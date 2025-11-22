@@ -34,7 +34,7 @@ fi
 
 # Load .env file
 echo "📖 Loading environment variables..."
-export $(grep -v '^#' .env | grep -v '^$' | xargs)
+export $(grep -v '^#' .env | grep -v '^$' | sed 's/ *#.*//' | xargs)
 
 # Validate required variables
 if [ -z "$NETWORK_NAME" ]; then
