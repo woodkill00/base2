@@ -11,7 +11,9 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install && npm cache clean --force
+RUN npm install \
+  && npm cache clean --force \
+  && rm -rf /tmp/* /app/node_modules/.cache
 
 # Copy application source
 COPY . .
@@ -37,6 +39,9 @@ WORKDIR /app
 COPY --from=build --chown=reactuser:nodejs /app/node_modules ./node_modules
 COPY --from=build --chown=reactuser:nodejs /app/package*.json ./
 COPY --chown=reactuser:nodejs . .
+
+# Optional: Clean up any temp/bloat files in production image
+RUN rm -rf /tmp/* /app/node_modules/.cache
 
 # Switch to non-root user
 USER reactuser

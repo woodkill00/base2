@@ -251,7 +251,10 @@ next-env.d.ts
 
 # Gatsby
 .cache/
-public/
+# Do not ignore react-app/public/
+# !react-app/public/
+# !react-app/public/**
+#public/
 
 # Serverless
 .serverless/
