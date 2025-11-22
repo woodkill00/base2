@@ -1,50 +1,55 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+
+# Base2 Constitution
+
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Test-First Development
+All code MUST be developed using test-driven development (TDD).  
+Tests are written before implementation, must fail initially, and must pass after code is complete.  
+No feature or fix is merged without passing tests and coverage review.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Seamless Dockerization
+All services MUST run together via Docker Compose.  
+Containers are built to work together out-of-the-box, with health checks and clear interdependencies.  
+No manual steps required beyond provided scripts.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Documentation-Driven
+Every feature, change, or fix MUST be accompanied by updated documentation.  
+Docs cover setup, usage, environment variables, and scripts.  
+No undocumented features or breaking changes.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. User-Friendly Operations
+All processes (build, start, stop, test, logs) MUST be runnable via scripts.  
+No required manual commands outside documented scripts.  
+All required configuration is stored in `.env`/`.env.example` only.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Environment Variable Discipline
+All required variables are defined in `.env.example` and loaded from `.env`.  
+Scripts and code MUST pull variables from `.env` or replace them automatically.  
+No hardcoded secrets or config outside `.env`.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+## Additional Constraints
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+- All containers must pass health checks before considered "ready".
+- No sensitive information is committed; only `.env.example` is tracked.
+- All dependencies and versions are documented.
+- All breaking changes require a migration guide in the documentation.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+
+## Development Workflow
+
+- All features/changes require updated tests and documentation before merge.
+- Code reviews verify TDD, Docker integration, documentation, and env discipline.
+- Any new or changed feature triggers a documentation update.
+- Scripts are the only supported way to run, build, or test the project.
+
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
-
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+- This constitution supersedes all other practices.
+- Amendments require documentation, approval, and migration plan.
+- All PRs/reviews must verify compliance with these principles.
+- TODO(RATIFICATION_DATE): Set original ratification date.
+- **Version**: 1.1.0 | **Ratified**: TODO(RATIFICATION_DATE) | **Last Amended**: 2025-11-21
