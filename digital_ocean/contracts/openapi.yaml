@@ -1,0 +1,61 @@
+openapi: 3.0.0
+info:
+  title: Digital Ocean Container API Scripts
+  version: 1.0.0
+  description: API contract for scripts that interact with Digital Ocean to launch and manage containers.
+servers:
+  - url: https://api.digitalocean.com/v2
+paths:
+  /apps:
+    post:
+      summary: Launch a new app/container
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                region:
+                  type: string
+                image:
+                  type: string
+              required:
+                - name
+                - image
+      responses:
+        '201':
+          description: App created
+        '400':
+          description: Invalid request
+        '401':
+          description: Unauthorized
+  /apps/{app_id}:
+    get:
+      summary: Get app/container status
+      parameters:
+        - name: app_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Status returned
+        '404':
+          description: Not found
+    delete:
+      summary: Destroy app/container
+      parameters:
+        - name: app_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: App destroyed
+        '404':
+          description: Not found
