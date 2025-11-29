@@ -4180,7 +4180,8 @@ paths:
                 "emails": ["sammy@digitalocean.com"],
                 "slack_webhooks": [
                     {
-                        "url": "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX",
+                        # Example only, not a real webhook
+                        "url": "https://hooks.slack.com/services/EXAMPLE/EXAMPLE/EXAMPLE",
                         "channel": "Channel Name",
                     }
                 ],
@@ -42417,8 +42418,9 @@ components:
         url:
           title: URL of the Slack webhook
           type: string
+          # Example only, not a real webhook
           example: >-
-            https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX
+            https://hooks.slack.com/services/EXAMPLE/EXAMPLE/EXAMPLE
         channel:
           title: Name of the Slack Webhook Channel
           type: string
