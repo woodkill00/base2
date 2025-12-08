@@ -1,4 +1,6 @@
 # Digital Ocean automation requirements
 # PyDo: Official Digital Ocean Python SDK (https://github.com/digitalocean/pydo)
+
 pydo>=0.5.0
 pytest>=7.0.0
+urllib3>=2.6.0
