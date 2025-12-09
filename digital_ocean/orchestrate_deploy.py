@@ -6,10 +6,15 @@ Orchestrate Digital Ocean Droplet deployment, DNS update, .env generation, and s
 """
 
 import os
+import json
 from pathlib import Path
 import subprocess
 from dotenv import load_dotenv
+# Load .env
 load_dotenv()
+def log_json(label, data):
+    print(f"\033[1;36m[DEBUG]\033[0m {label}: {json.dumps(data, indent=2)}")
+
 # --- SSH Key Generation and .env Update ---
 PROJECT_NAME = os.getenv("PROJECT_NAME", "base2")
 ssh_dir = os.path.expanduser("~/.ssh")
@@ -80,6 +85,14 @@ SSH_USER = os.getenv("SSH_USER", "root")
 
 client = Client(token=DO_API_TOKEN)
 
+
+# --- Read digital_ocean_base.sh for user_data ---
+base_script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "scripts/digital_ocean_base.sh"))
+with open(base_script_path, "r") as f:
+    user_data_script = f.read()
+log("Loaded digital_ocean_base.sh for user_data:")
+print(user_data_script)
+
 # --- 1. Create Droplet ---
 droplet_spec = {
     "name": DO_DROPLET_NAME,
@@ -88,11 +101,16 @@ droplet_spec = {
     "image": DO_API_IMAGE,
     "ssh_keys": ssh_keys,
     "tags": ["base2"],
+    "user_data": user_data_script,
 }
+log_json("Droplet spec being sent", droplet_spec)
 
-log("Creating droplet...")
+
+log("Creating droplet via DigitalOcean API...")
 try:
+    log_json("API Request - droplets.create", droplet_spec)
     droplet = client.droplets.create(droplet_spec)
+    log_json("API Response - droplets.create", droplet)
     droplet_id = droplet["droplet"]["id"]
 except Exception as e:
     err(f"Droplet creation failed: {e}")
@@ -100,21 +118,66 @@ except Exception as e:
 
 ip_address = None  # Will be set after droplet is active
 
+
 log("Waiting for droplet to become active...")
 while True:
     droplet_info = client.droplets.get(droplet_id)["droplet"]
+    log_json("API Response - droplets.get", droplet_info)
     if droplet_info["status"] == "active":
         break
     time.sleep(5)
     print("...", flush=True)
 
+
 ip_address = droplet_info["networks"]["v4"][0]["ip_address"]
 log(f"Droplet IP: {ip_address}")
+
+# --- SSH: Wait for digital_ocean_base.sh completion ---
+log("Waiting for digital_ocean_base.sh to complete on droplet...")
+import socket
+import time as t
+ssh_ready = False
+for _ in range(30):
+    try:
+        sock = socket.create_connection((ip_address, 22), timeout=5)
+        sock.close()
+        ssh_ready = True
+        break
+    except Exception:
+        t.sleep(5)
+if not ssh_ready:
+    err("SSH port 22 not available after droplet boot. Exiting.")
+    exit(1)
+
+ssh_client = paramiko.SSHClient()
+ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+try:
+    log(f"Connecting to droplet via SSH at {ip_address}...")
+    ssh_client.connect(ip_address, username=SSH_USER, key_filename=ssh_key_path)
+    # Wait for marker file from base script
+    for _ in range(30):
+        stdin, stdout, stderr = ssh_client.exec_command('test -f /var/log/do_base_complete && echo COMPLETE || echo WAIT')
+        result = stdout.read().decode().strip()
+        log(f"[SSH] /var/log/do_base_complete check: {result}")
+        if result == "COMPLETE":
+            break
+        t.sleep(10)
+    else:
+        err("digital_ocean_base.sh did not complete in time. Exiting.")
+        ssh_client.close()
+        exit(1)
+    log("digital_ocean_base.sh completed successfully.")
+except Exception as e:
+    err(f"SSH connection or base script check failed: {e}")
+    exit(1)
+
 
 # --- 3. Update DNS Records ---
 log("Updating DNS A/AAAA records for domain and www...")
 try:
+    log_json("API Request - domains.list_records", {"domain": DO_DOMAIN})
     records = client.domains.list_records(DO_DOMAIN)["domain_records"]
+    log_json("API Response - domains.list_records", records)
     v6_list = droplet_info["networks"].get("v6", [])
     ipv6_address = v6_list[0]["ip_address"] if v6_list else None
 
@@ -129,11 +192,13 @@ try:
             if DRY_RUN:
                 log(f"[DRY RUN] Would update root A record ({record['name']}) -> {ip_address}")
             else:
-                client.domains.update_record(DO_DOMAIN, record["id"], {
+                log_json("API Request - domains.update_record (A_root)", {"id": record["id"], "data": ip_address})
+                resp = client.domains.update_record(DO_DOMAIN, record["id"], {
                     "type": "A",
                     "name": record["name"],
                     "data": ip_address
                 })
+                log_json("API Response - domains.update_record (A_root)", resp)
                 log(f"Updated root A record ({record['name']}) -> {ip_address}")
             updated["A_root"] = True
         # www A record
@@ -142,11 +207,13 @@ try:
             if DRY_RUN:
                 log(f"[DRY RUN] Would update www A record ({record['name']}) -> {ip_address}")
             else:
-                client.domains.update_record(DO_DOMAIN, record["id"], {
+                log_json("API Request - domains.update_record (A_www)", {"id": record["id"], "data": ip_address})
+                resp = client.domains.update_record(DO_DOMAIN, record["id"], {
                     "type": "A",
                     "name": record["name"],
                     "data": ip_address
                 })
+                log_json("API Response - domains.update_record (A_www)", resp)
                 log(f"Updated www A record ({record['name']}) -> {ip_address}")
             updated["A_www"] = True
         # Root AAAA record
@@ -156,11 +223,13 @@ try:
                 if DRY_RUN:
                     log(f"[DRY RUN] Would update root AAAA record ({record['name']}) -> {ipv6_address}")
                 else:
-                    client.domains.update_record(DO_DOMAIN, record["id"], {
+                    log_json("API Request - domains.update_record (AAAA_root)", {"id": record["id"], "data": ipv6_address})
+                    resp = client.domains.update_record(DO_DOMAIN, record["id"], {
                         "type": "AAAA",
                         "name": record["name"],
                         "data": ipv6_address
                     })
+                    log_json("API Response - domains.update_record (AAAA_root)", resp)
                     log(f"Updated root AAAA record ({record['name']}) -> {ipv6_address}")
                 updated["AAAA_root"] = True
 
@@ -169,34 +238,73 @@ try:
         if DRY_RUN:
             log(f"[DRY RUN] Would create root A record (@) -> {ip_address}")
         else:
-            client.domains.create_record(DO_DOMAIN, {
+            log_json("API Request - domains.create_record (A_root)", {"type": "A", "name": "@", "data": ip_address})
+            resp = client.domains.create_record(DO_DOMAIN, {
                 "type": "A",
                 "name": "@",
                 "data": ip_address
             })
+            log_json("API Response - domains.create_record (A_root)", resp)
             log(f"Created root A record (@) -> {ip_address}")
     if not found["A_www"]:
         if DRY_RUN:
             log(f"[DRY RUN] Would create www A record (www) -> {ip_address}")
         else:
-            client.domains.create_record(DO_DOMAIN, {
+            log_json("API Request - domains.create_record (A_www)", {"type": "A", "name": "www", "data": ip_address})
+            resp = client.domains.create_record(DO_DOMAIN, {
                 "type": "A",
                 "name": "www",
                 "data": ip_address
             })
+            log_json("API Response - domains.create_record (A_www)", resp)
             log(f"Created www A record (www) -> {ip_address}")
     if ipv6_address and not found["AAAA_root"]:
         if DRY_RUN:
             log(f"[DRY RUN] Would create root AAAA record (@) -> {ipv6_address}")
         else:
-            client.domains.create_record(DO_DOMAIN, {
+            log_json("API Request - domains.create_record (AAAA_root)", {"type": "AAAA", "name": "@", "data": ipv6_address})
+            resp = client.domains.create_record(DO_DOMAIN, {
                 "type": "AAAA",
                 "name": "@",
                 "data": ipv6_address
             })
+            log_json("API Response - domains.create_record (AAAA_root)", resp)
             log(f"Created root AAAA record (@) -> {ipv6_address}")
     if not updated["A_root"] and not updated["A_www"] and not updated["AAAA_root"]:
         log("No A/AAAA records for root or www found to update or create.")
 except Exception as e:
     err(f"DNS update failed: {e}")
     exit(1)
+
+# --- 4. Run container startup and verify health ---
+try:
+    log("Running container startup script on droplet via SSH...")
+    start_cmd = f"bash /srv/backend/scripts/start.sh --build --file /srv/backend/local.docker.yml"
+    log(f"[SSH] Running: {start_cmd}")
+    stdin, stdout, stderr = ssh_client.exec_command(start_cmd)
+    out = stdout.read().decode()
+    err_out = stderr.read().decode()
+    log(f"[SSH][stdout] {out}")
+    if err_out:
+        err(f"[SSH][stderr] {err_out}")
+
+    # Check container status
+    log("Checking Docker containers status via SSH...")
+    check_cmds = [
+        "docker ps -a",
+        "docker compose -f /srv/backend/local.docker.yml ps"
+    ]
+    for cmd in check_cmds:
+        log(f"[SSH] Running: {cmd}")
+        stdin, stdout, stderr = ssh_client.exec_command(cmd)
+        out = stdout.read().decode()
+        err_out = stderr.read().decode()
+        log(f"[SSH][stdout] {out}")
+        if err_out:
+            err(f"[SSH][stderr] {err_out}")
+    log("All container checks complete.")
+except Exception as e:
+    err(f"Container startup or health check failed: {e}")
+    exit(1)
+
+log("Deployment complete! All steps finished.")
