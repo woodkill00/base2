@@ -57,6 +57,30 @@ def log(msg):
 
 def err(msg):
     print(f"\033[1;31m[ERROR]\033[0m {msg}", flush=True)
+    # --- Automatic recovery routine ---
+    try:
+        print("[RECOVERY] Attempting SSH recovery and diagnostics...")
+        ssh_client = paramiko.SSHClient()
+        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh_client.connect(ip_address, username=SSH_USER, key_filename=ssh_key_path)
+        # Check logs
+        for log_path in ["/var/log/cloud-init-output.log", "/var/log/do_base.log"]:
+            print(f"[RECOVERY] Checking {log_path}...")
+            stdin, stdout, stderr = ssh_client.exec_command(f"tail -n 100 {log_path}")
+            print(stdout.read().decode())
+            err_out = stderr.read().decode()
+            if err_out:
+                print(f"[RECOVERY][stderr] {err_out}")
+        # Rerun base script
+        print("[RECOVERY] Rerunning digital_ocean_base.sh...")
+        stdin, stdout, stderr = ssh_client.exec_command("bash /srv/backend/scripts/digital_ocean_base.sh")
+        print(stdout.read().decode())
+        err_out = stderr.read().decode()
+        if err_out:
+            print(f"[RECOVERY][stderr] {err_out}")
+        ssh_client.close()
+    except Exception as e:
+        print(f"[RECOVERY] SSH recovery failed: {e}")
 DO_API_TOKEN = os.getenv("DO_API_TOKEN")
 DO_DOMAIN = os.getenv("DO_DOMAIN")  # e.g. example.com
 DO_DROPLET_NAME = os.getenv("DO_DROPLET_NAME", "base2-droplet")
@@ -137,14 +161,15 @@ log("Waiting for digital_ocean_base.sh to complete on droplet...")
 import socket
 import time as t
 ssh_ready = False
-for _ in range(30):
+# Increased retries and sleep duration for SSH port check
+for _ in range(60):  # 60 retries (was 30)
     try:
         sock = socket.create_connection((ip_address, 22), timeout=5)
         sock.close()
         ssh_ready = True
         break
     except Exception:
-        t.sleep(5)
+        t.sleep(10)  # 10 seconds between retries (was 5)
 if not ssh_ready:
     err("SSH port 22 not available after droplet boot. Exiting.")
     exit(1)

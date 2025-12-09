@@ -59,9 +59,12 @@ fi
 # 1. System update and upgrade (already done above, but repeat for safety)
 apt-get update -y && apt-get upgrade -y
 
+
 # 2. SSH hardening: disable password authentication
 sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
 sed -i 's/^#*PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
+systemctl enable ssh
+systemctl start ssh
 systemctl reload sshd
 
 # 3. UFW Firewall setup
