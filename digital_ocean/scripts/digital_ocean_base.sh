@@ -13,7 +13,8 @@ IFS=$(printf '\n\t')
 apt-get update -y && apt-get upgrade -y
 apt-get autoremove -y
 
-# Install core tools
+apt-get update -y
+apt-get autoremove -y
 apt-get install -y curl python3-pip python3-venv make build-essential wget git
 
 # Upgrade pip
