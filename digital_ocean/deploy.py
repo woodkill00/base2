@@ -42,22 +42,23 @@ def main():
     client = Client(token=DO_API_TOKEN)
 
     app_spec = {
-        "name": DO_APP_NAME,
-        "region": DO_API_REGION,
-        "services": [{
-            "name": "web",
-            "git": {
-                "repo_clone_url": DO_GIT_REPO,
-                "branch": "main",  # You can make this configurable
-                "deploy_on_push": True
-            },
-            "run_command": "",  # Optionally set your run command
-            "envs": []
-        }]
+        "spec": {
+            "name": DO_APP_NAME,
+            "region": DO_API_REGION,
+            "services": [{
+                "name": "web",
+                "git": {
+                    "repo_clone_url": DO_GIT_REPO,
+                    "branch": "main"  # You can make this configurable
+                },
+                "run_command": "",  # Optionally set your run command
+                "envs": []
+            }]
+        }
     }
     try:
         logger.info(f"Starting App Platform deployment for app: {DO_APP_NAME} from repo: {DO_GIT_REPO}")
-        app = client.apps.create_app(app_spec)
+        app = client.apps.create(app_spec)
         app_id = app['app']['id'] if 'app' in app and 'id' in app['app'] else None
         logger.info(f"App Platform deployment started. App ID: {app_id}")
         print(f"App Platform deployment started. App ID: {app_id}")
