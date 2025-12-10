@@ -1,3 +1,25 @@
+
+# Source .env from workspace root (parent of this script's directory)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WORKSPACE_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
+ENV_PATH="$WORKSPACE_ROOT/.env"
+if [ -f "$ENV_PATH" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  . "$ENV_PATH"
+  set +a
+fi
+
+
+# Require DEPLOY_PATH and PROJECT_NAME to be set in .env
+if [ -z "${DEPLOY_PATH:-}" ]; then
+  echo "[ERROR] DEPLOY_PATH must be set in .env" >&2
+  exit 1
+fi
+if [ -z "${PROJECT_NAME:-}" ]; then
+  echo "[ERROR] PROJECT_NAME must be set in .env" >&2
+  exit 1
+fi
 #!/bin/bash
 # Digital Ocean droplet base setup script
 # Run as root or with sudo, or via cloud-init user_data
