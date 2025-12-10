@@ -5,6 +5,16 @@
 entryPoints:
   web:
     address: ':${TRAEFIK_PORT}'
+    http:
+      # https://docs.traefik.io/routing/entrypoints/#entrypoint
+      redirections:
+        entryPoint:
+          to: web-secure
+          # scheme: https # all will redirect to https
+
+  web-secure:
+    # https
+    address: ":443"
 
   # API and dashboard entrypoint (Traefik v3 uses 'traefik' as the internal name)
   traefik:
@@ -14,6 +24,7 @@ entryPoints:
 api:
   dashboard: true
   insecure: true
+  debug: true
 
 # Ping health check
 ping: {}
@@ -30,6 +41,21 @@ accessLog:
   format: json
   bufferingSize: 100
 
+certificatesResolvers:
+  letsencrypt:
+    # https://docs.traefik.io/master/https/acme/#lets-encrypt
+    acme:
+      email: '${TRAEFIK_CERT_EMAIL}'
+      storage: /etc/traefik/acme/acme.json
+      # https://docs.traefik.io/master/https/acme/#httpchallenge
+      httpChallenge:
+        entryPoint: web
+      dnsChallenge:
+        provider: digitalocean
+        # delayBeforeCheck: 0
+      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+      # caServer: https://acme-v02.api.letsencrypt.org/directory
+
 # Providers configuration
 providers:
   docker:
@@ -37,3 +63,10 @@ providers:
     exposedByDefault: ${TRAEFIK_EXPOSED_BY_DEFAULT}
     network: '${TRAEFIK_DOCKER_NETWORK}'
     watch: true
+
+# providers:
+#   # https://docs.traefik.io/master/providers/file/
+#   file:
+#     filename: /etc/traefik/dynamic.yml
+#     # filename: /etc/traefik/traefik.yml
+#     watch: true

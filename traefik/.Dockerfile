@@ -23,6 +23,10 @@ RUN addgroup -g 1000 traefik 2>/dev/null || true && \
     chown -R traefik:traefik /etc/traefik /var/log/traefik && \
     chmod -R 755 /etc/traefik /var/log/traefik
 
+RUN mkdir -p /etc/traefik/acme \
+  && touch /etc/traefik/acme/acme.json \
+  && chmod 600 /etc/traefik/acme/acme.json
+
 # Copy traefik configuration template
 COPY traefik.yml /etc/traefik/templates/traefik.yml.template
 

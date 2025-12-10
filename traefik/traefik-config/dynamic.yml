@@ -1,0 +1,53 @@
+# Dynamic configuration
+
+http:
+  routers:
+    web-secure-router:
+      rule: "Host(`${TRAEFIK_WEBSITE_DOMAIN}`) || Host(`www.${TRAEFIK_WEBSITE_DOMAIN}`)"
+      # rule: "Host(`woodkilldev.com`) || Host(`www.woodkilldev.com`)"
+      # rule: "Host(`jessejamesacademy.com`) || Host(`www.jessejamesacademy.com`)"
+      entryPoints:
+        - web-secure
+      middlewares:
+        - csrf
+        # - https_redirect # will only direct routes in this router to https
+      service: react-app
+      tls:
+        # https://docs.traefik.io/master/routing/routers/#certresolver
+        certResolver: letsencrypt
+
+    # web-secure-admin-router:
+    #   # need to pull in the ${DJANGO_ADMIN_URL} env var to have it go in where admin is below
+    #   rule: "Host(`jessejamesacademy.com`) && PathPrefix(`/admin`) || Host(`www.jessejamesacademy.com`) PathPrefix(`/admin`)"
+    #   entryPoints:
+    #     - web-secure
+    #   middlewares:
+    #     - csrf
+    #     # - https_redirect # will only direct routes in this router to https
+    #   service: django
+    #   tls:
+    #     # https://docs.traefik.io/master/routing/routers/#certresolver
+    #     certResolver: letsencrypt
+
+  middlewares:
+    csrf:
+      # https://docs.traefik.io/master/middlewares/headers/#hostsproxyheaders
+      # https://docs.djangoproject.com/en/dev/ref/csrf/#ajax
+      headers:
+        hostsProxyHeaders: ["X-CSRFToken"]
+    https-redirect:
+      redirectScheme:
+        scheme: https
+        permanent: true
+    auth:
+      basicAuth:
+        users:
+          - "testuser:${TRAEFIK_USER}"
+          # - "testuser:$2y$05$KizJao5OhD1.C9XsGR7dOeJa6706qKMT1rpbJ/PX1UB2aSauAVBdO"
+          # - "testuser:$2a$12$yq92zdYZFibqQVAmVkiIQuyeC20r.2dhhnak6fQ12ZU4/GzcErhAG"
+
+  services:
+    react-app:
+      loadBalancer:
+        servers:
+          - url: http://react-app:3000
