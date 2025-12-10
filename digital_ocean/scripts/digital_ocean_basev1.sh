@@ -1,4 +1,12 @@
 #!/bin/bash
+set -e
+
+echo "User data script started at $(date)" | tee -a /var/log/cloud-init-output.log
+
+touch /var/log/do_base_complete
+
+echo "User data script completed at $(date)" | tee -a /var/log/cloud-init-output.log
+#!/bin/bash
 
 set -e
 
