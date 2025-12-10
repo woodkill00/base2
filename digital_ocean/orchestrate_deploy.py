@@ -136,176 +136,18 @@ try:
     droplet = client.droplets.create(droplet_spec)
     log_json("API Response - droplets.create", droplet)
     droplet_id = droplet["droplet"]["id"]
+
+    log("Waiting for droplet to become active...")
+    while True:
+        droplet_info = client.droplets.get(droplet_id)["droplet"]
+        log_json("API Response - droplets.get", droplet_info)
+        if droplet_info["status"] == "active":
+            break
+        time.sleep(5)
+        print("...", flush=True)
+    ip_address = droplet_info["networks"]["v4"][0]["ip_address"]
+    print(f"Droplet created! IP address: {ip_address}")
+    exit(0)
 except Exception as e:
     err(f"Droplet creation failed: {e}")
     exit(1)
-
-ip_address = None  # Will be set after droplet is active
-
-
-log("Waiting for droplet to become active...")
-while True:
-    droplet_info = client.droplets.get(droplet_id)["droplet"]
-    log_json("API Response - droplets.get", droplet_info)
-    if droplet_info["status"] == "active":
-        break
-    time.sleep(5)
-    print("...", flush=True)
-
-
-ip_address = droplet_info["networks"]["v4"][0]["ip_address"]
-log(f"Droplet IP: {ip_address}")
-
-# --- SSH: Wait for digital_ocean_base.sh completion ---
-log("Waiting for digital_ocean_base.sh to complete on droplet...")
-
-import time as t
-import subprocess
-ssh_ready = False
-ssh_cmd = [
-    "ssh",
-    "-i", ssh_key_path,
-    f"{SSH_USER}@{ip_address}",
-    "echo SSH_OK"
-]
-for _ in range(60):
-    try:
-        result = subprocess.run(ssh_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10)
-        if result.returncode == 0 and "SSH_OK" in result.stdout.decode():
-            ssh_ready = True
-            break
-    except Exception:
-        pass
-    t.sleep(10)
-if not ssh_ready:
-    err("SSH port 22 not available after droplet boot. Exiting.")
-    exit(1)
-
-# Wait for marker file from base script
-marker_cmd = [
-    "ssh",
-    "-i", ssh_key_path,
-    f"{SSH_USER}@{ip_address}",
-    "test -f /var/log/do_base_complete && echo COMPLETE || echo WAIT"
-]
-for _ in range(30):
-    result = subprocess.run(marker_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10)
-    marker = result.stdout.decode().strip()
-    log(f"[SSH] /var/log/do_base_complete check: {marker}")
-    if marker == "COMPLETE":
-        break
-    t.sleep(10)
-else:
-    err("digital_ocean_base.sh did not complete in time. Exiting.")
-    exit(1)
-log("digital_ocean_base.sh completed successfully.")
-
-
-# --- 3. Update DNS Records ---
-log("Updating DNS A/AAAA records for domain and www...")
-try:
-    log_json("API Request - domains.list_records", {"domain": DO_DOMAIN})
-    records = client.domains.list_records(DO_DOMAIN)["domain_records"]
-    log_json("API Response - domains.list_records", records)
-    v6_list = droplet_info["networks"].get("v6", [])
-    ipv6_address = v6_list[0]["ip_address"] if v6_list else None
-
-    # Track which records exist
-    found = {"A_root": None, "A_www": None, "AAAA_root": None}
-    updated = {"A_root": False, "A_www": False, "AAAA_root": False}
-
-    for record in records:
-        # Root A record
-        if record["type"] == "A" and (record["name"] == "@" or record["name"] == DO_DOMAIN or record["name"] == ""):
-            found["A_root"] = record
-            if DRY_RUN:
-                log(f"[DRY RUN] Would update root A record ({record['name']}) -> {ip_address}")
-            else:
-                log_json("API Request - domains.update_record (A_root)", {"id": record["id"], "data": ip_address})
-                resp = client.domains.update_record(DO_DOMAIN, record["id"], {
-                    "type": "A",
-                    "name": record["name"],
-                    "data": ip_address
-                })
-                log_json("API Response - domains.update_record (A_root)", resp)
-                log(f"Updated root A record ({record['name']}) -> {ip_address}")
-            updated["A_root"] = True
-        # www A record
-        if record["type"] == "A" and (record["name"] == "www" or record["name"] == f"www.{DO_DOMAIN}"):
-            found["A_www"] = record
-            if DRY_RUN:
-                log(f"[DRY RUN] Would update www A record ({record['name']}) -> {ip_address}")
-            else:
-                log_json("API Request - domains.update_record (A_www)", {"id": record["id"], "data": ip_address})
-                resp = client.domains.update_record(DO_DOMAIN, record["id"], {
-                    "type": "A",
-                    "name": record["name"],
-                    "data": ip_address
-                })
-                log_json("API Response - domains.update_record (A_www)", resp)
-                log(f"Updated www A record ({record['name']}) -> {ip_address}")
-            updated["A_www"] = True
-        # Root AAAA record
-        if record["type"] == "AAAA" and (record["name"] == "@" or record["name"] == DO_DOMAIN or record["name"] == ""):
-            found["AAAA_root"] = record
-            if ipv6_address:
-                if DRY_RUN:
-                    log(f"[DRY RUN] Would update root AAAA record ({record['name']}) -> {ipv6_address}")
-                else:
-                    log_json("API Request - domains.update_record (AAAA_root)", {"id": record["id"], "data": ipv6_address})
-                    resp = client.domains.update_record(DO_DOMAIN, record["id"], {
-                        "type": "AAAA",
-                        "name": record["name"],
-                        "data": ipv6_address
-                    })
-                    log_json("API Response - domains.update_record (AAAA_root)", resp)
-                    log(f"Updated root AAAA record ({record['name']}) -> {ipv6_address}")
-                updated["AAAA_root"] = True
-
-    # Create missing records
-    if not found["A_root"]:
-        if DRY_RUN:
-            log(f"[DRY RUN] Would create root A record (@) -> {ip_address}")
-        else:
-            log_json("API Request - domains.create_record (A_root)", {"type": "A", "name": "@", "data": ip_address})
-            resp = client.domains.create_record(DO_DOMAIN, {
-                "type": "A",
-                "name": "@",
-                "data": ip_address
-            })
-            log_json("API Response - domains.create_record (A_root)", resp)
-            log(f"Created root A record (@) -> {ip_address}")
-    if not found["A_www"]:
-        if DRY_RUN:
-            log(f"[DRY RUN] Would create www A record (www) -> {ip_address}")
-        else:
-            log_json("API Request - domains.create_record (A_www)", {"type": "A", "name": "www", "data": ip_address})
-            resp = client.domains.create_record(DO_DOMAIN, {
-                "type": "A",
-                "name": "www",
-                "data": ip_address
-            })
-            log_json("API Response - domains.create_record (A_www)", resp)
-            log(f"Created www A record (www) -> {ip_address}")
-    if ipv6_address and not found["AAAA_root"]:
-        if DRY_RUN:
-            log(f"[DRY RUN] Would create root AAAA record (@) -> {ipv6_address}")
-        else:
-            log_json("API Request - domains.create_record (AAAA_root)", {"type": "AAAA", "name": "@", "data": ipv6_address})
-            resp = client.domains.create_record(DO_DOMAIN, {
-                "type": "AAAA",
-                "name": "@",
-                "data": ipv6_address
-            })
-            log_json("API Response - domains.create_record (AAAA_root)", resp)
-            log(f"Created root AAAA record (@) -> {ipv6_address}")
-    if not updated["A_root"] and not updated["A_www"] and not updated["AAAA_root"]:
-        log("No A/AAAA records for root or www found to update or create.")
-except Exception as e:
-    err(f"DNS update failed: {e}")
-    exit(1)
-
-
-# --- STOP HERE: Exit after DNS record creation/update ---
-log("All DNS records created/updated. Exiting as requested.")
-exit(0)
