@@ -147,6 +147,21 @@ try:
         print("...", flush=True)
     ip_address = droplet_info["networks"]["v4"][0]["ip_address"]
     print(f"Droplet created! IP address: {ip_address}")
+    # Connect via SSH and print cloud-init log
+    try:
+        log("Connecting via SSH to fetch /var/log/cloud-init-output.log ...")
+        ssh_client = paramiko.SSHClient()
+        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh_client.connect(ip_address, username=SSH_USER, key_filename=ssh_key_path)
+        stdin, stdout, stderr = ssh_client.exec_command("cat /var/log/cloud-init-output.log")
+        print("\n--- /var/log/cloud-init-output.log ---\n")
+        print(stdout.read().decode())
+        err_out = stderr.read().decode()
+        if err_out:
+            print(f"[stderr] {err_out}")
+        ssh_client.close()
+    except Exception as e:
+        err(f"SSH log fetch failed: {e}")
     exit(0)
 except Exception as e:
     err(f"Droplet creation failed: {e}")
