@@ -110,11 +110,11 @@ SSH_USER = os.getenv("SSH_USER", "root")
 client = Client(token=DO_API_TOKEN)
 
 
-# --- Read digital_ocean_base.sh for user_data ---
-base_script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "scripts/digital_ocean_base.sh"))
+# --- Read digital_ocean_basev1.sh for user_data ---
+base_script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "scripts/digital_ocean_basev1.sh"))
 with open(base_script_path, "r") as f:
     user_data_script = f.read()
-log("Loaded digital_ocean_base.sh for user_data:")
+log("Loaded digital_ocean_basev1.sh for user_data:")
 print(user_data_script)
 
 # --- 1. Create Droplet ---
@@ -301,35 +301,7 @@ except Exception as e:
     err(f"DNS update failed: {e}")
     exit(1)
 
-# --- 4. Run container startup and verify health ---
-try:
-    log("Running container startup script on droplet via SSH...")
-    start_cmd = f"bash /srv/backend/scripts/start.sh --build --file /srv/backend/local.docker.yml"
-    log(f"[SSH] Running: {start_cmd}")
-    stdin, stdout, stderr = ssh_client.exec_command(start_cmd)
-    out = stdout.read().decode()
-    err_out = stderr.read().decode()
-    log(f"[SSH][stdout] {out}")
-    if err_out:
-        err(f"[SSH][stderr] {err_out}")
 
-    # Check container status
-    log("Checking Docker containers status via SSH...")
-    check_cmds = [
-        "docker ps -a",
-        "docker compose -f /srv/backend/local.docker.yml ps"
-    ]
-    for cmd in check_cmds:
-        log(f"[SSH] Running: {cmd}")
-        stdin, stdout, stderr = ssh_client.exec_command(cmd)
-        out = stdout.read().decode()
-        err_out = stderr.read().decode()
-        log(f"[SSH][stdout] {out}")
-        if err_out:
-            err(f"[SSH][stderr] {err_out}")
-    log("All container checks complete.")
-except Exception as e:
-    err(f"Container startup or health check failed: {e}")
-    exit(1)
-
-log("Deployment complete! All steps finished.")
+# --- STOP HERE: Exit after DNS record creation/update ---
+log("All DNS records created/updated. Exiting as requested.")
+exit(0)
