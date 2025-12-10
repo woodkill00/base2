@@ -158,47 +158,43 @@ log(f"Droplet IP: {ip_address}")
 
 # --- SSH: Wait for digital_ocean_base.sh completion ---
 log("Waiting for digital_ocean_base.sh to complete on droplet...")
-
+import socket
 import time as t
-import subprocess
 ssh_ready = False
-ssh_cmd = [
-    "ssh",
-    "-i", ssh_key_path,
-    f"{SSH_USER}@{ip_address}",
-    "echo SSH_OK"
-]
-for _ in range(60):
+# Increased retries and sleep duration for SSH port check
+for _ in range(60):  # 60 retries (was 30)
     try:
-        result = subprocess.run(ssh_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10)
-        if result.returncode == 0 and "SSH_OK" in result.stdout.decode():
-            ssh_ready = True
-            break
+        sock = socket.create_connection((ip_address, 22), timeout=5)
+        sock.close()
+        ssh_ready = True
+        break
     except Exception:
-        pass
-    t.sleep(10)
+        t.sleep(10)  # 10 seconds between retries (was 5)
 if not ssh_ready:
     err("SSH port 22 not available after droplet boot. Exiting.")
     exit(1)
 
-# Wait for marker file from base script
-marker_cmd = [
-    "ssh",
-    "-i", ssh_key_path,
-    f"{SSH_USER}@{ip_address}",
-    "test -f /var/log/do_base_complete && echo COMPLETE || echo WAIT"
-]
-for _ in range(30):
-    result = subprocess.run(marker_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10)
-    marker = result.stdout.decode().strip()
-    log(f"[SSH] /var/log/do_base_complete check: {marker}")
-    if marker == "COMPLETE":
-        break
-    t.sleep(10)
-else:
-    err("digital_ocean_base.sh did not complete in time. Exiting.")
+ssh_client = paramiko.SSHClient()
+ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+try:
+    log(f"Connecting to droplet via SSH at {ip_address}...")
+    ssh_client.connect(ip_address, username=SSH_USER, key_filename=ssh_key_path)
+    # Wait for marker file from base script
+    for _ in range(30):
+        stdin, stdout, stderr = ssh_client.exec_command('test -f /var/log/do_base_complete && echo COMPLETE || echo WAIT')
+        result = stdout.read().decode().strip()
+        log(f"[SSH] /var/log/do_base_complete check: {result}")
+        if result == "COMPLETE":
+            break
+        t.sleep(10)
+    else:
+        err("digital_ocean_base.sh did not complete in time. Exiting.")
+        ssh_client.close()
+        exit(1)
+    log("digital_ocean_base.sh completed successfully.")
+except Exception as e:
+    err(f"SSH connection or base script check failed: {e}")
     exit(1)
-log("digital_ocean_base.sh completed successfully.")
 
 
 # --- 3. Update DNS Records ---
@@ -305,7 +301,35 @@ except Exception as e:
     err(f"DNS update failed: {e}")
     exit(1)
 
+# --- 4. Run container startup and verify health ---
+try:
+    log("Running container startup script on droplet via SSH...")
+    start_cmd = f"bash /srv/backend/scripts/start.sh --build --file /srv/backend/local.docker.yml"
+    log(f"[SSH] Running: {start_cmd}")
+    stdin, stdout, stderr = ssh_client.exec_command(start_cmd)
+    out = stdout.read().decode()
+    err_out = stderr.read().decode()
+    log(f"[SSH][stdout] {out}")
+    if err_out:
+        err(f"[SSH][stderr] {err_out}")
 
-# --- STOP HERE: Exit after DNS record creation/update ---
-log("All DNS records created/updated. Exiting as requested.")
-exit(0)
+    # Check container status
+    log("Checking Docker containers status via SSH...")
+    check_cmds = [
+        "docker ps -a",
+        "docker compose -f /srv/backend/local.docker.yml ps"
+    ]
+    for cmd in check_cmds:
+        log(f"[SSH] Running: {cmd}")
+        stdin, stdout, stderr = ssh_client.exec_command(cmd)
+        out = stdout.read().decode()
+        err_out = stderr.read().decode()
+        log(f"[SSH][stdout] {out}")
+        if err_out:
+            err(f"[SSH][stderr] {err_out}")
+    log("All container checks complete.")
+except Exception as e:
+    err(f"Container startup or health check failed: {e}")
+    exit(1)
+
+log("Deployment complete! All steps finished.")
