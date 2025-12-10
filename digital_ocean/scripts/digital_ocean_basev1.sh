@@ -38,9 +38,21 @@ apt-get autoremove -y
 dpkg_lock_wait
 apt-get install -y curl python3-pip python3-venv make build-essential wget git
 
-log "Upgrading pip..."
-python3 -m pip install --upgrade pip
-log "Core tools installed and pip upgraded."
+# --- Python Virtual Environment Setup ---
+log "Setting up Python virtual environment..."
+mkdir -p "$DEPLOY_PATH$PROJECT_NAME"
+VENV_PATH="$DEPLOY_PATH$PROJECT_NAME/venv"
+python3 -m venv "$VENV_PATH"
+source "$VENV_PATH/bin/activate"
+log "Virtual environment activated at $VENV_PATH."
+
+log "Upgrading pip in venv..."
+pip install --upgrade pip
+log "Core tools installed and pip upgraded in venv."
+
+# Ensure all subsequent commands use the venv
+export VIRTUAL_ENV="$VENV_PATH"
+export PATH="$VENV_PATH/bin:$PATH"
 
 # --- Docker Install ---
 log "Removing old Docker versions (if any)..."
@@ -103,9 +115,9 @@ ufw --force enable
 ufw status verbose
 
 # --- Application Setup ---
-log "Cloning repo to /opt/apps/base2..."
-mkdir -p /opt/apps/base2
-git clone https://github.com/woodkill00/base2.git /opt/apps/base2
+log "Cloning repo to $DEPLOY_PATH$PROJECT_NAME..."
+# Project Directory Created Above
+git clone https://github.com/woodkill00/base2.git "$DEPLOY_PATH$PROJECT_NAME"
 
 touch /var/log/do_base_complete
 log "User data script completed at $(date)"
