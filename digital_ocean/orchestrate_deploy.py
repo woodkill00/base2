@@ -441,6 +441,18 @@ try:
         exit(1)
     log("Deployment script completed successfully.")
     SUMMARY.append("Deployment script completed successfully.")
+
+    # Automatically run post-deployment script
+    post_deploy_script = os.path.abspath(os.path.join(os.path.dirname(__file__), "../scripts/post_deploy_base2.sh")).replace("\\", "/")
+    log(f"Running post-deployment script: {post_deploy_script} {ip_address}")
+    try:
+        result = subprocess.run(["bash", post_deploy_script, ip_address], capture_output=True, text=True)
+        print(result.stdout)
+        if result.stderr:
+            print(result.stderr)
+        log("Post-deployment script completed.")
+    except Exception as e:
+        err(f"Failed to run post-deployment script: {e}")
     exit(0)
 except Exception as e:
     err(f"Droplet creation failed: {e}")
