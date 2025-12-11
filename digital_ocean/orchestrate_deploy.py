@@ -148,14 +148,38 @@ SSH_USER = os.getenv("SSH_USER", "root")
 client = Client(token=DO_API_TOKEN)
 
 
-# --- Read digital_ocean_basev1.sh for user_data ---
 
-base_script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "scripts/digital_ocean_basev1.sh"))
+# --- Read digital_ocean_base.sh for user_data, substitute env vars ---
+import re
+from dotenv import dotenv_values
+
+base_script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "scripts/digital_ocean_base.sh"))
 log(f"Loading user_data script from {base_script_path}")
 with open(base_script_path, "r") as f:
     user_data_script = f.read()
-log("Loaded digital_ocean_basev1.sh for user_data:")
-print("--- user_data script ---\n" + user_data_script + "\n--- end user_data script ---")
+
+# Load .env as dict
+env_dict = dotenv_values(env_path)
+
+def substitute_env_vars(script, env):
+    # Replace $VAR and ${VAR} with env[VAR] if present
+    def replacer(match):
+        var = match.group(1) or match.group(2)
+        return env.get(var, match.group(0))
+    # $VAR or ${VAR}
+    pattern = re.compile(r'\$(\w+)|\${(\w+)}')
+    return pattern.sub(replacer, script)
+
+
+user_data_script_sub = substitute_env_vars(user_data_script, env_dict)
+log("Loaded digital_ocean_base.sh for user_data (with env substitution):")
+print("--- user_data script ---\n" + user_data_script_sub + "\n--- end user_data script ---")
+
+# Write user_data to DO_userdata.json for inspection (droplet_id will be added after creation)
+do_userdata_json_path = "DO_userdata.json"
+with open(do_userdata_json_path, "w", encoding="utf-8") as f:
+    json.dump({"user_data": user_data_script_sub}, f, indent=2)
+log("Wrote user_data to DO_userdata.json (without droplet_id yet)")
 
 # --- 1. Create Droplet ---
 
@@ -167,7 +191,7 @@ droplet_spec = {
     "image": DO_API_IMAGE,
     "ssh_keys": ssh_keys,
     "tags": ["base2"],
-    "user_data": user_data_script,
+    "user_data": user_data_script_sub,
 }
 log_json("Droplet spec being sent", droplet_spec)
 
@@ -178,8 +202,19 @@ try:
     log_json("API Request - droplets.create", droplet_spec)
     droplet = client.droplets.create(droplet_spec)
     log_json("API Response - droplets.create", droplet)
+
     droplet_id = droplet["droplet"]["id"]
     log(f"Droplet created with ID: {droplet_id}")
+    # Update DO_userdata.json to include droplet_id
+    try:
+        with open(do_userdata_json_path, "r", encoding="utf-8") as f:
+            do_userdata = json.load(f)
+        do_userdata["droplet_id"] = droplet_id
+        with open(do_userdata_json_path, "w", encoding="utf-8") as f:
+            json.dump(do_userdata, f, indent=2)
+        log(f"Updated {do_userdata_json_path} with droplet_id {droplet_id}")
+    except Exception as e:
+        err(f"Failed to update {do_userdata_json_path} with droplet_id: {e}")
 
     log("Waiting for droplet to become active...")
     while True:
@@ -452,13 +487,17 @@ try:
     log("Deployment script completed successfully.")
     SUMMARY.append("Deployment script completed successfully.")
     print("\n--- Deployment Summary ---\n" + "\n".join(SUMMARY))
+    print(f"[DROPLET ID] {droplet_id}")
     exit(0)
 except Exception as e:
     err(f"Droplet creation failed: {e}")
-    # Only run recovery for main droplet creation failure
     try:
         recovery_ssh_logs(ip_address, SSH_USER, ssh_key_path)
     except Exception:
         pass
+    try:
+        print(f"[DROPLET ID] {droplet_id}")
+    except Exception:
+        print("[DROPLET ID] unknown (not available)")
     exit(1)
 

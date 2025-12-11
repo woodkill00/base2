@@ -9,8 +9,6 @@ services:
         - REACT_APP_PORT=${REACT_APP_PORT}
         - REACT_APP_API_URL=${REACT_APP_API_URL}
     container_name: ${COMPOSE_PROJECT_NAME}_react-app
-    ports:
-      - '${REACT_APP_HOST_PORT}:${REACT_APP_PORT}'
     environment:
       - NODE_ENV=development
       - REACT_APP_API_URL=${REACT_APP_API_URL}
@@ -38,8 +36,6 @@ services:
       args:
         - NODE_VERSION=${BACKEND_NODE_VERSION}
     container_name: ${COMPOSE_PROJECT_NAME}_backend
-    ports:
-      - '${BACKEND_HOST_PORT}:${BACKEND_PORT}'
     environment:
       - NODE_ENV=${NODE_ENV}
       - PORT=${BACKEND_PORT}
@@ -125,8 +121,6 @@ services:
         - NGINX_WORKER_CONNECTIONS=${NGINX_WORKER_CONNECTIONS}
         - NGINX_PORT=${NGINX_PORT}
     container_name: ${COMPOSE_PROJECT_NAME}_nginx
-    ports:
-      - '${NGINX_HOST_PORT}:${NGINX_PORT}'
     environment:
       - NGINX_WORKER_PROCESSES=${NGINX_WORKER_PROCESSES}
       - NGINX_WORKER_CONNECTIONS=${NGINX_WORKER_CONNECTIONS}
@@ -152,8 +146,6 @@ services:
         - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
         - POSTGRES_DB=${POSTGRES_DB}
     container_name: ${COMPOSE_PROJECT_NAME}_postgres
-    ports:
-      - '${POSTGRES_HOST_PORT}:${POSTGRES_PORT}'
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -182,8 +174,6 @@ services:
         - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
         - PGADMIN_CONFIG_SERVER_MODE=${PGADMIN_CONFIG_SERVER_MODE}
     container_name: ${COMPOSE_PROJECT_NAME}_pgadmin
-    ports:
-      - '${PGADMIN_HOST_PORT}:${PGADMIN_PORT}'
     environment:
       - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
       - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
