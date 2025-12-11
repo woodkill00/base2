@@ -1,3 +1,5 @@
+# Prevent committing DigitalOcean user data
+DO_userdata.json
 # ==========================================
 # Security & Secrets (CRITICAL - DO NOT COMMIT)
 # ==========================================

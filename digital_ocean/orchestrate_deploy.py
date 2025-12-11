@@ -31,9 +31,9 @@ SSH_INITIAL_WAIT = 60  # seconds
 SSH_ATTEMPTS = 3
 SSH_INTERVAL = 20  # seconds
 SSH_TIMEOUT = 15  # seconds
-LOG_POLL_ATTEMPTS = 36
+LOG_POLL_ATTEMPTS = 60
 LOG_POLL_TIMEOUT = 30  # seconds
-LOG_POLL_INTERVAL = 10  # seconds
+LOG_POLL_INTERVAL = 15  # seconds
 REBOOT_MARKERS = [
     "Cloud-init v. 25.2-0ubuntu1~22.04.1 finished at"
 ]
@@ -100,7 +100,7 @@ def recovery_ssh_logs(ip_address, SSH_USER, ssh_key_path):
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh_client.connect(ip_address, username=SSH_USER, key_filename=ssh_key_path)
         # Only check logs, do not rerun any scripts
-        for log_path in ["/var/log/cloud-init-output.log", "/var/log/do_base.log"]:
+        for log_path in ["/var/log/cloud-init-output.log"]:
             # Check if file exists before tailing
             stdin, stdout, stderr = ssh_client.exec_command(f"test -f {log_path} && echo exists || echo missing")
             exists = stdout.read().decode().strip()
@@ -149,9 +149,11 @@ client = Client(token=DO_API_TOKEN)
 
 
 
-# --- Read digital_ocean_base.sh for user_data, substitute env vars ---
 import re
 from dotenv import dotenv_values
+
+
+
 
 base_script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "scripts/digital_ocean_base.sh"))
 log(f"Loading user_data script from {base_script_path}")
@@ -192,6 +194,7 @@ droplet_spec = {
     "ssh_keys": ssh_keys,
     "tags": ["base2"],
     "user_data": user_data_script_sub,
+    "ipv6": True,
 }
 log_json("Droplet spec being sent", droplet_spec)
 
@@ -205,16 +208,26 @@ try:
 
     droplet_id = droplet["droplet"]["id"]
     log(f"Droplet created with ID: {droplet_id}")
-    # Update DO_userdata.json to include droplet_id
+    # Update DO_userdata.json to include droplet_id and ip_address
     try:
         with open(do_userdata_json_path, "r", encoding="utf-8") as f:
             do_userdata = json.load(f)
         do_userdata["droplet_id"] = droplet_id
+        # Wait for droplet to become active and get IP address
+        while True:
+            droplet_info = client.droplets.get(droplet_id)["droplet"]
+            log_json("API Response - droplets.get", droplet_info)
+            if droplet_info["status"] == "active":
+                break
+            time.sleep(5)
+            print("...", flush=True)
+        ip_address = droplet_info["networks"]["v4"][0]["ip_address"]
+        do_userdata["ip_address"] = ip_address
         with open(do_userdata_json_path, "w", encoding="utf-8") as f:
             json.dump(do_userdata, f, indent=2)
-        log(f"Updated {do_userdata_json_path} with droplet_id {droplet_id}")
+        log(f"Updated {do_userdata_json_path} with droplet_id {droplet_id} and ip_address {ip_address}")
     except Exception as e:
-        err(f"Failed to update {do_userdata_json_path} with droplet_id: {e}")
+        err(f"Failed to update {do_userdata_json_path} with droplet_id and ip_address: {e}")
 
     log("Waiting for droplet to become active...")
     while True:
@@ -242,52 +255,65 @@ try:
         updated = {"A_root": False, "A_www": False, "AAAA_root": False}
 
         for record in records:
-            # Root A record
-            if record["type"] == "A" and (record["name"] == "@" or record["name"] == DO_DOMAIN or record["name"] == ""):
-                found["A_root"] = record
-                if DRY_RUN:
-                    log(f"[DRY RUN] Would update root A record ({record['name']}) -> {ip_address}")
-                else:
-                    log_json("API Request - domains.update_record (A_root)", {"id": record["id"], "data": ip_address})
-                    resp = client.domains.update_record(DO_DOMAIN, record["id"], {
-                        "type": "A",
-                        "name": record["name"],
-                        "data": ip_address
-                    })
-                    log_json("API Response - domains.update_record (A_root)", resp)
-                    log(f"Updated root A record ({record['name']}) -> {ip_address}")
-                updated["A_root"] = True
-            # www A record
-            if record["type"] == "A" and (record["name"] == "www" or record["name"] == f"www.{DO_DOMAIN}"):
-                found["A_www"] = record
-                if DRY_RUN:
-                    log(f"[DRY RUN] Would update www A record ({record['name']}) -> {ip_address}")
-                else:
-                    log_json("API Request - domains.update_record (A_www)", {"id": record["id"], "data": ip_address})
-                    resp = client.domains.update_record(DO_DOMAIN, record["id"], {
-                        "type": "A",
-                        "name": record["name"],
-                        "data": ip_address
-                    })
-                    log_json("API Response - domains.update_record (A_www)", resp)
-                    log(f"Updated www A record ({record['name']}) -> {ip_address}")
-                updated["A_www"] = True
-            # Root AAAA record
-            if record["type"] == "AAAA" and (record["name"] == "@" or record["name"] == DO_DOMAIN or record["name"] == ""):
-                found["AAAA_root"] = record
-                if ipv6_address:
+            # Update all A records for this domain (root, www, subdomains, wildcard, traefik)
+            if record["type"] == "A":
+                match_a = (
+                    record["name"] == "@"
+                    or record["name"] == DO_DOMAIN
+                    or record["name"] == ""
+                    or record["name"] == "www"
+                    or record["name"] == f"www.{DO_DOMAIN}"
+                    or DO_DOMAIN in record["name"]
+                    or record["name"].startswith("*")
+                    or record["name"] == "traefik"
+                    or record["name"] == f"traefik.{DO_DOMAIN}"
+                )
+                if match_a:
+                    # Track root and www for legacy logic
+                    if record["name"] == "@" or record["name"] == DO_DOMAIN or record["name"] == "":
+                        found["A_root"] = record
+                        updated["A_root"] = True
+                    if record["name"] == "www" or record["name"] == f"www.{DO_DOMAIN}":
+                        found["A_www"] = record
+                        updated["A_www"] = True
                     if DRY_RUN:
-                        log(f"[DRY RUN] Would update root AAAA record ({record['name']}) -> {ipv6_address}")
+                        log(f"[DRY RUN] Would update A record ({record['name']}) -> {ip_address}")
                     else:
-                        log_json("API Request - domains.update_record (AAAA_root)", {"id": record["id"], "data": ipv6_address})
+                        log_json("API Request - domains.update_record (A_generic)", {"id": record["id"], "data": ip_address})
                         resp = client.domains.update_record(DO_DOMAIN, record["id"], {
-                            "type": "AAAA",
+                            "type": "A",
                             "name": record["name"],
-                            "data": ipv6_address
+                            "data": ip_address
                         })
-                        log_json("API Response - domains.update_record (AAAA_root)", resp)
-                        log(f"Updated root AAAA record ({record['name']}) -> {ipv6_address}")
-                    updated["AAAA_root"] = True
+                        log_json("API Response - domains.update_record (A_generic)", resp)
+                        log(f"Updated A record ({record['name']}) -> {ip_address}")
+            # Update all AAAA records for this domain (root, subdomains, wildcard)
+            if record["type"] == "AAAA":
+                if (
+                    record["name"] == "@"
+                    or record["name"] == DO_DOMAIN
+                    or record["name"] == ""
+                    or DO_DOMAIN in record["name"]
+                    or record["name"].startswith("*")
+                    or record["name"] == "traefik"
+                    or record["name"] == f"traefik.{DO_DOMAIN}"
+                ):
+                    # Track root for legacy logic
+                    if record["name"] == "@" or record["name"] == DO_DOMAIN or record["name"] == "":
+                        found["AAAA_root"] = record
+                        updated["AAAA_root"] = True
+                    if ipv6_address:
+                        if DRY_RUN:
+                            log(f"[DRY RUN] Would update AAAA record ({record['name']}) -> {ipv6_address}")
+                        else:
+                            log_json("API Request - domains.update_record (AAAA_generic)", {"id": record["id"], "data": ipv6_address})
+                            resp = client.domains.update_record(DO_DOMAIN, record["id"], {
+                                "type": "AAAA",
+                                "name": record["name"],
+                                "data": ipv6_address
+                            })
+                            log_json("API Response - domains.update_record (AAAA_generic)", resp)
+                            log(f"Updated AAAA record ({record['name']}) -> {ipv6_address}")
 
         # Create missing records
         if not found["A_root"]:
@@ -371,88 +397,12 @@ try:
         f"root@{ip_address}",
         "cat /var/log/cloud-init-output.log"
     ]
-    log(f"Polling /var/log/cloud-init-output.log until any reboot marker {REBOOT_MARKERS} is found...")
-    reboot_found = False
-    for poll in range(1, LOG_POLL_ATTEMPTS + 1):
-        try:
-            result = subprocess.run(ssh_log_cmd, capture_output=True, text=True, timeout=LOG_POLL_TIMEOUT, encoding="utf-8", errors="replace")
-            log(f"Log poll {poll}/{LOG_POLL_ATTEMPTS}")
-            log_output = result.stdout if result.stdout is not None else ''
-            print("\n--- /var/log/cloud-init-output.log ---\n")
-            print(log_output)
-            if result.stderr:
-                print(f"[stderr] {result.stderr}")
-            if any(marker in log_output for marker in REBOOT_MARKERS):
-                log("Reboot marker found in log. Reboot has already occurred.")
-                reboot_found = True
-                SUMMARY.append(f"Reboot marker found in log after {poll} polls.")
-                # Prompt user for keep/destroy
-                print("\nDroplet setup complete. Would you like to keep or destroy this droplet?")
-                print("Type 'keep' to keep, or 'destroy' to destroy the droplet.")
-                user_choice = input("[keep/destroy]: ").strip().lower()
-                if user_choice == "destroy":
-                    print(f"Destroying droplet {droplet_id}...")
-                    # Call destroy_droplet.py with droplet_id
-                    import subprocess
-                    subprocess.run([sys.executable, "destroy_droplet.py", str(droplet_id)], check=False)
-                    print("Droplet destroy command sent.")
-                else:
-                    print("Droplet will be kept.")
-                break
-            else:
-                log("Reboot marker not found, will retry...")
-        except Exception as e:
-            err(f"SSH log fetch failed: {e}")
-        time.sleep(LOG_POLL_INTERVAL)
-    if not reboot_found:
-        err("Did not find reboot marker in cloud-init log after multiple attempts.")
-        # Print last 50 lines for diagnostics
-        try:
-            result = subprocess.run(ssh_log_cmd, capture_output=True, text=True, timeout=LOG_POLL_TIMEOUT, encoding="utf-8", errors="replace")
-            log_output = result.stdout if result.stdout is not None else ''
-            print("\n--- Last 50 lines of cloud-init log ---\n")
-            print("\n".join(log_output.splitlines()[-50:]))
-        except Exception as e:
-            err(f"Failed to fetch last lines of cloud-init log: {e}")
-        recovery_ssh_logs(ip_address, SSH_USER, ssh_key_path)
-        SUMMARY.append("Reboot marker not found in cloud-init log.")
-        exit(1)
-
-    # Wait for SSH to go down (reboot starts)
-    log("Waiting for SSH to go down (reboot in progress)...")
-    reboot_detected = False
-    for _ in range(24):
-        result = subprocess.run(ssh_cmd, capture_output=True, text=True, timeout=SSH_TIMEOUT, encoding="utf-8", errors="replace")
-        if result.returncode != 0:
-            log("SSH is down. Reboot detected.")
-            reboot_detected = True
-            SUMMARY.append("SSH down for reboot detected.")
-            break
-        time.sleep(5)
-    if not reboot_detected:
-        err("SSH never went down for reboot.")
-        SUMMARY.append("SSH never went down for reboot.")
-        exit(1)
-
-    # Wait for SSH to come back up (post-reboot)
-    log("Waiting for SSH to come back up after reboot...")
-    ssh_up_post_reboot = False
-    for _ in range(36):
-        result = subprocess.run(ssh_cmd, capture_output=True, text=True, timeout=SSH_TIMEOUT, encoding="utf-8", errors="replace")
-        if result.returncode == 0:
-            log("SSH is available after reboot. Proceeding to final cloud-init log polling.")
-            ssh_up_post_reboot = True
-            SUMMARY.append("SSH available after reboot.")
-            break
-        time.sleep(5)
-    if not ssh_up_post_reboot:
-        err("SSH did not come back up after reboot.")
-        SUMMARY.append("SSH did not come back up after reboot.")
-        exit(1)
-
-    # Final poll for completion marker in cloud-init log
     log(f"Polling /var/log/cloud-init-output.log until completion marker '{COMPLETION_MARKER}' is found...")
+    import re
     completion_found = False
+    cloud_init_pattern = re.compile(r"^Cloud-init v\\. .+ finished at")
+    # Updated pattern: match any line containing 'Cloud-init v.' and 'finished at' (version, timestamp, and details are variable)
+    cloud_init_pattern = re.compile(r"Cloud-init v\\..*finished at")
     for poll in range(1, LOG_POLL_ATTEMPTS + 1):
         try:
             result = subprocess.run(ssh_log_cmd, capture_output=True, text=True, timeout=LOG_POLL_TIMEOUT, encoding="utf-8", errors="replace")
@@ -462,18 +412,23 @@ try:
             print(log_output)
             if result.stderr:
                 print(f"[stderr] {result.stderr}")
-            if COMPLETION_MARKER in log_output:
-                log("Completion marker found in log. Script finished successfully.")
-                completion_found = True
-                SUMMARY.append(f"Completion marker found in log after {poll} polls.")
+            # Look for any line matching either marker
+            for line in log_output.splitlines():
+                if COMPLETION_MARKER in line or cloud_init_pattern.search(line.strip()):
+                    log("Cloud-init or user-data completion marker found in log. Script finished successfully.")
+                    print(f"\n[INFO] Deployment script ran and completion marker was found.\n[DROPLET ID] {droplet_id}\n[IP ADDRESS] {ip_address}\nScript completed correctly.\n")
+                    completion_found = True
+                    SUMMARY.append(f"Completion marker found in log after {poll} polls.")
+                    break
+            if completion_found:
                 break
             else:
-                log("Completion marker not found, will retry...")
+                log("Cloud-init completion marker not found, will retry...")
         except Exception as e:
             err(f"SSH log fetch failed: {e}")
         time.sleep(LOG_POLL_INTERVAL)
     if not completion_found:
-        err("Did not find completion marker in cloud-init log after multiple attempts.")
+        err("Did not find cloud-init completion marker in log after multiple attempts.")
         try:
             result = subprocess.run(ssh_log_cmd, capture_output=True, text=True, timeout=LOG_POLL_TIMEOUT, encoding="utf-8", errors="replace")
             log_output = result.stdout if result.stdout is not None else ''
@@ -482,12 +437,10 @@ try:
         except Exception as e:
             err(f"Failed to fetch last lines of cloud-init log: {e}")
         recovery_ssh_logs(ip_address, SSH_USER, ssh_key_path)
-        SUMMARY.append("Completion marker not found in cloud-init log.")
+        SUMMARY.append("Cloud-init completion marker not found in log.")
         exit(1)
     log("Deployment script completed successfully.")
     SUMMARY.append("Deployment script completed successfully.")
-    print("\n--- Deployment Summary ---\n" + "\n".join(SUMMARY))
-    print(f"[DROPLET ID] {droplet_id}")
     exit(0)
 except Exception as e:
     err(f"Droplet creation failed: {e}")

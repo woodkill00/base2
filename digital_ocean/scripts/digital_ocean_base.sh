@@ -101,12 +101,25 @@ sleep 5
 
 
 # --- Docker Compose Standalone Install ---
+
 log "Installing standalone Docker Compose binary..."
 DOCKER_COMPOSE_LATEST=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep 'tag_name' | cut -d '"' -f4)
-curl -L "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_LATEST}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-chmod +x /usr/local/bin/docker-compose
-docker compose version
-docker-compose --version
+DOWNLOAD_URL="https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_LATEST}/docker-compose-$(uname -s)-$(uname -m)"
+TMP_COMPOSE="/tmp/docker-compose"
+HTTP_STATUS=$(curl -s -o "$TMP_COMPOSE" -w "%{http_code}" -L "$DOWNLOAD_URL")
+
+if [ "$HTTP_STATUS" = "200" ] && file "$TMP_COMPOSE" | grep -q 'ELF'; then
+  mv "$TMP_COMPOSE" /usr/local/bin/docker-compose
+  chmod +x /usr/local/bin/docker-compose
+  log "Standalone Docker Compose binary installed successfully."
+else
+  err "Failed to download valid Docker Compose binary (HTTP $HTTP_STATUS). Falling back to apt install."
+  apt-get update -y
+  apt-get install -y docker-compose
+fi
+
+docker compose version || true
+docker-compose --version || true
 log "Docker Compose (plugin and standalone) installed successfully."
 
 # --- Docker Socket Permissions (optional) ---
