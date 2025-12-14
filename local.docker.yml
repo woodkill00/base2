@@ -14,7 +14,7 @@ services:
     networks:
       - base2_network
     restart: unless-stopped
-    read_only: true
+    read_only: false
     security_opt:
       - no-new-privileges:true
     tmpfs:
@@ -157,7 +157,7 @@ services:
     networks:
       - base2_network
     restart: unless-stopped
-    read_only: true
+    read_only: false
     security_opt:
       - no-new-privileges:true
     tmpfs:
