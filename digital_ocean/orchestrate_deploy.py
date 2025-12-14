@@ -544,9 +544,10 @@ log_json("Droplet spec being sent", droplet_spec)
                 print(err_out)
 
         # Start services and follow logs briefly for live visibility
+        # Always rebuild to ensure latest images when updating remotely
         start_cmd = (
             f"cd {repo_path} && START_FOLLOW_LOGS=true POST_DEPLOY_LOGS_FOLLOW_SECONDS=60 "
-            f"bash scripts/start.sh {'--build ' if not UPDATE_ONLY else ''}--follow-logs"
+            f"bash scripts/start.sh --build --follow-logs"
         )
         log(f"Starting services: {start_cmd}")
         try:
