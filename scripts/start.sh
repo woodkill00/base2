@@ -167,13 +167,13 @@ if [ "$DETACHED" = true ]; then
     # Optionally follow logs for a short window (useful for orchestrated deploys)
     if [ "$FOLLOW_LOGS" = true ] || [ "${START_FOLLOW_LOGS:-}" = "true" ]; then
         DURATION=${POST_DEPLOY_LOGS_FOLLOW_SECONDS:-60}
-        echo "\n🔎 Following logs for ${DURATION}s (traefik, backend, nginx)..."
+        echo "\n🔎 Following logs for ${DURATION}s (traefik, backend, nginx, pgadmin)..."
         # Use timeout to avoid hanging forever; fallback if timeout is not available
         if command -v timeout >/dev/null 2>&1; then
-            timeout "$DURATION" docker-compose -f "$COMPOSE_FILE" logs -f --tail=100 traefik backend nginx || true
+            timeout "$DURATION" docker-compose -f "$COMPOSE_FILE" logs -f --tail=100 traefik backend nginx pgadmin || true
         else
             # Portable fallback: run in background and kill after duration
-            ( docker-compose -f "$COMPOSE_FILE" logs -f --tail=100 traefik backend nginx & LOG_PID=$!; \
+            ( docker-compose -f "$COMPOSE_FILE" logs -f --tail=100 traefik backend nginx pgadmin & LOG_PID=$!; \
               sleep "$DURATION"; \
               kill "$LOG_PID" 2>/dev/null || true )
         fi

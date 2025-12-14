@@ -627,27 +627,27 @@ try:
                     for p, c in hotpaths:
                         print(f"  \u2514 {p}: {c}")
         print("===== End Summary =====\n")
-        # Verify Traefik environment contains TRAEFIK_API_PORT and show value
+        # Verify Traefik environment contains TRAEFIK_API_PORT and show value (robust jq-based fallback)
         try:
             log("Verifying Traefik container environment for TRAEFIK_API_PORT...")
-            inspect_cmd = (
+            # Prefer jq to avoid Go-template quoting issues; fallback to grep if jq missing
+            verify_cmd = (
                 f"cd {repo_path} && CID=\$(docker compose -f local.docker.yml ps -q traefik) && "
-                f"docker inspect \"$CID\" --format '{{json .Config.Env}}'"
+                f"(command -v jq >/dev/null 2>&1 && docker inspect \"$CID\" | jq -r '.[0].Config.Env[]' || docker inspect \"$CID\" | sed -n 's/.*\"Config\":{\"Env\":\[\(.*\)\].*/\1/p' | tr ',' '\n' | tr -d ' \"') | grep '^TRAEFIK_API_PORT=' || true"
             )
-            stdin, stdout, stderr = ssh_client.exec_command(inspect_cmd)
-            env_json = stdout.read().decode()
-            if env_json:
-                try:
-                    env_list = json.loads(env_json)
-                except Exception:
-                    env_list = []
+            stdin, stdout, stderr = ssh_client.exec_command(verify_cmd)
+            verify_output = stdout.read().decode().strip()
+            if verify_output:
+                print(f"[VERIFY] {verify_output}")
             else:
-                env_list = []
-            api_port_env = next((e for e in env_list if isinstance(e, str) and e.startswith("TRAEFIK_API_PORT=")), None)
-            if api_port_env:
-                print(f"[VERIFY] {api_port_env}")
-            else:
-                print("[VERIFY] TRAEFIK_API_PORT not found in container env")
+                # Last resort: dump all env lines
+                dump_cmd = (
+                    f"cd {repo_path} && CID=\$(docker compose -f local.docker.yml ps -q traefik) && "
+                    f"docker inspect \"$CID\" | grep -o 'TRAEFIK_.*' || true"
+                )
+                stdin, stdout, stderr = ssh_client.exec_command(dump_cmd)
+                lines = stdout.read().decode()
+                print("[VERIFY] TRAEFIK_API_PORT not found; env lines follow:\n" + lines)
             err_out = stderr.read().decode()
             if err_out:
                 print(err_out)
