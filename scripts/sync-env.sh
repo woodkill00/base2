@@ -163,6 +163,24 @@ fi
 echo ""
 
 # ============================================
+# 4. Sanitize TRAEFIK_USER to escape $ in bcrypt hash
+# ============================================
+if grep -q "^TRAEFIK_USER=" .env; then
+    ORIGINAL_TRAEFIK_USER_LINE=$(grep "^TRAEFIK_USER=" .env | head -n1)
+    SANITIZED_LINE=$(echo "$ORIGINAL_TRAEFIK_USER_LINE" | sed 's/\$/$$/g')
+    if [ "$ORIGINAL_TRAEFIK_USER_LINE" != "$SANITIZED_LINE" ]; then
+        echo -e "${YELLOW}⚙️  Escaping dollar signs in TRAEFIK_USER for Compose compatibility${NC}"
+        # macOS vs Linux sed in-place
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s~^${ORIGINAL_TRAEFIK_USER_LINE//~/\~}~${SANITIZED_LINE//~/\~}~" .env
+        else
+            sed -i "s~^${ORIGINAL_TRAEFIK_USER_LINE//~/\~}~${SANITIZED_LINE//~/\~}~" .env
+        fi
+        CHANGES_MADE=true
+    fi
+fi
+
+# ============================================
 # Summary
 # ============================================
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
