@@ -10,7 +10,7 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-  RUN npm install --omit=dev && npm cache clean --force
+  RUN npm install && npm cache clean --force
 
 COPY . .
 
