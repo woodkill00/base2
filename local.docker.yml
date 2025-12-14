@@ -29,11 +29,11 @@ services:
       start_period: 20s
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.frontend-react.rule=Host(`${WEBSITE_DOMAIN}`) || Host(`www.${WEBSITE_DOMAIN}`)"
+      - "traefik.http.routers.frontend-react.rule=(Host(`${WEBSITE_DOMAIN}`) || Host(`www.${WEBSITE_DOMAIN}`)) && PathPrefix(`/`)"
       - "traefik.http.routers.frontend-react.entrypoints=websecure"
       - "traefik.http.routers.frontend-react.tls.certresolver=le-staging"
       - "traefik.http.routers.frontend-react.service=frontend-react"
-      - "traefik.http.routers.frontend-http-react.rule=Host(`${WEBSITE_DOMAIN}`)"
+      - "traefik.http.routers.frontend-http-react.rule=(Host(`${WEBSITE_DOMAIN}`) || Host(`www.${WEBSITE_DOMAIN}`)) && PathPrefix(`/`)"
       - "traefik.http.routers.frontend-http-react.entrypoints=web"
       - "traefik.http.routers.frontend-http-react.middlewares=redirect-to-https"
       - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
