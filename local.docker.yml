@@ -116,7 +116,8 @@ services:
     networks:
       - base2_network
     restart: unless-stopped
-    read_only: true
+    # Traefik needs to generate /etc/traefik/traefik.yml from template at runtime
+    read_only: false
     security_opt:
       - no-new-privileges:true
     cap_drop:
