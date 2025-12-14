@@ -28,9 +28,9 @@ RUN addgroup -g 1001 -S nodegroup && \
 # Switch to non-root user
 USER nodeuser
 
-EXPOSE 5000
+EXPOSE 5001
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-  CMD-SHELL wget --quiet --tries=1 --spider "http://localhost:${PORT:-5000}/api/health" || exit 1
+  CMD sh -c 'wget --quiet --tries=1 --spider "http://localhost:${PORT:-5001}/api/health" || exit 1'
 
 CMD ["node", "server.js"]
