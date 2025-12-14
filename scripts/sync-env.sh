@@ -33,9 +33,27 @@ if [ ! -f .env ]; then
     fi
 fi
 
-# Load .env file
+# Load required variables from .env safely (ignore multiline values)
 echo "📖 Loading environment variables..."
-export $(grep -v '^#' .env | grep -v '^$' | sed 's/ *#.*//' | xargs)
+
+# Helper to read a single VAR from .env without exporting everything
+get_env_var() {
+    # Usage: get_env_var VAR_NAME
+    # Reads the first matching VAR=value line, strips inline comments, preserves spaces in value
+    local key="$1"
+    local line
+    line=$(grep -E "^${key}=" .env | head -n1 || true)
+    if [ -n "$line" ]; then
+        # Remove inline comments and trailing spaces
+        line=$(echo "$line" | sed 's/ *#.*//' | sed 's/[[:space:]]*$//')
+        echo "$line" | cut -d'=' -f2-
+    fi
+}
+
+# Read only the variables we actually need
+NETWORK_NAME="$(get_env_var NETWORK_NAME)"
+TRAEFIK_DOCKER_NETWORK="$(get_env_var TRAEFIK_DOCKER_NETWORK)"
+TRAEFIK_API_ENTRYPOINT="$(get_env_var TRAEFIK_API_ENTRYPOINT)"
 
 # Validate required variables
 if [ -z "$NETWORK_NAME" ]; then
