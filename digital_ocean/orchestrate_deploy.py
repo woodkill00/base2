@@ -627,6 +627,32 @@ try:
                     for p, c in hotpaths:
                         print(f"  \u2514 {p}: {c}")
         print("===== End Summary =====\n")
+        # Verify Traefik environment contains TRAEFIK_API_PORT and show value
+        try:
+            log("Verifying Traefik container environment for TRAEFIK_API_PORT...")
+            inspect_cmd = (
+                f"cd {repo_path} && CID=\$(docker compose -f local.docker.yml ps -q traefik) && "
+                f"docker inspect \"$CID\" --format '{{json .Config.Env}}'"
+            )
+            stdin, stdout, stderr = ssh_client.exec_command(inspect_cmd)
+            env_json = stdout.read().decode()
+            if env_json:
+                try:
+                    env_list = json.loads(env_json)
+                except Exception:
+                    env_list = []
+            else:
+                env_list = []
+            api_port_env = next((e for e in env_list if isinstance(e, str) and e.startswith("TRAEFIK_API_PORT=")), None)
+            if api_port_env:
+                print(f"[VERIFY] {api_port_env}")
+            else:
+                print("[VERIFY] TRAEFIK_API_PORT not found in container env")
+            err_out = stderr.read().decode()
+            if err_out:
+                print(err_out)
+        except Exception as e:
+            err(f"Traefik env verification failed: {e}")
 
         ssh_client.close()
         log("Post-deploy tasks completed.")
