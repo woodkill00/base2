@@ -32,6 +32,7 @@ services:
       - "traefik.http.routers.frontend-react.rule=Host(`${WEBSITE_DOMAIN}`)"
       - "traefik.http.routers.frontend-react.entrypoints=websecure"
       - "traefik.http.routers.frontend-react.tls.certresolver=le-staging"
+      - "traefik.http.routers.frontend-react.service=frontend-react"
       - "traefik.http.routers.frontend-http-react.rule=Host(`${WEBSITE_DOMAIN}`)"
       - "traefik.http.routers.frontend-http-react.entrypoints=web"
       - "traefik.http.routers.frontend-http-react.middlewares=redirect-to-https"
