@@ -19,11 +19,10 @@ entryPoints:
   traefik:
     address: ':${TRAEFIK_API_PORT}'
 
-# Dashboard disabled to avoid duplicate 'api' key conflicts
-# api:
-#   dashboard: true
-#   insecure: false
-#   debug: true
+api:
+  dashboard: true
+  insecure: false
+  debug: true
 
 # Ping health check
 ping: {}

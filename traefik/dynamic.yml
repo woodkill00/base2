@@ -28,6 +28,16 @@ http:
       tls:
         certResolver: le-staging
       service: api
+
+    traefik-dashboard:
+      rule: Host(`traefik.woodkilldev.com`)
+      entryPoints:
+        - websecure
+      middlewares:
+        - security-headers
+      tls:
+        certResolver: le-staging
+      service: api@internal
   services:
     frontend-react:
       loadBalancer:

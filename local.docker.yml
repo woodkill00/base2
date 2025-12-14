@@ -115,6 +115,8 @@ services:
     ports:
       - '${TRAEFIK_HOST_PORT}:${TRAEFIK_PORT}'
       - '443:443'
+      # Optional: expose API entrypoint if needed internally (dashboard will be routed via HTTPS by Host rule)
+      - '${TRAEFIK_API_HOST_PORT}:${TRAEFIK_API_PORT}'
     environment:
       - TRAEFIK_LOG_LEVEL=${TRAEFIK_LOG_LEVEL}
       - TRAEFIK_PORT=${TRAEFIK_PORT}
