@@ -4,8 +4,8 @@
 ARG NGINX_VERSION=1.25-alpine
 FROM nginx:${NGINX_VERSION}
 
-# Install envsubst for environment variable substitution
-RUN apk add --no-cache gettext
+# Install envsubst and curl for health checks
+RUN apk add --no-cache gettext curl
 
 # Set build arguments for environment variables
 ARG NGINX_WORKER_PROCESSES=auto
@@ -47,7 +47,7 @@ EXPOSE ${NGINX_PORT}
 
 # Add health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD wget --quiet --tries=1 --spider http://localhost:${NGINX_PORT}/ || exit 1
+    CMD curl -fsS http://localhost:${NGINX_PORT}/ >/dev/null || exit 1
 
 # Note: Not switching to nginx user here - entrypoint runs as root to generate config
 # Nginx itself will drop privileges based on the 'user' directive in nginx.conf

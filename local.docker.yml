@@ -22,7 +22,7 @@ services:
       - /var/run/nginx
       - /var/log/nginx
     healthcheck:
-      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:8080/']
+      test: ['CMD-SHELL', 'curl -fsS http://localhost:8080/ > /dev/null || exit 1']
       interval: 30s
       timeout: 5s
       retries: 3
@@ -171,7 +171,7 @@ services:
       - /var/run/nginx
       - /var/log/nginx
     healthcheck:
-      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:${NGINX_PORT}/']
+      test: ['CMD-SHELL', 'curl -fsS http://localhost:${NGINX_PORT}/ > /dev/null || exit 1']
       interval: 30s
       timeout: 3s
       retries: 3

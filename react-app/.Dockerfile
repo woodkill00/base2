@@ -25,7 +25,7 @@ RUN npm run build
 FROM nginx:${NGINX_VERSION}
 
 # Install envsubst (optional for templating)
-RUN apk add --no-cache gettext
+RUN apk add --no-cache gettext curl
 
 # Copy build artifacts to Nginx html directory
 COPY --from=build /app/build /usr/share/nginx/html
@@ -69,7 +69,7 @@ RUN echo "# INTERNAL-ONLY: served behind Traefik; do not publish host ports." > 
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD wget --quiet --tries=1 --spider http://localhost:8080/ || exit 1
+  CMD curl -fsS http://localhost:8080/ >/dev/null || exit 1
 
 # Run as root; nginx will drop privileges per config
 CMD ["nginx", "-g", "daemon off;"]
