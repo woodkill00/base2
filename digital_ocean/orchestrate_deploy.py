@@ -207,59 +207,34 @@ droplet_spec = {
 }
 log_json("Droplet spec being sent", droplet_spec)
 
+# Determine droplet to use (create or reuse) and set ip_address/droplet_id/droplet_info
+ip_address = None
+droplet_id = None
+droplet_info = None
 
-
-    # If update-only, skip droplet creation and fetch existing droplet by name
-    if UPDATE_ONLY:
-        log("[UPDATE-ONLY] Skipping droplet creation; locating existing droplet by name...")
-        try:
-            droplet_list = client.droplets.list()
-            matched = None
-            for d in droplet_list.get("droplets", []):
-                if d.get("name") == DO_DROPLET_NAME:
-                    matched = d
-                    break
-            if not matched:
-                raise RuntimeError(f"No existing droplet found named {DO_DROPLET_NAME}")
-            droplet_id = matched["id"]
-            droplet_info = client.droplets.get(droplet_id)["droplet"]
-            ip_address = droplet_info["networks"]["v4"][0]["ip_address"]
-            log(f"Using existing droplet {droplet_id} at {ip_address}")
-        except Exception as e:
-            err(f"Failed to locate existing droplet: {e}")
-            exit(1)
-    else:
-        log("Creating droplet via DigitalOcean API...")
-        try:
-    log_json("API Request - droplets.create", droplet_spec)
-    droplet = client.droplets.create(droplet_spec)
-    log_json("API Response - droplets.create", droplet)
-
-    droplet_id = droplet["droplet"]["id"]
-    log(f"Droplet created with ID: {droplet_id}")
-    # Update DO_userdata.json to include droplet_id and ip_address
+if UPDATE_ONLY:
+    log("[UPDATE-ONLY] Skipping creation; locating existing droplet by name...")
     try:
-        with open(do_userdata_json_path, "r", encoding="utf-8") as f:
-            do_userdata = json.load(f)
-        do_userdata["droplet_id"] = droplet_id
-        # Wait for droplet to become active and get IP address
-        while True:
-            droplet_info = client.droplets.get(droplet_id)["droplet"]
-            log_json("API Response - droplets.get", droplet_info)
-            if droplet_info["status"] == "active":
-                break
-            time.sleep(5)
-            print("...", flush=True)
+        lst = client.droplets.list()
+        matched = next((d for d in lst.get("droplets", []) if d.get("name") == DO_DROPLET_NAME), None)
+        if not matched:
+            raise RuntimeError(f"No existing droplet found named {DO_DROPLET_NAME}")
+        droplet_id = matched["id"]
+        droplet_info = client.droplets.get(droplet_id)["droplet"]
         ip_address = droplet_info["networks"]["v4"][0]["ip_address"]
-        do_userdata["ip_address"] = ip_address
-        with open(do_userdata_json_path, "w", encoding="utf-8") as f:
-            json.dump(do_userdata, f, indent=2)
-        log(f"Updated {do_userdata_json_path} with droplet_id {droplet_id} and ip_address {ip_address}")
+        log(f"Using existing droplet {droplet_id} at {ip_address}")
     except Exception as e:
-        err(f"Failed to update {do_userdata_json_path} with droplet_id and ip_address: {e}")
-
-    if not UPDATE_ONLY:
-        log("Waiting for droplet to become active...")
+        err(f"Failed to locate existing droplet: {e}")
+        exit(1)
+else:
+    log("Creating droplet via DigitalOcean API...")
+    try:
+        log_json("API Request - droplets.create", droplet_spec)
+        droplet = client.droplets.create(droplet_spec)
+        log_json("API Response - droplets.create", droplet)
+        droplet_id = droplet["droplet"]["id"]
+        log(f"Droplet created with ID: {droplet_id}")
+        # Wait active and set ip
         while True:
             droplet_info = client.droplets.get(droplet_id)["droplet"]
             log_json("API Response - droplets.get", droplet_info)
@@ -270,121 +245,135 @@ log_json("Droplet spec being sent", droplet_spec)
         ip_address = droplet_info["networks"]["v4"][0]["ip_address"]
         log(f"Droplet is active. IP address: {ip_address}")
         print(f"Droplet created! IP address: {ip_address}")
+        # Update DO_userdata.json
+        try:
+            with open(do_userdata_json_path, "r", encoding="utf-8") as f:
+                do_userdata = json.load(f)
+            do_userdata["droplet_id"] = droplet_id
+            do_userdata["ip_address"] = ip_address
+            with open(do_userdata_json_path, "w", encoding="utf-8") as f:
+                json.dump(do_userdata, f, indent=2)
+            log(f"Updated {do_userdata_json_path} with droplet_id {droplet_id} and ip_address {ip_address}")
+        except Exception as e:
+            err(f"Failed to update {do_userdata_json_path}: {e}")
+    except Exception as e:
+        err(f"Droplet creation failed: {e}")
+        exit(1)
 
     # --- 3. Update DNS Records ---
     if not UPDATE_ONLY:
         log("Updating DNS A/AAAA records for domain and www...")
         try:
-        log_json("API Request - domains.list_records", {"domain": DO_DOMAIN})
-        records = client.domains.list_records(DO_DOMAIN)["domain_records"]
-        log_json("API Response - domains.list_records", records)
-        v6_list = droplet_info["networks"].get("v6", [])
-        ipv6_address = v6_list[0]["ip_address"] if v6_list else None
+            log_json("API Request - domains.list_records", {"domain": DO_DOMAIN})
+            records = client.domains.list_records(DO_DOMAIN)["domain_records"]
+            log_json("API Response - domains.list_records", records)
+            v6_list = droplet_info["networks"].get("v6", [])
+            ipv6_address = v6_list[0]["ip_address"] if v6_list else None
 
-        # Track which records exist
-        found = {"A_root": None, "A_www": None, "AAAA_root": None}
-        updated = {"A_root": False, "A_www": False, "AAAA_root": False}
+            # Track which records exist
+            found = {"A_root": None, "A_www": None, "AAAA_root": None}
+            updated = {"A_root": False, "A_www": False, "AAAA_root": False}
 
-        for record in records:
-            # Update all A records for this domain (root, www, subdomains, wildcard, traefik)
-            if record["type"] == "A":
-                match_a = (
-                    record["name"] == "@"
-                    or record["name"] == DO_DOMAIN
-                    or record["name"] == ""
-                    or record["name"] == "www"
-                    or record["name"] == f"www.{DO_DOMAIN}"
-                    or DO_DOMAIN in record["name"]
-                    or record["name"].startswith("*")
-                    or record["name"] == "traefik"
-                    or record["name"] == f"traefik.{DO_DOMAIN}"
-                )
-                if match_a:
-                    # Track root and www for legacy logic
-                    if record["name"] == "@" or record["name"] == DO_DOMAIN or record["name"] == "":
-                        found["A_root"] = record
-                        updated["A_root"] = True
-                    if record["name"] == "www" or record["name"] == f"www.{DO_DOMAIN}":
-                        found["A_www"] = record
-                        updated["A_www"] = True
-                    if DRY_RUN:
-                        log(f"[DRY RUN] Would update A record ({record['name']}) -> {ip_address}")
-                    else:
-                        log_json("API Request - domains.update_record (A_generic)", {"id": record["id"], "data": ip_address})
-                        resp = client.domains.update_record(DO_DOMAIN, record["id"], {
-                            "type": "A",
-                            "name": record["name"],
-                            "data": ip_address
-                        })
-                        log_json("API Response - domains.update_record (A_generic)", resp)
-                        log(f"Updated A record ({record['name']}) -> {ip_address}")
-            # Update all AAAA records for this domain (root, subdomains, wildcard)
-            if record["type"] == "AAAA":
-                if (
-                    record["name"] == "@"
-                    or record["name"] == DO_DOMAIN
-                    or record["name"] == ""
-                    or DO_DOMAIN in record["name"]
-                    or record["name"].startswith("*")
-                    or record["name"] == "traefik"
-                    or record["name"] == f"traefik.{DO_DOMAIN}"
-                ):
-                    # Track root for legacy logic
-                    if record["name"] == "@" or record["name"] == DO_DOMAIN or record["name"] == "":
-                        found["AAAA_root"] = record
-                        updated["AAAA_root"] = True
-                    if ipv6_address:
+            for record in records:
+                # Update all A records for this domain (root, www, subdomains, wildcard, traefik)
+                if record["type"] == "A":
+                    match_a = (
+                        record["name"] == "@"
+                        or record["name"] == DO_DOMAIN
+                        or record["name"] == ""
+                        or record["name"] == "www"
+                        or record["name"] == f"www.{DO_DOMAIN}"
+                        or DO_DOMAIN in record["name"]
+                        or record["name"].startswith("*")
+                        or record["name"] == "traefik"
+                        or record["name"] == f"traefik.{DO_DOMAIN}"
+                    )
+                    if match_a:
+                        # Track root and www for legacy logic
+                        if record["name"] == "@" or record["name"] == DO_DOMAIN or record["name"] == "":
+                            found["A_root"] = record
+                            updated["A_root"] = True
+                        if record["name"] == "www" or record["name"] == f"www.{DO_DOMAIN}":
+                            found["A_www"] = record
+                            updated["A_www"] = True
                         if DRY_RUN:
-                            log(f"[DRY RUN] Would update AAAA record ({record['name']}) -> {ipv6_address}")
+                            log(f"[DRY RUN] Would update A record ({record['name']}) -> {ip_address}")
                         else:
-                            log_json("API Request - domains.update_record (AAAA_generic)", {"id": record["id"], "data": ipv6_address})
+                            log_json("API Request - domains.update_record (A_generic)", {"id": record["id"], "data": ip_address})
                             resp = client.domains.update_record(DO_DOMAIN, record["id"], {
-                                "type": "AAAA",
+                                "type": "A",
                                 "name": record["name"],
-                                "data": ipv6_address
+                                "data": ip_address
                             })
-                            log_json("API Response - domains.update_record (AAAA_generic)", resp)
-                            log(f"Updated AAAA record ({record['name']}) -> {ipv6_address}")
+                            log_json("API Response - domains.update_record (A_generic)", resp)
+                            log(f"Updated A record ({record['name']}) -> {ip_address}")
+                # Update all AAAA records for this domain (root, subdomains, wildcard)
+                if record["type"] == "AAAA":
+                    if (
+                        record["name"] == "@"
+                        or record["name"] == DO_DOMAIN
+                        or record["name"] == ""
+                        or DO_DOMAIN in record["name"]
+                        or record["name"].startswith("*")
+                        or record["name"] == "traefik"
+                        or record["name"] == f"traefik.{DO_DOMAIN}"
+                    ):
+                        # Track root for legacy logic
+                        if record["name"] == "@" or record["name"] == DO_DOMAIN or record["name"] == "":
+                            found["AAAA_root"] = record
+                            updated["AAAA_root"] = True
+                        if ipv6_address:
+                            if DRY_RUN:
+                                log(f"[DRY RUN] Would update AAAA record ({record['name']}) -> {ipv6_address}")
+                            else:
+                                log_json("API Request - domains.update_record (AAAA_generic)", {"id": record["id"], "data": ipv6_address})
+                                resp = client.domains.update_record(DO_DOMAIN, record["id"], {
+                                    "type": "AAAA",
+                                    "name": record["name"],
+                                    "data": ipv6_address
+                                })
+                                log_json("API Response - domains.update_record (AAAA_generic)", resp)
+                                log(f"Updated AAAA record ({record['name']}) -> {ipv6_address}")
 
-        # Create missing records
-        if not found["A_root"]:
-            if DRY_RUN:
-                log(f"[DRY RUN] Would create root A record (@) -> {ip_address}")
-            else:
-                log_json("API Request - domains.create_record (A_root)", {"type": "A", "name": "@", "data": ip_address})
-                resp = client.domains.create_record(DO_DOMAIN, {
-                    "type": "A",
-                    "name": "@",
-                    "data": ip_address
-                })
-                log_json("API Response - domains.create_record (A_root)", resp)
-                log(f"Created root A record (@) -> {ip_address}")
-        if not found["A_www"]:
-            if DRY_RUN:
-                log(f"[DRY RUN] Would create www A record (www) -> {ip_address}")
-            else:
-                log_json("API Request - domains.create_record (A_www)", {"type": "A", "name": "www", "data": ip_address})
-                resp = client.domains.create_record(DO_DOMAIN, {
-                    "type": "A",
-                    "name": "www",
-                    "data": ip_address
-                })
-                log_json("API Response - domains.create_record (A_www)", resp)
-                log(f"Created www A record (www) -> {ip_address}")
-        if ipv6_address and not found["AAAA_root"]:
-            if DRY_RUN:
-                log(f"[DRY RUN] Would create root AAAA record (@) -> {ipv6_address}")
-            else:
-                log_json("API Request - domains.create_record (AAAA_root)", {"type": "AAAA", "name": "@", "data": ipv6_address})
-                resp = client.domains.create_record(DO_DOMAIN, {
-                    "type": "AAAA",
-                    "name": "@",
-                    "data": ipv6_address
-                })
-                log_json("API Response - domains.create_record (AAAA_root)", resp)
-                log(f"Created root AAAA record (@) -> {ipv6_address}")
-        if not updated["A_root"] and not updated["A_www"] and not updated["AAAA_root"]:
-            log("No A/AAAA records for root or www found to update or create.")
+            # Create missing records
+            if not found["A_root"]:
+                if DRY_RUN:
+                    log(f"[DRY RUN] Would create root A record (@) -> {ip_address}")
+                else:
+                    log_json("API Request - domains.create_record (A_root)", {"type": "A", "name": "@", "data": ip_address})
+                    resp = client.domains.create_record(DO_DOMAIN, {
+                        "type": "A",
+                        "name": "@",
+                        "data": ip_address
+                    })
+                    log_json("API Response - domains.create_record (A_root)", resp)
+                    log(f"Created root A record (@) -> {ip_address}")
+            if not found["A_www"]:
+                if DRY_RUN:
+                    log(f"[DRY RUN] Would create www A record (www) -> {ip_address}")
+                else:
+                    log_json("API Request - domains.create_record (A_www)", {"type": "A", "name": "www", "data": ip_address})
+                    resp = client.domains.create_record(DO_DOMAIN, {
+                        "type": "A",
+                        "name": "www",
+                        "data": ip_address
+                    })
+                    log_json("API Response - domains.create_record (A_www)", resp)
+                    log(f"Created www A record (www) -> {ip_address}")
+            if ipv6_address and not found["AAAA_root"]:
+                if DRY_RUN:
+                    log(f"[DRY RUN] Would create root AAAA record (@) -> {ipv6_address}")
+                else:
+                    log_json("API Request - domains.create_record (AAAA_root)", {"type": "AAAA", "name": "@", "data": ipv6_address})
+                    resp = client.domains.create_record(DO_DOMAIN, {
+                        "type": "AAAA",
+                        "name": "@",
+                        "data": ipv6_address
+                    })
+                    log_json("API Response - domains.create_record (AAAA_root)", resp)
+                    log(f"Created root AAAA record (@) -> {ipv6_address}")
+            if not updated["A_root"] and not updated["A_www"] and not updated["AAAA_root"]:
+                log("No A/AAAA records for root or www found to update or create.")
         except Exception as e:
             err(f"DNS update failed: {e}")
             recovery_ssh_logs(ip_address, SSH_USER, ssh_key_path)
@@ -680,8 +669,8 @@ log_json("Droplet spec being sent", droplet_spec)
             log("Verifying Traefik container environment for TRAEFIK_API_PORT...")
             # 1) Most reliable: print env inside the running container
             exec_cmd = (
-                f"cd {repo_path} && CID=\$(docker compose -f local.docker.yml ps -q traefik) && "
-                f"docker exec \"$CID\" env | grep '^TRAEFIK_API_PORT=' || true"
+                fr"cd {repo_path} && CID=$(docker compose -f local.docker.yml ps -q traefik) && "
+                fr"docker exec \"$CID\" env | grep '^TRAEFIK_API_PORT=' || true"
             )
             stdin, stdout, stderr = ssh_client.exec_command(exec_cmd)
             exec_out = stdout.read().decode().strip()
@@ -690,8 +679,8 @@ log_json("Droplet spec being sent", droplet_spec)
             else:
                 # 2) Try jq on docker inspect output if available
                 jq_cmd = (
-                    f"cd {repo_path} && CID=\$(docker compose -f local.docker.yml ps -q traefik) && "
-                    f"command -v jq >/dev/null 2>&1 && docker inspect \"$CID\" | jq -r '.[0].Config.Env[] | select(startswith(\"TRAEFIK_API_PORT=\"))' || true"
+                    fr"cd {repo_path} && CID=$(docker compose -f local.docker.yml ps -q traefik) && "
+                    fr"command -v jq >/dev/null 2>&1 && docker inspect \"$CID\" | jq -r '.[0].Config.Env[] | select(startswith(\"TRAEFIK_API_PORT=\"))' || true"
                 )
                 stdin, stdout, stderr = ssh_client.exec_command(jq_cmd)
                 jq_out = stdout.read().decode().strip()
@@ -700,8 +689,8 @@ log_json("Droplet spec being sent", droplet_spec)
                 else:
                     # 3) Fallback: get JSON array of env with Go template and parse locally
                     json_cmd = (
-                        f"cd {repo_path} && CID=\$(docker compose -f local.docker.yml ps -q traefik) && "
-                        f"docker inspect \"$CID\" --format '{{{{json .Config.Env}}}}'"
+                        fr"cd {repo_path} && CID=$(docker compose -f local.docker.yml ps -q traefik) && "
+                        fr"docker inspect \"$CID\" --format '{{{{json .Config.Env}}}}'"
                     )
                     stdin, stdout, stderr = ssh_client.exec_command(json_cmd)
                     env_json = stdout.read().decode()
@@ -716,8 +705,8 @@ log_json("Droplet spec being sent", droplet_spec)
                     else:
                         # 4) Final fallback: print all env lines via Go template
                         lines_cmd = (
-                            f"cd {repo_path} && CID=\$(docker compose -f local.docker.yml ps -q traefik) && "
-                            f"docker inspect \"$CID\" --format '{{{{range .Config.Env}}}}{{{{println .}}}}{{{{end}}}}'"
+                            fr"cd {repo_path} && CID=$(docker compose -f local.docker.yml ps -q traefik) && "
+                            fr"docker inspect \"$CID\" --format '{{{{range .Config.Env}}}}{{{{println .}}}}{{{{end}}}}'"
                         )
                         stdin, stdout, stderr = ssh_client.exec_command(lines_cmd)
                         lines = stdout.read().decode()
@@ -733,15 +722,4 @@ log_json("Droplet spec being sent", droplet_spec)
     except Exception as e:
         err(f"Post-deploy workflow failed: {e}")
     exit(0)
-except Exception as e:
-    err(f"Droplet creation failed: {e}")
-    try:
-        recovery_ssh_logs(ip_address, SSH_USER, ssh_key_path)
-    except Exception:
-        pass
-    try:
-        print(f"[DROPLET ID] {droplet_id}")
-    except Exception:
-        print("[DROPLET ID] unknown (not available)")
-    exit(1)
 
