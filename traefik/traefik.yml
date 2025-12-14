@@ -16,14 +16,14 @@ entryPoints:
   websecure:
     # https
     address: ":443"
-  api:
+  traefik:
     address: ':${TRAEFIK_API_PORT}'
 
-# API and Dashboard
-api:
-  dashboard: true
-  insecure: false
-  debug: true
+# Dashboard disabled to avoid duplicate 'api' key conflicts
+# api:
+#   dashboard: true
+#   insecure: false
+#   debug: true
 
 # Ping health check
 ping: {}

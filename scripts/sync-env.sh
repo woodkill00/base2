@@ -170,12 +170,14 @@ if grep -q "^TRAEFIK_USER=" .env; then
     SANITIZED_LINE=$(echo "$ORIGINAL_TRAEFIK_USER_LINE" | sed 's/\$/$$/g')
     if [ "$ORIGINAL_TRAEFIK_USER_LINE" != "$SANITIZED_LINE" ]; then
         echo -e "${YELLOW}⚙️  Escaping dollar signs in TRAEFIK_USER for Compose compatibility${NC}"
-        # macOS vs Linux sed in-place
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' "s~^${ORIGINAL_TRAEFIK_USER_LINE//~/\~}~${SANITIZED_LINE//~/\~}~" .env
-        else
-            sed -i "s~^${ORIGINAL_TRAEFIK_USER_LINE//~/\~}~${SANITIZED_LINE//~/\~}~" .env
-        fi
+        # Use awk for robust in-place update to avoid sed Arg list too long
+        awk -v orig="$ORIGINAL_TRAEFIK_USER_LINE" -v repl="$SANITIZED_LINE" '
+            BEGIN { done=0 }
+            {
+                if (!done && index($0, orig) == 1) { print repl; done=1 }
+                else { print $0 }
+            }
+        ' .env > .env.tmp && mv .env.tmp .env
         CHANGES_MADE=true
     fi
 fi
