@@ -443,6 +443,11 @@ try:
     log("Deployment script completed successfully.")
     SUMMARY.append("Deployment script completed successfully.")
 
+    # Extra stabilization wait to allow services/SSH to settle
+    STABILIZATION_WAIT = int(os.getenv("POST_DEPLOY_STABILIZATION_SECONDS", "60"))
+    log(f"Waiting {STABILIZATION_WAIT} seconds for SSH/services to stabilize...")
+    time.sleep(STABILIZATION_WAIT)
+
     # --- Post-reboot configuration and service startup ---
     try:
         SSH_USER = os.getenv("SSH_USER", "root")
@@ -450,7 +455,19 @@ try:
         log(f"Connecting via SSH to {ip_address} for post-reboot configuration...")
         ssh_client = paramiko.SSHClient()
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh_client.connect(ip_address, username=SSH_USER, key_filename=ssh_key_path)
+
+        def ssh_connect_with_retry(max_attempts: int = 5, delay: int = 15):
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    ssh_client.connect(ip_address, username=SSH_USER, key_filename=ssh_key_path)
+                    return True
+                except Exception as e:
+                    err(f"SSH connect attempt {attempt}/{max_attempts} failed: {e}")
+                    time.sleep(delay)
+            return False
+
+        if not ssh_connect_with_retry():
+            raise RuntimeError("SSH connection failed after retries")
 
         # Copy local .env to remote repo
         remote_env_path = f"{repo_path}/.env"
@@ -459,23 +476,49 @@ try:
         sftp.put(env_path.replace('\\', '/'), remote_env_path)
         sftp.close()
 
-        # Run post_reboot_complete.sh to finalize config
+        # Run post_reboot_complete.sh to finalize config (with reconnect on drop)
         post_reboot_path = f"{repo_path}/digital_ocean/scripts/post_reboot_complete.sh"
         log(f"Running post-reboot script: {post_reboot_path}")
-        stdin, stdout, stderr = ssh_client.exec_command(f"bash {post_reboot_path}")
-        print(stdout.read().decode())
-        err_out = stderr.read().decode()
-        if err_out:
-            print(err_out)
+        try:
+            stdin, stdout, stderr = ssh_client.exec_command(f"bash {post_reboot_path}")
+            print(stdout.read().decode())
+            err_out = stderr.read().decode()
+            if err_out:
+                print(err_out)
+        except Exception as e:
+            err(f"Post-reboot exec encountered an error: {e}. Reconnecting and retrying once...")
+            ssh_client.close()
+            if not ssh_connect_with_retry():
+                raise RuntimeError("SSH reconnect failed after post-reboot error")
+            stdin, stdout, stderr = ssh_client.exec_command(f"bash {post_reboot_path}")
+            print(stdout.read().decode())
+            err_out = stderr.read().decode()
+            if err_out:
+                print(err_out)
 
         # Start services with build
-        start_cmd = f"cd {repo_path} && bash scripts/start.sh --build"
+        # Start services and follow logs briefly for live visibility
+        start_cmd = (
+            f"cd {repo_path} && START_FOLLOW_LOGS=true POST_DEPLOY_LOGS_FOLLOW_SECONDS=60 "
+            f"bash scripts/start.sh --build --follow-logs"
+        )
         log(f"Starting services: {start_cmd}")
-        stdin, stdout, stderr = ssh_client.exec_command(start_cmd)
-        print(stdout.read().decode())
-        err_out = stderr.read().decode()
-        if err_out:
-            print(err_out)
+        try:
+            stdin, stdout, stderr = ssh_client.exec_command(start_cmd)
+            print(stdout.read().decode())
+            err_out = stderr.read().decode()
+            if err_out:
+                print(err_out)
+        except Exception as e:
+            err(f"Start services encountered an error: {e}. Reconnecting and retrying once...")
+            ssh_client.close()
+            if not ssh_connect_with_retry():
+                raise RuntimeError("SSH reconnect failed after start error")
+            stdin, stdout, stderr = ssh_client.exec_command(start_cmd)
+            print(stdout.read().decode())
+            err_out = stderr.read().decode()
+            if err_out:
+                print(err_out)
 
         # Check status and logs
         def parse_ps_health(ps_text: str) -> Dict[str, str]:

@@ -61,6 +61,7 @@ done
 BUILD=false
 DETACHED=true
 SELF_TEST=false
+FOLLOW_LOGS=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -76,6 +77,10 @@ while [[ $# -gt 0 ]]; do
             SELF_TEST=true
             shift
             ;;
+        --follow-logs)
+            FOLLOW_LOGS=true
+            shift
+            ;;
         --help|-h)
             echo "Usage: ./start.sh [OPTIONS]"
             echo ""
@@ -83,6 +88,7 @@ while [[ $# -gt 0 ]]; do
             echo "  -b, --build       Rebuild images before starting"
             echo "  -f, --foreground  Run in foreground (don't detach)"
             echo "  --self-test       Run script self-test and exit"
+            echo "  --follow-logs     After up -d, follow service logs briefly"
             echo "  -h, --help        Show this help message"
             exit 0
             ;;
@@ -157,6 +163,21 @@ if [ "$DETACHED" = true ]; then
     echo "  - Traefik Dashboard:            disabled insecure access"
     echo ""
     echo "💡 View logs: ./scripts/logs.sh"
+
+    # Optionally follow logs for a short window (useful for orchestrated deploys)
+    if [ "$FOLLOW_LOGS" = true ] || [ "${START_FOLLOW_LOGS:-}" = "true" ]; then
+        DURATION=${POST_DEPLOY_LOGS_FOLLOW_SECONDS:-60}
+        echo "\n🔎 Following logs for ${DURATION}s (traefik, backend, nginx)..."
+        # Use timeout to avoid hanging forever; fallback if timeout is not available
+        if command -v timeout >/dev/null 2>&1; then
+            timeout "$DURATION" docker-compose -f "$COMPOSE_FILE" logs -f --tail=100 traefik backend nginx || true
+        else
+            # Portable fallback: run in background and kill after duration
+            ( docker-compose -f "$COMPOSE_FILE" logs -f --tail=100 traefik backend nginx & LOG_PID=$!; \
+              sleep "$DURATION"; \
+              kill "$LOG_PID" 2>/dev/null || true )
+        fi
+    fi
 else
     echo "🐳 Starting services in foreground mode..."
     docker-compose -f "$COMPOSE_FILE" up
