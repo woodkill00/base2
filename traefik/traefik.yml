@@ -63,7 +63,7 @@ providers:
   #   watch: true
 
   file:
-    filename: /etc/traefik/dynamic.yml
+    filename: /etc/traefik/dynamic/dynamic.yml
     watch: true
 # providers:
 #   # https://docs.traefik.io/master/providers/file/

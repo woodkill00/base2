@@ -129,8 +129,7 @@ services:
       - ./letsencrypt:/etc/traefik/acme
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik_logs:/var/log/traefik
-      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
-      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      # dynamic config is rendered internally; no bind mount to dynamic.yml (avoid read-only write errors)
     networks:
       - base2_network
     restart: unless-stopped
