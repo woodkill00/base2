@@ -30,7 +30,7 @@ ping: {}
 
 # Log configuration
 log:
-  level: '${TRAEFIK_LOG_LEVEL}'
+  level: 'DEBUG'
   filePath: '/var/log/traefik/traefik.log'
   format: json
 
