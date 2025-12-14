@@ -47,8 +47,7 @@ certificatesResolvers:
       email: '${TRAEFIK_CERT_EMAIL}'
       storage: /etc/traefik/acme/acme-staging.json
       caServer: https://acme-staging-v02.api.letsencrypt.org/directory
-      httpChallenge:
-        entryPoint: web
+      tlsChallenge: {}
       # dnsChallenge:
       #   provider: digitalocean
       #   # delayBeforeCheck: 0
@@ -57,11 +56,12 @@ certificatesResolvers:
 
 # Providers configuration
 providers:
-  docker:
-    endpoint: 'unix:///var/run/docker.sock'
-    exposedByDefault: ${TRAEFIK_EXPOSED_BY_DEFAULT}
-    network: '${TRAEFIK_DOCKER_NETWORK}'
-    watch: true
+  # docker provider disabled in dev due to daemon API mismatch
+  # docker:
+  #   endpoint: 'unix:///var/run/docker.sock'
+  #   exposedByDefault: ${TRAEFIK_EXPOSED_BY_DEFAULT}
+  #   network: '${TRAEFIK_DOCKER_NETWORK}'
+  #   watch: true
 
   file:
     filename: /etc/traefik/dynamic.yml

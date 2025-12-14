@@ -4,6 +4,8 @@ http:
       rule: (Host(`woodkilldev.com`) || Host(`www.woodkilldev.com`)) && PathPrefix(`/`)
       entryPoints:
         - websecure
+      middlewares:
+        - security-headers
       tls:
         certResolver: le-staging
       service: frontend-react
@@ -18,6 +20,10 @@ http:
       rule: Host(`woodkilldev.com`) && PathPrefix(`/api`)
       entryPoints:
         - websecure
+      middlewares:
+        - security-headers
+        - rate-limit
+        - retry
       tls:
         certResolver: le-staging
       service: api
@@ -36,3 +42,24 @@ http:
         scheme: https
         port: 443
         permanent: true
+    security-headers:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        frameDeny: true
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: "no-referrer-when-downgrade"
+        customResponseHeaders:
+          X-Frame-Options: "DENY"
+          X-Content-Type-Options: "nosniff"
+          X-XSS-Protection: "1; mode=block"
+    rate-limit:
+      rateLimit:
+        average: 100
+        burst: 50
+    retry:
+      retry:
+        attempts: 3
+        initialInterval: 100ms
