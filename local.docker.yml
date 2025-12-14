@@ -236,8 +236,7 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
-    security_opt:
-      # Allow pgAdmin init routines that may invoke sudo; removing no-new-privileges to prevent warnings
+    # security_opt removed to avoid compose validation errors; pgAdmin runs in server mode
     healthcheck:
       test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:${PGADMIN_PORT}/misc/ping']
       interval: 30s
