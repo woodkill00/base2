@@ -1,7 +1,9 @@
 # Dockerfile for React App (Production-like)
 # Build with Node, serve static build via Nginx (internal-only behind Traefik)
 
+# Declare all ARG used in any FROM before the first FROM
 ARG NODE_VERSION=18-alpine
+ARG NGINX_VERSION=1.25-alpine
 FROM node:${NODE_VERSION} AS build
 
 WORKDIR /app
@@ -20,7 +22,6 @@ ENV REACT_APP_API_URL=${REACT_APP_API_URL}
 RUN npm run build
 
 # ---------- Runtime: Nginx to serve static build ----------
-ARG NGINX_VERSION=1.25-alpine
 FROM nginx:${NGINX_VERSION}
 
 # Install envsubst (optional for templating)
