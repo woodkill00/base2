@@ -125,7 +125,15 @@ DO_API_REGION = os.getenv("DO_API_REGION", "nyc3")
 DO_API_SIZE = os.getenv("DO_API_SIZE", "s-1vcpu-1gb")
 DO_API_IMAGE = os.getenv("DO_API_IMAGE", "ubuntu-22-04-x64")
 import sys
-DRY_RUN = "--dry-run" in sys.argv
+import argparse
+
+# CLI flags
+parser = argparse.ArgumentParser(description="Orchestrate DO deploy and post-deploy actions")
+parser.add_argument("--dry-run", action="store_true", help="Print actions without making changes")
+parser.add_argument("--update-only", action="store_true", help="Skip droplet creation; pull latest repo on droplet and rerun post-deploy")
+args = parser.parse_args()
+DRY_RUN = args.dry_run
+UPDATE_ONLY = args.update_only
 if DRY_RUN:
     print("\033[1;32m[INFO]\033[0m [DRY RUN] No changes will be made. Printing planned actions only.")
 DO_SSH_KEY_ID = os.getenv("DO_SSH_KEY_ID")
@@ -201,8 +209,28 @@ log_json("Droplet spec being sent", droplet_spec)
 
 
 
-log("Creating droplet via DigitalOcean API...")
-try:
+    # If update-only, skip droplet creation and fetch existing droplet by name
+    if UPDATE_ONLY:
+        log("[UPDATE-ONLY] Skipping droplet creation; locating existing droplet by name...")
+        try:
+            droplet_list = client.droplets.list()
+            matched = None
+            for d in droplet_list.get("droplets", []):
+                if d.get("name") == DO_DROPLET_NAME:
+                    matched = d
+                    break
+            if not matched:
+                raise RuntimeError(f"No existing droplet found named {DO_DROPLET_NAME}")
+            droplet_id = matched["id"]
+            droplet_info = client.droplets.get(droplet_id)["droplet"]
+            ip_address = droplet_info["networks"]["v4"][0]["ip_address"]
+            log(f"Using existing droplet {droplet_id} at {ip_address}")
+        except Exception as e:
+            err(f"Failed to locate existing droplet: {e}")
+            exit(1)
+    else:
+        log("Creating droplet via DigitalOcean API...")
+        try:
     log_json("API Request - droplets.create", droplet_spec)
     droplet = client.droplets.create(droplet_spec)
     log_json("API Response - droplets.create", droplet)
@@ -230,21 +258,23 @@ try:
     except Exception as e:
         err(f"Failed to update {do_userdata_json_path} with droplet_id and ip_address: {e}")
 
-    log("Waiting for droplet to become active...")
-    while True:
-        droplet_info = client.droplets.get(droplet_id)["droplet"]
-        log_json("API Response - droplets.get", droplet_info)
-        if droplet_info["status"] == "active":
-            break
-        time.sleep(5)
-        print("...", flush=True)
-    ip_address = droplet_info["networks"]["v4"][0]["ip_address"]
-    log(f"Droplet is active. IP address: {ip_address}")
-    print(f"Droplet created! IP address: {ip_address}")
+    if not UPDATE_ONLY:
+        log("Waiting for droplet to become active...")
+        while True:
+            droplet_info = client.droplets.get(droplet_id)["droplet"]
+            log_json("API Response - droplets.get", droplet_info)
+            if droplet_info["status"] == "active":
+                break
+            time.sleep(5)
+            print("...", flush=True)
+        ip_address = droplet_info["networks"]["v4"][0]["ip_address"]
+        log(f"Droplet is active. IP address: {ip_address}")
+        print(f"Droplet created! IP address: {ip_address}")
 
     # --- 3. Update DNS Records ---
-    log("Updating DNS A/AAAA records for domain and www...")
-    try:
+    if not UPDATE_ONLY:
+        log("Updating DNS A/AAAA records for domain and www...")
+        try:
         log_json("API Request - domains.list_records", {"domain": DO_DOMAIN})
         records = client.domains.list_records(DO_DOMAIN)["domain_records"]
         log_json("API Response - domains.list_records", records)
@@ -355,10 +385,10 @@ try:
                 log(f"Created root AAAA record (@) -> {ipv6_address}")
         if not updated["A_root"] and not updated["A_www"] and not updated["AAAA_root"]:
             log("No A/AAAA records for root or www found to update or create.")
-    except Exception as e:
-        err(f"DNS update failed: {e}")
-        recovery_ssh_logs(ip_address, SSH_USER, ssh_key_path)
-        exit(1)
+        except Exception as e:
+            err(f"DNS update failed: {e}")
+            recovery_ssh_logs(ip_address, SSH_USER, ssh_key_path)
+            exit(1)
 
     ssh_cmd = [
         "ssh",
@@ -369,8 +399,9 @@ try:
     ]
 
     # Wait for SSH to become available (initial boot)
-    log(f"Waiting {SSH_INITIAL_WAIT} seconds before first SSH availability check after droplet creation...")
-    time.sleep(SSH_INITIAL_WAIT)
+    if not UPDATE_ONLY:
+        log(f"Waiting {SSH_INITIAL_WAIT} seconds before first SSH availability check after droplet creation...")
+        time.sleep(SSH_INITIAL_WAIT)
     ssh_success = False
     for attempt in range(1, SSH_ATTEMPTS + 1):
         try:
@@ -428,25 +459,27 @@ try:
         except Exception as e:
             err(f"SSH log fetch failed: {e}")
         time.sleep(LOG_POLL_INTERVAL)
-    if not completion_found:
-        err("Did not find cloud-init completion marker in log after multiple attempts.")
-        try:
-            result = subprocess.run(ssh_log_cmd, capture_output=True, text=True, timeout=LOG_POLL_TIMEOUT, encoding="utf-8", errors="replace")
-            log_output = result.stdout if result.stdout is not None else ''
-            print("\n--- Last 50 lines of cloud-init log ---\n")
-            print("\n".join(log_output.splitlines()[-50:]))
-        except Exception as e:
-            err(f"Failed to fetch last lines of cloud-init log: {e}")
-        recovery_ssh_logs(ip_address, SSH_USER, ssh_key_path)
-        SUMMARY.append("Cloud-init completion marker not found in log.")
-        exit(1)
-    log("Deployment script completed successfully.")
-    SUMMARY.append("Deployment script completed successfully.")
+    if not UPDATE_ONLY:
+        if not completion_found:
+            err("Did not find cloud-init completion marker in log after multiple attempts.")
+            try:
+                result = subprocess.run(ssh_log_cmd, capture_output=True, text=True, timeout=LOG_POLL_TIMEOUT, encoding="utf-8", errors="replace")
+                log_output = result.stdout if result.stdout is not None else ''
+                print("\n--- Last 50 lines of cloud-init log ---\n")
+                print("\n".join(log_output.splitlines()[-50:]))
+            except Exception as e:
+                err(f"Failed to fetch last lines of cloud-init log: {e}")
+            recovery_ssh_logs(ip_address, SSH_USER, ssh_key_path)
+            SUMMARY.append("Cloud-init completion marker not found in log.")
+            exit(1)
+        log("Deployment script completed successfully.")
+        SUMMARY.append("Deployment script completed successfully.")
 
     # Extra stabilization wait to allow services/SSH to settle
     STABILIZATION_WAIT = int(os.getenv("POST_DEPLOY_STABILIZATION_SECONDS", "60"))
-    log(f"Waiting {STABILIZATION_WAIT} seconds for SSH/services to stabilize...")
-    time.sleep(STABILIZATION_WAIT)
+    if not UPDATE_ONLY:
+        log(f"Waiting {STABILIZATION_WAIT} seconds for SSH/services to stabilize...")
+        time.sleep(STABILIZATION_WAIT)
 
     # --- Post-reboot configuration and service startup ---
     try:
@@ -476,6 +509,20 @@ try:
         sftp.put(env_path.replace('\\', '/'), remote_env_path)
         sftp.close()
 
+        # If update-only, ensure repo exists and pull latest
+        if UPDATE_ONLY:
+            log("[UPDATE-ONLY] Ensuring repo path exists and pulling latest changes...")
+            pull_cmd = (
+                f"test -d {repo_path} || mkdir -p {repo_path}; "
+                f"cd {repo_path} && git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git pull --ff-only || "
+                f"(test -d .git || (rm -rf ./*); git init && git remote add origin $(grep '^GIT_REMOTE=' .env | cut -d'=' -f2) && git fetch origin && git reset --hard origin/main)"
+            )
+            stdin, stdout, stderr = ssh_client.exec_command(pull_cmd)
+            print(stdout.read().decode())
+            err_out = stderr.read().decode()
+            if err_out:
+                print(err_out)
+
         # Run post_reboot_complete.sh to finalize config (with reconnect on drop)
         post_reboot_path = f"{repo_path}/digital_ocean/scripts/post_reboot_complete.sh"
         log(f"Running post-reboot script: {post_reboot_path}")
@@ -496,11 +543,10 @@ try:
             if err_out:
                 print(err_out)
 
-        # Start services with build
         # Start services and follow logs briefly for live visibility
         start_cmd = (
             f"cd {repo_path} && START_FOLLOW_LOGS=true POST_DEPLOY_LOGS_FOLLOW_SECONDS=60 "
-            f"bash scripts/start.sh --build --follow-logs"
+            f"bash scripts/start.sh {'--build ' if not UPDATE_ONLY else ''}--follow-logs"
         )
         log(f"Starting services: {start_cmd}")
         try:
