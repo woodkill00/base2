@@ -1,0 +1,38 @@
+http:
+  routers:
+    frontend-react:
+      rule: (Host(`woodkilldev.com`) || Host(`www.woodkilldev.com`)) && PathPrefix(`/`)
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: le-staging
+      service: frontend-react
+    frontend-http-react:
+      rule: (Host(`woodkilldev.com`) || Host(`www.woodkilldev.com`)) && PathPrefix(`/`)
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https
+      service: noop@internal
+    api:
+      rule: Host(`woodkilldev.com`) && PathPrefix(`/api`)
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: le-staging
+      service: api
+  services:
+    frontend-react:
+      loadBalancer:
+        servers:
+          - url: http://react-app:8080
+    api:
+      loadBalancer:
+        servers:
+          - url: http://backend:5001
+  middlewares:
+    redirect-to-https:
+      redirectScheme:
+        scheme: https
+        port: 443
+        permanent: true

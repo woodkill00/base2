@@ -103,7 +103,7 @@ services:
       context: ./traefik
       dockerfile: .Dockerfile
       args:
-        - TRAEFIK_VERSION=${TRAEFIK_VERSION}
+        - TRAEFIK_VERSION=v3.1
         - TRAEFIK_LOG_LEVEL=${TRAEFIK_LOG_LEVEL}
         - TRAEFIK_PORT=${TRAEFIK_PORT}
         - TRAEFIK_API_PORT=${TRAEFIK_API_PORT}
@@ -126,6 +126,8 @@ services:
       - ./letsencrypt:/etc/traefik/acme
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik_logs:/var/log/traefik
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
     networks:
       - base2_network
     restart: unless-stopped
