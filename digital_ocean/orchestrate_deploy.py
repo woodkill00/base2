@@ -630,10 +630,10 @@ try:
         # Verify Traefik environment contains TRAEFIK_API_PORT and show value (robust jq-based fallback)
         try:
             log("Verifying Traefik container environment for TRAEFIK_API_PORT...")
-            # Prefer jq to avoid Go-template quoting issues; fallback to grep if jq missing
+            # Use Go template to print env lines safely, then grep for the target var
             verify_cmd = (
                 f"cd {repo_path} && CID=\$(docker compose -f local.docker.yml ps -q traefik) && "
-                f"(command -v jq >/dev/null 2>&1 && docker inspect \"$CID\" | jq -r '.[0].Config.Env[]' || docker inspect \"$CID\" | sed -n 's/.*\"Config\":{\"Env\":\[\(.*\)\].*/\1/p' | tr ',' '\n' | tr -d ' \"') | grep '^TRAEFIK_API_PORT=' || true"
+                f"docker inspect \"$CID\" --format '{{{{range .Config.Env}}}}{{{{println .}}}}{{{{end}}}}' | grep '^TRAEFIK_API_PORT=' || true"
             )
             stdin, stdout, stderr = ssh_client.exec_command(verify_cmd)
             verify_output = stdout.read().decode().strip()
@@ -643,7 +643,7 @@ try:
                 # Last resort: dump all env lines
                 dump_cmd = (
                     f"cd {repo_path} && CID=\$(docker compose -f local.docker.yml ps -q traefik) && "
-                    f"docker inspect \"$CID\" | grep -o 'TRAEFIK_.*' || true"
+                    f"docker inspect \"$CID\" --format '{{{{range .Config.Env}}}}{{{{println .}}}}{{{{end}}}}' || true"
                 )
                 stdin, stdout, stderr = ssh_client.exec_command(dump_cmd)
                 lines = stdout.read().decode()
