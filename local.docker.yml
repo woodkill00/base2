@@ -27,6 +27,16 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`${WEBSITE_DOMAIN}`)"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls.certresolver=le-staging"
+      - "traefik.http.routers.frontend-http.rule=Host(`${WEBSITE_DOMAIN}`)"
+      - "traefik.http.routers.frontend-http.entrypoints=web"
+      - "traefik.http.routers.frontend-http.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.services.frontend.loadbalancer.server.port=8080"
     # Internal-only; Traefik routes to standalone nginx
 
   # Backend API Service
@@ -144,16 +154,7 @@ services:
       - NGINX_WORKER_PROCESSES=${NGINX_WORKER_PROCESSES}
       - NGINX_WORKER_CONNECTIONS=${NGINX_WORKER_CONNECTIONS}
       - NGINX_PORT=${NGINX_PORT}
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`${WEBSITE_DOMAIN}`)"
-      - "traefik.http.routers.frontend.entrypoints=websecure"
-      - "traefik.http.routers.frontend.tls.certresolver=le-staging"
-      - "traefik.http.routers.frontend-http.rule=Host(`${WEBSITE_DOMAIN}`)"
-      - "traefik.http.routers.frontend-http.entrypoints=web"
-      - "traefik.http.routers.frontend-http.middlewares=redirect-to-https"
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
-      - "traefik.http.services.frontend.loadbalancer.server.port=${NGINX_PORT}"
+    labels: []
     networks:
       - base2_network
     restart: unless-stopped
