@@ -16,8 +16,6 @@ entryPoints:
   websecure:
     # https
     address: ":443"
-  traefik:
-    address: ':${TRAEFIK_API_PORT}'
 
 api:
   dashboard: true
