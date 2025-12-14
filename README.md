@@ -83,15 +83,14 @@ See `backend/README.md` for detailed email setup instructions.
 ### 4. Access Services
 
 Once running, access the services at:
-
-- **React App**: http://localhost:3000
-- **Backend API**: http://localhost:5001 (NEW!)
-- **API Health**: http://localhost:5001/api/health
-- **Nginx**: http://localhost:8080
-- **pgAdmin**: http://localhost:5050
-- **Traefik Dashboard**: http://localhost:8082/dashboard/
-- **Traefik API**: http://localhost:8082/api/rawdata
-- **PostgreSQL**: localhost:5432
+ **React App**: Built into static assets; served internally by Nginx
+ **Backend API**: Node.js/Express auth server routed via Traefik `/api`
+ **Nginx**: Standalone SPA server; only exposed via Traefik
+ **PostgreSQL**: Internal-only database; health-checked
+ **pgAdmin**: Internal-only management UI; not publicly accessible
+ **Traefik v3**: Only public entrypoint (80/443); staging certs; no insecure dashboard
+- **Traefik Dashboard**: disabled insecure access
+- **PostgreSQL**: internal-only (no public access)
 
 ## 🔐 Security Enhancements
 
@@ -102,30 +101,15 @@ All Dockerfiles have been enhanced with:
 - Each service runs as a non-root user for improved security
 - Proper file permissions and ownership configured
 
-### Health Checks
-
+ **Frontend (via Traefik)**: `http://localhost:${TRAEFIK_HOST_PORT}` (HTTP)
+ **Frontend (HTTPS)**: `https://${WEBSITE_DOMAIN}` (staging cert; expect browser warning)
 - Built-in health monitoring for all services
 - Automatic restart on failure
 - Configurable health check intervals
-
-### Resource Management
-
 - Optimized PostgreSQL configuration for better performance
-- Nginx worker process and connection tuning
-- Proper volume management for data persistence
-
 ## 📝 Environment Variables
 
-### React App
-
-- `REACT_APP_NODE_VERSION`: Node.js version (default: 18-alpine)
-- `REACT_APP_PORT`: Internal container port (default: 3000)
-- `REACT_APP_HOST_PORT`: Host machine port (default: 3000)
 - `REACT_APP_API_URL`: API endpoint URL
-
-### Nginx
-
-- `NGINX_VERSION`: Nginx version (default: 1.25-alpine)
 - `NGINX_PORT`: Internal container port (default: 80)
 - `NGINX_HOST_PORT`: Host machine port (default: 8080)
 - `NGINX_WORKER_PROCESSES`: Number of worker processes (default: auto)
@@ -133,13 +117,9 @@ All Dockerfiles have been enhanced with:
 
 ### PostgreSQL
 
-- `POSTGRES_VERSION`: PostgreSQL version (default: 16-alpine)
 - `POSTGRES_USER`: Database user
 - `POSTGRES_PASSWORD`: Database password (change in production!)
 - `POSTGRES_DB`: Database name
-- `POSTGRES_PORT`: PostgreSQL port (default: 5432)
-- `POSTGRES_HOST_PORT`: Host machine port (default: 5432)
-
 ### pgAdmin
 
 - `PGADMIN_VERSION`: pgAdmin version (default: latest)
@@ -149,23 +129,12 @@ All Dockerfiles have been enhanced with:
 - `PGADMIN_HOST_PORT`: Host machine port (default: 5050)
 
 ### Traefik
-
-- `TRAEFIK_VERSION`: Traefik version (default: v3.0)
-- `TRAEFIK_PORT`: Web entrypoint port (default: 80)
-- `TRAEFIK_HOST_PORT`: Host machine port for web (default: 8081)
-- `TRAEFIK_API_PORT`: API/Dashboard port (default: 8082)
-- `TRAEFIK_API_ENTRYPOINT`: API entrypoint name (default: api)
-- `TRAEFIK_LOG_LEVEL`: Log verbosity (default: INFO)
 - `TRAEFIK_DOCKER_NETWORK`: Docker network to monitor (default: base2_network)
 - `TRAEFIK_EXPOSED_BY_DEFAULT`: Auto-expose containers (default: false)
 
 **⚠️ Important Notes:**
 
 1. When changing the network name, you must update **both** `NETWORK_NAME` and `TRAEFIK_DOCKER_NETWORK` to the same value in `.env` for Traefik to work correctly. These two variables must always match.
-2. Additionally, you must update the network key in `local.docker.yml` (currently `base2_network`) to match your new network name, as Docker Compose does not support variable substitution in network definition keys.
-3. The `TRAEFIK_API_ENTRYPOINT` variable must be set to `api` as the entrypoint key in `traefik.yml` cannot use variable substitution. If you need a different entrypoint name, you must also update the literal key in `traefik/traefik.yml`.
-
-## 🔄 Environment Synchronization
 ## 🛠️ Troubleshooting
 
 If you encounter issues running scripts:
@@ -216,7 +185,11 @@ The `scripts/sync-env.sh` script automatically updates these literal values to m
 
 - **`local.docker.yml`**: Network definition key and service network references
 - **`traefik/traefik.yml`**: API entrypoint key
-- **`.env`**: `TRAEFIK_DOCKER_NETWORK` matches `NETWORK_NAME`
+- **`.env`**: `TRAEFIK_DOCKER_NETWORK` is updated to mirror `NETWORK_NAME`
+
+Source of truth:
+- `NETWORK_NAME` is the single source of truth for networking.
+- `scripts/sync-env.sh` will automatically make `TRAEFIK_DOCKER_NETWORK` match `NETWORK_NAME`.
 
 ---
 
@@ -382,7 +355,7 @@ docker-compose -f local.docker.yml down
 ### Restart a Specific Service
 
 ```bash
-docker-compose -f local.docker.yml restart nginx
+docker-compose -f local.docker.yml restart react-app
 ```
 
 ### View Logs

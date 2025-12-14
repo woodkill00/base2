@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 import subprocess
 from dotenv import load_dotenv
+import re
 
 def log(msg):
     print(f"\033[1;32m[INFO]\033[0m {msg}")
@@ -85,6 +86,7 @@ import time
 from pydo import Client
 import paramiko
 from dotenv import dotenv_values, set_key
+from typing import Dict, Tuple
 
 def log(msg):
     print(f"\033[1;32m[INFO]\033[0m {msg}")
@@ -149,7 +151,6 @@ client = Client(token=DO_API_TOKEN)
 
 
 
-import re
 from dotenv import dotenv_values
 
 
@@ -442,17 +443,152 @@ try:
     log("Deployment script completed successfully.")
     SUMMARY.append("Deployment script completed successfully.")
 
-    # Automatically run post-deployment script
-    post_deploy_script = os.path.abspath(os.path.join(os.path.dirname(__file__), "../scripts/post_deploy_base2.sh")).replace("\\", "/")
-    log(f"Running post-deployment script: {post_deploy_script} {ip_address}")
+    # --- Post-reboot configuration and service startup ---
     try:
-        result = subprocess.run(["bash", post_deploy_script, ip_address], capture_output=True, text=True)
-        print(result.stdout)
-        if result.stderr:
-            print(result.stderr)
-        log("Post-deployment script completed.")
+        SSH_USER = os.getenv("SSH_USER", "root")
+        repo_path = f"{env_dict.get('DEPLOY_PATH', '/srv/')}{env_dict.get('PROJECT_NAME', 'base2')}"
+        log(f"Connecting via SSH to {ip_address} for post-reboot configuration...")
+        ssh_client = paramiko.SSHClient()
+        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh_client.connect(ip_address, username=SSH_USER, key_filename=ssh_key_path)
+
+        # Copy local .env to remote repo
+        remote_env_path = f"{repo_path}/.env"
+        log(f"Uploading .env to {remote_env_path}")
+        sftp = ssh_client.open_sftp()
+        sftp.put(env_path.replace('\\', '/'), remote_env_path)
+        sftp.close()
+
+        # Run post_reboot_complete.sh to finalize config
+        post_reboot_path = f"{repo_path}/digital_ocean/scripts/post_reboot_complete.sh"
+        log(f"Running post-reboot script: {post_reboot_path}")
+        stdin, stdout, stderr = ssh_client.exec_command(f"bash {post_reboot_path}")
+        print(stdout.read().decode())
+        err_out = stderr.read().decode()
+        if err_out:
+            print(err_out)
+
+        # Start services with build
+        start_cmd = f"cd {repo_path} && bash scripts/start.sh --build"
+        log(f"Starting services: {start_cmd}")
+        stdin, stdout, stderr = ssh_client.exec_command(start_cmd)
+        print(stdout.read().decode())
+        err_out = stderr.read().decode()
+        if err_out:
+            print(err_out)
+
+        # Check status and logs
+        def parse_ps_health(ps_text: str) -> Dict[str, str]:
+            summary: Dict[str, str] = {}
+            for line in ps_text.splitlines():
+                if not line or line.startswith("NAME"):
+                    continue
+                parts = re.split(r"\s{2,}", line.strip())
+                if len(parts) < 4:
+                    # Fallback split by single spaces if columns are condensed
+                    parts = line.split()
+                if not parts:
+                    continue
+                name = parts[0]
+                # STATUS column usually near the end; search for token containing health
+                status_field = next((p for p in parts if "healthy" in p.lower() or "unhealthy" in p.lower() or "exit" in p.lower() or "restarting" in p.lower()), None)
+                if status_field:
+                    summary[name] = status_field
+            return summary
+
+        log("Fetching docker compose status...")
+        stdin, stdout, stderr = ssh_client.exec_command(f"cd {repo_path} && docker compose -f local.docker.yml ps")
+        ps_output = stdout.read().decode()
+        print(ps_output)
+        err_out = stderr.read().decode()
+        if err_out:
+            print(err_out)
+        health_summary = parse_ps_health(ps_output)
+
+        def detect_http_errors(log_text: str) -> Tuple[int, int, Dict[str, int]]:
+            errors_4xx = 0
+            errors_5xx = 0
+            paths: Dict[str, int] = {}
+            for raw_line in log_text.splitlines():
+                line = raw_line.strip()
+                if not line:
+                    continue
+                # Try JSON first (Traefik, structured logs)
+                try:
+                    obj = json.loads(line)
+                    status = None
+                    for key in ("status", "DownstreamStatus", "downstream_status"):
+                        if key in obj:
+                            status = obj[key]
+                            break
+                    if isinstance(status, str) and status.isdigit():
+                        status = int(status)
+                    if isinstance(status, int):
+                        if 400 <= status <= 499:
+                            errors_4xx += 1
+                        elif 500 <= status <= 599:
+                            errors_5xx += 1
+                        # Capture path if present
+                        path = obj.get("RequestPath") or obj.get("path") or obj.get("requestPath")
+                        if path and (400 <= status <= 499 or 500 <= status <= 599):
+                            paths[path] = paths.get(path, 0) + 1
+                        continue
+                except Exception:
+                    pass
+
+                # Nginx/combined log format: "GET /path HTTP/1.1" 404 ...
+                m = re.search(r"\s([45]\d{2})\s", line)
+                if m:
+                    code = int(m.group(1))
+                    if 400 <= code <= 499:
+                        errors_4xx += 1
+                    elif 500 <= code <= 599:
+                        errors_5xx += 1
+                    # Try to extract the path inside quotes
+                    pm = re.search(r"\"(?:GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+([^\s\"]+)\s+HTTP/", line)
+                    if pm:
+                        p = pm.group(1)
+                        if 400 <= code <= 499 or 500 <= code <= 599:
+                            paths[p] = paths.get(p, 0) + 1
+            return errors_4xx, errors_5xx, paths
+
+        log("Fetching key service logs (last 100 lines) and summarizing...")
+        svc_errors: Dict[str, Dict[str, object]] = {}
+        for svc in ["traefik", "nginx", "backend", "postgres", "pgadmin"]:
+            log(f"Logs for {svc}:")
+            stdin, stdout, stderr = ssh_client.exec_command(f"cd {repo_path} && docker compose -f local.docker.yml logs --tail=100 {svc}")
+            logs_text = stdout.read().decode()
+            print(logs_text)
+            err_out = stderr.read().decode()
+            if err_out:
+                print(err_out)
+            # Only perform HTTP error detection for web-facing services
+            if svc in ("traefik", "nginx", "backend"):
+                e4, e5, paths = detect_http_errors(logs_text)
+                svc_errors[svc] = {"4xx": e4, "5xx": e5, "paths": paths}
+
+        # Print concise summary
+        print("\n===== Deployment Health Summary =====")
+        if health_summary:
+            print("[Containers]")
+            for name, status in health_summary.items():
+                print(f"- {name}: {status}")
+        else:
+            print("[Containers] No explicit health statuses parsed.")
+        if svc_errors:
+            print("\n[HTTP Errors]")
+            for svc, data in svc_errors.items():
+                print(f"- {svc}: 4xx={data['4xx']}, 5xx={data['5xx']}")
+                hotpaths = sorted(((p, c) for p, c in data.get("paths", {}).items()), key=lambda x: -x[1])[:5]
+                if hotpaths:
+                    for p, c in hotpaths:
+                        print(f"  \u2514 {p}: {c}")
+        print("===== End Summary =====\n")
+
+        ssh_client.close()
+        log("Post-deploy tasks completed.")
     except Exception as e:
-        err(f"Failed to run post-deployment script: {e}")
+        err(f"Post-deploy workflow failed: {e}")
     exit(0)
 except Exception as e:
     err(f"Droplet creation failed: {e}")

@@ -1,4 +1,6 @@
 # Dockerfile for PostgreSQL
+# INTERNAL-ONLY: This service must run behind Traefik or internal networks.
+# Do NOT publish host ports; use service discovery and network-only access.
 # Robust PostgreSQL configuration with environment variable support
 
 ARG POSTGRES_VERSION=16-alpine

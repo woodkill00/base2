@@ -47,8 +47,9 @@ if [ ! -f .env ]; then
     fi
 fi
 
-# Validate required .env variables (example: DB_HOST, DB_USER, DB_PASS)
-REQUIRED_VARS=(DB_HOST DB_USER DB_PASS)
+# Validate required .env variables relevant to this stack
+# Keep concise: domain and core service ports/credentials
+REQUIRED_VARS=(WEBSITE_DOMAIN NETWORK_NAME TRAEFIK_PORT BACKEND_PORT POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB)
 for VAR in "${REQUIRED_VARS[@]}"; do
     if ! grep -q "^$VAR=" .env; then
         echo "❌ Error: Required environment variable $VAR is missing in .env."
@@ -141,12 +142,19 @@ if [ "$DETACHED" = true ]; then
     
     echo ""
     echo "🌐 Access services at:"
-    echo "  - React App:         http://localhost:3000"
-    echo "  - Nginx:             http://localhost:8080"
-    echo "  - pgAdmin:           http://localhost:5050"
-    echo "  - Traefik Dashboard: http://localhost:8082/dashboard/"
-    echo "  - Traefik API:       http://localhost:8082/api/rawdata"
-    echo "  - PostgreSQL:        localhost:5432"
+    # Load env for dynamic endpoints
+    if [ -f .env ]; then
+        # shellcheck disable=SC2046
+        export $(grep -E '^(WEBSITE_DOMAIN|TRAEFIK_HOST_PORT|BACKEND_PORT|PGADMIN_PORT)=' .env | xargs)
+    fi
+    TRAEFIK_HOST_PORT_PRINT=${TRAEFIK_HOST_PORT:-8080}
+    WEBSITE_DOMAIN_PRINT=${WEBSITE_DOMAIN:-localhost}
+    echo "  - Frontend (HTTP via Traefik):  http://localhost:${TRAEFIK_HOST_PORT_PRINT}"
+    echo "  - Frontend (HTTPS via Traefik): https://${WEBSITE_DOMAIN_PRINT} (staging cert)"
+    echo "  - API (via Traefik):            https://${WEBSITE_DOMAIN_PRINT}/api"
+    echo "  - PostgreSQL:                   internal-only"
+    echo "  - pgAdmin:                      internal-only"
+    echo "  - Traefik Dashboard:            disabled insecure access"
     echo ""
     echo "💡 View logs: ./scripts/logs.sh"
 else

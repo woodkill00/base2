@@ -13,7 +13,8 @@
    ```
 2. Copy and configure environment variables:
    ```bash
-
+   cp .env.example .env
+   # Edit .env to set your values
    ## Digital Ocean Automation Onboarding
    This project includes robust Digital Ocean automation for deployment, teardown, edit/maintain, info/query, and exec actions.
 
@@ -77,8 +78,6 @@
       - For platform issues, see cross-platform notes below
    7. **Support**
       - For issues, see troubleshooting below or contact the project maintainer
-   cp .env.example .env
-   # Edit .env to set your values
    ```
 3. Build and start all services:
    ```bash
@@ -104,11 +103,31 @@
 - Review error messages for missing files or environment variables.
 - See README.md for more details.
 
+## DigitalOcean Deploy (Optional)
+Automate droplet creation, DNS, and remote stack startup with Traefik-only public entrypoint.
+
+```bash
+# Preview actions
+python digital_ocean/orchestrate_deploy.py --dry-run
+
+# Full deploy
+python digital_ocean/orchestrate_deploy.py
+```
+
+After deploy:
+- Frontend: `https://${WEBSITE_DOMAIN}` (staging cert; warning expected)
+- API: `https://${WEBSITE_DOMAIN}/api`
+- Logs and status are printed by the orchestrator; run SSH commands from README for deeper checks.
+
 ## Onboarding
 - All required environment variables are documented in `.env.example`.
 - Scripts automate all setup, build, start, stop, test, and log processes.
 - All major scripts support a `--self-test` mode to verify environment and dependencies before running. Use this mode for troubleshooting and onboarding.
 - No manual steps outside documented scripts.
+
+## Network Alignment
+- Ensure `NETWORK_NAME` equals `TRAEFIK_DOCKER_NETWORK` in `.env`.
+- If you change the network, update the compose network key to match (variable substitution is not supported for keys).
 
 ## Support
 - For issues, see the troubleshooting section or contact the project maintainer.

@@ -2,6 +2,7 @@
 # Environment variable support for dynamic configuration
 
 # Entry points configuration
+
 entryPoints:
   web:
     address: ':${TRAEFIK_PORT}'
@@ -9,21 +10,19 @@ entryPoints:
       # https://docs.traefik.io/routing/entrypoints/#entrypoint
       redirections:
         entryPoint:
-          to: web-secure
+          to: websecure
           # scheme: https # all will redirect to https
 
-  web-secure:
+  websecure:
     # https
     address: ":443"
-
-  # API and dashboard entrypoint (Traefik v3 uses 'traefik' as the internal name)
   traefik:
     address: ':${TRAEFIK_API_PORT}'
 
 # API and Dashboard
 api:
   dashboard: true
-  insecure: true
+  insecure: false
   debug: true
 
 # Ping health check
@@ -41,20 +40,20 @@ accessLog:
   format: json
   bufferingSize: 100
 
+
 certificatesResolvers:
-  letsencrypt:
-    # https://docs.traefik.io/master/https/acme/#lets-encrypt
+  le-staging:
     acme:
       email: '${TRAEFIK_CERT_EMAIL}'
-      storage: /etc/traefik/acme/acme.json
-      # https://docs.traefik.io/master/https/acme/#httpchallenge
+      storage: /etc/traefik/acme/acme-staging.json
+      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
       httpChallenge:
         entryPoint: web
-      dnsChallenge:
-        provider: digitalocean
-        # delayBeforeCheck: 0
-      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
-      # caServer: https://acme-v02.api.letsencrypt.org/directory
+      # dnsChallenge:
+      #   provider: digitalocean
+      #   # delayBeforeCheck: 0
+      # caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+      # # caServer: https://acme-v02.api.letsencrypt.org/directory
 
 # Providers configuration
 providers:

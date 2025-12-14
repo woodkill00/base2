@@ -6,27 +6,28 @@ services:
       dockerfile: .Dockerfile
       args:
         - NODE_VERSION=${REACT_APP_NODE_VERSION}
-        - REACT_APP_PORT=${REACT_APP_PORT}
         - REACT_APP_API_URL=${REACT_APP_API_URL}
     container_name: ${COMPOSE_PROJECT_NAME}_react-app
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - REACT_APP_API_URL=${REACT_APP_API_URL}
     networks:
       - base2_network
     restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run/nginx
+      - /var/log/nginx
     healthcheck:
-      test:
-        [
-          'CMD',
-          'node',
-          '-e',
-          "require('http').get('http://localhost:${REACT_APP_PORT}', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})",
-        ]
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:8080/']
       interval: 30s
-      timeout: 3s
+      timeout: 5s
       retries: 3
-      start_period: 40s
+      start_period: 20s
+    # Internal-only; Traefik routes to standalone nginx
 
   # Backend API Service
   backend:
@@ -60,6 +61,11 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     healthcheck:
       test:
         [
@@ -72,6 +78,12 @@ services:
       timeout: 3s
       retries: 3
       start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`${WEBSITE_DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.api.entrypoints=websecure"
+      - "traefik.http.routers.api.tls.certresolver=le-staging"
+      - "traefik.http.services.api.loadbalancer.server.port=${BACKEND_PORT}"
 
   # Traefik Reverse Proxy Service
   traefik:
@@ -89,7 +101,7 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME}_traefik
     ports:
       - '${TRAEFIK_HOST_PORT}:${TRAEFIK_PORT}'
-      - '${TRAEFIK_API_PORT}:${TRAEFIK_API_PORT}'
+      - '443:443'
     environment:
       - TRAEFIK_LOG_LEVEL=${TRAEFIK_LOG_LEVEL}
       - TRAEFIK_PORT=${TRAEFIK_PORT}
@@ -98,11 +110,17 @@ services:
       - TRAEFIK_DOCKER_NETWORK=${TRAEFIK_DOCKER_NETWORK}
       - TRAEFIK_EXPOSED_BY_DEFAULT=${TRAEFIK_EXPOSED_BY_DEFAULT}
     volumes:
+      - ./letsencrypt:/etc/traefik/acme
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik_logs:/var/log/traefik
     networks:
       - base2_network
     restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     healthcheck:
       test: ['CMD', 'traefik', 'healthcheck', '--ping']
       interval: 30s
@@ -110,7 +128,7 @@ services:
       retries: 3
       start_period: 20s
 
-  # Nginx Web Server Service
+  # Nginx Web Server Service (Standalone SPA server)
   nginx:
     build:
       context: ./nginx
@@ -125,24 +143,34 @@ services:
       - NGINX_WORKER_PROCESSES=${NGINX_WORKER_PROCESSES}
       - NGINX_WORKER_CONNECTIONS=${NGINX_WORKER_CONNECTIONS}
       - NGINX_PORT=${NGINX_PORT}
-      labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.frontend.rule=Host(${WEBSITE_DOMAIN})"
-        - "traefik.http.routers.frontend.entrypoints=websecure"
-        - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
-        - "traefik.http.routers.frontend-http.rule=Host(${WEBSITE_DOMAIN})"
-        - "traefik.http.routers.frontend-http.entrypoints=web"
-        - "traefik.http.routers.frontend-http.middlewares=redirect-to-https"
-        - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`${WEBSITE_DOMAIN}`)"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls.certresolver=le-staging"
+      - "traefik.http.routers.frontend-http.rule=Host(`${WEBSITE_DOMAIN}`)"
+      - "traefik.http.routers.frontend-http.entrypoints=web"
+      - "traefik.http.routers.frontend-http.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.services.frontend.loadbalancer.server.port=${NGINX_PORT}"
     networks:
       - base2_network
     restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run/nginx
+      - /var/log/nginx
     healthcheck:
       test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:${NGINX_PORT}/']
       interval: 30s
       timeout: 3s
       retries: 3
       start_period: 10s
+
+  # Nginx standalone removed; React's Nginx serves SPA
 
   # PostgreSQL Database Service
   postgres:
@@ -165,6 +193,8 @@ services:
     networks:
       - base2_network
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
       interval: 30s
@@ -196,22 +226,10 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     healthcheck:
-      test:
-        [
-          'CMD',
-          'wget',
-      labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.api.rule=Host(${WEBSITE_DOMAIN}) && PathPrefix(`/api`)"
-        - "traefik.http.routers.api.entrypoints=websecure"
-        - "traefik.http.routers.api.tls.certresolver=letsencrypt"
-        - "traefik.http.services.api.loadbalancer.server.port=${BACKEND_PORT}"
-          '--no-verbose',
-          '--tries=1',
-          '--spider',
-          'http://localhost:${PGADMIN_PORT}/misc/ping',
-        ]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:${PGADMIN_PORT}/misc/ping']
       interval: 30s
       timeout: 10s
       retries: 3

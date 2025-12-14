@@ -1,58 +1,53 @@
-# Dockerfile for React App
-# Build stage for React application with environment variable support
+# Dockerfile for React App (Production-like)
+# Build with Node, serve static build via Nginx (internal-only behind Traefik)
 
 ARG NODE_VERSION=18-alpine
 FROM node:${NODE_VERSION} AS build
 
-# Set working directory
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
+RUN npm ci && npm cache clean --force
 
-# Install dependencies
-RUN npm install \
-  && npm cache clean --force \
-  && rm -rf /tmp/* /app/node_modules/.cache
-
-# Copy application source
 COPY . .
 
-# Build arguments for environment variables
+# Build-time environment variables for React
 ARG REACT_APP_API_URL
 ENV REACT_APP_API_URL=${REACT_APP_API_URL}
 
-# Build the application (if needed)
-# RUN npm run build
+# Create production build
+RUN npm run build
 
-# Production stage
-FROM node:${NODE_VERSION}
+# ---------- Runtime: Nginx to serve static build ----------
+ARG NGINX_VERSION=1.25-alpine
+FROM nginx:${NGINX_VERSION}
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S reactuser -u 1001 -G nodejs
+# Install envsubst (optional for templating)
+RUN apk add --no-cache gettext
 
-# Set working directory
-WORKDIR /app
+# Create non-root user and group
+RUN addgroup -g 101 -S web && adduser -S -D -H -u 101 -G web web
 
-# Copy dependencies and application from build stage
-COPY --from=build --chown=reactuser:nodejs /app/node_modules ./node_modules
-COPY --from=build --chown=reactuser:nodejs /app/package*.json ./
-COPY --chown=reactuser:nodejs . .
+# Copy build artifacts to Nginx html directory
+COPY --from=build /app/build /usr/share/nginx/html
 
-# Optional: Clean up any temp/bloat files in production image
-RUN rm -rf /tmp/* /app/node_modules/.cache
+# Minimal Nginx main config to run workers as non-root user
+RUN printf "user web;\nworker_processes auto;\nerror_log /var/log/nginx/error.log warn;\npid /var/run/nginx.pid;\n\nevents { worker_connections 1024; }\n\nhttp {\n  include /etc/nginx/mime.types;\n  default_type application/octet-stream;\n  sendfile on;\n  keepalive_timeout 65;\n  include /etc/nginx/conf.d/*.conf;\n}\n" > /etc/nginx/nginx.conf
 
-# Switch to non-root user
-USER reactuser
+# Minimal Nginx site config for SPA (listen on 8080 for non-root)
+RUN printf "server {\n  listen 8080;\n  server_name _;\n\n  root /usr/share/nginx/html;\n  index index.html;\n\n  location / {\n    try_files $uri $uri/ /index.html;\n  }\n\n  location ~* \\.(?:js|css|png|jpg|jpeg|gif|ico|svg|webp|ttf|woff|woff2)$ {\n    try_files $uri =404;\n    expires 1y;\n    add_header Cache-Control \"public, immutable\";\n    access_log off;\n  }\n\n  add_header X-Content-Type-Options nosniff;\n  add_header X-Frame-Options SAMEORIGIN;\n  add_header Referrer-Policy strict-origin-when-cross-origin;\n  add_header X-XSS-Protection \"1; mode=block\";\n}\n" > /etc/nginx/conf.d/default.conf
 
-# Expose port
-ARG REACT_APP_PORT=3000
-EXPOSE ${REACT_APP_PORT}
+# Permissions for non-root user
+RUN chown -R web:web /usr/share/nginx /var/log/nginx /var/cache/nginx /etc/nginx
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:${REACT_APP_PORT}', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+# Internal-only note
+RUN echo "# INTERNAL-ONLY: served behind Traefik; do not publish host ports." > /etc/nginx/conf.d/README
 
-# Start the application
-CMD ["npm", "start"]
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost/ || exit 1
+
+USER web
+CMD ["nginx", "-g", "daemon off;"]

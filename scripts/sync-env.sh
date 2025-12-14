@@ -18,6 +18,7 @@ NC='\033[0m' # No Color
 echo -e "${BLUE}🔄 Synchronizing configuration with .env variables...${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
+echo "Note: NETWORK_NAME is the single source of truth; TRAEFIK_DOCKER_NETWORK will be updated to mirror it."
 
 # Check if .env exists
 if [ ! -f .env ]; then
@@ -56,6 +57,7 @@ CHANGES_MADE=false
 # 1. Sync TRAEFIK_DOCKER_NETWORK with NETWORK_NAME in .env
 # ============================================
 echo "🔍 Checking .env consistency..."
+echo "   - NETWORK_NAME will override TRAEFIK_DOCKER_NETWORK"
 CURRENT_TRAEFIK_NETWORK=$(grep "^TRAEFIK_DOCKER_NETWORK=" .env | cut -d'=' -f2)
 
 if [ "$CURRENT_TRAEFIK_NETWORK" != "$NETWORK_NAME" ]; then

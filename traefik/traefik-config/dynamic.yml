@@ -7,14 +7,14 @@ http:
       # rule: "Host(`woodkilldev.com`) || Host(`www.woodkilldev.com`)"
       # rule: "Host(`jessejamesacademy.com`) || Host(`www.jessejamesacademy.com`)"
       entryPoints:
-        - web-secure
+        - websecure
       middlewares:
         - csrf
         # - https_redirect # will only direct routes in this router to https
-      service: react-app
+      service: nginx
       tls:
         # https://docs.traefik.io/master/routing/routers/#certresolver
-        certResolver: letsencrypt
+        certResolver: le-staging
 
     # web-secure-admin-router:
     #   # need to pull in the ${DJANGO_ADMIN_URL} env var to have it go in where admin is below
@@ -47,7 +47,7 @@ http:
           # - "testuser:$2a$12$yq92zdYZFibqQVAmVkiIQuyeC20r.2dhhnak6fQ12ZU4/GzcErhAG"
 
   services:
-    react-app:
+    nginx:
       loadBalancer:
         servers:
-          - url: http://react-app:3000
+          - url: http://nginx:${NGINX_PORT}

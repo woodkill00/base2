@@ -1,6 +1,31 @@
 #!/bin/bash
+set -o errexit
+set -o nounset
+set -o pipefail
 
-# This script logs that all post-setup processes have completed.
-LOGFILE="/home/deploy/setup_complete.log"
+log() { echo -e "\033[1;32m[INFO]\033[0m $1"; }
+err() { echo -e "\033[1;31m[ERROR]\033[0m $1" >&2; }
+trap 'err "Script failed at line $LINENO"' ERR
 
-echo "$(date) - All setup processes completed successfully." | tee -a "$LOGFILE"
+DEPLOY_USER="deploy"
+DEPLOY_HOME="/home/$DEPLOY_USER"
+REPO_DIR="${DEPLOY_PATH:-/srv/}${PROJECT_NAME:-base2}"
+
+log "Ensuring deploy user exists and has docker access..."
+if ! id "$DEPLOY_USER" >/dev/null 2>&1; then
+	useradd -m -s /bin/bash "$DEPLOY_USER"
+fi
+usermod -aG docker "$DEPLOY_USER" || true
+
+log "Setting sensible system defaults for builds/runtime..."
+sysctl -w fs.inotify.max_user_watches=524288 || true
+sysctl -w fs.inotify.max_user_instances=1024 || true
+
+log "Ensuring scripts are executable..."
+chmod +x "$REPO_DIR/scripts/start.sh" || true
+
+LOGFILE="$DEPLOY_HOME/setup_complete.log"
+mkdir -p "$DEPLOY_HOME"
+chown -R "$DEPLOY_USER":"$DEPLOY_USER" "$DEPLOY_HOME" || true
+echo "$(date) - Post-reboot configuration completed." | tee -a "$LOGFILE"
+log "Post-reboot configuration completed."

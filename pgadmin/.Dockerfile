@@ -1,4 +1,6 @@
 # Dockerfile for pgAdmin
+# INTERNAL-ONLY: Prefer access via Traefik with auth/middleware or from trusted networks.
+# Do NOT publish host ports directly.
 # Robust pgAdmin configuration with environment variable support
 
 ARG PGADMIN_VERSION=latest
@@ -18,7 +20,8 @@ ENV PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL} \
 
 
 # Expose pgAdmin port
-ARG PGADMIN_PORT=80
+ARG PGADMIN_PORT=8080
+ENV PGADMIN_LISTEN_PORT=${PGADMIN_PORT}
 EXPOSE ${PGADMIN_PORT}
 
 # Health check
