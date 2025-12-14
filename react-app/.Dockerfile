@@ -34,7 +34,31 @@ COPY --from=build /app/build /usr/share/nginx/html
 RUN printf "user nginx;\nworker_processes auto;\nerror_log /dev/stderr warn;\npid /var/run/nginx.pid;\n\nevents { worker_connections 1024; }\n\nhttp {\n  include /etc/nginx/mime.types;\n  default_type application/octet-stream;\n  sendfile on;\n  keepalive_timeout 65;\n  include /etc/nginx/conf.d/*.conf;\n}\n" > /etc/nginx/nginx.conf
 
 # Minimal Nginx site config for SPA (listen on 8080 for non-root)
-RUN printf "server {\n  listen 8080;\n  server_name _;\n\n  root /usr/share/nginx/html;\n  index index.html;\n\n  location / {\n    try_files $$uri $$uri/ /index.html;\n  }\n\n  location ~* \\.(?:js|css|png|jpg|jpeg|gif|ico|svg|webp|ttf|woff|woff2)$ {\n    try_files $$uri =404;\n    expires 1y;\n    add_header Cache-Control \"public, immutable\";\n    access_log off;\n  }\n\n  add_header X-Content-Type-Options nosniff;\n  add_header X-Frame-Options SAMEORIGIN;\n  add_header Referrer-Policy strict-origin-when-cross-origin;\n  add_header X-XSS-Protection \"1; mode=block\";\n}\n" > /etc/nginx/conf.d/default.conf
+RUN cat <<'EOF' > /etc/nginx/conf.d/default.conf
+server {
+  listen 8080;
+  server_name _;
+
+  root /usr/share/nginx/html;
+  index index.html;
+
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+
+  location ~* \.(?:js|css|png|jpg|jpeg|gif|ico|svg|webp|ttf|woff|woff2)$ {
+    try_files $uri =404;
+    expires 1y;
+    add_header Cache-Control "public, immutable";
+    access_log off;
+  }
+
+  add_header X-Content-Type-Options nosniff;
+  add_header X-Frame-Options SAMEORIGIN;
+  add_header Referrer-Policy strict-origin-when-cross-origin;
+  add_header X-XSS-Protection "1; mode=block";
+}
+EOF
 
 # Permissions for non-root user
 RUN chown -R nginx:nginx /usr/share/nginx /var/log/nginx /var/cache/nginx /etc/nginx
