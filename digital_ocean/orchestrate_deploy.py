@@ -733,59 +733,6 @@ else:
                     for p, c in hotpaths:
                         print(f"  \u2514 {p}: {c}")
         print("===== End Summary =====\n")
-        # Verify Traefik environment contains TRAEFIK_API_PORT and show value.
-        # Strategy: prefer docker exec env to avoid Go-template quoting; then jq; then JSON via --format; final fallback prints env lines.
-        try:
-            log("Verifying Traefik container environment for TRAEFIK_API_PORT...")
-            # 1) Most reliable: print env inside the running container
-            exec_cmd = (
-                fr"cd {repo_path} && CID=$(docker compose -f local.docker.yml ps -q traefik) && "
-                fr"docker exec \"$CID\" env | grep '^TRAEFIK_API_PORT=' || true"
-            )
-            stdin, stdout, stderr = ssh_client.exec_command(exec_cmd)
-            exec_out = stdout.read().decode().strip()
-            if exec_out:
-                print(f"[VERIFY] {exec_out}")
-            else:
-                # 2) Try jq on docker inspect output if available
-                jq_cmd = (
-                    fr"cd {repo_path} && CID=$(docker compose -f local.docker.yml ps -q traefik) && "
-                    fr"command -v jq >/dev/null 2>&1 && docker inspect \"$CID\" | jq -r '.[0].Config.Env[] | select(startswith(\"TRAEFIK_API_PORT=\"))' || true"
-                )
-                stdin, stdout, stderr = ssh_client.exec_command(jq_cmd)
-                jq_out = stdout.read().decode().strip()
-                if jq_out:
-                    print(f"[VERIFY] {jq_out}")
-                else:
-                    # 3) Fallback: get JSON array of env with Go template and parse locally
-                    json_cmd = (
-                        fr"cd {repo_path} && CID=$(docker compose -f local.docker.yml ps -q traefik) && "
-                        fr"docker inspect \"$CID\" --format '{{{{json .Config.Env}}}}'"
-                    )
-                    stdin, stdout, stderr = ssh_client.exec_command(json_cmd)
-                    env_json = stdout.read().decode()
-                    parsed = []
-                    try:
-                        parsed = json.loads(env_json)
-                    except Exception:
-                        parsed = []
-                    api_port_env = next((e for e in parsed if isinstance(e, str) and e.startswith("TRAEFIK_API_PORT=")), None)
-                    if api_port_env:
-                        print(f"[VERIFY] {api_port_env}")
-                    else:
-                        # 4) Final fallback: print all env lines via Go template
-                        lines_cmd = (
-                            fr"cd {repo_path} && CID=$(docker compose -f local.docker.yml ps -q traefik) && "
-                            fr"docker inspect \"$CID\" --format '{{{{range .Config.Env}}}}{{{{println .}}}}{{{{end}}}}'"
-                        )
-                        stdin, stdout, stderr = ssh_client.exec_command(lines_cmd)
-                        lines = stdout.read().decode()
-                        print("[VERIFY] TRAEFIK_API_PORT not found; env lines follow:\n" + lines)
-            err_out = stderr.read().decode()
-            if err_out:
-                print(err_out)
-        except Exception as e:
-            err(f"Traefik env verification failed: {e}")
 
         ssh_client.close()
         log("Post-deploy tasks completed.")
