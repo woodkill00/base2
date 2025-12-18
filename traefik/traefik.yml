@@ -16,18 +16,20 @@ entryPoints:
   websecure:
     # https
     address: ":443"
+  traefik:
+    address: ':${TRAEFIK_API_PORT}'
 
 api:
   dashboard: true
   insecure: false
-  debug: true
+  debug: ${TRAEFIK_API_DEBUG}
 
 # Ping health check
 ping: {}
 
 # Log configuration
 log:
-  level: 'DEBUG'
+  level: '${TRAEFIK_LOG_LEVEL}'
   filePath: '/var/log/traefik/traefik.log'
   format: json
 

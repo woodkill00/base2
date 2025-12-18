@@ -498,7 +498,7 @@ You’ll also define internal-only URLs (e.g. `/internal/users/me`) in `project/
 Traefik is configured via:
 
 * `traefik/traefik.yml` (static config: entrypoints, providers, certresolver)
-* `traefik/traefik-config/dynamic.yml` (dynamic config: middlewares, etc.)
+* `traefik/dynamic.yml` (dynamic config: routers, services, middlewares)
 * Docker labels on services.
 
 ### 5.1 Recommended Approach
