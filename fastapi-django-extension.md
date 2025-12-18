@@ -709,3 +709,80 @@ You can now iteratively refine:
 * Frontend flows and UX in the React app.
 
 Save this file as something like `fastapi-django-extension.md` in your repo and use it as your blueprint for the build.
+
+---
+
+## 9. Ports & Routing Matrix (Current Repo)
+
+- Public entrypoints (Traefik):
+  - 80 → HTTP (redirect to HTTPS)
+  - 443 → HTTPS (staging certificate)
+- Frontend (`react-app`):
+  - Internal port: 8080
+  - Router: `frontend-react` → `Host(${WEBSITE_DOMAIN})` → service port 8080
+- API (`api`, FastAPI):
+  - Internal port: `${FASTAPI_PORT}` (e.g., 8000)
+  - Router: `api` → `Host(${WEBSITE_DOMAIN}) && PathPrefix(/api)` → service port `${FASTAPI_PORT}`
+- Django (`django`):
+  - Internal port: `${DJANGO_PORT}` (e.g., 8001)
+  - No public router by default (internal-only). Optional admin exposure only in non-production under protections.
+- Postgres (`postgres`):
+  - Internal-only; no host `ports:`; accessed via Docker network.
+
+## 10. Detailed Use Cases & Procedures
+
+- Full Deploy with Verification
+  - Preconditions: `.env` configured (`WEBSITE_DOMAIN`, `POSTGRES_*`, `FASTAPI_*`, `DJANGO_*`, Traefik vars), DO token present, SSH key path resolvable.
+  - Procedure:
+    - Run `./scripts/deploy.ps1 -Full -Timestamped -EnvPath ./.env`
+    - Wait for completion; check local_run_logs timestamped folder for artifacts.
+    - Validate HTTPS homepage and `https://${WEBSITE_DOMAIN}/api/health`.
+  - Outcomes: Full stack up; Traefik renders configs; artifacts captured (compose state, Traefik configs, logs, curl headers).
+
+- Update-Only Redeploy
+  - Goal: Faster rollout without full rebuild; preserves data.
+  - Procedure: `./scripts/deploy.ps1 -UpdateOnly -Timestamped -EnvPath ./.env`
+  - Check: Same verification artifacts; runtime ≥30% faster vs full deploy.
+
+- Remote Verify Unavailable (Fallback)
+  - Scenario: IP discovery fails or SSH blocked.
+  - Behavior: Script completes local tasks, warns, writes partial artifacts.
+  - Operator Action: Investigate credentials, network, firewall; rerun once resolved.
+
+- Optional Django Admin Exposure (Non-Production Only)
+  - Default: Internal-only (no Traefik router).
+  - If needed: add labels to `django` for `/admin` path with IP allowlist and strong auth; never in production per policy.
+  - Verify: Access only from allowlisted IPs; confirm TLS and security headers.
+
+## 11. Operator Pre-Flight Checklist
+
+- `.env` contains: `FASTAPI_*`, `DJANGO_*`, `REACT_APP_API_URL`, `POSTGRES_*`, `JWT_*`, `RATE_LIMIT_*`, `WEBSITE_DOMAIN`, Traefik vars.
+- DNS for `${WEBSITE_DOMAIN}` points to the droplet.
+- DO token and SSH key available; permissions correct.
+- Local Docker/Compose available; network name matches `${NETWORK_NAME}`.
+- Expect staging certificates; do not attempt production issuance.
+
+## 12. Troubleshooting Scenarios
+
+- Homepage/`/api/health` not reachable:
+  - Check Traefik containers and logs; inspect routers/services.
+  - Confirm `react-app` and `api` are healthy; verify internal ports.
+  - Validate DNS and TLS (staging cert).
+
+- Admin unintentionally exposed:
+  - Remove Traefik labels from `django`; restart compose; confirm no router exists.
+
+- Missing artifacts after deploy:
+  - Ensure `-Timestamped` used; verify scp and remote paths; re-run deploy.
+
+## 13. Environment Keys — Examples
+
+- `FASTAPI_PYTHON_VERSION=3.12-slim`
+- `FASTAPI_PORT=8000`
+- `DJANGO_PYTHON_VERSION=3.12-slim`
+- `DJANGO_PORT=8001`
+- `DJANGO_SECRET_KEY=<random-long-string>`
+- `DJANGO_DEBUG=false`
+- `DJANGO_ALLOWED_HOSTS=${WEBSITE_DOMAIN}`
+- `REACT_APP_API_URL=https://${WEBSITE_DOMAIN}/api`
+

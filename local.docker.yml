@@ -41,17 +41,17 @@ services:
       - "traefik.http.services.frontend-react.loadbalancer.server.port=8080"
     # Internal-only; Traefik routes to standalone nginx
 
-  # Backend API Service
-  backend:
+  # FastAPI API Service (replaces Node backend)
+  api:
     build:
-      context: ./backend
+      context: ./api
       dockerfile: .Dockerfile
       args:
-        - NODE_VERSION=${BACKEND_NODE_VERSION}
-    container_name: ${COMPOSE_PROJECT_NAME}_backend
+        - PYTHON_VERSION=${FASTAPI_PYTHON_VERSION}
+    container_name: ${COMPOSE_PROJECT_NAME}_api
     environment:
-      - NODE_ENV=${NODE_ENV}
-      - PORT=${BACKEND_PORT}
+      - ENV=production
+      - PORT=${FASTAPI_PORT}
       - DB_HOST=postgres
       - DB_PORT=${POSTGRES_PORT}
       - DB_NAME=${POSTGRES_DB}
@@ -59,12 +59,7 @@ services:
       - DB_PASSWORD=${POSTGRES_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRE=${JWT_EXPIRE}
-      - EMAIL_HOST=${EMAIL_HOST}
-      - EMAIL_PORT=${EMAIL_PORT}
-      - EMAIL_USER=${EMAIL_USER}
-      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
-      - EMAIL_FROM=${EMAIL_FROM}
-      - FRONTEND_URL=${FRONTEND_URL}
+      - DJANGO_SERVICE_URL=http://django:${DJANGO_PORT}
       - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS}
       - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS}
     networks:
@@ -72,6 +67,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      django:
+        condition: service_started
     restart: unless-stopped
     read_only: true
     security_opt:
@@ -79,13 +76,7 @@ services:
     cap_drop:
       - ALL
     healthcheck:
-      test:
-        [
-          'CMD',
-          'node',
-          '-e',
-          "require('http').get('http://localhost:${BACKEND_PORT}/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})",
-        ]
+      test: ["CMD", "curl", "-fsS", "http://localhost:${FASTAPI_PORT}/health"]
       interval: 30s
       timeout: 3s
       retries: 3
@@ -95,7 +86,39 @@ services:
       - "traefik.http.routers.api.rule=Host(`${WEBSITE_DOMAIN}`) && PathPrefix(`/api`)"
       - "traefik.http.routers.api.entrypoints=websecure"
       - "traefik.http.routers.api.tls.certresolver=le-staging"
-      - "traefik.http.services.api.loadbalancer.server.port=${BACKEND_PORT}"
+      - "traefik.http.services.api.loadbalancer.server.port=${FASTAPI_PORT}"
+
+  # Django Service (internal-only)
+  django:
+    build:
+      context: ./django
+      dockerfile: .Dockerfile
+      args:
+        - PYTHON_VERSION=${DJANGO_PYTHON_VERSION}
+    container_name: ${COMPOSE_PROJECT_NAME}_django
+    environment:
+      - DJANGO_SETTINGS_MODULE=project.settings.production
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - DJANGO_DEBUG=${DJANGO_DEBUG}
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
+      - DB_HOST=postgres
+      - DB_PORT=${POSTGRES_PORT}
+      - DB_NAME=${POSTGRES_DB}
+      - DB_USER=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - PORT=${DJANGO_PORT}
+    networks:
+      - base2_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "manage.py", "check", "--deploy"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   # Traefik Reverse Proxy Service
   traefik:
