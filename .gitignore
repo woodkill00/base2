@@ -1,5 +1,7 @@
 # Prevent committing DigitalOcean user data
 DO_userdata.json
+# Local run logs (timestamped deploy artifacts)
+local_run_logs/
 # ==========================================
 # Security & Secrets (CRITICAL - DO NOT COMMIT)
 # ==========================================
