@@ -121,6 +121,12 @@ set -eu
 mkdir -p /root/logs
 if [ -d /opt/apps/base2 ]; then
   cd /opt/apps/base2
+  # Ensure latest repo and rebuild traefik to render new templates
+  if command -v git >/dev/null 2>&1; then
+    git pull --rebase || true
+  fi
+  docker compose -f local.docker.yml build --no-cache traefik || true
+  docker compose -f local.docker.yml up -d --force-recreate traefik || true
   docker compose -f local.docker.yml ps > /root/logs/compose-ps.txt || true
   CID=$(docker compose -f local.docker.yml ps -q traefik || true)
   if [ -n "$CID" ]; then
@@ -136,6 +142,9 @@ if [ -d /opt/apps/base2 ]; then
       echo "EMPTY" > /root/logs/traefik-dynamic.yml
     fi
     docker exec "$CID" sh -lc 'ls -l /etc/traefik /etc/traefik/dynamic' > /root/logs/traefik-ls.txt || true
+    # Capture the templates used inside the container for debugging
+    docker exec "$CID" sh -lc 'cat /etc/traefik/templates/dynamic.yml.template 2>/dev/null || echo TEMPLATE_MISSING' > /root/logs/traefik-dynamic.template.yml || true
+    docker exec "$CID" sh -lc 'cat /etc/traefik/templates/traefik.yml.template 2>/dev/null || echo TEMPLATE_MISSING' > /root/logs/traefik-static.template.yml || true
     docker logs --timestamps --tail=1000 "$CID" > /root/logs/traefik-logs.txt || true
   else
     echo "MISSING_CID" | tee /root/logs/traefik-env.txt /root/logs/traefik-static.yml /root/logs/traefik-dynamic.yml /root/logs/traefik-ls.txt /root/logs/traefik-logs.txt >/dev/null
@@ -162,7 +171,7 @@ fi
   }
   if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
   $dest = (Resolve-Path $outDir).Path
-  $files = @('compose-ps.txt','traefik-env.txt','traefik-static.yml','traefik-dynamic.yml','traefik-ls.txt','traefik-logs.txt','curl-root.txt','curl-api.txt')
+  $files = @('compose-ps.txt','traefik-env.txt','traefik-static.yml','traefik-dynamic.yml','traefik-ls.txt','traefik-logs.txt','curl-root.txt','curl-api.txt','traefik-dynamic.template.yml','traefik-static.template.yml')
   foreach ($f in $files) {
     & $scpExe -i $keyPath "root@${ip}:/root/logs/$f" $dest | Out-Null
   }
