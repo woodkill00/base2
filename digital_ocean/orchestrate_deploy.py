@@ -379,56 +379,6 @@ else:
                     log_json("API Response - domains.create_record (A_www)", resp)
                     log(f"Created www A record (www) -> {ip_address}")
             if ipv6_address and not found["AAAA_root"]:
-                                        # Ensure Traefik subdomain exists
-                                        if not found["A_traefik"]:
-                                            if DRY_RUN:
-                                                log(f"[DRY RUN] Would create A record ({TRAEFIK_DNS_LABEL}) -> {ip_address}")
-                                            else:
-                                                log_json("API Request - domains.create_record (A_traefik)", {"type": "A", "name": TRAEFIK_DNS_LABEL, "data": ip_address})
-                                                resp = client.domains.create_record(DO_DOMAIN, {
-                                                    "type": "A",
-                                                    "name": TRAEFIK_DNS_LABEL,
-                                                    "data": ip_address
-                                                })
-                                                log_json("API Response - domains.create_record (A_traefik)", resp)
-                                                log(f"Created A record ({TRAEFIK_DNS_LABEL}) -> {ip_address}")
-                                        if ipv6_address and not found["AAAA_traefik"]:
-                                            if DRY_RUN:
-                                                log(f"[DRY RUN] Would create AAAA record ({TRAEFIK_DNS_LABEL}) -> {ipv6_address}")
-                                            else:
-                                                log_json("API Request - domains.create_record (AAAA_traefik)", {"type": "AAAA", "name": TRAEFIK_DNS_LABEL, "data": ipv6_address})
-                                                resp = client.domains.create_record(DO_DOMAIN, {
-                                                    "type": "AAAA",
-                                                    "name": TRAEFIK_DNS_LABEL,
-                                                    "data": ipv6_address
-                                                })
-                                                log_json("API Response - domains.create_record (AAAA_traefik)", resp)
-                                                log(f"Created AAAA record ({TRAEFIK_DNS_LABEL}) -> {ipv6_address}")
-                            # Ensure pgAdmin subdomain exists
-                            if not found["A_pgadmin"]:
-                                if DRY_RUN:
-                                    log(f"[DRY RUN] Would create A record ({PGADMIN_DNS_LABEL}) -> {ip_address}")
-                                else:
-                                    log_json("API Request - domains.create_record (A_pgadmin)", {"type": "A", "name": PGADMIN_DNS_LABEL, "data": ip_address})
-                                    resp = client.domains.create_record(DO_DOMAIN, {
-                                        "type": "A",
-                                        "name": PGADMIN_DNS_LABEL,
-                                        "data": ip_address
-                                    })
-                                    log_json("API Response - domains.create_record (A_pgadmin)", resp)
-                                    log(f"Created A record ({PGADMIN_DNS_LABEL}) -> {ip_address}")
-                            if ipv6_address and not found["AAAA_pgadmin"]:
-                                if DRY_RUN:
-                                    log(f"[DRY RUN] Would create AAAA record ({PGADMIN_DNS_LABEL}) -> {ipv6_address}")
-                                else:
-                                    log_json("API Request - domains.create_record (AAAA_pgadmin)", {"type": "AAAA", "name": PGADMIN_DNS_LABEL, "data": ipv6_address})
-                                    resp = client.domains.create_record(DO_DOMAIN, {
-                                        "type": "AAAA",
-                                        "name": PGADMIN_DNS_LABEL,
-                                        "data": ipv6_address
-                                    })
-                                    log_json("API Response - domains.create_record (AAAA_pgadmin)", resp)
-                                    log(f"Created AAAA record ({PGADMIN_DNS_LABEL}) -> {ipv6_address}")
                 if DRY_RUN:
                     log(f"[DRY RUN] Would create root AAAA record (@) -> {ipv6_address}")
                 else:
@@ -440,6 +390,58 @@ else:
                     })
                     log_json("API Response - domains.create_record (AAAA_root)", resp)
                     log(f"Created root AAAA record (@) -> {ipv6_address}")
+
+            # Ensure Traefik subdomain exists
+            if not found["A_traefik"]:
+                if DRY_RUN:
+                    log(f"[DRY RUN] Would create A record ({TRAEFIK_DNS_LABEL}) -> {ip_address}")
+                else:
+                    log_json("API Request - domains.create_record (A_traefik)", {"type": "A", "name": TRAEFIK_DNS_LABEL, "data": ip_address})
+                    resp = client.domains.create_record(DO_DOMAIN, {
+                        "type": "A",
+                        "name": TRAEFIK_DNS_LABEL,
+                        "data": ip_address
+                    })
+                    log_json("API Response - domains.create_record (A_traefik)", resp)
+                    log(f"Created A record ({TRAEFIK_DNS_LABEL}) -> {ip_address}")
+            if ipv6_address and not found["AAAA_traefik"]:
+                if DRY_RUN:
+                    log(f"[DRY RUN] Would create AAAA record ({TRAEFIK_DNS_LABEL}) -> {ipv6_address}")
+                else:
+                    log_json("API Request - domains.create_record (AAAA_traefik)", {"type": "AAAA", "name": TRAEFIK_DNS_LABEL, "data": ipv6_address})
+                    resp = client.domains.create_record(DO_DOMAIN, {
+                        "type": "AAAA",
+                        "name": TRAEFIK_DNS_LABEL,
+                        "data": ipv6_address
+                    })
+                    log_json("API Response - domains.create_record (AAAA_traefik)", resp)
+                    log(f"Created AAAA record ({TRAEFIK_DNS_LABEL}) -> {ipv6_address}")
+
+            # Ensure pgAdmin subdomain exists
+            if not found["A_pgadmin"]:
+                if DRY_RUN:
+                    log(f"[DRY RUN] Would create A record ({PGADMIN_DNS_LABEL}) -> {ip_address}")
+                else:
+                    log_json("API Request - domains.create_record (A_pgadmin)", {"type": "A", "name": PGADMIN_DNS_LABEL, "data": ip_address})
+                    resp = client.domains.create_record(DO_DOMAIN, {
+                        "type": "A",
+                        "name": PGADMIN_DNS_LABEL,
+                        "data": ip_address
+                    })
+                    log_json("API Response - domains.create_record (A_pgadmin)", resp)
+                    log(f"Created A record ({PGADMIN_DNS_LABEL}) -> {ip_address}")
+            if ipv6_address and not found["AAAA_pgadmin"]:
+                if DRY_RUN:
+                    log(f"[DRY RUN] Would create AAAA record ({PGADMIN_DNS_LABEL}) -> {ipv6_address}")
+                else:
+                    log_json("API Request - domains.create_record (AAAA_pgadmin)", {"type": "AAAA", "name": PGADMIN_DNS_LABEL, "data": ipv6_address})
+                    resp = client.domains.create_record(DO_DOMAIN, {
+                        "type": "AAAA",
+                        "name": PGADMIN_DNS_LABEL,
+                        "data": ipv6_address
+                    })
+                    log_json("API Response - domains.create_record (AAAA_pgadmin)", resp)
+                    log(f"Created AAAA record ({PGADMIN_DNS_LABEL}) -> {ipv6_address}")
             if not updated["A_root"] and not updated["A_www"] and not updated["AAAA_root"]:
                 log("No A/AAAA records for root or www found to update or create.")
         except Exception as e:

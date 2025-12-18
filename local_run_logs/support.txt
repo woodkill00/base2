@@ -1,0 +1,1 @@
+### Support file to upload folder without loading internal log files ###
