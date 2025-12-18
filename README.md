@@ -87,9 +87,10 @@ Once running, access the services at:
  **Backend API**: Node.js/Express auth server routed via Traefik `/api`
  **Nginx**: Standalone SPA server; only exposed via Traefik
  **PostgreSQL**: Internal-only database; health-checked
- **pgAdmin**: Internal-only management UI; not publicly accessible
+ **pgAdmin**: https://${PGADMIN_DNS_LABEL}.${WEBSITE_DOMAIN} (via Traefik; basic-auth + IP allowlist)
  **Traefik v3**: Only public entrypoint (80/443); staging certs; no insecure dashboard
 - **Traefik Dashboard**: disabled insecure access
+   - Host: `${TRAEFIK_DNS_LABEL}.${WEBSITE_DOMAIN}` via HTTPS, protected by basic-auth
 - **PostgreSQL**: internal-only (no public access)
 
 ## 🔐 Security Enhancements
@@ -127,10 +128,18 @@ All Dockerfiles have been enhanced with:
 - `PGADMIN_DEFAULT_PASSWORD`: Admin password (change in production!)
 - `PGADMIN_PORT`: Internal container port (default: 80)
 - `PGADMIN_HOST_PORT`: Host machine port (default: 5050)
+ - `PGADMIN_ALLOWLIST`: CIDR(s) allowed to access pgAdmin via Traefik (e.g., `203.0.113.5/32`). Default `0.0.0.0/0` exposes to all (change in production!).
+ - `PGADMIN_DNS_LABEL`: Subdomain label used for DNS and Traefik host rule (default: `pgadmin`). Final FQDN is `${PGADMIN_DNS_LABEL}.${WEBSITE_DOMAIN}`.
+
+To enable web access to pgAdmin:
+- Ensure DNS `A` record for `${PGADMIN_DNS_LABEL}.${WEBSITE_DOMAIN}` points to your server (orchestrator will create/update automatically).
+- Set `TRAEFIK_DASH_BASIC_USERS` in `.env` to an htpasswd entry.
+- Set `PGADMIN_ALLOWLIST` to your public IP `/32` to restrict access.
 
 ### Traefik
 - `TRAEFIK_DOCKER_NETWORK`: Docker network to monitor (default: base2_network)
 - `TRAEFIK_EXPOSED_BY_DEFAULT`: Auto-expose containers (default: false)
+ - `TRAEFIK_DNS_LABEL`: Subdomain label for Traefik dashboard host rule and DNS (default: `traefik`). Final FQDN: `${TRAEFIK_DNS_LABEL}.${WEBSITE_DOMAIN}`.
 
 **⚠️ Important Notes:**
 

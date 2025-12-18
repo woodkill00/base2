@@ -1,7 +1,7 @@
 http:
   routers:
     frontend-react:
-      rule: (Host(`woodkilldev.com`) || Host(`www.woodkilldev.com`)) && PathPrefix(`/`) && !PathPrefix(`/api`)
+      rule: (Host(`${WEBSITE_DOMAIN}`) || Host(`www.${WEBSITE_DOMAIN}`)) && PathPrefix(`/`) && !PathPrefix(`/api`)
       entryPoints:
         - websecure
       middlewares:
@@ -10,14 +10,14 @@ http:
         certResolver: le-staging
       service: frontend-react
     frontend-http-react:
-      rule: (Host(`woodkilldev.com`) || Host(`www.woodkilldev.com`)) && PathPrefix(`/`)
+      rule: (Host(`${WEBSITE_DOMAIN}`) || Host(`www.${WEBSITE_DOMAIN}`)) && PathPrefix(`/`)
       entryPoints:
         - web
       middlewares:
         - redirect-to-https
       service: noop@internal
     api:
-      rule: Host(`woodkilldev.com`) && PathPrefix(`/api`)
+      rule: Host(`${WEBSITE_DOMAIN}`) && PathPrefix(`/api`)
       priority: 100
       entryPoints:
         - websecure
@@ -30,7 +30,7 @@ http:
       service: api
 
     traefik-dashboard:
-      rule: Host(`traefik.woodkilldev.com`)
+      rule: Host(`${TRAEFIK_DNS_LABEL}.${WEBSITE_DOMAIN}`)
       entryPoints:
         - websecure
       middlewares:
@@ -39,6 +39,18 @@ http:
       tls:
         certResolver: le-staging
       service: api@internal
+
+    pgadmin:
+      rule: Host(`${PGADMIN_DNS_LABEL}.${WEBSITE_DOMAIN}`)
+      entryPoints:
+        - websecure
+      middlewares:
+        - security-headers
+        - traefik-basic-auth
+        - pgadmin-allow-ip
+      tls:
+        certResolver: le-staging
+      service: pgadmin
   services:
     frontend-react:
       loadBalancer:
@@ -48,6 +60,10 @@ http:
       loadBalancer:
         servers:
           - url: http://backend:5001
+    pgadmin:
+      loadBalancer:
+        servers:
+          - url: http://pgadmin:8080
   middlewares:
     redirect-to-https:
       redirectScheme:
@@ -72,6 +88,10 @@ http:
         # Provide one or more htpasswd-formatted entries via env: "user:hash"
         users:
           - ${TRAEFIK_DASH_BASIC_USERS}
+    pgadmin-allow-ip:
+      ipAllowList:
+        sourceRange:
+          - ${PGADMIN_ALLOWLIST}
     rate-limit:
       rateLimit:
         average: 100
