@@ -106,6 +106,30 @@
 ## DigitalOcean Deploy (Optional)
 Automate droplet creation, DNS, and remote stack startup with Traefik-only public entrypoint.
 
+### One-command Deploy (Windows PowerShell)
+
+```powershell
+./scripts/deploy.ps1
+```
+
+What it does:
+- Creates/uses `.venv` and installs `digital_ocean/requirements.txt`
+- Updates `PGADMIN_ALLOWLIST` to your public IP
+- Runs `digital_ocean/orchestrate_deploy.py` (update-only by default)
+- Verifies Traefik by fetching rendered configs and logs to local files:
+   - Saves to `local_run_logs/`: `compose-ps.txt`, `traefik-env.txt`, `traefik-static.yml`, `traefik-dynamic.yml`, `traefik-logs.txt`
+
+Options:
+
+```powershell
+./scripts/deploy.ps1 -Full                 # full provision path in orchestrator
+./scripts/deploy.ps1 -SkipAllowlist        # skip allowlist IP update
+./scripts/deploy.ps1 -DropletIp 1.2.3.4    # override droplet IP detection
+./scripts/deploy.ps1 -SshKey "C:\path\to\key"  # custom SSH key path
+```
+
+Manual invocation (advanced):
+
 ```bash
 # Preview actions
 python digital_ocean/orchestrate_deploy.py --dry-run
@@ -117,7 +141,8 @@ python digital_ocean/orchestrate_deploy.py
 After deploy:
 - Frontend: `https://${WEBSITE_DOMAIN}` (staging cert; warning expected)
 - API: `https://${WEBSITE_DOMAIN}/api`
-- Logs and status are printed by the orchestrator; run SSH commands from README for deeper checks.
+- Verification artifacts: see the fetched files in the repo root
+   - Stored under `local_run_logs/` (use `-Timestamped` for per-run subfolders)
 
 ## Onboarding
 - All required environment variables are documented in `.env.example`.
