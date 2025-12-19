@@ -283,18 +283,18 @@ if ($CheckDjangoProxy) {
 if ($CheckDjangoAdmin) {
   $sub = $env:DJANGO_ADMIN_DNS_LABEL
   if (-not $sub) { $sub = 'admin' }
-  $host = "$sub.$Domain"
-  $noAuthHdr = Curl-Head "https://$host/admin"
+  $AdminHost = "$sub.$Domain"
+  $noAuthHdr = Curl-Head "https://$AdminHost/admin"
   $noAuthStatus = Get-StatusCodeFromHeaders $noAuthHdr
   $withAuthStatus = 0
   if ($AdminUser -and $AdminPass) {
-    $authHdr = Curl-HeadAuth "https://$host/admin" $AdminUser $AdminPass
+    $authHdr = Curl-HeadAuth "https://$AdminHost/admin" $AdminUser $AdminPass
     $withAuthStatus = Get-StatusCodeFromHeaders $authHdr
   }
-  $result.adminCheck = [ordered]@{ enabled = $true; host = $host; statusNoAuth = $noAuthStatus; statusWithAuth = $withAuthStatus }
-  if ($noAuthStatus -ne 401) { $failures += "Django admin expected 401 without auth, got $noAuthStatus ($host)" }
+  $result.adminCheck = [ordered]@{ enabled = $true; host = $AdminHost; statusNoAuth = $noAuthStatus; statusWithAuth = $withAuthStatus }
+  if ($noAuthStatus -ne 401) { $failures += "Django admin expected 401 without auth, got $noAuthStatus ($AdminHost)" }
   if ($AdminUser -and $AdminPass) {
-    if (@(200,302) -notcontains $withAuthStatus) { $failures += "Django admin expected 200/302 with auth, got $withAuthStatus ($host)" }
+    if (@(200,302) -notcontains $withAuthStatus) { $failures += "Django admin expected 200/302 with auth, got $withAuthStatus ($AdminHost)" }
   }
 }
 
@@ -302,12 +302,12 @@ if ($CheckDjangoAdmin) {
 if ($CheckCelery) {
   $sub = $env:FLOWER_DNS_LABEL
   if (-not $sub) { $sub = 'flower' }
-  $host = "$sub.$Domain"
-  $noAuthHdr = Curl-Head "https://$host/"
+  $FlowerHost = "$sub.$Domain"
+  $noAuthHdr = Curl-Head "https://$FlowerHost/"
   $noAuthStatus = Get-StatusCodeFromHeaders $noAuthHdr
   $withAuthStatus = 0
   if ($AdminUser -and $AdminPass) {
-    $authHdr = Curl-HeadAuth "https://$host/" $AdminUser $AdminPass
+    $authHdr = Curl-HeadAuth "https://$FlowerHost/" $AdminUser $AdminPass
     $withAuthStatus = Get-StatusCodeFromHeaders $authHdr
   }
   # Try a roundtrip task via API if available
@@ -338,14 +338,14 @@ if ($CheckCelery) {
 
   $result.celeryCheck = [ordered]@{
     enabled = $true
-    host = $host
+    host = $FlowerHost
     statusNoAuth = $noAuthStatus
     statusWithAuth = $withAuthStatus
     task = [ordered]@{ id = $taskId; state = $taskState; result = $taskResult }
   }
-  if ($noAuthStatus -ne 401) { $failures += "Flower expected 401 without auth, got $noAuthStatus ($host)" }
+  if ($noAuthStatus -ne 401) { $failures += "Flower expected 401 without auth, got $noAuthStatus ($FlowerHost)" }
   if ($AdminUser -and $AdminPass) {
-    if (@(200,302) -notcontains $withAuthStatus) { $failures += "Flower expected 200/302 with auth, got $withAuthStatus ($host)" }
+    if (@(200,302) -notcontains $withAuthStatus) { $failures += "Flower expected 200/302 with auth, got $withAuthStatus ($FlowerHost)" }
   }
   if (-not $taskResult) { $failures += "Celery ping task did not complete successfully" }
 }

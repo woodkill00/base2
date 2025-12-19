@@ -171,9 +171,16 @@ if [ -d /opt/apps/base2 ]; then
   docker compose -f local.docker.yml up -d --force-recreate traefik || true
   # If requested, enable celery/flower profiles and build required images
   if [ "${RUN_CELERY_CHECK:-}" = "1" ]; then
-    docker compose -f local.docker.yml build api || true
-    docker compose -f local.docker.yml --profile celery up -d redis celery-worker || true
-    docker compose -f local.docker.yml --profile flower up -d flower || true
+    has_service() { docker compose -f local.docker.yml config --services | grep -qx "$1"; }
+    if has_service api; then
+      docker compose -f local.docker.yml build api || true
+    fi
+    if has_service redis && has_service celery-worker; then
+      docker compose -f local.docker.yml --profile celery up -d redis celery-worker || true
+    fi
+    if has_service flower; then
+      docker compose -f local.docker.yml --profile flower up -d flower || true
+    fi
   fi
   docker compose -f local.docker.yml ps > /root/logs/compose-ps.txt || true
   CID=$(docker compose -f local.docker.yml ps -q traefik || true)
@@ -267,91 +274,8 @@ fi
     }
   } catch { Write-Warning "Failed to scrub sensitive values: $($_.Exception.Message)" }
 
-  # Write droplet info JSON into the same timestamped folder
-  try {
-    $tmpPy = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), 'get_do_details.py')
-    $pyCode = @'
-import os, json
-from pydo import Client
+  # Droplet info JSON omitted (optional enhancement; non-critical for verification)
 
-token = os.environ.get('DO_API_TOKEN')
-name = os.environ.get('DO_DROPLET_NAME') or 'base2-droplet'
-out_path = os.environ.get('OUT_PATH')
-result = {
-  'name': name,
-  'ip_address': None,
-  'droplet_id': None,
-  'region': None,
-  'size': None,
-  'image': None,
-  'created_at': None,
-}
-
-function Write-LocalArtifactsNoRemote {
-  Write-Section "Remote verify unavailable — saving local artifacts"
-  $outDir = $LogsDir
-  if ($Timestamped) {
-    $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
-    $outDir = Join-Path $LogsDir $stamp
-  }
-  if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
-  $dest = (Resolve-Path $outDir).Path
-  $support = @()
-  $support += "Remote verification skipped due to missing droplet IP."
-  $support += "Ensure DNS points to droplet and DO token is valid."
-  $support += "Artifacts collected locally: droplet-info.json (if token present)."
-  $support += "Run: ./scripts/deploy.ps1 -Preflight -RunTests -TestsJson"
-  $text = ($support -join [Environment]::NewLine)
-  Set-Content -Path (Join-Path $dest 'support.txt') -Value $text -Encoding UTF8
-  # Write droplet-info.json if possible (same helper as Remote-Verify)
-  try {
-    $tmpPy = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), 'get_do_details.py')
-    $pyCode = @'
-import os, json
-from pydo import Client
-
-token = os.environ.get('DO_API_TOKEN')
-name = os.environ.get('DO_DROPLET_NAME') or 'base2-droplet'
-out_path = os.environ.get('OUT_PATH')
-result = {
-  'name': name,
-  'ip_address': None,
-  'droplet_id': None,
-  'region': None,
-  'size': None,
-  'image': None,
-  'created_at': None,
-}
-if token:
-  try:
-    c = Client(token=token)
-    resp = c.droplets.list(per_page=200)
-    for d in resp.get('droplets', []):
-      if d.get('name') == name:
-        result['droplet_id'] = d.get('id')
-        result['region'] = (d.get('region') or {}).get('slug')
-        result['size'] = d.get('size_slug') or (d.get('size') or {}).get('slug')
-        result['image'] = (d.get('image') or {}).get('slug')
-        result['created_at'] = d.get('created_at')
-        for n in d.get('networks', {}).get('v4', []):
-          if n.get('type') == 'public':
-            result['ip_address'] = n.get('ip_address')
-            break
-        break
-  except Exception:
-    pass
-try:
-  if out_path:
-    with open(out_path, 'w', encoding='utf-8') as f:
-      json.dump(result, f, indent=2)
-except Exception:
-  pass
-'@
-    Set-Content -Path $tmpPy -Value $pyCode -NoNewline
-    $outJson = Join-Path $dest 'droplet-info.json'
-    $env:OUT_PATH = $outJson
-    & .\.venv\Scripts\python.exe $tmpPy | Out-Null
-  } catch {}
 }
 
 
@@ -367,7 +291,20 @@ Run-Orchestrator
 $resolvedIp = Get-DropletIp
 if (-not $resolvedIp) {
   Write-Warning "Could not determine droplet IP. Skipping remote verification."
-  Write-LocalArtifactsNoRemote
+  Write-Section "Remote verify unavailable — saving local artifacts"
+  $outDir = $LogsDir
+  if ($Timestamped) {
+    $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
+    $outDir = Join-Path $LogsDir $stamp
+  }
+  if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
+  $dest = (Resolve-Path $outDir).Path
+  $support = @()
+  $support += "Remote verification skipped due to missing droplet IP."
+  $support += "Ensure DNS points to droplet and DO token is valid."
+  $support += "Run: ./scripts/deploy.ps1 -Preflight -RunTests -TestsJson"
+  $text = ($support -join [Environment]::NewLine)
+  Set-Content -Path (Join-Path $dest 'support.txt') -Value $text -Encoding UTF8
   exit 0
 }
 
@@ -405,4 +342,5 @@ if ($RunTests) {
 }
 
 Write-Section "Done"
-Write-Host "Artifacts saved to: $(Resolve-Path $LogsDir). Use -Timestamped for per-run subfolders." -ForegroundColor Green
+$artDir = (Resolve-Path $LogsDir)
+Write-Host ("Artifacts saved to: {0}. Use -Timestamped for per-run subfolders." -f $artDir) -ForegroundColor Green
