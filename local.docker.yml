@@ -336,7 +336,7 @@ services:
       args:
         - PYTHON_VERSION=${FASTAPI_PYTHON_VERSION}
     container_name: ${COMPOSE_PROJECT_NAME}_celery_beat
-    command: ["python", "-m", "celery", "-A", "tasks.app", "beat", "--loglevel=${CELERY_LOG_LEVEL}"]
+    command: ["python", "-m", "celery", "-A", "tasks.app", "beat", "--loglevel=${CELERY_LOG_LEVEL}", "--schedule=/tmp/celerybeat-schedule"]
     environment:
       - CELERY_BROKER_URL=${CELERY_BROKER_URL}
       - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}

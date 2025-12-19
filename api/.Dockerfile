@@ -8,8 +8,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Non-root user for runtime
-RUN useradd -m appuser
+# Non-root user for runtime and ensure /app is writable
+RUN useradd -m appuser && chown -R appuser:appuser /app
 USER appuser
 
 COPY requirements.txt ./
