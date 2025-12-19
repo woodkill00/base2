@@ -478,57 +478,6 @@ else:
                     log_json("API Response - domains.create_record (A_pgadmin)", resp)
                     log(f"Created A record ({PGADMIN_DNS_LABEL}) -> {ip_address}")
             if ipv6_address and not found["AAAA_pgadmin"]:
-                            # Ensure Django admin subdomain exists
-                            if not found["A_django_admin"]:
-                                if DRY_RUN:
-                                    log(f"[DRY RUN] Would create A record ({DJANGO_ADMIN_DNS_LABEL}) -> {ip_address}")
-                                else:
-                                    log_json("API Request - domains.create_record (A_django_admin)", {"type": "A", "name": DJANGO_ADMIN_DNS_LABEL, "data": ip_address})
-                                    resp = client.domains.create_record(DO_DOMAIN, {
-                                        "type": "A",
-                                        "name": DJANGO_ADMIN_DNS_LABEL,
-                                        "data": ip_address
-                                    })
-                                    log_json("API Response - domains.create_record (A_django_admin)", resp)
-                                    log(f"Created A record ({DJANGO_ADMIN_DNS_LABEL}) -> {ip_address}")
-                            if ipv6_address and not found["AAAA_django_admin"]:
-                                if DRY_RUN:
-                                    log(f"[DRY RUN] Would create AAAA record ({DJANGO_ADMIN_DNS_LABEL}) -> {ipv6_address}")
-                                else:
-                                    log_json("API Request - domains.create_record (AAAA_django_admin)", {"type": "AAAA", "name": DJANGO_ADMIN_DNS_LABEL, "data": ipv6_address})
-                                    resp = client.domains.create_record(DO_DOMAIN, {
-                                        "type": "AAAA",
-                                        "name": DJANGO_ADMIN_DNS_LABEL,
-                                        "data": ipv6_address
-                                    })
-                                    log_json("API Response - domains.create_record (AAAA_django_admin)", resp)
-                                    log(f"Created AAAA record ({DJANGO_ADMIN_DNS_LABEL}) -> {ipv6_address}")
-
-                            # Ensure Flower subdomain exists
-                            if not found["A_flower"]:
-                                if DRY_RUN:
-                                    log(f"[DRY RUN] Would create A record ({FLOWER_DNS_LABEL}) -> {ip_address}")
-                                else:
-                                    log_json("API Request - domains.create_record (A_flower)", {"type": "A", "name": FLOWER_DNS_LABEL, "data": ip_address})
-                                    resp = client.domains.create_record(DO_DOMAIN, {
-                                        "type": "A",
-                                        "name": FLOWER_DNS_LABEL,
-                                        "data": ip_address
-                                    })
-                                    log_json("API Response - domains.create_record (A_flower)", resp)
-                                    log(f"Created A record ({FLOWER_DNS_LABEL}) -> {ip_address}")
-                            if ipv6_address and not found["AAAA_flower"]:
-                                if DRY_RUN:
-                                    log(f"[DRY RUN] Would create AAAA record ({FLOWER_DNS_LABEL}) -> {ipv6_address}")
-                                else:
-                                    log_json("API Request - domains.create_record (AAAA_flower)", {"type": "AAAA", "name": FLOWER_DNS_LABEL, "data": ipv6_address})
-                                    resp = client.domains.create_record(DO_DOMAIN, {
-                                        "type": "AAAA",
-                                        "name": FLOWER_DNS_LABEL,
-                                        "data": ipv6_address
-                                    })
-                                    log_json("API Response - domains.create_record (AAAA_flower)", resp)
-                                    log(f"Created AAAA record ({FLOWER_DNS_LABEL}) -> {ipv6_address}")
                 if DRY_RUN:
                     log(f"[DRY RUN] Would create AAAA record ({PGADMIN_DNS_LABEL}) -> {ipv6_address}")
                 else:
@@ -540,6 +489,58 @@ else:
                     })
                     log_json("API Response - domains.create_record (AAAA_pgadmin)", resp)
                     log(f"Created AAAA record ({PGADMIN_DNS_LABEL}) -> {ipv6_address}")
+
+            # Ensure Django admin subdomain exists
+            if not found["A_django_admin"]:
+                if DRY_RUN:
+                    log(f"[DRY RUN] Would create A record ({DJANGO_ADMIN_DNS_LABEL}) -> {ip_address}")
+                else:
+                    log_json("API Request - domains.create_record (A_django_admin)", {"type": "A", "name": DJANGO_ADMIN_DNS_LABEL, "data": ip_address})
+                    resp = client.domains.create_record(DO_DOMAIN, {
+                        "type": "A",
+                        "name": DJANGO_ADMIN_DNS_LABEL,
+                        "data": ip_address
+                    })
+                    log_json("API Response - domains.create_record (A_django_admin)", resp)
+                    log(f"Created A record ({DJANGO_ADMIN_DNS_LABEL}) -> {ip_address}")
+            if ipv6_address and not found["AAAA_django_admin"]:
+                if DRY_RUN:
+                    log(f"[DRY RUN] Would create AAAA record ({DJANGO_ADMIN_DNS_LABEL}) -> {ipv6_address}")
+                else:
+                    log_json("API Request - domains.create_record (AAAA_django_admin)", {"type": "AAAA", "name": DJANGO_ADMIN_DNS_LABEL, "data": ipv6_address})
+                    resp = client.domains.create_record(DO_DOMAIN, {
+                        "type": "AAAA",
+                        "name": DJANGO_ADMIN_DNS_LABEL,
+                        "data": ipv6_address
+                    })
+                    log_json("API Response - domains.create_record (AAAA_django_admin)", resp)
+                    log(f"Created AAAA record ({DJANGO_ADMIN_DNS_LABEL}) -> {ipv6_address}")
+
+            # Ensure Flower subdomain exists
+            if not found["A_flower"]:
+                if DRY_RUN:
+                    log(f"[DRY RUN] Would create A record ({FLOWER_DNS_LABEL}) -> {ip_address}")
+                else:
+                    log_json("API Request - domains.create_record (A_flower)", {"type": "A", "name": FLOWER_DNS_LABEL, "data": ip_address})
+                    resp = client.domains.create_record(DO_DOMAIN, {
+                        "type": "A",
+                        "name": FLOWER_DNS_LABEL,
+                        "data": ip_address
+                    })
+                    log_json("API Response - domains.create_record (A_flower)", resp)
+                    log(f"Created A record ({FLOWER_DNS_LABEL}) -> {ip_address}")
+            if ipv6_address and not found["AAAA_flower"]:
+                if DRY_RUN:
+                    log(f"[DRY RUN] Would create AAAA record ({FLOWER_DNS_LABEL}) -> {ipv6_address}")
+                else:
+                    log_json("API Request - domains.create_record (AAAA_flower)", {"type": "AAAA", "name": FLOWER_DNS_LABEL, "data": ipv6_address})
+                    resp = client.domains.create_record(DO_DOMAIN, {
+                        "type": "AAAA",
+                        "name": FLOWER_DNS_LABEL,
+                        "data": ipv6_address
+                    })
+                    log_json("API Response - domains.create_record (AAAA_flower)", resp)
+                    log(f"Created AAAA record ({FLOWER_DNS_LABEL}) -> {ipv6_address}")
             if not updated["A_root"] and not updated["A_www"] and not updated["AAAA_root"]:
                 log("No A/AAAA records for root or www found to update or create.")
         except Exception as e:

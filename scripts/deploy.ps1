@@ -171,7 +171,16 @@ if [ -d /opt/apps/base2 ]; then
     BRANCH=$(grep -E '^DO_APP_BRANCH=' .env 2>/dev/null | cut -d'=' -f2 | tr -d '\r')
     if [ -z "$BRANCH" ]; then BRANCH=main; fi
     git fetch --all || true
-    git checkout "$BRANCH" || true
+    # Backup and remove potential untracked files that can block checkout (e.g., ACME storage)
+    if [ -d letsencrypt ]; then
+      tar -czf /root/logs/build/letsencrypt-backup.tgz letsencrypt || true
+      rm -rf letsencrypt || true
+    fi
+    # Reset any local changes and clean untracked files to avoid checkout failures
+    git reset --hard HEAD || true
+    git clean -fd || true
+    # Force checkout to the desired branch and pull latest
+    git checkout -f "$BRANCH" || true
     git pull --rebase || true
   fi
   # Capture build and up logs for traefik/django/api
