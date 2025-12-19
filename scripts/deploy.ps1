@@ -15,6 +15,8 @@ param(
   [int]$RateLimitBurst = 20,
   [int]$VerifyTimeoutSec = 600,
   [switch]$AsyncVerify,
+  [int]$LogsPollMaxAttempts = 30,
+  [int]$LogsPollIntervalSec = 10,
   [string]$ReportName = 'post-deploy-report.json'
 )
 
@@ -204,7 +206,7 @@ if [ -d /opt/apps/base2 ]; then
       docker compose -f local.docker.yml build api > /root/logs/build/api-build.txt 2>&1 || true
     fi
     if has_service redis && has_service celery-worker; then
-      docker compose -f local.docker.yml --profile celery up -d redis celery-worker > /root/logs/build/celery-up.txt 2>&1 || true
+      docker compose -f local.docker.yml --profile celery up -d redis celery-worker celery-beat > /root/logs/build/celery-up.txt 2>&1 || true
     fi
     if has_service flower; then
       docker compose -f local.docker.yml --profile flower up -d flower > /root/logs/build/flower-up.txt 2>&1 || true
@@ -275,7 +277,7 @@ fi
   & $scpExe -i $keyPath @($sshCommon) $tmpScript "root@${ip}:/root/remote_verify.sh" | Out-Null
   if ($AsyncVerify) {
     if ($RunCeleryCheck) {
-      & $sshExe @sshArgs "nohup bash /root/remote_verify.sh > /root/remote_verify.out 2>&1 & echo \$! > /root/remote_verify.pid" | Out-Null
+      & $sshExe @sshArgs "RUN_CELERY_CHECK=1 nohup bash /root/remote_verify.sh > /root/remote_verify.out 2>&1 & echo \$! > /root/remote_verify.pid" | Out-Null
     } else {
       & $sshExe @sshArgs "nohup bash /root/remote_verify.sh > /root/remote_verify.out 2>&1 & echo \$! > /root/remote_verify.pid" | Out-Null
     }
@@ -296,16 +298,43 @@ fi
   }
   if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
   $dest = (Resolve-Path $outDir).Path
-  # Copy entire remote logs directory (build + services + snapshots)
-  & $scpExe -i $keyPath @($sshCommon) -r "root@${ip}:/root/logs" $dest | Out-Null
-  $files = @(
-    'compose-ps.txt','traefik-env.txt','traefik-static.yml','traefik-dynamic.yml','traefik-ls.txt','traefik-logs.txt','backend-logs.txt',
-    'curl-root.txt','curl-api.txt','curl-api-health.txt','curl-api-health-slash.txt',
-    'api-health.json','api-health.status','api-health-slash.json','api-health-slash.status',
-    'traefik-dynamic.template.yml','traefik-static.template.yml'
-  )
-  foreach ($f in $files) {
-    & $scpExe -i $keyPath @($sshCommon) "root@${ip}:/root/logs/$f" $dest | Out-Null
+
+  # Robust copy with polling when async: wait for /root/logs/remote_verify.done, then scp
+  $attempts = 1
+  if ($AsyncVerify) { $attempts = [Math]::Max(3, [int]$LogsPollMaxAttempts) }
+  $interval = [Math]::Max(2, [int]$LogsPollIntervalSec)
+  $copied = $false
+  for ($i = 1; $i -le $attempts; $i++) {
+    try {
+      if ($AsyncVerify) {
+        $flag = & $sshExe @sshArgs "test -f /root/logs/remote_verify.done && echo DONE || echo WAIT"
+        if (-not ($flag -match 'DONE')) {
+          Start-Sleep -Seconds $interval
+          continue
+        }
+      }
+      # Copy entire remote logs directory (build + services + snapshots)
+      & $scpExe -i $keyPath -r "root@${ip}:/root/logs" $dest | Out-Null
+      $copied = $true
+      break
+    } catch {
+      Start-Sleep -Seconds $interval
+    }
+  }
+
+  if (-not $copied) {
+    Write-Warning "Remote logs not yet available after $attempts attempts; continuing. You can re-run copy later."
+  } else {
+    # Best-effort copy of individual files to the root of $dest for convenience
+    $files = @(
+      'compose-ps.txt','traefik-env.txt','traefik-static.yml','traefik-dynamic.yml','traefik-ls.txt','traefik-logs.txt','backend-logs.txt',
+      'curl-root.txt','curl-api.txt','curl-api-health.txt','curl-api-health-slash.txt',
+      'api-health.json','api-health.status','api-health-slash.json','api-health-slash.status',
+      'traefik-dynamic.template.yml','traefik-static.template.yml','remote_verify.done'
+    )
+    foreach ($f in $files) {
+      try { & $scpExe -i $keyPath "root@${ip}:/root/logs/$f" $dest | Out-Null } catch { }
+    }
   }
 
   # Scrub sensitive material from environment snapshots
