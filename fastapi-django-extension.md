@@ -84,9 +84,63 @@ After the modifications:
 
 ---
 
-## 2. Environment Variables (`.env`)
+## Ports & Routing Matrix
 
-Start from the existing `.env.example` and add/modify the following.
+| Component | Internal Port | Public Exposure | Traefik Router | TLS Resolver | Middlewares |
+|-----------|---------------|-----------------|----------------|--------------|-------------|
+| Traefik   | 80/443        | Host 80/443     | N/A            | le-staging   | redirect-to-https (web), security-headers |
+| React SPA | 8080          | No              | frontend-react (`Host(${WEBSITE_DOMAIN})` && `PathPrefix(/)` && not `/api`) | le-staging | security-headers |
+| API (FastAPI) | `${FASTAPI_PORT}` | No | api (`Host(${WEBSITE_DOMAIN})` && `PathPrefix(/api)`) | le-staging | security-headers, rate-limit, retry |
+| Django    | `${DJANGO_PORT}` | No | None (internal-only) | N/A | N/A |
+| pgAdmin   | 8080          | Via subdomain   | pgadmin (`Host(${PGADMIN_DNS_LABEL}.${WEBSITE_DOMAIN})`) | le-staging | security-headers, basic-auth, ip-allowlist |
+| Traefik Dashboard | N/A    | Via subdomain   | traefik-dashboard (`Host(${TRAEFIK_DNS_LABEL}.${WEBSITE_DOMAIN})`) | le-staging | security-headers, basic-auth |
+
+Notes:
+- Traefik is the only service bound to host ports.
+- Staging certificates (`le-staging`) are required for development/testing.
+
+
+## Step-by-Step Use Cases
+
+1) Full Deploy (staging TLS, artifact capture)
+- Prepare `.env` per `.env.example`.
+- Run preflight (optional) and deploy with tests.
+- Verify HTTPS homepage and `/api/health` via artifacts.
+
+2) Update-only Redeploy
+- Use `-UpdateOnly` to skip full rebuilds where safe.
+- Expect ≥30% faster runtime vs full deploy.
+
+3) Remote Verify Unavailable (fallback)
+- If droplet IP cannot be determined, deploy writes local `support.txt` and `droplet-info.json`.
+- Fix credentials/DNS, then rerun.
+
+
+## Troubleshooting Scenarios
+
+- API health non-200 via edge
+  - Check `traefik-dynamic.yml` router/service mapping.
+  - Inspect `backend-logs.txt` and `api-health.status`/`.json` artifacts.
+- Missing staging TLS
+  - Ensure `le-staging` is set in routers; restart Traefik.
+- Rate limit not observed
+  - Confirm `rate-limit` middleware attached to `api` router.
+  - Adjust `RATE_LIMIT_*` values in `.env`.
+- pgAdmin access blocked
+  - Update allowlist via `scripts/update-pgadmin-allowlist.ps1`.
+
+
+## Preflight Validation
+
+Use `scripts/validate-predeploy.ps1` before deploy to catch issues:
+- Checks `.env` keys, compose labels/ports, and required files.
+- Strict JSON mode for CI: `-Strict -Json`.
+
+Example:
+```
+./scripts/validate-predeploy.ps1 -EnvPath ./.env -ComposePath ./local.docker.yml -Strict
+```
+
 
 ### 2.1 Keep / Adjust These
 
@@ -785,4 +839,57 @@ Save this file as something like `fastapi-django-extension.md` in your repo and 
 - `DJANGO_DEBUG=false`
 - `DJANGO_ALLOWED_HOSTS=${WEBSITE_DOMAIN}`
 - `REACT_APP_API_URL=https://${WEBSITE_DOMAIN}/api`
+
+---
+
+## 14. Celery + Redis (Optional)
+
+Add background task processing in a secure, internal-only way. By default, nothing new is publicly exposed. An optional Flower dashboard can be enabled under strict guards.
+
+### Services & Exposure
+- `redis`: internal-only; no host `ports:`; used as Celery broker/result backend.
+- `celery-worker` (and optional `celery-beat`): internal-only; runs app tasks.
+- `flower` (optional): served via Traefik under `https://${FLOWER_DNS_LABEL}.${WEBSITE_DOMAIN}` and only when profile enabled; guarded by basic auth + IP allowlist.
+
+### Compose Profiles
+Profiles keep defaults unchanged and opt-in background services as needed:
+
+```bash
+# Enable Redis + Celery worker
+docker compose -f local.docker.yml --profile celery up -d redis celery-worker
+
+# Enable Flower dashboard (non-production only)
+docker compose -f local.docker.yml --profile flower up -d flower
+```
+
+### Environment Keys
+- Redis/Celery: `REDIS_VERSION`, `REDIS_PORT`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `CELERY_CONCURRENCY`, `CELERY_LOG_LEVEL`
+- Flower: `FLOWER_DNS_LABEL`, `FLOWER_BASIC_USERS` (htpasswd `user:hash`), `FLOWER_ALLOWLIST`
+
+### Security Controls
+- No host `ports:` on Redis/Celery/Flower; Traefik fronts Flower when explicitly enabled.
+- Flower requires both basic auth and allowlisted source IPs.
+- Keep production without Flower; use only for non-production inspection.
+
+### Allowlist Helper
+Update your allowlist to your current public IP:
+
+```powershell
+./scripts/update-flower-allowlist.ps1
+```
+
+### Testing & CI Hooks
+- Validate Flower is guarded:
+
+```powershell
+./scripts/test.ps1 -EnvPath .\.env -Json -CheckCelery -AdminUser <user> -AdminPass <pass>
+```
+
+- Or via deploy wrapper:
+
+```powershell
+./scripts/deploy.ps1 -RunTests -TestsJson -RunCeleryCheck
+```
+
+Result JSON includes a `celeryCheck` section when enabled.
 

@@ -128,6 +128,20 @@ Options:
 ./scripts/deploy.ps1 -SshKey "C:\path\to\key"  # custom SSH key path
 ```
 
+### Preflight Validation (Optional)
+Run preflight checks locally before deploying to catch misconfigurations early.
+
+```powershell
+# Human-readable
+./scripts/validate-predeploy.ps1 -EnvPath .\.env -ComposePath .\local.docker.yml
+
+# Strict + JSON (CI-friendly)
+./scripts/validate-predeploy.ps1 -EnvPath .\.env -ComposePath .\local.docker.yml -Strict -Json
+
+# Integrate with deploy (fails fast when preflight fails)
+./scripts/deploy.ps1 -Preflight
+```
+
 Manual invocation (advanced):
 
 ```bash
@@ -143,6 +157,54 @@ After deploy:
 - API: `https://${WEBSITE_DOMAIN}/api`
 - Verification artifacts: see the fetched files in the repo root
    - Stored under `local_run_logs/` (use `-Timestamped` for per-run subfolders)
+
+## Celery + Redis (Optional)
+Add background task processing without increasing the attack surface. Redis and Celery are internal-only; Flower dashboard is disabled by default and guarded when enabled.
+
+### Enable profiles
+- Redis + worker:
+   ```bash
+   docker compose -f local.docker.yml --profile celery up -d redis celery-worker
+   ```
+- Flower (dashboard):
+   ```bash
+   docker compose -f local.docker.yml --profile flower up -d flower
+   ```
+
+### Environment keys
+- Redis/Celery:
+   - `REDIS_VERSION`, `REDIS_PORT`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `CELERY_CONCURRENCY`, `CELERY_LOG_LEVEL`
+- Flower (optional):
+   - `FLOWER_DNS_LABEL`, `FLOWER_BASIC_USERS` (htpasswd `user:hash`), `FLOWER_ALLOWLIST`
+
+Update your allowlist to your current IP:
+```powershell
+./scripts/update-flower-allowlist.ps1
+```
+
+### Traefik routing (guarded)
+- Flower is available at `https://${FLOWER_DNS_LABEL}.${WEBSITE_DOMAIN}` only when the `flower` profile is enabled.
+- Access requires basic auth and the source IP must be allowlisted.
+
+### Post-deploy tests
+- Validate Flower security posture (401 unauth; 200/302 with auth):
+```powershell
+./scripts/test.ps1 -EnvPath .\.env -Json -CheckCelery -AdminUser <user> -AdminPass <pass>
+```
+- Or via deploy wrapper:
+```powershell
+./scripts/deploy.ps1 -RunTests -TestsJson -RunCeleryCheck
+```
+
+### API helpers (roundtrip task)
+- Enqueue a ping task:
+   ```bash
+   curl -sk https://${WEBSITE_DOMAIN}/api/celery/ping | jq
+   ```
+- Poll result (replace <id>):
+   ```bash
+   curl -sk https://${WEBSITE_DOMAIN}/api/celery/result/<id> | jq
+   ```
 
 ## Onboarding
 - All required environment variables are documented in `.env.example`.

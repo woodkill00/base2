@@ -10,13 +10,14 @@
 ### Full deploy with timestamped logs
 ```powershell
 # From repo root
-./scripts/deploy.ps1 -Full -Timestamped -EnvPath ./.env
+./scripts/deploy.ps1 -Full -Timestamped -EnvPath ./.env -RunTests -TestsJson -RunRateLimitTest -RateLimitBurst 20
 ```
 
 ### Update-only redeploy (faster)
 ```powershell
-./scripts/deploy.ps1 -UpdateOnly -Timestamped -EnvPath ./.env
+./scripts/deploy.ps1 -UpdateOnly -Timestamped -EnvPath ./.env -RunTests -TestsJson -RunRateLimitTest -RateLimitBurst 20
 ```
+Expected speedup: ≥30% vs full deploy on same environment. For measurement, run both modes back-to-back and compare total runtime logged in the terminal.
 
 ## Expected Outputs
 - HTTPS reachable at configured domain (homepage)
@@ -54,6 +55,33 @@
  - Preflight validation (optional):
    - Human-readable: `./scripts/validate-predeploy.ps1 -EnvPath ./.env -ComposePath ./local.docker.yml`
    - Strict + JSON: `./scripts/validate-predeploy.ps1 -EnvPath ./.env -ComposePath ./local.docker.yml -Strict -Json`
+
+ - Post-Deploy Smoke Tests (optional):
+   - `./scripts/smoke-tests.ps1 -EnvPath ./.env` (auto-uses `WEBSITE_DOMAIN` if present; defaults to `localhost`)
+   - Verifies HTTP→HTTPS redirect, security headers (HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy), and `/api/health` 200
+
+ - Post-deploy Verification (artifacts + smoke tests):
+   - `./scripts/test.ps1 -EnvPath ./.env -LogsDir ./local_run_logs -UseLatestTimestamp`
+  - CI-friendly JSON: `./scripts/test.ps1 -EnvPath ./.env -LogsDir ./local_run_logs -UseLatestTimestamp -Json`
+   - When using `deploy.ps1 -RunTests -TestsJson`, the JSON report is saved to the latest timestamped artifact folder as `post-deploy-report.json`
+  - Customize filename: add `-ReportName my-report.json` to `deploy.ps1` to save under a different name
+   - Or include `-RunTests` with `deploy.ps1` to run automatically
+   - Optional: Django proxy test: add `-CheckDjangoProxy`
+   - Optional: Admin router test: add `-CheckDjangoAdmin [-AdminUser <user> -AdminPass <pass>]`
+
+  ## Optional: Temporary Django Admin Exposure (Non-Production)
+  - Purpose: briefly enable Django admin via `https://<DJANGO_ADMIN_DNS_LABEL>.<domain>/admin` with strict guards.
+  - Guards enforced: staging TLS, basic auth (`TRAEFIK_DASH_BASIC_USERS`), and IP allowlist (`DJANGO_ADMIN_ALLOWLIST`).
+  - Steps:
+    1. Set env in `.env`:
+      - `DJANGO_ADMIN_DNS_LABEL=admin`
+      - `TRAEFIK_DASH_BASIC_USERS=<user:htpasswd>`
+    2. Restrict to your IP:
+      - `./scripts/update-django-admin-allowlist.ps1 -EnvPath ./.env`
+    3. Apply Traefik config only:
+      - `docker compose -f ./local.docker.yml up -d --force-recreate traefik`
+    4. Browse: `https://admin.${WEBSITE_DOMAIN}/admin`
+  - Disable afterwards: clear `DJANGO_ADMIN_DNS_LABEL`/`DJANGO_ADMIN_ALLOWLIST` and redeploy Traefik.
 
 ## Operator Tips
 - Inspect Traefik routers/services via `docker compose -f local.docker.yml ps` and logs.

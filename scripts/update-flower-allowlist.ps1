@@ -4,14 +4,14 @@ param(
     [switch] $DryRun
 )
 
-# update-pgadmin-allowlist.ps1
-# - Detects your public IPv4 (or uses -Ip) and updates PGADMIN_ALLOWLIST in .env to <ip>/32
+# update-flower-allowlist.ps1
+# - Detects your public IPv4 (or uses -Ip) and updates FLOWER_ALLOWLIST in .env to <ip>/32
 # - Safe for PowerShell 5.1; preserves other .env content
 #
 # Usage examples:
-#   ./scripts/update-pgadmin-allowlist.ps1
-#   ./scripts/update-pgadmin-allowlist.ps1 -Ip 203.0.113.42
-#   ./scripts/update-pgadmin-allowlist.ps1 -EnvPath ./.env -DryRun
+#   ./scripts/update-flower-allowlist.ps1
+#   ./scripts/update-flower-allowlist.ps1 -Ip 203.0.113.42
+#   ./scripts/update-flower-allowlist.ps1 -EnvPath ./.env -DryRun
 
 $ErrorActionPreference = 'Stop'
 
@@ -74,14 +74,14 @@ Write-Info "Using allowlist CIDR: $cidr"
 
 # Read .env as text to preserve formatting
 $text = Get-Content -LiteralPath $EnvPath -Raw -Encoding UTF8
-# Remove ALL existing PGADMIN_ALLOWLIST lines to avoid duplicates, then append a single line
-$newText = [System.Text.RegularExpressions.Regex]::Replace($text, '(?m)^\s*PGADMIN_ALLOWLIST\s*=.*\r?\n?', '')
+# Remove ALL existing FLOWER_ALLOWLIST lines to avoid duplicates, then append a single line
+$newText = [System.Text.RegularExpressions.Regex]::Replace($text, '(?m)^\s*FLOWER_ALLOWLIST\s*=.*\r?\n?', '')
 if ($newText.Length -gt 0 -and -not $newText.EndsWith("`r`n")) { $newText += "`r`n" }
-$newText += "PGADMIN_ALLOWLIST=$cidr`r`n"
+$newText += "FLOWER_ALLOWLIST=$cidr`r`n"
 
 if ($DryRun) {
-    Write-Warn "[DryRun] Would write updated .env with PGADMIN_ALLOWLIST=$cidr"
-    $preview = $newText -split "`r`n" | Where-Object { $_ -match '^PGADMIN_ALLOWLIST=' }
+    Write-Warn "[DryRun] Would write updated .env with FLOWER_ALLOWLIST=$cidr"
+    $preview = $newText -split "`r`n" | Where-Object { $_ -match '^FLOWER_ALLOWLIST=' }
     Write-Host ($preview -join "`n")
     exit 0
 }
@@ -90,14 +90,13 @@ if ($DryRun) {
 $newText | Set-Content -LiteralPath $EnvPath -Encoding UTF8
 
 # Confirm
-$confirm = Select-String -Path $EnvPath -Pattern '^PGADMIN_ALLOWLIST=' -Encoding UTF8
+$confirm = Select-String -Path $EnvPath -Pattern '^FLOWER_ALLOWLIST=' -Encoding UTF8
 if ($confirm) {
-    # Print a single confirmation line and the number of occurrences to ensure uniqueness
     $values = @($confirm | ForEach-Object { $_.Matches.Value })
     Write-Info ("Updated: " + $values[0])
-    if ($values.Count -gt 1) { Write-Warn ("Found ${values.Count} PGADMIN_ALLOWLIST lines; expected 1. File was cleaned to ensure single entry.") }
+    if ($values.Count -gt 1) { Write-Warn ("Found ${values.Count} FLOWER_ALLOWLIST lines; expected 1. File was cleaned to ensure single entry.") }
     Write-Info "Done. Restart Traefik to apply: docker compose up -d --force-recreate traefik"
 } else {
-    Write-Err "Failed to confirm PGADMIN_ALLOWLIST write."
+    Write-Err "Failed to confirm FLOWER_ALLOWLIST write."
     exit 1
 }

@@ -6,7 +6,14 @@ param(
   [string]$DropletIp = "",
   [switch]$SkipAllowlist,
   [string]$LogsDir = ".\local_run_logs",
-  [switch]$Timestamped
+  [switch]$Timestamped,
+  [switch]$Preflight,
+  [switch]$RunTests,
+  [switch]$TestsJson,
+  [switch]$RunRateLimitTest,
+  [switch]$RunCeleryCheck,
+  [int]$RateLimitBurst = 20,
+  [string]$ReportName = 'post-deploy-report.json'
 )
 
 Set-StrictMode -Version Latest
@@ -59,6 +66,41 @@ function Update-Allowlist {
   & .\scripts\update-pgadmin-allowlist.ps1 -EnvPath $EnvPath
 }
 
+function Invoke-Preflight {
+  Write-Section "Preflight validation"
+  # Runs strict validation of .env, compose labels/ports, and required files.
+  # Fails fast on any issue to prevent orchestration.
+  & .\scripts\validate-predeploy.ps1 -Strict
+}
+
+function Validate-DoCreds {
+  Write-Section "Validating DigitalOcean credentials"
+  $token = $env:DO_API_TOKEN
+  if (-not $token -or -not $token.Trim()) {
+    throw "Missing DO_API_TOKEN in environment. Set it in .env or process env before deploy."
+  }
+  # Lightweight token validation via pydo droplets.list
+  $tmpPy = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), 'validate_do_token.py')
+  $pyCode = @'
+import os
+from pydo import Client
+
+token = os.environ.get('DO_API_TOKEN')
+if not token:
+    raise RuntimeError('missing token')
+try:
+    c = Client(token=token)
+    c.droplets.list(per_page=1)
+except Exception as e:
+    raise SystemExit(f'invalid_token: {e.__class__.__name__}')
+'@
+  Set-Content -Path $tmpPy -Value $pyCode -NoNewline
+   & .\.venv\Scripts\python.exe $tmpPy 2>$null | Out-Null
+  if ($LASTEXITCODE -ne 0) {
+    throw "Invalid DO_API_TOKEN or API unreachable. Validate token before continuing."
+  }
+}
+
 function Get-DropletIp {
   if ($DropletIp) { return $DropletIp }
   $udFile = Join-Path $PSScriptRoot "..\DO_userdata.json"
@@ -97,7 +139,7 @@ except Exception:
     print('')
 '@
   Set-Content -Path $tmpPy -Value $pyCode -NoNewline
-  $ipGuess = & .\\.venv\\Scripts\\python.exe $tmpPy
+   $ipGuess = & .\.venv\Scripts\python.exe $tmpPy 2>$null
   if ($LASTEXITCODE -eq 0 -and $ipGuess) { return [string]$ipGuess.Trim() }
   return ""
 }
@@ -127,6 +169,12 @@ if [ -d /opt/apps/base2 ]; then
   fi
   docker compose -f local.docker.yml build --no-cache traefik || true
   docker compose -f local.docker.yml up -d --force-recreate traefik || true
+  # If requested, enable celery/flower profiles and build required images
+  if [ "${RUN_CELERY_CHECK:-}" = "1" ]; then
+    docker compose -f local.docker.yml build api || true
+    docker compose -f local.docker.yml --profile celery up -d redis celery-worker || true
+    docker compose -f local.docker.yml --profile flower up -d flower || true
+  fi
   docker compose -f local.docker.yml ps > /root/logs/compose-ps.txt || true
   CID=$(docker compose -f local.docker.yml ps -q traefik || true)
   if [ -n "$CID" ]; then
@@ -146,13 +194,34 @@ if [ -d /opt/apps/base2 ]; then
     docker exec "$CID" sh -lc 'cat /etc/traefik/templates/dynamic.yml.template 2>/dev/null || echo TEMPLATE_MISSING' > /root/logs/traefik-dynamic.template.yml || true
     docker exec "$CID" sh -lc 'cat /etc/traefik/templates/traefik.yml.template 2>/dev/null || echo TEMPLATE_MISSING' > /root/logs/traefik-static.template.yml || true
     docker logs --timestamps --tail=1000 "$CID" > /root/logs/traefik-logs.txt || true
+    # Capture backend logs for diagnostics if needed
+    BID=$(docker compose -f local.docker.yml ps -q backend || true)
+    if [ -n "$BID" ]; then
+      docker logs --timestamps --tail=500 "$BID" > /root/logs/backend-logs.txt || true
+    else
+      echo "MISSING_BACKEND_CID" > /root/logs/backend-logs.txt
+    fi
   else
     echo "MISSING_CID" | tee /root/logs/traefik-env.txt /root/logs/traefik-static.yml /root/logs/traefik-dynamic.yml /root/logs/traefik-ls.txt /root/logs/traefik-logs.txt >/dev/null
   fi
   DOMAIN=$(grep -E '^WEBSITE_DOMAIN=' /opt/apps/base2/.env | cut -d'=' -f2 | tr -d '\r')
   if [ -n "$DOMAIN" ]; then
+    # Root HEAD
     curl -skI "https://$DOMAIN/" -o /root/logs/curl-root.txt || true
-    curl -skI "https://$DOMAIN/api/" -o /root/logs/curl-api.txt || true
+
+    # API health HEAD (both forms)
+    curl -skI "https://$DOMAIN/api/health" -o /root/logs/curl-api-health.txt || true
+    curl -skI "https://$DOMAIN/api/health/" -o /root/logs/curl-api-health-slash.txt || true
+
+    # API health GET (capture body and status separately)
+    curl -sk -o /root/logs/api-health.json -w "%{http_code}" "https://$DOMAIN/api/health" > /root/logs/api-health.status || true
+    curl -sk -o /root/logs/api-health-slash.json -w "%{http_code}" "https://$DOMAIN/api/health/" > /root/logs/api-health-slash.status || true
+
+    # Back-compat: maintain curl-api.txt pointing at preferred health endpoint (non-slash first)
+    cp /root/logs/curl-api-health.txt /root/logs/curl-api.txt || true
+    if ! grep -q '^HTTP/.* 200' /root/logs/curl-api.txt 2>/dev/null; then
+      cp /root/logs/curl-api-health-slash.txt /root/logs/curl-api.txt || true
+    fi
   fi
 fi
 '@
@@ -161,7 +230,11 @@ fi
   Set-Content -Path $tmpScript -Value $unixScript -Encoding Ascii -NoNewline
   # Upload and execute the script
   & $scpExe -i $keyPath $tmpScript "root@${ip}:/root/remote_verify.sh" | Out-Null
-  & $sshExe @sshArgs "bash /root/remote_verify.sh" | Out-Null
+  if ($RunCeleryCheck) {
+    & $sshExe @sshArgs "RUN_CELERY_CHECK=1 bash /root/remote_verify.sh" | Out-Null
+  } else {
+    & $sshExe @sshArgs "bash /root/remote_verify.sh" | Out-Null
+  }
 
   Write-Section "Copying verification artifacts"
   $outDir = $LogsDir
@@ -171,12 +244,66 @@ fi
   }
   if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
   $dest = (Resolve-Path $outDir).Path
-  $files = @('compose-ps.txt','traefik-env.txt','traefik-static.yml','traefik-dynamic.yml','traefik-ls.txt','traefik-logs.txt','curl-root.txt','curl-api.txt','traefik-dynamic.template.yml','traefik-static.template.yml')
+  $files = @(
+    'compose-ps.txt','traefik-env.txt','traefik-static.yml','traefik-dynamic.yml','traefik-ls.txt','traefik-logs.txt','backend-logs.txt',
+    'curl-root.txt','curl-api.txt','curl-api-health.txt','curl-api-health-slash.txt',
+    'api-health.json','api-health.status','api-health-slash.json','api-health-slash.status',
+    'traefik-dynamic.template.yml','traefik-static.template.yml'
+  )
   foreach ($f in $files) {
     & $scpExe -i $keyPath "root@${ip}:/root/logs/$f" $dest | Out-Null
   }
 
+  # Scrub sensitive material from environment snapshots
+  try {
+    $traefikEnvPath = Join-Path $dest 'traefik-env.txt'
+    if (Test-Path $traefikEnvPath) {
+      $raw = Get-Content -Path $traefikEnvPath -Raw
+      $patterns = @(
+        '(?im)^(.*(?:PASS|PASSWORD|SECRET|TOKEN|API_KEY|BASIC_USERS)[^=]*)=.*$'
+      )
+      foreach ($pat in $patterns) { $raw = [Regex]::Replace($raw, $pat, '$1=REDACTED') }
+      Set-Content -Path $traefikEnvPath -Value $raw -Encoding UTF8
+    }
+  } catch { Write-Warning "Failed to scrub sensitive values: $($_.Exception.Message)" }
+
   # Write droplet info JSON into the same timestamped folder
+  try {
+    $tmpPy = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), 'get_do_details.py')
+    $pyCode = @'
+import os, json
+from pydo import Client
+
+token = os.environ.get('DO_API_TOKEN')
+name = os.environ.get('DO_DROPLET_NAME') or 'base2-droplet'
+out_path = os.environ.get('OUT_PATH')
+result = {
+  'name': name,
+  'ip_address': None,
+  'droplet_id': None,
+  'region': None,
+  'size': None,
+  'image': None,
+  'created_at': None,
+}
+
+function Write-LocalArtifactsNoRemote {
+  Write-Section "Remote verify unavailable — saving local artifacts"
+  $outDir = $LogsDir
+  if ($Timestamped) {
+    $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
+    $outDir = Join-Path $LogsDir $stamp
+  }
+  if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
+  $dest = (Resolve-Path $outDir).Path
+  $support = @()
+  $support += "Remote verification skipped due to missing droplet IP."
+  $support += "Ensure DNS points to droplet and DO token is valid."
+  $support += "Artifacts collected locally: droplet-info.json (if token present)."
+  $support += "Run: ./scripts/deploy.ps1 -Preflight -RunTests -TestsJson"
+  $text = ($support -join [Environment]::NewLine)
+  Set-Content -Path (Join-Path $dest 'support.txt') -Value $text -Encoding UTF8
+  # Write droplet-info.json if possible (same helper as Remote-Verify)
   try {
     $tmpPy = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), 'get_do_details.py')
     $pyCode = @'
@@ -227,20 +354,55 @@ except Exception:
   } catch {}
 }
 
+
 Write-Section "Base2 Deploy"
 Ensure-Venv
 Activate-Venv
 Load-DotEnv -path $EnvPath
 Update-Allowlist
+if ($Preflight) { Invoke-Preflight }
+Validate-DoCreds
 Run-Orchestrator
 
 $resolvedIp = Get-DropletIp
 if (-not $resolvedIp) {
   Write-Warning "Could not determine droplet IP. Skipping remote verification."
+  Write-LocalArtifactsNoRemote
   exit 0
 }
 
 Remote-Verify -ip $resolvedIp -keyPath $SshKey
+
+if ($RunTests) {
+  Write-Section "Running post-deploy tests"
+  if ($TestsJson) {
+    $testArgs = @{ EnvPath = $EnvPath; LogsDir = $LogsDir; UseLatestTimestamp = $true; Json = $true }
+    if ($RunRateLimitTest) { $testArgs.CheckRateLimit = $true; $testArgs.RateLimitBurst = $RateLimitBurst }
+      if ($RunCeleryCheck) { $testArgs.CheckCelery = $true }
+    $jsonOut = & .\scripts\test.ps1 @testArgs
+    $exitCode = $LASTEXITCODE
+    # Determine latest timestamped artifact folder
+    $artifactDir = $LogsDir
+    if (Test-Path $LogsDir) {
+      $cands = Get-ChildItem -Path $LogsDir -Directory | Where-Object { $_.Name -match '^\d{8}_\d{6}$' } | Sort-Object Name
+      if ($cands.Count -gt 0) { $artifactDir = $cands[-1].FullName }
+    }
+    $reportPath = Join-Path $artifactDir $ReportName
+    try {
+      Set-Content -Path $reportPath -Value $jsonOut -Encoding UTF8
+      Write-Host "Saved JSON report: $reportPath" -ForegroundColor Yellow
+    } catch {
+      Write-Warning "Failed to write JSON report: $($_.Exception.Message)"
+    }
+    if ($exitCode -ne 0) { Write-Warning "Post-deploy tests failed"; exit 1 }
+  } else {
+    $testArgs2 = @{ EnvPath = $EnvPath; LogsDir = $LogsDir; UseLatestTimestamp = $true }
+    if ($RunRateLimitTest) { $testArgs2.CheckRateLimit = $true; $testArgs2.RateLimitBurst = $RateLimitBurst }
+      if ($RunCeleryCheck) { $testArgs2.CheckCelery = $true }
+    & .\scripts\test.ps1 @testArgs2
+    if ($LASTEXITCODE -ne 0) { Write-Warning "Post-deploy tests failed"; exit 1 }
+  }
+}
 
 Write-Section "Done"
 Write-Host "Artifacts saved to: $(Resolve-Path $LogsDir). Use -Timestamped for per-run subfolders." -ForegroundColor Green

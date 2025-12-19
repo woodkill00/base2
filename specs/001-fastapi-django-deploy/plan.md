@@ -2,6 +2,7 @@
 
 **Branch**: `001-fastapi-django-deploy` | **Date**: 2025-12-18 | **Spec**: [specs/001-fastapi-django-deploy/spec.md](specs/001-fastapi-django-deploy/spec.md)
 **Input**: Feature specification from `/specs/001-fastapi-django-deploy/spec.md`
+**Reference**: Architecture guide at [docs/STACK.md](docs/STACK.md)
 
 ## Summary
 
@@ -55,7 +56,7 @@ api/        # FastAPI service (containerized)
 django/     # Django service (containerized, internal-only by default)
 ```
 
-**Structure Decision**: Keep current web-app layout, add `api/` (FastAPI) and `django/` services per spec. Traefik remains the only public entrypoint.
+**Structure Decision**: Keep current web-app layout, add `api/` (FastAPI) and `django/` services per spec. Traefik remains the only public entrypoint. Next, extend with Redis + Celery (and optional Flower) per the reference while maintaining zero public exposure by default.
 
 ## Phased Plan
 
@@ -81,6 +82,16 @@ django/     # Django service (containerized, internal-only by default)
 5) Documentation (P1)
 - Add quickstart guidance for operators: prerequisites, command variants, expected outputs, troubleshooting.
 - Note certificate policy (staging-only) and admin exposure policy.
+
+6) Celery + Redis integration (P2)
+- Compose: add `redis` (no host ports) and `celery-worker` service(s) bound to Django/FastAPI codebase images.
+- Optional Flower: add protected subdomain via Traefik only in non-production; guard with basic auth + IP allowlist.
+- Env: add `REDIS_*`, `CELERY_*` keys; ensure no secrets leak to artifacts.
+- Health/observability: define healthchecks; add optional smoke checks for task enqueue roundtrip (out of band).
+
+7) Golden Compose & zero-downtime (P3)
+- Provide a curated compose overlay (doc-first) aligning with `docs/STACK.md` for production-like posture.
+- Outline rolling update or blue/green strategy (doc + TODOs) without changing current deploy path.
 
 ## Acceptance & Validation
 

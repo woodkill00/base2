@@ -36,7 +36,9 @@ function Parse-DotEnv([string]$path) {
 }
 
 function Get-ServiceBlock([string]$name, [string[]]$lines) {
-  $start = ($lines | Select-String -Pattern "^\s{$(2)}$name:\s*$" -SimpleMatch).LineNumber
+  $escaped = [regex]::Escape($name)
+  $pattern = '^\s{2}' + $escaped + ':\s*$'
+  $start = ($lines | Select-String -Pattern $pattern).LineNumber
   if (-not $start) { return @() }
   $result = @()
   for ($i = $start; $i -le $lines.Count; $i++) {
@@ -69,7 +71,8 @@ $requiredEnv = @(
 $envVars = Parse-DotEnv -path $EnvPath
 $missing = @()
 foreach ($k in $requiredEnv) { if (-not ($envVars.ContainsKey($k) -and ($envVars[$k] -ne ''))) { $missing += $k } }
-Add-Check "Env keys present" ($missing.Count -eq 0) (if ($missing.Count -eq 0) { "All required keys present" } else { "Missing: " + ($missing -join ', ') })
+$envDetails = if ($missing.Count -eq 0) { "All required keys present" } else { "Missing: " + ($missing -join ', ') }
+Add-Check "Env keys present" ($missing.Count -eq 0) $envDetails
 
 # 2) Compose file sanity: services and ports
 $composeText = Read-TextFile -path $ComposePath
@@ -85,19 +88,19 @@ Add-Check "Service 'api' present" ($apiBlock.Count -gt 0) "api service block fou
 Add-Check "Service 'django' present" ($djangoBlock.Count -gt 0) "django service block found: $([bool]($djangoBlock.Count))"
 
 # Traefik ports only
-$traefikHas443 = ($traefikBlock | Where-Object { $_ -match "'443:443'" }).Count -gt 0
-$traefikHasHost = ($traefikBlock | Where-Object { $_ -match "\$\{TRAEFIK_HOST_PORT\}:\$\{TRAEFIK_PORT\}" }).Count -gt 0
+$traefikHas443 = ((($traefikBlock | Where-Object { $_ -match "'443:443'" }) | Measure-Object).Count -gt 0)
+$traefikHasHost = ((($traefikBlock | Where-Object { $_ -match "\$\{TRAEFIK_HOST_PORT\}:\$\{TRAEFIK_PORT\}" }) | Measure-Object).Count -gt 0)
 Add-Check "Traefik exposes only 80/443" ($traefikHas443 -and $traefikHasHost) "443:443=$traefikHas443, HOST_PORT mapping=$traefikHasHost"
 
-function Has-Ports([string[]]$block) { ($block | Where-Object { $_ -match '^\s{6}ports:\s*$' }).Count -gt 0 }
+function Has-Ports([string[]]$block) { ((($block | Where-Object { $_ -match '^\s{6}ports:\s*$' }) | Measure-Object).Count -gt 0) }
 Add-Check "No host ports on api" (-not (Has-Ports $apiBlock)) "ports section present: $([bool](Has-Ports $apiBlock))"
 Add-Check "No host ports on django" (-not (Has-Ports $djangoBlock)) "ports section present: $([bool](Has-Ports $djangoBlock))"
 Add-Check "No host ports on postgres" (-not (Has-Ports $postgresBlock)) "ports section present: $([bool](Has-Ports $postgresBlock))"
 
 # Labels checks
-$reactHasPortLabel = ($reactBlock | Where-Object { $_ -match 'traefik.http.services.frontend-react.loadbalancer.server.port=8080' }).Count -gt 0
-$apiHasRule = ($apiBlock | Where-Object { $_ -match 'traefik.http.routers.api.rule=Host\(\`\$\{WEBSITE_DOMAIN\}\`\) && PathPrefix\(\`/api\`\)' }).Count -gt 0
-$apiHasPortLabel = ($apiBlock | Where-Object { $_ -match 'traefik.http.services.api.loadbalancer.server.port=\$\{FASTAPI_PORT\}' }).Count -gt 0
+$reactHasPortLabel = ((($reactBlock | Where-Object { $_ -match 'traefik.http.services.frontend-react.loadbalancer.server.port=8080' }) | Measure-Object).Count -gt 0)
+$apiHasRule = ((($apiBlock | Where-Object { $_ -match 'traefik.http.routers.api.rule=Host\(\`\$\{WEBSITE_DOMAIN\}\`\) && PathPrefix\(\`/api\`\)' }) | Measure-Object).Count -gt 0)
+$apiHasPortLabel = ((($apiBlock | Where-Object { $_ -match 'traefik.http.services.api.loadbalancer.server.port=\$\{FASTAPI_PORT\}' }) | Measure-Object).Count -gt 0)
 Add-Check "React Traefik port label" $reactHasPortLabel "frontend-react port label present: $reactHasPortLabel"
 Add-Check "API Traefik rule label" $apiHasRule "api rule label present: $apiHasRule"
 Add-Check "API Traefik port label" $apiHasPortLabel "api port label present: $apiHasPortLabel"
@@ -111,7 +114,8 @@ $requiredFiles = @(
 )
 $missingFiles = @()
 foreach ($f in $requiredFiles) { if (-not (Test-Path $f)) { $missingFiles += $f } }
-Add-Check "Required files exist" ($missingFiles.Count -eq 0) (if ($missingFiles.Count -eq 0) { "All present" } else { "Missing: " + ($missingFiles -join ', ') })
+$fileDetails = if ($missingFiles.Count -eq 0) { "All present" } else { "Missing: " + ($missingFiles -join ', ') }
+Add-Check "Required files exist" ($missingFiles.Count -eq 0) $fileDetails
 
 # Output
 if ($Json) {
@@ -124,4 +128,5 @@ if ($Json) {
   }
 }
 
-if ($Strict -and ($checks | Where-Object { -not $_.ok }).Count -gt 0) { exit 1 } else { exit 0 }
+$failedCount = ((($checks | Where-Object { -not $_.ok }) | Measure-Object).Count)
+if ($Strict -and $failedCount -gt 0) { exit 1 } else { exit 0 }

@@ -3,7 +3,9 @@
 **Feature Branch**: `001-fastapi-django-deploy`  
 **Created**: 2025-12-18  
 **Status**: Draft  
-**Input**: User description: "fastapi-django-autmoated, we will be working on a new feature to extend our development, using the deploy.ps1 script to automate the full deployment / upgrade of a digital ocean droplet, it will load all the info an log information into a timestamped folder under loac_run_logs, the goal will be to integrate from fastapi-django-extension.md the build with out own current build"
+**Input**: User description: "fastapi-django-autmoated, we will be working on a new feature to extend our development, using the deploy.ps1 script to automate the full deployment / upgrade of a digital ocean droplet, it will load all the info an log information into a timestamped folder under local_run_logs, the goal will be to integrate from fastapi-django-extension.md the build with out own current build"
+
+**Reference Architecture**: See [docs/STACK.md](docs/STACK.md) — Full Stack Build Reference: Traefik + React + FastAPI + Django + Celery + Redis. Treat this as the source of truth for trust boundaries, service roles, env keys, and non-production exposure policies.
 
 ## User Scenarios & Testing (mandatory)
 
@@ -52,7 +54,7 @@ When remote verification cannot run (e.g., IP not discoverable or SSH access blo
 
 ### Edge Cases
 
-- Cloud access token missing or invalid; deployment should fail fast with a clear error or proceed in a limited mode per policy. [NEEDS CLARIFICATION: fail-fast vs proceed with best-effort local steps]
+ 
  - Cloud access token missing or invalid; deployment MUST fail fast with a clear error and MUST NOT proceed in a limited/local-only mode.
 - Configuration domain missing or pointing to unmanaged DNS; verification should still capture results and highlight misconfiguration.
 - SSH key not present or permission denied; remote verification is skipped with actionable guidance.
@@ -72,8 +74,21 @@ When remote verification cannot run (e.g., IP not discoverable or SSH access blo
 - **FR-008**: The artifact set MUST include at minimum: container/process state, edge proxy static and dynamic configuration snapshots, environment snapshots (non-sensitive), recent proxy logs, and basic HTTP response headers for the root and API paths.
 - **FR-009**: The API MUST expose a health endpoint addressable through the edge proxy path used by the web application.
 - **FR-010**: The deployment MUST integrate the FastAPI + Django extension so that API requests route to FastAPI and FastAPI can reach Django on the internal network; the Django admin interface remains non-public by default. In non-production environments only, the admin MAY be publicly routable under additional protections per policy.
+- **FR-010a**: Expand the stack per the reference to include Redis and Celery workers (and Flower dashboard) with no additional public exposure; Celery runs background jobs triggered by API/Django; Redis is internal-only.
 - **FR-011**: For this development-production simulation, the deployment MUST use staging certificates only and MUST NOT issue production certificates.
 - **FR-012**: On failure, the command MUST emit clear, actionable messages and still persist any available logs/artifacts for diagnosis.
+
+### Non-Functional Requirements
+
+- **NFR-001 Security Headers**: Public routes MUST include HSTS, X-Content-Type-Options, X-Frame-Options=sameorigin, and a conservative Referrer-Policy. Verification: headers present in remote artifact `curl-*.txt` and Traefik `dynamic.yml`/labels.
+- **NFR-002 Rate Limiting**: API MUST enforce a configurable rate limit (e.g., `RATE_LIMIT_API_RPM`). Verification: burst requests yield HTTP 429 and relevant headers.
+- **NFR-003 TLS Policy**: MUST use staging certificates only; MUST NOT issue production certs for this simulation. Verification: Traefik resolver/issuer in artifacts shows staging.
+- **NFR-004 Logging Redaction**: No secrets in artifacts; environment snapshots MUST redact sensitive keys. Verification: inspect `traefik-env.txt` and logs for absence of secrets.
+- **NFR-005 Health Checks**: All services MUST define Docker Compose `healthcheck` and be "healthy" before considered ready. Verification: `compose-ps.txt` shows healthy states.
+- **NFR-006 Portability**: Scripts MUST run on Windows and be compatible with WSL/bash; cross-platform notes documented. Verification: quickstart includes platform guidance.
+- **NFR-007 Performance**: Homepage and `/api/health` respond within ≤5s for ≥95% of runs; update-only reduces runtime ≥30%. Verification: measured and documented in quickstart.
+- **NFR-008 Observability**: Every run MUST produce a complete artifact set; partial when remote verify unavailable, but always present locally. Verification: timestamped folder contents.
+- **NFR-009 Queue Isolation**: Celery/Redis processes MUST remain internal-only with clear trust boundaries; no host ports, and dashboards (e.g., Flower) only via protected subdomains with basic auth + allowlist if enabled.
 
 ### Key Entities (data involved)
 
@@ -89,6 +104,7 @@ When remote verification cannot run (e.g., IP not discoverable or SSH access blo
 - A single deployment entrypoint is available to the operator (e.g., a CLI command) and can load environment configuration.
 - The API exposes a health endpoint reachable through the edge entrypoint.
 - Network egress from the deployment host is available during the deploy.
+ - All container lifecycle operations (build, start, verify) are performed via deployment scripts on the target environment; local manual Docker Compose runs are out of scope.
 
 ## Success Criteria (mandatory)
 

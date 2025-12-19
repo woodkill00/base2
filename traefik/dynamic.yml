@@ -51,6 +51,28 @@ http:
       tls:
         certResolver: le-staging
       service: pgadmin
+    django-admin:
+      rule: Host(`${DJANGO_ADMIN_DNS_LABEL}.${WEBSITE_DOMAIN}`) && PathPrefix(`/admin`)
+      entryPoints:
+        - websecure
+      middlewares:
+        - security-headers
+        - traefik-basic-auth
+        - django-admin-allow-ip
+      tls:
+        certResolver: le-staging
+      service: django-admin
+    flower:
+      rule: Host(`${FLOWER_DNS_LABEL}.${WEBSITE_DOMAIN}`)
+      entryPoints:
+        - websecure
+      middlewares:
+        - security-headers
+        - flower-basic-auth
+        - flower-allow-ip
+      tls:
+        certResolver: le-staging
+      service: flower
   services:
     frontend-react:
       loadBalancer:
@@ -59,11 +81,19 @@ http:
     api:
       loadBalancer:
         servers:
-          - url: http://backend:5001
+          - url: http://api:${FASTAPI_PORT}
     pgadmin:
       loadBalancer:
         servers:
           - url: http://pgadmin:8080
+    django-admin:
+      loadBalancer:
+        servers:
+          - url: http://django:${DJANGO_PORT}
+    flower:
+      loadBalancer:
+        servers:
+          - url: http://flower:5555
   middlewares:
     redirect-to-https:
       redirectScheme:
@@ -92,6 +122,18 @@ http:
       ipAllowList:
         sourceRange:
           - ${PGADMIN_ALLOWLIST}
+    django-admin-allow-ip:
+      ipAllowList:
+        sourceRange:
+          - ${DJANGO_ADMIN_ALLOWLIST}
+    flower-allow-ip:
+      ipAllowList:
+        sourceRange:
+          - ${FLOWER_ALLOWLIST}
+    flower-basic-auth:
+      basicAuth:
+        users:
+          - ${FLOWER_BASIC_USERS}
     rate-limit:
       rateLimit:
         average: 100

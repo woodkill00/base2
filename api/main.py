@@ -1,6 +1,8 @@
 from fastapi import FastAPI, HTTPException
 import os
 import httpx
+from celery.result import AsyncResult
+import tasks  # ensure tasks module is importable
 
 ENV = os.getenv("ENV", "development")
 DJANGO_SERVICE_URL = os.getenv("DJANGO_SERVICE_URL", "http://django:8001")
@@ -31,3 +33,28 @@ async def get_me():
         return resp.json()
     except httpx.RequestError as e:
         raise HTTPException(status_code=502, detail=str(e))
+
+
+# --- Celery helper endpoints (optional) ---
+@app.post("/api/celery/ping")
+async def celery_ping():
+    try:
+        res = tasks.ping.delay()
+        return {"task_id": res.id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"enqueue_failed: {e}")
+
+
+@app.get("/api/celery/result/{task_id}")
+async def celery_result(task_id: str):
+    try:
+        ar = AsyncResult(task_id, app=tasks.app)
+        return {
+            "task_id": task_id,
+            "ready": ar.ready(),
+            "successful": ar.successful() if ar.ready() else False,
+            "state": ar.state,
+            "result": (ar.result if ar.ready() else None),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"result_failed: {e}")

@@ -5,3 +5,5 @@ python-jose[cryptography]
 passlib[bcrypt]
 psycopg2-binary
 pydantic
+celery
+redis
