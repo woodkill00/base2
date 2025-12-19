@@ -14,6 +14,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 ENV DJANGO_SETTINGS_MODULE=project.settings.production
-ENV PORT=8001
+# Default port; can be overridden by Compose via PORT=${DJANGO_PORT}
+ENV PORT=8000
 
-CMD ["gunicorn", "project.wsgi:application", "--bind", "0.0.0.0:8001", "--workers", "3"]
+# Use $PORT so Traefik and Compose can control the binding
+CMD ["sh", "-lc", "gunicorn project.wsgi:application --bind 0.0.0.0:${PORT} --workers 3"]
