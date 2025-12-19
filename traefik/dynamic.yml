@@ -57,12 +57,20 @@ http:
         - websecure
       middlewares:
         - security-headers
-        - redirect-admin-root
         - traefik-basic-auth
         - django-admin-allow-ip
       tls:
         certResolver: le-staging
       service: django-admin
+    django-admin-sub-root:
+      rule: Host(`${DJANGO_ADMIN_DNS_LABEL}.${WEBSITE_DOMAIN}`) && Path(`/`)
+      entryPoints:
+        - websecure
+      middlewares:
+        - redirect-admin-root
+      tls:
+        certResolver: le-staging
+      service: noop@internal
     django-admin-root:
       rule: Host(`${WEBSITE_DOMAIN}`) && PathPrefix(`/admin`)
       priority: 120
