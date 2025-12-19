@@ -57,6 +57,19 @@ http:
         - websecure
       middlewares:
         - security-headers
+        - redirect-admin-root
+        - traefik-basic-auth
+        - django-admin-allow-ip
+      tls:
+        certResolver: le-staging
+      service: django-admin
+    django-admin-root:
+      rule: Host(`${WEBSITE_DOMAIN}`) && PathPrefix(`/admin`)
+      priority: 120
+      entryPoints:
+        - websecure
+      middlewares:
+        - security-headers
         - traefik-basic-auth
         - django-admin-allow-ip
       tls:
@@ -134,6 +147,11 @@ http:
       basicAuth:
         users:
           - ${FLOWER_BASIC_USERS}
+    redirect-admin-root:
+      redirectRegex:
+        regex: ^/$
+        replacement: /admin/
+        permanent: true
     rate-limit:
       rateLimit:
         average: 100
