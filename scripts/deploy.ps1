@@ -201,16 +201,12 @@ if [ -d /opt/apps/base2 ]; then
   docker compose -f local.docker.yml up -d django > /root/logs/build/django-up.txt 2>&1 || true
   # If requested, enable celery/flower profiles and build required images
   if [ "${RUN_CELERY_CHECK:-}" = "1" ]; then
-    has_service() { docker compose -f local.docker.yml config --services | grep -qx "$1"; }
-    if has_service api; then
-      docker compose -f local.docker.yml build api > /root/logs/build/api-build.txt 2>&1 || true
-    fi
-    if has_service redis && has_service celery-worker; then
-      docker compose -f local.docker.yml --profile celery up -d redis celery-worker celery-beat > /root/logs/build/celery-up.txt 2>&1 || true
-    fi
-    if has_service flower; then
-      docker compose -f local.docker.yml --profile flower up -d flower > /root/logs/build/flower-up.txt 2>&1 || true
-    fi
+    # Build API (used by Celery worker image) if present; ignore if missing
+    docker compose -f local.docker.yml build api > /root/logs/build/api-build.txt 2>&1 || true
+    # Start Redis, Celery worker and beat under the celery profile; ignore if services not defined
+    docker compose -f local.docker.yml --profile celery up -d redis celery-worker celery-beat > /root/logs/build/celery-up.txt 2>&1 || true
+    # Start Flower if defined (separate profile)
+    docker compose -f local.docker.yml --profile flower up -d flower > /root/logs/build/flower-up.txt 2>&1 || true
   fi
   docker compose -f local.docker.yml ps > /root/logs/compose-ps.txt || true
   docker compose -f local.docker.yml config > /root/logs/compose-config.yml || true
