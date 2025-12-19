@@ -1,6 +1,6 @@
 param(
   [switch]$Full,
-  [switch]$UpdateOnly = $true,
+  [switch]$UpdateOnly,
   [string]$EnvPath = ".\.env",
   [string]$SshKey = "$env:USERPROFILE\.ssh\base2",
   [string]$DropletIp = "",
@@ -146,9 +146,9 @@ except Exception:
 
 function Run-Orchestrator {
   Write-Section "Running orchestrator"
-  $args = @()
-    if (-not $Full) { $args += '--update-only' }
-  & .\.venv\Scripts\python.exe .\digital_ocean\orchestrate_deploy.py @args
+  $cliArgs = @()
+  if (-not $Full -and $UpdateOnly) { $cliArgs += '--update-only' }
+  & .\.venv\Scripts\python.exe .\digital_ocean\orchestrate_deploy.py @cliArgs
 }
 
 function Remote-Verify($ip, $keyPath) {
@@ -163,26 +163,43 @@ set -eu
 mkdir -p /root/logs
 if [ -d /opt/apps/base2 ]; then
   cd /opt/apps/base2
+  # Prepare log directories
+  mkdir -p /root/logs/build /root/logs/services || true
   # Ensure latest repo and rebuild traefik to render new templates
   if command -v git >/dev/null 2>&1; then
+    # Determine branch from .env (DO_APP_BRANCH), default to main
+    BRANCH=$(grep -E '^DO_APP_BRANCH=' .env 2>/dev/null | cut -d'=' -f2 | tr -d '\r')
+    if [ -z "$BRANCH" ]; then BRANCH=main; fi
+    git fetch --all || true
+    git checkout "$BRANCH" || true
     git pull --rebase || true
   fi
-  docker compose -f local.docker.yml build --no-cache traefik || true
-  docker compose -f local.docker.yml up -d --force-recreate traefik || true
+  # Capture build and up logs for traefik/django/api
+  docker compose -f local.docker.yml build --no-cache traefik > /root/logs/build/traefik-build.txt 2>&1 || true
+  docker compose -f local.docker.yml build django > /root/logs/build/django-build.txt 2>&1 || true
+  docker compose -f local.docker.yml up -d --force-recreate traefik > /root/logs/build/traefik-up.txt 2>&1 || true
+  # Ensure Django service is running for admin route
+  docker compose -f local.docker.yml up -d django > /root/logs/build/django-up.txt 2>&1 || true
   # If requested, enable celery/flower profiles and build required images
   if [ "${RUN_CELERY_CHECK:-}" = "1" ]; then
     has_service() { docker compose -f local.docker.yml config --services | grep -qx "$1"; }
     if has_service api; then
-      docker compose -f local.docker.yml build api || true
+      docker compose -f local.docker.yml build api > /root/logs/build/api-build.txt 2>&1 || true
     fi
     if has_service redis && has_service celery-worker; then
-      docker compose -f local.docker.yml --profile celery up -d redis celery-worker || true
+      docker compose -f local.docker.yml --profile celery up -d redis celery-worker > /root/logs/build/celery-up.txt 2>&1 || true
     fi
     if has_service flower; then
-      docker compose -f local.docker.yml --profile flower up -d flower || true
+      docker compose -f local.docker.yml --profile flower up -d flower > /root/logs/build/flower-up.txt 2>&1 || true
     fi
   fi
   docker compose -f local.docker.yml ps > /root/logs/compose-ps.txt || true
+  docker compose -f local.docker.yml config > /root/logs/compose-config.yml || true
+  # Capture logs from all services
+  SERVICES=$(docker compose -f local.docker.yml config --services || true)
+  for s in $SERVICES; do
+    docker compose -f local.docker.yml logs --no-color --timestamps --tail=2000 "$s" > "/root/logs/services/${s}.log" 2>&1 || true
+  done
   CID=$(docker compose -f local.docker.yml ps -q traefik || true)
   if [ -n "$CID" ]; then
     docker exec "$CID" sh -lc 'env | sort' > /root/logs/traefik-env.txt || true
@@ -251,6 +268,8 @@ fi
   }
   if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
   $dest = (Resolve-Path $outDir).Path
+  # Copy entire remote logs directory (build + services + snapshots)
+  & $scpExe -i $keyPath -r "root@${ip}:/root/logs" $dest | Out-Null
   $files = @(
     'compose-ps.txt','traefik-env.txt','traefik-static.yml','traefik-dynamic.yml','traefik-ls.txt','traefik-logs.txt','backend-logs.txt',
     'curl-root.txt','curl-api.txt','curl-api-health.txt','curl-api-health-slash.txt',
@@ -291,7 +310,7 @@ Run-Orchestrator
 $resolvedIp = Get-DropletIp
 if (-not $resolvedIp) {
   Write-Warning "Could not determine droplet IP. Skipping remote verification."
-  Write-Section "Remote verify unavailable — saving local artifacts"
+  Write-Section "Remote verify unavailable - saving local artifacts"
   $outDir = $LogsDir
   if ($Timestamped) {
     $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
@@ -313,7 +332,7 @@ Remote-Verify -ip $resolvedIp -keyPath $SshKey
 if ($RunTests) {
   Write-Section "Running post-deploy tests"
   if ($TestsJson) {
-    $testArgs = @{ EnvPath = $EnvPath; LogsDir = $LogsDir; UseLatestTimestamp = $true; Json = $true }
+    $testArgs = @{ EnvPath = $EnvPath; LogsDir = $LogsDir; UseLatestTimestamp = $true; Json = $true; CheckDjangoAdmin = $true }
     if ($RunRateLimitTest) { $testArgs.CheckRateLimit = $true; $testArgs.RateLimitBurst = $RateLimitBurst }
       if ($RunCeleryCheck) { $testArgs.CheckCelery = $true }
     $jsonOut = & .\scripts\test.ps1 @testArgs
@@ -333,7 +352,7 @@ if ($RunTests) {
     }
     if ($exitCode -ne 0) { Write-Warning "Post-deploy tests failed"; exit 1 }
   } else {
-    $testArgs2 = @{ EnvPath = $EnvPath; LogsDir = $LogsDir; UseLatestTimestamp = $true }
+    $testArgs2 = @{ EnvPath = $EnvPath; LogsDir = $LogsDir; UseLatestTimestamp = $true; CheckDjangoAdmin = $true }
     if ($RunRateLimitTest) { $testArgs2.CheckRateLimit = $true; $testArgs2.RateLimitBurst = $RateLimitBurst }
       if ($RunCeleryCheck) { $testArgs2.CheckCelery = $true }
     & .\scripts\test.ps1 @testArgs2
@@ -343,4 +362,4 @@ if ($RunTests) {
 
 Write-Section "Done"
 $artDir = (Resolve-Path $LogsDir)
-Write-Host ("Artifacts saved to: {0}. Use -Timestamped for per-run subfolders." -f $artDir) -ForegroundColor Green
+Write-Output ("Artifacts saved to: " + $artDir + ". Use -Timestamped for per-run subfolders.")

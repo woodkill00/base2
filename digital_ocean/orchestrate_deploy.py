@@ -126,6 +126,8 @@ DO_API_SIZE = os.getenv("DO_API_SIZE", "s-1vcpu-1gb")
 DO_API_IMAGE = os.getenv("DO_API_IMAGE", "ubuntu-22-04-x64")
 PGADMIN_DNS_LABEL = os.getenv("PGADMIN_DNS_LABEL", "pgadmin").strip() or "pgadmin"
 TRAEFIK_DNS_LABEL = os.getenv("TRAEFIK_DNS_LABEL", "traefik").strip() or "traefik"
+DJANGO_ADMIN_DNS_LABEL = os.getenv("DJANGO_ADMIN_DNS_LABEL", "admin").strip() or "admin"
+FLOWER_DNS_LABEL = os.getenv("FLOWER_DNS_LABEL", "flower").strip() or "flower"
 import sys
 import argparse
 
@@ -263,7 +265,8 @@ else:
         exit(1)
 
     # --- 3. Update DNS Records ---
-    if not UPDATE_ONLY:
+    # Always ensure required DNS records exist/update to current droplet IP
+    if True:
         log("Updating DNS A/AAAA records for domain and www...")
         try:
             log_json("API Request - domains.list_records", {"domain": DO_DOMAIN})
@@ -273,8 +276,32 @@ else:
             ipv6_address = v6_list[0]["ip_address"] if v6_list else None
 
             # Track which records exist
-            found = {"A_root": None, "A_www": None, "AAAA_root": None, "A_pgadmin": None, "AAAA_pgadmin": None, "A_traefik": None, "AAAA_traefik": None}
-            updated = {"A_root": False, "A_www": False, "AAAA_root": False, "A_pgadmin": False, "AAAA_pgadmin": False, "A_traefik": False, "AAAA_traefik": False}
+            found = {
+                "A_root": None,
+                "A_www": None,
+                "AAAA_root": None,
+                "A_pgadmin": None,
+                "AAAA_pgadmin": None,
+                "A_traefik": None,
+                "AAAA_traefik": None,
+                "A_django_admin": None,
+                "AAAA_django_admin": None,
+                "A_flower": None,
+                "AAAA_flower": None,
+            }
+            updated = {
+                "A_root": False,
+                "A_www": False,
+                "AAAA_root": False,
+                "A_pgadmin": False,
+                "AAAA_pgadmin": False,
+                "A_traefik": False,
+                "AAAA_traefik": False,
+                "A_django_admin": False,
+                "AAAA_django_admin": False,
+                "A_flower": False,
+                "AAAA_flower": False,
+            }
 
             for record in records:
                 # Update all A records for this domain (root, www, subdomains, wildcard, traefik)
@@ -291,6 +318,10 @@ else:
                         or record["name"] == f"{TRAEFIK_DNS_LABEL}.{DO_DOMAIN}"
                         or record["name"] == PGADMIN_DNS_LABEL
                         or record["name"] == f"{PGADMIN_DNS_LABEL}.{DO_DOMAIN}"
+                        or record["name"] == DJANGO_ADMIN_DNS_LABEL
+                        or record["name"] == f"{DJANGO_ADMIN_DNS_LABEL}.{DO_DOMAIN}"
+                        or record["name"] == FLOWER_DNS_LABEL
+                        or record["name"] == f"{FLOWER_DNS_LABEL}.{DO_DOMAIN}"
                     )
                     if match_a:
                         # Track root and www for legacy logic
@@ -306,6 +337,12 @@ else:
                         if record["name"] == PGADMIN_DNS_LABEL or record["name"] == f"{PGADMIN_DNS_LABEL}.{DO_DOMAIN}":
                             found["A_pgadmin"] = record
                             updated["A_pgadmin"] = True
+                        if record["name"] == DJANGO_ADMIN_DNS_LABEL or record["name"] == f"{DJANGO_ADMIN_DNS_LABEL}.{DO_DOMAIN}":
+                            found["A_django_admin"] = record
+                            updated["A_django_admin"] = True
+                        if record["name"] == FLOWER_DNS_LABEL or record["name"] == f"{FLOWER_DNS_LABEL}.{DO_DOMAIN}":
+                            found["A_flower"] = record
+                            updated["A_flower"] = True
                         if DRY_RUN:
                             log(f"[DRY RUN] Would update A record ({record['name']}) -> {ip_address}")
                         else:
@@ -329,6 +366,10 @@ else:
                         or record["name"] == f"{TRAEFIK_DNS_LABEL}.{DO_DOMAIN}"
                         or record["name"] == PGADMIN_DNS_LABEL
                         or record["name"] == f"{PGADMIN_DNS_LABEL}.{DO_DOMAIN}"
+                        or record["name"] == DJANGO_ADMIN_DNS_LABEL
+                        or record["name"] == f"{DJANGO_ADMIN_DNS_LABEL}.{DO_DOMAIN}"
+                        or record["name"] == FLOWER_DNS_LABEL
+                        or record["name"] == f"{FLOWER_DNS_LABEL}.{DO_DOMAIN}"
                     ):
                         # Track root for legacy logic
                         if record["name"] == "@" or record["name"] == DO_DOMAIN or record["name"] == "":
@@ -340,6 +381,12 @@ else:
                         if record["name"] == PGADMIN_DNS_LABEL or record["name"] == f"{PGADMIN_DNS_LABEL}.{DO_DOMAIN}":
                             found["AAAA_pgadmin"] = record
                             updated["AAAA_pgadmin"] = True
+                        if record["name"] == DJANGO_ADMIN_DNS_LABEL or record["name"] == f"{DJANGO_ADMIN_DNS_LABEL}.{DO_DOMAIN}":
+                            found["AAAA_django_admin"] = record
+                            updated["AAAA_django_admin"] = True
+                        if record["name"] == FLOWER_DNS_LABEL or record["name"] == f"{FLOWER_DNS_LABEL}.{DO_DOMAIN}":
+                            found["AAAA_flower"] = record
+                            updated["AAAA_flower"] = True
                         if ipv6_address:
                             if DRY_RUN:
                                 log(f"[DRY RUN] Would update AAAA record ({record['name']}) -> {ipv6_address}")
@@ -431,6 +478,57 @@ else:
                     log_json("API Response - domains.create_record (A_pgadmin)", resp)
                     log(f"Created A record ({PGADMIN_DNS_LABEL}) -> {ip_address}")
             if ipv6_address and not found["AAAA_pgadmin"]:
+                            # Ensure Django admin subdomain exists
+                            if not found["A_django_admin"]:
+                                if DRY_RUN:
+                                    log(f"[DRY RUN] Would create A record ({DJANGO_ADMIN_DNS_LABEL}) -> {ip_address}")
+                                else:
+                                    log_json("API Request - domains.create_record (A_django_admin)", {"type": "A", "name": DJANGO_ADMIN_DNS_LABEL, "data": ip_address})
+                                    resp = client.domains.create_record(DO_DOMAIN, {
+                                        "type": "A",
+                                        "name": DJANGO_ADMIN_DNS_LABEL,
+                                        "data": ip_address
+                                    })
+                                    log_json("API Response - domains.create_record (A_django_admin)", resp)
+                                    log(f"Created A record ({DJANGO_ADMIN_DNS_LABEL}) -> {ip_address}")
+                            if ipv6_address and not found["AAAA_django_admin"]:
+                                if DRY_RUN:
+                                    log(f"[DRY RUN] Would create AAAA record ({DJANGO_ADMIN_DNS_LABEL}) -> {ipv6_address}")
+                                else:
+                                    log_json("API Request - domains.create_record (AAAA_django_admin)", {"type": "AAAA", "name": DJANGO_ADMIN_DNS_LABEL, "data": ipv6_address})
+                                    resp = client.domains.create_record(DO_DOMAIN, {
+                                        "type": "AAAA",
+                                        "name": DJANGO_ADMIN_DNS_LABEL,
+                                        "data": ipv6_address
+                                    })
+                                    log_json("API Response - domains.create_record (AAAA_django_admin)", resp)
+                                    log(f"Created AAAA record ({DJANGO_ADMIN_DNS_LABEL}) -> {ipv6_address}")
+
+                            # Ensure Flower subdomain exists
+                            if not found["A_flower"]:
+                                if DRY_RUN:
+                                    log(f"[DRY RUN] Would create A record ({FLOWER_DNS_LABEL}) -> {ip_address}")
+                                else:
+                                    log_json("API Request - domains.create_record (A_flower)", {"type": "A", "name": FLOWER_DNS_LABEL, "data": ip_address})
+                                    resp = client.domains.create_record(DO_DOMAIN, {
+                                        "type": "A",
+                                        "name": FLOWER_DNS_LABEL,
+                                        "data": ip_address
+                                    })
+                                    log_json("API Response - domains.create_record (A_flower)", resp)
+                                    log(f"Created A record ({FLOWER_DNS_LABEL}) -> {ip_address}")
+                            if ipv6_address and not found["AAAA_flower"]:
+                                if DRY_RUN:
+                                    log(f"[DRY RUN] Would create AAAA record ({FLOWER_DNS_LABEL}) -> {ipv6_address}")
+                                else:
+                                    log_json("API Request - domains.create_record (AAAA_flower)", {"type": "AAAA", "name": FLOWER_DNS_LABEL, "data": ipv6_address})
+                                    resp = client.domains.create_record(DO_DOMAIN, {
+                                        "type": "AAAA",
+                                        "name": FLOWER_DNS_LABEL,
+                                        "data": ipv6_address
+                                    })
+                                    log_json("API Response - domains.create_record (AAAA_flower)", resp)
+                                    log(f"Created AAAA record ({FLOWER_DNS_LABEL}) -> {ipv6_address}")
                 if DRY_RUN:
                     log(f"[DRY RUN] Would create AAAA record ({PGADMIN_DNS_LABEL}) -> {ipv6_address}")
                 else:

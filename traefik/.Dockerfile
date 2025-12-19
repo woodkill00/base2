@@ -41,7 +41,7 @@ RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
     echo 'set -e' >> /docker-entrypoint.sh && \
     echo 'envsubst "\$TRAEFIK_PORT \$TRAEFIK_API_PORT \$TRAEFIK_LOG_LEVEL \$TRAEFIK_DOCKER_NETWORK \$TRAEFIK_EXPOSED_BY_DEFAULT \$TRAEFIK_CERT_EMAIL \$TRAEFIK_API_DEBUG" < /etc/traefik/templates/traefik.yml.template > /etc/traefik/traefik.yml' >> /docker-entrypoint.sh && \
   echo 'mkdir -p /etc/traefik/dynamic' >> /docker-entrypoint.sh && \
-  echo 'envsubst "\$WEBSITE_DOMAIN \$TRAEFIK_DASH_BASIC_USERS \$PGADMIN_ALLOWLIST \$PGADMIN_DNS_LABEL \$TRAEFIK_DNS_LABEL \$FASTAPI_PORT \$DJANGO_PORT \$DJANGO_ADMIN_DNS_LABEL \$DJANGO_ADMIN_ALLOWLIST" < /etc/traefik/templates/dynamic.yml.template > /etc/traefik/dynamic/dynamic.yml' >> /docker-entrypoint.sh && \
+  echo 'envsubst "\$WEBSITE_DOMAIN \$TRAEFIK_DASH_BASIC_USERS \$PGADMIN_ALLOWLIST \$PGADMIN_DNS_LABEL \$TRAEFIK_DNS_LABEL \$FASTAPI_PORT \$DJANGO_PORT \$DJANGO_ADMIN_DNS_LABEL \$DJANGO_ADMIN_ALLOWLIST \$FLOWER_DNS_LABEL \$FLOWER_ALLOWLIST \$FLOWER_BASIC_USERS" < /etc/traefik/templates/dynamic.yml.template > /etc/traefik/dynamic/dynamic.yml' >> /docker-entrypoint.sh && \
     echo 'exec /entrypoint.sh "$@"' >> /docker-entrypoint.sh && \
     chmod +x /docker-entrypoint.sh
 

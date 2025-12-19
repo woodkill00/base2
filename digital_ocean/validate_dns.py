@@ -55,6 +55,7 @@ def main():
     parser.add_argument('--domain', help='Domain to check (default: all domains in account or DO_APP_DOMAIN)')
     parser.add_argument('--record-type', help='DNS record type to check (A, CNAME, MX, etc.)')
     parser.add_argument('--name', help='Record name to check (e.g., @, www, mail)')
+    parser.add_argument('--check-required', action='store_true', help='Check required app records (@, www, traefik, pgadmin, django-admin, flower)')
     args = parser.parse_args()
 
     # Always load .env for DO_API_TOKEN
@@ -65,7 +66,9 @@ def main():
     if args.domain:
         domains = [args.domain]
     else:
-        domains = get_domains(client)
+        # Prefer DO_DOMAIN from env for project-specific checks when --check-required
+        env_domain = os.getenv('DO_DOMAIN')
+        domains = [env_domain] if env_domain else get_domains(client)
 
     if not domains:
         print("No domains found in your Digital Ocean account.")
@@ -75,7 +78,20 @@ def main():
     for domain in domains:
         try:
             records = get_records(client, domain)
-            if args.record_type or args.name:
+            if args.check-required:
+                traefik_label = os.getenv('TRAEFIK_DNS_LABEL', 'traefik')
+                pgadmin_label = os.getenv('PGADMIN_DNS_LABEL', 'pgadmin')
+                admin_label = os.getenv('DJANGO_ADMIN_DNS_LABEL', 'admin')
+                flower_label = os.getenv('FLOWER_DNS_LABEL', 'flower')
+                required = ['@', 'www', traefik_label, pgadmin_label, admin_label, flower_label]
+                print(f"\n[Required record presence checks]")
+                for name in required:
+                    has_a = any(r['type']=='A' and r['name']==name for r in records)
+                    has_aaaa = any(r['type']=='AAAA' and r['name']==name for r in records)
+                    a_status = '✔' if has_a else '✗'
+                    aaaa_status = '✔' if has_aaaa else '—'
+                    print(f"  - {name}: A {a_status}, AAAA {aaaa_status}")
+            elif args.record_type or args.name:
                 print_record_status(domain, records, args.record_type, args.name)
             else:
                 print(f"\nDomain: {domain}")

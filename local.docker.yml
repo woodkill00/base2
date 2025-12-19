@@ -154,6 +154,7 @@ services:
       - PGADMIN_ALLOWLIST=${PGADMIN_ALLOWLIST}
       - DJANGO_ADMIN_DNS_LABEL=${DJANGO_ADMIN_DNS_LABEL}
       - DJANGO_ADMIN_ALLOWLIST=${DJANGO_ADMIN_ALLOWLIST}
+      - DJANGO_PORT=${DJANGO_PORT}
       - FLOWER_DNS_LABEL=${FLOWER_DNS_LABEL}
       - FLOWER_ALLOWLIST=${FLOWER_ALLOWLIST}
       - FLOWER_BASIC_USERS=${FLOWER_BASIC_USERS}
@@ -307,7 +308,7 @@ services:
       args:
         - PYTHON_VERSION=${FASTAPI_PYTHON_VERSION}
     container_name: ${COMPOSE_PROJECT_NAME}_celery_worker
-    command: ["celery", "-A", "tasks.app", "worker", "--loglevel=${CELERY_LOG_LEVEL}", "--concurrency=${CELERY_CONCURRENCY}"]
+    command: ["python", "-m", "celery", "-A", "tasks.app", "worker", "--loglevel=${CELERY_LOG_LEVEL}", "--concurrency=${CELERY_CONCURRENCY}"]
     environment:
       - CELERY_BROKER_URL=${CELERY_BROKER_URL}
       - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
@@ -335,7 +336,7 @@ services:
       args:
         - PYTHON_VERSION=${FASTAPI_PYTHON_VERSION}
     container_name: ${COMPOSE_PROJECT_NAME}_celery_beat
-    command: ["celery", "-A", "tasks.app", "beat", "--loglevel=${CELERY_LOG_LEVEL}"]
+    command: ["python", "-m", "celery", "-A", "tasks.app", "beat", "--loglevel=${CELERY_LOG_LEVEL}"]
     environment:
       - CELERY_BROKER_URL=${CELERY_BROKER_URL}
       - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
@@ -359,7 +360,7 @@ services:
   flower:
     image: mher/flower:2.0.1
     container_name: ${COMPOSE_PROJECT_NAME}_flower
-    command: ["flower", "--port=5555", "--broker=${CELERY_BROKER_URL}"]
+    command: ["python", "-m", "flower", "--port=5555", "--broker=${CELERY_BROKER_URL}"]
     environment:
       - FLOWER_PORT=5555
     networks:

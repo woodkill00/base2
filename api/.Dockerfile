@@ -13,7 +13,10 @@ RUN useradd -m appuser
 USER appuser
 
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+ENV PATH="/home/appuser/.local/bin:${PATH}" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+RUN pip install --user --no-cache-dir -r requirements.txt
 
 COPY . .
 
