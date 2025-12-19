@@ -201,6 +201,8 @@ if [ -d /opt/apps/base2 ]; then
   docker compose -f local.docker.yml up -d django > /root/logs/build/django-up.txt 2>&1 || true
   # If requested, enable celery/flower profiles and build required images
   if [ "${RUN_CELERY_CHECK:-}" = "1" ]; then
+    # Tune host sysctl for Redis memory overcommit (best-effort, ignore errors)
+    (sysctl -w vm.overcommit_memory=1 && echo 'vm.overcommit_memory=1' > /etc/sysctl.d/99-redis.conf && sysctl --system) || true
     # Build API (used by Celery worker image) if present; ignore if missing
     docker compose -f local.docker.yml build api > /root/logs/build/api-build.txt 2>&1 || true
     # Start Redis, Celery worker and beat under the celery profile; ignore if services not defined
@@ -264,6 +266,35 @@ if [ -d /opt/apps/base2 ]; then
     cp /root/logs/curl-api-health.txt /root/logs/curl-api.txt || true
     if ! grep -q '^HTTP/.* 200' /root/logs/curl-api.txt 2>/dev/null; then
       cp /root/logs/curl-api-health-slash.txt /root/logs/curl-api.txt || true
+    fi
+
+    # Flower 401 check via Traefik (no credentials) -> expect 401 if guarded
+    FL_LABEL=$(grep -E '^FLOWER_DNS_LABEL=' /opt/apps/base2/.env | cut -d'=' -f2 | tr -d '\r')
+    if [ -n "$FL_LABEL" ]; then
+      FHOST="$FL_LABEL.$DOMAIN"
+      curl -skI "https://$FHOST/" -o /root/logs/curl-flower.txt || true
+    fi
+
+    # Celery roundtrip: enqueue ping and poll for result
+    if [ "${RUN_CELERY_CHECK:-}" = "1" ]; then
+      curl -sk -X POST "https://$DOMAIN/api/celery/ping" -H 'Content-Type: application/json' -d '{}' -o /root/logs/celery-ping.json || true
+      TASK_ID=$(python3 - <<'PY'
+import json,sys
+try:
+    print(json.load(open('/root/logs/celery-ping.json'))['task_id'])
+except Exception:
+    print('')
+PY
+)
+      if [ -n "$TASK_ID" ]; then
+        for i in $(seq 1 30); do
+          curl -sk "https://$DOMAIN/api/celery/result/$TASK_ID" -o /root/logs/celery-result.json || true
+          if grep -q '"successful": *true' /root/logs/celery-result.json 2>/dev/null; then
+            break
+          fi
+          sleep 2
+        done
+      fi
     fi
   fi
   # mark completion

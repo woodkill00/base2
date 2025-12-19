@@ -287,6 +287,8 @@ services:
     image: redis:${REDIS_VERSION}
     container_name: ${COMPOSE_PROJECT_NAME}_redis
     command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
     networks:
       - base2_network
     restart: unless-stopped
@@ -395,4 +397,8 @@ volumes:
 
   traefik_logs:
     name: ${COMPOSE_PROJECT_NAME}_traefik_logs
+    driver: local
+
+  redis_data:
+    name: ${COMPOSE_PROJECT_NAME}_redis_data
     driver: local
