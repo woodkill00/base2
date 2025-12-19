@@ -275,6 +275,8 @@ fi
   Set-Content -Path $tmpScript -Value $unixScript -Encoding Ascii -NoNewline
   # Upload and execute the script
   & $scpExe -i $keyPath @($sshCommon) $tmpScript "root@${ip}:/root/remote_verify.sh" | Out-Null
+  # Clear previous completion flag to avoid copying stale logs immediately
+  try { & $sshExe @sshArgs "rm -f /root/logs/remote_verify.done" | Out-Null } catch { }
   if ($AsyncVerify) {
     if ($RunCeleryCheck) {
       & $sshExe @sshArgs "RUN_CELERY_CHECK=1 nohup bash /root/remote_verify.sh > /root/remote_verify.out 2>&1 & echo \$! > /root/remote_verify.pid" | Out-Null
