@@ -13,6 +13,8 @@ param(
   [switch]$RunRateLimitTest,
   [switch]$RunCeleryCheck,
   [int]$RateLimitBurst = 20,
+  [int]$VerifyTimeoutSec = 600,
+  [switch]$AsyncVerify,
   [string]$ReportName = 'post-deploy-report.json'
 )
 
@@ -155,7 +157,8 @@ function Remote-Verify($ip, $keyPath) {
   Write-Section "Remote verification on $ip"
   $sshExe = "ssh"
   $scpExe = "scp"
-  $sshArgs = @('-i', $keyPath, "root@$ip")
+  $sshCommon = @('-o','ConnectTimeout=20','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=4','-o','StrictHostKeyChecking=no')
+  $sshArgs = @('-i', $keyPath) + $sshCommon + @("root@$ip")
   # Create a remote verification script to avoid quoting pitfalls
   $tmpScript = Join-Path $env:TEMP "remote_verify.sh"
   $scriptContent = @'
@@ -170,7 +173,7 @@ if [ -d /opt/apps/base2 ]; then
     # Determine branch from .env (DO_APP_BRANCH), default to main
     BRANCH=$(grep -E '^DO_APP_BRANCH=' .env 2>/dev/null | cut -d'=' -f2 | tr -d '\r')
     if [ -z "$BRANCH" ]; then BRANCH=main; fi
-    git fetch --all || true
+    git fetch --all --prune || true
     # Backup and remove potential untracked files that can block checkout (e.g., ACME storage)
     if [ -d letsencrypt ]; then
       tar -czf /root/logs/build/letsencrypt-backup.tgz letsencrypt || true
@@ -179,9 +182,14 @@ if [ -d /opt/apps/base2 ]; then
     # Reset any local changes and clean untracked files to avoid checkout failures
     git reset --hard HEAD || true
     git clean -fd || true
-    # Force checkout to the desired branch and pull latest
-    git checkout -f "$BRANCH" || true
-    git pull --rebase || true
+    # Force checkout to track remote branch and hard reset to remote to avoid rebase or merge prompts
+    if git show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
+      git checkout -B "$BRANCH" "origin/$BRANCH" || git checkout -f "$BRANCH" || true
+      git reset --hard "origin/$BRANCH" || true
+    else
+      git checkout -f "$BRANCH" || true
+      git pull --rebase || true
+    fi
   fi
   # Capture build and up logs for traefik/django/api
   docker compose -f local.docker.yml build --no-cache traefik > /root/logs/build/traefik-build.txt 2>&1 || true
@@ -256,17 +264,28 @@ if [ -d /opt/apps/base2 ]; then
       cp /root/logs/curl-api-health-slash.txt /root/logs/curl-api.txt || true
     fi
   fi
+  # mark completion
+  date -u +"%Y-%m-%dT%H:%M:%SZ" > /root/logs/remote_verify.done || true
 fi
 '@
   # Ensure Unix LF endings and no BOM for remote bash
   $unixScript = $scriptContent -replace "`r`n","`n"
   Set-Content -Path $tmpScript -Value $unixScript -Encoding Ascii -NoNewline
   # Upload and execute the script
-  & $scpExe -i $keyPath $tmpScript "root@${ip}:/root/remote_verify.sh" | Out-Null
-  if ($RunCeleryCheck) {
-    & $sshExe @sshArgs "RUN_CELERY_CHECK=1 bash /root/remote_verify.sh" | Out-Null
+  & $scpExe -i $keyPath @($sshCommon) $tmpScript "root@${ip}:/root/remote_verify.sh" | Out-Null
+  if ($AsyncVerify) {
+    if ($RunCeleryCheck) {
+      & $sshExe @sshArgs "nohup bash /root/remote_verify.sh > /root/remote_verify.out 2>&1 & echo \$! > /root/remote_verify.pid" | Out-Null
+    } else {
+      & $sshExe @sshArgs "nohup bash /root/remote_verify.sh > /root/remote_verify.out 2>&1 & echo \$! > /root/remote_verify.pid" | Out-Null
+    }
   } else {
-    & $sshExe @sshArgs "bash /root/remote_verify.sh" | Out-Null
+    $timeoutCmd = "if command -v timeout >/dev/null 2>&1; then timeout -k 15s $VerifyTimeoutSec bash /root/remote_verify.sh; else bash /root/remote_verify.sh; fi"
+    if ($RunCeleryCheck) {
+      & $sshExe @sshArgs "RUN_CELERY_CHECK=1 sh -lc '$timeoutCmd'" | Out-Null
+    } else {
+      & $sshExe @sshArgs "sh -lc '$timeoutCmd'" | Out-Null
+    }
   }
 
   Write-Section "Copying verification artifacts"
@@ -278,7 +297,7 @@ fi
   if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
   $dest = (Resolve-Path $outDir).Path
   # Copy entire remote logs directory (build + services + snapshots)
-  & $scpExe -i $keyPath -r "root@${ip}:/root/logs" $dest | Out-Null
+  & $scpExe -i $keyPath @($sshCommon) -r "root@${ip}:/root/logs" $dest | Out-Null
   $files = @(
     'compose-ps.txt','traefik-env.txt','traefik-static.yml','traefik-dynamic.yml','traefik-ls.txt','traefik-logs.txt','backend-logs.txt',
     'curl-root.txt','curl-api.txt','curl-api-health.txt','curl-api-health-slash.txt',
@@ -286,7 +305,7 @@ fi
     'traefik-dynamic.template.yml','traefik-static.template.yml'
   )
   foreach ($f in $files) {
-    & $scpExe -i $keyPath "root@${ip}:/root/logs/$f" $dest | Out-Null
+    & $scpExe -i $keyPath @($sshCommon) "root@${ip}:/root/logs/$f" $dest | Out-Null
   }
 
   # Scrub sensitive material from environment snapshots
