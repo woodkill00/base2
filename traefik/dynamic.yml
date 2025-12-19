@@ -67,10 +67,13 @@ http:
       entryPoints:
         - websecure
       middlewares:
-        - redirect-admin-root
+        - replace-admin-root
+        - security-headers
+        - traefik-basic-auth
+        - django-admin-allow-ip
       tls:
         certResolver: le-staging
-      service: noop@internal
+      service: django-admin
     django-admin-root:
       rule: Host(`${WEBSITE_DOMAIN}`) && PathPrefix(`/admin`)
       priority: 120
@@ -160,6 +163,10 @@ http:
         regex: ^/$
         replacement: /admin/
         permanent: true
+    replace-admin-root:
+      replacePathRegex:
+        regex: ^/$
+        replacement: /admin/
     rate-limit:
       rateLimit:
         average: 100
