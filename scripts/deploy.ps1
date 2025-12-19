@@ -211,7 +211,11 @@ if [ -d /opt/apps/base2 ]; then
   docker compose -f local.docker.yml ps > /root/logs/compose-ps.txt || true
   docker compose -f local.docker.yml config > /root/logs/compose-config.yml || true
   # Capture logs from all services
-  SERVICES=$(docker compose -f local.docker.yml config --services || true)
+  # Collect logs for services across default and profiled stacks (celery, flower)
+  S_DEF=$(docker compose -f local.docker.yml config --services || true)
+  S_CEL=$(docker compose -f local.docker.yml --profile celery config --services || true)
+  S_FLO=$(docker compose -f local.docker.yml --profile flower config --services || true)
+  SERVICES=$(printf "%s\n%s\n%s\n" "$S_DEF" "$S_CEL" "$S_FLO" | awk 'NF && !x[$0]++')
   for s in $SERVICES; do
     docker compose -f local.docker.yml logs --no-color --timestamps --tail=2000 "$s" > "/root/logs/services/${s}.log" 2>&1 || true
   done
