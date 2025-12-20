@@ -33,6 +33,15 @@ const Navigation = () => {
             Dashboard
           </Link>
           <Link 
+            to="/users" 
+            style={{
+              ...styles.menuItem,
+              ...(isActive('/users') && styles.menuItemActive)
+            }}
+          >
+            Users
+          </Link>
+          <Link 
             to="/settings" 
             style={{
               ...styles.menuItem,

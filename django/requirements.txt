@@ -2,3 +2,5 @@ Django
 gunicorn
 psycopg2-binary
 python-dotenv
+django-phonenumber-field[phonenumberslite]
+django-countries

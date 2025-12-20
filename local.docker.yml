@@ -1,4 +1,25 @@
 services:
+  # Nginx for Django static files
+  nginx-static:
+    image: nginx:1.25-alpine
+    container_name: ${COMPOSE_PROJECT_NAME}_nginx_static
+    volumes:
+      - ./nginx/nginx-django-static.conf:/etc/nginx/nginx.conf:ro
+      - django_static:/app/static:ro
+    networks:
+      - base2_network
+    restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://localhost:8081/health || exit 1']
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+services:
   # React App Service
   react-app:
     build:
@@ -70,7 +91,7 @@ services:
       django:
         condition: service_started
     restart: unless-stopped
-    read_only: true
+    # read_only: true  # Disabled for debug
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -101,12 +122,16 @@ services:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
       - DJANGO_DEBUG=${DJANGO_DEBUG}
       - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
+      - DJANGO_SECURE_SSL_REDIRECT=${DJANGO_SECURE_SSL_REDIRECT}
       - DB_HOST=postgres
       - DB_PORT=${POSTGRES_PORT}
       - DB_NAME=${POSTGRES_DB}
       - DB_USER=${POSTGRES_USER}
       - DB_PASSWORD=${POSTGRES_PASSWORD}
       - PORT=${DJANGO_PORT}
+      - DJANGO_SUPERUSER_NAME=${DJANGO_SUPERUSER_NAME}
+      - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL}
+      - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD}
     networks:
       - base2_network
     depends_on:
@@ -401,4 +426,8 @@ volumes:
 
   redis_data:
     name: ${COMPOSE_PROJECT_NAME}_redis_data
+    driver: local
+
+  django_static:
+    name: ${COMPOSE_PROJECT_NAME}_django_static
     driver: local

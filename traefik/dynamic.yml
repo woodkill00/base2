@@ -4,9 +4,8 @@ http:
       rule: (Host(`${WEBSITE_DOMAIN}`) || Host(`www.${WEBSITE_DOMAIN}`)) && PathPrefix(`/`) && !PathPrefix(`/api`)
       entryPoints:
         - websecure
-      middlewares:
         - security-headers
-      tls:
+        - django-admin-allow-ip
         certResolver: le-staging
       service: frontend-react
     frontend-http-react:
@@ -16,47 +15,45 @@ http:
       middlewares:
         - redirect-to-https
       service: noop@internal
-    api:
-      rule: Host(`${WEBSITE_DOMAIN}`) && PathPrefix(`/api`)
-      priority: 100
+        - security-headers
+        - django-admin-allow-ip
       entryPoints:
         - websecure
       middlewares:
-        - security-headers
+        - ${SECURITY_HEADERS_MIDDLEWARE}
         - rate-limit
         - retry
       tls:
         certResolver: le-staging
       service: api
-
-    traefik-dashboard:
-      rule: Host(`${TRAEFIK_DNS_LABEL}.${WEBSITE_DOMAIN}`)
+            - security-headers-no-hsts
+        - django-admin-allow-ip
       entryPoints:
         - websecure
       middlewares:
-        - security-headers
+        - ${SECURITY_HEADERS_MIDDLEWARE}
         - traefik-basic-auth
       tls:
         certResolver: le-staging
       service: api@internal
 
-    pgadmin:
+            - security-headers-no-hsts
       rule: Host(`${PGADMIN_DNS_LABEL}.${WEBSITE_DOMAIN}`)
       entryPoints:
         - websecure
       middlewares:
-        - security-headers
+        - ${SECURITY_HEADERS_MIDDLEWARE}
         - traefik-basic-auth
         - pgadmin-allow-ip
       tls:
         certResolver: le-staging
       service: pgadmin
-    django-admin:
+            - security-headers-no-hsts
       rule: Host(`${DJANGO_ADMIN_DNS_LABEL}.${WEBSITE_DOMAIN}`) && PathPrefix(`/admin`)
       entryPoints:
         - websecure
       middlewares:
-        - security-headers
+        - ${SECURITY_HEADERS_MIDDLEWARE}
         - traefik-basic-auth
         - django-admin-allow-ip
       tls:
@@ -68,7 +65,7 @@ http:
         - websecure
       middlewares:
         - replace-admin-root
-        - security-headers
+        - ${SECURITY_HEADERS_MIDDLEWARE}
         - traefik-basic-auth
         - django-admin-allow-ip
       tls:
@@ -80,7 +77,7 @@ http:
       entryPoints:
         - websecure
       middlewares:
-        - security-headers
+        - ${SECURITY_HEADERS_MIDDLEWARE}
         - traefik-basic-auth
         - django-admin-allow-ip
       tls:
@@ -91,12 +88,21 @@ http:
       entryPoints:
         - websecure
       middlewares:
-        - security-headers
+        - ${SECURITY_HEADERS_MIDDLEWARE}
         - flower-basic-auth
         - flower-allow-ip
       tls:
         certResolver: le-staging
       service: flower
+    static-files:
+      rule: Host(`${WEBSITE_DOMAIN}`) && PathPrefix(`/static`)
+      entryPoints:
+        - websecure
+      service: django-static
+      middlewares:
+        - security-headers
+      tls:
+        certResolver: le-staging
   services:
     frontend-react:
       loadBalancer:
@@ -118,6 +124,10 @@ http:
       loadBalancer:
         servers:
           - url: http://flower:5555
+    django-static:
+      loadBalancer:
+        servers:
+          - url: http://nginx-static:8081
   middlewares:
     redirect-to-https:
       redirectScheme:
@@ -129,6 +139,26 @@ http:
         stsSeconds: 31536000
         stsIncludeSubdomains: true
         stsPreload: true
+        frameDeny: true
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: "no-referrer-when-downgrade"
+        customResponseHeaders:
+          X-Frame-Options: "DENY"
+          X-Content-Type-Options: "nosniff"
+          X-XSS-Protection: "1; mode=block"
+    security-headers-no-hsts:
+      headers:
+        frameDeny: true
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: "no-referrer-when-downgrade"
+        customResponseHeaders:
+          X-Frame-Options: "DENY"
+          X-Content-Type-Options: "nosniff"
+          X-XSS-Protection: "1; mode=block"
+    security-headers-no-hsts:
+      headers:
         frameDeny: true
         contentTypeNosniff: true
         browserXssFilter: true

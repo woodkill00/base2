@@ -214,3 +214,58 @@
 - [X] T059 CI/test report includes `celery` checks section when `-CheckCelery` is used
 - [X] T060 No host ports opened for `redis`, `celery-*`, or `flower` services; Flower only reachable through Traefik when enabled and guarded
 
+---
+
+## Phase 7: Security & Compliance Implementation (Audit Coverage)
+
+- [ ] T061 [P] Research FastAPI login/session proxy issues and document in docs/fastapi_login_proxy.md
+- [ ] T062 [P] Research JWT/session/cookie best practices and document in docs/jwt_session_best_practices.md
+- [ ] T063 [P] Research secret management options (Vault, AWS Secrets Manager, Docker secrets) and document in docs/secret_management.md
+- [ ] T064 [P] Audit CORS and CSRF settings in FastAPI and Django, document findings in docs/cors_csrf_audit.md
+- [ ] T065 [P] Review container security (Dockerfile, Compose, user permissions, resource limits) and document in docs/container_security.md
+- [ ] T066 [P] Audit database security (SSL, password policy, pg_hba.conf, backups) and document in docs/database_security.md
+- [ ] T067 [P] Research rate limiting/throttling (FastAPI, Django, Traefik) and document in docs/rate_limiting.md
+- [ ] T068 [P] Document logging and monitoring requirements in docs/logging_monitoring.md
+
+- [ ] T069 Define step-by-step fixes for each researched area in docs/fix_proposals.md
+- [ ] T070 Propose configuration changes and code patches, mapping to specific files in docs/config_patch_map.md
+
+### Implementation Tasks
+- [ ] T071 [P] Implement strong secret generation scripts in scripts/generate-passwords.sh
+- [ ] T072 [P] Update .env.example with secure template and instructions
+- [ ] T073 [P] Integrate secret management solution (Vault/AWS/Docker secrets) in backend/.env, api/.env, django/.env
+- [ ] T074 [P] Enforce strong password policy in postgres/postgresql.conf
+- [ ] T075 [P] Implement password complexity validator in api/auth/password_validator.py
+- [ ] T076 [P] Implement account lockout logic in api/auth/lockout.py
+- [ ] T077 [P] Update traefik/traefik.yml for secure TLS config
+- [ ] T078 [P] Update nginx/nginx.conf for SSL redirect and secure ciphers
+- [ ] T079 [P] Test SSL/TLS config using scripts/test_ssl.sh
+- [ ] T080 [P] Update FastAPI CORS config in api/main.py
+- [ ] T081 [P] Install and configure django-cors-headers in django/settings.py
+- [ ] T082 [P] Update .env.example for allowed origins and trusted origins
+- [ ] T083 [P] Generate and install SSL certs for Postgres in postgres/server.crt and postgres/server.key
+- [ ] T084 [P] Update postgres/postgresql.conf and pg_hba.conf for SSL and authentication
+- [ ] T085 [P] Implement SQL injection prevention in api/database.py and relevant endpoints
+- [ ] T086 [P] Create backup script in scripts/backup-db.sh
+- [ ] T087 [P] Update api/Dockerfile to run as non-root, set resource limits, and health checks
+- [ ] T088 [P] Update local.docker.yml for security options, resource limits, and secrets
+- [ ] T089 [P] Add container security scan workflow in .github/workflows/security-scan.yml
+- [ ] T090 [P] Implement RSA key pair generation in scripts/generate-jwt-keys.sh
+- [ ] T091 [P] Refactor JWT handling to use RS256 in api/auth/jwt_handler.py
+- [ ] T092 [P] Implement token blacklisting and refresh logic in api/auth/jwt_handler.py
+- [ ] T093 [P] Add/extend Pydantic models for validation in api/models/validators.py
+- [ ] T094 [P] Add request size limit middleware in api/main.py
+- [ ] T095 [P] Audit and update Django form validation in django/forms.py
+- [ ] T096 [P] Implement FastAPI rate limiting with slowapi in api/main.py
+- [ ] T097 [P] Implement Django rate limiting with django-ratelimit in django/views.py
+- [ ] T098 [P] Add Traefik rate limiting config in traefik/dynamic/rate-limit.yml
+- [ ] T099 [P] Update local.docker.yml for network segmentation
+- [ ] T100 [P] Create firewall setup script in scripts/setup-firewall.sh
+- [ ] T101 [P] Implement structured logging with structlog in api/logging_config.py
+- [ ] T102 [P] Add security event monitoring middleware in api/middleware/security_logger.py
+
+### Validation & Review
+- [ ] T103 Validate each fix with tests/manual checks, document in docs/validation_results.md
+- [ ] T104 Review all changes for constitution/audit compliance, update docs/audit_checklist.md
+- [ ] T105 Update README.md with security checklist and process documentation
+

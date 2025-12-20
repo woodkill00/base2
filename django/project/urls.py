@@ -1,10 +1,8 @@
-from django.urls import path
-from django.http import JsonResponse
-
-
-def internal_me(request):
-    return JsonResponse({"ok": True, "user": "internal-placeholder"})
+from django.contrib import admin
+from django.urls import path, include
 
 urlpatterns = [
-    path("internal/users/me", internal_me),
+    path("admin/", admin.site.urls),
+    path("internal/users/", include("users.urls")),
+    path("internal/catalog/", include("catalog.urls")),
 ]

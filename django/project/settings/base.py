@@ -3,6 +3,15 @@ import os
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "change_me")
 DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",") if h.strip()]
+if os.environ.get("DJANGO_ALLOW_ALL_HOSTS", "false").lower() == "true":
+    ALLOWED_HOSTS = ["*"]
+
+# Trust proxy headers from Traefik and ensure correct scheme/host
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Trust CSRF origins derived from allowed hosts (https)
+CSRF_TRUSTED_ORIGINS = [f"https://{h}" for h in ALLOWED_HOSTS if h]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -11,6 +20,11 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "phonenumber_field",
+    "django_countries",
+    "common",
+    "users",
+    "catalog",
 ]
 
 MIDDLEWARE = [
@@ -61,3 +75,7 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join("/app", "static")
+
+# Explicit default auto field
+# Use BigAutoField for new primary keys for consistency
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
