@@ -229,7 +229,6 @@ services:
     networks:
       - base2_network
     restart: unless-stopped
-    read_only: true
     security_opt:
       - no-new-privileges:true
     healthcheck:
