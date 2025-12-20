@@ -1,25 +1,4 @@
 services:
-  # Nginx for Django static files
-  nginx-static:
-    image: nginx:1.25-alpine
-    container_name: ${COMPOSE_PROJECT_NAME}_nginx_static
-    volumes:
-      - ./nginx/nginx-django-static.conf:/etc/nginx/nginx.conf:ro
-      - django_static:/app/static:ro
-    networks:
-      - base2_network
-    restart: unless-stopped
-    read_only: true
-    security_opt:
-      - no-new-privileges:true
-    healthcheck:
-      test: ['CMD-SHELL', 'curl -fsS http://localhost:8081/health || exit 1']
-      interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 10s
-
-services:
   # React App Service
   react-app:
     build:
@@ -240,6 +219,25 @@ services:
 
   # Nginx standalone removed; React's Nginx serves SPA
 
+  # Nginx for Django static files
+  nginx-static:
+    image: nginx:1.25-alpine
+    container_name: ${COMPOSE_PROJECT_NAME}_nginx_static
+    volumes:
+      - ./nginx/nginx-django-static.conf:/etc/nginx/nginx.conf:ro
+      - django_static:/app/static:ro
+    networks:
+      - base2_network
+    restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://localhost:8081/health || exit 1']
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
   # PostgreSQL Database Service
   postgres:
     build:
