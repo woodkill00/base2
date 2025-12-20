@@ -238,6 +238,10 @@ services:
       timeout: 3s
       retries: 3
       start_period: 10s
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run/nginx
+      - /var/log/nginx
   # PostgreSQL Database Service
   postgres:
     build:
