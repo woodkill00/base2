@@ -1,73 +1,52 @@
-# Traefik Configuration File
-# Environment variable support for dynamic configuration
-
-# Entry points configuration
-
+# Traefik Configuration File (static config)
 entryPoints:
   web:
-    address: ':${TRAEFIK_PORT}'
+    address: ":${TRAEFIK_PORT}"
     http:
-      # https://docs.traefik.io/routing/entrypoints/#entrypoint
       redirections:
         entryPoint:
           to: websecure
-          # scheme: https # all will redirect to https
 
   websecure:
-    # https
     address: ":443"
+
   traefik:
-    address: ':${TRAEFIK_API_PORT}'
+    address: ":${TRAEFIK_API_PORT}"
 
 api:
   dashboard: true
   insecure: false
   debug: ${TRAEFIK_API_DEBUG}
 
-# Ping health check
 ping: {}
 
-# Log configuration
 log:
-  level: '${TRAEFIK_LOG_LEVEL}'
-  filePath: '/var/log/traefik/traefik.log'
+  level: "${TRAEFIK_LOG_LEVEL}"
+  filePath: "/var/log/traefik/traefik.log"
   format: json
 
-# Access logs
 accessLog:
-  filePath: '/var/log/traefik/access.log'
+  filePath: "/var/log/traefik/access.log"
   format: json
   bufferingSize: 100
-
 
 certificatesResolvers:
   le-staging:
     acme:
-      email: '${TRAEFIK_CERT_EMAIL}'
+      email: "${TRAEFIK_CERT_EMAIL}"
       storage: /etc/traefik/acme/acme-staging.json
       caServer: https://acme-staging-v02.api.letsencrypt.org/directory
       tlsChallenge: {}
-      # dnsChallenge:
-      #   provider: digitalocean
-      #   # delayBeforeCheck: 0
-      # caServer: https://acme-staging-v02.api.letsencrypt.org/directory
-      # # caServer: https://acme-v02.api.letsencrypt.org/directory
 
-# Providers configuration
 providers:
-  # docker provider disabled in dev due to daemon API mismatch
-  # docker:
-  #   endpoint: 'unix:///var/run/docker.sock'
-  #   exposedByDefault: ${TRAEFIK_EXPOSED_BY_DEFAULT}
-  #   network: '${TRAEFIK_DOCKER_NETWORK}'
-  #   watch: true
-
+  # Source of truth is file provider (dynamic.yml).
   file:
     filename: /etc/traefik/dynamic/dynamic.yml
     watch: true
-# providers:
-#   # https://docs.traefik.io/master/providers/file/
-#   file:
-#     filename: /etc/traefik/dynamic.yml
-#     # filename: /etc/traefik/traefik.yml
-#     watch: true
+
+  # Docker provider intentionally disabled to avoid label/file drift.
+  # docker:
+  #   endpoint: "unix:///var/run/docker.sock"
+  #   exposedByDefault: ${TRAEFIK_EXPOSED_BY_DEFAULT}
+  #   network: "${TRAEFIK_DOCKER_NETWORK}"
+  #   watch: true

@@ -1,5 +1,5 @@
 services:
-  # React App Service
+  # React App Service (SPA)
   react-app:
     build:
       context: ./react-app
@@ -11,37 +11,17 @@ services:
     environment:
       - NODE_ENV=production
       - REACT_APP_API_URL=${REACT_APP_API_URL}
-    networks:
-      - base2_network
+    networks: [base2_network]
     restart: unless-stopped
-    read_only: false
-    security_opt:
-      - no-new-privileges:true
+    security_opt: [no-new-privileges:true]
     tmpfs:
       - /var/cache/nginx
       - /var/run/nginx
       - /var/log/nginx
     healthcheck:
-      test: ['CMD-SHELL', 'curl -fsS http://localhost:8080/ > /dev/null || exit 1']
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.frontend-react.rule=(Host(`${WEBSITE_DOMAIN}`) || Host(`www.${WEBSITE_DOMAIN}`)) && PathPrefix(`/`)"
-      - "traefik.http.routers.frontend-react.entrypoints=websecure"
-      - "traefik.http.routers.frontend-react.tls.certresolver=le-staging"
-      - "traefik.http.routers.frontend-react.tls=true"
-      - "traefik.http.routers.frontend-react.service=frontend-react"
-      - "traefik.http.routers.frontend-http-react.rule=(Host(`${WEBSITE_DOMAIN}`) || Host(`www.${WEBSITE_DOMAIN}`)) && PathPrefix(`/`)"
-      - "traefik.http.routers.frontend-http-react.entrypoints=web"
-      - "traefik.http.routers.frontend-http-react.middlewares=redirect-to-https"
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
-      - "traefik.http.services.frontend-react.loadbalancer.server.port=8080"
-      volumes:
-        - traefik_acme:/etc/traefik/acme
-  # FastAPI API Service (replaces Node backend)
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/ > /dev/null || exit 1"]
+
+  # FastAPI API (Option B: internal /health, external /api/health)
   api:
     build:
       context: ./api
@@ -50,7 +30,6 @@ services:
         - PYTHON_VERSION=${FASTAPI_PYTHON_VERSION}
     container_name: ${COMPOSE_PROJECT_NAME}_api
     environment:
-      - ENV=production
       - PORT=${FASTAPI_PORT}
       - DB_HOST=postgres
       - DB_PORT=${POSTGRES_PORT}
@@ -59,36 +38,17 @@ services:
       - DB_PASSWORD=${POSTGRES_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRE=${JWT_EXPIRE}
-      - DJANGO_SERVICE_URL=http://django:${DJANGO_PORT}
-      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS}
-      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS}
-    networks:
-      - base2_network
+    networks: [base2_network]
     depends_on:
       postgres:
         condition: service_healthy
-      django:
-        condition: service_started
     restart: unless-stopped
-    # read_only: true  # Disabled for debug
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:${FASTAPI_PORT}/health"]
-      interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 40s
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.api.rule=Host(`${WEBSITE_DOMAIN}`) && PathPrefix(`/api`)"
-      - "traefik.http.routers.api.entrypoints=websecure"
-      - "traefik.http.routers.api.tls.certresolver=le-staging"
-      - "traefik.http.services.api.loadbalancer.server.port=${FASTAPI_PORT}"
 
-  # Django Service (internal-only)
+  # Django (schema owner + admin)
   django:
     build:
       context: ./django
@@ -101,342 +61,76 @@ services:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
       - DJANGO_DEBUG=${DJANGO_DEBUG}
       - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
-      - DJANGO_SECURE_SSL_REDIRECT=${DJANGO_SECURE_SSL_REDIRECT}
       - DB_HOST=postgres
       - DB_PORT=${POSTGRES_PORT}
       - DB_NAME=${POSTGRES_DB}
       - DB_USER=${POSTGRES_USER}
       - DB_PASSWORD=${POSTGRES_PASSWORD}
       - PORT=${DJANGO_PORT}
-      - DJANGO_SUPERUSER_NAME=${DJANGO_SUPERUSER_NAME}
-      - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL}
-      - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD}
-    networks:
-      - base2_network
+    networks: [base2_network]
     depends_on:
       postgres:
         condition: service_healthy
+    volumes:
+      - django_static:/app/static
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "manage.py", "check", "--deploy"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    volumes:
-      - django_static:/app/static
 
-  # Traefik Reverse Proxy Service
-  traefik:
-    build:
-      context: ./traefik
-      dockerfile: .Dockerfile
-      args:
-        - TRAEFIK_VERSION=v3.1
-        - TRAEFIK_LOG_LEVEL=${TRAEFIK_LOG_LEVEL}
-        - TRAEFIK_PORT=${TRAEFIK_PORT}
-        - TRAEFIK_API_PORT=${TRAEFIK_API_PORT}
-        - TRAEFIK_API_ENTRYPOINT=${TRAEFIK_API_ENTRYPOINT}
-        - TRAEFIK_DOCKER_NETWORK=${TRAEFIK_DOCKER_NETWORK}
-        - TRAEFIK_EXPOSED_BY_DEFAULT=${TRAEFIK_EXPOSED_BY_DEFAULT}
-    container_name: ${COMPOSE_PROJECT_NAME}_traefik
-    user: "0:0"
-    ports:
-      - '${TRAEFIK_HOST_PORT}:${TRAEFIK_PORT}'
-      - '443:443'
-      # Do not expose Traefik API entrypoint on host; dashboard served via HTTPS Host rule
-    environment:
-      - TRAEFIK_LOG_LEVEL=${TRAEFIK_LOG_LEVEL}
-      - TRAEFIK_PORT=${TRAEFIK_PORT}
-      - TRAEFIK_API_PORT=${TRAEFIK_API_PORT}
-      - TRAEFIK_API_ENTRYPOINT=${TRAEFIK_API_ENTRYPOINT}
-      - TRAEFIK_DOCKER_NETWORK=${TRAEFIK_DOCKER_NETWORK}
-      - TRAEFIK_EXPOSED_BY_DEFAULT=${TRAEFIK_EXPOSED_BY_DEFAULT}
-      - TRAEFIK_API_DEBUG=${TRAEFIK_API_DEBUG}
-      - WEBSITE_DOMAIN=${WEBSITE_DOMAIN}
-      - TRAEFIK_DASH_BASIC_USERS=${TRAEFIK_DASH_BASIC_USERS}
-      - TRAEFIK_DNS_LABEL=${TRAEFIK_DNS_LABEL}
-      - PGADMIN_DNS_LABEL=${PGADMIN_DNS_LABEL}
-      - PGADMIN_ALLOWLIST=${PGADMIN_ALLOWLIST}
-      - DJANGO_ADMIN_DNS_LABEL=${DJANGO_ADMIN_DNS_LABEL}
-      - DJANGO_ADMIN_ALLOWLIST=${DJANGO_ADMIN_ALLOWLIST}
-      - DJANGO_PORT=${DJANGO_PORT}
-      - FLOWER_DNS_LABEL=${FLOWER_DNS_LABEL}
-      - FLOWER_ALLOWLIST=${FLOWER_ALLOWLIST}
-      - FLOWER_BASIC_USERS=${FLOWER_BASIC_USERS}
-      - FASTAPI_PORT=${FASTAPI_PORT}
-    volumes:
-      - ./letsencrypt:/etc/traefik/acme
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - traefik_logs:/var/log/traefik
-      # dynamic config is rendered internally; no bind mount to dynamic.yml (avoid read-only write errors)
-    networks:
-      - base2_network
-    restart: unless-stopped
-    # Traefik needs to generate /etc/traefik/traefik.yml from template at runtime
-    read_only: false
-    security_opt:
-      - no-new-privileges:true
-    cap_add:
-      - NET_BIND_SERVICE
-    healthcheck:
-      test: ['CMD', 'traefik', 'healthcheck', '--ping']
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
-
-  # Nginx Web Server Service (Standalone SPA server)
+  # 🔹 Standalone NGINX (RESTORED)
   nginx:
     build:
       context: ./nginx
       dockerfile: .Dockerfile
       args:
         - NGINX_VERSION=${NGINX_VERSION}
-        - NGINX_WORKER_PROCESSES=${NGINX_WORKER_PROCESSES}
-        - NGINX_WORKER_CONNECTIONS=${NGINX_WORKER_CONNECTIONS}
         - NGINX_PORT=${NGINX_PORT}
     container_name: ${COMPOSE_PROJECT_NAME}_nginx
     environment:
-      - NGINX_WORKER_PROCESSES=${NGINX_WORKER_PROCESSES}
-      - NGINX_WORKER_CONNECTIONS=${NGINX_WORKER_CONNECTIONS}
       - NGINX_PORT=${NGINX_PORT}
-    labels: []
-    networks:
-      - base2_network
+    networks: [base2_network]
     restart: unless-stopped
+    security_opt: [no-new-privileges:true]
     read_only: false
-    security_opt:
-      - no-new-privileges:true
     tmpfs:
       - /var/cache/nginx
       - /var/run/nginx
       - /var/log/nginx
     healthcheck:
-      test: ['CMD-SHELL', 'curl -fsS http://localhost:${NGINX_PORT}/ > /dev/null || exit 1']
-      interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 10s
+      test: ["CMD-SHELL", "curl -fsS http://localhost:${NGINX_PORT}/ > /dev/null || exit 1"]
 
-  # Nginx standalone removed; React's Nginx serves SPA
-
-  # Nginx for Django static files
+  # Django static files
   nginx-static:
     image: nginx:1.25-alpine
     container_name: ${COMPOSE_PROJECT_NAME}_nginx_static
     volumes:
       - ./nginx/nginx-django-static.conf:/etc/nginx/nginx.conf:ro
       - django_static:/app/static:ro
-    networks:
-      - base2_network
+    networks: [base2_network]
     restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    healthcheck:
-      test: ['CMD-SHELL', 'curl -fsS http://localhost:8081/health || exit 1']
-      interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 10s
-    tmpfs:
-      - /var/cache/nginx
-      - /var/run/nginx
-      - /var/log/nginx
-    ports:
-      - "8081:8081"
-  # PostgreSQL Database Service
-  postgres:
+    security_opt: [no-new-privileges:true]
+
+  # Traefik (ONLY public ports)
+  traefik:
     build:
-      context: ./postgres
+      context: ./traefik
       dockerfile: .Dockerfile
-      args:
-        - POSTGRES_VERSION=${POSTGRES_VERSION}
-        - POSTGRES_USER=${POSTGRES_USER}
-        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-        - POSTGRES_DB=${POSTGRES_DB}
+    container_name: ${COMPOSE_PROJECT_NAME}_traefik
+    ports:
+      - "80:80"
+      - "443:443"
+    networks: [base2_network]
+    volumes:
+      - ./letsencrypt:/etc/traefik/acme
+      - traefik_logs:/var/log/traefik
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - WEBSITE_DOMAIN=${WEBSITE_DOMAIN}
+      - TRAEFIK_CERT_EMAIL=${TRAEFIK_CERT_EMAIL}
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:${POSTGRES_VERSION}
     container_name: ${COMPOSE_PROJECT_NAME}_postgres
     environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - PGDATA=/var/lib/postgresql/data/pgdata
-      - POSTGRES_HOST_AUTH_METHOD=md5
-      - POSTGRES_INITDB_ARGS=--auth=md5 --locale=C
-      - LANG=C.UTF-8
-      - LC_ALL=C.UTF-8
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - base2_network
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
-
-  # pgAdmin Database Management Service
-  pgadmin:
-    build:
-      context: ./pgadmin
-      dockerfile: .Dockerfile
-      args:
-        - PGADMIN_VERSION=${PGADMIN_VERSION}
-        - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
-        - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
-        - PGADMIN_CONFIG_SERVER_MODE=${PGADMIN_CONFIG_SERVER_MODE}
-    container_name: ${COMPOSE_PROJECT_NAME}_pgadmin
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
-      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
-      - PGADMIN_CONFIG_SERVER_MODE=${PGADMIN_CONFIG_SERVER_MODE}
-      - PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False
-      - PYTHONWARNINGS=ignore:SyntaxWarning:sshtunnel
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
-    networks:
-      - base2_network
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: unless-stopped
-    # security_opt removed to avoid compose validation errors; pgAdmin runs in server mode
-    healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:${PGADMIN_PORT}/misc/ping']
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
-  # Redis (internal-only, enabled via profile)
-  redis:
-    image: redis:${REDIS_VERSION}
-    container_name: ${COMPOSE_PROJECT_NAME}_redis
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - redis_data:/data
-    networks:
-      - base2_network
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    healthcheck:
-      test: ["CMD", "redis-cli", "-p", "${REDIS_PORT}", "ping"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    profiles: ["celery", "flower"]
-
-  # Celery Worker (uses API image to share code)
-  celery-worker:
-    build:
-      context: ./api
-      dockerfile: .Dockerfile
-      args:
-        - PYTHON_VERSION=${FASTAPI_PYTHON_VERSION}
-    container_name: ${COMPOSE_PROJECT_NAME}_celery_worker
-    command: ["python", "-m", "celery", "-A", "tasks.app", "worker", "--loglevel=${CELERY_LOG_LEVEL}", "--concurrency=${CELERY_CONCURRENCY}"]
-    environment:
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
-      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
-    depends_on:
-      redis:
-        condition: service_healthy
-    networks:
-      - base2_network
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    healthcheck:
-      test: ["CMD-SHELL", "celery -A tasks.app status >/dev/null 2>&1 || exit 1"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
-    profiles: ["celery"]
-
-  # Celery Beat (optional scheduler; enabled via profile)
-  celery-beat:
-    build:
-      context: ./api
-      dockerfile: .Dockerfile
-      args:
-        - PYTHON_VERSION=${FASTAPI_PYTHON_VERSION}
-    container_name: ${COMPOSE_PROJECT_NAME}_celery_beat
-    command: ["python", "-m", "celery", "-A", "tasks.app", "beat", "--loglevel=${CELERY_LOG_LEVEL}", "--schedule=/tmp/celerybeat-schedule"]
-    environment:
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
-      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
-    depends_on:
-      redis:
-        condition: service_healthy
-    networks:
-      - base2_network
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    healthcheck:
-      test: ["CMD-SHELL", "celery -A tasks.app status >/dev/null 2>&1 || exit 1"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
-    profiles: ["celery"]
-
-  # Flower dashboard (non-production only; guarded via Traefik; enabled via profile)
-  flower:
-    image: mher/flower:2.0.1
-    container_name: ${COMPOSE_PROJECT_NAME}_flower
-    command: ["python", "-m", "flower", "--port=5555", "--broker=${CELERY_BROKER_URL}"]
-    environment:
-      - FLOWER_PORT=5555
-    networks:
-      - base2_network
-    depends_on:
-      redis:
-        condition: service_started
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5555/"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
-    profiles: ["flower"]
-
-# Networks Configuration
-networks:
-  base2_network:
-    name: ${NETWORK_NAME}
-    driver: bridge
-
-# Volumes Configuration
-volumes:
-  postgres_data:
-    name: ${COMPOSE_PROJECT_NAME}_postgres_data
-    driver: local
-
-  pgadmin_data:
-    name: ${COMPOSE_PROJECT_NAME}_pgadmin_data
-    driver: local
-
-  traefik_logs:
-    name: ${COMPOSE_PROJECT_NAME}_traefik_logs
-    driver: local
-
-  redis_data:
-    name: ${COMPOSE_PROJECT_NAME}_redis_data
-    driver: local
-
-  traefik_acme:
-    name: ${COMPOSE_PROJECT_NAME}_traefik_acme
-    driver: local
-
-  django_static:
-    name: ${COMPOSE_PROJECT_NAME}_django_static
-    driver: local
+      - POSTGRES_USER=${POSTGRES_U

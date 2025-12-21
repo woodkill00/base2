@@ -1,138 +1,165 @@
 http:
   routers:
-    frontend-react:
-      rule: (Host(`${WEBSITE_DOMAIN}`) || Host(`www.${WEBSITE_DOMAIN}`)) && PathPrefix(`/`) && !PathPrefix(`/api`) && !PathPrefix(`/static`)
-      entryPoints:
-        - websecure
-        - security-headers
-        - django-admin-allow-ip
-        certResolver: le-staging
-      service: frontend-react
-    frontend-http-react:
-      rule: (Host(`${WEBSITE_DOMAIN}`) || Host(`www.${WEBSITE_DOMAIN}`)) && PathPrefix(`/`)
+    # Catch-all HTTP -> HTTPS
+    http-catchall:
+      rule: HostRegexp(`{host:.+}`)
       entryPoints:
         - web
       middlewares:
         - redirect-to-https
       service: noop@internal
-        - security-headers
-        - django-admin-allow-ip
+
+    # API: external /api/* -> internal /* (strip /api)
+    api:
+      rule: Host(`${WEBSITE_DOMAIN}`) && PathPrefix(`/api`)
+      priority: 200
       entryPoints:
         - websecure
       middlewares:
-        - ${SECURITY_HEADERS_MIDDLEWARE}
+        - strip-api-prefix
+        - security-headers
         - rate-limit
         - retry
       tls:
         certResolver: le-staging
       service: api
-            - security-headers-no-hsts
-        - django-admin-allow-ip
+
+    # Django admin on admin subdomain (guarded)
+    django-admin-subdomain:
+      rule: Host(`${DJANGO_ADMIN_DNS_LABEL}.${WEBSITE_DOMAIN}`)
+      priority: 190
       entryPoints:
         - websecure
       middlewares:
-        - ${SECURITY_HEADERS_MIDDLEWARE}
+        - security-headers-no-hsts
+        - traefik-basic-auth
+        - django-admin-allow-ip
+      tls:
+        certResolver: le-staging
+      service: django-admin
+
+    # Optional: Django admin on main domain /admin (guarded)
+    django-admin-path:
+      rule: Host(`${WEBSITE_DOMAIN}`) && PathPrefix(`/admin`)
+      priority: 180
+      entryPoints:
+        - websecure
+      middlewares:
+        - security-headers-no-hsts
+        - traefik-basic-auth
+        - django-admin-allow-ip
+      tls:
+        certResolver: le-staging
+      service: django-admin
+
+    # Django static: /static/*
+    static-files:
+      rule: Host(`${WEBSITE_DOMAIN}`) && PathPrefix(`/static`)
+      priority: 170
+      entryPoints:
+        - websecure
+      middlewares:
+        - security-headers
+      tls:
+        certResolver: le-staging
+      service: django-static
+
+    # React frontend: catch-all on HTTPS
+    frontend-react:
+      rule: (Host(`${WEBSITE_DOMAIN}`) || Host(`www.${WEBSITE_DOMAIN}`)) && PathPrefix(`/`)
+      priority: 100
+      entryPoints:
+        - websecure
+      middlewares:
+        - security-headers
+      tls:
+        certResolver: le-staging
+      service: frontend-react
+
+    # Traefik dashboard (guarded)
+    traefik-dashboard:
+      rule: Host(`${TRAEFIK_DNS_LABEL}.${WEBSITE_DOMAIN}`)
+      priority: 210
+      entryPoints:
+        - websecure
+      middlewares:
+        - security-headers-no-hsts
         - traefik-basic-auth
       tls:
         certResolver: le-staging
       service: api@internal
 
-            - security-headers-no-hsts
+    # pgAdmin (guarded)
+    pgadmin:
       rule: Host(`${PGADMIN_DNS_LABEL}.${WEBSITE_DOMAIN}`)
+      priority: 200
       entryPoints:
         - websecure
       middlewares:
-        - ${SECURITY_HEADERS_MIDDLEWARE}
+        - security-headers-no-hsts
         - traefik-basic-auth
         - pgadmin-allow-ip
       tls:
         certResolver: le-staging
       service: pgadmin
-            - security-headers-no-hsts
-      rule: Host(`${DJANGO_ADMIN_DNS_LABEL}.${WEBSITE_DOMAIN}`) && PathPrefix(`/admin`)
-      entryPoints:
-        - websecure
-      middlewares:
-        - ${SECURITY_HEADERS_MIDDLEWARE}
-        - traefik-basic-auth
-        - django-admin-allow-ip
-      tls:
-        certResolver: le-staging
-      service: django-admin
-    django-admin-sub-root:
-      rule: Host(`${DJANGO_ADMIN_DNS_LABEL}.${WEBSITE_DOMAIN}`) && Path(`/`)
-      entryPoints:
-        - websecure
-      middlewares:
-        - replace-admin-root
-        - ${SECURITY_HEADERS_MIDDLEWARE}
-        - traefik-basic-auth
-        - django-admin-allow-ip
-      tls:
-        certResolver: le-staging
-      service: django-admin
-    django-admin-root:
-      rule: Host(`${WEBSITE_DOMAIN}`) && PathPrefix(`/admin`)
-      priority: 120
-      entryPoints:
-        - websecure
-      middlewares:
-        - ${SECURITY_HEADERS_MIDDLEWARE}
-        - traefik-basic-auth
-        - django-admin-allow-ip
-      tls:
-        certResolver: le-staging
-      service: django-admin
+
+    # Flower (guarded; only works when container enabled)
     flower:
       rule: Host(`${FLOWER_DNS_LABEL}.${WEBSITE_DOMAIN}`)
+      priority: 200
       entryPoints:
         - websecure
       middlewares:
-        - ${SECURITY_HEADERS_MIDDLEWARE}
+        - security-headers-no-hsts
         - flower-basic-auth
         - flower-allow-ip
       tls:
         certResolver: le-staging
       service: flower
-    static-files:
-      rule: PathPrefix(`/static`)
-      priority: 200
-      entryPoints:
-        - websecure
-      service: django-static
-      tls:
-        certResolver: le-staging
+
   services:
     frontend-react:
       loadBalancer:
         servers:
           - url: http://react-app:8080
+
     api:
       loadBalancer:
         servers:
           - url: http://api:${FASTAPI_PORT}
-    pgadmin:
-      loadBalancer:
-        servers:
-          - url: http://pgadmin:8080
+
     django-admin:
       loadBalancer:
         servers:
           - url: http://django:${DJANGO_PORT}
-    flower:
-      loadBalancer:
-        servers:
-          - url: http://flower:5555
+
     django-static:
       loadBalancer:
         servers:
           - url: http://nginx-static:8081
+
+    pgadmin:
+      loadBalancer:
+        servers:
+          - url: http://pgadmin:8080
+
+    flower:
+      loadBalancer:
+        servers:
+          - url: http://flower:5555
+
   middlewares:
     redirect-to-https:
       redirectScheme:
         scheme: https
         port: 443
         permanent: true
+
+    strip-api-prefix:
+      stripPrefix:
+        prefixes:
+          - /api
+
     security-headers:
       headers:
         stsSeconds: 31536000
@@ -146,6 +173,7 @@ http:
           X-Frame-Options: "DENY"
           X-Content-Type-Options: "nosniff"
           X-XSS-Protection: "1; mode=block"
+
     security-headers-no-hsts:
       headers:
         frameDeny: true
@@ -156,50 +184,37 @@ http:
           X-Frame-Options: "DENY"
           X-Content-Type-Options: "nosniff"
           X-XSS-Protection: "1; mode=block"
-    security-headers-no-hsts:
-      headers:
-        frameDeny: true
-        contentTypeNosniff: true
-        browserXssFilter: true
-        referrerPolicy: "no-referrer-when-downgrade"
-        customResponseHeaders:
-          X-Frame-Options: "DENY"
-          X-Content-Type-Options: "nosniff"
-          X-XSS-Protection: "1; mode=block"
+
     traefik-basic-auth:
       basicAuth:
-        # Provide one or more htpasswd-formatted entries via env: "user:hash"
         users:
           - ${TRAEFIK_DASH_BASIC_USERS}
+
     pgadmin-allow-ip:
       ipAllowList:
         sourceRange:
           - ${PGADMIN_ALLOWLIST}
+
     django-admin-allow-ip:
       ipAllowList:
         sourceRange:
           - ${DJANGO_ADMIN_ALLOWLIST}
+
     flower-allow-ip:
       ipAllowList:
         sourceRange:
           - ${FLOWER_ALLOWLIST}
+
     flower-basic-auth:
       basicAuth:
         users:
           - ${FLOWER_BASIC_USERS}
-    redirect-admin-root:
-      redirectRegex:
-        regex: ^/$
-        replacement: /admin/
-        permanent: true
-    replace-admin-root:
-      replacePathRegex:
-        regex: ^/$
-        replacement: /admin/
+
     rate-limit:
       rateLimit:
         average: 100
         burst: 50
+
     retry:
       retry:
         attempts: 3
