@@ -1,55 +1,42 @@
-# Dockerfile for Traefik
-# Robust Traefik configuration with environment variable support
 
+# --- Multi-stage build ---
+
+# Stage 1: Render dynamic.yml using Python
+FROM python:3.11-alpine AS renderer
+WORKDIR /render
+COPY ../render_traefik_dynamic.py ./render_traefik_dynamic.py
+COPY ../.env ./.env
+COPY dynamic.yml ./traefik-dynamic.template.yml
+RUN pip install python-dotenv
+RUN python3 render_traefik_dynamic.py
+
+# Stage 2: Final Traefik image
 ARG TRAEFIK_VERSION=v3.1
 FROM traefik:${TRAEFIK_VERSION}
 
 # Set build arguments for environment variables
 ARG TRAEFIK_LOG_LEVEL
-
 ARG TRAEFIK_PORT
 ARG TRAEFIK_API_PORT
 ARG TRAEFIK_API_ENTRYPOINT
 ARG TRAEFIK_DOCKER_NETWORK
 ARG TRAEFIK_EXPOSED_BY_DEFAULT
 
-
-# Install Python and pip for environment variable substitution
-USER root
-RUN apk add --no-cache python3 py3-pip libcap && \
-    pip install python-dotenv && \
-    setcap 'cap_net_bind_service=+ep' /usr/local/bin/traefik
-
 # Create traefik user and necessary directories
+USER root
 RUN addgroup -g 1000 traefik 2>/dev/null || true && \
     adduser -D -u 1000 -G traefik traefik 2>/dev/null || true && \
     mkdir -p /etc/traefik /var/log/traefik && \
     chown -R traefik:traefik /etc/traefik /var/log/traefik && \
     chmod -R 755 /etc/traefik /var/log/traefik
-
 RUN mkdir -p /etc/traefik/acme \
   && touch /etc/traefik/acme/acme.json \
   && chmod 600 /etc/traefik/acme/acme.json
 
-
-
-# Copy traefik configuration template and dynamic config template
-COPY traefik.yml /etc/traefik/templates/traefik.yml.template
-COPY dynamic.yml /etc/traefik/templates/dynamic.yml.template
-
-# Copy Python render script and .env if present
-COPY ../render_traefik_dynamic.py /usr/local/bin/render_traefik_dynamic.py
-COPY ../.env /etc/traefik/templates/.env
-
-
-# Create startup script to render dynamic config using Python
-RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
-    echo 'set -e' >> /docker-entrypoint.sh && \
-    echo 'cp /etc/traefik/templates/traefik.yml.template /etc/traefik/traefik.yml' >> /docker-entrypoint.sh && \
-    echo 'mkdir -p /etc/traefik/dynamic' >> /docker-entrypoint.sh && \
-    echo 'python3 /usr/local/bin/render_traefik_dynamic.py' >> /docker-entrypoint.sh && \
-    echo 'exec /entrypoint.sh "$@"' >> /docker-entrypoint.sh && \
-    chmod +x /docker-entrypoint.sh
+# Copy static traefik config
+COPY traefik.yml /etc/traefik/traefik.yml
+# Copy rendered dynamic config from builder
+COPY --from=renderer /render/traefik/dynamic.yml /etc/traefik/dynamic/dynamic.yml
 
 # Set environment variables
 ENV TRAEFIK_LOG_LEVEL=${TRAEFIK_LOG_LEVEL:-INFO} \
@@ -69,6 +56,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 # Switch to non-root user
 USER traefik
 
-# Start traefik with environment variable substitution and config file
-ENTRYPOINT ["/docker-entrypoint.sh"]
+# Start traefik with config file
 CMD ["traefik", "--configFile=/etc/traefik/traefik.yml"]
