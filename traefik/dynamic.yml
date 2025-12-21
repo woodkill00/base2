@@ -1,7 +1,7 @@
 http:
   routers:
     frontend-react:
-      rule: (Host(`${WEBSITE_DOMAIN}`) || Host(`www.${WEBSITE_DOMAIN}`)) && PathPrefix(`/`) && !PathPrefix(`/api`)
+      rule: (Host(`${WEBSITE_DOMAIN}`) || Host(`www.${WEBSITE_DOMAIN}`)) && PathPrefix(`/`) && !PathPrefix(`/api`) && !PathPrefix(`/static`)
       entryPoints:
         - websecure
         - security-headers
@@ -95,12 +95,11 @@ http:
         certResolver: le-staging
       service: flower
     static-files:
-      rule: Host(`${WEBSITE_DOMAIN}`) && PathPrefix(`/static`)
+      rule: PathPrefix(`/static`)
+      priority: 200
       entryPoints:
         - websecure
       service: django-static
-      middlewares:
-        - security-headers
       tls:
         certResolver: le-staging
   services:

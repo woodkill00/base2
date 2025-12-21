@@ -13,10 +13,12 @@ ARG TRAEFIK_API_ENTRYPOINT
 ARG TRAEFIK_DOCKER_NETWORK
 ARG TRAEFIK_EXPOSED_BY_DEFAULT
 
-# Install envsubst for environment variable substitution
+
+# Install Python and pip for environment variable substitution
 USER root
-RUN apk add --no-cache gettext libcap && \
-  setcap 'cap_net_bind_service=+ep' /usr/local/bin/traefik
+RUN apk add --no-cache python3 py3-pip libcap && \
+    pip install python-dotenv && \
+    setcap 'cap_net_bind_service=+ep' /usr/local/bin/traefik
 
 # Create traefik user and necessary directories
 RUN addgroup -g 1000 traefik 2>/dev/null || true && \
@@ -30,18 +32,22 @@ RUN mkdir -p /etc/traefik/acme \
   && chmod 600 /etc/traefik/acme/acme.json
 
 
-# Copy traefik configuration template
-COPY traefik.yml /etc/traefik/templates/traefik.yml.template
 
-# Copy dynamic config template
+# Copy traefik configuration template and dynamic config template
+COPY traefik.yml /etc/traefik/templates/traefik.yml.template
 COPY dynamic.yml /etc/traefik/templates/dynamic.yml.template
 
-# Create startup script for environment variable substitution
+# Copy Python render script and .env if present
+COPY ../render_traefik_dynamic.py /usr/local/bin/render_traefik_dynamic.py
+COPY ../.env /etc/traefik/templates/.env
+
+
+# Create startup script to render dynamic config using Python
 RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
     echo 'set -e' >> /docker-entrypoint.sh && \
-    echo 'envsubst "\$TRAEFIK_PORT \$TRAEFIK_API_PORT \$TRAEFIK_LOG_LEVEL \$TRAEFIK_DOCKER_NETWORK \$TRAEFIK_EXPOSED_BY_DEFAULT \$TRAEFIK_CERT_EMAIL \$TRAEFIK_API_DEBUG" < /etc/traefik/templates/traefik.yml.template > /etc/traefik/traefik.yml' >> /docker-entrypoint.sh && \
-  echo 'mkdir -p /etc/traefik/dynamic' >> /docker-entrypoint.sh && \
-  echo 'envsubst "\$WEBSITE_DOMAIN \$TRAEFIK_DASH_BASIC_USERS \$PGADMIN_ALLOWLIST \$PGADMIN_DNS_LABEL \$TRAEFIK_DNS_LABEL \$FASTAPI_PORT \$DJANGO_PORT \$DJANGO_ADMIN_DNS_LABEL \$DJANGO_ADMIN_ALLOWLIST \$FLOWER_DNS_LABEL \$FLOWER_ALLOWLIST \$FLOWER_BASIC_USERS" < /etc/traefik/templates/dynamic.yml.template > /etc/traefik/dynamic/dynamic.yml' >> /docker-entrypoint.sh && \
+    echo 'cp /etc/traefik/templates/traefik.yml.template /etc/traefik/traefik.yml' >> /docker-entrypoint.sh && \
+    echo 'mkdir -p /etc/traefik/dynamic' >> /docker-entrypoint.sh && \
+    echo 'python3 /usr/local/bin/render_traefik_dynamic.py' >> /docker-entrypoint.sh && \
     echo 'exec /entrypoint.sh "$@"' >> /docker-entrypoint.sh && \
     chmod +x /docker-entrypoint.sh
 

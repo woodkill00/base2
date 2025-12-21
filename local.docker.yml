@@ -243,6 +243,8 @@ services:
       - /var/cache/nginx
       - /var/run/nginx
       - /var/log/nginx
+    ports:
+      - "8081:8081"
   # PostgreSQL Database Service
   postgres:
     build:
