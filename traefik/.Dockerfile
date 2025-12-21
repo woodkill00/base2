@@ -6,7 +6,7 @@ FROM python:3.11-alpine AS renderer
 WORKDIR /render
 COPY ../render_traefik_dynamic.py ./render_traefik_dynamic.py
 COPY ../.env ./.env
-COPY dynamic.yml ./traefik-dynamic.template.yml
+COPY dynamic.yml ./traefik/dynamic.template.yml
 RUN pip install python-dotenv
 RUN python3 render_traefik_dynamic.py
 
@@ -31,7 +31,8 @@ RUN addgroup -g 1000 traefik 2>/dev/null || true && \
     chmod -R 755 /etc/traefik /var/log/traefik
 RUN mkdir -p /etc/traefik/acme \
   && touch /etc/traefik/acme/acme.json \
-  && chmod 600 /etc/traefik/acme/acme.json
+  && touch /etc/traefik/acme/acme-staging.json \
+  && chmod 600 /etc/traefik/acme/acme.json /etc/traefik/acme/acme-staging.json
 
 # Copy static traefik config
 COPY traefik.yml /etc/traefik/traefik.yml
@@ -53,8 +54,16 @@ EXPOSE ${TRAEFIK_PORT} 443 ${TRAEFIK_API_PORT}
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD traefik healthcheck --ping || exit 1
 
-# Switch to non-root user
-USER traefik
+# Make entrypoint script executable and use it
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-# Start traefik with config file
-CMD ["traefik", "--configFile=/etc/traefik/traefik.yml"]
+# Install su-exec for privilege dropping
+USER root
+RUN apk add --no-cache su-exec
+
+# Optional: Map logs and acme to host for persistence
+VOLUME ["/var/log/traefik", "/etc/traefik/acme"]
+
+# Run as root so entrypoint can fix permissions, then drop to traefik user
+ENTRYPOINT ["/entrypoint.sh"]
