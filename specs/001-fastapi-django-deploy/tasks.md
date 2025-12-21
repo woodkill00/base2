@@ -216,56 +216,154 @@
 
 ---
 
-## Phase 7: Security & Compliance Implementation (Audit Coverage)
+## Phase 7: Full Stack Role Realignment — Django Backend, FastAPI API, React Frontend
 
-- [ ] T061 [P] Research FastAPI login/session proxy issues and document in docs/fastapi_login_proxy.md
-- [ ] T062 [P] Research JWT/session/cookie best practices and document in docs/jwt_session_best_practices.md
-- [ ] T063 [P] Research secret management options (Vault, AWS Secrets Manager, Docker secrets) and document in docs/secret_management.md
-- [ ] T064 [P] Audit CORS and CSRF settings in FastAPI and Django, document findings in docs/cors_csrf_audit.md
-- [ ] T065 [P] Review container security (Dockerfile, Compose, user permissions, resource limits) and document in docs/container_security.md
-- [ ] T066 [P] Audit database security (SSL, password policy, pg_hba.conf, backups) and document in docs/database_security.md
-- [ ] T067 [P] Research rate limiting/throttling (FastAPI, Django, Traefik) and document in docs/rate_limiting.md
-- [ ] T068 [P] Document logging and monitoring requirements in docs/logging_monitoring.md
+**Goal**: Migrate to a clear separation of concerns: Django for backend/admin, FastAPI for API, React for frontend. Remove Node.js backend. Ensure all routing, service, and security boundaries are correct.
 
-- [ ] T069 Define step-by-step fixes for each researched area in docs/fix_proposals.md
-- [ ] T070 Propose configuration changes and code patches, mapping to specific files in docs/config_patch_map.md
+> **For each task below:**
+> - **Check the current build and codebase** to see if any part of the task has already been started or completed.
+> - If partially complete, **note what remains** and update the checklist accordingly.
+> - If not started, **implement as described**.
+> - If already complete, **mark as done** and verify correctness.
 
-### Implementation Tasks
-- [ ] T071 [P] Implement strong secret generation scripts in scripts/generate-passwords.sh
-- [ ] T072 [P] Update .env.example with secure template and instructions
-- [ ] T073 [P] Integrate secret management solution (Vault/AWS/Docker secrets) in backend/.env, api/.env, django/.env
-- [ ] T074 [P] Enforce strong password policy in postgres/postgresql.conf
-- [ ] T075 [P] Implement password complexity validator in api/auth/password_validator.py
-- [ ] T076 [P] Implement account lockout logic in api/auth/lockout.py
-- [ ] T077 [P] Update traefik/traefik.yml for secure TLS config
-- [ ] T078 [P] Update nginx/nginx.conf for SSL redirect and secure ciphers
-- [ ] T079 [P] Test SSL/TLS config using scripts/test_ssl.sh
-- [ ] T080 [P] Update FastAPI CORS config in api/main.py
-- [ ] T081 [P] Install and configure django-cors-headers in django/settings.py
-- [ ] T082 [P] Update .env.example for allowed origins and trusted origins
-- [ ] T083 [P] Generate and install SSL certs for Postgres in postgres/server.crt and postgres/server.key
-- [ ] T084 [P] Update postgres/postgresql.conf and pg_hba.conf for SSL and authentication
-- [ ] T085 [P] Implement SQL injection prevention in api/database.py and relevant endpoints
-- [ ] T086 [P] Create backup script in scripts/backup-db.sh
-- [ ] T087 [P] Update api/Dockerfile to run as non-root, set resource limits, and health checks
-- [ ] T088 [P] Update local.docker.yml for security options, resource limits, and secrets
-- [ ] T089 [P] Add container security scan workflow in .github/workflows/security-scan.yml
-- [ ] T090 [P] Implement RSA key pair generation in scripts/generate-jwt-keys.sh
-- [ ] T091 [P] Refactor JWT handling to use RS256 in api/auth/jwt_handler.py
-- [ ] T092 [P] Implement token blacklisting and refresh logic in api/auth/jwt_handler.py
-- [ ] T093 [P] Add/extend Pydantic models for validation in api/models/validators.py
-- [ ] T094 [P] Add request size limit middleware in api/main.py
-- [ ] T095 [P] Audit and update Django form validation in django/forms.py
-- [ ] T096 [P] Implement FastAPI rate limiting with slowapi in api/main.py
-- [ ] T097 [P] Implement Django rate limiting with django-ratelimit in django/views.py
-- [ ] T098 [P] Add Traefik rate limiting config in traefik/dynamic/rate-limit.yml
-- [ ] T099 [P] Update local.docker.yml for network segmentation
-- [ ] T100 [P] Create firewall setup script in scripts/setup-firewall.sh
-- [ ] T101 [P] Implement structured logging with structlog in api/logging_config.py
-- [ ] T102 [P] Add security event monitoring middleware in api/middleware/security_logger.py
+### Planning & Preparation
+- [ ] T061 Audit current Compose and Traefik configs for Node.js backend references
+- [ ] T062 Document all endpoints and domains to be served by Django, FastAPI, and React
+- [ ] T063 Define environment variables for Django, FastAPI, and React (add to .env.example)
+- [ ] T064 Update architecture diagrams and stack documentation
 
-### Validation & Review
-- [ ] T103 Validate each fix with tests/manual checks, document in docs/validation_results.md
-- [ ] T104 Review all changes for constitution/audit compliance, update docs/audit_checklist.md
-- [ ] T105 Update README.md with security checklist and process documentation
+### Docker Compose (local.docker.yml)
+- [ ] T065 Remove Node.js backend service from Compose
+- [ ] T066 Add Django service:
+  - Use official Python image or custom Dockerfile
+  - Mount Django project code
+  - Set environment variables (DB, secret, allowed hosts, etc.)
+  - Expose port 8000 (internal only)
+  - Add healthcheck
+  - Add static/media volumes if needed
+  - Link to Postgres, Redis (if using Celery)
+- [ ] T067 Add FastAPI service:
+  - Use official Python image or custom Dockerfile
+  - Mount FastAPI project code
+  - Set environment variables
+  - Expose port 5001 (internal only)
+  - Add healthcheck
+- [ ] T068 Ensure React service only serves frontend (port 8080)
+- [ ] T069 Update Traefik service volumes for new config, logs, ACME
+- [ ] T070 Ensure all services are on the correct Docker network
+- [ ] T071 Remove any host port exposure except Traefik (80/443)
 
+### Traefik Configuration (dynamic.yml)
+- [ ] T072 Add router for Django (admin.woodkilldev.com → Django:8000)
+  - TLS, certResolver, security headers, etc.
+- [ ] T073 Add router for FastAPI (woodkilldev.com/api → FastAPI:5001)
+  - TLS, certResolver, security headers, rate limit, etc.
+- [ ] T074 Ensure React router only serves woodkilldev.com and www.woodkilldev.com (→ React:8080)
+- [ ] T075 Remove Node.js backend routers/services
+- [ ] T076 Add/adjust middlewares as needed (security, rate limit, etc.)
+- [ ] T077 Validate all routers and services in Traefik config
+
+### Django Project
+- [ ] T078 Create or migrate Django project
+- [ ] T079 Configure settings.py (allowed hosts, DB, static/media, admin URL)
+- [ ] T080 Add Dockerfile for Django (install deps, collectstatic, migrate, gunicorn/uvicorn)
+- [ ] T081 Add requirements.txt for Django
+- [ ] T082 Add entrypoint script for migrations, static collection, etc.
+- [ ] T083 Add health endpoint for Traefik healthcheck
+
+### FastAPI Project
+- [ ] T084 Create or migrate FastAPI project
+- [ ] T085 Add Dockerfile for FastAPI (install deps, uvicorn)
+- [ ] T086 Add requirements.txt for FastAPI
+- [ ] T087 Add entrypoint script if needed
+- [ ] T088 Add /api/health endpoint
+
+### React Project
+- [ ] T089 Ensure React only serves frontend assets
+- [ ] T090 Remove any backend logic or API proxying from React
+- [ ] T091 Build React for production and serve with nginx or similar
+
+### Database & Dependencies
+- [ ] T092 Ensure Postgres is available and configured for Django and FastAPI
+- [ ] T093 Ensure Redis is available if using Celery or caching
+- [ ] T094 Update environment variables for DB, Redis, etc.
+
+### Volumes & Persistence
+- [ ] T095 Map volumes for Django static/media files
+- [ ] T096 Map volumes for Traefik ACME and logs
+- [ ] T097 Map volumes for Postgres data
+
+### Healthchecks
+- [ ] T098 Add healthchecks for Django, FastAPI, React, Postgres, Redis
+
+### Environment Variables
+- [ ] T099 Set all required environment variables for Django, FastAPI, React, Traefik, Postgres, Redis
+
+### CI/CD & Scripts
+- [ ] T100 Update deploy scripts to build Django and FastAPI images
+- [ ] T101 Update orchestration scripts to handle new services
+
+### Documentation
+- [ ] T102 Update README and docs to reflect new stack and endpoints
+
+### Testing
+- [ ] T103 Add/adjust tests for Django, FastAPI, React
+- [ ] T104 Ensure integration tests cover new routing and service boundaries
+
+### Security
+- [ ] T105 Add/adjust Traefik middlewares for security (headers, auth, rate limit)
+- [ ] T106 Ensure Django and FastAPI are hardened (DEBUG=False, secure settings)
+
+### DNS
+- [ ] T107 Ensure DNS records point admin.woodkilldev.com to Traefik
+- [ ] T108 Ensure woodkilldev.com and www.woodkilldev.com point to Traefik
+
+---
+
+### T062 Endpoints/Domains Reference (Django, FastAPI, React)
+
+**React Frontend**
+- Domains: `${WEBSITE_DOMAIN}`, `www.${WEBSITE_DOMAIN}`
+- Paths: `/` (except `/api`, `/static`)
+- Service: `react-app` (port 8080)
+- Traefik router: `frontend-react`
+- Middlewares: `security-headers`
+- TLS: enabled via `le-staging` certResolver
+
+**FastAPI API**
+- Domain: `${WEBSITE_DOMAIN}`
+- Path: `/api/*`
+- Service: `api` (port `${FASTAPI_PORT}`)
+- Traefik router: `api`
+- Middlewares: `security-headers`, `rate-limit`, `retry`
+- TLS: enabled via `le-staging` certResolver
+
+**Django Admin**
+- Domain: `${DJANGO_ADMIN_DNS_LABEL}.${WEBSITE_DOMAIN}` (e.g., `admin.woodkilldev.com`)
+- Path: `/admin`, `/`
+- Service: `django-admin` (port `${DJANGO_PORT}`)
+- Traefik routers: `django-admin-root`, `django-admin-sub-root`
+- Middlewares: `security-headers`, `traefik-basic-auth`, `django-admin-allow-ip`
+- TLS: enabled via `le-staging` certResolver
+
+**Django Static Files**
+- Path: `/static`
+- Service: `django-static` (port 8081)
+- Traefik router: `static-files`
+- TLS: enabled via `le-staging` certResolver
+
+**pgAdmin**
+- Domain: `${PGADMIN_DNS_LABEL}.${WEBSITE_DOMAIN}`
+- Service: `pgadmin` (port 8080)
+- Traefik router: `pgadmin`
+- Middlewares: `security-headers`, `traefik-basic-auth`, `pgadmin-allow-ip`
+- TLS: enabled via `le-staging` certResolver
+
+**Flower (Celery Monitoring, optional)**
+- Domain: `${FLOWER_DNS_LABEL}.${WEBSITE_DOMAIN}`
+- Service: `flower` (port 5555)
+- Traefik router: `flower`
+- Middlewares: `security-headers`, `flower-basic-auth`, `flower-allow-ip`
+- TLS: enabled via `le-staging` certResolver
+
+---

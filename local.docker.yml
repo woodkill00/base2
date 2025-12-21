@@ -330,7 +330,7 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
-    profiles: ["celery"]
+    profiles: ["celery", "flower"]
 
   # Celery Worker (uses API image to share code)
   celery-worker:
@@ -433,9 +433,10 @@ volumes:
     name: ${COMPOSE_PROJECT_NAME}_redis_data
     driver: local
 
-    traefik_acme:
-      name: ${COMPOSE_PROJECT_NAME}_traefik_acme
-      driver: local
+  traefik_acme:
+    name: ${COMPOSE_PROJECT_NAME}_traefik_acme
+    driver: local
+
   django_static:
     name: ${COMPOSE_PROJECT_NAME}_django_static
     driver: local
