@@ -5,10 +5,10 @@
   "private": true,
   "scripts": {
     "prepare": "husky install",
-    "test": "cd backend && npm test && cd ../react-app && npm test",
-    "lint": "cd backend && npm run lint && cd ../react-app && npm run lint",
-    "format": "cd backend && npm run format && cd ../react-app && npm run format",
-    "format:check": "cd backend && npm run format:check && cd ../react-app && npm run format:check"
+    "test": "cd react-app && npm test",
+    "lint": "cd react-app && npm run lint",
+    "format": "cd react-app && npm run format",
+    "format:check": "cd react-app && npm run format:check"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.4.3",

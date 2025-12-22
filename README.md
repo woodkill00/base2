@@ -16,11 +16,27 @@ Docker Compose v2.0.0 or newer is required. Scripts will check and warn if your 
 This Docker environment includes the following services:
 
 - **React App**: Node.js-based React application with Google OAuth
-- **Backend API**: Node.js/Express authentication server (NEW!)
+- **API**: FastAPI-based service
 - **Nginx**: Web server and reverse proxy
 - **PostgreSQL**: Relational database with authentication schema
 - **pgAdmin**: PostgreSQL management interface
 - **Traefik**: Modern reverse proxy and load balancer
+
+### TLS & Certificates (Staging-Only Policy)
+- Traefik in this repository is configured to use **Let's Encrypt staging ACME** only.
+- All HTTPS endpoints will present **staging certificates** and therefore show browser warnings.
+- **No production/real certificates are issued by default**; this environment is for development and pre-production simulation.
+- If you fork or adapt this for production, you must explicitly update the Traefik ACME configuration and associated documentation.
+
+### Stack Overview: Option 1 + Option B
+- **Option 1 (Django + FastAPI)**
+   - Django owns the schema, migrations, and admin UI (internal-only by default).
+   - FastAPI is the public API runtime and talks to Postgres directly.
+   - React is the public frontend and calls `https://${WEBSITE_DOMAIN}/api/...`.
+- **Option B (Traefik strips `/api`)**
+   - Traefik router `api` matches `Host(${WEBSITE_DOMAIN}) && PathPrefix(/api)`.
+   - Middleware `strip-api-prefix` removes `/api` before forwarding to FastAPI.
+   - FastAPI implements routes without the `/api` prefix (for example, `/health`).
 
 ## 📋 Prerequisites
 
@@ -73,18 +89,18 @@ node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 ```env
 # For Gmail (development):
 EMAIL_USER=your_email@gmail.com
-EMAIL_PASSWORD=your_gmail_app_password  # See backend/README.md for setup
+EMAIL_PASSWORD=your_gmail_app_password
 
 # Or use SendGrid, Mailgun, etc.
 ```
 
-See `backend/README.md` for detailed email setup instructions.
+If you enable email-based flows, configure an app password/provider credentials.
 
 ### 4. Access Services
 
 Once running, access the services at:
  **React App**: Built into static assets; served internally by Nginx
- **Backend API**: Node.js/Express auth server routed via Traefik `/api`
+ **API**: FastAPI service routed via Traefik `/api`
  **Nginx**: Standalone SPA server; only exposed via Traefik
  **PostgreSQL**: Internal-only database; health-checked
  **pgAdmin**: https://${PGADMIN_DNS_LABEL}.${WEBSITE_DOMAIN} (via Traefik; basic-auth + IP allowlist)
@@ -102,7 +118,7 @@ All Dockerfiles have been enhanced with:
 - Each service runs as a non-root user for improved security
 - Proper file permissions and ownership configured
 
- **Frontend (via Traefik)**: `http://localhost:${TRAEFIK_HOST_PORT}` (HTTP)
+ **Frontend (via Traefik)**: `http://localhost` (HTTP)
  **Frontend (HTTPS)**: `https://${WEBSITE_DOMAIN}` (staging cert; expect browser warning)
 - Built-in health monitoring for all services
 - Automatic restart on failure
@@ -231,7 +247,7 @@ Stop all Docker services. Supports self-test mode:
 
 #### `./scripts/test.sh` - Run Tests
 
-Run all backend and frontend tests. Supports self-test mode:
+Run frontend tests by default.
 
 ```bash
 ./scripts/test.sh --self-test    # Run self-test for Node, npm, and test scripts

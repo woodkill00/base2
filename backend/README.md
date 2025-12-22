@@ -1,4 +1,6 @@
-# Base2 Backend API
+# Base2 Backend API (Legacy / Deprecated)
+
+This Node/Express backend is retained for historical reference. The active stack uses FastAPI (`api/`) + Django (`django/`) behind Traefik.
 
 Node.js/Express authentication backend with PostgreSQL database, JWT tokens, and email verification.
 

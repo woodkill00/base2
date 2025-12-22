@@ -5,7 +5,9 @@
 import '@testing-library/jest-dom';
 
 // Mock environment variables
-process.env.REACT_APP_API_URL = 'http://localhost:5001';
+const websiteDomain = process.env.WEBSITE_DOMAIN || 'localhost';
+process.env.REACT_APP_API_URL =
+  process.env.REACT_APP_API_URL || `https://${websiteDomain}/api`;
 process.env.REACT_APP_GOOGLE_CLIENT_ID = 'test-google-client-id';
 
 // Mock window.matchMedia (needed for some components)

@@ -34,7 +34,7 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "Arguments:"
             echo "  SERVICE           Specific service to view logs (optional)"
-            echo "                    Options: react-app, nginx, postgres, pgadmin, traefik"
+            echo "                    Common: traefik, react-app, api, django, postgres, nginx, nginx-static, pgadmin"
             echo ""
             echo "Options:"
             echo "  -f, --follow      Follow log output"

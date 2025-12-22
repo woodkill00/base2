@@ -64,7 +64,7 @@
       - Install dependencies:
         - `pip install -r requirements.txt`
    4. **(Optional) Set up Node.js dependencies**
-      - If using frontend/backend scripts, run `npm install` in the relevant directory
+      - If using frontend scripts, run `npm install` in `react-app/`
    5. **Run automation scripts**
       - Deploy: `./scripts/deploy.sh [--dry-run]` or `python digital_ocean/deploy.py [--dry-run]`
       - Teardown: `./scripts/teardown.sh [--dry-run]` or `python digital_ocean/teardown.py [--dry-run]`
@@ -103,8 +103,19 @@
 - Review error messages for missing files or environment variables.
 - See README.md for more details.
 
+Additional operator-focused tips (routing, certs, health, allowlists):
+- Certificate warnings on `https://${WEBSITE_DOMAIN}` are expected: Traefik uses Let's Encrypt **staging** ACME for this stack.
+- If `https://${WEBSITE_DOMAIN}/api/health` fails, check that Traefik and the `api` container are healthy and inspect remote artifacts under `local_run_logs/`.
+- If admin or pgAdmin subdomains time out or return 403, verify IP allowlist and basic auth variables in `.env` and re-run the relevant allowlist update scripts.
+
 ## DigitalOcean Deploy (Optional)
 Automate droplet creation, DNS, and remote stack startup with Traefik-only public entrypoint.
+
+**TLS & Certificates (Staging-Only Policy)**
+- Traefik is configured to use **Lets Encrypt staging ACME** for this stack.
+- Certificates are **staging-only** and will trigger browser warnings by design.
+- **Production/real certificates are intentionally not issued** by this project.
+- If you later adapt this for production, you must explicitly change the ACME configuration and update the documentation.
 
 ### One-command Deploy (Windows PowerShell)
 
@@ -158,6 +169,12 @@ After deploy:
 - Verification artifacts: see the fetched files in the repo root
    - Stored under `local_run_logs/` (use `-Timestamped` for per-run subfolders)
 
+Architecture summary (Option 1 + Option B):
+- Django owns the schema, migrations, and admin UI (internal-only by default).
+- FastAPI is the public API runtime and talks directly to Postgres.
+- React is the public frontend and calls `https://${WEBSITE_DOMAIN}/api/...`.
+- Traefik strips the `/api` prefix before forwarding requests to FastAPI, so FastAPI implements `/health`, `/users/...`, etc., without the `/api` prefix.
+
 ## Celery + Redis (Optional)
 Add background task processing without increasing the attack surface. Redis and Celery are internal-only; Flower dashboard is disabled by default and guarded when enabled.
 
@@ -207,12 +224,26 @@ Update your allowlist to your current IP:
    ```
 
 ## Onboarding
-- All required environment variables are documented in `.env.example`.
+- Recommended starting point:
+   - `cp .env.example .env`
+   - Set at minimum `WEBSITE_DOMAIN`, `TRAEFIK_CERT_EMAIL`, and secrets (`DJANGO_SECRET_KEY`, `JWT_SECRET`).
+- Traefik is the only public entrypoint and publishes host ports **80/443 only**.
 - Scripts automate all setup, build, start, stop, test, and log processes.
 - All major scripts support a `--self-test` mode to verify environment and dependencies before running. Use this mode for troubleshooting and onboarding.
-- No manual steps outside documented scripts.
-
+- `NETWORK_NAME` controls the Compose network name.
+- If you change the network, update the Compose network key to match (variable substitution is not supported for YAML keys).
 ## Network Alignment
+## Environment Variables (Quick Reference)
+
+- **Domain**: `WEBSITE_DOMAIN=example.com`
+- **Edge TLS (staging only)**: `TRAEFIK_CERT_EMAIL=you@example.com`
+- **Frontend → API**: `REACT_APP_API_URL=https://${WEBSITE_DOMAIN}/api`
+- **Ports (internal-only)**: `FASTAPI_PORT=5001`, `DJANGO_PORT=8000`, `POSTGRES_PORT=5432`
+- **DB**: `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`
+- **API auth**: `JWT_SECRET`, `JWT_EXPIRE`
+- **Admin guards**:
+   - `TRAEFIK_DASH_BASIC_USERS` (htpasswd format)
+   - `DJANGO_ADMIN_ALLOWLIST`, `PGADMIN_ALLOWLIST` (CIDR allowlists)
 - Ensure `NETWORK_NAME` equals `TRAEFIK_DOCKER_NETWORK` in `.env`.
 - If you change the network, update the compose network key to match (variable substitution is not supported for keys).
 

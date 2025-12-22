@@ -19,6 +19,13 @@
 ```
 Expected speedup: ≥30% vs full deploy on same environment. For measurement, run both modes back-to-back and compare total runtime logged in the terminal.
 
+Example measurement (PowerShell):
+
+```powershell
+Measure-Command { ./scripts/deploy.ps1 -Full -Timestamped -EnvPath ./.env }
+Measure-Command { ./scripts/deploy.ps1 -UpdateOnly -Timestamped -EnvPath ./.env }
+```
+
 ## Expected Outputs
 - HTTPS reachable at configured domain (homepage)
 - API health at https://<domain>/api/health returns OK
@@ -27,6 +34,11 @@ Expected speedup: ≥30% vs full deploy on same environment. For measurement, ru
   - traefik-ls.txt, traefik-logs.txt
   - curl-root.txt, curl-api.txt
   - template snapshots for static/dynamic configs
+
+**TLS & Certificates (Staging-Only Policy)**
+- Traefik for this feature uses **Let's Encrypt staging ACME** only.
+- All HTTPS traffic terminates on **staging certificates**, so browser warnings are expected.
+- This environment is intended for development and pre-production simulation, **not** for issuing real/production certificates.
 
 ## Troubleshooting
 - Missing credentials → script fails fast with an actionable error.
@@ -41,6 +53,12 @@ Expected speedup: ≥30% vs full deploy on same environment. For measurement, ru
 - API: `api` internal `${FASTAPI_PORT}`, router `api` with `PathPrefix(/api)`
 - Django: internal `${DJANGO_PORT}`, no public router by default
 - Postgres: internal-only
+
+Architecture summary (Option 1 + Option B):
+- Django owns the database schema, migrations, and admin UI (internal-only by default).
+- FastAPI is the public API runtime and talks directly to Postgres.
+- React is the public frontend and calls `https://${WEBSITE_DOMAIN}/api/...`.
+- Traefik strips the `/api` prefix via the `strip-api-prefix` middleware before forwarding requests to FastAPI, so FastAPI implements `/health`, `/users/...`, etc., without the `/api` prefix.
 
 ## Pre-Flight Checklist
 - `.env` has `FASTAPI_*`, `DJANGO_*`, `REACT_APP_API_URL`, `POSTGRES_*`, `JWT_*`, `RATE_LIMIT_*`, `WEBSITE_DOMAIN`, Traefik vars
@@ -66,7 +84,6 @@ Expected speedup: ≥30% vs full deploy on same environment. For measurement, ru
    - When using `deploy.ps1 -RunTests -TestsJson`, the JSON report is saved to the latest timestamped artifact folder as `post-deploy-report.json`
   - Customize filename: add `-ReportName my-report.json` to `deploy.ps1` to save under a different name
    - Or include `-RunTests` with `deploy.ps1` to run automatically
-   - Optional: Django proxy test: add `-CheckDjangoProxy`
    - Optional: Admin router test: add `-CheckDjangoAdmin [-AdminUser <user> -AdminPass <pass>]`
 
   ## Optional: Temporary Django Admin Exposure (Non-Production)

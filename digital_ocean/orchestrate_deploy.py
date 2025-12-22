@@ -156,7 +156,8 @@ else:
     exit(1)
 log(f"Using SSH keys for droplet: {ssh_keys}")
 LOCAL_ENV_PATH = os.getenv("LOCAL_ENV_PATH", os.path.abspath(os.path.join(os.path.dirname(__file__), "../.env")))
-REMOTE_ENV_PATH = "/srv/backend/.env"  # Adjust as needed for your droplet
+# Remote repo path is controlled via DEPLOY_PATH/PROJECT_NAME (defaults align with deploy.ps1 remote verification)
+REMOTE_ENV_PATH = os.getenv("REMOTE_ENV_PATH", "/opt/apps/base2/.env")
 SSH_USER = os.getenv("SSH_USER", "root")
 
 client = Client(token=DO_API_TOKEN)
@@ -642,7 +643,9 @@ else:
     # --- Post-reboot configuration and service startup ---
     try:
         SSH_USER = os.getenv("SSH_USER", "root")
-        repo_path = f"{env_dict.get('DEPLOY_PATH', '/srv/')}{env_dict.get('PROJECT_NAME', 'base2')}"
+        deploy_root = str(env_dict.get('DEPLOY_PATH', '/opt/apps')).rstrip('/')
+        project_name = str(env_dict.get('PROJECT_NAME', 'base2')).strip('/')
+        repo_path = f"{deploy_root}/{project_name}"
         log(f"Connecting via SSH to {ip_address} for post-reboot configuration...")
         ssh_client = paramiko.SSHClient()
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -802,7 +805,7 @@ else:
 
         log("Fetching key service logs (last 100 lines) and summarizing...")
         svc_errors: Dict[str, Dict[str, object]] = {}
-        for svc in ["traefik", "nginx", "backend", "postgres", "pgadmin"]:
+        for svc in ["traefik", "nginx", "api", "django", "postgres", "pgadmin", "nginx-static"]:
             log(f"Logs for {svc}:")
             stdin, stdout, stderr = ssh_client.exec_command(f"cd {repo_path} && docker compose -f local.docker.yml logs --tail=100 {svc}")
             logs_text = stdout.read().decode()
@@ -811,7 +814,7 @@ else:
             if err_out:
                 print(err_out)
             # Only perform HTTP error detection for web-facing services
-            if svc in ("traefik", "nginx", "backend"):
+            if svc in ("traefik", "nginx", "api"):
                 e4, e5, paths = detect_http_errors(logs_text)
                 svc_errors[svc] = {"4xx": e4, "5xx": e5, "paths": paths}
 

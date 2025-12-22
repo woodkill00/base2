@@ -23,8 +23,40 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$script:ArtifactDir = ''
+
 function Write-Section($msg) {
   Write-Host "`n=== $msg ===" -ForegroundColor Cyan
+}
+
+function Ensure-ArtifactDir {
+  if ($script:ArtifactDir -and (Test-Path $script:ArtifactDir)) { return $script:ArtifactDir }
+  $outDir = $LogsDir
+  if ($Timestamped) {
+    $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
+    $outDir = Join-Path $LogsDir $stamp
+  }
+  if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
+  $script:ArtifactDir = (Resolve-Path $outDir).Path
+  return $script:ArtifactDir
+}
+
+function Write-FailureArtifacts([string]$context, [string]$message) {
+  $dest = Ensure-ArtifactDir
+  try {
+    $support = @()
+    $support += "Deploy failed: $context"
+    $support += "Message: $message"
+    $support += "Time (UTC): $(Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ssZ')"
+    $support += "Tip: Re-run with -Preflight to validate config before cloud actions."
+    Set-Content -Path (Join-Path $dest 'support.txt') -Value ($support -join [Environment]::NewLine) -Encoding UTF8
+  } catch {}
+  try {
+    Set-Content -Path (Join-Path $dest 'deploy-error.txt') -Value $message -Encoding UTF8
+  } catch {}
+  try {
+    & docker compose -f ./local.docker.yml config > (Join-Path $dest 'compose-config-local.yml') 2>$null
+  } catch {}
 }
 
 function Ensure-Venv {
@@ -199,6 +231,15 @@ if [ -d /opt/apps/base2 ]; then
   docker compose -f local.docker.yml up -d --force-recreate traefik > /root/logs/build/traefik-up.txt 2>&1 || true
   # Ensure Django service is running for admin route
   docker compose -f local.docker.yml up -d django > /root/logs/build/django-up.txt 2>&1 || true
+  # Capture Django migration output into a dedicated artifact
+  docker compose -f local.docker.yml exec -T django python manage.py migrate --noinput > /root/logs/django-migrate.txt 2>&1 || true
+  # Django deploy checks (security + config sanity)
+  docker compose -f local.docker.yml exec -T django python manage.py check --deploy > /root/logs/django-check-deploy.txt 2>&1 || true
+  # Schema compatibility check (fails if migrations unapplied or schema drift)
+  set +e
+  docker compose -f local.docker.yml exec -T django python manage.py schema_compat_check --json > /root/logs/schema-compat-check.json 2> /root/logs/schema-compat-check.err
+  echo $? > /root/logs/schema-compat-check.status
+  set -e
   # If requested, enable celery/flower profiles and build required images
   if [ "${RUN_CELERY_CHECK:-}" = "1" ]; then
     # Tune host sysctl for Redis memory overcommit (best-effort, ignore errors)
@@ -212,6 +253,8 @@ if [ -d /opt/apps/base2 ]; then
   fi
   docker compose -f local.docker.yml ps > /root/logs/compose-ps.txt || true
   docker compose -f local.docker.yml config > /root/logs/compose-config.yml || true
+  # Published host ports report (Traefik should be the only one)
+  docker ps --format '{{.Names}}\t{{.Ports}}' | awk 'NF && $2!="" {print}' > /root/logs/published-ports.txt || true
   # Capture logs from all services
   # Collect logs for services across default and profiled stacks (celery, flower)
   S_DEF=$(docker compose -f local.docker.yml config --services || true)
@@ -239,15 +282,15 @@ if [ -d /opt/apps/base2 ]; then
     docker exec "$CID" sh -lc 'cat /etc/traefik/templates/dynamic.yml.template 2>/dev/null || echo TEMPLATE_MISSING' > /root/logs/traefik-dynamic.template.yml || true
     docker exec "$CID" sh -lc 'cat /etc/traefik/templates/traefik.yml.template 2>/dev/null || echo TEMPLATE_MISSING' > /root/logs/traefik-static.template.yml || true
     docker logs --timestamps --tail=1000 "$CID" > /root/logs/traefik-logs.txt || true
-    # Capture backend logs for diagnostics if needed
-    BID=$(docker compose -f local.docker.yml ps -q backend || true)
-    if [ -n "$BID" ]; then
-      docker logs --timestamps --tail=500 "$BID" > /root/logs/backend-logs.txt || true
+    # Capture API logs for quick diagnostics (in addition to per-service logs)
+    AID=$(docker compose -f local.docker.yml ps -q api || true)
+    if [ -n "$AID" ]; then
+      docker logs --timestamps --tail=500 "$AID" > /root/logs/api-logs.txt || true
     else
-      echo "MISSING_BACKEND_CID" > /root/logs/backend-logs.txt
+      echo "MISSING_API_CID" > /root/logs/api-logs.txt
     fi
   else
-    echo "MISSING_CID" | tee /root/logs/traefik-env.txt /root/logs/traefik-static.yml /root/logs/traefik-dynamic.yml /root/logs/traefik-ls.txt /root/logs/traefik-logs.txt >/dev/null
+    echo "MISSING_CID" | tee /root/logs/traefik-env.txt /root/logs/traefik-static.yml /root/logs/traefik-dynamic.yml /root/logs/traefik-ls.txt /root/logs/traefik-logs.txt /root/logs/api-logs.txt >/dev/null
   fi
   DOMAIN=$(grep -E '^WEBSITE_DOMAIN=' /opt/apps/base2/.env | cut -d'=' -f2 | tr -d '\r')
   if [ -n "$DOMAIN" ]; then
@@ -273,6 +316,13 @@ if [ -d /opt/apps/base2 ]; then
     if [ -n "$FL_LABEL" ]; then
       FHOST="$FL_LABEL.$DOMAIN"
       curl -skI "https://$FHOST/" -o /root/logs/curl-flower.txt || true
+    fi
+
+    # Django admin HEAD (no credentials) -> expect 401/403 when guarded
+    ADM_LABEL=$(grep -E '^DJANGO_ADMIN_DNS_LABEL=' /opt/apps/base2/.env | cut -d'=' -f2 | tr -d '\r')
+    if [ -n "$ADM_LABEL" ]; then
+      AHOST="$ADM_LABEL.$DOMAIN"
+      curl -skI "https://$AHOST/" -o /root/logs/curl-admin-head.txt || true
     fi
 
     # Celery roundtrip: enqueue ping and poll for result
@@ -324,13 +374,7 @@ fi
   }
 
   Write-Section "Copying verification artifacts"
-  $outDir = $LogsDir
-  if ($Timestamped) {
-    $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
-    $outDir = Join-Path $LogsDir $stamp
-  }
-  if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
-  $dest = (Resolve-Path $outDir).Path
+  $dest = Ensure-ArtifactDir
 
   # Robust copy with polling when async: wait for /root/logs/remote_verify.done, then scp
   $attempts = 1
@@ -360,8 +404,13 @@ fi
   } else {
     # Best-effort copy of individual files to the root of $dest for convenience
     $files = @(
-      'compose-ps.txt','traefik-env.txt','traefik-static.yml','traefik-dynamic.yml','traefik-ls.txt','traefik-logs.txt','backend-logs.txt',
+      'compose-ps.txt','traefik-env.txt','traefik-static.yml','traefik-dynamic.yml','traefik-ls.txt','traefik-logs.txt','api-logs.txt',
+      'django-migrate.txt',
+      'django-check-deploy.txt',
+      'schema-compat-check.json','schema-compat-check.err','schema-compat-check.status',
+      'published-ports.txt',
       'curl-root.txt','curl-api.txt','curl-api-health.txt','curl-api-health-slash.txt',
+      'curl-admin-head.txt',
       'api-health.json','api-health.status','api-health-slash.json','api-health-slash.status',
       'traefik-dynamic.template.yml','traefik-static.template.yml','remote_verify.done'
     )
@@ -389,35 +438,42 @@ fi
 
 
 Write-Section "Base2 Deploy"
-Ensure-Venv
-Activate-Venv
-Load-DotEnv -path $EnvPath
-Update-Allowlist
-if ($Preflight) { Invoke-Preflight }
-Validate-DoCreds
-Run-Orchestrator
+try {
+  $null = Ensure-ArtifactDir
 
-$resolvedIp = Get-DropletIp
-if (-not $resolvedIp) {
-  Write-Warning "Could not determine droplet IP. Skipping remote verification."
-  Write-Section "Remote verify unavailable - saving local artifacts"
-  $outDir = $LogsDir
-  if ($Timestamped) {
-    $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
-    $outDir = Join-Path $LogsDir $stamp
+  Ensure-Venv
+  Activate-Venv
+  Load-DotEnv -path $EnvPath
+  Update-Allowlist
+  if ($Preflight) { Invoke-Preflight }
+  Validate-DoCreds
+  Run-Orchestrator
+
+  $resolvedIp = Get-DropletIp
+  if (-not $resolvedIp) {
+    Write-Warning "Could not determine droplet IP. Skipping remote verification."
+    Write-Section "Remote verify unavailable - saving local artifacts"
+    $dest = Ensure-ArtifactDir
+
+    # Capture minimal local Compose artifacts for troubleshooting
+    try { & docker compose -f ./local.docker.yml ps > (Join-Path $dest 'compose-ps-local.txt') 2>$null } catch {}
+    try { & docker compose -f ./local.docker.yml config > (Join-Path $dest 'compose-config-local.yml') 2>$null } catch {}
+
+    $support = @()
+    $support += "Remote verification skipped due to missing droplet IP."
+    $support += "Ensure DNS points to droplet and DO token is valid."
+    $support += "Run: ./scripts/deploy.ps1 -Preflight -RunTests -TestsJson"
+    Set-Content -Path (Join-Path $dest 'support.txt') -Value ($support -join [Environment]::NewLine) -Encoding UTF8
+    exit 0
   }
-  if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
-  $dest = (Resolve-Path $outDir).Path
-  $support = @()
-  $support += "Remote verification skipped due to missing droplet IP."
-  $support += "Ensure DNS points to droplet and DO token is valid."
-  $support += "Run: ./scripts/deploy.ps1 -Preflight -RunTests -TestsJson"
-  $text = ($support -join [Environment]::NewLine)
-  Set-Content -Path (Join-Path $dest 'support.txt') -Value $text -Encoding UTF8
-  exit 0
-}
 
-Remote-Verify -ip $resolvedIp -keyPath $SshKey
+  Remote-Verify -ip $resolvedIp -keyPath $SshKey
+} catch {
+  $msg = $_.Exception.Message
+  Write-Warning "Deploy failed: $msg"
+  Write-FailureArtifacts -context 'exception' -message $msg
+  exit 1
+}
 
 if ($RunTests) {
   Write-Section "Running post-deploy tests"
@@ -427,12 +483,7 @@ if ($RunTests) {
       if ($RunCeleryCheck) { $testArgs.CheckCelery = $true }
     $jsonOut = & .\scripts\test.ps1 @testArgs
     $exitCode = $LASTEXITCODE
-    # Determine latest timestamped artifact folder
-    $artifactDir = $LogsDir
-    if (Test-Path $LogsDir) {
-      $cands = Get-ChildItem -Path $LogsDir -Directory | Where-Object { $_.Name -match '^\d{8}_\d{6}$' } | Sort-Object Name
-      if ($cands.Count -gt 0) { $artifactDir = $cands[-1].FullName }
-    }
+    $artifactDir = Ensure-ArtifactDir
     $reportPath = Join-Path $artifactDir $ReportName
     try {
       Set-Content -Path $reportPath -Value $jsonOut -Encoding UTF8
