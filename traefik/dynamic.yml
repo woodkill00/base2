@@ -208,7 +208,7 @@ http:
     flower-basic-auth:
       basicAuth:
         users:
-          - ${FLOWER_BASIC_USERS}"
+          - "${FLOWER_BASIC_USERS}"
 
     rate-limit:
       rateLimit:
