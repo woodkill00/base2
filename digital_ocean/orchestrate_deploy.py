@@ -193,9 +193,18 @@ print("--- user_data script ---\n" + user_data_script_sub + "\n--- end user_data
 
 # Write user_data to DO_userdata.json for inspection (droplet_id will be added after creation)
 do_userdata_json_path = "DO_userdata.json"
+try:
+    existing_userdata = {}
+    if os.path.exists(do_userdata_json_path):
+        with open(do_userdata_json_path, "r", encoding="utf-8") as f:
+            existing_userdata = json.load(f) or {}
+except Exception:
+    existing_userdata = {}
+
+existing_userdata["user_data"] = user_data_script_sub
 with open(do_userdata_json_path, "w", encoding="utf-8") as f:
-    json.dump({"user_data": user_data_script_sub}, f, indent=2)
-log("Wrote user_data to DO_userdata.json (without droplet_id yet)")
+    json.dump(existing_userdata, f, indent=2)
+log("Wrote user_data to DO_userdata.json (preserving existing fields)")
 
 # --- 1. Create Droplet ---
 
@@ -220,14 +229,39 @@ droplet_info = None
 if UPDATE_ONLY:
     log("[UPDATE-ONLY] Skipping creation; locating existing droplet by name...")
     try:
-        lst = client.droplets.list()
-        matched = next((d for d in lst.get("droplets", []) if d.get("name") == DO_DROPLET_NAME), None)
-        if not matched:
+        lst = client.droplets.list(per_page=200)
+        matches = [d for d in lst.get("droplets", []) if d.get("name") == DO_DROPLET_NAME]
+        if not matches:
             raise RuntimeError(f"No existing droplet found named {DO_DROPLET_NAME}")
+
+        # If multiple droplets share the same name, prefer the most recently created.
+        # If created_at is missing, fall back to highest id.
+        def sort_key(d):
+            return (d.get("created_at") or "", int(d.get("id") or 0))
+        matched = sorted(matches, key=sort_key)[-1]
+
         droplet_id = matched["id"]
         droplet_info = client.droplets.get(droplet_id)["droplet"]
-        ip_address = droplet_info["networks"]["v4"][0]["ip_address"]
+        v4_list = droplet_info.get("networks", {}).get("v4", [])
+        public_v4 = next((n for n in v4_list if n.get("type") == "public" and n.get("ip_address")), None)
+        ip_address = (public_v4 or (v4_list[0] if v4_list else {})).get("ip_address")
+        if not ip_address:
+            raise RuntimeError(f"Could not determine public IPv4 for droplet {droplet_id}")
         log(f"Using existing droplet {droplet_id} at {ip_address}")
+
+        # Update DO_userdata.json for downstream scripts (deploy.ps1 uses it as a primary source)
+        try:
+            do_userdata = {}
+            if os.path.exists(do_userdata_json_path):
+                with open(do_userdata_json_path, "r", encoding="utf-8") as f:
+                    do_userdata = json.load(f) or {}
+            do_userdata["droplet_id"] = droplet_id
+            do_userdata["ip_address"] = ip_address
+            with open(do_userdata_json_path, "w", encoding="utf-8") as f:
+                json.dump(do_userdata, f, indent=2)
+            log(f"Updated {do_userdata_json_path} with droplet_id {droplet_id} and ip_address {ip_address}")
+        except Exception as e:
+            err(f"Failed to update {do_userdata_json_path}: {e}")
     except Exception as e:
         err(f"Failed to locate existing droplet: {e}")
         exit(1)

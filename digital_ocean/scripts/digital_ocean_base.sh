@@ -146,6 +146,11 @@ for i in {1..10}; do
 done
 ufw default deny incoming
 ufw default allow outgoing
+
+# Safety: ensure Docker remote API ports are NOT exposed
+ufw delete allow 2375/tcp >/dev/null 2>&1 || true
+ufw delete allow 2376/tcp >/dev/null 2>&1 || true
+
 ufw allow 22/tcp    # SSH
 ufw allow 80/tcp    # HTTP
 ufw allow 443/tcp   # HTTPS

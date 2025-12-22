@@ -173,7 +173,11 @@ if (-not $Domain) { $Domain = 'localhost' }
 $artifactDir = $LogsDir
 if ($UseLatestTimestamp) {
   if (Test-Path $LogsDir) {
-    $cands = Get-ChildItem -Path $LogsDir -Directory | Where-Object { $_.Name -match '^\d{8}_\d{6}$' } | Sort-Object Name
+    $cands = @(
+      Get-ChildItem -Path $LogsDir -Directory |
+        Where-Object { $_.Name -match '^\d{8}_\d{6}$' } |
+        Sort-Object Name
+    )
     if ($cands.Count -gt 0) { $artifactDir = $cands[-1].FullName }
   }
 }

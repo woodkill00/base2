@@ -294,16 +294,30 @@ if [ -d /opt/apps/base2 ]; then
   fi
   DOMAIN=$(grep -E '^WEBSITE_DOMAIN=' /opt/apps/base2/.env | cut -d'=' -f2 | tr -d '\r')
   if [ -n "$DOMAIN" ]; then
+    # Ensure expected curl artifacts exist even if curl/DNS/TLS fails
+    : > /root/logs/curl-root.txt || true
+    : > /root/logs/curl-api-health.txt || true
+    : > /root/logs/curl-api-health-slash.txt || true
+    : > /root/logs/curl-api.txt || true
+    : > /root/logs/curl-admin-head.txt || true
+    : > /root/logs/api-health.json || true
+    : > /root/logs/api-health.status || true
+    : > /root/logs/api-health-slash.json || true
+    : > /root/logs/api-health-slash.status || true
+
+    # Curl against the local Traefik listener, but use the real hostname for SNI/Host.
+    RESOLVE_DOMAIN=(--resolve "$DOMAIN:443:127.0.0.1")
+
     # Root HEAD
-    curl -skI "https://$DOMAIN/" -o /root/logs/curl-root.txt || true
+    curl -skI "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/" -o /root/logs/curl-root.txt || true
 
     # API health HEAD (both forms)
-    curl -skI "https://$DOMAIN/api/health" -o /root/logs/curl-api-health.txt || true
-    curl -skI "https://$DOMAIN/api/health/" -o /root/logs/curl-api-health-slash.txt || true
+    curl -skI "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/health" -o /root/logs/curl-api-health.txt || true
+    curl -skI "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/health/" -o /root/logs/curl-api-health-slash.txt || true
 
     # API health GET (capture body and status separately)
-    curl -sk -o /root/logs/api-health.json -w "%{http_code}" "https://$DOMAIN/api/health" > /root/logs/api-health.status || true
-    curl -sk -o /root/logs/api-health-slash.json -w "%{http_code}" "https://$DOMAIN/api/health/" > /root/logs/api-health-slash.status || true
+    curl -sk "${RESOLVE_DOMAIN[@]}" -o /root/logs/api-health.json -w "%{http_code}" "https://$DOMAIN/api/health" > /root/logs/api-health.status || true
+    curl -sk "${RESOLVE_DOMAIN[@]}" -o /root/logs/api-health-slash.json -w "%{http_code}" "https://$DOMAIN/api/health/" > /root/logs/api-health-slash.status || true
 
     # Back-compat: maintain curl-api.txt pointing at preferred health endpoint (non-slash first)
     cp /root/logs/curl-api-health.txt /root/logs/curl-api.txt || true
@@ -315,14 +329,14 @@ if [ -d /opt/apps/base2 ]; then
     FL_LABEL=$(grep -E '^FLOWER_DNS_LABEL=' /opt/apps/base2/.env | cut -d'=' -f2 | tr -d '\r')
     if [ -n "$FL_LABEL" ]; then
       FHOST="$FL_LABEL.$DOMAIN"
-      curl -skI "https://$FHOST/" -o /root/logs/curl-flower.txt || true
+      curl -skI --resolve "$FHOST:443:127.0.0.1" "https://$FHOST/" -o /root/logs/curl-flower.txt || true
     fi
 
     # Django admin HEAD (no credentials) -> expect 401/403 when guarded
     ADM_LABEL=$(grep -E '^DJANGO_ADMIN_DNS_LABEL=' /opt/apps/base2/.env | cut -d'=' -f2 | tr -d '\r')
     if [ -n "$ADM_LABEL" ]; then
       AHOST="$ADM_LABEL.$DOMAIN"
-      curl -skI "https://$AHOST/" -o /root/logs/curl-admin-head.txt || true
+      curl -skI --resolve "$AHOST:443:127.0.0.1" "https://$AHOST/" -o /root/logs/curl-admin-head.txt || true
     fi
 
     # Celery roundtrip: enqueue ping and poll for result
@@ -355,7 +369,7 @@ fi
   $unixScript = $scriptContent -replace "`r`n","`n"
   Set-Content -Path $tmpScript -Value $unixScript -Encoding Ascii -NoNewline
   # Upload and execute the script
-  & $scpExe -i $keyPath @($sshCommon) $tmpScript "root@${ip}:/root/remote_verify.sh" | Out-Null
+  & $scpExe -i $keyPath @($sshCommon) $tmpScript "root@${ip}:/root/remote_verify.sh" 2>$null | Out-Null
   # Clear previous completion flag to avoid copying stale logs immediately
   try { & $sshExe @sshArgs "rm -f /root/logs/remote_verify.done" | Out-Null } catch { }
   if ($AsyncVerify) {
@@ -391,7 +405,7 @@ fi
         }
       }
       # Copy entire remote logs directory (build + services + snapshots)
-      & $scpExe -i $keyPath -r "root@${ip}:/root/logs" $dest | Out-Null
+      & $scpExe -i $keyPath -r "root@${ip}:/root/logs" $dest 2>$null | Out-Null
       $copied = $true
       break
     } catch {
@@ -415,7 +429,7 @@ fi
       'traefik-dynamic.template.yml','traefik-static.template.yml','remote_verify.done'
     )
     foreach ($f in $files) {
-      try { & $scpExe -i $keyPath "root@${ip}:/root/logs/$f" $dest | Out-Null } catch { }
+      try { & $scpExe -i $keyPath "root@${ip}:/root/logs/$f" $dest 2>$null | Out-Null } catch { }
     }
   }
 
@@ -445,7 +459,12 @@ try {
   Activate-Venv
   Load-DotEnv -path $EnvPath
   Update-Allowlist
-  if ($Preflight) { Invoke-Preflight }
+  if ($Preflight) {
+    Invoke-Preflight
+    Write-Section "Preflight only"
+    Write-Output "Preflight passed. No cloud actions executed."
+    exit 0
+  }
   Validate-DoCreds
   Run-Orchestrator
 

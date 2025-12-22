@@ -113,8 +113,10 @@ services:
   # Traefik (ONLY public ports)
   traefik:
     build:
-      context: ./traefik
-      dockerfile: .Dockerfile
+      context: .
+      dockerfile: ./traefik/.Dockerfile
+      args:
+        - TRAEFIK_VERSION=${TRAEFIK_VERSION}
     container_name: ${COMPOSE_PROJECT_NAME}_traefik
     ports:
       - "80:80"

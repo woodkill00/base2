@@ -1,17 +1,17 @@
+ARG TRAEFIK_VERSION=v3.1
 
 # --- Multi-stage build ---
 
 # Stage 1: Render dynamic.yml using Python
 FROM python:3.11-alpine AS renderer
 WORKDIR /render
-COPY ../render_traefik_dynamic.py ./render_traefik_dynamic.py
-COPY ../.env ./.env
-COPY dynamic.yml ./traefik/dynamic.template.yml
-RUN pip install python-dotenv
+COPY render_traefik_dynamic.py ./render_traefik_dynamic.py
+COPY .env ./.env
+COPY traefik/dynamic.yml ./traefik/dynamic.template.yml
+RUN pip install --no-cache-dir python-dotenv
 RUN python3 render_traefik_dynamic.py
 
 # Stage 2: Final Traefik image
-ARG TRAEFIK_VERSION=v3.1
 FROM traefik:${TRAEFIK_VERSION}
 
 # Set build arguments for environment variables
@@ -26,7 +26,7 @@ ARG TRAEFIK_EXPOSED_BY_DEFAULT
 USER root
 RUN addgroup -g 1000 traefik 2>/dev/null || true && \
     adduser -D -u 1000 -G traefik traefik 2>/dev/null || true && \
-    mkdir -p /etc/traefik /var/log/traefik && \
+  mkdir -p /etc/traefik /etc/traefik/dynamic /var/log/traefik && \
     chown -R traefik:traefik /etc/traefik /var/log/traefik && \
     chmod -R 755 /etc/traefik /var/log/traefik
 RUN mkdir -p /etc/traefik/acme \
@@ -35,7 +35,7 @@ RUN mkdir -p /etc/traefik/acme \
   && chmod 600 /etc/traefik/acme/acme.json /etc/traefik/acme/acme-staging.json
 
 # Copy static traefik config
-COPY traefik.yml /etc/traefik/traefik.yml
+COPY traefik/traefik.yml /etc/traefik/traefik.yml
 # Copy rendered dynamic config from builder
 COPY --from=renderer /render/traefik/dynamic.yml /etc/traefik/dynamic/dynamic.yml
 
@@ -55,7 +55,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD traefik healthcheck --ping || exit 1
 
 # Make entrypoint script executable and use it
-COPY entrypoint.sh /entrypoint.sh
+COPY traefik/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Install su-exec for privilege dropping
