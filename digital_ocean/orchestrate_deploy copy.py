@@ -1,3 +1,13 @@
+"""Deprecated copy of the deploy orchestrator.
+
+This file is intentionally disabled to avoid accidentally running stale logic
+that assumes the legacy Node backend layout.
+
+Use: digital_ocean/orchestrate_deploy.py
+"""
+
+raise SystemExit("orchestrate_deploy copy.py is deprecated; use orchestrate_deploy.py")
+
 #!/usr/bin/env python3
 """
 Orchestrate Digital Ocean Droplet deployment, DNS update, .env generation, and service startup.

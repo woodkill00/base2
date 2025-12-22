@@ -110,7 +110,7 @@ For rate limit issues, adjust retry settings in `.env`
 ### Prerequisites
 - Python 3.10+ (recommended: 3.12)
 - Digital Ocean account and API token
-- (Optional) Node.js for frontend/backend scripts
+- (Optional) Node.js for frontend scripts
 
 ### Setup Steps
 1. **Clone the repository**

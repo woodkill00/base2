@@ -87,6 +87,46 @@ function Verify-StagingCert([string]$staticPath, [string]$dynamicPath) {
   return $fail
 }
 
+function Verify-TraefikRoutingConfig([string]$dynamicPath) {
+  $fail = @()
+  if (-not $dynamicPath -or -not (Test-Path $dynamicPath)) {
+    return @('Missing traefik dynamic config for routing verification')
+  }
+  $content = Get-Content -Path $dynamicPath -Raw
+
+  # /static routing present
+  if ($content -notmatch "(?m)^\s*static-files:\s*$") { $fail += 'Missing router: static-files' }
+  if ($content -notmatch "(?m)^\s*service:\s*django-static\s*$") { $fail += 'Missing service reference: django-static' }
+
+  # Admin routing should be guarded (config-level check; runtime may vary by allowlist)
+  if ($content -match "(?m)^\s*django-admin-path:\s*$") {
+    if ($content -notmatch 'traefik-basic-auth') { $fail += 'Admin router missing basic auth middleware (traefik-basic-auth)' }
+    if ($content -notmatch 'django-admin-allow-ip') { $fail += 'Admin router missing allowlist middleware (django-admin-allow-ip)' }
+  } else {
+    $fail += 'Missing router: django-admin-path'
+  }
+
+  return $fail
+}
+
+function Verify-HostPortExposure([string]$composePsPath) {
+  $fail = @()
+  if (-not $composePsPath -or -not (Test-Path $composePsPath)) {
+    return @('Missing compose-ps.txt for host port exposure verification')
+  }
+
+  $lines = Get-Content -Path $composePsPath
+  foreach ($line in $lines) {
+    if ($line -match '0\.0\.0\.0:' -or $line -match '\[::\]:' ) {
+      # Allow Traefik only
+      if ($line -notmatch 'traefik') {
+        $fail += "Non-Traefik service appears to publish host ports: $line"
+      }
+    }
+  }
+  return $fail
+}
+
 function Curl-Head([string]$url) {
   $args = @('-skI', '--max-time', $TimeoutSec, $url)
   $out = & curl.exe @args 2>&1
@@ -143,7 +183,28 @@ $failures = @()
 
 # Check presence of expected artifacts
 $expectedFiles = @(
-  'compose-ps.txt','traefik-env.txt','traefik-static.yml','traefik-dynamic.yml','traefik-ls.txt','traefik-logs.txt','curl-root.txt','curl-api.txt','traefik-dynamic.template.yml','traefik-static.template.yml'
+  'compose-ps.txt',
+  'published-ports.txt',
+  'traefik-env.txt',
+  'traefik-static.yml',
+  'traefik-dynamic.yml',
+  'traefik-ls.txt',
+  'traefik-logs.txt',
+  'api-logs.txt',
+  'django-migrate.txt',
+  'django-check-deploy.txt',
+  'schema-compat-check.json',
+  'schema-compat-check.status',
+  'curl-root.txt',
+  'curl-api.txt',
+  'curl-api-health.txt',
+  'curl-api-health-slash.txt',
+  'api-health.json',
+  'api-health.status',
+  'api-health-slash.json',
+  'api-health-slash.status',
+  'traefik-dynamic.template.yml',
+  'traefik-static.template.yml'
 )
 foreach ($f in $expectedFiles) {
   $p = Join-Path $artifactDir $f
@@ -166,6 +227,25 @@ $failures += Verify-Headers $apiHdrHealthSlash 'api-https-health-slash'
 $staticYml = Join-Path $artifactDir 'traefik-static.yml'
 $dynamicYml = Join-Path $artifactDir 'traefik-dynamic.yml'
 $failures += Verify-StagingCert $staticYml $dynamicYml
+
+# Verify required routing and exposure invariants from artifacts
+$failures += Verify-TraefikRoutingConfig $dynamicYml
+$failures += Verify-HostPortExposure (Join-Path $artifactDir 'compose-ps.txt')
+
+# Schema compatibility check (post-migration)
+$schemaStatusPath = Join-Path $artifactDir 'schema-compat-check.status'
+if (Test-Path $schemaStatusPath) {
+  try {
+    $schemaExit = [int](Get-Content -Path $schemaStatusPath -Raw).Trim()
+    if ($schemaExit -ne 0) {
+      $failures += "Schema compatibility check failed (schema-compat-check.status=$schemaExit)"
+    }
+  } catch {
+    $failures += "Schema compatibility check status unreadable: $($_.Exception.Message)"
+  }
+} else {
+  $failures += 'Missing schema compatibility status (schema-compat-check.status)'
+}
 
 # Local smoke tests
 Write-Section "Local Smoke Tests"
@@ -201,12 +281,12 @@ $result = [ordered]@{
   failures = @()
 }
 
-# Diagnostics: if API health is non-200, include backend logs snippet
+# Diagnostics: if API health is non-200, include API logs snippet
 $apiStatus = (Get-StatusCodeFromHeaders $apiHdr)
 if ($apiStatus -ne 200) {
-  $backendLogsPath = Join-Path $artifactDir 'backend-logs.txt'
-  $snippet = @('backend-logs.txt not found')
-  if (Test-Path $backendLogsPath) { $snippet = Read-FileSafe $backendLogsPath 80 }
+  $apiLogsPath = Join-Path $artifactDir 'api-logs.txt'
+  $snippet = @('api-logs.txt not found')
+  if (Test-Path $apiLogsPath) { $snippet = Read-FileSafe $apiLogsPath 80 }
 
   # Include GET health status and body snippets for deeper insight
   $getStatusPath = Join-Path $artifactDir 'api-health.status'
@@ -253,7 +333,7 @@ if ($apiStatus -ne 200) {
 
   $result.diagnostics = [ordered]@{
     apiHealthStatus = $apiStatus
-    backendLogsSnippet = $snippet
+    apiLogsSnippet = $snippet
     apiHead = [ordered]@{ health = (Get-StatusCodeFromHeaders $apiHdrHealth); healthSlash = (Get-StatusCodeFromHeaders $apiHdrHealthSlash) }
     apiGet = [ordered]@{ status = $getStatus; statusSlash = $getStatusSlash; bodySnippet = $bodySnippet; bodySnippetSlash = $bodySnippetSlash }
     traefikRouting = [ordered]@{ apiRouterService = $apiRouterService; apiServiceURL = $apiServiceURL }
@@ -274,9 +354,11 @@ if ($CheckRateLimit) {
 
 # Optional: Test Django proxy endpoint via edge
 if ($CheckDjangoProxy) {
-  $dj = Curl-Get "https://$Domain/api/users/me"
-  $result.djangoProxy = [ordered]@{ enabled = $true; status = $dj.status; bodySnippet = $dj.body }
-  if ($dj.status -ne 200) { $failures += "Django proxy /api/users/me expected 200, got $($dj.status)" }
+  $result.djangoProxy = [ordered]@{
+    enabled = $true
+    status = 0
+    bodySnippet = @('Django proxy endpoint check removed; schema compatibility check will be implemented under N007.')
+  }
 }
 
 # Optional: Test Django admin router via edge

@@ -114,7 +114,7 @@ To deploy your app to Digital Ocean:
     - Activate: `.venv\Scripts\activate` (Windows) or `source .venv/bin/activate` (Linux/macOS)
     - `pip install -r requirements.txt`
 4. **Install Node.js dependencies** (if needed)
-    - `cd react-app` or `cd backend`
+   - `cd react-app`
     - `npm install`
 
 

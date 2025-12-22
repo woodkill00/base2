@@ -1,20 +1,18 @@
 from fastapi import FastAPI, HTTPException, Body, Request, Response
-import sys
 import os
 from pydantic import BaseModel
-class LoginPayload(BaseModel):
-    username: str = None
-    email: str = None
-    password: str
-from typing import Optional
-import os
-import httpx
 from celery.result import AsyncResult
 import tasks  # ensure tasks module is importable
+from db import db_ping
+
+
+class LoginPayload(BaseModel):
+    username: str | None = None
+    email: str | None = None
+    password: str
+
 
 ENV = os.getenv("ENV", "development")
-DJANGO_SERVICE_URL = os.getenv("DJANGO_SERVICE_URL", "http://django:8000")
-DJANGO_PUBLIC_HOST = os.getenv("WEBSITE_DOMAIN", "woodkilldev.com")
 
 app = FastAPI(
     title="Base2 API",
@@ -25,7 +23,7 @@ app = FastAPI(
 
 @app.get("/health")
 async def health():
-    return {"ok": True, "service": "api"}
+    return {"ok": True, "service": "api", "db_ok": db_ping()}
 
 @app.get("/api/health")
 async def api_health():
@@ -33,41 +31,12 @@ async def api_health():
 
 @app.get("/api/users/me")
 async def get_me(request: Request):
-    # Example proxy call to Django internal route
-    try:
-        async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as client:
-            resp = await client.get(
-                f"{DJANGO_SERVICE_URL}/internal/users/me",
-                headers={
-                    "Host": DJANGO_PUBLIC_HOST,
-                    "X-Forwarded-Host": DJANGO_PUBLIC_HOST,
-                    "X-Forwarded-Proto": "https",
-                    "Cookie": request.headers.get("cookie", ""),
-                },
-            )
-        if resp.status_code != 200:
-            raise HTTPException(status_code=resp.status_code, detail=resp.text)
-        return resp.json()
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=502, detail=str(e))
+    # Django-backed implementation has been removed; FastAPI is now decoupled.
+    raise HTTPException(status_code=501, detail="/api/users/me is not implemented yet")
 # --- Users (proxy to Django internal) ---
 @app.get("/api/users")
 async def list_users():
-    try:
-        async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as client:
-            resp = await client.get(
-                f"{DJANGO_SERVICE_URL}/internal/users/",
-                headers={
-                    "Host": DJANGO_PUBLIC_HOST,
-                    "X-Forwarded-Host": DJANGO_PUBLIC_HOST,
-                    "X-Forwarded-Proto": "https",
-                },
-            )
-        if resp.status_code != 200:
-            raise HTTPException(status_code=resp.status_code, detail=resp.text)
-        return resp.json()
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=502, detail=str(e))
+    raise HTTPException(status_code=501, detail="/api/users is not implemented yet")
 
 
 @app.post("/api/users/login")
@@ -99,119 +68,30 @@ async def users_login(request: Request):
     proxy_payload["password"] = payload.password
     if not proxy_payload.get("username") and not proxy_payload.get("email"):
         raise HTTPException(status_code=400, detail="Missing username or email")
-    try:
-        async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as client:
-            resp = await client.post(
-                f"{DJANGO_SERVICE_URL}/internal/users/login/",
-                json=proxy_payload,
-                headers={
-                    "Host": DJANGO_PUBLIC_HOST,
-                    "X-Forwarded-Host": DJANGO_PUBLIC_HOST,
-                    "X-Forwarded-Proto": "https",
-                },
-            )
-        if resp.status_code not in (200, 201):
-            raise HTTPException(status_code=resp.status_code, detail=resp.text)
-        # Propagate Django Set-Cookie headers to client
-        response = Response(content=resp.content, media_type="application/json", status_code=resp.status_code)
-        try:
-            for c in resp.headers.get_list("set-cookie"):
-                response.headers.append("set-cookie", c)
-        except Exception:
-            sc = resp.headers.get("set-cookie")
-            if sc:
-                response.headers.append("set-cookie", sc)
-        return response
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=502, detail=str(e))
+    # Authentication is no longer proxied to Django; this will be
+    # reimplemented to use FastAPI's own data models.
+    raise HTTPException(status_code=501, detail="/api/users/login is not implemented yet")
 
 
 @app.post("/api/users/logout")
 async def users_logout(request: Request):
-    try:
-        async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as client:
-            resp = await client.post(
-                f"{DJANGO_SERVICE_URL}/internal/users/logout/",
-                headers={
-                    "Host": DJANGO_PUBLIC_HOST,
-                    "X-Forwarded-Host": DJANGO_PUBLIC_HOST,
-                    "X-Forwarded-Proto": "https",
-                    "Cookie": request.headers.get("cookie", ""),
-                },
-            )
-        if resp.status_code not in (200, 204):
-            raise HTTPException(status_code=resp.status_code, detail=resp.text)
-        # Propagate cookie clearing if any
-        response = Response(content=resp.content, media_type="application/json", status_code=resp.status_code)
-        try:
-            for c in resp.headers.get_list("set-cookie"):
-                response.headers.append("set-cookie", c)
-        except Exception:
-            sc = resp.headers.get("set-cookie")
-            if sc:
-                response.headers.append("set-cookie", sc)
-        return response
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=502, detail=str(e))
+    raise HTTPException(status_code=501, detail="/api/users/logout is not implemented yet")
 
 
 # --- Catalog (proxy to Django internal) ---
 @app.get("/api/items")
 async def list_items():
-    try:
-        async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as client:
-            resp = await client.get(
-                f"{DJANGO_SERVICE_URL}/internal/catalog/items/",
-                headers={
-                    "Host": DJANGO_PUBLIC_HOST,
-                    "X-Forwarded-Host": DJANGO_PUBLIC_HOST,
-                    "X-Forwarded-Proto": "https",
-                },
-            )
-        if resp.status_code != 200:
-            raise HTTPException(status_code=resp.status_code, detail=resp.text)
-        return resp.json()
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=502, detail=str(e))
+    raise HTTPException(status_code=501, detail="/api/items is not implemented yet")
 
 
 @app.get("/api/items/{item_id}")
 async def get_item(item_id: int):
-    try:
-        async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as client:
-            resp = await client.get(
-                f"{DJANGO_SERVICE_URL}/internal/catalog/items/{item_id}/",
-                headers={
-                    "Host": DJANGO_PUBLIC_HOST,
-                    "X-Forwarded-Host": DJANGO_PUBLIC_HOST,
-                    "X-Forwarded-Proto": "https",
-                },
-            )
-        if resp.status_code != 200:
-            raise HTTPException(status_code=resp.status_code, detail=resp.text)
-        return resp.json()
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=502, detail=str(e))
+    raise HTTPException(status_code=501, detail="/api/items/{item_id} is not implemented yet")
 
 
 @app.post("/api/items")
 async def create_item(payload: dict = Body(...)):
-    try:
-        async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as client:
-            resp = await client.post(
-                f"{DJANGO_SERVICE_URL}/internal/catalog/items/create/",
-                json=payload,
-                headers={
-                    "Host": DJANGO_PUBLIC_HOST,
-                    "X-Forwarded-Host": DJANGO_PUBLIC_HOST,
-                    "X-Forwarded-Proto": "https",
-                },
-            )
-        if resp.status_code not in (200, 201):
-            raise HTTPException(status_code=resp.status_code, detail=resp.text)
-        return resp.json()
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=502, detail=str(e))
+    raise HTTPException(status_code=501, detail="/api/items POST is not implemented yet")
 
 
 # --- Celery helper endpoints (optional) ---

@@ -24,7 +24,7 @@ if docker-compose -f "$COMPOSE_FILE" ps -q | grep -q .; then
     echo ""
     
     # Check health of each service
-    for service in react-app nginx postgres pgadmin traefik; do
+    for service in traefik react-app api django postgres nginx nginx-static pgadmin redis celery-worker celery-beat flower; do
         container_name="base2_${service}"
         if docker ps --filter "name=${container_name}" --format "{{.Names}}" | grep -q "${container_name}"; then
             health=$(docker inspect --format='{{.State.Health.Status}}' "${container_name}" 2>/dev/null || echo "no healthcheck")
@@ -56,12 +56,13 @@ if docker-compose -f "$COMPOSE_FILE" ps -q | grep -q .; then
     
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "🌐 Service URLs:"
-    echo "  - React App:         http://localhost:3000"
-    echo "  - Nginx:             http://localhost:8080"
-    echo "  - pgAdmin:           http://localhost:5050"
-    echo "  - Traefik Dashboard: http://localhost:8080"
-    echo "  - PostgreSQL:        localhost:5432"
+    echo "🌐 Service URLs (via Traefik):"
+    domain=${WEBSITE_DOMAIN:-localhost}
+    echo "  - Frontend:          https://${domain}/"
+    echo "  - API health:        https://${domain}/api/health"
+    echo "  - Static:            https://${domain}/static/"
+    echo "  - Traefik Dashboard: https://${TRAEFIK_DNS_LABEL:-traefik}.${domain}/ (guarded)"
+    echo "  - Django Admin:      https://${DJANGO_ADMIN_DNS_LABEL:-admin}.${domain}/admin (guarded)"
 else
     echo "⚠️  No containers are running"
     echo ""

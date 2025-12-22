@@ -18,7 +18,7 @@ NC='\033[0m' # No Color
 echo -e "${BLUE}🔄 Synchronizing configuration with .env variables...${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "Note: NETWORK_NAME is the single source of truth; TRAEFIK_DOCKER_NETWORK will be updated to mirror it."
+echo "Note: NETWORK_NAME is the single source of truth for the Compose network name."
 
 # Check if .env exists
 if [ ! -f .env ]; then
@@ -53,16 +53,10 @@ get_env_var() {
 # Read only the variables we actually need
 NETWORK_NAME="$(get_env_var NETWORK_NAME)"
 TRAEFIK_DOCKER_NETWORK="$(get_env_var TRAEFIK_DOCKER_NETWORK)"
-TRAEFIK_API_ENTRYPOINT="$(get_env_var TRAEFIK_API_ENTRYPOINT)"
 
 # Validate required variables
 if [ -z "$NETWORK_NAME" ]; then
     echo "❌ Error: NETWORK_NAME not set in .env"
-    exit 1
-fi
-
-if [ -z "$TRAEFIK_API_ENTRYPOINT" ]; then
-    echo "❌ Error: TRAEFIK_API_ENTRYPOINT not set in .env"
     exit 1
 fi
 
@@ -131,20 +125,18 @@ else
 fi
 echo ""
 
-#!/bin/bash
 # Note: Removed automatic mutation of traefik/traefik.yml entrypoints.
 # The dashboard is exposed via HTTPS Host rule in dynamic config.
 
 # ============================================
-# 4. Sanitize TRAEFIK_USER to escape $ in bcrypt hash
+# 4. Sanitize Traefik dashboard basic-auth user list to escape $ in bcrypt hash
 # ============================================
-if grep -q "^TRAEFIK_USER=" .env; then
-    ORIGINAL_TRAEFIK_USER_LINE=$(grep "^TRAEFIK_USER=" .env | head -n1)
-    SANITIZED_LINE=$(echo "$ORIGINAL_TRAEFIK_USER_LINE" | sed 's/\$/$$/g')
-    if [ "$ORIGINAL_TRAEFIK_USER_LINE" != "$SANITIZED_LINE" ]; then
-        echo -e "${YELLOW}⚙️  Escaping dollar signs in TRAEFIK_USER for Compose compatibility${NC}"
-        # Use awk for robust in-place update to avoid sed Arg list too long
-        awk -v orig="$ORIGINAL_TRAEFIK_USER_LINE" -v repl="$SANITIZED_LINE" '
+if grep -q "^TRAEFIK_DASH_BASIC_USERS=" .env; then
+    ORIGINAL_LINE=$(grep "^TRAEFIK_DASH_BASIC_USERS=" .env | head -n1)
+    SANITIZED_LINE=$(echo "$ORIGINAL_LINE" | sed 's/\$/$$/g')
+    if [ "$ORIGINAL_LINE" != "$SANITIZED_LINE" ]; then
+        echo -e "${YELLOW}⚙️  Escaping dollar signs in TRAEFIK_DASH_BASIC_USERS for Compose compatibility${NC}"
+        awk -v orig="$ORIGINAL_LINE" -v repl="$SANITIZED_LINE" '
             BEGIN { done=0 }
             {
                 if (!done && index($0, orig) == 1) { print repl; done=1 }
@@ -164,7 +156,6 @@ if [ "$CHANGES_MADE" = true ]; then
     echo ""
     echo "Current configuration:"
     echo "  - Network Name: $NETWORK_NAME"
-    echo "  - API Entrypoint: $TRAEFIK_API_ENTRYPOINT"
     echo ""
     echo "💡 You should rebuild your containers for changes to take effect:"
     echo "   ./scripts/stop.sh && ./scripts/start.sh --build"
@@ -173,6 +164,5 @@ else
     echo ""
     echo "Current configuration:"
     echo "  - Network Name: $NETWORK_NAME"
-    echo "  - API Entrypoint: $TRAEFIK_API_ENTRYPOINT"
 fi
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

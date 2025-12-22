@@ -56,11 +56,6 @@ if [ "$SELF_TEST" = true ]; then
         echo -e "${RED}❌ npm not found.${NC}"
         exit 1
     fi
-    # Check backend test script
-    if ! grep -q 'test' backend/package.json; then
-        echo -e "${RED}❌ Backend test script missing in package.json.${NC}"
-        exit 1
-    fi
     # Check frontend test script
     if ! grep -q 'test' react-app/package.json; then
         echo -e "${RED}❌ Frontend test script missing in package.json.${NC}"
@@ -75,26 +70,8 @@ echo -e "${BLUE}Running All Tests${NC}"
 echo -e "${BLUE}================================================${NC}"
 echo ""
 
-# Run backend tests
-echo -e "${GREEN}Running Backend Tests...${NC}"
-cd backend
-
-if [ ! -d "node_modules" ]; then
-    echo -e "${RED}Backend dependencies not installed. Run 'npm install' first.${NC}"
-    exit 1
-fi
-
-if [ -n "$WATCH_FLAG" ]; then
-    npm run test:watch
-elif [ -n "$COVERAGE_FLAG" ]; then
-    npm run test
-else
-    npm run test:ci
-fi
-
-BACKEND_EXIT_CODE=$?
-
-cd ..
+BACKEND_EXIT_CODE=0
+echo -e "${BLUE}Legacy Node backend tests removed for the FastAPI/Django stack.${NC}"
 
 echo ""
 echo -e "${GREEN}Running Frontend Tests...${NC}"

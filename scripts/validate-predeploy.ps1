@@ -65,7 +65,7 @@ $requiredEnv = @(
   'POSTGRES_USER','POSTGRES_PASSWORD','POSTGRES_DB','POSTGRES_PORT',
   'JWT_SECRET','JWT_EXPIRE','RATE_LIMIT_WINDOW_MS','RATE_LIMIT_MAX_REQUESTS',
   'WEBSITE_DOMAIN',
-  'TRAEFIK_LOG_LEVEL','TRAEFIK_PORT','TRAEFIK_API_PORT','TRAEFIK_API_ENTRYPOINT','TRAEFIK_DOCKER_NETWORK','TRAEFIK_EXPOSED_BY_DEFAULT','TRAEFIK_HOST_PORT'
+  'TRAEFIK_LOG_LEVEL','TRAEFIK_PORT','TRAEFIK_API_PORT','TRAEFIK_CERT_EMAIL'
 )
 
 $envVars = Parse-DotEnv -path $EnvPath
@@ -88,22 +88,33 @@ Add-Check "Service 'api' present" ($apiBlock.Count -gt 0) "api service block fou
 Add-Check "Service 'django' present" ($djangoBlock.Count -gt 0) "django service block found: $([bool]($djangoBlock.Count))"
 
 # Traefik ports only
-$traefikHas443 = ((($traefikBlock | Where-Object { $_ -match "'443:443'" }) | Measure-Object).Count -gt 0)
-$traefikHasHost = ((($traefikBlock | Where-Object { $_ -match "\$\{TRAEFIK_HOST_PORT\}:\$\{TRAEFIK_PORT\}" }) | Measure-Object).Count -gt 0)
-Add-Check "Traefik exposes only 80/443" ($traefikHas443 -and $traefikHasHost) "443:443=$traefikHas443, HOST_PORT mapping=$traefikHasHost"
+$traefikPortMappings = @($traefikBlock | Where-Object { $_ -match '^\s{6}-\s+"\d+:\d+"\s*$' } | ForEach-Object {
+  if ($_ -match '"(\d+):(\d+)"') { "$($Matches[1]):$($Matches[2])" }
+})
+$expectedMappings = @('80:80','443:443')
+$traefikPortsOk = ($traefikPortMappings.Count -gt 0) -and (@($traefikPortMappings | Sort-Object -Unique) -join ',') -eq (@($expectedMappings | Sort-Object -Unique) -join ',')
+Add-Check "Traefik exposes only 80/443" $traefikPortsOk ("ports=" + ($traefikPortMappings -join ', '))
 
 function Has-Ports([string[]]$block) { ((($block | Where-Object { $_ -match '^\s{6}ports:\s*$' }) | Measure-Object).Count -gt 0) }
 Add-Check "No host ports on api" (-not (Has-Ports $apiBlock)) "ports section present: $([bool](Has-Ports $apiBlock))"
 Add-Check "No host ports on django" (-not (Has-Ports $djangoBlock)) "ports section present: $([bool](Has-Ports $djangoBlock))"
 Add-Check "No host ports on postgres" (-not (Has-Ports $postgresBlock)) "ports section present: $([bool](Has-Ports $postgresBlock))"
 
-# Labels checks
-$reactHasPortLabel = ((($reactBlock | Where-Object { $_ -match 'traefik.http.services.frontend-react.loadbalancer.server.port=8080' }) | Measure-Object).Count -gt 0)
-$apiHasRule = ((($apiBlock | Where-Object { $_ -match 'traefik.http.routers.api.rule=Host\(\`\$\{WEBSITE_DOMAIN\}\`\) && PathPrefix\(\`/api\`\)' }) | Measure-Object).Count -gt 0)
-$apiHasPortLabel = ((($apiBlock | Where-Object { $_ -match 'traefik.http.services.api.loadbalancer.server.port=\$\{FASTAPI_PORT\}' }) | Measure-Object).Count -gt 0)
-Add-Check "React Traefik port label" $reactHasPortLabel "frontend-react port label present: $reactHasPortLabel"
-Add-Check "API Traefik rule label" $apiHasRule "api rule label present: $apiHasRule"
-Add-Check "API Traefik port label" $apiHasPortLabel "api port label present: $apiHasPortLabel"
+# Ensure we are not using Docker provider labels (file-provider only)
+function Has-TraefikLabels([string[]]$block) {
+  ((($block | Where-Object { $_ -match 'traefik\.http\.' }) | Measure-Object).Count -gt 0)
+}
+Add-Check "No Traefik labels on react-app" (-not (Has-TraefikLabels $reactBlock)) "labels present: $([bool](Has-TraefikLabels $reactBlock))"
+Add-Check "No Traefik labels on api" (-not (Has-TraefikLabels $apiBlock)) "labels present: $([bool](Has-TraefikLabels $apiBlock))"
+Add-Check "No Traefik labels on django" (-not (Has-TraefikLabels $djangoBlock)) "labels present: $([bool](Has-TraefikLabels $djangoBlock))"
+
+# Validate key routing primitives exist in traefik/dynamic.yml
+$dynamicPath = '.\traefik\dynamic.yml'
+$dynamicText = if (Test-Path $dynamicPath) { Read-TextFile -path $dynamicPath } else { '' }
+Add-Check "Traefik dynamic.yml present" (Test-Path $dynamicPath) $dynamicPath
+Add-Check "Dynamic: strip /api middleware" ($dynamicText -match 'strip-api-prefix') "strip-api-prefix present: $([bool]($dynamicText -match 'strip-api-prefix'))"
+Add-Check 'Dynamic: API service points to api:${FASTAPI_PORT}' ($dynamicText -match 'url:\s*http://api:\$\{FASTAPI_PORT\}') "api service url ok: $([bool]($dynamicText -match 'url:\s*http://api:\$\{FASTAPI_PORT\}'))"
+Add-Check "Dynamic: React service points to react-app:8080" ($dynamicText -match 'url:\s*http://react-app:8080') "react service url ok: $([bool]($dynamicText -match 'url:\s*http://react-app:8080'))"
 
 # 3) Required files
 $requiredFiles = @(

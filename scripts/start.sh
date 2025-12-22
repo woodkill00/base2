@@ -49,7 +49,7 @@ fi
 
 # Validate required .env variables relevant to this stack
 # Keep concise: domain and core service ports/credentials
-REQUIRED_VARS=(WEBSITE_DOMAIN NETWORK_NAME TRAEFIK_PORT BACKEND_PORT POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB)
+REQUIRED_VARS=(WEBSITE_DOMAIN NETWORK_NAME TRAEFIK_PORT FASTAPI_PORT DJANGO_PORT POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB)
 for VAR in "${REQUIRED_VARS[@]}"; do
     if ! grep -q "^$VAR=" .env; then
         echo "❌ Error: Required environment variable $VAR is missing in .env."
@@ -151,11 +151,10 @@ if [ "$DETACHED" = true ]; then
     # Load env for dynamic endpoints
     if [ -f .env ]; then
         # shellcheck disable=SC2046
-        export $(grep -E '^(WEBSITE_DOMAIN|TRAEFIK_HOST_PORT|BACKEND_PORT|PGADMIN_PORT)=' .env | xargs)
+        export $(grep -E '^(WEBSITE_DOMAIN)=' .env | xargs)
     fi
-    TRAEFIK_HOST_PORT_PRINT=${TRAEFIK_HOST_PORT:-8080}
     WEBSITE_DOMAIN_PRINT=${WEBSITE_DOMAIN:-localhost}
-    echo "  - Frontend (HTTP via Traefik):  http://localhost:${TRAEFIK_HOST_PORT_PRINT}"
+    echo "  - Frontend (HTTP via Traefik):  http://localhost"
     echo "  - Frontend (HTTPS via Traefik): https://${WEBSITE_DOMAIN_PRINT} (staging cert)"
     echo "  - API (via Traefik):            https://${WEBSITE_DOMAIN_PRINT}/api"
     echo "  - PostgreSQL:                   internal-only"
@@ -167,13 +166,13 @@ if [ "$DETACHED" = true ]; then
     # Optionally follow logs for a short window (useful for orchestrated deploys)
     if [ "$FOLLOW_LOGS" = true ] || [ "${START_FOLLOW_LOGS:-}" = "true" ]; then
         DURATION=${POST_DEPLOY_LOGS_FOLLOW_SECONDS:-60}
-        echo "\n🔎 Following logs for ${DURATION}s (traefik, backend, nginx, pgadmin)..."
+        echo "\n🔎 Following logs for ${DURATION}s (traefik, api, django, nginx, pgadmin)..."
         # Use timeout to avoid hanging forever; fallback if timeout is not available
         if command -v timeout >/dev/null 2>&1; then
-            timeout "$DURATION" docker-compose -f "$COMPOSE_FILE" logs -f --tail=100 traefik backend nginx pgadmin || true
+            timeout "$DURATION" docker-compose -f "$COMPOSE_FILE" logs -f --tail=100 traefik api django nginx pgadmin || true
         else
             # Portable fallback: run in background and kill after duration
-            ( docker-compose -f "$COMPOSE_FILE" logs -f --tail=100 traefik backend nginx pgadmin & LOG_PID=$!; \
+            ( docker-compose -f "$COMPOSE_FILE" logs -f --tail=100 traefik api django nginx pgadmin & LOG_PID=$!; \
               sleep "$DURATION"; \
               kill "$LOG_PID" 2>/dev/null || true )
         fi
