@@ -53,9 +53,6 @@ Thumbs.db
 
 # Traefik & runtime
 letsencrypt/
-traefik/traefik.yml
-traefik/dynamic.yml
-traefik/static.yml
 
 # Local run logs and artifacts
 local_run_logs/

@@ -1,32 +1,21 @@
 #!/bin/sh
-set -e
+set -eu
 
+# Ensure directories exist
+mkdir -p /etc/traefik/dynamic /etc/traefik/templates /etc/traefik/acme /var/log/traefik
 
-# Wait for ACME file(s) to exist, then set permissions and ownership
+# Render dynamic config from template using environment variables
+TEMPLATE_PATH="/etc/traefik/templates/dynamic.yml.template"
+OUTPUT_PATH="/etc/traefik/dynamic/dynamic.yml"
+if [ -f "$TEMPLATE_PATH" ]; then
+  envsubst < "$TEMPLATE_PATH" > "$OUTPUT_PATH"
+fi
 
-# Start Traefik in the background, monitor for ACME file creation, and fix permissions
-su-exec traefik traefik --configFile=/etc/traefik/traefik.yml &
-traefik_pid=$!
+# Ensure ACME storage files exist with safe perms
+touch /etc/traefik/acme/acme.json /etc/traefik/acme/acme-staging.json
+chmod 600 /etc/traefik/acme/acme.json /etc/traefik/acme/acme-staging.json || true
+chown -R traefik:traefik /etc/traefik/acme /var/log/traefik || true
+chmod -R 755 /var/log/traefik || true
 
-# Monitor and fix permissions for ACME files for up to 60 seconds
-for i in $(seq 1 120); do
-    for acmefile in /etc/traefik/acme/acme-staging.json /etc/traefik/acme/acme.json; do
-        if [ -e "$acmefile" ]; then
-            chmod 600 "$acmefile"
-            chown traefik:traefik "$acmefile"
-        fi
-    done
-    sleep 0.5
-done
-
-wait $traefik_pid
-
-
-# Ensure log directory exists and is writable
-mkdir -p /var/log/traefik
-chown -R traefik:traefik /var/log/traefik
-chmod -R 755 /var/log/traefik
-
-
-# Start Traefik and fix ACME permissions in the background
-start_traefik
+# Drop privileges and run Traefik
+exec su-exec traefik:traefik traefik --configFile=/etc/traefik/traefik.yml

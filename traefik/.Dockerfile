@@ -1,17 +1,5 @@
 ARG TRAEFIK_VERSION=v3.1
 
-# --- Multi-stage build ---
-
-# Stage 1: Render dynamic.yml using Python
-FROM python:3.11-alpine AS renderer
-WORKDIR /render
-COPY render_traefik_dynamic.py ./render_traefik_dynamic.py
-COPY .env ./.env
-COPY traefik/dynamic.yml ./traefik/dynamic.template.yml
-RUN pip install --no-cache-dir python-dotenv
-RUN python3 render_traefik_dynamic.py
-
-# Stage 2: Final Traefik image
 FROM traefik:${TRAEFIK_VERSION}
 
 # Set build arguments for environment variables
@@ -36,8 +24,9 @@ RUN mkdir -p /etc/traefik/acme \
 
 # Copy static traefik config
 COPY traefik/traefik.yml /etc/traefik/traefik.yml
-# Copy rendered dynamic config from builder
-COPY --from=renderer /render/traefik/dynamic.yml /etc/traefik/dynamic/dynamic.yml
+
+# Copy dynamic config template (rendered at runtime)
+COPY traefik/dynamic.yml /etc/traefik/templates/dynamic.yml.template
 
 # Set environment variables
 ENV TRAEFIK_LOG_LEVEL=${TRAEFIK_LOG_LEVEL:-INFO} \
@@ -58,12 +47,12 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 COPY traefik/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Install su-exec for privilege dropping
+# Install runtime tools
 USER root
-RUN apk add --no-cache su-exec
+RUN apk add --no-cache su-exec gettext
 
 # Optional: Map logs and acme to host for persistence
 VOLUME ["/var/log/traefik", "/etc/traefik/acme"]
 
-# Run as root so entrypoint can fix permissions, then drop to traefik user
+# Run as root so entrypoint can render config + fix permissions, then drop to traefik user
 ENTRYPOINT ["/entrypoint.sh"]
