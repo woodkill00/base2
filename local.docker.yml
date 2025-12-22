@@ -252,7 +252,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    command: ["sh", "-c", "flower --port=5555 --broker=${CELERY_BROKER_URL}"]
+    command: ["python", "-m", "flower", "--port=5555", "--broker=${CELERY_BROKER_URL}"]
     restart: unless-stopped
     security_opt: [no-new-privileges:true]
     profiles: ["flower"]
