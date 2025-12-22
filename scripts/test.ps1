@@ -3,6 +3,7 @@ param(
   [string]$LogsDir = ".\local_run_logs",
   [switch]$UseLatestTimestamp = $true,
   [string]$Domain = "",
+  [string]$ResolveIp = "",
   [int]$TimeoutSec = 8,
   [switch]$Verbose,
   [switch]$Json,
@@ -254,7 +255,9 @@ if (Test-Path $schemaStatusPath) {
 # Local smoke tests
 Write-Section "Local Smoke Tests"
 try {
-  & ./scripts/smoke-tests.ps1 -EnvPath $EnvPath -Domain $Domain -TimeoutSec 5 | Out-Null
+  $smokeArgs = @{ EnvPath = $EnvPath; Domain = $Domain; TimeoutSec = 5 }
+  if ($ResolveIp) { $smokeArgs.ResolveIp = $ResolveIp }
+  & ./scripts/smoke-tests.ps1 @smokeArgs | Out-Null
 } catch {
   $failures += "Local smoke tests failed: $($_.Exception.Message)"
 }

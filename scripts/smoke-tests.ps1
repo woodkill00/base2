@@ -1,6 +1,7 @@
 param(
   [string]$EnvPath = ".\.env",
   [string]$Domain = "localhost",
+  [string]$ResolveIp = "",
   [int]$TimeoutSec = 5,
   [switch]$Verbose
 )
@@ -38,15 +39,15 @@ function Get-StatusCodeFromHeaders([string[]]$headers) {
   return 0
 }
 
-function Curl-Head([string]$url) {
-  $args = @('-skI', '--max-time', $TimeoutSec, $url)
+function Curl-Head([string]$url, [string[]]$extraArgs = @()) {
+  $args = @('-skI', '--max-time', $TimeoutSec) + $extraArgs + @($url)
   $out = & curl.exe @args 2>&1
   if ($Verbose) { $out | Write-Host }
   return $out -split "`r?`n"
 }
 
-function Curl-Get([string]$url) {
-  $args = @('-sk', '--max-time', $TimeoutSec, $url)
+function Curl-Get([string]$url, [string[]]$extraArgs = @()) {
+  $args = @('-sk', '--max-time', $TimeoutSec) + $extraArgs + @($url)
   $out = & curl.exe @args 2>&1
   if ($Verbose) { $out | Write-Host }
   return $out
@@ -61,14 +62,18 @@ $failures = @()
 
 # 1) HTTP root should redirect to HTTPS
 Write-Section "HTTP → HTTPS redirect"
-$hdr = Curl-Head "http://$Domain/"
+$resolveHttp = @()
+if ($ResolveIp) { $resolveHttp = @('--resolve', ("{0}:80:{1}" -f $Domain, $ResolveIp)) }
+$hdr = Curl-Head "http://$Domain/" $resolveHttp
 $code = Get-StatusCodeFromHeaders $hdr
 if ($code -lt 300 -or $code -ge 400) { $failures += "Root HTTP expected 3xx, got $code" }
 if (-not ($hdr | Where-Object { $_ -match '^Location:\s*https://'})) { $failures += "Missing Location:https:// header on HTTP root" }
 
 # 2) HTTPS root should return 200 and security headers
 Write-Section "HTTPS root and security headers"
-$hdr2 = Curl-Head "https://$Domain/"
+$resolveHttps = @()
+if ($ResolveIp) { $resolveHttps = @('--resolve', ("{0}:443:{1}" -f $Domain, $ResolveIp)) }
+$hdr2 = Curl-Head "https://$Domain/" $resolveHttps
 $code2 = Get-StatusCodeFromHeaders $hdr2
 if ($code2 -ne 200) { $failures += "HTTPS root expected 200, got $code2" }
 $expectedHeaders = @(
@@ -83,7 +88,7 @@ foreach ($h in $expectedHeaders) {
 
 # 3) API health should be OK
 Write-Section "API health"
-$hdr3 = Curl-Head "https://$Domain/api/health"
+$hdr3 = Curl-Head "https://$Domain/api/health" $resolveHttps
 $code3 = Get-StatusCodeFromHeaders $hdr3
 if ($code3 -ne 200) { $failures += "API health expected 200, got $code3" }
 

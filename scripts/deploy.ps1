@@ -24,6 +24,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $script:ArtifactDir = ''
+$script:ResolvedIp = ''
 
 function Write-Section($msg) {
   Write-Host "`n=== $msg ===" -ForegroundColor Cyan
@@ -225,10 +226,16 @@ if [ -d /opt/apps/base2 ]; then
       git pull --rebase || true
     fi
   fi
-  # Capture build and up logs for traefik/django/api
+  # Capture build and up logs for the core stack
   docker compose -f local.docker.yml build --no-cache traefik > /root/logs/build/traefik-build.txt 2>&1 || true
   docker compose -f local.docker.yml build django > /root/logs/build/django-build.txt 2>&1 || true
+  docker compose -f local.docker.yml build api > /root/logs/build/api-build.txt 2>&1 || true
+  docker compose -f local.docker.yml build react-app > /root/logs/build/react-build.txt 2>&1 || true
+
+  # Bring up core services needed for edge routing (avoid 502 due to missing upstreams)
+  docker compose -f local.docker.yml up -d --remove-orphans postgres django api react-app nginx-static traefik > /root/logs/build/compose-up-core.txt 2>&1 || true
   docker compose -f local.docker.yml up -d --force-recreate traefik > /root/logs/build/traefik-up.txt 2>&1 || true
+
   # Ensure Django service is running for admin route
   docker compose -f local.docker.yml up -d django > /root/logs/build/django-up.txt 2>&1 || true
   # Capture Django migration output into a dedicated artifact
@@ -486,6 +493,8 @@ try {
     exit 0
   }
 
+  $script:ResolvedIp = $resolvedIp
+
   Remote-Verify -ip $resolvedIp -keyPath $SshKey
 } catch {
   $msg = $_.Exception.Message
@@ -497,7 +506,7 @@ try {
 if ($RunTests) {
   Write-Section "Running post-deploy tests"
   if ($TestsJson) {
-    $testArgs = @{ EnvPath = $EnvPath; LogsDir = $LogsDir; UseLatestTimestamp = $true; Json = $true; CheckDjangoAdmin = $true }
+    $testArgs = @{ EnvPath = $EnvPath; LogsDir = $LogsDir; UseLatestTimestamp = $true; Json = $true; CheckDjangoAdmin = $true; ResolveIp = $script:ResolvedIp }
     if ($RunRateLimitTest) { $testArgs.CheckRateLimit = $true; $testArgs.RateLimitBurst = $RateLimitBurst }
       if ($RunCeleryCheck) { $testArgs.CheckCelery = $true }
     $jsonOut = & .\scripts\test.ps1 @testArgs
@@ -512,7 +521,7 @@ if ($RunTests) {
     }
     if ($exitCode -ne 0) { Write-Warning "Post-deploy tests failed"; exit 1 }
   } else {
-    $testArgs2 = @{ EnvPath = $EnvPath; LogsDir = $LogsDir; UseLatestTimestamp = $true; CheckDjangoAdmin = $true }
+    $testArgs2 = @{ EnvPath = $EnvPath; LogsDir = $LogsDir; UseLatestTimestamp = $true; CheckDjangoAdmin = $true; ResolveIp = $script:ResolvedIp }
     if ($RunRateLimitTest) { $testArgs2.CheckRateLimit = $true; $testArgs2.RateLimitBurst = $RateLimitBurst }
       if ($RunCeleryCheck) { $testArgs2.CheckCelery = $true }
     & .\scripts\test.ps1 @testArgs2
