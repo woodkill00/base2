@@ -90,12 +90,12 @@ if ($DryRun) {
 $newText | Set-Content -LiteralPath $EnvPath -Encoding UTF8
 
 # Confirm
-$confirm = Select-String -Path $EnvPath -Pattern '^PGADMIN_ALLOWLIST=' -Encoding UTF8
+$confirm = Select-String -Path $EnvPath -Pattern '^PGADMIN_ALLOWLIST=.*$' -Encoding UTF8
 if ($confirm) {
     # Print a single confirmation line and the number of occurrences to ensure uniqueness
-    $values = @($confirm | ForEach-Object { $_.Matches.Value })
-    Write-Info ("Updated: " + $values[0])
-    if ($values.Count -gt 1) { Write-Warn ("Found ${values.Count} PGADMIN_ALLOWLIST lines; expected 1. File was cleaned to ensure single entry.") }
+    $lines = @($confirm | ForEach-Object { $_.Line })
+    Write-Info ("Updated: " + $lines[0])
+    if ($lines.Count -gt 1) { Write-Warn ("Found ${lines.Count} PGADMIN_ALLOWLIST lines; expected 1. File was cleaned to ensure single entry.") }
     Write-Info "Done. Restart Traefik to apply: docker compose up -d --force-recreate traefik"
 } else {
     Write-Err "Failed to confirm PGADMIN_ALLOWLIST write."

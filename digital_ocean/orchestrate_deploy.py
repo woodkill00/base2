@@ -697,26 +697,50 @@ else:
         if not ssh_connect_with_retry():
             raise RuntimeError("SSH connection failed after retries")
 
-        # Copy local .env to remote repo
-        remote_env_path = f"{repo_path}/.env"
-        log(f"Uploading .env to {remote_env_path}")
-        sftp = ssh_client.open_sftp()
-        sftp.put(env_path.replace('\\', '/'), remote_env_path)
-        sftp.close()
-
-        # If update-only, ensure repo exists and pull latest
+        # If update-only, ensure repo exists and sync it BEFORE uploading .env.
+        # Rationale:
+        # - Git operations (reset/clean/checkout) can clobber local uncommitted state.
+        # - We upload .env after the sync so the deployed runtime secrets/credentials win.
         if UPDATE_ONLY:
-            log("[UPDATE-ONLY] Ensuring repo path exists and pulling latest changes...")
+            log("[UPDATE-ONLY] Ensuring repo path exists and syncing latest changes...")
+            git_remote = str(env_dict.get("GIT_REMOTE", "")).strip()
+            branch = str(env_dict.get("DO_APP_BRANCH", "main")).strip() or "main"
+            if not git_remote:
+                raise RuntimeError("Missing GIT_REMOTE in local .env (required for --update-only repo sync)")
+
             pull_cmd = (
+                f"set -eu; "
                 f"test -d {repo_path} || mkdir -p {repo_path}; "
-                f"cd {repo_path} && git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git pull --ff-only || "
-                f"(test -d .git || (rm -rf ./*); git init && git remote add origin $(grep '^GIT_REMOTE=' .env | cut -d'=' -f2) && git fetch origin && git reset --hard origin/main)"
+                f"cd {repo_path}; "
+                # Ensure we always have an initialized repo with a correct origin URL.
+                f"if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then "
+                f"  git remote set-url origin '{git_remote}' >/dev/null 2>&1 || true; "
+                f"else "
+                f"  git init >/dev/null 2>&1; "
+                f"  git remote remove origin >/dev/null 2>&1 || true; "
+                f"  git remote add origin '{git_remote}'; "
+                f"fi; "
+                # Fetch + hard reset to the desired branch (prefer remote branch, fall back to main).
+                f"git fetch --all --prune || true; "
+                f"TARGET='{branch}'; "
+                f"if ! git show-ref --verify --quiet \"refs/remotes/origin/$TARGET\"; then TARGET='main'; fi; "
+                f"git checkout -B \"$TARGET\" \"origin/$TARGET\" >/dev/null 2>&1 || true; "
+                f"git reset --hard \"origin/$TARGET\" >/dev/null 2>&1 || true; "
+                # Clean untracked files but keep ignored files (like .env). Extra exclusions are belt-and-suspenders.
+                f"git clean -fd -e .env -e '.env.*' || true"
             )
             stdin, stdout, stderr = ssh_client.exec_command(pull_cmd)
             print(stdout.read().decode())
             err_out = stderr.read().decode()
             if err_out:
                 print(err_out)
+
+        # Copy local .env to remote repo (AFTER any git sync)
+        remote_env_path = f"{repo_path}/.env"
+        log(f"Uploading .env to {remote_env_path}")
+        sftp = ssh_client.open_sftp()
+        sftp.put(env_path.replace('\\', '/'), remote_env_path)
+        sftp.close()
 
         # Run post_reboot_complete.sh to finalize config (with reconnect on drop)
         post_reboot_path = f"{repo_path}/digital_ocean/scripts/post_reboot_complete.sh"

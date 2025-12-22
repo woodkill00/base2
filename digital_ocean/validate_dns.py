@@ -78,7 +78,7 @@ def main():
     for domain in domains:
         try:
             records = get_records(client, domain)
-            if args.check-required:
+            if args.check_required:
                 traefik_label = os.getenv('TRAEFIK_DNS_LABEL', 'traefik')
                 pgadmin_label = os.getenv('PGADMIN_DNS_LABEL', 'pgadmin')
                 admin_label = os.getenv('DJANGO_ADMIN_DNS_LABEL', 'admin')

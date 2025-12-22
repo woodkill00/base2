@@ -96,6 +96,19 @@ function Load-DotEnv([string]$path) {
     }
   }
 }
+function Assert-EnvNotTracked {
+  # If .env is tracked, any git reset/clean/pull on the droplet can overwrite secrets.
+  # This should never happen in this repo; .env must remain local-only.
+  try {
+    $null = Get-Command git -ErrorAction Stop
+    & git ls-files --error-unmatch .env 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+      throw ".env is tracked by git. Fix by running: git rm --cached .env (and commit), ensure .gitignore includes .env, then re-run deploy."
+    }
+  } catch {
+    # If git isn't available or check fails in a non-fatal way, don't block deploy.
+  }
+}
 
 function Update-Allowlist {
   if ($SkipAllowlist) { return }
@@ -203,6 +216,10 @@ if [ -d /opt/apps/base2 ]; then
   cd /opt/apps/base2
   # Prepare log directories
   mkdir -p /root/logs/build /root/logs/services || true
+  # Preserve the active .env across git reset/clean (the repo may track a template .env)
+  if [ -f .env ]; then
+    cp -f .env /root/logs/build/env-backup.env || true
+  fi
   # Ensure latest repo and rebuild traefik to render new templates
   if command -v git >/dev/null 2>&1; then
     # Determine branch from .env (DO_APP_BRANCH), default to main
@@ -226,6 +243,44 @@ if [ -d /opt/apps/base2 ]; then
       git pull --rebase || true
     fi
   fi
+  # Restore .env after repo sync so Compose uses the deployed values
+  if [ -f /root/logs/build/env-backup.env ]; then
+    cp -f /root/logs/build/env-backup.env .env || true
+  fi
+
+  # Guardrail: htpasswd strings must not be double-escaped in the droplet .env.
+  # Compose treats $$ as an escape for a literal $, so a $$$$ run would land as $$ in the container,
+  # breaking htpasswd hashes that require single-$ delimiters.
+  python3 - <<'PY' > /root/logs/build/env-dollar-check.txt 2>&1
+import re
+from pathlib import Path
+
+p = Path('/opt/apps/base2/.env')
+raw = p.read_text(encoding='utf-8', errors='replace')
+keys = ['TRAEFIK_DASH_BASIC_USERS', 'FLOWER_BASIC_USERS']
+
+def get_val(key: str):
+    for line in raw.splitlines():
+        if line.startswith(key + '='):
+            return line.split('=', 1)[1].strip().rstrip('\r')
+    return None
+
+bad = []
+for k in keys:
+    v = get_val(k)
+    if not v:
+        continue
+    runs = [len(m.group(0)) for m in re.finditer(r"\$+", v)]
+    max_run = max(runs) if runs else 0
+    total = v.count('$')
+    print(f"{k}: len={len(v)} dollar_total={total} dollar_max_run={max_run}")
+    if max_run > 2:
+        bad.append(k)
+
+if bad:
+    print('ERROR: Detected over-escaped $ runs in .env for: ' + ', '.join(bad))
+    raise SystemExit(2)
+PY
   # Capture build and up logs for the core stack
   docker compose -f local.docker.yml build --no-cache traefik > /root/logs/build/traefik-build.txt 2>&1 || true
   docker compose -f local.docker.yml build django > /root/logs/build/django-build.txt 2>&1 || true
@@ -449,7 +504,9 @@ fi
     if (Test-Path $traefikEnvPath) {
       $raw = Get-Content -Path $traefikEnvPath -Raw
       $patterns = @(
-        '(?im)^(.*(?:PASS|PASSWORD|SECRET|TOKEN|API_KEY|BASIC_USERS)[^=]*)=.*$'
+        # Redact common secret env vars in copied artifacts.
+        # Include *_PW to catch vars like TRAEFIK_ACTUAL_PW.
+        '(?im)^(.*(?:PASS|PASSWORD|SECRET|TOKEN|API_KEY|BASIC_USERS|\bPW\b|_PW\b)[^=]*)=.*$'
       )
       foreach ($pat in $patterns) { $raw = [Regex]::Replace($raw, $pat, '$1=REDACTED') }
       Set-Content -Path $traefikEnvPath -Value $raw -Encoding UTF8
@@ -468,6 +525,7 @@ try {
   Ensure-Venv
   Activate-Venv
   Load-DotEnv -path $EnvPath
+  Assert-EnvNotTracked
   Update-Allowlist
   if ($Preflight) {
     Invoke-Preflight
