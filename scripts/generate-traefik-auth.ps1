@@ -48,12 +48,14 @@ if ([string]::IsNullOrWhiteSpace($Password)) {
 
 function Get-HtpasswdApr1($user, $pass) {
   # Prefer docker httpd generator to avoid local dependencies
-  $cmd = "docker run --rm httpd:2.4-alpine htpasswd -ni -m `"$user`""
+  $cmd = "docker run --rm httpd:2.4-alpine htpasswd -nbm `"$user`" <password>"
   Write-Info "Generating apr1 hash via: $cmd"
   try {
-    $raw = (& docker run --rm httpd:2.4-alpine htpasswd -ni -m "$user") 2>$null
+    $raw = (& docker run --rm httpd:2.4-alpine htpasswd -nbm "$user" "$pass") 2>$null
     if (-not $raw) { throw 'Empty output from htpasswd' }
-    return $raw
+    $line = @($raw) | ForEach-Object { $_.ToString() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -First 1
+    if (-not $line) { throw 'Empty output from htpasswd' }
+    return $line.Trim()
   }
   catch {
     Write-Warn "Docker httpd htpasswd failed: $($_.Exception.Message). Falling back to openssl perl method."
@@ -61,7 +63,7 @@ function Get-HtpasswdApr1($user, $pass) {
     $salt = -join ((48..57 + 65..90 + 97..122) | Get-Random -Count 8 | ForEach-Object {[char]$_})
     try {
       $digest = (& openssl passwd -apr1 -salt $salt $pass) 2>$null
-      if ($digest) { return "$user:$digest" }
+      if ($digest) { return "${user}:$digest" }
     } catch {}
     throw 'Failed to generate apr1 hash with all methods'
   }
@@ -88,7 +90,7 @@ bcrypt.hash(pass, 10).then(h => {
       $raw = (& node $tmp $user $pass)
       Remove-Item $tmp -Force
       if (-not $raw) { throw 'Empty output from bcrypt Node script' }
-      return $raw
+      return ($raw.ToString().Trim())
     } catch {
       Remove-Item $tmp -Force -ErrorAction SilentlyContinue
       Write-Warn "Node bcrypt failed: $($_.Exception.Message)"
@@ -99,7 +101,7 @@ bcrypt.hash(pass, 10).then(h => {
 
 function Escape-ForEnv($raw) {
   # Double all '$' to '$$' for .env/Docker Compose safety
-  return ($raw -replace '\$', '$$')
+  return ($raw.Replace('$', '$$'))
 }
 
 function Is-Safe($raw, $escaped) {

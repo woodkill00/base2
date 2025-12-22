@@ -3,6 +3,11 @@ render_traefik_dynamic.py
 
 Renders traefik/dynamic.yml from a template, substituting ${VAR} with values from .env or environment variables.
 Adds comment markers for idempotency.
+
+Note:
+    Docker Compose users often escape '$' as '$$' in .env (e.g., htpasswd hashes like $apr1$...).
+    This renderer reads .env directly (not via Compose), so we unescape '$$' -> '$' to match the values
+    Traefik expects at runtime.
 """
 import os
 import re
@@ -19,7 +24,13 @@ def load_env():
     env = dict(os.environ)
     if ENV_PATH.exists():
         env.update(dotenv_values(ENV_PATH))
-    return env
+    # Normalize values: dotenv_values can return None, and Compose-style escaping uses '$$'.
+    normalized = {}
+    for key, value in env.items():
+        if value is None:
+            continue
+        normalized[key] = str(value).replace('$$', '$')
+    return normalized
 
 def render_template(template, env):
     pattern = re.compile(r"\$\{([A-Za-z0-9_]+)\}")
