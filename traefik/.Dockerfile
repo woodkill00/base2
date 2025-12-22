@@ -14,7 +14,7 @@ ARG TRAEFIK_EXPOSED_BY_DEFAULT
 USER root
 RUN addgroup -g 1000 traefik 2>/dev/null || true && \
     adduser -D -u 1000 -G traefik traefik 2>/dev/null || true && \
-  mkdir -p /etc/traefik /etc/traefik/dynamic /var/log/traefik && \
+  mkdir -p /etc/traefik /etc/traefik/dynamic /etc/traefik/templates /var/log/traefik && \
     chown -R traefik:traefik /etc/traefik /var/log/traefik && \
     chmod -R 755 /etc/traefik /var/log/traefik
 RUN mkdir -p /etc/traefik/acme \
@@ -22,8 +22,8 @@ RUN mkdir -p /etc/traefik/acme \
   && touch /etc/traefik/acme/acme-staging.json \
   && chmod 600 /etc/traefik/acme/acme.json /etc/traefik/acme/acme-staging.json
 
-# Copy static traefik config
-COPY traefik/traefik.yml /etc/traefik/traefik.yml
+# Copy static traefik config template (rendered at runtime)
+COPY traefik/traefik.yml /etc/traefik/templates/traefik.yml.template
 
 # Copy dynamic config template (rendered at runtime)
 COPY traefik/dynamic.yml /etc/traefik/templates/dynamic.yml.template

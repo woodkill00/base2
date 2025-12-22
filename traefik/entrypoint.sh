@@ -4,11 +4,17 @@ set -eu
 # Ensure directories exist
 mkdir -p /etc/traefik/dynamic /etc/traefik/templates /etc/traefik/acme /var/log/traefik
 
-# Render dynamic config from template using environment variables
-TEMPLATE_PATH="/etc/traefik/templates/dynamic.yml.template"
-OUTPUT_PATH="/etc/traefik/dynamic/dynamic.yml"
-if [ -f "$TEMPLATE_PATH" ]; then
-  envsubst < "$TEMPLATE_PATH" > "$OUTPUT_PATH"
+# Render configs from templates using environment variables
+STATIC_TEMPLATE_PATH="/etc/traefik/templates/traefik.yml.template"
+STATIC_OUTPUT_PATH="/etc/traefik/traefik.yml"
+if [ -f "$STATIC_TEMPLATE_PATH" ]; then
+  envsubst < "$STATIC_TEMPLATE_PATH" > "$STATIC_OUTPUT_PATH"
+fi
+
+DYNAMIC_TEMPLATE_PATH="/etc/traefik/templates/dynamic.yml.template"
+DYNAMIC_OUTPUT_PATH="/etc/traefik/dynamic/dynamic.yml"
+if [ -f "$DYNAMIC_TEMPLATE_PATH" ]; then
+  envsubst < "$DYNAMIC_TEMPLATE_PATH" > "$DYNAMIC_OUTPUT_PATH"
 fi
 
 # Ensure ACME storage files exist with safe perms
