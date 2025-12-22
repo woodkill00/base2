@@ -61,6 +61,10 @@ services:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
       - DJANGO_DEBUG=${DJANGO_DEBUG}
       - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
+      # Django superuser bootstrap (used by `python -m project.create_superuser` in django/.Dockerfile)
+      - DJANGO_SUPERUSER_NAME=${DJANGO_SUPERUSER_NAME}
+      - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL}
+      - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD}
       - DB_HOST=postgres
       - DB_PORT=${POSTGRES_PORT}
       - DB_NAME=${POSTGRES_DB}
