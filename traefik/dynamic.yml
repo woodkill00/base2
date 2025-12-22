@@ -52,14 +52,14 @@ http:
         certResolver: le-staging
       service: django-admin
 
-    # Django static: /static/*
+    # Django static: /static/* (admin subdomain only; avoids hijacking React /static assets on main domain)
     static-files:
-      rule: Host(`${WEBSITE_DOMAIN}`) && PathPrefix(`/static`)
-      priority: 170
+      rule: Host(`${DJANGO_ADMIN_DNS_LABEL}.${WEBSITE_DOMAIN}`) && PathPrefix(`/static`)
+      priority: 195
       entryPoints:
         - websecure
       middlewares:
-        - security-headers
+        - security-headers-no-hsts
       tls:
         certResolver: le-staging
       service: django-static
