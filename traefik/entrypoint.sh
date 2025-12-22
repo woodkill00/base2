@@ -4,6 +4,24 @@ set -eu
 # Ensure directories exist
 mkdir -p /etc/traefik/dynamic /etc/traefik/templates /etc/traefik/acme /var/log/traefik
 
+# ---- FIX: unescape $$ -> $ for htpasswd/bcrypt user strings ----
+unescape_dollars() {
+  # usage: unescape_dollars VAR_NAME
+  name="$1"
+  eval "val=\${$name:-}"
+  if [ -n "${val:-}" ]; then
+    # replace all occurrences of $$ with $
+    val=$(printf '%s' "$val" | sed 's/\$\$/\$/g')
+    eval "export $name=\"\$val\""
+  fi
+}
+
+# Variables used in traefik dynamic config (basicAuth users)
+unescape_dollars TRAEFIK_DASH_BASIC_USERS
+unescape_dollars FLOWER_BASIC_USERS
+# add any other *BASIC_USERS vars you have here
+# ---------------------------------------------------------------
+
 # Render configs from templates using environment variables
 STATIC_TEMPLATE_PATH="/etc/traefik/templates/traefik.yml.template"
 STATIC_OUTPUT_PATH="/etc/traefik/traefik.yml"
