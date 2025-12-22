@@ -50,15 +50,15 @@ function Get-StatusCodeFromHeaders([string[]]$headers) {
 
 function Read-HeadersFile([string]$path) {
   if (-not (Test-Path $path)) { return @() }
-  return (Get-Content $path)
+  return @(Get-Content $path | ForEach-Object { [string]$_ })
 }
 
 # Helper to read small file content safely
 function Read-FileSafe([string]$path, [int]$tail = 0) {
   if (-not (Test-Path $path)) { return @() }
   try {
-    if ($tail -gt 0) { return Get-Content -Path $path -Tail $tail }
-    return Get-Content -Path $path
+    if ($tail -gt 0) { return @(Get-Content -Path $path -Tail $tail | ForEach-Object { [string]$_ }) }
+    return @(Get-Content -Path $path | ForEach-Object { [string]$_ })
   } catch { return @('ERROR: unable to read ' + $path) }
 }
 
@@ -67,12 +67,16 @@ function Verify-Headers([string[]]$headers, [string]$context) {
   if (-not $headers -or $headers.Count -eq 0) { return @("${context}: empty headers") }
   $code = Get-StatusCodeFromHeaders $headers
   if ($context -eq 'root-https' -and $code -ne 200) { $fail += "HTTPS root expected 200, got $code" }
-  if ($context -eq 'api-https' -and $code -ne 200) { $fail += "HTTPS /api expected 200, got $code" }
   $expected = @('strict-transport-security:', 'x-content-type-options:', 'x-frame-options:', 'referrer-policy:')
   foreach ($h in $expected) {
     if (-not ($headers | Where-Object { $_ -imatch $h })) { $fail += "Missing security header: $h ($context)" }
   }
   return $fail
+}
+
+function Read-StatusFile([string]$path) {
+  if (-not (Test-Path $path)) { return 0 }
+  try { return [int](Get-Content -Path $path -Raw).Trim() } catch { return 0 }
 }
 
 function Verify-StagingCert([string]$staticPath, [string]$dynamicPath) {
@@ -252,6 +256,13 @@ if (Test-Path $schemaStatusPath) {
   $failures += 'Missing schema compatibility status (schema-compat-check.status)'
 }
 
+# API health must be 200 via GET (HEAD may be 405, and /api may redirect).
+$apiGetStatus = Read-StatusFile (Join-Path $artifactDir 'api-health.status')
+$apiGetStatusSlash = Read-StatusFile (Join-Path $artifactDir 'api-health-slash.status')
+if (($apiGetStatus -ne 200) -and ($apiGetStatusSlash -ne 200)) {
+  $failures += "API health GET expected 200, got $apiGetStatus (no-slash) / $apiGetStatusSlash (slash)"
+}
+
 # Local smoke tests
 Write-Section "Local Smoke Tests"
 try {
@@ -275,7 +286,7 @@ $result = [ordered]@{
       missingHeaders = (Verify-Headers $rootHdr 'root-https' | Where-Object { $_ -match '^Missing security header' })
     }
     api = [ordered]@{
-      status = (Get-StatusCodeFromHeaders $apiHdr)
+      status = $apiGetStatus
       missingHeaders = (Verify-Headers $apiHdr 'api-https' | Where-Object { $_ -match '^Missing security header' })
     }
   }
@@ -289,8 +300,8 @@ $result = [ordered]@{
 }
 
 # Diagnostics: if API health is non-200, include API logs snippet
-$apiStatus = (Get-StatusCodeFromHeaders $apiHdr)
-if ($apiStatus -ne 200) {
+$apiStatus = $apiGetStatus
+if (($apiGetStatus -ne 200) -and ($apiGetStatusSlash -ne 200)) {
   $apiLogsPath = Join-Path $artifactDir 'api-logs.txt'
   $snippet = @('api-logs.txt not found')
   if (Test-Path $apiLogsPath) { $snippet = Read-FileSafe $apiLogsPath 80 }
@@ -300,9 +311,8 @@ if ($apiStatus -ne 200) {
   $getBodyPath = Join-Path $artifactDir 'api-health.json'
   $getStatusSlashPath = Join-Path $artifactDir 'api-health-slash.status'
   $getBodySlashPath = Join-Path $artifactDir 'api-health-slash.json'
-  $getStatus = 0; $getStatusSlash = 0
-  if (Test-Path $getStatusPath) { try { $getStatus = [int](Get-Content -Path $getStatusPath -Raw).Trim() } catch {} }
-  if (Test-Path $getStatusSlashPath) { try { $getStatusSlash = [int](Get-Content -Path $getStatusSlashPath -Raw).Trim() } catch {} }
+  $getStatus = $apiGetStatus
+  $getStatusSlash = $apiGetStatusSlash
   $bodySnippet = Read-FileSafe $getBodyPath 40
   $bodySnippetSlash = Read-FileSafe $getBodySlashPath 40
 
