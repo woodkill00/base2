@@ -18,5 +18,5 @@ ENV DJANGO_SETTINGS_MODULE=project.settings.production
 ENV PORT=8000
 
 # Use $PORT so Traefik and Compose can control the binding
-# Run database migrations, ensure a superuser (if env vars provided), then start Gunicorn with access logs
-CMD ["sh", "-lc", "python manage.py makemigrations && python manage.py migrate --noinput && python -m project.create_superuser || true && gunicorn project.wsgi:application --bind 0.0.0.0:${PORT} --workers 3 --access-logfile - --error-logfile -"]
+# Run migrations, collect static assets into STATIC_ROOT, ensure a superuser (if env vars provided), then start Gunicorn.
+CMD ["sh", "-lc", "python manage.py makemigrations && python manage.py migrate --noinput && python manage.py collectstatic --noinput && python -m project.create_superuser || true && gunicorn project.wsgi:application --bind 0.0.0.0:${PORT} --workers 3 --access-logfile - --error-logfile -"]
