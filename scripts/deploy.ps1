@@ -233,8 +233,11 @@ if [ -d /opt/apps/base2 ]; then
   docker compose -f local.docker.yml build react-app > /root/logs/build/react-build.txt 2>&1 || true
 
   # Bring up core services needed for edge routing (avoid 502 due to missing upstreams)
-  docker compose -f local.docker.yml up -d --remove-orphans postgres django api react-app nginx-static traefik > /root/logs/build/compose-up-core.txt 2>&1 || true
+  docker compose -f local.docker.yml up -d --remove-orphans postgres django api react-app nginx-static traefik redis pgadmin > /root/logs/build/compose-up-core.txt 2>&1 || true
   docker compose -f local.docker.yml up -d --force-recreate traefik > /root/logs/build/traefik-up.txt 2>&1 || true
+
+  # Ensure Flower is actually started if its router is configured (profiled service)
+  docker compose -f local.docker.yml --profile flower up -d flower > /root/logs/build/flower-up.txt 2>&1 || true
 
   # Ensure Django service is running for admin route
   docker compose -f local.docker.yml up -d django > /root/logs/build/django-up.txt 2>&1 || true
