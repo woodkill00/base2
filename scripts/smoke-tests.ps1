@@ -53,6 +53,15 @@ function Curl-Get([string]$url, [string[]]$extraArgs = @()) {
   return $out
 }
 
+function Curl-GetStatus([string]$url, [string[]]$extraArgs = @()) {
+  $tmp = [System.IO.Path]::GetTempFileName()
+  $args = @('-sk', '--max-time', $TimeoutSec) + $extraArgs + @('-o', $tmp, '-w', '%{http_code}', $url)
+  $statusRaw = & curl.exe @args 2>&1
+  if ($Verbose) { $statusRaw | Write-Host }
+  Remove-Item -Force -ErrorAction SilentlyContinue $tmp
+  try { return [int]$statusRaw } catch { return 0 }
+}
+
 # Init
 Write-Section "Smoke Tests"
 Load-DotEnv -path $EnvPath
@@ -88,8 +97,7 @@ foreach ($h in $expectedHeaders) {
 
 # 3) API health should be OK
 Write-Section "API health"
-$hdr3 = Curl-Head "https://$Domain/api/health" $resolveHttps
-$code3 = Get-StatusCodeFromHeaders $hdr3
+$code3 = Curl-GetStatus "https://$Domain/api/health" $resolveHttps
 if ($code3 -ne 200) { $failures += "API health expected 200, got $code3" }
 
 # Summary
