@@ -26,9 +26,35 @@ $ErrorActionPreference = 'Stop'
 $script:ArtifactDir = ''
 $script:ResolvedIp = ''
 $script:RunStamp = (Get-Date -Format 'yyyyMMdd_HHmmss')
+$script:TranscriptStarted = $false
+$script:ExitCode = 0
+$script:EarlyExitSentinel = '__BASE2_EARLY_EXIT__'
 
 function Write-Section($msg) {
   Write-Host "`n=== $msg ===" -ForegroundColor Cyan
+}
+
+function Start-DeployTranscript {
+  $dest = Ensure-ArtifactDir
+  $path = Join-Path $dest 'deploy-console.log'
+  try {
+    if (-not $script:TranscriptStarted) {
+      Start-Transcript -Path $path -Append | Out-Null
+      $script:TranscriptStarted = $true
+    }
+  } catch {
+    # Non-fatal: transcript can fail in some hosts.
+    $script:TranscriptStarted = $false
+  }
+}
+
+function Stop-DeployTranscript {
+  try {
+    if ($script:TranscriptStarted) {
+      Stop-Transcript | Out-Null
+      $script:TranscriptStarted = $false
+    }
+  } catch {}
 }
 
 function Ensure-ArtifactDir([string]$ip = '') {
@@ -176,13 +202,25 @@ except Exception as e:
 
 function Get-DropletIp {
   if ($DropletIp) { return $DropletIp }
-  $udFile = Join-Path $PSScriptRoot "..\DO_userdata.json"
-  if (Test-Path $udFile) {
-    try {
-      $json = Get-Content $udFile -Raw | ConvertFrom-Json
-      if ($json.ip_address) { return [string]$json.ip_address }
-    } catch { }
+
+  # Prefer per-run artifacts over workspace-root files.
+  $artifactDir = ''
+  try {
+    if ($env:BASE2_ARTIFACT_DIR) { $artifactDir = [string]$env:BASE2_ARTIFACT_DIR }
+    elseif ($script:ArtifactDir) { $artifactDir = [string]$script:ArtifactDir }
+    else { $artifactDir = Ensure-ArtifactDir }
+  } catch {}
+
+  if ($artifactDir) {
+    $udFile = Join-Path $artifactDir 'DO_userdata.json'
+    if (Test-Path $udFile) {
+      try {
+        $json = Get-Content $udFile -Raw | ConvertFrom-Json
+        if ($json.ip_address) { return [string]$json.ip_address }
+      } catch { }
+    }
   }
+
   # Fallback: query DigitalOcean API via pydo using DO_DROPLET_NAME
   $tmpPy = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), 'get_do_ip.py')
   $pyCode = @'
@@ -275,6 +313,7 @@ if [ -d /opt/apps/base2 ]; then
   # Guardrail: htpasswd strings must not be double-escaped in the droplet .env.
   # Compose treats $$ as an escape for a literal $, so a $$$$ run would land as $$ in the container,
   # breaking htpasswd hashes that require single-$ delimiters.
+  set +e
   python3 - <<'PY' > /root/logs/build/env-dollar-check.txt 2>&1
 import re
 from pathlib import Path
@@ -305,6 +344,9 @@ if bad:
     print('ERROR: Detected over-escaped $ runs in .env for: ' + ', '.join(bad))
     raise SystemExit(2)
 PY
+  STATUS=$?
+  set -e
+  echo $STATUS > /root/logs/build/env-dollar-check.status || true
   # Capture build and up logs for the core stack
   docker compose -f local.docker.yml build --no-cache traefik > /root/logs/build/traefik-build.txt 2>&1 || true
   docker compose -f local.docker.yml build django > /root/logs/build/django-build.txt 2>&1 || true
@@ -520,6 +562,27 @@ fi
     foreach ($f in $files) {
       try { & $scpExe -i $keyPath "root@${ip}:/root/logs/$f" $dest 2>$null | Out-Null } catch { }
     }
+
+    # Ensure expected artifacts are present at the run-folder root even if per-file scp fails.
+    # scp -r copies into $dest\logs\..., so we promote key files from there.
+    try {
+      $logsRoot = Join-Path $dest 'logs'
+      foreach ($f in $files) {
+        $src = Join-Path $logsRoot $f
+        $dst = Join-Path $dest $f
+        if ((-not (Test-Path $dst)) -and (Test-Path $src)) {
+          Copy-Item -Path $src -Destination $dst -Force
+        }
+      }
+      # Also promote env-dollar-check artifacts if present.
+      foreach ($f in @('env-dollar-check.txt','env-dollar-check.status')) {
+        $src = Join-Path (Join-Path $logsRoot 'build') $f
+        $dst = Join-Path $dest $f
+        if ((-not (Test-Path $dst)) -and (Test-Path $src)) {
+          Copy-Item -Path $src -Destination $dst -Force
+        }
+      }
+    } catch {}
   }
 
   # Scrub sensitive material from environment snapshots
@@ -549,6 +612,20 @@ try {
   # into this folder during the same run (even before the droplet IP is known).
   try { $env:BASE2_ARTIFACT_DIR = (Ensure-ArtifactDir) } catch {}
 
+  # Start capturing console output early.
+  Start-DeployTranscript
+
+  # If a stale root DO_userdata.json exists, move it into the run folder to avoid pollution.
+  try {
+    $rootUd = Join-Path $PSScriptRoot "..\DO_userdata.json"
+    if (Test-Path $rootUd) {
+      $dest = Ensure-ArtifactDir
+      $movedName = 'DO_userdata.root.moved.json'
+      $movedPath = Join-Path $dest $movedName
+      Move-Item -Path $rootUd -Destination $movedPath -Force
+    }
+  } catch {}
+
   Ensure-Venv
   Activate-Venv
   Load-DotEnv -path $EnvPath
@@ -558,7 +635,8 @@ try {
     Invoke-Preflight
     Write-Section "Preflight only"
     Write-Output "Preflight passed. No cloud actions executed."
-    exit 0
+    $script:ExitCode = 0
+    throw $script:EarlyExitSentinel
   }
   Validate-DoCreds
   Run-Orchestrator
@@ -579,46 +657,62 @@ try {
     $support += "Ensure DNS points to droplet and DO token is valid."
     $support += "Run: ./scripts/deploy.ps1 -Preflight -RunTests -TestsJson"
     Set-Content -Path (Join-Path $dest 'support.txt') -Value ($support -join [Environment]::NewLine) -Encoding UTF8
-    exit 0
+    $script:ExitCode = 0
+    throw $script:EarlyExitSentinel
   }
 
   $script:ResolvedIp = $resolvedIp
   $null = Ensure-ArtifactDir -ip $resolvedIp
 
   Remote-Verify -ip $resolvedIp -keyPath $SshKey
+
+  if ($RunTests) {
+    Write-Section "Running post-deploy tests"
+    if ($TestsJson) {
+      $testArgs = @{ EnvPath = $EnvPath; LogsDir = $LogsDir; UseLatestTimestamp = $true; Json = $true; CheckDjangoAdmin = $true; ResolveIp = $script:ResolvedIp }
+      if ($RunRateLimitTest) { $testArgs.CheckRateLimit = $true; $testArgs.RateLimitBurst = $RateLimitBurst }
+      if ($RunCeleryCheck) { $testArgs.CheckCelery = $true }
+      $jsonOut = & .\scripts\test.ps1 @testArgs
+      $exitCode = $LASTEXITCODE
+      $artifactDir = Ensure-ArtifactDir
+      $reportPath = Join-Path $artifactDir $ReportName
+      try {
+        Set-Content -Path $reportPath -Value $jsonOut -Encoding UTF8
+        Write-Host "Saved JSON report: $reportPath" -ForegroundColor Yellow
+      } catch {
+        Write-Warning "Failed to write JSON report: $($_.Exception.Message)"
+      }
+      if ($exitCode -ne 0) {
+        Write-Warning "Post-deploy tests failed"
+        $script:ExitCode = 1
+        throw $script:EarlyExitSentinel
+      }
+    } else {
+      $testArgs2 = @{ EnvPath = $EnvPath; LogsDir = $LogsDir; UseLatestTimestamp = $true; CheckDjangoAdmin = $true; ResolveIp = $script:ResolvedIp }
+      if ($RunRateLimitTest) { $testArgs2.CheckRateLimit = $true; $testArgs2.RateLimitBurst = $RateLimitBurst }
+      if ($RunCeleryCheck) { $testArgs2.CheckCelery = $true }
+      & .\scripts\test.ps1 @testArgs2
+      if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Post-deploy tests failed"
+        $script:ExitCode = 1
+        throw $script:EarlyExitSentinel
+      }
+    }
+  }
+
+  Write-Section "Done"
+  $artDir = Ensure-ArtifactDir
+  Write-Output ("Artifacts saved to: " + $artDir)
+  $script:ExitCode = 0
 } catch {
   $msg = $_.Exception.Message
-  Write-Warning "Deploy failed: $msg"
-  Write-FailureArtifacts -context 'exception' -message $msg
-  exit 1
-}
-
-if ($RunTests) {
-  Write-Section "Running post-deploy tests"
-  if ($TestsJson) {
-    $testArgs = @{ EnvPath = $EnvPath; LogsDir = $LogsDir; UseLatestTimestamp = $true; Json = $true; CheckDjangoAdmin = $true; ResolveIp = $script:ResolvedIp }
-    if ($RunRateLimitTest) { $testArgs.CheckRateLimit = $true; $testArgs.RateLimitBurst = $RateLimitBurst }
-      if ($RunCeleryCheck) { $testArgs.CheckCelery = $true }
-    $jsonOut = & .\scripts\test.ps1 @testArgs
-    $exitCode = $LASTEXITCODE
-    $artifactDir = Ensure-ArtifactDir
-    $reportPath = Join-Path $artifactDir $ReportName
-    try {
-      Set-Content -Path $reportPath -Value $jsonOut -Encoding UTF8
-      Write-Host "Saved JSON report: $reportPath" -ForegroundColor Yellow
-    } catch {
-      Write-Warning "Failed to write JSON report: $($_.Exception.Message)"
-    }
-    if ($exitCode -ne 0) { Write-Warning "Post-deploy tests failed"; exit 1 }
-  } else {
-    $testArgs2 = @{ EnvPath = $EnvPath; LogsDir = $LogsDir; UseLatestTimestamp = $true; CheckDjangoAdmin = $true; ResolveIp = $script:ResolvedIp }
-    if ($RunRateLimitTest) { $testArgs2.CheckRateLimit = $true; $testArgs2.RateLimitBurst = $RateLimitBurst }
-      if ($RunCeleryCheck) { $testArgs2.CheckCelery = $true }
-    & .\scripts\test.ps1 @testArgs2
-    if ($LASTEXITCODE -ne 0) { Write-Warning "Post-deploy tests failed"; exit 1 }
+  if ($msg -ne $script:EarlyExitSentinel) {
+    Write-Warning "Deploy failed: $msg"
+    Write-FailureArtifacts -context 'exception' -message $msg
+    $script:ExitCode = 1
   }
+} finally {
+  Stop-DeployTranscript
 }
 
-Write-Section "Done"
-$artDir = Ensure-ArtifactDir
-Write-Output ("Artifacts saved to: " + $artDir)
+exit $script:ExitCode

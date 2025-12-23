@@ -191,33 +191,32 @@ user_data_script_sub = substitute_env_vars(user_data_script, env_dict)
 log("Loaded digital_ocean_base.sh for user_data (with env substitution):")
 print("--- user_data script ---\n" + user_data_script_sub + "\n--- end user_data script ---")
 
-# Write user_data to DO_userdata.json for inspection (droplet_id will be added after creation)
-do_userdata_json_path = "DO_userdata.json"
+"""DO_userdata.json location
 
-# If deploy.ps1 provides a per-run artifact directory, also write DO_userdata.json there
-# during the run so it is captured under local_run_logs/<ip>-<timestamp>/.
+When run via scripts/deploy.ps1, we set BASE2_ARTIFACT_DIR to a per-run folder
+local_run_logs/<ip>-<timestamp>/ (initially unknown-<timestamp> and later renamed).
+
+In that flow we ONLY write DO_userdata.json into the artifact folder.
+"""
+
 artifact_dir = os.getenv("BASE2_ARTIFACT_DIR", "").strip()
-artifact_userdata_path = None
 if artifact_dir:
     try:
         artifact_dir_path = Path(artifact_dir)
         artifact_dir_path.mkdir(parents=True, exist_ok=True)
-        artifact_userdata_path = artifact_dir_path / "DO_userdata.json"
+        do_userdata_json_path = str(artifact_dir_path / "DO_userdata.json")
     except Exception as e:
         err(f"Failed to initialize BASE2_ARTIFACT_DIR '{artifact_dir}': {e}")
-        artifact_userdata_path = None
+        # Avoid writing into the workspace root by default.
+        do_userdata_json_path = str(Path(__file__).resolve().parent / "DO_userdata.json")
+else:
+    # Avoid writing into the workspace root by default.
+    do_userdata_json_path = str(Path(__file__).resolve().parent / "DO_userdata.json")
 
 
 def write_do_userdata(payload: dict):
-    # Root copy is used by downstream scripts; artifact copy is for per-run traceability.
     with open(do_userdata_json_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
-    if artifact_userdata_path is not None:
-        try:
-            with open(artifact_userdata_path, "w", encoding="utf-8") as f:
-                json.dump(payload, f, indent=2)
-        except Exception as e:
-            err(f"Failed to write artifact DO_userdata.json: {e}")
 
 try:
     existing_userdata = {}
