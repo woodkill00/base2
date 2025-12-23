@@ -1,19 +1,3 @@
-[CmdletBinding(PositionalBinding = $false)]
-param(
-  [string]$EnvPath = ".\.env",
-  [string]$Domain = "localhost",
-  [string]$ResolveIp = "",
-  [int]$TimeoutSec = 5
-)
-
-$ErrorActionPreference = 'Stop'
-
-$target = Join-Path $PSScriptRoot '..\digital_ocean\scripts\powershell\smoke-tests.ps1'
-$resolved = (Resolve-Path $target).Path
-& $resolved @PSBoundParameters
-exit $LASTEXITCODE
-
-<#
 param(
   [string]$EnvPath = ".\.env",
   [string]$Domain = "localhost",
@@ -25,10 +9,13 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# Ensure relative paths work regardless of where the script is invoked from.
+$script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
+Push-Location $script:RepoRoot
+
 function Write-Section($msg) {
   Write-Host "`n=== $msg ===" -ForegroundColor Cyan
 }
-
 
 function Load-DotEnv([string]$path) {
   if (-not (Test-Path $path)) { return }
@@ -123,10 +110,10 @@ if ($code3 -ne 200) { $failures += "API health expected 200, got $code3" }
 if ($failures.Count -gt 0) {
   Write-Host "Failures:" -ForegroundColor Red
   $failures | ForEach-Object { Write-Host " - $_" -ForegroundColor Red }
+  try { Pop-Location } catch {}
   exit 1
 }
 
 Write-Host "All smoke tests passed." -ForegroundColor Green
+try { Pop-Location } catch {}
 exit 0
-
-#>

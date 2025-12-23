@@ -1,19 +1,3 @@
-[CmdletBinding(PositionalBinding = $false)]
-param(
-  [string]$EnvPath = ".\.env",
-  [string]$ComposePath = ".\local.docker.yml",
-  [switch]$Strict,
-  [switch]$Json
-)
-
-$ErrorActionPreference = 'Stop'
-
-$target = Join-Path $PSScriptRoot '..\digital_ocean\scripts\powershell\validate-predeploy.ps1'
-$resolved = (Resolve-Path $target).Path
-& $resolved @PSBoundParameters
-exit $LASTEXITCODE
-
-<#
 param(
   [string]$EnvPath = ".\.env",
   [string]$ComposePath = ".\local.docker.yml",
@@ -24,12 +8,21 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# Ensure relative paths work regardless of where the script is invoked from.
+$script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
+Push-Location $script:RepoRoot
+
+$script:ExitCode = 0
+
+try {
+
 function Write-Section($msg) { Write-Host "`n=== $msg ===" -ForegroundColor Cyan }
 function Read-TextFile([string]$path) {
   if (-not (Test-Path $path)) { throw "File not found: $path" }
   Get-Content $path -Raw
 }
 
+function Parse-DotEnv([string]$path) {
   $vars = @{}
   if (-not (Test-Path $path)) { return $vars }
   Get-Content $path | ForEach-Object {
@@ -65,9 +58,9 @@ function Get-ServiceBlock([string]$name, [string[]]$lines) {
   return $result
 }
 
-$checks = @()
+$script:checks = @()
 function Add-Check([string]$name, [bool]$ok, [string]$details) {
-  $checks += [pscustomobject]@{ name = $name; ok = $ok; details = $details }
+  $script:checks += [pscustomobject]@{ name = $name; ok = $ok; details = $details }
 }
 
 Write-Section "Preflight Validation"
@@ -133,7 +126,11 @@ Add-Check "Dynamic: React service points to react-app:8080" ($dynamicText -match
 
 # 3) Required files
 $requiredFiles = @(
-  '.\scripts\deploy.ps1',
+  '.\digital_ocean\scripts\powershell\deploy.ps1',
+  '.\digital_ocean\scripts\powershell\test.ps1',
+  '.\digital_ocean\scripts\powershell\smoke-tests.ps1',
+  '.\digital_ocean\scripts\python\orchestrate_deploy.py',
+  '.\digital_ocean\scripts\python\validate_dns.py',
   '.\api\.Dockerfile', '.\api\requirements.txt', '.\api\main.py',
   '.\django\.Dockerfile', '.\django\requirements.txt', '.\django\manage.py',
   '.\django\project\settings\base.py', '.\django\project\settings\production.py', '.\django\project\urls.py', '.\django\project\wsgi.py'
@@ -145,16 +142,19 @@ Add-Check "Required files exist" ($missingFiles.Count -eq 0) $fileDetails
 
 # Output
 if ($Json) {
-  $checks | ConvertTo-Json -Depth 4 | Write-Output
+  $script:checks | ConvertTo-Json -Depth 4 | Write-Output
 } else {
   Write-Section "Results"
-  foreach ($c in $checks) {
+  foreach ($c in $script:checks) {
     $status = if ($c.ok) { "OK" } else { "FAIL" }
     Write-Host ("- {0}: {1} ({2})" -f $c.name, $status, $c.details) -ForegroundColor (if ($c.ok) { 'Green' } else { 'Red' })
   }
 }
 
-$failedCount = ((($checks | Where-Object { -not $_.ok }) | Measure-Object).Count)
-if ($Strict -and $failedCount -gt 0) { exit 1 } else { exit 0 }
+$failedCount = ((($script:checks | Where-Object { -not $_.ok }) | Measure-Object).Count)
+if ($Strict -and $failedCount -gt 0) { $script:ExitCode = 1 } else { $script:ExitCode = 0 }
+} finally {
+  try { Pop-Location } catch {}
+}
 
-#>
+exit $script:ExitCode

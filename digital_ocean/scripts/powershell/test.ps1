@@ -1,37 +1,3 @@
-[CmdletBinding(PositionalBinding = $false)]
-param(
-  [string]$EnvPath = ".\.env",
-  [string]$LogsDir = ".\local_run_logs",
-  [switch]$UseLatestTimestamp = $true,
-  [string]$Domain = "",
-  [string]$ResolveIp = "",
-  [string]$ExpectedIpv4 = "",
-  [string]$ExpectedIpv6 = "",
-  [int]$TimeoutSec = 8,
-  [switch]$Json,
-  [switch]$All,
-  [switch]$CheckTls,
-  [switch]$CheckOpenApi,
-  [switch]$CheckRateLimit,
-  [switch]$CheckDjangoProxy,
-  [switch]$CheckDjangoAdmin,
-  [switch]$CheckPgAdmin,
-  [switch]$CheckTraefikDashboard,
-  [switch]$CheckDns,
-  [switch]$CheckCelery,
-  [string]$AdminUser = "",
-  [string]$AdminPass = "",
-  [int]$RateLimitBurst = 20
-)
-
-$ErrorActionPreference = 'Stop'
-
-$target = Join-Path $PSScriptRoot '..\digital_ocean\scripts\powershell\test.ps1'
-$resolved = (Resolve-Path $target).Path
-& $resolved @PSBoundParameters
-exit $LASTEXITCODE
-
-<#
 param(
   [string]$EnvPath = ".\.env",
   [string]$LogsDir = ".\local_run_logs",
@@ -61,10 +27,13 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# Ensure relative paths work regardless of where the script is invoked from.
+$script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
+Push-Location $script:RepoRoot
+
 function Write-Section($msg) {
   if (-not $Json) { Write-Host "`n=== $msg ===" -ForegroundColor Cyan }
 }
-
 
 function Load-DotEnv([string]$path) {
   if (-not (Test-Path $path)) { return }
@@ -84,8 +53,6 @@ function Load-DotEnv([string]$path) {
     }
   }
 }
-
-#>
 function Get-StatusCodeFromHeaders([string[]]$headers) {
   foreach ($line in $headers) {
     if ($line -match '(?i)HTTP/[^ ]+\s+(\d{3})') { return [int]$Matches[1] }
@@ -996,6 +963,7 @@ if ($Json) {
   try { Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'post-deploy-report.json' -content $result } catch {}
   $jsonStr = $result | ConvertTo-Json -Depth 6
   Write-Output $jsonStr
+  try { Pop-Location } catch {}
   if ($ok) { exit 0 } else { exit 1 }
 } else {
   if ($failures.Count -gt 0 -or $result.missingFiles.Count -gt 0 -or -not $result.stagingResolverOK) {
@@ -1003,8 +971,10 @@ if ($Json) {
     $result.missingFiles | ForEach-Object { Write-Host " - Missing artifact: $_" -ForegroundColor Red }
     $failures | ForEach-Object { Write-Host " - $_" -ForegroundColor Red }
     if (-not $result.stagingResolverOK) { Write-Host " - Traefik not using staging resolver (le-staging)" -ForegroundColor Red }
+    try { Pop-Location } catch {}
     exit 1
   }
   Write-Host "Post-deploy verification passed." -ForegroundColor Green
+  try { Pop-Location } catch {}
   exit 0
 }

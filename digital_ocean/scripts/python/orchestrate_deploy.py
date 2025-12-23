@@ -1,13 +1,4 @@
 #!/usr/bin/env python3
-import runpy
-from pathlib import Path
-
-
-if __name__ == "__main__":
-    target = Path(__file__).resolve().parent / "scripts" / "python" / "orchestrate_deploy.py"
-    runpy.run_path(str(target), run_name="__main__")
-    raise SystemExit(0)
-#!/usr/bin/env python3
 """
 Orchestrate Digital Ocean Droplet deployment, DNS update, .env generation, and service startup.
 - Requires: pydo, paramiko (for SSH/SCP), python-dotenv
@@ -21,6 +12,32 @@ from pathlib import Path
 import subprocess
 from dotenv import load_dotenv
 import re
+
+
+def _find_env_path() -> str:
+    """Locate repo-root .env file.
+
+    After script relocation to digital_ocean/scripts/python, we can't assume
+    ../.env exists. Prefer BASE2_ENV_PATH/ENV_PATH if provided, else walk up
+    parent directories looking for '.env'.
+    """
+    for key in ("BASE2_ENV_PATH", "ENV_PATH"):
+        p = os.environ.get(key)
+        if p and os.path.isfile(p):
+            return os.path.abspath(p)
+
+    # Prefer current working directory (deploy.ps1 Push-Location's to repo root)
+    cwd_candidate = os.path.abspath(os.path.join(os.getcwd(), ".env"))
+    if os.path.isfile(cwd_candidate):
+        return cwd_candidate
+
+    # Fall back: walk upwards from this file location
+    here = Path(__file__).resolve()
+    for parent in [here.parent] + list(here.parents):
+        candidate = parent / ".env"
+        if candidate.is_file():
+            return str(candidate)
+    return cwd_candidate
 
 def log(msg):
     print(f"\033[1;32m[INFO]\033[0m {msg}")
@@ -53,7 +70,7 @@ PROJECT_NAME = os.getenv("PROJECT_NAME", "base2")
 ssh_dir = os.path.expanduser("~/.ssh")
 ssh_key_path = os.path.join(ssh_dir, PROJECT_NAME)
 pub_key_path = ssh_key_path + ".pub"
-env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.env"))
+env_path = _find_env_path()
 
 
 log(f"Checking for SSH key at {ssh_key_path} and {pub_key_path}")
@@ -228,7 +245,8 @@ from dotenv import dotenv_values
 
 
 
-base_script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "scripts/digital_ocean_base.sh"))
+repo_root = Path(env_path).resolve().parent if env_path else Path(__file__).resolve().parents[3]
+base_script_path = str((repo_root / "digital_ocean" / "scripts" / "digital_ocean_base.sh").resolve())
 log(f"Loading user_data script from {base_script_path}")
 with open(base_script_path, "r") as f:
     user_data_script = f.read()

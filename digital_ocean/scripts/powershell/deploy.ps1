@@ -1,44 +1,3 @@
-[CmdletBinding(PositionalBinding = $false)]
-param(
-  [switch]$Full,
-  [switch]$UpdateOnly,
-  [string]$EnvPath = ".\.env",
-  [string]$SshKey = "$env:USERPROFILE\.ssh\base2",
-  [string]$DropletIp = "",
-  [switch]$SkipAllowlist,
-  [string]$LogsDir = ".\local_run_logs",
-  [switch]$Timestamped,
-  [switch]$Preflight,
-  [switch]$RunTests,
-  [switch]$AllTests,
-  [switch]$TestsJson,
-  [switch]$RunRateLimitTest,
-  [switch]$RunCeleryCheck,
-  [int]$RateLimitBurst = 20,
-  [int]$VerifyTimeoutSec = 600,
-  [switch]$AsyncVerify,
-  [int]$LogsPollMaxAttempts = 30,
-  [int]$LogsPollIntervalSec = 10,
-  [string]$ReportName = 'post-deploy-report.json'
-)
-
-$ErrorActionPreference = 'Stop'
-
-$target = Join-Path $PSScriptRoot '..\digital_ocean\scripts\powershell\deploy.ps1'
-$resolved = (Resolve-Path $target).Path
-& $resolved @PSBoundParameters
-exit $LASTEXITCODE
-
-<#
-
-LEGACY SCRIPT BODY (commented out)
-
-$ErrorActionPreference = 'Stop'
-
-$target = Join-Path $PSScriptRoot '..\digital_ocean\scripts\powershell\deploy.ps1'
-$resolved = (Resolve-Path $target).Path
-& $resolved @args
-exit $LASTEXITCODE
 param(
   [switch]$Full,
   [switch]$UpdateOnly,
@@ -64,6 +23,10 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+# Ensure relative paths work regardless of where the script is invoked from.
+$script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
+Push-Location $script:RepoRoot
 
 $script:ArtifactDir = ''
 $script:ResolvedIp = ''
@@ -1132,8 +1095,7 @@ try {
   Stop-DeployTranscript
   Finalize-ArtifactDirRename
   Append-RemoteArtifactsToConsoleLog
+  try { Pop-Location } catch {}
 }
 
 exit $script:ExitCode
-
-#>

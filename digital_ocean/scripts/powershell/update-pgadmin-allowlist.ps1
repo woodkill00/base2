@@ -1,18 +1,3 @@
-[CmdletBinding(PositionalBinding = $false)]
-param(
-    [string]$EnvPath,
-    [string]$Ip,
-    [switch]$DryRun
-)
-
-$ErrorActionPreference = 'Stop'
-
-$target = Join-Path $PSScriptRoot '..\digital_ocean\scripts\powershell\update-pgadmin-allowlist.ps1'
-$resolved = (Resolve-Path $target).Path
-& $resolved @PSBoundParameters
-exit $LASTEXITCODE
-
-<#
 param(
     [string] $EnvPath,
     [string] $Ip,
@@ -22,8 +7,9 @@ param(
 # update-pgadmin-allowlist.ps1
 # - Detects your public IPv4 (or uses -Ip) and updates PGADMIN_ALLOWLIST in .env to <ip>/32
 # - Safe for PowerShell 5.1; preserves other .env content
-
-function Write-Info($m) { Write-Host "[INFO] $m" -ForegroundColor Green }
+#
+# Usage examples:
+#   ./scripts/update-pgadmin-allowlist.ps1
 #   ./scripts/update-pgadmin-allowlist.ps1 -Ip 203.0.113.42
 #   ./scripts/update-pgadmin-allowlist.ps1 -EnvPath ./.env -DryRun
 
@@ -38,10 +24,6 @@ if (-not $EnvPath -or [string]::IsNullOrWhiteSpace($EnvPath)) {
     $repoRoot = Split-Path -Parent $PSScriptRoot
     $EnvPath = Join-Path $repoRoot '.env'
 }
-
-#>
-
-#>
 
 if (-not (Test-Path -LiteralPath $EnvPath)) {
     Write-Err "Could not find .env at: $EnvPath"

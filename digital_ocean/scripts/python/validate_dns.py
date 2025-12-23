@@ -1,12 +1,3 @@
-#!/usr/bin/env python3
-import runpy
-from pathlib import Path
-
-
-if __name__ == "__main__":
-    target = Path(__file__).resolve().parent / "scripts" / "python" / "validate_dns.py"
-    runpy.run_path(str(target), run_name="__main__")
-    raise SystemExit(0)
 """
 validate_dns.py: Digital Ocean DNS Record Validator
 Checks DNS records for configured domains and reports missing or misconfigured records.
