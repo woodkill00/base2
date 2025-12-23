@@ -76,6 +76,8 @@ function Write-FailureArtifacts([string]$context, [string]$message) {
   try {
     Set-Content -Path (Join-Path $dest 'deploy-error.txt') -Value $message -Encoding UTF8
   } catch {}
+  # Ensure the orchestrator knows where to write per-run artifacts.
+  try { $env:BASE2_ARTIFACT_DIR = $dest } catch {}
   try {
     & docker compose -f ./local.docker.yml config > (Join-Path $dest 'compose-config-local.yml') 2>$null
   } catch {}
@@ -543,6 +545,9 @@ fi
 Write-Section "Base2 Deploy"
 try {
   $null = Ensure-ArtifactDir
+  # Provide the orchestrator a per-run artifact directory. It will write DO_userdata.json
+  # into this folder during the same run (even before the droplet IP is known).
+  try { $env:BASE2_ARTIFACT_DIR = (Ensure-ArtifactDir) } catch {}
 
   Ensure-Venv
   Activate-Venv
@@ -563,6 +568,7 @@ try {
     Write-Warning "Could not determine droplet IP. Skipping remote verification."
     Write-Section "Remote verify unavailable - saving local artifacts"
     $dest = Ensure-ArtifactDir
+    try { $env:BASE2_ARTIFACT_DIR = $dest } catch {}
 
     # Capture minimal local Compose artifacts for troubleshooting
     try { & docker compose -f ./local.docker.yml ps > (Join-Path $dest 'compose-ps-local.txt') 2>$null } catch {}
@@ -614,5 +620,5 @@ if ($RunTests) {
 }
 
 Write-Section "Done"
-$artDir = (Resolve-Path $LogsDir)
-Write-Output ("Artifacts saved to: " + $artDir + ". Use -Timestamped for per-run subfolders.")
+$artDir = Ensure-ArtifactDir
+Write-Output ("Artifacts saved to: " + $artDir)

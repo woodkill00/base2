@@ -193,6 +193,32 @@ print("--- user_data script ---\n" + user_data_script_sub + "\n--- end user_data
 
 # Write user_data to DO_userdata.json for inspection (droplet_id will be added after creation)
 do_userdata_json_path = "DO_userdata.json"
+
+# If deploy.ps1 provides a per-run artifact directory, also write DO_userdata.json there
+# during the run so it is captured under local_run_logs/<ip>-<timestamp>/.
+artifact_dir = os.getenv("BASE2_ARTIFACT_DIR", "").strip()
+artifact_userdata_path = None
+if artifact_dir:
+    try:
+        artifact_dir_path = Path(artifact_dir)
+        artifact_dir_path.mkdir(parents=True, exist_ok=True)
+        artifact_userdata_path = artifact_dir_path / "DO_userdata.json"
+    except Exception as e:
+        err(f"Failed to initialize BASE2_ARTIFACT_DIR '{artifact_dir}': {e}")
+        artifact_userdata_path = None
+
+
+def write_do_userdata(payload: dict):
+    # Root copy is used by downstream scripts; artifact copy is for per-run traceability.
+    with open(do_userdata_json_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+    if artifact_userdata_path is not None:
+        try:
+            with open(artifact_userdata_path, "w", encoding="utf-8") as f:
+                json.dump(payload, f, indent=2)
+        except Exception as e:
+            err(f"Failed to write artifact DO_userdata.json: {e}")
+
 try:
     existing_userdata = {}
     if os.path.exists(do_userdata_json_path):
@@ -202,8 +228,7 @@ except Exception:
     existing_userdata = {}
 
 existing_userdata["user_data"] = user_data_script_sub
-with open(do_userdata_json_path, "w", encoding="utf-8") as f:
-    json.dump(existing_userdata, f, indent=2)
+write_do_userdata(existing_userdata)
 log("Wrote user_data to DO_userdata.json (preserving existing fields)")
 
 # --- 1. Create Droplet ---
@@ -257,8 +282,7 @@ if UPDATE_ONLY:
                     do_userdata = json.load(f) or {}
             do_userdata["droplet_id"] = droplet_id
             do_userdata["ip_address"] = ip_address
-            with open(do_userdata_json_path, "w", encoding="utf-8") as f:
-                json.dump(do_userdata, f, indent=2)
+            write_do_userdata(do_userdata)
             log(f"Updated {do_userdata_json_path} with droplet_id {droplet_id} and ip_address {ip_address}")
         except Exception as e:
             err(f"Failed to update {do_userdata_json_path}: {e}")
@@ -290,8 +314,7 @@ else:
                 do_userdata = json.load(f)
             do_userdata["droplet_id"] = droplet_id
             do_userdata["ip_address"] = ip_address
-            with open(do_userdata_json_path, "w", encoding="utf-8") as f:
-                json.dump(do_userdata, f, indent=2)
+            write_do_userdata(do_userdata)
             log(f"Updated {do_userdata_json_path} with droplet_id {droplet_id} and ip_address {ip_address}")
         except Exception as e:
             err(f"Failed to update {do_userdata_json_path}: {e}")
