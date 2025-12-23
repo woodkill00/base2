@@ -180,10 +180,21 @@ if ($UseLatestTimestamp) {
   if (Test-Path $LogsDir) {
     $cands = @(
       Get-ChildItem -Path $LogsDir -Directory |
-        Where-Object { $_.Name -match '^\d{8}_\d{6}$' } |
-        Sort-Object Name
+        Where-Object {
+          # New format: <ip>-yyyyMMdd_HHmmss
+          $_.Name -match '^(?:\d{1,3}\.){3}\d{1,3}-\d{8}_\d{6}$' -or
+          # Legacy format: yyyyMMdd_HHmmss
+          $_.Name -match '^\d{8}_\d{6}$'
+        }
     )
-    if ($cands.Count -gt 0) { $artifactDir = $cands[-1].FullName }
+    if ($cands.Count -gt 0) {
+      $latest = $cands |
+        Sort-Object -Property @{ Expression = {
+            if ($_.Name -match '(\d{8}_\d{6})$') { $Matches[1] } else { $_.Name }
+          }
+        }
+      $artifactDir = $latest[-1].FullName
+    }
   }
 }
 if (-not $Json) { Write-Host "Using artifacts at: $artifactDir" -ForegroundColor Yellow }

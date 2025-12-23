@@ -25,20 +25,41 @@ $ErrorActionPreference = 'Stop'
 
 $script:ArtifactDir = ''
 $script:ResolvedIp = ''
+$script:RunStamp = (Get-Date -Format 'yyyyMMdd_HHmmss')
 
 function Write-Section($msg) {
   Write-Host "`n=== $msg ===" -ForegroundColor Cyan
 }
 
-function Ensure-ArtifactDir {
-  if ($script:ArtifactDir -and (Test-Path $script:ArtifactDir)) { return $script:ArtifactDir }
-  $outDir = $LogsDir
-  if ($Timestamped) {
-    $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
-    $outDir = Join-Path $LogsDir $stamp
+function Ensure-ArtifactDir([string]$ip = '') {
+  # Always write artifacts into a per-run folder to avoid polluting LogsDir.
+  # Folder format: <ip>-<timestamp>. If IP is unknown early in the run, we create
+  # unknown-<timestamp> and rename once IP becomes available.
+  $safeIp = if ($ip -and $ip.Trim()) { $ip.Trim() } elseif ($script:ResolvedIp) { $script:ResolvedIp } else { 'unknown' }
+  $leaf = "$safeIp-$($script:RunStamp)"
+  $targetDir = Join-Path $LogsDir $leaf
+
+  if (-not (Test-Path $LogsDir)) { New-Item -ItemType Directory -Path $LogsDir -Force | Out-Null }
+
+  if ($script:ArtifactDir -and (Test-Path $script:ArtifactDir)) {
+    # If we created an unknown-* folder earlier, rename it when IP is known.
+    try {
+      $currentLeaf = Split-Path -Leaf $script:ArtifactDir
+      if (($currentLeaf -like 'unknown-*') -and ($safeIp -ne 'unknown')) {
+        if (-not (Test-Path $targetDir)) {
+          Move-Item -Path $script:ArtifactDir -Destination $targetDir -Force
+          $script:ArtifactDir = (Resolve-Path $targetDir).Path
+        } else {
+          # If target exists, keep current dir to avoid clobber.
+          $script:ArtifactDir = (Resolve-Path $script:ArtifactDir).Path
+        }
+      }
+    } catch {}
+    return $script:ArtifactDir
   }
-  if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
-  $script:ArtifactDir = (Resolve-Path $outDir).Path
+
+  if (-not (Test-Path $targetDir)) { New-Item -ItemType Directory -Path $targetDir -Force | Out-Null }
+  $script:ArtifactDir = (Resolve-Path $targetDir).Path
   return $script:ArtifactDir
 }
 
@@ -203,6 +224,7 @@ function Run-Orchestrator {
 
 function Remote-Verify($ip, $keyPath) {
   Write-Section "Remote verification on $ip"
+  $null = Ensure-ArtifactDir -ip $ip
   $sshExe = "ssh"
   $scpExe = "scp"
   $sshCommon = @('-o','ConnectTimeout=20','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=4','-o','StrictHostKeyChecking=no')
@@ -288,11 +310,11 @@ PY
   docker compose -f local.docker.yml build react-app > /root/logs/build/react-build.txt 2>&1 || true
 
   # Bring up core services needed for edge routing (avoid 502 due to missing upstreams)
-  docker compose -f local.docker.yml up -d --remove-orphans postgres django api react-app nginx-static traefik redis pgadmin > /root/logs/build/compose-up-core.txt 2>&1 || true
+  docker compose -f local.docker.yml up -d --remove-orphans postgres django api react-app nginx-static traefik redis pgadmin flower > /root/logs/build/compose-up-core.txt 2>&1 || true
   docker compose -f local.docker.yml up -d --force-recreate traefik > /root/logs/build/traefik-up.txt 2>&1 || true
 
-  # Ensure Flower is actually started if its router is configured (profiled service)
-  docker compose -f local.docker.yml --profile flower up -d flower > /root/logs/build/flower-up.txt 2>&1 || true
+  # Ensure Flower is started (kept as a separate log artifact)
+  docker compose -f local.docker.yml up -d flower > /root/logs/build/flower-up.txt 2>&1 || true
 
   # Ensure Django service is running for admin route
   docker compose -f local.docker.yml up -d django > /root/logs/build/django-up.txt 2>&1 || true
@@ -313,8 +335,8 @@ PY
     docker compose -f local.docker.yml build api > /root/logs/build/api-build.txt 2>&1 || true
     # Start Redis, Celery worker and beat under the celery profile; ignore if services not defined
     docker compose -f local.docker.yml --profile celery up -d redis celery-worker celery-beat > /root/logs/build/celery-up.txt 2>&1 || true
-    # Start Flower if defined (separate profile)
-    docker compose -f local.docker.yml --profile flower up -d flower > /root/logs/build/flower-up.txt 2>&1 || true
+    # Start Flower if defined
+    docker compose -f local.docker.yml up -d flower > /root/logs/build/flower-up.txt 2>&1 || true
   fi
   docker compose -f local.docker.yml ps > /root/logs/compose-ps.txt || true
   docker compose -f local.docker.yml config > /root/logs/compose-config.yml || true
@@ -555,6 +577,7 @@ try {
   }
 
   $script:ResolvedIp = $resolvedIp
+  $null = Ensure-ArtifactDir -ip $resolvedIp
 
   Remote-Verify -ip $resolvedIp -keyPath $SshKey
 } catch {

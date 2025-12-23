@@ -259,7 +259,6 @@ services:
     command: ["python", "-m", "flower", "--broker=${CELERY_BROKER_URL}", "flower", "--port=5555"]
     restart: unless-stopped
     security_opt: [no-new-privileges:true]
-    profiles: ["flower"]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:5555/ > /dev/null || exit 1"]
       interval: 20s
