@@ -469,14 +469,14 @@ function Assert-EnvNotTracked {
 function Update-Allowlist {
   if ($SkipAllowlist) { return }
   Write-Section "Updating pgAdmin IP allowlist in .env"
-  & .\scripts\update-pgadmin-allowlist.ps1 -EnvPath $EnvPath
+  & .\digital_ocean\scripts\powershell\update-pgadmin-allowlist.ps1 -EnvPath $EnvPath
 }
 
 function Invoke-Preflight {
   Write-Section "Preflight validation"
   # Runs strict validation of .env, compose labels/ports, and required files.
   # Fails fast on any issue to prevent orchestration.
-  & .\scripts\validate-predeploy.ps1 -Strict
+  & .\digital_ocean\scripts\powershell\validate-predeploy.ps1 -Strict
 }
 
 function Validate-DoCreds {
@@ -566,7 +566,7 @@ function Run-Orchestrator {
   Write-Section "Running orchestrator"
   $cliArgs = @()
   if (-not $Full -and $UpdateOnly) { $cliArgs += '--update-only' }
-  & .\.venv\Scripts\python.exe .\digital_ocean\orchestrate_deploy.py @cliArgs
+  & .\.venv\Scripts\python.exe .\digital_ocean\scripts\python\orchestrate_deploy.py @cliArgs
 }
 
 function Remote-Verify($ip, $keyPath) {
@@ -1013,7 +1013,7 @@ try {
     $support = @()
     $support += "Remote verification skipped due to missing droplet IP."
     $support += "Ensure DNS points to droplet and DO token is valid."
-    $support += "Run: ./scripts/deploy.ps1 -Preflight -RunTests -TestsJson"
+    $support += "Run: ./digital_ocean/scripts/powershell/deploy.ps1 -Preflight -RunTests -TestsJson"
     Set-Content -Path (Join-Path $dest 'support.txt') -Value ($support -join [Environment]::NewLine) -Encoding UTF8
     $script:ExitCode = 0
     throw $script:EarlyExitSentinel
@@ -1045,7 +1045,7 @@ try {
       if ($RunRateLimitTest) { $testArgs.CheckRateLimit = $true; $testArgs.RateLimitBurst = $RateLimitBurst }
       if ($RunCeleryCheck) { $testArgs.CheckCelery = $true }
       if ($AllTests) { $testArgs.All = $true }
-      $jsonOut = & .\scripts\test.ps1 @testArgs
+      $jsonOut = & .\digital_ocean\scripts\powershell\test.ps1 @testArgs
       $exitCode = $LASTEXITCODE
       $artifactDir = Ensure-ArtifactDir
       $metaDir = Join-Path $artifactDir 'meta'
@@ -1071,7 +1071,7 @@ try {
       if ($RunRateLimitTest) { $testArgs2.CheckRateLimit = $true; $testArgs2.RateLimitBurst = $RateLimitBurst }
       if ($RunCeleryCheck) { $testArgs2.CheckCelery = $true }
       if ($AllTests) { $testArgs2.All = $true }
-      & .\scripts\test.ps1 @testArgs2
+      & .\digital_ocean\scripts\powershell\test.ps1 @testArgs2
       if ($LASTEXITCODE -ne 0) {
         Write-Warning "Post-deploy tests failed"
         $script:ExitCode = 1

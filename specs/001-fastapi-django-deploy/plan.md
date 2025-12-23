@@ -61,7 +61,7 @@ django/     # Django service (containerized, internal-only by default)
 ## Phased Plan
 
 1) Deployment pipeline hardening (P1)
-- Update `scripts/deploy.ps1` behavior is already aligned: venv bootstrap, `.env` load, allowlist update, orchestrator run, IP discovery, remote verification, timestamped artifacts.
+- Update `digital_ocean/scripts/powershell/deploy.ps1` behavior is already aligned: venv bootstrap, `.env` load, allowlist update, orchestrator run, IP discovery, remote verification, timestamped artifacts.
 - Enforce fail-fast on missing/invalid DO credentials before cloud actions (already implied by spec). Ensure clear error surface.
 - Ensure artifact set includes: compose ps, Traefik env/static/dynamic, template snapshots, proxy logs, `curl` headers for `/` and `/api/`.
 

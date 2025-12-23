@@ -23,7 +23,7 @@ description: "Task list for Digital Ocean Integration feature"
 
 ## Phase 3: Deployment Automation
 - [X] T011 Implement deployment script in `digital_ocean/deploy.py` using PyDo
-- [X] T012 Add deployment script CLI wrapper in `digital_ocean/scripts/deploy.sh`
+- [X] T012 Add deployment entrypoint (Windows) in `digital_ocean/scripts/powershell/deploy.ps1` (removed legacy `digital_ocean/scripts/deploy.sh`)
 - [X] T013 Write pytest for deployment in `digital_ocean/tests/test_deploy.py`
 - [X] T014 Update `README.md` and `quickstart.md` with deployment instructions
 - [X] T015 Log all deployment actions in `digital_ocean/logging.py`
@@ -41,7 +41,7 @@ description: "Task list for Digital Ocean Integration feature"
 
 ## Phase 5: Edit & Maintain Automation
 - [X] T025 Implement edit/maintain script in `digital_ocean/edit.py` using PyDo
-- [X] T026 Add edit script CLI wrapper in `digital_ocean/scripts/edit.sh`
+- [X] T026 Document direct invocation of `digital_ocean/edit.py` (removed legacy `digital_ocean/scripts/edit.sh`)
 - [X] T027 Write pytest for edit/maintain in `digital_ocean/tests/test_edit.py`
 - [X] T028 Update `README.md` and `quickstart.md` with edit/maintain instructions
 - [X] T029 Log all edit/maintain actions in `digital_ocean/logging.py`
@@ -50,7 +50,7 @@ description: "Task list for Digital Ocean Integration feature"
 
 ## Phase 6: Info/Query Automation
 - [X] T032 Implement info/query script in `digital_ocean/info.py` to list namespaces, domain names, and resource metadata
-- [X] T033 Add info script CLI wrapper in `digital_ocean/scripts/info.sh`
+- [X] T033 Document direct invocation of `digital_ocean/info.py` (removed legacy `digital_ocean/scripts/info.sh`)
 - [X] T034 Write pytest for info/query in `digital_ocean/tests/test_info.py`
 - [X] T035 Update documentation with info/query usage and troubleshooting
 - [X] T036 Log all info/query actions in `digital_ocean/logging.py`
@@ -58,7 +58,7 @@ description: "Task list for Digital Ocean Integration feature"
 
 ## Phase 7: Exec Automation
 - [X] T038 Implement exec script in `digital_ocean/exec.py` to run commands in containers
-- [X] T039 Add exec script CLI wrapper in `digital_ocean/scripts/exec.sh`
+- [X] T039 Document direct invocation of `digital_ocean/exec.py` (removed legacy `digital_ocean/scripts/exec.sh`)
 - [X] T040 Write pytest for exec in `digital_ocean/tests/test_exec.py`
 - [X] T041 Update documentation with exec usage and troubleshooting
 - [X] T042 Log all exec actions in `digital_ocean/logging.py`

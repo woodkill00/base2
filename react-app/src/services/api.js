@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios from 'axios/dist/browser/axios.cjs';
 
 // Always use relative path for API, so Traefik can route correctly
 const API_URL = '/api';

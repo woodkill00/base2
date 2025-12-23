@@ -34,7 +34,7 @@
   - Review and snapshot current:
     - `local.docker.yml` (ports, networks, volumes, labels)
     - `traefik/traefik.yml` and `traefik/dynamic.yml`
-    - `scripts/deploy.ps1`, `scripts/test.ps1`, `scripts/validate-predeploy.ps1`
+    - `digital_ocean/scripts/powershell/deploy.ps1`, `digital_ocean/scripts/powershell/test.ps1`, `digital_ocean/scripts/powershell/validate-predeploy.ps1`
     - `nginx/nginx.conf` and `nginx/nginx-django-static.conf`
     - `backend/**` (Node) **for deprecation plan**
     - `digital_ocean/**` (deploy orchestration and docs)
@@ -67,7 +67,7 @@
   - React:
     - `REACT_APP_NODE_VERSION`, `REACT_APP_API_URL=https://${WEBSITE_DOMAIN}/api`
   - Acceptance:
-    - `scripts/validate-predeploy.ps1` can validate required vars (see T037).
+    - `digital_ocean/scripts/powershell/validate-predeploy.ps1` can validate required vars (see T037).
     - `.env.example` is the contract; `.env` matches in deploy environments.
 
 - [X] T002 Update React to use `REACT_APP_API_URL=https://${WEBSITE_DOMAIN}/api`
@@ -138,7 +138,7 @@
     - `api/app/main.py` (or equivalent)
     - `django/project/urls.py` (+ a view)
     - `local.docker.yml` healthchecks
-    - `scripts/test.ps1` and deploy curls
+    - `digital_ocean/scripts/powershell/test.ps1` and deploy curls
 
 - [X] T007 Remove forbidden host ports (BLOCKER)
   - Only Traefik may publish host ports 80/443.
@@ -167,10 +167,10 @@
 **Goal**: Single deploy command provisions/updates, verifies, and saves timestamped artifacts.
 
 - [X] T010 Verify fail-fast behavior when DO credentials missing/invalid
-  - Touch file: `scripts/deploy.ps1`
+  - Touch file: `digital_ocean/scripts/powershell/deploy.ps1`
 
 - [X] T011 Confirm remote verification captures required artifacts (UPDATED)
-  - Touch file: `scripts/deploy.ps1`
+  - Touch file: `digital_ocean/scripts/powershell/deploy.ps1`
   - Must capture:
     - `compose-ps.txt`, `traefik-env.txt`, `traefik-static.yml`, `traefik-dynamic.yml`, `traefik-logs.txt`
     - `curl-root.txt`, `curl-api-health.txt` (must hit `/api/health`)
@@ -178,13 +178,13 @@
     - template snapshots (if generated)
 
 - [X] T012 Ensure timestamped mode writes to per-run subfolder
-  - Touch file: `scripts/deploy.ps1`
+  - Touch file: `digital_ocean/scripts/powershell/deploy.ps1`
 
 - [X] T012.1 Add deploy artifact for migration output (New)
   - Capture:
     - `django-migrate.txt` (stdout/stderr from `python manage.py migrate`)
   - Touch files:
-    - `scripts/deploy.ps1`
+    - `digital_ocean/scripts/powershell/deploy.ps1`
     - `django/entrypoint.sh` (if migrations run there)
   - Acceptance: migration output stored per deploy run.
 
@@ -195,7 +195,7 @@
 # Phase 4: User Story 2 — Update-only redeploy (P2)
 
 - [X] T013 Ensure update-only flag is passed to orchestrator
-  - Touch file: `scripts/deploy.ps1` (`--update-only`)
+  - Touch file: `digital_ocean/scripts/powershell/deploy.ps1` (`--update-only`)
 
 - [X] T014 Measure runtime comparison and document ≥30% improvement target
   - Touch file: `specs/**/quickstart.md` (where you keep deploy notes)
@@ -205,10 +205,10 @@
 # Phase 5: User Story 3 — Safe fallback when remote verify unavailable (P3)
 
 - [X] T015 Validate IP discovery fallback (`Get-DropletIp`) and skip path
-  - Touch file: `scripts/deploy.ps1`
+  - Touch file: `digital_ocean/scripts/powershell/deploy.ps1`
 
 - [X] T016 Confirm warning message and local artifacts exist when remote verify skipped
-  - Touch file: `scripts/deploy.ps1`
+  - Touch file: `digital_ocean/scripts/powershell/deploy.ps1`
 
 ---
 
@@ -232,7 +232,7 @@
   - Replace any “Django proxy endpoint” tests with:
     - schema compatibility check (see N007)
   - Touch files:
-    - `scripts/test.ps1`
+    - `digital_ocean/scripts/powershell/test.ps1`
     - `scripts/test.sh` (if used)
 
 ---
@@ -340,7 +340,7 @@ This phase is the “make it seamless” sweep across scripts, CI, DO orchestrat
     - Django: `django-migrate.txt` + optional `django-check-deploy.txt`
     - Traefik: `traefik-logs.txt` + `traefik-dynamic.yml` copy
     - Port exposure report: `published-ports.txt`
-  - Touch file: `scripts/deploy.ps1`
+  - Touch file: `digital_ocean/scripts/powershell/deploy.ps1`
 
 - [X] T072 Update log check scripts to include api/django
   - Ensure:

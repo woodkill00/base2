@@ -120,7 +120,7 @@ Automate droplet creation, DNS, and remote stack startup with Traefik-only publi
 ### One-command Deploy (Windows PowerShell)
 
 ```powershell
-./scripts/deploy.ps1
+./digital_ocean/scripts/powershell/deploy.ps1
 ```
 
 What it does:
@@ -133,10 +133,10 @@ What it does:
 Options:
 
 ```powershell
-./scripts/deploy.ps1 -Full                 # full provision path in orchestrator
-./scripts/deploy.ps1 -SkipAllowlist        # skip allowlist IP update
-./scripts/deploy.ps1 -DropletIp 1.2.3.4    # override droplet IP detection
-./scripts/deploy.ps1 -SshKey "C:\path\to\key"  # custom SSH key path
+./digital_ocean/scripts/powershell/deploy.ps1 -Full                 # full provision path in orchestrator
+./digital_ocean/scripts/powershell/deploy.ps1 -SkipAllowlist        # skip allowlist IP update
+./digital_ocean/scripts/powershell/deploy.ps1 -DropletIp 1.2.3.4    # override droplet IP detection
+./digital_ocean/scripts/powershell/deploy.ps1 -SshKey "C:\path\to\key"  # custom SSH key path
 ```
 
 ### Preflight Validation (Optional)
@@ -144,13 +144,13 @@ Run preflight checks locally before deploying to catch misconfigurations early.
 
 ```powershell
 # Human-readable
-./scripts/validate-predeploy.ps1 -EnvPath .\.env -ComposePath .\local.docker.yml
+./digital_ocean/scripts/powershell/validate-predeploy.ps1 -EnvPath .\.env -ComposePath .\local.docker.yml
 
 # Strict + JSON (CI-friendly)
-./scripts/validate-predeploy.ps1 -EnvPath .\.env -ComposePath .\local.docker.yml -Strict -Json
+./digital_ocean/scripts/powershell/validate-predeploy.ps1 -EnvPath .\.env -ComposePath .\local.docker.yml -Strict -Json
 
 # Integrate with deploy (fails fast when preflight fails)
-./scripts/deploy.ps1 -Preflight
+./digital_ocean/scripts/powershell/deploy.ps1 -Preflight
 ```
 
 Manual invocation (advanced):
@@ -206,11 +206,11 @@ Update your allowlist to your current IP:
 ### Post-deploy tests
 - Validate Flower security posture (401 unauth; 200/302 with auth):
 ```powershell
-./scripts/test.ps1 -EnvPath .\.env -Json -CheckCelery -AdminUser <user> -AdminPass <pass>
+./digital_ocean/scripts/powershell/test.ps1 -EnvPath .\.env -Json -CheckCelery -AdminUser <user> -AdminPass <pass>
 ```
 - Or via deploy wrapper:
 ```powershell
-./scripts/deploy.ps1 -RunTests -TestsJson -RunCeleryCheck
+./digital_ocean/scripts/powershell/deploy.ps1 -RunTests -TestsJson -RunCeleryCheck
 ```
 
 ### API helpers (roundtrip task)

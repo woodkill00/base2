@@ -665,7 +665,7 @@ Write-Section "Local Smoke Tests"
 try {
   $smokeArgs = @{ EnvPath = $EnvPath; Domain = $Domain; TimeoutSec = 5 }
   if ($ResolveIp) { $smokeArgs.ResolveIp = $ResolveIp }
-  & ./scripts/smoke-tests.ps1 @smokeArgs | Out-Null
+  & .\digital_ocean\scripts\powershell\smoke-tests.ps1 @smokeArgs | Out-Null
 } catch {
   $failures += "Local smoke tests failed: $($_.Exception.Message)"
 }

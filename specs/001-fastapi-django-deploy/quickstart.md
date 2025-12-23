@@ -10,20 +10,20 @@
 ### Full deploy with timestamped logs
 ```powershell
 # From repo root
-./scripts/deploy.ps1 -Full -Timestamped -EnvPath ./.env -RunTests -TestsJson -RunRateLimitTest -RateLimitBurst 20
+./digital_ocean/scripts/powershell/deploy.ps1 -Full -Timestamped -EnvPath ./.env -RunTests -TestsJson -RunRateLimitTest -RateLimitBurst 20
 ```
 
 ### Update-only redeploy (faster)
 ```powershell
-./scripts/deploy.ps1 -UpdateOnly -Timestamped -EnvPath ./.env -RunTests -TestsJson -RunRateLimitTest -RateLimitBurst 20
+./digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -Timestamped -EnvPath ./.env -RunTests -TestsJson -RunRateLimitTest -RateLimitBurst 20
 ```
 Expected speedup: ≥30% vs full deploy on same environment. For measurement, run both modes back-to-back and compare total runtime logged in the terminal.
 
 Example measurement (PowerShell):
 
 ```powershell
-Measure-Command { ./scripts/deploy.ps1 -Full -Timestamped -EnvPath ./.env }
-Measure-Command { ./scripts/deploy.ps1 -UpdateOnly -Timestamped -EnvPath ./.env }
+Measure-Command { ./digital_ocean/scripts/powershell/deploy.ps1 -Full -Timestamped -EnvPath ./.env }
+Measure-Command { ./digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -Timestamped -EnvPath ./.env }
 ```
 
 ## Expected Outputs
@@ -67,20 +67,20 @@ Architecture summary (Option 1 + Option B):
 - Using staging certs only per policy
 
 ## Use Cases
-- Full deploy: run `./scripts/deploy.ps1 -Full -Timestamped -EnvPath ./.env` → verify homepage + `/api/health`
-- Update-only: run `./scripts/deploy.ps1 -UpdateOnly -Timestamped -EnvPath ./.env` → verify faster runtime and artifacts
+- Full deploy: run `./digital_ocean/scripts/powershell/deploy.ps1 -Full -Timestamped -EnvPath ./.env` → verify homepage + `/api/health`
+- Update-only: run `./digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -Timestamped -EnvPath ./.env` → verify faster runtime and artifacts
 - Remote verify unavailable: expect warning + partial artifacts; fix credentials/network and rerun
  - Preflight validation (optional):
-   - Human-readable: `./scripts/validate-predeploy.ps1 -EnvPath ./.env -ComposePath ./local.docker.yml`
-   - Strict + JSON: `./scripts/validate-predeploy.ps1 -EnvPath ./.env -ComposePath ./local.docker.yml -Strict -Json`
+  - Human-readable: `./digital_ocean/scripts/powershell/validate-predeploy.ps1 -EnvPath ./.env -ComposePath ./local.docker.yml`
+  - Strict + JSON: `./digital_ocean/scripts/powershell/validate-predeploy.ps1 -EnvPath ./.env -ComposePath ./local.docker.yml -Strict -Json`
 
  - Post-Deploy Smoke Tests (optional):
-   - `./scripts/smoke-tests.ps1 -EnvPath ./.env` (auto-uses `WEBSITE_DOMAIN` if present; defaults to `localhost`)
+   - `./digital_ocean/scripts/powershell/smoke-tests.ps1 -EnvPath ./.env` (auto-uses `WEBSITE_DOMAIN` if present; defaults to `localhost`)
    - Verifies HTTP→HTTPS redirect, security headers (HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy), and `/api/health` 200
 
  - Post-deploy Verification (artifacts + smoke tests):
-   - `./scripts/test.ps1 -EnvPath ./.env -LogsDir ./local_run_logs -UseLatestTimestamp`
-  - CI-friendly JSON: `./scripts/test.ps1 -EnvPath ./.env -LogsDir ./local_run_logs -UseLatestTimestamp -Json`
+   - `./digital_ocean/scripts/powershell/test.ps1 -EnvPath ./.env -LogsDir ./local_run_logs -UseLatestTimestamp`
+  - CI-friendly JSON: `./digital_ocean/scripts/powershell/test.ps1 -EnvPath ./.env -LogsDir ./local_run_logs -UseLatestTimestamp -Json`
    - When using `deploy.ps1 -RunTests -TestsJson`, the JSON report is saved to the latest timestamped artifact folder as `post-deploy-report.json`
   - Customize filename: add `-ReportName my-report.json` to `deploy.ps1` to save under a different name
    - Or include `-RunTests` with `deploy.ps1` to run automatically

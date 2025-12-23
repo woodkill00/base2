@@ -6,11 +6,11 @@ services:
       dockerfile: .Dockerfile
       args:
         - NODE_VERSION=${REACT_APP_NODE_VERSION}
-        - REACT_APP_API_URL=${REACT_APP_API_URL}
+        - REACT_APP_API_URL=https://${WEBSITE_DOMAIN:-localhost}/api
     container_name: ${COMPOSE_PROJECT_NAME}_react-app
     environment:
       - NODE_ENV=production
-      - REACT_APP_API_URL=${REACT_APP_API_URL}
+      - REACT_APP_API_URL=https://${WEBSITE_DOMAIN:-localhost}/api
     networks: [base2_network]
     restart: unless-stopped
     security_opt: [no-new-privileges:true]
@@ -133,7 +133,7 @@ services:
     env_file:
       - .env
     environment:
-      - WEBSITE_DOMAIN=${WEBSITE_DOMAIN}
+      - WEBSITE_DOMAIN=${WEBSITE_DOMAIN:-localhost}
       - TRAEFIK_CERT_EMAIL=${TRAEFIK_CERT_EMAIL}
     restart: unless-stopped
 
