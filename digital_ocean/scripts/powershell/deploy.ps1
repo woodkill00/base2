@@ -58,6 +58,8 @@ function Get-ArtifactServiceSubdir([string]$fileName) {
     '^remote_verify\.done$' { return 'meta' }
     '^post-deploy-report\.json$' { return 'meta' }
 
+    '^manual-test-out\.json$' { return 'meta' }
+
     '^traefik-.*\.yml$' { return 'traefik' }
     '^traefik-.*\.template\.yml$' { return 'traefik' }
     '^traefik-.*\.txt$' { return 'traefik' }
@@ -388,11 +390,13 @@ function Ensure-ArtifactDir([string]$ip = '') {
         }
       }
     } catch {}
+    try { $env:BASE2_ARTIFACT_DIR = [string]$script:ArtifactDir } catch {}
     return $script:ArtifactDir
   }
 
   if (-not (Test-Path $targetDir)) { New-Item -ItemType Directory -Path $targetDir -Force | Out-Null }
   $script:ArtifactDir = (Resolve-Path $targetDir).Path
+  try { $env:BASE2_ARTIFACT_DIR = [string]$script:ArtifactDir } catch {}
   return $script:ArtifactDir
 }
 
@@ -457,12 +461,17 @@ function Assert-EnvNotTracked {
   # This should never happen in this repo; .env must remain local-only.
   try {
     $null = Get-Command git -ErrorAction Stop
-    & git ls-files --error-unmatch .env 2>$null | Out-Null
+    # In Windows PowerShell 5.1, piping native output (even to Out-Null) can raise
+    # "The pipeline has been stopped". Avoid pipelines; rely on exit codes instead.
+    # If .env is NOT tracked, git exits non-zero and may print a pathspec message to stderr.
+    & git ls-files --error-unmatch .env *> $null
     if ($LASTEXITCODE -eq 0) {
       throw ".env is tracked by git. Fix by running: git rm --cached .env (and commit), ensure .gitignore includes .env, then re-run deploy."
     }
+    $LASTEXITCODE = 0
   } catch {
     # If git isn't available or check fails in a non-fatal way, don't block deploy.
+    try { $LASTEXITCODE = 0 } catch {}
   }
 }
 
@@ -576,6 +585,25 @@ function Remote-Verify($ip, $keyPath) {
   $scpExe = "scp"
   $sshCommon = @('-o','ConnectTimeout=20','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=4','-o','StrictHostKeyChecking=no')
   $sshArgs = @('-i', $keyPath) + $sshCommon + @("root@$ip")
+  $prevEap = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = 'Continue'
+
+  # Ensure droplet has the current local .env so docker compose has required variables.
+  $localEnvPath = ''
+  try {
+    if (-not (Test-Path $EnvPath)) { throw "Env file not found: $EnvPath" }
+    $localEnvPath = (Resolve-Path $EnvPath).Path
+  } catch {
+    throw "Unable to resolve EnvPath '$EnvPath': $($_.Exception.Message)"
+  }
+  # Ensure repo directory exists (user_data should create it, but be defensive)
+  & $sshExe @sshArgs "mkdir -p /opt/apps/base2" *> $null
+  if ($LASTEXITCODE -ne 0) { throw "Failed to create /opt/apps/base2 on droplet (ssh exit $LASTEXITCODE)" }
+  # Upload .env (secrets) to droplet repo root
+  & $scpExe -i $keyPath @($sshCommon) $localEnvPath "root@${ip}:/opt/apps/base2/.env" *> $null
+  if ($LASTEXITCODE -ne 0) { throw "Failed to upload .env to droplet (scp exit $LASTEXITCODE)" }
+
   # Create a remote verification script to avoid quoting pitfalls
   $tmpScript = Join-Path $env:TEMP "remote_verify.sh"
   $scriptContent = @'
@@ -662,7 +690,7 @@ PY
 
   # Bring up core services needed for edge routing (avoid 502 due to missing upstreams)
   # Also start Celery worker/beat by default (Option A: no profile gating).
-  docker compose -f local.docker.yml up -d --remove-orphans postgres django api react-app nginx-static traefik redis pgadmin flower celery-worker celery-beat > /root/logs/build/compose-up-core.txt 2>&1 || true
+  docker compose -f local.docker.yml up -d --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat > /root/logs/build/compose-up-core.txt 2>&1 || true
   docker compose -f local.docker.yml up -d --force-recreate traefik > /root/logs/build/traefik-up.txt 2>&1 || true
 
   # Ensure Flower is started (kept as a separate log artifact)
@@ -690,6 +718,27 @@ PY
     # Start Flower if defined
     docker compose -f local.docker.yml up -d flower > /root/logs/build/flower-up.txt 2>&1 || true
   fi
+  # Best-effort: wait for key services to report healthy before snapshotting.
+  # This reduces false negatives where compose-ps.txt is captured during startup.
+  set +e
+  : > /root/logs/build/health-wait.txt || true
+  for i in $(seq 1 60); do
+    PS_OUT=$(docker compose -f local.docker.yml ps 2>/dev/null)
+    echo "--- attempt $i ---" >> /root/logs/build/health-wait.txt
+    echo "$PS_OUT" >> /root/logs/build/health-wait.txt
+    OK=1
+    for s in traefik nginx nginx-static django api postgres redis react-app celery-worker celery-beat flower; do
+      echo "$PS_OUT" | grep -E "\s${s}\s" >/dev/null 2>&1 || { OK=0; break; }
+      echo "$PS_OUT" | grep -E "\s${s}\s.*\(healthy\)" >/dev/null 2>&1 || { OK=0; break; }
+    done
+    if [ "$OK" = "1" ]; then
+      echo "READY" >> /root/logs/build/health-wait.txt
+      break
+    fi
+    sleep 2
+  done
+  set -e
+
   docker compose -f local.docker.yml ps > /root/logs/compose-ps.txt || true
   docker compose -f local.docker.yml config > /root/logs/compose-config.yml || true
   # Published host ports report (Traefik should be the only one)
@@ -830,7 +879,9 @@ PY
 
     # Celery roundtrip: enqueue ping and poll for result
     if [ "${RUN_CELERY_CHECK:-}" = "1" ]; then
-      curl -sk -X POST "https://$DOMAIN/api/celery/ping" -H 'Content-Type: application/json' -d '{}' -o /root/logs/celery-ping.json || true
+      : > /root/logs/celery-ping.json || true
+      : > /root/logs/celery-result.json || true
+      curl -sk "${RESOLVE_DOMAIN[@]}" -X POST "https://$DOMAIN/api/celery/ping" -H 'Content-Type: application/json' -d '{}' -o /root/logs/celery-ping.json || true
       TASK_ID=$(python3 - <<'PY'
 import json,sys
 try:
@@ -841,7 +892,7 @@ PY
 )
       if [ -n "$TASK_ID" ]; then
         for i in $(seq 1 30); do
-          curl -sk "https://$DOMAIN/api/celery/result/$TASK_ID" -o /root/logs/celery-result.json || true
+          curl -sk "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/celery/result/$TASK_ID" -o /root/logs/celery-result.json || true
           if grep -q '"successful": *true' /root/logs/celery-result.json 2>/dev/null; then
             break
           fi
@@ -858,22 +909,33 @@ fi
   $unixScript = $scriptContent -replace "`r`n","`n"
   Set-Content -Path $tmpScript -Value $unixScript -Encoding Ascii -NoNewline
   # Upload and execute the script
-  & $scpExe -i $keyPath @($sshCommon) $tmpScript "root@${ip}:/root/remote_verify.sh" 2>$null | Out-Null
+  try {
+    & $scpExe -i $keyPath @($sshCommon) $tmpScript "root@${ip}:/root/remote_verify.sh" *> $null
+    if ($LASTEXITCODE -ne 0) { throw "scp upload failed (exit $LASTEXITCODE)" }
+  } finally {
+    $LASTEXITCODE = 0
+  }
   # Clear previous completion flag to avoid copying stale logs immediately
-  try { & $sshExe @sshArgs "rm -f /root/logs/remote_verify.done" | Out-Null } catch { }
+  try { & $sshExe @sshArgs "rm -f /root/logs/remote_verify.done" *> $null } catch { }
   if ($AsyncVerify) {
     if ($RunCeleryCheck) {
-      & $sshExe @sshArgs "RUN_CELERY_CHECK=1 nohup bash /root/remote_verify.sh > /root/remote_verify.out 2>&1 & echo \$! > /root/remote_verify.pid" | Out-Null
+      & $sshExe @sshArgs "RUN_CELERY_CHECK=1 nohup bash /root/remote_verify.sh > /root/remote_verify.out 2>&1 & echo \$! > /root/remote_verify.pid" *> $null
     } else {
-      & $sshExe @sshArgs "nohup bash /root/remote_verify.sh > /root/remote_verify.out 2>&1 & echo \$! > /root/remote_verify.pid" | Out-Null
+      & $sshExe @sshArgs "nohup bash /root/remote_verify.sh > /root/remote_verify.out 2>&1 & echo \$! > /root/remote_verify.pid" *> $null
     }
   } else {
     $timeoutCmd = "if command -v timeout >/dev/null 2>&1; then timeout -k 15s $VerifyTimeoutSec bash /root/remote_verify.sh; else bash /root/remote_verify.sh; fi"
     if ($RunCeleryCheck) {
-      & $sshExe @sshArgs "RUN_CELERY_CHECK=1 sh -lc '$timeoutCmd'" | Out-Null
+      & $sshExe @sshArgs "RUN_CELERY_CHECK=1 sh -lc '$timeoutCmd'" *> $null
     } else {
-      & $sshExe @sshArgs "sh -lc '$timeoutCmd'" | Out-Null
+      & $sshExe @sshArgs "sh -lc '$timeoutCmd'" *> $null
     }
+  }
+
+  if ($LASTEXITCODE -ne 0) {
+    $code = $LASTEXITCODE
+    $LASTEXITCODE = 0
+    throw "Remote verification SSH failed (exit $code)"
   }
 
   Write-Section "Copying verification artifacts"
@@ -887,14 +949,15 @@ fi
   for ($i = 1; $i -le $attempts; $i++) {
     try {
       if ($AsyncVerify) {
-        $flag = & $sshExe @sshArgs "test -f /root/logs/remote_verify.done && echo DONE || echo WAIT"
+        $flag = & $sshExe @sshArgs "test -f /root/logs/remote_verify.done && echo DONE || echo WAIT" 2>&1
         if (-not ($flag -match 'DONE')) {
           Start-Sleep -Seconds $interval
           continue
         }
       }
       # Copy entire remote logs directory (build + services + snapshots)
-      & $scpExe -i $keyPath -r "root@${ip}:/root/logs" $dest 2>$null | Out-Null
+      & $scpExe -i $keyPath @($sshCommon) -r "root@${ip}:/root/logs" $dest *> $null
+      if ($LASTEXITCODE -ne 0) { throw "scp logs failed (exit $LASTEXITCODE)" }
       $copied = $true
       break
     } catch {
@@ -918,7 +981,7 @@ fi
       'traefik-dynamic.template.yml','traefik-static.template.yml','remote_verify.done'
     )
     foreach ($f in $files) {
-      try { & $scpExe -i $keyPath "root@${ip}:/root/logs/$f" $dest 2>$null | Out-Null } catch { }
+      try { & $scpExe -i $keyPath @($sshCommon) "root@${ip}:/root/logs/$f" $dest *> $null } catch { }
     }
 
     # Ensure expected artifacts are present at the run-folder root even if per-file scp fails.
@@ -958,7 +1021,15 @@ fi
     }
   } catch { Write-Warning "Failed to scrub sensitive values: $($_.Exception.Message)" }
 
+  # Avoid leaking a non-zero $LASTEXITCODE to callers (native tools may set it).
+  try { $LASTEXITCODE = 0 } catch {}
+
   # Droplet info JSON omitted (optional enhancement; non-critical for verification)
+
+  }
+  finally {
+    $ErrorActionPreference = $prevEap
+  }
 
 }
 
@@ -1023,6 +1094,14 @@ try {
   Switch-TranscriptToResolvedArtifactDir -ip $resolvedIp
   $null = Ensure-ArtifactDir -ip $resolvedIp
 
+  # Expand -AllTests before remote verification so droplet verification produces required artifacts.
+  if ($AllTests) {
+    $RunTests = $true
+    $TestsJson = $true
+    $RunRateLimitTest = $true
+    $RunCeleryCheck = $true
+  }
+
   Remote-Verify -ip $resolvedIp -keyPath $SshKey
 
   # Group downloaded artifacts by service for easier debugging.
@@ -1030,13 +1109,6 @@ try {
 
   # Bundle droplet-side artifacts/logs into a single local file for later review.
   Write-RemoteArtifactsBundle
-
-  if ($AllTests) {
-    $RunTests = $true
-    $TestsJson = $true
-    $RunRateLimitTest = $true
-    $RunCeleryCheck = $true
-  }
 
   if ($RunTests) {
     Write-Section "Running post-deploy tests"
@@ -1095,6 +1167,18 @@ try {
   Stop-DeployTranscript
   Finalize-ArtifactDirRename
   Append-RemoteArtifactsToConsoleLog
+
+  # If a manual test runner wrote its JSON output at repo root, sweep it into this run's meta/.
+  try {
+    $manualOut = Join-Path $script:RepoRoot 'manual-test-out.json'
+    if (Test-Path $manualOut) {
+      $dest = Ensure-ArtifactDir
+      $metaDir = Join-Path $dest 'meta'
+      if (-not (Test-Path $metaDir)) { New-Item -ItemType Directory -Path $metaDir -Force | Out-Null }
+      Copy-Item -LiteralPath $manualOut -Destination (Join-Path $metaDir 'manual-test-out.json') -Force
+    }
+  } catch {}
+
   try { Pop-Location } catch {}
 }
 

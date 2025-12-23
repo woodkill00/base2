@@ -221,12 +221,14 @@ function Write-ServiceArtifact([string]$artifactDir, [string]$serviceName, [stri
 }
 
 function Read-HeadersFile([string]$path) {
+  if (-not $path) { return @() }
   if (-not (Test-Path $path)) { return @() }
   return @(Get-Content $path | ForEach-Object { [string]$_ })
 }
 
 # Helper to read small file content safely
 function Read-FileSafe([string]$path, [int]$tail = 0) {
+  if (-not $path) { return @() }
   if (-not (Test-Path $path)) { return @() }
   try {
     if ($tail -gt 0) { return @(Get-Content -Path $path -Tail $tail | ForEach-Object { [string]$_ }) }
@@ -247,6 +249,7 @@ function Verify-Headers([string[]]$headers, [string]$context) {
 }
 
 function Read-StatusFile([string]$path) {
+  if (-not $path) { return 0 }
   if (-not (Test-Path $path)) { return 0 }
   try { return [int](Get-Content -Path $path -Raw).Trim() } catch { return 0 }
 }
@@ -388,7 +391,20 @@ function Invoke-ValidateDnsJson([string]$domain, [string]$recordType, [string]$n
   $args = @('.\\digital_ocean\\validate_dns.py','--domain',$domain,'--json')
   if ($recordType) { $args += @('--record-type',$recordType) }
   if ($name) { $args += @('--name',$name) }
-  $raw = (& python @args 2>&1 | Out-String).Trim()
+
+  # Prefer the repo venv Python (deploy creates .\.venv\Scripts\python.exe with required deps).
+  $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
+  $venvPy = Join-Path $repoRoot '.venv\Scripts\python.exe'
+  $pythonExe = 'python'
+  if (Test-Path $venvPy) { $pythonExe = $venvPy }
+
+  Push-Location $repoRoot
+  try {
+    $rawLines = & $pythonExe @args 2>&1
+    $raw = ($rawLines -join "`n").Trim()
+  } finally {
+    Pop-Location
+  }
   if (-not $raw) { throw "validate_dns.py returned empty output" }
   try { return ($raw | ConvertFrom-Json) } catch { throw "validate_dns.py returned non-JSON: $raw" }
 }
@@ -447,36 +463,71 @@ function Check-DoDns([string]$artifactDir, [string]$domain, [string]$expectedIpv
 }
 
 function Get-CurlResolveArgs([string]$url) {
-  if (-not $ResolveIp) { return @() }
+  $ip = $ResolveIp
+  if (-not $ip) { $ip = $ExpectedIpv4 }
+  if (-not $ip) { return @() }
+
+  try { $ip = $ip.Trim() } catch {}
+  if (-not $ip) { return @() }
+
+  # Avoid [System.Uri] parsing here; it can behave inconsistently in Windows PowerShell 5.1
+  # with certain inputs and leads to missing --resolve args (false timeouts).
+  $m = [regex]::Match($url, '^(?<scheme>https?)://(?<host>[^/:]+)(?::(?<port>\d+))?')
+  if (-not $m.Success) { return @() }
+
+  $scheme = $m.Groups['scheme'].Value
+  $urlHost = $m.Groups['host'].Value
+  $portText = $m.Groups['port'].Value
+
+  try { $scheme = $scheme.Trim().ToLowerInvariant() } catch {}
+  try { $urlHost = $urlHost.Trim() } catch {}
+  if (-not $urlHost) { return @() }
+
+  $port = 0
+  if ($portText) {
+    try { $port = [int]$portText } catch { $port = 0 }
+  }
+  if (-not $port -or $port -le 0) {
+    if ($scheme -eq 'https') { $port = 443 } elseif ($scheme -eq 'http') { $port = 80 } else { return @() }
+  }
+
+  # curl --resolve supports IPv6 literals, but they can be ambiguous due to ':' separators.
+  # Wrap IPv6 in brackets to be safe.
+  $ipLiteral = $ip
+  if ($ipLiteral -match ':') { $ipLiteral = "[$ipLiteral]" }
+
+  return @('--resolve', ("{0}:{1}:{2}" -f $urlHost, $port, $ipLiteral))
+}
+
+function Invoke-CurlSafe([string[]]$curlArgs) {
+  $oldEap = $ErrorActionPreference
   try {
-    $u = [System.Uri]$url
-    $host = $u.Host
-    $port = $u.Port
-    if (-not $host) { return @() }
-    if (-not $port -or $port -le 0) {
-      if ($u.Scheme -eq 'https') { $port = 443 } elseif ($u.Scheme -eq 'http') { $port = 80 } else { return @() }
-    }
-    return @('--resolve', ("{0}:{1}:{2}" -f $host, $port, $ResolveIp))
+    $ErrorActionPreference = 'Continue'
+    $raw = & curl.exe @curlArgs 2>&1
+    return $raw
   } catch {
-    return @()
+    return @([string]$_.Exception.Message)
+  } finally {
+    try { $global:LASTEXITCODE = 0 } catch {}
+    $ErrorActionPreference = $oldEap
   }
 }
 
 function Curl-Head([string]$url) {
-  $args = @('-skI', '--max-time', $TimeoutSec)
+  $args = @('-4', '-sS', '-k', '-I', '--max-time', $TimeoutSec)
   $args += (Get-CurlResolveArgs $url)
   $args += @($url)
-  $raw = & curl.exe @args 2>&1
+  $raw = Invoke-CurlSafe $args
   if ($Verbose) { $raw | Write-Host }
   $text = ($raw | Out-String)
   return $text -split "`r?`n"
 }
 
 function Curl-HeadAuth([string]$url, [string]$user, [string]$pass) {
-  $args = @('-skI', '--max-time', $TimeoutSec, '-u', ("{0}:{1}" -f $user, $pass))
+  $args = @('-4', '-sS', '-k', '-I', '--max-time', $TimeoutSec, '-u', ("{0}:{1}" -f $user, $pass))
   $args += (Get-CurlResolveArgs $url)
   $args += @($url)
-  $raw = & curl.exe @args 2>&1
+  $raw = Invoke-CurlSafe $args
   if ($Verbose) { $raw | Write-Host }
   $text = ($raw | Out-String)
   return $text -split "`r?`n"
@@ -485,10 +536,10 @@ function Curl-HeadAuth([string]$url, [string]$user, [string]$pass) {
 # Simple GET utility to capture body and status
 function Curl-Get([string]$url) {
   $tmp = [System.IO.Path]::GetTempFileName()
-  $args = @('-sk', '--max-time', $TimeoutSec)
+  $args = @('-4', '-sS', '-k', '--max-time', $TimeoutSec)
   $args += (Get-CurlResolveArgs $url)
   $args += @('-o', $tmp, '-w', '%{http_code}', $url)
-  $statusText = (& curl.exe @args 2>&1 | Out-String).Trim()
+  $statusText = ((Invoke-CurlSafe $args) | Out-String).Trim()
   $status = 0
   if ($statusText -match '(\d{3})\s*$') { $status = [int]$Matches[1] }
   $body = @()
@@ -498,10 +549,10 @@ function Curl-Get([string]$url) {
 }
 
 function Curl-GetStatusOnly([string]$url) {
-  $args = @('-sk', '--max-time', $TimeoutSec, '-o', 'NUL', '-D', '-')
+  $args = @('-4', '-sS', '-k', '--max-time', $TimeoutSec, '-o', 'NUL', '-D', '-')
   $args += (Get-CurlResolveArgs $url)
   $args += @($url)
-  $raw = & curl.exe @args 2>&1
+  $raw = Invoke-CurlSafe $args
   if ($Verbose) { $raw | Write-Host }
   $text = ($raw | Out-String)
   $lines = $text -split "`r?`n"
@@ -511,10 +562,10 @@ function Curl-GetStatusOnly([string]$url) {
 # Simple POST utility to capture body and status
 function Curl-PostJson([string]$url, [string]$jsonBody = '{}') {
   $tmp = [System.IO.Path]::GetTempFileName()
-  $args = @('-sk', '--max-time', $TimeoutSec, '-X', 'POST', '-H', 'Content-Type: application/json', '-d', $jsonBody)
+  $args = @('-4', '-sS', '-k', '--max-time', $TimeoutSec, '-X', 'POST', '-H', 'Content-Type: application/json', '-d', $jsonBody)
   $args += (Get-CurlResolveArgs $url)
   $args += @('-o', $tmp, '-w', '%{http_code}', $url)
-  $statusText = (& curl.exe @args 2>&1 | Out-String).Trim()
+  $statusText = ((Invoke-CurlSafe $args) | Out-String).Trim()
   $status = 0
   if ($statusText -match '(\d{3})\s*$') { $status = [int]$Matches[1] }
   $body = @()
@@ -547,6 +598,15 @@ if (-not $Domain) { $Domain = 'localhost' }
 
 # Locate artifact folder
 $artifactDir = $LogsDir
+
+# Prefer explicit per-run artifact directory if provided by deploy.ps1.
+try {
+  if ($env:BASE2_ARTIFACT_DIR) {
+    $cand = [string]$env:BASE2_ARTIFACT_DIR
+    if ($cand -and (Test-Path $cand)) { $artifactDir = $cand }
+  }
+} catch {}
+
 if ($UseLatestTimestamp) {
   if (Test-Path $LogsDir) {
     $cands = @(
@@ -640,7 +700,7 @@ $failures += Verify-ComposePsHealth (Resolve-ArtifactPath -artifactDir $artifact
 
 # Schema compatibility check (post-migration)
 $schemaStatusPath = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'schema-compat-check.status'
-if (Test-Path $schemaStatusPath) {
+if ($schemaStatusPath -and (Test-Path $schemaStatusPath)) {
   try {
     $schemaExit = [int](Get-Content -Path $schemaStatusPath -Raw).Trim()
     if ($schemaExit -ne 0) {
@@ -664,7 +724,9 @@ if (($apiGetStatus -ne 200) -and ($apiGetStatusSlash -ne 200)) {
 Write-Section "Local Smoke Tests"
 try {
   $smokeArgs = @{ EnvPath = $EnvPath; Domain = $Domain; TimeoutSec = 5 }
-  if ($ResolveIp) { $smokeArgs.ResolveIp = $ResolveIp }
+  $smokeResolve = $ResolveIp
+  if (-not $smokeResolve) { $smokeResolve = $ExpectedIpv4 }
+  if ($smokeResolve) { $smokeArgs.ResolveIp = $smokeResolve }
   & .\digital_ocean\scripts\powershell\smoke-tests.ps1 @smokeArgs | Out-Null
 } catch {
   $failures += "Local smoke tests failed: $($_.Exception.Message)"
@@ -875,7 +937,8 @@ if ($CheckTraefikDashboard) {
   $sub = $env:TRAEFIK_DNS_LABEL
   if (-not $sub) { $sub = 'traefik' }
   $TraefikHost = "$sub.$Domain"
-  $noAuthHdr = Curl-Head "https://$TraefikHost/"
+  $traefikUrl = "https://$TraefikHost/"
+  $noAuthHdr = Curl-Head $traefikUrl
   $noAuthStatus = Get-StatusCodeFromHeaders $noAuthHdr
   $result.traefikDashboardCheck = [ordered]@{ enabled = $true; host = $TraefikHost; statusNoAuth = $noAuthStatus }
   if (-not (Get-ExpectedGuardedNoAuthOk $noAuthStatus)) { $failures += "Traefik dashboard expected 401/403 without auth, got $noAuthStatus ($TraefikHost)" }

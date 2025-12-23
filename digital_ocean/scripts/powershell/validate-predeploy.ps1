@@ -147,7 +147,8 @@ if ($Json) {
   Write-Section "Results"
   foreach ($c in $script:checks) {
     $status = if ($c.ok) { "OK" } else { "FAIL" }
-    Write-Host ("- {0}: {1} ({2})" -f $c.name, $status, $c.details) -ForegroundColor (if ($c.ok) { 'Green' } else { 'Red' })
+    $color = if ($c.ok) { 'Green' } else { 'Red' }
+    Write-Host ("- {0}: {1} ({2})" -f $c.name, $status, $c.details) -ForegroundColor $color
   }
 }
 

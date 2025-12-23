@@ -10,17 +10,50 @@ Usage:
 - If no record type is specified, checks all records for the domain.
 - Requires .env with DO_API_TOKEN and (optionally) DO_APP_DOMAIN.
 """
-
-
 import os
 import sys
 import argparse
 import json
-from dotenv import load_dotenv
-load_dotenv()
 from pydo import Client
 
 REQUIRED_ENV_VARS = ["DO_API_TOKEN"]
+
+
+def _load_dotenv_fallback() -> None:
+    """Load a local .env without python-dotenv.
+
+    This avoids a subtle import-shadowing issue in this repo where python-dotenv's
+    dependency chain imports `logging`, and an internal module name can be picked
+    up instead of the stdlib module depending on sys.path.
+    """
+    try:
+        from pathlib import Path
+
+        # Candidate locations (prefer CWD for CLI usage; fall back to repo root).
+        candidates = [Path.cwd() / ".env"]
+        # .../digital_ocean/scripts/python/validate_dns.py -> repo root is 4 levels up
+        candidates.append(Path(__file__).resolve().parents[4] / ".env")
+
+        env_path = next((p for p in candidates if p.is_file()), None)
+        if not env_path:
+            return
+
+        for raw_line in env_path.read_text(encoding="utf-8", errors="replace").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip().strip("\r")
+            if not key:
+                continue
+            # Do not override already-set environment variables.
+            os.environ.setdefault(key, value)
+    except Exception:
+        # Best-effort only; validation will fail later if required vars are missing.
+        return
 
 def validate_env():
     missing = [v for v in REQUIRED_ENV_VARS if not os.getenv(v)]
@@ -52,6 +85,7 @@ def print_record_status(domain, records, record_type=None, name=None):
         print(f"  [MISSING] No matching record found for type={record_type or 'ANY'}, name={name or 'ANY'}")
 
 def main():
+    _load_dotenv_fallback()
     parser = argparse.ArgumentParser(description="Validate Digital Ocean DNS records for a domain.")
     parser.add_argument('--domain', help='Domain to check (default: all domains in account or DO_APP_DOMAIN)')
     parser.add_argument('--record-type', help='DNS record type to check (A, CNAME, MX, etc.)')

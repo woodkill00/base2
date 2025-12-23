@@ -10,10 +10,9 @@ Usage:
 Exits nonzero on error. Requires .env to be configured.
 """
 import os
-from dotenv import load_dotenv
-load_dotenv()
 import sys
 import logging
+from dotenv import load_dotenv
 try:
 	from pydo import Client
 except ImportError:
@@ -65,6 +64,8 @@ def main():
 	if len(sys.argv) > 1 and sys.argv[1] in ("--help", "-h"):
 		print("Usage: python info.py [options]\nLists Digital Ocean namespaces, domain names, and resource metadata.")
 		sys.exit(0)
+	# Load .env at runtime so unit tests can patch os.environ before calling validate_env().
+	load_dotenv(override=False)
 	validate_env()
 	logger = get_logger("digital_ocean.info")
 	client = get_client()

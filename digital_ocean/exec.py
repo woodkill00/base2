@@ -12,10 +12,10 @@ Usage:
 Exits nonzero on error. Requires .env to be configured.
 """
 import os
-from dotenv import load_dotenv
-load_dotenv()
 import sys
 import argparse
+
+from dotenv import load_dotenv
 
 try:
 	from pydo import Client
@@ -62,6 +62,9 @@ def exec_on_app_service(client, app_id, service_name, command):
 	return 127
 
 def main():
+	# Load .env at runtime so unit tests can patch os.environ before calling main().
+	load_dotenv(override=False)
+
 	parser = argparse.ArgumentParser(description="Run commands in Digital Ocean containers.")
 	group = parser.add_mutually_exclusive_group(required=True)
 	group.add_argument('--droplet', help='Droplet ID or name')
