@@ -655,7 +655,8 @@ PY
   docker compose -f local.docker.yml build react-app > /root/logs/build/react-build.txt 2>&1 || true
 
   # Bring up core services needed for edge routing (avoid 502 due to missing upstreams)
-  docker compose -f local.docker.yml up -d --remove-orphans postgres django api react-app nginx-static traefik redis pgadmin flower > /root/logs/build/compose-up-core.txt 2>&1 || true
+  # Also start Celery worker/beat by default (Option A: no profile gating).
+  docker compose -f local.docker.yml up -d --remove-orphans postgres django api react-app nginx-static traefik redis pgadmin flower celery-worker celery-beat > /root/logs/build/compose-up-core.txt 2>&1 || true
   docker compose -f local.docker.yml up -d --force-recreate traefik > /root/logs/build/traefik-up.txt 2>&1 || true
 
   # Ensure Flower is started (kept as a separate log artifact)

@@ -95,8 +95,7 @@ async def create_item(payload: dict = Body(...)):
 
 
 # --- Celery helper endpoints (optional) ---
-@app.post("/api/celery/ping")
-async def celery_ping():
+async def _enqueue_celery_ping():
     try:
         res = tasks.ping.delay()
         return {"task_id": res.id}
@@ -104,8 +103,17 @@ async def celery_ping():
         raise HTTPException(status_code=500, detail=f"enqueue_failed: {e}")
 
 
-@app.get("/api/celery/result/{task_id}")
-async def celery_result(task_id: str):
+@app.post("/api/celery/ping")
+async def celery_ping_api():
+    return await _enqueue_celery_ping()
+
+
+@app.post("/celery/ping")
+async def celery_ping_root():
+    return await _enqueue_celery_ping()
+
+
+async def _read_celery_result(task_id: str):
     try:
         ar = AsyncResult(task_id, app=tasks.app)
         return {
@@ -117,3 +125,13 @@ async def celery_result(task_id: str):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"result_failed: {e}")
+
+
+@app.get("/api/celery/result/{task_id}")
+async def celery_result_api(task_id: str):
+    return await _read_celery_result(task_id)
+
+
+@app.get("/celery/result/{task_id}")
+async def celery_result_root(task_id: str):
+    return await _read_celery_result(task_id)

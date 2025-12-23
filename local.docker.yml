@@ -212,7 +212,6 @@ services:
     command: ["sh", "-c", "celery -A tasks.app worker -l ${CELERY_LOG_LEVEL:-INFO} --concurrency=${CELERY_CONCURRENCY:-2}"]
     restart: unless-stopped
     security_opt: [no-new-privileges:true]
-    profiles: ["celery"]
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import os;from celery import Celery;app=Celery(broker=os.getenv('CELERY_BROKER_URL'));c=app.connection();c.connect();c.release();print('ok')\" || exit 1"]
       interval: 20s
@@ -238,7 +237,6 @@ services:
     command: ["sh", "-c", "celery -A tasks.app beat -l ${CELERY_LOG_LEVEL:-INFO}"]
     restart: unless-stopped
     security_opt: [no-new-privileges:true]
-    profiles: ["celery"]
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import os;from celery import Celery;app=Celery(broker=os.getenv('CELERY_BROKER_URL'));c=app.connection();c.connect();c.release();print('ok')\" || exit 1"]
       interval: 20s
