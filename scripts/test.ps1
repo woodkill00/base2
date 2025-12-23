@@ -79,6 +79,51 @@ function Read-StatusFile([string]$path) {
   try { return [int](Get-Content -Path $path -Raw).Trim() } catch { return 0 }
 }
 
+function Get-ArtifactServiceSubdir([string]$fileName) {
+  switch -Regex ($fileName) {
+    '^DO_userdata\.json$' { return 'digital_ocean' }
+
+    '^compose-ps\.txt$' { return 'docker' }
+    '^published-ports\.txt$' { return 'docker' }
+
+    '^traefik-.*\.yml$' { return 'traefik' }
+    '^traefik-.*\.template\.yml$' { return 'traefik' }
+    '^traefik-.*\.txt$' { return 'traefik' }
+
+    '^django-.*\.txt$' { return 'django' }
+
+    '^api-logs\.txt$' { return 'api' }
+    '^api-health(\-slash)?\.(json|status)$' { return 'api' }
+
+    '^curl-.*\.txt$' { return 'smoke' }
+
+    '^schema-compat-check\.(json|err|status)$' { return 'database' }
+
+    '^env-dollar-check\.(txt|status)$' { return 'meta' }
+    default { return '' }
+  }
+}
+
+function Resolve-ArtifactPath([string]$artifactDir, [string]$fileName) {
+  $candidates = @()
+  $candidates += (Join-Path $artifactDir $fileName)
+  $sub = Get-ArtifactServiceSubdir -fileName $fileName
+  if ($sub) { $candidates += (Join-Path (Join-Path $artifactDir $sub) $fileName) }
+
+  # Current layout (renamed from logs/)
+  $candidates += (Join-Path (Join-Path $artifactDir 'container_logs') $fileName)
+  $candidates += (Join-Path (Join-Path (Join-Path $artifactDir 'container_logs') 'build') $fileName)
+
+  # Legacy layout
+  $candidates += (Join-Path (Join-Path $artifactDir 'logs') $fileName)
+  $candidates += (Join-Path (Join-Path (Join-Path $artifactDir 'logs') 'build') $fileName)
+
+  foreach ($p in $candidates) {
+    if (Test-Path $p) { return $p }
+  }
+  return ''
+}
+
 function Verify-StagingCert([string]$staticPath, [string]$dynamicPath) {
   $fail = @()
   $hasStaging = $false
@@ -227,15 +272,15 @@ $expectedFiles = @(
   'traefik-static.template.yml'
 )
 foreach ($f in $expectedFiles) {
-  $p = Join-Path $artifactDir $f
-  if (-not (Test-Path $p)) { $failures += "Missing artifact: $f" }
+  $p = Resolve-ArtifactPath -artifactDir $artifactDir -fileName $f
+  if (-not $p) { $failures += "Missing artifact: $f" }
 }
 
 # Verify headers from remote artifacts
-$rootHdr = Read-HeadersFile (Join-Path $artifactDir 'curl-root.txt')
-$apiHdr  = Read-HeadersFile (Join-Path $artifactDir 'curl-api.txt')
-$apiHdrHealth = Read-HeadersFile (Join-Path $artifactDir 'curl-api-health.txt')
-$apiHdrHealthSlash = Read-HeadersFile (Join-Path $artifactDir 'curl-api-health-slash.txt')
+$rootHdr = Read-HeadersFile (Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'curl-root.txt')
+$apiHdr  = Read-HeadersFile (Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'curl-api.txt')
+$apiHdrHealth = Read-HeadersFile (Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'curl-api-health.txt')
+$apiHdrHealthSlash = Read-HeadersFile (Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'curl-api-health-slash.txt')
 $failures += Verify-Headers $rootHdr 'root-https'
 $failures += Verify-Headers $apiHdr 'api-https'
 
@@ -244,16 +289,16 @@ $failures += Verify-Headers $apiHdrHealth 'api-https-health'
 $failures += Verify-Headers $apiHdrHealthSlash 'api-https-health-slash'
 
 # Verify staging cert resolver
-$staticYml = Join-Path $artifactDir 'traefik-static.yml'
-$dynamicYml = Join-Path $artifactDir 'traefik-dynamic.yml'
+$staticYml = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'traefik-static.yml'
+$dynamicYml = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'traefik-dynamic.yml'
 $failures += Verify-StagingCert $staticYml $dynamicYml
 
 # Verify required routing and exposure invariants from artifacts
 $failures += Verify-TraefikRoutingConfig $dynamicYml
-$failures += Verify-HostPortExposure (Join-Path $artifactDir 'compose-ps.txt')
+$failures += Verify-HostPortExposure (Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'compose-ps.txt')
 
 # Schema compatibility check (post-migration)
-$schemaStatusPath = Join-Path $artifactDir 'schema-compat-check.status'
+$schemaStatusPath = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'schema-compat-check.status'
 if (Test-Path $schemaStatusPath) {
   try {
     $schemaExit = [int](Get-Content -Path $schemaStatusPath -Raw).Trim()
@@ -268,8 +313,8 @@ if (Test-Path $schemaStatusPath) {
 }
 
 # API health must be 200 via GET (HEAD may be 405, and /api may redirect).
-$apiGetStatus = Read-StatusFile (Join-Path $artifactDir 'api-health.status')
-$apiGetStatusSlash = Read-StatusFile (Join-Path $artifactDir 'api-health-slash.status')
+$apiGetStatus = Read-StatusFile (Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'api-health.status')
+$apiGetStatusSlash = Read-StatusFile (Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'api-health-slash.status')
 if (($apiGetStatus -ne 200) -and ($apiGetStatusSlash -ne 200)) {
   $failures += "API health GET expected 200, got $apiGetStatus (no-slash) / $apiGetStatusSlash (slash)"
 }
@@ -313,25 +358,25 @@ $result = [ordered]@{
 # Diagnostics: if API health is non-200, include API logs snippet
 $apiStatus = $apiGetStatus
 if (($apiGetStatus -ne 200) -and ($apiGetStatusSlash -ne 200)) {
-  $apiLogsPath = Join-Path $artifactDir 'api-logs.txt'
+  $apiLogsPath = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'api-logs.txt'
   $snippet = @('api-logs.txt not found')
-  if (Test-Path $apiLogsPath) { $snippet = Read-FileSafe $apiLogsPath 80 }
+  if ($apiLogsPath -and (Test-Path $apiLogsPath)) { $snippet = Read-FileSafe $apiLogsPath 80 }
 
   # Include GET health status and body snippets for deeper insight
-  $getStatusPath = Join-Path $artifactDir 'api-health.status'
-  $getBodyPath = Join-Path $artifactDir 'api-health.json'
-  $getStatusSlashPath = Join-Path $artifactDir 'api-health-slash.status'
-  $getBodySlashPath = Join-Path $artifactDir 'api-health-slash.json'
+  $getStatusPath = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'api-health.status'
+  $getBodyPath = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'api-health.json'
+  $getStatusSlashPath = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'api-health-slash.status'
+  $getBodySlashPath = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'api-health-slash.json'
   $getStatus = $apiGetStatus
   $getStatusSlash = $apiGetStatusSlash
-  $bodySnippet = Read-FileSafe $getBodyPath 40
-  $bodySnippetSlash = Read-FileSafe $getBodySlashPath 40
+  $bodySnippet = if ($getBodyPath) { Read-FileSafe $getBodyPath 40 } else { @() }
+  $bodySnippetSlash = if ($getBodySlashPath) { Read-FileSafe $getBodySlashPath 40 } else { @() }
 
   # Traefik routing parsing: extract api router service and service URL if possible
-  $dynPath = Join-Path $artifactDir 'traefik-dynamic.yml'
+  $dynPath = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'traefik-dynamic.yml'
   $apiRouterService = ''
   $apiServiceURL = ''
-  if (Test-Path $dynPath) {
+  if ($dynPath -and (Test-Path $dynPath)) {
     try {
       $dynLines = Get-Content -Path $dynPath
       # naive parsing: find 'routers:' then 'api:' block and service
@@ -369,8 +414,8 @@ if (($apiGetStatus -ne 200) -and ($apiGetStatusSlash -ne 200)) {
 }
 
 foreach ($f in $expectedFiles) {
-  $p = Join-Path $artifactDir $f
-  if (-not (Test-Path $p)) { $result.missingFiles += $f }
+  $p = Resolve-ArtifactPath -artifactDir $artifactDir -fileName $f
+  if (-not $p) { $result.missingFiles += $f }
 }
 
 if ($failures.Count -gt 0) { $result.failures = $failures; $result.localSmokePassed = $false }

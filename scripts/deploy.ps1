@@ -29,9 +29,170 @@ $script:RunStamp = (Get-Date -Format 'yyyyMMdd_HHmmss')
 $script:TranscriptStarted = $false
 $script:ExitCode = 0
 $script:EarlyExitSentinel = '__BASE2_EARLY_EXIT__'
+$script:PendingArtifactRenameTo = ''
 
 function Write-Section($msg) {
   Write-Host "`n=== $msg ===" -ForegroundColor Cyan
+}
+
+function Get-UtcTimestamp {
+  # Windows PowerShell 5.1 doesn't support Get-Date -AsUTC.
+  return (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+}
+
+function Get-ArtifactServiceSubdir([string]$fileName) {
+  # Map known artifact files to per-service folders.
+  # Keep meta files (deploy-console.log, post-deploy-report.json, etc.) at the run root.
+  switch -Regex ($fileName) {
+    '^DO_userdata\.json$' { return 'digital_ocean' }
+
+    '^compose-ps\.txt$' { return 'docker' }
+    '^compose-config\.yml$' { return 'docker' }
+    '^published-ports\.txt$' { return 'docker' }
+
+    '^remote_verify\.done$' { return 'meta' }
+
+    '^traefik-.*\.yml$' { return 'traefik' }
+    '^traefik-.*\.template\.yml$' { return 'traefik' }
+    '^traefik-.*\.txt$' { return 'traefik' }
+
+    '^django-.*\.txt$' { return 'django' }
+
+    '^api-logs\.txt$' { return 'api' }
+    '^api-health(\-slash)?\.(json|status)$' { return 'api' }
+
+    '^curl-.*\.txt$' { return 'smoke' }
+
+    '^schema-compat-check\.(json|err|status)$' { return 'database' }
+
+    '^celery-(ping|result)\.json$' { return 'celery' }
+
+    '^env-dollar-check\.(txt|status)$' { return 'meta' }
+    default { return '' }
+  }
+}
+
+function Get-ServiceFolderForServiceLog([string]$logFileName) {
+  # Map /root/logs/services/<service>.log to top-level per-service folders.
+  $serviceName = [System.IO.Path]::GetFileNameWithoutExtension($logFileName)
+  switch -Regex ($serviceName) {
+    '^traefik$' { return 'traefik' }
+    '^nginx$' { return 'nginx' }
+    '^nginx-static$' { return 'nginx' }
+    '^django$' { return 'django' }
+    '^api$' { return 'api' }
+    '^postgres$' { return 'database' }
+    '^redis$' { return 'database' }
+    '^pgadmin$' { return 'database' }
+    '^(celery-worker|celery-beat|flower)$' { return 'celery' }
+    '^react-app$' { return 'react-app' }
+    default { return '' }
+  }
+}
+
+function Resolve-ArtifactFilePath([string]$artifactDir, [string]$fileName) {
+  # Look for a file in the root, then in the service folder, then in legacy subfolders.
+  $candidates = @()
+  $candidates += (Join-Path $artifactDir $fileName)
+
+  $sub = Get-ArtifactServiceSubdir -fileName $fileName
+  if ($sub) { $candidates += (Join-Path (Join-Path $artifactDir $sub) $fileName) }
+
+  # Current layout (renamed from logs/)
+  $candidates += (Join-Path (Join-Path $artifactDir 'container_logs') $fileName)
+  $candidates += (Join-Path (Join-Path (Join-Path $artifactDir 'container_logs') 'build') $fileName)
+
+  # Legacy paths from older implementations
+  $candidates += (Join-Path (Join-Path $artifactDir 'logs') $fileName)
+  $candidates += (Join-Path (Join-Path (Join-Path $artifactDir 'logs') 'build') $fileName)
+
+  foreach ($p in $candidates) {
+    if (Test-Path $p) { return $p }
+  }
+  return ''
+}
+
+function Organize-ArtifactsByService {
+  # Move known artifacts from the run root into per-service folders.
+  # Rename logs/ -> container_logs/ and keep container_logs clean (only build/ and services/).
+  # Copy per-container service logs (container_logs/services/*.log) into their matching top-level service folder.
+  try {
+    $dest = Ensure-ArtifactDir
+    if (-not (Test-Path $dest)) { return }
+
+    # Rename logs -> container_logs (best effort; preserve backward compat).
+    $logsDir = Join-Path $dest 'logs'
+    $containerLogsDir = Join-Path $dest 'container_logs'
+    try {
+      if ((-not (Test-Path $containerLogsDir)) -and (Test-Path $logsDir)) {
+        Rename-Item -LiteralPath $logsDir -NewName 'container_logs' -Force
+      }
+    } catch {}
+
+    $files = @(Get-ChildItem -LiteralPath $dest -File -ErrorAction Stop)
+    foreach ($f in $files) {
+      $sub = Get-ArtifactServiceSubdir -fileName $f.Name
+      if (-not $sub) { continue }
+
+      $targetDir = Join-Path $dest $sub
+      if (-not (Test-Path $targetDir)) { New-Item -ItemType Directory -Path $targetDir -Force | Out-Null }
+      $targetPath = Join-Path $targetDir $f.Name
+      try {
+        Move-Item -LiteralPath $f.FullName -Destination $targetPath -Force
+      } catch {}
+    }
+
+    # Copy service logs into their service folder for convenience.
+    try {
+      $containerLogsDir = Join-Path $dest 'container_logs'
+      $svcDir = Join-Path $containerLogsDir 'services'
+      if (Test-Path $svcDir) {
+        $svcLogs = @(Get-ChildItem -LiteralPath $svcDir -File -Filter '*.log' -ErrorAction Stop)
+        foreach ($lf in $svcLogs) {
+          $svcSub = Get-ServiceFolderForServiceLog -logFileName $lf.Name
+          if (-not $svcSub) { continue }
+          $targetDir = Join-Path $dest $svcSub
+          if (-not (Test-Path $targetDir)) { New-Item -ItemType Directory -Path $targetDir -Force | Out-Null }
+          $targetPath = Join-Path $targetDir $lf.Name
+          try { Copy-Item -LiteralPath $lf.FullName -Destination $targetPath -Force } catch {}
+        }
+      }
+    } catch {}
+
+    # Keep container_logs/ clean: only build/ and services/ remain.
+    # Anything else is moved into its mapped service folder (or meta/ if unknown).
+    try {
+      $containerLogsDir = Join-Path $dest 'container_logs'
+      if (Test-Path $containerLogsDir) {
+        $children = @(Get-ChildItem -LiteralPath $containerLogsDir -Force -ErrorAction Stop)
+        foreach ($c in $children) {
+          if ($c.Name -in @('build','services')) { continue }
+
+          $sub = Get-ArtifactServiceSubdir -fileName $c.Name
+          if (-not $sub) { $sub = 'meta' }
+
+          $targetDir = Join-Path $dest $sub
+          if (-not (Test-Path $targetDir)) { New-Item -ItemType Directory -Path $targetDir -Force | Out-Null }
+
+          $targetPath = Join-Path $targetDir $c.Name
+          try {
+            Move-Item -LiteralPath $c.FullName -Destination $targetPath -Force
+          } catch {
+            # If move fails (e.g., cross-device or locked), try copy then delete.
+            try {
+              if ($c.PSIsContainer) {
+                Copy-Item -LiteralPath $c.FullName -Destination $targetPath -Recurse -Force
+                Remove-Item -LiteralPath $c.FullName -Recurse -Force
+              } else {
+                Copy-Item -LiteralPath $c.FullName -Destination $targetPath -Force
+                Remove-Item -LiteralPath $c.FullName -Force
+              }
+            } catch {}
+          }
+        }
+      }
+    } catch {}
+  } catch {}
 }
 
 function Start-DeployTranscript {
@@ -57,6 +218,141 @@ function Stop-DeployTranscript {
   } catch {}
 }
 
+function Finalize-ArtifactDirRename {
+  # If we had to defer unknown-* -> <ip>-* rename because transcript had the folder locked,
+  # attempt it once after Stop-Transcript.
+  try {
+    if (-not $script:PendingArtifactRenameTo) { return }
+    if (-not $script:ArtifactDir) { return }
+    if (-not (Test-Path $script:ArtifactDir)) { return }
+    if (Test-Path $script:PendingArtifactRenameTo) {
+      $script:PendingArtifactRenameTo = ''
+      return
+    }
+    Move-Item -Path $script:ArtifactDir -Destination $script:PendingArtifactRenameTo -Force
+    $script:ArtifactDir = (Resolve-Path $script:PendingArtifactRenameTo).Path
+    try { $env:BASE2_ARTIFACT_DIR = $script:ArtifactDir } catch {}
+  } catch {}
+  finally {
+    $script:PendingArtifactRenameTo = ''
+  }
+}
+
+function Append-RemoteArtifactsToConsoleLog {
+  # Start-Transcript captures local console output. Remote verification artifacts are usually copied,
+  # not printed. Append a curated set into deploy-console.log for one-stop review.
+  try {
+    $dest = Ensure-ArtifactDir
+    $logPath = Join-Path $dest 'deploy-console.log'
+    if (-not (Test-Path $logPath)) { return }
+
+    $safeFiles = @(
+      'compose-ps.txt','published-ports.txt',
+      'traefik-static.yml','traefik-dynamic.yml','traefik-ls.txt','traefik-logs.txt','traefik-env.txt',
+      'api-logs.txt','django-migrate.txt','django-check-deploy.txt',
+      'curl-root.txt','curl-api.txt','curl-api-health.txt','curl-api-health-slash.txt','curl-admin-head.txt',
+      'api-health.json','api-health.status','api-health-slash.json','api-health-slash.status',
+      'schema-compat-check.json','schema-compat-check.err','schema-compat-check.status',
+      'env-dollar-check.txt','env-dollar-check.status'
+    )
+
+    $sb = New-Object System.Text.StringBuilder
+    $null = $sb.AppendLine('')
+    $null = $sb.AppendLine('===== BEGIN APPENDED REMOTE ARTIFACTS =====')
+    $null = $sb.AppendLine(('Time (UTC): ' + (Get-UtcTimestamp)))
+    $null = $sb.AppendLine('Note: This section is appended locally from downloaded /root/logs artifacts.')
+    foreach ($name in $safeFiles) {
+      $path = Resolve-ArtifactFilePath -artifactDir $dest -fileName $name
+      if (-not $path) { continue }
+
+      $null = $sb.AppendLine('')
+      $null = $sb.AppendLine(('----- FILE: ' + $name + ' -----'))
+
+      try {
+        $item = Get-Item -LiteralPath $path -ErrorAction Stop
+        # Avoid exploding the console log; include full content for small files, tail for large.
+        if ($item.Length -le 200000) {
+          $null = $sb.AppendLine((Get-Content -LiteralPath $path -Raw -ErrorAction Stop))
+        } else {
+          $null = $sb.AppendLine(('(file is large: ' + $item.Length + ' bytes)'))
+          $null = $sb.AppendLine('--- last 400 lines ---')
+          $null = $sb.AppendLine((Get-Content -LiteralPath $path -Tail 400 -ErrorAction Stop | Out-String))
+        }
+      } catch {
+        $null = $sb.AppendLine(('(failed to read file: ' + $_.Exception.Message + ')'))
+      }
+    }
+    $null = $sb.AppendLine('===== END APPENDED REMOTE ARTIFACTS =====')
+
+    Add-Content -LiteralPath $logPath -Value $sb.ToString() -Encoding UTF8
+  } catch {}
+}
+
+function Write-RemoteArtifactsBundle {
+  # Always write a separate file containing key droplet artifacts/logs.
+  # This avoids relying on Start-Transcript (which only captures local console output).
+  try {
+    $dest = Ensure-ArtifactDir
+    $outPath = Join-Path $dest 'deploy-remote-artifacts.log'
+
+    $safeFiles = @(
+      'compose-ps.txt','published-ports.txt',
+      'traefik-static.yml','traefik-dynamic.yml','traefik-ls.txt','traefik-logs.txt','traefik-env.txt',
+      'api-logs.txt','django-migrate.txt','django-check-deploy.txt',
+      'curl-root.txt','curl-api.txt','curl-api-health.txt','curl-api-health-slash.txt','curl-admin-head.txt',
+      'api-health.json','api-health.status','api-health-slash.json','api-health-slash.status',
+      'schema-compat-check.json','schema-compat-check.err','schema-compat-check.status',
+      'env-dollar-check.txt','env-dollar-check.status'
+    )
+
+    $sb = New-Object System.Text.StringBuilder
+    $null = $sb.AppendLine('===== REMOTE ARTIFACTS BUNDLE =====')
+    $null = $sb.AppendLine(('Time (UTC): ' + (Get-UtcTimestamp)))
+    $null = $sb.AppendLine('Source: downloaded /root/logs artifacts from droplet')
+
+    foreach ($name in $safeFiles) {
+      $path = Resolve-ArtifactFilePath -artifactDir $dest -fileName $name
+      if (-not $path) { continue }
+
+      $null = $sb.AppendLine('')
+      $null = $sb.AppendLine(('----- FILE: ' + $name + ' -----'))
+      try {
+        $item = Get-Item -LiteralPath $path -ErrorAction Stop
+        if ($item.Length -le 500000) {
+          $null = $sb.AppendLine((Get-Content -LiteralPath $path -Raw -ErrorAction Stop))
+        } else {
+          $null = $sb.AppendLine(('(file is large: ' + $item.Length + ' bytes)'))
+          $null = $sb.AppendLine('--- last 800 lines ---')
+          $null = $sb.AppendLine((Get-Content -LiteralPath $path -Tail 800 -ErrorAction Stop | Out-String))
+        }
+      } catch {
+        $null = $sb.AppendLine(('(failed to read file: ' + $_.Exception.Message + ')'))
+      }
+    }
+
+    Set-Content -LiteralPath $outPath -Value $sb.ToString() -Encoding UTF8
+  } catch {}
+}
+
+function Switch-TranscriptToResolvedArtifactDir([string]$ip) {
+  # If the transcript is writing into unknown-<timestamp>, that folder cannot be renamed.
+  # Stop the transcript, rename the folder, then restart the transcript in the new folder.
+  try {
+    if (-not $ip -or -not $ip.Trim()) { return }
+    if (-not $script:TranscriptStarted) {
+      $null = Ensure-ArtifactDir -ip $ip
+      return
+    }
+
+    Stop-DeployTranscript
+    $null = Ensure-ArtifactDir -ip $ip
+    Start-DeployTranscript
+  } catch {
+    # Non-fatal; deploy can continue even if transcript switching fails.
+    try { Start-DeployTranscript } catch {}
+  }
+}
+
 function Ensure-ArtifactDir([string]$ip = '') {
   # Always write artifacts into a per-run folder to avoid polluting LogsDir.
   # Folder format: <ip>-<timestamp>. If IP is unknown early in the run, we create
@@ -73,8 +369,13 @@ function Ensure-ArtifactDir([string]$ip = '') {
       $currentLeaf = Split-Path -Leaf $script:ArtifactDir
       if (($currentLeaf -like 'unknown-*') -and ($safeIp -ne 'unknown')) {
         if (-not (Test-Path $targetDir)) {
-          Move-Item -Path $script:ArtifactDir -Destination $targetDir -Force
-          $script:ArtifactDir = (Resolve-Path $targetDir).Path
+          if ($script:TranscriptStarted) {
+            # Transcript holds an open file handle inside the folder. Defer rename until transcript stops.
+            $script:PendingArtifactRenameTo = $targetDir
+          } else {
+            Move-Item -Path $script:ArtifactDir -Destination $targetDir -Force
+            $script:ArtifactDir = (Resolve-Path $targetDir).Path
+          }
         } else {
           # If target exists, keep current dir to avoid clobber.
           $script:ArtifactDir = (Resolve-Path $script:ArtifactDir).Path
@@ -95,7 +396,7 @@ function Write-FailureArtifacts([string]$context, [string]$message) {
     $support = @()
     $support += "Deploy failed: $context"
     $support += "Message: $message"
-    $support += "Time (UTC): $(Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ssZ')"
+    $support += "Time (UTC): $(Get-UtcTimestamp)"
     $support += "Tip: Re-run with -Preflight to validate config before cloud actions."
     Set-Content -Path (Join-Path $dest 'support.txt') -Value ($support -join [Environment]::NewLine) -Encoding UTF8
   } catch {}
@@ -212,8 +513,8 @@ function Get-DropletIp {
   } catch {}
 
   if ($artifactDir) {
-    $udFile = Join-Path $artifactDir 'DO_userdata.json'
-    if (Test-Path $udFile) {
+    $udFile = Resolve-ArtifactFilePath -artifactDir $artifactDir -fileName 'DO_userdata.json'
+    if ($udFile -and (Test-Path $udFile)) {
       try {
         $json = Get-Content $udFile -Raw | ConvertFrom-Json
         if ($json.ip_address) { return [string]$json.ip_address }
@@ -393,8 +694,58 @@ PY
   S_FLO=$(docker compose -f local.docker.yml --profile flower config --services || true)
   SERVICES=$(printf "%s\n%s\n%s\n" "$S_DEF" "$S_CEL" "$S_FLO" | awk 'NF && !x[$0]++')
   for s in $SERVICES; do
-    docker compose -f local.docker.yml logs --no-color --timestamps --tail=2000 "$s" > "/root/logs/services/${s}.log" 2>&1 || true
+    OUT="/root/logs/services/${s}.log"
+    echo "===== SERVICE LOG: ${s} =====" > "$OUT" || true
+    echo "Time: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$OUT" || true
+
+    # If the service isn't running (e.g., profiled services like celery-*), record that explicitly.
+    CIDS=$(docker compose -f local.docker.yml ps -q "$s" 2>/dev/null || true)
+    if [ -z "$CIDS" ]; then
+      echo "NOTE: No running containers found for service '$s'." >> "$OUT" || true
+      echo "      If this is a profiled service (e.g., celery), ensure the profile is enabled." >> "$OUT" || true
+      continue
+    fi
+
+    # Prefer docker logs for exact container output.
+    for cid in $CIDS; do
+      echo "" >> "$OUT" || true
+      echo "--- docker logs (cid=$cid) ---" >> "$OUT" || true
+      docker logs --timestamps --tail=2000 "$cid" >> "$OUT" 2>&1 || true
+    done
+
+    # Also include compose logs as a fallback/aggregate view.
+    echo "" >> "$OUT" || true
+    echo "--- docker compose logs (service=$s) ---" >> "$OUT" || true
+    docker compose -f local.docker.yml logs --no-color --timestamps --tail=2000 "$s" >> "$OUT" 2>&1 || true
   done
+
+  # Some services may log primarily to files inside the container/volume.
+  # Traefik: try /var/log/traefik/*
+  TID=$(docker compose -f local.docker.yml ps -q traefik 2>/dev/null || true)
+  if [ -n "$TID" ]; then
+    OUT="/root/logs/services/traefik.log"
+    echo "" >> "$OUT" || true
+    echo "--- /var/log/traefik (file-based logs) ---" >> "$OUT" || true
+    docker exec "$TID" sh -lc 'ls -la /var/log/traefik 2>/dev/null || true; for f in /var/log/traefik/*; do [ -f "$f" ] || continue; echo "\n----- $f -----"; tail -n 2000 "$f" || true; done' >> "$OUT" 2>&1 || true
+  fi
+
+  # Nginx: try /var/log/nginx/*
+  NID=$(docker compose -f local.docker.yml ps -q nginx 2>/dev/null || true)
+  if [ -n "$NID" ]; then
+    OUT="/root/logs/services/nginx.log"
+    echo "" >> "$OUT" || true
+    echo "--- /var/log/nginx (file-based logs) ---" >> "$OUT" || true
+    docker exec "$NID" sh -lc 'ls -la /var/log/nginx 2>/dev/null || true; for f in /var/log/nginx/*; do [ -f "$f" ] || continue; echo "\n----- $f -----"; tail -n 2000 "$f" || true; done' >> "$OUT" 2>&1 || true
+  fi
+
+  # Nginx-static: try /var/log/nginx/* (image-based static nginx may log to files)
+  NSID=$(docker compose -f local.docker.yml ps -q nginx-static 2>/dev/null || true)
+  if [ -n "$NSID" ]; then
+    OUT="/root/logs/services/nginx-static.log"
+    echo "" >> "$OUT" || true
+    echo "--- /var/log/nginx (file-based logs) ---" >> "$OUT" || true
+    docker exec "$NSID" sh -lc 'ls -la /var/log/nginx 2>/dev/null || true; for f in /var/log/nginx/*; do [ -f "$f" ] || continue; echo "\n----- $f -----"; tail -n 2000 "$f" || true; done' >> "$OUT" 2>&1 || true
+  fi
   CID=$(docker compose -f local.docker.yml ps -q traefik || true)
   if [ -n "$CID" ]; then
     docker exec "$CID" sh -lc 'env | sort' > /root/logs/traefik-env.txt || true
@@ -662,9 +1013,16 @@ try {
   }
 
   $script:ResolvedIp = $resolvedIp
+  Switch-TranscriptToResolvedArtifactDir -ip $resolvedIp
   $null = Ensure-ArtifactDir -ip $resolvedIp
 
   Remote-Verify -ip $resolvedIp -keyPath $SshKey
+
+  # Group downloaded artifacts by service for easier debugging.
+  Organize-ArtifactsByService
+
+  # Bundle droplet-side artifacts/logs into a single local file for later review.
+  Write-RemoteArtifactsBundle
 
   if ($RunTests) {
     Write-Section "Running post-deploy tests"
@@ -713,6 +1071,8 @@ try {
   }
 } finally {
   Stop-DeployTranscript
+  Finalize-ArtifactDirRename
+  Append-RemoteArtifactsToConsoleLog
 }
 
 exit $script:ExitCode
