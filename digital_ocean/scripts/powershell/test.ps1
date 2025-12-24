@@ -462,6 +462,82 @@ function Check-DoDns([string]$artifactDir, [string]$domain, [string]$expectedIpv
   return $fail
 }
 
+function Check-ClientDns([string]$artifactDir, [string]$domain, [string]$expectedIpv4) {
+  # This checks what *this machine's resolver* returns (i.e., what the user/browser will likely hit),
+  # which is exactly where stale caches/split-horizon issues show up.
+  $fail = @()
+
+  $traefikLabel = $env:TRAEFIK_DNS_LABEL
+  if (-not $traefikLabel) { $traefikLabel = 'traefik' }
+  $pgadminLabel = $env:PGADMIN_DNS_LABEL
+  if (-not $pgadminLabel) { $pgadminLabel = 'pgadmin' }
+  $adminLabel = $env:DJANGO_ADMIN_DNS_LABEL
+  if (-not $adminLabel) { $adminLabel = 'admin' }
+  $flowerLabel = $env:FLOWER_DNS_LABEL
+  if (-not $flowerLabel) { $flowerLabel = 'flower' }
+
+  $labels = [ordered]@{
+    at = '@'
+    www = 'www'
+    traefik = $traefikLabel
+    pgadmin = $pgadminLabel
+    admin = $adminLabel
+    flower = $flowerLabel
+  }
+
+  $dnsServers = @()
+  try {
+    $dnsServers = @(
+      Get-DnsClientServerAddress -AddressFamily IPv4 -ErrorAction Stop |
+        ForEach-Object { $_.ServerAddresses } |
+        Where-Object { $_ }
+    )
+  } catch {}
+
+  $payload = [ordered]@{
+    domain = $domain
+    expectedIpv4 = $expectedIpv4
+    dnsServers = @($dnsServers)
+    names = @{}
+  }
+
+  foreach ($k in $labels.Keys) {
+    $name = $labels[$k]
+    $fqdn = ''
+    if ($name -eq '@') {
+      $fqdn = $domain
+    } else {
+      $fqdn = "{0}.{1}" -f $name, $domain
+    }
+
+    $vals = @()
+    $err = ''
+    try {
+      $res = Resolve-DnsName -Name $fqdn -Type A -ErrorAction Stop
+      $vals = @($res | ForEach-Object { $_.IPAddress } | Where-Object { $_ } | Select-Object -Unique)
+    } catch {
+      $err = [string]$_.Exception.Message
+    }
+
+    $payload.names[$fqdn] = [ordered]@{ A = $vals; error = $err }
+
+    if ($err) {
+      $fail += "Client DNS lookup failed for ${fqdn}: $err"
+      continue
+    }
+    if (-not $vals -or $vals.Count -eq 0) {
+      $fail += "Client DNS missing A record for ${fqdn}"
+      continue
+    }
+    if ($expectedIpv4 -and ($vals -notcontains $expectedIpv4)) {
+      $fail += "Client DNS A mismatch for ${fqdn}: expected $expectedIpv4, got $($vals -join ',')"
+    }
+  }
+
+  Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'digital_ocean' -fileName 'client-dns.json' -content $payload
+  return $fail
+}
+
 function Get-CurlResolveArgs([string]$url) {
   $ip = $ResolveIp
   if (-not $ip) { $ip = $ExpectedIpv4 }
@@ -644,6 +720,9 @@ if ($All) {
 
 $failures = @()
 
+$doDnsFails = @()
+$clientDnsFails = @()
+
 # Check presence of expected artifacts
 $expectedFiles = @(
   'compose-ps.txt',
@@ -755,8 +834,9 @@ if ($CheckDns) {
     } catch {}
   }
 
-  $dnsFails = Check-DoDns -artifactDir $artifactDir -domain $Domain -expectedIpv4 $ExpectedIpv4 -expectedIpv6 $ExpectedIpv6
-  $failures += $dnsFails
+  $doDnsFails = @(Check-DoDns -artifactDir $artifactDir -domain $Domain -expectedIpv4 $ExpectedIpv4 -expectedIpv6 $ExpectedIpv6)
+  $clientDnsFails = @(Check-ClientDns -artifactDir $artifactDir -domain $Domain -expectedIpv4 $ExpectedIpv4)
+  $failures += $doDnsFails
 }
 
 # Final result
@@ -784,7 +864,14 @@ $result = [ordered]@{
   djangoProxy = [ordered]@{ enabled = $false; status = 0; bodySnippet = @() }
   adminCheck = [ordered]@{ enabled = $false; host = ''; statusNoAuth = 0; statusWithAuth = 0 }
   celeryCheck = [ordered]@{ enabled = $false; host = ''; statusNoAuth = 0; statusWithAuth = 0 }
+  doDnsCheck = [ordered]@{ enabled = $false; ok = $false; expectedIpv4 = ''; expectedIpv6 = '' }
+  clientDnsCheck = [ordered]@{ enabled = $false; ok = $false; expectedIpv4 = ''; failures = @() }
   failures = @()
+}
+
+if ($CheckDns) {
+  $result.doDnsCheck = [ordered]@{ enabled = $true; ok = ($doDnsFails.Count -eq 0); expectedIpv4 = $ExpectedIpv4; expectedIpv6 = $ExpectedIpv6 }
+  $result.clientDnsCheck = [ordered]@{ enabled = $true; ok = ($clientDnsFails.Count -eq 0); expectedIpv4 = $ExpectedIpv4; failures = @($clientDnsFails) }
 }
 
 # Diagnostics: if API health is non-200, include API logs snippet
