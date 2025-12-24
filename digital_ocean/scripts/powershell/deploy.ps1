@@ -67,6 +67,7 @@ function Get-ArtifactServiceSubdir([string]$fileName) {
     '^django-.*\.txt$' { return 'django' }
 
     '^api-logs\.txt$' { return 'api' }
+    '^api-.*\.txt$' { return 'api' }
     '^api-health(\-slash)?\.(json|status)$' { return 'api' }
 
     '^curl-.*\.txt$' { return 'smoke' }
@@ -937,6 +938,12 @@ PY
     fi
   fi
   # mark completion
+  # Run service test suites inside containers and capture outputs
+  mkdir -p /root/logs || true
+  # FastAPI (api) pytest
+  docker compose -f local.docker.yml exec -T api sh -lc 'pytest -q' > /root/logs/api-pytest.txt 2>&1 || true
+  # Django pytest
+  docker compose -f local.docker.yml exec -T django sh -lc 'pytest -q' > /root/logs/django-pytest.txt 2>&1 || true
   date -u +"%Y-%m-%dT%H:%M:%SZ" > /root/logs/remote_verify.done || true
 fi
 '@
@@ -1118,6 +1125,16 @@ try {
       Write-Verbose ("AllTests UpdateOnly default check failed: {0}" -f $_.Exception.Message)
     }
   }
+
+  # Reminder banner for UpdateOnly runs: ensure commit/push to origin/<DO_APP_BRANCH>
+  if ($UpdateOnly -and -not $Full) {
+    try {
+      $branch = $env:DO_APP_BRANCH
+      if (-not $branch) { $branch = '(unset)' }
+      Write-Section "UpdateOnly: using remote branch origin/$branch"
+      Write-Host "Reminder: UpdateOnly hard-resets the droplet repo to origin/$branch. Commit and push any runtime-impacting changes (api/, django/, react-app/, Dockerfiles, compose, traefik) before running UpdateOnly." -ForegroundColor Yellow
+    } catch {}
+  }
   Run-Orchestrator
 
   $resolvedIp = Get-DropletIp
@@ -1199,6 +1216,30 @@ try {
         $script:ExitCode = 1
         throw $script:EarlyExitSentinel
       }
+    }
+
+    # T024: Run React Jest tests locally and capture output
+    try {
+      Write-Section "Running React Jest (local)"
+      $artifactDir = Ensure-ArtifactDir
+      $reactOutDir = Join-Path $artifactDir 'react-app'
+      if (-not (Test-Path $reactOutDir)) { New-Item -ItemType Directory -Path $reactOutDir -Force | Out-Null }
+      $jestOutPath = Join-Path $reactOutDir 'jest.txt'
+      Push-Location (Join-Path $script:RepoRoot 'react-app')
+      try {
+        $null = (& npm ci --no-audit --no-fund 2>&1 | Tee-Object -Variable npmCiOut)
+      } catch {}
+      try {
+        $jestOut = & npm run test:ci 2>&1
+        $jestOut | Out-String | Set-Content -Path $jestOutPath -Encoding UTF8
+      } catch {
+        $err = $_.Exception.Message
+        "Jest run failed: $err" | Set-Content -Path $jestOutPath -Encoding UTF8
+      } finally {
+        Pop-Location
+      }
+    } catch {
+      Write-Warning ("React Jest execution error: {0}" -f $_.Exception.Message)
     }
   }
 

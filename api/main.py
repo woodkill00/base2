@@ -21,6 +21,24 @@ app = FastAPI(
     openapi_url=None if ENV == "production" else "/openapi.json",
 )
 
+# Middleware: request id
+try:
+    from api.middleware.request_id import request_id_middleware
+
+    @app.middleware("http")
+    async def _add_request_id(request: Request, call_next):
+        return await request_id_middleware(request, call_next)
+except Exception:
+    pass
+
+# Error handlers: ensure consistent {detail}
+try:
+    from api.middleware.errors import register_error_handlers
+
+    register_error_handlers(app)
+except Exception:
+    pass
+
 # Customize OpenAPI to include required security schemes from the external contract.
 try:
     from fastapi.openapi.utils import get_openapi

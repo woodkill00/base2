@@ -24,9 +24,9 @@ http:
         certResolver: le-staging
       service: api
 
-    # Django admin on admin subdomain (guarded)
+    # Django admin on admin subdomain (guarded; restrict to /admin paths only)
     django-admin-subdomain:
-      rule: Host(`${DJANGO_ADMIN_DNS_LABEL}.${WEBSITE_DOMAIN}`)
+      rule: Host(`${DJANGO_ADMIN_DNS_LABEL}.${WEBSITE_DOMAIN}`) && PathPrefix(`/admin`)
       priority: 190
       entryPoints:
         - websecure

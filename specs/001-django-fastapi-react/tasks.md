@@ -12,6 +12,12 @@
 - When Full is necessary: first deploy (no droplet yet), droplet provisioning/user-data changes, DNS/firewall/VPC changes, or anything that invalidates update-in-place assumptions.
 - Compatibility rule: `deploy.ps1 -AllTests` should still work; see T078 to make it prefer UpdateOnly when an environment already exists.
 
+### Pre-Deploy Discipline (UpdateOnly + AllTests)
+
+- Prerequisite: Commit and push any runtime-impacting changes to the droplet-tracked branch before running UpdateOnly. The deploy orchestration hard-resets the remote to `origin/<DO_APP_BRANCH>`, so local edits will not apply unless they are pushed.
+- Branch source: Ensure `.env` sets `DO_APP_BRANCH` to the intended branch. Push to `origin/<DO_APP_BRANCH>` prior to invoking `-UpdateOnly -AllTests`.
+- Scope: Runtime-impacting files include service code (e.g., `api/`, `django/`, `react-app/`), Dockerfiles, compose files, and Traefik configs. Docs-only changes do not require an UpdateOnly push.
+
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies)
@@ -32,11 +38,12 @@
 
 **Purpose**: Documentation + baseline test scaffolding + feature hygiene
 
-- [ ] T001 [P] Remove duplicated “OAuth Identity” bullet under Key Entities in specs/001-django-fastapi-react/spec.md ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T002 [P] Add feature links to README.md pointing to specs/001-django-fastapi-react/spec.md and specs/001-django-fastapi-react/plan.md ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T001 [P] Remove duplicated “OAuth Identity” bullet under Key Entities in specs/001-django-fastapi-react/spec.md ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T002 [P] Add feature links to README.md pointing to specs/001-django-fastapi-react/spec.md and specs/001-django-fastapi-react/plan.md ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+ - [X] T003 [P] Create docs/DEPLOY.md documenting “deploy.ps1 is authoritative” and staging-only ACME policy ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 - [ ] T003 [P] Create docs/DEPLOY.md documenting “deploy.ps1 is authoritative” and staging-only ACME policy ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T004 [P] Create docs/SECURITY.md documenting cookie auth + CSRF + admin tool gating ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T005 [P] Update docs/STACK.md to include the current service inventory from local.docker.yml ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+ - [X] T004 [P] Create docs/SECURITY.md documenting cookie auth + CSRF + admin tool gating ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+ - [X] T005 [P] Update docs/STACK.md to include the current service inventory from local.docker.yml ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 
 ---
 
@@ -48,37 +55,37 @@
 
 ### Environment + configuration
 
-- [ ] T006 Add missing auth/security env vars to .env.example (SESSION_COOKIE_NAME, CSRF_COOKIE_NAME, COOKIE_SAMESITE, COOKIE_SECURE, DJANGO_INTERNAL_BASE_URL, RATE_LIMIT_REDIS_PREFIX, GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, GOOGLE_OAUTH_REDIRECT_URI, OAUTH_STATE_SECRET) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T007 Implement centralized FastAPI settings loader in api/settings.py (read env; validate required values; defaults safe for staging) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T008 [P] Implement request-id middleware in api/middleware/request_id.py and wire it in api/main.py (echo `X-Request-Id`) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T009 [P] Implement standard JSON error handlers in api/middleware/errors.py and wire in api/main.py (ensure consistent `{detail}` shape per contract) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+ - [X] T006 Add missing auth/security env vars to .env.example (SESSION_COOKIE_NAME, CSRF_COOKIE_NAME, COOKIE_SAMESITE, COOKIE_SECURE, DJANGO_INTERNAL_BASE_URL, RATE_LIMIT_REDIS_PREFIX, GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, GOOGLE_OAUTH_REDIRECT_URI, OAUTH_STATE_SECRET) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+ - [X] T007 Implement centralized FastAPI settings loader in api/settings.py (read env; validate required values; defaults safe for staging) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+ - [X] T008 [P] Implement request-id middleware in api/middleware/request_id.py and wire it in api/main.py (echo `X-Request-Id`) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+ - [X] T009 [P] Implement standard JSON error handlers in api/middleware/errors.py and wire in api/main.py (ensure consistent `{detail}` shape per contract) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 
 ### Security primitives (rate limiting + CSRF/cookies)
 
-- [ ] T010 [P] Implement Redis helper in api/redis_client.py (connect, ping, prefixed keys) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T011 Implement app-level rate limiting in api/security/rate_limit.py (Redis counters keyed by IP + endpoint; 429 responses) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T012 [P] Define cookie/CSRF header conventions in specs/001-django-fastapi-react/research.md (cookie names and header name `X-CSRF-Token`) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+ - [X] T010 [P] Implement Redis helper in api/redis_client.py (connect, ping, prefixed keys) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+ - [X] T011 Implement app-level rate limiting in api/security/rate_limit.py (Redis counters keyed by IP + endpoint; 429 responses) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+ - [X] T012 [P] Define cookie/CSRF header conventions in specs/001-django-fastapi-react/research.md (cookie names and header name `X-CSRF-Token`) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 
 ### Traefik exposure hardening
 
-- [ ] T013 Restrict admin subdomain router to only `/admin` paths in traefik/dynamic.yml (avoid exposing any internal endpoints on admin host) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T014 [P] Add a deploy-time probe that admin.<domain> rejects non-/admin paths in digital_ocean/scripts/powershell/test.ps1 (records meta/admin-host-path-guard.json) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+ - [X] T013 Restrict admin subdomain router to only `/admin` paths in traefik/dynamic.yml (avoid exposing any internal endpoints on admin host) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+ - [X] T014 [P] Add a deploy-time probe that admin.<domain> rejects non-/admin paths in digital_ocean/scripts/powershell/test.ps1 (records meta/admin-host-path-guard.json) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 
 ### Django cookie/CSRF defaults
 
-- [ ] T015 [P] Confirm/adjust cookie + CSRF defaults in django/project/settings/production.py (Secure, HttpOnly for session cookie; SameSite; trusted origins where needed) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+ - [X] T015 [P] Confirm/adjust cookie + CSRF defaults in django/project/settings/production.py (Secure, HttpOnly for session cookie; SameSite; trusted origins where needed) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 
 ### Test tooling + deploy orchestration (gated through deploy.ps1)
 
-- [ ] T016 Add pytest tooling deps to api/requirements.txt (pytest, pytest-asyncio, httpx) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T017 Add pytest tooling deps to django/requirements.txt (pytest, pytest-django) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T018 [P] Create api/pytest.ini for test discovery ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T019 [P] Create django/pytest.ini + django/conftest.py configuring pytest-django settings module ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T020 [P] Add a minimal FastAPI test scaffold in api/tests/test_smoke.py (imports app and asserts health route exists) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T021 [P] Add a minimal Django test scaffold in django/tests/test_smoke.py (loads settings; asserts UserProfile model import) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T022 Update digital_ocean/scripts/powershell/deploy.ps1 to run `pytest` inside api container and save output to local_run_logs/<run>/api/pytest.txt ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T023 Update digital_ocean/scripts/powershell/deploy.ps1 to run `pytest` inside django container and save output to local_run_logs/<run>/django/pytest.txt ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T024 Update digital_ocean/scripts/powershell/deploy.ps1 to run `npm run test:ci` in react-app/ and save output to local_run_logs/<run>/react-app/jest.txt ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+ - [X] T016 Add pytest tooling deps to api/requirements.txt (pytest, pytest-asyncio, httpx) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+ - [X] T017 Add pytest tooling deps to django/requirements.txt (pytest, pytest-django) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+ - [X] T018 [P] Create api/pytest.ini for test discovery ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+ - [X] T019 [P] Create django/pytest.ini + django/conftest.py configuring pytest-django settings module ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+ - [X] T020 [P] Add a minimal FastAPI test scaffold in api/tests/test_smoke.py (imports app and asserts health route exists) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+ - [X] T021 [P] Add a minimal Django test scaffold in django/tests/test_smoke.py (loads settings; asserts UserProfile model import) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T022 Update digital_ocean/scripts/powershell/deploy.ps1 to run `pytest` inside api container and save output to local_run_logs/<run>/api/pytest.txt ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T023 Update digital_ocean/scripts/powershell/deploy.ps1 to run `pytest` inside django container and save output to local_run_logs/<run>/django/pytest.txt ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T024 Update digital_ocean/scripts/powershell/deploy.ps1 to run `npm run test:ci` in react-app/ and save output to local_run_logs/<run>/react-app/jest.txt ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 

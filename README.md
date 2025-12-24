@@ -3,6 +3,11 @@
 
 A robust, production-ready Docker setup with enhanced security, health checks, and comprehensive environment variable management.
 
+## Feature Docs (Current Work)
+
+- Spec: [specs/001-django-fastapi-react/spec.md](specs/001-django-fastapi-react/spec.md)
+- Plan: [specs/001-django-fastapi-react/plan.md](specs/001-django-fastapi-react/plan.md)
+
 ## ⚠️ Platform Compatibility
 
 All scripts require Bash and are tested on Mac, Linux, and Windows (WSL/Git Bash). For Windows, use WSL or Git Bash for best results.

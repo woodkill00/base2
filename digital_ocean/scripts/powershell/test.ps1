@@ -856,6 +856,44 @@ if (($apiGetStatus -ne 200) -and ($apiGetStatusSlash -ne 200)) {
   $failures += "API health GET expected 200, got $apiGetStatus (no-slash) / $apiGetStatusSlash (slash)"
 }
 
+# When API health is reachable, validate response shape and measure latency
+try {
+  $healthJsonPath = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'api-health.json'
+  if ($healthJsonPath -and (Test-Path $healthJsonPath)) {
+    $healthRaw = Get-Content -Path $healthJsonPath -Raw
+    $healthObj = $null
+    try { $healthObj = ($healthRaw | ConvertFrom-Json) } catch {}
+    $shapeOk = $false
+    $missing = @()
+    $types = [ordered]@{ okType = ''; serviceType = ''; db_okType = '' }
+    if ($healthObj) {
+      try { $types.okType = (if ($healthObj.ok -is [bool]) { 'boolean' } elseif ($null -eq $healthObj.ok) { 'null' } else { $healthObj.ok.GetType().Name }) } catch {}
+      try { $types.serviceType = (if ($healthObj.service -is [string]) { 'string' } elseif ($null -eq $healthObj.service) { 'null' } else { $healthObj.service.GetType().Name }) } catch {}
+      try { $types.db_okType = (if ($healthObj.db_ok -is [bool]) { 'boolean' } elseif ($null -eq $healthObj.db_ok) { 'null' } else { $healthObj.db_ok.GetType().Name }) } catch {}
+      if (-not $healthObj.PSObject.Properties.Name.Contains('ok')) { $missing += 'ok' }
+      if (-not $healthObj.PSObject.Properties.Name.Contains('service')) { $missing += 'service' }
+      if (-not $healthObj.PSObject.Properties.Name.Contains('db_ok')) { $missing += 'db_ok' }
+      # Consider shape OK if required keys exist; types are recorded but not enforced to avoid false negatives.
+      $shapeOk = ($missing.Count -eq 0)
+    }
+    $shapePayload = [ordered]@{ ok = [bool]$shapeOk; missing = @($missing); observedTypes = $types }
+    Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'api' -fileName 'api-health-shape.json' -content $shapePayload
+    if (-not $shapeOk) { $failures += 'API health response shape mismatch (expect keys: ok, service, db_ok)' }
+  }
+} catch {}
+
+try {
+  # Only measure latency if at least one health GET returned 200
+  if (($apiGetStatus -eq 200) -or ($apiGetStatusSlash -eq 200)) {
+    $healthUrl = "https://$Domain/api/health"
+    $metrics = Measure-EndpointLatency -url $healthUrl -samples 20 -sleepMs 100
+    Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'api' -fileName 'api-health-latency.json' -content $metrics
+    if ($metrics.p95Ms -and ([double]$metrics.p95Ms) -gt 5000) {
+      $failures += "API health p95 latency too high: $([int]$metrics.p95Ms)ms (> 5000ms)"
+    }
+  }
+} catch {}
+
 # Local smoke tests
 Write-Section "Local Smoke Tests"
 try {
@@ -1067,6 +1105,21 @@ if ($CheckDjangoAdmin) {
   if ($AdminUser -and $AdminPass) {
     if (@(200,302) -notcontains $withAuthStatus) { $failures += "Django admin expected 200/302 with auth, got $withAuthStatus ($AdminHost)" }
   }
+
+  # Admin host path guard: non-/admin paths should not be served
+  try {
+    $rootHdr = Curl-Head ("https://{0}/" -f $AdminHost)
+    $rootStatus = Get-StatusCodeFromHeaders $rootHdr
+    $fooHdr = Curl-Head ("https://{0}/foo" -f $AdminHost)
+    $fooStatus = Get-StatusCodeFromHeaders $fooHdr
+    $guardOk = (($rootStatus -ne 200) -and ($fooStatus -ne 200))
+    # Prefer explicit allowed statuses
+    $allowedNonAdmin = @(401,403,404)
+    $guardOk = $guardOk -or (($allowedNonAdmin -contains $rootStatus) -and ($allowedNonAdmin -contains $fooStatus))
+    $guardPayload = [ordered]@{ host = $AdminHost; rootStatus = $rootStatus; fooStatus = $fooStatus; ok = $guardOk }
+    Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'admin-host-path-guard.json' -content $guardPayload
+    if (-not $guardOk) { $failures += "Admin host path guard failed: statuses root=$rootStatus, foo=$fooStatus ($AdminHost)" }
+  } catch {}
 }
 
 # Optional: Test pgAdmin dashboard via edge

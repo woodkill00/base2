@@ -6,6 +6,11 @@ This document resolves planning unknowns and records key technical decisions wit
 
 **Decision**: Use HttpOnly, Secure, SameSite cookies as the primary credential carrier; implement CSRF protection for state-changing requests using a double-submit CSRF token (CSRF cookie + `X-CSRF-Token` header) or an equivalent per-session token strategy.
 
+**Conventions**:
+- Session cookie name: `base2_session`
+- CSRF cookie name: `base2_csrf`
+- CSRF header name: `X-CSRF-Token`
+
 **Rationale**:
 - Satisfies constitution requirements (no sensitive tokens in browser storage; cookie auth; CSRF enforced).
 - Works naturally with a React SPA calling internal API routes.

@@ -6,3 +6,6 @@ psycopg2-binary
 pydantic
 celery
 redis
+pytest
+pytest-asyncio
+httpx
