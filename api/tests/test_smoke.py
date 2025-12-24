@@ -1,5 +1,8 @@
 from fastapi.testclient import TestClient
-from api.main import app
+try:
+    from api.main import app
+except ModuleNotFoundError:
+    from main import app
 
 def test_health_exists():
     client = TestClient(app)

@@ -609,6 +609,8 @@ function Remote-Verify($ip, $keyPath) {
   try {
     $localApiDir = (Join-Path $script:RepoRoot 'api')
     if (Test-Path $localApiDir) {
+      # Ensure remote upload directory exists to avoid scp failure
+      try { & $sshExe @sshArgs "mkdir -p /root/uploads" *> $null } catch { }
       $tmpZip = Join-Path $env:TEMP ("api-overlay-" + $script:RunStamp + ".zip")
       try { if (Test-Path $tmpZip) { Remove-Item -LiteralPath $tmpZip -Force } } catch {}
       Compress-Archive -Path (Join-Path $localApiDir '*') -DestinationPath $tmpZip -Force
