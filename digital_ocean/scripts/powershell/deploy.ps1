@@ -1238,13 +1238,14 @@ try {
       $log += '== npm ci =='
       $ciOut = ''
       $ciExit = 0
+      $prevEAP = $ErrorActionPreference
       try {
-        # Use cmd.exe to avoid Windows PowerShell surfacing stderr from native tools as error records.
+        # npm emits warnings to stderr; with $ErrorActionPreference='Stop' that can become terminating.
+        $ErrorActionPreference = 'Continue'
         $ciOut = (& cmd /c "npm ci --no-audit --no-fund" 2>&1 | Out-String)
         $ciExit = $LASTEXITCODE
-      } catch {
-        $ciOut = ("npm ci threw: " + $_.Exception.Message)
-        $ciExit = 1
+      } finally {
+        $ErrorActionPreference = $prevEAP
       }
       $log += $ciOut.TrimEnd()
       $log += ("npm ci exitCode={0}" -f $ciExit)
@@ -1260,13 +1261,14 @@ try {
           $env:CI = 'true'
           $testOut = ''
           $testExit = 0
+          $prevEAP = $ErrorActionPreference
           try {
+            $ErrorActionPreference = 'Continue'
             # Avoid cross-env (often the source of Windows PATH issues) and rely on PowerShell env.
             $testOut = (& cmd /c "npm test -- --coverage" 2>&1 | Out-String)
             $testExit = $LASTEXITCODE
-          } catch {
-            $testOut = ("npm test threw: " + $_.Exception.Message)
-            $testExit = 1
+          } finally {
+            $ErrorActionPreference = $prevEAP
           }
           $log += $testOut.TrimEnd()
           $log += ("npm test exitCode={0}" -f $testExit)
