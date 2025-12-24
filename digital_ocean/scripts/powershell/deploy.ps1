@@ -1228,21 +1228,28 @@ try {
       if (-not (Test-Path $reactOutDir)) { New-Item -ItemType Directory -Path $reactOutDir -Force | Out-Null }
       $jestOutPath = Join-Path $reactOutDir 'jest.txt'
       Push-Location (Join-Path $script:RepoRoot 'react-app')
+      try { $null = (& npm ci --no-audit --no-fund 2>&1 | Out-String) } catch {}
+      $out = ""
+      $succ = $false
       try {
-        $null = (& npm ci --no-audit --no-fund 2>&1 | Tee-Object -Variable npmCiOut)
-      } catch {}
-      try {
-        $jestOut = & npm run test:ci 2>&1
-        $jestOut | Out-String | Set-Content -Path $jestOutPath -Encoding UTF8
+        $out = (& npm run test:ci 2>&1 | Out-String)
+        $succ = $true
       } catch {
-        $err = $_.Exception.Message
-        "Jest run failed: $err" | Set-Content -Path $jestOutPath -Encoding UTF8
-      } finally {
-        Pop-Location
+        $out = ("npm run test:ci failed: " + $_.Exception.Message)
+        $succ = $false
       }
+      if (-not $succ -and ($out -match "'CI' is not recognized")) {
+        try {
+          $out = (& npx --yes cross-env CI=true react-scripts test --coverage 2>&1 | Out-String)
+          $succ = $true
+        } catch {
+          $out += ("`nFallback with cross-env failed: " + $_.Exception.Message)
+        }
+      }
+      $out | Set-Content -Path $jestOutPath -Encoding UTF8
     } catch {
       Write-Warning ("React Jest execution error: {0}" -f $_.Exception.Message)
-    }
+    } finally { try { Pop-Location } catch {} }
   }
 
   Write-Section "Done"
