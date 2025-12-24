@@ -4,6 +4,10 @@
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 
+// CRA/Jest can struggle with some ESM-only node_modules (e.g., axios). We don't need
+// real HTTP in unit tests, so use a manual mock.
+jest.mock('axios');
+
 // Mock environment variables
 const websiteDomain = process.env.WEBSITE_DOMAIN || 'localhost';
 process.env.REACT_APP_API_URL =
