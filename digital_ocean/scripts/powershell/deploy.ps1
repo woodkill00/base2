@@ -604,6 +604,19 @@ function Remote-Verify($ip, $keyPath) {
   & $scpExe -i $keyPath @($sshCommon) $localEnvPath "root@${ip}:/opt/apps/base2/.env" *> $null
   if ($LASTEXITCODE -ne 0) { throw "Failed to upload .env to droplet (scp exit $LASTEXITCODE)" }
 
+  # Upload local API source overlay to droplet (to ensure runtime OpenAPI fix is present)
+  try {
+    $localApiDir = (Join-Path $script:RepoRoot 'api')
+    if (Test-Path $localApiDir) {
+      $tmpZip = Join-Path $env:TEMP ("api-overlay-" + $script:RunStamp + ".zip")
+      try { if (Test-Path $tmpZip) { Remove-Item -LiteralPath $tmpZip -Force } } catch {}
+      Compress-Archive -Path (Join-Path $localApiDir '*') -DestinationPath $tmpZip -Force
+      & $scpExe -i $keyPath @($sshCommon) $tmpZip "root@${ip}:/root/uploads/api.zip" *> $null
+      try { Remove-Item -LiteralPath $tmpZip -Force } catch {}
+      # Do not fail the deploy if overlay upload fails; remote script will proceed with repo code.
+    }
+  } catch {}
+
   # Create a remote verification script to avoid quoting pitfalls
   $tmpScript = Join-Path $env:TEMP "remote_verify.sh"
   $scriptContent = @'
@@ -643,6 +656,26 @@ if [ -d /opt/apps/base2 ]; then
   # Restore .env after repo sync so Compose uses the deployed values
   if [ -f /root/logs/build/env-backup.env ]; then
     cp -f /root/logs/build/env-backup.env .env || true
+  fi
+
+  # If a local API overlay was uploaded, apply it before building images
+  if [ -f /root/uploads/api.zip ]; then
+    mkdir -p /opt/apps/base2/api || true
+    python3 - <<'PY' > /root/logs/api-overlay.txt 2>&1
+import sys, zipfile
+from pathlib import Path
+src = Path('/root/uploads/api.zip')
+dest = Path('/opt/apps/base2/api')
+print('overlay: src exists?', src.exists())
+print('overlay: dest', dest)
+if src.exists():
+    with zipfile.ZipFile(src, 'r') as z:
+        z.extractall(dest)
+print('overlay: done')
+PY
+    # Diagnostic: capture the first 200 lines of main.py and grep for SessionCookie marker
+    (sed -n '1,200p' /opt/apps/base2/api/main.py > /root/logs/api-main-head.txt) || true
+    (grep -n "SessionCookie" /opt/apps/base2/api/main.py > /root/logs/api-main-grep.txt) || true
   fi
 
   # Guardrail: htpasswd strings must not be double-escaped in the droplet .env.
@@ -685,12 +718,14 @@ PY
   # Capture build and up logs for the core stack
   docker compose -f local.docker.yml build --no-cache traefik > /root/logs/build/traefik-build.txt 2>&1 || true
   docker compose -f local.docker.yml build django > /root/logs/build/django-build.txt 2>&1 || true
-  docker compose -f local.docker.yml build api > /root/logs/build/api-build.txt 2>&1 || true
+  docker compose -f local.docker.yml build --no-cache api > /root/logs/build/api-build.txt 2>&1 || true
   docker compose -f local.docker.yml build react-app > /root/logs/build/react-build.txt 2>&1 || true
 
   # Bring up core services needed for edge routing (avoid 502 due to missing upstreams)
   # Also start Celery worker/beat by default (Option A: no profile gating).
   docker compose -f local.docker.yml up -d --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat > /root/logs/build/compose-up-core.txt 2>&1 || true
+  # Ensure API container uses the freshly built image
+  docker compose -f local.docker.yml up -d --force-recreate api > /root/logs/build/api-up.txt 2>&1 || true
   docker compose -f local.docker.yml up -d --force-recreate traefik > /root/logs/build/traefik-up.txt 2>&1 || true
 
   # Ensure Flower is started (kept as a separate log artifact)

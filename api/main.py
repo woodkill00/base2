@@ -21,6 +21,46 @@ app = FastAPI(
     openapi_url=None if ENV == "production" else "/openapi.json",
 )
 
+# Customize OpenAPI to include required security schemes from the external contract.
+try:
+    from fastapi.openapi.utils import get_openapi
+
+    def custom_openapi():
+        openapi_schema = get_openapi(
+            title=app.title,
+            version="0.1.0",
+            description="External API contract surface for Base2",
+            routes=app.routes,
+        )
+        comps = openapi_schema.setdefault("components", {})
+        sec = comps.setdefault("securitySchemes", {})
+        # Session cookie scheme required by contract
+        sec["SessionCookie"] = {
+            "type": "apiKey",
+            "in": "cookie",
+            "name": "base2_session",
+            "description": "HttpOnly cookie carrying the primary session credential.",
+        }
+        # CSRF token header scheme required by contract
+        sec["CsrfToken"] = {
+            "type": "apiKey",
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "description": "CSRF token header required for state-changing requests.",
+        }
+        app.openapi_schema = openapi_schema
+        return app.openapi_schema
+
+    # Assign override and eagerly generate schema so it's ready before first request
+    app.openapi = custom_openapi
+    try:
+        app.openapi()
+    except Exception:
+        pass
+except Exception:
+    # If OpenAPI customization fails, proceed without breaking runtime.
+    pass
+
 @app.get("/health")
 async def health():
     return {"ok": True, "service": "api", "db_ok": db_ping()}
