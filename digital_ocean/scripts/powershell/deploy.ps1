@@ -943,7 +943,8 @@ PY
   # Run service test suites inside containers and capture outputs
   mkdir -p /root/logs || true
   # FastAPI (api) pytest
-  docker compose -f local.docker.yml exec -T api sh -lc 'pytest -q' > /root/logs/api-pytest.txt 2>&1 || true
+  # Ensure we run from /app so `import main` / local imports resolve as expected.
+  docker compose -f local.docker.yml exec -T api sh -lc 'cd /app && pytest -q' > /root/logs/api-pytest.txt 2>&1 || true
   # Django pytest
   docker compose -f local.docker.yml exec -T django sh -lc 'pytest -q' > /root/logs/django-pytest.txt 2>&1 || true
   date -u +"%Y-%m-%dT%H:%M:%SZ" > /root/logs/remote_verify.done || true
