@@ -156,7 +156,7 @@ function Check-TlsCert([string]$artifactDir, [string]$domain) {
 function Check-OpenApi([string]$artifactDir, [string]$domain) {
   $fail = @()
   $u = "https://$domain/api/openapi.json"
-  $payload = [ordered]@{ url = $u; status = 0; ok = $false; openapi = ''; title = ''; pathsCount = 0 }
+  $payload = [ordered]@{ url = $u; status = 0; ok = $false; openapi = ''; title = ''; pathsCount = 0; sessionCookieName = '' }
 
   try {
     $resp = Curl-Get $u
@@ -182,6 +182,20 @@ function Check-OpenApi([string]$artifactDir, [string]$domain) {
       $payload.pathsCount = $pc
       if ($pc -le 0) { $fail += 'OpenAPI doc has zero paths' }
     } catch {}
+
+    # Validate session cookie governance aligns with contract
+    try {
+      $cookieName = ''
+      if ($doc.components -and $doc.components.securitySchemes -and $doc.components.securitySchemes.SessionCookie) {
+        $cookieName = '' + $doc.components.securitySchemes.SessionCookie.name
+      }
+      $payload.sessionCookieName = $cookieName
+      if (-not $cookieName) {
+        $fail += 'OpenAPI missing components.securitySchemes.SessionCookie.name'
+      } elseif ($cookieName -ne 'base2_session') {
+        $fail += "OpenAPI session cookie name mismatch: expected base2_session, got $cookieName"
+      }
+    } catch { $fail += 'Failed to validate OpenAPI session cookie name' }
 
     $payload.ok = ($fail.Count -eq 0)
   } catch {
@@ -650,6 +664,49 @@ function Curl-PostJson([string]$url, [string]$jsonBody = '{}') {
   return [pscustomobject]@{ status = $status; body = $body }
 }
 
+# Compute percentile (e.g., 0.95 => p95) from an array of millisecond durations
+function Get-Percentile([double[]]$values, [double]$p) {
+  if (-not $values -or $values.Count -eq 0) { return $null }
+  $sorted = @($values | Sort-Object)
+  $n = $sorted.Count
+  if ($n -eq 1) { return [double]$sorted[0] }
+  if ($p -lt 0) { $p = 0 }
+  if ($p -gt 1) { $p = 1 }
+  $rank = [Math]::Ceiling($p * $n) - 1
+  if ($rank -lt 0) { $rank = 0 }
+  if ($rank -ge $n) { $rank = $n - 1 }
+  return [double]$sorted[$rank]
+}
+
+# Measure latency for an endpoint using HEAD-based status to minimize payload
+function Measure-EndpointLatency([string]$url, [int]$samples = 20, [int]$sleepMs = 100) {
+  $durations = New-Object System.Collections.Generic.List[double]
+  $codes = New-Object System.Collections.Generic.List[int]
+  for ($i = 0; $i -lt $samples; $i++) {
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    $code = 0
+    try { $code = [int](Curl-GetStatusOnly $url) } catch { $code = 0 }
+    $sw.Stop()
+    $codes.Add($code) | Out-Null
+    $durations.Add([double]$sw.Elapsed.TotalMilliseconds) | Out-Null
+    if ($sleepMs -gt 0 -and $i -lt ($samples - 1)) { Start-Sleep -Milliseconds $sleepMs }
+  }
+  $okDurations = @()
+  for ($j=0; $j -lt $durations.Count; $j++) { if ($codes[$j] -eq 200) { $okDurations += $durations[$j] } }
+  $p50 = Get-Percentile $okDurations 0.5
+  $p95 = Get-Percentile $okDurations 0.95
+  return [ordered]@{
+    url = $url
+    samplesRequested = $samples
+    samplesTaken = $durations.Count
+    successCount = $okDurations.Count
+    durationsMs = @($durations)
+    statusCodes = @($codes)
+    p50Ms = $p50
+    p95Ms = $p95
+  }
+}
+
 function Try-RateLimit([string]$domain, [int]$burst) {
   $codes = @()
   for ($i = 0; $i -lt $burst; $i++) {
@@ -868,6 +925,11 @@ $result = [ordered]@{
   clientDnsCheck = [ordered]@{ enabled = $false; ok = $false; expectedIpv4 = ''; failures = @() }
   failures = @()
 }
+
+# Emit explicit artifact for staging-only TLS resolver verification
+try {
+  Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'traefik' -fileName 'tls-staging.json' -content ([ordered]@{ ok = [bool]$result.stagingResolverOK })
+} catch {}
 
 if ($CheckDns) {
   $result.doDnsCheck = [ordered]@{ enabled = $true; ok = ($doDnsFails.Count -eq 0); expectedIpv4 = $ExpectedIpv4; expectedIpv6 = $ExpectedIpv6 }

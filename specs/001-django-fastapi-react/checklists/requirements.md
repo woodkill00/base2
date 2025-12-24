@@ -1,8 +1,8 @@
-# Specification Quality Checklist: FastAPI + Django Automated Deployment
+# Specification Quality Checklist: Full-stack Baseline
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
-**Created**: 2025-12-18
-**Feature**: [specs/001-fastapi-django-deploy/spec.md](specs/001-fastapi-django-deploy/spec.md)
+**Created**: 2025-12-24
+**Feature**: [Link to spec.md](../spec.md)
 
 ## Content Quality
 
@@ -31,6 +31,4 @@
 
 ## Notes
 
-- Items marked incomplete require spec updates before `/speckit.clarify` or `/speckit.plan`
-  
-  (No outstanding clarifications.)
+- Validation completed 2025-12-24; no spec changes required before planning.

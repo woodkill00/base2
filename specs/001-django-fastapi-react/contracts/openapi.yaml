@@ -1,0 +1,373 @@
+openapi: 3.0.3
+info:
+  title: Base2 API (External Contract)
+  version: 0.1.0
+  description: |
+    External API contract for the Full-stack Baseline feature.
+
+    Note: Clients call `/api/*` paths. Traefik strips the `/api` prefix before forwarding
+    to the FastAPI container, so the service may implement routes without the `/api` prefix.
+servers:
+  - url: https://{domain}
+    variables:
+      domain:
+        default: example.com
+
+components:
+  securitySchemes:
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: base2_session
+      description: HttpOnly cookie carrying the primary session credential.
+    CsrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: CSRF token header required for state-changing requests.
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [detail]
+      properties:
+        detail:
+          type: string
+
+    HealthResponse:
+      type: object
+      required: [ok, service]
+      properties:
+        ok:
+          type: boolean
+        service:
+          type: string
+        db_ok:
+          type: boolean
+
+    UserMe:
+      type: object
+      required: [email]
+      properties:
+        id:
+          type: string
+          description: Stable user identifier.
+        email:
+          type: string
+          format: email
+        display_name:
+          type: string
+        avatar_url:
+          type: string
+        bio:
+          type: string
+
+    SignupRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        username:
+          type: string
+
+    LoginRequest:
+      type: object
+      required: [password]
+      properties:
+        email:
+          type: string
+          format: email
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+
+    ProfileUpdateRequest:
+      type: object
+      properties:
+        display_name:
+          type: string
+        avatar_url:
+          type: string
+        bio:
+          type: string
+
+    OAuthStartResponse:
+      type: object
+      required: [authorization_url]
+      properties:
+        authorization_url:
+          type: string
+
+    OAuthCallbackRequest:
+      type: object
+      required: [code, state]
+      properties:
+        code:
+          type: string
+        state:
+          type: string
+
+    CeleryEnqueueResponse:
+      type: object
+      required: [task_id]
+      properties:
+        task_id:
+          type: string
+
+    CeleryResultResponse:
+      type: object
+      required: [task_id, ready, state]
+      properties:
+        task_id:
+          type: string
+        ready:
+          type: boolean
+        successful:
+          type: boolean
+        state:
+          type: string
+        result:
+          nullable: true
+
+paths:
+  /api/health:
+    get:
+      summary: Health check (external)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/users/signup:
+    post:
+      summary: Create account and sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupRequest'
+      responses:
+        '201':
+          description: Created
+          headers:
+            Set-Cookie:
+              description: Session and CSRF cookies are set on success.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserMe'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/login:
+    post:
+      summary: Sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Signed in
+          headers:
+            Set-Cookie:
+              description: Session and CSRF cookies are set on success.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserMe'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/logout:
+    post:
+      summary: Sign out
+      security:
+        - SessionCookie: []
+      responses:
+        '204':
+          description: Signed out (cookies cleared)
+        '401':
+          description: Not signed in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/me:
+    get:
+      summary: Current user
+      security:
+        - SessionCookie: []
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserMe'
+        '401':
+          description: Not signed in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    patch:
+      summary: Update profile fields
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdateRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserMe'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not signed in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: CSRF rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/oauth/google/start:
+    post:
+      summary: Start Google OAuth (returns authorization URL)
+      responses:
+        '200':
+          description: Authorization URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthStartResponse'
+
+  /api/oauth/google/callback:
+    post:
+      summary: Complete Google OAuth (exchange code)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthCallbackRequest'
+      responses:
+        '200':
+          description: Signed in
+          headers:
+            Set-Cookie:
+              description: Session and CSRF cookies are set on success.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserMe'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: OAuth rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/celery/ping:
+    post:
+      summary: Enqueue a celery ping task
+      responses:
+        '200':
+          description: Enqueued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CeleryEnqueueResponse'
+
+  /api/celery/result/{task_id}:
+    get:
+      summary: Read celery task result
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CeleryResultResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

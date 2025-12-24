@@ -1068,6 +1068,21 @@ try {
     throw $script:EarlyExitSentinel
   }
   Validate-DoCreds
+  
+  # Default AllTests to UpdateOnly when an environment exists and -Full was not requested.
+  if ($AllTests -and -not $Full -and -not $UpdateOnly) {
+    try {
+      $ipCheck = Get-DropletIp
+      if ($ipCheck) {
+        Write-Section "AllTests: existing environment detected ($ipCheck); defaulting to -UpdateOnly"
+        $UpdateOnly = $true
+      } else {
+        Write-Section "AllTests: no existing environment detected; proceeding without -UpdateOnly"
+      }
+    } catch {
+      Write-Verbose ("AllTests UpdateOnly default check failed: {0}" -f $_.Exception.Message)
+    }
+  }
   Run-Orchestrator
 
   $resolvedIp = Get-DropletIp
