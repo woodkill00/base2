@@ -1239,7 +1239,8 @@ try {
       $ciOut = ''
       $ciExit = 0
       try {
-        $ciOut = (& npm ci --no-audit --no-fund 2>&1 | Out-String)
+        # Use cmd.exe to avoid Windows PowerShell surfacing stderr from native tools as error records.
+        $ciOut = (& cmd /c "npm ci --no-audit --no-fund" 2>&1 | Out-String)
         $ciExit = $LASTEXITCODE
       } catch {
         $ciOut = ("npm ci threw: " + $_.Exception.Message)
@@ -1261,7 +1262,7 @@ try {
           $testExit = 0
           try {
             # Avoid cross-env (often the source of Windows PATH issues) and rely on PowerShell env.
-            $testOut = (& npm test -- --coverage 2>&1 | Out-String)
+            $testOut = (& cmd /c "npm test -- --coverage" 2>&1 | Out-String)
             $testExit = $LASTEXITCODE
           } catch {
             $testOut = ("npm test threw: " + $_.Exception.Message)
