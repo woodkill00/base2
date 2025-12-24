@@ -1229,25 +1229,51 @@ try {
       if (-not (Test-Path $reactOutDir)) { New-Item -ItemType Directory -Path $reactOutDir -Force | Out-Null }
       $jestOutPath = Join-Path $reactOutDir 'jest.txt'
       Push-Location (Join-Path $script:RepoRoot 'react-app')
-      try { $null = (& npm ci --no-audit --no-fund 2>&1 | Out-String) } catch {}
-      $out = ""
-      $succ = $false
+      $log = @()
+      $log += ("UTC: {0}" -f (Get-UtcTimestamp))
+      try { $log += (& node --version 2>&1 | Out-String).TrimEnd() } catch {}
+      try { $log += (& npm --version 2>&1 | Out-String).TrimEnd() } catch {}
+      $log += ''
+
+      $log += '== npm ci =='
+      $ciOut = ''
+      $ciExit = 0
       try {
-        $out = (& npm run test:ci 2>&1 | Out-String)
-        $succ = $true
+        $ciOut = (& npm ci --no-audit --no-fund 2>&1 | Out-String)
+        $ciExit = $LASTEXITCODE
       } catch {
-        $out = ("npm run test:ci failed: " + $_.Exception.Message)
-        $succ = $false
+        $ciOut = ("npm ci threw: " + $_.Exception.Message)
+        $ciExit = 1
       }
-      if (-not $succ -and ($out -match "'CI' is not recognized")) {
+      $log += $ciOut.TrimEnd()
+      $log += ("npm ci exitCode={0}" -f $ciExit)
+      $log += ''
+
+      if ($ciExit -ne 0) {
+        $log += 'Skipping Jest because npm ci failed.'
+        $log | Set-Content -Path $jestOutPath -Encoding UTF8
+      } else {
+        $log += '== Jest (CRA) =='
+        $prevCI = $env:CI
         try {
-          $out = (& npx --yes cross-env CI=true react-scripts test --coverage 2>&1 | Out-String)
-          $succ = $true
-        } catch {
-          $out += ("`nFallback with cross-env failed: " + $_.Exception.Message)
+          $env:CI = 'true'
+          $testOut = ''
+          $testExit = 0
+          try {
+            # Avoid cross-env (often the source of Windows PATH issues) and rely on PowerShell env.
+            $testOut = (& npm test -- --coverage 2>&1 | Out-String)
+            $testExit = $LASTEXITCODE
+          } catch {
+            $testOut = ("npm test threw: " + $_.Exception.Message)
+            $testExit = 1
+          }
+          $log += $testOut.TrimEnd()
+          $log += ("npm test exitCode={0}" -f $testExit)
+        } finally {
+          $env:CI = $prevCI
         }
+        $log | Set-Content -Path $jestOutPath -Encoding UTF8
       }
-      $out | Set-Content -Path $jestOutPath -Encoding UTF8
     } catch {
       Write-Warning ("React Jest execution error: {0}" -f $_.Exception.Message)
     } finally { try { Pop-Location } catch {} }
