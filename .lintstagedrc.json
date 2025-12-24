@@ -1,5 +1,4 @@
 {
-  "backend/**/*.js": ["cd backend && npx eslint --fix", "cd backend && npx prettier --write"],
   "react-app/src/**/*.{js,jsx}": [
     "cd react-app && npx eslint --fix",
     "cd react-app && npx prettier --write"

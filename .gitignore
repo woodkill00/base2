@@ -71,6 +71,9 @@ dist/
 out/
 .next/
 
+# Legacy (removed)
+backend/
+
 # Backend build outputs
 backend/build/
 backend/dist/
@@ -124,6 +127,9 @@ pnpm-debug.log*
 # Docker volumes and data
 docker-volumes/
 .docker/
+
+# Traefik ACME storage (certs/account/private keys)
+letsencrypt/
 
 # Docker override files (local development)
 docker-compose.override.yml
