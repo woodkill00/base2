@@ -259,4 +259,4 @@
 
 ### Make AllTests prefer UpdateOnly when possible
 
-- [ ] T078 [US1] Update digital_ocean/scripts/powershell/deploy.ps1 so `-AllTests` prefers `-UpdateOnly` automatically when an existing droplet/environment can be resolved and `-Full` was not requested (fallback to full deploy only when needed; log the chosen mode into artifacts) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T078 [US1] Update digital_ocean/scripts/powershell/deploy.ps1 so `-AllTests` prefers `-UpdateOnly` automatically when an existing droplet/environment can be resolved and `-Full` was not requested (fallback to full deploy only when needed; log the chosen mode into artifacts) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests

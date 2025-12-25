@@ -57,6 +57,7 @@ function Get-ArtifactServiceSubdir([string]$fileName) {
 
     '^remote_verify\.done$' { return 'meta' }
     '^post-deploy-report\.json$' { return 'meta' }
+    '^deploy-mode\.json$' { return 'meta' }
 
     '^manual-test-out\.json$' { return 'meta' }
 
@@ -1115,10 +1116,14 @@ try {
   Validate-DoCreds
   
   # Default AllTests to UpdateOnly when an environment exists and -Full was not requested.
+  $autoSelectedUpdateOnly = $false
+  $detectedExistingIp = ''
   if ($AllTests -and -not $Full -and -not $UpdateOnly) {
     try {
       $ipCheck = Get-DropletIp
       if ($ipCheck) {
+        $detectedExistingIp = [string]$ipCheck
+        $autoSelectedUpdateOnly = $true
         Write-Section "AllTests: existing environment detected ($ipCheck); defaulting to -UpdateOnly"
         $UpdateOnly = $true
       } else {
@@ -1128,6 +1133,31 @@ try {
       Write-Verbose ("AllTests UpdateOnly default check failed: {0}" -f $_.Exception.Message)
     }
   }
+
+  # Record requested vs effective mode into artifacts (T078).
+  try {
+    $dest = Ensure-ArtifactDir
+    $branch = $env:DO_APP_BRANCH
+    if (-not $branch) { $branch = '' }
+    $effectiveMode = 'auto'
+    if ($Full) { $effectiveMode = 'full' }
+    elseif ($UpdateOnly) { $effectiveMode = 'update-only' }
+
+    $modePayload = [ordered]@{
+      timestampUtc = (Get-UtcTimestamp)
+      allTests = [bool]$AllTests
+      requested = [ordered]@{
+        full = [bool]$Full
+        updateOnly = [bool]$UpdateOnly
+      }
+      effectiveMode = $effectiveMode
+      autoSelectedUpdateOnly = [bool]$autoSelectedUpdateOnly
+      detectedExistingIp = $detectedExistingIp
+      doAppBranch = $branch
+    }
+    $modeJson = ($modePayload | ConvertTo-Json -Depth 6)
+    Set-Content -Path (Join-Path $dest 'deploy-mode.json') -Value $modeJson -Encoding UTF8
+  } catch {}
 
   # Reminder banner for UpdateOnly runs: ensure commit/push to origin/<DO_APP_BRANCH>
   if ($UpdateOnly -and -not $Full) {
