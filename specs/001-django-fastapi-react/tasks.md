@@ -251,11 +251,11 @@
 
 ## Verification Enhancements (Additions)
 
-- [ ] T073 [P] [US1] Add explicit staging-only TLS guard verification in digital_ocean/scripts/powershell/test.ps1 (assert ACME uses staging directory; fail if production issuance is configured; write meta/tls-acme-guard.json) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T074 [P] [US1] Add health timing probe in digital_ocean/scripts/powershell/test.ps1 (sample N requests to /api/health; compute p95; enforce SC-002 p95 < 5s; write meta/health-timings.json) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T075 [P] [US1] Add login timing probe in digital_ocean/scripts/powershell/test.ps1 (sample N logins under “normal conditions”; enforce SC-004 99% < 2s; write meta/login-timings.json) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T076 [P] [US1] Add signup-to-dashboard timing probe in digital_ocean/scripts/powershell/test.ps1 (script signup + auth confirmation via /api/users/me; optionally fetch a protected page; enforce SC-003 < 2 minutes; write meta/signup-to-dashboard-timings.json) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T077 [P] [US1] Add health response contract-shape check in digital_ocean/scripts/powershell/test.ps1 (assert /api/health JSON fields minimally: ok/service/db_ok; write meta/health-contract-check.json) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T073 [P] [US1] Add explicit staging-only TLS guard verification in digital_ocean/scripts/powershell/test.ps1 (assert ACME uses staging directory; fail if production issuance is configured; write meta/tls-acme-guard.json) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T074 [P] [US1] Add health timing probe in digital_ocean/scripts/powershell/test.ps1 (sample N requests to /api/health; compute p95; enforce SC-002 p95 < 5s; write meta/health-timings.json) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T075 [P] [US1] Add login timing probe in digital_ocean/scripts/powershell/test.ps1 (sample N logins under “normal conditions”; enforce SC-004 99% < 2s; write meta/login-timings.json) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T076 [P] [US1] Add signup-to-dashboard timing probe in digital_ocean/scripts/powershell/test.ps1 (script signup + auth confirmation via /api/users/me; optionally fetch a protected page; enforce SC-003 < 2 minutes; write meta/signup-to-dashboard-timings.json) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T077 [P] [US1] Add health response contract-shape check in digital_ocean/scripts/powershell/test.ps1 (assert /api/health JSON fields minimally: ok/service/db_ok; write meta/health-contract-check.json) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 
 ### Make AllTests prefer UpdateOnly when possible
 

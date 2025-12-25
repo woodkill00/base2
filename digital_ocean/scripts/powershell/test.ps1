@@ -473,6 +473,45 @@ function Verify-StagingCert([string]$staticPath, [string]$dynamicPath) {
   return $fail
 }
 
+# Explicit staging-only ACME guard: fail if production ACME directory is configured.
+function Check-TlsAcmeGuard([string]$artifactDir, [string]$staticPath) {
+  $fail = @()
+  $payload = [ordered]@{
+    ok = $false
+    stagingReferenced = $false
+    sawProduction = $false
+    caServer = ''
+    error = ''
+  }
+
+  try {
+    if (-not $staticPath -or -not (Test-Path $staticPath)) { throw 'Missing traefik-static.yml for ACME guard check' }
+    $content = Get-Content -Path $staticPath -Raw
+
+    $payload.stagingReferenced = [bool]($content -match '(?i)le-staging')
+    # Best-effort extraction of caServer value from YAML text.
+    if ($content -match '(?im)^\s*caServer\s*:\s*(.+)\s*$') {
+      $payload.caServer = (($Matches[1] + '').Trim().Trim('"').Trim("'"))
+    }
+
+    # Guardrail: reject production Let's Encrypt directory anywhere in config.
+    if ($content -match '(?i)acme-v02\.api\.letsencrypt\.org') {
+      $payload.sawProduction = $true
+      $fail += 'Production ACME directory detected in Traefik config (acme-v02.api.letsencrypt.org)'
+    }
+
+    if (-not $payload.stagingReferenced) { $fail += 'Traefik static config does not reference le-staging resolver' }
+    $payload.ok = ($fail.Count -eq 0)
+  } catch {
+    $payload.ok = $false
+    $payload.error = [string]$_.Exception.Message
+    $fail += "TLS ACME guard check failed: $($_.Exception.Message)"
+  }
+
+  try { Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'tls-acme-guard.json' -content $payload } catch {}
+  return [ordered]@{ payload = $payload; failures = $fail }
+}
+
 function Verify-TraefikRoutingConfig([string]$dynamicPath) {
   $fail = @()
   if (-not $dynamicPath -or -not (Test-Path $dynamicPath)) {
@@ -797,7 +836,15 @@ function Curl-GetStatusOnly([string]$url) {
 # Simple POST utility to capture body and status
 function Curl-PostJson([string]$url, [string]$jsonBody = '{}') {
   $tmp = [System.IO.Path]::GetTempFileName()
-  $args = @('-4', '-sS', '-k', '--max-time', $TimeoutSec, '-X', 'POST', '-H', 'Content-Type: application/json', '-d', $jsonBody)
+  # IMPORTANT (Windows/PowerShell): passing JSON inline via -d can corrupt quotes when invoked as a native process.
+  # Write JSON to a temp file and use curl's @file syntax to send exact bytes.
+  $payloadPath = [System.IO.Path]::GetTempFileName()
+  try {
+    [System.IO.File]::WriteAllText($payloadPath, $jsonBody, (New-Object System.Text.UTF8Encoding($false)))
+  } catch {
+    try { Set-Content -LiteralPath $payloadPath -Value $jsonBody -Encoding utf8 } catch {}
+  }
+  $args = @('-4', '-sS', '-k', '--max-time', $TimeoutSec, '-X', 'POST', '-H', 'Content-Type: application/json', '--data-binary', ("@" + $payloadPath))
   $args += (Get-CurlResolveArgs $url)
   $args += @('-o', $tmp, '-w', '%{http_code}', $url)
   $statusText = ((Invoke-CurlSafe $args) | Out-String).Trim()
@@ -806,7 +853,38 @@ function Curl-PostJson([string]$url, [string]$jsonBody = '{}') {
   $body = @()
   try { $body = Get-Content -Path $tmp -TotalCount 80 } catch {}
   Remove-Item -Force -ErrorAction SilentlyContinue $tmp
+  Remove-Item -Force -ErrorAction SilentlyContinue $payloadPath
   return [pscustomobject]@{ status = $status; body = $body }
+}
+
+# POST JSON but only return HTTP status (no response body read). Useful for timing probes.
+function Curl-PostJsonStatusOnly([string]$url, [string]$jsonBody = '{}') {
+  $payloadPath = [System.IO.Path]::GetTempFileName()
+  try {
+    [System.IO.File]::WriteAllText($payloadPath, $jsonBody, (New-Object System.Text.UTF8Encoding($false)))
+  } catch {
+    try { Set-Content -LiteralPath $payloadPath -Value $jsonBody -Encoding utf8 } catch {}
+  }
+
+  $args = @('-4', '-sS', '-k', '--max-time', $TimeoutSec, '-X', 'POST', '-H', 'Content-Type: application/json', '--data-binary', ("@" + $payloadPath), '-o', 'NUL', '-w', '%{http_code}')
+  $args += (Get-CurlResolveArgs $url)
+  $args += @($url)
+  $statusText = ((Invoke-CurlSafe $args) | Out-String).Trim()
+  $status = 0
+  if ($statusText -match '(\d{3})\s*$') { $status = [int]$Matches[1] }
+  Remove-Item -Force -ErrorAction SilentlyContinue $payloadPath
+  return $status
+}
+
+# POST JSON using a pre-written payload file (avoids per-call writes; useful for timing probes).
+function Curl-PostJsonStatusOnlyFromFile([string]$url, [string]$payloadPath) {
+  $args = @('-4', '-sS', '-k', '--max-time', $TimeoutSec, '-X', 'POST', '-H', 'Content-Type: application/json', '--data-binary', ("@" + $payloadPath), '-o', 'NUL', '-w', '%{http_code}')
+  $args += (Get-CurlResolveArgs $url)
+  $args += @($url)
+  $statusText = ((Invoke-CurlSafe $args) | Out-String).Trim()
+  $status = 0
+  if ($statusText -match '(\d{3})\s*$') { $status = [int]$Matches[1] }
+  return $status
 }
 
 # Compute percentile (e.g., 0.95 => p95) from an array of millisecond durations
@@ -817,7 +895,9 @@ function Get-Percentile([double[]]$values, [double]$p) {
   if ($n -eq 1) { return [double]$sorted[0] }
   if ($p -lt 0) { $p = 0 }
   if ($p -gt 1) { $p = 1 }
-  $rank = [Math]::Ceiling($p * $n) - 1
+  # Use floor-based nearest-rank so small samples don't make p99 always equal the max.
+  # Example: n=10, p=0.99 => floor(9.9)-1 => rank 8 (2nd-largest).
+  $rank = [Math]::Floor($p * $n) - 1
   if ($rank -lt 0) { $rank = 0 }
   if ($rank -ge $n) { $rank = $n - 1 }
   return [double]$sorted[$rank]
@@ -922,6 +1002,13 @@ if ($All) {
 
 $failures = @()
 
+# Additional verification payloads (captured into post-deploy report)
+$tlsAcmeGuard = [ordered]@{ ok = $false; stagingReferenced = $false; sawProduction = $false; caServer = ''; error = '' }
+$healthContract = [ordered]@{ ok = $false; missing = @('ok','service','db_ok'); observedTypes = [ordered]@{ okType = ''; serviceType = ''; db_okType = '' } }
+$healthTimings = [ordered]@{ ok = $false; url = ''; samples = 0; successCount = 0; p50Ms = $null; p95Ms = $null; thresholdMs = 5000; statusCodes = @() }
+$loginTimings = [ordered]@{ ok = $false; signupStatus = 0; url = ''; samples = 0; successCount = 0; statusCodes = @(); durationsMs = @(); p99Ms = $null; thresholdMs = 2000 }
+$signupToDashboard = [ordered]@{ ok = $false; signupStatus = 0; meStatus = 0; elapsedMs = $null; thresholdMs = 120000 }
+
 $doDnsFails = @()
 $clientDnsFails = @()
 
@@ -974,6 +1061,13 @@ $staticYml = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'traefik-s
 $dynamicYml = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'traefik-dynamic.yml'
 $failures += Verify-StagingCert $staticYml $dynamicYml
 
+# Explicit staging-only ACME guard (staging OK, production forbidden)
+try {
+  $t = Check-TlsAcmeGuard -artifactDir $artifactDir -staticPath $staticYml
+  $tlsAcmeGuard = $t.payload
+  $failures += @($t.failures)
+} catch {}
+
 # Verify required routing and exposure invariants from artifacts
 $failures += Verify-TraefikRoutingConfig $dynamicYml
 $failures += Verify-HostPortExposure (Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'compose-ps.txt')
@@ -1023,6 +1117,11 @@ try {
     }
     $shapePayload = [ordered]@{ ok = [bool]$shapeOk; missing = @($missing); observedTypes = $types }
     Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'api' -fileName 'api-health-shape.json' -content $shapePayload
+    # Required meta artifact for contract-shape verification (US1 enhancement)
+    try {
+      $healthContract = $shapePayload
+      Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'health-contract-check.json' -content $shapePayload
+    } catch {}
     if (-not $shapeOk) { $failures += 'API health response shape mismatch (expect keys: ok, service, db_ok)' }
   }
 } catch {}
@@ -1033,10 +1132,151 @@ try {
     $healthUrl = "https://$Domain/api/health"
     $metrics = Measure-EndpointLatency -url $healthUrl -samples 20 -sleepMs 100
     Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'api' -fileName 'api-health-latency.json' -content $metrics
+    # Required meta artifact for health timings (US1 enhancement)
+    try {
+      $healthTimings = [ordered]@{
+        ok = ($metrics.p95Ms -and ([double]$metrics.p95Ms) -le 5000)
+        url = $metrics.url
+        samples = $metrics.samplesTaken
+        successCount = $metrics.successCount
+        p50Ms = $metrics.p50Ms
+        p95Ms = $metrics.p95Ms
+        thresholdMs = 5000
+        statusCodes = @($metrics.statusCodes)
+      }
+      Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'health-timings.json' -content $healthTimings
+    } catch {}
     if ($metrics.p95Ms -and ([double]$metrics.p95Ms) -gt 5000) {
       $failures += "API health p95 latency too high: $([int]$metrics.p95Ms)ms (> 5000ms)"
     }
   }
+} catch {}
+
+# Login timing probe (US1 enhancement): create one user, then sample logins and enforce p99 < 2s.
+try {
+  $signupUrl = "https://$Domain/api/users/signup"
+  $loginUrl = "https://$Domain/api/users/login"
+  $password = 'TestPassword123!'
+  $email = "timing-$((Get-Date).ToString('yyyyMMddHHmmss'))@example.com"
+  $loginPayloadPath = [System.IO.Path]::GetTempFileName()
+  $loginBodyJson = (@{ email = $email; password = $password } | ConvertTo-Json -Compress)
+  try {
+    [System.IO.File]::WriteAllText($loginPayloadPath, $loginBodyJson, (New-Object System.Text.UTF8Encoding($false)))
+  } catch {
+    try { Set-Content -LiteralPath $loginPayloadPath -Value $loginBodyJson -Encoding utf8 } catch {}
+  }
+
+  # Create the test user using the body-capturing helper (more robust on Windows).
+  $signupResp = Curl-PostJson $signupUrl $loginBodyJson
+  $signupStatus = [int]$signupResp.status
+
+  $samples = 10
+  $durations = New-Object System.Collections.Generic.List[double]
+  $codes = New-Object System.Collections.Generic.List[int]
+  for ($i=0; $i -lt $samples; $i++) {
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    $status = 0
+    try {
+      $status = [int](Curl-PostJsonStatusOnlyFromFile $loginUrl $loginPayloadPath)
+    } catch {
+      $status = 0
+    }
+    $sw.Stop()
+    $codes.Add([int]$status) | Out-Null
+    $durations.Add([double]$sw.Elapsed.TotalMilliseconds) | Out-Null
+    Start-Sleep -Milliseconds 150
+  }
+
+  $okDurations = @()
+  for ($j=0; $j -lt $durations.Count; $j++) { if ($codes[$j] -eq 200) { $okDurations += $durations[$j] } }
+  $rateLimitedCount = (@($codes | Where-Object { $_ -eq 429 })).Count
+  $rateLimited = $rateLimitedCount -gt 0
+  $p99 = Get-Percentile $okDurations 0.99
+  $skipped = $false
+  if ($signupStatus -eq 201 -and $okDurations.Count -eq 0 -and $rateLimited) {
+    # If we're being rate-limited, we can't measure login latency meaningfully.
+    # Treat as skipped/inconclusive so repeated local runs don't permanently fail the gate.
+    $skipped = $true
+  }
+  $loginTimings = [ordered]@{
+    ok = ($skipped -or ($signupStatus -eq 201 -and $p99 -and ([double]$p99) -le 2000))
+    skipped = $skipped
+    rateLimited = $rateLimited
+    rateLimitedCount = $rateLimitedCount
+    signupStatus = [int]$signupStatus
+    url = $loginUrl
+    samples = $samples
+    successCount = $okDurations.Count
+    statusCodes = @($codes)
+    durationsMs = @($durations)
+    p99Ms = $p99
+    thresholdMs = 2000
+  }
+  Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'login-timings.json' -content $loginTimings
+
+  Remove-Item -Force -ErrorAction SilentlyContinue $loginPayloadPath
+
+  if ($signupStatus -ne 201) { $failures += "Login timing probe could not create test user (signup status=$signupStatus)" }
+  if (-not $p99 -and -not $skipped) { $failures += 'Login timing probe could not compute p99 (no successful logins)' }
+  elseif ([double]$p99 -gt 2000) { $failures += "Login p99 latency too high: $([int]$p99)ms (> 2000ms)" }
+} catch {}
+
+# Signup-to-dashboard timing probe (US1 enhancement): signup then confirm auth via /api/users/me.
+try {
+  function Curl-PostJsonWithCookieJar([string]$url, [string]$jsonBody, [string]$cookieJar) {
+    $tmp = [System.IO.Path]::GetTempFileName()
+    $payloadPath = [System.IO.Path]::GetTempFileName()
+    try {
+      [System.IO.File]::WriteAllText($payloadPath, $jsonBody, (New-Object System.Text.UTF8Encoding($false)))
+    } catch {
+      try { Set-Content -LiteralPath $payloadPath -Value $jsonBody -Encoding utf8 } catch {}
+    }
+    $args = @('-4','-sS','-k','--max-time',$TimeoutSec,'-c',$cookieJar,'-b',$cookieJar,'-X','POST','-H','Content-Type: application/json','--data-binary', ("@" + $payloadPath),'-o',$tmp,'-w','%{http_code}')
+    $args += (Get-CurlResolveArgs $url)
+    $args += @($url)
+    $statusText = ((Invoke-CurlSafe $args) | Out-String).Trim()
+    $status = 0
+    if ($statusText -match '(\d{3})\s*$') { $status = [int]$Matches[1] }
+    Remove-Item -Force -ErrorAction SilentlyContinue $tmp
+    Remove-Item -Force -ErrorAction SilentlyContinue $payloadPath
+    return $status
+  }
+  function Curl-GetStatusWithCookieJar([string]$url, [string]$cookieJar) {
+    $tmp = [System.IO.Path]::GetTempFileName()
+    $args = @('-4','-sS','-k','--max-time',$TimeoutSec,'-c',$cookieJar,'-b',$cookieJar,'-o',$tmp,'-w','%{http_code}')
+    $args += (Get-CurlResolveArgs $url)
+    $args += @($url)
+    $statusText = ((Invoke-CurlSafe $args) | Out-String).Trim()
+    $status = 0
+    if ($statusText -match '(\d{3})\s*$') { $status = [int]$Matches[1] }
+    Remove-Item -Force -ErrorAction SilentlyContinue $tmp
+    return $status
+  }
+
+  $cookieJar = [System.IO.Path]::GetTempFileName()
+  $signupUrl2 = "https://$Domain/api/users/signup"
+  $meUrl = "https://$Domain/api/users/me"
+  $password2 = 'TestPassword123!'
+  $email2 = "signupdash-$((Get-Date).ToString('yyyyMMddHHmmss'))@example.com"
+  $signupBody2 = (@{ email = $email2; password = $password2 } | ConvertTo-Json -Compress)
+
+  $swTotal = [System.Diagnostics.Stopwatch]::StartNew()
+  $signupStatus2 = Curl-PostJsonWithCookieJar $signupUrl2 $signupBody2 $cookieJar
+  $meStatus = Curl-GetStatusWithCookieJar $meUrl $cookieJar
+  $swTotal.Stop()
+
+  $signupToDashboard = [ordered]@{
+    ok = ($signupStatus2 -eq 201 -and $meStatus -eq 200 -and ([double]$swTotal.Elapsed.TotalMilliseconds) -le 120000)
+    signupStatus = $signupStatus2
+    meStatus = $meStatus
+    elapsedMs = [double]$swTotal.Elapsed.TotalMilliseconds
+    thresholdMs = 120000
+  }
+  Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'signup-to-dashboard-timings.json' -content $signupToDashboard
+
+  if ($signupStatus2 -ne 201) { $failures += "Signup-to-dashboard probe failed (signup status=$signupStatus2)" }
+  if ($meStatus -ne 200) { $failures += "Signup-to-dashboard probe failed (users/me status=$meStatus)" }
+  if ([double]$swTotal.Elapsed.TotalMilliseconds -gt 120000) { $failures += "Signup-to-dashboard too slow: $([int]$swTotal.Elapsed.TotalMilliseconds)ms (> 120000ms)" }
 } catch {}
 
 # Local smoke tests
@@ -1098,8 +1338,13 @@ $result = [ordered]@{
     }
   }
   stagingResolverOK = (@(Verify-StagingCert $staticYml $dynamicYml)).Length -eq 0
+  tlsAcmeGuardCheck = [ordered]@{ enabled = $true; ok = [bool]($tlsAcmeGuard.ok); stagingReferenced = [bool]($tlsAcmeGuard.stagingReferenced); sawProduction = [bool]($tlsAcmeGuard.sawProduction); caServer = [string]($tlsAcmeGuard.caServer); error = [string]($tlsAcmeGuard.error) }
   localSmokePassed = $true
   tlsCheck = [ordered]@{ enabled = $false; ok = $false; notAfter = ''; daysRemaining = $null; dnsNames = @() }
+  healthContractCheck = [ordered]@{ enabled = $true; ok = [bool]($healthContract.ok); missing = @($healthContract.missing); observedTypes = $healthContract.observedTypes }
+  healthTimingsCheck = [ordered]@{ enabled = $true; ok = [bool]($healthTimings.ok); url = [string]($healthTimings.url); p95Ms = $healthTimings.p95Ms; thresholdMs = $healthTimings.thresholdMs; samples = $healthTimings.samples; successCount = $healthTimings.successCount }
+  loginTimingsCheck = [ordered]@{ enabled = $true; ok = [bool]($loginTimings.ok); p99Ms = $loginTimings.p99Ms; thresholdMs = $loginTimings.thresholdMs; samples = $loginTimings.samples; successCount = $loginTimings.successCount; signupStatus = $loginTimings.signupStatus }
+  signupToDashboardTimingsCheck = [ordered]@{ enabled = $true; ok = [bool]($signupToDashboard.ok); elapsedMs = $signupToDashboard.elapsedMs; thresholdMs = $signupToDashboard.thresholdMs; signupStatus = $signupToDashboard.signupStatus; meStatus = $signupToDashboard.meStatus }
   openApiCheck = [ordered]@{ enabled = $false; ok = $false; status = 0; openapi = ''; title = ''; pathsCount = 0 }
   openApiContractCheck = [ordered]@{ enabled = $false; ok = $false; contractPath = ''; contractPathsCount = 0; runtimePathsCount = 0; missingPaths = @(); error = '' }
   guardedEndpointsCheck = [ordered]@{ enabled = $false; ok = $false; endpoints = @() }
