@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Common functions and variables for all scripts
 
+# NOTE (Windows): When running these scripts under WSL, repo paths may be reported as `/mnt/c/...`.
+# Under Git Bash, paths will typically be Windows-style (e.g., `C:/...`). If you hit path-mapping
+# issues during prerequisite checks, prefer running the Spec-Kit scripts via Git Bash.
+
 # Get repository root, with fallback for non-git repositories
 get_repo_root() {
     if git rev-parse --show-toplevel >/dev/null 2>&1; then

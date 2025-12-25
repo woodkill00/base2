@@ -64,6 +64,16 @@ How to interpret `meta/post-deploy-report.json`:
 - `guardedEndpointsCheck.endpoints[]` records status codes for unauthenticated probes.
 - `artifactCompletenessCheck.missing` lists required artifacts that were not found.
 
+## Quickstart validation checklist
+
+- Run: `powershell -File digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests -Timestamped`
+- Confirm `meta/post-deploy-report.json` exists for the run
+- Confirm `success=true` and `failures` is empty
+- Confirm `stagingResolverOK=true` and `tlsCheck.ok=true`
+- Confirm `openApiContractCheck.ok=true` and `missingPaths` is empty
+- Confirm `guardedEndpointsCheck.ok=true` (unauthenticated probes return `401`)
+- Confirm `artifactCompletenessCheck.ok=true` and `missing` is empty
+
 ## Common verification expectations
 
 - Traefik uses staging-only ACME resolver (`le-staging`).

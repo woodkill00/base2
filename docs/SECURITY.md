@@ -12,11 +12,12 @@
 - Staging-only ACME (`le-staging`) is enforced; production issuance is disallowed.
 
 ## Rate Limiting
-- Edge (Traefik) coarse rate limiting on auth endpoints.
-- App-level rate limiting (FastAPI) backed by Redis counters.
+- **Edge (Traefik)**: coarse rate limiting on sensitive endpoints (especially auth) to reduce burst abuse.
+- **App-level (FastAPI)**: Redis-backed counters (e.g., keyed by IP + endpoint) for signup/login and other high-risk routes; returns HTTP `429` with a consistent `{detail}` JSON shape.
 
 ## Error Handling
-- Enumeration resistance: authentication errors should be generic; avoid revealing account existence.
+- **Enumeration resistance**: authentication and signup errors must be generic and must not reveal whether an email exists.
+- **Safe failures**: OAuth errors should not include provider tokens, codes, or internal stack traces.
 
 ## Logging & Auditing
 - Record audit events (login success/failure, signup, logout, profile update, OAuth link) with request metadata.
