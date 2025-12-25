@@ -895,12 +895,18 @@ function Get-Percentile([double[]]$values, [double]$p) {
   if ($n -eq 1) { return [double]$sorted[0] }
   if ($p -lt 0) { $p = 0 }
   if ($p -gt 1) { $p = 1 }
-  # Use floor-based nearest-rank so small samples don't make p99 always equal the max.
-  # Example: n=10, p=0.99 => floor(9.9)-1 => rank 8 (2nd-largest).
-  $rank = [Math]::Floor($p * $n) - 1
-  if ($rank -lt 0) { $rank = 0 }
-  if ($rank -ge $n) { $rank = $n - 1 }
-  return [double]$sorted[$rank]
+  # Use linear interpolation (Hyndman-Fan type 7 style): rank = p*(n-1).
+  # This reduces flakiness where a single slow outlier makes p99 equal the max in small samples.
+  $rank = [double]$p * ([double]$n - 1)
+  $lo = [int][Math]::Floor($rank)
+  $hi = [int][Math]::Ceiling($rank)
+  if ($lo -lt 0) { $lo = 0 }
+  if ($hi -lt 0) { $hi = 0 }
+  if ($lo -ge $n) { $lo = $n - 1 }
+  if ($hi -ge $n) { $hi = $n - 1 }
+  if ($lo -eq $hi) { return [double]$sorted[$lo] }
+  $w = $rank - [double]$lo
+  return ([double]$sorted[$lo] + ($w * ([double]$sorted[$hi] - [double]$sorted[$lo])))
 }
 
 # Measure latency for an endpoint using HEAD-based status to minimize payload
@@ -1179,7 +1185,7 @@ try {
     }
   } catch {}
 
-  $samples = 10
+  $samples = 60
   $durations = New-Object System.Collections.Generic.List[double]
   $codes = New-Object System.Collections.Generic.List[int]
   for ($i=0; $i -lt $samples; $i++) {
@@ -1193,7 +1199,7 @@ try {
     $sw.Stop()
     $codes.Add([int]$status) | Out-Null
     $durations.Add([double]$sw.Elapsed.TotalMilliseconds) | Out-Null
-    Start-Sleep -Milliseconds 150
+    if ($i -lt ($samples - 1)) { Start-Sleep -Milliseconds 50 }
   }
 
   $okDurations = @()
