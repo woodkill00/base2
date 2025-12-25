@@ -1170,6 +1170,15 @@ try {
   $signupResp = Curl-PostJson $signupUrl $loginBodyJson
   $signupStatus = [int]$signupResp.status
 
+  # Warm up: avoid counting cold-start effects (TLS handshake/caches) against the latency SLO.
+  try {
+    Start-Sleep -Milliseconds 500
+    for ($w=0; $w -lt 3; $w++) {
+      try { [void](Curl-PostJsonStatusOnlyFromFile $loginUrl $loginPayloadPath) } catch {}
+      Start-Sleep -Milliseconds 300
+    }
+  } catch {}
+
   $samples = 10
   $durations = New-Object System.Collections.Generic.List[double]
   $codes = New-Object System.Collections.Generic.List[int]
