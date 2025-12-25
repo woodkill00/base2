@@ -13,6 +13,9 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 # Trust CSRF origins derived from allowed hosts (https)
 CSRF_TRUSTED_ORIGINS = [f"https://{h}" for h in ALLOWED_HOSTS if h]
 
+# Align CSRF header with repo convention: `X-CSRF-Token`
+CSRF_HEADER_NAME = "HTTP_X_CSRF_TOKEN"
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",

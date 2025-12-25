@@ -99,15 +99,15 @@
 
 ### Tests for User Story 1 (write/extend first) ⚠️
 
-- [ ] T025 [P] [US1] Add contract-vs-runtime OpenAPI path check in digital_ocean/scripts/powershell/test.ps1 by parsing specs/001-django-fastapi-react/contracts/openapi.yaml `paths:` keys and verifying they exist in fetched api/openapi.json (write api/openapi-contract-check.json) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T026 [P] [US1] Add guarded endpoint probes in digital_ocean/scripts/powershell/test.ps1 for unauthenticated access (e.g., /api/users/me, /api/users/logout) and write meta/guarded-endpoints.json ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T027 [P] [US1] Add an artifact completeness check in digital_ocean/scripts/powershell/test.ps1 (assert key artifacts exist: openapi.json, openapi-validation.json, schema-compat-check.json, post-deploy-report.json) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T025 [P] [US1] Add contract-vs-runtime OpenAPI path check in digital_ocean/scripts/powershell/test.ps1 by parsing specs/001-django-fastapi-react/contracts/openapi.yaml `paths:` keys and verifying they exist in fetched api/openapi.json (write api/openapi-contract-check.json) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T026 [P] [US1] Add guarded endpoint probes in digital_ocean/scripts/powershell/test.ps1 for unauthenticated access (e.g., /api/users/me, /api/users/logout) and write meta/guarded-endpoints.json ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T027 [P] [US1] Add an artifact completeness check in digital_ocean/scripts/powershell/test.ps1 (assert key artifacts exist: openapi.json, openapi-validation.json, schema-compat-check.json, post-deploy-report.json) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 
 ### Implementation for User Story 1
 
-- [ ] T028 [US1] Ensure post-deploy report schema includes new check blocks (openApiContractCheck, guardedEndpointsCheck, artifactCompletenessCheck) in digital_ocean/scripts/powershell/test.ps1 ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T029 [US1] Align specs/001-django-fastapi-react/contracts/openapi.yaml with actual external routes (only change if real implementation differs) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T030 [US1] Expand specs/001-django-fastapi-react/quickstart.md with artifact locations and “how to interpret” guidance for meta/post-deploy-report.json ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T028 [US1] Ensure post-deploy report schema includes new check blocks (openApiContractCheck, guardedEndpointsCheck, artifactCompletenessCheck) in digital_ocean/scripts/powershell/test.ps1 ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T029 [US1] Align specs/001-django-fastapi-react/contracts/openapi.yaml with actual external routes (only change if real implementation differs) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T030 [US1] Expand specs/001-django-fastapi-react/quickstart.md with artifact locations and “how to interpret” guidance for meta/post-deploy-report.json ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 
 **Checkpoint**: At this point, US1 is independently verifiable and becomes the deployment safety net for all later stories
 

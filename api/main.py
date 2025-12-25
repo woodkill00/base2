@@ -1,29 +1,11 @@
-from fastapi import FastAPI, HTTPException, Body, Request, Response
+from fastapi import FastAPI, HTTPException, Body
 import os
-from pydantic import BaseModel
 from celery.result import AsyncResult
 import tasks  # ensure tasks module is importable
 from db import db_ping
 
 
-class LoginPayload(BaseModel):
-    username: str | None = None
-    email: str | None = None
-    password: str
-
-
 ENV = os.getenv("ENV", "development")
-
-
-def _session_cookie_name() -> str:
-    return os.getenv("SESSION_COOKIE_NAME", "base2_session")
-
-
-def _has_session_cookie(request: Request) -> bool:
-    try:
-        return bool(request.cookies.get(_session_cookie_name()))
-    except Exception:
-        return False
 
 app = FastAPI(
     title="Base2 API",
@@ -90,66 +72,21 @@ except Exception:
     # If OpenAPI customization fails, proceed without breaking runtime.
     pass
 
+
+# External routes (proxy to Django internal)
+try:
+    from api.routes.auth import router as auth_router
+    from api.routes.users import router as users_router
+
+    app.include_router(auth_router)
+    app.include_router(users_router)
+except Exception:
+    # Keep app bootable even if routes fail to import.
+    pass
+
 @app.get("/health")
 async def health():
     return {"ok": True, "service": "api", "db_ok": db_ping()}
-
-@app.get("/users/me")
-async def get_me(request: Request):
-    if not _has_session_cookie(request):
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    # Django-backed implementation has been removed; FastAPI is now decoupled.
-    raise HTTPException(status_code=501, detail="/api/users/me is not implemented yet")
-# --- Users (proxy to Django internal) ---
-@app.get("/users")
-async def list_users():
-    raise HTTPException(status_code=501, detail="/api/users is not implemented yet")
-
-
-@app.post("/users/login")
-async def users_login(request: Request):
-    raw = await request.body()
-    # DEBUG: write raw body and headers to file immediately
-    try:
-        with open("/tmp/login_debug.txt", "a") as f:
-            f.write("\n==== LOGIN ATTEMPT ====" + os.linesep)
-            f.write("headers: " + str(dict(request.headers)) + os.linesep)
-            f.write("raw body: " + repr(raw) + os.linesep)
-    except Exception as e:
-        pass
-    try:
-        payload = LoginPayload.parse_raw(raw)
-    except Exception as e:
-        try:
-            with open("/tmp/login_debug.txt", "a") as f:
-                f.write("parse error: " + str(e) + os.linesep)
-        except Exception:
-            pass
-        raise HTTPException(status_code=422, detail=f"JSON decode error: {e}")
-    # Accept either username or email, and always forward both if present
-    proxy_payload = {}
-    if payload.username:
-        proxy_payload["username"] = payload.username
-    if payload.email:
-        proxy_payload["email"] = payload.email
-    proxy_payload["password"] = payload.password
-    if not proxy_payload.get("username") and not proxy_payload.get("email"):
-        raise HTTPException(status_code=400, detail="Missing username or email")
-    # Authentication is no longer proxied to Django; this will be
-    # reimplemented to use FastAPI's own data models.
-    raise HTTPException(status_code=501, detail="/api/users/login is not implemented yet")
-
-
-@app.post("/users/signup")
-async def users_signup(request: Request):
-    raise HTTPException(status_code=501, detail="/api/users/signup is not implemented yet")
-
-
-@app.post("/users/logout")
-async def users_logout(request: Request):
-    if not _has_session_cookie(request):
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    raise HTTPException(status_code=501, detail="/api/users/logout is not implemented yet")
 
 
 @app.post("/oauth/google/start")
