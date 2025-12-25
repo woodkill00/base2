@@ -207,9 +207,9 @@
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T069 [P] Update docs/SECURITY.md to include rate limiting policies (Traefik + app-level) and enumeration-safe error guidance ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T070 [P] Add “quickstart validation checklist” to specs/001-django-fastapi-react/quickstart.md (URLs + artifact files + expected report keys) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T071 [P] Add a note to .specify/scripts/bash/common.sh about Git Bash vs WSL path differences on Windows and recommend Git Bash for prereq checks ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T069 [P] Update docs/SECURITY.md to include rate limiting policies (Traefik + app-level) and enumeration-safe error guidance ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T070 [P] Add “quickstart validation checklist” to specs/001-django-fastapi-react/quickstart.md (URLs + artifact files + expected report keys) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T071 [P] Add a note to .specify/scripts/bash/common.sh about Git Bash vs WSL path differences on Windows and recommend Git Bash for prereq checks ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 - [ ] T072 Resolve Spec-Kit numeric-prefix ambiguity by renumbering any conflicting spec directory and updating README.md links (optional, only if another 001-* directory exists) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 
 ---
