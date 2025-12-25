@@ -207,6 +207,141 @@ function Check-OpenApi([string]$artifactDir, [string]$domain) {
   return $fail
 }
 
+function Get-OpenApiContractPaths([string]$contractPath) {
+  if (-not $contractPath -or -not (Test-Path $contractPath)) { return @() }
+  $lines = @(Get-Content -Path $contractPath | ForEach-Object { [string]$_ })
+  $inPaths = $false
+  $pathsIndent = $null
+  $keys = @()
+
+  foreach ($rawLine in $lines) {
+    $line = ($rawLine + '')
+    $trim = $line.Trim()
+    if (-not $trim) { continue }
+    if ($trim.StartsWith('#')) { continue }
+
+    if (-not $inPaths) {
+      if ($line -match '^\s*paths\s*:\s*$') {
+        $inPaths = $true
+        $pathsIndent = ($line.Length - $line.TrimStart().Length)
+      }
+      continue
+    }
+
+    $indent = ($line.Length - $line.TrimStart().Length)
+    if ($pathsIndent -ne $null -and $indent -le $pathsIndent -and ($line -notmatch '^\s*#')) {
+      break
+    }
+
+    if ($line -match '^\s{2,}([\x27\"]?)(/[^\x27"\s:]+)\1\s*:\s*$') {
+      $k = ($Matches[2] + '').Trim()
+      if ($k) { $keys += $k }
+    }
+  }
+
+  return @($keys | Select-Object -Unique)
+}
+
+function Check-OpenApiContract([string]$artifactDir, [string]$contractPath) {
+  $fail = @()
+  $payload = [ordered]@{
+    contractPath = $contractPath
+    ok = $false
+    contractPathsCount = 0
+    runtimePathsCount = 0
+    missingPaths = @()
+    error = ''
+  }
+
+  try {
+    $contractPaths = @(Get-OpenApiContractPaths -contractPath $contractPath)
+    $payload.contractPathsCount = $contractPaths.Count
+    if ($contractPaths.Count -le 0) { $fail += 'OpenAPI contract has zero parsed paths' }
+
+    $runtimePath = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'openapi.json'
+    if (-not $runtimePath) { throw 'Runtime openapi.json artifact not found' }
+    $raw = Get-Content -Path $runtimePath -Raw
+    $doc = $raw | ConvertFrom-Json
+    if (-not $doc -or -not $doc.paths) { throw 'Runtime OpenAPI missing paths' }
+
+    $runtimePaths = @()
+    foreach ($p in $doc.paths.PSObject.Properties) { $runtimePaths += [string]$p.Name }
+    $payload.runtimePathsCount = $runtimePaths.Count
+    if ($runtimePaths.Count -le 0) { $fail += 'Runtime OpenAPI has zero paths' }
+
+    $missing = @()
+    foreach ($cp in $contractPaths) {
+      if ($runtimePaths -notcontains $cp) { $missing += $cp }
+    }
+    $payload.missingPaths = @($missing)
+    if ($missing.Count -gt 0) {
+      $fail += "OpenAPI contract paths missing from runtime: $($missing -join ', ')"
+    }
+
+    $payload.ok = ($fail.Count -eq 0)
+  } catch {
+    $payload.ok = $false
+    $payload.error = [string]$_.Exception.Message
+    $fail += "OpenAPI contract check failed: $($_.Exception.Message)"
+  }
+
+  Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'api' -fileName 'openapi-contract-check.json' -content $payload
+  return [pscustomobject]@{ payload = $payload; failures = @($fail) }
+}
+
+function Check-GuardedEndpoints([string]$artifactDir, [string]$domain) {
+  $fail = @()
+  $endpoints = @(
+    [ordered]@{ name = 'usersMe'; method = 'GET'; url = "https://$domain/api/users/me"; status = 0; ok = $false },
+    [ordered]@{ name = 'usersLogout'; method = 'POST'; url = "https://$domain/api/users/logout"; status = 0; ok = $false }
+  )
+
+  foreach ($ep in $endpoints) {
+    try {
+      $status = 0
+      if ($ep.method -eq 'POST') {
+        $resp = Curl-PostJson $ep.url '{}'
+        $status = [int]$resp.status
+      } else {
+        $status = [int](Curl-GetStatusOnly $ep.url)
+      }
+      $ep.status = $status
+      $ep.ok = (Get-ExpectedGuardedNoAuthOk $status)
+      if (-not $ep.ok) {
+        $fail += "Guarded endpoint expected 401/403 without auth, got $status ($($ep.method) $($ep.url))"
+      }
+    } catch {
+      $ep.status = 0
+      $ep.ok = $false
+      $fail += "Guarded endpoint probe failed: $($_.Exception.Message) ($($ep.method) $($ep.url))"
+    }
+  }
+
+  $payload = [ordered]@{ ok = ($fail.Count -eq 0); endpoints = @($endpoints) }
+  Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'guarded-endpoints.json' -content $payload
+  return [pscustomobject]@{ payload = $payload; failures = @($fail) }
+}
+
+function Check-ArtifactCompleteness([string]$artifactDir, [string[]]$expectedFiles) {
+  $fail = @()
+  $found = [ordered]@{}
+  $missing = @()
+  foreach ($f in $expectedFiles) {
+    $p = Resolve-ArtifactPath -artifactDir $artifactDir -fileName $f
+    $exists = ($p -and (Test-Path $p))
+    $found[$f] = [ordered]@{ exists = [bool]$exists; path = [string]$p }
+    if (-not $exists) { $missing += $f }
+  }
+
+  if ($missing.Count -gt 0) {
+    $fail += "Missing required artifacts: $($missing -join ', ')"
+  }
+
+  $payload = [ordered]@{ ok = ($missing.Count -eq 0); expected = @($expectedFiles); found = $found; missing = @($missing) }
+  Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'artifact-completeness.json' -content $payload
+  return [pscustomobject]@{ payload = $payload; failures = @($fail) }
+}
+
 function Ensure-Dir([string]$path) {
   if (-not $path) { return }
   if (-not (Test-Path $path)) { New-Item -ItemType Directory -Path $path -Force | Out-Null }
@@ -284,6 +419,10 @@ function Get-ArtifactServiceSubdir([string]$fileName) {
     '^api-logs\.txt$' { return 'api' }
     '^api-health(\-slash)?\.(json|status)$' { return 'api' }
 
+    '^openapi\.json$' { return 'api' }
+    '^openapi-validation\.json$' { return 'api' }
+    '^openapi-contract-check\.json$' { return 'api' }
+
     '^curl-.*\.txt$' { return 'smoke' }
 
     '^schema-compat-check\.(json|err|status)$' { return 'database' }
@@ -291,6 +430,10 @@ function Get-ArtifactServiceSubdir([string]$fileName) {
     '^celery-(ping|result)\.json$' { return 'celery' }
 
     '^env-dollar-check\.(txt|status)$' { return 'meta' }
+    '^post-deploy-report\.json$' { return 'meta' }
+    '^admin-host-path-guard\.json$' { return 'meta' }
+    '^guarded-endpoints\.json$' { return 'meta' }
+    '^artifact-completeness\.json$' { return 'meta' }
     default { return '' }
   }
 }
@@ -939,6 +1082,7 @@ $result = [ordered]@{
   domain = $Domain
   logsDir = $LogsDir
   artifactDir = $artifactDir
+  timestamp = ''
   expectedFiles = $expectedFiles
   missingFiles = @()
   headers = [ordered]@{
@@ -955,6 +1099,9 @@ $result = [ordered]@{
   localSmokePassed = $true
   tlsCheck = [ordered]@{ enabled = $false; ok = $false; notAfter = ''; daysRemaining = $null; dnsNames = @() }
   openApiCheck = [ordered]@{ enabled = $false; ok = $false; status = 0; openapi = ''; title = ''; pathsCount = 0 }
+  openApiContractCheck = [ordered]@{ enabled = $false; ok = $false; contractPath = ''; contractPathsCount = 0; runtimePathsCount = 0; missingPaths = @(); error = '' }
+  guardedEndpointsCheck = [ordered]@{ enabled = $false; ok = $false; endpoints = @() }
+  artifactCompletenessCheck = [ordered]@{ enabled = $false; ok = $false; expected = @(); found = @{}; missing = @() }
   rateLimitCheck = [ordered]@{ enabled = $false; burst = 0; saw429 = $false }
   djangoProxy = [ordered]@{ enabled = $false; status = 0; bodySnippet = @() }
   adminCheck = [ordered]@{ enabled = $false; host = ''; statusNoAuth = 0; statusWithAuth = 0 }
@@ -1077,6 +1224,38 @@ if ($CheckOpenApi) {
     }
   } catch {}
   $failures += $openApiFails
+
+  # Contract-vs-runtime OpenAPI path check (contract is YAML under specs/)
+  try {
+    $contractPath = Join-Path $script:RepoRoot 'specs\001-django-fastapi-react\contracts\openapi.yaml'
+    $c = Check-OpenApiContract -artifactDir $artifactDir -contractPath $contractPath
+    $result.openApiContractCheck.enabled = $true
+    $result.openApiContractCheck.ok = [bool]$c.payload.ok
+    $result.openApiContractCheck.contractPath = [string]$c.payload.contractPath
+    $result.openApiContractCheck.contractPathsCount = [int]$c.payload.contractPathsCount
+    $result.openApiContractCheck.runtimePathsCount = [int]$c.payload.runtimePathsCount
+    $result.openApiContractCheck.missingPaths = @($c.payload.missingPaths)
+    $result.openApiContractCheck.error = [string]$c.payload.error
+    $failures += @($c.failures)
+  } catch {
+    $result.openApiContractCheck.enabled = $true
+    $result.openApiContractCheck.ok = $false
+    $result.openApiContractCheck.error = [string]$_.Exception.Message
+    $failures += "OpenAPI contract check failed: $($_.Exception.Message)"
+  }
+
+  # Guarded endpoint probes (unauthenticated should be 401/403)
+  try {
+    $g = Check-GuardedEndpoints -artifactDir $artifactDir -domain $Domain
+    $result.guardedEndpointsCheck.enabled = $true
+    $result.guardedEndpointsCheck.ok = [bool]$g.payload.ok
+    $result.guardedEndpointsCheck.endpoints = @($g.payload.endpoints)
+    $failures += @($g.failures)
+  } catch {
+    $result.guardedEndpointsCheck.enabled = $true
+    $result.guardedEndpointsCheck.ok = $false
+    $failures += "Guarded endpoints check failed: $($_.Exception.Message)"
+  }
 }
 
 # Optional: Test Django proxy endpoint via edge
@@ -1219,13 +1398,54 @@ if ($CheckCelery) {
   if (-not $taskResult) { $failures += "Celery ping task did not complete successfully" }
 }
 
+# Artifact completeness check (key deploy artifacts must exist)
+if ($CheckOpenApi) {
+  try {
+    $acExpected = @('openapi.json','openapi-validation.json','schema-compat-check.json')
+    $ac = Check-ArtifactCompleteness -artifactDir $artifactDir -expectedFiles $acExpected
+    $result.artifactCompletenessCheck.enabled = $true
+    $result.artifactCompletenessCheck.ok = [bool]$ac.payload.ok
+    $result.artifactCompletenessCheck.expected = @($ac.payload.expected)
+    $result.artifactCompletenessCheck.found = $ac.payload.found
+    $result.artifactCompletenessCheck.missing = @($ac.payload.missing)
+    $failures += @($ac.failures)
+  } catch {
+    $result.artifactCompletenessCheck.enabled = $true
+    $result.artifactCompletenessCheck.ok = $false
+    $failures += "Artifact completeness check failed: $($_.Exception.Message)"
+  }
+}
+
 if ($Json) {
+  $result.timestamp = (Get-Date).ToString('s')
+
+  # Write report early so artifact completeness can assert it exists.
+  $result.failures = @($failures)
+  $result.success = $false
+  try { Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'post-deploy-report.json' -content $result } catch {}
+
+  if ($CheckOpenApi) {
+    try {
+      $acExpectedFinal = @('openapi.json','openapi-validation.json','schema-compat-check.json','post-deploy-report.json')
+      $ac2 = Check-ArtifactCompleteness -artifactDir $artifactDir -expectedFiles $acExpectedFinal
+      $result.artifactCompletenessCheck.enabled = $true
+      $result.artifactCompletenessCheck.ok = [bool]$ac2.payload.ok
+      $result.artifactCompletenessCheck.expected = @($ac2.payload.expected)
+      $result.artifactCompletenessCheck.found = $ac2.payload.found
+      $result.artifactCompletenessCheck.missing = @($ac2.payload.missing)
+      $failures += @($ac2.failures)
+    } catch {
+      $failures += "Artifact completeness finalization failed: $($_.Exception.Message)"
+    }
+  }
+
   $result.failures = @($failures)
   $ok = ($failures.Count -eq 0 -and $result.missingFiles.Count -eq 0 -and $result.stagingResolverOK)
   $result.success = $ok
-  $result.timestamp = (Get-Date).ToString('s')
-  # Persist the JSON report under meta/ as a run artifact as well.
+
+  # Persist final form.
   try { Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'post-deploy-report.json' -content $result } catch {}
+
   $jsonStr = $result | ConvertTo-Json -Depth 6
   Write-Output $jsonStr
   try { Pop-Location } catch {}

@@ -39,6 +39,22 @@ Artifacts:
 - Deploy/test runs write artifacts under `local_run_logs/<droplet-ip>-<timestamp>/`.
 - The post-deploy JSON report is stored at `local_run_logs/<run>/meta/post-deploy-report.json`.
 
+Key artifacts to inspect:
+- Report summary: `meta/post-deploy-report.json`
+- OpenAPI runtime: `api/openapi.json`
+- OpenAPI basic validation: `api/openapi-validation.json`
+- OpenAPI contract alignment: `api/openapi-contract-check.json`
+- Guarded endpoint probes: `meta/guarded-endpoints.json`
+- Artifact completeness: `meta/artifact-completeness.json`
+- DB schema compatibility: `database/schema-compat-check.json`
+
+How to interpret `meta/post-deploy-report.json`:
+- `success=true` means no failures, no missing files, and staging TLS resolver checks passed.
+- `failures` lists human-readable failures (including contract mismatches and guarded endpoint violations).
+- `openApiContractCheck.missingPaths` shows contract paths that are not present in runtime OpenAPI.
+- `guardedEndpointsCheck.endpoints[]` records status codes for unauthenticated probes.
+- `artifactCompletenessCheck.missing` lists required artifacts that were not found.
+
 ## Common verification expectations
 
 - Traefik uses staging-only ACME resolver (`le-staging`).

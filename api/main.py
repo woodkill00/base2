@@ -14,6 +14,17 @@ class LoginPayload(BaseModel):
 
 ENV = os.getenv("ENV", "development")
 
+
+def _session_cookie_name() -> str:
+    return os.getenv("SESSION_COOKIE_NAME", "base2_session")
+
+
+def _has_session_cookie(request: Request) -> bool:
+    try:
+        return bool(request.cookies.get(_session_cookie_name()))
+    except Exception:
+        return False
+
 app = FastAPI(
     title="Base2 API",
     docs_url=None if ENV == "production" else "/docs",
@@ -89,6 +100,8 @@ async def api_health():
 
 @app.get("/api/users/me")
 async def get_me(request: Request):
+    if not _has_session_cookie(request):
+        raise HTTPException(status_code=401, detail="Not authenticated")
     # Django-backed implementation has been removed; FastAPI is now decoupled.
     raise HTTPException(status_code=501, detail="/api/users/me is not implemented yet")
 # --- Users (proxy to Django internal) ---
@@ -131,9 +144,26 @@ async def users_login(request: Request):
     raise HTTPException(status_code=501, detail="/api/users/login is not implemented yet")
 
 
+@app.post("/api/users/signup")
+async def users_signup(request: Request):
+    raise HTTPException(status_code=501, detail="/api/users/signup is not implemented yet")
+
+
 @app.post("/api/users/logout")
 async def users_logout(request: Request):
+    if not _has_session_cookie(request):
+        raise HTTPException(status_code=401, detail="Not authenticated")
     raise HTTPException(status_code=501, detail="/api/users/logout is not implemented yet")
+
+
+@app.post("/api/oauth/google/start")
+async def oauth_google_start():
+    raise HTTPException(status_code=501, detail="/api/oauth/google/start is not implemented yet")
+
+
+@app.post("/api/oauth/google/callback")
+async def oauth_google_callback():
+    raise HTTPException(status_code=501, detail="/api/oauth/google/callback is not implemented yet")
 
 
 # --- Catalog (proxy to Django internal) ---
