@@ -144,10 +144,10 @@
 
 ### React minimal auth UI (US2 scope)
 
-- [ ] T045 [P] [US2] Add React tests for login/logout UI in react-app/src/__tests__/auth.test.js (successful login sets authenticated state; logout clears it) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T046 [US2] Implement Login page in react-app/src/pages/Login.jsx (email/password form; calls POST /api/users/login with credentials) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T047 [US2] Implement Signup page in react-app/src/pages/Signup.jsx (email/password; calls POST /api/users/signup) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T048 [US2] Wire routes for /login and /signup in react-app/src/App.js ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T045 [P] [US2] Add React tests for login/logout UI in react-app/src/__tests__/auth.test.js (successful login sets authenticated state; logout clears it) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T046 [US2] Implement Login page in react-app/src/pages/Login.jsx (email/password form; calls POST /api/users/login with credentials) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T047 [US2] Implement Signup page in react-app/src/pages/Signup.jsx (email/password; calls POST /api/users/signup) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T048 [US2] Wire routes for /login and /signup in react-app/src/App.js ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 
 **Checkpoint**: At this point, a user can sign up, sign in, sign out, and the session cookie auth works end-to-end
 

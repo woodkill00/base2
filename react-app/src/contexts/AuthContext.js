@@ -37,10 +37,14 @@ export const AuthProvider = ({ children }) => {
   const register = async (email, password, name) => {
     try {
       setError(null);
-      const data = await authAPI.register(email, password, name);
-      return { success: true, data };
+      const userPayload = await authAPI.register(email, password, name);
+      if (userPayload && userPayload.email) {
+        setUser(userPayload);
+        localStorage.setItem('user', JSON.stringify(userPayload));
+      }
+      return { success: true, data: userPayload };
     } catch (error) {
-      const message = error.response?.data?.message || 'Registration failed';
+      const message = error.response?.data?.detail || error.response?.data?.message || 'Registration failed';
       setError(message);
       return { success: false, error: message };
     }
@@ -50,18 +54,17 @@ export const AuthProvider = ({ children }) => {
   const loginWithEmail = async (email, password) => {
     try {
       setError(null);
-      const data = await authAPI.login(email, password);
-      
-      if (data.success && data.token) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        setUser(data.user);
+      const userPayload = await authAPI.login(email, password);
+
+      if (userPayload && userPayload.email) {
+        localStorage.setItem('user', JSON.stringify(userPayload));
+        setUser(userPayload);
         return { success: true };
       }
-      
+
       return { success: false, error: 'Invalid response from server' };
     } catch (error) {
-      const message = error.response?.data?.message || 'Login failed';
+      const message = error.response?.data?.detail || error.response?.data?.message || 'Login failed';
       setError(message);
       return { success: false, error: message };
     }
@@ -98,10 +101,16 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Logout
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
+  const logout = async () => {
+    try {
+      await authAPI.logout();
+    } catch (error) {
+      // Ignore network/server errors; we still clear local session state.
+    } finally {
+      setUser(null);
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+    }
   };
 
   // Update user profile

@@ -4,6 +4,8 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
 import Items from './pages/Items';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
@@ -24,6 +26,8 @@ function App() {
         <Router>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
             <Route path="/items" element={<Items />} />
             <Route path="/users" element={<Users />} />
             <Route path="/verify-email" element={<VerifyEmail />} />

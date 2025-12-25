@@ -46,11 +46,7 @@ describe('AuthContext', () => {
       name: 'Test User',
     };
 
-    authAPI.login.mockResolvedValue({
-      success: true,
-      token: 'test-token',
-      user: mockUser,
-    });
+    authAPI.login.mockResolvedValue(mockUser);
 
     const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -63,8 +59,6 @@ describe('AuthContext', () => {
     });
 
     expect(result.current.isAuthenticated).toBe(true);
-
-    expect(localStorage.setItem).toHaveBeenCalledWith('token', 'test-token');
     expect(localStorage.setItem).toHaveBeenCalledWith('user', JSON.stringify(mockUser));
   });
 
@@ -72,19 +66,16 @@ describe('AuthContext', () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
 
     // First login
-    authAPI.login.mockResolvedValue({
-      success: true,
-      token: 'test-token',
-      user: { id: 1, email: 'test@example.com' },
-    });
+    authAPI.login.mockResolvedValue({ id: 1, email: 'test@example.com' });
+    authAPI.logout.mockResolvedValue({});
 
     await act(async () => {
       await result.current.loginWithEmail('test@example.com', 'Test1234');
     });
 
     // Then logout
-    act(() => {
-      result.current.logout();
+    await act(async () => {
+      await result.current.logout();
     });
 
     expect(result.current.user).toBeNull();

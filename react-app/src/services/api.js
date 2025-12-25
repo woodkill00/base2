@@ -6,6 +6,9 @@ const API_URL = '/api';
 // Create axios instance
 const api = axios.create({
   baseURL: API_URL,
+  withCredentials: true,
+  xsrfCookieName: 'csrftoken',
+  xsrfHeaderName: 'X-CSRF-Token',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -41,15 +44,27 @@ api.interceptors.response.use(
 
 // Auth API calls
 export const authAPI = {
-  // Register new user
-  register: async (email, password, name) => {
-    const response = await api.post('/auth/register', { email, password, name });
+  // Register new user (cookie session)
+  register: async (email, password, _name) => {
+    const response = await api.post('/users/signup', { email, password });
     return response.data;
   },
 
-  // Login with email/password
+  // Login with email/password (cookie session)
   login: async (email, password) => {
-    const response = await api.post('/auth/login', { email, password });
+    const response = await api.post('/users/login', { email, password });
+    return response.data;
+  },
+
+  // Logout (cookie session)
+  logout: async () => {
+    const response = await api.post('/users/logout');
+    return response.data;
+  },
+
+  // Get current user (cookie session)
+  getMe: async () => {
+    const response = await api.get('/users/me');
     return response.data;
   },
 
@@ -83,11 +98,6 @@ export const authAPI = {
     return response.data;
   },
 
-  // Get current user
-  getMe: async () => {
-    const response = await api.get('/auth/me');
-    return response.data;
-  },
 };
 
 export default api;
