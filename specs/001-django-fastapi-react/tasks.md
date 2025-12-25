@@ -121,26 +121,26 @@
 
 ### Tests for User Story 2 (write first) ⚠️
 
-- [ ] T031 [P] [US2] Add Django tests for internal auth API in django/tests/test_auth_api.py (signup, login, logout, me; duplicate email; generic errors; CSRF rejection) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T032 [P] [US2] Add Django tests for audit events in django/tests/test_audit_events.py (login failure/success actions recorded; secrets not in metadata) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T033 [P] [US2] Add FastAPI proxy tests in api/tests/test_auth_proxy.py (cookie forwarding; header forwarding; error mapping; 429 passthrough) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T034 [P] [US2] Add FastAPI rate limit tests in api/tests/test_rate_limit.py (Redis counter increments; 429 returns {detail}) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T031 [P] [US2] Add Django tests for internal auth API in django/tests/test_auth_api.py (signup, login, logout, me; duplicate email; generic errors; CSRF rejection) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T032 [P] [US2] Add Django tests for audit events in django/tests/test_audit_events.py (login failure/success actions recorded; secrets not in metadata) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T033 [P] [US2] Add FastAPI proxy tests in api/tests/test_auth_proxy.py (cookie forwarding; header forwarding; error mapping; 429 passthrough) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T034 [P] [US2] Add FastAPI rate limit tests in api/tests/test_rate_limit.py (Redis counter increments; 429 returns {detail}) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 
 ### Implementation for User Story 2 (Django internal endpoints)
 
-- [ ] T035 [US2] Implement internal JSON auth views in django/users/api_views.py (signup/login/logout/me/profile patch) using Django auth + sessions ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T036 [US2] Add internal routes in django/users/api_urls.py and mount under /internal/api in django/project/urls.py ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T037 [US2] Implement CSRF bootstrap view in django/users/api_views.py (ensures CSRF cookie is set; returns `{detail}` or token info) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T038 [US2] Ensure UserProfile auto-creation on signup in django/users/models.py or django/users/signals.py (if not already present) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T039 [US2] Emit AuditEvent records for auth actions in django/users/api_views.py using django/users/models.py::AuditEvent ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T035 [US2] Implement internal JSON auth views in django/users/api_views.py (signup/login/logout/me/profile patch) using Django auth + sessions ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T036 [US2] Add internal routes in django/users/api_urls.py and mount under /internal/api in django/project/urls.py ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T037 [US2] Implement CSRF bootstrap view in django/users/api_views.py (ensures CSRF cookie is set; returns `{detail}` or token info) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T038 [US2] Ensure UserProfile auto-creation on signup in django/users/models.py or django/users/signals.py (if not already present) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T039 [US2] Emit AuditEvent records for auth actions in django/users/api_views.py using django/users/models.py::AuditEvent ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 
 ### Implementation for User Story 2 (FastAPI external surface)
 
-- [ ] T040 [US2] Create Django proxy client in api/clients/django_client.py (base URL from api/settings.py; forwards cookies + CSRF header; timeout; error mapping) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T041 [US2] Implement external auth routes in api/routes/auth.py for /users/signup, /users/login, /users/logout and include router in api/main.py ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T042 [US2] Implement external current-user routes in api/routes/users.py for /users/me (GET + PATCH) and include router in api/main.py ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T043 [US2] Apply app-level rate limiting to external signup/login in api/routes/auth.py using api/security/rate_limit.py ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T044 [US2] Update FastAPI OpenAPI metadata in api/main.py (title/version) to remain compatible with specs/001-django-fastapi-react/contracts/openapi.yaml ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T040 [US2] Create Django proxy client in api/clients/django_client.py (base URL from api/settings.py; forwards cookies + CSRF header; timeout; error mapping) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T041 [US2] Implement external auth routes in api/routes/auth.py for /users/signup, /users/login, /users/logout and include router in api/main.py ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T042 [US2] Implement external current-user routes in api/routes/users.py for /users/me (GET + PATCH) and include router in api/main.py ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T043 [US2] Apply app-level rate limiting to external signup/login in api/routes/auth.py using api/security/rate_limit.py ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T044 [US2] Update FastAPI OpenAPI metadata in api/main.py (title/version) to remain compatible with specs/001-django-fastapi-react/contracts/openapi.yaml ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 
 ### React minimal auth UI (US2 scope)
 
