@@ -73,7 +73,7 @@ def test_login_rate_limited_returns_detail(monkeypatch):
     monkeypatch.setattr(rl, "get_client", lambda: fake)
     monkeypatch.setattr(rl, "MAX_REQUESTS", 1)
     monkeypatch.setattr(rl, "WINDOW_MS", 60000)
-    monkeypatch.setattr("api.clients.django_client.django_request", fake_request)
+    monkeypatch.setattr("api.routes._proxy.django_request", fake_request)
 
     client = TestClient(app)
 

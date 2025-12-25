@@ -161,19 +161,19 @@
 
 ### Tests for User Story 3 (write first) ⚠️
 
-- [ ] T049 [P] [US3] Add React tests for protected route gating in react-app/src/__tests__/protected-route.test.js ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T050 [P] [US3] Add React tests for dashboard render in react-app/src/__tests__/dashboard.test.js ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T051 [P] [US3] Add React tests for settings update form in react-app/src/__tests__/settings.test.js ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T052 [P] [US3] Add API integration tests for PATCH /api/users/me allowed fields in api/tests/test_profile_update.py ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T049 [P] [US3] Add React tests for protected route gating in react-app/src/__tests__/protected-route.test.js ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T050 [P] [US3] Add React tests for dashboard render in react-app/src/__tests__/dashboard.test.js ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T051 [P] [US3] Add React tests for settings update form in react-app/src/__tests__/settings.test.js ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T052 [P] [US3] Add API integration tests for PATCH /api/users/me allowed fields in api/tests/test_profile_update.py ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 
 ### Implementation for User Story 3 (React)
 
-- [ ] T053 [US3] Create ProtectedRoute component in react-app/src/components/ProtectedRoute.jsx (redirect to /login on 401/unauthenticated) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T054 [US3] Create auth hook in react-app/src/hooks/useAuth.js (loads current user via GET /api/users/me; exposes loading/authenticated/user) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T055 [US3] Create axios wrapper in react-app/src/lib/apiClient.js (withCredentials; attaches X-CSRF-Token when present) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T056 [US3] Implement Dashboard page in react-app/src/pages/Dashboard.jsx (renders email + basic metadata) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T057 [US3] Implement Settings page in react-app/src/pages/Settings.jsx (edit display_name/avatar_url/bio; calls PATCH /api/users/me) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T058 [US3] Wire routes for /dashboard and /settings in react-app/src/App.js using ProtectedRoute ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T053 [US3] Create ProtectedRoute component in react-app/src/components/ProtectedRoute.jsx (redirect to /login on 401/unauthenticated) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T054 [US3] Create auth hook in react-app/src/hooks/useAuth.js (loads current user via GET /api/users/me; exposes loading/authenticated/user) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T055 [US3] Create axios wrapper in react-app/src/lib/apiClient.js (withCredentials; attaches X-CSRF-Token when present) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T056 [US3] Implement Dashboard page in react-app/src/pages/Dashboard.jsx (renders email + basic metadata) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T057 [US3] Implement Settings page in react-app/src/pages/Settings.jsx (edit display_name/avatar_url/bio; calls PATCH /api/users/me) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T058 [US3] Wire routes for /dashboard and /settings in react-app/src/App.js using ProtectedRoute ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 
 **Checkpoint**: At this point, dashboard + profile update flows are independently testable
 

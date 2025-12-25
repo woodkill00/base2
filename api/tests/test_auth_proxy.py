@@ -31,7 +31,7 @@ def test_proxy_forwards_session_cookie(monkeypatch, method, path, expected_cooki
         seen["headers"] = dict(headers or {})
         return 200, {"email": "u@example.com"}, {}
 
-    monkeypatch.setattr("api.clients.django_client.django_request", fake_request)
+    monkeypatch.setattr("api.routes._proxy.django_request", fake_request)
 
     client = TestClient(app)
     resp = client.request(method, path, cookies={expected_cookie: "abc"})
@@ -48,7 +48,7 @@ def test_proxy_forwards_csrf_header(monkeypatch):
         seen["headers"] = dict(headers or {})
         return 204, None, {}
 
-    monkeypatch.setattr("api.clients.django_client.django_request", fake_request)
+    monkeypatch.setattr("api.routes._proxy.django_request", fake_request)
 
     client = TestClient(app)
     resp = client.post(
@@ -67,7 +67,7 @@ def test_proxy_passthrough_429(monkeypatch):
     async def fake_request(*, method: str, path: str, json_body, cookies, headers):
         return 429, {"detail": "Rate limited"}, {}
 
-    monkeypatch.setattr("api.clients.django_client.django_request", fake_request)
+    monkeypatch.setattr("api.routes._proxy.django_request", fake_request)
 
     client = TestClient(app)
     resp = client.post("/users/login", json={"email": "u@example.com", "password": "pw"})
