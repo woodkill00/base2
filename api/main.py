@@ -76,9 +76,11 @@ except Exception:
 # External routes (proxy to Django internal)
 try:
     from api.routes.auth import router as auth_router
+    from api.routes.oauth import router as oauth_router
     from api.routes.users import router as users_router
 
     app.include_router(auth_router)
+    app.include_router(oauth_router)
     app.include_router(users_router)
 except Exception:
     # Keep app bootable even if routes fail to import.
@@ -87,16 +89,6 @@ except Exception:
 @app.get("/health")
 async def health():
     return {"ok": True, "service": "api", "db_ok": db_ping()}
-
-
-@app.post("/oauth/google/start")
-async def oauth_google_start():
-    raise HTTPException(status_code=501, detail="/api/oauth/google/start is not implemented yet")
-
-
-@app.post("/oauth/google/callback")
-async def oauth_google_callback():
-    raise HTTPException(status_code=501, detail="/api/oauth/google/callback is not implemented yet")
 
 
 # --- Catalog (proxy to Django internal) ---

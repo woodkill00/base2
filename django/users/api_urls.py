@@ -9,4 +9,6 @@ urlpatterns = [
     path("users/login", api_views.login_view),
     path("users/logout", api_views.logout_view),
     path("users/me", api_views.me),
+    path("oauth/google/start", api_views.oauth_google_start),
+    path("oauth/google/callback", api_views.oauth_google_callback),
 ]

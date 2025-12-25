@@ -28,6 +28,15 @@ This quickstart is for running and verifying the full stack using the repo’s s
 Notes:
 - The Traefik config enforces HTTPS and uses the Let’s Encrypt **staging** ACME directory. For fully offline/local domains that are not publicly resolvable, certificate issuance may not succeed; the staging-like verification path is designed for the droplet environment.
 
+## Google OAuth (US4)
+
+To enable “Sign in with Google”, set these env vars (see `.env.example`):
+
+- `GOOGLE_OAUTH_CLIENT_ID`
+- `GOOGLE_OAUTH_CLIENT_SECRET`
+- `GOOGLE_OAUTH_REDIRECT_URI` (must match the SPA callback route, typically `https://$WEBSITE_DOMAIN/oauth/google/callback`)
+- `OAUTH_STATE_SECRET` (HMAC secret used to sign/validate OAuth state)
+
 ## Staging-like deployment (authoritative)
 
 Deploy/update/test MUST be executed via the single entrypoint:

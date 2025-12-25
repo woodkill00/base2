@@ -46,7 +46,7 @@ describe('US2 login/logout UI', () => {
     await user.type(screen.getByLabelText(/email/i), 'test@example.com');
     await user.type(screen.getByLabelText(/password/i), 'Test1234');
 
-    await user.click(screen.getByRole('button', { name: /sign in/i }));
+    await user.click(screen.getByRole('button', { name: /^sign in$/i }));
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /dashboard/i })).toBeInTheDocument();
@@ -72,7 +72,7 @@ describe('US2 login/logout UI', () => {
     await user.type(screen.getByLabelText(/email/i), 'test@example.com');
     await user.type(screen.getByLabelText(/password/i), 'Test1234');
 
-    await user.click(screen.getByRole('button', { name: /sign in/i }));
+    await user.click(screen.getByRole('button', { name: /^sign in$/i }));
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /logout/i })).toBeInTheDocument();

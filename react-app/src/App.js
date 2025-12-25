@@ -10,6 +10,7 @@ import Items from './pages/Items';
 import Dashboard from './pages/Dashboard.jsx';
 import Users from './pages/Users';
 import Settings from './pages/Settings';
+import OAuthCallback from './pages/OAuthCallback';
 import VerifyEmail from './pages/VerifyEmail';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
@@ -33,6 +34,7 @@ function App() {
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/oauth/google/callback" element={<OAuthCallback />} />
             <Route 
               path="/dashboard" 
               element={

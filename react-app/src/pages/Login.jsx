@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../contexts/AuthContext';
+import apiClient from '../lib/apiClient';
 
 const Login = () => {
   const { loginWithEmail } = useAuth();
@@ -11,6 +12,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -31,6 +33,24 @@ const Login = () => {
       setError(result.error || 'Login failed');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const onGoogle = async () => {
+    setError('');
+    setGoogleLoading(true);
+    try {
+      const res = await apiClient.post('/oauth/google/start', { next: '/dashboard' });
+      const authorizationUrl = res?.data?.authorization_url;
+      if (!authorizationUrl) {
+        setError('Unable to start Google sign-in');
+        return;
+      }
+      window.location.assign(authorizationUrl);
+    } catch (e) {
+      setError('Unable to start Google sign-in');
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -70,6 +90,10 @@ const Login = () => {
 
           <button type="submit" style={styles.primaryButton} disabled={loading}>
             {loading ? 'Signing in…' : 'Sign in'}
+          </button>
+
+          <button type="button" style={styles.secondaryButton} onClick={onGoogle} disabled={googleLoading}>
+            {googleLoading ? 'Starting Google sign-in…' : 'Sign in with Google'}
           </button>
         </form>
 
@@ -133,6 +157,15 @@ const styles = {
     border: 'none',
     background: '#111827',
     color: 'white',
+    cursor: 'pointer',
+    fontWeight: 600,
+  },
+  secondaryButton: {
+    padding: '10px 12px',
+    borderRadius: '8px',
+    border: '1px solid #d1d5db',
+    background: 'white',
+    color: '#111827',
     cursor: 'pointer',
     fontWeight: 600,
   },
