@@ -187,19 +187,19 @@
 
 ### Tests for User Story 4 (write first) ⚠️
 
-- [ ] T059 [P] [US4] Add Django tests for OAuth start/callback in django/tests/test_oauth_google.py (state validation; allowlist; cancel/fail paths; account link) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T060 [P] [US4] Add FastAPI proxy tests for OAuth routes in api/tests/test_oauth_proxy.py ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T061 [P] [US4] Add React tests for OAuth start + callback UX in react-app/src/__tests__/oauth.test.js ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T059 [P] [US4] Add Django tests for OAuth start/callback in django/tests/test_oauth_google.py (state validation; allowlist; cancel/fail paths; account link) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T060 [P] [US4] Add FastAPI proxy tests for OAuth routes in api/tests/test_oauth_proxy.py ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T061 [P] [US4] Add React tests for OAuth start + callback UX in react-app/src/__tests__/oauth.test.js ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 
 ### Implementation for User Story 4 (Django + FastAPI + React)
 
-- [ ] T062 [US4] Document required Google OAuth env vars in specs/001-django-fastapi-react/quickstart.md (client id/secret/redirect; state secret) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T063 [US4] Ensure OAuthAccount uniqueness constraints align with data-model.md in django/users/models.py (add migration if missing) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T064 [US4] Implement internal OAuth views in django/users/api_views.py (start → auth URL; callback → exchange code; link/create user; create session; audit event) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T065 [US4] Implement external OAuth proxy routes in api/routes/oauth.py (/oauth/google/start and /oauth/google/callback) and include router in api/main.py ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T066 [US4] Add Login page “Sign in with Google” button in react-app/src/pages/Login.jsx (calls POST /api/oauth/google/start then redirects) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T067 [US4] Add OAuth callback page in react-app/src/pages/OAuthCallback.jsx (reads code/state; calls POST /api/oauth/google/callback; redirects to /dashboard; safe error display) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T068 [US4] Wire /oauth/google/callback route in react-app/src/App.js ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T062 [US4] Document required Google OAuth env vars in specs/001-django-fastapi-react/quickstart.md (client id/secret/redirect; state secret) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T063 [US4] Ensure OAuthAccount uniqueness constraints align with data-model.md in django/users/models.py (add migration if missing) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T064 [US4] Implement internal OAuth views in django/users/api_views.py (start → auth URL; callback → exchange code; link/create user; create session; audit event) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T065 [US4] Implement external OAuth proxy routes in api/routes/oauth.py (/oauth/google/start and /oauth/google/callback) and include router in api/main.py ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T066 [US4] Add Login page “Sign in with Google” button in react-app/src/pages/Login.jsx (calls POST /api/oauth/google/start then redirects) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T067 [US4] Add OAuth callback page in react-app/src/pages/OAuthCallback.jsx (reads code/state; calls POST /api/oauth/google/callback; redirects to /dashboard; safe error display) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T068 [US4] Wire /oauth/google/callback route in react-app/src/App.js ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 
 **Checkpoint**: At this point, OAuth login works end-to-end (or is safely failing with tests proving failure handling)
 
