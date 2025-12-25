@@ -40,10 +40,9 @@
 
 - [X] T001 [P] Remove duplicated “OAuth Identity” bullet under Key Entities in specs/001-django-fastapi-react/spec.md ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 - [X] T002 [P] Add feature links to README.md pointing to specs/001-django-fastapi-react/spec.md and specs/001-django-fastapi-react/plan.md ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
- - [X] T003 [P] Create docs/DEPLOY.md documenting “deploy.ps1 is authoritative” and staging-only ACME policy ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
-- [ ] T003 [P] Create docs/DEPLOY.md documenting “deploy.ps1 is authoritative” and staging-only ACME policy ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
- - [X] T004 [P] Create docs/SECURITY.md documenting cookie auth + CSRF + admin tool gating ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
- - [X] T005 [P] Update docs/STACK.md to include the current service inventory from local.docker.yml ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T003 [P] Create docs/DEPLOY.md documenting “deploy.ps1 is authoritative” and staging-only ACME policy ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T004 [P] Create docs/SECURITY.md documenting cookie auth + CSRF + admin tool gating ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
+- [X] T005 [P] Update docs/STACK.md to include the current service inventory from local.docker.yml ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests
 
 ---
 
