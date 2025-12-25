@@ -271,7 +271,9 @@ function Check-OpenApiContract([string]$artifactDir, [string]$contractPath) {
 
     $missing = @()
     foreach ($cp in $contractPaths) {
-      if ($runtimePaths -notcontains $cp) { $missing += $cp }
+      $rp = $cp
+      if ($rp -like '/api/*') { $rp = $rp.Substring(4) }
+      if ($runtimePaths -notcontains $rp) { $missing += $cp }
     }
     $payload.missingPaths = @($missing)
     if ($missing.Count -gt 0) {

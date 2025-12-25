@@ -94,23 +94,19 @@ except Exception:
 async def health():
     return {"ok": True, "service": "api", "db_ok": db_ping()}
 
-@app.get("/api/health")
-async def api_health():
-    return {"ok": True, "service": "api"}
-
-@app.get("/api/users/me")
+@app.get("/users/me")
 async def get_me(request: Request):
     if not _has_session_cookie(request):
         raise HTTPException(status_code=401, detail="Not authenticated")
     # Django-backed implementation has been removed; FastAPI is now decoupled.
     raise HTTPException(status_code=501, detail="/api/users/me is not implemented yet")
 # --- Users (proxy to Django internal) ---
-@app.get("/api/users")
+@app.get("/users")
 async def list_users():
     raise HTTPException(status_code=501, detail="/api/users is not implemented yet")
 
 
-@app.post("/api/users/login")
+@app.post("/users/login")
 async def users_login(request: Request):
     raw = await request.body()
     # DEBUG: write raw body and headers to file immediately
@@ -144,40 +140,40 @@ async def users_login(request: Request):
     raise HTTPException(status_code=501, detail="/api/users/login is not implemented yet")
 
 
-@app.post("/api/users/signup")
+@app.post("/users/signup")
 async def users_signup(request: Request):
     raise HTTPException(status_code=501, detail="/api/users/signup is not implemented yet")
 
 
-@app.post("/api/users/logout")
+@app.post("/users/logout")
 async def users_logout(request: Request):
     if not _has_session_cookie(request):
         raise HTTPException(status_code=401, detail="Not authenticated")
     raise HTTPException(status_code=501, detail="/api/users/logout is not implemented yet")
 
 
-@app.post("/api/oauth/google/start")
+@app.post("/oauth/google/start")
 async def oauth_google_start():
     raise HTTPException(status_code=501, detail="/api/oauth/google/start is not implemented yet")
 
 
-@app.post("/api/oauth/google/callback")
+@app.post("/oauth/google/callback")
 async def oauth_google_callback():
     raise HTTPException(status_code=501, detail="/api/oauth/google/callback is not implemented yet")
 
 
 # --- Catalog (proxy to Django internal) ---
-@app.get("/api/items")
+@app.get("/items")
 async def list_items():
     raise HTTPException(status_code=501, detail="/api/items is not implemented yet")
 
 
-@app.get("/api/items/{item_id}")
+@app.get("/items/{item_id}")
 async def get_item(item_id: int):
     raise HTTPException(status_code=501, detail="/api/items/{item_id} is not implemented yet")
 
 
-@app.post("/api/items")
+@app.post("/items")
 async def create_item(payload: dict = Body(...)):
     raise HTTPException(status_code=501, detail="/api/items POST is not implemented yet")
 
@@ -189,11 +185,6 @@ async def _enqueue_celery_ping():
         return {"task_id": res.id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"enqueue_failed: {e}")
-
-
-@app.post("/api/celery/ping")
-async def celery_ping_api():
-    return await _enqueue_celery_ping()
 
 
 @app.post("/celery/ping")
@@ -213,11 +204,6 @@ async def _read_celery_result(task_id: str):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"result_failed: {e}")
-
-
-@app.get("/api/celery/result/{task_id}")
-async def celery_result_api(task_id: str):
-    return await _read_celery_result(task_id)
 
 
 @app.get("/celery/result/{task_id}")
