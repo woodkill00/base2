@@ -1,8 +1,8 @@
 from fastapi import FastAPI, HTTPException, Body
 import os
 from celery.result import AsyncResult
-import tasks  # ensure tasks module is importable
-from db import db_ping
+from api import tasks  # ensure tasks module is importable
+from api.db import db_ping
 
 
 ENV = os.getenv("ENV", "development")

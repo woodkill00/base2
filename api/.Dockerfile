@@ -12,14 +12,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN useradd -m appuser && chown -R appuser:appuser /app
 USER appuser
 
-COPY requirements.txt ./
+RUN mkdir -p /app/api
+
+COPY requirements.txt ./api/requirements.txt
 ENV PATH="/home/appuser/.local/bin:${PATH}" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
-RUN pip install --user --no-cache-dir -r requirements.txt
+RUN pip install --user --no-cache-dir -r api/requirements.txt
 
-COPY . .
+COPY . ./api
 
 ENV PORT=8000
+ENV PYTHONPATH=/app
 # Use shell form to expand $PORT at runtime
-CMD ["sh", "-lc", "uvicorn main:app --host 0.0.0.0 --port ${PORT}"]
+CMD ["sh", "-lc", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT}"]
