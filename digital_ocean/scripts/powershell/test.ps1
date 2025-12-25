@@ -1185,7 +1185,8 @@ try {
     }
   } catch {}
 
-  $samples = 60
+  $samples = 20
+  $sleepBetweenMs = 300
   $durations = New-Object System.Collections.Generic.List[double]
   $codes = New-Object System.Collections.Generic.List[int]
   for ($i=0; $i -lt $samples; $i++) {
@@ -1199,7 +1200,7 @@ try {
     $sw.Stop()
     $codes.Add([int]$status) | Out-Null
     $durations.Add([double]$sw.Elapsed.TotalMilliseconds) | Out-Null
-    if ($i -lt ($samples - 1)) { Start-Sleep -Milliseconds 50 }
+    if ($i -lt ($samples - 1) -and $sleepBetweenMs -gt 0) { Start-Sleep -Milliseconds $sleepBetweenMs }
   }
 
   $okDurations = @()
