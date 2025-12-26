@@ -356,7 +356,7 @@
 
 **Purpose**: Make FastAPI production-ready (process model, timeouts, typed settings, DB pooling).
 
-- [ ] T084 Switch FastAPI container to Gunicorn + Uvicorn workers (or uvicorn multi-worker) with sane defaults.
+- [X] T084 Switch FastAPI container to Gunicorn + Uvicorn workers (or uvicorn multi-worker) with sane defaults.
   - **Touch**:
     - `api/Dockerfile` (or `api/.Dockerfile` if present)
     - `api/entrypoint.sh` (new, recommended)
