@@ -76,7 +76,7 @@ export const authAPI = {
 
   // Verify email
   verifyEmail: async (token) => {
-    const response = await api.get(`/auth/verify-email/${token}`);
+    const response = await api.post('/users/verify-email', { token });
     return response.data;
   },
 

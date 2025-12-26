@@ -126,30 +126,10 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null);
       const data = await authAPI.verifyEmail(token);
-      
-      if (data.success && data.token) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        setUser(data.user);
-        return { success: true, message: data.message };
-      }
-      
-      return { success: false, error: 'Verification failed' };
+      const message = data?.detail || 'Email verified successfully!';
+      return { success: true, message };
     } catch (error) {
-      const message = error.response?.data?.message || 'Email verification failed';
-      setError(message);
-      return { success: false, error: message };
-    }
-  };
-
-  // Resend verification email
-  const resendVerification = async (email) => {
-    try {
-      setError(null);
-      const data = await authAPI.resendVerification(email);
-      return { success: true, message: data.message };
-    } catch (error) {
-      const message = error.response?.data?.message || 'Failed to resend verification email';
+      const message = error.response?.data?.detail || 'Email verification failed';
       setError(message);
       return { success: false, error: message };
     }
@@ -193,7 +173,6 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateUser,
     verifyEmail,
-    resendVerification,
     forgotPassword,
     resetPassword,
   };

@@ -34,6 +34,13 @@ components:
         detail:
           type: string
 
+    DetailResponse:
+      type: object
+      required: [detail]
+      properties:
+        detail:
+          type: string
+
     HealthResponse:
       type: object
       required: [ok, service]
@@ -73,6 +80,13 @@ components:
           type: string
           format: password
         username:
+          type: string
+
+    VerifyEmailRequest:
+      type: object
+      required: [token]
+      properties:
+        token:
           type: string
 
     LoginRequest:
@@ -217,6 +231,29 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '429':
           description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/verify-email:
+    post:
+      summary: Verify email using one-time token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyEmailRequest'
+      responses:
+        '200':
+          description: Verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailResponse'
+        '400':
+          description: Invalid or expired token
           content:
             application/json:
               schema:

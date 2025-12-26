@@ -5,11 +5,9 @@ import { useAuth } from '../contexts/AuthContext';
 const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { verifyEmail, resendVerification } = useAuth();
+  const { verifyEmail } = useAuth();
   const [status, setStatus] = useState('verifying'); // verifying, success, error
   const [message, setMessage] = useState('');
-  const [email, setEmail] = useState('');
-  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     const token = searchParams.get('token');
@@ -30,7 +28,7 @@ const VerifyEmail = () => {
         setStatus('success');
         setMessage(result.message || 'Email verified successfully!');
         setTimeout(() => {
-          navigate('/dashboard');
+          navigate('/login');
         }, 2000);
       } else {
         setStatus('error');
@@ -39,28 +37,6 @@ const VerifyEmail = () => {
     } catch (error) {
       setStatus('error');
       setMessage('An error occurred during verification. Please try again.');
-    }
-  };
-
-  const handleResend = async () => {
-    if (!email) {
-      setMessage('Please enter your email address');
-      return;
-    }
-
-    setResending(true);
-    try {
-      const result = await resendVerification(email);
-      if (result.success) {
-        setMessage(result.message || 'Verification email sent! Please check your inbox.');
-        setStatus('success');
-      } else {
-        setMessage(result.error || 'Failed to resend verification email');
-      }
-    } catch (error) {
-      setMessage('An error occurred. Please try again.');
-    } finally {
-      setResending(false);
     }
   };
 
@@ -87,33 +63,9 @@ const VerifyEmail = () => {
 
         <p style={styles.message}>{message}</p>
 
-        {status === 'error' && (
-          <div style={styles.resendSection}>
-            <p style={styles.resendText}>
-              Didn't receive the email or link expired?
-            </p>
-            <div style={styles.resendForm}>
-              <input
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                style={styles.input}
-              />
-              <button
-                onClick={handleResend}
-                disabled={resending}
-                style={styles.resendButton}
-              >
-                {resending ? 'Sending...' : 'Resend Verification Email'}
-              </button>
-            </div>
-          </div>
-        )}
-
         {status === 'success' && (
           <div style={styles.redirectMessage}>
-            Redirecting to dashboard...
+            Redirecting to login...
           </div>
         )}
 

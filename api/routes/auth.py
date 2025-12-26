@@ -47,6 +47,19 @@ async def users_signup(request: Request, response: Response):
     )
 
 
+@router.post("/users/verify-email")
+async def users_verify_email(request: Request, response: Response):
+    payload = await request.json()
+    return await proxy_json(
+        request=request,
+        response=response,
+        method="POST",
+        upstream_path="/internal/api/users/verify-email",
+        json_body=payload,
+        forward_csrf=False,
+    )
+
+
 @router.post("/users/logout")
 async def users_logout(request: Request, response: Response):
     require_session_cookie(request, settings.SESSION_COOKIE_NAME)

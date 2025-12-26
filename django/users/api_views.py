@@ -5,15 +5,18 @@ import hmac
 import os
 import secrets
 import time
+from datetime import timedelta
 from urllib.parse import urlencode
 from urllib.request import Request as UrlRequest, urlopen
 
 from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.utils import timezone
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 
-from users.models import AuditEvent, OAuthAccount, UserProfile
+from users.models import AuditEvent, EmailAddress, OAuthAccount, OneTimeToken, UserProfile
+from users.tokens import consume_one_time_token, mint_one_time_token
 
 AuthUser = get_user_model()
 
@@ -132,6 +135,18 @@ def _oauth_state_validate(request, *, state: str, state_secret: str) -> dict:
         raise ValueError("Invalid redirect")
 
     return {"next": next_path, "issued_at": issued_at}
+
+
+def _public_origin(request) -> str:
+    # Prefer forwarded headers (Traefik), fall back to request-derived values.
+    proto = request.META.get("HTTP_X_FORWARDED_PROTO") or request.scheme or "https"
+    host = request.META.get("HTTP_X_FORWARDED_HOST") or request.META.get("HTTP_HOST") or request.get_host()
+    return f"{proto}://{host}"
+
+
+def _verification_link(request, *, raw_token: str) -> str:
+    # React route: /verify-email?token=...
+    return f"{_public_origin(request)}/verify-email?{urlencode({'token': raw_token})}"
 
 
 def _google_exchange_code_for_tokens(*, code: str, redirect_uri: str, client_id: str, client_secret: str) -> dict:
@@ -330,12 +345,87 @@ def signup(request):
 
     UserProfile.objects.get_or_create(user=user)
 
+    EmailAddress.objects.get_or_create(
+        user=user,
+        email=email,
+        defaults={"is_primary": True, "is_verified": False},
+    )
+
+    try:
+        raw_token, _token = mint_one_time_token(
+            user=user,
+            purpose=OneTimeToken.Purpose.EMAIL_VERIFICATION,
+            email=email,
+            ttl=timedelta(hours=24),
+        )
+        from users.tasks import send_verification_email
+
+        send_verification_email.delay(to=email, verification_url=_verification_link(request, raw_token=raw_token))
+        _audit(
+            request,
+            action="auth.email.verify.issued",
+            actor_user=user,
+            target_type="user",
+            target_id=str(user.id),
+            metadata={"email": email},
+        )
+    except Exception:
+        # Do not fail signup if the async email pipeline is temporarily unavailable.
+        _audit(
+            request,
+            action="auth.email.verify.enqueue_failed",
+            actor_user=user,
+            target_type="user",
+            target_id=str(user.id),
+            metadata={"email": email},
+        )
+
     login(request, user)
     get_token(request)
     _audit(request, action="auth.signup", actor_user=user, target_type="user", target_id=str(user.id), metadata={"email": email})
 
     return JsonResponse(_user_me_payload(user), status=201)
 
+
+@csrf_exempt
+def verify_email(request):
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        payload = {}
+
+    raw_token = (payload.get("token") or "").strip()
+    if not raw_token:
+        return JsonResponse({"detail": "Invalid or expired token"}, status=400)
+
+    token = consume_one_time_token(raw_token=raw_token, purpose=OneTimeToken.Purpose.EMAIL_VERIFICATION)
+    if token is None:
+        _audit(request, action="auth.email.verify.failure", actor_user=None, target_type="user", target_id="")
+        return JsonResponse({"detail": "Invalid or expired token"}, status=400)
+
+    email_obj = EmailAddress.objects.filter(user=token.user, email=token.email).first()
+    if email_obj and not email_obj.is_verified:
+        email_obj.is_verified = True
+        email_obj.verified_at = timezone.now()
+        if not email_obj.is_primary:
+            # If they verified a non-primary address, still consider it a valid address.
+            pass
+        email_obj.save(update_fields=["is_verified", "verified_at"])
+
+    _audit(
+        request,
+        action="auth.email.verify.success",
+        actor_user=token.user,
+        target_type="user",
+        target_id=str(getattr(token.user, "id", "")),
+        metadata={"email": token.email},
+    )
+
+    # Cookie-session auth remains unchanged; verification does not auto-login.
+    return JsonResponse({"detail": "Email verified"}, status=200)
 
 @csrf_exempt
 def login_view(request):
