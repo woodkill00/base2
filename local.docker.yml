@@ -221,7 +221,8 @@ services:
       postgres:
         condition: service_healthy
     entrypoint: ["sh", "-c"]
-    command: "celery -A project worker -l ${CELERY_LOG_LEVEL:-INFO} --concurrency=${CELERY_CONCURRENCY:-2}"
+    command:
+      - "celery -A project worker -l $${CELERY_LOG_LEVEL:-INFO} --concurrency=$${CELERY_CONCURRENCY:-2}"
     restart: unless-stopped
     security_opt: [no-new-privileges:true]
     healthcheck:
@@ -258,7 +259,8 @@ services:
       postgres:
         condition: service_healthy
     entrypoint: ["sh", "-c"]
-    command: "celery -A project beat -l ${CELERY_LOG_LEVEL:-INFO}"
+    command:
+      - "celery -A project beat -l $${CELERY_LOG_LEVEL:-INFO}"
     restart: unless-stopped
     security_opt: [no-new-privileges:true]
     healthcheck:
