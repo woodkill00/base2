@@ -929,6 +929,18 @@ PY
       -o /root/logs/request-id-health.body \
       "https://$DOMAIN/api/users/login" || true
 
+    # Also hit Django directly (loopback) with the same RID. This avoids false negatives when
+    # the API proxy path is short-circuited or internal forwarding is temporarily unhealthy.
+    : > /root/logs/request-id-django-health.headers || true
+    : > /root/logs/request-id-django-health.body || true
+    DJANGO_PORT=$(grep -E '^DJANGO_PORT=' /opt/apps/base2/.env | cut -d'=' -f2 | tr -d '\r')
+    if [ -n "$DJANGO_PORT" ]; then
+      curl -sS -D /root/logs/request-id-django-health.headers \
+        -o /root/logs/request-id-django-health.body \
+        -H "X-Request-Id: $RID" \
+        "http://127.0.0.1:${DJANGO_PORT}/internal/health" >/dev/null 2>&1 || true
+    fi
+
     # During deploy/recreate, `docker compose ps -q <service>` can briefly return multiple IDs.
     # Grep across all candidate IDs to avoid false negatives.
     TIDS=$(docker compose -f local.docker.yml ps -q traefik 2>/dev/null || true)
