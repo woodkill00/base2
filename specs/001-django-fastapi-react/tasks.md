@@ -300,7 +300,7 @@
     3) Ensure compose uses correct container port and healthcheck endpoint (e.g., `/admin/login/` or a new `/internal/health`).
   - **Verify**: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
 
-- [ ] T081 Add explicit Django internal health endpoint for deploy/test probes (avoid probing admin HTML).
+- [X] T081 Add explicit Django internal health endpoint for deploy/test probes (avoid probing admin HTML).
   - **Touch**:
     - `django/project/urls.py` (route)
     - `django/project/views.py` (new) or `django/users/api_views.py`
