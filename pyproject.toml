@@ -1,0 +1,15 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# Keep this CI guardrail lightweight: fail on syntax/parse and obvious bugs.
+select = ["E9", "F"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+follow_imports = "skip"
+warn_unused_ignores = true
+no_implicit_optional = false
+check_untyped_defs = false
