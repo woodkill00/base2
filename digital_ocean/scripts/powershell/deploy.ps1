@@ -921,7 +921,7 @@ PY
     mkdir -p /root/logs/meta /root/logs/services || true
     : > /root/logs/request-id-health.headers || true
     : > /root/logs/request-id-health.body || true
-    curl -sk "${RESOLVE_DOMAIN[@]}" -H "X-Request-Id: $RID" -D /root/logs/request-id-health.headers -o /root/logs/request-id-health.body "https://$DOMAIN/api/health" || true
+    curl -sk "${RESOLVE_DOMAIN[@]}" -H "X-Request-Id: $RID" -D /root/logs/request-id-health.headers -o /root/logs/request-id-health.body "https://$DOMAIN/api/users/me" || true
 
     TID=$(docker compose -f local.docker.yml ps -q traefik 2>/dev/null || true)
     AID=$(docker compose -f local.docker.yml ps -q api 2>/dev/null || true)
