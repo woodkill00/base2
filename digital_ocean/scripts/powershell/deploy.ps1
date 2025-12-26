@@ -948,11 +948,7 @@ PY
     fi
 
     python3 -c "import json, os; from pathlib import Path;\
-def rt(p):\
-  try:\
-    return Path(p).read_text(encoding='utf-8', errors='replace').strip()\
-  except Exception:\
-    return ''\
+rt=lambda p: (Path(p).read_text(encoding='utf-8', errors='replace').strip() if Path(p).exists() else '');\
 rid=os.environ.get('RID','');\
 found={\
   'traefik': bool(rt('/root/logs/services/request-id-traefik.txt')),\
