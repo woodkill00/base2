@@ -13,6 +13,16 @@ def getenv(name: str, default: Optional[str] = None) -> Optional[str]:
     return os.environ.get(name, default)
 
 
+def getenv_int(name: str, default: int) -> int:
+    v = os.environ.get(name)
+    if v is None:
+        return default
+    try:
+        return int(str(v).strip())
+    except Exception:
+        return default
+
+
 class Settings:
     SESSION_COOKIE_NAME: str = getenv("SESSION_COOKIE_NAME", "base2_session")
     CSRF_COOKIE_NAME: str = getenv("CSRF_COOKIE_NAME", "base2_csrf")
@@ -27,6 +37,20 @@ class Settings:
     GOOGLE_OAUTH_CLIENT_SECRET: Optional[str] = getenv("GOOGLE_OAUTH_CLIENT_SECRET")
     GOOGLE_OAUTH_REDIRECT_URI: Optional[str] = getenv("GOOGLE_OAUTH_REDIRECT_URI")
     OAUTH_STATE_SECRET: Optional[str] = getenv("OAUTH_STATE_SECRET")
+
+    # DB settings (FastAPI side)
+    DB_CONNECT_TIMEOUT_SEC: int = getenv_int("DB_CONNECT_TIMEOUT_SEC", 3)
+    DB_STATEMENT_TIMEOUT_MS: int = getenv_int("DB_STATEMENT_TIMEOUT_MS", 3000)
+    DB_POOL_MIN: int = getenv_int("DB_POOL_MIN", 1)
+    DB_POOL_MAX: int = getenv_int("DB_POOL_MAX", 5)
+
+    def __init__(self) -> None:
+        if self.DB_POOL_MIN < 0:
+            self.DB_POOL_MIN = 0
+        if self.DB_POOL_MAX < 1:
+            self.DB_POOL_MAX = 1
+        if self.DB_POOL_MAX < self.DB_POOL_MIN:
+            self.DB_POOL_MAX = self.DB_POOL_MIN
 
 
 settings = Settings()
