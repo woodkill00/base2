@@ -918,6 +918,7 @@ PY
       RID=$(python3 -c 'import uuid; print(str(uuid.uuid4()))' 2>/dev/null || true)
     fi
     export RID
+    mkdir -p /root/logs/meta /root/logs/services || true
     : > /root/logs/request-id-health.headers || true
     : > /root/logs/request-id-health.body || true
     curl -sk "${RESOLVE_DOMAIN[@]}" -H "X-Request-Id: $RID" -D /root/logs/request-id-health.headers -o /root/logs/request-id-health.body "https://$DOMAIN/api/health" || true
