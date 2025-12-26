@@ -516,7 +516,7 @@
     - React tests: `react-app/src/__tests__/password-reset.test.js`
     - `deploy.ps1 -AllTests`
 
-- [ ] T093 Expand AuditEvent coverage and add an admin-visible audit dashboard in Django Admin.
+- [X] T093 Expand AuditEvent coverage and add an admin-visible audit dashboard in Django Admin.
   - **Touch**:
     - `django/users/models.py` (ensure `AuditEvent` has indexes: actor, action, created_at)
     - `django/users/admin.py` (register AuditEvent with list filters + search)
