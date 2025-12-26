@@ -24,3 +24,6 @@ Routing:
 Policy:
 - Staging-only ACME (`le-staging`) enforced; production issuance disallowed
 - Security headers applied to public routes; admin routes may use no-HSTS variant for staging
+
+Runtime notes:
+- api runs under Gunicorn using `uvicorn.workers.UvicornWorker`.
