@@ -392,7 +392,14 @@ function Verify-Headers([string[]]$headers, [string]$context) {
   if (-not $headers -or $headers.Count -eq 0) { return @("${context}: empty headers") }
   $code = Get-StatusCodeFromHeaders $headers
   if ($context -eq 'root-https' -and $code -ne 200) { $fail += "HTTPS root expected 200, got $code" }
-  $expected = @('strict-transport-security:', 'x-content-type-options:', 'x-frame-options:', 'referrer-policy:')
+  $expected = @(
+    'strict-transport-security:',
+    'x-content-type-options:',
+    'x-frame-options:',
+    'referrer-policy:',
+    'permissions-policy:',
+    'content-security-policy:'
+  )
   foreach ($h in $expected) {
     if (-not ($headers | Where-Object { $_ -imatch $h })) { $fail += "Missing security header: $h ($context)" }
   }
@@ -1411,6 +1418,21 @@ $result = [ordered]@{
   clientDnsCheck = [ordered]@{ enabled = $false; ok = $false; expectedIpv4 = ''; failures = @() }
   failures = @()
 }
+
+# Emit explicit artifact for public security headers on / and /api/health (T082).
+try {
+  $securityHeadersPayload = [ordered]@{
+    root = [ordered]@{
+      status = (Get-StatusCodeFromHeaders $rootHdr)
+      missing = @($result.headers.root.missingHeaders)
+    }
+    api = [ordered]@{
+      status = $apiGetStatus
+      missing = @($result.headers.api.missingHeaders)
+    }
+  }
+  Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'security-headers.json' -content $securityHeadersPayload
+} catch {}
 
 # Emit explicit artifact for staging-only TLS resolver verification
 try {

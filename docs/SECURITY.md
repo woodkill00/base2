@@ -11,6 +11,11 @@
 ## TLS Policy
 - Staging-only ACME (`le-staging`) is enforced; production issuance is disallowed.
 
+## Security Headers (Traefik)
+- Public routes (`/` and `/api/*`) are served with baseline security headers (HSTS, nosniff, frame-ancestors protection, referrer policy).
+- A Content Security Policy (CSP) and Permissions Policy are applied at the edge via Traefik middleware.
+- Deploy verification records observed headers in `meta/security-headers.json`.
+
 ## Rate Limiting
 - **Edge (Traefik)**: coarse rate limiting on sensitive endpoints (especially auth) to reduce burst abuse.
 - **App-level (FastAPI)**: Redis-backed counters (e.g., keyed by IP + endpoint) for signup/login and other high-risk routes; returns HTTP `429` with a consistent `{detail}` JSON shape.

@@ -18,6 +18,7 @@ http:
       middlewares:
         - strip-api-prefix
         - security-headers
+        - security-csp
         - rate-limit
         - retry
       tls:
@@ -72,6 +73,7 @@ http:
         - websecure
       middlewares:
         - security-headers
+        - security-csp
       tls:
         certResolver: le-staging
       service: frontend-react
@@ -173,6 +175,11 @@ http:
           X-Frame-Options: "DENY"
           X-Content-Type-Options: "nosniff"
           X-XSS-Protection: "1; mode=block"
+          Permissions-Policy: "geolocation=(), microphone=(), camera=(), payment=(), usb=()"
+
+    security-csp:
+      headers:
+        contentSecurityPolicy: "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self' data:;"
 
     security-headers-no-hsts:
       headers:
@@ -184,6 +191,7 @@ http:
           X-Frame-Options: "DENY"
           X-Content-Type-Options: "nosniff"
           X-XSS-Protection: "1; mode=block"
+          Permissions-Policy: "geolocation=(), microphone=(), camera=(), payment=(), usb=()"
 
     traefik-basic-auth:
       basicAuth:
