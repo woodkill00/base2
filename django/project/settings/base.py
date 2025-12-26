@@ -149,6 +149,15 @@ LOGGING = {
             "formatter": "json",
         }
     },
+    "loggers": {
+        # Ensure request-scoped logs emitted by RequestIdMiddleware aren't filtered out by
+        # Django's default logger configuration.
+        "django.request": {
+            "handlers": ["console"],
+            "level": os.environ.get("DJANGO_REQUEST_LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+    },
     "root": {
         "handlers": ["console"],
         "level": os.environ.get("DJANGO_LOG_LEVEL", "INFO"),
