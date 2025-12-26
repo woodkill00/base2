@@ -911,12 +911,13 @@ PY
     # Request-id log propagation probe:
     # - Send a request with an explicit X-Request-Id
     # - Confirm that ID appears in FastAPI/Django logs (and Traefik access log if available)
+    # IMPORTANT: Keep this probe non-fatal; missing log hits should not abort remote verification.
+    set +e
+    RID=$(cat /proc/sys/kernel/random/uuid 2>/dev/null || true)
+    if [ -z "$RID" ]; then
+      RID=$(python3 -c 'import uuid; print(str(uuid.uuid4()))' 2>/dev/null || true)
+    fi
     export RID
-    RID=$(python3 - <<'PY'
-  import uuid
-  print(str(uuid.uuid4()))
-  PY
-  )
     : > /root/logs/request-id-health.headers || true
     : > /root/logs/request-id-health.body || true
     curl -sk "${RESOLVE_DOMAIN[@]}" -H "X-Request-Id: $RID" -D /root/logs/request-id-health.headers -o /root/logs/request-id-health.body "https://$DOMAIN/api/health" || true
@@ -945,40 +946,22 @@ PY
       docker logs --timestamps --since=10m "$CWID" 2>/dev/null | grep -F "$RID" | tail -n 50 > /root/logs/services/request-id-celery-worker.txt || true
     fi
 
-    python3 - <<'PY' > /root/logs/meta/request-id-log-propagation.json 2> /root/logs/meta/request-id-log-propagation.err || true
-  import json
-  from pathlib import Path
-
-  def read_text(p: str) -> str:
-    try:
-      return Path(p).read_text(encoding='utf-8', errors='replace')
-    except Exception:
-      return ''
-
-  request_id = None
-  try:
-    # Exported by the shell probe
-    import os
-    request_id = os.environ.get('RID')
-  except Exception:
-    request_id = None
-
-  payload = {
-    'request_id': request_id or '',
-    'ok': False,
-    'found': {
-      'traefik': bool(read_text('/root/logs/services/request-id-traefik.txt').strip()),
-      'api': bool(read_text('/root/logs/services/request-id-api.txt').strip()),
-      'django': bool(read_text('/root/logs/services/request-id-django.txt').strip()),
-      'celery_worker': bool(read_text('/root/logs/services/request-id-celery-worker.txt').strip()),
-    },
-  }
-
-  # Minimum success: api + django logs show the request_id.
-  payload['ok'] = bool(payload['request_id']) and payload['found']['api'] and payload['found']['django']
-
-  print(json.dumps(payload))
-  PY
+    python3 -c "import json, os; from pathlib import Path;\
+def rt(p):\
+  try:\
+    return Path(p).read_text(encoding='utf-8', errors='replace').strip()\
+  except Exception:\
+    return ''\
+rid=os.environ.get('RID','');\
+found={\
+  'traefik': bool(rt('/root/logs/services/request-id-traefik.txt')),\
+  'api': bool(rt('/root/logs/services/request-id-api.txt')),\
+  'django': bool(rt('/root/logs/services/request-id-django.txt')),\
+  'celery_worker': bool(rt('/root/logs/services/request-id-celery-worker.txt')),\
+};\
+payload={'request_id': rid, 'ok': bool(rid) and found['api'] and found['django'], 'found': found};\
+print(json.dumps(payload))" > /root/logs/meta/request-id-log-propagation.json 2> /root/logs/meta/request-id-log-propagation.err || true
+    set -e
 
     # Back-compat: maintain curl-api.txt pointing at preferred health endpoint (non-slash first)
     cp /root/logs/curl-api-health.txt /root/logs/curl-api.txt || true
@@ -1005,14 +988,12 @@ PY
       : > /root/logs/celery-ping.json || true
       : > /root/logs/celery-result.json || true
       curl -sk "${RESOLVE_DOMAIN[@]}" -X POST "https://$DOMAIN/api/celery/ping" -H 'Content-Type: application/json' -d '{}' -o /root/logs/celery-ping.json || true
-      TASK_ID=$(python3 - <<'PY'
-import json,sys
-try:
-    print(json.load(open('/root/logs/celery-ping.json'))['task_id'])
-except Exception:
-    print('')
-PY
-)
+      TASK_ID=$(python3 -c "import json;\
+import sys;\
+try:\
+  print(json.load(open('/root/logs/celery-ping.json'))['task_id']);\
+except Exception:\
+  print('')" 2>/dev/null || true)
       if [ -n "$TASK_ID" ]; then
         for i in $(seq 1 30); do
           curl -sk "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/celery/result/$TASK_ID" -o /root/logs/celery-result.json || true
