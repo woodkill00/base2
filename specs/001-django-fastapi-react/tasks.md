@@ -280,7 +280,7 @@
     4) Add a CI guard that fails if a tracked file named `docker-compose` reappears (see T089).
   - **Verify**: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
 
-- [ ] T080 Fix Django container entrypoint + remove “truncated CMD” risk in `django/.Dockerfile`.
+- [X] T080 Fix Django container entrypoint + remove “truncated CMD” risk in `django/.Dockerfile`.
   - **Touch**:
     - `django/.Dockerfile`
     - `django/entrypoint.sh` (new)
