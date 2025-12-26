@@ -317,7 +317,7 @@
 
 **Purpose**: Establish consistent security headers and reduce browser attack surface.
 
-- [ ] T082 Centralize Traefik security headers middleware and attach to all public routers (api + spa).
+- [X] T082 Centralize Traefik security headers middleware and attach to all public routers (api + spa).
   - **Touch**:
     - `traefik/dynamic.yml` (middlewares + router attachments)
     - `traefik/traefik.yml` (if static config needs header defaults)
