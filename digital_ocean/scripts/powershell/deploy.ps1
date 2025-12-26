@@ -929,10 +929,13 @@ PY
       -o /root/logs/request-id-health.body \
       "https://$DOMAIN/api/users/login" || true
 
-    TID=$(docker compose -f local.docker.yml ps -q traefik 2>/dev/null || true)
-    AID=$(docker compose -f local.docker.yml ps -q api 2>/dev/null || true)
-    DJID=$(docker compose -f local.docker.yml ps -q django 2>/dev/null || true)
-    CWID=$(docker compose -f local.docker.yml ps -q celery-worker 2>/dev/null || true)
+    # During deploy/recreate, `docker compose ps -q <service>` can briefly return multiple IDs.
+    # `docker logs "$ID"` then fails because $ID contains newlines, and stderr is suppressed.
+    # Take the first ID to keep the probe stable.
+    TID=$(docker compose -f local.docker.yml ps -q traefik 2>/dev/null | head -n 1 || true)
+    AID=$(docker compose -f local.docker.yml ps -q api 2>/dev/null | head -n 1 || true)
+    DJID=$(docker compose -f local.docker.yml ps -q django 2>/dev/null | head -n 1 || true)
+    CWID=$(docker compose -f local.docker.yml ps -q celery-worker 2>/dev/null | head -n 1 || true)
 
     # Capture grep outputs (best-effort; keep artifacts even on failure)
     : > /root/logs/services/request-id-traefik.txt || true
