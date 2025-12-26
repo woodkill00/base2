@@ -338,7 +338,7 @@
        - admin router (optional; keep strict)
   - **Verify**: Extend `digital_ocean/scripts/powershell/test.ps1` to curl headers from `/` and `/api/health` and write `meta/security-headers.json`, then run `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
 
-- [ ] T083 Add “TLS mode guard” to ensure production cert issuance cannot be enabled accidentally.
+- [X] T083 Add “TLS mode guard” to ensure production cert issuance cannot be enabled accidentally.
   - **Touch**:
     - `traefik/traefik.yml` (ACME CA server URL)
     - `digital_ocean/scripts/powershell/test.ps1` (assert staging directory)
