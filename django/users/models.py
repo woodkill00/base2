@@ -142,7 +142,13 @@ class AuditEvent(TimestampedModel):
     class Meta:
         verbose_name = _("Audit Event")
         verbose_name_plural = _("Audit Events")
-        indexes = [models.Index(fields=["action", "actor_user"]) ]
+        indexes = [
+            # Common query patterns: per-user audit trail, per-action filtering, and recent events.
+            models.Index(fields=["action", "actor_user"], name="users_audit_action_idx"),
+            models.Index(fields=["actor_user"], name="users_audit_actor_idx"),
+            models.Index(fields=["action"], name="users_audit_action_only_idx"),
+            models.Index(fields=["created"], name="users_audit_created_idx"),
+        ]
 
 
 class EmailOutbox(UUIDMixin, TimestampedModel):

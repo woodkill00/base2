@@ -27,5 +27,5 @@
 - **Safe failures**: OAuth errors should not include provider tokens, codes, or internal stack traces.
 
 ## Logging & Auditing
-- Record audit events (login success/failure, signup, logout, profile update, OAuth link) with request metadata.
-- Never log secrets (passwords, verification tokens, OAuth tokens).
+- Record audit events (login success/failure, signup, logout, profile update, OAuth link, email verification, password reset) with request metadata.
+- Never log secrets (passwords, raw verification/reset tokens, OAuth tokens, OAuth codes).
