@@ -940,17 +940,36 @@ PY
     : > /root/logs/services/request-id-django.txt || true
     : > /root/logs/services/request-id-celery-worker.txt || true
 
+    # Poll briefly to avoid false negatives from log buffering.
+    POLL_MAX=15
+    POLL_SLEEP=2
     if [ -n "$TID" ]; then
-      docker exec "$TID" sh -lc "(grep -F \"$RID\" /var/log/traefik/access.log 2>/dev/null || true) | tail -n 50" > /root/logs/services/request-id-traefik.txt 2>&1 || true
+      for i in $(seq 1 $POLL_MAX); do
+        docker exec "$TID" sh -lc "(grep -F \"$RID\" /var/log/traefik/access.log 2>/dev/null || true) | tail -n 50" > /root/logs/services/request-id-traefik.txt 2>&1 || true
+        if [ -s /root/logs/services/request-id-traefik.txt ]; then break; fi
+        sleep $POLL_SLEEP
+      done
     fi
     if [ -n "$AID" ]; then
-      docker logs --timestamps --since=60m "$AID" 2>/dev/null | grep -F "$RID" | tail -n 50 > /root/logs/services/request-id-api.txt || true
+      for i in $(seq 1 $POLL_MAX); do
+        docker logs --timestamps --since=60m "$AID" 2>/dev/null | grep -F "$RID" | tail -n 50 > /root/logs/services/request-id-api.txt || true
+        if [ -s /root/logs/services/request-id-api.txt ]; then break; fi
+        sleep $POLL_SLEEP
+      done
     fi
     if [ -n "$DJID" ]; then
-      docker logs --timestamps --since=60m "$DJID" 2>/dev/null | grep -F "$RID" | tail -n 50 > /root/logs/services/request-id-django.txt || true
+      for i in $(seq 1 $POLL_MAX); do
+        docker logs --timestamps --since=60m "$DJID" 2>/dev/null | grep -F "$RID" | tail -n 50 > /root/logs/services/request-id-django.txt || true
+        if [ -s /root/logs/services/request-id-django.txt ]; then break; fi
+        sleep $POLL_SLEEP
+      done
     fi
     if [ -n "$CWID" ]; then
-      docker logs --timestamps --since=60m "$CWID" 2>/dev/null | grep -F "$RID" | tail -n 50 > /root/logs/services/request-id-celery-worker.txt || true
+      for i in $(seq 1 $POLL_MAX); do
+        docker logs --timestamps --since=60m "$CWID" 2>/dev/null | grep -F "$RID" | tail -n 50 > /root/logs/services/request-id-celery-worker.txt || true
+        if [ -s /root/logs/services/request-id-celery-worker.txt ]; then break; fi
+        sleep $POLL_SLEEP
+      done
     fi
 
     python3 -c "import json, os; from pathlib import Path;\
