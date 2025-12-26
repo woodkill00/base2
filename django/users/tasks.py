@@ -13,6 +13,12 @@ def send_email_outbox(email_outbox_uuid: str) -> str:
     return email_outbox_uuid
 
 
+# Keep deploy-time Celery probes stable: FastAPI enqueues `api.tasks.ping`.
+@shared_task(name="api.tasks.ping")
+def ping():
+    return {"ok": True}
+
+
 @shared_task
 def send_verification_email(*, to: str, verification_url: str) -> str:
     subject = "Verify your email"

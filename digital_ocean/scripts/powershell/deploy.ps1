@@ -724,6 +724,8 @@ PY
   docker compose -f local.docker.yml build django > /root/logs/build/django-build.txt 2>&1 || true
   docker compose -f local.docker.yml build --no-cache api > /root/logs/build/api-build.txt 2>&1 || true
   docker compose -f local.docker.yml build react-app > /root/logs/build/react-build.txt 2>&1 || true
+  docker compose -f local.docker.yml build celery-worker > /root/logs/build/celery-worker-build.txt 2>&1 || true
+  docker compose -f local.docker.yml build celery-beat > /root/logs/build/celery-beat-build.txt 2>&1 || true
 
   # Bring up core services needed for edge routing (avoid 502 due to missing upstreams)
   # Also start Celery worker/beat by default (Option A: no profile gating).
@@ -780,8 +782,9 @@ PY
   if [ "${RUN_CELERY_CHECK:-}" = "1" ]; then
     # Tune host sysctl for Redis memory overcommit (best-effort, ignore errors)
     (sysctl -w vm.overcommit_memory=1 && echo 'vm.overcommit_memory=1' > /etc/sysctl.d/99-redis.conf && sysctl --system) || true
-    # Build API (used by Celery worker image) if present; ignore if missing
-    docker compose -f local.docker.yml build api > /root/logs/build/api-build.txt 2>&1 || true
+    # Build Celery services (Django-based) if present; ignore if missing
+    docker compose -f local.docker.yml build celery-worker > /root/logs/build/celery-worker-build.txt 2>&1 || true
+    docker compose -f local.docker.yml build celery-beat > /root/logs/build/celery-beat-build.txt 2>&1 || true
     # Start Redis, Celery worker and beat under the celery profile; ignore if services not defined
     docker compose -f local.docker.yml --profile celery up -d redis celery-worker celery-beat > /root/logs/build/celery-up.txt 2>&1 || true
     # Start Flower if defined
