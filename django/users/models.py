@@ -143,3 +143,16 @@ class AuditEvent(TimestampedModel):
         verbose_name = _("Audit Event")
         verbose_name_plural = _("Audit Events")
         indexes = [models.Index(fields=["action", "actor_user"]) ]
+
+
+class EmailOutbox(UUIDMixin, TimestampedModel):
+    to = models.EmailField(max_length=255)
+    subject = models.CharField(max_length=255)
+    body = models.TextField()
+    sent_at = models.DateTimeField(null=True, blank=True)
+    provider_message_id = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        verbose_name = _("Email Outbox")
+        verbose_name_plural = _("Email Outbox")
+        indexes = [models.Index(fields=["to", "sent_at"])]

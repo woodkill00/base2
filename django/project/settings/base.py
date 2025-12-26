@@ -91,6 +91,36 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join("/app", "static")
 
+# ============================================
+# Email (SMTP)
+# ============================================
+
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", os.environ.get("EMAIL_USER", ""))
+EMAIL_HOST_PASSWORD = os.environ.get(
+    "EMAIL_HOST_PASSWORD", os.environ.get("EMAIL_PASSWORD", "")
+)
+
+_email_use_tls = os.environ.get("EMAIL_USE_TLS", "true").lower()
+EMAIL_USE_TLS = _email_use_tls in ("1", "true", "yes", "on")
+
+DEFAULT_FROM_EMAIL = os.environ.get(
+    "DEFAULT_FROM_EMAIL",
+    os.environ.get("EMAIL_FROM", os.environ.get("EMAIL_FROM_EMAIL", "noreply@example.com")),
+)
+
+# ============================================
+# Celery
+# ============================================
+
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://redis:6379/0")
+CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", "redis://redis:6379/1")
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+
 # Explicit default auto field
 # Use BigAutoField for new primary keys for consistency
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
