@@ -944,13 +944,13 @@ PY
       docker exec "$TID" sh -lc "(grep -F \"$RID\" /var/log/traefik/access.log 2>/dev/null || true) | tail -n 50" > /root/logs/services/request-id-traefik.txt 2>&1 || true
     fi
     if [ -n "$AID" ]; then
-      docker logs --timestamps --since=10m "$AID" 2>/dev/null | grep -F "$RID" | tail -n 50 > /root/logs/services/request-id-api.txt || true
+      docker logs --timestamps --since=60m "$AID" 2>/dev/null | grep -F "$RID" | tail -n 50 > /root/logs/services/request-id-api.txt || true
     fi
     if [ -n "$DJID" ]; then
-      docker logs --timestamps --since=10m "$DJID" 2>/dev/null | grep -F "$RID" | tail -n 50 > /root/logs/services/request-id-django.txt || true
+      docker logs --timestamps --since=60m "$DJID" 2>/dev/null | grep -F "$RID" | tail -n 50 > /root/logs/services/request-id-django.txt || true
     fi
     if [ -n "$CWID" ]; then
-      docker logs --timestamps --since=10m "$CWID" 2>/dev/null | grep -F "$RID" | tail -n 50 > /root/logs/services/request-id-celery-worker.txt || true
+      docker logs --timestamps --since=60m "$CWID" 2>/dev/null | grep -F "$RID" | tail -n 50 > /root/logs/services/request-id-celery-worker.txt || true
     fi
 
     python3 -c "import json, os; from pathlib import Path;\
