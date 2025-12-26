@@ -729,16 +729,16 @@ PY
 
   # Bring up core services needed for edge routing (avoid 502 due to missing upstreams)
   # Also start Celery worker/beat by default (Option A: no profile gating).
-  docker compose -f local.docker.yml up -d --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat > /root/logs/build/compose-up-core.txt 2>&1 || true
+  docker compose -f local.docker.yml up -d --build --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat > /root/logs/build/compose-up-core.txt 2>&1 || true
   # Ensure API container uses the freshly built image
-  docker compose -f local.docker.yml up -d --force-recreate api > /root/logs/build/api-up.txt 2>&1 || true
-  docker compose -f local.docker.yml up -d --force-recreate traefik > /root/logs/build/traefik-up.txt 2>&1 || true
+  docker compose -f local.docker.yml up -d --build --force-recreate --no-deps api > /root/logs/build/api-up.txt 2>&1 || true
+  docker compose -f local.docker.yml up -d --build --force-recreate --no-deps traefik > /root/logs/build/traefik-up.txt 2>&1 || true
 
   # Ensure Flower is started (kept as a separate log artifact)
-  docker compose -f local.docker.yml up -d flower > /root/logs/build/flower-up.txt 2>&1 || true
+  docker compose -f local.docker.yml up -d --build flower > /root/logs/build/flower-up.txt 2>&1 || true
 
   # Ensure Django service is running for admin route
-  docker compose -f local.docker.yml up -d django > /root/logs/build/django-up.txt 2>&1 || true
+  docker compose -f local.docker.yml up -d --build django > /root/logs/build/django-up.txt 2>&1 || true
   # Capture Django migration output into a dedicated artifact
   docker compose -f local.docker.yml exec -T django python manage.py migrate --noinput > /root/logs/django-migrate.txt 2>&1 || true
   # Django deploy checks (security + config sanity)
@@ -786,9 +786,9 @@ PY
     docker compose -f local.docker.yml build celery-worker > /root/logs/build/celery-worker-build.txt 2>&1 || true
     docker compose -f local.docker.yml build celery-beat > /root/logs/build/celery-beat-build.txt 2>&1 || true
     # Start Redis, Celery worker and beat under the celery profile; ignore if services not defined
-    docker compose -f local.docker.yml --profile celery up -d redis celery-worker celery-beat > /root/logs/build/celery-up.txt 2>&1 || true
+    docker compose -f local.docker.yml --profile celery up -d --build redis celery-worker celery-beat > /root/logs/build/celery-up.txt 2>&1 || true
     # Start Flower if defined
-    docker compose -f local.docker.yml up -d flower > /root/logs/build/flower-up.txt 2>&1 || true
+    docker compose -f local.docker.yml up -d --build flower > /root/logs/build/flower-up.txt 2>&1 || true
   fi
   # Best-effort: wait for key services to report healthy before snapshotting.
   # This reduces false negatives where compose-ps.txt is captured during startup.
