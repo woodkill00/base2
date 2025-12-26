@@ -961,7 +961,7 @@ found={\
   'celery_worker': bool(rt('/root/logs/services/request-id-celery-worker.txt')),\
 };\
 payload={'request_id': rid, 'ok': bool(rid) and found['api'] and found['django'], 'found': found};\
-print(json.dumps(payload))" > /root/logs/meta/request-id-log-propagation.json 2> /root/logs/meta/request-id-log-propagation.err || true
+print(json.dumps(payload))" > /root/logs/request-id-log-propagation.json 2> /root/logs/request-id-log-propagation.err || true
     set -e
 
     # Back-compat: maintain curl-api.txt pointing at preferred health endpoint (non-slash first)
