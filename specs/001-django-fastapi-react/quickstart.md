@@ -25,6 +25,10 @@ This quickstart is for running and verifying the full stack using the repo’s s
 - Web UI: `https://$WEBSITE_DOMAIN/`
 - API health: `https://$WEBSITE_DOMAIN/api/health`
 
+Email (local outbox fallback):
+- If SMTP is not configured (for example, `EMAIL_HOST` is empty), outbound emails are written to the Django `EmailOutbox` table instead of being sent.
+- To inspect queued emails, use Django Admin (`https://admin.$WEBSITE_DOMAIN/admin`) and view the EmailOutbox entries.
+
 Notes:
 - The Traefik config enforces HTTPS and uses the Let’s Encrypt **staging** ACME directory. For fully offline/local domains that are not publicly resolvable, certificate issuance may not succeed; the staging-like verification path is designed for the droplet environment.
 

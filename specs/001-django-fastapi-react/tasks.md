@@ -441,7 +441,7 @@
 
 **Purpose**: Complete the auth surface React already implies and add expected account-management features.
 
-- [ ] T090 Implement email delivery plumbing via Celery (provider-agnostic) and a safe “outbox” fallback for local.
+- [X] T090 Implement email delivery plumbing via Celery (provider-agnostic) and a safe “outbox” fallback for local.
   - **Touch**:
     - `django/users/emails.py` (new helper: render + send)
     - `django/users/tasks.py` (Celery tasks: send_verification_email, send_password_reset_email)

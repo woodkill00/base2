@@ -9,8 +9,8 @@ Services (Compose-first):
 - django: canonical domain models, migrations, admin
 - postgres: Postgres 16 (internal-only)
 - redis: Redis 7.2 (internal-only)
-- celery-worker: executes async jobs (api image)
-- celery-beat: schedules periodic jobs (api image)
+- celery-worker: executes async jobs (django image)
+- celery-beat: schedules periodic jobs (django image)
 - flower: Celery monitoring UI (gated)
 - pgadmin: DB admin UI (gated)
 
@@ -27,3 +27,4 @@ Policy:
 
 Runtime notes:
 - api runs under Gunicorn using `uvicorn.workers.UvicornWorker`.
+- Email sending is provider-agnostic; if SMTP is not configured, emails are written to the Django `EmailOutbox` table.
