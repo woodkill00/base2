@@ -463,7 +463,7 @@
     - Django tests in `django/tests/test_email_tasks.py`
     - `deploy.ps1 -AllTests`
 
-- [ ] T091 Add Email Verification flow (token issuance + verify endpoint + UI).
+- [X] T091 Add Email Verification flow (token issuance + verify endpoint + UI).
   - **Touch**:
     - `django/users/models.py` (new model: `EmailVerificationToken` or generic `OneTimeToken`)
     - `django/users/migrations/*` (new)
