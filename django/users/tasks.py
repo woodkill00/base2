@@ -16,13 +16,13 @@ def send_email_outbox(email_outbox_uuid: str) -> str:
 # Keep deploy-time Celery probes stable: FastAPI enqueues `api.tasks.ping`.
 @shared_task(name="api.tasks.ping")
 def ping():
-    return {"ok": True}
+    return "pong"
 
 
 # Deploy-time probes also enqueue `base2.ping` (legacy Celery app name).
 @shared_task(name="base2.ping")
 def ping_base2():
-    return {"ok": True}
+    return "pong"
 
 
 @shared_task
