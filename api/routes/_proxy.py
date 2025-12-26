@@ -35,6 +35,23 @@ async def proxy_json(
     forward_csrf: bool = True,
 ) -> Any:
     forward_headers: dict[str, str] = {}
+
+    # Request-id propagation (for logging/tracing).
+    try:
+        req_id = getattr(request.state, "request_id", None) or request.headers.get("x-request-id")
+        if req_id:
+            forward_headers["X-Request-Id"] = str(req_id)
+    except Exception:
+        pass
+
+    # Preserve context that Django may use for auditing/logging.
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        forward_headers.setdefault("X-Forwarded-For", xff)
+    ua = request.headers.get("user-agent")
+    if ua:
+        forward_headers.setdefault("User-Agent", ua)
+
     if forward_csrf:
         csrf = request.headers.get("x-csrf-token")
         if csrf:

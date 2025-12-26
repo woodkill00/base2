@@ -29,6 +29,11 @@ accessLog:
   filePath: "/var/log/traefik/access.log"
   format: json
   bufferingSize: 100
+  fields:
+    headers:
+      defaultMode: drop
+      names:
+        X-Request-Id: keep
 
 certificatesResolvers:
   le-staging:

@@ -439,6 +439,7 @@ function Get-ArtifactServiceSubdir([string]$fileName) {
     '^celery-(ping|result)\.json$' { return 'celery' }
 
     '^env-dollar-check\.(txt|status)$' { return 'meta' }
+    '^request-id-log-propagation\.json$' { return 'meta' }
     '^post-deploy-report\.json$' { return 'meta' }
     '^admin-host-path-guard\.json$' { return 'meta' }
     '^guarded-endpoints\.json$' { return 'meta' }
@@ -1087,6 +1088,7 @@ $expectedFiles = @(
   'traefik-acme-perms.txt',
   'traefik-logs.txt',
   'api-logs.txt',
+  'request-id-log-propagation.json',
   'django-migrate.txt',
   'django-check-deploy.txt',
   'django-internal-health.json',
@@ -1454,6 +1456,7 @@ $result = [ordered]@{
   tlsCheck = [ordered]@{ enabled = $false; ok = $false; notAfter = ''; daysRemaining = $null; dnsNames = @() }
   healthContractCheck = [ordered]@{ enabled = $true; ok = [bool]($healthContract.ok); missing = @($healthContract.missing); observedTypes = $healthContract.observedTypes }
   djangoInternalHealthCheck = [ordered]@{ enabled = $true; ok = [bool]($djangoInternalHealth.ok); status = $djangoInternalHealth.status; db_ok = [bool]($djangoInternalHealth.db_ok); error = [string]($djangoInternalHealth.error) }
+  requestIdLogPropagationCheck = [ordered]@{ enabled = $true; ok = $false; request_id = ''; found = [ordered]@{ traefik = $false; api = $false; django = $false; celery_worker = $false }; error = '' }
   healthTimingsCheck = [ordered]@{ enabled = $true; ok = [bool]($healthTimings.ok); url = [string]($healthTimings.url); p95Ms = $healthTimings.p95Ms; thresholdMs = $healthTimings.thresholdMs; samples = $healthTimings.samples; successCount = $healthTimings.successCount }
   loginTimingsCheck = [ordered]@{ enabled = $true; ok = [bool]($loginTimings.ok); p99Ms = $loginTimings.p99Ms; thresholdMs = $loginTimings.thresholdMs; samples = $loginTimings.samples; successCount = $loginTimings.successCount; signupStatus = $loginTimings.signupStatus }
   signupToDashboardTimingsCheck = [ordered]@{ enabled = $true; ok = [bool]($signupToDashboard.ok); elapsedMs = $signupToDashboard.elapsedMs; thresholdMs = $signupToDashboard.thresholdMs; signupStatus = $signupToDashboard.signupStatus; meStatus = $signupToDashboard.meStatus }
@@ -1468,6 +1471,29 @@ $result = [ordered]@{
   doDnsCheck = [ordered]@{ enabled = $false; ok = $false; expectedIpv4 = ''; expectedIpv6 = '' }
   clientDnsCheck = [ordered]@{ enabled = $false; ok = $false; expectedIpv4 = ''; failures = @() }
   failures = @()
+}
+
+# Request-id log propagation check: consume the remote verification artifact if present.
+try {
+  $ridPath = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'request-id-log-propagation.json'
+  if ($ridPath -and (Test-Path $ridPath)) {
+    $rid = Get-Content -Path $ridPath -Raw | ConvertFrom-Json
+    $result.requestIdLogPropagationCheck.request_id = [string]$rid.request_id
+    $result.requestIdLogPropagationCheck.ok = [bool]$rid.ok
+    try { $result.requestIdLogPropagationCheck.found = $rid.found } catch {}
+  } else {
+    $result.requestIdLogPropagationCheck.error = 'Missing request-id-log-propagation.json'
+  }
+} catch {
+  $result.requestIdLogPropagationCheck.error = [string]$_.Exception.Message
+}
+
+if (-not $result.requestIdLogPropagationCheck.ok) {
+  if ($result.requestIdLogPropagationCheck.error) {
+    $failures += "Request-id log propagation check failed: $($result.requestIdLogPropagationCheck.error)"
+  } else {
+    $failures += "Request-id log propagation check failed: request_id=$($result.requestIdLogPropagationCheck.request_id) found=$($result.requestIdLogPropagationCheck.found | ConvertTo-Json -Compress)"
+  }
 }
 
 # Emit explicit artifact for public security headers on / and /api/health (T082).

@@ -29,6 +29,11 @@ def _request_ip(request) -> str | None:
     return request.META.get("REMOTE_ADDR")
 
 
+def _request_id(request) -> str | None:
+    rid = request.META.get("HTTP_X_REQUEST_ID")
+    return rid or None
+
+
 def _audit(request, *, action: str, actor_user=None, target_type: str = "", target_id: str = "", metadata=None):
     AuditEvent.objects.create(
         actor_user=actor_user,
@@ -366,7 +371,11 @@ def signup(request):
         )
         from users.tasks import send_verification_email
 
-        send_verification_email.delay(to=email, verification_url=_verification_link(request, raw_token=raw_token))
+        send_verification_email.delay(
+            to=email,
+            verification_url=_verification_link(request, raw_token=raw_token),
+            request_id=_request_id(request),
+        )
         _audit(
             request,
             action="auth.email.verify.issued",
@@ -465,7 +474,11 @@ def forgot_password(request):
         )
         from users.tasks import send_password_reset_email
 
-        send_password_reset_email.delay(to=email, reset_url=_password_reset_link(request, raw_token=raw_token))
+        send_password_reset_email.delay(
+            to=email,
+            reset_url=_password_reset_link(request, raw_token=raw_token),
+            request_id=_request_id(request),
+        )
         _audit(
             request,
             action="auth.password.reset.issued",

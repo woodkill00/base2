@@ -1,11 +1,18 @@
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body, Request
+import logging
 import os
+import time
 from celery.result import AsyncResult
 from api import tasks  # ensure tasks module is importable
 from api.db import db_ping
 
+from api.logging import configure_logging
+
 
 ENV = os.getenv("ENV", "development")
+
+configure_logging(service="api")
+logger = logging.getLogger("api.http")
 
 app = FastAPI(
     title="Base2 API",
@@ -23,6 +30,45 @@ try:
         return await request_id_middleware(request, call_next)
 except Exception:
     pass
+
+
+@app.middleware("http")
+async def _access_log(request: Request, call_next):
+    start = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        latency_ms = int((time.perf_counter() - start) * 1000)
+        req_id = getattr(request.state, "request_id", "")
+        logger.exception(
+            "request_failed",
+            extra={
+                "request_id": req_id,
+                "method": request.method,
+                "path": request.url.path,
+                "status": 500,
+                "latency_ms": latency_ms,
+                "client_ip": (request.client.host if request.client else "unknown"),
+                "user_agent": request.headers.get("user-agent", ""),
+            },
+        )
+        raise
+
+    latency_ms = int((time.perf_counter() - start) * 1000)
+    req_id = getattr(request.state, "request_id", "")
+    logger.info(
+        "request",
+        extra={
+            "request_id": req_id,
+            "method": request.method,
+            "path": request.url.path,
+            "status": int(getattr(response, "status_code", 0) or 0),
+            "latency_ms": latency_ms,
+            "client_ip": (request.client.host if request.client else "unknown"),
+            "user_agent": request.headers.get("user-agent", ""),
+        },
+    )
+    return response
 
 # Error handlers: ensure consistent {detail}
 try:

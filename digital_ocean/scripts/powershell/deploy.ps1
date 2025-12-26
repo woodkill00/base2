@@ -626,7 +626,7 @@ if [ -d /opt/apps/base2 ]; then
   cd /opt/apps/base2
   # Prepare log directories; clear stale artifacts from previous runs.
   rm -rf /root/logs/* || true
-  mkdir -p /root/logs/build /root/logs/services || true
+  mkdir -p /root/logs/build /root/logs/services /root/logs/meta || true
   # Prevent noisy stdout/stderr (git, docker build progress) from flowing back over SSH.
   # Windows PowerShell 5.1 can treat remote stderr as terminating errors under strict settings.
   exec > /root/logs/build/remote-verify-console.txt 2>&1
@@ -907,6 +907,78 @@ PY
     # API health GET (capture body and status separately)
     curl -sk "${RESOLVE_DOMAIN[@]}" -o /root/logs/api-health.json -w "%{http_code}" "https://$DOMAIN/api/health" > /root/logs/api-health.status || true
     curl -sk "${RESOLVE_DOMAIN[@]}" -o /root/logs/api-health-slash.json -w "%{http_code}" "https://$DOMAIN/api/health/" > /root/logs/api-health-slash.status || true
+
+    # Request-id log propagation probe:
+    # - Send a request with an explicit X-Request-Id
+    # - Confirm that ID appears in FastAPI/Django logs (and Traefik access log if available)
+    export RID
+    RID=$(python3 - <<'PY'
+  import uuid
+  print(str(uuid.uuid4()))
+  PY
+  )
+    : > /root/logs/request-id-health.headers || true
+    : > /root/logs/request-id-health.body || true
+    curl -sk "${RESOLVE_DOMAIN[@]}" -H "X-Request-Id: $RID" -D /root/logs/request-id-health.headers -o /root/logs/request-id-health.body "https://$DOMAIN/api/health" || true
+
+    TID=$(docker compose -f local.docker.yml ps -q traefik 2>/dev/null || true)
+    AID=$(docker compose -f local.docker.yml ps -q api 2>/dev/null || true)
+    DJID=$(docker compose -f local.docker.yml ps -q django 2>/dev/null || true)
+    CWID=$(docker compose -f local.docker.yml ps -q celery-worker 2>/dev/null || true)
+
+    # Capture grep outputs (best-effort; keep artifacts even on failure)
+    : > /root/logs/services/request-id-traefik.txt || true
+    : > /root/logs/services/request-id-api.txt || true
+    : > /root/logs/services/request-id-django.txt || true
+    : > /root/logs/services/request-id-celery-worker.txt || true
+
+    if [ -n "$TID" ]; then
+      docker exec "$TID" sh -lc "(grep -F \"$RID\" /var/log/traefik/access.log 2>/dev/null || true) | tail -n 50" > /root/logs/services/request-id-traefik.txt 2>&1 || true
+    fi
+    if [ -n "$AID" ]; then
+      docker logs --timestamps --since=10m "$AID" 2>/dev/null | grep -F "$RID" | tail -n 50 > /root/logs/services/request-id-api.txt || true
+    fi
+    if [ -n "$DJID" ]; then
+      docker logs --timestamps --since=10m "$DJID" 2>/dev/null | grep -F "$RID" | tail -n 50 > /root/logs/services/request-id-django.txt || true
+    fi
+    if [ -n "$CWID" ]; then
+      docker logs --timestamps --since=10m "$CWID" 2>/dev/null | grep -F "$RID" | tail -n 50 > /root/logs/services/request-id-celery-worker.txt || true
+    fi
+
+    python3 - <<'PY' > /root/logs/meta/request-id-log-propagation.json 2> /root/logs/meta/request-id-log-propagation.err || true
+  import json
+  from pathlib import Path
+
+  def read_text(p: str) -> str:
+    try:
+      return Path(p).read_text(encoding='utf-8', errors='replace')
+    except Exception:
+      return ''
+
+  request_id = None
+  try:
+    # Exported by the shell probe
+    import os
+    request_id = os.environ.get('RID')
+  except Exception:
+    request_id = None
+
+  payload = {
+    'request_id': request_id or '',
+    'ok': False,
+    'found': {
+      'traefik': bool(read_text('/root/logs/services/request-id-traefik.txt').strip()),
+      'api': bool(read_text('/root/logs/services/request-id-api.txt').strip()),
+      'django': bool(read_text('/root/logs/services/request-id-django.txt').strip()),
+      'celery_worker': bool(read_text('/root/logs/services/request-id-celery-worker.txt').strip()),
+    },
+  }
+
+  # Minimum success: api + django logs show the request_id.
+  payload['ok'] = bool(payload['request_id']) and payload['found']['api'] and payload['found']['django']
+
+  print(json.dumps(payload))
+  PY
 
     # Back-compat: maintain curl-api.txt pointing at preferred health endpoint (non-slash first)
     cp /root/logs/curl-api-health.txt /root/logs/curl-api.txt || true
