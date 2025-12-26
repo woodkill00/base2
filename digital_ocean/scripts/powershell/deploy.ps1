@@ -14,7 +14,8 @@ param(
   [switch]$RunRateLimitTest,
   [switch]$RunCeleryCheck,
   [int]$RateLimitBurst = 20,
-  [int]$VerifyTimeoutSec = 600,
+  # Remote verification can include container rebuilds and test runs; 10 minutes is often too low.
+  [int]$VerifyTimeoutSec = 1800,
   [switch]$AsyncVerify,
   [int]$LogsPollMaxAttempts = 30,
   [int]$LogsPollIntervalSec = 10,
@@ -465,9 +466,10 @@ function Assert-EnvNotTracked {
     $null = Get-Command git -ErrorAction Stop
     # In Windows PowerShell 5.1, piping native output (even to Out-Null) can raise
     # "The pipeline has been stopped". Avoid pipelines; rely on exit codes instead.
-    # If .env is NOT tracked, git exits non-zero and may print a pathspec message to stderr.
-    & git ls-files --error-unmatch .env *> $null
-    if ($LASTEXITCODE -eq 0) {
+    # Avoid `git ls-files --error-unmatch` because it can emit a terminating error record
+    # under strict error settings. Use output presence to detect tracking, without pipelines.
+    $tracked = & git ls-files .env 2>$null
+    if ($tracked) {
       throw ".env is tracked by git. Fix by running: git rm --cached .env (and commit), ensure .gitignore includes .env, then re-run deploy."
     }
     $LASTEXITCODE = 0
@@ -585,7 +587,16 @@ function Remote-Verify($ip, $keyPath) {
   $null = Ensure-ArtifactDir -ip $ip
   $sshExe = "ssh"
   $scpExe = "scp"
-  $sshCommon = @('-o','ConnectTimeout=20','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=4','-o','StrictHostKeyChecking=no')
+  # Be resilient to transient SSH/SCP handshake slowness; OpenSSH on Windows sometimes hits
+  # "Connection timed out during banner exchange" on busy or briefly unreachable hosts.
+  $sshCommon = @(
+    '-o','ConnectTimeout=60',
+    '-o','ConnectionAttempts=3',
+    '-o','ServerAliveInterval=15',
+    '-o','ServerAliveCountMax=4',
+    '-o','StrictHostKeyChecking=no',
+    '-o','BatchMode=yes'
+  )
   $sshArgs = @('-i', $keyPath) + $sshCommon + @("root@$ip")
   $prevEap = $ErrorActionPreference
   try {
@@ -606,21 +617,6 @@ function Remote-Verify($ip, $keyPath) {
   & $scpExe -i $keyPath @($sshCommon) $localEnvPath "root@${ip}:/opt/apps/base2/.env" *> $null
   if ($LASTEXITCODE -ne 0) { throw "Failed to upload .env to droplet (scp exit $LASTEXITCODE)" }
 
-  # Upload local API source overlay to droplet (to ensure runtime OpenAPI fix is present)
-  try {
-    $localApiDir = (Join-Path $script:RepoRoot 'api')
-    if (Test-Path $localApiDir) {
-      # Ensure remote upload directory exists to avoid scp failure
-      try { & $sshExe @sshArgs "mkdir -p /root/uploads" *> $null } catch { }
-      $tmpZip = Join-Path $env:TEMP ("api-overlay-" + $script:RunStamp + ".zip")
-      try { if (Test-Path $tmpZip) { Remove-Item -LiteralPath $tmpZip -Force } } catch {}
-      Compress-Archive -Path (Join-Path $localApiDir '*') -DestinationPath $tmpZip -Force
-      & $scpExe -i $keyPath @($sshCommon) $tmpZip "root@${ip}:/root/uploads/api.zip" *> $null
-      try { Remove-Item -LiteralPath $tmpZip -Force } catch {}
-      # Do not fail the deploy if overlay upload fails; remote script will proceed with repo code.
-    }
-  } catch {}
-
   # Create a remote verification script to avoid quoting pitfalls
   $tmpScript = Join-Path $env:TEMP "remote_verify.sh"
   $scriptContent = @'
@@ -628,8 +624,12 @@ set -eu
 mkdir -p /root/logs
 if [ -d /opt/apps/base2 ]; then
   cd /opt/apps/base2
-  # Prepare log directories
+  # Prepare log directories; clear stale artifacts from previous runs.
+  rm -rf /root/logs/* || true
   mkdir -p /root/logs/build /root/logs/services || true
+  # Prevent noisy stdout/stderr (git, docker build progress) from flowing back over SSH.
+  # Windows PowerShell 5.1 can treat remote stderr as terminating errors under strict settings.
+  exec > /root/logs/build/remote-verify-console.txt 2>&1
   # Preserve the active .env across git reset/clean (the repo may track a template .env)
   if [ -f .env ]; then
     cp -f .env /root/logs/build/env-backup.env || true
@@ -660,26 +660,6 @@ if [ -d /opt/apps/base2 ]; then
   # Restore .env after repo sync so Compose uses the deployed values
   if [ -f /root/logs/build/env-backup.env ]; then
     cp -f /root/logs/build/env-backup.env .env || true
-  fi
-
-  # If a local API overlay was uploaded, apply it before building images
-  if [ -f /root/uploads/api.zip ]; then
-    mkdir -p /opt/apps/base2/api || true
-    python3 - <<'PY' > /root/logs/api-overlay.txt 2>&1
-import sys, zipfile
-from pathlib import Path
-src = Path('/root/uploads/api.zip')
-dest = Path('/opt/apps/base2/api')
-print('overlay: src exists?', src.exists())
-print('overlay: dest', dest)
-if src.exists():
-    with zipfile.ZipFile(src, 'r') as z:
-        z.extractall(dest)
-print('overlay: done')
-PY
-    # Diagnostic: capture the first 200 lines of main.py and grep for SessionCookie marker
-    (sed -n '1,200p' /opt/apps/base2/api/main.py > /root/logs/api-main-head.txt) || true
-    (grep -n "SessionCookie" /opt/apps/base2/api/main.py > /root/logs/api-main-grep.txt) || true
   fi
 
   # Guardrail: htpasswd strings must not be double-escaped in the droplet .env.
@@ -719,14 +699,12 @@ PY
   STATUS=$?
   set -e
   echo $STATUS > /root/logs/build/env-dollar-check.status || true
-  # Capture build and up logs for the core stack
-  docker compose -f local.docker.yml build --no-cache traefik > /root/logs/build/traefik-build.txt 2>&1 || true
-  docker compose -f local.docker.yml build django > /root/logs/build/django-build.txt 2>&1 || true
-  docker compose -f local.docker.yml build --no-cache api > /root/logs/build/api-build.txt 2>&1 || true
-  docker compose -f local.docker.yml build react-app > /root/logs/build/react-build.txt 2>&1 || true
-  docker compose -f local.docker.yml build celery-worker > /root/logs/build/celery-worker-build.txt 2>&1 || true
-  docker compose -f local.docker.yml build celery-beat > /root/logs/build/celery-beat-build.txt 2>&1 || true
+  # IMPORTANT: We have observed Docker caching causing stale FastAPI code to persist across
+  # UpdateOnly deploys. Use a targeted no-cache rebuild for the `api` service to ensure the
+  # running container matches the git checkout (keeps overall verification time reasonable).
+  docker compose -f local.docker.yml build --no-cache api > /root/logs/build/api-build-nocache.txt 2>&1 || true
 
+  # Bring up services. `up --build` is generally sufficient to rebuild when inputs change.
   # Bring up core services needed for edge routing (avoid 502 due to missing upstreams)
   # Also start Celery worker/beat by default (Option A: no profile gating).
   docker compose -f local.docker.yml up -d --build --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat > /root/logs/build/compose-up-core.txt 2>&1 || true
@@ -1018,14 +996,28 @@ fi
     throw "Remote verification SSH failed (exit $code)"
   }
 
+  # If we ran synchronously, require a completion marker; otherwise we risk proceeding with
+  # partial /root/logs and then failing confusingly on missing artifacts.
+  if (-not $AsyncVerify) {
+    try {
+      $flag = & $sshExe @sshArgs "test -f /root/logs/remote_verify.done && echo DONE || echo NOT_DONE" 2>&1
+      if (-not ($flag -match 'DONE')) {
+        throw "Remote verification did not complete (missing /root/logs/remote_verify.done). Try a larger -VerifyTimeoutSec (current=$VerifyTimeoutSec) or use -AsyncVerify."
+      }
+    } catch {
+      throw $_
+    }
+  }
+
   Write-Section "Copying verification artifacts"
   $dest = Ensure-ArtifactDir
 
   # Robust copy with polling when async: wait for /root/logs/remote_verify.done, then scp
-  $attempts = 1
-  if ($AsyncVerify) { $attempts = [Math]::Max(3, [int]$LogsPollMaxAttempts) }
+  $attempts = 3
+  if ($AsyncVerify) { $attempts = [Math]::Max($attempts, [int]$LogsPollMaxAttempts) }
   $interval = [Math]::Max(2, [int]$LogsPollIntervalSec)
   $copied = $false
+  $lastCopyErr = $null
   for ($i = 1; $i -le $attempts; $i++) {
     try {
       if ($AsyncVerify) {
@@ -1041,12 +1033,33 @@ fi
       $copied = $true
       break
     } catch {
-      Start-Sleep -Seconds $interval
+      $lastCopyErr = $_
+      Start-Sleep -Seconds ([Math]::Min(30, $interval * $i))
+    }
+  }
+
+  # Fallback: try copying a single tarball if directory copy was flaky.
+  if (-not $copied) {
+    try {
+      & $sshExe @sshArgs "tar -czf /root/logs.tgz -C /root logs" *> $null
+      if ($LASTEXITCODE -ne 0) { throw "remote tar failed (exit $LASTEXITCODE)" }
+      $tgzPath = Join-Path $dest 'logs.tgz'
+      & $scpExe -i $keyPath @($sshCommon) "root@${ip}:/root/logs.tgz" $tgzPath *> $null
+      if ($LASTEXITCODE -ne 0) { throw "scp logs.tgz failed (exit $LASTEXITCODE)" }
+      if (Test-Path $tgzPath) {
+        & tar -xzf $tgzPath -C $dest *> $null
+        Remove-Item -Force $tgzPath -ErrorAction SilentlyContinue
+        $copied = $true
+      }
+    } catch {
+      $lastCopyErr = $_
     }
   }
 
   if (-not $copied) {
-    Write-Warning "Remote logs not yet available after $attempts attempts; continuing. You can re-run copy later."
+    $msg = "Remote logs could not be copied after $attempts attempts"
+    if ($lastCopyErr) { $msg += ": $($lastCopyErr.Exception.Message)" }
+    Write-Warning "$msg; continuing. You can re-run copy later."
   } else {
     # Best-effort copy of individual files to the root of $dest for convenience
     $files = @(

@@ -492,7 +492,7 @@
     - React tests: `react-app/src/__tests__/verify-email.test.js`
     - `deploy.ps1 -AllTests`
 
-- [ ] T092 Add Forgot Password + Reset Password flow (enumeration-safe).
+- [X] T092 Add Forgot Password + Reset Password flow (enumeration-safe).
   - **Touch**:
     - `django/users/models.py` (reset token model; can reuse generic token table)
     - `django/users/api_views.py` (`/forgot-password`, `/reset-password`)

@@ -44,3 +44,7 @@ Thumbs.db
 
 # Generated files
 *.lock
+
+# Deploy artifacts
+local_run_logs/
+DO_userdata.json
