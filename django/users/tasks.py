@@ -19,6 +19,12 @@ def ping():
     return {"ok": True}
 
 
+# Deploy-time probes also enqueue `base2.ping` (legacy Celery app name).
+@shared_task(name="base2.ping")
+def ping_base2():
+    return {"ok": True}
+
+
 @shared_task
 def send_verification_email(*, to: str, verification_url: str) -> str:
     subject = "Verify your email"
