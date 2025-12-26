@@ -373,7 +373,7 @@
     - Add `api/tests/test_process_model.py` to assert app still serves `/health` under the new command (basic httpx call inside container).
     - `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
 
-- [ ] T085 Replace ad-hoc psycopg2 usage with a pooled approach and explicit timeouts.
+- [X] T085 Replace ad-hoc psycopg2 usage with a pooled approach and explicit timeouts.
   - **Touch**:
     - `api/db.py` (or wherever connections are built; currently `api/database.py`-like)
     - `api/settings.py` (pool size + timeouts)
