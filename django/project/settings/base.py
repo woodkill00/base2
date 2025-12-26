@@ -5,6 +5,12 @@ DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",") if h.strip()]
 if os.environ.get("DJANGO_ALLOW_ALL_HOSTS", "false").lower() == "true":
     ALLOWED_HOSTS = ["*"]
+else:
+    # Internal/loopback calls (used by deploy-time probes) should not fail with DisallowedHost.
+    # Keep this minimal and safe: only add loopback hosts, and only when not allowing all.
+    for _h in ("localhost", "127.0.0.1"):
+        if _h not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(_h)
 
 # Trust proxy headers from Traefik and ensure correct scheme/host
 USE_X_FORWARDED_HOST = True

@@ -741,36 +741,36 @@ PY
   docker compose -f local.docker.yml exec -T django python manage.py migrate --noinput > /root/logs/django-migrate.txt 2>&1 || true
   # Django deploy checks (security + config sanity)
   docker compose -f local.docker.yml exec -T django python manage.py check --deploy > /root/logs/django-check-deploy.txt 2>&1 || true
-    # Django internal HTTP health (avoid probing admin HTML); capture JSON body + HTTP status
-    docker compose -f local.docker.yml exec -T django python - <<'PY' > /root/logs/django-internal-health.json 2> /root/logs/django-internal-health.status || true
-  import json
-  import os
-  import sys
-  from urllib.error import HTTPError
-  from urllib.request import urlopen
+  # Django internal HTTP health (avoid probing admin HTML); capture JSON body + HTTP status
+  docker compose -f local.docker.yml exec -T django python - <<'PY' > /root/logs/django-internal-health.json 2> /root/logs/django-internal-health.status || true
+import json
+import os
+import sys
+from urllib.error import HTTPError
+from urllib.request import urlopen
 
-  port = os.environ.get("PORT") or "8000"
-  url = f"http://127.0.0.1:{port}/internal/health"
-  status = 0
-  body = "{}"
+port = os.environ.get("PORT") or "8000"
+url = f"http://127.0.0.1:{port}/internal/health"
+status = 0
+body = "{}"
 
-  try:
+try:
     with urlopen(url, timeout=5) as resp:
-      status = getattr(resp, "status", None) or resp.getcode() or 200
-      body = resp.read().decode("utf-8")
-  except HTTPError as e:
+        status = getattr(resp, "status", None) or resp.getcode() or 200
+        body = resp.read().decode("utf-8")
+except HTTPError as e:
     status = e.code
     try:
-      body = e.read().decode("utf-8")
+        body = e.read().decode("utf-8")
     except Exception:
-      body = json.dumps({"ok": False, "service": "django", "db_ok": False})
-  except Exception as e:
+        body = json.dumps({"ok": False, "service": "django", "db_ok": False})
+except Exception as e:
     status = 0
     body = json.dumps({"ok": False, "service": "django", "db_ok": False, "error": str(e)})
 
-  sys.stdout.write(body)
-  sys.stderr.write(str(status))
-  PY
+sys.stdout.write(body)
+sys.stderr.write(str(status))
+PY
   # Schema compatibility check (fails if migrations unapplied or schema drift)
   set +e
   docker compose -f local.docker.yml exec -T django python manage.py schema_compat_check --json > /root/logs/schema-compat-check.json 2> /root/logs/schema-compat-check.err
