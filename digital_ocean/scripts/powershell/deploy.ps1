@@ -885,6 +885,7 @@ PY
       echo "EMPTY" > /root/logs/traefik-dynamic.yml
     fi
     docker exec "$CID" sh -lc 'ls -l /etc/traefik /etc/traefik/dynamic' > /root/logs/traefik-ls.txt || true
+    docker exec "$CID" sh -lc 'ls -la /etc/traefik/acme 2>/dev/null || true; for f in /etc/traefik/acme/*.json; do [ -f "$f" ] || continue; stat -c "%a %n" "$f" 2>/dev/null || true; done' > /root/logs/traefik-acme-perms.txt || true
     # Capture the templates used inside the container for debugging
     docker exec "$CID" sh -lc 'cat /etc/traefik/templates/dynamic.yml.template 2>/dev/null || echo TEMPLATE_MISSING' > /root/logs/traefik-dynamic.template.yml || true
     docker exec "$CID" sh -lc 'cat /etc/traefik/templates/traefik.yml.template 2>/dev/null || echo TEMPLATE_MISSING' > /root/logs/traefik-static.template.yml || true
@@ -897,7 +898,7 @@ PY
       echo "MISSING_API_CID" > /root/logs/api-logs.txt
     fi
   else
-    echo "MISSING_CID" | tee /root/logs/traefik-env.txt /root/logs/traefik-static.yml /root/logs/traefik-dynamic.yml /root/logs/traefik-ls.txt /root/logs/traefik-logs.txt /root/logs/api-logs.txt >/dev/null
+    echo "MISSING_CID" | tee /root/logs/traefik-env.txt /root/logs/traefik-static.yml /root/logs/traefik-dynamic.yml /root/logs/traefik-ls.txt /root/logs/traefik-acme-perms.txt /root/logs/traefik-logs.txt /root/logs/api-logs.txt >/dev/null
   fi
   DOMAIN=$(grep -E '^WEBSITE_DOMAIN=' /opt/apps/base2/.env | cut -d'=' -f2 | tr -d '\r')
   if [ -n "$DOMAIN" ]; then
@@ -1047,6 +1048,7 @@ fi
     # Best-effort copy of individual files to the root of $dest for convenience
     $files = @(
       'compose-ps.txt','traefik-env.txt','traefik-static.yml','traefik-dynamic.yml','traefik-ls.txt','traefik-logs.txt','api-logs.txt',
+      'traefik-acme-perms.txt',
       'django-migrate.txt',
       'django-check-deploy.txt',
       'django-internal-health.json',

@@ -488,6 +488,10 @@ function Check-TlsAcmeGuard([string]$artifactDir, [string]$staticPath) {
     stagingReferenced = $false
     sawProduction = $false
     caServer = ''
+    email = ''
+    storage = ''
+    acmeStorageMode = ''
+    acmeStoragePermsOk = $false
     error = ''
   }
 
@@ -501,13 +505,59 @@ function Check-TlsAcmeGuard([string]$artifactDir, [string]$staticPath) {
       $payload.caServer = (($Matches[1] + '').Trim().Trim('"').Trim("'"))
     }
 
+    # Best-effort extraction of ACME email + storage path from YAML text.
+    if ($content -match '(?im)^\s*email\s*:\s*(.+)\s*$') {
+      $payload.email = (($Matches[1] + '').Trim().Trim('"').Trim("'"))
+    }
+    if ($content -match '(?im)^\s*storage\s*:\s*(.+)\s*$') {
+      $payload.storage = (($Matches[1] + '').Trim().Trim('"').Trim("'"))
+    }
+
     # Guardrail: reject production Let's Encrypt directory anywhere in config.
     if ($content -match '(?i)acme-v02\.api\.letsencrypt\.org') {
       $payload.sawProduction = $true
-      $fail += 'Production ACME directory detected in Traefik config (acme-v02.api.letsencrypt.org)'
+      $envMode = ''
+      try {
+        if ($env:ENV) { $envMode = [string]$env:ENV }
+        elseif ($env:BASE2_ENV) { $envMode = [string]$env:BASE2_ENV }
+      } catch {}
+      if ($envMode -ne 'prod') {
+        $fail += 'Production ACME directory detected in Traefik config (acme-v02.api.letsencrypt.org) but ENV is not prod'
+      }
     }
 
     if (-not $payload.stagingReferenced) { $fail += 'Traefik static config does not reference le-staging resolver' }
+
+    # Guardrail: ACME email must be set.
+    if (-not $payload.email -or $payload.email -match '^\$\{') {
+      $fail += 'Traefik ACME email is not set (TRAEFIK_CERT_EMAIL)'
+    }
+
+    # Guardrail: ACME storage must not be world-readable.
+    $permsPath = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'traefik-acme-perms.txt'
+    if (-not $permsPath) {
+      $fail += 'Missing traefik-acme-perms.txt for ACME storage permissions check'
+    } else {
+      $lines = @(Get-Content -Path $permsPath | ForEach-Object { [string]$_ })
+      # Look for a numeric mode line for acme-staging.json (preferred) or any *.json file.
+      $modeLine = ($lines | Where-Object { $_ -match '(?m)^\d{3,4}\s+.*acme-staging\.json\s*$' } | Select-Object -First 1)
+      if (-not $modeLine) {
+        $modeLine = ($lines | Where-Object { $_ -match '(?m)^\d{3,4}\s+.*\.json\s*$' } | Select-Object -First 1)
+      }
+      if ($modeLine -and ($modeLine -match '^(\d{3,4})\s+')) {
+        $mode = [string]$Matches[1]
+        $payload.acmeStorageMode = $mode
+        # "not world-readable" => last digit must be 0-3 (no read bit for others).
+        $last = [int]$mode.Substring($mode.Length - 1, 1)
+        $payload.acmeStoragePermsOk = ($last -le 3)
+        if (-not $payload.acmeStoragePermsOk) {
+          $fail += "Traefik ACME storage appears world-readable (mode=$mode)"
+        }
+      } else {
+        $fail += 'Unable to parse Traefik ACME storage permissions from traefik-acme-perms.txt'
+      }
+    }
+
     $payload.ok = ($fail.Count -eq 0)
   } catch {
     $payload.ok = $false
@@ -1016,7 +1066,7 @@ if ($All) {
 $failures = @()
 
 # Additional verification payloads (captured into post-deploy report)
-$tlsAcmeGuard = [ordered]@{ ok = $false; stagingReferenced = $false; sawProduction = $false; caServer = ''; error = '' }
+$tlsAcmeGuard = [ordered]@{ ok = $false; stagingReferenced = $false; sawProduction = $false; caServer = ''; email = ''; storage = ''; acmeStorageMode = ''; acmeStoragePermsOk = $false; error = '' }
 $healthContract = [ordered]@{ ok = $false; missing = @('ok','service','db_ok'); observedTypes = [ordered]@{ okType = ''; serviceType = ''; db_okType = '' } }
 $healthTimings = [ordered]@{ ok = $false; url = ''; samples = 0; successCount = 0; p50Ms = $null; p95Ms = $null; thresholdMs = 5000; statusCodes = @() }
 $loginTimings = [ordered]@{ ok = $false; signupStatus = 0; url = ''; samples = 0; successCount = 0; statusCodes = @(); durationsMs = @(); p99Ms = $null; thresholdMs = 2000 }
@@ -1034,6 +1084,7 @@ $expectedFiles = @(
   'traefik-static.yml',
   'traefik-dynamic.yml',
   'traefik-ls.txt',
+  'traefik-acme-perms.txt',
   'traefik-logs.txt',
   'api-logs.txt',
   'django-migrate.txt',

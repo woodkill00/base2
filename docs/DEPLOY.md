@@ -18,6 +18,13 @@ Authoritative deploy/update/test is executed via `digital_ocean/scripts/powershe
 - Traefik must use the Let’s Encrypt staging ACME directory (`le-staging`).
 - Verification (`test.ps1`) fails if production issuance is detected.
 
+### TLS Mode Guard (Hardening)
+
+- Deploy verification also enforces:
+  - ACME email is set (`TRAEFIK_CERT_EMAIL`)
+  - ACME storage files are not world-readable
+  - If the production Let's Encrypt directory is referenced, `ENV=prod` (or `BASE2_ENV=prod`) must be explicitly set
+
 ## Artifacts
 
 - Runs write artifacts to `local_run_logs/<droplet-ip>-<timestamp>/`.
