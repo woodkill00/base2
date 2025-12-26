@@ -6,6 +6,11 @@ import httpx
 
 from api.settings import settings
 
+try:
+    from api.logging import get_request_id
+except Exception:  # pragma: no cover
+    get_request_id = None
+
 
 async def django_request(
     *,
@@ -26,13 +31,23 @@ async def django_request(
     base_url = settings.DJANGO_INTERNAL_BASE_URL.rstrip("/")
     url = f"{base_url}{path}"
 
+    resolved_headers = dict(headers or {})
+    # Ensure request-id is propagated to Django even if a caller forgets.
+    try:
+        if "X-Request-Id" not in resolved_headers and get_request_id is not None:
+            rid = get_request_id()
+            if rid:
+                resolved_headers["X-Request-Id"] = str(rid)
+    except Exception:
+        pass
+
     async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
         r = await client.request(
             method.upper(),
             url,
             json=json_body,
             cookies=dict(cookies or {}),
-            headers=dict(headers or {}),
+            headers=resolved_headers,
         )
 
     try:
