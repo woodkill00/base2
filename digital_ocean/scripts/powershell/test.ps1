@@ -1014,6 +1014,7 @@ $healthContract = [ordered]@{ ok = $false; missing = @('ok','service','db_ok'); 
 $healthTimings = [ordered]@{ ok = $false; url = ''; samples = 0; successCount = 0; p50Ms = $null; p95Ms = $null; thresholdMs = 5000; statusCodes = @() }
 $loginTimings = [ordered]@{ ok = $false; signupStatus = 0; url = ''; samples = 0; successCount = 0; statusCodes = @(); durationsMs = @(); p99Ms = $null; thresholdMs = 2000 }
 $signupToDashboard = [ordered]@{ ok = $false; signupStatus = 0; meStatus = 0; elapsedMs = $null; thresholdMs = 120000 }
+$djangoInternalHealth = [ordered]@{ ok = $false; status = 0; service = 'django'; db_ok = $false; error = '' }
 
 $doDnsFails = @()
 $clientDnsFails = @()
@@ -1030,6 +1031,8 @@ $expectedFiles = @(
   'api-logs.txt',
   'django-migrate.txt',
   'django-check-deploy.txt',
+  'django-internal-health.json',
+  'django-internal-health.status',
   'schema-compat-check.json',
   'schema-compat-check.status',
   'curl-root.txt',
@@ -1072,6 +1075,40 @@ try {
   $t = Check-TlsAcmeGuard -artifactDir $artifactDir -staticPath $staticYml
   $tlsAcmeGuard = $t.payload
   $failures += @($t.failures)
+} catch {}
+
+# Django internal health endpoint (from remote artifacts) should be JSON and include db_ok.
+try {
+  $djangoHealthStatus = Read-StatusFile (Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'django-internal-health.status')
+  $djangoHealthJsonPath = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'django-internal-health.json'
+  $djObj = $null
+  $djErr = ''
+
+  if (-not $djangoHealthStatus) { $djangoHealthStatus = 0 }
+
+  if ($djangoHealthJsonPath -and (Test-Path $djangoHealthJsonPath)) {
+    $djRaw = Get-Content -Path $djangoHealthJsonPath -Raw
+    try { $djObj = ($djRaw | ConvertFrom-Json) } catch { $djErr = "Invalid JSON" }
+  } else {
+    $djErr = 'Missing django-internal-health.json'
+  }
+
+  $dbOk = $false
+  if ($djObj -and $djObj.PSObject.Properties.Name.Contains('db_ok')) {
+    try { $dbOk = [bool]$djObj.db_ok } catch { $dbOk = $false }
+  }
+
+  $ok = ($djangoHealthStatus -eq 200 -and $djObj -and $djObj.PSObject.Properties.Name.Contains('ok') -and $djObj.PSObject.Properties.Name.Contains('service') -and $djObj.PSObject.Properties.Name.Contains('db_ok') -and $dbOk)
+  $djangoInternalHealth = [ordered]@{ ok = [bool]$ok; status = [int]$djangoHealthStatus; service = 'django'; db_ok = [bool]$dbOk; error = [string]$djErr }
+
+  try { Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'django-internal-health-check.json' -content $djangoInternalHealth } catch {}
+
+  if (-not $ok) {
+    if ($djangoHealthStatus -ne 200) { $failures += "Django internal health expected 200, got $djangoHealthStatus" }
+    elseif (-not $djObj) { $failures += 'Django internal health response was not valid JSON' }
+    elseif (-not $dbOk) { $failures += 'Django internal health reports db_ok=false' }
+    else { $failures += 'Django internal health response shape mismatch (expect keys: ok, service, db_ok)' }
+  }
 } catch {}
 
 # Verify required routing and exposure invariants from artifacts
@@ -1358,6 +1395,7 @@ $result = [ordered]@{
   localSmokePassed = $true
   tlsCheck = [ordered]@{ enabled = $false; ok = $false; notAfter = ''; daysRemaining = $null; dnsNames = @() }
   healthContractCheck = [ordered]@{ enabled = $true; ok = [bool]($healthContract.ok); missing = @($healthContract.missing); observedTypes = $healthContract.observedTypes }
+  djangoInternalHealthCheck = [ordered]@{ enabled = $true; ok = [bool]($djangoInternalHealth.ok); status = $djangoInternalHealth.status; db_ok = [bool]($djangoInternalHealth.db_ok); error = [string]($djangoInternalHealth.error) }
   healthTimingsCheck = [ordered]@{ enabled = $true; ok = [bool]($healthTimings.ok); url = [string]($healthTimings.url); p95Ms = $healthTimings.p95Ms; thresholdMs = $healthTimings.thresholdMs; samples = $healthTimings.samples; successCount = $healthTimings.successCount }
   loginTimingsCheck = [ordered]@{ enabled = $true; ok = [bool]($loginTimings.ok); p99Ms = $loginTimings.p99Ms; thresholdMs = $loginTimings.thresholdMs; samples = $loginTimings.samples; successCount = $loginTimings.successCount; signupStatus = $loginTimings.signupStatus }
   signupToDashboardTimingsCheck = [ordered]@{ enabled = $true; ok = [bool]($signupToDashboard.ok); elapsedMs = $signupToDashboard.elapsedMs; thresholdMs = $signupToDashboard.thresholdMs; signupStatus = $signupToDashboard.signupStatus; meStatus = $signupToDashboard.meStatus }

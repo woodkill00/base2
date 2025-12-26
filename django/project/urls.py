@@ -3,6 +3,8 @@ from django.http import JsonResponse
 from django.urls import path, include
 from django.views.generic import RedirectView
 
+from project.views import internal_health
+
 
 def health_view(_request):
     return JsonResponse({"ok": True, "service": "django"})
@@ -11,6 +13,7 @@ def health_view(_request):
 urlpatterns = [
     path("", RedirectView.as_view(url="/admin/", permanent=False)),
     path("admin/", admin.site.urls),
+    path("internal/health", internal_health),
     path("internal/api/", include("users.api_urls")),
     path("internal/users/", include("users.urls")),
     path("internal/catalog/", include("catalog.urls")),
