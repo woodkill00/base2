@@ -930,12 +930,11 @@ PY
       "https://$DOMAIN/api/users/login" || true
 
     # During deploy/recreate, `docker compose ps -q <service>` can briefly return multiple IDs.
-    # `docker logs "$ID"` then fails because $ID contains newlines, and stderr is suppressed.
-    # Take the first ID to keep the probe stable.
-    TID=$(docker compose -f local.docker.yml ps -q traefik 2>/dev/null | head -n 1 || true)
-    AID=$(docker compose -f local.docker.yml ps -q api 2>/dev/null | head -n 1 || true)
-    DJID=$(docker compose -f local.docker.yml ps -q django 2>/dev/null | head -n 1 || true)
-    CWID=$(docker compose -f local.docker.yml ps -q celery-worker 2>/dev/null | head -n 1 || true)
+    # Grep across all candidate IDs to avoid false negatives.
+    TIDS=$(docker compose -f local.docker.yml ps -q traefik 2>/dev/null || true)
+    AIDS=$(docker compose -f local.docker.yml ps -q api 2>/dev/null || true)
+    DJIDS=$(docker compose -f local.docker.yml ps -q django 2>/dev/null || true)
+    CWIDS=$(docker compose -f local.docker.yml ps -q celery-worker 2>/dev/null || true)
 
     # Capture grep outputs (best-effort; keep artifacts even on failure)
     : > /root/logs/services/request-id-traefik.txt || true
@@ -946,32 +945,54 @@ PY
     # Poll briefly to avoid false negatives from log buffering.
     POLL_MAX=15
     POLL_SLEEP=2
-    if [ -n "$TID" ]; then
+    if [ -n "$TIDS" ]; then
       for i in $(seq 1 $POLL_MAX); do
-        docker exec "$TID" sh -lc "(grep -F \"$RID\" /var/log/traefik/access.log 2>/dev/null || true) | tail -n 50" > /root/logs/services/request-id-traefik.txt 2>&1 || true
+        : > /root/logs/services/request-id-traefik.txt || true
+        for id in $TIDS; do
+          docker exec "$id" sh -lc "(grep -F \"$RID\" /var/log/traefik/access.log 2>/dev/null || true) | tail -n 50" >> /root/logs/services/request-id-traefik.txt 2>&1 || true
+        done
         if [ -s /root/logs/services/request-id-traefik.txt ]; then break; fi
         sleep $POLL_SLEEP
+        TIDS=$(docker compose -f local.docker.yml ps -q traefik 2>/dev/null || true)
       done
     fi
-    if [ -n "$AID" ]; then
+    if [ -n "$AIDS" ]; then
       for i in $(seq 1 $POLL_MAX); do
-        docker logs --timestamps --since=60m "$AID" 2>/dev/null | grep -F "$RID" | tail -n 50 > /root/logs/services/request-id-api.txt || true
+        : > /root/logs/services/request-id-api.txt || true
+        for id in $AIDS; do
+          docker logs --timestamps --since=60m "$id" 2>/dev/null | grep -F "$RID" >> /root/logs/services/request-id-api.txt || true
+        done
+        tail -n 50 /root/logs/services/request-id-api.txt > /root/logs/services/request-id-api.txt.tmp 2>/dev/null || true
+        mv -f /root/logs/services/request-id-api.txt.tmp /root/logs/services/request-id-api.txt 2>/dev/null || true
         if [ -s /root/logs/services/request-id-api.txt ]; then break; fi
         sleep $POLL_SLEEP
+        AIDS=$(docker compose -f local.docker.yml ps -q api 2>/dev/null || true)
       done
     fi
-    if [ -n "$DJID" ]; then
+    if [ -n "$DJIDS" ]; then
       for i in $(seq 1 $POLL_MAX); do
-        docker logs --timestamps --since=60m "$DJID" 2>/dev/null | grep -F "$RID" | tail -n 50 > /root/logs/services/request-id-django.txt || true
+        : > /root/logs/services/request-id-django.txt || true
+        for id in $DJIDS; do
+          docker logs --timestamps --since=60m "$id" 2>/dev/null | grep -F "$RID" >> /root/logs/services/request-id-django.txt || true
+        done
+        tail -n 50 /root/logs/services/request-id-django.txt > /root/logs/services/request-id-django.txt.tmp 2>/dev/null || true
+        mv -f /root/logs/services/request-id-django.txt.tmp /root/logs/services/request-id-django.txt 2>/dev/null || true
         if [ -s /root/logs/services/request-id-django.txt ]; then break; fi
         sleep $POLL_SLEEP
+        DJIDS=$(docker compose -f local.docker.yml ps -q django 2>/dev/null || true)
       done
     fi
-    if [ -n "$CWID" ]; then
+    if [ -n "$CWIDS" ]; then
       for i in $(seq 1 $POLL_MAX); do
-        docker logs --timestamps --since=60m "$CWID" 2>/dev/null | grep -F "$RID" | tail -n 50 > /root/logs/services/request-id-celery-worker.txt || true
+        : > /root/logs/services/request-id-celery-worker.txt || true
+        for id in $CWIDS; do
+          docker logs --timestamps --since=60m "$id" 2>/dev/null | grep -F "$RID" >> /root/logs/services/request-id-celery-worker.txt || true
+        done
+        tail -n 50 /root/logs/services/request-id-celery-worker.txt > /root/logs/services/request-id-celery-worker.txt.tmp 2>/dev/null || true
+        mv -f /root/logs/services/request-id-celery-worker.txt.tmp /root/logs/services/request-id-celery-worker.txt 2>/dev/null || true
         if [ -s /root/logs/services/request-id-celery-worker.txt ]; then break; fi
         sleep $POLL_SLEEP
+        CWIDS=$(docker compose -f local.docker.yml ps -q celery-worker 2>/dev/null || true)
       done
     fi
 
