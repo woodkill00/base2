@@ -393,7 +393,7 @@
 
 **Purpose**: Enforce code quality, prevent bad artifacts (like the binary), and ensure OpenAPI remains aligned.
 
-- [ ] T086 Add GitHub Actions workflow: backend lint + typecheck + tests (FastAPI + Django).
+- [X] T086 Add GitHub Actions workflow: backend lint + typecheck + tests (FastAPI + Django).
   - **Touch**:
     - `.github/workflows/ci-backend.yml` (new)
     - `api/pyproject.toml` (new; ruff config) OR `api/requirements-dev.txt`
@@ -405,7 +405,7 @@
     - Ensure env vars needed for tests are set (use sqlite for Django unit tests if possible, or spin Postgres service).
   - **Verify**: CI green on PR; local still: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
 
-- [ ] T087 Add GitHub Actions workflow: frontend lint + test + build.
+- [X] T087 Add GitHub Actions workflow: frontend lint + test + build.
   - **Touch**:
     - `.github/workflows/ci-frontend.yml` (new)
     - `react-app/package.json` (scripts: `lint`, `test:ci`, `build`)
@@ -415,7 +415,7 @@
     - `npm run build`
   - **Verify**: CI green + `deploy.ps1 -AllTests` still passes.
 
-- [ ] T088 Add contract test in CI: OpenAPI contract vs runtime, plus “no missing auth endpoints”.
+- [X] T088 Add contract test in CI: OpenAPI contract vs runtime, plus “no missing auth endpoints”.
   - **Touch**:
     - `.github/workflows/ci-contract.yml` (new)
     - Reuse/port logic from `digital_ocean/scripts/powershell/test.ps1` (or write a small Python script in `scripts/contract_check.py`)
@@ -424,7 +424,7 @@
     - Fetch `/api/openapi.json` and compare required routes from `specs/.../contracts/openapi.yaml`.
   - **Verify**: CI green.
 
-- [ ] T089 Add a repository guard: fail if forbidden binaries are tracked (docker-compose, *.exe, large blobs).
+- [X] T089 Add a repository guard: fail if forbidden binaries are tracked (docker-compose, *.exe, large blobs).
   - **Touch**:
     - `.github/workflows/ci-repo-guards.yml` (new)
     - `scripts/repo_guard.sh` (new)
