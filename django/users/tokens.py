@@ -29,7 +29,7 @@ def mint_one_time_token(*, user, purpose: str, email: str, ttl: timedelta) -> tu
     return raw, token
 
 
-def consume_one_time_token(*, raw_token: str, purpose: str) -> OneTimeToken | None:
+def get_valid_one_time_token(*, raw_token: str, purpose: str) -> OneTimeToken | None:
     token_hash = hash_one_time_token(raw_token)
     now = timezone.now()
 
@@ -44,6 +44,14 @@ def consume_one_time_token(*, raw_token: str, purpose: str) -> OneTimeToken | No
     if token.expires_at and token.expires_at <= now:
         return None
 
-    token.consumed_at = now
+    return token
+
+
+def consume_one_time_token(*, raw_token: str, purpose: str) -> OneTimeToken | None:
+    token = get_valid_one_time_token(raw_token=raw_token, purpose=purpose)
+    if token is None:
+        return None
+
+    token.consumed_at = timezone.now()
     token.save(update_fields=["consumed_at"])
     return token

@@ -10,13 +10,14 @@ from urllib.parse import urlencode
 from urllib.request import Request as UrlRequest, urlopen
 
 from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.contrib.auth import password_validation
 from django.utils import timezone
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 
 from users.models import AuditEvent, EmailAddress, OAuthAccount, OneTimeToken, UserProfile
-from users.tokens import consume_one_time_token, mint_one_time_token
+from users.tokens import consume_one_time_token, get_valid_one_time_token, mint_one_time_token
 
 AuthUser = get_user_model()
 
@@ -147,6 +148,11 @@ def _public_origin(request) -> str:
 def _verification_link(request, *, raw_token: str) -> str:
     # React route: /verify-email?token=...
     return f"{_public_origin(request)}/verify-email?{urlencode({'token': raw_token})}"
+
+
+def _password_reset_link(request, *, raw_token: str) -> str:
+    # React route: /reset-password?token=...
+    return f"{_public_origin(request)}/reset-password?{urlencode({'token': raw_token})}"
 
 
 def _google_exchange_code_for_tokens(*, code: str, redirect_uri: str, client_id: str, client_secret: str) -> dict:
@@ -426,6 +432,103 @@ def verify_email(request):
 
     # Cookie-session auth remains unchanged; verification does not auto-login.
     return JsonResponse({"detail": "Email verified"}, status=200)
+
+
+@csrf_exempt
+def forgot_password(request):
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        payload = {}
+
+    email = (payload.get("email") or "").strip().lower()
+    # Enumeration-safe response: always return 200.
+    generic_detail = "If the account exists, a password reset email has been sent"
+
+    if not email:
+        return JsonResponse({"detail": generic_detail}, status=200)
+
+    user = AuthUser.objects.filter(email=email).first()
+    if user is None:
+        _audit(request, action="auth.password.reset.requested", actor_user=None, target_type="user", target_id="", metadata={"email": email})
+        return JsonResponse({"detail": generic_detail}, status=200)
+
+    try:
+        raw_token, _token = mint_one_time_token(
+            user=user,
+            purpose=OneTimeToken.Purpose.PASSWORD_RESET,
+            email=email,
+            ttl=timedelta(hours=1),
+        )
+        from users.tasks import send_password_reset_email
+
+        send_password_reset_email.delay(to=email, reset_url=_password_reset_link(request, raw_token=raw_token))
+        _audit(
+            request,
+            action="auth.password.reset.issued",
+            actor_user=user,
+            target_type="user",
+            target_id=str(getattr(user, "id", "")),
+            metadata={"email": email},
+        )
+    except Exception:
+        _audit(
+            request,
+            action="auth.password.reset.enqueue_failed",
+            actor_user=user,
+            target_type="user",
+            target_id=str(getattr(user, "id", "")),
+            metadata={"email": email},
+        )
+
+    return JsonResponse({"detail": generic_detail}, status=200)
+
+
+@csrf_exempt
+def reset_password(request):
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        payload = {}
+
+    raw_token = (payload.get("token") or "").strip()
+    new_password = payload.get("password")
+
+    if not raw_token or not new_password:
+        return JsonResponse({"detail": "Invalid or expired token"}, status=400)
+
+    token = get_valid_one_time_token(raw_token=raw_token, purpose=OneTimeToken.Purpose.PASSWORD_RESET)
+    if token is None:
+        _audit(request, action="auth.password.reset.failure", actor_user=None, target_type="user", target_id="")
+        return JsonResponse({"detail": "Invalid or expired token"}, status=400)
+
+    try:
+        password_validation.validate_password(new_password, user=token.user)
+    except Exception:
+        return JsonResponse({"detail": "Invalid password"}, status=400)
+
+    token.user.set_password(new_password)
+    token.user.save(update_fields=["password"])
+
+    token.consumed_at = timezone.now()
+    token.save(update_fields=["consumed_at"])
+
+    _audit(
+        request,
+        action="auth.password.reset.success",
+        actor_user=token.user,
+        target_type="user",
+        target_id=str(getattr(token.user, "id", "")),
+        metadata={"email": token.email},
+    )
+
+    return JsonResponse({"detail": "Password reset. Please log in."}, status=200)
 
 @csrf_exempt
 def login_view(request):

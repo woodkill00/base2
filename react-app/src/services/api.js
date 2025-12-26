@@ -88,13 +88,13 @@ export const authAPI = {
 
   // Request password reset
   forgotPassword: async (email) => {
-    const response = await api.post('/auth/forgot-password', { email });
+    const response = await api.post('/users/forgot-password', { email });
     return response.data;
   },
 
   // Reset password
   resetPassword: async (token, password) => {
-    const response = await api.post(`/auth/reset-password/${token}`, { password });
+    const response = await api.post('/users/reset-password', { token, password });
     return response.data;
   },
 

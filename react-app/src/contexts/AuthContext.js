@@ -140,9 +140,10 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null);
       const data = await authAPI.forgotPassword(email);
-      return { success: true, message: data.message };
+      const message = data?.detail || 'If the account exists, a password reset email has been sent';
+      return { success: true, message };
     } catch (error) {
-      const message = error.response?.data?.message || 'Failed to send reset email';
+      const message = error.response?.data?.detail || 'Failed to send reset email';
       setError(message);
       return { success: false, error: message };
     }
@@ -153,9 +154,10 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null);
       const data = await authAPI.resetPassword(token, password);
-      return { success: true, message: data.message };
+      const message = data?.detail || 'Password reset successfully';
+      return { success: true, message };
     } catch (error) {
-      const message = error.response?.data?.message || 'Password reset failed';
+      const message = error.response?.data?.detail || 'Password reset failed';
       setError(message);
       return { success: false, error: message };
     }

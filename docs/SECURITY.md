@@ -22,6 +22,8 @@
 
 ## Error Handling
 - **Enumeration resistance**: authentication and signup errors must be generic and must not reveal whether an email exists.
+- **Forgot password**: the forgot-password endpoint MUST always return HTTP 200 with a generic message, regardless of whether the email exists.
+- **Reset password**: reset failures MUST not reveal whether the token corresponds to a real account (use a generic "Invalid or expired token" style response).
 - **Safe failures**: OAuth errors should not include provider tokens, codes, or internal stack traces.
 
 ## Logging & Auditing

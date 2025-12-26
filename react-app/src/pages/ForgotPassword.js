@@ -80,7 +80,7 @@ const ForgotPassword = () => {
 
         <div style={styles.backToLogin}>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/login')}
             style={styles.secondaryButton}
           >
             ← Back to Login

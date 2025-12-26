@@ -60,6 +60,38 @@ async def users_verify_email(request: Request, response: Response):
     )
 
 
+@router.post("/users/forgot-password")
+async def users_forgot_password(request: Request, response: Response):
+    ip = _client_ip(request)
+    count, _over = rate_limit.incr_and_check(ip, "forgot_password")
+    # Heavier limit than login/signup; keep conservative by default.
+    if count > 10:
+        raise HTTPException(status_code=429, detail="Rate limited")
+
+    payload = await request.json()
+    return await proxy_json(
+        request=request,
+        response=response,
+        method="POST",
+        upstream_path="/internal/api/users/forgot-password",
+        json_body=payload,
+        forward_csrf=False,
+    )
+
+
+@router.post("/users/reset-password")
+async def users_reset_password(request: Request, response: Response):
+    payload = await request.json()
+    return await proxy_json(
+        request=request,
+        response=response,
+        method="POST",
+        upstream_path="/internal/api/users/reset-password",
+        json_body=payload,
+        forward_csrf=False,
+    )
+
+
 @router.post("/users/logout")
 async def users_logout(request: Request, response: Response):
     require_session_cookie(request, settings.SESSION_COOKIE_NAME)

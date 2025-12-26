@@ -67,7 +67,7 @@ const ResetPassword = () => {
         setMessage(result.message || 'Password reset successfully!');
         setFormData({ password: '', confirmPassword: '' });
         setTimeout(() => {
-          navigate('/');
+          navigate('/login');
         }, 2000);
       } else {
         setError(result.error || 'Failed to reset password');
@@ -142,7 +142,7 @@ const ResetPassword = () => {
 
         <div style={styles.backToLogin}>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/login')}
             style={styles.secondaryButton}
           >
             ← Back to Login
