@@ -30,6 +30,12 @@ INSTALLED_APPS = [
     "catalog",
 ]
 
+# Performance: Django's default PBKDF2 iterations can be too slow on 1vCPU droplets,
+# causing login requests to exceed our verification SLO. Keep PBKDF2 but tune iterations.
+PASSWORD_HASHERS = [
+    "project.password_hashers.PBKDF2FastPasswordHasher",
+]
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
