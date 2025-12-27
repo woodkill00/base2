@@ -195,16 +195,12 @@ services:
   # Celery worker (optional; enable with `--profile celery`)
   celery-worker:
     build:
-      context: ./django
+      context: ./api
       dockerfile: .Dockerfile
       args:
-        - PYTHON_VERSION=${DJANGO_PYTHON_VERSION}
+        - PYTHON_VERSION=${FASTAPI_PYTHON_VERSION}
     container_name: ${COMPOSE_PROJECT_NAME}_celery_worker
     environment:
-      - DJANGO_SETTINGS_MODULE=project.settings.production
-      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
-      - DJANGO_DEBUG=${DJANGO_DEBUG}
-      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
       - DB_HOST=postgres
       - DB_PORT=${POSTGRES_PORT}
       - DB_NAME=${POSTGRES_DB}
@@ -222,7 +218,7 @@ services:
         condition: service_healthy
     entrypoint: ["sh", "-c"]
     command:
-      - "celery -A project worker -l $${CELERY_LOG_LEVEL:-INFO} --concurrency=$${CELERY_CONCURRENCY:-2}"
+      - "celery -A api.tasks worker -l $${CELERY_LOG_LEVEL:-INFO} --concurrency=$${CELERY_CONCURRENCY:-2}"
     restart: unless-stopped
     security_opt: [no-new-privileges:true]
     healthcheck:
@@ -234,16 +230,12 @@ services:
   # Celery beat (optional; enable with `--profile celery`)
   celery-beat:
     build:
-      context: ./django
+      context: ./api
       dockerfile: .Dockerfile
       args:
-        - PYTHON_VERSION=${DJANGO_PYTHON_VERSION}
+        - PYTHON_VERSION=${FASTAPI_PYTHON_VERSION}
     container_name: ${COMPOSE_PROJECT_NAME}_celery_beat
     environment:
-      - DJANGO_SETTINGS_MODULE=project.settings.production
-      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
-      - DJANGO_DEBUG=${DJANGO_DEBUG}
-      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
       - DB_HOST=postgres
       - DB_PORT=${POSTGRES_PORT}
       - DB_NAME=${POSTGRES_DB}
@@ -260,7 +252,7 @@ services:
         condition: service_healthy
     entrypoint: ["sh", "-c"]
     command:
-      - "celery -A project beat -l $${CELERY_LOG_LEVEL:-INFO}"
+      - "celery -A api.tasks beat -l $${CELERY_LOG_LEVEL:-INFO}"
     restart: unless-stopped
     security_opt: [no-new-privileges:true]
     healthcheck:

@@ -28,3 +28,4 @@ Policy:
 Runtime notes:
 - api runs under Gunicorn using `uvicorn.workers.UvicornWorker`.
 - Email sending is provider-agnostic; if SMTP is not configured, emails are written to the Django `EmailOutbox` table.
+- Phase 14 email flows: FastAPI writes outgoing messages to `api_email_outbox` (inspect via pgAdmin/psql).

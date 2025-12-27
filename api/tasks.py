@@ -36,3 +36,11 @@ def ping(request_id: str | None = None):
 @app.task(name="base2.add")
 def add(x: int, y: int) -> int:
     return int(x) + int(y)
+
+
+# Register additional tasks
+try:
+    from api.tasks import email_tasks as _email_tasks  # noqa: F401
+except Exception:
+    # Keep import failures from breaking app startup.
+    pass

@@ -25,7 +25,10 @@ def apply_migrations() -> None:
     if os.getenv("API_DISABLE_MIGRATIONS", "").strip().lower() in {"1", "true", "yes", "on"}:
         return
 
-    migrations = ["001_create_auth_tables"]
+    migrations = [
+        "001_create_auth_tables",
+        "002_create_email_outbox",
+    ]
 
     with db_conn() as conn:
         conn.autocommit = True
