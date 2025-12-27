@@ -45,6 +45,9 @@ export const AuthProvider = ({ children }) => {
         if (userPayload.access_token) {
           localStorage.setItem('token', userPayload.access_token);
         }
+        if (userPayload.refresh_token) {
+          localStorage.setItem('refresh_token', userPayload.refresh_token);
+        }
       }
       return { success: true, data: userPayload };
     } catch (error) {
@@ -64,6 +67,9 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('user', JSON.stringify(userPayload));
         if (userPayload.access_token) {
           localStorage.setItem('token', userPayload.access_token);
+        }
+        if (userPayload.refresh_token) {
+          localStorage.setItem('refresh_token', userPayload.refresh_token);
         }
         setUser(userPayload);
         return { success: true };
@@ -85,6 +91,9 @@ export const AuthProvider = ({ children }) => {
 
       if (data && data.email && data.access_token) {
         localStorage.setItem('token', data.access_token);
+        if (data.refresh_token) {
+          localStorage.setItem('refresh_token', data.refresh_token);
+        }
         localStorage.setItem('user', JSON.stringify(data));
         setUser(data);
         return { success: true };
@@ -117,6 +126,7 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       localStorage.removeItem('user');
       localStorage.removeItem('token');
+      localStorage.removeItem('refresh_token');
     }
   };
 

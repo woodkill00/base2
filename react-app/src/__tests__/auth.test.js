@@ -10,6 +10,11 @@ import Dashboard from '../pages/Dashboard';
 
 jest.mock('../services/api');
 
+jest.mock('@react-oauth/google', () => ({
+  GoogleOAuthProvider: ({ children }) => <div>{children}</div>,
+  GoogleLogin: () => null,
+}));
+
 const HomeStub = () => <div>Home</div>;
 
 const renderApp = (initialPath = '/login') => {

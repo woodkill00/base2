@@ -1,20 +1,17 @@
 import api from './api';
 
+// Legacy compatibility wrapper; Option A auth endpoints are /auth/*.
 export const usersAPI = {
-  list: async () => {
-    const res = await api.get('/users');
-    return res.data;
-  },
   me: async () => {
-    const res = await api.get('/users/me');
+    const res = await api.get('/auth/me');
     return res.data;
   },
   login: async (email, password) => {
-    const res = await api.post('/users/login', { email, password });
+    const res = await api.post('/auth/login', { email, password });
     return res.data;
   },
   logout: async () => {
-    const res = await api.post('/users/logout');
+    const res = await api.post('/auth/logout');
     return res.data;
   },
 };

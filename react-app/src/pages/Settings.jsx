@@ -30,7 +30,7 @@ const Settings = () => {
     setSaving(true);
 
     try {
-      const resp = await apiClient.patch('/users/me', {
+      const resp = await apiClient.patch('/auth/me', {
         display_name: form.display_name,
         avatar_url: form.avatar_url,
         bio: form.bio,

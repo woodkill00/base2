@@ -33,15 +33,6 @@ const Navigation = () => {
             Dashboard
           </Link>
           <Link 
-            to="/users" 
-            style={{
-              ...styles.menuItem,
-              ...(isActive('/users') && styles.menuItemActive)
-            }}
-          >
-            Users
-          </Link>
-          <Link 
             to="/settings" 
             style={{
               ...styles.menuItem,
@@ -55,11 +46,11 @@ const Navigation = () => {
         <div style={styles.userSection}>
           <div style={styles.userInfo}>
             <img 
-              src={user?.picture || 'https://via.placeholder.com/40'} 
+              src={user?.avatar_url || user?.picture || 'https://via.placeholder.com/40'} 
               alt="Profile" 
               style={styles.avatar}
             />
-            <span style={styles.userName}>{user?.name}</span>
+            <span style={styles.userName}>{user?.display_name || user?.name || user?.email}</span>
           </div>
           <button onClick={handleLogout} style={styles.logoutButton}>
             Logout

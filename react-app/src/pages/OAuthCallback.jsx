@@ -1,71 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-
-import apiClient from '../lib/apiClient';
-import { useAuth } from '../contexts/AuthContext';
+import React from 'react';
 
 const OAuthCallback = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { login } = useAuth();
-
-  const [error, setError] = useState('');
-
-  const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
-  const code = params.get('code');
-  const state = params.get('state');
-  const oauthError = params.get('error');
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const run = async () => {
-      if (oauthError || !code || !state) {
-        setError('Unable to sign in. Please try again.');
-        return;
-      }
-
-      try {
-        await apiClient.post('/oauth/google/callback', { code, state });
-        const me = await apiClient.get('/users/me');
-        const user = me?.data;
-        if (!user || !user.email) {
-          throw new Error('invalid_me');
-        }
-
-        login(user);
-        if (!cancelled) {
-          navigate('/dashboard', { replace: true });
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setError('Unable to sign in. Please try again.');
-        }
-      }
-    };
-
-    run();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [code, state, oauthError, login, navigate]);
-
-  if (error) {
-    return (
-      <div style={styles.container}>
-        <div style={styles.card}>
-          <h1 style={styles.title}>Unable to sign in</h1>
-          <div style={styles.error}>{error}</div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h1 style={styles.title}>Signing you in…</h1>
+        <h1 style={styles.title}>OAuth callback not used</h1>
+        <div style={styles.error}>
+          This app uses Google Sign-In (ID token) on the login page.
+        </div>
       </div>
     </div>
   );

@@ -12,12 +12,7 @@ jest.mock('../services/api');
 
 describe('T092 Password reset UI', () => {
   beforeEach(() => {
-    jest.useFakeTimers();
     jest.clearAllMocks();
-  });
-
-  afterEach(() => {
-    jest.useRealTimers();
   });
 
   test('forgot password calls API and shows generic success', async () => {
@@ -46,6 +41,7 @@ describe('T092 Password reset UI', () => {
   });
 
   test('reset password uses token and redirects to login', async () => {
+    jest.useFakeTimers();
     authAPI.resetPassword.mockResolvedValue({ detail: 'Password reset. Please log in.' });
 
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
@@ -61,8 +57,8 @@ describe('T092 Password reset UI', () => {
       </AuthProvider>
     );
 
-    await user.type(screen.getByPlaceholderText(/new password/i), 'NewPass123!');
-    await user.type(screen.getByPlaceholderText(/confirm new password/i), 'NewPass123!');
+    await user.type(screen.getByPlaceholderText(/^new password$/i), 'NewPass123!');
+    await user.type(screen.getByPlaceholderText(/^confirm new password$/i), 'NewPass123!');
     await user.click(screen.getByRole('button', { name: /reset password/i }));
 
     await waitFor(() => {
@@ -74,5 +70,7 @@ describe('T092 Password reset UI', () => {
     });
 
     expect(await screen.findByRole('heading', { name: /login/i })).toBeInTheDocument();
+
+    jest.useRealTimers();
   });
 });

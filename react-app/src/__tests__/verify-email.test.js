@@ -37,7 +37,7 @@ describe('T091 Email verification UI', () => {
     });
 
     expect(await screen.findByRole('heading', { name: /email verified/i })).toBeInTheDocument();
-    expect(screen.getByText(/email verified/i)).toBeInTheDocument();
+    expect(screen.getByText(/^email verified$/i)).toBeInTheDocument();
 
     await act(async () => {
       jest.advanceTimersByTime(2100);

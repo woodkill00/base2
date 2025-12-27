@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
@@ -43,7 +43,7 @@ describe('US3 Settings', () => {
     );
   });
 
-  test('submits allowed profile fields to PATCH /api/users/me', async () => {
+  test('submits allowed profile fields to PATCH /api/auth/me', async () => {
     const user = userEvent.setup();
 
     apiClient.patch.mockResolvedValue({
@@ -58,25 +58,29 @@ describe('US3 Settings', () => {
 
     renderSettings();
 
-    await user.clear(screen.getByLabelText(/display name/i));
-    await user.type(screen.getByLabelText(/display name/i), 'New Name');
+    await act(async () => {
+      await user.clear(screen.getByLabelText(/display name/i));
+      await user.type(screen.getByLabelText(/display name/i), 'New Name');
 
-    await user.clear(screen.getByLabelText(/avatar url/i));
-    await user.type(screen.getByLabelText(/avatar url/i), 'https://example.com/new.png');
+      await user.clear(screen.getByLabelText(/avatar url/i));
+      await user.type(screen.getByLabelText(/avatar url/i), 'https://example.com/new.png');
 
-    await user.clear(screen.getByLabelText(/bio/i));
-    await user.type(screen.getByLabelText(/bio/i), 'New bio');
+      await user.clear(screen.getByLabelText(/bio/i));
+      await user.type(screen.getByLabelText(/bio/i), 'New bio');
 
-    await user.click(screen.getByRole('button', { name: /save/i }));
+      await user.click(screen.getByRole('button', { name: /save/i }));
+    });
 
     await waitFor(() => {
-      expect(apiClient.patch).toHaveBeenCalledWith('/users/me', {
+      expect(apiClient.patch).toHaveBeenCalledWith('/auth/me', {
         display_name: 'New Name',
         avatar_url: 'https://example.com/new.png',
         bio: 'New bio',
       });
     });
 
-    expect(screen.getByText(/new name/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getAllByText(/new name/i).length).toBeGreaterThan(0);
+    });
   });
 });
