@@ -16,6 +16,16 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+def _env_int(name: str, default: int) -> int:
+    try:
+        raw = os.getenv(name)
+        if raw is None or str(raw).strip() == "":
+            return int(default)
+        return int(str(raw).strip())
+    except Exception:
+        return int(default)
+
+
 router = APIRouter()
 
 
@@ -66,14 +76,14 @@ async def auth_login(request: Request, response: Response, payload: _LoginReques
     try:
         from api.auth.service import login_user
 
-        refresh_ttl_days = int(os.getenv("REFRESH_TOKEN_TTL_DAYS", "30") or 30)
+        refresh_ttl_days = _env_int("REFRESH_TOKEN_TTL_DAYS", 30)
         user, tokens = login_user(
             email=payload.email,
             password=payload.password,
             ip=ip,
             user_agent=request.headers.get("user-agent", ""),
             refresh_ttl_days=refresh_ttl_days,
-            access_ttl_minutes=int(os.getenv("JWT_EXPIRE", "15") or 15),
+            access_ttl_minutes=_env_int("JWT_EXPIRE", 15),
         )
     except ValueError as e:
         if str(e) == "invalid_credentials":
@@ -108,14 +118,14 @@ async def auth_register(request: Request, response: Response, payload: _Register
     try:
         from api.auth.service import register_user
 
-        refresh_ttl_days = int(os.getenv("REFRESH_TOKEN_TTL_DAYS", "30") or 30)
+        refresh_ttl_days = _env_int("REFRESH_TOKEN_TTL_DAYS", 30)
         user, tokens = register_user(
             email=payload.email,
             password=payload.password,
             ip=ip,
             user_agent=request.headers.get("user-agent", ""),
             refresh_ttl_days=refresh_ttl_days,
-            access_ttl_minutes=int(os.getenv("JWT_EXPIRE", "15") or 15),
+            access_ttl_minutes=_env_int("JWT_EXPIRE", 15),
         )
     except ValueError as e:
         if str(e) == "email_taken":
@@ -377,13 +387,13 @@ async def auth_refresh(request: Request, response: Response):
     try:
         from api.auth.service import refresh_tokens
 
-        refresh_ttl_days = int(os.getenv("REFRESH_TOKEN_TTL_DAYS", "30") or 30)
+        refresh_ttl_days = _env_int("REFRESH_TOKEN_TTL_DAYS", 30)
         user, tokens = refresh_tokens(
             refresh_token=refresh,
             ip=ip,
             user_agent=request.headers.get("user-agent", ""),
             refresh_ttl_days=refresh_ttl_days,
-            access_ttl_minutes=int(os.getenv("JWT_EXPIRE", "15") or 15),
+            access_ttl_minutes=_env_int("JWT_EXPIRE", 15),
         )
     except ValueError:
         raise HTTPException(status_code=401, detail="Not authenticated")
