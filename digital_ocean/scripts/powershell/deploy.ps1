@@ -941,7 +941,7 @@ PY
     # container recreation.
     if [ -n "$DJIDS" ]; then
       for id in $DJIDS; do
-        docker exec "$id" python -c "import logging; logging.getLogger('django.request').info('request_id_probe', extra={'request_id': '$RID', 'path': '/internal/health', 'method': 'GET', 'status': 200})" >/dev/null 2>&1 || true
+        docker exec "$id" python -c "import os; os.environ.setdefault('DJANGO_SETTINGS_MODULE','project.settings.production'); import django; django.setup(); import logging; logging.getLogger('django.request').info('request_id_probe', extra={'request_id': '$RID', 'path': '/internal/health', 'method': 'GET', 'status': 200})" >/dev/null 2>&1 || true
       done
     fi
 
