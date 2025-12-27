@@ -678,7 +678,7 @@
 
 ### Email verification + password reset (FastAPI-owned)
 
-- [ ] T101 Implement FastAPI email sending abstraction (Celery task) + local outbox
+- [X] T101 Implement FastAPI email sending abstraction (Celery task) + local outbox
   - **Touch**:
     - `api/tasks/email_tasks.py` (new Celery tasks)
     - `api/services/email_service.py` (new)
