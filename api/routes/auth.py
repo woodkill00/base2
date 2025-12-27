@@ -72,9 +72,9 @@ async def users_login(request: Request, response: Response):
 @router.post("/auth/login")
 async def auth_login(request: Request, response: Response, payload: _LoginRequest):
     ip = _client_ip(request)
-    _count, over = rate_limit.incr_and_check(ip, "auth_login")
+    _count, over, retry_after = rate_limit.incr_and_check_detailed(ip, "auth_login")
     if over:
-        raise HTTPException(status_code=429, detail="Rate limited")
+        raise HTTPException(status_code=429, detail="Rate limited", headers={"Retry-After": str(retry_after)})
 
     try:
         from api.auth.service import login_user
@@ -128,9 +128,9 @@ async def users_signup(request: Request, response: Response):
 @router.post("/auth/register")
 async def auth_register(request: Request, response: Response, payload: _RegisterRequest):
     ip = _client_ip(request)
-    _count, over = rate_limit.incr_and_check(ip, "auth_register")
+    _count, over, retry_after = rate_limit.incr_and_check_detailed(ip, "auth_register")
     if over:
-        raise HTTPException(status_code=429, detail="Rate limited")
+        raise HTTPException(status_code=429, detail="Rate limited", headers={"Retry-After": str(retry_after)})
 
     try:
         from api.auth.service import register_user
@@ -226,9 +226,9 @@ async def users_forgot_password(request: Request, response: Response):
 @router.post("/auth/forgot-password")
 async def auth_forgot_password(request: Request, response: Response):
     ip = _client_ip(request)
-    count, _over = rate_limit.incr_and_check(ip, "forgot_password")
-    if count > 10:
-        raise HTTPException(status_code=429, detail="Rate limited", headers={"Retry-After": "900"})
+    _count, over, retry_after = rate_limit.incr_and_check_detailed(ip, "forgot_password")
+    if over:
+        raise HTTPException(status_code=429, detail="Rate limited", headers={"Retry-After": str(retry_after)})
 
     try:
         payload = await request.json()
@@ -239,14 +239,14 @@ async def auth_forgot_password(request: Request, response: Response):
 
     # Add an additional limiter keyed by email hash (enumeration-safe).
     try:
-        from api.security.rate_limit import incr_and_check_identifier
+        from api.security.rate_limit import incr_and_check_identifier_detailed
 
         normalized = str(email or "").strip().lower()
         if normalized:
             email_hash = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
-            email_count, _ = incr_and_check_identifier(email_hash, "forgot_password_email")
-            if email_count > 5:
-                raise HTTPException(status_code=429, detail="Rate limited", headers={"Retry-After": "900"})
+            _email_count, email_over, email_retry_after = incr_and_check_identifier_detailed(email_hash, "forgot_password_email")
+            if email_over:
+                raise HTTPException(status_code=429, detail="Rate limited", headers={"Retry-After": str(email_retry_after)})
     except HTTPException:
         raise
     except Exception:
@@ -481,9 +481,9 @@ async def auth_refresh(request: Request, response: Response):
 @router.post("/auth/oauth/google")
 async def auth_oauth_google(request: Request, response: Response):
     ip = _client_ip(request)
-    _count, over = rate_limit.incr_and_check(ip, "auth_oauth_google")
+    _count, over, retry_after = rate_limit.incr_and_check_detailed(ip, "auth_oauth_google")
     if over:
-        raise HTTPException(status_code=429, detail="Rate limited")
+        raise HTTPException(status_code=429, detail="Rate limited", headers={"Retry-After": str(retry_after)})
 
     try:
         payload = await request.json()

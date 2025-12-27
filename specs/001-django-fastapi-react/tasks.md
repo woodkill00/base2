@@ -733,7 +733,7 @@
 
 ### OAuth (Google) + session linkage
 
-- [ ] T104 Implement Google OAuth login in FastAPI (`/api/auth/oauth/google`)
+- [X] T104 Implement Google OAuth login in FastAPI (`/api/auth/oauth/google`)
   - **Touch**:
     - `api/routes/oauth.py` (new or inside auth)
     - `api/services/oauth_google.py` (new)
@@ -751,7 +751,7 @@
       - create user with `is_email_verified=true` (if Google email is verified) and link provider
   - **Verify**: unit test by mocking verifier; integration in staging with real credentials.
 
-- [ ] T105 Add provider linking table + account merge rules
+- [X] T105 Add provider linking table + account merge rules
   - **Touch**:
     - `api/models/oauth_accounts.py` (new)
     - `api/services/oauth_google.py`
