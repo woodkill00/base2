@@ -69,8 +69,8 @@ export const authAPI = {
   },
 
   // Google OAuth login
-  googleAuth: async (googleId, email, name, picture) => {
-    const response = await api.post('/auth/oauth/google', { googleId, email, name, picture });
+  googleAuth: async (credential) => {
+    const response = await api.post('/auth/oauth/google', { credential });
     return response.data;
   },
 

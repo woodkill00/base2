@@ -30,6 +30,8 @@ def _refresh_cookie_name() -> str:
 
 
 def _set_refresh_cookie(response: Response, token: str) -> None:
+    if not bool(settings.AUTH_REFRESH_COOKIE):
+        return
     response.set_cookie(
         key=_refresh_cookie_name(),
         value=token,
@@ -41,6 +43,8 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
 
 
 def _clear_refresh_cookie(response: Response) -> None:
+    if not bool(settings.AUTH_REFRESH_COOKIE):
+        return
     response.delete_cookie(
         key=_refresh_cookie_name(),
         path="/",
@@ -436,6 +440,12 @@ async def auth_me_patch(request: Request):
 async def auth_refresh(request: Request, response: Response):
     refresh = request.cookies.get(_refresh_cookie_name())
     if not refresh:
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = {}
+        refresh = (payload or {}).get("refresh_token")
+    if not refresh:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     ip = _client_ip(request)
@@ -455,7 +465,7 @@ async def auth_refresh(request: Request, response: Response):
         raise HTTPException(status_code=500, detail="Refresh failed")
 
     _set_refresh_cookie(response, tokens.refresh_token)
-    return {
+    body = {
         "id": str(user.id),
         "email": user.email,
         "display_name": user.display_name,
@@ -463,20 +473,130 @@ async def auth_refresh(request: Request, response: Response):
         "bio": user.bio,
         "access_token": tokens.access_token,
     }
+    if not bool(settings.AUTH_REFRESH_COOKIE):
+        body["refresh_token"] = tokens.refresh_token
+    return body
 
 
 @router.post("/auth/oauth/google")
 async def auth_oauth_google(request: Request, response: Response):
+    ip = _client_ip(request)
+    _count, over = rate_limit.incr_and_check(ip, "auth_oauth_google")
+    if over:
+        raise HTTPException(status_code=429, detail="Rate limited")
+
     try:
         payload = await request.json()
     except Exception:
         payload = {}
 
-    return await proxy_json(
-        request=request,
-        response=response,
-        method="POST",
-        upstream_path="/internal/api/oauth/google/start",
-        json_body=payload,
-        forward_csrf=False,
-    )
+    id_token = (payload or {}).get("credential") or (payload or {}).get("id_token")
+    if not id_token:
+        raise HTTPException(status_code=400, detail="Invalid request")
+
+    if not settings.GOOGLE_OAUTH_CLIENT_ID:
+        raise HTTPException(status_code=500, detail="Google OAuth not configured")
+
+    try:
+        from api.services.oauth_google import verify_google_id_token
+
+        ident = verify_google_id_token(id_token=str(id_token), audience=str(settings.GOOGLE_OAUTH_CLIENT_ID))
+    except ValueError:
+        raise HTTPException(status_code=401, detail="OAuth rejected")
+    except Exception:
+        raise HTTPException(status_code=500, detail="OAuth failed")
+
+    try:
+        from api.auth import repo
+        from api.auth.tokens import create_access_token, new_refresh_token, hash_token
+
+        # 1) If provider account already linked, sign in that user.
+        linked = repo.find_oauth_account(provider="google", provider_account_id=ident.sub)
+        user = None
+        if linked is not None:
+            user = repo.get_user_by_id(linked["user_id"])
+
+        # 2) Else: try to attach to an existing local user by email, under merge rules.
+        if user is None:
+            existing = repo.get_user_by_email(ident.email)
+            if existing is not None:
+                # Merge/link only if local email is already verified OR Google says verified.
+                if (existing.is_email_verified is True) or (ident.email_verified is True):
+                    try:
+                        repo.create_oauth_account(
+                            user_id=existing.id,
+                            provider="google",
+                            provider_account_id=ident.sub,
+                            email=ident.email,
+                        )
+                    except Exception:
+                        # Ignore duplicates due to race.
+                        pass
+                    user = existing
+                else:
+                    repo.insert_audit_event(
+                        user_id=existing.id,
+                        action="auth.oauth_link_rejected",
+                        ip=ip,
+                        user_agent=request.headers.get("user-agent", ""),
+                        metadata={"provider": "google"},
+                    )
+                    raise HTTPException(status_code=401, detail="OAuth rejected")
+            else:
+                # 3) Create new user and link.
+                user = repo.create_user(email=ident.email, password_hash="")
+                try:
+                    repo.update_profile(
+                        user_id=user.id,
+                        display_name=(ident.name or ""),
+                        avatar_url=(ident.picture or ""),
+                        bio=None,
+                    )
+                except Exception:
+                    pass
+                if ident.email_verified:
+                    try:
+                        repo.set_user_email_verified(user_id=user.id)
+                    except Exception:
+                        pass
+                try:
+                    repo.create_oauth_account(
+                        user_id=user.id,
+                        provider="google",
+                        provider_account_id=ident.sub,
+                        email=ident.email,
+                    )
+                except Exception:
+                    pass
+
+        if user is None or not user.is_active:
+            raise HTTPException(status_code=401, detail="OAuth rejected")
+
+        refresh = new_refresh_token()
+        _token_id, _expires_at = repo.create_refresh_token(
+            user_id=user.id,
+            token_hash=hash_token(refresh),
+            ttl_days=int(os.getenv("REFRESH_TOKEN_TTL_DAYS", "30") or 30),
+            ip=ip,
+            user_agent=request.headers.get("user-agent", ""),
+        )
+        access = create_access_token(subject=str(user.id), email=user.email, ttl_minutes=int(os.getenv("JWT_EXPIRE", "15") or 15))
+
+        repo.insert_audit_event(user_id=user.id, action="auth.oauth_login", ip=ip, user_agent=request.headers.get("user-agent", ""), metadata={"provider": "google"})
+
+        _set_refresh_cookie(response, refresh)
+        body = {
+            "id": str(user.id),
+            "email": user.email,
+            "display_name": user.display_name,
+            "avatar_url": user.avatar_url,
+            "bio": user.bio,
+            "access_token": access,
+        }
+        if not bool(settings.AUTH_REFRESH_COOKIE):
+            body["refresh_token"] = refresh
+        return body
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="OAuth failed")

@@ -38,6 +38,8 @@ class Settings:
     GOOGLE_OAUTH_REDIRECT_URI: Optional[str] = getenv("GOOGLE_OAUTH_REDIRECT_URI")
     OAUTH_STATE_SECRET: Optional[str] = getenv("OAUTH_STATE_SECRET")
 
+    AUTH_REFRESH_COOKIE: bool = getenv_bool("AUTH_REFRESH_COOKIE", True)
+
     # DB settings (FastAPI side)
     DB_CONNECT_TIMEOUT_SEC: int = getenv_int("DB_CONNECT_TIMEOUT_SEC", 3)
     DB_STATEMENT_TIMEOUT_MS: int = getenv_int("DB_STATEMENT_TIMEOUT_MS", 3000)

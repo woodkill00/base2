@@ -78,18 +78,18 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Login with Google OAuth
-  const loginWithGoogle = async (googleId, email, name, picture) => {
+  const loginWithGoogle = async (credential) => {
     try {
       setError(null);
-      const data = await authAPI.googleAuth(googleId, email, name, picture);
-      
-      if (data.success && data.token) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        setUser(data.user);
+      const data = await authAPI.googleAuth(credential);
+
+      if (data && data.email && data.access_token) {
+        localStorage.setItem('token', data.access_token);
+        localStorage.setItem('user', JSON.stringify(data));
+        setUser(data);
         return { success: true };
       }
-      
+
       return { success: false, error: 'Invalid response from server' };
     } catch (error) {
       const message = error.response?.data?.message || 'Google login failed';

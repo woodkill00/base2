@@ -10,3 +10,4 @@ redis
 pytest
 pytest-asyncio
 httpx
+google-auth

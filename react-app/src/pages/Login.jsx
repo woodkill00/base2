@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
 
 import { useAuth } from '../contexts/AuthContext';
-import apiClient from '../lib/apiClient';
 
 const Login = () => {
-  const { loginWithEmail } = useAuth();
+  const { loginWithEmail, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
@@ -36,22 +36,25 @@ const Login = () => {
     }
   };
 
-  const onGoogle = async () => {
+  const onGoogleSuccess = async (credentialResponse) => {
     setError('');
     setGoogleLoading(true);
     try {
-      const res = await apiClient.post('/oauth/google/start', { next: '/dashboard' });
-      const authorizationUrl = res?.data?.authorization_url;
-      if (!authorizationUrl) {
-        setError('Unable to start Google sign-in');
+      const result = await loginWithGoogle(credentialResponse.credential);
+      if (result.success) {
+        navigate('/dashboard');
         return;
       }
-      window.location.assign(authorizationUrl);
+      setError(result.error || 'Google login failed');
     } catch (e) {
-      setError('Unable to start Google sign-in');
+      setError('Google login failed');
     } finally {
       setGoogleLoading(false);
     }
+  };
+
+  const onGoogleError = () => {
+    setError('Google login failed');
   };
 
   return (
@@ -92,9 +95,9 @@ const Login = () => {
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
 
-          <button type="button" style={styles.secondaryButton} onClick={onGoogle} disabled={googleLoading}>
-            {googleLoading ? 'Starting Google sign-in…' : 'Sign in with Google'}
-          </button>
+          <div style={styles.googleContainer}>
+            <GoogleLogin onSuccess={onGoogleSuccess} onError={onGoogleError} />
+          </div>
         </form>
 
         <div style={styles.footer}>
@@ -168,6 +171,11 @@ const styles = {
     color: '#111827',
     cursor: 'pointer',
     fontWeight: 600,
+  },
+  googleContainer: {
+    marginTop: '8px',
+    display: 'flex',
+    justifyContent: 'center',
   },
   footer: {
     marginTop: '14px',

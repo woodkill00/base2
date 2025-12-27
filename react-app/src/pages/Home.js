@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { jwtDecode } from 'jwt-decode';
 
 const Home = () => {
   const { loginWithGoogle, loginWithEmail, register, isAuthenticated, logout } = useAuth();
@@ -21,13 +20,7 @@ const Home = () => {
 
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
-      const decoded = jwtDecode(credentialResponse.credential);
-      const result = await loginWithGoogle(
-        decoded.sub,
-        decoded.email,
-        decoded.name,
-        decoded.picture
-      );
+      const result = await loginWithGoogle(credentialResponse.credential);
       
       if (result.success) {
         navigate('/dashboard');

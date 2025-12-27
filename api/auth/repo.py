@@ -341,3 +341,44 @@ def consume_one_time_token(*, token_id: UUID) -> None:
                 """,
                 (str(token_id),),
             )
+
+
+def find_oauth_account(*, provider: str, provider_account_id: str) -> Optional[dict[str, Any]]:
+    with db_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, user_id, provider, provider_account_id, email
+                FROM api_auth_oauth_accounts
+                WHERE provider=%s AND provider_account_id=%s
+                """,
+                (provider, provider_account_id),
+            )
+            row = cur.fetchone()
+
+    if not row:
+        return None
+
+    return {
+        "id": UUID(str(row[0])),
+        "user_id": UUID(str(row[1])),
+        "provider": row[2],
+        "provider_account_id": row[3],
+        "email": row[4] or "",
+    }
+
+
+def create_oauth_account(*, user_id: UUID, provider: str, provider_account_id: str, email: str = "") -> UUID:
+    account_id = uuid4()
+    with db_conn() as conn:
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO api_auth_oauth_accounts(id, user_id, provider, provider_account_id, email)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (str(account_id), str(user_id), provider, provider_account_id, (email or "")),
+            )
+
+    return account_id
