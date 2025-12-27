@@ -86,6 +86,14 @@ make test
 
 See `Makefile` for all available targets.
 
+### Seed data (dev/demo)
+
+Configure `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` in `.env`, then run:
+
+```bash
+make seed
+```
+
 ### 3. Configure Authentication (IMPORTANT!)
 
 Before starting, you MUST configure:
