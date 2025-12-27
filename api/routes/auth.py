@@ -266,11 +266,18 @@ async def auth_logout(request: Request, response: Response):
     if refresh:
         try:
             from api.auth.repo import find_refresh_token, revoke_refresh_token
+            from api.auth.repo import insert_audit_event
             from api.auth.tokens import hash_token
 
             rec = find_refresh_token(token_hash=hash_token(refresh))
             if rec is not None:
                 revoke_refresh_token(token_id=rec["id"], replaced_by_token_id=None)
+                insert_audit_event(
+                    user_id=rec.get("user_id"),
+                    action="auth.logout",
+                    ip=_client_ip(request),
+                    user_agent=request.headers.get("user-agent", ""),
+                )
         except Exception:
             pass
 

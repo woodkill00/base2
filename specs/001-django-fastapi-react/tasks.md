@@ -573,7 +573,7 @@
 
 ### Core auth primitives
 
-- [ ] T096 Define FastAPI auth ownership boundaries and update routing contract
+- [X] T096 Define FastAPI auth ownership boundaries and update routing contract
   - **Touch**:
     - `specs/.../contracts/openapi.yaml` (auth endpoints canonical)
     - `react-app/src/services/auth.js` (ensure base paths match)
@@ -594,7 +594,7 @@
     3) Update OpenAPI contract first (so tests can enforce).
   - **Verify**: contract test (see T088) fails until endpoints exist, then passes.
 
-- [ ] T097 Create FastAPI identity schema + persistence layer (Users + tokens + audit)
+- [X] T097 Create FastAPI identity schema + persistence layer (Users + tokens + audit)
   - **Touch**:
     - `api/models/*.py` (new: SQLAlchemy models or equivalent)
     - `api/db.py` (engine + sessions/pool)
@@ -614,7 +614,7 @@
   - **Verify**:
     - unit tests: unique email constraint, token hash not raw, expiry behavior.
 
-- [ ] T098 Implement FastAPI auth service layer (hashing, token creation, rotation, verification)
+- [X] T098 Implement FastAPI auth service layer (hashing, token creation, rotation, verification)
   - **Touch**:
     - `api/services/auth_service.py` (new)
     - `api/services/token_service.py` (new)
@@ -637,7 +637,7 @@
 
 ### API endpoints
 
-- [ ] T099 Build FastAPI `/api/auth/register` + `/api/auth/me`
+- [X] T099 Build FastAPI `/api/auth/register` + `/api/auth/me`
   - **Touch**:
     - `api/routes/auth.py` (new or expand)
     - `api/main.py` (router include)
@@ -654,7 +654,7 @@
       - returns user profile fields used by UI.
   - **Verify**: `GET /api/auth/me` returns 401 without token, 200 with token.
 
-- [ ] T100 Build FastAPI login/logout/refresh endpoints (token-based auth)
+- [X] T100 Build FastAPI login/logout/refresh endpoints (token-based auth)
   - **Touch**:
     - `api/routes/auth.py`
     - `api/services/auth_service.py`
