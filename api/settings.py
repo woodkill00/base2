@@ -24,6 +24,8 @@ def getenv_int(name: str, default: int) -> int:
 
 
 class Settings:
+    ENV: str = getenv("ENV", "development") or "development"
+
     SESSION_COOKIE_NAME: str = getenv("SESSION_COOKIE_NAME", "base2_session")
     CSRF_COOKIE_NAME: str = getenv("CSRF_COOKIE_NAME", "base2_csrf")
     COOKIE_SAMESITE: str = getenv("COOKIE_SAMESITE", "Lax")
@@ -40,6 +42,12 @@ class Settings:
 
     AUTH_REFRESH_COOKIE: bool = getenv_bool("AUTH_REFRESH_COOKIE", True)
 
+    JWT_SECRET: str = getenv("JWT_SECRET", "") or ""
+    TOKEN_PEPPER: str = getenv("TOKEN_PEPPER", "") or ""
+    JWT_EXPIRE_MINUTES: int = getenv_int("JWT_EXPIRE", 15)
+    REFRESH_TOKEN_TTL_DAYS: int = getenv_int("REFRESH_TOKEN_TTL_DAYS", 30)
+    FRONTEND_URL: str = getenv("FRONTEND_URL", "") or ""
+
     # DB settings (FastAPI side)
     DB_CONNECT_TIMEOUT_SEC: int = getenv_int("DB_CONNECT_TIMEOUT_SEC", 3)
     DB_STATEMENT_TIMEOUT_MS: int = getenv_int("DB_STATEMENT_TIMEOUT_MS", 3000)
@@ -53,6 +61,28 @@ class Settings:
             self.DB_POOL_MAX = 1
         if self.DB_POOL_MAX < self.DB_POOL_MIN:
             self.DB_POOL_MAX = self.DB_POOL_MIN
+
+        # Fail-fast only for explicit production deployments.
+        # Keep local/dev/test permissive to avoid breaking onboarding and CI.
+        if (self.ENV or "").strip().lower() == "production":
+            missing = []
+            if not self.JWT_SECRET.strip():
+                missing.append("JWT_SECRET")
+            if not self.TOKEN_PEPPER.strip():
+                missing.append("TOKEN_PEPPER")
+            if not (self.OAUTH_STATE_SECRET or "").strip():
+                missing.append("OAUTH_STATE_SECRET")
+            if missing:
+                raise RuntimeError("Missing required env var(s): " + ", ".join(missing))
+
+            samesite = (self.COOKIE_SAMESITE or "").strip()
+            if samesite not in {"Lax", "Strict", "None"}:
+                raise RuntimeError(f"Invalid COOKIE_SAMESITE: {samesite}")
+
+            if self.JWT_EXPIRE_MINUTES < 1:
+                raise RuntimeError("JWT_EXPIRE must be a positive integer (minutes)")
+            if self.REFRESH_TOKEN_TTL_DAYS < 1:
+                raise RuntimeError("REFRESH_TOKEN_TTL_DAYS must be a positive integer")
 
 
 settings = Settings()
