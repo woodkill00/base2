@@ -1140,11 +1140,15 @@ $expectedFiles = @(
   'api-health.status',
   'api-health-slash.json',
   'api-health-slash.status',
-  'celery-ping.json',
-  'celery-result.json',
   'traefik-dynamic.template.yml',
   'traefik-static.template.yml'
 )
+if ($CheckCelery) {
+  $expectedFiles += @(
+    'celery-ping.json',
+    'celery-result.json'
+  )
+}
 foreach ($f in $expectedFiles) {
   $p = Resolve-ArtifactPath -artifactDir $artifactDir -fileName $f
   if (-not $p) { $failures += "Missing artifact: $f" }
