@@ -1005,7 +1005,7 @@ PY
       for i in $(seq 1 $POLL_MAX); do
         : > /root/logs/services/request-id-api.txt || true
         for id in $AIDS; do
-          docker logs --timestamps --since=60m "$id" 2>/dev/null | grep -F "$RID" >> /root/logs/services/request-id-api.txt || true
+          docker logs --timestamps --since=60m "$id" 2>&1 | grep -F "$RID" >> /root/logs/services/request-id-api.txt || true
         done
         tail -n 50 /root/logs/services/request-id-api.txt > /root/logs/services/request-id-api.txt.tmp 2>/dev/null || true
         mv -f /root/logs/services/request-id-api.txt.tmp /root/logs/services/request-id-api.txt 2>/dev/null || true
@@ -1019,8 +1019,8 @@ PY
         : > /root/logs/services/request-id-django.txt || true
         : > /root/logs/services/request-id-django-context.txt || true
         for id in $DJIDS; do
-          docker logs --timestamps --since=60m "$id" 2>/dev/null | grep -F "$RID" >> /root/logs/services/request-id-django.txt || true
-          docker logs --timestamps --since=10m "$id" 2>/dev/null | tail -n 200 >> /root/logs/services/request-id-django-context.txt || true
+          docker logs --timestamps --since=60m "$id" 2>&1 | grep -F "$RID" >> /root/logs/services/request-id-django.txt || true
+          docker logs --timestamps --since=10m "$id" 2>&1 | tail -n 200 >> /root/logs/services/request-id-django-context.txt || true
         done
         tail -n 50 /root/logs/services/request-id-django.txt > /root/logs/services/request-id-django.txt.tmp 2>/dev/null || true
         mv -f /root/logs/services/request-id-django.txt.tmp /root/logs/services/request-id-django.txt 2>/dev/null || true
@@ -1034,8 +1034,8 @@ PY
         : > /root/logs/services/request-id-celery-worker.txt || true
         : > /root/logs/services/request-id-celery-worker-context.txt || true
         for id in $CWIDS; do
-          docker logs --timestamps --since=60m "$id" 2>/dev/null | grep -F "$RID" >> /root/logs/services/request-id-celery-worker.txt || true
-          docker logs --timestamps --since=10m "$id" 2>/dev/null | tail -n 200 >> /root/logs/services/request-id-celery-worker-context.txt || true
+          docker logs --timestamps --since=60m "$id" 2>&1 | grep -F "$RID" >> /root/logs/services/request-id-celery-worker.txt || true
+          docker logs --timestamps --since=10m "$id" 2>&1 | tail -n 200 >> /root/logs/services/request-id-celery-worker-context.txt || true
         done
         tail -n 50 /root/logs/services/request-id-celery-worker.txt > /root/logs/services/request-id-celery-worker.txt.tmp 2>/dev/null || true
         mv -f /root/logs/services/request-id-celery-worker.txt.tmp /root/logs/services/request-id-celery-worker.txt 2>/dev/null || true
