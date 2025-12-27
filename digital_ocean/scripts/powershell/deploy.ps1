@@ -940,18 +940,23 @@ PY
     # NOTE: `docker exec` process stdout does not appear in `docker logs`, so we must trigger
     # a real HTTP request handled by the running gunicorn process.
     if [ -n "$DJIDS" ]; then
-      docker compose -f local.docker.yml exec -T -e RID="$RID" django python - <<'PY' >/dev/null 2>&1 || true
-import os
-from urllib.request import Request, urlopen
+      : > /root/logs/meta/request-id-django-probe.txt || true
+      docker compose -f local.docker.yml exec -T -e RID="$RID" django python - <<'PY' > /root/logs/meta/request-id-django-probe.txt 2>&1 || true
+  import http.client
+  import os
 
-rid = os.environ.get('RID', '')
-port = os.environ.get('PORT') or '8000'
-url = f"http://127.0.0.1:{port}/internal/health"
+  rid = os.environ.get('RID', '')
+  port = int(os.environ.get('PORT') or '8000')
 
-req = Request(url, headers={'X-Request-Id': rid}, method='GET')
-with urlopen(req, timeout=5) as resp:
-    resp.read()
-PY
+  print(f"rid_env={rid}")
+  conn = http.client.HTTPConnection('127.0.0.1', port, timeout=5)
+  conn.request('GET', '/internal/health', headers={'X-Request-Id': rid})
+  resp = conn.getresponse()
+  body = resp.read()  # consume
+  print(f"status={resp.status}")
+  print(f"resp_x_request_id={resp.getheader('X-Request-Id','')}")
+  print(f"body_len={len(body)}")
+  PY
     fi
 
     # Ensure Celery worker emits at least one log line containing the probe RID.
