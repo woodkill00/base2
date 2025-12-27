@@ -5,6 +5,8 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
+import secrets
+
 from api.auth import repo
 from api.auth.passwords import hash_password, verify_password
 from api.auth.tokens import create_access_token, hash_token, new_refresh_token
@@ -15,6 +17,144 @@ class AuthTokens:
     access_token: str
     refresh_token: str
     refresh_token_expires_at: datetime
+
+
+def _public_base_url_from_headers(*, host: str | None, proto: str | None) -> str:
+    h = (host or "").strip()
+    p = (proto or "").strip()
+    if not h:
+        h = "localhost"
+    if not p:
+        p = "https"
+    return f"{p}://{h}".rstrip("/")
+
+
+def _new_one_time_token() -> str:
+    # URL-safe token suitable for query parameters.
+    return secrets.token_urlsafe(32)
+
+
+def issue_verify_email(*, email: str, host: str | None, proto: str | None, request_id: str | None = None, ttl_minutes: int = 60 * 24) -> None:
+    user = repo.get_user_by_email(email)
+    if user is None:
+        return
+    if user.is_email_verified:
+        return
+
+    raw = _new_one_time_token()
+    repo.create_one_time_token(
+        user_id=user.id,
+        token_hash=hash_token(raw),
+        token_type="verify_email",
+        ttl_minutes=ttl_minutes,
+    )
+
+    base = _public_base_url_from_headers(host=host, proto=proto)
+    url = f"{base}/verify-email?token={raw}"
+    body = f"Verify your email by visiting: {url}"
+
+    try:
+        from api.services.email_service import queue_email
+
+        queue_email(
+            to_email=user.email,
+            subject="Verify your email",
+            body_text=body,
+            body_html="",
+            request_id=request_id,
+            send_async=True,
+        )
+    except Exception:
+        # Never fail the request path.
+        pass
+
+
+def verify_email(*, token: str) -> None:
+    if not token:
+        raise ValueError("invalid_token")
+
+    rec = repo.find_one_time_token(token_hash=hash_token(token), token_type="verify_email")
+    if rec is None:
+        raise ValueError("invalid_token")
+
+    if rec.get("consumed_at") is not None:
+        raise ValueError("invalid_token")
+
+    expires_at = rec.get("expires_at")
+    if expires_at is not None:
+        now = datetime.now(expires_at.tzinfo) if getattr(expires_at, "tzinfo", None) else datetime.utcnow()
+        if expires_at <= now:
+            raise ValueError("invalid_token")
+
+    user_id = rec.get("user_id")
+    if user_id is None:
+        raise ValueError("invalid_token")
+
+    repo.set_user_email_verified(user_id=user_id)
+    repo.consume_one_time_token(token_id=rec["id"])
+
+
+def issue_password_reset(*, email: str, host: str | None, proto: str | None, request_id: str | None = None, ttl_minutes: int = 60) -> None:
+    user = repo.get_user_by_email(email)
+    if user is None:
+        return
+    if not user.is_active:
+        return
+
+    raw = _new_one_time_token()
+    repo.create_one_time_token(
+        user_id=user.id,
+        token_hash=hash_token(raw),
+        token_type="password_reset",
+        ttl_minutes=ttl_minutes,
+    )
+
+    base = _public_base_url_from_headers(host=host, proto=proto)
+    url = f"{base}/reset-password?token={raw}"
+    body = f"Reset your password by visiting: {url}"
+
+    try:
+        from api.services.email_service import queue_email
+
+        queue_email(
+            to_email=user.email,
+            subject="Reset your password",
+            body_text=body,
+            body_html="",
+            request_id=request_id,
+            send_async=True,
+        )
+    except Exception:
+        pass
+
+
+def reset_password(*, token: str, new_password: str) -> None:
+    if not token:
+        raise ValueError("invalid_token")
+
+    if not new_password or len(new_password) < 8:
+        raise ValueError("invalid_password")
+
+    rec = repo.find_one_time_token(token_hash=hash_token(token), token_type="password_reset")
+    if rec is None:
+        raise ValueError("invalid_token")
+
+    if rec.get("consumed_at") is not None:
+        raise ValueError("invalid_token")
+
+    expires_at = rec.get("expires_at")
+    if expires_at is not None:
+        now = datetime.now(expires_at.tzinfo) if getattr(expires_at, "tzinfo", None) else datetime.utcnow()
+        if expires_at <= now:
+            raise ValueError("invalid_token")
+
+    user_id = rec.get("user_id")
+    if user_id is None:
+        raise ValueError("invalid_token")
+
+    repo.set_user_password_hash(user_id=user_id, password_hash=hash_password(new_password))
+    repo.consume_one_time_token(token_id=rec["id"])
+    repo.revoke_all_refresh_tokens(user_id=user_id)
 
 
 def register_user(*, email: str, password: str, ip: str, user_agent: str, refresh_ttl_days: int, access_ttl_minutes: int) -> tuple[repo.User, AuthTokens]:

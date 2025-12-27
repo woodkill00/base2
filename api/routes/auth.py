@@ -172,15 +172,21 @@ async def users_verify_email(request: Request, response: Response):
 
 @router.post("/auth/verify-email")
 async def auth_verify_email(request: Request, response: Response):
-    payload = await request.json()
-    return await proxy_json(
-        request=request,
-        response=response,
-        method="POST",
-        upstream_path="/internal/api/users/verify-email",
-        json_body=payload,
-        forward_csrf=False,
-    )
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+
+    token = (payload or {}).get("token")
+    try:
+        from api.auth.service import verify_email
+
+        verify_email(token=str(token or ""))
+        return {"detail": "Email verified"}
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Verification failed")
 
 
 @router.post("/users/forgot-password")
@@ -209,15 +215,26 @@ async def auth_forgot_password(request: Request, response: Response):
     if count > 10:
         raise HTTPException(status_code=429, detail="Rate limited")
 
-    payload = await request.json()
-    return await proxy_json(
-        request=request,
-        response=response,
-        method="POST",
-        upstream_path="/internal/api/users/forgot-password",
-        json_body=payload,
-        forward_csrf=False,
-    )
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+
+    email = (payload or {}).get("email")
+    try:
+        from api.auth.service import issue_password_reset
+
+        issue_password_reset(
+            email=str(email or "").strip(),
+            host=request.headers.get("host"),
+            proto=request.headers.get("x-forwarded-proto"),
+            request_id=request.headers.get("x-request-id"),
+        )
+    except Exception:
+        # Enumeration-safe: never leak existence, never error.
+        pass
+
+    return {"detail": "If the account exists, a password reset email has been sent"}
 
 
 @router.post("/users/reset-password")
@@ -235,15 +252,23 @@ async def users_reset_password(request: Request, response: Response):
 
 @router.post("/auth/reset-password")
 async def auth_reset_password(request: Request, response: Response):
-    payload = await request.json()
-    return await proxy_json(
-        request=request,
-        response=response,
-        method="POST",
-        upstream_path="/internal/api/users/reset-password",
-        json_body=payload,
-        forward_csrf=False,
-    )
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+
+    token = (payload or {}).get("token")
+    password = (payload or {}).get("password")
+
+    try:
+        from api.auth.service import reset_password
+
+        reset_password(token=str(token or ""), new_password=str(password or ""))
+        return {"detail": "Password reset"}
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid request or token")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Reset failed")
 
 
 @router.post("/users/logout")
