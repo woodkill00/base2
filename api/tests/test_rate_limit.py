@@ -57,26 +57,3 @@ def test_incr_and_check_over_limit(monkeypatch):
 
     c3, over3 = rl.incr_and_check("1.2.3.4", "login")
     assert c3 == 3 and over3 is True
-
-
-def test_login_rate_limited_returns_detail(monkeypatch):
-    import api.security.rate_limit as rl
-
-    async def fake_request(*, method: str, path: str, json_body, cookies, headers):
-        return 401, {"detail": "Invalid credentials"}, {}
-
-    fake = _FakeRedis()
-
-    monkeypatch.setattr(rl, "get_client", lambda: fake)
-    monkeypatch.setattr(rl, "MAX_REQUESTS", 1)
-    monkeypatch.setattr(rl, "WINDOW_MS", 60000)
-    monkeypatch.setattr("api.routes._proxy.django_request", fake_request)
-
-    client = TestClient(app)
-
-    r1 = client.post("/users/login", json={"email": "u@example.com", "password": "pw"})
-    assert r1.status_code in (200, 401, 422)
-
-    r2 = client.post("/users/login", json={"email": "u@example.com", "password": "pw"})
-    assert r2.status_code == 429
-    assert "detail" in r2.json()

@@ -295,8 +295,7 @@ function Check-OpenApiContract([string]$artifactDir, [string]$contractPath) {
 function Check-GuardedEndpoints([string]$artifactDir, [string]$domain) {
   $fail = @()
   $endpoints = @(
-    [ordered]@{ name = 'usersMe'; method = 'GET'; url = "https://$domain/api/users/me"; status = 0; ok = $false },
-    [ordered]@{ name = 'usersLogout'; method = 'POST'; url = "https://$domain/api/users/logout"; status = 0; ok = $false }
+    [ordered]@{ name = 'authMe'; method = 'GET'; url = "https://$domain/api/auth/me"; status = 0; ok = $false }
   )
 
   foreach ($ep in $endpoints) {
@@ -1295,8 +1294,8 @@ try {
 
 # Login timing probe (US1 enhancement): create one user, then sample logins and enforce p99 < 2s.
 try {
-  $signupUrl = "https://$Domain/api/users/signup"
-  $loginUrl = "https://$Domain/api/users/login"
+  $signupUrl = "https://$Domain/api/auth/register"
+  $loginUrl = "https://$Domain/api/auth/login"
   $password = 'TestPassword123!'
   $email = "timing-$((Get-Date).ToString('yyyyMMddHHmmss'))@example.com"
   $loginPayloadPath = [System.IO.Path]::GetTempFileName()
@@ -1367,53 +1366,42 @@ try {
 
   Remove-Item -Force -ErrorAction SilentlyContinue $loginPayloadPath
 
-  if ($signupStatus -ne 201) { $failures += "Login timing probe could not create test user (signup status=$signupStatus)" }
+  if ($signupStatus -ne 201) { $failures += "Login timing probe could not create test user (register status=$signupStatus)" }
   if (-not $p99 -and -not $skipped) { $failures += 'Login timing probe could not compute p99 (no successful logins)' }
   elseif ([double]$p99 -gt 2000) { $failures += "Login p99 latency too high: $([int]$p99)ms (> 2000ms)" }
 } catch {}
 
-# Signup-to-dashboard timing probe (US1 enhancement): signup then confirm auth via /api/users/me.
+# Signup-to-dashboard timing probe (US1 enhancement): register then confirm auth via /api/auth/me.
 try {
-  function Curl-PostJsonWithCookieJar([string]$url, [string]$jsonBody, [string]$cookieJar) {
-    $tmp = [System.IO.Path]::GetTempFileName()
-    $payloadPath = [System.IO.Path]::GetTempFileName()
-    try {
-      [System.IO.File]::WriteAllText($payloadPath, $jsonBody, (New-Object System.Text.UTF8Encoding($false)))
-    } catch {
-      try { Set-Content -LiteralPath $payloadPath -Value $jsonBody -Encoding utf8 } catch {}
-    }
-    $args = @('-4','-sS','-k','--max-time',$TimeoutSec,'-c',$cookieJar,'-b',$cookieJar,'-X','POST','-H','Content-Type: application/json','--data-binary', ("@" + $payloadPath),'-o',$tmp,'-w','%{http_code}')
+  function Curl-GetStatusWithHeader([string]$url, [string]$header) {
+    $args = @('-4','-sS','-k','--max-time',$TimeoutSec,'-H', $header, '-o', 'NUL', '-w', '%{http_code}')
     $args += (Get-CurlResolveArgs $url)
     $args += @($url)
     $statusText = ((Invoke-CurlSafe $args) | Out-String).Trim()
     $status = 0
     if ($statusText -match '(\d{3})\s*$') { $status = [int]$Matches[1] }
-    Remove-Item -Force -ErrorAction SilentlyContinue $tmp
-    Remove-Item -Force -ErrorAction SilentlyContinue $payloadPath
-    return $status
-  }
-  function Curl-GetStatusWithCookieJar([string]$url, [string]$cookieJar) {
-    $tmp = [System.IO.Path]::GetTempFileName()
-    $args = @('-4','-sS','-k','--max-time',$TimeoutSec,'-c',$cookieJar,'-b',$cookieJar,'-o',$tmp,'-w','%{http_code}')
-    $args += (Get-CurlResolveArgs $url)
-    $args += @($url)
-    $statusText = ((Invoke-CurlSafe $args) | Out-String).Trim()
-    $status = 0
-    if ($statusText -match '(\d{3})\s*$') { $status = [int]$Matches[1] }
-    Remove-Item -Force -ErrorAction SilentlyContinue $tmp
     return $status
   }
 
-  $cookieJar = [System.IO.Path]::GetTempFileName()
-  $signupUrl2 = "https://$Domain/api/users/signup"
-  $meUrl = "https://$Domain/api/users/me"
+  $signupUrl2 = "https://$Domain/api/auth/register"
+  $meUrl = "https://$Domain/api/auth/me"
   $password2 = 'TestPassword123!'
   $email2 = "signupdash-$((Get-Date).ToString('yyyyMMddHHmmss'))@example.com"
   $signupBody2 = (@{ email = $email2; password = $password2 } | ConvertTo-Json -Compress)
 
   $swTotal = [System.Diagnostics.Stopwatch]::StartNew()
-  $signupStatus2 = Curl-PostJsonWithCookieJar $signupUrl2 $signupBody2 $cookieJar
-  $meStatus = Curl-GetStatusWithCookieJar $meUrl $cookieJar
+  $signupResp2 = Curl-PostJson $signupUrl2 $signupBody2
+  $signupStatus2 = [int]$signupResp2.status
+  $accessToken = $null
+  try {
+    $signupText = ($signupResp2.body | Out-String)
+    $signupJson = ($signupText | ConvertFrom-Json)
+    $accessToken = [string]$signupJson.access_token
+  } catch { $accessToken = $null }
+  $meStatus = 0
+  if ($accessToken) {
+    $meStatus = Curl-GetStatusWithHeader $meUrl ("Authorization: Bearer $accessToken")
+  }
   $swTotal.Stop()
 
   $signupToDashboard = [ordered]@{
@@ -1426,7 +1414,7 @@ try {
   Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'signup-to-dashboard-timings.json' -content $signupToDashboard
 
   if ($signupStatus2 -ne 201) { $failures += "Signup-to-dashboard probe failed (signup status=$signupStatus2)" }
-  if ($meStatus -ne 200) { $failures += "Signup-to-dashboard probe failed (users/me status=$meStatus)" }
+  if ($meStatus -ne 200) { $failures += "Signup-to-dashboard probe failed (auth/me status=$meStatus)" }
   if ([double]$swTotal.Elapsed.TotalMilliseconds -gt 120000) { $failures += "Signup-to-dashboard too slow: $([int]$swTotal.Elapsed.TotalMilliseconds)ms (> 120000ms)" }
 } catch {}
 

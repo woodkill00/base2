@@ -146,13 +146,9 @@ except Exception:
 try:
     from api.routes.auth import router as auth_router
     from api.routes.metrics import router as metrics_router
-    from api.routes.oauth import router as oauth_router
-    from api.routes.users import router as users_router
 
     app.include_router(auth_router)
     app.include_router(metrics_router)
-    app.include_router(oauth_router)
-    app.include_router(users_router)
 except Exception:
     # Keep app bootable even if routes fail to import.
     pass

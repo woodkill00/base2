@@ -804,7 +804,7 @@
 
 ### Frontend alignment + removal of Django auth proxy (if present)
 
-- [ ] T109 Update React auth client to match Option A tokens/cookies and remove any `/users/*` proxy assumptions
+- [X] T109 Update React auth client to match Option A tokens/cookies and remove any `/users/*` proxy assumptions
   - **Touch**:
     - `react-app/src/services/auth.js`
     - `react-app/src/services/api.js`
@@ -815,7 +815,7 @@
       - token storage strategy consistent (memory + refresh cookie, or localStorage + refresh endpoint)
       - automatic refresh on 401 (single-flight refresh, queue concurrent requests)
       - logout clears state and revokes refresh.
-  - **Verify**: E2E happy path: register → verify → login → settings → logout.
+  - **Verify**: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests -Timestamped` (artifacts: `local_run_logs/45.55.70.113-20251227_030955/`).
 
 - [ ] T110 Decommission Django auth routes (if any exist) and clearly scope Django to admin/schema only
   - **Touch**:

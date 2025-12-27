@@ -14,7 +14,6 @@ urlpatterns = [
     path("", RedirectView.as_view(url="/admin/", permanent=False)),
     path("admin/", admin.site.urls),
     path("internal/health", internal_health),
-    path("internal/api/", include("users.api_urls")),
     path("internal/users/", include("users.urls")),
     path("internal/catalog/", include("catalog.urls")),
     path("health", health_view),

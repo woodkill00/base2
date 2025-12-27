@@ -9,7 +9,11 @@ from pydantic import BaseModel
 from api.security import rate_limit
 from api.settings import settings
 
-from ._proxy import _client_ip, proxy_json, require_session_cookie
+def _client_ip(request: Request) -> str:
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
 
 
 router = APIRouter()
@@ -49,24 +53,6 @@ def _clear_refresh_cookie(response: Response) -> None:
     response.delete_cookie(
         key=_refresh_cookie_name(),
         path="/",
-    )
-
-
-@router.post("/users/login")
-async def users_login(request: Request, response: Response):
-    ip = _client_ip(request)
-    _count, over = rate_limit.incr_and_check(ip, "login")
-    if over:
-        raise HTTPException(status_code=429, detail="Rate limited")
-
-    payload = await request.json()
-    return await proxy_json(
-        request=request,
-        response=response,
-        method="POST",
-        upstream_path="/internal/api/users/login",
-        json_body=payload,
-        forward_csrf=False,
     )
 
 
@@ -112,24 +98,6 @@ async def auth_login(request: Request, response: Response, payload: _LoginReques
     return body
 
 
-@router.post("/users/signup")
-async def users_signup(request: Request, response: Response):
-    ip = _client_ip(request)
-    _count, over = rate_limit.incr_and_check(ip, "signup")
-    if over:
-        raise HTTPException(status_code=429, detail="Rate limited")
-
-    payload = await request.json()
-    return await proxy_json(
-        request=request,
-        response=response,
-        method="POST",
-        upstream_path="/internal/api/users/signup",
-        json_body=payload,
-        forward_csrf=False,
-    )
-
-
 @router.post("/auth/register")
 async def auth_register(request: Request, response: Response, payload: _RegisterRequest):
     ip = _client_ip(request)
@@ -171,19 +139,6 @@ async def auth_register(request: Request, response: Response, payload: _Register
     return body
 
 
-@router.post("/users/verify-email")
-async def users_verify_email(request: Request, response: Response):
-    payload = await request.json()
-    return await proxy_json(
-        request=request,
-        response=response,
-        method="POST",
-        upstream_path="/internal/api/users/verify-email",
-        json_body=payload,
-        forward_csrf=False,
-    )
-
-
 @router.post("/auth/verify-email")
 async def auth_verify_email(request: Request, response: Response):
     try:
@@ -211,25 +166,6 @@ async def auth_verify_email(request: Request, response: Response):
         raise HTTPException(status_code=400, detail="Invalid or expired token")
     except Exception:
         raise HTTPException(status_code=500, detail="Verification failed")
-
-
-@router.post("/users/forgot-password")
-async def users_forgot_password(request: Request, response: Response):
-    ip = _client_ip(request)
-    count, _over = rate_limit.incr_and_check(ip, "forgot_password")
-    # Heavier limit than login/signup; keep conservative by default.
-    if count > 10:
-        raise HTTPException(status_code=429, detail="Rate limited")
-
-    payload = await request.json()
-    return await proxy_json(
-        request=request,
-        response=response,
-        method="POST",
-        upstream_path="/internal/api/users/forgot-password",
-        json_body=payload,
-        forward_csrf=False,
-    )
 
 
 @router.post("/auth/forgot-password")
@@ -288,19 +224,6 @@ async def auth_forgot_password(request: Request, response: Response):
     return {"detail": "If the account exists, a password reset email has been sent"}
 
 
-@router.post("/users/reset-password")
-async def users_reset_password(request: Request, response: Response):
-    payload = await request.json()
-    return await proxy_json(
-        request=request,
-        response=response,
-        method="POST",
-        upstream_path="/internal/api/users/reset-password",
-        json_body=payload,
-        forward_csrf=False,
-    )
-
-
 @router.post("/auth/reset-password")
 async def auth_reset_password(request: Request, response: Response):
     try:
@@ -330,20 +253,6 @@ async def auth_reset_password(request: Request, response: Response):
         raise HTTPException(status_code=400, detail="Invalid request or token")
     except Exception:
         raise HTTPException(status_code=500, detail="Reset failed")
-
-
-@router.post("/users/logout")
-async def users_logout(request: Request, response: Response):
-    require_session_cookie(request, settings.SESSION_COOKIE_NAME)
-
-    return await proxy_json(
-        request=request,
-        response=response,
-        method="POST",
-        upstream_path="/internal/api/users/logout",
-        json_body=None,
-        forward_csrf=True,
-    )
 
 
 @router.post("/auth/logout")
