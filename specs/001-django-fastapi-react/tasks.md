@@ -778,7 +778,7 @@
     - Return 429 with `Retry-After`.
   - **Verify**: test that 6th login attempt in a minute returns 429.
 
-- [ ] T107 Add secure cookie mode option (optional) for refresh token storage
+- [X] T107 Add secure cookie mode option (optional) for refresh token storage
   - **Touch**:
     - `api/routes/auth.py`
     - `api/settings.py`
