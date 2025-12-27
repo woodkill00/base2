@@ -1,5 +1,10 @@
+import logging
 import os
+
 from celery import Celery
+
+
+logger = logging.getLogger("api.tasks")
 
 # Broker/backends from environment; defaults align with .env.example
 BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
@@ -21,7 +26,11 @@ app.conf.update(
 )
 
 @app.task(name="base2.ping")
-def ping():
+def ping(request_id: str | None = None):
+    try:
+        logger.info("ping", extra={"request_id": request_id})
+    except Exception:
+        pass
     return "pong"
 
 @app.task(name="base2.add")

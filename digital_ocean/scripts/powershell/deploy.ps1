@@ -936,13 +936,32 @@ PY
     DJIDS=$(docker compose -f local.docker.yml ps -q django 2>/dev/null || true)
     CWIDS=$(docker compose -f local.docker.yml ps -q celery-worker 2>/dev/null || true)
 
-    # Ensure Django emits at least one structured log line containing the probe RID.
-    # This keeps the verification stable even if HTTP-layer forwarding is degraded during
-    # container recreation.
+    # Ensure Django emits at least one structured *request* log line containing the probe RID.
+    # NOTE: `docker exec` process stdout does not appear in `docker logs`, so we must trigger
+    # a real HTTP request handled by the running gunicorn process.
     if [ -n "$DJIDS" ]; then
-      for id in $DJIDS; do
-        docker exec "$id" python -c "import os; os.environ.setdefault('DJANGO_SETTINGS_MODULE','project.settings.production'); import django; django.setup(); import logging; logging.getLogger('django.request').info('request_id_probe', extra={'request_id': '$RID', 'path': '/internal/health', 'method': 'GET', 'status': 200})" >/dev/null 2>&1 || true
-      done
+      docker compose -f local.docker.yml exec -T django python - <<'PY' >/dev/null 2>&1 || true
+import os
+from urllib.request import Request, urlopen
+
+rid = os.environ.get('RID', '')
+port = os.environ.get('PORT') or '8000'
+url = f"http://127.0.0.1:{port}/internal/health"
+
+req = Request(url, headers={'X-Request-Id': rid}, method='GET')
+with urlopen(req, timeout=5) as resp:
+    resp.read()
+PY
+    fi
+
+    # Ensure Celery worker emits at least one log line containing the probe RID.
+    # This is best-effort: only run when the worker service exists.
+    if [ -n "$CWIDS" ]; then
+      curl -sk "${RESOLVE_DOMAIN[@]}" -X POST \
+        -H "X-Request-Id: $RID" \
+        -H 'Content-Type: application/json' \
+        -d '{}' \
+        "https://$DOMAIN/api/celery/ping" >/dev/null 2>&1 || true
     fi
 
     # Capture grep outputs (best-effort; keep artifacts even on failure)

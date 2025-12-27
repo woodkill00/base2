@@ -23,14 +23,20 @@ def send_email_outbox(self, email_outbox_uuid: str, request_id: str | None = Non
 
 
 # Keep deploy-time Celery probes stable: FastAPI enqueues `api.tasks.ping`.
-@shared_task(name="api.tasks.ping")
-def ping():
+@shared_task(bind=True, name="api.tasks.ping")
+def ping(self, request_id: str | None = None):
+    logger.info("ping", extra={"task_id": self.request.id, "request_id": request_id})
     return "pong"
 
 
 # Deploy-time probes also enqueue `base2.ping` (legacy Celery app name).
 @shared_task(name="base2.ping")
-def ping_base2():
+def ping_base2(request_id: str | None = None):
+    # Keep this task signature permissive: deploy-time probes may pass request_id.
+    try:
+        logger.info("ping_base2", extra={"request_id": request_id})
+    except Exception:
+        pass
     return "pong"
 
 
