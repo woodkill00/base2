@@ -2,8 +2,10 @@ import os
 import socket
 import subprocess
 import time
+from shutil import which
 
 import httpx
+import pytest
 
 
 def _get_free_port() -> int:
@@ -13,6 +15,9 @@ def _get_free_port() -> int:
 
 
 def test_gunicorn_serves_health() -> None:
+    if which("gunicorn") is None:
+        pytest.skip("gunicorn not available on PATH")
+
     port = _get_free_port()
     env = os.environ.copy()
 

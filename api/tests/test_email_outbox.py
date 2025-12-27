@@ -1,12 +1,25 @@
 from __future__ import annotations
 
+import os
 from uuid import UUID
+
+import pytest
 
 from api.services.email_service import (
     get_outbox_email,
     process_outbox_email,
     queue_email,
 )
+
+
+def _has_db_config() -> bool:
+    if os.getenv("DATABASE_URL"):
+        return True
+    return all(os.getenv(k) for k in ("DB_NAME", "DB_USER", "DB_PASSWORD"))
+
+
+if not _has_db_config():
+    pytest.skip("DB is not configured for local pytest run", allow_module_level=True)
 
 
 def test_queue_email_creates_outbox_row():
