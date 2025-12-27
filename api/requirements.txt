@@ -2,7 +2,7 @@ fastapi
 uvicorn[standard]
 gunicorn
 python-jose[cryptography]
-passlib[bcrypt]
+passlib
 psycopg2-binary
 pydantic
 celery
