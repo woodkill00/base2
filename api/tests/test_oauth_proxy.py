@@ -4,14 +4,11 @@ import sys
 import pytest
 from fastapi.testclient import TestClient
 
-_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-if _PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, _PROJECT_ROOT)
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
-try:
-    from main import app
-except ModuleNotFoundError:
-    from api.main import app
+from api.main import app
 
 
 def test_oauth_start_proxies_to_django(monkeypatch):

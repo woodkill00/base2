@@ -7,6 +7,10 @@ from api import tasks  # ensure tasks module is importable
 from api.db import db_ping
 
 from api.logging import configure_logging
+try:
+    from api.metrics import metrics
+except Exception:  # pragma: no cover
+    metrics = None
 
 
 ENV = os.getenv("ENV", "development")
@@ -40,6 +44,11 @@ async def _access_log(request: Request, call_next):
     except Exception:
         latency_ms = int((time.perf_counter() - start) * 1000)
         req_id = getattr(request.state, "request_id", "")
+        try:
+            if metrics is not None:
+                metrics.observe(status=500, latency_ms=latency_ms)
+        except Exception:
+            pass
         logger.exception(
             "request_failed",
             extra={
@@ -56,6 +65,11 @@ async def _access_log(request: Request, call_next):
 
     latency_ms = int((time.perf_counter() - start) * 1000)
     req_id = getattr(request.state, "request_id", "")
+    try:
+        if metrics is not None:
+            metrics.observe(status=int(getattr(response, "status_code", 0) or 0), latency_ms=latency_ms)
+    except Exception:
+        pass
     logger.info(
         "request",
         extra={
@@ -122,10 +136,12 @@ except Exception:
 # External routes (proxy to Django internal)
 try:
     from api.routes.auth import router as auth_router
+    from api.routes.metrics import router as metrics_router
     from api.routes.oauth import router as oauth_router
     from api.routes.users import router as users_router
 
     app.include_router(auth_router)
+    app.include_router(metrics_router)
     app.include_router(oauth_router)
     app.include_router(users_router)
 except Exception:

@@ -10,6 +10,7 @@ param(
   [switch]$Verbose,
   [switch]$Json,
   [switch]$All,
+  [switch]$CheckMetrics,
   [switch]$CheckTls,
   [switch]$CheckOpenApi,
   [switch]$CheckRateLimit,
@@ -1062,6 +1063,7 @@ if ($All) {
   $CheckRateLimit = $true
   $CheckTls = $true
   $CheckOpenApi = $true
+  $CheckMetrics = $true
 }
 
 $failures = @()
@@ -1073,6 +1075,42 @@ $healthTimings = [ordered]@{ ok = $false; url = ''; samples = 0; successCount = 
 $loginTimings = [ordered]@{ ok = $false; signupStatus = 0; url = ''; samples = 0; successCount = 0; statusCodes = @(); durationsMs = @(); p99Ms = $null; thresholdMs = 2000 }
 $signupToDashboard = [ordered]@{ ok = $false; signupStatus = 0; meStatus = 0; elapsedMs = $null; thresholdMs = 120000 }
 $djangoInternalHealth = [ordered]@{ ok = $false; status = 0; service = 'django'; db_ok = $false; error = '' }
+$apiMetrics = [ordered]@{ ok = $false; status = 0; url = ''; saw = @(); error = '' }
+
+function Check-ApiMetrics([string]$artifactDir, [string]$domain) {
+  $fail = @()
+  $u = "https://$domain/api/metrics"
+  $payload = [ordered]@{ url = $u; status = 0; ok = $false; saw = @(); error = '' }
+
+  try {
+    $resp = Curl-Get $u
+    $payload.status = [int]$resp.status
+    $text = ($resp.body -join "`n")
+    Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'api' -fileName 'metrics.prom' -content $text
+
+    if ($payload.status -ne 200) {
+      $fail += "Metrics expected 200, got $($payload.status) ($u)"
+    }
+
+    $expected = @('base2_api_requests_total', 'base2_api_uptime_seconds')
+    foreach ($m in $expected) {
+      if ($text -notmatch [regex]::Escape($m)) {
+        $fail += "Metrics missing expected name: $m"
+      } else {
+        $payload.saw += $m
+      }
+    }
+
+    $payload.ok = ($fail.Count -eq 0)
+  } catch {
+    $payload.ok = $false
+    $payload.error = [string]$_.Exception.Message
+    $fail += "Metrics check failed: $($_.Exception.Message)"
+  }
+
+  Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'api' -fileName 'metrics-validation.json' -content $payload
+  return [pscustomobject]@{ payload = $payload; failures = @($fail) }
+}
 
 $doDnsFails = @()
 $clientDnsFails = @()
@@ -1457,6 +1495,7 @@ $result = [ordered]@{
   healthContractCheck = [ordered]@{ enabled = $true; ok = [bool]($healthContract.ok); missing = @($healthContract.missing); observedTypes = $healthContract.observedTypes }
   djangoInternalHealthCheck = [ordered]@{ enabled = $true; ok = [bool]($djangoInternalHealth.ok); status = $djangoInternalHealth.status; db_ok = [bool]($djangoInternalHealth.db_ok); error = [string]($djangoInternalHealth.error) }
   requestIdLogPropagationCheck = [ordered]@{ enabled = $true; ok = $false; request_id = ''; found = [ordered]@{ traefik = $false; api = $false; django = $false; celery_worker = $false }; error = '' }
+  metricsCheck = [ordered]@{ enabled = $false; ok = $false; status = 0; url = ''; saw = @(); error = '' }
   healthTimingsCheck = [ordered]@{ enabled = $true; ok = [bool]($healthTimings.ok); url = [string]($healthTimings.url); p95Ms = $healthTimings.p95Ms; thresholdMs = $healthTimings.thresholdMs; samples = $healthTimings.samples; successCount = $healthTimings.successCount }
   loginTimingsCheck = [ordered]@{ enabled = $true; ok = [bool]($loginTimings.ok); p99Ms = $loginTimings.p99Ms; thresholdMs = $loginTimings.thresholdMs; samples = $loginTimings.samples; successCount = $loginTimings.successCount; signupStatus = $loginTimings.signupStatus }
   signupToDashboardTimingsCheck = [ordered]@{ enabled = $true; ok = [bool]($signupToDashboard.ok); elapsedMs = $signupToDashboard.elapsedMs; thresholdMs = $signupToDashboard.thresholdMs; signupStatus = $signupToDashboard.signupStatus; meStatus = $signupToDashboard.meStatus }
@@ -1471,6 +1510,25 @@ $result = [ordered]@{
   doDnsCheck = [ordered]@{ enabled = $false; ok = $false; expectedIpv4 = ''; expectedIpv6 = '' }
   clientDnsCheck = [ordered]@{ enabled = $false; ok = $false; expectedIpv4 = ''; failures = @() }
   failures = @()
+}
+
+# Optional: API metrics endpoint (Prometheus-compatible text format)
+if ($CheckMetrics) {
+  try {
+    $m = Check-ApiMetrics -artifactDir $artifactDir -domain $Domain
+    $result.metricsCheck.enabled = $true
+    $result.metricsCheck.ok = [bool]$m.payload.ok
+    $result.metricsCheck.status = [int]$m.payload.status
+    $result.metricsCheck.url = [string]$m.payload.url
+    $result.metricsCheck.saw = @($m.payload.saw)
+    $result.metricsCheck.error = [string]$m.payload.error
+    $failures += @($m.failures)
+  } catch {
+    $result.metricsCheck.enabled = $true
+    $result.metricsCheck.ok = $false
+    $result.metricsCheck.error = [string]$_.Exception.Message
+    $failures += "Metrics check failed: $($_.Exception.Message)"
+  }
 }
 
 # Request-id log propagation check: consume the remote verification artifact if present.
