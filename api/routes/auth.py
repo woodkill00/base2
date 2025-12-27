@@ -29,7 +29,7 @@ def _refresh_cookie_name() -> str:
     return "base2_refresh"
 
 
-def _set_refresh_cookie(response: Response, token: str) -> None:
+def _set_refresh_cookie(response: Response, token: str, *, max_age_seconds: int | None = None) -> None:
     if not bool(settings.AUTH_REFRESH_COOKIE):
         return
     response.set_cookie(
@@ -39,6 +39,7 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
         secure=bool(settings.COOKIE_SECURE),
         samesite=str(settings.COOKIE_SAMESITE or "Lax"),
         path="/",
+        max_age=max_age_seconds,
     )
 
 
@@ -79,12 +80,13 @@ async def auth_login(request: Request, response: Response, payload: _LoginReques
     try:
         from api.auth.service import login_user
 
+        refresh_ttl_days = int(os.getenv("REFRESH_TOKEN_TTL_DAYS", "30") or 30)
         user, tokens = login_user(
             email=payload.email,
             password=payload.password,
             ip=ip,
             user_agent=request.headers.get("user-agent", ""),
-            refresh_ttl_days=int(os.getenv("REFRESH_TOKEN_TTL_DAYS", "30") or 30),
+            refresh_ttl_days=refresh_ttl_days,
             access_ttl_minutes=int(os.getenv("JWT_EXPIRE", "15") or 15),
         )
     except ValueError as e:
@@ -96,8 +98,8 @@ async def auth_login(request: Request, response: Response, payload: _LoginReques
     except Exception:
         raise HTTPException(status_code=500, detail="Login failed")
 
-    _set_refresh_cookie(response, tokens.refresh_token)
-    return {
+    _set_refresh_cookie(response, tokens.refresh_token, max_age_seconds=refresh_ttl_days * 86400)
+    body = {
         "id": str(user.id),
         "email": user.email,
         "display_name": user.display_name,
@@ -105,6 +107,9 @@ async def auth_login(request: Request, response: Response, payload: _LoginReques
         "bio": user.bio,
         "access_token": tokens.access_token,
     }
+    if not bool(settings.AUTH_REFRESH_COOKIE):
+        body["refresh_token"] = tokens.refresh_token
+    return body
 
 
 @router.post("/users/signup")
@@ -135,12 +140,13 @@ async def auth_register(request: Request, response: Response, payload: _Register
     try:
         from api.auth.service import register_user
 
+        refresh_ttl_days = int(os.getenv("REFRESH_TOKEN_TTL_DAYS", "30") or 30)
         user, tokens = register_user(
             email=payload.email,
             password=payload.password,
             ip=ip,
             user_agent=request.headers.get("user-agent", ""),
-            refresh_ttl_days=int(os.getenv("REFRESH_TOKEN_TTL_DAYS", "30") or 30),
+            refresh_ttl_days=refresh_ttl_days,
             access_ttl_minutes=int(os.getenv("JWT_EXPIRE", "15") or 15),
         )
     except ValueError as e:
@@ -150,9 +156,9 @@ async def auth_register(request: Request, response: Response, payload: _Register
     except Exception:
         raise HTTPException(status_code=500, detail="Registration failed")
 
-    _set_refresh_cookie(response, tokens.refresh_token)
+    _set_refresh_cookie(response, tokens.refresh_token, max_age_seconds=refresh_ttl_days * 86400)
     response.status_code = 201
-    return {
+    body = {
         "id": str(user.id),
         "email": user.email,
         "display_name": user.display_name,
@@ -160,6 +166,9 @@ async def auth_register(request: Request, response: Response, payload: _Register
         "bio": user.bio,
         "access_token": tokens.access_token,
     }
+    if not bool(settings.AUTH_REFRESH_COOKIE):
+        body["refresh_token"] = tokens.refresh_token
+    return body
 
 
 @router.post("/users/verify-email")
@@ -340,13 +349,20 @@ async def users_logout(request: Request, response: Response):
 @router.post("/auth/logout")
 async def auth_logout(request: Request, response: Response):
     refresh = request.cookies.get(_refresh_cookie_name())
+    if not refresh:
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = {}
+        refresh = (payload or {}).get("refresh_token")
+
     if refresh:
         try:
             from api.auth.repo import find_refresh_token, revoke_refresh_token
             from api.auth.repo import insert_audit_event
             from api.auth.tokens import hash_token
 
-            rec = find_refresh_token(token_hash=hash_token(refresh))
+            rec = find_refresh_token(token_hash=hash_token(str(refresh)))
             if rec is not None:
                 revoke_refresh_token(token_id=rec["id"], replaced_by_token_id=None)
                 insert_audit_event(
@@ -452,11 +468,12 @@ async def auth_refresh(request: Request, response: Response):
     try:
         from api.auth.service import refresh_tokens
 
+        refresh_ttl_days = int(os.getenv("REFRESH_TOKEN_TTL_DAYS", "30") or 30)
         user, tokens = refresh_tokens(
             refresh_token=refresh,
             ip=ip,
             user_agent=request.headers.get("user-agent", ""),
-            refresh_ttl_days=int(os.getenv("REFRESH_TOKEN_TTL_DAYS", "30") or 30),
+            refresh_ttl_days=refresh_ttl_days,
             access_ttl_minutes=int(os.getenv("JWT_EXPIRE", "15") or 15),
         )
     except ValueError:
@@ -464,7 +481,7 @@ async def auth_refresh(request: Request, response: Response):
     except Exception:
         raise HTTPException(status_code=500, detail="Refresh failed")
 
-    _set_refresh_cookie(response, tokens.refresh_token)
+    _set_refresh_cookie(response, tokens.refresh_token, max_age_seconds=refresh_ttl_days * 86400)
     body = {
         "id": str(user.id),
         "email": user.email,
@@ -572,11 +589,12 @@ async def auth_oauth_google(request: Request, response: Response):
         if user is None or not user.is_active:
             raise HTTPException(status_code=401, detail="OAuth rejected")
 
+        refresh_ttl_days = int(os.getenv("REFRESH_TOKEN_TTL_DAYS", "30") or 30)
         refresh = new_refresh_token()
         _token_id, _expires_at = repo.create_refresh_token(
             user_id=user.id,
             token_hash=hash_token(refresh),
-            ttl_days=int(os.getenv("REFRESH_TOKEN_TTL_DAYS", "30") or 30),
+            ttl_days=refresh_ttl_days,
             ip=ip,
             user_agent=request.headers.get("user-agent", ""),
         )
@@ -584,7 +602,7 @@ async def auth_oauth_google(request: Request, response: Response):
 
         repo.insert_audit_event(user_id=user.id, action="auth.oauth_login", ip=ip, user_agent=request.headers.get("user-agent", ""), metadata={"provider": "google"})
 
-        _set_refresh_cookie(response, refresh)
+        _set_refresh_cookie(response, refresh, max_age_seconds=refresh_ttl_days * 86400)
         body = {
             "id": str(user.id),
             "email": user.email,
