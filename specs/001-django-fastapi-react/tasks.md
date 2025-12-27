@@ -791,7 +791,7 @@
     - Keep a non-cookie fallback for local dev.
   - **Verify**: refresh works with cookies; no JS access to refresh cookie.
 
-- [ ] T108 Add audit event emission for all auth actions (login, logout, refresh, reset, verify)
+- [X] T108 Add audit event emission for all auth actions (login, logout, refresh, reset, verify)
   - **Touch**:
     - `api/services/audit_service.py`
     - `api/routes/auth.py`

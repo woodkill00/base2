@@ -196,10 +196,10 @@ async def auth_verify_email(request: Request, response: Response):
         from api.auth.service import verify_email
         from api.auth.repo import insert_audit_event
 
-        verify_email(token=str(token or ""))
+        user_id = verify_email(token=str(token or ""))
         try:
             insert_audit_event(
-                user_id=None,
+                user_id=user_id,
                 action="user.verify_email",
                 ip=_client_ip(request),
                 user_agent=request.headers.get("user-agent", ""),
@@ -315,10 +315,10 @@ async def auth_reset_password(request: Request, response: Response):
         from api.auth.service import reset_password
         from api.auth.repo import insert_audit_event
 
-        reset_password(token=str(token or ""), new_password=str(password or ""))
+        user_id = reset_password(token=str(token or ""), new_password=str(password or ""))
         try:
             insert_audit_event(
-                user_id=None,
+                user_id=user_id,
                 action="user.reset_password",
                 ip=_client_ip(request),
                 user_agent=request.headers.get("user-agent", ""),

@@ -32,6 +32,22 @@ def _count_unrevoked_refresh_tokens(user_id: str) -> int:
             return int(cur.fetchone()[0])
 
 
+def _count_audit_events(action: str, user_id: str | None = None) -> int:
+    with db_conn() as conn:
+        with conn.cursor() as cur:
+            if user_id is None:
+                cur.execute(
+                    "SELECT COUNT(*) FROM api_auth_audit_events WHERE action=%s",
+                    (action,),
+                )
+            else:
+                cur.execute(
+                    "SELECT COUNT(*) FROM api_auth_audit_events WHERE action=%s AND user_id=%s",
+                    (action, user_id),
+                )
+            return int(cur.fetchone()[0])
+
+
 def _create_user(email: str, password: str):
     from api.auth import repo
 
@@ -74,8 +90,13 @@ def test_auth_verify_email_consumes_token_and_sets_flag():
     raw = "t_verify_" + uuid.uuid4().hex
     _insert_one_time_token(str(user.id), "verify_email", raw, ttl_minutes=60)
 
+    before_audit = _count_audit_events("user.verify_email", str(user.id))
+
     r = client.post("/auth/verify-email", json={"token": raw})
     assert r.status_code == 200, r.text
+
+    after_audit = _count_audit_events("user.verify_email", str(user.id))
+    assert after_audit == before_audit + 1
 
     from api.auth import repo
 
@@ -141,8 +162,13 @@ def test_auth_reset_password_updates_hash_consumes_token_and_revokes_refresh_tok
     raw = "t_reset_" + uuid.uuid4().hex
     _insert_one_time_token(str(user.id), "password_reset", raw, ttl_minutes=60)
 
+    before_audit = _count_audit_events("user.reset_password", str(user.id))
+
     r = client.post("/auth/reset-password", json={"token": raw, "password": new_pw})
     assert r.status_code == 200, r.text
+
+    after_audit = _count_audit_events("user.reset_password", str(user.id))
+    assert after_audit == before_audit + 1
 
     from api.auth import repo
 

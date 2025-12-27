@@ -69,7 +69,7 @@ def issue_verify_email(*, email: str, host: str | None, proto: str | None, reque
         pass
 
 
-def verify_email(*, token: str) -> None:
+def verify_email(*, token: str) -> UUID:
     if not token:
         raise ValueError("invalid_token")
 
@@ -92,6 +92,8 @@ def verify_email(*, token: str) -> None:
 
     repo.set_user_email_verified(user_id=user_id)
     repo.consume_one_time_token(token_id=rec["id"])
+
+    return user_id
 
 
 def issue_password_reset(*, email: str, host: str | None, proto: str | None, request_id: str | None = None, ttl_minutes: int = 60) -> None:
@@ -128,7 +130,7 @@ def issue_password_reset(*, email: str, host: str | None, proto: str | None, req
         pass
 
 
-def reset_password(*, token: str, new_password: str) -> None:
+def reset_password(*, token: str, new_password: str) -> UUID:
     if not token:
         raise ValueError("invalid_token")
 
@@ -155,6 +157,8 @@ def reset_password(*, token: str, new_password: str) -> None:
     repo.set_user_password_hash(user_id=user_id, password_hash=hash_password(new_password))
     repo.consume_one_time_token(token_id=rec["id"])
     repo.revoke_all_refresh_tokens(user_id=user_id)
+
+    return user_id
 
 
 def register_user(*, email: str, password: str, ip: str, user_agent: str, refresh_ttl_days: int, access_ttl_minutes: int) -> tuple[repo.User, AuthTokens]:
