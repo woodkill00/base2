@@ -74,6 +74,18 @@ docker compose -f local.docker.yml up -d
 docker compose -f local.docker.yml logs -f
 ```
 
+### 2b. (Recommended) Use the Makefile shortcuts
+
+If you have `make` available (Mac/Linux, or Windows via WSL/Git Bash), you can use:
+
+```bash
+make up
+make logs
+make test
+```
+
+See `Makefile` for all available targets.
+
 ### 3. Configure Authentication (IMPORTANT!)
 
 Before starting, you MUST configure:
