@@ -42,6 +42,9 @@ export const AuthProvider = ({ children }) => {
       if (userPayload && userPayload.email) {
         setUser(userPayload);
         localStorage.setItem('user', JSON.stringify(userPayload));
+        if (userPayload.access_token) {
+          localStorage.setItem('token', userPayload.access_token);
+        }
       }
       return { success: true, data: userPayload };
     } catch (error) {
@@ -59,6 +62,9 @@ export const AuthProvider = ({ children }) => {
 
       if (userPayload && userPayload.email) {
         localStorage.setItem('user', JSON.stringify(userPayload));
+        if (userPayload.access_token) {
+          localStorage.setItem('token', userPayload.access_token);
+        }
         setUser(userPayload);
         return { success: true };
       }

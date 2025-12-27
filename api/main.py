@@ -25,6 +25,15 @@ app = FastAPI(
     openapi_url=None if ENV == "production" else "/openapi.json",
 )
 
+# Ensure DB schema is present (idempotent migrations)
+try:
+    from api.migrations.runner import apply_migrations
+
+    apply_migrations()
+except Exception:
+    # Keep boot resilient; schema creation will be retried on next boot.
+    pass
+
 # Middleware: request id
 try:
     from api.middleware.request_id import request_id_middleware

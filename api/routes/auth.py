@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import os
+
 from fastapi import APIRouter, HTTPException, Request, Response
+from pydantic import BaseModel
 
 from api.security import rate_limit
 from api.settings import settings
@@ -9,6 +12,38 @@ from ._proxy import _client_ip, proxy_json, require_session_cookie
 
 
 router = APIRouter()
+
+
+class _LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class _RegisterRequest(BaseModel):
+    email: str
+    password: str
+
+
+def _refresh_cookie_name() -> str:
+    return "base2_refresh"
+
+
+def _set_refresh_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=_refresh_cookie_name(),
+        value=token,
+        httponly=True,
+        secure=bool(settings.COOKIE_SECURE),
+        samesite=str(settings.COOKIE_SAMESITE or "Lax"),
+        path="/",
+    )
+
+
+def _clear_refresh_cookie(response: Response) -> None:
+    response.delete_cookie(
+        key=_refresh_cookie_name(),
+        path="/",
+    )
 
 
 @router.post("/users/login")
@@ -30,21 +65,41 @@ async def users_login(request: Request, response: Response):
 
 
 @router.post("/auth/login")
-async def auth_login(request: Request, response: Response):
+async def auth_login(request: Request, response: Response, payload: _LoginRequest):
     ip = _client_ip(request)
-    _count, over = rate_limit.incr_and_check(ip, "login")
+    _count, over = rate_limit.incr_and_check(ip, "auth_login")
     if over:
         raise HTTPException(status_code=429, detail="Rate limited")
 
-    payload = await request.json()
-    return await proxy_json(
-        request=request,
-        response=response,
-        method="POST",
-        upstream_path="/internal/api/users/login",
-        json_body=payload,
-        forward_csrf=False,
-    )
+    try:
+        from api.auth.service import login_user
+
+        user, tokens = login_user(
+            email=payload.email,
+            password=payload.password,
+            ip=ip,
+            user_agent=request.headers.get("user-agent", ""),
+            refresh_ttl_days=int(os.getenv("REFRESH_TOKEN_TTL_DAYS", "30") or 30),
+            access_ttl_minutes=int(os.getenv("JWT_EXPIRE", "15") or 15),
+        )
+    except ValueError as e:
+        if str(e) == "invalid_credentials":
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        if str(e) == "inactive":
+            raise HTTPException(status_code=403, detail="Account inactive")
+        raise HTTPException(status_code=400, detail="Invalid request")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Login failed")
+
+    _set_refresh_cookie(response, tokens.refresh_token)
+    return {
+        "id": str(user.id),
+        "email": user.email,
+        "display_name": user.display_name,
+        "avatar_url": user.avatar_url,
+        "bio": user.bio,
+        "access_token": tokens.access_token,
+    }
 
 
 @router.post("/users/signup")
@@ -66,21 +121,40 @@ async def users_signup(request: Request, response: Response):
 
 
 @router.post("/auth/register")
-async def auth_register(request: Request, response: Response):
+async def auth_register(request: Request, response: Response, payload: _RegisterRequest):
     ip = _client_ip(request)
-    _count, over = rate_limit.incr_and_check(ip, "signup")
+    _count, over = rate_limit.incr_and_check(ip, "auth_register")
     if over:
         raise HTTPException(status_code=429, detail="Rate limited")
 
-    payload = await request.json()
-    return await proxy_json(
-        request=request,
-        response=response,
-        method="POST",
-        upstream_path="/internal/api/users/signup",
-        json_body=payload,
-        forward_csrf=False,
-    )
+    try:
+        from api.auth.service import register_user
+
+        user, tokens = register_user(
+            email=payload.email,
+            password=payload.password,
+            ip=ip,
+            user_agent=request.headers.get("user-agent", ""),
+            refresh_ttl_days=int(os.getenv("REFRESH_TOKEN_TTL_DAYS", "30") or 30),
+            access_ttl_minutes=int(os.getenv("JWT_EXPIRE", "15") or 15),
+        )
+    except ValueError as e:
+        if str(e) == "email_taken":
+            raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="Invalid request")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Registration failed")
+
+    _set_refresh_cookie(response, tokens.refresh_token)
+    response.status_code = 201
+    return {
+        "id": str(user.id),
+        "email": user.email,
+        "display_name": user.display_name,
+        "avatar_url": user.avatar_url,
+        "bio": user.bio,
+        "access_token": tokens.access_token,
+    }
 
 
 @router.post("/users/verify-email")
@@ -188,54 +262,127 @@ async def users_logout(request: Request, response: Response):
 
 @router.post("/auth/logout")
 async def auth_logout(request: Request, response: Response):
-    require_session_cookie(request, settings.SESSION_COOKIE_NAME)
+    refresh = request.cookies.get(_refresh_cookie_name())
+    if refresh:
+        try:
+            from api.auth.repo import find_refresh_token, revoke_refresh_token
+            from api.auth.tokens import hash_token
 
-    return await proxy_json(
-        request=request,
-        response=response,
-        method="POST",
-        upstream_path="/internal/api/users/logout",
-        json_body=None,
-        forward_csrf=True,
-    )
+            rec = find_refresh_token(token_hash=hash_token(refresh))
+            if rec is not None:
+                revoke_refresh_token(token_id=rec["id"], replaced_by_token_id=None)
+        except Exception:
+            pass
+
+    _clear_refresh_cookie(response)
+    response.status_code = 204
+    return None
 
 
 @router.get("/auth/me")
-async def auth_me(request: Request, response: Response):
-    require_session_cookie(request, settings.SESSION_COOKIE_NAME)
-    return await proxy_json(
-        request=request,
-        response=response,
-        method="GET",
-        upstream_path="/internal/api/users/me",
-        json_body=None,
-        forward_csrf=False,
-    )
+async def auth_me(request: Request):
+    auth = request.headers.get("authorization", "")
+    if not auth.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    token = auth.split(" ", 1)[1].strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    try:
+        from api.auth.repo import get_user_by_id
+        from api.auth.tokens import decode_access_token
+        from uuid import UUID
+
+        payload = decode_access_token(token)
+        user_id = UUID(str(payload.get("sub")))
+        user = get_user_by_id(user_id)
+        if user is None:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        return {
+            "id": str(user.id),
+            "email": user.email,
+            "display_name": user.display_name,
+            "avatar_url": user.avatar_url,
+            "bio": user.bio,
+        }
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=401, detail="Not authenticated")
 
 
 @router.patch("/auth/me")
-async def auth_me_patch(request: Request, response: Response):
-    require_session_cookie(request, settings.SESSION_COOKIE_NAME)
+async def auth_me_patch(request: Request):
+    auth = request.headers.get("authorization", "")
+    if not auth.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    token = auth.split(" ", 1)[1].strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
     try:
-        payload = await request.json()
+        body = await request.json()
     except Exception:
-        payload = {}
+        body = {}
 
     allowed_keys = {"display_name", "avatar_url", "bio"}
-    filtered_payload = {k: v for k, v in (payload or {}).items() if k in allowed_keys}
-    return await proxy_json(
-        request=request,
-        response=response,
-        method="PATCH",
-        upstream_path="/internal/api/users/me",
-        json_body=filtered_payload,
-        forward_csrf=True,
-    )
+    filtered = {k: v for k, v in (body or {}).items() if k in allowed_keys}
+
+    try:
+        from api.auth.repo import update_profile
+        from api.auth.tokens import decode_access_token
+        from uuid import UUID
+
+        payload = decode_access_token(token)
+        user_id = UUID(str(payload.get("sub")))
+        user = update_profile(
+            user_id=user_id,
+            display_name=filtered.get("display_name"),
+            avatar_url=filtered.get("avatar_url"),
+            bio=filtered.get("bio"),
+        )
+        return {
+            "id": str(user.id),
+            "email": user.email,
+            "display_name": user.display_name,
+            "avatar_url": user.avatar_url,
+            "bio": user.bio,
+        }
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid request")
 
 
 @router.post("/auth/refresh")
-async def auth_refresh():
-    raise HTTPException(status_code=501, detail="/api/auth/refresh is not implemented yet")
+async def auth_refresh(request: Request, response: Response):
+    refresh = request.cookies.get(_refresh_cookie_name())
+    if not refresh:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    ip = _client_ip(request)
+    try:
+        from api.auth.service import refresh_tokens
+
+        user, tokens = refresh_tokens(
+            refresh_token=refresh,
+            ip=ip,
+            user_agent=request.headers.get("user-agent", ""),
+            refresh_ttl_days=int(os.getenv("REFRESH_TOKEN_TTL_DAYS", "30") or 30),
+            access_ttl_minutes=int(os.getenv("JWT_EXPIRE", "15") or 15),
+        )
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Refresh failed")
+
+    _set_refresh_cookie(response, tokens.refresh_token)
+    return {
+        "id": str(user.id),
+        "email": user.email,
+        "display_name": user.display_name,
+        "avatar_url": user.avatar_url,
+        "bio": user.bio,
+        "access_token": tokens.access_token,
+    }
 
 
 @router.post("/auth/oauth/google")
