@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import hashlib
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
@@ -180,8 +181,18 @@ async def auth_verify_email(request: Request, response: Response):
     token = (payload or {}).get("token")
     try:
         from api.auth.service import verify_email
+        from api.auth.repo import insert_audit_event
 
         verify_email(token=str(token or ""))
+        try:
+            insert_audit_event(
+                user_id=None,
+                action="user.verify_email",
+                ip=_client_ip(request),
+                user_agent=request.headers.get("user-agent", ""),
+            )
+        except Exception:
+            pass
         return {"detail": "Email verified"}
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid or expired token")
@@ -213,7 +224,7 @@ async def auth_forgot_password(request: Request, response: Response):
     ip = _client_ip(request)
     count, _over = rate_limit.incr_and_check(ip, "forgot_password")
     if count > 10:
-        raise HTTPException(status_code=429, detail="Rate limited")
+        raise HTTPException(status_code=429, detail="Rate limited", headers={"Retry-After": "900"})
 
     try:
         payload = await request.json()
@@ -221,8 +232,26 @@ async def auth_forgot_password(request: Request, response: Response):
         payload = {}
 
     email = (payload or {}).get("email")
+
+    # Add an additional limiter keyed by email hash (enumeration-safe).
+    try:
+        from api.security.rate_limit import incr_and_check_identifier
+
+        normalized = str(email or "").strip().lower()
+        if normalized:
+            email_hash = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+            email_count, _ = incr_and_check_identifier(email_hash, "forgot_password_email")
+            if email_count > 5:
+                raise HTTPException(status_code=429, detail="Rate limited", headers={"Retry-After": "900"})
+    except HTTPException:
+        raise
+    except Exception:
+        # Never break forgot-password because of limiter errors.
+        pass
+
     try:
         from api.auth.service import issue_password_reset
+        from api.auth.repo import insert_audit_event
 
         issue_password_reset(
             email=str(email or "").strip(),
@@ -230,6 +259,15 @@ async def auth_forgot_password(request: Request, response: Response):
             proto=request.headers.get("x-forwarded-proto"),
             request_id=request.headers.get("x-request-id"),
         )
+        try:
+            insert_audit_event(
+                user_id=None,
+                action="user.reset_password_requested",
+                ip=ip,
+                user_agent=request.headers.get("user-agent", ""),
+            )
+        except Exception:
+            pass
     except Exception:
         # Enumeration-safe: never leak existence, never error.
         pass
@@ -262,8 +300,18 @@ async def auth_reset_password(request: Request, response: Response):
 
     try:
         from api.auth.service import reset_password
+        from api.auth.repo import insert_audit_event
 
         reset_password(token=str(token or ""), new_password=str(password or ""))
+        try:
+            insert_audit_event(
+                user_id=None,
+                action="user.reset_password",
+                ip=_client_ip(request),
+                user_agent=request.headers.get("user-agent", ""),
+            )
+        except Exception:
+            pass
         return {"detail": "Password reset"}
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid request or token")

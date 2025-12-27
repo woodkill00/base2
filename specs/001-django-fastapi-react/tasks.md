@@ -692,7 +692,7 @@
   - **Verify**:
     - tests: sending creates outbox row; worker marks sent.
 
-- [ ] T102 Implement FastAPI verify-email issuance + verify endpoint
+- [X] T102 Implement FastAPI verify-email issuance + verify endpoint
   - **Touch**:
     - `api/routes/auth.py`
     - `api/models/one_time_tokens.py`
@@ -709,7 +709,7 @@
       - mark token consumed; audit `user.verify_email`
   - **Verify**: verify consumes token (second use fails).
 
-- [ ] T103 Implement FastAPI forgot-password + reset-password endpoints (enumeration-safe)
+- [X] T103 Implement FastAPI forgot-password + reset-password endpoints (enumeration-safe)
   - **Touch**:
     - `api/routes/auth.py`
     - `api/models/one_time_tokens.py`

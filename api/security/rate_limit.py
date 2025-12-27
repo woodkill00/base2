@@ -19,10 +19,19 @@ def incr_and_check(ip: str, scope: str) -> Tuple[int, bool]:
     """Increment counter for (ip, scope) and check if over limit.
     Returns (count, over_limit).
     """
+    return incr_and_check_identifier(ip, scope)
+
+
+def incr_and_check_identifier(identifier: str, scope: str) -> Tuple[int, bool]:
+    """Increment counter for (identifier, scope) and check if over limit.
+
+    Use this when the limiting key is not an IP address (e.g. email hash).
+    Returns (count, over_limit).
+    """
     c = get_client()
     ts = now_ms()
     start = bucket_start(ts)
-    k = key("rl", scope, ip, str(start))
+    k = key("rl", scope, identifier, str(start))
     pipe = c.pipeline()
     pipe.incr(k, 1)
     # Set expiry to window length in seconds if key is new
