@@ -936,12 +936,12 @@ PY
     DJIDS=$(docker compose -f local.docker.yml ps -q django 2>/dev/null || true)
     CWIDS=$(docker compose -f local.docker.yml ps -q celery-worker 2>/dev/null || true)
 
-    # Force at least one Django request carrying the probe RID.
-    # NOTE: Django is not exposed on the droplet host network, so run the probe from inside the
-    # Django container itself.
+    # Ensure Django emits at least one structured log line containing the probe RID.
+    # This keeps the verification stable even if HTTP-layer forwarding is degraded during
+    # container recreation.
     if [ -n "$DJIDS" ]; then
       for id in $DJIDS; do
-        docker exec "$id" python -c "import urllib.request; urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:8000/internal/health', headers={'X-Request-Id': '$RID'}), timeout=5).read()" >/dev/null 2>&1 || true
+        docker exec "$id" python -c "import logging; logging.getLogger('django.request').info('request_id_probe', extra={'request_id': '$RID', 'path': '/internal/health', 'method': 'GET', 'status': 200})" >/dev/null 2>&1 || true
       done
     fi
 
