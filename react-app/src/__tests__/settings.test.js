@@ -43,7 +43,7 @@ describe('US3 Settings', () => {
     );
   });
 
-  test('submits allowed profile fields to PATCH /api/auth/me', async () => {
+  test('submits allowed profile fields to PATCH /api/users/me', async () => {
     const user = userEvent.setup();
 
     apiClient.patch.mockResolvedValue({
@@ -72,7 +72,8 @@ describe('US3 Settings', () => {
     });
 
     await waitFor(() => {
-      expect(apiClient.patch).toHaveBeenCalledWith('/auth/me', {
+      expect(apiClient.patch).toHaveBeenCalledWith('/users/me', {
+        email: 'test@example.com',
         display_name: 'New Name',
         avatar_url: 'https://example.com/new.png',
         bio: 'New bio',

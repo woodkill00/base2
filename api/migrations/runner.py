@@ -28,6 +28,8 @@ def apply_migrations() -> None:
     migrations = [
         "001_create_auth_tables",
         "002_create_email_outbox",
+        "003_add_refresh_token_last_seen",
+        "004_add_user_lockout_fields",
     ]
 
     with db_conn() as conn:

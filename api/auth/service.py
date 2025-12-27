@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+import os
 from typing import Optional
 from uuid import UUID
 
@@ -134,8 +135,7 @@ def reset_password(*, token: str, new_password: str) -> UUID:
     if not token:
         raise ValueError("invalid_token")
 
-    if not new_password or len(new_password) < 8:
-        raise ValueError("invalid_password")
+    _validate_password_or_raise(new_password)
 
     rec = repo.find_one_time_token(token_hash=hash_token(token), token_type="password_reset")
     if rec is None:
@@ -162,6 +162,8 @@ def reset_password(*, token: str, new_password: str) -> UUID:
 
 
 def register_user(*, email: str, password: str, ip: str, user_agent: str, refresh_ttl_days: int, access_ttl_minutes: int) -> tuple[repo.User, AuthTokens]:
+    _validate_password_or_raise(password)
+
     existing = repo.get_user_by_email(email)
     if existing is not None:
         raise ValueError("email_taken")
@@ -191,11 +193,36 @@ def login_user(*, email: str, password: str, ip: str, user_agent: str, refresh_t
         repo.insert_audit_event(user_id=None, action="auth.login_failed", ip=ip, user_agent=user_agent, metadata={"email": email.strip().lower()})
         raise ValueError("invalid_credentials")
 
+    # Always return generic invalid credentials.
     if not user.is_active:
-        raise ValueError("inactive")
+        repo.insert_audit_event(user_id=user.id, action="auth.login_failed", ip=ip, user_agent=user_agent)
+        raise ValueError("invalid_credentials")
+
+    # Account lockout window.
+    try:
+        st = repo.get_user_lock_state(user_id=user.id)
+        locked_until = st.get("locked_until")
+        if locked_until is not None:
+            now = datetime.now(locked_until.tzinfo) if getattr(locked_until, "tzinfo", None) else datetime.utcnow()
+            if locked_until > now:
+                repo.insert_audit_event(user_id=user.id, action="auth.login_locked", ip=ip, user_agent=user_agent)
+                raise ValueError("invalid_credentials")
+    except ValueError:
+        raise
+    except Exception:
+        # Never block login because lock metadata couldn't be read.
+        pass
 
     if not verify_password(password, user.password_hash):
         repo.insert_audit_event(user_id=user.id, action="auth.login_failed", ip=ip, user_agent=user_agent)
+        try:
+            max_failures = int(os.getenv("AUTH_LOCKOUT_MAX_FAILURES", "5") or 5)
+            lock_minutes = int(os.getenv("AUTH_LOCKOUT_MINUTES", "15") or 15)
+            st = repo.register_login_failure(user_id=user.id, max_failures=max_failures, lock_minutes=lock_minutes)
+            if st.get("locked_until") is not None and int(st.get("failed_login_attempts") or 0) >= max_failures:
+                repo.insert_audit_event(user_id=user.id, action="auth.account_locked", ip=ip, user_agent=user_agent)
+        except Exception:
+            pass
         raise ValueError("invalid_credentials")
 
     refresh = new_refresh_token()
@@ -210,9 +237,25 @@ def login_user(*, email: str, password: str, ip: str, user_agent: str, refresh_t
 
     access = create_access_token(subject=str(user.id), email=user.email, ttl_minutes=access_ttl_minutes)
 
+    try:
+        repo.reset_login_failures(user_id=user.id)
+    except Exception:
+        pass
+
     repo.insert_audit_event(user_id=user.id, action="auth.login", ip=ip, user_agent=user_agent)
 
     return user, AuthTokens(access_token=access, refresh_token=refresh, refresh_token_expires_at=refresh_expires_at)
+
+
+def _validate_password_or_raise(password: str) -> None:
+    pwd = str(password or "")
+    if len(pwd) < 8:
+        raise ValueError("invalid_password")
+    has_lower = any(c.islower() for c in pwd)
+    has_upper = any(c.isupper() for c in pwd)
+    has_digit = any(c.isdigit() for c in pwd)
+    if not (has_lower and has_upper and has_digit):
+        raise ValueError("invalid_password")
 
 
 def refresh_tokens(*, refresh_token: str, ip: str, user_agent: str, refresh_ttl_days: int, access_ttl_minutes: int) -> tuple[repo.User, AuthTokens]:
@@ -235,6 +278,12 @@ def refresh_tokens(*, refresh_token: str, ip: str, user_agent: str, refresh_ttl_
     user = repo.get_user_by_id(rec["user_id"])
     if user is None:
         raise ValueError("invalid_refresh")
+
+    try:
+        repo.touch_refresh_token(token_id=rec["id"], ip=ip, user_agent=user_agent)
+    except Exception:
+        # Never fail refresh because of session bookkeeping.
+        pass
 
     new_refresh = new_refresh_token()
     new_refresh_hash = hash_token(new_refresh)

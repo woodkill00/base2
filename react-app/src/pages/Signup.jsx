@@ -54,7 +54,11 @@ const Signup = () => {
       <div style={styles.card}>
         <h1 style={styles.title}>Create account</h1>
 
-        {error ? <div style={styles.error}>{error}</div> : null}
+        {error ? (
+          <div style={styles.error} role="alert">
+            {error}
+          </div>
+        ) : null}
 
         <form onSubmit={onSubmit} style={styles.form}>
           <label style={styles.label} htmlFor="email">
@@ -68,8 +72,14 @@ const Signup = () => {
             onChange={(e) => setEmail(e.target.value)}
             style={styles.input}
             autoComplete="email"
+            aria-invalid={fieldErrors.email ? 'true' : 'false'}
+            aria-describedby={fieldErrors.email ? 'email-error' : undefined}
           />
-          {fieldErrors.email ? <div style={styles.fieldError}>{fieldErrors.email}</div> : null}
+          {fieldErrors.email ? (
+            <div id="email-error" style={styles.fieldError} role="alert">
+              {fieldErrors.email}
+            </div>
+          ) : null}
 
           <label style={styles.label} htmlFor="password">
             Password
@@ -82,8 +92,14 @@ const Signup = () => {
             onChange={(e) => setPassword(e.target.value)}
             style={styles.input}
             autoComplete="new-password"
+            aria-invalid={fieldErrors.password ? 'true' : 'false'}
+            aria-describedby={fieldErrors.password ? 'password-error' : undefined}
           />
-          {fieldErrors.password ? <div style={styles.fieldError}>{fieldErrors.password}</div> : null}
+          {fieldErrors.password ? (
+            <div id="password-error" style={styles.fieldError} role="alert">
+              {fieldErrors.password}
+            </div>
+          ) : null}
 
           <button type="submit" style={styles.primaryButton} disabled={loading}>
             {loading ? 'Creating…' : 'Create account'}

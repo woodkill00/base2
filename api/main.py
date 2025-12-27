@@ -5,6 +5,7 @@ import time
 from celery.result import AsyncResult
 from api import tasks  # ensure tasks module is importable
 from api.db import db_ping
+from fastapi.middleware.cors import CORSMiddleware
 
 from api.logging import configure_logging
 try:
@@ -24,6 +25,50 @@ app = FastAPI(
     redoc_url=None if ENV == "production" else "/redoc",
     openapi_url=None if ENV == "production" else "/openapi.json",
 )
+
+# Observability: optional OpenTelemetry
+try:
+    from api.otel import configure_otel
+
+    configure_otel(app)
+except Exception:
+    pass
+
+# CORS (strict allowlist; required for browser credentialed requests)
+try:
+    raw = os.getenv("CORS_ALLOW_ORIGINS", "").strip()
+    origins = [o.strip() for o in raw.split(",") if o.strip()] if raw else []
+
+    if not origins:
+        # Dev-friendly defaults.
+        origins = [
+            "http://localhost",
+            "http://localhost:3000",
+            "http://127.0.0.1",
+            "http://127.0.0.1:3000",
+        ]
+        try:
+            from api.settings import settings
+
+            if getattr(settings, "FRONTEND_URL", ""):
+                origins.append(str(settings.FRONTEND_URL).rstrip("/"))
+        except Exception:
+            pass
+
+    allow_credentials = True
+    if "*" in origins:
+        # Disallow wildcard origins with credentials.
+        allow_credentials = False
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=allow_credentials,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-CSRF-Token", "X-Requested-With"],
+    )
+except Exception:
+    pass
 
 # Ensure DB schema is present (idempotent migrations)
 try:
@@ -146,9 +191,11 @@ except Exception:
 try:
     from api.routes.auth import router as auth_router
     from api.routes.metrics import router as metrics_router
+    from api.routes.users import router as users_router
 
     app.include_router(auth_router)
     app.include_router(metrics_router)
+    app.include_router(users_router)
 except Exception:
     # Keep app bootable even if routes fail to import.
     pass
@@ -156,6 +203,16 @@ except Exception:
 @app.get("/health")
 async def health():
     return {"ok": True, "service": "api", "db_ok": db_ping()}
+
+
+@app.get("/flags")
+async def flags():
+    try:
+        from api.flags import get_flags
+
+        return {"flags": get_flags()}
+    except Exception:
+        return {"flags": {}}
 
 
 # --- Catalog (proxy to Django internal) ---

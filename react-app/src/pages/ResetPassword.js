@@ -109,7 +109,7 @@ const ResetPassword = () => {
         </p>
 
         {error && (
-          <div style={styles.errorMessage}>
+          <div style={styles.errorMessage} role="alert">
             {error}
           </div>
         )}
@@ -133,8 +133,14 @@ const ResetPassword = () => {
               onChange={handleChange}
               style={styles.input}
               required
+            aria-invalid={fieldErrors.password ? 'true' : 'false'}
+            aria-describedby={fieldErrors.password ? 'password-error' : undefined}
             />
-            {fieldErrors.password ? <div style={styles.fieldError}>{fieldErrors.password}</div> : null}
+            {fieldErrors.password ? (
+              <div id="password-error" style={styles.fieldError} role="alert">
+                {fieldErrors.password}
+              </div>
+            ) : null}
           </div>
 
           <div style={styles.formGroup}>
@@ -146,9 +152,13 @@ const ResetPassword = () => {
               onChange={handleChange}
               style={styles.input}
               required
+              aria-invalid={fieldErrors.confirmPassword ? 'true' : 'false'}
+              aria-describedby={fieldErrors.confirmPassword ? 'confirm-password-error' : undefined}
             />
             {fieldErrors.confirmPassword ? (
-              <div style={styles.fieldError}>{fieldErrors.confirmPassword}</div>
+              <div id="confirm-password-error" style={styles.fieldError} role="alert">
+                {fieldErrors.confirmPassword}
+              </div>
             ) : null}
           </div>
 

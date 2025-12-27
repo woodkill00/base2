@@ -889,7 +889,7 @@
 
 **Purpose**: Make the React app feel “shippable”: robust forms, error states, a11y, performance.
 
-- [ ] T114 Add a unified form + API error handling pattern (toasts + field errors).
+- [X] T114 Add a unified form + API error handling pattern (toasts + field errors).
   - **Touch**:
     - `react-app/src/components/ToastProvider.jsx` (new if missing)
     - `react-app/src/services/api.js`
@@ -903,7 +903,7 @@
       - disabled submit + spinner while pending
   - **Verify**: Bad password shows field error; server down shows friendly message.
 
-- [ ] T115 Add route-level guards + redirect memory (return user to original page after login).
+- [X] T115 Add route-level guards + redirect memory (return user to original page after login).
   - **Touch**:
     - `react-app/src/routes/PrivateRoute.jsx` (new)
     - `react-app/src/providers/AuthProvider.jsx`
@@ -913,7 +913,7 @@
     - After login, navigate to `next`.
   - **Verify**: Visiting a protected route sends to login then returns.
 
-- [ ] T116 Improve accessibility baseline (keyboard nav, focus, aria).
+- [X] T116 Improve accessibility baseline (keyboard nav, focus, aria).
   - **Touch**:
     - `react-app/src/components/*`
     - `react-app/src/pages/*`
@@ -924,7 +924,7 @@
     - Visible focus ring
   - **Verify**: Basic keyboard-only pass.
 
-- [ ] T117 Add production build performance checklist (bundle size + lazy routes).
+- [X] T117 Add production build performance checklist (bundle size + lazy routes).
   - **Touch**:
     - `react-app/src/App.js` (code splitting)
     - `react-app/package.json` (analyze script)
@@ -974,7 +974,7 @@
 
 **Purpose**: Reduce risk from common web attacks and operational mistakes.
 
-- [ ] T120 Add CORS policy + CSRF posture documentation (token vs cookie modes).
+- [X] T120 Add CORS policy + CSRF posture documentation (token vs cookie modes).
   - **Touch**:
     - `api/main.py` (CORS middleware)
     - `docs/SECURITY.md`
@@ -986,7 +986,7 @@
       - CORS still strict, but CSRF risk is reduced
   - **Verify**: Browser calls from non-allowed origins fail.
 
-- [ ] T121 Add password policy + account lockout/throttling rules.
+- [X] T121 Add password policy + account lockout/throttling rules.
   - **Touch**:
     - `api/services/auth_service.py`
     - `api/models/users.py` (track failed attempts, lock until)
@@ -999,7 +999,7 @@
     - Always return generic “invalid credentials”.
   - **Verify**: repeated failures trigger lock; audit logs record it.
 
-- [ ] T122 Add secrets scanning + dependency scanning in CI.
+- [X] T122 Add secrets scanning + dependency scanning in CI.
   - **Touch**:
     - `.github/workflows/security.yml` (new)
   - **How**:
@@ -1015,7 +1015,7 @@
 
 **Purpose**: Make incidents diagnosable in minutes, not hours.
 
-- [ ] T123 Add OpenTelemetry tracing hooks (start with FastAPI) + propagate trace headers.
+- [X] T123 Add OpenTelemetry tracing hooks (start with FastAPI) + propagate trace headers.
   - **Touch**:
     - `api/otel.py` (new)
     - `api/main.py`
@@ -1029,7 +1029,7 @@
       - staging/prod: OTLP endpoint (Tempo/Jaeger).
   - **Verify**: request generates a trace with spans.
 
-- [ ] T124 Add a “golden signals” dashboard checklist (latency, errors, traffic, saturation).
+- [X] T124 Add a “golden signals” dashboard checklist (latency, errors, traffic, saturation).
   - **Touch**:
     - `docs/OBSERVABILITY.md`
     - `meta/dashboards/*` (optional JSON exports)
@@ -1046,7 +1046,7 @@
 
 **Purpose**: Provide a few “this feels finished” features that users expect.
 
-- [ ] T125 Add `/api/auth/sessions` endpoint + UI for “log out other devices”.
+- [X] T125 Add `/api/auth/sessions` endpoint + UI for “log out other devices”.
   - **Touch**:
     - `api/routes/auth.py`
     - `api/models/refresh_tokens.py`
@@ -1057,7 +1057,7 @@
     - Endpoint to revoke all except current.
   - **Verify**: other device refresh stops working after revoke.
 
-- [ ] T126 Add user profile update endpoint (`PATCH /api/users/me`) + UI wiring.
+- [X] T126 Add user profile update endpoint (`PATCH /api/users/me`) + UI wiring.
   - **Touch**:
     - `api/routes/users.py` (new)
     - `api/models/users.py`
@@ -1066,7 +1066,7 @@
     - allow updating display name and optionally email (if you support email change, require re-verify)
   - **Verify**: UI updates and persists.
 
-- [ ] T127 Add feature flags support (simple env-driven, later DB-driven).
+- [X] T127 Add feature flags support (simple env-driven, later DB-driven).
   - **Touch**:
     - `api/flags.py` (new)
     - `react-app/src/flags.js` (new)

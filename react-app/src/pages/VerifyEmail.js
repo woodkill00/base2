@@ -69,7 +69,11 @@ const VerifyEmail = () => {
           {status === 'error' && 'Verification Failed'}
         </h1>
 
-        <p style={styles.message}>{message}</p>
+        {status === 'error' ? (
+          <div style={styles.error} role="alert">{message}</div>
+        ) : (
+          <p style={styles.message}>{message}</p>
+        )}
 
         {status === 'success' && (
           <div style={styles.redirectMessage}>
@@ -97,7 +101,7 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    padding: '20px'
+    padding: '20px',
   },
   card: {
     background: 'white',
@@ -134,6 +138,12 @@ const styles = {
   message: {
     fontSize: '16px',
     color: '#666',
+    marginBottom: '30px',
+    lineHeight: '1.6'
+  },
+  error: {
+    fontSize: '16px',
+    color: '#dc2626',
     marginBottom: '30px',
     lineHeight: '1.6'
   },

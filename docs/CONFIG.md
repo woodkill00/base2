@@ -29,3 +29,22 @@ This repo uses a single `.env` file (see `.env.example`) that feeds Docker Compo
 ## Email
 
 Django and FastAPI both support SMTP-style env vars (see `.env.example`). If SMTP is not configured, the system may fall back to local/outbox behavior depending on the service.
+
+## Feature flags
+
+Feature flags are controlled by environment variables on the API service.
+
+- `FEATURE_FLAGS`
+	- Comma-separated list of enabled flag names.
+	- Example: `FEATURE_FLAGS=NEW_SETTINGS_UI,ENABLE_BETA_PAYMENTS`
+- `FLAG_<NAME>`
+	- Overrides a single flag explicitly.
+	- Allowed values: `true|false|1|0|yes|no|on|off` (case-insensitive).
+	- Example: `FLAG_NEW_SETTINGS_UI=true`
+
+The API exposes effective flags at `GET /flags` (served externally as `GET /api/flags` when Traefik strips the `/api` prefix).
+
+Frontend usage:
+
+- `react-app/src/flags.js` provides `fetchFlags()` and `isFlagEnabled()`.
+- If `window.__FLAGS__` is set (optional), the frontend will use it without making a network call.

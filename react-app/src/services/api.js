@@ -71,6 +71,20 @@ export const authAPI = {
     });
   },
 
+  // List active sessions (refresh tokens)
+  listSessions: async () => {
+    return _call(apiClient.get('/auth/sessions'), {
+      fallbackMessage: 'Failed to load sessions',
+    });
+  },
+
+  // Revoke all sessions except the current one
+  revokeOtherSessions: async () => {
+    return _call(apiClient.post('/auth/sessions/revoke-others'), {
+      fallbackMessage: 'Failed to log out other devices',
+    });
+  },
+
 };
 
 export default apiClient;

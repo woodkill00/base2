@@ -4,6 +4,17 @@
 - Cookie-based sessions (HttpOnly, Secure, SameSite) are the primary credential.
 - CSRF protection required for state-changing requests (double-submit CSRF cookie + `X-CSRF-Token` header or equivalent per-session token).
 
+## CORS + CSRF Posture
+- The API uses a **strict CORS allowlist** for browser calls.
+	- Configure allowed origins via `CORS_ALLOW_ORIGINS` (comma-separated, exact origins like `https://example.com`).
+	- Default (when unset) allows localhost dev origins only.
+- If using **credentialed cookies** (refresh/session cookies):
+	- CORS must allow only your frontend origin(s).
+	- Cookies should be `HttpOnly`, `Secure` in production, and `SameSite=Lax` (or `Strict` if compatible).
+	- Prefer POST/PUT/PATCH/DELETE for state changes.
+- If using **Authorization headers only** (no credential cookies):
+	- CSRF risk is reduced, but CORS should still be strict to limit browser-based abuse.
+
 ## Admin and Operational UIs
 - Admin routes (Django admin), pgAdmin, Flower, and Traefik dashboard MUST be gated: basic auth + IP allowlist.
 - Do not expose internal-only services publicly.

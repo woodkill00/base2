@@ -7,6 +7,7 @@ A robust, production-ready Docker setup with enhanced security, health checks, a
 
 - Spec: [specs/001-django-fastapi-react/spec.md](specs/001-django-fastapi-react/spec.md)
 - Plan: [specs/001-django-fastapi-react/plan.md](specs/001-django-fastapi-react/plan.md)
+- Observability: [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md)
 
 ## ⚠️ Platform Compatibility
 

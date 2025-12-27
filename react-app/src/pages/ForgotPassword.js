@@ -61,13 +61,13 @@ const ForgotPassword = () => {
         </p>
 
         {error && (
-          <div style={styles.errorMessage}>
+          <div style={styles.errorMessage} role="alert">
             {error}
           </div>
         )}
 
         {message && (
-          <div style={styles.successMessage}>
+          <div style={styles.successMessage} role="status">
             {message}
           </div>
         )}
@@ -81,8 +81,14 @@ const ForgotPassword = () => {
               onChange={(e) => setEmail(e.target.value)}
               style={styles.input}
               required
+              aria-invalid={fieldErrors.email ? 'true' : 'false'}
+              aria-describedby={fieldErrors.email ? 'email-error' : undefined}
             />
-            {fieldErrors.email ? <div style={styles.fieldError}>{fieldErrors.email}</div> : null}
+            {fieldErrors.email ? (
+              <div id="email-error" style={styles.fieldError} role="alert">
+                {fieldErrors.email}
+              </div>
+            ) : null}
           </div>
 
           <button

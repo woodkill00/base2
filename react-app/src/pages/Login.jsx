@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 
 import { useAuth } from '../contexts/AuthContext';
@@ -8,7 +8,17 @@ import { useToast } from '../components/ToastProvider.jsx';
 const Login = () => {
   const { loginWithEmail, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const toast = useToast();
+
+  const nextPath = useMemo(() => {
+    const raw = searchParams.get('next') || '';
+    // Only allow internal navigations.
+    if (!raw || typeof raw !== 'string') return '/dashboard';
+    if (!raw.startsWith('/')) return '/dashboard';
+    if (raw.startsWith('//')) return '/dashboard';
+    return raw;
+  }, [searchParams]);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,7 +45,7 @@ const Login = () => {
     try {
       const result = await loginWithEmail(email, password);
       if (result.success) {
-        navigate('/dashboard');
+        navigate(nextPath);
         return;
       }
       if (result.fields) {
@@ -58,7 +68,7 @@ const Login = () => {
     try {
       const result = await loginWithGoogle(credentialResponse.credential);
       if (result.success) {
-        navigate('/dashboard');
+        navigate(nextPath);
         return;
       }
       const msg = result.error || 'Google login failed';
@@ -82,7 +92,11 @@ const Login = () => {
       <div style={styles.card}>
         <h1 style={styles.title}>Sign in</h1>
 
-        {error ? <div style={styles.error}>{error}</div> : null}
+        {error ? (
+          <div style={styles.error} role="alert">
+            {error}
+          </div>
+        ) : null}
 
         <form onSubmit={onSubmit} style={styles.form}>
           <label style={styles.label} htmlFor="email">
@@ -96,8 +110,14 @@ const Login = () => {
             onChange={(e) => setEmail(e.target.value)}
             style={styles.input}
             autoComplete="email"
+            aria-invalid={fieldErrors.email ? 'true' : 'false'}
+            aria-describedby={fieldErrors.email ? 'email-error' : undefined}
           />
-          {fieldErrors.email ? <div style={styles.fieldError}>{fieldErrors.email}</div> : null}
+          {fieldErrors.email ? (
+            <div id="email-error" style={styles.fieldError} role="alert">
+              {fieldErrors.email}
+            </div>
+          ) : null}
 
           <label style={styles.label} htmlFor="password">
             Password
@@ -110,8 +130,14 @@ const Login = () => {
             onChange={(e) => setPassword(e.target.value)}
             style={styles.input}
             autoComplete="current-password"
+            aria-invalid={fieldErrors.password ? 'true' : 'false'}
+            aria-describedby={fieldErrors.password ? 'password-error' : undefined}
           />
-          {fieldErrors.password ? <div style={styles.fieldError}>{fieldErrors.password}</div> : null}
+          {fieldErrors.password ? (
+            <div id="password-error" style={styles.fieldError} role="alert">
+              {fieldErrors.password}
+            </div>
+          ) : null}
 
           <button type="submit" style={styles.primaryButton} disabled={loading}>
             {loading ? 'Signing in…' : 'Sign in'}
