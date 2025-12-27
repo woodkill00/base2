@@ -534,7 +534,7 @@
 
 **Purpose**: Make diagnosing issues fast (especially on droplet).
 
-- [ ] T094 Structured JSON logging across Traefik, FastAPI, Django, Celery.
+- [X] T094 Structured JSON logging across Traefik, FastAPI, Django, Celery.
   - **Touch**:
     - `api/main.py` / `api/logging.py` (new)
     - `django/project/settings/*.py` (LOGGING config)
@@ -547,7 +547,7 @@
     - Ensure Celery tasks log `task_id` and `request_id` if available (pass request_id in task args).
   - **Verify**: Add a probe that makes a request and then `docker logs` grep for the request id; write `meta/request-id-log-propagation.json`; run `deploy.ps1 -AllTests`
 
-- [ ] T095 Add lightweight metrics endpoint(s) (start with app-level timings you already compute).
+- [X] T095 Add lightweight metrics endpoint(s) (start with app-level timings you already compute).
   - **Touch**:
     - `api/routes/metrics.py` (new, optional)
     - `digital_ocean/scripts/powershell/test.ps1` (collect and store)

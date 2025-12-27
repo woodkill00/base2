@@ -46,37 +46,37 @@ api.interceptors.response.use(
 export const authAPI = {
   // Register new user (cookie session)
   register: async (email, password, _name) => {
-    const response = await api.post('/users/signup', { email, password });
+    const response = await api.post('/auth/register', { email, password });
     return response.data;
   },
 
   // Login with email/password (cookie session)
   login: async (email, password) => {
-    const response = await api.post('/users/login', { email, password });
+    const response = await api.post('/auth/login', { email, password });
     return response.data;
   },
 
   // Logout (cookie session)
   logout: async () => {
-    const response = await api.post('/users/logout');
+    const response = await api.post('/auth/logout');
     return response.data;
   },
 
   // Get current user (cookie session)
   getMe: async () => {
-    const response = await api.get('/users/me');
+    const response = await api.get('/auth/me');
     return response.data;
   },
 
   // Google OAuth login
   googleAuth: async (googleId, email, name, picture) => {
-    const response = await api.post('/auth/google', { googleId, email, name, picture });
+    const response = await api.post('/auth/oauth/google', { googleId, email, name, picture });
     return response.data;
   },
 
   // Verify email
   verifyEmail: async (token) => {
-    const response = await api.post('/users/verify-email', { token });
+    const response = await api.post('/auth/verify-email', { token });
     return response.data;
   },
 
@@ -88,13 +88,13 @@ export const authAPI = {
 
   // Request password reset
   forgotPassword: async (email) => {
-    const response = await api.post('/users/forgot-password', { email });
+    const response = await api.post('/auth/forgot-password', { email });
     return response.data;
   },
 
   // Reset password
   resetPassword: async (token, password) => {
-    const response = await api.post('/users/reset-password', { token, password });
+    const response = await api.post('/auth/reset-password', { token, password });
     return response.data;
   },
 
