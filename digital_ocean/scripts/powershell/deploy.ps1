@@ -940,7 +940,7 @@ PY
     # NOTE: `docker exec` process stdout does not appear in `docker logs`, so we must trigger
     # a real HTTP request handled by the running gunicorn process.
     if [ -n "$DJIDS" ]; then
-      docker compose -f local.docker.yml exec -T django python - <<'PY' >/dev/null 2>&1 || true
+      docker compose -f local.docker.yml exec -T -e RID="$RID" django python - <<'PY' >/dev/null 2>&1 || true
 import os
 from urllib.request import Request, urlopen
 
