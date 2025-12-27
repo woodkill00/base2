@@ -2,22 +2,30 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/ToastProvider.jsx';
 
 const Signup = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
   const onSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setFieldErrors({});
 
     if (!email || !password) {
-      setError('Email and password are required');
+      const fe = {};
+      if (!email) fe.email = 'Email is required';
+      if (!password) fe.password = 'Password is required';
+      setFieldErrors(fe);
+      setError('Please fix the highlighted fields');
       return;
     }
 
@@ -28,7 +36,14 @@ const Signup = () => {
         navigate('/dashboard');
         return;
       }
-      setError(result.error || 'Signup failed');
+      if (result.fields) {
+        setFieldErrors(result.fields);
+      }
+      const msg = result.error || 'Signup failed';
+      setError(msg);
+      if (result.code === 'network_error') {
+        toast.error(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -54,6 +69,7 @@ const Signup = () => {
             style={styles.input}
             autoComplete="email"
           />
+          {fieldErrors.email ? <div style={styles.fieldError}>{fieldErrors.email}</div> : null}
 
           <label style={styles.label} htmlFor="password">
             Password
@@ -67,6 +83,7 @@ const Signup = () => {
             style={styles.input}
             autoComplete="new-password"
           />
+          {fieldErrors.password ? <div style={styles.fieldError}>{fieldErrors.password}</div> : null}
 
           <button type="submit" style={styles.primaryButton} disabled={loading}>
             {loading ? 'Creating…' : 'Create account'}
@@ -125,6 +142,12 @@ const styles = {
     borderRadius: '8px',
     border: '1px solid #d1d5db',
     fontSize: '14px',
+  },
+  fieldError: {
+    marginTop: '-6px',
+    marginBottom: '4px',
+    fontSize: '12px',
+    color: '#991b1b',
   },
   primaryButton: {
     marginTop: '8px',

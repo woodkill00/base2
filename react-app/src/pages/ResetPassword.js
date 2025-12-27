@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/ToastProvider.jsx';
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { resetPassword } = useAuth();
+  const toast = useToast();
   const [formData, setFormData] = useState({
     password: '',
     confirmPassword: ''
@@ -13,6 +15,7 @@ const ResetPassword = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const handleChange = (e) => {
     setFormData({
@@ -20,26 +23,34 @@ const ResetPassword = () => {
       [e.target.name]: e.target.value
     });
     setError('');
+    setFieldErrors((prev) => ({ ...prev, [e.target.name]: null }));
   };
 
   const validateForm = () => {
     if (!formData.password || !formData.confirmPassword) {
-      setError('Both fields are required');
+      const fe = {};
+      if (!formData.password) fe.password = 'Password is required';
+      if (!formData.confirmPassword) fe.confirmPassword = 'Confirm your password';
+      setFieldErrors(fe);
+      setError('Please fix the highlighted fields');
       return false;
     }
 
     if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters');
+      setFieldErrors({ password: 'Password must be at least 8 characters' });
+      setError('Please fix the highlighted fields');
       return false;
     }
 
     if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
-      setError('Password must contain uppercase, lowercase, and number');
+      setFieldErrors({ password: 'Must contain uppercase, lowercase, and number' });
+      setError('Please fix the highlighted fields');
       return false;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setFieldErrors({ confirmPassword: 'Passwords do not match' });
+      setError('Please fix the highlighted fields');
       return false;
     }
 
@@ -50,6 +61,7 @@ const ResetPassword = () => {
     e.preventDefault();
     setError('');
     setMessage('');
+    setFieldErrors({});
 
     if (!validateForm()) return;
 
@@ -64,13 +76,22 @@ const ResetPassword = () => {
     try {
       const result = await resetPassword(token, formData.password);
       if (result.success) {
-        setMessage(result.message || 'Password reset successfully!');
+        const msg = result.message || 'Password reset successfully!';
+        setMessage(msg);
+        toast.success(msg);
         setFormData({ password: '', confirmPassword: '' });
         setTimeout(() => {
           navigate('/login');
         }, 2000);
       } else {
-        setError(result.error || 'Failed to reset password');
+        if (result.fields) {
+          setFieldErrors(result.fields);
+        }
+        const msg = result.error || 'Failed to reset password';
+        setError(msg);
+        if (result.code === 'network_error') {
+          toast.error(msg);
+        }
       }
     } catch (err) {
       setError('An error occurred. Please try again.');
@@ -113,6 +134,7 @@ const ResetPassword = () => {
               style={styles.input}
               required
             />
+            {fieldErrors.password ? <div style={styles.fieldError}>{fieldErrors.password}</div> : null}
           </div>
 
           <div style={styles.formGroup}>
@@ -125,6 +147,9 @@ const ResetPassword = () => {
               style={styles.input}
               required
             />
+            {fieldErrors.confirmPassword ? (
+              <div style={styles.fieldError}>{fieldErrors.confirmPassword}</div>
+            ) : null}
           </div>
 
           <div style={styles.passwordHint}>
@@ -199,6 +224,12 @@ const styles = {
     outline: 'none',
     transition: 'border-color 0.2s',
     boxSizing: 'border-box'
+  },
+  fieldError: {
+    marginTop: '6px',
+    fontSize: '12px',
+    color: '#c33',
+    textAlign: 'left',
   },
   passwordHint: {
     fontSize: '12px',

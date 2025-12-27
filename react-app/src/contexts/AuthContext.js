@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI } from '../services/api';
+import { normalizeApiError } from '../lib/apiErrors';
 
 const AuthContext = createContext(null);
 
@@ -51,9 +52,9 @@ export const AuthProvider = ({ children }) => {
       }
       return { success: true, data: userPayload };
     } catch (error) {
-      const message = error.response?.data?.detail || error.response?.data?.message || 'Registration failed';
-      setError(message);
-      return { success: false, error: message };
+      const apiErr = normalizeApiError(error, { fallbackMessage: 'Registration failed' });
+      setError(apiErr.message);
+      return { success: false, error: apiErr.message, fields: apiErr.fields || null, code: apiErr.code };
     }
   };
 
@@ -77,9 +78,9 @@ export const AuthProvider = ({ children }) => {
 
       return { success: false, error: 'Invalid response from server' };
     } catch (error) {
-      const message = error.response?.data?.detail || error.response?.data?.message || 'Login failed';
-      setError(message);
-      return { success: false, error: message };
+      const apiErr = normalizeApiError(error, { fallbackMessage: 'Login failed' });
+      setError(apiErr.message);
+      return { success: false, error: apiErr.message, fields: apiErr.fields || null, code: apiErr.code };
     }
   };
 
@@ -101,9 +102,9 @@ export const AuthProvider = ({ children }) => {
 
       return { success: false, error: 'Invalid response from server' };
     } catch (error) {
-      const message = error.response?.data?.message || 'Google login failed';
-      setError(message);
-      return { success: false, error: message };
+      const apiErr = normalizeApiError(error, { fallbackMessage: 'Google login failed' });
+      setError(apiErr.message);
+      return { success: false, error: apiErr.message, fields: apiErr.fields || null, code: apiErr.code };
     }
   };
 
@@ -145,9 +146,9 @@ export const AuthProvider = ({ children }) => {
       const message = data?.detail || 'Email verified successfully!';
       return { success: true, message };
     } catch (error) {
-      const message = error.response?.data?.detail || 'Email verification failed';
-      setError(message);
-      return { success: false, error: message };
+      const apiErr = normalizeApiError(error, { fallbackMessage: 'Email verification failed' });
+      setError(apiErr.message);
+      return { success: false, error: apiErr.message, fields: apiErr.fields || null, code: apiErr.code };
     }
   };
 
@@ -159,9 +160,9 @@ export const AuthProvider = ({ children }) => {
       const message = data?.detail || 'If the account exists, a password reset email has been sent';
       return { success: true, message };
     } catch (error) {
-      const message = error.response?.data?.detail || 'Failed to send reset email';
-      setError(message);
-      return { success: false, error: message };
+      const apiErr = normalizeApiError(error, { fallbackMessage: 'Failed to send reset email' });
+      setError(apiErr.message);
+      return { success: false, error: apiErr.message, fields: apiErr.fields || null, code: apiErr.code };
     }
   };
 
@@ -173,9 +174,9 @@ export const AuthProvider = ({ children }) => {
       const message = data?.detail || 'Password reset successfully';
       return { success: true, message };
     } catch (error) {
-      const message = error.response?.data?.detail || 'Password reset failed';
-      setError(message);
-      return { success: false, error: message };
+      const apiErr = normalizeApiError(error, { fallbackMessage: 'Password reset failed' });
+      setError(apiErr.message);
+      return { success: false, error: apiErr.message, fields: apiErr.fields || null, code: apiErr.code };
     }
   };
 

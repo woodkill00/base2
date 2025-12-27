@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/ToastProvider.jsx';
 
 const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { verifyEmail } = useAuth();
+  const toast = useToast();
   const [status, setStatus] = useState('verifying'); // verifying, success, error
   const [message, setMessage] = useState('');
 
@@ -26,13 +28,19 @@ const VerifyEmail = () => {
       
       if (result.success) {
         setStatus('success');
-        setMessage(result.message || 'Email verified successfully!');
+        const msg = result.message || 'Email verified successfully!';
+        setMessage(msg);
+        toast.success(msg);
         setTimeout(() => {
           navigate('/login');
         }, 2000);
       } else {
         setStatus('error');
-        setMessage(result.error || 'Verification failed. The link may be expired or invalid.');
+        const msg = result.error || 'Verification failed. The link may be expired or invalid.';
+        setMessage(msg);
+        if (result.code === 'network_error') {
+          toast.error(msg);
+        }
       }
     } catch (error) {
       setStatus('error');

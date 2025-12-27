@@ -1,11 +1,14 @@
 import React, { useMemo, useState } from 'react';
 
 import apiClient from '../lib/apiClient';
+import { normalizeApiError } from '../lib/apiErrors';
 import { useAuth } from '../contexts/AuthContext';
 import Navigation from '../components/Navigation';
+import { useToast } from '../components/ToastProvider.jsx';
 
 const Settings = () => {
   const { user, updateUser } = useAuth();
+  const toast = useToast();
 
   const initial = useMemo(
     () => ({
@@ -19,14 +22,17 @@ const Settings = () => {
   const [form, setForm] = useState(initial);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const onChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    setFieldErrors((prev) => ({ ...prev, [e.target.name]: null }));
   };
 
   const onSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setFieldErrors({});
     setSaving(true);
 
     try {
@@ -38,11 +44,17 @@ const Settings = () => {
 
       if (resp?.data) {
         updateUser(resp.data);
+        toast.success('Saved');
       }
     } catch (err) {
-      const message =
-        err?.response?.data?.detail || err?.response?.data?.message || 'Failed to save settings';
-      setError(message);
+      const apiErr = normalizeApiError(err, { fallbackMessage: 'Failed to save settings' });
+      if (apiErr.fields) {
+        setFieldErrors(apiErr.fields);
+      }
+      setError(apiErr.message);
+      if (apiErr.code === 'network_error') {
+        toast.error(apiErr.message);
+      }
     } finally {
       setSaving(false);
     }
@@ -69,6 +81,9 @@ const Settings = () => {
             onChange={onChange}
             style={styles.input}
           />
+          {fieldErrors.display_name ? (
+            <div style={styles.fieldError}>{fieldErrors.display_name}</div>
+          ) : null}
 
           <label style={styles.label} htmlFor="avatar_url">
             Avatar URL
@@ -81,6 +96,9 @@ const Settings = () => {
             onChange={onChange}
             style={styles.input}
           />
+          {fieldErrors.avatar_url ? (
+            <div style={styles.fieldError}>{fieldErrors.avatar_url}</div>
+          ) : null}
 
           <label style={styles.label} htmlFor="bio">
             Bio
@@ -93,6 +111,7 @@ const Settings = () => {
             rows={4}
             style={styles.textarea}
           />
+          {fieldErrors.bio ? <div style={styles.fieldError}>{fieldErrors.bio}</div> : null}
 
           <button type="submit" style={styles.primaryButton} disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
@@ -151,6 +170,12 @@ const styles = {
     borderRadius: '8px',
     border: '1px solid #d1d5db',
     fontSize: '14px',
+  },
+  fieldError: {
+    marginTop: '-6px',
+    marginBottom: '4px',
+    fontSize: '12px',
+    color: '#991b1b',
   },
   textarea: {
     padding: '10px 12px',
