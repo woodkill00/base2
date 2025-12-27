@@ -18,7 +18,15 @@
 
 ## Rate Limiting
 - **Edge (Traefik)**: coarse rate limiting on sensitive endpoints (especially auth) to reduce burst abuse.
-- **App-level (FastAPI)**: Redis-backed counters (e.g., keyed by IP + endpoint) for signup/login and other high-risk routes; returns HTTP `429` with a consistent `{detail}` JSON shape.
+- **App-level (FastAPI)**: Redis-backed counters (fixed-window) keyed by IP and/or identifier; returns HTTP `429` with a consistent `{detail}` JSON shape and `Retry-After`.
+
+Current FastAPI defaults:
+- `POST /api/auth/login`: 5 / minute / IP
+- `POST /api/auth/register`: 5 / minute / IP
+- `POST /api/auth/oauth/google`: 5 / minute / IP
+- `POST /api/auth/forgot-password`: 10 / 15 minutes / IP + 5 / 15 minutes / email-hash
+
+Override knobs (optional): `RATE_LIMIT_<SCOPE>_WINDOW_MS`, `RATE_LIMIT_<SCOPE>_MAX_REQUESTS` (e.g. `RATE_LIMIT_AUTH_LOGIN_MAX_REQUESTS`).
 
 ## Error Handling
 - **Enumeration resistance**: authentication and signup errors must be generic and must not reveal whether an email exists.

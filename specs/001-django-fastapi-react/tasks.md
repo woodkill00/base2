@@ -765,7 +765,7 @@
 
 ### Security hardening around auth
 
-- [ ] T106 Add rate limiting for auth endpoints (login, register, forgot-password, oauth)
+- [X] T106 Add rate limiting for auth endpoints (login, register, forgot-password, oauth)
   - **Touch**:
     - `api/middleware/rate_limit.py` (new) OR integrate an existing limiter
     - `api/main.py` (middleware)
