@@ -9,10 +9,6 @@ from pydantic import BaseModel
 from api.security import rate_limit
 from api.settings import settings
 
-
-def _is_production() -> bool:
-    return (os.getenv("ENV", "development") or "").strip().lower() == "production"
-
 def _client_ip(request: Request) -> str:
     xff = request.headers.get("x-forwarded-for")
     if xff:
@@ -94,9 +90,7 @@ async def auth_login(request: Request, response: Response, payload: _LoginReques
             raise HTTPException(status_code=401, detail="Invalid credentials")
         if str(e) == "inactive":
             raise HTTPException(status_code=403, detail="Account inactive")
-        if _is_production():
-            raise HTTPException(status_code=400, detail="Invalid request")
-        raise HTTPException(status_code=400, detail=f"Invalid request: {str(e) or type(e).__name__}")
+        raise HTTPException(status_code=400, detail="Invalid request")
     except Exception:
         raise HTTPException(status_code=500, detail="Login failed")
 
@@ -136,9 +130,7 @@ async def auth_register(request: Request, response: Response, payload: _Register
     except ValueError as e:
         if str(e) == "email_taken":
             raise HTTPException(status_code=400, detail="Email already registered")
-        if _is_production():
-            raise HTTPException(status_code=400, detail="Invalid request")
-        raise HTTPException(status_code=400, detail=f"Invalid request: {str(e) or type(e).__name__}")
+        raise HTTPException(status_code=400, detail="Invalid request")
     except Exception:
         raise HTTPException(status_code=500, detail="Registration failed")
 
