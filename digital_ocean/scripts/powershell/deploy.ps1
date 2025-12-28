@@ -58,7 +58,9 @@ function Invoke-LocalCmdWithTimeout {
     [int]$HeartbeatSec = 30
   )
 
-  $tmp = Join-Path ($env:TEMP ?? $script:RepoRoot) ("base2-{0}.log" -f ([guid]::NewGuid().ToString('n')))
+  $tempRoot = $env:TEMP
+  if ([string]::IsNullOrWhiteSpace($tempRoot)) { $tempRoot = $script:RepoRoot }
+  $tmp = Join-Path $tempRoot ("base2-{0}.log" -f ([guid]::NewGuid().ToString('n')))
   $wrapped = "$CmdLine > `"$tmp`" 2>&1"
 
   $p = Start-Process -FilePath 'cmd.exe' -ArgumentList @('/c', $wrapped) -WorkingDirectory $WorkingDirectory -NoNewWindow -PassThru
@@ -96,9 +98,11 @@ function Invoke-LocalCmdWithTimeout {
     }
   } catch {}
 
+  if ($null -eq $out) { $out = '' }
+
   return @{
     ExitCode = [int]$p.ExitCode
-    Output = ($out ?? '')
+    Output = $out
   }
 }
 
