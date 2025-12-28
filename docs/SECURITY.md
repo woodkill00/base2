@@ -31,6 +31,11 @@ Policy:
 - Admin routes (Django admin), pgAdmin, Flower, and Traefik dashboard MUST be gated: basic auth + IP allowlist.
 - Do not expose internal-only services publicly.
 
+Admin gating policy (Traefik):
+
+- `https://admin.${WEBSITE_DOMAIN}/admin/*` is protected by **basic auth** + **IP allowlist**.
+- Allowlist is configured via `DJANGO_ADMIN_ALLOWLIST`; credentials via `TRAEFIK_DASH_BASIC_USERS`.
+
 ## TLS Policy
 - Staging-only ACME (`le-staging`) is enforced; production issuance is disallowed.
 
