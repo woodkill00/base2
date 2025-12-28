@@ -1147,7 +1147,7 @@
 
 ### Browser security headers + CSP correctness
 
-- [ ] T131 Fix/replace Traefik CSP header with a valid policy (no placeholder/invalid tokens) and validate it on SPA + API + Swagger hosts.
+- [X] T131 Fix/replace Traefik CSP header with a valid policy (no placeholder/invalid tokens) and validate it on SPA + API + Swagger hosts.
   - **Touch**:
     - `traefik/dynamic.yml`
     - `digital_ocean/scripts/powershell/test.ps1` (header capture)

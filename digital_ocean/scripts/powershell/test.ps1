@@ -407,6 +407,30 @@ function Verify-Headers([string[]]$headers, [string]$context) {
   return $fail
 }
 
+function Get-HeaderValue([string[]]$headers, [string]$name) {
+  if (-not $headers) { return '' }
+  $n = ($name + '').Trim()
+  foreach ($line in $headers) {
+    if (-not $line) { continue }
+    if ($line -match "(?i)^\s*" + [regex]::Escape($n) + "\s*:\s*(.+)\s*$") {
+      return ([string]$Matches[1]).Trim()
+    }
+  }
+  return ''
+}
+
+function Test-CspValue([string]$csp) {
+  $fail = @()
+  $v = ($csp + '').Trim()
+  if (-not $v) {
+    $fail += 'Missing Content-Security-Policy'
+    return $fail
+  }
+  if ($v -notmatch "(?i)\bdefault-src\b") { $fail += 'CSP missing default-src directive' }
+  if ($v -match "\{\{|\}\}|<%|%>|PLACEHOLDER|TODO") { $fail += 'CSP appears to contain template/placeholder tokens' }
+  return $fail
+}
+
 function Read-StatusFile([string]$path) {
   if (-not $path) { return 0 }
   if (-not (Test-Path $path)) { return 0 }
@@ -1208,6 +1232,65 @@ $failures += Verify-Headers $apiHdr 'api-https'
 # Also verify explicit health endpoints headers for clarity
 $failures += Verify-Headers $apiHdrHealth 'api-https-health'
 $failures += Verify-Headers $apiHdrHealthSlash 'api-https-health-slash'
+
+# Capture security headers (including CSP) for key entrypoints.
+try {
+  $secFailures = @()
+  $rootCsp = Get-HeaderValue $rootHdr 'Content-Security-Policy'
+  $apiCsp = Get-HeaderValue $apiHdrHealth 'Content-Security-Policy'
+
+  $secFailures += Test-CspValue $rootCsp
+  $secFailures += Test-CspValue $apiCsp
+
+  $swagger = $null
+  if ($CheckSwagger) {
+    $SwaggerHost = "swagger.$Domain"
+    $swaggerUrl = "https://$SwaggerHost/docs"
+    $swaggerHdr = @()
+    $swaggerStatus = 0
+    try {
+      $swaggerHdr = Curl-Head $swaggerUrl
+      $swaggerStatus = Get-StatusCodeFromHeaders $swaggerHdr
+    } catch {
+      $swaggerHdr = @()
+      $swaggerStatus = 0
+      $secFailures += "Swagger header probe failed: $($_.Exception.Message)"
+    }
+    $swaggerCsp = Get-HeaderValue $swaggerHdr 'Content-Security-Policy'
+    $secFailures += Test-CspValue $swaggerCsp
+    $swagger = [ordered]@{ url = $swaggerUrl; status = [int]$swaggerStatus; csp = [string]$swaggerCsp }
+  }
+
+  $payload = [ordered]@{
+    ok = ([bool]($secFailures.Count -eq 0))
+    failures = @($secFailures)
+    urls = [ordered]@{
+      root = "https://$Domain/"
+      apiHealth = "https://$Domain/api/health"
+    }
+    headers = [ordered]@{
+      root = [ordered]@{
+        csp = [string]$rootCsp
+        hsts = [string](Get-HeaderValue $rootHdr 'Strict-Transport-Security')
+        xfo = [string](Get-HeaderValue $rootHdr 'X-Frame-Options')
+        xcto = [string](Get-HeaderValue $rootHdr 'X-Content-Type-Options')
+        pp = [string](Get-HeaderValue $rootHdr 'Permissions-Policy')
+      }
+      apiHealth = [ordered]@{
+        csp = [string]$apiCsp
+        hsts = [string](Get-HeaderValue $apiHdrHealth 'Strict-Transport-Security')
+        xfo = [string](Get-HeaderValue $apiHdrHealth 'X-Frame-Options')
+        xcto = [string](Get-HeaderValue $apiHdrHealth 'X-Content-Type-Options')
+        pp = [string](Get-HeaderValue $apiHdrHealth 'Permissions-Policy')
+      }
+      swagger = $swagger
+    }
+  }
+  Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'security-headers.json' -content $payload
+  if (-not $payload.ok) {
+    $failures += @($payload.failures | ForEach-Object { "Security headers: $($_)" })
+  }
+} catch {}
 
 # Verify staging cert resolver
 $staticYml = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'traefik-static.yml'

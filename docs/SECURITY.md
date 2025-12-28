@@ -27,6 +27,16 @@
 - A Content Security Policy (CSP) and Permissions Policy are applied at the edge via Traefik middleware.
 - Deploy verification records observed headers in `meta/security-headers.json`.
 
+### CSP validation
+
+The deploy-time probe captures CSP (and other security headers) from:
+
+- `https://${WEBSITE_DOMAIN}/`
+- `https://${WEBSITE_DOMAIN}/api/health`
+- `https://swagger.${WEBSITE_DOMAIN}/docs`
+
+It applies basic sanity checks (presence of `default-src`, and rejects obvious placeholder/template tokens).
+
 ## Rate Limiting
 - **Edge (Traefik)**: coarse rate limiting on sensitive endpoints (especially auth) to reduce burst abuse.
 - **App-level (FastAPI)**: Redis-backed counters (fixed-window) keyed by IP and/or identifier; returns HTTP `429` with a consistent `{detail}` JSON shape and `Retry-After`.
