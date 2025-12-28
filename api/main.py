@@ -16,6 +16,8 @@ except Exception:  # pragma: no cover
 
 ENV = os.getenv("ENV", "development")
 
+_E2E_TEST_MODE = (os.getenv("E2E_TEST_MODE", "") or "").strip().lower() in {"1", "true", "yes", "on"}
+
 configure_logging(service="api")
 logger = logging.getLogger("api.http")
 
@@ -196,6 +198,15 @@ try:
     app.include_router(auth_router)
     app.include_router(metrics_router)
     app.include_router(users_router)
+
+    # E2E-only helpers (must be explicitly enabled; never in production).
+    if _E2E_TEST_MODE and ENV != "production":
+        try:
+            from api.routes.test_support import router as test_support_router
+
+            app.include_router(test_support_router)
+        except Exception:
+            pass
 except Exception:
     # Keep app bootable even if routes fail to import.
     pass

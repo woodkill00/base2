@@ -939,7 +939,7 @@
 
 **Purpose**: Prevent regressions on auth flows and deployments.
 
-- [ ] T118 Add E2E test harness (Playwright recommended) for core flows.
+- [X] T118 Add E2E test harness (Playwright recommended) for core flows.
   - **Touch**:
     - `e2e/` (new)
     - `package.json` (workspace or root scripts)

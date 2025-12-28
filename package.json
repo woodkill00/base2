@@ -8,7 +8,10 @@
     "test": "cd react-app && npm test",
     "lint": "cd react-app && npm run lint",
     "format": "cd react-app && npm run format",
-    "format:check": "cd react-app && npm run format:check"
+    "format:check": "cd react-app && npm run format:check",
+    "e2e:up": "docker compose -f e2e/docker-compose.e2e.yml up -d --build",
+    "e2e:down": "docker compose -f e2e/docker-compose.e2e.yml down -v",
+    "e2e:test": "cd e2e && npm test"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.4.3",
