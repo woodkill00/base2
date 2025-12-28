@@ -1800,7 +1800,15 @@ if ($CheckSwagger) {
     openapi = [ordered]@{ url = $openapiUrl; status = $openapiStatus; ok = $openapiOk }
     ok = [bool]$ok
   }
-  Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'swagger-host-check.json' -content $payload
+  # Force JSON serialization here so the artifact is guaranteed to be written (Write-ServiceArtifact
+  # swallows serialization errors).
+  $payloadJson = ''
+  try {
+    $payloadJson = $payload | ConvertTo-Json -Depth 8
+  } catch {
+    $payloadJson = ([ordered]@{ host = $SwaggerHost; ok = $false; error = [string]$_.Exception.Message } | ConvertTo-Json -Depth 4)
+  }
+  Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'swagger-host-check.json' -content $payloadJson
 
   $result.swaggerCheck = [ordered]@{ enabled = $true; host = $SwaggerHost; docsHeadStatus = $docsHeadStatus; docsGetStatus = $docsGetStatus; openapiStatus = $openapiStatus; ok = [bool]$ok }
 
