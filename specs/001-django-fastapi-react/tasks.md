@@ -1205,7 +1205,7 @@
     - Test asserts production uses strong hasher (default or Argon2).
     - Run: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
 
-- [ ] T136 Add admin access gating middleware at Traefik for `admin.websitedomain` (IP allowlist and/or basic-auth), documented as dev-production policy.
+- [X] T136 Add admin access gating middleware at Traefik for `admin.websitedomain` (IP allowlist and/or basic-auth), documented as dev-production policy.
   - **Touch**:
     - `traefik/dynamic.yml`
     - `docs/SECURITY.md`
@@ -1216,7 +1216,7 @@
 
 ### Dependency supply-chain (Python + Node) and CI guardrails
 
-- [ ] T137 Pin Python dependencies and add automated vulnerability auditing (pip-audit) in CI.
+- [X] T137 Pin Python dependencies and add automated vulnerability auditing (pip-audit) in CI.
   - **Touch**:
     - `api/requirements.txt` + add `api/requirements.in` (or move to Poetry/uv)
     - `django/requirements.txt` + add `django/requirements.in`
@@ -1227,7 +1227,7 @@
     - `deploy.ps1 -AllTests` still passes.
     - Run: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
 
-- [ ] T138 Add Node dependency audit + lockfile enforcement in CI (npm audit / audit-ci) and ensure builds remain reproducible.
+- [X] T138 Add Node dependency audit + lockfile enforcement in CI (npm audit / audit-ci) and ensure builds remain reproducible.
   - **Touch**:
     - `react-app/package-lock.json` (ensure present/updated)
     - `.github/workflows/security.yml` (or frontend CI)

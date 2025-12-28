@@ -75,3 +75,9 @@ Override knobs (optional): `RATE_LIMIT_<SCOPE>_WINDOW_MS`, `RATE_LIMIT_<SCOPE>_M
 ## Logging & Auditing
 - Record audit events (login success/failure, signup, logout, profile update, OAuth link, email verification, password reset) with request metadata.
 - Never log secrets (passwords, raw verification/reset tokens, OAuth tokens, OAuth codes).
+
+## Dependency Supply-Chain
+
+- Python dependencies are **pinned** via `api/requirements.txt` and `django/requirements.txt` (generated from `*.in`).
+- CI runs `pip-audit` for **high severity** vulnerabilities.
+- CI runs `npm audit` for **high severity** vulnerabilities (React app).
