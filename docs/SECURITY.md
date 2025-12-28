@@ -4,6 +4,18 @@
 - Cookie-based sessions (HttpOnly, Secure, SameSite) are the primary credential.
 - CSRF protection required for state-changing requests (double-submit CSRF cookie + `X-CSRF-Token` header or equivalent per-session token).
 
+### Refresh-cookie CSRF hardening
+
+When `AUTH_REFRESH_COOKIE=true` (refresh token stored in an HttpOnly cookie), the following cookie-based endpoints require **double-submit CSRF**:
+
+- `POST /api/auth/refresh`
+- `POST /api/auth/logout`
+
+Policy:
+
+- Browser must send `X-CSRF-Token` header whose value matches the CSRF cookie (default: `base2_csrf`).
+- In `staging`/`production`, the request must also include a valid `Origin` (preferred) or `Referer` that matches `FRONTEND_URL`.
+
 ## CORS + CSRF Posture
 - The API uses a **strict CORS allowlist** for browser calls.
 	- Configure allowed origins via `CORS_ALLOW_ORIGINS` (comma-separated, exact origins like `https://example.com`).

@@ -1182,7 +1182,7 @@
     - Tests cover missing/wrong issuer/audience rejection.
     - Run: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
 
-- [ ] T134 Harden refresh-cookie CSRF posture (double-submit token + Origin/Referer checks) for any state-changing endpoints that rely on cookies.
+- [X] T134 Harden refresh-cookie CSRF posture (double-submit token + Origin/Referer checks) for any state-changing endpoints that rely on cookies.
   - **Touch**:
     - `api/routes/auth.py`
     - `api/clients/django_client.py` (if forwarding CSRF)
