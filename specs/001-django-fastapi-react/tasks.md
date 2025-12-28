@@ -1252,7 +1252,7 @@
 
 ### Celery/Redis hardening
 
-- [ ] T140 Ensure Celery uses JSON-only serializers and Redis is not exposed publicly (auth required, bind private network).
+- [X] T140 Ensure Celery uses JSON-only serializers and Redis is not exposed publicly (auth required, bind private network).
   - **Touch**:
     - `api/tasks.py` / celery config module
     - `django/project/celery.py` (if applicable)
@@ -1264,7 +1264,7 @@
 
 ### Logging redaction
 
-- [ ] T141 Add log redaction rules to prevent secrets/tokens/cookies from being logged (FastAPI + Django + Traefik).
+- [X] T141 Add log redaction rules to prevent secrets/tokens/cookies from being logged (FastAPI + Django + Traefik).
   - **Touch**:
     - `api/logging.py` (or equivalent)
     - `django/project/settings/production.py` LOGGING config

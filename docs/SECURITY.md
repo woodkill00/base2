@@ -76,6 +76,15 @@ Override knobs (optional): `RATE_LIMIT_<SCOPE>_WINDOW_MS`, `RATE_LIMIT_<SCOPE>_M
 - Record audit events (login success/failure, signup, logout, profile update, OAuth link, email verification, password reset) with request metadata.
 - Never log secrets (passwords, raw verification/reset tokens, OAuth tokens, OAuth codes).
 
+### Redis + Celery hardening
+
+- Redis is **internal-only** (no published ports) and MUST require a password (`REDIS_PASSWORD`).
+- Celery MUST use JSON-only serialization (`accept_content` excludes pickle) to prevent unsafe deserialization.
+
+### Log redaction
+
+- FastAPI and Django apply a redacting logging filter to scrub common secret patterns (e.g., `Authorization`, `Cookie`, `*token*`, `*password*`) from log messages and structured extras.
+
 ## Dependency Supply-Chain
 
 - Python dependencies are **pinned** via `api/requirements.txt` and `django/requirements.txt` (generated from `*.in`).

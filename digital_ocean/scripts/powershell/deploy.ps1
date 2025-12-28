@@ -787,6 +787,13 @@ if [ -d /opt/apps/base2 ]; then
     cp -f /root/logs/build/env-backup.env .env || true
   fi
 
+  # Ensure Traefik bind-mounted ACME storage exists and is writable by the Traefik runtime user.
+  # Traefik runs as uid 1000 inside the container; with cap_drop=ALL it cannot fix host perms.
+  mkdir -p letsencrypt || true
+  touch letsencrypt/acme.json letsencrypt/acme-staging.json || true
+  chmod 600 letsencrypt/acme.json letsencrypt/acme-staging.json || true
+  chown -R 1000:1000 letsencrypt || true
+
   # Guardrail: htpasswd strings must not be double-escaped in the droplet .env.
   # Compose treats $$ as an escape for a literal $, so a $$$$ run would land as $$ in the container,
   # breaking htpasswd hashes that require single-$ delimiters.
@@ -980,12 +987,17 @@ PY
   CID=$(docker compose -f local.docker.yml ps -q traefik || true)
   if [ -n "$CID" ]; then
     docker exec "$CID" sh -lc 'env | sort' > /root/logs/traefik-env.txt || true
-    if docker exec "$CID" test -s /etc/traefik/traefik.yml; then
+    # Capture the *rendered* configs Traefik actually runs with (entrypoint renders into /tmp).
+    if docker exec "$CID" test -s /tmp/traefik.yml; then
+      docker exec "$CID" cat /tmp/traefik.yml > /root/logs/traefik-static.yml || true
+    elif docker exec "$CID" test -s /etc/traefik/traefik.yml; then
       docker exec "$CID" cat /etc/traefik/traefik.yml > /root/logs/traefik-static.yml || true
     else
       echo "EMPTY" > /root/logs/traefik-static.yml
     fi
-    if docker exec "$CID" test -s /etc/traefik/dynamic/dynamic.yml; then
+    if docker exec "$CID" test -s /tmp/dynamic.yml; then
+      docker exec "$CID" cat /tmp/dynamic.yml > /root/logs/traefik-dynamic.yml || true
+    elif docker exec "$CID" test -s /etc/traefik/dynamic/dynamic.yml; then
       docker exec "$CID" cat /etc/traefik/dynamic/dynamic.yml > /root/logs/traefik-dynamic.yml || true
     else
       echo "EMPTY" > /root/logs/traefik-dynamic.yml

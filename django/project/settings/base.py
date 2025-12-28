@@ -149,6 +149,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {
+        "redact": {
+            "()": "project.logging.RedactingFilter",
+        }
+    },
     "formatters": {
         "json": {
             "()": "project.logging.JsonFormatter",
@@ -159,6 +164,7 @@ LOGGING = {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "json",
+            "filters": ["redact"],
         }
     },
     "loggers": {

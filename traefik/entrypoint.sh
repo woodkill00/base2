@@ -39,8 +39,6 @@ fi
 # Ensure ACME storage files exist with safe perms
 touch /etc/traefik/acme/acme.json /etc/traefik/acme/acme-staging.json
 chmod 600 /etc/traefik/acme/acme.json /etc/traefik/acme/acme-staging.json || true
-chown -R traefik:traefik /etc/traefik/acme /var/log/traefik || true
-chmod -R 755 /var/log/traefik || true
 
 # Run Traefik. With cap_drop=ALL, root cannot bypass DAC permissions, so we render configs into
 # /tmp (tmpfs) and run using that config file.

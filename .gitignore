@@ -6,6 +6,9 @@ local_run_logs/
 # Temporary diagnostics (created during local debugging)
 /_tmp_*
 
+# Speckit generated output (do not commit)
+.specify/prereq_run.json
+
 # Platform-specific binaries (do not commit)
 /docker-compose
 # ==========================================
