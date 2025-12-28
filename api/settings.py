@@ -62,18 +62,34 @@ class Settings:
         if self.DB_POOL_MAX < self.DB_POOL_MIN:
             self.DB_POOL_MAX = self.DB_POOL_MIN
 
-        # Fail-fast only for explicit production deployments.
+        # Fail-fast in non-local environments.
         # Keep local/dev/test permissive to avoid breaking onboarding and CI.
-        if (self.ENV or "").strip().lower() == "production":
+        env = (self.ENV or "").strip().lower()
+        if env in {"staging", "production"}:
             missing = []
             if not self.JWT_SECRET.strip():
                 missing.append("JWT_SECRET")
             if not self.TOKEN_PEPPER.strip():
                 missing.append("TOKEN_PEPPER")
+            if not self.FRONTEND_URL.strip():
+                missing.append("FRONTEND_URL")
             if not (self.OAUTH_STATE_SECRET or "").strip():
                 missing.append("OAUTH_STATE_SECRET")
             if missing:
                 raise RuntimeError("Missing required env var(s): " + ", ".join(missing))
+
+            # OAuth client credentials are required in production; allow staging to omit
+            # if OAuth is not being exercised.
+            if env == "production":
+                oauth_missing = []
+                if not (self.GOOGLE_OAUTH_CLIENT_ID or "").strip():
+                    oauth_missing.append("GOOGLE_OAUTH_CLIENT_ID")
+                if not (self.GOOGLE_OAUTH_CLIENT_SECRET or "").strip():
+                    oauth_missing.append("GOOGLE_OAUTH_CLIENT_SECRET")
+                if not (self.GOOGLE_OAUTH_REDIRECT_URI or "").strip():
+                    oauth_missing.append("GOOGLE_OAUTH_REDIRECT_URI")
+                if oauth_missing:
+                    raise RuntimeError("Missing required OAuth env var(s): " + ", ".join(oauth_missing))
 
             samesite = (self.COOKIE_SAMESITE or "").strip()
             if samesite not in {"Lax", "Strict", "None"}:

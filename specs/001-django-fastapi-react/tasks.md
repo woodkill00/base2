@@ -817,7 +817,7 @@
       - logout clears state and revokes refresh.
   - **Verify**: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests -Timestamped` (artifacts: `local_run_logs/45.55.70.113-20251227_030955/`).
 
-- [ ] T110 Decommission Django auth routes (if any exist) and clearly scope Django to admin/schema only
+- [X] T110 Decommission Django auth routes (if any exist) and clearly scope Django to admin/schema only
   - **Touch**:
     - `django/users/api_views.py` (remove or restrict)
     - `django/users/api_urls.py`
@@ -836,7 +836,7 @@
 
 **Purpose**: Make it easy for a new dev to clone → run → test → deploy without tribal knowledge.
 
-- [ ] T111 Add a single top-level `Makefile` (or `justfile`) to standardize commands across OSes.
+- [X] T111 Add a single top-level `Makefile` (or `justfile`) to standardize commands across OSes.
   - **Touch**:
     - `Makefile` (new) OR `justfile` (new)
     - `README.md` (replace long command sequences with `make <target>`)
@@ -853,7 +853,7 @@
     - On Windows, either document `just` or provide `scripts/*.ps1` wrappers that call the same docker compose commands.
   - **Verify**: Fresh clone can run `make up` and reach `/` and `/api/health`.
 
-- [ ] T112 Add `.env.example` completeness pass + env validation at startup.
+- [X] T112 Add `.env.example` completeness pass + env validation at startup.
   - **Touch**:
     - `.env.example`
     - `api/settings.py`
@@ -870,7 +870,7 @@
     - Add startup-time checks that fail fast with human-readable error if required envs are missing (only in non-local).
   - **Verify**: Removing required env produces clear startup error.
 
-- [ ] T113 Add local seed data command for dev and demo.
+- [X] T113 Add local seed data command for dev and demo.
   - **Touch**:
     - `api/scripts/seed.py` (new)
     - `api/Dockerfile` (ensure script can run)

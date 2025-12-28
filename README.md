@@ -87,12 +87,26 @@ make test
 
 See `Makefile` for all available targets.
 
+On Windows PowerShell (no Bash/make required), use the equivalent wrappers:
+
+```powershell
+./scripts/start.ps1
+./scripts/logs.ps1
+./scripts/test.ps1
+```
+
 ### Seed data (dev/demo)
 
 Configure `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` in `.env`, then run:
 
 ```bash
 make seed
+```
+
+Windows PowerShell:
+
+```powershell
+./scripts/seed.ps1
 ```
 
 ### 3. Configure Authentication (IMPORTANT!)

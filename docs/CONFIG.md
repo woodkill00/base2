@@ -6,6 +6,8 @@ This repo uses a single `.env` file (see `.env.example`) that feeds Docker Compo
 
 - `ENV`: `development` | `staging` | `production`
 
+In `ENV=staging` and `ENV=production`, services fail fast on startup if required environment variables are missing.
+
 ## FastAPI auth (Option A)
 
 - `JWT_SECRET`: required for signing access tokens.
@@ -24,7 +26,7 @@ This repo uses a single `.env` file (see `.env.example`) that feeds Docker Compo
 ## OAuth
 
 - `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REDIRECT_URI`
-- `OAUTH_STATE_SECRET`: required for CSRF/state protection (required in `ENV=production`).
+- `OAUTH_STATE_SECRET`: required for CSRF/state protection (required in `ENV=staging`/`ENV=production`).
 
 ## Email
 

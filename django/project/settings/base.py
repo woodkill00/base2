@@ -19,6 +19,18 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 # Trust CSRF origins derived from allowed hosts (https)
 CSRF_TRUSTED_ORIGINS = [f"https://{h}" for h in ALLOWED_HOSTS if h]
 
+# Fail-fast in non-local environments.
+_env = (os.environ.get("ENV", "development") or "development").strip().lower()
+if _env in {"staging", "production"}:
+    _missing = []
+    if not SECRET_KEY.strip() or SECRET_KEY.strip() == "change_me":
+        _missing.append("DJANGO_SECRET_KEY")
+    for _k in ("DB_NAME", "DB_USER", "DB_PASSWORD"):
+        if not (os.environ.get(_k) or "").strip():
+            _missing.append(_k)
+    if _missing:
+        raise RuntimeError("Missing required env var(s): " + ", ".join(_missing))
+
 # Align CSRF header with repo convention: `X-CSRF-Token`
 CSRF_HEADER_NAME = "HTTP_X_CSRF_TOKEN"
 

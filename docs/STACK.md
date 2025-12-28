@@ -6,7 +6,7 @@ Services (Compose-first):
 - nginx: internal Nginx (optional use, not a public edge)
 - nginx-static: serves Django collected static for admin subdomain
 - api: FastAPI external API under `/api/*` (Traefik strips prefix); canonical auth surface `/api/auth/*`
-- django: canonical domain models, migrations, admin
+- django: canonical domain models, migrations, admin (admin/schema only; no auth API routes)
 - postgres: Postgres 16 (internal-only)
 - redis: Redis 7.2 (internal-only)
 - celery-worker: executes async jobs (django image)
