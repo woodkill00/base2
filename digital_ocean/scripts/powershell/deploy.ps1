@@ -1196,11 +1196,34 @@ fi
     }
   } else {
     $timeoutCmd = "if command -v timeout >/dev/null 2>&1; then timeout -k 15s $VerifyTimeoutSec bash /root/remote_verify.sh; else bash /root/remote_verify.sh; fi"
-    if ($RunCeleryCheck) {
-      & $sshExe @sshArgs "RUN_CELERY_CHECK=1 sh -lc '$timeoutCmd'" *> $null
-    } else {
-      & $sshExe @sshArgs "sh -lc '$timeoutCmd'" *> $null
+    $remoteCmd = if ($RunCeleryCheck) { "RUN_CELERY_CHECK=1 sh -lc '$timeoutCmd'" } else { "sh -lc '$timeoutCmd'" }
+
+    Write-Host ("Remote verification running (timeout={0}s)." -f $VerifyTimeoutSec) -ForegroundColor DarkGray
+    Write-Host "If this step takes a while, it will print heartbeats here." -ForegroundColor DarkGray
+
+    $job = Start-Job -ScriptBlock {
+      param($sshExeInner, $sshArgsInner, $remoteCmdInner)
+      & $sshExeInner @sshArgsInner $remoteCmdInner *> $null
+      return $LASTEXITCODE
+    } -ArgumentList $sshExe, $sshArgs, $remoteCmd
+
+    $startedAt = Get-Date
+    while ($true) {
+      $completed = Wait-Job -Job $job -Timeout 15
+      if ($completed) { break }
+
+      $elapsedSec = [int]((Get-Date) - $startedAt).TotalSeconds
+      Write-Host ("Remote verification still running... elapsed={0}s" -f $elapsedSec) -ForegroundColor DarkGray
     }
+
+    $code = 0
+    try {
+      $code = (Receive-Job -Job $job -ErrorAction SilentlyContinue | Select-Object -Last 1)
+      if ($null -eq $code) { $code = 0 }
+    } finally {
+      try { Remove-Job -Job $job -Force -ErrorAction SilentlyContinue } catch {}
+    }
+    $LASTEXITCODE = [int]$code
   }
 
   if ($LASTEXITCODE -ne 0) {
@@ -1236,6 +1259,7 @@ fi
       if ($AsyncVerify) {
         $flag = & $sshExe @sshArgs "test -f /root/logs/remote_verify.done && echo DONE || echo WAIT" 2>&1
         if (-not ($flag -match 'DONE')) {
+          Write-Host ("Waiting for remote verification to complete... attempt {0}/{1}" -f $i, $attempts) -ForegroundColor DarkGray
           Start-Sleep -Seconds $interval
           continue
         }
