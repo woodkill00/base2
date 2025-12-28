@@ -16,6 +16,9 @@ param(
   [int]$RateLimitBurst = 20,
   # Remote verification can include container rebuilds and test runs; 10 minutes is often too low.
   [int]$VerifyTimeoutSec = 1800,
+  # Local React tests can be slow on first run (npm ci) and appear to hang without output.
+  # This timeout prevents indefinite waits.
+  [int]$ReactTestTimeoutSec = 1800,
   [switch]$AsyncVerify,
   [int]$LogsPollMaxAttempts = 30,
   [int]$LogsPollIntervalSec = 10,
@@ -44,6 +47,59 @@ function Write-Section($msg) {
 function Get-UtcTimestamp {
   # Windows PowerShell 5.1 doesn't support Get-Date -AsUTC.
   return (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+}
+
+function Invoke-LocalCmdWithTimeout {
+  param(
+    [string]$WorkingDirectory,
+    [string]$Label,
+    [string]$CmdLine,
+    [int]$TimeoutSec,
+    [int]$HeartbeatSec = 30
+  )
+
+  $tmp = Join-Path ($env:TEMP ?? $script:RepoRoot) ("base2-{0}.log" -f ([guid]::NewGuid().ToString('n')))
+  $wrapped = "$CmdLine > `"$tmp`" 2>&1"
+
+  $p = Start-Process -FilePath 'cmd.exe' -ArgumentList @('/c', $wrapped) -WorkingDirectory $WorkingDirectory -NoNewWindow -PassThru
+  $startedAt = Get-Date
+  $lastBeatAt = $startedAt
+
+  while (-not $p.HasExited) {
+    Start-Sleep -Seconds 2
+
+    $now = Get-Date
+    $elapsedSec = [int]($now - $startedAt).TotalSeconds
+    if ($elapsedSec -ge $TimeoutSec) {
+      try { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } catch {}
+      return @{
+        ExitCode = 124
+        Output = ("{0} timed out after {1}s (killed)." -f $Label, $TimeoutSec)
+      }
+    }
+
+    if ([int]($now - $lastBeatAt).TotalSeconds -ge $HeartbeatSec) {
+      $bytes = 0
+      try {
+        if (Test-Path $tmp) { $bytes = (Get-Item -LiteralPath $tmp -ErrorAction Stop).Length }
+      } catch {}
+      Write-Host ("{0} still running... elapsed={1}s outputBytes={2}" -f $Label, $elapsedSec, $bytes) -ForegroundColor DarkGray
+      $lastBeatAt = $now
+    }
+  }
+
+  $out = ''
+  try {
+    if (Test-Path $tmp) {
+      $out = Get-Content -LiteralPath $tmp -Raw -ErrorAction SilentlyContinue
+      Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+    }
+  } catch {}
+
+  return @{
+    ExitCode = [int]$p.ExitCode
+    Output = ($out ?? '')
+  }
 }
 
 function Get-ArtifactServiceSubdir([string]$fileName) {
@@ -1555,22 +1611,12 @@ try {
       $log += ''
 
       $log += '== npm ci =='
-      $ciOut = ''
-      $ciExit = 0
-      $prevEAP = $ErrorActionPreference
-      try {
-        # npm emits warnings to stderr; with $ErrorActionPreference='Stop' that can become terminating.
-        $ErrorActionPreference = 'Continue'
-        $ciOut = (& cmd /c "npm ci --no-audit --no-fund" 2>&1 | Out-String)
-        $ciExit = $LASTEXITCODE
-      } finally {
-        $ErrorActionPreference = $prevEAP
-      }
-      $log += $ciOut.TrimEnd()
-      $log += ("npm ci exitCode={0}" -f $ciExit)
+      $ci = Invoke-LocalCmdWithTimeout -WorkingDirectory $PWD.Path -Label 'npm ci' -CmdLine 'npm ci --no-audit --no-fund' -TimeoutSec $ReactTestTimeoutSec
+      $log += (($ci.Output ?? '').TrimEnd())
+      $log += ("npm ci exitCode={0}" -f ([int]$ci.ExitCode))
       $log += ''
 
-      if ($ciExit -ne 0) {
+      if ([int]$ci.ExitCode -ne 0) {
         $log += 'Skipping Jest because npm ci failed.'
         $log | Set-Content -Path $jestOutPath -Encoding UTF8
       } else {
@@ -1578,19 +1624,10 @@ try {
         $prevCI = $env:CI
         try {
           $env:CI = 'true'
-          $testOut = ''
-          $testExit = 0
-          $prevEAP = $ErrorActionPreference
-          try {
-            $ErrorActionPreference = 'Continue'
-            # Avoid cross-env (often the source of Windows PATH issues) and rely on PowerShell env.
-            $testOut = (& cmd /c "npm test -- --coverage" 2>&1 | Out-String)
-            $testExit = $LASTEXITCODE
-          } finally {
-            $ErrorActionPreference = $prevEAP
-          }
-          $log += $testOut.TrimEnd()
-          $log += ("npm test exitCode={0}" -f $testExit)
+          # Ensure non-interactive test mode even if CI env isn't picked up by CRA for some reason.
+          $test = Invoke-LocalCmdWithTimeout -WorkingDirectory $PWD.Path -Label 'npm test' -CmdLine 'npm test -- --coverage --watchAll=false' -TimeoutSec $ReactTestTimeoutSec
+          $log += (($test.Output ?? '').TrimEnd())
+          $log += ("npm test exitCode={0}" -f ([int]$test.ExitCode))
         } finally {
           $env:CI = $prevCI
         }
