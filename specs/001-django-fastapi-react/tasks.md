@@ -1238,7 +1238,7 @@
 ### Runtime/container hardening
     - Run: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
 
-- [ ] T139 Harden docker-compose runtime settings (drop caps, read-only FS where feasible, no-new-privileges).
+- [X] T139 Harden docker-compose runtime settings (drop caps, read-only FS where feasible, no-new-privileges).
   - **Touch**:
     - `local.docker.yml` (and any droplet compose file, if separate)
     - `docs/DEPLOY.md`
