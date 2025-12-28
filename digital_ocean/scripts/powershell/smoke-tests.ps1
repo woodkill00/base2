@@ -43,6 +43,57 @@ function Get-StatusCodeFromHeaders([string[]]$headers) {
   return 0
 }
 
+function Get-CertDnsNames([System.Security.Cryptography.X509Certificates.X509Certificate2]$cert) {
+  $names = @()
+  if (-not $cert) { return $names }
+  try {
+    foreach ($ext in $cert.Extensions) {
+      if ($ext.Oid -and $ext.Oid.Value -eq '2.5.29.17') {
+        $formatted = $ext.Format($true)
+        foreach ($line in ($formatted -split "`r?`n")) {
+          $t = ($line + '').Trim()
+          if ($t -match '(?i)DNS\s*Name\s*=\s*(.+)$') {
+            $n = ($Matches[1] + '').Trim()
+            if ($n) { $names += $n }
+          }
+        }
+      }
+    }
+  } catch {}
+  return @($names | Where-Object { $_ } | Select-Object -Unique)
+}
+
+function Get-RemoteTlsCertificate([string]$domain) {
+  $client = $null
+  $stream = $null
+  $ssl = $null
+  try {
+    $ipToConnect = $domain
+    if ($ResolveIp) { $ipToConnect = $ResolveIp }
+
+    $client = New-Object System.Net.Sockets.TcpClient
+    $client.ReceiveTimeout = $TimeoutSec * 1000
+    $client.SendTimeout = $TimeoutSec * 1000
+    $client.Connect($ipToConnect, 443)
+    $stream = $client.GetStream()
+
+    $sslCallback = {
+      param($sender, $certificate, $chain, $sslPolicyErrors)
+      return $true
+    }
+    $ssl = New-Object System.Net.Security.SslStream($stream, $false, $sslCallback)
+    $ssl.AuthenticateAsClient($domain)
+
+    $remoteCert = $ssl.RemoteCertificate
+    if (-not $remoteCert) { throw 'No remote certificate presented' }
+    return New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($remoteCert)
+  } finally {
+    try { if ($ssl) { $ssl.Dispose() } } catch {}
+    try { if ($stream) { $stream.Dispose() } } catch {}
+    try { if ($client) { $client.Close() } } catch {}
+  }
+}
+
 function Curl-Head([string]$url, [string[]]$extraArgs = @()) {
   $args = @('-skI', '--max-time', $TimeoutSec) + $extraArgs + @($url)
   $raw = & curl.exe @args 2>&1
@@ -105,6 +156,38 @@ foreach ($h in $expectedHeaders) {
 Write-Section "API health"
 $code3 = Curl-GetStatus "https://$Domain/api/health" $resolveHttps
 if ($code3 -ne 200) { $failures += "API health expected 200, got $code3" }
+
+# 4) Unauthenticated /api/auth/me should return 401
+Write-Section "API auth/me unauth"
+$code4 = Curl-GetStatus "https://$Domain/api/auth/me" $resolveHttps
+if ($code4 -ne 401) { $failures += "API auth/me expected 401 (unauth), got $code4" }
+
+# 5) TLS certificate should be valid and cover the domain
+Write-Section "TLS certificate validity"
+try {
+  $cert = Get-RemoteTlsCertificate -domain $Domain
+  $dnsNames = @(Get-CertDnsNames -cert $cert)
+  if ($cert.NotAfter.ToUniversalTime() -le (Get-Date).ToUniversalTime()) {
+    $failures += "TLS cert expired (notAfter=$($cert.NotAfter.ToString('o')))"
+  }
+  if ($cert.NotBefore.ToUniversalTime() -gt (Get-Date).ToUniversalTime().AddMinutes(5)) {
+    $failures += "TLS cert not yet valid (notBefore=$($cert.NotBefore.ToString('o')))"
+  }
+  if (-not ($dnsNames -contains $Domain)) {
+    $failures += "TLS cert SAN does not include ${Domain} (dnsNames=$($dnsNames -join ','))"
+  }
+
+  $deployEnv = ((($env:ENV) + '')).Trim().ToLower()
+  $isProd = ($deployEnv -eq 'production' -or $deployEnv -eq 'prod')
+  if ($isProd) {
+    $issuer = (($cert.Issuer) + '')
+    if ($issuer -match '(?i)fake\s+le|staging') {
+      $failures += "TLS issuer looks like staging in production (issuer=$issuer)"
+    }
+  }
+} catch {
+  $failures += "TLS check failed: $($_.Exception.Message)"
+}
 
 # Summary
 if ($failures.Count -gt 0) {

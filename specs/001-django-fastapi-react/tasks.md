@@ -955,7 +955,7 @@
       - run playwright against `http://localhost`
   - **Verify**: CI green.
 
-- [ ] T119 Add smoke tests to droplet deploy script (post-deploy checks with rollback hook).
+- [X] T119 Add smoke tests to droplet deploy script (post-deploy checks with rollback hook).
   - **Touch**:
     - `digital_ocean/scripts/powershell/deploy.ps1`
     - `digital_ocean/scripts/powershell/test.ps1`

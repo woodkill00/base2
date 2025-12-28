@@ -62,6 +62,8 @@ function Get-ArtifactServiceSubdir([string]$fileName) {
 
     '^manual-test-out\.json$' { return 'meta' }
 
+    '^rollback\.(txt|log)$' { return 'meta' }
+
     '^traefik-.*\.yml$' { return 'traefik' }
     '^traefik-.*\.template\.yml$' { return 'traefik' }
     '^traefik-.*\.txt$' { return 'traefik' }
@@ -80,6 +82,64 @@ function Get-ArtifactServiceSubdir([string]$fileName) {
 
     '^env-dollar-check\.(txt|status)$' { return 'meta' }
     default { return '' }
+  }
+}
+
+function Invoke-RollbackOnFailureIfEnabled([string]$ip, [string]$keyPath) {
+  $enabled = ((($env:DEPLOY_ROLLBACK_ON_FAILURE) + '')).Trim().ToLower() -in @('1','true','yes','on')
+  if (-not $enabled) { return }
+
+  Write-Section "Rollback hook (enabled)"
+  $artifactDir = Ensure-ArtifactDir
+  $metaDir = Join-Path $artifactDir 'meta'
+  if (-not (Test-Path $metaDir)) { New-Item -ItemType Directory -Path $metaDir -Force | Out-Null }
+  $outPath = Join-Path $metaDir 'rollback.txt'
+
+  $sshExe = 'ssh'
+  $sshCommon = @(
+    '-o','ConnectTimeout=60',
+    '-o','ConnectionAttempts=2',
+    '-o','ServerAliveInterval=15',
+    '-o','ServerAliveCountMax=3',
+    '-o','StrictHostKeyChecking=no',
+    '-o','BatchMode=yes'
+  )
+  $sshArgs = @('-i', $keyPath) + $sshCommon + @("root@$ip")
+
+  $remote = @'
+set -eu
+cd /opt/apps/base2
+PREV_FILE=/root/logs/build/pre-deploy-head.txt
+if [ ! -f "$PREV_FILE" ]; then
+  echo "No pre-deploy head recorded at $PREV_FILE" >&2
+  exit 2
+fi
+PREV=$(cat "$PREV_FILE" | tr -d '\r\n' || true)
+if [ -z "$PREV" ]; then
+  echo "Pre-deploy head file was empty" >&2
+  exit 2
+fi
+
+echo "Rolling back to $PREV" 
+git reset --hard "$PREV" || true
+
+# Recreate core services to match the rolled-back code.
+docker compose -f local.docker.yml up -d --build --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat >/root/logs/build/rollback-compose-up.txt 2>&1 || true
+
+echo "Rollback completed. Current HEAD: $(git rev-parse HEAD 2>/dev/null || true)"
+'@
+
+  $prevEap = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = 'Continue'
+    $txt = (& $sshExe @sshArgs $remote 2>&1 | Out-String)
+    Set-Content -Path $outPath -Value $txt.TrimEnd() -Encoding UTF8
+    Write-Host "Rollback output saved: $outPath" -ForegroundColor Yellow
+  } catch {
+    try { Set-Content -Path $outPath -Value ("Rollback failed: " + $($_.Exception.Message)) -Encoding UTF8 } catch {}
+    Write-Warning "Rollback hook failed: $($_.Exception.Message)"
+  } finally {
+    $ErrorActionPreference = $prevEap
   }
 }
 
@@ -627,6 +687,10 @@ if [ -d /opt/apps/base2 ]; then
   # Prepare log directories; clear stale artifacts from previous runs.
   rm -rf /root/logs/* || true
   mkdir -p /root/logs/build /root/logs/services /root/logs/meta || true
+  # Record pre-deploy git SHA for optional rollback.
+  if command -v git >/dev/null 2>&1; then
+    (git rev-parse HEAD 2>/dev/null || true) > /root/logs/build/pre-deploy-head.txt || true
+  fi
   # Prevent noisy stdout/stderr (git, docker build progress) from flowing back over SSH.
   # Windows PowerShell 5.1 can treat remote stderr as terminating errors under strict settings.
   exec > /root/logs/build/remote-verify-console.txt 2>&1
@@ -656,6 +720,7 @@ if [ -d /opt/apps/base2 ]; then
       git checkout -f "$BRANCH" || true
       git pull --rebase || true
     fi
+    (git rev-parse HEAD 2>/dev/null || true) > /root/logs/build/post-deploy-head.txt || true
   fi
   # Restore .env after repo sync so Compose uses the deployed values
   if [ -f /root/logs/build/env-backup.env ]; then
@@ -1433,6 +1498,7 @@ try {
 
       if ($exitCode -ne 0) {
         Write-Warning "Post-deploy tests failed"
+        try { Invoke-RollbackOnFailureIfEnabled -ip $script:ResolvedIp -keyPath $SshKey } catch {}
         $script:ExitCode = 1
         throw $script:EarlyExitSentinel
       }
@@ -1444,6 +1510,7 @@ try {
       & .\digital_ocean\scripts\powershell\test.ps1 @testArgs2
       if ($LASTEXITCODE -ne 0) {
         Write-Warning "Post-deploy tests failed"
+        try { Invoke-RollbackOnFailureIfEnabled -ip $script:ResolvedIp -keyPath $SshKey } catch {}
         $script:ExitCode = 1
         throw $script:EarlyExitSentinel
       }
