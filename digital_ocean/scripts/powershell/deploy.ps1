@@ -1616,7 +1616,9 @@ try {
 
       $log += '== npm ci =='
       $ci = Invoke-LocalCmdWithTimeout -WorkingDirectory $PWD.Path -Label 'npm ci' -CmdLine 'npm ci --no-audit --no-fund' -TimeoutSec $ReactTestTimeoutSec
-      $log += (($ci.Output ?? '').TrimEnd())
+      $ciText = $ci.Output
+      if ($null -eq $ciText) { $ciText = '' }
+      $log += ($ciText.TrimEnd())
       $log += ("npm ci exitCode={0}" -f ([int]$ci.ExitCode))
       $log += ''
 
@@ -1630,7 +1632,9 @@ try {
           $env:CI = 'true'
           # Ensure non-interactive test mode even if CI env isn't picked up by CRA for some reason.
           $test = Invoke-LocalCmdWithTimeout -WorkingDirectory $PWD.Path -Label 'npm test' -CmdLine 'npm test -- --coverage --watchAll=false' -TimeoutSec $ReactTestTimeoutSec
-          $log += (($test.Output ?? '').TrimEnd())
+          $testText = $test.Output
+          if ($null -eq $testText) { $testText = '' }
+          $log += ($testText.TrimEnd())
           $log += ("npm test exitCode={0}" -f ([int]$test.ExitCode))
         } finally {
           $env:CI = $prevCI
