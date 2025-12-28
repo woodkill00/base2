@@ -1034,6 +1034,20 @@ PY
     # Curl against the local Traefik listener, but use the real hostname for SNI/Host.
     RESOLVE_DOMAIN=(--resolve "$DOMAIN:443:127.0.0.1")
 
+    # Warm up / wait: Traefik can briefly return 404 before file-provider routers are loaded.
+    # Keep this best-effort and bounded so deploy doesn't hang.
+    : > /root/logs/build/domain-warmup.txt || true
+    for i in $(seq 1 30); do
+      ROOT_CODE=$(curl -sk "${RESOLVE_DOMAIN[@]}" -o /dev/null -w "%{http_code}" "https://$DOMAIN/" 2>/dev/null || echo 000)
+      API_CODE=$(curl -sk "${RESOLVE_DOMAIN[@]}" -o /dev/null -w "%{http_code}" "https://$DOMAIN/api/health" 2>/dev/null || echo 000)
+      echo "attempt=$i root=$ROOT_CODE api=$API_CODE" >> /root/logs/build/domain-warmup.txt
+      if [ "$ROOT_CODE" = "200" ] && [ "$API_CODE" = "200" ]; then
+        echo "READY" >> /root/logs/build/domain-warmup.txt
+        break
+      fi
+      sleep 2
+    done
+
     # Root HEAD
     curl -skI "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/" -o /root/logs/curl-root.txt || true
 
