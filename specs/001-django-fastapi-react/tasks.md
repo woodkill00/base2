@@ -1163,7 +1163,7 @@
 
 ### Auth + token hardening (FastAPI)
 
-- [ ] T132 Require `TOKEN_PEPPER` explicitly (no fallback to JWT secret) and fail fast on missing env in non-local.
+- [X] T132 Require `TOKEN_PEPPER` explicitly (no fallback to JWT secret) and fail fast on missing env in non-local.
   - **Touch**:
     - `api/auth/tokens.py` (or wherever pepper is used)
     - `api/settings.py`
