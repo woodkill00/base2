@@ -24,13 +24,14 @@ unescape_dollars FLOWER_BASIC_USERS
 
 # Render configs from templates using environment variables
 STATIC_TEMPLATE_PATH="/etc/traefik/templates/traefik.yml.template"
-STATIC_OUTPUT_PATH="/etc/traefik/traefik.yml"
+STATIC_OUTPUT_PATH="/tmp/traefik.yml"
 if [ -f "$STATIC_TEMPLATE_PATH" ]; then
+  export TRAEFIK_DYNAMIC_FILE="/tmp/dynamic.yml"
   envsubst < "$STATIC_TEMPLATE_PATH" > "$STATIC_OUTPUT_PATH"
 fi
 
 DYNAMIC_TEMPLATE_PATH="/etc/traefik/templates/dynamic.yml.template"
-DYNAMIC_OUTPUT_PATH="/etc/traefik/dynamic/dynamic.yml"
+DYNAMIC_OUTPUT_PATH="/tmp/dynamic.yml"
 if [ -f "$DYNAMIC_TEMPLATE_PATH" ]; then
   envsubst < "$DYNAMIC_TEMPLATE_PATH" > "$DYNAMIC_OUTPUT_PATH"
 fi
@@ -41,5 +42,6 @@ chmod 600 /etc/traefik/acme/acme.json /etc/traefik/acme/acme-staging.json || tru
 chown -R traefik:traefik /etc/traefik/acme /var/log/traefik || true
 chmod -R 755 /var/log/traefik || true
 
-# Drop privileges and run Traefik
-exec su-exec traefik:traefik traefik --configFile=/etc/traefik/traefik.yml
+# Run Traefik. With cap_drop=ALL, root cannot bypass DAC permissions, so we render configs into
+# /tmp (tmpfs) and run using that config file.
+exec traefik --configFile=/tmp/traefik.yml

@@ -281,7 +281,7 @@ services:
         condition: service_healthy
     entrypoint: ["sh", "-c"]
     command:
-      - "celery -A api.tasks beat -l $${CELERY_LOG_LEVEL:-INFO}"
+      - "celery -A api.tasks beat -l $${CELERY_LOG_LEVEL:-INFO} --schedule=/tmp/celerybeat-schedule"
     restart: unless-stopped
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
