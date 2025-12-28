@@ -1195,7 +1195,7 @@
 
 ### Django production-hardening adjustments (admin-focused)
 
-- [ ] T135 Ensure Django production password hashing is not “fast mode”; restrict any reduced iterations to test-only settings.
+- [X] T135 Ensure Django production password hashing is not “fast mode”; restrict any reduced iterations to test-only settings.
   - **Touch**:
     - `django/project/password_hashers.py`
     - `django/project/settings/production.py`
