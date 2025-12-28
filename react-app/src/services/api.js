@@ -1,93 +1,90 @@
-import axios from 'axios';
+import apiClient from '../lib/apiClient';
+import { normalizeApiError } from '../lib/apiErrors';
 
-// Always use relative path for API, so Traefik can route correctly
-const API_URL = '/api';
-
-// Create axios instance
-const api = axios.create({
-  baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Add token to requests automatically
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
+const _call = async (promise, opts) => {
+  try {
+    const response = await promise;
+    return response.data;
+  } catch (err) {
+    throw normalizeApiError(err, opts);
   }
-);
-
-// Handle response errors
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/';
-    }
-    return Promise.reject(error);
-  }
-);
+};
 
 // Auth API calls
 export const authAPI = {
-  // Register new user
-  register: async (email, password, name) => {
-    const response = await api.post('/auth/register', { email, password, name });
-    return response.data;
+  // Register new user (cookie session)
+  register: async (email, password, _name) => {
+    return _call(apiClient.post('/auth/register', { email, password }), {
+      fallbackMessage: 'Registration failed',
+    });
   },
 
-  // Login with email/password
+  // Login with email/password (cookie session)
   login: async (email, password) => {
-    const response = await api.post('/auth/login', { email, password });
-    return response.data;
+    return _call(apiClient.post('/auth/login', { email, password }), {
+      fallbackMessage: 'Login failed',
+    });
+  },
+
+  // Logout (cookie session)
+  logout: async () => {
+    return _call(apiClient.post('/auth/logout'), { fallbackMessage: 'Logout failed' });
+  },
+
+  // Get current user (cookie session)
+  getMe: async () => {
+    return _call(apiClient.get('/auth/me'), { fallbackMessage: 'Failed to load user' });
   },
 
   // Google OAuth login
-  googleAuth: async (googleId, email, name, picture) => {
-    const response = await api.post('/auth/google', { googleId, email, name, picture });
-    return response.data;
+  googleAuth: async (credential) => {
+    return _call(apiClient.post('/auth/oauth/google', { credential }), {
+      fallbackMessage: 'Google login failed',
+    });
   },
 
   // Verify email
   verifyEmail: async (token) => {
-    const response = await api.get(`/auth/verify-email/${token}`);
-    return response.data;
+    return _call(apiClient.post('/auth/verify-email', { token }), {
+      fallbackMessage: 'Email verification failed',
+    });
   },
 
   // Resend verification email
   resendVerification: async (email) => {
-    const response = await api.post('/auth/resend-verification', { email });
-    return response.data;
+    return _call(apiClient.post('/auth/resend-verification', { email }), {
+      fallbackMessage: 'Failed to resend verification email',
+    });
   },
 
   // Request password reset
   forgotPassword: async (email) => {
-    const response = await api.post('/auth/forgot-password', { email });
-    return response.data;
+    return _call(apiClient.post('/auth/forgot-password', { email }), {
+      fallbackMessage: 'Failed to send reset email',
+    });
   },
 
   // Reset password
   resetPassword: async (token, password) => {
-    const response = await api.post(`/auth/reset-password/${token}`, { password });
-    return response.data;
+    return _call(apiClient.post('/auth/reset-password', { token, password }), {
+      fallbackMessage: 'Password reset failed',
+    });
   },
 
-  // Get current user
-  getMe: async () => {
-    const response = await api.get('/auth/me');
-    return response.data;
+  // List active sessions (refresh tokens)
+  listSessions: async () => {
+    return _call(apiClient.get('/auth/sessions'), {
+      fallbackMessage: 'Failed to load sessions',
+    });
   },
+
+  // Revoke all sessions except the current one
+  revokeOtherSessions: async () => {
+    return _call(apiClient.post('/auth/sessions/revoke-others'), {
+      fallbackMessage: 'Failed to log out other devices',
+    });
+  },
+
 };
 
-export default api;
+export default apiClient;

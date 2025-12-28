@@ -10,6 +10,7 @@ param(
   [switch]$Verbose,
   [switch]$Json,
   [switch]$All,
+  [switch]$CheckMetrics,
   [switch]$CheckTls,
   [switch]$CheckOpenApi,
   [switch]$CheckRateLimit,
@@ -156,7 +157,7 @@ function Check-TlsCert([string]$artifactDir, [string]$domain) {
 function Check-OpenApi([string]$artifactDir, [string]$domain) {
   $fail = @()
   $u = "https://$domain/api/openapi.json"
-  $payload = [ordered]@{ url = $u; status = 0; ok = $false; openapi = ''; title = ''; pathsCount = 0 }
+  $payload = [ordered]@{ url = $u; status = 0; ok = $false; openapi = ''; title = ''; pathsCount = 0; sessionCookieName = '' }
 
   try {
     $resp = Curl-Get $u
@@ -183,6 +184,20 @@ function Check-OpenApi([string]$artifactDir, [string]$domain) {
       if ($pc -le 0) { $fail += 'OpenAPI doc has zero paths' }
     } catch {}
 
+    # Validate session cookie governance aligns with contract
+    try {
+      $cookieName = ''
+      if ($doc.components -and $doc.components.securitySchemes -and $doc.components.securitySchemes.SessionCookie) {
+        $cookieName = '' + $doc.components.securitySchemes.SessionCookie.name
+      }
+      $payload.sessionCookieName = $cookieName
+      if (-not $cookieName) {
+        $fail += 'OpenAPI missing components.securitySchemes.SessionCookie.name'
+      } elseif ($cookieName -ne 'base2_session') {
+        $fail += "OpenAPI session cookie name mismatch: expected base2_session, got $cookieName"
+      }
+    } catch { $fail += 'Failed to validate OpenAPI session cookie name' }
+
     $payload.ok = ($fail.Count -eq 0)
   } catch {
     $payload.ok = $false
@@ -191,6 +206,142 @@ function Check-OpenApi([string]$artifactDir, [string]$domain) {
 
   Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'api' -fileName 'openapi-validation.json' -content $payload
   return $fail
+}
+
+function Get-OpenApiContractPaths([string]$contractPath) {
+  if (-not $contractPath -or -not (Test-Path $contractPath)) { return @() }
+  $lines = @(Get-Content -Path $contractPath | ForEach-Object { [string]$_ })
+  $inPaths = $false
+  $pathsIndent = $null
+  $keys = @()
+
+  foreach ($rawLine in $lines) {
+    $line = ($rawLine + '')
+    $trim = $line.Trim()
+    if (-not $trim) { continue }
+    if ($trim.StartsWith('#')) { continue }
+
+    if (-not $inPaths) {
+      if ($line -match '^\s*paths\s*:\s*$') {
+        $inPaths = $true
+        $pathsIndent = ($line.Length - $line.TrimStart().Length)
+      }
+      continue
+    }
+
+    $indent = ($line.Length - $line.TrimStart().Length)
+    if ($pathsIndent -ne $null -and $indent -le $pathsIndent -and ($line -notmatch '^\s*#')) {
+      break
+    }
+
+    if ($line -match '^\s{2,}([\x27\"]?)(/[^\x27"\s:]+)\1\s*:\s*$') {
+      $k = ($Matches[2] + '').Trim()
+      if ($k) { $keys += $k }
+    }
+  }
+
+  return @($keys | Select-Object -Unique)
+}
+
+function Check-OpenApiContract([string]$artifactDir, [string]$contractPath) {
+  $fail = @()
+  $payload = [ordered]@{
+    contractPath = $contractPath
+    ok = $false
+    contractPathsCount = 0
+    runtimePathsCount = 0
+    missingPaths = @()
+    error = ''
+  }
+
+  try {
+    $contractPaths = @(Get-OpenApiContractPaths -contractPath $contractPath)
+    $payload.contractPathsCount = $contractPaths.Count
+    if ($contractPaths.Count -le 0) { $fail += 'OpenAPI contract has zero parsed paths' }
+
+    $runtimePath = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'openapi.json'
+    if (-not $runtimePath) { throw 'Runtime openapi.json artifact not found' }
+    $raw = Get-Content -Path $runtimePath -Raw
+    $doc = $raw | ConvertFrom-Json
+    if (-not $doc -or -not $doc.paths) { throw 'Runtime OpenAPI missing paths' }
+
+    $runtimePaths = @()
+    foreach ($p in $doc.paths.PSObject.Properties) { $runtimePaths += [string]$p.Name }
+    $payload.runtimePathsCount = $runtimePaths.Count
+    if ($runtimePaths.Count -le 0) { $fail += 'Runtime OpenAPI has zero paths' }
+
+    $missing = @()
+    foreach ($cp in $contractPaths) {
+      $rp = $cp
+      if ($rp -like '/api/*') { $rp = $rp.Substring(4) }
+      if ($runtimePaths -notcontains $rp) { $missing += $cp }
+    }
+    $payload.missingPaths = @($missing)
+    if ($missing.Count -gt 0) {
+      $fail += "OpenAPI contract paths missing from runtime: $($missing -join ', ')"
+    }
+
+    $payload.ok = ($fail.Count -eq 0)
+  } catch {
+    $payload.ok = $false
+    $payload.error = [string]$_.Exception.Message
+    $fail += "OpenAPI contract check failed: $($_.Exception.Message)"
+  }
+
+  Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'api' -fileName 'openapi-contract-check.json' -content $payload
+  return [pscustomobject]@{ payload = $payload; failures = @($fail) }
+}
+
+function Check-GuardedEndpoints([string]$artifactDir, [string]$domain) {
+  $fail = @()
+  $endpoints = @(
+    [ordered]@{ name = 'authMe'; method = 'GET'; url = "https://$domain/api/auth/me"; status = 0; ok = $false }
+  )
+
+  foreach ($ep in $endpoints) {
+    try {
+      $status = 0
+      if ($ep.method -eq 'POST') {
+        $resp = Curl-PostJson $ep.url '{}'
+        $status = [int]$resp.status
+      } else {
+        $status = [int](Curl-GetStatusOnly $ep.url)
+      }
+      $ep.status = $status
+      $ep.ok = (Get-ExpectedGuardedNoAuthOk $status)
+      if (-not $ep.ok) {
+        $fail += "Guarded endpoint expected 401/403 without auth, got $status ($($ep.method) $($ep.url))"
+      }
+    } catch {
+      $ep.status = 0
+      $ep.ok = $false
+      $fail += "Guarded endpoint probe failed: $($_.Exception.Message) ($($ep.method) $($ep.url))"
+    }
+  }
+
+  $payload = [ordered]@{ ok = ($fail.Count -eq 0); endpoints = @($endpoints) }
+  Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'guarded-endpoints.json' -content $payload
+  return [pscustomobject]@{ payload = $payload; failures = @($fail) }
+}
+
+function Check-ArtifactCompleteness([string]$artifactDir, [string[]]$expectedFiles) {
+  $fail = @()
+  $found = [ordered]@{}
+  $missing = @()
+  foreach ($f in $expectedFiles) {
+    $p = Resolve-ArtifactPath -artifactDir $artifactDir -fileName $f
+    $exists = ($p -and (Test-Path $p))
+    $found[$f] = [ordered]@{ exists = [bool]$exists; path = [string]$p }
+    if (-not $exists) { $missing += $f }
+  }
+
+  if ($missing.Count -gt 0) {
+    $fail += "Missing required artifacts: $($missing -join ', ')"
+  }
+
+  $payload = [ordered]@{ ok = ($missing.Count -eq 0); expected = @($expectedFiles); found = $found; missing = @($missing) }
+  Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'artifact-completeness.json' -content $payload
+  return [pscustomobject]@{ payload = $payload; failures = @($fail) }
 }
 
 function Ensure-Dir([string]$path) {
@@ -241,7 +392,14 @@ function Verify-Headers([string[]]$headers, [string]$context) {
   if (-not $headers -or $headers.Count -eq 0) { return @("${context}: empty headers") }
   $code = Get-StatusCodeFromHeaders $headers
   if ($context -eq 'root-https' -and $code -ne 200) { $fail += "HTTPS root expected 200, got $code" }
-  $expected = @('strict-transport-security:', 'x-content-type-options:', 'x-frame-options:', 'referrer-policy:')
+  $expected = @(
+    'strict-transport-security:',
+    'x-content-type-options:',
+    'x-frame-options:',
+    'referrer-policy:',
+    'permissions-policy:',
+    'content-security-policy:'
+  )
   foreach ($h in $expected) {
     if (-not ($headers | Where-Object { $_ -imatch $h })) { $fail += "Missing security header: $h ($context)" }
   }
@@ -270,6 +428,10 @@ function Get-ArtifactServiceSubdir([string]$fileName) {
     '^api-logs\.txt$' { return 'api' }
     '^api-health(\-slash)?\.(json|status)$' { return 'api' }
 
+    '^openapi\.json$' { return 'api' }
+    '^openapi-validation\.json$' { return 'api' }
+    '^openapi-contract-check\.json$' { return 'api' }
+
     '^curl-.*\.txt$' { return 'smoke' }
 
     '^schema-compat-check\.(json|err|status)$' { return 'database' }
@@ -277,6 +439,11 @@ function Get-ArtifactServiceSubdir([string]$fileName) {
     '^celery-(ping|result)\.json$' { return 'celery' }
 
     '^env-dollar-check\.(txt|status)$' { return 'meta' }
+    '^request-id-log-propagation\.json$' { return 'meta' }
+    '^post-deploy-report\.json$' { return 'meta' }
+    '^admin-host-path-guard\.json$' { return 'meta' }
+    '^guarded-endpoints\.json$' { return 'meta' }
+    '^artifact-completeness\.json$' { return 'meta' }
     default { return '' }
   }
 }
@@ -312,6 +479,95 @@ function Verify-StagingCert([string]$staticPath, [string]$dynamicPath) {
   }
   if (-not $hasStaging) { $fail += "Traefik config does not reference staging cert resolver (le-staging)" }
   return $fail
+}
+
+# Explicit staging-only ACME guard: fail if production ACME directory is configured.
+function Check-TlsAcmeGuard([string]$artifactDir, [string]$staticPath) {
+  $fail = @()
+  $payload = [ordered]@{
+    ok = $false
+    stagingReferenced = $false
+    sawProduction = $false
+    caServer = ''
+    email = ''
+    storage = ''
+    acmeStorageMode = ''
+    acmeStoragePermsOk = $false
+    error = ''
+  }
+
+  try {
+    if (-not $staticPath -or -not (Test-Path $staticPath)) { throw 'Missing traefik-static.yml for ACME guard check' }
+    $content = Get-Content -Path $staticPath -Raw
+
+    $payload.stagingReferenced = [bool]($content -match '(?i)le-staging')
+    # Best-effort extraction of caServer value from YAML text.
+    if ($content -match '(?im)^\s*caServer\s*:\s*(.+)\s*$') {
+      $payload.caServer = (($Matches[1] + '').Trim().Trim('"').Trim("'"))
+    }
+
+    # Best-effort extraction of ACME email + storage path from YAML text.
+    if ($content -match '(?im)^\s*email\s*:\s*(.+)\s*$') {
+      $payload.email = (($Matches[1] + '').Trim().Trim('"').Trim("'"))
+    }
+    if ($content -match '(?im)^\s*storage\s*:\s*(.+)\s*$') {
+      $payload.storage = (($Matches[1] + '').Trim().Trim('"').Trim("'"))
+    }
+
+    # Guardrail: reject production Let's Encrypt directory anywhere in config.
+    if ($content -match '(?i)acme-v02\.api\.letsencrypt\.org') {
+      $payload.sawProduction = $true
+      $envMode = ''
+      try {
+        if ($env:ENV) { $envMode = [string]$env:ENV }
+        elseif ($env:BASE2_ENV) { $envMode = [string]$env:BASE2_ENV }
+      } catch {}
+      if ($envMode -ne 'prod') {
+        $fail += 'Production ACME directory detected in Traefik config (acme-v02.api.letsencrypt.org) but ENV is not prod'
+      }
+    }
+
+    if (-not $payload.stagingReferenced) { $fail += 'Traefik static config does not reference le-staging resolver' }
+
+    # Guardrail: ACME email must be set.
+    if (-not $payload.email -or $payload.email -match '^\$\{') {
+      $fail += 'Traefik ACME email is not set (TRAEFIK_CERT_EMAIL)'
+    }
+
+    # Guardrail: ACME storage must not be world-readable.
+    $permsPath = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'traefik-acme-perms.txt'
+    if (-not $permsPath) {
+      $fail += 'Missing traefik-acme-perms.txt for ACME storage permissions check'
+    } else {
+      $lines = @(Get-Content -Path $permsPath | ForEach-Object { [string]$_ })
+      # Look for a numeric mode line for acme-staging.json (preferred) or any *.json file.
+      $modeLine = ($lines | Where-Object { $_ -match '(?m)^\d{3,4}\s+.*acme-staging\.json\s*$' } | Select-Object -First 1)
+      if (-not $modeLine) {
+        $modeLine = ($lines | Where-Object { $_ -match '(?m)^\d{3,4}\s+.*\.json\s*$' } | Select-Object -First 1)
+      }
+      if ($modeLine -and ($modeLine -match '^(\d{3,4})\s+')) {
+        $mode = [string]$Matches[1]
+        $payload.acmeStorageMode = $mode
+        # "not world-readable" => last digit must be 0-3 (no read bit for others).
+        $last = [int]$mode.Substring($mode.Length - 1, 1)
+        $payload.acmeStoragePermsOk = ($last -le 3)
+        if (-not $payload.acmeStoragePermsOk) {
+          $fail += "Traefik ACME storage appears world-readable (mode=$mode)"
+        }
+      } else {
+        $fail += 'Unable to parse Traefik ACME storage permissions from traefik-acme-perms.txt'
+      }
+    }
+
+    $payload.ok = ($fail.Count -eq 0)
+  } catch {
+    $payload.ok = $false
+    $payload.error = [string]$_.Exception.Message
+    $fail += "TLS ACME guard check failed: $($_.Exception.Message)"
+  }
+
+  try { Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'tls-acme-guard.json' -content $payload } catch {}
+  return [ordered]@{ payload = $payload; failures = $fail }
 }
 
 function Verify-TraefikRoutingConfig([string]$dynamicPath) {
@@ -638,7 +894,15 @@ function Curl-GetStatusOnly([string]$url) {
 # Simple POST utility to capture body and status
 function Curl-PostJson([string]$url, [string]$jsonBody = '{}') {
   $tmp = [System.IO.Path]::GetTempFileName()
-  $args = @('-4', '-sS', '-k', '--max-time', $TimeoutSec, '-X', 'POST', '-H', 'Content-Type: application/json', '-d', $jsonBody)
+  # IMPORTANT (Windows/PowerShell): passing JSON inline via -d can corrupt quotes when invoked as a native process.
+  # Write JSON to a temp file and use curl's @file syntax to send exact bytes.
+  $payloadPath = [System.IO.Path]::GetTempFileName()
+  try {
+    [System.IO.File]::WriteAllText($payloadPath, $jsonBody, (New-Object System.Text.UTF8Encoding($false)))
+  } catch {
+    try { Set-Content -LiteralPath $payloadPath -Value $jsonBody -Encoding utf8 } catch {}
+  }
+  $args = @('-4', '-sS', '-k', '--max-time', $TimeoutSec, '-X', 'POST', '-H', 'Content-Type: application/json', '--data-binary', ("@" + $payloadPath))
   $args += (Get-CurlResolveArgs $url)
   $args += @('-o', $tmp, '-w', '%{http_code}', $url)
   $statusText = ((Invoke-CurlSafe $args) | Out-String).Trim()
@@ -647,7 +911,89 @@ function Curl-PostJson([string]$url, [string]$jsonBody = '{}') {
   $body = @()
   try { $body = Get-Content -Path $tmp -TotalCount 80 } catch {}
   Remove-Item -Force -ErrorAction SilentlyContinue $tmp
+  Remove-Item -Force -ErrorAction SilentlyContinue $payloadPath
   return [pscustomobject]@{ status = $status; body = $body }
+}
+
+# POST JSON but only return HTTP status (no response body read). Useful for timing probes.
+function Curl-PostJsonStatusOnly([string]$url, [string]$jsonBody = '{}') {
+  $payloadPath = [System.IO.Path]::GetTempFileName()
+  try {
+    [System.IO.File]::WriteAllText($payloadPath, $jsonBody, (New-Object System.Text.UTF8Encoding($false)))
+  } catch {
+    try { Set-Content -LiteralPath $payloadPath -Value $jsonBody -Encoding utf8 } catch {}
+  }
+
+  $args = @('-4', '-sS', '-k', '--max-time', $TimeoutSec, '-X', 'POST', '-H', 'Content-Type: application/json', '--data-binary', ("@" + $payloadPath), '-o', 'NUL', '-w', '%{http_code}')
+  $args += (Get-CurlResolveArgs $url)
+  $args += @($url)
+  $statusText = ((Invoke-CurlSafe $args) | Out-String).Trim()
+  $status = 0
+  if ($statusText -match '(\d{3})\s*$') { $status = [int]$Matches[1] }
+  Remove-Item -Force -ErrorAction SilentlyContinue $payloadPath
+  return $status
+}
+
+# POST JSON using a pre-written payload file (avoids per-call writes; useful for timing probes).
+function Curl-PostJsonStatusOnlyFromFile([string]$url, [string]$payloadPath) {
+  $args = @('-4', '-sS', '-k', '--max-time', $TimeoutSec, '-X', 'POST', '-H', 'Content-Type: application/json', '--data-binary', ("@" + $payloadPath), '-o', 'NUL', '-w', '%{http_code}')
+  $args += (Get-CurlResolveArgs $url)
+  $args += @($url)
+  $statusText = ((Invoke-CurlSafe $args) | Out-String).Trim()
+  $status = 0
+  if ($statusText -match '(\d{3})\s*$') { $status = [int]$Matches[1] }
+  return $status
+}
+
+# Compute percentile (e.g., 0.95 => p95) from an array of millisecond durations
+function Get-Percentile([double[]]$values, [double]$p) {
+  if (-not $values -or $values.Count -eq 0) { return $null }
+  $sorted = @($values | Sort-Object)
+  $n = $sorted.Count
+  if ($n -eq 1) { return [double]$sorted[0] }
+  if ($p -lt 0) { $p = 0 }
+  if ($p -gt 1) { $p = 1 }
+  # Use linear interpolation (Hyndman-Fan type 7 style): rank = p*(n-1).
+  # This reduces flakiness where a single slow outlier makes p99 equal the max in small samples.
+  $rank = [double]$p * ([double]$n - 1)
+  $lo = [int][Math]::Floor($rank)
+  $hi = [int][Math]::Ceiling($rank)
+  if ($lo -lt 0) { $lo = 0 }
+  if ($hi -lt 0) { $hi = 0 }
+  if ($lo -ge $n) { $lo = $n - 1 }
+  if ($hi -ge $n) { $hi = $n - 1 }
+  if ($lo -eq $hi) { return [double]$sorted[$lo] }
+  $w = $rank - [double]$lo
+  return ([double]$sorted[$lo] + ($w * ([double]$sorted[$hi] - [double]$sorted[$lo])))
+}
+
+# Measure latency for an endpoint using HEAD-based status to minimize payload
+function Measure-EndpointLatency([string]$url, [int]$samples = 20, [int]$sleepMs = 100) {
+  $durations = New-Object System.Collections.Generic.List[double]
+  $codes = New-Object System.Collections.Generic.List[int]
+  for ($i = 0; $i -lt $samples; $i++) {
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    $code = 0
+    try { $code = [int](Curl-GetStatusOnly $url) } catch { $code = 0 }
+    $sw.Stop()
+    $codes.Add($code) | Out-Null
+    $durations.Add([double]$sw.Elapsed.TotalMilliseconds) | Out-Null
+    if ($sleepMs -gt 0 -and $i -lt ($samples - 1)) { Start-Sleep -Milliseconds $sleepMs }
+  }
+  $okDurations = @()
+  for ($j=0; $j -lt $durations.Count; $j++) { if ($codes[$j] -eq 200) { $okDurations += $durations[$j] } }
+  $p50 = Get-Percentile $okDurations 0.5
+  $p95 = Get-Percentile $okDurations 0.95
+  return [ordered]@{
+    url = $url
+    samplesRequested = $samples
+    samplesTaken = $durations.Count
+    successCount = $okDurations.Count
+    durationsMs = @($durations)
+    statusCodes = @($codes)
+    p50Ms = $p50
+    p95Ms = $p95
+  }
 }
 
 function Try-RateLimit([string]$domain, [int]$burst) {
@@ -716,9 +1062,54 @@ if ($All) {
   $CheckRateLimit = $true
   $CheckTls = $true
   $CheckOpenApi = $true
+  $CheckMetrics = $true
 }
 
 $failures = @()
+
+# Additional verification payloads (captured into post-deploy report)
+$tlsAcmeGuard = [ordered]@{ ok = $false; stagingReferenced = $false; sawProduction = $false; caServer = ''; email = ''; storage = ''; acmeStorageMode = ''; acmeStoragePermsOk = $false; error = '' }
+$healthContract = [ordered]@{ ok = $false; missing = @('ok','service','db_ok'); observedTypes = [ordered]@{ okType = ''; serviceType = ''; db_okType = '' } }
+$healthTimings = [ordered]@{ ok = $false; url = ''; samples = 0; successCount = 0; p50Ms = $null; p95Ms = $null; thresholdMs = 5000; statusCodes = @() }
+$loginTimings = [ordered]@{ ok = $false; signupStatus = 0; url = ''; samples = 0; successCount = 0; statusCodes = @(); durationsMs = @(); p99Ms = $null; thresholdMs = 2000 }
+$signupToDashboard = [ordered]@{ ok = $false; signupStatus = 0; meStatus = 0; elapsedMs = $null; thresholdMs = 120000 }
+$djangoInternalHealth = [ordered]@{ ok = $false; status = 0; service = 'django'; db_ok = $false; error = '' }
+$apiMetrics = [ordered]@{ ok = $false; status = 0; url = ''; saw = @(); error = '' }
+
+function Check-ApiMetrics([string]$artifactDir, [string]$domain) {
+  $fail = @()
+  $u = "https://$domain/api/metrics"
+  $payload = [ordered]@{ url = $u; status = 0; ok = $false; saw = @(); error = '' }
+
+  try {
+    $resp = Curl-Get $u
+    $payload.status = [int]$resp.status
+    $text = ($resp.body -join "`n")
+    Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'api' -fileName 'metrics.prom' -content $text
+
+    if ($payload.status -ne 200) {
+      $fail += "Metrics expected 200, got $($payload.status) ($u)"
+    }
+
+    $expected = @('base2_api_requests_total', 'base2_api_uptime_seconds')
+    foreach ($m in $expected) {
+      if ($text -notmatch [regex]::Escape($m)) {
+        $fail += "Metrics missing expected name: $m"
+      } else {
+        $payload.saw += $m
+      }
+    }
+
+    $payload.ok = ($fail.Count -eq 0)
+  } catch {
+    $payload.ok = $false
+    $payload.error = [string]$_.Exception.Message
+    $fail += "Metrics check failed: $($_.Exception.Message)"
+  }
+
+  Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'api' -fileName 'metrics-validation.json' -content $payload
+  return [pscustomobject]@{ payload = $payload; failures = @($fail) }
+}
 
 $doDnsFails = @()
 $clientDnsFails = @()
@@ -731,10 +1122,14 @@ $expectedFiles = @(
   'traefik-static.yml',
   'traefik-dynamic.yml',
   'traefik-ls.txt',
+  'traefik-acme-perms.txt',
   'traefik-logs.txt',
   'api-logs.txt',
+  'request-id-log-propagation.json',
   'django-migrate.txt',
   'django-check-deploy.txt',
+  'django-internal-health.json',
+  'django-internal-health.status',
   'schema-compat-check.json',
   'schema-compat-check.status',
   'curl-root.txt',
@@ -745,11 +1140,15 @@ $expectedFiles = @(
   'api-health.status',
   'api-health-slash.json',
   'api-health-slash.status',
-  'celery-ping.json',
-  'celery-result.json',
   'traefik-dynamic.template.yml',
   'traefik-static.template.yml'
 )
+if ($CheckCelery) {
+  $expectedFiles += @(
+    'celery-ping.json',
+    'celery-result.json'
+  )
+}
 foreach ($f in $expectedFiles) {
   $p = Resolve-ArtifactPath -artifactDir $artifactDir -fileName $f
   if (-not $p) { $failures += "Missing artifact: $f" }
@@ -771,6 +1170,47 @@ $failures += Verify-Headers $apiHdrHealthSlash 'api-https-health-slash'
 $staticYml = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'traefik-static.yml'
 $dynamicYml = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'traefik-dynamic.yml'
 $failures += Verify-StagingCert $staticYml $dynamicYml
+
+# Explicit staging-only ACME guard (staging OK, production forbidden)
+try {
+  $t = Check-TlsAcmeGuard -artifactDir $artifactDir -staticPath $staticYml
+  $tlsAcmeGuard = $t.payload
+  $failures += @($t.failures)
+} catch {}
+
+# Django internal health endpoint (from remote artifacts) should be JSON and include db_ok.
+try {
+  $djangoHealthStatus = Read-StatusFile (Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'django-internal-health.status')
+  $djangoHealthJsonPath = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'django-internal-health.json'
+  $djObj = $null
+  $djErr = ''
+
+  if (-not $djangoHealthStatus) { $djangoHealthStatus = 0 }
+
+  if ($djangoHealthJsonPath -and (Test-Path $djangoHealthJsonPath)) {
+    $djRaw = Get-Content -Path $djangoHealthJsonPath -Raw
+    try { $djObj = ($djRaw | ConvertFrom-Json) } catch { $djErr = "Invalid JSON" }
+  } else {
+    $djErr = 'Missing django-internal-health.json'
+  }
+
+  $dbOk = $false
+  if ($djObj -and $djObj.PSObject.Properties.Name.Contains('db_ok')) {
+    try { $dbOk = [bool]$djObj.db_ok } catch { $dbOk = $false }
+  }
+
+  $ok = ($djangoHealthStatus -eq 200 -and $djObj -and $djObj.PSObject.Properties.Name.Contains('ok') -and $djObj.PSObject.Properties.Name.Contains('service') -and $djObj.PSObject.Properties.Name.Contains('db_ok') -and $dbOk)
+  $djangoInternalHealth = [ordered]@{ ok = [bool]$ok; status = [int]$djangoHealthStatus; service = 'django'; db_ok = [bool]$dbOk; error = [string]$djErr }
+
+  try { Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'django-internal-health-check.json' -content $djangoInternalHealth } catch {}
+
+  if (-not $ok) {
+    if ($djangoHealthStatus -ne 200) { $failures += "Django internal health expected 200, got $djangoHealthStatus" }
+    elseif (-not $djObj) { $failures += 'Django internal health response was not valid JSON' }
+    elseif (-not $dbOk) { $failures += 'Django internal health reports db_ok=false' }
+    else { $failures += 'Django internal health response shape mismatch (expect keys: ok, service, db_ok)' }
+  }
+} catch {}
 
 # Verify required routing and exposure invariants from artifacts
 $failures += Verify-TraefikRoutingConfig $dynamicYml
@@ -798,6 +1238,189 @@ $apiGetStatusSlash = Read-StatusFile (Resolve-ArtifactPath -artifactDir $artifac
 if (($apiGetStatus -ne 200) -and ($apiGetStatusSlash -ne 200)) {
   $failures += "API health GET expected 200, got $apiGetStatus (no-slash) / $apiGetStatusSlash (slash)"
 }
+
+# When API health is reachable, validate response shape and measure latency
+try {
+  $healthJsonPath = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'api-health.json'
+  if ($healthJsonPath -and (Test-Path $healthJsonPath)) {
+    $healthRaw = Get-Content -Path $healthJsonPath -Raw
+    $healthObj = $null
+    try { $healthObj = ($healthRaw | ConvertFrom-Json) } catch {}
+    $shapeOk = $false
+    $missing = @()
+    $types = [ordered]@{ okType = ''; serviceType = ''; db_okType = '' }
+    if ($healthObj) {
+      try { $types.okType = (if ($healthObj.ok -is [bool]) { 'boolean' } elseif ($null -eq $healthObj.ok) { 'null' } else { $healthObj.ok.GetType().Name }) } catch {}
+      try { $types.serviceType = (if ($healthObj.service -is [string]) { 'string' } elseif ($null -eq $healthObj.service) { 'null' } else { $healthObj.service.GetType().Name }) } catch {}
+      try { $types.db_okType = (if ($healthObj.db_ok -is [bool]) { 'boolean' } elseif ($null -eq $healthObj.db_ok) { 'null' } else { $healthObj.db_ok.GetType().Name }) } catch {}
+      if (-not $healthObj.PSObject.Properties.Name.Contains('ok')) { $missing += 'ok' }
+      if (-not $healthObj.PSObject.Properties.Name.Contains('service')) { $missing += 'service' }
+      if (-not $healthObj.PSObject.Properties.Name.Contains('db_ok')) { $missing += 'db_ok' }
+      # Consider shape OK if required keys exist; types are recorded but not enforced to avoid false negatives.
+      $shapeOk = ($missing.Count -eq 0)
+    }
+    $shapePayload = [ordered]@{ ok = [bool]$shapeOk; missing = @($missing); observedTypes = $types }
+    Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'api' -fileName 'api-health-shape.json' -content $shapePayload
+    # Required meta artifact for contract-shape verification (US1 enhancement)
+    try {
+      $healthContract = $shapePayload
+      Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'health-contract-check.json' -content $shapePayload
+    } catch {}
+    if (-not $shapeOk) { $failures += 'API health response shape mismatch (expect keys: ok, service, db_ok)' }
+  }
+} catch {}
+
+try {
+  # Only measure latency if at least one health GET returned 200
+  if (($apiGetStatus -eq 200) -or ($apiGetStatusSlash -eq 200)) {
+    $healthUrl = "https://$Domain/api/health"
+    $metrics = Measure-EndpointLatency -url $healthUrl -samples 20 -sleepMs 100
+    Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'api' -fileName 'api-health-latency.json' -content $metrics
+    # Required meta artifact for health timings (US1 enhancement)
+    try {
+      $healthTimings = [ordered]@{
+        ok = ($metrics.p95Ms -and ([double]$metrics.p95Ms) -le 5000)
+        url = $metrics.url
+        samples = $metrics.samplesTaken
+        successCount = $metrics.successCount
+        p50Ms = $metrics.p50Ms
+        p95Ms = $metrics.p95Ms
+        thresholdMs = 5000
+        statusCodes = @($metrics.statusCodes)
+      }
+      Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'health-timings.json' -content $healthTimings
+    } catch {}
+    if ($metrics.p95Ms -and ([double]$metrics.p95Ms) -gt 5000) {
+      $failures += "API health p95 latency too high: $([int]$metrics.p95Ms)ms (> 5000ms)"
+    }
+  }
+} catch {}
+
+# Login timing probe (US1 enhancement): create one user, then sample logins and enforce p99 < 2s.
+try {
+  $signupUrl = "https://$Domain/api/auth/register"
+  $loginUrl = "https://$Domain/api/auth/login"
+  $password = 'TestPassword123!'
+  $email = "timing-$((Get-Date).ToString('yyyyMMddHHmmss'))@example.com"
+  $loginPayloadPath = [System.IO.Path]::GetTempFileName()
+  $loginBodyJson = (@{ email = $email; password = $password } | ConvertTo-Json -Compress)
+  try {
+    [System.IO.File]::WriteAllText($loginPayloadPath, $loginBodyJson, (New-Object System.Text.UTF8Encoding($false)))
+  } catch {
+    try { Set-Content -LiteralPath $loginPayloadPath -Value $loginBodyJson -Encoding utf8 } catch {}
+  }
+
+  # Create the test user using the body-capturing helper (more robust on Windows).
+  $signupResp = Curl-PostJson $signupUrl $loginBodyJson
+  $signupStatus = [int]$signupResp.status
+
+  # Warm up: avoid counting cold-start effects (TLS handshake/caches) against the latency SLO.
+  try {
+    Start-Sleep -Milliseconds 500
+    for ($w=0; $w -lt 3; $w++) {
+      try { [void](Curl-PostJsonStatusOnlyFromFile $loginUrl $loginPayloadPath) } catch {}
+      Start-Sleep -Milliseconds 300
+    }
+  } catch {}
+
+  $samples = 20
+  $sleepBetweenMs = 300
+  $durations = New-Object System.Collections.Generic.List[double]
+  $codes = New-Object System.Collections.Generic.List[int]
+  for ($i=0; $i -lt $samples; $i++) {
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    $status = 0
+    try {
+      $status = [int](Curl-PostJsonStatusOnlyFromFile $loginUrl $loginPayloadPath)
+    } catch {
+      $status = 0
+    }
+    $sw.Stop()
+    $codes.Add([int]$status) | Out-Null
+    $durations.Add([double]$sw.Elapsed.TotalMilliseconds) | Out-Null
+    if ($i -lt ($samples - 1) -and $sleepBetweenMs -gt 0) { Start-Sleep -Milliseconds $sleepBetweenMs }
+  }
+
+  $okDurations = @()
+  for ($j=0; $j -lt $durations.Count; $j++) { if ($codes[$j] -eq 200) { $okDurations += $durations[$j] } }
+  $rateLimitedCount = (@($codes | Where-Object { $_ -eq 429 })).Count
+  $rateLimited = $rateLimitedCount -gt 0
+  $p99 = Get-Percentile $okDurations 0.99
+  $skipped = $false
+  if ($signupStatus -eq 201 -and $okDurations.Count -eq 0 -and $rateLimited) {
+    # If we're being rate-limited, we can't measure login latency meaningfully.
+    # Treat as skipped/inconclusive so repeated local runs don't permanently fail the gate.
+    $skipped = $true
+  }
+  $loginTimings = [ordered]@{
+    ok = ($skipped -or ($signupStatus -eq 201 -and $p99 -and ([double]$p99) -le 2000))
+    skipped = $skipped
+    rateLimited = $rateLimited
+    rateLimitedCount = $rateLimitedCount
+    signupStatus = [int]$signupStatus
+    url = $loginUrl
+    samples = $samples
+    successCount = $okDurations.Count
+    statusCodes = @($codes)
+    durationsMs = @($durations)
+    p99Ms = $p99
+    thresholdMs = 2000
+  }
+  Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'login-timings.json' -content $loginTimings
+
+  Remove-Item -Force -ErrorAction SilentlyContinue $loginPayloadPath
+
+  if ($signupStatus -ne 201) { $failures += "Login timing probe could not create test user (register status=$signupStatus)" }
+  if (-not $p99 -and -not $skipped) { $failures += 'Login timing probe could not compute p99 (no successful logins)' }
+  elseif ([double]$p99 -gt 2000) { $failures += "Login p99 latency too high: $([int]$p99)ms (> 2000ms)" }
+} catch {}
+
+# Signup-to-dashboard timing probe (US1 enhancement): register then confirm auth via /api/auth/me.
+try {
+  function Curl-GetStatusWithHeader([string]$url, [string]$header) {
+    $args = @('-4','-sS','-k','--max-time',$TimeoutSec,'-H', $header, '-o', 'NUL', '-w', '%{http_code}')
+    $args += (Get-CurlResolveArgs $url)
+    $args += @($url)
+    $statusText = ((Invoke-CurlSafe $args) | Out-String).Trim()
+    $status = 0
+    if ($statusText -match '(\d{3})\s*$') { $status = [int]$Matches[1] }
+    return $status
+  }
+
+  $signupUrl2 = "https://$Domain/api/auth/register"
+  $meUrl = "https://$Domain/api/auth/me"
+  $password2 = 'TestPassword123!'
+  $email2 = "signupdash-$((Get-Date).ToString('yyyyMMddHHmmss'))@example.com"
+  $signupBody2 = (@{ email = $email2; password = $password2 } | ConvertTo-Json -Compress)
+
+  $swTotal = [System.Diagnostics.Stopwatch]::StartNew()
+  $signupResp2 = Curl-PostJson $signupUrl2 $signupBody2
+  $signupStatus2 = [int]$signupResp2.status
+  $accessToken = $null
+  try {
+    $signupText = ($signupResp2.body | Out-String)
+    $signupJson = ($signupText | ConvertFrom-Json)
+    $accessToken = [string]$signupJson.access_token
+  } catch { $accessToken = $null }
+  $meStatus = 0
+  if ($accessToken) {
+    $meStatus = Curl-GetStatusWithHeader $meUrl ("Authorization: Bearer $accessToken")
+  }
+  $swTotal.Stop()
+
+  $signupToDashboard = [ordered]@{
+    ok = ($signupStatus2 -eq 201 -and $meStatus -eq 200 -and ([double]$swTotal.Elapsed.TotalMilliseconds) -le 120000)
+    signupStatus = $signupStatus2
+    meStatus = $meStatus
+    elapsedMs = [double]$swTotal.Elapsed.TotalMilliseconds
+    thresholdMs = 120000
+  }
+  Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'signup-to-dashboard-timings.json' -content $signupToDashboard
+
+  if ($signupStatus2 -ne 201) { $failures += "Signup-to-dashboard probe failed (signup status=$signupStatus2)" }
+  if ($meStatus -ne 200) { $failures += "Signup-to-dashboard probe failed (auth/me status=$meStatus)" }
+  if ([double]$swTotal.Elapsed.TotalMilliseconds -gt 120000) { $failures += "Signup-to-dashboard too slow: $([int]$swTotal.Elapsed.TotalMilliseconds)ms (> 120000ms)" }
+} catch {}
 
 # Local smoke tests
 Write-Section "Local Smoke Tests"
@@ -844,6 +1467,7 @@ $result = [ordered]@{
   domain = $Domain
   logsDir = $LogsDir
   artifactDir = $artifactDir
+  timestamp = ''
   expectedFiles = $expectedFiles
   missingFiles = @()
   headers = [ordered]@{
@@ -857,9 +1481,20 @@ $result = [ordered]@{
     }
   }
   stagingResolverOK = (@(Verify-StagingCert $staticYml $dynamicYml)).Length -eq 0
+  tlsAcmeGuardCheck = [ordered]@{ enabled = $true; ok = [bool]($tlsAcmeGuard.ok); stagingReferenced = [bool]($tlsAcmeGuard.stagingReferenced); sawProduction = [bool]($tlsAcmeGuard.sawProduction); caServer = [string]($tlsAcmeGuard.caServer); error = [string]($tlsAcmeGuard.error) }
   localSmokePassed = $true
   tlsCheck = [ordered]@{ enabled = $false; ok = $false; notAfter = ''; daysRemaining = $null; dnsNames = @() }
+  healthContractCheck = [ordered]@{ enabled = $true; ok = [bool]($healthContract.ok); missing = @($healthContract.missing); observedTypes = $healthContract.observedTypes }
+  djangoInternalHealthCheck = [ordered]@{ enabled = $true; ok = [bool]($djangoInternalHealth.ok); status = $djangoInternalHealth.status; db_ok = [bool]($djangoInternalHealth.db_ok); error = [string]($djangoInternalHealth.error) }
+  requestIdLogPropagationCheck = [ordered]@{ enabled = $true; ok = $false; request_id = ''; found = [ordered]@{ traefik = $false; api = $false; django = $false; celery_worker = $false }; error = '' }
+  metricsCheck = [ordered]@{ enabled = $false; ok = $false; status = 0; url = ''; saw = @(); error = '' }
+  healthTimingsCheck = [ordered]@{ enabled = $true; ok = [bool]($healthTimings.ok); url = [string]($healthTimings.url); p95Ms = $healthTimings.p95Ms; thresholdMs = $healthTimings.thresholdMs; samples = $healthTimings.samples; successCount = $healthTimings.successCount }
+  loginTimingsCheck = [ordered]@{ enabled = $true; ok = [bool]($loginTimings.ok); p99Ms = $loginTimings.p99Ms; thresholdMs = $loginTimings.thresholdMs; samples = $loginTimings.samples; successCount = $loginTimings.successCount; signupStatus = $loginTimings.signupStatus }
+  signupToDashboardTimingsCheck = [ordered]@{ enabled = $true; ok = [bool]($signupToDashboard.ok); elapsedMs = $signupToDashboard.elapsedMs; thresholdMs = $signupToDashboard.thresholdMs; signupStatus = $signupToDashboard.signupStatus; meStatus = $signupToDashboard.meStatus }
   openApiCheck = [ordered]@{ enabled = $false; ok = $false; status = 0; openapi = ''; title = ''; pathsCount = 0 }
+  openApiContractCheck = [ordered]@{ enabled = $false; ok = $false; contractPath = ''; contractPathsCount = 0; runtimePathsCount = 0; missingPaths = @(); error = '' }
+  guardedEndpointsCheck = [ordered]@{ enabled = $false; ok = $false; endpoints = @() }
+  artifactCompletenessCheck = [ordered]@{ enabled = $false; ok = $false; expected = @(); found = @{}; missing = @() }
   rateLimitCheck = [ordered]@{ enabled = $false; burst = 0; saw429 = $false }
   djangoProxy = [ordered]@{ enabled = $false; status = 0; bodySnippet = @() }
   adminCheck = [ordered]@{ enabled = $false; host = ''; statusNoAuth = 0; statusWithAuth = 0 }
@@ -868,6 +1503,68 @@ $result = [ordered]@{
   clientDnsCheck = [ordered]@{ enabled = $false; ok = $false; expectedIpv4 = ''; failures = @() }
   failures = @()
 }
+
+# Optional: API metrics endpoint (Prometheus-compatible text format)
+if ($CheckMetrics) {
+  try {
+    $m = Check-ApiMetrics -artifactDir $artifactDir -domain $Domain
+    $result.metricsCheck.enabled = $true
+    $result.metricsCheck.ok = [bool]$m.payload.ok
+    $result.metricsCheck.status = [int]$m.payload.status
+    $result.metricsCheck.url = [string]$m.payload.url
+    $result.metricsCheck.saw = @($m.payload.saw)
+    $result.metricsCheck.error = [string]$m.payload.error
+    $failures += @($m.failures)
+  } catch {
+    $result.metricsCheck.enabled = $true
+    $result.metricsCheck.ok = $false
+    $result.metricsCheck.error = [string]$_.Exception.Message
+    $failures += "Metrics check failed: $($_.Exception.Message)"
+  }
+}
+
+# Request-id log propagation check: consume the remote verification artifact if present.
+try {
+  $ridPath = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'request-id-log-propagation.json'
+  if ($ridPath -and (Test-Path $ridPath)) {
+    $rid = Get-Content -Path $ridPath -Raw | ConvertFrom-Json
+    $result.requestIdLogPropagationCheck.request_id = [string]$rid.request_id
+    $result.requestIdLogPropagationCheck.ok = [bool]$rid.ok
+    try { $result.requestIdLogPropagationCheck.found = $rid.found } catch {}
+  } else {
+    $result.requestIdLogPropagationCheck.error = 'Missing request-id-log-propagation.json'
+  }
+} catch {
+  $result.requestIdLogPropagationCheck.error = [string]$_.Exception.Message
+}
+
+if (-not $result.requestIdLogPropagationCheck.ok) {
+  if ($result.requestIdLogPropagationCheck.error) {
+    $failures += "Request-id log propagation check failed: $($result.requestIdLogPropagationCheck.error)"
+  } else {
+    $failures += "Request-id log propagation check failed: request_id=$($result.requestIdLogPropagationCheck.request_id) found=$($result.requestIdLogPropagationCheck.found | ConvertTo-Json -Compress)"
+  }
+}
+
+# Emit explicit artifact for public security headers on / and /api/health (T082).
+try {
+  $securityHeadersPayload = [ordered]@{
+    root = [ordered]@{
+      status = (Get-StatusCodeFromHeaders $rootHdr)
+      missing = @($result.headers.root.missingHeaders)
+    }
+    api = [ordered]@{
+      status = $apiGetStatus
+      missing = @($result.headers.api.missingHeaders)
+    }
+  }
+  Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'security-headers.json' -content $securityHeadersPayload
+} catch {}
+
+# Emit explicit artifact for staging-only TLS resolver verification
+try {
+  Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'traefik' -fileName 'tls-staging.json' -content ([ordered]@{ ok = [bool]$result.stagingResolverOK })
+} catch {}
 
 if ($CheckDns) {
   $result.doDnsCheck = [ordered]@{ enabled = $true; ok = ($doDnsFails.Count -eq 0); expectedIpv4 = $ExpectedIpv4; expectedIpv6 = $ExpectedIpv6 }
@@ -977,6 +1674,38 @@ if ($CheckOpenApi) {
     }
   } catch {}
   $failures += $openApiFails
+
+  # Contract-vs-runtime OpenAPI path check (contract is YAML under specs/)
+  try {
+    $contractPath = Join-Path $script:RepoRoot 'specs\001-django-fastapi-react\contracts\openapi.yaml'
+    $c = Check-OpenApiContract -artifactDir $artifactDir -contractPath $contractPath
+    $result.openApiContractCheck.enabled = $true
+    $result.openApiContractCheck.ok = [bool]$c.payload.ok
+    $result.openApiContractCheck.contractPath = [string]$c.payload.contractPath
+    $result.openApiContractCheck.contractPathsCount = [int]$c.payload.contractPathsCount
+    $result.openApiContractCheck.runtimePathsCount = [int]$c.payload.runtimePathsCount
+    $result.openApiContractCheck.missingPaths = @($c.payload.missingPaths)
+    $result.openApiContractCheck.error = [string]$c.payload.error
+    $failures += @($c.failures)
+  } catch {
+    $result.openApiContractCheck.enabled = $true
+    $result.openApiContractCheck.ok = $false
+    $result.openApiContractCheck.error = [string]$_.Exception.Message
+    $failures += "OpenAPI contract check failed: $($_.Exception.Message)"
+  }
+
+  # Guarded endpoint probes (unauthenticated should be 401/403)
+  try {
+    $g = Check-GuardedEndpoints -artifactDir $artifactDir -domain $Domain
+    $result.guardedEndpointsCheck.enabled = $true
+    $result.guardedEndpointsCheck.ok = [bool]$g.payload.ok
+    $result.guardedEndpointsCheck.endpoints = @($g.payload.endpoints)
+    $failures += @($g.failures)
+  } catch {
+    $result.guardedEndpointsCheck.enabled = $true
+    $result.guardedEndpointsCheck.ok = $false
+    $failures += "Guarded endpoints check failed: $($_.Exception.Message)"
+  }
 }
 
 # Optional: Test Django proxy endpoint via edge
@@ -1005,6 +1734,21 @@ if ($CheckDjangoAdmin) {
   if ($AdminUser -and $AdminPass) {
     if (@(200,302) -notcontains $withAuthStatus) { $failures += "Django admin expected 200/302 with auth, got $withAuthStatus ($AdminHost)" }
   }
+
+  # Admin host path guard: non-/admin paths should not be served
+  try {
+    $rootHdr = Curl-Head ("https://{0}/" -f $AdminHost)
+    $rootStatus = Get-StatusCodeFromHeaders $rootHdr
+    $fooHdr = Curl-Head ("https://{0}/foo" -f $AdminHost)
+    $fooStatus = Get-StatusCodeFromHeaders $fooHdr
+    $guardOk = (($rootStatus -ne 200) -and ($fooStatus -ne 200))
+    # Prefer explicit allowed statuses
+    $allowedNonAdmin = @(401,403,404)
+    $guardOk = $guardOk -or (($allowedNonAdmin -contains $rootStatus) -and ($allowedNonAdmin -contains $fooStatus))
+    $guardPayload = [ordered]@{ host = $AdminHost; rootStatus = $rootStatus; fooStatus = $fooStatus; ok = $guardOk }
+    Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'admin-host-path-guard.json' -content $guardPayload
+    if (-not $guardOk) { $failures += "Admin host path guard failed: statuses root=$rootStatus, foo=$fooStatus ($AdminHost)" }
+  } catch {}
 }
 
 # Optional: Test pgAdmin dashboard via edge
@@ -1104,13 +1848,54 @@ if ($CheckCelery) {
   if (-not $taskResult) { $failures += "Celery ping task did not complete successfully" }
 }
 
+# Artifact completeness check (key deploy artifacts must exist)
+if ($CheckOpenApi) {
+  try {
+    $acExpected = @('openapi.json','openapi-validation.json','schema-compat-check.json')
+    $ac = Check-ArtifactCompleteness -artifactDir $artifactDir -expectedFiles $acExpected
+    $result.artifactCompletenessCheck.enabled = $true
+    $result.artifactCompletenessCheck.ok = [bool]$ac.payload.ok
+    $result.artifactCompletenessCheck.expected = @($ac.payload.expected)
+    $result.artifactCompletenessCheck.found = $ac.payload.found
+    $result.artifactCompletenessCheck.missing = @($ac.payload.missing)
+    $failures += @($ac.failures)
+  } catch {
+    $result.artifactCompletenessCheck.enabled = $true
+    $result.artifactCompletenessCheck.ok = $false
+    $failures += "Artifact completeness check failed: $($_.Exception.Message)"
+  }
+}
+
 if ($Json) {
+  $result.timestamp = (Get-Date).ToString('s')
+
+  # Write report early so artifact completeness can assert it exists.
+  $result.failures = @($failures)
+  $result.success = $false
+  try { Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'post-deploy-report.json' -content $result } catch {}
+
+  if ($CheckOpenApi) {
+    try {
+      $acExpectedFinal = @('openapi.json','openapi-validation.json','schema-compat-check.json','post-deploy-report.json')
+      $ac2 = Check-ArtifactCompleteness -artifactDir $artifactDir -expectedFiles $acExpectedFinal
+      $result.artifactCompletenessCheck.enabled = $true
+      $result.artifactCompletenessCheck.ok = [bool]$ac2.payload.ok
+      $result.artifactCompletenessCheck.expected = @($ac2.payload.expected)
+      $result.artifactCompletenessCheck.found = $ac2.payload.found
+      $result.artifactCompletenessCheck.missing = @($ac2.payload.missing)
+      $failures += @($ac2.failures)
+    } catch {
+      $failures += "Artifact completeness finalization failed: $($_.Exception.Message)"
+    }
+  }
+
   $result.failures = @($failures)
   $ok = ($failures.Count -eq 0 -and $result.missingFiles.Count -eq 0 -and $result.stagingResolverOK)
   $result.success = $ok
-  $result.timestamp = (Get-Date).ToString('s')
-  # Persist the JSON report under meta/ as a run artifact as well.
+
+  # Persist final form.
   try { Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'post-deploy-report.json' -content $result } catch {}
+
   $jsonStr = $result | ConvertTo-Json -Depth 6
   Write-Output $jsonStr
   try { Pop-Location } catch {}

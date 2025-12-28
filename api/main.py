@@ -1,18 +1,25 @@
-from fastapi import FastAPI, HTTPException, Body, Request, Response
+from fastapi import FastAPI, HTTPException, Body, Request
+import logging
 import os
-from pydantic import BaseModel
+import time
 from celery.result import AsyncResult
-import tasks  # ensure tasks module is importable
-from db import db_ping
+from api import tasks  # ensure tasks module is importable
+from api.db import db_ping
+from fastapi.middleware.cors import CORSMiddleware
 
-
-class LoginPayload(BaseModel):
-    username: str | None = None
-    email: str | None = None
-    password: str
+from api.logging import configure_logging
+try:
+    from api.metrics import metrics
+except Exception:  # pragma: no cover
+    metrics = None
 
 
 ENV = os.getenv("ENV", "development")
+
+_E2E_TEST_MODE = (os.getenv("E2E_TEST_MODE", "") or "").strip().lower() in {"1", "true", "yes", "on"}
+
+configure_logging(service="api")
+logger = logging.getLogger("api.http")
 
 app = FastAPI(
     title="Base2 API",
@@ -21,96 +28,233 @@ app = FastAPI(
     openapi_url=None if ENV == "production" else "/openapi.json",
 )
 
+# Observability: optional OpenTelemetry
+try:
+    from api.otel import configure_otel
+
+    configure_otel(app)
+except Exception:
+    pass
+
+# CORS (strict allowlist; required for browser credentialed requests)
+try:
+    raw = os.getenv("CORS_ALLOW_ORIGINS", "").strip()
+    origins = [o.strip() for o in raw.split(",") if o.strip()] if raw else []
+
+    if not origins:
+        # Dev-friendly defaults.
+        origins = [
+            "http://localhost",
+            "http://localhost:3000",
+            "http://127.0.0.1",
+            "http://127.0.0.1:3000",
+        ]
+        try:
+            from api.settings import settings
+
+            if getattr(settings, "FRONTEND_URL", ""):
+                origins.append(str(settings.FRONTEND_URL).rstrip("/"))
+        except Exception:
+            pass
+
+    allow_credentials = True
+    if "*" in origins:
+        # Disallow wildcard origins with credentials.
+        allow_credentials = False
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=allow_credentials,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-CSRF-Token", "X-Requested-With"],
+    )
+except Exception:
+    pass
+
+# Ensure DB schema is present (idempotent migrations)
+try:
+    from api.migrations.runner import apply_migrations
+
+    apply_migrations()
+except Exception:
+    # Keep boot resilient; schema creation will be retried on next boot.
+    pass
+
+# Middleware: request id
+try:
+    from api.middleware.request_id import request_id_middleware
+
+    @app.middleware("http")
+    async def _add_request_id(request: Request, call_next):
+        return await request_id_middleware(request, call_next)
+except Exception:
+    pass
+
+
+@app.middleware("http")
+async def _access_log(request: Request, call_next):
+    start = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        latency_ms = int((time.perf_counter() - start) * 1000)
+        req_id = getattr(request.state, "request_id", "")
+        try:
+            if metrics is not None:
+                metrics.observe(status=500, latency_ms=latency_ms)
+        except Exception:
+            pass
+        logger.exception(
+            "request_failed",
+            extra={
+                "request_id": req_id,
+                "method": request.method,
+                "path": request.url.path,
+                "status": 500,
+                "latency_ms": latency_ms,
+                "client_ip": (request.client.host if request.client else "unknown"),
+                "user_agent": request.headers.get("user-agent", ""),
+            },
+        )
+        raise
+
+    latency_ms = int((time.perf_counter() - start) * 1000)
+    req_id = getattr(request.state, "request_id", "")
+    try:
+        if metrics is not None:
+            metrics.observe(status=int(getattr(response, "status_code", 0) or 0), latency_ms=latency_ms)
+    except Exception:
+        pass
+    logger.info(
+        "request",
+        extra={
+            "request_id": req_id,
+            "method": request.method,
+            "path": request.url.path,
+            "status": int(getattr(response, "status_code", 0) or 0),
+            "latency_ms": latency_ms,
+            "client_ip": (request.client.host if request.client else "unknown"),
+            "user_agent": request.headers.get("user-agent", ""),
+        },
+    )
+    return response
+
+# Error handlers: ensure consistent {detail}
+try:
+    from api.middleware.errors import register_error_handlers
+
+    register_error_handlers(app)
+except Exception:
+    pass
+
+# Customize OpenAPI to include required security schemes from the external contract.
+try:
+    from fastapi.openapi.utils import get_openapi
+
+    def custom_openapi():
+        openapi_schema = get_openapi(
+            title=app.title,
+            version="0.1.0",
+            description="External API contract surface for Base2",
+            routes=app.routes,
+        )
+        comps = openapi_schema.setdefault("components", {})
+        sec = comps.setdefault("securitySchemes", {})
+        # Session cookie scheme required by contract
+        sec["SessionCookie"] = {
+            "type": "apiKey",
+            "in": "cookie",
+            "name": "base2_session",
+            "description": "HttpOnly cookie carrying the primary session credential.",
+        }
+        # CSRF token header scheme required by contract
+        sec["CsrfToken"] = {
+            "type": "apiKey",
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "description": "CSRF token header required for state-changing requests.",
+        }
+        app.openapi_schema = openapi_schema
+        return app.openapi_schema
+
+    # Assign override and eagerly generate schema so it's ready before first request
+    app.openapi = custom_openapi
+    try:
+        app.openapi()
+    except Exception:
+        pass
+except Exception:
+    # If OpenAPI customization fails, proceed without breaking runtime.
+    pass
+
+
+# External routes (proxy to Django internal)
+try:
+    from api.routes.auth import router as auth_router
+    from api.routes.metrics import router as metrics_router
+    from api.routes.users import router as users_router
+
+    app.include_router(auth_router)
+    app.include_router(metrics_router)
+    app.include_router(users_router)
+
+    # E2E-only helpers (must be explicitly enabled; never in production).
+    if _E2E_TEST_MODE and ENV != "production":
+        try:
+            from api.routes.test_support import router as test_support_router
+
+            app.include_router(test_support_router)
+        except Exception:
+            pass
+except Exception:
+    # Keep app bootable even if routes fail to import.
+    pass
+
 @app.get("/health")
 async def health():
     return {"ok": True, "service": "api", "db_ok": db_ping()}
 
-@app.get("/api/health")
-async def api_health():
-    return {"ok": True, "service": "api"}
 
-@app.get("/api/users/me")
-async def get_me(request: Request):
-    # Django-backed implementation has been removed; FastAPI is now decoupled.
-    raise HTTPException(status_code=501, detail="/api/users/me is not implemented yet")
-# --- Users (proxy to Django internal) ---
-@app.get("/api/users")
-async def list_users():
-    raise HTTPException(status_code=501, detail="/api/users is not implemented yet")
-
-
-@app.post("/api/users/login")
-async def users_login(request: Request):
-    raw = await request.body()
-    # DEBUG: write raw body and headers to file immediately
+@app.get("/flags")
+async def flags():
     try:
-        with open("/tmp/login_debug.txt", "a") as f:
-            f.write("\n==== LOGIN ATTEMPT ====" + os.linesep)
-            f.write("headers: " + str(dict(request.headers)) + os.linesep)
-            f.write("raw body: " + repr(raw) + os.linesep)
-    except Exception as e:
-        pass
-    try:
-        payload = LoginPayload.parse_raw(raw)
-    except Exception as e:
-        try:
-            with open("/tmp/login_debug.txt", "a") as f:
-                f.write("parse error: " + str(e) + os.linesep)
-        except Exception:
-            pass
-        raise HTTPException(status_code=422, detail=f"JSON decode error: {e}")
-    # Accept either username or email, and always forward both if present
-    proxy_payload = {}
-    if payload.username:
-        proxy_payload["username"] = payload.username
-    if payload.email:
-        proxy_payload["email"] = payload.email
-    proxy_payload["password"] = payload.password
-    if not proxy_payload.get("username") and not proxy_payload.get("email"):
-        raise HTTPException(status_code=400, detail="Missing username or email")
-    # Authentication is no longer proxied to Django; this will be
-    # reimplemented to use FastAPI's own data models.
-    raise HTTPException(status_code=501, detail="/api/users/login is not implemented yet")
+        from api.flags import get_flags
 
-
-@app.post("/api/users/logout")
-async def users_logout(request: Request):
-    raise HTTPException(status_code=501, detail="/api/users/logout is not implemented yet")
+        return {"flags": get_flags()}
+    except Exception:
+        return {"flags": {}}
 
 
 # --- Catalog (proxy to Django internal) ---
-@app.get("/api/items")
+@app.get("/items")
 async def list_items():
     raise HTTPException(status_code=501, detail="/api/items is not implemented yet")
 
 
-@app.get("/api/items/{item_id}")
+@app.get("/items/{item_id}")
 async def get_item(item_id: int):
     raise HTTPException(status_code=501, detail="/api/items/{item_id} is not implemented yet")
 
 
-@app.post("/api/items")
+@app.post("/items")
 async def create_item(payload: dict = Body(...)):
     raise HTTPException(status_code=501, detail="/api/items POST is not implemented yet")
 
 
 # --- Celery helper endpoints (optional) ---
-async def _enqueue_celery_ping():
+async def _enqueue_celery_ping(request: Request):
     try:
-        res = tasks.ping.delay()
+        rid = getattr(request.state, "request_id", None) or request.headers.get("x-request-id")
+        res = tasks.ping.delay(request_id=(str(rid) if rid else None))
         return {"task_id": res.id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"enqueue_failed: {e}")
 
 
-@app.post("/api/celery/ping")
-async def celery_ping_api():
-    return await _enqueue_celery_ping()
-
-
 @app.post("/celery/ping")
-async def celery_ping_root():
-    return await _enqueue_celery_ping()
+async def celery_ping_root(request: Request):
+    return await _enqueue_celery_ping(request)
 
 
 async def _read_celery_result(task_id: str):
@@ -125,11 +269,6 @@ async def _read_celery_result(task_id: str):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"result_failed: {e}")
-
-
-@app.get("/api/celery/result/{task_id}")
-async def celery_result_api(task_id: str):
-    return await _read_celery_result(task_id)
 
 
 @app.get("/celery/result/{task_id}")

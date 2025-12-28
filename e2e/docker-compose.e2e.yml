@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: e2e
+      POSTGRES_PASSWORD: e2e
+      POSTGRES_DB: e2e
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U e2e -d e2e || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: ../api
+      dockerfile: .Dockerfile
+      args:
+        PYTHON_VERSION: 3.12-slim
+    environment:
+      ENV: test
+      PORT: 5001
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: e2e
+      DB_USER: e2e
+      DB_PASSWORD: e2e
+      JWT_SECRET: e2e_jwt_secret
+      TOKEN_PEPPER: e2e_token_pepper
+      OAUTH_STATE_SECRET: e2e_oauth_state
+      AUTH_REFRESH_COOKIE: "true"
+      COOKIE_SECURE: "false"
+      COOKIE_SAMESITE: Lax
+      FRONTEND_URL: http://localhost:8080
+      CORS_ALLOW_ORIGINS: http://localhost:8080
+      E2E_TEST_MODE: "true"
+      E2E_TEST_KEY: local-e2e-key
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5001:5001"
+
+  react-app:
+    build:
+      context: ../react-app
+      dockerfile: .Dockerfile
+      args:
+        NODE_VERSION: 18-alpine
+        NGINX_VERSION: 1.25-alpine
+        REACT_APP_API_URL: http://localhost:5001
+    ports:
+      - "8080:8080"
+    depends_on:
+      - api
+

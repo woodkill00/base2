@@ -1,0 +1,61 @@
+name: CI (backend)
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  backend:
+    name: ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [api, django]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          if [ "${{ matrix.service }}" = "api" ]; then
+            python -m pip install -r api/requirements.txt
+          else
+            python -m pip install -r django/requirements.txt
+          fi
+          python -m pip install ruff mypy
+
+      - name: Ruff (lint)
+        run: |
+          if [ "${{ matrix.service }}" = "api" ]; then
+            ruff check api
+          else
+            ruff check django
+          fi
+
+      - name: Mypy (typecheck)
+        run: |
+          if [ "${{ matrix.service }}" = "api" ]; then
+            mypy api
+          else
+            mypy django
+          fi
+
+      - name: Pytest
+        env:
+          # Ensure Django tests use sqlite settings.
+          DJANGO_SETTINGS_MODULE: project.settings.test
+        run: |
+          if [ "${{ matrix.service }}" = "api" ]; then
+            pytest -c api/pytest.ini api
+          else
+            pytest -c django/pytest.ini django
+          fi

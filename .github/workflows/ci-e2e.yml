@@ -1,0 +1,58 @@
+name: CI (e2e)
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: Install deps
+        working-directory: e2e
+        run: npm ci
+
+      - name: Install Playwright browser
+        working-directory: e2e
+        run: npm run install:browsers
+
+      - name: Start stack (docker compose)
+        run: docker compose -f e2e/docker-compose.e2e.yml up -d --build
+
+      - name: Wait for health
+        run: |
+          for i in {1..60}; do
+            curl -fsS http://localhost:5001/health >/dev/null && curl -fsS http://localhost:8080/ >/dev/null && exit 0
+            sleep 2
+          done
+          echo "Services did not become healthy in time" >&2
+          docker compose -f e2e/docker-compose.e2e.yml ps
+          docker compose -f e2e/docker-compose.e2e.yml logs --no-color
+          exit 1
+
+      - name: Run Playwright
+        working-directory: e2e
+        env:
+          E2E_BASE_URL: http://localhost:8080
+          E2E_API_URL: http://localhost:5001
+          E2E_TEST_KEY: local-e2e-key
+        run: npm run test:ci
+
+      - name: Dump compose logs on failure
+        if: failure()
+        run: docker compose -f e2e/docker-compose.e2e.yml logs --no-color
+
+      - name: Stop stack
+        if: always()
+        run: docker compose -f e2e/docker-compose.e2e.yml down -v

@@ -1,7 +1,14 @@
 import os
 from contextlib import contextmanager
+import threading
 
-import psycopg2
+from psycopg2.pool import ThreadedConnectionPool
+
+from api.settings import settings
+
+
+_pool: ThreadedConnectionPool | None = None
+_pool_lock = threading.Lock()
 
 
 def _build_dsn() -> str:
@@ -20,17 +27,52 @@ def _build_dsn() -> str:
     return f"postgresql://{user}:{password}@{host}:{port}/{name}"
 
 
+def _get_pool() -> ThreadedConnectionPool:
+    global _pool
+    if _pool is not None:
+        return _pool
+
+    with _pool_lock:
+        if _pool is not None:
+            return _pool
+
+        dsn = _build_dsn()
+        options = f"-c statement_timeout={settings.DB_STATEMENT_TIMEOUT_MS}"
+        _pool = ThreadedConnectionPool(
+            minconn=settings.DB_POOL_MIN,
+            maxconn=settings.DB_POOL_MAX,
+            dsn=dsn,
+            connect_timeout=settings.DB_CONNECT_TIMEOUT_SEC,
+            options=options,
+            application_name="base2-api",
+        )
+        return _pool
+
+
 @contextmanager
 def db_conn():
-    dsn = _build_dsn()
-    conn = psycopg2.connect(dsn, connect_timeout=3)
+    pool = _get_pool()
+    conn = pool.getconn()
     try:
         yield conn
     finally:
         try:
-            conn.close()
+            pool.putconn(conn)
         except Exception:
-            pass
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+def close_pool() -> None:
+    global _pool
+    if _pool is None:
+        return
+    try:
+        _pool.closeall()
+    finally:
+        _pool = None
 
 
 def db_ping() -> bool:

@@ -1,22 +1,27 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/ToastProvider.jsx';
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
   const { forgotPassword } = useAuth();
+  const toast = useToast();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setMessage('');
+    setFieldErrors({});
 
     if (!email) {
-      setError('Please enter your email address');
+      setFieldErrors({ email: 'Email is required' });
+      setError('Please fix the highlighted fields');
       return;
     }
 
@@ -25,10 +30,20 @@ const ForgotPassword = () => {
     try {
       const result = await forgotPassword(email);
       if (result.success) {
-        setMessage(result.message || 'Password reset instructions sent! Please check your email.');
+        const msg =
+          result.message || 'If the account exists, a password reset email has been sent';
+        setMessage(msg);
+        toast.success(msg);
         setEmail('');
       } else {
-        setError(result.error || 'Failed to send reset email');
+        if (result.fields) {
+          setFieldErrors(result.fields);
+        }
+        const msg = result.error || 'Failed to send reset email';
+        setError(msg);
+        if (result.code === 'network_error') {
+          toast.error(msg);
+        }
       }
     } catch (err) {
       setError('An error occurred. Please try again.');
@@ -46,13 +61,13 @@ const ForgotPassword = () => {
         </p>
 
         {error && (
-          <div style={styles.errorMessage}>
+          <div style={styles.errorMessage} role="alert">
             {error}
           </div>
         )}
 
         {message && (
-          <div style={styles.successMessage}>
+          <div style={styles.successMessage} role="status">
             {message}
           </div>
         )}
@@ -66,7 +81,14 @@ const ForgotPassword = () => {
               onChange={(e) => setEmail(e.target.value)}
               style={styles.input}
               required
+              aria-invalid={fieldErrors.email ? 'true' : 'false'}
+              aria-describedby={fieldErrors.email ? 'email-error' : undefined}
             />
+            {fieldErrors.email ? (
+              <div id="email-error" style={styles.fieldError} role="alert">
+                {fieldErrors.email}
+              </div>
+            ) : null}
           </div>
 
           <button
@@ -80,7 +102,7 @@ const ForgotPassword = () => {
 
         <div style={styles.backToLogin}>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/login')}
             style={styles.secondaryButton}
           >
             ← Back to Login
@@ -137,6 +159,12 @@ const styles = {
     outline: 'none',
     transition: 'border-color 0.2s',
     boxSizing: 'border-box'
+  },
+  fieldError: {
+    marginTop: '6px',
+    fontSize: '12px',
+    color: '#c33',
+    textAlign: 'left',
   },
   submitButton: {
     width: '100%',

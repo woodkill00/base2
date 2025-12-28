@@ -142,4 +142,45 @@ class AuditEvent(TimestampedModel):
     class Meta:
         verbose_name = _("Audit Event")
         verbose_name_plural = _("Audit Events")
-        indexes = [models.Index(fields=["action", "actor_user"]) ]
+        indexes = [
+            # Common query patterns: per-user audit trail, per-action filtering, and recent events.
+            models.Index(fields=["action", "actor_user"], name="users_audit_action_idx"),
+            models.Index(fields=["actor_user"], name="users_audit_actor_idx"),
+            models.Index(fields=["action"], name="users_audit_action_only_idx"),
+            models.Index(fields=["created"], name="users_audit_created_idx"),
+        ]
+
+
+class EmailOutbox(UUIDMixin, TimestampedModel):
+    to = models.EmailField(max_length=255)
+    subject = models.CharField(max_length=255)
+    body = models.TextField()
+    sent_at = models.DateTimeField(null=True, blank=True)
+    provider_message_id = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        verbose_name = _("Email Outbox")
+        verbose_name_plural = _("Email Outbox")
+        indexes = [models.Index(fields=["to", "sent_at"])]
+
+
+class OneTimeToken(UUIDMixin, TimestampedModel):
+    class Purpose(models.TextChoices):
+        EMAIL_VERIFICATION = "email_verification", _("Email verification")
+        PASSWORD_RESET = "password_reset", _("Password reset")
+
+    user = models.ForeignKey(AuthUser, on_delete=models.CASCADE, related_name="one_time_tokens")
+    purpose = models.CharField(max_length=50, choices=Purpose.choices)
+    email = models.EmailField(max_length=255)
+    token_hash = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    consumed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = _("One Time Token")
+        verbose_name_plural = _("One Time Tokens")
+        indexes = [
+            models.Index(fields=["purpose", "email"]),
+            models.Index(fields=["user", "purpose"]),
+            models.Index(fields=["purpose", "consumed_at"]),
+        ]

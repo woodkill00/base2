@@ -1,5 +1,16 @@
 from django.contrib import admin
-from .models import UserProfile, EmailAddress, PhoneNumber, UserAddress, UserUrl, ApiToken, OAuthAccount, RecoveryCode, AuditEvent
+
+from .models import (
+    ApiToken,
+    AuditEvent,
+    EmailAddress,
+    OAuthAccount,
+    PhoneNumber,
+    RecoveryCode,
+    UserAddress,
+    UserProfile,
+    UserUrl,
+)
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
@@ -36,4 +47,30 @@ class RecoveryCodeAdmin(admin.ModelAdmin):
 
 @admin.register(AuditEvent)
 class AuditEventAdmin(admin.ModelAdmin):
-    list_display = ("actor_user", "action", "target_type", "created")
+    list_display = ("actor_email", "action", "ip", "short_user_agent", "target_type", "target_id", "created")
+    list_filter = ("action", "target_type", "created")
+    search_fields = (
+        "actor_user__email",
+        "actor_user__username",
+        "action",
+        "target_type",
+        "target_id",
+        "ip",
+        "user_agent",
+    )
+    ordering = ("-created",)
+    list_select_related = ("actor_user",)
+
+    @admin.display(description="Actor")
+    def actor_email(self, obj):
+        user = getattr(obj, "actor_user", None)
+        if not user:
+            return ""
+        return getattr(user, "email", "") or getattr(user, "username", "") or str(getattr(user, "id", ""))
+
+    @admin.display(description="User agent")
+    def short_user_agent(self, obj):
+        ua = (getattr(obj, "user_agent", "") or "").strip()
+        if len(ua) <= 60:
+            return ua
+        return ua[:57] + "..."

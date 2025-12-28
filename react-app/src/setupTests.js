@@ -4,6 +4,10 @@
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 
+// CRA/Jest can struggle with some ESM-only node_modules (e.g., axios). We don't need
+// real HTTP in unit tests, so use a manual mock.
+jest.mock('axios');
+
 // Mock environment variables
 const websiteDomain = process.env.WEBSITE_DOMAIN || 'localhost';
 process.env.REACT_APP_API_URL =
@@ -13,30 +17,57 @@ process.env.REACT_APP_GOOGLE_CLIENT_ID = 'test-google-client-id';
 // Mock window.matchMedia (needed for some components)
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: jest.fn().mockImplementation((query) => ({
+  value: (query) => ({
     matches: false,
     media: query,
     onchange: null,
-    addListener: jest.fn(), // deprecated
-    removeListener: jest.fn(), // deprecated
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    dispatchEvent: jest.fn(),
-  })),
+    addListener: () => {}, // deprecated
+    removeListener: () => {}, // deprecated
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  }),
 });
 
 // Mock localStorage
+const localStorageStore = new Map();
+const getItemImpl = (key) => {
+  const normalizedKey = String(key);
+  return localStorageStore.has(normalizedKey)
+    ? localStorageStore.get(normalizedKey)
+    : null;
+};
+const setItemImpl = (key, value) => {
+  localStorageStore.set(String(key), String(value));
+};
+const removeItemImpl = (key) => {
+  localStorageStore.delete(String(key));
+};
+const clearImpl = () => {
+  localStorageStore.clear();
+};
+
 const localStorageMock = {
-  getItem: jest.fn(),
-  setItem: jest.fn(),
-  removeItem: jest.fn(),
-  clear: jest.fn(),
+  getItem: jest.fn(getItemImpl),
+  setItem: jest.fn(setItemImpl),
+  removeItem: jest.fn(removeItemImpl),
+  clear: jest.fn(clearImpl),
 };
 Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
   writable: true,
 });
 global.localStorage = window.localStorage;
+
+// CRA/Jest runs with resetMocks enabled, which clears mock implementations
+// before each test. Re-apply implementations so localStorage behaves like
+// the real thing while still allowing call assertions.
+beforeEach(() => {
+  localStorageMock.getItem.mockImplementation(getItemImpl);
+  localStorageMock.setItem.mockImplementation(setItemImpl);
+  localStorageMock.removeItem.mockImplementation(removeItemImpl);
+  localStorageMock.clear.mockImplementation(clearImpl);
+});
 
 // Suppress console errors in tests (optional)
 // global.console = {

@@ -2,6 +2,12 @@
 DO_userdata.json
 # Local run logs (timestamped deploy artifacts)
 local_run_logs/
+
+# Temporary diagnostics (created during local debugging)
+/_tmp_*
+
+# Platform-specific binaries (do not commit)
+/docker-compose
 # ==========================================
 # Security & Secrets (CRITICAL - DO NOT COMMIT)
 # ==========================================

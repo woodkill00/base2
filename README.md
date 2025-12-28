@@ -3,6 +3,12 @@
 
 A robust, production-ready Docker setup with enhanced security, health checks, and comprehensive environment variable management.
 
+## Feature Docs (Current Work)
+
+- Spec: [specs/001-django-fastapi-react/spec.md](specs/001-django-fastapi-react/spec.md)
+- Plan: [specs/001-django-fastapi-react/plan.md](specs/001-django-fastapi-react/plan.md)
+- Observability: [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md)
+
 ## ⚠️ Platform Compatibility
 
 All scripts require Bash and are tested on Mac, Linux, and Windows (WSL/Git Bash). For Windows, use WSL or Git Bash for best results.
@@ -59,16 +65,48 @@ Edit `.env` to configure your services with custom values. All environment varia
 ### 2. Build and Start Services
 
 ```bash
-```bash
 # Build all services
-docker-compose -f local.docker.yml build
+docker compose -f local.docker.yml build
 
 # Start all services
-docker-compose -f local.docker.yml up -d
+docker compose -f local.docker.yml up -d
 
 # View logs
-docker-compose -f local.docker.yml logs -f
+docker compose -f local.docker.yml logs -f
 ```
+
+### 2b. (Recommended) Use the Makefile shortcuts
+
+If you have `make` available (Mac/Linux, or Windows via WSL/Git Bash), you can use:
+
+```bash
+make up
+make logs
+make test
+```
+
+See `Makefile` for all available targets.
+
+On Windows PowerShell (no Bash/make required), use the equivalent wrappers:
+
+```powershell
+./scripts/start.ps1
+./scripts/logs.ps1
+./scripts/test.ps1
+```
+
+### Seed data (dev/demo)
+
+Configure `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` in `.env`, then run:
+
+```bash
+make seed
+```
+
+Windows PowerShell:
+
+```powershell
+./scripts/seed.ps1
 ```
 
 ### 3. Configure Authentication (IMPORTANT!)
@@ -363,52 +401,52 @@ This script will permanently delete:
 
 ## 🛠️ Direct Docker Compose Commands
 
-If you prefer to use docker-compose directly:
+If you prefer to use Docker Compose directly:
 
 ### Start Services
 
 ```bash
-docker-compose -f local.docker.yml up -d
+docker compose -f local.docker.yml up -d
 ```
 
 ### Stop Services
 
 ```bash
-docker-compose -f local.docker.yml down
+docker compose -f local.docker.yml down
 ```
 
 ### Restart a Specific Service
 
 ```bash
-docker-compose -f local.docker.yml restart react-app
+docker compose -f local.docker.yml restart react-app
 ```
 
 ### View Logs
 
 ```bash
 # All services
-docker-compose -f local.docker.yml logs -f
+docker compose -f local.docker.yml logs -f
 
 # Specific service
-docker-compose -f local.docker.yml logs -f postgres
+docker compose -f local.docker.yml logs -f postgres
 ```
 
 ### Rebuild After Changes
 
 ```bash
-docker-compose -f local.docker.yml up -d --build
+docker compose -f local.docker.yml up -d --build
 ```
 
 ### Check Service Health
 
 ```bash
-docker-compose -f local.docker.yml ps
+docker compose -f local.docker.yml ps
 ```
 
 ### Access Container Shell
 
 ```bash
-docker-compose -f local.docker.yml exec postgres sh
+docker compose -f local.docker.yml exec postgres sh
 ```
 
 ## 🗄️ Data Persistence
@@ -422,7 +460,7 @@ The following data is persisted in named volumes:
 To remove volumes (⚠️ **WARNING: This will delete all data**):
 
 ```bash
-docker-compose -f local.docker.yml down -v
+docker compose -f local.docker.yml down -v
 ```
 
 ## 🔍 Troubleshooting
@@ -446,7 +484,7 @@ Then log out and back in.
 Check logs for the specific service:
 
 ```bash
-docker-compose -f local.docker.yml logs servicename
+docker compose -f local.docker.yml logs servicename
 ```
 
 ### Database Connection Issues
@@ -454,7 +492,7 @@ docker-compose -f local.docker.yml logs servicename
 Verify PostgreSQL is healthy:
 
 ```bash
-docker-compose -f local.docker.yml exec postgres pg_isready -U myuser
+docker compose -f local.docker.yml exec postgres pg_isready -U myuser
 ```
 
 ## 🚨 Production Considerations
@@ -486,6 +524,6 @@ This project configuration is available for use under your project's license ter
 To contribute improvements:
 
 1. Update the relevant Dockerfile or configuration
-2. Test thoroughly with `docker-compose build` and `up`
+2. Test thoroughly with `docker compose build` and `up`
 3. Update this README with any new features or changes
 4. Document environment variables in `.env.example`

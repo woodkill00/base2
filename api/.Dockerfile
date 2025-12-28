@@ -5,21 +5,25 @@ FROM python:${PYTHON_VERSION}
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl build-essential \
+    bash curl build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Non-root user for runtime and ensure /app is writable
 RUN useradd -m appuser && chown -R appuser:appuser /app
 USER appuser
 
-COPY requirements.txt ./
+RUN mkdir -p /app/api
+
+COPY --chown=appuser:appuser requirements.txt ./api/requirements.txt
 ENV PATH="/home/appuser/.local/bin:${PATH}" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
-RUN pip install --user --no-cache-dir -r requirements.txt
+RUN pip install --user --no-cache-dir -r api/requirements.txt
 
-COPY . .
+COPY --chown=appuser:appuser . ./api
+
+RUN sed -i 's/\r$//' /app/api/entrypoint.sh && chmod +x /app/api/entrypoint.sh
 
 ENV PORT=8000
-# Use shell form to expand $PORT at runtime
-CMD ["sh", "-lc", "uvicorn main:app --host 0.0.0.0 --port ${PORT}"]
+ENV PYTHONPATH=/app
+CMD ["/app/api/entrypoint.sh"]

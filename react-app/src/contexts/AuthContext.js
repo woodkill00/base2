@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI } from '../services/api';
+import { normalizeApiError } from '../lib/apiErrors';
 
 const AuthContext = createContext(null);
 
@@ -12,24 +13,25 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(() => {
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(storedUser);
+    } catch (error) {
+      console.error('Error parsing stored user:', error);
+      localStorage.removeItem('user');
+      return null;
+    }
+  });
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Check for stored token and user on mount
-    const token = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    
-    if (token && storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (error) {
-        console.error('Error parsing stored user:', error);
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
-      }
-    }
+    // If we ever add async session verification, this is the hook.
     setLoading(false);
   }, []);
 
@@ -37,12 +39,22 @@ export const AuthProvider = ({ children }) => {
   const register = async (email, password, name) => {
     try {
       setError(null);
-      const data = await authAPI.register(email, password, name);
-      return { success: true, data };
+      const userPayload = await authAPI.register(email, password, name);
+      if (userPayload && userPayload.email) {
+        setUser(userPayload);
+        localStorage.setItem('user', JSON.stringify(userPayload));
+        if (userPayload.access_token) {
+          localStorage.setItem('token', userPayload.access_token);
+        }
+        if (userPayload.refresh_token) {
+          localStorage.setItem('refresh_token', userPayload.refresh_token);
+        }
+      }
+      return { success: true, data: userPayload };
     } catch (error) {
-      const message = error.response?.data?.message || 'Registration failed';
-      setError(message);
-      return { success: false, error: message };
+      const apiErr = normalizeApiError(error, { fallbackMessage: 'Registration failed' });
+      setError(apiErr.message);
+      return { success: false, error: apiErr.message, fields: apiErr.fields || null, code: apiErr.code };
     }
   };
 
@@ -50,41 +62,49 @@ export const AuthProvider = ({ children }) => {
   const loginWithEmail = async (email, password) => {
     try {
       setError(null);
-      const data = await authAPI.login(email, password);
-      
-      if (data.success && data.token) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        setUser(data.user);
+      const userPayload = await authAPI.login(email, password);
+
+      if (userPayload && userPayload.email) {
+        localStorage.setItem('user', JSON.stringify(userPayload));
+        if (userPayload.access_token) {
+          localStorage.setItem('token', userPayload.access_token);
+        }
+        if (userPayload.refresh_token) {
+          localStorage.setItem('refresh_token', userPayload.refresh_token);
+        }
+        setUser(userPayload);
         return { success: true };
       }
-      
+
       return { success: false, error: 'Invalid response from server' };
     } catch (error) {
-      const message = error.response?.data?.message || 'Login failed';
-      setError(message);
-      return { success: false, error: message };
+      const apiErr = normalizeApiError(error, { fallbackMessage: 'Login failed' });
+      setError(apiErr.message);
+      return { success: false, error: apiErr.message, fields: apiErr.fields || null, code: apiErr.code };
     }
   };
 
   // Login with Google OAuth
-  const loginWithGoogle = async (googleId, email, name, picture) => {
+  const loginWithGoogle = async (credential) => {
     try {
       setError(null);
-      const data = await authAPI.googleAuth(googleId, email, name, picture);
-      
-      if (data.success && data.token) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        setUser(data.user);
+      const data = await authAPI.googleAuth(credential);
+
+      if (data && data.email && data.access_token) {
+        localStorage.setItem('token', data.access_token);
+        if (data.refresh_token) {
+          localStorage.setItem('refresh_token', data.refresh_token);
+        }
+        localStorage.setItem('user', JSON.stringify(data));
+        setUser(data);
         return { success: true };
       }
-      
+
       return { success: false, error: 'Invalid response from server' };
     } catch (error) {
-      const message = error.response?.data?.message || 'Google login failed';
-      setError(message);
-      return { success: false, error: message };
+      const apiErr = normalizeApiError(error, { fallbackMessage: 'Google login failed' });
+      setError(apiErr.message);
+      return { success: false, error: apiErr.message, fields: apiErr.fields || null, code: apiErr.code };
     }
   };
 
@@ -98,15 +118,22 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Logout
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
+  const logout = async () => {
+    try {
+      await authAPI.logout();
+    } catch (error) {
+      // Ignore network/server errors; we still clear local session state.
+    } finally {
+      setUser(null);
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      localStorage.removeItem('refresh_token');
+    }
   };
 
   // Update user profile
   const updateUser = (userData) => {
-    const updatedUser = { ...user, ...userData };
+    const updatedUser = { ...(user || {}), ...userData };
     setUser(updatedUser);
     localStorage.setItem('user', JSON.stringify(updatedUser));
   };
@@ -116,32 +143,12 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null);
       const data = await authAPI.verifyEmail(token);
-      
-      if (data.success && data.token) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        setUser(data.user);
-        return { success: true, message: data.message };
-      }
-      
-      return { success: false, error: 'Verification failed' };
+      const message = data?.detail || 'Email verified successfully!';
+      return { success: true, message };
     } catch (error) {
-      const message = error.response?.data?.message || 'Email verification failed';
-      setError(message);
-      return { success: false, error: message };
-    }
-  };
-
-  // Resend verification email
-  const resendVerification = async (email) => {
-    try {
-      setError(null);
-      const data = await authAPI.resendVerification(email);
-      return { success: true, message: data.message };
-    } catch (error) {
-      const message = error.response?.data?.message || 'Failed to resend verification email';
-      setError(message);
-      return { success: false, error: message };
+      const apiErr = normalizeApiError(error, { fallbackMessage: 'Email verification failed' });
+      setError(apiErr.message);
+      return { success: false, error: apiErr.message, fields: apiErr.fields || null, code: apiErr.code };
     }
   };
 
@@ -150,11 +157,12 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null);
       const data = await authAPI.forgotPassword(email);
-      return { success: true, message: data.message };
+      const message = data?.detail || 'If the account exists, a password reset email has been sent';
+      return { success: true, message };
     } catch (error) {
-      const message = error.response?.data?.message || 'Failed to send reset email';
-      setError(message);
-      return { success: false, error: message };
+      const apiErr = normalizeApiError(error, { fallbackMessage: 'Failed to send reset email' });
+      setError(apiErr.message);
+      return { success: false, error: apiErr.message, fields: apiErr.fields || null, code: apiErr.code };
     }
   };
 
@@ -163,11 +171,12 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null);
       const data = await authAPI.resetPassword(token, password);
-      return { success: true, message: data.message };
+      const message = data?.detail || 'Password reset successfully';
+      return { success: true, message };
     } catch (error) {
-      const message = error.response?.data?.message || 'Password reset failed';
-      setError(message);
-      return { success: false, error: message };
+      const apiErr = normalizeApiError(error, { fallbackMessage: 'Password reset failed' });
+      setError(apiErr.message);
+      return { success: false, error: apiErr.message, fields: apiErr.fields || null, code: apiErr.code };
     }
   };
 
@@ -183,7 +192,6 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateUser,
     verifyEmail,
-    resendVerification,
     forgotPassword,
     resetPassword,
   };

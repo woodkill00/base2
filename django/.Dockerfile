@@ -6,6 +6,7 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    bash \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt ./
@@ -18,5 +19,7 @@ ENV DJANGO_SETTINGS_MODULE=project.settings.production
 ENV PORT=8000
 
 # Use $PORT so Traefik and Compose can control the binding
-# Run migrations, collect static assets into STATIC_ROOT, ensure a superuser (if env vars provided), then start Gunicorn.
-CMD ["sh", "-lc", "python manage.py makemigrations && python manage.py migrate --noinput && python manage.py collectstatic --noinput && python -m project.create_superuser || true && gunicorn project.wsgi:application --bind 0.0.0.0:${PORT} --workers 3 --access-logfile - --error-logfile -"]
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]

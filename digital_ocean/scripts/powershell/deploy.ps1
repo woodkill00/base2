@@ -14,7 +14,8 @@ param(
   [switch]$RunRateLimitTest,
   [switch]$RunCeleryCheck,
   [int]$RateLimitBurst = 20,
-  [int]$VerifyTimeoutSec = 600,
+  # Remote verification can include container rebuilds and test runs; 10 minutes is often too low.
+  [int]$VerifyTimeoutSec = 1800,
   [switch]$AsyncVerify,
   [int]$LogsPollMaxAttempts = 30,
   [int]$LogsPollIntervalSec = 10,
@@ -57,8 +58,11 @@ function Get-ArtifactServiceSubdir([string]$fileName) {
 
     '^remote_verify\.done$' { return 'meta' }
     '^post-deploy-report\.json$' { return 'meta' }
+    '^deploy-mode\.json$' { return 'meta' }
 
     '^manual-test-out\.json$' { return 'meta' }
+
+    '^rollback\.(txt|log)$' { return 'meta' }
 
     '^traefik-.*\.yml$' { return 'traefik' }
     '^traefik-.*\.template\.yml$' { return 'traefik' }
@@ -67,6 +71,7 @@ function Get-ArtifactServiceSubdir([string]$fileName) {
     '^django-.*\.txt$' { return 'django' }
 
     '^api-logs\.txt$' { return 'api' }
+    '^api-.*\.txt$' { return 'api' }
     '^api-health(\-slash)?\.(json|status)$' { return 'api' }
 
     '^curl-.*\.txt$' { return 'smoke' }
@@ -77,6 +82,64 @@ function Get-ArtifactServiceSubdir([string]$fileName) {
 
     '^env-dollar-check\.(txt|status)$' { return 'meta' }
     default { return '' }
+  }
+}
+
+function Invoke-RollbackOnFailureIfEnabled([string]$ip, [string]$keyPath) {
+  $enabled = ((($env:DEPLOY_ROLLBACK_ON_FAILURE) + '')).Trim().ToLower() -in @('1','true','yes','on')
+  if (-not $enabled) { return }
+
+  Write-Section "Rollback hook (enabled)"
+  $artifactDir = Ensure-ArtifactDir
+  $metaDir = Join-Path $artifactDir 'meta'
+  if (-not (Test-Path $metaDir)) { New-Item -ItemType Directory -Path $metaDir -Force | Out-Null }
+  $outPath = Join-Path $metaDir 'rollback.txt'
+
+  $sshExe = 'ssh'
+  $sshCommon = @(
+    '-o','ConnectTimeout=60',
+    '-o','ConnectionAttempts=2',
+    '-o','ServerAliveInterval=15',
+    '-o','ServerAliveCountMax=3',
+    '-o','StrictHostKeyChecking=no',
+    '-o','BatchMode=yes'
+  )
+  $sshArgs = @('-i', $keyPath) + $sshCommon + @("root@$ip")
+
+  $remote = @'
+set -eu
+cd /opt/apps/base2
+PREV_FILE=/root/logs/build/pre-deploy-head.txt
+if [ ! -f "$PREV_FILE" ]; then
+  echo "No pre-deploy head recorded at $PREV_FILE" >&2
+  exit 2
+fi
+PREV=$(cat "$PREV_FILE" | tr -d '\r\n' || true)
+if [ -z "$PREV" ]; then
+  echo "Pre-deploy head file was empty" >&2
+  exit 2
+fi
+
+echo "Rolling back to $PREV" 
+git reset --hard "$PREV" || true
+
+# Recreate core services to match the rolled-back code.
+docker compose -f local.docker.yml up -d --build --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat >/root/logs/build/rollback-compose-up.txt 2>&1 || true
+
+echo "Rollback completed. Current HEAD: $(git rev-parse HEAD 2>/dev/null || true)"
+'@
+
+  $prevEap = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = 'Continue'
+    $txt = (& $sshExe @sshArgs $remote 2>&1 | Out-String)
+    Set-Content -Path $outPath -Value $txt.TrimEnd() -Encoding UTF8
+    Write-Host "Rollback output saved: $outPath" -ForegroundColor Yellow
+  } catch {
+    try { Set-Content -Path $outPath -Value ("Rollback failed: " + $($_.Exception.Message)) -Encoding UTF8 } catch {}
+    Write-Warning "Rollback hook failed: $($_.Exception.Message)"
+  } finally {
+    $ErrorActionPreference = $prevEap
   }
 }
 
@@ -463,9 +526,10 @@ function Assert-EnvNotTracked {
     $null = Get-Command git -ErrorAction Stop
     # In Windows PowerShell 5.1, piping native output (even to Out-Null) can raise
     # "The pipeline has been stopped". Avoid pipelines; rely on exit codes instead.
-    # If .env is NOT tracked, git exits non-zero and may print a pathspec message to stderr.
-    & git ls-files --error-unmatch .env *> $null
-    if ($LASTEXITCODE -eq 0) {
+    # Avoid `git ls-files --error-unmatch` because it can emit a terminating error record
+    # under strict error settings. Use output presence to detect tracking, without pipelines.
+    $tracked = & git ls-files .env 2>$null
+    if ($tracked) {
       throw ".env is tracked by git. Fix by running: git rm --cached .env (and commit), ensure .gitignore includes .env, then re-run deploy."
     }
     $LASTEXITCODE = 0
@@ -583,7 +647,16 @@ function Remote-Verify($ip, $keyPath) {
   $null = Ensure-ArtifactDir -ip $ip
   $sshExe = "ssh"
   $scpExe = "scp"
-  $sshCommon = @('-o','ConnectTimeout=20','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=4','-o','StrictHostKeyChecking=no')
+  # Be resilient to transient SSH/SCP handshake slowness; OpenSSH on Windows sometimes hits
+  # "Connection timed out during banner exchange" on busy or briefly unreachable hosts.
+  $sshCommon = @(
+    '-o','ConnectTimeout=60',
+    '-o','ConnectionAttempts=3',
+    '-o','ServerAliveInterval=15',
+    '-o','ServerAliveCountMax=4',
+    '-o','StrictHostKeyChecking=no',
+    '-o','BatchMode=yes'
+  )
   $sshArgs = @('-i', $keyPath) + $sshCommon + @("root@$ip")
   $prevEap = $ErrorActionPreference
   try {
@@ -611,8 +684,16 @@ set -eu
 mkdir -p /root/logs
 if [ -d /opt/apps/base2 ]; then
   cd /opt/apps/base2
-  # Prepare log directories
-  mkdir -p /root/logs/build /root/logs/services || true
+  # Prepare log directories; clear stale artifacts from previous runs.
+  rm -rf /root/logs/* || true
+  mkdir -p /root/logs/build /root/logs/services /root/logs/meta || true
+  # Record pre-deploy git SHA for optional rollback.
+  if command -v git >/dev/null 2>&1; then
+    (git rev-parse HEAD 2>/dev/null || true) > /root/logs/build/pre-deploy-head.txt || true
+  fi
+  # Prevent noisy stdout/stderr (git, docker build progress) from flowing back over SSH.
+  # Windows PowerShell 5.1 can treat remote stderr as terminating errors under strict settings.
+  exec > /root/logs/build/remote-verify-console.txt 2>&1
   # Preserve the active .env across git reset/clean (the repo may track a template .env)
   if [ -f .env ]; then
     cp -f .env /root/logs/build/env-backup.env || true
@@ -639,6 +720,7 @@ if [ -d /opt/apps/base2 ]; then
       git checkout -f "$BRANCH" || true
       git pull --rebase || true
     fi
+    (git rev-parse HEAD 2>/dev/null || true) > /root/logs/build/post-deploy-head.txt || true
   fi
   # Restore .env after repo sync so Compose uses the deployed values
   if [ -f /root/logs/build/env-backup.env ]; then
@@ -682,26 +764,58 @@ PY
   STATUS=$?
   set -e
   echo $STATUS > /root/logs/build/env-dollar-check.status || true
-  # Capture build and up logs for the core stack
-  docker compose -f local.docker.yml build --no-cache traefik > /root/logs/build/traefik-build.txt 2>&1 || true
-  docker compose -f local.docker.yml build django > /root/logs/build/django-build.txt 2>&1 || true
-  docker compose -f local.docker.yml build api > /root/logs/build/api-build.txt 2>&1 || true
-  docker compose -f local.docker.yml build react-app > /root/logs/build/react-build.txt 2>&1 || true
+  # IMPORTANT: We have observed Docker caching causing stale FastAPI code to persist across
+  # UpdateOnly deploys. Use a targeted no-cache rebuild for the `api` service to ensure the
+  # running container matches the git checkout (keeps overall verification time reasonable).
+  docker compose -f local.docker.yml build --no-cache api > /root/logs/build/api-build-nocache.txt 2>&1 || true
 
+  # Bring up services. `up --build` is generally sufficient to rebuild when inputs change.
   # Bring up core services needed for edge routing (avoid 502 due to missing upstreams)
   # Also start Celery worker/beat by default (Option A: no profile gating).
-  docker compose -f local.docker.yml up -d --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat > /root/logs/build/compose-up-core.txt 2>&1 || true
-  docker compose -f local.docker.yml up -d --force-recreate traefik > /root/logs/build/traefik-up.txt 2>&1 || true
+  docker compose -f local.docker.yml up -d --build --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat > /root/logs/build/compose-up-core.txt 2>&1 || true
+  # Ensure API container uses the freshly built image
+  docker compose -f local.docker.yml up -d --build --force-recreate --no-deps api > /root/logs/build/api-up.txt 2>&1 || true
+  docker compose -f local.docker.yml up -d --build --force-recreate --no-deps traefik > /root/logs/build/traefik-up.txt 2>&1 || true
 
   # Ensure Flower is started (kept as a separate log artifact)
-  docker compose -f local.docker.yml up -d flower > /root/logs/build/flower-up.txt 2>&1 || true
+  docker compose -f local.docker.yml up -d --build flower > /root/logs/build/flower-up.txt 2>&1 || true
 
   # Ensure Django service is running for admin route
-  docker compose -f local.docker.yml up -d django > /root/logs/build/django-up.txt 2>&1 || true
+  docker compose -f local.docker.yml up -d --build django > /root/logs/build/django-up.txt 2>&1 || true
   # Capture Django migration output into a dedicated artifact
   docker compose -f local.docker.yml exec -T django python manage.py migrate --noinput > /root/logs/django-migrate.txt 2>&1 || true
   # Django deploy checks (security + config sanity)
   docker compose -f local.docker.yml exec -T django python manage.py check --deploy > /root/logs/django-check-deploy.txt 2>&1 || true
+  # Django internal HTTP health (avoid probing admin HTML); capture JSON body + HTTP status
+  docker compose -f local.docker.yml exec -T django python - <<'PY' > /root/logs/django-internal-health.json 2> /root/logs/django-internal-health.status || true
+import json
+import os
+import sys
+from urllib.error import HTTPError
+from urllib.request import urlopen
+
+port = os.environ.get("PORT") or "8000"
+url = f"http://127.0.0.1:{port}/internal/health"
+status = 0
+body = "{}"
+
+try:
+    with urlopen(url, timeout=5) as resp:
+        status = getattr(resp, "status", None) or resp.getcode() or 200
+        body = resp.read().decode("utf-8")
+except HTTPError as e:
+    status = e.code
+    try:
+        body = e.read().decode("utf-8")
+    except Exception:
+        body = json.dumps({"ok": False, "service": "django", "db_ok": False})
+except Exception as e:
+    status = 0
+    body = json.dumps({"ok": False, "service": "django", "db_ok": False, "error": str(e)})
+
+sys.stdout.write(body)
+sys.stderr.write(str(status))
+PY
   # Schema compatibility check (fails if migrations unapplied or schema drift)
   set +e
   docker compose -f local.docker.yml exec -T django python manage.py schema_compat_check --json > /root/logs/schema-compat-check.json 2> /root/logs/schema-compat-check.err
@@ -711,12 +825,13 @@ PY
   if [ "${RUN_CELERY_CHECK:-}" = "1" ]; then
     # Tune host sysctl for Redis memory overcommit (best-effort, ignore errors)
     (sysctl -w vm.overcommit_memory=1 && echo 'vm.overcommit_memory=1' > /etc/sysctl.d/99-redis.conf && sysctl --system) || true
-    # Build API (used by Celery worker image) if present; ignore if missing
-    docker compose -f local.docker.yml build api > /root/logs/build/api-build.txt 2>&1 || true
+    # Build Celery services (Django-based) if present; ignore if missing
+    docker compose -f local.docker.yml build celery-worker > /root/logs/build/celery-worker-build.txt 2>&1 || true
+    docker compose -f local.docker.yml build celery-beat > /root/logs/build/celery-beat-build.txt 2>&1 || true
     # Start Redis, Celery worker and beat under the celery profile; ignore if services not defined
-    docker compose -f local.docker.yml --profile celery up -d redis celery-worker celery-beat > /root/logs/build/celery-up.txt 2>&1 || true
+    docker compose -f local.docker.yml --profile celery up -d --build redis celery-worker celery-beat > /root/logs/build/celery-up.txt 2>&1 || true
     # Start Flower if defined
-    docker compose -f local.docker.yml up -d flower > /root/logs/build/flower-up.txt 2>&1 || true
+    docker compose -f local.docker.yml up -d --build flower > /root/logs/build/flower-up.txt 2>&1 || true
   fi
   # Best-effort: wait for key services to report healthy before snapshotting.
   # This reduces false negatives where compose-ps.txt is captured during startup.
@@ -816,6 +931,7 @@ PY
       echo "EMPTY" > /root/logs/traefik-dynamic.yml
     fi
     docker exec "$CID" sh -lc 'ls -l /etc/traefik /etc/traefik/dynamic' > /root/logs/traefik-ls.txt || true
+    docker exec "$CID" sh -lc 'ls -la /etc/traefik/acme 2>/dev/null || true; for f in /etc/traefik/acme/*.json; do [ -f "$f" ] || continue; stat -c "%a %n" "$f" 2>/dev/null || true; done' > /root/logs/traefik-acme-perms.txt || true
     # Capture the templates used inside the container for debugging
     docker exec "$CID" sh -lc 'cat /etc/traefik/templates/dynamic.yml.template 2>/dev/null || echo TEMPLATE_MISSING' > /root/logs/traefik-dynamic.template.yml || true
     docker exec "$CID" sh -lc 'cat /etc/traefik/templates/traefik.yml.template 2>/dev/null || echo TEMPLATE_MISSING' > /root/logs/traefik-static.template.yml || true
@@ -828,7 +944,7 @@ PY
       echo "MISSING_API_CID" > /root/logs/api-logs.txt
     fi
   else
-    echo "MISSING_CID" | tee /root/logs/traefik-env.txt /root/logs/traefik-static.yml /root/logs/traefik-dynamic.yml /root/logs/traefik-ls.txt /root/logs/traefik-logs.txt /root/logs/api-logs.txt >/dev/null
+    echo "MISSING_CID" | tee /root/logs/traefik-env.txt /root/logs/traefik-static.yml /root/logs/traefik-dynamic.yml /root/logs/traefik-ls.txt /root/logs/traefik-acme-perms.txt /root/logs/traefik-logs.txt /root/logs/api-logs.txt >/dev/null
   fi
   DOMAIN=$(grep -E '^WEBSITE_DOMAIN=' /opt/apps/base2/.env | cut -d'=' -f2 | tr -d '\r')
   if [ -n "$DOMAIN" ]; then
@@ -857,6 +973,156 @@ PY
     curl -sk "${RESOLVE_DOMAIN[@]}" -o /root/logs/api-health.json -w "%{http_code}" "https://$DOMAIN/api/health" > /root/logs/api-health.status || true
     curl -sk "${RESOLVE_DOMAIN[@]}" -o /root/logs/api-health-slash.json -w "%{http_code}" "https://$DOMAIN/api/health/" > /root/logs/api-health-slash.status || true
 
+    # Request-id log propagation probe:
+    # - Send a request with an explicit X-Request-Id
+    # - Confirm that ID appears in FastAPI/Django logs (and Traefik access log if available)
+    # IMPORTANT: Keep this probe non-fatal; missing log hits should not abort remote verification.
+    set +e
+    RID=$(cat /proc/sys/kernel/random/uuid 2>/dev/null || true)
+    if [ -z "$RID" ]; then
+      RID=$(python3 -c 'import uuid; print(str(uuid.uuid4()))' 2>/dev/null || true)
+    fi
+    export RID
+    mkdir -p /root/logs/meta /root/logs/services || true
+    : > /root/logs/request-id-health.headers || true
+    : > /root/logs/request-id-health.body || true
+    curl -sk "${RESOLVE_DOMAIN[@]}" -X POST \
+      -H "X-Request-Id: $RID" \
+      -H 'Content-Type: application/json' \
+      -d '{"email":"request-id-probe@example.com","password":"not-a-real-password"}' \
+      -D /root/logs/request-id-health.headers \
+      -o /root/logs/request-id-health.body \
+      "https://$DOMAIN/api/users/login" || true
+
+    # During deploy/recreate, `docker compose ps -q <service>` can briefly return multiple IDs.
+    # Grep across all candidate IDs to avoid false negatives.
+    TIDS=$(docker compose -f local.docker.yml ps -q traefik 2>/dev/null || true)
+    AIDS=$(docker compose -f local.docker.yml ps -q api 2>/dev/null || true)
+    DJIDS=$(docker compose -f local.docker.yml ps -q django 2>/dev/null || true)
+    CWIDS=$(docker compose -f local.docker.yml ps -q celery-worker 2>/dev/null || true)
+
+    # Ensure Django emits at least one structured *request* log line containing the probe RID.
+    # NOTE: `docker exec` process stdout does not appear in `docker logs`, so we must trigger
+    # a real HTTP request handled by the running gunicorn process.
+    if [ -n "$DJIDS" ]; then
+      # Write into /root/logs (top-level) so the artifact copy-back picks it up.
+      : > /root/logs/request-id-django-probe.txt || true
+      docker compose -f local.docker.yml exec -T django python - <<PY > /root/logs/request-id-django-probe.txt 2>&1 || true
+import http.client
+import os
+
+rid = "${RID}"
+port = int(os.environ.get('PORT') or '8000')
+
+print(f"rid_literal={rid}")
+conn = http.client.HTTPConnection('127.0.0.1', port, timeout=5)
+conn.request('GET', '/internal/health', headers={'X-Request-Id': rid})
+resp = conn.getresponse()
+body = resp.read()  # consume
+print(f"status={resp.status}")
+print(f"resp_x_request_id={resp.getheader('X-Request-Id','')}")
+print(f"body_len={len(body)}")
+PY
+    fi
+
+    # Ensure Celery worker emits at least one log line containing the probe RID.
+    # Use the Django container to enqueue the task by name. This avoids relying on
+    # API helper endpoints and guarantees the worker sees `request_id=$RID`.
+    if [ -n "$CWIDS" ] && [ -n "$DJIDS" ]; then
+      : > /root/logs/request-id-celery-probe.txt || true
+      docker compose -f local.docker.yml exec -T django python - <<PY > /root/logs/request-id-celery-probe.txt 2>&1 || true
+import os
+
+rid = "${RID}"
+
+try:
+    from project.celery import app
+    res = app.send_task("base2.ping", kwargs={"request_id": rid})
+    print(f"enqueued_task_id={res.id}")
+except Exception as e:
+    print(f"enqueue_failed={e}")
+PY
+    fi
+
+    # Capture grep outputs (best-effort; keep artifacts even on failure)
+    : > /root/logs/services/request-id-traefik.txt || true
+    : > /root/logs/services/request-id-api.txt || true
+    : > /root/logs/services/request-id-django.txt || true
+    : > /root/logs/services/request-id-celery-worker.txt || true
+    : > /root/logs/services/request-id-django-context.txt || true
+    : > /root/logs/services/request-id-celery-worker-context.txt || true
+
+    # Poll briefly to avoid false negatives from log buffering.
+    POLL_MAX=15
+    POLL_SLEEP=2
+    if [ -n "$TIDS" ]; then
+      for i in $(seq 1 $POLL_MAX); do
+        : > /root/logs/services/request-id-traefik.txt || true
+        for id in $TIDS; do
+          docker exec "$id" sh -lc "(grep -F \"$RID\" /var/log/traefik/access.log 2>/dev/null || true) | tail -n 50" >> /root/logs/services/request-id-traefik.txt 2>&1 || true
+        done
+        if [ -s /root/logs/services/request-id-traefik.txt ]; then break; fi
+        sleep $POLL_SLEEP
+        TIDS=$(docker compose -f local.docker.yml ps -q traefik 2>/dev/null || true)
+      done
+    fi
+    if [ -n "$AIDS" ]; then
+      for i in $(seq 1 $POLL_MAX); do
+        : > /root/logs/services/request-id-api.txt || true
+        for id in $AIDS; do
+          docker logs --timestamps --since=60m "$id" 2>&1 | grep -F "$RID" >> /root/logs/services/request-id-api.txt || true
+        done
+        tail -n 50 /root/logs/services/request-id-api.txt > /root/logs/services/request-id-api.txt.tmp 2>/dev/null || true
+        mv -f /root/logs/services/request-id-api.txt.tmp /root/logs/services/request-id-api.txt 2>/dev/null || true
+        if [ -s /root/logs/services/request-id-api.txt ]; then break; fi
+        sleep $POLL_SLEEP
+        AIDS=$(docker compose -f local.docker.yml ps -q api 2>/dev/null || true)
+      done
+    fi
+    if [ -n "$DJIDS" ]; then
+      for i in $(seq 1 $POLL_MAX); do
+        : > /root/logs/services/request-id-django.txt || true
+        : > /root/logs/services/request-id-django-context.txt || true
+        for id in $DJIDS; do
+          docker logs --timestamps --since=60m "$id" 2>&1 | grep -F "$RID" >> /root/logs/services/request-id-django.txt || true
+          docker logs --timestamps --since=10m "$id" 2>&1 | tail -n 200 >> /root/logs/services/request-id-django-context.txt || true
+        done
+        tail -n 50 /root/logs/services/request-id-django.txt > /root/logs/services/request-id-django.txt.tmp 2>/dev/null || true
+        mv -f /root/logs/services/request-id-django.txt.tmp /root/logs/services/request-id-django.txt 2>/dev/null || true
+        if [ -s /root/logs/services/request-id-django.txt ]; then break; fi
+        sleep $POLL_SLEEP
+        DJIDS=$(docker compose -f local.docker.yml ps -q django 2>/dev/null || true)
+      done
+    fi
+    if [ -n "$CWIDS" ]; then
+      for i in $(seq 1 $POLL_MAX); do
+        : > /root/logs/services/request-id-celery-worker.txt || true
+        : > /root/logs/services/request-id-celery-worker-context.txt || true
+        for id in $CWIDS; do
+          docker logs --timestamps --since=60m "$id" 2>&1 | grep -F "$RID" >> /root/logs/services/request-id-celery-worker.txt || true
+          docker logs --timestamps --since=10m "$id" 2>&1 | tail -n 200 >> /root/logs/services/request-id-celery-worker-context.txt || true
+        done
+        tail -n 50 /root/logs/services/request-id-celery-worker.txt > /root/logs/services/request-id-celery-worker.txt.tmp 2>/dev/null || true
+        mv -f /root/logs/services/request-id-celery-worker.txt.tmp /root/logs/services/request-id-celery-worker.txt 2>/dev/null || true
+        if [ -s /root/logs/services/request-id-celery-worker.txt ]; then break; fi
+        sleep $POLL_SLEEP
+        CWIDS=$(docker compose -f local.docker.yml ps -q celery-worker 2>/dev/null || true)
+      done
+    fi
+
+    python3 -c "import json, os; from pathlib import Path;\
+rt=lambda p: (Path(p).read_text(encoding='utf-8', errors='replace').strip() if Path(p).exists() else '');\
+rid=os.environ.get('RID','');\
+found={\
+  'traefik': bool(rt('/root/logs/services/request-id-traefik.txt')),\
+  'api': bool(rt('/root/logs/services/request-id-api.txt')),\
+  'django': bool(rt('/root/logs/services/request-id-django.txt')),\
+  'celery_worker': bool(rt('/root/logs/services/request-id-celery-worker.txt')),\
+};\
+payload={'request_id': rid, 'ok': bool(rid) and found['api'] and found['django'], 'found': found};\
+print(json.dumps(payload))" > /root/logs/request-id-log-propagation.json 2> /root/logs/request-id-log-propagation.err || true
+    set -e
+
     # Back-compat: maintain curl-api.txt pointing at preferred health endpoint (non-slash first)
     cp /root/logs/curl-api-health.txt /root/logs/curl-api.txt || true
     if ! grep -q '^HTTP/.* 200' /root/logs/curl-api.txt 2>/dev/null; then
@@ -882,14 +1148,12 @@ PY
       : > /root/logs/celery-ping.json || true
       : > /root/logs/celery-result.json || true
       curl -sk "${RESOLVE_DOMAIN[@]}" -X POST "https://$DOMAIN/api/celery/ping" -H 'Content-Type: application/json' -d '{}' -o /root/logs/celery-ping.json || true
-      TASK_ID=$(python3 - <<'PY'
-import json,sys
-try:
-    print(json.load(open('/root/logs/celery-ping.json'))['task_id'])
-except Exception:
-    print('')
-PY
-)
+      TASK_ID=$(python3 -c "import json;\
+import sys;\
+try:\
+  print(json.load(open('/root/logs/celery-ping.json'))['task_id']);\
+except Exception:\
+  print('')" 2>/dev/null || true)
       if [ -n "$TASK_ID" ]; then
         for i in $(seq 1 30); do
           curl -sk "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/celery/result/$TASK_ID" -o /root/logs/celery-result.json || true
@@ -902,6 +1166,13 @@ PY
     fi
   fi
   # mark completion
+  # Run service test suites inside containers and capture outputs
+  mkdir -p /root/logs || true
+  # FastAPI (api) pytest
+  # Ensure we run from /app so `import main` / local imports resolve as expected.
+  docker compose -f local.docker.yml exec -T api sh -lc 'cd /app && pytest -q' > /root/logs/api-pytest.txt 2>&1 || true
+  # Django pytest
+  docker compose -f local.docker.yml exec -T django sh -lc 'pytest -q' > /root/logs/django-pytest.txt 2>&1 || true
   date -u +"%Y-%m-%dT%H:%M:%SZ" > /root/logs/remote_verify.done || true
 fi
 '@
@@ -938,14 +1209,28 @@ fi
     throw "Remote verification SSH failed (exit $code)"
   }
 
+  # If we ran synchronously, require a completion marker; otherwise we risk proceeding with
+  # partial /root/logs and then failing confusingly on missing artifacts.
+  if (-not $AsyncVerify) {
+    try {
+      $flag = & $sshExe @sshArgs "test -f /root/logs/remote_verify.done && echo DONE || echo NOT_DONE" 2>&1
+      if (-not ($flag -match 'DONE')) {
+        throw "Remote verification did not complete (missing /root/logs/remote_verify.done). Try a larger -VerifyTimeoutSec (current=$VerifyTimeoutSec) or use -AsyncVerify."
+      }
+    } catch {
+      throw $_
+    }
+  }
+
   Write-Section "Copying verification artifacts"
   $dest = Ensure-ArtifactDir
 
   # Robust copy with polling when async: wait for /root/logs/remote_verify.done, then scp
-  $attempts = 1
-  if ($AsyncVerify) { $attempts = [Math]::Max(3, [int]$LogsPollMaxAttempts) }
+  $attempts = 3
+  if ($AsyncVerify) { $attempts = [Math]::Max($attempts, [int]$LogsPollMaxAttempts) }
   $interval = [Math]::Max(2, [int]$LogsPollIntervalSec)
   $copied = $false
+  $lastCopyErr = $null
   for ($i = 1; $i -le $attempts; $i++) {
     try {
       if ($AsyncVerify) {
@@ -961,18 +1246,42 @@ fi
       $copied = $true
       break
     } catch {
-      Start-Sleep -Seconds $interval
+      $lastCopyErr = $_
+      Start-Sleep -Seconds ([Math]::Min(30, $interval * $i))
+    }
+  }
+
+  # Fallback: try copying a single tarball if directory copy was flaky.
+  if (-not $copied) {
+    try {
+      & $sshExe @sshArgs "tar -czf /root/logs.tgz -C /root logs" *> $null
+      if ($LASTEXITCODE -ne 0) { throw "remote tar failed (exit $LASTEXITCODE)" }
+      $tgzPath = Join-Path $dest 'logs.tgz'
+      & $scpExe -i $keyPath @($sshCommon) "root@${ip}:/root/logs.tgz" $tgzPath *> $null
+      if ($LASTEXITCODE -ne 0) { throw "scp logs.tgz failed (exit $LASTEXITCODE)" }
+      if (Test-Path $tgzPath) {
+        & tar -xzf $tgzPath -C $dest *> $null
+        Remove-Item -Force $tgzPath -ErrorAction SilentlyContinue
+        $copied = $true
+      }
+    } catch {
+      $lastCopyErr = $_
     }
   }
 
   if (-not $copied) {
-    Write-Warning "Remote logs not yet available after $attempts attempts; continuing. You can re-run copy later."
+    $msg = "Remote logs could not be copied after $attempts attempts"
+    if ($lastCopyErr) { $msg += ": $($lastCopyErr.Exception.Message)" }
+    Write-Warning "$msg; continuing. You can re-run copy later."
   } else {
     # Best-effort copy of individual files to the root of $dest for convenience
     $files = @(
       'compose-ps.txt','traefik-env.txt','traefik-static.yml','traefik-dynamic.yml','traefik-ls.txt','traefik-logs.txt','api-logs.txt',
+      'traefik-acme-perms.txt',
       'django-migrate.txt',
       'django-check-deploy.txt',
+      'django-internal-health.json',
+      'django-internal-health.status',
       'schema-compat-check.json','schema-compat-check.err','schema-compat-check.status',
       'published-ports.txt',
       'curl-root.txt','curl-api.txt','curl-api-health.txt','curl-api-health-slash.txt',
@@ -1068,6 +1377,60 @@ try {
     throw $script:EarlyExitSentinel
   }
   Validate-DoCreds
+  
+  # Default AllTests to UpdateOnly when an environment exists and -Full was not requested.
+  $autoSelectedUpdateOnly = $false
+  $detectedExistingIp = ''
+  if ($AllTests -and -not $Full -and -not $UpdateOnly) {
+    try {
+      $ipCheck = Get-DropletIp
+      if ($ipCheck) {
+        $detectedExistingIp = [string]$ipCheck
+        $autoSelectedUpdateOnly = $true
+        Write-Section "AllTests: existing environment detected ($ipCheck); defaulting to -UpdateOnly"
+        $UpdateOnly = $true
+      } else {
+        Write-Section "AllTests: no existing environment detected; proceeding without -UpdateOnly"
+      }
+    } catch {
+      Write-Verbose ("AllTests UpdateOnly default check failed: {0}" -f $_.Exception.Message)
+    }
+  }
+
+  # Record requested vs effective mode into artifacts (T078).
+  try {
+    $dest = Ensure-ArtifactDir
+    $branch = $env:DO_APP_BRANCH
+    if (-not $branch) { $branch = '' }
+    $effectiveMode = 'auto'
+    if ($Full) { $effectiveMode = 'full' }
+    elseif ($UpdateOnly) { $effectiveMode = 'update-only' }
+
+    $modePayload = [ordered]@{
+      timestampUtc = (Get-UtcTimestamp)
+      allTests = [bool]$AllTests
+      requested = [ordered]@{
+        full = [bool]$Full
+        updateOnly = [bool]$UpdateOnly
+      }
+      effectiveMode = $effectiveMode
+      autoSelectedUpdateOnly = [bool]$autoSelectedUpdateOnly
+      detectedExistingIp = $detectedExistingIp
+      doAppBranch = $branch
+    }
+    $modeJson = ($modePayload | ConvertTo-Json -Depth 6)
+    Set-Content -Path (Join-Path $dest 'deploy-mode.json') -Value $modeJson -Encoding UTF8
+  } catch {}
+
+  # Reminder banner for UpdateOnly runs: ensure commit/push to origin/<DO_APP_BRANCH>
+  if ($UpdateOnly -and -not $Full) {
+    try {
+      $branch = $env:DO_APP_BRANCH
+      if (-not $branch) { $branch = '(unset)' }
+      Write-Section "UpdateOnly: using remote branch origin/$branch"
+      Write-Host "Reminder: UpdateOnly hard-resets the droplet repo to origin/$branch. Commit and push any runtime-impacting changes (api/, django/, react-app/, Dockerfiles, compose, traefik) before running UpdateOnly." -ForegroundColor Yellow
+    } catch {}
+  }
   Run-Orchestrator
 
   $resolvedIp = Get-DropletIp
@@ -1135,6 +1498,7 @@ try {
 
       if ($exitCode -ne 0) {
         Write-Warning "Post-deploy tests failed"
+        try { Invoke-RollbackOnFailureIfEnabled -ip $script:ResolvedIp -keyPath $SshKey } catch {}
         $script:ExitCode = 1
         throw $script:EarlyExitSentinel
       }
@@ -1146,10 +1510,71 @@ try {
       & .\digital_ocean\scripts\powershell\test.ps1 @testArgs2
       if ($LASTEXITCODE -ne 0) {
         Write-Warning "Post-deploy tests failed"
+        try { Invoke-RollbackOnFailureIfEnabled -ip $script:ResolvedIp -keyPath $SshKey } catch {}
         $script:ExitCode = 1
         throw $script:EarlyExitSentinel
       }
     }
+
+    # T024: Run React Jest tests locally and capture output
+    try {
+      Write-Section "Running React Jest (local)"
+      $artifactDir = Ensure-ArtifactDir
+      $reactOutDir = Join-Path $artifactDir 'react-app'
+      if (-not (Test-Path $reactOutDir)) { New-Item -ItemType Directory -Path $reactOutDir -Force | Out-Null }
+      $jestOutPath = Join-Path $reactOutDir 'jest.txt'
+      Push-Location (Join-Path $script:RepoRoot 'react-app')
+      $log = @()
+      $log += ("UTC: {0}" -f (Get-UtcTimestamp))
+      try { $log += (& node --version 2>&1 | Out-String).TrimEnd() } catch {}
+      try { $log += (& npm --version 2>&1 | Out-String).TrimEnd() } catch {}
+      $log += ''
+
+      $log += '== npm ci =='
+      $ciOut = ''
+      $ciExit = 0
+      $prevEAP = $ErrorActionPreference
+      try {
+        # npm emits warnings to stderr; with $ErrorActionPreference='Stop' that can become terminating.
+        $ErrorActionPreference = 'Continue'
+        $ciOut = (& cmd /c "npm ci --no-audit --no-fund" 2>&1 | Out-String)
+        $ciExit = $LASTEXITCODE
+      } finally {
+        $ErrorActionPreference = $prevEAP
+      }
+      $log += $ciOut.TrimEnd()
+      $log += ("npm ci exitCode={0}" -f $ciExit)
+      $log += ''
+
+      if ($ciExit -ne 0) {
+        $log += 'Skipping Jest because npm ci failed.'
+        $log | Set-Content -Path $jestOutPath -Encoding UTF8
+      } else {
+        $log += '== Jest (CRA) =='
+        $prevCI = $env:CI
+        try {
+          $env:CI = 'true'
+          $testOut = ''
+          $testExit = 0
+          $prevEAP = $ErrorActionPreference
+          try {
+            $ErrorActionPreference = 'Continue'
+            # Avoid cross-env (often the source of Windows PATH issues) and rely on PowerShell env.
+            $testOut = (& cmd /c "npm test -- --coverage" 2>&1 | Out-String)
+            $testExit = $LASTEXITCODE
+          } finally {
+            $ErrorActionPreference = $prevEAP
+          }
+          $log += $testOut.TrimEnd()
+          $log += ("npm test exitCode={0}" -f $testExit)
+        } finally {
+          $env:CI = $prevCI
+        }
+        $log | Set-Content -Path $jestOutPath -Encoding UTF8
+      }
+    } catch {
+      Write-Warning ("React Jest execution error: {0}" -f $_.Exception.Message)
+    } finally { try { Pop-Location } catch {} }
   }
 
   Write-Section "Done"

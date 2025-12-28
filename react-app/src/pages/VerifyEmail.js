@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/ToastProvider.jsx';
 
 const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { verifyEmail, resendVerification } = useAuth();
+  const { verifyEmail } = useAuth();
+  const toast = useToast();
   const [status, setStatus] = useState('verifying'); // verifying, success, error
   const [message, setMessage] = useState('');
-  const [email, setEmail] = useState('');
-  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     const token = searchParams.get('token');
@@ -28,39 +28,23 @@ const VerifyEmail = () => {
       
       if (result.success) {
         setStatus('success');
-        setMessage(result.message || 'Email verified successfully!');
+        const msg = result.message || 'Email verified successfully!';
+        setMessage(msg);
+        toast.success(msg);
         setTimeout(() => {
-          navigate('/dashboard');
+          navigate('/login');
         }, 2000);
       } else {
         setStatus('error');
-        setMessage(result.error || 'Verification failed. The link may be expired or invalid.');
+        const msg = result.error || 'Verification failed. The link may be expired or invalid.';
+        setMessage(msg);
+        if (result.code === 'network_error') {
+          toast.error(msg);
+        }
       }
     } catch (error) {
       setStatus('error');
       setMessage('An error occurred during verification. Please try again.');
-    }
-  };
-
-  const handleResend = async () => {
-    if (!email) {
-      setMessage('Please enter your email address');
-      return;
-    }
-
-    setResending(true);
-    try {
-      const result = await resendVerification(email);
-      if (result.success) {
-        setMessage(result.message || 'Verification email sent! Please check your inbox.');
-        setStatus('success');
-      } else {
-        setMessage(result.error || 'Failed to resend verification email');
-      }
-    } catch (error) {
-      setMessage('An error occurred. Please try again.');
-    } finally {
-      setResending(false);
     }
   };
 
@@ -85,35 +69,15 @@ const VerifyEmail = () => {
           {status === 'error' && 'Verification Failed'}
         </h1>
 
-        <p style={styles.message}>{message}</p>
-
-        {status === 'error' && (
-          <div style={styles.resendSection}>
-            <p style={styles.resendText}>
-              Didn't receive the email or link expired?
-            </p>
-            <div style={styles.resendForm}>
-              <input
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                style={styles.input}
-              />
-              <button
-                onClick={handleResend}
-                disabled={resending}
-                style={styles.resendButton}
-              >
-                {resending ? 'Sending...' : 'Resend Verification Email'}
-              </button>
-            </div>
-          </div>
+        {status === 'error' ? (
+          <div style={styles.error} role="alert">{message}</div>
+        ) : (
+          <p style={styles.message}>{message}</p>
         )}
 
         {status === 'success' && (
           <div style={styles.redirectMessage}>
-            Redirecting to dashboard...
+            Redirecting to login...
           </div>
         )}
 
@@ -137,7 +101,7 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    padding: '20px'
+    padding: '20px',
   },
   card: {
     background: 'white',
@@ -174,6 +138,12 @@ const styles = {
   message: {
     fontSize: '16px',
     color: '#666',
+    marginBottom: '30px',
+    lineHeight: '1.6'
+  },
+  error: {
+    fontSize: '16px',
+    color: '#dc2626',
     marginBottom: '30px',
     lineHeight: '1.6'
   },
