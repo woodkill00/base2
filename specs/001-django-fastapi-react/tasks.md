@@ -1173,7 +1173,7 @@
     - New test asserts startup fails in staging/prod mode if pepper missing.
     - Run: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
 
-- [ ] T133 Add `iss` + `aud` claims to access tokens and validate them on decode.
+- [X] T133 Add `iss` + `aud` claims to access tokens and validate them on decode.
   - **Touch**:
     - `api/auth/tokens.py`
     - `api/settings.py` (JWT_ISSUER, JWT_AUDIENCE)

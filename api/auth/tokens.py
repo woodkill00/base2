@@ -37,11 +37,16 @@ def create_access_token(*, subject: str, email: str, ttl_minutes: int) -> str:
     if not secret:
         raise RuntimeError("Missing JWT_SECRET")
 
+    issuer = (os.getenv("JWT_ISSUER") or "base2").strip() or "base2"
+    audience = (os.getenv("JWT_AUDIENCE") or "base2").strip() or "base2"
+
     now = _utcnow()
     exp = now + timedelta(minutes=ttl_minutes)
     payload: Dict[str, Any] = {
         "sub": subject,
         "email": email,
+        "iss": issuer,
+        "aud": audience,
         "iat": int(now.timestamp()),
         "exp": int(exp.timestamp()),
         "jti": secrets.token_hex(16),
@@ -53,4 +58,7 @@ def decode_access_token(token: str) -> Dict[str, Any]:
     secret = (os.getenv("JWT_SECRET") or "").strip()
     if not secret:
         raise RuntimeError("Missing JWT_SECRET")
-    return jwt.decode(token, secret, algorithms=["HS256"])
+
+    issuer = (os.getenv("JWT_ISSUER") or "base2").strip() or "base2"
+    audience = (os.getenv("JWT_AUDIENCE") or "base2").strip() or "base2"
+    return jwt.decode(token, secret, algorithms=["HS256"], issuer=issuer, audience=audience)

@@ -52,6 +52,8 @@ class Settings:
 
     JWT_SECRET: str = getenv("JWT_SECRET", "") or ""
     TOKEN_PEPPER: str = getenv("TOKEN_PEPPER", "") or ""
+    JWT_ISSUER: str = getenv("JWT_ISSUER", "base2") or "base2"
+    JWT_AUDIENCE: str = getenv("JWT_AUDIENCE", "base2") or "base2"
     JWT_EXPIRE_MINUTES: int = getenv_int("JWT_EXPIRE", 15)
     REFRESH_TOKEN_TTL_DAYS: int = getenv_int("REFRESH_TOKEN_TTL_DAYS", 30)
     FRONTEND_URL: str = getenv("FRONTEND_URL", "") or ""
