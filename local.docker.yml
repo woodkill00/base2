@@ -13,9 +13,7 @@ services:
       - REACT_APP_API_URL=https://${WEBSITE_DOMAIN:-localhost}/api
     networks: [base2_network]
     restart: unless-stopped
-    cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
-    read_only: true
     tmpfs:
       - /var/cache/nginx
       - /var/run/nginx
@@ -108,9 +106,7 @@ services:
       - NGINX_PORT=${NGINX_PORT}
     networks: [base2_network]
     restart: unless-stopped
-    cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
-    read_only: true
     tmpfs:
       - /var/cache/nginx
       - /var/run/nginx
@@ -127,9 +123,7 @@ services:
       - django_static:/app/static:ro
     networks: [base2_network]
     restart: unless-stopped
-    cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
-    read_only: true
     tmpfs:
       - /var/cache/nginx
       - /var/run
@@ -160,7 +154,6 @@ services:
     cap_drop: [ALL]
     cap_add: [NET_BIND_SERVICE]
     security_opt: [no-new-privileges:true]
-    read_only: true
     tmpfs:
       - /tmp
 
@@ -199,9 +192,7 @@ services:
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     restart: unless-stopped
-    cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
-    read_only: true
     tmpfs:
       - /tmp
     healthcheck:
@@ -216,9 +207,7 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME}_redis
     networks: [base2_network]
     restart: unless-stopped
-    cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
-    read_only: true
     tmpfs:
       - /data
     healthcheck:
