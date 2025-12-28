@@ -1110,7 +1110,7 @@
     - `https://admin.websitedomain/` (non-/admin) → 404/403 per guard
     - Run: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
 
-- [ ] T129 Add a dedicated Traefik router for FastAPI Swagger UI at `swagger.websitedomain`.
+- [X] T129 Add a dedicated Traefik router for FastAPI Swagger UI at `swagger.websitedomain`.
   - **Touch**:
     - `traefik/dynamic.yml`
     - `api/main.py` (ensure docs + openapi URLs are stable)
@@ -1131,7 +1131,7 @@
     - Write `meta/swagger-host-check.json`
     - Run: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
 
-- [ ] T130 Keep LE **staging** cert resolver as the only enabled resolver for dev-production, and add an explicit guard for the new hosts.
+- [X] T130 Keep LE **staging** cert resolver as the only enabled resolver for dev-production, and add an explicit guard for the new hosts.
   - **Touch**:
     - `traefik/traefik.yml`
     - `traefik/dynamic.yml` (routers reference resolver)

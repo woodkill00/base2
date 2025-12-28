@@ -483,7 +483,7 @@ function Verify-StagingCert([string]$staticPath, [string]$dynamicPath) {
 }
 
 # Explicit staging-only ACME guard: fail if production ACME directory is configured.
-function Check-TlsAcmeGuard([string]$artifactDir, [string]$staticPath) {
+function Check-TlsAcmeGuard([string]$artifactDir, [string]$staticPath, [string]$dynamicPath = '') {
   $fail = @()
   $payload = [ordered]@{
     ok = $false
@@ -494,6 +494,10 @@ function Check-TlsAcmeGuard([string]$artifactDir, [string]$staticPath) {
     storage = ''
     acmeStorageMode = ''
     acmeStoragePermsOk = $false
+    dynamicChecked = $false
+    routersChecked = @()
+    routersMissing = @()
+    routersWrongResolver = @()
     error = ''
   }
 
@@ -529,6 +533,43 @@ function Check-TlsAcmeGuard([string]$artifactDir, [string]$staticPath) {
     }
 
     if (-not $payload.stagingReferenced) { $fail += 'Traefik static config does not reference le-staging resolver' }
+
+    # Dynamic routing guardrail: key routers must explicitly reference le-staging.
+    try {
+      if ($dynamicPath -and (Test-Path $dynamicPath)) {
+        $payload.dynamicChecked = $true
+        $dyn = Get-Content -Path $dynamicPath -Raw
+
+        $requiredRouters = @(
+          'api',
+          'frontend-react',
+          'swagger-docs',
+          'django-admin-subdomain',
+          'django-admin-path',
+          'static-files'
+        )
+
+        foreach ($r in $requiredRouters) {
+          $m = [ordered]@{ router = $r; found = $false; certResolver = '' }
+          $pattern = "(?ims)^\s*" + [regex]::Escape($r) + ":\s*\r?\n.*?^\s*tls\s*:\s*\r?\n\s*certResolver\s*:\s*(\S+)\s*$"
+          $mm = [regex]::Match($dyn, $pattern)
+          if ($mm.Success) {
+            $m.found = $true
+            $m.certResolver = ([string]$mm.Groups[1].Value).Trim().Trim('"').Trim("'")
+            if ($m.certResolver -ne 'le-staging') {
+              $payload.routersWrongResolver += @([ordered]@{ router = $r; certResolver = $m.certResolver })
+              $fail += "Traefik router $r uses certResolver=$($m.certResolver) (expected le-staging)"
+            }
+          } else {
+            $payload.routersMissing += $r
+            $fail += "Traefik dynamic config missing expected TLS certResolver for router: $r"
+          }
+          $payload.routersChecked += $m
+        }
+      }
+    } catch {
+      $fail += "Traefik dynamic router TLS guard failed: $($_.Exception.Message)"
+    }
 
     # Guardrail: ACME email must be set.
     if (-not $payload.email -or $payload.email -match '^\$\{') {
@@ -1175,7 +1216,7 @@ $failures += Verify-StagingCert $staticYml $dynamicYml
 
 # Explicit staging-only ACME guard (staging OK, production forbidden)
 try {
-  $t = Check-TlsAcmeGuard -artifactDir $artifactDir -staticPath $staticYml
+  $t = Check-TlsAcmeGuard -artifactDir $artifactDir -staticPath $staticYml -dynamicPath $dynamicYml
   $tlsAcmeGuard = $t.payload
   $failures += @($t.failures)
 } catch {}
