@@ -1077,3 +1077,202 @@
   - **Verify**: toggling a flag changes UI/API behavior predictably.
 
 ---
+---
+
+## Phase 21: Security Review Remediation + New Entry Points (Dev-Production)
+
+**Purpose**: Apply security hardening recommendations while preserving **LE staging** cert issuance (dev-production) and adding dedicated entry points:
+- Django Admin: `admin.websitedomain`
+- FastAPI Swagger UI: `swagger.websitedomain`
+
+> **Invariant**: Traefik MUST continue using Let's Encrypt **staging** CA for this environment (no production issuance).
+
+**Verification standard**: After completing *each* task below, run:
+- `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
+  - and ensure any new probes write their artifacts to `meta/` as noted.
+
+### Edge routing + hostnames
+
+- [X] T128 Update Traefik routers to use `admin.websitedomain` for Django admin (replace/augment `admin.<domain>`).
+  - **Touch**:
+    - `traefik/dynamic.yml`
+    - `django/project/settings/base.py` (ALLOWED_HOSTS/CSRF trusted origin patterns)
+    - `django/project/settings/production.py` (admin host in allowed/CSRF trusted origins)
+    - `.env.example` (document new hostnames/env vars)
+    - `docs/DEPLOY.md` (document hostnames for dev-production)
+    - `digital_ocean/scripts/powershell/test.ps1` (update probes)
+  - **How**:
+    1) Add/rename router host rule to `Host("admin.websitedomain")`.
+    2) Keep the existing admin path guard: only allow `/admin` (and required static/media paths if applicable).
+    3) Ensure router uses the **same** entrypoints/TLS resolver as other public routers (still staging).
+  - **Verify**:
+    - `digital_ocean/scripts/powershell/test.ps1` curls `https://admin.websitedomain/admin/` → 200/302
+    - `https://admin.websitedomain/` (non-/admin) → 404/403 per guard
+    - Run: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
+
+- [ ] T129 Add a dedicated Traefik router for FastAPI Swagger UI at `swagger.websitedomain`.
+  - **Touch**:
+    - `traefik/dynamic.yml`
+    - `api/main.py` (ensure docs + openapi URLs are stable)
+    - `api/settings.py` (docs/openapi paths if configured)
+    - `.env.example` (document swagger host)
+    - `docs/DEPLOY.md`
+    - `digital_ocean/scripts/powershell/test.ps1` (new probes + artifacts)
+  - **How**:
+    1) Add router: `Host("swagger.websitedomain")` → service `api` (FastAPI) with middleware stack.
+    2) Route only documentation paths:
+       - `/docs` (Swagger UI)
+       - `/openapi.json`
+       - optional: `/redoc`
+    3) Ensure `root_path`/proxy headers do not break asset loading (docs must fully render via subdomain).
+  - **Verify**:
+    - `curl -I https://swagger.websitedomain/docs` returns 200/307 then 200 with HTML body
+    - `curl https://swagger.websitedomain/openapi.json` returns JSON
+    - Write `meta/swagger-host-check.json`
+    - Run: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
+
+- [ ] T130 Keep LE **staging** cert resolver as the only enabled resolver for dev-production, and add an explicit guard for the new hosts.
+  - **Touch**:
+    - `traefik/traefik.yml`
+    - `traefik/dynamic.yml` (routers reference resolver)
+    - `docs/DEPLOY.md`
+    - `digital_ocean/scripts/powershell/test.ps1` (extend T073-style checks for the new routers)
+  - **How**:
+    - Ensure the ACME `caServer` continues pointing at LE staging.
+    - Ensure the new routers reference the staging resolver.
+    - Extend TLS guard to validate issuance mode for `admin.websitedomain` and `swagger.websitedomain`.
+  - **Verify**:
+    - Artifact `meta/tls-acme-guard.json` (or extension) includes new hosts.
+    - Run: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
+
+### Browser security headers + CSP correctness
+
+- [ ] T131 Fix/replace Traefik CSP header with a valid policy (no placeholder/invalid tokens) and validate it on SPA + API + Swagger hosts.
+  - **Touch**:
+    - `traefik/dynamic.yml`
+    - `digital_ocean/scripts/powershell/test.ps1` (header capture)
+    - `docs/SECURITY.md`
+  - **How**:
+    - Define CSP per host/router (SPA vs API vs Swagger) so docs can load its JS/CSS without requiring `unsafe-inline` broadly.
+  - **Verify**:
+    - Extend header probe to record `meta/security-headers.json` for:
+      - `https://websitedomain/`
+      - `https://websitedomain/api/health`
+      - `https://swagger.websitedomain/docs`
+    - Run: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
+
+### Auth + token hardening (FastAPI)
+
+- [ ] T132 Require `TOKEN_PEPPER` explicitly (no fallback to JWT secret) and fail fast on missing env in non-local.
+  - **Touch**:
+    - `api/auth/tokens.py` (or wherever pepper is used)
+    - `api/settings.py`
+    - `.env.example`
+    - `api/tests/` (new unit test)
+  - **Verify**:
+    - New test asserts startup fails in staging/prod mode if pepper missing.
+    - Run: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
+
+- [ ] T133 Add `iss` + `aud` claims to access tokens and validate them on decode.
+  - **Touch**:
+    - `api/auth/tokens.py`
+    - `api/settings.py` (JWT_ISSUER, JWT_AUDIENCE)
+    - `api/tests/test_jwt_claims.py` (new)
+  - **Verify**:
+    - Tests cover missing/wrong issuer/audience rejection.
+    - Run: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
+
+- [ ] T134 Harden refresh-cookie CSRF posture (double-submit token + Origin/Referer checks) for any state-changing endpoints that rely on cookies.
+  - **Touch**:
+    - `api/routes/auth.py`
+    - `api/clients/django_client.py` (if forwarding CSRF)
+    - `react-app/src/lib/apiClient.js`
+    - `docs/SECURITY.md`
+    - `api/tests/test_csrf_cookie_mode.py` (new)
+  - **Verify**:
+    - Tests prove requests without matching `X-CSRF-Token` are rejected.
+    - Run: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
+
+### Django production-hardening adjustments (admin-focused)
+
+- [ ] T135 Ensure Django production password hashing is not “fast mode”; restrict any reduced iterations to test-only settings.
+  - **Touch**:
+    - `django/project/password_hashers.py`
+    - `django/project/settings/production.py`
+    - `django/project/settings/test.py` (or pytest settings module)
+    - `django/tests/` (new test asserting production hasher)
+  - **Verify**:
+    - Test asserts production uses strong hasher (default or Argon2).
+    - Run: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
+
+- [ ] T136 Add admin access gating middleware at Traefik for `admin.websitedomain` (IP allowlist and/or basic-auth), documented as dev-production policy.
+  - **Touch**:
+    - `traefik/dynamic.yml`
+    - `docs/SECURITY.md`
+    - `digital_ocean/scripts/powershell/test.ps1` (verify gate behavior)
+  - **Verify**:
+    - Probe demonstrates unauthenticated access is blocked per policy.
+    - Run: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
+
+### Dependency supply-chain (Python + Node) and CI guardrails
+
+- [ ] T137 Pin Python dependencies and add automated vulnerability auditing (pip-audit) in CI.
+  - **Touch**:
+    - `api/requirements.txt` + add `api/requirements.in` (or move to Poetry/uv)
+    - `django/requirements.txt` + add `django/requirements.in`
+    - `.github/workflows/security.yml` (or extend existing)
+    - `docs/SECURITY.md`
+  - **Verify**:
+    - CI job runs `pip-audit` and fails on high severity CVEs (policy documented).
+    - `deploy.ps1 -AllTests` still passes.
+    - Run: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
+
+- [ ] T138 Add Node dependency audit + lockfile enforcement in CI (npm audit / audit-ci) and ensure builds remain reproducible.
+  - **Touch**:
+    - `react-app/package-lock.json` (ensure present/updated)
+    - `.github/workflows/security.yml` (or frontend CI)
+  - **Verify**:
+    - CI runs dependency audit and build.
+    - `deploy.ps1 -AllTests` passes.
+
+### Runtime/container hardening
+    - Run: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
+
+- [ ] T139 Harden docker-compose runtime settings (drop caps, read-only FS where feasible, no-new-privileges).
+  - **Touch**:
+    - `local.docker.yml` (and any droplet compose file, if separate)
+    - `docs/DEPLOY.md`
+  - **How**:
+    - Add `cap_drop: ["ALL"]` for app services
+    - Add `security_opt: ["no-new-privileges:true"]`
+    - Use `read_only: true` + `tmpfs: /tmp` where safe
+  - **Verify**:
+    - Services still boot and pass healthchecks.
+    - Run: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
+
+### Celery/Redis hardening
+
+- [ ] T140 Ensure Celery uses JSON-only serializers and Redis is not exposed publicly (auth required, bind private network).
+  - **Touch**:
+    - `api/tasks.py` / celery config module
+    - `django/project/celery.py` (if applicable)
+    - compose files (Redis config/env)
+    - `docs/SECURITY.md`
+  - **Verify**:
+    - A unit test asserts Celery `accept_content` excludes pickle.
+    - Run: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
+
+### Logging redaction
+
+- [ ] T141 Add log redaction rules to prevent secrets/tokens/cookies from being logged (FastAPI + Django + Traefik).
+  - **Touch**:
+    - `api/logging.py` (or equivalent)
+    - `django/project/settings/production.py` LOGGING config
+    - `docs/SECURITY.md`
+    - `api/tests/test_log_redaction.py` (new)
+  - **Verify**:
+    - Tests ensure auth headers/cookies are never written.
+    - Run: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
+
+---
+

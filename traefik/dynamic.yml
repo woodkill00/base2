@@ -27,7 +27,7 @@ http:
 
     # Django admin on admin subdomain (guarded; restrict to /admin paths only)
     django-admin-subdomain:
-      rule: Host(`${DJANGO_ADMIN_DNS_LABEL}.${WEBSITE_DOMAIN}`) && PathPrefix(`/admin`)
+      rule: Host(`admin.${WEBSITE_DOMAIN}`) && PathPrefix(`/admin`)
       priority: 190
       entryPoints:
         - websecure
@@ -55,7 +55,7 @@ http:
 
     # Django static: /static/* (admin subdomain only; avoids hijacking React /static assets on main domain)
     static-files:
-      rule: Host(`${DJANGO_ADMIN_DNS_LABEL}.${WEBSITE_DOMAIN}`) && PathPrefix(`/static`)
+      rule: Host(`admin.${WEBSITE_DOMAIN}`) && PathPrefix(`/static`)
       priority: 195
       entryPoints:
         - websecure
@@ -77,6 +77,21 @@ http:
       tls:
         certResolver: le-staging
       service: frontend-react
+
+    # FastAPI Swagger UI on swagger subdomain (docs-only paths)
+    swagger-docs:
+      rule: Host(`swagger.${WEBSITE_DOMAIN}`) && (PathPrefix(`/docs`) || Path(`/openapi.json`) || PathPrefix(`/redoc`))
+      priority: 205
+      entryPoints:
+        - websecure
+      middlewares:
+        - security-headers
+        - security-csp-swagger
+        - rate-limit
+        - retry
+      tls:
+        certResolver: le-staging
+      service: api
 
     # Traefik dashboard (guarded)
     traefik-dashboard:
@@ -180,6 +195,10 @@ http:
     security-csp:
       headers:
         contentSecurityPolicy: "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self' data:;"
+
+    security-csp-swagger:
+      headers:
+        contentSecurityPolicy: "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self' data:; worker-src 'self' blob:;"
 
     security-headers-no-hsts:
       headers:

@@ -16,6 +16,7 @@ param(
   [switch]$CheckRateLimit,
   [switch]$CheckDjangoProxy,
   [switch]$CheckDjangoAdmin,
+  [switch]$CheckSwagger,
   [switch]$CheckPgAdmin,
   [switch]$CheckTraefikDashboard,
   [switch]$CheckDns,
@@ -1055,6 +1056,7 @@ if (-not $Json) { Write-Host "Using artifacts at: $artifactDir" -ForegroundColor
 # If invoked as a suite, expand to all checks.
 if ($All) {
   $CheckDjangoAdmin = $true
+  $CheckSwagger = $true
   $CheckCelery = $true
   $CheckDns = $true
   $CheckPgAdmin = $true
@@ -1498,6 +1500,7 @@ $result = [ordered]@{
   rateLimitCheck = [ordered]@{ enabled = $false; burst = 0; saw429 = $false }
   djangoProxy = [ordered]@{ enabled = $false; status = 0; bodySnippet = @() }
   adminCheck = [ordered]@{ enabled = $false; host = ''; statusNoAuth = 0; statusWithAuth = 0 }
+  swaggerCheck = [ordered]@{ enabled = $false; host = ''; docsHeadStatus = 0; docsGetStatus = 0; openapiStatus = 0; ok = $false }
   celeryCheck = [ordered]@{ enabled = $false; host = ''; statusNoAuth = 0; statusWithAuth = 0 }
   doDnsCheck = [ordered]@{ enabled = $false; ok = $false; expectedIpv4 = ''; expectedIpv6 = '' }
   clientDnsCheck = [ordered]@{ enabled = $false; ok = $false; expectedIpv4 = ''; failures = @() }
@@ -1749,6 +1752,61 @@ if ($CheckDjangoAdmin) {
     Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'admin-host-path-guard.json' -content $guardPayload
     if (-not $guardOk) { $failures += "Admin host path guard failed: statuses root=$rootStatus, foo=$fooStatus ($AdminHost)" }
   } catch {}
+}
+
+# Optional: Swagger UI host (docs-only) probes
+if ($CheckSwagger) {
+  $SwaggerHost = "swagger.$Domain"
+
+  $docsUrl = "https://$SwaggerHost/docs"
+  $openapiUrl = "https://$SwaggerHost/openapi.json"
+
+  $docsHead = Curl-Head $docsUrl
+  $docsHeadStatus = Get-StatusCodeFromHeaders $docsHead
+
+  $docsGetStatus = 0
+  $docsSnippet = @()
+  try {
+    # If /docs redirects, try /docs/ as a follow-up (FastAPI sometimes normalizes slashes).
+    if (@(301,302,307,308) -contains $docsHeadStatus) {
+      $resp = Curl-Get ("https://{0}/docs/" -f $SwaggerHost)
+      $docsGetStatus = [int]$resp.status
+      $docsSnippet = @($resp.body)
+    } else {
+      $resp = Curl-Get $docsUrl
+      $docsGetStatus = [int]$resp.status
+      $docsSnippet = @($resp.body)
+    }
+  } catch {}
+
+  $openapiStatus = 0
+  $openapiOk = $false
+  try {
+    $oa = Curl-Get $openapiUrl
+    $openapiStatus = [int]$oa.status
+    if ($openapiStatus -eq 200) {
+      $raw = ($oa.body -join "")
+      $null = ($raw | ConvertFrom-Json)
+      $openapiOk = $true
+    }
+  } catch { $openapiOk = $false }
+
+  $docsOk = (@(200,301,302,307,308) -contains $docsHeadStatus) -and ($docsGetStatus -eq 200)
+  $ok = $docsOk -and $openapiOk
+
+  $payload = [ordered]@{
+    host = $SwaggerHost
+    docs = [ordered]@{ url = $docsUrl; headStatus = $docsHeadStatus; getStatus = $docsGetStatus; snippet = @($docsSnippet) }
+    openapi = [ordered]@{ url = $openapiUrl; status = $openapiStatus; ok = $openapiOk }
+    ok = [bool]$ok
+  }
+  Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'swagger-host-check.json' -content $payload
+
+  $result.swaggerCheck = [ordered]@{ enabled = $true; host = $SwaggerHost; docsHeadStatus = $docsHeadStatus; docsGetStatus = $docsGetStatus; openapiStatus = $openapiStatus; ok = [bool]$ok }
+
+  if (-not $ok) {
+    $failures += "Swagger host check failed: docsHead=$docsHeadStatus docsGet=$docsGetStatus openapi=$openapiStatus ($SwaggerHost)"
+  }
 }
 
 # Optional: Test pgAdmin dashboard via edge

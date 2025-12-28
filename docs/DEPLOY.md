@@ -34,3 +34,10 @@ Authoritative deploy/update/test is executed via `digital_ocean/scripts/powershe
 
 - If UpdateOnly changes don’t reflect on the droplet, verify a recent push to `origin/<DO_APP_BRANCH>`.
 - For DNS allowlists, the script updates `.env` with your public IP; restart Traefik if needed.
+
+## Hostnames (Dev-Production)
+
+- Main site: `https://${WEBSITE_DOMAIN}/`
+- API: `https://${WEBSITE_DOMAIN}/api/*`
+- Django admin: `https://admin.${WEBSITE_DOMAIN}/admin/` (guarded by Traefik basic-auth + IP allowlist)
+- FastAPI Swagger UI: `https://swagger.${WEBSITE_DOMAIN}/docs` (docs-only host; routed to FastAPI)

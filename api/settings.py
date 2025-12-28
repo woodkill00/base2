@@ -26,6 +26,14 @@ def getenv_int(name: str, default: int) -> int:
 class Settings:
     ENV: str = getenv("ENV", "development") or "development"
 
+    # Docs/OpenAPI exposure
+    # Default: enabled outside production. For dev-production (staging-only TLS) you may
+    # explicitly enable docs even if ENV=production.
+    API_DOCS_ENABLED: bool = getenv_bool("API_DOCS_ENABLED", (ENV.strip().lower() != "production"))
+    API_DOCS_URL: str = getenv("API_DOCS_URL", "/docs") or "/docs"
+    API_REDOC_URL: str = getenv("API_REDOC_URL", "/redoc") or "/redoc"
+    API_OPENAPI_URL: str = getenv("API_OPENAPI_URL", "/openapi.json") or "/openapi.json"
+
     SESSION_COOKIE_NAME: str = getenv("SESSION_COOKIE_NAME", "base2_session")
     CSRF_COOKIE_NAME: str = getenv("CSRF_COOKIE_NAME", "base2_csrf")
     COOKIE_SAMESITE: str = getenv("COOKIE_SAMESITE", "Lax")
