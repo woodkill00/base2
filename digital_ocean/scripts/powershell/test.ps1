@@ -741,6 +741,8 @@ function Check-DoDns([string]$artifactDir, [string]$domain, [string]$expectedIpv
   if (-not $adminLabel) { $adminLabel = 'admin' }
   $flowerLabel = $env:FLOWER_DNS_LABEL
   if (-not $flowerLabel) { $flowerLabel = 'flower' }
+  $swaggerLabel = $env:SWAGGER_DNS_LABEL
+  if (-not $swaggerLabel) { $swaggerLabel = 'swagger' }
 
   $labels = [ordered]@{
     at = '@'
@@ -749,6 +751,7 @@ function Check-DoDns([string]$artifactDir, [string]$domain, [string]$expectedIpv
     pgadmin = $pgadminLabel
     admin = $adminLabel
     flower = $flowerLabel
+    swagger = $swaggerLabel
   }
 
   $payload = [ordered]@{ domain = $domain; expectedIpv4 = $expectedIpv4; expectedIpv6 = $expectedIpv6; names = @{}; } 
@@ -797,6 +800,8 @@ function Check-ClientDns([string]$artifactDir, [string]$domain, [string]$expecte
   if (-not $adminLabel) { $adminLabel = 'admin' }
   $flowerLabel = $env:FLOWER_DNS_LABEL
   if (-not $flowerLabel) { $flowerLabel = 'flower' }
+  $swaggerLabel = $env:SWAGGER_DNS_LABEL
+  if (-not $swaggerLabel) { $swaggerLabel = 'swagger' }
 
   $labels = [ordered]@{
     at = '@'
@@ -805,6 +810,7 @@ function Check-ClientDns([string]$artifactDir, [string]$domain, [string]$expecte
     pgadmin = $pgadminLabel
     admin = $adminLabel
     flower = $flowerLabel
+    swagger = $swaggerLabel
   }
 
   $dnsServers = @()
