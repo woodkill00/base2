@@ -48,10 +48,10 @@ INSTALLED_APPS = [
     "catalog",
 ]
 
-# Performance: Django's default PBKDF2 iterations can be too slow on 1vCPU droplets,
-# causing login requests to exceed our verification SLO. Keep PBKDF2 but tune iterations.
+# Password hashing: production must not run reduced-iteration hashing.
+# Use PBKDF2 with a tunable override that enforces a minimum of Django's default iterations.
 PASSWORD_HASHERS = [
-    "project.password_hashers.PBKDF2FastPasswordHasher",
+    "project.password_hashers.PBKDF2TunablePasswordHasher",
 ]
 
 MIDDLEWARE = [
@@ -149,6 +149,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {
+        "redact": {
+            "()": "project.logging.RedactingFilter",
+        }
+    },
     "formatters": {
         "json": {
             "()": "project.logging.JsonFormatter",
@@ -159,6 +164,7 @@ LOGGING = {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "json",
+            "filters": ["redact"],
         }
     },
     "loggers": {

@@ -8,13 +8,39 @@ from api.db import db_ping
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.logging import configure_logging
+from typing import Any
+
+_metrics: Any
 try:
-    from api.metrics import metrics
+    from api.metrics import metrics as _metrics
 except Exception:  # pragma: no cover
-    metrics = None
+    _metrics = None
+
+metrics: Any = _metrics
 
 
 ENV = os.getenv("ENV", "development")
+
+def _env_truthy(name: str) -> bool:
+    v = os.getenv(name)
+    if v is None:
+        return False
+    return str(v).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _docs_enabled_for_env() -> bool:
+    # Default policy: docs disabled in production unless explicitly enabled.
+    if _env_truthy("API_DOCS_ENABLED"):
+        return True
+    if (ENV or "").strip().lower() == "production":
+        return False
+    return True
+
+
+_docs_enabled = _docs_enabled_for_env()
+_docs_url = os.getenv("API_DOCS_URL", "/docs") or "/docs"
+_redoc_url = os.getenv("API_REDOC_URL", "/redoc") or "/redoc"
+_openapi_url = os.getenv("API_OPENAPI_URL", "/openapi.json") or "/openapi.json"
 
 _E2E_TEST_MODE = (os.getenv("E2E_TEST_MODE", "") or "").strip().lower() in {"1", "true", "yes", "on"}
 
@@ -23,9 +49,9 @@ logger = logging.getLogger("api.http")
 
 app = FastAPI(
     title="Base2 API",
-    docs_url=None if ENV == "production" else "/docs",
-    redoc_url=None if ENV == "production" else "/redoc",
-    openapi_url=None if ENV == "production" else "/openapi.json",
+    docs_url=(_docs_url if _docs_enabled else None),
+    redoc_url=(_redoc_url if _docs_enabled else None),
+    openapi_url=(_openapi_url if _docs_enabled else None),
 )
 
 # Observability: optional OpenTelemetry
@@ -193,10 +219,12 @@ except Exception:
 try:
     from api.routes.auth import router as auth_router
     from api.routes.metrics import router as metrics_router
+    from api.routes.oauth import router as oauth_router
     from api.routes.users import router as users_router
 
     app.include_router(auth_router)
     app.include_router(metrics_router)
+    app.include_router(oauth_router)
     app.include_router(users_router)
 
     # E2E-only helpers (must be explicitly enabled; never in production).

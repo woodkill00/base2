@@ -46,7 +46,7 @@ certificatesResolvers:
 providers:
   # Source of truth is file provider (dynamic.yml).
   file:
-    filename: /etc/traefik/dynamic/dynamic.yml
+    filename: ${TRAEFIK_DYNAMIC_FILE}
     watch: true
 
   # Docker provider intentionally disabled to avoid label/file drift.

@@ -1,7 +1,5 @@
 import os
 import sys
-
-import pytest
 from fastapi.testclient import TestClient
 
 _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -14,7 +12,7 @@ from api.main import app
 class _FakePipeline:
     def __init__(self, store: dict):
         self._store = store
-        self._ops = []
+        self._ops: list[tuple[str, str, int]] = []
 
     def incr(self, k: str, n: int):
         self._ops.append(("incr", k, n))

@@ -85,9 +85,16 @@ test('register → verify (mocked via outbox) → login → me → logout', asyn
   } else {
     // cookie-mode: best-effort parse from Set-Cookie
     const refreshCookie = parseCookieValue(login.headers()['set-cookie'], 'base2_refresh');
+    const csrfCookie =
+      parseCookieValue(login.headers()['set-cookie'], 'base2_csrf') ||
+      parseCookieValue(reg.headers()['set-cookie'], 'base2_csrf');
     expect(refreshCookie).toBeTruthy();
+    expect(csrfCookie).toBeTruthy();
     logout = await request.post(`${apiBase()}/auth/logout`, {
-      headers: { Cookie: `base2_refresh=${refreshCookie}` }
+      headers: {
+        Cookie: `base2_refresh=${refreshCookie}; base2_csrf=${csrfCookie}`,
+        'X-CSRF-Token': String(csrfCookie)
+      }
     });
   }
   expect(logout.status()).toBe(204);
@@ -124,15 +131,20 @@ test('forgot → reset → login with new password', async ({ request }) => {
 test('refresh token rotation rejects reuse', async ({ request }) => {
   const email = uniqueEmail('refresh');
 
-  await request.post(`${apiBase()}/auth/register`, {
+  const reg = await request.post(`${apiBase()}/auth/register`, {
     data: { email, password: PASSWORD }
   });
+  const csrfFromRegister = parseCookieValue(reg.headers()['set-cookie'], 'base2_csrf');
 
   const login = await request.post(`${apiBase()}/auth/login`, { data: { email, password: PASSWORD } });
   expect(login.ok()).toBeTruthy();
 
   const setCookie = login.headers()['set-cookie'];
   const refresh1 = parseCookieValue(setCookie, 'base2_refresh');
+  const csrf1 = parseCookieValue(setCookie, 'base2_csrf') || csrfFromRegister;
+  if (refresh1) {
+    expect(csrf1).toBeTruthy();
+  }
 
   // If running in non-cookie mode, the response body will include refresh_token.
   const loginBody = await login.json();
@@ -141,26 +153,42 @@ test('refresh token rotation rejects reuse', async ({ request }) => {
 
   // First refresh -> rotates token
   const refreshResp = await request.post(`${apiBase()}/auth/refresh`, {
-    headers: refresh1 ? { Cookie: `base2_refresh=${refresh1}` } : undefined,
+    headers: refresh1
+      ? {
+          Cookie: `base2_refresh=${refresh1}; base2_csrf=${csrf1}`,
+          'X-CSRF-Token': String(csrf1)
+        }
+      : undefined,
     data: refresh1 ? undefined : { refresh_token: refreshToken1 }
   });
   expect(refreshResp.ok()).toBeTruthy();
 
   const refresh2 = parseCookieValue(refreshResp.headers()['set-cookie'], 'base2_refresh');
+  const csrf2 = parseCookieValue(refreshResp.headers()['set-cookie'], 'base2_csrf') || csrf1;
   const refreshBody = await refreshResp.json();
   const refreshToken2 = refresh2 || refreshBody.refresh_token;
   expect(refreshToken2).toBeTruthy();
 
   // Reuse old token should fail
   const reuse = await request.post(`${apiBase()}/auth/refresh`, {
-    headers: refresh1 ? { Cookie: `base2_refresh=${refresh1}` } : undefined,
+    headers: refresh1
+      ? {
+          Cookie: `base2_refresh=${refresh1}; base2_csrf=${csrf1}`,
+          'X-CSRF-Token': String(csrf1)
+        }
+      : undefined,
     data: refresh1 ? undefined : { refresh_token: refreshToken1 }
   });
   expect(reuse.status()).toBe(401);
 
   // New token should still work
   const good = await request.post(`${apiBase()}/auth/refresh`, {
-    headers: refresh2 ? { Cookie: `base2_refresh=${refresh2}` } : undefined,
+    headers: refresh2
+      ? {
+          Cookie: `base2_refresh=${refresh2}; base2_csrf=${csrf2}`,
+          'X-CSRF-Token': String(csrf2)
+        }
+      : undefined,
     data: refresh2 ? undefined : { refresh_token: refreshToken2 }
   });
   expect(good.ok()).toBeTruthy();

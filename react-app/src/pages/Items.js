@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { itemsAPI } from '../services/items';
 
 export default function Items() {

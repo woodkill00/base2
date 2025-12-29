@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 import os
-from typing import Optional
 from uuid import UUID
 
 import secrets

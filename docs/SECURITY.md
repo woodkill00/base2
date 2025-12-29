@@ -4,6 +4,18 @@
 - Cookie-based sessions (HttpOnly, Secure, SameSite) are the primary credential.
 - CSRF protection required for state-changing requests (double-submit CSRF cookie + `X-CSRF-Token` header or equivalent per-session token).
 
+### Refresh-cookie CSRF hardening
+
+When `AUTH_REFRESH_COOKIE=true` (refresh token stored in an HttpOnly cookie), the following cookie-based endpoints require **double-submit CSRF**:
+
+- `POST /api/auth/refresh`
+- `POST /api/auth/logout`
+
+Policy:
+
+- Browser must send `X-CSRF-Token` header whose value matches the CSRF cookie (default: `base2_csrf`).
+- In `staging`/`production`, the request must also include a valid `Origin` (preferred) or `Referer` that matches `FRONTEND_URL`.
+
 ## CORS + CSRF Posture
 - The API uses a **strict CORS allowlist** for browser calls.
 	- Configure allowed origins via `CORS_ALLOW_ORIGINS` (comma-separated, exact origins like `https://example.com`).
@@ -19,6 +31,11 @@
 - Admin routes (Django admin), pgAdmin, Flower, and Traefik dashboard MUST be gated: basic auth + IP allowlist.
 - Do not expose internal-only services publicly.
 
+Admin gating policy (Traefik):
+
+- `https://admin.${WEBSITE_DOMAIN}/admin/*` is protected by **basic auth** + **IP allowlist**.
+- Allowlist is configured via `DJANGO_ADMIN_ALLOWLIST`; credentials via `TRAEFIK_DASH_BASIC_USERS`.
+
 ## TLS Policy
 - Staging-only ACME (`le-staging`) is enforced; production issuance is disallowed.
 
@@ -26,6 +43,16 @@
 - Public routes (`/` and `/api/*`) are served with baseline security headers (HSTS, nosniff, frame-ancestors protection, referrer policy).
 - A Content Security Policy (CSP) and Permissions Policy are applied at the edge via Traefik middleware.
 - Deploy verification records observed headers in `meta/security-headers.json`.
+
+### CSP validation
+
+The deploy-time probe captures CSP (and other security headers) from:
+
+- `https://${WEBSITE_DOMAIN}/`
+- `https://${WEBSITE_DOMAIN}/api/health`
+- `https://swagger.${WEBSITE_DOMAIN}/docs`
+
+It applies basic sanity checks (presence of `default-src`, and rejects obvious placeholder/template tokens).
 
 ## Rate Limiting
 - **Edge (Traefik)**: coarse rate limiting on sensitive endpoints (especially auth) to reduce burst abuse.
@@ -48,3 +75,18 @@ Override knobs (optional): `RATE_LIMIT_<SCOPE>_WINDOW_MS`, `RATE_LIMIT_<SCOPE>_M
 ## Logging & Auditing
 - Record audit events (login success/failure, signup, logout, profile update, OAuth link, email verification, password reset) with request metadata.
 - Never log secrets (passwords, raw verification/reset tokens, OAuth tokens, OAuth codes).
+
+### Redis + Celery hardening
+
+- Redis is **internal-only** (no published ports) and MUST require a password (`REDIS_PASSWORD`).
+- Celery MUST use JSON-only serialization (`accept_content` excludes pickle) to prevent unsafe deserialization.
+
+### Log redaction
+
+- FastAPI and Django apply a redacting logging filter to scrub common secret patterns (e.g., `Authorization`, `Cookie`, `*token*`, `*password*`) from log messages and structured extras.
+
+## Dependency Supply-Chain
+
+- Python dependencies are **pinned** via `api/requirements.txt` and `django/requirements.txt` (generated from `*.in`).
+- CI runs `pip-audit` for **high severity** vulnerabilities.
+- CI runs `npm audit` for **high severity** vulnerabilities (React app).

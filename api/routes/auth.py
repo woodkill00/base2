@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 import hashlib
+import secrets
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
@@ -41,6 +43,64 @@ class _RegisterRequest(BaseModel):
 
 def _refresh_cookie_name() -> str:
     return "base2_refresh"
+
+
+def _csrf_cookie_name() -> str:
+    return str(getattr(settings, "CSRF_COOKIE_NAME", "base2_csrf") or "base2_csrf")
+
+
+def _ensure_csrf_cookie(request: Request, response: Response) -> None:
+    name = _csrf_cookie_name()
+    existing = request.cookies.get(name)
+    if existing:
+        return
+    token = secrets.token_urlsafe(16)
+    response.set_cookie(
+        key=name,
+        value=token,
+        httponly=False,
+        secure=bool(settings.COOKIE_SECURE),
+        samesite=str(settings.COOKIE_SAMESITE or "Lax"),
+        path="/",
+    )
+
+
+def _require_cookie_csrf(request: Request) -> None:
+    cookie_name = _csrf_cookie_name()
+    cookie_val = (request.cookies.get(cookie_name) or "").strip()
+    header_val = (request.headers.get("x-csrf-token") or request.headers.get("X-CSRF-Token") or "").strip()
+    if not cookie_val or not header_val or cookie_val != header_val:
+        raise HTTPException(status_code=403, detail="CSRF failed")
+
+
+def _require_origin_or_referer(request: Request) -> None:
+    env = (getattr(settings, "ENV", "development") or "development").strip().lower()
+    if env not in {"staging", "production"}:
+        return
+    expected = (getattr(settings, "FRONTEND_URL", "") or "").strip().rstrip("/")
+    if not expected:
+        return
+
+    origin = (request.headers.get("origin") or "").strip().rstrip("/")
+    if origin:
+        if origin != expected:
+            raise HTTPException(status_code=403, detail="Origin not allowed")
+        return
+
+    referer = (request.headers.get("referer") or "").strip()
+    if referer:
+        try:
+            u = urlparse(referer)
+            ref_origin = (f"{u.scheme}://{u.netloc}").rstrip("/")
+            if ref_origin != expected:
+                raise HTTPException(status_code=403, detail="Referer not allowed")
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=403, detail="Referer not allowed")
+        return
+
+    raise HTTPException(status_code=403, detail="Missing Origin/Referer")
 
 
 def _set_refresh_cookie(response: Response, token: str, *, max_age_seconds: int | None = None) -> None:
@@ -112,6 +172,7 @@ async def auth_login(request: Request, response: Response, payload: _LoginReques
         raise HTTPException(status_code=500, detail="Login failed")
 
     _set_refresh_cookie(response, tokens.refresh_token, max_age_seconds=refresh_ttl_days * 86400)
+    _ensure_csrf_cookie(request, response)
     body = {
         "id": str(user.id),
         "email": user.email,
@@ -123,6 +184,11 @@ async def auth_login(request: Request, response: Response, payload: _LoginReques
     if not bool(settings.AUTH_REFRESH_COOKIE):
         body["refresh_token"] = tokens.refresh_token
     return body
+
+
+@router.post("/users/login")
+async def users_login(request: Request, response: Response, payload: _LoginRequest):
+    return await auth_login(request, response, payload)
 
 
 @router.post("/auth/register")
@@ -157,6 +223,7 @@ async def auth_register(request: Request, response: Response, payload: _Register
         raise HTTPException(status_code=500, detail="Registration failed")
 
     _set_refresh_cookie(response, tokens.refresh_token, max_age_seconds=refresh_ttl_days * 86400)
+    _ensure_csrf_cookie(request, response)
     response.status_code = 201
     body = {
         "id": str(user.id),
@@ -169,6 +236,11 @@ async def auth_register(request: Request, response: Response, payload: _Register
     if not bool(settings.AUTH_REFRESH_COOKIE):
         body["refresh_token"] = tokens.refresh_token
     return body
+
+
+@router.post("/users/signup")
+async def users_signup(request: Request, response: Response, payload: _RegisterRequest):
+    return await auth_register(request, response, payload)
 
 
 @router.post("/auth/verify-email")
@@ -295,6 +367,9 @@ async def auth_reset_password(request: Request, response: Response):
 @router.post("/auth/logout")
 async def auth_logout(request: Request, response: Response):
     refresh = request.cookies.get(_refresh_cookie_name())
+    if refresh and bool(settings.AUTH_REFRESH_COOKIE):
+        _require_origin_or_referer(request)
+        _require_cookie_csrf(request)
     if not refresh:
         try:
             payload = await request.json()
@@ -323,6 +398,11 @@ async def auth_logout(request: Request, response: Response):
     _clear_refresh_cookie(response)
     response.status_code = 204
     return None
+
+
+@router.post("/users/logout")
+async def users_logout(request: Request, response: Response):
+    return await auth_logout(request, response)
 
 
 @router.get("/auth/me")
@@ -401,6 +481,9 @@ async def auth_me_patch(request: Request):
 @router.post("/auth/refresh")
 async def auth_refresh(request: Request, response: Response):
     refresh = request.cookies.get(_refresh_cookie_name())
+    if refresh and bool(settings.AUTH_REFRESH_COOKIE):
+        _require_origin_or_referer(request)
+        _require_cookie_csrf(request)
     if not refresh:
         try:
             payload = await request.json()
@@ -428,6 +511,7 @@ async def auth_refresh(request: Request, response: Response):
         raise HTTPException(status_code=500, detail="Refresh failed")
 
     _set_refresh_cookie(response, tokens.refresh_token, max_age_seconds=refresh_ttl_days * 86400)
+    _ensure_csrf_cookie(request, response)
     body = {
         "id": str(user.id),
         "email": user.email,

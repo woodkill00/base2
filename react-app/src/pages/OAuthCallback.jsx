@@ -1,5 +1,3 @@
-import React from 'react';
-
 const OAuthCallback = () => {
   return (
     <div style={styles.container}>

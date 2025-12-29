@@ -71,14 +71,14 @@ def main() -> int:
 
     admin_email = _env("SEED_ADMIN_EMAIL")
     admin_password = _env("SEED_ADMIN_PASSWORD")
-    if not admin_email or not admin_password:
+    if admin_email is None or admin_password is None or not admin_email.strip() or not admin_password.strip():
         print(
             "Missing SEED_ADMIN_EMAIL/SEED_ADMIN_PASSWORD. Set them in .env before running seed.",
             file=sys.stderr,
         )
         return 2
 
-    demo_password = _env("SEED_DEMO_PASSWORD", admin_password)
+    demo_password = _env("SEED_DEMO_PASSWORD", admin_password) or admin_password
 
     users = [
         SeedUser(email=admin_email, password=admin_password, verified=True),

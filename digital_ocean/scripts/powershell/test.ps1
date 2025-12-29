@@ -16,6 +16,7 @@ param(
   [switch]$CheckRateLimit,
   [switch]$CheckDjangoProxy,
   [switch]$CheckDjangoAdmin,
+  [switch]$CheckSwagger,
   [switch]$CheckPgAdmin,
   [switch]$CheckTraefikDashboard,
   [switch]$CheckDns,
@@ -406,6 +407,30 @@ function Verify-Headers([string[]]$headers, [string]$context) {
   return $fail
 }
 
+function Get-HeaderValue([string[]]$headers, [string]$name) {
+  if (-not $headers) { return '' }
+  $n = ($name + '').Trim()
+  foreach ($line in $headers) {
+    if (-not $line) { continue }
+    if ($line -match "(?i)^\s*" + [regex]::Escape($n) + "\s*:\s*(.+)\s*$") {
+      return ([string]$Matches[1]).Trim()
+    }
+  }
+  return ''
+}
+
+function Test-CspValue([string]$csp) {
+  $fail = @()
+  $v = ($csp + '').Trim()
+  if (-not $v) {
+    $fail += 'Missing Content-Security-Policy'
+    return $fail
+  }
+  if ($v -notmatch "(?i)\bdefault-src\b") { $fail += 'CSP missing default-src directive' }
+  if ($v -match "\{\{|\}\}|<%|%>|PLACEHOLDER|TODO") { $fail += 'CSP appears to contain template/placeholder tokens' }
+  return $fail
+}
+
 function Read-StatusFile([string]$path) {
   if (-not $path) { return 0 }
   if (-not (Test-Path $path)) { return 0 }
@@ -482,7 +507,7 @@ function Verify-StagingCert([string]$staticPath, [string]$dynamicPath) {
 }
 
 # Explicit staging-only ACME guard: fail if production ACME directory is configured.
-function Check-TlsAcmeGuard([string]$artifactDir, [string]$staticPath) {
+function Check-TlsAcmeGuard([string]$artifactDir, [string]$staticPath, [string]$dynamicPath = '') {
   $fail = @()
   $payload = [ordered]@{
     ok = $false
@@ -493,6 +518,10 @@ function Check-TlsAcmeGuard([string]$artifactDir, [string]$staticPath) {
     storage = ''
     acmeStorageMode = ''
     acmeStoragePermsOk = $false
+    dynamicChecked = $false
+    routersChecked = @()
+    routersMissing = @()
+    routersWrongResolver = @()
     error = ''
   }
 
@@ -528,6 +557,43 @@ function Check-TlsAcmeGuard([string]$artifactDir, [string]$staticPath) {
     }
 
     if (-not $payload.stagingReferenced) { $fail += 'Traefik static config does not reference le-staging resolver' }
+
+    # Dynamic routing guardrail: key routers must explicitly reference le-staging.
+    try {
+      if ($dynamicPath -and (Test-Path $dynamicPath)) {
+        $payload.dynamicChecked = $true
+        $dyn = Get-Content -Path $dynamicPath -Raw
+
+        $requiredRouters = @(
+          'api',
+          'frontend-react',
+          'swagger-docs',
+          'django-admin-subdomain',
+          'django-admin-path',
+          'static-files'
+        )
+
+        foreach ($r in $requiredRouters) {
+          $m = [ordered]@{ router = $r; found = $false; certResolver = '' }
+          $pattern = "(?ims)^\s*" + [regex]::Escape($r) + ":\s*\r?\n.*?^\s*tls\s*:\s*\r?\n\s*certResolver\s*:\s*(\S+)\s*$"
+          $mm = [regex]::Match($dyn, $pattern)
+          if ($mm.Success) {
+            $m.found = $true
+            $m.certResolver = ([string]$mm.Groups[1].Value).Trim().Trim('"').Trim("'")
+            if ($m.certResolver -ne 'le-staging') {
+              $payload.routersWrongResolver += @([ordered]@{ router = $r; certResolver = $m.certResolver })
+              $fail += "Traefik router $r uses certResolver=$($m.certResolver) (expected le-staging)"
+            }
+          } else {
+            $payload.routersMissing += $r
+            $fail += "Traefik dynamic config missing expected TLS certResolver for router: $r"
+          }
+          $payload.routersChecked += $m
+        }
+      }
+    } catch {
+      $fail += "Traefik dynamic router TLS guard failed: $($_.Exception.Message)"
+    }
 
     # Guardrail: ACME email must be set.
     if (-not $payload.email -or $payload.email -match '^\$\{') {
@@ -675,6 +741,8 @@ function Check-DoDns([string]$artifactDir, [string]$domain, [string]$expectedIpv
   if (-not $adminLabel) { $adminLabel = 'admin' }
   $flowerLabel = $env:FLOWER_DNS_LABEL
   if (-not $flowerLabel) { $flowerLabel = 'flower' }
+  $swaggerLabel = $env:SWAGGER_DNS_LABEL
+  if (-not $swaggerLabel) { $swaggerLabel = 'swagger' }
 
   $labels = [ordered]@{
     at = '@'
@@ -683,6 +751,7 @@ function Check-DoDns([string]$artifactDir, [string]$domain, [string]$expectedIpv
     pgadmin = $pgadminLabel
     admin = $adminLabel
     flower = $flowerLabel
+    swagger = $swaggerLabel
   }
 
   $payload = [ordered]@{ domain = $domain; expectedIpv4 = $expectedIpv4; expectedIpv6 = $expectedIpv6; names = @{}; } 
@@ -731,6 +800,8 @@ function Check-ClientDns([string]$artifactDir, [string]$domain, [string]$expecte
   if (-not $adminLabel) { $adminLabel = 'admin' }
   $flowerLabel = $env:FLOWER_DNS_LABEL
   if (-not $flowerLabel) { $flowerLabel = 'flower' }
+  $swaggerLabel = $env:SWAGGER_DNS_LABEL
+  if (-not $swaggerLabel) { $swaggerLabel = 'swagger' }
 
   $labels = [ordered]@{
     at = '@'
@@ -739,6 +810,7 @@ function Check-ClientDns([string]$artifactDir, [string]$domain, [string]$expecte
     pgadmin = $pgadminLabel
     admin = $adminLabel
     flower = $flowerLabel
+    swagger = $swaggerLabel
   }
 
   $dnsServers = @()
@@ -1055,6 +1127,7 @@ if (-not $Json) { Write-Host "Using artifacts at: $artifactDir" -ForegroundColor
 # If invoked as a suite, expand to all checks.
 if ($All) {
   $CheckDjangoAdmin = $true
+  $CheckSwagger = $true
   $CheckCelery = $true
   $CheckDns = $true
   $CheckPgAdmin = $true
@@ -1166,6 +1239,65 @@ $failures += Verify-Headers $apiHdr 'api-https'
 $failures += Verify-Headers $apiHdrHealth 'api-https-health'
 $failures += Verify-Headers $apiHdrHealthSlash 'api-https-health-slash'
 
+# Capture security headers (including CSP) for key entrypoints.
+try {
+  $secFailures = @()
+  $rootCsp = Get-HeaderValue $rootHdr 'Content-Security-Policy'
+  $apiCsp = Get-HeaderValue $apiHdrHealth 'Content-Security-Policy'
+
+  $secFailures += Test-CspValue $rootCsp
+  $secFailures += Test-CspValue $apiCsp
+
+  $swagger = $null
+  if ($CheckSwagger) {
+    $SwaggerHost = "swagger.$Domain"
+    $swaggerUrl = "https://$SwaggerHost/docs"
+    $swaggerHdr = @()
+    $swaggerStatus = 0
+    try {
+      $swaggerHdr = Curl-Head $swaggerUrl
+      $swaggerStatus = Get-StatusCodeFromHeaders $swaggerHdr
+    } catch {
+      $swaggerHdr = @()
+      $swaggerStatus = 0
+      $secFailures += "Swagger header probe failed: $($_.Exception.Message)"
+    }
+    $swaggerCsp = Get-HeaderValue $swaggerHdr 'Content-Security-Policy'
+    $secFailures += Test-CspValue $swaggerCsp
+    $swagger = [ordered]@{ url = $swaggerUrl; status = [int]$swaggerStatus; csp = [string]$swaggerCsp }
+  }
+
+  $payload = [ordered]@{
+    ok = ([bool]($secFailures.Count -eq 0))
+    failures = @($secFailures)
+    urls = [ordered]@{
+      root = "https://$Domain/"
+      apiHealth = "https://$Domain/api/health"
+    }
+    headers = [ordered]@{
+      root = [ordered]@{
+        csp = [string]$rootCsp
+        hsts = [string](Get-HeaderValue $rootHdr 'Strict-Transport-Security')
+        xfo = [string](Get-HeaderValue $rootHdr 'X-Frame-Options')
+        xcto = [string](Get-HeaderValue $rootHdr 'X-Content-Type-Options')
+        pp = [string](Get-HeaderValue $rootHdr 'Permissions-Policy')
+      }
+      apiHealth = [ordered]@{
+        csp = [string]$apiCsp
+        hsts = [string](Get-HeaderValue $apiHdrHealth 'Strict-Transport-Security')
+        xfo = [string](Get-HeaderValue $apiHdrHealth 'X-Frame-Options')
+        xcto = [string](Get-HeaderValue $apiHdrHealth 'X-Content-Type-Options')
+        pp = [string](Get-HeaderValue $apiHdrHealth 'Permissions-Policy')
+      }
+      swagger = $swagger
+    }
+  }
+  Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'security-headers.json' -content $payload
+  if (-not $payload.ok) {
+    $failures += @($payload.failures | ForEach-Object { "Security headers: $($_)" })
+  }
+} catch {}
+
 # Verify staging cert resolver
 $staticYml = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'traefik-static.yml'
 $dynamicYml = Resolve-ArtifactPath -artifactDir $artifactDir -fileName 'traefik-dynamic.yml'
@@ -1173,7 +1305,7 @@ $failures += Verify-StagingCert $staticYml $dynamicYml
 
 # Explicit staging-only ACME guard (staging OK, production forbidden)
 try {
-  $t = Check-TlsAcmeGuard -artifactDir $artifactDir -staticPath $staticYml
+  $t = Check-TlsAcmeGuard -artifactDir $artifactDir -staticPath $staticYml -dynamicPath $dynamicYml
   $tlsAcmeGuard = $t.payload
   $failures += @($t.failures)
 } catch {}
@@ -1498,6 +1630,7 @@ $result = [ordered]@{
   rateLimitCheck = [ordered]@{ enabled = $false; burst = 0; saw429 = $false }
   djangoProxy = [ordered]@{ enabled = $false; status = 0; bodySnippet = @() }
   adminCheck = [ordered]@{ enabled = $false; host = ''; statusNoAuth = 0; statusWithAuth = 0 }
+  swaggerCheck = [ordered]@{ enabled = $false; host = ''; docsHeadStatus = 0; docsGetStatus = 0; openapiStatus = 0; ok = $false }
   celeryCheck = [ordered]@{ enabled = $false; host = ''; statusNoAuth = 0; statusWithAuth = 0 }
   doDnsCheck = [ordered]@{ enabled = $false; ok = $false; expectedIpv4 = ''; expectedIpv6 = '' }
   clientDnsCheck = [ordered]@{ enabled = $false; ok = $false; expectedIpv4 = ''; failures = @() }
@@ -1749,6 +1882,92 @@ if ($CheckDjangoAdmin) {
     Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'admin-host-path-guard.json' -content $guardPayload
     if (-not $guardOk) { $failures += "Admin host path guard failed: statuses root=$rootStatus, foo=$fooStatus ($AdminHost)" }
   } catch {}
+}
+
+# Optional: Swagger UI host (docs-only) probes
+if ($CheckSwagger) {
+  $SwaggerHost = "swagger.$Domain"
+
+  $rootUrl = "https://$SwaggerHost/"
+  $docsUrl = "https://$SwaggerHost/docs"
+  $openapiUrl = "https://$SwaggerHost/openapi.json"
+
+  $rootHeadStatus = 0
+  $rootLocation = ''
+  try {
+    $rootHead = Curl-Head $rootUrl
+    $rootHeadStatus = Get-StatusCodeFromHeaders $rootHead
+    $rootLocation = [string](Get-HeaderValue $rootHead 'Location')
+  } catch {
+    $rootHeadStatus = 0
+    $rootLocation = ''
+  }
+
+  $rootOk = $false
+  if (@(301,302,307,308) -contains $rootHeadStatus) {
+    # Accept either absolute or relative redirect to /docs or /docs/
+    $rootOk = ($rootLocation -match '(^/docs/?$)|(/docs/?$)')
+  }
+
+  $docsHead = Curl-Head $docsUrl
+  $docsHeadStatus = Get-StatusCodeFromHeaders $docsHead
+
+  $docsGetStatus = 0
+  $docsBodyPreview = ''
+  try {
+    # If /docs redirects, try /docs/ as a follow-up (FastAPI sometimes normalizes slashes).
+    if (@(301,302,307,308) -contains $docsHeadStatus) {
+      $resp = Curl-Get ("https://{0}/docs/" -f $SwaggerHost)
+      $docsGetStatus = [int]$resp.status
+      $docsBodyPreview = [string]($resp.body -join "`n")
+    } else {
+      $resp = Curl-Get $docsUrl
+      $docsGetStatus = [int]$resp.status
+      $docsBodyPreview = [string]($resp.body -join "`n")
+    }
+  } catch {}
+
+  if ($docsBodyPreview -and $docsBodyPreview.Length -gt 1200) {
+    $docsBodyPreview = $docsBodyPreview.Substring(0, 1200)
+  }
+
+  $openapiStatus = 0
+  $openapiOk = $false
+  try {
+    $oa = Curl-Get $openapiUrl
+    $openapiStatus = [int]$oa.status
+    if ($openapiStatus -eq 200) {
+      $raw = ($oa.body -join "")
+      $null = ($raw | ConvertFrom-Json)
+      $openapiOk = $true
+    }
+  } catch { $openapiOk = $false }
+
+  $docsOk = (@(200,301,302,307,308) -contains $docsHeadStatus) -and ($docsGetStatus -eq 200)
+  $ok = $rootOk -and $docsOk -and $openapiOk
+
+  $payload = [ordered]@{
+    host = $SwaggerHost
+    root = [ordered]@{ url = $rootUrl; headStatus = $rootHeadStatus; location = $rootLocation; ok = [bool]$rootOk }
+    docs = [ordered]@{ url = $docsUrl; headStatus = $docsHeadStatus; getStatus = $docsGetStatus; bodyPreview = $docsBodyPreview }
+    openapi = [ordered]@{ url = $openapiUrl; status = $openapiStatus; ok = $openapiOk }
+    ok = [bool]$ok
+  }
+  # Force JSON serialization here so the artifact is guaranteed to be written (Write-ServiceArtifact
+  # swallows serialization errors).
+  $payloadJson = ''
+  try {
+    $payloadJson = $payload | ConvertTo-Json -Depth 8
+  } catch {
+    $payloadJson = ([ordered]@{ host = $SwaggerHost; ok = $false; error = [string]$_.Exception.Message } | ConvertTo-Json -Depth 4)
+  }
+  Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'swagger-host-check.json' -content $payloadJson
+
+  $result.swaggerCheck = [ordered]@{ enabled = $true; host = $SwaggerHost; rootHeadStatus = $rootHeadStatus; rootLocation = $rootLocation; docsHeadStatus = $docsHeadStatus; docsGetStatus = $docsGetStatus; openapiStatus = $openapiStatus; ok = [bool]$ok }
+
+  if (-not $ok) {
+    $failures += "Swagger host check failed: rootHead=$rootHeadStatus rootLocation=$rootLocation docsHead=$docsHeadStatus docsGet=$docsGetStatus openapi=$openapiStatus ($SwaggerHost)"
+  }
 }
 
 # Optional: Test pgAdmin dashboard via edge

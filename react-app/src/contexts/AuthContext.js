@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { authAPI } from '../services/api';
 import { normalizeApiError } from '../lib/apiErrors';
 
@@ -22,7 +22,6 @@ export const AuthProvider = ({ children }) => {
     try {
       return JSON.parse(storedUser);
     } catch (error) {
-      console.error('Error parsing stored user:', error);
       localStorage.removeItem('user');
       return null;
     }

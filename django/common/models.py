@@ -18,10 +18,7 @@ from phonenumber_field.modelfields import PhoneNumberField
 
 # from django.contrib.gis.db import models
 # from enum import unique
-try:
-    import zoneinfo
-except ImportError:
-    from backports import zoneinfo
+import zoneinfo
 
 # from django.db.models.fields import CharField
 from django.utils.translation import gettext_lazy as _

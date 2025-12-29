@@ -5,6 +5,22 @@ const API_URL = '/api';
 
 let refreshPromise = null;
 
+const _getCookie = (name) => {
+  try {
+    const needle = `${encodeURIComponent(name)}=`;
+    const parts = String(document.cookie || '').split(';');
+    for (const part of parts) {
+      const trimmed = String(part || '').trim();
+      if (trimmed.startsWith(needle)) {
+        return decodeURIComponent(trimmed.substring(needle.length));
+      }
+    }
+    return null;
+  } catch (_) {
+    return null;
+  }
+};
+
 const _getAccessToken = () => {
   try {
     return window.localStorage.getItem('token');
@@ -67,9 +83,15 @@ const _refreshAccessTokenSingleFlight = async () => {
     const refreshToken = _getRefreshToken();
     const body = refreshToken ? { refresh_token: refreshToken } : {};
 
+    const csrf = _getCookie('base2_csrf');
+    const headers = { 'Content-Type': 'application/json' };
+    if (csrf) {
+      headers['X-CSRF-Token'] = csrf;
+    }
+
     const resp = await axios.post(`${API_URL}/auth/refresh`, body, {
       withCredentials: true,
-      headers: { 'Content-Type': 'application/json' },
+      headers,
     });
 
     _setTokensFromResponse(resp?.data);

@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Optional, overload
 
 
 def getenv_bool(name: str, default: bool) -> bool:
@@ -7,6 +7,18 @@ def getenv_bool(name: str, default: bool) -> bool:
     if v is None:
         return default
     return str(v).strip().lower() in {"1", "true", "yes", "on"}
+
+
+@overload
+def getenv(name: str) -> Optional[str]: ...
+
+
+@overload
+def getenv(name: str, default: str) -> str: ...
+
+
+@overload
+def getenv(name: str, default: None) -> Optional[str]: ...
 
 
 def getenv(name: str, default: Optional[str] = None) -> Optional[str]:
@@ -26,6 +38,14 @@ def getenv_int(name: str, default: int) -> int:
 class Settings:
     ENV: str = getenv("ENV", "development") or "development"
 
+    # Docs/OpenAPI exposure
+    # Default: enabled outside production. For dev-production (staging-only TLS) you may
+    # explicitly enable docs even if ENV=production.
+    API_DOCS_ENABLED: bool = getenv_bool("API_DOCS_ENABLED", (ENV.strip().lower() != "production"))
+    API_DOCS_URL: str = getenv("API_DOCS_URL", "/docs") or "/docs"
+    API_REDOC_URL: str = getenv("API_REDOC_URL", "/redoc") or "/redoc"
+    API_OPENAPI_URL: str = getenv("API_OPENAPI_URL", "/openapi.json") or "/openapi.json"
+
     SESSION_COOKIE_NAME: str = getenv("SESSION_COOKIE_NAME", "base2_session")
     CSRF_COOKIE_NAME: str = getenv("CSRF_COOKIE_NAME", "base2_csrf")
     COOKIE_SAMESITE: str = getenv("COOKIE_SAMESITE", "Lax")
@@ -44,6 +64,8 @@ class Settings:
 
     JWT_SECRET: str = getenv("JWT_SECRET", "") or ""
     TOKEN_PEPPER: str = getenv("TOKEN_PEPPER", "") or ""
+    JWT_ISSUER: str = getenv("JWT_ISSUER", "base2") or "base2"
+    JWT_AUDIENCE: str = getenv("JWT_AUDIENCE", "base2") or "base2"
     JWT_EXPIRE_MINUTES: int = getenv_int("JWT_EXPIRE", 15)
     REFRESH_TOKEN_TTL_DAYS: int = getenv_int("REFRESH_TOKEN_TTL_DAYS", 30)
     FRONTEND_URL: str = getenv("FRONTEND_URL", "") or ""

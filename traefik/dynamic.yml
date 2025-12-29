@@ -27,7 +27,7 @@ http:
 
     # Django admin on admin subdomain (guarded; restrict to /admin paths only)
     django-admin-subdomain:
-      rule: Host(`${DJANGO_ADMIN_DNS_LABEL}.${WEBSITE_DOMAIN}`) && PathPrefix(`/admin`)
+      rule: Host(`admin.${WEBSITE_DOMAIN}`) && PathPrefix(`/admin`)
       priority: 190
       entryPoints:
         - websecure
@@ -55,7 +55,7 @@ http:
 
     # Django static: /static/* (admin subdomain only; avoids hijacking React /static assets on main domain)
     static-files:
-      rule: Host(`${DJANGO_ADMIN_DNS_LABEL}.${WEBSITE_DOMAIN}`) && PathPrefix(`/static`)
+      rule: Host(`admin.${WEBSITE_DOMAIN}`) && PathPrefix(`/static`)
       priority: 195
       entryPoints:
         - websecure
@@ -77,6 +77,33 @@ http:
       tls:
         certResolver: le-staging
       service: frontend-react
+
+    # FastAPI Swagger UI on swagger subdomain (docs-only paths)
+    swagger-docs:
+      rule: Host(`swagger.${WEBSITE_DOMAIN}`) && (PathPrefix(`/docs`) || Path(`/openapi.json`) || PathPrefix(`/redoc`))
+      priority: 205
+      entryPoints:
+        - websecure
+      middlewares:
+        - security-headers
+        - security-csp-swagger
+        - rate-limit
+        - retry
+      tls:
+        certResolver: le-staging
+      service: api
+
+    # Swagger root convenience: visiting https://swagger.<domain>/ should land on /docs
+    swagger-docs-root:
+      rule: Host(`swagger.${WEBSITE_DOMAIN}`) && Path(`/`)
+      priority: 206
+      entryPoints:
+        - websecure
+      middlewares:
+        - swagger-root-to-docs
+      tls:
+        certResolver: le-staging
+      service: noop@internal
 
     # Traefik dashboard (guarded)
     traefik-dashboard:
@@ -170,33 +197,37 @@ http:
         frameDeny: true
         contentTypeNosniff: true
         browserXssFilter: true
-        referrerPolicy: "no-referrer-when-downgrade"
+        referrerPolicy: 'no-referrer-when-downgrade'
         customResponseHeaders:
-          X-Frame-Options: "DENY"
-          X-Content-Type-Options: "nosniff"
-          X-XSS-Protection: "1; mode=block"
-          Permissions-Policy: "geolocation=(), microphone=(), camera=(), payment=(), usb=()"
+          X-Frame-Options: 'DENY'
+          X-Content-Type-Options: 'nosniff'
+          X-XSS-Protection: '1; mode=block'
+          Permissions-Policy: 'geolocation=(), microphone=(), camera=(), payment=(), usb=()'
 
     security-csp:
       headers:
         contentSecurityPolicy: "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self' data:;"
+
+    security-csp-swagger:
+      headers:
+        contentSecurityPolicy: "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' data:; worker-src 'self' blob:;"
 
     security-headers-no-hsts:
       headers:
         frameDeny: true
         contentTypeNosniff: true
         browserXssFilter: true
-        referrerPolicy: "no-referrer-when-downgrade"
+        referrerPolicy: 'no-referrer-when-downgrade'
         customResponseHeaders:
-          X-Frame-Options: "DENY"
-          X-Content-Type-Options: "nosniff"
-          X-XSS-Protection: "1; mode=block"
-          Permissions-Policy: "geolocation=(), microphone=(), camera=(), payment=(), usb=()"
+          X-Frame-Options: 'DENY'
+          X-Content-Type-Options: 'nosniff'
+          X-XSS-Protection: '1; mode=block'
+          Permissions-Policy: 'geolocation=(), microphone=(), camera=(), payment=(), usb=()'
 
     traefik-basic-auth:
       basicAuth:
         users:
-          - "${TRAEFIK_DASH_BASIC_USERS}"
+          - '${TRAEFIK_DASH_BASIC_USERS}'
 
     pgadmin-allow-ip:
       ipAllowList:
@@ -216,7 +247,7 @@ http:
     flower-basic-auth:
       basicAuth:
         users:
-          - "${FLOWER_BASIC_USERS}"
+          - '${FLOWER_BASIC_USERS}'
 
     rate-limit:
       rateLimit:
@@ -227,3 +258,9 @@ http:
       retry:
         attempts: 3
         initialInterval: 100ms
+
+    swagger-root-to-docs:
+      redirectRegex:
+        regex: '^https?://([^/]+)/?$'
+        replacement: 'https://$1/docs'
+        permanent: false

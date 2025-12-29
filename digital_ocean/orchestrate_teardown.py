@@ -10,14 +10,33 @@ Usage:
 import os
 import sys
 import time
+import re
 from dotenv import load_dotenv
 from pydo import Client
 
 load_dotenv()
 
+
+_ENV_VAR_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
+
+
+def _expand_env_templates(value: str, env: dict | None = None) -> str:
+    if value is None:
+        return value
+    env_map = env or os.environ
+    current = str(value)
+    for _ in range(5):
+        next_value = _ENV_VAR_PATTERN.sub(lambda m: env_map.get(m.group(1), m.group(0)), current)
+        if next_value == current:
+            break
+        current = next_value
+    return current
+
 DO_API_TOKEN = os.getenv("DO_API_TOKEN")
-DO_DOMAIN = os.getenv("DO_DOMAIN")
-DO_DROPLET_NAME = os.getenv("DO_DROPLET_NAME", "base2-droplet")
+PROJECT_NAME = os.getenv("PROJECT_NAME", "base2")
+_EXPANSION_ENV = {**os.environ, "PROJECT_NAME": PROJECT_NAME}
+DO_DOMAIN = _expand_env_templates(os.getenv("DO_DOMAIN"), _EXPANSION_ENV)
+DO_DROPLET_NAME = _expand_env_templates(os.getenv("DO_DROPLET_NAME", "base2-droplet"), _EXPANSION_ENV)
 CLEAN_DNS = "--clean-dns" in sys.argv
 
 client = Client(token=DO_API_TOKEN)

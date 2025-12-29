@@ -16,6 +16,9 @@ param(
   [int]$RateLimitBurst = 20,
   # Remote verification can include container rebuilds and test runs; 10 minutes is often too low.
   [int]$VerifyTimeoutSec = 1800,
+  # Local React tests can be slow on first run (npm ci) and appear to hang without output.
+  # This timeout prevents indefinite waits.
+  [int]$ReactTestTimeoutSec = 1800,
   [switch]$AsyncVerify,
   [int]$LogsPollMaxAttempts = 30,
   [int]$LogsPollIntervalSec = 10,
@@ -44,6 +47,63 @@ function Write-Section($msg) {
 function Get-UtcTimestamp {
   # Windows PowerShell 5.1 doesn't support Get-Date -AsUTC.
   return (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+}
+
+function Invoke-LocalCmdWithTimeout {
+  param(
+    [string]$WorkingDirectory,
+    [string]$Label,
+    [string]$CmdLine,
+    [int]$TimeoutSec,
+    [int]$HeartbeatSec = 30
+  )
+
+  $tempRoot = $env:TEMP
+  if ([string]::IsNullOrWhiteSpace($tempRoot)) { $tempRoot = $script:RepoRoot }
+  $tmp = Join-Path $tempRoot ("base2-{0}.log" -f ([guid]::NewGuid().ToString('n')))
+  $wrapped = "$CmdLine > `"$tmp`" 2>&1"
+
+  $p = Start-Process -FilePath 'cmd.exe' -ArgumentList @('/c', $wrapped) -WorkingDirectory $WorkingDirectory -NoNewWindow -PassThru
+  $startedAt = Get-Date
+  $lastBeatAt = $startedAt
+
+  while (-not $p.HasExited) {
+    Start-Sleep -Seconds 2
+
+    $now = Get-Date
+    $elapsedSec = [int]($now - $startedAt).TotalSeconds
+    if ($elapsedSec -ge $TimeoutSec) {
+      try { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } catch {}
+      return @{
+        ExitCode = 124
+        Output = ("{0} timed out after {1}s (killed)." -f $Label, $TimeoutSec)
+      }
+    }
+
+    if ([int]($now - $lastBeatAt).TotalSeconds -ge $HeartbeatSec) {
+      $bytes = 0
+      try {
+        if (Test-Path $tmp) { $bytes = (Get-Item -LiteralPath $tmp -ErrorAction Stop).Length }
+      } catch {}
+      Write-Host ("{0} still running... elapsed={1}s outputBytes={2}" -f $Label, $elapsedSec, $bytes) -ForegroundColor DarkGray
+      $lastBeatAt = $now
+    }
+  }
+
+  $out = ''
+  try {
+    if (Test-Path $tmp) {
+      $out = Get-Content -LiteralPath $tmp -Raw -ErrorAction SilentlyContinue
+      Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+    }
+  } catch {}
+
+  if ($null -eq $out) { $out = '' }
+
+  return @{
+    ExitCode = [int]$p.ExitCode
+    Output = $out
+  }
 }
 
 function Get-ArtifactServiceSubdir([string]$fileName) {
@@ -608,7 +668,20 @@ import os, sys
 from pydo import Client
 
 token = os.environ.get('DO_API_TOKEN')
-name = os.environ.get('DO_DROPLET_NAME') or 'base2-droplet'
+project = (os.environ.get('PROJECT_NAME') or 'base2').strip() or 'base2'
+raw_name = os.environ.get('DO_DROPLET_NAME')
+
+def resolve_name(value: str) -> str:
+  # Support common .env templates like "${PROJECT_NAME}-droplet" used across shells.
+  resolved = value.replace('${PROJECT_NAME}', project).replace('$PROJECT_NAME', project)
+  # If unresolved templating syntax remains, treat as invalid and fall back.
+  if '${' in resolved or '$(' in resolved:
+    return ''
+  return resolved.strip()
+
+name = resolve_name(raw_name) if raw_name else ''
+if not name:
+  name = f'{project}-droplet' if project else 'base2-droplet'
 if not token:
     print('')
     sys.exit(0)
@@ -726,6 +799,13 @@ if [ -d /opt/apps/base2 ]; then
   if [ -f /root/logs/build/env-backup.env ]; then
     cp -f /root/logs/build/env-backup.env .env || true
   fi
+
+  # Ensure Traefik bind-mounted ACME storage exists and is writable by the Traefik runtime user.
+  # Traefik runs as uid 1000 inside the container; with cap_drop=ALL it cannot fix host perms.
+  mkdir -p letsencrypt || true
+  touch letsencrypt/acme.json letsencrypt/acme-staging.json || true
+  chmod 600 letsencrypt/acme.json letsencrypt/acme-staging.json || true
+  chown -R 1000:1000 letsencrypt || true
 
   # Guardrail: htpasswd strings must not be double-escaped in the droplet .env.
   # Compose treats $$ as an escape for a literal $, so a $$$$ run would land as $$ in the container,
@@ -920,12 +1000,17 @@ PY
   CID=$(docker compose -f local.docker.yml ps -q traefik || true)
   if [ -n "$CID" ]; then
     docker exec "$CID" sh -lc 'env | sort' > /root/logs/traefik-env.txt || true
-    if docker exec "$CID" test -s /etc/traefik/traefik.yml; then
+    # Capture the *rendered* configs Traefik actually runs with (entrypoint renders into /tmp).
+    if docker exec "$CID" test -s /tmp/traefik.yml; then
+      docker exec "$CID" cat /tmp/traefik.yml > /root/logs/traefik-static.yml || true
+    elif docker exec "$CID" test -s /etc/traefik/traefik.yml; then
       docker exec "$CID" cat /etc/traefik/traefik.yml > /root/logs/traefik-static.yml || true
     else
       echo "EMPTY" > /root/logs/traefik-static.yml
     fi
-    if docker exec "$CID" test -s /etc/traefik/dynamic/dynamic.yml; then
+    if docker exec "$CID" test -s /tmp/dynamic.yml; then
+      docker exec "$CID" cat /tmp/dynamic.yml > /root/logs/traefik-dynamic.yml || true
+    elif docker exec "$CID" test -s /etc/traefik/dynamic/dynamic.yml; then
       docker exec "$CID" cat /etc/traefik/dynamic/dynamic.yml > /root/logs/traefik-dynamic.yml || true
     else
       echo "EMPTY" > /root/logs/traefik-dynamic.yml
@@ -961,6 +1046,20 @@ PY
 
     # Curl against the local Traefik listener, but use the real hostname for SNI/Host.
     RESOLVE_DOMAIN=(--resolve "$DOMAIN:443:127.0.0.1")
+
+    # Warm up / wait: Traefik can briefly return 404 before file-provider routers are loaded.
+    # Keep this best-effort and bounded so deploy doesn't hang.
+    : > /root/logs/build/domain-warmup.txt || true
+    for i in $(seq 1 30); do
+      ROOT_CODE=$(curl -sk "${RESOLVE_DOMAIN[@]}" -o /dev/null -w "%{http_code}" "https://$DOMAIN/" 2>/dev/null || echo 000)
+      API_CODE=$(curl -sk "${RESOLVE_DOMAIN[@]}" -o /dev/null -w "%{http_code}" "https://$DOMAIN/api/health" 2>/dev/null || echo 000)
+      echo "attempt=$i root=$ROOT_CODE api=$API_CODE" >> /root/logs/build/domain-warmup.txt
+      if [ "$ROOT_CODE" = "200" ] && [ "$API_CODE" = "200" ]; then
+        echo "READY" >> /root/logs/build/domain-warmup.txt
+        break
+      fi
+      sleep 2
+    done
 
     # Root HEAD
     curl -skI "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/" -o /root/logs/curl-root.txt || true
@@ -1196,11 +1295,34 @@ fi
     }
   } else {
     $timeoutCmd = "if command -v timeout >/dev/null 2>&1; then timeout -k 15s $VerifyTimeoutSec bash /root/remote_verify.sh; else bash /root/remote_verify.sh; fi"
-    if ($RunCeleryCheck) {
-      & $sshExe @sshArgs "RUN_CELERY_CHECK=1 sh -lc '$timeoutCmd'" *> $null
-    } else {
-      & $sshExe @sshArgs "sh -lc '$timeoutCmd'" *> $null
+    $remoteCmd = if ($RunCeleryCheck) { "RUN_CELERY_CHECK=1 sh -lc '$timeoutCmd'" } else { "sh -lc '$timeoutCmd'" }
+
+    Write-Host ("Remote verification running (timeout={0}s)." -f $VerifyTimeoutSec) -ForegroundColor DarkGray
+    Write-Host "If this step takes a while, it will print heartbeats here." -ForegroundColor DarkGray
+
+    $job = Start-Job -ScriptBlock {
+      param($sshExeInner, $sshArgsInner, $remoteCmdInner)
+      & $sshExeInner @sshArgsInner $remoteCmdInner *> $null
+      return $LASTEXITCODE
+    } -ArgumentList $sshExe, $sshArgs, $remoteCmd
+
+    $startedAt = Get-Date
+    while ($true) {
+      $completed = Wait-Job -Job $job -Timeout 15
+      if ($completed) { break }
+
+      $elapsedSec = [int]((Get-Date) - $startedAt).TotalSeconds
+      Write-Host ("Remote verification still running... elapsed={0}s" -f $elapsedSec) -ForegroundColor DarkGray
     }
+
+    $code = 0
+    try {
+      $code = (Receive-Job -Job $job -ErrorAction SilentlyContinue | Select-Object -Last 1)
+      if ($null -eq $code) { $code = 0 }
+    } finally {
+      try { Remove-Job -Job $job -Force -ErrorAction SilentlyContinue } catch {}
+    }
+    $LASTEXITCODE = [int]$code
   }
 
   if ($LASTEXITCODE -ne 0) {
@@ -1236,6 +1358,7 @@ fi
       if ($AsyncVerify) {
         $flag = & $sshExe @sshArgs "test -f /root/logs/remote_verify.done && echo DONE || echo WAIT" 2>&1
         if (-not ($flag -match 'DONE')) {
+          Write-Host ("Waiting for remote verification to complete... attempt {0}/{1}" -f $i, $attempts) -ForegroundColor DarkGray
           Start-Sleep -Seconds $interval
           continue
         }
@@ -1531,22 +1654,14 @@ try {
       $log += ''
 
       $log += '== npm ci =='
-      $ciOut = ''
-      $ciExit = 0
-      $prevEAP = $ErrorActionPreference
-      try {
-        # npm emits warnings to stderr; with $ErrorActionPreference='Stop' that can become terminating.
-        $ErrorActionPreference = 'Continue'
-        $ciOut = (& cmd /c "npm ci --no-audit --no-fund" 2>&1 | Out-String)
-        $ciExit = $LASTEXITCODE
-      } finally {
-        $ErrorActionPreference = $prevEAP
-      }
-      $log += $ciOut.TrimEnd()
-      $log += ("npm ci exitCode={0}" -f $ciExit)
+      $ci = Invoke-LocalCmdWithTimeout -WorkingDirectory $PWD.Path -Label 'npm ci' -CmdLine 'npm ci --no-audit --no-fund' -TimeoutSec $ReactTestTimeoutSec
+      $ciText = $ci.Output
+      if ($null -eq $ciText) { $ciText = '' }
+      $log += ($ciText.TrimEnd())
+      $log += ("npm ci exitCode={0}" -f ([int]$ci.ExitCode))
       $log += ''
 
-      if ($ciExit -ne 0) {
+      if ([int]$ci.ExitCode -ne 0) {
         $log += 'Skipping Jest because npm ci failed.'
         $log | Set-Content -Path $jestOutPath -Encoding UTF8
       } else {
@@ -1554,19 +1669,12 @@ try {
         $prevCI = $env:CI
         try {
           $env:CI = 'true'
-          $testOut = ''
-          $testExit = 0
-          $prevEAP = $ErrorActionPreference
-          try {
-            $ErrorActionPreference = 'Continue'
-            # Avoid cross-env (often the source of Windows PATH issues) and rely on PowerShell env.
-            $testOut = (& cmd /c "npm test -- --coverage" 2>&1 | Out-String)
-            $testExit = $LASTEXITCODE
-          } finally {
-            $ErrorActionPreference = $prevEAP
-          }
-          $log += $testOut.TrimEnd()
-          $log += ("npm test exitCode={0}" -f $testExit)
+          # Ensure non-interactive test mode even if CI env isn't picked up by CRA for some reason.
+          $test = Invoke-LocalCmdWithTimeout -WorkingDirectory $PWD.Path -Label 'npm test' -CmdLine 'npm test -- --coverage --watchAll=false' -TimeoutSec $ReactTestTimeoutSec
+          $testText = $test.Output
+          if ($null -eq $testText) { $testText = '' }
+          $log += ($testText.TrimEnd())
+          $log += ("npm test exitCode={0}" -f ([int]$test.ExitCode))
         } finally {
           $env:CI = $prevCI
         }

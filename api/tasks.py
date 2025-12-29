@@ -14,6 +14,7 @@ app = Celery(
     "base2",
     broker=BROKER_URL,
     backend=RESULT_BACKEND,
+    fixups=[],
 )
 
 # Basic config can be extended as needed

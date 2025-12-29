@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ToastProvider.jsx';
@@ -13,40 +13,52 @@ const VerifyEmail = () => {
 
   useEffect(() => {
     const token = searchParams.get('token');
-    
-    if (token) {
-      handleVerification(token);
-    } else {
-      setStatus('error');
-      setMessage('Invalid verification link. Please check your email for the correct link.');
-    }
-  }, [searchParams]);
+    let cancelled = false;
+    let redirectTimeout = null;
 
-  const handleVerification = async (token) => {
-    try {
-      const result = await verifyEmail(token);
-      
-      if (result.success) {
-        setStatus('success');
-        const msg = result.message || 'Email verified successfully!';
-        setMessage(msg);
-        toast.success(msg);
-        setTimeout(() => {
-          navigate('/login');
-        }, 2000);
-      } else {
+    const run = async () => {
+      if (!token) {
+        setStatus('error');
+        setMessage('Invalid verification link. Please check your email for the correct link.');
+        return;
+      }
+
+      try {
+        const result = await verifyEmail(token);
+        if (cancelled) return;
+
+        if (result.success) {
+          setStatus('success');
+          const msg = result.message || 'Email verified successfully!';
+          setMessage(msg);
+          toast.success(msg);
+          redirectTimeout = window.setTimeout(() => {
+            navigate('/login');
+          }, 2000);
+          return;
+        }
+
         setStatus('error');
         const msg = result.error || 'Verification failed. The link may be expired or invalid.';
         setMessage(msg);
         if (result.code === 'network_error') {
           toast.error(msg);
         }
+      } catch (error) {
+        if (cancelled) return;
+        setStatus('error');
+        setMessage('An error occurred during verification. Please try again.');
       }
-    } catch (error) {
-      setStatus('error');
-      setMessage('An error occurred during verification. Please try again.');
-    }
-  };
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+      if (redirectTimeout) {
+        window.clearTimeout(redirectTimeout);
+      }
+    };
+  }, [navigate, searchParams, toast, verifyEmail]);
 
   return (
     <div style={styles.container}>

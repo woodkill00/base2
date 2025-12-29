@@ -14,6 +14,30 @@ from dotenv import load_dotenv
 import re
 
 
+_ENV_VAR_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
+
+
+def _expand_env_templates(value: str, env: dict | None = None) -> str:
+    """Expand simple ${VAR} templates using environment variables.
+
+    This intentionally keeps behavior minimal:
+    - Only supports ${NAME} (no default expressions like ${NAME:-x})
+    - Unknown vars are left unchanged
+    - Expansion is applied repeatedly a few times to allow chaining
+    """
+    if value is None:
+        return value
+
+    env_map = env or os.environ
+    current = str(value)
+    for _ in range(5):
+        next_value = _ENV_VAR_PATTERN.sub(lambda m: env_map.get(m.group(1), m.group(0)), current)
+        if next_value == current:
+            break
+        current = next_value
+    return current
+
+
 def _find_env_path() -> str:
     """Locate repo-root .env file.
 
@@ -67,6 +91,7 @@ REBOOT_MARKERS = [
 COMPLETION_MARKER = "User data script completed at"
 SUMMARY = []
 PROJECT_NAME = os.getenv("PROJECT_NAME", "base2")
+_EXPANSION_ENV = {**os.environ, "PROJECT_NAME": PROJECT_NAME}
 ssh_dir = os.path.expanduser("~/.ssh")
 ssh_key_path = os.path.join(ssh_dir, PROJECT_NAME)
 pub_key_path = ssh_key_path + ".pub"
@@ -145,8 +170,8 @@ def recovery_ssh_logs(ip_address, SSH_USER, ssh_key_path):
     except Exception as e:
         print(f"[RECOVERY] SSH recovery failed: {e}")
 DO_API_TOKEN = os.getenv("DO_API_TOKEN")
-DO_DOMAIN = os.getenv("DO_DOMAIN")  # e.g. example.com
-DO_DROPLET_NAME = os.getenv("DO_DROPLET_NAME", "base2-droplet")
+DO_DOMAIN = _expand_env_templates(os.getenv("DO_DOMAIN"), _EXPANSION_ENV)  # e.g. example.com
+DO_DROPLET_NAME = _expand_env_templates(os.getenv("DO_DROPLET_NAME", "base2-droplet"), _EXPANSION_ENV)
 DO_API_REGION = os.getenv("DO_API_REGION", "nyc3")
 DO_API_SIZE = os.getenv("DO_API_SIZE", "s-1vcpu-1gb")
 DO_API_IMAGE = os.getenv("DO_API_IMAGE", "ubuntu-22-04-x64")
@@ -154,8 +179,214 @@ PGADMIN_DNS_LABEL = os.getenv("PGADMIN_DNS_LABEL", "pgadmin").strip() or "pgadmi
 TRAEFIK_DNS_LABEL = os.getenv("TRAEFIK_DNS_LABEL", "traefik").strip() or "traefik"
 DJANGO_ADMIN_DNS_LABEL = os.getenv("DJANGO_ADMIN_DNS_LABEL", "admin").strip() or "admin"
 FLOWER_DNS_LABEL = os.getenv("FLOWER_DNS_LABEL", "flower").strip() or "flower"
+SWAGGER_DNS_LABEL = os.getenv("SWAGGER_DNS_LABEL", "swagger").strip() or "swagger"
 import sys
 import argparse
+
+
+def ensure_dns_records_for_droplet(*, client: Client, droplet_id: int, ipv4_address: str) -> None:
+    log("Updating DNS A/AAAA records for required hostnames...")
+    try:
+        log_json("API Request - domains.list_records", {"domain": DO_DOMAIN})
+        records = client.domains.list_records(DO_DOMAIN)["domain_records"]
+        log_json("API Response - domains.list_records", records)
+
+        ipv6_enabled = _truthy_env(os.getenv("DO_IPV6_ENABLED"), default=True)
+        ipv6_wait_timeout_sec = int(os.getenv("DO_IPV6_WAIT_TIMEOUT", os.getenv("DO_DEPLOY_TIMEOUT", "180")))
+
+        # Refresh droplet info right before DNS changes.
+        droplet_info = client.droplets.get(int(droplet_id))["droplet"]
+        ipv6_address = _get_public_ipv6(droplet_info)
+        if ipv6_enabled and not ipv6_address:
+            try:
+                ipv6_address, droplet_info = wait_for_public_ipv6(
+                    client=client,
+                    droplet_id=int(droplet_id),
+                    timeout_sec=ipv6_wait_timeout_sec,
+                    interval_sec=5,
+                )
+                log(f"Droplet IPv6 assigned: {ipv6_address}")
+            except Exception as e:
+                err(f"IPv6 is enabled but no IPv6 address was assigned in time: {e}")
+                err("Aborting DNS updates to avoid leaving stale AAAA records.")
+                raise
+
+        # Track which records exist
+        found = {
+            "A_root": None,
+            "A_www": None,
+            "AAAA_root": None,
+            "A_pgadmin": None,
+            "AAAA_pgadmin": None,
+            "A_traefik": None,
+            "AAAA_traefik": None,
+            "A_django_admin": None,
+            "AAAA_django_admin": None,
+            "A_flower": None,
+            "AAAA_flower": None,
+            "A_swagger": None,
+            "AAAA_swagger": None,
+        }
+        updated = {k: False for k in found.keys()}
+
+        for record in records:
+            # Update all A records for this domain (root, www, subdomains, wildcard)
+            if record.get("type") == "A":
+                name = record.get("name")
+                match_a = (
+                    name == "@"
+                    or name == DO_DOMAIN
+                    or name == ""
+                    or name == "www"
+                    or name == f"www.{DO_DOMAIN}"
+                    or (isinstance(name, str) and DO_DOMAIN in name)
+                    or (isinstance(name, str) and name.startswith("*"))
+                    or name == TRAEFIK_DNS_LABEL
+                    or name == f"{TRAEFIK_DNS_LABEL}.{DO_DOMAIN}"
+                    or name == PGADMIN_DNS_LABEL
+                    or name == f"{PGADMIN_DNS_LABEL}.{DO_DOMAIN}"
+                    or name == DJANGO_ADMIN_DNS_LABEL
+                    or name == f"{DJANGO_ADMIN_DNS_LABEL}.{DO_DOMAIN}"
+                    or name == FLOWER_DNS_LABEL
+                    or name == f"{FLOWER_DNS_LABEL}.{DO_DOMAIN}"
+                    or name == SWAGGER_DNS_LABEL
+                    or name == f"{SWAGGER_DNS_LABEL}.{DO_DOMAIN}"
+                )
+                if match_a:
+                    if name in ("@", DO_DOMAIN, ""):
+                        found["A_root"] = record
+                        updated["A_root"] = True
+                    if name in ("www", f"www.{DO_DOMAIN}"):
+                        found["A_www"] = record
+                        updated["A_www"] = True
+                    if name in (TRAEFIK_DNS_LABEL, f"{TRAEFIK_DNS_LABEL}.{DO_DOMAIN}"):
+                        found["A_traefik"] = record
+                        updated["A_traefik"] = True
+                    if name in (PGADMIN_DNS_LABEL, f"{PGADMIN_DNS_LABEL}.{DO_DOMAIN}"):
+                        found["A_pgadmin"] = record
+                        updated["A_pgadmin"] = True
+                    if name in (DJANGO_ADMIN_DNS_LABEL, f"{DJANGO_ADMIN_DNS_LABEL}.{DO_DOMAIN}"):
+                        found["A_django_admin"] = record
+                        updated["A_django_admin"] = True
+                    if name in (FLOWER_DNS_LABEL, f"{FLOWER_DNS_LABEL}.{DO_DOMAIN}"):
+                        found["A_flower"] = record
+                        updated["A_flower"] = True
+                    if name in (SWAGGER_DNS_LABEL, f"{SWAGGER_DNS_LABEL}.{DO_DOMAIN}"):
+                        found["A_swagger"] = record
+                        updated["A_swagger"] = True
+
+                    if DRY_RUN:
+                        log(f"[DRY RUN] Would update A record ({name}) -> {ipv4_address}")
+                    else:
+                        log_json("API Request - domains.update_record (A_generic)", {"id": record["id"], "data": ipv4_address})
+                        resp = client.domains.update_record(DO_DOMAIN, record["id"], {
+                            "type": "A",
+                            "name": name,
+                            "data": ipv4_address,
+                        })
+                        log_json("API Response - domains.update_record (A_generic)", resp)
+                        log(f"Updated A record ({name}) -> {ipv4_address}")
+
+            # Update all AAAA records for this domain (root, subdomains, wildcard)
+            if record.get("type") == "AAAA":
+                name = record.get("name")
+                match_aaaa = (
+                    name == "@"
+                    or name == DO_DOMAIN
+                    or name == ""
+                    or (isinstance(name, str) and DO_DOMAIN in name)
+                    or (isinstance(name, str) and name.startswith("*"))
+                    or name == TRAEFIK_DNS_LABEL
+                    or name == f"{TRAEFIK_DNS_LABEL}.{DO_DOMAIN}"
+                    or name == PGADMIN_DNS_LABEL
+                    or name == f"{PGADMIN_DNS_LABEL}.{DO_DOMAIN}"
+                    or name == DJANGO_ADMIN_DNS_LABEL
+                    or name == f"{DJANGO_ADMIN_DNS_LABEL}.{DO_DOMAIN}"
+                    or name == FLOWER_DNS_LABEL
+                    or name == f"{FLOWER_DNS_LABEL}.{DO_DOMAIN}"
+                    or name == SWAGGER_DNS_LABEL
+                    or name == f"{SWAGGER_DNS_LABEL}.{DO_DOMAIN}"
+                )
+                if match_aaaa:
+                    if name in ("@", DO_DOMAIN, ""):
+                        found["AAAA_root"] = record
+                        updated["AAAA_root"] = True
+                    if name in (TRAEFIK_DNS_LABEL, f"{TRAEFIK_DNS_LABEL}.{DO_DOMAIN}"):
+                        found["AAAA_traefik"] = record
+                        updated["AAAA_traefik"] = True
+                    if name in (PGADMIN_DNS_LABEL, f"{PGADMIN_DNS_LABEL}.{DO_DOMAIN}"):
+                        found["AAAA_pgadmin"] = record
+                        updated["AAAA_pgadmin"] = True
+                    if name in (DJANGO_ADMIN_DNS_LABEL, f"{DJANGO_ADMIN_DNS_LABEL}.{DO_DOMAIN}"):
+                        found["AAAA_django_admin"] = record
+                        updated["AAAA_django_admin"] = True
+                    if name in (FLOWER_DNS_LABEL, f"{FLOWER_DNS_LABEL}.{DO_DOMAIN}"):
+                        found["AAAA_flower"] = record
+                        updated["AAAA_flower"] = True
+                    if name in (SWAGGER_DNS_LABEL, f"{SWAGGER_DNS_LABEL}.{DO_DOMAIN}"):
+                        found["AAAA_swagger"] = record
+                        updated["AAAA_swagger"] = True
+
+                    if ipv6_address:
+                        if DRY_RUN:
+                            log(f"[DRY RUN] Would update AAAA record ({name}) -> {ipv6_address}")
+                        else:
+                            log_json("API Request - domains.update_record (AAAA_generic)", {"id": record["id"], "data": ipv6_address})
+                            resp = client.domains.update_record(DO_DOMAIN, record["id"], {
+                                "type": "AAAA",
+                                "name": name,
+                                "data": ipv6_address,
+                            })
+                            log_json("API Response - domains.update_record (AAAA_generic)", resp)
+                            log(f"Updated AAAA record ({name}) -> {ipv6_address}")
+
+        def create_a(label: str, key: str) -> None:
+            if found[key]:
+                return
+            if DRY_RUN:
+                log(f"[DRY RUN] Would create A record ({label}) -> {ipv4_address}")
+                return
+            log_json("API Request - domains.create_record (A)", {"type": "A", "name": label, "data": ipv4_address})
+            resp = client.domains.create_record(DO_DOMAIN, {"type": "A", "name": label, "data": ipv4_address})
+            log_json("API Response - domains.create_record (A)", resp)
+            log(f"Created A record ({label}) -> {ipv4_address}")
+
+        def create_aaaa(label: str, key: str) -> None:
+            if not ipv6_address or found[key]:
+                return
+            if DRY_RUN:
+                log(f"[DRY RUN] Would create AAAA record ({label}) -> {ipv6_address}")
+                return
+            log_json("API Request - domains.create_record (AAAA)", {"type": "AAAA", "name": label, "data": ipv6_address})
+            resp = client.domains.create_record(DO_DOMAIN, {"type": "AAAA", "name": label, "data": ipv6_address})
+            log_json("API Response - domains.create_record (AAAA)", resp)
+            log(f"Created AAAA record ({label}) -> {ipv6_address}")
+
+        # Root + www + required labels
+        create_a("@", "A_root")
+        create_a("www", "A_www")
+        create_aaaa("@", "AAAA_root")
+
+        create_a(TRAEFIK_DNS_LABEL, "A_traefik")
+        create_aaaa(TRAEFIK_DNS_LABEL, "AAAA_traefik")
+
+        create_a(PGADMIN_DNS_LABEL, "A_pgadmin")
+        create_aaaa(PGADMIN_DNS_LABEL, "AAAA_pgadmin")
+
+        create_a(DJANGO_ADMIN_DNS_LABEL, "A_django_admin")
+        create_aaaa(DJANGO_ADMIN_DNS_LABEL, "AAAA_django_admin")
+
+        create_a(FLOWER_DNS_LABEL, "A_flower")
+        create_aaaa(FLOWER_DNS_LABEL, "AAAA_flower")
+
+        create_a(SWAGGER_DNS_LABEL, "A_swagger")
+        create_aaaa(SWAGGER_DNS_LABEL, "AAAA_swagger")
+
+        if not updated["A_root"] and not updated["A_www"] and not updated["AAAA_root"]:
+            log("No A/AAAA records for root or www found to update or create.")
+    except Exception as e:
+        err(f"DNS update failed: {e}")
+        raise
 
 
 def _truthy_env(value: str, default: bool = True) -> bool:
@@ -362,6 +593,11 @@ if UPDATE_ONLY:
             log(f"Updated {do_userdata_json_path} with droplet_id {droplet_id} and ip_address {ip_address}")
         except Exception as e:
             err(f"Failed to update {do_userdata_json_path}: {e}")
+
+        # Always ensure required DNS records exist/update to current droplet IP.
+        # This is important in --update-only, where the droplet already exists but
+        # DNS may be missing/stale (e.g., swagger subdomain).
+        ensure_dns_records_for_droplet(client=client, droplet_id=int(droplet_id), ipv4_address=str(ip_address))
     except Exception as e:
         err(f"Failed to locate existing droplet: {e}")
         exit(1)
@@ -400,309 +636,12 @@ else:
         err(f"Droplet creation failed: {e}")
         exit(1)
 
-    # --- 3. Update DNS Records ---
-    # Always ensure required DNS records exist/update to current droplet IP
-    if True:
-        log("Updating DNS A/AAAA records for domain and www...")
-        try:
-            log_json("API Request - domains.list_records", {"domain": DO_DOMAIN})
-            records = client.domains.list_records(DO_DOMAIN)["domain_records"]
-            log_json("API Response - domains.list_records", records)
-
-            ipv6_enabled = _truthy_env(os.getenv("DO_IPV6_ENABLED"), default=True)
-            ipv6_wait_timeout_sec = int(os.getenv("DO_IPV6_WAIT_TIMEOUT", os.getenv("DO_DEPLOY_TIMEOUT", "180")))
-
-            # Refresh droplet info right before DNS changes.
-            droplet_info = client.droplets.get(droplet_id)["droplet"]
-            ipv6_address = _get_public_ipv6(droplet_info)
-            if ipv6_enabled and not ipv6_address:
-                # Critical: wait for IPv6 BEFORE updating any A/AAAA records.
-                # Otherwise A can point to the new droplet while AAAA stays stuck on the old droplet.
-                try:
-                    ipv6_address, droplet_info = wait_for_public_ipv6(
-                        client=client,
-                        droplet_id=int(droplet_id),
-                        timeout_sec=ipv6_wait_timeout_sec,
-                        interval_sec=5,
-                    )
-                    log(f"Droplet IPv6 assigned: {ipv6_address}")
-                except Exception as e:
-                    err(f"IPv6 is enabled but no IPv6 address was assigned in time: {e}")
-                    err("Aborting DNS updates to avoid leaving stale AAAA records.")
-                    exit(1)
-
-            # Track which records exist
-            found = {
-                "A_root": None,
-                "A_www": None,
-                "AAAA_root": None,
-                "A_pgadmin": None,
-                "AAAA_pgadmin": None,
-                "A_traefik": None,
-                "AAAA_traefik": None,
-                "A_django_admin": None,
-                "AAAA_django_admin": None,
-                "A_flower": None,
-                "AAAA_flower": None,
-            }
-            updated = {
-                "A_root": False,
-                "A_www": False,
-                "AAAA_root": False,
-                "A_pgadmin": False,
-                "AAAA_pgadmin": False,
-                "A_traefik": False,
-                "AAAA_traefik": False,
-                "A_django_admin": False,
-                "AAAA_django_admin": False,
-                "A_flower": False,
-                "AAAA_flower": False,
-            }
-
-            for record in records:
-                # Update all A records for this domain (root, www, subdomains, wildcard, traefik)
-                if record["type"] == "A":
-                    match_a = (
-                        record["name"] == "@"
-                        or record["name"] == DO_DOMAIN
-                        or record["name"] == ""
-                        or record["name"] == "www"
-                        or record["name"] == f"www.{DO_DOMAIN}"
-                        or DO_DOMAIN in record["name"]
-                        or record["name"].startswith("*")
-                        or record["name"] == TRAEFIK_DNS_LABEL
-                        or record["name"] == f"{TRAEFIK_DNS_LABEL}.{DO_DOMAIN}"
-                        or record["name"] == PGADMIN_DNS_LABEL
-                        or record["name"] == f"{PGADMIN_DNS_LABEL}.{DO_DOMAIN}"
-                        or record["name"] == DJANGO_ADMIN_DNS_LABEL
-                        or record["name"] == f"{DJANGO_ADMIN_DNS_LABEL}.{DO_DOMAIN}"
-                        or record["name"] == FLOWER_DNS_LABEL
-                        or record["name"] == f"{FLOWER_DNS_LABEL}.{DO_DOMAIN}"
-                    )
-                    if match_a:
-                        # Track root and www for legacy logic
-                        if record["name"] == "@" or record["name"] == DO_DOMAIN or record["name"] == "":
-                            found["A_root"] = record
-                            updated["A_root"] = True
-                        if record["name"] == "www" or record["name"] == f"www.{DO_DOMAIN}":
-                            found["A_www"] = record
-                            updated["A_www"] = True
-                        if record["name"] == TRAEFIK_DNS_LABEL or record["name"] == f"{TRAEFIK_DNS_LABEL}.{DO_DOMAIN}":
-                            found["A_traefik"] = record
-                            updated["A_traefik"] = True
-                        if record["name"] == PGADMIN_DNS_LABEL or record["name"] == f"{PGADMIN_DNS_LABEL}.{DO_DOMAIN}":
-                            found["A_pgadmin"] = record
-                            updated["A_pgadmin"] = True
-                        if record["name"] == DJANGO_ADMIN_DNS_LABEL or record["name"] == f"{DJANGO_ADMIN_DNS_LABEL}.{DO_DOMAIN}":
-                            found["A_django_admin"] = record
-                            updated["A_django_admin"] = True
-                        if record["name"] == FLOWER_DNS_LABEL or record["name"] == f"{FLOWER_DNS_LABEL}.{DO_DOMAIN}":
-                            found["A_flower"] = record
-                            updated["A_flower"] = True
-                        if DRY_RUN:
-                            log(f"[DRY RUN] Would update A record ({record['name']}) -> {ip_address}")
-                        else:
-                            log_json("API Request - domains.update_record (A_generic)", {"id": record["id"], "data": ip_address})
-                            resp = client.domains.update_record(DO_DOMAIN, record["id"], {
-                                "type": "A",
-                                "name": record["name"],
-                                "data": ip_address
-                            })
-                            log_json("API Response - domains.update_record (A_generic)", resp)
-                            log(f"Updated A record ({record['name']}) -> {ip_address}")
-                # Update all AAAA records for this domain (root, subdomains, wildcard)
-                if record["type"] == "AAAA":
-                    if (
-                        record["name"] == "@"
-                        or record["name"] == DO_DOMAIN
-                        or record["name"] == ""
-                        or DO_DOMAIN in record["name"]
-                        or record["name"].startswith("*")
-                        or record["name"] == TRAEFIK_DNS_LABEL
-                        or record["name"] == f"{TRAEFIK_DNS_LABEL}.{DO_DOMAIN}"
-                        or record["name"] == PGADMIN_DNS_LABEL
-                        or record["name"] == f"{PGADMIN_DNS_LABEL}.{DO_DOMAIN}"
-                        or record["name"] == DJANGO_ADMIN_DNS_LABEL
-                        or record["name"] == f"{DJANGO_ADMIN_DNS_LABEL}.{DO_DOMAIN}"
-                        or record["name"] == FLOWER_DNS_LABEL
-                        or record["name"] == f"{FLOWER_DNS_LABEL}.{DO_DOMAIN}"
-                    ):
-                        # Track root for legacy logic
-                        if record["name"] == "@" or record["name"] == DO_DOMAIN or record["name"] == "":
-                            found["AAAA_root"] = record
-                            updated["AAAA_root"] = True
-                        if record["name"] == TRAEFIK_DNS_LABEL or record["name"] == f"{TRAEFIK_DNS_LABEL}.{DO_DOMAIN}":
-                            found["AAAA_traefik"] = record
-                            updated["AAAA_traefik"] = True
-                        if record["name"] == PGADMIN_DNS_LABEL or record["name"] == f"{PGADMIN_DNS_LABEL}.{DO_DOMAIN}":
-                            found["AAAA_pgadmin"] = record
-                            updated["AAAA_pgadmin"] = True
-                        if record["name"] == DJANGO_ADMIN_DNS_LABEL or record["name"] == f"{DJANGO_ADMIN_DNS_LABEL}.{DO_DOMAIN}":
-                            found["AAAA_django_admin"] = record
-                            updated["AAAA_django_admin"] = True
-                        if record["name"] == FLOWER_DNS_LABEL or record["name"] == f"{FLOWER_DNS_LABEL}.{DO_DOMAIN}":
-                            found["AAAA_flower"] = record
-                            updated["AAAA_flower"] = True
-                        if ipv6_address:
-                            if DRY_RUN:
-                                log(f"[DRY RUN] Would update AAAA record ({record['name']}) -> {ipv6_address}")
-                            else:
-                                log_json("API Request - domains.update_record (AAAA_generic)", {"id": record["id"], "data": ipv6_address})
-                                resp = client.domains.update_record(DO_DOMAIN, record["id"], {
-                                    "type": "AAAA",
-                                    "name": record["name"],
-                                    "data": ipv6_address
-                                })
-                                log_json("API Response - domains.update_record (AAAA_generic)", resp)
-                                log(f"Updated AAAA record ({record['name']}) -> {ipv6_address}")
-
-            # Create missing records
-            if not found["A_root"]:
-                if DRY_RUN:
-                    log(f"[DRY RUN] Would create root A record (@) -> {ip_address}")
-                else:
-                    log_json("API Request - domains.create_record (A_root)", {"type": "A", "name": "@", "data": ip_address})
-                    resp = client.domains.create_record(DO_DOMAIN, {
-                        "type": "A",
-                        "name": "@",
-                        "data": ip_address
-                    })
-                    log_json("API Response - domains.create_record (A_root)", resp)
-                    log(f"Created root A record (@) -> {ip_address}")
-            if not found["A_www"]:
-                if DRY_RUN:
-                    log(f"[DRY RUN] Would create www A record (www) -> {ip_address}")
-                else:
-                    log_json("API Request - domains.create_record (A_www)", {"type": "A", "name": "www", "data": ip_address})
-                    resp = client.domains.create_record(DO_DOMAIN, {
-                        "type": "A",
-                        "name": "www",
-                        "data": ip_address
-                    })
-                    log_json("API Response - domains.create_record (A_www)", resp)
-                    log(f"Created www A record (www) -> {ip_address}")
-            if ipv6_address and not found["AAAA_root"]:
-                if DRY_RUN:
-                    log(f"[DRY RUN] Would create root AAAA record (@) -> {ipv6_address}")
-                else:
-                    log_json("API Request - domains.create_record (AAAA_root)", {"type": "AAAA", "name": "@", "data": ipv6_address})
-                    resp = client.domains.create_record(DO_DOMAIN, {
-                        "type": "AAAA",
-                        "name": "@",
-                        "data": ipv6_address
-                    })
-                    log_json("API Response - domains.create_record (AAAA_root)", resp)
-                    log(f"Created root AAAA record (@) -> {ipv6_address}")
-
-            # Ensure Traefik subdomain exists
-            if not found["A_traefik"]:
-                if DRY_RUN:
-                    log(f"[DRY RUN] Would create A record ({TRAEFIK_DNS_LABEL}) -> {ip_address}")
-                else:
-                    log_json("API Request - domains.create_record (A_traefik)", {"type": "A", "name": TRAEFIK_DNS_LABEL, "data": ip_address})
-                    resp = client.domains.create_record(DO_DOMAIN, {
-                        "type": "A",
-                        "name": TRAEFIK_DNS_LABEL,
-                        "data": ip_address
-                    })
-                    log_json("API Response - domains.create_record (A_traefik)", resp)
-                    log(f"Created A record ({TRAEFIK_DNS_LABEL}) -> {ip_address}")
-            if ipv6_address and not found["AAAA_traefik"]:
-                if DRY_RUN:
-                    log(f"[DRY RUN] Would create AAAA record ({TRAEFIK_DNS_LABEL}) -> {ipv6_address}")
-                else:
-                    log_json("API Request - domains.create_record (AAAA_traefik)", {"type": "AAAA", "name": TRAEFIK_DNS_LABEL, "data": ipv6_address})
-                    resp = client.domains.create_record(DO_DOMAIN, {
-                        "type": "AAAA",
-                        "name": TRAEFIK_DNS_LABEL,
-                        "data": ipv6_address
-                    })
-                    log_json("API Response - domains.create_record (AAAA_traefik)", resp)
-                    log(f"Created AAAA record ({TRAEFIK_DNS_LABEL}) -> {ipv6_address}")
-
-            # Ensure pgAdmin subdomain exists
-            if not found["A_pgadmin"]:
-                if DRY_RUN:
-                    log(f"[DRY RUN] Would create A record ({PGADMIN_DNS_LABEL}) -> {ip_address}")
-                else:
-                    log_json("API Request - domains.create_record (A_pgadmin)", {"type": "A", "name": PGADMIN_DNS_LABEL, "data": ip_address})
-                    resp = client.domains.create_record(DO_DOMAIN, {
-                        "type": "A",
-                        "name": PGADMIN_DNS_LABEL,
-                        "data": ip_address
-                    })
-                    log_json("API Response - domains.create_record (A_pgadmin)", resp)
-                    log(f"Created A record ({PGADMIN_DNS_LABEL}) -> {ip_address}")
-            if ipv6_address and not found["AAAA_pgadmin"]:
-                if DRY_RUN:
-                    log(f"[DRY RUN] Would create AAAA record ({PGADMIN_DNS_LABEL}) -> {ipv6_address}")
-                else:
-                    log_json("API Request - domains.create_record (AAAA_pgadmin)", {"type": "AAAA", "name": PGADMIN_DNS_LABEL, "data": ipv6_address})
-                    resp = client.domains.create_record(DO_DOMAIN, {
-                        "type": "AAAA",
-                        "name": PGADMIN_DNS_LABEL,
-                        "data": ipv6_address
-                    })
-                    log_json("API Response - domains.create_record (AAAA_pgadmin)", resp)
-                    log(f"Created AAAA record ({PGADMIN_DNS_LABEL}) -> {ipv6_address}")
-
-            # Ensure Django admin subdomain exists
-            if not found["A_django_admin"]:
-                if DRY_RUN:
-                    log(f"[DRY RUN] Would create A record ({DJANGO_ADMIN_DNS_LABEL}) -> {ip_address}")
-                else:
-                    log_json("API Request - domains.create_record (A_django_admin)", {"type": "A", "name": DJANGO_ADMIN_DNS_LABEL, "data": ip_address})
-                    resp = client.domains.create_record(DO_DOMAIN, {
-                        "type": "A",
-                        "name": DJANGO_ADMIN_DNS_LABEL,
-                        "data": ip_address
-                    })
-                    log_json("API Response - domains.create_record (A_django_admin)", resp)
-                    log(f"Created A record ({DJANGO_ADMIN_DNS_LABEL}) -> {ip_address}")
-            if ipv6_address and not found["AAAA_django_admin"]:
-                if DRY_RUN:
-                    log(f"[DRY RUN] Would create AAAA record ({DJANGO_ADMIN_DNS_LABEL}) -> {ipv6_address}")
-                else:
-                    log_json("API Request - domains.create_record (AAAA_django_admin)", {"type": "AAAA", "name": DJANGO_ADMIN_DNS_LABEL, "data": ipv6_address})
-                    resp = client.domains.create_record(DO_DOMAIN, {
-                        "type": "AAAA",
-                        "name": DJANGO_ADMIN_DNS_LABEL,
-                        "data": ipv6_address
-                    })
-                    log_json("API Response - domains.create_record (AAAA_django_admin)", resp)
-                    log(f"Created AAAA record ({DJANGO_ADMIN_DNS_LABEL}) -> {ipv6_address}")
-
-            # Ensure Flower subdomain exists
-            if not found["A_flower"]:
-                if DRY_RUN:
-                    log(f"[DRY RUN] Would create A record ({FLOWER_DNS_LABEL}) -> {ip_address}")
-                else:
-                    log_json("API Request - domains.create_record (A_flower)", {"type": "A", "name": FLOWER_DNS_LABEL, "data": ip_address})
-                    resp = client.domains.create_record(DO_DOMAIN, {
-                        "type": "A",
-                        "name": FLOWER_DNS_LABEL,
-                        "data": ip_address
-                    })
-                    log_json("API Response - domains.create_record (A_flower)", resp)
-                    log(f"Created A record ({FLOWER_DNS_LABEL}) -> {ip_address}")
-            if ipv6_address and not found["AAAA_flower"]:
-                if DRY_RUN:
-                    log(f"[DRY RUN] Would create AAAA record ({FLOWER_DNS_LABEL}) -> {ipv6_address}")
-                else:
-                    log_json("API Request - domains.create_record (AAAA_flower)", {"type": "AAAA", "name": FLOWER_DNS_LABEL, "data": ipv6_address})
-                    resp = client.domains.create_record(DO_DOMAIN, {
-                        "type": "AAAA",
-                        "name": FLOWER_DNS_LABEL,
-                        "data": ipv6_address
-                    })
-                    log_json("API Response - domains.create_record (AAAA_flower)", resp)
-                    log(f"Created AAAA record ({FLOWER_DNS_LABEL}) -> {ipv6_address}")
-            if not updated["A_root"] and not updated["A_www"] and not updated["AAAA_root"]:
-                log("No A/AAAA records for root or www found to update or create.")
-        except Exception as e:
-            err(f"DNS update failed: {e}")
-            recovery_ssh_logs(ip_address, SSH_USER, ssh_key_path)
-            exit(1)
+    # Always ensure required DNS records exist/update to current droplet IP.
+    try:
+        ensure_dns_records_for_droplet(client=client, droplet_id=int(droplet_id), ipv4_address=str(ip_address))
+    except Exception:
+        recovery_ssh_logs(ip_address, SSH_USER, ssh_key_path)
+        exit(1)
 
     ssh_cmd = [
         "ssh",
