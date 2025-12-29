@@ -261,6 +261,6 @@ http:
 
     swagger-root-to-docs:
       redirectRegex:
-        regex: '^https?://swagger\\.${WEBSITE_DOMAIN}/?$'
+        regex: '^https?://swagger\\.${WEBSITE_DOMAIN}(:\\d+)?/?$'
         replacement: 'https://swagger.${WEBSITE_DOMAIN}/docs'
         permanent: false

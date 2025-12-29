@@ -1913,19 +1913,23 @@ if ($CheckSwagger) {
   $docsHeadStatus = Get-StatusCodeFromHeaders $docsHead
 
   $docsGetStatus = 0
-  $docsSnippet = @()
+  $docsBodyPreview = ''
   try {
     # If /docs redirects, try /docs/ as a follow-up (FastAPI sometimes normalizes slashes).
     if (@(301,302,307,308) -contains $docsHeadStatus) {
       $resp = Curl-Get ("https://{0}/docs/" -f $SwaggerHost)
       $docsGetStatus = [int]$resp.status
-      $docsSnippet = @($resp.body)
+      $docsBodyPreview = [string]($resp.body -join "`n")
     } else {
       $resp = Curl-Get $docsUrl
       $docsGetStatus = [int]$resp.status
-      $docsSnippet = @($resp.body)
+      $docsBodyPreview = [string]($resp.body -join "`n")
     }
   } catch {}
+
+  if ($docsBodyPreview -and $docsBodyPreview.Length -gt 1200) {
+    $docsBodyPreview = $docsBodyPreview.Substring(0, 1200)
+  }
 
   $openapiStatus = 0
   $openapiOk = $false
@@ -1945,7 +1949,7 @@ if ($CheckSwagger) {
   $payload = [ordered]@{
     host = $SwaggerHost
     root = [ordered]@{ url = $rootUrl; headStatus = $rootHeadStatus; location = $rootLocation; ok = [bool]$rootOk }
-    docs = [ordered]@{ url = $docsUrl; headStatus = $docsHeadStatus; getStatus = $docsGetStatus; snippet = @($docsSnippet) }
+    docs = [ordered]@{ url = $docsUrl; headStatus = $docsHeadStatus; getStatus = $docsGetStatus; bodyPreview = $docsBodyPreview }
     openapi = [ordered]@{ url = $openapiUrl; status = $openapiStatus; ok = $openapiOk }
     ok = [bool]$ok
   }
