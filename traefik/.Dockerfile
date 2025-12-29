@@ -41,7 +41,7 @@ EXPOSE ${TRAEFIK_PORT} 443 ${TRAEFIK_API_PORT}
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD traefik healthcheck --ping || exit 1
+  CMD traefik --configFile=/tmp/traefik.yml healthcheck --ping || exit 1
 
 # Make entrypoint script executable and use it
 COPY traefik/entrypoint.sh /entrypoint.sh
