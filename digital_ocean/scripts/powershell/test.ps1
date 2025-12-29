@@ -1888,8 +1888,26 @@ if ($CheckDjangoAdmin) {
 if ($CheckSwagger) {
   $SwaggerHost = "swagger.$Domain"
 
+  $rootUrl = "https://$SwaggerHost/"
   $docsUrl = "https://$SwaggerHost/docs"
   $openapiUrl = "https://$SwaggerHost/openapi.json"
+
+  $rootHeadStatus = 0
+  $rootLocation = ''
+  try {
+    $rootHead = Curl-Head $rootUrl
+    $rootHeadStatus = Get-StatusCodeFromHeaders $rootHead
+    $rootLocation = [string](Get-HeaderValue $rootHead 'Location')
+  } catch {
+    $rootHeadStatus = 0
+    $rootLocation = ''
+  }
+
+  $rootOk = $false
+  if (@(301,302,307,308) -contains $rootHeadStatus) {
+    # Accept either absolute or relative redirect to /docs or /docs/
+    $rootOk = ($rootLocation -match '(^/docs/?$)|(/docs/?$)')
+  }
 
   $docsHead = Curl-Head $docsUrl
   $docsHeadStatus = Get-StatusCodeFromHeaders $docsHead
@@ -1922,10 +1940,11 @@ if ($CheckSwagger) {
   } catch { $openapiOk = $false }
 
   $docsOk = (@(200,301,302,307,308) -contains $docsHeadStatus) -and ($docsGetStatus -eq 200)
-  $ok = $docsOk -and $openapiOk
+  $ok = $rootOk -and $docsOk -and $openapiOk
 
   $payload = [ordered]@{
     host = $SwaggerHost
+    root = [ordered]@{ url = $rootUrl; headStatus = $rootHeadStatus; location = $rootLocation; ok = [bool]$rootOk }
     docs = [ordered]@{ url = $docsUrl; headStatus = $docsHeadStatus; getStatus = $docsGetStatus; snippet = @($docsSnippet) }
     openapi = [ordered]@{ url = $openapiUrl; status = $openapiStatus; ok = $openapiOk }
     ok = [bool]$ok
@@ -1940,10 +1959,10 @@ if ($CheckSwagger) {
   }
   Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'swagger-host-check.json' -content $payloadJson
 
-  $result.swaggerCheck = [ordered]@{ enabled = $true; host = $SwaggerHost; docsHeadStatus = $docsHeadStatus; docsGetStatus = $docsGetStatus; openapiStatus = $openapiStatus; ok = [bool]$ok }
+  $result.swaggerCheck = [ordered]@{ enabled = $true; host = $SwaggerHost; rootHeadStatus = $rootHeadStatus; rootLocation = $rootLocation; docsHeadStatus = $docsHeadStatus; docsGetStatus = $docsGetStatus; openapiStatus = $openapiStatus; ok = [bool]$ok }
 
   if (-not $ok) {
-    $failures += "Swagger host check failed: docsHead=$docsHeadStatus docsGet=$docsGetStatus openapi=$openapiStatus ($SwaggerHost)"
+    $failures += "Swagger host check failed: rootHead=$rootHeadStatus rootLocation=$rootLocation docsHead=$docsHeadStatus docsGet=$docsGetStatus openapi=$openapiStatus ($SwaggerHost)"
   }
 }
 

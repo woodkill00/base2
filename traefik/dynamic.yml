@@ -93,6 +93,18 @@ http:
         certResolver: le-staging
       service: api
 
+    # Swagger root convenience: visiting https://swagger.<domain>/ should land on /docs
+    swagger-docs-root:
+      rule: Host(`swagger.${WEBSITE_DOMAIN}`) && Path(`/`)
+      priority: 206
+      entryPoints:
+        - websecure
+      middlewares:
+        - swagger-root-to-docs
+      tls:
+        certResolver: le-staging
+      service: noop@internal
+
     # Traefik dashboard (guarded)
     traefik-dashboard:
       rule: Host(`${TRAEFIK_DNS_LABEL}.${WEBSITE_DOMAIN}`)
@@ -185,12 +197,12 @@ http:
         frameDeny: true
         contentTypeNosniff: true
         browserXssFilter: true
-        referrerPolicy: "no-referrer-when-downgrade"
+        referrerPolicy: 'no-referrer-when-downgrade'
         customResponseHeaders:
-          X-Frame-Options: "DENY"
-          X-Content-Type-Options: "nosniff"
-          X-XSS-Protection: "1; mode=block"
-          Permissions-Policy: "geolocation=(), microphone=(), camera=(), payment=(), usb=()"
+          X-Frame-Options: 'DENY'
+          X-Content-Type-Options: 'nosniff'
+          X-XSS-Protection: '1; mode=block'
+          Permissions-Policy: 'geolocation=(), microphone=(), camera=(), payment=(), usb=()'
 
     security-csp:
       headers:
@@ -205,17 +217,17 @@ http:
         frameDeny: true
         contentTypeNosniff: true
         browserXssFilter: true
-        referrerPolicy: "no-referrer-when-downgrade"
+        referrerPolicy: 'no-referrer-when-downgrade'
         customResponseHeaders:
-          X-Frame-Options: "DENY"
-          X-Content-Type-Options: "nosniff"
-          X-XSS-Protection: "1; mode=block"
-          Permissions-Policy: "geolocation=(), microphone=(), camera=(), payment=(), usb=()"
+          X-Frame-Options: 'DENY'
+          X-Content-Type-Options: 'nosniff'
+          X-XSS-Protection: '1; mode=block'
+          Permissions-Policy: 'geolocation=(), microphone=(), camera=(), payment=(), usb=()'
 
     traefik-basic-auth:
       basicAuth:
         users:
-          - "${TRAEFIK_DASH_BASIC_USERS}"
+          - '${TRAEFIK_DASH_BASIC_USERS}'
 
     pgadmin-allow-ip:
       ipAllowList:
@@ -235,7 +247,7 @@ http:
     flower-basic-auth:
       basicAuth:
         users:
-          - "${FLOWER_BASIC_USERS}"
+          - '${FLOWER_BASIC_USERS}'
 
     rate-limit:
       rateLimit:
@@ -246,3 +258,9 @@ http:
       retry:
         attempts: 3
         initialInterval: 100ms
+
+    swagger-root-to-docs:
+      redirectRegex:
+        regex: '^https?://swagger\\.${WEBSITE_DOMAIN}/?$'
+        replacement: 'https://swagger.${WEBSITE_DOMAIN}/docs'
+        permanent: false
