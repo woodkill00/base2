@@ -271,9 +271,9 @@
 
 - [x] T143 Expand templated DO_DROPLET_NAME values like `${PROJECT_NAME}-droplet` when resolving droplet IP in digital_ocean/scripts/powershell/deploy.ps1 (avoid literal-name lookup failures on Windows) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests -Timestamped
 
-- [ ] T144 Fix swagger host root 404 by redirecting `https://swagger.$WEBSITE_DOMAIN/` to `/docs` in traefik/dynamic.yml (keep docs-only paths routed to FastAPI) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests -Timestamped
+- [x] T144 Fix swagger host root 404 by redirecting `https://swagger.$WEBSITE_DOMAIN/` to `/docs` in traefik/dynamic.yml (keep docs-only paths routed to FastAPI) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests -Timestamped
 
-- [ ] T145 Add deploy-time Swagger root + docs health check in digital_ocean/scripts/powershell/test.ps1 (probe `/` redirect target, `/docs` 200, `/openapi.json` valid JSON; write meta/swagger-host-check.json) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests -Timestamped
+- [x] T145 Add deploy-time Swagger root + docs health check in digital_ocean/scripts/powershell/test.ps1 (probe `/` redirect target, `/docs` 200, `/openapi.json` valid JSON; write meta/swagger-host-check.json) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests -Timestamped
 
 - [x] T079 Remove committed `./docker-compose` ELF binary from repo and prevent re-introduction.
   - **Why**: It is a platform-specific executable that can confuse tooling, trip scanners, and bloat the repo.
