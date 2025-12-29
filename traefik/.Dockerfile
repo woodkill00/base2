@@ -41,7 +41,7 @@ EXPOSE ${TRAEFIK_PORT} 443 ${TRAEFIK_API_PORT}
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD traefik --configFile=/tmp/traefik.yml healthcheck || exit 1
+  CMD /bin/sh -ec 'wget -qO- "http://127.0.0.1:${TRAEFIK_API_PORT}/ping" >/dev/null'
 
 # Make entrypoint script executable and use it
 COPY traefik/entrypoint.sh /entrypoint.sh
@@ -49,7 +49,7 @@ RUN chmod +x /entrypoint.sh
 
 # Install runtime tools
 USER root
-RUN apk add --no-cache su-exec gettext
+RUN apk add --no-cache su-exec gettext wget
 
 # Optional: Map logs and acme to host for persistence
 VOLUME ["/var/log/traefik", "/etc/traefik/acme"]

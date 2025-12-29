@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import apiClient from '../lib/apiClient';
 import { normalizeApiError } from '../lib/apiErrors';

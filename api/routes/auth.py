@@ -186,6 +186,11 @@ async def auth_login(request: Request, response: Response, payload: _LoginReques
     return body
 
 
+@router.post("/users/login")
+async def users_login(request: Request, response: Response, payload: _LoginRequest):
+    return await auth_login(request, response, payload)
+
+
 @router.post("/auth/register")
 async def auth_register(request: Request, response: Response, payload: _RegisterRequest):
     ip = _client_ip(request)
@@ -231,6 +236,11 @@ async def auth_register(request: Request, response: Response, payload: _Register
     if not bool(settings.AUTH_REFRESH_COOKIE):
         body["refresh_token"] = tokens.refresh_token
     return body
+
+
+@router.post("/users/signup")
+async def users_signup(request: Request, response: Response, payload: _RegisterRequest):
+    return await auth_register(request, response, payload)
 
 
 @router.post("/auth/verify-email")
@@ -388,6 +398,11 @@ async def auth_logout(request: Request, response: Response):
     _clear_refresh_cookie(response)
     response.status_code = 204
     return None
+
+
+@router.post("/users/logout")
+async def users_logout(request: Request, response: Response):
+    return await auth_logout(request, response)
 
 
 @router.get("/auth/me")

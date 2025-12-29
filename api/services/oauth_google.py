@@ -23,8 +23,8 @@ def verify_google_id_token(*, id_token: str, audience: str) -> GoogleIdentity:
         raise ValueError("invalid_token")
 
     try:
-        from google.auth.transport import requests as google_requests  # type: ignore
-        from google.oauth2 import id_token as google_id_token  # type: ignore
+        from google.auth.transport import requests as google_requests
+        from google.oauth2 import id_token as google_id_token
 
         req = google_requests.Request()
         claims: dict[str, Any] = google_id_token.verify_oauth2_token(str(id_token), req, str(audience))

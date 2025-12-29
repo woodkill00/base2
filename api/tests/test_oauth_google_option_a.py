@@ -50,7 +50,7 @@ def test_auth_oauth_google_merge_rules_reject_unverified_collision(monkeypatch):
 
     email = f"merge_{uuid.uuid4().hex[:8]}@example.com"
     # Create local user with unverified email.
-    local_user = repo.create_user(email=email, password_hash="x")
+    repo.create_user(email=email, password_hash="x")
 
     monkeypatch.setattr("api.routes.auth.settings.GOOGLE_OAUTH_CLIENT_ID", "test-client")
 

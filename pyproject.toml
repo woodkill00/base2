@@ -13,3 +13,4 @@ follow_imports = "skip"
 warn_unused_ignores = true
 no_implicit_optional = false
 check_untyped_defs = false
+exclude = '.*[\\\\/](django[\\\\/].*[\\\\/]migrations[\\\\/].*\\.py)$'

@@ -8,6 +8,7 @@ local_run_logs/
 
 # Speckit generated output (do not commit)
 .specify/prereq_run.json
+.specify/memory/
 
 # Platform-specific binaries (do not commit)
 /docker-compose

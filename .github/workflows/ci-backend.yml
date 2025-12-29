@@ -46,7 +46,7 @@ jobs:
           if [ "${{ matrix.service }}" = "api" ]; then
             mypy api
           else
-            mypy django
+            mypy --exclude '.*/migrations/.*' django
           fi
 
       - name: Pytest
@@ -57,5 +57,6 @@ jobs:
           if [ "${{ matrix.service }}" = "api" ]; then
             pytest -c api/pytest.ini api
           else
-            pytest -c django/pytest.ini django
+            cd django
+            pytest -c pytest.ini .
           fi

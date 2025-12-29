@@ -1,7 +1,7 @@
 fastapi
 uvicorn[standard]
 gunicorn
-python-jose[cryptography]
+PyJWT[crypto]
 passlib
 psycopg2-binary
 pydantic

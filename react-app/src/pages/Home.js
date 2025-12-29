@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -28,13 +28,11 @@ const Home = () => {
         setFormError(result.error || 'Google login failed');
       }
     } catch (error) {
-      console.error('Error with Google login:', error);
       setFormError('Failed to process Google login');
     }
   };
 
   const handleGoogleError = () => {
-    console.error('Google Login Failed');
     setFormError('Google login failed. Please try again.');
   };
 

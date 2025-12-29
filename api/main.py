@@ -8,10 +8,15 @@ from api.db import db_ping
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.logging import configure_logging
+from typing import Any
+
+_metrics: Any
 try:
-    from api.metrics import metrics
+    from api.metrics import metrics as _metrics
 except Exception:  # pragma: no cover
-    metrics = None
+    _metrics = None
+
+metrics: Any = _metrics
 
 
 ENV = os.getenv("ENV", "development")
@@ -214,10 +219,12 @@ except Exception:
 try:
     from api.routes.auth import router as auth_router
     from api.routes.metrics import router as metrics_router
+    from api.routes.oauth import router as oauth_router
     from api.routes.users import router as users_router
 
     app.include_router(auth_router)
     app.include_router(metrics_router)
+    app.include_router(oauth_router)
     app.include_router(users_router)
 
     # E2E-only helpers (must be explicitly enabled; never in production).

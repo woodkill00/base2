@@ -266,6 +266,10 @@
 
 **Purpose**: Remove risky artifacts, fix container boot reliability, and ensure local + droplet deploys behave the same.
 
+- [X] T142 Fix Traefik container healthcheck to probe `/ping` on the configured Traefik entrypoint (avoid `traefik healthcheck` default-port mismatches) in traefik/.Dockerfile ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests -Timestamped
+
+- [X] T143 Expand templated DO_DROPLET_NAME values like `${PROJECT_NAME}-droplet` when resolving droplet IP in digital_ocean/scripts/powershell/deploy.ps1 (avoid literal-name lookup failures on Windows) ; Verify: digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests -Timestamped
+
 - [X] T079 Remove committed `./docker-compose` ELF binary from repo and prevent re-introduction.
   - **Why**: It is a platform-specific executable that can confuse tooling, trip scanners, and bloat the repo.
   - **Touch**:

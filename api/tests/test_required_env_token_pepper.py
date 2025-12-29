@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import importlib
-import os
+import sys
 
 
 def test_settings_requires_token_pepper_in_staging(monkeypatch):
@@ -10,6 +10,9 @@ def test_settings_requires_token_pepper_in_staging(monkeypatch):
     monkeypatch.setenv("FRONTEND_URL", "https://example.com")
     monkeypatch.setenv("OAUTH_STATE_SECRET", "state-secret")
     monkeypatch.delenv("TOKEN_PEPPER", raising=False)
+
+    # Ensure we re-evaluate module import-time validation.
+    sys.modules.pop("api.settings", None)
 
     try:
         importlib.import_module("api.settings")

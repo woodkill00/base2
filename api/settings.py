@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Optional, overload
 
 
 def getenv_bool(name: str, default: bool) -> bool:
@@ -7,6 +7,18 @@ def getenv_bool(name: str, default: bool) -> bool:
     if v is None:
         return default
     return str(v).strip().lower() in {"1", "true", "yes", "on"}
+
+
+@overload
+def getenv(name: str) -> Optional[str]: ...
+
+
+@overload
+def getenv(name: str, default: str) -> str: ...
+
+
+@overload
+def getenv(name: str, default: None) -> Optional[str]: ...
 
 
 def getenv(name: str, default: Optional[str] = None) -> Optional[str]:

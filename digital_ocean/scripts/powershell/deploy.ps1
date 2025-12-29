@@ -668,7 +668,20 @@ import os, sys
 from pydo import Client
 
 token = os.environ.get('DO_API_TOKEN')
-name = os.environ.get('DO_DROPLET_NAME') or 'base2-droplet'
+project = (os.environ.get('PROJECT_NAME') or 'base2').strip() or 'base2'
+raw_name = os.environ.get('DO_DROPLET_NAME')
+
+def resolve_name(value: str) -> str:
+  # Support common .env templates like "${PROJECT_NAME}-droplet" used across shells.
+  resolved = value.replace('${PROJECT_NAME}', project).replace('$PROJECT_NAME', project)
+  # If unresolved templating syntax remains, treat as invalid and fall back.
+  if '${' in resolved or '$(' in resolved:
+    return ''
+  return resolved.strip()
+
+name = resolve_name(raw_name) if raw_name else ''
+if not name:
+  name = f'{project}-droplet' if project else 'base2-droplet'
 if not token:
     print('')
     sys.exit(0)

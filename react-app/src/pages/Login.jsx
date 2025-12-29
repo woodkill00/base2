@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 
@@ -25,7 +25,6 @@ const Login = () => {
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -64,7 +63,6 @@ const Login = () => {
   const onGoogleSuccess = async (credentialResponse) => {
     setError('');
     setFieldErrors({});
-    setGoogleLoading(true);
     try {
       const result = await loginWithGoogle(credentialResponse.credential);
       if (result.success) {
@@ -78,8 +76,6 @@ const Login = () => {
       }
     } catch (e) {
       setError('Google login failed');
-    } finally {
-      setGoogleLoading(false);
     }
   };
 
