@@ -3,7 +3,14 @@
 // expect(element).toHaveTextContent(/react/i)
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
-import { server } from './test/msw/server';
+let server;
+try {
+  // Load MSW server after polyfills are applied
+  // eslint-disable-next-line global-require
+  server = require('./test/msw/server').server;
+} catch (e) {
+  // noop if MSW fails to load
+}
 // Polyfills for Node test environment (required by MSW/interceptors)
 try {
   const { TextEncoder, TextDecoder } = require('util');
@@ -18,9 +25,11 @@ try {
 }
 
 // Start MSW before all tests, reset after each, and close after all
-beforeAll(() => server.listen({ onUnhandledRequest: 'bypass' }));
-afterEach(() => server.resetHandlers());
-afterAll(() => server.close());
+if (server) {
+  beforeAll(() => server.listen({ onUnhandledRequest: 'bypass' }));
+  afterEach(() => server.resetHandlers());
+  afterAll(() => server.close());
+}
 
 // Mock environment variables
 const websiteDomain = process.env.WEBSITE_DOMAIN || 'localhost';
