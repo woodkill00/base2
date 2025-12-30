@@ -10,6 +10,19 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'bypass' }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
+// Polyfills for Node test environment (required by MSW/interceptors)
+try {
+  const { TextEncoder, TextDecoder } = require('util');
+  if (typeof global.TextEncoder === 'undefined') {
+    global.TextEncoder = TextEncoder;
+  }
+  if (typeof global.TextDecoder === 'undefined') {
+    global.TextDecoder = TextDecoder;
+  }
+} catch (e) {
+  // noop polyfill fallback
+}
+
 // Mock environment variables
 const websiteDomain = process.env.WEBSITE_DOMAIN || 'localhost';
 process.env.REACT_APP_API_URL = process.env.REACT_APP_API_URL || `https://${websiteDomain}/api`;
