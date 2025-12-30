@@ -1,0 +1,14 @@
+name: ci-chaos
+
+on:
+  workflow_dispatch:
+
+jobs:
+  chaos-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Print guidance
+        run: |
+          echo "This workflow is a placeholder for chaos smoke tests."
+          echo "Run scripts/chaos_smoke.sh on an environment with docker access."

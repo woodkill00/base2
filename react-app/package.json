@@ -25,7 +25,11 @@
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "prettier": "^3.0.0",
-    "source-map-explorer": "^2.5.3"
+    "source-map-explorer": "^2.5.3",
+    "@storybook/react": "^8.1.0",
+    "@storybook/addon-essentials": "^8.1.0",
+    "storybook": "^8.1.0",
+    "openapi-typescript": "^6.7.0"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -41,7 +45,10 @@
     "e2e": "playwright test --reporter=list",
     "e2e:headed": "playwright test --headed",
     "e2e:install": "playwright install",
-    "analyze": "react-scripts build && source-map-explorer 'build/static/js/*.js'"
+    "analyze": "react-scripts build && source-map-explorer 'build/static/js/*.js'",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "generate:openapi:types": "openapi-typescript ../specs/001-django-fastapi-react/contracts/openapi.yaml -o src/services/api/types.d.ts"
   },
   "browserslist": {
     "production": [

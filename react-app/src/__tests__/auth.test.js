@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import { act } from 'react-dom/test-utils';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
@@ -47,10 +48,11 @@ describe('US2 login/logout UI', () => {
 
     renderApp('/login');
 
-    await user.type(screen.getByLabelText(/email/i), 'test@example.com');
-    await user.type(screen.getByLabelText(/password/i), 'Test1234');
-
-    await user.click(screen.getByRole('button', { name: /^sign in$/i }));
+    await act(async () => {
+      await user.type(screen.getByLabelText(/email/i), 'test@example.com');
+      await user.type(screen.getByLabelText(/password/i), 'Test1234');
+      await user.click(screen.getByRole('button', { name: /^sign in$/i }));
+    });
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /dashboard/i })).toBeInTheDocument();
@@ -73,16 +75,19 @@ describe('US2 login/logout UI', () => {
 
     renderApp('/login');
 
-    await user.type(screen.getByLabelText(/email/i), 'test@example.com');
-    await user.type(screen.getByLabelText(/password/i), 'Test1234');
-
-    await user.click(screen.getByRole('button', { name: /^sign in$/i }));
+    await act(async () => {
+      await user.type(screen.getByLabelText(/email/i), 'test@example.com');
+      await user.type(screen.getByLabelText(/password/i), 'Test1234');
+      await user.click(screen.getByRole('button', { name: /^sign in$/i }));
+    });
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /logout/i })).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole('button', { name: /logout/i }));
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: /logout/i }));
+    });
 
     await waitFor(() => {
       expect(screen.getByText(/home/i)).toBeInTheDocument();

@@ -13,6 +13,7 @@ This document describes the lightweight release process for Base2.
 5. Run deploy gate:
    - `powershell -File digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests -Timestamped`
 6. Verify post-deploy report success
+7. Update `CHANGELOG.md` with notable changes
 
 ## Rollback
 
@@ -23,3 +24,4 @@ This document describes the lightweight release process for Base2.
 
 - SBOM and security scans run in CI
 - Coverage thresholds enforced (backend, frontend)
+- Storybook builds in CI (see workflow)

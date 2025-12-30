@@ -80,3 +80,78 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: 'false'
+
+  semgrep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run Semgrep SAST
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: .semgrep.yml
+          generateSarif: true
+          publishSarif: false
+      - name: Upload Semgrep SARIF
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: semgrep-sarif
+          path: semgrep.sarif
+
+  node-licenses:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+      - name: Install license-checker
+        run: npm install -g license-checker
+      - name: Check root licenses
+        run: |
+          license-checker --production --json --failOn "GPL;LGPL;AGPL" --onlyAllow "MIT;Apache-2.0;BSD-3-Clause;ISC"
+      - name: Check react-app licenses
+        run: |
+          cd react-app
+          license-checker --production --json --failOn "GPL;LGPL;AGPL" --onlyAllow "MIT;Apache-2.0;BSD-3-Clause;ISC"
+
+  python-licenses:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pip-licenses
+        run: python -m pip install --upgrade pip pip-licenses
+      - name: Generate API licenses
+        run: |
+          pip install -r api/requirements.txt
+          pip-licenses --from=mixed --format=json --output-file api-licenses.json
+      - name: Generate Django licenses
+        run: |
+          pip install -r django/requirements.txt
+          pip-licenses --from=mixed --format=json --output-file django-licenses.json
+      - name: Validate licenses (allowlist)
+        run: |
+          python - <<'PY'
+          import json, sys
+          allow = {"MIT", "Apache-2.0", "BSD", "BSD-3-Clause", "ISC"}
+          bad = []
+          for path in ("api-licenses.json", "django-licenses.json"):
+              with open(path) as f:
+                  data = json.load(f)
+              for row in data:
+                  lic = (row.get("License", "") or "").strip()
+                  name = row.get("Name", "")
+                  if lic and all(a not in lic for a in allow):
+                      bad.append((name, lic))
+          if bad:
+              print("Disallowed licenses:")
+              for name, lic in bad:
+                  print(f" - {name}: {lic}")
+              sys.exit(1)
+          PY

@@ -1547,7 +1547,7 @@
 
 ## Phase 25: Advanced Security and Compliance Hardening (Optional / Best Ideas)
 
-- [ ] T221 Add SAST scanning (Semgrep) with tuned rules
+- [x] T221 Add SAST scanning (Semgrep) with tuned rules
 - **Touch**:
   - `.github/workflows/security.yml`
   - `.semgrep.yml` (new)
@@ -1556,7 +1556,7 @@
   - CI runs Semgrep and reports findings
   - Baseline is established and new issues fail CI
 
-- [ ] T222 Add CSP + security headers for frontend
+- [x] T222 Add CSP + security headers for frontend
 - **Touch**:
   - `nginx/*` or `traefik/*` (headers config)
   - `react-app/public/*` (if required)
@@ -1565,7 +1565,7 @@
   - CSP enabled in staging; no major console violations
   - Security headers validated (curl/OWASP checks)
 
-- [ ] T223 Add audit logging for sensitive actions (auth, admin, data changes)
+- [x] T223 Add audit logging for sensitive actions (auth, admin, data changes)
 - **Touch**:
   - `api/middleware/*` or `api/logging.py`
   - `api/routers/*` (emit audit events)
@@ -1575,7 +1575,7 @@
   - Login, token refresh, password reset, privilege changes produce audit entries
   - Audit logs avoid secrets/PII leakage
 
-- [ ] T224 Add key rotation and secrets lifecycle runbooks + automation hooks
+- [x] T224 Add key rotation and secrets lifecycle runbooks + automation hooks
 - **Touch**:
   - `docs/RUNBOOKS/key_rotation.md` (new)
   - `docs/RUNBOOKS/secrets_management.md` (new)
@@ -1584,7 +1584,7 @@
   - Runbook includes steps, validation, rollback
   - Rotation can be executed safely in staging
 
-- [ ] T225 Add dependency allow/deny policy and license checks
+- [x] T225 Add dependency allow/deny policy and license checks
 - **Touch**:
   - `.github/workflows/security.yml`
   - `react-app/package.json`
@@ -1593,7 +1593,7 @@
 - **Verify**:
   - CI fails on disallowed licenses or critical advisories
 
-- [ ] T226 Add secure configuration enforcement by environment
+- [x] T226 Add secure configuration enforcement by environment
 - **Touch**:
   - `api/settings.py` (enforce prod flags)
   - `django/project/settings.py`
@@ -1605,7 +1605,7 @@
 
 ## Phase 26: Load, Chaos, and Scale Testing (Optional / Best Ideas)
 
-- [ ] T227 Add k6 load test suite (smoke + baseline) with CI manual trigger
+- [x] T227 Add k6 load test suite (smoke + baseline) with CI manual trigger
 - **Touch**:
   - `load/k6/*.js` (new)
   - `.github/workflows/ci-load.yml` (new; workflow_dispatch)
@@ -1614,7 +1614,7 @@
   - k6 runs against local/staging
   - Baseline metrics recorded and compared over time
 
-- [ ] T228 Add chaos smoke tests (restart DB/Redis during requests)
+- [x] T228 Add chaos smoke tests (restart DB/Redis during requests)
 - **Touch**:
   - `scripts/chaos_smoke.sh` (new)
   - `local.docker.yml` (resource constraints + restart policies)
@@ -1624,7 +1624,7 @@
   - App recovers or fails gracefully without corruption
   - Tests are deterministic (timeouts, retries)
 
-- [ ] T229 Add resource limits and leak detection in compose/CI
+- [x] T229 Add resource limits and leak detection in compose/CI
 - **Touch**:
   - `local.docker.yml`
   - `.github/workflows/ci-backend.yml`
@@ -1634,7 +1634,7 @@
   - Services run with CPU/memory caps
   - CI flags runaway memory usage
 
-- [ ] T230 Add database performance regression checks (indexes + query timings)
+- [x] T230 Add database performance regression checks (indexes + query timings)
 - **Touch**:
   - `django/*` (indexes, query annotations)
   - `api/tests/perf/test_query_perf.py` (new)
@@ -1642,7 +1642,7 @@
 - **Verify**:
   - Key queries stay under budget in realistic dataset fixtures
 
-- [ ] T231 Add log volume + error-rate SLO smoke checks
+- [x] T231 Add log volume + error-rate SLO smoke checks
 - **Touch**:
   - `scripts/perf_smoke.py` (extend) or `scripts/slo_smoke.py` (new)
   - `docs/OBSERVABILITY.md`
@@ -1653,7 +1653,7 @@
 
 ## Phase 27: Multi-tenant and Enterprise Readiness (Optional / Best Ideas)
 
-- [ ] T232 Add tenant isolation patterns and tests (if multi-tenant is planned)
+- [x] T232 Add tenant isolation patterns and tests (if multi-tenant is planned)
 - **Touch**:
   - `api/*` (tenant context propagation)
   - `django/*` (tenant-aware models or schemas)
@@ -1663,7 +1663,7 @@
   - Cross-tenant access attempts are blocked
   - Logs include tenant_id without leaking data
 
-- [ ] T233 Add per-tenant rate limits + quotas
+- [x] T233 Add per-tenant rate limits + quotas
 - **Touch**:
   - `api/middleware/*`
   - `api/settings.py`
@@ -1672,7 +1672,7 @@
   - Tenant A does not affect Tenant B limits
   - Quota exhaustion returns correct error codes
 
-- [ ] T234 Add data export/delete workflows (privacy ops)
+- [x] T234 Add data export/delete workflows (privacy ops)
 - **Touch**:
   - `api/routers/*` (export/delete endpoints if applicable)
   - `django/*` (data selection/deletion)
@@ -1681,7 +1681,7 @@
   - Export is complete and secure
   - Delete is irreversible and auditable
 
-- [ ] T235 Add audit-friendly admin + access review process
+- [x] T235 Add audit-friendly admin + access review process
 - **Touch**:
   - `django/*` (admin roles/permissions)
   - `docs/RUNBOOKS/access_reviews.md` (new)
@@ -1694,7 +1694,7 @@
 
 ## Phase 28: Extra “Best Polish” Ideas (Optional)
 
-- [ ] T236 Add Storybook + visual regression baseline for UI components
+- [x] T236 Add Storybook + visual regression baseline for UI components
 - **Touch**:
   - `react-app/.storybook/*` (new)
   - `react-app/package.json`
@@ -1704,7 +1704,7 @@
   - Storybook builds in CI
   - Optional: screenshot baseline generated and stored
 
-- [ ] T237 Add API client generation from OpenAPI (typed client for frontend)
+- [x] T237 Add API client generation from OpenAPI (typed client for frontend)
 - **Touch**:
   - `react-app/src/services/api/*` (generated or wrapper)
   - `specs/**/openapi.yaml`
@@ -1714,7 +1714,7 @@
   - Client regenerates deterministically
   - Frontend compiles with typed API calls
 
-- [ ] T238 Add git commit conventions + changelog automation
+- [x] T238 Add git commit conventions + changelog automation
 - **Touch**:
   - `docs/RELEASE.md`
   - `CHANGELOG.md`
@@ -1723,7 +1723,7 @@
   - Releases produce consistent changelog entries
   - Conventional commits enforced optionally
 
-- [ ] T239 Add “golden PR template” + issue templates
+- [x] T239 Add “golden PR template” + issue templates
 - **Touch**:
   - `.github/pull_request_template.md` (new)
   - `.github/ISSUE_TEMPLATE/*` (new)

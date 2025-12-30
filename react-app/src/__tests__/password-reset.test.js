@@ -15,7 +15,9 @@ describe('T092 Password reset UI', () => {
   });
 
   test('forgot password calls API and shows generic success', async () => {
-    authAPI.forgotPassword.mockResolvedValue({ detail: 'If the account exists, a password reset email has been sent' });
+    authAPI.forgotPassword.mockResolvedValue({
+      detail: 'If the account exists, a password reset email has been sent',
+    });
 
     const user = userEvent.setup();
 
@@ -29,8 +31,10 @@ describe('T092 Password reset UI', () => {
       </AuthProvider>
     );
 
-    await user.type(screen.getByPlaceholderText(/email address/i), 'u@example.com');
-    await user.click(screen.getByRole('button', { name: /send reset link/i }));
+    await act(async () => {
+      await user.type(screen.getByPlaceholderText(/email address/i), 'u@example.com');
+      await user.click(screen.getByRole('button', { name: /send reset link/i }));
+    });
 
     await waitFor(() => {
       expect(authAPI.forgotPassword).toHaveBeenCalledWith('u@example.com');
@@ -56,9 +60,11 @@ describe('T092 Password reset UI', () => {
       </AuthProvider>
     );
 
-    await user.type(screen.getByPlaceholderText(/^new password$/i), 'NewPass123!');
-    await user.type(screen.getByPlaceholderText(/^confirm new password$/i), 'NewPass123!');
-    await user.click(screen.getByRole('button', { name: /reset password/i }));
+    await act(async () => {
+      await user.type(screen.getByPlaceholderText(/^new password$/i), 'NewPass123!');
+      await user.type(screen.getByPlaceholderText(/^confirm new password$/i), 'NewPass123!');
+      await user.click(screen.getByRole('button', { name: /reset password/i }));
+    });
 
     await waitFor(() => {
       expect(authAPI.resetPassword).toHaveBeenCalledWith('test-token', 'NewPass123!');

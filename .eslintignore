@@ -1,0 +1,13 @@
+# Directories to ignore
+node_modules/
+dist/
+build/
+coverage/
+
+# Minified bundles and generated assets
+*.min.js
+react-app/build/
+react-app/dist/
+
+# Test artifacts
+.nyc_output/

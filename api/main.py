@@ -122,6 +122,16 @@ try:
 except Exception:
     pass
 
+# Middleware: tenant context
+try:
+    from api.middleware.tenant import tenant_context_middleware
+
+    @app.middleware("http")
+    async def _add_tenant_context(request: Request, call_next):
+        return await tenant_context_middleware(request, call_next)
+except Exception:
+    pass
+
 
 @app.middleware("http")
 async def _access_log(request: Request, call_next):
@@ -226,11 +236,15 @@ try:
     from api.routes.metrics import router as metrics_router
     from api.routes.oauth import router as oauth_router
     from api.routes.users import router as users_router
+    from api.routes.tenant import router as tenant_router
+    from api.routes.privacy import router as privacy_router
 
     app.include_router(auth_router)
     app.include_router(metrics_router)
     app.include_router(oauth_router)
     app.include_router(users_router)
+    app.include_router(tenant_router)
+    app.include_router(privacy_router)
 
     # E2E-only helpers (must be explicitly enabled; never in production).
     if _E2E_TEST_MODE and str(getattr(settings, "ENV", "development")).strip().lower() != "production":

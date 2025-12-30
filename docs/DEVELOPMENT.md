@@ -34,3 +34,28 @@ pre-commit run --all-files
 - React Jest: runs automatically via deploy script; see local_run_logs/<run>/react-app/jest.txt
 - Playwright E2E: runs via deploy script; artifacts under local_run_logs/<run>/react-app/playwright/
 - API/Django Pytest: runs inside containers; outputs under local_run_logs/<run>/(api|django)/
+
+## Storybook
+
+Run Storybook locally:
+
+```bash
+cd react-app
+npm run storybook
+```
+
+Build Storybook (CI also builds this):
+
+```bash
+cd react-app
+npm run build-storybook
+```
+
+## OpenAPI Types Generation
+
+Generate frontend TypeScript types from the OpenAPI contract:
+
+```bash
+cd react-app
+npm run generate:openapi:types
+```
