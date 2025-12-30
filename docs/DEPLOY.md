@@ -35,6 +35,16 @@ Authoritative deploy/update/test is executed via `digital_ocean/scripts/powershe
 - If UpdateOnly changes don’t reflect on the droplet, verify a recent push to `origin/<DO_APP_BRANCH>`.
 - For DNS allowlists, the script updates `.env` with your public IP; restart Traefik if needed.
 
+## Migration Safety (CI)
+
+CI enforces Django migration safety by failing if model changes are detected without migrations.
+Run locally before PRs:
+
+```
+cd django
+python manage.py makemigrations --check --dry-run
+```
+
 ## Hostnames (Dev-Production)
 
 - Main site: `https://${WEBSITE_DOMAIN}/`

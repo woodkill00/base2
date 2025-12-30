@@ -1,7 +1,7 @@
 {
   "react-app/src/**/*.{js,jsx}": [
-    "cd react-app && npx eslint --fix",
-    "cd react-app && npx prettier --write"
+    "node react-app/node_modules/eslint/bin/eslint.js --fix",
+    "node react-app/node_modules/prettier/bin/prettier.cjs --write"
   ],
   "*.{json,md,yml,yaml}": ["npx prettier --write"]
 }

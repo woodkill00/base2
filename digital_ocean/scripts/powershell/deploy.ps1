@@ -1269,9 +1269,14 @@ except Exception:\
   mkdir -p /root/logs || true
   # FastAPI (api) pytest
   # Ensure we run from /app so `import main` / local imports resolve as expected.
-  docker compose -f local.docker.yml exec -T api sh -lc 'cd /app && pytest -q' > /root/logs/api-pytest.txt 2>&1 || true
+  docker compose -f local.docker.yml exec -T api sh -lc 'cd /app && pytest -q --cov=api --cov-report=term --cov-fail-under=60' > /root/logs/api-pytest.txt 2>&1 || true
+  # API integration tests (marked with @pytest.mark.integration)
+  docker compose -f local.docker.yml exec -T api sh -lc 'cd /app && pytest -q -m integration --cov=api --cov-report=term --cov-fail-under=60' > /root/logs/api-pytest-integration.txt 2>&1 || true
+  # API lint/type checks (Ruff + Mypy)
+  docker compose -f local.docker.yml exec -T api sh -lc 'cd /app && (ruff --version >/dev/null 2>&1 && ruff check . || echo "ruff_not_available")' > /root/logs/api-ruff.txt 2>&1 || true
+  docker compose -f local.docker.yml exec -T api sh -lc 'cd /app && (mypy --version >/dev/null 2>&1 && mypy --show-error-codes --pretty api || echo "mypy_not_available")' > /root/logs/api-mypy.txt 2>&1 || true
   # Django pytest
-  docker compose -f local.docker.yml exec -T django sh -lc 'pytest -q' > /root/logs/django-pytest.txt 2>&1 || true
+  docker compose -f local.docker.yml exec -T django sh -lc 'pytest -q --cov=project --cov-report=term --cov-fail-under=60' > /root/logs/django-pytest.txt 2>&1 || true
   date -u +"%Y-%m-%dT%H:%M:%SZ" > /root/logs/remote_verify.done || true
 fi
 '@
@@ -1682,6 +1687,61 @@ try {
       }
     } catch {
       Write-Warning ("React Jest execution error: {0}" -f $_.Exception.Message)
+    } finally { try { Pop-Location } catch {} }
+
+    # T207: Run Playwright E2E tests locally and capture output/artifacts
+    try {
+      Write-Section "Running Playwright E2E (local)"
+      $artifactDir = Ensure-ArtifactDir
+      $reactOutDir = Join-Path $artifactDir 'react-app'
+      if (-not (Test-Path $reactOutDir)) { New-Item -ItemType Directory -Path $reactOutDir -Force | Out-Null }
+      $pwOutPath = Join-Path $reactOutDir 'playwright.txt'
+      $pwArtifactsDir = Join-Path $reactOutDir 'playwright'
+      if (-not (Test-Path $pwArtifactsDir)) { New-Item -ItemType Directory -Path $pwArtifactsDir -Force | Out-Null }
+      Push-Location (Join-Path $script:RepoRoot 'react-app')
+      $log = @()
+      $log += ("UTC: {0}" -f (Get-UtcTimestamp))
+      try { $log += (& node --version 2>&1 | Out-String).TrimEnd() } catch {}
+      try { $log += (& npm --version 2>&1 | Out-String).TrimEnd() } catch {}
+      $log += ''
+
+      $log += '== Playwright install =='
+      $install = Invoke-LocalCmdWithTimeout -WorkingDirectory $PWD.Path -Label 'playwright install' -CmdLine 'npx playwright install' -TimeoutSec $ReactTestTimeoutSec
+      $installText = $install.Output
+      if ($null -eq $installText) { $installText = '' }
+      $log += ($installText.TrimEnd())
+      $log += ("playwright install exitCode={0}" -f ([int]$install.ExitCode))
+      $log += ''
+
+      if ([int]$install.ExitCode -ne 0) {
+        $log += 'Skipping Playwright run because install failed.'
+        $log | Set-Content -Path $pwOutPath -Encoding UTF8
+      } else {
+        $log += '== Playwright test =='
+        $prevCI = $env:CI
+        try {
+          $env:CI = 'true'
+          $cmd = 'npx playwright test --config=playwright.config.js --reporter=list'
+          $run = Invoke-LocalCmdWithTimeout -WorkingDirectory $PWD.Path -Label 'playwright test' -CmdLine $cmd -TimeoutSec $ReactTestTimeoutSec
+          $runText = $run.Output
+          if ($null -eq $runText) { $runText = '' }
+          $log += ($runText.TrimEnd())
+          $log += ("playwright test exitCode={0}" -f ([int]$run.ExitCode))
+
+          # Copy playwright-report (if generated) into artifacts
+          try {
+            $reportDir = Join-Path $PWD.Path 'playwright-report'
+            if (Test-Path $reportDir) {
+              Copy-Item -LiteralPath $reportDir -Destination (Join-Path $pwArtifactsDir 'playwright-report') -Recurse -Force -ErrorAction SilentlyContinue
+            }
+          } catch {}
+        } finally {
+          $env:CI = $prevCI
+        }
+        $log | Set-Content -Path $pwOutPath -Encoding UTF8
+      }
+    } catch {
+      Write-Warning ("Playwright E2E execution error: {0}" -f $_.Exception.Message)
     } finally { try { Pop-Location } catch {} }
   }
 

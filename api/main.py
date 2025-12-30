@@ -19,30 +19,37 @@ except Exception:  # pragma: no cover
 metrics: Any = _metrics
 
 
-ENV = os.getenv("ENV", "development")
+try:
+    from api.settings import settings
+except Exception as e:
+    # Loud startups: in non-development, fail fast and log clearly.
+    env_val = (os.getenv("ENV", "development") or "").strip().lower()
+    try:
+        configure_logging(service="api")
+    except Exception:
+        pass
+    _boot_logger = logging.getLogger("api.boot")
+    _boot_logger.error("settings_import_failed", extra={"env": env_val, "error": str(e)})
+    if env_val in {"staging", "production"}:
+        raise
+    # Development fallback only
+    class _Fallback:
+        ENV = os.getenv("ENV", "development")
+        API_DOCS_ENABLED = (os.getenv("API_DOCS_ENABLED", "") or "").strip().lower() in {"1", "true", "yes", "on"} or (ENV.strip().lower() != "production")
+        API_DOCS_URL = os.getenv("API_DOCS_URL", "/docs") or "/docs"
+        API_REDOC_URL = os.getenv("API_REDOC_URL", "/redoc") or "/redoc"
+        API_OPENAPI_URL = os.getenv("API_OPENAPI_URL", "/openapi.json") or "/openapi.json"
+        FRONTEND_URL = os.getenv("FRONTEND_URL", "") or ""
+        E2E_TEST_MODE = (os.getenv("E2E_TEST_MODE", "") or "").strip().lower() in {"1", "true", "yes", "on"}
 
-def _env_truthy(name: str) -> bool:
-    v = os.getenv(name)
-    if v is None:
-        return False
-    return str(v).strip().lower() in {"1", "true", "yes", "on"}
+    settings = _Fallback()
 
+_docs_enabled = bool(getattr(settings, "API_DOCS_ENABLED", True))
+_docs_url = str(getattr(settings, "API_DOCS_URL", "/docs"))
+_redoc_url = str(getattr(settings, "API_REDOC_URL", "/redoc"))
+_openapi_url = str(getattr(settings, "API_OPENAPI_URL", "/openapi.json"))
 
-def _docs_enabled_for_env() -> bool:
-    # Default policy: docs disabled in production unless explicitly enabled.
-    if _env_truthy("API_DOCS_ENABLED"):
-        return True
-    if (ENV or "").strip().lower() == "production":
-        return False
-    return True
-
-
-_docs_enabled = _docs_enabled_for_env()
-_docs_url = os.getenv("API_DOCS_URL", "/docs") or "/docs"
-_redoc_url = os.getenv("API_REDOC_URL", "/redoc") or "/redoc"
-_openapi_url = os.getenv("API_OPENAPI_URL", "/openapi.json") or "/openapi.json"
-
-_E2E_TEST_MODE = (os.getenv("E2E_TEST_MODE", "") or "").strip().lower() in {"1", "true", "yes", "on"}
+_E2E_TEST_MODE = bool(getattr(settings, "E2E_TEST_MODE", False))
 
 configure_logging(service="api")
 logger = logging.getLogger("api.http")
@@ -76,10 +83,8 @@ try:
             "http://127.0.0.1:3000",
         ]
         try:
-            from api.settings import settings
-
             if getattr(settings, "FRONTEND_URL", ""):
-                origins.append(str(settings.FRONTEND_URL).rstrip("/"))
+                origins.append(str(getattr(settings, "FRONTEND_URL", "")).rstrip("/"))
         except Exception:
             pass
 
@@ -228,7 +233,7 @@ try:
     app.include_router(users_router)
 
     # E2E-only helpers (must be explicitly enabled; never in production).
-    if _E2E_TEST_MODE and ENV != "production":
+    if _E2E_TEST_MODE and str(getattr(settings, "ENV", "development")).strip().lower() != "production":
         try:
             from api.routes.test_support import router as test_support_router
 

@@ -3,15 +3,16 @@
 // expect(element).toHaveTextContent(/react/i)
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
+import { server } from './test/msw/server';
 
-// CRA/Jest can struggle with some ESM-only node_modules (e.g., axios). We don't need
-// real HTTP in unit tests, so use a manual mock.
-jest.mock('axios');
+// Start MSW before all tests, reset after each, and close after all
+beforeAll(() => server.listen({ onUnhandledRequest: 'bypass' }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
 
 // Mock environment variables
 const websiteDomain = process.env.WEBSITE_DOMAIN || 'localhost';
-process.env.REACT_APP_API_URL =
-  process.env.REACT_APP_API_URL || `https://${websiteDomain}/api`;
+process.env.REACT_APP_API_URL = process.env.REACT_APP_API_URL || `https://${websiteDomain}/api`;
 process.env.REACT_APP_GOOGLE_CLIENT_ID = 'test-google-client-id';
 
 // Mock window.matchMedia (needed for some components)
@@ -33,9 +34,7 @@ Object.defineProperty(window, 'matchMedia', {
 const localStorageStore = new Map();
 const getItemImpl = (key) => {
   const normalizedKey = String(key);
-  return localStorageStore.has(normalizedKey)
-    ? localStorageStore.get(normalizedKey)
-    : null;
+  return localStorageStore.has(normalizedKey) ? localStorageStore.get(normalizedKey) : null;
 };
 const setItemImpl = (key, value) => {
   localStorageStore.set(String(key), String(value));

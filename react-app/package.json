@@ -15,6 +15,9 @@
     "@testing-library/jest-dom": "^6.1.4",
     "@testing-library/react": "^14.1.0",
     "@testing-library/user-event": "^14.5.1",
+    "jest-axe": "^9.0.0",
+    "msw": "^2.6.6",
+    "@playwright/test": "^1.47.0",
     "cross-env": "^7.0.3",
     "react-scripts": "^5.0.1",
     "eslint": "^8.50.0",
@@ -35,6 +38,9 @@
     "lint:fix": "eslint src --ext .js,.jsx --fix",
     "format": "prettier --write \"src/**/*.{js,jsx,json,css,md}\"",
     "format:check": "prettier --check \"src/**/*.{js,jsx,json,css,md}\"",
+    "e2e": "playwright test --reporter=list",
+    "e2e:headed": "playwright test --headed",
+    "e2e:install": "playwright install",
     "analyze": "react-scripts build && source-map-explorer 'build/static/js/*.js'"
   },
   "browserslist": {

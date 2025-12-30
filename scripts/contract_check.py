@@ -1,3 +1,32 @@
+from pathlib import Path
+import sys
+import argparse
+import yaml
+from api.main import app
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--contract", default="specs/001-django-fastapi-react/contracts/openapi.yaml")
+    args = parser.parse_args()
+    runtime = app.openapi()
+    runtime_paths = set((runtime.get("paths") or {}).keys())
+    contract_path = Path(args.contract)
+    if not contract_path.exists():
+        print(f"Missing contract file: {contract_path}", file=sys.stderr)
+        return 2
+    contract = yaml.safe_load(contract_path.read_text(encoding="utf-8"))
+    contract_paths = set((contract.get("paths") or {}).keys())
+    missing = sorted(p for p in contract_paths if p not in runtime_paths)
+    if missing:
+        print(f"Runtime missing contract paths: {missing}", file=sys.stderr)
+        return 1
+    print("Contract check OK")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
 import argparse
 import sys
 from pathlib import Path

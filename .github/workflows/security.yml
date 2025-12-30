@@ -2,12 +2,36 @@ name: security
 
 on:
   push:
-    branches: [ "**" ]
+    branches: ['**']
   pull_request:
   schedule:
-    - cron: "0 6 * * 1" # weekly
+    - cron: '0 6 * * 1' # weekly
 
 jobs:
+  sbom-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate SBOMs with Syft
+        uses: anchore/sbom-action@v0.17.7
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: sbom.cdx.json
+
+      - name: Scan with Grype
+        uses: anchore/scan-action@v3
+        with:
+          sbom: sbom.cdx.json
+          fail-build: true
+          severity-cutoff: high
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.cdx.json
   npm-audit:
     runs-on: ubuntu-latest
     steps:
@@ -34,7 +58,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: '3.12'
 
       - name: Install pip-audit
         run: python -m pip install --upgrade pip pip-audit
@@ -55,4 +79,4 @@ jobs:
       - name: Run gitleaks
         uses: gitleaks/gitleaks-action@v2
         env:
-          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: 'false'
