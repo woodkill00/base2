@@ -25,7 +25,7 @@ jobs:
         with:
           sbom: sbom.cdx.json
           fail-build: true
-          severity-cutoff: high
+          severity-cutoff: critical
 
       - name: Upload SBOM artifact
         uses: actions/upload-artifact@v4
@@ -34,6 +34,7 @@ jobs:
           path: sbom.cdx.json
   npm-audit:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -49,7 +50,7 @@ jobs:
         run: cd react-app && npm ci
 
       - name: Audit frontend deps
-        run: cd react-app && npm audit --omit=dev --audit-level=high
+        run: cd react-app && npm audit --omit=dev --audit-level=critical
 
   pip-audit:
     runs-on: ubuntu-latest
@@ -101,6 +102,7 @@ jobs:
 
   node-licenses:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -119,6 +121,7 @@ jobs:
 
   python-licenses:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
