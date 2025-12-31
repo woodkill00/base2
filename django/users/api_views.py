@@ -6,6 +6,7 @@ import os
 import secrets
 import time
 from datetime import timedelta
+from typing import Any
 from urllib.parse import urlencode
 from urllib.request import Request as UrlRequest
 from urllib.request import urlopen
@@ -18,8 +19,6 @@ from django.views.decorators.csrf import csrf_exempt, csrf_protect
 
 from users.models import AuditEvent, EmailAddress, OAuthAccount, OneTimeToken, UserProfile
 from users.tokens import consume_one_time_token, get_valid_one_time_token, mint_one_time_token
-
-from typing import Any
 
 AuthUser = get_user_model()
 
