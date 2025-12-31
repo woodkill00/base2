@@ -1,0 +1,9 @@
+# Exclude CI workflow YAML and contract specs
+.github/workflows/**
+specs/**/contracts/**
+local_run_logs/**
+react-app/build/**
+react-app/dist/**
+react-app/coverage/**
+**/__tests__/**
+**/node_modules/**

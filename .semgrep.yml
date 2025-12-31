@@ -63,3 +63,6 @@ ignore:
   - '**/node_modules/**'
   - 'local_run_logs/**'
   - '.specify/**'
+  # Exclude GitHub workflow YAML and contract specs to reduce false positives
+  - '.github/workflows/**'
+  - 'specs/**/contracts/**'
