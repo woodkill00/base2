@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     # E2E test mode gate
     E2E_TEST_MODE: bool = Field(default=False)
 
-    def model_post_init(self, __context):  # type: ignore[override]
+    def model_post_init(self, __context):
         # Normalize pool bounds
         if self.DB_POOL_MIN < 0:
             object.__setattr__(self, "DB_POOL_MIN", 0)

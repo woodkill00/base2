@@ -1,13 +1,8 @@
-import os
-import sys
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-if _REPO_ROOT not in sys.path:
-    sys.path.insert(0, _REPO_ROOT)
 
 from api.main import app
 
@@ -81,7 +76,7 @@ def test_auth_login_cookie_mode_sets_http_only_cookie_and_hides_refresh(monkeypa
     assert r.status_code == 200, r.text
 
     # Refresh should be a cookie only.
-    assert "set-cookie" in {k.lower() for k in r.headers.keys()}
+    assert "set-cookie" in {k.lower() for k in r.headers}
     assert "base2_refresh=" in r.headers.get("set-cookie", "")
 
     body = r.json()

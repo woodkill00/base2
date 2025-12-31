@@ -1,13 +1,8 @@
 import json
 import logging
-import os
-import sys
 from io import StringIO
 
 # Ensure repo root is importable for tests run in containers.
-_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-if _REPO_ROOT not in sys.path:
-    sys.path.insert(0, _REPO_ROOT)
 
 from api.logging import JsonFormatter, RedactingFilter
 

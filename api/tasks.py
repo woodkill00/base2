@@ -2,6 +2,7 @@ import logging
 import os
 
 from celery import Celery
+from contextlib import suppress
 
 
 logger = logging.getLogger("api.tasks")
@@ -28,10 +29,8 @@ app.conf.update(
 
 @app.task(name="base2.ping")
 def ping(request_id: str | None = None):
-    try:
+    with suppress(Exception):
         logger.info("ping", extra={"request_id": request_id})
-    except Exception:
-        pass
     return "pong"
 
 @app.task(name="base2.add")
@@ -39,9 +38,6 @@ def add(x: int, y: int) -> int:
     return int(x) + int(y)
 
 
-# Register additional tasks
-try:
+# Register additional tasks (keep import failures from breaking app startup)
+with suppress(Exception):
     from api.tasks import email_tasks as _email_tasks  # noqa: F401
-except Exception:
-    # Keep import failures from breaking app startup.
-    pass

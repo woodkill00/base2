@@ -1,5 +1,5 @@
 import os
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 import threading
 
 from psycopg2.pool import ThreadedConnectionPool
@@ -56,13 +56,10 @@ def db_conn():
     try:
         yield conn
     finally:
-        try:
+        with suppress(Exception):
             pool.putconn(conn)
-        except Exception:
-            try:
-                conn.close()
-            except Exception:
-                pass
+        with suppress(Exception):
+            conn.close()
 
 
 def close_pool() -> None:
@@ -77,10 +74,9 @@ def close_pool() -> None:
 
 def db_ping() -> bool:
     try:
-        with db_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT 1")
-                cur.fetchone()
+        with db_conn() as conn, conn.cursor() as cur:
+            cur.execute("SELECT 1")
+            cur.fetchone()
         return True
     except Exception:
         return False

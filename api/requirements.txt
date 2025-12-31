@@ -196,6 +196,8 @@ python-dotenv==1.2.1
     # via uvicorn
 pyyaml==6.0.3
     # via uvicorn
+types-pyyaml==6.0.12.20241230
+    # via mypy type checking for tests using yaml
 redis==7.1.0
     # via -r api/requirements.in
 requests==2.32.5

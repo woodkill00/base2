@@ -1,6 +1,5 @@
 import os
 import time
-import statistics
 from typing import Tuple, List
 
 import psycopg2

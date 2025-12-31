@@ -1,5 +1,6 @@
 import os
 import time
+from contextlib import suppress
 from typing import Tuple
 
 from api.redis_client import get_client, key
@@ -26,14 +27,10 @@ def _limit_for_scope(scope: str) -> tuple[int, int]:
     window_ms = 60_000
     max_requests = 5
 
-    try:
+    with suppress(Exception):
         window_ms = int(os.environ.get(f"{env_prefix}_WINDOW_MS", str(window_ms)))
-    except Exception:
-        pass
-    try:
+    with suppress(Exception):
         max_requests = int(os.environ.get(f"{env_prefix}_MAX_REQUESTS", str(max_requests)))
-    except Exception:
-        pass
 
     return window_ms, max_requests
 

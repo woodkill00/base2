@@ -36,19 +36,18 @@ async def outbox_latest(request: Request, to_email: str, subject_contains: str =
     subj = (subject_contains or "").strip()
     subj_like = f"%{subj}%" if subj else "%"
 
-    with db_conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id, to_email, subject, body_text, body_html, status, created_at, sent_at
-                FROM api_email_outbox
-                WHERE lower(to_email)=lower(%s) AND subject ILIKE %s
-                ORDER BY created_at DESC
-                LIMIT 1
-                """,
-                (email, subj_like),
-            )
-            row = cur.fetchone()
+    with db_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id, to_email, subject, body_text, body_html, status, created_at, sent_at
+            FROM api_email_outbox
+            WHERE lower(to_email)=lower(%s) AND subject ILIKE %s
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+            (email, subj_like),
+        )
+        row = cur.fetchone()
 
     if not row:
         raise HTTPException(status_code=404, detail="outbox_not_found")

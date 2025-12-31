@@ -1,5 +1,4 @@
 import importlib
-import os
 import sys
 
 import pytest
@@ -16,7 +15,7 @@ def test_settings_import_failure_is_loud(monkeypatch, caplog, capsys):
     if "api.main" in sys.modules:
         del sys.modules["api.main"]
     caplog.set_level("ERROR")
-    with pytest.raises(Exception):
+    with pytest.raises(RuntimeError):
         importlib.import_module("api.main")
     # Prefer captured stdout/stderr since logging may emit to stream handlers
     out = capsys.readouterr()

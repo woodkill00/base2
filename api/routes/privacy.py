@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request
 from api.middleware.tenant import require_tenant
 
 router = APIRouter(prefix="/privacy", tags=["privacy"])

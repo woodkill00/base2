@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.logging import configure_logging
 from typing import Any
+from contextlib import suppress
 
 _metrics: Any
 try:
@@ -18,16 +19,18 @@ except Exception:  # pragma: no cover
 
 metrics: Any = _metrics
 
+# Settings may fall back to a lightweight runtime object in development.
+settings: Any
+
 
 try:
-    from api.settings import settings
+    from api.settings import settings as _settings
+    settings = _settings
 except Exception as e:
     # Loud startups: in non-development, fail fast and log clearly.
     env_val = (os.getenv("ENV", "development") or "").strip().lower()
-    try:
+    with suppress(Exception):
         configure_logging(service="api")
-    except Exception:
-        pass
     _boot_logger = logging.getLogger("api.boot")
     _boot_logger.error("settings_import_failed", extra={"env": env_val, "error": str(e)})
     if env_val in {"staging", "production"}:
@@ -221,10 +224,8 @@ try:
 
     # Assign override and eagerly generate schema so it's ready before first request
     app.openapi = custom_openapi
-    try:
+    with suppress(Exception):
         app.openapi()
-    except Exception:
-        pass
 except Exception:
     # If OpenAPI customization fails, proceed without breaking runtime.
     pass
@@ -284,8 +285,11 @@ async def get_item(item_id: int):
     raise HTTPException(status_code=501, detail="/api/items/{item_id} is not implemented yet")
 
 
+DEFAULT_CREATE_ITEM_BODY = Body(...)
+
+
 @app.post("/items")
-async def create_item(payload: dict = Body(...)):
+async def create_item(payload: dict = DEFAULT_CREATE_ITEM_BODY):
     raise HTTPException(status_code=501, detail="/api/items POST is not implemented yet")
 
 
@@ -296,7 +300,7 @@ async def _enqueue_celery_ping(request: Request):
         res = tasks.ping.delay(request_id=(str(rid) if rid else None))
         return {"task_id": res.id}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"enqueue_failed: {e}")
+        raise HTTPException(status_code=500, detail=f"enqueue_failed: {e}") from e
 
 
 @app.post("/celery/ping")
@@ -315,7 +319,7 @@ async def _read_celery_result(task_id: str):
             "result": (ar.result if ar.ready() else None),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"result_failed: {e}")
+        raise HTTPException(status_code=500, detail=f"result_failed: {e}") from e
 
 
 @app.get("/celery/result/{task_id}")
