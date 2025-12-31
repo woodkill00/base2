@@ -24,7 +24,7 @@ services:
       context: ../api
       dockerfile: .Dockerfile
       args:
-        PYTHON_VERSION: 3.12-slim
+        PYTHON_VERSION: 3.12-slim-bookworm
     environment:
       ENV: test
       PORT: 5001
@@ -57,7 +57,7 @@ services:
       context: ../api
       dockerfile: .Dockerfile
       args:
-        PYTHON_VERSION: 3.12-slim
+        PYTHON_VERSION: 3.12-slim-bookworm
     environment:
       ENV: test
       CELERY_BROKER_URL: redis://redis:6379/0
@@ -74,7 +74,7 @@ services:
       dockerfile: .Dockerfile
       args:
         NODE_VERSION: 18-alpine
-        NGINX_VERSION: 1.25-alpine
+        NGINX_VERSION: 1.27.3-alpine
         REACT_APP_API_URL: http://localhost:5001
     ports:
       - '8080:8080'

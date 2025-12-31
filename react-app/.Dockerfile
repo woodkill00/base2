@@ -3,7 +3,7 @@
 
 # Declare all ARG used in any FROM before the first FROM
 ARG NODE_VERSION=18-alpine
-ARG NGINX_VERSION=1.25-alpine
+ARG NGINX_VERSION=1.27.3-alpine
 FROM node:${NODE_VERSION} AS build
 
 WORKDIR /app
@@ -24,8 +24,10 @@ RUN npm run build
 # ---------- Runtime: Nginx to serve static build ----------
 FROM nginx:${NGINX_VERSION}
 
-# Install envsubst (optional for templating)
-RUN apk add --no-cache gettext curl
+# Upgrade base Alpine packages and install minimal tools (drop gettext)
+RUN apk update \
+  && apk upgrade --no-cache \
+  && apk add --no-cache wget
 
 # Copy build artifacts to Nginx html directory
 COPY --from=build /app/build /usr/share/nginx/html
@@ -69,7 +71,7 @@ RUN echo "# INTERNAL-ONLY: served behind Traefik; do not publish host ports." > 
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD curl -fsS http://localhost:8080/ >/dev/null || exit 1
+  CMD wget -q --spider http://localhost:8080/ || exit 1
 
 # Run as root; nginx will drop privileges per config
 CMD ["nginx", "-g", "daemon off;"]
