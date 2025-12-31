@@ -46,7 +46,10 @@ describe('Phase 14 Option A Google Sign-In', () => {
 
     render(
       <AuthProvider>
-        <MemoryRouter initialEntries={['/login']}>
+        <MemoryRouter
+          initialEntries={['/login']}
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/dashboard" element={<h1>Dashboard</h1>} />

@@ -5,6 +5,15 @@ function Boom() {
   throw new Error('boom');
 }
 
+let errorSpy;
+beforeAll(() => {
+  errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+});
+
+afterAll(() => {
+  errorSpy.mockRestore();
+});
+
 test('ErrorBoundary renders fallback on error', () => {
   render(
     <ErrorBoundary>

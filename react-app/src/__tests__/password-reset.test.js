@@ -23,7 +23,10 @@ describe('T092 Password reset UI', () => {
 
     render(
       <AuthProvider>
-        <MemoryRouter initialEntries={['/forgot-password']}>
+        <MemoryRouter
+          initialEntries={['/forgot-password']}
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
           <Routes>
             <Route path="/forgot-password" element={<ForgotPassword />} />
           </Routes>
@@ -51,7 +54,10 @@ describe('T092 Password reset UI', () => {
 
     render(
       <AuthProvider>
-        <MemoryRouter initialEntries={['/reset-password?token=test-token']}>
+        <MemoryRouter
+          initialEntries={['/reset-password?token=test-token']}
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
           <Routes>
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/login" element={<h1>Login</h1>} />

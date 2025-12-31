@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { act } from 'react-dom/test-utils';
+import { act } from 'react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
@@ -20,7 +20,10 @@ const HomeStub = () => <div>Home</div>;
 const renderApp = (initialPath = '/login') => {
   return render(
     <AuthProvider>
-      <MemoryRouter initialEntries={[initialPath]}>
+      <MemoryRouter
+        initialEntries={[initialPath]}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
         <Routes>
           <Route path="/" element={<HomeStub />} />
           <Route path="/login" element={<Login />} />

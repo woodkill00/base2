@@ -53,7 +53,7 @@ jobs:
     needs: frontend
     env:
       CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
-    if: ${{ env.CHROMATIC_PROJECT_TOKEN != '' }}
+    if: ${{ secrets.CHROMATIC_PROJECT_TOKEN != '' }}
 
     steps:
       - name: Checkout

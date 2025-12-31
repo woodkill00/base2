@@ -19,6 +19,8 @@ from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from users.models import AuditEvent, EmailAddress, OAuthAccount, OneTimeToken, UserProfile
 from users.tokens import consume_one_time_token, get_valid_one_time_token, mint_one_time_token
 
+from typing import Any
+
 AuthUser = get_user_model()
 
 
@@ -241,7 +243,7 @@ def _process_oauth_google_callback_flow(
     redirect_uri: str,
     client_id: str,
     client_secret: str,
-) -> tuple[AuthUser, str, dict]:
+) -> tuple[Any, str, dict]:
     token_payload = _google_exchange_code_for_tokens(
         code=code,
         redirect_uri=redirect_uri,

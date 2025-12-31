@@ -25,7 +25,12 @@ function App() {
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <AuthProvider>
         <ToastProvider>
-          <Router>
+          <Router
+            future={{
+              v7_startTransition: true,
+              v7_relativeSplatPath: true,
+            }}
+          >
             <ErrorBoundary>
               <Suspense fallback={<div style={{ padding: 24 }}>Loading...</div>}>
                 <Routes>

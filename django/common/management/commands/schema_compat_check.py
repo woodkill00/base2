@@ -64,11 +64,11 @@ class Command(BaseCommand):
         except Exception:
             return []
 
-        expected_cols = [
-            getattr(f, "column", None)
-            for f in model._meta.local_concrete_fields
-            if getattr(f, "column", None)
-        ]
+        expected_cols: list[str] = []
+        for f in model._meta.local_concrete_fields:
+            c = getattr(f, "column", None)
+            if isinstance(c, str):
+                expected_cols.append(c)
         return [c for c in expected_cols if c not in present_cols]
 
     def _collect_missing(

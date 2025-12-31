@@ -22,7 +22,10 @@ describe('T091 Email verification UI', () => {
 
     render(
       <AuthProvider>
-        <MemoryRouter initialEntries={['/verify-email?token=test-token']}>
+        <MemoryRouter
+          initialEntries={['/verify-email?token=test-token']}
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
           <Routes>
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/login" element={<h1>Login</h1>} />
@@ -48,7 +51,10 @@ describe('T091 Email verification UI', () => {
   test('shows error when token is missing', async () => {
     render(
       <AuthProvider>
-        <MemoryRouter initialEntries={['/verify-email']}>
+        <MemoryRouter
+          initialEntries={['/verify-email']}
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
           <Routes>
             <Route path="/verify-email" element={<VerifyEmail />} />
           </Routes>
@@ -56,6 +62,8 @@ describe('T091 Email verification UI', () => {
       </AuthProvider>
     );
 
-    expect(await screen.findByRole('heading', { name: /verification failed/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: /verification failed/i })
+    ).toBeInTheDocument();
   });
 });

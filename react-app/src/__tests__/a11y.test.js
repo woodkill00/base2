@@ -15,7 +15,9 @@ describe('Accessibility checks', () => {
     render(
       <GoogleOAuthProvider clientId="test-client-id">
         <AuthProvider>
-          <MemoryRouter>{ui}</MemoryRouter>
+          <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            {ui}
+          </MemoryRouter>
         </AuthProvider>
       </GoogleOAuthProvider>
     );

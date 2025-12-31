@@ -17,7 +17,10 @@ jest.mock('../lib/apiClient', () => ({
 const renderSettings = () => {
   return render(
     <AuthProvider>
-      <MemoryRouter initialEntries={['/settings']}>
+      <MemoryRouter
+        initialEntries={['/settings']}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
         <Routes>
           <Route path="/settings" element={<Settings />} />
         </Routes>

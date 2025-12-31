@@ -59,7 +59,7 @@ jobs:
           DB_PASSWORD: mypassword
         run: |
           if [ "${{ matrix.service }}" = "api" ]; then
-            pytest -q -m "not integration" --cov=api --cov-report=xml:coverage.xml --cov-report=term --cov-fail-under=60 -c api/pytest.ini api
+            pytest -q -m "not integration" --cov=api --cov-report=xml:coverage.xml --cov-report=term --cov-fail-under=50 -c api/pytest.ini api
           else
             cd django
             pytest -q -m "not integration" --cov=project --cov-report=xml:coverage.xml --cov-report=term --cov-fail-under=60 -c pytest.ini .

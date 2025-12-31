@@ -3,15 +3,14 @@ from __future__ import annotations
 from uuid import UUID
 
 import pytest
-
-# These tests exercise real DB I/O via the outbox table; they belong in integration.
-pytestmark = [pytest.mark.integration]
-
 from api.services.email_service import (
     get_outbox_email,
     process_outbox_email,
     queue_email,
 )
+
+# These tests exercise real DB I/O via the outbox table; they belong in integration.
+pytestmark = [pytest.mark.integration]
 
 
 def test_queue_email_creates_outbox_row():
