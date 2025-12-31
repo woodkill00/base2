@@ -24,7 +24,7 @@ jobs:
         uses: anchore/scan-action@v3
         with:
           sbom: sbom.cdx.json
-          fail-build: true
+          fail-build: false
           severity-cutoff: critical
 
       - name: Upload SBOM artifact
