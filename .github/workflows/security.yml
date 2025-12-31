@@ -91,8 +91,7 @@ jobs:
         uses: returntocorp/semgrep-action@v1
         with:
           config: .semgrep.yml
-          generateSarif: true
-          publishSarif: false
+          args: --sarif --output semgrep.sarif
       - name: Upload Semgrep SARIF
         uses: actions/upload-artifact@v4
         if: always()
