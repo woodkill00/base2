@@ -1,8 +1,13 @@
 import os
 import time
+import pytest
 from fastapi.testclient import TestClient
 
 from api.main import app
+
+# These tests exercise the runtime route which depends on Redis.
+# Mark as integration to run only when services are available (CI integration job).
+pytestmark = pytest.mark.integration
 
 client = TestClient(app)
 

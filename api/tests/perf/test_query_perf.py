@@ -6,6 +6,10 @@ from typing import Tuple, List
 import psycopg2
 import pytest
 
+# These perf tests query Postgres directly and require the service.
+# Mark as integration so unit-only runs skip them unless services are available.
+pytestmark = [pytest.mark.perf, pytest.mark.integration]
+
 
 def _get_db_conn_params() -> Tuple[str, int, str, str, str]:
     host = os.getenv("DB_HOST", os.getenv("POSTGRES_HOST", "postgres"))

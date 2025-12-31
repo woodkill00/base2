@@ -1,8 +1,12 @@
 import os
+import pytest
 from fastapi.testclient import TestClient
 
 from api.main import app
 
+# Uses the tenant echo route which performs Redis-backed rate limiting.
+# Mark as integration to require Redis service (CI integration job).
+pytestmark = pytest.mark.integration
 
 client = TestClient(app)
 
