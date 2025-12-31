@@ -1,5 +1,4 @@
 import pytest
-
 from django.utils import timezone
 
 from users.emails import queue_and_maybe_send_email

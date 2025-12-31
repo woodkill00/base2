@@ -12,6 +12,7 @@ from .models import (
     UserUrl,
 )
 
+
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
     list_display = ("user", "display_name", "created", "updated")
@@ -47,7 +48,15 @@ class RecoveryCodeAdmin(admin.ModelAdmin):
 
 @admin.register(AuditEvent)
 class AuditEventAdmin(admin.ModelAdmin):
-    list_display = ("actor_email", "action", "ip", "short_user_agent", "target_type", "target_id", "created")
+    list_display = (
+        "actor_email",
+        "action",
+        "ip",
+        "short_user_agent",
+        "target_type",
+        "target_id",
+        "created",
+    )
     list_filter = ("action", "target_type", "created")
     search_fields = (
         "actor_user__email",
@@ -66,7 +75,11 @@ class AuditEventAdmin(admin.ModelAdmin):
         user = getattr(obj, "actor_user", None)
         if not user:
             return ""
-        return getattr(user, "email", "") or getattr(user, "username", "") or str(getattr(user, "id", ""))
+        return (
+            getattr(user, "email", "")
+            or getattr(user, "username", "")
+            or str(getattr(user, "id", ""))
+        )
 
     @admin.display(description="User agent")
     def short_user_agent(self, obj):

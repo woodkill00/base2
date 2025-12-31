@@ -7,7 +7,6 @@ from celery import shared_task
 from users.emails import queue_and_maybe_send_email, send_outbox_email
 from users.models import EmailOutbox
 
-
 logger = logging.getLogger("users.tasks")
 
 
@@ -15,7 +14,11 @@ logger = logging.getLogger("users.tasks")
 def send_email_outbox(self, email_outbox_uuid: str, request_id: str | None = None) -> str:
     logger.info(
         "send_email_outbox",
-        extra={"task_id": self.request.id, "request_id": request_id, "outbox_uuid": email_outbox_uuid},
+        extra={
+            "task_id": self.request.id,
+            "request_id": request_id,
+            "outbox_uuid": email_outbox_uuid,
+        },
     )
     outbox = EmailOutbox.objects.get(uuid=email_outbox_uuid)
     send_outbox_email(outbox)
@@ -41,7 +44,13 @@ def ping_base2(request_id: str | None = None):
 
 
 @shared_task(bind=True)
-def send_verification_email(self, *, to: str, verification_url: str, request_id: str | None = None) -> str:
+def send_verification_email(
+    self,
+    *,
+    to: str,
+    verification_url: str,
+    request_id: str | None = None,
+) -> str:
     subject = "Verify your email"
     body = f"Verify your email by visiting: {verification_url}"
     logger.info(
@@ -53,7 +62,13 @@ def send_verification_email(self, *, to: str, verification_url: str, request_id:
 
 
 @shared_task(bind=True)
-def send_password_reset_email(self, *, to: str, reset_url: str, request_id: str | None = None) -> str:
+def send_password_reset_email(
+    self,
+    *,
+    to: str,
+    reset_url: str,
+    request_id: str | None = None,
+) -> str:
     subject = "Password reset"
     body = f"Reset your password by visiting: {reset_url}"
     logger.info(

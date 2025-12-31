@@ -1,13 +1,17 @@
 import os
+
 import django
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", os.environ.get("DJANGO_SETTINGS_MODULE", "project.settings.production"))
-django.setup()
 
-from django.contrib.auth import get_user_model
+def ensure_superuser() -> bool:
+    os.environ.setdefault(
+        "DJANGO_SETTINGS_MODULE",
+        os.environ.get("DJANGO_SETTINGS_MODULE", "project.settings.production"),
+    )
+    django.setup()
 
+    from django.contrib.auth import get_user_model
 
-def ensure_superuser():
     username = os.getenv("DJANGO_SUPERUSER_NAME") or os.getenv("DJANGO_SUPERUSER_USERNAME")
     email = os.getenv("DJANGO_SUPERUSER_EMAIL")
     password = os.getenv("DJANGO_SUPERUSER_PASSWORD")

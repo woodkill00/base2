@@ -1,19 +1,19 @@
-import json
 import base64
 import hashlib
 import hmac
+import json
 import os
 import secrets
 import time
 from datetime import timedelta
 from urllib.parse import urlencode
-from urllib.request import Request as UrlRequest, urlopen
+from urllib.request import Request as UrlRequest
+from urllib.request import urlopen
 
-from django.contrib.auth import authenticate, get_user_model, login, logout
-from django.contrib.auth import password_validation
-from django.utils import timezone
+from django.contrib.auth import authenticate, get_user_model, login, logout, password_validation
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 
 from users.models import AuditEvent, EmailAddress, OAuthAccount, OneTimeToken, UserProfile
@@ -34,7 +34,15 @@ def _request_id(request) -> str | None:
     return rid or None
 
 
-def _audit(request, *, action: str, actor_user=None, target_type: str = "", target_id: str = "", metadata=None):
+def _audit(
+    request,
+    *,
+    action: str,
+    actor_user=None,
+    target_type: str = "",
+    target_id: str = "",
+    metadata=None,
+):
     AuditEvent.objects.create(
         actor_user=actor_user,
         action=action,
@@ -110,7 +118,7 @@ def _oauth_state_validate(request, *, state: str, state_secret: str) -> dict:
     try:
         payload_b64, sig_b64 = state.split(".", 1)
     except ValueError:
-        raise ValueError("Invalid state")
+        raise ValueError("Invalid state") from None
 
     payload_json = _b64url_decode(payload_b64)
     expected_sig = _oauth_state_sign(payload_json, state_secret=state_secret)
@@ -120,7 +128,7 @@ def _oauth_state_validate(request, *, state: str, state_secret: str) -> dict:
     try:
         payload = json.loads(payload_json.decode("utf-8"))
     except Exception:
-        raise ValueError("Invalid state")
+        raise ValueError("Invalid state") from None
 
     nonce = payload.get("n")
     issued_at = int(payload.get("t") or 0)
@@ -146,7 +154,11 @@ def _oauth_state_validate(request, *, state: str, state_secret: str) -> dict:
 def _public_origin(request) -> str:
     # Prefer forwarded headers (Traefik), fall back to request-derived values.
     proto = request.META.get("HTTP_X_FORWARDED_PROTO") or request.scheme or "https"
-    host = request.META.get("HTTP_X_FORWARDED_HOST") or request.META.get("HTTP_HOST") or request.get_host()
+    host = (
+        request.META.get("HTTP_X_FORWARDED_HOST")
+        or request.META.get("HTTP_HOST")
+        or request.get_host()
+    )
     return f"{proto}://{host}"
 
 
@@ -160,7 +172,13 @@ def _password_reset_link(request, *, raw_token: str) -> str:
     return f"{_public_origin(request)}/reset-password?{urlencode({'token': raw_token})}"
 
 
-def _google_exchange_code_for_tokens(*, code: str, redirect_uri: str, client_id: str, client_secret: str) -> dict:
+def _google_exchange_code_for_tokens(
+    *,
+    code: str,
+    redirect_uri: str,
+    client_id: str,
+    client_secret: str,
+) -> dict:
     # Separate helper so tests can monkeypatch without real network.
     url = "https://oauth2.googleapis.com/token"
     body = urlencode(
@@ -178,13 +196,13 @@ def _google_exchange_code_for_tokens(*, code: str, redirect_uri: str, client_id:
     try:
         with urlopen(req, timeout=10) as resp:
             raw = resp.read().decode("utf-8")
-    except Exception:
-        raise ValueError("Token exchange failed")
+    except Exception as err:
+        raise ValueError("Token exchange failed") from err
 
     try:
         return json.loads(raw)
-    except Exception:
-        raise ValueError("Token exchange failed")
+    except Exception as err:
+        raise ValueError("Token exchange failed") from err
 
 
 def _google_fetch_userinfo(*, access_token: str) -> dict:
@@ -195,13 +213,89 @@ def _google_fetch_userinfo(*, access_token: str) -> dict:
     try:
         with urlopen(req, timeout=10) as resp:
             raw = resp.read().decode("utf-8")
-    except Exception:
-        raise ValueError("Userinfo fetch failed")
+    except Exception as err:
+        raise ValueError("Userinfo fetch failed") from err
 
     try:
         return json.loads(raw)
+    except Exception as err:
+        raise ValueError("Userinfo fetch failed") from err
+
+
+def _parse_oauth_callback_request(request) -> tuple[str, str]:
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
     except Exception:
+        payload = {}
+    code = (payload.get("code") or "").strip()
+    state = (payload.get("state") or "").strip()
+    if not code or not state:
+        raise ValueError("Invalid request")
+    return code, state
+
+
+def _process_oauth_google_callback_flow(
+    request,
+    *,
+    code: str,
+    redirect_uri: str,
+    client_id: str,
+    client_secret: str,
+) -> tuple[AuthUser, str, dict]:
+    token_payload = _google_exchange_code_for_tokens(
+        code=code,
+        redirect_uri=redirect_uri,
+        client_id=client_id,
+        client_secret=client_secret,
+    )
+    access_token = (token_payload.get("access_token") or "").strip()
+    if not access_token:
+        raise ValueError("Token exchange failed")
+
+    userinfo = _google_fetch_userinfo(access_token=access_token)
+    provider_user_id = (userinfo.get("sub") or "").strip()
+    email = (userinfo.get("email") or "").strip().lower()
+    if not provider_user_id or not email:
         raise ValueError("Userinfo fetch failed")
+
+    account = (
+        OAuthAccount.objects.filter(
+            provider="google",
+            provider_user_id=provider_user_id,
+        )
+        .select_related("user")
+        .first()
+    )
+    if account:
+        return account.user, email, token_payload
+
+    user = AuthUser.objects.filter(email=email).first()
+    if user is None:
+        base_username = email.split("@", 1)[0] or "user"
+        base_username = (
+            "".join(
+                ch for ch in base_username if ch.isalnum() or ch in {"_", ".", "-"}
+            )[:30]
+            or "user"
+        )
+        candidate = base_username
+        suffix = 0
+        while AuthUser.objects.filter(username=candidate).exists():
+            suffix += 1
+            candidate = f"{base_username}{suffix}"
+        user = AuthUser.objects.create_user(username=candidate, email=email)
+        user.set_unusable_password()
+        user.save()
+
+    UserProfile.objects.get_or_create(user=user)
+    OAuthAccount.objects.create(
+        user=user,
+        provider="google",
+        provider_user_id=provider_user_id,
+        access_token=token_payload.get("access_token") or "",
+        refresh_token=token_payload.get("refresh_token") or "",
+    )
+    return user, email, token_payload
 
 
 @csrf_exempt
@@ -238,7 +332,14 @@ def oauth_google_start(request):
         }
     )
 
-    _audit(request, action="auth.oauth.google.start", actor_user=None, target_type="", target_id="", metadata={"next": next_path})
+    _audit(
+        request,
+        action="auth.oauth.google.start",
+        actor_user=None,
+        target_type="",
+        target_id="",
+        metadata={"next": next_path},
+    )
     return JsonResponse({"authorization_url": auth_url}, status=200)
 
 
@@ -246,75 +347,39 @@ def oauth_google_start(request):
 def oauth_google_callback(request):
     if request.method != "POST":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
-
     try:
-        payload = json.loads(request.body.decode("utf-8"))
-    except Exception:
-        payload = {}
-
-    code = (payload.get("code") or "").strip()
-    state = (payload.get("state") or "").strip()
-    if not code or not state:
-        return JsonResponse({"detail": "Invalid request"}, status=400)
-
-    try:
+        code, state = _parse_oauth_callback_request(request)
         client_id, client_secret, redirect_uri, state_secret = _oauth_config()
-    except ValueError as e:
-        return JsonResponse({"detail": str(e)}, status=500)
-
-    try:
         _oauth_state_validate(request, state=state, state_secret=state_secret)
     except ValueError as e:
-        _audit(request, action="auth.oauth.google.failure", actor_user=None, target_type="", target_id="", metadata={"reason": str(e)})
+        _audit(
+            request,
+            action="auth.oauth.google.failure",
+            actor_user=None,
+            target_type="",
+            target_id="",
+            metadata={"reason": str(e)},
+        )
         return JsonResponse({"detail": str(e)}, status=400)
 
     try:
-        token_payload = _google_exchange_code_for_tokens(
+        user, email, token_payload = _process_oauth_google_callback_flow(
+            request,
             code=code,
             redirect_uri=redirect_uri,
             client_id=client_id,
             client_secret=client_secret,
         )
-        access_token = (token_payload.get("access_token") or "").strip()
-        if not access_token:
-            raise ValueError("Token exchange failed")
-
-        userinfo = _google_fetch_userinfo(access_token=access_token)
-        provider_user_id = (userinfo.get("sub") or "").strip()
-        email = (userinfo.get("email") or "").strip().lower()
-        if not provider_user_id or not email:
-            raise ValueError("Userinfo fetch failed")
     except ValueError as e:
-        _audit(request, action="auth.oauth.google.failure", actor_user=None, target_type="", target_id="", metadata={"reason": str(e)})
-        return JsonResponse({"detail": "OAuth failed"}, status=400)
-
-    account = OAuthAccount.objects.filter(provider="google", provider_user_id=provider_user_id).select_related("user").first()
-    user = None
-    if account:
-        user = account.user
-    else:
-        user = AuthUser.objects.filter(email=email).first()
-        if user is None:
-            base_username = email.split("@", 1)[0] or "user"
-            base_username = "".join(ch for ch in base_username if ch.isalnum() or ch in {"_", ".", "-"})[:30] or "user"
-            candidate = base_username
-            suffix = 0
-            while AuthUser.objects.filter(username=candidate).exists():
-                suffix += 1
-                candidate = f"{base_username}{suffix}"
-            user = AuthUser.objects.create_user(username=candidate, email=email)
-            user.set_unusable_password()
-            user.save()
-
-        UserProfile.objects.get_or_create(user=user)
-
-        account = OAuthAccount.objects.create(
-            user=user,
-            provider="google",
-            provider_user_id=provider_user_id,
-            access_token=token_payload.get("access_token") or "",
-            refresh_token=token_payload.get("refresh_token") or "",
+        _audit(
+            request,
+            action="auth.oauth.google.failure",
+            actor_user=None,
+            target_type="",
+            target_id="",
+            metadata={"reason": str(e)},
         )
+        return JsonResponse({"detail": "OAuth failed"}, status=400)
 
     login(request, user)
     get_token(request)
@@ -397,7 +462,14 @@ def signup(request):
 
     login(request, user)
     get_token(request)
-    _audit(request, action="auth.signup", actor_user=user, target_type="user", target_id=str(user.id), metadata={"email": email})
+    _audit(
+        request,
+        action="auth.signup",
+        actor_user=user,
+        target_type="user",
+        target_id=str(user.id),
+        metadata={"email": email},
+    )
 
     return JsonResponse(_user_me_payload(user), status=201)
 
@@ -416,9 +488,18 @@ def verify_email(request):
     if not raw_token:
         return JsonResponse({"detail": "Invalid or expired token"}, status=400)
 
-    token = consume_one_time_token(raw_token=raw_token, purpose=OneTimeToken.Purpose.EMAIL_VERIFICATION)
+    token = consume_one_time_token(
+        raw_token=raw_token,
+        purpose=OneTimeToken.Purpose.EMAIL_VERIFICATION,
+    )
     if token is None:
-        _audit(request, action="auth.email.verify.failure", actor_user=None, target_type="user", target_id="")
+        _audit(
+            request,
+            action="auth.email.verify.failure",
+            actor_user=None,
+            target_type="user",
+            target_id="",
+        )
         return JsonResponse({"detail": "Invalid or expired token"}, status=400)
 
     email_obj = EmailAddress.objects.filter(user=token.user, email=token.email).first()
@@ -462,7 +543,14 @@ def forgot_password(request):
 
     user = AuthUser.objects.filter(email=email).first()
     if user is None:
-        _audit(request, action="auth.password.reset.requested", actor_user=None, target_type="user", target_id="", metadata={"email": email})
+        _audit(
+            request,
+            action="auth.password.reset.requested",
+            actor_user=None,
+            target_type="user",
+            target_id="",
+            metadata={"email": email},
+        )
         return JsonResponse({"detail": generic_detail}, status=200)
 
     try:
@@ -516,9 +604,18 @@ def reset_password(request):
     if not raw_token or not new_password:
         return JsonResponse({"detail": "Invalid or expired token"}, status=400)
 
-    token = get_valid_one_time_token(raw_token=raw_token, purpose=OneTimeToken.Purpose.PASSWORD_RESET)
+    token = get_valid_one_time_token(
+        raw_token=raw_token,
+        purpose=OneTimeToken.Purpose.PASSWORD_RESET,
+    )
     if token is None:
-        _audit(request, action="auth.password.reset.failure", actor_user=None, target_type="user", target_id="")
+        _audit(
+            request,
+            action="auth.password.reset.failure",
+            actor_user=None,
+            target_type="user",
+            target_id="",
+        )
         return JsonResponse({"detail": "Invalid or expired token"}, status=400)
 
     try:
@@ -567,12 +664,26 @@ def login_view(request):
 
     user = authenticate(request, username=username, password=password)
     if user is None:
-        _audit(request, action="auth.login.failure", actor_user=None, target_type="user", target_id="", metadata={"email": email or None})
+        _audit(
+            request,
+            action="auth.login.failure",
+            actor_user=None,
+            target_type="user",
+            target_id="",
+            metadata={"email": email or None},
+        )
         return JsonResponse({"detail": "Invalid credentials"}, status=401)
 
     login(request, user)
     get_token(request)
-    _audit(request, action="auth.login.success", actor_user=user, target_type="user", target_id=str(user.id), metadata={"email": getattr(user, "email", "")})
+    _audit(
+        request,
+        action="auth.login.success",
+        actor_user=user,
+        target_type="user",
+        target_id=str(user.id),
+        metadata={"email": getattr(user, "email", "")},
+    )
 
     return JsonResponse(_user_me_payload(user), status=200)
 
@@ -587,7 +698,13 @@ def logout_view(request):
 
     actor = request.user
     logout(request)
-    _audit(request, action="auth.logout", actor_user=actor, target_type="user", target_id=str(getattr(actor, "id", "")))
+    _audit(
+        request,
+        action="auth.logout",
+        actor_user=actor,
+        target_type="user",
+        target_id=str(getattr(actor, "id", "")),
+    )
 
     return JsonResponse({}, status=204)
 
@@ -617,6 +734,13 @@ def me(request):
             setattr(profile, field, payload.get(field) or "")
     profile.save()
 
-    _audit(request, action="profile.updated", actor_user=user, target_type="user", target_id=str(user.id), metadata={"fields": list(payload.keys())})
+    _audit(
+        request,
+        action="profile.updated",
+        actor_user=user,
+        target_type="user",
+        target_id=str(user.id),
+        metadata={"fields": list(payload.keys())},
+    )
 
     return JsonResponse(_user_me_payload(user), status=200)

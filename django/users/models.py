@@ -1,14 +1,14 @@
-from django.db import models
 from django.contrib.auth import get_user_model
+from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from common.models import (
-    TimestampedModel,
-    UUIDMixin,
+    Address,
     Email,
     Phonenumber,
-    Address,
+    TimestampedModel,
     Url,
+    UUIDMixin,
 )
 
 AuthUser = get_user_model()
@@ -126,7 +126,13 @@ class RecoveryCode(UUIDMixin, TimestampedModel):
 
 
 class AuditEvent(TimestampedModel):
-    actor_user = models.ForeignKey(AuthUser, on_delete=models.SET_NULL, null=True, blank=True, related_name="audit_events")
+    actor_user = models.ForeignKey(
+        AuthUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="audit_events",
+    )
     action = models.CharField(max_length=100)
     target_type = models.CharField(max_length=100, blank=True, default="")
     target_id = models.CharField(max_length=100, blank=True, default="")
