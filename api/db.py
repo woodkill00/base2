@@ -49,17 +49,37 @@ def _get_pool() -> ThreadedConnectionPool:
         return _pool
 
 
+def _get_conn() -> object:
+    pool = _get_pool()
+    # Try a few times in case the pool contains closed connections from a prior bug.
+    for _ in range(3):
+        conn = pool.getconn()
+        try:
+            if getattr(conn, "closed", 0):
+                with suppress(Exception):
+                    pool.putconn(conn, close=True)
+                continue
+            return conn
+        except Exception:
+            # If inspection fails, try again
+            with suppress(Exception):
+                pool.putconn(conn, close=True)
+            continue
+    # As a fallback, reset the pool and get a fresh connection.
+    close_pool()
+    pool = _get_pool()
+    return pool.getconn()
+
+
 @contextmanager
 def db_conn():
     pool = _get_pool()
-    conn = pool.getconn()
+    conn = _get_conn()
     try:
         yield conn
     finally:
         with suppress(Exception):
             pool.putconn(conn)
-        with suppress(Exception):
-            conn.close()
 
 
 def close_pool() -> None:
