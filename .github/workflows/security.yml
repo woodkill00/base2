@@ -144,7 +144,7 @@ jobs:
       - name: Validate licenses (allowlist)
         run: |
           python - <<'PY'
-          import json, sys
+          import json, sys, os
           # Allow common permissive licenses (SPDX + common names)
           allow_tokens = {
             "mit",
@@ -160,18 +160,21 @@ jobs:
           }
           bad = []
           for path in ("api-licenses.json", "django-licenses.json"):
-              with open(path) as f:
-                  data = json.load(f)
-              for row in data:
-                  lic = (row.get("License", "") or "").strip()
-                  name = row.get("Name", "")
+            if not os.path.exists(path):
+              print(f"Warning: {path} not found")
+              continue
+            with open(path, encoding="utf-8") as f:
+              data = json.load(f)
+            for row in data:
+              lic = (row.get("License") or "").strip()
+              name = row.get("Name") or ""
               lic_l = lic.lower()
               if lic and all(tok not in lic_l for tok in allow_tokens):
-                      bad.append((name, lic))
+                bad.append((name, lic))
           if bad:
-              print("Disallowed licenses:")
-              for name, lic in bad:
-                  print(f" - {name}: {lic}")
-            # Report but do not fail the job; security workflow is informational
-            sys.exit(0)
+            print("Disallowed licenses:")
+            for name, lic in bad:
+              print(f" - {name}: {lic}")
+          # Report but do not fail the job; security workflow is informational
+          sys.exit(0)
           PY
