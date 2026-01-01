@@ -57,7 +57,10 @@ def incr_and_check_detailed(tenant_id: str, scope: str) -> tuple[int, bool, int]
 
     c = get_client()
     window_ms, max_requests = _limit_for_scope(scope)
-    k = key("tenant_rl", scope, tenant)
+    # Include current window in the key to avoid cross-test/interference
+    # when configuration changes at runtime (e.g., tests overriding window).
+    # This also ensures counts reset when window policy changes.
+    k = key("tenant_rl", scope, str(window_ms), tenant)
     pipe = c.pipeline()
     pipe.incr(k, 1)
     # Only set expiry if the key is new (no TTL yet)
