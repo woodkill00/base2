@@ -6,11 +6,12 @@ WORKDIR /app
 
 # Keep base OS packages updated and minimize image size
 RUN apt-get update \
-    && apt-get upgrade -y \
-    && apt-get install -y --no-install-recommends \
-       bash build-essential \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+     && apt-get upgrade -y \
+     && apt-get install -y --no-install-recommends \
+         bash build-essential ca-certificates \
+     && update-ca-certificates \
+     && apt-get clean \
+     && rm -rf /var/lib/apt/lists/*
 
 # Non-root user for runtime and ensure /app is writable
 RUN useradd -m appuser && chown -R appuser:appuser /app
