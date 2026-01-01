@@ -46,8 +46,8 @@ jobs:
       - name: Install root deps
         run: npm ci
 
-      - name: Install frontend deps
-        run: cd react-app && npm ci
+      - name: Install frontend deps (prod only)
+        run: cd react-app && npm install --omit=dev
 
       - name: Audit frontend deps
         run: cd react-app && npm audit --omit=dev --audit-level=critical
