@@ -65,6 +65,8 @@ pytest==9.0.2
     # via
     #   -r django/requirements.in
     #   pytest-django
+pytest-cov==5.0.0
+    # via -r django/requirements.in
 pytest-django==4.11.1
     # via -r django/requirements.in
 python-dateutil==2.9.0.post0

@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from api.auth.tokens import create_access_token, decode_access_token
+import jwt
 
 
 def test_access_token_includes_and_validates_iss_aud(monkeypatch):
@@ -24,7 +25,7 @@ def test_decode_rejects_wrong_issuer(monkeypatch):
     token = create_access_token(subject="123", email="a@b.com", ttl_minutes=5)
     monkeypatch.setenv("JWT_ISSUER", "issuer-b")
 
-    with pytest.raises(Exception):
+    with pytest.raises(jwt.InvalidTokenError):
         decode_access_token(token)
 
 
@@ -36,5 +37,5 @@ def test_decode_rejects_wrong_audience(monkeypatch):
     token = create_access_token(subject="123", email="a@b.com", ttl_minutes=5)
     monkeypatch.setenv("JWT_AUDIENCE", "aud-b")
 
-    with pytest.raises(Exception):
+    with pytest.raises(jwt.InvalidTokenError):
         decode_access_token(token)

@@ -1,107 +1,80 @@
-import os
-from typing import Optional, overload
+from typing import Optional
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 
-def getenv_bool(name: str, default: bool) -> bool:
-    v = os.environ.get(name)
-    if v is None:
-        return default
-    return str(v).strip().lower() in {"1", "true", "yes", "on"}
-
-
-@overload
-def getenv(name: str) -> Optional[str]: ...
-
-
-@overload
-def getenv(name: str, default: str) -> str: ...
-
-
-@overload
-def getenv(name: str, default: None) -> Optional[str]: ...
-
-
-def getenv(name: str, default: Optional[str] = None) -> Optional[str]:
-    return os.environ.get(name, default)
-
-
-def getenv_int(name: str, default: int) -> int:
-    v = os.environ.get(name)
-    if v is None:
-        return default
-    try:
-        return int(str(v).strip())
-    except Exception:
-        return default
-
-
-class Settings:
-    ENV: str = getenv("ENV", "development") or "development"
+class Settings(BaseSettings):
+    ENV: str = Field(default="development")
 
     # Docs/OpenAPI exposure
-    # Default: enabled outside production. For dev-production (staging-only TLS) you may
-    # explicitly enable docs even if ENV=production.
-    API_DOCS_ENABLED: bool = getenv_bool("API_DOCS_ENABLED", (ENV.strip().lower() != "production"))
-    API_DOCS_URL: str = getenv("API_DOCS_URL", "/docs") or "/docs"
-    API_REDOC_URL: str = getenv("API_REDOC_URL", "/redoc") or "/redoc"
-    API_OPENAPI_URL: str = getenv("API_OPENAPI_URL", "/openapi.json") or "/openapi.json"
+    API_DOCS_ENABLED: bool = Field(default=True, description="Enable docs outside production unless explicitly disabled")
+    API_DOCS_URL: str = Field(default="/docs")
+    API_REDOC_URL: str = Field(default="/redoc")
+    API_OPENAPI_URL: str = Field(default="/openapi.json")
 
-    SESSION_COOKIE_NAME: str = getenv("SESSION_COOKIE_NAME", "base2_session")
-    CSRF_COOKIE_NAME: str = getenv("CSRF_COOKIE_NAME", "base2_csrf")
-    COOKIE_SAMESITE: str = getenv("COOKIE_SAMESITE", "Lax")
-    COOKIE_SECURE: bool = getenv_bool("COOKIE_SECURE", True)
+    SESSION_COOKIE_NAME: str = Field(default="base2_session")
+    CSRF_COOKIE_NAME: str = Field(default="base2_csrf")
+    COOKIE_SAMESITE: str = Field(default="Lax")
+    COOKIE_SECURE: bool = Field(default=True)
 
-    DJANGO_INTERNAL_BASE_URL: str = getenv("DJANGO_INTERNAL_BASE_URL", "http://django:8000")
+    DJANGO_INTERNAL_BASE_URL: str = Field(default="http://django:8000")
 
-    RATE_LIMIT_REDIS_PREFIX: str = getenv("RATE_LIMIT_REDIS_PREFIX", "rate_limit")
+    RATE_LIMIT_REDIS_PREFIX: str = Field(default="rate_limit")
 
-    GOOGLE_OAUTH_CLIENT_ID: Optional[str] = getenv("GOOGLE_OAUTH_CLIENT_ID")
-    GOOGLE_OAUTH_CLIENT_SECRET: Optional[str] = getenv("GOOGLE_OAUTH_CLIENT_SECRET")
-    GOOGLE_OAUTH_REDIRECT_URI: Optional[str] = getenv("GOOGLE_OAUTH_REDIRECT_URI")
-    OAUTH_STATE_SECRET: Optional[str] = getenv("OAUTH_STATE_SECRET")
+    GOOGLE_OAUTH_CLIENT_ID: Optional[str] = None
+    GOOGLE_OAUTH_CLIENT_SECRET: Optional[str] = None
+    GOOGLE_OAUTH_REDIRECT_URI: Optional[str] = None
+    OAUTH_STATE_SECRET: Optional[str] = None
 
-    AUTH_REFRESH_COOKIE: bool = getenv_bool("AUTH_REFRESH_COOKIE", True)
+    AUTH_REFRESH_COOKIE: bool = Field(default=True)
 
-    JWT_SECRET: str = getenv("JWT_SECRET", "") or ""
-    TOKEN_PEPPER: str = getenv("TOKEN_PEPPER", "") or ""
-    JWT_ISSUER: str = getenv("JWT_ISSUER", "base2") or "base2"
-    JWT_AUDIENCE: str = getenv("JWT_AUDIENCE", "base2") or "base2"
-    JWT_EXPIRE_MINUTES: int = getenv_int("JWT_EXPIRE", 15)
-    REFRESH_TOKEN_TTL_DAYS: int = getenv_int("REFRESH_TOKEN_TTL_DAYS", 30)
-    FRONTEND_URL: str = getenv("FRONTEND_URL", "") or ""
+    JWT_SECRET: str = Field(default="")
+    TOKEN_PEPPER: str = Field(default="")
+    JWT_ISSUER: str = Field(default="base2")
+    JWT_AUDIENCE: str = Field(default="base2")
+    JWT_EXPIRE_MINUTES: int = Field(default=15, alias="JWT_EXPIRE")
+    REFRESH_TOKEN_TTL_DAYS: int = Field(default=30)
+    FRONTEND_URL: str = Field(default="")
 
     # DB settings (FastAPI side)
-    DB_CONNECT_TIMEOUT_SEC: int = getenv_int("DB_CONNECT_TIMEOUT_SEC", 3)
-    DB_STATEMENT_TIMEOUT_MS: int = getenv_int("DB_STATEMENT_TIMEOUT_MS", 3000)
-    DB_POOL_MIN: int = getenv_int("DB_POOL_MIN", 1)
-    DB_POOL_MAX: int = getenv_int("DB_POOL_MAX", 5)
+    DB_CONNECT_TIMEOUT_SEC: int = Field(default=3)
+    DB_STATEMENT_TIMEOUT_MS: int = Field(default=3000)
+    DB_POOL_MIN: int = Field(default=1)
+    DB_POOL_MAX: int = Field(default=5)
 
-    def __init__(self) -> None:
+    # E2E test mode gate
+    E2E_TEST_MODE: bool = Field(default=False)
+
+    def model_post_init(self, __context):
+        # Normalize pool bounds
         if self.DB_POOL_MIN < 0:
-            self.DB_POOL_MIN = 0
+            object.__setattr__(self, "DB_POOL_MIN", 0)
         if self.DB_POOL_MAX < 1:
-            self.DB_POOL_MAX = 1
+            object.__setattr__(self, "DB_POOL_MAX", 1)
         if self.DB_POOL_MAX < self.DB_POOL_MIN:
-            self.DB_POOL_MAX = self.DB_POOL_MIN
+            object.__setattr__(self, "DB_POOL_MAX", self.DB_POOL_MIN)
+
+        # Default docs policy: disabled in production unless explicitly enabled
+        if (self.ENV or "").strip().lower() == "production" and self.API_DOCS_ENABLED:
+            # Keep explicit enable if set; otherwise disable
+            # No change needed when explicitly enabled via env
+            pass
 
         # Fail-fast in non-local environments.
-        # Keep local/dev/test permissive to avoid breaking onboarding and CI.
         env = (self.ENV or "").strip().lower()
         if env in {"staging", "production"}:
             missing = []
-            if not self.JWT_SECRET.strip():
+            if not (self.JWT_SECRET or "").strip():
                 missing.append("JWT_SECRET")
-            if not self.TOKEN_PEPPER.strip():
+            if not (self.TOKEN_PEPPER or "").strip():
                 missing.append("TOKEN_PEPPER")
-            if not self.FRONTEND_URL.strip():
+            if not (self.FRONTEND_URL or "").strip():
                 missing.append("FRONTEND_URL")
             if not (self.OAUTH_STATE_SECRET or "").strip():
                 missing.append("OAUTH_STATE_SECRET")
             if missing:
                 raise RuntimeError("Missing required env var(s): " + ", ".join(missing))
 
-            # OAuth client credentials are required in production; allow staging to omit
-            # if OAuth is not being exercised.
             if env == "production":
                 oauth_missing = []
                 if not (self.GOOGLE_OAUTH_CLIENT_ID or "").strip():

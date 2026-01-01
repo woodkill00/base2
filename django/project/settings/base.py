@@ -2,7 +2,11 @@ import os
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "change_me")
 DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"
-ALLOWED_HOSTS = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",") if h.strip()]
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",")
+    if h.strip()
+]
 if os.environ.get("DJANGO_ALLOW_ALL_HOSTS", "false").lower() == "true":
     ALLOWED_HOSTS = ["*"]
 else:

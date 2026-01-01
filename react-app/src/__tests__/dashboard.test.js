@@ -7,7 +7,10 @@ import Dashboard from '../pages/Dashboard';
 const renderDashboard = () => {
   return render(
     <AuthProvider>
-      <MemoryRouter initialEntries={['/dashboard']}>
+      <MemoryRouter
+        initialEntries={['/dashboard']}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
         <Routes>
           <Route path="/dashboard" element={<Dashboard />} />
         </Routes>

@@ -1,6 +1,5 @@
 # Base2 Docker Environment
 
-
 A robust, production-ready Docker setup with enhanced security, health checks, and comprehensive environment variable management.
 
 ## Feature Docs (Current Work)
@@ -29,20 +28,22 @@ This Docker environment includes the following services:
 - **Traefik**: Modern reverse proxy and load balancer
 
 ### TLS & Certificates (Staging-Only Policy)
+
 - Traefik in this repository is configured to use **Let's Encrypt staging ACME** only.
 - All HTTPS endpoints will present **staging certificates** and therefore show browser warnings.
 - **No production/real certificates are issued by default**; this environment is for development and pre-production simulation.
 - If you fork or adapt this for production, you must explicitly update the Traefik ACME configuration and associated documentation.
 
 ### Stack Overview: Option 1 + Option B
+
 - **Option 1 (Django + FastAPI)**
-   - Django owns the schema, migrations, and admin UI (internal-only by default).
-   - FastAPI is the public API runtime and talks to Postgres directly.
-   - React is the public frontend and calls `https://${WEBSITE_DOMAIN}/api/...`.
+  - Django owns the schema, migrations, and admin UI (internal-only by default).
+  - FastAPI is the public API runtime and talks to Postgres directly.
+  - React is the public frontend and calls `https://${WEBSITE_DOMAIN}/api/...`.
 - **Option B (Traefik strips `/api`)**
-   - Traefik router `api` matches `Host(${WEBSITE_DOMAIN}) && PathPrefix(/api)`.
-   - Middleware `strip-api-prefix` removes `/api` before forwarding to FastAPI.
-   - FastAPI implements routes without the `/api` prefix (for example, `/health`).
+  - Traefik router `api` matches `Host(${WEBSITE_DOMAIN}) && PathPrefix(/api)`.
+  - Middleware `strip-api-prefix` removes `/api` before forwarding to FastAPI.
+  - FastAPI implements routes without the `/api` prefix (for example, `/health`).
 
 ## 📋 Prerequisites
 
@@ -137,14 +138,15 @@ If you enable email-based flows, configure an app password/provider credentials.
 ### 4. Access Services
 
 Once running, access the services at:
- **React App**: Built into static assets; served internally by Nginx
- **API**: FastAPI service routed via Traefik `/api`
- **Nginx**: Standalone SPA server; only exposed via Traefik
- **PostgreSQL**: Internal-only database; health-checked
- **pgAdmin**: https://${PGADMIN_DNS_LABEL}.${WEBSITE_DOMAIN} (via Traefik; basic-auth + IP allowlist)
- **Traefik v3**: Only public entrypoint (80/443); staging certs; no insecure dashboard
+**React App**: Built into static assets; served internally by Nginx
+**API**: FastAPI service routed via Traefik `/api`
+**Nginx**: Standalone SPA server; only exposed via Traefik
+**PostgreSQL**: Internal-only database; health-checked
+**pgAdmin**: https://${PGADMIN_DNS_LABEL}.${WEBSITE_DOMAIN} (via Traefik; basic-auth + IP allowlist)
+**Traefik v3**: Only public entrypoint (80/443); staging certs; no insecure dashboard
+
 - **Traefik Dashboard**: disabled insecure access
-   - Host: `${TRAEFIK_DNS_LABEL}.${WEBSITE_DOMAIN}` via HTTPS, protected by basic-auth
+  - Host: `${TRAEFIK_DNS_LABEL}.${WEBSITE_DOMAIN}` via HTTPS, protected by basic-auth
 - **PostgreSQL**: internal-only (no public access)
 
 ## 🔐 Security Enhancements
@@ -156,12 +158,14 @@ All Dockerfiles have been enhanced with:
 - Each service runs as a non-root user for improved security
 - Proper file permissions and ownership configured
 
- **Frontend (via Traefik)**: `http://localhost` (HTTP)
- **Frontend (HTTPS)**: `https://${WEBSITE_DOMAIN}` (staging cert; expect browser warning)
+  **Frontend (via Traefik)**: `http://localhost` (HTTP)
+  **Frontend (HTTPS)**: `https://${WEBSITE_DOMAIN}` (staging cert; expect browser warning)
+
 - Built-in health monitoring for all services
 - Automatic restart on failure
 - Configurable health check intervals
 - Optimized PostgreSQL configuration for better performance
+
 ## 📝 Environment Variables
 
 - `REACT_APP_API_URL`: API endpoint URL
@@ -175,6 +179,7 @@ All Dockerfiles have been enhanced with:
 - `POSTGRES_USER`: Database user
 - `POSTGRES_PASSWORD`: Database password (change in production!)
 - `POSTGRES_DB`: Database name
+
 ### pgAdmin
 
 - `PGADMIN_VERSION`: pgAdmin version (default: latest)
@@ -182,22 +187,37 @@ All Dockerfiles have been enhanced with:
 - `PGADMIN_DEFAULT_PASSWORD`: Admin password (change in production!)
 - `PGADMIN_PORT`: Internal container port (default: 80)
 - `PGADMIN_HOST_PORT`: Host machine port (default: 5050)
- - `PGADMIN_ALLOWLIST`: CIDR(s) allowed to access pgAdmin via Traefik (e.g., `203.0.113.5/32`). Default `0.0.0.0/0` exposes to all (change in production!).
- - `PGADMIN_DNS_LABEL`: Subdomain label used for DNS and Traefik host rule (default: `pgadmin`). Final FQDN is `${PGADMIN_DNS_LABEL}.${WEBSITE_DOMAIN}`.
+- `PGADMIN_ALLOWLIST`: CIDR(s) allowed to access pgAdmin via Traefik (e.g., `203.0.113.5/32`). Default `0.0.0.0/0` exposes to all (change in production!).
+- `PGADMIN_DNS_LABEL`: Subdomain label used for DNS and Traefik host rule (default: `pgadmin`). Final FQDN is `${PGADMIN_DNS_LABEL}.${WEBSITE_DOMAIN}`.
 
 To enable web access to pgAdmin:
+
 - Ensure DNS `A` record for `${PGADMIN_DNS_LABEL}.${WEBSITE_DOMAIN}` points to your server (orchestrator will create/update automatically).
 - Set `TRAEFIK_DASH_BASIC_USERS` in `.env` to an htpasswd entry.
 - Set `PGADMIN_ALLOWLIST` to your public IP `/32` to restrict access.
 
 ### Traefik
+
 - `TRAEFIK_DOCKER_NETWORK`: Docker network to monitor (default: base2_network)
 - `TRAEFIK_EXPOSED_BY_DEFAULT`: Auto-expose containers (default: false)
- - `TRAEFIK_DNS_LABEL`: Subdomain label for Traefik dashboard host rule and DNS (default: `traefik`). Final FQDN: `${TRAEFIK_DNS_LABEL}.${WEBSITE_DOMAIN}`.
+- `TRAEFIK_DNS_LABEL`: Subdomain label for Traefik dashboard host rule and DNS (default: `traefik`). Final FQDN: `${TRAEFIK_DNS_LABEL}.${WEBSITE_DOMAIN}`.
 
 **⚠️ Important Notes:**
 
 1. When changing the network name, you must update **both** `NETWORK_NAME` and `TRAEFIK_DOCKER_NETWORK` to the same value in `.env` for Traefik to work correctly. These two variables must always match.
+
+## Development Versions
+
+- **Python**: 3.12 (pin via .python-version)
+- **Node.js**: 18.x (pin via react-app/.nvmrc)
+
+Fresh clone: install these versions before running builds/tests.
+
+## Contribution & Release
+
+- See CONTRIBUTING.md for dev flow, commit style, and PR guidance.
+- See docs/RELEASE.md for tagging and deploy validation.
+
 ## 🛠️ Troubleshooting
 
 If you encounter issues running scripts:
@@ -251,6 +271,7 @@ The `scripts/sync-env.sh` script automatically updates these literal values to m
 - **`.env`**: `TRAEFIK_DOCKER_NETWORK` is updated to mirror `NETWORK_NAME`
 
 Source of truth:
+
 - `NETWORK_NAME` is the single source of truth for networking.
 - `scripts/sync-env.sh` will automatically make `TRAEFIK_DOCKER_NETWORK` match `NETWORK_NAME`.
 

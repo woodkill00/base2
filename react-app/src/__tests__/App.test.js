@@ -20,11 +20,11 @@ jest.mock('../contexts/AuthContext', () => ({
 }));
 
 describe('App Component', () => {
-  test('renders without crashing', () => {
+  test('renders without crashing', async () => {
     render(<App />);
   });
 
-  test('renders Home component by default', () => {
+  test('renders Home component by default', async () => {
     render(<App />);
     // Add assertions based on your Home component
     // expect(screen.getByText(/welcome/i)).toBeInTheDocument();

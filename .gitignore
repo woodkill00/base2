@@ -104,6 +104,8 @@ backend/dist/
 coverage/
 .nyc_output/
 *.lcov
+api/.coverage
+.coverage
 
 # Test results
 test-results/
@@ -119,6 +121,9 @@ junk/
 # Application logs
 logs/
 *.log
+# Local analysis artifacts
+sbom.cdx.json
+semgrep.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

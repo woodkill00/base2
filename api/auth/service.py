@@ -221,6 +221,7 @@ def login_user(*, email: str, password: str, ip: str, user_agent: str, refresh_t
             if st.get("locked_until") is not None and int(st.get("failed_login_attempts") or 0) >= max_failures:
                 repo.insert_audit_event(user_id=user.id, action="auth.account_locked", ip=ip, user_agent=user_agent)
         except Exception:
+            # Never block login because lock metadata couldn't be updated.
             pass
         raise ValueError("invalid_credentials")
 
@@ -236,10 +237,9 @@ def login_user(*, email: str, password: str, ip: str, user_agent: str, refresh_t
 
     access = create_access_token(subject=str(user.id), email=user.email, ttl_minutes=access_ttl_minutes)
 
-    try:
+    from contextlib import suppress
+    with suppress(Exception):
         repo.reset_login_failures(user_id=user.id)
-    except Exception:
-        pass
 
     repo.insert_audit_event(user_id=user.id, action="auth.login", ip=ip, user_agent=user_agent)
 
@@ -278,11 +278,9 @@ def refresh_tokens(*, refresh_token: str, ip: str, user_agent: str, refresh_ttl_
     if user is None:
         raise ValueError("invalid_refresh")
 
-    try:
+    from contextlib import suppress
+    with suppress(Exception):
         repo.touch_refresh_token(token_id=rec["id"], ip=ip, user_agent=user_agent)
-    except Exception:
-        # Never fail refresh because of session bookkeeping.
-        pass
 
     new_refresh = new_refresh_token()
     new_refresh_hash = hash_token(new_refresh)

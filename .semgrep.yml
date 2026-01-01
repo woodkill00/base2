@@ -1,0 +1,68 @@
+# Semgrep configuration for SAST scanning
+# Uses default community rulesets plus a few custom patterns.
+# Scope: Python (FastAPI/Django), JavaScript/TypeScript (React), Docker, YAML.
+
+# Recommended community rules
+# See: https://semgrep.dev/r
+rules:
+  - id: generic-dangerous-eval
+    languages: [python, javascript, typescript]
+    message: Avoid eval/exec; use safe parsing.
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: 'eval(...)'
+          - pattern: 'exec(...)'
+          - pattern: 'Function($ARGS)'
+    metadata:
+      category: security
+
+  - id: python-subprocess-shell-true
+    languages: [python]
+    message: Prefer subprocess without shell=True to avoid injection.
+    severity: WARNING
+    pattern: 'subprocess.$FUNC(..., shell=True, ...)'
+    metadata:
+      category: security
+
+  - id: js-dangerous-innerhtml
+    languages: [javascript, typescript]
+    message: Avoid setting innerHTML directly; use safe rendering.
+    severity: WARNING
+    pattern: '$X.innerHTML = $Y'
+    metadata:
+      category: security
+
+  - id: yaml-hardcoded-secrets
+    languages: [yaml]
+    message: Suspected hardcoded secret in YAML; prefer env vars or secrets manager.
+    severity: WARNING
+    patterns:
+      - pattern-either:
+          - pattern: 'secret: $VAL'
+          - pattern: 'password: $VAL'
+          - pattern: 'token: $VAL'
+    metadata:
+      category: security
+
+  - id: docker-insecure-latest-tag
+    languages: [docker]
+    message: Avoid floating tags (latest); pin versions.
+    severity: WARNING
+    pattern: 'FROM $IMG:latest'
+    metadata:
+      category: supply-chain
+
+# Exclusions
+# Skip tests and generated files to reduce noise
+ignore:
+  - 'react-app/build/**'
+  - 'react-app/dist/**'
+  - 'react-app/coverage/**'
+  - '**/__tests__/**'
+  - '**/node_modules/**'
+  - 'local_run_logs/**'
+  - '.specify/**'
+  # Exclude GitHub workflow YAML and contract specs to reduce false positives
+  - '.github/workflows/**'
+  - 'specs/**/contracts/**'

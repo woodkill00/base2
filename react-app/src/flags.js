@@ -1,3 +1,5 @@
+import apiClient from './lib/apiClient';
+
 let cachedFlags = null;
 
 function normalizeFlags(input) {
@@ -28,16 +30,8 @@ export async function fetchFlags() {
   }
 
   try {
-    const res = await fetch('/api/flags', {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-      },
-    });
-    if (!res.ok) return getCachedFlags();
-    const json = await res.json();
-    cachedFlags = normalizeFlags(json?.flags);
+    const res = await apiClient.get('/flags');
+    cachedFlags = normalizeFlags(res?.data?.flags);
     return cachedFlags;
   } catch {
     return getCachedFlags();

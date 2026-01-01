@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
+from contextlib import suppress
 from pydantic import BaseModel
 
 from api.routes.auth import _client_ip
@@ -22,8 +23,8 @@ def _require_user_id(request: Request):
 
         payload = decode_access_token(token)
         return UUID(str(payload.get("sub")))
-    except Exception:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Not authenticated") from e
 
 
 class _PatchMeRequest(BaseModel):
@@ -51,8 +52,8 @@ async def users_me(request: Request):
         }
     except HTTPException:
         raise
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid request")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Invalid request") from e
 
 
 @router.patch("/users/me")
@@ -70,27 +71,23 @@ async def users_me_patch(request: Request, payload: _PatchMeRequest):
                 raise HTTPException(status_code=422, detail=[{"loc": ["body", "email"], "msg": "Email is required", "type": "value_error"}])
             try:
                 repo.update_user_email(user_id=user_id, email=new_email)
-                try:
+                with suppress(Exception):
                     issue_verify_email(
                         email=new_email,
                         host=request.headers.get("host"),
                         proto=request.headers.get("x-forwarded-proto"),
                         request_id=request.headers.get("x-request-id"),
                     )
-                except Exception:
-                    pass
-                try:
+                with suppress(Exception):
                     repo.insert_audit_event(
                         user_id=user_id,
                         action="user.email_change_requested",
                         ip=_client_ip(request),
                         user_agent=request.headers.get("user-agent", ""),
                     )
-                except Exception:
-                    pass
             except ValueError as e:
                 if str(e) == "email_taken":
-                    raise HTTPException(status_code=422, detail=[{"loc": ["body", "email"], "msg": "Email already registered", "type": "value_error"}])
+                    raise HTTPException(status_code=422, detail=[{"loc": ["body", "email"], "msg": "Email already registered", "type": "value_error"}]) from e
                 raise
 
         user = repo.update_profile(
@@ -109,5 +106,5 @@ async def users_me_patch(request: Request, payload: _PatchMeRequest):
         }
     except HTTPException:
         raise
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid request")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Invalid request") from e

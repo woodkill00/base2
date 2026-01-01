@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.logging import configure_logging
 from typing import Any
+from contextlib import suppress
 
 _metrics: Any
 try:
@@ -18,31 +19,40 @@ except Exception:  # pragma: no cover
 
 metrics: Any = _metrics
 
-
-ENV = os.getenv("ENV", "development")
-
-def _env_truthy(name: str) -> bool:
-    v = os.getenv(name)
-    if v is None:
-        return False
-    return str(v).strip().lower() in {"1", "true", "yes", "on"}
+# Settings may fall back to a lightweight runtime object in development.
+settings: Any
 
 
-def _docs_enabled_for_env() -> bool:
-    # Default policy: docs disabled in production unless explicitly enabled.
-    if _env_truthy("API_DOCS_ENABLED"):
-        return True
-    if (ENV or "").strip().lower() == "production":
-        return False
-    return True
+try:
+    from api.settings import settings as _settings
+    settings = _settings
+except Exception as e:
+    # Loud startups: in non-development, fail fast and log clearly.
+    env_val = (os.getenv("ENV", "development") or "").strip().lower()
+    with suppress(Exception):
+        configure_logging(service="api")
+    _boot_logger = logging.getLogger("api.boot")
+    _boot_logger.error("settings_import_failed", extra={"env": env_val, "error": str(e)})
+    if env_val in {"staging", "production"}:
+        raise
+    # Development fallback only
+    class _Fallback:
+        ENV = os.getenv("ENV", "development")
+        API_DOCS_ENABLED = (os.getenv("API_DOCS_ENABLED", "") or "").strip().lower() in {"1", "true", "yes", "on"} or (ENV.strip().lower() != "production")
+        API_DOCS_URL = os.getenv("API_DOCS_URL", "/docs") or "/docs"
+        API_REDOC_URL = os.getenv("API_REDOC_URL", "/redoc") or "/redoc"
+        API_OPENAPI_URL = os.getenv("API_OPENAPI_URL", "/openapi.json") or "/openapi.json"
+        FRONTEND_URL = os.getenv("FRONTEND_URL", "") or ""
+        E2E_TEST_MODE = (os.getenv("E2E_TEST_MODE", "") or "").strip().lower() in {"1", "true", "yes", "on"}
 
+    settings = _Fallback()
 
-_docs_enabled = _docs_enabled_for_env()
-_docs_url = os.getenv("API_DOCS_URL", "/docs") or "/docs"
-_redoc_url = os.getenv("API_REDOC_URL", "/redoc") or "/redoc"
-_openapi_url = os.getenv("API_OPENAPI_URL", "/openapi.json") or "/openapi.json"
+_docs_enabled = bool(getattr(settings, "API_DOCS_ENABLED", True))
+_docs_url = str(getattr(settings, "API_DOCS_URL", "/docs"))
+_redoc_url = str(getattr(settings, "API_REDOC_URL", "/redoc"))
+_openapi_url = str(getattr(settings, "API_OPENAPI_URL", "/openapi.json"))
 
-_E2E_TEST_MODE = (os.getenv("E2E_TEST_MODE", "") or "").strip().lower() in {"1", "true", "yes", "on"}
+_E2E_TEST_MODE = bool(getattr(settings, "E2E_TEST_MODE", False))
 
 configure_logging(service="api")
 logger = logging.getLogger("api.http")
@@ -76,10 +86,8 @@ try:
             "http://127.0.0.1:3000",
         ]
         try:
-            from api.settings import settings
-
             if getattr(settings, "FRONTEND_URL", ""):
-                origins.append(str(settings.FRONTEND_URL).rstrip("/"))
+                origins.append(str(getattr(settings, "FRONTEND_URL", "")).rstrip("/"))
         except Exception:
             pass
 
@@ -114,6 +122,16 @@ try:
     @app.middleware("http")
     async def _add_request_id(request: Request, call_next):
         return await request_id_middleware(request, call_next)
+except Exception:
+    pass
+
+# Middleware: tenant context
+try:
+    from api.middleware.tenant import tenant_context_middleware
+
+    @app.middleware("http")
+    async def _add_tenant_context(request: Request, call_next):
+        return await tenant_context_middleware(request, call_next)
 except Exception:
     pass
 
@@ -206,10 +224,8 @@ try:
 
     # Assign override and eagerly generate schema so it's ready before first request
     app.openapi = custom_openapi
-    try:
+    with suppress(Exception):
         app.openapi()
-    except Exception:
-        pass
 except Exception:
     # If OpenAPI customization fails, proceed without breaking runtime.
     pass
@@ -221,14 +237,18 @@ try:
     from api.routes.metrics import router as metrics_router
     from api.routes.oauth import router as oauth_router
     from api.routes.users import router as users_router
+    from api.routes.tenant import router as tenant_router
+    from api.routes.privacy import router as privacy_router
 
     app.include_router(auth_router)
     app.include_router(metrics_router)
     app.include_router(oauth_router)
     app.include_router(users_router)
+    app.include_router(tenant_router)
+    app.include_router(privacy_router)
 
     # E2E-only helpers (must be explicitly enabled; never in production).
-    if _E2E_TEST_MODE and ENV != "production":
+    if _E2E_TEST_MODE and str(getattr(settings, "ENV", "development")).strip().lower() != "production":
         try:
             from api.routes.test_support import router as test_support_router
 
@@ -265,8 +285,11 @@ async def get_item(item_id: int):
     raise HTTPException(status_code=501, detail="/api/items/{item_id} is not implemented yet")
 
 
+DEFAULT_CREATE_ITEM_BODY = Body(...)
+
+
 @app.post("/items")
-async def create_item(payload: dict = Body(...)):
+async def create_item(payload: dict = DEFAULT_CREATE_ITEM_BODY):
     raise HTTPException(status_code=501, detail="/api/items POST is not implemented yet")
 
 
@@ -277,7 +300,7 @@ async def _enqueue_celery_ping(request: Request):
         res = tasks.ping.delay(request_id=(str(rid) if rid else None))
         return {"task_id": res.id}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"enqueue_failed: {e}")
+        raise HTTPException(status_code=500, detail=f"enqueue_failed: {e}") from e
 
 
 @app.post("/celery/ping")
@@ -296,7 +319,7 @@ async def _read_celery_result(task_id: str):
             "result": (ar.result if ar.ready() else None),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"result_failed: {e}")
+        raise HTTPException(status_code=500, detail=f"result_failed: {e}") from e
 
 
 @app.get("/celery/result/{task_id}")

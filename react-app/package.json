@@ -4,25 +4,35 @@
   "description": "Base2 React Application",
   "private": true,
   "dependencies": {
+    "@react-oauth/google": "^0.12.1",
+    "axios": "^1.6.0",
+    "jwt-decode": "^4.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.20.0",
-    "@react-oauth/google": "^0.12.1",
-    "jwt-decode": "^4.0.0",
-    "axios": "^1.6.0"
+    "react-router-dom": "^6.20.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.47.0",
+    "@storybook/addon-essentials": "^8.1.0",
+    "@storybook/preset-create-react-app": "^8.6.15",
+    "@storybook/react": "^8.1.0",
+    "@storybook/react-webpack5": "^8.6.15",
+    "@storybook/test": "^8.6.15",
     "@testing-library/jest-dom": "^6.1.4",
     "@testing-library/react": "^14.1.0",
     "@testing-library/user-event": "^14.5.1",
     "cross-env": "^7.0.3",
-    "react-scripts": "^5.0.1",
     "eslint": "^8.50.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
+    "jest-axe": "^9.0.0",
+    "msw": "^2.6.6",
+    "openapi-typescript": "^6.7.0",
     "prettier": "^3.0.0",
-    "source-map-explorer": "^2.5.3"
+    "react-scripts": "^5.0.1",
+    "source-map-explorer": "^2.5.3",
+    "storybook": "^8.1.0"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -35,7 +45,13 @@
     "lint:fix": "eslint src --ext .js,.jsx --fix",
     "format": "prettier --write \"src/**/*.{js,jsx,json,css,md}\"",
     "format:check": "prettier --check \"src/**/*.{js,jsx,json,css,md}\"",
-    "analyze": "react-scripts build && source-map-explorer 'build/static/js/*.js'"
+    "e2e": "playwright test --reporter=list",
+    "e2e:headed": "playwright test --headed",
+    "e2e:install": "playwright install",
+    "analyze": "react-scripts build && source-map-explorer 'build/static/js/*.js'",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "generate:openapi:types": "openapi-typescript ../specs/001-django-fastapi-react/contracts/openapi.yaml -o src/services/api/types.d.ts"
   },
   "browserslist": {
     "production": [

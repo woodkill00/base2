@@ -1,5 +1,5 @@
 import os
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 import threading
 
 from psycopg2.pool import ThreadedConnectionPool
@@ -49,20 +49,37 @@ def _get_pool() -> ThreadedConnectionPool:
         return _pool
 
 
+def _get_conn() -> object:
+    pool = _get_pool()
+    # Try a few times in case the pool contains closed connections from a prior bug.
+    for _ in range(3):
+        conn = pool.getconn()
+        try:
+            if getattr(conn, "closed", 0):
+                with suppress(Exception):
+                    pool.putconn(conn, close=True)
+                continue
+            return conn
+        except Exception:
+            # If inspection fails, try again
+            with suppress(Exception):
+                pool.putconn(conn, close=True)
+            continue
+    # As a fallback, reset the pool and get a fresh connection.
+    close_pool()
+    pool = _get_pool()
+    return pool.getconn()
+
+
 @contextmanager
 def db_conn():
     pool = _get_pool()
-    conn = pool.getconn()
+    conn = _get_conn()
     try:
         yield conn
     finally:
-        try:
+        with suppress(Exception):
             pool.putconn(conn)
-        except Exception:
-            try:
-                conn.close()
-            except Exception:
-                pass
 
 
 def close_pool() -> None:
@@ -77,10 +94,9 @@ def close_pool() -> None:
 
 def db_ping() -> bool:
     try:
-        with db_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT 1")
-                cur.fetchone()
+        with db_conn() as conn, conn.cursor() as cur:
+            cur.execute("SELECT 1")
+            cur.fetchone()
         return True
     except Exception:
         return False

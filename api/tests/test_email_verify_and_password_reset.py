@@ -1,13 +1,8 @@
-import os
-import sys
 import uuid
 
 import pytest
 from fastapi.testclient import TestClient
 
-_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-if _REPO_ROOT not in sys.path:
-    sys.path.insert(0, _REPO_ROOT)
 
 from api.auth.passwords import hash_password, verify_password
 from api.auth.tokens import hash_token
@@ -16,36 +11,33 @@ from api.main import app
 
 
 def _count_outbox_rows_for(to_email: str) -> int:
-    with db_conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) FROM api_email_outbox WHERE to_email=%s", (to_email,))
-            return int(cur.fetchone()[0])
+    with db_conn() as conn, conn.cursor() as cur:
+        cur.execute("SELECT COUNT(*) FROM api_email_outbox WHERE to_email=%s", (to_email,))
+        return int(cur.fetchone()[0])
 
 
 def _count_unrevoked_refresh_tokens(user_id: str) -> int:
-    with db_conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT COUNT(*) FROM api_auth_refresh_tokens WHERE user_id=%s AND revoked_at IS NULL",
-                (user_id,),
-            )
-            return int(cur.fetchone()[0])
+    with db_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT COUNT(*) FROM api_auth_refresh_tokens WHERE user_id=%s AND revoked_at IS NULL",
+            (user_id,),
+        )
+        return int(cur.fetchone()[0])
 
 
 def _count_audit_events(action: str, user_id: str | None = None) -> int:
-    with db_conn() as conn:
-        with conn.cursor() as cur:
-            if user_id is None:
-                cur.execute(
-                    "SELECT COUNT(*) FROM api_auth_audit_events WHERE action=%s",
-                    (action,),
-                )
-            else:
-                cur.execute(
-                    "SELECT COUNT(*) FROM api_auth_audit_events WHERE action=%s AND user_id=%s",
-                    (action, user_id),
-                )
-            return int(cur.fetchone()[0])
+    with db_conn() as conn, conn.cursor() as cur:
+        if user_id is None:
+            cur.execute(
+                "SELECT COUNT(*) FROM api_auth_audit_events WHERE action=%s",
+                (action,),
+            )
+        else:
+            cur.execute(
+                "SELECT COUNT(*) FROM api_auth_audit_events WHERE action=%s AND user_id=%s",
+                (action, user_id),
+            )
+        return int(cur.fetchone()[0])
 
 
 def _create_user(email: str, password: str):

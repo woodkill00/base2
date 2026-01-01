@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import sys
+import pytest
 
 
 def test_settings_requires_token_pepper_in_staging(monkeypatch):
@@ -14,8 +15,6 @@ def test_settings_requires_token_pepper_in_staging(monkeypatch):
     # Ensure we re-evaluate module import-time validation.
     sys.modules.pop("api.settings", None)
 
-    try:
+    with pytest.raises(RuntimeError) as exc:
         importlib.import_module("api.settings")
-        assert False, "Expected settings import to fail without TOKEN_PEPPER in staging"
-    except RuntimeError as e:
-        assert "TOKEN_PEPPER" in str(e)
+    assert "TOKEN_PEPPER" in str(exc.value)

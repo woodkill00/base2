@@ -1,4 +1,5 @@
 import os
+import sys
 import socket
 import subprocess
 import time
@@ -15,6 +16,8 @@ def _get_free_port() -> int:
 
 
 def test_gunicorn_serves_health() -> None:
+    if sys.platform.startswith("win"):
+        pytest.skip("gunicorn not supported on Windows (fcntl missing)")
     if which("gunicorn") is None:
         pytest.skip("gunicorn not available on PATH")
 

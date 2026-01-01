@@ -4,7 +4,8 @@ from pathlib import Path
 
 # Ensure repo root is on sys.path so `import api` works when running this script.
 REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT))
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 import yaml
 
@@ -16,6 +17,7 @@ def _load_contract_paths(contract_path: Path) -> set[str]:
         raise SystemExit("Contract has no 'paths' map")
     out: set[str] = set()
     for p in paths.keys():
+        # Normalize contract paths: external paths include '/api' prefix.
         if isinstance(p, str) and p.startswith("/api/"):
             out.add(p[len("/api") :])
         else:

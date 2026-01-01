@@ -61,17 +61,16 @@ def create_outbox_email(*, to_email: str, subject: str, body_text: str, body_htm
 
 
 def get_outbox_email(outbox_id: UUID) -> EmailOutboxRow | None:
-    with db_conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id, to_email, subject, body_text, body_html, status, provider, provider_message_id, error, created_at, sent_at
-                FROM api_email_outbox
-                WHERE id=%s
-                """,
-                (str(outbox_id),),
-            )
-            row = cur.fetchone()
+    with db_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id, to_email, subject, body_text, body_html, status, provider, provider_message_id, error, created_at, sent_at
+            FROM api_email_outbox
+            WHERE id=%s
+            """,
+            (str(outbox_id),),
+        )
+        row = cur.fetchone()
 
     if not row:
         return None
@@ -167,9 +166,8 @@ def queue_email(
         )
     except Exception as e:
         # Never fail the request path because the broker is down.
-        try:
+        from contextlib import suppress
+        with suppress(Exception):
             logger.warning("email_enqueue_failed", extra={"outbox_id": str(outbox.id), "error": str(e)})
-        except Exception:
-            pass
 
     return outbox

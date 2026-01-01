@@ -1291,3 +1291,442 @@
     - Run: `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests`
 
 ---
+
+## Phase 22: Codebase Polish + Testing Amplification (Finish-Line)
+
+**Purpose**: Reduce “paper cuts”, tighten correctness guarantees, and make regressions hard (unit + integration + E2E + accessibility).
+
+> **Verification standard**: After completing each task, run `digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests -Timestamped` and ensure new artifacts land in `local_run_logs/<run>/`.
+
+### Backend (FastAPI) polish
+
+- [x] T200 Adopt `pydantic-settings` for configuration (typed env loading, defaults, and validation).
+  - **Touch**:
+    - `api/settings.py`
+    - `api/main.py` (settings init)
+    - `api/requirements.txt` (add `pydantic-settings`)
+    - `docs/CONFIG.md` (document env validation + required vars)
+  - **How**:
+    - Replace any ad-hoc `os.getenv` usage with a single `Settings` object.
+    - Fail fast on missing required env vars (with safe error message).
+  - **Verify**:
+    - Add `api/tests/test_settings_validation.py` (missing required env → clear startup error).
+    - Deploy passes `-AllTests`.
+
+- [x] T201 Replace broad `except Exception` paths with typed exceptions + consistent error mapping.
+  - **Touch**:
+    - `api/middleware/errors.py`
+    - `api/routes/*`
+    - `api/clients/django_client.py` (or any upstream client)
+    - `api/tests/test_error_mapping.py` (new)
+  - **How**:
+    - Introduce small exception types (e.g., `UpstreamTimeout`, `UpstreamBadResponse`, `ConfigError`).
+    - Ensure non-sensitive `{detail}` messages and preserve status codes where appropriate.
+  - **Verify**:
+    - Tests cover timeout → 504, invalid upstream → 502, and validation errors → 422.
+
+- [x] T202 Add strict lint/type gates for the API (ruff + mypy) and make them part of AllTests.
+  - **Touch**:
+    - `api/pyproject.toml` (new or extend)
+    - `api/requirements-dev.txt` (or `api/requirements.txt` if that’s the convention)
+    - `digital_ocean/scripts/powershell/deploy.ps1` (run lint/type in api container; store artifacts)
+    - `docs/DEVELOPMENT.md` (new; how to run lint/type locally)
+  - **How**:
+    - Ruff: enable more rules (imports, bugbear, simplify) but start with a practical allowlist.
+    - Mypy: strict-ish on `api/` (ignore third-party stubs as needed).
+  - **Verify**:
+    - New artifacts: `local_run_logs/<run>/api/ruff.txt`, `.../api/mypy.txt`.
+
+### Frontend (React) polish + quality gates
+
+- [x] T203 Remove dead/duplicate code paths and centralize API/auth wiring.
+  - **Touch**:
+    - `react-app/src/services/*`
+    - `react-app/src/lib/apiClient.js`
+    - `react-app/src/providers/AuthProvider.jsx` / `react-app/src/hooks/useAuth.js`
+    - `react-app/src/components/ProtectedRoute.jsx`
+    - `react-app/src/__tests__/*` (update tests to new single source of truth)
+  - **How**:
+    - Ensure there is exactly one place that:
+      - attaches credentials/cookies
+      - handles 401 refresh (single-flight)
+      - normalizes error shapes for UI
+  - **Verify**:
+    - Existing auth/dashboard tests still pass; add one regression test proving “single-flight refresh”.
+
+- [x] T204 Add MSW (Mock Service Worker) for React tests to eliminate brittle fetch/axios mocks.
+  - **Touch**:
+    - `react-app/src/test/msw/server.js` (new)
+    - `react-app/src/test/msw/handlers.js` (new)
+    - `react-app/src/setupTests.js` (wire MSW lifecycle)
+    - `react-app/package.json` (add MSW deps + config)
+    - `react-app/src/__tests__/*.js` (migrate tests)
+  - **How**:
+    - Provide handlers for `/api/users/me`, `/api/users/login`, `/api/users/logout`, `/api/auth/refresh`, and error cases.
+  - **Verify**:
+    - Tests no longer use manual `jest.mock('axios')`; suite is faster and more realistic.
+
+- [x] T205 Add accessibility checks to critical pages (jest-axe baseline).
+  - **Touch**:
+    - `react-app/package.json` (add `jest-axe`)
+    - `react-app/src/__tests__/a11y.test.js` (new)
+    - `react-app/src/pages/Login.jsx`
+    - `react-app/src/pages/Signup.jsx`
+    - `react-app/src/pages/Dashboard.jsx`
+    - `react-app/src/pages/Settings.jsx`
+  - **How**:
+    - Run `axe` on rendered pages and fix low-effort issues (missing labels, button names, heading order).
+  - **Verify**:
+    - `npm run test:ci` includes a11y tests; artifacts saved in `local_run_logs/<run>/react-app/jest.txt`.
+
+- [x] T206 Add an ErrorBoundary + “friendly error” UI for unexpected failures.
+  - **Touch**:
+    - `react-app/src/components/ErrorBoundary.jsx` (new)
+    - `react-app/src/App.js` (wrap routes)
+    - `react-app/src/pages/*` (optionally add per-page fallback)
+    - `docs/UX.md` (new: error UX conventions)
+  - **Verify**:
+    - Add `react-app/src/__tests__/error-boundary.test.js` to assert fallback renders on thrown error.
+
+### Cross-stack integration + E2E
+
+- [x] T207 Add Playwright E2E smoke tests running against the docker-compose stack.
+- **Touch**:
+  - `react-app/playwright.config.js` (new)
+  - `react-app/e2e/*.spec.ts` (new: login, dashboard, logout)
+  - `react-app/package.json` (add Playwright deps + scripts)
+  - `digital_ocean/scripts/powershell/deploy.ps1` (run E2E in CI mode; store artifacts)
+  - `local.docker.yml` (ensure stable base URL + health readiness for tests)
+- **How**:
+  - Gate on readiness: wait for `/api/health` then run browser tests.
+  - Save Playwright traces/screenshots on failure into `local_run_logs/<run>/react-app/playwright/`.
+- **Verify**:
+  - A failing E2E test produces trace artifacts and a clear report.
+
+- [x] T208 Add API “true integration” tests against Postgres + Redis via docker (not mocked).
+- **Touch**:
+  - `api/tests/integration/*` (new)
+  - `api/conftest.py` (fixtures for db + redis)
+  - `local.docker.yml` (if needed to expose test db)
+  - `digital_ocean/scripts/powershell/deploy.ps1` (run integration tests separately; store artifacts)
+- **How**:
+  - Mark tests with `@pytest.mark.integration` and run them explicitly in AllTests.
+- **Verify**:
+  - Artifacts: `local_run_logs/<run>/api/pytest-integration.txt`.
+
+### CI/Repo niceties (polish that keeps polish)
+
+- [x] T209 Add version pinning and reproducible toolchains.
+- **Touch**:
+  - `.python-version` (new) or `runtime.txt` (if you prefer)
+  - `react-app/.nvmrc` (new)
+  - `README.md` (document versions)
+- **Verify**:
+  - Fresh clone instructions succeed with pinned versions.
+
+- [x] T210 Add pre-commit hooks for formatting/lint (fast feedback locally).
+- **Touch**:
+  - `.pre-commit-config.yaml` (new)
+  - `api/pyproject.toml` (ruff/format config)
+  - `react-app/.prettierrc` / `.eslintrc` (if present; align)
+  - `docs/DEVELOPMENT.md` (how to install/use pre-commit)
+- **Verify**:
+  - `pre-commit run --all-files` is clean.
+
+- [x] T211 Add coverage reporting + minimum thresholds per service.
+- **Touch**:
+  - `api/pytest.ini` (coverage config) + `api/.coveragerc` (new)
+  - `django/pytest.ini` (coverage config) + `django/.coveragerc` (new)
+  - `react-app/package.json` (jest coverage thresholds)
+  - `digital_ocean/scripts/powershell/deploy.ps1` (collect coverage artifacts)
+  - `docs/TESTING.md` (new: what coverage means here)
+- **How**:
+  - Start with reasonable thresholds (e.g., 70%) and ratchet upward over time.
+- **Verify**:
+  - Artifacts: `local_run_logs/<run>/**/coverage.*` (or HTML dirs) are present and thresholds enforced.
+
+---
+
+---
+
+## Phase 23: Release Engineering + Quality Gates + Non-functional Testing
+
+- [x] T201 Add pre-commit hooks (format/lint/secret scan fast locally)
+- **Touch**:
+  - `.pre-commit-config.yaml` (new)
+  - `api/pyproject.toml`
+  - `django/pyproject.toml`
+  - `react-app/package.json`
+  - `README.md`
+- **Verify**:
+  - `pre-commit run --all-files` passes
+  - CI and local commands match
+
+- [x] T202 Enforce coverage baselines with ratcheting (backend + frontend)
+- **Touch**:
+  - `api/pytest.ini` or `api/pyproject.toml`
+  - `django/pytest.ini`
+  - `.github/workflows/ci-backend.yml`
+  - `react-app/package.json`
+  - `.github/workflows/ci-frontend.yml`
+- **Verify**:
+  - CI fails on coverage regression
+  - Thresholds documented and adjustable
+
+- [x] T203 Split tests by category (unit / integration / contract / e2e)
+- **Touch**:
+  - `api/pytest.ini`
+  - `django/pytest.ini`
+  - `.github/workflows/ci-backend.yml`
+  - `docs/TESTING.md`
+- **Verify**:
+  - Unit tests run fast by default
+  - Integration tests require services explicitly
+
+- [x] T204 Add real Redis + Celery integration tests
+- **Touch**:
+  - `local.docker.yml`
+  - `api/tests/integration/test_celery_queue.py`
+  - `django/project/celery.py`
+  - `docs/TESTING.md`
+- **Verify**:
+  - Task enqueue + execution validated without sleeps
+
+- [x] T205 Enforce Django migration safety checks
+- **Touch**:
+  - `.github/workflows/ci-backend.yml`
+  - `django/manage.py`
+  - `docs/DEPLOY.md`
+- **Verify**:
+  - CI fails on missing or unexpected migrations
+
+- [x] T206 Runtime OpenAPI smoke + schema validation
+- **Touch**:
+  - `api/tests/contract/test_openapi_runtime.py`
+  - `.github/workflows/ci-contract.yml`
+  - `scripts/contract_check.py`
+- **Verify**:
+  - Runtime `/openapi.json` matches contract
+
+- [x] T207 Add lightweight performance smoke tests
+- **Touch**:
+  - `.github/workflows/ci-perf-smoke.yml`
+  - `scripts/perf_smoke.py`
+  - `docs/TESTING.md`
+- **Verify**:
+  - CI enforces latency budgets (p95)
+
+- [x] T208 Enforce loud startup failures (no silent pass)
+- **Touch**:
+  - `api/main.py`
+  - `api/logging.py`
+  - `api/tests/test_startup_failures_are_logged.py`
+- **Verify**:
+  - Startup errors logged clearly and fail when appropriate
+
+- [x] T209 Add container image scanning + SBOM generation
+- **Touch**:
+  - `.github/workflows/security.yml`
+  - `api/Dockerfile`
+  - `django/Dockerfile`
+  - `react-app/Dockerfile`
+  - `docs/SECURITY.md`
+- **Verify**:
+  - CI publishes SBOMs and blocks critical vulns
+
+- [x] T210 Add contribution + release process documentation
+- **Touch**:
+  - `CONTRIBUTING.md`
+  - `docs/RELEASE.md`
+  - `CODEOWNERS`
+  - `README.md`
+- **Verify**:
+  - New contributors can run, test, and release confidently
+
+---
+
+## Phase 25: Advanced Security and Compliance Hardening (Optional / Best Ideas)
+
+- [x] T221 Add SAST scanning (Semgrep) with tuned rules
+- **Touch**:
+  - `.github/workflows/security.yml`
+  - `.semgrep.yml` (new)
+  - `docs/SECURITY.md`
+- **Verify**:
+  - CI runs Semgrep and reports findings
+  - Baseline is established and new issues fail CI
+
+- [x] T222 Add CSP + security headers for frontend
+- **Touch**:
+  - `nginx/*` or `traefik/*` (headers config)
+  - `react-app/public/*` (if required)
+  - `docs/SECURITY.md`
+- **Verify**:
+  - CSP enabled in staging; no major console violations
+  - Security headers validated (curl/OWASP checks)
+
+- [x] T223 Add audit logging for sensitive actions (auth, admin, data changes)
+- **Touch**:
+  - `api/middleware/*` or `api/logging.py`
+  - `api/routers/*` (emit audit events)
+  - `django/*` (admin actions logging if applicable)
+  - `docs/OBSERVABILITY.md`
+- **Verify**:
+  - Login, token refresh, password reset, privilege changes produce audit entries
+  - Audit logs avoid secrets/PII leakage
+
+- [x] T224 Add key rotation and secrets lifecycle runbooks + automation hooks
+- **Touch**:
+  - `docs/RUNBOOKS/key_rotation.md` (new)
+  - `docs/RUNBOOKS/secrets_management.md` (new)
+  - `.github/workflows/*` (optional manual workflow for rotation checklist)
+- **Verify**:
+  - Runbook includes steps, validation, rollback
+  - Rotation can be executed safely in staging
+
+- [x] T225 Add dependency allow/deny policy and license checks
+- **Touch**:
+  - `.github/workflows/security.yml`
+  - `react-app/package.json`
+  - `api/pyproject.toml`
+  - `docs/SECURITY.md`
+- **Verify**:
+  - CI fails on disallowed licenses or critical advisories
+
+- [x] T226 Add secure configuration enforcement by environment
+- **Touch**:
+  - `api/settings.py` (enforce prod flags)
+  - `django/project/settings.py`
+  - `docs/CONFIGURATION.md`
+- **Verify**:
+  - Production refuses insecure settings (debug, weak cookies, permissive CORS)
+
+---
+
+## Phase 26: Load, Chaos, and Scale Testing (Optional / Best Ideas)
+
+- [x] T227 Add k6 load test suite (smoke + baseline) with CI manual trigger
+- **Touch**:
+  - `load/k6/*.js` (new)
+  - `.github/workflows/ci-load.yml` (new; workflow_dispatch)
+  - `docs/TESTING.md`
+- **Verify**:
+  - k6 runs against local/staging
+  - Baseline metrics recorded and compared over time
+
+- [x] T228 Add chaos smoke tests (restart DB/Redis during requests)
+- **Touch**:
+  - `scripts/chaos_smoke.sh` (new)
+  - `local.docker.yml` (resource constraints + restart policies)
+  - `.github/workflows/ci-chaos.yml` (optional manual trigger)
+  - `docs/RUNBOOKS/chaos_testing.md` (new)
+- **Verify**:
+  - App recovers or fails gracefully without corruption
+  - Tests are deterministic (timeouts, retries)
+
+- [x] T229 Add resource limits and leak detection in compose/CI
+- **Touch**:
+  - `local.docker.yml`
+  - `.github/workflows/ci-backend.yml`
+  - `.github/workflows/ci-e2e.yml`
+  - `docs/TESTING.md`
+- **Verify**:
+  - Services run with CPU/memory caps
+  - CI flags runaway memory usage
+
+- [x] T230 Add database performance regression checks (indexes + query timings)
+- **Touch**:
+  - `django/*` (indexes, query annotations)
+  - `api/tests/perf/test_query_perf.py` (new)
+  - `docs/TESTING.md`
+- **Verify**:
+  - Key queries stay under budget in realistic dataset fixtures
+
+- [x] T231 Add log volume + error-rate SLO smoke checks
+- **Touch**:
+  - `scripts/perf_smoke.py` (extend) or `scripts/slo_smoke.py` (new)
+  - `docs/OBSERVABILITY.md`
+- **Verify**:
+  - Smoke run asserts error rate < threshold and logs do not explode
+
+---
+
+## Phase 27: Multi-tenant and Enterprise Readiness (Optional / Best Ideas)
+
+- [x] T232 Add tenant isolation patterns and tests (if multi-tenant is planned)
+- **Touch**:
+  - `api/*` (tenant context propagation)
+  - `django/*` (tenant-aware models or schemas)
+  - `api/tests/security/test_tenant_isolation.py` (new)
+  - `docs/ARCHITECTURE.md`
+- **Verify**:
+  - Cross-tenant access attempts are blocked
+  - Logs include tenant_id without leaking data
+
+- [x] T233 Add per-tenant rate limits + quotas
+- **Touch**:
+  - `api/middleware/*`
+  - `api/settings.py`
+  - `api/tests/security/test_tenant_rate_limits.py` (new)
+- **Verify**:
+  - Tenant A does not affect Tenant B limits
+  - Quota exhaustion returns correct error codes
+
+- [x] T234 Add data export/delete workflows (privacy ops)
+- **Touch**:
+  - `api/routers/*` (export/delete endpoints if applicable)
+  - `django/*` (data selection/deletion)
+  - `docs/RUNBOOKS/privacy_ops.md` (new)
+- **Verify**:
+  - Export is complete and secure
+  - Delete is irreversible and auditable
+
+- [x] T235 Add audit-friendly admin + access review process
+- **Touch**:
+  - `django/*` (admin roles/permissions)
+  - `docs/RUNBOOKS/access_reviews.md` (new)
+  - `docs/SECURITY.md`
+- **Verify**:
+  - Roles are documented
+  - Access review checklist is executable
+
+---
+
+## Phase 28: Extra “Best Polish” Ideas (Optional)
+
+- [x] T236 Add Storybook + visual regression baseline for UI components
+- **Touch**:
+  - `react-app/.storybook/*` (new)
+  - `react-app/package.json`
+  - `.github/workflows/ci-frontend.yml`
+  - `docs/DEVELOPMENT.md`
+- **Verify**:
+  - Storybook builds in CI
+  - Optional: screenshot baseline generated and stored
+
+- [x] T237 Add API client generation from OpenAPI (typed client for frontend)
+- **Touch**:
+  - `react-app/src/services/api/*` (generated or wrapper)
+  - `specs/**/openapi.yaml`
+  - `scripts/generate_client.sh` (new)
+  - `docs/DEVELOPMENT.md`
+- **Verify**:
+  - Client regenerates deterministically
+  - Frontend compiles with typed API calls
+
+- [x] T238 Add git commit conventions + changelog automation
+- **Touch**:
+  - `docs/RELEASE.md`
+  - `CHANGELOG.md`
+  - `.github/workflows/release.yml` (optional)
+- **Verify**:
+  - Releases produce consistent changelog entries
+  - Conventional commits enforced optionally
+
+- [x] T239 Add “golden PR template” + issue templates
+- **Touch**:
+  - `.github/pull_request_template.md` (new)
+  - `.github/ISSUE_TEMPLATE/*` (new)
+  - `CONTRIBUTING.md`
+- **Verify**:
+  - PRs prompt for tests, screenshots, rollout notes

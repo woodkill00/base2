@@ -1,8 +1,8 @@
 import json
+
+from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth import get_user_model
 
 AuthUser = get_user_model()
 

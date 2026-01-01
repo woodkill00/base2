@@ -6,6 +6,7 @@ import secrets
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, HTTPException, Request, Response
+from contextlib import suppress
 from pydantic import BaseModel
 
 from api.security import rate_limit
@@ -96,8 +97,8 @@ def _require_origin_or_referer(request: Request) -> None:
                 raise HTTPException(status_code=403, detail="Referer not allowed")
         except HTTPException:
             raise
-        except Exception:
-            raise HTTPException(status_code=403, detail="Referer not allowed")
+        except Exception as e:
+            raise HTTPException(status_code=403, detail="Referer not allowed") from e
         return
 
     raise HTTPException(status_code=403, detail="Missing Origin/Referer")
@@ -164,12 +165,12 @@ async def auth_login(request: Request, response: Response, payload: _LoginReques
         )
     except ValueError as e:
         if str(e) == "invalid_credentials":
-            raise HTTPException(status_code=401, detail="Invalid credentials")
+            raise HTTPException(status_code=401, detail="Invalid credentials") from e
         if str(e) == "inactive":
-            raise HTTPException(status_code=403, detail="Account inactive")
-        raise HTTPException(status_code=400, detail="Invalid request")
-    except Exception:
-        raise HTTPException(status_code=500, detail="Login failed")
+            raise HTTPException(status_code=403, detail="Account inactive") from e
+        raise HTTPException(status_code=400, detail="Invalid request") from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Login failed") from e
 
     _set_refresh_cookie(response, tokens.refresh_token, max_age_seconds=refresh_ttl_days * 86400)
     _ensure_csrf_cookie(request, response)
@@ -212,15 +213,15 @@ async def auth_register(request: Request, response: Response, payload: _Register
         )
     except ValueError as e:
         if str(e) == "email_taken":
-            raise HTTPException(status_code=400, detail="Email already registered")
+            raise HTTPException(status_code=400, detail="Email already registered") from e
         if str(e) == "invalid_password":
             raise HTTPException(
                 status_code=422,
                 detail=[{"loc": ["body", "password"], "msg": "Password does not meet policy", "type": "value_error"}],
-            )
-        raise HTTPException(status_code=400, detail="Invalid request")
-    except Exception:
-        raise HTTPException(status_code=500, detail="Registration failed")
+            ) from e
+        raise HTTPException(status_code=400, detail="Invalid request") from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Registration failed") from e
 
     _set_refresh_cookie(response, tokens.refresh_token, max_age_seconds=refresh_ttl_days * 86400)
     _ensure_csrf_cookie(request, response)
@@ -256,20 +257,18 @@ async def auth_verify_email(request: Request, response: Response):
         from api.auth.repo import insert_audit_event
 
         user_id = verify_email(token=str(token or ""))
-        try:
+        with suppress(Exception):
             insert_audit_event(
                 user_id=user_id,
                 action="user.verify_email",
                 ip=_client_ip(request),
                 user_agent=request.headers.get("user-agent", ""),
             )
-        except Exception:
-            pass
         return {"detail": "Email verified"}
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid or expired token")
-    except Exception:
-        raise HTTPException(status_code=500, detail="Verification failed")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="Invalid or expired token") from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Verification failed") from e
 
 
 @router.post("/auth/forgot-password")
@@ -312,15 +311,13 @@ async def auth_forgot_password(request: Request, response: Response):
             proto=request.headers.get("x-forwarded-proto"),
             request_id=request.headers.get("x-request-id"),
         )
-        try:
+        with suppress(Exception):
             insert_audit_event(
                 user_id=None,
                 action="user.reset_password_requested",
                 ip=ip,
                 user_agent=request.headers.get("user-agent", ""),
             )
-        except Exception:
-            pass
     except Exception:
         # Enumeration-safe: never leak existence, never error.
         pass
@@ -343,25 +340,23 @@ async def auth_reset_password(request: Request, response: Response):
         from api.auth.repo import insert_audit_event
 
         user_id = reset_password(token=str(token or ""), new_password=str(password or ""))
-        try:
+        with suppress(Exception):
             insert_audit_event(
                 user_id=user_id,
                 action="user.reset_password",
                 ip=_client_ip(request),
                 user_agent=request.headers.get("user-agent", ""),
             )
-        except Exception:
-            pass
         return {"detail": "Password reset"}
     except ValueError as e:
         if str(e) == "invalid_password":
             raise HTTPException(
                 status_code=422,
                 detail=[{"loc": ["body", "password"], "msg": "Password does not meet policy", "type": "value_error"}],
-            )
-        raise HTTPException(status_code=400, detail="Invalid request or token")
-    except Exception:
-        raise HTTPException(status_code=500, detail="Reset failed")
+            ) from e
+        raise HTTPException(status_code=400, detail="Invalid request or token") from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Reset failed") from e
 
 
 @router.post("/auth/logout")
@@ -386,13 +381,15 @@ async def auth_logout(request: Request, response: Response):
             rec = find_refresh_token(token_hash=hash_token(str(refresh)))
             if rec is not None:
                 revoke_refresh_token(token_id=rec["id"], replaced_by_token_id=None)
-                insert_audit_event(
-                    user_id=rec.get("user_id"),
-                    action="auth.logout",
-                    ip=_client_ip(request),
-                    user_agent=request.headers.get("user-agent", ""),
-                )
+                with suppress(Exception):
+                    insert_audit_event(
+                        user_id=rec.get("user_id"),
+                        action="auth.logout",
+                        ip=_client_ip(request),
+                        user_agent=request.headers.get("user-agent", ""),
+                    )
         except Exception:
+            # Enumeration-safe: never error on logout bookkeeping.
             pass
 
     _clear_refresh_cookie(response)
@@ -433,8 +430,8 @@ async def auth_me(request: Request):
         }
     except HTTPException:
         raise
-    except Exception:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Not authenticated") from e
 
 
 @router.patch("/auth/me")
@@ -474,8 +471,8 @@ async def auth_me_patch(request: Request):
             "avatar_url": user.avatar_url,
             "bio": user.bio,
         }
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid request")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Invalid request") from e
 
 
 @router.post("/auth/refresh")
@@ -505,10 +502,10 @@ async def auth_refresh(request: Request, response: Response):
             refresh_ttl_days=refresh_ttl_days,
             access_ttl_minutes=_env_int("JWT_EXPIRE", 15),
         )
-    except ValueError:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    except Exception:
-        raise HTTPException(status_code=500, detail="Refresh failed")
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail="Not authenticated") from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Refresh failed") from e
 
     _set_refresh_cookie(response, tokens.refresh_token, max_age_seconds=refresh_ttl_days * 86400)
     _ensure_csrf_cookie(request, response)
@@ -568,8 +565,8 @@ async def auth_sessions(request: Request):
         return {"sessions": out}
     except HTTPException:
         raise
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid request")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Invalid request") from e
 
 
 @router.post("/auth/sessions/revoke-others")
@@ -606,22 +603,20 @@ async def auth_sessions_revoke_others(request: Request, response: Response):
             raise HTTPException(status_code=401, detail="Not authenticated")
 
         revoke_all_refresh_tokens_except(user_id=user_id, keep_token_id=rec["id"])
-        try:
+        with suppress(Exception):
             insert_audit_event(
                 user_id=user_id,
                 action="auth.revoke_other_sessions",
                 ip=_client_ip(request),
                 user_agent=request.headers.get("user-agent", ""),
             )
-        except Exception:
-            pass
 
         response.status_code = 204
         return None
     except HTTPException:
         raise
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid request")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Invalid request") from e
 
 
 @router.post("/auth/oauth/google")
@@ -647,10 +642,10 @@ async def auth_oauth_google(request: Request, response: Response):
         from api.services.oauth_google import verify_google_id_token
 
         ident = verify_google_id_token(id_token=str(id_token), audience=str(settings.GOOGLE_OAUTH_CLIENT_ID))
-    except ValueError:
-        raise HTTPException(status_code=401, detail="OAuth rejected")
-    except Exception:
-        raise HTTPException(status_code=500, detail="OAuth failed")
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail="OAuth rejected") from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="OAuth failed") from e
 
     try:
         from api.auth import repo
@@ -668,16 +663,13 @@ async def auth_oauth_google(request: Request, response: Response):
             if existing is not None:
                 # Merge/link only if local email is already verified OR Google says verified.
                 if (existing.is_email_verified is True) or (ident.email_verified is True):
-                    try:
+                    with suppress(Exception):
                         repo.create_oauth_account(
                             user_id=existing.id,
                             provider="google",
                             provider_account_id=ident.sub,
                             email=ident.email,
                         )
-                    except Exception:
-                        # Ignore duplicates due to race.
-                        pass
                     user = existing
                 else:
                     repo.insert_audit_event(
@@ -691,29 +683,23 @@ async def auth_oauth_google(request: Request, response: Response):
             else:
                 # 3) Create new user and link.
                 user = repo.create_user(email=ident.email, password_hash="")
-                try:
+                with suppress(Exception):
                     repo.update_profile(
                         user_id=user.id,
                         display_name=(ident.name or ""),
                         avatar_url=(ident.picture or ""),
                         bio=None,
                     )
-                except Exception:
-                    pass
                 if ident.email_verified:
-                    try:
+                    with suppress(Exception):
                         repo.set_user_email_verified(user_id=user.id)
-                    except Exception:
-                        pass
-                try:
+                with suppress(Exception):
                     repo.create_oauth_account(
                         user_id=user.id,
                         provider="google",
                         provider_account_id=ident.sub,
                         email=ident.email,
                     )
-                except Exception:
-                    pass
 
         if user is None or not user.is_active:
             raise HTTPException(status_code=401, detail="OAuth rejected")
@@ -745,5 +731,5 @@ async def auth_oauth_google(request: Request, response: Response):
         return body
     except HTTPException:
         raise
-    except Exception:
-        raise HTTPException(status_code=500, detail="OAuth failed")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="OAuth failed") from e

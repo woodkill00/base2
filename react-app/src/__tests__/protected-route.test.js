@@ -10,7 +10,10 @@ const SecretStub = () => <div>Secret Page</div>;
 const renderAt = (initialPath) => {
   return render(
     <AuthProvider>
-      <MemoryRouter initialEntries={[initialPath]}>
+      <MemoryRouter
+        initialEntries={[initialPath]}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
         <Routes>
           <Route path="/login" element={<LoginStub />} />
           <Route

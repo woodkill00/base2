@@ -16,3 +16,4 @@ opentelemetry-sdk
 opentelemetry-exporter-otlp
 opentelemetry-instrumentation-fastapi
 opentelemetry-instrumentation-psycopg2
+pydantic-settings

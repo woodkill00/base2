@@ -1,0 +1,23 @@
+name: CI (perf-smoke)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *'
+
+jobs:
+  perf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        run: pip install requests
+      - name: Perf smoke
+        env:
+          PERF_BASE_URL: https://woodkilldev.com
+          PERF_P95_BUDGET_MS: '5000'
+          PERF_SAMPLES: '10'
+        run: python scripts/perf_smoke.py

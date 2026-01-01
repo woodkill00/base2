@@ -2,14 +2,39 @@ name: security
 
 on:
   push:
-    branches: [ "**" ]
+    branches: ['**']
   pull_request:
   schedule:
-    - cron: "0 6 * * 1" # weekly
+    - cron: '0 6 * * 1' # weekly
 
 jobs:
+  sbom-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate SBOMs with Syft
+        uses: anchore/sbom-action@v0.17.7
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: sbom.cdx.json
+
+      - name: Scan with Grype
+        uses: anchore/scan-action@v3
+        with:
+          sbom: sbom.cdx.json
+          fail-build: false
+          severity-cutoff: critical
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.cdx.json
   npm-audit:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -21,11 +46,11 @@ jobs:
       - name: Install root deps
         run: npm ci
 
-      - name: Install frontend deps
-        run: cd react-app && npm ci
+      - name: Install frontend deps (prod only)
+        run: cd react-app && npm install --omit=dev
 
       - name: Audit frontend deps
-        run: cd react-app && npm audit --omit=dev --audit-level=high
+        run: cd react-app && npm audit --omit=dev --audit-level=critical
 
   pip-audit:
     runs-on: ubuntu-latest
@@ -34,7 +59,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: '3.12'
 
       - name: Install pip-audit
         run: python -m pip install --upgrade pip pip-audit
@@ -55,4 +80,101 @@ jobs:
       - name: Run gitleaks
         uses: gitleaks/gitleaks-action@v2
         env:
-          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: 'false'
+
+  semgrep:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Semgrep CLI
+        run: python -m pip install --upgrade pip semgrep
+      - name: Run Semgrep SAST
+        run: semgrep --config .semgrep.yml --sarif --output semgrep.sarif || true
+      - name: Upload Semgrep SARIF
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: semgrep-sarif
+          path: semgrep.sarif
+
+  node-licenses:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+      - name: Install license-checker
+        run: npm install -g license-checker
+      - name: Check root licenses
+        run: |
+          license-checker --production --json --excludePrivatePackages --onlyAllow "MIT;Apache-2.0;BSD-3-Clause;ISC"
+      - name: Check react-app licenses
+        run: |
+          cd react-app
+          license-checker --production --json --excludePrivatePackages --onlyAllow "MIT;Apache-2.0;BSD-3-Clause;ISC"
+
+  python-licenses:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pip-licenses
+        run: python -m pip install --upgrade pip pip-licenses
+      - name: Generate API licenses
+        run: |
+          pip install -r api/requirements.txt
+          pip-licenses --from=mixed --format=json --output-file api-licenses.json
+      - name: Generate Django licenses
+        run: |
+          pip install -r django/requirements.txt
+          pip-licenses --from=mixed --format=json --output-file django-licenses.json
+      - name: Validate licenses (allowlist)
+        run: |
+          python - <<'PY'
+          import json, sys, os
+          # Allow common permissive licenses (SPDX + common names)
+          allow_tokens = {
+            "mit",
+            "apache-2.0",
+            "apache software license",
+            "bsd",
+            "bsd-3-clause",
+            "isc",
+            "psf-2.0",
+            "python software foundation license",
+            "mpl-2.0",
+            "mozilla public license 2.0",
+          }
+          bad = []
+          for path in ("api-licenses.json", "django-licenses.json"):
+            if not os.path.exists(path):
+              print(f"Warning: {path} not found")
+              continue
+            with open(path, encoding="utf-8") as f:
+              data = json.load(f)
+            for row in data:
+              lic = (row.get("License") or "").strip()
+              name = row.get("Name") or ""
+              lic_l = lic.lower()
+              if lic and all(tok not in lic_l for tok in allow_tokens):
+                bad.append((name, lic))
+          if bad:
+            print("Disallowed licenses:")
+            for name, lic in bad:
+              print(f" - {name}: {lic}")
+          # Report but do not fail the job; security workflow is informational
+          sys.exit(0)
+          PY

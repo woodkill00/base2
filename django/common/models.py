@@ -1,27 +1,22 @@
 import uuid
+import zoneinfo
 
 from django.contrib.auth import get_user_model
-
-# from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.core.validators import MaxValueValidator, MinValueValidator
-
-# from djmoney.models.fields import MoneyField
 from django.db import models
-
-# from django.utils import timezone
-# from django_countries import countries
-# from django_countries import CountryTuple, countries
+from django.utils.translation import gettext_lazy as _
 from django_countries.fields import CountryField
-
-# from model_utils import Choices
 from phonenumber_field.modelfields import PhoneNumberField
 
 # from django.contrib.gis.db import models
 # from enum import unique
-import zoneinfo
-
+# from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+# from djmoney.models.fields import MoneyField
 # from django.db.models.fields import CharField
-from django.utils.translation import gettext_lazy as _
+# from django.utils import timezone
+# from django_countries import countries
+# from django_countries import CountryTuple, countries
+# from model_utils import Choices
 
 User = get_user_model()
 

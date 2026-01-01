@@ -12,11 +12,17 @@ from users.models import OneTimeToken
 
 def hash_one_time_token(raw_token: str) -> str:
     # Use Django SECRET_KEY as a pepper. Raw tokens are never stored.
-    material = f"{settings.SECRET_KEY}:{raw_token}".encode("utf-8")
+    material = f"{settings.SECRET_KEY}:{raw_token}".encode()
     return hashlib.sha256(material).hexdigest()
 
 
-def mint_one_time_token(*, user, purpose: str, email: str, ttl: timedelta) -> tuple[str, OneTimeToken]:
+def mint_one_time_token(
+    *,
+    user,
+    purpose: str,
+    email: str,
+    ttl: timedelta,
+) -> tuple[str, OneTimeToken]:
     raw = secrets.token_urlsafe(32)
     token_hash = hash_one_time_token(raw)
     token = OneTimeToken.objects.create(

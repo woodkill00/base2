@@ -56,17 +56,16 @@ def create_user(*, email: str, password_hash: str) -> User:
 
 def get_user_by_email(email: str) -> Optional[User]:
     normalized_email = email.strip().lower()
-    with db_conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id, email, password_hash, is_active, is_email_verified, display_name, avatar_url, bio
-                FROM api_auth_users
-                WHERE email=%s
-                """,
-                (normalized_email,),
-            )
-            row = cur.fetchone()
+    with db_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id, email, password_hash, is_active, is_email_verified, display_name, avatar_url, bio
+            FROM api_auth_users
+            WHERE email=%s
+            """,
+            (normalized_email,),
+        )
+        row = cur.fetchone()
 
     if not row:
         return None
@@ -84,17 +83,16 @@ def get_user_by_email(email: str) -> Optional[User]:
 
 
 def get_user_by_id(user_id: UUID) -> Optional[User]:
-    with db_conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id, email, password_hash, is_active, is_email_verified, display_name, avatar_url, bio
-                FROM api_auth_users
-                WHERE id=%s
-                """,
-                (str(user_id),),
-            )
-            row = cur.fetchone()
+    with db_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id, email, password_hash, is_active, is_email_verified, display_name, avatar_url, bio
+            FROM api_auth_users
+            WHERE id=%s
+            """,
+            (str(user_id),),
+        )
+        row = cur.fetchone()
 
     if not row:
         return None
@@ -164,17 +162,16 @@ def update_profile(*, user_id: UUID, display_name: str | None, avatar_url: str |
 
 
 def get_user_lock_state(*, user_id: UUID) -> dict[str, Any]:
-    with db_conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT failed_login_attempts, locked_until
-                FROM api_auth_users
-                WHERE id=%s
-                """,
-                (str(user_id),),
-            )
-            row = cur.fetchone()
+    with db_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT failed_login_attempts, locked_until
+            FROM api_auth_users
+            WHERE id=%s
+            """,
+            (str(user_id),),
+        )
+        row = cur.fetchone()
     if not row:
         return {"failed_login_attempts": 0, "locked_until": None}
     return {"failed_login_attempts": int(row[0] or 0), "locked_until": row[1]}
@@ -263,17 +260,16 @@ def create_refresh_token(
 
 
 def find_refresh_token(*, token_hash: str) -> Optional[dict[str, Any]]:
-    with db_conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id, user_id, token_hash, created_at, last_seen_at, expires_at, revoked_at, replaced_by_token_id, user_agent, ip
-                FROM api_auth_refresh_tokens
-                WHERE token_hash=%s
-                """,
-                (token_hash,),
-            )
-            row = cur.fetchone()
+    with db_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id, user_id, token_hash, created_at, last_seen_at, expires_at, revoked_at, replaced_by_token_id, user_agent, ip
+            FROM api_auth_refresh_tokens
+            WHERE token_hash=%s
+            """,
+            (token_hash,),
+        )
+        row = cur.fetchone()
 
     if not row:
         return None
@@ -307,20 +303,19 @@ def touch_refresh_token(*, token_id: UUID, ip: str, user_agent: str) -> None:
 
 
 def list_active_refresh_sessions(*, user_id: UUID) -> list[dict[str, Any]]:
-    with db_conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id, created_at, last_seen_at, expires_at, user_agent, ip
-                FROM api_auth_refresh_tokens
-                WHERE user_id=%s
-                  AND revoked_at IS NULL
-                  AND expires_at > NOW()
-                ORDER BY last_seen_at DESC, created_at DESC
-                """,
-                (str(user_id),),
-            )
-            rows = cur.fetchall() or []
+    with db_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id, created_at, last_seen_at, expires_at, user_agent, ip
+            FROM api_auth_refresh_tokens
+            WHERE user_id=%s
+              AND revoked_at IS NULL
+              AND expires_at > NOW()
+            ORDER BY last_seen_at DESC, created_at DESC
+            """,
+            (str(user_id),),
+        )
+        rows = cur.fetchall() or []
 
     out: list[dict[str, Any]] = []
     for r in rows:
@@ -449,17 +444,16 @@ def create_one_time_token(*, user_id: UUID | None, token_hash: str, token_type: 
 
 
 def find_one_time_token(*, token_hash: str, token_type: str) -> Optional[dict[str, Any]]:
-    with db_conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id, user_id, token_hash, type, expires_at, consumed_at
-                FROM api_auth_one_time_tokens
-                WHERE token_hash=%s AND type=%s
-                """,
-                (token_hash, token_type),
-            )
-            row = cur.fetchone()
+    with db_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id, user_id, token_hash, type, expires_at, consumed_at
+            FROM api_auth_one_time_tokens
+            WHERE token_hash=%s AND type=%s
+            """,
+            (token_hash, token_type),
+        )
+        row = cur.fetchone()
 
     if not row:
         return None
@@ -489,17 +483,16 @@ def consume_one_time_token(*, token_id: UUID) -> None:
 
 
 def find_oauth_account(*, provider: str, provider_account_id: str) -> Optional[dict[str, Any]]:
-    with db_conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id, user_id, provider, provider_account_id, email
-                FROM api_auth_oauth_accounts
-                WHERE provider=%s AND provider_account_id=%s
-                """,
-                (provider, provider_account_id),
-            )
-            row = cur.fetchone()
+    with db_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id, user_id, provider, provider_account_id, email
+            FROM api_auth_oauth_accounts
+            WHERE provider=%s AND provider_account_id=%s
+            """,
+            (provider, provider_account_id),
+        )
+        row = cur.fetchone()
 
     if not row:
         return None

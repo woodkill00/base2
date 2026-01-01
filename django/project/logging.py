@@ -8,7 +8,6 @@ from typing import Any
 
 from project.middleware.request_id import get_request_id
 
-
 _SENSITIVE_KEY_FRAGMENTS = (
     "authorization",
     "cookie",

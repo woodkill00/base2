@@ -1,18 +1,26 @@
 # api/.Dockerfile
-ARG PYTHON_VERSION=3.12-slim
+ARG PYTHON_VERSION=3.12-slim-bookworm
 FROM python:${PYTHON_VERSION}
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    bash curl build-essential \
-    && rm -rf /var/lib/apt/lists/*
+# Keep base OS packages updated and minimize image size
+RUN apt-get update \
+     && apt-get upgrade -y \
+     && apt-get install -y --no-install-recommends \
+         bash build-essential ca-certificates \
+     && update-ca-certificates \
+     && apt-get clean \
+     && rm -rf /var/lib/apt/lists/*
 
 # Non-root user for runtime and ensure /app is writable
 RUN useradd -m appuser && chown -R appuser:appuser /app
 USER appuser
 
 RUN mkdir -p /app/api
+
+# Upgrade pip to address known advisories
+RUN python -m pip install --user --upgrade pip
 
 COPY --chown=appuser:appuser requirements.txt ./api/requirements.txt
 ENV PATH="/home/appuser/.local/bin:${PATH}" \
