@@ -44,28 +44,36 @@ def incr_and_check(tenant_id: str, scope: str) -> Tuple[int, bool]:
 
 
 def incr_and_check_detailed(tenant_id: str, scope: str) -> tuple[int, bool, int]:
-    """Increment tenant limit counter and return (count, over_limit, retry_after_seconds)."""
+    """Increment tenant limit counter and return (count, over_limit, retry_after_seconds).
+
+    Uses a fixed window anchored on first request by leveraging key TTL.
+    This avoids edge flakiness near window boundaries that can occur with
+    purely timestamp-bucketed keys.
+    """
     tenant = (tenant_id or "").strip()
     if not tenant:
         # Treat missing tenant as over-limit to force caller to enforce presence.
         return 0, True, 1
 
     c = get_client()
-    ts = now_ms()
     window_ms, max_requests = _limit_for_scope(scope)
-    start = bucket_start_for_window(ts, window_ms)
-    k = key("tenant_rl", scope, tenant, str(start))
+    k = key("tenant_rl", scope, tenant)
     pipe = c.pipeline()
     pipe.incr(k, 1)
-    pipe.pexpire(k, window_ms)
-    val, _ = pipe.execute()
-    count = int(val)
+    # Only set expiry if the key is new (no TTL yet)
+    ttl_ms = c.pttl(k)
+    if ttl_ms < 0:
+        pipe.pexpire(k, window_ms)
+    res = pipe.execute()
+    count = int(res[0]) if res else 1
 
     over = count > max_requests
     if not over:
         return count, False, 0
 
-    remaining_ms = (start + window_ms) - ts
+    # Read remaining time in current window from key TTL
+    ttl_ms2 = c.pttl(k)
+    remaining_ms = int(ttl_ms2 if ttl_ms2 > 0 else window_ms)
     retry_after = int((remaining_ms + 999) // 1000)
     if retry_after < 1:
         retry_after = 1
