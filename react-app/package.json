@@ -29,6 +29,7 @@
     "jest-axe": "^9.0.0",
     "msw": "^2.6.6",
     "openapi-typescript": "^6.7.0",
+    "patch-package": "^8.0.0",
     "prettier": "^3.0.0",
     "react-scripts": "^5.0.1",
     "source-map-explorer": "^2.5.3",
@@ -52,6 +53,7 @@
     "analyze": "react-scripts build && source-map-explorer 'build/static/js/*.js'",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
+    "postinstall": "patch-package",
     "generate:openapi:types": "openapi-typescript ../specs/001-django-fastapi-react/contracts/openapi.yaml -o src/services/api/types.d.ts"
   },
   "browserslist": {
