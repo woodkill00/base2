@@ -5,3 +5,4 @@ exclude = ["migrations"]
 
 [tool.ruff.lint]
 select = ["E","F","I","UP","B","C90"]
+ignore = ["UP017"]

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from project.middleware.request_id import get_request_id
@@ -88,7 +88,7 @@ class JsonFormatter(logging.Formatter):
         self._service = service
 
     def format(self, record: logging.LogRecord) -> str:
-        timestamp = datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z")
+        timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
         payload: dict[str, Any] = {
             "timestamp": timestamp,
