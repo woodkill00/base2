@@ -1786,7 +1786,7 @@
   - FastAPI boots without creating/modifying schema
   - Database schema is unchanged by API container startup
 
-- [ ] T245 Move API-auth/email/outbox schema into Django migrations (Django is the single schema owner)
+- [x] T245 Move API-auth/email/outbox schema into Django migrations (Django is the single schema owner)
 - **Touch**:
   - `django/*` (create a dedicated Django app for API-facing tables, or map existing models)
   - Django models must use `Meta.db_table = ...` to match tables FastAPI reads/writes (if keeping the existing table names)
@@ -1840,7 +1840,7 @@
 - **Verify**:
   - CI fails fast if someone reintroduces Option 2 semantics
 
-- [ ] T251 Validate production deploy entrypoint still works with Option 1-only routing and Django-owned migrations
+- [x] T251 Validate production deploy entrypoint still works with Option 1-only routing and Django-owned migrations
 - **Touch**:
   - `digital_ocean/scripts/powershell/deploy.ps1` (ensure migrate runs for Django; ensure API healthcheck URLs use `/api/health`)
   - Any “AllTests” probe URLs updated to `/api/...`
