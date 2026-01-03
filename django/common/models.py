@@ -1,6 +1,6 @@
 import uuid
-
 import zoneinfo
+
 from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models

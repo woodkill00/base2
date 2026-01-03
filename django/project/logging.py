@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 
 from project.middleware.request_id import get_request_id
@@ -60,7 +60,7 @@ def _redact_value(value: Any) -> Any:
             else:
                 redacted[str(k)] = _redact_value(v)
         return redacted
-    if isinstance(value, (list, tuple, set)):
+    if isinstance(value, list | tuple | set):
         seq = [_redact_value(v) for v in value]
         return seq if isinstance(value, list) else type(value)(seq)
     return value
@@ -75,7 +75,7 @@ class RedactingFilter(logging.Filter):
             for key, raw in list(record.__dict__.items()):
                 if _is_sensitive_key(str(key)):
                     record.__dict__[key] = "[REDACTED]"
-                elif isinstance(raw, (dict, list, tuple, set, str, bytes)):
+                elif isinstance(raw, dict | list | tuple | set | str | bytes):
                     record.__dict__[key] = _redact_value(raw)
         except Exception:
             return True
@@ -88,7 +88,7 @@ class JsonFormatter(logging.Formatter):
         self._service = service
 
     def format(self, record: logging.LogRecord) -> str:
-        timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        timestamp = datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z")
 
         payload: dict[str, Any] = {
             "timestamp": timestamp,
