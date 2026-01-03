@@ -72,6 +72,25 @@ jobs:
           path: compose-logs.txt
           retention-days: 7
 
+      - name: Tail targeted container logs on failure
+        if: failure()
+        run: |
+          docker compose -f e2e/docker-compose.e2e.yml logs --no-color api | tail -n 200 > api.log || true
+          docker compose -f e2e/docker-compose.e2e.yml logs --no-color react-app | tail -n 200 > react-app.log || true
+          docker compose -f e2e/docker-compose.e2e.yml logs --no-color postgres | tail -n 200 > postgres.log || true
+
+      - name: Upload targeted logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-targeted-logs
+          path: |
+            api.log
+            react-app.log
+            postgres.log
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Dump compose logs on failure
         if: failure()
         run: docker compose -f e2e/docker-compose.e2e.yml logs --no-color
