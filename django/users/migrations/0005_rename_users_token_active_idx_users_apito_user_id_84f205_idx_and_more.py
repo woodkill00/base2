@@ -26,7 +26,10 @@ def _pg_rename_index_if_present(schema_editor, old_name: str, new_name: str) -> 
     if not old_exists or new_exists:
         return
 
-    schema_editor.execute(f"ALTER INDEX {qn(old_name)} RENAME TO {qn(new_name)}")
+    # Use IF EXISTS to avoid noisy errors if the index disappears between the
+    # existence check and the rename (or in drifted environments where the old
+    # name never existed).
+    schema_editor.execute(f"ALTER INDEX IF EXISTS {qn(old_name)} RENAME TO {qn(new_name)}")
 
 
 def rename_indexes_forward(apps, schema_editor):
