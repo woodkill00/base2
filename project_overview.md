@@ -3,11 +3,13 @@
 This workspace is a full-stack web application project, organized into several main components:
 
 ## 1. API + Schema Services (`api/`, `django/`)
-- **FastAPI (`api/`)**: Public API runtime (behind Traefik at `/api/*`; Traefik strips `/api` so FastAPI serves routes without that prefix).
+
+- **FastAPI (`api/`)**: Public API runtime (behind Traefik at `/api/*`; pass-through routing so FastAPI serves routes with the `/api` prefix).
 - **Django (`django/`)**: Schema owner (migrations) and admin UI (guarded via subdomain + allowlist/auth in Traefik).
 - **Database**: PostgreSQL (internal-only). Django migrations define the canonical schema.
 
 ## 2. Frontend (`react-app/`)
+
 - **React application**: The frontend is a React SPA, with routing and context for authentication.
 - **Pages**: Includes pages for dashboard, user settings, password reset, email verification, etc.
 - **Components**: Navigation, protected routes, and other UI components.
@@ -15,19 +17,23 @@ This workspace is a full-stack web application project, organized into several m
 - **Testing**: Jest is also used for frontend tests.
 
 ## 3. Infrastructure
+
 - **Docker Compose**: `local.docker.yml` defines the stack with internal-only exposure. Only Traefik maps host ports (80/443).
 - **Nginx**: Standalone SPA server (`nginx/nginx.conf`), never exposed directly; Traefik routes to it.
 - **Traefik v3**: Static config at `traefik/traefik.yml` and dynamic routers at `traefik/dynamic.yml`. Uses Let's Encrypt staging resolver `le-staging`.
 - **PgAdmin**: Internal-only DB admin; no public exposure.
 
 ## 4. Scripts (`scripts/`)
+
 - Shell scripts for managing the environment, starting/stopping services, health checks, logs, and testing.
 
 ## 5. Project Management
+
 - **README.md**: Contains setup and usage instructions.
 - **Workspace file**: VS Code workspace configuration.
 
 ## 6. Build & Deployment
+
 The build process composes services with Traefik as the only public entrypoint.
 
 - Frontend served by Nginx via Traefik
@@ -38,10 +44,12 @@ The build process composes services with Traefik as the only public entrypoint.
 DigitalOcean automation (`digital_ocean/orchestrate_deploy.py`) provisions a droplet, applies cloud-init (`digital_ocean/scripts/digital_ocean_base.sh`), runs post-reboot config, starts the stack, and summarizes health/logs.
 
 ## 7. Authentication & Security
+
 - The project supports user authentication, password reset, email verification, and protected routes.
 - Security hardening: non-root users, `no-new-privileges`, Traefik capability to bind 80/443, read-only filesystems, tmpfs for Nginx, and disabled insecure dashboard.
 
 ## 8. Operations
+
 - Management scripts in `scripts/` for start/stop/logs/status/health/test.
 - `scripts/start.sh` validates `.env`, syncs literal config, starts services, and prints endpoints.
 - Ensure `NETWORK_NAME` equals `TRAEFIK_DOCKER_NETWORK` in `.env`.

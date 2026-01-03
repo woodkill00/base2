@@ -48,7 +48,7 @@ def test_gunicorn_serves_health() -> None:
     )
 
     try:
-        url = f"http://127.0.0.1:{port}/health"
+        url = f"http://127.0.0.1:{port}/api/health"
         deadline = time.time() + 20
         last_error: Exception | None = None
 

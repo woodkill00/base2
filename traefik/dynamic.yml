@@ -9,14 +9,14 @@ http:
         - redirect-to-https
       service: noop@internal
 
-    # API: external /api/* -> internal /* (strip /api)
+    # API: external /api/* -> internal /api/* (pass-through; no strip)
     api:
+      # Pass-through: external /api/* -> internal /api/*
       rule: Host(`${WEBSITE_DOMAIN}`) && PathPrefix(`/api`)
       priority: 200
       entryPoints:
         - websecure
       middlewares:
-        - strip-api-prefix
         - security-headers
         - security-csp
         - rate-limit
@@ -183,11 +183,6 @@ http:
         scheme: https
         port: 443
         permanent: true
-
-    strip-api-prefix:
-      stripPrefix:
-        prefixes:
-          - /api
 
     security-headers:
       headers:

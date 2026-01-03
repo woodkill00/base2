@@ -2,9 +2,8 @@
 
 ## 1. Current Behavior
 
-- **Docker Compose stack**: Traefik, Django, FastAPI, React, Nginx, Postgres, pgAdmin, Redis, Celery, Flower
-- **Traefik**: File provider only, le-staging ACME, correct entrypoints, no Docker provider. Routers for API (with stripPrefix), Django admin, static, frontend, dashboard, pgAdmin, Flower, all with correct middlewares and priorities.
-- **Nginx**: Internal-only, static serving, healthcheck.
+**Traefik**: File provider only, le-staging ACME, correct entrypoints, no Docker provider. Routers for API (pass-through /api), Django admin, static, frontend, dashboard, pgAdmin, Flower, all with correct middlewares and priorities.
+
 - **Scripts**: All present and up to date for deploy, test, validation, logs, status, etc.
 - **backend/**: Node backend present for deprecation/removal.
 - **digital_ocean/**: Orchestration scripts and docs.
@@ -33,4 +32,4 @@
 
 ---
 
-*This file is auto-generated as part of T000 (Inventory & sanity pass).*
+_This file is auto-generated as part of T000 (Inventory & sanity pass)._

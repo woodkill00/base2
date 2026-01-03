@@ -5,8 +5,8 @@ info:
   description: |
     External API contract for the Full-stack Baseline feature.
 
-    Note: Clients call `/api/*` paths. Traefik strips the `/api` prefix before forwarding
-    to the FastAPI container, so the service may implement routes without the `/api` prefix.
+    Note: Clients call `/api/*` paths and Traefik forwards `/api/*` to the FastAPI container
+    without rewriting. The service implements routes with the `/api` prefix.
 servers:
   - url: https://{domain}
     variables:

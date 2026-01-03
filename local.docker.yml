@@ -23,7 +23,7 @@ services:
     mem_limit: 256m
     cpus: '0.5'
 
-  # FastAPI API (Option B: internal /health, external /api/health)
+  # FastAPI API (Option 1: native /api/* surface)
   api:
     build:
       context: ./api
@@ -54,7 +54,7 @@ services:
       - /tmp
       - /var/tmp
     healthcheck:
-      test: ['CMD', 'curl', '-fsS', 'http://localhost:${FASTAPI_PORT}/health']
+      test: ['CMD', 'curl', '-fsS', 'http://localhost:${FASTAPI_PORT}/api/health']
     mem_limit: 512m
     cpus: '0.75'
 

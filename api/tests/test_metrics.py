@@ -7,7 +7,7 @@ from api.main import app
 
 def test_metrics_exists_and_has_expected_names():
     client = TestClient(app)
-    r = client.get("/metrics")
+    r = client.get("/api/metrics")
     assert r.status_code == 200
     body = r.text
     assert "base2_api_requests_total" in body

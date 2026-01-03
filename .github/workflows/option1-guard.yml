@@ -1,0 +1,43 @@
+name: Option1 Guard
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure no strip-prefix in Traefik
+        run: |
+          if grep -qE 'strip-api-prefix|stripPrefix' traefik/dynamic.yml; then
+            echo "Found strip prefix middleware in traefik/dynamic.yml" >&2
+            exit 1
+          fi
+
+      - name: Ensure no public /health router in Traefik
+        run: |
+          if grep -qE 'PathPrefix\(/health\)' traefik/dynamic.yml; then
+            echo "Found public /health router in traefik/dynamic.yml" >&2
+            exit 1
+          fi
+
+      - name: Ensure FastAPI does not expose public /health
+        run: |
+          if grep -RInE "@app\.(get|post|put|patch|delete)\(\s*['\"]\/health['\"]" api; then
+            echo "Found a public FastAPI /health route; use /api/health only." >&2
+            exit 1
+          fi
+
+      - name: Docs must not mention Option 2
+        run: |
+          if [ -f shared/docs/current_state.md ] && grep -qiE 'stripPrefix|Option 2|Option B' shared/docs/current_state.md; then
+            echo "Docs mention Option 2/stripPrefix; update to Option 1-only." >&2
+            exit 1
+          fi
+
+      - name: OK
+        run: echo "Option 1-only guard passed"

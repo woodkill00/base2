@@ -34,16 +34,12 @@ This Docker environment includes the following services:
 - **No production/real certificates are issued by default**; this environment is for development and pre-production simulation.
 - If you fork or adapt this for production, you must explicitly update the Traefik ACME configuration and associated documentation.
 
-### Stack Overview: Option 1 + Option B
+### Stack Overview: Option 1 (Authoritative)
 
-- **Option 1 (Django + FastAPI)**
-  - Django owns the schema, migrations, and admin UI (internal-only by default).
-  - FastAPI is the public API runtime and talks to Postgres directly.
-  - React is the public frontend and calls `https://${WEBSITE_DOMAIN}/api/...`.
-- **Option B (Traefik strips `/api`)**
-  - Traefik router `api` matches `Host(${WEBSITE_DOMAIN}) && PathPrefix(/api)`.
-  - Middleware `strip-api-prefix` removes `/api` before forwarding to FastAPI.
-  - FastAPI implements routes without the `/api` prefix (for example, `/health`).
+- **Django**: Owns schema, migrations, and admin UI (internal-only by default).
+- **FastAPI**: Public API runtime and talks to Postgres directly; all public routes are under `/api/*`.
+- **React**: Public frontend; calls `https://${WEBSITE_DOMAIN}/api/...`.
+- **Traefik**: Routes `/api/*` to FastAPI as pass-through (no prefix stripping).
 
 ## 📋 Prerequisites
 

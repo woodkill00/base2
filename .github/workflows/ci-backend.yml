@@ -96,6 +96,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r api/requirements.txt
           pip install -r django/requirements.txt
+
+      - name: Run Django migrations (schema owner)
+        env:
+          DJANGO_SETTINGS_MODULE: project.settings.production
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: mydatabase
+          DB_USER: myuser
+          DB_PASSWORD: mypassword
+        working-directory: django
+        run: |
+          python manage.py migrate api_schema --noinput
+
       - name: Start Celery worker
         env:
           CELERY_BROKER_URL: redis://localhost:6379/0
