@@ -32,7 +32,8 @@
     "prettier": "^3.0.0",
     "react-scripts": "^5.0.1",
     "source-map-explorer": "^2.5.3",
-    "storybook": "^8.6.15"
+    "storybook": "^8.6.15",
+    "yaml": "^2.8.2"
   },
   "scripts": {
     "start": "react-scripts start",
