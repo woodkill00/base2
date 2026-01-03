@@ -2,7 +2,7 @@
 # Build with Node, serve static build via Nginx (internal-only behind Traefik)
 
 # Declare all ARG used in any FROM before the first FROM
-ARG NODE_VERSION=18-alpine
+ARG NODE_VERSION=20-alpine
 ARG NGINX_VERSION=1.27.3-alpine
 FROM node:${NODE_VERSION} AS build
 
@@ -10,7 +10,7 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-  RUN npm install && npm cache clean --force
+RUN npm ci && npm cache clean --force
 
 COPY . .
 

@@ -73,10 +73,15 @@ services:
       context: ../react-app
       dockerfile: .Dockerfile
       args:
-        NODE_VERSION: 18-alpine
+        NODE_VERSION: 20-alpine
         NGINX_VERSION: 1.27.3-alpine
         REACT_APP_API_URL: http://localhost:5001
     ports:
       - '8080:8080'
     depends_on:
       - api
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q --spider http://localhost:8080/ || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 30
