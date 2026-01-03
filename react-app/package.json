@@ -53,7 +53,7 @@
     "analyze": "react-scripts build && source-map-explorer 'build/static/js/*.js'",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "postinstall": "patch-package",
+    "postinstall": "node scripts/postinstall.js",
     "generate:openapi:types": "openapi-typescript ../specs/001-django-fastapi-react/contracts/openapi.yaml -o src/services/api/types.d.ts"
   },
   "browserslist": {

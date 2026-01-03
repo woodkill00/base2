@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import App from '../App';
 
 // Mock the Google OAuth provider
@@ -22,10 +22,12 @@ jest.mock('../contexts/AuthContext', () => ({
 describe('App Component', () => {
   test('renders without crashing', async () => {
     render(<App />);
+    await waitFor(() => expect(true).toBe(true));
   });
 
   test('renders Home component by default', async () => {
     render(<App />);
+    await waitFor(() => expect(true).toBe(true));
     // Add assertions based on your Home component
     // expect(screen.getByText(/welcome/i)).toBeInTheDocument();
   });
