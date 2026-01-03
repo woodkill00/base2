@@ -12,7 +12,14 @@ from .models import (
 
 @admin.register(ApiAuthUser)
 class ApiAuthUserAdmin(admin.ModelAdmin):
-    list_display = ("email", "is_active", "is_email_verified", "failed_login_attempts", "locked_until", "created_at")
+    list_display = (
+        "email",
+        "is_active",
+        "is_email_verified",
+        "failed_login_attempts",
+        "locked_until",
+        "created_at",
+    )
     search_fields = ("email",)
     list_filter = ("is_active", "is_email_verified")
 

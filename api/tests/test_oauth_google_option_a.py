@@ -29,7 +29,7 @@ def test_auth_oauth_google_creates_user_and_returns_tokens(monkeypatch):
     monkeypatch.setattr("api.services.oauth_google.verify_google_id_token", fake_verify)
 
     client = TestClient(app)
-    r = client.post("/auth/oauth/google", json={"credential": "dummy"})
+    r = client.post("/api/auth/oauth/google", json={"credential": "dummy"})
     assert r.status_code == 200, r.text
     j = r.json()
     assert j.get("email")
@@ -61,7 +61,7 @@ def test_auth_oauth_google_merge_rules_reject_unverified_collision(monkeypatch):
     monkeypatch.setattr("api.services.oauth_google.verify_google_id_token", fake_verify)
 
     client = TestClient(app)
-    r = client.post("/auth/oauth/google", json={"credential": "dummy"})
+    r = client.post("/api/auth/oauth/google", json={"credential": "dummy"})
     assert r.status_code == 401
 
 
@@ -89,6 +89,6 @@ def test_auth_oauth_google_merge_rules_allow_when_google_verified(monkeypatch):
     monkeypatch.setattr("api.services.oauth_google.verify_google_id_token", fake_verify)
 
     client = TestClient(app)
-    r = client.post("/auth/oauth/google", json={"credential": "dummy"})
+    r = client.post("/api/auth/oauth/google", json={"credential": "dummy"})
     assert r.status_code == 200, r.text
     assert r.json().get("email") == email

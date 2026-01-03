@@ -49,10 +49,10 @@ def test_auth_login_rate_limited_includes_retry_after(monkeypatch):
     client = TestClient(app)
 
     for _ in range(5):
-        r = client.post("/auth/login", json={"email": "u@example.com", "password": "pw"})
+        r = client.post("/api/auth/login", json={"email": "u@example.com", "password": "pw"})
         assert r.status_code == 401
 
-    r6 = client.post("/auth/login", json={"email": "u@example.com", "password": "pw"})
+    r6 = client.post("/api/auth/login", json={"email": "u@example.com", "password": "pw"})
     assert r6.status_code == 429
     assert r6.headers.get("Retry-After")
     assert int(r6.headers["Retry-After"]) >= 1

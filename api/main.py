@@ -253,7 +253,7 @@ try:
         try:
             from api.routes.test_support import router as test_support_router
 
-            app.include_router(test_support_router)
+            app.include_router(test_support_router, prefix="/api")
         except Exception:
             pass
 except Exception:

@@ -72,7 +72,7 @@ def test_auth_login_cookie_mode_sets_http_only_cookie_and_hides_refresh(monkeypa
     monkeypatch.setattr("api.auth.service.login_user", fake_login_user)
 
     client = TestClient(app)
-    r = client.post("/auth/login", json={"email": "u@example.com", "password": "pw"})
+    r = client.post("/api/auth/login", json={"email": "u@example.com", "password": "pw"})
     assert r.status_code == 200, r.text
 
     # Refresh should be a cookie only.
@@ -118,7 +118,7 @@ def test_auth_login_non_cookie_mode_returns_refresh_in_json(monkeypatch):
     monkeypatch.setattr("api.auth.service.login_user", fake_login_user)
 
     client = TestClient(app)
-    r = client.post("/auth/login", json={"email": "u@example.com", "password": "pw"})
+    r = client.post("/api/auth/login", json={"email": "u@example.com", "password": "pw"})
     assert r.status_code == 200, r.text
 
     body = r.json()

@@ -1,6 +1,6 @@
 import uuid
-import zoneinfo
 
+import zoneinfo
 from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -8,6 +8,9 @@ from django.utils.translation import gettext_lazy as _
 from django_countries.fields import CountryField
 from phonenumber_field.modelfields import PhoneNumberField
 
+User = get_user_model()
+
+# Notes / optional imports kept for future reference:
 # from django.contrib.gis.db import models
 # from enum import unique
 # from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
@@ -17,8 +20,6 @@ from phonenumber_field.modelfields import PhoneNumberField
 # from django_countries import countries
 # from django_countries import CountryTuple, countries
 # from model_utils import Choices
-
-User = get_user_model()
 
 
 class ID(models.Model):
