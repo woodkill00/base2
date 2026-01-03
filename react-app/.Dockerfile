@@ -10,6 +10,8 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
+COPY scripts/postinstall.js ./scripts/postinstall.js
+COPY patches ./patches
 RUN npm ci && npm cache clean --force
 
 COPY . .
