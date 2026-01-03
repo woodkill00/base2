@@ -273,9 +273,9 @@ function Check-OpenApiContract([string]$artifactDir, [string]$contractPath) {
 
     $missing = @()
     foreach ($cp in $contractPaths) {
-      $rp = $cp
-      if ($rp -like '/api/*') { $rp = $rp.Substring(4) }
-      if ($runtimePaths -notcontains $rp) { $missing += $cp }
+      # Option 1-only routing: Traefik does NOT strip `/api`, so contract and runtime
+      # must match exact `/api/*` paths.
+      if ($runtimePaths -notcontains $cp) { $missing += $cp }
     }
     $payload.missingPaths = @($missing)
     if ($missing.Count -gt 0) {
