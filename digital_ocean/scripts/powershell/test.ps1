@@ -273,9 +273,9 @@ function Check-OpenApiContract([string]$artifactDir, [string]$contractPath) {
 
     $missing = @()
     foreach ($cp in $contractPaths) {
-      $rp = $cp
-      if ($rp -like '/api/*') { $rp = $rp.Substring(4) }
-      if ($runtimePaths -notcontains $rp) { $missing += $cp }
+      # Option 1-only routing: Traefik does NOT strip `/api`, so contract and runtime
+      # must match exact `/api/*` paths.
+      if ($runtimePaths -notcontains $cp) { $missing += $cp }
     }
     $payload.missingPaths = @($missing)
     if ($missing.Count -gt 0) {
@@ -1874,11 +1874,16 @@ if ($CheckDjangoAdmin) {
     $rootStatus = Get-StatusCodeFromHeaders $rootHdr
     $fooHdr = Curl-Head ("https://{0}/foo" -f $AdminHost)
     $fooStatus = Get-StatusCodeFromHeaders $fooHdr
-    $guardOk = (($rootStatus -ne 200) -and ($fooStatus -ne 200))
-    # Prefer explicit allowed statuses
+    # Root should not be a Traefik 404 (we either want redirect-to-/admin/, or auth/allowlist to block).
+    $allowedRoot = @(301,302,307,308,401,403)
+    $rootOk = ($allowedRoot -contains $rootStatus)
+
+    # Any other non-/admin path should not be served as a 200.
     $allowedNonAdmin = @(401,403,404)
-    $guardOk = $guardOk -or (($allowedNonAdmin -contains $rootStatus) -and ($allowedNonAdmin -contains $fooStatus))
-    $guardPayload = [ordered]@{ host = $AdminHost; rootStatus = $rootStatus; fooStatus = $fooStatus; ok = $guardOk }
+    $fooOk = (($fooStatus -ne 200) -and ($allowedNonAdmin -contains $fooStatus))
+
+    $guardOk = ($rootOk -and $fooOk)
+    $guardPayload = [ordered]@{ host = $AdminHost; rootStatus = $rootStatus; fooStatus = $fooStatus; rootOk = $rootOk; fooOk = $fooOk; ok = $guardOk }
     Write-ServiceArtifact -artifactDir $artifactDir -serviceName 'meta' -fileName 'admin-host-path-guard.json' -content $guardPayload
     if (-not $guardOk) { $failures += "Admin host path guard failed: statuses root=$rootStatus, foo=$fooStatus ($AdminHost)" }
   } catch {}

@@ -19,13 +19,8 @@ def test_runtime_openapi_includes_contract_paths():
     with contract_path.open("r", encoding="utf-8") as f:
         contract = yaml.safe_load(f)
 
-    # Traefik strips the '/api' prefix before forwarding to FastAPI.
-    # Normalize contract paths by removing the '/api' prefix when present.
-    contract_paths_raw = set((contract.get("paths") or {}).keys())
-    contract_paths = set(
-        p[4:] if p.startswith("/api") else p
-        for p in contract_paths_raw
-    )
+    # Option 1-only routing: external '/api/*' remains '/api/*' internally.
+    contract_paths = set((contract.get("paths") or {}).keys())
 
     missing = sorted(p for p in contract_paths if p not in runtime_paths)
     assert not missing, f"Runtime missing contract paths: {json.dumps(missing)}"

@@ -84,7 +84,7 @@ def test_auth_verify_email_consumes_token_and_sets_flag():
 
     before_audit = _count_audit_events("user.verify_email", str(user.id))
 
-    r = client.post("/auth/verify-email", json={"token": raw})
+    r = client.post("/api/auth/verify-email", json={"token": raw})
     assert r.status_code == 200, r.text
 
     after_audit = _count_audit_events("user.verify_email", str(user.id))
@@ -97,13 +97,13 @@ def test_auth_verify_email_consumes_token_and_sets_flag():
     assert updated.is_email_verified is True
 
     # Single-use: second attempt should fail.
-    r2 = client.post("/auth/verify-email", json={"token": raw})
+    r2 = client.post("/api/auth/verify-email", json={"token": raw})
     assert r2.status_code == 400
 
 
 def test_auth_verify_email_rejects_unknown_token():
     client = TestClient(app)
-    r = client.post("/auth/verify-email", json={"token": "nope"})
+    r = client.post("/api/auth/verify-email", json={"token": "nope"})
     assert r.status_code in (400, 500)
     # If DB isn't reachable, endpoint may 500; that's fine for this test.
 
@@ -121,8 +121,8 @@ def test_auth_forgot_password_enumeration_safe_and_sends_email_only_if_user_exis
     before_missing = _count_outbox_rows_for(missing)
     before_existing = _count_outbox_rows_for(existing)
 
-    r1 = client.post("/auth/forgot-password", json={"email": missing})
-    r2 = client.post("/auth/forgot-password", json={"email": existing})
+    r1 = client.post("/api/auth/forgot-password", json={"email": missing})
+    r2 = client.post("/api/auth/forgot-password", json={"email": existing})
 
     assert r1.status_code == 200
     assert r2.status_code == 200
@@ -156,7 +156,7 @@ def test_auth_reset_password_updates_hash_consumes_token_and_revokes_refresh_tok
 
     before_audit = _count_audit_events("user.reset_password", str(user.id))
 
-    r = client.post("/auth/reset-password", json={"token": raw, "password": new_pw})
+    r = client.post("/api/auth/reset-password", json={"token": raw, "password": new_pw})
     assert r.status_code == 200, r.text
 
     after_audit = _count_audit_events("user.reset_password", str(user.id))
@@ -169,7 +169,7 @@ def test_auth_reset_password_updates_hash_consumes_token_and_revokes_refresh_tok
     assert verify_password(new_pw, updated.password_hash)
 
     # Single-use: second attempt should fail.
-    r2 = client.post("/auth/reset-password", json={"token": raw, "password": "Another123!"})
+    r2 = client.post("/api/auth/reset-password", json={"token": raw, "password": "Another123!"})
     assert r2.status_code == 400
 
     assert _count_unrevoked_refresh_tokens(str(user.id)) == 0

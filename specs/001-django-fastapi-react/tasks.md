@@ -1730,3 +1730,124 @@
   - `CONTRIBUTING.md`
 - **Verify**:
   - PRs prompt for tests, screenshots, rollout notes
+
+---
+
+## Phase 10: Option 1 Only (Remove Option 2 / “Option B” Path Rewriting)
+
+**Purpose**: Make the entire build + docs enforce only:
+
+- Django owns schema/migrations/admin
+- FastAPI is the public API runtime and talks to Postgres directly
+- React calls `https://${WEBSITE_DOMAIN}/api/...`
+- Traefik routes `/api/*` to FastAPI **without** stripping `/api`
+
+- [x] T240 Remove Traefik `/api` strip middleware and enforce pass-through routing
+- **Touch**:
+  - `traefik/dynamic.yml` (remove `strip-api-prefix` middleware usage and definition)
+  - `digital_ocean/scripts/powershell/validate-predeploy.ps1` (remove assertions that depend on strip middleware; add guard that it is absent)
+  - Any docs mentioning “strip” (see T250)
+- **Verify**:
+  - `https://${WEBSITE_DOMAIN}/api/health` reaches FastAPI
+  - No router/middleware rewrites or strips `/api`
+
+- [x] T241 Make FastAPI serve `/api/*` natively (no internal “Option 2” paths)
+- **Touch**:
+  - `api/main.py` (move all public endpoints under `/api`; ensure OpenAPI paths match)
+  - `api/routes/*` (use a shared `APIRouter(prefix="/api")` or equivalent)
+  - `api/tests/*` (update any hard-coded paths)
+- **Verify**:
+  - `GET /api/health` returns 200
+  - `GET /api/openapi.json` lists paths beginning with `/api/`
+
+- [x] T242 Update local compose + container health checks to `/api/health`
+- **Touch**:
+  - `local.docker.yml` (FastAPI healthcheck; remove “Option B” comment)
+  - `docker-compose*.yml` variants if any (ensure consistent checks)
+- **Verify**:
+  - `docker compose up` shows API service healthy
+  - No healthcheck hits `/health` anymore
+
+- [x] T243 Update CI/e2e readiness probes and smoke scripts to `/api/health`
+- **Touch**:
+  - `.github/workflows/ci-e2e.yml` (wait-on URL)
+  - `scripts/chaos_smoke.sh` (API health probe)
+  - Any other scripts calling `/health`
+- **Verify**:
+  - CI passes without path-rewrite assumptions
+  - Smoke tests pass against `/api/health`
+
+- [x] T244 Remove FastAPI-owned schema/migration runner from runtime boot
+- **Touch**:
+  - `api/main.py` (remove any `apply_migrations()`/runner invocation)
+  - `api/migrations/runner.py` (disable/remove runtime behavior)
+  - `api/migrations/sql/*` (retire from runtime; keep only if explicitly documented as legacy reference)
+- **Verify**:
+  - FastAPI boots without creating/modifying schema
+  - Database schema is unchanged by API container startup
+
+- [x] T245 Move API-auth/email/outbox schema into Django migrations (Django is the single schema owner)
+- **Touch**:
+  - `django/*` (create a dedicated Django app for API-facing tables, or map existing models)
+  - Django models must use `Meta.db_table = ...` to match tables FastAPI reads/writes (if keeping the existing table names)
+  - Django migrations: `CreateModel` / `RunSQL` as needed to match current SQL schema
+  - `django/admin.py` (register internal models)
+- **Verify**:
+  - `python manage.py migrate` creates all required tables
+  - FastAPI can read/write auth + email/outbox data with zero API-side migrations
+
+- [x] T246 Remove any “Option 2” code paths, flags, env vars, or docs toggles
+- **Touch**:
+  - `.env.example` (remove variables that only exist to support path stripping or API-owned migrations)
+  - `docs/*` and `shared/docs/*` (remove Option 2 toggles/branches)
+  - `digital_ocean/scripts/*` (remove Option 2 branches)
+- **Verify**:
+  - There is no configuration path that enables the removed behavior
+  - “Option B/Option 2” terms no longer appear in repo text (excluding this checklist and guardrails in `.github/workflows/option1-guard.yml` and `digital_ocean/scripts/powershell/validate-predeploy.ps1`)
+
+- [x] T247 Align React API base URL and client code to always call `/api/*`
+- **Touch**:
+  - `react-app/.env*` (ensure base points to `.../api`)
+  - `react-app/src/*` (API client helpers; remove any `/health` or non-`/api` usage)
+- **Verify**:
+  - Frontend calls `https://${WEBSITE_DOMAIN}/api/...` only
+  - Login/flags/items flows work end-to-end
+
+- [x] T248 Update OpenAPI contract to Option 1-only paths (`/api/*`)
+- **Touch**:
+  - `specs/001-django-fastapi-react/contracts/openapi.yaml` (paths must be `/api/...`)
+  - `api/tests/contract/*` (contract runtime checks updated accordingly)
+- **Verify**:
+  - Contract tests pass
+  - OpenAPI served by FastAPI matches the contract paths
+
+- [x] T249 Update docs/specs to remove Option 2 language and explain Option 1-only routing clearly
+- **Touch**:
+  - `README.md` (remove “Option B”; describe only Option 1)
+  - `specs/001-django-fastapi-react/plan.md` (remove any Option 2 references)
+  - `specs/001-django-fastapi-react/quickstart.md` (Option 1-only)
+  - `docs/CONFIG.md`, `project_overview.md`, `shared/docs/current_state.md` (remove stripPrefix/Option B references)
+- **Verify**:
+  - Grep for “Option B”, “Option 2”, “strip-api-prefix”, “stripPrefix” returns nothing (excluding this checklist and guardrails in `.github/workflows/option1-guard.yml` and `digital_ocean/scripts/powershell/validate-predeploy.ps1`)
+  - All examples use `/api/...` endpoints
+
+- [x] T250 Add a regression guard: repo-wide check that `/health` is not used as a public FastAPI route
+- **Touch**:
+  - Add a small script or CI step (e.g., in `.github/workflows/sync-config.yml` or a new workflow) that fails if:
+    - Traefik uses strip middleware for `/api`
+    - FastAPI defines a public `/health` route (non-`/api/health`)
+    - Docs mention “Option B/Option 2”
+- **Verify**:
+  - CI fails fast if someone reintroduces Option 2 semantics
+
+- [x] T251 Validate production deploy entrypoint still works with Option 1-only routing and Django-owned migrations
+- **Touch**:
+  - `digital_ocean/scripts/powershell/deploy.ps1` (ensure migrate runs for Django; ensure API healthcheck URLs use `/api/health`)
+  - Any “AllTests” probe URLs updated to `/api/...`
+- **Verify**:
+  - `deploy.ps1 -AllTests` passes on a clean environment
+  - UpdateOnly deploy works against an existing environment
+
+## Phase 10: Option 1 Only – CI/CD, Coverage, and Traefik Cert Enforcement
+
+(extended tasks included)

@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "common",
     "users",
     "catalog",
+    "api_schema",
 ]
 
 # Password hashing: production must not run reduced-iteration hashing.

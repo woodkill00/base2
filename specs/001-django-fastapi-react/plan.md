@@ -1,4 +1,3 @@
-
 # Implementation Plan: Full-stack Baseline (Django + FastAPI + React)
 
 **Branch**: `001-django-fastapi-react` | **Date**: 2025-12-24 | **Spec**: `specs/001-django-fastapi-react/spec.md`
@@ -30,19 +29,19 @@ Deliver a production-like, staging-safe full stack behind Traefik (staging-only 
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-1) **Spec → Plan → Tasks discipline**: PASS (spec exists; this plan stays technical; tasks are explicitly out of scope for `/speckit.plan`).
-2) **TDD by default**: PASS (plan requires unit/integration/e2e coverage and deploy gates).
-3) **Environment parity**: PASS (staging and local share the same Compose topology; differences explicitly limited to TLS and dev ergonomics).
-4) **Container-first, Compose-first**: PASS (all services are Compose services; healthchecks and dependencies documented).
-5) **Single-entrypoint operations**: PASS (no alternative deploy path introduced; integrations are via `deploy.ps1`).
-6) **Observability/artifacts**: PASS (deploy/test scripts already capture artifacts; plan extends artifacts for OpenAPI and auth flows).
-7) **Django is domain source of truth**: PASS (new domain concepts begin in `django/common/models.py`; user-related models may be wrapped/adapted in `django/users/models.py` without forking semantics).
-8) **FastAPI mirrors Django semantics**: PASS with explicit plan gates (mirror-contract tests + schema drift checks).
-9) **React contract and cookie security**: PASS (plan uses HttpOnly cookies + CSRF; avoids localStorage tokens).
-10) **Trust boundaries and internal-only surfaces**: PASS (Traefik is the only published port; admin tools gated by allowlist/auth).
-11) **TLS/certs policy**: PASS (Traefik resolver is `le-staging`; `test.ps1` verifies staging resolver usage).
+1. **Spec → Plan → Tasks discipline**: PASS (spec exists; this plan stays technical; tasks are explicitly out of scope for `/speckit.plan`).
+2. **TDD by default**: PASS (plan requires unit/integration/e2e coverage and deploy gates).
+3. **Environment parity**: PASS (staging and local share the same Compose topology; differences explicitly limited to TLS and dev ergonomics).
+4. **Container-first, Compose-first**: PASS (all services are Compose services; healthchecks and dependencies documented).
+5. **Single-entrypoint operations**: PASS (no alternative deploy path introduced; integrations are via `deploy.ps1`).
+6. **Observability/artifacts**: PASS (deploy/test scripts already capture artifacts; plan extends artifacts for OpenAPI and auth flows).
+7. **Django is domain source of truth**: PASS (new domain concepts begin in `django/common/models.py`; user-related models may be wrapped/adapted in `django/users/models.py` without forking semantics).
+8. **FastAPI mirrors Django semantics**: PASS with explicit plan gates (mirror-contract tests + schema drift checks).
+9. **React contract and cookie security**: PASS (plan uses HttpOnly cookies + CSRF; avoids localStorage tokens).
+10. **Trust boundaries and internal-only surfaces**: PASS (Traefik is the only published port; admin tools gated by allowlist/auth).
+11. **TLS/certs policy**: PASS (Traefik resolver is `le-staging`; `test.ps1` verifies staging resolver usage).
 
 **Repo hygiene note (non-blocking)**: The Spec-Kit scripts warn that multiple specs share prefix `001` (`001-fastapi-django-deploy` and `001-django-fastapi-react`). This plan proceeds on the current branch directory; a future cleanup should renumber one spec directory to avoid tooling ambiguity.
 
@@ -89,6 +88,7 @@ This inventory MUST match `local.docker.yml`, Traefik dynamic routing, deploy or
 ### 1.1 Edge + routing
 
 **traefik**
+
 - Public edge entrypoint (ports 80/443)
 - Responsibilities: TLS termination, host/path routing, security headers middleware, coarse rate limiting, retries
 - TLS policy: staging-only cert issuance via resolver `le-staging` (enforced in `traefik/traefik.yml` and verified in deploy tests)
@@ -97,48 +97,59 @@ This inventory MUST match `local.docker.yml`, Traefik dynamic routing, deploy or
 ### 1.2 Web serving
 
 **react-app**
+
 - React SPA built in container, served by Nginx runtime on port 8080 (internal-only behind Traefik)
 
 **nginx**
+
 - Standalone internal Nginx (present in compose). Used only if needed for internal proxying; must never become a second public edge.
 
 **nginx-static**
+
 - Serves Django-collected static files (volume `django_static`), exposed internally at port 8081 and routed only for Django admin static.
 
 ### 1.3 Application services
 
 **api (FastAPI)**
-- Primary API surface (external paths are under `/api/*` as seen by clients; Traefik strips `/api` before forwarding)
+
+- Primary API surface (external paths are under `/api/*` as seen by clients; Traefik forwards `/api/*` without rewriting)
 - Owns: OpenAPI exposure, auth/session endpoints, CSRF enforcement, OAuth handshake endpoints, health probes, Celery helper endpoints
 
 **django**
+
 - Canonical domain models, migrations, and Django admin
 - Runs `migrate`, `check --deploy`, `collectstatic` during container start (also re-run by deploy script)
 
 ### 1.4 Data & messaging
 
 **postgres**
+
 - Primary database
 - Internal-only; healthchecked via `pg_isready`
 
 **redis**
+
 - Internal-only ephemeral store
 - Used for: Celery broker (+ optional result backend), rate-limit counters (recommended), optional session-related state
 
 ### 1.5 Background processing and admin UIs
 
 **celery-worker**
+
 - Executes async jobs
 - Current wiring uses the `api/` image and Celery app in `api/tasks.py`
 
 **celery-beat**
+
 - Schedules periodic jobs (same Celery app)
 
 **flower**
+
 - Celery monitoring UI
 - Internal-only by default; if routed, must be gated (basic auth + allowlist in Traefik)
 
 **pgadmin**
+
 - DB admin UI
 - Internal-only by default; if routed, must be gated (basic auth + allowlist in Traefik)
 
@@ -154,7 +165,7 @@ Internet
   v
 [traefik] (public edge; TLS; headers; rate limit; retry)
   |------------------ host: WEBSITE_DOMAIN, path: /        -> [react-app]
-  |------------------ host: WEBSITE_DOMAIN, path: /api/*   -> [api]   (Traefik strips /api)
+  |------------------ host: WEBSITE_DOMAIN, path: /api/*   -> [api]   (pass-through; no strip)
   |
   |-- host: admin.<domain> or /admin (guarded)             -> [django]
   |-- host: admin.<domain>, path: /static/*                -> [nginx-static]
@@ -199,7 +210,7 @@ Internet
 ### 4.1 Routing rules (authoritative)
 
 - Web UI: `Host(WEBSITE_DOMAIN|www.WEBSITE_DOMAIN) && PathPrefix(/)` -> `react-app:8080`
-- API: `Host(WEBSITE_DOMAIN) && PathPrefix(/api)` -> `api:FASTAPI_PORT` with `stripPrefix(/api)`
+- API: `Host(WEBSITE_DOMAIN) && PathPrefix(/api)` -> `api:FASTAPI_PORT` (pass-through)
 - Django admin: subdomain or path, gated by basic auth + allowlist
 - Admin UIs (pgAdmin/Flower/Traefik dashboard): subdomain routes gated by basic auth + allowlist
 

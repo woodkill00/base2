@@ -104,6 +104,7 @@ backend/dist/
 coverage/
 .nyc_output/
 *.lcov
+coverage.xml
 api/.coverage
 .coverage
 

@@ -20,7 +20,7 @@ def test_auth_register_login_refresh_me_logout_flow():
     email = f"u_{uuid.uuid4().hex[:12]}@example.com"
     password = "Test1234!"
 
-    r = client.post("/auth/register", json={"email": email, "password": password})
+    r = client.post("/api/auth/register", json={"email": email, "password": password})
     assert r.status_code == 201, r.text
     j = r.json()
     assert j.get("email") == email
@@ -28,15 +28,15 @@ def test_auth_register_login_refresh_me_logout_flow():
 
     access_token = j["access_token"]
 
-    me = client.get("/auth/me", headers={"Authorization": f"Bearer {access_token}"})
+    me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {access_token}"})
     assert me.status_code == 200
     assert me.json().get("email") == email
 
-    refreshed = client.post("/auth/refresh")
+    refreshed = client.post("/api/auth/refresh")
     assert refreshed.status_code == 200, refreshed.text
     j2 = refreshed.json()
     assert j2.get("email") == email
     assert j2.get("access_token")
 
-    out = client.post("/auth/logout")
+    out = client.post("/api/auth/logout")
     assert out.status_code == 204

@@ -59,14 +59,23 @@ def _ensure_user(u: SeedUser) -> None:
 
 
 def main() -> int:
-    # Ensure schema exists before seeding (idempotent).
+    # Schema ownership is Django.
+    # Ensure required tables exist before seeding.
     try:
-        from api.migrations.runner import apply_migrations
+        from api.db import db_conn
 
-        apply_migrations()
-    except Exception:
-        # If migrations fail here, the API container would also fail later; surface clearly.
-        print("Seed failed: unable to apply migrations", file=sys.stderr)
+        with db_conn() as conn, conn.cursor() as cur:
+            cur.execute("SELECT to_regclass('public.api_auth_users')")
+            exists = cur.fetchone()[0] is not None
+        if not exists:
+            print(
+                "Seed failed: required tables are missing. Run Django migrations first: "
+                "`python manage.py migrate` (using project.settings.production against Postgres).",
+                file=sys.stderr,
+            )
+            return 2
+    except Exception as e:
+        print(f"Seed failed: unable to verify schema ({e})", file=sys.stderr)
         raise
 
     admin_email = _env("SEED_ADMIN_EMAIL")

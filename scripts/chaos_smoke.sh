@@ -18,6 +18,6 @@ echo "[INFO] Waiting 10s for services to settle..."
 sleep 10
 
 echo "[INFO] Probing API health"
-curl -fsS http://localhost:8000/health || echo "[WARN] API health probe failed (expected during chaos)"
+curl -fsS http://localhost:8000/api/health || echo "[WARN] API health probe failed (expected during chaos)"
 
 echo "[INFO] Done"

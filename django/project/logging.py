@@ -60,7 +60,7 @@ def _redact_value(value: Any) -> Any:
             else:
                 redacted[str(k)] = _redact_value(v)
         return redacted
-    if isinstance(value, (list, tuple, set)):
+    if isinstance(value, list | tuple | set):
         seq = [_redact_value(v) for v in value]
         return seq if isinstance(value, list) else type(value)(seq)
     return value
@@ -75,7 +75,7 @@ class RedactingFilter(logging.Filter):
             for key, raw in list(record.__dict__.items()):
                 if _is_sensitive_key(str(key)):
                     record.__dict__[key] = "[REDACTED]"
-                elif isinstance(raw, (dict, list, tuple, set, str, bytes)):
+                elif isinstance(raw, dict | list | tuple | set | str | bytes):
                     record.__dict__[key] = _redact_value(raw)
         except Exception:
             return True

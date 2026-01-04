@@ -37,14 +37,14 @@ Django and FastAPI both support SMTP-style env vars (see `.env.example`). If SMT
 Feature flags are controlled by environment variables on the API service.
 
 - `FEATURE_FLAGS`
-	- Comma-separated list of enabled flag names.
-	- Example: `FEATURE_FLAGS=NEW_SETTINGS_UI,ENABLE_BETA_PAYMENTS`
+  - Comma-separated list of enabled flag names.
+  - Example: `FEATURE_FLAGS=NEW_SETTINGS_UI,ENABLE_BETA_PAYMENTS`
 - `FLAG_<NAME>`
-	- Overrides a single flag explicitly.
-	- Allowed values: `true|false|1|0|yes|no|on|off` (case-insensitive).
-	- Example: `FLAG_NEW_SETTINGS_UI=true`
+  - Overrides a single flag explicitly.
+  - Allowed values: `true|false|1|0|yes|no|on|off` (case-insensitive).
+  - Example: `FLAG_NEW_SETTINGS_UI=true`
 
-The API exposes effective flags at `GET /flags` (served externally as `GET /api/flags` when Traefik strips the `/api` prefix).
+The API exposes effective flags at `GET /api/flags`.
 
 Frontend usage:
 

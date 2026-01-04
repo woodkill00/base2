@@ -9,14 +9,14 @@ http:
         - redirect-to-https
       service: noop@internal
 
-    # API: external /api/* -> internal /* (strip /api)
+    # API: external /api/* -> internal /api/* (pass-through; no strip)
     api:
+      # Pass-through: external /api/* -> internal /api/*
       rule: Host(`${WEBSITE_DOMAIN}`) && PathPrefix(`/api`)
       priority: 200
       entryPoints:
         - websecure
       middlewares:
-        - strip-api-prefix
         - security-headers
         - security-csp
         - rate-limit
@@ -38,6 +38,21 @@ http:
       tls:
         certResolver: le-staging
       service: django-admin
+
+    # Admin subdomain root convenience: visiting https://admin.<domain>/ should land on /admin/
+    django-admin-subdomain-root:
+      rule: Host(`admin.${WEBSITE_DOMAIN}`) && Path(`/`)
+      priority: 196
+      entryPoints:
+        - websecure
+      middlewares:
+        - security-headers-no-hsts
+        - traefik-basic-auth
+        - django-admin-allow-ip
+        - django-admin-root-to-admin
+      tls:
+        certResolver: le-staging
+      service: noop@internal
 
     # Optional: Django admin on main domain /admin (guarded)
     django-admin-path:
@@ -184,11 +199,6 @@ http:
         port: 443
         permanent: true
 
-    strip-api-prefix:
-      stripPrefix:
-        prefixes:
-          - /api
-
     security-headers:
       headers:
         stsSeconds: 31536000
@@ -263,4 +273,9 @@ http:
       redirectRegex:
         regex: '^https?://([^/]+)/?$'
         replacement: 'https://$1/docs'
+
+    django-admin-root-to-admin:
+      redirectRegex:
+        regex: '^https?://([^/]+)/?$'
+        replacement: 'https://$1/admin/'
         permanent: false

@@ -23,7 +23,7 @@ services:
     mem_limit: 256m
     cpus: '0.5'
 
-  # FastAPI API (Option B: internal /health, external /api/health)
+  # FastAPI API (Option 1: native /api/* surface)
   api:
     build:
       context: ./api
@@ -54,7 +54,11 @@ services:
       - /tmp
       - /var/tmp
     healthcheck:
-      test: ['CMD', 'curl', '-fsS', 'http://localhost:${FASTAPI_PORT}/health']
+      test:
+        [
+          'CMD-SHELL',
+          'python -c "import os, http.client, sys; p=int(os.environ.get(\"PORT\", \"8000\")); c=http.client.HTTPConnection(\"localhost\", p, timeout=3); c.request(\"GET\", \"/api/health\"); r=c.getresponse(); sys.exit(0 if r.status==200 else 1)"',
+        ]
     mem_limit: 512m
     cpus: '0.75'
 

@@ -17,11 +17,8 @@ def _load_contract_paths(contract_path: Path) -> set[str]:
         raise SystemExit("Contract has no 'paths' map")
     out: set[str] = set()
     for p in paths.keys():
-        # Normalize contract paths: external paths include '/api' prefix.
-        if isinstance(p, str) and p.startswith("/api/"):
-            out.add(p[len("/api") :])
-        else:
-            out.add(str(p))
+        # Option 1-only routing: external '/api/*' remains '/api/*' internally.
+        out.add(str(p))
     return out
 
 
@@ -61,12 +58,11 @@ def main() -> int:
 
     # Explicit guardrail: ensure core auth endpoints exist in runtime.
     required_auth = {
-        "/users/signup",
-        "/users/login",
-        "/users/logout",
-        "/users/me",
-        "/oauth/google/start",
-        "/oauth/google/callback",
+        "/api/auth/register",
+        "/api/auth/login",
+        "/api/auth/logout",
+        "/api/auth/me",
+        "/api/auth/oauth/google",
     }
     missing_auth = sorted(required_auth - runtime_paths)
     if missing_auth:

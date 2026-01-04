@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Body, Request
+from fastapi.responses import JSONResponse
 import logging
 import os
 import time
@@ -64,6 +65,13 @@ app = FastAPI(
     openapi_url=(_openapi_url if _docs_enabled else None),
 )
 
+
+@app.get("/api/openapi.json", include_in_schema=False)
+async def openapi_alias():
+    # Keep /api/openapi.json stable for contract/runtime checks even if
+    # docs/openapi are served at /openapi.json (e.g., swagger subdomain).
+    return JSONResponse(app.openapi())
+
 # Observability: optional OpenTelemetry
 try:
     from api.otel import configure_otel
@@ -106,14 +114,7 @@ try:
 except Exception:
     pass
 
-# Ensure DB schema is present (idempotent migrations)
-try:
-    from api.migrations.runner import apply_migrations
-
-    apply_migrations()
-except Exception:
-    # Keep boot resilient; schema creation will be retried on next boot.
-    pass
+# Schema ownership is Django. API must not run migrations at boot.
 
 # Middleware: request id
 try:
@@ -240,31 +241,31 @@ try:
     from api.routes.tenant import router as tenant_router
     from api.routes.privacy import router as privacy_router
 
-    app.include_router(auth_router)
-    app.include_router(metrics_router)
-    app.include_router(oauth_router)
-    app.include_router(users_router)
-    app.include_router(tenant_router)
-    app.include_router(privacy_router)
+    app.include_router(auth_router, prefix="/api")
+    app.include_router(metrics_router, prefix="/api")
+    app.include_router(oauth_router, prefix="/api")
+    app.include_router(users_router, prefix="/api")
+    app.include_router(tenant_router, prefix="/api")
+    app.include_router(privacy_router, prefix="/api")
 
     # E2E-only helpers (must be explicitly enabled; never in production).
     if _E2E_TEST_MODE and str(getattr(settings, "ENV", "development")).strip().lower() != "production":
         try:
             from api.routes.test_support import router as test_support_router
 
-            app.include_router(test_support_router)
+            app.include_router(test_support_router, prefix="/api")
         except Exception:
             pass
 except Exception:
     # Keep app bootable even if routes fail to import.
     pass
 
-@app.get("/health")
+@app.get("/api/health")
 async def health():
     return {"ok": True, "service": "api", "db_ok": db_ping()}
 
 
-@app.get("/flags")
+@app.get("/api/flags")
 async def flags():
     try:
         from api.flags import get_flags
@@ -275,12 +276,12 @@ async def flags():
 
 
 # --- Catalog (proxy to Django internal) ---
-@app.get("/items")
+@app.get("/api/items")
 async def list_items():
     raise HTTPException(status_code=501, detail="/api/items is not implemented yet")
 
 
-@app.get("/items/{item_id}")
+@app.get("/api/items/{item_id}")
 async def get_item(item_id: int):
     raise HTTPException(status_code=501, detail="/api/items/{item_id} is not implemented yet")
 
@@ -288,7 +289,7 @@ async def get_item(item_id: int):
 DEFAULT_CREATE_ITEM_BODY = Body(...)
 
 
-@app.post("/items")
+@app.post("/api/items")
 async def create_item(payload: dict = DEFAULT_CREATE_ITEM_BODY):
     raise HTTPException(status_code=501, detail="/api/items POST is not implemented yet")
 
@@ -303,7 +304,7 @@ async def _enqueue_celery_ping(request: Request):
         raise HTTPException(status_code=500, detail=f"enqueue_failed: {e}") from e
 
 
-@app.post("/celery/ping")
+@app.post("/api/celery/ping")
 async def celery_ping_root(request: Request):
     return await _enqueue_celery_ping(request)
 
@@ -322,6 +323,6 @@ async def _read_celery_result(task_id: str):
         raise HTTPException(status_code=500, detail=f"result_failed: {e}") from e
 
 
-@app.get("/celery/result/{task_id}")
+@app.get("/api/celery/result/{task_id}")
 async def celery_result_root(task_id: str):
     return await _read_celery_result(task_id)
