@@ -7,7 +7,7 @@ description: 'Tasks for React Glass UI System + App Shell'
 **Input**: Design documents from specs/002-react-design/
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: Tests will be included only where explicitly requested; this feature emphasizes Storybook and accessibility checks.
+**Tests**: Tests are mandatory and must be written first per constitution. Include RTL, accessibility (jest-axe), and Storybook interaction tests.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -48,14 +48,32 @@ description: 'Tasks for React Glass UI System + App Shell'
 
 **Independent Test**: Toggle persists across reloads; glass acceptance checklist passes in light/dark; focus-visible glow visible; contrast ≥ 4.5:1.
 
+### Testing Scenarios
+
+- Cookie precedence: backend profile override → client `theme` cookie → `prefers-color-scheme` fallback.
+- No localStorage usage; root theme class set before React mounts to prevent flicker.
+- Set-Cookie attributes present: Secure=true, SameSite=Lax, Path=/, Domain=.woodkilldev.com, Expires≈180 days.
+- Fallback when `backdrop-filter` is unsupported: semi-transparent background + border/shadow (no blur) retains fidelity.
+- Focus-visible glow (3px) and contrast ≥ 4.5:1 validated across interactive elements.
+
+### Tests for User Story 1 (MANDATORY — write first)
+
+- [ ] T050 [P] [US1] RTL unit tests for ThemeToggle in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_\theme-toggle.test.tsx
+- [ ] T051 [P] [US1] Accessibility tests (jest-axe) for focus-visible and contrast in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_\glass-a11y.test.tsx
+- [ ] T052 [P] [US1] Storybook interaction tests for Header/ThemeToggle in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\ThemeToggle.stories.tsx
+- [ ] T063 [P] [US1] RTL tests: cookie precedence (backend override > client cookie > prefers-color-scheme) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_\theme-persistence.test.tsx
+- [ ] T064 [P] [US1] RTL tests: ensure no localStorage usage and root theme class set pre-mount in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_\theme-persistence.test.tsx
+- [ ] T065 [P] [US1] Playwright e2e: verify Set-Cookie attributes (Secure, SameSite=Lax, Path=/, Domain=.woodkilldev.com, Expires≈180d) in c:\Users\theju\Documents\coding\website_build\base2\react-app\e2e\theme-cookie.spec.ts
+- [ ] T066 [P] [US1] RTL/Storybook: simulate no `backdrop-filter` support and verify fallback styles (semi-transparent + border/shadow) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_\glass-fallback.test.tsx
+
 ### Implementation for User Story 1
 
-- [ ] T010 [P] [US1] Implement `ThemeToggle` component in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\ThemeToggle.jsx
-- [ ] T011 [P] [US1] Add theme persistence util in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\services\theme\persistence.js
-- [ ] T012 [P] [US1] Implement animated sun/moon SVG in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\icons\SunMoon.jsx
-- [ ] T013 [US1] Integrate `ThemeToggle` into app header in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassHeader.jsx
+- [ ] T010 [P] [US1] Implement `ThemeToggle` component in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\ThemeToggle.tsx
+- [ ] T011 [P] [US1] Add theme persistence util in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\services\theme\persistence.ts
+- [ ] T012 [P] [US1] Implement animated sun/moon SVG in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\icons\SunMoon.tsx
+- [ ] T013 [US1] Integrate `ThemeToggle` into app header in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassHeader.tsx
 - [ ] T014 [US1] Apply focus-visible 3px glow to interactive elements in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\glass.css
-- [ ] T015 [US1] Storybook: ThemeToggle and header stories (light/dark, hover/focus) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\ThemeToggle.stories.jsx
+- [ ] T015 [US1] Storybook: ThemeToggle and header stories (light/dark, hover/focus) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\ThemeToggle.stories.tsx
 
 **Checkpoint**: User Story 1 independently testable via UI and Storybook.
 
@@ -67,15 +85,32 @@ description: 'Tasks for React Glass UI System + App Shell'
 
 **Independent Test**: Each component renders in isolation with accessible states; Storybook stories demonstrate light/dark and interaction states without console warnings.
 
+### Testing Scenarios
+
+- Blur fallback: when `backdrop-filter` unsupported, components render semi-transparent with border/shadow (no blur) consistently.
+- Storybook interactions validate light/dark themes with fallback toggles; no console warnings.
+- Accessibility in fallback mode: contrast ≥ 4.5:1 for key text/controls; focus-visible glow present.
+- Modal behavior: ESC/backdrop click closes; focus returns to trigger; tabs switch via keyboard.
+- Button variants show hover elevation and disabled states correctly under both themes.
+
+### Tests for User Story 2 (MANDATORY — write first)
+
+- [ ] T053 [P] [US2] RTL tests for `GlassButton` variants in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_\glass-button.test.tsx
+- [ ] T054 [P] [US2] RTL tests for `GlassModal` open/close + focus trap in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_\glass-modal.test.tsx
+- [ ] T055 [P] [US2] Storybook interaction tests for all components in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\glass\
+- [ ] T067 [P] [US2] RTL tests: blur fallback active on components when `backdrop-filter` unsupported in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_\glass-components-fallback.test.tsx
+- [ ] T068 [P] [US2] Storybook interactions: verify light/dark with glass fallback toggles across components in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\glass\GlassFallback.stories.tsx
+- [ ] T069 [P] [US2] Accessibility (jest-axe): contrast ≥ 4.5:1 in fallback mode for key text/controls in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_\glass-a11y-fallback.test.tsx
+
 ### Implementation for User Story 2
 
-- [ ] T016 [P] [US2] Create `GlassCard` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassCard.jsx
-- [ ] T017 [P] [US2] Create `GlassButton` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassButton.jsx
-- [ ] T018 [P] [US2] Create `GlassInput` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassInput.jsx
-- [ ] T019 [P] [US2] Create `GlassTabs` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassTabs.jsx
-- [ ] T020 [P] [US2] Create `GlassModal` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassModal.jsx
-- [ ] T021 [P] [US2] Create `GlassSpinner` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassSpinner.jsx
-- [ ] T022 [P] [US2] Create `GlassSkeleton` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassSkeleton.jsx
+- [ ] T016 [P] [US2] Create `GlassCard` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassCard.tsx
+- [ ] T017 [P] [US2] Create `GlassButton` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassButton.tsx
+- [ ] T018 [P] [US2] Create `GlassInput` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassInput.tsx
+- [ ] T019 [P] [US2] Create `GlassTabs` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassTabs.tsx
+- [ ] T020 [P] [US2] Create `GlassModal` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassModal.tsx
+- [ ] T021 [P] [US2] Create `GlassSpinner` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassSpinner.tsx
+- [ ] T022 [P] [US2] Create `GlassSkeleton` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassSkeleton.tsx
 - [ ] T023 [US2] Implement inline SVG icon pattern with aria labels in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\icons\README.md
 - [ ] T024 [US2] Storybook: Stories for all components with light/dark, hover/focus, disabled/error in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\glass\
 
@@ -89,13 +124,25 @@ description: 'Tasks for React Glass UI System + App Shell'
 
 **Independent Test**: Resize viewport; verify header/footer heights, sidebar width, and content height computed via `calc()` with min/max bounds.
 
+### Testing Scenarios
+
+- Sidebar width respects bounds 320–400px and `calc(100vw * 0.25)` across desktop widths.
+- Content height equals `calc(100vh - header - footer)`; stable with minimal layout shift.
+- Layout shift ≤ 5% measured via Lighthouse/Web Vitals; no JS layout math used.
+- Safe-area insets respected with `env(safe-area-inset-*)` where applicable.
+
+### Tests for User Story 3 (MANDATORY — write first)
+
+- [ ] T056 [P] [US3] Playwright e2e checks for calc sizes and sidebar bounds in c:\Users\theju\Documents\coding\website_build\base2\react-app\e2e\app-shell.spec.ts
+- [ ] T057 [P] [US3] Performance measurement: Lighthouse/Web Vitals layout shift ≤ 5% in c:\Users\theju\Documents\coding\website_build\base2\react-app\scripts\perf\layout-shift.spec.ts
+
 ### Implementation for User Story 3
 
-- [ ] T025 [P] [US3] Implement `GlassHeader` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassHeader.jsx
-- [ ] T026 [P] [US3] Implement `GlassSidebar` (5 items) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassSidebar.jsx
-- [ ] T027 [P] [US3] Implement `AppShell` and content grid in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\AppShell.jsx
+- [ ] T025 [P] [US3] Implement `GlassHeader` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassHeader.tsx
+- [ ] T026 [P] [US3] Implement `GlassSidebar` (5 items) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassSidebar.tsx
+- [ ] T027 [P] [US3] Implement `AppShell` and content grid in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\AppShell.tsx
 - [ ] T028 [US3] Apply layout tokens and calc discipline in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\tokens.css
-- [ ] T029 [US3] Storybook: AppShell composition and responsive grid in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\AppShell.stories.jsx
+- [ ] T029 [US3] Storybook: AppShell composition and responsive grid in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\AppShell.stories.tsx
 
 **Checkpoint**: App Shell independently testable; layout validates via calc-only sizing.
 
@@ -105,8 +152,8 @@ description: 'Tasks for React Glass UI System + App Shell'
 
 **Purpose**: Wrap target pages and ensure no auth/routing regressions.
 
-- [ ] T030 [US2] Integrate components into dashboard in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\pages\Dashboard.jsx
-- [ ] T031 [US2] Integrate components into settings in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\pages\Settings.jsx
+- [ ] T030 [US2] Integrate components into dashboard in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\pages\Dashboard.tsx
+- [ ] T031 [US2] Integrate components into settings in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\pages\Settings.tsx
 - [ ] T032 Preserve auth behavior and routing; verify no changes in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\services\auth\
 
 ---
@@ -139,9 +186,12 @@ description: 'Tasks for React Glass UI System + App Shell'
 - [ ] T040 [P] Documentation updates in c:\Users\theju\Documents\coding\website_build\base2\specs\002-react-design\
 - [ ] T041 Code cleanup and refactoring in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\
 - [ ] T042 Performance optimization across stories in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\
-- [ ] T043 [P] Quickstart validation and checklist in c:\Users\Users\theju\Documents\coding\website_build\base2\specs\002-react-design\quickstart.md
+- [ ] T043 [P] Quickstart validation and checklist in c:\Users\theju\Documents\coding\website_build\base2\specs\002-react-design\quickstart.md
 - [ ] T044 [P] Prepare deploy script usage notes (update-only + all tests) in c:\Users\theju\Documents\coding\website_build\base2\docs\DEPLOY.md
 - [ ] T045 [P] After push, run deploy script update-only with all tests in c:\Users\theju\Documents\coding\website_build\base2\digital_ocean\scripts\powershell\deploy.ps1
+- [ ] T060 [P] Validate Visual Acceptance Checklist across AppShell and components in c:\Users\theju\Documents\coding\website_build\base2\specs\002-react-design\checklists\requirements.md
+- [ ] T061 [P] Observability artifact review post-deploy (logs, configs, health responses) in c:\Users\theju\Documents\coding\website_build\base2\local_run_logs\
+- [ ] T062 [P] Performance verification: confirm layout shift metrics (CLS/Web Vitals) meet targets documented in c:\Users\theju\Documents\coding\website_build\base2\specs\002-react-design\plan.md
 
 ---
 
@@ -196,6 +246,16 @@ description: 'Tasks for React Glass UI System + App Shell'
 - After pushing to branch `002-react-design`, run deploy script with update-only and all tests:
   - Path: c:\Users\theju\Documents\coding\website_build\base2\digital_ocean\scripts\powershell\deploy.ps1
   - Flags: `-UpdateOnly -RunAllTests`
+
+### TypeScript Setup (Phase 1 additions)
+
+- [ ] T046 [P] Add TypeScript to react-app: create c:\Users\theju\Documents\coding\website_build\base2\react-app\tsconfig.json and install devDependencies (typescript, @types/react, @types/react-dom, @types/jest).
+- [ ] T047 [P] Configure Storybook for TypeScript in c:\Users\theju\Documents\coding\website_build\base2\react-app\.storybook\ (if not auto-detected).
+
+### Tailwind Usage Policy
+
+- [ ] T048 Document Tailwind usage policy (utilities allowed, no removal/replacement, no global overrides, no new plugins) in c:\Users\theju\Documents\coding\website_build\base2\specs\002-react-design\plan.md and c:\Users\theju\Documents\coding\website_build\base2\docs\DEVELOPMENT.md.
+- [ ] T049 Add a style guard: scan for global overrides and ensure component-scoped CSS variables/tokens in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\.
 
 ### Independent Test Criteria (per story)
 

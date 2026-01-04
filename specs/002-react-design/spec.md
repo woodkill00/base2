@@ -5,6 +5,16 @@
 **Status**: Draft  
 **Input**: User description: "React glassmorphism design system and App Shell: cohesive glass UI components, calc-based layout, accessibility, and Storybook coverage."
 
+## Clarifications
+
+### Session 2026-01-04
+
+- Q: Theme persistence & hydration → A: Use backend profile setting when authenticated; otherwise read a client cookie (`theme=light|dark`) on initial paint; if neither exists, fall back to `prefers-color-scheme`. Do not use localStorage.
+- Q: Theme cookie attributes → A: Client-readable `theme` cookie with `Secure=true`, `SameSite=Lax`, `HttpOnly=false`, `Path=/`.
+- Q: Theme cookie domain scope → A: Set cookie domain to `.woodkilldev.com` to cover all subdomains consistently.
+- Q: Browser support & blur fallback → A: Support evergreen browsers (Chrome/Edge/Safari/Firefox). If `backdrop-filter` is unsupported, fallback to semi-transparent backgrounds with subtle border + shadow (no blur) to maintain fidelity.
+- Q: Cookie expiration TTL → A: 180 days.
+
 ## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Toggle Theme + Glass Fidelity (Priority: P1)
@@ -58,12 +68,17 @@ The layout shell sizes header, sidebar, content, and footer using CSS calc disci
 - Low-end devices: backdrop blur is present but performance remains acceptable; fallbacks do not remove glass fidelity.
 - High-contrast requirements: ensure translucent glass still meets ≥ 4.5:1 contrast for key text and controls.
 - Accessibility labels: inline SVG icons include `aria-label` and `role="img"`; missing icon labels are surfaced as defaults.
+- Blur unsupported: when `backdrop-filter` is not available, use semi-transparent backgrounds with subtle borders and shadows; avoid heavy blur emulation overlays.
 
 ## Requirements _(mandatory)_
 
 ### Functional Requirements
 
-- **FR-001**: Provide a persistent theme toggle that switches between light and dark themes; preference persists across sessions and applies on initial load.
+**FR-001**: Provide a persistent theme toggle that switches between light and dark themes; preference persists across sessions and applies on initial load via a client cookie (`theme=light|dark`). On authenticated sessions, a backend profile setting supersedes the cookie. If neither is present, default to `prefers-color-scheme` and set the root theme class before React mounts. LocalStorage is not used. Cookie attributes: `Secure=true`, `SameSite=Lax`, `HttpOnly=false`, `Path=/`, `Domain=.woodkilldev.com`, `Expires=180 days`.
+
+- **FR-001**: Provide a persistent theme toggle that switches between light and dark themes; preference persists across sessions and applies on initial load via a client cookie (`theme=light|dark`). On authenticated sessions, a backend profile setting supersedes the cookie. If neither is present, default to `prefers-color-scheme` and set the root theme class before React mounts. LocalStorage is not used.
+- **FR-001**: Provide a persistent theme toggle that switches between light and dark themes; preference persists across sessions and applies on initial load via a client cookie (`theme=light|dark`). On authenticated sessions, a backend profile setting supersedes the cookie. If neither is present, default to `prefers-color-scheme` and set the root theme class before React mounts. LocalStorage is not used. Cookie attributes: `Secure=true`, `SameSite=Lax`, `HttpOnly=false`, `Path=/`.
+- **FR-001**: Provide a persistent theme toggle that switches between light and dark themes; preference persists across sessions and applies on initial load via a client cookie (`theme=light|dark`). On authenticated sessions, a backend profile setting supersedes the cookie. If neither is present, default to `prefers-color-scheme` and set the root theme class before React mounts. LocalStorage is not used. Cookie attributes: `Secure=true`, `SameSite=Lax`, `HttpOnly=false`, `Path=/`, `Domain=.woodkilldev.com`.
 - **FR-002**: Implement an app shell with header, sidebar, content, and footer sized using CSS `calc()` with the following targets: header ≈ `calc(100vh * 0.08)` (min 64px), footer ≈ `calc(100vh * 0.08)` (min 56px), sidebar ≈ `calc(100vw * 0.25)` constrained between 320–400px, content = `calc(100vh - header - footer)`.
 - **FR-003**: Deliver a reusable glass component library including `GlassCard`, `GlassButton`, `GlassInput`, `GlassTabs`, `GlassModal`, `GlassSpinner`, and `GlassSkeleton` with clear, minimal APIs and ARIA support.
 - **FR-004**: Meet WCAG 2.1 AA: keyboard navigation everywhere, focus-visible 3px neon glow, accessible labels for inline SVG icons, and contrast ≥ 4.5:1 for key text and controls.
@@ -84,6 +99,8 @@ The layout shell sizes header, sidebar, content, and footer using CSS calc disci
 ### Key Entities _(include if feature involves data)_
 
 - **Theme Preference**: Represents the user’s selected theme (`light` or `dark`); persists across sessions; applied at hydration to avoid flicker.
+  - Persistence mechanism: client cookie read at initial paint; backend profile (post-auth) overrides; fallback to `prefers-color-scheme`. No localStorage.
+  - Cookie attributes: `Secure=true`, `SameSite=Lax`, `HttpOnly=false`, `Path=/`, `Domain=.woodkilldev.com`, `Expires=180 days`.
 
 ## Success Criteria _(mandatory)_
 

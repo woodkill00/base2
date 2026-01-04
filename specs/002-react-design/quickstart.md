@@ -36,3 +36,13 @@ npm run storybook
 
 - No backend/auth or API contract changes in this feature.
 - Layout sizing must use CSS `calc()` per spec.
+
+### Theme Persistence (Cookie)
+
+- Theme order: backend profile (authenticated) > client cookie (`theme=light|dark`) > `prefers-color-scheme` fallback.
+- Cookie attributes: Secure=true, SameSite=Lax, HttpOnly=false, Path=/, Domain=.woodkilldev.com, Expires=180 days.
+- Tip: To test fallback, clear the `theme` cookie and reload; to test cross-subdomain, open admin/swagger subdomains.
+
+### Blur Fallback
+
+- If `backdrop-filter` is unsupported, the UI uses semi-transparent backgrounds with subtle border + shadow to maintain glass fidelity (no blur emulation).

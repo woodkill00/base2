@@ -19,9 +19,9 @@
 
 ### 3) Theme Persistence & Early Hydration
 
-- Decision: Persist theme via `localStorage` key `theme` and apply `.dark` class on initial render using a minimal inline script to avoid flicker.
-- Rationale: Common pattern; fast; no backend changes.
-- Alternatives: Cookie + server-side render — rejected (no SSR in CRA).
+- Decision: Persist theme via client cookie `theme=light|dark`; backend profile (authenticated) overrides; fallback to `prefers-color-scheme`. Apply root theme class before React mounts. Do not use localStorage.
+- Rationale: Aligns with governance (no sensitive storage), enables cross-subdomain consistency, and prevents flicker without SSR.
+- Alternatives considered: localStorage (rejected: governance/policy), SSR or HttpOnly cookie (rejected: not using SSR; client needs read access).
 
 ### 4) Glass Tokens & Layout Discipline
 
@@ -44,7 +44,7 @@
 ## Best Practices & Patterns
 
 - CSS variables for theming and glass tokens; `.dark` toggles variable values.
-- Backdrop blur via `backdrop-filter`; ensure fallbacks maintain translucency.
+- Backdrop blur via `backdrop-filter`; if unsupported, fallback to semi-transparent backgrounds with subtle border + shadow (no blur).
 - Use `calc()` for all sizing; avoid JS-based measurement.
 - Storybook stories demonstrate states: light/dark, hover/focus, disabled/error.
 - RTL tests for keyboard navigation and focus-visible behavior.
@@ -58,3 +58,9 @@
 - Decision: No API changes; contracts document "no new endpoints".
 - Rationale: Frontend-only feature; guardrails prohibit backend/auth changes.
 - Alternatives: Add endpoints — rejected.
+
+### Cookie & Browser Support Details
+
+- Decision: Cookie attributes: Secure=true, SameSite=Lax, HttpOnly=false, Path=/, Domain=.woodkilldev.com, Expires=180 days.
+- Rationale: Safe defaults for a non-sensitive theme preference; cross-subdomain consistency; reasonable TTL.
+- Alternatives considered: Session-only cookie (rejected: user convenience); host-only domain (rejected: subdomain inconsistency); longer TTL (365d) or shorter (90d) — balanced at 180d.
