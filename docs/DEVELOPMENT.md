@@ -51,6 +51,27 @@ cd react-app
 npm run build-storybook
 ```
 
+## Tailwind Usage Policy
+
+- Utilities allowed where already present; do not remove or replace Tailwind.
+- No global overrides; keep styles component-scoped and use CSS variables/tokens.
+- No new Tailwind plugins; keep config unchanged.
+
+## Style Guard (Glass Feature)
+
+Run a simple guard to detect forbidden global overrides or `!important` usage in glass styles:
+
+```bash
+node react-app/scripts/style_guard.js
+```
+
+The guard checks `react-app/src/styles` and `react-app/src/components/glass` for:
+
+- Global selectors (`html`, `body`, `:root`, `.dark`) outside of `tokens.css`
+- `!important` usage
+
+If violations are found, the script exits non-zero and lists offending files/lines.
+
 ## OpenAPI Types Generation
 
 Generate frontend TypeScript types from the OpenAPI contract:

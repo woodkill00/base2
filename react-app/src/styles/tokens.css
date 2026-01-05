@@ -1,0 +1,25 @@
+/* Glass and layout tokens */
+:root {
+  /* Glass palette */
+  --glass-bg-light: rgba(255, 255, 255, 0.25);
+  --glass-bg-dark: rgba(0, 0, 0, 0.4);
+  --glass-border: rgba(255, 255, 255, 0.4);
+  --glass-shadow: rgba(0, 0, 0, 0.3);
+  --focus-glow: 0 0 0 3px #39ff14; /* neon green */
+
+  /* Layout tokens */
+  --header-h: max(calc(100vh * 0.08), 64px);
+  --footer-h: max(calc(100vh * 0.08), 56px);
+  --sidebar-w: clamp(320px, calc(100vw * 0.25), 400px);
+  --content-h: calc(100vh - var(--header-h) - var(--footer-h));
+}
+
+/* Dark theme overrides */
+.dark {
+  --glass-bg: var(--glass-bg-dark);
+}
+
+/* Light theme defaults */
+:root {
+  --glass-bg: var(--glass-bg-light);
+}

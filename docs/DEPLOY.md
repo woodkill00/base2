@@ -7,6 +7,8 @@ Authoritative deploy/update/test is executed via `digital_ocean/scripts/powershe
 - Full deploy: `powershell -File digital_ocean/scripts/powershell/deploy.ps1 -Full -AllTests -Timestamped`
 - Update-only: `powershell -File digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -AllTests -Timestamped`
 
+Alias/Flag note: Recent runs used `-RunAllTests` which is equivalent to `-AllTests`.
+
 ## Pre-Deploy Discipline (UpdateOnly)
 
 - Commit and push runtime-impacting changes to `origin/<DO_APP_BRANCH>` before using `-UpdateOnly`.
@@ -29,6 +31,15 @@ Authoritative deploy/update/test is executed via `digital_ocean/scripts/powershe
 
 - Runs write artifacts to `local_run_logs/<droplet-ip>-<timestamp>/`.
 - Post-deploy report: `meta/post-deploy-report.json`.
+
+### Suggested Verification Flow (UpdateOnly)
+
+- Run: `powershell -File digital_ocean/scripts/powershell/deploy.ps1 -UpdateOnly -RunAllTests -Timestamped`
+- Verify endpoints:
+  - Traefik dashboard: https://traefik.${WEBSITE_DOMAIN}/ (basic-auth + allowlist)
+  - Django admin: https://admin.${WEBSITE_DOMAIN}/admin/ (basic-auth + allowlist)
+  - FastAPI Swagger UI: https://swagger.${WEBSITE_DOMAIN}/docs
+- Review artifacts under `local_run_logs/<droplet-ip>-<timestamp>/` for jest, Playwright, and API/Django pytest outputs.
 
 ## Troubleshooting
 

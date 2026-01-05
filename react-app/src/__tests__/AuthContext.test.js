@@ -10,6 +10,11 @@ describe('AuthContext', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Ensure localStorage methods are spies for call assertions
+    jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {});
+    jest.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {});
+    jest.spyOn(Storage.prototype, 'getItem').mockImplementation(() => null);
+    jest.spyOn(Storage.prototype, 'clear').mockImplementation(() => {});
     localStorage.clear();
   });
 

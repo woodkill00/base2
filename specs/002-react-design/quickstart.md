@@ -1,5 +1,7 @@
 # Quickstart — React Glass UI System + App Shell
 
+See the feature specification at specs/002-react-design/spec.md and the implementation plan at specs/002-react-design/plan.md for full context.
+
 ## Prerequisites
 
 - Node.js (per repo README)

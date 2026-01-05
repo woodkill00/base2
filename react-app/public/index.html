@@ -9,6 +9,18 @@
     <title>Base2 React App</title>
   </head>
   <body>
+    <script>
+      (function() {
+        try {
+          // Backend profile override would set server-rendered class; client reads cookie otherwise
+          var m = document.cookie.match(/(?:^|; )theme=([^;]+)/);
+          var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var theme = m ? decodeURIComponent(m[1]) : (prefersDark ? 'dark' : 'light');
+          var root = document.documentElement;
+          if (theme === 'dark') root.classList.add('dark'); else root.classList.remove('dark');
+        } catch (e) {}
+      })();
+    </script>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
   </body>
