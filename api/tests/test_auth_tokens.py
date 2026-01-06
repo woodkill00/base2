@@ -32,11 +32,15 @@ def test_auth_register_login_refresh_me_logout_flow():
     assert me.status_code == 200
     assert me.json().get("email") == email
 
-    refreshed = client.post("/api/auth/refresh")
+    # In cookie mode, refresh requires double-submit CSRF when cookie is present
+    csrf = client.cookies.get("base2_csrf")
+    headers = {"X-CSRF-Token": csrf} if csrf else {}
+    refreshed = client.post("/api/auth/refresh", headers=headers)
     assert refreshed.status_code == 200, refreshed.text
     j2 = refreshed.json()
     assert j2.get("email") == email
     assert j2.get("access_token")
 
-    out = client.post("/api/auth/logout")
+    # Logout also enforces CSRF when refresh cookie is present
+    out = client.post("/api/auth/logout", headers=headers)
     assert out.status_code == 204
