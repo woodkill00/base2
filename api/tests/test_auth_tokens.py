@@ -10,7 +10,10 @@ from api.db import db_ping
 
 
 @pytest.mark.skipif(not os.getenv("JWT_SECRET"), reason="JWT_SECRET not set")
-def test_auth_register_login_refresh_me_logout_flow():
+def test_auth_register_login_refresh_me_logout_flow(monkeypatch):
+    # For TestClient over HTTP, avoid Secure cookies blocking storage
+    monkeypatch.setattr("api.routes.auth.settings.AUTH_REFRESH_COOKIE", False)
+    monkeypatch.setattr("api.routes.auth.settings.COOKIE_SECURE", False)
     # Requires Postgres reachable via env vars.
     if not db_ping():
         pytest.skip("DB not reachable")
@@ -32,15 +35,14 @@ def test_auth_register_login_refresh_me_logout_flow():
     assert me.status_code == 200
     assert me.json().get("email") == email
 
-    # In cookie mode, refresh requires double-submit CSRF when cookie is present
-    csrf = client.cookies.get("base2_csrf")
-    headers = {"X-CSRF-Token": csrf} if csrf else {}
-    refreshed = client.post("/api/auth/refresh", headers=headers)
+    # Non-cookie mode: refresh token is returned in JSON and accepted in body
+    refresh_token = j.get("refresh_token")
+    refreshed = client.post("/api/auth/refresh", json={"refresh_token": refresh_token})
     assert refreshed.status_code == 200, refreshed.text
     j2 = refreshed.json()
     assert j2.get("email") == email
     assert j2.get("access_token")
 
-    # Logout also enforces CSRF when refresh cookie is present
-    out = client.post("/api/auth/logout", headers=headers)
+    # Non-cookie mode: logout accepts refresh token in body
+    out = client.post("/api/auth/logout", json={"refresh_token": refresh_token})
     assert out.status_code == 204
