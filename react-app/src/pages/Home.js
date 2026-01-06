@@ -126,20 +126,22 @@ const Home = () => {
   if (isAuthenticated) {
     return (
       <AppShell headerTitle="Home">
-        <div style={styles.containerInner}>
-          <Navigation />
-          <GlassCard>
-            <h1 style={styles.title}>Welcome Back!</h1>
-            <p style={styles.subtitle}>You are already logged in</p>
-            <div style={styles.buttonGroup}>
-              <GlassButton onClick={() => navigate('/dashboard')} variant="primary">
-                Go to Dashboard
-              </GlassButton>
-              <GlassButton onClick={logout} variant="secondary">
-                Logout
-              </GlassButton>
-            </div>
-          </GlassCard>
+        <div style={styles.page}>
+          <div style={styles.containerInner}>
+            <Navigation />
+            <GlassCard>
+              <h1 style={styles.title}>Welcome Back!</h1>
+              <p style={styles.subtitle}>You are already logged in</p>
+              <div style={styles.buttonGroup}>
+                <GlassButton onClick={() => navigate('/dashboard')} variant="primary">
+                  Go to Dashboard
+                </GlassButton>
+                <GlassButton onClick={logout} variant="secondary">
+                  Logout
+                </GlassButton>
+              </div>
+            </GlassCard>
+          </div>
         </div>
       </AppShell>
     );
@@ -147,162 +149,171 @@ const Home = () => {
 
   return (
     <AppShell headerTitle="Home">
-      <div style={styles.containerInner}>
-        <Navigation />
-        <GlassCard>
-          <h1 style={styles.title}>Welcome to Base2</h1>
-          <p style={styles.subtitle}>
-            {showEmailAuth
-              ? isSignup
-                ? 'Create your account'
-                : 'Sign in to your account'
-              : 'Choose your sign-in method'}
-          </p>
+      <div style={styles.page}>
+        <div style={styles.containerInner}>
+          <Navigation />
+          <GlassCard>
+            <h1 style={styles.title}>Welcome to Base2</h1>
+            <p style={styles.subtitle}>
+              {showEmailAuth
+                ? isSignup
+                  ? 'Create your account'
+                  : 'Sign in to your account'
+                : 'Choose your sign-in method'}
+            </p>
 
-          {formError && <div style={styles.errorMessage}>{formError}</div>}
-          {formSuccess && <div style={styles.successMessage}>{formSuccess}</div>}
+            {formError && <div style={styles.errorMessage}>{formError}</div>}
+            {formSuccess && <div style={styles.successMessage}>{formSuccess}</div>}
 
-          {!showEmailAuth ? (
-            <>
-              <div style={styles.loginContainer}>
-                <GoogleLogin
-                  onSuccess={handleGoogleSuccess}
-                  onError={handleGoogleError}
-                  theme="outline"
-                  size="large"
-                  text="signin_with"
-                  shape="rectangular"
-                />
-              </div>
+            {!showEmailAuth ? (
+              <>
+                <div style={styles.loginContainer}>
+                  <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={handleGoogleError}
+                    theme="outline"
+                    size="large"
+                    text="signin_with"
+                    shape="rectangular"
+                  />
+                </div>
 
-              <div style={styles.divider}>
-                <span style={styles.dividerText}>OR</span>
-              </div>
+                <div style={styles.divider}>
+                  <span style={styles.dividerText}>OR</span>
+                </div>
 
-              <GlassButton onClick={() => setShowEmailAuth(true)} variant="secondary">
-                Continue with Email
-              </GlassButton>
+                <GlassButton onClick={() => setShowEmailAuth(true)} variant="secondary">
+                  Continue with Email
+                </GlassButton>
 
-              <div style={styles.features}>
-                <h3 style={styles.featuresTitle}>Features:</h3>
-                <ul style={styles.featuresList}>
-                  <li>🔐 Secure Authentication</li>
-                  <li>📊 Personalized Dashboard</li>
-                  <li>⚙️ User Settings Management</li>
-                  <li>🚀 Fast and Responsive Interface</li>
-                </ul>
-              </div>
-            </>
-          ) : (
-            <>
-              <form onSubmit={handleEmailSubmit} style={styles.form}>
-                {isSignup && (
+                <div style={styles.features}>
+                  <h3 style={styles.featuresTitle}>Features:</h3>
+                  <ul style={styles.featuresList}>
+                    <li>🔐 Secure Authentication</li>
+                    <li>📊 Personalized Dashboard</li>
+                    <li>⚙️ User Settings Management</li>
+                    <li>🚀 Fast and Responsive Interface</li>
+                  </ul>
+                </div>
+              </>
+            ) : (
+              <>
+                <form onSubmit={handleEmailSubmit} style={styles.form}>
+                  {isSignup && (
+                    <div style={styles.formGroup}>
+                      <GlassInput
+                        id="name"
+                        name="name"
+                        type="text"
+                        value={formData.name}
+                        onChange={handleInputChange}
+                        placeholder="Full Name"
+                      />
+                    </div>
+                  )}
+
                   <div style={styles.formGroup}>
                     <GlassInput
-                      id="name"
-                      name="name"
-                      type="text"
-                      value={formData.name}
+                      id="email"
+                      name="email"
+                      type="email"
+                      value={formData.email}
                       onChange={handleInputChange}
-                      placeholder="Full Name"
+                      placeholder="Email Address"
                     />
                   </div>
-                )}
 
-                <div style={styles.formGroup}>
-                  <GlassInput
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    placeholder="Email Address"
-                  />
-                </div>
-
-                <div style={styles.formGroup}>
-                  <GlassInput
-                    id="password"
-                    name="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    placeholder="Password"
-                  />
-                </div>
-
-                {isSignup && (
                   <div style={styles.formGroup}>
                     <GlassInput
-                      id="confirmPassword"
-                      name="confirmPassword"
+                      id="password"
+                      name="password"
                       type="password"
-                      value={formData.confirmPassword}
+                      value={formData.password}
                       onChange={handleInputChange}
-                      placeholder="Confirm Password"
+                      placeholder="Password"
                     />
                   </div>
-                )}
 
-                {isSignup && (
-                  <div style={styles.passwordHint}>
-                    Password must be at least 8 characters with uppercase, lowercase, and number
+                  {isSignup && (
+                    <div style={styles.formGroup}>
+                      <GlassInput
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        type="password"
+                        value={formData.confirmPassword}
+                        onChange={handleInputChange}
+                        placeholder="Confirm Password"
+                      />
+                    </div>
+                  )}
+
+                  {isSignup && (
+                    <div style={styles.passwordHint}>
+                      Password must be at least 8 characters with uppercase, lowercase, and number
+                    </div>
+                  )}
+
+                  <GlassButton type="submit" variant="primary" disabled={loading}>
+                    {loading ? 'Processing…' : isSignup ? 'Sign Up' : 'Sign In'}
+                  </GlassButton>
+                </form>
+
+                <div style={styles.toggleAuth}>
+                  {isSignup ? (
+                    <p>
+                      Already have an account?{' '}
+                      <span onClick={toggleAuthMode} style={styles.link}>
+                        Sign In
+                      </span>
+                    </p>
+                  ) : (
+                    <p>
+                      Don't have an account?{' '}
+                      <span onClick={toggleAuthMode} style={styles.link}>
+                        Sign Up
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                {!isSignup && (
+                  <div style={styles.forgotPassword}>
+                    <span onClick={() => navigate('/forgot-password')} style={styles.link}>
+                      Forgot Password?
+                    </span>
                   </div>
                 )}
 
-                <GlassButton type="submit" variant="primary" disabled={loading}>
-                  {loading ? 'Processing…' : isSignup ? 'Sign Up' : 'Sign In'}
-                </GlassButton>
-              </form>
-
-              <div style={styles.toggleAuth}>
-                {isSignup ? (
-                  <p>
-                    Already have an account?{' '}
-                    <span onClick={toggleAuthMode} style={styles.link}>
-                      Sign In
-                    </span>
-                  </p>
-                ) : (
-                  <p>
-                    Don't have an account?{' '}
-                    <span onClick={toggleAuthMode} style={styles.link}>
-                      Sign Up
-                    </span>
-                  </p>
-                )}
-              </div>
-
-              {!isSignup && (
-                <div style={styles.forgotPassword}>
-                  <span onClick={() => navigate('/forgot-password')} style={styles.link}>
-                    Forgot Password?
-                  </span>
+                <div style={styles.backButton}>
+                  <GlassButton
+                    type="button"
+                    onClick={() => {
+                      setShowEmailAuth(false);
+                      setFormError('');
+                      setFormSuccess('');
+                    }}
+                    variant="secondary"
+                  >
+                    ← Back to Options
+                  </GlassButton>
                 </div>
-              )}
-
-              <div style={styles.backButton}>
-                <GlassButton
-                  type="button"
-                  onClick={() => {
-                    setShowEmailAuth(false);
-                    setFormError('');
-                    setFormSuccess('');
-                  }}
-                  variant="secondary"
-                >
-                  ← Back to Options
-                </GlassButton>
-              </div>
-            </>
-          )}
-        </GlassCard>
+              </>
+            )}
+          </GlassCard>
+        </div>
       </div>
     </AppShell>
   );
 };
 
 const styles = {
+  page: {
+    background: '#000',
+    color: '#fff',
+    minHeight: 'calc(100vh - var(--header-h) - var(--footer-h))',
+    display: 'flex',
+    justifyContent: 'center',
+  },
   containerInner: {
     maxWidth: '720px',
     margin: '0 auto',
@@ -320,12 +331,12 @@ const styles = {
   title: {
     fontSize: '32px',
     fontWeight: '700',
-    color: '#333',
+    color: '#fff',
     marginBottom: '10px',
   },
   subtitle: {
     fontSize: '16px',
-    color: '#666',
+    color: '#aaa',
     marginBottom: '30px',
   },
   loginContainer: {
@@ -383,11 +394,12 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     margin: '20px 0',
-    color: '#999',
+    color: '#bbb',
+    borderTop: '1px solid rgba(255,255,255,0.1)',
   },
   dividerText: {
     padding: '0 15px',
-    background: 'white',
+    background: 'transparent',
     position: 'relative',
     zIndex: 1,
   },
