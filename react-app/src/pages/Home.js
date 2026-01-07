@@ -126,7 +126,7 @@ const Home = () => {
   if (isAuthenticated) {
     return (
       <AppShell headerTitle="Home">
-        <div style={styles.page}>
+        <div style={styles.page} data-testid="home-page">
           <div style={styles.containerInner}>
             <Navigation />
             <GlassCard>
@@ -149,7 +149,7 @@ const Home = () => {
 
   return (
     <AppShell headerTitle="Home">
-      <div style={styles.page}>
+      <div style={styles.page} data-testid="home-page">
         <div style={styles.containerInner}>
           <Navigation />
           <GlassCard>
