@@ -856,6 +856,8 @@ PY
   # Ensure API container uses the freshly built image
   docker compose -f local.docker.yml up -d --build --force-recreate --no-deps api > /root/logs/build/api-up.txt 2>&1 || true
   docker compose -f local.docker.yml up -d --build --force-recreate --no-deps traefik > /root/logs/build/traefik-up.txt 2>&1 || true
+  # Ensure React frontend uses freshly built assets (avoid stale bundle)
+  docker compose -f local.docker.yml up -d --build --force-recreate --no-deps react-app > /root/logs/build/react-app-up.txt 2>&1 || true
 
   # Ensure Flower is started (kept as a separate log artifact)
   docker compose -f local.docker.yml up -d --build flower > /root/logs/build/flower-up.txt 2>&1 || true
