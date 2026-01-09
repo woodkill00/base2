@@ -3,6 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ToastProvider.jsx';
+import AppShell from '../components/glass/AppShell';
+import GlassCard from '../components/glass/GlassCard';
+import GlassButton from '../components/glass/GlassButton';
+import GlassInput from '../components/glass/GlassInput';
+import Navigation from '../components/Navigation';
 
 const Signup = () => {
   const { register } = useAuth();
@@ -50,88 +55,79 @@ const Signup = () => {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h1 style={styles.title}>Create account</h1>
+    <AppShell headerTitle="Signup">
+      <div style={styles.containerInner}>
+        <Navigation />
+        <GlassCard>
+          <h1 style={styles.title}>Create account</h1>
 
-        {error ? (
-          <div style={styles.error} role="alert">
-            {error}
+          {error ? (
+            <div style={styles.error} role="alert">
+              {error}
+            </div>
+          ) : null}
+
+          <form onSubmit={onSubmit} style={styles.form}>
+            <label style={styles.label} htmlFor="email">
+              Email
+            </label>
+            <GlassInput
+              id="email"
+              name="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              ariaInvalid={fieldErrors.email ? 'true' : 'false'}
+              ariaDescribedBy={fieldErrors.email ? 'email-error' : undefined}
+            />
+            {fieldErrors.email ? (
+              <div id="email-error" style={styles.fieldError} role="alert">
+                {fieldErrors.email}
+              </div>
+            ) : null}
+
+            <label style={styles.label} htmlFor="password">
+              Password
+            </label>
+            <GlassInput
+              id="password"
+              name="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Your password"
+              ariaInvalid={fieldErrors.password ? 'true' : 'false'}
+              ariaDescribedBy={fieldErrors.password ? 'password-error' : undefined}
+            />
+            {fieldErrors.password ? (
+              <div id="password-error" style={styles.fieldError} role="alert">
+                {fieldErrors.password}
+              </div>
+            ) : null}
+
+            <GlassButton type="submit" variant="primary" disabled={loading}>
+              {loading ? 'Creating…' : 'Create account'}
+            </GlassButton>
+          </form>
+
+          <div style={styles.footer}>
+            <span>Already have an account?</span>{' '}
+            <Link to="/login" style={styles.link}>
+              Sign in
+            </Link>
           </div>
-        ) : null}
-
-        <form onSubmit={onSubmit} style={styles.form}>
-          <label style={styles.label} htmlFor="email">
-            Email
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={styles.input}
-            autoComplete="email"
-            aria-invalid={fieldErrors.email ? 'true' : 'false'}
-            aria-describedby={fieldErrors.email ? 'email-error' : undefined}
-          />
-          {fieldErrors.email ? (
-            <div id="email-error" style={styles.fieldError} role="alert">
-              {fieldErrors.email}
-            </div>
-          ) : null}
-
-          <label style={styles.label} htmlFor="password">
-            Password
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={styles.input}
-            autoComplete="new-password"
-            aria-invalid={fieldErrors.password ? 'true' : 'false'}
-            aria-describedby={fieldErrors.password ? 'password-error' : undefined}
-          />
-          {fieldErrors.password ? (
-            <div id="password-error" style={styles.fieldError} role="alert">
-              {fieldErrors.password}
-            </div>
-          ) : null}
-
-          <button type="submit" style={styles.primaryButton} disabled={loading}>
-            {loading ? 'Creating…' : 'Create account'}
-          </button>
-        </form>
-
-        <div style={styles.footer}>
-          <span>Already have an account?</span>{' '}
-          <Link to="/login" style={styles.link}>
-            Sign in
-          </Link>
-        </div>
+        </GlassCard>
       </div>
-    </div>
+    </AppShell>
   );
 };
 
 const styles = {
-  container: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '24px',
-  },
-  card: {
-    width: '100%',
-    maxWidth: '420px',
-    background: 'white',
-    borderRadius: '12px',
-    padding: '24px',
-    border: '1px solid #e5e7eb',
+  containerInner: {
+    maxWidth: '480px',
+    margin: '0 auto',
+    padding: '20px',
   },
   title: {
     margin: '0 0 16px 0',

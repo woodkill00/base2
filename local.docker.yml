@@ -31,6 +31,9 @@ services:
       args:
         - PYTHON_VERSION=${FASTAPI_PYTHON_VERSION}
     container_name: ${COMPOSE_PROJECT_NAME}_api
+    volumes:
+      # Mount external OpenAPI contract for runtime contract checks
+      - ./specs/001-django-fastapi-react/contracts:/app/specs/001-django-fastapi-react/contracts:ro
     environment:
       - PORT=${FASTAPI_PORT}
       - DB_HOST=postgres

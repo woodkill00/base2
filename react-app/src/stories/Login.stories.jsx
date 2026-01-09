@@ -1,9 +1,8 @@
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import Login from '../pages/Login.jsx';
 import { AuthProvider } from '../contexts/AuthContext';
 
-export default {
+const meta = {
   title: 'Pages/Login',
   component: Login,
   decorators: [
@@ -16,5 +15,6 @@ export default {
     ),
   ],
 };
+export default meta;
 
 export const Default = {};

@@ -21,6 +21,9 @@
     "@testing-library/jest-dom": "^6.1.4",
     "@testing-library/react": "^14.1.0",
     "@testing-library/user-event": "^14.5.1",
+    "@types/jest": "^30.0.0",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
     "cross-env": "^7.0.3",
     "eslint": "^8.50.0",
     "eslint-config-prettier": "^9.0.0",
@@ -34,6 +37,7 @@
     "react-scripts": "^5.0.1",
     "source-map-explorer": "^2.5.3",
     "storybook": "^8.6.15",
+    "typescript": "^5.9.3",
     "yaml": "^2.8.2"
   },
   "scripts": {
@@ -55,6 +59,21 @@
     "build-storybook": "storybook build",
     "postinstall": "node scripts/postinstall.js",
     "generate:openapi:types": "openapi-typescript ../specs/001-django-fastapi-react/contracts/openapi.yaml -o src/services/api/types.d.ts"
+  },
+  "jest": {
+    "collectCoverageFrom": [
+      "src/components/glass/**/*.{js,jsx,ts,tsx}",
+      "src/services/glass/**/*.{js,ts}",
+      "src/services/theme/**/*.{ts}"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 100,
+        "functions": 100,
+        "lines": 100,
+        "statements": 100
+      }
+    }
   },
   "browserslist": {
     "production": [

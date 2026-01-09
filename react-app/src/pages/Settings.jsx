@@ -3,7 +3,11 @@ import { useMemo, useState } from 'react';
 import apiClient from '../lib/apiClient';
 import { normalizeApiError } from '../lib/apiErrors';
 import { useAuth } from '../contexts/AuthContext';
+import AppShell from '../components/glass/AppShell';
 import Navigation from '../components/Navigation';
+import GlassCard from '../components/glass/GlassCard';
+import GlassButton from '../components/glass/GlassButton';
+import GlassInput from '../components/glass/GlassInput';
 import { useToast } from '../components/ToastProvider.jsx';
 import { authAPI } from '../services/api';
 
@@ -104,9 +108,9 @@ const Settings = () => {
   };
 
   return (
-    <div style={styles.container}>
-      <Navigation />
+    <AppShell headerTitle="Settings">
       <div style={styles.card}>
+        <Navigation />
         <h1 style={styles.title}>Settings</h1>
         <p style={styles.subtitle}>{user?.email || ''}</p>
 
@@ -116,104 +120,120 @@ const Settings = () => {
           </div>
         ) : null}
 
-        <form onSubmit={onSubmit} style={styles.form}>
-          <label style={styles.label} htmlFor="email">
-            Email
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            value={form.email}
-            onChange={onChange}
-            style={styles.input}
-            autoComplete="email"
-            aria-invalid={fieldErrors.email ? 'true' : 'false'}
-            aria-describedby={fieldErrors.email ? 'email-error' : undefined}
-          />
-          {fieldErrors.email ? (
-            <div id="email-error" style={styles.fieldError} role="alert">
-              {fieldErrors.email}
-            </div>
-          ) : null}
+        <GlassCard>
+          <form onSubmit={onSubmit} style={styles.form}>
+            <label style={styles.label} htmlFor="email">
+              Email
+            </label>
+            <GlassInput
+              id="email"
+              name="email"
+              name="email"
+              type="email"
+              value={form.email}
+              onChange={onChange}
+              placeholder="you@example.com"
+              ariaInvalid={fieldErrors.email ? 'true' : 'false'}
+              ariaDescribedBy={fieldErrors.email ? 'email-error' : undefined}
+            />
+            {fieldErrors.email ? (
+              <div id="email-error" style={styles.fieldError} role="alert">
+                {fieldErrors.email}
+              </div>
+            ) : null}
 
-          <label style={styles.label} htmlFor="display_name">
-            Display name
-          </label>
-          <input
-            id="display_name"
-            name="display_name"
-            type="text"
-            value={form.display_name}
-            onChange={onChange}
-            style={styles.input}
-            aria-invalid={fieldErrors.display_name ? 'true' : 'false'}
-            aria-describedby={fieldErrors.display_name ? 'display-name-error' : undefined}
-          />
-          {fieldErrors.display_name ? (
-            <div id="display-name-error" style={styles.fieldError} role="alert">
-              {fieldErrors.display_name}
-            </div>
-          ) : null}
+            <label style={styles.label} htmlFor="display_name">
+              Display name
+            </label>
+            <GlassInput
+              id="display_name"
+              name="display_name"
+              name="display_name"
+              type="text"
+              value={form.display_name}
+              onChange={onChange}
+              placeholder="Your display name"
+              ariaInvalid={fieldErrors.display_name ? 'true' : 'false'}
+              ariaDescribedBy={fieldErrors.display_name ? 'display-name-error' : undefined}
+            />
+            {fieldErrors.display_name ? (
+              <div id="display-name-error" style={styles.fieldError} role="alert">
+                {fieldErrors.display_name}
+              </div>
+            ) : null}
 
-          <label style={styles.label} htmlFor="avatar_url">
-            Avatar URL
-          </label>
-          <input
-            id="avatar_url"
-            name="avatar_url"
-            type="url"
-            value={form.avatar_url}
-            onChange={onChange}
-            style={styles.input}
-            aria-invalid={fieldErrors.avatar_url ? 'true' : 'false'}
-            aria-describedby={fieldErrors.avatar_url ? 'avatar-url-error' : undefined}
-          />
-          {fieldErrors.avatar_url ? (
-            <div id="avatar-url-error" style={styles.fieldError} role="alert">
-              {fieldErrors.avatar_url}
-            </div>
-          ) : null}
+            <label style={styles.label} htmlFor="avatar_url">
+              Avatar URL
+            </label>
+            <GlassInput
+              id="avatar_url"
+              name="avatar_url"
+              name="avatar_url"
+              type="url"
+              value={form.avatar_url}
+              onChange={onChange}
+              placeholder="https://..."
+              ariaInvalid={fieldErrors.avatar_url ? 'true' : 'false'}
+              ariaDescribedBy={fieldErrors.avatar_url ? 'avatar-url-error' : undefined}
+            />
+            {fieldErrors.avatar_url ? (
+              <div id="avatar-url-error" style={styles.fieldError} role="alert">
+                {fieldErrors.avatar_url}
+              </div>
+            ) : null}
 
-          <label style={styles.label} htmlFor="bio">
-            Bio
-          </label>
-          <textarea
-            id="bio"
-            name="bio"
-            value={form.bio}
-            onChange={onChange}
-            rows={4}
-            style={styles.textarea}
-            aria-invalid={fieldErrors.bio ? 'true' : 'false'}
-            aria-describedby={fieldErrors.bio ? 'bio-error' : undefined}
-          />
-          {fieldErrors.bio ? (
-            <div id="bio-error" style={styles.fieldError} role="alert">
-              {fieldErrors.bio}
-            </div>
-          ) : null}
+            <label style={styles.label} htmlFor="bio">
+              Bio
+            </label>
+            <textarea
+              id="bio"
+              name="bio"
+              value={form.bio}
+              onChange={onChange}
+              rows={4}
+              style={styles.textarea}
+              aria-invalid={fieldErrors.bio ? 'true' : 'false'}
+              aria-describedby={fieldErrors.bio ? 'bio-error' : undefined}
+            />
+            {fieldErrors.bio ? (
+              <div id="bio-error" style={styles.fieldError} role="alert">
+                {fieldErrors.bio}
+              </div>
+            ) : null}
 
-          <button type="submit" style={styles.primaryButton} disabled={saving}>
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-        </form>
+            <GlassButton type="submit" disabled={saving} variant="primary">
+              {saving ? 'Saving…' : 'Save'}
+            </GlassButton>
+          </form>
+        </GlassCard>
 
-        <div style={styles.preview}>
-          <div style={styles.previewLabel}>Preview</div>
-          <div style={styles.previewValue}>{form.display_name || '(no display name)'}</div>
-        </div>
+        <GlassCard>
+          <div style={styles.preview}>
+            <div style={styles.previewLabel}>Preview</div>
+            <div style={styles.previewValue}>{form.display_name || '(no display name)'}</div>
+          </div>
+        </GlassCard>
 
         <div style={styles.section}>
           <div style={styles.sectionHeaderRow}>
             <h2 style={styles.sectionTitle}>Sessions</h2>
             <div style={styles.sectionActions}>
-              <button type="button" style={styles.secondaryButton} onClick={loadSessions} disabled={sessionsLoading}>
+              <GlassButton
+                type="button"
+                onClick={loadSessions}
+                disabled={sessionsLoading}
+                variant="secondary"
+              >
                 {sessionsLoading ? 'Refreshing…' : 'Refresh'}
-              </button>
-              <button type="button" style={styles.dangerButton} onClick={revokeOtherSessions} disabled={revokingOthers}>
+              </GlassButton>
+              <GlassButton
+                type="button"
+                onClick={revokeOtherSessions}
+                disabled={revokingOthers}
+                variant="ghost"
+              >
                 {revokingOthers ? 'Logging out…' : 'Log out other devices'}
-              </button>
+              </GlassButton>
             </div>
           </div>
 
@@ -228,7 +248,7 @@ const Settings = () => {
           ) : (
             <div style={styles.sessionsList}>
               {sessions.map((s) => (
-                <div key={s.id} style={styles.sessionRow}>
+                <GlassCard key={s.id}>
                   <div style={styles.sessionMain}>
                     <div style={styles.sessionUa}>{s.user_agent || '(unknown device)'}</div>
                     <div style={styles.sessionMeta}>
@@ -236,21 +256,17 @@ const Settings = () => {
                       <span>{s.is_current ? 'Current session' : 'Other session'}</span>
                     </div>
                   </div>
-                </div>
+                </GlassCard>
               ))}
             </div>
           )}
         </div>
       </div>
-    </div>
+    </AppShell>
   );
 };
 
 const styles = {
-  container: {
-    minHeight: '100vh',
-    background: '#f5f7fa',
-  },
   card: {
     maxWidth: '720px',
     margin: '0 auto',
@@ -275,10 +291,6 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '10px',
-    background: 'white',
-    borderRadius: '12px',
-    padding: '16px',
-    border: '1px solid #e5e7eb',
   },
   label: {
     fontSize: '14px',
@@ -286,9 +298,6 @@ const styles = {
   },
   input: {
     padding: '10px 12px',
-    borderRadius: '8px',
-    border: '1px solid #d1d5db',
-    fontSize: '14px',
   },
   fieldError: {
     marginTop: '-6px',
@@ -305,13 +314,6 @@ const styles = {
   },
   primaryButton: {
     marginTop: '8px',
-    padding: '10px 12px',
-    borderRadius: '8px',
-    border: 'none',
-    background: '#111827',
-    color: 'white',
-    cursor: 'pointer',
-    fontWeight: 600,
   },
   preview: {
     marginTop: '14px',
@@ -330,10 +332,6 @@ const styles = {
   },
   section: {
     marginTop: '14px',
-    background: 'white',
-    borderRadius: '12px',
-    padding: '16px',
-    border: '1px solid #e5e7eb',
   },
   sectionHeaderRow: {
     display: 'flex',
@@ -354,24 +352,8 @@ const styles = {
     color: '#6b7280',
     fontSize: '14px',
   },
-  secondaryButton: {
-    padding: '10px 12px',
-    borderRadius: '8px',
-    border: '1px solid #d1d5db',
-    background: 'white',
-    color: '#111827',
-    cursor: 'pointer',
-    fontWeight: 600,
-  },
-  dangerButton: {
-    padding: '10px 12px',
-    borderRadius: '8px',
-    border: '1px solid #d1d5db',
-    background: 'white',
-    color: '#991b1b',
-    cursor: 'pointer',
-    fontWeight: 600,
-  },
+  secondaryButton: {},
+  dangerButton: {},
   sessionsList: {
     display: 'flex',
     flexDirection: 'column',

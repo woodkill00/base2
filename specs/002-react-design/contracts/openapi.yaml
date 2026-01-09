@@ -1,0 +1,13 @@
+openapi: 3.0.3
+info:
+  title: Base2 UI Feature — No API Changes
+  version: 1.0.0
+  description: |
+    This frontend-only feature introduces a glassmorphism design system and App Shell.
+    It does not add, remove, or modify API endpoints or schemas.
+    All existing contracts from 001-django-fastapi-react remain authoritative.
+  x-notes:
+    - Guardrail: No auth flow or API contract changes.
+paths: {}
+components:
+  schemas: {}

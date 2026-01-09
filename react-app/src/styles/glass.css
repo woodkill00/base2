@@ -1,0 +1,85 @@
+/* Base glass styles and focus-visible */
+.glass {
+  background-color: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 4px 16px var(--glass-shadow);
+  backdrop-filter: blur(12px);
+}
+
+/* Fallback when backdrop-filter unsupported: apply via class toggles in JS/CSS */
+.no-backdrop .glass {
+  backdrop-filter: none;
+}
+
+.glass-interactive:hover {
+  box-shadow: 0 8px 24px var(--glass-shadow);
+}
+
+.glass-interactive:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-glow);
+}
+
+/* Button variants */
+.glass-btn {
+  border-radius: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--glass-border);
+  color: #fff;
+  background-color: var(--glass-bg);
+}
+.glass-btn-primary { color: #fff; }
+.glass-btn-secondary { color: #e0e0e0; }
+.glass-btn-ghost { color: #ffffffcc; background-color: transparent; }
+.glass-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Modal */
+.glass-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.glass-modal {
+  min-width: 300px;
+  max-width: 600px;
+  padding: 16px;
+}
+
+/* Card */
+.glass-card { border-radius: 12px; padding: 16px; }
+.glass-card-elevated { box-shadow: 0 10px 30px var(--glass-shadow); }
+.glass-card-subtle { border-color: rgba(255,255,255,0.25); }
+
+/* Input */
+.glass-input { display: grid; gap: 8px; }
+.glass-input-label { color: #fff; font-size: 0.9rem; }
+.glass-input-field { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--glass-border); }
+.glass-input-error { color: #ff6b6b; font-size: 0.85rem; }
+
+/* Tabs */
+.glass-tabs { display: flex; gap: 8px; }
+.glass-tab { padding: 8px 12px; border-radius: 8px; }
+[role="tab"][aria-selected="true"] { box-shadow: 0 0 0 3px #39ff14; }
+
+/* Spinner */
+.glass-spinner { display: inline-block; }
+.glass-spinner-circle { border-radius: 50%; border: 3px solid rgba(255,255,255,0.6); border-top-color: transparent; animation: spin 1s linear infinite; }
+.glass-spinner-sm { width: 16px; height: 16px; }
+.glass-spinner-md { width: 24px; height: 24px; }
+.glass-spinner-lg { width: 32px; height: 32px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Skeleton */
+.glass-skeleton { background: linear-gradient(90deg, rgba(255,255,255,0.1), rgba(255,255,255,0.2), rgba(255,255,255,0.1)); animation: shimmer 1.2s infinite; }
+.glass-skeleton-rounded { border-radius: 8px; }
+@keyframes shimmer { 0% { background-position: -200px 0; } 100% { background-position: 200px 0; } }
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .glass-interactive { transition: none; }
+  .glass-spinner-circle { animation: none; }
+  .glass-skeleton { animation: none; }
+}

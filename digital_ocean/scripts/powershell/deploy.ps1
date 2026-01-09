@@ -856,6 +856,10 @@ PY
   # Ensure API container uses the freshly built image
   docker compose -f local.docker.yml up -d --build --force-recreate --no-deps api > /root/logs/build/api-up.txt 2>&1 || true
   docker compose -f local.docker.yml up -d --build --force-recreate --no-deps traefik > /root/logs/build/traefik-up.txt 2>&1 || true
+  # Ensure React frontend uses freshly built assets (avoid stale bundle).
+  # We have observed CRA static assets being cached aggressively; perform a targeted no-cache rebuild.
+  docker compose -f local.docker.yml build --no-cache react-app > /root/logs/build/react-app-build-nocache.txt 2>&1 || true
+  docker compose -f local.docker.yml up -d --build --force-recreate --no-deps react-app > /root/logs/build/react-app-up.txt 2>&1 || true
 
   # Ensure Flower is started (kept as a separate log artifact)
   docker compose -f local.docker.yml up -d --build flower > /root/logs/build/flower-up.txt 2>&1 || true
@@ -1264,19 +1268,27 @@ except Exception:\
       fi
     fi
   fi
-  # mark completion
-  # Run service test suites inside containers and capture outputs
+    # Ensure contract file available inside API container for contract tests
+    AID=$(docker compose -f local.docker.yml ps -q api 2>/dev/null || true)
+    if [ -n "$AID" ] && [ -f "/opt/apps/base2/specs/001-django-fastapi-react/contracts/openapi.yaml" ]; then
+      docker compose -f local.docker.yml exec -T api sh -lc 'mkdir -p /app/specs/001-django-fastapi-react/contracts' >/dev/null 2>&1 || true
+      docker cp "/opt/apps/base2/specs/001-django-fastapi-react/contracts/openapi.yaml" "$AID":/app/specs/001-django-fastapi-react/contracts/openapi.yaml >/dev/null 2>&1 || true
+    fi
+
+    # mark completion
+    # Run service test suites inside containers and capture outputs
   mkdir -p /root/logs || true
   # FastAPI (api) pytest
   # Ensure we run from /app so `import main` / local imports resolve as expected.
-  docker compose -f local.docker.yml exec -T api sh -lc 'cd /app && pytest -q --cov=api --cov-report=term --cov-fail-under=60' > /root/logs/api-pytest.txt 2>&1 || true
+  # Set COVERAGE_FILE to a writable path inside the container to avoid read-only filesystem issues.
+  docker compose -f local.docker.yml exec -T api sh -lc 'export COVERAGE_FILE=/tmp/.coverage_api && cd /app && pytest -q --cov=api --cov-report=term --cov-fail-under=60' > /root/logs/api-pytest.txt 2>&1 || true
   # API integration tests (marked with @pytest.mark.integration)
-  docker compose -f local.docker.yml exec -T api sh -lc 'cd /app && pytest -q -m integration --cov=api --cov-report=term --cov-fail-under=60' > /root/logs/api-pytest-integration.txt 2>&1 || true
+  docker compose -f local.docker.yml exec -T api sh -lc 'export COVERAGE_FILE=/tmp/.coverage_api_int && cd /app && pytest -q -m integration --cov=api --cov-report=term --cov-fail-under=60' > /root/logs/api-pytest-integration.txt 2>&1 || true
   # API lint/type checks (Ruff + Mypy)
   docker compose -f local.docker.yml exec -T api sh -lc 'cd /app && (ruff --version >/dev/null 2>&1 && ruff check . || echo "ruff_not_available")' > /root/logs/api-ruff.txt 2>&1 || true
   docker compose -f local.docker.yml exec -T api sh -lc 'cd /app && (mypy --version >/dev/null 2>&1 && mypy --show-error-codes --pretty api || echo "mypy_not_available")' > /root/logs/api-mypy.txt 2>&1 || true
   # Django pytest
-  docker compose -f local.docker.yml exec -T django sh -lc 'pytest -q --cov=project --cov-report=term --cov-fail-under=60' > /root/logs/django-pytest.txt 2>&1 || true
+  docker compose -f local.docker.yml exec -T django sh -lc 'export COVERAGE_FILE=/tmp/.coverage_django && pytest -q --cov=project --cov-report=term --cov-fail-under=60' > /root/logs/django-pytest.txt 2>&1 || true
   date -u +"%Y-%m-%dT%H:%M:%SZ" > /root/logs/remote_verify.done || true
 fi
 '@
