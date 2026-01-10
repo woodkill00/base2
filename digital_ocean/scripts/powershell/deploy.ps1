@@ -861,6 +861,19 @@ PY
   docker compose -f local.docker.yml build --no-cache react-app > /root/logs/build/react-app-build-nocache.txt 2>&1 || true
   docker compose -f local.docker.yml up -d --build --force-recreate --no-deps react-app > /root/logs/build/react-app-up.txt 2>&1 || true
 
+  # ENOSPC safeguard for React build: if npm/docker report "no space left on device",
+  # prune images/volumes and retry a targeted rebuild to refresh assets.
+  if grep -qi 'no space left on device' /root/logs/build/react-app-build-nocache.txt 2>/dev/null; then
+    echo "Detected ENOSPC during react-app build; pruning Docker resources and retrying" >> /root/logs/build/react-app-build-nocache.txt
+    docker system df > /root/logs/build/docker-system-df-before.txt 2>&1 || true
+    docker system prune -a -f --volumes > /root/logs/build/docker-prune.txt 2>&1 || true
+    docker system df > /root/logs/build/docker-system-df-after.txt 2>&1 || true
+
+    # Retry targeted rebuild and recreate for react-app
+    docker compose -f local.docker.yml build --no-cache react-app > /root/logs/build/react-app-build-retry.txt 2>&1 || true
+    docker compose -f local.docker.yml up -d --build --force-recreate --no-deps react-app > /root/logs/build/react-app-up-retry.txt 2>&1 || true
+  fi
+
   # Ensure Flower is started (kept as a separate log artifact)
   docker compose -f local.docker.yml up -d --build flower > /root/logs/build/flower-up.txt 2>&1 || true
 
