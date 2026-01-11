@@ -257,6 +257,16 @@ description: 'Tasks for React Glass UI System + App Shell'
 - Create `GlassCard`, `GlassButton`, `GlassInput`, `GlassTabs`, `GlassModal`, `GlassSpinner`, `GlassSkeleton` in parallel (distinct files).
 - Write stories for each concurrently under src/stories/glass/.
 
+## Parallel Example: User Story 1
+
+- Write RTL tests for `ThemeToggle`, cookie precedence, fallback styling in parallel (distinct test files).
+- Implement `ThemeToggle`, persistence util, and header integration in parallel (separate files) before wiring in App Shell.
+
+## Parallel Example: User Story 3
+
+- Implement `GlassHeader`, `GlassSidebar`, and `AppShell` in parallel (separate components).
+- Create Playwright calc-sizing e2e and performance spec in parallel with CSS token updates.
+
 ## Implementation Strategy
 
 ### MVP First (User Story 1 Only)
