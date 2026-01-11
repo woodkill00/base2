@@ -23,8 +23,8 @@ describe('Pages migrated to glass/AppShell', () => {
   test('Home renders within AppShell and uses GlassCard', () => {
     renderWithRouter(<Home />);
     // At least one GlassCard should be present
-    const card = screen.getByTestId('glass-card');
-    expect(card).toBeInTheDocument();
+    const cards = screen.getAllByTestId('glass-card');
+    expect(cards.length).toBeGreaterThanOrEqual(1);
   });
 
   test('Login renders within AppShell and uses Glass components', () => {

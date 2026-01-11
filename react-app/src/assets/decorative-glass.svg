@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200" viewBox="0 0 400 200" aria-label="Decorative frosted glass shapes" role="img">
+  <defs>
+    <filter id="blur"><feGaussianBlur stdDeviation="6"/></filter>
+  </defs>
+  <g filter="url(#blur)">
+    <rect x="30" y="30" width="140" height="80" rx="20" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.4)" />
+    <rect x="200" y="80" width="160" height="90" rx="24" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.35)" />
+  </g>
+</svg>
