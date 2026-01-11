@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="40" viewBox="0 0 120 40" aria-label="Logo" role="img">
+  <rect x="0" y="0" width="120" height="40" rx="8" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.4)" />
+  <text x="10" y="26" font-size="18" fill="#fff">Base2</text>
+</svg>

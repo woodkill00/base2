@@ -26,7 +26,6 @@ description: 'Tasks for React Glass UI System + App Shell'
 - [x] T003 [P] Create Storybook stories directory at c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\
 - [x] T004 Add spec README pointer in c:\Users\theju\Documents\coding\website_build\base2\specs\002-react-design\quickstart.md
 - [x] T005 Ensure npm dependencies installed in c:\Users\theju\Documents\coding\website_build\base2\react-app\package.json
-- [x] T005 Ensure npm dependencies installed in c:\Users\theju\Documents\coding\website_build\base2\react-app\package.json
 
 ---
 
@@ -35,7 +34,7 @@ description: 'Tasks for React Glass UI System + App Shell'
 **Purpose**: Core infrastructure that MUST be complete before ANY user story can be implemented.
 
 - [x] T006 Define CSS tokens (glass, spacing, motion, layout) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\tokens.css
-- [x] T006 Define CSS tokens (glass, spacing, motion, layout) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\tokens.css
+
 - [x] T007 [P] Add global glass base styles and `.dark` class handling in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\glass.css
 - [x] T008 [P] Wire tokens and base styles in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\App.css
 - [x] T009 [P] Early theme hydration snippet in c:\Users\theju\Documents\coding\website_build\base2\react-app\public\index.html
@@ -117,6 +116,36 @@ description: 'Tasks for React Glass UI System + App Shell'
 - [x] T024 [US2] Storybook: Stories for all components with light/dark, hover/focus, disabled/error in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\glass\
 
 **Checkpoint**: Components independently testable; stories render with no console warnings.
+
+---
+
+### Home Page (Public) — Implementation (User Story 2)
+
+**Goal**: Implement the Public Home Page (`/`) using glass components with a black backdrop, gradient/mesh background, and no API calls.
+
+**Independent Test**: Home page renders without API; sections present and accessible; glass visible in both themes; no flat sections; no JS layout math.
+
+#### Implementation Tasks (Write tests first where applicable)
+
+- [ ] T070 [P] [US2] Create Home components directory at c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\home\
+- [ ] T071 [P] [US2] Implement `HomeHero` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\home\HomeHero.jsx
+- [ ] T072 [P] [US2] Implement `HomeFeatures` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\home\HomeFeatures.jsx
+- [ ] T073 [P] [US2] Implement `HomeVisual` (lazy-load Illustration) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\home\HomeVisual.jsx
+- [ ] T074 [P] [US2] Implement `HomeTrust` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\home\HomeTrust.jsx
+- [ ] T075 [P] [US2] Implement `HomeFooter` in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\home\HomeFooter.jsx
+- [ ] T076 [US2] Compose sections on Home page in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\pages\Home.js (gradient/mesh background; glass-only containers; black backdrop)
+- [ ] T077 [P] [US2] Add ARIA labels and role="img" for inline SVGs in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\home\
+- [ ] T078 [P] [US2] Add search-style glass input in header (public variant) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\glass\GlassHeader.tsx
+- [ ] T079 [P] [US2] Add assets (logo.svg, hero.svg/webp, feature icons, decorative-glass.svg, mesh-light.svg, mesh-dark.svg) in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\assets\
+
+#### Tests for Home Page
+
+- [ ] T080 [P] [US2] Storybook composition: Home page in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\stories\home\HomePage.stories.jsx
+- [ ] T081 [P] [US2] RTL tests: sections render and keyboard navigation works in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_\home\home-page.test.jsx
+- [ ] T082 [P] [US2] Playwright: verify black backdrop and glass visibility across sections in c:\Users\theju\Documents\coding\website_build\base2\react-app\e2e\home-style.spec.ts
+- [ ] T083 [P] [US2] Accessibility (jest-axe): focus-visible glow everywhere and contrast ≥ 4.5:1 in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests\_\_\home\home-a11y.test.jsx
+
+**Checkpoint**: Public Home Page independently testable and compliant with spec.
 
 ---
 
@@ -228,6 +257,16 @@ description: 'Tasks for React Glass UI System + App Shell'
 - Create `GlassCard`, `GlassButton`, `GlassInput`, `GlassTabs`, `GlassModal`, `GlassSpinner`, `GlassSkeleton` in parallel (distinct files).
 - Write stories for each concurrently under src/stories/glass/.
 
+## Parallel Example: User Story 1
+
+- Write RTL tests for `ThemeToggle`, cookie precedence, fallback styling in parallel (distinct test files).
+- Implement `ThemeToggle`, persistence util, and header integration in parallel (separate files) before wiring in App Shell.
+
+## Parallel Example: User Story 3
+
+- Implement `GlassHeader`, `GlassSidebar`, and `AppShell` in parallel (separate components).
+- Create Playwright calc-sizing e2e and performance spec in parallel with CSS token updates.
+
 ## Implementation Strategy
 
 ### MVP First (User Story 1 Only)
@@ -252,7 +291,7 @@ description: 'Tasks for React Glass UI System + App Shell'
 ### TypeScript Setup (Phase 1 additions)
 
 - [x] T046 [P] Add TypeScript to react-app: create c:\Users\theju\Documents\coding\website_build\base2\react-app\tsconfig.json and install devDependencies (typescript, @types/react, @types/react-dom, @types/jest).
-- [x] T046 [P] Add TypeScript to react-app: create c:\Users\theju\Documents\coding\website_build\base2\react-app\tsconfig.json and install devDependencies (typescript, @types/react, @types/react-dom, @types/jest).
+
 - [x] T047 [P] Configure Storybook for TypeScript in c:\Users\theju\Documents\coding\website_build\base2\react-app\.storybook\ (if not auto-detected).
 
 ### Tailwind Usage Policy

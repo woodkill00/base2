@@ -7,6 +7,11 @@ import GlassCard from '../components/glass/GlassCard';
 import GlassButton from '../components/glass/GlassButton';
 import GlassInput from '../components/glass/GlassInput';
 import Navigation from '../components/Navigation';
+import HomeHero from '../components/home/HomeHero';
+import HomeFeatures from '../components/home/HomeFeatures';
+import HomeVisual from '../components/home/HomeVisual';
+import HomeTrust from '../components/home/HomeTrust';
+import HomeFooter from '../components/home/HomeFooter';
 
 const Home = () => {
   const { loginWithGoogle, loginWithEmail, register, isAuthenticated, logout } = useAuth();
@@ -129,6 +134,11 @@ const Home = () => {
         <div style={styles.page} data-testid="home-page">
           <div style={styles.containerInner}>
             <Navigation />
+            <HomeHero />
+            <HomeFeatures />
+            <HomeVisual />
+            <HomeTrust />
+            <HomeFooter />
             <GlassCard>
               <h1 style={styles.title}>Welcome Back!</h1>
               <p style={styles.subtitle}>You are already logged in</p>
@@ -152,6 +162,11 @@ const Home = () => {
       <div style={styles.page} data-testid="home-page">
         <div style={styles.containerInner}>
           <Navigation />
+          <HomeHero />
+          <HomeFeatures />
+          <HomeVisual />
+          <HomeTrust />
+          <HomeFooter />
           <GlassCard>
             <h1 style={styles.title}>Welcome to Base2</h1>
             <p style={styles.subtitle}>

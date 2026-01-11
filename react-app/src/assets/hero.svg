@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" aria-label="Abstract glassmorphism ui illustration" role="img">
+  <defs>
+    <filter id="blur" x="-10" y="-10" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="8" />
+    </filter>
+  </defs>
+  <rect x="0" y="0" width="1200" height="600" fill="#121212"/>
+  <g filter="url(#blur)">
+    <rect x="200" y="120" width="280" height="160" rx="24" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.4)"/>
+    <rect x="520" y="220" width="360" height="220" rx="28" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.35)"/>
+    <rect x="160" y="340" width="240" height="120" rx="20" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.45)"/>
+  </g>
+</svg>
