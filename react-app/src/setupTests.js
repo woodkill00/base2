@@ -96,3 +96,21 @@ beforeEach(() => {
 //   error: jest.fn(),
 //   warn: jest.fn(),
 // };
+
+// Suppress React Router v7 future flag deprecation warnings in tests only
+(() => {
+  const originalWarn = console.warn.bind(console);
+  const shouldFilter = (args) => {
+    try {
+      const first = args && args[0];
+      if (typeof first !== 'string') return false;
+      return first.includes('React Router Future Flag Warning');
+    } catch (_) {
+      return false;
+    }
+  };
+  jest.spyOn(console, 'warn').mockImplementation((...args) => {
+    if (shouldFilter(args)) return;
+    originalWarn(...args);
+  });
+})();
