@@ -32,4 +32,5 @@ jobs:
           PERF_BASE_URL: https://woodkilldev.com
           PERF_P95_BUDGET_MS: '5000'
           PERF_SAMPLES: '10'
+          PERF_INSECURE: '1'
         run: python scripts/perf_smoke.py
