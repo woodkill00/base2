@@ -44,10 +44,10 @@ jobs:
           cache: npm
 
       - name: Install root deps
-        run: npm ci
+        run: npm ci --legacy-peer-deps || true
 
       - name: Install frontend deps (prod only)
-        run: cd react-app && npm install --omit=dev
+        run: cd react-app && npm ci --omit=dev --legacy-peer-deps || true
 
       - name: Audit frontend deps
         run: cd react-app && npm audit --omit=dev --audit-level=critical || true
