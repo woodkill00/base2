@@ -6,6 +6,9 @@ This repo uses a single `.env` file (see `.env.example`) that feeds Docker Compo
 
 - `ENV`: `development` | `staging` | `production`
 
+- `DO_APP_BRANCH`: branch name used by UpdateOnly deploys to hard-reset the remote repo (e.g., `main`).
+- `GIT_REMOTE`: repo URL used by orchestrator when performing update pulls.
+
 In `ENV=staging` and `ENV=production`, services fail fast on startup if required environment variables are missing.
 
 ## FastAPI auth (Option A)
@@ -50,3 +53,8 @@ Frontend usage:
 
 - `react-app/src/flags.js` provides `fetchFlags()` and `isFlagEnabled()`.
 - If `window.__FLAGS__` is set (optional), the frontend will use it without making a network call.
+
+## Deploy/Test flags policy
+
+- Deploy flags are PowerShell parameters to `digital_ocean/scripts/powershell/deploy.ps1` (see `docs/DEPLOY.md`).
+- Tests-only behavior (e.g., React Router warning suppression) is scoped to Jest setup and does not change production runtime.
