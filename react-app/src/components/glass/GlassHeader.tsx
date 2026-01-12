@@ -11,6 +11,9 @@ export const GlassHeader: React.FC<Props> = ({ title = 'App Shell' }) => {
       className="glass"
       style={{
         height: 'var(--header-h)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',

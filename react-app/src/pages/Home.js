@@ -8,6 +8,9 @@ import GlassButton from '../components/glass/GlassButton';
 import GlassInput from '../components/glass/GlassInput';
 import Navigation from '../components/Navigation';
 import HomeHero from '../components/home/HomeHero';
+import About from '../components/portfolio/About';
+import ProjectsGrid from '../components/portfolio/ProjectsGrid';
+import ContactForm from '../components/portfolio/ContactForm';
 import HomeFeatures from '../components/home/HomeFeatures';
 import HomeVisual from '../components/home/HomeVisual';
 import HomeTrust from '../components/home/HomeTrust';
@@ -162,8 +165,11 @@ const Home = () => {
       <div style={styles.page} data-testid="home-page">
         <div style={styles.containerInner}>
           <Navigation />
-          <HomeHero />
+          <HomeHero title="Woodkill Dev" subtitle="Clean, modern glassmorphism portfolio" />
           <HomeFeatures />
+          <About />
+          <ProjectsGrid />
+          <ContactForm />
           <HomeVisual />
           <HomeTrust />
           <HomeFooter />
@@ -323,7 +329,7 @@ const Home = () => {
 
 const styles = {
   page: {
-    background: '#000',
+    background: '#0f0f23',
     color: '#fff',
     minHeight: 'calc(100vh - var(--header-h) - var(--footer-h))',
     display: 'flex',
