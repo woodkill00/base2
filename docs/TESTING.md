@@ -21,6 +21,13 @@ Coverage thresholds enforced in CI and deploy gate.
 - Tests: `cd react-app && npm run test:ci`
 - E2E: `cd react-app && npm run e2e`
 
+### React Router v7 future flags (tests-only)
+
+- Production: Router flags are configured in app code (see `react-app/src/App.js`).
+- Tests: We suppress only the React Router "Future Flag Warning" messages in `react-app/src/setupTests.js` to keep CI output clean.
+- Alternative (preferred in new tests): Wrap components with `TestRouter` from `react-app/src/test/TestRouter.jsx`, which sets `future={{ v7_startTransition: true, v7_relativeSplatPath: true }}`.
+- Scope: This policy affects Jest tests only. Runtime builds and behavior remain unchanged.
+
 ## Contract
 
 - Runtime OpenAPI vs contract: `cd api && pytest -q -m contract`
