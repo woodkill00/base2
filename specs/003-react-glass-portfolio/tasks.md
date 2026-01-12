@@ -28,12 +28,12 @@ description: 'Task list for React Glass Portfolio SPA'
 
 **Purpose**: Initialize styling/animation tooling and base theme/glass utilities
 
-- [ ] T001 Add Tailwind CSS and Framer Motion dependencies in react-app/package.json
-- [ ] T002 Create Tailwind config with dark-mode 'class' and glass utilities in react-app/tailwind.config.js
-- [ ] T003 [P] Create PostCSS config for Tailwind in react-app/postcss.config.js
-- [ ] T004 [P] Integrate Tailwind directives (@tailwind base, components, utilities) in react-app/src/index.css
-- [ ] T005 [P] Create tokens stylesheet with clamp() design scales in react-app/src/styles/tokens.css
-- [ ] T006 Wire global tokens import in entry file in react-app/src/index.js
+- [x] T001 Add Tailwind CSS and Framer Motion dependencies in react-app/package.json
+- [x] T002 Create Tailwind config with dark-mode 'class' and glass utilities in react-app/tailwind.config.js
+- [x] T003 [P] Create PostCSS config for Tailwind in react-app/postcss.config.js
+- [x] T004 [P] Integrate Tailwind directives (@tailwind base, components, utilities) in react-app/src/index.css
+- [x] T005 [P] Create tokens stylesheet with clamp() design scales in react-app/src/styles/tokens.css
+- [x] T006 Wire global tokens import in entry file in react-app/src/index.js
 
 ---
 
@@ -44,15 +44,15 @@ description: 'Task list for React Glass Portfolio SPA'
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
 - [ ] T007 Create theme context with localStorage persistence in react-app/src/contexts/ThemeContext.js
-- [ ] T008 [P] Create glass UI primitives: GlassCard in react-app/src/components/glass/GlassCard.tsx
-- [ ] T009 [P] Create glass UI primitives: GlassButton in react-app/src/components/glass/GlassButton.tsx
-- [ ] T010 [P] Create ThemeToggle (sun/moon, glass pill) in react-app/src/components/glass/ThemeToggle.tsx
+- [x] T008 [P] Create glass UI primitives: GlassCard in react-app/src/components/glass/GlassCard.tsx
+- [x] T009 [P] Create glass UI primitives: GlassButton in react-app/src/components/glass/GlassButton.tsx
+- [x] T010 [P] Create ThemeToggle (sun/moon, glass pill) in react-app/src/components/glass/ThemeToggle.tsx
 - [ ] T011 [P] Create SectionContainer.jsx with clamp-based spacing in react-app/src/components/SectionContainer.jsx
-- [ ] T012 [P] Add Framer Motion variants helper in react-app/src/lib/motion.js
-- [ ] T013 [P] Scaffold App layout (Header/Footer placeholders, section anchors) in react-app/src/App.js
-- [ ] T014 [P] Add SEO meta tags and dark/light theme-color in react-app/public/index.html
+- [x] T012 [P] Add Framer Motion variants helper in react-app/src/lib/motion.js
+- [x] T013 [P] Scaffold App layout (Header/Footer placeholders, section anchors) in react-app/src/App.js
+- [x] T014 [P] Add SEO meta tags and dark/light theme-color in react-app/public/index.html
 - [ ] T015 [P] Add focus-visible ring/glass glow styles in react-app/src/index.css
-- [ ] T016 Extend Tailwind theme with color tokens and typography/spacing scales in react-app/tailwind.config.js
+- [x] T016 Extend Tailwind theme with color tokens and typography/spacing scales in react-app/tailwind.config.js
 
 **Checkpoint**: Foundation ready — user story implementation can now begin in parallel
 
@@ -66,12 +66,12 @@ description: 'Task list for React Glass Portfolio SPA'
 
 ### Implementation for User Story 1
 
-- [ ] T017 [P] [US1] Implement fixed Header with glass navbar in react-app/src/components/glass/GlassHeader.tsx
-- [ ] T018 [P] [US1] Integrate ThemeToggle with ThemeContext in react-app/src/components/glass/ThemeToggle.tsx
-- [ ] T019 [P] [US1] Create search input + Explore button in react-app/src/components/home/HomeHero.jsx
-- [ ] T020 [P] [US1] Implement Hero section with centered glass card in react-app/src/components/home/HomeHero.jsx
-- [ ] T021 [US1] Add Framer Motion fade-up + blur-in to Hero in react-app/src/components/home/HomeHero.jsx
-- [ ] T022 [US1] Wire Header and Hero into Home page in react-app/src/pages/Home.js
+- [x] T017 [P] [US1] Implement fixed Header with glass navbar in react-app/src/components/glass/GlassHeader.tsx
+- [x] T018 [P] [US1] Integrate ThemeToggle with ThemeContext in react-app/src/components/glass/ThemeToggle.tsx
+- [x] T019 [P] [US1] Create search input + Explore button in react-app/src/components/home/HomeHero.jsx
+- [x] T020 [P] [US1] Implement Hero section with centered glass card in react-app/src/components/home/HomeHero.jsx
+- [x] T021 [US1] Add Framer Motion fade-up + blur-in to Hero in react-app/src/components/home/HomeHero.jsx
+- [x] T022 [US1] Wire Header and Hero into Home page in react-app/src/pages/Home.js
 
 **Checkpoint**: Header + Hero fully functional with persistent theming
 
@@ -85,10 +85,10 @@ description: 'Task list for React Glass Portfolio SPA'
 
 ### Implementation for User Story 2
 
-- [ ] T023 [P] [US2] Implement About section with glass profile frame in react-app/src/components/portfolio/About.jsx
-- [ ] T024 [P] [US2] Implement skills chips within About in react-app/src/components/portfolio/About.jsx
-- [ ] T025 [US2] Add motion and ARIA labelling to About in react-app/src/components/portfolio/About.jsx
-- [ ] T026 [US2] Wire About section into Home layout in react-app/src/pages/Home.js
+- [x] T023 [P] [US2] Implement About section with glass profile frame in react-app/src/components/portfolio/About.jsx
+- [x] T024 [P] [US2] Implement skills chips within About in react-app/src/components/portfolio/About.jsx
+- [x] T025 [US2] Add motion and ARIA labelling to About in react-app/src/components/portfolio/About.jsx
+- [x] T026 [US2] Wire About section into Home layout in react-app/src/pages/Home.js
 
 **Checkpoint**: About section independently shippable
 
@@ -102,10 +102,10 @@ description: 'Task list for React Glass Portfolio SPA'
 
 ### Implementation for User Story 3
 
-- [ ] T027 [P] [US3] Create ProjectCard with glass overlay + hover in react-app/src/components/portfolio/ProjectCard.jsx
-- [ ] T028 [P] [US3] Create ProjectsGrid responsive layout in react-app/src/components/portfolio/ProjectsGrid.jsx
-- [ ] T029 [US3] Provide sample projects data inline in react-app/src/components/portfolio/ProjectsGrid.jsx
-- [ ] T030 [US3] Integrate Projects into Home sections in react-app/src/pages/Home.js
+- [x] T027 [P] [US3] Create ProjectCard with glass overlay + hover in react-app/src/components/portfolio/ProjectCard.jsx
+- [x] T028 [P] [US3] Create ProjectsGrid responsive layout in react-app/src/components/portfolio/ProjectsGrid.jsx
+- [x] T029 [US3] Provide sample projects data inline in react-app/src/components/portfolio/ProjectsGrid.jsx
+- [x] T030 [US3] Integrate Projects into Home sections in react-app/src/pages/Home.js
 
 **Checkpoint**: Projects grid independently shippable
 
@@ -119,11 +119,11 @@ description: 'Task list for React Glass Portfolio SPA'
 
 ### Implementation for User Story 4
 
-- [ ] T031 [P] [US4] Implement ContactForm with floating labels in react-app/src/components/portfolio/ContactForm.jsx
-- [ ] T032 [P] [US4] Implement SocialOrbs icons row inline in react-app/src/components/portfolio/ContactForm.jsx
-- [ ] T033 [US4] Wire Contact section into Home layout in react-app/src/pages/Home.js
-- [ ] T034 [US4] Add validation + aria-invalid states to form in react-app/src/components/portfolio/ContactForm.jsx
-- [ ] T035 [US4] Add motion variants for Contact entrance in react-app/src/components/portfolio/ContactForm.jsx
+- [x] T031 [P] [US4] Implement ContactForm with floating labels in react-app/src/components/portfolio/ContactForm.jsx
+- [x] T032 [P] [US4] Implement SocialOrbs icons row inline in react-app/src/components/portfolio/ContactForm.jsx
+- [x] T033 [US4] Wire Contact section into Home layout in react-app/src/pages/Home.js
+- [x] T034 [US4] Add validation + aria-invalid states to form in react-app/src/components/portfolio/ContactForm.jsx
+- [x] T035 [US4] Add motion variants for Contact entrance in react-app/src/components/portfolio/ContactForm.jsx
 
 **Checkpoint**: Contact independently shippable
 
