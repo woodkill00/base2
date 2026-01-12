@@ -2,13 +2,14 @@ name: CI (perf-smoke)
 
 on:
   workflow_dispatch:
+  push:
+    branches: ['main']
   schedule:
     - cron: '0 6 * * *'
 
 jobs:
   perf:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -16,6 +17,16 @@ jobs:
           python-version: '3.12'
       - name: Install deps
         run: pip install requests
+      - name: Warmup HEAD to base URL
+        run: |
+          python - <<'PY'
+          import os, requests
+          base = os.getenv('PERF_BASE_URL','https://woodkilldev.com')
+          try:
+            requests.head(base, timeout=10)
+          except Exception as e:
+            print(f"WARN: warmup failed: {e}")
+          PY
       - name: Perf smoke
         env:
           PERF_BASE_URL: https://woodkilldev.com
