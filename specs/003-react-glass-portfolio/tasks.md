@@ -43,15 +43,15 @@ description: 'Task list for React Glass Portfolio SPA'
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T007 Create theme context with localStorage persistence in react-app/src/contexts/ThemeContext.js
+- [x] T007 Create theme context with localStorage persistence in react-app/src/contexts/ThemeContext.js
 - [x] T008 [P] Create glass UI primitives: GlassCard in react-app/src/components/glass/GlassCard.tsx
 - [x] T009 [P] Create glass UI primitives: GlassButton in react-app/src/components/glass/GlassButton.tsx
 - [x] T010 [P] Create ThemeToggle (sun/moon, glass pill) in react-app/src/components/glass/ThemeToggle.tsx
-- [ ] T011 [P] Create SectionContainer.jsx with clamp-based spacing in react-app/src/components/SectionContainer.jsx
+- [x] T011 [P] Create SectionContainer.jsx with clamp-based spacing in react-app/src/components/SectionContainer.jsx
 - [x] T012 [P] Add Framer Motion variants helper in react-app/src/lib/motion.js
 - [x] T013 [P] Scaffold App layout (Header/Footer placeholders, section anchors) in react-app/src/App.js
 - [x] T014 [P] Add SEO meta tags and dark/light theme-color in react-app/public/index.html
-- [ ] T015 [P] Add focus-visible ring/glass glow styles in react-app/src/index.css
+- [x] T015 [P] Add focus-visible ring/glass glow styles in react-app/src/index.css
 - [x] T016 Extend Tailwind theme with color tokens and typography/spacing scales in react-app/tailwind.config.js
 
 **Checkpoint**: Foundation ready — user story implementation can now begin in parallel
@@ -133,11 +133,11 @@ description: 'Task list for React Glass Portfolio SPA'
 
 **Purpose**: Finishing touches and improvements across sections
 
-- [ ] T036 [P] Optimize clamp scales and theme tokens in react-app/tailwind.config.js
-- [ ] T037 Extract constants/tokens to dedicated file in react-app/src/styles/tokens.css
-- [ ] T038 [P] Accessibility pass (focus rings, contrast) in react-app/src/index.css
-- [ ] T039 [P] Update portfolio README with run/build steps in react-app/README.md
-- [ ] T040 Performance touch-ups (preload/prefetch as needed) in react-app/public/index.html
+- [x] T036 [P] Optimize clamp scales and theme tokens in react-app/tailwind.config.js
+- [x] T037 Extract constants/tokens to dedicated file in react-app/src/styles/tokens.css
+- [x] T038 [P] Accessibility pass (focus rings, contrast) in react-app/src/index.css
+- [x] T039 [P] Update portfolio README with run/build steps in react-app/README.md
+- [x] T040 Performance touch-ups (preload/prefetch as needed) in react-app/public/index.html
 
 ---
 
