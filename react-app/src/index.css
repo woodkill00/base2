@@ -63,6 +63,17 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Accessible focus-visible helpers (glass glow) */
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-glow);
+}
+
+.glass-focus:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 0.2rem rgba(30, 144, 255, 0.4), 0 0 0.6rem rgba(255, 255, 255, 0.2) inset;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 10px;

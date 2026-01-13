@@ -70,6 +70,36 @@ The app will open at `http://localhost:3000`
 
 ---
 
+## 🧊 Glass Portfolio Quickstart
+
+### Prereqs
+
+- Tailwind and PostCSS are preconfigured
+- Glass tokens live in `src/styles/tokens.css`
+- Base glass styles in `src/styles/glass.css` (imported via `App.css`)
+
+### Run & Test
+
+```bash
+npm run build
+npm run test:ci
+```
+
+### Key Files
+
+- `src/components/glass/ThemeToggle.tsx` – theme switch (dark/light)
+- `src/contexts/ThemeContext.js` – theme provider with cookie persistence
+- `src/components/home/HomeHero.jsx` – hero section
+- `src/components/portfolio/*` – About, Projects, Contact
+- `src/components/SectionContainer.jsx` – spacing/container helper
+
+### Accessibility
+
+- Focus-visible rings: `.focus-ring` and `.glass-focus` classes
+- Contrast and keyboard navigation validated in components
+
+---
+
 ## 📁 Project Structure
 
 ```

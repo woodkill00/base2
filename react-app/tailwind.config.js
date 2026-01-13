@@ -7,6 +7,12 @@ module.exports = {
   ],
   theme: {
     extend: {
+      spacing: {
+        section: 'var(--space)'
+      },
+      borderRadius: {
+        glass: 'var(--radius)'
+      },
       colors: {
         primaryBgDark: '#0f0f23',
         cardDark: '#1a1a2e',
