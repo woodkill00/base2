@@ -93,3 +93,17 @@ No constitutional violations; section not applicable.
 - Tasks: See c:\Users\theju\Documents\coding\website_build\base2\specs\002-react-design\tasks.design-integration.md
 - Mapping: `shadcn/ui` primitives → glass components (`GlassButton`, `GlassInput`, `GlassCard`, `GlassTabs`, `GlassModal`)
 - Asset policy: Vector-only (SVG/WebP). Unsplash photos noted in design ATTRIBUTIONS, but not shipped.
+
+### UI Mapping Table (Design → Glass)
+
+- header.tsx → GlassHeader.tsx (adds public search input when `title="Home"`)
+- hero.tsx → HomeHero.jsx
+- features.tsx → HomeFeatures.jsx
+- visual-section.tsx → HomeVisual.jsx (vector-first assets: hero.svg, mesh backgrounds)
+- trust-section.tsx → HomeTrust.jsx
+- footer.tsx → HomeFooter.jsx
+- ui/button.tsx → GlassButton.tsx
+- ui/card.tsx → GlassCard.tsx
+- ui/input.tsx → GlassInput.tsx
+- ui/tabs.tsx → GlassTabs.tsx
+- ui/dialog.tsx → GlassModal.tsx
