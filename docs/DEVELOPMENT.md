@@ -80,3 +80,9 @@ Generate frontend TypeScript types from the OpenAPI contract:
 cd react-app
 npm run generate:openapi:types
 ```
+
+## Design Integration & Attributions
+
+- Design bundle in c:\Users\theju\Documents\coding\website_build\base2\junk\idea\; see additional tasks in c:\Users\theju\Documents\coding\website_build\base2\specs\002-react-design\tasks.design-integration.md
+- Components referenced from shadcn/ui are used under MIT license.
+- Photos referenced from Unsplash are under Unsplash license; we do not ship raster images. Use vector assets (SVG/WebP) only.

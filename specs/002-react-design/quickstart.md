@@ -39,6 +39,12 @@ npm run storybook
 - No backend/auth or API contract changes in this feature.
 - Layout sizing must use CSS `calc()` per spec.
 
+## Design Integration
+
+- Design bundle: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\ (README.md, components under `src/app/components/` and `src/app/components/ui/`)
+- Additional tasks: c:\Users\theju\Documents\coding\website_build\base2\specs\002-react-design\tasks.design-integration.md
+- Attribution: shadcn/ui under MIT; Unsplash license documented in the design folder. We ship vector assets only.
+
 ### Theme Persistence (Cookie)
 
 - Theme order: backend profile (authenticated) > client cookie (`theme=light|dark`) > `prefers-color-scheme` fallback.

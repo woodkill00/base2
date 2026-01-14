@@ -85,3 +85,11 @@ tests/
 ## Complexity Tracking
 
 No constitutional violations; section not applicable.
+
+## Design Integration (Phase 9)
+
+- Source bundle: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\
+- Design README: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\README.md
+- Tasks: See c:\Users\theju\Documents\coding\website_build\base2\specs\002-react-design\tasks.design-integration.md
+- Mapping: `shadcn/ui` primitives → glass components (`GlassButton`, `GlassInput`, `GlassCard`, `GlassTabs`, `GlassModal`)
+- Asset policy: Vector-only (SVG/WebP). Unsplash photos noted in design ATTRIBUTIONS, but not shipped.
