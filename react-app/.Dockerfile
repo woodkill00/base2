@@ -16,9 +16,8 @@ RUN npm ci --legacy-peer-deps --no-audit --no-fund && npm cache clean --force
 
 COPY . .
 
-# Build-time environment variables for React
-ARG REACT_APP_API_URL
-ENV REACT_APP_API_URL=${REACT_APP_API_URL}
+# Speed up CRA production builds on small machines
+ENV GENERATE_SOURCEMAP=false
 
 # Create production build
 RUN npm run build

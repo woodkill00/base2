@@ -767,12 +767,15 @@ if [ -d /opt/apps/base2 ]; then
   # Prevent noisy stdout/stderr (git, docker build progress) from flowing back over SSH.
   # Windows PowerShell 5.1 can treat remote stderr as terminating errors under strict settings.
   exec > /root/logs/build/remote-verify-console.txt 2>&1
+  : > /root/logs/build/steps.txt || true
+  echo "STEP: start $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> /root/logs/build/steps.txt
   # Preserve the active .env across git reset/clean (the repo may track a template .env)
   if [ -f .env ]; then
     cp -f .env /root/logs/build/env-backup.env || true
   fi
   # Ensure latest repo and rebuild traefik to render new templates
   if command -v git >/dev/null 2>&1; then
+    echo "STEP: git sync $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> /root/logs/build/steps.txt
     # Determine branch from .env (DO_APP_BRANCH), default to main
     BRANCH=$(grep -E '^DO_APP_BRANCH=' .env 2>/dev/null | cut -d'=' -f2 | tr -d '\r')
     if [ -z "$BRANCH" ]; then BRANCH=main; fi
@@ -847,31 +850,33 @@ PY
   # IMPORTANT: We have observed Docker caching causing stale FastAPI code to persist across
   # UpdateOnly deploys. Use a targeted no-cache rebuild for the `api` service to ensure the
   # running container matches the git checkout (keeps overall verification time reasonable).
+  echo "STEP: docker build api (no-cache) $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> /root/logs/build/steps.txt
   docker compose -f local.docker.yml build --no-cache api > /root/logs/build/api-build-nocache.txt 2>&1 || true
 
   # Bring up services. `up --build` is generally sufficient to rebuild when inputs change.
   # Bring up core services needed for edge routing (avoid 502 due to missing upstreams)
   # Also start Celery worker/beat by default (Option A: no profile gating).
-  docker compose -f local.docker.yml up -d --build --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat > /root/logs/build/compose-up-core.txt 2>&1 || true
+  echo "STEP: compose up core $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> /root/logs/build/steps.txt
+  docker compose -f local.docker.yml up -d --build --remove-orphans postgres django api nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat > /root/logs/build/compose-up-core.txt 2>&1 || true
   # Ensure API container uses the freshly built image
   docker compose -f local.docker.yml up -d --build --force-recreate --no-deps api > /root/logs/build/api-up.txt 2>&1 || true
   docker compose -f local.docker.yml up -d --build --force-recreate --no-deps traefik > /root/logs/build/traefik-up.txt 2>&1 || true
-  # Ensure React frontend uses freshly built assets (avoid stale bundle).
-  # We have observed CRA static assets being cached aggressively; perform a targeted no-cache rebuild.
-  docker compose -f local.docker.yml build --no-cache react-app > /root/logs/build/react-app-build-nocache.txt 2>&1 || true
-  docker compose -f local.docker.yml up -d --build --force-recreate --no-deps react-app > /root/logs/build/react-app-up.txt 2>&1 || true
+  echo "STEP: docker build react-app (cached) $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> /root/logs/build/steps.txt
+  docker compose -f local.docker.yml build react-app > /root/logs/build/react-app-build.txt 2>&1 || true
+  echo "STEP: compose up react-app $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> /root/logs/build/steps.txt
+  docker compose -f local.docker.yml up -d --force-recreate --no-deps react-app > /root/logs/build/react-app-up.txt 2>&1 || true
 
   # ENOSPC safeguard for React build: if npm/docker report "no space left on device",
   # prune images/volumes and retry a targeted rebuild to refresh assets.
-  if grep -qi 'no space left on device' /root/logs/build/react-app-build-nocache.txt 2>/dev/null; then
-    echo "Detected ENOSPC during react-app build; pruning Docker resources and retrying" >> /root/logs/build/react-app-build-nocache.txt
+  if grep -qi 'no space left on device' /root/logs/build/react-app-build.txt 2>/dev/null; then
+    echo "Detected ENOSPC during react-app build; pruning Docker resources and retrying" >> /root/logs/build/react-app-build.txt
     docker system df > /root/logs/build/docker-system-df-before.txt 2>&1 || true
     docker system prune -a -f --volumes > /root/logs/build/docker-prune.txt 2>&1 || true
     docker system df > /root/logs/build/docker-system-df-after.txt 2>&1 || true
 
     # Retry targeted rebuild and recreate for react-app
     docker compose -f local.docker.yml build --no-cache react-app > /root/logs/build/react-app-build-retry.txt 2>&1 || true
-    docker compose -f local.docker.yml up -d --build --force-recreate --no-deps react-app > /root/logs/build/react-app-up-retry.txt 2>&1 || true
+    docker compose -f local.docker.yml up -d --force-recreate --no-deps react-app > /root/logs/build/react-app-up-retry.txt 2>&1 || true
   fi
 
   # Ensure Flower is started (kept as a separate log artifact)
@@ -1302,6 +1307,7 @@ except Exception:\
   docker compose -f local.docker.yml exec -T api sh -lc 'cd /app && (mypy --version >/dev/null 2>&1 && mypy --show-error-codes --pretty api || echo "mypy_not_available")' > /root/logs/api-mypy.txt 2>&1 || true
   # Django pytest
   docker compose -f local.docker.yml exec -T django sh -lc 'export COVERAGE_FILE=/tmp/.coverage_django && pytest -q --cov=project --cov-report=term --cov-fail-under=60' > /root/logs/django-pytest.txt 2>&1 || true
+  echo "STEP: done $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> /root/logs/build/steps.txt
   date -u +"%Y-%m-%dT%H:%M:%SZ" > /root/logs/remote_verify.done || true
 fi
 '@
@@ -1337,12 +1343,29 @@ fi
     } -ArgumentList $sshExe, $sshArgs, $remoteCmd
 
     $startedAt = Get-Date
+    $lastProgress = ''
+    $lastProgressAt = Get-Date
     while ($true) {
       $completed = Wait-Job -Job $job -Timeout 15
       if ($completed) { break }
 
       $elapsedSec = [int]((Get-Date) - $startedAt).TotalSeconds
       Write-Host ("Remote verification still running... elapsed={0}s" -f $elapsedSec) -ForegroundColor DarkGray
+
+      if (((Get-Date) - $lastProgressAt).TotalSeconds -ge 60) {
+        $lastProgressAt = Get-Date
+        try {
+          $progress = & $sshExe @sshArgs "tail -n 3 /root/logs/build/steps.txt 2>/dev/null | tr -d '\r'" 2>$null
+          $progressText = ($progress | ForEach-Object { "$_" }) -join "`n"
+          if ($progressText -and ($progressText -ne $lastProgress)) {
+            Write-Host "Remote progress:" -ForegroundColor DarkGray
+            Write-Host $progressText -ForegroundColor DarkGray
+            $lastProgress = $progressText
+          }
+        } catch {
+          # ignore (SSH may be busy while build is running)
+        }
+      }
     }
 
     $code = 0
