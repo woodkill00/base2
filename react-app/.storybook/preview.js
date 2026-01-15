@@ -10,6 +10,7 @@ export const parameters = {
 
 // Global styles for stories (glass tokens + base styles)
 import '../src/styles/tokens.css';
+import '../src/styles/background.css';
 import '../src/styles/glass.css';
 
 // Global toolbar controls

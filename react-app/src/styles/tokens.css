@@ -7,11 +7,25 @@
   --glass-shadow: rgba(0, 0, 0, 0.3);
   --focus-glow: 0 0 0 3px #39ff14; /* neon green */
 
+  /* Motion */
+  --motion-fast: 150ms;
+  --motion-medium: 250ms;
+  --motion-slow: 400ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
   /* Layout tokens */
   --header-h: max(calc(100vh * 0.08), 64px);
   --footer-h: max(calc(100vh * 0.08), 56px);
-  --sidebar-w: clamp(320px, calc(100vw * 0.25), 400px);
+  /*
+    Sidebar width: prefer 20vw, bounded 320–400px.
+    Note: “≤20vw” is satisfied for wide desktop viewports (e.g., 1920px => 384px).
+  */
+  --sidebar-w: clamp(320px, calc(100vw * 0.2), 400px);
+  --drawer-w: clamp(280px, calc(100vw * 0.8), 420px);
   --content-h: calc(100vh - var(--header-h) - var(--footer-h));
+
+  /* Alias for tasks/spec wording */
+  --nav-h: var(--header-h);
 }
 
 /* Dark theme overrides */

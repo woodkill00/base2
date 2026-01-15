@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ToastProvider.jsx';
+import AppShell from '../components/glass/AppShell';
 
-const ForgotPassword = () => {
+const ForgotPassword = ({ variant = 'public' }) => {
   const navigate = useNavigate();
   const { forgotPassword } = useAuth();
   const toast = useToast();
@@ -30,8 +31,7 @@ const ForgotPassword = () => {
     try {
       const result = await forgotPassword(email);
       if (result.success) {
-        const msg =
-          result.message || 'If the account exists, a password reset email has been sent';
+        const msg = result.message || 'If the account exists, a password reset email has been sent';
         setMessage(msg);
         toast.success(msg);
         setEmail('');
@@ -53,63 +53,58 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h1 style={styles.title}>Forgot Password?</h1>
-        <p style={styles.subtitle}>
-          Enter your email address and we'll send you a link to reset your password
-        </p>
+    <AppShell variant={variant} headerTitle="Forgot Password">
+      <div style={styles.container}>
+        <div style={styles.card}>
+          <h1 style={styles.title}>Forgot Password?</h1>
+          <p style={styles.subtitle}>
+            Enter your email address and we'll send you a link to reset your password
+          </p>
 
-        {error && (
-          <div style={styles.errorMessage} role="alert">
-            {error}
+          {error && (
+            <div style={styles.errorMessage} role="alert">
+              {error}
+            </div>
+          )}
+
+          {message && (
+            <div style={styles.successMessage} role="status">
+              {message}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} style={styles.form}>
+            <div style={styles.formGroup}>
+              <input
+                type="email"
+                placeholder="Email Address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                style={styles.input}
+                required
+                aria-invalid={fieldErrors.email ? 'true' : 'false'}
+                aria-describedby={fieldErrors.email ? 'email-error' : undefined}
+              />
+              {fieldErrors.email ? (
+                <div id="email-error" style={styles.fieldError} role="alert">
+                  {fieldErrors.email}
+                </div>
+              ) : null}
+            </div>
+
+            <button type="submit" style={styles.submitButton} disabled={loading}>
+              {loading ? 'Sending...' : 'Send Reset Link'}
+            </button>
+          </form>
+
+          <div style={styles.backToLogin}>
+            <button onClick={() => navigate('/login')} style={styles.secondaryButton}>
+              ← Back to Login
+            </button>
           </div>
-        )}
-
-        {message && (
-          <div style={styles.successMessage} role="status">
-            {message}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.formGroup}>
-            <input
-              type="email"
-              placeholder="Email Address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              style={styles.input}
-              required
-              aria-invalid={fieldErrors.email ? 'true' : 'false'}
-              aria-describedby={fieldErrors.email ? 'email-error' : undefined}
-            />
-            {fieldErrors.email ? (
-              <div id="email-error" style={styles.fieldError} role="alert">
-                {fieldErrors.email}
-              </div>
-            ) : null}
-          </div>
-
-          <button
-            type="submit"
-            style={styles.submitButton}
-            disabled={loading}
-          >
-            {loading ? 'Sending...' : 'Send Reset Link'}
-          </button>
-        </form>
-
-        <div style={styles.backToLogin}>
-          <button
-            onClick={() => navigate('/login')}
-            style={styles.secondaryButton}
-          >
-            ← Back to Login
-          </button>
         </div>
       </div>
-    </div>
+    </AppShell>
   );
 };
 
@@ -120,7 +115,7 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    padding: '20px'
+    padding: '20px',
   },
   card: {
     background: 'white',
@@ -129,26 +124,26 @@ const styles = {
     maxWidth: '500px',
     width: '100%',
     boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-    textAlign: 'center'
+    textAlign: 'center',
   },
   title: {
     fontSize: '32px',
     fontWeight: '700',
     color: '#333',
-    marginBottom: '10px'
+    marginBottom: '10px',
   },
   subtitle: {
     fontSize: '16px',
     color: '#666',
     marginBottom: '30px',
-    lineHeight: '1.6'
+    lineHeight: '1.6',
   },
   form: {
     width: '100%',
-    marginBottom: '20px'
+    marginBottom: '20px',
   },
   formGroup: {
-    marginBottom: '20px'
+    marginBottom: '20px',
   },
   input: {
     width: '100%',
@@ -158,7 +153,7 @@ const styles = {
     borderRadius: '8px',
     outline: 'none',
     transition: 'border-color 0.2s',
-    boxSizing: 'border-box'
+    boxSizing: 'border-box',
   },
   fieldError: {
     marginTop: '6px',
@@ -177,10 +172,10 @@ const styles = {
     borderRadius: '8px',
     cursor: 'pointer',
     transition: 'transform 0.2s, box-shadow 0.2s',
-    boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)'
+    boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
   },
   backToLogin: {
-    marginTop: '20px'
+    marginTop: '20px',
   },
   secondaryButton: {
     padding: '12px 30px',
@@ -191,7 +186,7 @@ const styles = {
     border: '2px solid #667eea',
     borderRadius: '8px',
     cursor: 'pointer',
-    transition: 'transform 0.2s, box-shadow 0.2s'
+    transition: 'transform 0.2s, box-shadow 0.2s',
   },
   errorMessage: {
     padding: '12px',
@@ -200,7 +195,7 @@ const styles = {
     color: '#c33',
     borderRadius: '8px',
     fontSize: '14px',
-    border: '1px solid #fcc'
+    border: '1px solid #fcc',
   },
   successMessage: {
     padding: '12px',
@@ -209,8 +204,8 @@ const styles = {
     color: '#3c3',
     borderRadius: '8px',
     fontSize: '14px',
-    border: '1px solid #cfc'
-  }
+    border: '1px solid #cfc',
+  },
 };
 
 export default ForgotPassword;

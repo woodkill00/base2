@@ -10,7 +10,7 @@ import GlassButton from '../components/glass/GlassButton';
 import GlassInput from '../components/glass/GlassInput';
 import Navigation from '../components/Navigation';
 
-const Login = () => {
+const Login = ({ variant = 'public' }) => {
   const { loginWithEmail, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -89,7 +89,7 @@ const Login = () => {
   };
 
   return (
-    <AppShell headerTitle="Login">
+    <AppShell variant={variant} headerTitle="Login">
       <div style={styles.containerInner}>
         <Navigation />
         <GlassCard>

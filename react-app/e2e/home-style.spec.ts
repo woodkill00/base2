@@ -50,5 +50,10 @@ test.describe('Home page styling', () => {
     });
 
     expect(hasBlackOrDarkTheme).toBeTruthy();
+      // Ensure multiple glass cards exist (hero + sections).
+      const cards = page.locator('[data-testid="glass-card"]');
+      await expect(cards.first()).toBeVisible();
+      const count = await cards.count();
+      expect(count).toBeGreaterThan(1);
   });
 });

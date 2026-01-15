@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
 import { itemsAPI } from '../services/items';
+import AppShell from '../components/glass/AppShell';
+import GlassCard from '../components/glass/GlassCard';
+import GlassButton from '../components/glass/GlassButton';
+import GlassInput from '../components/glass/GlassInput';
 
 export default function Items() {
   const [items, setItems] = useState([]);
@@ -46,46 +50,60 @@ export default function Items() {
   };
 
   return (
-    <div style={{ maxWidth: 800, margin: '40px auto', padding: 20 }}>
-      <h1>Items</h1>
-      <p>Backed by Django models, served via FastAPI.</p>
+    <AppShell headerTitle="Items">
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: 20 }}>
+        <GlassCard>
+          <h1 style={{ marginTop: 0 }}>Items</h1>
+          <p>Backed by Django models, served via FastAPI.</p>
 
-      <form onSubmit={onCreate} style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input
-            type="text"
-            placeholder="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            style={{ flex: 1, padding: 8 }}
-          />
-          <input
-            type="text"
-            placeholder="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            style={{ flex: 2, padding: 8 }}
-          />
-          <button type="submit">Add</button>
-        </div>
-      </form>
+          <form onSubmit={onCreate} style={{ display: 'grid', gap: 12, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gap: 12, gridTemplateColumns: '1fr 2fr' }}>
+              <GlassInput
+                id="item-name"
+                name="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Name"
+                ariaInvalid={error && error.toLowerCase().includes('name') ? 'true' : 'false'}
+              />
+              <GlassInput
+                id="item-description"
+                name="description"
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Description"
+                ariaInvalid={error ? 'true' : 'false'}
+              />
+            </div>
 
-      {success && (
-        <div style={{ color: 'green', marginBottom: 10 }}>{success}</div>
-      )}
-      {loading ? (
-        <div>Loading…</div>
-      ) : error ? (
-        <div style={{ color: 'red' }}>{error}</div>
-      ) : (
-        <ul>
-          {items.map((i) => (
-            <li key={i.id}>
-              <strong>{i.name}</strong> — {i.description} <em>({i.created_at})</em>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <GlassButton type="submit" variant="primary">
+                Add
+              </GlassButton>
+              {success ? <div style={{ margin: 0 }}>{success}</div> : null}
+              {error ? (
+                <div role="alert" style={{ margin: 0 }}>
+                  {error}
+                </div>
+              ) : null}
+            </div>
+          </form>
+
+          {loading ? (
+            <div>Loading…</div>
+          ) : (
+            <ul>
+              {items.map((i) => (
+                <li key={i.id}>
+                  <strong>{i.name}</strong> — {i.description} <em>({i.created_at})</em>
+                </li>
+              ))}
+            </ul>
+          )}
+        </GlassCard>
+      </div>
+    </AppShell>
   );
 }

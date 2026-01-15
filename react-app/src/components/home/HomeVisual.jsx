@@ -1,7 +1,9 @@
 import React from 'react';
 import GlassCard from '../glass/GlassCard';
 
-const HomeVisual = ({ src = '/assets/hero.svg', alt = 'Abstract glass UI illustration' }) => {
+import heroSvg from '../../assets/hero.svg';
+
+const HomeVisual = ({ src = heroSvg, alt = 'Abstract glass UI illustration' }) => {
   return (
     <section aria-labelledby="home-visual-title" style={styles.section}>
       <h2 id="home-visual-title" style={styles.sectionTitle}>

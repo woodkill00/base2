@@ -7,19 +7,22 @@ import HomeVisual from '../../components/home/HomeVisual';
 import HomeTrust from '../../components/home/HomeTrust';
 import HomeFooter from '../../components/home/HomeFooter';
 import { axe, toHaveNoViolations } from 'jest-axe';
+import { MemoryRouter } from 'react-router-dom';
 
 expect.extend(toHaveNoViolations);
 
 describe('Public Home Page components', () => {
   test('render sections and keyboard focus', async () => {
     render(
-      <div>
-        <HomeHero />
-        <HomeFeatures />
-        <HomeVisual />
-        <HomeTrust />
-        <HomeFooter />
-      </div>
+      <MemoryRouter>
+        <div>
+          <HomeHero />
+          <HomeFeatures />
+          <HomeVisual />
+          <HomeTrust />
+          <HomeFooter />
+        </div>
+      </MemoryRouter>
     );
 
     expect(screen.getByRole('heading', { name: /Elegant Glass Interface/i })).toBeInTheDocument();

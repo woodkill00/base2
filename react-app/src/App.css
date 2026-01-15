@@ -1,5 +1,7 @@
 @import './styles/tokens.css';
+@import './styles/background.css';
 @import './styles/glass.css';
+@import './styles/home.css';
 .App {
   text-align: center;
   min-height: 100vh;

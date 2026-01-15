@@ -34,6 +34,12 @@ npm run storybook
 - Inline SVG icons include `aria-label` and `role="img"`.
 - Contrast ≥ 4.5:1 for key text/controls.
 
+## Design Port Final Review
+
+- Use the checklists in `specs/002-react-design/checklists/`:
+  - `requirements.md` (spec quality)
+  - `design-port.md` (Figma/design bundle integration)
+
 ## Notes
 
 - No backend/auth or API contract changes in this feature.

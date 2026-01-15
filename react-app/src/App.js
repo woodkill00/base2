@@ -35,12 +35,12 @@ function App() {
               <Suspense fallback={<div style={{ padding: 24 }}>Loading...</div>}>
                 <Routes>
                   <Route path="/" element={<Home />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/signup" element={<Signup />} />
+                  <Route path="/login" element={<Login variant="public" />} />
+                  <Route path="/signup" element={<Signup variant="public" />} />
                   <Route path="/items" element={<Items />} />
-                  <Route path="/verify-email" element={<VerifyEmail />} />
-                  <Route path="/forgot-password" element={<ForgotPassword />} />
-                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/verify-email" element={<VerifyEmail variant="public" />} />
+                  <Route path="/forgot-password" element={<ForgotPassword variant="public" />} />
+                  <Route path="/reset-password" element={<ResetPassword variant="public" />} />
                   <Route
                     path="/dashboard"
                     element={

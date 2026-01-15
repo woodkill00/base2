@@ -13,6 +13,11 @@
 
 .glass-interactive:hover {
   box-shadow: 0 8px 24px var(--glass-shadow);
+  transform: translateY(-2px);
+}
+
+.glass-interactive {
+  transition: box-shadow var(--motion-medium) var(--ease-standard), transform var(--motion-medium) var(--ease-standard);
 }
 
 .glass-interactive:focus-visible {
@@ -38,14 +43,65 @@
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 16px;
 }
 .glass-modal {
+  position: relative;
   min-width: 300px;
   max-width: 600px;
-  padding: 16px;
+  padding: 24px 20px;
+  border-radius: 12px;
+}
+
+.glass-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+/* Drawer (mobile side menu) */
+.glass-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: grid;
+  grid-template-columns: 1fr;
+  z-index: 50;
+}
+
+.glass-drawer-panel {
+  height: 100vh;
+  max-width: var(--drawer-w);
+  width: var(--drawer-w);
+  transform: translateX(-110%);
+  transition: transform var(--motion-medium) var(--ease-standard);
+  will-change: transform;
+}
+
+.glass-drawer-panel[data-state="open"] {
+  transform: translateX(0);
+}
+
+/* Responsive behavior: desktop shows sidebar; mobile uses drawer overlay */
+@media (max-width: 768px) {
+  .glass-sidebar {
+    display: none !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .glass-drawer-overlay {
+    display: none;
+  }
 }
 
 /* Card */
@@ -82,4 +138,5 @@
   .glass-interactive { transition: none; }
   .glass-spinner-circle { animation: none; }
   .glass-skeleton { animation: none; }
+  .glass-drawer-panel { transition: none; }
 }

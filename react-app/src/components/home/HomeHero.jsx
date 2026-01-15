@@ -9,20 +9,22 @@ const HomeHero = ({
   primaryLabel = 'Get Started',
   secondaryLabel = 'Learn More',
   showInput = true,
+  onPrimary,
+  onSecondary,
 }) => {
   return (
     <section aria-labelledby="home-hero-title" style={styles.section}>
-      <GlassCard>
-        <div style={styles.heroContainer}>
+      <GlassCard variant="elevated" interactive>
+        <div className="home-hero-float" style={styles.heroContainer}>
           <h1 id="home-hero-title" style={styles.title}>
             {title}
           </h1>
           <p style={styles.subtitle}>{subtitle}</p>
           <div style={styles.ctaRow}>
-            <GlassButton variant="primary" onClick={() => {}}>
+            <GlassButton className="home-cta-primary" variant="primary" onClick={onPrimary}>
               {primaryLabel}
             </GlassButton>
-            <GlassButton variant="secondary" onClick={() => {}}>
+            <GlassButton variant="secondary" onClick={onSecondary}>
               {secondaryLabel}
             </GlassButton>
           </div>
@@ -56,7 +58,6 @@ const styles = {
     width: 'min(calc(100% - 4rem), 960px)',
     margin: '0 auto',
     textAlign: 'center',
-    animation: 'heroFloat 10s ease-in-out infinite',
   },
   title: {
     fontSize: 'clamp(2rem, 5vw, 3rem)',

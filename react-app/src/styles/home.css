@@ -1,0 +1,38 @@
+/* Home page micro-interactions (ported intent from junk/idea hero) */
+
+.home-hero-float {
+  animation: homeHeroFloat 10s ease-in-out infinite;
+}
+
+@keyframes homeHeroFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.home-cta-primary:hover {
+  animation: homeCtaPulse 900ms var(--ease-standard) infinite alternate;
+}
+
+@keyframes homeCtaPulse {
+  from {
+    transform: translateY(0) scale(1);
+  }
+  to {
+    transform: translateY(-1px) scale(1.02);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-hero-float {
+    animation: none;
+  }
+
+  .home-cta-primary:hover {
+    animation: none;
+  }
+}

@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ToastProvider.jsx';
+import AppShell from '../components/glass/AppShell';
 
-const VerifyEmail = () => {
+const VerifyEmail = ({ variant = 'public' }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { verifyEmail } = useAuth();
@@ -61,48 +62,41 @@ const VerifyEmail = () => {
   }, [navigate, searchParams, toast, verifyEmail]);
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <div style={styles.iconContainer}>
-          {status === 'verifying' && (
-            <div style={styles.spinner}>⏳</div>
-          )}
-          {status === 'success' && (
-            <div style={styles.successIcon}>✓</div>
-          )}
-          {status === 'error' && (
-            <div style={styles.errorIcon}>✗</div>
-          )}
-        </div>
-
-        <h1 style={styles.title}>
-          {status === 'verifying' && 'Verifying Email...'}
-          {status === 'success' && 'Email Verified!'}
-          {status === 'error' && 'Verification Failed'}
-        </h1>
-
-        {status === 'error' ? (
-          <div style={styles.error} role="alert">{message}</div>
-        ) : (
-          <p style={styles.message}>{message}</p>
-        )}
-
-        {status === 'success' && (
-          <div style={styles.redirectMessage}>
-            Redirecting to login...
+    <AppShell variant={variant} headerTitle="Verify Email">
+      <div style={styles.container}>
+        <div style={styles.card}>
+          <div style={styles.iconContainer}>
+            {status === 'verifying' && <div style={styles.spinner}>⏳</div>}
+            {status === 'success' && <div style={styles.successIcon}>✓</div>}
+            {status === 'error' && <div style={styles.errorIcon}>✗</div>}
           </div>
-        )}
 
-        <div style={styles.backToHome}>
-          <button
-            onClick={() => navigate('/')}
-            style={styles.secondaryButton}
-          >
-            Back to Home
-          </button>
+          <h1 style={styles.title}>
+            {status === 'verifying' && 'Verifying Email...'}
+            {status === 'success' && 'Email Verified!'}
+            {status === 'error' && 'Verification Failed'}
+          </h1>
+
+          {status === 'error' ? (
+            <div style={styles.error} role="alert">
+              {message}
+            </div>
+          ) : (
+            <p style={styles.message}>{message}</p>
+          )}
+
+          {status === 'success' && (
+            <div style={styles.redirectMessage}>Redirecting to login...</div>
+          )}
+
+          <div style={styles.backToHome}>
+            <button onClick={() => navigate('/')} style={styles.secondaryButton}>
+              Back to Home
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </AppShell>
   );
 };
 
@@ -122,57 +116,57 @@ const styles = {
     maxWidth: '500px',
     width: '100%',
     boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-    textAlign: 'center'
+    textAlign: 'center',
   },
   iconContainer: {
-    marginBottom: '20px'
+    marginBottom: '20px',
   },
   spinner: {
     fontSize: '64px',
-    animation: 'spin 2s linear infinite'
+    animation: 'spin 2s linear infinite',
   },
   successIcon: {
     fontSize: '64px',
     color: '#10b981',
-    fontWeight: 'bold'
+    fontWeight: 'bold',
   },
   errorIcon: {
     fontSize: '64px',
     color: '#dc2626',
-    fontWeight: 'bold'
+    fontWeight: 'bold',
   },
   title: {
     fontSize: '32px',
     fontWeight: '700',
     color: '#333',
-    marginBottom: '15px'
+    marginBottom: '15px',
   },
   message: {
     fontSize: '16px',
     color: '#666',
     marginBottom: '30px',
-    lineHeight: '1.6'
+    lineHeight: '1.6',
   },
   error: {
     fontSize: '16px',
     color: '#dc2626',
     marginBottom: '30px',
-    lineHeight: '1.6'
+    lineHeight: '1.6',
   },
   resendSection: {
     marginTop: '30px',
     paddingTop: '30px',
-    borderTop: '1px solid #eee'
+    borderTop: '1px solid #eee',
   },
   resendText: {
     fontSize: '14px',
     color: '#666',
-    marginBottom: '15px'
+    marginBottom: '15px',
   },
   resendForm: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '10px'
+    gap: '10px',
   },
   input: {
     width: '100%',
@@ -182,7 +176,7 @@ const styles = {
     borderRadius: '8px',
     outline: 'none',
     transition: 'border-color 0.2s',
-    boxSizing: 'border-box'
+    boxSizing: 'border-box',
   },
   resendButton: {
     padding: '12px',
@@ -194,16 +188,16 @@ const styles = {
     borderRadius: '8px',
     cursor: 'pointer',
     transition: 'transform 0.2s, box-shadow 0.2s',
-    boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)'
+    boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
   },
   redirectMessage: {
     fontSize: '14px',
     color: '#10b981',
     marginTop: '20px',
-    fontStyle: 'italic'
+    fontStyle: 'italic',
   },
   backToHome: {
-    marginTop: '30px'
+    marginTop: '30px',
   },
   secondaryButton: {
     padding: '12px 30px',
@@ -214,8 +208,8 @@ const styles = {
     border: '2px solid #667eea',
     borderRadius: '8px',
     cursor: 'pointer',
-    transition: 'transform 0.2s, box-shadow 0.2s'
-  }
+    transition: 'transform 0.2s, box-shadow 0.2s',
+  },
 };
 
 export default VerifyEmail;
