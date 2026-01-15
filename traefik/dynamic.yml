@@ -22,7 +22,7 @@ http:
         - rate-limit
         - retry
       tls:
-        certResolver: le-staging
+        certResolver: ${TRAEFIK_CERT_RESOLVER}
       service: api
 
     # Django admin on admin subdomain (guarded; restrict to /admin paths only)
@@ -36,7 +36,7 @@ http:
         - traefik-basic-auth
         - django-admin-allow-ip
       tls:
-        certResolver: le-staging
+        certResolver: ${TRAEFIK_CERT_RESOLVER}
       service: django-admin
 
     # Admin subdomain root convenience: visiting https://admin.<domain>/ should land on /admin/
@@ -51,7 +51,7 @@ http:
         - django-admin-allow-ip
         - django-admin-root-to-admin
       tls:
-        certResolver: le-staging
+        certResolver: ${TRAEFIK_CERT_RESOLVER}
       service: noop@internal
 
     # Optional: Django admin on main domain /admin (guarded)
@@ -65,7 +65,7 @@ http:
         - traefik-basic-auth
         - django-admin-allow-ip
       tls:
-        certResolver: le-staging
+        certResolver: ${TRAEFIK_CERT_RESOLVER}
       service: django-admin
 
     # Django static: /static/* (admin subdomain only; avoids hijacking React /static assets on main domain)
@@ -77,7 +77,7 @@ http:
       middlewares:
         - security-headers-no-hsts
       tls:
-        certResolver: le-staging
+        certResolver: ${TRAEFIK_CERT_RESOLVER}
       service: django-static
 
     # React frontend: catch-all on HTTPS
@@ -90,7 +90,7 @@ http:
         - security-headers
         - security-csp
       tls:
-        certResolver: le-staging
+        certResolver: ${TRAEFIK_CERT_RESOLVER}
       service: frontend-react
 
     # FastAPI Swagger UI on swagger subdomain (docs-only paths)
@@ -105,7 +105,7 @@ http:
         - rate-limit
         - retry
       tls:
-        certResolver: le-staging
+        certResolver: ${TRAEFIK_CERT_RESOLVER}
       service: api
 
     # Swagger root convenience: visiting https://swagger.<domain>/ should land on /docs
@@ -117,7 +117,7 @@ http:
       middlewares:
         - swagger-root-to-docs
       tls:
-        certResolver: le-staging
+        certResolver: ${TRAEFIK_CERT_RESOLVER}
       service: noop@internal
 
     # Traefik dashboard (guarded)
@@ -130,7 +130,7 @@ http:
         - security-headers-no-hsts
         - traefik-basic-auth
       tls:
-        certResolver: le-staging
+        certResolver: ${TRAEFIK_CERT_RESOLVER}
       service: api@internal
 
     # pgAdmin (guarded)
@@ -144,7 +144,7 @@ http:
         - traefik-basic-auth
         - pgadmin-allow-ip
       tls:
-        certResolver: le-staging
+        certResolver: ${TRAEFIK_CERT_RESOLVER}
       service: pgadmin
 
     # Flower (guarded; only works when container enabled)
@@ -158,7 +158,7 @@ http:
         - flower-basic-auth
         - flower-allow-ip
       tls:
-        certResolver: le-staging
+        certResolver: ${TRAEFIK_CERT_RESOLVER}
       service: flower
 
   services:

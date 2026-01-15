@@ -22,6 +22,9 @@ unescape_dollars FLOWER_BASIC_USERS
 # add any other *BASIC_USERS vars you have here
 # ---------------------------------------------------------------
 
+# Default to production Let's Encrypt unless explicitly overridden.
+: "${TRAEFIK_CERT_RESOLVER:=le}"
+
 # Render configs from templates using environment variables
 STATIC_TEMPLATE_PATH="/etc/traefik/templates/traefik.yml.template"
 STATIC_OUTPUT_PATH="/tmp/traefik.yml"
