@@ -10,8 +10,8 @@ describe('GlassCard extra coverage', () => {
       </GlassCard>
     );
     const card = screen.getByTestId('glass-card');
-    expect(card.className).toContain('glass-interactive');
-    expect(card.className).toContain('glass-card-elevated');
+    expect(card.className).toContain('hover:bg-white/35');
+    expect(card.className).toContain('hover:-translate-y-1');
     expect(card.className).toContain('extra');
   });
 });

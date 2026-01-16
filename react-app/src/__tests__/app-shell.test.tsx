@@ -1,23 +1,28 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import TestMemoryRouter from '../test/TestMemoryRouter';
 import AppShell from '../components/glass/AppShell';
 
 describe('AppShell', () => {
   test('renders header and content; side menu opens via toggle', async () => {
     const user = userEvent.setup();
     render(
-      <AppShell headerTitle="Title" sidebarItems={["One","Two","Three","Four","Five"]}>
-        <div>Content</div>
-      </AppShell>
+      <TestMemoryRouter>
+        <AppShell headerTitle="Title" sidebarItems={["One", "Two", "Three", "Four", "Five"]}>
+          <div>Content</div>
+        </AppShell>
+      </TestMemoryRouter>
     );
     expect(screen.getByText('Title')).toBeInTheDocument();
     expect(screen.getByText('Content')).toBeInTheDocument();
 
     const sidebar = screen.getByLabelText('Sidebar');
     expect(sidebar).not.toBeVisible();
-    await user.click(screen.getByRole('button', { name: /menu/i }));
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: /menu/i }));
+    });
+    expect(await screen.findByText('One')).toBeInTheDocument();
     expect(sidebar).toBeVisible();
-    expect(screen.getByText('One')).toBeInTheDocument();
   });
 });

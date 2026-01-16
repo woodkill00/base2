@@ -7,6 +7,8 @@
     "@react-oauth/google": "^0.12.1",
     "axios": "^1.6.0",
     "jwt-decode": "^4.0.0",
+    "lucide-react": "^0.562.0",
+    "motion": "^12.26.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.0"
@@ -18,6 +20,7 @@
     "@storybook/react": "^8.6.15",
     "@storybook/react-webpack5": "^8.6.15",
     "@storybook/test": "^8.6.15",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.1.4",
     "@testing-library/react": "^14.1.0",
     "@testing-library/user-event": "^14.5.1",

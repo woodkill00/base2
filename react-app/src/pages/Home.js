@@ -1,53 +1,45 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import AppShell from '../components/glass/AppShell';
+import GlassHeader from '../components/glass/GlassHeader';
+import GlassSidebar from '../components/glass/GlassSidebar';
 import HomeHero from '../components/home/HomeHero';
 import HomeFeatures from '../components/home/HomeFeatures';
 import HomeVisual from '../components/home/HomeVisual';
 import HomeTrust from '../components/home/HomeTrust';
 import HomeFooter from '../components/home/HomeFooter';
 
-const styles = {
-  page: {
-    minHeight: '100vh',
-    backgroundColor: '#000',
-    color: '#fff',
-    display: 'flex',
-    justifyContent: 'center',
-    padding: '24px 16px',
-  },
-  containerInner: {
-    maxWidth: '1200px',
-    width: '100%',
-    display: 'grid',
-    gap: '24px',
-  },
-};
-
 const Home = () => {
   const navigate = useNavigate();
 
+  const handleMenuItemClick = (id) => {
+    if (id === 'home') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    if (id === 'features') {
+      const section = document.getElementById('features');
+      if (section) section.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
-    <AppShell variant="public" headerTitle="Home">
-      <div className="gradient-background" aria-hidden="true" />
-      <div style={styles.page} data-testid="home-page">
-        <div style={styles.containerInner}>
-          <HomeHero
-            title="Build with glass"
-            subtitle="A fast, accessible, calc-driven UI system with a modern app shell."
-            primaryLabel="Create account"
-            secondaryLabel="Sign in"
-            onPrimary={() => navigate('/signup')}
-            onSecondary={() => navigate('/login')}
-          />
+    <div className="relative min-h-screen" data-testid="home-page">
+      <div className="gradient-background" />
+
+      <div className="relative z-10">
+        <GlassHeader variant="public" title="Home" />
+        <GlassSidebar variant="public" onMenuItemClick={handleMenuItemClick} />
+
+        <main>
+          <HomeHero onPrimary={() => navigate('/signup')} onSecondary={() => {}} />
           <HomeFeatures />
           <HomeVisual />
           <HomeTrust />
-          <HomeFooter />
-        </div>
+        </main>
+
+        <HomeFooter />
       </div>
-    </AppShell>
+    </div>
   );
 };
 

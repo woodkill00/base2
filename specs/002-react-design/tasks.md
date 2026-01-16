@@ -254,10 +254,23 @@ description: 'Tasks for React Glass UI System + App Shell'
 - [x] T042 Performance optimization across stories in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\
 - [x] T043 [P] Quickstart validation and checklist in c:\Users\theju\Documents\coding\website_build\base2\specs\002-react-design\quickstart.md
 - [x] T044 [P] Prepare deploy script usage notes (update-only + all tests) in c:\Users\theju\Documents\coding\website_build\base2\docs\DEPLOY.md
-- [ ] T045 [P] After push, run deploy script update-only with all tests in c:\Users\theju\Documents\coding\website_build\base2\digital_ocean\scripts\powershell\deploy.ps1
+- [x] T045 [P] After push, run deploy script update-only with all tests in c:\Users\theju\Documents\coding\website_build\base2\digital_ocean\scripts\powershell\deploy.ps1
 - [x] T060 [P] Validate Visual Acceptance Checklist across AppShell and components in c:\Users\theju\Documents\coding\website_build\base2\specs\002-react-design\checklists\requirements.md
 - [x] T061 [P] Observability artifact review post-deploy (logs, configs, health responses) in c:\Users\theju\Documents\coding\website_build\base2\local_run_logs\
 - [x] T062 [P] Performance verification: confirm layout shift metrics (CLS/Web Vitals) meet targets documented in c:\Users\theju\Documents\coding\website_build\base2\specs\002-react-design\plan.md
+
+---
+
+## Phase 9: Follow-on — Exact Parity with junk/idea (Public Home)
+
+**Purpose**: User-approved follow-on work to make the `react-app` public landing experience visually match `c:\Users\theju\Documents\coding\website_build\base2\junk\idea\` exactly.
+
+- [x] T200 Add runtime deps used by `junk/idea` (motion + lucide-react) in c:\Users\theju\Documents\coding\website_build\base2\react-app\package.json
+- [x] T201 Add copied Vite/Tailwind compiled CSS bundle in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\styles\idea-vite.css (source: c:\Users\theju\Documents\coding\website_build\base2\junk\idea\dist\assets\index-\*.css)
+- [ ] T202 Port `junk/idea` landing components (Header, SideMenu, Hero, Features, VisualSection, TrustSection, Footer, Modal/SubPageModal, ImageWithFallback) into c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\idea\
+- [ ] T203 Replace c:\Users\theju\Documents\coding\website_build\base2\react-app\src\pages\Home.js composition to match c:\Users\theju\Documents\coding\website_build\base2\junk\idea\src\app\App.tsx (keep Login/Sign Up CTAs wired to /login and /signup)
+- [ ] T204 Ensure theme toggle updates both `.dark` and the `theme` cookie in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\components\idea\Header.tsx (using c:\Users\theju\Documents\coding\website_build\base2\react-app\src\services\theme\persistence.ts)
+- [ ] T205 Update public home tests to match the new parity layout while preserving global 100% coverage in c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests**\_\_home\ and c:\Users\theju\Documents\coding\website_build\base2\react-app\src\_\_tests**\home\
 
 ### Design Port Additions (Modal unification + cross-cutting audit)
 

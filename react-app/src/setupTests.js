@@ -4,6 +4,35 @@
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 import 'jest-axe/extend-expect';
+
+// framer-motion (in-view) relies on IntersectionObserver which isn't present in JSDOM.
+// Provide a minimal mock so motion viewport features don't crash tests.
+if (typeof global.IntersectionObserver === 'undefined') {
+  global.IntersectionObserver = class IntersectionObserver {
+    constructor(callback) {
+      this._callback = callback;
+    }
+
+    observe = (target) => {
+      if (typeof this._callback === 'function') {
+        this._callback(
+          [
+            {
+              isIntersecting: true,
+              target,
+              intersectionRatio: 1,
+            },
+          ],
+          this
+        );
+      }
+    };
+
+    unobserve = () => {};
+    disconnect = () => {};
+    takeRecords = () => [];
+  };
+}
 // Polyfills for Node test environment (required by MSW/interceptors)
 try {
   const { TextEncoder, TextDecoder } = require('util');

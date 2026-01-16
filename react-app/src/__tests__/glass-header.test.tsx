@@ -1,5 +1,7 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import TestMemoryRouter from '../test/TestMemoryRouter';
 import GlassHeader from '../components/glass/GlassHeader';
 import * as persistence from '../services/theme/persistence';
 
@@ -14,19 +16,32 @@ describe('GlassHeader', () => {
     document.documentElement.classList.remove('dark');
   });
   test('renders title and toggle button', () => {
-    render(<GlassHeader title="Dashboard" />);
+    render(
+      <TestMemoryRouter>
+        <GlassHeader title="Dashboard" />
+      </TestMemoryRouter>
+    );
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
     const btn = screen.getByRole('button', { name: /toggle theme/i });
     expect(btn).toBeInTheDocument();
   });
 
-  test('toggle switches theme class on root', () => {
-    render(<GlassHeader title="Test" />);
+  test('toggle switches theme class on root', async () => {
+    const user = userEvent.setup();
+    render(
+      <TestMemoryRouter>
+        <GlassHeader title="Test" />
+      </TestMemoryRouter>
+    );
     const btn = screen.getByRole('button', { name: /toggle theme/i });
     expect(document.documentElement.classList.contains('dark')).toBe(false);
-    fireEvent.click(btn);
+    await act(async () => {
+      await user.click(btn);
+    });
     expect(document.documentElement.classList.contains('dark')).toBe(true);
-    fireEvent.click(btn);
+    await act(async () => {
+      await user.click(btn);
+    });
     expect(document.documentElement.classList.contains('dark')).toBe(false);
   });
 });

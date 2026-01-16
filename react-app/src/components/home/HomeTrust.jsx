@@ -1,98 +1,44 @@
-import React from 'react';
-import GlassCard from '../glass/GlassCard';
+import { motion } from 'motion/react';
+import { Lock, Cpu, Box, TrendingUp } from 'lucide-react';
 
-const HomeTrust = ({ items = defaultItems }) => {
+const values = [
+  { icon: Lock, text: 'Privacy First' },
+  { icon: Cpu, text: 'AI Native' },
+  { icon: Box, text: 'Open Architecture' },
+  { icon: TrendingUp, text: 'Built for Scale' },
+];
+
+const HomeTrust = () => {
   return (
-    <section aria-labelledby="home-trust-title" style={styles.section}>
-      <h2 id="home-trust-title" style={styles.sectionTitle}>
-        Trusted Values
-      </h2>
-      <div style={styles.row} role="list">
-        {items.map((it, idx) => (
-          <GlassCard key={idx} variant="subtle" interactive>
-            <div style={styles.pill} tabIndex={0} role="listitem">
-              <span aria-label={it.text + ' icon'} role="img" style={styles.icon}>
-                {it.icon}
-              </span>
-              <span>{it.text}</span>
-            </div>
-          </GlassCard>
-        ))}
+    <section
+      style={{ padding: 'calc(4rem) calc(max(1rem, calc((100vw - 1200px) / 2))) calc(4rem)' }}
+    >
+      <div
+        className="flex flex-wrap justify-center gap-4"
+        style={{ maxWidth: '1000px', margin: '0 auto' }}
+      >
+        {values.map((value, index) => {
+          const Icon = value.icon;
+          return (
+            <motion.div
+              key={value.text}
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: index * 0.1, duration: 0.5, ease: 'easeOut' }}
+              className="backdrop-blur-2xl bg-white/25 dark:bg-black/40 border border-white/30 dark:border-white/20 rounded-full shadow-[0_4px_16px_0_rgba(31,38,135,0.1)] dark:shadow-[0_4px_16px_0_rgba(0,0,0,0.3)]"
+              style={{ padding: 'calc(0.75rem) calc(1.5rem)' }}
+            >
+              <div className="flex items-center gap-2">
+                <Icon className="w-4 h-4 text-violet-400" aria-hidden="true" />
+                <span className="text-sm font-medium">{value.text}</span>
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
     </section>
   );
 };
-
-const Svg = ({ label, children }) => (
-  <svg
-    role="img"
-    aria-label={label}
-    viewBox="0 0 24 24"
-    width="20"
-    height="20"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    {children}
-  </svg>
-);
-
-const styles = {
-  section: { padding: '2rem 1rem' },
-  sectionTitle: { textAlign: 'center', marginBottom: '1rem' },
-  row: { display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' },
-  pill: { display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.5rem 1rem' },
-  icon: { display: 'inline-block', width: 20, height: 20 },
-};
-
-const defaultItems = [
-  {
-    text: 'Privacy-first',
-    icon: (
-      <Svg label="Privacy-first">
-        <path
-          d="M12 2l7 4v6c0 5-3 9-7 10C8 21 5 17 5 12V6l7-4z"
-          stroke="currentColor"
-          strokeWidth="1.8"
-        />
-      </Svg>
-    ),
-  },
-  {
-    text: 'AI-native',
-    icon: (
-      <Svg label="AI-native">
-        <path d="M8 8h8v8H8V8z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      </Svg>
-    ),
-  },
-  {
-    text: 'Open architecture',
-    icon: (
-      <Svg label="Open architecture">
-        <path
-          d="M8 10l4-3 4 3v8H8v-8z"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinejoin="round"
-        />
-      </Svg>
-    ),
-  },
-  {
-    text: 'Built for scale',
-    icon: (
-      <Svg label="Built for scale">
-        <path
-          d="M6 16l4-4 3 3 5-6"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </Svg>
-    ),
-  },
-];
 
 export default HomeTrust;

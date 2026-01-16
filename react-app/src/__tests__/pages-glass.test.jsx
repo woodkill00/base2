@@ -1,4 +1,4 @@
-import { MemoryRouter } from 'react-router-dom';
+import TestMemoryRouter from '../test/TestMemoryRouter';
 import { render, screen } from '@testing-library/react';
 
 import Home from '../pages/Home';
@@ -13,9 +13,9 @@ jest.mock('@react-oauth/google', () => ({
 
 const renderWithRouter = (ui) => {
   return render(
-    <MemoryRouter>
+    <TestMemoryRouter>
       <AuthProvider>{ui}</AuthProvider>
-    </MemoryRouter>
+    </TestMemoryRouter>
   );
 };
 

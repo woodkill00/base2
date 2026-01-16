@@ -1,51 +1,54 @@
-import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import TestMemoryRouter from '../../test/TestMemoryRouter';
 
 import Home from '../../pages/Home';
 
 describe('Home page (public)', () => {
   test('renders all main sections', () => {
     render(
-      <MemoryRouter>
+      <TestMemoryRouter>
         <Home />
-      </MemoryRouter>
+      </TestMemoryRouter>
     );
 
     expect(screen.getByTestId('home-page')).toBeInTheDocument();
 
-    expect(screen.getByRole('heading', { name: /build with glass/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /what you get/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /visual/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /trusted values/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /build better with/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /everything you need/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /beautiful by design/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /privacy first/i })).toBeInTheDocument();
     expect(screen.getByRole('contentinfo', { name: /footer/i })).toBeInTheDocument();
-
-    expect(screen.getByRole('link', { name: /create account/i })).toHaveAttribute(
-      'href',
-      '/signup'
-    );
-    expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute('href', '/login');
   });
 
   test('keyboard navigation can reach CTAs', async () => {
     const user = userEvent.setup();
 
     render(
-      <MemoryRouter>
+      <TestMemoryRouter>
         <Home />
-      </MemoryRouter>
+      </TestMemoryRouter>
     );
 
-    // Public header contains a search input + theme toggle.
-    await user.tab();
-    await user.tab();
-    await user.tab();
-    const create = screen.getByRole('button', { name: /create account/i });
-    expect(create).toHaveFocus();
+    const primary = screen.getByRole('button', { name: /get started/i });
+    const secondary = screen.getByRole('button', { name: /view documentation/i });
+
+    // Tab through focusables until we hit the hero CTAs.
+    for (let i = 0; i < 20; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await user.tab();
+
+      try {
+        expect(primary).toHaveFocus();
+        break;
+      } catch (e) {
+        // continue
+      }
+    }
+
+    expect(primary).toHaveFocus();
 
     await user.tab();
-    const signIn = screen.getByRole('button', { name: /sign in/i });
-    expect(signIn).toHaveFocus();
+    expect(secondary).toHaveFocus();
   });
 });

@@ -91,6 +91,10 @@ http:
         - security-csp
       tls:
         certResolver: ${TRAEFIK_CERT_RESOLVER}
+        domains:
+          - main: ${WEBSITE_DOMAIN}
+            sans:
+              - www.${WEBSITE_DOMAIN}
       service: frontend-react
 
     # FastAPI Swagger UI on swagger subdomain (docs-only paths)

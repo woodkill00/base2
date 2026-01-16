@@ -14,7 +14,7 @@ const Navigation = () => {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <nav style={styles.nav}>
+    <nav style={styles.nav} aria-label="App navigation">
       <div style={styles.container}>
         <Link to="/dashboard" style={styles.logo}>
           <span style={styles.logoIcon}>🚀</span>
@@ -22,20 +22,20 @@ const Navigation = () => {
         </Link>
 
         <div style={styles.menu}>
-          <Link 
-            to="/dashboard" 
+          <Link
+            to="/dashboard"
             style={{
               ...styles.menuItem,
-              ...(isActive('/dashboard') && styles.menuItemActive)
+              ...(isActive('/dashboard') && styles.menuItemActive),
             }}
           >
             Dashboard
           </Link>
-          <Link 
-            to="/settings" 
+          <Link
+            to="/settings"
             style={{
               ...styles.menuItem,
-              ...(isActive('/settings') && styles.menuItemActive)
+              ...(isActive('/settings') && styles.menuItemActive),
             }}
           >
             Settings
@@ -44,9 +44,9 @@ const Navigation = () => {
 
         <div style={styles.userSection}>
           <div style={styles.userInfo}>
-            <img 
-              src={user?.avatar_url || user?.picture || 'https://via.placeholder.com/40'} 
-              alt="Profile" 
+            <img
+              src={user?.avatar_url || user?.picture || 'https://via.placeholder.com/40'}
+              alt="Profile"
               style={styles.avatar}
             />
             <span style={styles.userName}>{user?.display_name || user?.name || user?.email}</span>
@@ -67,7 +67,7 @@ const styles = {
     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
     position: 'sticky',
     top: 0,
-    zIndex: 1000
+    zIndex: 1000,
   },
   container: {
     maxWidth: '1200px',
@@ -75,7 +75,7 @@ const styles = {
     padding: '15px 20px',
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
   },
   logo: {
     fontSize: '24px',
@@ -84,14 +84,14 @@ const styles = {
     textDecoration: 'none',
     display: 'flex',
     alignItems: 'center',
-    gap: '8px'
+    gap: '8px',
   },
   logoIcon: {
-    fontSize: '28px'
+    fontSize: '28px',
   },
   menu: {
     display: 'flex',
-    gap: '20px'
+    gap: '20px',
   },
   menuItem: {
     fontSize: '16px',
@@ -100,33 +100,33 @@ const styles = {
     textDecoration: 'none',
     padding: '8px 16px',
     borderRadius: '6px',
-    transition: 'all 0.2s'
+    transition: 'all 0.2s',
   },
   menuItemActive: {
     color: '#667eea',
-    background: '#f0f4ff'
+    background: '#f0f4ff',
   },
   userSection: {
     display: 'flex',
     alignItems: 'center',
-    gap: '15px'
+    gap: '15px',
   },
   userInfo: {
     display: 'flex',
     alignItems: 'center',
-    gap: '10px'
+    gap: '10px',
   },
   avatar: {
     width: '40px',
     height: '40px',
     borderRadius: '50%',
     objectFit: 'cover',
-    border: '2px solid #667eea'
+    border: '2px solid #667eea',
   },
   userName: {
     fontSize: '14px',
     fontWeight: '600',
-    color: '#333'
+    color: '#333',
   },
   logoutButton: {
     padding: '8px 20px',
@@ -137,8 +137,8 @@ const styles = {
     border: 'none',
     borderRadius: '6px',
     cursor: 'pointer',
-    transition: 'all 0.2s'
-  }
+    transition: 'all 0.2s',
+  },
 };
 
 export default Navigation;
