@@ -495,14 +495,34 @@ function Resolve-ArtifactPath([string]$artifactDir, [string]$fileName) {
 
 function Verify-StagingCert([string]$staticPath, [string]$dynamicPath) {
   $fail = @()
-  $hasStaging = $false
-  foreach ($p in @($staticPath, $dynamicPath)) {
-    if ($p -and (Test-Path $p)) {
-      $content = Get-Content $p -Raw
-      if ($content -match 'le-staging') { $hasStaging = $true }
+  $envMode = ''
+  try {
+    if ($env:ENV) { $envMode = [string]$env:ENV }
+    elseif ($env:BASE2_ENV) { $envMode = [string]$env:BASE2_ENV }
+  } catch {}
+  $envMode = ($envMode + '').Trim().ToLower()
+  $isProd = ($envMode -eq 'prod' -or $envMode -eq 'production')
+  $expectedResolver = if ($isProd) { 'le' } else { 'le-staging' }
+
+  # Static config always defines both resolvers; the meaningful signal is the rendered
+  # dynamic config's certResolver selection.
+  if ($dynamicPath -and (Test-Path $dynamicPath)) {
+    $dyn = Get-Content $dynamicPath -Raw
+    $hasExpected = [bool]([regex]::Match($dyn, "(?im)^\s*certResolver\s*:\s*" + [regex]::Escape($expectedResolver) + "\s*$").Success)
+    if (-not $hasExpected) {
+      $fail += "Traefik dynamic config does not use expected cert resolver ($expectedResolver)"
     }
+  } else {
+    # Fallback: best-effort scan of any provided config files.
+    $hasExpected = $false
+    foreach ($p in @($staticPath, $dynamicPath)) {
+      if ($p -and (Test-Path $p)) {
+        $content = Get-Content $p -Raw
+        if ($content -match [regex]::Escape($expectedResolver)) { $hasExpected = $true }
+      }
+    }
+    if (-not $hasExpected) { $fail += "Traefik config does not reference expected cert resolver ($expectedResolver)" }
   }
-  if (-not $hasStaging) { $fail += "Traefik config does not reference staging cert resolver (le-staging)" }
   return $fail
 }
 
@@ -525,6 +545,15 @@ function Check-TlsAcmeGuard([string]$artifactDir, [string]$staticPath, [string]$
     error = ''
   }
 
+  $envMode = ''
+  try {
+    if ($env:ENV) { $envMode = [string]$env:ENV }
+    elseif ($env:BASE2_ENV) { $envMode = [string]$env:BASE2_ENV }
+  } catch {}
+  $envMode = ($envMode + '').Trim().ToLower()
+  $isProd = ($envMode -eq 'prod' -or $envMode -eq 'production')
+  $expectedResolver = if ($isProd) { 'le' } else { 'le-staging' }
+
   try {
     if (-not $staticPath -or -not (Test-Path $staticPath)) { throw 'Missing traefik-static.yml for ACME guard check' }
     $content = Get-Content -Path $staticPath -Raw
@@ -543,22 +572,15 @@ function Check-TlsAcmeGuard([string]$artifactDir, [string]$staticPath, [string]$
       $payload.storage = (($Matches[1] + '').Trim().Trim('"').Trim("'"))
     }
 
-    # Guardrail: reject production Let's Encrypt directory anywhere in config.
+    # Guardrail: reject production Let's Encrypt directory in non-prod.
     if ($content -match '(?i)acme-v02\.api\.letsencrypt\.org') {
       $payload.sawProduction = $true
-      $envMode = ''
-      try {
-        if ($env:ENV) { $envMode = [string]$env:ENV }
-        elseif ($env:BASE2_ENV) { $envMode = [string]$env:BASE2_ENV }
-      } catch {}
-      if ($envMode -ne 'prod') {
-        $fail += 'Production ACME directory detected in Traefik config (acme-v02.api.letsencrypt.org) but ENV is not prod'
-      }
+      if (-not $isProd) { $fail += 'Production ACME directory detected in Traefik config (acme-v02.api.letsencrypt.org) but ENV is not production/prod' }
     }
 
-    if (-not $payload.stagingReferenced) { $fail += 'Traefik static config does not reference le-staging resolver' }
+    if (-not $isProd -and -not $payload.stagingReferenced) { $fail += 'Traefik static config does not reference le-staging resolver' }
 
-    # Dynamic routing guardrail: key routers must explicitly reference le-staging.
+    # Dynamic routing guardrail: key routers must explicitly reference the expected certResolver.
     try {
       if ($dynamicPath -and (Test-Path $dynamicPath)) {
         $payload.dynamicChecked = $true
@@ -580,9 +602,9 @@ function Check-TlsAcmeGuard([string]$artifactDir, [string]$staticPath, [string]$
           if ($mm.Success) {
             $m.found = $true
             $m.certResolver = ([string]$mm.Groups[1].Value).Trim().Trim('"').Trim("'")
-            if ($m.certResolver -ne 'le-staging') {
+            if ($m.certResolver -ne $expectedResolver) {
               $payload.routersWrongResolver += @([ordered]@{ router = $r; certResolver = $m.certResolver })
-              $fail += "Traefik router $r uses certResolver=$($m.certResolver) (expected le-staging)"
+              $fail += "Traefik router $r uses certResolver=$($m.certResolver) (expected $expectedResolver)"
             }
           } else {
             $payload.routersMissing += $r
@@ -606,8 +628,9 @@ function Check-TlsAcmeGuard([string]$artifactDir, [string]$staticPath, [string]$
       $fail += 'Missing traefik-acme-perms.txt for ACME storage permissions check'
     } else {
       $lines = @(Get-Content -Path $permsPath | ForEach-Object { [string]$_ })
-      # Look for a numeric mode line for acme-staging.json (preferred) or any *.json file.
-      $modeLine = ($lines | Where-Object { $_ -match '(?m)^\d{3,4}\s+.*acme-staging\.json\s*$' } | Select-Object -First 1)
+      $expectedAcmeFile = if ($isProd) { 'acme\.json' } else { 'acme-staging\.json' }
+      # Look for a numeric mode line for the expected ACME storage file or any *.json file.
+      $modeLine = ($lines | Where-Object { $_ -match ("(?m)^\d{3,4}\s+.*" + $expectedAcmeFile + "\s*$") } | Select-Object -First 1)
       if (-not $modeLine) {
         $modeLine = ($lines | Where-Object { $_ -match '(?m)^\d{3,4}\s+.*\.json\s*$' } | Select-Object -First 1)
       }
