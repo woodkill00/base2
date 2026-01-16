@@ -16,42 +16,50 @@ export const AppShell: React.FC<Props> = ({ children, headerTitle, sidebarItems,
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <div className="app-shell" style={{ minHeight: 'calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom))' }}>
-      <GlassHeader
-        title={headerTitle}
-        variant={variant}
-        menuControlsId={sidebarId}
-        isMenuOpen={isMenuOpen}
-        onToggleMenu={isPublic ? undefined : () => setIsMenuOpen((v) => !v)}
-      />
+    <div className="relative min-h-screen">
+      <div className="gradient-background" />
 
       <div
-        className="app-shell-body"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: isPublic ? '1fr' : isMenuOpen ? 'var(--sidebar-w) 1fr' : '1fr',
-        }}
+        className="app-shell relative z-10"
+        style={{ minHeight: 'calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom))' }}
       >
-        {isPublic ? null : (
-          <GlassSidebar
-            id={sidebarId}
-            items={sidebarItems}
-            isOpen={isMenuOpen}
-            onClose={() => setIsMenuOpen(false)}
-          />
-        )}
+        <GlassHeader
+          title={headerTitle}
+          variant={variant}
+          menuControlsId={sidebarId}
+          isMenuOpen={isMenuOpen}
+          onToggleMenu={isPublic ? undefined : () => setIsMenuOpen((v) => !v)}
+        />
 
-        <main
-          className="app-shell-content"
+        <div
+          className="app-shell-body"
           style={{
-            minHeight: 'calc(100vh - var(--nav-h) - var(--footer-h) - env(safe-area-inset-top) - env(safe-area-inset-bottom))',
+            display: 'grid',
+            gridTemplateColumns: isPublic ? '1fr' : isMenuOpen ? 'var(--sidebar-w) 1fr' : '1fr',
           }}
         >
-          {children}
-        </main>
-      </div>
+          {isPublic ? null : (
+            <GlassSidebar
+              id={sidebarId}
+              items={sidebarItems}
+              isOpen={isMenuOpen}
+              onClose={() => setIsMenuOpen(false)}
+            />
+          )}
 
-      {isPublic ? null : <footer className="app-shell-footer glass" style={{ height: 'var(--footer-h)' }} />}
+          <main
+            className="app-shell-content"
+            style={{
+              minHeight:
+                'calc(100vh - var(--nav-h) - var(--footer-h) - env(safe-area-inset-top) - env(safe-area-inset-bottom))',
+            }}
+          >
+            {children}
+          </main>
+        </div>
+
+        {isPublic ? null : <footer className="app-shell-footer glass" style={{ height: 'var(--footer-h)' }} />}
+      </div>
     </div>
   );
 };

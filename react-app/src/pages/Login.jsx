@@ -8,7 +8,6 @@ import AppShell from '../components/glass/AppShell';
 import GlassCard from '../components/glass/GlassCard';
 import GlassButton from '../components/glass/GlassButton';
 import GlassInput from '../components/glass/GlassInput';
-import Navigation from '../components/Navigation';
 
 const Login = ({ variant = 'public' }) => {
   const { loginWithEmail, loginWithGoogle } = useAuth();
@@ -91,7 +90,6 @@ const Login = ({ variant = 'public' }) => {
   return (
     <AppShell variant={variant} headerTitle="Login">
       <div style={styles.containerInner}>
-        <Navigation />
         <GlassCard>
           <h1 style={styles.title}>Sign in</h1>
 

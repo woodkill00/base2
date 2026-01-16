@@ -1,42 +1,21 @@
+import AppShell from '../components/glass/AppShell';
+import GlassCard from '../components/glass/GlassCard';
+
 const OAuthCallback = () => {
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h1 style={styles.title}>OAuth callback not used</h1>
-        <div style={styles.error}>
-          This app uses Google Sign-In (ID token) on the login page.
-        </div>
+    <AppShell variant="public" headerTitle="OAuth">
+      <div className="mx-auto max-w-md px-4 py-10">
+        <GlassCard>
+          <div className="p-6 space-y-3">
+            <h1 className="text-xl font-semibold tracking-tight">OAuth callback not used</h1>
+            <p className="text-sm opacity-80">
+              This app uses Google Sign-In (ID token) on the login page.
+            </p>
+          </div>
+        </GlassCard>
       </div>
-    </div>
+    </AppShell>
   );
-};
-
-const styles = {
-  container: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '24px',
-  },
-  card: {
-    width: '100%',
-    maxWidth: '420px',
-    background: 'white',
-    borderRadius: '12px',
-    padding: '24px',
-    border: '1px solid #e5e7eb',
-  },
-  title: {
-    margin: '0 0 12px 0',
-  },
-  error: {
-    padding: '10px 12px',
-    background: '#fee2e2',
-    color: '#991b1b',
-    borderRadius: '8px',
-    fontSize: '14px',
-  },
 };
 
 export default OAuthCallback;

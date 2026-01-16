@@ -1,5 +1,6 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import GlassButton from './glass/GlassButton';
 
 const Navigation = () => {
   const { user, logout } = useAuth();
@@ -13,132 +14,68 @@ const Navigation = () => {
 
   const isActive = (path) => location.pathname === path;
 
+  const linkClass = (path) =>
+    [
+      'text-sm font-medium px-3 py-2 rounded-[var(--radius-lg)] transition-all duration-300 ease-out',
+      'hover:bg-white/20 dark:hover:bg-black/30',
+      isActive(path) ? 'bg-white/20 dark:bg-black/30' : 'opacity-80 hover:opacity-100',
+    ].join(' ');
+
   return (
-    <nav style={styles.nav} aria-label="App navigation">
-      <div style={styles.container}>
-        <Link to="/dashboard" style={styles.logo}>
-          <span style={styles.logoIcon}>🚀</span>
-          Base2
-        </Link>
+    <nav aria-label="App navigation" className="sticky top-[calc(var(--nav-h)+0px)] z-40">
+      <div className="mx-auto max-w-6xl px-4 pt-4">
+        <div
+          className={[
+            'backdrop-blur-2xl border rounded-[var(--radius-lg)] transition-all duration-300 ease-out',
+            'shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.4)] dark:shadow-[0_0_40px_0_rgba(139,92,246,0.1)]',
+            'bg-white/25 dark:bg-black/40 border-white/30 dark:border-white/20',
+            'px-4 py-3',
+          ].join(' ')}
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center justify-between gap-3">
+              <Link to="/dashboard" className="flex items-center gap-2">
+                <span className="text-xl" aria-hidden="true">
+                  🚀
+                </span>
+                <span className="text-sm font-semibold tracking-tight">Base2</span>
+              </Link>
+            </div>
 
-        <div style={styles.menu}>
-          <Link
-            to="/dashboard"
-            style={{
-              ...styles.menuItem,
-              ...(isActive('/dashboard') && styles.menuItemActive),
-            }}
-          >
-            Dashboard
-          </Link>
-          <Link
-            to="/settings"
-            style={{
-              ...styles.menuItem,
-              ...(isActive('/settings') && styles.menuItemActive),
-            }}
-          >
-            Settings
-          </Link>
-        </div>
+            <div className="flex items-center gap-2">
+              <Link to="/dashboard" className={linkClass('/dashboard')}>
+                Dashboard
+              </Link>
+              <Link to="/settings" className={linkClass('/settings')}>
+                Settings
+              </Link>
+            </div>
 
-        <div style={styles.userSection}>
-          <div style={styles.userInfo}>
-            <img
-              src={user?.avatar_url || user?.picture || 'https://via.placeholder.com/40'}
-              alt="Profile"
-              style={styles.avatar}
-            />
-            <span style={styles.userName}>{user?.display_name || user?.name || user?.email}</span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <img
+                  src={user?.avatar_url || user?.picture || 'https://via.placeholder.com/40'}
+                  alt="Profile"
+                  className="w-9 h-9 rounded-full object-cover border border-white/30 dark:border-white/20"
+                />
+                <span className="text-sm opacity-90">
+                  {user?.display_name || user?.name || user?.email}
+                </span>
+              </div>
+              <GlassButton
+                type="button"
+                variant="ghost"
+                className="text-sm px-4 py-2"
+                onClick={handleLogout}
+              >
+                Logout
+              </GlassButton>
+            </div>
           </div>
-          <button onClick={handleLogout} style={styles.logoutButton}>
-            Logout
-          </button>
         </div>
       </div>
     </nav>
   );
-};
-
-const styles = {
-  nav: {
-    background: 'white',
-    borderBottom: '1px solid #e0e0e0',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
-    position: 'sticky',
-    top: 0,
-    zIndex: 1000,
-  },
-  container: {
-    maxWidth: '1200px',
-    margin: '0 auto',
-    padding: '15px 20px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  logo: {
-    fontSize: '24px',
-    fontWeight: '700',
-    color: '#667eea',
-    textDecoration: 'none',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  logoIcon: {
-    fontSize: '28px',
-  },
-  menu: {
-    display: 'flex',
-    gap: '20px',
-  },
-  menuItem: {
-    fontSize: '16px',
-    fontWeight: '500',
-    color: '#666',
-    textDecoration: 'none',
-    padding: '8px 16px',
-    borderRadius: '6px',
-    transition: 'all 0.2s',
-  },
-  menuItemActive: {
-    color: '#667eea',
-    background: '#f0f4ff',
-  },
-  userSection: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '15px',
-  },
-  userInfo: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-  },
-  avatar: {
-    width: '40px',
-    height: '40px',
-    borderRadius: '50%',
-    objectFit: 'cover',
-    border: '2px solid #667eea',
-  },
-  userName: {
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#333',
-  },
-  logoutButton: {
-    padding: '8px 20px',
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#666',
-    background: '#f0f0f0',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  },
 };
 
 export default Navigation;

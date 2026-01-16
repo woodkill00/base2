@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ToastProvider.jsx';
 import AppShell from '../components/glass/AppShell';
+import GlassButton from '../components/glass/GlassButton';
+import GlassCard from '../components/glass/GlassCard';
+import GlassInput from '../components/glass/GlassInput';
 
 const ResetPassword = ({ variant = 'public' }) => {
   const [searchParams] = useSearchParams();
@@ -103,194 +106,87 @@ const ResetPassword = ({ variant = 'public' }) => {
 
   return (
     <AppShell variant={variant} headerTitle="Reset Password">
-      <div style={styles.container}>
-        <div style={styles.card}>
-          <h1 style={styles.title}>Reset Password</h1>
-          <p style={styles.subtitle}>Enter your new password below</p>
+      <div className="mx-auto max-w-md px-4 py-10">
+        <GlassCard>
+          <div className="space-y-6">
+            <header className="space-y-2">
+              <h1 className="text-xl font-semibold tracking-tight">Set a new password</h1>
+              <p className="text-sm opacity-80">Enter your new password below.</p>
+            </header>
 
-          {error && (
-            <div style={styles.errorMessage} role="alert">
-              {error}
+            {error ? (
+              <div className="text-sm" role="alert">
+                {error}
+              </div>
+            ) : null}
+
+            {message ? (
+              <div className="text-sm" role="status">
+                {message}
+                <div className="text-xs opacity-80 mt-2">Redirecting to login…</div>
+              </div>
+            ) : null}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <GlassInput
+                  id="password"
+                  label="New password"
+                  name="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="New Password"
+                  ariaInvalid={fieldErrors.password ? 'true' : 'false'}
+                  ariaDescribedBy={fieldErrors.password ? 'password-error' : undefined}
+                />
+                {fieldErrors.password ? (
+                  <div id="password-error" className="text-sm mt-2" role="alert">
+                    {fieldErrors.password}
+                  </div>
+                ) : null}
+              </div>
+
+              <div>
+                <GlassInput
+                  id="confirmPassword"
+                  label="Confirm password"
+                  name="confirmPassword"
+                  type="password"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="Confirm New Password"
+                  ariaInvalid={fieldErrors.confirmPassword ? 'true' : 'false'}
+                  ariaDescribedBy={
+                    fieldErrors.confirmPassword ? 'confirm-password-error' : undefined
+                  }
+                />
+                {fieldErrors.confirmPassword ? (
+                  <div id="confirm-password-error" className="text-sm mt-2" role="alert">
+                    {fieldErrors.confirmPassword}
+                  </div>
+                ) : null}
+              </div>
+
+              <p className="text-xs opacity-80">
+                Password must be at least 8 characters with uppercase, lowercase, and number.
+              </p>
+
+              <GlassButton type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Resetting…' : 'Reset password'}
+              </GlassButton>
+            </form>
+
+            <div className="text-sm opacity-80">
+              <Link to="/login" className="underline">
+                Back to login
+              </Link>
             </div>
-          )}
-
-          {message && (
-            <div style={styles.successMessage}>
-              {message}
-              <div style={styles.redirectMessage}>Redirecting to login...</div>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} style={styles.form}>
-            <div style={styles.formGroup}>
-              <input
-                type="password"
-                name="password"
-                placeholder="New Password"
-                value={formData.password}
-                onChange={handleChange}
-                style={styles.input}
-                required
-                aria-invalid={fieldErrors.password ? 'true' : 'false'}
-                aria-describedby={fieldErrors.password ? 'password-error' : undefined}
-              />
-              {fieldErrors.password ? (
-                <div id="password-error" style={styles.fieldError} role="alert">
-                  {fieldErrors.password}
-                </div>
-              ) : null}
-            </div>
-
-            <div style={styles.formGroup}>
-              <input
-                type="password"
-                name="confirmPassword"
-                placeholder="Confirm New Password"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                style={styles.input}
-                required
-                aria-invalid={fieldErrors.confirmPassword ? 'true' : 'false'}
-                aria-describedby={
-                  fieldErrors.confirmPassword ? 'confirm-password-error' : undefined
-                }
-              />
-              {fieldErrors.confirmPassword ? (
-                <div id="confirm-password-error" style={styles.fieldError} role="alert">
-                  {fieldErrors.confirmPassword}
-                </div>
-              ) : null}
-            </div>
-
-            <div style={styles.passwordHint}>
-              Password must be at least 8 characters with uppercase, lowercase, and number
-            </div>
-
-            <button type="submit" style={styles.submitButton} disabled={loading}>
-              {loading ? 'Resetting...' : 'Reset Password'}
-            </button>
-          </form>
-
-          <div style={styles.backToLogin}>
-            <button onClick={() => navigate('/login')} style={styles.secondaryButton}>
-              ← Back to Login
-            </button>
           </div>
-        </div>
+        </GlassCard>
       </div>
     </AppShell>
   );
-};
-
-const styles = {
-  container: {
-    minHeight: '100vh',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    padding: '20px',
-  },
-  card: {
-    background: 'white',
-    borderRadius: '16px',
-    padding: '40px',
-    maxWidth: '500px',
-    width: '100%',
-    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-    textAlign: 'center',
-  },
-  title: {
-    fontSize: '32px',
-    fontWeight: '700',
-    color: '#333',
-    marginBottom: '10px',
-  },
-  subtitle: {
-    fontSize: '16px',
-    color: '#666',
-    marginBottom: '30px',
-    lineHeight: '1.6',
-  },
-  form: {
-    width: '100%',
-    marginBottom: '20px',
-  },
-  formGroup: {
-    marginBottom: '15px',
-  },
-  input: {
-    width: '100%',
-    padding: '12px',
-    fontSize: '16px',
-    border: '2px solid #e0e0e0',
-    borderRadius: '8px',
-    outline: 'none',
-    transition: 'border-color 0.2s',
-    boxSizing: 'border-box',
-  },
-  fieldError: {
-    marginTop: '6px',
-    fontSize: '12px',
-    color: '#c33',
-    textAlign: 'left',
-  },
-  passwordHint: {
-    fontSize: '12px',
-    color: '#999',
-    marginBottom: '20px',
-    textAlign: 'left',
-  },
-  submitButton: {
-    width: '100%',
-    padding: '12px',
-    fontSize: '16px',
-    fontWeight: '600',
-    color: 'white',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    transition: 'transform 0.2s, box-shadow 0.2s',
-    boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
-  },
-  backToLogin: {
-    marginTop: '20px',
-  },
-  secondaryButton: {
-    padding: '12px 30px',
-    fontSize: '16px',
-    fontWeight: '600',
-    color: '#667eea',
-    background: 'white',
-    border: '2px solid #667eea',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    transition: 'transform 0.2s, box-shadow 0.2s',
-  },
-  errorMessage: {
-    padding: '12px',
-    marginBottom: '20px',
-    background: '#fee',
-    color: '#c33',
-    borderRadius: '8px',
-    fontSize: '14px',
-    border: '1px solid #fcc',
-  },
-  successMessage: {
-    padding: '12px',
-    marginBottom: '20px',
-    background: '#efe',
-    color: '#3c3',
-    borderRadius: '8px',
-    fontSize: '14px',
-    border: '1px solid #cfc',
-  },
-  redirectMessage: {
-    fontSize: '12px',
-    marginTop: '10px',
-    fontStyle: 'italic',
-  },
 };
 
 export default ResetPassword;

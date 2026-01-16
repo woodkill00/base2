@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import apiClient from '../lib/apiClient';
 import { normalizeApiError } from '../lib/apiErrors';
@@ -26,21 +26,63 @@ const Settings = () => {
   );
 
   const [form, setForm] = useState(initial);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
+  const [saving, setSaving] = useState(false);
 
   const [sessions, setSessions] = useState([]);
-  const [sessionsError, setSessionsError] = useState('');
   const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionsError, setSessionsError] = useState('');
   const [revokingOthers, setRevokingOthers] = useState(false);
+
+  useEffect(() => {
+    setForm(initial);
+  }, [initial]);
+
+  const onChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setFieldErrors({});
+    setSaving(true);
+
+    try {
+      const payload = {
+        email: form.email,
+        display_name: form.display_name,
+        avatar_url: form.avatar_url,
+        bio: form.bio,
+      };
+
+      const response = await apiClient.patch('/users/me', payload);
+      if (response?.data) {
+        updateUser(response.data);
+      }
+    } catch (err) {
+      const apiErr = normalizeApiError(err, { fallbackMessage: 'Failed to save settings' });
+      setError(apiErr.message);
+      if (apiErr.fields) {
+        setFieldErrors(apiErr.fields);
+      }
+      if (apiErr.code === 'network_error') {
+        toast.error(apiErr.message);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const loadSessions = async () => {
     setSessionsError('');
     setSessionsLoading(true);
     try {
       const data = await authAPI.listSessions();
-      setSessions(Array.isArray(data?.sessions) ? data.sessions : []);
+      const list = Array.isArray(data) ? data : data?.sessions;
+      setSessions(Array.isArray(list) ? list : []);
     } catch (err) {
       const apiErr = normalizeApiError(err, { fallbackMessage: 'Failed to load sessions' });
       setSessionsError(apiErr.message);
@@ -57,7 +99,6 @@ const Settings = () => {
     setRevokingOthers(true);
     try {
       await authAPI.revokeOtherSessions();
-      toast.success('Logged out other devices');
       await loadSessions();
     } catch (err) {
       const apiErr = normalizeApiError(err, { fallbackMessage: 'Failed to log out other devices' });
@@ -70,159 +111,146 @@ const Settings = () => {
     }
   };
 
-  const onChange = (e) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-    setFieldErrors((prev) => ({ ...prev, [e.target.name]: null }));
-  };
-
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setFieldErrors({});
-    setSaving(true);
-
-    try {
-      const resp = await apiClient.patch('/users/me', {
-        email: form.email,
-        display_name: form.display_name,
-        avatar_url: form.avatar_url,
-        bio: form.bio,
-      });
-
-      if (resp?.data) {
-        updateUser(resp.data);
-        toast.success('Saved');
-      }
-    } catch (err) {
-      const apiErr = normalizeApiError(err, { fallbackMessage: 'Failed to save settings' });
-      if (apiErr.fields) {
-        setFieldErrors(apiErr.fields);
-      }
-      setError(apiErr.message);
-      if (apiErr.code === 'network_error') {
-        toast.error(apiErr.message);
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
-
   return (
     <AppShell headerTitle="Settings">
-      <div style={styles.card}>
+      <div className="mx-auto max-w-3xl px-4 py-8 space-y-6">
         <Navigation />
-        <h1 style={styles.title}>Settings</h1>
-        <p style={styles.subtitle}>{user?.email || ''}</p>
+
+        <header className="space-y-1">
+          <h1 className="text-xl font-semibold tracking-tight">Settings</h1>
+          <p className="text-sm opacity-80">{user?.email || ''}</p>
+        </header>
 
         {error ? (
-          <div style={styles.error} role="alert">
+          <div className="text-sm" role="alert">
             {error}
           </div>
         ) : null}
 
         <GlassCard>
-          <form onSubmit={onSubmit} style={styles.form}>
-            <label style={styles.label} htmlFor="email">
-              Email
-            </label>
-            <GlassInput
-              id="email"
-              name="email"
-              name="email"
-              type="email"
-              value={form.email}
-              onChange={onChange}
-              placeholder="you@example.com"
-              ariaInvalid={fieldErrors.email ? 'true' : 'false'}
-              ariaDescribedBy={fieldErrors.email ? 'email-error' : undefined}
-            />
-            {fieldErrors.email ? (
-              <div id="email-error" style={styles.fieldError} role="alert">
-                {fieldErrors.email}
+          <div className="p-6">
+            <form onSubmit={onSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2" htmlFor="email">
+                  Email
+                </label>
+                <GlassInput
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={form.email}
+                  onChange={onChange}
+                  placeholder="you@example.com"
+                  ariaInvalid={fieldErrors.email ? 'true' : 'false'}
+                  ariaDescribedBy={fieldErrors.email ? 'email-error' : undefined}
+                />
+                {fieldErrors.email ? (
+                  <div id="email-error" className="text-sm mt-2" role="alert">
+                    {fieldErrors.email}
+                  </div>
+                ) : null}
               </div>
-            ) : null}
 
-            <label style={styles.label} htmlFor="display_name">
-              Display name
-            </label>
-            <GlassInput
-              id="display_name"
-              name="display_name"
-              name="display_name"
-              type="text"
-              value={form.display_name}
-              onChange={onChange}
-              placeholder="Your display name"
-              ariaInvalid={fieldErrors.display_name ? 'true' : 'false'}
-              ariaDescribedBy={fieldErrors.display_name ? 'display-name-error' : undefined}
-            />
-            {fieldErrors.display_name ? (
-              <div id="display-name-error" style={styles.fieldError} role="alert">
-                {fieldErrors.display_name}
+              <div>
+                <label className="block text-sm font-medium mb-2" htmlFor="display_name">
+                  Display name
+                </label>
+                <GlassInput
+                  id="display_name"
+                  name="display_name"
+                  type="text"
+                  value={form.display_name}
+                  onChange={onChange}
+                  placeholder="Your display name"
+                  ariaInvalid={fieldErrors.display_name ? 'true' : 'false'}
+                  ariaDescribedBy={fieldErrors.display_name ? 'display-name-error' : undefined}
+                />
+                {fieldErrors.display_name ? (
+                  <div id="display-name-error" className="text-sm mt-2" role="alert">
+                    {fieldErrors.display_name}
+                  </div>
+                ) : null}
               </div>
-            ) : null}
 
-            <label style={styles.label} htmlFor="avatar_url">
-              Avatar URL
-            </label>
-            <GlassInput
-              id="avatar_url"
-              name="avatar_url"
-              name="avatar_url"
-              type="url"
-              value={form.avatar_url}
-              onChange={onChange}
-              placeholder="https://..."
-              ariaInvalid={fieldErrors.avatar_url ? 'true' : 'false'}
-              ariaDescribedBy={fieldErrors.avatar_url ? 'avatar-url-error' : undefined}
-            />
-            {fieldErrors.avatar_url ? (
-              <div id="avatar-url-error" style={styles.fieldError} role="alert">
-                {fieldErrors.avatar_url}
+              <div>
+                <label className="block text-sm font-medium mb-2" htmlFor="avatar_url">
+                  Avatar URL
+                </label>
+                <GlassInput
+                  id="avatar_url"
+                  name="avatar_url"
+                  type="url"
+                  value={form.avatar_url}
+                  onChange={onChange}
+                  placeholder="https://..."
+                  ariaInvalid={fieldErrors.avatar_url ? 'true' : 'false'}
+                  ariaDescribedBy={fieldErrors.avatar_url ? 'avatar-url-error' : undefined}
+                />
+                {fieldErrors.avatar_url ? (
+                  <div id="avatar-url-error" className="text-sm mt-2" role="alert">
+                    {fieldErrors.avatar_url}
+                  </div>
+                ) : null}
               </div>
-            ) : null}
 
-            <label style={styles.label} htmlFor="bio">
-              Bio
-            </label>
-            <textarea
-              id="bio"
-              name="bio"
-              value={form.bio}
-              onChange={onChange}
-              rows={4}
-              style={styles.textarea}
-              aria-invalid={fieldErrors.bio ? 'true' : 'false'}
-              aria-describedby={fieldErrors.bio ? 'bio-error' : undefined}
-            />
-            {fieldErrors.bio ? (
-              <div id="bio-error" style={styles.fieldError} role="alert">
-                {fieldErrors.bio}
+              <div>
+                <label className="block text-sm font-medium mb-2" htmlFor="bio">
+                  Bio
+                </label>
+                <textarea
+                  id="bio"
+                  name="bio"
+                  value={form.bio}
+                  onChange={onChange}
+                  rows={4}
+                  className={
+                    'w-full backdrop-blur-2xl bg-white/25 dark:bg-black/40 ' +
+                    'border border-white/30 dark:border-white/20 rounded-[var(--radius-lg)] ' +
+                    'px-4 py-3 text-foreground placeholder:text-foreground/50 dark:placeholder:text-foreground/40 ' +
+                    'focus:outline-none focus:ring-2 focus:ring-white/40 dark:focus:ring-white/30 ' +
+                    'focus:border-white/50 dark:focus:border-white/30 ' +
+                    'shadow-[0_4px_16px_0_rgba(31,38,135,0.1)] dark:shadow-[0_4px_16px_0_rgba(0,0,0,0.3)] ' +
+                    'transition-all duration-300 ease-out'
+                  }
+                  aria-invalid={fieldErrors.bio ? 'true' : 'false'}
+                  aria-describedby={fieldErrors.bio ? 'bio-error' : undefined}
+                />
+                {fieldErrors.bio ? (
+                  <div id="bio-error" className="text-sm mt-2" role="alert">
+                    {fieldErrors.bio}
+                  </div>
+                ) : null}
               </div>
-            ) : null}
 
-            <GlassButton type="submit" disabled={saving} variant="primary">
-              {saving ? 'Saving…' : 'Save'}
-            </GlassButton>
-          </form>
-        </GlassCard>
-
-        <GlassCard>
-          <div style={styles.preview}>
-            <div style={styles.previewLabel}>Preview</div>
-            <div style={styles.previewValue}>{form.display_name || '(no display name)'}</div>
+              <GlassButton
+                type="submit"
+                disabled={saving}
+                variant="primary"
+                className="w-full sm:w-auto"
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </GlassButton>
+            </form>
           </div>
         </GlassCard>
 
-        <div style={styles.section}>
-          <div style={styles.sectionHeaderRow}>
-            <h2 style={styles.sectionTitle}>Sessions</h2>
-            <div style={styles.sectionActions}>
+        <GlassCard>
+          <div className="p-6">
+            <div className="text-xs opacity-70">Preview</div>
+            <div className="mt-2 font-semibold">{form.display_name || '(no display name)'}</div>
+          </div>
+        </GlassCard>
+
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold tracking-tight">Sessions</h2>
+            <div className="flex gap-2">
               <GlassButton
                 type="button"
                 onClick={loadSessions}
                 disabled={sessionsLoading}
                 variant="secondary"
+                className="text-sm px-4 py-2"
               >
                 {sessionsLoading ? 'Refreshing…' : 'Refresh'}
               </GlassButton>
@@ -231,6 +259,7 @@ const Settings = () => {
                 onClick={revokeOtherSessions}
                 disabled={revokingOthers}
                 variant="ghost"
+                className="text-sm px-4 py-2"
               >
                 {revokingOthers ? 'Logging out…' : 'Log out other devices'}
               </GlassButton>
@@ -238,20 +267,20 @@ const Settings = () => {
           </div>
 
           {sessionsError ? (
-            <div style={styles.error} role="alert">
+            <div className="text-sm" role="alert">
               {sessionsError}
             </div>
           ) : null}
 
           {sessions.length === 0 ? (
-            <div style={styles.muted}>No active sessions loaded.</div>
+            <div className="text-sm opacity-70">No active sessions loaded.</div>
           ) : (
-            <div style={styles.sessionsList}>
+            <div className="space-y-3">
               {sessions.map((s) => (
-                <GlassCard key={s.id}>
-                  <div style={styles.sessionMain}>
-                    <div style={styles.sessionUa}>{s.user_agent || '(unknown device)'}</div>
-                    <div style={styles.sessionMeta}>
+                <GlassCard key={s.id || `${s.ip}-${s.user_agent}`.trim()}>
+                  <div className="p-5">
+                    <div className="text-sm font-medium">{s.user_agent || '(unknown device)'}</div>
+                    <div className="mt-2 text-xs opacity-70 flex flex-wrap gap-x-4 gap-y-1">
                       <span>{s.ip || ''}</span>
                       <span>{s.is_current ? 'Current session' : 'Other session'}</span>
                     </div>
@@ -260,126 +289,10 @@ const Settings = () => {
               ))}
             </div>
           )}
-        </div>
+        </section>
       </div>
     </AppShell>
   );
-};
-
-const styles = {
-  card: {
-    maxWidth: '720px',
-    margin: '0 auto',
-    padding: '20px',
-  },
-  title: {
-    margin: '16px 0 4px 0',
-  },
-  subtitle: {
-    margin: '0 0 16px 0',
-    color: '#374151',
-  },
-  error: {
-    marginBottom: '12px',
-    padding: '10px 12px',
-    background: '#fee2e2',
-    color: '#991b1b',
-    borderRadius: '8px',
-    fontSize: '14px',
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '10px',
-  },
-  label: {
-    fontSize: '14px',
-    fontWeight: 600,
-  },
-  input: {
-    padding: '10px 12px',
-  },
-  fieldError: {
-    marginTop: '-6px',
-    marginBottom: '4px',
-    fontSize: '12px',
-    color: '#991b1b',
-  },
-  textarea: {
-    padding: '10px 12px',
-    borderRadius: '8px',
-    border: '1px solid #d1d5db',
-    fontSize: '14px',
-    resize: 'vertical',
-  },
-  primaryButton: {
-    marginTop: '8px',
-  },
-  preview: {
-    marginTop: '14px',
-    background: 'white',
-    borderRadius: '12px',
-    padding: '12px 16px',
-    border: '1px solid #e5e7eb',
-  },
-  previewLabel: {
-    fontSize: '12px',
-    color: '#6b7280',
-  },
-  previewValue: {
-    marginTop: '6px',
-    fontWeight: 600,
-  },
-  section: {
-    marginTop: '14px',
-  },
-  sectionHeaderRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: '12px',
-    marginBottom: '10px',
-  },
-  sectionTitle: {
-    margin: 0,
-    fontSize: '16px',
-  },
-  sectionActions: {
-    display: 'flex',
-    gap: '8px',
-  },
-  muted: {
-    color: '#6b7280',
-    fontSize: '14px',
-  },
-  secondaryButton: {},
-  dangerButton: {},
-  sessionsList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '10px',
-  },
-  sessionRow: {
-    border: '1px solid #e5e7eb',
-    borderRadius: '10px',
-    padding: '10px 12px',
-  },
-  sessionMain: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '6px',
-  },
-  sessionUa: {
-    fontWeight: 600,
-    fontSize: '14px',
-    color: '#111827',
-  },
-  sessionMeta: {
-    display: 'flex',
-    gap: '10px',
-    fontSize: '12px',
-    color: '#6b7280',
-  },
 };
 
 export default Settings;
