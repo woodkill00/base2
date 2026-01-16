@@ -954,6 +954,7 @@ PY
 import json
 import os
 import sys
+import time
 from urllib.error import HTTPError
 from urllib.request import urlopen
 
@@ -962,19 +963,28 @@ url = f"http://127.0.0.1:{port}/internal/health"
 status = 0
 body = "{}"
 
-try:
+last_error = ""
+
+for _ in range(20):
+  try:
     with urlopen(url, timeout=5) as resp:
-        status = getattr(resp, "status", None) or resp.getcode() or 200
-        body = resp.read().decode("utf-8")
-except HTTPError as e:
+      status = getattr(resp, "status", None) or resp.getcode() or 200
+      body = resp.read().decode("utf-8")
+      break
+  except HTTPError as e:
     status = e.code
     try:
-        body = e.read().decode("utf-8")
+      body = e.read().decode("utf-8")
     except Exception:
-        body = json.dumps({"ok": False, "service": "django", "db_ok": False})
-except Exception as e:
+      body = json.dumps({"ok": False, "service": "django", "db_ok": False})
+    break
+  except Exception as e:
+    last_error = str(e)
     status = 0
-    body = json.dumps({"ok": False, "service": "django", "db_ok": False, "error": str(e)})
+    time.sleep(1)
+
+if status == 0 and not body.strip():
+  body = json.dumps({"ok": False, "service": "django", "db_ok": False, "error": last_error})
 
 sys.stdout.write(body)
 sys.stderr.write(str(status))
@@ -1153,6 +1163,8 @@ PY
 
     # API health HEAD (both forms)
     curl -skI "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/health" -o /root/logs/curl-api-health.txt || true
+    # Back-compat: also populate curl-api.txt from the preferred health endpoint.
+    curl -skI "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/health" -o /root/logs/curl-api.txt || true
     curl -skI "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/health/" -o /root/logs/curl-api-health-slash.txt || true
 
     # API health GET (capture body and status separately)
