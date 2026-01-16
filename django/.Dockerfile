@@ -1,6 +1,7 @@
 # django/.Dockerfile
+ARG DOCKER_LIBRARY_REGISTRY=public.ecr.aws/docker/library
 ARG PYTHON_VERSION=3.12-slim
-FROM python:${PYTHON_VERSION}
+FROM ${DOCKER_LIBRARY_REGISTRY}/python:${PYTHON_VERSION}
 
 WORKDIR /app
 

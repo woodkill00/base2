@@ -2,9 +2,10 @@
 # Build with Node, serve static build via Nginx (internal-only behind Traefik)
 
 # Declare all ARG used in any FROM before the first FROM
+ARG DOCKER_LIBRARY_REGISTRY=public.ecr.aws/docker/library
 ARG NODE_VERSION=20-alpine
 ARG NGINX_VERSION=1.27.3-alpine
-FROM node:${NODE_VERSION} AS build
+FROM ${DOCKER_LIBRARY_REGISTRY}/node:${NODE_VERSION} AS build
 
 WORKDIR /app
 
@@ -24,7 +25,7 @@ ENV REACT_APP_API_URL=${REACT_APP_API_URL}
 RUN npm run build
 
 # ---------- Runtime: Nginx to serve static build ----------
-FROM nginx:${NGINX_VERSION}
+FROM ${DOCKER_LIBRARY_REGISTRY}/nginx:${NGINX_VERSION}
 
 # Upgrade base Alpine packages and install minimal tools (drop gettext)
 RUN apk update \
