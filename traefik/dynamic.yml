@@ -133,6 +133,7 @@ http:
       middlewares:
         - security-headers-no-hsts
         - traefik-basic-auth
+        - django-admin-allow-ip
       tls:
         certResolver: ${TRAEFIK_CERT_RESOLVER}
       service: api@internal
