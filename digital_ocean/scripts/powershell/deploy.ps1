@@ -194,7 +194,6 @@ echo "Rollback completed. Current HEAD: $(git rev-parse HEAD 2>/dev/null || true
     $ErrorActionPreference = 'Continue'
     $txt = (& $sshExe @sshArgs $remote 2>&1 | Out-String)
     Set-Content -Path $outPath -Value $txt.TrimEnd() -Encoding UTF8
-    Write-Host "Rollback output saved: $outPath" -ForegroundColor Yellow
   } catch {
     try { Set-Content -Path $outPath -Value ("Rollback failed: " + $($_.Exception.Message)) -Encoding UTF8 } catch {}
     Write-Warning "Rollback hook failed: $($_.Exception.Message)"
@@ -760,6 +759,20 @@ if [ -d /opt/apps/base2 ]; then
   # Prepare log directories; clear stale artifacts from previous runs.
   rm -rf /root/logs/* || true
   mkdir -p /root/logs/build /root/logs/services /root/logs/meta || true
+
+  # Lightweight progress reporting for the deploy script heartbeat loop.
+  # Writes a single "current step" file plus an append-only progress log.
+  LOG_TAIL_LINES=${LOG_TAIL_LINES:-800}
+  LOG_SINCE=${LOG_SINCE:-15m}
+  status() {
+    STEP="$1"
+    MSG="$2"
+    TS=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date)
+    printf "%s\t%s\t%s\n" "$TS" "$STEP" "$MSG" >> /root/logs/meta/remote_verify_progress.log 2>/dev/null || true
+    printf "%s\n" "$STEP" > /root/logs/meta/remote_verify_step.txt 2>/dev/null || true
+  }
+  status "init" "starting remote verification"
+
   # Record pre-deploy git SHA for optional rollback.
   if command -v git >/dev/null 2>&1; then
     (git rev-parse HEAD 2>/dev/null || true) > /root/logs/build/pre-deploy-head.txt || true
@@ -773,6 +786,7 @@ if [ -d /opt/apps/base2 ]; then
   fi
   # Ensure latest repo and rebuild traefik to render new templates
   if command -v git >/dev/null 2>&1; then
+    status "repo-sync" "fetch/checkout/reset"
     # Determine branch from .env (DO_APP_BRANCH), default to main
     BRANCH=$(grep -E '^DO_APP_BRANCH=' .env 2>/dev/null | cut -d'=' -f2 | tr -d '\r')
     if [ -z "$BRANCH" ]; then BRANCH=main; fi
@@ -845,21 +859,74 @@ PY
   set -e
   echo $STATUS > /root/logs/build/env-dollar-check.status || true
   # IMPORTANT: We have observed Docker caching causing stale FastAPI code to persist across
-  # UpdateOnly deploys. Use a targeted no-cache rebuild for the `api` service to ensure the
-  # running container matches the git checkout (keeps overall verification time reasonable).
-  docker compose -f local.docker.yml build --no-cache api > /root/logs/build/api-build-nocache.txt 2>&1 || true
+  # UpdateOnly deploys can be severely slowed down by rebuilding the React image (npm run build)
+  # on a small droplet. To keep verification fast, rebuild services only when their source changed
+  # between the pre/post deploy git SHAs.
+  status "diff" "detecting changed files"
+  OLD_SHA=$(cat /root/logs/build/pre-deploy-head.txt 2>/dev/null || true)
+  NEW_SHA=$(cat /root/logs/build/post-deploy-head.txt 2>/dev/null || true)
+  : > /root/logs/build/changed-files.txt || true
+  if command -v git >/dev/null 2>&1 && [ -n "$OLD_SHA" ] && [ -n "$NEW_SHA" ] && [ "$OLD_SHA" != "$NEW_SHA" ]; then
+    git diff --name-only "$OLD_SHA" "$NEW_SHA" > /root/logs/build/changed-files.txt 2>/dev/null || true
+  fi
+  NEED_REACT=0
+  NEED_API=0
+  NEED_DJANGO=0
+  NEED_TRAEFIK=0
+  if grep -q '^react-app/' /root/logs/build/changed-files.txt 2>/dev/null; then NEED_REACT=1; fi
+  if grep -q '^api/' /root/logs/build/changed-files.txt 2>/dev/null; then NEED_API=1; fi
+  if grep -q '^django/' /root/logs/build/changed-files.txt 2>/dev/null; then NEED_DJANGO=1; fi
+  if grep -q '^traefik/' /root/logs/build/changed-files.txt 2>/dev/null; then NEED_TRAEFIK=1; fi
+  printf "NEED_REACT=%s\nNEED_API=%s\nNEED_DJANGO=%s\nNEED_TRAEFIK=%s\n" "$NEED_REACT" "$NEED_API" "$NEED_DJANGO" "$NEED_TRAEFIK" > /root/logs/build/changed-services.txt 2>/dev/null || true
 
-  # Bring up services. `up --build` is generally sufficient to rebuild when inputs change.
-  # Bring up core services needed for edge routing (avoid 502 due to missing upstreams)
-  # Also start Celery worker/beat by default (Option A: no profile gating).
-  docker compose -f local.docker.yml up -d --build --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat > /root/logs/build/compose-up-core.txt 2>&1 || true
-  # Ensure API container uses the freshly built image
-  docker compose -f local.docker.yml up -d --build --force-recreate --no-deps api > /root/logs/build/api-up.txt 2>&1 || true
-  docker compose -f local.docker.yml up -d --build --force-recreate --no-deps traefik > /root/logs/build/traefik-up.txt 2>&1 || true
-  # Ensure React frontend uses freshly built assets (avoid stale bundle).
-  # We have observed CRA static assets being cached aggressively; perform a targeted no-cache rebuild.
-  docker compose -f local.docker.yml build --no-cache react-app > /root/logs/build/react-app-build-nocache.txt 2>&1 || true
-  docker compose -f local.docker.yml up -d --build --force-recreate --no-deps react-app > /root/logs/build/react-app-up.txt 2>&1 || true
+  # Bring up core services without forcing builds (fast path).
+  status "up" "docker compose up core services (no build)"
+  set +e
+  docker compose -f local.docker.yml up -d --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat > /root/logs/build/compose-up-core.txt 2>&1
+  CORE_UP_CODE=$?
+  echo $CORE_UP_CODE > /root/logs/build/compose-up-core.status 2>/dev/null || true
+  set -e
+  if [ "$CORE_UP_CODE" != "0" ]; then
+    # Fallback for first-time builds or missing images.
+    status "up" "compose up failed; retrying with --build"
+    docker compose -f local.docker.yml up -d --build --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat > /root/logs/build/compose-up-core-build.txt 2>&1 || true
+  fi
+
+  # Selective rebuilds/recreates based on diff.
+  # API: default to no-cache rebuild when api/ changed (historically stale cache issues).
+  if [ "$NEED_API" = "1" ]; then
+    status "build" "docker compose build --no-cache api (api changed)"
+    docker compose -f local.docker.yml build --no-cache api > /root/logs/build/api-build-nocache.txt 2>&1 || true
+  fi
+  status "recreate" "force-recreate api"
+  docker compose -f local.docker.yml up -d --force-recreate --no-deps api > /root/logs/build/api-up.txt 2>&1 || true
+
+  if [ "$NEED_DJANGO" = "1" ]; then
+    status "build" "docker compose build django (django changed)"
+    docker compose -f local.docker.yml build django > /root/logs/build/django-build.txt 2>&1 || true
+  fi
+  status "recreate" "force-recreate django"
+  docker compose -f local.docker.yml up -d --force-recreate --no-deps django > /root/logs/build/django-up.txt 2>&1 || true
+
+  # Traefik: rebuild only when traefik/ changed; always recreate to pick up env and templates.
+  if [ "$NEED_TRAEFIK" = "1" ]; then
+    status "build" "docker compose build traefik (traefik changed)"
+    docker compose -f local.docker.yml build traefik > /root/logs/build/traefik-build.txt 2>&1 || true
+  fi
+  status "recreate" "force-recreate traefik"
+  docker compose -f local.docker.yml up -d --force-recreate --no-deps traefik > /root/logs/build/traefik-up.txt 2>&1 || true
+
+  # React: rebuild only when react-app/ changed.
+  if [ "$NEED_REACT" = "1" ]; then
+    status "build" "docker compose build react-app (react-app changed)"
+    docker compose -f local.docker.yml build react-app > /root/logs/build/react-app-build.txt 2>&1 || true
+    status "recreate" "force-recreate react-app"
+    docker compose -f local.docker.yml up -d --force-recreate --no-deps react-app > /root/logs/build/react-app-up.txt 2>&1 || true
+  else
+    status "build" "skipping react-app rebuild (no react-app changes)"
+    : > /root/logs/build/react-app-build.txt || true
+    echo "SKIPPED: no react-app/ changes between SHAs" > /root/logs/build/react-app-build.txt || true
+  fi
 
   # ENOSPC safeguard for React build: if npm/docker report "no space left on device",
   # prune images/volumes and retry a targeted rebuild to refresh assets.
@@ -875,11 +942,10 @@ PY
   fi
 
   # Ensure Flower is started (kept as a separate log artifact)
+  status "up" "ensure flower"
   docker compose -f local.docker.yml up -d --build flower > /root/logs/build/flower-up.txt 2>&1 || true
-
-  # Ensure Django service is running for admin route
-  docker compose -f local.docker.yml up -d --build django > /root/logs/build/django-up.txt 2>&1 || true
   # Capture Django migration output into a dedicated artifact
+  status "django" "migrate/check-deploy/health"
   docker compose -f local.docker.yml exec -T django python manage.py migrate --noinput > /root/logs/django-migrate.txt 2>&1 || true
   # Django deploy checks (security + config sanity)
   docker compose -f local.docker.yml exec -T django python manage.py check --deploy > /root/logs/django-check-deploy.txt 2>&1 || true
@@ -932,6 +998,7 @@ PY
   fi
   # Best-effort: wait for key services to report healthy before snapshotting.
   # This reduces false negatives where compose-ps.txt is captured during startup.
+  status "wait" "waiting for services to become healthy"
   set +e
   : > /root/logs/build/health-wait.txt || true
   for i in $(seq 1 60); do
@@ -951,6 +1018,7 @@ PY
   done
   set -e
 
+  status "snapshot" "capturing compose ps/config and ports"
   docker compose -f local.docker.yml ps > /root/logs/compose-ps.txt || true
   docker compose -f local.docker.yml config > /root/logs/compose-config.yml || true
   # Published host ports report (Traefik should be the only one)
@@ -961,6 +1029,7 @@ PY
   S_CEL=$(docker compose -f local.docker.yml --profile celery config --services || true)
   S_FLO=$(docker compose -f local.docker.yml --profile flower config --services || true)
   SERVICES=$(printf "%s\n%s\n%s\n" "$S_DEF" "$S_CEL" "$S_FLO" | awk 'NF && !x[$0]++')
+  status "logs" "collecting container logs"
   for s in $SERVICES; do
     OUT="/root/logs/services/${s}.log"
     echo "===== SERVICE LOG: ${s} =====" > "$OUT" || true
@@ -978,13 +1047,13 @@ PY
     for cid in $CIDS; do
       echo "" >> "$OUT" || true
       echo "--- docker logs (cid=$cid) ---" >> "$OUT" || true
-      docker logs --timestamps --tail=2000 "$cid" >> "$OUT" 2>&1 || true
+      docker logs --timestamps --tail=$LOG_TAIL_LINES "$cid" >> "$OUT" 2>&1 || true
     done
 
     # Also include compose logs as a fallback/aggregate view.
     echo "" >> "$OUT" || true
     echo "--- docker compose logs (service=$s) ---" >> "$OUT" || true
-    docker compose -f local.docker.yml logs --no-color --timestamps --tail=2000 "$s" >> "$OUT" 2>&1 || true
+    docker compose -f local.docker.yml logs --no-color --timestamps --tail=$LOG_TAIL_LINES "$s" >> "$OUT" 2>&1 || true
   done
 
   # Some services may log primarily to files inside the container/volume.
@@ -994,7 +1063,7 @@ PY
     OUT="/root/logs/services/traefik.log"
     echo "" >> "$OUT" || true
     echo "--- /var/log/traefik (file-based logs) ---" >> "$OUT" || true
-    docker exec "$TID" sh -lc 'ls -la /var/log/traefik 2>/dev/null || true; for f in /var/log/traefik/*; do [ -f "$f" ] || continue; echo "\n----- $f -----"; tail -n 2000 "$f" || true; done' >> "$OUT" 2>&1 || true
+    docker exec "$TID" sh -lc 'ls -la /var/log/traefik 2>/dev/null || true; for f in /var/log/traefik/*; do [ -f "$f" ] || continue; echo "\n----- $f -----"; tail -n '$LOG_TAIL_LINES' "$f" || true; done' >> "$OUT" 2>&1 || true
   fi
 
   # Nginx: try /var/log/nginx/*
@@ -1003,7 +1072,7 @@ PY
     OUT="/root/logs/services/nginx.log"
     echo "" >> "$OUT" || true
     echo "--- /var/log/nginx (file-based logs) ---" >> "$OUT" || true
-    docker exec "$NID" sh -lc 'ls -la /var/log/nginx 2>/dev/null || true; for f in /var/log/nginx/*; do [ -f "$f" ] || continue; echo "\n----- $f -----"; tail -n 2000 "$f" || true; done' >> "$OUT" 2>&1 || true
+    docker exec "$NID" sh -lc 'ls -la /var/log/nginx 2>/dev/null || true; for f in /var/log/nginx/*; do [ -f "$f" ] || continue; echo "\n----- $f -----"; tail -n '$LOG_TAIL_LINES' "$f" || true; done' >> "$OUT" 2>&1 || true
   fi
 
   # Nginx-static: try /var/log/nginx/* (image-based static nginx may log to files)
@@ -1012,7 +1081,7 @@ PY
     OUT="/root/logs/services/nginx-static.log"
     echo "" >> "$OUT" || true
     echo "--- /var/log/nginx (file-based logs) ---" >> "$OUT" || true
-    docker exec "$NSID" sh -lc 'ls -la /var/log/nginx 2>/dev/null || true; for f in /var/log/nginx/*; do [ -f "$f" ] || continue; echo "\n----- $f -----"; tail -n 2000 "$f" || true; done' >> "$OUT" 2>&1 || true
+    docker exec "$NSID" sh -lc 'ls -la /var/log/nginx 2>/dev/null || true; for f in /var/log/nginx/*; do [ -f "$f" ] || continue; echo "\n----- $f -----"; tail -n '$LOG_TAIL_LINES' "$f" || true; done' >> "$OUT" 2>&1 || true
   fi
   CID=$(docker compose -f local.docker.yml ps -q traefik || true)
   if [ -n "$CID" ]; then
@@ -1050,6 +1119,7 @@ PY
   fi
   DOMAIN=$(grep -E '^WEBSITE_DOMAIN=' /opt/apps/base2/.env | cut -d'=' -f2 | tr -d '\r')
   if [ -n "$DOMAIN" ]; then
+    status "curl" "probing https://$DOMAIN (local resolve)"
     # Ensure expected curl artifacts exist even if curl/DNS/TLS fails
     : > /root/logs/curl-root.txt || true
     : > /root/logs/curl-api-health.txt || true
@@ -1186,7 +1256,7 @@ PY
       for i in $(seq 1 $POLL_MAX); do
         : > /root/logs/services/request-id-api.txt || true
         for id in $AIDS; do
-          docker logs --timestamps --since=60m "$id" 2>&1 | grep -F "$RID" >> /root/logs/services/request-id-api.txt || true
+          docker logs --timestamps --since=$LOG_SINCE "$id" 2>&1 | grep -F "$RID" >> /root/logs/services/request-id-api.txt || true
         done
         tail -n 50 /root/logs/services/request-id-api.txt > /root/logs/services/request-id-api.txt.tmp 2>/dev/null || true
         mv -f /root/logs/services/request-id-api.txt.tmp /root/logs/services/request-id-api.txt 2>/dev/null || true
@@ -1200,7 +1270,7 @@ PY
         : > /root/logs/services/request-id-django.txt || true
         : > /root/logs/services/request-id-django-context.txt || true
         for id in $DJIDS; do
-          docker logs --timestamps --since=60m "$id" 2>&1 | grep -F "$RID" >> /root/logs/services/request-id-django.txt || true
+          docker logs --timestamps --since=$LOG_SINCE "$id" 2>&1 | grep -F "$RID" >> /root/logs/services/request-id-django.txt || true
           docker logs --timestamps --since=10m "$id" 2>&1 | tail -n 200 >> /root/logs/services/request-id-django-context.txt || true
         done
         tail -n 50 /root/logs/services/request-id-django.txt > /root/logs/services/request-id-django.txt.tmp 2>/dev/null || true
@@ -1215,7 +1285,7 @@ PY
         : > /root/logs/services/request-id-celery-worker.txt || true
         : > /root/logs/services/request-id-celery-worker-context.txt || true
         for id in $CWIDS; do
-          docker logs --timestamps --since=60m "$id" 2>&1 | grep -F "$RID" >> /root/logs/services/request-id-celery-worker.txt || true
+          docker logs --timestamps --since=$LOG_SINCE "$id" 2>&1 | grep -F "$RID" >> /root/logs/services/request-id-celery-worker.txt || true
           docker logs --timestamps --since=10m "$id" 2>&1 | tail -n 200 >> /root/logs/services/request-id-celery-worker-context.txt || true
         done
         tail -n 50 /root/logs/services/request-id-celery-worker.txt > /root/logs/services/request-id-celery-worker.txt.tmp 2>/dev/null || true
@@ -1288,20 +1358,37 @@ except Exception:\
       docker cp "/opt/apps/base2/specs/001-django-fastapi-react/contracts/openapi.yaml" "$AID":/app/specs/001-django-fastapi-react/contracts/openapi.yaml >/dev/null 2>&1 || true
     fi
 
-    # mark completion
-    # Run service test suites inside containers and capture outputs
+  # Run service test suites inside containers and capture outputs.
+  # This is expensive; only run it when explicitly requested from the deploy script.
   mkdir -p /root/logs || true
-  # FastAPI (api) pytest
-  # Ensure we run from /app so `import main` / local imports resolve as expected.
-  # Set COVERAGE_FILE to a writable path inside the container to avoid read-only filesystem issues.
-  docker compose -f local.docker.yml exec -T api sh -lc 'export COVERAGE_FILE=/tmp/.coverage_api && cd /app && pytest -q --cov=api --cov-report=term --cov-fail-under=60' > /root/logs/api-pytest.txt 2>&1 || true
-  # API integration tests (marked with @pytest.mark.integration)
-  docker compose -f local.docker.yml exec -T api sh -lc 'export COVERAGE_FILE=/tmp/.coverage_api_int && cd /app && pytest -q -m integration --cov=api --cov-report=term --cov-fail-under=60' > /root/logs/api-pytest-integration.txt 2>&1 || true
-  # API lint/type checks (Ruff + Mypy)
-  docker compose -f local.docker.yml exec -T api sh -lc 'cd /app && (ruff --version >/dev/null 2>&1 && ruff check . || echo "ruff_not_available")' > /root/logs/api-ruff.txt 2>&1 || true
-  docker compose -f local.docker.yml exec -T api sh -lc 'cd /app && (mypy --version >/dev/null 2>&1 && mypy --show-error-codes --pretty api || echo "mypy_not_available")' > /root/logs/api-mypy.txt 2>&1 || true
-  # Django pytest
-  docker compose -f local.docker.yml exec -T django sh -lc 'export COVERAGE_FILE=/tmp/.coverage_django && pytest -q --cov=project --cov-report=term --cov-fail-under=60' > /root/logs/django-pytest.txt 2>&1 || true
+  : > /root/logs/api-pytest.txt || true
+  : > /root/logs/api-pytest-integration.txt || true
+  : > /root/logs/api-ruff.txt || true
+  : > /root/logs/api-mypy.txt || true
+  : > /root/logs/django-pytest.txt || true
+  if [ "${RUN_REMOTE_TESTS:-}" = "1" ]; then
+    status "tests" "running in-container pytest/ruff/mypy"
+    # FastAPI (api) pytest
+    # Ensure we run from /app so `import main` / local imports resolve as expected.
+    # Set COVERAGE_FILE to a writable path inside the container to avoid read-only filesystem issues.
+    docker compose -f local.docker.yml exec -T api sh -lc 'export COVERAGE_FILE=/tmp/.coverage_api && cd /app && pytest -q --cov=api --cov-report=term --cov-fail-under=60' > /root/logs/api-pytest.txt 2>&1 || true
+    # API integration tests (marked with @pytest.mark.integration)
+    docker compose -f local.docker.yml exec -T api sh -lc 'export COVERAGE_FILE=/tmp/.coverage_api_int && cd /app && pytest -q -m integration --cov=api --cov-report=term --cov-fail-under=60' > /root/logs/api-pytest-integration.txt 2>&1 || true
+    # API lint/type checks (Ruff + Mypy)
+    docker compose -f local.docker.yml exec -T api sh -lc 'cd /app && (ruff --version >/dev/null 2>&1 && ruff check . || echo "ruff_not_available")' > /root/logs/api-ruff.txt 2>&1 || true
+    docker compose -f local.docker.yml exec -T api sh -lc 'cd /app && (mypy --version >/dev/null 2>&1 && mypy --show-error-codes --pretty api || echo "mypy_not_available")' > /root/logs/api-mypy.txt 2>&1 || true
+    # Django pytest
+    docker compose -f local.docker.yml exec -T django sh -lc 'export COVERAGE_FILE=/tmp/.coverage_django && pytest -q --cov=project --cov-report=term --cov-fail-under=60' > /root/logs/django-pytest.txt 2>&1 || true
+  else
+    status "tests" "skipped (RUN_REMOTE_TESTS!=1)"
+    echo "SKIPPED: set RUN_REMOTE_TESTS=1 (use -RunTests or -AllTests)" > /root/logs/api-pytest.txt || true
+    echo "SKIPPED: set RUN_REMOTE_TESTS=1 (use -RunTests or -AllTests)" > /root/logs/api-pytest-integration.txt || true
+    echo "SKIPPED: set RUN_REMOTE_TESTS=1 (use -RunTests or -AllTests)" > /root/logs/api-ruff.txt || true
+    echo "SKIPPED: set RUN_REMOTE_TESTS=1 (use -RunTests or -AllTests)" > /root/logs/api-mypy.txt || true
+    echo "SKIPPED: set RUN_REMOTE_TESTS=1 (use -RunTests or -AllTests)" > /root/logs/django-pytest.txt || true
+  fi
+
+  status "done" "remote verification complete"
   date -u +"%Y-%m-%dT%H:%M:%SZ" > /root/logs/remote_verify.done || true
 fi
 '@
@@ -1310,8 +1397,15 @@ fi
   Set-Content -Path $tmpScript -Value $unixScript -Encoding Ascii -NoNewline
   # Upload and execute the script
   try {
-    & $scpExe -i $keyPath @($sshCommon) $tmpScript "root@${ip}:/root/remote_verify.sh" *> $null
-    if ($LASTEXITCODE -ne 0) { throw "scp upload failed (exit $LASTEXITCODE)" }
+    $scpOut = & $scpExe -i $keyPath @($sshCommon) $tmpScript "root@${ip}:/root/remote_verify.sh" 2>&1
+    $scpCode = $LASTEXITCODE
+    if ($scpCode -ne 0) {
+      $LASTEXITCODE = 0
+      $details = ''
+      try { $details = ([string]$scpOut).Trim() } catch { $details = '' }
+      if ([string]::IsNullOrWhiteSpace($details)) { $details = '(no scp output captured)' }
+      throw "scp upload failed (exit $scpCode): $details"
+    }
   } finally {
     $LASTEXITCODE = 0
   }
@@ -1319,13 +1413,16 @@ fi
   try { & $sshExe @sshArgs "rm -f /root/logs/remote_verify.done" *> $null } catch { }
   if ($AsyncVerify) {
     if ($RunCeleryCheck) {
-      & $sshExe @sshArgs "RUN_CELERY_CHECK=1 nohup bash /root/remote_verify.sh > /root/remote_verify.out 2>&1 & echo \$! > /root/remote_verify.pid" *> $null
+      $rt = if ($RunTests) { '1' } else { '0' }
+      & $sshExe @sshArgs "RUN_CELERY_CHECK=1 RUN_REMOTE_TESTS=$rt nohup bash /root/remote_verify.sh > /root/remote_verify.out 2>&1 & echo \$! > /root/remote_verify.pid" *> $null
     } else {
-      & $sshExe @sshArgs "nohup bash /root/remote_verify.sh > /root/remote_verify.out 2>&1 & echo \$! > /root/remote_verify.pid" *> $null
+      $rt = if ($RunTests) { '1' } else { '0' }
+      & $sshExe @sshArgs "RUN_REMOTE_TESTS=$rt nohup bash /root/remote_verify.sh > /root/remote_verify.out 2>&1 & echo \$! > /root/remote_verify.pid" *> $null
     }
   } else {
     $timeoutCmd = "if command -v timeout >/dev/null 2>&1; then timeout -k 15s $VerifyTimeoutSec bash /root/remote_verify.sh; else bash /root/remote_verify.sh; fi"
-    $remoteCmd = if ($RunCeleryCheck) { "RUN_CELERY_CHECK=1 sh -lc '$timeoutCmd'" } else { "sh -lc '$timeoutCmd'" }
+    $rt = if ($RunTests) { '1' } else { '0' }
+    $remoteCmd = if ($RunCeleryCheck) { "RUN_CELERY_CHECK=1 RUN_REMOTE_TESTS=$rt sh -lc '$timeoutCmd'" } else { "RUN_REMOTE_TESTS=$rt sh -lc '$timeoutCmd'" }
 
     Write-Host ("Remote verification running (timeout={0}s)." -f $VerifyTimeoutSec) -ForegroundColor DarkGray
     Write-Host "If this step takes a while, it will print heartbeats here." -ForegroundColor DarkGray
@@ -1337,12 +1434,44 @@ fi
     } -ArgumentList $sshExe, $sshArgs, $remoteCmd
 
     $startedAt = Get-Date
+    $lastStep = ''
+    $lastProgress = ''
+    $lastStatusPollAt = $startedAt
     while ($true) {
       $completed = Wait-Job -Job $job -Timeout 15
       if ($completed) { break }
 
       $elapsedSec = [int]((Get-Date) - $startedAt).TotalSeconds
       Write-Host ("Remote verification still running... elapsed={0}s" -f $elapsedSec) -ForegroundColor DarkGray
+
+      # Poll droplet-side progress markers for more actionable logging.
+      $now = Get-Date
+      if ([int]($now - $lastStatusPollAt).TotalSeconds -ge 60) {
+        $lastStatusPollAt = $now
+        try {
+          $statusCmd = 'sh -lc ''STEP=""; LAST=""; [ -f /root/logs/meta/remote_verify_step.txt ] && STEP=$(cat /root/logs/meta/remote_verify_step.txt 2>/dev/null | tr -d "\015"); [ -f /root/logs/meta/remote_verify_progress.log ] && LAST=$(tail -n 1 /root/logs/meta/remote_verify_progress.log 2>/dev/null | tr -d "\015"); echo "STEP=$STEP"; echo "LAST=$LAST"'''
+          $statusOut = & $sshExe @sshArgs $statusCmd 2>$null
+          if ($statusOut) {
+            $lines = @($statusOut) | ForEach-Object { $_.ToString().Trim() } | Where-Object { $_ -ne '' }
+            $stepLine = $lines | Where-Object { $_ -like 'STEP=*' } | Select-Object -First 1
+            $lastLine = $lines | Where-Object { $_ -like 'LAST=*' } | Select-Object -First 1
+            if ($stepLine) {
+              $step = $stepLine.Substring(5)
+              if ($step -and $step -ne $lastStep) {
+                Write-Host ("phase: {0}" -f $step) -ForegroundColor DarkGray
+                $lastStep = $step
+              }
+            }
+            if ($lastLine) {
+              $prog = $lastLine.Substring(5)
+              if ($prog -and $prog -ne $lastProgress) {
+                Write-Host ("progress: {0}" -f $prog) -ForegroundColor DarkGray
+                $lastProgress = $prog
+              }
+            }
+          }
+        } catch { }
+      }
     }
 
     $code = 0
