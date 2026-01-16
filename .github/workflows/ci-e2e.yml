@@ -28,7 +28,41 @@ jobs:
         run: npm run install:browsers
 
       - name: Start stack (docker compose)
-        run: docker compose -f e2e/docker-compose.e2e.yml up -d --build
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          max_attempts=6
+          delay_seconds=5
+
+          for attempt in $(seq 1 "$max_attempts"); do
+            echo "Starting stack (attempt ${attempt}/${max_attempts})"
+
+            set +e
+            output=$(docker compose -f e2e/docker-compose.e2e.yml up -d --build 2>&1)
+            exit_code=$?
+            set -e
+
+            echo "$output"
+
+            if [ "$exit_code" -eq 0 ]; then
+              exit 0
+            fi
+
+            if echo "$output" | grep -qiE "toomanyrequests|rate exceeded|504 Gateway Timeout|context deadline exceeded|server didn't respond in time"; then
+              echo "Transient registry error detected; retrying in ${delay_seconds}s" >&2
+              docker compose -f e2e/docker-compose.e2e.yml down -v || true
+              sleep "$delay_seconds"
+              delay_seconds=$((delay_seconds * 2))
+              continue
+            fi
+
+            echo "Non-retryable failure starting stack" >&2
+            exit "$exit_code"
+          done
+
+          echo "Failed to start stack after ${max_attempts} attempts" >&2
+          exit 1
 
       - name: Wait for health
         run: |
