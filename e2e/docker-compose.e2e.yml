@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: public.ecr.aws/docker/library/postgres:16-alpine
     environment:
       POSTGRES_USER: e2e
       POSTGRES_PASSWORD: e2e
@@ -12,7 +12,7 @@ services:
       retries: 20
 
   redis:
-    image: redis:7-alpine
+    image: public.ecr.aws/docker/library/redis:7-alpine
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
