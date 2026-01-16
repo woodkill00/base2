@@ -75,7 +75,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: public.ecr.aws/docker/library/postgres:16-alpine
         env:
           POSTGRES_USER: myuser
           POSTGRES_PASSWORD: mypassword
@@ -84,7 +84,7 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U myuser -d mydatabase" --health-interval 10s --health-timeout 5s --health-retries 10
       redis:
-        image: redis:7.2-alpine
+        image: public.ecr.aws/docker/library/redis:7.2-alpine
         ports: ['6379:6379']
     steps:
       - uses: actions/checkout@v4
