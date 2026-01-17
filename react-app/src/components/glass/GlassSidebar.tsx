@@ -18,7 +18,7 @@ type Props = {
   isOpen?: boolean;
   onClose?: () => void;
   variant?: 'app' | 'public';
-  onMenuItemClick?: (item: string) => void;
+  onMenuItemClick?: (_item: string) => void;
 };
 
 const defaultItems = ['Home', 'Dashboard', 'Settings', 'Users', 'Help'];
