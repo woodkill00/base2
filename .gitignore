@@ -6,6 +6,9 @@ local_run_logs/
 # Temporary diagnostics (created during local debugging)
 /_tmp_*
 
+# Temporary GitHub Actions artifact downloads (local debugging)
+.tmp-gh-artifacts-*/
+
 # Speckit generated output (do not commit)
 .specify/prereq_run.json
 .specify/memory/

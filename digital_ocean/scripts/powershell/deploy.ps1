@@ -106,6 +106,54 @@ function Invoke-LocalCmdWithTimeout {
   }
 }
 
+function Invoke-NativeWithTimeout {
+  param(
+    [string]$FilePath,
+    [string[]]$ArgumentList,
+    [string]$Label,
+    [int]$TimeoutSec,
+    [string]$StdoutPath,
+    [string]$StderrPath,
+    [int]$HeartbeatSec = 30
+  )
+
+  if ([string]::IsNullOrWhiteSpace($StdoutPath)) { throw 'StdoutPath is required' }
+  if ([string]::IsNullOrWhiteSpace($StderrPath)) { throw 'StderrPath is required' }
+
+  try { New-Item -ItemType Directory -Path (Split-Path -Parent $StdoutPath) -Force | Out-Null } catch {}
+  try { New-Item -ItemType Directory -Path (Split-Path -Parent $StderrPath) -Force | Out-Null } catch {}
+
+  # Ensure files exist so callers can always read them even if the process fails early.
+  try { '' | Set-Content -Path $StdoutPath -Encoding UTF8 } catch {}
+  try { '' | Set-Content -Path $StderrPath -Encoding UTF8 } catch {}
+
+  $p = Start-Process -FilePath $FilePath -ArgumentList $ArgumentList -NoNewWindow -PassThru -RedirectStandardOutput $StdoutPath -RedirectStandardError $StderrPath
+  $startedAt = Get-Date
+  $lastBeatAt = $startedAt
+
+  while (-not $p.HasExited) {
+    Start-Sleep -Seconds 2
+
+    $now = Get-Date
+    $elapsedSec = [int]($now - $startedAt).TotalSeconds
+    if ($elapsedSec -ge $TimeoutSec) {
+      try { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } catch {}
+      throw ("{0} timed out after {1}s (killed)." -f $Label, $TimeoutSec)
+    }
+
+    if ([int]($now - $lastBeatAt).TotalSeconds -ge $HeartbeatSec) {
+      $outBytes = 0
+      $errBytes = 0
+      try { if (Test-Path $StdoutPath) { $outBytes = (Get-Item -LiteralPath $StdoutPath -ErrorAction Stop).Length } } catch {}
+      try { if (Test-Path $StderrPath) { $errBytes = (Get-Item -LiteralPath $StderrPath -ErrorAction Stop).Length } } catch {}
+      Write-Host ("{0} still running... elapsed={1}s stdoutBytes={2} stderrBytes={3}" -f $Label, $elapsedSec, $outBytes, $errBytes) -ForegroundColor DarkGray
+      $lastBeatAt = $now
+    }
+  }
+
+  return [int]$p.ExitCode
+}
+
 function Get-ArtifactServiceSubdir([string]$fileName) {
   # Map known artifact files to per-service folders.
   # Keep meta files (deploy-console.log, post-deploy-report.json, etc.) under meta/.
@@ -717,6 +765,7 @@ function Run-Orchestrator {
 function Remote-Verify($ip, $keyPath) {
   Write-Section "Remote verification on $ip"
   $null = Ensure-ArtifactDir -ip $ip
+  $dest = Ensure-ArtifactDir
   $sshExe = "ssh"
   $scpExe = "scp"
   # Be resilient to transient SSH/SCP handshake slowness; OpenSSH on Windows sometimes hits
@@ -743,11 +792,15 @@ function Remote-Verify($ip, $keyPath) {
     throw "Unable to resolve EnvPath '$EnvPath': $($_.Exception.Message)"
   }
   # Ensure repo directory exists (user_data should create it, but be defensive)
-  & $sshExe @sshArgs "mkdir -p /opt/apps/base2" *> $null
-  if ($LASTEXITCODE -ne 0) { throw "Failed to create /opt/apps/base2 on droplet (ssh exit $LASTEXITCODE)" }
+  $sshMkdirOut = Join-Path $dest 'ssh-mkdir.stdout.txt'
+  $sshMkdirErr = Join-Path $dest 'ssh-mkdir.stderr.txt'
+  $code = Invoke-NativeWithTimeout -FilePath $sshExe -ArgumentList ($sshArgs + @('mkdir -p /opt/apps/base2')) -Label 'SSH mkdir /opt/apps/base2' -TimeoutSec 120 -StdoutPath $sshMkdirOut -StderrPath $sshMkdirErr -HeartbeatSec 9999
+  if ($code -ne 0) { throw "Failed to create /opt/apps/base2 on droplet (ssh exit $code)" }
   # Upload .env (secrets) to droplet repo root
-  & $scpExe -i $keyPath @($sshCommon) $localEnvPath "root@${ip}:/opt/apps/base2/.env" *> $null
-  if ($LASTEXITCODE -ne 0) { throw "Failed to upload .env to droplet (scp exit $LASTEXITCODE)" }
+  $scpEnvOut = Join-Path $dest 'scp-env.stdout.txt'
+  $scpEnvErr = Join-Path $dest 'scp-env.stderr.txt'
+  $code = Invoke-NativeWithTimeout -FilePath $scpExe -ArgumentList (@('-i', $keyPath) + $sshCommon + @($localEnvPath, "root@${ip}:/opt/apps/base2/.env")) -Label 'SCP upload .env' -TimeoutSec 300 -StdoutPath $scpEnvOut -StderrPath $scpEnvErr -HeartbeatSec 60
+  if ($code -ne 0) { throw "Failed to upload .env to droplet (scp exit $code). See scp-env.stderr.txt in artifacts." }
 
   # Create a remote verification script to avoid quoting pitfalls
   $tmpScript = Join-Path $env:TEMP "remote_verify.sh"
@@ -791,14 +844,22 @@ if [ -d /opt/apps/base2 ]; then
     BRANCH=$(grep -E '^DO_APP_BRANCH=' .env 2>/dev/null | cut -d'=' -f2 | tr -d '\r')
     if [ -z "$BRANCH" ]; then BRANCH=main; fi
     git fetch --all --prune || true
-    # Backup and remove potential untracked files that can block checkout (e.g., ACME storage)
+    # Preserve ACME storage across git operations.
+    # If letsencrypt/ is wiped, Traefik will fall back to its default cert and browsers will error.
     if [ -d letsencrypt ]; then
       tar -czf /root/logs/build/letsencrypt-backup.tgz letsencrypt || true
-      rm -rf letsencrypt || true
+      rm -rf /root/letsencrypt.keep || true
+      mv letsencrypt /root/letsencrypt.keep || true
     fi
     # Reset any local changes and clean untracked files to avoid checkout failures
     git reset --hard HEAD || true
     git clean -fd || true
+
+    # Restore ACME storage after git clean/checkout.
+    if [ -d /root/letsencrypt.keep ]; then
+      rm -rf letsencrypt || true
+      mv /root/letsencrypt.keep letsencrypt || true
+    fi
     # Force checkout to track remote branch and hard reset to remote to avoid rebase or merge prompts
     if git show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
       git checkout -B "$BRANCH" "origin/$BRANCH" || git checkout -f "$BRANCH" || true
@@ -1158,18 +1219,145 @@ PY
       sleep 2
     done
 
+    # Ensure Traefik has obtained real TLS certs for the apex + key subdomains.
+    # If ACME storage is missing or cert issuance is still in progress, Traefik serves a default/staging cert,
+    # which makes browsers show TLS errors (often misreported as "blocked").
+    PG_LABEL=$(grep -E '^PGADMIN_DNS_LABEL=' /opt/apps/base2/.env 2>/dev/null | cut -d'=' -f2 | tr -d '\r' || true)
+    if [ -z "$PG_LABEL" ]; then PG_LABEL=pgadmin; fi
+    FLOWER_LABEL=$(grep -E '^FLOWER_DNS_LABEL=' /opt/apps/base2/.env 2>/dev/null | cut -d'=' -f2 | tr -d '\r' || true)
+    if [ -z "$FLOWER_LABEL" ]; then FLOWER_LABEL=flower; fi
+    TRAEFIK_LABEL=$(grep -E '^TRAEFIK_DNS_LABEL=' /opt/apps/base2/.env 2>/dev/null | cut -d'=' -f2 | tr -d '\r' || true)
+    if [ -z "$TRAEFIK_LABEL" ]; then TRAEFIK_LABEL=traefik; fi
+
+    TLS_HOSTS="$DOMAIN www.$DOMAIN swagger.$DOMAIN admin.$DOMAIN ${PG_LABEL}.$DOMAIN ${FLOWER_LABEL}.$DOMAIN ${TRAEFIK_LABEL}.$DOMAIN"
+    status "tls" "waiting for valid TLS certs (hosts: $TLS_HOSTS)"
+    DOMAIN="$DOMAIN" TLS_HOSTS="$TLS_HOSTS" python3 - <<'PY' > /root/logs/build/tls-cert-wait.txt 2>&1
+import os
+import socket
+import ssl
+import tempfile
+import time
+
+domain = os.environ.get('DOMAIN') or os.environ.get('WEBSITE_DOMAIN') or ''
+if not domain:
+  raise SystemExit('missing domain')
+
+hosts_raw = (os.environ.get('TLS_HOSTS') or '').strip()
+hosts = [h.strip() for h in hosts_raw.split() if h.strip()]
+if not hosts:
+  hosts = [domain]
+
+def get_sans_from_pem(pem: str):
+  try:
+    from ssl import _ssl
+    with tempfile.NamedTemporaryFile('w', delete=False) as f:
+      f.write(pem)
+      tmp = f.name
+    decoded = _ssl._test_decode_cert(tmp)
+    sans = decoded.get('subjectAltName') or []
+    return [v for (k, v) in sans if k == 'DNS']
+  except Exception:
+    return []
+
+def fetch_cert_pem(hostname: str):
+  ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+  ctx.check_hostname = False
+  ctx.verify_mode = ssl.CERT_NONE
+  with ctx.wrap_socket(socket.socket(socket.AF_INET), server_hostname=hostname) as s:
+    s.settimeout(5)
+    s.connect(('127.0.0.1', 443))
+    der = s.getpeercert(binary_form=True)
+  return ssl.DER_cert_to_PEM_cert(der)
+
+deadline = time.time() + 600
+ok = {h: False for h in hosts}
+last = {h: {'err': '', 'sans': []} for h in hosts}
+
+print('Waiting for valid TLS SANs for hosts:')
+for h in hosts:
+  print(' -', h)
+
+while time.time() < deadline:
+  pending = [h for h, v in ok.items() if not v]
+  if not pending:
+    print('OK: all hosts have valid TLS SANs')
+    raise SystemExit(0)
+
+  for h in pending:
+    try:
+      pem = fetch_cert_pem(h)
+      sans = get_sans_from_pem(pem)
+      last[h]['sans'] = sans
+      if h in sans:
+        ok[h] = True
+        print(f'OK: {h} SAN includes host')
+      else:
+        last[h]['err'] = 'SAN missing host'
+    except Exception as e:
+      last[h]['err'] = str(e)
+
+  time.sleep(5)
+
+print('ERROR: TLS certs never became valid for all hosts within 600s')
+for h, v in ok.items():
+  if v:
+    continue
+  sans = last[h].get('sans') or []
+  err = last[h].get('err') or ''
+  print(f'- host={h} err={err} sans={", ".join(sans) if sans else "(none)"}')
+raise SystemExit(2)
+PY
+    TLS_WAIT_STATUS=$?
+    echo $TLS_WAIT_STATUS > /root/logs/build/tls-cert-wait.status || true
+    if [ "$TLS_WAIT_STATUS" != "0" ]; then
+      status "tls" "ERROR: TLS cert invalid for $DOMAIN"
+      exit 2
+    fi
+
+    # Retry helpers: avoid producing empty artifacts during transient startup.
+    curl_head_retry() {
+      URL="$1"
+      OUT="$2"
+      : > "$OUT" || true
+      for i in $(seq 1 15); do
+        curl -skI "${RESOLVE_DOMAIN[@]}" "$URL" -o "$OUT" 2>/dev/null || true
+        if [ -s "$OUT" ]; then
+          return 0
+        fi
+        sleep 2
+      done
+      return 1
+    }
+
+    curl_get_json_retry() {
+      URL="$1"
+      OUT_BODY="$2"
+      OUT_STATUS="$3"
+      : > "$OUT_BODY" || true
+      : > "$OUT_STATUS" || true
+      for i in $(seq 1 15); do
+        CODE=$(curl -sk "${RESOLVE_DOMAIN[@]}" -o "$OUT_BODY" -w "%{http_code}" "$URL" 2>/dev/null || echo 000)
+        echo "$CODE" > "$OUT_STATUS" || true
+        if [ "$CODE" = "200" ] && [ -s "$OUT_BODY" ]; then
+          return 0
+        fi
+        sleep 2
+      done
+      return 1
+    }
+
     # Root HEAD
-    curl -skI "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/" -o /root/logs/curl-root.txt || true
+    curl_head_retry "https://$DOMAIN/" /root/logs/curl-root.txt || true
 
     # API health HEAD (both forms)
-    curl -skI "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/health" -o /root/logs/curl-api-health.txt || true
+    curl_head_retry "https://$DOMAIN/api/health" /root/logs/curl-api-health.txt || true
     # Back-compat: also populate curl-api.txt from the preferred health endpoint.
-    curl -skI "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/health" -o /root/logs/curl-api.txt || true
-    curl -skI "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/health/" -o /root/logs/curl-api-health-slash.txt || true
+    curl_head_retry "https://$DOMAIN/api/health" /root/logs/curl-api.txt || true
+    curl_head_retry "https://$DOMAIN/api/health/" /root/logs/curl-api-health-slash.txt || true
 
     # API health GET (capture body and status separately)
-    curl -sk "${RESOLVE_DOMAIN[@]}" -o /root/logs/api-health.json -w "%{http_code}" "https://$DOMAIN/api/health" > /root/logs/api-health.status || true
-    curl -sk "${RESOLVE_DOMAIN[@]}" -o /root/logs/api-health-slash.json -w "%{http_code}" "https://$DOMAIN/api/health/" > /root/logs/api-health-slash.status || true
+    curl_get_json_retry "https://$DOMAIN/api/health" /root/logs/api-health.json /root/logs/api-health.status || true
+    curl_get_json_retry "https://$DOMAIN/api/health/" /root/logs/api-health-slash.json /root/logs/api-health-slash.status || true
 
     # Request-id log propagation probe:
     # - Send a request with an explicit X-Request-Id
@@ -1409,14 +1597,11 @@ fi
   Set-Content -Path $tmpScript -Value $unixScript -Encoding Ascii -NoNewline
   # Upload and execute the script
   try {
-    $scpOut = & $scpExe -i $keyPath @($sshCommon) $tmpScript "root@${ip}:/root/remote_verify.sh" 2>&1
-    $scpCode = $LASTEXITCODE
+    $scpScriptOut = Join-Path $dest 'scp-remote-verify-script.stdout.txt'
+    $scpScriptErr = Join-Path $dest 'scp-remote-verify-script.stderr.txt'
+    $scpCode = Invoke-NativeWithTimeout -FilePath $scpExe -ArgumentList (@('-i', $keyPath) + $sshCommon + @($tmpScript, "root@${ip}:/root/remote_verify.sh")) -Label 'SCP upload remote_verify.sh' -TimeoutSec 300 -StdoutPath $scpScriptOut -StderrPath $scpScriptErr -HeartbeatSec 60
     if ($scpCode -ne 0) {
-      $LASTEXITCODE = 0
-      $details = ''
-      try { $details = ([string]$scpOut).Trim() } catch { $details = '' }
-      if ([string]::IsNullOrWhiteSpace($details)) { $details = '(no scp output captured)' }
-      throw "scp upload failed (exit $scpCode): $details"
+      throw "scp upload failed (exit $scpCode). See scp-remote-verify-script.stderr.txt in artifacts."
     }
   } finally {
     $LASTEXITCODE = 0
@@ -1439,21 +1624,26 @@ fi
     Write-Host ("Remote verification running (timeout={0}s)." -f $VerifyTimeoutSec) -ForegroundColor DarkGray
     Write-Host "If this step takes a while, it will print heartbeats here." -ForegroundColor DarkGray
 
-    $job = Start-Job -ScriptBlock {
-      param($sshExeInner, $sshArgsInner, $remoteCmdInner)
-      & $sshExeInner @sshArgsInner $remoteCmdInner *> $null
-      return $LASTEXITCODE
-    } -ArgumentList $sshExe, $sshArgs, $remoteCmd
+    $sshVerifyOut = Join-Path $dest 'ssh-remote-verify.stdout.txt'
+    $sshVerifyErr = Join-Path $dest 'ssh-remote-verify.stderr.txt'
+    try { '' | Set-Content -Path $sshVerifyOut -Encoding UTF8 } catch {}
+    try { '' | Set-Content -Path $sshVerifyErr -Encoding UTF8 } catch {}
+    $proc = Start-Process -FilePath $sshExe -ArgumentList ($sshArgs + @($remoteCmd)) -NoNewWindow -PassThru -RedirectStandardOutput $sshVerifyOut -RedirectStandardError $sshVerifyErr
 
     $startedAt = Get-Date
     $lastStep = ''
     $lastProgress = ''
     $lastStatusPollAt = $startedAt
-    while ($true) {
-      $completed = Wait-Job -Job $job -Timeout 15
-      if ($completed) { break }
+    $hardTimeoutSec = [int]$VerifyTimeoutSec + 120
+    while (-not $proc.HasExited) {
+      Start-Sleep -Seconds 2
 
       $elapsedSec = [int]((Get-Date) - $startedAt).TotalSeconds
+      if ($elapsedSec -ge $hardTimeoutSec) {
+        try { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue } catch {}
+        throw "Remote verification exceeded local hard timeout (${hardTimeoutSec}s). See ssh-remote-verify.stderr.txt/stdout.txt in artifacts."
+      }
+
       Write-Host ("Remote verification still running... elapsed={0}s" -f $elapsedSec) -ForegroundColor DarkGray
 
       # Poll droplet-side progress markers for more actionable logging.
@@ -1462,7 +1652,13 @@ fi
         $lastStatusPollAt = $now
         try {
           $statusCmd = 'sh -lc ''STEP=""; LAST=""; [ -f /root/logs/meta/remote_verify_step.txt ] && STEP=$(cat /root/logs/meta/remote_verify_step.txt 2>/dev/null | tr -d "\015"); [ -f /root/logs/meta/remote_verify_progress.log ] && LAST=$(tail -n 1 /root/logs/meta/remote_verify_progress.log 2>/dev/null | tr -d "\015"); echo "STEP=$STEP"; echo "LAST=$LAST"'''
-          $statusOut = & $sshExe @sshArgs $statusCmd 2>$null
+          $statusOutPath = Join-Path $dest 'ssh-remote-verify-status.stdout.txt'
+          $statusErrPath = Join-Path $dest 'ssh-remote-verify-status.stderr.txt'
+          $statusCode = Invoke-NativeWithTimeout -FilePath $sshExe -ArgumentList ($sshArgs + @($statusCmd)) -Label 'SSH remote verify status poll' -TimeoutSec 30 -StdoutPath $statusOutPath -StderrPath $statusErrPath -HeartbeatSec 9999
+          $statusOut = $null
+          if ($statusCode -eq 0 -and (Test-Path $statusOutPath)) {
+            $statusOut = Get-Content -Path $statusOutPath -ErrorAction SilentlyContinue
+          }
           if ($statusOut) {
             $lines = @($statusOut) | ForEach-Object { $_.ToString().Trim() } | Where-Object { $_ -ne '' }
             $stepLine = $lines | Where-Object { $_ -like 'STEP=*' } | Select-Object -First 1
@@ -1486,14 +1682,7 @@ fi
       }
     }
 
-    $code = 0
-    try {
-      $code = (Receive-Job -Job $job -ErrorAction SilentlyContinue | Select-Object -Last 1)
-      if ($null -eq $code) { $code = 0 }
-    } finally {
-      try { Remove-Job -Job $job -Force -ErrorAction SilentlyContinue } catch {}
-    }
-    $LASTEXITCODE = [int]$code
+    $LASTEXITCODE = [int]$proc.ExitCode
   }
 
   if ($LASTEXITCODE -ne 0) {
@@ -1535,8 +1724,11 @@ fi
         }
       }
       # Copy entire remote logs directory (build + services + snapshots)
-      & $scpExe -i $keyPath @($sshCommon) -r "root@${ip}:/root/logs" $dest *> $null
-      if ($LASTEXITCODE -ne 0) { throw "scp logs failed (exit $LASTEXITCODE)" }
+      $scpTimeoutSec = [Math]::Max(300, [Math]::Min(1200, [int]$VerifyTimeoutSec))
+      $scpLogsOut = Join-Path $dest ("scp-logs-attempt-{0}.stdout.txt" -f $i)
+      $scpLogsErr = Join-Path $dest ("scp-logs-attempt-{0}.stderr.txt" -f $i)
+      $scpCode = Invoke-NativeWithTimeout -FilePath $scpExe -ArgumentList (@('-i', $keyPath) + $sshCommon + @('-r', "root@${ip}:/root/logs", $dest)) -Label ("SCP logs attempt {0}/{1}" -f $i, $attempts) -TimeoutSec $scpTimeoutSec -StdoutPath $scpLogsOut -StderrPath $scpLogsErr -HeartbeatSec 30
+      if ($scpCode -ne 0) { throw "scp logs failed (exit $scpCode)" }
       $copied = $true
       break
     } catch {
@@ -1548,11 +1740,15 @@ fi
   # Fallback: try copying a single tarball if directory copy was flaky.
   if (-not $copied) {
     try {
-      & $sshExe @sshArgs "tar -czf /root/logs.tgz -C /root logs" *> $null
-      if ($LASTEXITCODE -ne 0) { throw "remote tar failed (exit $LASTEXITCODE)" }
+      $sshTarOut = Join-Path $dest 'ssh-tar-logs.stdout.txt'
+      $sshTarErr = Join-Path $dest 'ssh-tar-logs.stderr.txt'
+      $tarCode = Invoke-NativeWithTimeout -FilePath $sshExe -ArgumentList ($sshArgs + @('tar -czf /root/logs.tgz -C /root logs')) -Label 'SSH tar logs' -TimeoutSec 300 -StdoutPath $sshTarOut -StderrPath $sshTarErr -HeartbeatSec 9999
+      if ($tarCode -ne 0) { throw "remote tar failed (exit $tarCode)" }
       $tgzPath = Join-Path $dest 'logs.tgz'
-      & $scpExe -i $keyPath @($sshCommon) "root@${ip}:/root/logs.tgz" $tgzPath *> $null
-      if ($LASTEXITCODE -ne 0) { throw "scp logs.tgz failed (exit $LASTEXITCODE)" }
+      $scpTgzOut = Join-Path $dest 'scp-logs-tgz.stdout.txt'
+      $scpTgzErr = Join-Path $dest 'scp-logs-tgz.stderr.txt'
+      $scpCode = Invoke-NativeWithTimeout -FilePath $scpExe -ArgumentList (@('-i', $keyPath) + $sshCommon + @("root@${ip}:/root/logs.tgz", $tgzPath)) -Label 'SCP logs.tgz' -TimeoutSec 600 -StdoutPath $scpTgzOut -StderrPath $scpTgzErr -HeartbeatSec 30
+      if ($scpCode -ne 0) { throw "scp logs.tgz failed (exit $scpCode)" }
       if (Test-Path $tgzPath) {
         & tar -xzf $tgzPath -C $dest *> $null
         Remove-Item -Force $tgzPath -ErrorAction SilentlyContinue
@@ -1566,7 +1762,25 @@ fi
   if (-not $copied) {
     $msg = "Remote logs could not be copied after $attempts attempts"
     if ($lastCopyErr) { $msg += ": $($lastCopyErr.Exception.Message)" }
-    Write-Warning "$msg; continuing. You can re-run copy later."
+    Write-Warning "$msg; continuing. Attempting minimal log capture (progress + console)."
+
+    # Best-effort: copy the most useful small files even when the full logs directory copy fails.
+    $quick = @(
+      @{ remote = '/root/logs/meta/remote_verify_step.txt'; local = 'remote_verify_step.txt' },
+      @{ remote = '/root/logs/meta/remote_verify_progress.log'; local = 'remote_verify_progress.log' },
+      @{ remote = '/root/logs/build/remote-verify-console.txt'; local = 'remote-verify-console.txt' },
+      @{ remote = '/root/remote_verify.out'; local = 'remote_verify.out' },
+      @{ remote = '/root/remote_verify.pid'; local = 'remote_verify.pid' }
+    )
+    foreach ($q in $quick) {
+      try {
+        $localPath = Join-Path $dest $q.local
+        $scpQOut = Join-Path $dest ("scp-quick-{0}.stdout.txt" -f $q.local)
+        $scpQErr = Join-Path $dest ("scp-quick-{0}.stderr.txt" -f $q.local)
+        $code = Invoke-NativeWithTimeout -FilePath $scpExe -ArgumentList (@('-i', $keyPath) + $sshCommon + @("root@${ip}:$($q.remote)", $localPath)) -Label ("SCP quick {0}" -f $q.remote) -TimeoutSec 60 -StdoutPath $scpQOut -StderrPath $scpQErr -HeartbeatSec 9999
+        if ($code -ne 0) { continue }
+      } catch { }
+    }
   } else {
     # Best-effort copy of individual files to the root of $dest for convenience
     $files = @(
@@ -1581,6 +1795,9 @@ fi
       'curl-root.txt','curl-api.txt','curl-api-health.txt','curl-api-health-slash.txt',
       'curl-admin-head.txt',
       'api-health.json','api-health.status','api-health-slash.json','api-health-slash.status',
+      'request-id-log-propagation.json','request-id-log-propagation.err',
+      'celery-ping.json','celery-result.json',
+      'build/tls-cert-wait.txt','build/tls-cert-wait.status',
       'traefik-dynamic.template.yml','traefik-static.template.yml','remote_verify.done'
     )
     foreach ($f in $files) {
