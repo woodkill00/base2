@@ -205,3 +205,381 @@
   background: #000;
   color: var(--foreground, #fff);
 }
+
+/* Deeper volcanic obsidian pass: Base2-native command, thermal, and security surfaces. */
+.home-page-root {
+  --obsidian-bg: #080808;
+  --obsidian-surface: #131313;
+  --obsidian-surface-low: #0e0e0e;
+  --obsidian-surface-high: #1a1a1a;
+  --obsidian-primary: #ff3131;
+  --obsidian-accent: #ff6321;
+  --obsidian-text: #e5e2e1;
+  --obsidian-muted: #808080;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(255, 49, 49, 0.16), transparent 34rem),
+    radial-gradient(circle at 88% 22%, rgba(255, 99, 33, 0.12), transparent 28rem),
+    linear-gradient(180deg, #080808 0%, #0e0e0e 48%, #080808 100%);
+  color: var(--obsidian-text);
+}
+
+.home-page-root::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.home-obsidian-panel,
+.home-command-stack,
+.home-visual-console,
+.home-boot-panel,
+.home-command-palette-preview,
+.home-utility-rail-preview,
+.home-thermal-panel,
+.home-security-log-panel,
+.home-seismic-panel {
+  border-color: rgba(255, 49, 49, 0.24) !important;
+  background:
+    linear-gradient(135deg, rgba(19, 19, 19, 0.92), rgba(8, 8, 8, 0.82)),
+    radial-gradient(circle at 10% 0%, rgba(255, 49, 49, 0.14), transparent 42%),
+    radial-gradient(circle at 100% 12%, rgba(255, 99, 33, 0.1), transparent 36%) !important;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.home-obsidian-title,
+.home-panel-title-hot svg,
+.home-command-search-row svg,
+.home-command-preview-item svg,
+.home-utility-icon svg {
+  color: var(--obsidian-primary);
+}
+
+.home-obsidian-section {
+  position: relative;
+  z-index: 1;
+  padding: 4.5rem max(1rem, calc((100vw - 1200px) / 2));
+}
+
+.home-section-kicker,
+.home-panel-title,
+.home-command-preview-item em,
+.home-secure-pill,
+.home-obsidian-status-pill {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.home-section-kicker {
+  color: var(--obsidian-accent);
+  margin: 0 auto 0.85rem;
+  max-width: 1200px;
+}
+
+.home-obsidian-section-head {
+  align-items: flex-end;
+  display: flex;
+  gap: 1.5rem;
+  justify-content: space-between;
+  margin: 0 auto 1.5rem;
+  max-width: 1200px;
+}
+
+.home-obsidian-section-head h2 {
+  color: #fff;
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  font-weight: 900;
+  line-height: 0.95;
+  margin: 0 0 0.85rem;
+  text-transform: uppercase;
+}
+
+.home-obsidian-section-head p {
+  color: rgba(229, 226, 225, 0.68);
+  line-height: 1.65;
+  max-width: 680px;
+}
+
+.home-obsidian-status-pill,
+.home-secure-pill {
+  align-items: center;
+  border: 1px solid rgba(255, 49, 49, 0.32);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.78);
+  display: inline-flex;
+  gap: 0.55rem;
+  padding: 0.6rem 0.85rem;
+  white-space: nowrap;
+}
+
+.home-obsidian-status-pill span {
+  background: var(--obsidian-primary);
+  border-radius: 999px;
+  box-shadow: 0 0 18px rgba(255, 49, 49, 0.8);
+  display: block;
+  height: 0.5rem;
+  width: 0.5rem;
+}
+
+.home-ops-grid,
+.home-thermal-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(260px, 0.7fr);
+  margin: 0 auto;
+  max-width: 1200px;
+}
+
+.home-thermal-grid {
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  margin-bottom: 1rem;
+}
+
+.home-boot-panel,
+.home-command-palette-preview,
+.home-utility-rail-preview,
+.home-thermal-panel,
+.home-security-log-panel,
+.home-seismic-panel {
+  padding: clamp(1rem, 2.2vw, 1.5rem);
+}
+
+.home-panel-title,
+.home-security-heading,
+.home-command-search-row,
+.home-command-preview-item,
+.home-boot-line,
+.home-security-log-row {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+}
+
+.home-panel-title {
+  color: rgba(255, 255, 255, 0.86);
+  margin-bottom: 1rem;
+}
+
+.home-boot-lines,
+.home-command-preview-list,
+.home-security-log-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.home-boot-line,
+.home-command-preview-item,
+.home-security-log-row,
+.home-command-search-row,
+.home-thermal-zone {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 0.78rem 0.85rem;
+}
+
+.home-boot-line span,
+.home-command-preview-item span,
+.home-security-log-row span,
+.home-thermal-zone span,
+.home-command-search-row span {
+  color: rgba(229, 226, 225, 0.48);
+  font-size: 0.78rem;
+}
+
+.home-boot-line strong,
+.home-command-preview-item strong,
+.home-security-log-row strong,
+.home-thermal-zone strong {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 700;
+}
+
+.home-boot-progress {
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.home-boot-progress span {
+  background: var(--obsidian-primary);
+  border-radius: 999px;
+  box-shadow: 0 0 12px rgba(255, 49, 49, 0.48);
+  height: 1.15rem;
+  width: 0.32rem;
+}
+
+.home-boot-progress strong {
+  color: var(--obsidian-primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  margin-left: auto;
+}
+
+.home-command-search-row {
+  border-color: rgba(255, 49, 49, 0.26);
+  margin-bottom: 0.75rem;
+}
+
+.home-command-search-row kbd {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.7rem;
+  margin-left: auto;
+  padding: 0.2rem 0.45rem;
+}
+
+.home-command-preview-item div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.home-command-preview-item em {
+  color: rgba(255, 99, 33, 0.78);
+  font-style: normal;
+  margin-left: auto;
+}
+
+.home-utility-rail-preview {
+  min-height: 100%;
+  overflow: visible;
+  position: relative;
+}
+
+.home-utility-tab {
+  background: var(--obsidian-primary);
+  border-radius: 999px 0 0 999px;
+  box-shadow: 0 0 28px rgba(255, 49, 49, 0.45);
+  height: 5rem;
+  position: absolute;
+  right: -0.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1rem;
+}
+
+.home-utility-icons {
+  display: grid;
+  gap: 0.65rem;
+  justify-content: start;
+}
+
+.home-utility-icon {
+  align-items: center;
+  background: rgba(255, 49, 49, 0.08);
+  border: 1px solid rgba(255, 49, 49, 0.18);
+  border-radius: 12px;
+  display: inline-flex;
+  height: 2.4rem;
+  justify-content: center;
+  width: 2.4rem;
+}
+
+.home-thermal-zone-grid {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.home-thermal-zone strong {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 1.25rem;
+  margin: 0.45rem 0 0.75rem;
+}
+
+.home-thermal-meter {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  height: 0.28rem;
+  overflow: hidden;
+}
+
+.home-thermal-meter i {
+  background: linear-gradient(90deg, var(--obsidian-primary), var(--obsidian-accent));
+  display: block;
+  height: 100%;
+}
+
+.home-security-heading {
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.home-panel-title-secure svg,
+.home-security-log-row em[data-state="ok"] {
+  color: #22c55e;
+}
+
+.home-security-log-row {
+  grid-template-columns: 5rem 1fr auto;
+}
+
+.home-security-log-row em {
+  color: #f59e0b;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.home-seismic-panel {
+  margin: 0 auto;
+  max-width: 1200px;
+}
+
+.home-panel-title-seismic svg {
+  color: #a855f7;
+}
+
+.home-seismic-bars {
+  align-items: end;
+  background: linear-gradient(180deg, rgba(168, 85, 247, 0.08), rgba(0, 0, 0, 0.16));
+  border: 1px solid rgba(168, 85, 247, 0.18);
+  border-radius: 14px;
+  display: flex;
+  gap: 0.28rem;
+  height: clamp(12rem, 26vw, 18rem);
+  overflow: hidden;
+  padding: 1rem;
+}
+
+.home-seismic-bars span {
+  background: rgba(168, 85, 247, 0.5);
+  border-radius: 999px 999px 0 0;
+  flex: 1;
+  min-width: 0.18rem;
+}
+
+@media (max-width: 960px) {
+  .home-obsidian-section-head,
+  .home-security-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .home-ops-grid,
+  .home-thermal-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .home-thermal-zone-grid,
+  .home-security-log-row {
+    grid-template-columns: 1fr;
+  }
+
+  .home-command-preview-item,
+  .home-command-search-row,
+  .home-boot-line {
+    align-items: flex-start;
+  }
+}
