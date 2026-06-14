@@ -584,3 +584,419 @@
     align-items: flex-start;
   }
 }
+
+/* Base2-native volcanic navigation controls ported from the reference left rail, utility dial, and movement buttons. */
+.home-obsidian-nav-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  pointer-events: none;
+}
+
+.home-left-menu-toggle,
+.home-right-utility-toggle,
+.home-movement-button,
+.home-left-command-menu button,
+.home-right-utility-nav-toggle button {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.home-left-menu-toggle {
+  align-items: center;
+  background: var(--obsidian-primary);
+  border-radius: 0 999px 999px 0;
+  box-shadow: 0 0 24px rgba(255, 49, 49, 0.28), 0 10px 26px rgba(0, 0, 0, 0.42);
+  color: #080808;
+  display: flex;
+  height: 8rem;
+  justify-content: center;
+  left: 0;
+  overflow: hidden;
+  pointer-events: auto;
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  transition: left 320ms ease, width 260ms ease, box-shadow 260ms ease;
+  width: 1.85rem;
+  z-index: 93;
+}
+
+.home-left-menu-toggle.is-open {
+  left: min(17.5rem, calc(100vw - 3.5rem));
+  width: 2.2rem;
+}
+
+.home-left-menu-toggle svg,
+.home-right-utility-toggle svg {
+  height: 1.15rem;
+  position: relative;
+  width: 1.15rem;
+  z-index: 1;
+}
+
+.home-left-menu-pulse {
+  animation: homeNavPulse 2s ease-in-out infinite;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: inherit;
+  inset: 0;
+  position: absolute;
+}
+
+.home-left-command-menu {
+  background: rgba(14, 14, 14, 0.96);
+  border-right: 1px solid rgba(255, 49, 49, 0.3);
+  box-shadow: 22px 0 70px rgba(0, 0, 0, 0.45), inset -1px 0 0 rgba(255, 255, 255, 0.06);
+  color: var(--obsidian-text);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  height: 100vh;
+  left: 0;
+  max-width: calc(100vw - 3.5rem);
+  padding: 5.25rem 1.25rem 1.5rem;
+  pointer-events: auto;
+  position: fixed;
+  top: 0;
+  transform: translateX(-100%);
+  transition: transform 320ms ease;
+  width: 17.5rem;
+  z-index: 92;
+}
+
+.home-left-command-menu.is-open {
+  transform: translateX(0);
+}
+
+.home-left-command-mark {
+  align-items: center;
+  background: var(--obsidian-surface-high);
+  border: 1px solid rgba(255, 49, 49, 0.32);
+  border-radius: 999px;
+  display: flex;
+  height: 5rem;
+  justify-content: center;
+  margin: 0 auto;
+  width: 5rem;
+}
+
+.home-left-command-mark svg {
+  color: var(--obsidian-accent);
+  height: 2.1rem;
+  width: 2.1rem;
+}
+
+.home-left-command-title {
+  text-align: center;
+}
+
+.home-left-command-title span,
+.home-right-utility-nav-toggle span {
+  color: rgba(229, 226, 225, 0.42);
+  display: block;
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.home-left-command-title strong {
+  color: var(--obsidian-accent);
+  display: block;
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0.34em;
+  margin-top: 0.25rem;
+  text-transform: uppercase;
+}
+
+.home-left-command-list {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.home-left-command-list button {
+  align-items: center;
+  background: transparent;
+  border-left: 0.25rem solid transparent;
+  color: rgba(229, 226, 225, 0.56);
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: 1.5rem 1fr;
+  padding: 0.85rem 0.75rem;
+  text-align: left;
+  transition: background 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.home-left-command-list button:hover,
+.home-left-command-list button:focus-visible {
+  background: rgba(255, 49, 49, 0.1);
+  border-left-color: var(--obsidian-primary);
+  color: #fff;
+  outline: none;
+  transform: translateX(0.2rem);
+}
+
+.home-left-command-list svg,
+.home-left-command-switches svg {
+  color: var(--obsidian-primary);
+  height: 1.2rem;
+  width: 1.2rem;
+}
+
+.home-left-command-list span,
+.home-left-command-switches span {
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.home-left-command-switches {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: auto;
+}
+
+.home-left-command-switches label {
+  align-items: center;
+  background: rgba(26, 26, 26, 0.76);
+  border: 1px solid rgba(255, 49, 49, 0.18);
+  border-radius: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  padding: 0.8rem;
+}
+
+.home-left-command-switches label span {
+  align-items: center;
+  color: rgba(229, 226, 225, 0.72);
+  display: flex;
+  gap: 0.45rem;
+}
+
+.home-left-command-switches input {
+  accent-color: var(--obsidian-primary);
+}
+
+.home-right-utility-menu {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  pointer-events: auto;
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 91;
+}
+
+.home-right-utility-panel {
+  background: rgba(14, 14, 14, 0.96);
+  border: 1px solid rgba(255, 49, 49, 0.3);
+  border-radius: 1.45rem;
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  display: grid;
+  gap: 0.8rem;
+  padding: 0.8rem;
+  width: 5.5rem;
+}
+
+.home-right-utility-nav-toggle {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  display: grid;
+  gap: 0.45rem;
+  justify-items: center;
+  padding-bottom: 0.75rem;
+}
+
+.home-right-utility-nav-toggle button {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 49, 49, 0.35);
+  border-radius: 999px;
+  height: 1.25rem;
+  padding: 0.15rem;
+  position: relative;
+  width: 2.5rem;
+}
+
+.home-right-utility-nav-toggle button span {
+  background: rgba(229, 226, 225, 0.48);
+  border-radius: 999px;
+  display: block;
+  height: 0.85rem;
+  transform: translateX(0);
+  transition: transform 180ms ease, background 180ms ease;
+  width: 0.85rem;
+}
+
+.home-right-utility-nav-toggle button span.is-on {
+  background: var(--obsidian-primary);
+  transform: translateX(1.15rem);
+}
+
+.home-right-utility-scroll {
+  display: grid;
+  gap: 0.18rem;
+  max-height: 15.75rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.home-right-utility-scroll::before {
+  border: 2px solid var(--obsidian-primary);
+  border-radius: 0.8rem;
+  content: "";
+  height: 3rem;
+  left: 50%;
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 3rem;
+  z-index: 0;
+}
+
+.home-right-utility-icon {
+  align-items: center;
+  display: flex;
+  height: 2.35rem;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.home-right-utility-icon svg {
+  color: rgba(255, 99, 33, 0.46);
+  height: 1.2rem;
+  transition: color 180ms ease, filter 180ms ease, transform 180ms ease;
+  width: 1.2rem;
+}
+
+.home-right-utility-icon[aria-selected="true"] svg,
+.home-right-utility-icon:hover svg {
+  color: var(--obsidian-primary);
+  filter: drop-shadow(0 0 8px rgba(255, 49, 49, 0.75));
+  transform: scale(1.28);
+}
+
+.home-right-utility-toggle {
+  align-items: center;
+  background: var(--obsidian-primary);
+  border-radius: 999px 0 0 999px;
+  box-shadow: 0 0 24px rgba(255, 49, 49, 0.28), 0 10px 26px rgba(0, 0, 0, 0.42);
+  color: #080808;
+  display: flex;
+  height: 8rem;
+  justify-content: center;
+  overflow: hidden;
+  transition: width 260ms ease;
+  width: 2rem;
+}
+
+.home-right-utility-menu:not(.is-open) .home-right-utility-toggle {
+  width: 0.85rem;
+}
+
+.home-right-utility-menu.is-open .home-right-utility-toggle svg {
+  transform: rotate(180deg);
+}
+
+.home-bottom-movement-controls {
+  inset: auto 0 0 0;
+  pointer-events: none;
+  position: fixed;
+  z-index: 94;
+}
+
+.home-movement-button {
+  align-items: center;
+  background: rgba(19, 19, 19, 0.86);
+  border: 1px solid rgba(255, 49, 49, 0.48);
+  border-radius: 999px;
+  bottom: 1rem;
+  box-shadow: 0 0 24px rgba(255, 49, 49, 0.2), 0 14px 42px rgba(0, 0, 0, 0.5);
+  color: var(--obsidian-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  height: 4rem;
+  justify-content: center;
+  overflow: hidden;
+  pointer-events: auto;
+  position: fixed;
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  width: 4rem;
+}
+
+.home-movement-button:hover,
+.home-movement-button:focus-visible {
+  border-color: var(--obsidian-primary);
+  box-shadow: 0 0 34px rgba(255, 49, 49, 0.34), 0 14px 42px rgba(0, 0, 0, 0.5);
+  outline: none;
+  transform: translateY(-0.12rem);
+}
+
+.home-movement-button-up {
+  left: 1rem;
+}
+
+.home-movement-button-down {
+  right: 1rem;
+}
+
+.home-movement-button svg {
+  height: 1.15rem;
+  position: relative;
+  width: 1.15rem;
+  z-index: 1;
+}
+
+.home-movement-button svg + svg {
+  color: rgba(229, 226, 225, 0.28);
+  height: 0.7rem;
+  width: 0.7rem;
+}
+
+.home-movement-progress {
+  background: var(--obsidian-primary);
+  bottom: 0;
+  left: 0;
+  opacity: 0.32;
+  position: absolute;
+  transition: height 180ms ease;
+  width: 100%;
+}
+
+@keyframes homeNavPulse {
+  0%, 100% {
+    opacity: 0.08;
+  }
+  50% {
+    opacity: 0.28;
+  }
+}
+
+@media (max-width: 720px) {
+  .home-left-menu-toggle,
+  .home-right-utility-toggle {
+    height: 6.5rem;
+  }
+
+  .home-right-utility-panel {
+    width: 4.75rem;
+  }
+
+  .home-movement-button {
+    height: 3.25rem;
+    width: 3.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-left-menu-pulse {
+    animation: none;
+  }
+}
