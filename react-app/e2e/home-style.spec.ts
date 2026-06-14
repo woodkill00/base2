@@ -25,31 +25,8 @@ test.describe('Home page styling', () => {
     // Bust caches and ensure fresh bundle load
     await page.goto('/?e2e=' + Date.now());
 
-    // Assert the dedicated home wrapper has a black or near-black background
-    const hasBlackOrDarkTheme = await page.evaluate(() => {
-      const el = document.querySelector('[data-testid="home-page"]') as HTMLElement | null;
-      if (!el) return false;
-
-      // Prefer computed color
-      const bg = getComputedStyle(el).backgroundColor.trim();
-      const match = bg.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
-      if (match) {
-        const r = Number(match[1]);
-        const g = Number(match[2]);
-        const b = Number(match[3]);
-        if (r <= 10 && g <= 10 && b <= 10) return true;
-      }
-
-      // Fallback: inline style background string (from React inline styles)
-      const inlineBg = (el.style && el.style.background) || '';
-      if (/black|#000|rgb\(0,\s*0,\s*0\)/i.test(inlineBg)) return true;
-
-      // As an alternate acceptance, verify the root has the dark theme class
-      const rootHasDark = document.documentElement.classList.contains('dark');
-      return rootHasDark;
-    });
-
-    expect(hasBlackOrDarkTheme).toBeTruthy();
+    // Assert the dedicated home wrapper has a black or near-black background.
+    await expect(page.getByTestId("home-page")).toHaveCSS("background-color", "rgb(0, 0, 0)");
     // Ensure multiple glass cards exist (hero + sections).
     const cards = page.locator('[data-testid="glass-card"]');
     await expect(cards.first()).toBeVisible();
