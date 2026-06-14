@@ -58,7 +58,7 @@ else
   git clone "$REPO_URL" "$DEPLOY_PATH$PROJECT_NAME"
 fi
 
-APP_BRANCH="${DO_APP_BRANCH:-${GIT_REPO_BRANCH:-}}"
+APP_BRANCH="${BASE2_BRANCH}"
 if [ -n "$APP_BRANCH" ]; then
   log "Checking out requested branch $APP_BRANCH..."
   git -C "$DEPLOY_PATH$PROJECT_NAME" fetch origin "$APP_BRANCH" || true
