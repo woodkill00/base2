@@ -41,6 +41,12 @@ test('home page remains base2 while using volcanic visual markers', async ({ pag
 
   await expect(page.getByTestId('home-page')).toBeVisible();
   await expect(page.getByTestId('base2-preserved-home-hero')).toBeVisible();
+  await expect(page.getByTestId('base2-obsidian-navigation')).toBeVisible();
+  await expect(page.getByTestId('base2-left-menu-toggle')).toBeVisible();
+  await expect(page.getByTestId('base2-right-utility-menu')).toBeVisible();
+  await expect(page.getByTestId('base2-right-utility-icons')).toBeVisible();
+  await expect(page.getByTestId('base2-bottom-movement-controls')).toBeVisible();
+  await expect(page.getByTestId('base2-scroll-descend')).toBeVisible();
   await expect(page.getByTestId('base2-visual-command-stack')).toBeVisible();
   await expect(page.getByRole('button', { name: /get started/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /view documentation/i })).toBeVisible();
@@ -73,4 +79,21 @@ test('home page applies volcanic obsidian palette tokens', async ({ page }) => {
   expect(palette.primary.toLowerCase()).toBe('#ff3131');
   expect(palette.accent.toLowerCase()).toBe('#ff6321');
   expect(palette.surface.toLowerCase()).toBe('#131313');
+});
+
+test('home page volcanic navigation controls move and reveal menus', async ({ page }) => {
+  await page.goto('/?volcanic-nav=' + Date.now());
+
+  await expect(page.getByTestId('base2-left-menu-toggle')).toBeVisible();
+  await page.getByTestId('base2-left-menu-toggle').click();
+  await expect(page.getByTestId('base2-left-command-menu')).toHaveClass(/is-open/);
+  await expect(page.getByRole('button', { name: 'Command' })).toBeVisible();
+
+  const startY = await page.evaluate(() => window.scrollY);
+  await page.getByTestId('base2-scroll-descend').click();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(startY);
+
+  await expect(page.getByTestId('base2-scroll-ascend')).toBeVisible();
+  await page.getByTestId('base2-right-utility-toggle').click();
+  await expect(page.getByTestId('base2-right-utility-menu')).not.toHaveClass(/is-open/);
 });
