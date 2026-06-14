@@ -98,8 +98,8 @@ test('command palette and utility rail expose only safe public actions', async (
   await page.getByTestId('base2-left-menu-toggle').click();
   await page.getByTestId('base2-command-palette-open').click();
   await expect(page.getByTestId('base2-command-palette')).toBeVisible();
-  await expect(page.getByRole('button', { name: /admin diagnostics/i })).toBeDisabled();
-  await page.getByRole('button', { name: /inspect security surface/i }).click();
+  await expect(page.getByRole('menuitem', { name: /admin diagnostics/i })).toBeDisabled();
+  await page.getByRole('menuitem', { name: /inspect security surface/i }).click();
   await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain('security');
 
   const lockedUtility = page.getByRole('option', { name: /automation unavailable/i }).first();
