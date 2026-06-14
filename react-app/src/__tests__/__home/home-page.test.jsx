@@ -14,6 +14,13 @@ describe('Home page (public)', () => {
 
     expect(screen.getByTestId('home-page')).toBeInTheDocument();
     expect(screen.getByTestId('base2-preserved-home-hero')).toBeInTheDocument();
+    expect(screen.getByTestId('base2-obsidian-navigation')).toBeInTheDocument();
+    expect(screen.getByTestId('base2-left-menu-toggle')).toBeInTheDocument();
+    expect(screen.getByTestId('base2-left-command-menu')).toBeInTheDocument();
+    expect(screen.getByTestId('base2-right-utility-menu')).toBeInTheDocument();
+    expect(screen.getByTestId('base2-right-utility-icons')).toBeInTheDocument();
+    expect(screen.getByTestId('base2-bottom-movement-controls')).toBeInTheDocument();
+    expect(screen.getByTestId('base2-scroll-descend')).toBeInTheDocument();
     expect(screen.getByTestId('base2-visual-command-stack')).toBeInTheDocument();
     expect(screen.getByTestId('base2-preserved-feature-grid')).toBeInTheDocument();
     expect(screen.getByTestId('base2-obsidian-ops')).toBeInTheDocument();
@@ -84,4 +91,25 @@ test('preserves base2 product structure while adding visual integration markers'
   expect(screen.queryByText(/Nexus OS/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/Kaelen Voss/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/Obsidian Core/i)).not.toBeInTheDocument();
+});
+
+test('provides volcanic left menu, right utility dial, and movement controls', async () => {
+  const user = userEvent.setup();
+
+  render(
+    <TestMemoryRouter>
+      <Home />
+    </TestMemoryRouter>
+  );
+
+  const leftToggle = screen.getByRole('button', { name: /open base2 command menu/i });
+  expect(leftToggle).toHaveAttribute('aria-expanded', 'false');
+
+  await user.click(leftToggle);
+  expect(screen.getByRole('button', { name: /close base2 command menu/i })).toHaveAttribute('aria-expanded', 'true');
+  expect(screen.getByRole('navigation', { name: /base2 page sections/i })).toBeInTheDocument();
+
+  expect(screen.getByRole('button', { name: /close base2 utility menu/i })).toHaveAttribute('aria-expanded', 'true');
+  expect(screen.getByRole('listbox', { name: /base2 utility shortcuts/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /scroll down/i })).toBeInTheDocument();
 });
