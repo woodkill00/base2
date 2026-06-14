@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 
 import GlassHeader from '../components/glass/GlassHeader';
-import GlassSidebar from '../components/glass/GlassSidebar';
 import HomeHero from '../components/home/HomeHero';
 import About from '../components/portfolio/About';
 import ProjectsGrid from '../components/portfolio/ProjectsGrid';
@@ -11,6 +10,7 @@ import HomeVisual from '../components/home/HomeVisual';
 import HomeTrust from '../components/home/HomeTrust';
 import HomeObsidianOps from '../components/home/HomeObsidianOps';
 import HomeThermalSecurity from '../components/home/HomeThermalSecurity';
+import HomeObsidianNavigation from '../components/home/HomeObsidianNavigation';
 import HomeFooter from '../components/home/HomeFooter';
 
 const Home = () => {
@@ -33,7 +33,7 @@ const Home = () => {
 
       <div className="relative z-10">
         <GlassHeader variant="public" title="Home" />
-        <GlassSidebar variant="public" onMenuItemClick={handleMenuItemClick} />
+        <HomeObsidianNavigation onNavigate={handleMenuItemClick} />
 
         <main>
           <HomeHero onPrimary={() => navigate('/signup')} onSecondary={() => {}} />
