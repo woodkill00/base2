@@ -95,9 +95,8 @@ test('home page volcanic navigation controls move by sections and reveal menus',
 test('command palette and utility rail expose only safe public actions', async ({ page }) => {
   await page.goto('/?command-palette=' + Date.now());
 
-  await page.evaluate(() => {
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }));
-  });
+  await page.getByTestId('base2-left-menu-toggle').click();
+  await page.getByTestId('base2-command-palette-open').click();
   await expect(page.getByTestId('base2-command-palette')).toBeVisible();
   await expect(page.getByRole('button', { name: /admin diagnostics unavailable/i })).toBeDisabled();
   await page.getByRole('button', { name: /inspect security surface/i }).click();
