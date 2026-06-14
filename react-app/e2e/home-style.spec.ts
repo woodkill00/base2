@@ -87,7 +87,7 @@ test('home page volcanic navigation controls move and reveal menus', async ({ pa
   await expect(page.getByTestId('base2-left-menu-toggle')).toBeVisible();
   await page.getByTestId('base2-left-menu-toggle').click();
   await expect(page.getByTestId('base2-left-command-menu')).toHaveClass(/is-open/);
-  await expect(page.getByRole('button', { name: 'Command' })).toBeVisible();
+  await expect(page.getByTestId('base2-left-command-menu').getByRole('button', { name: 'Command' })).toBeVisible();
 
   const startY = await page.evaluate(() => window.scrollY);
   await page.getByTestId('base2-scroll-descend').click();
