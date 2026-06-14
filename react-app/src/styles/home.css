@@ -1001,3 +1001,161 @@
     animation: none;
   }
 }
+
+/* Base2 volcanic implementation pass: behavior-complete shell controls. */
+.home-left-command-list button.is-active {
+  border-left-color: var(--obsidian-accent);
+  background: rgba(255, 99, 33, 0.18);
+  color: #ffffff;
+  transform: translateX(4px);
+}
+
+.home-command-palette-open {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 99, 33, 0.34);
+  background: rgba(255, 49, 49, 0.1);
+  color: var(--obsidian-text);
+}
+
+.home-command-palette-open kbd,
+.home-command-search-row kbd {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 5px;
+  padding: 2px 6px;
+  color: var(--obsidian-accent);
+  font-size: 0.72rem;
+}
+
+.home-command-palette-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+}
+
+.home-command-palette-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(10px);
+}
+
+.home-command-palette-surface {
+  position: relative;
+  z-index: 1;
+  width: min(540px, 94vw);
+  border: 1px solid rgba(255, 99, 33, 0.4);
+  border-radius: 8px;
+  background: linear-gradient(145deg, rgba(16, 16, 16, 0.98), rgba(6, 6, 6, 0.98));
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.home-command-palette-actions {
+  display: grid;
+  gap: 1px;
+  padding: 8px;
+}
+
+.home-command-palette-actions button {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--obsidian-text);
+  text-align: left;
+}
+
+.home-command-palette-actions button:not(:disabled):hover,
+.home-command-palette-actions button:not(:disabled):focus-visible {
+  border-color: rgba(255, 99, 33, 0.42);
+  background: rgba(255, 49, 49, 0.12);
+}
+
+.home-command-palette-actions button:disabled,
+.home-right-utility-icon:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.home-command-palette-actions em {
+  color: var(--obsidian-muted);
+  font-size: 0.72rem;
+  font-style: normal;
+}
+
+.home-right-utility-icon {
+  position: relative;
+}
+
+.home-right-utility-icon span {
+  position: absolute;
+  right: 42px;
+  max-width: 118px;
+  padding: 3px 7px;
+  border: 1px solid rgba(255, 99, 33, 0.28);
+  border-radius: 6px;
+  background: rgba(8, 8, 8, 0.94);
+  color: var(--obsidian-text);
+  font-size: 0.68rem;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(8px);
+  transition: opacity 160ms ease, transform 160ms ease;
+  white-space: nowrap;
+}
+
+.home-right-utility-icon:hover span,
+.home-right-utility-icon:focus-visible span,
+.home-right-utility-icon.is-active span {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.home-right-utility-icon.is-active {
+  transform: scale(1.2);
+  border-color: rgba(255, 99, 33, 0.55);
+  background: rgba(255, 99, 33, 0.16);
+}
+
+.home-active-section-output {
+  min-width: 76px;
+  padding: 4px 7px;
+  border: 1px solid rgba(255, 99, 33, 0.3);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.68);
+  color: var(--obsidian-accent);
+  font-size: 0.68rem;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.home-movement-button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+@media (max-width: 720px) {
+  .home-command-palette-modal {
+    align-items: start;
+    padding-top: 78px;
+  }
+
+  .home-active-section-output {
+    min-width: 62px;
+    font-size: 0.61rem;
+  }
+}
