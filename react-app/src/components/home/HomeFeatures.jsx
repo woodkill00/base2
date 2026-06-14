@@ -55,7 +55,8 @@ const HomeFeatures = ({ items }) => {
       </div>
 
       <div
-        className="grid gap-6"
+        data-testid="base2-preserved-feature-grid"
+        className="grid gap-6 home-obsidian-features"
         style={{
           gridTemplateColumns: 'repeat(auto-fit, minmax(calc(280px), 1fr))',
           maxWidth: '1200px',
@@ -74,6 +75,7 @@ const HomeFeatures = ({ items }) => {
             >
               <GlassCard
                 hover
+                className="home-obsidian-feature-card"
                 style={{
                   padding: 'calc(2.5rem) calc(2rem)',
                   height: '100%',
