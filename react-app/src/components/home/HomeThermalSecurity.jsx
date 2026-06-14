@@ -25,7 +25,7 @@ const HomeThermalSecurity = () => {
       aria-label="Base2 thermal telemetry and security logs"
     >
       <div className="home-thermal-grid">
-        <GlassCard className="home-thermal-panel" data-testid="base2-thermal-dynamics">
+        <div data-testid="base2-thermal-dynamics"><GlassCard className="home-thermal-panel">
           <div className="home-panel-title home-panel-title-hot">
             <Flame className="w-5 h-5" aria-hidden="true" />
             <span>Thermal Dynamics</span>
@@ -46,9 +46,9 @@ const HomeThermalSecurity = () => {
               </div>
             ))}
           </div>
-        </GlassCard>
+        </GlassCard></div>
 
-        <GlassCard className="home-security-log-panel" data-testid="base2-security-logs">
+        <div data-testid="base2-security-logs"><GlassCard className="home-security-log-panel">
           <div className="home-security-heading">
             <div className="home-panel-title home-panel-title-secure">
               <ShieldCheck className="w-5 h-5" aria-hidden="true" />
@@ -65,15 +65,15 @@ const HomeThermalSecurity = () => {
               </div>
             ))}
           </div>
-        </GlassCard>
+        </GlassCard></div>
       </div>
 
-      <GlassCard className="home-seismic-panel" data-testid="base2-seismic-monitoring">
+      <div data-testid="base2-seismic-monitoring"><GlassCard className="home-seismic-panel">
         <div className="home-panel-title home-panel-title-seismic">
           <Activity className="w-5 h-5" aria-hidden="true" />
           <span>Seismic Monitoring</span>
         </div>
-        <div className="home-seismic-bars" aria-label="Base2 workflow activity monitor">
+        <div className="home-seismic-bars" role="img" aria-label="Base2 workflow activity monitor">
           {Array.from({ length: 28 }).map((_, index) => (
             <motion.span
               key={index}
@@ -83,7 +83,7 @@ const HomeThermalSecurity = () => {
             />
           ))}
         </div>
-      </GlassCard>
+      </GlassCard></div>
     </section>
   );
 };
