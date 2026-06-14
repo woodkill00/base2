@@ -216,6 +216,7 @@
   --obsidian-accent: #ff6321;
   --obsidian-text: #e5e2e1;
   --obsidian-muted: #808080;
+  background-color: #000;
   background:
     radial-gradient(circle at 12% 8%, rgba(255, 49, 49, 0.16), transparent 34rem),
     radial-gradient(circle at 88% 22%, rgba(255, 99, 33, 0.12), transparent 28rem),
