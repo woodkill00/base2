@@ -31,7 +31,18 @@ const leftItems = [
   { id: 'contact', label: 'Contact', icon: Server },
 ];
 
-const utilityItems = [Settings, Bell, Share2, History, Shield, Zap, Search, User, Heart, LogOut];
+const utilityItems = [
+  { label: 'Settings', icon: Settings },
+  { label: 'Notifications', icon: Bell },
+  { label: 'Share', icon: Share2 },
+  { label: 'History', icon: History },
+  { label: 'Security', icon: Shield },
+  { label: 'Automation', icon: Zap },
+  { label: 'Search', icon: Search },
+  { label: 'Profile', icon: User },
+  { label: 'Favorites', icon: Heart },
+  { label: 'Sign out', icon: LogOut },
+];
 
 const getScrollMetrics = () => {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
@@ -169,11 +180,20 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
               </button>
             </div>
             <div className="home-right-utility-scroll" role="listbox" aria-label="Base2 utility shortcuts">
-              {visibleUtilityItems.map((Icon, index) => (
-                <div className="home-right-utility-icon" role="option" aria-selected={index === 10} key={index}>
-                  <Icon aria-hidden="true" />
-                </div>
-              ))}
+              {visibleUtilityItems.map((item, index) => {
+                const Icon = item.icon;
+                return (
+                  <div
+                    className="home-right-utility-icon"
+                    role="option"
+                    aria-label={`Base2 utility: ${item.label}`}
+                    aria-selected={index === 10}
+                    key={`${item.label}-${index}`}
+                  >
+                    <Icon aria-hidden="true" />
+                  </div>
+                );
+              })}
             </div>
           </div>
         ) : null}
@@ -192,8 +212,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
 
       {navButtonsEnabled ? (
         <div className="home-bottom-movement-controls" data-testid="base2-bottom-movement-controls">
-          {scrollState.canAscend ? (
-            <button
+          <button
               type="button"
               className="home-movement-button home-movement-button-up"
               onClick={() => scrollByPage(-1)}
@@ -205,10 +224,8 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
               <ChevronUp aria-hidden="true" />
               <ArrowUp aria-hidden="true" />
             </button>
-          ) : null}
 
-          {scrollState.canDescend ? (
-            <button
+          <button
               type="button"
               className="home-movement-button home-movement-button-down"
               onClick={() => scrollByPage(1)}
@@ -220,7 +237,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
               <ArrowDown aria-hidden="true" />
               <ChevronDown aria-hidden="true" />
             </button>
-          ) : null}
         </div>
       ) : null}
     </div>
