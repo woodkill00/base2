@@ -41,7 +41,7 @@ const HomeObsidianOps = () => {
       </div>
 
       <div className="home-ops-grid">
-        <GlassCard className="home-boot-panel" data-testid="base2-boot-sequence-panel">
+        <div data-testid="base2-boot-sequence-panel"><GlassCard className="home-boot-panel">
           <div className="home-panel-title">
             <Command className="w-5 h-5" aria-hidden="true" />
             <span>Base2 boot sequence</span>
@@ -67,9 +67,9 @@ const HomeObsidianOps = () => {
             ))}
             <strong>100%</strong>
           </div>
-        </GlassCard>
+        </GlassCard></div>
 
-        <GlassCard className="home-command-palette-preview" data-testid="base2-command-palette-preview">
+        <div data-testid="base2-command-palette-preview"><GlassCard className="home-command-palette-preview">
           <div className="home-command-search-row">
             <Search className="w-5 h-5" aria-hidden="true" />
             <span>Search Base2 commands...</span>
@@ -90,22 +90,22 @@ const HomeObsidianOps = () => {
               );
             })}
           </div>
-        </GlassCard>
+        </GlassCard></div>
 
-        <GlassCard className="home-utility-rail-preview" data-testid="base2-utility-rail-preview">
+        <div data-testid="base2-utility-rail-preview"><GlassCard className="home-utility-rail-preview">
           <div className="home-utility-tab" aria-hidden="true" />
           <div className="home-panel-title">
             <Settings className="w-5 h-5" aria-hidden="true" />
             <span>Utility rail</span>
           </div>
-          <div className="home-utility-icons" aria-label="Base2 utility shortcuts">
+          <div className="home-utility-icons" role="list" aria-label="Base2 utility shortcuts">
             {utilityItems.map((Icon, index) => (
-              <div className="home-utility-icon" key={index}>
+              <div className="home-utility-icon" key={index} role="listitem">
                 <Icon className="w-5 h-5" aria-hidden="true" />
               </div>
             ))}
           </div>
-        </GlassCard>
+        </GlassCard></div>
       </div>
     </section>
   );
