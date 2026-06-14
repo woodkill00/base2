@@ -1,11 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-// Verifies the Home page applies a black background via glass-styled wrapper
-// Sets the theme cookie to dark to ensure black backdrop, then asserts
-
 test.describe('Home page styling', () => {
   test('home page has black backdrop', async ({ page, context }) => {
-    // Ensure dark theme via cookie, then reload after initial navigation
     await page.goto('/');
 
     const url = new URL(page.url());
@@ -22,19 +18,15 @@ test.describe('Home page styling', () => {
       },
     ]);
 
-    // Bust caches and ensure fresh bundle load
     await page.goto('/?e2e=' + Date.now());
 
-    // Assert the dedicated home wrapper has a black or near-black background.
-    await expect(page.getByTestId("home-page")).toHaveCSS("background-color", "rgb(0, 0, 0)");
-    // Ensure multiple glass cards exist (hero + sections).
+    await expect(page.getByTestId('home-page')).toHaveCSS('background-color', 'rgb(0, 0, 0)');
     const cards = page.locator('[data-testid="glass-card"]');
     await expect(cards.first()).toBeVisible();
     const count = await cards.count();
     expect(count).toBeGreaterThan(1);
   });
 });
-
 
 test('home page remains base2 while using volcanic visual markers', async ({ page }) => {
   await page.goto('/?visual-preservation=' + Date.now());
@@ -64,7 +56,6 @@ test('home page remains base2 while using volcanic visual markers', async ({ pag
   await expect(page.getByText(/Obsidian Core/i)).toHaveCount(0);
 });
 
-
 test('home page applies volcanic obsidian palette tokens', async ({ page }) => {
   await page.goto('/?palette=' + Date.now());
   const palette = await page.getByTestId('home-page').evaluate((el) => {
@@ -81,7 +72,7 @@ test('home page applies volcanic obsidian palette tokens', async ({ page }) => {
   expect(palette.surface.toLowerCase()).toBe('#131313');
 });
 
-test('home page volcanic navigation controls move and reveal menus', async ({ page }) => {
+test('home page volcanic navigation controls move by sections and reveal menus', async ({ page }) => {
   await page.goto('/?volcanic-nav=' + Date.now());
 
   await expect(page.getByTestId('base2-left-menu-toggle')).toBeVisible();
@@ -89,11 +80,29 @@ test('home page volcanic navigation controls move and reveal menus', async ({ pa
   await expect(page.getByTestId('base2-left-command-menu')).toHaveClass(/is-open/);
   await expect(page.getByTestId('base2-left-command-menu').getByRole('button', { name: 'Command' })).toBeVisible();
 
-  const startY = await page.evaluate(() => window.scrollY);
-  await page.getByTestId('base2-scroll-descend').click();
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(startY);
+  await page.getByTestId('base2-section-nav-security').click();
+  await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain('security');
+  await expect(page.getByTestId('base2-section-nav-security')).toHaveAttribute('aria-current', 'location');
 
-  await expect(page.getByTestId('base2-scroll-ascend')).toBeVisible();
+  await page.getByTestId('base2-scroll-ascend').click();
+  await expect.poll(() => page.getByTestId('base2-section-active').textContent()).not.toContain('security');
+
+  await expect(page.getByTestId('base2-scroll-descend')).toBeVisible();
   await page.getByTestId('base2-right-utility-toggle').click();
   await expect(page.getByTestId('base2-right-utility-menu')).not.toHaveClass(/is-open/);
+});
+
+test('command palette and utility rail expose only safe public actions', async ({ page }) => {
+  await page.goto('/?command-palette=' + Date.now());
+
+  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+K' : 'Control+K');
+  await expect(page.getByTestId('base2-command-palette')).toBeVisible();
+  await expect(page.getByRole('button', { name: /admin diagnostics unavailable/i })).toBeDisabled();
+  await page.getByRole('button', { name: /inspect security surface/i }).click();
+  await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain('security');
+
+  const lockedUtility = page.getByRole('option', { name: /automation unavailable/i }).first();
+  await expect(lockedUtility).toBeDisabled();
+  await page.getByRole('option', { name: /Base2 utility: Search/i }).first().click();
+  await expect(page.getByRole('option', { name: /Base2 utility: Search/i }).first()).toHaveAttribute('aria-selected', 'true');
 });
