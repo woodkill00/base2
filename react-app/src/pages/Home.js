@@ -9,6 +9,8 @@ import ContactForm from '../components/portfolio/ContactForm';
 import HomeFeatures from '../components/home/HomeFeatures';
 import HomeVisual from '../components/home/HomeVisual';
 import HomeTrust from '../components/home/HomeTrust';
+import HomeObsidianOps from '../components/home/HomeObsidianOps';
+import HomeThermalSecurity from '../components/home/HomeThermalSecurity';
 import HomeFooter from '../components/home/HomeFooter';
 
 const Home = () => {
@@ -36,10 +38,12 @@ const Home = () => {
         <main>
           <HomeHero onPrimary={() => navigate('/signup')} onSecondary={() => {}} />
           <HomeFeatures />
+          <HomeObsidianOps />
           <About />
           <ProjectsGrid />
           <ContactForm />
           <HomeVisual />
+          <HomeThermalSecurity />
           <HomeTrust />
         </main>
 
