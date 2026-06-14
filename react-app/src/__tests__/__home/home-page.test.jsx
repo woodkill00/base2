@@ -13,8 +13,14 @@ describe('Home page (public)', () => {
     );
 
     expect(screen.getByTestId('home-page')).toBeInTheDocument();
+    expect(screen.getByTestId('base2-preserved-home-hero')).toBeInTheDocument();
+    expect(screen.getByTestId('base2-visual-command-stack')).toBeInTheDocument();
+    expect(screen.getByTestId('base2-preserved-feature-grid')).toBeInTheDocument();
+    expect(screen.getByTestId('base2-preserved-home-visual')).toBeInTheDocument();
 
     expect(screen.getByRole('heading', { name: /build better with/i })).toBeInTheDocument();
+    expect(screen.getByText(/base2 runtime/i)).toBeInTheDocument();
+    expect(screen.getByText(/auth flows kept/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /everything you need/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /beautiful by design/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /privacy first/i })).toBeInTheDocument();
@@ -51,4 +57,17 @@ describe('Home page (public)', () => {
     await user.tab();
     expect(secondary).toHaveFocus();
   });
+});
+
+
+test('preserves base2 product structure while adding visual integration markers', () => {
+  render(
+    <TestMemoryRouter>
+      <Home />
+    </TestMemoryRouter>
+  );
+
+  expect(screen.getByText(/The existing Base2 app keeps its auth, API, deployment, and dashboard workflows/i)).toBeInTheDocument();
+  expect(screen.getByText(/Routes, auth, API, dashboard, settings, scripts, and deployment flow stay wired/i)).toBeInTheDocument();
+  expect(screen.queryByText(/Nexus OS/i)).not.toBeInTheDocument();
 });
