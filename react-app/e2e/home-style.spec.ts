@@ -57,3 +57,17 @@ test.describe('Home page styling', () => {
     expect(count).toBeGreaterThan(1);
   });
 });
+
+
+test('home page remains base2 while using volcanic visual markers', async ({ page }) => {
+  await page.goto('/?visual-preservation=' + Date.now());
+
+  await expect(page.getByTestId('home-page')).toBeVisible();
+  await expect(page.getByTestId('base2-preserved-home-hero')).toBeVisible();
+  await expect(page.getByTestId('base2-visual-command-stack')).toBeVisible();
+  await expect(page.getByRole('button', { name: /get started/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /view documentation/i })).toBeVisible();
+  await expect(page.getByText(/auth flows kept/i)).toBeVisible();
+  await expect(page.getByText(/Base2 remains intact/i)).toBeVisible();
+  await expect(page.getByText(/Nexus OS/i)).toHaveCount(0);
+});
