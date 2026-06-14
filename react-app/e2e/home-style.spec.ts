@@ -46,5 +46,31 @@ test('home page remains base2 while using volcanic visual markers', async ({ pag
   await expect(page.getByRole('button', { name: /view documentation/i })).toBeVisible();
   await expect(page.getByText(/auth flows kept/i)).toBeVisible();
   await expect(page.getByText(/Base2 remains intact/i)).toBeVisible();
+  await expect(page.getByTestId('base2-obsidian-ops')).toBeVisible();
+  await expect(page.getByTestId('base2-command-palette-preview')).toBeVisible();
+  await expect(page.getByTestId('base2-utility-rail-preview')).toBeVisible();
+  await expect(page.getByTestId('base2-thermal-dynamics')).toBeVisible();
+  await expect(page.getByTestId('base2-security-logs')).toBeVisible();
+  await expect(page.getByText(/Thermal Dynamics/i)).toBeVisible();
+  await expect(page.getByText(/Security Logs/i)).toBeVisible();
   await expect(page.getByText(/Nexus OS/i)).toHaveCount(0);
+  await expect(page.getByText(/Kaelen Voss/i)).toHaveCount(0);
+  await expect(page.getByText(/Obsidian Core/i)).toHaveCount(0);
+});
+
+
+test('home page applies volcanic obsidian palette tokens', async ({ page }) => {
+  await page.goto('/?palette=' + Date.now());
+  const palette = await page.getByTestId('home-page').evaluate((el) => {
+    const styles = getComputedStyle(el);
+    return {
+      primary: styles.getPropertyValue('--obsidian-primary').trim(),
+      accent: styles.getPropertyValue('--obsidian-accent').trim(),
+      surface: styles.getPropertyValue('--obsidian-surface').trim(),
+    };
+  });
+
+  expect(palette.primary.toLowerCase()).toBe('#ff3131');
+  expect(palette.accent.toLowerCase()).toBe('#ff6321');
+  expect(palette.surface.toLowerCase()).toBe('#131313');
 });
