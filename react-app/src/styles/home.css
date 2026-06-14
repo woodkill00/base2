@@ -200,3 +200,8 @@
     flex-direction: column;
   }
 }
+
+.home-page-root {
+  background: #000;
+  color: var(--foreground, #fff);
+}
