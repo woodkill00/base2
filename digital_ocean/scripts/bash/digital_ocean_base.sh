@@ -58,6 +58,14 @@ else
   git clone "$REPO_URL" "$DEPLOY_PATH$PROJECT_NAME"
 fi
 
+APP_BRANCH="${DO_APP_BRANCH:-${GIT_REPO_BRANCH:-}}"
+if [ -n "$APP_BRANCH" ]; then
+  log "Checking out requested branch $APP_BRANCH..."
+  git -C "$DEPLOY_PATH$PROJECT_NAME" fetch origin "$APP_BRANCH" || true
+  git -C "$DEPLOY_PATH$PROJECT_NAME" checkout -B "$APP_BRANCH" "origin/$APP_BRANCH"
+  git -C "$DEPLOY_PATH$PROJECT_NAME" reset --hard "origin/$APP_BRANCH"
+fi
+
 # --- Python Virtual Environment Setup ---
 log "Setting up Python virtual environment..."
 
