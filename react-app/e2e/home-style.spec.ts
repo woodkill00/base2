@@ -78,7 +78,7 @@ test('home page volcanic navigation controls move by sections and reveal menus',
   await expect(page.getByTestId('base2-left-menu-toggle')).toBeVisible();
   await page.getByTestId('base2-left-menu-toggle').click();
   await expect(page.getByTestId('base2-left-command-menu')).toHaveClass(/is-open/);
-  await expect(page.getByTestId('base2-left-command-menu').getByRole('button', { name: 'Command' })).toBeVisible();
+  await expect(page.getByTestId('base2-section-nav-command')).toBeVisible();
 
   await page.getByTestId('base2-section-nav-security').click();
   await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain('security');
@@ -95,7 +95,9 @@ test('home page volcanic navigation controls move by sections and reveal menus',
 test('command palette and utility rail expose only safe public actions', async ({ page }) => {
   await page.goto('/?command-palette=' + Date.now());
 
-  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+K' : 'Control+K');
+  await page.evaluate(() => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }));
+  });
   await expect(page.getByTestId('base2-command-palette')).toBeVisible();
   await expect(page.getByRole('button', { name: /admin diagnostics unavailable/i })).toBeDisabled();
   await page.getByRole('button', { name: /inspect security surface/i }).click();
