@@ -905,6 +905,7 @@
 }
 
 .home-bottom-movement-controls {
+  height: 5.5rem;
   inset: auto 0 0 0;
   pointer-events: none;
   position: fixed;
