@@ -36,3 +36,167 @@
     animation: none;
   }
 }
+
+
+/* Volcanic obsidian visual integration for the existing Base2 home page. */
+.home-obsidian-hero {
+  color: var(--foreground, inherit);
+}
+
+.home-obsidian-panel {
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(135deg, rgba(8, 10, 18, 0.88), rgba(19, 22, 33, 0.76)),
+    linear-gradient(115deg, rgba(255, 49, 49, 0.13), rgba(30, 144, 255, 0.12) 52%, rgba(255, 255, 255, 0.08));
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.home-obsidian-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.32;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(to bottom, black, transparent 88%);
+}
+
+.home-obsidian-eyebrow,
+.home-command-topline,
+.home-runtime-header,
+.home-runtime-row {
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.home-obsidian-eyebrow {
+  border-radius: 999px;
+  padding: 0.55rem 0.85rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.home-obsidian-title {
+  display: inline-block;
+  color: #fff;
+  text-shadow: 0 0 28px rgba(255, 49, 49, 0.24);
+}
+
+.home-command-stack {
+  display: grid;
+  gap: 0.85rem;
+  padding: clamp(1rem, 3vw, 1.5rem);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 18px;
+  background: rgba(4, 7, 12, 0.58);
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.28);
+}
+
+.home-command-topline,
+.home-runtime-header,
+.home-runtime-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+}
+
+.home-command-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.8rem;
+  align-items: center;
+  padding: 0.85rem 0.9rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.home-command-row span,
+.home-runtime-panel span,
+.home-runtime-row span,
+.home-command-topline span,
+.home-runtime-header span {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.home-command-row strong,
+.home-command-topline strong,
+.home-runtime-header strong,
+.home-runtime-row strong {
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 650;
+}
+
+.home-obsidian-features .home-obsidian-feature-card {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.1)),
+    rgba(7, 10, 16, 0.38);
+}
+
+.home-visual-console {
+  background:
+    linear-gradient(180deg, rgba(9, 12, 20, 0.82), rgba(5, 7, 12, 0.72)),
+    linear-gradient(110deg, rgba(255, 49, 49, 0.1), rgba(30, 144, 255, 0.1));
+}
+
+.home-runtime-frame {
+  display: grid;
+  gap: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 18px;
+  padding: clamp(1rem, 3vw, 1.4rem);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.home-runtime-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+.home-runtime-panel {
+  min-height: 160px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 16px;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.home-runtime-panel-primary {
+  background: linear-gradient(145deg, rgba(255, 49, 49, 0.16), rgba(30, 144, 255, 0.12));
+}
+
+.home-runtime-panel strong {
+  display: block;
+  margin-top: 0.45rem;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 1.08rem;
+}
+
+.home-runtime-panel p {
+  margin-top: 0.65rem;
+  color: rgba(255, 255, 255, 0.68);
+  line-height: 1.55;
+}
+
+.home-runtime-rows {
+  display: grid;
+  gap: 0.65rem;
+}
+
+@media (max-width: 760px) {
+  .home-command-topline,
+  .home-runtime-header,
+  .home-runtime-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
