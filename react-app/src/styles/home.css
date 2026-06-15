@@ -1161,6 +1161,44 @@
 }
 
 /* Base2 volcanic implementation pass v2: behavior-complete shell controls. */
+.home-left-command-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 8990;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
+
+.home-left-command-menu {
+  z-index: 9000;
+}
+
+.home-left-command-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.home-left-command-close {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 99, 33, 0.32);
+  border-radius: 6px;
+  background: rgba(255, 49, 49, 0.1);
+  color: var(--obsidian-text);
+  cursor: pointer;
+}
+
+.home-left-command-close:hover,
+.home-left-command-close:focus-visible {
+  border-color: rgba(255, 99, 33, 0.58);
+  background: rgba(255, 99, 33, 0.18);
+}
+
 .home-left-command-list button.is-active {
   border-left-color: var(--obsidian-accent);
   background: rgba(255, 99, 33, 0.18);
@@ -1265,6 +1303,23 @@
 
 .home-right-utility-icon {
   position: relative;
+}
+
+.home-right-utility-scroll {
+  max-height: min(58vh, 430px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 99, 33, 0.58) rgba(255, 255, 255, 0.08);
+}
+
+.home-right-utility-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.home-right-utility-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(255, 99, 33, 0.58);
 }
 
 .home-right-utility-icon span {
