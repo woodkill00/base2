@@ -18,7 +18,7 @@ describe('Home page (public)', () => {
     expect(screen.getByTestId('base2-left-menu-toggle')).toBeInTheDocument();
     expect(screen.getByTestId('base2-left-command-menu')).toBeInTheDocument();
     expect(screen.getByTestId('base2-right-utility-menu')).toBeInTheDocument();
-    expect(screen.getByTestId('base2-right-utility-icons')).toBeInTheDocument();
+    expect(screen.queryByTestId('base2-right-utility-icons')).not.toBeInTheDocument();
     expect(screen.getByTestId('base2-bottom-movement-controls')).toBeInTheDocument();
     expect(screen.getByTestId('base2-scroll-descend')).toBeInTheDocument();
     expect(screen.getByTestId('base2-visual-command-stack')).toBeInTheDocument();
