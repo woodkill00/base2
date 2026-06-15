@@ -1263,36 +1263,6 @@
   font-style: normal;
 }
 
-.home-command-search-row {
-  min-height: 54px;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-bottom: 1px solid rgba(255, 99, 33, 0.24);
-}
-
-.home-command-search-row input {
-  min-width: 0;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: var(--obsidian-text);
-  font: inherit;
-}
-
-.home-command-search-row input::placeholder {
-  color: var(--obsidian-muted);
-}
-
-.home-command-palette-empty {
-  margin: 0;
-  padding: 16px;
-  color: var(--obsidian-muted);
-  font-size: 12px;
-}
-
 .home-right-utility-icon {
   position: relative;
 }
