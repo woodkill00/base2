@@ -36,7 +36,7 @@ test('home page remains base2 while using volcanic visual markers', async ({ pag
   await expect(page.getByTestId('base2-obsidian-navigation')).toBeVisible();
   await expect(page.getByTestId('base2-left-menu-toggle')).toBeVisible();
   await expect(page.getByTestId('base2-right-utility-menu')).toBeVisible();
-  await expect(page.getByTestId('base2-right-utility-icons')).toBeVisible();
+  await expect(page.getByTestId('base2-right-utility-menu')).not.toHaveClass(/is-open/);
   await expect(page.getByTestId('base2-bottom-movement-controls')).toBeVisible();
   await expect(page.getByTestId('base2-scroll-descend')).toBeVisible();
   await expect(page.getByTestId('base2-visual-command-stack')).toBeVisible();
@@ -78,6 +78,14 @@ test('home page volcanic navigation controls move by sections and reveal menus',
   await expect(page.getByTestId('base2-left-menu-toggle')).toBeVisible();
   await page.getByTestId('base2-left-menu-toggle').click();
   await expect(page.getByTestId('base2-left-command-menu')).toHaveClass(/is-open/);
+  await expect(page.getByTestId('base2-left-menu-close')).toBeVisible();
+  await page.getByTestId('base2-left-menu-close').click();
+  await expect(page.getByTestId('base2-left-command-menu')).not.toHaveClass(/is-open/);
+  await page.getByTestId('base2-left-menu-toggle').click();
+  await page.getByTestId('base2-left-menu-backdrop').click({ position: { x: 20, y: 20 } });
+  await expect(page.getByTestId('base2-left-command-menu')).not.toHaveClass(/is-open/);
+
+  await page.getByTestId('base2-left-menu-toggle').click();
   await expect(page.getByTestId('base2-section-nav-command')).toBeVisible();
 
   await page.getByTestId('base2-section-nav-security').click();
@@ -88,8 +96,15 @@ test('home page volcanic navigation controls move by sections and reveal menus',
   await expect.poll(() => page.getByTestId('base2-section-active').textContent()).not.toContain('security');
 
   await expect(page.getByTestId('base2-scroll-descend')).toBeVisible();
-  await page.getByTestId('base2-right-utility-toggle').click();
   await expect(page.getByTestId('base2-right-utility-menu')).not.toHaveClass(/is-open/);
+  await page.getByTestId('base2-right-utility-toggle').click();
+  await expect(page.getByTestId('base2-right-utility-menu')).toHaveClass(/is-open/);
+  await expect(page.getByTestId('base2-right-utility-icons')).toBeVisible();
+  await expect(page.getByTestId('base2-right-utility-icons')).toHaveCSS('overflow-y', /auto|scroll/);
+  await page.getByTestId('base2-scroll-descend').dblclick();
+  await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain('contact');
+  await page.getByTestId('base2-scroll-ascend').dblclick();
+  await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain('home');
 });
 
 test('command palette and utility rail expose only safe public actions', async ({ page }) => {
