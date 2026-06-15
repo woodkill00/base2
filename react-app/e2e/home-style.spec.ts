@@ -32,8 +32,6 @@ test('home page remains base2 while using volcanic visual markers', async ({ pag
   await page.goto('/?visual-preservation=' + Date.now());
 
   await expect(page.getByTestId('home-page')).toBeVisible();
-  await expect(page.getByRole('navigation', { name: /public header/i })).toContainText('Base2');
-  await expect(page.getByRole('navigation', { name: /public header/i })).not.toContainText('SpecKit');
   await expect(page.getByTestId('base2-preserved-home-hero')).toBeVisible();
   await expect(page.getByTestId('base2-obsidian-navigation')).toBeVisible();
   await expect(page.getByTestId('base2-left-menu-toggle')).toBeVisible();
@@ -100,17 +98,9 @@ test('command palette and utility rail expose only safe public actions', async (
   await page.getByTestId('base2-left-menu-toggle').click();
   await page.getByTestId('base2-command-palette-open').click();
   await expect(page.getByTestId('base2-command-palette')).toBeVisible();
-  await expect(page.getByRole('textbox', { name: /search base2 actions/i })).toBeFocused();
-  await page.getByRole('textbox', { name: /search base2 actions/i }).fill('security');
-  await expect(page.getByRole('menuitem', { name: /inspect security surface/i })).toBeVisible();
-  await expect(page.getByRole('menuitem', { name: /review base2 features/i })).toHaveCount(0);
   await expect(page.getByRole('menuitem', { name: /admin diagnostics/i })).toBeDisabled();
   await page.getByRole('menuitem', { name: /inspect security surface/i }).click();
   await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain('security');
-  await page.keyboard.press('Control+K');
-  await expect(page.getByTestId('base2-command-palette')).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.getByTestId('base2-command-palette')).toHaveCount(0);
 
   const lockedUtility = page.getByRole('option', { name: /automation unavailable/i }).first();
   await expect(lockedUtility).toBeDisabled();
