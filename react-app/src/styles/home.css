@@ -1190,6 +1190,11 @@
   font-size: 10px;
 }
 
+.home-left-command-title span,
+.home-right-utility-nav-toggle span {
+  font-size: 10px;
+}
+
 .home-command-palette-modal {
   position: fixed;
   inset: 0;
