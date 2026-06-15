@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   ArrowDown,
@@ -54,6 +54,8 @@ const commandActions = [
   { id: 'admin-debug', label: 'Admin diagnostics', safe: false },
 ];
 
+const MOVEMENT_CLICK_DELAY_MS = 180;
+
 const findSection = (item) => {
   if (typeof document === 'undefined') return null;
   return document.querySelector(`[data-testid="${item.target}"]`) || document.getElementById(item.target);
@@ -98,12 +100,13 @@ const readActiveSection = () => {
 
 const HomeObsidianNavigation = ({ onNavigate }) => {
   const [isLeftOpen, setIsLeftOpen] = useState(false);
-  const [isRightOpen, setIsRightOpen] = useState(true);
+  const [isRightOpen, setIsRightOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [navButtonsEnabled, setNavButtonsEnabled] = useState(true);
   const [activeSection, setActiveSection] = useState('home');
   const [activeUtilityIndex, setActiveUtilityIndex] = useState(4);
   const [scrollState, setScrollState] = useState(getScrollMetrics);
+  const movementClickTimer = useRef(null);
 
   const visibleUtilityItems = useMemo(
     () => [...utilityItems, ...utilityItems, ...utilityItems],
@@ -124,6 +127,15 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       window.removeEventListener('resize', updateScrollState);
     };
   }, [updateScrollState]);
+
+  useEffect(
+    () => () => {
+      if (movementClickTimer.current) {
+        window.clearTimeout(movementClickTimer.current);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -172,12 +184,40 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     goToSection(target.id);
   };
 
+  const queueSectionMove = (direction) => {
+    if (movementClickTimer.current) {
+      window.clearTimeout(movementClickTimer.current);
+    }
+    movementClickTimer.current = window.setTimeout(() => {
+      movementClickTimer.current = null;
+      moveSection(direction);
+    }, MOVEMENT_CLICK_DELAY_MS);
+  };
+
+  const moveToEdgeNow = (top) => {
+    if (movementClickTimer.current) {
+      window.clearTimeout(movementClickTimer.current);
+      movementClickTimer.current = null;
+    }
+    scrollToEdge(top);
+  };
+
   const activeIndex = Math.max(0, sectionItems.findIndex((item) => item.id === activeSection));
   const canMoveUp = activeIndex > 0 && scrollState.canAscend;
   const canMoveDown = activeIndex < sectionItems.length - 1 && scrollState.canDescend;
 
   return (
     <div className="home-obsidian-nav-layer" data-testid="base2-obsidian-navigation">
+      {isLeftOpen ? (
+        <button
+          type="button"
+          className="home-left-command-backdrop"
+          aria-label="Close Base2 command menu backdrop"
+          onClick={() => setIsLeftOpen(false)}
+          data-testid="base2-left-menu-backdrop"
+        />
+      ) : null}
+
       <button
         type="button"
         className={`home-left-menu-toggle ${isLeftOpen ? 'is-open' : ''}`}
@@ -200,8 +240,20 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
           <LayoutGrid aria-hidden="true" />
         </div>
         <div className="home-left-command-title">
-          <span>Base2</span>
-          <strong>Command</strong>
+          <div>
+            <span>Base2</span>
+            <strong>Command</strong>
+          </div>
+          <button
+            type="button"
+            className="home-left-command-close"
+            onClick={() => setIsLeftOpen(false)}
+            aria-label="Close Base2 command menu"
+            tabIndex={isLeftOpen ? 0 : -1}
+            data-testid="base2-left-menu-close"
+          >
+            <ChevronLeft aria-hidden="true" />
+          </button>
         </div>
         <nav aria-label="Base2 page sections" className="home-left-command-list">
           {sectionItems.map((item) => {
@@ -361,8 +413,8 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
           <button
             type="button"
             className="home-movement-button home-movement-button-up"
-            onClick={() => moveSection(-1)}
-            onDoubleClick={() => scrollToEdge(true)}
+            onClick={() => queueSectionMove(-1)}
+            onDoubleClick={() => moveToEdgeNow(true)}
             aria-label="Scroll up to previous Base2 section"
             disabled={!canMoveUp}
             tabIndex={-1}
@@ -376,8 +428,8 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
           <button
             type="button"
             className="home-movement-button home-movement-button-down"
-            onClick={() => moveSection(1)}
-            onDoubleClick={() => scrollToEdge(false)}
+            onClick={() => queueSectionMove(1)}
+            onDoubleClick={() => moveToEdgeNow(false)}
             aria-label="Scroll down to next Base2 section"
             disabled={!canMoveDown}
             tabIndex={-1}
