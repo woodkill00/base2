@@ -55,7 +55,12 @@ export const GlassHeader: React.FC<Props> = ({
               padding: 'calc(0.75rem) calc(max(1rem, calc((100vw - 1200px) / 2)))',
             }}
           >
-            <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="flex items-center gap-2 text-left"
+              onClick={() => navigate('/')}
+              aria-label="Base2 home"
+            >
               <svg
                 width="32"
                 height="32"
@@ -81,8 +86,8 @@ export const GlassHeader: React.FC<Props> = ({
                   strokeLinejoin="round"
                 />
               </svg>
-              <span className="text-lg font-medium">SpecKit</span>
-            </div>
+              <span className="text-lg font-medium">Base2</span>
+            </button>
 
             <div className="flex items-center gap-3">
               <button
