@@ -212,7 +212,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
         <button
           type="button"
           className="home-left-command-backdrop"
-          aria-label="Close Base2 command menu backdrop"
+          aria-label="Dismiss Base2 command overlay"
           onClick={() => setIsLeftOpen(false)}
           data-testid="base2-left-menu-backdrop"
         />
