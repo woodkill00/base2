@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   ArrowDown,
@@ -100,30 +100,18 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   const [isLeftOpen, setIsLeftOpen] = useState(false);
   const [isRightOpen, setIsRightOpen] = useState(true);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [commandSearch, setCommandSearch] = useState('');
   const [navButtonsEnabled, setNavButtonsEnabled] = useState(true);
   const [activeSection, setActiveSection] = useState('home');
   const [activeUtilityIndex, setActiveUtilityIndex] = useState(4);
   const [scrollState, setScrollState] = useState(getScrollMetrics);
-  const commandInputRef = useRef(null);
-  const activeOverrideRef = useRef({ id: 'home', until: 0 });
 
   const visibleUtilityItems = useMemo(
     () => [...utilityItems, ...utilityItems, ...utilityItems],
     []
   );
-  const filteredCommandActions = useMemo(() => {
-    const needle = commandSearch.trim().toLowerCase();
-    if (!needle) return commandActions;
-    return commandActions.filter((action) => action.label.toLowerCase().includes(needle));
-  }, [commandSearch]);
 
   const updateScrollState = useCallback(() => {
     setScrollState(getScrollMetrics());
-    if (Date.now() < activeOverrideRef.current.until) {
-      setActiveSection(activeOverrideRef.current.id);
-      return;
-    }
     setActiveSection(readActiveSection());
   }, []);
 
@@ -153,18 +141,9 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  useEffect(() => {
-    if (!isCommandPaletteOpen) {
-      setCommandSearch('');
-      return;
-    }
-    window.setTimeout(() => commandInputRef.current?.focus(), 0);
-  }, [isCommandPaletteOpen]);
-
   const goToSection = useCallback(
     (id) => {
       const item = sectionItems.find((candidate) => candidate.id === id) || sectionItems[0];
-      activeOverrideRef.current = { id: item.id, until: Date.now() + 1200 };
       setActiveSection(item.id);
       setIsLeftOpen(false);
       setIsCommandPaletteOpen(false);
@@ -294,17 +273,11 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
           <div className="home-command-palette-surface">
             <div className="home-command-search-row">
               <Search aria-hidden="true" />
-              <input
-                ref={commandInputRef}
-                value={commandSearch}
-                onChange={(event) => setCommandSearch(event.target.value)}
-                placeholder="Search Base2 actions"
-                aria-label="Search Base2 actions"
-              />
+              <span>Search Base2 actions</span>
               <kbd>Esc</kbd>
             </div>
             <div className="home-command-palette-actions" role="menu">
-              {filteredCommandActions.map((action) => (
+              {commandActions.map((action) => (
                 <button
                   type="button"
                   key={action.id}
@@ -317,9 +290,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
                   <em>{action.safe ? 'Public safe' : 'Locked'}</em>
                 </button>
               ))}
-              {filteredCommandActions.length === 0 ? (
-                <p className="home-command-palette-empty">No public action found</p>
-              ) : null}
             </div>
           </div>
         </div>
