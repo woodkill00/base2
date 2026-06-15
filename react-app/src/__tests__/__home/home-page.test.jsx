@@ -107,8 +107,13 @@ test('provides volcanic left menu, right utility dial, and movement controls', a
 
   await user.click(leftToggle);
   expect(screen.getByRole('button', { name: /close base2 command menu/i })).toHaveAttribute('aria-expanded', 'true');
+  expect(screen.getByRole('button', { name: /collapse base2 command panel/i })).toBeInTheDocument();
   expect(screen.getByRole('navigation', { name: /base2 page sections/i })).toBeInTheDocument();
 
+  const rightToggle = screen.getByRole('button', { name: /open base2 utility menu/i });
+  expect(rightToggle).toHaveAttribute('aria-expanded', 'false');
+  expect(screen.queryByRole('listbox', { name: /base2 utility shortcuts/i })).not.toBeInTheDocument();
+  await user.click(rightToggle);
   expect(screen.getByRole('button', { name: /close base2 utility menu/i })).toHaveAttribute('aria-expanded', 'true');
   expect(screen.getByRole('listbox', { name: /base2 utility shortcuts/i })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /scroll down/i })).toBeInTheDocument();
