@@ -15,7 +15,7 @@ describe('GlassHeader extra coverage', () => {
     expect(screen.getByText('App Shell')).toBeInTheDocument();
   });
 
-  test('renders public search input when title is Home', async () => {
+  test('renders public Base2 brand and theme toggle when title is Home', async () => {
     const user = userEvent.setup();
     render(
       <TestMemoryRouter>
@@ -23,8 +23,9 @@ describe('GlassHeader extra coverage', () => {
       </TestMemoryRouter>
     );
 
-    // Public header should render brand + theme toggle.
-    expect(screen.getByText('SpecKit')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /base2 home/i })).toBeInTheDocument();
+    expect(screen.getByText('Base2')).toBeInTheDocument();
+    expect(screen.queryByText('SpecKit')).not.toBeInTheDocument();
     const btn = screen.getByRole('button', { name: /toggle theme/i });
     expect(btn).toBeInTheDocument();
     await act(async () => {
