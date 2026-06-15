@@ -248,7 +248,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
             type="button"
             className="home-left-command-close"
             onClick={() => setIsLeftOpen(false)}
-            aria-label="Close Base2 command menu"
+            aria-label="Collapse Base2 command panel"
             tabIndex={isLeftOpen ? 0 : -1}
             data-testid="base2-left-menu-close"
           >
