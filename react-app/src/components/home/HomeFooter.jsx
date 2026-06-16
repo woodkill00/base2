@@ -7,7 +7,7 @@ const footerLinks = [
 ];
 
 const HomeFooter = () => (
-  <footer className="base2-integrated-footer" data-testid="base2-footer">
+  <footer className="base2-integrated-footer" data-testid="base2-footer" aria-label="Footer">
     <div>
       <span className="base2-footer-mark">Base2</span>
       <p>Volcanic staging shell for managed agent delivery, review, and recovery.</p>
