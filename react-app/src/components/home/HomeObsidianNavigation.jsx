@@ -54,6 +54,30 @@ const commandActions = [
   { id: 'admin-debug', label: 'Admin diagnostics', safe: false },
 ];
 
+const colorSchemes = [
+  {
+    id: 'volcanic',
+    label: 'Volcanic',
+    primary: '#ff3131',
+    accent: '#ff6321',
+    surface: '#131313',
+  },
+  {
+    id: 'ember',
+    label: 'Ember',
+    primary: '#ff7a18',
+    accent: '#ffd166',
+    surface: '#17120f',
+  },
+  {
+    id: 'basalt',
+    label: 'Basalt',
+    primary: '#66e3ff',
+    accent: '#b5f7ff',
+    surface: '#101518',
+  },
+];
+
 const MOVEMENT_CLICK_DELAY_MS = 180;
 
 const findSection = (item) => {
@@ -104,7 +128,8 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [navButtonsEnabled, setNavButtonsEnabled] = useState(true);
   const [activeSection, setActiveSection] = useState('home');
-  const [activeUtilityIndex, setActiveUtilityIndex] = useState(4);
+  const [activeUtilitySlot, setActiveUtilitySlot] = useState(utilityItems.length + 4);
+  const [colorSchemeId, setColorSchemeId] = useState('volcanic');
   const [scrollState, setScrollState] = useState(getScrollMetrics);
   const movementClickTimer = useRef(null);
 
@@ -112,6 +137,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     () => [...utilityItems, ...utilityItems, ...utilityItems],
     []
   );
+  const activeColorScheme = colorSchemes.find((scheme) => scheme.id === colorSchemeId) || colorSchemes[0];
 
   const updateScrollState = useCallback(() => {
     setScrollState(getScrollMetrics());
@@ -184,9 +210,14 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     goToSection(target.id);
   };
 
-  const queueSectionMove = (direction) => {
+  const handleMovementClick = (direction, event) => {
     if (movementClickTimer.current) {
       window.clearTimeout(movementClickTimer.current);
+      movementClickTimer.current = null;
+    }
+    if (event.detail >= 2) {
+      scrollToEdge(direction < 0);
+      return;
     }
     movementClickTimer.current = window.setTimeout(() => {
       movementClickTimer.current = null;
@@ -194,20 +225,21 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     }, MOVEMENT_CLICK_DELAY_MS);
   };
 
-  const moveToEdgeNow = (top) => {
-    if (movementClickTimer.current) {
-      window.clearTimeout(movementClickTimer.current);
-      movementClickTimer.current = null;
-    }
-    scrollToEdge(top);
-  };
-
   const activeIndex = Math.max(0, sectionItems.findIndex((item) => item.id === activeSection));
   const canMoveUp = activeIndex > 0 && scrollState.canAscend;
   const canMoveDown = activeIndex < sectionItems.length - 1 && scrollState.canDescend;
 
   return (
-    <div className="home-obsidian-nav-layer" data-testid="base2-obsidian-navigation">
+    <div
+      className={`home-obsidian-nav-layer home-palette-${activeColorScheme.id}`}
+      style={{
+        '--obsidian-primary': activeColorScheme.primary,
+        '--obsidian-accent': activeColorScheme.accent,
+        '--obsidian-surface': activeColorScheme.surface,
+      }}
+      data-testid="base2-obsidian-navigation"
+      data-active-palette={activeColorScheme.id}
+    >
       {isLeftOpen ? (
         <button
           type="button"
@@ -329,6 +361,26 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
               <kbd>Esc</kbd>
             </div>
             <div className="home-command-palette-actions" role="menu">
+              <div className="home-command-palette-schemes" role="group" aria-label="Base2 color schemes">
+                {colorSchemes.map((scheme) => (
+                  <button
+                    type="button"
+                    key={scheme.id}
+                    className={scheme.id === colorSchemeId ? 'is-active' : ''}
+                    onClick={() => setColorSchemeId(scheme.id)}
+                    aria-pressed={scheme.id === colorSchemeId}
+                    aria-label={`Use ${scheme.label} color scheme`}
+                    data-testid={`base2-color-scheme-${scheme.id}`}
+                    style={{
+                      '--scheme-primary': scheme.primary,
+                      '--scheme-accent': scheme.accent,
+                    }}
+                  >
+                    <span>{scheme.label}</span>
+                    <em>{scheme.id === colorSchemeId ? 'Active' : 'Apply'}</em>
+                  </button>
+                ))}
+              </div>
               {commandActions.map((action) => (
                 <button
                   type="button"
@@ -365,11 +417,17 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
                 <span className={navButtonsEnabled ? 'is-on' : ''} />
               </button>
             </div>
-            <div className="home-right-utility-scroll" role="listbox" aria-label="Base2 utility shortcuts">
+            <div
+              className="home-right-utility-scroll"
+              role="listbox"
+              aria-label="Base2 utility shortcuts"
+              style={{ '--utility-selected-offset': `${activeUtilitySlot * 44 + 7}px` }}
+              data-testid="base2-right-utility-scroll"
+            >
               {visibleUtilityItems.map((item, index) => {
                 const Icon = item.icon;
                 const utilityIndex = index % utilityItems.length;
-                const isSelected = utilityIndex === activeUtilityIndex;
+                const isSelected = index === activeUtilitySlot;
                 return (
                   <button
                     type="button"
@@ -379,7 +437,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
                     aria-selected={isSelected}
                     disabled={!item.safe}
                     key={`${item.label}-${index}`}
-                    onClick={() => item.safe && setActiveUtilityIndex(utilityIndex)}
+                    onClick={() => item.safe && setActiveUtilitySlot(index)}
                     tabIndex={-1}
                     title={`${item.label}${item.safe ? '' : ' locked'}`}
                   >
@@ -406,15 +464,14 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       </div>
 
       {navButtonsEnabled ? (
-        <div className="home-bottom-movement-controls" data-testid="base2-bottom-movement-controls">
+        <div className="home-bottom-movement-controls" data-testid="base2-bottom-movement-controls" data-active-section={activeSection}>
           <output className="home-active-section-output" data-testid="base2-section-active">
             {activeSection}
           </output>
           <button
             type="button"
             className="home-movement-button home-movement-button-up"
-            onClick={() => queueSectionMove(-1)}
-            onDoubleClick={() => moveToEdgeNow(true)}
+            onClick={(event) => handleMovementClick(-1, event)}
             aria-label="Scroll up to previous Base2 section"
             disabled={!canMoveUp}
             tabIndex={-1}
@@ -428,8 +485,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
           <button
             type="button"
             className="home-movement-button home-movement-button-down"
-            onClick={() => queueSectionMove(1)}
-            onDoubleClick={() => moveToEdgeNow(false)}
+            onClick={(event) => handleMovementClick(1, event)}
             aria-label="Scroll down to next Base2 section"
             disabled={!canMoveDown}
             tabIndex={-1}
