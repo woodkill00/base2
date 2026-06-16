@@ -78,7 +78,9 @@ test('home page volcanic navigation controls move by sections and reveal menus',
   await expect(page.getByTestId('base2-left-menu-toggle')).toBeVisible();
   await page.getByTestId('base2-left-menu-toggle').click();
   await expect(page.getByTestId('base2-left-command-menu')).toHaveClass(/is-open/);
+  await expect(page.getByTestId('base2-left-command-menu')).toHaveCSS('overflow-y', /auto|scroll/);
   await expect(page.getByTestId('base2-left-menu-close')).toBeVisible();
+  await expect(page.getByTestId('base2-left-menu-close')).not.toHaveCSS('animation-name', 'none');
   await page.getByTestId('base2-left-menu-close').click();
   await expect(page.getByTestId('base2-left-command-menu')).not.toHaveClass(/is-open/);
   await page.getByTestId('base2-left-menu-toggle').click();
@@ -90,6 +92,8 @@ test('home page volcanic navigation controls move by sections and reveal menus',
 
   await page.getByTestId('base2-section-nav-security').click();
   await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain('security');
+  await expect(page.getByTestId('base2-section-active')).toBeHidden();
+  await expect(page.getByTestId('base2-bottom-movement-controls')).toHaveAttribute('data-active-section', 'security');
   await expect(page.getByTestId('base2-section-nav-security')).toHaveAttribute('aria-current', 'location');
 
   await page.getByTestId('base2-scroll-ascend').click();
@@ -101,6 +105,10 @@ test('home page volcanic navigation controls move by sections and reveal menus',
   await expect(page.getByTestId('base2-right-utility-menu')).toHaveClass(/is-open/);
   await expect(page.getByTestId('base2-right-utility-icons')).toBeVisible();
   await expect(page.getByTestId('base2-right-utility-icons')).toHaveCSS('overflow-y', /auto|scroll/);
+  const initialRingTop = await page.getByTestId('base2-right-utility-scroll').evaluate((el) => getComputedStyle(el, '::before').top);
+  await page.getByRole('option', { name: /Base2 utility: Search/i }).first().click();
+  const movedRingTop = await page.getByTestId('base2-right-utility-scroll').evaluate((el) => getComputedStyle(el, '::before').top);
+  expect(movedRingTop).not.toBe(initialRingTop);
   await page.getByTestId('base2-scroll-descend').dblclick();
   await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain('contact');
   await page.getByTestId('base2-scroll-ascend').dblclick();
@@ -113,6 +121,19 @@ test('command palette and utility rail expose only safe public actions', async (
   await page.getByTestId('base2-left-menu-toggle').click();
   await page.getByTestId('base2-command-palette-open').click();
   await expect(page.getByTestId('base2-command-palette')).toBeVisible();
+  await expect(page.getByTestId('base2-color-scheme-volcanic')).toHaveAttribute('aria-pressed', 'true');
+  await page.getByTestId('base2-color-scheme-basalt').click();
+  await expect(page.getByTestId('base2-obsidian-navigation')).toHaveAttribute('data-active-palette', 'basalt');
+  await expect(page.getByTestId('base2-color-scheme-basalt')).toHaveAttribute('aria-pressed', 'true');
+  const navPalette = await page.getByTestId('base2-obsidian-navigation').evaluate((el) => {
+    const styles = getComputedStyle(el);
+    return {
+      primary: styles.getPropertyValue('--obsidian-primary').trim(),
+      accent: styles.getPropertyValue('--obsidian-accent').trim(),
+    };
+  });
+  expect(navPalette.primary.toLowerCase()).toBe('#66e3ff');
+  expect(navPalette.accent.toLowerCase()).toBe('#b5f7ff');
   await expect(page.getByRole('menuitem', { name: /admin diagnostics/i })).toBeDisabled();
   await page.getByRole('menuitem', { name: /inspect security surface/i }).click();
   await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain('security');
