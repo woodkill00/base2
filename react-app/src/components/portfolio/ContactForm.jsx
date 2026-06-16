@@ -1,138 +1,65 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { fadeUpBlur } from '../../lib/motion';
-import GlassCard from '../glass/GlassCard';
-import GlassInput from '../glass/GlassInput';
-import GlassButton from '../glass/GlassButton';
+import { CheckCircle2, MessageSquare, Send, ShieldCheck } from 'lucide-react';
 
 const ContactForm = () => {
-  const [form, setForm] = useState({ name: '', email: '', message: '' });
-  const [error, setError] = useState('');
-  const onChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
-  const onSubmit = (e) => {
-    e.preventDefault();
-    if (!form.email || !form.message) {
-      setError('Email and message are required');
-      return;
-    }
-    setError('');
-    // no-op submit
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    setSubmitted(true);
   };
 
   return (
-    <section aria-labelledby="contact-title" style={styles.section}>
-      <motion.div
-        initial={fadeUpBlur.initial}
-        animate={fadeUpBlur.animate}
-        transition={fadeUpBlur.transition}
-      >
-        <h2 id="contact-title" style={styles.title}>
-          Contact
-        </h2>
-        <GlassCard>
-          <form onSubmit={onSubmit} style={styles.form}>
-            <GlassInput
-              id="c-name"
-              name="name"
-              type="text"
-              value={form.name}
-              onChange={onChange}
-              placeholder="Your name"
-            />
-            <GlassInput
-              id="c-email"
-              name="email"
-              type="email"
-              value={form.email}
-              onChange={onChange}
-              placeholder="Your email"
-              ariaInvalid={error ? 'true' : 'false'}
-            />
-            <div className="glass" style={styles.textareaWrap}>
-              <label htmlFor="c-message" className="glass-input-label">
-                Message
-              </label>
-              <textarea
-                id="c-message"
-                name="message"
-                value={form.message}
-                onChange={onChange}
-                placeholder="Tell me about your project…"
-                style={styles.textarea}
-                aria-invalid={error ? 'true' : 'false'}
-              />
-              {error ? (
-                <div className="glass-input-error" role="alert">
-                  {error}
-                </div>
-              ) : null}
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                gap: '0.75rem',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <SocialOrbs />
-              <GlassButton type="submit" variant="primary" className="glass-pill">
-                Send
-              </GlassButton>
-            </div>
-          </form>
-        </GlassCard>
-      </motion.div>
-    </section>
+    <motion.section
+      id="contact"
+      className="base2-integrated-section base2-integrated-contact"
+      data-testid="base2-contact-section"
+      initial={{ opacity: 0, y: 28 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.18 }}
+      transition={{ duration: 0.55 }}
+    >
+      <div className="base2-integrated-copy">
+        <span className="base2-section-kicker">Handoff</span>
+        <h2>Keep feedback actionable for the next agent pass.</h2>
+        <p>
+          Use this surface to describe what still looks wrong, which screen size it affects, and
+          what acceptance proof should be attached to the next run.
+        </p>
+        <div className="base2-contact-proof">
+          <span><ShieldCheck aria-hidden="true" /> Secrets redacted</span>
+          <span><MessageSquare aria-hidden="true" /> Discord report ready</span>
+          <span><CheckCircle2 aria-hidden="true" /> Staging cert mode</span>
+        </div>
+      </div>
+      <form className="base2-feedback-form" onSubmit={handleSubmit}>
+        <label>
+          Name
+          <input name="name" autoComplete="name" placeholder="Project reviewer" />
+        </label>
+        <label>
+          Email
+          <input name="email" type="email" autoComplete="email" placeholder="reviewer@example.com" />
+        </label>
+        <label>
+          Feedback
+          <textarea
+            name="message"
+            rows="5"
+            placeholder="Describe the visual or behavior issue the team should fix next."
+          />
+        </label>
+        <button type="submit">
+          <Send aria-hidden="true" />
+          Send review note
+        </button>
+        <p className="base2-form-status" role="status">
+          {submitted ? 'Review note staged for the next team report.' : 'No credentials or private data belong in feedback.'}
+        </p>
+      </form>
+    </motion.section>
   );
-};
-
-const SocialOrbs = () => (
-  <div aria-label="Social links" style={{ display: 'flex', gap: '0.5rem' }}>
-    {[
-      { label: 'Twitter', icon: '🐦', href: '#' },
-      { label: 'GitHub', icon: '💻', href: '#' },
-      { label: 'LinkedIn', icon: '🔗', href: '#' },
-    ].map((s) => (
-      <a
-        key={s.label}
-        href={s.href}
-        aria-label={s.label}
-        className="glass glass-pill"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '2.25rem',
-          height: '2.25rem',
-        }}
-      >
-        <span role="img" aria-label={s.label}>
-          {s.icon}
-        </span>
-      </a>
-    ))}
-  </div>
-);
-
-const styles = {
-  section: { padding: 'var(--space) 1rem' },
-  title: { textAlign: 'center', marginBottom: 'var(--space)' },
-  form: { display: 'grid', gap: '0.75rem' },
-  textareaWrap: {
-    display: 'grid',
-    gap: '0.5rem',
-    borderRadius: 'var(--radius)',
-    padding: '0.5rem',
-  },
-  textarea: {
-    minHeight: 'clamp(120px, 20vw, 180px)',
-    border: '1px solid var(--glass-border)',
-    borderRadius: '8px',
-    padding: '8px',
-    background: 'transparent',
-    color: 'inherit',
-  },
 };
 
 export default ContactForm;
