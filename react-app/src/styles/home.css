@@ -1431,6 +1431,7 @@
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+  font-size: 10px;
 }
 
 .home-movement-button:disabled {
