@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { Activity, GitBranch, ShieldCheck, TerminalSquare } from 'lucide-react';
 
 const operatingPoints = [
@@ -25,14 +24,10 @@ const operatingPoints = [
 ];
 
 const About = () => (
-  <motion.section
+  <section
     id="about"
     className="base2-integrated-section base2-integrated-about"
     data-testid="base2-about-section"
-    initial={{ opacity: 0, y: 28 }}
-    whileInView={{ opacity: 1, y: 0 }}
-    viewport={{ once: true, amount: 0.22 }}
-    transition={{ duration: 0.55 }}
   >
     <div className="base2-integrated-copy">
       <span className="base2-section-kicker">About Base2</span>
@@ -52,7 +47,7 @@ const About = () => (
         </article>
       ))}
     </div>
-  </motion.section>
+  </section>
 );
 
 export default About;
