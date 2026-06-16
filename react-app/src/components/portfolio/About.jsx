@@ -1,72 +1,58 @@
 import { motion } from 'framer-motion';
-import { fadeUpBlur } from '../../lib/motion';
-import GlassCard from '../glass/GlassCard';
+import { Activity, GitBranch, ShieldCheck, TerminalSquare } from 'lucide-react';
 
-const About = () => {
-  return (
-    <section aria-labelledby="about-title" style={styles.section}>
-      <motion.div
-        initial={fadeUpBlur.initial}
-        animate={fadeUpBlur.animate}
-        transition={fadeUpBlur.transition}
-      >
-        <h2 id="about-title" style={styles.title}>
-          About
-        </h2>
-        <GlassCard>
-          <div style={styles.container}>
-            <div style={styles.avatarWrap} aria-hidden="true">
-              <div style={styles.avatar} className="glass" />
-            </div>
-            <div style={styles.content}>
-              <p style={styles.text}>
-                I’m Woodkill Dev — building clean, accessible, and modern interfaces with a focus on
-                performance, motion, and glassmorphism aesthetics.
-              </p>
-              <div style={styles.skillsWrap}>
-                <div role="list" aria-label="Skills" style={styles.skillsList}>
-                  {['React', 'TypeScript', 'Tailwind', 'Framer Motion', 'A11y', 'Jest/RTL'].map(
-                    (s) => (
-                      <span
-                        role="listitem"
-                        key={s}
-                        className="glass glass-pill"
-                        style={styles.skill}
-                      >
-                        {s}
-                      </span>
-                    )
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </GlassCard>
-      </motion.div>
-    </section>
-  );
-};
+const operatingPoints = [
+  {
+    icon: GitBranch,
+    label: 'Repo-aware work',
+    text: 'Feature branches, review gates, and rollback notes stay attached to every Base2 change.',
+  },
+  {
+    icon: TerminalSquare,
+    label: 'Scripted delivery',
+    text: 'Build, deploy, and smoke-test steps are visible before the team touches a live target.',
+  },
+  {
+    icon: ShieldCheck,
+    label: 'Credential safe',
+    text: 'Secrets stay in scoped Vaultwarden references; reports only show redacted proof.',
+  },
+  {
+    icon: Activity,
+    label: 'Live health',
+    text: 'Capacity, cert mode, service status, and visual checks are tracked during every run.',
+  },
+];
 
-const styles = {
-  section: { padding: 'var(--space) 1rem' },
-  title: { textAlign: 'center', marginBottom: 'var(--space)' },
-  container: {
-    display: 'grid',
-    gap: 'var(--space)',
-    gridTemplateColumns: '1fr',
-    alignItems: 'center',
-  },
-  avatarWrap: { display: 'flex', justifyContent: 'center' },
-  avatar: {
-    width: 'clamp(96px, 20vw, 140px)',
-    height: 'clamp(96px, 20vw, 140px)',
-    borderRadius: '9999px',
-  },
-  content: { display: 'grid', gap: 'calc(var(--space) * 0.75)' },
-  text: { margin: 0, opacity: 0.9 },
-  skillsWrap: { overflowX: 'auto' },
-  skillsList: { display: 'flex', gap: '0.75rem', padding: '0.25rem', alignItems: 'center' },
-  skill: { padding: '0.4rem 0.8rem', whiteSpace: 'nowrap' },
-};
+const About = () => (
+  <motion.section
+    id="about"
+    className="base2-integrated-section base2-integrated-about"
+    data-testid="base2-about-section"
+    initial={{ opacity: 0, y: 28 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true, amount: 0.22 }}
+    transition={{ duration: 0.55 }}
+  >
+    <div className="base2-integrated-copy">
+      <span className="base2-section-kicker">About Base2</span>
+      <h2>Project teams that can ship without exposing the controls.</h2>
+      <p>
+        Base2 keeps the development surface organized around approved branches, scoped secrets,
+        staging-first deploys, and readable operational proof. The visual shell should feel like the
+        same volcanic command center from the hero all the way through the final handoff.
+      </p>
+    </div>
+    <div className="base2-integrated-grid" aria-label="Base2 operating model">
+      {operatingPoints.map(({ icon: Icon, label, text }) => (
+        <article className="base2-integrated-card" key={label}>
+          <Icon aria-hidden="true" />
+          <h3>{label}</h3>
+          <p>{text}</p>
+        </article>
+      ))}
+    </div>
+  </motion.section>
+);
 
 export default About;
