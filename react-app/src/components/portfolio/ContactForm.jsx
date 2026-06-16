@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import { CheckCircle2, MessageSquare, Send, ShieldCheck } from 'lucide-react';
 
 const ContactForm = () => {
@@ -11,14 +10,10 @@ const ContactForm = () => {
   };
 
   return (
-    <motion.section
+    <section
       id="contact"
       className="base2-integrated-section base2-integrated-contact"
       data-testid="base2-contact-section"
-      initial={{ opacity: 0, y: 28 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.18 }}
-      transition={{ duration: 0.55 }}
     >
       <div className="base2-integrated-copy">
         <span className="base2-section-kicker">Handoff</span>
@@ -58,7 +53,7 @@ const ContactForm = () => {
           {submitted ? 'Review note staged for the next team report.' : 'No credentials or private data belong in feedback.'}
         </p>
       </form>
-    </motion.section>
+    </section>
   );
 };
 
