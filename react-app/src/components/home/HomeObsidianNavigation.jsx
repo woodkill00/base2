@@ -426,7 +426,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
             >
               {visibleUtilityItems.map((item, index) => {
                 const Icon = item.icon;
-                const utilityIndex = index % utilityItems.length;
                 const isSelected = index === activeUtilitySlot;
                 return (
                   <button
