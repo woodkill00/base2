@@ -1172,16 +1172,26 @@
 
 .home-left-command-menu {
   z-index: 9000;
+  max-height: min(76vh, 620px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 99, 33, 0.58) rgba(255, 255, 255, 0.08);
 }
 
 .home-left-command-title {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  padding-right: 42px;
 }
 
 .home-left-command-close {
+  position: absolute;
+  top: -4px;
+  right: -2px;
   width: 30px;
   height: 30px;
   display: grid;
@@ -1191,12 +1201,25 @@
   background: rgba(255, 49, 49, 0.1);
   color: var(--obsidian-text);
   cursor: pointer;
+  animation: base2-command-close-pulse 1.4s ease-in-out infinite;
 }
 
 .home-left-command-close:hover,
 .home-left-command-close:focus-visible {
   border-color: rgba(255, 99, 33, 0.58);
   background: rgba(255, 99, 33, 0.18);
+}
+
+@keyframes base2-command-close-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 99, 33, 0.38);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgba(255, 99, 33, 0);
+    transform: scale(1.08);
+  }
 }
 
 .home-left-command-list button.is-active {
@@ -1269,6 +1292,34 @@
   padding: 8px;
 }
 
+.home-command-palette-schemes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 4px 0 10px;
+}
+
+.home-command-palette-schemes button {
+  position: relative;
+  min-height: 48px;
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background:
+    linear-gradient(90deg, var(--scheme-primary), var(--scheme-accent)) left top / 100% 3px no-repeat,
+    rgba(255, 255, 255, 0.04);
+  color: var(--obsidian-text);
+}
+
+.home-command-palette-schemes button.is-active {
+  border-color: var(--obsidian-accent);
+  background:
+    linear-gradient(90deg, var(--scheme-primary), var(--scheme-accent)) left top / 100% 4px no-repeat,
+    rgba(255, 99, 33, 0.14);
+}
+
 .home-command-palette-actions button {
   min-height: 48px;
   display: flex;
@@ -1303,14 +1354,32 @@
 
 .home-right-utility-icon {
   position: relative;
+  min-height: 44px;
 }
 
 .home-right-utility-scroll {
+  position: relative;
   max-height: min(58vh, 430px);
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 99, 33, 0.58) rgba(255, 255, 255, 0.08);
+}
+
+.home-right-utility-scroll::before {
+  content: "";
+  position: absolute;
+  top: var(--utility-selected-offset, 183px);
+  left: 50%;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  border: 2px solid var(--obsidian-accent);
+  border-radius: 999px;
+  box-shadow: 0 0 18px rgba(255, 99, 33, 0.4);
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition: top 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
 }
 
 .home-right-utility-scroll::-webkit-scrollbar {
@@ -1353,15 +1422,15 @@
 }
 
 .home-active-section-output {
-  min-width: 76px;
-  padding: 4px 7px;
-  border: 1px solid rgba(255, 99, 33, 0.3);
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.68);
-  color: var(--obsidian-accent);
-  font-size: 10px;
-  text-align: center;
-  text-transform: uppercase;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .home-movement-button:disabled {
@@ -1382,9 +1451,8 @@
   }
 
   .home-active-section-output {
-    min-width: 62px;
-    font-size: 10px;
-    line-height: 1.22;
+    width: 1px;
+    height: 1px;
   }
 
   .home-command-button,
