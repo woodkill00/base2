@@ -1439,6 +1439,249 @@
   cursor: not-allowed;
 }
 
+.base2-integrated-section {
+  width: min(1180px, calc(100% - 40px));
+  margin: 56px auto;
+  padding: clamp(26px, 4vw, 48px);
+  border: 1px solid rgba(255, 99, 33, 0.2);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 16% 4%, rgba(255, 49, 49, 0.16), transparent 34%),
+    linear-gradient(145deg, rgba(20, 20, 20, 0.96), rgba(5, 5, 5, 0.98));
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
+  color: var(--obsidian-text, #f7f1ee);
+}
+
+.base2-integrated-about,
+.base2-integrated-contact {
+  display: grid;
+  grid-template-columns: minmax(0, 0.86fr) minmax(320px, 1.14fr);
+  gap: clamp(22px, 4vw, 42px);
+  align-items: start;
+}
+
+.base2-integrated-copy {
+  display: grid;
+  gap: 14px;
+}
+
+.base2-section-kicker {
+  width: fit-content;
+  border: 1px solid rgba(255, 99, 33, 0.38);
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(255, 49, 49, 0.1);
+  color: var(--obsidian-accent, #ff6321);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.base2-integrated-copy h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: clamp(1.9rem, 3.6vw, 3rem);
+  line-height: 1.02;
+  letter-spacing: 0;
+}
+
+.base2-integrated-copy p,
+.base2-integrated-card p,
+.base2-module-card p,
+.base2-integrated-footer p,
+.base2-form-status {
+  color: rgba(247, 241, 238, 0.76);
+  line-height: 1.65;
+}
+
+.base2-integrated-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.base2-integrated-card,
+.base2-module-card,
+.base2-feedback-form {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.025));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.base2-integrated-card {
+  min-height: 168px;
+  padding: 18px;
+}
+
+.base2-integrated-card svg,
+.base2-module-icon svg,
+.base2-contact-proof svg,
+.base2-feedback-form button svg,
+.base2-footer-proof svg {
+  width: 18px;
+  height: 18px;
+  color: var(--obsidian-accent, #ff6321);
+}
+
+.base2-integrated-card h3,
+.base2-module-card h3 {
+  margin: 14px 0 8px;
+  color: #ffffff;
+  font-size: 1rem;
+  letter-spacing: 0;
+}
+
+.base2-module-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 28px;
+}
+
+.base2-module-card {
+  min-height: 250px;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.base2-module-card::after {
+  content: "";
+  position: absolute;
+  inset: auto 18px 0 18px;
+  height: 3px;
+  border-radius: 999px 999px 0 0;
+  background: linear-gradient(90deg, rgba(255, 49, 49, 0.1), rgba(255, 99, 33, 0.82));
+}
+
+.base2-module-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 99, 33, 0.28);
+  border-radius: 8px;
+  background: rgba(255, 49, 49, 0.1);
+}
+
+.base2-module-tags,
+.base2-contact-proof,
+.base2-footer-proof {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.base2-module-tags span,
+.base2-contact-proof span,
+.base2-footer-proof span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 99, 33, 0.22);
+  border-radius: 999px;
+  padding: 6px 9px;
+  background: rgba(255, 255, 255, 0.045);
+  color: rgba(247, 241, 238, 0.82);
+  font-size: 10px;
+}
+
+.base2-feedback-form {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+
+.base2-feedback-form label {
+  display: grid;
+  gap: 7px;
+  color: rgba(247, 241, 238, 0.88);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.base2-feedback-form input,
+.base2-feedback-form textarea {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  padding: 12px 13px;
+  background: rgba(0, 0, 0, 0.32);
+  color: #ffffff;
+  font: inherit;
+}
+
+.base2-feedback-form input:focus,
+.base2-feedback-form textarea:focus {
+  outline: 2px solid rgba(255, 99, 33, 0.34);
+  border-color: rgba(255, 99, 33, 0.68);
+}
+
+.base2-feedback-form button {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid rgba(255, 99, 33, 0.5);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(255, 49, 49, 0.86), rgba(255, 99, 33, 0.86));
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.base2-form-status {
+  min-height: 24px;
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.base2-integrated-footer {
+  width: min(1180px, calc(100% - 40px));
+  margin: 58px auto 30px;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto minmax(260px, 0.9fr);
+  gap: 20px;
+  align-items: center;
+  border-top: 1px solid rgba(255, 99, 33, 0.24);
+  padding: 24px 0 4px;
+  color: rgba(247, 241, 238, 0.82);
+}
+
+.base2-footer-mark {
+  display: block;
+  margin-bottom: 8px;
+  color: #ffffff;
+  font-size: 1.4rem;
+  font-weight: 900;
+}
+
+.base2-integrated-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+.base2-integrated-footer a {
+  color: rgba(247, 241, 238, 0.78);
+  text-decoration: none;
+}
+
+.base2-integrated-footer a:hover,
+.base2-integrated-footer a:focus-visible {
+  color: var(--obsidian-accent, #ff6321);
+}
+
+.base2-footer-proof {
+  justify-content: flex-end;
+}
+
 @media (max-width: 720px) {
   .home-right-utility-menu {
     top: min(62vh, 520px);
@@ -1468,5 +1711,36 @@
   .home-movement-label {
     font-size: 10px;
     line-height: 1.25;
+  }
+
+  .base2-integrated-section {
+    width: min(100% - 20px, 680px);
+    margin: 28px auto;
+    padding: 22px 16px;
+  }
+
+  .base2-integrated-about,
+  .base2-integrated-contact,
+  .base2-module-grid,
+  .base2-integrated-footer {
+    grid-template-columns: 1fr;
+  }
+
+  .base2-integrated-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .base2-module-card {
+    min-height: auto;
+  }
+
+  .base2-integrated-footer {
+    width: min(100% - 20px, 680px);
+    justify-items: start;
+  }
+
+  .base2-integrated-footer nav,
+  .base2-footer-proof {
+    justify-content: flex-start;
   }
 }
