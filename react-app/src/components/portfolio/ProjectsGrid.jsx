@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { Eye, Gauge, GitPullRequest, RotateCcw, ServerCog, TestTube2 } from 'lucide-react';
 
 const modules = [
@@ -41,14 +40,10 @@ const modules = [
 ];
 
 const ProjectsGrid = () => (
-  <motion.section
+  <section
     id="projects"
     className="base2-integrated-section base2-integrated-projects"
     data-testid="base2-projects-section"
-    initial={{ opacity: 0, y: 28 }}
-    whileInView={{ opacity: 1, y: 0 }}
-    viewport={{ once: true, amount: 0.16 }}
-    transition={{ duration: 0.55 }}
   >
     <div className="base2-integrated-copy">
       <span className="base2-section-kicker">Operational modules</span>
@@ -74,7 +69,7 @@ const ProjectsGrid = () => (
         </article>
       ))}
     </div>
-  </motion.section>
+  </section>
 );
 
 export default ProjectsGrid;
