@@ -117,10 +117,28 @@ test('home page volcanic navigation controls move by sections and reveal menus',
   await expect(page.getByTestId('base2-right-utility-menu')).toHaveClass(/is-open/);
   await expect(page.getByTestId('base2-right-utility-icons')).toBeVisible();
   await expect(page.getByTestId('base2-right-utility-icons')).toHaveCSS('overflow-y', /auto|scroll/);
-  const initialRingTop = await page.getByTestId('base2-right-utility-scroll').evaluate((el) => getComputedStyle(el, '::before').top);
+  const utilityScroll = page.getByTestId('base2-right-utility-scroll');
+  const initialRing = await utilityScroll.evaluate((el) => {
+    const ring = getComputedStyle(el, '::before');
+    return {
+      top: ring.top,
+      radius: ring.borderRadius,
+      width: ring.width,
+      height: ring.height,
+    };
+  });
+  expect(initialRing.radius).not.toBe('999px');
   await page.getByRole('option', { name: /Base2 utility: Search/i }).first().click();
-  const movedRingTop = await page.getByTestId('base2-right-utility-scroll').evaluate((el) => getComputedStyle(el, '::before').top);
-  expect(movedRingTop).not.toBe(initialRingTop);
+  const movedRing = await utilityScroll.evaluate((el) => getComputedStyle(el, '::before').top);
+  expect(movedRing).not.toBe(initialRing.top);
+  await utilityScroll.evaluate((el) => {
+    el.scrollTop += 58;
+    el.dispatchEvent(new Event('scroll', { bubbles: true }));
+  });
+  await expect.poll(async () => {
+    const selected = await page.locator('[role="option"][aria-selected="true"]').first().getAttribute('aria-label');
+    return selected || '';
+  }).not.toContain('Search');
   await page.getByTestId('base2-scroll-descend').dblclick();
   await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain('contact');
   await page.getByTestId('base2-scroll-ascend').dblclick();
@@ -151,7 +169,7 @@ test('command palette and utility rail expose only safe public actions', async (
   await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain('security');
 
   const lockedUtility = page.getByRole('option', { name: /automation unavailable/i }).first();
-  await expect(lockedUtility).toBeDisabled();
+  await expect(lockedUtility).toHaveAttribute('aria-disabled', 'true');
   await page.getByRole('option', { name: /Base2 utility: Search/i }).first().click();
   await expect(page.getByRole('option', { name: /Base2 utility: Search/i }).first()).toHaveAttribute('aria-selected', 'true');
 });
