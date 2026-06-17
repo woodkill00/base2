@@ -79,6 +79,11 @@ const colorSchemes = [
 ];
 
 const MOVEMENT_CLICK_DELAY_MS = 180;
+const UTILITY_SELECTOR_FALLBACK = {
+  top: '183px',
+  width: '42px',
+  height: '42px',
+};
 
 const findSection = (item) => {
   if (typeof document === 'undefined') return null;
@@ -129,9 +134,13 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   const [navButtonsEnabled, setNavButtonsEnabled] = useState(true);
   const [activeSection, setActiveSection] = useState('home');
   const [activeUtilitySlot, setActiveUtilitySlot] = useState(utilityItems.length + 4);
+  const [utilitySelectorStyle, setUtilitySelectorStyle] = useState(UTILITY_SELECTOR_FALLBACK);
   const [colorSchemeId, setColorSchemeId] = useState('volcanic');
   const [scrollState, setScrollState] = useState(getScrollMetrics);
   const movementClickTimer = useRef(null);
+  const utilityScrollRef = useRef(null);
+  const utilityItemRefs = useRef([]);
+  const utilityScrollFrame = useRef(null);
 
   const visibleUtilityItems = useMemo(
     () => [...utilityItems, ...utilityItems, ...utilityItems],
@@ -143,6 +152,41 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     setScrollState(getScrollMetrics());
     setActiveSection(readActiveSection());
   }, []);
+
+  const updateUtilitySelectionFromScroll = useCallback(() => {
+    const scrollEl = utilityScrollRef.current;
+    if (!scrollEl || typeof window === 'undefined') return;
+
+    if (utilityScrollFrame.current) {
+      window.cancelAnimationFrame(utilityScrollFrame.current);
+    }
+
+    utilityScrollFrame.current = window.requestAnimationFrame(() => {
+      utilityScrollFrame.current = null;
+      const viewportCenter = scrollEl.scrollTop + scrollEl.clientHeight / 2;
+      let nextSlot = activeUtilitySlot;
+      let nearestDistance = Number.POSITIVE_INFINITY;
+
+      utilityItemRefs.current.forEach((itemEl, index) => {
+        if (!itemEl) return;
+        const itemCenter = itemEl.offsetTop + itemEl.offsetHeight / 2;
+        const distance = Math.abs(itemCenter - viewportCenter);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nextSlot = index;
+        }
+      });
+
+      const selectedEl = utilityItemRefs.current[nextSlot];
+      if (!selectedEl) return;
+      setActiveUtilitySlot(nextSlot);
+      setUtilitySelectorStyle({
+        top: `${selectedEl.offsetTop + Math.max(0, (selectedEl.offsetHeight - 42) / 2)}px`,
+        width: `${Math.max(42, Math.min(selectedEl.offsetWidth, 54))}px`,
+        height: `${Math.max(42, Math.min(selectedEl.offsetHeight, 54))}px`,
+      });
+    });
+  }, [activeUtilitySlot]);
 
   useEffect(() => {
     updateScrollState();
@@ -159,9 +203,30 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       if (movementClickTimer.current) {
         window.clearTimeout(movementClickTimer.current);
       }
+      if (utilityScrollFrame.current) {
+        window.cancelAnimationFrame(utilityScrollFrame.current);
+      }
     },
     []
   );
+
+  useEffect(() => {
+    const scrollEl = utilityScrollRef.current;
+    if (!isRightOpen || !scrollEl) return undefined;
+
+    updateUtilitySelectionFromScroll();
+    scrollEl.addEventListener('scroll', updateUtilitySelectionFromScroll, { passive: true });
+    window.addEventListener('resize', updateUtilitySelectionFromScroll);
+
+    return () => {
+      scrollEl.removeEventListener('scroll', updateUtilitySelectionFromScroll);
+      window.removeEventListener('resize', updateUtilitySelectionFromScroll);
+      if (utilityScrollFrame.current) {
+        window.cancelAnimationFrame(utilityScrollFrame.current);
+        utilityScrollFrame.current = null;
+      }
+    };
+  }, [isRightOpen, updateUtilitySelectionFromScroll]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -223,6 +288,26 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       movementClickTimer.current = null;
       moveSection(direction);
     }, MOVEMENT_CLICK_DELAY_MS);
+  };
+
+  const handleUtilitySelect = (index, item) => {
+    const selectedEl = utilityItemRefs.current[index];
+    const scrollEl = utilityScrollRef.current;
+    setActiveUtilitySlot(index);
+
+    if (selectedEl && scrollEl) {
+      setUtilitySelectorStyle({
+        top: `${selectedEl.offsetTop + Math.max(0, (selectedEl.offsetHeight - 42) / 2)}px`,
+        width: `${Math.max(42, Math.min(selectedEl.offsetWidth, 54))}px`,
+        height: `${Math.max(42, Math.min(selectedEl.offsetHeight, 54))}px`,
+      });
+      scrollEl.scrollTo({
+        top: selectedEl.offsetTop - (scrollEl.clientHeight - selectedEl.offsetHeight) / 2,
+        behavior: 'smooth',
+      });
+    }
+
+    if (!item.safe) return;
   };
 
   const activeIndex = Math.max(0, sectionItems.findIndex((item) => item.id === activeSection));
@@ -421,7 +506,12 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
               className="home-right-utility-scroll"
               role="listbox"
               aria-label="Base2 utility shortcuts"
-              style={{ '--utility-selected-offset': `${activeUtilitySlot * 44 + 7}px` }}
+              ref={utilityScrollRef}
+              style={{
+                '--utility-selected-offset': utilitySelectorStyle.top,
+                '--utility-selected-width': utilitySelectorStyle.width,
+                '--utility-selected-height': utilitySelectorStyle.height,
+              }}
               data-testid="base2-right-utility-scroll"
             >
               {visibleUtilityItems.map((item, index) => {
@@ -430,13 +520,16 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
                 return (
                   <button
                     type="button"
-                    className={`home-right-utility-icon ${isSelected ? 'is-active' : ''}`}
+                    className={`home-right-utility-icon ${isSelected ? 'is-active' : ''} ${item.safe ? '' : 'is-locked'}`}
                     role="option"
                     aria-label={`Base2 utility: ${item.label}${item.safe ? '' : ' unavailable on public site'}`}
                     aria-selected={isSelected}
-                    disabled={!item.safe}
+                    aria-disabled={!item.safe}
+                    ref={(node) => {
+                      utilityItemRefs.current[index] = node;
+                    }}
                     key={`${item.label}-${index}`}
-                    onClick={() => item.safe && setActiveUtilitySlot(index)}
+                    onClick={() => handleUtilitySelect(index, item)}
                     tabIndex={-1}
                     title={`${item.label}${item.safe ? '' : ' locked'}`}
                   >
