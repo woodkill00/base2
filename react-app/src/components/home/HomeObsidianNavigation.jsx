@@ -341,7 +341,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
         onClick={() => setIsLeftOpen((open) => !open)}
         aria-label={isLeftOpen ? 'Close Base2 command menu' : 'Open Base2 command menu'}
         aria-expanded={isLeftOpen}
-        tabIndex={-1}
         data-testid="base2-left-menu-toggle"
       >
         <span className="home-left-menu-pulse" aria-hidden="true" />
@@ -497,7 +496,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
                 onClick={() => setNavButtonsEnabled((enabled) => !enabled)}
                 aria-label="Toggle Base2 movement buttons"
                 aria-pressed={navButtonsEnabled}
-                tabIndex={-1}
               >
                 <span className={navButtonsEnabled ? 'is-on' : ''} />
               </button>
@@ -530,7 +528,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
                     }}
                     key={`${item.label}-${index}`}
                     onClick={() => handleUtilitySelect(index, item)}
-                    tabIndex={-1}
                     title={`${item.label}${item.safe ? '' : ' locked'}`}
                   >
                     <Icon aria-hidden="true" />
@@ -548,7 +545,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
           onClick={() => setIsRightOpen((open) => !open)}
           aria-label={isRightOpen ? 'Close Base2 utility menu' : 'Open Base2 utility menu'}
           aria-expanded={isRightOpen}
-          tabIndex={-1}
           data-testid="base2-right-utility-toggle"
         >
           <ChevronLeft aria-hidden="true" />
@@ -566,7 +562,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
             onClick={(event) => handleMovementClick(-1, event)}
             aria-label="Scroll up to previous Base2 section"
             disabled={!canMoveUp}
-            tabIndex={-1}
             data-testid="base2-scroll-ascend"
           >
             <span className="home-movement-progress" style={{ height: `${scrollState.progress}%` }} />
@@ -580,7 +575,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
             onClick={(event) => handleMovementClick(1, event)}
             aria-label="Scroll down to next Base2 section"
             disabled={!canMoveDown}
-            tabIndex={-1}
             data-testid="base2-scroll-descend"
           >
             <span className="home-movement-progress" style={{ height: `${scrollState.progress}%` }} />
