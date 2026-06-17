@@ -128,12 +128,15 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [navButtonsEnabled, setNavButtonsEnabled] = useState(true);
   const [activeSection, setActiveSection] = useState('home');
-  const [activeUtilitySlot, setActiveUtilitySlot] = useState(1);
+  const [activeUtilitySlot, setActiveUtilitySlot] = useState(utilityItems.length + 4);
   const [colorSchemeId, setColorSchemeId] = useState('volcanic');
   const [scrollState, setScrollState] = useState(getScrollMetrics);
   const movementClickTimer = useRef(null);
 
-  const visibleUtilityItems = useMemo(() => utilityItems, []);
+  const visibleUtilityItems = useMemo(
+    () => [...utilityItems, ...utilityItems, ...utilityItems],
+    []
+  );
   const activeColorScheme = colorSchemes.find((scheme) => scheme.id === colorSchemeId) || colorSchemes[0];
 
   const updateScrollState = useCallback(() => {
@@ -169,7 +172,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       if (event.key === 'Escape') {
         setIsCommandPaletteOpen(false);
         setIsLeftOpen(false);
-        setIsRightOpen(false);
       }
     };
 
@@ -397,41 +399,14 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
         </div>
       ) : null}
 
-      {isRightOpen ? (
-        <button
-          type="button"
-          className="home-right-utility-backdrop"
-          aria-label="Dismiss Base2 utility overlay"
-          data-testid="base2-right-menu-backdrop"
-          onClick={() => setIsRightOpen(false)}
-          tabIndex={-1}
-        />
-      ) : null}
-
       <div
         className={`home-right-utility-menu ${isRightOpen ? 'is-open' : ''}`}
         data-testid="base2-right-utility-menu"
       >
         {isRightOpen ? (
           <div className="home-right-utility-panel" data-testid="base2-right-utility-icons">
-            <div className="home-right-utility-header">
-              <div>
-                <span>Utilities</span>
-                <strong>Safe public actions</strong>
-              </div>
-              <button
-                type="button"
-                className="home-right-utility-close"
-                aria-label="Close Base2 utility drawer"
-                data-testid="base2-right-menu-close"
-                onClick={() => setIsRightOpen(false)}
-                tabIndex={-1}
-              >
-                <ChevronRight aria-hidden="true" />
-              </button>
-            </div>
             <div className="home-right-utility-nav-toggle">
-              <span>Page movement</span>
+              <span>Navigation</span>
               <button
                 type="button"
                 onClick={() => setNavButtonsEnabled((enabled) => !enabled)}
@@ -446,7 +421,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
               className="home-right-utility-scroll"
               role="listbox"
               aria-label="Base2 utility shortcuts"
-              style={{ '--utility-selected-offset': `${activeUtilitySlot * 50 + 7}px` }}
+              style={{ '--utility-selected-offset': `${activeUtilitySlot * 44 + 7}px` }}
               data-testid="base2-right-utility-scroll"
             >
               {visibleUtilityItems.map((item, index) => {
@@ -467,7 +442,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
                   >
                     <Icon aria-hidden="true" />
                     <span>{item.label}</span>
-                    {!item.safe ? <em>Locked</em> : null}
                   </button>
                 );
               })}
@@ -485,7 +459,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
           data-testid="base2-right-utility-toggle"
         >
           <ChevronLeft aria-hidden="true" />
-          <span>Utilities</span>
         </button>
       </div>
 
