@@ -142,6 +142,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   const utilityScrollRef = useRef(null);
   const utilityItemRefs = useRef([]);
   const utilityScrollFrame = useRef(null);
+  const utilitySnapTimer = useRef(null);
   const activeUtilitySlotRef = useRef(activeUtilitySlot);
 
   const visibleUtilityItems = useMemo(
@@ -159,7 +160,22 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     activeUtilitySlotRef.current = activeUtilitySlot;
   }, [activeUtilitySlot]);
 
-  const updateUtilitySelectionFromScroll = useCallback(() => {
+  const centerUtilitySlot = useCallback((index, behavior = 'auto') => {
+    const scrollEl = utilityScrollRef.current;
+    const selectedEl = utilityItemRefs.current[index];
+    if (!scrollEl || !selectedEl) return;
+
+    const iconEl = selectedEl.querySelector('svg');
+    const itemCenter = iconEl
+      ? selectedEl.offsetTop + iconEl.offsetTop + iconEl.offsetHeight / 2
+      : selectedEl.offsetTop + selectedEl.offsetHeight / 2;
+    scrollEl.scrollTo({
+      top: Math.max(0, itemCenter - scrollEl.clientHeight / 2),
+      behavior,
+    });
+  }, []);
+
+  const updateUtilitySelectionFromScroll = useCallback((shouldSettle = false) => {
     const scrollEl = utilityScrollRef.current;
     if (!scrollEl || typeof window === 'undefined') return;
 
@@ -208,8 +224,18 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
         width: '64px',
         height: '64px',
       });
+
+      if (shouldSettle) {
+        if (utilitySnapTimer.current) {
+          window.clearTimeout(utilitySnapTimer.current);
+        }
+        utilitySnapTimer.current = window.setTimeout(() => {
+          utilitySnapTimer.current = null;
+          centerUtilitySlot(nextSlot, 'smooth');
+        }, 120);
+      }
     });
-  }, []);
+  }, [centerUtilitySlot]);
 
   useEffect(() => {
     updateScrollState();
@@ -229,6 +255,9 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       if (utilityScrollFrame.current) {
         window.cancelAnimationFrame(utilityScrollFrame.current);
       }
+      if (utilitySnapTimer.current) {
+        window.clearTimeout(utilitySnapTimer.current);
+      }
     },
     []
   );
@@ -237,19 +266,21 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     const scrollEl = utilityScrollRef.current;
     if (!isRightOpen || !scrollEl) return undefined;
 
+    centerUtilitySlot(activeUtilitySlotRef.current, 'auto');
     updateUtilitySelectionFromScroll();
-    scrollEl.addEventListener('scroll', updateUtilitySelectionFromScroll, { passive: true });
+    const handleUtilityScroll = () => updateUtilitySelectionFromScroll(true);
+    scrollEl.addEventListener('scroll', handleUtilityScroll, { passive: true });
     window.addEventListener('resize', updateUtilitySelectionFromScroll);
 
     return () => {
-      scrollEl.removeEventListener('scroll', updateUtilitySelectionFromScroll);
+      scrollEl.removeEventListener('scroll', handleUtilityScroll);
       window.removeEventListener('resize', updateUtilitySelectionFromScroll);
       if (utilityScrollFrame.current) {
         window.cancelAnimationFrame(utilityScrollFrame.current);
         utilityScrollFrame.current = null;
       }
     };
-  }, [isRightOpen, updateUtilitySelectionFromScroll]);
+  }, [centerUtilitySlot, isRightOpen, updateUtilitySelectionFromScroll]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -337,20 +368,9 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
         width: '64px',
         height: '64px',
       });
-      scrollEl.scrollTo({
-        top: Math.max(0, iconTop + iconHeight / 2 - scrollEl.clientHeight / 2),
-        behavior: 'auto',
-      });
+      centerUtilitySlot(index, 'smooth');
       window.requestAnimationFrame(() => {
-        const updatedIcon = selectedEl.querySelector('svg');
-        const updatedScrollRect = scrollEl.getBoundingClientRect();
-        const updatedIconRect = updatedIcon ? updatedIcon.getBoundingClientRect() : null;
-        if (updatedIconRect) {
-          const iconCenter = updatedIconRect.top + updatedIconRect.height / 2;
-          const scrollCenter = updatedScrollRect.top + updatedScrollRect.height / 2;
-          scrollEl.scrollTop += iconCenter - scrollCenter;
-        }
-        window.requestAnimationFrame(updateUtilitySelectionFromScroll);
+        window.requestAnimationFrame(() => updateUtilitySelectionFromScroll(false));
       });
     }
 
@@ -358,7 +378,9 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   };
 
   const handleUtilityWheel = (event) => {
-    event.preventDefault();
+    if (event.cancelable) {
+      event.preventDefault();
+    }
     const direction = event.deltaY >= 0 ? 1 : -1;
     let nextIndex = activeUtilitySlotRef.current;
 
