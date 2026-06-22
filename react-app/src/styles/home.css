@@ -844,21 +844,6 @@
   overflow: hidden;
   position: relative;
 }
-
-.home-right-utility-scroll::before {
-  border: 2px solid var(--obsidian-primary);
-  border-radius: 0.8rem;
-  content: "";
-  height: 3rem;
-  left: 50%;
-  pointer-events: none;
-  position: absolute;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 3rem;
-  z-index: 0;
-}
-
 .home-right-utility-icon {
   align-items: center;
   display: flex;
