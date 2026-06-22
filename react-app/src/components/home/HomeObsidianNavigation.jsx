@@ -541,6 +541,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
               role="listbox"
               aria-label="Base2 utility shortcuts"
               ref={utilityScrollRef}
+              onScroll={updateUtilitySelectionFromScroll}
               style={{
                 '--utility-selected-offset': utilitySelectorStyle.top,
                 '--utility-selected-left': utilitySelectorStyle.left,
