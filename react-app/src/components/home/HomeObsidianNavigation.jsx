@@ -341,7 +341,17 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
         top: Math.max(0, iconTop + iconHeight / 2 - scrollEl.clientHeight / 2),
         behavior: 'auto',
       });
-      window.requestAnimationFrame(updateUtilitySelectionFromScroll);
+      window.requestAnimationFrame(() => {
+        const updatedIcon = selectedEl.querySelector('svg');
+        const updatedScrollRect = scrollEl.getBoundingClientRect();
+        const updatedIconRect = updatedIcon ? updatedIcon.getBoundingClientRect() : null;
+        if (updatedIconRect) {
+          const iconCenter = updatedIconRect.top + updatedIconRect.height / 2;
+          const scrollCenter = updatedScrollRect.top + updatedScrollRect.height / 2;
+          scrollEl.scrollTop += iconCenter - scrollCenter;
+        }
+        window.requestAnimationFrame(updateUtilitySelectionFromScroll);
+      });
     }
 
     if (!item.safe) return;
