@@ -197,10 +197,10 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       const iconWidth = iconRect ? iconRect.width : 26;
       setActiveUtilitySlot(nextSlot);
       setUtilitySelectorStyle({
-        top: `${iconTop + iconHeight / 2 - 27}px`,
+        top: `${iconTop + iconHeight / 2 - 30}px`,
         left: `${iconLeft + iconWidth / 2}px`,
-        width: '48px',
-        height: '54px',
+        width: '56px',
+        height: '60px',
       });
     });
   }, [activeUtilitySlot]);
