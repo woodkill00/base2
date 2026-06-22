@@ -1370,17 +1370,17 @@
 .home-right-utility-icon {
   position: relative;
   z-index: 3;
-  width: 48px;
-  min-height: 72px;
+  width: 72px;
+  min-height: 82px;
   margin-inline: auto;
-  padding: 6px 0 8px;
+  padding: 8px 6px 10px;
   border: 1px solid transparent;
   border-radius: 7px;
   display: grid;
-  grid-template-rows: 32px 1fr;
+  grid-template-rows: 36px 1fr;
   justify-items: center;
   align-items: start;
-  gap: 3px;
+  gap: 6px;
   overflow: visible;
   background: transparent;
   color: var(--obsidian-text);
@@ -1388,6 +1388,8 @@
 
 .home-right-utility-scroll {
   position: relative;
+  width: 96px;
+  padding: 8px 10px;
   max-height: min(54vh, 396px);
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -1397,7 +1399,7 @@
   flex-direction: column;
   align-items: center;
   scroll-snap-type: y mandatory;
-  scroll-padding-block: calc(50% - 36px);
+  scroll-padding-block: calc(50% - 41px);
 }
 
 .home-right-utility-scroll::before {
@@ -1406,11 +1408,12 @@
   top: var(--utility-selected-offset, 183px);
   left: var(--utility-selected-left, 50%);
   z-index: 2;
-  width: var(--utility-selected-width, 42px);
-  height: var(--utility-selected-height, 42px);
+  width: var(--utility-selected-width, 56px);
+  height: var(--utility-selected-height, 60px);
   border: 2px solid var(--obsidian-accent);
   border-radius: 7px;
-  box-shadow: 0 0 18px rgba(255, 99, 33, 0.4);
+  background: linear-gradient(180deg, rgba(255, 99, 33, 0.11), rgba(255, 49, 49, 0.04));
+  box-shadow: 0 0 22px rgba(255, 99, 33, 0.42), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   pointer-events: none;
   transform: translateX(-50%);
   transition: top 160ms ease, width 160ms ease, height 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
@@ -1427,20 +1430,22 @@
 
 .home-right-utility-icon span {
   position: static;
-  max-width: 124px;
-  padding: 2px 6px;
+  max-width: 78px;
+  min-width: 46px;
+  padding: 3px 6px;
   border: 1px solid rgba(255, 99, 33, 0.28);
   border-radius: 6px;
   background: rgba(8, 8, 8, 0.94);
   color: var(--obsidian-text);
-  font-size: 10px;
-  line-height: 1.1;
+  font-size: 9px;
+  line-height: 1.15;
   text-align: center;
   opacity: 1;
   pointer-events: none;
   transform: translateY(0);
   transition: opacity 160ms ease, transform 160ms ease;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .home-right-utility-icon:hover span,
@@ -1457,16 +1462,19 @@
 }
 
 .home-right-utility-icon.is-active {
-  border-color: rgba(255, 99, 33, 0.55);
-  background: rgba(255, 99, 33, 0.16);
+  border-color: rgba(255, 99, 33, 0.72);
+  background: linear-gradient(180deg, rgba(255, 99, 33, 0.2), rgba(255, 49, 49, 0.08));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 8px 20px rgba(255, 49, 49, 0.14);
 }
 
 .home-right-utility-icon svg {
   transition: transform 160ms ease;
+  width: 24px;
+  height: 24px;
 }
 
 .home-right-utility-icon.is-active svg {
-  transform: scale(1.18);
+  transform: scale(1.26);
 }
 
 .home-active-section-output {
@@ -1767,11 +1775,15 @@
   }
 
   .home-right-utility-scroll {
-    max-height: min(32vh, 236px);
+    width: 86px;
+    padding-inline: 8px;
+    max-height: min(34vh, 260px);
   }
 
   .home-right-utility-icon {
-    min-height: 66px;
+    width: 66px;
+    min-height: 76px;
+    padding-inline: 5px;
   }
 
   .base2-integrated-section {
