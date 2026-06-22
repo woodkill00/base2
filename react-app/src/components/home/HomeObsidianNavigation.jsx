@@ -320,13 +320,25 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     setActiveUtilitySlot(index);
 
     if (selectedEl && scrollEl) {
+      const iconEl = selectedEl.querySelector('svg');
+      const scrollRect = scrollEl.getBoundingClientRect();
+      const iconRect = iconEl ? iconEl.getBoundingClientRect() : null;
+      const iconTop = iconRect
+        ? iconRect.top - scrollRect.top + scrollEl.scrollTop
+        : selectedEl.offsetTop + Math.max(0, (selectedEl.offsetHeight - 26) / 2);
+      const iconLeft = iconRect
+        ? iconRect.left - scrollRect.left
+        : selectedEl.offsetLeft + Math.max(0, (selectedEl.offsetWidth - 26) / 2);
+      const iconHeight = iconRect ? iconRect.height : 26;
+      const iconWidth = iconRect ? iconRect.width : 26;
       setUtilitySelectorStyle({
-        top: `${selectedEl.offsetTop + Math.max(0, (selectedEl.offsetHeight - 42) / 2)}px`,
-        width: `${Math.max(42, Math.min(selectedEl.offsetWidth, 54))}px`,
-        height: `${Math.max(42, Math.min(selectedEl.offsetHeight, 54))}px`,
+        top: `${iconTop + iconHeight / 2 - 32}px`,
+        left: `${iconLeft + iconWidth / 2}px`,
+        width: '64px',
+        height: '64px',
       });
       scrollEl.scrollTo({
-        top: selectedEl.offsetTop - (scrollEl.clientHeight - selectedEl.offsetHeight) / 2,
+        top: Math.max(0, iconTop + iconHeight / 2 - scrollEl.clientHeight / 2),
         behavior: 'smooth',
       });
     }
