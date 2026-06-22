@@ -170,7 +170,10 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
 
       utilityItemRefs.current.forEach((itemEl, index) => {
         if (!itemEl) return;
-        const itemCenter = itemEl.offsetTop + itemEl.offsetHeight / 2;
+        const itemIcon = itemEl.querySelector('svg');
+        const itemCenter = itemIcon
+          ? itemEl.offsetTop + itemIcon.offsetTop + itemIcon.offsetHeight / 2
+          : itemEl.offsetTop + itemEl.offsetHeight / 2;
         const distance = Math.abs(itemCenter - viewportCenter);
         if (distance < nearestDistance) {
           nearestDistance = distance;
@@ -180,7 +183,11 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
 
       const selectedEl = utilityItemRefs.current[nextSlot];
       if (!selectedEl) return;
-      const targetScrollTop = Math.max(0, selectedEl.offsetTop - (scrollEl.clientHeight - selectedEl.offsetHeight) / 2);
+      const selectedIconForScroll = selectedEl.querySelector('svg');
+      const selectedIconCenter = selectedIconForScroll
+        ? selectedEl.offsetTop + selectedIconForScroll.offsetTop + selectedIconForScroll.offsetHeight / 2
+        : selectedEl.offsetTop + selectedEl.offsetHeight / 2;
+      const targetScrollTop = Math.max(0, selectedIconCenter - scrollEl.clientHeight / 2);
       if (Math.abs(scrollEl.scrollTop - targetScrollTop) > 1) {
         scrollEl.scrollTop = targetScrollTop;
       }
@@ -197,10 +204,10 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       const iconWidth = iconRect ? iconRect.width : 26;
       setActiveUtilitySlot(nextSlot);
       setUtilitySelectorStyle({
-        top: `${iconTop + iconHeight / 2 - 30}px`,
+        top: `${iconTop + iconHeight / 2 - 32}px`,
         left: `${iconLeft + iconWidth / 2}px`,
-        width: '56px',
-        height: '60px',
+        width: '64px',
+        height: '64px',
       });
     });
   }, [activeUtilitySlot]);
