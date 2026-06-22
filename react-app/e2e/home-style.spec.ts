@@ -118,19 +118,13 @@ test('home page volcanic navigation controls move by sections and reveal menus',
   await expect(page.getByTestId('base2-right-utility-icons')).toBeVisible();
   await expect(page.getByTestId('base2-right-utility-icons')).toHaveCSS('overflow-y', /auto|scroll/);
   const utilityScroll = page.getByTestId('base2-right-utility-scroll');
-  const initialRing = await utilityScroll.evaluate((el) => {
-    const ring = getComputedStyle(el, '::before');
-    return {
-      top: ring.top,
-      radius: ring.borderRadius,
-      width: ring.width,
-      height: ring.height,
-    };
-  });
-  expect(initialRing.radius).not.toBe('999px');
+  await expect(utilityScroll).not.toHaveCSS('content', '""');
   await page.getByRole('option', { name: /Base2 utility: Search/i }).first().click();
-  const movedRing = await utilityScroll.evaluate((el) => getComputedStyle(el, '::before').top);
-  expect(movedRing).not.toBe(initialRing.top);
+  await expect(page.locator('[role="option"][aria-selected="true"]')).toHaveCount(1);
+  const selectedBox = await page.locator('[role="option"][aria-selected="true"]').first().boundingBox();
+  expect(selectedBox?.width || 0).toBeGreaterThan(60);
+  const pseudoContent = await utilityScroll.evaluate((el) => getComputedStyle(el, '::before').content);
+  expect(['none', 'normal']).toContain(pseudoContent);
   await utilityScroll.evaluate((el) => {
     el.scrollTop += 58;
     el.dispatchEvent(new Event('scroll', { bubbles: true }));
