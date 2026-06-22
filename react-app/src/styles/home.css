@@ -1408,8 +1408,8 @@
   top: var(--utility-selected-offset, 183px);
   left: var(--utility-selected-left, 50%);
   z-index: 2;
-  width: var(--utility-selected-width, 56px);
-  height: var(--utility-selected-height, 60px);
+  width: var(--utility-selected-width, 64px);
+  height: var(--utility-selected-height, 64px);
   border: 2px solid var(--obsidian-accent);
   border-radius: 7px;
   background: linear-gradient(180deg, rgba(255, 99, 33, 0.11), rgba(255, 49, 49, 0.04));
