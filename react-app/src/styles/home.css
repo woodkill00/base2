@@ -1398,7 +1398,6 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  scroll-snap-type: y mandatory;
   scroll-padding-block: calc(50% - 41px);
 }
 
@@ -1455,10 +1454,6 @@
   opacity: 1;
   transform: translateY(0);
   transition-duration: 60ms;
-}
-
-.home-right-utility-icon {
-  scroll-snap-align: center;
 }
 
 .home-right-utility-icon.is-active {
