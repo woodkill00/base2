@@ -346,6 +346,27 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     if (!item.safe) return;
   };
 
+  const handleUtilityWheel = (event) => {
+    event.preventDefault();
+    const direction = event.deltaY >= 0 ? 1 : -1;
+    let nextIndex = activeUtilitySlotRef.current;
+
+    for (let step = 1; step < visibleUtilityItems.length; step += 1) {
+      const candidate = activeUtilitySlotRef.current + direction * step;
+      if (candidate < 0 || candidate >= visibleUtilityItems.length) break;
+      const candidateItem = visibleUtilityItems[candidate];
+      const candidateEl = utilityItemRefs.current[candidate];
+      if (candidateItem?.safe && candidateEl && candidateEl.getAttribute('aria-disabled') !== 'true') {
+        nextIndex = candidate;
+        break;
+      }
+    }
+
+    if (nextIndex !== activeUtilitySlotRef.current) {
+      handleUtilitySelect(nextIndex, visibleUtilityItems[nextIndex]);
+    }
+  };
+
   const activeIndex = Math.max(0, sectionItems.findIndex((item) => item.id === activeSection));
   const canMoveUp = activeIndex > 0 && scrollState.canAscend;
   const canMoveDown = activeIndex < sectionItems.length - 1 && scrollState.canDescend;
@@ -542,6 +563,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
               aria-label="Base2 utility shortcuts"
               ref={utilityScrollRef}
               onScroll={updateUtilitySelectionFromScroll}
+              onWheel={handleUtilityWheel}
               style={{
                 '--utility-selected-offset': utilitySelectorStyle.top,
                 '--utility-selected-left': utilitySelectorStyle.left,
