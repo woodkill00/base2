@@ -1257,28 +1257,32 @@
 }
 
 .home-right-utility-nav-toggle {
-  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto;
   align-items: center;
   justify-items: center;
-  min-height: 42px;
-  padding-inline: 58px;
+  gap: 10px;
+  min-height: 78px;
+  padding-inline: 0;
 }
 
 .home-right-utility-nav-toggle > span {
   grid-column: 1;
+  grid-row: 1;
   width: 100%;
+  max-width: 100%;
   text-align: center;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .home-right-utility-nav-toggle button {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
+  grid-column: 1;
+  grid-row: 2;
+  justify-self: center;
 }
 
 .home-command-palette-modal {
