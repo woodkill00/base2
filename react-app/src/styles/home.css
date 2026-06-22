@@ -1355,7 +1355,7 @@
 .home-right-utility-icon {
   position: relative;
   z-index: 3;
-  width: 68px;
+  width: 64px;
   min-height: 64px;
   margin-inline: auto;
   padding: 7px 4px 6px;
@@ -1444,8 +1444,8 @@
 
 .home-right-utility-icon svg {
   transition: transform 160ms ease;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
 }
 
 .home-right-utility-icon.is-active svg {
