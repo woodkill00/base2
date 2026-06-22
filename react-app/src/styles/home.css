@@ -1371,19 +1371,30 @@
   position: relative;
   z-index: 3;
   width: 48px;
-  min-height: 54px;
+  min-height: 72px;
+  margin-inline: auto;
+  padding: 6px 0 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
   display: grid;
-  place-items: center;
+  grid-template-rows: 32px 1fr;
+  justify-items: center;
+  align-items: start;
+  gap: 3px;
   overflow: visible;
+  background: transparent;
+  color: var(--obsidian-text);
 }
 
 .home-right-utility-scroll {
   position: relative;
-  max-height: min(58vh, 430px);
+  max-height: min(54vh, 396px);
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 99, 33, 0.58) rgba(255, 255, 255, 0.08);
+  scroll-snap-type: y mandatory;
+  scroll-padding-block: calc(50% - 36px);
 }
 
 .home-right-utility-scroll::before {
@@ -1412,20 +1423,19 @@
 }
 
 .home-right-utility-icon span {
-  position: absolute;
-  top: calc(100% + 5px);
-  left: 50%;
+  position: static;
   max-width: 124px;
-  padding: 3px 7px;
+  padding: 2px 6px;
   border: 1px solid rgba(255, 99, 33, 0.28);
   border-radius: 6px;
   background: rgba(8, 8, 8, 0.94);
   color: var(--obsidian-text);
   font-size: 10px;
+  line-height: 1.1;
   text-align: center;
   opacity: 0;
   pointer-events: none;
-  transform: translate(-50%, -2px);
+  transform: translateY(-2px);
   transition: opacity 160ms ease, transform 160ms ease;
   white-space: nowrap;
 }
@@ -1434,7 +1444,11 @@
 .home-right-utility-icon:focus-visible span,
 .home-right-utility-icon.is-active span {
   opacity: 1;
-  transform: translate(-50%, 0);
+  transform: translateY(0);
+}
+
+.home-right-utility-icon {
+  scroll-snap-align: center;
 }
 
 .home-right-utility-icon.is-active {
@@ -1740,6 +1754,19 @@
   .home-movement-label {
     font-size: 10px;
     line-height: 1.25;
+  }
+
+  .home-right-utility-panel {
+    max-height: calc(100vh - 112px);
+    padding-block: 10px;
+  }
+
+  .home-right-utility-scroll {
+    max-height: min(48vh, 340px);
+  }
+
+  .home-right-utility-icon {
+    min-height: 68px;
   }
 
   .base2-integrated-section {
