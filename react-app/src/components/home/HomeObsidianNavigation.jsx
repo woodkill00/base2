@@ -237,6 +237,34 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     });
   }, [centerUtilitySlot]);
 
+  const handleUtilityWheel = useCallback((event) => {
+    event.preventDefault();
+    const direction = event.deltaY >= 0 ? 1 : -1;
+    let nextIndex = activeUtilitySlotRef.current;
+
+    for (let step = 1; step < visibleUtilityItems.length; step += 1) {
+      const candidate = activeUtilitySlotRef.current + direction * step;
+      if (candidate < 0 || candidate >= visibleUtilityItems.length) break;
+      const candidateItem = visibleUtilityItems[candidate];
+      const candidateEl = utilityItemRefs.current[candidate];
+      if (candidateItem?.safe && candidateEl && candidateEl.getAttribute('aria-disabled') !== 'true') {
+        nextIndex = candidate;
+        break;
+      }
+    }
+
+    if (nextIndex !== activeUtilitySlotRef.current) {
+      const nextItem = visibleUtilityItems[nextIndex];
+      activeUtilitySlotRef.current = nextIndex;
+      setActiveUtilitySlot(nextIndex);
+      centerUtilitySlot(nextIndex, 'smooth');
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => updateUtilitySelectionFromScroll(false));
+      });
+      if (!nextItem?.safe) return;
+    }
+  }, [centerUtilitySlot, updateUtilitySelectionFromScroll, visibleUtilityItems]);
+
   useEffect(() => {
     updateScrollState();
     window.addEventListener('scroll', updateScrollState, { passive: true });
@@ -270,17 +298,19 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     updateUtilitySelectionFromScroll();
     const handleUtilityScroll = () => updateUtilitySelectionFromScroll(true);
     scrollEl.addEventListener('scroll', handleUtilityScroll, { passive: true });
+    scrollEl.addEventListener('wheel', handleUtilityWheel, { passive: false });
     window.addEventListener('resize', updateUtilitySelectionFromScroll);
 
     return () => {
       scrollEl.removeEventListener('scroll', handleUtilityScroll);
+      scrollEl.removeEventListener('wheel', handleUtilityWheel);
       window.removeEventListener('resize', updateUtilitySelectionFromScroll);
       if (utilityScrollFrame.current) {
         window.cancelAnimationFrame(utilityScrollFrame.current);
         utilityScrollFrame.current = null;
       }
     };
-  }, [centerUtilitySlot, isRightOpen, updateUtilitySelectionFromScroll]);
+  }, [centerUtilitySlot, handleUtilityWheel, isRightOpen, updateUtilitySelectionFromScroll]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
