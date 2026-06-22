@@ -179,11 +179,19 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
 
       const selectedEl = utilityItemRefs.current[nextSlot];
       if (!selectedEl) return;
+      const selectedCenter = selectedEl.offsetTop + selectedEl.offsetHeight / 2;
+      const centerDelta = selectedCenter - viewportCenter;
+      if (Math.abs(centerDelta) > 1) {
+        scrollEl.scrollTop = Math.max(0, scrollEl.scrollTop + centerDelta);
+      }
+      const iconEl = selectedEl.querySelector('svg');
+      const iconTop = iconEl ? iconEl.offsetTop : Math.max(0, (selectedEl.offsetHeight - 26) / 2);
+      const iconHeight = iconEl ? iconEl.offsetHeight : 26;
       setActiveUtilitySlot(nextSlot);
       setUtilitySelectorStyle({
-        top: `${selectedEl.offsetTop + Math.max(0, (selectedEl.offsetHeight - 42) / 2)}px`,
-        width: `${Math.max(42, Math.min(selectedEl.offsetWidth, 54))}px`,
-        height: `${Math.max(42, Math.min(selectedEl.offsetHeight, 54))}px`,
+        top: `${selectedEl.offsetTop + iconTop + iconHeight / 2 - 27}px`,
+        width: '48px',
+        height: '54px',
       });
     });
   }, [activeUtilitySlot]);
