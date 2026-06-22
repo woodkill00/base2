@@ -339,8 +339,9 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       });
       scrollEl.scrollTo({
         top: Math.max(0, iconTop + iconHeight / 2 - scrollEl.clientHeight / 2),
-        behavior: 'smooth',
+        behavior: 'auto',
       });
+      window.requestAnimationFrame(updateUtilitySelectionFromScroll);
     }
 
     if (!item.safe) return;
