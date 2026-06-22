@@ -81,6 +81,7 @@ const colorSchemes = [
 const MOVEMENT_CLICK_DELAY_MS = 180;
 const UTILITY_SELECTOR_FALLBACK = {
   top: '183px',
+  left: '50%',
   width: '42px',
   height: '42px',
 };
@@ -185,10 +186,13 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       }
       const iconEl = selectedEl.querySelector('svg');
       const iconTop = iconEl ? iconEl.offsetTop : Math.max(0, (selectedEl.offsetHeight - 26) / 2);
+      const iconLeft = iconEl ? iconEl.offsetLeft : Math.max(0, (selectedEl.offsetWidth - 26) / 2);
       const iconHeight = iconEl ? iconEl.offsetHeight : 26;
+      const iconWidth = iconEl ? iconEl.offsetWidth : 26;
       setActiveUtilitySlot(nextSlot);
       setUtilitySelectorStyle({
         top: `${selectedEl.offsetTop + iconTop + iconHeight / 2 - 27}px`,
+        left: `${selectedEl.offsetLeft + iconLeft + iconWidth / 2}px`,
         width: '48px',
         height: '54px',
       });
@@ -514,6 +518,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
               ref={utilityScrollRef}
               style={{
                 '--utility-selected-offset': utilitySelectorStyle.top,
+                '--utility-selected-left': utilitySelectorStyle.left,
                 '--utility-selected-width': utilitySelectorStyle.width,
                 '--utility-selected-height': utilitySelectorStyle.height,
               }}
