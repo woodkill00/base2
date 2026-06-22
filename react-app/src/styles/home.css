@@ -1257,15 +1257,17 @@
 }
 
 .home-right-utility-nav-toggle {
+  position: relative;
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) 54px;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   justify-items: center;
-  gap: 8px;
+  min-height: 42px;
+  padding-inline: 58px;
 }
 
 .home-right-utility-nav-toggle > span {
-  grid-column: 2;
+  grid-column: 1;
   width: 100%;
   text-align: center;
   letter-spacing: 0.18em;
@@ -1273,7 +1275,10 @@
 }
 
 .home-right-utility-nav-toggle button {
-  grid-column: 3;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .home-command-palette-modal {
@@ -1393,8 +1398,8 @@
 
 .home-right-utility-scroll {
   position: relative;
-  width: 104px;
-  padding: calc(50% - 32px) 18px calc(50% - 32px) 14px;
+  width: 116px;
+  padding: calc(50% - 32px) 22px calc(50% - 32px) 18px;
   max-height: min(54vh, 396px);
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -1736,7 +1741,7 @@
 @media (max-width: 720px) {
   .home-right-utility-menu {
     top: 64px;
-    right: 8px;
+    right: 22px;
     transform: none;
   }
 
@@ -1766,12 +1771,12 @@
 
   .home-right-utility-panel {
     max-height: calc(100vh - 160px);
-    padding-block: 10px;
+    padding: 12px 12px 10px;
   }
 
   .home-right-utility-scroll {
-    width: 100px;
-    padding-inline: 14px;
+    width: 112px;
+    padding-inline: 20px;
     max-height: min(38vh, 292px);
   }
 
