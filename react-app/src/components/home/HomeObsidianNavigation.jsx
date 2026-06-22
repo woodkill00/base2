@@ -142,6 +142,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   const utilityScrollRef = useRef(null);
   const utilityItemRefs = useRef([]);
   const utilityScrollFrame = useRef(null);
+  const activeUtilitySlotRef = useRef(activeUtilitySlot);
 
   const visibleUtilityItems = useMemo(
     () => [...utilityItems, ...utilityItems, ...utilityItems],
@@ -154,6 +155,10 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     setActiveSection(readActiveSection());
   }, []);
 
+  useEffect(() => {
+    activeUtilitySlotRef.current = activeUtilitySlot;
+  }, [activeUtilitySlot]);
+
   const updateUtilitySelectionFromScroll = useCallback(() => {
     const scrollEl = utilityScrollRef.current;
     if (!scrollEl || typeof window === 'undefined') return;
@@ -165,11 +170,12 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     utilityScrollFrame.current = window.requestAnimationFrame(() => {
       utilityScrollFrame.current = null;
       const viewportCenter = scrollEl.scrollTop + scrollEl.clientHeight / 2;
-      let nextSlot = activeUtilitySlot;
+      let nextSlot = activeUtilitySlotRef.current;
       let nearestDistance = Number.POSITIVE_INFINITY;
 
       utilityItemRefs.current.forEach((itemEl, index) => {
         if (!itemEl) return;
+        if (itemEl.getAttribute('aria-disabled') === 'true' || itemEl.classList.contains('is-locked')) return;
         const itemIcon = itemEl.querySelector('svg');
         const itemCenter = itemIcon
           ? itemEl.offsetTop + itemIcon.offsetTop + itemIcon.offsetHeight / 2
@@ -183,14 +189,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
 
       const selectedEl = utilityItemRefs.current[nextSlot];
       if (!selectedEl) return;
-      const selectedIconForScroll = selectedEl.querySelector('svg');
-      const selectedIconCenter = selectedIconForScroll
-        ? selectedEl.offsetTop + selectedIconForScroll.offsetTop + selectedIconForScroll.offsetHeight / 2
-        : selectedEl.offsetTop + selectedEl.offsetHeight / 2;
-      const targetScrollTop = Math.max(0, selectedIconCenter - scrollEl.clientHeight / 2);
-      if (Math.abs(scrollEl.scrollTop - targetScrollTop) > 1) {
-        scrollEl.scrollTop = targetScrollTop;
-      }
       const iconEl = selectedEl.querySelector('svg');
       const scrollRect = scrollEl.getBoundingClientRect();
       const iconRect = iconEl ? iconEl.getBoundingClientRect() : null;
@@ -202,6 +200,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
         : selectedEl.offsetLeft + Math.max(0, (selectedEl.offsetWidth - 26) / 2);
       const iconHeight = iconRect ? iconRect.height : 26;
       const iconWidth = iconRect ? iconRect.width : 26;
+      activeUtilitySlotRef.current = nextSlot;
       setActiveUtilitySlot(nextSlot);
       setUtilitySelectorStyle({
         top: `${iconTop + iconHeight / 2 - 32}px`,
@@ -210,7 +209,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
         height: '64px',
       });
     });
-  }, [activeUtilitySlot]);
+  }, []);
 
   useEffect(() => {
     updateScrollState();
@@ -317,6 +316,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   const handleUtilitySelect = (index, item) => {
     const selectedEl = utilityItemRefs.current[index];
     const scrollEl = utilityScrollRef.current;
+    activeUtilitySlotRef.current = index;
     setActiveUtilitySlot(index);
 
     if (selectedEl && scrollEl) {
