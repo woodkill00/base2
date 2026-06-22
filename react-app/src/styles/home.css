@@ -1405,7 +1405,7 @@
 .home-right-utility-scroll::before {
   content: "";
   position: absolute;
-  top: var(--utility-selected-offset, 183px);
+  top: calc(50% - 32px);
   left: var(--utility-selected-left, 50%);
   z-index: 2;
   width: var(--utility-selected-width, 64px);
