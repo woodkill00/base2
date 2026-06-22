@@ -179,10 +179,9 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
 
       const selectedEl = utilityItemRefs.current[nextSlot];
       if (!selectedEl) return;
-      const selectedCenter = selectedEl.offsetTop + selectedEl.offsetHeight / 2;
-      const centerDelta = selectedCenter - viewportCenter;
-      if (Math.abs(centerDelta) > 1) {
-        scrollEl.scrollTop = Math.max(0, scrollEl.scrollTop + centerDelta);
+      const targetScrollTop = Math.max(0, selectedEl.offsetTop - (scrollEl.clientHeight - selectedEl.offsetHeight) / 2);
+      if (Math.abs(scrollEl.scrollTop - targetScrollTop) > 1) {
+        scrollEl.scrollTop = targetScrollTop;
       }
       const iconEl = selectedEl.querySelector('svg');
       const iconTop = iconEl ? iconEl.offsetTop : Math.max(0, (selectedEl.offsetHeight - 26) / 2);
