@@ -410,10 +410,12 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     window.requestAnimationFrame(jump);
     window.setTimeout(jump, 120);
     window.setTimeout(jump, 260);
+    window.setTimeout(jump, 620);
+    window.setTimeout(jump, 960);
     window.setTimeout(() => {
       jump();
       updateScrollState();
-    }, 520);
+    }, 1180);
   };
 
   const scrollToEdge = (top) => {
@@ -500,7 +502,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
 
 
   const activeIndex = Math.max(0, sectionItems.findIndex((item) => item.id === activeSection));
-  const canMoveUp = activeIndex > 0 && scrollState.canAscend;
+  const canMoveUp = scrollState.canAscend;
   const canMoveDown = activeIndex < sectionItems.length - 1 && scrollState.canDescend;
 
   return (
