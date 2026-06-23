@@ -305,10 +305,12 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     updateUtilitySelectionFromScroll();
     const handleUtilityScroll = () => updateUtilitySelectionFromScroll(true);
     scrollEl.addEventListener('scroll', handleUtilityScroll, { passive: true });
+    scrollEl.addEventListener('wheel', handleUtilityWheel, { passive: false });
     window.addEventListener('resize', updateUtilitySelectionFromScroll);
 
     return () => {
       scrollEl.removeEventListener('scroll', handleUtilityScroll);
+      scrollEl.removeEventListener('wheel', handleUtilityWheel);
       window.removeEventListener('resize', updateUtilitySelectionFromScroll);
       if (utilityScrollFrame.current) {
         window.cancelAnimationFrame(utilityScrollFrame.current);
@@ -610,7 +612,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
               aria-label="Base2 utility shortcuts"
               ref={utilityScrollRef}
               onScroll={updateUtilitySelectionFromScroll}
-              onWheel={handleUtilityWheel}
               style={{
                 '--utility-selected-offset': utilitySelectorStyle.top,
                 '--utility-selected-left': utilitySelectorStyle.left,
