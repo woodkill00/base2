@@ -390,17 +390,30 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
 
   const forceScrollToDocumentEdge = (top) => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
-    const root = document.documentElement;
-    const resolveTarget = () => top ? 0 : Math.max(0, root.scrollHeight - window.innerHeight);
-    const jump = () => window.scrollTo({ top: resolveTarget(), behavior: 'auto' });
+    const resolveTarget = () => {
+      const root = document.documentElement;
+      const body = document.body;
+      const scrollHeight = Math.max(root.scrollHeight, body?.scrollHeight || 0);
+      return top ? 0 : Math.max(0, scrollHeight - window.innerHeight);
+    };
+    const jump = () => {
+      const target = resolveTarget();
+      window.scrollTo(0, target);
+      [document.scrollingElement, document.documentElement, document.body]
+        .filter(Boolean)
+        .forEach((element) => {
+          element.scrollTop = target;
+        });
+    };
 
     jump();
     window.requestAnimationFrame(jump);
     window.setTimeout(jump, 120);
+    window.setTimeout(jump, 260);
     window.setTimeout(() => {
       jump();
       updateScrollState();
-    }, 360);
+    }, 520);
   };
 
   const scrollToEdge = (top) => {
