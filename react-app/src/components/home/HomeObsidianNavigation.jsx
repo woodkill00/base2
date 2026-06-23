@@ -208,6 +208,13 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       });
 
       const normalizedSlot = normalizeUtilitySlot(nextSlot);
+      if (normalizedSlot !== nextSlot && utilityItemRefs.current[nextSlot]) {
+        const currentLoopEl = utilityItemRefs.current[nextSlot];
+        const middleLoopEl = utilityItemRefs.current[normalizedSlot];
+        if (currentLoopEl && middleLoopEl) {
+          scrollEl.scrollTop += middleLoopEl.offsetTop - currentLoopEl.offsetTop;
+        }
+      }
       const selectedEl = utilityItemRefs.current[normalizedSlot];
       if (!selectedEl) return;
       const iconEl = selectedEl.querySelector('svg');
