@@ -29,6 +29,8 @@ const About = () => (
     className="base2-integrated-section base2-integrated-about"
     data-testid="base2-about-section"
   >
+    <span id="base2-obsidian-ops" className="base2-section-anchor" aria-hidden="true" />
+    <span id="base2-thermal-security" className="base2-section-anchor" aria-hidden="true" />
     <div className="base2-integrated-copy">
       <span className="base2-section-kicker">About Base2</span>
       <h2>Project teams that can ship without exposing the controls.</h2>
