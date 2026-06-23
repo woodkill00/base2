@@ -1673,7 +1673,7 @@
 
 .base2-module-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(min(100%, 240px), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(210px + 2vw)), 1fr));
   gap: clamp(12px, calc(1.2vw + 8px), 22px);
   margin-top: clamp(24px, calc(2vw + 12px), 34px);
 }
