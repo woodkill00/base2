@@ -1604,6 +1604,14 @@
   cursor: not-allowed;
 }
 
+.base2-section-anchor {
+  display: block;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  scroll-margin-top: clamp(80px, calc(5vh + 46px), 132px);
+}
+
 .base2-integrated-section {
   --base2-section-inline: clamp(10px, calc(2vw + 8px), 40px);
   --base2-section-block: clamp(28px, calc(4vw + 18px), 56px);
