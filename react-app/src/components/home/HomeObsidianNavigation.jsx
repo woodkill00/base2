@@ -140,6 +140,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   const [scrollState, setScrollState] = useState(getScrollMetrics);
   const movementClickTimer = useRef(null);
   const lastMovementClick = useRef({ direction: 0, time: 0 });
+  const leftMenuRef = useRef(null);
   const utilityScrollRef = useRef(null);
   const utilityItemRefs = useRef([]);
   const utilityScrollFrame = useRef(null);
@@ -326,6 +327,24 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       }
     };
   }, [centerUtilitySlot, handleUtilityWheel, isRightOpen, updateUtilitySelectionFromScroll]);
+
+  useEffect(() => {
+    const menu = leftMenuRef.current;
+    if (!menu) return;
+    if (!isLeftOpen) {
+      menu.style.removeProperty('top');
+      menu.style.removeProperty('left');
+      menu.style.removeProperty('width');
+      menu.style.removeProperty('max-height');
+      menu.style.removeProperty('transform');
+      return;
+    }
+    menu.style.setProperty('top', 'var(--left-menu-top)', 'important');
+    menu.style.setProperty('left', 'var(--left-menu-edge)', 'important');
+    menu.style.setProperty('width', 'min(var(--left-menu-width), calc(100vw - (var(--left-menu-edge) * 2)))', 'important');
+    menu.style.setProperty('max-height', 'min(620px, calc(100vh - var(--left-menu-top) - var(--left-menu-bottom-gap)))', 'important');
+    menu.style.setProperty('transform', 'translate3d(0, 0, 0)', 'important');
+  }, [isLeftOpen]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -540,6 +559,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
 
       <div
         className={`home-left-command-menu ${isLeftOpen ? 'is-open' : ''}`}
+        ref={leftMenuRef}
         style={isLeftOpen ? {
           top: 'var(--left-menu-top)',
           left: 'var(--left-menu-edge)',
