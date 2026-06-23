@@ -149,6 +149,11 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     () => [...utilityItems, ...utilityItems, ...utilityItems],
     []
   );
+  const utilityLoopOffset = utilityItems.length;
+  const normalizeUtilitySlot = useCallback((index) => {
+    const length = utilityItems.length;
+    return utilityLoopOffset + ((index % length) + length) % length;
+  }, [utilityLoopOffset]);
   const activeColorScheme = colorSchemes.find((scheme) => scheme.id === colorSchemeId) || colorSchemes[0];
 
   const updateScrollState = useCallback(() => {
@@ -161,19 +166,21 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   }, [activeUtilitySlot]);
 
   const centerUtilitySlot = useCallback((index, behavior = 'auto') => {
+    const normalizedIndex = normalizeUtilitySlot(index);
     const scrollEl = utilityScrollRef.current;
-    const selectedEl = utilityItemRefs.current[index];
+    const selectedEl = utilityItemRefs.current[normalizedIndex];
     if (!scrollEl || !selectedEl) return;
+    if (normalizedIndex !== activeUtilitySlotRef.current) {
+      activeUtilitySlotRef.current = normalizedIndex;
+      setActiveUtilitySlot(normalizedIndex);
+    }
 
-    const iconEl = selectedEl.querySelector('svg');
-    const itemCenter = iconEl
-      ? selectedEl.offsetTop + iconEl.offsetTop + iconEl.offsetHeight / 2
-      : selectedEl.offsetTop + selectedEl.offsetHeight / 2;
+    const itemCenter = selectedEl.offsetTop + selectedEl.offsetHeight / 2;
     scrollEl.scrollTo({
       top: Math.max(0, itemCenter - scrollEl.clientHeight / 2),
       behavior,
     });
-  }, []);
+  }, [normalizeUtilitySlot]);
 
   const updateUtilitySelectionFromScroll = useCallback((shouldSettle = false) => {
     const scrollEl = utilityScrollRef.current;
@@ -186,16 +193,13 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     utilityScrollFrame.current = window.requestAnimationFrame(() => {
       utilityScrollFrame.current = null;
       const viewportCenter = scrollEl.scrollTop + scrollEl.clientHeight / 2;
-      let nextSlot = activeUtilitySlotRef.current;
+      let nextSlot = normalizeUtilitySlot(activeUtilitySlotRef.current);
       let nearestDistance = Number.POSITIVE_INFINITY;
 
       utilityItemRefs.current.forEach((itemEl, index) => {
         if (!itemEl) return;
         if (itemEl.getAttribute('aria-disabled') === 'true' || itemEl.classList.contains('is-locked')) return;
-        const itemIcon = itemEl.querySelector('svg');
-        const itemCenter = itemIcon
-          ? itemEl.offsetTop + itemIcon.offsetTop + itemIcon.offsetHeight / 2
-          : itemEl.offsetTop + itemEl.offsetHeight / 2;
+        const itemCenter = itemEl.offsetTop + itemEl.offsetHeight / 2;
         const distance = Math.abs(itemCenter - viewportCenter);
         if (distance < nearestDistance) {
           nearestDistance = distance;
@@ -203,7 +207,8 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
         }
       });
 
-      const selectedEl = utilityItemRefs.current[nextSlot];
+      const normalizedSlot = normalizeUtilitySlot(nextSlot);
+      const selectedEl = utilityItemRefs.current[normalizedSlot];
       if (!selectedEl) return;
       const iconEl = selectedEl.querySelector('svg');
       const scrollRect = scrollEl.getBoundingClientRect();
@@ -216,8 +221,8 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
         : selectedEl.offsetLeft + Math.max(0, (selectedEl.offsetWidth - 26) / 2);
       const iconHeight = iconRect ? iconRect.height : 26;
       const iconWidth = iconRect ? iconRect.width : 26;
-      activeUtilitySlotRef.current = nextSlot;
-      setActiveUtilitySlot(nextSlot);
+      activeUtilitySlotRef.current = normalizedSlot;
+      setActiveUtilitySlot(normalizedSlot);
       setUtilitySelectorStyle({
         top: `${iconTop + iconHeight / 2 - 32}px`,
         left: `${iconLeft + iconWidth / 2}px`,
@@ -231,20 +236,22 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
         }
         utilitySnapTimer.current = window.setTimeout(() => {
           utilitySnapTimer.current = null;
-          centerUtilitySlot(nextSlot, 'smooth');
+          centerUtilitySlot(normalizedSlot, 'smooth');
         }, 120);
       }
     });
-  }, [centerUtilitySlot]);
+  }, [centerUtilitySlot, normalizeUtilitySlot]);
 
   const handleUtilityWheel = useCallback((event) => {
     event.preventDefault();
     const direction = event.deltaY >= 0 ? 1 : -1;
-    let nextIndex = activeUtilitySlotRef.current;
+    const length = utilityItems.length;
+    const activeBaseIndex = ((activeUtilitySlotRef.current - utilityLoopOffset) % length + length) % length;
+    let nextIndex = normalizeUtilitySlot(activeBaseIndex + direction);
 
-    for (let step = 1; step < visibleUtilityItems.length; step += 1) {
-      const candidate = activeUtilitySlotRef.current + direction * step;
-      if (candidate < 0 || candidate >= visibleUtilityItems.length) break;
+    for (let step = 1; step <= length; step += 1) {
+      const candidateBaseIndex = (activeBaseIndex + direction * step + length) % length;
+      const candidate = normalizeUtilitySlot(candidateBaseIndex);
       const candidateItem = visibleUtilityItems[candidate];
       const candidateEl = utilityItemRefs.current[candidate];
       if (candidateItem?.safe && candidateEl && candidateEl.getAttribute('aria-disabled') !== 'true') {
@@ -263,7 +270,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       });
       if (!nextItem?.safe) return;
     }
-  }, [centerUtilitySlot, updateUtilitySelectionFromScroll, visibleUtilityItems]);
+  }, [centerUtilitySlot, normalizeUtilitySlot, updateUtilitySelectionFromScroll, utilityLoopOffset, visibleUtilityItems]);
 
   useEffect(() => {
     updateScrollState();
@@ -375,10 +382,11 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   };
 
   const handleUtilitySelect = (index, item) => {
-    const selectedEl = utilityItemRefs.current[index];
+    const normalizedIndex = normalizeUtilitySlot(index);
+    const selectedEl = utilityItemRefs.current[normalizedIndex];
     const scrollEl = utilityScrollRef.current;
-    activeUtilitySlotRef.current = index;
-    setActiveUtilitySlot(index);
+    activeUtilitySlotRef.current = normalizedIndex;
+    setActiveUtilitySlot(normalizedIndex);
 
     if (selectedEl && scrollEl) {
       const iconEl = selectedEl.querySelector('svg');
@@ -398,7 +406,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
         width: '64px',
         height: '64px',
       });
-      centerUtilitySlot(index, 'smooth');
+      centerUtilitySlot(normalizedIndex, 'smooth');
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => updateUtilitySelectionFromScroll(false));
       });
