@@ -362,15 +362,42 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     [onNavigate, updateScrollState]
   );
 
+  const currentSectionIndex = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return Math.max(0, sectionItems.findIndex((item) => item.id === activeSection));
+    }
+    const viewportAnchor = window.scrollY + Math.max(96, window.innerHeight * 0.34);
+    const sections = getSectionElements();
+    if (!sections.length) {
+      return Math.max(0, sectionItems.findIndex((item) => item.id === activeSection));
+    }
+    let currentId = sections[0].item.id;
+    sections.forEach(({ item, element }) => {
+      const top = element.getBoundingClientRect().top + window.scrollY;
+      if (top <= viewportAnchor) {
+        currentId = item.id;
+      }
+    });
+    return Math.max(0, sectionItems.findIndex((item) => item.id === currentId));
+  }, [activeSection]);
+
   const moveSection = (direction) => {
-    const index = Math.max(0, sectionItems.findIndex((item) => item.id === activeSection));
+    const index = currentSectionIndex();
     const nextIndex = Math.min(sectionItems.length - 1, Math.max(0, index + direction));
     goToSection(sectionItems[nextIndex].id);
   };
 
   const scrollToEdge = (top) => {
     const target = top ? sectionItems[0] : sectionItems[sectionItems.length - 1];
-    goToSection(target.id);
+    setActiveSection(target.id);
+    setIsLeftOpen(false);
+    setIsCommandPaletteOpen(false);
+    if (target.id === 'home' || target.id === 'features') {
+      onNavigate(target.id);
+    }
+    const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    window.scrollTo({ top: top ? 0 : maxScroll, behavior: 'smooth' });
+    window.setTimeout(updateScrollState, 420);
   };
 
   const handleMovementClick = (direction, event) => {
@@ -671,18 +698,19 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
           <output className="home-active-section-output" data-testid="base2-section-active">
             {activeSection}
           </output>
-          <button
-            type="button"
-            className="home-movement-button home-movement-button-up"
-            onClick={(event) => handleMovementClick(-1, event)}
-            aria-label="Scroll up to previous Base2 section"
-            disabled={!canMoveUp}
-            data-testid="base2-scroll-ascend"
-          >
-            <span className="home-movement-progress" style={{ height: `${scrollState.progress}%` }} />
-            <ChevronUp aria-hidden="true" />
-            <ArrowUp aria-hidden="true" />
-          </button>
+          {canMoveUp ? (
+            <button
+              type="button"
+              className="home-movement-button home-movement-button-up"
+              onClick={(event) => handleMovementClick(-1, event)}
+              aria-label="Scroll up to previous Base2 section"
+              data-testid="base2-scroll-ascend"
+            >
+              <span className="home-movement-progress" style={{ height: `${scrollState.progress}%` }} />
+              <ChevronUp aria-hidden="true" />
+              <ArrowUp aria-hidden="true" />
+            </button>
+          ) : null}
 
           <button
             type="button"
