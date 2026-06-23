@@ -1156,8 +1156,18 @@
 }
 
 .home-left-command-menu {
+  --left-menu-edge: clamp(12px, calc(1.8vw + 8px), 34px);
+  --left-menu-top: clamp(68px, calc(5vh + 38px), 108px);
+  --left-menu-width: clamp(248px, calc(18vw + 190px), 342px);
+  --left-menu-bottom-gap: clamp(18px, calc(3vh + 10px), 42px);
+  --left-menu-pad: clamp(16px, calc(1vw + 12px), 22px);
+  --left-menu-close-size: clamp(30px, calc(1.2vw + 18px), 36px);
   z-index: 9000;
-  max-height: min(76vh, 620px);
+  top: var(--left-menu-top);
+  left: var(--left-menu-edge);
+  width: min(var(--left-menu-width), calc(100vw - (var(--left-menu-edge) * 2)));
+  max-height: min(620px, calc(100vh - var(--left-menu-top) - var(--left-menu-bottom-gap)));
+  padding: var(--left-menu-pad);
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
@@ -1167,10 +1177,10 @@
 .home-left-command-title {
   position: relative;
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) 30px;
+  grid-template-columns: var(--left-menu-close-size) minmax(0, 1fr) var(--left-menu-close-size);
   align-items: center;
-  gap: 10px;
-  padding: 0 2px;
+  gap: calc(var(--left-menu-pad) / 2);
+  padding: 0 calc(var(--left-menu-close-size) + 2px);
 }
 
 .home-left-command-title > div {
@@ -1190,10 +1200,10 @@
 
 .home-left-command-close {
   position: absolute;
-  top: -4px;
-  right: -2px;
-  width: 30px;
-  height: 30px;
+  top: calc(var(--left-menu-close-size) * -0.14);
+  right: calc(var(--left-menu-pad) * -0.1);
+  width: var(--left-menu-close-size);
+  height: var(--left-menu-close-size);
   display: grid;
   place-items: center;
   border: 1px solid rgba(255, 99, 33, 0.32);
@@ -1234,9 +1244,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-top: 16px;
-  padding: 10px 12px;
+  gap: calc(var(--left-menu-pad) / 2);
+  margin-top: calc(var(--left-menu-pad) * 0.75);
+  padding: calc(var(--left-menu-pad) * 0.52) calc(var(--left-menu-pad) * 0.64);
   border: 1px solid rgba(255, 99, 33, 0.34);
   background: rgba(255, 49, 49, 0.1);
   color: var(--obsidian-text);
@@ -1780,8 +1790,11 @@
 }
 
 .base2-integrated-footer {
-  width: min(1180px, calc(100% - 40px));
-  margin: 58px auto 30px;
+  --base2-footer-inline: clamp(20px, calc(2vw + 12px), 40px);
+  --base2-footer-top: clamp(42px, calc(3vw + 24px), 58px);
+  --base2-footer-bottom: clamp(22px, calc(1vw + 18px), 30px);
+  width: min(1180px, calc(100% - var(--base2-footer-inline)));
+  margin: var(--base2-footer-top) auto var(--base2-footer-bottom);
   display: grid;
   grid-template-columns: minmax(220px, 1fr) auto minmax(260px, 0.9fr);
   gap: 20px;
@@ -1821,9 +1834,17 @@
 }
 
 @media (max-width: 720px) {
+  .home-left-command-menu {
+    --left-menu-edge: clamp(10px, calc(2vw + 6px), 18px);
+    --left-menu-top: clamp(58px, calc(4vh + 42px), 84px);
+    --left-menu-width: calc(100vw - (var(--left-menu-edge) * 2));
+    --left-menu-bottom-gap: clamp(14px, calc(2vh + 10px), 28px);
+    --left-menu-pad: clamp(14px, calc(2vw + 8px), 18px);
+  }
+
   .home-right-utility-menu {
-    top: 64px;
-    right: 22px;
+    top: clamp(58px, calc(4vh + 40px), 74px);
+    right: clamp(14px, calc(2vw + 8px), 22px);
     transform: none;
   }
 
@@ -1893,7 +1914,8 @@
   }
 
   .base2-integrated-footer {
-    width: min(680px, calc(100% - 20px));
+    --base2-footer-inline: clamp(20px, calc(2vw + 12px), 28px);
+    width: min(680px, calc(100% - var(--base2-footer-inline)));
     justify-items: start;
   }
 
