@@ -540,6 +540,13 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
 
       <div
         className={`home-left-command-menu ${isLeftOpen ? 'is-open' : ''}`}
+        style={isLeftOpen ? {
+          top: 'var(--left-menu-top)',
+          left: 'var(--left-menu-edge)',
+          width: 'min(var(--left-menu-width), calc(100vw - (var(--left-menu-edge) * 2)))',
+          maxHeight: 'min(620px, calc(100vh - var(--left-menu-top) - var(--left-menu-bottom-gap)))',
+          transform: 'translate3d(0, 0, 0)',
+        } : undefined}
         data-testid="base2-left-command-menu"
         aria-hidden={!isLeftOpen}
       >
