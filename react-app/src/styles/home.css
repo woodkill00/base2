@@ -1172,6 +1172,11 @@
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 99, 33, 0.58) rgba(255, 255, 255, 0.08);
+  transform: translateX(calc((var(--left-menu-width) + var(--left-menu-edge)) * -1));
+}
+
+.home-left-command-menu.is-open {
+  transform: translateX(0);
 }
 
 .home-left-command-title {
