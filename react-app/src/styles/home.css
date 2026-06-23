@@ -1179,6 +1179,19 @@
   transform: translateX(0);
 }
 
+.home-obsidian-nav-layer .home-left-command-menu {
+  top: var(--left-menu-top);
+  left: var(--left-menu-edge);
+  width: min(var(--left-menu-width), calc(100vw - (var(--left-menu-edge) * 2)));
+  max-height: min(620px, calc(100vh - var(--left-menu-top) - var(--left-menu-bottom-gap)));
+  padding: var(--left-menu-pad);
+  transform: translateX(calc((var(--left-menu-width) + var(--left-menu-edge)) * -1));
+}
+
+.home-obsidian-nav-layer .home-left-command-menu.is-open {
+  transform: translate3d(0, 0, 0);
+}
+
 .home-left-command-title {
   position: relative;
   display: grid;
