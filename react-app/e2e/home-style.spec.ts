@@ -86,8 +86,18 @@ test('home page applies volcanic obsidian palette tokens', async ({ page }) => {
 
 test('home page volcanic navigation controls move by sections and reveal menus', async ({ page }) => {
   await page.goto('/?volcanic-nav=' + Date.now());
+  await page.evaluate(() => window.scrollTo(0, 0));
 
   await expect(page.getByTestId('base2-left-menu-toggle')).toBeVisible();
+  await expect(page.getByTestId('base2-scroll-ascend')).toHaveCount(0);
+  await expect(page.getByTestId('base2-scroll-descend')).toBeVisible();
+  await page.getByTestId('base2-scroll-descend').click();
+  await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain('features');
+  await expect(page.getByTestId('base2-scroll-ascend')).toBeVisible();
+  await page.getByTestId('base2-scroll-ascend').click();
+  await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain('home');
+  await expect(page.getByTestId('base2-scroll-ascend')).toHaveCount(0);
+
   await page.getByTestId('base2-left-menu-toggle').click();
   await expect(page.getByTestId('base2-left-command-menu')).toHaveClass(/is-open/);
   await expect(page.getByTestId('base2-left-command-menu')).toHaveCSS('overflow-y', /auto|scroll/);
@@ -109,7 +119,7 @@ test('home page volcanic navigation controls move by sections and reveal menus',
   await expect(page.getByTestId('base2-section-nav-security')).toHaveAttribute('aria-current', 'location');
 
   await page.getByTestId('base2-scroll-ascend').click();
-  await expect.poll(() => page.getByTestId('base2-section-active').textContent()).not.toContain('security');
+  await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain('command');
 
   await expect(page.getByTestId('base2-scroll-descend')).toBeVisible();
   await expect(page.getByTestId('base2-right-utility-menu')).not.toHaveClass(/is-open/);
@@ -135,8 +145,13 @@ test('home page volcanic navigation controls move by sections and reveal menus',
   }).not.toContain('Search');
   await page.getByTestId('base2-scroll-descend').dblclick();
   await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain('contact');
+  await expect.poll(async () => {
+    return page.evaluate(() => Math.abs(window.scrollY - (document.documentElement.scrollHeight - window.innerHeight)) <= 24);
+  }).toBe(true);
   await page.getByTestId('base2-scroll-ascend').dblclick();
   await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain('home');
+  await expect.poll(async () => page.evaluate(() => window.scrollY <= 4)).toBe(true);
+  await expect(page.getByTestId('base2-scroll-ascend')).toHaveCount(0);
 });
 
 test('command palette and utility rail expose only safe public actions', async ({ page }) => {
