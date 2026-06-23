@@ -139,6 +139,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   const [colorSchemeId, setColorSchemeId] = useState('volcanic');
   const [scrollState, setScrollState] = useState(getScrollMetrics);
   const movementClickTimer = useRef(null);
+  const lastMovementClick = useRef({ direction: 0, time: 0 });
   const utilityScrollRef = useRef(null);
   const utilityItemRefs = useRef([]);
   const utilityScrollFrame = useRef(null);
@@ -401,11 +402,17 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   };
 
   const handleMovementClick = (direction, event) => {
+    const now = Date.now();
+    const isRapidRepeat =
+      lastMovementClick.current.direction === direction &&
+      now - lastMovementClick.current.time <= 340;
+    lastMovementClick.current = { direction, time: now };
+
     if (movementClickTimer.current) {
       window.clearTimeout(movementClickTimer.current);
       movementClickTimer.current = null;
     }
-    if (event.detail >= 2) {
+    if (event.detail >= 2 || isRapidRepeat) {
       scrollToEdge(direction < 0);
       return;
     }
@@ -421,6 +428,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       window.clearTimeout(movementClickTimer.current);
       movementClickTimer.current = null;
     }
+    lastMovementClick.current = { direction, time: Date.now() };
     scrollToEdge(direction < 0);
   };
 
