@@ -424,6 +424,12 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     scrollToEdge(direction < 0);
   };
 
+  const handleMovementMouseDown = (direction, event) => {
+    if (event.detail >= 2) {
+      handleMovementDoubleClick(direction, event);
+    }
+  };
+
   const handleUtilitySelect = (index, item) => {
     const normalizedIndex = normalizeUtilitySlot(index);
     const selectedEl = utilityItemRefs.current[normalizedIndex];
@@ -711,6 +717,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
             <button
               type="button"
               className="home-movement-button home-movement-button-up"
+              onMouseDown={(event) => handleMovementMouseDown(-1, event)}
               onClick={(event) => handleMovementClick(-1, event)}
               onDoubleClick={(event) => handleMovementDoubleClick(-1, event)}
               aria-label="Scroll up to previous Base2 section"
@@ -725,6 +732,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
           <button
             type="button"
             className="home-movement-button home-movement-button-down"
+            onMouseDown={(event) => handleMovementMouseDown(1, event)}
             onClick={(event) => handleMovementClick(1, event)}
             onDoubleClick={(event) => handleMovementDoubleClick(1, event)}
             aria-label="Scroll down to next Base2 section"
