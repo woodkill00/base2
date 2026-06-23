@@ -1258,7 +1258,7 @@
 
 .home-right-utility-panel {
   --utility-rail-width: 120px;
-  --utility-active-size: 70px;
+  --utility-active-size: 64px;
   --utility-rail-pad: calc((var(--utility-rail-width) - var(--utility-active-size)) / 2);
   width: calc(var(--utility-rail-width) + 24px);
   display: grid;
@@ -1398,14 +1398,14 @@
   width: var(--utility-active-size);
   min-height: var(--utility-active-size);
   margin-inline: auto;
-  padding: calc((var(--utility-active-size) - 52px) / 2) 6px 8px;
+  padding: calc((var(--utility-active-size) - 48px) / 2) 5px 7px;
   border: 1px solid transparent;
   border-radius: 8px;
   display: grid;
-  grid-template-rows: 32px 18px;
+  grid-template-rows: 30px 16px;
   justify-items: center;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
   overflow: hidden;
   background: transparent;
   color: var(--obsidian-text);
@@ -1786,7 +1786,7 @@
 
   .home-right-utility-panel {
     --utility-rail-width: 116px;
-    --utility-active-size: 70px;
+    --utility-active-size: 64px;
     max-height: calc(100vh - 160px);
     padding: 12px 12px 10px;
   }
