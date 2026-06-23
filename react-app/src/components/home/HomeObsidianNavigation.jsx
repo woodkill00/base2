@@ -415,6 +415,15 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     }, MOVEMENT_CLICK_DELAY_MS);
   };
 
+  const handleMovementDoubleClick = (direction, event) => {
+    event.preventDefault();
+    if (movementClickTimer.current) {
+      window.clearTimeout(movementClickTimer.current);
+      movementClickTimer.current = null;
+    }
+    scrollToEdge(direction < 0);
+  };
+
   const handleUtilitySelect = (index, item) => {
     const normalizedIndex = normalizeUtilitySlot(index);
     const selectedEl = utilityItemRefs.current[normalizedIndex];
@@ -703,6 +712,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
               type="button"
               className="home-movement-button home-movement-button-up"
               onClick={(event) => handleMovementClick(-1, event)}
+              onDoubleClick={(event) => handleMovementDoubleClick(-1, event)}
               aria-label="Scroll up to previous Base2 section"
               data-testid="base2-scroll-ascend"
             >
@@ -716,6 +726,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
             type="button"
             className="home-movement-button home-movement-button-down"
             onClick={(event) => handleMovementClick(1, event)}
+            onDoubleClick={(event) => handleMovementDoubleClick(1, event)}
             aria-label="Scroll down to next Base2 section"
             disabled={!canMoveDown}
             data-testid="base2-scroll-descend"
