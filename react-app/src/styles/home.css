@@ -1256,7 +1256,18 @@
   font-size: 10px;
 }
 
+.home-right-utility-panel {
+  --utility-rail-width: 120px;
+  --utility-active-size: 76px;
+  --utility-rail-pad: calc((var(--utility-rail-width) - var(--utility-active-size)) / 2);
+  width: calc(var(--utility-rail-width) + 24px);
+  display: grid;
+  justify-items: center;
+  align-items: start;
+}
+
 .home-right-utility-nav-toggle {
+  width: var(--utility-rail-width);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto auto;
@@ -1384,16 +1395,16 @@
 .home-right-utility-icon {
   position: relative;
   z-index: 3;
-  width: 64px;
-  min-height: 64px;
+  width: var(--utility-active-size);
+  min-height: var(--utility-active-size);
   margin-inline: auto;
-  padding: 7px 4px 6px;
+  padding: calc((var(--utility-active-size) - 52px) / 2) 6px 8px;
   border: 1px solid transparent;
   border-radius: 8px;
   display: grid;
-  grid-template-rows: 30px 16px;
+  grid-template-rows: 32px 18px;
   justify-items: center;
-  align-items: start;
+  align-items: center;
   gap: 3px;
   overflow: hidden;
   background: transparent;
@@ -1402,8 +1413,8 @@
 
 .home-right-utility-scroll {
   position: relative;
-  width: 116px;
-  padding: calc(50% - 32px) 22px calc(50% - 32px) 18px;
+  width: var(--utility-rail-width);
+  padding: calc(50% - (var(--utility-active-size) / 2)) var(--utility-rail-pad);
   max-height: min(54vh, 396px);
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -1413,7 +1424,7 @@
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  scroll-padding-block: calc(50% - 32px);
+  scroll-padding-block: calc(50% - (var(--utility-active-size) / 2));
 }
 
 .home-right-utility-scroll::-webkit-scrollbar {
@@ -1774,20 +1785,22 @@
   }
 
   .home-right-utility-panel {
+    --utility-rail-width: 116px;
+    --utility-active-size: 76px;
     max-height: calc(100vh - 160px);
     padding: 12px 12px 10px;
   }
 
   .home-right-utility-scroll {
-    width: 112px;
-    padding-inline: 20px;
+    width: var(--utility-rail-width);
+    padding-inline: var(--utility-rail-pad);
     max-height: min(38vh, 292px);
   }
 
   .home-right-utility-icon {
-    width: 64px;
-    min-height: 64px;
-    padding-inline: 5px;
+    width: var(--utility-active-size);
+    min-height: var(--utility-active-size);
+    padding-inline: 6px;
   }
 
   .base2-integrated-section {
