@@ -1258,7 +1258,7 @@
 
 .home-right-utility-panel {
   --utility-rail-width: 120px;
-  --utility-active-size: 76px;
+  --utility-active-size: 70px;
   --utility-rail-pad: calc((var(--utility-rail-width) - var(--utility-active-size)) / 2);
   width: calc(var(--utility-rail-width) + 24px);
   display: grid;
@@ -1786,7 +1786,7 @@
 
   .home-right-utility-panel {
     --utility-rail-width: 116px;
-    --utility-active-size: 76px;
+    --utility-active-size: 70px;
     max-height: calc(100vh - 160px);
     padding: 12px 12px 10px;
   }
