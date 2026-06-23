@@ -388,6 +388,21 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     goToSection(sectionItems[nextIndex].id);
   };
 
+  const forceScrollToDocumentEdge = (top) => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    const root = document.documentElement;
+    const resolveTarget = () => top ? 0 : Math.max(0, root.scrollHeight - window.innerHeight);
+    const jump = () => window.scrollTo({ top: resolveTarget(), behavior: 'auto' });
+
+    jump();
+    window.requestAnimationFrame(jump);
+    window.setTimeout(jump, 120);
+    window.setTimeout(() => {
+      jump();
+      updateScrollState();
+    }, 360);
+  };
+
   const scrollToEdge = (top) => {
     const target = top ? sectionItems[0] : sectionItems[sectionItems.length - 1];
     setActiveSection(target.id);
@@ -396,9 +411,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     if (target.id === 'home' || target.id === 'features') {
       onNavigate(target.id);
     }
-    const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-    window.scrollTo({ top: top ? 0 : maxScroll, behavior: 'smooth' });
-    window.setTimeout(updateScrollState, 420);
+    forceScrollToDocumentEdge(top);
   };
 
   const handleMovementClick = (direction, event) => {
