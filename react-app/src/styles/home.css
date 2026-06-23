@@ -1325,12 +1325,13 @@
 }
 
 .home-command-palette-modal {
+  --command-palette-pad: clamp(18px, calc(1.5vw + 12px), 28px);
   position: fixed;
   inset: 0;
   z-index: 9999;
   display: grid;
   place-items: center;
-  padding: 22px;
+  padding: var(--command-palette-pad);
   pointer-events: auto;
 }
 
@@ -1343,9 +1344,10 @@
 }
 
 .home-command-palette-surface {
+  --command-palette-inline: clamp(18px, calc(2vw + 12px), 42px);
   position: relative;
   z-index: 2;
-  width: min(540px, 94vw);
+  width: min(540px, calc(100vw - (var(--command-palette-inline) * 2)));
   border: 1px solid rgba(255, 99, 33, 0.4);
   border-radius: 8px;
   background: linear-gradient(145deg, rgba(16, 16, 16, 0.98), rgba(6, 6, 6, 0.98));
@@ -1356,20 +1358,20 @@
 
 .home-command-palette-actions {
   display: grid;
-  gap: 1px;
-  padding: 8px;
+  gap: calc(var(--command-palette-pad) * 0.05);
+  padding: calc(var(--command-palette-pad) * 0.36);
 }
 
 .home-command-palette-schemes {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-  padding: 4px 0 10px;
+  gap: calc(var(--command-palette-pad) * 0.27);
+  padding: calc(var(--command-palette-pad) * 0.18) 0 calc(var(--command-palette-pad) * 0.45);
 }
 
 .home-command-palette-schemes button {
   position: relative;
-  min-height: 48px;
+  min-height: clamp(46px, calc(2vw + 22px), 54px);
   display: grid;
   align-content: center;
   gap: 3px;
@@ -1389,11 +1391,11 @@
 }
 
 .home-command-palette-actions button {
-  min-height: 48px;
+  min-height: clamp(46px, calc(2vw + 22px), 54px);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: clamp(10px, calc(1vw + 6px), 16px);
   border: 1px solid transparent;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.03);
@@ -1664,7 +1666,7 @@
 .base2-integrated-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: clamp(10px, calc(1vw + 6px), 14px);
 }
 
 .base2-integrated-card,
@@ -1677,8 +1679,8 @@
 }
 
 .base2-integrated-card {
-  min-height: 168px;
-  padding: 18px;
+  min-height: clamp(156px, calc(8vw + 88px), 174px);
+  padding: clamp(16px, calc(1vw + 10px), 20px);
 }
 
 .base2-integrated-card svg,
@@ -1719,15 +1721,15 @@
 .base2-module-card::after {
   content: "";
   position: absolute;
-  inset: auto 18px 0 18px;
-  height: 3px;
+  inset: auto clamp(16px, calc(1vw + 10px), 22px) 0 clamp(16px, calc(1vw + 10px), 22px);
+  height: clamp(3px, calc(0.2vw + 2px), 4px);
   border-radius: 999px 999px 0 0;
   background: linear-gradient(90deg, rgba(255, 49, 49, 0.1), rgba(255, 99, 33, 0.82));
 }
 
 .base2-module-icon {
-  width: 42px;
-  height: 42px;
+  width: clamp(40px, calc(1vw + 30px), 46px);
+  height: clamp(40px, calc(1vw + 30px), 46px);
   display: grid;
   place-items: center;
   border: 1px solid rgba(255, 99, 33, 0.28);
@@ -1740,7 +1742,7 @@
 .base2-footer-proof {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: clamp(7px, calc(0.5vw + 5px), 10px);
 }
 
 .base2-module-tags span,
@@ -1748,10 +1750,10 @@
 .base2-footer-proof span {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: clamp(5px, calc(0.4vw + 4px), 8px);
   border: 1px solid rgba(255, 99, 33, 0.22);
   border-radius: 999px;
-  padding: 6px 9px;
+  padding: clamp(5px, calc(0.4vw + 4px), 7px) clamp(8px, calc(0.5vw + 6px), 11px);
   background: rgba(255, 255, 255, 0.045);
   color: rgba(247, 241, 238, 0.82);
   font-size: 10px;
@@ -1759,13 +1761,13 @@
 
 .base2-feedback-form {
   display: grid;
-  gap: 14px;
-  padding: 20px;
+  gap: clamp(12px, calc(0.8vw + 8px), 16px);
+  padding: clamp(18px, calc(1vw + 12px), 22px);
 }
 
 .base2-feedback-form label {
   display: grid;
-  gap: 7px;
+  gap: clamp(6px, calc(0.3vw + 5px), 8px);
   color: rgba(247, 241, 238, 0.88);
   font-size: 0.9rem;
   font-weight: 700;
@@ -1776,7 +1778,7 @@
   width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 8px;
-  padding: 12px 13px;
+  padding: clamp(11px, calc(0.5vw + 9px), 14px) clamp(12px, calc(0.5vw + 10px), 15px);
   background: rgba(0, 0, 0, 0.32);
   color: #ffffff;
   font: inherit;
@@ -1789,11 +1791,11 @@
 }
 
 .base2-feedback-form button {
-  min-height: 46px;
+  min-height: clamp(44px, calc(1.2vw + 30px), 50px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
+  gap: clamp(8px, calc(0.5vw + 6px), 11px);
   border: 1px solid rgba(255, 99, 33, 0.5);
   border-radius: 8px;
   background: linear-gradient(135deg, rgba(255, 49, 49, 0.86), rgba(255, 99, 33, 0.86));
@@ -1815,16 +1817,16 @@
   margin: var(--base2-footer-top) auto var(--base2-footer-bottom);
   display: grid;
   grid-template-columns: minmax(220px, 1fr) auto minmax(260px, 0.9fr);
-  gap: 20px;
+  gap: clamp(16px, calc(1.4vw + 10px), 24px);
   align-items: center;
   border-top: 1px solid rgba(255, 99, 33, 0.24);
-  padding: 24px 0 4px;
+  padding: clamp(20px, calc(1.4vw + 14px), 28px) 0 clamp(4px, calc(0.2vw + 2px), 6px);
   color: rgba(247, 241, 238, 0.82);
 }
 
 .base2-footer-mark {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: clamp(7px, calc(0.4vw + 5px), 10px);
   color: #ffffff;
   font-size: 1.4rem;
   font-weight: 900;
@@ -1834,7 +1836,7 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 12px;
+  gap: clamp(10px, calc(0.8vw + 6px), 14px);
 }
 
 .base2-integrated-footer a {
