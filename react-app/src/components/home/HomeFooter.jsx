@@ -2,7 +2,7 @@ import { Github, LockKeyhole, RadioTower, ShieldCheck } from 'lucide-react';
 
 const footerLinks = [
   { label: 'Repo workflow', href: '#projects' },
-  { label: 'Security posture', href: '#security' },
+  { label: 'Security posture', href: '#base2-thermal-security' },
   { label: 'Review handoff', href: '#contact' },
 ];
 
