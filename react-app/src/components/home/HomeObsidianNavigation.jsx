@@ -398,9 +398,27 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
 
       const section = findSection(item);
       if (section) {
-        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const scrollToSectionTop = () => {
+          const root = document.documentElement;
+          const body = document.body;
+          const maxScroll = Math.max(0, root.scrollHeight - window.innerHeight);
+          const sectionTop = section.getBoundingClientRect().top + window.scrollY;
+          const targetTop = Math.min(Math.max(0, sectionTop), maxScroll);
+          window.scrollTo({ top: targetTop, behavior: 'auto' });
+          [document.scrollingElement, root, body]
+            .filter(Boolean)
+            .forEach((element) => {
+              element.scrollTop = targetTop;
+            });
+        };
+        scrollToSectionTop();
+        window.requestAnimationFrame(scrollToSectionTop);
+        window.setTimeout(scrollToSectionTop, 120);
+        window.setTimeout(scrollToSectionTop, 320);
+        window.setTimeout(scrollToSectionTop, 720);
       }
       window.setTimeout(updateScrollState, 420);
+      window.setTimeout(updateScrollState, 840);
     },
     [onNavigate, updateScrollState]
   );
