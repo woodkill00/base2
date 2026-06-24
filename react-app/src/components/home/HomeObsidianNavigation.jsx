@@ -435,14 +435,16 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     };
     scrollToSectionTop();
     window.requestAnimationFrame(scrollToSectionTop);
-    [120, 320, 720, 1240, 1880, 2600].forEach((delay) => {
+    [120, 320, 720, 1240, 1880, 2600, 3600, 4600, 5600].forEach((delay) => {
       scheduleMovementTimeout(scrollToSectionTop, delay);
     });
     const startedAt = Date.now();
+    let stableTicks = 0;
     const alignTimer = scheduleMovementInterval(() => {
       scrollToSectionTop();
       const rect = section.getBoundingClientRect();
-      if (Math.abs(rect.top) <= 3 || Date.now() - startedAt > 5600) {
+      stableTicks = Math.abs(rect.top) <= 3 ? stableTicks + 1 : 0;
+      if (stableTicks >= 8 || Date.now() - startedAt > 6800) {
         window.clearInterval(alignTimer);
         movementAlignTimers.current = movementAlignTimers.current.filter((timer) => timer.id !== alignTimer);
       }
@@ -456,7 +458,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       const nextIndex = Math.max(0, itemIndex);
       movementTargetIndexRef.current = nextIndex;
       setMovementTargetIndex(nextIndex);
-      movementScrollLockUntilRef.current = Date.now() + 6200;
+      movementScrollLockUntilRef.current = Date.now() + 7600;
       setActiveSection(item.id);
       setIsLeftOpen(false);
       setIsCommandPaletteOpen(false);
@@ -532,15 +534,17 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
 
     jump();
     window.requestAnimationFrame(jump);
-    [120, 260, 620, 960, 1320, 1900, 2700].forEach((delay) => {
+    [120, 260, 620, 960, 1320, 1900, 2700, 3600, 4600, 5600].forEach((delay) => {
       scheduleMovementTimeout(jump, delay);
     });
     const startedAt = Date.now();
+    let stableTicks = 0;
     const edgeTimer = scheduleMovementInterval(() => {
       jump();
       const target = resolveTarget();
       const current = window.scrollY || document.documentElement.scrollTop || 0;
-      if (Math.abs(current - target) <= 3 || Date.now() - startedAt > 5600) {
+      stableTicks = Math.abs(current - target) <= 3 ? stableTicks + 1 : 0;
+      if (stableTicks >= 8 || Date.now() - startedAt > 6800) {
         window.clearInterval(edgeTimer);
         movementAlignTimers.current = movementAlignTimers.current.filter((timer) => timer.id !== edgeTimer);
       }
@@ -548,7 +552,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     scheduleMovementTimeout(() => {
       jump();
       updateScrollState();
-    }, 5800);
+    }, 7000);
   };
 
   const scrollToEdge = (top) => {
@@ -556,7 +560,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     const nextIndex = top ? 0 : sectionItems.length - 1;
     movementTargetIndexRef.current = nextIndex;
     setMovementTargetIndex(nextIndex);
-    movementScrollLockUntilRef.current = Date.now() + 6200;
+    movementScrollLockUntilRef.current = Date.now() + 7600;
     setActiveSection(target.id);
     setIsLeftOpen(false);
     setIsCommandPaletteOpen(false);
