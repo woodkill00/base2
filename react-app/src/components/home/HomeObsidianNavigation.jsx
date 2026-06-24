@@ -386,16 +386,24 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     const scrollToSectionTop = () => {
       const root = document.documentElement;
       const body = document.body;
-      const maxScroll = Math.max(0, root.scrollHeight - window.innerHeight);
-      section.scrollIntoView({ behavior: 'auto', block: 'start' });
-      const sectionTop = section.getBoundingClientRect().top + window.scrollY;
+      const scrollRoot = document.scrollingElement || root;
+      const previousRootBehavior = root.style.scrollBehavior;
+      const previousBodyBehavior = body.style.scrollBehavior;
+      root.style.scrollBehavior = 'auto';
+      body.style.scrollBehavior = 'auto';
+      const scrollHeight = Math.max(root.scrollHeight, body?.scrollHeight || 0, scrollRoot?.scrollHeight || 0);
+      const maxScroll = Math.max(0, scrollHeight - window.innerHeight);
+      const currentScroll = window.scrollY || scrollRoot?.scrollTop || root.scrollTop || body.scrollTop || 0;
+      const sectionTop = section.getBoundingClientRect().top + currentScroll;
       const targetTop = Math.min(Math.max(0, sectionTop), maxScroll);
       window.scrollTo({ top: targetTop, behavior: 'auto' });
-      [document.scrollingElement, root, body]
+      [scrollRoot, root, body]
         .filter(Boolean)
         .forEach((element) => {
           element.scrollTop = targetTop;
         });
+      root.style.scrollBehavior = previousRootBehavior;
+      body.style.scrollBehavior = previousBodyBehavior;
     };
     scrollToSectionTop();
     window.requestAnimationFrame(scrollToSectionTop);
