@@ -380,6 +380,29 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const forceSectionIntoView = useCallback((item) => {
+    const section = findSection(item);
+    if (!section || typeof window === 'undefined' || typeof document === 'undefined') return;
+    const scrollToSectionTop = () => {
+      const root = document.documentElement;
+      const body = document.body;
+      const maxScroll = Math.max(0, root.scrollHeight - window.innerHeight);
+      const sectionTop = section.getBoundingClientRect().top + window.scrollY;
+      const targetTop = Math.min(Math.max(0, sectionTop), maxScroll);
+      window.scrollTo({ top: targetTop, behavior: 'auto' });
+      [document.scrollingElement, root, body]
+        .filter(Boolean)
+        .forEach((element) => {
+          element.scrollTop = targetTop;
+        });
+    };
+    scrollToSectionTop();
+    window.requestAnimationFrame(scrollToSectionTop);
+    window.setTimeout(scrollToSectionTop, 120);
+    window.setTimeout(scrollToSectionTop, 320);
+    window.setTimeout(scrollToSectionTop, 720);
+  }, []);
+
   const goToSection = useCallback(
     (id) => {
       const item = sectionItems.find((candidate) => candidate.id === id) || sectionItems[0];
@@ -396,32 +419,20 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
         onNavigate(item.id);
       }
 
-      const section = findSection(item);
-      if (section) {
-        const scrollToSectionTop = () => {
-          const root = document.documentElement;
-          const body = document.body;
-          const maxScroll = Math.max(0, root.scrollHeight - window.innerHeight);
-          const sectionTop = section.getBoundingClientRect().top + window.scrollY;
-          const targetTop = Math.min(Math.max(0, sectionTop), maxScroll);
-          window.scrollTo({ top: targetTop, behavior: 'auto' });
-          [document.scrollingElement, root, body]
-            .filter(Boolean)
-            .forEach((element) => {
-              element.scrollTop = targetTop;
-            });
-        };
-        scrollToSectionTop();
-        window.requestAnimationFrame(scrollToSectionTop);
-        window.setTimeout(scrollToSectionTop, 120);
-        window.setTimeout(scrollToSectionTop, 320);
-        window.setTimeout(scrollToSectionTop, 720);
-      }
+      forceSectionIntoView(item);
       window.setTimeout(updateScrollState, 420);
       window.setTimeout(updateScrollState, 840);
     },
-    [onNavigate, updateScrollState]
+    [forceSectionIntoView, onNavigate, updateScrollState]
   );
+
+  useEffect(() => {
+    if (Date.now() > movementScrollLockUntilRef.current) return;
+    const item = sectionItems[movementTargetIndexRef.current] || sectionItems[movementTargetIndex];
+    if (!item) return;
+    forceSectionIntoView(item);
+    window.setTimeout(updateScrollState, 860);
+  }, [forceSectionIntoView, movementTargetIndex, updateScrollState]);
 
   const currentSectionIndex = useCallback(() => {
     if (typeof window === 'undefined') {
