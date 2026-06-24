@@ -1156,7 +1156,7 @@
 }
 
 .home-left-command-menu {
-  --left-menu-edge: clamp(12px, calc(1.8vw + 8px), 34px);
+  --left-menu-edge: clamp(24px, calc(2.2vw + 24px), 72px);
   --left-menu-top: clamp(68px, calc(5vh + 38px), 108px);
   --left-menu-width: clamp(248px, calc(18vw + 190px), 342px);
   --left-menu-bottom-gap: clamp(18px, calc(3vh + 10px), 42px);
