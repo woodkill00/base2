@@ -470,17 +470,12 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     forceScrollToDocumentEdge(top);
   };
 
-  const handleMovementClick = (direction, event) => {
+  const handleMovementClick = (direction) => {
     if (movementClickTimer.current) {
       window.clearTimeout(movementClickTimer.current);
       movementClickTimer.current = null;
     }
     lastMovementClick.current = { direction, time: Date.now() };
-
-    if (event.detail >= 2) {
-      scrollToEdge(direction < 0);
-      return;
-    }
     moveSection(direction);
   };
 
@@ -492,12 +487,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     }
     lastMovementClick.current = { direction, time: Date.now() };
     scrollToEdge(direction < 0);
-  };
-
-  const handleMovementMouseDown = (direction, event) => {
-    if (event.detail >= 2) {
-      handleMovementDoubleClick(direction, event);
-    }
   };
 
   const handleUtilitySelect = (index, item) => {
@@ -795,8 +784,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
             <button
               type="button"
               className="home-movement-button home-movement-button-up"
-              onMouseDown={(event) => handleMovementMouseDown(-1, event)}
-              onClick={(event) => handleMovementClick(-1, event)}
+              onClick={() => handleMovementClick(-1)}
               onDoubleClick={(event) => handleMovementDoubleClick(-1, event)}
               aria-label="Scroll up to previous Base2 section"
               data-testid="base2-scroll-ascend"
@@ -810,8 +798,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
           <button
             type="button"
             className="home-movement-button home-movement-button-down"
-            onMouseDown={(event) => handleMovementMouseDown(1, event)}
-            onClick={(event) => handleMovementClick(1, event)}
+            onClick={() => handleMovementClick(1)}
             onDoubleClick={(event) => handleMovementDoubleClick(1, event)}
             aria-label="Scroll down to next Base2 section"
             disabled={!canMoveDown}
