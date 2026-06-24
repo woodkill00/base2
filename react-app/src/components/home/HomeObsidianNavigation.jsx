@@ -137,6 +137,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   const [utilitySelectorStyle, setUtilitySelectorStyle] = useState(UTILITY_SELECTOR_FALLBACK);
   const [colorSchemeId, setColorSchemeId] = useState('volcanic');
   const [scrollState, setScrollState] = useState(getScrollMetrics);
+  const [movementTargetIndex, setMovementTargetIndex] = useState(0);
   const movementClickTimer = useRef(null);
   const lastMovementClick = useRef({ direction: 0, time: 0 });
   const leftMenuRef = useRef(null);
@@ -167,6 +168,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       const nextIndex = sectionItems.findIndex((item) => item.id === nextActiveSection);
       if (nextIndex >= 0) {
         movementTargetIndexRef.current = nextIndex;
+        setMovementTargetIndex(nextIndex);
       }
     }
   }, []);
@@ -179,6 +181,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     const index = sectionItems.findIndex((item) => item.id === activeSection);
     if (index >= 0 && Date.now() > movementScrollLockUntilRef.current) {
       movementTargetIndexRef.current = index;
+      setMovementTargetIndex(index);
     }
   }, [activeSection]);
 
@@ -381,7 +384,9 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     (id) => {
       const item = sectionItems.find((candidate) => candidate.id === id) || sectionItems[0];
       const itemIndex = sectionItems.findIndex((candidate) => candidate.id === item.id);
-      movementTargetIndexRef.current = Math.max(0, itemIndex);
+      const nextIndex = Math.max(0, itemIndex);
+      movementTargetIndexRef.current = nextIndex;
+      setMovementTargetIndex(nextIndex);
       movementScrollLockUntilRef.current = Date.now() + 2200;
       setActiveSection(item.id);
       setIsLeftOpen(false);
@@ -425,6 +430,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       : currentSectionIndex();
     const nextIndex = Math.min(sectionItems.length - 1, Math.max(0, index + direction));
     movementTargetIndexRef.current = nextIndex;
+    setMovementTargetIndex(nextIndex);
     goToSection(sectionItems[nextIndex].id);
   };
 
@@ -460,7 +466,9 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
 
   const scrollToEdge = (top) => {
     const target = top ? sectionItems[0] : sectionItems[sectionItems.length - 1];
-    movementTargetIndexRef.current = top ? 0 : sectionItems.length - 1;
+    const nextIndex = top ? 0 : sectionItems.length - 1;
+    movementTargetIndexRef.current = nextIndex;
+    setMovementTargetIndex(nextIndex);
     setActiveSection(target.id);
     setIsLeftOpen(false);
     setIsCommandPaletteOpen(false);
@@ -525,8 +533,9 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
 
 
   const activeIndex = Math.max(0, sectionItems.findIndex((item) => item.id === activeSection));
-  const canMoveUp = scrollState.canAscend;
-  const canMoveDown = activeIndex < sectionItems.length - 1 && scrollState.canDescend;
+  const resolvedMovementIndex = Math.max(0, Math.min(sectionItems.length - 1, movementTargetIndex));
+  const canMoveUp = resolvedMovementIndex > 0;
+  const canMoveDown = resolvedMovementIndex < sectionItems.length - 1;
 
   return (
     <div
