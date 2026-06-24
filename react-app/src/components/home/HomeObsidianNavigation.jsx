@@ -407,12 +407,17 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     };
     scrollToSectionTop();
     window.requestAnimationFrame(scrollToSectionTop);
-    window.setTimeout(scrollToSectionTop, 120);
-    window.setTimeout(scrollToSectionTop, 320);
-    window.setTimeout(scrollToSectionTop, 720);
-    window.setTimeout(scrollToSectionTop, 1240);
-    window.setTimeout(scrollToSectionTop, 1880);
-    window.setTimeout(scrollToSectionTop, 2600);
+    [120, 320, 720, 1240, 1880, 2600].forEach((delay) => {
+      window.setTimeout(scrollToSectionTop, delay);
+    });
+    const startedAt = Date.now();
+    const alignTimer = window.setInterval(() => {
+      scrollToSectionTop();
+      const rect = section.getBoundingClientRect();
+      if (Math.abs(rect.top) <= 3 || Date.now() - startedAt > 5600) {
+        window.clearInterval(alignTimer);
+      }
+    }, 180);
   }, []);
 
   const goToSection = useCallback(
@@ -422,7 +427,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       const nextIndex = Math.max(0, itemIndex);
       movementTargetIndexRef.current = nextIndex;
       setMovementTargetIndex(nextIndex);
-      movementScrollLockUntilRef.current = Date.now() + 2200;
+      movementScrollLockUntilRef.current = Date.now() + 6200;
       setActiveSection(item.id);
       setIsLeftOpen(false);
       setIsCommandPaletteOpen(false);
@@ -497,14 +502,22 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
 
     jump();
     window.requestAnimationFrame(jump);
-    window.setTimeout(jump, 120);
-    window.setTimeout(jump, 260);
-    window.setTimeout(jump, 620);
-    window.setTimeout(jump, 960);
+    [120, 260, 620, 960, 1320, 1900, 2700].forEach((delay) => {
+      window.setTimeout(jump, delay);
+    });
+    const startedAt = Date.now();
+    const edgeTimer = window.setInterval(() => {
+      jump();
+      const target = resolveTarget();
+      const current = window.scrollY || document.documentElement.scrollTop || 0;
+      if (Math.abs(current - target) <= 3 || Date.now() - startedAt > 5600) {
+        window.clearInterval(edgeTimer);
+      }
+    }, 180);
     window.setTimeout(() => {
       jump();
       updateScrollState();
-    }, 1180);
+    }, 5800);
   };
 
   const scrollToEdge = (top) => {
@@ -512,7 +525,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     const nextIndex = top ? 0 : sectionItems.length - 1;
     movementTargetIndexRef.current = nextIndex;
     setMovementTargetIndex(nextIndex);
-    movementScrollLockUntilRef.current = Date.now() + 2200;
+    movementScrollLockUntilRef.current = Date.now() + 6200;
     setActiveSection(target.id);
     setIsLeftOpen(false);
     setIsCommandPaletteOpen(false);
