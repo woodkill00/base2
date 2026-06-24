@@ -87,7 +87,7 @@ const UTILITY_SELECTOR_FALLBACK = {
 
 const findSection = (item) => {
   if (typeof document === 'undefined') return null;
-  return document.querySelector(`[data-testid="${item.target}"]`) || document.getElementById(item.target);
+  return document.getElementById(item.target) || document.querySelector(`[data-testid="${item.target}"]`);
 };
 
 const getSectionElements = () =>
