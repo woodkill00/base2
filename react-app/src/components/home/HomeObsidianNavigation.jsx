@@ -387,6 +387,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       const root = document.documentElement;
       const body = document.body;
       const maxScroll = Math.max(0, root.scrollHeight - window.innerHeight);
+      section.scrollIntoView({ behavior: 'auto', block: 'start' });
       const sectionTop = section.getBoundingClientRect().top + window.scrollY;
       const targetTop = Math.min(Math.max(0, sectionTop), maxScroll);
       window.scrollTo({ top: targetTop, behavior: 'auto' });
@@ -401,6 +402,9 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     window.setTimeout(scrollToSectionTop, 120);
     window.setTimeout(scrollToSectionTop, 320);
     window.setTimeout(scrollToSectionTop, 720);
+    window.setTimeout(scrollToSectionTop, 1240);
+    window.setTimeout(scrollToSectionTop, 1880);
+    window.setTimeout(scrollToSectionTop, 2600);
   }, []);
 
   const goToSection = useCallback(
@@ -425,14 +429,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     },
     [forceSectionIntoView, onNavigate, updateScrollState]
   );
-
-  useEffect(() => {
-    if (Date.now() > movementScrollLockUntilRef.current) return;
-    const item = sectionItems[movementTargetIndexRef.current] || sectionItems[movementTargetIndex];
-    if (!item) return;
-    forceSectionIntoView(item);
-    window.setTimeout(updateScrollState, 860);
-  }, [forceSectionIntoView, movementTargetIndex, updateScrollState]);
 
   const currentSectionIndex = useCallback(() => {
     if (typeof window === 'undefined') {
