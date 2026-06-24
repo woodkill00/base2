@@ -41,7 +41,7 @@ const modules = [
 
 const ProjectsGrid = () => (
   <section
-    id="projects"
+    id="base2-thermal-security"
     className="base2-integrated-section base2-integrated-projects"
     data-testid="base2-projects-section"
   >
