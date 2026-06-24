@@ -162,8 +162,8 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   const updateScrollState = useCallback(() => {
     setScrollState(getScrollMetrics());
     const nextActiveSection = readActiveSection();
-    setActiveSection(nextActiveSection);
     if (Date.now() > movementScrollLockUntilRef.current) {
+      setActiveSection(nextActiveSection);
       const nextIndex = sectionItems.findIndex((item) => item.id === nextActiveSection);
       if (nextIndex >= 0) {
         movementTargetIndexRef.current = nextIndex;
