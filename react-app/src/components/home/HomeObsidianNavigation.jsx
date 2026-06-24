@@ -148,6 +148,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   const activeUtilitySlotRef = useRef(activeUtilitySlot);
   const movementTargetIndexRef = useRef(0);
   const movementScrollLockUntilRef = useRef(0);
+  const movementAlignTimers = useRef([]);
 
   const visibleUtilityItems = useMemo(
     () => [...utilityItems, ...utilityItems, ...utilityItems],
@@ -159,6 +160,32 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     return utilityLoopOffset + ((index % length) + length) % length;
   }, [utilityLoopOffset]);
   const activeColorScheme = colorSchemes.find((scheme) => scheme.id === colorSchemeId) || colorSchemes[0];
+
+  const clearMovementAlignTimers = useCallback(() => {
+    movementAlignTimers.current.forEach(({ type, id }) => {
+      if (type === 'interval') {
+        window.clearInterval(id);
+      } else {
+        window.clearTimeout(id);
+      }
+    });
+    movementAlignTimers.current = [];
+  }, []);
+
+  const scheduleMovementTimeout = useCallback((callback, delay) => {
+    const id = window.setTimeout(() => {
+      movementAlignTimers.current = movementAlignTimers.current.filter((timer) => timer.id !== id);
+      callback();
+    }, delay);
+    movementAlignTimers.current.push({ type: 'timeout', id });
+    return id;
+  }, []);
+
+  const scheduleMovementInterval = useCallback((callback, delay) => {
+    const id = window.setInterval(callback, delay);
+    movementAlignTimers.current.push({ type: 'interval', id });
+    return id;
+  }, []);
 
   const updateScrollState = useCallback(() => {
     setScrollState(getScrollMetrics());
@@ -383,6 +410,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   const forceSectionIntoView = useCallback((item) => {
     const section = findSection(item);
     if (!section || typeof window === 'undefined' || typeof document === 'undefined') return;
+    clearMovementAlignTimers();
     const scrollToSectionTop = () => {
       const root = document.documentElement;
       const body = document.body;
@@ -408,17 +436,18 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     scrollToSectionTop();
     window.requestAnimationFrame(scrollToSectionTop);
     [120, 320, 720, 1240, 1880, 2600].forEach((delay) => {
-      window.setTimeout(scrollToSectionTop, delay);
+      scheduleMovementTimeout(scrollToSectionTop, delay);
     });
     const startedAt = Date.now();
-    const alignTimer = window.setInterval(() => {
+    const alignTimer = scheduleMovementInterval(() => {
       scrollToSectionTop();
       const rect = section.getBoundingClientRect();
       if (Math.abs(rect.top) <= 3 || Date.now() - startedAt > 5600) {
         window.clearInterval(alignTimer);
+        movementAlignTimers.current = movementAlignTimers.current.filter((timer) => timer.id !== alignTimer);
       }
     }, 180);
-  }, []);
+  }, [clearMovementAlignTimers, scheduleMovementInterval, scheduleMovementTimeout]);
 
   const goToSection = useCallback(
     (id) => {
@@ -484,6 +513,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
 
   const forceScrollToDocumentEdge = (top) => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    clearMovementAlignTimers();
     const resolveTarget = () => {
       const root = document.documentElement;
       const body = document.body;
@@ -503,18 +533,19 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     jump();
     window.requestAnimationFrame(jump);
     [120, 260, 620, 960, 1320, 1900, 2700].forEach((delay) => {
-      window.setTimeout(jump, delay);
+      scheduleMovementTimeout(jump, delay);
     });
     const startedAt = Date.now();
-    const edgeTimer = window.setInterval(() => {
+    const edgeTimer = scheduleMovementInterval(() => {
       jump();
       const target = resolveTarget();
       const current = window.scrollY || document.documentElement.scrollTop || 0;
       if (Math.abs(current - target) <= 3 || Date.now() - startedAt > 5600) {
         window.clearInterval(edgeTimer);
+        movementAlignTimers.current = movementAlignTimers.current.filter((timer) => timer.id !== edgeTimer);
       }
     }, 180);
-    window.setTimeout(() => {
+    scheduleMovementTimeout(() => {
       jump();
       updateScrollState();
     }, 5800);
