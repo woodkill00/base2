@@ -532,7 +532,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   };
 
 
-  const activeIndex = Math.max(0, sectionItems.findIndex((item) => item.id === activeSection));
   const resolvedMovementIndex = Math.max(0, Math.min(sectionItems.length - 1, movementTargetIndex));
   const canMoveUp = resolvedMovementIndex > 0;
   const canMoveDown = resolvedMovementIndex < sectionItems.length - 1;
