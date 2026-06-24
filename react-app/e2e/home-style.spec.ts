@@ -98,6 +98,16 @@ test('home page volcanic navigation controls move by sections and reveal menus',
   await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain('home');
   await expect(page.getByTestId('base2-scroll-ascend')).toHaveCount(0);
 
+  for (const expectedSection of ['features', 'command', 'security', 'contact']) {
+    await page.getByTestId('base2-scroll-descend').click({ clickCount: 1 });
+    await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain(expectedSection);
+  }
+  await expect(page.getByTestId('base2-scroll-descend')).toBeDisabled();
+  await page.getByTestId('base2-scroll-ascend').dblclick();
+  await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain('home');
+  await expect.poll(async () => page.evaluate(() => window.scrollY <= 4)).toBe(true);
+  await expect(page.getByTestId('base2-scroll-ascend')).toHaveCount(0);
+
   await page.getByTestId('base2-left-menu-toggle').click();
   await expect(page.getByTestId('base2-left-command-menu')).toHaveClass(/is-open/);
   await expect(page.getByTestId('base2-left-command-menu')).toHaveCSS('overflow-y', /auto|scroll/);
