@@ -452,6 +452,16 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     goToSection(sectionItems[nextIndex].id);
   };
 
+  const queueSingleMovement = (direction) => {
+    if (movementClickTimer.current) {
+      window.clearTimeout(movementClickTimer.current);
+    }
+    movementClickTimer.current = window.setTimeout(() => {
+      movementClickTimer.current = null;
+      moveSection(direction);
+    }, 220);
+  };
+
   const forceScrollToDocumentEdge = (top) => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
     const resolveTarget = () => {
@@ -487,6 +497,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     const nextIndex = top ? 0 : sectionItems.length - 1;
     movementTargetIndexRef.current = nextIndex;
     setMovementTargetIndex(nextIndex);
+    movementScrollLockUntilRef.current = Date.now() + 2200;
     setActiveSection(target.id);
     setIsLeftOpen(false);
     setIsCommandPaletteOpen(false);
@@ -497,12 +508,8 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   };
 
   const handleMovementClick = (direction) => {
-    if (movementClickTimer.current) {
-      window.clearTimeout(movementClickTimer.current);
-      movementClickTimer.current = null;
-    }
     lastMovementClick.current = { direction, time: Date.now() };
-    moveSection(direction);
+    queueSingleMovement(direction);
   };
 
   const handleMovementDoubleClick = (direction, event) => {
