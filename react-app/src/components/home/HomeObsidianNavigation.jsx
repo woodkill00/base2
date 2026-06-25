@@ -112,6 +112,38 @@ const getScrollMetrics = () => {
   };
 };
 
+const clampScrollTarget = (target) => {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return 0;
+  const root = document.documentElement;
+  const body = document.body;
+  const scrollRoot = document.scrollingElement || root;
+  const scrollHeight = Math.max(root.scrollHeight, body?.scrollHeight || 0, scrollRoot?.scrollHeight || 0);
+  const maxScroll = Math.max(0, scrollHeight - window.innerHeight);
+  return Math.min(maxScroll, Math.max(0, Math.round(target)));
+};
+
+const getMovementStops = () => {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return [0];
+  const root = document.documentElement;
+  const body = document.body;
+  const scrollRoot = document.scrollingElement || root;
+  const scrollHeight = Math.max(root.scrollHeight, body?.scrollHeight || 0, scrollRoot?.scrollHeight || 0);
+  const maxScroll = Math.max(0, scrollHeight - window.innerHeight);
+  const targetStops = sectionItems
+    .map((item) => {
+      const element = findSection(item);
+      if (!element) return null;
+      return clampScrollTarget(element.getBoundingClientRect().top + window.scrollY);
+    })
+    .filter((value) => typeof value === 'number');
+  const viewportStops = Array.from(
+    { length: Math.ceil(maxScroll / Math.max(1, window.innerHeight)) + 1 },
+    (_, index) => clampScrollTarget(index * window.innerHeight)
+  );
+  const stops = [...targetStops, ...viewportStops, maxScroll].sort((a, b) => a - b);
+  return stops.filter((value, index) => index === 0 || Math.abs(value - stops[index - 1]) > 24);
+};
+
 const readActiveSection = () => {
   if (typeof window === 'undefined') return sectionItems[0].id;
   const sections = getSectionElements();
@@ -464,8 +496,11 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     const scrollHeight = Math.max(root.scrollHeight, body?.scrollHeight || 0, scrollRoot?.scrollHeight || 0);
     const maxScroll = Math.max(0, scrollHeight - window.innerHeight);
     const currentScroll = window.scrollY || scrollRoot?.scrollTop || root.scrollTop || body.scrollTop || 0;
-    const pageStep = Math.max(320, Math.round(window.innerHeight * 0.92));
-    const targetTop = Math.min(maxScroll, Math.max(0, currentScroll + direction * pageStep));
+    const stops = getMovementStops();
+    const targetStop = direction > 0
+      ? stops.find((stop) => stop > currentScroll + 24)
+      : [...stops].reverse().find((stop) => stop < currentScroll - 24);
+    const targetTop = typeof targetStop === 'number' ? targetStop : (direction > 0 ? maxScroll : 0);
     movementScrollLockUntilRef.current = Date.now() + 360;
     window.scrollTo({ top: targetTop, behavior: 'auto' });
     [document.scrollingElement, document.documentElement, document.body]
@@ -860,19 +895,20 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
             </button>
           ) : null}
 
-          <button
-            type="button"
-            className="home-movement-button home-movement-button-down"
-            onClick={() => handleMovementClick(1)}
-            onDoubleClick={(event) => handleMovementDoubleClick(1, event)}
-            aria-label="Scroll down to next Base2 section"
-            disabled={!canMoveDown}
-            data-testid="base2-scroll-descend"
-          >
-            <span className="home-movement-progress" style={{ height: `${scrollState.progress}%` }} />
-            <ArrowDown aria-hidden="true" />
-            <ChevronDown aria-hidden="true" />
-          </button>
+          {canMoveDown ? (
+            <button
+              type="button"
+              className="home-movement-button home-movement-button-down"
+              onClick={() => handleMovementClick(1)}
+              onDoubleClick={(event) => handleMovementDoubleClick(1, event)}
+              aria-label="Scroll down to next Base2 section"
+              data-testid="base2-scroll-descend"
+            >
+              <span className="home-movement-progress" style={{ height: `${scrollState.progress}%` }} />
+              <ArrowDown aria-hidden="true" />
+              <ChevronDown aria-hidden="true" />
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>
