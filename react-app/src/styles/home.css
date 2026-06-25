@@ -1666,6 +1666,7 @@
 .base2-viewport-section {
   display: grid;
   align-content: center;
+  align-items: center;
   justify-items: stretch;
 }
 
