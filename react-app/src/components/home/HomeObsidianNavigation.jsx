@@ -129,18 +129,11 @@ const getMovementStops = () => {
   const scrollRoot = document.scrollingElement || root;
   const scrollHeight = Math.max(root.scrollHeight, body?.scrollHeight || 0, scrollRoot?.scrollHeight || 0);
   const maxScroll = Math.max(0, scrollHeight - window.innerHeight);
-  const targetStops = sectionItems
-    .map((item) => {
-      const element = findSection(item);
-      if (!element) return null;
-      return clampScrollTarget(element.getBoundingClientRect().top + window.scrollY);
-    })
-    .filter((value) => typeof value === 'number');
   const viewportStops = Array.from(
     { length: Math.ceil(maxScroll / Math.max(1, window.innerHeight)) + 1 },
     (_, index) => clampScrollTarget(index * window.innerHeight)
   );
-  const stops = [...targetStops, ...viewportStops, maxScroll].sort((a, b) => a - b);
+  const stops = [...viewportStops, maxScroll].sort((a, b) => a - b);
   return stops.filter((value, index) => index === 0 || Math.abs(value - stops[index - 1]) > 24);
 };
 
