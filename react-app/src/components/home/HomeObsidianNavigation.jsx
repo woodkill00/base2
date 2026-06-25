@@ -466,10 +466,16 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     const currentScroll = window.scrollY || scrollRoot?.scrollTop || root.scrollTop || body.scrollTop || 0;
     const pageStep = Math.max(320, Math.round(window.innerHeight * 0.92));
     const targetTop = Math.min(maxScroll, Math.max(0, currentScroll + direction * pageStep));
-    movementScrollLockUntilRef.current = Date.now() + 1200;
-    window.scrollTo({ top: targetTop, behavior: 'smooth' });
-    window.setTimeout(updateScrollState, 420);
-    window.setTimeout(updateScrollState, 980);
+    movementScrollLockUntilRef.current = Date.now() + 360;
+    window.scrollTo({ top: targetTop, behavior: 'auto' });
+    [document.scrollingElement, document.documentElement, document.body]
+      .filter(Boolean)
+      .forEach((element) => {
+        element.scrollTop = targetTop;
+      });
+    updateScrollState();
+    window.requestAnimationFrame(updateScrollState);
+    window.setTimeout(updateScrollState, 260);
   };
 
   const queueSingleMovement = (direction) => {
