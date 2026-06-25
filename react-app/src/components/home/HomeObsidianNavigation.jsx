@@ -122,6 +122,32 @@ const clampScrollTarget = (target) => {
   return Math.min(maxScroll, Math.max(0, Math.round(target)));
 };
 
+const getSnapStopElements = () => {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return [];
+  const selectors = [
+    '[data-testid="base2-preserved-home-hero"]',
+    '#features',
+    '[data-base2-section-panel]',
+    'main > section',
+    'main > footer',
+    'main > [data-testid]',
+    '#home-page > section',
+    '#home-page > footer',
+    '#home-page > [data-testid]',
+  ];
+  const seen = new Set();
+  return selectors.flatMap((selector) => Array.from(document.querySelectorAll(selector))).filter((element) => {
+    if (seen.has(element)) return false;
+    seen.add(element);
+    const style = getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+    return style.display !== 'none'
+      && style.visibility !== 'hidden'
+      && rect.width >= Math.min(280, window.innerWidth * 0.6)
+      && rect.height >= Math.min(180, window.innerHeight * 0.24);
+  });
+};
+
 const getMovementStops = () => {
   if (typeof window === 'undefined' || typeof document === 'undefined') return [0];
   const root = document.documentElement;
@@ -129,11 +155,15 @@ const getMovementStops = () => {
   const scrollRoot = document.scrollingElement || root;
   const scrollHeight = Math.max(root.scrollHeight, body?.scrollHeight || 0, scrollRoot?.scrollHeight || 0);
   const maxScroll = Math.max(0, scrollHeight - window.innerHeight);
+  const elementStops = getSnapStopElements()
+    .map((element) => element.getBoundingClientRect().top + window.scrollY)
+    .map((top) => clampScrollTarget(top));
   const viewportStops = Array.from(
     { length: Math.ceil(maxScroll / Math.max(1, window.innerHeight)) + 1 },
     (_, index) => clampScrollTarget(index * window.innerHeight)
   );
-  const stops = [...viewportStops, maxScroll].sort((a, b) => a - b);
+  const sourceStops = elementStops.length >= 4 ? elementStops : viewportStops;
+  const stops = [0, ...sourceStops, maxScroll].sort((a, b) => a - b);
   return stops.filter((value, index) => index === 0 || Math.abs(value - stops[index - 1]) > 24);
 };
 
