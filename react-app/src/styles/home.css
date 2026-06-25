@@ -1629,6 +1629,7 @@
 }
 
 .base2-viewport-section,
+[data-testid="home-page"],
 #home-page,
 #features {
   min-height: 100vh;
@@ -1641,6 +1642,7 @@
 }
 
 #home-page,
+[data-testid="home-page"],
 #features {
   margin-block: 0;
 }
