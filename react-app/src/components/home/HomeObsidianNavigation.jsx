@@ -494,16 +494,23 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       ? stops.find((stop) => stop > currentScroll + 24)
       : [...stops].reverse().find((stop) => stop < currentScroll - 24);
     const targetTop = typeof targetStop === 'number' ? targetStop : (direction > 0 ? maxScroll : 0);
-    movementScrollLockUntilRef.current = Date.now() + 360;
-    window.scrollTo({ top: targetTop, behavior: 'auto' });
-    [document.scrollingElement, document.documentElement, document.body]
-      .filter(Boolean)
-      .forEach((element) => {
-        element.scrollTop = targetTop;
-      });
+    const jump = () => {
+      window.scrollTo({ top: targetTop, behavior: 'auto' });
+      [document.scrollingElement, document.documentElement, document.body]
+        .filter(Boolean)
+        .forEach((element) => {
+          element.scrollTop = targetTop;
+        });
+    };
+    movementScrollLockUntilRef.current = Date.now() + 920;
+    jump();
+    window.requestAnimationFrame(jump);
+    [90, 180, 320, 520, 760].forEach((delay) => {
+      scheduleMovementTimeout(jump, delay);
+    });
     updateScrollState();
     window.requestAnimationFrame(updateScrollState);
-    window.setTimeout(updateScrollState, 260);
+    window.setTimeout(updateScrollState, 920);
   };
 
   const queueSingleMovement = (direction) => {
