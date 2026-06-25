@@ -1613,19 +1613,35 @@
 }
 
 .base2-integrated-section {
-  --base2-section-inline: clamp(10px, calc(2vw + 8px), 40px);
-  --base2-section-block: 0px;
+  --base2-section-inline: clamp(18px, calc(2.4vw + 12px), 56px);
+  --base2-section-block: clamp(18px, calc(3vh + 8px), 54px);
   --base2-section-pad: clamp(24px, calc(3vw + 14px), 48px);
-  width: min(1180px, calc(100% - (var(--base2-section-inline) * 2)));
-  margin: var(--base2-section-block) auto;
+  width: 100%;
+  margin: 0;
+  padding: var(--base2-section-block) var(--base2-section-inline);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--obsidian-text, #f7f1ee);
+  isolation: isolate;
+  contain: paint;
+}
+
+.base2-section-shell {
+  width: min(1180px, 100%);
+  max-height: calc(100vh - (var(--base2-section-block) * 2));
+  margin: 0 auto;
   padding: var(--base2-section-pad);
   border: 1px solid rgba(255, 99, 33, 0.2);
   border-radius: 8px;
   background:
     radial-gradient(circle at 16% 4%, rgba(255, 49, 49, 0.16), transparent 34%),
     linear-gradient(145deg, rgba(20, 20, 20, 0.96), rgba(5, 5, 5, 0.98));
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
-  color: var(--obsidian-text, #f7f1ee);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), inset 0 -1px 0 rgba(255, 99, 33, 0.08);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
 }
 
 .base2-viewport-section,
@@ -1650,14 +1666,19 @@
 .base2-viewport-section {
   display: grid;
   align-content: center;
+  justify-items: stretch;
 }
 
-.base2-integrated-about,
-.base2-integrated-contact {
+.base2-integrated-about .base2-section-shell,
+.base2-integrated-contact .base2-section-shell {
   display: grid;
   grid-template-columns: minmax(0, 0.86fr) minmax(320px, 1.14fr);
   gap: clamp(22px, calc(3vw + 10px), 48px);
   align-items: start;
+}
+
+.base2-integrated-projects .base2-section-shell {
+  display: block;
 }
 
 .base2-integrated-copy {
@@ -1944,14 +1965,18 @@
   }
 
   .base2-integrated-section {
-    --base2-section-inline: clamp(10px, calc(2vw + 6px), 18px);
-    --base2-section-block: 0px;
+    --base2-section-inline: clamp(16px, calc(3vw + 8px), 26px);
+    --base2-section-block: clamp(16px, calc(3vh + 8px), 30px);
     --base2-section-pad: clamp(18px, calc(3vw + 8px), 24px);
-    width: min(680px, calc(100% - (var(--base2-section-inline) * 2)));
   }
 
-  .base2-integrated-about,
-  .base2-integrated-contact,
+  .base2-section-shell {
+    width: min(680px, 100%);
+    max-height: calc(100vh - (var(--base2-section-block) * 2));
+  }
+
+  .base2-integrated-about .base2-section-shell,
+  .base2-integrated-contact .base2-section-shell,
   .base2-module-grid,
   .base2-integrated-footer {
     grid-template-columns: 1fr;
