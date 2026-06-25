@@ -46,29 +46,31 @@ const ProjectsGrid = () => (
     data-base2-section-panel="security"
     data-testid="base2-projects-section"
   >
-    <div className="base2-integrated-copy">
-      <span className="base2-section-kicker">Operational modules</span>
-      <h2>The page below the hero now belongs to the same system.</h2>
-      <p>
-        These cards replace the generic portfolio samples with Base2-specific workflows the team
-        actually uses when it plans, changes, deploys, checks, and reports on a repo.
-      </p>
-    </div>
-    <div className="base2-module-grid">
-      {modules.map(({ icon: Icon, title, detail, tags }) => (
-        <article className="base2-module-card" key={title}>
-          <div className="base2-module-icon">
-            <Icon aria-hidden="true" />
-          </div>
-          <h3>{title}</h3>
-          <p>{detail}</p>
-          <div className="base2-module-tags" aria-label={`${title} tags`}>
-            {tags.map((tag) => (
-              <span key={tag}>{tag}</span>
-            ))}
-          </div>
-        </article>
-      ))}
+    <div className="base2-section-shell">
+      <div className="base2-integrated-copy">
+        <span className="base2-section-kicker">Operational modules</span>
+        <h2>The page below the hero now belongs to the same system.</h2>
+        <p>
+          These cards replace the generic portfolio samples with Base2-specific workflows the team
+          actually uses when it plans, changes, deploys, checks, and reports on a repo.
+        </p>
+      </div>
+      <div className="base2-module-grid">
+        {modules.map(({ icon: Icon, title, detail, tags }) => (
+          <article className="base2-module-card" key={title}>
+            <div className="base2-module-icon">
+              <Icon aria-hidden="true" />
+            </div>
+            <h3>{title}</h3>
+            <p>{detail}</p>
+            <div className="base2-module-tags" aria-label={`${title} tags`}>
+              {tags.map((tag) => (
+                <span key={tag}>{tag}</span>
+              ))}
+            </div>
+          </article>
+        ))}
+      </div>
     </div>
   </section>
 );
