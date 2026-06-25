@@ -1693,8 +1693,8 @@
 }
 
 @media (max-width: 430px) {
-  #home-page > :where(div, section, article, ul, ol):first-child,
-  [data-testid="base2-preserved-home-hero"] > :where(div, section, article, ul, ol):first-child {
+  #home-page > :where(div, section, article, ul, ol):not(.home-obsidian-nav-layer):not(.home-bottom-movement-controls):not(.home-command-palette-modal),
+  [data-testid="base2-preserved-home-hero"] > :where(div, section, article, ul, ol):not(.home-obsidian-nav-layer):not(.home-bottom-movement-controls):not(.home-command-palette-modal) {
     transform: translateY(clamp(-168px, calc(-631px + 40vw + 30vh), -104px));
   }
 }
