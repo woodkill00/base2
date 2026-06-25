@@ -1657,6 +1657,18 @@
   scroll-snap-stop: always;
 }
 
+:where(main, #home-page) > :where(section, footer, [data-testid]):not(.home-obsidian-nav-layer):not(.home-bottom-movement-controls):not(.home-command-palette-modal) {
+  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  box-sizing: border-box;
+  overflow: auto;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: grid;
+  align-items: center;
+}
+
 #home-page,
 [data-testid="base2-preserved-home-hero"],
 #features {
