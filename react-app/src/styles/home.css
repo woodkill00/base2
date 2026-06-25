@@ -1626,6 +1626,9 @@
   color: var(--obsidian-text, #f7f1ee);
   isolation: isolate;
   contain: paint;
+  display: grid;
+  align-items: center;
+  justify-items: center;
 }
 
 .base2-section-shell {
@@ -1642,6 +1645,7 @@
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable both-edges;
+  align-self: center;
 }
 
 .base2-viewport-section,
@@ -1675,6 +1679,19 @@
   margin-block: 0;
 }
 
+#features {
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  padding-block: clamp(18px, calc(3vh + 8px), 54px);
+  padding-inline: clamp(18px, calc(2.4vw + 12px), 56px);
+}
+
+#features > :where(div, section, article, ul, ol):first-child {
+  width: min(1180px, 100%);
+  margin-block: auto;
+}
+
 .base2-viewport-section {
   display: grid;
   align-content: center;
@@ -1687,11 +1704,14 @@
   display: grid;
   grid-template-columns: minmax(0, 0.86fr) minmax(320px, 1.14fr);
   gap: clamp(22px, calc(3vw + 10px), 48px);
-  align-items: start;
+  align-items: center;
+  align-content: center;
 }
 
 .base2-integrated-projects .base2-section-shell {
-  display: block;
+  display: grid;
+  align-content: center;
+  gap: clamp(18px, calc(1.6vw + 10px), 30px);
 }
 
 .base2-integrated-copy {
@@ -1771,11 +1791,12 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(210px + 2vw)), 1fr));
   gap: clamp(12px, calc(1.2vw + 8px), 22px);
-  margin-top: clamp(24px, calc(2vw + 12px), 34px);
+  margin-top: 0;
+  align-items: stretch;
 }
 
 .base2-module-card {
-  min-height: clamp(232px, calc(16vw + 68px), 288px);
+  min-height: clamp(196px, calc(12vw + 54px), 254px);
   display: grid;
   align-content: start;
   gap: clamp(10px, calc(0.8vw + 6px), 16px);
