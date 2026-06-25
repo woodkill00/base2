@@ -494,13 +494,20 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   }, [activeSection]);
 
   const moveSection = (direction) => {
-    const index = movementTargetIndexRef.current >= 0
-      ? movementTargetIndexRef.current
-      : currentSectionIndex();
-    const nextIndex = Math.min(sectionItems.length - 1, Math.max(0, index + direction));
-    movementTargetIndexRef.current = nextIndex;
-    setMovementTargetIndex(nextIndex);
-    goToSection(sectionItems[nextIndex].id);
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    clearMovementAlignTimers();
+    const root = document.documentElement;
+    const body = document.body;
+    const scrollRoot = document.scrollingElement || root;
+    const scrollHeight = Math.max(root.scrollHeight, body?.scrollHeight || 0, scrollRoot?.scrollHeight || 0);
+    const maxScroll = Math.max(0, scrollHeight - window.innerHeight);
+    const currentScroll = window.scrollY || scrollRoot?.scrollTop || root.scrollTop || body.scrollTop || 0;
+    const pageStep = Math.max(320, Math.round(window.innerHeight * 0.92));
+    const targetTop = Math.min(maxScroll, Math.max(0, currentScroll + direction * pageStep));
+    movementScrollLockUntilRef.current = Date.now() + 1200;
+    window.scrollTo({ top: targetTop, behavior: 'smooth' });
+    window.setTimeout(updateScrollState, 420);
+    window.setTimeout(updateScrollState, 980);
   };
 
   const queueSingleMovement = (direction) => {
@@ -620,9 +627,8 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   };
 
 
-  const resolvedMovementIndex = Math.max(0, Math.min(sectionItems.length - 1, movementTargetIndex));
-  const canMoveUp = resolvedMovementIndex > 0;
-  const canMoveDown = resolvedMovementIndex < sectionItems.length - 1;
+  const canMoveUp = scrollState.canAscend;
+  const canMoveDown = scrollState.canDescend;
 
   return (
     <div
