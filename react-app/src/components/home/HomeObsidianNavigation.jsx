@@ -476,10 +476,8 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     if (movementClickTimer.current) {
       window.clearTimeout(movementClickTimer.current);
     }
-    movementClickTimer.current = window.setTimeout(() => {
-      movementClickTimer.current = null;
-      moveSection(direction);
-    }, 220);
+    movementClickTimer.current = null;
+    moveSection(direction);
   };
 
   const forceScrollToDocumentEdge = (top) => {
