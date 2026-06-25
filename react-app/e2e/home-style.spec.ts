@@ -102,7 +102,7 @@ test('home page volcanic navigation controls move by sections and reveal menus',
     await page.getByTestId('base2-scroll-descend').click({ clickCount: 1 });
     await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain(expectedSection);
   }
-  await expect(page.getByTestId('base2-scroll-descend')).toBeDisabled();
+  await expect(page.getByTestId('base2-scroll-descend')).toHaveCount(0);
   await page.getByTestId('base2-scroll-ascend').dblclick();
   await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain('home');
   await expect.poll(async () => page.evaluate(() => window.scrollY <= 4)).toBe(true);
