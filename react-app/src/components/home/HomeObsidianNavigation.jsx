@@ -163,7 +163,10 @@ const getMovementStops = () => {
     (_, index) => clampScrollTarget(index * window.innerHeight)
   );
   const sourceStops = elementStops.length >= 4 ? elementStops : viewportStops;
-  const stops = [0, ...sourceStops, maxScroll].sort((a, b) => a - b);
+  const duplicateTopTolerance = Math.max(72, Math.round(window.innerHeight * 0.1));
+  const stops = [0, ...sourceStops, maxScroll]
+    .map((stop) => (stop <= duplicateTopTolerance ? 0 : stop))
+    .sort((a, b) => a - b);
   return stops.filter((value, index) => index === 0 || Math.abs(value - stops[index - 1]) > 24);
 };
 
