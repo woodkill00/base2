@@ -12,7 +12,8 @@ const ContactForm = () => {
   return (
     <section
       id="contact"
-      className="base2-integrated-section base2-integrated-contact"
+      className="base2-integrated-section base2-viewport-section base2-integrated-contact"
+      data-base2-section-panel="contact"
       data-testid="base2-contact-section"
     >
       <div className="base2-integrated-copy">
