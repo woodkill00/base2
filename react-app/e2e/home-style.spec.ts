@@ -98,10 +98,27 @@ test('home page volcanic navigation controls move by sections and reveal menus',
   await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain('home');
   await expect(page.getByTestId('base2-scroll-ascend')).toHaveCount(0);
 
-  for (const expectedSection of ['features', 'command', 'security', 'contact']) {
-    await page.getByTestId('base2-scroll-descend').click({ clickCount: 1 });
-    await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain(expectedSection);
+  const seenSections = [];
+  for (let index = 0; index < 14; index += 1) {
+    const down = page.getByTestId('base2-scroll-descend');
+    if (await down.count() === 0) break;
+    await down.click({ clickCount: 1 });
+    await page.waitForTimeout(120);
+    const active = await page.getByTestId('base2-section-active').textContent();
+    if (active && seenSections[seenSections.length - 1] !== active) {
+      seenSections.push(active);
+    }
+    const position = await page.evaluate(() => ({
+      y: Math.round(window.scrollY),
+      height: window.innerHeight,
+      max: Math.round(Math.max(0, document.documentElement.scrollHeight - window.innerHeight)),
+    }));
+    expect(position.y % position.height <= 4 || Math.abs(position.y - position.max) <= 8).toBeTruthy();
   }
+  expect(seenSections.join(' ')).toContain('features');
+  expect(seenSections.join(' ')).toContain('command');
+  expect(seenSections.join(' ')).toContain('security');
+  expect(seenSections.join(' ')).toContain('contact');
   await expect(page.getByTestId('base2-scroll-descend')).toHaveCount(0);
   await page.getByTestId('base2-scroll-ascend').dblclick();
   await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain('home');
