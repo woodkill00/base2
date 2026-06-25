@@ -1614,7 +1614,7 @@
 
 .base2-integrated-section {
   --base2-section-inline: clamp(10px, calc(2vw + 8px), 40px);
-  --base2-section-block: clamp(28px, calc(4vw + 18px), 56px);
+  --base2-section-block: 0px;
   --base2-section-pad: clamp(24px, calc(3vw + 14px), 48px);
   width: min(1180px, calc(100% - (var(--base2-section-inline) * 2)));
   margin: var(--base2-section-block) auto;
@@ -1626,6 +1626,28 @@
     linear-gradient(145deg, rgba(20, 20, 20, 0.96), rgba(5, 5, 5, 0.98));
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
   color: var(--obsidian-text, #f7f1ee);
+}
+
+.base2-viewport-section,
+#home-page,
+#features {
+  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  box-sizing: border-box;
+  overflow: auto;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+#home-page,
+#features {
+  margin-block: 0;
+}
+
+.base2-viewport-section {
+  display: grid;
+  align-content: center;
 }
 
 .base2-integrated-about,
@@ -1921,7 +1943,7 @@
 
   .base2-integrated-section {
     --base2-section-inline: clamp(10px, calc(2vw + 6px), 18px);
-    --base2-section-block: clamp(24px, calc(3vw + 16px), 32px);
+    --base2-section-block: 0px;
     --base2-section-pad: clamp(18px, calc(3vw + 8px), 24px);
     width: min(680px, calc(100% - (var(--base2-section-inline) * 2)));
   }
