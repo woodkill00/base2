@@ -26,7 +26,8 @@ const operatingPoints = [
 const About = () => (
   <section
     id="base2-obsidian-ops"
-    className="base2-integrated-section base2-integrated-about"
+    className="base2-integrated-section base2-viewport-section base2-integrated-about"
+    data-base2-section-panel="command"
     data-testid="base2-about-section"
   >
     <div className="base2-integrated-copy">
