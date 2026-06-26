@@ -1722,6 +1722,27 @@
   align-content: center;
 }
 
+.base2-integrated-contact .base2-section-shell {
+  width: min(1040px, 100%);
+  grid-template-columns: minmax(0, 0.92fr) minmax(320px, 1.08fr);
+  gap: clamp(24px, calc(2vw + 14px), 40px);
+  padding: clamp(24px, calc(2vw + 18px), 42px);
+}
+
+.base2-integrated-contact .base2-integrated-copy {
+  max-width: calc(440px + 2vw);
+}
+
+.base2-integrated-contact .base2-integrated-copy h2 {
+  font-size: clamp(1.75rem, calc(2vw + 1rem), 2.55rem);
+}
+
+.base2-integrated-contact .base2-feedback-form {
+  align-self: center;
+  max-width: calc(440px + 3vw);
+  width: 100%;
+}
+
 .base2-integrated-projects .base2-section-shell {
   display: grid;
   align-content: center;
@@ -1862,8 +1883,8 @@
 
 .base2-feedback-form {
   display: grid;
-  gap: clamp(12px, calc(0.8vw + 8px), 16px);
-  padding: clamp(18px, calc(1vw + 12px), 22px);
+  gap: clamp(11px, calc(0.7vw + 8px), 15px);
+  padding: clamp(18px, calc(1.2vw + 12px), 26px);
 }
 
 .base2-feedback-form label {
@@ -1883,6 +1904,11 @@
   background: rgba(0, 0, 0, 0.32);
   color: #ffffff;
   font: inherit;
+}
+
+.base2-feedback-form textarea {
+  min-height: clamp(116px, calc(6vh + 72px), 156px);
+  resize: vertical;
 }
 
 .base2-feedback-form input:focus,
@@ -2028,6 +2054,35 @@
   .base2-module-grid,
   .base2-integrated-footer {
     grid-template-columns: 1fr;
+  }
+
+  .base2-integrated-contact .base2-section-shell {
+    width: min(620px, 100%);
+    gap: clamp(16px, calc(2vh + 6px), 24px);
+    padding: clamp(18px, calc(2vw + 10px), 24px);
+  }
+
+  .base2-integrated-contact .base2-integrated-copy {
+    max-width: none;
+    gap: clamp(9px, calc(0.8vh + 5px), 13px);
+  }
+
+  .base2-integrated-contact .base2-integrated-copy h2 {
+    font-size: clamp(1.42rem, calc(3vw + 0.8rem), 1.85rem);
+  }
+
+  .base2-integrated-contact .base2-contact-proof {
+    gap: clamp(6px, calc(0.5vw + 4px), 8px);
+  }
+
+  .base2-integrated-contact .base2-feedback-form {
+    max-width: none;
+    gap: clamp(9px, calc(0.8vh + 5px), 13px);
+    padding: clamp(16px, calc(2vw + 8px), 20px);
+  }
+
+  .base2-integrated-contact .base2-feedback-form textarea {
+    min-height: clamp(92px, calc(5vh + 50px), 124px);
   }
 
   .base2-integrated-grid {
