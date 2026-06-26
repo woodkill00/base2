@@ -1696,7 +1696,7 @@
   #home-page > :where(div, section, article, ul, ol):not(.home-obsidian-nav-layer):not(.home-bottom-movement-controls):not(.home-command-palette-modal),
   [data-testid="base2-preserved-home-hero"] > :where(div, section, article, ul, ol):not(.home-obsidian-nav-layer):not(.home-bottom-movement-controls):not(.home-command-palette-modal) {
     position: relative;
-    top: clamp(-168px, calc(-631px + 40vw + 30vh), -104px);
+    top: clamp(-112px, calc(-367px + 34vw + 20vh), -56px);
   }
 }
 
