@@ -1862,7 +1862,7 @@
 
 @media (min-width: 900px) and (max-width: 1320px) and (max-height: 820px) {
   #features > :where(div, section, article, ul, ol):first-child {
-    transform: translateY(0);
+    transform: translateY(calc(var(--base2-section-block) * 1));
   }
 }
 
