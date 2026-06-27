@@ -208,6 +208,23 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   const movementScrollLockUntilRef = useRef(0);
   const movementAlignTimers = useRef([]);
 
+  const handleLeftSectionWheel = useCallback((event) => {
+    const node = event.currentTarget;
+    const maxScroll = Math.max(0, node.scrollHeight - node.clientHeight);
+    if (maxScroll <= 2) return;
+
+    event.preventDefault();
+    const edge = Math.max(4, Math.min(24, node.clientHeight * 0.08));
+    const nextTop = node.scrollTop + event.deltaY;
+    if (nextTop >= maxScroll - edge) {
+      node.scrollTop = edge;
+    } else if (nextTop <= edge && event.deltaY < 0) {
+      node.scrollTop = Math.max(edge, maxScroll - edge);
+    } else {
+      node.scrollTop = Math.max(edge, Math.min(maxScroll - edge, nextTop));
+    }
+  }, []);
+
   const visibleUtilityItems = useMemo(
     () => [...utilityItems, ...utilityItems, ...utilityItems],
     []
@@ -771,7 +788,12 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
             <ChevronLeft aria-hidden="true" />
           </button>
         </div>
-        <nav aria-label="Base2 page sections" className="home-left-command-list" data-testid="base2-left-section-list">
+        <nav
+          aria-label="Base2 page sections"
+          className="home-left-command-list"
+          data-testid="base2-left-section-list"
+          onWheel={handleLeftSectionWheel}
+        >
           {sectionItems.map((item, index) => {
             const Icon = item.icon;
             const isActive = activeSection === item.id;
