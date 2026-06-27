@@ -197,7 +197,9 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   const [scrollState, setScrollState] = useState(getScrollMetrics);
   const movementClickTimer = useRef(null);
   const lastMovementClick = useRef({ direction: 0, time: 0 });
+  const leftToggleRef = useRef(null);
   const leftMenuRef = useRef(null);
+  const leftSectionButtonRefs = useRef([]);
   const utilityScrollRef = useRef(null);
   const utilityItemRefs = useRef([]);
   const utilityScrollFrame = useRef(null);
@@ -423,6 +425,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       menu.style.removeProperty('top');
       menu.style.removeProperty('left');
       menu.style.removeProperty('width');
+      menu.style.removeProperty('height');
       menu.style.removeProperty('max-height');
       menu.style.removeProperty('transform');
       return;
@@ -430,8 +433,18 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     menu.style.setProperty('top', 'var(--left-menu-top)', 'important');
     menu.style.setProperty('left', 'var(--left-menu-edge)', 'important');
     menu.style.setProperty('width', 'min(var(--left-menu-width), calc(100vw - (var(--left-menu-edge) * 2)))', 'important');
-    menu.style.setProperty('max-height', 'min(620px, calc(100vh - var(--left-menu-top) - var(--left-menu-bottom-gap)))', 'important');
+    menu.style.setProperty('height', 'min(90vh, var(--left-menu-safe-height))', 'important');
+    menu.style.setProperty('max-height', 'min(90vh, var(--left-menu-safe-height))', 'important');
     menu.style.setProperty('transform', 'translate3d(0, 0, 0)', 'important');
+  }, [isLeftOpen]);
+
+  useEffect(() => {
+    if (isLeftOpen) return;
+    window.requestAnimationFrame(() => {
+      if (document.activeElement === document.body || document.activeElement?.closest?.('[data-testid="base2-left-command-menu"]')) {
+        leftToggleRef.current?.focus?.();
+      }
+    });
   }, [isLeftOpen]);
 
   useEffect(() => {
@@ -449,6 +462,27 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  const handleLeftSectionKeyDown = (event, index) => {
+    const buttons = leftSectionButtonRefs.current.filter(Boolean);
+    if (!buttons.length) return;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+      event.preventDefault();
+      buttons[(index + 1) % buttons.length]?.focus();
+    }
+    if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+      event.preventDefault();
+      buttons[(index - 1 + buttons.length) % buttons.length]?.focus();
+    }
+    if (event.key === 'Home') {
+      event.preventDefault();
+      buttons[0]?.focus();
+    }
+    if (event.key === 'End') {
+      event.preventDefault();
+      buttons[buttons.length - 1]?.focus();
+    }
+  };
 
   const forceSectionIntoView = useCallback((item) => {
     const section = findSection(item);
@@ -691,9 +725,11 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       <button
         type="button"
         className={`home-left-menu-toggle ${isLeftOpen ? 'is-open' : ''}`}
+        ref={leftToggleRef}
         onClick={() => setIsLeftOpen((open) => !open)}
         aria-label={isLeftOpen ? 'Close Base2 command menu' : 'Open Base2 command menu'}
         aria-expanded={isLeftOpen}
+        aria-controls="base2-left-command-menu"
         data-testid="base2-left-menu-toggle"
       >
         <span className="home-left-menu-pulse" aria-hidden="true" />
@@ -707,16 +743,19 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
           top: 'var(--left-menu-top)',
           left: 'var(--left-menu-edge)',
           width: 'min(var(--left-menu-width), calc(100vw - (var(--left-menu-edge) * 2)))',
-          maxHeight: 'min(620px, calc(100vh - var(--left-menu-top) - var(--left-menu-bottom-gap)))',
+          height: 'min(90vh, var(--left-menu-safe-height))',
+          maxHeight: 'min(90vh, var(--left-menu-safe-height))',
           transform: 'translate3d(0, 0, 0)',
         } : undefined}
         data-testid="base2-left-command-menu"
+        id="base2-left-command-menu"
         aria-hidden={!isLeftOpen}
+        aria-labelledby="base2-left-command-title"
       >
         <div className="home-left-command-mark">
           <LayoutGrid aria-hidden="true" />
         </div>
-        <div className="home-left-command-title">
+        <div className="home-left-command-title" id="base2-left-command-title">
           <div>
             <span>Base2</span>
             <strong>Command</strong>
@@ -732,15 +771,19 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
             <ChevronLeft aria-hidden="true" />
           </button>
         </div>
-        <nav aria-label="Base2 page sections" className="home-left-command-list">
-          {sectionItems.map((item) => {
+        <nav aria-label="Base2 page sections" className="home-left-command-list" data-testid="base2-left-section-list">
+          {sectionItems.map((item, index) => {
             const Icon = item.icon;
             const isActive = activeSection === item.id;
             return (
               <button
                 type="button"
                 key={item.id}
+                ref={(node) => {
+                  leftSectionButtonRefs.current[index] = node;
+                }}
                 onClick={() => goToSection(item.id)}
+                onKeyDown={(event) => handleLeftSectionKeyDown(event, index)}
                 className={isActive ? 'is-active' : ''}
                 aria-current={isActive ? 'location' : undefined}
                 tabIndex={isLeftOpen ? 0 : -1}
