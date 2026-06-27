@@ -1373,6 +1373,7 @@
 
 .home-command-palette-open {
   width: 100%;
+  min-height: var(--left-menu-row-height);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1855,7 +1856,7 @@
   #home-page > :where(div, section, article, ul, ol):not(.home-obsidian-nav-layer):not(.home-bottom-movement-controls):not(.home-command-palette-modal),
   [data-testid="base2-preserved-home-hero"] > :where(div, section, article, ul, ol):not(.home-obsidian-nav-layer):not(.home-bottom-movement-controls):not(.home-command-palette-modal) {
     position: relative;
-    top: calc(var(--base2-section-block) * -1);
+    top: 0;
   }
 }
 
