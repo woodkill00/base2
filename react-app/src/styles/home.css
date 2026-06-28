@@ -1222,16 +1222,20 @@
 
 .home-left-command-title > div {
   grid-column: 2;
+  --left-title-inline: min(100%, calc(var(--left-menu-width) - (var(--left-menu-close-size) * 2) - (var(--left-menu-pad) * 2)));
+  --left-title-primary-size: clamp(13px, calc(8cqi + 4px), 17px);
+  --left-title-secondary-size: clamp(9px, calc(4cqi + 5px), 11px);
   display: inline-flex;
   align-items: baseline;
   justify-content: center;
   gap: clamp(4px, calc(0.22vw + 3px), 7px);
+  container-type: inline-size;
   min-width: 0;
-  max-width: calc(100% * 1);
+  max-width: var(--left-title-inline);
   text-align: center;
   justify-self: center;
-  width: fit-content;
-  max-width: min(100%, calc(var(--left-menu-width) - (var(--left-menu-close-size) * 2) - (var(--left-menu-pad) * 2)));
+  width: var(--left-title-inline);
+  white-space: nowrap;
 }
 
 .home-left-command-title strong,
@@ -1247,12 +1251,12 @@
 }
 
 .home-left-command-title strong {
-  font-size: clamp(14px, calc(0.5vw + 12px), 18px) !important;
+  font-size: var(--left-title-primary-size) !important;
   min-height: calc(16px + 2px);
 }
 
 .home-left-command-title span {
-  font-size: clamp(10px, calc(0.22vw + 9px), 12px) !important;
+  font-size: var(--left-title-secondary-size) !important;
   min-height: calc(10px + 2px);
 }
 
@@ -1348,9 +1352,22 @@
 
 .home-left-command-list button span {
   min-width: 0;
+  display: grid;
+  grid-template-rows: auto calc(1px * 1);
+  gap: calc(var(--left-menu-row-gap) * 0.34);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.home-left-command-list button span::after {
+  content: "";
+  display: block;
+  width: clamp(26px, calc(32% + 4px), 58px);
+  height: calc(1px * 1);
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 99, 33, 0), rgba(255, 99, 33, 0.55), rgba(255, 99, 33, 0));
+  opacity: 0.64;
 }
 
 .home-left-command-list button:hover,
