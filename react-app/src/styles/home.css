@@ -1222,6 +1222,10 @@
 
 .home-left-command-title > div {
   grid-column: 2;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: clamp(4px, calc(0.22vw + 3px), 7px);
   min-width: 0;
   max-width: calc(100% * 1);
   text-align: center;
@@ -1232,7 +1236,7 @@
 
 .home-left-command-title strong,
 .home-left-command-title span {
-  display: block;
+  display: inline-block;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1243,12 +1247,12 @@
 }
 
 .home-left-command-title strong {
-  font-size: clamp(16px, calc(0.62vw + 14px), 22px) !important;
+  font-size: clamp(14px, calc(0.5vw + 12px), 18px) !important;
   min-height: calc(16px + 2px);
 }
 
 .home-left-command-title span {
-  font-size: clamp(10px, calc(0.32vw + 9px), 13px) !important;
+  font-size: clamp(10px, calc(0.22vw + 9px), 12px) !important;
   min-height: calc(10px + 2px);
 }
 
