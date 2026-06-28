@@ -450,8 +450,8 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     menu.style.setProperty('top', 'var(--left-menu-top)', 'important');
     menu.style.setProperty('left', 'var(--left-menu-edge)', 'important');
     menu.style.setProperty('width', 'min(var(--left-menu-width), calc(100vw - (var(--left-menu-edge) * 2)))', 'important');
-    menu.style.setProperty('height', 'min(90vh, var(--left-menu-safe-height))', 'important');
-    menu.style.setProperty('max-height', 'min(90vh, var(--left-menu-safe-height))', 'important');
+    menu.style.setProperty('height', 'min(90dvh, var(--left-menu-safe-height))', 'important');
+    menu.style.setProperty('max-height', 'min(90dvh, var(--left-menu-safe-height))', 'important');
     menu.style.setProperty('transform', 'translate3d(0, 0, 0)', 'important');
   }, [isLeftOpen]);
 
@@ -760,8 +760,8 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
           top: 'var(--left-menu-top)',
           left: 'var(--left-menu-edge)',
           width: 'min(var(--left-menu-width), calc(100vw - (var(--left-menu-edge) * 2)))',
-          height: 'min(90vh, var(--left-menu-safe-height))',
-          maxHeight: 'min(90vh, var(--left-menu-safe-height))',
+          height: 'min(90dvh, var(--left-menu-safe-height))',
+          maxHeight: 'min(90dvh, var(--left-menu-safe-height))',
           transform: 'translate3d(0, 0, 0)',
         } : undefined}
         data-testid="base2-left-command-menu"
