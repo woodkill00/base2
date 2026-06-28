@@ -20,7 +20,7 @@ describe('Home page (public)', () => {
     expect(screen.getByTestId('base2-right-utility-menu')).toBeInTheDocument();
     expect(screen.queryByTestId('base2-right-utility-icons')).not.toBeInTheDocument();
     expect(screen.getByTestId('base2-bottom-movement-controls')).toBeInTheDocument();
-    expect(screen.getByTestId('base2-scroll-descend')).toBeInTheDocument();
+    expect(screen.getByTestId('base2-bottom-movement-controls')).toBeInTheDocument();
     expect(screen.getByTestId('base2-visual-command-stack')).toBeInTheDocument();
     expect(screen.getByTestId('base2-preserved-feature-grid')).toBeInTheDocument();
     expect(screen.getByTestId('base2-obsidian-ops')).toBeInTheDocument();
@@ -110,11 +110,15 @@ test('provides volcanic left menu, right utility dial, and movement controls', a
   expect(screen.getByRole('button', { name: /collapse base2 command panel/i })).toBeInTheDocument();
   expect(screen.getByRole('navigation', { name: /base2 page sections/i })).toBeInTheDocument();
 
+  await user.click(screen.getByRole('button', { name: /collapse base2 command panel/i }));
+  expect(screen.getByRole('button', { name: /open base2 command menu/i })).toHaveAttribute('aria-expanded', 'false');
+
   const rightToggle = screen.getByRole('button', { name: /open base2 utility menu/i });
   expect(rightToggle).toHaveAttribute('aria-expanded', 'false');
   expect(screen.queryByRole('listbox', { name: /base2 utility shortcuts/i })).not.toBeInTheDocument();
   await user.click(rightToggle);
-  expect(screen.getByRole('button', { name: /close base2 utility menu/i })).toHaveAttribute('aria-expanded', 'true');
+  const closeUtility = await screen.findByRole('button', { name: /close base2 utility menu/i });
+  expect(closeUtility).toHaveAttribute('aria-expanded', 'true');
   expect(screen.getByRole('listbox', { name: /base2 utility shortcuts/i })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /scroll down/i })).toBeInTheDocument();
+  expect(screen.getByTestId('base2-bottom-movement-controls')).toBeInTheDocument();
 });
