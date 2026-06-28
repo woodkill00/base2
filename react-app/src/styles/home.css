@@ -1236,18 +1236,20 @@
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: nowrap !important;
   overflow-wrap: normal;
-  line-height: 1.08;
+  line-height: 1.18 !important;
   letter-spacing: 0;
 }
 
 .home-left-command-title strong {
   font-size: clamp(16px, calc(0.62vw + 14px), 22px) !important;
+  min-height: calc(16px + 2px);
 }
 
 .home-left-command-title span {
   font-size: clamp(10px, calc(0.32vw + 9px), 13px) !important;
+  min-height: calc(10px + 2px);
 }
 
 .home-left-command-close {
