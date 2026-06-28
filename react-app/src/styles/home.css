@@ -1146,7 +1146,7 @@
 }
 
 
-/* Base2 volcanic implementation pass v3: requested-change patch handoff. */
+/* Base2 volcanic implementation pass v4: left-title proof alignment. */
 .home-left-command-backdrop {
   position: fixed;
   inset: 0;
@@ -1225,17 +1225,19 @@
   min-width: 0;
   max-width: calc(100% * 1);
   text-align: center;
+  justify-self: center;
+  width: fit-content;
+  max-width: min(100%, calc(var(--left-menu-width) - (var(--left-menu-close-size) * 2) - (var(--left-menu-pad) * 2)));
 }
 
 .home-left-command-title strong,
 .home-left-command-title span {
   display: block;
   max-width: 100%;
-  overflow: visible;
-  text-overflow: clip;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  text-wrap: balance;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow-wrap: normal;
   line-height: 1.08;
   letter-spacing: 0;
 }
