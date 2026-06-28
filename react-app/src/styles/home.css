@@ -1145,7 +1145,8 @@
   }
 }
 
-/* Base2 volcanic implementation pass v2: behavior-complete shell controls. */
+
+/* Base2 volcanic implementation pass v3: requested-change patch handoff. */
 .home-left-command-backdrop {
   position: fixed;
   inset: 0;
@@ -1162,7 +1163,7 @@
   --left-menu-bottom-gap: calc(16px);
   --left-menu-pad: clamp(16px, calc(1vw + 12px), 22px);
   --left-menu-close-size: clamp(42px, calc(1.2vw + 34px), 48px);
-  --left-menu-safe-height: calc(100vh - var(--left-menu-top) - var(--left-menu-bottom-gap));
+  --left-menu-safe-height: calc(100dvh - var(--left-menu-top) - var(--left-menu-bottom-gap));
   --left-menu-row-height: clamp(44px, calc(1.4vh + 34px), 52px);
   --left-menu-row-gap: clamp(7px, calc(0.5vh + 5px), 11px);
   --left-menu-icon-size: clamp(18px, calc(0.5vw + 14px), 22px);
@@ -1171,8 +1172,8 @@
   top: var(--left-menu-top);
   left: var(--left-menu-edge);
   width: min(var(--left-menu-width), calc(100vw - (var(--left-menu-edge) * 2)));
-  height: min(90vh, var(--left-menu-safe-height));
-  max-height: min(90vh, var(--left-menu-safe-height));
+  height: min(90dvh, var(--left-menu-safe-height));
+  max-height: min(90dvh, var(--left-menu-safe-height));
   padding: calc(var(--left-menu-pad) * 1);
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto auto;
@@ -1200,8 +1201,8 @@
   top: var(--left-menu-top);
   left: var(--left-menu-edge);
   width: min(var(--left-menu-width), calc(100vw - (var(--left-menu-edge) * 2)));
-  height: min(90vh, var(--left-menu-safe-height));
-  max-height: min(90vh, var(--left-menu-safe-height));
+  height: min(90dvh, var(--left-menu-safe-height));
+  max-height: min(90dvh, var(--left-menu-safe-height));
   padding: var(--left-menu-pad);
   transform: translateX(calc((var(--left-menu-width) + var(--left-menu-edge)) * -1));
 }
@@ -1230,19 +1231,21 @@
 .home-left-command-title span {
   display: block;
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 1.1;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+  line-height: 1.08;
   letter-spacing: 0;
 }
 
 .home-left-command-title strong {
-  font-size: clamp(17px, calc(0.7vw + 14px), 22px) !important;
+  font-size: clamp(16px, calc(0.62vw + 14px), 22px) !important;
 }
 
 .home-left-command-title span {
-  font-size: clamp(11px, calc(0.35vw + 9px), 13px) !important;
+  font-size: clamp(10px, calc(0.32vw + 9px), 13px) !important;
 }
 
 .home-left-command-close {
@@ -1304,6 +1307,7 @@
   touch-action: pan-y;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 99, 33, 0.58) rgba(255, 255, 255, 0.08);
+  scrollbar-gutter: stable;
 }
 
 .home-left-command-list button {
