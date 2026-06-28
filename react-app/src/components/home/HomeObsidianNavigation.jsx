@@ -285,10 +285,12 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     }
 
     const itemCenter = selectedEl.offsetTop + selectedEl.offsetHeight / 2;
-    scrollEl.scrollTo({
-      top: Math.max(0, itemCenter - scrollEl.clientHeight / 2),
-      behavior,
-    });
+    const targetTop = Math.max(0, itemCenter - scrollEl.clientHeight / 2);
+    if (typeof scrollEl.scrollTo === 'function') {
+      scrollEl.scrollTo({ top: targetTop, behavior });
+    } else {
+      scrollEl.scrollTop = targetTop;
+    }
   }, [normalizeUtilitySlot]);
 
   const updateUtilitySelectionFromScroll = useCallback((shouldSettle = false) => {
