@@ -191,6 +191,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [navButtonsEnabled, setNavButtonsEnabled] = useState(true);
   const [activeSection, setActiveSection] = useState('home');
+  const [activeLeftSectionSlot, setActiveLeftSectionSlot] = useState(sectionItems.length);
   const [activeUtilitySlot, setActiveUtilitySlot] = useState(utilityItems.length + 4);
   const [utilitySelectorStyle, setUtilitySelectorStyle] = useState(UTILITY_SELECTOR_FALLBACK);
   const [colorSchemeId, setColorSchemeId] = useState('volcanic');
@@ -249,11 +250,12 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       }
     });
     const item = visibleSectionItems[closestIndex];
+    const canonicalIndex = normalizeSectionSlot(closestIndex);
+    setActiveLeftSectionSlot(canonicalIndex);
     if (item && item.id !== activeSection) {
       setActiveSection(item.id);
     }
     if (snap) {
-      const canonicalIndex = normalizeSectionSlot(closestIndex);
       centerLeftSectionSlot(canonicalIndex, true);
     }
   }, [activeSection, centerLeftSectionSlot, normalizeSectionSlot, visibleSectionItems]);
@@ -520,8 +522,10 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     if (!isLeftOpen) return;
     const scrollEl = leftSectionListRef.current;
     const activeIndex = sectionItems.findIndex((item) => item.id === activeSection);
-    const selectedEl = leftSectionButtonRefs.current[normalizeSectionSlot(Math.max(0, activeIndex))];
+    const normalizedIndex = normalizeSectionSlot(Math.max(0, activeIndex));
+    const selectedEl = leftSectionButtonRefs.current[normalizedIndex];
     if (!scrollEl || !selectedEl) return;
+    setActiveLeftSectionSlot(normalizedIndex);
     const itemCenter = selectedEl.offsetTop + selectedEl.offsetHeight / 2;
     const targetTop = Math.max(0, itemCenter - scrollEl.clientHeight / 2);
     if (typeof scrollEl.scrollTo === 'function') {
@@ -885,7 +889,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
             const isCanonicalLoop = index >= sectionLoopOffset && index < sectionLoopOffset + sectionItems.length;
             const loopPosition = index < sectionLoopOffset ? 'previous' : (isCanonicalLoop ? 'middle' : 'next');
             const isLoopBoundary = index % sectionItems.length === 0;
-            const isActive = activeSection === item.id;
+            const isActive = index === activeLeftSectionSlot;
             return (
               <button
                 type="button"
