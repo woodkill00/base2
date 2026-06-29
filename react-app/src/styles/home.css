@@ -1229,7 +1229,6 @@
   align-items: baseline;
   justify-content: center;
   gap: clamp(4px, calc(0.22vw + 3px), 7px);
-  container-type: inline-size;
   min-width: 0;
   max-width: var(--left-title-inline);
   text-align: center;
