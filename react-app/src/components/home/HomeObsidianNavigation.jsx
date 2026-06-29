@@ -274,11 +274,10 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       setActiveSection(nextItem.id);
       setActiveLeftSectionSlot(nextSlot);
     }
-    leftSectionWheelLockUntilRef.current = Date.now() + 360;
+    leftSectionWheelLockUntilRef.current = Date.now() + 900;
     centerLeftSectionSlot(nextSlot, smooth);
     window.clearTimeout(leftSectionSnapTimer.current);
-    leftSectionSnapTimer.current = window.setTimeout(() => updateActiveLeftSectionFromScroll(true), 220);
-  }, [centerLeftSectionSlot, normalizeSectionSlot, updateActiveLeftSectionFromScroll, visibleSectionItems]);
+  }, [centerLeftSectionSlot, normalizeSectionSlot, visibleSectionItems]);
 
   const handleLeftSectionWheel = useCallback((event) => {
     const node = event.currentTarget || leftSectionListRef.current;
