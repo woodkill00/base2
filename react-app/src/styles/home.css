@@ -1306,8 +1306,8 @@
 }
 
 .home-left-command-list {
-  --left-list-fade-size: clamp(28px, calc(3vh + 12px), 48px);
-  --left-list-loop-gap: clamp(16px, calc(1vh + 10px), 24px);
+  --left-list-fade-size: clamp(34px, calc(3vh + 14px), 54px);
+  --left-list-loop-gap: clamp(24px, calc(1.5vh + 14px), 34px);
   display: grid;
   gap: var(--left-menu-row-gap);
   position: relative;
@@ -1328,8 +1328,10 @@
   mask-image: linear-gradient(
     180deg,
     transparent 0,
+    rgba(0, 0, 0, 0) calc(var(--left-list-fade-size) * 0.22),
     #000 var(--left-list-fade-size),
     #000 calc(100% - var(--left-list-fade-size)),
+    rgba(0, 0, 0, 0) calc(100% - (var(--left-list-fade-size) * 0.22)),
     transparent 100%
   );
 }
@@ -1361,7 +1363,12 @@
 
 .home-left-command-list button[data-section-loop="previous"],
 .home-left-command-list button[data-section-loop="next"] {
-  opacity: 0.58;
+  opacity: 0.22;
+}
+
+.home-left-command-list button[data-section-loop="previous"] span,
+.home-left-command-list button[data-section-loop="next"] span {
+  color: rgba(247, 241, 238, 0.28);
 }
 
 .home-left-command-list button[data-loop-boundary="start"] {
@@ -1377,7 +1384,7 @@
   height: calc(2px * 1);
   display: grid;
   place-items: center;
-  background: linear-gradient(90deg, rgba(255, 99, 33, 0), rgba(255, 99, 33, 0.82), rgba(255, 99, 33, 0));
+  background: linear-gradient(90deg, rgba(255, 99, 33, 0), rgba(255, 99, 33, 0.92), rgba(255, 99, 33, 0));
   color: rgba(255, 99, 33, 0.9);
   font-size: clamp(8px, calc(0.18vw + 7px), 10px);
   font-weight: 900;
@@ -1392,7 +1399,7 @@
   left: clamp(18px, calc(1vw + 12px), 28px);
   right: clamp(18px, calc(1vw + 12px), 28px);
   top: calc(var(--left-list-loop-gap) * -0.68);
-  height: calc(18px + 0px);
+  height: calc(22px + 0px);
   transform: translateY(-50%);
   border-radius: 999px;
   background: radial-gradient(circle, rgba(255, 99, 33, 0.22), transparent 68%);
