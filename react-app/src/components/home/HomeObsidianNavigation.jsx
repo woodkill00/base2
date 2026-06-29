@@ -220,7 +220,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   }, [sectionLoopOffset]);
 
   const handleLeftSectionWheel = useCallback((event) => {
-    const node = event.currentTarget;
+    const node = event.currentTarget || leftSectionListRef.current;
     const maxScroll = Math.max(0, node.scrollHeight - node.clientHeight);
     if (maxScroll <= 2) return;
 
@@ -482,6 +482,15 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       scrollEl.scrollTop = targetTop;
     }
   }, [activeSection, isLeftOpen, normalizeSectionSlot]);
+
+  useEffect(() => {
+    const scrollEl = leftSectionListRef.current;
+    if (!isLeftOpen || !scrollEl) return undefined;
+    scrollEl.addEventListener('wheel', handleLeftSectionWheel, { passive: false });
+    return () => {
+      scrollEl.removeEventListener('wheel', handleLeftSectionWheel);
+    };
+  }, [handleLeftSectionWheel, isLeftOpen]);
 
   useEffect(() => {
     if (isLeftOpen) return;
@@ -821,7 +830,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
           className="home-left-command-list"
           ref={leftSectionListRef}
           data-testid="base2-left-section-list"
-          onWheel={handleLeftSectionWheel}
         >
           {visibleSectionItems.map((item, index) => {
             const Icon = item.icon;
