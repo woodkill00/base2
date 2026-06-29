@@ -1223,8 +1223,8 @@
 
 .home-left-command-title > div {
   --left-title-inline: min(100%, calc(var(--left-menu-width) - var(--left-menu-close-size) - (var(--left-menu-pad) * 3)));
-  --left-title-primary-size: clamp(16px, calc(0.18vw + 15.2px), 19px);
-  --left-title-secondary-size: clamp(10px, calc(0.1vw + 9.7px), 12px);
+  --left-title-primary-size: clamp(17px, calc(0.18vw + 16.2px), 19px);
+  --left-title-secondary-size: clamp(11px, calc(0.1vw + 10.7px), 12px);
   display: inline-flex;
   align-items: baseline;
   justify-content: center;
@@ -1239,7 +1239,7 @@
 
 .home-left-command-title strong,
 .home-left-command-title span {
-  display: inline;
+  display: inline-block;
   max-width: none;
   overflow: visible;
   text-overflow: clip;
