@@ -204,6 +204,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   const leftSectionButtonRefs = useRef([]);
   const leftSectionSnapTimer = useRef(null);
   const leftSectionWheelLockUntilRef = useRef(0);
+  const activeLeftSectionSlotRef = useRef(sectionItems.length);
   const utilityScrollRef = useRef(null);
   const utilityItemRefs = useRef([]);
   const utilityScrollFrame = useRef(null);
@@ -252,6 +253,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     });
     const item = visibleSectionItems[closestIndex];
     const canonicalIndex = normalizeSectionSlot(closestIndex);
+    activeLeftSectionSlotRef.current = canonicalIndex;
     setActiveLeftSectionSlot(canonicalIndex);
     if (item && item.id !== activeSection) {
       setActiveSection(item.id);
@@ -265,6 +267,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     const nextSlot = normalizeSectionSlot(index);
     const nextItem = visibleSectionItems[nextSlot];
     if (nextItem) {
+      activeLeftSectionSlotRef.current = nextSlot;
       setActiveSection(nextItem.id);
       setActiveLeftSectionSlot(nextSlot);
     }
@@ -283,22 +286,12 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
 
     const direction = event.deltaY >= 0 ? 1 : -1;
     const edge = Math.max(4, Math.min(24, node.clientHeight * 0.08));
-    const centerY = node.scrollTop + node.clientHeight / 2;
-    let closestIndex = 0;
-    let closestDistance = Number.POSITIVE_INFINITY;
-    buttons.forEach((button, index) => {
-      const buttonCenter = button.offsetTop + button.offsetHeight / 2;
-      const distance = Math.abs(buttonCenter - centerY);
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        closestIndex = index;
-      }
-    });
+    const currentSlot = normalizeSectionSlot(activeLeftSectionSlotRef.current);
     const nextSlot = direction > 0 && node.scrollTop >= maxScroll - edge
       ? normalizeSectionSlot(0)
       : direction < 0 && node.scrollTop <= edge
         ? normalizeSectionSlot(sectionItems.length - 1)
-        : normalizeSectionSlot(closestIndex + direction);
+        : normalizeSectionSlot(currentSlot + direction);
     moveLeftSectionSlot(nextSlot, false);
   }, [moveLeftSectionSlot, normalizeSectionSlot]);
 
@@ -548,6 +541,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     const normalizedIndex = normalizeSectionSlot(Math.max(0, activeIndex));
     const selectedEl = leftSectionButtonRefs.current[normalizedIndex];
     if (!scrollEl || !selectedEl) return;
+    activeLeftSectionSlotRef.current = normalizedIndex;
     setActiveLeftSectionSlot(normalizedIndex);
     const itemCenter = selectedEl.offsetTop + selectedEl.offsetHeight / 2;
     const targetTop = Math.max(0, itemCenter - scrollEl.clientHeight / 2);
