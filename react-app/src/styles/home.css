@@ -1223,7 +1223,7 @@
 .home-left-command-title > div {
   grid-column: 2;
   --left-title-inline: min(100%, calc(var(--left-menu-width) - (var(--left-menu-close-size) * 2) - (var(--left-menu-pad) * 2)));
-  --left-title-primary-size: clamp(13px, calc(8cqi + 4px), 17px);
+  --left-title-primary-size: clamp(15px, calc(7cqi + 6px), 17px);
   --left-title-secondary-size: clamp(9px, calc(4cqi + 5px), 11px);
   display: inline-flex;
   align-items: baseline;
