@@ -1159,13 +1159,13 @@
 .home-left-command-menu {
   --left-menu-edge: clamp(4px, calc(1vw), 12px);
   --left-menu-top: clamp(68px, calc(5vh + 38px), 108px);
-  --left-menu-width: clamp(248px, calc(18vw + 190px), 342px);
+  --left-menu-width: clamp(296px, calc(14vw + 206px), 430px);
   --left-menu-bottom-gap: calc(16px);
-  --left-menu-pad: clamp(16px, calc(1vw + 12px), 22px);
+  --left-menu-pad: clamp(18px, calc(1vw + 13px), 26px);
   --left-menu-close-size: clamp(42px, calc(1.2vw + 34px), 48px);
   --left-menu-safe-height: calc(100dvh - var(--left-menu-top) - var(--left-menu-bottom-gap));
-  --left-menu-row-height: clamp(44px, calc(1.4vh + 34px), 52px);
-  --left-menu-row-gap: clamp(7px, calc(0.5vh + 5px), 11px);
+  --left-menu-row-height: clamp(48px, calc(1.35vh + 39px), 58px);
+  --left-menu-row-gap: clamp(9px, calc(0.5vh + 6px), 14px);
   --left-menu-icon-size: clamp(18px, calc(0.5vw + 14px), 22px);
   z-index: 9000;
   position: fixed;
@@ -1216,15 +1216,16 @@
   display: grid;
   grid-template-columns: var(--left-menu-close-size) minmax(0, 1fr) var(--left-menu-close-size);
   align-items: center;
-  gap: calc(var(--left-menu-pad) / 2);
-  padding: 0 calc(var(--left-menu-close-size) + 2px);
+  gap: clamp(10px, calc(0.5vw + 7px), 16px);
+  min-height: clamp(48px, calc(1.2vh + 40px), 58px);
+  padding: 0 calc(var(--left-menu-close-size) + clamp(8px, calc(0.5vw + 5px), 14px));
 }
 
 .home-left-command-title > div {
   grid-column: 2;
   --left-title-inline: min(100%, calc(var(--left-menu-width) - (var(--left-menu-close-size) * 2) - (var(--left-menu-pad) * 2)));
-  --left-title-primary-size: clamp(15px, calc(0.24vw + 14px), 17px);
-  --left-title-secondary-size: clamp(10px, calc(0.12vw + 9.6px), 12px);
+  --left-title-primary-size: clamp(17px, calc(0.22vw + 16px), 20px);
+  --left-title-secondary-size: clamp(11px, calc(0.12vw + 10.6px), 13px);
   display: inline-flex;
   align-items: baseline;
   justify-content: center;
@@ -1252,18 +1253,18 @@
 
 .home-left-command-title strong {
   font-size: var(--left-title-primary-size) !important;
-  min-height: calc(16px + 2px);
+  min-height: calc(18px + 2px);
 }
 
 .home-left-command-title span {
   font-size: var(--left-title-secondary-size) !important;
-  min-height: calc(10px + 2px);
+  min-height: calc(12px + 2px);
 }
 
 .home-left-command-close {
   position: absolute;
-  top: calc(var(--left-menu-close-size) * -0.14);
-  right: calc(var(--left-menu-pad) * -0.1);
+  top: calc(var(--left-menu-close-size) * -0.06);
+  right: calc(var(--left-menu-pad) * 0.12);
   width: var(--left-menu-close-size);
   height: var(--left-menu-close-size);
   display: grid;
@@ -1309,7 +1310,7 @@
 .home-left-command-list {
   display: grid;
   gap: var(--left-menu-row-gap);
-  padding: calc(var(--left-menu-row-gap) * 0.5) 0;
+  padding: calc(var(--left-menu-row-gap) * 0.85) 0;
   min-height: 0;
   width: calc(100% * 1);
   max-width: calc(100% * 1);
@@ -1334,10 +1335,10 @@
   justify-self: center;
   padding: 0 clamp(10px, calc(0.7vw + 7px), 14px);
   box-sizing: border-box;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.13);
   border-left: 3px solid transparent;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.035);
+  background: rgba(255, 255, 255, 0.048);
   color: rgba(247, 241, 238, 0.82);
   text-align: left;
   cursor: pointer;
@@ -1363,11 +1364,11 @@
 .home-left-command-list button span::after {
   content: "";
   display: block;
-  width: clamp(26px, calc(32% + 4px), 58px);
-  height: calc(1px * 1);
+  width: clamp(44px, calc(46% + 8px), 84px);
+  height: calc(2px * 1);
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(255, 99, 33, 0), rgba(255, 99, 33, 0.55), rgba(255, 99, 33, 0));
-  opacity: 0.64;
+  background: linear-gradient(90deg, rgba(255, 99, 33, 0), rgba(255, 99, 33, 0.78), rgba(255, 99, 33, 0));
+  opacity: 0.82;
 }
 
 .home-left-command-list button:hover,
@@ -1389,7 +1390,8 @@
 .home-left-command-switches {
   display: grid;
   gap: calc(var(--left-menu-row-gap) * 0.85);
-  padding-top: calc(var(--left-menu-row-gap) * 0.5);
+  padding-top: calc(var(--left-menu-row-gap) * 1.05);
+  border-top: 1px solid rgba(255, 99, 33, 0.22);
 }
 
 .home-left-command-switches label {
