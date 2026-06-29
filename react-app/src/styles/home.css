@@ -1157,14 +1157,14 @@
 }
 
 .home-left-command-menu {
-  --left-menu-edge: clamp(4px, calc(1vw), 12px);
+  --left-menu-edge: clamp(3px, calc(0.65vw), 10px);
   --left-menu-top: clamp(68px, calc(5vh + 38px), 108px);
-  --left-menu-width: clamp(296px, calc(14vw + 206px), 430px);
+  --left-menu-width: clamp(380px, calc(10vw + 278px), 460px);
   --left-menu-bottom-gap: calc(16px);
   --left-menu-pad: clamp(18px, calc(1vw + 13px), 26px);
   --left-menu-close-size: clamp(42px, calc(1.2vw + 34px), 48px);
   --left-menu-safe-height: calc(100dvh - var(--left-menu-top) - var(--left-menu-bottom-gap));
-  --left-menu-row-height: clamp(48px, calc(1.35vh + 39px), 58px);
+  --left-menu-row-height: clamp(50px, calc(1.35vh + 41px), 60px);
   --left-menu-row-gap: clamp(9px, calc(0.5vh + 6px), 14px);
   --left-menu-icon-size: clamp(18px, calc(0.5vw + 14px), 22px);
   z-index: 9000;
