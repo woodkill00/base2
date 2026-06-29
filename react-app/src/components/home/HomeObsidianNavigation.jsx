@@ -262,23 +262,33 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
 
   const handleLeftSectionWheel = useCallback((event) => {
     const node = event.currentTarget || leftSectionListRef.current;
+    const buttons = leftSectionButtonRefs.current.filter(Boolean);
     const maxScroll = Math.max(0, node.scrollHeight - node.clientHeight);
-    if (maxScroll <= 2) return;
+    if (maxScroll <= 2 || !buttons.length) return;
     event.preventDefault();
 
-    const edge = Math.max(4, Math.min(24, node.clientHeight * 0.08));
-    const nextTop = node.scrollTop + event.deltaY;
-    if (nextTop >= maxScroll - edge) {
-      node.scrollTop = edge;
-    } else if (nextTop <= edge && event.deltaY < 0) {
-      node.scrollTop = Math.max(edge, maxScroll - edge);
-    } else {
-      node.scrollTop = Math.max(edge, Math.min(maxScroll - edge, nextTop));
+    const direction = event.deltaY >= 0 ? 1 : -1;
+    const centerY = node.scrollTop + node.clientHeight / 2;
+    let closestIndex = 0;
+    let closestDistance = Number.POSITIVE_INFINITY;
+    buttons.forEach((button, index) => {
+      const buttonCenter = button.offsetTop + button.offsetHeight / 2;
+      const distance = Math.abs(buttonCenter - centerY);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestIndex = index;
+      }
+    });
+    const nextSlot = normalizeSectionSlot(closestIndex + direction);
+    const nextItem = visibleSectionItems[nextSlot];
+    if (nextItem) {
+      setActiveSection(nextItem.id);
+      setActiveLeftSectionSlot(nextSlot);
     }
-    updateActiveLeftSectionFromScroll(false);
+    centerLeftSectionSlot(nextSlot, false);
     window.clearTimeout(leftSectionSnapTimer.current);
     leftSectionSnapTimer.current = window.setTimeout(() => updateActiveLeftSectionFromScroll(true), 120);
-  }, [updateActiveLeftSectionFromScroll]);
+  }, [centerLeftSectionSlot, normalizeSectionSlot, updateActiveLeftSectionFromScroll, visibleSectionItems]);
 
   const handleLeftSectionScroll = useCallback(() => {
     updateActiveLeftSectionFromScroll(false);
