@@ -203,6 +203,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   const leftSectionListRef = useRef(null);
   const leftSectionButtonRefs = useRef([]);
   const leftSectionSnapTimer = useRef(null);
+  const leftSectionWheelLockUntilRef = useRef(0);
   const utilityScrollRef = useRef(null);
   const utilityItemRefs = useRef([]);
   const utilityScrollFrame = useRef(null);
@@ -260,6 +261,19 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     }
   }, [activeSection, centerLeftSectionSlot, normalizeSectionSlot, visibleSectionItems]);
 
+  const moveLeftSectionSlot = useCallback((index, smooth = false) => {
+    const nextSlot = normalizeSectionSlot(index);
+    const nextItem = visibleSectionItems[nextSlot];
+    if (nextItem) {
+      setActiveSection(nextItem.id);
+      setActiveLeftSectionSlot(nextSlot);
+    }
+    leftSectionWheelLockUntilRef.current = Date.now() + 360;
+    centerLeftSectionSlot(nextSlot, smooth);
+    window.clearTimeout(leftSectionSnapTimer.current);
+    leftSectionSnapTimer.current = window.setTimeout(() => updateActiveLeftSectionFromScroll(true), 220);
+  }, [centerLeftSectionSlot, normalizeSectionSlot, updateActiveLeftSectionFromScroll, visibleSectionItems]);
+
   const handleLeftSectionWheel = useCallback((event) => {
     const node = event.currentTarget || leftSectionListRef.current;
     const buttons = leftSectionButtonRefs.current.filter(Boolean);
@@ -285,17 +299,11 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       : direction < 0 && node.scrollTop <= edge
         ? normalizeSectionSlot(sectionItems.length - 1)
         : normalizeSectionSlot(closestIndex + direction);
-    const nextItem = visibleSectionItems[nextSlot];
-    if (nextItem) {
-      setActiveSection(nextItem.id);
-      setActiveLeftSectionSlot(nextSlot);
-    }
-    centerLeftSectionSlot(nextSlot, false);
-    window.clearTimeout(leftSectionSnapTimer.current);
-    leftSectionSnapTimer.current = window.setTimeout(() => updateActiveLeftSectionFromScroll(true), 120);
-  }, [centerLeftSectionSlot, normalizeSectionSlot, updateActiveLeftSectionFromScroll, visibleSectionItems]);
+    moveLeftSectionSlot(nextSlot, false);
+  }, [moveLeftSectionSlot, normalizeSectionSlot]);
 
   const handleLeftSectionScroll = useCallback(() => {
+    if (Date.now() < leftSectionWheelLockUntilRef.current) return;
     updateActiveLeftSectionFromScroll(false);
     window.clearTimeout(leftSectionSnapTimer.current);
     leftSectionSnapTimer.current = window.setTimeout(() => updateActiveLeftSectionFromScroll(true), 160);
