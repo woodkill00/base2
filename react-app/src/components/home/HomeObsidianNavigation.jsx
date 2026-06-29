@@ -201,6 +201,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   const leftMenuRef = useRef(null);
   const leftSectionListRef = useRef(null);
   const leftSectionButtonRefs = useRef([]);
+  const leftSectionSnapTimer = useRef(null);
   const utilityScrollRef = useRef(null);
   const utilityItemRefs = useRef([]);
   const utilityScrollFrame = useRef(null);
@@ -219,10 +220,49 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     return sectionLoopOffset + ((index % length) + length) % length;
   }, [sectionLoopOffset]);
 
+  const centerLeftSectionSlot = useCallback((index, smooth = true) => {
+    const scrollEl = leftSectionListRef.current;
+    const target = leftSectionButtonRefs.current[index];
+    if (!scrollEl || !target) return;
+    const targetTop = target.offsetTop - (scrollEl.clientHeight / 2) + (target.offsetHeight / 2);
+    if (typeof scrollEl.scrollTo === 'function') {
+      scrollEl.scrollTo({ top: targetTop, behavior: smooth ? 'smooth' : 'auto' });
+    } else {
+      scrollEl.scrollTop = targetTop;
+    }
+  }, []);
+
+  const updateActiveLeftSectionFromScroll = useCallback((snap = false) => {
+    const scrollEl = leftSectionListRef.current;
+    if (!scrollEl) return;
+    const centerY = scrollEl.scrollTop + scrollEl.clientHeight / 2;
+    const buttons = leftSectionButtonRefs.current.filter(Boolean);
+    if (!buttons.length) return;
+    let closestIndex = 0;
+    let closestDistance = Number.POSITIVE_INFINITY;
+    buttons.forEach((button, index) => {
+      const buttonCenter = button.offsetTop + button.offsetHeight / 2;
+      const distance = Math.abs(buttonCenter - centerY);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestIndex = index;
+      }
+    });
+    const item = visibleSectionItems[closestIndex];
+    if (item && item.id !== activeSection) {
+      setActiveSection(item.id);
+    }
+    if (snap) {
+      const canonicalIndex = normalizeSectionSlot(closestIndex);
+      centerLeftSectionSlot(canonicalIndex, true);
+    }
+  }, [activeSection, centerLeftSectionSlot, normalizeSectionSlot, visibleSectionItems]);
+
   const handleLeftSectionWheel = useCallback((event) => {
     const node = event.currentTarget || leftSectionListRef.current;
     const maxScroll = Math.max(0, node.scrollHeight - node.clientHeight);
     if (maxScroll <= 2) return;
+    event.preventDefault();
 
     const edge = Math.max(4, Math.min(24, node.clientHeight * 0.08));
     const nextTop = node.scrollTop + event.deltaY;
@@ -233,7 +273,16 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     } else {
       node.scrollTop = Math.max(edge, Math.min(maxScroll - edge, nextTop));
     }
-  }, []);
+    updateActiveLeftSectionFromScroll(false);
+    window.clearTimeout(leftSectionSnapTimer.current);
+    leftSectionSnapTimer.current = window.setTimeout(() => updateActiveLeftSectionFromScroll(true), 120);
+  }, [updateActiveLeftSectionFromScroll]);
+
+  const handleLeftSectionScroll = useCallback(() => {
+    updateActiveLeftSectionFromScroll(false);
+    window.clearTimeout(leftSectionSnapTimer.current);
+    leftSectionSnapTimer.current = window.setTimeout(() => updateActiveLeftSectionFromScroll(true), 160);
+  }, [updateActiveLeftSectionFromScroll]);
 
   const visibleUtilityItems = useMemo(
     () => [...utilityItems, ...utilityItems, ...utilityItems],
@@ -829,11 +878,14 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
           className="home-left-command-list"
           ref={leftSectionListRef}
           data-testid="base2-left-section-list"
+          onScroll={handleLeftSectionScroll}
         >
           {visibleSectionItems.map((item, index) => {
             const Icon = item.icon;
             const isCanonicalLoop = index >= sectionLoopOffset && index < sectionLoopOffset + sectionItems.length;
-            const isActive = isCanonicalLoop && activeSection === item.id;
+            const loopPosition = index < sectionLoopOffset ? 'previous' : (isCanonicalLoop ? 'middle' : 'next');
+            const isLoopBoundary = index % sectionItems.length === 0;
+            const isActive = activeSection === item.id;
             return (
               <button
                 type="button"
@@ -846,7 +898,8 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
                 className={isActive ? 'is-active' : ''}
                 aria-current={isActive ? 'location' : undefined}
                 tabIndex={isLeftOpen ? 0 : -1}
-                data-section-loop={isCanonicalLoop ? 'middle' : 'repeat'}
+                data-section-loop={loopPosition}
+                data-loop-boundary={isLoopBoundary ? 'start' : undefined}
                 data-testid={`base2-section-nav-${item.id}`}
               >
                 <Icon aria-hidden="true" />
