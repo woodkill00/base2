@@ -205,6 +205,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   const leftSectionSnapTimer = useRef(null);
   const leftSectionWheelLockUntilRef = useRef(0);
   const activeLeftSectionSlotRef = useRef(sectionItems.length);
+  const activeSectionRef = useRef('home');
   const utilityScrollRef = useRef(null);
   const utilityItemRefs = useRef([]);
   const utilityScrollFrame = useRef(null);
@@ -256,6 +257,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     activeLeftSectionSlotRef.current = canonicalIndex;
     setActiveLeftSectionSlot(canonicalIndex);
     if (item && item.id !== activeSection) {
+      activeSectionRef.current = item.id;
       setActiveSection(item.id);
     }
     if (snap) {
@@ -268,6 +270,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     const nextItem = visibleSectionItems[nextSlot];
     if (nextItem) {
       activeLeftSectionSlotRef.current = nextSlot;
+      activeSectionRef.current = nextItem.id;
       setActiveSection(nextItem.id);
       setActiveLeftSectionSlot(nextSlot);
     }
@@ -286,12 +289,13 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
 
     const direction = event.deltaY >= 0 ? 1 : -1;
     const edge = Math.max(4, Math.min(24, node.clientHeight * 0.08));
-    const currentSlot = normalizeSectionSlot(activeLeftSectionSlotRef.current);
+    const activeBaseIndex = Math.max(0, sectionItems.findIndex((item) => item.id === activeSectionRef.current));
+    const nextBaseIndex = (activeBaseIndex + direction + sectionItems.length) % sectionItems.length;
     const nextSlot = direction > 0 && node.scrollTop >= maxScroll - edge
       ? normalizeSectionSlot(0)
       : direction < 0 && node.scrollTop <= edge
         ? normalizeSectionSlot(sectionItems.length - 1)
-        : normalizeSectionSlot(currentSlot + direction);
+        : normalizeSectionSlot(nextBaseIndex);
     moveLeftSectionSlot(nextSlot, false);
   }, [moveLeftSectionSlot, normalizeSectionSlot]);
 
@@ -542,6 +546,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     const selectedEl = leftSectionButtonRefs.current[normalizedIndex];
     if (!scrollEl || !selectedEl) return;
     activeLeftSectionSlotRef.current = normalizedIndex;
+    activeSectionRef.current = activeSection;
     setActiveLeftSectionSlot(normalizedIndex);
     const itemCenter = selectedEl.offsetTop + selectedEl.offsetHeight / 2;
     const targetTop = Math.max(0, itemCenter - scrollEl.clientHeight / 2);
