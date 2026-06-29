@@ -268,6 +268,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     event.preventDefault();
 
     const direction = event.deltaY >= 0 ? 1 : -1;
+    const edge = Math.max(4, Math.min(24, node.clientHeight * 0.08));
     const centerY = node.scrollTop + node.clientHeight / 2;
     let closestIndex = 0;
     let closestDistance = Number.POSITIVE_INFINITY;
@@ -279,7 +280,11 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
         closestIndex = index;
       }
     });
-    const nextSlot = normalizeSectionSlot(closestIndex + direction);
+    const nextSlot = direction > 0 && node.scrollTop >= maxScroll - edge
+      ? normalizeSectionSlot(0)
+      : direction < 0 && node.scrollTop <= edge
+        ? normalizeSectionSlot(sectionItems.length - 1)
+        : normalizeSectionSlot(closestIndex + direction);
     const nextItem = visibleSectionItems[nextSlot];
     if (nextItem) {
       setActiveSection(nextItem.id);
