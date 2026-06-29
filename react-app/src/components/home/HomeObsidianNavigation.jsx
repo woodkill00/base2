@@ -224,7 +224,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     const maxScroll = Math.max(0, node.scrollHeight - node.clientHeight);
     if (maxScroll <= 2) return;
 
-    event.preventDefault();
     const edge = Math.max(4, Math.min(24, node.clientHeight * 0.08));
     const nextTop = node.scrollTop + event.deltaY;
     if (nextTop >= maxScroll - edge) {
