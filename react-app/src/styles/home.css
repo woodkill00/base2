@@ -1222,7 +1222,7 @@
 }
 
 .home-left-command-title > div {
-  --left-title-inline: min(100%, calc(var(--left-menu-width) - var(--left-menu-close-size) - (var(--left-menu-pad) * 3)));
+  --left-title-inline: min(100%, calc(var(--left-menu-width) - var(--left-menu-close-size) - (var(--left-menu-pad) * 3) - clamp(8px, calc(0.5vw + 5px), 14px)));
   --left-title-primary-size: clamp(17px, calc(0.18vw + 16.2px), 19px);
   --left-title-secondary-size: clamp(11px, calc(0.1vw + 10.7px), 12px);
   display: inline-flex;
@@ -1233,7 +1233,7 @@
   min-width: 0;
   max-width: var(--left-title-inline);
   text-align: center;
-  width: auto;
+  width: var(--left-title-inline);
   white-space: nowrap;
 }
 
