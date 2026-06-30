@@ -279,6 +279,15 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     window.clearTimeout(leftSectionSnapTimer.current);
   }, [centerLeftSectionSlot, normalizeSectionSlot, visibleSectionItems]);
 
+  const getLeftSectionDistance = useCallback((index) => {
+    const length = sectionItems.length;
+    const activeBaseIndex = ((activeLeftSectionSlot - sectionLoopOffset) % length + length) % length;
+    const itemBaseIndex = ((index - sectionLoopOffset) % length + length) % length;
+    const forward = (itemBaseIndex - activeBaseIndex + length) % length;
+    const signedDistance = forward > length / 2 ? forward - length : forward;
+    return Math.max(-2, Math.min(2, signedDistance));
+  }, [activeLeftSectionSlot, sectionLoopOffset]);
+
   const handleLeftSectionWheel = useCallback((event) => {
     const node = event.currentTarget || leftSectionListRef.current;
     const buttons = leftSectionButtonRefs.current.filter(Boolean);
@@ -595,19 +604,36 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     if (!buttons.length) return;
     if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
       event.preventDefault();
-      buttons[(index + 1) % buttons.length]?.focus();
+      const nextIndex = normalizeSectionSlot(index + 1);
+      moveLeftSectionSlot(nextIndex, true);
+      buttons[nextIndex]?.focus();
     }
     if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
       event.preventDefault();
-      buttons[(index - 1 + buttons.length) % buttons.length]?.focus();
+      const nextIndex = normalizeSectionSlot(index - 1);
+      moveLeftSectionSlot(nextIndex, true);
+      buttons[nextIndex]?.focus();
     }
     if (event.key === 'Home') {
       event.preventDefault();
-      buttons[0]?.focus();
+      const nextIndex = normalizeSectionSlot(0);
+      moveLeftSectionSlot(nextIndex, true);
+      buttons[nextIndex]?.focus();
     }
     if (event.key === 'End') {
       event.preventDefault();
-      buttons[buttons.length - 1]?.focus();
+      const nextIndex = normalizeSectionSlot(sectionItems.length - 1);
+      moveLeftSectionSlot(nextIndex, true);
+      buttons[nextIndex]?.focus();
+    }
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      const item = visibleSectionItems[index];
+      if (index === activeLeftSectionSlot && item) {
+        goToSection(item.id);
+      } else {
+        moveLeftSectionSlot(index, true);
+      }
     }
   };
 
@@ -911,6 +937,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
             const loopPosition = index < sectionLoopOffset ? 'previous' : (isCanonicalLoop ? 'middle' : 'next');
             const isLoopBoundary = index % sectionItems.length === 0;
             const isActive = index === activeLeftSectionSlot;
+            const wheelDistance = getLeftSectionDistance(index);
             return (
               <button
                 type="button"
@@ -918,12 +945,13 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
                 ref={(node) => {
                   leftSectionButtonRefs.current[index] = node;
                 }}
-                onClick={() => goToSection(item.id)}
+                onClick={() => (isActive ? goToSection(item.id) : moveLeftSectionSlot(index, true))}
                 onKeyDown={(event) => handleLeftSectionKeyDown(event, index)}
                 className={isActive ? 'is-active' : ''}
                 aria-current={isActive ? 'location' : undefined}
                 tabIndex={isLeftOpen ? 0 : -1}
                 data-section-loop={loopPosition}
+                data-wheel-distance={wheelDistance}
                 data-loop-boundary={isLoopBoundary ? 'start' : undefined}
                 data-testid={`base2-section-nav-${item.id}`}
               >
