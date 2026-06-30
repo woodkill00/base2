@@ -1308,6 +1308,7 @@
 .home-left-command-list {
   --left-list-fade-size: clamp(34px, calc(3vh + 14px), 54px);
   --left-list-loop-gap: clamp(24px, calc(1.5vh + 14px), 34px);
+  --left-wheel-center-height: clamp(52px, calc(1.6vh + 44px), 64px);
   display: grid;
   gap: var(--left-menu-row-gap);
   position: relative;
@@ -1322,9 +1323,8 @@
   scroll-behavior: smooth;
   scroll-padding-block: var(--left-list-fade-size);
   scroll-snap-type: y mandatory;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 99, 33, 0.58) rgba(255, 255, 255, 0.08);
-  scrollbar-gutter: stable;
+  scrollbar-width: none;
+  scrollbar-gutter: auto;
   mask-image: linear-gradient(
     180deg,
     transparent 0,
@@ -1336,8 +1336,34 @@
   );
 }
 
+.home-left-command-list::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.home-left-command-list::before {
+  content: "";
+  position: sticky;
+  top: calc(50% - (var(--left-wheel-center-height) / 2));
+  z-index: 1;
+  display: block;
+  height: var(--left-wheel-center-height);
+  margin-bottom: calc(var(--left-wheel-center-height) * -1);
+  pointer-events: none;
+  border: 1px solid rgba(255, 99, 33, 0.34);
+  border-inline-color: rgba(255, 49, 49, 0.58);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(255, 49, 49, 0.12), rgba(255, 99, 33, 0.02) 28%, rgba(255, 99, 33, 0.02) 72%, rgba(255, 49, 49, 0.12)),
+    radial-gradient(circle at 16% 50%, rgba(255, 99, 33, 0.18), transparent 44%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 0 22px rgba(255, 99, 33, 0.14);
+}
+
 .home-left-command-list button {
   position: relative;
+  z-index: 2;
   scroll-snap-align: center;
   scroll-snap-stop: always;
   min-height: var(--left-menu-row-height);
@@ -1358,17 +1384,32 @@
   color: rgba(247, 241, 238, 0.82);
   text-align: left;
   cursor: pointer;
-  transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease, opacity 160ms ease, box-shadow 160ms ease;
+  transform-origin: center;
+  transition: border-color 180ms ease, background 180ms ease, color 180ms ease, transform 180ms ease, opacity 180ms ease, box-shadow 180ms ease, filter 180ms ease;
 }
 
 .home-left-command-list button[data-section-loop="previous"],
 .home-left-command-list button[data-section-loop="next"] {
-  opacity: 0.22;
+  opacity: 0.16;
+}
+
+.home-left-command-list button[data-wheel-distance="-2"],
+.home-left-command-list button[data-wheel-distance="2"] {
+  opacity: 0.2;
+  transform: scale(0.91);
+  filter: saturate(0.58);
+}
+
+.home-left-command-list button[data-wheel-distance="-1"],
+.home-left-command-list button[data-wheel-distance="1"] {
+  opacity: 0.52;
+  transform: scale(0.96);
+  filter: saturate(0.82);
 }
 
 .home-left-command-list button[data-section-loop="previous"] span,
 .home-left-command-list button[data-section-loop="next"] span {
-  color: rgba(247, 241, 238, 0.28);
+  color: rgba(247, 241, 238, 0.22);
 }
 
 .home-left-command-list button[data-loop-boundary="start"] {
@@ -1438,6 +1479,7 @@
   background: rgba(255, 99, 33, 0.12);
   color: #ffffff;
   outline: none;
+  transform: scale(0.985);
 }
 
 .home-left-command-list button.is-active {
@@ -1448,8 +1490,9 @@
     rgba(255, 99, 33, 0.18);
   color: #ffffff;
   opacity: 1;
-  box-shadow: inset 0 0 0 1px rgba(255, 99, 33, 0.28), 0 0 18px rgba(255, 99, 33, 0.16);
-  transform: translateX(calc(var(--left-menu-pad) * 0.08));
+  filter: saturate(1.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 99, 33, 0.34), 0 0 22px rgba(255, 99, 33, 0.22);
+  transform: translateX(calc(var(--left-menu-pad) * 0.08)) scale(1.02);
 }
 
 .home-left-command-switches {
