@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from datetime import UTC, datetime
 
 import pytest
@@ -155,3 +156,105 @@ def test_evidence_run_records_success_and_failure(tmp_path):
     receipt = failed_store.load("run-failed-001")
     assert receipt["status"] == "failed"
     assert receipt["stages"][0]["status"] == "failed"
+
+
+def test_strict_evidence_validator_rejects_malformed_shapes(tmp_path):
+    valid_stage = {
+        "id": "admission",
+        "status": "passed",
+        "startedAt": "2026-08-24T20:00:00Z",
+        "finishedAt": "2026-08-24T20:00:01Z",
+        "diagnosticCode": None,
+    }
+    valid_artifact = {"name": "receipt.json", "sha256": "c" * 64, "size": 1}
+    valid_failure = {"stage": "dns", "code": "dns_failed", "retryable": False}
+    cases = []
+
+    def add(expected, change):
+        item = deepcopy(base_evidence())
+        change(item)
+        cases.append((expected, item))
+
+    add("unknown field", lambda item: item.update(extra=True))
+    add("missing field", lambda item: item.pop("action"))
+    add("schemaVersion", lambda item: item.update(schemaVersion=2))
+    add("runId is unsafe", lambda item: item.update(runId="../bad"))
+    add("sourceCommit", lambda item: item.update(sourceCommit="bad"))
+    add("manifestDigest", lambda item: item.update(manifestDigest="bad"))
+    add("action or status", lambda item: item.update(action="destroy-everything"))
+    add("valid date-time", lambda item: item.update(startedAt="not-a-date"))
+    add("timezone", lambda item: item.update(startedAt="2026-08-24T20:00:00"))
+    add("running evidence", lambda item: item.update(finishedAt="2026-08-24T20:00:01Z"))
+    add(
+        "terminal evidence",
+        lambda item: item.update(status="passed", finishedAt=None),
+    )
+    add(
+        "precedes",
+        lambda item: item.update(status="passed", finishedAt="2026-08-24T19:00:00Z"),
+    )
+    add("stages must", lambda item: item.update(stages={}))
+    add("stage must", lambda item: item.update(stages=["bad"]))
+    add(
+        "stage id",
+        lambda item: item.update(stages=[{**valid_stage, "id": "../bad"}]),
+    )
+    add("duplicated", lambda item: item.update(stages=[valid_stage, valid_stage]))
+    add(
+        "stage status",
+        lambda item: item.update(stages=[{**valid_stage, "status": "unknown"}]),
+    )
+    add(
+        "running stage",
+        lambda item: item.update(
+            stages=[{**valid_stage, "status": "running", "finishedAt": valid_stage["finishedAt"]}]
+        ),
+    )
+    add(
+        "terminal stage",
+        lambda item: item.update(stages=[{**valid_stage, "finishedAt": None}]),
+    )
+    add(
+        "diagnosticCode",
+        lambda item: item.update(stages=[{**valid_stage, "diagnosticCode": 7}]),
+    )
+    add("cost must", lambda item: item.update(cost=[]))
+    add("currency", lambda item: item["cost"].update(currency="usd"))
+    add("MinorUnits", lambda item: item["cost"].update(actualMinorUnits=True))
+    add("artifacts must", lambda item: item.update(artifacts={}))
+    add("artifact must", lambda item: item.update(artifacts=["bad"]))
+    add("duplicated", lambda item: item.update(artifacts=[valid_artifact, valid_artifact]))
+    add(
+        "artifact digest",
+        lambda item: item.update(artifacts=[{**valid_artifact, "sha256": "bad"}]),
+    )
+    add(
+        "artifact size",
+        lambda item: item.update(artifacts=[{**valid_artifact, "size": -1}]),
+    )
+    add("failure must", lambda item: item.update(failure="bad"))
+    add(
+        "failure fields",
+        lambda item: item.update(
+            status="failed",
+            finishedAt="2026-08-24T20:00:01Z",
+            failure={**valid_failure, "code": ""},
+        ),
+    )
+    add(
+        "retryable",
+        lambda item: item.update(
+            status="failed",
+            finishedAt="2026-08-24T20:00:01Z",
+            failure={**valid_failure, "retryable": "no"},
+        ),
+    )
+    add(
+        "requires failure",
+        lambda item: item.update(status="failed", finishedAt="2026-08-24T20:00:01Z"),
+    )
+    add("non-failed", lambda item: item.update(failure=valid_failure))
+
+    for index, (expected, item) in enumerate(cases):
+        with pytest.raises(EvidenceValidationError, match=expected):
+            EvidenceStore(tmp_path / str(index)).create(item)

@@ -635,4 +635,4 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Routed only the DigitalOcean coverage gate through that wrapper; test selection, coverage source, report path, required status, and coverage policy remain unchanged.
 - Added manifest/wrapper regressions so the stable tracer cannot silently drift back to the crashing core.
 
-**Result**: The unchanged DigitalOcean suite passes 160 tests with a valid JSON coverage report under `sys.monitoring`. No retry, test exclusion, threshold reduction, or unavailable classification was used. The complete gate must be replayed before this cycle is closed.
+**Result**: The DigitalOcean suite passes 162 tests with a valid JSON coverage report under `sys.monitoring`. Strict malformed-evidence and invalid-source-identity cases raised changed-line coverage from 89.06% to 91.15% against the unchanged 90% floor. No retry, test exclusion, threshold reduction, or unavailable classification was used. The complete gate must be replayed before this cycle is closed.

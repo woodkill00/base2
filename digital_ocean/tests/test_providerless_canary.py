@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from subprocess import CompletedProcess
+
+import pytest
 
 from digital_ocean.scripts.python import providerless_canary
 
@@ -31,3 +34,13 @@ def test_cli_emits_one_machine_readable_receipt(capsys):
     receipt = json.loads(capsys.readouterr().out)
     assert receipt["provider"] == "in-memory-fixture"
     assert receipt["assertions"]["zeroProviderResources"] is True
+
+
+def test_canary_rejects_non_exact_source_commit(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        providerless_canary.subprocess,
+        "run",
+        lambda *_args, **_kwargs: CompletedProcess([], 0, stdout="not-a-commit\n"),
+    )
+    with pytest.raises(RuntimeError, match="exact lowercase source commit"):
+        providerless_canary.run_canary(tmp_path)
