@@ -44,7 +44,7 @@
 - [x] T027 [US1] Replace Dockerfile heredoc config with checked-in `react-app/nginx/default.conf` copied into the image | Depends: T026 | Validate: 3/3 classic/BuildKit/config/SPA fallback fixtures and production Compose config validation pass
 - [x] T028 [P] [US1] Write per-service health tests that inspect installed binaries and meaningful readiness | Depends: T007 | Validate: pre-T029 matrix failed on six React/Django/static/Flower/dependency defects; corrected 4/4 service/image/dependency cases pass
 - [ ] T029 [US1] Correct Compose/Dockerfile health probes and dependency conditions | Depends: T028 | Validate: all images healthy in production-like Compose
-- [ ] T030 [P] [US1] Write TLS bootstrap tests for absent/file/dir/wrong-owner/wrong-mode/idempotent cases | Depends: T007 | Validate: fail before T031
+- [x] T030 [P] [US1] Write TLS bootstrap tests for absent/file/dir/wrong-owner/wrong-mode/idempotent cases | Depends: T007 | Validate: pre-T031 import failed; corrected 9/9 absent/file/dir/symlink/owner/mode/idempotency/wrapper cases pass
 - [ ] T031 [US1] Implement ACME storage bootstrap in sole orchestration path plus Bash/PowerShell wrappers | Depends: T030 | Validate: Traefik starts unprivileged with mode 0600
 - [ ] T032 [P] [US1] Write strict env parser tests for quotes, whitespace, CRLF, comments, duplicate/unknown keys, malformed region/name/image, and secret redaction | Depends: T007 | Validate: fail before T033
 - [ ] T033 [US1] Implement one strict env/config normalization library and route deploy/preflight through it | Depends: T032 | Validate: parser and existing env tests pass

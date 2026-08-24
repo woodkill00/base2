@@ -184,11 +184,7 @@ fi
 # Ensure Traefik ACME storage exists and is writable by the Traefik user.
 stage "prepare traefik acme storage"
 ACME_DIR="$PROJECT_DIR/letsencrypt"
-mkdir -p "$ACME_DIR"
-touch "$ACME_DIR/acme.json" "$ACME_DIR/acme-staging.json"
-chmod 600 "$ACME_DIR/acme.json" "$ACME_DIR/acme-staging.json" || true
-chmod 700 "$ACME_DIR" || true
-chown -R 1000:1000 "$ACME_DIR" || true
+"$PROJECT_DIR/scripts/bash/bootstrap-acme.sh" --directory "$ACME_DIR" --uid 1000 --gid 1000
 
 # Build if requested
 if [ "$BUILD" = true ]; then

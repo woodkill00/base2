@@ -30,10 +30,7 @@ fi
 stage "prepare traefik acme storage"
 log "Ensuring Traefik ACME storage is writable by UID 1000..."
 ACME_DIR="$REPO_DIR/letsencrypt"
-mkdir -p "$ACME_DIR"
-touch "$ACME_DIR/acme.json" "$ACME_DIR/acme-staging.json"
-chmod 600 "$ACME_DIR/acme.json" "$ACME_DIR/acme-staging.json" || true
-chown -R 1000:1000 "$ACME_DIR" || true
+"$REPO_DIR/scripts/bash/bootstrap-acme.sh" --directory "$ACME_DIR" --uid 1000 --gid 1000
 
 stage "ensure deploy user"
 log "Ensuring deploy user exists and has docker access..."

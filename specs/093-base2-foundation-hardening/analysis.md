@@ -360,3 +360,19 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added two Django readiness tests and made the service-health contract a required complete-gate node.
 
 **Result**: T028 resolved and the T029 implementation is present. The corrected 4/4 contract, 2/2 Django readiness cases, and production Compose configuration validation pass. T029 remains open until all built containers can be observed healthy through an accessible Docker daemon.
+
+## Cycle 24 - ACME storage bootstrap
+
+**Findings**:
+
+1. Three startup/deployment paths independently created ACME files with shell commands and suppressed ownership/mode failures.
+2. A directory replaced by a file, an ACME file replaced by a directory or symlink, wrong ownership, and idempotent content preservation had no focused contract.
+3. The PowerShell/Bash paths could drift because filesystem mutation was duplicated rather than delegated.
+
+**Corrections**:
+
+- Added one Python implementation using no-follow file creation, fixed filenames, exact directory/file modes, exact UID/GID, post-change verification, content preservation, and redacted receipts.
+- Added thin Bash and PowerShell wrappers; local start, post-reboot convergence, the primary Python orchestrator upload set, and the legacy remote deployment block route to the same implementation.
+- Added nine cases for absent storage, file/dir/symlink conflicts, wrong ownership metadata, wrong modes, content preservation, idempotency, live Bash delegation, and static PowerShell delegation; made them a required complete-gate node.
+
+**Result**: T030 resolved and the T031 implementation is present. All 9 focused and 36 DigitalOcean tests, shell syntax/parity, and command-matrix checks pass. T031 remains open until accessible Docker acceptance observes Traefik running with UID 1000 and both ACME files at mode 0600.

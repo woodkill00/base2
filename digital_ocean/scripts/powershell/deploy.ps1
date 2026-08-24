@@ -1057,10 +1057,7 @@ if [ -d __REMOTE_APP_DIR__ ]; then
 
   # Ensure Traefik bind-mounted ACME storage exists and is writable by the Traefik runtime user.
   # Traefik runs as uid 1000 inside the container; with cap_drop=ALL it cannot fix host perms.
-  mkdir -p letsencrypt || true
-  touch letsencrypt/acme.json letsencrypt/acme-staging.json || true
-  chmod 600 letsencrypt/acme.json letsencrypt/acme-staging.json || true
-  chown -R 1000:1000 letsencrypt || true
+  python3 digital_ocean/scripts/python/bootstrap_acme.py --directory letsencrypt --uid 1000 --gid 1000
 
   # Guardrail: htpasswd strings must not be double-escaped in the droplet .env.
   # Compose treats $$ as an escape for a literal $, so a $$$$ run would land as $$ in the container,

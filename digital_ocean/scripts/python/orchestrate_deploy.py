@@ -1230,7 +1230,8 @@ def run_post_reboot() -> None:
 
         # Ensure destination folders exist for script updates.
         run_ssh_cmd(
-            f"mkdir -p {repo_path}/scripts/bash {repo_path}/digital_ocean/scripts/bash {repo_path}/traefik",
+            f"mkdir -p {repo_path}/scripts/bash {repo_path}/digital_ocean/scripts/bash "
+            f"{repo_path}/digital_ocean/scripts/python {repo_path}/traefik",
             "ensure remote script dirs",
             artifact_name="ensure-dirs.txt",
             allow_fail=True,
@@ -1250,6 +1251,10 @@ def run_post_reboot() -> None:
                 str(repo_root / "scripts" / "bash" / "start.sh"),
                 f"{repo_path}/scripts/bash/start.sh",
             ),
+            (
+                str(repo_root / "scripts" / "bash" / "bootstrap-acme.sh"),
+                f"{repo_path}/scripts/bash/bootstrap-acme.sh",
+            ),
             (str(repo_root / "scripts" / "bash" / "test.sh"), f"{repo_path}/scripts/bash/test.sh"),
             (str(repo_root / "traefik" / "entrypoint.sh"), f"{repo_path}/traefik/entrypoint.sh"),
             (
@@ -1263,6 +1268,10 @@ def run_post_reboot() -> None:
             (
                 str(repo_root / "digital_ocean" / "scripts" / "bash" / "remote_verify_min.sh"),
                 f"{repo_path}/digital_ocean/scripts/bash/remote_verify_min.sh",
+            ),
+            (
+                str(repo_root / "digital_ocean" / "scripts" / "python" / "bootstrap_acme.py"),
+                f"{repo_path}/digital_ocean/scripts/python/bootstrap_acme.py",
             ),
         ]
         for src, dest in upload_pairs:
