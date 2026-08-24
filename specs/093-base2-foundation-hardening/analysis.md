@@ -511,3 +511,20 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added the combined evidence/DNS/teardown matrix as a required complete-gate node.
 
 **Result**: T040-T041 resolved. The intentional absent-module run failed at collection; the implementation passes all 28 combined cases, including five independently injected failure stages, secret fixtures, integrity tampering, DNS success evidence, and teardown success evidence. T039 remains open only for replacement of the legacy deploy script's broad DNS path.
+
+## Cycle 33 - TTL and idle cleanup controller
+
+**Findings**:
+
+1. Preview leases had an absolute expiry but no explicit activity/idle deadline or unattended cleanup controller.
+2. Concurrent sweepers could duplicate teardown attempts, while unbounded retries or raw exception notifications could increase cost and leak provider details.
+3. A healthy no-active/no-due state had no explicit tested no-op result.
+
+**Corrections**:
+
+- Extended the lease contract with paired optional `lastActivityAt`/`idleExpiresAt` fields and added an atomic activity-touch operation; malformed partial/negative windows fail closed.
+- Reconciliation now chooses the earliest absolute or idle deadline and transitions only eligible leases to `teardown_due`.
+- Added a nonblocking owner-only sweeper lock, fixed three-attempt retry with bounded backoff, exact lease-ID teardown callback, and one sanitized exhaustion notification with no exception text.
+- Added no-lease, active-lease, absolute expiry, idle expiry, transient recovery, retry exhaustion, and overlapping-run coverage; made the suite a required gate node.
+
+**Result**: T043 resolved. All 6 focused sweeper and 31 combined lease/sweeper cases pass without provider access or live mutation.

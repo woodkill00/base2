@@ -177,6 +177,20 @@
       "requiredTools": ["{python-orchestrator}"]
     },
     {
+      "id": "preview-sweeper-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "digital_ocean/tests/test_preview_sweeper.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["deployment-evidence-contract"],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
       "id": "env-tools",
       "command": ["node", "scripts/run-root-coverage.js"],
       "required": true,

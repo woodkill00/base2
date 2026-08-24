@@ -57,7 +57,7 @@
 - [x] T040 [P] [US1] Define deployment evidence/redaction/cost schemas and failure-stage tests | Depends: T012,T035 | Validate: intentional absent-module RED then 10 evidence/schema/budget/secret/integrity/stage cases pass
 - [x] T041 [US1] Integrate atomic deployment/teardown evidence and cost receipts into DNS and teardown orchestrators | Depends: T040 | Validate: 28/28 evidence/DNS/teardown cases pass and every invoked stage becomes passed or failed
 - [ ] T042 [US1] Add complete first-deploy, update, rollback, resume-after-interruption, and idempotent replay paths | Depends: T027,T029,T031,T033,T035,T037,T039,T041 | Validate: provider-fake lifecycle matrix
-- [ ] T043 [P] [US1] Add TTL/idle sweeper with lock, bounded retry/backoff, notification, and no-active-lease no-op | Depends: T035,T037 | Validate: time/race/property tests
+- [x] T043 [P] [US1] Add TTL/idle sweeper with lock, bounded retry/backoff, notification, and no-active-lease no-op | Depends: T035,T037 | Validate: 6 TTL/idle/no-op/retry/recovery/lock cases and 31 combined lease/sweeper cases pass
 - [ ] T044 [US1] Add production-like providerless canary to required CI and document explicit live-canary authority | Depends: T042,T043 | Validate: CI canary creates no provider resources
 - [ ] T045 [US1] Under separate live approval, run three deploy/verify/destroy canaries and reconcile provider/DNS/cost to zero | Depends: T025,T044,T118 | Validate: three integrity-bound zero-resource receipts
 - [ ] T117 [P] [US1] Define provider quota, rate-limit, budget ceiling, resource-pressure, disk-full, OOM, and retry-storm tests with safe admission/degradation behavior | Depends: T035,T041 | Validate: injected exhaustion never creates excess resources or silent success

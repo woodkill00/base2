@@ -56,6 +56,7 @@ LEASE_FIELDS = {
     "resources",
     "dnsMutations",
 }
+LEASE_OPTIONAL_FIELDS = {"lastActivityAt", "idleExpiresAt"}
 RESOURCE_FIELDS = {"provider", "kind", "providerId", "ownershipTag"}
 DNS_FIELDS = {"zone", "name", "type", "previousValues", "desiredValues", "state"}
 DNS_STATES = {"planned", "applied", "verified", "restored"}
@@ -125,7 +126,12 @@ def _require_exact_fields(value: dict[str, Any], expected: set[str], label: str)
 def validate_lease(lease: Any) -> dict[str, Any]:
     if not isinstance(lease, dict):
         raise LeaseValidationError("lease must be an object")
-    _require_exact_fields(lease, LEASE_FIELDS, "lease")
+    unknown = sorted(set(lease) - LEASE_FIELDS - LEASE_OPTIONAL_FIELDS)
+    missing = sorted(LEASE_FIELDS - set(lease))
+    if unknown:
+        raise LeaseValidationError(f"lease has unknown field: {unknown[0]}")
+    if missing:
+        raise LeaseValidationError(f"lease is missing field: {missing[0]}")
     if lease["schemaVersion"] != 1:
         raise LeaseValidationError("schemaVersion must be 1")
     if not isinstance(lease["leaseId"], str) or not LEASE_ID.fullmatch(lease["leaseId"]):
@@ -144,6 +150,14 @@ def validate_lease(lease: Any) -> dict[str, Any]:
     expires = _timestamp(lease["expiresAt"], "expiresAt")
     if expires <= created:
         raise LeaseValidationError("expiresAt must be after createdAt")
+    activity_fields = LEASE_OPTIONAL_FIELDS & set(lease)
+    if activity_fields and activity_fields != LEASE_OPTIONAL_FIELDS:
+        raise LeaseValidationError("idle activity fields must be supplied together")
+    if activity_fields:
+        last_activity = _timestamp(lease["lastActivityAt"], "lastActivityAt")
+        idle_expires = _timestamp(lease["idleExpiresAt"], "idleExpiresAt")
+        if last_activity < created or idle_expires <= last_activity:
+            raise LeaseValidationError("idle activity window is invalid")
 
     cost = lease["costPolicy"]
     if not isinstance(cost, dict):
@@ -355,6 +369,28 @@ class LeaseStore:
             self._write_unlocked(updated)
             return updated
 
+    def touch_activity(
+        self,
+        lease_id: str,
+        *,
+        now: datetime,
+        idle_timeout: timedelta,
+    ) -> dict[str, Any]:
+        if idle_timeout <= timedelta(0):
+            raise LeaseValidationError("idle timeout must be positive")
+        current_time = now.astimezone(UTC)
+        with self._lock():
+            lease = self._load_unlocked(lease_id)
+            if lease["state"] in TERMINAL_STATES:
+                raise LeaseConflict("terminal lease activity cannot be updated")
+            updated = {
+                **lease,
+                "lastActivityAt": _format_timestamp(current_time),
+                "idleExpiresAt": _format_timestamp(current_time + idle_timeout),
+            }
+            self._write_unlocked(updated)
+            return updated
+
     def reconcile_expired(self, *, now: datetime | None = None) -> list[str]:
         current_time = (now or datetime.now(UTC)).astimezone(UTC)
         reconciled: list[str] = []
@@ -364,7 +400,10 @@ class LeaseStore:
                 lease = self._load_unlocked(lease_id)
                 if lease["state"] in {"teardown_due", "destroying", "destroyed"}:
                     continue
-                if _timestamp(lease["expiresAt"], "expiresAt") <= current_time:
+                deadlines = [_timestamp(lease["expiresAt"], "expiresAt")]
+                if "idleExpiresAt" in lease:
+                    deadlines.append(_timestamp(lease["idleExpiresAt"], "idleExpiresAt"))
+                if min(deadlines) <= current_time:
                     updated = {**lease, "state": "teardown_due"}
                     self._write_unlocked(updated)
                     reconciled.append(lease_id)
