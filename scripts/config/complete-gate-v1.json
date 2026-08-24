@@ -109,11 +109,11 @@
     },
     {
       "id": "compose-config",
-      "command": ["docker", "compose", "-f", "development.docker.yml", "config", "--quiet"],
+      "command": ["python3", "scripts/python/validate_compose_config.py"],
       "required": true,
       "timeoutSeconds": 60,
       "dependsOn": ["env-tools"],
-      "requiredTools": ["docker"]
+      "requiredTools": ["docker", "python3"]
     }
   ]
 }

@@ -141,3 +141,18 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Declared the exact compatible `react-refresh` build dependency directly; the optimized production build now succeeds rather than relying on a transitive peer accident.
 
 **Result**: Resolved; the next complete-gate receipt must bind the repaired exact commit.
+
+## Cycle 10 - Clean-checkout Compose validation
+
+**Findings**:
+
+1. Docker and Compose were installed and healthy, but the gate invoked Compose without an interpolation environment.
+2. The production Compose file also referenced private `.env` directly, preventing safe validation from a clean checkout.
+
+**Corrections**:
+
+- Parameterized only the Compose `env_file` path while retaining `.env` as the runtime default.
+- Added a no-shell validator that supplies the repository-owned, non-secret `.env.example` for both interpolation and service configuration.
+- Kept personal `.env` files ignored and out of gate evidence.
+
+**Result**: Resolved in implementation; exact-commit complete-gate replay remains required.

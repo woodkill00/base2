@@ -8,6 +8,7 @@ import unittest
 
 
 MODULE_PATH = Path(__file__).parents[1] / "python" / "run_complete_gate.py"
+COMPOSE_MODULE_PATH = Path(__file__).parents[1] / "python" / "validate_compose_config.py"
 
 
 def load_module():
@@ -105,9 +106,17 @@ class CompleteGateTests(unittest.TestCase):
         self.assertEqual("{python-django}", commands["django-tests"][0])
         self.assertEqual("{python-orchestrator}", commands["digitalocean-tests"][0])
         self.assertIn("django/pytest.ini", commands["django-tests"])
+        self.assertEqual(["python3", "scripts/python/validate_compose_config.py"], commands["compose-config"])
         powershell = (repo_root / "scripts/powershell/install-python-deps.ps1").read_text(encoding="utf-8")
         for name in (".venv-api", ".venv-django", ".venv"):
             self.assertIn(name, powershell)
+
+    def test_compose_fixture_replaces_only_documentation_placeholders(self):
+        spec = importlib.util.spec_from_file_location("validate_compose_config", COMPOSE_MODULE_PATH)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        rendered = module.render_validation_env("PROJECT_NAME=YOUR_PROJECT_NAME\nKEEP=${PROJECT_NAME}\n")
+        self.assertEqual("PROJECT_NAME=fixture\nKEEP=${PROJECT_NAME}\n", rendered)
 
 
 if __name__ == "__main__":

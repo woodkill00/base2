@@ -167,7 +167,7 @@ services:
       - traefik_logs:/var/log/traefik
       - /var/run/docker.sock:/var/run/docker.sock:ro
     env_file:
-      - .env
+      - ${COMPOSE_ENV_FILE:-.env}
     environment:
       - WEBSITE_DOMAIN=${WEBSITE_DOMAIN:-localhost}
       - TRAEFIK_CERT_EMAIL=${TRAEFIK_CERT_EMAIL}
