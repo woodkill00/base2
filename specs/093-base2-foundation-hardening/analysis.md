@@ -173,3 +173,18 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added regression tests rejecting duplicate, unmeasured, inflated, expired, or ownerless policy state and proving test-module exclusion.
 
 **Result**: T016 resolved. T017 remains responsible for producing and enforcing every machine-readable report in the complete gate.
+
+## Cycle 12 - WSL signal-11 containment
+
+**Findings**:
+
+1. The current exact-commit gate saw Django terminated by kernel signal 11 while all other checks passed; prior bootstrap runs observed the same host signal in unrelated Python and Node processes.
+2. Treating this as an application assertion failure obscures the host fault, while unbounded generic retries could hide real defects.
+
+**Corrections**:
+
+- Added one runner-level retry only for subprocess return code `-11`.
+- Recorded attempt count and separated attempt output in integrity-bound evidence.
+- Ordinary failures, timeouts, and a repeated signal remain terminal without additional retries.
+
+**Result**: Contained, not declared eliminated; WSL/kernel stability remains a host risk and every recovery is visible in the gate receipt.

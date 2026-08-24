@@ -25,14 +25,15 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "status", "required", "exitCode", "artifact", "diagnostic"],
+        "required": ["id", "status", "required", "exitCode", "artifact", "diagnostic", "attempts"],
         "properties": {
           "id": { "type": "string" },
           "status": { "enum": ["passed", "failed", "skipped", "unavailable", "not_run"] },
           "required": { "type": "boolean" },
           "exitCode": { "type": ["integer", "null"] },
           "artifact": { "type": ["string", "null"] },
-          "diagnostic": { "type": ["string", "null"] }
+          "diagnostic": { "type": ["string", "null"] },
+          "attempts": { "type": "integer", "minimum": 0, "maximum": 2 }
         }
       }
     },

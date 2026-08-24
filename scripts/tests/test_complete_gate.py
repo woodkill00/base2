@@ -67,6 +67,11 @@ class CompleteGateTests(unittest.TestCase):
         self.assertEqual("failed", result["overallStatus"])
         self.assertIn("timed out", result["checks"][0]["diagnostic"])
 
+    def test_does_not_retry_ordinary_failure(self):
+        result, _ = self.run_gate([check("bad", ["/bin/sh", "-c", "exit 7"], tools=["/bin/sh"])])
+        self.assertEqual(1, result["checks"][0]["attempts"])
+        self.assertNotIn("retry", result["checks"][0]["diagnostic"])
+
     def test_redacts_secret_environment_values_and_binds_digest(self):
         secret = "fixture-super-secret-value"
         result, output = self.run_gate(

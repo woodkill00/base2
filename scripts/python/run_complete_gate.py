@@ -129,6 +129,7 @@ def run_gate(
             "exitCode": None,
             "artifact": None,
             "diagnostic": None,
+            "attempts": 0,
         }
         blocked = [dependency for dependency in item["dependsOn"] if states.get(dependency) != "passed"]
         if blocked:
@@ -141,27 +142,37 @@ def run_gate(
                 artifact = evidence_dir / f"{check_id}.log"
                 try:
                     command = [resolve_tool(value, repo_root) for value in item["command"]]
-                    completed = subprocess.run(
-                        command,
-                        cwd=repo_root,
-                        env=environment,
-                        text=True,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT,
-                        timeout=item["timeoutSeconds"],
-                        check=False,
-                    )
-                    artifact.write_text(redact(completed.stdout or "", environment), encoding="utf-8")
+                    outputs = []
+                    attempts = 0
+                    while True:
+                        attempts += 1
+                        completed = subprocess.run(
+                            command,
+                            cwd=repo_root,
+                            env=environment,
+                            text=True,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT,
+                            timeout=item["timeoutSeconds"],
+                            check=False,
+                        )
+                        outputs.append(f"=== attempt {attempts} exit {completed.returncode} ===\n{completed.stdout or ''}")
+                        if completed.returncode != -11 or attempts >= 2:
+                            break
+                    artifact.write_text(redact("\n".join(outputs), environment), encoding="utf-8")
                     status = "passed" if completed.returncode == 0 else "failed"
-                    result = {**base, "status": status, "exitCode": completed.returncode, "artifact": artifact.name}
+                    result = {**base, "status": status, "exitCode": completed.returncode, "artifact": artifact.name, "attempts": attempts}
+                    if status == "passed" and attempts > 1:
+                        result["diagnostic"] = "recovered after one signal 11 retry"
                     if status == "failed":
-                        result["diagnostic"] = f"command exited {completed.returncode}"
+                        suffix = " after one signal 11 retry" if attempts > 1 else ""
+                        result["diagnostic"] = f"command exited {completed.returncode}{suffix}"
                 except subprocess.TimeoutExpired as exc:
                     captured = exc.stdout or ""
                     if isinstance(captured, bytes):
                         captured = captured.decode(errors="replace")
                     artifact.write_text(redact(captured, environment), encoding="utf-8")
-                    result = {**base, "status": "failed", "artifact": artifact.name, "diagnostic": f"timed out after {item['timeoutSeconds']} seconds"}
+                    result = {**base, "status": "failed", "artifact": artifact.name, "attempts": 1, "diagnostic": f"timed out after {item['timeoutSeconds']} seconds"}
         states[check_id] = result["status"]
         results.append(result)
 
