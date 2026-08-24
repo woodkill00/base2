@@ -325,6 +325,36 @@ class LeaseStore:
             self._write_unlocked(updated)
             return updated
 
+    def update_dns_state(self, lease_id: str, index: int, target_state: str) -> dict[str, Any]:
+        allowed = {
+            "planned": {"applied"},
+            "applied": {"verified", "restored"},
+            "verified": {"restored"},
+            "restored": set(),
+        }
+        if target_state not in DNS_STATES:
+            raise LeaseValidationError("DNS mutation target state is invalid")
+        with self._lock():
+            lease = self._load_unlocked(lease_id)
+            mutations = lease["dnsMutations"]
+            if (
+                isinstance(index, bool)
+                or not isinstance(index, int)
+                or not 0 <= index < len(mutations)
+            ):
+                raise LeaseValidationError("DNS mutation index is invalid")
+            current = mutations[index]["state"]
+            if current == target_state:
+                return lease
+            if target_state not in allowed[current]:
+                raise LeaseConflict(
+                    f"DNS mutation transition {current} -> {target_state} is not allowed"
+                )
+            updated = json.loads(_canonical(lease))
+            updated["dnsMutations"][index]["state"] = target_state
+            self._write_unlocked(updated)
+            return updated
+
     def reconcile_expired(self, *, now: datetime | None = None) -> list[str]:
         current_time = (now or datetime.now(UTC)).astimezone(UTC)
         reconciled: list[str] = []

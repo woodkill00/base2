@@ -443,3 +443,20 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added seven provider-fake cases for exact deletion, wrong ID/tag, name replacement, missing/tampered receipts, residual resources, bounded rate limits, and idempotency, then made them a required gate node.
 
 **Result**: T036-T037 resolved. The legacy import failed before tests because it eagerly created a real client; the corrected 7/7 teardown and combined 22/22 lease/teardown cases pass without provider access.
+
+## Cycle 29 - Transactional DNS contract
+
+**Findings**:
+
+1. Preview DNS changes had no exact before-state transaction, partial-apply recovery, health gate, or reverse-order restoration primitive.
+2. A stale or third-party-modified record could be overwritten, and certificate SAN evidence was not bound to the exact mutation names.
+3. Lease DNS mutation state could not be advanced atomically with integrity verification.
+
+**Corrections**:
+
+- Added bounded DNS mutation transitions to the integrity-bound lease store.
+- Added an offline provider-neutral transaction that preflights every exact prior/desired value before mutation, reconciles an interrupted remote apply, binds exact mutation names to the exact certificate SAN set, and verifies health before completion.
+- Health failure restores exact prior values in reverse order; a third-party change during rollback fails closed rather than being overwritten.
+- Added five transaction fixtures and a required gate node.
+
+**Result**: T038 resolved and the core T039 transaction implementation is present. The intentional absent-module run failed during collection; the corrected DNS/lease/teardown matrix passes 27/27. T039 remains open until the primary deployment orchestrator uses this primitive through a provider adapter.

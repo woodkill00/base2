@@ -52,7 +52,7 @@
 - [x] T035 [US1] Implement lease store, ownership tags, TTL/renewal, and reconciliation in `digital_ocean/scripts/python/preview_lease.py` | Depends: T034 | Validate: all 15 state/property cases and complete DigitalOcean suite pass
 - [x] T036 [P] [US1] Write compare-before-delete tests for wrong ID/tag/digest, replacement resources, missing receipts, rate limits, residual resources, and idempotent deletion | Depends: T035 | Validate: legacy import RED then 7 provider-fake hostile/lifecycle cases pass
 - [x] T037 [US1] Integrate exact-owned cleanup and bounded zero-resource verification into `orchestrate_teardown.py`; broad name and DNS deletion are forbidden | Depends: T036 | Validate: 7/7 provider-fake teardown and 22/22 lease/teardown matrix pass
-- [ ] T038 [P] [US1] Write transactional DNS tests for staged apply, health gate, exact prior values, rollback, SAN set, stale records, and interruption | Depends: T035 | Validate: fail before T039
+- [x] T038 [P] [US1] Write transactional DNS tests for staged apply, health gate, exact prior values, reverse rollback, exact SAN/mutation set, stale records, and interruption | Depends: T035 | Validate: intentional absent-module RED then 5 transaction cases pass
 - [ ] T039 [US1] Implement DNS transaction/reconciliation through orchestrator | Depends: T038 | Validate: provider-fake DNS matrix passes
 - [ ] T040 [P] [US1] Define deployment evidence/redaction/cost schemas and failure-stage tests | Depends: T012,T035 | Validate: schema and secret fixtures pass
 - [ ] T041 [US1] Integrate atomic deployment/teardown evidence and cost receipts into orchestrators | Depends: T040 | Validate: every stage emits terminal result
