@@ -62,6 +62,10 @@ Required modules fail startup. Optional modules expose explicit disabled/degrade
 
 Use an exact commit archive plus declarative transformations; never copy the live worktree or execute input content during generation.
 
+### R-013: Replace Create React App with bounded Vite 6/Vitest 4 compatibility
+
+Vite 6.4 is the newest line jointly supported by Node 24, Vitest 4, and the retained Storybook 8 framework. The migration preserves the existing `build/` artifact, `REACT_APP_*` public build inputs, all 46 frontend suites, Istanbul report paths, Docker/Nginx serving contract, and Storybook while removing `react-scripts`, its Webpack builder/preset, and its patch-package workaround. Client configuration is accessed through `import.meta.env`; prefixed values remain public by design and must never contain secrets. Full npm audit moved from 34 findings including 15 high to five moderate and zero high/critical. React Router 7 and Storybook major upgrades remain separately compatibility-tested moderate remediation work under the T020 SLA.
+
 ## Alternatives rejected
 
 - Promoting the stale design branch.
@@ -74,6 +78,5 @@ Use an exact commit archive plus declarative transformations; never copy the liv
 
 ## Decisions deferred behind adapters
 
-- The CRA modernization target is selected after compatibility evidence.
 - Object storage, mail, payment, and analytics providers use local fakes and disabled defaults.
 - Permanent production hosting and public production DNS need separate approval.

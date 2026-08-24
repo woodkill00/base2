@@ -4,6 +4,11 @@
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 import 'jest-axe/extend-expect';
+import { vi } from 'vitest';
+
+// Preserve the existing Jest-compatible test namespace during the bounded
+// runner migration. Production bundles never load this test-only bridge.
+globalThis.jest = vi;
 
 // framer-motion (in-view) relies on IntersectionObserver which isn't present in JSDOM.
 // Provide a minimal mock so motion viewport features don't crash tests.
@@ -62,9 +67,8 @@ if (server) {
 }
 
 // Mock environment variables
-const websiteDomain = process.env.WEBSITE_DOMAIN || 'localhost';
-process.env.REACT_APP_API_URL = process.env.REACT_APP_API_URL || `https://${websiteDomain}/api`;
-process.env.REACT_APP_GOOGLE_CLIENT_ID = 'test-google-client-id';
+vi.stubEnv('REACT_APP_API_URL', 'https://localhost/api');
+vi.stubEnv('REACT_APP_GOOGLE_CLIENT_ID', 'test-google-client-id');
 
 // Mock window.matchMedia (needed for some components)
 Object.defineProperty(window, 'matchMedia', {

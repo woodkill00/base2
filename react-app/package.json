@@ -16,19 +16,22 @@
     "react-router-dom": "^6.20.0"
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "^4.7.0",
+    "@vitest/coverage-istanbul": "^4.1.11",
     "@playwright/test": "^1.47.0",
+    "@babel/preset-react": "^7.27.1",
+    "@babel/preset-typescript": "^7.27.1",
     "@storybook/addon-essentials": "^8.6.15",
-    "@storybook/preset-create-react-app": "^8.6.15",
     "@storybook/react": "^8.6.15",
-    "@storybook/react-webpack5": "^8.6.15",
+    "@storybook/react-vite": "^8.6.15",
     "@storybook/test": "^8.6.15",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.1.4",
     "@testing-library/react": "^14.1.0",
     "@testing-library/user-event": "^14.5.1",
-    "@types/jest": "^30.0.0",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "@typescript-eslint/parser": "^8.41.0",
     "autoprefixer": "^10.4.23",
     "cross-env": "^7.0.3",
     "eslint": "^8.50.0",
@@ -36,26 +39,24 @@
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "jest-axe": "^9.0.0",
+    "jsdom": "^29.1.1",
     "msw": "^2.6.6",
-    "openapi-typescript": "^6.7.0",
-    "patch-package": "^8.0.0",
+    "openapi-typescript": "^7.13.0",
     "postcss": "^8.5.6",
     "prettier": "^3.0.0",
-    "react-refresh": "0.18.0",
-    "react-scripts": "^5.0.1",
-    "source-map-explorer": "^2.5.3",
     "storybook": "^8.6.15",
     "tailwindcss": "^3.4.19",
-    "typescript": "^4.9.5",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.3",
+    "vitest": "^4.1.11",
     "yaml": "^2.8.2"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test --coverage --watchAll=false",
-    "test:watch": "react-scripts test",
-    "test:ci": "cross-env CI=true react-scripts test --coverage",
-    "eject": "react-scripts eject",
+    "start": "vite",
+    "build": "vite build",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest",
+    "test:ci": "cross-env CI=true vitest run --coverage",
     "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint src --ext .js,.jsx,.ts,.tsx --fix",
     "format": "prettier --write \"src/**/*.{js,jsx,json,css,md}\"",
@@ -63,35 +64,10 @@
     "e2e": "playwright test --reporter=list",
     "e2e:headed": "playwright test --headed",
     "e2e:install": "playwright install",
-    "analyze": "react-scripts build && source-map-explorer 'build/static/js/*.js'",
+    "analyze": "vite build --mode analyze",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "postinstall": "node scripts/postinstall.js",
     "generate:openapi:types": "openapi-typescript ../specs/001-django-fastapi-react/contracts/openapi.yaml -o src/services/api/types.d.ts"
-  },
-  "jest": {
-    "collectCoverageFrom": [
-      "src/**/*.{js,jsx,ts,tsx}",
-      "!src/**/*.d.ts",
-      "!src/**/*.test.{js,jsx,ts,tsx}",
-      "!src/**/__tests__/**",
-      "!src/service-worker.js",
-      "!src/reportWebVitals.js"
-    ],
-    "coverageThreshold": {
-      "global": {
-        "branches": 36,
-        "functions": 38,
-        "lines": 45,
-        "statements": 44
-      },
-      "src/components/glass/**/*.{js,jsx,ts,tsx}": {
-        "branches": 100,
-        "functions": 100,
-        "lines": 100,
-        "statements": 100
-      }
-    }
   },
   "browserslist": {
     "production": [

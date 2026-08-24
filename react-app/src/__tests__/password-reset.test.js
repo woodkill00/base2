@@ -7,7 +7,7 @@ import { authAPI } from '../services/api';
 import ForgotPassword from '../pages/ForgotPassword';
 import ResetPassword from '../pages/ResetPassword';
 
-jest.mock('../services/api');
+vi.mock('../services/api');
 
 describe('T092 Password reset UI', () => {
   beforeEach(() => {

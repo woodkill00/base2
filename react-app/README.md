@@ -281,7 +281,7 @@ All pages use inline styles that can be easily customized in their respective fi
   "react-router-dom": "^6.20.0",
   "@react-oauth/google": "^0.12.1",
   "axios": "^1.6.0",
-  "react-scripts": "^5.0.1"
+  "vite": "^6.4.3"
 }
 ```
 

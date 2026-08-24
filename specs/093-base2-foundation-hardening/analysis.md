@@ -241,3 +241,21 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added the zero-exception policy validator to the complete gate and mirrored the machine contract in `docs/SECURITY_POLICY.md`.
 
 **Result**: T020 resolved; five policy regressions pass and there are zero active exceptions.
+
+## Cycle 17 - Legacy CRA removal
+
+**Findings**:
+
+1. `react-scripts` concealed the ESLint preset, jsdom, JSX-in-`.js` transform, Jest globals, and Istanbul setup behind one vulnerable dependency tree.
+2. Storybook's retained version supports Vite 6 but not Vite 8, so selecting the newest Vite release would break an existing visual contract.
+3. The runner migration initially changed Istanbul statement accounting by 0.23 points and fell below the independent 52% floor.
+
+**Corrections**:
+
+- Selected Vite 6.4, Vitest 4, the Vite React plugin, explicit jsdom, and Storybook's Vite framework from declared compatibility evidence.
+- Preserved `build/`, public `REACT_APP_*` inputs, all Istanbul output paths, Docker serving, and the complete-gate interface while removing CRA, Webpack Storybook, patch-package, and stale Jest flags.
+- Converted hoisted mocks to Vitest, retained a test-only Jest namespace bridge for non-hoisted APIs, and added explicit legacy JSX/Babel/TypeScript transforms.
+- Kept the coverage floor unchanged and covered two previously untested explicit legacy route surfaces; whole-frontend statements now pass at 52.10% and critical glass/theme remains 100% statements/lines/functions.
+- Upgraded the OpenAPI generator to remove the final high advisory. Full audit now reports five moderate and zero high/critical findings; production audit contains no high/critical findings.
+
+**Result**: T021 resolved. Lint, 46 suites/86 tests, Vite production build, Storybook build, six coverage surfaces, and the high/critical audit gate pass.

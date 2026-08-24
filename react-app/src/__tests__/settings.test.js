@@ -6,7 +6,7 @@ import { AuthProvider } from '../contexts/AuthContext';
 import apiClient from '../lib/apiClient';
 import Settings from '../pages/Settings';
 
-jest.mock('../lib/apiClient', () => ({
+vi.mock('../lib/apiClient', () => ({
   __esModule: true,
   default: {
     patch: jest.fn(),

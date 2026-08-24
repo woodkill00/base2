@@ -7,7 +7,7 @@ import Signup from '../pages/Signup.jsx';
 import { AuthProvider } from '../contexts/AuthContext';
 
 // Mock GoogleLogin to avoid external dependency errors in jsdom
-jest.mock('@react-oauth/google', () => ({
+vi.mock('@react-oauth/google', () => ({
   GoogleLogin: () => <div data-testid="google-login" />,
 }));
 

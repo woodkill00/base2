@@ -59,18 +59,7 @@
     },
     {
       "id": "frontend-test",
-      "command": [
-        "npm",
-        "--prefix",
-        "react-app",
-        "run",
-        "test:ci",
-        "--",
-        "--watchAll=false",
-        "--coverageReporters=json",
-        "--coverageReporters=json-summary",
-        "--coverageReporters=text"
-      ],
+      "command": ["npm", "--prefix", "react-app", "run", "test:ci"],
       "required": true,
       "timeoutSeconds": 900,
       "dependsOn": ["frontend-lint"],

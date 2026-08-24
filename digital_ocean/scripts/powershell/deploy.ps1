@@ -2274,7 +2274,7 @@ try {
         try {
           $env:CI = 'true'
           # Ensure non-interactive test mode even if CI env isn't picked up by CRA for some reason.
-          $test = Invoke-LocalCmdWithTimeout -WorkingDirectory $PWD.Path -Label 'npm test' -CmdLine 'npm test -- --coverage --watchAll=false' -TimeoutSec $ReactTestTimeoutSec
+          $test = Invoke-LocalCmdWithTimeout -WorkingDirectory $PWD.Path -Label 'npm test' -CmdLine 'npm run test:ci' -TimeoutSec $ReactTestTimeoutSec
           $testText = $test.Output
           if ($null -eq $testText) { $testText = '' }
           $log += ($testText.TrimEnd())

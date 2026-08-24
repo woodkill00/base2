@@ -19,7 +19,7 @@ const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 
 // Replace this with your actual Google Client ID
 // Get it from: https://console.cloud.google.com/apis/credentials
-const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID_HERE';
+const GOOGLE_CLIENT_ID = import.meta.env.REACT_APP_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID_HERE';
 
 function App() {
   return (

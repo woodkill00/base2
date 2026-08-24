@@ -32,7 +32,7 @@ Missing/skipped/unavailable checks are not green.
 Focused development commands:
 
 ```bash
-cd react-app && npm test -- --watchAll=false
+cd react-app && npm run test:ci
 cd ../api && python3 -m pytest
 cd ../django && python3 -m pytest
 cd .. && python3 -m pytest digital_ocean/tests
