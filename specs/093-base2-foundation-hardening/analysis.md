@@ -409,3 +409,20 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added parser, preflight, integration, and secret-redaction cases, then made the contract a required complete-gate node.
 
 **Result**: T032-T033 resolved. All 23 parser/preflight/env cases pass, and the combined focused ACME/config matrix passes 36/36.
+
+## Cycle 27 - Integrity-bound preview leases
+
+**Findings**:
+
+1. The PreviewLease contract existed, but there was no durable implementation for exact replay, ownership, expiry, transition, or restart reconciliation.
+2. No runtime boundary rejected traversal IDs, changed replays, hostile resource tags, malformed nested records, state tampering, or interrupted writes.
+3. TTL renewal lacked a maximum extension and expired resources had no deterministic transition to teardown authority.
+
+**Corrections**:
+
+- Added a private lease store with strict contract validation, deterministic ownership tags, canonical SHA-256 envelopes, owner-only permissions, an exclusive lock, fsync, atomic replacement, and interruption cleanup.
+- Implemented exact idempotent create replay, bounded state transitions, capped UTC renewal, and deterministic expired-lease reconciliation to `teardown_due` without provider mutation.
+- Added 15 cases binding runtime fields to the reviewed schema and covering valid round trips, unchanged replay, conflicts, tampering/truncation, interrupted replacement, transitions, expiry, renewal, terminal state, resource ownership, hostile IDs, and modes.
+- Added the lease suite as a required complete-gate node.
+
+**Result**: T034-T035 resolved. The intentional absent-module run failed during collection; the implementation passes all 15 focused cases.

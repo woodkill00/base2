@@ -119,6 +119,20 @@
       "requiredTools": ["{python-orchestrator}"]
     },
     {
+      "id": "preview-lease-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "digital_ocean/tests/test_preview_lease.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["deploy-config-contract"],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
       "id": "env-tools",
       "command": ["node", "scripts/run-root-coverage.js"],
       "required": true,
