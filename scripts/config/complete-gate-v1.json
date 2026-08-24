@@ -42,6 +42,14 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "security-adapter-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_security_result_adapter"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["dependency-policy"],
+      "requiredTools": ["python3"]
+    },
+    {
       "id": "env-tools",
       "command": ["node", "scripts/run-root-coverage.js"],
       "required": true,

@@ -259,3 +259,21 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Upgraded the OpenAPI generator to remove the final high advisory. Full audit now reports five moderate and zero high/critical findings; production audit contains no high/critical findings.
 
 **Result**: T021 resolved. Lint, 46 suites/86 tests, Vite production build, Storybook build, six coverage surfaces, and the high/critical audit gate pass.
+
+## Cycle 18 - Security result normalization
+
+**Findings**:
+
+1. Existing security jobs retained CycloneDX, SARIF, npm-audit, and pip-audit files with incompatible result shapes and no common source-commit or raw-digest binding.
+2. Gitleaks explicitly disabled artifact upload, so a passing/failing job had no owner-retained machine-readable result.
+3. Image, DAST, provenance, and IaC scans require later task-owned activation inputs; treating them as currently green would be false evidence.
+
+**Corrections**:
+
+- Added one strict normalized result contract and adapters for secret, SAST, dependency, SBOM, provenance, image, DAST, and IaC families.
+- Bound every normalized result to exact source commit and SHA-256 of the raw artifact, rejected malformed/inconsistent counts, and failed closed on critical, high, or unknown severity.
+- Added 12 fixtures covering a red or malformed result for every family, green integrity binding, policy completeness, normalized-count consistency, and required CI workflow wiring.
+- Retained raw plus normalized outputs for Syft/Grype, npm audit, both pip audits, Gitleaks, and Semgrep. The local complete gate now blocks on the adapter contract tests.
+- Kept image, DAST, provenance, and IaC activation explicit rather than claiming scans without a trusted image, isolated target, generated output, or enabled policy.
+
+**Result**: T022 resolved. The real frontend npm audit normalized to five moderate, zero high/critical/unknown, and an integrity-bound passing result.

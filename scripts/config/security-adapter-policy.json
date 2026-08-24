@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "blockingSeverities": ["critical", "high"],
+  "families": {
+    "secret": { "format": "sarif", "activation": "required-ci" },
+    "sast": { "format": "sarif", "activation": "required-ci" },
+    "dependency": { "format": "npm-audit", "activation": "required-ci" },
+    "sbom": { "format": "cyclonedx", "activation": "required-ci" },
+    "provenance": { "format": "slsa", "activation": "generated-output" },
+    "image": { "format": "sarif", "activation": "image-present" },
+    "dast": { "format": "zap", "activation": "isolated-target" },
+    "iac": { "format": "checkov", "activation": "policy-enabled" }
+  }
+}
