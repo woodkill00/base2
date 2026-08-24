@@ -492,4 +492,4 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Reduced the API timeout to a conservative 120 seconds, limiting a pathological two-attempt run to four minutes, and retained each attempt in the redacted evidence log.
 - Added runner tests proving timeout recovery, incomplete-output recovery, ordinary failure non-retry, and assertion-failure non-retry.
 
-**Result**: All 11 gate-runner cases pass. No product threshold or failure classification was weakened; recovered infrastructure attempts remain explicitly labeled in the signed result.
+**Result**: All 11 gate-runner cases pass. No product threshold or failure classification was weakened; recovered infrastructure attempts remain explicitly labeled in the signed result. Exact commit `45ad21b7d391997956c4be884f2bbac52c944cfb` then passed two consecutive complete gates (`20260824T204904Z`, `20260824T204926Z`) with every required check green and zero retries in either run. T025 is resolved.
