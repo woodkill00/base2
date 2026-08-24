@@ -14,9 +14,9 @@ FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
 JOB = re.compile(r"^  ([a-zA-Z0-9_-]+):\s*$", re.MULTILINE)
 
 
-def scan_workflow(name: str, text: str, required_jobs: list[str], marker: str) -> list[str]:
+def scan_workflow(name: str, text: str, required_jobs: list[str], marker: str, *, require_pull_request: bool = True) -> list[str]:
     findings = []
-    if not re.search(r"^\s{2}pull_request:\s*$", text, re.MULTILINE):
+    if require_pull_request and not re.search(r"^\s{2}pull_request:\s*$", text, re.MULTILINE):
         findings.append(f"{name}: required workflow lacks pull_request trigger")
     jobs_text = text.split("\njobs:\n", 1)[1] if "\njobs:\n" in text else ""
     jobs = set(JOB.findall(jobs_text))
@@ -26,8 +26,13 @@ def scan_workflow(name: str, text: str, required_jobs: list[str], marker: str) -
     for line_number, line in enumerate(text.splitlines(), 1):
         if re.search(r"\bcontinue-on-error:\s*true\b", line):
             findings.append(f"{name}:{line_number}: continue-on-error true is forbidden")
+        if re.search(r"\bfail-build:\s*false\b", line):
+            findings.append(f"{name}:{line_number}: nonblocking scanner is forbidden")
         if "|| true" in line and marker not in line:
             findings.append(f"{name}:{line_number}: failure suppression is forbidden")
+        image = re.match(r"^\s*image:\s*([^\s#]+)", line)
+        if image and "@sha256:" not in image.group(1):
+            findings.append(f"{name}:{line_number}: mutable image {image.group(1)}")
     for action in ACTION.findall(text):
         if action.startswith("./") or action.startswith("docker://") or "@" not in action:
             continue
@@ -41,12 +46,13 @@ def validate(repo_root: Path, policy: dict) -> list[str]:
     findings = []
     workflow_root = repo_root / ".github" / "workflows"
     marker = policy["diagnosticCleanupMarker"]
-    for name, jobs in policy["requiredPullRequestWorkflows"].items():
-        path = workflow_root / name
-        if not path.is_file():
+    required = policy["requiredPullRequestWorkflows"]
+    for name in required:
+        if not (workflow_root / name).is_file():
             findings.append(f"{name}: required workflow missing")
-            continue
-        findings.extend(scan_workflow(name, path.read_text(encoding="utf-8"), jobs, marker))
+    for path in sorted(workflow_root.glob("*.yml")):
+        jobs = required.get(path.name, [])
+        findings.extend(scan_workflow(path.name, path.read_text(encoding="utf-8"), jobs, marker, require_pull_request=path.name in required))
     return sorted(set(findings))
 
 

@@ -42,12 +42,17 @@ class CiPolicyTests(unittest.TestCase):
         self.assertTrue(any("missing required job" in item for item in findings))
         self.assertTrue(any("mutable action" in item for item in findings))
 
-    def test_current_repository_has_known_pre_t019_findings(self):
+    def test_rejects_nonblocking_scanner_and_mutable_service_image(self):
+        body = "on:\n  pull_request:\njobs:\n  gate:\n    services:\n      db:\n        image: postgres:16\n    steps:\n      - run: scan\n        fail-build: false\n"
+        findings = self.scan(body)
+        self.assertTrue(any("nonblocking scanner" in item for item in findings))
+        self.assertTrue(any("mutable image" in item for item in findings))
+
+    def test_current_repository_satisfies_t019_policy(self):
         repo_root = MODULE_PATH.parents[2]
         policy = __import__("json").loads((repo_root / "scripts/config/ci-policy.json").read_text(encoding="utf-8"))
         findings = self.policy.validate(repo_root, policy)
-        self.assertTrue(any("continue-on-error" in item for item in findings))
-        self.assertTrue(any("mutable action" in item for item in findings))
+        self.assertEqual([], findings)
 
 
 if __name__ == "__main__":

@@ -216,3 +216,16 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Frozen the pre-T019 repository baseline at 41 explicit findings so repair cannot silently omit a class.
 
 **Result**: T018 resolved. The repository policy intentionally remains red until T019 removes all 41 findings and adds the validator to the required gate.
+
+## Cycle 15 - Blocking immutable CI
+
+**Corrections**:
+
+- Resolved nine upstream action tags to exact 40-character commits and pinned every action in every workflow, including manual chaos/load workflows.
+- Pinned PostgreSQL and Redis service images to verified registry digests.
+- Removed all security-job `continue-on-error`, scanner suppression, and Grype `fail-build: false`; high-severity findings now block.
+- Retained only five explicitly marked diagnostic cleanup/log-capture suppressions that run during failure handling and cannot turn a failed test green.
+- Updated security jobs to Node 24.13.1 and isolated incompatible API/Django license environments.
+- Added the zero-finding CI policy validator to the required complete gate; monthly grouped Dependabot updates remain the controlled update path.
+
+**Result**: T019 resolved; all six policy fixtures and the full workflow scan pass with zero findings.

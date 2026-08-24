@@ -10,10 +10,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '20'
           cache: 'npm'
@@ -51,7 +51,7 @@ jobs:
 
             if echo "$output" | grep -qiE "toomanyrequests|rate exceeded|504 Gateway Timeout|context deadline exceeded|server didn't respond in time"; then
               echo "Transient registry error detected; retrying in ${delay_seconds}s" >&2
-              docker compose -f e2e/docker-compose.e2e.yml down -v || true
+              docker compose -f e2e/docker-compose.e2e.yml down -v || true # ci-policy: diagnostic-cleanup
               sleep "$delay_seconds"
               delay_seconds=$((delay_seconds * 2))
               continue
@@ -89,7 +89,7 @@ jobs:
 
       - name: Upload Playwright artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: e2e-playwright-artifacts
           path: |
@@ -100,7 +100,7 @@ jobs:
 
       - name: Upload compose logs on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: e2e-compose-logs
           path: compose-logs.txt
@@ -109,13 +109,13 @@ jobs:
       - name: Tail targeted container logs on failure
         if: failure()
         run: |
-          docker compose -f e2e/docker-compose.e2e.yml logs --no-color api | tail -n 200 > api.log || true
-          docker compose -f e2e/docker-compose.e2e.yml logs --no-color react-app | tail -n 200 > react-app.log || true
-          docker compose -f e2e/docker-compose.e2e.yml logs --no-color postgres | tail -n 200 > postgres.log || true
+          docker compose -f e2e/docker-compose.e2e.yml logs --no-color api | tail -n 200 > api.log || true # ci-policy: diagnostic-cleanup
+          docker compose -f e2e/docker-compose.e2e.yml logs --no-color react-app | tail -n 200 > react-app.log || true # ci-policy: diagnostic-cleanup
+          docker compose -f e2e/docker-compose.e2e.yml logs --no-color postgres | tail -n 200 > postgres.log || true # ci-policy: diagnostic-cleanup
 
       - name: Upload targeted logs on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: e2e-targeted-logs
           path: |

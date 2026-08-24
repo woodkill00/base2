@@ -5,6 +5,7 @@
     "ci-contract.yml": ["contract"],
     "ci-e2e.yml": ["e2e"],
     "ci-frontend.yml": ["frontend"],
+    "ci-perf-smoke.yml": ["perf"],
     "ci-repo-guards.yml": ["repo-guards"],
     "ci-smoke.yml": ["smoke"],
     "option1-guard.yml": ["guard"],
