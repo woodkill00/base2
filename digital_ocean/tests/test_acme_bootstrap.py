@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import stat
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,7 @@ import pytest
 from digital_ocean.scripts.python.bootstrap_acme import (
     AcmeBootstrapError,
     bootstrap_acme,
+    main,
     ownership_change_required,
 )
 
@@ -106,3 +108,47 @@ def test_powershell_wrapper_has_no_filesystem_implementation():
     assert "bootstrap_acme.py" in wrapper
     assert "New-Item" not in wrapper
     assert "Set-Acl" not in wrapper
+
+
+def test_cli_writes_receipt_and_reports_ready(tmp_path, monkeypatch, capsys):
+    target = tmp_path / "cli-acme"
+    output = tmp_path / "receipt.json"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "bootstrap_acme.py",
+            "--directory",
+            str(target),
+            "--uid",
+            str(os.getuid()),
+            "--gid",
+            str(os.getgid()),
+            "--output",
+            str(output),
+        ],
+    )
+    assert main() == 0
+    assert '"status": "ready"' in output.read_text(encoding="utf-8")
+    assert "READY" in capsys.readouterr().out
+
+
+def test_cli_reports_typed_failure_without_traceback(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["bootstrap_acme.py", "--directory", str(tmp_path / "bad"), "--uid", "-1"],
+    )
+    assert main() == 1
+    assert "FAILED" in capsys.readouterr().out
+
+
+def test_directory_symlink_and_negative_identity_fail(tmp_path):
+    real = tmp_path / "real"
+    real.mkdir()
+    link = tmp_path / "link"
+    link.symlink_to(real, target_is_directory=True)
+    with pytest.raises(AcmeBootstrapError, match="symlink"):
+        bootstrap_acme(link, uid=os.getuid(), gid=os.getgid())
+    with pytest.raises(AcmeBootstrapError, match="non-negative"):
+        bootstrap_acme(tmp_path / "negative", uid=-1, gid=0)

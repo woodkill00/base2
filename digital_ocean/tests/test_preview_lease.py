@@ -157,3 +157,31 @@ def test_contract_schema_remains_bound_to_runtime_fields():
     )
     assert schema["additionalProperties"] is False
     assert set(schema["required"]) == set(lease_payload())
+
+
+@pytest.mark.parametrize(
+    "change,match",
+    [
+        (lambda item: item.update(schemaVersion=2), "schemaVersion"),
+        (lambda item: item.update(siteId="Bad Site"), "siteId"),
+        (lambda item: item.update(manifestDigest="short"), "manifestDigest"),
+        (lambda item: item.update(owner=""), "owner"),
+        (lambda item: item.update(state="unknown"), "state"),
+        (lambda item: item.update(expiresAt=item["createdAt"]), "expiresAt"),
+        (
+            lambda item: item.update(costPolicy={"currency": "usd", "maximumMinorUnits": 1}),
+            "currency",
+        ),
+        (
+            lambda item: item.update(costPolicy={"currency": "USD", "maximumMinorUnits": -1}),
+            "maximumMinorUnits",
+        ),
+        (lambda item: item.update(resources="not-a-list"), "resources"),
+        (lambda item: item.update(dnsMutations="not-a-list"), "dnsMutations"),
+    ],
+)
+def test_additional_contract_failures_are_typed(tmp_path, change, match):
+    item = lease_payload()
+    change(item)
+    with pytest.raises(LeaseValidationError, match=match):
+        LeaseStore(tmp_path).create(item)
