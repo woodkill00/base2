@@ -321,14 +321,7 @@
     },
     {
       "id": "digitalocean-tests",
-      "command": [
-        "{python-orchestrator}",
-        "-m",
-        "pytest",
-        "digital_ocean/tests",
-        "--cov=digital_ocean/scripts/python",
-        "--cov-report=json:.artifacts/coverage/digitalocean.json"
-      ],
+      "command": ["{python-orchestrator}", "scripts/python/run_digitalocean_coverage.py"],
       "required": true,
       "timeoutSeconds": 300,
       "dependsOn": ["env-tools"],

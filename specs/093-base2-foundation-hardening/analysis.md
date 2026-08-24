@@ -619,3 +619,20 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Made the canary a required complete-gate node and documented that any live run needs new exact commit/manifest/provider/DNS/resource/cost/lease/trial authority.
 
 **Result**: T042 and T044 resolved. The combined provider-fake matrix passes 88 cases, and the standalone canary reports zero network requests, credential reads, external provider mutations, public DNS mutations, production certificate requests, or residual resources. T045 remains deliberately open and no live DigitalOcean action was performed.
+
+## Cycle 39 - WSL DigitalOcean coverage tracer stability
+
+**Findings**:
+
+1. The exact-commit complete gate failed because the DigitalOcean coverage process segfaulted twice during pytest collection; its ordinary 88-case focused matrix remained green.
+2. The host had 30 GiB available memory and 943 GiB free disk, excluding resource exhaustion as the immediate cause.
+3. Coverage's pure-Python tracer avoided the segfault but failed inside Python 3.12 typing imports and warned that trace data was unreliable.
+4. Coverage's supported Python 3.12 `sys.monitoring` core completed the unchanged tests and report successfully.
+
+**Corrections**:
+
+- Added one fixed portable wrapper that selects `COVERAGE_CORE=sysmon` and replaces itself with the exact existing pytest/coverage command.
+- Routed only the DigitalOcean coverage gate through that wrapper; test selection, coverage source, report path, required status, and coverage policy remain unchanged.
+- Added manifest/wrapper regressions so the stable tracer cannot silently drift back to the crashing core.
+
+**Result**: The unchanged DigitalOcean suite passes 160 tests with a valid JSON coverage report under `sys.monitoring`. No retry, test exclusion, threshold reduction, or unavailable classification was used. The complete gate must be replayed before this cycle is closed.

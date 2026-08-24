@@ -196,7 +196,10 @@ class CompleteGateTests(unittest.TestCase):
         commands = {item["id"]: item["command"] for item in manifest["checks"]}
         self.assertEqual("{python-api}", commands["api-tests"][0])
         self.assertEqual("{python-django}", commands["django-tests"][0])
-        self.assertEqual("{python-orchestrator}", commands["digitalocean-tests"][0])
+        self.assertEqual(
+            ["{python-orchestrator}", "scripts/python/run_digitalocean_coverage.py"],
+            commands["digitalocean-tests"],
+        )
         self.assertEqual(
             [
                 "{python-orchestrator}",
@@ -213,6 +216,15 @@ class CompleteGateTests(unittest.TestCase):
         )
         for name in (".venv-api", ".venv-django", ".venv"):
             self.assertIn(name, powershell)
+
+    def test_digitalocean_coverage_uses_python_312_monitoring_core(self):
+        repo_root = MODULE_PATH.parents[2]
+        wrapper = (repo_root / "scripts/python/run_digitalocean_coverage.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('os.environ["COVERAGE_CORE"] = "sysmon"', wrapper)
+        self.assertIn('"digital_ocean/tests"', wrapper)
+        self.assertIn('"--cov=digital_ocean/scripts/python"', wrapper)
 
     def test_compose_fixture_replaces_only_documentation_placeholders(self):
         spec = importlib.util.spec_from_file_location(
