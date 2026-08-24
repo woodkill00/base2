@@ -22,25 +22,13 @@ unescape_dollars FLOWER_BASIC_USERS
 # add any other *BASIC_USERS vars you have here
 # ---------------------------------------------------------------
 
-# Default to production Let's Encrypt unless explicitly overridden.
-# Treat ENV/APP_ENV of 'prod' or 'production' as production.
-MODE="${ENV:-${APP_ENV:-}}"
-case "${MODE}" in
-  prod|production)
-    :
-    ;;
-  *)
-    # Force staging in non-prod to avoid rate limits/prop delays.
-    TRAEFIK_CERT_RESOLVER="le-staging"
-    ;;
-esac
-
-if [ -z "${TRAEFIK_CERT_RESOLVER:-}" ]; then
-  case "${MODE}" in
-    prod|production) TRAEFIK_CERT_RESOLVER="le" ;;
-    *) TRAEFIK_CERT_RESOLVER="le-staging" ;;
-  esac
+# Feature 093 is staging-only. A production-looking environment must not turn
+# certificate issuance live; that requires a later, separately approved feature.
+if [ "${TRAEFIK_CERT_RESOLVER:-le-staging}" != "le-staging" ]; then
+  echo "Traefik certificate resolver must remain le-staging" >&2
+  exit 78
 fi
+TRAEFIK_CERT_RESOLVER="le-staging"
 export TRAEFIK_CERT_RESOLVER
 
 # Render configs from templates using environment variables
@@ -57,9 +45,13 @@ if [ -f "$DYNAMIC_TEMPLATE_PATH" ]; then
   envsubst < "$DYNAMIC_TEMPLATE_PATH" > "$DYNAMIC_OUTPUT_PATH"
 fi
 
-# Ensure ACME storage files exist with safe perms
-touch /etc/traefik/acme/acme.json /etc/traefik/acme/acme-staging.json
-chmod 600 /etc/traefik/acme/acme.json /etc/traefik/acme/acme-staging.json || true
+# The shared bootstrap prepares storage before startup. This entrypoint only
+# verifies the staging file and never creates or selects live ACME storage.
+if [ ! -f /etc/traefik/acme/acme-staging.json ]; then
+  echo "Staging ACME storage is missing" >&2
+  exit 78
+fi
+chmod 600 /etc/traefik/acme/acme-staging.json || true
 
 # Run Traefik. With cap_drop=ALL, root cannot bypass DAC permissions, so we render configs into
 # /tmp (tmpfs) and run using that config file.

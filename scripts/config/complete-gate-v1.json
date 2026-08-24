@@ -96,6 +96,29 @@
       "requiredTools": ["{python-orchestrator}"]
     },
     {
+      "id": "acme-staging-policy",
+      "command": ["python3", "scripts/python/validate_acme_mode.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["acme-bootstrap-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "deploy-config-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "digital_ocean/tests/test_deploy_config.py",
+        "digital_ocean/tests/test_env_check.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["acme-staging-policy"],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
       "id": "env-tools",
       "command": ["node", "scripts/run-root-coverage.js"],
       "required": true,

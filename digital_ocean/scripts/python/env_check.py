@@ -10,6 +10,16 @@ Exits nonzero on error. Requires .env to be configured.
 
 import os
 import sys
+from collections.abc import Mapping
+from pathlib import Path
+
+try:
+    from digital_ocean.scripts.python.deploy_config import (
+        DeployConfigError,
+        load_deploy_config,
+    )
+except ModuleNotFoundError:
+    from deploy_config import DeployConfigError, load_deploy_config
 
 REQUIRED_VARS = ["DO_API_TOKEN", "DO_API_REGION", "DO_API_IMAGE", "DO_APP_NAME"]
 
@@ -60,19 +70,20 @@ OPTIONAL_VARS = [
 ]
 
 
-def check_required_env_vars():
+def check_required_env_vars(values: Mapping[str, str] | None = None):
     """
     Checks required environment variables and exits if any are missing.
     Used for both CLI and test validation.
     """
-    missing = [var for var in REQUIRED_VARS if not os.getenv(var)]
+    config = values if values is not None else os.environ
+    missing = [var for var in REQUIRED_VARS if not config.get(var)]
     if missing:
         print(
             f"ERROR: Missing required environment variables: {', '.join(missing)}", file=sys.stderr
         )
         sys.exit(1)
     # Optionally warn about unset optional variables
-    unset_optional = [var for var in OPTIONAL_VARS if not os.getenv(var)]
+    unset_optional = [var for var in OPTIONAL_VARS if not config.get(var)]
     if unset_optional:
         print(f"[WARN] Unset optional variables: {', '.join(unset_optional)}")
     print("All required Digital Ocean environment variables are set.")
@@ -85,7 +96,13 @@ def main():
         )
         sys.exit(0)
     try:
-        check_required_env_vars()
+        configured_path = os.getenv("APP_ENV_PATH") or os.getenv("ENV_PATH")
+        path = Path(configured_path) if configured_path else Path.cwd() / ".env"
+        values = load_deploy_config(path) if path.is_file() else os.environ
+        check_required_env_vars(values)
+    except DeployConfigError as e:
+        print(f"[ERROR] Invalid deployment configuration: {e}", file=sys.stderr)
+        sys.exit(2)
     except Exception as e:
         print(f"[ERROR] {e}", file=sys.stderr)
         sys.exit(2)

@@ -45,9 +45,9 @@
 - [x] T028 [P] [US1] Write per-service health tests that inspect installed binaries and meaningful readiness | Depends: T007 | Validate: pre-T029 matrix failed on six React/Django/static/Flower/dependency defects; corrected 4/4 service/image/dependency cases pass
 - [ ] T029 [US1] Correct Compose/Dockerfile health probes and dependency conditions | Depends: T028 | Validate: all images healthy in production-like Compose
 - [x] T030 [P] [US1] Write TLS bootstrap tests for absent/file/dir/wrong-owner/wrong-mode/idempotent cases | Depends: T007 | Validate: pre-T031 import failed; corrected 9/9 absent/file/dir/symlink/owner/mode/idempotency/wrapper cases pass
-- [ ] T031 [US1] Implement ACME storage bootstrap in sole orchestration path plus Bash/PowerShell wrappers | Depends: T030 | Validate: Traefik starts unprivileged with mode 0600
-- [ ] T032 [P] [US1] Write strict env parser tests for quotes, whitespace, CRLF, comments, duplicate/unknown keys, malformed region/name/image, and secret redaction | Depends: T007 | Validate: fail before T033
-- [ ] T033 [US1] Implement one strict env/config normalization library and route deploy/preflight through it | Depends: T032 | Validate: parser and existing env tests pass
+- [ ] T031 [US1] Implement staging-only ACME storage bootstrap in sole orchestration path plus Bash/PowerShell wrappers; reject the live endpoint/resolver/storage until a separately approved activation feature | Depends: T030 | Validate: static policy passes; final Traefik test-mode observation proves staging storage mode 0600 without live issuance
+- [x] T032 [P] [US1] Write strict env parser tests for quotes, whitespace, CRLF, comments, duplicate/unknown keys, malformed region/name/image, unavailable files, example drift, and secret redaction | Depends: T007 | Validate: 15 parser cases pass after intentional absent-module RED
+- [x] T033 [US1] Implement one strict env/config normalization library and route deploy/preflight through it | Depends: T032 | Validate: 23 parser/preflight/env cases pass; orchestrator has one strict load and no dotenv parser
 - [ ] T034 [P] [US1] Write PreviewLease state/replay/integrity/atomic-write/interruption tests using `preview-lease.schema.json` | Depends: T005 | Validate: fail before T035
 - [ ] T035 [US1] Implement lease store, ownership tags, TTL/renewal, and reconciliation in `digital_ocean/scripts/python/preview_lease.py` | Depends: T034 | Validate: state/property tests pass
 - [ ] T036 [P] [US1] Write compare-before-delete tests for wrong ID/tag/digest, replacement resources, missing receipts, rate limits, and idempotent deletion | Depends: T035 | Validate: fail before T037
@@ -171,4 +171,4 @@ P0 truth/deployment blocks all public/module/factory expansion. Persistent featu
 
 ## Activation boundaries
 
-Local tests and provider fakes are authorized by implementation work. Live DigitalOcean mutation (T045/T108), public DNS, production credentials, production payments, destructive module removal, permanent hosting, push/PR/merge, and production deployment require separately scoped approval. No prior approval is treated as indefinite authority.
+Local tests and provider fakes are authorized by implementation work. Live DigitalOcean mutation (T045/T108), public DNS, production credentials, production payments, destructive module removal, permanent hosting, push/PR/merge, production deployment, and live certificate issuance require separately scoped approval. Feature 093 is hard-wired to ACME staging and cannot issue a production certificate. No prior approval is treated as indefinite authority.

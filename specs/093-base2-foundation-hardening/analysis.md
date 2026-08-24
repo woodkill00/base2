@@ -376,3 +376,36 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added nine cases for absent storage, file/dir/symlink conflicts, wrong ownership metadata, wrong modes, content preservation, idempotency, live Bash delegation, and static PowerShell delegation; made them a required complete-gate node.
 
 **Result**: T030 resolved and the T031 implementation is present. All 9 focused and 36 DigitalOcean tests, shell syntax/parity, and command-matrix checks pass. T031 remains open until accessible Docker acceptance observes Traefik running with UID 1000 and both ACME files at mode 0600.
+
+## Cycle 25 - Staging-only certificate activation boundary
+
+**Findings**:
+
+1. Although staging was the documented default, the static configuration still defined a live resolver and omitted its `caServer`, which makes Traefik default to the production ACME endpoint.
+2. A production-shaped `ENV` made both the entrypoint and deployment script select the live resolver, while remote validation expected that behavior.
+3. The smoke test rejected staging issuers in a production-shaped test, directly conflicting with the owner requirement that Traefik remain test-only.
+
+**Corrections**:
+
+- Removed the live resolver and all live storage selection from Traefik's static configuration; the sole resolver uses the exact Let's Encrypt staging endpoint and isolated staging storage.
+- Made the entrypoint reject any non-staging resolver, made deployment always normalize to `le-staging`, and made remote/smoke validation require staging regardless of the application environment name.
+- Added a required repository policy gate and hostile fixtures for the live endpoint, resolver, storage, and entrypoint override. This is static/offline validation and performs no ACME request.
+- Recorded live certificate issuance as a separately approved future activation that Feature 093 cannot enable.
+
+**Result**: The policy validator reports `mode=staging-only`; all 13 ACME policy/bootstrap cases pass. No Traefik process was started and no certificate request was made.
+
+## Cycle 26 - Single strict deployment configuration
+
+**Findings**:
+
+1. Provider preflight read only ambient process variables while orchestration independently used both `load_dotenv` and `dotenv_values`.
+2. Duplicate and unknown provider keys, malformed identities, quoting/CRLF differences, and unresolved templates could therefore be interpreted differently at different deployment stages.
+3. Configuration failures lacked a focused assurance that secret values would not be echoed.
+
+**Corrections**:
+
+- Added one non-executing parser and normalizer for comments, quotes, whitespace, CRLF, strict keys, known DigitalOcean fields, templates, provider identities, and redacted diagnostics.
+- Routed both preflight and the orchestrator through the same implementation; the orchestrator loads once before provider identity or client construction and no longer imports either dotenv parser.
+- Added parser, preflight, integration, and secret-redaction cases, then made the contract a required complete-gate node.
+
+**Result**: T032-T033 resolved. All 23 parser/preflight/env cases pass, and the combined focused ACME/config matrix passes 36/36.

@@ -799,8 +799,9 @@ function Update-TraefikResolver {
   }
 
   $mode = ($envMode + '').Trim().ToLower()
-  $isProd = ($mode -eq 'prod' -or $mode -eq 'production')
-  $expected = if ($isProd) { 'le' } else { 'le-staging' }
+  # Certificate activation is deliberately independent from deployment mode.
+  # Feature 093 permits staging ACME only, including production-shaped tests.
+  $expected = 'le-staging'
   $found = $false
   $changed = $false
 
@@ -822,7 +823,7 @@ function Update-TraefikResolver {
 
   if ($changed) {
     Set-Content -Path $EnvPath -Value $lines -Encoding UTF8
-    Write-Host "Updated TRAEFIK_CERT_RESOLVER to $expected based on ENV=$mode" -ForegroundColor Yellow
+    Write-Host "Updated TRAEFIK_CERT_RESOLVER to staging-only mode (ENV=$mode)" -ForegroundColor Yellow
   } else {
     Write-Host "TRAEFIK_CERT_RESOLVER already set to $expected" -ForegroundColor DarkGray
   }
