@@ -111,3 +111,19 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Bound T060-T069 to automated reconciliation with zero unexplained controls.
 
 **Result**: Resolved; zero remaining planning findings after revalidation.
+
+## Cycle 8 - Complete-gate Python isolation
+
+**Findings**:
+
+1. API and Django pin incompatible transitive versions, so the legacy aggregate `requirements-dev.txt` cannot create one deterministic test environment.
+2. The initial gate manifest embedded POSIX virtual-environment paths and pointed Django at the root pytest configuration, bypassing pytest-django initialization.
+3. WSL Python package installation can terminate with signal 11 despite ample memory; accepting the partial environment would create a silent bootstrap failure.
+
+**Corrections**:
+
+- Added T130 and split service dependencies into `.venv-api`, `.venv-django`, and orchestration `.venv` while preserving explicit single-target installation flags.
+- Added platform-resolved interpreter tokens to the no-shell gate runner and corrected Django to its service-owned pytest configuration.
+- Added bounded one-retry installation, mandatory `pip check`, and tests for platform interpreter resolution. A repeated failure remains terminal and visible.
+
+**Result**: Resolved in implementation; final task completion remains evidence-gated on the full first-start and complete-gate rerun.

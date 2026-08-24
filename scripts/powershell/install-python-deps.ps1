@@ -10,10 +10,9 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = (Resolve-Path (Join-Path (Join-Path $PSScriptRoot '..') '..')).Path
-$venvPython = Join-Path $repoRoot '.venv\Scripts\python.exe'
-if (-not (Test-Path $venvPython)) {
-    throw 'Virtual environment .venv not found. Run ./scripts/powershell/bootstrap-venv.ps1 first.'
-}
+$hostPython = (Get-Command python -ErrorAction SilentlyContinue)
+if (-not $hostPython) { $hostPython = Get-Command python3 -ErrorAction SilentlyContinue }
+if (-not $hostPython) { throw 'Python executable not found in PATH. Install Python 3.12+ and retry.' }
 
 Write-Host '==> Python dependency installation starting' -ForegroundColor Cyan
 
@@ -33,53 +32,51 @@ function Normalize-Version([string]$version) {
     return $version.Trim()
 }
 
-$actualVersion = (& $venvPython -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')").Trim()
-if (-not $actualVersion) {
-    throw 'Unable to determine Python version from virtual environment.'
-}
-
 $expectedVersion = Normalize-Version $requiredVersion
 if (-not $expectedVersion) {
     throw 'Unable to determine required Python version.'
 }
 
-if ($actualVersion -ne $expectedVersion) {
-    throw "Virtual environment uses Python $actualVersion but $expectedVersion is required."
-}
-
-if (-not $SkipPipUpgrade) {
-    Write-Host 'Upgrading pip...' -ForegroundColor Cyan
-    & $venvPython -m pip install --upgrade pip
-    if ($LASTEXITCODE -ne 0) {
-        throw "pip upgrade failed with exit code $LASTEXITCODE"
-    }
-}
-
-$requirements = @()
-$apiReq = 'requirements-dev-api.txt'
-$djangoReq = 'requirements-dev-django.txt'
-$doReq = 'digital_ocean/requirements.txt'
-
+$targets = @()
 if ($Api -or $Django -or $DigitalOcean) {
-    if ($Api) { $requirements += $apiReq }
-    if ($Django) { $requirements += $djangoReq }
-    if ($DigitalOcean) { $requirements += $doReq }
+    if ($Api) { $targets += @{ Venv = '.venv-api'; Requirements = 'requirements-dev-api.txt' } }
+    if ($Django) { $targets += @{ Venv = '.venv-django'; Requirements = 'requirements-dev-django.txt' } }
+    if ($DigitalOcean) { $targets += @{ Venv = '.venv'; Requirements = 'digital_ocean/requirements.txt' } }
 } else {
-    # Default to DigitalOcean automation deps for first-start.
-    $requirements += $doReq
+    $targets += @{ Venv = '.venv-api'; Requirements = 'requirements-dev-api.txt' }
+    $targets += @{ Venv = '.venv-django'; Requirements = 'requirements-dev-django.txt' }
+    $targets += @{ Venv = '.venv'; Requirements = 'digital_ocean/requirements.txt' }
 }
 
-foreach ($req in $requirements) {
-    $reqPath = Join-Path $repoRoot $req
-    if (Test-Path $reqPath) {
-        Write-Host "Installing Python dependencies from $req..." -ForegroundColor Cyan
-        & $venvPython -m pip install -r $reqPath
-        if ($LASTEXITCODE -ne 0) {
-            throw "pip install -r $req failed with exit code $LASTEXITCODE"
-        }
-    } else {
-        throw "Requirements file not found: $req"
+foreach ($target in $targets) {
+    $reqPath = Join-Path $repoRoot $target.Requirements
+    $venvDir = Join-Path $repoRoot $target.Venv
+    $venvPython = Join-Path $venvDir 'Scripts\python.exe'
+    if (-not (Test-Path $reqPath)) { throw "Requirements file not found: $($target.Requirements)" }
+    if (-not (Test-Path $venvPython)) {
+        Write-Host "Creating isolated environment $($target.Venv)..." -ForegroundColor Cyan
+        & $hostPython.Source -m venv --clear $venvDir
+        if ($LASTEXITCODE -ne 0) { throw "Unable to create $($target.Venv)" }
     }
+    & $venvPython -m pip --version | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "$($target.Venv) cannot run pip" }
+    $actualVersion = (& $venvPython -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')").Trim()
+    if ($actualVersion -ne $expectedVersion) {
+        throw "$($target.Venv) uses Python $actualVersion but $expectedVersion is required."
+    }
+    if (-not $SkipPipUpgrade) {
+        & $venvPython -m pip install --upgrade pip
+        if ($LASTEXITCODE -ne 0) { throw "pip upgrade failed in $($target.Venv)" }
+    }
+    Write-Host "Installing $($target.Requirements) into $($target.Venv)..." -ForegroundColor Cyan
+    & $venvPython -m pip install -r $reqPath
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Initial pip install failed for $($target.Venv); retrying once without cache."
+        & $venvPython -m pip install --no-cache-dir -r $reqPath
+        if ($LASTEXITCODE -ne 0) { throw "pip install failed twice for $($target.Requirements)" }
+    }
+    & $venvPython -m pip check
+    if ($LASTEXITCODE -ne 0) { throw "Dependency validation failed for $($target.Venv)" }
 }
 
 Write-Host 'Python dependencies installed successfully.' -ForegroundColor Green

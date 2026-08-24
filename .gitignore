@@ -2,6 +2,7 @@
 DO_userdata.json
 # Local run logs (timestamped deploy artifacts)
 local_run_logs/
+.artifacts/
 
 # Temporary diagnostics (created during local debugging)
 /_tmp_*

@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "checks": [
+    {
+      "id": "feature-093-plan",
+      "command": ["python3", "scripts/python/validate_feature_093.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": [],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "shell-parity",
+      "command": ["node", "scripts/guard-shell-parity.js"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": [],
+      "requiredTools": ["node"]
+    },
+    {
+      "id": "command-matrix",
+      "command": ["node", "scripts/validate-command-matrix.js"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["shell-parity"],
+      "requiredTools": ["node"]
+    },
+    {
+      "id": "env-tools",
+      "command": ["npm", "run", "test:env-tools"],
+      "required": true,
+      "timeoutSeconds": 120,
+      "dependsOn": ["shell-parity"],
+      "requiredTools": ["node", "npm"]
+    },
+    {
+      "id": "frontend-lint",
+      "command": ["npm", "--prefix", "react-app", "run", "lint"],
+      "required": true,
+      "timeoutSeconds": 180,
+      "dependsOn": ["env-tools"],
+      "requiredTools": ["node", "npm"]
+    },
+    {
+      "id": "frontend-test",
+      "command": ["npm", "--prefix", "react-app", "run", "test:ci", "--", "--watchAll=false"],
+      "required": true,
+      "timeoutSeconds": 900,
+      "dependsOn": ["frontend-lint"],
+      "requiredTools": ["node", "npm"]
+    },
+    {
+      "id": "frontend-build",
+      "command": ["npm", "--prefix", "react-app", "run", "build"],
+      "required": true,
+      "timeoutSeconds": 600,
+      "dependsOn": ["frontend-test"],
+      "requiredTools": ["node", "npm"]
+    },
+    {
+      "id": "api-tests",
+      "command": [
+        "{python-api}",
+        "-m",
+        "pytest",
+        "api/tests",
+        "-c",
+        "api/pytest.ini",
+        "-m",
+        "not integration and not perf"
+      ],
+      "required": true,
+      "timeoutSeconds": 900,
+      "dependsOn": ["env-tools"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "django-tests",
+      "command": [
+        "{python-django}",
+        "-m",
+        "pytest",
+        "django/tests",
+        "-c",
+        "django/pytest.ini",
+        "-m",
+        "not integration and not perf"
+      ],
+      "required": true,
+      "timeoutSeconds": 900,
+      "dependsOn": ["env-tools"],
+      "requiredTools": ["{python-django}"]
+    },
+    {
+      "id": "digitalocean-tests",
+      "command": ["{python-orchestrator}", "-m", "pytest", "digital_ocean/tests"],
+      "required": true,
+      "timeoutSeconds": 300,
+      "dependsOn": ["env-tools"],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
+      "id": "frontend-production-audit",
+      "command": ["npm", "--prefix", "react-app", "audit", "--omit=dev", "--audit-level=high"],
+      "required": true,
+      "timeoutSeconds": 180,
+      "dependsOn": ["frontend-build"],
+      "requiredTools": ["npm"]
+    },
+    {
+      "id": "compose-config",
+      "command": ["docker", "compose", "-f", "development.docker.yml", "config", "--quiet"],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": ["env-tools"],
+      "requiredTools": ["docker"]
+    }
+  ]
+}
