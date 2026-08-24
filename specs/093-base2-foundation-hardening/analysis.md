@@ -528,3 +528,22 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added no-lease, active-lease, absolute expiry, idle expiry, transient recovery, retry exhaustion, and overlapping-run coverage; made the suite a required gate node.
 
 **Result**: T043 resolved. All 6 focused sweeper and 31 combined lease/sweeper cases pass without provider access or live mutation.
+
+## Cycle 34 - Lease-bound preview orchestration and DNS restoration
+
+**Findings**:
+
+1. The DNS primitive was not yet composed with provision, bootstrap, health, evidence, teardown, interruption resume, or exact replay.
+2. A resumed lease was incorrectly re-created from its original payload, conflicting with durable resource state added after provisioning.
+3. Failure cleanup could not restore planned/applied/verified DNS mutations before exact resource deletion, so safe teardown failed closed but leaked the resource.
+4. The DNS transaction used a placeholder health result instead of the exact provisioned resource, and evidence/ownership tampering needed end-to-end hostile coverage.
+
+**Corrections**:
+
+- Added a provider-neutral preview orchestrator for admission, exact-owned provision, bootstrap, transactional DNS, health, update, rollback, interruption resume, and terminal evidence.
+- Existing leases and evidence are now loaded through their integrity-checked stores; exact successful replay makes no provider call, while changed or tampered state fails closed.
+- Added exact DNS restoration for planned/applied/verified mutations. It restores only exact desired values, accepts already-restored prior values, refuses third-party drift, and completes before exact resource deletion.
+- Bound DNS health to the exact provider resource and reject provision responses lacking the deterministic ownership tag before lease admission.
+- Added the lifecycle/DNS matrix as a required complete-gate node.
+
+**Result**: T039 resolved. Fourteen DNS transaction/orchestration cases and the combined 55-case lease, DNS, teardown, and lifecycle matrix pass without credentials or provider access. T042 implementation is substantially present but remains open behind T029/T031 runtime observations and final provider-fake admission/fault coverage.

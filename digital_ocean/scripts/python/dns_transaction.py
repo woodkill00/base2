@@ -102,6 +102,28 @@ def apply_dns_transaction(
     raise DnsConflict("health gate failed; exact prior DNS values restored")
 
 
+def restore_dns_transaction(
+    store: LeaseStore,
+    provider: DnsProvider,
+    lease_id: str,
+) -> dict:
+    """Restore every lease-owned DNS mutation without overwriting drift."""
+    lease = store.load(lease_id)
+    for index in reversed(range(len(lease["dnsMutations"]))):
+        mutation = store.load(lease_id)["dnsMutations"][index]
+        if mutation["state"] == "restored":
+            continue
+        current = _current(provider, mutation)
+        desired = sorted(mutation["desiredValues"])
+        previous = sorted(mutation["previousValues"])
+        if current == desired:
+            _replace(provider, mutation, mutation["previousValues"])
+        elif current != previous:
+            raise DnsConflict("DNS changed before teardown; exact restoration refused")
+        store.update_dns_state(lease_id, index, "restored")
+    return store.load(lease_id)
+
+
 def apply_dns_with_evidence(
     store: LeaseStore,
     provider: DnsProvider,

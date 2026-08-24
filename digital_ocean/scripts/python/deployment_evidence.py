@@ -256,6 +256,13 @@ class EvidenceStore:
         with self._lock():
             return self._load(run_id)
 
+    def exists(self, run_id: str) -> bool:
+        with self._lock():
+            path = self._path(run_id)
+            if path.is_symlink():
+                raise EvidenceIntegrityError("evidence path must not be a symlink")
+            return path.is_file()
+
     def _write(self, evidence: dict[str, Any]) -> None:
         validate_evidence(evidence)
         target = self._path(evidence["runId"])

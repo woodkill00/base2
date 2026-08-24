@@ -61,7 +61,7 @@ def teardown_lease(
     lease = store.load(lease_id)
     if lease["state"] == "destroyed":
         return {"leaseId": lease_id, "state": "destroyed", "deletedProviderIds": []}
-    if lease["dnsMutations"]:
+    if any(item["state"] != "restored" for item in lease["dnsMutations"]):
         raise TeardownConflict("DNS mutations require the transactional restoration path")
     if lease["state"] not in {"teardown_due", "destroying"}:
         lease = store.transition(lease_id, "teardown_due")

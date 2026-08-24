@@ -9,6 +9,7 @@ from digital_ocean.scripts.python.dns_transaction import (
     DnsConflict,
     apply_dns_transaction,
     apply_dns_with_evidence,
+    restore_dns_transaction,
 )
 from digital_ocean.scripts.python.preview_lease import LeaseStore
 
@@ -165,6 +166,31 @@ def test_multi_record_failure_rolls_back_in_reverse_order(tmp_path):
             certificate_sans={"one.example.test", "two.example.test"},
         )
     assert [change[1] for change in provider.changes] == ["one", "two", "two", "one"]
+
+
+@pytest.mark.parametrize("initial_state", ["planned", "applied", "verified"])
+def test_explicit_restore_accepts_only_exact_prior_or_desired_state(tmp_path, initial_state):
+    item = mutation()
+    item["state"] = initial_state
+    store = LeaseStore(tmp_path)
+    store.create(payload([item]))
+    current = item["previousValues"] if initial_state == "planned" else item["desiredValues"]
+    provider = FakeDns({("example.test", "preview", "A"): current})
+    restored = restore_dns_transaction(store, provider, "lease-dns-001")
+    assert restored["dnsMutations"][0]["state"] == "restored"
+    assert provider.read_values("example.test", "preview", "A") == item["previousValues"]
+
+
+def test_explicit_restore_refuses_third_party_dns_drift(tmp_path):
+    item = mutation()
+    item["state"] = "verified"
+    store = LeaseStore(tmp_path)
+    store.create(payload([item]))
+    provider = FakeDns({("example.test", "preview", "A"): ["203.0.113.55"]})
+    with pytest.raises(DnsConflict, match="restoration refused"):
+        restore_dns_transaction(store, provider, "lease-dns-001")
+    assert provider.changes == []
+    assert store.load("lease-dns-001")["dnsMutations"][0]["state"] == "verified"
 
 
 def test_dns_orchestrator_emits_terminal_evidence(tmp_path):

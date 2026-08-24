@@ -268,6 +268,14 @@ class LeaseStore:
         with self._lock():
             return self._load_unlocked(lease_id)
 
+    def exists(self, lease_id: str) -> bool:
+        """Return whether an exact lease path exists without hiding corruption."""
+        with self._lock():
+            path = self._path(lease_id)
+            if path.is_symlink():
+                raise LeaseIntegrityError("lease state must not be a symbolic link")
+            return path.exists()
+
     def _write_unlocked(self, lease: dict[str, Any]) -> None:
         validate_lease(lease)
         target = self._path(lease["leaseId"])
@@ -319,6 +327,19 @@ class LeaseStore:
             self._write_unlocked(updated)
             return updated
 
+    def add_resource(self, lease_id: str, resource: dict[str, str]) -> dict[str, Any]:
+        with self._lock():
+            lease = self._load_unlocked(lease_id)
+            candidate = json.loads(_canonical(lease))
+            if resource in candidate["resources"]:
+                return lease
+            if lease["state"] not in {"planned", "provisioning"}:
+                raise LeaseConflict("resources can only be admitted while provisioning")
+            candidate["resources"].append(resource)
+            validate_lease(candidate)
+            self._write_unlocked(candidate)
+            return candidate
+
     def renew(
         self,
         lease_id: str,
@@ -341,7 +362,7 @@ class LeaseStore:
 
     def update_dns_state(self, lease_id: str, index: int, target_state: str) -> dict[str, Any]:
         allowed = {
-            "planned": {"applied"},
+            "planned": {"applied", "restored"},
             "applied": {"verified", "restored"},
             "verified": {"restored"},
             "restored": set(),

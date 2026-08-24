@@ -191,6 +191,21 @@
       "requiredTools": ["{python-orchestrator}"]
     },
     {
+      "id": "preview-orchestrator-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "digital_ocean/tests/test_preview_orchestrator.py",
+        "digital_ocean/tests/test_dns_transaction.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["preview-sweeper-contract"],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
       "id": "env-tools",
       "command": ["node", "scripts/run-root-coverage.js"],
       "required": true,
