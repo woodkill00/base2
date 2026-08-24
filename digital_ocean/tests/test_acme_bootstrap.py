@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from digital_ocean.scripts.python import bootstrap_acme as bootstrap_module
 from digital_ocean.scripts.python.bootstrap_acme import (
     AcmeBootstrapError,
     bootstrap_acme,
@@ -26,6 +27,19 @@ def test_absent_storage_is_created_with_exact_contract(tmp_path):
         path = target / name
         assert path.is_file()
         assert stat.S_IMODE(path.stat().st_mode) == 0o600
+
+
+def test_new_files_are_always_passed_through_identity_contract(tmp_path, monkeypatch):
+    original = bootstrap_module._set_contract
+    calls = []
+
+    def observed(path, **kwargs):
+        calls.append(Path(path).name)
+        return original(path, **kwargs)
+
+    monkeypatch.setattr(bootstrap_module, "_set_contract", observed)
+    bootstrap_acme(tmp_path / "letsencrypt", uid=os.getuid(), gid=os.getgid())
+    assert calls == ["letsencrypt", "acme.json", "acme-staging.json"]
 
 
 def test_directory_path_that_is_a_file_fails_closed(tmp_path):

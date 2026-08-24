@@ -66,7 +66,8 @@ def bootstrap_acme(directory: str | Path, *, uid: int, gid: int) -> dict[str, An
         except OSError as exc:
             raise AcmeBootstrapError(f"cannot safely open {name}") from exc
         os.close(descriptor)
-        changed = (not existed) or _set_contract(path, mode=0o600, uid=uid, gid=gid) or changed
+        contract_changed = _set_contract(path, mode=0o600, uid=uid, gid=gid)
+        changed = (not existed) or contract_changed or changed
         metadata = path.stat(follow_symlinks=False)
         if (
             not stat.S_ISREG(metadata.st_mode)

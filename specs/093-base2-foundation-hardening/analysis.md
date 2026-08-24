@@ -583,3 +583,22 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added the 14-case preservation matrix as a required complete-gate node.
 
 **Result**: T127 resolved. All 14 classification, retention, evidence, encryption, identity, integrity, and hostile-field cases pass. T128 remains separately responsible for integrating this authority with snapshot creation, teardown, restore, and recreation; no provider or destructive action was performed.
+
+## Cycle 37 - Real Compose health and staging-only Traefik observation
+
+**Findings**:
+
+1. A root-created, newly absent ACME file skipped the ownership/mode contract because a Boolean expression short-circuited the normalization call.
+2. The static Nginx health probe resolved `localhost` to IPv6 while Nginx listened on IPv4, leaving a working service incorrectly unhealthy.
+3. The first disposable pgAdmin fixture was not a syntactically valid email address; the corrected reserved domain was also rejected by pgAdmin's stricter validator.
+4. An externally interrupted observer could leave its isolated Compose project holding ports 80/443, and the final staging assertion initially inspected the template path rather than Traefik's rendered runtime path.
+
+**Corrections**:
+
+- Always apply the ACME identity contract after file creation and added a regression proving every new path is normalized.
+- Bound the static Nginx probe to `127.0.0.1:8081` and added an explicit IPv6-ambiguity regression.
+- Generate a non-secret, accepted `fixture@example.com` only inside the disposable canary environment.
+- Added signal-specific cleanup, idempotent teardown, pending-service diagnostics, and assertions against `/tmp/traefik.yml`, the actual rendered configuration.
+- Ran the complete real Compose stack under a unique project and removed its volumes, network, containers, and temporary environment after observation.
+
+**Result**: T029 and T031 resolved. All 12 services reached healthy state. The rendered Traefik configuration contained only the Let's Encrypt staging endpoint and `acme-staging.json`; storage was mode `0600`, uid/gid `1000:1000`. Post-run Docker inventory was empty. No DigitalOcean resource, public DNS record, production credential, or live certificate endpoint was used.
