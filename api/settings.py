@@ -62,6 +62,7 @@ class Settings(BaseSettings):
 
     # E2E test mode gate
     E2E_TEST_MODE: bool = Field(default=False)
+    CELERY_REQUIRED: bool = Field(default=False)
 
     def model_post_init(self, __context):
         project = _default_project_slug()
@@ -92,6 +93,8 @@ class Settings(BaseSettings):
 
         # Fail-fast in non-local environments.
         env = (self.ENV or '').strip().lower()
+        if env == 'production' and self.E2E_TEST_MODE:
+            raise RuntimeError('E2E_TEST_MODE cannot be enabled in production')
         if env in {'staging', 'production'}:
             missing = []
             if not (self.JWT_SECRET or '').strip():

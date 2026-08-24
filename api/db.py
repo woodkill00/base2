@@ -107,3 +107,17 @@ def db_ping() -> bool:
         return True
     except Exception:
         return False
+
+
+def db_schema_ready() -> bool:
+    """Verify the Django-owned schema exists without mutating it."""
+    try:
+        with db_conn() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT to_regclass('public.django_migrations'), "
+                "to_regclass('public.api_auth_users')"
+            )
+            row = cur.fetchone()
+        return bool(row and all(row))
+    except Exception:
+        return False

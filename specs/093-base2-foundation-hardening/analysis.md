@@ -277,3 +277,22 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Kept image, DAST, provenance, and IaC activation explicit rather than claiming scans without a trusted image, isolated target, generated output, or enabled policy.
 
 **Result**: T022 resolved. The real frontend npm audit normalized to five moderate, zero high/critical/unknown, and an integrity-bound passing result.
+
+## Cycle 19 - API startup and readiness contracts
+
+**Findings**:
+
+1. Required middleware, error handlers, OpenAPI generation, and route imports were wrapped in broad exception suppression, so an incomplete API could report a successful process start.
+2. The health endpoint returned `ok: true` even when its only database probe failed; schema, Redis, Celery, and startup-component state were absent.
+3. Production settings did not reject E2E support mode, invalid flag sources were silently replaced with an empty response, and enabled telemetry failures disappeared without evidence.
+4. The first red-test process encountered the independently tracked WSL Python signal-11 fault during FastAPI schema import; lightweight startup primitives were therefore tested separately before application integration.
+
+**Corrections**:
+
+- Added a typed startup registry that terminates required-component failures and records optional-component degradation without exposing exception messages or secrets.
+- Made CORS, request/tenant middleware, error handlers, routes, test-support routes, and complete OpenAPI generation explicit registered startup components. The schema is eagerly generated only after every route is installed.
+- Added redacted readiness for database connectivity, Django-owned schema presence, Redis, optional-or-required Celery, and the startup component snapshot. The API performs no migration operation at boot.
+- Rejected production E2E mode, removed development settings fallback, made invalid flag sources return the generic server error contract, and moved enabled telemetry failure handling to the visible optional-component boundary.
+- Added 18 startup cases covering terminal/degraded initialization, the full readiness matrix, probe redaction, migration exclusion, schema probes, both telemetry exporter paths, production support-route exclusion, and flag failure; retained focused OpenAPI, health, and settings-failure logging checks.
+
+**Result**: T023-T024 resolved. Ruff passes, focused validation passes 21/21, and the full API suite passes all 64 applicable tests with eight explicitly environment-dependent skips (72 collected). The first exact gate retained its signal-11 failure; the next run reached coverage and correctly rejected 85.48% changed-line coverage before the missing schema/telemetry tests were added.

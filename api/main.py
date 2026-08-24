@@ -1,64 +1,36 @@
-from fastapi import FastAPI, HTTPException, Body, Request
-from fastapi.responses import JSONResponse
+import importlib
 import logging
 import os
 import time
+
 from celery.result import AsyncResult
-from api import tasks  # ensure tasks module is importable
-from api.db import db_ping
+from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
+from fastapi.responses import JSONResponse
 
+from api import tasks  # ensure tasks module is importable
+from api.db import db_ping, db_schema_ready
+from api.flags import get_flags
 from api.logging import configure_logging
-from typing import Any
-from contextlib import suppress
+from api.metrics import metrics
+from api.redis_client import ping as redis_ping
+from api.settings import Settings
+from api.startup import StartupRegistry, evaluate_readiness
 
-_metrics: Any
+configure_logging(service='api')
+boot_logger = logging.getLogger('api.boot')
 try:
-    from api.metrics import metrics as _metrics
-except Exception:  # pragma: no cover
-    _metrics = None
-
-metrics: Any = _metrics
-
-# Settings may fall back to a lightweight runtime object in development.
-settings: Any
-
-
-try:
-    from api.settings import settings as _settings
-
-    settings = _settings
-except Exception as e:
-    # Loud startups: in non-development, fail fast and log clearly.
-    env_val = (os.getenv('ENV', 'development') or '').strip().lower()
-    with suppress(Exception):
-        configure_logging(service='api')
-    _boot_logger = logging.getLogger('api.boot')
-    _boot_logger.error('settings_import_failed', extra={'env': env_val, 'error': str(e)})
-    if env_val in {'staging', 'production'}:
-        raise
-
-    # Development fallback only
-    class _Fallback:
-        ENV = os.getenv('ENV', 'development')
-        API_DOCS_ENABLED = (os.getenv('API_DOCS_ENABLED', '') or '').strip().lower() in {
-            '1',
-            'true',
-            'yes',
-            'on',
-        } or (ENV.strip().lower() != 'production')
-        API_DOCS_URL = os.getenv('API_DOCS_URL', '/docs') or '/docs'
-        API_REDOC_URL = os.getenv('API_REDOC_URL', '/redoc') or '/redoc'
-        API_OPENAPI_URL = os.getenv('API_OPENAPI_URL', '/openapi.json') or '/openapi.json'
-        FRONTEND_URL = os.getenv('FRONTEND_URL', '') or ''
-        E2E_TEST_MODE = (os.getenv('E2E_TEST_MODE', '') or '').strip().lower() in {
-            '1',
-            'true',
-            'yes',
-            'on',
-        }
-
-    settings = _Fallback()
+    settings = Settings()
+except Exception as exc:
+    boot_logger.error(
+        'settings_import_failed',
+        extra={
+            'env': (os.getenv('ENV', 'development') or '').strip().lower(),
+            'exception_type': type(exc).__name__,
+        },
+    )
+    raise
 
 _docs_enabled = bool(getattr(settings, 'API_DOCS_ENABLED', True))
 _docs_url = str(getattr(settings, 'API_DOCS_URL', '/docs'))
@@ -67,8 +39,19 @@ _openapi_url = str(getattr(settings, 'API_OPENAPI_URL', '/openapi.json'))
 
 _E2E_TEST_MODE = bool(getattr(settings, 'E2E_TEST_MODE', False))
 
-configure_logging(service='api')
 logger = logging.getLogger('api.http')
+startup_registry = StartupRegistry()
+
+
+def _observe_metrics(*, status: int, latency_ms: int) -> None:
+    try:
+        metrics.observe(status=status, latency_ms=latency_ms)
+    except Exception as exc:
+        logger.warning(
+            'metrics_observation_failed',
+            extra={'exception_type': type(exc).__name__, 'status': status},
+        )
+
 
 app = FastAPI(
     title=(os.getenv('API_TITLE') or 'API'),
@@ -85,16 +68,20 @@ async def openapi_alias():
     return JSONResponse(app.openapi())
 
 
-# Observability: optional OpenTelemetry
-try:
-    from api.otel import configure_otel
+# Observability: optional, but enabled failures are explicitly degraded.
+if os.getenv('OTEL_ENABLED', '').strip().lower() in {'1', 'true', 'yes', 'on'}:
 
-    configure_otel(app)
-except Exception:
-    pass
+    def _configure_otel() -> None:
+        module = importlib.import_module('api.otel')
+        module.configure_otel(app)
+
+    startup_registry.initialize('otel', required=False, initializer=_configure_otel)
+else:
+    startup_registry.disabled('otel')
+
 
 # CORS (strict allowlist; required for browser credentialed requests)
-try:
+def _configure_cors() -> None:
     raw = os.getenv('CORS_ALLOW_ORIGINS', '').strip()
     origins = [o.strip() for o in raw.split(',') if o.strip()] if raw else []
 
@@ -106,11 +93,8 @@ try:
             'http://127.0.0.1',
             'http://127.0.0.1:3000',
         ]
-        try:
-            if getattr(settings, 'FRONTEND_URL', ''):
-                origins.append(str(getattr(settings, 'FRONTEND_URL', '')).rstrip('/'))
-        except Exception:
-            pass
+        if getattr(settings, 'FRONTEND_URL', ''):
+            origins.append(str(getattr(settings, 'FRONTEND_URL', '')).rstrip('/'))
 
     allow_credentials = True
     if '*' in origins:
@@ -124,30 +108,39 @@ try:
         allow_methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
         allow_headers=['Authorization', 'Content-Type', 'X-CSRF-Token', 'X-Requested-With'],
     )
-except Exception:
-    pass
+
+
+startup_registry.initialize('cors', required=True, initializer=_configure_cors)
 
 # Schema ownership is Django. API must not run migrations at boot.
 
+
 # Middleware: request id
-try:
-    from api.middleware.request_id import request_id_middleware
+def _configure_request_id_middleware() -> None:
+    module = importlib.import_module('api.middleware.request_id')
 
     @app.middleware('http')
     async def _add_request_id(request: Request, call_next):
-        return await request_id_middleware(request, call_next)
-except Exception:
-    pass
+        return await module.request_id_middleware(request, call_next)
+
+
+startup_registry.initialize(
+    'request_id_middleware', required=True, initializer=_configure_request_id_middleware
+)
+
 
 # Middleware: tenant context
-try:
-    from api.middleware.tenant import tenant_context_middleware
+def _configure_tenant_middleware() -> None:
+    module = importlib.import_module('api.middleware.tenant')
 
     @app.middleware('http')
     async def _add_tenant_context(request: Request, call_next):
-        return await tenant_context_middleware(request, call_next)
-except Exception:
-    pass
+        return await module.tenant_context_middleware(request, call_next)
+
+
+startup_registry.initialize(
+    'tenant_middleware', required=True, initializer=_configure_tenant_middleware
+)
 
 
 @app.middleware('http')
@@ -158,11 +151,7 @@ async def _access_log(request: Request, call_next):
     except Exception:
         latency_ms = int((time.perf_counter() - start) * 1000)
         req_id = getattr(request.state, 'request_id', '')
-        try:
-            if metrics is not None:
-                metrics.observe(status=500, latency_ms=latency_ms)
-        except Exception:
-            pass
+        _observe_metrics(status=500, latency_ms=latency_ms)
         logger.exception(
             'request_failed',
             extra={
@@ -179,13 +168,7 @@ async def _access_log(request: Request, call_next):
 
     latency_ms = int((time.perf_counter() - start) * 1000)
     req_id = getattr(request.state, 'request_id', '')
-    try:
-        if metrics is not None:
-            metrics.observe(
-                status=int(getattr(response, 'status_code', 0) or 0), latency_ms=latency_ms
-            )
-    except Exception:
-        pass
+    _observe_metrics(status=int(getattr(response, 'status_code', 0) or 0), latency_ms=latency_ms)
     logger.info(
         'request',
         extra={
@@ -202,98 +185,94 @@ async def _access_log(request: Request, call_next):
 
 
 # Error handlers: ensure consistent {detail}
-try:
-    from api.middleware.errors import register_error_handlers
+def _configure_error_handlers() -> None:
+    module = importlib.import_module('api.middleware.errors')
+    module.register_error_handlers(app)
 
-    register_error_handlers(app)
-except Exception:
-    pass
+
+startup_registry.initialize('error_handlers', required=True, initializer=_configure_error_handlers)
+
 
 # Customize OpenAPI to include required security schemes from the external contract.
-try:
-    from fastapi.openapi.utils import get_openapi
-
-    def custom_openapi():
-        session_cookie_name = str(getattr(settings, 'SESSION_COOKIE_NAME', '') or '') or 'session'
-        openapi_schema = get_openapi(
-            title=app.title,
-            version='0.1.0',
-            description='External API contract surface',
-            routes=app.routes,
-        )
-        comps = openapi_schema.setdefault('components', {})
-        sec = comps.setdefault('securitySchemes', {})
-        # Session cookie scheme required by contract
-        sec['SessionCookie'] = {
-            'type': 'apiKey',
-            'in': 'cookie',
-            'name': session_cookie_name,
-            'description': 'HttpOnly cookie carrying the primary session credential.',
-        }
-        # CSRF token header scheme required by contract
-        sec['CsrfToken'] = {
-            'type': 'apiKey',
-            'in': 'header',
-            'name': 'X-CSRF-Token',
-            'description': 'CSRF token header required for state-changing requests.',
-        }
-        app.openapi_schema = openapi_schema
+def custom_openapi():
+    if app.openapi_schema:
         return app.openapi_schema
+    session_cookie_name = str(getattr(settings, 'SESSION_COOKIE_NAME', '') or '') or 'session'
+    openapi_schema = get_openapi(
+        title=app.title,
+        version='0.1.0',
+        description='External API contract surface',
+        routes=app.routes,
+    )
+    comps = openapi_schema.setdefault('components', {})
+    sec = comps.setdefault('securitySchemes', {})
+    sec['SessionCookie'] = {
+        'type': 'apiKey',
+        'in': 'cookie',
+        'name': session_cookie_name,
+        'description': 'HttpOnly cookie carrying the primary session credential.',
+    }
+    sec['CsrfToken'] = {
+        'type': 'apiKey',
+        'in': 'header',
+        'name': 'X-CSRF-Token',
+        'description': 'CSRF token header required for state-changing requests.',
+    }
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
 
-    # Assign override and eagerly generate schema so it's ready before first request
+
+def _configure_openapi() -> None:
     app.openapi = custom_openapi
-    with suppress(Exception):
-        app.openapi()
-except Exception:
-    # If OpenAPI customization fails, proceed without breaking runtime.
-    pass
+    app.openapi()
 
 
 # External routes (proxy to Django internal)
-try:
-    from api.routes.auth import router as auth_router
-    from api.routes.metrics import router as metrics_router
-    from api.routes.oauth import router as oauth_router
-    from api.routes.users import router as users_router
-    from api.routes.tenant import router as tenant_router
-    from api.routes.privacy import router as privacy_router
+def _include_external_routes() -> None:
+    for module_name in ('auth', 'metrics', 'oauth', 'users', 'tenant', 'privacy'):
+        module = importlib.import_module(f'api.routes.{module_name}')
+        app.include_router(module.router, prefix='/api')
 
-    app.include_router(auth_router, prefix='/api')
-    app.include_router(metrics_router, prefix='/api')
-    app.include_router(oauth_router, prefix='/api')
-    app.include_router(users_router, prefix='/api')
-    app.include_router(tenant_router, prefix='/api')
-    app.include_router(privacy_router, prefix='/api')
 
-    # E2E-only helpers (must be explicitly enabled; never in production).
-    if (
-        _E2E_TEST_MODE
-        and str(getattr(settings, 'ENV', 'development')).strip().lower() != 'production'
-    ):
-        try:
-            from api.routes.test_support import router as test_support_router
+startup_registry.initialize('routes', required=True, initializer=_include_external_routes)
 
-            app.include_router(test_support_router, prefix='/api')
-        except Exception:
-            pass
-except Exception:
-    # Keep app bootable even if routes fail to import.
-    pass
+# E2E-only helpers are impossible in production by Settings validation.
+if _E2E_TEST_MODE:
+
+    def _include_test_support_routes() -> None:
+        module = importlib.import_module('api.routes.test_support')
+        app.include_router(module.router, prefix='/api')
+
+    startup_registry.initialize(
+        'test_support_routes',
+        required=True,
+        initializer=_include_test_support_routes,
+    )
+else:
+    startup_registry.disabled('test_support_routes')
+
+READINESS_PROBES = {
+    'database': db_ping,
+    'schema': db_schema_ready,
+    'redis': redis_ping,
+    # Celery uses the same broker availability boundary as the configured Redis broker.
+    'celery': redis_ping,
+}
 
 
 @app.get('/api/health')
 async def health():
-    return {'ok': True, 'service': 'api', 'db_ok': db_ping()}
+    status, payload = evaluate_readiness(
+        probes=READINESS_PROBES,
+        celery_required=bool(getattr(settings, 'CELERY_REQUIRED', False)),
+        startup_components=startup_registry.snapshot(),
+    )
+    return JSONResponse(status_code=status, content=payload)
 
 
 @app.get('/api/flags')
 async def flags():
-    try:
-        from api.flags import get_flags
-
-        return {'flags': get_flags()}
-    except Exception:
-        return {'flags': {}}
+    return {'flags': get_flags()}
 
 
 # --- Catalog (proxy to Django internal) ---
@@ -347,3 +326,7 @@ async def _read_celery_result(task_id: str):
 @app.get('/api/celery/result/{task_id}')
 async def celery_result_root(task_id: str):
     return await _read_celery_result(task_id)
+
+
+# Eager generation after every route is registered makes schema failures terminal.
+startup_registry.initialize('openapi', required=True, initializer=_configure_openapi)
