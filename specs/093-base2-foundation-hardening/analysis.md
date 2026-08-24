@@ -566,3 +566,20 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added the combined admission/orchestration matrix as a required complete-gate node.
 
 **Result**: T117-T118 resolved. Fourteen focused quota/budget/pressure/OOM/rate-limit/retry/circuit/notification/integrity/concurrency cases and nine end-to-end provider-fake lifecycle cases pass. Exhaustion performs no excess provider mutation, half-open permits one probe, notification adapter failure is durable, and cleanup remains exact and available.
+
+## Cycle 36 - Preview state preservation authority
+
+**Findings**:
+
+1. Lease teardown treated all preview data as equivalent, so state requiring retention, snapshot, encryption, or later restoration had no fail-closed classification boundary.
+2. Missing keys, corrupt/interrupted evidence, expired snapshots, and mismatched lease identities had no stable denial contract.
+3. Retention expiry and restore-required state were not represented in a strict machine-readable contract.
+
+**Corrections**:
+
+- Added strict declaration and snapshot-receipt schema definitions for ephemeral, retained, snapshot-before-destroy, and restore-required state.
+- Added a providerless preservation authority with exact fields, safe IDs, Vaultwarden reference-only keys, timezone-aware timestamps, encrypted snapshot digest/size/verification/retention checks, and stable denial codes.
+- Retained state blocks before its declared expiry; preserved state blocks on missing/mismatched keys, missing/corrupt/interrupted/unencrypted/expired evidence, lease mismatch, or future verification time.
+- Added the 14-case preservation matrix as a required complete-gate node.
+
+**Result**: T127 resolved. All 14 classification, retention, evidence, encryption, identity, integrity, and hostile-field cases pass. T128 remains separately responsible for integrating this authority with snapshot creation, teardown, restore, and recreation; no provider or destructive action was performed.

@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://base2.local/contracts/preview-state-v1.schema.json",
+  "title": "Base2 Preview State Preservation v1",
+  "oneOf": [{ "$ref": "#/$defs/declaration" }, { "$ref": "#/$defs/snapshotReceipt" }],
+  "$defs": {
+    "safeId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{6,126}[A-Za-z0-9]$"
+    },
+    "keyRef": {
+      "type": "string",
+      "pattern": "^vaultwarden://[A-Za-z0-9][A-Za-z0-9._/-]{2,254}$"
+    },
+    "declaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "leaseId",
+        "classification",
+        "retentionExpiresAt",
+        "encryptionKeyRef"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "leaseId": { "$ref": "#/$defs/safeId" },
+        "classification": {
+          "enum": ["ephemeral", "retained", "snapshot-before-destroy", "restore-required"]
+        },
+        "retentionExpiresAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "encryptionKeyRef": {
+          "oneOf": [{ "$ref": "#/$defs/keyRef" }, { "type": "null" }]
+        }
+      }
+    },
+    "snapshotReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "leaseId",
+        "status",
+        "sha256",
+        "size",
+        "encrypted",
+        "keyRef",
+        "verifiedAt",
+        "retentionExpiresAt"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "leaseId": { "$ref": "#/$defs/safeId" },
+        "status": { "enum": ["complete", "interrupted"] },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "size": { "type": "integer", "minimum": 1 },
+        "encrypted": { "type": "boolean" },
+        "keyRef": { "$ref": "#/$defs/keyRef" },
+        "verifiedAt": { "type": "string", "format": "date-time" },
+        "retentionExpiresAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

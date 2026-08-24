@@ -221,6 +221,20 @@
       "requiredTools": ["{python-orchestrator}"]
     },
     {
+      "id": "preview-state-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "digital_ocean/tests/test_preview_state.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["provider-admission-contract"],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
       "id": "env-tools",
       "command": ["node", "scripts/run-root-coverage.js"],
       "required": true,

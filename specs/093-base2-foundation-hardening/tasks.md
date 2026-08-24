@@ -62,7 +62,7 @@
 - [ ] T045 [US1] Under separate live approval, run three deploy/verify/destroy canaries and reconcile provider/DNS/cost to zero | Depends: T025,T044,T118 | Validate: three integrity-bound zero-resource receipts
 - [x] T117 [P] [US1] Define provider quota, rate-limit, budget ceiling, resource-pressure, disk-full, OOM, and retry-storm tests with safe admission/degradation behavior | Depends: T035,T041 | Validate: 14 injected exhaustion/recovery/integrity/concurrency cases create zero excess resources or silent success
 - [x] T118 [US1] Implement bounded provider/resource admission, circuit breaking, and durable owner notifications | Depends: T117 | Validate: 14-case admission matrix plus 9-case orchestrator lifecycle matrix pass with deduplicated durable notification receipts
-- [ ] T127 [P] [US1] Define state classification and teardown tests for ephemeral, retained, snapshot-before-destroy, restore-required, corrupt-snapshot, missing-key, retention-expiry, and interrupted snapshot cases | Depends: T035,T040 | Validate: destructive transition is denied without required verified preservation evidence
+- [x] T127 [P] [US1] Define state classification and teardown tests for ephemeral, retained, snapshot-before-destroy, restore-required, corrupt-snapshot, missing-key, retention-expiry, and interrupted snapshot cases | Depends: T035,T040 | Validate: 14 preservation cases deny destructive transition without exact verified evidence
 
 ## Phase 4 - Site manifest and current-main visual system (P1)
 
