@@ -229,3 +229,15 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added the zero-finding CI policy validator to the required complete gate; monthly grouped Dependabot updates remain the controlled update path.
 
 **Result**: T019 resolved; all six policy fixtures and the full workflow scan pass with zero findings.
+
+## Cycle 16 - Dependency severity authority
+
+**Corrections**:
+
+- Defined blocking critical/high policy with zero allowed exceptions and 0/72-hour remediation deadlines.
+- Defined 30/90-day moderate/low remediation and a maximum 30-day owner-approved exception lifecycle.
+- Required exact package/advisory, accountable owner, rationale, mitigation, approver, review, and expiry fields.
+- Added deterministic rejection for malformed severity rules and high, expired, overdue, ownerless, duplicated, or overlong exceptions.
+- Added the zero-exception policy validator to the complete gate and mirrored the machine contract in `docs/SECURITY_POLICY.md`.
+
+**Result**: T020 resolved; five policy regressions pass and there are zero active exceptions.

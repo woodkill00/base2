@@ -34,6 +34,14 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "dependency-policy",
+      "command": ["python3", "scripts/python/validate_dependency_policy.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["ci-policy"],
+      "requiredTools": ["python3"]
+    },
+    {
       "id": "env-tools",
       "command": ["node", "scripts/run-root-coverage.js"],
       "required": true,
