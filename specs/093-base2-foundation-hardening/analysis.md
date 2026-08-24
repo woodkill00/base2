@@ -426,3 +426,20 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added the lease suite as a required complete-gate node.
 
 **Result**: T034-T035 resolved. The intentional absent-module run failed during collection; the implementation passes all 15 focused cases.
+
+## Cycle 28 - Exact-owned teardown
+
+**Findings**:
+
+1. The legacy orchestrator instantiated a provider client at import, searched and deleted by mutable droplet name, and caught deletion failure while continuing to a misleading completion message.
+2. Optional DNS cleanup deleted a broad fixed set of names without exact before-state or lease evidence.
+3. There was no compare-before-delete identity/tag check, replacement-resource protection, bounded rate-limit behavior, or post-delete zero-resource proof.
+
+**Corrections**:
+
+- Replaced name-based deletion with an import-safe lease-bound command requiring exact provider, kind, immutable ID, and deterministic ownership tag before mutation.
+- Added bounded retry for 429/5xx responses, bounded eventual zero-resource verification, idempotent already-absent/destroyed handling, and durable `destroying`/`destroyed` transitions.
+- Disabled DNS deletion until the separate transactional DNS contract is implemented; leases containing DNS mutations fail closed in this path.
+- Added seven provider-fake cases for exact deletion, wrong ID/tag, name replacement, missing/tampered receipts, residual resources, bounded rate limits, and idempotency, then made them a required gate node.
+
+**Result**: T036-T037 resolved. The legacy import failed before tests because it eagerly created a real client; the corrected 7/7 teardown and combined 22/22 lease/teardown cases pass without provider access.

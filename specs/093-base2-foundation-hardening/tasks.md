@@ -50,8 +50,8 @@
 - [x] T033 [US1] Implement one strict env/config normalization library and route deploy/preflight through it | Depends: T032 | Validate: 23 parser/preflight/env cases pass; orchestrator has one strict load and no dotenv parser
 - [x] T034 [P] [US1] Write PreviewLease state/replay/integrity/atomic-write/interruption tests using `preview-lease.schema.json` | Depends: T005 | Validate: intentional import RED then 15 contract/state/hostile/interruption cases pass
 - [x] T035 [US1] Implement lease store, ownership tags, TTL/renewal, and reconciliation in `digital_ocean/scripts/python/preview_lease.py` | Depends: T034 | Validate: all 15 state/property cases and complete DigitalOcean suite pass
-- [ ] T036 [P] [US1] Write compare-before-delete tests for wrong ID/tag/digest, replacement resources, missing receipts, rate limits, and idempotent deletion | Depends: T035 | Validate: fail before T037
-- [ ] T037 [US1] Integrate exact-owned cleanup and zero-resource verification into `orchestrate_teardown.py` | Depends: T036 | Validate: provider-fake teardown matrix passes
+- [x] T036 [P] [US1] Write compare-before-delete tests for wrong ID/tag/digest, replacement resources, missing receipts, rate limits, residual resources, and idempotent deletion | Depends: T035 | Validate: legacy import RED then 7 provider-fake hostile/lifecycle cases pass
+- [x] T037 [US1] Integrate exact-owned cleanup and bounded zero-resource verification into `orchestrate_teardown.py`; broad name and DNS deletion are forbidden | Depends: T036 | Validate: 7/7 provider-fake teardown and 22/22 lease/teardown matrix pass
 - [ ] T038 [P] [US1] Write transactional DNS tests for staged apply, health gate, exact prior values, rollback, SAN set, stale records, and interruption | Depends: T035 | Validate: fail before T039
 - [ ] T039 [US1] Implement DNS transaction/reconciliation through orchestrator | Depends: T038 | Validate: provider-fake DNS matrix passes
 - [ ] T040 [P] [US1] Define deployment evidence/redaction/cost schemas and failure-stage tests | Depends: T012,T035 | Validate: schema and secret fixtures pass

@@ -133,6 +133,20 @@
       "requiredTools": ["{python-orchestrator}"]
     },
     {
+      "id": "owned-teardown-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "digital_ocean/tests/test_owned_teardown.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["preview-lease-contract"],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
       "id": "env-tools",
       "command": ["node", "scripts/run-root-coverage.js"],
       "required": true,
