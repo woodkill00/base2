@@ -7,8 +7,10 @@ from collections.abc import Callable
 from typing import Protocol
 
 try:
+    from digital_ocean.scripts.python.deployment_evidence import EvidenceRun, EvidenceStore
     from digital_ocean.scripts.python.preview_lease import LeaseStore
 except ModuleNotFoundError:
+    from deployment_evidence import EvidenceRun, EvidenceStore
     from preview_lease import LeaseStore
 
 
@@ -98,3 +100,33 @@ def apply_dns_transaction(
             raise DnsConflict("DNS changed during rollback; exact restoration refused")
         store.update_dns_state(lease_id, index, "restored")
     raise DnsConflict("health gate failed; exact prior DNS values restored")
+
+
+def apply_dns_with_evidence(
+    store: LeaseStore,
+    provider: DnsProvider,
+    lease_id: str,
+    *,
+    health_check: Callable[[], bool],
+    required_sans: set[str],
+    certificate_sans: set[str],
+    evidence_store: EvidenceStore,
+    evidence: dict,
+    actual_minor_units: int,
+    clock,
+) -> tuple[dict, dict]:
+    run = EvidenceRun(evidence_store, evidence, clock=clock)
+    result = run.execute(
+        "dns",
+        lambda: apply_dns_transaction(
+            store,
+            provider,
+            lease_id,
+            health_check=health_check,
+            required_sans=required_sans,
+            certificate_sans=certificate_sans,
+        ),
+        failure_code="dns_transaction_failed",
+        retryable=False,
+    )
+    return result, run.complete(actual_minor_units=actual_minor_units)

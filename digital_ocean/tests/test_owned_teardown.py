@@ -5,11 +5,13 @@ from unittest import mock
 
 import pytest
 
+from digital_ocean.scripts.python.deployment_evidence import EvidenceStore
 from digital_ocean.scripts.python.orchestrate_teardown import (
     DigitalOceanProvider,
     TeardownConflict,
     main,
     teardown_lease,
+    teardown_lease_with_evidence,
 )
 from digital_ocean.scripts.python.preview_lease import (
     LeaseIntegrityError,
@@ -221,3 +223,43 @@ def test_cli_success_uses_lease_bound_path(monkeypatch, tmp_path, capsys):
     )
     assert main(args) == 0
     assert '"state": "destroyed"' in capsys.readouterr().out
+
+
+def test_teardown_orchestrator_emits_terminal_evidence(tmp_path):
+    store = LeaseStore(tmp_path / "leases")
+    store.create(payload())
+    evidence = {
+        "schemaVersion": 1,
+        "runId": "run-delete-001",
+        "leaseId": "lease-delete-001",
+        "sourceCommit": "a" * 40,
+        "manifestDigest": "b" * 64,
+        "action": "teardown",
+        "status": "running",
+        "startedAt": "2026-08-24T20:00:00Z",
+        "finishedAt": None,
+        "stages": [],
+        "cost": {
+            "currency": "USD",
+            "ceilingMinorUnits": 100,
+            "projectedMinorUnits": 0,
+            "actualMinorUnits": 0,
+            "withinBudget": True,
+        },
+        "artifacts": [],
+        "failure": None,
+    }
+    times = iter(NOW + timedelta(seconds=value) for value in range(5))
+    result, receipt = teardown_lease_with_evidence(
+        store,
+        FakeProvider({}),
+        "lease-delete-001",
+        evidence_store=EvidenceStore(tmp_path / "evidence"),
+        evidence=evidence,
+        actual_minor_units=0,
+        clock=lambda: next(times),
+        sleep=lambda _delay: None,
+    )
+    assert result["state"] == "destroyed"
+    assert receipt["status"] == "passed"
+    assert receipt["stages"][0]["id"] == "teardown"

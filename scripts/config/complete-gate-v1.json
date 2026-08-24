@@ -161,6 +161,22 @@
       "requiredTools": ["{python-orchestrator}"]
     },
     {
+      "id": "deployment-evidence-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "digital_ocean/tests/test_deployment_evidence.py",
+        "digital_ocean/tests/test_dns_transaction.py",
+        "digital_ocean/tests/test_owned_teardown.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["dns-transaction-contract"],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
       "id": "env-tools",
       "command": ["node", "scripts/run-root-coverage.js"],
       "required": true,

@@ -54,8 +54,8 @@
 - [x] T037 [US1] Integrate exact-owned cleanup and bounded zero-resource verification into `orchestrate_teardown.py`; broad name and DNS deletion are forbidden | Depends: T036 | Validate: 7/7 provider-fake teardown and 22/22 lease/teardown matrix pass
 - [x] T038 [P] [US1] Write transactional DNS tests for staged apply, health gate, exact prior values, reverse rollback, exact SAN/mutation set, stale records, and interruption | Depends: T035 | Validate: intentional absent-module RED then 5 transaction cases pass
 - [ ] T039 [US1] Implement DNS transaction/reconciliation through orchestrator | Depends: T038 | Validate: provider-fake DNS matrix passes
-- [ ] T040 [P] [US1] Define deployment evidence/redaction/cost schemas and failure-stage tests | Depends: T012,T035 | Validate: schema and secret fixtures pass
-- [ ] T041 [US1] Integrate atomic deployment/teardown evidence and cost receipts into orchestrators | Depends: T040 | Validate: every stage emits terminal result
+- [x] T040 [P] [US1] Define deployment evidence/redaction/cost schemas and failure-stage tests | Depends: T012,T035 | Validate: intentional absent-module RED then 10 evidence/schema/budget/secret/integrity/stage cases pass
+- [x] T041 [US1] Integrate atomic deployment/teardown evidence and cost receipts into DNS and teardown orchestrators | Depends: T040 | Validate: 28/28 evidence/DNS/teardown cases pass and every invoked stage becomes passed or failed
 - [ ] T042 [US1] Add complete first-deploy, update, rollback, resume-after-interruption, and idempotent replay paths | Depends: T027,T029,T031,T033,T035,T037,T039,T041 | Validate: provider-fake lifecycle matrix
 - [ ] T043 [P] [US1] Add TTL/idle sweeper with lock, bounded retry/backoff, notification, and no-active-lease no-op | Depends: T035,T037 | Validate: time/race/property tests
 - [ ] T044 [US1] Add production-like providerless canary to required CI and document explicit live-canary authority | Depends: T042,T043 | Validate: CI canary creates no provider resources

@@ -4,7 +4,12 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from digital_ocean.scripts.python.dns_transaction import DnsConflict, apply_dns_transaction
+from digital_ocean.scripts.python.deployment_evidence import EvidenceStore
+from digital_ocean.scripts.python.dns_transaction import (
+    DnsConflict,
+    apply_dns_transaction,
+    apply_dns_with_evidence,
+)
 from digital_ocean.scripts.python.preview_lease import LeaseStore
 
 NOW = datetime(2026, 8, 24, 20, 0, tzinfo=UTC)
@@ -160,3 +165,47 @@ def test_multi_record_failure_rolls_back_in_reverse_order(tmp_path):
             certificate_sans={"one.example.test", "two.example.test"},
         )
     assert [change[1] for change in provider.changes] == ["one", "two", "two", "one"]
+
+
+def test_dns_orchestrator_emits_terminal_evidence(tmp_path):
+    item = mutation()
+    store = LeaseStore(tmp_path / "leases")
+    store.create(payload([item]))
+    provider = FakeDns({("example.test", "preview", "A"): item["previousValues"]})
+    evidence = {
+        "schemaVersion": 1,
+        "runId": "run-dns-001",
+        "leaseId": "lease-dns-001",
+        "sourceCommit": "a" * 40,
+        "manifestDigest": "b" * 64,
+        "action": "deploy",
+        "status": "running",
+        "startedAt": "2026-08-24T20:00:00Z",
+        "finishedAt": None,
+        "stages": [],
+        "cost": {
+            "currency": "USD",
+            "ceilingMinorUnits": 100,
+            "projectedMinorUnits": 5,
+            "actualMinorUnits": 0,
+            "withinBudget": True,
+        },
+        "artifacts": [],
+        "failure": None,
+    }
+    times = iter(NOW + timedelta(seconds=value) for value in range(5))
+    result, receipt = apply_dns_with_evidence(
+        store,
+        provider,
+        "lease-dns-001",
+        health_check=lambda: True,
+        required_sans={"preview.example.test"},
+        certificate_sans={"preview.example.test"},
+        evidence_store=EvidenceStore(tmp_path / "evidence"),
+        evidence=evidence,
+        actual_minor_units=3,
+        clock=lambda: next(times),
+    )
+    assert result["dnsMutations"][0]["state"] == "verified"
+    assert receipt["status"] == "passed"
+    assert receipt["stages"][0]["id"] == "dns"

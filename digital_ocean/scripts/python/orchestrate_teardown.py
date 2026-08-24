@@ -15,9 +15,11 @@ from pydo import Client
 
 try:
     from digital_ocean.scripts.python.deploy_config import load_deploy_config
+    from digital_ocean.scripts.python.deployment_evidence import EvidenceRun, EvidenceStore
     from digital_ocean.scripts.python.preview_lease import LeaseStore
 except ModuleNotFoundError:
     from deploy_config import load_deploy_config
+    from deployment_evidence import EvidenceRun, EvidenceStore
     from preview_lease import LeaseStore
 
 
@@ -121,6 +123,27 @@ def teardown_lease(
         raise TeardownConflict("zero-resource verification found residual owned resources")
     store.transition(lease_id, "destroyed")
     return {"leaseId": lease_id, "state": "destroyed", "deletedProviderIds": deleted}
+
+
+def teardown_lease_with_evidence(
+    store: LeaseStore,
+    provider: Provider,
+    lease_id: str,
+    *,
+    evidence_store: EvidenceStore,
+    evidence: dict[str, Any],
+    actual_minor_units: int,
+    clock,
+    sleep=time.sleep,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    run = EvidenceRun(evidence_store, evidence, clock=clock)
+    result = run.execute(
+        "teardown",
+        lambda: teardown_lease(store, provider, lease_id, sleep=sleep),
+        failure_code="teardown_failed",
+        retryable=True,
+    )
+    return result, run.complete(actual_minor_units=actual_minor_units)
 
 
 class DigitalOceanProvider:

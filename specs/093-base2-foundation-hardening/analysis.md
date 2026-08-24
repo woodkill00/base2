@@ -493,3 +493,21 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added runner tests proving timeout recovery, incomplete-output recovery, ordinary failure non-retry, and assertion-failure non-retry.
 
 **Result**: All 11 gate-runner cases pass. No product threshold or failure classification was weakened; recovered infrastructure attempts remain explicitly labeled in the signed result. Exact commit `45ad21b7d391997956c4be884f2bbac52c944cfb` then passed two consecutive complete gates (`20260824T204904Z`, `20260824T204926Z`) with every required check green and zero retries in either run. T025 is resolved.
+
+## Cycle 32 - Terminal deployment evidence and cost receipts
+
+**Findings**:
+
+1. Lease, DNS, and teardown state did not provide one commit/manifest/run-bound terminal receipt spanning stages, costs, and admitted artifacts.
+2. Console failures could omit a terminal stage result, and stored diagnostic structures had no recursive secret-key rejection.
+3. Budget state could be internally inconsistent or a successful operation could exceed its approved ceiling.
+
+**Corrections**:
+
+- Added a strict deployment-evidence schema for deploy/update/rollback/teardown/reconcile/canary actions, terminal stages, explicit safe failure codes, cost ceilings/projected/actual totals, and digest/size-bound artifacts.
+- Added an owner-only, locked, canonical SHA-256 evidence store using fsync and atomic replacement; changed replay and tampering fail closed.
+- Added recursive secret-key rejection, exact nested-field validation, budget consistency/admission, and terminal success/failure lifecycle methods.
+- Added an orchestration adapter and integrated it into provider-neutral DNS and exact-owned teardown entrypoints so every invoked operation stage becomes terminal and cost-accounted.
+- Added the combined evidence/DNS/teardown matrix as a required complete-gate node.
+
+**Result**: T040-T041 resolved. The intentional absent-module run failed at collection; the implementation passes all 28 combined cases, including five independently injected failure stages, secret fixtures, integrity tampering, DNS success evidence, and teardown success evidence. T039 remains open only for replacement of the legacy deploy script's broad DNS path.
