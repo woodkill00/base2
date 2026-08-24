@@ -17,7 +17,7 @@
 
 ## Phase 2 - Honest complete gate (P0 blocker)
 
-- [x] T010 [P] [US2] Write tests for Feature 093 planning validator covering placeholders, duplicate/missing IDs, bad dependencies, cycles, unmapped FRs, unchecked-evidence mismatch, and unsafe activation in `scripts/tests/test_validate_feature_093.py` | Depends: T006 | Validate: tests failed before T011 and now pass 7/7
+- [x] T010 [P] [US2] Write tests for Feature 093 planning validator covering placeholders, duplicate/missing IDs, bad dependencies, cycles, unmapped FRs, formatter-stable traceability, unchecked-evidence mismatch, and unsafe activation in `scripts/tests/test_validate_feature_093.py` | Depends: T006 | Validate: tests failed before T011 and now pass 8/8
 - [x] T011 [US2] Implement `scripts/python/validate_feature_093.py` and same-shell wrappers `scripts/bash/validate-feature-093.sh`, `scripts/powershell/validate-feature-093.ps1` | Depends: T010 | Validate: T010 passes 7/7 and live package reports zero findings
 - [x] T012 [P] [US2] Define versioned complete-gate manifest and policy in `scripts/config/complete-gate-v1.json` and `shared/schemas/gate-result-v1.schema.json` | Depends: T005 | Validate: strict manifest/result JSON contracts parse and enumerate explicit required checks/statuses
 - [x] T013 [P] [US2] Write gate-runner tests for pass/fail/unavailable/not-run, dependency blocking, timeout, malformed graph, redaction, digest, atomic evidence, and portable isolated interpreters in `scripts/tests/test_complete_gate.py` | Depends: T012 | Validate: failed before T014 and now passes 7/7

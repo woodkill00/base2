@@ -127,3 +127,17 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added bounded one-retry installation, mandatory `pip check`, and tests for platform interpreter resolution. A repeated failure remains terminal and visible.
 
 **Result**: Resolved in implementation; final task completion remains evidence-gated on the full first-start and complete-gate rerun.
+
+## Cycle 9 - Exact-commit replay defects
+
+**Findings**:
+
+1. The first exact-commit gate failed after the pre-commit formatter aligned Markdown table columns because traceability parsing assumed one literal space around requirement IDs.
+2. A recovered legacy CRA dependency installation omitted the transitive `react-refresh` peer, allowing unit tests to pass while the production build failed.
+
+**Corrections**:
+
+- Made traceability parsing whitespace-tolerant and added a formatter-aligned regression fixture.
+- Declared the exact compatible `react-refresh` build dependency directly; the optimized production build now succeeds rather than relying on a transitive peer accident.
+
+**Result**: Resolved; the next complete-gate receipt must bind the repaired exact commit.

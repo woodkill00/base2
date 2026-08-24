@@ -47,6 +47,11 @@ class PlanningValidatorTests(unittest.TestCase):
         trace_text = "| FR-001 | T001 | evidence |\n"
         self.assertEqual(["requirement FR-002 is not traced"], self.validator.validate_traceability(spec_text, trace_text))
 
+    def test_accepts_prettier_aligned_traceability_table(self):
+        spec_text = "- **FR-001**: One\n"
+        trace_text = "| Requirement | Tasks |\n| ----------- | ----- |\n| FR-001      | T001  |\n"
+        self.assertEqual([], self.validator.validate_traceability(spec_text, trace_text))
+
     def test_detects_placeholders_but_allows_resolved_history(self):
         docs = {"spec.md": "NEEDS CLARIFICATION", "analysis.md": "Pending.\nResult: Resolved"}
         findings = self.validator.validate_placeholders(docs)

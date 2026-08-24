@@ -75,7 +75,7 @@ def validate_task_graph(text: str) -> list[str]:
 
 def validate_traceability(spec_text: str, trace_text: str) -> list[str]:
     required = set(REQUIREMENT.findall(spec_text))
-    traced = set(re.findall(r"^\| (FR-\d{3}) \|", trace_text, re.MULTILINE))
+    traced = set(re.findall(r"^\|\s*(FR-\d{3})\s*\|", trace_text, re.MULTILINE))
     findings = [f"requirement {item} is not traced" for item in sorted(required - traced)]
     findings.extend(f"traceability references unknown {item}" for item in sorted(traced - required))
     return findings
