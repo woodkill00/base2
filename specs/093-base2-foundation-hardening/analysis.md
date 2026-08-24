@@ -602,3 +602,20 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Ran the complete real Compose stack under a unique project and removed its volumes, network, containers, and temporary environment after observation.
 
 **Result**: T029 and T031 resolved. All 12 services reached healthy state. The rendered Traefik configuration contained only the Let's Encrypt staging endpoint and `acme-staging.json`; storage was mode `0600`, uid/gid `1000:1000`. Post-run Docker inventory was empty. No DigitalOcean resource, public DNS record, production credential, or live certificate endpoint was used.
+
+## Cycle 38 - Required providerless lifecycle canary
+
+**Findings**:
+
+1. The lifecycle matrix proved individual paths but the required gate had no one-shot deploy/replay/update/rollback acceptance receipt.
+2. A CI canary must not inherit provider credentials, contact a provider, mutate public DNS, or exercise certificate issuance.
+3. Live-canary approval needed an explicit separation from ordinary local and providerless validation.
+
+**Corrections**:
+
+- Added a deterministic in-memory provider canary using the production lease, evidence, admission, DNS transaction, teardown, and preview orchestration implementations.
+- The canary verifies first deploy, exact no-call replay, update, rollback, exact prior DNS restoration, destroyed lease state, and zero residual fixture resources.
+- Added tests that make socket creation fail, remove provider-token variables, and assert the machine-readable zero-authority receipt.
+- Made the canary a required complete-gate node and documented that any live run needs new exact commit/manifest/provider/DNS/resource/cost/lease/trial authority.
+
+**Result**: T042 and T044 resolved. The combined provider-fake matrix passes 88 cases, and the standalone canary reports zero network requests, credential reads, external provider mutations, public DNS mutations, production certificate requests, or residual resources. T045 remains deliberately open and no live DigitalOcean action was performed.

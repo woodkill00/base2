@@ -49,6 +49,16 @@ Do not merge/rebase Feature 093 onto that stale branch.
 
 ## Live canary (separate approval required)
 
+The required CI canary is providerless and safe to run without credentials:
+
+```bash
+.venv/bin/python digital_ocean/scripts/python/providerless_canary.py
+```
+
+It uses an in-memory provider and documentation-only addresses, then proves exact replay, update, rollback, DNS restoration, and zero residual resources. It performs zero network requests, credential reads, provider mutations, public DNS changes, or certificate requests.
+
+The commands below are discovery only. Running a live canary requires a new approval bound to the exact commit, manifest digest, provider project, DNS mutation set, resource ceiling, cost ceiling, lease expiry, and number of trials. Approval for local/providerless work is not live authority.
+
 ```bash
 bash digital_ocean/scripts/bash/deploy.sh --help
 bash digital_ocean/scripts/bash/teardown.sh --help

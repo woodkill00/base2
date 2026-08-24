@@ -197,6 +197,13 @@ class CompleteGateTests(unittest.TestCase):
         self.assertEqual("{python-api}", commands["api-tests"][0])
         self.assertEqual("{python-django}", commands["django-tests"][0])
         self.assertEqual("{python-orchestrator}", commands["digitalocean-tests"][0])
+        self.assertEqual(
+            [
+                "{python-orchestrator}",
+                "digital_ocean/scripts/python/providerless_canary.py",
+            ],
+            commands["providerless-deployment-canary"],
+        )
         self.assertIn("django/pytest.ini", commands["django-tests"])
         self.assertEqual(
             ["python3", "scripts/python/validate_compose_config.py"], commands["compose-config"]

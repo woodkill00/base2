@@ -235,6 +235,14 @@
       "requiredTools": ["{python-orchestrator}"]
     },
     {
+      "id": "providerless-deployment-canary",
+      "command": ["{python-orchestrator}", "digital_ocean/scripts/python/providerless_canary.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["preview-state-contract"],
+      "requiredTools": ["{python-orchestrator}", "git"]
+    },
+    {
       "id": "env-tools",
       "command": ["node", "scripts/run-root-coverage.js"],
       "required": true,
