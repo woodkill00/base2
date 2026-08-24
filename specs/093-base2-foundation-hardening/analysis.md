@@ -81,6 +81,20 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 
 **Result**: Resolved; zero remaining planning findings after revalidation.
 
+## Cycle 7 - Clean WSL bootstrap
+
+**Findings**:
+
+1. WSL had no Linux Node binary and resolved `npm` to a Windows shim despite the repository's pinned Node/npm requirements.
+2. After installing the exact Linux toolchain, the supported first-start flow failed because tracked Bash helpers lacked executable mode while being invoked directly.
+
+**Corrections**:
+
+- Installed and SHA-256-verified official Linux Node 24.13.1 user-locally, then updated npm to the required 11.10.0.
+- Added T129 to make the clean-clone executable boundary and exact toolchain an enforced regression rather than a workstation-only repair.
+
+**Result**: Resolved. The fallback/mode regression passes, supported first-start completes, and all applicable WSL environment tests pass.
+
 ## Cycle 6 - Current route and control inventory
 
 **Findings**:

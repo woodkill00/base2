@@ -83,7 +83,7 @@ test('regression: complete-setup inherits basic-auth and escapes $ for Compose',
     'FLOWER_ALLOWLIST=your_ip_address_here/32',
     'PGADMIN_ALLOWLIST=your_ip_address_here/32',
   ].join('\n');
-  fs.writeFileSync(path.join(root, '.env'), envIn, 'utf8');
+  fs.writeFileSync(path.join(root, '.env.build'), envIn, 'utf8');
 
   await runCompleteSetup({
     rootDir: root,
@@ -102,7 +102,7 @@ test('regression: complete-setup inherits basic-auth and escapes $ for Compose',
   assert.ok(envMap.TRAEFIK_DASH_BASIC_USERS.includes('$$2a$$10$$abc$$def'));
   assert.equal(envMap.FLOWER_BASIC_USERS, envMap.TRAEFIK_DASH_BASIC_USERS);
   assert.equal(envMap.TP_USER_IP_ADDRESS, '1.2.3.4');
-  assert.equal(envMap.DJANGO_ADMIN_ALLOWLIST, '${TP_USER_IP_ADDRESS}/32');
+  assert.equal(envMap.DJANGO_ADMIN_ALLOWLIST, '1.2.3.4/32');
 });
 
 test('regression: complete-setup is idempotent with deterministic inputs', async () => {
@@ -159,7 +159,7 @@ test('regression: complete-setup is idempotent with deterministic inputs', async
     'FLOWER_ALLOWLIST=1.2.3.4/32',
     'PGADMIN_ALLOWLIST=1.2.3.4/32',
   ].join('\n');
-  fs.writeFileSync(path.join(root, '.env'), envIn, 'utf8');
+  fs.writeFileSync(path.join(root, '.env.build'), envIn, 'utf8');
 
   const first = await runCompleteSetup({
     rootDir: root,

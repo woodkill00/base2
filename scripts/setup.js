@@ -13,7 +13,7 @@ const {
   expandEnvContent,
   findUnresolvedPlaceholders,
 } = require('./lib/envFile');
-const { sanitizeProjectName } = require('./lib/derived');
+const { sanitizeProjectName, deriveIdentifiers } = require('./lib/derived');
 const { detectPublicIpv4 } = require('./lib/ipDetect');
 const { isPlaceholder } = require('./lib/placeholders');
 const { validateEnv, CATEGORY } = require('./envRules');
@@ -256,7 +256,7 @@ async function runSetup(options = {}) {
 
   const updates = {
     ...base,
-    PROJECT_NAME: sanitizeProjectName(projectName),
+    ...deriveIdentifiers({ projectName }),
     WEBSITE_DOMAIN: websiteDomain.trim(),
     ENV: env,
     DEPLOY_MODE: deployMode,
@@ -269,6 +269,21 @@ async function runSetup(options = {}) {
 
   if (emailValue) {
     updates.USER_MAIN_EMAIL = emailValue;
+    if (applyEmailDefaults) {
+      for (const key of [
+        'DJANGO_SUPERUSER_EMAIL',
+        'PGADMIN_DEFAULT_EMAIL',
+        'TRAEFIK_CERT_EMAIL',
+        'EMAIL_HOST_USER',
+        'EMAIL_USER',
+        'DEFAULT_FROM_EMAIL',
+        'EMAIL_FROM',
+        'SEED_ADMIN_EMAIL',
+        'DO_ALERT_EMAIL',
+      ]) {
+        updates[key] = emailValue;
+      }
+    }
   }
 
   if (typeof applyPasswordDefaults === 'boolean') {
@@ -300,6 +315,7 @@ async function runSetup(options = {}) {
     'TP_PGADMIN_PASSWORD',
     'TP_FLOWER_PASSWORD',
     'TP_TRAEFIK_PASSWORD',
+    'TP_EMAIL_HOST_PASSWORD',
   ];
 
   const passwordDefaultsEnabled =

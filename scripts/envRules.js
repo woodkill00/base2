@@ -105,7 +105,7 @@ function requiredCategories({ env, deployMode }) {
   const needsTls =
     normalizedEnv === ENVS.PRODUCTION || normalizedDeployMode === DEPLOY_MODES.DIGITALOCEAN;
   const needsSmtp =
-    normalizedEnv !== ENVS.DEVELOPMENT && normalizedDeployMode !== DEPLOY_MODES.LOCAL;
+    normalizedEnv === ENVS.PRODUCTION || normalizedDeployMode === DEPLOY_MODES.DIGITALOCEAN;
 
   if (needsTls) {
     required.add(CATEGORY.TLS);

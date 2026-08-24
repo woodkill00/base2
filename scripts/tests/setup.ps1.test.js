@@ -6,10 +6,13 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const { findPowerShell } = require('./helpers/powershell');
 
 const { parseEnv } = require('../lib/envFile');
 
-test('setup.ps1 generates TP_ secrets for placeholders', () => {
+const powershell = findPowerShell();
+
+test('setup.ps1 generates TP_ secrets for placeholders', { skip: !powershell }, () => {
   const repoRoot = path.resolve(__dirname, '..', '..');
   const envDir = fs.mkdtempSync(path.join(os.tmpdir(), 'setup-ps1-'));
   const envPath = path.join(envDir, '.env');
@@ -33,7 +36,7 @@ test('setup.ps1 generates TP_ secrets for placeholders', () => {
 
   const setupPs1 = path.join(repoRoot, 'scripts', 'powershell', 'setup.ps1');
   const result = spawnSync(
-    'powershell',
+    powershell,
     [
       '-NoProfile',
       '-ExecutionPolicy',

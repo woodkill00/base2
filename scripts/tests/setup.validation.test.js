@@ -40,7 +40,7 @@ test('setup overwrites .env only after confirmation and creates timestamped back
     ].join('\n'),
     'utf8'
   );
-  fs.writeFileSync(path.join(root, '.env'), 'PROJECT_NAME=old\n', 'utf8');
+  fs.writeFileSync(path.join(root, '.env.build'), 'PROJECT_NAME=old\n', 'utf8');
 
   const prompt = async (questions) => {
     if (questions.length === 1 && questions[0].name === 'overwrite') {
@@ -58,6 +58,8 @@ test('setup overwrites .env only after confirmation and creates timestamped back
   const res = await runSetup({ rootDir: root, prompt, stdout: () => {}, stderr: () => {} });
   assert.equal(res.changed, true);
 
-  const backups = fs.readdirSync(root).filter((n) => /^\.env\.pre-setup\.\d{8}_\d{6}$/.test(n));
+  const backups = fs
+    .readdirSync(root)
+    .filter((n) => /^\.env\.build\.pre-setup\.\d{8}_\d{6}$/.test(n));
   assert.equal(backups.length, 1);
 });

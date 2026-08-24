@@ -47,15 +47,44 @@ fi
 VENV_DIR="$REPO_ROOT/.venv"
 VENV_PYTHON="$VENV_DIR/bin/python"
 
-if $FORCE && [[ -d "$VENV_DIR" ]]; then
-  rm -rf "$VENV_DIR"
-fi
+venv_is_usable() {
+  [[ -x "$VENV_PYTHON" ]] && "$VENV_PYTHON" -m pip --version >/dev/null 2>&1
+}
 
-if [[ -x "$VENV_PYTHON" ]]; then
+create_venv() {
+  local clear_arg=()
+  if [[ -d "$VENV_DIR" ]]; then
+    clear_arg=(--clear)
+  fi
+
+  if "$PYTHON_CMD" -m venv "${clear_arg[@]}" "$VENV_DIR"; then
+    return 0
+  fi
+
+  echo "Standard-library venv is unavailable; checking user-local virtualenv fallback..." >&2
+  if "$PYTHON_CMD" -m virtualenv --version >/dev/null 2>&1; then
+    "$PYTHON_CMD" -m virtualenv --clear "$VENV_DIR"
+    return 0
+  fi
+
+  cat >&2 <<'EOF'
+Unable to create .venv. Install Ubuntu's python3.12-venv package, or install
+virtualenv for the current WSL user, then retry. A partial environment is not
+accepted as ready.
+EOF
+  return 1
+}
+
+if ! $FORCE && venv_is_usable; then
   echo "Existing Python virtual environment detected."
 else
   echo "Creating Python virtual environment (.venv)..."
-  "$PYTHON_CMD" -m venv "$VENV_DIR"
+  create_venv
+fi
+
+if ! venv_is_usable; then
+  echo "Virtual environment validation failed: $VENV_PYTHON cannot run pip." >&2
+  exit 1
 fi
 
 echo "Virtual environment ready at: $VENV_PYTHON"

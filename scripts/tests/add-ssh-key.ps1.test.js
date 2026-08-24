@@ -6,8 +6,11 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const { findPowerShell } = require('./helpers/powershell');
 
-test('add-ssh-key.ps1 dry-run does not create files', () => {
+const powershell = findPowerShell();
+
+test('add-ssh-key.ps1 dry-run does not create files', { skip: !powershell }, () => {
   const repoRoot = path.resolve(__dirname, '..', '..');
   const sshDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ssh-key-test-'));
   const keyName = 'testkey';
@@ -16,7 +19,7 @@ test('add-ssh-key.ps1 dry-run does not create files', () => {
     repoRoot,
     'digital_ocean',
     'scripts',
-    'powershell',
+    powershell,
     'add-ssh-key.ps1'
   );
 
