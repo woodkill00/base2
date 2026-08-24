@@ -343,3 +343,20 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added three required-gate fixtures covering classic and BuildKit frontend compatibility, checked configuration content, and fallback-before-static routing order.
 
 **Result**: T026-T027 resolved. The intentional pre-implementation run failed on both builder contracts and absent files; the corrected 3/3 suite and production Compose configuration validation pass.
+
+## Cycle 23 - Service readiness contracts
+
+**Findings**:
+
+1. React's Compose probe called `curl` although its runtime image installs only `wget`.
+2. Django ran a configuration check rather than probing its serving process and database; its internal DB health view returned HTTP 200 even when the database failed.
+3. Static Nginx had no healthcheck, Flower called absent `wget`, and API readiness required Redis without waiting for Redis health.
+4. Docker daemon access is denied to the current WSL user, so the required production-like all-container healthy acceptance cannot yet be claimed.
+
+**Corrections**:
+
+- Added a four-case service health contract covering every runtime service, installed probe binaries, meaningful endpoints/dependencies, and Traefik ping support; the original matrix failed six defects.
+- Switched React to installed `wget`, made Django probe `/internal/health`, made DB failure return redacted HTTP 503, added static Nginx and Python-native Flower probes, and added Redis as an API healthy dependency.
+- Added two Django readiness tests and made the service-health contract a required complete-gate node.
+
+**Result**: T028 resolved and the T029 implementation is present. The corrected 4/4 contract, 2/2 Django readiness cases, and production Compose configuration validation pass. T029 remains open until all built containers can be observed healthy through an accessible Docker daemon.

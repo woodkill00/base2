@@ -21,7 +21,7 @@ services:
       - /var/run/nginx
       - /var/log/nginx
     healthcheck:
-      test: ['CMD-SHELL', 'curl -fsS http://localhost:8080/ > /dev/null || exit 1']
+      test: ['CMD-SHELL', 'wget -q --spider http://localhost:8080/ || exit 1']
     mem_limit: 256m
     cpus: '0.5'
 
@@ -50,6 +50,8 @@ services:
     networks: [app_network]
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
     cap_drop: [ALL]
@@ -106,7 +108,11 @@ services:
       - /tmp
       - /var/tmp
     healthcheck:
-      test: ['CMD', 'python', 'manage.py', 'check', '--deploy']
+      test:
+        [
+          'CMD-SHELL',
+          'python -c "import os, http.client, sys; p=int(os.environ.get(''PORT'', ''8000'')); c=http.client.HTTPConnection(''localhost'', p, timeout=3); c.request(''GET'', ''/internal/health''); r=c.getresponse(); sys.exit(0 if r.status==200 else 1)"',
+        ]
     mem_limit: 512m
     cpus: '0.75'
 
@@ -147,6 +153,8 @@ services:
       - /var/cache/nginx
       - /var/run
       - /var/log/nginx
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q --spider http://localhost:8081/health || exit 1']
     mem_limit: 64m
     cpus: '0.25'
 
@@ -375,7 +383,11 @@ services:
     tmpfs:
       - /tmp
     healthcheck:
-      test: ['CMD-SHELL', 'wget -qO- http://localhost:5555/ > /dev/null || exit 1']
+      test:
+        [
+          'CMD-SHELL',
+          'python -c "import http.client, sys; c=http.client.HTTPConnection(''localhost'', 5555, timeout=3); c.request(''GET'', ''/''); r=c.getresponse(); sys.exit(0 if r.status < 500 else 1)"',
+        ]
       interval: 20s
       timeout: 5s
       retries: 10

@@ -74,6 +74,14 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "service-health-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_service_health_contract"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["react-image-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
       "id": "env-tools",
       "command": ["node", "scripts/run-root-coverage.js"],
       "required": true,
