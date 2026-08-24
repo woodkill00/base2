@@ -156,3 +156,20 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Kept personal `.env` files ignored and out of gate evidence.
 
 **Result**: Resolved in implementation; exact-commit complete-gate replay remains required.
+
+## Cycle 11 - Coverage-scope truth
+
+**Findings**:
+
+1. The frontend's 100% label covered only a selected glass/theme subset; whole React runtime coverage is materially lower.
+2. API totals included test modules, Django measured only `project`, root tooling lacked a policy artifact, and DigitalOcean had no coverage plugin.
+3. A single global percentage would conceal these incompatible scopes.
+
+**Corrections**:
+
+- Added six separately labeled measured surfaces with test inclusion, scope, exclusions, baseline metrics, and non-inflated floors.
+- Retained the 100% critical glass/theme contract while separately recording the whole React baseline.
+- Added strict changed-line and expiring owner-approved exception contracts; there are currently zero exceptions.
+- Added regression tests rejecting duplicate, unmeasured, inflated, expired, or ownerless policy state and proving test-module exclusion.
+
+**Result**: T016 resolved. T017 remains responsible for producing and enforcing every machine-readable report in the complete gate.

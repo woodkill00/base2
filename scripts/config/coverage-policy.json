@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "e11172a9ae67f3b255fc4929a9ebafa4c4b03a0d",
+  "changedLines": {
+    "minimumPercent": 90,
+    "comparisonBase": "merge-base-with-target",
+    "unavailablePolicy": "incomplete"
+  },
+  "surfaces": [
+    {
+      "id": "root-env-runtime",
+      "label": "Root environment-tool runtime",
+      "scope": "JavaScript modules loaded by scripts/tests; PowerShell-only tests are reported separately",
+      "includeTests": false,
+      "required": true,
+      "baselineStatus": "measured",
+      "baseline": { "lines": 80.66, "branches": 64.52, "functions": 70.97 },
+      "floors": { "lines": 80, "branches": 64, "functions": 70 },
+      "exclusions": [
+        "scripts/tests",
+        "PowerShell implementation until a PowerShell runner is present"
+      ]
+    },
+    {
+      "id": "frontend-runtime",
+      "label": "Whole React runtime",
+      "scope": "All JavaScript and JSX under react-app/src",
+      "includeTests": false,
+      "required": true,
+      "baselineStatus": "measured",
+      "baseline": { "lines": 50.34, "branches": 36.7, "functions": 45.91, "statements": 49.18 },
+      "floors": { "lines": 50, "branches": 36, "functions": 45, "statements": 49 },
+      "exclusions": ["test files", "generated service worker", "type declarations"]
+    },
+    {
+      "id": "frontend-critical-glass",
+      "label": "Critical glass/theme component subset",
+      "scope": "react-app/src/components/glass, services/glass, and services/theme",
+      "includeTests": false,
+      "required": true,
+      "baselineStatus": "measured",
+      "baseline": { "lines": 100, "branches": 100, "functions": 100, "statements": 100 },
+      "floors": { "lines": 100, "branches": 100, "functions": 100, "statements": 100 },
+      "exclusions": []
+    },
+    {
+      "id": "api-runtime",
+      "label": "FastAPI runtime",
+      "scope": "api package excluding api/tests",
+      "includeTests": false,
+      "required": true,
+      "baselineStatus": "measured",
+      "baseline": { "lines": 45.65, "statements": 45.65 },
+      "floors": { "lines": 45, "statements": 45 },
+      "exclusions": ["api/tests"]
+    },
+    {
+      "id": "django-runtime",
+      "label": "Django runtime",
+      "scope": "project, users, common, catalog, and api_schema packages excluding tests",
+      "includeTests": false,
+      "required": true,
+      "baselineStatus": "measured",
+      "baseline": { "lines": 49.3, "statements": 49.3 },
+      "floors": { "lines": 49, "statements": 49 },
+      "exclusions": ["django/tests", "generated migrations"]
+    },
+    {
+      "id": "digitalocean-supported-runtime",
+      "label": "Supported DigitalOcean orchestration runtime",
+      "scope": "digital_ocean/scripts/python excluding tests and experimental prototypes",
+      "includeTests": false,
+      "required": true,
+      "baselineStatus": "measured",
+      "baseline": { "lines": 15.47, "statements": 15.47 },
+      "floors": { "lines": 15, "statements": 15 },
+      "exclusions": ["digital_ocean/tests", "digital_ocean/experimental"]
+    }
+  ],
+  "exceptions": []
+}

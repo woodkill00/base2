@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://base2.local/contracts/coverage-policy-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "sourceCommit", "changedLines", "surfaces", "exceptions"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "sourceCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "changedLines": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minimumPercent", "comparisonBase", "unavailablePolicy"],
+      "properties": {
+        "minimumPercent": { "type": "number", "minimum": 0, "maximum": 100 },
+        "comparisonBase": { "const": "merge-base-with-target" },
+        "unavailablePolicy": { "const": "incomplete" }
+      }
+    },
+    "surfaces": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "label",
+          "scope",
+          "includeTests",
+          "required",
+          "baselineStatus",
+          "baseline",
+          "floors",
+          "exclusions"
+        ],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]+$" },
+          "label": { "type": "string", "minLength": 1 },
+          "scope": { "type": "string", "minLength": 1 },
+          "includeTests": { "type": "boolean" },
+          "required": { "const": true },
+          "baselineStatus": { "const": "measured" },
+          "baseline": { "$ref": "#/$defs/metrics" },
+          "floors": { "$ref": "#/$defs/metrics" },
+          "exclusions": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "uniqueItems": true
+          }
+        }
+      }
+    },
+    "exceptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "surface",
+          "owner",
+          "rationale",
+          "mitigation",
+          "approvedBy",
+          "expiresOn",
+          "floorOverrides"
+        ],
+        "properties": {
+          "id": { "type": "string", "pattern": "^COV-[0-9]{3}$" },
+          "surface": { "type": "string" },
+          "owner": { "type": "string", "minLength": 1 },
+          "rationale": { "type": "string", "minLength": 1 },
+          "mitigation": { "type": "string", "minLength": 1 },
+          "approvedBy": { "type": "string", "minLength": 1 },
+          "expiresOn": { "type": "string", "format": "date" },
+          "floorOverrides": { "$ref": "#/$defs/metrics" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "lines": { "type": "number", "minimum": 0, "maximum": 100 },
+        "branches": { "type": "number", "minimum": 0, "maximum": 100 },
+        "functions": { "type": "number", "minimum": 0, "maximum": 100 },
+        "statements": { "type": "number", "minimum": 0, "maximum": 100 }
+      }
+    }
+  }
+}
