@@ -66,6 +66,14 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "react-image-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_react_image_build"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["supply-chain-policy"],
+      "requiredTools": ["python3"]
+    },
+    {
       "id": "env-tools",
       "command": ["node", "scripts/run-root-coverage.js"],
       "required": true,

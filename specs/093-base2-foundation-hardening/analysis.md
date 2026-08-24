@@ -327,3 +327,19 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added a blocking supply-chain workflow and complete-gate node plus eight fixtures covering allowed dual licenses, unknown/missing licenses, forbidden Node/Python packages, valid provenance, tampering, unsigned output, and incomplete policy.
 
 **Result**: T116 resolved. All 13 combined threat/supply-chain policy tests, live policy validators, CI policy validation, workflow YAML parsing, and Feature 093 analysis pass.
+
+## Cycle 22 - Portable React runtime image
+
+**Findings**:
+
+1. The React Dockerfile generated its site configuration with Dockerfile heredoc syntax, which is not portable to the supported classic frontend.
+2. Both Nginx configuration files were embedded in Dockerfile shell commands, preventing direct review and route-fallback contract testing.
+3. The current WSL user cannot access the Docker daemon and has no Buildx plugin, so claiming a local image build would be false; the repository can still enforce frontend syntax/config contracts and Compose interpolation independently.
+
+**Corrections**:
+
+- Added checked-in main and site Nginx configuration, copied with portable Dockerfile `COPY` instructions.
+- Preserved non-root worker behavior, port 8080, SPA history fallback, static-asset 404 behavior, immutable cache policy, and existing security headers.
+- Added three required-gate fixtures covering classic and BuildKit frontend compatibility, checked configuration content, and fallback-before-static routing order.
+
+**Result**: T026-T027 resolved. The intentional pre-implementation run failed on both builder contracts and absent files; the corrected 3/3 suite and production Compose configuration validation pass.
