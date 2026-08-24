@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any, Protocol
 
@@ -14,11 +15,16 @@ try:
     )
     from digital_ocean.scripts.python.orchestrate_teardown import teardown_lease
     from digital_ocean.scripts.python.preview_lease import LeaseStore, ownership_tag
+    from digital_ocean.scripts.python.provider_admission import (
+        AdmissionSnapshot,
+        ProviderAdmissionController,
+    )
 except ModuleNotFoundError:
     from deployment_evidence import EvidenceRun, EvidenceStore
     from dns_transaction import apply_dns_transaction, restore_dns_transaction
     from orchestrate_teardown import teardown_lease
     from preview_lease import LeaseStore, ownership_tag
+    from provider_admission import AdmissionSnapshot, ProviderAdmissionController
 
 
 class PreviewProvider(Protocol):
@@ -49,6 +55,8 @@ class PreviewOrchestrator:
         lease_store: LeaseStore,
         evidence_store: EvidenceStore,
         provider: PreviewProvider,
+        admission: ProviderAdmissionController,
+        admission_snapshot: Callable[[], AdmissionSnapshot],
         *,
         clock=lambda: datetime.now(UTC),
         sleep=lambda _delay: None,
@@ -56,6 +64,8 @@ class PreviewOrchestrator:
         self.leases = lease_store
         self.evidence = evidence_store
         self.provider = provider
+        self.admission = admission
+        self.admission_snapshot = admission_snapshot
         self.clock = clock
         self.sleep = sleep
 
@@ -103,14 +113,20 @@ class PreviewOrchestrator:
         )
         run = EvidenceRun(self.evidence, evidence_payload, clock=self.clock)
         try:
-            run.execute("admission", lambda: None, failure_code="admission_failed")
+            run.execute(
+                "admission",
+                lambda: self._provider_operation("preview-admission", lambda: None),
+                failure_code="admission_failed",
+            )
             if not lease["resources"]:
                 if lease["state"] == "planned":
                     lease = self.leases.transition(lease_id, "provisioning")
                 tag = ownership_tag(lease_id, lease["siteId"], lease["manifestDigest"])
                 remote = run.execute(
                     "provision",
-                    lambda: self._provision_owned(tag),
+                    lambda: self._provider_operation(
+                        "preview-create", lambda: self._provision_owned(tag)
+                    ),
                     failure_code="provision_failed",
                     retryable=True,
                 )
@@ -126,7 +142,10 @@ class PreviewOrchestrator:
                 lease = self.leases.transition(lease_id, "bootstrapping")
             run.execute(
                 "bootstrap",
-                lambda: self.provider.bootstrap(resource["providerId"]),
+                lambda: self._provider_operation(
+                    "preview-bootstrap",
+                    lambda: self.provider.bootstrap(resource["providerId"]),
+                ),
                 failure_code="bootstrap_failed",
                 retryable=True,
             )
@@ -136,13 +155,16 @@ class PreviewOrchestrator:
             if lease["dnsMutations"]:
                 run.execute(
                     "dns",
-                    lambda: apply_dns_transaction(
-                        self.leases,
-                        self.provider,
-                        lease_id,
-                        health_check=lambda: self.provider.health(resource["providerId"]),
-                        required_sans=sans,
-                        certificate_sans=certificate_sans,
+                    lambda: self._provider_operation(
+                        "preview-dns",
+                        lambda: apply_dns_transaction(
+                            self.leases,
+                            self.provider,
+                            lease_id,
+                            health_check=lambda: self.provider.health(resource["providerId"]),
+                            required_sans=sans,
+                            certificate_sans=certificate_sans,
+                        ),
                     ),
                     failure_code="dns_failed",
                 )
@@ -150,7 +172,10 @@ class PreviewOrchestrator:
                 run.execute("dns", lambda: None, failure_code="dns_failed")
             run.execute(
                 "health",
-                lambda: self._require_health(resource["providerId"]),
+                lambda: self._provider_operation(
+                    "preview-health",
+                    lambda: self._require_health(resource["providerId"]),
+                ),
                 failure_code="health_failed",
                 retryable=True,
             )
@@ -174,13 +199,17 @@ class PreviewOrchestrator:
         run = EvidenceRun(self.evidence, evidence_payload, clock=self.clock)
         run.execute(
             "bootstrap",
-            lambda: self.provider.bootstrap(resource["providerId"]),
+            lambda: self._provider_operation(
+                "preview-update", lambda: self.provider.bootstrap(resource["providerId"])
+            ),
             failure_code="update_failed",
             retryable=True,
         )
         run.execute(
             "health",
-            lambda: self._require_health(resource["providerId"]),
+            lambda: self._provider_operation(
+                "preview-health", lambda: self._require_health(resource["providerId"])
+            ),
             failure_code="health_failed",
             retryable=True,
         )
@@ -205,6 +234,9 @@ class PreviewOrchestrator:
     def _require_health(self, provider_id: str) -> None:
         if self.provider.health(provider_id) is not True:
             raise PreviewOrchestrationError("preview health gate failed")
+
+    def _provider_operation(self, scope: str, operation: Callable[[], Any]) -> Any:
+        return self.admission.execute(scope, self.admission_snapshot(), operation)
 
     def _provision_owned(self, tag: str) -> dict[str, Any]:
         remote = self.provider.provision(tag)

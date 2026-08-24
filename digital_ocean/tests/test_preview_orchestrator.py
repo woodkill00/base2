@@ -14,6 +14,12 @@ from digital_ocean.scripts.python.preview_orchestrator import (
     PreviewOrchestrationError,
     PreviewOrchestrator,
 )
+from digital_ocean.scripts.python.provider_admission import (
+    AdmissionDenied,
+    AdmissionPolicy,
+    AdmissionSnapshot,
+    ProviderAdmissionController,
+)
 
 NOW = datetime(2026, 8, 24, 20, 0, tzinfo=UTC)
 
@@ -112,12 +118,34 @@ class FakeProvider:
         return [item for item in self.resources.values() if tag in item["tags"]]
 
 
-def orchestrator(tmp_path, provider):
+def orchestrator(tmp_path, provider, *, snapshot_overrides=None):
     times = iter(NOW + timedelta(seconds=value) for value in range(40))
+    snapshot_values = {
+        "active_resources": 0,
+        "provider_quota": 5,
+        "projected_minor_units": 10,
+        "budget_ceiling_minor_units": 100,
+        "disk_free_bytes": 2_000,
+        "memory_available_bytes": 2_000,
+        "oom_kills": 0,
+    }
+    snapshot_values.update(snapshot_overrides or {})
+    admission = ProviderAdmissionController(
+        tmp_path / "admission",
+        AdmissionPolicy(
+            maximum_active_resources=2,
+            minimum_disk_free_bytes=1_000,
+            minimum_memory_available_bytes=1_000,
+        ),
+        clock=lambda: NOW,
+        sleep=lambda _delay: None,
+    )
     return PreviewOrchestrator(
         LeaseStore(tmp_path / "leases"),
         EvidenceStore(tmp_path / "evidence"),
         provider,
+        admission,
+        lambda: AdmissionSnapshot(**snapshot_values),
         clock=lambda: next(times),
         sleep=lambda _delay: None,
     )
@@ -173,6 +201,20 @@ def test_provision_failure_is_terminal_and_rolls_back(tmp_path):
     assert flow.leases.load("lease-flow-001")["state"] == "destroyed"
     receipt = flow.evidence.load("run-flow-001")
     assert receipt["status"] == "failed" and receipt["failure"]["stage"] == "provision"
+
+
+def test_resource_pressure_fails_admission_before_provider_mutation(tmp_path):
+    provider = FakeProvider()
+    flow = orchestrator(tmp_path, provider, snapshot_overrides={"disk_free_bytes": 1})
+    with pytest.raises(AdmissionDenied, match="disk_pressure"):
+        flow.deploy(lease_payload(), evidence(), certificate_sans={"preview.example.test"})
+    assert provider.calls == []
+    receipt = flow.evidence.load("run-flow-001")
+    assert receipt["failure"] == {
+        "stage": "admission",
+        "code": "admission_failed",
+        "retryable": False,
+    }
 
 
 def test_health_failure_deletes_exact_owned_resource(tmp_path):

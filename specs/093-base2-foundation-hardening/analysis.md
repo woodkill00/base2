@@ -547,3 +547,22 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added the lifecycle/DNS matrix as a required complete-gate node.
 
 **Result**: T039 resolved. Fourteen DNS transaction/orchestration cases and the combined 55-case lease, DNS, teardown, and lifecycle matrix pass without credentials or provider access. T042 implementation is substantially present but remains open behind T029/T031 runtime observations and final provider-fake admission/fault coverage.
+
+## Cycle 35 - Provider admission, circuit breaking, and durable notification
+
+**Findings**:
+
+1. Provider creation could begin despite a local resource ceiling, provider quota, budget overflow, low disk/memory, or current OOM evidence.
+2. Provider throttling and transient failures lacked one cross-operation retry-storm boundary; simultaneous cooldown probes could amplify recovery load.
+3. A notification marked deduplicated before successful delivery could be permanently lost when its delivery adapter failed.
+4. Cleanup must remain available during pressure and circuit incidents or safety controls could cause billed-resource leaks.
+
+**Corrections**:
+
+- Added immutable policy/snapshot contracts and fail-before-call admission for local resource, provider quota, budget, disk, memory, and OOM conditions.
+- Added exact retry classification for 429/5xx only, fixed maximum attempts/delays, integrity-bound owner-only circuit state, cooldown, and a single half-open probe.
+- Added atomic pending-notification state. Delivery failure remains queued across restart, delivered incidents deduplicate, and circuit recovery produces a distinct sanitized notice.
+- Routed preview admission, create, bootstrap, DNS, health, and update provider operations through the controller. Exact DNS/resource cleanup deliberately bypasses admission so it can always reduce resource usage.
+- Added the combined admission/orchestration matrix as a required complete-gate node.
+
+**Result**: T117-T118 resolved. Fourteen focused quota/budget/pressure/OOM/rate-limit/retry/circuit/notification/integrity/concurrency cases and nine end-to-end provider-fake lifecycle cases pass. Exhaustion performs no excess provider mutation, half-open permits one probe, notification adapter failure is durable, and cleanup remains exact and available.
