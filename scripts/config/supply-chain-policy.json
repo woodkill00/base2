@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "allowedLicenses": {
+    "MIT": ["mit"],
+    "Apache-2.0": ["apache-2.0", "apache software license"],
+    "BSD-2-Clause": ["bsd-2-clause"],
+    "BSD-3-Clause": ["bsd", "bsd-3-clause", "bsd license"],
+    "ISC": ["isc", "isc license (iscl)"],
+    "PSF-2.0": ["psf-2.0", "python software foundation license"],
+    "MPL-2.0": ["mpl-2.0", "mozilla public license 2.0"]
+  },
+  "forbiddenPackages": {
+    "npm": ["event-stream", "flatmap-stream"],
+    "python": ["pycrypto"]
+  },
+  "generatedArtifact": {
+    "requiredFields": [
+      "schemaVersion",
+      "sourceCommit",
+      "generator",
+      "inputsDigest",
+      "artifactDigest",
+      "provenance",
+      "verification"
+    ],
+    "requiredPredicateType": "https://slsa.dev/provenance/v1",
+    "verificationStatus": "verified"
+  }
+}

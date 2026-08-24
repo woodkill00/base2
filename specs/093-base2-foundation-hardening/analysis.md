@@ -296,3 +296,34 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added 18 startup cases covering terminal/degraded initialization, the full readiness matrix, probe redaction, migration exclusion, schema probes, both telemetry exporter paths, production support-route exclusion, and flag failure; retained focused OpenAPI, health, and settings-failure logging checks.
 
 **Result**: T023-T024 resolved. Ruff passes, focused validation passes 21/21, and the full API suite passes all 64 applicable tests with eight explicitly environment-dependent skips (72 collected). The first exact gate retained its signal-11 failure; the next run reached coverage and correctly rejected 85.48% changed-line coverage before the missing schema/telemetry tests were added.
+
+## Cycle 20 - Threat boundaries and response ownership
+
+**Findings**:
+
+1. Security requirements named many controls but did not provide one reviewable STRIDE/privacy/abuse ledger spanning public, tenant, admin, module, factory, and provider boundaries.
+2. Detection and prevention existed in separate tasks without a mandatory response path, accountable owner, or executable test linkage per boundary.
+
+**Corrections**:
+
+- Added the six-boundary threat model with principals/assets, multiple misuse cases, prevention, detection, response, owner, and exact test tasks.
+- Made fail-closed authority, untrusted-data handling, zero-unapproved-mutation, sanitized evidence, and separate live activation explicit global rules.
+- Added five mutation tests for missing, blank, duplicate, unknown, untested, and policy-incomplete ledger content and made the policy a required complete-gate node.
+
+**Result**: T115 resolved. The live model passes with all six trust boundaries and every injected omission fails.
+
+## Cycle 21 - Supply-chain admission
+
+**Findings**:
+
+1. Node and Python license jobs used different inline allowlists; the Python script skipped missing reports and accepted missing license values.
+2. A permissive license could not independently block a known-forbidden package.
+3. Generated-artifact and source-provenance requirements lacked one strict admission contract, including a verified-signature requirement.
+
+**Corrections**:
+
+- Added one versioned policy and validator for Node/Python licenses, exact forbidden packages, generated-artifact identity/digests, SLSA v1 subject binding, builder/build type, and verification identity/signature digest.
+- Replaced both CI license allowlists with the shared validator and retained each raw inventory beside its machine-readable policy result.
+- Added a blocking supply-chain workflow and complete-gate node plus eight fixtures covering allowed dual licenses, unknown/missing licenses, forbidden Node/Python packages, valid provenance, tampering, unsigned output, and incomplete policy.
+
+**Result**: T116 resolved. All 13 combined threat/supply-chain policy tests, live policy validators, CI policy validation, workflow YAML parsing, and Feature 093 analysis pass.

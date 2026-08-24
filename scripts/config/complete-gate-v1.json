@@ -50,6 +50,22 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "threat-model-policy",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_threat_model_policy"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["security-adapter-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "supply-chain-policy",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_supply_chain_policy"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["security-adapter-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
       "id": "env-tools",
       "command": ["node", "scripts/run-root-coverage.js"],
       "required": true,

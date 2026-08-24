@@ -56,6 +56,9 @@ jobs:
         with:
           node-version: 24.13.1
           cache: npm
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
 
       - name: Install root deps
         run: npm ci --legacy-peer-deps
@@ -183,14 +186,12 @@ jobs:
         run: npm install -g license-checker
       - name: Check Node licenses
         run: |
-          set +e
-          license-checker --production --json --excludePrivatePackages --onlyAllow "MIT;Apache-2.0;BSD-3-Clause;ISC" > root-node-licenses.json
-          root_status=$?
+          license-checker --production --json --excludePrivatePackages > root-node-licenses.json
           cd react-app
-          license-checker --production --json --excludePrivatePackages --onlyAllow "MIT;Apache-2.0;BSD-3-Clause;ISC" > ../react-node-licenses.json
-          react_status=$?
-          set -e
-          if [ "$root_status" -ne 0 ] || [ "$react_status" -ne 0 ]; then exit 1; fi
+          license-checker --production --json --excludePrivatePackages > ../react-node-licenses.json
+          cd ..
+          python scripts/python/validate_supply_chain_policy.py --kind npm-license --input root-node-licenses.json --output root-node-licenses.policy.json
+          python scripts/python/validate_supply_chain_policy.py --kind npm-license --input react-node-licenses.json --output react-node-licenses.policy.json
       - name: Upload Node license results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -198,7 +199,9 @@ jobs:
           name: node-licenses
           path: |
             root-node-licenses.json
+            root-node-licenses.policy.json
             react-node-licenses.json
+            react-node-licenses.policy.json
 
   python-licenses:
     runs-on: ubuntu-latest
@@ -221,40 +224,8 @@ jobs:
           .license-django/bin/pip-licenses --from=mixed --format=json --output-file django-licenses.json
       - name: Validate licenses (allowlist)
         run: |
-          python - <<'PY'
-          import json, sys, os
-          # Allow common permissive licenses (SPDX + common names)
-          allow_tokens = {
-            "mit",
-            "apache-2.0",
-            "apache software license",
-            "bsd",
-            "bsd-3-clause",
-            "isc",
-            "psf-2.0",
-            "python software foundation license",
-            "mpl-2.0",
-            "mozilla public license 2.0",
-          }
-          bad = []
-          for path in ("api-licenses.json", "django-licenses.json"):
-            if not os.path.exists(path):
-              print(f"Warning: {path} not found")
-              continue
-            with open(path, encoding="utf-8") as f:
-              data = json.load(f)
-            for row in data:
-              lic = (row.get("License") or "").strip()
-              name = row.get("Name") or ""
-              lic_l = lic.lower()
-              if lic and all(tok not in lic_l for tok in allow_tokens):
-                bad.append((name, lic))
-          if bad:
-            print("Disallowed licenses:")
-            for name, lic in bad:
-              print(f" - {name}: {lic}")
-          sys.exit(1 if bad else 0)
-          PY
+          python scripts/python/validate_supply_chain_policy.py --kind python-license --input api-licenses.json --output api-licenses.policy.json
+          python scripts/python/validate_supply_chain_policy.py --kind python-license --input django-licenses.json --output django-licenses.policy.json
       - name: Upload Python license results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -262,4 +233,24 @@ jobs:
           name: python-licenses
           path: |
             api-licenses.json
+            api-licenses.policy.json
             django-licenses.json
+            django-licenses.policy.json
+
+  supply-chain-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Validate license, package, provenance, and generated-artifact policy
+        run: |
+          python -m unittest scripts.tests.test_supply_chain_policy
+          python scripts/python/validate_supply_chain_policy.py --output supply-chain-policy.json
+      - name: Upload supply-chain policy result
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: supply-chain-policy
+          path: supply-chain-policy.json

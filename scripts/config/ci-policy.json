@@ -16,7 +16,8 @@
       "gitleaks",
       "semgrep",
       "node-licenses",
-      "python-licenses"
+      "python-licenses",
+      "supply-chain-policy"
     ],
     "sync-config.yml": ["sync-config"]
   },

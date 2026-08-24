@@ -24,3 +24,11 @@ There are currently no dependency exceptions. Disabling a feature is only a miti
 Dependabot opens grouped monthly updates for each npm/Python surface and GitHub Actions. Security advisories bypass the normal cadence. Every update must pass the complete gate, machine-readable audits, license checks, secret/SAST checks, build tests, and relevant runtime tests. Action references and CI service images remain digest-pinned; version comments and update automation may propose reviewed digest changes.
 
 Audit outputs are private CI artifacts. They must not contain credentials, personal environment files, access tokens, or production configuration. Security remediation never grants deployment, publication, credential, payment, or destructive authority.
+
+## License, package, provenance, and generated-artifact policy
+
+The machine authority is `scripts/config/supply-chain-policy.json`. Every production Node and Python dependency must have an explicit approved license; missing, unknown, malformed, or compound licenses containing an unapproved term fail closed. The policy also blocks named packages independently of their declared license, so a permissive label cannot admit a prohibited package.
+
+Generated artifacts must bind the exact 40-character source commit, generator identity, inputs digest, artifact digest, SLSA v1 provenance subject, builder identity, and build type. Verification must report an identified signer and a 64-character signature digest with status `verified`. Missing/unsigned provenance, a digest mismatch, extra/missing manifest fields, or an unknown schema fails the supply-chain gate. Passing policy validation does not itself authorize generation, signing, publication, deployment, or provider mutation.
+
+Raw license inventories and their machine-readable policy results are retained together in private CI artifacts. Generated-repository governance adds attribution and notice requirements under T125; image signing and live provenance verification remain separately activated under T097.
