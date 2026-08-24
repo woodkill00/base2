@@ -460,3 +460,19 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added five transaction fixtures and a required gate node.
 
 **Result**: T038 resolved and the core T039 transaction implementation is present. The intentional absent-module run failed during collection; the corrected DNS/lease/teardown matrix passes 27/27. T039 remains open until the primary deployment orchestrator uses this primitive through a provider adapter.
+
+## Cycle 30 - Complete-gate resource contention
+
+**Findings**:
+
+1. The first exact gate passed, but the immediate second gate's frontend test exited `1` directly after the Vitest banner with no test result, assertion, stack, or coverage output.
+2. An immediate isolated replay passed all 46 files and 86 tests, identifying host resource contention rather than a deterministic product/test failure.
+3. The gate scheduled frontend test/build, API, Django, and DigitalOcean coverage processes concurrently on the same constrained WSL host, recreating the independently observed Node/Python process instability.
+
+**Corrections**:
+
+- Preserved the failed receipt and did not classify it as green or weaken any test/coverage threshold.
+- Serialized the memory-intensive frontend build, API, Django, and DigitalOcean coverage nodes through explicit manifest dependencies while retaining parallel lightweight policy checks.
+- Kept both exact full gates required after this scheduling correction.
+
+**Result**: The deterministic suite passes in isolation. T025 remains open pending two consecutive exact green receipts on the corrected resource-aware manifest.

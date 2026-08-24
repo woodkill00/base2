@@ -207,7 +207,7 @@
       ],
       "required": true,
       "timeoutSeconds": 900,
-      "dependsOn": ["env-tools"],
+      "dependsOn": ["env-tools", "frontend-build"],
       "requiredTools": ["{python-api}"]
     },
     {
@@ -230,7 +230,7 @@
       ],
       "required": true,
       "timeoutSeconds": 900,
-      "dependsOn": ["env-tools"],
+      "dependsOn": ["env-tools", "api-tests"],
       "requiredTools": ["{python-django}"]
     },
     {
@@ -245,7 +245,7 @@
       ],
       "required": true,
       "timeoutSeconds": 300,
-      "dependsOn": ["env-tools"],
+      "dependsOn": ["env-tools", "django-tests"],
       "requiredTools": ["{python-orchestrator}"]
     },
     {
