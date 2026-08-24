@@ -71,12 +71,21 @@
   },
   "jest": {
     "collectCoverageFrom": [
-      "src/components/glass/**/*.{js,jsx,ts,tsx}",
-      "src/services/glass/**/*.{js,ts}",
-      "src/services/theme/**/*.{ts}"
+      "src/**/*.{js,jsx,ts,tsx}",
+      "!src/**/*.d.ts",
+      "!src/**/*.test.{js,jsx,ts,tsx}",
+      "!src/**/__tests__/**",
+      "!src/service-worker.js",
+      "!src/reportWebVitals.js"
     ],
     "coverageThreshold": {
       "global": {
+        "branches": 36,
+        "functions": 38,
+        "lines": 45,
+        "statements": 44
+      },
+      "src/components/glass/**/*.{js,jsx,ts,tsx}": {
         "branches": 100,
         "functions": 100,
         "lines": 100,

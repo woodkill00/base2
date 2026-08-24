@@ -27,7 +27,7 @@
     },
     {
       "id": "env-tools",
-      "command": ["npm", "run", "test:env-tools"],
+      "command": ["node", "scripts/run-root-coverage.js"],
       "required": true,
       "timeoutSeconds": 120,
       "dependsOn": ["shell-parity"],
@@ -43,7 +43,18 @@
     },
     {
       "id": "frontend-test",
-      "command": ["npm", "--prefix", "react-app", "run", "test:ci", "--", "--watchAll=false"],
+      "command": [
+        "npm",
+        "--prefix",
+        "react-app",
+        "run",
+        "test:ci",
+        "--",
+        "--watchAll=false",
+        "--coverageReporters=json",
+        "--coverageReporters=json-summary",
+        "--coverageReporters=text"
+      ],
       "required": true,
       "timeoutSeconds": 900,
       "dependsOn": ["frontend-lint"],
@@ -67,7 +78,8 @@
         "-c",
         "api/pytest.ini",
         "-m",
-        "not integration and not perf"
+        "not integration and not perf",
+        "--cov-report=json:.artifacts/coverage/api.json"
       ],
       "required": true,
       "timeoutSeconds": 900,
@@ -84,7 +96,13 @@
         "-c",
         "django/pytest.ini",
         "-m",
-        "not integration and not perf"
+        "not integration and not perf",
+        "--cov=project",
+        "--cov=users",
+        "--cov=common",
+        "--cov=catalog",
+        "--cov=api_schema",
+        "--cov-report=json:.artifacts/coverage/django.json"
       ],
       "required": true,
       "timeoutSeconds": 900,
@@ -93,11 +111,32 @@
     },
     {
       "id": "digitalocean-tests",
-      "command": ["{python-orchestrator}", "-m", "pytest", "digital_ocean/tests"],
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "digital_ocean/tests",
+        "--cov=digital_ocean/scripts/python",
+        "--cov-report=json:.artifacts/coverage/digitalocean.json"
+      ],
       "required": true,
       "timeoutSeconds": 300,
       "dependsOn": ["env-tools"],
       "requiredTools": ["{python-orchestrator}"]
+    },
+    {
+      "id": "coverage-policy",
+      "command": ["python3", "scripts/python/run_coverage_policy.py"],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": [
+        "env-tools",
+        "frontend-test",
+        "api-tests",
+        "django-tests",
+        "digitalocean-tests"
+      ],
+      "requiredTools": ["python3"]
     },
     {
       "id": "frontend-production-audit",

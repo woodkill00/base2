@@ -6,6 +6,7 @@ import unittest
 
 
 MODULE_PATH = Path(__file__).parents[1] / "python" / "coverage_policy.py"
+RUNNER_PATH = Path(__file__).parents[1] / "python" / "run_coverage_policy.py"
 
 
 def load_module():
@@ -31,6 +32,14 @@ class CoveragePolicyTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.coverage = load_module()
+        spec = importlib.util.spec_from_file_location("run_coverage_policy", RUNNER_PATH)
+        cls.runner = importlib.util.module_from_spec(spec)
+        sys_path = __import__("sys").path
+        sys_path.insert(0, str(RUNNER_PATH.parent))
+        try:
+            spec.loader.exec_module(cls.runner)
+        finally:
+            sys_path.pop(0)
 
     def test_accepts_measured_floor_at_or_below_baseline(self):
         self.assertEqual([], self.coverage.validate_policy(policy()))
@@ -60,6 +69,28 @@ class CoveragePolicyTests(unittest.TestCase):
         }}
         summary = self.coverage.summarize_python_coverage(report, ["/tests/"])
         self.assertEqual({"lines": 80.0, "statements": 80.0, "branches": 75.0}, summary)
+
+    def test_summarizes_lcov_without_averaging_file_percentages(self):
+        report = "LF:10\nLH:8\nBRF:4\nBRH:3\nFNF:2\nFNH:1\nend_of_record\nLF:10\nLH:10\nBRF:6\nBRH:6\nFNF:2\nFNH:2\n"
+        self.assertEqual({"lines": 90.0, "branches": 90.0, "functions": 75.0}, self.runner.summarize_lcov(report))
+
+    def test_evaluator_fails_missing_or_regressed_metric(self):
+        candidate = policy()
+        result = self.runner.evaluate(candidate, {"api-runtime": {"lines": 48}})
+        self.assertEqual("failed", result["status"])
+        self.assertTrue(any("49" in finding for finding in result["findings"]))
+
+    def test_changed_line_parser_and_floor(self):
+        diff = "+++ b/api/main.py\n@@ -4,0 +5,3 @@\n+one\n+two\n+three\n"
+        changed = self.runner.parse_changed_lines(diff)
+        self.assertEqual({"api/main.py": {5, 6, 7}}, changed)
+        result = self.runner.changed_line_result(changed, [{"api/main.py": {5: True, 6: True, 7: False}}], 90)
+        self.assertEqual("failed", result["status"])
+        self.assertEqual(66.67, result["percent"])
+
+    def test_changed_line_floor_is_not_applicable_without_executable_lines(self):
+        result = self.runner.changed_line_result({"docs/readme.md": {1}}, [{}], 90)
+        self.assertEqual("not_applicable", result["status"])
 
 
 if __name__ == "__main__":

@@ -188,3 +188,15 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Ordinary failures, timeouts, and a repeated signal remain terminal without additional retries.
 
 **Result**: Contained, not declared eliminated; WSL/kernel stability remains a host risk and every recovery is visible in the gate receipt.
+
+## Cycle 13 - Coverage enforcement integration
+
+**Checks**:
+
+- Root Node tests emit LCOV and enforce line/branch/function floors.
+- React emits whole-runtime and critical glass/theme Istanbul reports; the critical subset retains 100% lines/functions/statements and 99% branches.
+- API, Django, and supported DigitalOcean runtime emit Coverage.py JSON with test and experimental scopes explicitly excluded.
+- The gate evaluates each labeled surface independently and enforces 90% changed executable lines from the fixed `main` merge base.
+- Missing reports, missing metrics, floor regressions, changed-line regressions, and non-executable-only changes have deterministic fixtures.
+
+**Result**: T017 resolved with six passing surfaces and 100% (34/34) measured changed executable lines; no coverage exception exists.

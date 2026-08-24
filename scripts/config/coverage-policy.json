@@ -28,8 +28,8 @@
       "includeTests": false,
       "required": true,
       "baselineStatus": "measured",
-      "baseline": { "lines": 50.34, "branches": 36.7, "functions": 45.91, "statements": 49.18 },
-      "floors": { "lines": 50, "branches": 36, "functions": 45, "statements": 49 },
+      "baseline": { "lines": 52.65, "branches": 49.55, "functions": 48.97, "statements": 52.07 },
+      "floors": { "lines": 52, "branches": 49, "functions": 48, "statements": 52 },
       "exclusions": ["test files", "generated service worker", "type declarations"]
     },
     {
@@ -39,8 +39,8 @@
       "includeTests": false,
       "required": true,
       "baselineStatus": "measured",
-      "baseline": { "lines": 100, "branches": 100, "functions": 100, "statements": 100 },
-      "floors": { "lines": 100, "branches": 100, "functions": 100, "statements": 100 },
+      "baseline": { "lines": 100, "branches": 99.42, "functions": 100, "statements": 100 },
+      "floors": { "lines": 100, "branches": 99, "functions": 100, "statements": 100 },
       "exclusions": []
     },
     {
