@@ -3,17 +3,15 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import hashlib
 import json
 import os
-from pathlib import Path
 import re
 import shutil
 import subprocess
-import sys
 import uuid
-
+from datetime import UTC, datetime
+from pathlib import Path
 
 SECRET_KEY = re.compile(r"(?:TOKEN|PASSWORD|SECRET|PRIVATE|CREDENTIAL|API_KEY)", re.I)
 INLINE_SECRET = re.compile(r"(?i)(bearer\s+)[A-Za-z0-9._~+/=-]+")
@@ -25,7 +23,7 @@ TOOL_TOKENS = {
 
 
 def now() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
 def validate_manifest(manifest: dict) -> None:
@@ -40,15 +38,44 @@ def validate_manifest(manifest: dict) -> None:
     known = set(ids)
     graph = {}
     for item in checks:
-        allowed = {"id", "command", "required", "timeoutSeconds", "dependsOn", "requiredTools"}
-        if set(item) != allowed:
+        allowed = {
+            "id",
+            "command",
+            "required",
+            "timeoutSeconds",
+            "dependsOn",
+            "requiredTools",
+            "maxAttempts",
+            "retryOn",
+        }
+        required_fields = {
+            "id",
+            "command",
+            "required",
+            "timeoutSeconds",
+            "dependsOn",
+            "requiredTools",
+        }
+        if not required_fields <= set(item) or not set(item) <= allowed:
             raise ValueError(f"invalid fields for {item.get('id')}")
-        if not isinstance(item["command"], list) or not item["command"] or not all(isinstance(value, str) and value for value in item["command"]):
+        if (
+            not isinstance(item["command"], list)
+            or not item["command"]
+            or not all(isinstance(value, str) and value for value in item["command"])
+        ):
             raise ValueError(f"invalid command for {item['id']}")
         for dependency in item["dependsOn"]:
             if dependency not in known:
                 raise ValueError(f"unknown dependency {dependency}")
         graph[item["id"]] = item["dependsOn"]
+        max_attempts = item.get("maxAttempts", 2)
+        retry_on = item.get("retryOn", [])
+        if max_attempts not in (1, 2):
+            raise ValueError(f"invalid maxAttempts for {item['id']}")
+        if not isinstance(retry_on, list) or any(
+            value not in {"timeout", "incomplete-test-output"} for value in retry_on
+        ):
+            raise ValueError(f"invalid retryOn for {item['id']}")
 
     visiting = set()
     visited = set()
@@ -131,48 +158,95 @@ def run_gate(
             "diagnostic": None,
             "attempts": 0,
         }
-        blocked = [dependency for dependency in item["dependsOn"] if states.get(dependency) != "passed"]
+        blocked = [
+            dependency for dependency in item["dependsOn"] if states.get(dependency) != "passed"
+        ]
         if blocked:
-            result = {**base, "status": "not_run", "diagnostic": "blocked by: " + ", ".join(blocked)}
+            result = {
+                **base,
+                "status": "not_run",
+                "diagnostic": "blocked by: " + ", ".join(blocked),
+            }
         else:
-            missing = [tool for tool in item["requiredTools"] if not tool_available(tool, repo_root)]
+            missing = [
+                tool for tool in item["requiredTools"] if not tool_available(tool, repo_root)
+            ]
             if missing:
-                result = {**base, "status": "unavailable", "diagnostic": "missing tools: " + ", ".join(missing)}
+                result = {
+                    **base,
+                    "status": "unavailable",
+                    "diagnostic": "missing tools: " + ", ".join(missing),
+                }
             else:
                 artifact = evidence_dir / f"{check_id}.log"
                 try:
                     command = [resolve_tool(value, repo_root) for value in item["command"]]
                     outputs = []
                     attempts = 0
-                    while True:
+                    timed_out = False
+                    retry_on = set(item.get("retryOn", []))
+                    max_attempts = item.get("maxAttempts", 2)
+                    while attempts < max_attempts:
                         attempts += 1
-                        completed = subprocess.run(
-                            command,
-                            cwd=repo_root,
-                            env=environment,
-                            text=True,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            timeout=item["timeoutSeconds"],
-                            check=False,
+                        try:
+                            completed = subprocess.run(
+                                command,
+                                cwd=repo_root,
+                                env=environment,
+                                text=True,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT,
+                                timeout=item["timeoutSeconds"],
+                                check=False,
+                            )
+                        except subprocess.TimeoutExpired as exc:
+                            timed_out = True
+                            captured = exc.stdout or ""
+                            if isinstance(captured, bytes):
+                                captured = captured.decode(errors="replace")
+                            outputs.append(
+                                f"=== attempt {attempts} timeout after {item['timeoutSeconds']} seconds ===\n{captured}"
+                            )
+                            if "timeout" in retry_on and attempts < max_attempts:
+                                continue
+                            break
+                        timed_out = False
+                        outputs.append(
+                            f"=== attempt {attempts} exit {completed.returncode} ===\n{completed.stdout or ''}"
                         )
-                        outputs.append(f"=== attempt {attempts} exit {completed.returncode} ===\n{completed.stdout or ''}")
-                        if completed.returncode != -11 or attempts >= 2:
+                        incomplete = (
+                            completed.returncode != 0
+                            and "incomplete-test-output" in retry_on
+                            and not re.search(
+                                r"(?im)(test files|\bpassed\b|\bfailed\b|\berror\b|\bfail\b)",
+                                completed.stdout or "",
+                            )
+                        )
+                        if completed.returncode != -11 and not incomplete:
                             break
                     artifact.write_text(redact("\n".join(outputs), environment), encoding="utf-8")
-                    status = "passed" if completed.returncode == 0 else "failed"
-                    result = {**base, "status": status, "exitCode": completed.returncode, "artifact": artifact.name, "attempts": attempts}
+                    exit_code = None if timed_out else completed.returncode
+                    status = "passed" if not timed_out and exit_code == 0 else "failed"
+                    result = {
+                        **base,
+                        "status": status,
+                        "exitCode": exit_code,
+                        "artifact": artifact.name,
+                        "attempts": attempts,
+                    }
                     if status == "passed" and attempts > 1:
-                        result["diagnostic"] = "recovered after one signal 11 retry"
+                        result["diagnostic"] = "recovered after one bounded infrastructure retry"
                     if status == "failed":
-                        suffix = " after one signal 11 retry" if attempts > 1 else ""
-                        result["diagnostic"] = f"command exited {completed.returncode}{suffix}"
-                except subprocess.TimeoutExpired as exc:
-                    captured = exc.stdout or ""
-                    if isinstance(captured, bytes):
-                        captured = captured.decode(errors="replace")
-                    artifact.write_text(redact(captured, environment), encoding="utf-8")
-                    result = {**base, "status": "failed", "artifact": artifact.name, "attempts": 1, "diagnostic": f"timed out after {item['timeoutSeconds']} seconds"}
+                        if timed_out:
+                            result["diagnostic"] = (
+                                f"timed out after {item['timeoutSeconds']} seconds"
+                                + (" after one bounded retry" if attempts > 1 else "")
+                            )
+                        else:
+                            suffix = " after one bounded retry" if attempts > 1 else ""
+                            result["diagnostic"] = f"command exited {exit_code}{suffix}"
+                except Exception:
+                    raise
         states[check_id] = result["status"]
         results.append(result)
 
@@ -200,7 +274,9 @@ def run_gate(
 
 
 def git_commit(repo_root: Path) -> str:
-    completed = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo_root, text=True, capture_output=True, check=True)
+    completed = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo_root, text=True, capture_output=True, check=True
+    )
     return completed.stdout.strip()
 
 
@@ -208,7 +284,7 @@ def main() -> int:
     repo_root = Path(__file__).resolve().parents[2]
     manifest_path = repo_root / "scripts" / "config" / "complete-gate-v1.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     evidence_dir = repo_root / ".artifacts" / "complete-gate" / run_id
     result = run_gate(manifest, repo_root, evidence_dir, source_commit=git_commit(repo_root))
     print(f"Complete gate: {result['overallStatus'].upper()}")

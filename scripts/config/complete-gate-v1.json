@@ -182,7 +182,9 @@
       "required": true,
       "timeoutSeconds": 900,
       "dependsOn": ["frontend-lint"],
-      "requiredTools": ["node", "npm"]
+      "requiredTools": ["node", "npm"],
+      "maxAttempts": 2,
+      "retryOn": ["incomplete-test-output"]
     },
     {
       "id": "frontend-build",
@@ -206,9 +208,11 @@
         "--cov-report=json:.artifacts/coverage/api.json"
       ],
       "required": true,
-      "timeoutSeconds": 900,
-      "dependsOn": ["env-tools", "frontend-build"],
-      "requiredTools": ["{python-api}"]
+      "timeoutSeconds": 120,
+      "dependsOn": ["env-tools"],
+      "requiredTools": ["{python-api}"],
+      "maxAttempts": 2,
+      "retryOn": ["timeout"]
     },
     {
       "id": "django-tests",
@@ -230,7 +234,7 @@
       ],
       "required": true,
       "timeoutSeconds": 900,
-      "dependsOn": ["env-tools", "api-tests"],
+      "dependsOn": ["env-tools"],
       "requiredTools": ["{python-django}"]
     },
     {
@@ -245,7 +249,7 @@
       ],
       "required": true,
       "timeoutSeconds": 300,
-      "dependsOn": ["env-tools", "django-tests"],
+      "dependsOn": ["env-tools"],
       "requiredTools": ["{python-orchestrator}"]
     },
     {

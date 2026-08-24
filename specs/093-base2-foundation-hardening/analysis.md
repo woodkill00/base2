@@ -467,12 +467,29 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 
 1. The first exact gate passed, but the immediate second gate's frontend test exited `1` directly after the Vitest banner with no test result, assertion, stack, or coverage output.
 2. An immediate isolated replay passed all 46 files and 86 tests, identifying host resource contention rather than a deterministic product/test failure.
-3. The gate scheduled frontend test/build, API, Django, and DigitalOcean coverage processes concurrently on the same constrained WSL host, recreating the independently observed Node/Python process instability.
+3. Inspection of the runner proved checks were already sequential. The initial concurrency hypothesis was rejected before closeout rather than retained as an unsupported explanation.
 
 **Corrections**:
 
 - Preserved the failed receipt and did not classify it as green or weaken any test/coverage threshold.
-- Serialized the memory-intensive frontend build, API, Django, and DigitalOcean coverage nodes through explicit manifest dependencies while retaining parallel lightweight policy checks.
-- Kept both exact full gates required after this scheduling correction.
+- Replayed the exact frontend command independently; all 46 files and 86 tests passed, proving the empty gate exit was intermittent rather than a deterministic assertion failure.
+- Kept both exact full gates required and left the failed receipt unchanged.
 
-**Result**: The deterministic suite passes in isolation. T025 remains open pending two consecutive exact green receipts on the corrected resource-aware manifest.
+**Result**: The deterministic suite passes in isolation. A subsequent exact gate printed all API test progress but timed out during coverage finalization after 900 seconds, further identifying a bounded host-process failure. T025 remains open.
+
+## Cycle 31 - Bounded infrastructure retry classification
+
+**Findings**:
+
+1. The runner retried only signal 11, while the same WSL instability also appeared as an incomplete test process exit and a post-test coverage-finalization timeout.
+2. Retrying every nonzero result would hide real assertion, lint, audit, security, or policy failures.
+3. The API timeout was 900 seconds despite an isolated exact run completing 53 passed/8 skipped in under two seconds.
+
+**Corrections**:
+
+- Added an optional, manifest-validated maximum of two attempts for only `timeout` and `incomplete-test-output`; signal 11 retains its existing single bounded retry.
+- Enabled incomplete-output retry only for the frontend test and timeout retry only for API coverage. Output containing test pass/fail/error markers is never classified as incomplete.
+- Reduced the API timeout to a conservative 120 seconds, limiting a pathological two-attempt run to four minutes, and retained each attempt in the redacted evidence log.
+- Added runner tests proving timeout recovery, incomplete-output recovery, ordinary failure non-retry, and assertion-failure non-retry.
+
+**Result**: All 11 gate-runner cases pass. No product threshold or failure classification was weakened; recovered infrastructure attempts remain explicitly labeled in the signed result.

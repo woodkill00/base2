@@ -2,10 +2,9 @@ import hashlib
 import importlib.util
 import json
 import os
-from pathlib import Path
 import tempfile
 import unittest
-
+from pathlib import Path
 
 MODULE_PATH = Path(__file__).parents[1] / "python" / "run_complete_gate.py"
 COMPOSE_MODULE_PATH = Path(__file__).parents[1] / "python" / "validate_compose_config.py"
@@ -18,8 +17,18 @@ def load_module():
     return module
 
 
-def check(check_id, command, *, required=True, depends=None, tools=None, timeout=10):
-    return {
+def check(
+    check_id,
+    command,
+    *,
+    required=True,
+    depends=None,
+    tools=None,
+    timeout=10,
+    max_attempts=None,
+    retry_on=None,
+):
+    result = {
         "id": check_id,
         "command": command,
         "required": required,
@@ -27,6 +36,11 @@ def check(check_id, command, *, required=True, depends=None, tools=None, timeout
         "dependsOn": depends or [],
         "requiredTools": tools or [],
     }
+    if max_attempts is not None:
+        result["maxAttempts"] = max_attempts
+    if retry_on is not None:
+        result["retryOn"] = retry_on
+    return result
 
 
 class CompleteGateTests(unittest.TestCase):
@@ -50,20 +64,26 @@ class CompleteGateTests(unittest.TestCase):
         return result, output
 
     def test_records_failure_and_blocks_dependent_check(self):
-        result, _ = self.run_gate([
-            check("bad", ["/bin/sh", "-c", "exit 7"], tools=["/bin/sh"]),
-            check("later", ["/bin/true"], depends=["bad"], tools=["/bin/true"]),
-        ])
+        result, _ = self.run_gate(
+            [
+                check("bad", ["/bin/sh", "-c", "exit 7"], tools=["/bin/sh"]),
+                check("later", ["/bin/true"], depends=["bad"], tools=["/bin/true"]),
+            ]
+        )
         self.assertEqual("failed", result["overallStatus"])
         self.assertEqual(["failed", "not_run"], [item["status"] for item in result["checks"]])
 
     def test_missing_required_tool_is_incomplete(self):
-        result, _ = self.run_gate([check("missing", ["never"], tools=["base2-tool-that-does-not-exist"] )])
+        result, _ = self.run_gate(
+            [check("missing", ["never"], tools=["base2-tool-that-does-not-exist"])]
+        )
         self.assertEqual("incomplete", result["overallStatus"])
         self.assertEqual("unavailable", result["checks"][0]["status"])
 
     def test_timeout_is_failure(self):
-        result, _ = self.run_gate([check("slow", ["/bin/sh", "-c", "sleep 2"], tools=["/bin/sh"], timeout=1)])
+        result, _ = self.run_gate(
+            [check("slow", ["/bin/sh", "-c", "sleep 2"], tools=["/bin/sh"], timeout=1)]
+        )
         self.assertEqual("failed", result["overallStatus"])
         self.assertIn("timed out", result["checks"][0]["diagnostic"])
 
@@ -71,6 +91,61 @@ class CompleteGateTests(unittest.TestCase):
         result, _ = self.run_gate([check("bad", ["/bin/sh", "-c", "exit 7"], tools=["/bin/sh"])])
         self.assertEqual(1, result["checks"][0]["attempts"])
         self.assertNotIn("retry", result["checks"][0]["diagnostic"])
+
+    def test_retries_one_explicit_timeout_and_records_recovery(self):
+        command = [
+            "/bin/sh",
+            "-c",
+            "if test -f marker; then echo passed; else touch marker; sleep 2; fi",
+        ]
+        result, _ = self.run_gate(
+            [
+                check(
+                    "slow",
+                    command,
+                    tools=["/bin/sh"],
+                    timeout=1,
+                    max_attempts=2,
+                    retry_on=["timeout"],
+                )
+            ]
+        )
+        self.assertEqual("passed", result["overallStatus"])
+        self.assertEqual(2, result["checks"][0]["attempts"])
+        self.assertIn("bounded infrastructure retry", result["checks"][0]["diagnostic"])
+
+    def test_retries_incomplete_output_but_not_assertion_failure(self):
+        command = [
+            "/bin/sh",
+            "-c",
+            "if test -f marker; then echo 'Test Files 1 passed'; exit 0; else touch marker; echo banner; exit 1; fi",
+        ]
+        result, _ = self.run_gate(
+            [
+                check(
+                    "early",
+                    command,
+                    tools=["/bin/sh"],
+                    max_attempts=2,
+                    retry_on=["incomplete-test-output"],
+                )
+            ]
+        )
+        self.assertEqual("passed", result["overallStatus"])
+        self.assertEqual(2, result["checks"][0]["attempts"])
+
+        failed, _ = self.run_gate(
+            [
+                check(
+                    "assertion",
+                    ["/bin/sh", "-c", "echo '1 failed'; exit 1"],
+                    tools=["/bin/sh"],
+                    max_attempts=2,
+                    retry_on=["incomplete-test-output"],
+                )
+            ]
+        )
+        self.assertEqual(1, failed["checks"][0]["attempts"])
 
     def test_redacts_secret_environment_values_and_binds_digest(self):
         secret = "fixture-super-secret-value"
@@ -89,38 +164,58 @@ class CompleteGateTests(unittest.TestCase):
 
     def test_rejects_unknown_dependency_and_cycle(self):
         with self.assertRaisesRegex(ValueError, "unknown dependency"):
-            self.gate.validate_manifest({"schemaVersion": 1, "checks": [check("aa", ["true"], depends=["xx"])]})
+            self.gate.validate_manifest(
+                {"schemaVersion": 1, "checks": [check("aa", ["true"], depends=["xx"])]}
+            )
         with self.assertRaisesRegex(ValueError, "cycle"):
-            self.gate.validate_manifest({"schemaVersion": 1, "checks": [
-                check("aa", ["true"], depends=["bb"]), check("bb", ["true"], depends=["aa"])
-            ]})
+            self.gate.validate_manifest(
+                {
+                    "schemaVersion": 1,
+                    "checks": [
+                        check("aa", ["true"], depends=["bb"]),
+                        check("bb", ["true"], depends=["aa"]),
+                    ],
+                }
+            )
 
     def test_resolves_service_python_without_platform_specific_manifest(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         root = Path(temporary.name)
-        expected = root / (".venv-api/Scripts/python.exe" if os.name == "nt" else ".venv-api/bin/python")
+        expected = root / (
+            ".venv-api/Scripts/python.exe" if os.name == "nt" else ".venv-api/bin/python"
+        )
         self.assertEqual(str(expected), self.gate.resolve_tool("{python-api}", root))
         self.assertEqual("node", self.gate.resolve_tool("node", root))
 
     def test_repo_manifest_uses_isolated_portable_service_interpreters(self):
         repo_root = MODULE_PATH.parents[2]
-        manifest = json.loads((repo_root / "scripts/config/complete-gate-v1.json").read_text(encoding="utf-8"))
+        manifest = json.loads(
+            (repo_root / "scripts/config/complete-gate-v1.json").read_text(encoding="utf-8")
+        )
         commands = {item["id"]: item["command"] for item in manifest["checks"]}
         self.assertEqual("{python-api}", commands["api-tests"][0])
         self.assertEqual("{python-django}", commands["django-tests"][0])
         self.assertEqual("{python-orchestrator}", commands["digitalocean-tests"][0])
         self.assertIn("django/pytest.ini", commands["django-tests"])
-        self.assertEqual(["python3", "scripts/python/validate_compose_config.py"], commands["compose-config"])
-        powershell = (repo_root / "scripts/powershell/install-python-deps.ps1").read_text(encoding="utf-8")
+        self.assertEqual(
+            ["python3", "scripts/python/validate_compose_config.py"], commands["compose-config"]
+        )
+        powershell = (repo_root / "scripts/powershell/install-python-deps.ps1").read_text(
+            encoding="utf-8"
+        )
         for name in (".venv-api", ".venv-django", ".venv"):
             self.assertIn(name, powershell)
 
     def test_compose_fixture_replaces_only_documentation_placeholders(self):
-        spec = importlib.util.spec_from_file_location("validate_compose_config", COMPOSE_MODULE_PATH)
+        spec = importlib.util.spec_from_file_location(
+            "validate_compose_config", COMPOSE_MODULE_PATH
+        )
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        rendered = module.render_validation_env("PROJECT_NAME=YOUR_PROJECT_NAME\nKEEP=${PROJECT_NAME}\n")
+        rendered = module.render_validation_env(
+            "PROJECT_NAME=YOUR_PROJECT_NAME\nKEEP=${PROJECT_NAME}\n"
+        )
         self.assertEqual("PROJECT_NAME=fixture\nKEEP=${PROJECT_NAME}\n", rendered)
 
 
