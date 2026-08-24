@@ -200,3 +200,19 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Missing reports, missing metrics, floor regressions, changed-line regressions, and non-executable-only changes have deterministic fixtures.
 
 **Result**: T017 resolved with six passing surfaces and 100% (34/34) measured changed executable lines; no coverage exception exists.
+
+## Cycle 14 - CI policy baseline
+
+**Findings**:
+
+1. Five security jobs use `continue-on-error`, eight commands suppress failure, and action references use mutable tags.
+2. Diagnostic cleanup and security enforcement were not distinguished by machine policy.
+3. Required pull-request workflows and job IDs had no fixed repository-owned map.
+
+**Corrections**:
+
+- Added a required workflow/job map covering nine pull-request workflows and their required jobs.
+- Added fixtures for pinned/blocking success, job omission, mutable actions, forbidden suppression, and the narrowly marked diagnostic-cleanup case.
+- Frozen the pre-T019 repository baseline at 41 explicit findings so repair cannot silently omit a class.
+
+**Result**: T018 resolved. The repository policy intentionally remains red until T019 removes all 41 findings and adds the validator to the required gate.
