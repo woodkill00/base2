@@ -49,6 +49,10 @@ class ProviderlessFixture:
     def bootstrap(self, provider_id: str) -> None:
         self.calls.append(("bootstrap", provider_id))
 
+    def dns_values(self, provider_id: str) -> list[str]:
+        self.calls.append(("dns-values", provider_id))
+        return ["192.0.2.20"]
+
     def health(self, provider_id: str) -> bool:
         self.calls.append(("health", provider_id))
         return provider_id == "fixture-001"

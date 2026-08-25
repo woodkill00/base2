@@ -142,6 +142,25 @@ def test_resources_require_exact_deterministic_ownership_tag(tmp_path):
         LeaseStore(tmp_path / "wrong").create(lease_payload(resources=[wrong]))
 
 
+def test_dns_desired_values_bind_once_during_provisioning(tmp_path):
+    store = LeaseStore(tmp_path)
+    mutation = {
+        "zone": "example.test",
+        "name": "preview",
+        "type": "A",
+        "previousValues": [],
+        "desiredValues": [],
+        "state": "planned",
+    }
+    store.create(lease_payload(dnsMutations=[mutation]))
+    store.transition("lease-test-001", "provisioning")
+    bound = store.bind_dns_desired_values("lease-test-001", ["192.0.2.20"])
+    assert bound["dnsMutations"][0]["desiredValues"] == ["192.0.2.20"]
+    assert store.bind_dns_desired_values("lease-test-001", ["192.0.2.20"]) == bound
+    with pytest.raises(LeaseConflict, match="already differ"):
+        store.bind_dns_desired_values("lease-test-001", ["192.0.2.21"])
+
+
 @pytest.mark.parametrize("lease_id", ["../escape", "short", "bad id", "a" * 129])
 def test_hostile_lease_ids_are_rejected(tmp_path, lease_id):
     with pytest.raises(LeaseValidationError, match="leaseId"):

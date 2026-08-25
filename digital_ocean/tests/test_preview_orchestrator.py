@@ -96,6 +96,10 @@ class FakeProvider:
     def bootstrap(self, provider_id):
         self.calls.append(("bootstrap", provider_id))
 
+    def dns_values(self, provider_id):
+        self.calls.append(("dns-values", provider_id))
+        return ["192.0.2.20"]
+
     def health(self, provider_id):
         self.calls.append(("health", provider_id))
         return self.healthy
@@ -173,6 +177,18 @@ def test_first_deploy_dns_health_and_exact_replay(tmp_path):
         lease_payload(), evidence(), certificate_sans={"preview.example.test"}
     )
     assert replay_lease == lease and replay_receipt == receipt and provider.calls == before
+
+
+def test_provider_dns_value_is_bound_after_owned_provision(tmp_path):
+    provider = FakeProvider()
+    flow = orchestrator(tmp_path, provider)
+    payload = lease_payload()
+    payload["dnsMutations"][0]["desiredValues"] = []
+    lease, receipt = flow.deploy(
+        payload, evidence(), certificate_sans={"preview.example.test"}
+    )
+    assert lease["dnsMutations"][0]["desiredValues"] == ["192.0.2.20"]
+    assert "dns-bind" in [stage["id"] for stage in receipt["stages"]]
 
 
 def test_resume_bootstrapping_does_not_provision_again(tmp_path):

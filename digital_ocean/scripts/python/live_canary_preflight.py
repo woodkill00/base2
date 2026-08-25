@@ -23,6 +23,27 @@ SAFE_DOMAIN = re.compile(
 )
 SAFE_SLUG = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 SECRET_MARKERS = ("TOKEN", "PASSWORD", "SECRET", "PRIVATE", "CREDENTIAL")
+BINDING_FIELDS = (
+    "sourceCommit",
+    "sourceArchiveSha256",
+    "projectName",
+    "providerProjectId",
+    "region",
+    "size",
+    "image",
+    "dropletName",
+    "ownershipNamespace",
+    "dnsZone",
+    "dnsMutations",
+    "certificateSans",
+    "trialCount",
+    "maximumConcurrentDroplets",
+    "leaseMinutesPerTrial",
+    "totalCostCeilingMinorUnits",
+    "hourlyCostMinorUnitsCeiling",
+    "currency",
+    "certificateMode",
+)
 
 
 class PreflightError(RuntimeError):
@@ -42,6 +63,17 @@ def _commit(repo_root: Path) -> str:
     if len(commit) != 40 or any(character not in "0123456789abcdef" for character in commit):
         raise PreflightError("an exact lowercase source commit is required")
     return commit
+
+
+def _archive_digest(repo_root: Path, commit: str) -> str:
+    result = subprocess.run(
+        ["git", "archive", "--format=tar", commit],
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+        timeout=30,
+    )
+    return hashlib.sha256(result.stdout).hexdigest()
 
 
 def _resolve(values: dict[str, str], value: str) -> str:
@@ -64,11 +96,20 @@ def _choose(values: dict[str, str], *keys: str, default: str = "") -> str:
     return default
 
 
+def binding_digest(binding: dict[str, Any]) -> str:
+    if set(binding) != set(BINDING_FIELDS):
+        raise PreflightError("plan binding fields are not exact")
+    return hashlib.sha256(
+        json.dumps(binding, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+
+
 def build_plan(env_path: Path, repo_root: Path) -> dict[str, Any]:
     if not env_path.is_file() or env_path.is_symlink():
         raise PreflightError("environment source must be a real file")
     values = parse_env_text(env_path.read_text(encoding="utf-8-sig"))
     commit = _commit(repo_root)
+    archive_digest = _archive_digest(repo_root, commit)
     project = _choose(values, "PROJECT_NAME", default="base2").lower()
     domain = _choose(values, "DO_DOMAIN", "WEBSITE_DOMAIN", "DO_DNS_DOMAIN").lower()
     region = _choose(values, "DO_API_REGION", "DO_DROPLET_REGION", default="nyc3")
@@ -77,6 +118,18 @@ def build_plan(env_path: Path, repo_root: Path) -> dict[str, Any]:
         values, "DO_API_IMAGE", "DO_DROPLET_IMAGE", default="ubuntu-24-04-x64"
     )
     project_id = _choose(values, "DO_PROJECT_ID", default="not-configured")
+    try:
+        hourly_cost_ceiling = int(
+            _choose(
+                values,
+                "DO_CANARY_HOURLY_COST_MINOR_UNITS_CEILING",
+                default="100",
+            )
+        )
+    except ValueError as exc:
+        raise PreflightError("hourly cost ceiling is invalid") from exc
+    if not 1 <= hourly_cost_ceiling <= 100:
+        raise PreflightError("hourly cost ceiling is invalid")
     if not SAFE_NAME.fullmatch(project):
         raise PreflightError("project name is unsafe")
     reserved_suffixes = (".invalid", ".test", ".example", ".localhost")
@@ -90,12 +143,14 @@ def build_plan(env_path: Path, repo_root: Path) -> dict[str, Any]:
     dns_name = f"{canary_label}.{domain}"
     safe_binding = {
         "sourceCommit": commit,
+        "sourceArchiveSha256": archive_digest,
         "projectName": project,
         "providerProjectId": project_id,
         "region": region,
         "size": size,
         "image": image,
         "dropletName": f"{project}-{canary_label}",
+        "ownershipNamespace": f"base2-f093-{commit[:8]}",
         "dnsZone": domain,
         "dnsMutations": [{"name": canary_label, "type": "A", "fqdn": dns_name}],
         "certificateSans": [dns_name],
@@ -103,12 +158,11 @@ def build_plan(env_path: Path, repo_root: Path) -> dict[str, Any]:
         "maximumConcurrentDroplets": 1,
         "leaseMinutesPerTrial": 15,
         "totalCostCeilingMinorUnits": 100,
+        "hourlyCostMinorUnitsCeiling": hourly_cost_ceiling,
         "currency": "USD",
         "certificateMode": "letsencrypt-staging-only",
     }
-    digest = hashlib.sha256(
-        json.dumps(safe_binding, sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
+    digest = binding_digest(safe_binding)
     return {
         "schemaVersion": 1,
         "status": "approval-required",

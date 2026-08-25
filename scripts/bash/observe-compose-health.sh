@@ -8,6 +8,7 @@ PROJECT_NAME="base2-f093-$$"
 ENV_FILE="$(mktemp /tmp/base2-f093-compose.XXXXXX.env)"
 ATTEMPTS="${OBSERVE_HEALTH_ATTEMPTS:-90}"
 INTERVAL="${OBSERVE_HEALTH_INTERVAL_SECONDS:-2}"
+TRAEFIK_CANARY_MODE="${OBSERVE_TRAEFIK_CANARY_MODE:-false}"
 CLEANED_UP=false
 
 cleanup() {
@@ -32,12 +33,12 @@ trap 'handle_signal 143' TERM
 
 cd "$REPO_ROOT"
 
-python3 - "$ENV_FILE" "$PROJECT_NAME" <<'PY'
+python3 - "$ENV_FILE" "$PROJECT_NAME" "$TRAEFIK_CANARY_MODE" <<'PY'
 from pathlib import Path
 import re
 import sys
 
-target, project = Path(sys.argv[1]), sys.argv[2]
+target, project, canary_mode = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
 source = Path(".env.example").read_text(encoding="utf-8")
 rendered = re.sub(r"\bYOUR_[A-Z0-9_]+\b", "fixture", source)
 rendered = rendered.replace("PROJECT_NAME=fixture", f"PROJECT_NAME={project}")
@@ -45,6 +46,8 @@ rendered = rendered.replace(
     "WEBSITE_DOMAIN=fixture", f"WEBSITE_DOMAIN={project}.invalid"
 )
 rendered = rendered.replace("USER_MAIN_EMAIL=fixture", "USER_MAIN_EMAIL=fixture@example.com")
+if canary_mode == "true":
+    rendered += "\nTRAEFIK_CANARY_MODE=true\n"
 target.write_text(rendered, encoding="utf-8")
 PY
 chmod 600 "$ENV_FILE"
@@ -103,6 +106,15 @@ stat -c 'acme-staging mode=%a uid=%u gid=%g size=%s' \
 traefik_id="$(COMPOSE_ENV_FILE="$ENV_FILE" "${compose[@]}" ps -q traefik)"
 docker exec "$traefik_id" sh -lc \
   'grep -F "https://acme-staging-v02.api.letsencrypt.org/directory" /tmp/traefik.yml >/dev/null && grep -F "acme-staging.json" /tmp/traefik.yml >/dev/null'
+
+if [[ "$TRAEFIK_CANARY_MODE" == "true" ]]; then
+  docker exec "$traefik_id" sh -ec '
+    test "$(grep -oF "'"$PROJECT_NAME"'.invalid" /tmp/dynamic.yml | wc -l)" -eq 2
+    ! grep -F "www.'"$PROJECT_NAME"'.invalid" /tmp/dynamic.yml >/dev/null
+    ! grep -F "sans:" /tmp/dynamic.yml >/dev/null
+  '
+  echo 'traefik-canary-single-host=verified'
+fi
 
 echo 'traefik-staging-config=verified'
 echo 'compose-health-observation=passed'

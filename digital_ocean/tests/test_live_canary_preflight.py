@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 from subprocess import CompletedProcess
 
@@ -17,6 +18,7 @@ def write_env(path: Path, **overrides) -> Path:
         "DO_API_REGION": "nyc3",
         "DO_API_SIZE": "s-1vcpu-1gb",
         "DO_API_IMAGE": "ubuntu-24-04-x64",
+        "DO_CANARY_HOURLY_COST_MINOR_UNITS_CEILING": "4",
         "DO_API_TOKEN": "must-never-appear",
     }
     values.update(overrides)
@@ -25,11 +27,12 @@ def write_env(path: Path, **overrides) -> Path:
 
 
 def exact_commit(monkeypatch):
-    monkeypatch.setattr(
-        live_canary_preflight.subprocess,
-        "run",
-        lambda *_args, **_kwargs: CompletedProcess([], 0, stdout="a" * 40 + "\n"),
-    )
+    def fake_run(args, **_kwargs):
+        if args[1] == "rev-parse":
+            return CompletedProcess(args, 0, stdout="a" * 40 + "\n")
+        return CompletedProcess(args, 0, stdout=b"exact-archive")
+
+    monkeypatch.setattr(live_canary_preflight.subprocess, "run", fake_run)
 
 
 def test_plan_is_exact_minimal_redacted_and_networkless(monkeypatch, tmp_path):
@@ -47,8 +50,11 @@ def test_plan_is_exact_minimal_redacted_and_networkless(monkeypatch, tmp_path):
         {"name": "f093-aaaaaaaa", "type": "A", "fqdn": "f093-aaaaaaaa.example.com"}
     ]
     assert plan["certificateSans"] == ["f093-aaaaaaaa.example.com"]
+    assert plan["sourceArchiveSha256"] == hashlib.sha256(b"exact-archive").hexdigest()
+    assert plan["ownershipNamespace"] == "base2-f093-aaaaaaaa"
     assert plan["maximumConcurrentDroplets"] == 1
     assert plan["totalCostCeilingMinorUnits"] == 100
+    assert plan["hourlyCostMinorUnitsCeiling"] == 4
     assert plan["certificateMode"] == "letsencrypt-staging-only"
     assert plan["networkRequests"] == 0
 
@@ -78,7 +84,7 @@ def test_symlink_environment_and_non_exact_commit_fail_closed(monkeypatch, tmp_p
     monkeypatch.setattr(
         live_canary_preflight.subprocess,
         "run",
-        lambda *_args, **_kwargs: CompletedProcess([], 0, stdout="not-exact\n"),
+        lambda args, **_kwargs: CompletedProcess(args, 0, stdout="not-exact\n"),
     )
     with pytest.raises(live_canary_preflight.PreflightError, match="exact lowercase"):
         live_canary_preflight.build_plan(real, tmp_path)

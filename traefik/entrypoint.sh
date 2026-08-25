@@ -40,6 +40,9 @@ if [ -f "$STATIC_TEMPLATE_PATH" ]; then
 fi
 
 DYNAMIC_TEMPLATE_PATH="/etc/traefik/templates/dynamic.yml.template"
+if [ "${TRAEFIK_CANARY_MODE:-false}" = "true" ]; then
+  DYNAMIC_TEMPLATE_PATH="/etc/traefik/templates/dynamic-canary.yml.template"
+fi
 DYNAMIC_OUTPUT_PATH="/tmp/dynamic.yml"
 if [ -f "$DYNAMIC_TEMPLATE_PATH" ]; then
   envsubst < "$DYNAMIC_TEMPLATE_PATH" > "$DYNAMIC_OUTPUT_PATH"

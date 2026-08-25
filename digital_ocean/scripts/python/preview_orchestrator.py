@@ -29,6 +29,7 @@ except ModuleNotFoundError:
 
 class PreviewProvider(Protocol):
     def provision(self, ownership_tag: str) -> dict[str, Any]: ...
+    def dns_values(self, provider_id: str) -> list[str]: ...
     def bootstrap(self, provider_id: str) -> None: ...
     def health(self, provider_id: str) -> bool: ...
     def read_values(self, zone: str, name: str, record_type: str) -> list[str]: ...
@@ -138,6 +139,20 @@ class PreviewOrchestrator:
                 }
                 lease = self.leases.add_resource(lease_id, resource)
             resource = self._resource(lease)
+            desired_sets = [item["desiredValues"] for item in lease["dnsMutations"]]
+            if desired_sets and not any(desired_sets):
+                desired_values = run.execute(
+                    "dns-bind",
+                    lambda: self._provider_operation(
+                        "preview-dns-bind",
+                        lambda: self.provider.dns_values(resource["providerId"]),
+                    ),
+                    failure_code="dns_bind_failed",
+                    retryable=True,
+                )
+                lease = self.leases.bind_dns_desired_values(lease_id, desired_values)
+            elif desired_sets and not all(desired_sets):
+                raise PreviewOrchestrationError("DNS desired-value state is inconsistent")
             if lease["state"] == "provisioning":
                 lease = self.leases.transition(lease_id, "bootstrapping")
             run.execute(

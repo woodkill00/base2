@@ -340,6 +340,33 @@ class LeaseStore:
             self._write_unlocked(candidate)
             return candidate
 
+    def bind_dns_desired_values(self, lease_id: str, values: list[str]) -> dict[str, Any]:
+        if not isinstance(values, list) or not values or not all(
+            isinstance(item, str) and item for item in values
+        ):
+            raise LeaseValidationError("DNS desired values must be a non-empty text array")
+        if len(values) != len(set(values)):
+            raise LeaseValidationError("DNS desired values are duplicated")
+        with self._lock():
+            lease = self._load_unlocked(lease_id)
+            if lease["state"] != "provisioning":
+                raise LeaseConflict("DNS desired values bind only while provisioning")
+            candidate = json.loads(_canonical(lease))
+            if not candidate["dnsMutations"]:
+                raise LeaseConflict("lease has no DNS mutation to bind")
+            current_sets = [mutation["desiredValues"] for mutation in candidate["dnsMutations"]]
+            if all(current == values for current in current_sets):
+                return lease
+            if any(current for current in current_sets):
+                raise LeaseConflict("DNS desired values already differ from provider identity")
+            for mutation in candidate["dnsMutations"]:
+                if mutation["state"] != "planned":
+                    raise LeaseConflict("DNS desired values cannot bind after mutation")
+                mutation["desiredValues"] = list(values)
+            validate_lease(candidate)
+            self._write_unlocked(candidate)
+            return candidate
+
     def renew(
         self,
         lease_id: str,
