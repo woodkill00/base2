@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "marketplace",
+  "version": "1.0.0",
+  "compatibility": ">=2.0.0,<3.0.0",
+  "models": ["marketplace.transaction"],
+  "migrations": [],
+  "apiRoutes": ["/api/marketplace"],
+  "uiRoutes": ["/marketplace"],
+  "navigation": ["marketplace.index"],
+  "permissions": ["marketplace.read", "marketplace.manage"],
+  "jobs": ["marketplace.reconcile"],
+  "settingsSchema": "modules/marketplace/settings.schema.json",
+  "healthChecks": ["marketplace.provider-ready"],
+  "providerCapabilities": ["payment"],
+  "dependencies": ["listing"],
+  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+}

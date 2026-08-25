@@ -221,6 +221,14 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "commercial-pack-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_commercial_pack_manifests"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["engagement-pack-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
       "id": "public-experience-contract",
       "command": ["npm", "--prefix", "react-app", "run", "test:public-contract"],
       "required": true,

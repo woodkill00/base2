@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "subscription",
+  "version": "1.0.0",
+  "compatibility": ">=2.0.0,<3.0.0",
+  "models": ["subscription.plan"],
+  "migrations": [],
+  "apiRoutes": ["/api/subscriptions"],
+  "uiRoutes": ["/subscriptions"],
+  "navigation": ["subscription.index"],
+  "permissions": ["subscription.read", "subscription.manage"],
+  "jobs": ["subscription.reconcile"],
+  "settingsSchema": "modules/subscription/settings.schema.json",
+  "healthChecks": ["subscription.provider-ready"],
+  "providerCapabilities": ["payment"],
+  "dependencies": ["membership"],
+  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+}

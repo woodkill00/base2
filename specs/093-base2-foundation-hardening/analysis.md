@@ -1184,3 +1184,33 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Added content/community/support SDK manifests, dependency ordering, inert email declaration, focused policy/service tests, documentation, and a required gate node.
 
 **Result**: T089 complete. Community cannot self-publish, support cannot become public, and notification payloads contain identifiers/status only.
+
+## Cycle 71 - Disabled commercial pack composition
+
+**Findings**:
+
+1. Membership, catalog, and listing data can be provider-free, while their subscription, commerce, and marketplace transaction layers require an explicit payment boundary.
+2. A capability declaration must not activate credentials, sockets, or production behavior.
+
+**Corrections**:
+
+- Added six independently versioned manifests as three dependency pairs, with every pack disabled by default and payment capability limited to transaction modules.
+- Added deterministic membership, commerce, and marketplace domain services using only a credential-free in-process fake; network calls are forbidden by the test harness.
+- Bound transactions to tenant/replay inputs, required marketplace moderation, rejected self-purchase, and documented the separate live-provider authority boundary.
+
+**Result**: T090 complete. All three pack suites pass and no live-provider value or call path exists in their settings.
+
+## Cycle 72 - Payment and webhook hostile boundary
+
+**Findings**:
+
+1. Provider callbacks require exact signature, freshness, event allowlist, bounded body, and changed-replay rejection.
+2. Sandbox webhook configuration requires a SecretRef and scoped approval shape, while production activation is outside Feature 093 authority.
+
+**Corrections**:
+
+- Added constant-time HMAC verification over timestamp and exact body, five-minute freshness, stable event IDs, exact idempotent replay, and changed-body conflict rejection.
+- Added disabled/local-fake payment activation and separately validated sandbox webhook configuration; production and plaintext credential modes fail closed.
+- Added deterministic refund/cancel state transitions and hostile envelope, credential, mode, signature, replay, JSON, and event fixtures.
+
+**Result**: T091 complete. Provider security tests execute with injected test bytes only, perform zero credential reads/network calls, and cannot activate production payments.
