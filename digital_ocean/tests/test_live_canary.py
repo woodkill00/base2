@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+from datetime import UTC, datetime, timedelta
 
 from digital_ocean.scripts.python.live_canary import main, run_canaries, validate_plan
 from digital_ocean.scripts.python.live_canary_preflight import binding_digest
@@ -150,6 +151,40 @@ def test_three_trials_restore_dns_and_resources(tmp_path, capsys):
     assert client.droplets.rows == {} and client.domains.records == []
     assert remote.deploys == 3
     assert json.loads(capsys.readouterr().out)["zeroProviderResources"] is True
+
+
+def test_three_trials_tolerate_backward_wall_clock_correction(tmp_path, capsys):
+    archive, key = inputs(tmp_path)
+    plan = approved_plan(archive)
+    client, remote = Client(), Remote()
+    current = datetime(2026, 8, 25, 8, 0, tzinfo=UTC)
+    observations = [
+        current,
+        current + timedelta(seconds=2),
+        current - timedelta(seconds=30),
+    ]
+
+    def backward_clock():
+        if observations:
+            return observations.pop(0)
+        return current - timedelta(minutes=1)
+
+    result = run_canaries(
+        plan,
+        token="fixture",
+        source_archive=archive,
+        ssh_private_key=key,
+        ssh_key_id=1,
+        state_root=tmp_path / "state",
+        client_factory=lambda _token: client,
+        remote_factory=lambda _known: remote,
+        clock=backward_clock,
+        sleep=lambda _delay: None,
+    )
+    assert result["status"] == "passed"
+    assert result["zeroProviderResources"] is True
+    assert client.droplets.rows == {} and client.domains.records == []
+    capsys.readouterr()
 
 
 def test_plan_tamper_and_archive_tamper_fail_closed(tmp_path):

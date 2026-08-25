@@ -149,6 +149,16 @@ def run_canaries(
 ) -> dict[str, Any]:
     binding = validate_plan(plan, source_archive)
     _private_file(ssh_private_key, "SSH private key")
+    last_observed: datetime | None = None
+
+    def observed_clock() -> datetime:
+        nonlocal last_observed
+        observed = clock()
+        if last_observed is not None and observed < last_observed:
+            return last_observed
+        last_observed = observed
+        return observed
+
     state_root.mkdir(parents=True, exist_ok=True, mode=0o700)
     state_root.chmod(0o700)
     client = client_factory(token)
@@ -190,7 +200,7 @@ def run_canaries(
         if previous_values:
             raise LiveCanaryError("exact canary DNS record is not absent")
 
-        started = clock()
+        started = observed_clock()
         lease_id = f"lease-f093-{binding['sourceCommit'][:8]}-t{trial}"
         site_id = f"base2-f093-t{trial}"
         projected = math.ceil(
@@ -205,7 +215,7 @@ def run_canaries(
                 minimum_disk_free_bytes=100 * 1024 * 1024,
                 minimum_memory_available_bytes=100 * 1024 * 1024,
             ),
-            clock=clock,
+            clock=observed_clock,
             sleep=sleep,
         )
         lease_store = LeaseStore(trial_root / "leases")
@@ -233,7 +243,7 @@ def run_canaries(
                 memory_available_bytes=_memory_available(),
                 oom_kills=0,
             ),
-            clock=clock,
+            clock=observed_clock,
             sleep=sleep,
         )
         lease_payload = {
@@ -301,7 +311,7 @@ def run_canaries(
                         lease_id,
                         binding,
                         "rollback",
-                        clock(),
+                        observed_clock(),
                         projected,
                     ),
                     actual_minor_units=actual_cost,

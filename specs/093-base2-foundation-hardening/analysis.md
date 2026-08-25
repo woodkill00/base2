@@ -706,3 +706,17 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Terminated and restarted only the Ubuntu WSL VM after the native crashes, then replayed the unchanged test and audit commands without weakening or retrying around an assertion failure.
 
 **Result**: The DigitalOcean matrix now passes 196 tests and changed-line coverage is 90.34% against the unchanged 90% floor. The production audit completes normally with zero high/critical findings. No Pi, provider, DNS, certificate, repository remote, or billable resource was mutated.
+
+## Cycle 44 - Backward wall-clock correction
+
+**Findings**:
+
+1. A clean exact-gate replay observed WSL time move backward between a canary receipt's start and finish timestamps.
+2. The integrity validator correctly rejected the impossible timestamp ordering, but a real NTP correction could otherwise interrupt cleanup and strand a preview.
+
+**Corrections**:
+
+- Wrapped the live canary's injected wall clock in a nondecreasing observer and routed admission, orchestration, lease, deploy, and rollback evidence through that single view.
+- Added a deterministic regression that advances and then reverses wall time during all three canary trials while requiring successful teardown, empty DNS, and zero provider resources.
+
+**Result**: The focused regression passes, the full DigitalOcean matrix passes 197 tests, and changed-line coverage is 90.43% against the unchanged 90% floor. Evidence ordering and cleanup remain valid across a backward wall-clock correction.
