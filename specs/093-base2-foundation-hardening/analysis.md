@@ -669,3 +669,20 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added manifest and wrapper drift tests for all three isolated interpreters.
 
 **Result**: The unchanged FastAPI matrix passes under the stable tracer with a valid JSON report. No retry, exclusion, skip, or coverage-policy reduction was introduced. The exact complete gate must still be replayed.
+
+## Cycle 42 - Live-canary admission fail-closed finding
+
+**Findings**:
+
+1. The approved exact plan named one temporary DNS record and one certificate name, but the ordinary Traefik dynamic template declares several additional subdomain SANs. Starting that template would exceed the reviewed mutation/certificate set even though issuance is staging-only.
+2. The provider-neutral preview lifecycle has only provider fakes and an exact-owned teardown adapter; it has no bounded live adapter implementing provision, exact-source bootstrap, health, transactional single-record DNS, and inventory under one contract.
+3. The legacy live deployment path broadly edits root, `www`, administrative, monitoring, and wildcard-adjacent records and therefore cannot safely satisfy the exact Feature 093 plan.
+4. The approved plan was correctly stopped before its first mutation. Credential validation and six GET-only inventory requests succeeded, with zero matching DNS records or Droplets and one matching existing SSH key.
+
+**Corrections**:
+
+- Added explicit T131-T133 test-first work for a hostile live-adapter matrix, bounded DigitalOcean adapter, exact-source bootstrap, and one-host staging-only Traefik canary surface.
+- Bound T045 to those corrections so evidence cannot mark the live acceptance complete using the broad legacy deployer or an ad hoc operator command.
+- Retained the exact clean-inventory discovery as read-only evidence; the superseded mutation approval cannot transfer to a corrected source commit or changed plan digest.
+
+**Result**: No Droplet, DNS record, certificate request, project resource, repository remote, or billable resource was created. T045 remains open and fails closed until T131-T133 pass, a new exact plan is rendered from the corrected commit, and that plan receives separate approval.
