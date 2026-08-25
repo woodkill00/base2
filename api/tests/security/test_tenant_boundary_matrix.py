@@ -148,8 +148,9 @@ def test_pool_checkout_resets_after_exception(monkeypatch):
 
 def test_every_site_content_query_has_explicit_tenant_predicate_and_context():
     source = (Path(__file__).parents[2] / "repositories" / "site_content.py").read_text()
-    assert source.count("db_conn(tenant_id=site_id)") == 5
+    assert source.count("db_conn(tenant_id=site_id)") == 6
     assert source.count("site_id=%s") >= 5
+    assert "(id,site_id,content_type" in source
 
 
 def test_database_defense_status_cannot_claim_rls_before_role_separation():

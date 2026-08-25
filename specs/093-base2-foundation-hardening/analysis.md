@@ -1229,3 +1229,17 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Chained the required checkpoint to the commercial pack, hermetic visual, accessibility, public experience/performance, and browser compatibility gates and documented its authority boundary.
 
 **Result**: T092 complete. The combined US6/US10 bundle is deterministic, provider-inert, and required by the full gate.
+
+## Cycle 74 - Module checkpoint exact-gate repair
+
+**Findings**:
+
+1. The tenant repository invariant still asserted five database contexts after the community insert added a sixth tenant-bound operation.
+2. A mistaken `--help` invocation started this argument-free gate runner concurrently, causing two Playwright processes to contend for the same trace directory and one compatibility test to time out.
+
+**Corrections**:
+
+- Updated the static tenant matrix to require six explicit transaction contexts, five query predicates, and the tenant column on the community insert.
+- Confirmed no duplicate complete-gate or Playwright process remains before isolated browser replay.
+
+**Result**: The original exact-commit failure remains immutable evidence; both failed nodes must pass in isolation before a replacement commit and full gate.
