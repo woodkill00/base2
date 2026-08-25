@@ -6,6 +6,8 @@ from uuid import UUID
 from celery import Celery
 
 from api.services.email_service import process_outbox_email
+from api.repositories.data_rights import expire_results, queued_operation_ids
+from api.services.data_rights_worker import process_operation
 
 
 logger = logging.getLogger('api.tasks')
@@ -29,6 +31,16 @@ app.conf.update(
     timezone='UTC',
     enable_utc=True,
     include=['api.tasks'],
+    beat_schedule={
+        'replay-data-rights-queue': {
+            'task': 'app.replay_data_rights_operations',
+            'schedule': 300.0,
+        },
+        'expire-data-rights-results': {
+            'task': 'app.expire_data_rights_results',
+            'schedule': 86400.0,
+        },
+    },
 )
 
 # Ensure tasks are registered even when Celery starts before module import.
@@ -57,3 +69,21 @@ def send_email_outbox(self, outbox_id: str, request_id: str | None = None) -> st
 
     process_outbox_email(outbox_id=UUID(outbox_id))
     return outbox_id
+
+
+@app.task(name='app.process_data_rights_operation')
+def process_data_rights_operation(operation_id: str) -> str:
+    return process_operation(UUID(operation_id))
+
+
+@app.task(name='app.expire_data_rights_results')
+def expire_data_rights_results() -> int:
+    return expire_results()
+
+
+@app.task(name='app.replay_data_rights_operations')
+def replay_data_rights_operations(limit: int = 25) -> int:
+    operation_ids = queued_operation_ids(limit=limit)
+    for operation_id in operation_ids:
+        process_data_rights_operation.delay(str(operation_id))
+    return len(operation_ids)

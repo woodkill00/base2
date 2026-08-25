@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "maxBytes": { "type": "integer", "minimum": 1, "maximum": 52428800 },
+    "adapter": { "type": "string", "enum": ["disabled", "local-private", "s3-compatible"] }
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://base2.local/contracts/deployment-evidence-v1.schema.json",
+  "title": "Base2 Deployment Evidence v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "runId",
+    "leaseId",
+    "sourceCommit",
+    "manifestDigest",
+    "action",
+    "status",
+    "startedAt",
+    "finishedAt",
+    "stages",
+    "cost",
+    "artifacts",
+    "failure"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "runId": { "type": "string", "minLength": 8, "maxLength": 128 },
+    "leaseId": { "type": "string", "minLength": 8, "maxLength": 128 },
+    "sourceCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "manifestDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "action": { "enum": ["deploy", "update", "rollback", "teardown", "reconcile", "canary"] },
+    "status": { "enum": ["running", "passed", "failed", "rolled_back"] },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "finishedAt": { "type": ["string", "null"], "format": "date-time" },
+    "stages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status", "startedAt", "finishedAt", "diagnosticCode"],
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "enum": ["running", "passed", "failed", "rolled_back", "skipped"] },
+          "startedAt": { "type": "string", "format": "date-time" },
+          "finishedAt": { "type": ["string", "null"], "format": "date-time" },
+          "diagnosticCode": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "cost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "currency",
+        "ceilingMinorUnits",
+        "projectedMinorUnits",
+        "actualMinorUnits",
+        "withinBudget"
+      ],
+      "properties": {
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "ceilingMinorUnits": { "type": "integer", "minimum": 0 },
+        "projectedMinorUnits": { "type": "integer", "minimum": 0 },
+        "actualMinorUnits": { "type": "integer", "minimum": 0 },
+        "withinBudget": { "type": "boolean" }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "sha256", "size"],
+        "properties": {
+          "name": { "type": "string" },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "size": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "failure": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["stage", "code", "retryable"],
+      "properties": {
+        "stage": { "type": "string" },
+        "code": { "type": "string" },
+        "retryable": { "type": "boolean" }
+      }
+    }
+  }
+}

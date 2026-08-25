@@ -6,9 +6,9 @@ import { AuthProvider } from '../contexts/AuthContext';
 import { authAPI } from '../services/api';
 import Login from '../pages/Login';
 
-jest.mock('../services/api');
+vi.mock('../services/api');
 
-jest.mock('@react-oauth/google', () => ({
+vi.mock('@react-oauth/google', () => ({
   GoogleOAuthProvider: ({ children }) => <div>{children}</div>,
   GoogleLogin: ({ onSuccess, onError }) => (
     <button

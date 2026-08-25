@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "portfolio",
+  "version": "1.0.0",
+  "compatibility": ">=2.0.0,<3.0.0",
+  "models": ["portfolio.entry"],
+  "migrations": [],
+  "apiRoutes": ["/api/content/portfolio-item/{slug}"],
+  "uiRoutes": ["/portfolio", "/portfolio/{slug}"],
+  "navigation": ["portfolio.index"],
+  "permissions": ["portfolio.read", "portfolio.write"],
+  "jobs": [],
+  "settingsSchema": "modules/portfolio/settings.schema.json",
+  "healthChecks": ["portfolio.ready"],
+  "providerCapabilities": [],
+  "dependencies": [],
+  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+}

@@ -34,4 +34,4 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception):
         # Avoid leaking internals; log via server logs; return generic error
-        return JSONResponse(status_code=500, content={'detail': 'internal_error'})
+        return JSONResponse(status_code=500, content={'detail': 'internal_server_error'})

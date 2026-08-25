@@ -22,12 +22,17 @@ describe('theme persistence', () => {
     expect(document.cookie).toMatch(/Path=\//);
     expect(document.cookie).toMatch(/Secure/);
     expect(document.cookie).toMatch(/SameSite=Lax/);
-    expect(document.cookie).toMatch(/Domain=.woodkilldev.com/);
+    expect(document.cookie).not.toMatch(/Domain=/);
   });
 
   test('getThemeCookie reads valid values', () => {
     setThemeCookie('light', 1);
     expect(getThemeCookie()).toBe('light');
+  });
+
+  test('getThemeCookie rejects an invalid value', () => {
+    document.cookie = 'theme=hostile';
+    expect(getThemeCookie()).toBeNull();
   });
 
   test('applyThemeClass toggles .dark on root', () => {

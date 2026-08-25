@@ -10,7 +10,7 @@ const { runCompleteSetup } = require('../complete-setup');
 
 function writeEnvFiles(root, { example, env }) {
   fs.writeFileSync(path.join(root, '.env.example'), example, 'utf8');
-  fs.writeFileSync(path.join(root, '.env'), env, 'utf8');
+  fs.writeFileSync(path.join(root, '.env.build'), env, 'utf8');
 }
 
 test('setup:complete groups missing/placeholder keys by category in its report', async () => {

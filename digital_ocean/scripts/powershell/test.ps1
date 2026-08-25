@@ -507,16 +507,9 @@ function Resolve-ArtifactPath([string]$artifactDir, [string]$fileName) {
 
 function Verify-StagingCert([string]$staticPath, [string]$dynamicPath) {
   $fail = @()
-  $envMode = ''
-  try {
-    if ($env:ENV) { $envMode = [string]$env:ENV }
-  } catch {}
-  $envMode = ($envMode + '').Trim().ToLower()
-  $isProd = ($envMode -eq 'prod' -or $envMode -eq 'production')
-  $expectedResolver = if ($isProd) { 'le' } else { 'le-staging' }
+  $expectedResolver = 'le-staging'
 
-  # Static config always defines both resolvers; the meaningful signal is the rendered
-  # dynamic config's certResolver selection.
+  # Feature 093 permits staging certificates only in every deployment profile.
   if ($dynamicPath -and (Test-Path $dynamicPath)) {
     $dyn = Get-Content $dynamicPath -Raw
     $hasExpected = [bool]([regex]::Match($dyn, "(?im)^\s*certResolver\s*:\s*" + [regex]::Escape($expectedResolver) + "\s*$").Success)
@@ -556,13 +549,7 @@ function Check-TlsAcmeGuard([string]$artifactDir, [string]$staticPath, [string]$
     error = ''
   }
 
-  $envMode = ''
-  try {
-    if ($env:ENV) { $envMode = [string]$env:ENV }
-  } catch {}
-  $envMode = ($envMode + '').Trim().ToLower()
-  $isProd = ($envMode -eq 'prod' -or $envMode -eq 'production')
-  $expectedResolver = if ($isProd) { 'le' } else { 'le-staging' }
+  $expectedResolver = 'le-staging'
 
   try {
     if (-not $staticPath -or -not (Test-Path $staticPath)) { throw 'Missing traefik-static.yml for ACME guard check' }
@@ -582,13 +569,13 @@ function Check-TlsAcmeGuard([string]$artifactDir, [string]$staticPath, [string]$
       $payload.storage = (($Matches[1] + '').Trim().Trim('"').Trim("'"))
     }
 
-    # Guardrail: reject production Let's Encrypt directory in non-prod.
+    # Guardrail: live issuance remains forbidden in every Feature 093 profile.
     if ($content -match '(?i)acme-v02\.api\.letsencrypt\.org') {
       $payload.sawProduction = $true
-      if (-not $isProd) { $fail += 'Production ACME directory detected in Traefik config (acme-v02.api.letsencrypt.org) but ENV is not production/prod' }
+      $fail += 'Production ACME directory detected in staging-only Traefik config'
     }
 
-    if (-not $isProd -and -not $payload.stagingReferenced) { $fail += 'Traefik static config does not reference le-staging resolver' }
+    if (-not $payload.stagingReferenced) { $fail += 'Traefik static config does not reference le-staging resolver' }
 
     # Dynamic routing guardrail: key routers must explicitly reference the expected certResolver.
     try {
@@ -638,7 +625,7 @@ function Check-TlsAcmeGuard([string]$artifactDir, [string]$staticPath, [string]$
       $fail += 'Missing traefik-acme-perms.txt for ACME storage permissions check'
     } else {
       $lines = @(Get-Content -Path $permsPath | ForEach-Object { [string]$_ })
-      $expectedAcmeFile = if ($isProd) { 'acme\.json' } else { 'acme-staging\.json' }
+      $expectedAcmeFile = 'acme-staging\.json'
       # Look for a numeric mode line for the expected ACME storage file or any *.json file.
       $modeLine = ($lines | Where-Object { $_ -match ("(?m)^\d{3,4}\s+.*" + $expectedAcmeFile + "\s*$") } | Select-Object -First 1)
       if (-not $modeLine) {

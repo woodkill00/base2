@@ -50,6 +50,11 @@ class _RegisterRequest(BaseModel):
     password: str
 
 
+class _MfaLoginRequest(BaseModel):
+    challenge_token: str
+    code: str
+
+
 def _refresh_cookie_name() -> str:
     session_name = str(getattr(settings, 'SESSION_COOKIE_NAME', '') or '')
     if session_name.endswith('_session'):
@@ -189,6 +194,132 @@ async def auth_login(request: Request, response: Response, payload: _LoginReques
         raise HTTPException(status_code=400, detail='Invalid request') from e
     except Exception as e:
         raise HTTPException(status_code=500, detail='Login failed') from e
+
+    # Password success must not bypass an active second factor. The provisional
+    # refresh row is revoked before any token leaves the process, and a short,
+    # one-time, hashed server-side challenge is returned instead.
+    try:
+        from api.auth.repo import find_refresh_token, revoke_refresh_token, insert_audit_event
+        from api.auth.tokens import hash_token
+        from api.repositories.identity_admin import active_totp, create_login_challenge
+
+        if active_totp(user_id=user.id) is not None:
+            provisional = find_refresh_token(token_hash=hash_token(tokens.refresh_token))
+            if provisional is not None:
+                revoke_refresh_token(token_id=provisional['id'], replaced_by_token_id=None)
+            raw_challenge = secrets.token_urlsafe(32)
+            create_login_challenge(
+                user_id=user.id,
+                token_hash=hash_token(raw_challenge),
+                ip=ip,
+                user_agent=request.headers.get('user-agent', ''),
+            )
+            insert_audit_event(
+                user_id=user.id,
+                action='auth.mfa_required',
+                ip=ip,
+                user_agent=request.headers.get('user-agent', ''),
+            )
+            return {
+                'mfa_required': True,
+                'challenge_token': raw_challenge,
+                'methods': ['totp', 'recovery_code'],
+                'expires_in': 300,
+            }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        # If MFA state cannot be checked or the provisional session cannot be
+        # revoked, fail closed and return no token.
+        raise HTTPException(status_code=503, detail='Login temporarily unavailable') from exc
+
+    _set_refresh_cookie(response, tokens.refresh_token, max_age_seconds=refresh_ttl_days * 86400)
+    _ensure_csrf_cookie(request, response)
+    body = {
+        'id': str(user.id),
+        'email': user.email,
+        'display_name': user.display_name,
+        'avatar_url': user.avatar_url,
+        'bio': user.bio,
+        'access_token': tokens.access_token,
+    }
+    if not bool(settings.AUTH_REFRESH_COOKIE):
+        body['refresh_token'] = tokens.refresh_token
+    return body
+
+
+@router.post('/auth/login/mfa')
+async def auth_login_mfa(request: Request, response: Response, payload: _MfaLoginRequest):
+    ip = _client_ip(request)
+    _count, over, retry_after = rate_limit.incr_and_check_detailed(ip, 'auth_login_mfa')
+    if over:
+        raise HTTPException(
+            status_code=429, detail='Rate limited', headers={'Retry-After': str(retry_after)}
+        )
+    try:
+        from api.auth.repo import get_user_by_id, insert_audit_event
+        from api.auth.service import issue_authenticated_session
+        from api.auth.tokens import hash_token
+        from api.repositories.identity_admin import (
+            active_totp,
+            consume_login_challenge,
+            consume_recovery_login,
+            pending_login_challenge,
+        )
+        from api.security.identity import hash_sensitive_value, verify_totp
+        from api.security.secret_box import SecretBox
+
+        challenge = pending_login_challenge(token_hash=hash_token(payload.challenge_token))
+        if challenge is None or challenge['ip'] != ip:
+            raise ValueError('invalid_challenge')
+        authenticator = active_totp(user_id=challenge['user_id'])
+        if authenticator is None:
+            raise ValueError('invalid_challenge')
+        valid = False
+        challenge_consumed = False
+        if len(payload.code) == 6 and payload.code.isdigit():
+            key = str(settings.IDENTITY_ENCRYPTION_KEY or '').strip()
+            if not key:
+                raise RuntimeError('mfa_key_unavailable')
+            secret = SecretBox(key).decrypt(authenticator['secret_ciphertext'])
+            valid = verify_totp(secret, payload.code)
+        else:
+            recovery_hash = hash_sensitive_value(payload.code, pepper=settings.TOKEN_PEPPER)
+            valid = consume_recovery_login(
+                challenge_id=challenge['id'],
+                user_id=challenge['user_id'],
+                code_hash=recovery_hash,
+            )
+            challenge_consumed = valid
+        if not valid or (
+            not challenge_consumed
+            and not consume_login_challenge(
+                challenge_id=challenge['id'], user_id=challenge['user_id']
+            )
+        ):
+            raise ValueError('invalid_code')
+        user = get_user_by_id(challenge['user_id'])
+        if user is None:
+            raise ValueError('invalid_challenge')
+        refresh_ttl_days = _env_int('REFRESH_TOKEN_TTL_DAYS', 30)
+        tokens = issue_authenticated_session(
+            user=user,
+            ip=ip,
+            user_agent=request.headers.get('user-agent', ''),
+            refresh_ttl_days=refresh_ttl_days,
+            access_ttl_minutes=_env_int('JWT_EXPIRE', 15),
+        )
+    except ValueError as exc:
+        with suppress(Exception):
+            insert_audit_event(
+                user_id=None,
+                action='auth.mfa_failed',
+                ip=ip,
+                user_agent=request.headers.get('user-agent', ''),
+            )
+        raise HTTPException(status_code=401, detail='Invalid authentication challenge') from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='Login temporarily unavailable') from exc
 
     _set_refresh_cookie(response, tokens.refresh_token, max_age_seconds=refresh_ttl_days * 86400)
     _ensure_csrf_cookie(request, response)
@@ -663,6 +794,35 @@ async def auth_sessions_revoke_others(request: Request, response: Response):
         raise HTTPException(status_code=400, detail='Invalid request') from e
 
 
+@router.post('/auth/sessions/{session_id}/revoke')
+async def auth_session_revoke(session_id: str, request: Request, response: Response):
+    from uuid import UUID
+
+    from api.auth.repo import insert_audit_event, revoke_user_refresh_token
+    from api.security.request_auth import require_authenticated_user
+
+    user_id = require_authenticated_user(request)
+    try:
+        target_id = UUID(session_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail='session_not_found') from exc
+
+    if not revoke_user_refresh_token(user_id=user_id, token_id=target_id):
+        # Do not reveal whether a session belongs to another account.
+        raise HTTPException(status_code=404, detail='session_not_found')
+
+    with suppress(Exception):
+        insert_audit_event(
+            user_id=user_id,
+            action='auth.revoke_session',
+            ip=_client_ip(request),
+            user_agent=request.headers.get('user-agent', ''),
+            metadata={'session_id': str(target_id)},
+        )
+    response.status_code = 204
+    return None
+
+
 @router.post('/auth/oauth/google')
 async def auth_oauth_google(request: Request, response: Response):
     ip = _client_ip(request)
@@ -681,8 +841,10 @@ async def auth_oauth_google(request: Request, response: Response):
     if not id_token:
         raise HTTPException(status_code=400, detail='Invalid request')
 
+    if not settings.GOOGLE_OAUTH_ENABLED:
+        raise HTTPException(status_code=404, detail='oauth_provider_disabled')
     if not settings.GOOGLE_OAUTH_CLIENT_ID:
-        raise HTTPException(status_code=500, detail='Google OAuth not configured')
+        raise HTTPException(status_code=503, detail='oauth_provider_unavailable')
 
     try:
         from api.services.oauth_google import verify_google_id_token
@@ -695,31 +857,22 @@ async def auth_oauth_google(request: Request, response: Response):
     except Exception as e:
         raise HTTPException(status_code=500, detail='OAuth failed') from e
 
+    return await complete_google_oauth_identity(ident=ident, request=request, response=response)
+
+
+async def complete_google_oauth_identity(*, ident, request: Request, response: Response):
+    """Complete the canonical Google identity flow without retaining provider tokens."""
+    ip = _client_ip(request)
     try:
         from api.auth import repo
-        from api.auth.tokens import create_access_token, new_refresh_token, hash_token
+        from api.auth.tokens import create_access_token, hash_token, new_refresh_token
 
-        # 1) If provider account already linked, sign in that user.
         linked = repo.find_oauth_account(provider='google', provider_account_id=ident.sub)
-        user = None
-        if linked is not None:
-            user = repo.get_user_by_id(linked['user_id'])
-
-        # 2) Else: try to attach to an existing local user by email, under merge rules.
+        user = repo.get_user_by_id(linked['user_id']) if linked is not None else None
         if user is None:
             existing = repo.get_user_by_email(ident.email)
             if existing is not None:
-                # Merge/link only if local email is already verified OR Google says verified.
-                if (existing.is_email_verified is True) or (ident.email_verified is True):
-                    with suppress(Exception):
-                        repo.create_oauth_account(
-                            user_id=existing.id,
-                            provider='google',
-                            provider_account_id=ident.sub,
-                            email=ident.email,
-                        )
-                    user = existing
-                else:
+                if not (existing.is_email_verified or ident.email_verified):
                     repo.insert_audit_event(
                         user_id=existing.id,
                         action='auth.oauth_link_rejected',
@@ -728,14 +881,21 @@ async def auth_oauth_google(request: Request, response: Response):
                         metadata={'provider': 'google'},
                     )
                     raise HTTPException(status_code=401, detail='OAuth rejected')
+                with suppress(Exception):
+                    repo.create_oauth_account(
+                        user_id=existing.id,
+                        provider='google',
+                        provider_account_id=ident.sub,
+                        email=ident.email,
+                    )
+                user = existing
             else:
-                # 3) Create new user and link.
                 user = repo.create_user(email=ident.email, password_hash='')
                 with suppress(Exception):
                     repo.update_profile(
                         user_id=user.id,
-                        display_name=(ident.name or ''),
-                        avatar_url=(ident.picture or ''),
+                        display_name=ident.name or '',
+                        avatar_url=ident.picture or '',
                         bio=None,
                     )
                 if ident.email_verified:
@@ -748,13 +908,36 @@ async def auth_oauth_google(request: Request, response: Response):
                         provider_account_id=ident.sub,
                         email=ident.email,
                     )
-
         if user is None or not user.is_active:
             raise HTTPException(status_code=401, detail='OAuth rejected')
 
+        from api.repositories.identity_admin import active_totp, create_login_challenge
+
+        if active_totp(user_id=user.id) is not None:
+            raw_challenge = secrets.token_urlsafe(32)
+            create_login_challenge(
+                user_id=user.id,
+                token_hash=hash_token(raw_challenge),
+                ip=ip,
+                user_agent=request.headers.get('user-agent', ''),
+            )
+            repo.insert_audit_event(
+                user_id=user.id,
+                action='auth.oauth_mfa_required',
+                ip=ip,
+                user_agent=request.headers.get('user-agent', ''),
+                metadata={'provider': 'google'},
+            )
+            return {
+                'mfa_required': True,
+                'challenge_token': raw_challenge,
+                'methods': ['totp', 'recovery_code'],
+                'expires_in': 300,
+            }
+
         refresh_ttl_days = int(os.getenv('REFRESH_TOKEN_TTL_DAYS', '30') or 30)
         refresh = new_refresh_token()
-        _token_id, _expires_at = repo.create_refresh_token(
+        repo.create_refresh_token(
             user_id=user.id,
             token_hash=hash_token(refresh),
             ttl_days=refresh_ttl_days,
@@ -766,15 +949,13 @@ async def auth_oauth_google(request: Request, response: Response):
             email=user.email,
             ttl_minutes=int(os.getenv('JWT_EXPIRE', '15') or 15),
         )
-
         repo.insert_audit_event(
             user_id=user.id,
             action='auth.oauth_login',
             ip=ip,
             user_agent=request.headers.get('user-agent', ''),
-            metadata={'provider': 'google'},
+            metadata={'provider': 'google', 'flow': 'authorization_code'},
         )
-
         _set_refresh_cookie(response, refresh, max_age_seconds=refresh_ttl_days * 86400)
         body = {
             'id': str(user.id),
@@ -789,5 +970,5 @@ async def auth_oauth_google(request: Request, response: Response):
         return body
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail='OAuth failed') from e
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail='OAuth failed') from exc

@@ -28,6 +28,23 @@ def test_flags_endpoint_returns_dict():
     assert 'flags' in j
 
 
+def test_site_endpoint_exposes_only_integrity_bound_public_metadata():
+    response = _client().get('/api/site')
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['siteId'] == 'ember-studio'
+    assert payload['name'] == 'Ember Studio'
+    assert len(payload['manifestDigest']) == 64
+    assert set(payload) == {
+        'siteId',
+        'name',
+        'defaultLocale',
+        'navigation',
+        'theme',
+        'manifestDigest',
+    }
+
+
 def test_metrics_endpoint_exposes_prometheus_text():
     c = _client()
     r = c.get('/api/metrics')
@@ -40,28 +57,16 @@ def test_metrics_endpoint_exposes_prometheus_text():
     assert 'api_uptime_seconds' in body
 
 
-def test_privacy_endpoints_require_tenant_header_and_succeed():
+def test_privacy_endpoints_require_auth_before_tenant_details():
     c = _client()
-    # Missing header should fail
+    # Authentication is checked before tenant details are disclosed.
     r_missing = c.post('/api/privacy/export')
-    assert r_missing.status_code == 400
-    assert r_missing.json().get('detail') == 'tenant_required'
+    assert r_missing.status_code == 401
+    assert r_missing.json().get('detail') == 'not_authenticated'
 
-    # With header, operations should be accepted
-    hdr = {'X-Tenant-Id': 't-123'}
-    r_export = c.post('/api/privacy/export', headers=hdr)
-    assert r_export.status_code == 200
-    j_export = r_export.json()
-    assert j_export.get('accepted') is True
-    assert j_export.get('operation') == 'export'
-    assert j_export.get('tenant_id') == 't-123'
-
-    r_delete = c.post('/api/privacy/delete', headers=hdr)
-    assert r_delete.status_code == 200
-    j_delete = r_delete.json()
-    assert j_delete.get('accepted') is True
-    assert j_delete.get('operation') == 'delete'
-    assert j_delete.get('tenant_id') == 't-123'
+    r_delete = c.post('/api/privacy/delete', json={'confirmation': 'DELETE'})
+    assert r_delete.status_code == 401
+    assert r_delete.json().get('detail') == 'not_authenticated'
 
 
 def test_api_openapi_alias_exists_and_is_json():

@@ -50,3 +50,7 @@ Thumbs.db
 # Deploy artifacts
 local_run_logs/
 DO_userdata.json
+# Generated from canonical site_profiles by generate_site_profiles.py.
+api/site_profiles/
+django/site_profiles/
+react-app/src/config/generated/

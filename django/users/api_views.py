@@ -291,8 +291,6 @@ def _process_oauth_google_callback_flow(
         user=user,
         provider="google",
         provider_user_id=provider_user_id,
-        access_token=token_payload.get("access_token") or "",
-        refresh_token=token_payload.get("refresh_token") or "",
     )
     return user, email, token_payload
 

@@ -11,7 +11,7 @@ const { parseEnv } = require('../lib/envFile');
 
 function write(root, example, env) {
   fs.writeFileSync(path.join(root, '.env.example'), example, 'utf8');
-  fs.writeFileSync(path.join(root, '.env'), env, 'utf8');
+  fs.writeFileSync(path.join(root, '.env.build'), env, 'utf8');
 }
 
 test('safe dev defaults apply only when ENV=development and opted in', async () => {

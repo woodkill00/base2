@@ -1,0 +1,773 @@
+{
+  "schemaVersion": 1,
+  "checks": [
+    {
+      "id": "feature-093-plan",
+      "command": ["python3", "scripts/python/validate_feature_093.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": [],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "gate-runtime-recovery-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_gate_runtime_recovery"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["feature-093-plan"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "surface-drift-contract",
+      "command": ["python3", "scripts/python/validate_surface_drift.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["feature-093-plan"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "surface-drift-hostile-tests",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_surface_drift"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["surface-drift-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "feature-093-closeout-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_feature_093_closeout"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["surface-drift-hostile-tests"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "module-registry-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_module_registry"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["feature-093-plan"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "module-lifecycle-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_module_lifecycle"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["module-registry-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "site-manifest-contract",
+      "command": ["{python-orchestrator}", "-m", "unittest", "scripts.tests.test_site_manifest"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["module-lifecycle-contract"],
+      "requiredTools": ["{python-orchestrator}", "node"]
+    },
+    {
+      "id": "site-profile-builds",
+      "command": ["{python-orchestrator}", "scripts/python/verify_site_profile_builds.py"],
+      "required": true,
+      "timeoutSeconds": 120,
+      "dependsOn": ["site-manifest-contract"],
+      "requiredTools": ["{python-orchestrator}", "node", "npm"]
+    },
+    {
+      "id": "visual-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_visual_contract"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["site-profile-builds"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "visual-port",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_visual_port"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["visual-contract"],
+      "requiredTools": ["python3", "git"]
+    },
+    {
+      "id": "visual-harness",
+      "command": ["npm", "--prefix", "react-app", "run", "test:visual"],
+      "required": true,
+      "timeoutSeconds": 120,
+      "dependsOn": ["visual-port"],
+      "requiredTools": ["npm", "node"]
+    },
+    {
+      "id": "visual-baseline-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_visual_baseline_contract"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["visual-harness"],
+      "requiredTools": ["python3", "bash", "git"]
+    },
+    {
+      "id": "accessibility-matrix-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_accessibility_matrix_contract"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["visual-baseline-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "brand-inventory",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_brand_inventory"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["accessibility-matrix-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "site-content-models",
+      "command": [
+        "{python-django}",
+        "-m",
+        "pytest",
+        "django/tests/test_site_content_models.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 45,
+      "dependsOn": ["brand-inventory"],
+      "requiredTools": ["{python-django}"]
+    },
+    {
+      "id": "identity-domain-models",
+      "command": [
+        "{python-django}",
+        "-m",
+        "pytest",
+        "--assert=plain",
+        "django/tests/test_identity_domain_models.py",
+        "django/tests/test_no_auth_routes.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 45,
+      "dependsOn": ["site-content-models"],
+      "requiredTools": ["{python-django}"]
+    },
+    {
+      "id": "identity-security-contract",
+      "command": ["{python-api}", "scripts/python/run_identity_security_matrix.py"],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": ["identity-domain-models"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "identity-realm-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_identity_realm_contract"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["identity-security-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "identity-schema-parity",
+      "command": [
+        "{python-api}",
+        "-m",
+        "pytest",
+        "scripts/tests/test_identity_schema_parity.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["identity-realm-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "identity-postgres-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_identity_postgres_contract"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["identity-schema-parity"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "data-rights-contract",
+      "command": ["{python-api}", "scripts/python/run_data_rights_matrix.py"],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": ["identity-postgres-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "account-admin-browser",
+      "command": ["npm", "--prefix", "react-app", "run", "test:account-e2e"],
+      "required": true,
+      "timeoutSeconds": 120,
+      "dependsOn": ["identity-security-contract", "browser-compatibility-matrix"],
+      "requiredTools": ["npm", "node"]
+    },
+    {
+      "id": "site-content-api",
+      "command": [
+        "{python-api}",
+        "-m",
+        "pytest",
+        "api/tests/contract/test_site_content_contract.py",
+        "api/tests/test_site_content_service.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 45,
+      "dependsOn": ["site-content-models"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "content-pack-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_content_pack_manifests"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["module-lifecycle-contract", "site-content-api"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "interaction-pack-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_interaction_pack_manifests"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["content-pack-contract", "public-content-abuse-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "scheduling-pack-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_scheduling_pack_manifests"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["interaction-pack-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "engagement-pack-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_engagement_pack_manifests"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["scheduling-pack-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "commercial-pack-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_commercial_pack_manifests"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["engagement-pack-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "module-checkpoint",
+      "command": ["python3", "scripts/python/run_module_checkpoint.py"],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": [
+        "commercial-pack-contract",
+        "visual-harness",
+        "accessibility-matrix-contract",
+        "public-experience-checkpoint",
+        "browser-compatibility-matrix"
+      ],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "operations-telemetry-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_operations_telemetry"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["module-checkpoint"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "recovery-assurance-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "unittest",
+        "scripts.tests.test_recovery_assurance"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": [
+        "operations-telemetry-contract",
+        "preview-state-contract",
+        "acme-staging-policy"
+      ],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
+      "id": "immutable-release-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "unittest",
+        "digital_ocean.tests.test_release_orchestrator"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": [
+        "recovery-assurance-contract",
+        "supply-chain-policy",
+        "deployment-evidence-contract"
+      ],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
+      "id": "capacity-assurance-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_capacity_assurance"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["module-checkpoint", "operations-telemetry-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "operations-checkpoint",
+      "command": ["{python-orchestrator}", "scripts/python/run_operations_checkpoint.py"],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": ["immutable-release-contract", "capacity-assurance-contract"],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
+      "id": "website-factory-contract",
+      "command": ["{python-orchestrator}", "-m", "unittest", "scripts.tests.test_base2_factory"],
+      "required": true,
+      "timeoutSeconds": 120,
+      "dependsOn": ["operations-checkpoint", "module-lifecycle-contract", "supply-chain-policy"],
+      "requiredTools": ["{python-orchestrator}", "git"]
+    },
+    {
+      "id": "generated-child-canary-preflight",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "digital_ocean/tests/test_generated_child_canary_preflight.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 120,
+      "dependsOn": [
+        "website-factory-contract",
+        "live-canary-preflight-contract",
+        "preview-state-contract"
+      ],
+      "requiredTools": ["{python-orchestrator}", "git"]
+    },
+    {
+      "id": "public-experience-contract",
+      "command": ["npm", "--prefix", "react-app", "run", "test:public-contract"],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": ["site-content-api"],
+      "requiredTools": ["npm", "node"]
+    },
+    {
+      "id": "public-content-abuse-contract",
+      "command": [
+        "{python-api}",
+        "-m",
+        "pytest",
+        "api/tests/security/test_site_content_abuse.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 45,
+      "dependsOn": ["site-content-api"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "search-seo-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_search_seo_contract"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["site-profile-builds", "site-content-api"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "privacy-localization-contract",
+      "command": ["npm", "--prefix", "react-app", "run", "test:privacy-contract"],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": ["public-experience-contract", "search-seo-contract"],
+      "requiredTools": ["npm", "node"]
+    },
+    {
+      "id": "browser-compatibility-matrix",
+      "command": ["npm", "--prefix", "react-app", "run", "test:compatibility"],
+      "required": true,
+      "timeoutSeconds": 300,
+      "dependsOn": ["privacy-localization-contract", "visual-harness"],
+      "requiredTools": ["npm", "node"]
+    },
+    {
+      "id": "edge-security-policy",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_edge_security_policy"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["site-profile-builds"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "transactional-email-contract",
+      "command": ["{python-api}", "-m", "pytest", "api/tests/test_transactional_email.py", "-q"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["public-content-abuse-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "public-experience-checkpoint",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_public_experience_checkpoint"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": [
+        "browser-compatibility-matrix",
+        "transactional-email-contract",
+        "edge-security-policy"
+      ],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "shell-parity",
+      "command": ["node", "scripts/guard-shell-parity.js"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": [],
+      "requiredTools": ["node"]
+    },
+    {
+      "id": "command-matrix",
+      "command": ["node", "scripts/validate-command-matrix.js"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["shell-parity"],
+      "requiredTools": ["node"]
+    },
+    {
+      "id": "ci-policy",
+      "command": ["python3", "scripts/python/validate_ci_policy.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["shell-parity"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "dependency-policy",
+      "command": ["python3", "scripts/python/validate_dependency_policy.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["ci-policy"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "security-adapter-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_security_result_adapter"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["dependency-policy"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "threat-model-policy",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_threat_model_policy"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["security-adapter-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "supply-chain-policy",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_supply_chain_policy"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["security-adapter-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "react-image-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_react_image_build"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["supply-chain-policy"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "service-health-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_service_health_contract"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["react-image-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "acme-bootstrap-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "digital_ocean/tests/test_acme_bootstrap.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["service-health-contract"],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
+      "id": "acme-staging-policy",
+      "command": ["python3", "scripts/python/validate_acme_mode.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["acme-bootstrap-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "deploy-config-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "digital_ocean/tests/test_deploy_config.py",
+        "digital_ocean/tests/test_env_check.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["acme-staging-policy"],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
+      "id": "preview-lease-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "digital_ocean/tests/test_preview_lease.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["deploy-config-contract"],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
+      "id": "owned-teardown-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "digital_ocean/tests/test_owned_teardown.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["preview-lease-contract"],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
+      "id": "dns-transaction-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "digital_ocean/tests/test_dns_transaction.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["owned-teardown-contract"],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
+      "id": "deployment-evidence-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "digital_ocean/tests/test_deployment_evidence.py",
+        "digital_ocean/tests/test_dns_transaction.py",
+        "digital_ocean/tests/test_owned_teardown.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["dns-transaction-contract"],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
+      "id": "preview-sweeper-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "digital_ocean/tests/test_preview_sweeper.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["deployment-evidence-contract"],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
+      "id": "preview-orchestrator-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "digital_ocean/tests/test_preview_orchestrator.py",
+        "digital_ocean/tests/test_dns_transaction.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["preview-sweeper-contract"],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
+      "id": "provider-admission-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "digital_ocean/tests/test_provider_admission.py",
+        "digital_ocean/tests/test_preview_orchestrator.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["preview-orchestrator-contract"],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
+      "id": "preview-state-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "digital_ocean/tests/test_preview_state.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["provider-admission-contract"],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
+      "id": "providerless-deployment-canary",
+      "command": ["{python-orchestrator}", "digital_ocean/scripts/python/providerless_canary.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["preview-state-contract"],
+      "requiredTools": ["{python-orchestrator}", "git"]
+    },
+    {
+      "id": "live-canary-preflight-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "digital_ocean/tests/test_live_canary_preflight.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["providerless-deployment-canary"],
+      "requiredTools": ["{python-orchestrator}", "git"]
+    },
+    {
+      "id": "env-tools",
+      "command": ["node", "scripts/run-root-coverage.js"],
+      "required": true,
+      "timeoutSeconds": 120,
+      "dependsOn": ["shell-parity"],
+      "requiredTools": ["node", "npm"]
+    },
+    {
+      "id": "frontend-lint",
+      "command": ["npm", "--prefix", "react-app", "run", "lint"],
+      "required": true,
+      "timeoutSeconds": 180,
+      "dependsOn": ["env-tools", "account-admin-browser"],
+      "requiredTools": ["node", "npm"]
+    },
+    {
+      "id": "frontend-test",
+      "command": ["npm", "--prefix", "react-app", "run", "test:ci"],
+      "required": true,
+      "timeoutSeconds": 900,
+      "dependsOn": ["frontend-lint"],
+      "requiredTools": ["node", "npm"],
+      "maxAttempts": 2,
+      "retryOn": ["incomplete-test-output"]
+    },
+    {
+      "id": "frontend-build",
+      "command": ["npm", "--prefix", "react-app", "run", "build"],
+      "required": true,
+      "timeoutSeconds": 600,
+      "dependsOn": ["frontend-test"],
+      "requiredTools": ["node", "npm"]
+    },
+    {
+      "id": "api-tests",
+      "command": ["{python-api}", "scripts/python/run_api_coverage.py"],
+      "required": true,
+      "timeoutSeconds": 120,
+      "dependsOn": ["env-tools"],
+      "requiredTools": ["{python-api}"],
+      "maxAttempts": 2,
+      "retryOn": ["timeout", "incomplete-test-output"]
+    },
+    {
+      "id": "django-tests",
+      "command": ["{python-django}", "scripts/python/run_django_coverage.py"],
+      "required": true,
+      "timeoutSeconds": 900,
+      "dependsOn": ["env-tools"],
+      "requiredTools": ["{python-django}"]
+    },
+    {
+      "id": "digitalocean-tests",
+      "command": ["{python-orchestrator}", "scripts/python/run_digitalocean_coverage.py"],
+      "required": true,
+      "timeoutSeconds": 300,
+      "dependsOn": ["env-tools"],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
+      "id": "coverage-policy",
+      "command": ["python3", "scripts/python/run_coverage_policy.py"],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": [
+        "env-tools",
+        "frontend-test",
+        "api-tests",
+        "django-tests",
+        "digitalocean-tests"
+      ],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "frontend-production-audit",
+      "command": ["npm", "--prefix", "react-app", "audit", "--omit=dev", "--audit-level=high"],
+      "required": true,
+      "timeoutSeconds": 180,
+      "dependsOn": ["frontend-build"],
+      "requiredTools": ["npm"]
+    },
+    {
+      "id": "compose-config",
+      "command": ["python3", "scripts/python/validate_compose_config.py"],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": ["env-tools"],
+      "requiredTools": ["docker", "python3"]
+    }
+  ]
+}

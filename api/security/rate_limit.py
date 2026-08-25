@@ -1,8 +1,9 @@
-import time
+import hashlib
 import os
+import time
 from contextlib import suppress
 from typing import Tuple
-from api.redis_client import get_client, key
+from api.redis_client import get_client, key, tenant_key
 
 WINDOW_MS = int(os.environ.get('RATE_LIMIT_WINDOW_MS', '900000'))  # 15 minutes default
 MAX_REQUESTS = int(os.environ.get('RATE_LIMIT_MAX_REQUESTS', '100'))
@@ -17,6 +18,10 @@ SCOPE_LIMITS: dict[str, tuple[int, int]] = {
     # Forgot-password is intentionally a bit higher.
     'forgot_password': (900_000, 10),
     'forgot_password_email': (900_000, 5),
+    # Public forms are tenant/IP scoped by their caller.
+    'public_form': (60_000, 10),
+    # Authenticated community writes remain bounded per tenant and source.
+    'community_submit': (60_000, 10),
 }
 
 
@@ -102,3 +107,25 @@ def incr_and_check_identifier_detailed(identifier: str, scope: str) -> tuple[int
     if retry_after < 1:
         retry_after = 1
     return count, True, retry_after
+
+
+def incr_and_check_tenant_detailed(
+    tenant_id: str, identifier: str, scope: str
+) -> tuple[int, bool, int]:
+    """Increment a tenant-owned counter without permitting a global key."""
+
+    c = get_client()
+    ts = now_ms()
+    window_ms, max_requests = _limit_for_scope(scope)
+    start = bucket_start_for_window(ts, window_ms)
+    identifier_digest = hashlib.sha256(str(identifier).encode()).hexdigest()
+    k = tenant_key("rate-limit", tenant_id, scope, identifier_digest, str(start))
+    pipe = c.pipeline()
+    pipe.incr(k, 1)
+    pipe.pexpire(k, window_ms)
+    value, _ = pipe.execute()
+    count = int(value)
+    if count <= max_requests:
+        return count, False, 0
+    remaining_ms = (start + window_ms) - ts
+    return count, True, max(1, int((remaining_ms + 999) // 1000))

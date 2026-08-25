@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "content",
+  "version": "1.0.0",
+  "compatibility": ">=2.0.0,<3.0.0",
+  "models": ["content.record"],
+  "migrations": ["django/sitecontent/migrations/0001_initial.py"],
+  "apiRoutes": ["/api/content"],
+  "uiRoutes": ["/journal"],
+  "navigation": ["content.index"],
+  "permissions": ["content.read", "content.write"],
+  "jobs": ["content.publish-scheduled"],
+  "settingsSchema": "modules/content/settings.schema.json",
+  "healthChecks": ["content.ready"],
+  "providerCapabilities": [],
+  "dependencies": [],
+  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+}

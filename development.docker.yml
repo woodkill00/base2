@@ -8,11 +8,13 @@ services:
         - NODE_VERSION=${REACT_APP_NODE_VERSION}
         - REACT_APP_API_URL=https://${WEBSITE_DOMAIN:-localhost}/api
         - REACT_APP_GOOGLE_CLIENT_ID=${REACT_APP_GOOGLE_CLIENT_ID}
+        - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
     container_name: ${COMPOSE_PROJECT_NAME}_react-app
     environment:
       - NODE_ENV=production
       - REACT_APP_API_URL=https://${WEBSITE_DOMAIN:-localhost}/api
       - REACT_APP_GOOGLE_CLIENT_ID=${REACT_APP_GOOGLE_CLIENT_ID}
+      - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
     networks: [app_network]
     restart: unless-stopped
     security_opt: [no-new-privileges:true]
@@ -21,7 +23,7 @@ services:
       - /var/run/nginx
       - /var/log/nginx
     healthcheck:
-      test: ['CMD-SHELL', 'curl -fsS http://localhost:8080/ > /dev/null || exit 1']
+      test: ['CMD-SHELL', 'wget -q --spider http://localhost:8080/ || exit 1']
     mem_limit: 256m
     cpus: '0.5'
 
@@ -37,6 +39,7 @@ services:
       # Mount external OpenAPI contract for runtime contract checks
       - ./specs/001-django-fastapi-react/contracts:/app/specs/001-django-fastapi-react/contracts:ro
     environment:
+      - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
       - PORT=${FASTAPI_PORT}
       - DB_HOST=postgres
       - DB_PORT=${POSTGRES_PORT}
@@ -44,12 +47,15 @@ services:
       - DB_USER=${POSTGRES_USER}
       - DB_PASSWORD=${POSTGRES_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
+      - IDENTITY_ENCRYPTION_KEY=${IDENTITY_ENCRYPTION_KEY}
       - JWT_EXPIRE=${JWT_EXPIRE}
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
     networks: [app_network]
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
     cap_drop: [ALL]
@@ -76,6 +82,7 @@ services:
         - PYTHON_VERSION=${DJANGO_PYTHON_VERSION}
     container_name: ${COMPOSE_PROJECT_NAME}_django
     environment:
+      - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
       - DJANGO_SETTINGS_MODULE=project.settings.production
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
       - DJANGO_DEBUG=${DJANGO_DEBUG}
@@ -106,7 +113,11 @@ services:
       - /tmp
       - /var/tmp
     healthcheck:
-      test: ['CMD', 'python', 'manage.py', 'check', '--deploy']
+      test:
+        [
+          'CMD-SHELL',
+          'python -c "import os, http.client, sys; p=int(os.environ.get(''PORT'', ''8000'')); c=http.client.HTTPConnection(''localhost'', p, timeout=3); c.request(''GET'', ''/internal/health''); r=c.getresponse(); sys.exit(0 if r.status==200 else 1)"',
+        ]
     mem_limit: 512m
     cpus: '0.75'
 
@@ -147,6 +158,8 @@ services:
       - /var/cache/nginx
       - /var/run
       - /var/log/nginx
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q --spider http://127.0.0.1:8081/health || exit 1']
     mem_limit: 64m
     cpus: '0.25'
 
@@ -167,7 +180,7 @@ services:
       - traefik_logs:/var/log/traefik
       - /var/run/docker.sock:/var/run/docker.sock:ro
     env_file:
-      - .env
+      - ${COMPOSE_ENV_FILE:-.env}
     environment:
       - WEBSITE_DOMAIN=${WEBSITE_DOMAIN:-localhost}
       - TRAEFIK_CERT_EMAIL=${TRAEFIK_CERT_EMAIL}
@@ -266,6 +279,7 @@ services:
         - PYTHON_VERSION=${FASTAPI_PYTHON_VERSION}
     container_name: ${COMPOSE_PROJECT_NAME}_celery_worker
     environment:
+      - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
       - DB_HOST=postgres
       - DB_PORT=${POSTGRES_PORT}
       - DB_NAME=${POSTGRES_DB}
@@ -312,6 +326,7 @@ services:
         - PYTHON_VERSION=${FASTAPI_PYTHON_VERSION}
     container_name: ${COMPOSE_PROJECT_NAME}_celery_beat
     environment:
+      - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
       - DB_HOST=postgres
       - DB_PORT=${POSTGRES_PORT}
       - DB_NAME=${POSTGRES_DB}
@@ -375,7 +390,11 @@ services:
     tmpfs:
       - /tmp
     healthcheck:
-      test: ['CMD-SHELL', 'wget -qO- http://localhost:5555/ > /dev/null || exit 1']
+      test:
+        [
+          'CMD-SHELL',
+          'python -c "import http.client, sys; c=http.client.HTTPConnection(''localhost'', 5555, timeout=3); c.request(''GET'', ''/''); r=c.getresponse(); sys.exit(0 if r.status < 500 else 1)"',
+        ]
       interval: 20s
       timeout: 5s
       retries: 10

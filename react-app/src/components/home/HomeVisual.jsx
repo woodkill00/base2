@@ -1,11 +1,9 @@
 import { motion } from 'motion/react';
 
 import GlassCard from '../glass/GlassCard';
+import { siteManifest } from '../../config/siteRuntime';
 
-const defaultSrc =
-  'https://images.unsplash.com/photo-1724159465042-f345315d2cd1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxnbGFzc21vcnBoaXNtJTIwdWklMjBhYnN0cmFjdHxlbnwxfHx8fDE3NjgzNTk5NTJ8MA&ixlib=rb-4.1.0&q=80&w=1080';
-
-const HomeVisual = ({ src = defaultSrc, alt = 'Glassmorphism UI Abstract' }) => {
+const HomeVisual = () => {
   return (
     <section
       style={{ padding: 'calc(4rem) calc(max(1rem, calc((100vw - 1200px) / 2))) calc(4rem)' }}
@@ -17,40 +15,40 @@ const HomeVisual = ({ src = defaultSrc, alt = 'Glassmorphism UI Abstract' }) => 
           viewport={{ once: true }}
           transition={{ duration: 0.8, ease: 'easeOut' }}
         >
-          <GlassCard style={{ padding: 'calc(3rem) calc(2.5rem)', overflow: 'hidden' }}>
+          <GlassCard
+            className="home-visual-console"
+            style={{ padding: 'calc(3rem) calc(2.5rem)', overflow: 'hidden' }}
+          >
             <div className="text-center" style={{ marginBottom: 'calc(2rem)' }}>
               <h2 style={{ fontSize: 'clamp(1.875rem, 4vw, 2.5rem)', marginBottom: 'calc(1rem)' }}>
                 Beautiful by Design
               </h2>
               <p className="text-foreground/70 dark:text-foreground/60">
-                Experience the perfect blend of aesthetics and functionality
+                A manifest-driven surface with deterministic, local visual assets.
               </p>
             </div>
 
             <div
-              className="relative rounded-[var(--radius-lg)] overflow-hidden backdrop-blur-2xl bg-white/20 dark:bg-black/30 border border-white/30 dark:border-white/20"
-              style={{ aspectRatio: '16 / 9' }}
+              className="home-runtime-frame"
+              role="region"
+              tabIndex={0}
+              aria-label="Enabled site modules"
             >
-              <img
-                src={src}
-                alt={alt}
-                className="w-full h-full object-cover opacity-80"
-                loading="lazy"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-            </div>
-
-            <div className="relative mt-8 grid grid-cols-3 gap-4">
-              {[1, 2, 3].map((i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1, duration: 0.5, ease: 'easeOut' }}
-                  className="aspect-square rounded-[var(--radius-lg)] backdrop-blur-2xl bg-white/20 dark:bg-black/30 border border-white/30 dark:border-white/20"
-                />
-              ))}
+              <div className="home-runtime-header">
+                <span>{siteManifest.siteId}</span>
+                <strong>{siteManifest.defaultLocale}</strong>
+              </div>
+              <div className="home-runtime-grid">
+                {siteManifest.modules
+                  .filter((item) => item.enabled)
+                  .map((item) => (
+                    <article className="home-runtime-panel" key={item.id}>
+                      <span>Enabled module</span>
+                      <strong>{item.id}</strong>
+                      <p>Contract version {item.version}</p>
+                    </article>
+                  ))}
+              </div>
             </div>
           </GlassCard>
         </motion.div>

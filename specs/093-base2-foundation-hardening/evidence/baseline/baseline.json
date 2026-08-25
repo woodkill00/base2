@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-08-24",
+  "source": {
+    "branch": "main",
+    "commit": "5320d3fac8decfb77df75c10b4633821f91cea78"
+  },
+  "visualSource": {
+    "branch": "vscode-codex/base2-volcanic-obsidian-layout",
+    "commit": "0132131292d584172a9b2fa173e439b540abed99",
+    "mergeBase": "5320d3fac8decfb77df75c10b4633821f91cea78",
+    "aheadOfMainCommits": 231,
+    "changedFiles": 17,
+    "insertions": 4513,
+    "deletions": 510,
+    "promotionAllowed": false
+  },
+  "tests": {
+    "frontend": {"status": "passed", "suites": 45, "tests": 84, "coverageScope": "selected-glass-components-only"},
+    "api": {"status": "passed", "totalCoveragePercent": 52.63},
+    "rootEnvironment": {"status": "failed", "passed": 14, "failed": 14},
+    "scheduledPerformance": {"status": "failed-repeatedly"}
+  },
+  "dependencies": {
+    "frontendProduction": {"total": 6, "high": 2, "moderate": 4},
+    "legacyDevelopmentTree": {"critical": 2}
+  },
+  "knownGateRisks": [
+    "security workflows contain non-blocking failure suppression",
+    "coverage label does not represent the whole application",
+    "root fixtures depend on generated state or unavailable PowerShell"
+  ],
+  "liveCanaryFindings": [
+    "frontend Nginx configuration generation was incompatible with the live builder",
+    "health commands referenced a binary absent from the image",
+    "Traefik ACME storage ownership was invalid",
+    "environment values contained malformed inline configuration",
+    "first deployment required manual completion",
+    "managed DNS records drifted"
+  ],
+  "experienceFindings": [
+    "visible controls and links have no implementation",
+    "sample project and dashboard data are hardcoded",
+    "items API returns HTTP 501",
+    "branded 404 behavior is incomplete",
+    "branding is inconsistent"
+  ],
+  "secretMaterialIncluded": false
+}

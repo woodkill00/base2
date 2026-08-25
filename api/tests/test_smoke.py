@@ -4,11 +4,16 @@ from fastapi.testclient import TestClient
 # to sys.path when importing test modules. Ensure the API app module is importable
 # both when running from repo root and when code is copied into a container at /app.
 
-from api.main import app
+import api.main as main
 
 
-def test_health_exists():
-    client = TestClient(app)
+def test_health_exists(monkeypatch):
+    monkeypatch.setattr(
+        main,
+        'READINESS_PROBES',
+        {name: (lambda: True) for name in ('database', 'schema', 'redis', 'celery')},
+    )
+    client = TestClient(main.app)
     r = client.get('/api/health')
     assert r.status_code == 200
     j = r.json()

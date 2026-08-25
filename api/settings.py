@@ -4,6 +4,11 @@ from typing import Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
+from api.site_manifest import load_runtime_manifest
+
+
+SITE_MANIFEST, SITE_MANIFEST_DIGEST = load_runtime_manifest()
+
 
 def _sanitize_project_slug(raw: str) -> str:
     value = (raw or '').strip().lower()
@@ -21,6 +26,9 @@ def _default_project_slug() -> str:
 
 class Settings(BaseSettings):
     ENV: str = Field(default='development')
+    SITE_PROFILE: str = Field(default=SITE_MANIFEST['siteId'])
+    SITE_NAME: str = Field(default=SITE_MANIFEST['name'])
+    SITE_MANIFEST_DIGEST: str = Field(default=SITE_MANIFEST_DIGEST)
 
     # Docs/OpenAPI exposure
     API_DOCS_ENABLED: bool = Field(
@@ -42,7 +50,11 @@ class Settings(BaseSettings):
     GOOGLE_OAUTH_CLIENT_ID: Optional[str] = None
     GOOGLE_OAUTH_CLIENT_SECRET: Optional[str] = None
     GOOGLE_OAUTH_REDIRECT_URI: Optional[str] = None
+    GOOGLE_OAUTH_ENABLED: bool = Field(default=False)
     OAUTH_STATE_SECRET: Optional[str] = None
+    IDENTITY_ENCRYPTION_KEY: Optional[str] = None
+    IDENTITY_ALLOW_FIRST_OWNER_BOOTSTRAP: bool = Field(default=False)
+    WEBAUTHN_ENABLED: bool = Field(default=False)
 
     AUTH_REFRESH_COOKIE: bool = Field(default=True)
 
@@ -62,6 +74,7 @@ class Settings(BaseSettings):
 
     # E2E test mode gate
     E2E_TEST_MODE: bool = Field(default=False)
+    CELERY_REQUIRED: bool = Field(default=False)
 
     def model_post_init(self, __context):
         project = _default_project_slug()
@@ -92,6 +105,8 @@ class Settings(BaseSettings):
 
         # Fail-fast in non-local environments.
         env = (self.ENV or '').strip().lower()
+        if env == 'production' and self.E2E_TEST_MODE:
+            raise RuntimeError('E2E_TEST_MODE cannot be enabled in production')
         if env in {'staging', 'production'}:
             missing = []
             if not (self.JWT_SECRET or '').strip():
@@ -102,10 +117,12 @@ class Settings(BaseSettings):
                 missing.append('FRONTEND_URL')
             if not (self.OAUTH_STATE_SECRET or '').strip():
                 missing.append('OAUTH_STATE_SECRET')
+            if not (self.IDENTITY_ENCRYPTION_KEY or '').strip():
+                missing.append('IDENTITY_ENCRYPTION_KEY')
             if missing:
                 raise RuntimeError('Missing required env var(s): ' + ', '.join(missing))
 
-            if env == 'production':
+            if env == 'production' and self.GOOGLE_OAUTH_ENABLED:
                 oauth_missing = []
                 if not (self.GOOGLE_OAUTH_CLIENT_ID or '').strip():
                     oauth_missing.append('GOOGLE_OAUTH_CLIENT_ID')

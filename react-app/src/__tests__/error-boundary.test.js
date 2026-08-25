@@ -21,5 +21,5 @@ test('ErrorBoundary renders fallback on error', () => {
     </ErrorBoundary>
   );
   expect(screen.getByRole('alert')).toBeInTheDocument();
-  expect(screen.getByText(/Something went wrong/i)).toBeInTheDocument();
+  expect(screen.getByText(/encountered a problem/i)).toBeInTheDocument();
 });

@@ -47,6 +47,7 @@ test('doctor --strict exits 0 when no required findings exist', () => {
     'REDIS_PASSWORD=real',
     'JWT_SECRET=real',
     'TOKEN_PEPPER=real',
+    'IDENTITY_ENCRYPTION_KEY=real',
     'OAUTH_STATE_SECRET=real',
     'DJANGO_SUPERUSER_NAME=admin',
     'DJANGO_SUPERUSER_PASSWORD=real',

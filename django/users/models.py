@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -12,6 +13,124 @@ from common.models import (
 )
 
 AuthUser = get_user_model()
+
+
+class Organization(UUIDMixin, TimestampedModel):
+    name = models.CharField(max_length=160)
+    slug = models.SlugField(max_length=80, unique=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ("slug",)
+
+
+class Membership(UUIDMixin, TimestampedModel):
+    class Role(models.TextChoices):
+        OWNER = "owner", _("Owner")
+        ADMIN = "admin", _("Administrator")
+        EDITOR = "editor", _("Editor")
+        VIEWER = "viewer", _("Viewer")
+
+    class Status(models.TextChoices):
+        ACTIVE = "active", _("Active")
+        SUSPENDED = "suspended", _("Suspended")
+
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="memberships"
+    )
+    user = models.ForeignKey(
+        AuthUser, on_delete=models.CASCADE, related_name="organization_memberships"
+    )
+    role = models.CharField(max_length=16, choices=Role.choices, default=Role.VIEWER)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.ACTIVE)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("organization", "user"), name="users_membership_org_user_uniq"
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=("organization", "role", "status"), name="users_membership_role_idx"
+            )
+        ]
+
+
+class Invitation(UUIDMixin, TimestampedModel):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="invitations"
+    )
+    email = models.EmailField(max_length=255)
+    role = models.CharField(max_length=16, choices=Membership.Role.choices)
+    token_hash = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField()
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=("organization", "email", "expires_at"), name="users_invite_lookup_idx"
+            )
+        ]
+
+
+class Authenticator(UUIDMixin, TimestampedModel):
+    class Kind(models.TextChoices):
+        TOTP = "totp", _("TOTP")
+        WEBAUTHN = "webauthn", _("WebAuthn")
+
+    user = models.ForeignKey(AuthUser, on_delete=models.CASCADE, related_name="authenticators")
+    kind = models.CharField(max_length=16, choices=Kind.choices)
+    credential_id = models.CharField(max_length=512, blank=True, default="")
+    secret_ciphertext = models.TextField()
+    is_active = models.BooleanField(default=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("user", "kind", "credential_id"), name="users_authenticator_uniq"
+            )
+        ]
+
+
+class UserSession(UUIDMixin, TimestampedModel):
+    user = models.ForeignKey(AuthUser, on_delete=models.CASCADE, related_name="managed_sessions")
+    token_hash = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField()
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True, default="")
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=("user", "revoked_at", "expires_at"), name="users_session_active_idx"
+            )
+        ]
+
+
+class ApiCredential(UUIDMixin, TimestampedModel):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="api_credentials"
+    )
+    user = models.ForeignKey(
+        AuthUser, on_delete=models.CASCADE, related_name="managed_api_credentials"
+    )
+    label = models.CharField(max_length=120)
+    prefix = models.CharField(max_length=32, unique=True)
+    secret_hash = models.CharField(max_length=64, unique=True)
+    scopes = models.JSONField(default=list)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=("organization", "revoked_at"), name="users_credential_active_idx")
+        ]
 
 
 class UserProfile(UUIDMixin, TimestampedModel):
@@ -106,8 +225,6 @@ class OAuthAccount(UUIDMixin, TimestampedModel):
     user = models.ForeignKey(AuthUser, on_delete=models.CASCADE, related_name="oauth_accounts")
     provider = models.CharField(max_length=50)
     provider_user_id = models.CharField(max_length=255)
-    access_token = models.TextField(blank=True, default="")
-    refresh_token = models.TextField(blank=True, default="")
     expires_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
@@ -151,6 +268,14 @@ class AuditEvent(TimestampedModel):
             models.Index(fields=["action"], name="users_audit_action_only_idx"),
             models.Index(fields=["created"], name="users_audit_created_idx"),
         ]
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValidationError("audit_event_append_only")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("audit_event_append_only")
 
 
 class EmailOutbox(UUIDMixin, TimestampedModel):

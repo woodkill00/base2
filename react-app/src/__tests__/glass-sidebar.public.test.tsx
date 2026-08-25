@@ -41,9 +41,9 @@ describe('GlassSidebar (public variant)', () => {
 
     // Click a menu item and ensure callback + close.
     await act(async () => {
-      await user.click(screen.getByRole('button', { name: /features/i }));
+      await user.click(screen.getByRole('button', { name: /journal/i }));
     });
-    expect(onMenuItemClick).toHaveBeenCalledWith('features');
+    expect(onMenuItemClick).toHaveBeenCalledWith('/journal');
     await waitForElementToBeRemoved(() => screen.queryByText('Menu'));
     expect(screen.getByLabelText(/open menu/i)).toBeInTheDocument();
 
@@ -71,7 +71,7 @@ describe('GlassSidebar (public variant)', () => {
     expect(await screen.findByText('Menu')).toBeInTheDocument();
 
     await act(async () => {
-      await user.click(screen.getByRole('button', { name: /documentation/i }));
+      await user.click(screen.getByRole('button', { name: /contact/i }));
     });
     await waitForElementToBeRemoved(() => screen.queryByText('Menu'));
   });

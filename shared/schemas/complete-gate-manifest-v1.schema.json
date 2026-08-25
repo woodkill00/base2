@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://base2.local/contracts/complete-gate-manifest-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "checks"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "command", "required", "timeoutSeconds", "dependsOn", "requiredTools"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]+$" },
+          "command": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+          "required": { "type": "boolean" },
+          "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 3600 },
+          "dependsOn": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+          "requiredTools": { "type": "array", "uniqueItems": true, "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

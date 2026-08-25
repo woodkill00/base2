@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "blog",
+  "version": "1.0.0",
+  "compatibility": ">=2.0.0,<3.0.0",
+  "models": ["blog.post"],
+  "migrations": [],
+  "apiRoutes": ["/api/content/blog-post/{slug}"],
+  "uiRoutes": ["/blog", "/blog/{slug}"],
+  "navigation": ["blog.index"],
+  "permissions": ["blog.read", "blog.write"],
+  "jobs": ["blog.publish-scheduled"],
+  "settingsSchema": "modules/blog/settings.schema.json",
+  "healthChecks": ["blog.ready"],
+  "providerCapabilities": [],
+  "dependencies": [],
+  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+}

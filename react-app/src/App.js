@@ -1,69 +1,53 @@
-import { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Suspense, useEffect } from 'react';
+import { BrowserRouter as Router } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import { MotionConfig } from 'motion/react';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ToastProvider from './components/ToastProvider.jsx';
-import ProtectedRoute from './components/ProtectedRoute.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
+import PrivacyRuntime from './components/public/PrivacyRuntime.jsx';
+import PublicRoutes from './routes/PublicRoutes.jsx';
 import './App.css';
-const Home = lazy(() => import('./pages/Home'));
-const Login = lazy(() => import('./pages/Login'));
-const Signup = lazy(() => import('./pages/Signup'));
-const Items = lazy(() => import('./pages/Items'));
-const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
-const Settings = lazy(() => import('./pages/Settings'));
-const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
-const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
-const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+import { siteManifest } from './config/siteRuntime';
+import { resolveLocale } from './services/privacyRuntime';
 
 // Replace this with your actual Google Client ID
 // Get it from: https://console.cloud.google.com/apis/credentials
-const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID_HERE';
+const GOOGLE_CLIENT_ID = import.meta.env.REACT_APP_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID_HERE';
 
 function App() {
+  useEffect(() => {
+    const routeLocale = resolveLocale(window.location.pathname.split('/')[1], siteManifest);
+    document.documentElement.lang = routeLocale.supported
+      ? routeLocale.locale
+      : siteManifest.defaultLocale;
+    document.documentElement.dataset.siteId = siteManifest.siteId;
+    document.documentElement.dataset.theme = siteManifest.brand.theme;
+    document.title = siteManifest.seo.titleTemplate.replace('%s', 'Home');
+  }, []);
+
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <AuthProvider>
         <ThemeProvider>
-          <ToastProvider>
-            <Router
-              future={{
-                v7_startTransition: true,
-                v7_relativeSplatPath: true,
-              }}
-            >
-              <ErrorBoundary>
-                <Suspense fallback={<div style={{ padding: 24 }}>Loading...</div>}>
-                  <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/login" element={<Login variant="public" />} />
-                    <Route path="/signup" element={<Signup variant="public" />} />
-                    <Route path="/items" element={<Items />} />
-                    <Route path="/verify-email" element={<VerifyEmail variant="public" />} />
-                    <Route path="/forgot-password" element={<ForgotPassword variant="public" />} />
-                    <Route path="/reset-password" element={<ResetPassword variant="public" />} />
-                    <Route
-                      path="/dashboard"
-                      element={
-                        <ProtectedRoute>
-                          <Dashboard />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/settings"
-                      element={
-                        <ProtectedRoute>
-                          <Settings />
-                        </ProtectedRoute>
-                      }
-                    />
-                  </Routes>
-                </Suspense>
-              </ErrorBoundary>
-            </Router>
-          </ToastProvider>
+          <MotionConfig reducedMotion="user">
+            <ToastProvider>
+              <PrivacyRuntime />
+              <Router
+                future={{
+                  v7_startTransition: true,
+                  v7_relativeSplatPath: true,
+                }}
+              >
+                <ErrorBoundary>
+                  <Suspense fallback={<div style={{ padding: 24 }}>Loading...</div>}>
+                    <PublicRoutes />
+                  </Suspense>
+                </ErrorBoundary>
+              </Router>
+            </ToastProvider>
+          </MotionConfig>
         </ThemeProvider>
       </AuthProvider>
     </GoogleOAuthProvider>

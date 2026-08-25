@@ -12,9 +12,9 @@ Usage: ./scripts/bash/install-python-deps.sh [options]
 
 Options:
   --skip-pip-upgrade   Skip pip upgrade step
-  --api                Install requirements-dev-api.txt
-  --django             Install requirements-dev-django.txt
-  --digital-ocean      Install digital_ocean/requirements.txt
+  --api                Install API dependencies into .venv-api
+  --django             Install Django dependencies into .venv-django
+  --digital-ocean      Install orchestration dependencies into .venv
   --help, -h           Show this help message
 EOF
 }
@@ -51,10 +51,9 @@ done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-VENV_PYTHON="$REPO_ROOT/.venv/bin/python"
-
-if [[ ! -x "$VENV_PYTHON" ]]; then
-  echo "Virtual environment .venv not found. Run ./scripts/bash/bootstrap-venv.sh first." >&2
+HOST_PYTHON="$(command -v python3 || command -v python || true)"
+if [[ -z "$HOST_PYTHON" ]]; then
+  echo "Python executable not found in PATH. Install Python 3.12+ and retry." >&2
   exit 1
 fi
 
@@ -76,42 +75,68 @@ normalize_version() {
   fi
 }
 
-actual_version="$($VENV_PYTHON -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")"
 expected_version="$(normalize_version "$required_version")"
-
-if [[ -z "$actual_version" || -z "$expected_version" ]]; then
+if [[ -z "$expected_version" ]]; then
   echo "Unable to determine Python version." >&2
   exit 1
 fi
 
-if [[ "$actual_version" != "$expected_version" ]]; then
-  echo "Virtual environment uses Python $actual_version but $expected_version is required." >&2
-  exit 1
-fi
-
-if ! $SKIP_PIP_UPGRADE; then
-  echo "Upgrading pip..."
-  "$VENV_PYTHON" -m pip install --upgrade pip
-fi
-
-requirements=()
+targets=()
 if $INSTALL_API || $INSTALL_DJANGO || $INSTALL_DO; then
-  $INSTALL_API && requirements+=("requirements-dev-api.txt")
-  $INSTALL_DJANGO && requirements+=("requirements-dev-django.txt")
-  $INSTALL_DO && requirements+=("digital_ocean/requirements.txt")
+  $INSTALL_API && targets+=(".venv-api:requirements-dev-api.txt")
+  $INSTALL_DJANGO && targets+=(".venv-django:requirements-dev-django.txt")
+  $INSTALL_DO && targets+=(".venv:digital_ocean/requirements.txt")
 else
-  requirements+=("digital_ocean/requirements.txt")
+  targets+=(
+    ".venv-api:requirements-dev-api.txt"
+    ".venv-django:requirements-dev-django.txt"
+    ".venv:digital_ocean/requirements.txt"
+  )
 fi
 
-for req in "${requirements[@]}"; do
+ensure_venv() {
+  local venv_dir="$1"
+  local venv_python="$venv_dir/bin/python"
+  if [[ -x "$venv_python" ]] && "$venv_python" -m pip --version >/dev/null 2>&1; then
+    return 0
+  fi
+  echo "Creating isolated environment ${venv_dir#$REPO_ROOT/}..."
+  if ! "$HOST_PYTHON" -m venv --clear "$venv_dir"; then
+    echo "Standard-library venv unavailable; trying user-local virtualenv..." >&2
+    "$HOST_PYTHON" -m virtualenv --clear "$venv_dir"
+  fi
+  [[ -x "$venv_python" ]] && "$venv_python" -m pip --version >/dev/null 2>&1
+}
+
+for target in "${targets[@]}"; do
+  venv_name="${target%%:*}"
+  req="${target#*:}"
+  venv_dir="$REPO_ROOT/$venv_name"
+  venv_python="$venv_dir/bin/python"
   req_path="$REPO_ROOT/$req"
-  if [[ -f "$req_path" ]]; then
-    echo "Installing Python dependencies from $req..."
-    "$VENV_PYTHON" -m pip install -r "$req_path"
-  else
+  if [[ ! -f "$req_path" ]]; then
     echo "Requirements file not found: $req" >&2
     exit 1
   fi
- done
+  if ! ensure_venv "$venv_dir"; then
+    echo "Unable to create a usable $venv_name environment." >&2
+    exit 1
+  fi
+  actual_version="$($venv_python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")"
+  if [[ "$actual_version" != "$expected_version" ]]; then
+    echo "$venv_name uses Python $actual_version but $expected_version is required." >&2
+    exit 1
+  fi
+  if ! $SKIP_PIP_UPGRADE; then
+    echo "Upgrading pip in $venv_name..."
+    "$venv_python" -m pip install --upgrade pip
+  fi
+  echo "Installing $req into $venv_name..."
+  if ! "$venv_python" -m pip install -r "$req_path"; then
+    echo "Initial pip install failed for $venv_name; retrying once without cache..." >&2
+    "$venv_python" -m pip install --no-cache-dir -r "$req_path"
+  fi
+  "$venv_python" -m pip check
+done
 
 echo "Python dependencies installed successfully."

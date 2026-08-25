@@ -11,4 +11,7 @@ def internal_health(_request):
     except Exception:
         db_ok = False
 
-    return JsonResponse({"ok": bool(db_ok), "service": "django", "db_ok": bool(db_ok)})
+    return JsonResponse(
+        {"ok": bool(db_ok), "service": "django", "db_ok": bool(db_ok)},
+        status=200 if db_ok else 503,
+    )

@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://base2.local/contracts/preview-lease-v1.schema.json",
+  "title": "Base2 Preview Lease v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "leaseId",
+    "siteId",
+    "sourceCommit",
+    "manifestDigest",
+    "owner",
+    "state",
+    "createdAt",
+    "expiresAt",
+    "costPolicy",
+    "resources",
+    "dnsMutations"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "leaseId": { "type": "string", "minLength": 8, "maxLength": 128 },
+    "siteId": { "type": "string" },
+    "sourceCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "manifestDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "owner": { "type": "string", "minLength": 1 },
+    "state": {
+      "enum": [
+        "planned",
+        "provisioning",
+        "bootstrapping",
+        "healthy",
+        "observing",
+        "teardown_due",
+        "destroying",
+        "destroyed",
+        "failed"
+      ]
+    },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" },
+    "lastActivityAt": { "type": "string", "format": "date-time" },
+    "idleExpiresAt": { "type": "string", "format": "date-time" },
+    "costPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["currency", "maximumMinorUnits"],
+      "properties": {
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "maximumMinorUnits": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["provider", "kind", "providerId", "ownershipTag"],
+        "properties": {
+          "provider": { "type": "string" },
+          "kind": { "type": "string" },
+          "providerId": { "type": "string" },
+          "ownershipTag": { "type": "string" }
+        }
+      }
+    },
+    "dnsMutations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["zone", "name", "type", "previousValues", "desiredValues", "state"],
+        "properties": {
+          "zone": { "type": "string" },
+          "name": { "type": "string" },
+          "type": { "type": "string" },
+          "previousValues": { "type": "array", "items": { "type": "string" } },
+          "desiredValues": { "type": "array", "items": { "type": "string" } },
+          "state": { "enum": ["planned", "applied", "verified", "restored"] }
+        }
+      }
+    }
+  }
+}

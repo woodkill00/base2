@@ -3,30 +3,25 @@ import { useNavigate } from 'react-router-dom';
 import GlassHeader from '../components/glass/GlassHeader';
 import GlassSidebar from '../components/glass/GlassSidebar';
 import HomeHero from '../components/home/HomeHero';
-import About from '../components/portfolio/About';
-import ProjectsGrid from '../components/portfolio/ProjectsGrid';
-import ContactForm from '../components/portfolio/ContactForm';
 import HomeFeatures from '../components/home/HomeFeatures';
 import HomeVisual from '../components/home/HomeVisual';
 import HomeTrust from '../components/home/HomeTrust';
 import HomeFooter from '../components/home/HomeFooter';
+import { siteManifest } from '../config/siteRuntime';
 
 const Home = () => {
   const navigate = useNavigate();
 
-  const handleMenuItemClick = (id) => {
-    if (id === 'home') {
+  const handleMenuItemClick = (path) => {
+    if (path === '/') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    if (id === 'features') {
-      const section = document.getElementById('features');
-      if (section) section.scrollIntoView({ behavior: 'smooth' });
-    }
+    navigate(path);
   };
 
   return (
-    <div className="relative min-h-screen" data-testid="home-page">
+    <div className="home-page-root relative min-h-screen" data-testid="home-page">
       <div className="gradient-background" />
 
       <div className="relative z-10">
@@ -34,11 +29,16 @@ const Home = () => {
         <GlassSidebar variant="public" onMenuItemClick={handleMenuItemClick} />
 
         <main>
-          <HomeHero onPrimary={() => navigate('/signup')} onSecondary={() => {}} />
+          <HomeHero
+            onPrimary={() =>
+              navigate(
+                siteManifest.contact.enabled ? '/contact' : siteManifest.navigation[0]?.path || '/'
+              )
+            }
+            onSecondary={() => navigate(siteManifest.legal.accessibilityPath)}
+            onSearch={(query) => navigate(`/search?q=${encodeURIComponent(query)}`)}
+          />
           <HomeFeatures />
-          <About />
-          <ProjectsGrid />
-          <ContactForm />
           <HomeVisual />
           <HomeTrust />
         </main>

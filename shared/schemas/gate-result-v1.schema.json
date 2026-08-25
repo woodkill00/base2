@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://base2.local/contracts/gate-result-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "runId",
+    "sourceCommit",
+    "startedAt",
+    "finishedAt",
+    "overallStatus",
+    "checks",
+    "evidenceDigest"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "runId": { "type": "string" },
+    "sourceCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "finishedAt": { "type": "string", "format": "date-time" },
+    "overallStatus": { "enum": ["passed", "failed", "incomplete"] },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status", "required", "exitCode", "artifact", "diagnostic", "attempts"],
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "enum": ["passed", "failed", "skipped", "unavailable", "not_run"] },
+          "required": { "type": "boolean" },
+          "exitCode": { "type": ["integer", "null"] },
+          "artifact": { "type": ["string", "null"] },
+          "diagnostic": { "type": ["string", "null"] },
+          "attempts": { "type": "integer", "minimum": 0, "maximum": 2 }
+        }
+      }
+    },
+    "evidenceDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}

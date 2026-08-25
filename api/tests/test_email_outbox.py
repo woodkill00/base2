@@ -28,7 +28,8 @@ def test_queue_email_creates_outbox_row():
     assert fetched.status in {'queued', 'sent'}
 
 
-def test_process_outbox_marks_sent():
+def test_process_outbox_marks_sent(monkeypatch):
+    monkeypatch.setenv('BASE2_EMAIL_ADAPTER', 'local_fake')
     outbox = queue_email(
         to_email='test2@example.com',
         subject='Hello2',

@@ -30,6 +30,9 @@ def apply_migrations() -> None:
         '002_create_email_outbox',
         '003_add_refresh_token_last_seen',
         '004_add_user_lockout_fields',
+        '005_create_identity_admin_tables',
+        '006_create_data_rights_operations',
+        '007_protect_audit_events',
     ]
 
     with db_conn() as conn:

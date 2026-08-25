@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "support",
+  "version": "1.0.0",
+  "compatibility": ">=2.0.0,<3.0.0",
+  "models": ["support.request"],
+  "migrations": [],
+  "apiRoutes": ["/api/forms/support"],
+  "uiRoutes": ["/support"],
+  "navigation": ["support.index"],
+  "permissions": ["support.create", "support.manage"],
+  "jobs": ["support.notify", "support.expire"],
+  "settingsSchema": "modules/support/settings.schema.json",
+  "healthChecks": ["support.queue-ready"],
+  "providerCapabilities": ["email"],
+  "dependencies": ["forms"],
+  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+}

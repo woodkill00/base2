@@ -12,18 +12,18 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 COPY .npmrc ./
-COPY scripts/postinstall.js ./scripts/postinstall.js
-COPY patches ./patches
 RUN npm ci --legacy-peer-deps --no-audit --no-fund && npm cache clean --force
 
 COPY . .
 
-# Speed up CRA production builds on small machines
+# Keep production builds deterministic on small machines.
 ENV CI=true
 ENV GENERATE_SOURCEMAP=false
 
 ARG REACT_APP_GOOGLE_CLIENT_ID
 ENV REACT_APP_GOOGLE_CLIENT_ID=${REACT_APP_GOOGLE_CLIENT_ID}
+ARG SITE_PROFILE=ember-studio
+ENV VITE_SITE_PROFILE=${SITE_PROFILE}
 
 # Create production build
 RUN npm run build
@@ -39,35 +39,9 @@ RUN apk update \
 # Copy build artifacts to Nginx html directory
 COPY --from=build /app/build /usr/share/nginx/html
 
-# Minimal Nginx main config to run workers as non-root user
-RUN printf "user nginx;\nworker_processes auto;\nerror_log /dev/stderr warn;\npid /var/run/nginx.pid;\n\nevents { worker_connections 1024; }\n\nhttp {\n  include /etc/nginx/mime.types;\n  default_type application/octet-stream;\n  sendfile on;\n  keepalive_timeout 65;\n  include /etc/nginx/conf.d/*.conf;\n}\n" > /etc/nginx/nginx.conf
-
-# Minimal Nginx site config for SPA (listen on 8080 for non-root)
-RUN cat <<'EOF' > /etc/nginx/conf.d/default.conf
-server {
-  listen 8080;
-  server_name _;
-
-  root /usr/share/nginx/html;
-  index index.html;
-
-  location / {
-    try_files $uri $uri/ /index.html;
-  }
-
-  location ~* \.(?:js|css|png|jpg|jpeg|gif|ico|svg|webp|ttf|woff|woff2)$ {
-    try_files $uri =404;
-    expires 1y;
-    add_header Cache-Control "public, immutable";
-    access_log off;
-  }
-
-  add_header X-Content-Type-Options nosniff;
-  add_header X-Frame-Options SAMEORIGIN;
-  add_header Referrer-Policy strict-origin-when-cross-origin;
-  add_header X-XSS-Protection "1; mode=block";
-}
-EOF
+# Checked-in configs are portable across the supported classic and BuildKit frontends.
+COPY nginx/nginx.conf /etc/nginx/nginx.conf
+COPY nginx/default.conf /etc/nginx/conf.d/default.conf
 
 # Permissions for non-root user
 RUN chown -R nginx:nginx /usr/share/nginx /var/log/nginx /var/cache/nginx /etc/nginx

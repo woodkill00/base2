@@ -4,8 +4,10 @@ import threading
 import re
 
 from psycopg2.pool import ThreadedConnectionPool
+from psycopg2.extensions import connection as PsycopgConnection
 
 from api.settings import settings
+from api.security.tenant_context import canonical_tenant_id
 
 
 _pool: ThreadedConnectionPool | None = None
@@ -56,7 +58,7 @@ def _get_pool() -> ThreadedConnectionPool:
         return _pool
 
 
-def _get_conn() -> object:
+def _get_conn() -> PsycopgConnection:
     pool = _get_pool()
     # Try a few times in case the pool contains closed connections from a prior bug.
     for _ in range(3):
@@ -78,13 +80,33 @@ def _get_conn() -> object:
     return pool.getconn()
 
 
+def _bind_tenant(conn: PsycopgConnection, tenant_id: str) -> None:
+    tenant = canonical_tenant_id(tenant_id)
+    # Transaction-local state is consumed by PostgreSQL RLS policies. Parameter
+    # binding prevents the tenant identifier from becoming executable SQL.
+    with conn.cursor() as cur:
+        cur.execute("SELECT set_config('app.tenant_id', %s, true)", (tenant,))
+
+
+def _reset_connection(conn: PsycopgConnection) -> None:
+    """Remove transaction/session state before a pooled connection is reused."""
+
+    with suppress(Exception):
+        conn.rollback()
+    with suppress(Exception):
+        conn.reset()
+
+
 @contextmanager
-def db_conn():
+def db_conn(*, tenant_id: str | None = None):
     pool = _get_pool()
     conn = _get_conn()
     try:
+        if tenant_id is not None:
+            _bind_tenant(conn, tenant_id)
         yield conn
     finally:
+        _reset_connection(conn)
         with suppress(Exception):
             pool.putconn(conn)
 
@@ -105,5 +127,19 @@ def db_ping() -> bool:
             cur.execute('SELECT 1')
             cur.fetchone()
         return True
+    except Exception:
+        return False
+
+
+def db_schema_ready() -> bool:
+    """Verify the Django-owned schema exists without mutating it."""
+    try:
+        with db_conn() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT to_regclass('public.django_migrations'), "
+                "to_regclass('public.api_auth_users')"
+            )
+            row = cur.fetchone()
+        return bool(row and all(row))
     except Exception:
         return False

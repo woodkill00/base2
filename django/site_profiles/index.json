@@ -1,0 +1,8 @@
+{
+  "defaultProfile": "ember-studio",
+  "profiles": {
+    "ember-studio": "caeca976b87fad158ed46b4fe92fdc9aef9d7485c7e8e33cfda2a635b007858b",
+    "northstar-library": "f9809d52dfc22ce4d65b898c5dae7506109495da21bb405cfe1767b4dd83cb22"
+  },
+  "schemaVersion": 1
+}

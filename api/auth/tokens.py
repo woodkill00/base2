@@ -39,7 +39,9 @@ def new_refresh_token() -> str:
     return secrets.token_urlsafe(32)
 
 
-def create_access_token(*, subject: str, email: str, ttl_minutes: int) -> str:
+def create_access_token(
+    *, subject: str, email: str, ttl_minutes: int, recently_authenticated: bool = True
+) -> str:
     secret = (os.getenv('JWT_SECRET') or '').strip()
     if not secret:
         raise RuntimeError('Missing JWT_SECRET')
@@ -58,6 +60,7 @@ def create_access_token(*, subject: str, email: str, ttl_minutes: int) -> str:
         'iat': int(now.timestamp()),
         'exp': int(exp.timestamp()),
         'jti': secrets.token_hex(16),
+        'reauth': bool(recently_authenticated),
     }
     return jwt.encode(payload, secret, algorithm='HS256')
 

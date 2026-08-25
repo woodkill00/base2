@@ -6,7 +6,6 @@ export function setThemeCookie(theme: 'light' | 'dark', days = 180) {
     'Path=/',
     'Secure',
     'SameSite=Lax',
-    'Domain=.woodkilldev.com',
   ];
   document.cookie = parts.join('; ');
 }

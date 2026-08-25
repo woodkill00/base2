@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "tenantKey": "site_id",
+  "applicationIsolation": {
+    "cacheNamespaceRequired": true,
+    "databaseContext": "transaction-local",
+    "explicitRepositoryPredicateRequired": true,
+    "jobEnvelopeRequired": true,
+    "poolResetRequired": true
+  },
+  "postgresqlRls": {
+    "status": "deferred",
+    "reason": "runtime-and-migration-role-not-yet-separated",
+    "activationRequirements": [
+      "dedicated-non-owner-runtime-role",
+      "runtime-role-without-bypassrls",
+      "separate-migration-role",
+      "policies-on-every-tenant-owned-table",
+      "direct-query-hostile-matrix",
+      "pool-reuse-reset-matrix",
+      "migration-bypass-matrix"
+    ]
+  }
+}

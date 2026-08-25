@@ -3,7 +3,7 @@ import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { authAPI } from '../services/api';
 
 // Mock the API module
-jest.mock('../services/api');
+vi.mock('../services/api');
 
 describe('AuthContext', () => {
   const wrapper = ({ children }) => <AuthProvider>{children}</AuthProvider>;

@@ -1,43 +1,20 @@
 import { motion } from 'motion/react';
-import { Zap, Shield, Layers, Sparkles, Code2, Palette } from 'lucide-react';
+import { Layers } from 'lucide-react';
 
 import GlassCard from '../glass/GlassCard';
-
-const defaultFeatures = [
-  {
-    icon: Zap,
-    title: 'Blazing Fast',
-    description: 'Optimized for performance with minimal runtime overhead',
-  },
-  {
-    icon: Shield,
-    title: 'Privacy First',
-    description: 'Built with security and data protection at the core',
-  },
-  {
-    icon: Layers,
-    title: 'Modular Design',
-    description: 'Composable components that work seamlessly together',
-  },
-  {
-    icon: Sparkles,
-    title: 'AI Native',
-    description: 'Designed for modern AI-powered applications',
-  },
-  {
-    icon: Code2,
-    title: 'Developer Friendly',
-    description: 'Clean APIs and excellent TypeScript support',
-  },
-  {
-    icon: Palette,
-    title: 'Customizable',
-    description: 'Fully themeable with CSS variables and Tailwind',
-  },
-];
+import { siteManifest } from '../../config/siteRuntime';
 
 const HomeFeatures = ({ items }) => {
-  const features = items && items.length ? items : defaultFeatures;
+  const features =
+    items && items.length
+      ? items
+      : siteManifest.modules
+          .filter((item) => item.enabled)
+          .map((item) => ({
+            icon: Layers,
+            title: item.id.charAt(0).toUpperCase() + item.id.slice(1),
+            description: `Enabled capability using contract version ${item.version}.`,
+          }));
 
   return (
     <section
@@ -46,11 +23,10 @@ const HomeFeatures = ({ items }) => {
     >
       <div className="text-center mb-12">
         <h2 style={{ fontSize: 'clamp(1.875rem, 4vw, 2.5rem)', marginBottom: 'calc(1rem)' }}>
-          Everything You Need
+          Enabled Capabilities
         </h2>
         <p className="text-foreground/70 dark:text-foreground/60 max-w-2xl mx-auto">
-          A complete design system with all the components and tools you need to build stunning
-          interfaces
+          This site exposes only the capabilities selected by its reviewed manifest.
         </p>
       </div>
 

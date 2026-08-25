@@ -15,10 +15,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: '3.12'
           cache: 'pip'
@@ -35,7 +35,7 @@ jobs:
 
       - name: Ruff (lint)
         if: matrix.service == 'api'
-        run: ruff check .
+        run: ruff check api
 
       - name: Mypy (typecheck)
         run: |
@@ -61,7 +61,7 @@ jobs:
             pytest -q -m "not integration" --cov=project --cov-report=xml:coverage.xml --cov-report=term --cov-fail-under=60 -c pytest.ini .
           fi
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: coverage-${{ matrix.service }}
           path: ${{ matrix.service == 'api' && 'coverage.xml' || 'django/coverage.xml' }}
@@ -78,7 +78,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:16-alpine
+        image: public.ecr.aws/docker/library/postgres@sha256:075f7ba66bc9b3ce7d6b8b635208ff61cd7cf1a67d71ec530eec5d7ae0cbe571
         env:
           POSTGRES_USER: myuser
           POSTGRES_PASSWORD: mypassword
@@ -87,11 +87,11 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U myuser -d mydatabase" --health-interval 10s --health-timeout 5s --health-retries 10
       redis:
-        image: public.ecr.aws/docker/library/redis:7.2-alpine
+        image: public.ecr.aws/docker/library/redis@sha256:b5dee736fa6758052556cc97b5d5423177dcd8e26ce9746e6e3d58484a5a4143
         ports: ['6379:6379']
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: '3.12'
       - name: Install deps

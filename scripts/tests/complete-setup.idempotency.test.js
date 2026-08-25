@@ -60,7 +60,7 @@ test('setup:complete is idempotent (rerun produces no net changes)', async () =>
   ].join('\n');
 
   fs.writeFileSync(path.join(root, '.env.example'), example, 'utf8');
-  fs.writeFileSync(path.join(root, '.env'), env, 'utf8');
+  fs.writeFileSync(path.join(root, '.env.build'), env, 'utf8');
 
   const deps = {
     rootDir: root,

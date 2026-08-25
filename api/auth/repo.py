@@ -231,8 +231,10 @@ def insert_audit_event(
     user_agent: str,
     metadata: dict[str, Any] | None = None,
 ) -> None:
+    from api.security.identity import redact_audit_metadata
+
     event_id = uuid4()
-    metadata_json = json.dumps(metadata or {})
+    metadata_json = json.dumps(redact_audit_metadata(metadata or {}))
     with db_conn() as conn:
         conn.autocommit = True
         with conn.cursor() as cur:
@@ -376,6 +378,26 @@ def revoke_refresh_token(*, token_id: UUID, replaced_by_token_id: UUID | None = 
                 """,
                 (str(replaced_by_token_id) if replaced_by_token_id else None, str(token_id)),
             )
+
+
+def revoke_user_refresh_token(*, user_id: UUID, token_id: UUID) -> bool:
+    """Revoke exactly one active session owned by the authenticated user."""
+
+    with db_conn() as conn:
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE api_auth_refresh_tokens
+                SET revoked_at=NOW()
+                WHERE id=%s
+                  AND user_id=%s
+                  AND revoked_at IS NULL
+                  AND expires_at > NOW()
+                """,
+                (str(token_id), str(user_id)),
+            )
+            return cur.rowcount == 1
 
 
 def revoke_all_refresh_tokens(*, user_id: UUID) -> None:

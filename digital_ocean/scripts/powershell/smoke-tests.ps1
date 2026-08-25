@@ -177,13 +177,9 @@ try {
     $failures += "TLS cert SAN does not include ${Domain} (dnsNames=$($dnsNames -join ','))"
   }
 
-  $deployEnv = ((($env:ENV) + '')).Trim().ToLower()
-  $isProd = ($deployEnv -eq 'production' -or $deployEnv -eq 'prod')
-  if ($isProd) {
-    $issuer = (($cert.Issuer) + '')
-    if ($issuer -match '(?i)fake\s+le|staging') {
-      $failures += "TLS issuer looks like staging in production (issuer=$issuer)"
-    }
+  $issuer = (($cert.Issuer) + '')
+  if ($issuer -notmatch '(?i)fake\s+le|staging') {
+    $failures += "TLS issuer is not recognizably staging-only (issuer=$issuer)"
   }
 } catch {
   $failures += "TLS check failed: $($_.Exception.Message)"

@@ -1,11 +1,20 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import GlassButton from './glass/GlassButton';
+import { siteManifest } from '../config/siteRuntime';
 
 const Navigation = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const avatarUrl = user?.avatar_url || user?.picture;
+  const avatarLabel = String(user?.display_name || user?.name || user?.email || '?')
+    .trim()
+    .charAt(0)
+    .toUpperCase();
+  const accountsEnabled = siteManifest.modules.some(
+    (module) => module.id === 'accounts' && module.enabled
+  );
 
   const handleLogout = async () => {
     await logout();
@@ -35,10 +44,8 @@ const Navigation = () => {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center justify-between gap-3">
               <Link to="/dashboard" className="flex items-center gap-2">
-                <span className="text-xl" aria-hidden="true">
-                  🚀
-                </span>
-                <span className="text-sm font-semibold tracking-tight">App</span>
+                <img src={siteManifest.brand.logo} alt="" className="w-6 h-6" />
+                <span className="text-sm font-semibold tracking-tight">{siteManifest.name}</span>
               </Link>
             </div>
 
@@ -49,15 +56,37 @@ const Navigation = () => {
               <Link to="/settings" className={linkClass('/settings')}>
                 Settings
               </Link>
+              {accountsEnabled ? (
+                <Link to="/account" className={linkClass('/account')}>
+                  Account
+                </Link>
+              ) : null}
+              {accountsEnabled &&
+              Array.isArray(user?.permissions) &&
+              user.permissions.includes('audit.read') ? (
+                <Link to="/admin" className={linkClass('/admin')}>
+                  Admin
+                </Link>
+              ) : null}
             </div>
 
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
-                <img
-                  src={user?.avatar_url || user?.picture || 'https://via.placeholder.com/40'}
-                  alt="Profile"
-                  className="w-9 h-9 rounded-full object-cover border border-white/30 dark:border-white/20"
-                />
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Profile"
+                    className="w-9 h-9 rounded-full object-cover border border-white/30 dark:border-white/20"
+                  />
+                ) : (
+                  <span
+                    aria-label="Profile"
+                    role="img"
+                    className="w-9 h-9 rounded-full border border-white/30 dark:border-white/20 grid place-items-center"
+                  >
+                    {avatarLabel}
+                  </span>
+                )}
                 <span className="text-sm opacity-90">
                   {user?.display_name || user?.name || user?.email}
                 </span>

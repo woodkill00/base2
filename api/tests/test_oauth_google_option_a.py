@@ -15,6 +15,7 @@ def test_auth_oauth_google_creates_user_and_returns_tokens(monkeypatch):
     from api.services import oauth_google
 
     monkeypatch.setattr('api.routes.auth.settings.GOOGLE_OAUTH_CLIENT_ID', 'test-client')
+    monkeypatch.setattr('api.routes.auth.settings.GOOGLE_OAUTH_ENABLED', True)
 
     def fake_verify(*, id_token: str, audience: str):
         assert audience == 'test-client'
@@ -48,6 +49,7 @@ def test_auth_oauth_google_merge_rules_reject_unverified_collision(monkeypatch):
     repo.create_user(email=email, password_hash='x')
 
     monkeypatch.setattr('api.routes.auth.settings.GOOGLE_OAUTH_CLIENT_ID', 'test-client')
+    monkeypatch.setattr('api.routes.auth.settings.GOOGLE_OAUTH_ENABLED', True)
 
     def fake_verify(*, id_token: str, audience: str):
         return oauth_google.GoogleIdentity(
@@ -76,6 +78,7 @@ def test_auth_oauth_google_merge_rules_allow_when_google_verified(monkeypatch):
     repo.create_user(email=email, password_hash='x')
 
     monkeypatch.setattr('api.routes.auth.settings.GOOGLE_OAUTH_CLIENT_ID', 'test-client')
+    monkeypatch.setattr('api.routes.auth.settings.GOOGLE_OAUTH_ENABLED', True)
 
     def fake_verify(*, id_token: str, audience: str):
         return oauth_google.GoogleIdentity(

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "gallery",
+  "version": "1.0.0",
+  "compatibility": ">=2.0.0,<3.0.0",
+  "models": ["gallery.entry"],
+  "migrations": [],
+  "apiRoutes": ["/api/content/gallery-item/{slug}"],
+  "uiRoutes": ["/gallery", "/gallery/{slug}"],
+  "navigation": ["gallery.index"],
+  "permissions": ["gallery.read", "gallery.write"],
+  "jobs": [],
+  "settingsSchema": "modules/gallery/settings.schema.json",
+  "healthChecks": ["gallery.ready"],
+  "providerCapabilities": [],
+  "dependencies": ["media"],
+  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+}

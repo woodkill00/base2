@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "membership",
+  "version": "1.0.0",
+  "compatibility": ">=2.0.0,<3.0.0",
+  "models": ["membership.member"],
+  "migrations": [],
+  "apiRoutes": ["/api/membership"],
+  "uiRoutes": ["/membership"],
+  "navigation": ["membership.index"],
+  "permissions": ["membership.read", "membership.manage"],
+  "jobs": [],
+  "settingsSchema": "modules/membership/settings.schema.json",
+  "healthChecks": ["membership.ready"],
+  "providerCapabilities": [],
+  "dependencies": [],
+  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+}

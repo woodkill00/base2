@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "requiredPullRequestWorkflows": {
+    "ci-backend.yml": ["backend", "backend-integration"],
+    "ci-contract.yml": ["contract"],
+    "ci-e2e.yml": ["e2e"],
+    "ci-frontend.yml": ["frontend"],
+    "ci-perf-smoke.yml": ["perf"],
+    "ci-repo-guards.yml": ["repo-guards"],
+    "ci-smoke.yml": ["smoke"],
+    "option1-guard.yml": ["guard"],
+    "security.yml": [
+      "sbom-scan",
+      "npm-audit",
+      "pip-audit",
+      "gitleaks",
+      "semgrep",
+      "node-licenses",
+      "python-licenses",
+      "supply-chain-policy"
+    ],
+    "sync-config.yml": ["sync-config"]
+  },
+  "requiredActionRef": "full-commit-sha",
+  "failureSuppression": "forbidden",
+  "diagnosticCleanupMarker": "ci-policy: diagnostic-cleanup"
+}

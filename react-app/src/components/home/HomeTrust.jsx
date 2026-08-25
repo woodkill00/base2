@@ -1,11 +1,15 @@
 import { motion } from 'motion/react';
-import { Lock, Cpu, Box, TrendingUp } from 'lucide-react';
+import { BarChart3, Globe2, Lock, Search } from 'lucide-react';
+import { siteManifest } from '../../config/siteRuntime';
 
 const values = [
-  { icon: Lock, text: 'Privacy First' },
-  { icon: Cpu, text: 'AI Native' },
-  { icon: Box, text: 'Open Architecture' },
-  { icon: TrendingUp, text: 'Built for Scale' },
+  { icon: Lock, text: `Consent: ${siteManifest.consent.mode}` },
+  {
+    icon: BarChart3,
+    text: `Analytics: ${siteManifest.analytics.enabled ? 'enabled' : 'disabled'}`,
+  },
+  { icon: Search, text: `Search: ${siteManifest.search.enabled ? 'enabled' : 'disabled'}` },
+  { icon: Globe2, text: `${siteManifest.locales.length} supported locales` },
 ];
 
 const HomeTrust = () => {

@@ -8,9 +8,9 @@ import { authAPI } from '../services/api';
 import Login from '../pages/Login';
 import Dashboard from '../pages/Dashboard';
 
-jest.mock('../services/api');
+vi.mock('../services/api');
 
-jest.mock('@react-oauth/google', () => ({
+vi.mock('@react-oauth/google', () => ({
   GoogleOAuthProvider: ({ children }) => <div>{children}</div>,
   GoogleLogin: () => null,
 }));
@@ -95,5 +95,33 @@ describe('US2 login/logout UI', () => {
     await waitFor(() => {
       expect(screen.getByText(/home/i)).toBeInTheDocument();
     });
+  });
+
+  test('active MFA requires and completes a one-time challenge before navigation', async () => {
+    const user = userEvent.setup();
+    authAPI.login.mockResolvedValue({
+      mfa_required: true,
+      challenge_token: 'challenge-token',
+      methods: ['totp', 'recovery_code'],
+      expires_in: 300,
+    });
+    authAPI.completeMfaLogin.mockResolvedValue({
+      id: '1',
+      email: 'test@example.com',
+      access_token: 'fresh-access-token',
+    });
+    renderApp('/login');
+    await act(async () => {
+      await user.type(screen.getByLabelText(/email/i), 'test@example.com');
+      await user.type(screen.getByLabelText(/password/i), 'Test1234');
+      await user.click(screen.getByRole('button', { name: /^sign in$/i }));
+    });
+    expect(await screen.findByText(/complete multi-factor authentication/i)).toBeInTheDocument();
+    await act(async () => {
+      await user.type(screen.getByLabelText(/authenticator or recovery code/i), '123456');
+      await user.click(screen.getByRole('button', { name: /verify and sign in/i }));
+    });
+    expect(authAPI.completeMfaLogin).toHaveBeenCalledWith('challenge-token', '123456');
+    expect(await screen.findByRole('heading', { name: /dashboard/i })).toBeInTheDocument();
   });
 });

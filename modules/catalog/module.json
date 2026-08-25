@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "catalog",
+  "version": "1.0.0",
+  "compatibility": ">=2.0.0,<3.0.0",
+  "models": ["catalog.product"],
+  "migrations": [
+    "django/catalog/migrations/0001_initial.py",
+    "django/catalog/migrations/0002_alter_item_options_item_updated.py"
+  ],
+  "apiRoutes": ["/api/catalog"],
+  "uiRoutes": ["/catalog"],
+  "navigation": ["catalog.index"],
+  "permissions": ["catalog.read", "catalog.manage"],
+  "jobs": [],
+  "settingsSchema": "modules/catalog/settings.schema.json",
+  "healthChecks": ["catalog.ready"],
+  "providerCapabilities": [],
+  "dependencies": [],
+  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+}

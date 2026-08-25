@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { Route, Routes } from 'react-router-dom';
 import TestMemoryRouter from '../test/TestMemoryRouter';
 import GlassHeader from '../components/glass/GlassHeader';
+import { siteManifest } from '../config/siteRuntime';
 
 describe('GlassHeader extra coverage', () => {
   test('renders with default title when none provided', () => {
@@ -24,7 +25,7 @@ describe('GlassHeader extra coverage', () => {
     );
 
     // Public header should render brand + theme toggle.
-    expect(screen.getByText('SpecKit')).toBeInTheDocument();
+    expect(screen.getByText('Ember Studio')).toBeInTheDocument();
     const btn = screen.getByRole('button', { name: /toggle theme/i });
     expect(btn).toBeInTheDocument();
     await act(async () => {
@@ -37,10 +38,14 @@ describe('GlassHeader extra coverage', () => {
 
   test('public header navigates via Login and Sign Up', async () => {
     const user = userEvent.setup();
+    const accountManifest = {
+      ...siteManifest,
+      modules: [...siteManifest.modules, { id: 'accounts', version: '1.0.0', enabled: true }],
+    };
 
     render(
       <TestMemoryRouter initialEntries={['/']}>
-        <GlassHeader variant="public" title="Home" />
+        <GlassHeader variant="public" title="Home" manifest={accountManifest} />
         <Routes>
           <Route path="/" element={<div>Home Page</div>} />
           <Route path="/login" element={<div>Login Page</div>} />

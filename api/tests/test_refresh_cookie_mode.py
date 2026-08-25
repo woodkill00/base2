@@ -78,6 +78,7 @@ def test_auth_login_cookie_mode_sets_http_only_cookie_and_hides_refresh(monkeypa
         return u, tokens
 
     monkeypatch.setattr('api.auth.service.login_user', fake_login_user)
+    monkeypatch.setattr('api.repositories.identity_admin.active_totp', lambda **kwargs: None)
 
     client = TestClient(app)
     r = client.post('/api/auth/login', json={'email': 'u@example.com', 'password': 'pw'})
@@ -132,6 +133,7 @@ def test_auth_login_non_cookie_mode_returns_refresh_in_json(monkeypatch):
         return u, tokens
 
     monkeypatch.setattr('api.auth.service.login_user', fake_login_user)
+    monkeypatch.setattr('api.repositories.identity_admin.active_totp', lambda **kwargs: None)
 
     client = TestClient(app)
     r = client.post('/api/auth/login', json={'email': 'u@example.com', 'password': 'pw'})

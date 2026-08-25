@@ -21,8 +21,12 @@ from contextlib import suppress
 from pathlib import Path
 
 import paramiko
-from dotenv import dotenv_values, load_dotenv
 from pydo import Client
+
+try:
+    from digital_ocean.scripts.python.deploy_config import load_deploy_config
+except ModuleNotFoundError:
+    from deploy_config import load_deploy_config
 
 _ENV_VAR_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
@@ -125,8 +129,13 @@ def _do_api_call(label, func, *args, **kwargs):
     raise RuntimeError(f"{label} failed after {retries} attempts: {last_exc}")
 
 
-# Load .env
-load_dotenv()
+# Parse configuration once, before provider identity or clients are created.
+# Values already supplied by the process retain precedence, matching the prior
+# dotenv behavior while eliminating multiple parsing implementations.
+env_path = _find_env_path()
+_DEPLOY_CONFIG = load_deploy_config(env_path)
+for _key, _value in _DEPLOY_CONFIG.items():
+    os.environ.setdefault(_key, _value)
 
 
 # --- SSH Key Generation and .env Update ---
@@ -148,7 +157,6 @@ _EXPANSION_ENV = {**os.environ, "PROJECT_NAME": PROJECT_NAME}
 ssh_dir = os.path.expanduser("~/.ssh")
 ssh_key_path = os.path.join(ssh_dir, PROJECT_NAME)
 pub_key_path = ssh_key_path + ".pub"
-env_path = _find_env_path()
 
 artifact_dir = os.getenv("DEPLOY_ARTIFACT_DIR", "").strip()
 artifact_dir_path: Path | None = None
@@ -488,6 +496,7 @@ if not found:
 with open(env_path, "w") as f:
     f.writelines(lines)
 log(".env updated with public key.")
+_DEPLOY_CONFIG["DO_API_SSH_KEYS"] = pubkey
 
 
 # --- Recovery routine, now only called explicitly ---
@@ -927,8 +936,9 @@ log(f"Loading user_data script from {base_script_path}")
 with open(base_script_path) as f:
     user_data_script = f.read()
 
-# Load .env as dict
-env_dict = dotenv_values(env_path)
+# Use the same strict, normalized configuration used by preflight and process
+# setup. Do not parse the deployment file a second way.
+env_dict = dict(_DEPLOY_CONFIG)
 if "REPO_URL" not in env_dict or not env_dict.get("REPO_URL"):
     repo_url = env_dict.get("GIT_REPO") or env_dict.get("DO_GIT_REPO")
     if repo_url:
@@ -1230,7 +1240,8 @@ def run_post_reboot() -> None:
 
         # Ensure destination folders exist for script updates.
         run_ssh_cmd(
-            f"mkdir -p {repo_path}/scripts/bash {repo_path}/digital_ocean/scripts/bash {repo_path}/traefik",
+            f"mkdir -p {repo_path}/scripts/bash {repo_path}/digital_ocean/scripts/bash "
+            f"{repo_path}/digital_ocean/scripts/python {repo_path}/traefik",
             "ensure remote script dirs",
             artifact_name="ensure-dirs.txt",
             allow_fail=True,
@@ -1250,6 +1261,10 @@ def run_post_reboot() -> None:
                 str(repo_root / "scripts" / "bash" / "start.sh"),
                 f"{repo_path}/scripts/bash/start.sh",
             ),
+            (
+                str(repo_root / "scripts" / "bash" / "bootstrap-acme.sh"),
+                f"{repo_path}/scripts/bash/bootstrap-acme.sh",
+            ),
             (str(repo_root / "scripts" / "bash" / "test.sh"), f"{repo_path}/scripts/bash/test.sh"),
             (str(repo_root / "traefik" / "entrypoint.sh"), f"{repo_path}/traefik/entrypoint.sh"),
             (
@@ -1263,6 +1278,10 @@ def run_post_reboot() -> None:
             (
                 str(repo_root / "digital_ocean" / "scripts" / "bash" / "remote_verify_min.sh"),
                 f"{repo_path}/digital_ocean/scripts/bash/remote_verify_min.sh",
+            ),
+            (
+                str(repo_root / "digital_ocean" / "scripts" / "python" / "bootstrap_acme.py"),
+                f"{repo_path}/digital_ocean/scripts/python/bootstrap_acme.py",
             ),
         ]
         for src, dest in upload_pairs:

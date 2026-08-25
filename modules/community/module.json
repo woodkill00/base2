@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "community",
+  "version": "1.0.0",
+  "compatibility": ">=2.0.0,<3.0.0",
+  "models": ["community.post", "community.moderation"],
+  "migrations": [],
+  "apiRoutes": ["/api/content/community-post/{slug}"],
+  "uiRoutes": ["/community", "/community/{slug}"],
+  "navigation": ["community.index"],
+  "permissions": ["community.read", "community.write", "community.moderate"],
+  "jobs": ["community.review-notify"],
+  "settingsSchema": "modules/community/settings.schema.json",
+  "healthChecks": ["community.moderation-ready"],
+  "providerCapabilities": [],
+  "dependencies": ["content"],
+  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+}

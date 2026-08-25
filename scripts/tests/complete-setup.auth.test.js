@@ -40,7 +40,7 @@ test('setup:complete generates basic-auth and escapes $ for Compose', async () =
   );
 
   fs.writeFileSync(
-    path.join(root, '.env'),
+    path.join(root, '.env.build'),
     [
       'PROJECT_NAME=alpha',
       'ENV=development',

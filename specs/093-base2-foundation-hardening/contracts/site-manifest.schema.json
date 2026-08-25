@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://base2.local/contracts/site-manifest-v1.schema.json",
+  "title": "Base2 Site Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "siteId", "slug", "name", "domains", "brand", "navigation", "seo", "legal", "locales", "defaultLocale", "consent", "analytics", "contact", "media", "search", "modules", "operationsProfile", "previewPolicy"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "siteId": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,62}$"},
+    "slug": {"type": "string", "pattern": "^[a-z][a-z0-9-]{1,62}$"},
+    "name": {"type": "string", "minLength": 1, "maxLength": 120},
+    "legalName": {"type": "string", "maxLength": 200},
+    "domains": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["host", "kind"], "properties": {"host": {"type": "string", "minLength": 4}, "kind": {"enum": ["canonical", "redirect", "preview"]}}}},
+    "brand": {"type": "object", "additionalProperties": false, "required": ["theme", "logo", "voice"], "properties": {"theme": {"type": "string"}, "logo": {"type": "string", "pattern": "^/"}, "voice": {"type": "string", "minLength": 1, "maxLength": 500}}},
+    "navigation": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["label", "path"], "properties": {"label": {"type": "string", "minLength": 1}, "path": {"type": "string", "pattern": "^/"}, "module": {"type": "string"}}}},
+    "seo": {"type": "object", "additionalProperties": false, "required": ["titleTemplate", "description", "indexing"], "properties": {"titleTemplate": {"type": "string", "minLength": 1}, "description": {"type": "string", "minLength": 1, "maxLength": 320}, "indexing": {"enum": ["allow", "deny"]}}},
+    "legal": {"type": "object", "additionalProperties": false, "required": ["privacyPath", "termsPath", "accessibilityPath"], "properties": {"privacyPath": {"type": "string", "pattern": "^/"}, "termsPath": {"type": "string", "pattern": "^/"}, "accessibilityPath": {"type": "string", "pattern": "^/"}}},
+    "locales": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+    "defaultLocale": {"type": "string"},
+    "consent": {"type": "object", "additionalProperties": false, "required": ["mode"], "properties": {"mode": {"enum": ["disabled", "essential-only", "opt-in"]}}},
+    "analytics": {"type": "object", "additionalProperties": false, "required": ["enabled", "provider"], "properties": {"enabled": {"type": "boolean"}, "provider": {"enum": ["none", "adapter"]}}},
+    "contact": {"type": "object", "additionalProperties": false, "required": ["enabled", "retentionDays"], "properties": {"enabled": {"type": "boolean"}, "retentionDays": {"type": "integer", "minimum": 1, "maximum": 3650}}},
+    "media": {"type": "object", "additionalProperties": false, "required": ["maxBytes", "allowedTypes"], "properties": {"maxBytes": {"type": "integer", "minimum": 1}, "allowedTypes": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}}},
+    "search": {"type": "object", "additionalProperties": false, "required": ["enabled"], "properties": {"enabled": {"type": "boolean"}}},
+    "modules": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["id", "version", "enabled"], "properties": {"id": {"type": "string"}, "version": {"type": "string"}, "enabled": {"type": "boolean"}, "configRef": {"type": "string"}}}},
+    "operationsProfile": {"enum": ["local", "preview", "staging", "production"]},
+    "previewPolicy": {"type": "object", "additionalProperties": false, "required": ["ttlMinutes", "idleAction"], "properties": {"ttlMinutes": {"type": "integer", "minimum": 15, "maximum": 1440}, "idleAction": {"enum": ["destroy", "retain"]}}}
+  }
+}

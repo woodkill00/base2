@@ -44,6 +44,7 @@ test('regression: complete-setup inherits basic-auth and escapes $ for Compose',
     'REDIS_PASSWORD=change_me_redis_password',
     'JWT_SECRET=real',
     'TOKEN_PEPPER=real',
+    'IDENTITY_ENCRYPTION_KEY=real',
     'OAUTH_STATE_SECRET=real',
     'DJANGO_SUPERUSER_NAME=admin',
     'DJANGO_SUPERUSER_PASSWORD=real',
@@ -71,6 +72,7 @@ test('regression: complete-setup inherits basic-auth and escapes $ for Compose',
     'REDIS_PASSWORD=real',
     'JWT_SECRET=real',
     'TOKEN_PEPPER=real',
+    'IDENTITY_ENCRYPTION_KEY=real',
     'OAUTH_STATE_SECRET=real',
     'DJANGO_SUPERUSER_NAME=admin',
     'DJANGO_SUPERUSER_PASSWORD=real',
@@ -83,7 +85,7 @@ test('regression: complete-setup inherits basic-auth and escapes $ for Compose',
     'FLOWER_ALLOWLIST=your_ip_address_here/32',
     'PGADMIN_ALLOWLIST=your_ip_address_here/32',
   ].join('\n');
-  fs.writeFileSync(path.join(root, '.env'), envIn, 'utf8');
+  fs.writeFileSync(path.join(root, '.env.build'), envIn, 'utf8');
 
   await runCompleteSetup({
     rootDir: root,
@@ -102,7 +104,7 @@ test('regression: complete-setup inherits basic-auth and escapes $ for Compose',
   assert.ok(envMap.TRAEFIK_DASH_BASIC_USERS.includes('$$2a$$10$$abc$$def'));
   assert.equal(envMap.FLOWER_BASIC_USERS, envMap.TRAEFIK_DASH_BASIC_USERS);
   assert.equal(envMap.TP_USER_IP_ADDRESS, '1.2.3.4');
-  assert.equal(envMap.DJANGO_ADMIN_ALLOWLIST, '${TP_USER_IP_ADDRESS}/32');
+  assert.equal(envMap.DJANGO_ADMIN_ALLOWLIST, '1.2.3.4/32');
 });
 
 test('regression: complete-setup is idempotent with deterministic inputs', async () => {
@@ -120,6 +122,7 @@ test('regression: complete-setup is idempotent with deterministic inputs', async
     'REDIS_PASSWORD=change_me_redis_password',
     'JWT_SECRET=real',
     'TOKEN_PEPPER=real',
+    'IDENTITY_ENCRYPTION_KEY=real',
     'OAUTH_STATE_SECRET=real',
     'DJANGO_SUPERUSER_NAME=admin',
     'DJANGO_SUPERUSER_PASSWORD=real',
@@ -147,6 +150,7 @@ test('regression: complete-setup is idempotent with deterministic inputs', async
     'REDIS_PASSWORD=real',
     'JWT_SECRET=real',
     'TOKEN_PEPPER=real',
+    'IDENTITY_ENCRYPTION_KEY=real',
     'OAUTH_STATE_SECRET=real',
     'DJANGO_SUPERUSER_NAME=admin',
     'DJANGO_SUPERUSER_PASSWORD=real',
@@ -159,7 +163,7 @@ test('regression: complete-setup is idempotent with deterministic inputs', async
     'FLOWER_ALLOWLIST=1.2.3.4/32',
     'PGADMIN_ALLOWLIST=1.2.3.4/32',
   ].join('\n');
-  fs.writeFileSync(path.join(root, '.env'), envIn, 'utf8');
+  fs.writeFileSync(path.join(root, '.env.build'), envIn, 'utf8');
 
   const first = await runCompleteSetup({
     rootDir: root,

@@ -1,0 +1,41 @@
+http:
+  routers:
+    canary-api:
+      rule: Host(`${WEBSITE_DOMAIN}`) && PathPrefix(`/api`)
+      priority: 200
+      entryPoints: [websecure]
+      middlewares: [canary-security-headers]
+      tls:
+        certResolver: ${TRAEFIK_CERT_RESOLVER}
+      service: canary-api
+
+    canary-frontend:
+      rule: Host(`${WEBSITE_DOMAIN}`) && PathPrefix(`/`)
+      priority: 100
+      entryPoints: [websecure]
+      middlewares: [canary-security-headers]
+      tls:
+        certResolver: ${TRAEFIK_CERT_RESOLVER}
+      service: canary-frontend
+
+  services:
+    canary-api:
+      loadBalancer:
+        servers:
+          - url: http://api:${FASTAPI_PORT}
+    canary-frontend:
+      loadBalancer:
+        servers:
+          - url: http://react-app:8080
+
+  middlewares:
+    canary-security-headers:
+      headers:
+        stsSeconds: 0
+        frameDeny: true
+        contentTypeNosniff: true
+        referrerPolicy: no-referrer
+        permissionsPolicy: camera=(), geolocation=(), microphone=(), payment=(), usb=()
+        contentSecurityPolicy: "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; font-src 'self' data:"
+        customResponseHeaders:
+          X-Robots-Tag: 'noindex, nofollow, noarchive'

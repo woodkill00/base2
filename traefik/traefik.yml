@@ -36,12 +36,6 @@ accessLog:
         X-Request-Id: keep
 
 certificatesResolvers:
-  le:
-    acme:
-      email: '${TRAEFIK_CERT_EMAIL}'
-      storage: /etc/traefik/acme/acme.json
-      tlsChallenge: {}
-
   le-staging:
     acme:
       email: '${TRAEFIK_CERT_EMAIL}'

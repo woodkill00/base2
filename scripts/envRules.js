@@ -36,6 +36,7 @@ const CATEGORIES = {
       'REDIS_PASSWORD',
       'JWT_SECRET',
       'TOKEN_PEPPER',
+      'IDENTITY_ENCRYPTION_KEY',
       'OAUTH_STATE_SECRET',
     ],
   },
@@ -105,7 +106,7 @@ function requiredCategories({ env, deployMode }) {
   const needsTls =
     normalizedEnv === ENVS.PRODUCTION || normalizedDeployMode === DEPLOY_MODES.DIGITALOCEAN;
   const needsSmtp =
-    normalizedEnv !== ENVS.DEVELOPMENT && normalizedDeployMode !== DEPLOY_MODES.LOCAL;
+    normalizedEnv === ENVS.PRODUCTION || normalizedDeployMode === DEPLOY_MODES.DIGITALOCEAN;
 
   if (needsTls) {
     required.add(CATEGORY.TLS);

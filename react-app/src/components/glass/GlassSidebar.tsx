@@ -1,16 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import {
-  ChevronLeft,
-  ChevronRight,
-  FileText,
-  HelpCircle,
-  Home,
-  Layers,
-  Settings,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileText, Home } from 'lucide-react';
 
-import GlassButton from './GlassButton';
+import { siteManifest } from '../../config/siteRuntime';
 
 type Props = {
   items?: string[];
@@ -44,13 +36,11 @@ export const GlassSidebar: React.FC<Props> = ({
   const [edgeOpen, setEdgeOpen] = useState(false);
   const [edgePosition, setEdgePosition] = useState<'left' | 'right'>('left');
 
-  const publicMenuItems = [
-    { icon: Home, label: 'Home', id: 'home' },
-    { icon: Layers, label: 'Features', id: 'features' },
-    { icon: FileText, label: 'Documentation', id: 'docs' },
-    { icon: Settings, label: 'Settings', id: 'settings' },
-    { icon: HelpCircle, label: 'Help & Support', id: 'help' },
-  ];
+  const publicMenuItems = siteManifest.navigation.map((item, index) => ({
+    icon: index === 0 ? Home : FileText,
+    label: item.label,
+    id: item.path,
+  }));
 
   useEffect(() => {
     if (variant === 'public' || !isOpen || !isMobile) {
@@ -313,22 +303,6 @@ export const GlassSidebar: React.FC<Props> = ({
                     );
                   })}
                 </nav>
-
-                <div
-                  className="sm:hidden flex flex-col gap-2"
-                  style={{
-                    marginTop: 'auto',
-                    paddingTop: 'calc(1.5rem)',
-                    borderTop: '1px solid rgba(255, 255, 255, 0.2)',
-                  }}
-                >
-                  <GlassButton variant="ghost" className="w-full">
-                    Login
-                  </GlassButton>
-                  <GlassButton variant="primary" className="w-full">
-                    Sign Up
-                  </GlassButton>
-                </div>
               </div>
             </motion.aside>
           ) : null}

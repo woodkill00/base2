@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://base2.local/schemas/design-system-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "tokens", "themes", "cssVariables", "componentStates"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "tokens": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["color", "space", "radius", "motion", "typography", "breakpoint"],
+      "properties": {
+        "color": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+        "space": { "$ref": "#/$defs/numberMap" },
+        "radius": { "$ref": "#/$defs/numberMap" },
+        "motion": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["durationMs", "easing"],
+          "properties": {
+            "durationMs": { "$ref": "#/$defs/numberMap" },
+            "easing": { "$ref": "#/$defs/stringMap" }
+          }
+        },
+        "typography": { "$ref": "#/$defs/stringMap" },
+        "breakpoint": { "$ref": "#/$defs/numberMap" }
+      }
+    },
+    "themes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["volcanic", "obsidian", "polar"],
+      "properties": {
+        "volcanic": { "$ref": "#/$defs/theme" },
+        "obsidian": { "$ref": "#/$defs/theme" },
+        "polar": { "$ref": "#/$defs/theme" }
+      }
+    },
+    "cssVariables": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^--[a-z0-9-]+$" }
+    },
+    "componentStates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["button", "input", "modal", "tabs", "navigation"],
+      "properties": {
+        "button": { "$ref": "#/$defs/stateList" },
+        "input": { "$ref": "#/$defs/stateList" },
+        "modal": { "$ref": "#/$defs/stateList" },
+        "tabs": { "$ref": "#/$defs/stateList" },
+        "navigation": { "$ref": "#/$defs/stateList" }
+      }
+    }
+  },
+  "$defs": {
+    "numberMap": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "type": "number", "minimum": 0 }
+    },
+    "stringMap": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "stateList": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "theme": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["colorScheme", "color"],
+      "properties": {
+        "colorScheme": { "enum": ["light", "dark"] },
+        "color": {
+          "type": "object",
+          "additionalProperties": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+        }
+      }
+    }
+  }
+}

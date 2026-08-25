@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "severityPolicy": {
+    "critical": { "blocks": true, "remediationHours": 0, "exceptionsAllowed": false },
+    "high": { "blocks": true, "remediationHours": 72, "exceptionsAllowed": false },
+    "moderate": { "blocks": false, "remediationHours": 720, "exceptionsAllowed": true },
+    "low": { "blocks": false, "remediationHours": 2160, "exceptionsAllowed": true }
+  },
+  "exceptionMaximumDays": 30,
+  "exceptions": []
+}

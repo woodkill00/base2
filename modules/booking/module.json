@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "booking",
+  "version": "1.0.0",
+  "compatibility": ">=2.0.0,<3.0.0",
+  "models": ["booking.reservation"],
+  "migrations": [],
+  "apiRoutes": ["/api/scheduling/events/{event-id}/bookings"],
+  "uiRoutes": ["/events/{slug}/book"],
+  "navigation": [],
+  "permissions": ["booking.create", "booking.manage"],
+  "jobs": ["booking.expire"],
+  "settingsSchema": "modules/booking/settings.schema.json",
+  "healthChecks": ["booking.ready"],
+  "providerCapabilities": ["email"],
+  "dependencies": ["events"],
+  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+}

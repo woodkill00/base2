@@ -66,7 +66,7 @@ test('setup fills TP_ defaults and preserves template references', async () => {
 
   await runSetup({ rootDir: root, prompt, stdout: () => {}, stderr: () => {} });
 
-  const envText = fs.readFileSync(path.join(root, '.env'), 'utf8');
+  const envText = fs.readFileSync(path.join(root, '.env.build'), 'utf8');
   const envMap = parseEnv(envText);
 
   assert.equal(envMap.USER_MAIN_EMAIL, 'user@example.com');

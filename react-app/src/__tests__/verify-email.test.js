@@ -5,7 +5,7 @@ import { AuthProvider } from '../contexts/AuthContext';
 import { authAPI } from '../services/api';
 import VerifyEmail from '../pages/VerifyEmail';
 
-jest.mock('../services/api');
+vi.mock('../services/api');
 
 describe('T091 Email verification UI', () => {
   beforeEach(() => {

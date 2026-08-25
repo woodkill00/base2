@@ -316,6 +316,43 @@ def login_user(
     )
 
 
+def issue_authenticated_session(
+    *,
+    user: repo.User,
+    ip: str,
+    user_agent: str,
+    refresh_ttl_days: int,
+    access_ttl_minutes: int,
+) -> AuthTokens:
+    """Issue a session only after an independent authentication ceremony.
+
+    This entrypoint intentionally accepts a repository User rather than an
+    arbitrary subject/email pair. Callers must first consume their bounded,
+    server-side ceremony record.
+    """
+    if not user.is_active:
+        raise ValueError('inactive')
+    refresh = new_refresh_token()
+    _token_id, refresh_expires_at = repo.create_refresh_token(
+        user_id=user.id,
+        token_hash=hash_token(refresh),
+        ttl_days=refresh_ttl_days,
+        ip=ip,
+        user_agent=user_agent,
+    )
+    access = create_access_token(
+        subject=str(user.id), email=user.email, ttl_minutes=access_ttl_minutes
+    )
+    repo.insert_audit_event(
+        user_id=user.id, action='auth.mfa_login', ip=ip, user_agent=user_agent
+    )
+    return AuthTokens(
+        access_token=access,
+        refresh_token=refresh,
+        refresh_token_expires_at=refresh_expires_at,
+    )
+
+
 def _validate_password_or_raise(password: str) -> None:
     pwd = str(password or '')
     if len(pwd) < 8:
@@ -374,7 +411,10 @@ def refresh_tokens(
     repo.revoke_refresh_token(token_id=rec['id'], replaced_by_token_id=new_token_id)
 
     access = create_access_token(
-        subject=str(user.id), email=user.email, ttl_minutes=access_ttl_minutes
+        subject=str(user.id),
+        email=user.email,
+        ttl_minutes=access_ttl_minutes,
+        recently_authenticated=False,
     )
 
     repo.insert_audit_event(user_id=user.id, action='auth.refresh', ip=ip, user_agent=user_agent)

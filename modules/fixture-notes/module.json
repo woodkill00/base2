@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "fixture-notes",
+  "version": "1.0.0",
+  "compatibility": ">=2.0.0,<3.0.0",
+  "models": ["fixture-notes.note"],
+  "migrations": ["modules/fixture-notes/migrations/0001.sql"],
+  "apiRoutes": ["/api/modules/fixture-notes"],
+  "uiRoutes": ["/notes"],
+  "navigation": ["fixture-notes.index"],
+  "permissions": ["fixture-notes.read", "fixture-notes.write"],
+  "jobs": ["fixture-notes.expire"],
+  "settingsSchema": "modules/fixture-notes/settings.schema.json",
+  "healthChecks": ["fixture-notes.ready"],
+  "providerCapabilities": [],
+  "dependencies": [],
+  "dataLifecycle": {
+    "disable": "preserve",
+    "export": true,
+    "remove": "backup-required"
+  }
+}
