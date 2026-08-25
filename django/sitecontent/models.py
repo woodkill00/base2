@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import re
 import uuid
 
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
+from django.db import transaction
 from django.utils import timezone
 
 SITE_ID_PATTERN = r"^[a-z][a-z0-9-]{2,62}$"
@@ -157,6 +159,38 @@ class MediaAsset(SiteOwnedModel):
         constraints = [models.UniqueConstraint(fields=["site_id", "storage_key"], name="sitecontent_media_key_uq")]
         indexes = [models.Index(fields=["site_id", "status", "created_at"], name="sitecontent_media_idx")]
 
+    def quarantine(self, reason_code: str) -> None:
+        if self.status == self.Status.DELETED:
+            raise ValidationError({"status": "Deleted media cannot return to quarantine."})
+        if not re.fullmatch(r"[a-z][a-z0-9_]{2,63}", reason_code or ""):
+            raise ValidationError({"metadata": "A bounded machine-readable quarantine reason is required."})
+        self.status = self.Status.QUARANTINED
+        self.metadata = {"metadataPolicy": "stripped", "quarantineReason": reason_code}
+        self.save(update_fields=["status", "metadata", "updated_at"])
+
+    def validate_variants(self, variants: list[dict], *, scanner_ref: str) -> list["MediaVariant"]:
+        if self.status != self.Status.QUARANTINED:
+            raise ValidationError({"status": "Only quarantined media can be validated."})
+        if not re.fullmatch(r"[A-Za-z0-9._:-]{3,128}", scanner_ref or ""):
+            raise ValidationError({"metadata": "A valid scanner receipt is required."})
+        if not 1 <= len(variants) <= 10:
+            raise ValidationError({"variants": "Between one and ten validated variants are required."})
+        with transaction.atomic():
+            created = []
+            for item in variants:
+                variant = MediaVariant(asset=self, **item)
+                variant.full_clean()
+                variant.save()
+                created.append(variant)
+            self.status = self.Status.VALIDATED
+            self.metadata = {
+                "metadataPolicy": "stripped",
+                "scanStatus": "clean",
+                "scannerRef": scanner_ref,
+            }
+            self.save(update_fields=["status", "metadata", "updated_at"])
+        return created
+
 
 class MediaVariant(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -204,6 +238,32 @@ class FormSubmission(SiteOwnedModel):
         super().clean()
         if self.retained_until <= timezone.now():
             raise ValidationError({"retained_until": "Retention expiry must be in the future."})
+
+    @classmethod
+    def expire_due(cls, *, at=None) -> int:
+        at = at or timezone.now()
+        with transaction.atomic():
+            due = cls.objects.select_for_update().filter(
+                retained_until__lte=at,
+            ).exclude(status=cls.Status.EXPIRED)
+            submission_ids = list(due.values_list("id", flat=True))
+            if not submission_ids:
+                return 0
+            FormDeliveryOutbox.objects.filter(
+                submission_id__in=submission_ids,
+                status=FormDeliveryOutbox.Status.QUEUED,
+            ).update(
+                status=FormDeliveryOutbox.Status.DEAD_LETTER,
+                last_error_code="retention_expired",
+                updated_at=at,
+            )
+            return due.update(
+                payload={},
+                consent={},
+                request_id="",
+                status=cls.Status.EXPIRED,
+                updated_at=at,
+            )
 
 
 class FormDeliveryOutbox(models.Model):

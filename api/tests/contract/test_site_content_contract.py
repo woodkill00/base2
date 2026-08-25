@@ -93,7 +93,11 @@ def test_tenant_policy_pagination_not_found_and_search_mapping():
         app.dependency_overrides.clear()
 
 
-def test_form_submission_is_queued_and_idempotently_replayed():
+def test_form_submission_is_queued_and_idempotently_replayed(monkeypatch):
+    monkeypatch.setattr(
+        'api.routes.site_content.rate_limit.incr_and_check_detailed',
+        lambda *_args: (1, False, 0),
+    )
     fake = FakeSiteContentService()
     app.dependency_overrides[get_site_content_service] = lambda: fake
     try:

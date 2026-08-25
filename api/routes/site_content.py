@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 import re
 from datetime import datetime
 from typing import Annotated, Any, NoReturn
@@ -11,6 +12,9 @@ from pydantic import BaseModel, Field
 from api.middleware.tenant import require_tenant
 from api.repositories.site_content import PostgresSiteContentRepository
 from api.services.site_content import SiteContentService
+from api.security import rate_limit
+from api.security.public_content import FormPolicyError
+from api.settings import settings
 
 router = APIRouter()
 _SITE_ID = re.compile(r'^[a-z][a-z0-9-]{2,62}$')
@@ -98,6 +102,27 @@ def _temporarily_unavailable(exc: Exception) -> NoReturn:
     raise HTTPException(status_code=503, detail='site_content_temporarily_unavailable') from exc
 
 
+def _guard_form_request(request: Request, tenant: str) -> None:
+    session_name = str(settings.SESSION_COOKIE_NAME or '')
+    if session_name and request.cookies.get(session_name):
+        csrf_name = str(settings.CSRF_COOKIE_NAME or '')
+        cookie = request.cookies.get(csrf_name, '')
+        header = request.headers.get('X-CSRF-Token', '')
+        if not cookie or not header or not hmac.compare_digest(cookie, header):
+            raise HTTPException(status_code=403, detail='csrf_failed')
+
+    client_ip = request.client.host if request.client else 'unknown'
+    _count, over, retry_after = rate_limit.incr_and_check_detailed(
+        f'{tenant}:{client_ip}', 'public_form'
+    )
+    if over:
+        raise HTTPException(
+            status_code=429,
+            detail='rate_limited',
+            headers={'Retry-After': str(retry_after)},
+        )
+
+
 @router.get('/content', response_model=ContentPage)
 def list_content(
     request: Request,
@@ -174,6 +199,7 @@ def submit_form(
     ],
 ):
     tenant = _tenant(request)
+    _guard_form_request(request, tenant)
     try:
         return service.submit_form(
             site_id=tenant,
@@ -185,6 +211,8 @@ def submit_form(
                 request.state, 'request_id', request.headers.get('X-Request-Id', '')
             ),
         )
+    except FormPolicyError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except ValueError as exc:
         _map_value_error(exc)
     except Exception as exc:

@@ -90,8 +90,8 @@
 - [x] T060 [P] [US4] Write React tests for core page inventory, loading/empty/error/permission/offline states, and every visible control | Depends: T009,T058 | Validate: fail before T061
 - [x] T061 [US4] Implement manifest-driven home/about/contact/privacy/terms/accessibility/search and branded 404/500 | Depends: T059,T060 | Validate: route/control E2E passes
 - [x] T062 [US4] Replace hero/docs/contact/social/dashboard/sample/no-op interactions with real behavior, explicit disabled state, or removal | Depends: T009,T061 | Validate: zero unexplained inventory entries
-- [ ] T063 [P] [US4] Write abuse/security tests for CSRF, spam, replay, limits, hostile markup/uploads, MIME spoof, metadata, and retention | Depends: T059 | Validate: attack fixtures fail before T064
-- [ ] T064 [US4] Implement hardened form/outbox and media validation/variants/quarantine/attribution flows | Depends: T063 | Validate: security/integration tests pass
+- [x] T063 [P] [US4] Write abuse/security tests for CSRF, spam, replay, limits, hostile markup/uploads, MIME spoof, metadata, and retention | Depends: T059 | Validate: attack fixtures fail before T064
+- [x] T064 [US4] Implement hardened form/outbox and media validation/variants/quarantine/attribution flows | Depends: T063 | Validate: security/integration tests pass
 - [ ] T065 [P] [US4] Write search authorization/freshness/tombstone and SEO/redirect/robots/sitemap tests | Depends: T059 | Validate: fail before T066
 - [ ] T066 [US4] Implement tenant-safe search and manifest/content-driven canonical/robots/sitemap/OG/structured-data/redirect behavior | Depends: T065 | Validate: fixture-site search/SEO matrix
 - [ ] T067 [P] [US4] Write consent/analytics/localization tests including tracker-before-consent and locale fallback | Depends: T049 | Validate: fail before T068

@@ -17,6 +17,8 @@ SCOPE_LIMITS: dict[str, tuple[int, int]] = {
     # Forgot-password is intentionally a bit higher.
     'forgot_password': (900_000, 10),
     'forgot_password_email': (900_000, 5),
+    # Public forms are tenant/IP scoped by their caller.
+    'public_form': (60_000, 10),
 }
 
 

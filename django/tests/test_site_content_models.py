@@ -100,6 +100,46 @@ def test_media_integrity_variants_and_quarantine_contract():
         ).full_clean()
 
 
+def test_media_requires_quarantine_scanner_receipt_before_public_variants():
+    asset = MediaAsset.objects.create(
+        site_id="site-a",
+        storage_key="sha256/cc/photo.png",
+        original_name="photo.png",
+        media_type="image/png",
+        byte_size=128,
+        sha256="c" * 64,
+        owner_ref="content:test",
+    )
+    with pytest.raises(ValidationError):
+        asset.validate_variants([], scanner_ref="scan:clean")
+    asset.quarantine("awaiting_scan")
+    assert asset.status == "quarantined"
+    with pytest.raises(ValidationError):
+        asset.validate_variants([], scanner_ref="scan:clean")
+    variants = asset.validate_variants(
+        [
+            {
+                "name": "small",
+                "storage_key": "sha256/dd/photo-small.webp",
+                "media_type": "image/webp",
+                "byte_size": 64,
+                "sha256": "d" * 64,
+                "width": 320,
+                "height": 180,
+            }
+        ],
+        scanner_ref="scanner:receipt-1",
+    )
+    asset.refresh_from_db()
+    assert len(variants) == 1
+    assert asset.status == "validated"
+    assert asset.metadata["scanStatus"] == "clean"
+    asset.status = "deleted"
+    asset.save(update_fields=["status"])
+    with pytest.raises(ValidationError):
+        asset.quarantine("retry_scan")
+
+
 def test_form_replay_retention_and_search_publication_contract():
     retained_until = timezone.now() + timedelta(days=30)
     FormSubmission.objects.create(
@@ -144,6 +184,31 @@ def test_form_replay_retention_and_search_publication_contract():
             visibility="public",
             source_updated_at=content.updated_at,
         )
+
+
+def test_expired_form_data_is_redacted_and_queued_delivery_is_stopped():
+    submission = FormSubmission.objects.create(
+        site_id="site-a",
+        form_key="contact",
+        replay_key="request-expired",
+        request_digest="e" * 64,
+        payload={"email": "private@example.test", "message": "private"},
+        consent={"essential": True},
+        request_id="private-request-id",
+        retained_until=timezone.now() + timedelta(days=1),
+    )
+    delivery = FormDeliveryOutbox.objects.create(submission=submission)
+    FormSubmission.objects.filter(pk=submission.pk).update(retained_until=timezone.now() - timedelta(seconds=1))
+    assert FormSubmission.expire_due() == 1
+    submission.refresh_from_db()
+    delivery.refresh_from_db()
+    assert submission.status == "expired"
+    assert submission.payload == {}
+    assert submission.consent == {}
+    assert submission.request_id == ""
+    assert delivery.status == "dead_letter"
+    assert delivery.last_error_code == "retention_expired"
+    assert FormSubmission.expire_due() == 0
 
 
 def test_admin_registration_and_migrations_are_current():

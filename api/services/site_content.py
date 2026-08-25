@@ -6,6 +6,7 @@ from typing import Any, Protocol
 from uuid import UUID
 
 from api.site_manifest import load_runtime_manifest
+from api.security.public_content import validate_form_submission
 
 
 class SiteContentRepository(Protocol):
@@ -71,6 +72,7 @@ class SiteContentService:
         consent: dict[str, Any],
         request_id: str,
     ):
+        payload, consent = validate_form_submission(payload, consent)
         encoded = json.dumps(
             {'siteId': site_id, 'formKey': form_key, 'payload': payload, 'consent': consent},
             sort_keys=True,

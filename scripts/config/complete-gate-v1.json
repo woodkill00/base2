@@ -111,6 +111,20 @@
       "requiredTools": ["npm", "node"]
     },
     {
+      "id": "public-content-abuse-contract",
+      "command": [
+        "{python-api}",
+        "-m",
+        "pytest",
+        "api/tests/security/test_site_content_abuse.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 45,
+      "dependsOn": ["site-content-api"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
       "id": "shell-parity",
       "command": ["node", "scripts/guard-shell-parity.js"],
       "required": true,
