@@ -31,6 +31,19 @@ class GateRuntimeRecoveryTests(unittest.TestCase):
             result=classify(path)
             self.assertFalse(result['nativeCorruption']); self.assertEqual(['policy'],result['nonNativeFailedChecks'])
 
+    def test_playwright_worker_sigsegv_is_native_but_assertion_is_not(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path=self.evidence(Path(temporary),{'visual':'Error: worker process exited unexpectedly (code=null, signal=SIGSEGV)'})
+            self.assertTrue(classify(path)['nativeCorruption'])
+        with tempfile.TemporaryDirectory() as temporary:
+            path=self.evidence(Path(temporary),{
+                'visual':'Error: worker process exited unexpectedly (code=null, signal=SIGSEGV)',
+                'a11y':'AssertionError: serious accessibility violation',
+            })
+            result=classify(path)
+            self.assertFalse(result['nativeCorruption'])
+            self.assertEqual(['a11y'],result['nonNativeFailedChecks'])
+
     def test_windows_launcher_is_bounded_and_exact_commit_bound(self):
         source=(Path(__file__).parents[2]/'scripts/run-complete-gate-wsl.ps1').read_text()
         self.assertIn('$attempt -le 2',source)

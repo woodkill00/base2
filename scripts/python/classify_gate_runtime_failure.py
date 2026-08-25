@@ -11,6 +11,7 @@ from pathlib import Path
 
 NATIVE_CORRUPTION = re.compile(
     r'(Fatal Python error:\s*Segmentation fault|\bexit[ _]-11\b|'
+    r'worker process exited unexpectedly \(code=null, signal=SIGSEGV\)|'
     r'malloc_consolidate\(\)|unaligned fastbin|corrupted double-linked list|'
     r'double free or corruption)',
     re.IGNORECASE,

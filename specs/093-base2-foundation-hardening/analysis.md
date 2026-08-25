@@ -1388,3 +1388,18 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Published one consolidated migration, operations, security, module, factory, cost, recovery, residual-risk, activation, and release guide.
 
 **Result**: T109 and T126 are complete, and the T111-T113 evidence builders and documentation are ready. Final exact-commit gates and generated ledgers remain required before those tasks and T114 can close.
+
+## Cycle 85 - Cross-runtime native failure classification
+
+**Findings**:
+
+1. The final gate launcher correctly recognized repeated Python/allocator corruption and restarted WSL once, but the clean-runtime replay encountered Playwright's exact unexpected worker `SIGSEGV` signature.
+2. The classifier treated that native worker termination as a product failure because its allowlist covered Python and allocator signatures only.
+
+**Corrections**:
+
+- Added only Playwright's exact `worker process exited unexpectedly (code=null, signal=SIGSEGV)` signature to native recovery eligibility.
+- Added positive worker-crash and mixed worker-crash-plus-accessibility-assertion tests; mixed or ordinary visual failures still forbid restart.
+- Retained the exact-commit check, clean-worktree requirement, preserved evidence, and one-restart maximum.
+
+**Result**: Native recovery covers the observed Python and browser-worker corruption classes without admitting screenshot, accessibility, product, security, coverage, policy, or mixed failures.
