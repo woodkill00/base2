@@ -50,7 +50,9 @@ class Settings(BaseSettings):
     GOOGLE_OAUTH_CLIENT_ID: Optional[str] = None
     GOOGLE_OAUTH_CLIENT_SECRET: Optional[str] = None
     GOOGLE_OAUTH_REDIRECT_URI: Optional[str] = None
+    GOOGLE_OAUTH_ENABLED: bool = Field(default=False)
     OAUTH_STATE_SECRET: Optional[str] = None
+    WEBAUTHN_ENABLED: bool = Field(default=False)
 
     AUTH_REFRESH_COOKIE: bool = Field(default=True)
 
@@ -116,7 +118,7 @@ class Settings(BaseSettings):
             if missing:
                 raise RuntimeError('Missing required env var(s): ' + ', '.join(missing))
 
-            if env == 'production':
+            if env == 'production' and self.GOOGLE_OAUTH_ENABLED:
                 oauth_missing = []
                 if not (self.GOOGLE_OAUTH_CLIENT_ID or '').strip():
                     oauth_missing.append('GOOGLE_OAUTH_CLIENT_ID')

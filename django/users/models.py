@@ -225,8 +225,6 @@ class OAuthAccount(UUIDMixin, TimestampedModel):
     user = models.ForeignKey(AuthUser, on_delete=models.CASCADE, related_name="oauth_accounts")
     provider = models.CharField(max_length=50)
     provider_user_id = models.CharField(max_length=255)
-    access_token = models.TextField(blank=True, default="")
-    refresh_token = models.TextField(blank=True, default="")
     expires_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:

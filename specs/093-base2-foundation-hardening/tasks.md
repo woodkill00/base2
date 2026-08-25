@@ -105,8 +105,8 @@
 
 - [x] T070 [P] [US5] Write Django tests/models/migrations for organizations, memberships, invitations, roles, authenticators, sessions, credentials, and audit events | Depends: T057 | Validate: fail before T071
 - [x] T071 [US5] Implement canonical Django domain, constraints, admin adapters, and migrations | Depends: T070 | Validate: Django tests/migration rollback pass
-- [ ] T072 [P] [US5] Write FastAPI contract/security tests for account lifecycle, OAuth provider enable/disable/start/callback, TOTP/recovery, WebAuthn, invitations, RBAC, sessions, API credentials, audit, and data rights | Depends: T071 | Validate: fail before T073
-- [ ] T073 [US5] Implement one supported account/OAuth contract, remove dead duplicate 501 routes, and implement services/routes/policies with reauthentication, secure secret handling, and append-only audit | Depends: T072 | Validate: API auth/OAuth/security tests pass
+- [x] T072 [P] [US5] Write FastAPI contract/security tests for account lifecycle, OAuth provider enable/disable/start/callback, TOTP/recovery, WebAuthn, invitations, RBAC, sessions, API credentials, audit, and data rights | Depends: T071 | Validate: fail before T073
+- [x] T073 [US5] Implement one supported account/OAuth contract, remove dead duplicate 501 routes, and implement services/routes/policies with reauthentication, secure secret handling, and append-only audit | Depends: T072 | Validate: API auth/OAuth/security tests pass
 - [ ] T074 [P] [US5] Build hostile tenant-isolation matrix across models, API, caches, jobs, search, media, admin, and timing-safe not-found behavior | Depends: T071,T073 | Validate: fail before T075
 - [ ] T075 [US5] Enforce tenant context/keys/policies and database constraints across all boundaries | Depends: T074 | Validate: isolation matrix passes
 - [ ] T123 [P] [US5] Evaluate and test PostgreSQL row-level security/defense-in-depth, connection-pool tenant reset, transaction boundaries, and migration bypass behavior | Depends: T071,T074 | Validate: direct-query/pool-reuse hostile matrix and recorded decision

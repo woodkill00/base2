@@ -57,15 +57,20 @@ def test_metrics_endpoint_exposes_prometheus_text():
     assert 'api_uptime_seconds' in body
 
 
-def test_privacy_endpoints_require_tenant_header_and_succeed():
-    c = _client()
-    # Missing header should fail
-    r_missing = c.post('/api/privacy/export')
-    assert r_missing.status_code == 400
-    assert r_missing.json().get('detail') == 'tenant_required'
+def test_privacy_endpoints_require_auth_and_tenant_header_and_succeed(monkeypatch):
+    from uuid import UUID
 
-    # With header, operations should be accepted
-    hdr = {'X-Tenant-Id': 't-123'}
+    monkeypatch.setattr(
+        'api.auth.tokens.decode_access_token',
+        lambda _token: {'sub': str(UUID('00000000-0000-0000-0000-000000000123'))},
+    )
+    c = _client()
+    # Authentication is checked before tenant details are disclosed.
+    r_missing = c.post('/api/privacy/export')
+    assert r_missing.status_code == 401
+    assert r_missing.json().get('detail') == 'not_authenticated'
+
+    hdr = {'X-Tenant-Id': 't-123', 'Authorization': 'Bearer fixture-token'}
     r_export = c.post('/api/privacy/export', headers=hdr)
     assert r_export.status_code == 200
     j_export = r_export.json()

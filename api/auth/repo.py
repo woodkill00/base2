@@ -231,8 +231,10 @@ def insert_audit_event(
     user_agent: str,
     metadata: dict[str, Any] | None = None,
 ) -> None:
+    from api.security.identity import redact_audit_metadata
+
     event_id = uuid4()
-    metadata_json = json.dumps(metadata or {})
+    metadata_json = json.dumps(redact_audit_metadata(metadata or {}))
     with db_conn() as conn:
         conn.autocommit = True
         with conn.cursor() as cur:

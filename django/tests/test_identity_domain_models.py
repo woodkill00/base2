@@ -3,7 +3,7 @@ from datetime import timedelta
 import pytest
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError, transaction
+from django.db import DatabaseError, IntegrityError, transaction
 from django.utils import timezone
 
 from users.models import (
@@ -82,3 +82,7 @@ def test_audit_events_are_append_only():
         event.save()
     with pytest.raises(ValidationError, match="append_only"):
         event.delete()
+    with pytest.raises(DatabaseError, match="audit_event_append_only"), transaction.atomic():
+        AuditEvent.objects.filter(pk=event.pk).update(action="identity.bypassed")
+    with pytest.raises(DatabaseError, match="audit_event_append_only"), transaction.atomic():
+        AuditEvent.objects.filter(pk=event.pk).delete()

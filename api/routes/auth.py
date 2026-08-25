@@ -681,8 +681,10 @@ async def auth_oauth_google(request: Request, response: Response):
     if not id_token:
         raise HTTPException(status_code=400, detail='Invalid request')
 
+    if not settings.GOOGLE_OAUTH_ENABLED:
+        raise HTTPException(status_code=404, detail='oauth_provider_disabled')
     if not settings.GOOGLE_OAUTH_CLIENT_ID:
-        raise HTTPException(status_code=500, detail='Google OAuth not configured')
+        raise HTTPException(status_code=503, detail='oauth_provider_unavailable')
 
     try:
         from api.services.oauth_google import verify_google_id_token
@@ -695,31 +697,22 @@ async def auth_oauth_google(request: Request, response: Response):
     except Exception as e:
         raise HTTPException(status_code=500, detail='OAuth failed') from e
 
+    return await complete_google_oauth_identity(ident=ident, request=request, response=response)
+
+
+async def complete_google_oauth_identity(*, ident, request: Request, response: Response):
+    """Complete the canonical Google identity flow without retaining provider tokens."""
+    ip = _client_ip(request)
     try:
         from api.auth import repo
-        from api.auth.tokens import create_access_token, new_refresh_token, hash_token
+        from api.auth.tokens import create_access_token, hash_token, new_refresh_token
 
-        # 1) If provider account already linked, sign in that user.
         linked = repo.find_oauth_account(provider='google', provider_account_id=ident.sub)
-        user = None
-        if linked is not None:
-            user = repo.get_user_by_id(linked['user_id'])
-
-        # 2) Else: try to attach to an existing local user by email, under merge rules.
+        user = repo.get_user_by_id(linked['user_id']) if linked is not None else None
         if user is None:
             existing = repo.get_user_by_email(ident.email)
             if existing is not None:
-                # Merge/link only if local email is already verified OR Google says verified.
-                if (existing.is_email_verified is True) or (ident.email_verified is True):
-                    with suppress(Exception):
-                        repo.create_oauth_account(
-                            user_id=existing.id,
-                            provider='google',
-                            provider_account_id=ident.sub,
-                            email=ident.email,
-                        )
-                    user = existing
-                else:
+                if not (existing.is_email_verified or ident.email_verified):
                     repo.insert_audit_event(
                         user_id=existing.id,
                         action='auth.oauth_link_rejected',
@@ -728,14 +721,21 @@ async def auth_oauth_google(request: Request, response: Response):
                         metadata={'provider': 'google'},
                     )
                     raise HTTPException(status_code=401, detail='OAuth rejected')
+                with suppress(Exception):
+                    repo.create_oauth_account(
+                        user_id=existing.id,
+                        provider='google',
+                        provider_account_id=ident.sub,
+                        email=ident.email,
+                    )
+                user = existing
             else:
-                # 3) Create new user and link.
                 user = repo.create_user(email=ident.email, password_hash='')
                 with suppress(Exception):
                     repo.update_profile(
                         user_id=user.id,
-                        display_name=(ident.name or ''),
-                        avatar_url=(ident.picture or ''),
+                        display_name=ident.name or '',
+                        avatar_url=ident.picture or '',
                         bio=None,
                     )
                 if ident.email_verified:
@@ -748,13 +748,12 @@ async def auth_oauth_google(request: Request, response: Response):
                         provider_account_id=ident.sub,
                         email=ident.email,
                     )
-
         if user is None or not user.is_active:
             raise HTTPException(status_code=401, detail='OAuth rejected')
 
         refresh_ttl_days = int(os.getenv('REFRESH_TOKEN_TTL_DAYS', '30') or 30)
         refresh = new_refresh_token()
-        _token_id, _expires_at = repo.create_refresh_token(
+        repo.create_refresh_token(
             user_id=user.id,
             token_hash=hash_token(refresh),
             ttl_days=refresh_ttl_days,
@@ -766,15 +765,13 @@ async def auth_oauth_google(request: Request, response: Response):
             email=user.email,
             ttl_minutes=int(os.getenv('JWT_EXPIRE', '15') or 15),
         )
-
         repo.insert_audit_event(
             user_id=user.id,
             action='auth.oauth_login',
             ip=ip,
             user_agent=request.headers.get('user-agent', ''),
-            metadata={'provider': 'google'},
+            metadata={'provider': 'google', 'flow': 'authorization_code'},
         )
-
         _set_refresh_cookie(response, refresh, max_age_seconds=refresh_ttl_days * 86400)
         body = {
             'id': str(user.id),
@@ -789,5 +786,5 @@ async def auth_oauth_google(request: Request, response: Response):
         return body
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail='OAuth failed') from e
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail='OAuth failed') from exc

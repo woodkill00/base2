@@ -102,6 +102,23 @@
       "requiredTools": ["{python-django}"]
     },
     {
+      "id": "identity-security-contract",
+      "command": [
+        "{python-api}",
+        "-m",
+        "pytest",
+        "api/tests/contract/test_identity_security_contract.py",
+        "api/tests/test_auth_tokens.py",
+        "api/tests/test_auth_rate_limits.py",
+        "api/tests/test_oauth_google_option_a.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": ["identity-domain-models"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
       "id": "site-content-api",
       "command": [
         "{python-api}",
