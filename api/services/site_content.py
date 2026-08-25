@@ -7,6 +7,7 @@ from uuid import UUID
 
 from api.site_manifest import load_runtime_manifest
 from api.security.public_content import validate_form_submission
+from api.security.engagement import community_submission, support_submission
 
 
 class SiteContentRepository(Protocol):
@@ -77,6 +78,10 @@ class SiteContentService:
         request_id: str,
     ):
         payload, consent = validate_form_submission(payload, consent)
+        if form_key == 'support':
+            payload = support_submission(
+                payload.get('subject'), payload.get('message'), consent.get('supportProcessing')
+            )
         encoded = json.dumps(
             {'siteId': site_id, 'formKey': form_key, 'payload': payload, 'consent': consent},
             sort_keys=True,
@@ -93,4 +98,10 @@ class SiteContentService:
             request_id=request_id,
             retention_days=int(self.manifest['contact']['retentionDays']),
             request_digest=request_digest,
+        )
+
+    def submit_community(self, *, site_id: str, author_ref: str, title: str, body: str):
+        payload = community_submission(title, body)
+        return self.repository.create_community_post(
+            site_id=site_id, author_ref=author_ref, payload=payload
         )

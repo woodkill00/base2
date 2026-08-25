@@ -23,6 +23,23 @@ def _content(row) -> dict[str, Any]:
 
 
 class PostgresSiteContentRepository:
+    def create_community_post(self, *, site_id: str, author_ref: str, payload: dict[str, Any]):
+        record_id, now = uuid4(), datetime.now(UTC)
+        slug = f'post-{record_id.hex[:16]}'
+        with db_conn(tenant_id=site_id) as conn:
+            conn.autocommit = True
+            with conn.cursor() as cur:
+                cur.execute(
+                    """INSERT INTO sitecontent_contentrecord
+                       (id,site_id,content_type,slug,title,excerpt,body,metadata,state,
+                        sitemap_include,search_visible,version,created_at,updated_at)
+                       VALUES (%s,%s,'community-post',%s,%s,'',%s,%s,'draft',FALSE,FALSE,1,%s,%s)""",
+                    (str(record_id),site_id,slug,payload['title'],payload['body'],
+                     json.dumps({'authorRef':author_ref,'moderationStatus':'pending',
+                                 'abuseScore':payload['abuseScore']}),now,now),
+                )
+        return {'id':record_id,'slug':slug,'moderationStatus':'pending'}
+
     def list_content(
         self, *, site_id: str, limit: int, cursor: UUID | None, content_type: str | None = None
     ):

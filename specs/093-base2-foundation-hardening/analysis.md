@@ -1168,3 +1168,19 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Kept the coverage floor and every required check unchanged.
 
 **Result**: The failed exact evidence remains preserved. Focused coverage must pass before a replacement exact-commit gate.
+
+## Cycle 70 - Moderated community and private support
+
+**Findings**:
+
+1. Community content cannot use immediate publication safely, and support payloads cannot inherit public content visibility.
+2. Notification adapters must not receive post bodies, messages, emails, or credentials.
+
+**Corrections**:
+
+- Added bounded active-content rejection, deterministic abuse scoring, explicit moderation transitions/reasons, and opaque notification payloads.
+- Added authenticated tenant-bound community submission stored as non-searchable draft content pending review.
+- Added support-specific processing consent and forced private retention classification over the existing replay/CSRF/rate-limit/outbox pipeline.
+- Added content/community/support SDK manifests, dependency ordering, inert email declaration, focused policy/service tests, documentation, and a required gate node.
+
+**Result**: T089 complete. Community cannot self-publish, support cannot become public, and notification payloads contain identifiers/status only.
