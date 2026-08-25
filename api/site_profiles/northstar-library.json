@@ -32,9 +32,16 @@
     "termsPath": "/terms"
   },
   "legalName": "Northstar Learning Foundation",
-  "locales": ["en-US", "fr"],
+  "locales": [
+    "en-US",
+    "fr"
+  ],
   "media": {
-    "allowedTypes": ["image/jpeg", "image/png", "application/pdf"],
+    "allowedTypes": [
+      "image/jpeg",
+      "image/png",
+      "application/pdf"
+    ],
     "maxBytes": 5242880
   },
   "modules": [

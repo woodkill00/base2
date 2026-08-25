@@ -32,9 +32,16 @@
     "termsPath": "/terms"
   },
   "legalName": "Ember Studio Cooperative",
-  "locales": ["en", "de"],
+  "locales": [
+    "en",
+    "de"
+  ],
   "media": {
-    "allowedTypes": ["image/jpeg", "image/png", "image/webp"],
+    "allowedTypes": [
+      "image/jpeg",
+      "image/png",
+      "image/webp"
+    ],
     "maxBytes": 10485760
   },
   "modules": [

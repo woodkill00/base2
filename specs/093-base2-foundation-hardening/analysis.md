@@ -784,3 +784,17 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added a strict Vite selection plugin that rejects unknown profiles and emits explicit public `site-profile.json` plus an HTML site-ID marker; the required build verifier builds both fixture brands and proves distinct output from the same tree.
 
 **Result**: T049 complete. Twelve manifest/runtime tests pass, API and Django resolve Northstar to the same canonical digest, focused API/Django/React regressions pass, and both Ember Studio and Northstar Library production builds are distinct and identify their exact selected profile. The generator `--check` mode and dual-build verifier are required complete-gate nodes; no secret, provider, DNS, certificate, or external mutation is involved.
+
+## Cycle 49 - Generated profile formatter ownership
+
+**Findings**:
+
+1. The first exact-commit expanded gate failed because pre-commit's general JSON formatter rewrote all six generated profile copies after the generator had verified their exact bytes.
+2. The integrity check failed closed and blocked the dependent dual-brand build check; all other required gate nodes passed.
+
+**Corrections**:
+
+- Declared all three generated profile directories formatter-exempt so the canonical generator is their sole byte-level owner.
+- Regenerated every service-local profile from the validated canonical source and required `generate_site_profiles.py --check` before the replacement commit.
+
+**Result**: The original failed result remains preserved under ignored gate evidence. The regenerated files match the generator exactly, and a new exact-commit complete gate is required; no validation threshold, profile contract, or required check was weakened.
