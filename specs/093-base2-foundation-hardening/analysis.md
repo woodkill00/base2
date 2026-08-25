@@ -690,3 +690,19 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Bound the initially unknown Droplet address only after exact resource identity is persisted; existing providerless flows remain unchanged when DNS values are already known.
 
 **Result**: T131-T133 pass. The DigitalOcean suite passes 184 tests, the focused canary/feature matrix passes 12 tests, and the real local Compose canary reached 12/12 healthy services while verifying the exact single-host route and staging-only ACME configuration. Cleanup left no Compose project. No Droplet, DNS record, certificate request, project resource, repository remote, or billable resource was created. T045 remains open until the corrected implementation is committed, its deterministic archive and plan dry-run pass, and the new exact plan receives separate approval.
+
+## Cycle 43 - Exact-commit coverage and WSL native-process replay
+
+**Findings**:
+
+1. The first exact-commit replay passed every functional node but measured changed-line coverage at 87.96%, below the unchanged 90% floor.
+2. The same replay exposed the known WSL native-process instability as an `npm audit` allocator abort; a following Python collection attempt also segfaulted with ample host memory.
+3. The production dependency audit itself reports only two moderate React Router advisories, below the fixed high-severity failure threshold; it does not authorize a breaking major-version upgrade.
+
+**Corrections**:
+
+- Added direct dependency-free HTTP adapter tests covering every fixed Droplet and Domain operation, request-path/method rejection, HTTP failure redaction, and connection cleanup.
+- Added hostile live-boundary tests for every exact config dimension, private input permissions, ownership tags, invalid DNS addresses, bounded readiness exhaustion, health failure, and non-404 provider errors.
+- Terminated and restarted only the Ubuntu WSL VM after the native crashes, then replayed the unchanged test and audit commands without weakening or retrying around an assertion failure.
+
+**Result**: The DigitalOcean matrix now passes 196 tests and changed-line coverage is 90.34% against the unchanged 90% floor. The production audit completes normally with zero high/critical findings. No Pi, provider, DNS, certificate, repository remote, or billable resource was mutated.
