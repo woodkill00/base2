@@ -243,6 +243,31 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "operations-telemetry-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_operations_telemetry"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["module-checkpoint"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "recovery-assurance-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "unittest",
+        "scripts.tests.test_recovery_assurance"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": [
+        "operations-telemetry-contract",
+        "preview-state-contract",
+        "acme-staging-policy"
+      ],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
       "id": "public-experience-contract",
       "command": ["npm", "--prefix", "react-app", "run", "test:public-contract"],
       "required": true,

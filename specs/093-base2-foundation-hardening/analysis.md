@@ -1243,3 +1243,33 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Confirmed no duplicate complete-gate or Playwright process remains before isolated browser replay.
 
 **Result**: The original exact-commit failure remains immutable evidence; both failed nodes must pass in isolation before a replacement commit and full gate.
+
+## Cycle 75 - Observable incident lifecycle
+
+**Findings**:
+
+1. Health, queue, adapter, log, metric, and trace evidence needed one bounded schema and recursive secret redaction policy.
+2. Repeated fault sampling could spam the owner unless incident and recovery transitions were durable and idempotent.
+
+**Corrections**:
+
+- Added strict structured event kinds, severity, diagnostic codes, correlation IDs, attribute bounds, and recursive secret-key/value redaction.
+- Added an atomic owner-only alert ledger that emits exactly once on failure and once on recovery, with corrupt state failing closed.
+- Added an integrity-digested diagnostic bundle limited to exact commit, boot, events, health, queues, and adapter state plus injected fault tests and operations documentation.
+
+**Result**: T093-T094 complete. Fault, repeated-fault, recovery, redaction, corrupt-state, and safe-bundle cases pass without notification-provider or credential authority.
+
+## Cycle 76 - Authenticated recovery and stateful preview preservation
+
+**Findings**:
+
+1. Backup evidence required authenticated encryption, exact target/schema binding, and an isolated restore boundary rather than checksum-only archives.
+2. Stateful preview destruction needed a real snapshot receipt compatible with the existing preservation decision and exact recreation proof.
+
+**Corrections**:
+
+- Added AES-256-GCM backup envelopes with authenticated metadata, fresh nonce, exact digest/size, atomic owner-only storage, and SecretRef-only key identity.
+- Added absent-target isolated restore, migration/rollback preflight, staging-only certificate drills, and hostile corruption, wrong-target, stale-schema, partial-file, existing-target, and secret-exposure tests.
+- Integrated encrypted preview snapshots with lease ID, verification/expiry evidence, preservation admission, and exact state recreation.
+
+**Result**: T095, T096, and T128 complete. The bounded local recovery drills preserve exact state and expose neither plaintext nor key material; production restores and provider actions remain unauthorized.
