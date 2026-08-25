@@ -42,11 +42,14 @@ RECOVERY_CHECKS = {
 }
 LIVE_TO_CLOSEOUT_ALLOWED = (
     "docs/feature-093-production-readiness.md",
+    "docs/wsl-gate-recovery.md",
     "scripts/config/complete-gate-v1.json",
     "scripts/config/surface-drift-v1.json",
+    "scripts/python/classify_gate_runtime_failure.py",
     "scripts/python/feature_093_closeout.py",
     "scripts/python/validate_surface_drift.py",
     "scripts/tests/test_feature_093_closeout.py",
+    "scripts/tests/test_gate_runtime_recovery.py",
     "scripts/tests/test_surface_drift.py",
     "specs/093-base2-foundation-hardening/analysis.md",
     "specs/093-base2-foundation-hardening/tasks.md",

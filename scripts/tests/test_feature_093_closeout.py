@@ -78,6 +78,19 @@ class Feature093CloseoutTests(unittest.TestCase):
             with self.assertRaisesRegex(CloseoutError, "live:runtime_delta:api/main.py"):
                 _verified_closeout_delta(ROOT, "a" * 40, "b" * 40)
 
+    def test_gate_recovery_closeout_delta_is_explicitly_allowed(self):
+        expected = [
+            "docs/wsl-gate-recovery.md",
+            "scripts/python/classify_gate_runtime_failure.py",
+            "scripts/tests/test_gate_runtime_recovery.py",
+        ]
+        responses = [
+            subprocess.CompletedProcess([], 0, "", ""),
+            subprocess.CompletedProcess([], 0, "\n".join(expected) + "\n", ""),
+        ]
+        with patch("scripts.python.feature_093_closeout.subprocess.run", side_effect=responses):
+            self.assertEqual(expected, _verified_closeout_delta(ROOT, "a" * 40, "b" * 40))
+
     def test_unrelated_live_commit_fails_closed(self):
         response = subprocess.CompletedProcess([], 1, "", "")
         with patch("scripts.python.feature_093_closeout.subprocess.run", return_value=response):
