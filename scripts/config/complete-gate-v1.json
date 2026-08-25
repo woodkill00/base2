@@ -309,6 +309,24 @@
       "requiredTools": ["{python-orchestrator}", "git"]
     },
     {
+      "id": "generated-child-canary-preflight",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "digital_ocean/tests/test_generated_child_canary_preflight.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 120,
+      "dependsOn": [
+        "website-factory-contract",
+        "live-canary-preflight-contract",
+        "preview-state-contract"
+      ],
+      "requiredTools": ["{python-orchestrator}", "git"]
+    },
+    {
       "id": "public-experience-contract",
       "command": ["npm", "--prefix", "react-app", "run", "test:public-contract"],
       "required": true,

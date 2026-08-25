@@ -1333,3 +1333,18 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Added a non-applying upgrade advisor, hostile profile/commit/output fixtures, three distinct fixture profiles, deterministic double-generation, and an applicable child gate that executes no input-supplied command.
 
 **Result**: T100-T107 and T125 complete. Blog/portfolio, SaaS, and marketplace children generate differently and deterministically from one exact commit, pass governance/module/provenance checks, and perform zero provider or credential actions.
+
+## Cycle 81 - Generated-child live acceptance preflight
+
+**Findings**:
+
+1. T108 needs an exact child archive rather than the parent repository archive used by the earlier provider canary.
+2. The approval must bind child identity/state intent plus existing DNS, lease, staging-certificate, concurrency, and cost controls before credentials or network access.
+
+**Corrections**:
+
+- Added deterministic normalized child archiving, tree digest, plaintext staging cleanup, and an approval-required plan compatible with the existing integrity-verifying live runner.
+- Bound the exact parent commit, child archive digest, child identity/profile, restore-required state mode, unique DNS name, three sequential trials, one-resource concurrency, fifteen-minute lease, staging-only certificates, and existing cost ceilings.
+- Added changed-archive and reused-output hostile tests; preflight reports zero network requests and secret emissions.
+
+**Result**: T108 implementation and credential-free preflight contract are ready. The live deploy/verify/destroy/recreate run remains open until its newly generated exact plan receives separate provider approval.
