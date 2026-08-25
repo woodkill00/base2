@@ -36,3 +36,198 @@
     animation: none;
   }
 }
+
+/* Reviewed volcanic/obsidian intent, rebuilt on the current component tree. */
+.home-page-root {
+  min-height: 100vh;
+  color: var(--color-text);
+  background:
+    radial-gradient(
+      circle at 12% 8%,
+      color-mix(in srgb, var(--color-accent) 18%, transparent),
+      transparent 34rem
+    ),
+    radial-gradient(
+      circle at 88% 22%,
+      color-mix(in srgb, var(--color-focus) 10%, transparent),
+      transparent 28rem
+    ),
+    var(--color-canvas);
+}
+
+.home-obsidian-panel,
+.home-visual-console {
+  isolation: isolate;
+  color: var(--color-text);
+  border-color: color-mix(in srgb, var(--color-border) 76%, transparent);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-surface) 94%, transparent),
+      color-mix(in srgb, var(--color-canvas) 82%, transparent)
+    ),
+    radial-gradient(
+      circle at 8% 0%,
+      color-mix(in srgb, var(--color-accent) 15%, transparent),
+      transparent 44%
+    );
+  box-shadow: 0 24px 80px color-mix(in srgb, var(--color-canvas) 60%, transparent);
+}
+
+.home-obsidian-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.2;
+  pointer-events: none;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--color-border) 24%, transparent) 1px, transparent 1px),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--color-border) 24%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 42px 42px;
+  mask-image: linear-gradient(to bottom, black, transparent 88%);
+}
+
+.home-hero-layout {
+  display: grid;
+  align-items: center;
+  gap: var(--space-xl);
+  grid-template-columns: minmax(0, 1.12fr) minmax(16rem, 0.88fr);
+}
+
+.home-hero-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-lg);
+  text-align: left;
+}
+
+.home-obsidian-eyebrow,
+.home-command-topline,
+.home-command-row,
+.home-runtime-header,
+.home-runtime-panel {
+  border: 1px solid color-mix(in srgb, var(--color-border) 64%, transparent);
+  background: color-mix(in srgb, var(--color-surface-elevated) 72%, transparent);
+}
+
+.home-obsidian-eyebrow {
+  padding: 0.55rem 0.85rem;
+  border-radius: var(--radius-pill);
+  color: var(--color-text-muted);
+  text-transform: capitalize;
+}
+
+.home-obsidian-title {
+  display: inline-block;
+  color: var(--color-text);
+  text-shadow: 0 0 28px color-mix(in srgb, var(--color-accent) 26%, transparent);
+}
+
+.home-command-stack,
+.home-runtime-frame {
+  display: grid;
+  gap: var(--space-sm);
+  padding: clamp(1rem, 3vw, 1.5rem);
+  border: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-canvas) 64%, transparent);
+  box-shadow: 0 22px 70px color-mix(in srgb, var(--color-canvas) 55%, transparent);
+}
+
+.home-command-topline,
+.home-runtime-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius-md);
+}
+
+.home-command-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-sm);
+  align-items: center;
+  padding: 0.85rem 0.9rem;
+  border-radius: var(--radius-md);
+}
+
+.home-command-row div {
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.home-command-row span,
+.home-command-topline span,
+.home-runtime-header span,
+.home-runtime-panel span {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.home-command-row strong,
+.home-command-topline strong,
+.home-runtime-header strong,
+.home-runtime-panel strong {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.home-runtime-grid {
+  display: grid;
+  gap: var(--space-md);
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.home-runtime-panel {
+  min-height: 9rem;
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+}
+
+.home-runtime-panel strong {
+  display: block;
+  margin-top: var(--space-sm);
+  font-size: 1.1rem;
+}
+
+.home-runtime-panel p {
+  margin-top: var(--space-md);
+  color: var(--color-text-muted);
+}
+
+.home-integrated-footer {
+  color: var(--color-text);
+  border-color: color-mix(in srgb, var(--color-border) 64%, transparent);
+  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
+}
+
+@media (max-width: 768px) {
+  .home-hero-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .home-command-topline,
+  .home-runtime-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-obsidian-panel *,
+  .home-visual-console * {
+    scroll-behavior: auto;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

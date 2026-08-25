@@ -74,7 +74,7 @@
 - [x] T048 [P] [US3] Add two fixture site profiles with distinct brands/modules/domains and no secrets in `site_profiles/` | Depends: T047 | Validate: Ember Studio and Northstar Library validate and produce distinct brand/module inventories and digests
 - [x] T049 [US3] Thread manifest into Django/FastAPI/React/config generation with compatibility defaults | Depends: T048 | Validate: 12 manifest/runtime hostility tests pass; API and Django select the same integrity digest; Ember Studio and Northstar Library produce distinct verified Vite builds from one commit
 - [x] T050 [P] [US7] Formalize token/theme/component/state contracts and Storybook stories from `visual-port-map.md` | Depends: T008,T049 | Validate: five strict schema/theme/token/component-state/motion contract tests and the Storybook production build pass
-- [ ] T051 [US7] Port volcanic/obsidian visual behavior onto current-main components without merging stale history | Depends: T050 | Validate: ancestry guard and reviewed component diffs
+- [x] T051 [US7] Port volcanic/obsidian visual behavior onto current-main components without merging stale history | Depends: T050 | Validate: four ancestry/current-component/semantic-style/no-false-claim tests plus four home accessibility/keyboard tests pass
 - [ ] T052 [P] [US7] Build hermetic visual harness freezing fonts/assets/time/locale/network/motion/theme/viewport | Depends: T050 | Validate: repeated screenshots byte/diff stable
 - [ ] T053 [US7] Add reviewed component/page/state visual baselines and controlled update workflow | Depends: T051,T052 | Validate: intentional mutation fails
 - [ ] T054 [P] [US4] Add automated WCAG/keyboard/focus/contrast/reduced-motion/responsive matrix | Depends: T051 | Validate: injected accessibility defect fails

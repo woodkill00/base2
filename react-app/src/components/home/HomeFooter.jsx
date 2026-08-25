@@ -26,7 +26,7 @@ const HomeFooter = () => {
   return (
     <footer
       aria-label="Footer"
-      className="backdrop-blur-2xl bg-white/20 dark:bg-black/30 border-t border-white/30 dark:border-white/20"
+      className="home-integrated-footer backdrop-blur-2xl bg-white/20 dark:bg-black/30 border-t border-white/30 dark:border-white/20"
       style={{ marginTop: 'calc(4rem)' }}
     >
       <div style={{ padding: 'calc(3rem) calc(max(1rem, calc((100vw - 1200px) / 2))) calc(2rem)' }}>

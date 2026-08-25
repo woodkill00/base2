@@ -26,7 +26,7 @@ const Home = () => {
   };
 
   return (
-    <div className="relative min-h-screen" data-testid="home-page">
+    <div className="home-page-root relative min-h-screen" data-testid="home-page">
       <div className="gradient-background" />
 
       <div className="relative z-10">

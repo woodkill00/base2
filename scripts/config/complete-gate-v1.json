@@ -34,6 +34,14 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "visual-port",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_visual_port"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["visual-contract"],
+      "requiredTools": ["python3", "git"]
+    },
+    {
       "id": "shell-parity",
       "command": ["node", "scripts/guard-shell-parity.js"],
       "required": true,

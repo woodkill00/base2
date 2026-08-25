@@ -815,3 +815,20 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Made the visual contract a required gate dependency after both fixture brands build successfully.
 
 **Result**: T050 complete. All five contract tests pass, strict TypeScript and ESLint pass for the inventory, and the Storybook production build succeeds. The upstream Storybook runtime reports its known build-time `eval` and bundle-size warnings; this tool-only output is not shipped in the application image and does not change the production CSP boundary addressed by T119.
+
+## Cycle 51 - Reviewed visual port onto current components
+
+**Findings**:
+
+1. The stale visual branch mixes useful layout/contrast intent with hardcoded Base2 identity, an external decorative image, simulated operational claims, new no-op navigation surfaces, and an unrelated unsafe deployment-script delta.
+2. Wholesale merging would bypass the manifest and current component behavior while importing 231 historical commits.
+3. Current home tests intentionally preserve the public heading, CTA focus order, section inventory, and accessibility contract.
+
+**Corrections**:
+
+- Rebuilt the approved volcanic/obsidian composition on the current `HomeHero`, `HomeVisual`, `HomeFooter`, and `Home` tree using semantic theme tokens and responsive/reduced-motion rules.
+- Bound hero identity, voice, theme, locales, operations profile, and module summary to the selected generated manifest; removed the remote Unsplash dependency and replaced it with deterministic local CSS presentation.
+- Declined the stale simulated runtime/security panels, no-op navigation additions, hardcoded repository identity, and deployment changes.
+- Added a required ancestry/current-component/semantic-style/no-false-claim gate proving the visual tip is not an ancestor and only reviewed current surfaces own the port.
+
+**Result**: T051 complete. Four visual-port tests, five visual-contract tests, ESLint, and all four focused home keyboard/accessibility tests pass. The existing public heading and CTA focus behavior remain intact, and no stale branch history or external visual asset was merged.
