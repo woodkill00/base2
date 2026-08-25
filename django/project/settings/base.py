@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "users",
     "catalog",
     "api_schema",
+    "sitecontent",
 ]
 
 # Password hashing: production must not run reduced-iteration hashing.

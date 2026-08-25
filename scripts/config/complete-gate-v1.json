@@ -74,6 +74,20 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "site-content-models",
+      "command": [
+        "{python-django}",
+        "-m",
+        "pytest",
+        "django/tests/test_site_content_models.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 45,
+      "dependsOn": ["brand-inventory"],
+      "requiredTools": ["{python-django}"]
+    },
+    {
       "id": "shell-parity",
       "command": ["node", "scripts/guard-shell-parity.js"],
       "required": true,

@@ -83,8 +83,8 @@
 
 ## Phase 5 - Core public website (P1)
 
-- [ ] T056 [P] [US4] Define canonical content/media/form/search models and write Django model/migration tests | Depends: T049 | Validate: tests fail before T057
-- [ ] T057 [US4] Implement Django models, constraints, revisions, lifecycle, admin adapters, and migrations | Depends: T056 | Validate: Django model/migration tests pass
+- [x] T056 [P] [US4] Define canonical content/media/form/search models and write Django model/migration tests | Depends: T049 | Validate: tests fail before T057
+- [x] T057 [US4] Implement Django models, constraints, revisions, lifecycle, admin adapters, and migrations | Depends: T056 | Validate: Django model/migration tests pass
 - [ ] T058 [P] [US4] Define FastAPI mirror/OpenAPI/authorization contracts for content/media/forms/search | Depends: T057 | Validate: contract tests fail before T059
 - [ ] T059 [US4] Implement FastAPI services/routes, tenant policy, pagination, error mapping, and outbox semantics | Depends: T058 | Validate: contract/integration/security tests pass
 - [ ] T060 [P] [US4] Write React tests for core page inventory, loading/empty/error/permission/offline states, and every visible control | Depends: T009,T058 | Validate: fail before T061
