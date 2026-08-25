@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the fixed FastAPI coverage command with Python 3.12 sys.monitoring."""
+"""Run the fixed FastAPI coverage command with Coverage.py's stable C tracer."""
 
 from __future__ import annotations
 
@@ -8,7 +8,10 @@ import sys
 
 
 def main() -> None:
-    os.environ["COVERAGE_CORE"] = "sysmon"
+    # The Python 3.12 sys.monitoring core can emit an empty JSON report after
+    # parser failures even when every test passes. The C tracer produces the
+    # same line-coverage contract without that false-success failure mode.
+    os.environ["COVERAGE_CORE"] = "ctrace"
     os.execv(
         sys.executable,
         [

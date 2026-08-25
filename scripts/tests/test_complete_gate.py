@@ -245,28 +245,37 @@ class CompleteGateTests(unittest.TestCase):
         for name in (".venv-api", ".venv-django", ".venv"):
             self.assertIn(name, powershell)
 
-    def test_digitalocean_coverage_uses_python_312_monitoring_core(self):
+    def test_digitalocean_coverage_uses_stable_c_tracer(self):
         repo_root = MODULE_PATH.parents[2]
         wrapper = (repo_root / "scripts/python/run_digitalocean_coverage.py").read_text(
             encoding="utf-8"
         )
-        self.assertIn('os.environ["COVERAGE_CORE"] = "sysmon"', wrapper)
+        self.assertIn('os.environ["COVERAGE_CORE"] = "ctrace"', wrapper)
         self.assertIn('"digital_ocean/tests"', wrapper)
         self.assertIn('"--cov=digital_ocean/scripts/python"', wrapper)
 
-    def test_all_python_coverage_surfaces_use_python_312_monitoring_core(self):
+    def test_python_coverage_surfaces_use_their_verified_tracing_core(self):
         repo_root = MODULE_PATH.parents[2]
         expected = {
-            "run_api_coverage.py": ("api/tests", ".artifacts/coverage/api.json"),
-            "run_django_coverage.py": ("django/tests", ".artifacts/coverage/django.json"),
+            "run_api_coverage.py": (
+                "ctrace",
+                "api/tests",
+                ".artifacts/coverage/api.json",
+            ),
+            "run_django_coverage.py": (
+                "ctrace",
+                "django/tests",
+                ".artifacts/coverage/django.json",
+            ),
             "run_digitalocean_coverage.py": (
+                "ctrace",
                 "digital_ocean/tests",
                 ".artifacts/coverage/digitalocean.json",
             ),
         }
-        for name, markers in expected.items():
+        for name, (core, *markers) in expected.items():
             wrapper = (repo_root / "scripts/python" / name).read_text(encoding="utf-8")
-            self.assertIn('os.environ["COVERAGE_CORE"] = "sysmon"', wrapper)
+            self.assertIn(f'os.environ["COVERAGE_CORE"] = "{core}"', wrapper)
             for marker in markers:
                 self.assertIn(marker, wrapper)
 
