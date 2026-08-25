@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
+import subprocess
+import sys
 from unittest import mock
 
 import pytest
@@ -204,6 +207,37 @@ def test_cli_refuses_dns_and_missing_token(monkeypatch, tmp_path, capsys):
     monkeypatch.delenv("DO_API_TOKEN", raising=False)
     assert main(args) == 2
     assert "DO_API_TOKEN" in capsys.readouterr().err
+
+
+def test_cli_reports_optional_pydo_without_blocking_library_import(
+    monkeypatch, tmp_path, capsys
+):
+    args = ["--lease-id", "lease-delete-001", "--lease-root", str(tmp_path)]
+    monkeypatch.setattr(
+        "digital_ocean.scripts.python.orchestrate_teardown.load_deploy_config",
+        lambda _path: {"DO_API_TOKEN": "secret"},
+    )
+    monkeypatch.setattr("digital_ocean.scripts.python.orchestrate_teardown.Client", None)
+    assert main(args) == 2
+    assert "standalone teardown CLI" in capsys.readouterr().err
+
+
+def test_live_canary_imports_with_only_the_standard_library():
+    repo_root = Path(__file__).resolve().parents[2]
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-S",
+            "-c",
+            "import digital_ocean.scripts.python.live_canary; print('stdlib-import-ok')",
+        ],
+        cwd=repo_root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout.strip() == "stdlib-import-ok"
 
 
 def test_cli_success_uses_lease_bound_path(monkeypatch, tmp_path, capsys):

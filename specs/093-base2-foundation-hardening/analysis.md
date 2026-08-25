@@ -720,3 +720,17 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added a deterministic regression that advances and then reverses wall time during all three canary trials while requiring successful teardown, empty DNS, and zero provider resources.
 
 **Result**: The focused regression passes, the full DigitalOcean matrix passes 197 tests, and changed-line coverage is 90.43% against the unchanged 90% floor. Evidence ordering and cleanup remain valid across a backward wall-clock correction.
+
+## Cycle 45 - Pi stdlib-only live-run import
+
+**Findings**:
+
+1. The exact archive and plan transferred to the Pi with the approved archive digest, but the Pi-side dry-run stopped before provider access because the shared teardown module imported optional legacy `pydo` at module load.
+2. The live canary supplies its own dependency-free provider and never exercises the legacy standalone teardown CLI, so importing `pydo` for that path improperly broadened the runtime dependency.
+
+**Corrections**:
+
+- Made `pydo` optional at shared-library import and retained a fail-closed, explicit error only when the legacy standalone teardown CLI is invoked without it.
+- Added CLI-unavailable coverage and a subprocess regression that imports the complete live canary with Python `-S`, proving the path works with only the standard library.
+
+**Result**: The focused matrix passes 18 tests, the DigitalOcean matrix passes 199 tests, and changed-line coverage remains above policy at 90.37%. The failed Pi dry-run made no provider request or mutation; its superseded archive will not be executed.

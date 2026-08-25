@@ -11,7 +11,10 @@ import time
 from pathlib import Path
 from typing import Any, Protocol
 
-from pydo import Client
+try:
+    from pydo import Client
+except ModuleNotFoundError:  # Optional: only the legacy standalone CLI needs pydo.
+    Client = None
 
 try:
     from digital_ocean.scripts.python.deploy_config import load_deploy_config
@@ -191,6 +194,9 @@ def main(argv: list[str] | None = None) -> int:
     token = config.get("DO_API_TOKEN") or os.getenv("DO_API_TOKEN")
     if not token:
         print("DO_API_TOKEN is required", file=sys.stderr)
+        return 2
+    if Client is None:
+        print("pydo is required for the standalone teardown CLI", file=sys.stderr)
         return 2
     result = teardown_lease(
         LeaseStore(args.lease_root), DigitalOceanProvider(Client(token=token)), args.lease_id
