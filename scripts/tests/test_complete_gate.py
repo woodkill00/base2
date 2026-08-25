@@ -194,8 +194,14 @@ class CompleteGateTests(unittest.TestCase):
             (repo_root / "scripts/config/complete-gate-v1.json").read_text(encoding="utf-8")
         )
         commands = {item["id"]: item["command"] for item in manifest["checks"]}
-        self.assertEqual("{python-api}", commands["api-tests"][0])
-        self.assertEqual("{python-django}", commands["django-tests"][0])
+        self.assertEqual(
+            ["{python-api}", "scripts/python/run_api_coverage.py"],
+            commands["api-tests"],
+        )
+        self.assertEqual(
+            ["{python-django}", "scripts/python/run_django_coverage.py"],
+            commands["django-tests"],
+        )
         self.assertEqual(
             ["{python-orchestrator}", "scripts/python/run_digitalocean_coverage.py"],
             commands["digitalocean-tests"],
@@ -217,7 +223,10 @@ class CompleteGateTests(unittest.TestCase):
             ],
             commands["live-canary-preflight-contract"],
         )
-        self.assertIn("django/pytest.ini", commands["django-tests"])
+        django_wrapper = (
+            repo_root / "scripts/python/run_django_coverage.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn('"django/pytest.ini"', django_wrapper)
         self.assertEqual(
             ["python3", "scripts/python/validate_compose_config.py"], commands["compose-config"]
         )
@@ -235,6 +244,22 @@ class CompleteGateTests(unittest.TestCase):
         self.assertIn('os.environ["COVERAGE_CORE"] = "sysmon"', wrapper)
         self.assertIn('"digital_ocean/tests"', wrapper)
         self.assertIn('"--cov=digital_ocean/scripts/python"', wrapper)
+
+    def test_all_python_coverage_surfaces_use_python_312_monitoring_core(self):
+        repo_root = MODULE_PATH.parents[2]
+        expected = {
+            "run_api_coverage.py": ("api/tests", ".artifacts/coverage/api.json"),
+            "run_django_coverage.py": ("django/tests", ".artifacts/coverage/django.json"),
+            "run_digitalocean_coverage.py": (
+                "digital_ocean/tests",
+                ".artifacts/coverage/digitalocean.json",
+            ),
+        }
+        for name, markers in expected.items():
+            wrapper = (repo_root / "scripts/python" / name).read_text(encoding="utf-8")
+            self.assertIn('os.environ["COVERAGE_CORE"] = "sysmon"', wrapper)
+            for marker in markers:
+                self.assertIn(marker, wrapper)
 
     def test_compose_fixture_replaces_only_documentation_placeholders(self):
         spec = importlib.util.spec_from_file_location(

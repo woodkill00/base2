@@ -653,3 +653,19 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added six tests with sockets disabled, secret non-disclosure, exact output, hostile target rejection, symlink rejection, and machine-readable CLI coverage; made the contract required in the complete gate.
 
 **Result**: The first approved read-only preflight performed zero network requests and emitted zero secret values. It produced exact DNS candidate `f093-6d8e4ecd.woodkilldev.com` and plan digest `a80e62d1c226633a839abf4051b3c24a49c617629c609eec3b145a7d3ff0700f`. No provider or DNS mutation occurred. A new exact-commit plan and separately approved provider-read validation remain required before T045 can run.
+
+## Cycle 41 - Stable coverage tracing across Python services
+
+**Findings**:
+
+1. After the DigitalOcean coverage repair, the next exact gate passed all 168 DigitalOcean tests but the FastAPI coverage process aborted in native memory cleanup with signal 6 and no assertion result.
+2. Kernel evidence recorded the abort despite 30 GiB available memory; it also contained an unrelated Python/libapt segfault, confirming broader WSL native-process instability rather than application pressure.
+3. The unchanged FastAPI suite passed immediately under Python 3.12's `sys.monitoring` coverage core.
+
+**Corrections**:
+
+- Added fixed FastAPI and Django coverage wrappers matching the already-proven DigitalOcean wrapper.
+- All three Python coverage surfaces now replace themselves with their unchanged pytest selections, sources, report paths, and thresholds after selecting `COVERAGE_CORE=sysmon`.
+- Added manifest and wrapper drift tests for all three isolated interpreters.
+
+**Result**: The unchanged FastAPI matrix passes under the stable tracer with a valid JSON report. No retry, exclusion, skip, or coverage-policy reduction was introduced. The exact complete gate must still be replayed.

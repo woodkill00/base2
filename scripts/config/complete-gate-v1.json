@@ -292,17 +292,7 @@
     },
     {
       "id": "api-tests",
-      "command": [
-        "{python-api}",
-        "-m",
-        "pytest",
-        "api/tests",
-        "-c",
-        "api/pytest.ini",
-        "-m",
-        "not integration and not perf",
-        "--cov-report=json:.artifacts/coverage/api.json"
-      ],
+      "command": ["{python-api}", "scripts/python/run_api_coverage.py"],
       "required": true,
       "timeoutSeconds": 120,
       "dependsOn": ["env-tools"],
@@ -312,22 +302,7 @@
     },
     {
       "id": "django-tests",
-      "command": [
-        "{python-django}",
-        "-m",
-        "pytest",
-        "django/tests",
-        "-c",
-        "django/pytest.ini",
-        "-m",
-        "not integration and not perf",
-        "--cov=project",
-        "--cov=users",
-        "--cov=common",
-        "--cov=catalog",
-        "--cov=api_schema",
-        "--cov-report=json:.artifacts/coverage/django.json"
-      ],
+      "command": ["{python-django}", "scripts/python/run_django_coverage.py"],
       "required": true,
       "timeoutSeconds": 900,
       "dependsOn": ["env-tools"],
