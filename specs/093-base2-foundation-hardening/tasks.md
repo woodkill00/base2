@@ -155,16 +155,16 @@
 - [x] T105 [US9] Implement upgrade advisor and controlled patch generation without push/merge/deploy authority | Depends: T104 | Validate: compatible/incompatible fixture matrix
 - [x] T106 [P] [US9] Create blog/portfolio, SaaS, and marketplace fixture profiles and expected inventories | Depends: T103 | Validate: all generate differently from same commit
 - [x] T107 [US9] Run applicable complete gate in generated repos without executing input-supplied commands | Depends: T105,T106 | Validate: three child gates green
-- [ ] T108 [US9] Under separate provider approval, deploy/verify/destroy/recreate one generated child preview with exact state/lease/cost/zero-resource receipts | Depends: T045,T107,T125,T128 | Validate: US9 acceptance bundle
+- [x] T108 [US9] Under separate provider approval, deploy/verify/destroy/recreate one generated child preview with exact state/lease/cost/zero-resource receipts | Depends: T045,T107,T125,T128 | Validate: US9 acceptance bundle
 - [x] T125 [P] [US9] Add generated-repository policy checks for license/notice attribution, owner/codeowners, branch protection guidance, dependency update config, vulnerability disclosure, and secret/provider exclusion | Depends: T103,T116 | Validate: child repository governance fixture matrix
 
 ## Phase 10 - Closeout and production-readiness evidence
 
-- [ ] T109 [P] [US2] Re-run requirements/task/contract/control/state/error/authority analysis and resolve every finding | Depends: T108 | Validate: planning validator zero findings
+- [x] T109 [P] [US2] Re-run requirements/task/contract/control/state/error/authority analysis and resolve every finding | Depends: T108 | Validate: planning validator zero findings
 - [ ] T110 [P] [US2] Run complete local/CI gates twice and reconcile flakes, skips, unavailable tools, coverage, audits, and artifacts | Depends: T109 | Validate: two consecutive complete gates
 - [ ] T111 [P] [US4] Run final route/control/a11y/visual/performance matrix for two fixture brands and every enabled pack | Depends: T109 | Validate: complete experience ledger
 - [ ] T112 [P] [US8] Run final backup/restore/rollback/incident and three canary teardown observations | Depends: T109 | Validate: RPO/RTO and zero-resource evidence
-- [ ] T126 [P] [US2] Add docs/config/OpenAPI/generated-client/module-inventory/route-inventory drift checks to required gate | Depends: T047,T082,T109 | Validate: injected stale artifact fails
+- [x] T126 [P] [US2] Add docs/config/OpenAPI/generated-client/module-inventory/route-inventory drift checks to required gate | Depends: T047,T082,T109 | Validate: injected stale artifact fails
 - [ ] T113 [US2] Publish migration, operations, security, module, factory, cost, recovery, residual-risk, and activation docs | Depends: T110-T112,T126 | Validate: docs/link/config drift checks
 - [ ] T114 [US2] Mark tasks complete only from evidence, confirm no known unresolved issue/silent failure, and prepare reviewed PR | Depends: T113 | Validate: DoD and traceability 100%
 

@@ -1363,3 +1363,28 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Added native-only, product-only, mixed-failure, bounded-retry, exact-commit, and static launcher tests plus an operator runbook.
 
 **Result**: WSL recovery is automated without weakening a check or converting a failure into success. Original and replacement evidence remain separate, and recurring corruption after one restart still fails closed.
+
+## Cycle 83 - Generated-child live acceptance
+
+**Checks**:
+
+- Revalidated exact commit `56ac18588b4b4f157f22f531e7767d4094edc21b`, plan digest `363074ed8057cab6b4698a2f832f8e30bd3b60c54a864183eed9a2cd4f0e0c64`, source archive digest, SSH identity, cost/lease/concurrency limits, staging-only certificate mode, ownership namespace, and exact DNS record before mutation.
+- Ran three sequential create, full 12-service health, exact source identity, staging policy, DNS, teardown, and recreation trials.
+- Independently queried the provider after completion and found zero ownership-matching Droplets and zero exact DNS records; every lease state was `destroyed` and temporary credential copies were removed.
+
+**Result**: T108 live acceptance passed. Estimated cost was 3 USD minor units under the approved 100-unit ceiling; no production certificate or persistent provider resource was created.
+
+## Cycle 84 - Final drift and evidence gap analysis
+
+**Findings**:
+
+1. Documentation, configuration, OpenAPI, generated-client/profile, module-inventory, and route-inventory changes could each become stale without one required cross-surface lock.
+2. Final experience and recovery claims needed machine-readable builders that reject incomplete gates, missing checks, mismatched commits, incomplete restore cycles, or a non-destroyed canary.
+
+**Corrections**:
+
+- Added a six-family SHA-256 drift lock, named diagnostics, explicit reviewed refresh, and hostile stale/new/missing artifact tests to the required gate.
+- Added final experience and recovery ledger builders bound to exact gate, profile, operations, and live receipts, with failure-oriented unit tests.
+- Published one consolidated migration, operations, security, module, factory, cost, recovery, residual-risk, activation, and release guide.
+
+**Result**: T109 and T126 are complete, and the T111-T113 evidence builders and documentation are ready. Final exact-commit gates and generated ledgers remain required before those tasks and T114 can close.

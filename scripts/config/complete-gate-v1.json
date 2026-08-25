@@ -18,6 +18,30 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "surface-drift-contract",
+      "command": ["python3", "scripts/python/validate_surface_drift.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["feature-093-plan"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "surface-drift-hostile-tests",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_surface_drift"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["surface-drift-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "feature-093-closeout-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_feature_093_closeout"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["surface-drift-hostile-tests"],
+      "requiredTools": ["python3"]
+    },
+    {
       "id": "module-registry-contract",
       "command": ["python3", "-m", "unittest", "scripts.tests.test_module_registry"],
       "required": true,

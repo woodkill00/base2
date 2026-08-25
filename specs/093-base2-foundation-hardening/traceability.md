@@ -14,7 +14,7 @@ Each requirement has an implementation task and failure-oriented evidence. Share
 | FR-008      | T035,T037,T043,T045,T117,T118,T127,T128,T131-T133 | TTL/race/resource/state recovery plus bounded live-adapter and zero-inventory receipts                    |
 | FR-009      | T038,T039,T045                                    | DNS transaction/rollback/SAN/stale-record matrix                                                          |
 | FR-010      | T040,T041,T045                                    | Redacted integrity/cost evidence                                                                          |
-| FR-011      | T012-T019,T022,T025                               | Complete gate manifest and injected family failures                                                       |
+| FR-011      | T012-T019,T022,T025,T109,T110,T126                | Complete gate manifest, drift lock, two exact gates, and injected family failures                         |
 | FR-012      | T018,T019                                         | Workflow policy fixtures and required CI                                                                  |
 | FR-013      | T012-T014,T025                                    | Explicit status schema/summary tests                                                                      |
 | FR-014      | T015,T025,T129,T130                               | Clean Linux container root suite plus isolated service-environment and interpreter-resolution regressions |
@@ -59,7 +59,7 @@ Each requirement has an implementation task and failure-oriented evidence. Share
 | FR-053      | T042,T097,T098,T112                               | Immutable/migration/traffic/rollback observations                                                         |
 | FR-054      | T100-T103,T125                                    | Archive/policy exclusion, interruption, secret scan                                                       |
 | FR-055      | T103,T106,T107,T125                               | Child identity/manifest/CI/docs/governance/provenance checks                                              |
-| FR-056      | T107,T108                                         | Child complete gate and zero-resource preview                                                             |
+| FR-056      | T107,T108                                         | Child complete gate plus three exact staging preview and zero-resource receipts                           |
 | FR-057      | T104,T105                                         | Compatibility/migration/rollback fixture matrix                                                           |
 | FR-058      | T035-T045,T084,T090-T091,T098,T108                | Explicit authority, rollback, and zero-unapproved-mutation evidence                                       |
 
