@@ -1154,3 +1154,17 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Added SQLite contract cases and an ephemeral PostgreSQL 16 two-thread capacity-one race; the latter produced exactly one confirmation and one capacity rejection and cleaned all owned containers.
 
 **Result**: T088 complete. Scheduling manifests install events before booking, only booking declares inert email capability, and all focused model, API import, React, manifest, migration-drift, and live race checks pass.
+
+## Cycle 69 - Scheduling changed-line coverage
+
+**Findings**:
+
+1. The exact `bcd27b8` gate passed every functional node but the unchanged 90% changed-line policy failed at 89.68%.
+2. The new repository SQL branches and client request binding were exercised indirectly but not directly attributed by their isolated coverage processes.
+
+**Corrections**:
+
+- Added direct tenant-bound event listing, locked successful reservation, missing-event rollback/no-insert, encoded event ID, seat count, and generated-tenant client tests.
+- Kept the coverage floor and every required check unchanged.
+
+**Result**: The failed exact evidence remains preserved. Focused coverage must pass before a replacement exact-commit gate.
