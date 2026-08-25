@@ -45,4 +45,12 @@ describe('site content API tenant and replay contract', () => {
     apiClient.get.mockRejectedValueOnce({ response: { status: 503, data: { detail: 'down' } } });
     await expect(siteContentAPI.getPage('broken')).rejects.toBeTruthy();
   });
+
+  it('fails closed when an intermediary returns a non-JSON application shell', async () => {
+    apiClient.get.mockResolvedValueOnce({ data: '<!doctype html><title>SPA</title>' });
+    await expect(siteContentAPI.getPage('privacy')).rejects.toMatchObject({
+      code: 'invalid_response',
+      message: 'Page temporarily unavailable',
+    });
+  });
 });

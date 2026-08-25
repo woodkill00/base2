@@ -10,6 +10,7 @@ import PrivacyRuntime from './components/public/PrivacyRuntime.jsx';
 import PublicRoutes from './routes/PublicRoutes.jsx';
 import './App.css';
 import { siteManifest } from './config/siteRuntime';
+import { resolveLocale } from './services/privacyRuntime';
 
 // Replace this with your actual Google Client ID
 // Get it from: https://console.cloud.google.com/apis/credentials
@@ -17,7 +18,10 @@ const GOOGLE_CLIENT_ID = import.meta.env.REACT_APP_GOOGLE_CLIENT_ID || 'YOUR_GOO
 
 function App() {
   useEffect(() => {
-    document.documentElement.lang = siteManifest.defaultLocale;
+    const routeLocale = resolveLocale(window.location.pathname.split('/')[1], siteManifest);
+    document.documentElement.lang = routeLocale.supported
+      ? routeLocale.locale
+      : siteManifest.defaultLocale;
     document.documentElement.dataset.siteId = siteManifest.siteId;
     document.documentElement.dataset.theme = siteManifest.brand.theme;
     document.title = siteManifest.seo.titleTemplate.replace('%s', 'Home');

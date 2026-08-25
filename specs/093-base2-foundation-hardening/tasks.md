@@ -96,7 +96,7 @@
 - [x] T066 [US4] Implement tenant-safe search and manifest/content-driven canonical/robots/sitemap/OG/structured-data/redirect behavior | Depends: T065 | Validate: fixture-site search/SEO matrix
 - [x] T067 [P] [US4] Write consent/analytics/localization tests including tracker-before-consent and locale fallback | Depends: T049 | Validate: fail before T068
 - [x] T068 [US4] Implement disabled-by-default analytics/consent adapters and localization routing/content | Depends: T067 | Validate: network/locale E2E passes
-- [ ] T120 [P] [US4] Add supported browser/device/input/network matrix and deterministic compatibility tests with documented minimum versions | Depends: T052,T061 | Validate: Chromium/Firefox/WebKit desktop/mobile matrix
+- [x] T120 [P] [US4] Add supported browser/device/input/network matrix and deterministic compatibility tests with documented minimum versions | Depends: T052,T061 | Validate: Chromium/Firefox/WebKit desktop/mobile matrix
 - [ ] T121 [P] [US4] Add local-fake and disabled-default transactional email adapter tests for verification, reset, contact, invite, bounce, suppression, retry, and privacy | Depends: T059,T115 | Validate: no live email; delivery/dead-letter matrix
 - [ ] T122 [US4] Implement transactional email adapter/outbox templates, suppression handling, status, and safe operator diagnostics | Depends: T121 | Validate: mail integration/accessibility/security tests
 - [ ] T069 [US4] Complete public experience checkpoint including control ledger, accessibility manual checks, visual/browser matrix, performance budgets, and docs | Depends: T053,T054,T055,T061-T068,T119,T120,T122 | Validate: US3/US4/US7 acceptance bundle

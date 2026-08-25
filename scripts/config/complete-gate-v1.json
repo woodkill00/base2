@@ -141,6 +141,14 @@
       "requiredTools": ["npm", "node"]
     },
     {
+      "id": "browser-compatibility-matrix",
+      "command": ["npm", "--prefix", "react-app", "run", "test:compatibility"],
+      "required": true,
+      "timeoutSeconds": 300,
+      "dependsOn": ["privacy-localization-contract", "visual-harness"],
+      "requiredTools": ["npm", "node"]
+    },
+    {
       "id": "shell-parity",
       "command": ["node", "scripts/guard-shell-parity.js"],
       "required": true,

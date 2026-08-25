@@ -1,13 +1,14 @@
-import { useEffect } from 'react';
+import { lazy, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { siteManifest } from '../config/siteRuntime';
 import { resolveLocale } from '../services/privacyRuntime';
-import Home from '../pages/Home';
 import ContentPage from '../pages/public/ContentPage';
 import ContactPage from '../pages/public/ContactPage';
 import SearchPage from '../pages/public/SearchPage';
 import ContentCollectionPage from '../pages/public/ContentCollectionPage';
 import NotFoundPage from '../pages/public/NotFoundPage';
+
+const Home = lazy(() => import('../pages/Home'));
 
 const LocalizedExperience = () => {
   const { locale: candidate, '*': rest = '' } = useParams();
