@@ -10,7 +10,7 @@ export default defineConfig({
   reporter: [['line']],
   use: {
     ...devices['Desktop Chrome'],
-    baseURL: 'http://127.0.0.1:4175',
+    baseURL: 'http://127.0.0.1:4185',
     browserName: 'chromium',
     locale: 'en-US',
     timezoneId: 'UTC',
@@ -25,8 +25,8 @@ export default defineConfig({
   },
   webServer: {
     command:
-      'VITE_SITE_PROFILE=northstar-library npm run build && npm exec vite preview -- --host 127.0.0.1 --port 4175 --strictPort',
-    url: 'http://127.0.0.1:4175',
+      'VITE_SITE_PROFILE=northstar-library npm run build && npm exec vite preview -- --host 127.0.0.1 --port 4185 --strictPort',
+    url: 'http://127.0.0.1:4185',
     reuseExistingServer: false,
     timeout: 120_000,
     stdout: 'pipe',

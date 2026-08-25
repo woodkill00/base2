@@ -222,7 +222,12 @@ def run_gate(
                                 completed.stdout or "",
                             )
                         )
-                        if completed.returncode != -11 and not incomplete:
+                        # Direct processes report SIGSEGV as -11 while shell/npm
+                        # wrappers conventionally translate the same signal to
+                        # 128 + 11. Treat both as the existing bounded
+                        # infrastructure retry, never as an application pass.
+                        segfault_exit = completed.returncode in {-11, 139}
+                        if not segfault_exit and not incomplete:
                             break
                     artifact.write_text(redact("\n".join(outputs), environment), encoding="utf-8")
                     exit_code = None if timed_out else completed.returncode

@@ -935,3 +935,18 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Restricted restore to integrity-checked isolated preview and added operator/security documentation plus required complete-gate nodes.
 
 **Result**: T078 and T079 complete. Twenty-eight focused lifecycle, route, repository, worker, replay, retention, receipt, restore, and schema tests pass. A real PostgreSQL container migration remains unavailable in this WSL account because the Docker socket is not accessible and sudo requires the owner password; SQL and Django parity are verified, and T080 retains the live database acceptance requirement.
+
+## Cycle 55 - Complete-gate browser and signal isolation
+
+**Findings**:
+
+1. The first exact `d87ea7c` gate let the existing compatibility browser and new account browser claim the same loopback port and concurrently rewrite the same Vite build directory.
+2. WebKit mobile then observed missing locale state during that collision, while the account server failed its strict-port admission.
+3. WSL terminated npm-wrapped ESLint with SIGSEGV exit 139, but the gate recognized only direct subprocess signal `-11` for its single bounded infrastructure retry.
+
+**Corrections**:
+
+- Assigned the account harness its own fixed port and serialized visual, compatibility, account, and frontend chains through explicit gate dependencies.
+- Recognized both direct `-11` and shell-normalized `139` as the same bounded SIGSEGV infrastructure retry, with a regression proving exactly one recovery attempt and no conversion of persistent failure into success.
+
+**Result**: The failed evidence remains preserved. Focused runner and browser replacement tests must pass before a new exact-commit complete gate; no test was removed, made optional, or given an unbounded retry.

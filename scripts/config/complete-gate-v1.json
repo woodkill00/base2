@@ -170,7 +170,7 @@
       "command": ["npm", "--prefix", "react-app", "run", "test:account-e2e"],
       "required": true,
       "timeoutSeconds": 120,
-      "dependsOn": ["identity-security-contract", "site-profile-builds"],
+      "dependsOn": ["identity-security-contract", "browser-compatibility-matrix"],
       "requiredTools": ["npm", "node"]
     },
     {
@@ -522,7 +522,7 @@
       "command": ["npm", "--prefix", "react-app", "run", "lint"],
       "required": true,
       "timeoutSeconds": 180,
-      "dependsOn": ["env-tools"],
+      "dependsOn": ["env-tools", "account-admin-browser"],
       "requiredTools": ["node", "npm"]
     },
     {

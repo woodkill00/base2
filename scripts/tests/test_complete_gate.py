@@ -114,6 +114,19 @@ class CompleteGateTests(unittest.TestCase):
         self.assertEqual(2, result["checks"][0]["attempts"])
         self.assertIn("bounded infrastructure retry", result["checks"][0]["diagnostic"])
 
+    def test_retries_shell_wrapped_sigsegv_once_and_records_recovery(self):
+        command = [
+            "/bin/sh",
+            "-c",
+            "if test -f marker; then echo passed; else touch marker; exit 139; fi",
+        ]
+        result, _ = self.run_gate(
+            [check("segfault", command, tools=["/bin/sh"], max_attempts=2)]
+        )
+        self.assertEqual("passed", result["overallStatus"])
+        self.assertEqual(2, result["checks"][0]["attempts"])
+        self.assertIn("bounded infrastructure retry", result["checks"][0]["diagnostic"])
+
     def test_retries_incomplete_output_but_not_assertion_failure(self):
         command = [
             "/bin/sh",
