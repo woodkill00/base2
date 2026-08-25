@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Route, Routes, useParams } from 'react-router-dom';
 import ContentPage from '../pages/public/ContentPage';
 import ContactPage from '../pages/public/ContactPage';
 import SearchPage from '../pages/public/SearchPage';
@@ -29,6 +29,25 @@ const accountsEnabled = siteManifest.modules.some(
 
 const AccountsModuleRoute = ({ children }) => (accountsEnabled ? children : <NotFoundPage />);
 
+const moduleEnabled = (moduleId) =>
+  siteManifest.modules.some((module) => module.id === moduleId && module.enabled);
+
+const PackCollectionRoute = ({ moduleId, title, contentType, basePath }) =>
+  moduleEnabled(moduleId) ? (
+    <ContentCollectionPage title={title} contentType={contentType} basePath={basePath} />
+  ) : (
+    <NotFoundPage />
+  );
+
+const PackDetailRoute = ({ moduleId, title, contentType }) => {
+  const { slug } = useParams();
+  return moduleEnabled(moduleId) ? (
+    <ContentPage slug={slug} fallbackTitle={title} contentType={contentType} />
+  ) : (
+    <NotFoundPage />
+  );
+};
+
 const AccountRoute = () => {
   const { user } = useAuth();
   return <AccountCenter user={user} />;
@@ -56,6 +75,55 @@ const PublicRoutes = () => (
     <Route path="/contact" element={<ContactPage />} />
     <Route path="/search" element={<SearchPage />} />
     <Route path="/journal" element={<ContentCollectionPage title="Journal" />} />
+    <Route
+      path="/portfolio"
+      element={
+        <PackCollectionRoute
+          moduleId="portfolio"
+          title="Portfolio"
+          contentType="portfolio-item"
+          basePath="/portfolio"
+        />
+      }
+    />
+    <Route
+      path="/portfolio/:slug"
+      element={
+        <PackDetailRoute moduleId="portfolio" title="Portfolio" contentType="portfolio-item" />
+      }
+    />
+    <Route
+      path="/blog"
+      element={
+        <PackCollectionRoute
+          moduleId="blog"
+          title="Blog"
+          contentType="blog-post"
+          basePath="/blog"
+        />
+      }
+    />
+    <Route
+      path="/blog/:slug"
+      element={<PackDetailRoute moduleId="blog" title="Blog" contentType="blog-post" />}
+    />
+    <Route
+      path="/docs"
+      element={
+        <PackCollectionRoute
+          moduleId="documentation"
+          title="Documentation"
+          contentType="doc-page"
+          basePath="/docs"
+        />
+      }
+    />
+    <Route
+      path="/docs/:slug"
+      element={
+        <PackDetailRoute moduleId="documentation" title="Documentation" contentType="doc-page" />
+      }
+    />
     <Route path="/login" element={<Login variant="public" />} />
     <Route path="/signup" element={<Signup variant="public" />} />
     <Route path="/verify-email" element={<VerifyEmail variant="public" />} />

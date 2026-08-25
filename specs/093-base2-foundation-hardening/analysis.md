@@ -1089,3 +1089,19 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Kept the fixture provider-free and tenant-keyed; it grants no runtime route activation or migration execution merely by existing in the repository.
 
 **Result**: T085 complete. The fixture produces the exact one-module deterministic install plan, and every durable hostile fixture is rejected before lifecycle state changes.
+
+## Cycle 65 - Typed content-pack reuse
+
+**Findings**:
+
+1. Portfolio, blog, and documentation require distinct public experiences but share the already-reviewed tenant-owned content, publication, revision, search, and media controls.
+2. The existing collection endpoint could not filter by content type, so a pack page could mix unrelated published records.
+
+**Corrections**:
+
+- Added three conflict-free providerless module manifests and settings schemas, each disabled until a site manifest explicitly enables it.
+- Extended the Django-backed FastAPI repository/service/route with a validated tenant-bound content-type filter while preserving cursor bounds and published/search-visible policy.
+- Added reusable React collection/detail behavior, encoded links, exact type requests, and fail-closed disabled pack routes for portfolio, blog, and documentation.
+- Added independent Django tenant/type, API query/SQL, React service/rendering, and combined manifest tests plus pack documentation and a required gate node.
+
+**Result**: T086 complete. The three packs reuse one hardened pipeline without data or navigation leakage, and none adds provider authority.

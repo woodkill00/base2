@@ -131,6 +131,15 @@ def test_repository_reads_are_tenant_bound_and_map_public_rows():
     assert params[0] == 'site-a'
     assert listed.tenant_ids == ['site-a']
 
+    filtered = FakeConnection([content_row])
+    with patch('api.repositories.site_content.db_conn', connection_context(filtered)):
+        repository.list_content(
+            site_id='site-a', limit=25, cursor=None, content_type='blog-post'
+        )
+    filtered_sql, filtered_params = filtered.cursor_instance.executions[0]
+    assert 'content_type=%s' in filtered_sql
+    assert filtered_params == ('site-a', 'blog-post', 26)
+
     found = FakeConnection([content_row])
     with patch('api.repositories.site_content.db_conn', connection_context(found)):
         item = repository.get_content(site_id='site-a', content_type='page', slug='about')

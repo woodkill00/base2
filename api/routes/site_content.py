@@ -124,10 +124,13 @@ def list_content(
     service: SiteContentDependency,
     limit: PageLimit = 25,
     cursor: str | None = None,
+    content_type: Slug | None = None,
 ):
     tenant = _tenant(request)
     try:
-        return service.list_content(site_id=tenant, limit=limit, cursor=cursor)
+        return service.list_content(
+            site_id=tenant, limit=limit, cursor=cursor, content_type=content_type
+        )
     except ValueError as exc:
         _map_value_error(exc)
     except Exception as exc:

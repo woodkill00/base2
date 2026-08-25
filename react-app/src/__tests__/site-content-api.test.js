@@ -39,6 +39,19 @@ describe('site content API tenant and replay contract', () => {
     );
   });
 
+  it('binds pack reads to an encoded type and filtered tenant collection', async () => {
+    apiClient.get.mockResolvedValue({ data: { items: [] } });
+    await siteContentAPI.listContent(undefined, 'blog-post');
+    await siteContentAPI.getContent('doc-page', 'safe path');
+    expect(apiClient.get).toHaveBeenNthCalledWith(1, '/content', {
+      headers: { 'X-Tenant-Id': 'ember-studio' },
+      params: { content_type: 'blog-post' },
+    });
+    expect(apiClient.get).toHaveBeenNthCalledWith(2, '/content/doc-page/safe%20path', {
+      headers: { 'X-Tenant-Id': 'ember-studio' },
+    });
+  });
+
   it('maps not-found to null and normalizes other failures', async () => {
     apiClient.get.mockRejectedValueOnce({ response: { status: 404 } });
     expect(await siteContentAPI.getPage('missing')).toBeNull();

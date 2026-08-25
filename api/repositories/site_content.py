@@ -23,11 +23,18 @@ def _content(row) -> dict[str, Any]:
 
 
 class PostgresSiteContentRepository:
-    def list_content(self, *, site_id: str, limit: int, cursor: UUID | None):
-        clause = 'AND id < %s' if cursor else ''
+    def list_content(
+        self, *, site_id: str, limit: int, cursor: UUID | None, content_type: str | None = None
+    ):
+        clauses = []
         params = [site_id]
+        if content_type:
+            clauses.append('AND content_type=%s')
+            params.append(content_type)
         if cursor:
+            clauses.append('AND id < %s')
             params.append(str(cursor))
+        clause = ' '.join(clauses)
         params.append(limit + 1)
         with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
             cur.execute(

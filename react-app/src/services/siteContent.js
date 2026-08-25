@@ -21,11 +21,14 @@ const call = async (request, fallbackMessage) => {
 };
 
 export const siteContentAPI = {
-  listContent: (cursor) =>
+  listContent: (cursor, contentType) =>
     call(
       apiClient.get('/content', {
         headers: tenantHeaders(),
-        params: cursor ? { cursor } : {},
+        params: {
+          ...(cursor ? { cursor } : {}),
+          ...(contentType ? { content_type: contentType } : {}),
+        },
       }),
       'Content temporarily unavailable'
     ),
@@ -35,6 +38,13 @@ export const siteContentAPI = {
         headers: tenantHeaders(),
       }),
       'Page temporarily unavailable'
+    ),
+  getContent: (contentType, slug) =>
+    call(
+      apiClient.get(`/content/${encodeURIComponent(contentType)}/${encodeURIComponent(slug)}`, {
+        headers: tenantHeaders(),
+      }),
+      'Content temporarily unavailable'
     ),
   search: (query, cursor) =>
     call(

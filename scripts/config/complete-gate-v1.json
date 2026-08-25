@@ -181,6 +181,14 @@
       "requiredTools": ["{python-api}"]
     },
     {
+      "id": "content-pack-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_content_pack_manifests"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["module-lifecycle-contract", "site-content-api"],
+      "requiredTools": ["python3"]
+    },
+    {
       "id": "public-experience-contract",
       "command": ["npm", "--prefix", "react-app", "run", "test:public-contract"],
       "required": true,

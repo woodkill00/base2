@@ -125,7 +125,7 @@
 - [x] T083 [P] [US10] Write install/enable/disable/upgrade/export/removal/replay/rollback tests including persistent data and scheduled jobs | Depends: T082 | Validate: 7 lifecycle cases cover transitions, replay, policy, jobs, integrity, and rollback
 - [x] T084 [US10] Implement deterministic module lifecycle, migration preview, receipts, and admin integration | Depends: T083 | Validate: required lifecycle gate passes; owner-only atomic state and sanitized admin projection documented
 - [x] T085 [P] [US10] Create fixture module solely through public SDK and create hostile module fixtures | Depends: T084 | Validate: fixture-notes installs from declarative SDK; executable-field and traversal fixtures fail closed
-- [ ] T086 [US6] Implement portfolio/blog/docs packs in Django → FastAPI → React order with independent tests/docs | Depends: T084 | Validate: three pack acceptance suites
+- [x] T086 [US6] Implement portfolio/blog/docs packs in Django → FastAPI → React order with independent tests/docs | Depends: T084 | Validate: tenant/type Django case, 9 API cases, 4 React cases, and three-manifest gate pass
 - [ ] T087 [US6] Implement forms/gallery/media packs in required build order with independent tests/docs | Depends: T084,T064 | Validate: three pack acceptance suites
 - [ ] T088 [US6] Implement events/booking packs in required build order with timezone/capacity/race tests | Depends: T084 | Validate: two pack acceptance suites
 - [ ] T089 [US6] Implement community/support packs with moderation, notification, privacy, and abuse boundaries | Depends: T084 | Validate: two pack acceptance suites

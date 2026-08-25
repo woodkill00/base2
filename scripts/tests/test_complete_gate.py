@@ -226,6 +226,10 @@ class CompleteGateTests(unittest.TestCase):
             commands["module-lifecycle-contract"],
         )
         self.assertEqual(
+            ["python3", "-m", "unittest", "scripts.tests.test_content_pack_manifests"],
+            commands["content-pack-contract"],
+        )
+        self.assertEqual(
             [
                 "{python-orchestrator}",
                 "-m",

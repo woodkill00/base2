@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { siteContentAPI } from '../../services/siteContent';
 import PublicShell from '../../components/public/PublicShell';
 
-const ContentPage = ({ slug, fallbackTitle, locale }) => {
+const ContentPage = ({ slug, fallbackTitle, locale, contentType = 'page' }) => {
   const [state, setState] = useState({ status: 'loading', item: null });
 
   useEffect(() => {
@@ -11,8 +11,12 @@ const ContentPage = ({ slug, fallbackTitle, locale }) => {
     const localizedSlug =
       locale && !/^en(?:-US)?$/i.test(locale) ? `${slug}-${locale.toLowerCase()}` : slug;
     const load = async () => {
-      const localized = await siteContentAPI.getPage(localizedSlug);
-      return localized || (localizedSlug !== slug ? siteContentAPI.getPage(slug) : null);
+      const getter =
+        contentType === 'page'
+          ? siteContentAPI.getPage
+          : (value) => siteContentAPI.getContent(contentType, value);
+      const localized = await getter(localizedSlug);
+      return localized || (localizedSlug !== slug ? getter(slug) : null);
     };
     load().then(
       (item) => active && setState({ status: item ? 'ready' : 'empty', item }),
@@ -22,7 +26,7 @@ const ContentPage = ({ slug, fallbackTitle, locale }) => {
     return () => {
       active = false;
     };
-  }, [locale, slug]);
+  }, [contentType, locale, slug]);
 
   return (
     <PublicShell title={fallbackTitle}>

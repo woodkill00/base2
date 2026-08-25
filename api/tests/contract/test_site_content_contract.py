@@ -16,8 +16,10 @@ CONTENT_ID = UUID('11111111-1111-4111-8111-111111111111')
 class FakeSiteContentService:
     def __init__(self):
         self.form_calls = 0
+        self.last_content_type = None
 
-    def list_content(self, *, site_id, limit, cursor):
+    def list_content(self, *, site_id, limit, cursor, content_type=None):
+        self.last_content_type = content_type
         return {
             'items': [
                 {
@@ -38,7 +40,9 @@ class FakeSiteContentService:
     def get_content(self, *, site_id, content_type, slug):
         if slug == 'missing':
             return None
-        return self.list_content(site_id=site_id, limit=1, cursor=None)['items'][0]
+        return self.list_content(
+            site_id=site_id, limit=1, cursor=None, content_type=content_type
+        )['items'][0]
 
     def get_media(self, *, site_id, asset_id):
         return None
@@ -78,6 +82,11 @@ def test_tenant_policy_pagination_not_found_and_search_mapping():
         response = client.get('/api/content?limit=25', headers={'X-Tenant-Id': 'site-a'})
         assert response.status_code == 200
         assert response.json()['items'][0]['slug'] == 'about'
+        filtered = client.get(
+            '/api/content?content_type=blog-post', headers={'X-Tenant-Id': 'site-a'}
+        )
+        assert filtered.status_code == 200
+        assert fake.last_content_type == 'blog-post'
         assert (
             client.get('/api/content?limit=101', headers={'X-Tenant-Id': 'site-a'}).status_code
             == 422

@@ -10,7 +10,9 @@ from api.security.public_content import validate_form_submission
 
 
 class SiteContentRepository(Protocol):
-    def list_content(self, *, site_id: str, limit: int, cursor: UUID | None) -> dict[str, Any]: ...
+    def list_content(
+        self, *, site_id: str, limit: int, cursor: UUID | None, content_type: str | None
+    ) -> dict[str, Any]: ...
     def get_content(
         self, *, site_id: str, content_type: str, slug: str
     ) -> dict[str, Any] | None: ...
@@ -46,9 +48,11 @@ class SiteContentService:
         except (TypeError, ValueError) as exc:
             raise ValueError('invalid_cursor') from exc
 
-    def list_content(self, *, site_id: str, limit: int, cursor: str | None):
+    def list_content(
+        self, *, site_id: str, limit: int, cursor: str | None, content_type: str | None = None
+    ):
         return self.repository.list_content(
-            site_id=site_id, limit=limit, cursor=self._cursor(cursor)
+            site_id=site_id, limit=limit, cursor=self._cursor(cursor), content_type=content_type
         )
 
     def get_content(self, *, site_id: str, content_type: str, slug: str):
