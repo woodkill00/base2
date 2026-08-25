@@ -15,9 +15,9 @@ describe('Home page (public)', () => {
     expect(screen.getByTestId('home-page')).toBeInTheDocument();
 
     expect(screen.getByRole('heading', { name: /build better with/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /everything you need/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /enabled capabilities/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /beautiful by design/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /privacy first/i })).toBeInTheDocument();
+    expect(screen.getByText(/consent: opt-in/i)).toBeInTheDocument();
     expect(screen.getByRole('contentinfo', { name: /footer/i })).toBeInTheDocument();
   });
 
@@ -30,8 +30,8 @@ describe('Home page (public)', () => {
       </TestMemoryRouter>
     );
 
-    const primary = screen.getByRole('button', { name: /get started/i });
-    const secondary = screen.getByRole('button', { name: /view documentation/i });
+    const primary = screen.getByRole('button', { name: /contact us/i });
+    const secondary = screen.getByRole('button', { name: /accessibility/i });
 
     // Tab through focusables until we hit the hero CTAs.
     for (let i = 0; i < 20; i += 1) {

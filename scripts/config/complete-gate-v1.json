@@ -103,6 +103,14 @@
       "requiredTools": ["{python-api}"]
     },
     {
+      "id": "public-experience-contract",
+      "command": ["npm", "--prefix", "react-app", "run", "test:public-contract"],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": ["site-content-api"],
+      "requiredTools": ["npm", "node"]
+    },
+    {
       "id": "shell-parity",
       "command": ["node", "scripts/guard-shell-parity.js"],
       "required": true,

@@ -16,7 +16,7 @@ const systemSignals = [
   { label: 'Profile', value: siteManifest.operationsProfile, icon: ShieldCheck },
 ];
 
-const HomeHero = ({ onPrimary, onSecondary }) => {
+const HomeHero = ({ onPrimary, onSecondary, onSearch }) => {
   const [query, setQuery] = useState('');
 
   return (
@@ -71,11 +71,17 @@ const HomeHero = ({ onPrimary, onSecondary }) => {
                 {siteManifest.brand.voice}
               </motion.p>
 
-              <motion.div
+              <motion.form
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5, duration: 0.6, ease: 'easeOut' }}
                 style={{ width: 'calc(min(100%, 600px))' }}
+                role="search"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (siteManifest.search.enabled && query.trim().length >= 2)
+                    onSearch(query.trim());
+                }}
               >
                 <GlassInput
                   id="hero-search"
@@ -87,8 +93,12 @@ const HomeHero = ({ onPrimary, onSecondary }) => {
                   placeholder={`Search ${siteManifest.name}...`}
                   icon={<Search className="w-5 h-5" />}
                   className="text-lg"
+                  disabled={!siteManifest.search.enabled}
                 />
-              </motion.div>
+                {!siteManifest.search.enabled && (
+                  <p className="text-sm">Search is not enabled for this site.</p>
+                )}
+              </motion.form>
 
               <motion.div
                 initial={{ opacity: 0 }}
@@ -98,10 +108,10 @@ const HomeHero = ({ onPrimary, onSecondary }) => {
                 style={{ marginTop: 'calc(1rem)' }}
               >
                 <GlassButton variant="primary" onClick={onPrimary}>
-                  Get Started
+                  {siteManifest.contact.enabled ? 'Contact us' : 'Explore'}
                 </GlassButton>
                 <GlassButton variant="ghost" onClick={onSecondary}>
-                  View Documentation
+                  Accessibility
                 </GlassButton>
               </motion.div>
             </div>

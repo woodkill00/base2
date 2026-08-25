@@ -7,6 +7,7 @@ import HomeFeatures from '../components/home/HomeFeatures';
 import HomeVisual from '../components/home/HomeVisual';
 import HomeTrust from '../components/home/HomeTrust';
 import HomeFooter from '../components/home/HomeFooter';
+import { siteManifest } from '../config/siteRuntime';
 
 const Home = () => {
   const navigate = useNavigate();
@@ -28,7 +29,15 @@ const Home = () => {
         <GlassSidebar variant="public" onMenuItemClick={handleMenuItemClick} />
 
         <main>
-          <HomeHero onPrimary={() => navigate('/signup')} onSecondary={() => {}} />
+          <HomeHero
+            onPrimary={() =>
+              navigate(
+                siteManifest.contact.enabled ? '/contact' : siteManifest.navigation[0]?.path || '/'
+              )
+            }
+            onSecondary={() => navigate(siteManifest.legal.accessibilityPath)}
+            onSearch={(query) => navigate(`/search?q=${encodeURIComponent(query)}`)}
+          />
           <HomeFeatures />
           <HomeVisual />
           <HomeTrust />

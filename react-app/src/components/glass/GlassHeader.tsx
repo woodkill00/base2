@@ -7,6 +7,7 @@ import ThemeToggle from './ThemeToggle';
 import GlassButton from './GlassButton';
 import { applyThemeClass, setThemeCookie } from '../../services/theme/persistence';
 import { siteManifest } from '../../config/siteRuntime';
+import type { SiteManifest } from '../../config/siteManifest';
 
 type Props = {
   title?: string;
@@ -14,6 +15,7 @@ type Props = {
   menuControlsId?: string;
   isMenuOpen?: boolean;
   onToggleMenu?: () => void;
+  manifest?: SiteManifest;
 };
 
 export const GlassHeader: React.FC<Props> = ({
@@ -22,10 +24,14 @@ export const GlassHeader: React.FC<Props> = ({
   menuControlsId,
   isMenuOpen,
   onToggleMenu,
+  manifest = siteManifest,
 }) => {
   const navigate = useNavigate();
   const inferredPublic = useMemo(() => title?.toLowerCase() === 'home', [title]);
   const isPublic = variant ? variant === 'public' : inferredPublic;
+  const accountsEnabled = manifest.modules.some(
+    (item) => item.id === 'accounts' && item.enabled
+  );
 
   const [isDark, setIsDark] = useState(false);
 
@@ -82,7 +88,7 @@ export const GlassHeader: React.FC<Props> = ({
                   strokeLinejoin="round"
                 />
               </svg>
-              <span className="text-lg font-medium">{siteManifest.name}</span>
+              <span className="text-lg font-medium">{manifest.name}</span>
             </div>
 
             <div className="flex items-center gap-3">
@@ -103,7 +109,7 @@ export const GlassHeader: React.FC<Props> = ({
                 </motion.div>
               </button>
 
-              <div className="hidden sm:flex items-center gap-2">
+              {accountsEnabled && <div className="hidden sm:flex items-center gap-2">
                 <GlassButton
                   variant="ghost"
                   className="text-sm px-4 py-2"
@@ -118,7 +124,7 @@ export const GlassHeader: React.FC<Props> = ({
                 >
                   Sign Up
                 </GlassButton>
-              </div>
+              </div>}
             </div>
           </div>
         </nav>

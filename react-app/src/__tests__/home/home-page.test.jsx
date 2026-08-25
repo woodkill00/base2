@@ -25,9 +25,9 @@ describe('Public Home Page components', () => {
     );
 
     expect(screen.getByRole('heading', { name: /Build Better with/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Everything You Need/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Enabled Capabilities/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Beautiful by Design/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Privacy First/i })).toBeInTheDocument();
+    expect(screen.getByText(/Consent: opt-in/i)).toBeInTheDocument();
     expect(screen.getByRole('contentinfo', { name: /Footer/i })).toBeInTheDocument();
 
     const results = await axe(document.body);
