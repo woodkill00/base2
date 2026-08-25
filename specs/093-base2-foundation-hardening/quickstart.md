@@ -57,6 +57,15 @@ The required CI canary is providerless and safe to run without credentials:
 
 It uses an in-memory provider and documentation-only addresses, then proves exact replay, update, rollback, DNS restoration, and zero residual resources. It performs zero network requests, credential reads, provider mutations, public DNS changes, or certificate requests.
 
+Before requesting live authority, render a redacted exact plan from an ignored environment source:
+
+```bash
+.venv/bin/python digital_ocean/scripts/python/live_canary_preflight.py \
+  --env-path /absolute/path/to/ignored/base2.env
+```
+
+This reads one local credential source but emits no secret value and performs no network request. Review its exact commit, plan digest, provider target, single temporary DNS record, staging-only certificate mode, lease, concurrency, trial count, and cost ceiling before granting provider-read or mutation authority.
+
 The commands below are discovery only. Running a live canary requires a new approval bound to the exact commit, manifest digest, provider project, DNS mutation set, resource ceiling, cost ceiling, lease expiry, and number of trials. Approval for local/providerless work is not live authority.
 
 ```bash

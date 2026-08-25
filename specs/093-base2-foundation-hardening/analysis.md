@@ -636,3 +636,20 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added manifest/wrapper regressions so the stable tracer cannot silently drift back to the crashing core.
 
 **Result**: The DigitalOcean suite passes 162 tests with a valid JSON coverage report under `sys.monitoring`. Strict malformed-evidence and invalid-source-identity cases raised changed-line coverage from 89.06% to 91.15% against the unchanged 90% floor. No retry, test exclusion, threshold reduction, or unavailable classification was used. The complete gate must be replayed before this cycle is closed.
+
+## Cycle 40 - Redacted live-canary approval preflight
+
+**Findings**:
+
+1. The Base2 checkout had no local `.env`, while the operator's ignored Base2 environment and the Pi's private resolved profile were present.
+2. The live task lacked a deterministic way to show the exact non-secret scope before credential or provider authority was granted.
+3. The stored profile currently selects `s-4vcpu-8gb` and legacy image `docker-20-04`; neither should be silently treated as the intended smallest modern canary.
+4. The legacy deployment path proposes a broad hostname set, while the acceptance canary needs only one exact temporary record.
+
+**Corrections**:
+
+- Added a networkless redacted preflight that parses the ignored environment as data, resolves bounded templates, rejects symlinks/unsafe targets/reserved domains/non-exact commits, and emits no secret value.
+- The plan binds commit, safe plan digest, project/region/size/image, one commit-derived A record and certificate SAN, three sequential trials, one maximum concurrent droplet, 15-minute leases, a USD 1.00 total ceiling, and staging-only certificates.
+- Added six tests with sockets disabled, secret non-disclosure, exact output, hostile target rejection, symlink rejection, and machine-readable CLI coverage; made the contract required in the complete gate.
+
+**Result**: The first approved read-only preflight performed zero network requests and emitted zero secret values. It produced exact DNS candidate `f093-6d8e4ecd.woodkilldev.com` and plan digest `a80e62d1c226633a839abf4051b3c24a49c617629c609eec3b145a7d3ff0700f`. No provider or DNS mutation occurred. A new exact-commit plan and separately approved provider-read validation remain required before T045 can run.

@@ -243,6 +243,20 @@
       "requiredTools": ["{python-orchestrator}", "git"]
     },
     {
+      "id": "live-canary-preflight-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "digital_ocean/tests/test_live_canary_preflight.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["providerless-deployment-canary"],
+      "requiredTools": ["{python-orchestrator}", "git"]
+    },
+    {
       "id": "env-tools",
       "command": ["node", "scripts/run-root-coverage.js"],
       "required": true,
