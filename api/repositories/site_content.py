@@ -44,7 +44,7 @@ class PostgresSiteContentRepository:
         self, *, site_id: str, limit: int, cursor: UUID | None, content_type: str | None = None
     ):
         clauses = []
-        params = [site_id]
+        params: list[str | int] = [site_id]
         if content_type:
             clauses.append('AND content_type=%s')
             params.append(content_type)
@@ -102,7 +102,7 @@ class PostgresSiteContentRepository:
 
     def search(self, *, site_id: str, query: str, limit: int, cursor: UUID | None):
         clause = 'AND d.id < %s' if cursor else ''
-        params = [site_id, f'%{query}%', f'%{query}%']
+        params: list[str | int] = [site_id, f'%{query}%', f'%{query}%']
         if cursor:
             params.append(str(cursor))
         params.append(limit + 1)

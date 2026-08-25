@@ -54,6 +54,12 @@ class CiPolicyTests(unittest.TestCase):
         findings = self.policy.validate(repo_root, policy)
         self.assertEqual([], findings)
 
+    def test_storybook_excludes_only_the_application_bundle_budget(self):
+        repo_root = MODULE_PATH.parents[2]
+        main = (repo_root / "react-app/.storybook/main.js").read_text(encoding="utf-8")
+        self.assertIn("viteFinal(config)", main)
+        self.assertIn("plugin.name !== 'base2-performance-budget'", main)
+
 
 if __name__ == "__main__":
     unittest.main()

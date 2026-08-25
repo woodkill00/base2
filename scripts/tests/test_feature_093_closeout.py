@@ -82,13 +82,18 @@ class Feature093CloseoutTests(unittest.TestCase):
         expected = [
             ".github/workflows/ci-backend.yml",
             ".github/workflows/ci-frontend.yml",
+            "api/db.py",
             "api/repositories/scheduling.py",
+            "api/repositories/site_content.py",
+            "api/security/request_auth.py",
             "api/tests/security/test_engagement_policy.py",
             "api/tests/test_engagement_service.py",
             "api/tests/test_scheduling_repository.py",
             "django/tests/live_scheduling_race.py",
             "docs/wsl-gate-recovery.md",
+            "react-app/.storybook/main.js",
             "scripts/python/classify_gate_runtime_failure.py",
+            "scripts/tests/test_ci_policy.py",
             "scripts/tests/test_gate_runtime_recovery.py",
         ]
         responses = [

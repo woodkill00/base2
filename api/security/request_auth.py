@@ -26,7 +26,10 @@ def require_authenticated_principal(request: Request) -> PublicPrincipal:
 
         payload = decode_access_token(token)
         user_id = UUID(str(payload.get('sub')))
-        issued_at = datetime.fromtimestamp(int(payload.get('iat')), tz=timezone.utc)
+        issued_at_value = payload.get('iat')
+        if isinstance(issued_at_value, bool) or not isinstance(issued_at_value, (int, str)):
+            raise ValueError('invalid_iat')
+        issued_at = datetime.fromtimestamp(int(issued_at_value), tz=timezone.utc)
         return PublicPrincipal(
             user_id=user_id,
             authenticated_at=issued_at,
