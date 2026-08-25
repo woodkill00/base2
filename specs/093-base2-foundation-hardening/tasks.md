@@ -140,10 +140,10 @@
 - [x] T095 [P] [US8] Write backup/restore/migration/rollback/DR/certificate tests for corruption, wrong target, stale schema, partial data, and secret exposure | Depends: T041,T092 | Validate: fail before T096
 - [x] T096 [US8] Implement encrypted backup, isolated restore validation, migration preflight, rollback, DR, and certificate-renewal drills | Depends: T095 | Validate: bounded drills pass with RPO/RTO
 - [x] T128 [US8] Integrate declared preview-state snapshot/restore/expiry receipts with lease teardown/recreation without exposing secrets or live production targets | Depends: T043,T096,T127 | Validate: stateful preview destroy/recreate drill preserves exact approved state
-- [ ] T097 [P] [US8] Add image signing/provenance verification, immutable deploy identity, health-gated traffic, and rollback tests | Depends: T019,T022,T042 | Validate: tampered/unverified image rejected
-- [ ] T098 [US8] Implement verified immutable release/update/observation/rollback path in orchestrator | Depends: T094,T096,T097 | Validate: three fault/restore cycles
-- [ ] T124 [P] [US8] Define and run capacity/load/soak/resource-pressure/backpressure/cache-stampede/queue-drain tests against documented profiles | Depends: T092,T093,T117 | Validate: SLO, recovery, data-integrity, and budget evidence
-- [ ] T099 [US8] Run operations checkpoint with chaos, capacity, alert, backup/restore, rollback, cert, and post-recovery complete gate | Depends: T098,T124 | Validate: US8 acceptance bundle
+- [x] T097 [P] [US8] Add image signing/provenance verification, immutable deploy identity, health-gated traffic, and rollback tests | Depends: T019,T022,T042 | Validate: tampered/unverified image rejected
+- [x] T098 [US8] Implement verified immutable release/update/observation/rollback path in orchestrator | Depends: T094,T096,T097 | Validate: three fault/restore cycles
+- [x] T124 [P] [US8] Define and run capacity/load/soak/resource-pressure/backpressure/cache-stampede/queue-drain tests against documented profiles | Depends: T092,T093,T117 | Validate: SLO, recovery, data-integrity, and budget evidence
+- [x] T099 [US8] Run operations checkpoint with chaos, capacity, alert, backup/restore, rollback, cert, and post-recovery complete gate | Depends: T098,T124 | Validate: US8 acceptance bundle
 
 ## Phase 9 - Website factory and upgrade path (P3)
 

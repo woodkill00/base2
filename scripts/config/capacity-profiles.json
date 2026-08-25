@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "profiles": {
+    "small-preview": {
+      "requests": 2000,
+      "queueCapacity": 128,
+      "cacheContenders": 32,
+      "soakRounds": 3,
+      "p95Milliseconds": 25,
+      "maximumErrorRate": 0.0,
+      "maximumMemoryBytes": 67108864
+    }
+  }
+}

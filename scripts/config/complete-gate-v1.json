@@ -268,6 +268,39 @@
       "requiredTools": ["{python-orchestrator}"]
     },
     {
+      "id": "immutable-release-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "unittest",
+        "digital_ocean.tests.test_release_orchestrator"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": [
+        "recovery-assurance-contract",
+        "supply-chain-policy",
+        "deployment-evidence-contract"
+      ],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
+      "id": "capacity-assurance-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_capacity_assurance"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["module-checkpoint", "operations-telemetry-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "operations-checkpoint",
+      "command": ["{python-orchestrator}", "scripts/python/run_operations_checkpoint.py"],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": ["immutable-release-contract", "capacity-assurance-contract"],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
       "id": "public-experience-contract",
       "command": ["npm", "--prefix", "react-app", "run", "test:public-contract"],
       "required": true,

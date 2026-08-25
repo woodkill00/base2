@@ -1273,3 +1273,33 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Integrated encrypted preview snapshots with lease ID, verification/expiry evidence, preservation admission, and exact state recreation.
 
 **Result**: T095, T096, and T128 complete. The bounded local recovery drills preserve exact state and expose neither plaintext nor key material; production restores and provider actions remain unauthorized.
+
+## Cycle 77 - Immutable health-gated release control
+
+**Findings**:
+
+1. A deploy identity must bind image digest, source commit, SBOM, provenance, and signature before any health or traffic action.
+2. Failed candidate health and explicit rollback require exact prior/current identities and durable observation state.
+
+**Corrections**:
+
+- Added signed immutable release manifests and fail-closed rejection for tags, malformed provenance, tampering, and reused identities.
+- Added an atomic provider-neutral release controller with idempotent replay, pre-traffic health gating, failed-candidate restoration, exact-current rollback, and sanitized observation.
+- Added three successive update/replay cycles, health-failure restoration, tamper, mutable-image, and rollback-target tests.
+
+**Result**: T097-T098 complete. All local release transitions are verified and reversible; the controller itself has no provider, registry credential, or public traffic authority.
+
+## Cycle 78 - Capacity and operations checkpoint
+
+**Findings**:
+
+1. Capacity claims needed a versioned profile covering load, soak, memory, backpressure, cache contention, and queue drain with integrity assertions.
+2. Operations readiness needed one providerless bundle proving repeated incident, restore, release, capacity, certificate, and cleanup behavior.
+
+**Corrections**:
+
+- Added the bounded small-preview profile plus queue saturation/rejection, exact drain, 32-way single-flight cache, three-round soak, p95, error-rate, and peak-memory tests.
+- Added a combined checkpoint with three encrypted restore cycles, three immutable healthy releases, one alert and one recovery notification, staging certificate renewal, capacity evidence, and zero retained resources/state.
+- Made both suites required full-gate nodes and documented the local-versus-live authority boundary.
+
+**Result**: T124 and T099 complete. SLO, recovery, integrity, budget, idempotent alert, and cleanup evidence pass locally with zero provider calls or credential reads.
