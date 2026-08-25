@@ -165,6 +165,18 @@
       "requiredTools": ["{python-api}"]
     },
     {
+      "id": "public-experience-checkpoint",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_public_experience_checkpoint"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": [
+        "browser-compatibility-matrix",
+        "transactional-email-contract",
+        "edge-security-policy"
+      ],
+      "requiredTools": ["python3"]
+    },
+    {
       "id": "shell-parity",
       "command": ["node", "scripts/guard-shell-parity.js"],
       "required": true,

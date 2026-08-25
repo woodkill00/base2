@@ -12,6 +12,32 @@ const legacyJsxInJs = {
   },
 };
 
+const PERFORMANCE_BUDGETS = {
+  javascriptChunkBytes: 460 * 1024,
+  stylesheetBytes: 40 * 1024,
+  totalInitialBytes: 540 * 1024,
+};
+
+const performanceBudgetPlugin = () => ({
+  name: 'base2-performance-budget',
+  generateBundle(_options, bundle) {
+    let total = 0;
+    for (const [fileName, output] of Object.entries(bundle)) {
+      const bytes = Buffer.byteLength(output.type === 'chunk' ? output.code : String(output.source));
+      total += bytes;
+      if (output.type === 'chunk' && bytes > PERFORMANCE_BUDGETS.javascriptChunkBytes) {
+        this.error(`performance_budget_javascript:${fileName}:${bytes}`);
+      }
+      if (fileName.endsWith('.css') && bytes > PERFORMANCE_BUDGETS.stylesheetBytes) {
+        this.error(`performance_budget_stylesheet:${fileName}:${bytes}`);
+      }
+    }
+    if (total > PERFORMANCE_BUDGETS.totalInitialBytes) {
+      this.error(`performance_budget_total:${total}`);
+    }
+  },
+});
+
 const generatedProfilePlugin = () => {
   const root = path.resolve(import.meta.dirname, 'src/config/generated');
   const index = JSON.parse(fs.readFileSync(path.join(root, 'index.json'), 'utf8'));
@@ -124,7 +150,7 @@ const generatedProfilePlugin = () => {
 };
 
 export default defineConfig({
-  plugins: [legacyJsxInJs, generatedProfilePlugin(), react()],
+  plugins: [legacyJsxInJs, generatedProfilePlugin(), performanceBudgetPlugin(), react()],
   envPrefix: ['VITE_', 'REACT_APP_'],
   build: {
     outDir: 'build',

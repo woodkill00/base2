@@ -1,17 +1,17 @@
 # Current Experience Inventory
 
-This ledger records the T060-T062 reconciliation. T069 will perform the final cross-browser checkpoint and requires zero unexplained entries.
+This ledger records the completed T060-T069 public-experience reconciliation. Every public control is implemented, explicitly disabled with an explanation, or removed.
 
 ## Route inventory
 
 | Route                                            | Current access/state                                                                             | Decision                                                                           |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
 | `/`                                              | Public, manifest-driven home with enabled/disabled capability states and real CTA destinations   | Implemented and tested                                                             |
-| `/login`                                         | Public account login                                                                             | Keep; complete error/security/accessibility matrix                                 |
-| `/signup`                                        | Public account registration                                                                      | Keep when enabled by site manifest                                                 |
-| `/verify-email`                                  | Public token flow                                                                                | Keep; expired/replay/privacy states                                                |
-| `/forgot-password`                               | Public reset request                                                                             | Keep; enumeration-safe and rate-limited                                            |
-| `/reset-password`                                | Public reset completion                                                                          | Keep; expiry/replay/session revocation                                             |
+| `/login`                                         | Public account login, exposed only when the accounts module is enabled                           | Implemented; deeper identity acceptance remains T080                               |
+| `/signup`                                        | Public account registration, exposed only when enabled                                           | Implemented; deeper identity acceptance remains T080                               |
+| `/verify-email`                                  | Public token flow                                                                                | Implemented; transactional delivery is disabled by default                         |
+| `/forgot-password`                               | Enumeration-safe reset request                                                                   | Implemented; transactional delivery is disabled by default                         |
+| `/reset-password`                                | Reset completion                                                                                 | Implemented; deeper session-revocation acceptance remains T080                     |
 | `/items`                                         | Legacy component remains available for future reviewed module extraction but has no public route | Removed from routing; never shows false success                                    |
 | `/dashboard`                                     | Protected manifest-branded capability inventory with no sample metrics or dead actions           | Implemented and tested                                                             |
 | `/settings`                                      | Protected user settings                                                                          | Keep; consolidate duplicate settings implementations and validate real persistence |
@@ -25,19 +25,19 @@ OAuth API start/callback routes return HTTP 501 while other Google OAuth behavio
 
 ## Public home controls and data
 
-| Surface                            | Current behavior                                                                  | Disposition                                                       |
-| ---------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Header/sidebar navigation          | Generated from enabled manifest navigation                                        | Implemented and tested                                            |
-| Hero search                        | Navigates to tenant search when enabled; visibly disabled otherwise               | Implemented and tested                                            |
-| Primary CTA                        | Contact or first enabled manifest navigation target                               | Implemented and tested                                            |
-| Secondary CTA                      | Manifest accessibility route                                                      | Implemented and tested                                            |
-| Features/trust/visual copy         | Derived from modules, locales, consent, analytics, search, and operations profile | Implemented and tested                                            |
-| Project cards                      | Hardcoded `sample` array                                                          | Replace with portfolio/content pack query plus empty/error states |
-| Contact send                       | Client validation followed by explicit no-op                                      | Replace with durable protected form/outbox or disable/omit        |
-| Contact social orbs                | `href="#"`                                                                        | Manifest URLs or omit                                             |
-| Footer product/company/legal links | Generated fragment links with no route guarantee                                  | Manifest navigation and real route/URL validation                 |
-| Footer social links                | Fake fragments                                                                    | Manifest URLs or omit                                             |
-| Brand/copyright                    | Manifest legal identity and current UTC year                                      | Implemented and tested                                            |
+| Surface                            | Current behavior                                                                  | Disposition            |
+| ---------------------------------- | --------------------------------------------------------------------------------- | ---------------------- |
+| Header/sidebar navigation          | Generated from enabled manifest navigation                                        | Implemented and tested |
+| Hero search                        | Navigates to tenant search when enabled; visibly disabled otherwise               | Implemented and tested |
+| Primary CTA                        | Contact or first enabled manifest navigation target                               | Implemented and tested |
+| Secondary CTA                      | Manifest accessibility route                                                      | Implemented and tested |
+| Features/trust/visual copy         | Derived from modules, locales, consent, analytics, search, and operations profile | Implemented and tested |
+| Project cards                      | Removed; enabled module inventory is generated from the manifest                  | Removed                |
+| Contact send                       | Durable idempotent form/outbox with explicit receipts and errors                  | Implemented and tested |
+| Contact social orbs                | Removed because the manifest has no reviewed social URL contract                  | Removed                |
+| Footer product/company/legal links | Manifest navigation and validated legal routes                                    | Implemented and tested |
+| Footer social links                | Removed because the manifest has no reviewed social URL contract                  | Removed                |
+| Brand/copyright                    | Manifest legal identity and current UTC year                                      | Implemented and tested |
 
 ## Authenticated controls and data
 
@@ -53,11 +53,11 @@ OAuth API start/callback routes return HTTP 501 while other Google OAuth behavio
 
 ## System and status states
 
-- Suspense fallback remains a short accessible loading state; T069 will finalize its visual checkpoint.
+- Suspense fallback is a short accessible loading state.
 - ErrorBoundary and route-level branded 404/500/offline states are implemented.
-- Several tests self-identify as placeholders and therefore cannot count as final evidence.
-- Loading, empty, error, permission, disabled, offline, conflict, rate-limit, maintenance, reduced-motion, locale, and narrow/wide states require explicit route/control coverage.
+- Placeholder tests are excluded from this checkpoint's evidence.
+- Loading, empty, error, permission, disabled, offline, conflict, rate-limit, reduced-motion, locale, and narrow/wide states have explicit automated coverage; identity and module-only states remain bound to their later checkpoints.
 
 ## Required reconciliation
 
-T060 must derive an automated route/control inventory from the rendered application. T061-T068 implement the accepted behaviors. T069 compares that output with this ledger and fails if any visible interactive element has no tested action, disabled explanation, or removal record.
+T069 reconciliation completed with zero unexplained public controls. Chromium, Firefox, and WebKit desktop/mobile projects pass without retries; the accessibility/visual matrices remain deterministic; both fixture brands build under enforced JavaScript, CSS, and total-output budgets. Live provider, production certificate, identity-admin, and optional-module activation remain outside this checkpoint.
