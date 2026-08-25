@@ -1348,3 +1348,18 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Added changed-archive and reused-output hostile tests; preflight reports zero network requests and secret emissions.
 
 **Result**: T108 implementation and credential-free preflight contract are ready. The live deploy/verify/destroy/recreate run remains open until its newly generated exact plan receives separate provider approval.
+
+## Cycle 82 - Bounded WSL native-corruption convergence
+
+**Findings**:
+
+1. Native corruption recurred after a clean WSL restart and could surface as segmentation faults or corrupted Python container iteration, sometimes causing wrapper exit 1 rather than a directly retryable signal.
+2. Blindly retrying any failed gate would hide product, security, coverage, or policy defects.
+
+**Corrections**:
+
+- Added a strict evidence classifier that grants runtime-recovery eligibility only when every failed check contains a recognized native Python/allocator corruption signature.
+- Added a Windows-side launcher that requires a clean tracked exact commit, runs the unchanged gate, permits at most one WSL restart, verifies the commit is unchanged, and refuses application or mixed failures.
+- Added native-only, product-only, mixed-failure, bounded-retry, exact-commit, and static launcher tests plus an operator runbook.
+
+**Result**: WSL recovery is automated without weakening a check or converting a failure into success. Original and replacement evidence remain separate, and recurring corruption after one restart still fails closed.

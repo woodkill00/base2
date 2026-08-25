@@ -10,6 +10,14 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "gate-runtime-recovery-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_gate_runtime_recovery"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["feature-093-plan"],
+      "requiredTools": ["python3"]
+    },
+    {
       "id": "module-registry-contract",
       "command": ["python3", "-m", "unittest", "scripts.tests.test_module_registry"],
       "required": true,
