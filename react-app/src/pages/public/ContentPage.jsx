@@ -2,13 +2,19 @@ import { useEffect, useState } from 'react';
 import { siteContentAPI } from '../../services/siteContent';
 import PublicShell from '../../components/public/PublicShell';
 
-const ContentPage = ({ slug, fallbackTitle }) => {
+const ContentPage = ({ slug, fallbackTitle, locale }) => {
   const [state, setState] = useState({ status: 'loading', item: null });
 
   useEffect(() => {
     let active = true;
     setState({ status: 'loading', item: null });
-    siteContentAPI.getPage(slug).then(
+    const localizedSlug =
+      locale && !/^en(?:-US)?$/i.test(locale) ? `${slug}-${locale.toLowerCase()}` : slug;
+    const load = async () => {
+      const localized = await siteContentAPI.getPage(localizedSlug);
+      return localized || (localizedSlug !== slug ? siteContentAPI.getPage(slug) : null);
+    };
+    load().then(
       (item) => active && setState({ status: item ? 'ready' : 'empty', item }),
       () =>
         active && setState({ status: navigator.onLine === false ? 'offline' : 'error', item: null })
@@ -16,7 +22,7 @@ const ContentPage = ({ slug, fallbackTitle }) => {
     return () => {
       active = false;
     };
-  }, [slug]);
+  }, [locale, slug]);
 
   return (
     <PublicShell title={fallbackTitle}>

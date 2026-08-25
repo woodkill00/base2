@@ -6,6 +6,7 @@ import SearchPage from '../pages/public/SearchPage';
 import NotFoundPage from '../pages/public/NotFoundPage';
 import ContentCollectionPage from '../pages/public/ContentCollectionPage';
 import ProtectedRoute from '../components/ProtectedRoute';
+import LocalizedExperience from './LocalizedExperience';
 
 const Home = lazy(() => import('../pages/Home'));
 const Login = lazy(() => import('../pages/Login'));
@@ -58,6 +59,7 @@ const PublicRoutes = () => (
         </ProtectedRoute>
       }
     />
+    <Route path="/:locale/*" element={<LocalizedExperience />} />
     <Route path="*" element={<NotFoundPage />} />
   </Routes>
 );

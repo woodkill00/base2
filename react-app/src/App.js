@@ -6,6 +6,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ToastProvider from './components/ToastProvider.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
+import PrivacyRuntime from './components/public/PrivacyRuntime.jsx';
 import PublicRoutes from './routes/PublicRoutes.jsx';
 import './App.css';
 import { siteManifest } from './config/siteRuntime';
@@ -28,6 +29,7 @@ function App() {
         <ThemeProvider>
           <MotionConfig reducedMotion="user">
             <ToastProvider>
+              <PrivacyRuntime />
               <Router
                 future={{
                   v7_startTransition: true,

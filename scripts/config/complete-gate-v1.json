@@ -133,6 +133,14 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "privacy-localization-contract",
+      "command": ["npm", "--prefix", "react-app", "run", "test:privacy-contract"],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": ["public-experience-contract", "search-seo-contract"],
+      "requiredTools": ["npm", "node"]
+    },
+    {
       "id": "shell-parity",
       "command": ["node", "scripts/guard-shell-parity.js"],
       "required": true,

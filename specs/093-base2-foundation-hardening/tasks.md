@@ -94,8 +94,8 @@
 - [x] T064 [US4] Implement hardened form/outbox and media validation/variants/quarantine/attribution flows | Depends: T063 | Validate: security/integration tests pass
 - [x] T065 [P] [US4] Write search authorization/freshness/tombstone and SEO/redirect/robots/sitemap tests | Depends: T059 | Validate: fail before T066
 - [x] T066 [US4] Implement tenant-safe search and manifest/content-driven canonical/robots/sitemap/OG/structured-data/redirect behavior | Depends: T065 | Validate: fixture-site search/SEO matrix
-- [ ] T067 [P] [US4] Write consent/analytics/localization tests including tracker-before-consent and locale fallback | Depends: T049 | Validate: fail before T068
-- [ ] T068 [US4] Implement disabled-by-default analytics/consent adapters and localization routing/content | Depends: T067 | Validate: network/locale E2E passes
+- [x] T067 [P] [US4] Write consent/analytics/localization tests including tracker-before-consent and locale fallback | Depends: T049 | Validate: fail before T068
+- [x] T068 [US4] Implement disabled-by-default analytics/consent adapters and localization routing/content | Depends: T067 | Validate: network/locale E2E passes
 - [ ] T120 [P] [US4] Add supported browser/device/input/network matrix and deterministic compatibility tests with documented minimum versions | Depends: T052,T061 | Validate: Chromium/Firefox/WebKit desktop/mobile matrix
 - [ ] T121 [P] [US4] Add local-fake and disabled-default transactional email adapter tests for verification, reset, contact, invite, bounce, suppression, retry, and privacy | Depends: T059,T115 | Validate: no live email; delivery/dead-letter matrix
 - [ ] T122 [US4] Implement transactional email adapter/outbox templates, suppression handling, status, and safe operator diagnostics | Depends: T121 | Validate: mail integration/accessibility/security tests

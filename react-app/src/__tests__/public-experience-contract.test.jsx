@@ -30,7 +30,10 @@ const renderRoute = (path) =>
   );
 
 describe('manifest public experience contract', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    document.documentElement.lang = siteManifest.defaultLocale;
+  });
 
   it.each([
     ['/about', 'About'],
@@ -42,6 +45,21 @@ describe('manifest public experience contract', () => {
     renderRoute(path);
     expect(await screen.findByRole('heading', { name: title })).toBeInTheDocument();
     expect(screen.getByText(`${title} body`)).toBeInTheDocument();
+  });
+
+  it('loads localized content first and falls back to the base publication', async () => {
+    siteContentAPI.getPage.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      title: 'Datenschutz',
+      body: 'Verified fallback content',
+      excerpt: '',
+    });
+    renderRoute('/de/privacy');
+    expect(await screen.findByRole('heading', { name: 'Datenschutz' })).toBeInTheDocument();
+    expect(siteContentAPI.getPage.mock.calls.map(([slug]) => slug)).toEqual([
+      'privacy-de',
+      'privacy',
+    ]);
+    expect(document.documentElement.lang).toBe('de');
   });
 
   it('exposes deterministic loading, empty, unavailable, and offline states', async () => {
