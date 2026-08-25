@@ -50,6 +50,14 @@
       "requiredTools": ["npm", "node"]
     },
     {
+      "id": "visual-baseline-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_visual_baseline_contract"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["visual-harness"],
+      "requiredTools": ["python3", "bash", "git"]
+    },
+    {
       "id": "shell-parity",
       "command": ["node", "scripts/guard-shell-parity.js"],
       "required": true,

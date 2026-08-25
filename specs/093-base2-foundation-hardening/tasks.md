@@ -76,7 +76,7 @@
 - [x] T050 [P] [US7] Formalize token/theme/component/state contracts and Storybook stories from `visual-port-map.md` | Depends: T008,T049 | Validate: five strict schema/theme/token/component-state/motion contract tests and the Storybook production build pass
 - [x] T051 [US7] Port volcanic/obsidian visual behavior onto current-main components without merging stale history | Depends: T050 | Validate: four ancestry/current-component/semantic-style/no-false-claim tests plus four home accessibility/keyboard tests pass
 - [x] T052 [P] [US7] Build hermetic visual harness freezing fonts/assets/time/locale/network/motion/theme/viewport | Depends: T050 | Validate: two browser tests prove byte-stable repeated captures and fixed local-only environment; two static harness-contract tests pass
-- [ ] T053 [US7] Add reviewed component/page/state visual baselines and controlled update workflow | Depends: T051,T052 | Validate: intentional mutation fails
+- [x] T053 [US7] Add reviewed component/page/state visual baselines and controlled update workflow | Depends: T051,T052 | Validate: intentional mutation fails
 - [ ] T054 [P] [US4] Add automated WCAG/keyboard/focus/contrast/reduced-motion/responsive matrix | Depends: T051 | Validate: injected accessibility defect fails
 - [ ] T055 [US3] Remove hardcoded Base2/Woodkill/SpecKit branding, navigation, social/legal links, metadata, and sample identity | Depends: T049,T051 | Validate: repository/UI brand inventory matches manifest
 - [ ] T119 [P] [US4] Write and enforce CSP, HSTS, framing, content-type, referrer, permissions-policy, CORS, cache, WAF/CDN/bot, and preview-indexing policy tests | Depends: T049,T115 | Validate: header/edge-policy attack matrix

@@ -70,6 +70,10 @@ test('repeated home captures are byte stable under frozen inputs', async ({ page
   writeFileSync(testInfo.outputPath('current-capture.png'), current);
   expect(stable).toBe(true);
   expect(previous.byteLength).toBeGreaterThan(10_000);
+  await expect(target).toHaveScreenshot('ember-home-hero.png', {
+    animations: 'disabled',
+    scale: 'css',
+  });
 });
 
 test('harness blocks non-local assets and fixes environment identity', async ({ page }) => {
