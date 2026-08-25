@@ -88,6 +88,20 @@
       "requiredTools": ["{python-django}"]
     },
     {
+      "id": "identity-domain-models",
+      "command": [
+        "{python-django}",
+        "-m",
+        "pytest",
+        "django/tests/test_identity_domain_models.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 45,
+      "dependsOn": ["site-content-models"],
+      "requiredTools": ["{python-django}"]
+    },
+    {
       "id": "site-content-api",
       "command": [
         "{python-api}",

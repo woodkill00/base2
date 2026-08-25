@@ -1,16 +1,29 @@
 from django.contrib import admin
 
 from .models import (
+    ApiCredential,
     ApiToken,
     AuditEvent,
+    Authenticator,
     EmailAddress,
+    Invitation,
+    Membership,
     OAuthAccount,
+    Organization,
     PhoneNumber,
     RecoveryCode,
     UserAddress,
     UserProfile,
+    UserSession,
     UserUrl,
 )
+
+admin.site.register(Organization)
+admin.site.register(Membership)
+admin.site.register(Invitation)
+admin.site.register(Authenticator)
+admin.site.register(UserSession)
+admin.site.register(ApiCredential)
 
 
 @admin.register(UserProfile)
