@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "media",
+  "version": "1.0.0",
+  "compatibility": ">=2.0.0,<3.0.0",
+  "models": ["media.asset", "media.variant"],
+  "migrations": [],
+  "apiRoutes": ["/api/media/{asset-id}"],
+  "uiRoutes": [],
+  "navigation": [],
+  "permissions": ["media.read", "media.manage"],
+  "jobs": ["media.scan", "media.expire"],
+  "settingsSchema": "modules/media/settings.schema.json",
+  "healthChecks": ["media.scanner-ready"],
+  "providerCapabilities": ["storage"],
+  "dependencies": [],
+  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+}

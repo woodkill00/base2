@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "forms",
+  "version": "1.0.0",
+  "compatibility": ">=2.0.0,<3.0.0",
+  "models": ["forms.submission", "forms.outbox"],
+  "migrations": [],
+  "apiRoutes": ["/api/forms/{form-key}"],
+  "uiRoutes": ["/contact"],
+  "navigation": ["forms.contact"],
+  "permissions": ["forms.read", "forms.manage"],
+  "jobs": ["forms.deliver", "forms.expire"],
+  "settingsSchema": "modules/forms/settings.schema.json",
+  "healthChecks": ["forms.outbox-ready"],
+  "providerCapabilities": ["email"],
+  "dependencies": [],
+  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+}

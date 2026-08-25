@@ -1105,3 +1105,19 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Added independent Django tenant/type, API query/SQL, React service/rendering, and combined manifest tests plus pack documentation and a required gate node.
 
 **Result**: T086 complete. The three packs reuse one hardened pipeline without data or navigation leakage, and none adds provider authority.
+
+## Cycle 66 - Forms, gallery, and media packaging
+
+**Findings**:
+
+1. Hardened form/outbox and media quarantine/variant implementations existed, but they were not represented through the public module SDK.
+2. Gallery must not become independently active without the media safety boundary, and capability declarations must not imply provider activation.
+
+**Corrections**:
+
+- Added forms, media, and gallery manifests with independent routes, permissions, jobs, settings, health checks, and persistent-data policies.
+- Bound gallery to an explicit media dependency. The deterministic install plan therefore admits media before gallery.
+- Declared email and storage only on the packs that may later use them; default settings keep adapters disabled and lifecycle receipts grant no provider or credential authority.
+- Added combined dependency/capability tests, documentation, and a required gate node chained to the existing public-content abuse suite.
+
+**Result**: T087 complete. Existing form replay/retention/outbox and media quarantine/variant tests remain authoritative, while the SDK gate proves correct pack composition and inert provider declarations.

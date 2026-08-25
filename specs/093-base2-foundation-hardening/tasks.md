@@ -126,7 +126,7 @@
 - [x] T084 [US10] Implement deterministic module lifecycle, migration preview, receipts, and admin integration | Depends: T083 | Validate: required lifecycle gate passes; owner-only atomic state and sanitized admin projection documented
 - [x] T085 [P] [US10] Create fixture module solely through public SDK and create hostile module fixtures | Depends: T084 | Validate: fixture-notes installs from declarative SDK; executable-field and traversal fixtures fail closed
 - [x] T086 [US6] Implement portfolio/blog/docs packs in Django → FastAPI → React order with independent tests/docs | Depends: T084 | Validate: tenant/type Django case, 9 API cases, 4 React cases, and three-manifest gate pass
-- [ ] T087 [US6] Implement forms/gallery/media packs in required build order with independent tests/docs | Depends: T084,T064 | Validate: three pack acceptance suites
+- [x] T087 [US6] Implement forms/gallery/media packs in required build order with independent tests/docs | Depends: T084,T064 | Validate: existing form/media suites plus dependency/capability manifest gate and pack docs pass
 - [ ] T088 [US6] Implement events/booking packs in required build order with timezone/capacity/race tests | Depends: T084 | Validate: two pack acceptance suites
 - [ ] T089 [US6] Implement community/support packs with moderation, notification, privacy, and abuse boundaries | Depends: T084 | Validate: two pack acceptance suites
 - [ ] T090 [US6] Implement membership/subscription, commerce/catalog, and marketplace/listing packs disabled-by-default with local fake providers | Depends: T084 | Validate: three pack suites; zero live provider calls
