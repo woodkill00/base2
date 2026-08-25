@@ -734,3 +734,19 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added CLI-unavailable coverage and a subprocess regression that imports the complete live canary with Python `-S`, proving the path works with only the standard library.
 
 **Result**: The focused matrix passes 18 tests, the DigitalOcean matrix passes 199 tests, and changed-line coverage remains above policy at 90.37%. The failed Pi dry-run made no provider request or mutation; its superseded archive will not be executed.
+
+## Cycle 46 - Approved three-trial DigitalOcean acceptance
+
+**Findings**:
+
+1. Exact plan `7438b48e416db8283a49bcda7f630e7a0112da407cb511d9881f23b7ae0c1c93` passed both local and Pi networkless dry runs before live authority was used.
+2. On each clean Droplet, pgAdmin briefly entered an unhealthy startup state while initialization continued, then recovered inside the fixed 240-second service window; the other eleven services converged normally.
+3. Destroying every Droplet between trials intentionally removed all Docker/image cache, so each trial independently proved Ubuntu package bootstrap, exact archive verification, image construction, service health, staging-only Traefik, DNS, public health, and teardown.
+
+**Corrections**:
+
+- Ran the exact approved source commit `43c888eebabde3c1541ad27cbbed7a001585ee36` as a Pi user service so workstation or SSH loss could not interrupt the lifecycle.
+- Required the existing fixed health contract to observe pgAdmin recovery; no service was excluded and no health threshold was weakened.
+- Preserved all three lease/deploy/rollback receipts and the final result in an owner-only artifact directory, then performed a separate read-only provider/DNS inventory using the private runtime credential.
+
+**Result**: All three trials passed. Droplets `594979819`, `594981694`, and `594983363` were each created sequentially, reached 12/12 service health, served the exact public API health route through staging-only Traefik, restored DNS, and reached terminal `destroyed`. Final receipt digest is `b54c53305ede82c780c4ea6e41cf85ef4de268b4f292652e08de39706ffa80c5`; deploy/rollback receipt digests are integrity-bound in that receipt. Independent API inventory found zero owned Droplets and zero exact DNS records. Estimated cost was 3 USD minor units against the approved 100-unit ceiling, and zero secret values were emitted. T045 is complete.
