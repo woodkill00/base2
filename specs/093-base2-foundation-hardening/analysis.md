@@ -1318,3 +1318,18 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Revalidated interpreter configuration, imports, API coverage partitions, all DigitalOcean partitions, and the full Django suite from the clean runtime.
 
 **Result**: The isolated suites pass after runtime convergence with unchanged product code and unchanged test thresholds. A replacement exact full gate is required before the operations phase can be considered closed.
+
+## Cycle 80 - Exact-commit website factory
+
+**Findings**:
+
+1. Child repositories must derive from immutable committed source without inheriting the parent worktree, identity, runtime residue, or authority.
+2. Profile-controlled paths, commands, modules, secrets, compatibility, and governance require fail-closed schemas and a child-local gate.
+
+**Corrections**:
+
+- Added strict factory profile/provenance contracts, safe tar-member extraction from exact `git archive`, deterministic filtering, interruption cleanup, and Bash/PowerShell wrappers.
+- Added distinct child identity, selected declarative modules, provenance, license/notice, vulnerability policy, CODEOWNERS, branch guidance, dependency updates, inherited CI, and SecretRef-only configuration.
+- Added a non-applying upgrade advisor, hostile profile/commit/output fixtures, three distinct fixture profiles, deterministic double-generation, and an applicable child gate that executes no input-supplied command.
+
+**Result**: T100-T107 and T125 complete. Blog/portfolio, SaaS, and marketplace children generate differently and deterministically from one exact commit, pass governance/module/provenance checks, and perform zero provider or credential actions.

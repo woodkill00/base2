@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "marketplace",
+  "name": "Harbor Marketplace",
+  "description": "Moderated listing and local-fake commerce website generated from Base2.",
+  "modules": [
+    "content",
+    "forms",
+    "media",
+    "listing",
+    "marketplace",
+    "catalog",
+    "commerce",
+    "support"
+  ],
+  "owner": "@woodkill",
+  "license": "UNLICENSED",
+  "secretRefs": ["vaultwarden://base2/marketplace-runtime"]
+}

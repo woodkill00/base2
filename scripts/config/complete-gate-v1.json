@@ -301,6 +301,14 @@
       "requiredTools": ["{python-orchestrator}"]
     },
     {
+      "id": "website-factory-contract",
+      "command": ["{python-orchestrator}", "-m", "unittest", "scripts.tests.test_base2_factory"],
+      "required": true,
+      "timeoutSeconds": 120,
+      "dependsOn": ["operations-checkpoint", "module-lifecycle-contract", "supply-chain-policy"],
+      "requiredTools": ["{python-orchestrator}", "git"]
+    },
+    {
       "id": "public-experience-contract",
       "command": ["npm", "--prefix", "react-app", "run", "test:public-contract"],
       "required": true,

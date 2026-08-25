@@ -147,16 +147,16 @@
 
 ## Phase 9 - Website factory and upgrade path (P3)
 
-- [ ] T100 [P] [US9] Define factory profile/transformation/provenance/compatibility schemas and hostile path/secret/state fixtures | Depends: T047,T084,T098 | Validate: invalid profiles fail before export
-- [ ] T101 [P] [US9] Write immutable archive/generation tests for exact commit, no worktree/untracked/.git/secrets/logs/cache/receipts, interruption, and deterministic replay | Depends: T100 | Validate: fail before T102
-- [ ] T102 [US9] Implement generator in `scripts/python/create_base2_site.py` with Bash/PowerShell parity wrappers | Depends: T101 | Validate: deterministic fixture repos and secret scan
-- [ ] T103 [US9] Generate independent repo identity, manifests, module inventory, docs, CI, secret references, and provenance | Depends: T102 | Validate: child identity/provenance contract
-- [ ] T104 [P] [US9] Write compatibility/upgrade/migration-preview/rollback tests across foundation versions and module constraints | Depends: T103 | Validate: incompatible upgrade blocks
-- [ ] T105 [US9] Implement upgrade advisor and controlled patch generation without push/merge/deploy authority | Depends: T104 | Validate: compatible/incompatible fixture matrix
-- [ ] T106 [P] [US9] Create blog/portfolio, SaaS, and marketplace fixture profiles and expected inventories | Depends: T103 | Validate: all generate differently from same commit
-- [ ] T107 [US9] Run applicable complete gate in generated repos without executing input-supplied commands | Depends: T105,T106 | Validate: three child gates green
+- [x] T100 [P] [US9] Define factory profile/transformation/provenance/compatibility schemas and hostile path/secret/state fixtures | Depends: T047,T084,T098 | Validate: invalid profiles fail before export
+- [x] T101 [P] [US9] Write immutable archive/generation tests for exact commit, no worktree/untracked/.git/secrets/logs/cache/receipts, interruption, and deterministic replay | Depends: T100 | Validate: fail before T102
+- [x] T102 [US9] Implement generator in `scripts/python/create_base2_site.py` with Bash/PowerShell parity wrappers | Depends: T101 | Validate: deterministic fixture repos and secret scan
+- [x] T103 [US9] Generate independent repo identity, manifests, module inventory, docs, CI, secret references, and provenance | Depends: T102 | Validate: child identity/provenance contract
+- [x] T104 [P] [US9] Write compatibility/upgrade/migration-preview/rollback tests across foundation versions and module constraints | Depends: T103 | Validate: incompatible upgrade blocks
+- [x] T105 [US9] Implement upgrade advisor and controlled patch generation without push/merge/deploy authority | Depends: T104 | Validate: compatible/incompatible fixture matrix
+- [x] T106 [P] [US9] Create blog/portfolio, SaaS, and marketplace fixture profiles and expected inventories | Depends: T103 | Validate: all generate differently from same commit
+- [x] T107 [US9] Run applicable complete gate in generated repos without executing input-supplied commands | Depends: T105,T106 | Validate: three child gates green
 - [ ] T108 [US9] Under separate provider approval, deploy/verify/destroy/recreate one generated child preview with exact state/lease/cost/zero-resource receipts | Depends: T045,T107,T125,T128 | Validate: US9 acceptance bundle
-- [ ] T125 [P] [US9] Add generated-repository policy checks for license/notice attribution, owner/codeowners, branch protection guidance, dependency update config, vulnerability disclosure, and secret/provider exclusion | Depends: T103,T116 | Validate: child repository governance fixture matrix
+- [x] T125 [P] [US9] Add generated-repository policy checks for license/notice attribution, owner/codeowners, branch protection guidance, dependency update config, vulnerability disclosure, and secret/provider exclusion | Depends: T103,T116 | Validate: child repository governance fixture matrix
 
 ## Phase 10 - Closeout and production-readiness evidence
 

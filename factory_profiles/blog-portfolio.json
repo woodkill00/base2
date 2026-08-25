@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "blog-portfolio",
+  "name": "Atlas Journal",
+  "description": "Editorial portfolio and publishing website generated from Base2.",
+  "modules": ["content", "blog", "portfolio", "media", "gallery", "forms"],
+  "owner": "@woodkill",
+  "license": "UNLICENSED",
+  "secretRefs": []
+}

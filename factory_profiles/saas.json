@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "saas",
+  "name": "Northstar SaaS",
+  "description": "Account, membership, subscription, support, and documentation website.",
+  "modules": ["content", "documentation", "forms", "membership", "subscription", "support"],
+  "owner": "@woodkill",
+  "license": "UNLICENSED",
+  "secretRefs": ["vaultwarden://base2/saas-runtime"]
+}
