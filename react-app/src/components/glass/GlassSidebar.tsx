@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react';
 import { ChevronLeft, ChevronRight, FileText, Home } from 'lucide-react';
 
-import GlassButton from './GlassButton';
 import { siteManifest } from '../../config/siteRuntime';
 
 type Props = {
@@ -304,32 +303,6 @@ export const GlassSidebar: React.FC<Props> = ({
                     );
                   })}
                 </nav>
-
-                {siteManifest.modules.some((item) => item.enabled && item.id === 'accounts') ? (
-                  <div
-                    className="sm:hidden flex flex-col gap-2"
-                    style={{
-                      marginTop: 'auto',
-                      paddingTop: 'calc(1.5rem)',
-                      borderTop: '1px solid rgba(255, 255, 255, 0.2)',
-                    }}
-                  >
-                    <GlassButton
-                      variant="ghost"
-                      className="w-full"
-                      onClick={() => handleClick('/login')}
-                    >
-                      Login
-                    </GlassButton>
-                    <GlassButton
-                      variant="primary"
-                      className="w-full"
-                      onClick={() => handleClick('/signup')}
-                    >
-                      Sign Up
-                    </GlassButton>
-                  </div>
-                ) : null}
               </div>
             </motion.aside>
           ) : null}

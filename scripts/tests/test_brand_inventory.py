@@ -11,7 +11,13 @@ REACT = ROOT / "react-app"
 class BrandInventoryTests(unittest.TestCase):
     def test_legacy_sample_identity_and_placeholder_links_are_absent(self):
         source = REACT / "src"
-        files = [REACT / "index.html", *source.rglob("*.js"), *source.rglob("*.jsx"), *source.rglob("*.tsx")]
+        files = [
+            REACT / "index.html",
+            *source.rglob("*.js"),
+            *source.rglob("*.jsx"),
+            *source.rglob("*.ts"),
+            *source.rglob("*.tsx"),
+        ]
         content = "\n".join(path.read_text(encoding="utf-8") for path in files)
         for forbidden in ("SpecKit", "Woodkill Dev", "Base2 React App", "woodkilldev.com"):
             self.assertNotIn(forbidden, content)
