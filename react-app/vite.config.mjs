@@ -21,6 +21,16 @@ const generatedProfilePlugin = () => {
   }
   const profile = JSON.parse(fs.readFileSync(path.join(root, `${selected}.json`), 'utf8'));
   if (profile.siteId !== selected) throw new Error('generated site profile identity mismatch');
+  const escapeHtml = (value) =>
+    String(value).replace(
+      /[&<>"']/g,
+      (character) =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]
+    );
+  const siteName = escapeHtml(profile.name);
+  const description = escapeHtml(profile.seo.description);
+  const canonicalUrl = `https://${profile.domains.find((domain) => domain.kind === 'canonical').host}/`;
+  const robots = profile.seo.indexing === 'allow' ? 'index,follow' : 'noindex,nofollow';
   const publicProfile = {
     schemaVersion: profile.schemaVersion,
     siteId: profile.siteId,
@@ -32,8 +42,35 @@ const generatedProfilePlugin = () => {
     name: 'generated-site-profile',
     transformIndexHtml(html) {
       return html
-        .replace('<html', `<html lang="${profile.defaultLocale}" data-site-id="${selected}"`)
-        .replace(/<title>.*?<\/title>/, `<title>${profile.name}</title>`);
+        .replace(
+          '<html',
+          `<html lang="${escapeHtml(profile.defaultLocale)}" data-site-id="${selected}"`
+        )
+        .replace(/<title>.*?<\/title>/, `<title>${siteName}</title>`)
+        .replace(
+          /<meta name="description" content=".*?" \/>/,
+          `<meta name="description" content="${description}" />`
+        )
+        .replace(
+          /<meta name="robots" content=".*?" \/>/,
+          `<meta name="robots" content="${robots}" />`
+        )
+        .replace(
+          /<meta property="og:title" content=".*?" \/>/,
+          `<meta property="og:title" content="${siteName}" />`
+        )
+        .replace(
+          /<meta property="og:description" content=".*?" \/>/,
+          `<meta property="og:description" content="${description}" />`
+        )
+        .replace(
+          /<meta property="og:url" content=".*?" \/>/,
+          `<meta property="og:url" content="${canonicalUrl}" />`
+        )
+        .replace(
+          /<link rel="canonical" href=".*?" \/>/,
+          `<link rel="canonical" href="${canonicalUrl}" />`
+        );
     },
     generateBundle() {
       this.emitFile({

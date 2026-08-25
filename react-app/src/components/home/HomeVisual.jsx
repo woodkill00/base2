@@ -28,7 +28,12 @@ const HomeVisual = () => {
               </p>
             </div>
 
-            <div className="home-runtime-frame" aria-label="Enabled site modules">
+            <div
+              className="home-runtime-frame"
+              role="region"
+              tabIndex={0}
+              aria-label="Enabled site modules"
+            >
               <div className="home-runtime-header">
                 <span>{siteManifest.siteId}</span>
                 <strong>{siteManifest.defaultLocale}</strong>

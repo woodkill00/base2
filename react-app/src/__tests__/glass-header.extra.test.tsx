@@ -24,7 +24,7 @@ describe('GlassHeader extra coverage', () => {
     );
 
     // Public header should render brand + theme toggle.
-    expect(screen.getByText('SpecKit')).toBeInTheDocument();
+    expect(screen.getByText('Ember Studio')).toBeInTheDocument();
     const btn = screen.getByRole('button', { name: /toggle theme/i });
     expect(btn).toBeInTheDocument();
     await act(async () => {

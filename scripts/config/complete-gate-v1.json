@@ -58,6 +58,22 @@
       "requiredTools": ["python3", "bash", "git"]
     },
     {
+      "id": "accessibility-matrix-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_accessibility_matrix_contract"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["visual-baseline-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "brand-inventory",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_brand_inventory"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["accessibility-matrix-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
       "id": "shell-parity",
       "command": ["node", "scripts/guard-shell-parity.js"],
       "required": true,

@@ -20,8 +20,8 @@ const About = () => {
             </div>
             <div style={styles.content}>
               <p style={styles.text}>
-                I’m Woodkill Dev — building clean, accessible, and modern interfaces with a focus on
-                performance, motion, and glassmorphism aesthetics.
+                This profile presents clean, accessible, and modern interfaces with a focus on
+                performance, motion, and inclusive experiences.
               </p>
               <div style={styles.skillsWrap}>
                 <div role="list" aria-label="Skills" style={styles.skillsList}>

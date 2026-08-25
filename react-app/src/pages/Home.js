@@ -3,9 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import GlassHeader from '../components/glass/GlassHeader';
 import GlassSidebar from '../components/glass/GlassSidebar';
 import HomeHero from '../components/home/HomeHero';
-import About from '../components/portfolio/About';
-import ProjectsGrid from '../components/portfolio/ProjectsGrid';
-import ContactForm from '../components/portfolio/ContactForm';
 import HomeFeatures from '../components/home/HomeFeatures';
 import HomeVisual from '../components/home/HomeVisual';
 import HomeTrust from '../components/home/HomeTrust';
@@ -14,15 +11,12 @@ import HomeFooter from '../components/home/HomeFooter';
 const Home = () => {
   const navigate = useNavigate();
 
-  const handleMenuItemClick = (id) => {
-    if (id === 'home') {
+  const handleMenuItemClick = (path) => {
+    if (path === '/') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    if (id === 'features') {
-      const section = document.getElementById('features');
-      if (section) section.scrollIntoView({ behavior: 'smooth' });
-    }
+    navigate(path);
   };
 
   return (
@@ -36,9 +30,6 @@ const Home = () => {
         <main>
           <HomeHero onPrimary={() => navigate('/signup')} onSecondary={() => {}} />
           <HomeFeatures />
-          <About />
-          <ProjectsGrid />
-          <ContactForm />
           <HomeVisual />
           <HomeTrust />
         </main>

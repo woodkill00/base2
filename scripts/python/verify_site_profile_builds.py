@@ -49,8 +49,21 @@ def main() -> int:
             )
             metadata = json.loads((output / "site-profile.json").read_text(encoding="utf-8"))
             html = (output / "index.html").read_text(encoding="utf-8")
+            manifest = json.loads(
+                (ROOT / "site_profiles" / f"{profile_id}.json").read_text(encoding="utf-8")
+            )
+            canonical = next(item["host"] for item in manifest["domains"] if item["kind"] == "canonical")
+            robots = "index,follow" if manifest["seo"]["indexing"] == "allow" else "noindex,nofollow"
             if metadata["siteId"] != profile_id or f'data-site-id="{profile_id}"' not in html:
                 raise RuntimeError(f"built profile selection was not preserved for {profile_id}")
+            expected = (
+                f'<title>{manifest["name"]}</title>',
+                f'content="{manifest["seo"]["description"]}"',
+                f'<meta name="robots" content="{robots}"',
+                f'href="https://{canonical}/"',
+            )
+            if any(marker not in html for marker in expected):
+                raise RuntimeError(f"built brand metadata was not preserved for {profile_id}")
             receipts[profile_id] = _tree_digest(output)
     if len(set(receipts.values())) != len(receipts):
         raise RuntimeError("fixture profile builds are not distinct")

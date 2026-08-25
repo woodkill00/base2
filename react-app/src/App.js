@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import { MotionConfig } from 'motion/react';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ToastProvider from './components/ToastProvider.jsx';
@@ -34,44 +35,49 @@ function App() {
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <AuthProvider>
         <ThemeProvider>
-          <ToastProvider>
-            <Router
-              future={{
-                v7_startTransition: true,
-                v7_relativeSplatPath: true,
-              }}
-            >
-              <ErrorBoundary>
-                <Suspense fallback={<div style={{ padding: 24 }}>Loading...</div>}>
-                  <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/login" element={<Login variant="public" />} />
-                    <Route path="/signup" element={<Signup variant="public" />} />
-                    <Route path="/items" element={<Items />} />
-                    <Route path="/verify-email" element={<VerifyEmail variant="public" />} />
-                    <Route path="/forgot-password" element={<ForgotPassword variant="public" />} />
-                    <Route path="/reset-password" element={<ResetPassword variant="public" />} />
-                    <Route
-                      path="/dashboard"
-                      element={
-                        <ProtectedRoute>
-                          <Dashboard />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/settings"
-                      element={
-                        <ProtectedRoute>
-                          <Settings />
-                        </ProtectedRoute>
-                      }
-                    />
-                  </Routes>
-                </Suspense>
-              </ErrorBoundary>
-            </Router>
-          </ToastProvider>
+          <MotionConfig reducedMotion="user">
+            <ToastProvider>
+              <Router
+                future={{
+                  v7_startTransition: true,
+                  v7_relativeSplatPath: true,
+                }}
+              >
+                <ErrorBoundary>
+                  <Suspense fallback={<div style={{ padding: 24 }}>Loading...</div>}>
+                    <Routes>
+                      <Route path="/" element={<Home />} />
+                      <Route path="/login" element={<Login variant="public" />} />
+                      <Route path="/signup" element={<Signup variant="public" />} />
+                      <Route path="/items" element={<Items />} />
+                      <Route path="/verify-email" element={<VerifyEmail variant="public" />} />
+                      <Route
+                        path="/forgot-password"
+                        element={<ForgotPassword variant="public" />}
+                      />
+                      <Route path="/reset-password" element={<ResetPassword variant="public" />} />
+                      <Route
+                        path="/dashboard"
+                        element={
+                          <ProtectedRoute>
+                            <Dashboard />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/settings"
+                        element={
+                          <ProtectedRoute>
+                            <Settings />
+                          </ProtectedRoute>
+                        }
+                      />
+                    </Routes>
+                  </Suspense>
+                </ErrorBoundary>
+              </Router>
+            </ToastProvider>
+          </MotionConfig>
         </ThemeProvider>
       </AuthProvider>
     </GoogleOAuthProvider>

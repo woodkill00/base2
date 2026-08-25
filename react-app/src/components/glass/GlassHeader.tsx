@@ -6,6 +6,7 @@ import { motion } from 'motion/react';
 import ThemeToggle from './ThemeToggle';
 import GlassButton from './GlassButton';
 import { applyThemeClass, setThemeCookie } from '../../services/theme/persistence';
+import { siteManifest } from '../../config/siteRuntime';
 
 type Props = {
   title?: string;
@@ -81,7 +82,7 @@ export const GlassHeader: React.FC<Props> = ({
                   strokeLinejoin="round"
                 />
               </svg>
-              <span className="text-lg font-medium">SpecKit</span>
+              <span className="text-lg font-medium">{siteManifest.name}</span>
             </div>
 
             <div className="flex items-center gap-3">
