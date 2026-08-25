@@ -1042,3 +1042,35 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Retained at most three attempts only for native abort/segfault exits, explicit recovery reporting, and immediate failure for every ordinary test, collection, or configuration error. Added gate-contract coverage for the exact inventory and policy.
 
 **Result**: All five isolated partitions and all 19 assertions pass, complete-gate contract tests pass, and Feature 093 analysis reports zero findings. The sixth failed evidence remains preserved; a new exact-commit gate is required.
+
+## Cycle 62 - Public module registry foundation
+
+**Findings**:
+
+1. The versioned module JSON schema existed, but no runtime validator or registry enforced semantic compatibility, namespaces, cross-module conflicts, dependency existence/cycles, safe references, or deterministic installation.
+2. Accepting executable hooks, import paths, or module-provided commands would make a manifest an unreviewed code-execution boundary.
+
+**Corrections**:
+
+- Added a standard-library module validator with exact keys, strict semantic versions and Base2 constraints, safe relative references, namespaced permissions, fixed provider capabilities, explicit lifecycle policy, and deep-copied normalized data.
+- Added registry-wide duplicate, conflict, missing-dependency, and cycle rejection plus stable dependency-ordered install and health inventories.
+- Added hostile fixtures for unknown keys, traversal, absolute paths, unsafe routes, cross-namespace permissions, unknown capabilities, incompatible versions, duplicates, missing/cyclic dependencies, conflicts, malformed JSON, and symlinks.
+- Made the six-case module registry suite a required complete-gate dependency. The contract accepts no command, shell, callable, import, or executable hook field.
+
+**Result**: T081 and T082 complete. The focused module suite and gate-contract suite pass, and the install plan is deterministic data only. Lifecycle mutation remains intentionally absent until T083/T084 define its receipt, replay, rollback, and persistent-data semantics.
+
+## Cycle 63 - Receipt-bound module lifecycle
+
+**Findings**:
+
+1. Registry validation alone did not define durable install, enable, disable, upgrade, export, removal, replay, or rollback behavior.
+2. A lifecycle implementation could otherwise lose persistent data, leave scheduled jobs active while disabled, accept downgrade/migration-history loss, or replay changed requests under an old operation identity.
+
+**Corrections**:
+
+- Added locked atomic owner-only lifecycle state, HMAC-signed before/after receipts, exact-request replay, changed-request rejection, and exact-latest rollback with state-integrity checks.
+- Added explicit job suppression/reactivation, preserve/archive and forbid/backup-required/purge data policies, forward-only semantic upgrades, migration-history preview, export inventory, and sanitized stable admin overview.
+- Added seven focused lifecycle cases covering every transition, state corruption, receipt tampering, replay, upgrade order, migration preview, removal policy, persistent state, and scheduled jobs.
+- Added operator-facing SDK documentation and made lifecycle validation a required gate node chained before the remaining repository checks.
+
+**Result**: T083 and T084 complete. Thirteen module registry/lifecycle cases and the gate-contract suite pass. Provider declarations remain inert metadata and no dynamic module code execution or provider activation was introduced.

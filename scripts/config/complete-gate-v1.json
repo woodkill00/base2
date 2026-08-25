@@ -10,11 +10,27 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "module-registry-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_module_registry"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["feature-093-plan"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "module-lifecycle-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_module_lifecycle"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["module-registry-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
       "id": "site-manifest-contract",
       "command": ["{python-orchestrator}", "-m", "unittest", "scripts.tests.test_site_manifest"],
       "required": true,
       "timeoutSeconds": 30,
-      "dependsOn": ["feature-093-plan"],
+      "dependsOn": ["module-lifecycle-contract"],
       "requiredTools": ["{python-orchestrator}", "node"]
     },
     {

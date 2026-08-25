@@ -218,6 +218,14 @@ class CompleteGateTests(unittest.TestCase):
         )
         commands = {item["id"]: item["command"] for item in manifest["checks"]}
         self.assertEqual(
+            ["python3", "-m", "unittest", "scripts.tests.test_module_registry"],
+            commands["module-registry-contract"],
+        )
+        self.assertEqual(
+            ["python3", "-m", "unittest", "scripts.tests.test_module_lifecycle"],
+            commands["module-lifecycle-contract"],
+        )
+        self.assertEqual(
             [
                 "{python-orchestrator}",
                 "-m",

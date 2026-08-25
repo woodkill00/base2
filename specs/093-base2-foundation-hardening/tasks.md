@@ -120,10 +120,10 @@
 
 ## Phase 7 - Module SDK and representative packs (P2)
 
-- [ ] T081 [P] [US10] Write module schema/semantic/compatibility/dependency/route/permission/capability/lifecycle tests | Depends: T005,T075 | Validate: invalid fixture matrix fails
-- [ ] T082 [US10] Implement module registry/validator/health/install plan with no dynamic code execution | Depends: T081 | Validate: module contract tests pass
-- [ ] T083 [P] [US10] Write install/enable/disable/upgrade/export/removal/replay/rollback tests including persistent data and scheduled jobs | Depends: T082 | Validate: fail before T084
-- [ ] T084 [US10] Implement deterministic module lifecycle, migration preview, receipts, and admin integration | Depends: T083 | Validate: lifecycle tests pass
+- [x] T081 [P] [US10] Write module schema/semantic/compatibility/dependency/route/permission/capability/lifecycle tests | Depends: T005,T075 | Validate: 6 contract cases and 11 hostile mutations pass
+- [x] T082 [US10] Implement module registry/validator/health/install plan with no dynamic code execution | Depends: T081 | Validate: required module-registry gate passes with deterministic data-only plan
+- [x] T083 [P] [US10] Write install/enable/disable/upgrade/export/removal/replay/rollback tests including persistent data and scheduled jobs | Depends: T082 | Validate: 7 lifecycle cases cover transitions, replay, policy, jobs, integrity, and rollback
+- [x] T084 [US10] Implement deterministic module lifecycle, migration preview, receipts, and admin integration | Depends: T083 | Validate: required lifecycle gate passes; owner-only atomic state and sanitized admin projection documented
 - [ ] T085 [P] [US10] Create fixture module solely through public SDK and create hostile module fixtures | Depends: T084 | Validate: fixture installs; hostile fixtures fail closed
 - [ ] T086 [US6] Implement portfolio/blog/docs packs in Django → FastAPI → React order with independent tests/docs | Depends: T084 | Validate: three pack acceptance suites
 - [ ] T087 [US6] Implement forms/gallery/media packs in required build order with independent tests/docs | Depends: T084,T064 | Validate: three pack acceptance suites
