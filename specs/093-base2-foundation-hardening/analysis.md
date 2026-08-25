@@ -2,6 +2,28 @@
 
 Analysis checks requirement coverage, task executability, dependency validity, test-first order, error visibility, security/authority, rollback, observability, documentation, and measurable acceptance. A cycle is complete only after findings are reflected in artifacts and rechecked.
 
+## Cycle 17 - Tenant isolation and database defense truth
+
+The identity checkpoint had explicit `site_id` predicates but no single tenant
+contract for request validation, cache keys, job envelopes, pooled connection
+state, or Django admin visibility. PostgreSQL RLS was also named without a safe
+role-separation decision, which could have produced a false security claim.
+
+- Added canonical tenant validation, tenant-owned cache/job namespaces,
+  transaction-local database binding, and unconditional pooled-connection
+  rollback/reset on success and failure.
+- Required every site-content repository checkout and SQL query to carry the
+  same tenant key; retained generic not-found and sanitized service failures.
+- Added membership-scoped Django admin query/object controls and model-level
+  cross-tenant search-document validation.
+- Recorded RLS as `deferred` until provisioning supplies distinct migration and
+  non-owner runtime roles. The gate cannot report RLS as active before the
+  direct-query, pool-reuse, and migration-bypass PostgreSQL matrix passes.
+
+**Result**: T074, T075, and T123 are resolved without claiming an unavailable
+database control. Focused API and Django matrices pass; complete-gate validation
+is required from the resulting commit.
+
 ## Cycle 1 - Scope decomposition
 
 **Findings**:

@@ -29,7 +29,7 @@ class PostgresSiteContentRepository:
         if cursor:
             params.append(str(cursor))
         params.append(limit + 1)
-        with db_conn() as conn, conn.cursor() as cur:
+        with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
             cur.execute(
                 f"""SELECT id, content_type, slug, title, excerpt, body, metadata,
                            published_at, updated_at
@@ -43,7 +43,7 @@ class PostgresSiteContentRepository:
         return {'items': items, 'nextCursor': str(items[-1]['id']) if len(rows) > limit else None}
 
     def get_content(self, *, site_id: str, content_type: str, slug: str):
-        with db_conn() as conn, conn.cursor() as cur:
+        with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
             cur.execute(
                 """SELECT id, content_type, slug, title, excerpt, body, metadata,
                           published_at, updated_at
@@ -55,7 +55,7 @@ class PostgresSiteContentRepository:
         return _content(row) if row else None
 
     def get_media(self, *, site_id: str, asset_id: UUID):
-        with db_conn() as conn, conn.cursor() as cur:
+        with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
             cur.execute(
                 """SELECT id, original_name, media_type, byte_size, sha256, attribution, metadata, updated_at
                    FROM sitecontent_mediaasset
@@ -82,7 +82,7 @@ class PostgresSiteContentRepository:
         if cursor:
             params.append(str(cursor))
         params.append(limit + 1)
-        with db_conn() as conn, conn.cursor() as cur:
+        with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
             cur.execute(
                 f"""SELECT d.id, d.title, d.body, d.url_path, d.indexed_at, d.source_updated_at
                     FROM sitecontent_searchdocument d
@@ -124,7 +124,7 @@ class PostgresSiteContentRepository:
         request_digest,
     ):
         now = datetime.now(UTC)
-        with db_conn() as conn:
+        with db_conn(tenant_id=site_id) as conn:
             conn.autocommit = False
             try:
                 with conn.cursor() as cur:

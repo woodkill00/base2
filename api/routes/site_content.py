@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hmac
-import re
 from datetime import datetime
 from typing import Annotated, Any, NoReturn
 from uuid import UUID
@@ -17,7 +16,6 @@ from api.security.public_content import FormPolicyError
 from api.settings import settings
 
 router = APIRouter()
-_SITE_ID = re.compile(r'^[a-z][a-z0-9-]{2,62}$')
 
 
 class ContentItem(BaseModel):
@@ -84,10 +82,7 @@ Slug = Annotated[str, Path(pattern=r'^[a-z0-9][a-z0-9-]{0,159}$')]
 
 
 def _tenant(request: Request) -> str:
-    tenant = require_tenant(request)
-    if not _SITE_ID.fullmatch(tenant):
-        raise HTTPException(status_code=400, detail='tenant_invalid')
-    return tenant
+    return require_tenant(request)
 
 
 def _map_value_error(exc: ValueError) -> NoReturn:
@@ -112,8 +107,8 @@ def _guard_form_request(request: Request, tenant: str) -> None:
             raise HTTPException(status_code=403, detail='csrf_failed')
 
     client_ip = request.client.host if request.client else 'unknown'
-    _count, over, retry_after = rate_limit.incr_and_check_detailed(
-        f'{tenant}:{client_ip}', 'public_form'
+    _count, over, retry_after = rate_limit.incr_and_check_tenant_detailed(
+        tenant, client_ip, 'public_form'
     )
     if over:
         raise HTTPException(

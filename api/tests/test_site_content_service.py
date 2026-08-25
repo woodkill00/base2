@@ -71,6 +71,7 @@ class FakeConnection:
         self.autocommit = None
         self.commits = 0
         self.rollbacks = 0
+        self.tenant_ids = []
 
     def cursor(self):
         return self.cursor_instance
@@ -84,7 +85,8 @@ class FakeConnection:
 
 def connection_context(connection):
     @contextmanager
-    def context():
+    def context(*, tenant_id=None):
+        connection.tenant_ids.append(tenant_id)
         yield connection
 
     return context
@@ -109,6 +111,7 @@ def test_repository_creates_submission_and_outbox_in_one_transaction():
     assert 'INSERT INTO sitecontent_formdeliveryoutbox' in sql
     assert connection.commits == 1
     assert connection.rollbacks == 0
+    assert connection.tenant_ids == ['site-a']
     assert receipt['replayed'] is False
 
 
@@ -126,6 +129,7 @@ def test_repository_reads_are_tenant_bound_and_map_public_rows():
     sql, params = listed.cursor_instance.executions[0]
     assert "site_id=%s AND state='published'" in sql
     assert params[0] == 'site-a'
+    assert listed.tenant_ids == ['site-a']
 
     found = FakeConnection([content_row])
     with patch('api.repositories.site_content.db_conn', connection_context(found)):

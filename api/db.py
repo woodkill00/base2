@@ -6,6 +6,7 @@ import re
 from psycopg2.pool import ThreadedConnectionPool
 
 from api.settings import settings
+from api.security.tenant_context import canonical_tenant_id
 
 
 _pool: ThreadedConnectionPool | None = None
@@ -78,13 +79,33 @@ def _get_conn() -> object:
     return pool.getconn()
 
 
+def _bind_tenant(conn: object, tenant_id: str) -> None:
+    tenant = canonical_tenant_id(tenant_id)
+    # Transaction-local state is consumed by PostgreSQL RLS policies. Parameter
+    # binding prevents the tenant identifier from becoming executable SQL.
+    with conn.cursor() as cur:
+        cur.execute("SELECT set_config('app.tenant_id', %s, true)", (tenant,))
+
+
+def _reset_connection(conn: object) -> None:
+    """Remove transaction/session state before a pooled connection is reused."""
+
+    with suppress(Exception):
+        conn.rollback()
+    with suppress(Exception):
+        conn.reset()
+
+
 @contextmanager
-def db_conn():
+def db_conn(*, tenant_id: str | None = None):
     pool = _get_pool()
     conn = _get_conn()
     try:
+        if tenant_id is not None:
+            _bind_tenant(conn, tenant_id)
         yield conn
     finally:
+        _reset_connection(conn)
         with suppress(Exception):
             pool.putconn(conn)
 

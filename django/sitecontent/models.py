@@ -22,10 +22,18 @@ def validate_local_path(value: str) -> None:
         raise ValidationError("Path traversal is forbidden.")
 
 
+class SiteOwnedQuerySet(models.QuerySet):
+    def for_tenant(self, tenant_id: str):
+        if not re.fullmatch(SITE_ID_PATTERN, str(tenant_id or "")):
+            raise ValidationError("tenant_invalid")
+        return self.filter(site_id=tenant_id)
+
+
 class SiteOwnedModel(models.Model):
     site_id = models.CharField(max_length=63, validators=[site_id_validator], db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    objects = SiteOwnedQuerySet.as_manager()
 
     class Meta:
         abstract = True

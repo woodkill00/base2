@@ -90,7 +90,7 @@ def test_form_route_rate_limit_and_session_csrf_fail_closed(monkeypatch):
     headers = {'X-Tenant-Id': 'site-a', 'Idempotency-Key': 'request-1'}
     try:
         monkeypatch.setattr(
-            'api.routes.site_content.rate_limit.incr_and_check_detailed',
+            'api.routes.site_content.rate_limit.incr_and_check_tenant_detailed',
             lambda *_args: (11, True, 37),
         )
         limited = client.post('/api/forms/contact', headers=headers, json={'payload': {}})
@@ -98,7 +98,7 @@ def test_form_route_rate_limit_and_session_csrf_fail_closed(monkeypatch):
         assert limited.headers['Retry-After'] == '37'
 
         monkeypatch.setattr(
-            'api.routes.site_content.rate_limit.incr_and_check_detailed',
+            'api.routes.site_content.rate_limit.incr_and_check_tenant_detailed',
             lambda *_args: (1, False, 0),
         )
         client.cookies.set(settings.SESSION_COOKIE_NAME, 'private-session')

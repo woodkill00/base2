@@ -95,7 +95,7 @@ def test_tenant_policy_pagination_not_found_and_search_mapping():
 
 def test_form_submission_is_queued_and_idempotently_replayed(monkeypatch):
     monkeypatch.setattr(
-        'api.routes.site_content.rate_limit.incr_and_check_detailed',
+        'api.routes.site_content.rate_limit.incr_and_check_tenant_detailed',
         lambda *_args: (1, False, 0),
     )
     fake = FakeSiteContentService()
