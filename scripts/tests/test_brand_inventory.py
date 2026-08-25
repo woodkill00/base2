@@ -25,7 +25,10 @@ class BrandInventoryTests(unittest.TestCase):
 
     def test_brand_navigation_legal_and_metadata_are_manifest_driven(self):
         expected = {
-            "src/components/glass/GlassHeader.tsx": ("siteManifest.name",),
+            "src/components/glass/GlassHeader.tsx": (
+                "manifest = siteManifest",
+                "manifest.name",
+            ),
             "src/components/glass/GlassSidebar.tsx": ("siteManifest.navigation.map",),
             "src/components/home/HomeFooter.jsx": (
                 "manifest.navigation.map",
