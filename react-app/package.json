@@ -63,6 +63,7 @@
     "format:check": "prettier --check \"src/**/*.{js,jsx,json,css,md}\"",
     "e2e": "playwright test --reporter=list",
     "e2e:headed": "playwright test --headed",
+    "test:visual": "playwright test --config=playwright.visual.config.mjs",
     "e2e:install": "playwright install",
     "analyze": "vite build --mode analyze",
     "storybook": "storybook dev -p 6006",

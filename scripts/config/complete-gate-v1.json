@@ -42,6 +42,14 @@
       "requiredTools": ["python3", "git"]
     },
     {
+      "id": "visual-harness",
+      "command": ["npm", "--prefix", "react-app", "run", "test:visual"],
+      "required": true,
+      "timeoutSeconds": 120,
+      "dependsOn": ["visual-port"],
+      "requiredTools": ["npm", "node"]
+    },
+    {
       "id": "shell-parity",
       "command": ["node", "scripts/guard-shell-parity.js"],
       "required": true,

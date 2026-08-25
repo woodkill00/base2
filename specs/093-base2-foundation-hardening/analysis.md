@@ -832,3 +832,20 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Added a required ancestry/current-component/semantic-style/no-false-claim gate proving the visual tip is not an ancestor and only reviewed current surfaces own the port.
 
 **Result**: T051 complete. Four visual-port tests, five visual-contract tests, ESLint, and all four focused home keyboard/accessibility tests pass. The existing public heading and CTA focus behavior remain intact, and no stale branch history or external visual asset was merged.
+
+## Cycle 52 - Hermetic browser capture boundary
+
+**Findings**:
+
+1. WSL initially held Chromium revision 1217 while the lockfile-resolved Playwright required revision 1208; after installing the exact browser, its declared Ubuntu native libraries were also absent.
+2. The page's fixed animated menu control crossed the hero capture bounds and changed a small pixel region between otherwise identical captures.
+3. Google OAuth attempted to request its remote client script during page startup, even though the visual harness must never depend on external network success.
+
+**Corrections**:
+
+- Added a dedicated single-worker Chromium harness fixed to locale `en-US`, UTC, 1280x900 at scale 1, dark color scheme, reduced motion, frozen time, local production build, no service workers, no server reuse, and local-only routing.
+- Installed the repo-pinned browser revision and Playwright-declared Chromium OS dependencies in WSL; missing browser/runtime dependencies now fail the required harness visibly.
+- Blocked every non-loopback request, asserted zero external response, removed filters/backdrop and transient animation from capture, settled motion state, and hid only the fixed out-of-scope menu toggle before capture.
+- Added exact repeated PNG byte equality plus a static contract test that prevents removal of any frozen-input or local-only boundary.
+
+**Result**: T052 complete. Both real-browser tests pass: repeated hero captures converge to byte-identical PNG output, and browser identity/time/theme/motion/network assertions match exactly. Two static harness-contract tests also pass. No external request completed, and no provider, DNS, Pi, or production service was touched.
