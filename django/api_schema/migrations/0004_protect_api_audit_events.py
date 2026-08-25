@@ -22,6 +22,16 @@ DROP FUNCTION IF EXISTS api_reject_audit_mutation();
 """
 
 
+def install_trigger(apps, schema_editor):
+    if schema_editor.connection.vendor == 'postgresql':
+        schema_editor.execute(FORWARD)
+
+
+def remove_trigger(apps, schema_editor):
+    if schema_editor.connection.vendor == 'postgresql':
+        schema_editor.execute(REVERSE)
+
+
 class Migration(migrations.Migration):
     dependencies = [('api_schema', '0003_data_rights_operations')]
-    operations = [migrations.RunSQL(FORWARD, REVERSE)]
+    operations = [migrations.RunPython(install_trigger, remove_trigger)]
