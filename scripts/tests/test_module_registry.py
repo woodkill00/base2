@@ -31,6 +31,18 @@ def manifest(module_id='content', **changes):
 
 
 class ModuleRegistryTests(unittest.TestCase):
+    def test_public_fixture_installs_only_through_sdk_and_hostile_files_fail(self):
+        root = Path(__file__).parents[2]
+        fixture = json.loads(
+            (root / 'modules/fixture-notes/module.json').read_text(encoding='utf-8')
+        )
+        registry = ModuleRegistry([fixture])
+        self.assertEqual(['fixture-notes'], [item['id'] for item in registry.install_plan()])
+        hostile_root = root / 'scripts/tests/fixtures/modules'
+        for path in sorted(hostile_root.glob('hostile-*.json')):
+            with self.subTest(path=path), self.assertRaises(ModuleContractError):
+                validate_manifest(json.loads(path.read_text(encoding='utf-8')))
+
     def test_validates_and_normalizes_complete_manifest(self):
         result = validate_manifest(manifest())
         self.assertEqual('content', result.id)

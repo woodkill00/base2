@@ -1074,3 +1074,18 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Added operator-facing SDK documentation and made lifecycle validation a required gate node chained before the remaining repository checks.
 
 **Result**: T083 and T084 complete. Thirteen module registry/lifecycle cases and the gate-contract suite pass. Provider declarations remain inert metadata and no dynamic module code execution or provider activation was introduced.
+
+## Cycle 64 - SDK-only fixture boundary
+
+**Findings**:
+
+1. The SDK needed proof that a new module could be described without editing registry code or adding an executable extension hook.
+2. Programmatic hostile mutations did not leave durable review fixtures for the two highest-risk boundaries: command injection and path traversal.
+
+**Corrections**:
+
+- Added `fixture-notes` using only the public declarative manifest, settings schema, and reviewed SQL migration surface.
+- Added durable hostile command-field and migration-traversal manifests and required both to fail closed through the same public validator used by the valid fixture.
+- Kept the fixture provider-free and tenant-keyed; it grants no runtime route activation or migration execution merely by existing in the repository.
+
+**Result**: T085 complete. The fixture produces the exact one-module deterministic install plan, and every durable hostile fixture is rejected before lifecycle state changes.

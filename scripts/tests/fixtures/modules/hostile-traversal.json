@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "hostile-traversal",
+  "version": "1.0.0",
+  "compatibility": ">=2.0.0,<3.0.0",
+  "models": [],
+  "migrations": ["../../outside.sql"],
+  "apiRoutes": [],
+  "uiRoutes": [],
+  "navigation": [],
+  "permissions": [],
+  "jobs": [],
+  "settingsSchema": "modules/hostile-traversal/settings.schema.json",
+  "healthChecks": [],
+  "providerCapabilities": [],
+  "dependencies": [],
+  "dataLifecycle": { "disable": "preserve", "export": false, "remove": "forbid" }
+}
