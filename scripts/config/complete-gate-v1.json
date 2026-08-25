@@ -135,17 +135,7 @@
     },
     {
       "id": "data-rights-contract",
-      "command": [
-        "{python-api}",
-        "-m",
-        "pytest",
-        "api/tests/contract/test_data_rights_contract.py",
-        "api/tests/security/test_data_rights_restore.py",
-        "api/tests/test_data_rights_repository.py",
-        "api/tests/test_data_rights_worker.py",
-        "api/tests/test_data_rights_tasks.py",
-        "-q"
-      ],
+      "command": ["{python-api}", "scripts/python/run_data_rights_matrix.py"],
       "required": true,
       "timeoutSeconds": 60,
       "dependsOn": ["identity-schema-parity"],

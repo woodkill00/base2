@@ -239,6 +239,10 @@ class CompleteGateTests(unittest.TestCase):
             commands["digitalocean-tests"],
         )
         self.assertEqual(
+            ["{python-api}", "scripts/python/run_data_rights_matrix.py"],
+            commands["data-rights-contract"],
+        )
+        self.assertEqual(
             [
                 "{python-orchestrator}",
                 "digital_ocean/scripts/python/providerless_canary.py",
@@ -277,6 +281,23 @@ class CompleteGateTests(unittest.TestCase):
         self.assertIn("'digital_ocean' / 'tests'", wrapper)
         self.assertIn("'--source=digital_ocean/scripts/python'", wrapper)
         self.assertIn("'--parallel-mode'", wrapper)
+
+    def test_data_rights_matrix_is_isolated_and_native_crash_bounded(self):
+        repo_root = MODULE_PATH.parents[2]
+        wrapper = (repo_root / "scripts/python/run_data_rights_matrix.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("MAX_ATTEMPTS = 3", wrapper)
+        self.assertIn("NATIVE_FAILURES = {-11, 134, 139}", wrapper)
+        self.assertIn("'-p', 'no:cov'", wrapper)
+        for test_file in (
+            "api/tests/contract/test_data_rights_contract.py",
+            "api/tests/security/test_data_rights_restore.py",
+            "api/tests/test_data_rights_repository.py",
+            "api/tests/test_data_rights_worker.py",
+            "api/tests/test_data_rights_tasks.py",
+        ):
+            self.assertIn(test_file, wrapper)
 
     def test_python_coverage_surfaces_use_their_verified_tracing_core(self):
         repo_root = MODULE_PATH.parents[2]

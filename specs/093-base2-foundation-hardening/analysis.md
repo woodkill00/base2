@@ -1027,3 +1027,18 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Updated complete-gate static contracts to bind both partitioned inventories and their unchanged C-tracer/report targets.
 
 **Result**: The fifth failed evidence remains preserved. Both partitioned surfaces and the unchanged combined coverage policy must pass before another exact-commit gate; no test or required status was removed.
+
+## Cycle 61 - Data-rights reporting crash isolation
+
+**Findings**:
+
+1. The sixth exact gate passed every other required node and all 19 data-rights assertions, then aborted with native allocator corruption while pytest-cov parsed source for its terminal report.
+2. Repository-wide API coverage already executes this exact inventory in isolated coverage partitions and enforces the unchanged coverage policy, so this contract node was redundantly creating a second monolithic report without adding assurance.
+
+**Corrections**:
+
+- Replaced the redundant monolithic data-rights invocation with an exact five-file inventory executed one file per fresh interpreter.
+- Disabled duplicate coverage only in this focused contract node; the required partitioned API coverage node still measures every data-rights test and source line and remains a prerequisite of the final policy gate.
+- Retained at most three attempts only for native abort/segfault exits, explicit recovery reporting, and immediate failure for every ordinary test, collection, or configuration error. Added gate-contract coverage for the exact inventory and policy.
+
+**Result**: All five isolated partitions and all 19 assertions pass, complete-gate contract tests pass, and Feature 093 analysis reports zero findings. The sixth failed evidence remains preserved; a new exact-commit gate is required.
