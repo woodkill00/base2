@@ -32,6 +32,7 @@ def apply_migrations() -> None:
         '004_add_user_lockout_fields',
         '005_create_identity_admin_tables',
         '006_create_data_rights_operations',
+        '007_protect_audit_events',
     ]
 
     with db_conn() as conn:

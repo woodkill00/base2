@@ -150,11 +150,19 @@
       "requiredTools": ["{python-api}"]
     },
     {
+      "id": "identity-postgres-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_identity_postgres_contract"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["identity-schema-parity"],
+      "requiredTools": ["python3"]
+    },
+    {
       "id": "data-rights-contract",
       "command": ["{python-api}", "scripts/python/run_data_rights_matrix.py"],
       "required": true,
       "timeoutSeconds": 60,
-      "dependsOn": ["identity-schema-parity"],
+      "dependsOn": ["identity-postgres-contract"],
       "requiredTools": ["{python-api}"]
     },
     {

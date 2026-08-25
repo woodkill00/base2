@@ -116,7 +116,7 @@
 - [x] T077 [US5] Implement manifest-aware account/admin UI with private routes and least privilege | Depends: T075,T076,T135 | Validate: 3 hermetic real-browser account/admin layout, interaction, permission, and zero-external-response cases pass
 - [x] T078 [P] [US5] Write export/correction/retention/deletion workflow and restore-integrity tests | Depends: T134,T135 | Validate: 28 focused workflow, repository, worker, task, restore, and schema cases pass
 - [x] T079 [US5] Implement asynchronous data-rights workflows, receipts, retention jobs, and admin status | Depends: T078 | Validate: encrypted/idempotent lifecycle, deferred replay, retention wipe, integrity download, isolated restore, and admin status tests pass
-- [ ] T080 [US5] Complete identity/admin checkpoint with two-tenant hostile trial, session/token revocation, database defense, audit verification, and docs | Depends: T077,T079,T123,T134,T135 | Validate: US5 acceptance bundle
+- [x] T080 [US5] Complete identity/admin checkpoint with two-tenant hostile trial, session/token revocation, database defense, audit verification, and docs | Depends: T077,T079,T123,T134,T135 | Validate: ephemeral PostgreSQL 16 trial passes all six controls and cleans exact containers
 
 ## Phase 7 - Module SDK and representative packs (P2)
 

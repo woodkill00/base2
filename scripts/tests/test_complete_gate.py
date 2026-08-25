@@ -259,6 +259,10 @@ class CompleteGateTests(unittest.TestCase):
             commands["data-rights-contract"],
         )
         self.assertEqual(
+            ["python3", "-m", "unittest", "scripts.tests.test_identity_postgres_contract"],
+            commands["identity-postgres-contract"],
+        )
+        self.assertEqual(
             [
                 "{python-orchestrator}",
                 "digital_ocean/scripts/python/providerless_canary.py",

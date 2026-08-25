@@ -1121,3 +1121,20 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Added combined dependency/capability tests, documentation, and a required gate node chained to the existing public-content abuse suite.
 
 **Result**: T087 complete. Existing form replay/retention/outbox and media quarantine/variant tests remain authoritative, while the SDK gate proves correct pack composition and inert provider declarations.
+
+## Cycle 67 - Real PostgreSQL identity acceptance
+
+**Findings**:
+
+1. Docker access became available after owner-approved group membership, allowing the deferred real-database checkpoint.
+2. The public-account audit table was append-only by application convention but lacked database-enforced UPDATE/DELETE rejection.
+3. Docker Desktop did not expose ephemeral PostgreSQL reliably through WSL host or bridge addressing, and a fresh image build hit the known native exit 139 during dependency installation.
+
+**Corrections**:
+
+- Added API and Django-parity migration `007/0004` with a PostgreSQL trigger that rejects audit UPDATE/DELETE using SQLSTATE `55000`.
+- Added a bounded acceptance harness that runs PostgreSQL 16 and a read-only current-source API checker in one private Docker network, generates an ephemeral password, and removes every owned container on pass or failure.
+- Reused an existing local Base2 API dependency image after the host-native build crash; current source is mounted read-only and forced first on `PYTHONPATH`.
+- Added a required static parity contract binding both migrations and the API migration inventory.
+
+**Result**: T080 complete. The live trial created two tenants, denied cross-tenant owner access, persisted exact refresh-session revocation, rejected audit deletion at the database layer, reset transaction-local tenant state before pool reuse, returned a machine-readable pass, and left zero owned containers.
