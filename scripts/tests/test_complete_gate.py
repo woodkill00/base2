@@ -73,6 +73,16 @@ class CompleteGateTests(unittest.TestCase):
         self.assertEqual("failed", result["overallStatus"])
         self.assertEqual(["failed", "not_run"], [item["status"] for item in result["checks"]])
 
+    def test_executes_later_declared_dependency_before_consumer(self):
+        result, _ = self.run_gate(
+            [
+                check("consumer", ["/bin/true"], depends=["provider"], tools=["/bin/true"]),
+                check("provider", ["/bin/true"], tools=["/bin/true"]),
+            ]
+        )
+        self.assertEqual("passed", result["overallStatus"])
+        self.assertEqual(["provider", "consumer"], [item["id"] for item in result["checks"]])
+
     def test_missing_required_tool_is_incomplete(self):
         result, _ = self.run_gate(
             [check("missing", ["never"], tools=["base2-tool-that-does-not-exist"])]
@@ -269,12 +279,14 @@ class CompleteGateTests(unittest.TestCase):
 
     def test_python_coverage_surfaces_use_their_verified_tracing_core(self):
         repo_root = MODULE_PATH.parents[2]
+        api_wrapper = (repo_root / "scripts/python/run_api_coverage.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("environment['COVERAGE_CORE'] = 'ctrace'", api_wrapper)
+        self.assertIn("(root / 'api' / 'tests').rglob('test_*.py')", api_wrapper)
+        self.assertIn("coverage_dir / 'api.json'", api_wrapper)
+        self.assertIn("PARTITION_SIZE = 4", api_wrapper)
         expected = {
-            "run_api_coverage.py": (
-                "ctrace",
-                "api/tests",
-                ".artifacts/coverage/api.json",
-            ),
             "run_django_coverage.py": (
                 "ctrace",
                 "django/tests",

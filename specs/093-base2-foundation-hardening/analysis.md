@@ -998,3 +998,17 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Extended coverage evidence with per-file executable, covered, and missing changed lines so future shortfalls identify actionable locations instead of only a global percentage.
 
 **Result**: All 165 API tests pass across six isolated coverage partitions, a valid combined report is produced, and the unchanged coverage policy passes at 90.12% changed lines. Identity repository coverage is 91%; the partition/retry and policy tests pass. Host SIGSEGV remains visible and bounded rather than silently ignored.
+
+## Cycle 59 - Topological gate and smaller crash domains
+
+**Findings**:
+
+1. The fourth exact gate declared `account-admin-browser` before its newly added compatibility dependency. The runner used manifest order rather than a dependency order, so it incorrectly marked the valid later dependency as blocking before evaluating it.
+2. One eight-file API partition encountered native corruption on both allowed attempts during the gate, despite the same complete partition inventory and coverage policy passing immediately beforehand.
+
+**Corrections**:
+
+- Added a stable topological scheduler after cycle validation, with a regression proving later-declared dependencies execute first and their consumer runs.
+- Reduced API crash domains from eight to four files, allowed at most three attempts only for native abort/segfault exit codes, and emit an explicit recovery line with the exact partition and retry count. Ordinary assertion/configuration failures still receive no retry.
+
+**Result**: The fourth failed evidence remains preserved. Scheduler and partition-bound regressions plus the full partitioned coverage policy must pass before the next exact gate. No required check or coverage threshold changed.

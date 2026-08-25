@@ -10,8 +10,8 @@ import sys
 from pathlib import Path
 
 
-PARTITION_SIZE = 8
-MAX_ATTEMPTS = 2
+PARTITION_SIZE = 4
+MAX_ATTEMPTS = 3
 
 
 def partition(values: list[Path], size: int = PARTITION_SIZE) -> list[list[Path]]:
@@ -77,6 +77,12 @@ def main() -> None:
                 check=False,
             )
             if completed.returncode == 0:
+                if attempt > 1:
+                    print(
+                        f'API coverage partition {index} recovered after {attempt - 1} '
+                        'native-crash retry attempt(s)',
+                        flush=True,
+                    )
                 break
             for artifact in set(raw_dir.iterdir()) - before:
                 artifact.unlink(missing_ok=True)

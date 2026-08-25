@@ -13,8 +13,8 @@ SPEC.loader.exec_module(MODULE)
 
 def test_partition_preserves_order_exactly_once_and_bounds_each_process():
     values = [Path(f'test_{index}.py') for index in range(19)]
-    groups = MODULE.partition(values, size=8)
-    assert [len(group) for group in groups] == [8, 8, 3]
+    groups = MODULE.partition(values, size=4)
+    assert [len(group) for group in groups] == [4, 4, 4, 4, 3]
     assert [item for group in groups for item in group] == values
 
 

@@ -95,6 +95,22 @@ def validate_manifest(manifest: dict) -> None:
         visit(check_id)
 
 
+def dependency_ordered_checks(manifest: dict) -> list[dict]:
+    """Return a stable topological order independent of declaration order."""
+    pending = list(manifest["checks"])
+    ordered = []
+    emitted = set()
+    while pending:
+        ready = [item for item in pending if set(item["dependsOn"]) <= emitted]
+        if not ready:
+            raise ValueError("dependency cycle")
+        for item in ready:
+            ordered.append(item)
+            emitted.add(item["id"])
+            pending.remove(item)
+    return ordered
+
+
 def resolve_tool(tool: str, repo_root: Path) -> str:
     if tool in TOOL_TOKENS:
         candidates = TOOL_TOKENS[tool]
@@ -148,7 +164,7 @@ def run_gate(
     results = []
     states = {}
 
-    for item in manifest["checks"]:
+    for item in dependency_ordered_checks(manifest):
         check_id = item["id"]
         base = {
             "id": check_id,
