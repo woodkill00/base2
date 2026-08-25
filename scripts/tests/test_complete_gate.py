@@ -273,9 +273,10 @@ class CompleteGateTests(unittest.TestCase):
         wrapper = (repo_root / "scripts/python/run_digitalocean_coverage.py").read_text(
             encoding="utf-8"
         )
-        self.assertIn('os.environ["COVERAGE_CORE"] = "ctrace"', wrapper)
-        self.assertIn('"digital_ocean/tests"', wrapper)
-        self.assertIn('"--cov=digital_ocean/scripts/python"', wrapper)
+        self.assertIn("'COVERAGE_CORE': 'ctrace'", wrapper)
+        self.assertIn("'digital_ocean' / 'tests'", wrapper)
+        self.assertIn("'--source=digital_ocean/scripts/python'", wrapper)
+        self.assertIn("'--parallel-mode'", wrapper)
 
     def test_python_coverage_surfaces_use_their_verified_tracing_core(self):
         repo_root = MODULE_PATH.parents[2]
@@ -292,17 +293,19 @@ class CompleteGateTests(unittest.TestCase):
                 "django/tests",
                 ".artifacts/coverage/django.json",
             ),
-            "run_digitalocean_coverage.py": (
-                "ctrace",
-                "digital_ocean/tests",
-                ".artifacts/coverage/digitalocean.json",
-            ),
         }
         for name, (core, *markers) in expected.items():
             wrapper = (repo_root / "scripts/python" / name).read_text(encoding="utf-8")
             self.assertIn(f'os.environ["COVERAGE_CORE"] = "{core}"', wrapper)
             for marker in markers:
                 self.assertIn(marker, wrapper)
+        digitalocean_wrapper = (
+            repo_root / "scripts/python/run_digitalocean_coverage.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("'COVERAGE_CORE': 'ctrace'", digitalocean_wrapper)
+        self.assertIn("'digital_ocean' / 'tests'", digitalocean_wrapper)
+        self.assertIn("coverage_dir / 'digitalocean.json'", digitalocean_wrapper)
+        self.assertIn("PARTITION_SIZE = 4", digitalocean_wrapper)
 
     def test_compose_fixture_replaces_only_documentation_placeholders(self):
         spec = importlib.util.spec_from_file_location(

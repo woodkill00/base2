@@ -1012,3 +1012,18 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Reduced API crash domains from eight to four files, allowed at most three attempts only for native abort/segfault exit codes, and emit an explicit recovery line with the exact partition and retry count. Ordinary assertion/configuration failures still receive no retry.
 
 **Result**: The fourth failed evidence remains preserved. Scheduler and partition-bound regressions plus the full partitioned coverage policy must pass before the next exact gate. No required check or coverage threshold changed.
+
+## Cycle 60 - Cross-surface Python crash isolation
+
+**Findings**:
+
+1. The fifth gate executed dependencies correctly, but the monolithic DigitalOcean coverage process and ten-file identity matrix each received two unrelated native SIGSEGVs during Python/FastAPI import and collection.
+2. This proves the WSL corruption is process-duration/load sensitive across Python surfaces rather than isolated to API coverage.
+
+**Corrections**:
+
+- Partitioned the full sorted DigitalOcean test inventory into four-file coverage processes with exact combine/report output, native-crash-only bounded recovery, and explicit recovery reporting.
+- Partitioned the fixed ten-file identity security inventory one file per process with the same ordinary-failure-immediate/native-crash-bounded policy.
+- Updated complete-gate static contracts to bind both partitioned inventories and their unchanged C-tracer/report targets.
+
+**Result**: The fifth failed evidence remains preserved. Both partitioned surfaces and the unchanged combined coverage policy must pass before another exact-commit gate; no test or required status was removed.

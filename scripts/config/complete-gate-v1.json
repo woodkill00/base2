@@ -105,22 +105,7 @@
     },
     {
       "id": "identity-security-contract",
-      "command": [
-        "{python-api}",
-        "-m",
-        "pytest",
-        "api/tests/contract/test_identity_security_contract.py",
-        "api/tests/test_auth_tokens.py",
-        "api/tests/test_auth_rate_limits.py",
-        "api/tests/test_oauth_google_option_a.py",
-        "api/tests/security/test_identity_realms.py",
-        "api/tests/security/test_secret_box.py",
-        "api/tests/contract/test_identity_admin_actions.py",
-        "api/tests/contract/test_mfa_login_contract.py",
-        "api/tests/test_identity_admin_repository.py",
-        "api/tests/test_session_revocation.py",
-        "-q"
-      ],
+      "command": ["{python-api}", "scripts/python/run_identity_security_matrix.py"],
       "required": true,
       "timeoutSeconds": 60,
       "dependsOn": ["identity-domain-models"],
