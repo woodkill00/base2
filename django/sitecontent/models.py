@@ -186,6 +186,7 @@ class FormSubmission(SiteOwnedModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     form_key = models.SlugField(max_length=100)
     replay_key = models.CharField(max_length=128)
+    request_digest = models.CharField(max_length=64, validators=[sha256_validator])
     payload = models.JSONField(default=dict)
     consent = models.JSONField(default=dict, blank=True)
     request_id = models.CharField(max_length=128, blank=True, default="")
@@ -203,6 +204,27 @@ class FormSubmission(SiteOwnedModel):
         super().clean()
         if self.retained_until <= timezone.now():
             raise ValidationError({"retained_until": "Retention expiry must be in the future."})
+
+
+class FormDeliveryOutbox(models.Model):
+    class Status(models.TextChoices):
+        QUEUED = "queued", "Queued"
+        DELIVERED = "delivered", "Delivered"
+        DEAD_LETTER = "dead_letter", "Dead letter"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    submission = models.OneToOneField(FormSubmission, on_delete=models.CASCADE, related_name="delivery")
+    adapter = models.SlugField(max_length=64, default="disabled")
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.QUEUED)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    next_attempt_at = models.DateTimeField(default=timezone.now)
+    last_error_code = models.CharField(max_length=64, blank=True, default="")
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["status", "next_attempt_at"], name="sitecontent_outbox_idx")]
 
 
 class SearchDocument(SiteOwnedModel):

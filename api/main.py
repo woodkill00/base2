@@ -242,7 +242,7 @@ def _configure_openapi() -> None:
 
 # External routes (proxy to Django internal)
 def _include_external_routes() -> None:
-    for module_name in ('auth', 'metrics', 'oauth', 'users', 'tenant', 'privacy'):
+    for module_name in ('auth', 'metrics', 'oauth', 'users', 'tenant', 'privacy', 'site_content'):
         module = importlib.import_module(f'api.routes.{module_name}')
         app.include_router(module.router, prefix='/api')
 

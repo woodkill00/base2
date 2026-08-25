@@ -85,8 +85,8 @@
 
 - [x] T056 [P] [US4] Define canonical content/media/form/search models and write Django model/migration tests | Depends: T049 | Validate: tests fail before T057
 - [x] T057 [US4] Implement Django models, constraints, revisions, lifecycle, admin adapters, and migrations | Depends: T056 | Validate: Django model/migration tests pass
-- [ ] T058 [P] [US4] Define FastAPI mirror/OpenAPI/authorization contracts for content/media/forms/search | Depends: T057 | Validate: contract tests fail before T059
-- [ ] T059 [US4] Implement FastAPI services/routes, tenant policy, pagination, error mapping, and outbox semantics | Depends: T058 | Validate: contract/integration/security tests pass
+- [x] T058 [P] [US4] Define FastAPI mirror/OpenAPI/authorization contracts for content/media/forms/search | Depends: T057 | Validate: contract tests fail before T059
+- [x] T059 [US4] Implement FastAPI services/routes, tenant policy, pagination, error mapping, and outbox semantics | Depends: T058 | Validate: contract/integration/security tests pass
 - [ ] T060 [P] [US4] Write React tests for core page inventory, loading/empty/error/permission/offline states, and every visible control | Depends: T009,T058 | Validate: fail before T061
 - [ ] T061 [US4] Implement manifest-driven home/about/contact/privacy/terms/accessibility/search and branded 404/500 | Depends: T059,T060 | Validate: route/control E2E passes
 - [ ] T062 [US4] Replace hero/docs/contact/social/dashboard/sample/no-op interactions with real behavior, explicit disabled state, or removal | Depends: T009,T061 | Validate: zero unexplained inventory entries
