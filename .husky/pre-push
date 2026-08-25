@@ -8,7 +8,7 @@ UNAME=$(uname -s 2>/dev/null || echo '')
 if echo "$UNAME" | grep -qiE 'mingw|msys|cygwin'; then
   powershell -File scripts/powershell/test.ps1 -ComposeFile local.docker.yml -EnvFile .env.local
 else
-  ./scripts/bash/test.sh --compose-file local.docker.yml --env-file .env.local
+  bash scripts/bash/test.sh --compose-file local.docker.yml --env-file .env.local
 fi
 
 if [ $? -eq 0 ]; then
