@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from './contexts/AuthContext';
@@ -7,6 +7,7 @@ import ToastProvider from './components/ToastProvider.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import './App.css';
+import { siteManifest } from './config/siteRuntime';
 const Home = lazy(() => import('./pages/Home'));
 const Login = lazy(() => import('./pages/Login'));
 const Signup = lazy(() => import('./pages/Signup'));
@@ -22,6 +23,12 @@ const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const GOOGLE_CLIENT_ID = import.meta.env.REACT_APP_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID_HERE';
 
 function App() {
+  useEffect(() => {
+    document.documentElement.lang = siteManifest.defaultLocale;
+    document.documentElement.dataset.siteId = siteManifest.siteId;
+    document.title = siteManifest.seo.titleTemplate.replace('%s', 'Home');
+  }, []);
+
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <AuthProvider>

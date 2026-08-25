@@ -1,0 +1,91 @@
+{
+  "analytics": {
+    "enabled": false,
+    "provider": "none"
+  },
+  "brand": {
+    "logo": "/assets/northstar-mark.svg",
+    "theme": "polar",
+    "voice": "Clear, calm, inclusive, and evidence-led."
+  },
+  "consent": {
+    "mode": "essential-only"
+  },
+  "contact": {
+    "enabled": false,
+    "retentionDays": 30
+  },
+  "defaultLocale": "en-US",
+  "domains": [
+    {
+      "host": "northstar.example",
+      "kind": "canonical"
+    },
+    {
+      "host": "learn.northstar.example",
+      "kind": "redirect"
+    }
+  ],
+  "legal": {
+    "accessibilityPath": "/accessibility",
+    "privacyPath": "/privacy",
+    "termsPath": "/terms"
+  },
+  "legalName": "Northstar Learning Foundation",
+  "locales": ["en-US", "fr"],
+  "media": {
+    "allowedTypes": ["image/jpeg", "image/png", "application/pdf"],
+    "maxBytes": 5242880
+  },
+  "modules": [
+    {
+      "enabled": true,
+      "id": "accounts",
+      "version": "1.0.0"
+    },
+    {
+      "enabled": true,
+      "id": "content",
+      "version": "1.0.0"
+    },
+    {
+      "enabled": true,
+      "id": "search",
+      "version": "1.0.0"
+    }
+  ],
+  "name": "Northstar Library",
+  "navigation": [
+    {
+      "label": "Library",
+      "module": "content",
+      "path": "/"
+    },
+    {
+      "label": "Search",
+      "module": "search",
+      "path": "/search"
+    },
+    {
+      "label": "Account",
+      "module": "accounts",
+      "path": "/account"
+    }
+  ],
+  "operationsProfile": "staging",
+  "previewPolicy": {
+    "idleAction": "destroy",
+    "ttlMinutes": 120
+  },
+  "schemaVersion": 1,
+  "search": {
+    "enabled": true
+  },
+  "seo": {
+    "description": "An accessible, searchable learning library.",
+    "indexing": "deny",
+    "titleTemplate": "%s · Northstar Library"
+  },
+  "siteId": "northstar-library",
+  "slug": "northstar"
+}

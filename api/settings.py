@@ -4,6 +4,11 @@ from typing import Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
+from api.site_manifest import load_runtime_manifest
+
+
+SITE_MANIFEST, SITE_MANIFEST_DIGEST = load_runtime_manifest()
+
 
 def _sanitize_project_slug(raw: str) -> str:
     value = (raw or '').strip().lower()
@@ -21,6 +26,9 @@ def _default_project_slug() -> str:
 
 class Settings(BaseSettings):
     ENV: str = Field(default='development')
+    SITE_PROFILE: str = Field(default=SITE_MANIFEST['siteId'])
+    SITE_NAME: str = Field(default=SITE_MANIFEST['name'])
+    SITE_MANIFEST_DIGEST: str = Field(default=SITE_MANIFEST_DIGEST)
 
     # Docs/OpenAPI exposure
     API_DOCS_ENABLED: bool = Field(

@@ -767,3 +767,20 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Made the manifest contract a required complete-gate node with both Python and Node tool admission.
 
 **Result**: T046-T048 complete. Both profiles validate and digest differently; the independent consumers agree exactly, the typed consumer compiles under focused strict TypeScript, and malformed or secret-bearing manifests fail closed. T049 remains open for Django/FastAPI/React/config integration and dual-brand builds.
+
+## Cycle 48 - Integrity-bound service profile generation
+
+**Findings**:
+
+1. API, Django, and React images use separate build contexts, so directly reading the root manifest would either fail in containers or require broadening every context and its secret-exclusion boundary.
+2. Merely finding a brand string in a minified bundle does not prove which profile the build selected because multiple public fixture manifests may be compiled into the same application.
+3. A runtime-supplied unknown profile could otherwise become a path traversal or silent fallback, and independently copied profile files could drift or be tampered with.
+
+**Corrections**:
+
+- Added one atomic generator that validates canonical profiles, requires filename/site identity agreement, emits identical service-local copies, and binds every generated profile to a canonical SHA-256 index.
+- Added API and Django runtime loaders that allow only indexed IDs, reject symlinks, verify exact identity and digest, fail closed on unknown/tampered input, and default compatibly to `ember-studio`.
+- Threaded `SITE_PROFILE` through both Compose surfaces and worker processes, exposed only bounded public site metadata from FastAPI, and applied the selected locale, title, and site identity in React.
+- Added a strict Vite selection plugin that rejects unknown profiles and emits explicit public `site-profile.json` plus an HTML site-ID marker; the required build verifier builds both fixture brands and proves distinct output from the same tree.
+
+**Result**: T049 complete. Twelve manifest/runtime tests pass, API and Django resolve Northstar to the same canonical digest, focused API/Django/React regressions pass, and both Ember Studio and Northstar Library production builds are distinct and identify their exact selected profile. The generator `--check` mode and dual-build verifier are required complete-gate nodes; no secret, provider, DNS, certificate, or external mutation is involved.

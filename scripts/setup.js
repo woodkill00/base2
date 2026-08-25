@@ -230,6 +230,7 @@ async function runSetup(options = {}) {
 
   const allowedKeys = new Set([
     'PROJECT_NAME',
+    'SITE_PROFILE',
     'WEBSITE_DOMAIN',
     'ENV',
     'DEPLOY_MODE',
@@ -257,6 +258,7 @@ async function runSetup(options = {}) {
   const updates = {
     ...base,
     ...deriveIdentifiers({ projectName }),
+    SITE_PROFILE: String(base.SITE_PROFILE || 'ember-studio'),
     WEBSITE_DOMAIN: websiteDomain.trim(),
     ENV: env,
     DEPLOY_MODE: deployMode,

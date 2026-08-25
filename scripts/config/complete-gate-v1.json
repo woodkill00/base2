@@ -18,6 +18,14 @@
       "requiredTools": ["{python-orchestrator}", "node"]
     },
     {
+      "id": "site-profile-builds",
+      "command": ["{python-orchestrator}", "scripts/python/verify_site_profile_builds.py"],
+      "required": true,
+      "timeoutSeconds": 120,
+      "dependsOn": ["site-manifest-contract"],
+      "requiredTools": ["{python-orchestrator}", "node", "npm"]
+    },
+    {
       "id": "shell-parity",
       "command": ["node", "scripts/guard-shell-parity.js"],
       "required": true,

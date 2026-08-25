@@ -15,7 +15,7 @@ from api.flags import get_flags
 from api.logging import configure_logging
 from api.metrics import metrics
 from api.redis_client import ping as redis_ping
-from api.settings import Settings
+from api.settings import SITE_MANIFEST, Settings
 from api.startup import StartupRegistry, evaluate_readiness
 
 configure_logging(service='api')
@@ -54,11 +54,24 @@ def _observe_metrics(*, status: int, latency_ms: int) -> None:
 
 
 app = FastAPI(
-    title=(os.getenv('API_TITLE') or 'API'),
+    title=(os.getenv('API_TITLE') or f"{SITE_MANIFEST['name']} API"),
     docs_url=(_docs_url if _docs_enabled else None),
     redoc_url=(_redoc_url if _docs_enabled else None),
     openapi_url=(_openapi_url if _docs_enabled else None),
 )
+
+
+@app.get('/api/site', tags=['site'])
+async def site_metadata():
+    """Return only public, generated site metadata."""
+    return {
+        'siteId': SITE_MANIFEST['siteId'],
+        'name': SITE_MANIFEST['name'],
+        'defaultLocale': SITE_MANIFEST['defaultLocale'],
+        'navigation': SITE_MANIFEST['navigation'],
+        'theme': SITE_MANIFEST['brand']['theme'],
+        'manifestDigest': settings.SITE_MANIFEST_DIGEST,
+    }
 
 
 @app.get('/api/openapi.json', include_in_schema=False)

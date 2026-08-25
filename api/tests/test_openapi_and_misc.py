@@ -28,6 +28,23 @@ def test_flags_endpoint_returns_dict():
     assert 'flags' in j
 
 
+def test_site_endpoint_exposes_only_integrity_bound_public_metadata():
+    response = _client().get('/api/site')
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['siteId'] == 'ember-studio'
+    assert payload['name'] == 'Ember Studio'
+    assert len(payload['manifestDigest']) == 64
+    assert set(payload) == {
+        'siteId',
+        'name',
+        'defaultLocale',
+        'navigation',
+        'theme',
+        'manifestDigest',
+    }
+
+
 def test_metrics_endpoint_exposes_prometheus_text():
     c = _client()
     r = c.get('/api/metrics')

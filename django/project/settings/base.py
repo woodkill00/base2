@@ -1,5 +1,12 @@
 import os
 
+from project.site_manifest import load_runtime_manifest
+
+SITE_MANIFEST, SITE_MANIFEST_DIGEST = load_runtime_manifest()
+SITE_ID = SITE_MANIFEST["siteId"]
+SITE_NAME = SITE_MANIFEST["name"]
+SITE_DEFAULT_LOCALE = SITE_MANIFEST["defaultLocale"]
+
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "change_me")
 DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"
 ALLOWED_HOSTS = [
@@ -99,7 +106,7 @@ DATABASES = {
     }
 }
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = SITE_DEFAULT_LOCALE
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
