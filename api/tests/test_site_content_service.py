@@ -60,6 +60,10 @@ class FakeCursor:
     def fetchone(self):
         return self.rows.pop(0) if self.rows else None
 
+    def fetchall(self):
+        rows, self.rows = self.rows, []
+        return rows
+
 
 class FakeConnection:
     def __init__(self, rows):
@@ -106,6 +110,67 @@ def test_repository_creates_submission_and_outbox_in_one_transaction():
     assert connection.commits == 1
     assert connection.rollbacks == 0
     assert receipt['replayed'] is False
+
+
+def test_repository_reads_are_tenant_bound_and_map_public_rows():
+    now = datetime.now(UTC)
+    content_id = UUID('11111111-1111-4111-8111-111111111111')
+    content_row = (content_id, 'page', 'about', 'About', 'Excerpt', 'Body', {}, now, now)
+    repository = PostgresSiteContentRepository()
+
+    listed = FakeConnection([content_row, content_row])
+    with patch('api.repositories.site_content.db_conn', connection_context(listed)):
+        page = repository.list_content(site_id='site-a', limit=1, cursor=content_id)
+    assert page['items'][0]['slug'] == 'about'
+    assert page['nextCursor'] == str(content_id)
+    sql, params = listed.cursor_instance.executions[0]
+    assert "site_id=%s AND state='published'" in sql
+    assert params[0] == 'site-a'
+
+    found = FakeConnection([content_row])
+    with patch('api.repositories.site_content.db_conn', connection_context(found)):
+        item = repository.get_content(site_id='site-a', content_type='page', slug='about')
+    assert item['id'] == content_id
+    assert found.cursor_instance.executions[0][1] == ('site-a', 'page', 'about')
+
+    missing = FakeConnection([])
+    with patch('api.repositories.site_content.db_conn', connection_context(missing)):
+        assert repository.get_content(site_id='site-a', content_type='page', slug='missing') is None
+
+    media_row = (content_id, 'photo.png', 'image/png', 128, 'a' * 64, 'Owner', {}, now)
+    media = FakeConnection([media_row])
+    with patch('api.repositories.site_content.db_conn', connection_context(media)):
+        asset = repository.get_media(site_id='site-a', asset_id=content_id)
+    assert asset['mediaType'] == 'image/png'
+    assert media.cursor_instance.executions[0][1] == ('site-a', str(content_id))
+
+    no_media = FakeConnection([])
+    with patch('api.repositories.site_content.db_conn', connection_context(no_media)):
+        assert repository.get_media(site_id='site-a', asset_id=content_id) is None
+
+
+def test_repository_search_enforces_public_published_join_and_freshness():
+    now = datetime.now(UTC)
+    document_id = UUID('33333333-3333-4333-8333-333333333333')
+    row = (document_id, 'Notes', 'A' * 400, '/notes', now, now)
+    connection = FakeConnection([row, row])
+    repository = PostgresSiteContentRepository()
+    with patch('api.repositories.site_content.db_conn', connection_context(connection)):
+        page = repository.search(site_id='site-a', query='notes', limit=1, cursor=document_id)
+    assert page['items'][0]['excerpt'] == 'A' * 320
+    assert page['nextCursor'] == str(document_id)
+    assert page['freshThrough'] == now
+    sql, params = connection.cursor_instance.executions[0]
+    assert 'c.id=d.content_id AND c.site_id=d.site_id' in sql
+    assert "d.visibility='public'" in sql
+    assert "c.state='published'" in sql
+    assert params[0] == 'site-a'
+
+    empty = FakeConnection([])
+    with patch('api.repositories.site_content.db_conn', connection_context(empty)):
+        empty_page = repository.search(site_id='site-a', query='none', limit=5, cursor=None)
+    assert empty_page['items'] == []
+    assert empty_page['nextCursor'] is None
 
 
 def test_repository_replay_is_noop_and_digest_mismatch_fails_closed():
