@@ -229,6 +229,20 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "module-checkpoint",
+      "command": ["python3", "scripts/python/run_module_checkpoint.py"],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": [
+        "commercial-pack-contract",
+        "visual-harness",
+        "accessibility-matrix-contract",
+        "public-experience-checkpoint",
+        "browser-compatibility-matrix"
+      ],
+      "requiredTools": ["python3"]
+    },
+    {
       "id": "public-experience-contract",
       "command": ["npm", "--prefix", "react-app", "run", "test:public-contract"],
       "required": true,

@@ -131,7 +131,7 @@
 - [x] T089 [US6] Implement community/support packs with moderation, notification, privacy, and abuse boundaries | Depends: T084 | Validate: policy/service/abuse suites and dependency manifest gate pass
 - [x] T090 [US6] Implement membership/subscription, commerce/catalog, and marketplace/listing packs disabled-by-default with local fake providers | Depends: T084 | Validate: three pack suites; zero live provider calls
 - [x] T091 [P] [US6] Add payment/provider webhook signature, idempotency, replay, sandbox, credential, refund/cancel, and activation-boundary tests | Depends: T090 | Validate: hostile provider fixtures pass/fail correctly
-- [ ] T092 [US6] Complete module checkpoint: all packs install/enable/disable/upgrade/export, route inventory, isolation, a11y, visual, performance, docs | Depends: T085-T091 | Validate: US6/US10 acceptance bundle
+- [x] T092 [US6] Complete module checkpoint: all packs install/enable/disable/upgrade/export, route inventory, isolation, a11y, visual, performance, docs | Depends: T085-T091 | Validate: US6/US10 acceptance bundle
 
 ## Phase 8 - Production operations and recovery (P2)
 
