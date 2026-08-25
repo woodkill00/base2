@@ -93,6 +93,7 @@ class Feature093CloseoutTests(unittest.TestCase):
             "django/tests/live_scheduling_race.py",
             "docs/wsl-gate-recovery.md",
             "react-app/.storybook/main.js",
+            "react-app/src/__tests__/content-packs.test.jsx",
             "scripts/python/classify_gate_runtime_failure.py",
             "scripts/tests/test_ci_policy.py",
             "scripts/tests/test_gate_runtime_recovery.py",

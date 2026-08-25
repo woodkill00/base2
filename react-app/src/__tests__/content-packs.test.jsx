@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -51,9 +51,7 @@ describe('declarative content packs', () => {
         <ContentPage slug="typed" fallbackTitle="Blog" contentType="blog-post" />
       </MemoryRouter>
     );
-    await waitFor(() =>
-      expect(siteContentAPI.getContent).toHaveBeenCalledWith('blog-post', 'typed')
-    );
-    expect(screen.getByRole('heading', { name: 'Typed entry' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Typed entry' })).toBeInTheDocument();
+    expect(siteContentAPI.getContent).toHaveBeenCalledWith('blog-post', 'typed');
   });
 });

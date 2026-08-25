@@ -50,6 +50,7 @@ LIVE_TO_CLOSEOUT_ALLOWED = (
     "api/tests/security/test_engagement_policy.py",
     "api/tests/test_engagement_service.py",
     "api/tests/test_process_model.py",
+    "react-app/src/__tests__/content-packs.test.jsx",
     "api/tests/test_scheduling_repository.py",
     "django/tests/live_scheduling_race.py",
     "react-app/.storybook/main.js",

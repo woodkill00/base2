@@ -1420,3 +1420,18 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Repaired the Gunicorn process-model probe so a dependency-degraded `503` still proves the server and structured readiness contract are live, while cleanup uses bounded terminate/kill/communicate instead of blocking on a live stdout pipe.
 
 **Result**: Local focused validation passes Ruff, both Mypy partitions, the API matrix with threshold-passing coverage, 125 frontend tests with threshold-passing coverage, a real bounded Gunicorn readiness probe, Storybook, and all closeout-delta tests. Exact-commit independent CI replay remains required before T136-T137 or final closeout can complete.
+
+## Cycle 87 - Frontend asynchronous-render determinism
+
+**Findings**:
+
+1. The repaired exact-commit matrix made six of seven workflows green and proved the backend process-model repair, but frontend CI exposed one timing race in the content-pack detail test.
+2. The test waited only for the mocked repository call, then synchronously asserted a heading rendered by a later React state update. Runner timing could therefore fail a correct user-visible transition.
+
+**Corrections**:
+
+- Changed the test to await the actual accessible heading before verifying the exact repository call.
+- Repeated the focused four-case content-pack suite five consecutive times and retained the same application behavior and coverage thresholds.
+- Added only the exact test path to the post-live closeout delta and its fail-closed regression inventory.
+
+**Result**: The focused test passes deterministically and the closeout/CI-policy regression suite passes 14 cases. Two consecutive exact-commit independent matrices remain required before T138 and final closeout can complete.
