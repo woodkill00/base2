@@ -26,6 +26,14 @@
       "requiredTools": ["{python-orchestrator}", "node", "npm"]
     },
     {
+      "id": "visual-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_visual_contract"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["site-profile-builds"],
+      "requiredTools": ["python3"]
+    },
+    {
       "id": "shell-parity",
       "command": ["node", "scripts/guard-shell-parity.js"],
       "required": true,

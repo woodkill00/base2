@@ -798,3 +798,20 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Regenerated every service-local profile from the validated canonical source and required `generate_site_profiles.py --check` before the replacement commit.
 
 **Result**: The original failed result remains preserved under ignored gate evidence. The regenerated files match the generator exactly, and a new exact-commit complete gate is required; no validation threshold, profile contract, or required check was weakened.
+
+## Cycle 50 - Visual contract before visual port
+
+**Findings**:
+
+1. Existing glass styles mix layout, palette, and component values without one strict source describing supported themes or required interaction states.
+2. The visual branch inventory calls for volcanic/obsidian behavior, while the second fixture manifest requires a distinct polar theme; none had a machine-readable completeness contract.
+3. Storybook covered individual component variants but did not prove the full default, hover, focus, disabled, error, selected, responsive-navigation, and modal-state inventory.
+
+**Corrections**:
+
+- Added a strict versioned design-system contract and schema covering semantic color, spacing, radius, motion, typography, breakpoints, volcanic/obsidian/polar themes, CSS variables, and exact required component states.
+- Added semantic CSS tokens and manifest-selected theme activation without removing the existing compatibility aliases needed by current components.
+- Added a Storybook visual-contract inventory containing every required state marker and a five-test gate that validates schema, exact theme completeness, CSS exposure, component raw-color exclusion, bounded motion, breakpoints, reduced motion, and story coverage.
+- Made the visual contract a required gate dependency after both fixture brands build successfully.
+
+**Result**: T050 complete. All five contract tests pass, strict TypeScript and ESLint pass for the inventory, and the Storybook production build succeeds. The upstream Storybook runtime reports its known build-time `eval` and bundle-size warnings; this tool-only output is not shipped in the application image and does not change the production CSP boundary addressed by T119.

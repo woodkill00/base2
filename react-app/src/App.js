@@ -26,6 +26,7 @@ function App() {
   useEffect(() => {
     document.documentElement.lang = siteManifest.defaultLocale;
     document.documentElement.dataset.siteId = siteManifest.siteId;
+    document.documentElement.dataset.theme = siteManifest.brand.theme;
     document.title = siteManifest.seo.titleTemplate.replace('%s', 'Home');
   }, []);
 

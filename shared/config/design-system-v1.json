@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "tokens": {
+    "color": [
+      "canvas",
+      "surface",
+      "surfaceElevated",
+      "text",
+      "textMuted",
+      "border",
+      "accent",
+      "focus",
+      "danger",
+      "success"
+    ],
+    "space": { "xs": 4, "sm": 8, "md": 16, "lg": 24, "xl": 40 },
+    "radius": { "sm": 8, "md": 12, "lg": 20, "pill": 999 },
+    "motion": {
+      "durationMs": { "instant": 0, "fast": 150, "standard": 250, "deliberate": 400 },
+      "easing": {
+        "standard": "cubic-bezier(0.2, 0, 0, 1)",
+        "emphasized": "cubic-bezier(0.2, 0, 0, 1.2)"
+      }
+    },
+    "typography": { "body": "system-ui", "display": "system-ui", "mono": "ui-monospace" },
+    "breakpoint": { "compact": 480, "medium": 768, "wide": 1200 }
+  },
+  "themes": {
+    "volcanic": {
+      "colorScheme": "dark",
+      "color": {
+        "canvas": "#160d0a",
+        "surface": "#2a1711",
+        "surfaceElevated": "#3a2017",
+        "text": "#fff7ed",
+        "textMuted": "#d6b9a8",
+        "border": "#8f4d32",
+        "accent": "#ff6b35",
+        "focus": "#ffd166",
+        "danger": "#ff6b6b",
+        "success": "#65d89a"
+      }
+    },
+    "obsidian": {
+      "colorScheme": "dark",
+      "color": {
+        "canvas": "#090b10",
+        "surface": "#121722",
+        "surfaceElevated": "#1b2331",
+        "text": "#f4f7fb",
+        "textMuted": "#a7b1c2",
+        "border": "#38445a",
+        "accent": "#8b5cf6",
+        "focus": "#39ff14",
+        "danger": "#ff6b6b",
+        "success": "#65d89a"
+      }
+    },
+    "polar": {
+      "colorScheme": "light",
+      "color": {
+        "canvas": "#f4f8fb",
+        "surface": "#ffffff",
+        "surfaceElevated": "#eaf2f8",
+        "text": "#132337",
+        "textMuted": "#52677c",
+        "border": "#a9c2d5",
+        "accent": "#176b9d",
+        "focus": "#005fcc",
+        "danger": "#b42318",
+        "success": "#067647"
+      }
+    }
+  },
+  "cssVariables": [
+    "--color-canvas",
+    "--color-surface",
+    "--color-surface-elevated",
+    "--color-text",
+    "--color-text-muted",
+    "--color-border",
+    "--color-accent",
+    "--color-focus",
+    "--color-danger",
+    "--color-success",
+    "--space-xs",
+    "--space-sm",
+    "--space-md",
+    "--space-lg",
+    "--space-xl",
+    "--radius-sm",
+    "--radius-md",
+    "--radius-lg",
+    "--radius-pill",
+    "--motion-instant",
+    "--motion-fast",
+    "--motion-standard",
+    "--motion-deliberate"
+  ],
+  "componentStates": {
+    "button": ["default", "hover", "focus-visible", "disabled"],
+    "input": ["default", "focus-visible", "error", "disabled"],
+    "modal": ["closed", "open", "focus-trapped"],
+    "tabs": ["default", "selected", "focus-visible"],
+    "navigation": ["desktop", "mobile", "open", "active", "focus-visible"]
+  }
+}

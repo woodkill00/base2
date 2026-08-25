@@ -1,5 +1,28 @@
 /* Glass and layout tokens */
 :root {
+  --color-canvas: #090b10;
+  --color-surface: #121722;
+  --color-surface-elevated: #1b2331;
+  --color-text: #f4f7fb;
+  --color-text-muted: #a7b1c2;
+  --color-border: #38445a;
+  --color-accent: #8b5cf6;
+  --color-focus: #39ff14;
+  --color-danger: #ff6b6b;
+  --color-success: #65d89a;
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+  --motion-instant: 0ms;
+  --motion-standard: 250ms;
+  --motion-deliberate: 400ms;
   /* Glass palette */
   --glass-bg-light: rgba(255, 255, 255, 0.25);
   --glass-bg-dark: rgba(0, 0, 0, 0.4);
@@ -39,6 +62,36 @@
   --accent-blue: #1e90ff;
   --bg-light: #f8fafc;
   --text-light: #1e293b;
+}
+
+[data-theme='volcanic'] {
+  color-scheme: dark;
+  --color-canvas: #160d0a;
+  --color-surface: #2a1711;
+  --color-surface-elevated: #3a2017;
+  --color-text: #fff7ed;
+  --color-text-muted: #d6b9a8;
+  --color-border: #8f4d32;
+  --color-accent: #ff6b35;
+  --color-focus: #ffd166;
+}
+
+[data-theme='obsidian'] {
+  color-scheme: dark;
+}
+
+[data-theme='polar'] {
+  color-scheme: light;
+  --color-canvas: #f4f8fb;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #eaf2f8;
+  --color-text: #132337;
+  --color-text-muted: #52677c;
+  --color-border: #a9c2d5;
+  --color-accent: #176b9d;
+  --color-focus: #005fcc;
+  --color-danger: #b42318;
+  --color-success: #067647;
 }
 
 /* Dark theme overrides */
