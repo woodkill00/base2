@@ -1,11 +1,19 @@
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from api.db import db_conn
+from api.services.transactional_email import (
+    DisabledEmailAdapter,
+    LocalFakeEmailAdapter,
+    RenderedEmail,
+    deliver_email,
+    recipient_digest,
+)
 
 
 logger = logging.getLogger('api.email')
@@ -125,6 +133,46 @@ def mark_outbox_failed(*, outbox_id: UUID, error: str) -> None:
             )
 
 
+def mark_outbox_status(
+    *, outbox_id: UUID, status: str, provider: str, provider_message_id: str = '', error: str = ''
+) -> None:
+    if status not in {'queued', 'sent', 'disabled', 'suppressed', 'retry', 'dead_letter'}:
+        raise ValueError('outbox_status_invalid')
+    with db_conn() as conn:
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE api_email_outbox
+                SET status=%s, provider=%s, provider_message_id=%s, error=%s,
+                    sent_at=CASE WHEN %s='sent' THEN NOW() ELSE sent_at END
+                WHERE id=%s
+                """,
+                (status, provider, provider_message_id[:255], error[:2000], status, str(outbox_id)),
+            )
+
+
+def safe_outbox_diagnostic(row: EmailOutboxRow) -> dict[str, object]:
+    return {
+        'id': str(row.id),
+        'recipientDigest': recipient_digest(row.to_email),
+        'status': row.status,
+        'provider': row.provider,
+        'createdAt': row.created_at.isoformat(),
+        'sentAt': row.sent_at.isoformat() if row.sent_at else None,
+        'hasError': bool(row.error),
+    }
+
+
+def _configured_adapter():
+    mode = os.getenv('BASE2_EMAIL_ADAPTER', 'disabled').strip().lower()
+    if mode == 'local_fake':
+        return LocalFakeEmailAdapter()
+    if mode != 'disabled':
+        raise RuntimeError('email_adapter_not_allowed')
+    return DisabledEmailAdapter()
+
+
 def process_outbox_email(*, outbox_id: UUID) -> None:
     """Process an outbox row.
 
@@ -139,8 +187,24 @@ def process_outbox_email(*, outbox_id: UUID) -> None:
     if existing.sent_at is not None or existing.status == 'sent':
         return
 
-    # In later tasks we can add real provider integrations here.
-    mark_outbox_sent(outbox_id=outbox_id, provider='local_outbox', provider_message_id='local')
+    adapter = _configured_adapter()
+    result = deliver_email(
+        RenderedEmail(
+            kind='outbox',
+            recipient=existing.to_email,
+            subject=existing.subject,
+            text=existing.body_text,
+            html=existing.body_html,
+        ),
+        adapter,
+    )
+    mark_outbox_status(
+        outbox_id=outbox_id,
+        status=result.status,
+        provider=result.provider,
+        provider_message_id=result.message_id,
+        error='' if result.status == 'sent' else f'delivery_{result.status}',
+    )
 
 
 def queue_email(

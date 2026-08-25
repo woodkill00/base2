@@ -157,6 +157,14 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "transactional-email-contract",
+      "command": ["{python-api}", "-m", "pytest", "api/tests/test_transactional_email.py", "-q"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["public-content-abuse-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
       "id": "shell-parity",
       "command": ["node", "scripts/guard-shell-parity.js"],
       "required": true,
