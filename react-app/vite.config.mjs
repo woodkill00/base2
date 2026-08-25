@@ -31,6 +31,13 @@ const generatedProfilePlugin = () => {
   const description = escapeHtml(profile.seo.description);
   const canonicalUrl = `https://${profile.domains.find((domain) => domain.kind === 'canonical').host}/`;
   const robots = profile.seo.indexing === 'allow' ? 'index,follow' : 'noindex,nofollow';
+  const structuredData = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: profile.name,
+    url: canonicalUrl,
+    description: profile.seo.description,
+  }).replace(/</g, '\\u003c');
   const publicProfile = {
     schemaVersion: profile.schemaVersion,
     siteId: profile.siteId,
@@ -70,13 +77,47 @@ const generatedProfilePlugin = () => {
         .replace(
           /<link rel="canonical" href=".*?" \/>/,
           `<link rel="canonical" href="${canonicalUrl}" />`
-        );
+        )
+        .replace('</head>', `<script type="application/ld+json">${structuredData}</script>\n</head>`);
     },
     generateBundle() {
       this.emitFile({
         type: 'asset',
         fileName: 'site-profile.json',
         source: `${JSON.stringify(publicProfile, null, 2)}\n`,
+      });
+      const sitemapPaths = [
+        ...profile.navigation.map((item) => item.path),
+        profile.legal.privacyPath,
+        profile.legal.termsPath,
+        profile.legal.accessibilityPath,
+      ];
+      const uniquePaths = [...new Set(sitemapPaths)].sort();
+      const sitemapUrls = profile.seo.indexing === 'allow'
+        ? uniquePaths.map((route) => `  <url><loc>${canonicalUrl.replace(/\/$/, '')}${escapeHtml(route)}</loc></url>`).join('\n')
+        : '';
+      this.emitFile({
+        type: 'asset',
+        fileName: 'robots.txt',
+        source: profile.seo.indexing === 'allow'
+          ? `User-agent: *\nAllow: /\nSitemap: ${canonicalUrl}sitemap.xml\n`
+          : 'User-agent: *\nDisallow: /\n',
+      });
+      this.emitFile({
+        type: 'asset',
+        fileName: 'sitemap.xml',
+        source: `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemapUrls}\n</urlset>\n`,
+      });
+      this.emitFile({
+        type: 'asset',
+        fileName: 'redirects.json',
+        source: `${JSON.stringify(
+          profile.domains
+            .filter((domain) => domain.kind === 'redirect')
+            .map((domain) => ({ sourceHost: domain.host, target: canonicalUrl, statusCode: 301 })),
+          null,
+          2
+        )}\n`,
       });
     },
   };

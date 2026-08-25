@@ -49,6 +49,9 @@ def main() -> int:
             )
             metadata = json.loads((output / "site-profile.json").read_text(encoding="utf-8"))
             html = (output / "index.html").read_text(encoding="utf-8")
+            robots_text = (output / "robots.txt").read_text(encoding="utf-8")
+            sitemap = (output / "sitemap.xml").read_text(encoding="utf-8")
+            redirects = json.loads((output / "redirects.json").read_text(encoding="utf-8"))
             manifest = json.loads(
                 (ROOT / "site_profiles" / f"{profile_id}.json").read_text(encoding="utf-8")
             )
@@ -61,9 +64,20 @@ def main() -> int:
                 f'content="{manifest["seo"]["description"]}"',
                 f'<meta name="robots" content="{robots}"',
                 f'href="https://{canonical}/"',
+                'type="application/ld+json"',
             )
             if any(marker not in html for marker in expected):
                 raise RuntimeError(f"built brand metadata was not preserved for {profile_id}")
+            if manifest["seo"]["indexing"] == "allow":
+                if "Allow: /" not in robots_text or f"https://{canonical}/" not in sitemap:
+                    raise RuntimeError(f"indexable discovery assets are incomplete for {profile_id}")
+            elif "Disallow: /" not in robots_text or "<url>" in sitemap:
+                raise RuntimeError(f"non-indexable discovery policy is unsafe for {profile_id}")
+            expected_redirects = sorted(
+                item["host"] for item in manifest["domains"] if item["kind"] == "redirect"
+            )
+            if sorted(item["sourceHost"] for item in redirects) != expected_redirects:
+                raise RuntimeError(f"domain redirects are incomplete for {profile_id}")
             receipts[profile_id] = _tree_digest(output)
     if len(set(receipts.values())) != len(receipts):
         raise RuntimeError("fixture profile builds are not distinct")

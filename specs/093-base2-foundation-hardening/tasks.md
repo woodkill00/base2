@@ -92,8 +92,8 @@
 - [x] T062 [US4] Replace hero/docs/contact/social/dashboard/sample/no-op interactions with real behavior, explicit disabled state, or removal | Depends: T009,T061 | Validate: zero unexplained inventory entries
 - [x] T063 [P] [US4] Write abuse/security tests for CSRF, spam, replay, limits, hostile markup/uploads, MIME spoof, metadata, and retention | Depends: T059 | Validate: attack fixtures fail before T064
 - [x] T064 [US4] Implement hardened form/outbox and media validation/variants/quarantine/attribution flows | Depends: T063 | Validate: security/integration tests pass
-- [ ] T065 [P] [US4] Write search authorization/freshness/tombstone and SEO/redirect/robots/sitemap tests | Depends: T059 | Validate: fail before T066
-- [ ] T066 [US4] Implement tenant-safe search and manifest/content-driven canonical/robots/sitemap/OG/structured-data/redirect behavior | Depends: T065 | Validate: fixture-site search/SEO matrix
+- [x] T065 [P] [US4] Write search authorization/freshness/tombstone and SEO/redirect/robots/sitemap tests | Depends: T059 | Validate: fail before T066
+- [x] T066 [US4] Implement tenant-safe search and manifest/content-driven canonical/robots/sitemap/OG/structured-data/redirect behavior | Depends: T065 | Validate: fixture-site search/SEO matrix
 - [ ] T067 [P] [US4] Write consent/analytics/localization tests including tracker-before-consent and locale fallback | Depends: T049 | Validate: fail before T068
 - [ ] T068 [US4] Implement disabled-by-default analytics/consent adapters and localization routing/content | Depends: T067 | Validate: network/locale E2E passes
 - [ ] T120 [P] [US4] Add supported browser/device/input/network matrix and deterministic compatibility tests with documented minimum versions | Depends: T052,T061 | Validate: Chromium/Firefox/WebKit desktop/mobile matrix

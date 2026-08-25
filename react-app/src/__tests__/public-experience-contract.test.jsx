@@ -166,5 +166,14 @@ describe('manifest public experience contract', () => {
       screen.getByText('Ember Studio could not find the page you requested.')
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Return home' })).toHaveAttribute('href', '/');
+    expect(document.title).toBe('Page not found · Ember Studio');
+    expect(document.head.querySelector('link[rel="canonical"]')).toHaveAttribute(
+      'href',
+      'https://ember.example/'
+    );
+    expect(document.head.querySelector('script[data-runtime-seo]')).toHaveAttribute(
+      'type',
+      'application/ld+json'
+    );
   });
 });

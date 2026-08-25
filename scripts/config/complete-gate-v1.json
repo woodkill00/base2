@@ -125,6 +125,14 @@
       "requiredTools": ["{python-api}"]
     },
     {
+      "id": "search-seo-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_search_seo_contract"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["site-profile-builds", "site-content-api"],
+      "requiredTools": ["python3"]
+    },
+    {
       "id": "shell-parity",
       "command": ["node", "scripts/guard-shell-parity.js"],
       "required": true,
