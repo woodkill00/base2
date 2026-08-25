@@ -18,6 +18,11 @@ import pytest
         # Old internal Django endpoints (Django is admin/schema-only).
         "/internal/users/login/",
         "/internal/users/logout/",
+        # Public-account APIs belong exclusively to FastAPI. Django must not
+        # accept bearer-token traffic on lookalike routes.
+        "/api/auth/login",
+        "/api/identity/capabilities",
+        "/api/privacy/export",
     ],
 )
 def test_internal_auth_routes_not_mounted(client, path):

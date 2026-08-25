@@ -66,6 +66,7 @@
     "e2e": "playwright test --reporter=list",
     "e2e:headed": "playwright test --headed",
     "test:visual": "playwright test --config=playwright.visual.config.mjs",
+    "test:account-e2e": "playwright test --config=playwright.account.config.mjs",
     "test:compatibility": "playwright test --config=playwright.compatibility.config.mjs",
     "e2e:install": "playwright install",
     "analyze": "vite build --mode analyze",

@@ -12,6 +12,9 @@ const Navigation = () => {
     .trim()
     .charAt(0)
     .toUpperCase();
+  const accountsEnabled = siteManifest.modules.some(
+    (module) => module.id === 'accounts' && module.enabled
+  );
 
   const handleLogout = async () => {
     await logout();
@@ -53,6 +56,18 @@ const Navigation = () => {
               <Link to="/settings" className={linkClass('/settings')}>
                 Settings
               </Link>
+              {accountsEnabled ? (
+                <Link to="/account" className={linkClass('/account')}>
+                  Account
+                </Link>
+              ) : null}
+              {accountsEnabled &&
+              Array.isArray(user?.permissions) &&
+              user.permissions.includes('audit.read') ? (
+                <Link to="/admin" className={linkClass('/admin')}>
+                  Admin
+                </Link>
+              ) : null}
             </div>
 
             <div className="flex items-center gap-3">

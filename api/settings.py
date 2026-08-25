@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     GOOGLE_OAUTH_REDIRECT_URI: Optional[str] = None
     GOOGLE_OAUTH_ENABLED: bool = Field(default=False)
     OAUTH_STATE_SECRET: Optional[str] = None
+    IDENTITY_ENCRYPTION_KEY: Optional[str] = None
+    IDENTITY_ALLOW_FIRST_OWNER_BOOTSTRAP: bool = Field(default=False)
     WEBAUTHN_ENABLED: bool = Field(default=False)
 
     AUTH_REFRESH_COOKIE: bool = Field(default=True)
@@ -115,6 +117,8 @@ class Settings(BaseSettings):
                 missing.append('FRONTEND_URL')
             if not (self.OAUTH_STATE_SECRET or '').strip():
                 missing.append('OAUTH_STATE_SECRET')
+            if not (self.IDENTITY_ENCRYPTION_KEY or '').strip():
+                missing.append('IDENTITY_ENCRYPTION_KEY')
             if missing:
                 raise RuntimeError('Missing required env var(s): ' + ', '.join(missing))
 

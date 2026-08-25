@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import os
 from pathlib import Path
 import re
@@ -37,6 +38,10 @@ SECRET_KEYS = {
 
 def _secret() -> str:
     return secrets.token_urlsafe(32)
+
+
+def _fernet_key() -> str:
+    return base64.urlsafe_b64encode(secrets.token_bytes(32)).decode("ascii")
 
 
 def render(source: Path, target: Path, domain: str, project: str) -> None:
@@ -77,6 +82,7 @@ def render(source: Path, target: Path, domain: str, project: str) -> None:
         "TRAEFIK_CANARY_MODE": "true",
     }
     overrides.update({key: _secret() for key in SECRET_KEYS})
+    overrides["TP_IDENTITY_ENCRYPTION_KEY"] = _fernet_key()
 
     rendered: list[str] = []
     seen: set[str] = set()

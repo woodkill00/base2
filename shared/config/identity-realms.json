@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "realms": {
+    "publicAccount": {
+      "authority": "fastapi",
+      "subjectType": "uuid",
+      "sessionTypes": ["short-lived-jwt", "rotating-refresh-token"],
+      "allowedSurfaces": ["/api/auth", "/api/identity", "/api/privacy"],
+      "forbiddenSurfaces": ["/admin"]
+    },
+    "operatorCms": {
+      "authority": "django",
+      "subjectType": "django-primary-key",
+      "sessionTypes": ["django-session-cookie"],
+      "allowedSurfaces": ["/admin"],
+      "forbiddenSurfaces": ["/api/auth", "/api/identity", "/api/privacy"]
+    }
+  },
+  "crossRealmMapping": {
+    "mode": "none",
+    "forbiddenJoinKeys": ["email", "display_name", "username"],
+    "futureMappingRequires": [
+      "immutable-link-table",
+      "explicit-account-link-proof",
+      "two-realm-revocation-tests",
+      "migration-and-rollback-plan"
+    ]
+  },
+  "authorization": {
+    "tenantSource": "validated-request-context",
+    "permissionSource": "server-side-active-membership",
+    "untrustedTokenClaims": ["tenant_id", "organization_id", "role", "permissions"],
+    "unknownRole": "deny"
+  }
+}

@@ -141,13 +141,14 @@ def test_totp_recovery_invitation_and_api_secrets_are_not_retained_in_plaintext(
     assert hash_sensitive_value("api-secret", pepper=pepper) != "api-secret"
 
 
-def test_webauthn_is_versioned_optional_and_disabled_without_configuration(monkeypatch):
+def test_mfa_is_versioned_and_fails_closed_without_secret_or_webauthn_ceremony(monkeypatch):
     monkeypatch.setattr("api.routes.identity.settings.WEBAUTHN_ENABLED", False)
+    monkeypatch.setattr("api.routes.identity.settings.IDENTITY_ENCRYPTION_KEY", None)
     response = TestClient(app).get("/api/identity/capabilities")
     assert response.status_code == 200
     methods = response.json()["mfa"]
-    assert methods["totp"]["enabled"] is True
-    assert methods["recovery_codes"]["enabled"] is True
+    assert methods["totp"] == {"enabled": False, "version": "v1"}
+    assert methods["recovery_codes"] == {"enabled": False, "version": "v1"}
     assert methods["webauthn"] == {"enabled": False, "version": "v1"}
 
 

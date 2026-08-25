@@ -308,6 +308,7 @@ async function runSetup(options = {}) {
     'TP_DJANGO_SECRET_KEY',
     'TP_JWT_SECRET',
     'TP_TOKEN_PEPPER',
+    'TP_IDENTITY_ENCRYPTION_KEY',
     'TP_OAUTH_STATE_SECRET',
     'TP_SEED_ADMIN_PASSWORD',
     'TP_SEED_DEMO_PASSWORD',

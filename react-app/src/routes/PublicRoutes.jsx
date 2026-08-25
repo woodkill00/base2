@@ -6,16 +6,42 @@ import SearchPage from '../pages/public/SearchPage';
 import NotFoundPage from '../pages/public/NotFoundPage';
 import ContentCollectionPage from '../pages/public/ContentCollectionPage';
 import ProtectedRoute from '../components/ProtectedRoute';
+import PermissionRoute from '../components/PermissionRoute';
 import LocalizedExperience from './LocalizedExperience';
+import { useAuth } from '../contexts/AuthContext';
+import { siteManifest } from '../config/siteRuntime';
 
 const Home = lazy(() => import('../pages/Home'));
 const Login = lazy(() => import('../pages/Login'));
 const Signup = lazy(() => import('../pages/Signup'));
 const Dashboard = lazy(() => import('../pages/Dashboard.jsx'));
 const Settings = lazy(() => import('../pages/Settings'));
+const AccountCenter = lazy(() => import('../pages/AccountCenter'));
+const AdminConsole = lazy(() => import('../pages/AdminConsole'));
+const AcceptInvitation = lazy(() => import('../pages/AcceptInvitation'));
 const VerifyEmail = lazy(() => import('../pages/VerifyEmail'));
 const ForgotPassword = lazy(() => import('../pages/ForgotPassword'));
 const ResetPassword = lazy(() => import('../pages/ResetPassword'));
+
+const accountsEnabled = siteManifest.modules.some(
+  (module) => module.id === 'accounts' && module.enabled
+);
+
+const AccountsModuleRoute = ({ children }) => (accountsEnabled ? children : <NotFoundPage />);
+
+const AccountRoute = () => {
+  const { user } = useAuth();
+  return <AccountCenter user={user} />;
+};
+
+const AdminRoute = () => {
+  const { user } = useAuth();
+  return (
+    <PermissionRoute user={user} permission="audit.read">
+      <AdminConsole user={user} />
+    </PermissionRoute>
+  );
+};
 
 const PublicRoutes = () => (
   <Routes>
@@ -47,7 +73,29 @@ const PublicRoutes = () => (
       path="/account"
       element={
         <ProtectedRoute>
-          <Dashboard />
+          <AccountsModuleRoute>
+            <AccountRoute />
+          </AccountsModuleRoute>
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/admin"
+      element={
+        <ProtectedRoute>
+          <AccountsModuleRoute>
+            <AdminRoute />
+          </AccountsModuleRoute>
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/accept-invitation"
+      element={
+        <ProtectedRoute>
+          <AccountsModuleRoute>
+            <AcceptInvitation />
+          </AccountsModuleRoute>
         </ProtectedRoute>
       }
     />

@@ -92,6 +92,16 @@ export const AuthProvider = ({ children }) => {
       setError(null);
       const userPayload = await authAPI.login(email, password);
 
+      if (userPayload?.mfa_required && userPayload?.challenge_token) {
+        return {
+          success: false,
+          mfaRequired: true,
+          challengeToken: userPayload.challenge_token,
+          methods: userPayload.methods || [],
+          expiresIn: userPayload.expires_in,
+        };
+      }
+
       if (userPayload && userPayload.email) {
         safeStorageSet('user', JSON.stringify(userPayload));
         if (userPayload.access_token) {
@@ -117,11 +127,42 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const completeMfaLogin = async (challengeToken, code) => {
+    try {
+      setError(null);
+      const userPayload = await authAPI.completeMfaLogin(challengeToken, code);
+      if (!userPayload?.email || !userPayload?.access_token) {
+        return { success: false, error: 'Invalid response from server' };
+      }
+      safeStorageSet('user', JSON.stringify(userPayload));
+      safeStorageSet('token', userPayload.access_token);
+      if (userPayload.refresh_token) safeStorageSet('refresh_token', userPayload.refresh_token);
+      setUser(userPayload);
+      return { success: true };
+    } catch (error) {
+      const apiErr = normalizeApiError(error, {
+        fallbackMessage: 'Authentication code was not accepted',
+      });
+      setError(apiErr.message);
+      return { success: false, error: apiErr.message, code: apiErr.code };
+    }
+  };
+
   // Login with Google OAuth
   const loginWithGoogle = async (credential) => {
     try {
       setError(null);
       const data = await authAPI.googleAuth(credential);
+
+      if (data?.mfa_required && data?.challenge_token) {
+        return {
+          success: false,
+          mfaRequired: true,
+          challengeToken: data.challenge_token,
+          methods: data.methods || [],
+          expiresIn: data.expires_in,
+        };
+      }
 
       if (data && data.email && data.access_token) {
         safeStorageSet('token', data.access_token);
@@ -240,6 +281,7 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!user,
     register,
     loginWithEmail,
+    completeMfaLogin,
     loginWithGoogle,
     login, // Keep for compatibility
     logout,

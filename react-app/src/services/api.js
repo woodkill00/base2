@@ -26,6 +26,12 @@ export const authAPI = {
     });
   },
 
+  completeMfaLogin: async (challengeToken, code) => {
+    return _call(apiClient.post('/auth/login/mfa', { challenge_token: challengeToken, code }), {
+      fallbackMessage: 'Authentication code was not accepted',
+    });
+  },
+
   // Logout (cookie session)
   logout: async () => {
     return _call(apiClient.post('/auth/logout'), { fallbackMessage: 'Logout failed' });

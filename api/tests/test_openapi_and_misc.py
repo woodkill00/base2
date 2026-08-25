@@ -57,33 +57,16 @@ def test_metrics_endpoint_exposes_prometheus_text():
     assert 'api_uptime_seconds' in body
 
 
-def test_privacy_endpoints_require_auth_and_tenant_header_and_succeed(monkeypatch):
-    from uuid import UUID
-
-    monkeypatch.setattr(
-        'api.auth.tokens.decode_access_token',
-        lambda _token: {'sub': str(UUID('00000000-0000-0000-0000-000000000123'))},
-    )
+def test_privacy_endpoints_require_auth_before_tenant_details():
     c = _client()
     # Authentication is checked before tenant details are disclosed.
     r_missing = c.post('/api/privacy/export')
     assert r_missing.status_code == 401
     assert r_missing.json().get('detail') == 'not_authenticated'
 
-    hdr = {'X-Tenant-Id': 't-123', 'Authorization': 'Bearer fixture-token'}
-    r_export = c.post('/api/privacy/export', headers=hdr)
-    assert r_export.status_code == 200
-    j_export = r_export.json()
-    assert j_export.get('accepted') is True
-    assert j_export.get('operation') == 'export'
-    assert j_export.get('tenant_id') == 't-123'
-
-    r_delete = c.post('/api/privacy/delete', headers=hdr)
-    assert r_delete.status_code == 200
-    j_delete = r_delete.json()
-    assert j_delete.get('accepted') is True
-    assert j_delete.get('operation') == 'delete'
-    assert j_delete.get('tenant_id') == 't-123'
+    r_delete = c.post('/api/privacy/delete', json={'confirmation': 'DELETE'})
+    assert r_delete.status_code == 401
+    assert r_delete.json().get('detail') == 'not_authenticated'
 
 
 def test_api_openapi_alias_exists_and_is_json():

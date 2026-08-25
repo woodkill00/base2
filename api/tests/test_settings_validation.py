@@ -8,6 +8,7 @@ def test_missing_required_env_raises(monkeypatch):
     for var in [
         'JWT_SECRET',
         'TOKEN_PEPPER',
+        'IDENTITY_ENCRYPTION_KEY',
         'FRONTEND_URL',
         'OAUTH_STATE_SECRET',
     ]:

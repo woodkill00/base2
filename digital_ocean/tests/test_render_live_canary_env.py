@@ -38,12 +38,14 @@ def test_canary_env_is_private_secret_randomized_and_staging_only(tmp_path):
         "TP_DJANGO_SECRET_KEY",
         "TP_JWT_SECRET",
         "TP_TOKEN_PEPPER",
+        "TP_IDENTITY_ENCRYPTION_KEY",
         "TP_POSTGRES_PASSWORD",
         "TP_REDIS_PASSWORD",
         "TP_PGADMIN_PASSWORD",
     ):
         assert len(values[key]) >= 32
         assert values[key] != "fixture"
+    assert len(values["TP_IDENTITY_ENCRYPTION_KEY"]) == 44
 
 
 def test_invalid_domain_or_project_fails_before_write(tmp_path):

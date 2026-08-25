@@ -36,6 +36,7 @@ const CATEGORIES = {
       'REDIS_PASSWORD',
       'JWT_SECRET',
       'TOKEN_PEPPER',
+      'IDENTITY_ENCRYPTION_KEY',
       'OAUTH_STATE_SECRET',
     ],
   },

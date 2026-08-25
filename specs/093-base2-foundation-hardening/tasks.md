@@ -110,11 +110,13 @@
 - [x] T074 [P] [US5] Build hostile tenant-isolation matrix across models, API, caches, jobs, search, media, admin, and timing-safe not-found behavior | Depends: T071,T073 | Validate: 15 API boundary cases plus two-tenant Django model/admin matrix pass
 - [x] T075 [US5] Enforce tenant context/keys/policies and database constraints across all boundaries | Depends: T074 | Validate: canonical HTTP/cache/job/repository/admin isolation and pool reset matrix passes
 - [x] T123 [P] [US5] Evaluate and test PostgreSQL row-level security/defense-in-depth, connection-pool tenant reset, transaction boundaries, and migration bypass behavior | Depends: T071,T074 | Validate: exact transaction binding/reset tests pass and machine-readable RLS decision remains explicitly deferred pending non-owner runtime role separation
-- [ ] T076 [P] [US5] Write React account/admin tests for MFA enrollment/recovery, passkeys, invites, roles, sessions, tokens, audit, content, errors, and accessibility | Depends: T073 | Validate: fail before T077
-- [ ] T077 [US5] Implement manifest-aware account/admin UI with private routes and least privilege | Depends: T075,T076 | Validate: E2E/account/admin visual matrix
-- [ ] T078 [P] [US5] Write export/correction/retention/deletion workflow and restore-integrity tests | Depends: T073 | Validate: fail before T079
-- [ ] T079 [US5] Implement asynchronous data-rights workflows, receipts, retention jobs, and admin status | Depends: T078 | Validate: lifecycle integration tests
-- [ ] T080 [US5] Complete identity/admin checkpoint with two-tenant hostile trial, session/token revocation, database defense, audit verification, and docs | Depends: T077,T079,T123 | Validate: US5 acceptance bundle
+- [x] T076 [P] [US5] Write React account/admin tests for MFA enrollment/recovery, passkeys, invites, roles, sessions, tokens, audit, content, errors, and accessibility | Depends: T073 | Validate: 10 focused account/admin/API-adapter cases plus 3 auth cases pass, including axe, deny-by-default routing, bounded errors, MFA challenge handling, and exact session revocation
+- [x] T134 [P] [US5] Make the public-account and operator-CMS identity realms explicit, non-interchangeable, and tenant-bound; prohibit email joins and cross-realm token acceptance | Depends: T071,T073,T075 | Validate: 3 realm-contract, 5 hostile public-token, and 14 Django route-exclusion cases pass as required gate nodes
+- [x] T135 [US5] Implement authenticated tenant-owned MFA/recovery, invitation, membership/role, API credential, audit, and admin-overview action APIs with reauthentication and one-time secret handling | Depends: T134 | Validate: 34 focused identity/security cases plus repository, session, settings, and schema matrices pass
+- [x] T077 [US5] Implement manifest-aware account/admin UI with private routes and least privilege | Depends: T075,T076,T135 | Validate: 3 hermetic real-browser account/admin layout, interaction, permission, and zero-external-response cases pass
+- [x] T078 [P] [US5] Write export/correction/retention/deletion workflow and restore-integrity tests | Depends: T134,T135 | Validate: 28 focused workflow, repository, worker, task, restore, and schema cases pass
+- [x] T079 [US5] Implement asynchronous data-rights workflows, receipts, retention jobs, and admin status | Depends: T078 | Validate: encrypted/idempotent lifecycle, deferred replay, retention wipe, integrity download, isolated restore, and admin status tests pass
+- [ ] T080 [US5] Complete identity/admin checkpoint with two-tenant hostile trial, session/token revocation, database defense, audit verification, and docs | Depends: T077,T079,T123,T134,T135 | Validate: US5 acceptance bundle
 
 ## Phase 7 - Module SDK and representative packs (P2)
 

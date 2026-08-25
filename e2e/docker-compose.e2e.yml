@@ -61,6 +61,7 @@ services:
       DB_PASSWORD: e2e
       JWT_SECRET: e2e_jwt_secret
       TOKEN_PEPPER: e2e_token_pepper
+      IDENTITY_ENCRYPTION_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
       OAUTH_STATE_SECRET: e2e_oauth_state
       AUTH_REFRESH_COOKIE: 'true'
       COOKIE_SECURE: 'false'

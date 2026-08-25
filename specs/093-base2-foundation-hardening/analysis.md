@@ -24,6 +24,38 @@ role-separation decision, which could have produced a false security claim.
 database control. Focused API and Django matrices pass; complete-gate validation
 is required from the resulting commit.
 
+## Cycle 18 - Identity realm and interactive-control gap
+
+The React account/admin test-first slice exposed two gaps that the earlier API
+contract tests did not prove. FastAPI public accounts use UUID identities in
+`api_auth_users`, while Django administration uses its separate staff identity
+realm; joining these realms by mutable email would be unsafe. The existing
+session inventory also lacked an owner-bound endpoint for revoking exactly one
+session, and several planned controls had no complete server action contract.
+
+- Added T134 to codify public-account versus operator-CMS realm separation,
+  tenant ownership, and hostile cross-token rejection without email joins.
+- Added T135 for the complete tenant-owned administration action surface before
+  T077 may claim functional UI completion.
+- Added an exact owner-bound active-session revoke operation with generic
+  not-found behavior and append-only redacted audit evidence.
+- Added the React account/admin test matrix and initial manifest/private-route,
+  MFA capability, session, admin inventory, bounded-error, and accessibility
+  surfaces. T076 is complete; T077 remains open until T135 actions and the
+  browser/visual matrix prove that every exposed control works or is explicitly
+  unavailable.
+
+**Result**: No false completion claim is made for the identity/admin UI. The
+focused API and React matrices pass, and the newly exposed architecture work is
+ordered before data-rights and the US5 checkpoint.
+
+T134 is now resolved with a required machine-readable realm contract. FastAPI
+tokens yield only a UUID public principal even when hostile role, permission,
+tenant, or organization claims are injected. Django rejects all public-account
+API lookalikes, the public API does not accept Django identities, and mutable
+email/name joins are explicitly forbidden. A future cross-realm mapping remains
+a separately reviewed migration with proof-of-control and rollback requirements.
+
 ## Cycle 1 - Scope decomposition
 
 **Findings**:
@@ -871,3 +903,35 @@ is required from the resulting commit.
 - Added exact repeated PNG byte equality plus a static contract test that prevents removal of any frozen-input or local-only boundary.
 
 **Result**: T052 complete. Both real-browser tests pass: repeated hero captures converge to byte-identical PNG output, and browser identity/time/theme/motion/network assertions match exactly. Two static harness-contract tests also pass. No external request completed, and no provider, DNS, Pi, or production service was touched.
+
+## Cycle 53 - Identity/admin action and browser completion
+
+**Findings**:
+
+1. The identity schema and route skeleton did not provide complete MFA challenge, one-time recovery, exact session revocation, invitation, role, credential, or truthful passkey behavior.
+2. Account/admin UI lacked manifest gating, permission-safe routing, and a real-browser interaction/layout gate.
+3. Task identifiers T132/T133 were already assigned to DigitalOcean work; the first draft of the identity findings incorrectly reused them.
+
+**Corrections**:
+
+- Added encrypted TOTP enrollment, atomic recovery login, MFA enforcement for password and Google OAuth, non-recent refresh tokens, exact session revocation, tenant membership/RBAC actions, one-time credentials, and disabled-by-default owner bootstrap.
+- Added account, admin, and invitation surfaces with manifest, authentication, and permission boundaries plus a hermetic Northstar browser matrix with local API fixtures and blocked external responses.
+- Renumbered the new identity tasks to T134/T135 and updated dependencies and traceability without altering the existing DigitalOcean tasks.
+
+**Result**: T135 and T077 complete. Focused API, repository, schema, React, accessibility, adapter, auth, production build, and three-case real-browser matrices pass. Screenshot encoding triggered the already observed WSL `SIGSEGV`; the required account gate uses deterministic rendered layout and interaction assertions without capture, while the independent visual harness continues to own screenshot evidence.
+
+## Cycle 54 - Durable data-rights lifecycle
+
+**Findings**:
+
+1. Privacy routes returned placeholder success responses without durable work, receipts, retention, or status.
+2. A broker outage could otherwise strand work silently, and retries could create duplicate active operations.
+3. Export restoration had no explicit prohibition against a live target.
+
+**Corrections**:
+
+- Added API/Django parity migrations, encrypted durable operations, one-active-kind uniqueness, guarded claims/completion, explicit deferred dispatch, bounded periodic replay, and daily sensitive-material expiry.
+- Added recent-reauthenticated export/correction/deletion requests, owner-only status/download, permission-gated tenant status, receipt-bound no-store downloads, exact correction/deletion limits, redacted audits, and generic failures.
+- Restricted restore to integrity-checked isolated preview and added operator/security documentation plus required complete-gate nodes.
+
+**Result**: T078 and T079 complete. Twenty-eight focused lifecycle, route, repository, worker, replay, retention, receipt, restore, and schema tests pass. A real PostgreSQL container migration remains unavailable in this WSL account because the Docker socket is not accessible and sudo requires the owner password; SQL and Django parity are verified, and T080 retains the live database acceptance requirement.

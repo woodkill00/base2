@@ -94,6 +94,7 @@
         "-m",
         "pytest",
         "django/tests/test_identity_domain_models.py",
+        "django/tests/test_no_auth_routes.py",
         "-q"
       ],
       "required": true,
@@ -111,12 +112,66 @@
         "api/tests/test_auth_tokens.py",
         "api/tests/test_auth_rate_limits.py",
         "api/tests/test_oauth_google_option_a.py",
+        "api/tests/security/test_identity_realms.py",
+        "api/tests/security/test_secret_box.py",
+        "api/tests/contract/test_identity_admin_actions.py",
+        "api/tests/contract/test_mfa_login_contract.py",
+        "api/tests/test_identity_admin_repository.py",
+        "api/tests/test_session_revocation.py",
         "-q"
       ],
       "required": true,
       "timeoutSeconds": 60,
       "dependsOn": ["identity-domain-models"],
       "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "identity-realm-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_identity_realm_contract"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["identity-security-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "identity-schema-parity",
+      "command": [
+        "{python-api}",
+        "-m",
+        "pytest",
+        "scripts/tests/test_identity_schema_parity.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["identity-realm-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "data-rights-contract",
+      "command": [
+        "{python-api}",
+        "-m",
+        "pytest",
+        "api/tests/contract/test_data_rights_contract.py",
+        "api/tests/security/test_data_rights_restore.py",
+        "api/tests/test_data_rights_repository.py",
+        "api/tests/test_data_rights_worker.py",
+        "api/tests/test_data_rights_tasks.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": ["identity-schema-parity"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "account-admin-browser",
+      "command": ["npm", "--prefix", "react-app", "run", "test:account-e2e"],
+      "required": true,
+      "timeoutSeconds": 120,
+      "dependsOn": ["identity-security-contract", "site-profile-builds"],
+      "requiredTools": ["npm", "node"]
     },
     {
       "id": "site-content-api",

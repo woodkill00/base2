@@ -13,6 +13,8 @@ type Props = {
   ariaInvalid?: 'true' | 'false';
   ariaDescribedBy?: string;
   icon?: React.ReactNode;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
+  autoComplete?: string;
 };
 
 export const GlassInput: React.FC<Props> = ({
@@ -28,6 +30,8 @@ export const GlassInput: React.FC<Props> = ({
   ariaInvalid,
   ariaDescribedBy,
   icon,
+  inputMode,
+  autoComplete,
 }) => {
   return (
     <div className={['w-full', className].filter(Boolean).join(' ')}>
@@ -61,6 +65,8 @@ export const GlassInput: React.FC<Props> = ({
           }
           aria-invalid={ariaInvalid}
           aria-describedby={ariaDescribedBy}
+          inputMode={inputMode}
+          autoComplete={autoComplete}
         />
       </div>
       {error ? (

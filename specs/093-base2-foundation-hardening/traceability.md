@@ -36,13 +36,13 @@ Each requirement has an implementation task and failure-oriented evidence. Share
 | FR-030      | T050-T054,T060-T069,T120                          | Automated/manual WCAG and browser/device matrix                                                           |
 | FR-031      | T049,T061,T065,T066                               | Canonical/robots/sitemap/OG/schema/redirect matrix                                                        |
 | FR-032      | T067,T068                                         | Tracker-before-consent network assertions                                                                 |
-| FR-033      | T070-T073,T076,T077                               | Account lifecycle, session, reauth E2E                                                                    |
-| FR-034      | T070-T073,T076,T077                               | TOTP/recovery/WebAuthn hostile and recovery paths                                                         |
-| FR-035      | T070-T077                                         | Org/invite/RBAC deny-by-default matrix                                                                    |
+| FR-033      | T070-T073,T076,T077,T134,T135                     | Account lifecycle, realm separation, session, reauth E2E                                                  |
+| FR-034      | T070-T073,T076,T077,T135                          | TOTP/recovery/WebAuthn hostile and recovery paths                                                         |
+| FR-035      | T070-T077,T134,T135                               | Org/invite/RBAC deny-by-default matrix                                                                    |
 | FR-036      | T074,T075,T080,T123                               | Cross-boundary and database/pool two-tenant hostile suite                                                 |
-| FR-037      | T071-T077,T080                                    | Private admin route/permission matrix                                                                     |
-| FR-038      | T070-T075,T080                                    | Append-only audit outcome verification                                                                    |
-| FR-039      | T070-T073,T076,T077                               | Credential one-time display/scope/revoke/audit tests                                                      |
+| FR-037      | T071-T077,T080,T134,T135                          | Private admin route/realm/permission matrix                                                               |
+| FR-038      | T070-T075,T080,T135                               | Append-only audit outcome verification                                                                    |
+| FR-039      | T070-T073,T076,T077,T135                          | Credential one-time display/scope/revoke/audit tests                                                      |
 | FR-040      | T078-T080                                         | Data-rights lifecycle and restore integrity                                                               |
 | FR-041      | T005,T081,T082                                    | Strict module manifest/semantic tests                                                                     |
 | FR-042      | T083,T084,T092                                    | Module lifecycle/replay/rollback suite                                                                    |
