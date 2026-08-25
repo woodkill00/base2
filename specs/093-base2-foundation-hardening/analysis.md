@@ -950,3 +950,19 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Recognized both direct `-11` and shell-normalized `139` as the same bounded SIGSEGV infrastructure retry, with a regression proving exactly one recovery attempt and no conversion of persistent failure into success.
 
 **Result**: The failed evidence remains preserved. Focused runner and browser replacement tests must pass before a new exact-commit complete gate; no test was removed, made optional, or given an unbounded retry.
+
+## Cycle 56 - WSL Django assertion-rewrite isolation
+
+**Findings**:
+
+1. The replacement gate passed the browser collision point but the Django identity node received two native Python SIGSEGVs at unrelated interpreter locations: migration model rendering and pytest path collection.
+2. The same 17-test command passes immediately and consistently with pytest assertion rewriting disabled, matching the earlier focused identity validation behavior on this WSL instance.
+
+**Corrections**:
+
+- Set only the affected Django identity gate to `--assert=plain`. Test discovery,
+  database creation/migrations, assertions, coverage, required status, and the
+  bounded retry policy remain unchanged; only pytest's bytecode-rewriting layer
+  is bypassed.
+
+**Result**: All 17 identity domain/no-public-admin tests pass with plain assertions. The second failed gate remains retained, and a new exact-commit gate is required. The persistent native WSL instability remains a host risk and is not classified as an application pass.

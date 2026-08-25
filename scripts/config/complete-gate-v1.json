@@ -93,6 +93,7 @@
         "{python-django}",
         "-m",
         "pytest",
+        "--assert=plain",
         "django/tests/test_identity_domain_models.py",
         "django/tests/test_no_auth_routes.py",
         "-q"
