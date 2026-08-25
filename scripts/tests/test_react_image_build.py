@@ -38,7 +38,9 @@ class ReactImageBuildTests(unittest.TestCase):
         self.assertIn("listen 8080;", site)
         self.assertIn("try_files $uri $uri/ /index.html;", site)
         self.assertIn("try_files $uri =404;", site)
-        self.assertIn('Cache-Control "public, immutable"', site)
+        self.assertIn('default "no-store"', site)
+        self.assertIn('"public, max-age=31536000, immutable"', site)
+        self.assertIn('Cache-Control $base2_cache_control always', site)
 
     def test_spa_fallback_precedes_static_asset_404(self):
         site = NGINX_SITE.read_text(encoding="utf-8")

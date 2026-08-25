@@ -35,4 +35,7 @@ http:
         frameDeny: true
         contentTypeNosniff: true
         referrerPolicy: no-referrer
-        permissionsPolicy: camera=(), geolocation=(), microphone=()
+        permissionsPolicy: camera=(), geolocation=(), microphone=(), payment=(), usb=()
+        contentSecurityPolicy: "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; font-src 'self' data:"
+        customResponseHeaders:
+          X-Robots-Tag: 'noindex, nofollow, noarchive'

@@ -89,6 +89,7 @@ http:
       middlewares:
         - security-headers
         - security-csp
+        - rate-limit
       tls:
         certResolver: ${TRAEFIK_CERT_RESOLVER}
         domains:
@@ -217,7 +218,7 @@ http:
         frameDeny: true
         contentTypeNosniff: true
         browserXssFilter: true
-        referrerPolicy: 'no-referrer-when-downgrade'
+        referrerPolicy: 'strict-origin-when-cross-origin'
         customResponseHeaders:
           X-Frame-Options: 'DENY'
           X-Content-Type-Options: 'nosniff'
@@ -237,7 +238,7 @@ http:
         frameDeny: true
         contentTypeNosniff: true
         browserXssFilter: true
-        referrerPolicy: 'no-referrer-when-downgrade'
+        referrerPolicy: 'strict-origin-when-cross-origin'
         customResponseHeaders:
           X-Frame-Options: 'DENY'
           X-Content-Type-Options: 'nosniff'

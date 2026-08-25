@@ -79,7 +79,7 @@
 - [x] T053 [US7] Add reviewed component/page/state visual baselines and controlled update workflow | Depends: T051,T052 | Validate: intentional mutation fails
 - [x] T054 [P] [US4] Add automated WCAG/keyboard/focus/contrast/reduced-motion/responsive matrix | Depends: T051 | Validate: injected accessibility defect fails
 - [x] T055 [US3] Remove hardcoded Base2/Woodkill/SpecKit branding, navigation, social/legal links, metadata, and sample identity | Depends: T049,T051 | Validate: repository/UI brand inventory matches manifest
-- [ ] T119 [P] [US4] Write and enforce CSP, HSTS, framing, content-type, referrer, permissions-policy, CORS, cache, WAF/CDN/bot, and preview-indexing policy tests | Depends: T049,T115 | Validate: header/edge-policy attack matrix
+- [x] T119 [P] [US4] Write and enforce CSP, HSTS, framing, content-type, referrer, permissions-policy, CORS, cache, WAF/CDN/bot, and preview-indexing policy tests | Depends: T049,T115 | Validate: header/edge-policy attack matrix
 
 ## Phase 5 - Core public website (P1)
 
