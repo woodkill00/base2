@@ -20,6 +20,8 @@ SCOPE_LIMITS: dict[str, tuple[int, int]] = {
     'forgot_password_email': (900_000, 5),
     # Public forms are tenant/IP scoped by their caller.
     'public_form': (60_000, 10),
+    # Authenticated community writes remain bounded per tenant and source.
+    'community_submit': (60_000, 10),
 }
 
 

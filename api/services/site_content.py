@@ -11,6 +11,9 @@ from api.security.engagement import community_submission, support_submission
 
 
 class SiteContentRepository(Protocol):
+    def create_community_post(
+        self, *, site_id: str, author_ref: str, payload: dict[str, Any]
+    ) -> dict[str, Any]: ...
     def list_content(
         self, *, site_id: str, limit: int, cursor: UUID | None, content_type: str | None
     ) -> dict[str, Any]: ...
