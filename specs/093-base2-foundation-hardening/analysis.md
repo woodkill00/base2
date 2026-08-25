@@ -1303,3 +1303,18 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Made both suites required full-gate nodes and documented the local-versus-live authority boundary.
 
 **Result**: T124 and T099 complete. SLO, recovery, integrity, budget, idempotent alert, and cleanup evidence pass locally with zero provider calls or credential reads.
+
+## Cycle 79 - WSL native-corruption recovery
+
+**Findings**:
+
+1. The first post-recovery complete gate recorded repeated native segmentation faults across unrelated Python imports and frameworks; an isolated replay additionally reported allocator corruption and a malformed standard-library `sysconfig` result despite 30 GiB available memory.
+2. Existing API and DigitalOcean partition runners already retried native exits three times, and the gate retried direct native exits twice, so further retries would conceal a corrupted runtime rather than increase assurance.
+
+**Corrections**:
+
+- Preserved the failed exact-commit gate and stopped treating the condition as an application assertion.
+- Restarted the WSL VM only after confirming the repository was committed and no owned containers or provider resources existed.
+- Revalidated interpreter configuration, imports, API coverage partitions, all DigitalOcean partitions, and the full Django suite from the clean runtime.
+
+**Result**: The isolated suites pass after runtime convergence with unchanged product code and unchanged test thresholds. A replacement exact full gate is required before the operations phase can be considered closed.
