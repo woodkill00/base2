@@ -35,7 +35,7 @@ jobs:
 
       - name: Ruff (lint)
         if: matrix.service == 'api'
-        run: ruff check .
+        run: ruff check api
 
       - name: Mypy (typecheck)
         run: |

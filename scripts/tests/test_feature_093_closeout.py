@@ -78,8 +78,15 @@ class Feature093CloseoutTests(unittest.TestCase):
             with self.assertRaisesRegex(CloseoutError, "live:runtime_delta:api/main.py"):
                 _verified_closeout_delta(ROOT, "a" * 40, "b" * 40)
 
-    def test_gate_recovery_closeout_delta_is_explicitly_allowed(self):
+    def test_gate_and_independent_ci_recovery_delta_is_explicitly_allowed(self):
         expected = [
+            ".github/workflows/ci-backend.yml",
+            ".github/workflows/ci-frontend.yml",
+            "api/repositories/scheduling.py",
+            "api/tests/security/test_engagement_policy.py",
+            "api/tests/test_engagement_service.py",
+            "api/tests/test_scheduling_repository.py",
+            "django/tests/live_scheduling_race.py",
             "docs/wsl-gate-recovery.md",
             "scripts/python/classify_gate_runtime_failure.py",
             "scripts/tests/test_gate_runtime_recovery.py",

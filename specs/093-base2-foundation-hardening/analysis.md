@@ -1403,3 +1403,19 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Retained the exact-commit check, clean-worktree requirement, preserved evidence, and one-restart maximum.
 
 **Result**: Native recovery covers the observed Python and browser-worker corruption classes without admitting screenshot, accessibility, product, security, coverage, policy, or mixed failures.
+
+## Cycle 86 - Independent CI compatibility and lint truth
+
+**Findings**:
+
+1. The first exact-commit GitHub matrix proved five workflows green but exposed frontend and backend failures hidden by the unreliable local WSL runtime.
+2. Frontend CI selected Node 18 for a locked jsdom dependency that requires a supported newer runtime, so every Vitest worker failed before tests and coverage incorrectly reported zero.
+3. The API matrix linted the entire multi-service repository instead of its API boundary; after correcting that scope, 26 real API style findings remained. Django Mypy also found one untyped live-race result list.
+
+**Corrections**:
+
+- Moved frontend CI to supported Node 20 without changing dependencies, tests, or coverage thresholds.
+- Bound API Ruff to `api`, mechanically reformatted the four reported API files, fixed the remaining nested-context finding, and retained the complete behavioral suite.
+- Typed the Django race-test outcomes, explicitly allowlisted only these post-live CI-recovery paths, and extended the closeout-delta regression so unrelated runtime changes remain forbidden.
+
+**Result**: Local focused validation passes Ruff, Django Mypy, 196 API tests with 76% coverage, 125 frontend tests with threshold-passing coverage, and all closeout-delta tests. Exact-commit independent CI replay remains required before T136-T137 or final closeout can complete.

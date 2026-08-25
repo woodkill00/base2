@@ -41,6 +41,13 @@ RECOVERY_CHECKS = {
     "providerless-deployment-canary",
 }
 LIVE_TO_CLOSEOUT_ALLOWED = (
+    ".github/workflows/ci-backend.yml",
+    ".github/workflows/ci-frontend.yml",
+    "api/repositories/scheduling.py",
+    "api/tests/security/test_engagement_policy.py",
+    "api/tests/test_engagement_service.py",
+    "api/tests/test_scheduling_repository.py",
+    "django/tests/live_scheduling_race.py",
     "docs/feature-093-production-readiness.md",
     "docs/wsl-gate-recovery.md",
     "scripts/config/complete-gate-v1.json",

@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 from scheduling.models import Event, Booking
 
 event=Event.objects.create(site_id='tenant-one',slug='race',title='Race',starts_at=datetime.now(UTC)+timedelta(days=1),ends_at=datetime.now(UTC)+timedelta(days=1,hours=1),timezone_name='UTC',capacity=1,booking_open=True)
-barrier=threading.Barrier(2); outcomes=[]
+barrier=threading.Barrier(2); outcomes: list[str]=[]
 def reserve(ref):
     close_old_connections(); barrier.wait()
     try:

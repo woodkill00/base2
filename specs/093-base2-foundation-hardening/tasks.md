@@ -165,6 +165,8 @@
 - [ ] T111 [P] [US4] Run final route/control/a11y/visual/performance matrix for two fixture brands and every enabled pack | Depends: T109 | Validate: complete experience ledger
 - [ ] T112 [P] [US8] Run final backup/restore/rollback/incident and three canary teardown observations | Depends: T109 | Validate: RPO/RTO and zero-resource evidence
 - [x] T126 [P] [US2] Add docs/config/OpenAPI/generated-client/module-inventory/route-inventory drift checks to required gate | Depends: T047,T082,T109 | Validate: injected stale artifact fails
+- [ ] T136 [P] [US2] Repair independent frontend/backend CI runtime and service-boundary drift without weakening coverage, lint, type, build, or artifact gates | Depends: T109 | Validate: exact-commit frontend/backend workflows pass with all required steps executed
+- [ ] T137 [P] [US2] Reconcile API lint debt and Django live-race typing exposed by the independent CI gate, preserving behavior and the post-live mutation boundary | Depends: T136 | Validate: Ruff, Mypy, API unit/coverage, frontend unit/coverage, and closeout-delta regressions pass
 - [ ] T113 [US2] Publish migration, operations, security, module, factory, cost, recovery, residual-risk, and activation docs | Depends: T110-T112,T126 | Validate: docs/link/config drift checks
 - [ ] T114 [US2] Mark tasks complete only from evidence, confirm no known unresolved issue/silent failure, and prepare reviewed PR | Depends: T113 | Validate: DoD and traceability 100%
 
