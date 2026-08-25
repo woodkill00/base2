@@ -69,9 +69,9 @@
 
 ## Phase 4 - Site manifest and current-main visual system (P1)
 
-- [ ] T046 [P] [US3] Write site-manifest schema/semantic tests for unknown keys, duplicate/canonical domains, locale, navigation, module compatibility, unsafe URLs, and secret values | Depends: T005 | Validate: invalid matrix rejected
-- [ ] T047 [US3] Implement shared manifest loader/semantic validator and generate Python/TypeScript consumers | Depends: T046 | Validate: cross-language golden fixtures agree
-- [ ] T048 [P] [US3] Add two fixture site profiles with distinct brands/modules/domains and no secrets in `site_profiles/` | Depends: T047 | Validate: both pass and digest differently
+- [x] T046 [P] [US3] Write site-manifest schema/semantic tests for unknown keys, duplicate/canonical domains, locale, navigation, module compatibility, unsafe URLs, and secret values | Depends: T005 | Validate: 9-test hostile matrix rejects unknown/missing fields, unsafe files/paths/domains, locale/navigation/module conflicts, and secret-bearing keys/values
+- [x] T047 [US3] Implement shared manifest loader/semantic validator and generate Python/TypeScript consumers | Depends: T046 | Validate: dependency-free Python and Node consumers agree on canonical SHA-256 for both golden profiles; strict TypeScript consumer compiles independently
+- [x] T048 [P] [US3] Add two fixture site profiles with distinct brands/modules/domains and no secrets in `site_profiles/` | Depends: T047 | Validate: Ember Studio and Northstar Library validate and produce distinct brand/module inventories and digests
 - [ ] T049 [US3] Thread manifest into Django/FastAPI/React/config generation with compatibility defaults | Depends: T048 | Validate: two brands build from same commit
 - [ ] T050 [P] [US7] Formalize token/theme/component/state contracts and Storybook stories from `visual-port-map.md` | Depends: T008,T049 | Validate: token/component contract tests
 - [ ] T051 [US7] Port volcanic/obsidian visual behavior onto current-main components without merging stale history | Depends: T050 | Validate: ancestry guard and reviewed component diffs

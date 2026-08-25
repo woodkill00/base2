@@ -750,3 +750,20 @@ Analysis checks requirement coverage, task executability, dependency validity, t
 - Preserved all three lease/deploy/rollback receipts and the final result in an owner-only artifact directory, then performed a separate read-only provider/DNS inventory using the private runtime credential.
 
 **Result**: All three trials passed. Droplets `594979819`, `594981694`, and `594983363` were each created sequentially, reached 12/12 service health, served the exact public API health route through staging-only Traefik, restored DNS, and reached terminal `destroyed`. Final receipt digest is `b54c53305ede82c780c4ea6e41cf85ef4de268b4f292652e08de39706ffa80c5`; deploy/rollback receipt digests are integrity-bound in that receipt. Independent API inventory found zero owned Droplets and zero exact DNS records. Estimated cost was 3 USD minor units against the approved 100-unit ceiling, and zero secret values were emitted. T045 is complete.
+
+## Cycle 47 - Site-manifest contract and cross-language consumers
+
+**Findings**:
+
+1. The contract schema described the desired shape but had no executable semantic boundary for canonical domains, module compatibility, navigation exposure, locale fallback, safe local URLs, file provenance, or raw-secret rejection.
+2. No shared consumer or fixture profiles existed, so service-specific configuration could silently interpret the same site differently.
+3. Repository-wide TypeScript compilation currently includes unrelated legacy test typing failures; a focused strict compile is required for the new typed consumer until that broader debt is resolved in its ordered task.
+
+**Corrections**:
+
+- Added a dependency-free strict Python loader with exact-field checks, bounded real-file reads, canonical SHA-256, compatibility-catalog enforcement, capability dependencies, safe paths, locale/domain invariants, and recursive secret rejection.
+- Added an independent Node consumer and a strict typed React consumer; golden tests require Python and Node to produce identical site identity and digest.
+- Added Ember Studio and Northstar Library fixtures with distinct domains, brands, locales, modules, policies, and digests, plus a hostile nine-test matrix.
+- Made the manifest contract a required complete-gate node with both Python and Node tool admission.
+
+**Result**: T046-T048 complete. Both profiles validate and digest differently; the independent consumers agree exactly, the typed consumer compiles under focused strict TypeScript, and malformed or secret-bearing manifests fail closed. T049 remains open for Django/FastAPI/React/config integration and dual-brand builds.

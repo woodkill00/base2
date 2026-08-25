@@ -195,6 +195,15 @@ class CompleteGateTests(unittest.TestCase):
         )
         commands = {item["id"]: item["command"] for item in manifest["checks"]}
         self.assertEqual(
+            [
+                "{python-orchestrator}",
+                "-m",
+                "unittest",
+                "scripts.tests.test_site_manifest",
+            ],
+            commands["site-manifest-contract"],
+        )
+        self.assertEqual(
             ["{python-api}", "scripts/python/run_api_coverage.py"],
             commands["api-tests"],
         )

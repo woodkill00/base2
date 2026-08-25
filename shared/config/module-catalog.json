@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "modules": {
+    "content": { "versions": ["1.0.0"], "requires": [] },
+    "forms": { "versions": ["1.0.0"], "requires": ["content"] },
+    "search": { "versions": ["1.0.0"], "requires": ["content"] },
+    "accounts": { "versions": ["1.0.0"], "requires": [] },
+    "commerce": { "versions": ["1.0.0"], "requires": ["accounts"] }
+  }
+}

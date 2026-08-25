@@ -10,6 +10,14 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "site-manifest-contract",
+      "command": ["{python-orchestrator}", "-m", "unittest", "scripts.tests.test_site_manifest"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["feature-093-plan"],
+      "requiredTools": ["{python-orchestrator}", "node"]
+    },
+    {
       "id": "shell-parity",
       "command": ["node", "scripts/guard-shell-parity.js"],
       "required": true,

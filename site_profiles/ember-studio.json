@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "siteId": "ember-studio",
+  "slug": "ember",
+  "name": "Ember Studio",
+  "legalName": "Ember Studio Cooperative",
+  "domains": [
+    { "host": "ember.example", "kind": "canonical" },
+    { "host": "preview.ember.example", "kind": "preview" }
+  ],
+  "brand": {
+    "theme": "volcanic",
+    "logo": "/assets/ember-mark.svg",
+    "voice": "Warm, direct, practical, and quietly adventurous."
+  },
+  "navigation": [
+    { "label": "Home", "path": "/" },
+    { "label": "Journal", "path": "/journal", "module": "content" },
+    { "label": "Contact", "path": "/contact", "module": "forms" }
+  ],
+  "seo": {
+    "titleTemplate": "%s · Ember Studio",
+    "description": "Independent design and field notes from Ember Studio.",
+    "indexing": "allow"
+  },
+  "legal": {
+    "privacyPath": "/privacy",
+    "termsPath": "/terms",
+    "accessibilityPath": "/accessibility"
+  },
+  "locales": ["en", "de"],
+  "defaultLocale": "en",
+  "consent": { "mode": "opt-in" },
+  "analytics": { "enabled": false, "provider": "none" },
+  "contact": { "enabled": true, "retentionDays": 90 },
+  "media": { "maxBytes": 10485760, "allowedTypes": ["image/jpeg", "image/png", "image/webp"] },
+  "search": { "enabled": false },
+  "modules": [
+    { "id": "content", "version": "1.0.0", "enabled": true },
+    { "id": "forms", "version": "1.0.0", "enabled": true }
+  ],
+  "operationsProfile": "preview",
+  "previewPolicy": { "ttlMinutes": 60, "idleAction": "destroy" }
+}
