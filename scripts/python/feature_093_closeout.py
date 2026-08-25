@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import subprocess
 from typing import Any
 
 
@@ -39,6 +40,18 @@ RECOVERY_CHECKS = {
     "preview-state-contract",
     "providerless-deployment-canary",
 }
+LIVE_TO_CLOSEOUT_ALLOWED = (
+    "docs/feature-093-production-readiness.md",
+    "scripts/config/complete-gate-v1.json",
+    "scripts/config/surface-drift-v1.json",
+    "scripts/python/feature_093_closeout.py",
+    "scripts/python/validate_surface_drift.py",
+    "scripts/tests/test_feature_093_closeout.py",
+    "scripts/tests/test_surface_drift.py",
+    "specs/093-base2-foundation-hardening/analysis.md",
+    "specs/093-base2-foundation-hardening/tasks.md",
+    "specs/093-base2-foundation-hardening/traceability.md",
+)
 
 
 def _load(path: Path, label: str) -> dict[str, Any]:
@@ -93,14 +106,42 @@ def experience_ledger(repo: Path, gate_path: Path) -> dict[str, Any]:
     }
 
 
-def recovery_ledger(gate_path: Path, live_path: Path, operations_path: Path) -> dict[str, Any]:
+def _verified_closeout_delta(repo: Path, live_commit: str, closeout_commit: str) -> list[str]:
+    if live_commit == closeout_commit:
+        return []
+    if not all(len(value) == 40 and set(value) <= set("0123456789abcdef") for value in (live_commit, closeout_commit)):
+        raise CloseoutError("live:source_commit_invalid")
+    ancestor = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", live_commit, closeout_commit],
+        cwd=repo,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if ancestor.returncode != 0:
+        raise CloseoutError("live:source_not_ancestor")
+    changed = subprocess.run(
+        ["git", "diff", "--name-only", f"{live_commit}..{closeout_commit}"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.splitlines()
+    forbidden = sorted(path for path in changed if path not in LIVE_TO_CLOSEOUT_ALLOWED)
+    if forbidden:
+        raise CloseoutError("live:runtime_delta:" + ",".join(forbidden))
+    return sorted(changed)
+
+
+def recovery_ledger(repo: Path, gate_path: Path, live_path: Path, operations_path: Path) -> dict[str, Any]:
     gate, checks = _passed_gate(gate_path, RECOVERY_CHECKS)
     live = _load(live_path, "live")
     operations = _load(operations_path, "operations")
     trials = live.get("trials")
+    live_commit = live.get("sourceCommit")
     if (
         live.get("status") != "passed"
-        or live.get("sourceCommit") != gate.get("sourceCommit")
+        or not isinstance(live_commit, str)
         or live.get("trialCount") != 3
         or not isinstance(trials, list)
         or len(trials) != 3
@@ -114,6 +155,7 @@ def recovery_ledger(gate_path: Path, live_path: Path, operations_path: Path) -> 
         or live.get("dnsRestored") is not True
     ):
         raise CloseoutError("live:teardown_evidence_invalid")
+    closeout_delta = _verified_closeout_delta(repo, live_commit, gate["sourceCommit"])
     if (
         operations.get("status") != "passed"
         or operations.get("faultRestoreCycles") != 3
@@ -126,6 +168,9 @@ def recovery_ledger(gate_path: Path, live_path: Path, operations_path: Path) -> 
         "schemaVersion": 1,
         "status": "passed",
         "sourceCommit": gate["sourceCommit"],
+        "liveSourceCommit": live_commit,
+        "liveToCloseoutChangedPaths": closeout_delta,
+        "liveRuntimeSurfaceChanged": False,
         "gateEvidenceDigest": gate.get("evidenceDigest"),
         "planDigest": live.get("planDigest"),
         "canaryTeardownObservations": 3,
@@ -162,7 +207,7 @@ def main() -> int:
     else:
         if args.live is None or args.operations is None:
             raise CloseoutError("recovery:live_and_operations_required")
-        payload = recovery_ledger(args.gate, args.live, args.operations)
+        payload = recovery_ledger(args.repo.resolve(), args.gate, args.live, args.operations)
     _write(args.output, payload)
     return 0
 

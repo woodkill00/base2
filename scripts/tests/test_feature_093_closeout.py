@@ -2,11 +2,14 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
+import subprocess
 
 from scripts.python.feature_093_closeout import (
     CloseoutError,
     EXPERIENCE_CHECKS,
     RECOVERY_CHECKS,
+    _verified_closeout_delta,
     experience_ledger,
     recovery_ledger,
 )
@@ -34,7 +37,7 @@ class Feature093CloseoutTests(unittest.TestCase):
     def test_three_teardowns_and_recovery_cycles_are_required(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            result = recovery_ledger(self._gate(root), self._live(root), self._operations(root))
+            result = recovery_ledger(ROOT, self._gate(root), self._live(root), self._operations(root))
             self.assertEqual(3, result["canaryTeardownObservations"])
             self.assertTrue(result["zeroProviderResources"])
             self.assertEqual("letsencrypt-staging-only", result["certificateMode"])
@@ -55,7 +58,7 @@ class Feature093CloseoutTests(unittest.TestCase):
             gate["checks"] = [item for item in gate["checks"] if item["id"] != "operations-checkpoint"]
             path = self._json(root, "bad-gate.json", gate)
             with self.assertRaisesRegex(CloseoutError, "gate:missing"):
-                recovery_ledger(path, self._live(root), self._operations(root))
+                recovery_ledger(ROOT, path, self._live(root), self._operations(root))
 
     def test_non_destroyed_trial_fails_closed(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -64,7 +67,22 @@ class Feature093CloseoutTests(unittest.TestCase):
             live["trials"][1]["state"] = "healthy"
             path = self._json(root, "bad-live.json", live)
             with self.assertRaisesRegex(CloseoutError, "live:teardown"):
-                recovery_ledger(self._gate(root), path, self._operations(root))
+                recovery_ledger(ROOT, self._gate(root), path, self._operations(root))
+
+    def test_runtime_change_between_live_and_closeout_fails_closed(self):
+        responses = [
+            subprocess.CompletedProcess([], 0, "", ""),
+            subprocess.CompletedProcess([], 0, "api/main.py\n", ""),
+        ]
+        with patch("scripts.python.feature_093_closeout.subprocess.run", side_effect=responses):
+            with self.assertRaisesRegex(CloseoutError, "live:runtime_delta:api/main.py"):
+                _verified_closeout_delta(ROOT, "a" * 40, "b" * 40)
+
+    def test_unrelated_live_commit_fails_closed(self):
+        response = subprocess.CompletedProcess([], 1, "", "")
+        with patch("scripts.python.feature_093_closeout.subprocess.run", return_value=response):
+            with self.assertRaisesRegex(CloseoutError, "live:source_not_ancestor"):
+                _verified_closeout_delta(ROOT, "a" * 40, "b" * 40)
 
 
 if __name__ == "__main__":
