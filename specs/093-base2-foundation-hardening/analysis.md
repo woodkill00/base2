@@ -1138,3 +1138,19 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Added a required static parity contract binding both migrations and the API migration inventory.
 
 **Result**: T080 complete. The live trial created two tenants, denied cross-tenant owner access, persisted exact refresh-session revocation, rejected audit deletion at the database layer, reset transaction-local tenant state before pool reuse, returned a machine-readable pass, and left zero owned containers.
+
+## Cycle 68 - Transactional events and booking
+
+**Findings**:
+
+1. Events require UTC instants plus valid IANA presentation zones; naive or invented zones would create ambiguous bookings.
+2. Capacity checks without a row lock permit concurrent oversubscription, while unbound event IDs permit cross-tenant probing.
+
+**Corrections**:
+
+- Added tenant-owned Event and Booking models, constraints, migration parity, exact attendee replay, and a `select_for_update` capacity transaction.
+- Added tenant-bound FastAPI event listing and authenticated booking admission with generic not-found/conflict errors.
+- Added manifest-gated React listing and booking feedback, provider-inert event/booking manifests, and operations documentation.
+- Added SQLite contract cases and an ephemeral PostgreSQL 16 two-thread capacity-one race; the latter produced exactly one confirmation and one capacity rejection and cleaned all owned containers.
+
+**Result**: T088 complete. Scheduling manifests install events before booking, only booking declares inert email capability, and all focused model, API import, React, manifest, migration-drift, and live race checks pass.

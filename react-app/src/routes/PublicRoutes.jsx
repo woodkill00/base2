@@ -22,6 +22,7 @@ const AcceptInvitation = lazy(() => import('../pages/AcceptInvitation'));
 const VerifyEmail = lazy(() => import('../pages/VerifyEmail'));
 const ForgotPassword = lazy(() => import('../pages/ForgotPassword'));
 const ResetPassword = lazy(() => import('../pages/ResetPassword'));
+const EventsPage = lazy(() => import('../pages/public/EventsPage'));
 
 const accountsEnabled = siteManifest.modules.some(
   (module) => module.id === 'accounts' && module.enabled
@@ -75,6 +76,12 @@ const PublicRoutes = () => (
     <Route path="/contact" element={<ContactPage />} />
     <Route path="/search" element={<SearchPage />} />
     <Route path="/journal" element={<ContentCollectionPage title="Journal" />} />
+    <Route
+      path="/events"
+      element={
+        moduleEnabled('events') && moduleEnabled('booking') ? <EventsPage /> : <NotFoundPage />
+      }
+    />
     <Route
       path="/portfolio"
       element={

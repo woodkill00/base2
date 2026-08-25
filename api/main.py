@@ -251,6 +251,7 @@ def _include_external_routes() -> None:
         'tenant',
         'privacy',
         'site_content',
+        'scheduling',
     ):
         module = importlib.import_module(f'api.routes.{module_name}')
         app.include_router(module.router, prefix='/api')
