@@ -1417,5 +1417,6 @@ a separately reviewed migration with proof-of-control and rollback requirements.
 - Moved frontend CI to supported Node 20 without changing dependencies, tests, or coverage thresholds.
 - Bound API Ruff to `api`, mechanically reformatted the four reported API files, fixed the remaining nested-context finding, and retained the complete behavioral suite.
 - Typed the Django race-test outcomes, explicitly allowlisted only these post-live CI-recovery paths, and extended the closeout-delta regression so unrelated runtime changes remain forbidden.
+- Repaired the Gunicorn process-model probe so a dependency-degraded `503` still proves the server and structured readiness contract are live, while cleanup uses bounded terminate/kill/communicate instead of blocking on a live stdout pipe.
 
-**Result**: Local focused validation passes Ruff, Django Mypy, 196 API tests with 76% coverage, 125 frontend tests with threshold-passing coverage, and all closeout-delta tests. Exact-commit independent CI replay remains required before T136-T137 or final closeout can complete.
+**Result**: Local focused validation passes Ruff, both Mypy partitions, the API matrix with threshold-passing coverage, 125 frontend tests with threshold-passing coverage, a real bounded Gunicorn readiness probe, Storybook, and all closeout-delta tests. Exact-commit independent CI replay remains required before T136-T137 or final closeout can complete.

@@ -15,6 +15,17 @@ def _get_free_port() -> int:
         return int(s.getsockname()[1])
 
 
+def _terminate_and_collect(proc: subprocess.Popen[str]) -> str:
+    if proc.poll() is None:
+        proc.terminate()
+    try:
+        output, _ = proc.communicate(timeout=5)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        output, _ = proc.communicate(timeout=5)
+    return output
+
+
 def test_gunicorn_serves_health() -> None:
     if sys.platform.startswith('win'):
         pytest.skip('gunicorn not supported on Windows (fcntl missing)')
@@ -64,19 +75,19 @@ def test_gunicorn_serves_health() -> None:
             try:
                 with httpx.Client(timeout=1.0) as client:
                     r = client.get(url)
-                if r.status_code == 200:
+                if r.status_code in {200, 503}:
+                    payload = r.json()
+                    assert isinstance(payload.get('ok'), bool)
+                    assert {'database', 'schema', 'redis', 'celery'} <= set(
+                        payload.get('checks', {})
+                    )
                     return
             except Exception as e:  # noqa: BLE001
                 last_error = e
 
             time.sleep(0.25)
 
-        out = ''
-        if proc.stdout is not None:
-            try:
-                out = proc.stdout.read()
-            except Exception:
-                out = ''
+        out = _terminate_and_collect(proc)
 
         raise AssertionError(
             'gunicorn did not become ready within 20s\n'
@@ -85,9 +96,4 @@ def test_gunicorn_serves_health() -> None:
         )
     finally:
         if proc.poll() is None:
-            proc.terminate()
-            try:
-                proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.wait(timeout=5)
+            _terminate_and_collect(proc)

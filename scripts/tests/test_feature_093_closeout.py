@@ -88,6 +88,7 @@ class Feature093CloseoutTests(unittest.TestCase):
             "api/security/request_auth.py",
             "api/tests/security/test_engagement_policy.py",
             "api/tests/test_engagement_service.py",
+            "api/tests/test_process_model.py",
             "api/tests/test_scheduling_repository.py",
             "django/tests/live_scheduling_race.py",
             "docs/wsl-gate-recovery.md",
