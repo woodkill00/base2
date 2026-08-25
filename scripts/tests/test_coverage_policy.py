@@ -87,6 +87,7 @@ class CoveragePolicyTests(unittest.TestCase):
         result = self.runner.changed_line_result(changed, [{"api/main.py": {5: True, 6: True, 7: False}}], 90)
         self.assertEqual("failed", result["status"])
         self.assertEqual(66.67, result["percent"])
+        self.assertEqual([7], result["files"]["api/main.py"]["missing"])
 
     def test_changed_line_floor_is_not_applicable_without_executable_lines(self):
         result = self.runner.changed_line_result({"docs/readme.md": {1}}, [{}], 90)

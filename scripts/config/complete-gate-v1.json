@@ -552,7 +552,7 @@
       "dependsOn": ["env-tools"],
       "requiredTools": ["{python-api}"],
       "maxAttempts": 2,
-      "retryOn": ["timeout"]
+      "retryOn": ["timeout", "incomplete-test-output"]
     },
     {
       "id": "django-tests",

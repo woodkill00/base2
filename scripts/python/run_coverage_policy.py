@@ -117,12 +117,23 @@ def changed_line_result(changed: dict[str, set[int]], maps: list[dict[str, dict[
         for filename, lines in coverage_map.items():
             combined.setdefault(filename, {}).update(lines)
     measured = []
+    files = {}
     for filename, lines in changed.items():
         instrumented = combined.get(filename, {})
-        measured.extend(instrumented[line] for line in lines if line in instrumented)
+        file_measurements = {line: instrumented[line] for line in lines if line in instrumented}
+        measured.extend(file_measurements.values())
+        if file_measurements:
+            files[filename] = {
+                "covered": sum(file_measurements.values()),
+                "executable": len(file_measurements),
+                "missing": sorted(line for line, covered in file_measurements.items() if not covered),
+            }
     actual = ratio(sum(measured), len(measured)) if measured else None
     status = "not_applicable" if not measured else ("passed" if actual >= floor else "failed")
-    return {"status": status, "covered": sum(measured), "executable": len(measured), "percent": actual, "floor": floor}
+    return {
+        "status": status, "covered": sum(measured), "executable": len(measured),
+        "percent": actual, "floor": floor, "files": files,
+    }
 
 
 def evaluate(policy: dict, reports: dict[str, dict[str, float]], changed_lines: dict | None = None) -> dict:

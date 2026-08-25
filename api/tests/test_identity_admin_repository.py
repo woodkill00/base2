@@ -252,3 +252,150 @@ def test_exact_revocation_and_atomic_recovery_login(monkeypatch):
     assert recovery_connection.committed is True
     assert sum('SET used_at=NOW()' in query for query, _ in recovery_cursor.calls) == 1
     assert sum('SET consumed_at=NOW()' in query for query, _ in recovery_cursor.calls) == 1
+
+
+def test_authenticator_and_login_challenge_lookup_and_exact_consumption(monkeypatch):
+    class LookupCursor(FakeCursor):
+        def fetchone(self):
+            if 'SELECT secret_ciphertext' in self.query:
+                return ('encrypted-secret',)
+            if 'SELECT id, secret_ciphertext' in self.query:
+                return (RECORD_ID, 'encrypted-secret')
+            if 'SELECT id, user_id, ip, user_agent' in self.query:
+                return (RECORD_ID, USER_ID, '127.0.0.1', 'fixture-agent')
+            return super().fetchone()
+
+    cursor = LookupCursor()
+    connection = FakeConnection(cursor)
+
+    @contextmanager
+    def lookup_db(**_kwargs):
+        yield connection
+
+    monkeypatch.setattr(repository, 'db_conn', lookup_db)
+    assert repository.pending_totp(user_id=USER_ID, authenticator_id=RECORD_ID) == 'encrypted-secret'
+    assert repository.active_totp(user_id=USER_ID) == {
+        'id': RECORD_ID,
+        'secret_ciphertext': 'encrypted-secret',
+    }
+    challenge_id = repository.create_login_challenge(
+        user_id=USER_ID, token_hash='hash', ip='127.0.0.1', user_agent='fixture-agent'
+    )
+    assert isinstance(challenge_id, UUID)
+    assert repository.pending_login_challenge(token_hash='hash') == {
+        'id': RECORD_ID,
+        'user_id': USER_ID,
+        'ip': '127.0.0.1',
+        'user_agent': 'fixture-agent',
+    }
+    assert repository.consume_login_challenge(challenge_id=RECORD_ID, user_id=USER_ID)
+    assert repository.consume_recovery_code(user_id=USER_ID, code_hash='recovery-hash')
+    assert any('INSERT INTO api_identity_login_challenges' in query for query, _ in cursor.calls)
+
+
+def test_recovery_replacement_requires_active_authenticator(monkeypatch):
+    class ActiveCursor(FakeCursor):
+        def fetchone(self):
+            if 'FOR UPDATE' in self.query:
+                return (RECORD_ID,)
+            return super().fetchone()
+
+    active_cursor = ActiveCursor()
+    active_connection = FakeConnection(active_cursor)
+
+    @contextmanager
+    def active_db(**_kwargs):
+        yield active_connection
+
+    monkeypatch.setattr(repository, 'db_conn', active_db)
+    repository.replace_recovery_codes(user_id=USER_ID, code_hashes=('hash-a', 'hash-b'))
+    assert active_connection.committed is True
+    assert sum('INSERT INTO api_identity_recovery_codes' in query for query, _ in active_cursor.calls) == 2
+
+    missing_connection = FakeConnection(FakeCursor())
+
+    @contextmanager
+    def missing_db(**_kwargs):
+        yield missing_connection
+
+    monkeypatch.setattr(repository, 'db_conn', missing_db)
+    with pytest.raises(PermissionError, match='mfa_not_enabled'):
+        repository.replace_recovery_codes(user_id=USER_ID, code_hashes=('unused',))
+
+
+def test_invitation_acceptance_and_owner_bootstrap_commit_exact_rows(monkeypatch):
+    class AcceptCursor(FakeCursor):
+        def fetchone(self):
+            if 'FROM api_identity_invitations i' in self.query:
+                return (RECORD_ID, ORG_ID, 'editor')
+            return super().fetchone()
+
+    accept_cursor = AcceptCursor()
+    accept_connection = FakeConnection(accept_cursor)
+
+    @contextmanager
+    def accept_db(**kwargs):
+        assert kwargs == {'tenant_id': 'tenant-a'}
+        yield accept_connection
+
+    monkeypatch.setattr(repository, 'db_conn', accept_db)
+    assert repository.accept_invitation(
+        token_hash='hash', user_id=USER_ID,
+        user_email='invite@example.test', tenant_id='tenant-a',
+    ) == {'organization_id': ORG_ID, 'role': 'editor'}
+    assert accept_connection.committed is True
+
+    bootstrap_cursor = FakeCursor()
+    bootstrap_connection = FakeConnection(bootstrap_cursor)
+
+    @contextmanager
+    def bootstrap_db(**kwargs):
+        assert kwargs == {'tenant_id': 'tenant-new'}
+        yield bootstrap_connection
+
+    monkeypatch.setattr(repository, 'db_conn', bootstrap_db)
+    created = repository.bootstrap_owner_organization(
+        user_id=USER_ID, tenant_id='tenant-new', name='Tenant New'
+    )
+    assert created['role'] == 'owner'
+    assert bootstrap_connection.committed is True
+    assert any('pg_advisory_xact_lock' in query for query, _ in bootstrap_cursor.calls)
+
+
+def test_role_update_denies_unauthorized_actor_and_stale_target(monkeypatch):
+    class RoleSequenceCursor(FakeCursor):
+        def __init__(self, rows):
+            super().__init__()
+            self.rows = list(rows)
+
+        def fetchone(self):
+            return self.rows.pop(0) if self.rows else None
+
+    denied_cursor = RoleSequenceCursor([('viewer',)])
+    denied_connection = FakeConnection(denied_cursor)
+
+    @contextmanager
+    def denied_db(**_kwargs):
+        yield denied_connection
+
+    monkeypatch.setattr(repository, 'db_conn', denied_db)
+    with pytest.raises(PermissionError, match='not_found'):
+        repository.update_member_role(
+            organization_id=ORG_ID, actor_id=USER_ID, member_id=RECORD_ID,
+            new_role='editor', expected_updated_at=datetime.now(timezone.utc),
+        )
+    assert denied_connection.rolled_back is True
+
+    stale_cursor = RoleSequenceCursor([('owner',), None])
+    stale_connection = FakeConnection(stale_cursor)
+
+    @contextmanager
+    def stale_db(**_kwargs):
+        yield stale_connection
+
+    monkeypatch.setattr(repository, 'db_conn', stale_db)
+    assert repository.update_member_role(
+        organization_id=ORG_ID, actor_id=USER_ID, member_id=RECORD_ID,
+        new_role='editor', expected_updated_at=datetime.now(timezone.utc),
+    ) is False
+    assert stale_connection.rolled_back is True

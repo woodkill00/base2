@@ -966,3 +966,35 @@ a separately reviewed migration with proof-of-control and rollback requirements.
   is bypassed.
 
 **Result**: All 17 identity domain/no-public-admin tests pass with plain assertions. The second failed gate remains retained, and a new exact-commit gate is required. The persistent native WSL instability remains a host risk and is not classified as an application pass.
+
+## Cycle 57 - Partitioned API coverage isolation
+
+**Findings**:
+
+1. After a clean WSL restart, the unchanged visual harness passed all six cases, proving the prior Rollup failure was transient host corruption.
+2. The full API suite completed its assertions but aborted while the forced C tracer generated coverage; the pure-Python tracer also SIGSEGVed during collection. The shared factor is long-lived whole-suite tracing on this WSL runtime.
+3. Retrying the same monolithic interpreter cannot isolate corrupted tracer state and consumed both bounded attempts.
+
+**Corrections**:
+
+- Replaced the monolithic API coverage process with an exact sorted test-file inventory partitioned into bounded groups of eight.
+- Each partition runs the same marker exclusion and API source coverage in a fresh interpreter, retries only native abort/segfault exits once, discards failed fragments, and fails visibly on any ordinary test failure.
+- Coverage data is combined only after every partition passes, then emitted to the same required `api.json` policy input. Unit tests bind ordering, exactly-once inventory flattening, and partition bounds.
+
+**Result**: The third failed gate remains preserved. The partitioned runner must produce a valid complete API coverage artifact and pass the unchanged coverage policy before another exact-commit gate. No test, source package, marker, coverage threshold, or required node was removed.
+
+## Cycle 58 - Partition retry and changed-line recovery
+
+**Findings**:
+
+1. Six isolated API partitions completed all 165 selected tests, including one transparently retained native-crash retry, but the first fresh coverage JSON process then received SIGSEGV.
+2. Retrying that read-only report command in a fresh interpreter succeeded, proving combined data remained valid.
+3. The first valid partitioned report exposed changed-line coverage at 89.2%, below the unchanged 90% policy, primarily because several new identity repository branches lacked direct tests.
+
+**Corrections**:
+
+- Applied the same one-retry native-crash boundary to coverage combine/report processes, retained raw fragments through combine, removed partial output before retry, and added ordinary-failure/no-retry regressions.
+- Added direct repository coverage for authenticator lookup, challenge creation/consumption, recovery replacement, invitation acceptance, owner bootstrap, and unauthorized/stale role updates.
+- Extended coverage evidence with per-file executable, covered, and missing changed lines so future shortfalls identify actionable locations instead of only a global percentage.
+
+**Result**: All 165 API tests pass across six isolated coverage partitions, a valid combined report is produced, and the unchanged coverage policy passes at 90.12% changed lines. Identity repository coverage is 91%; the partition/retry and policy tests pass. Host SIGSEGV remains visible and bounded rather than silently ignored.
