@@ -14,7 +14,7 @@ Each requirement has an implementation task and failure-oriented evidence. Share
 | FR-008      | T035,T037,T043,T045,T117,T118,T127,T128,T131-T133 | TTL/race/resource/state recovery plus bounded live-adapter and zero-inventory receipts                    |
 | FR-009      | T038,T039,T045                                    | DNS transaction/rollback/SAN/stale-record matrix                                                          |
 | FR-010      | T040,T041,T045                                    | Redacted integrity/cost evidence                                                                          |
-| FR-011      | T012-T019,T022,T025,T109,T110,T126                | Complete gate manifest, drift lock, two exact gates, and injected family failures                         |
+| FR-011      | T012-T019,T022,T025,T109,T110,T126,T136,T137      | Complete gate manifest, drift lock, two exact gates/matrices, and injected family failures                |
 | FR-012      | T018,T019                                         | Workflow policy fixtures and required CI                                                                  |
 | FR-013      | T012-T014,T025                                    | Explicit status schema/summary tests                                                                      |
 | FR-014      | T015,T025,T129,T130                               | Clean Linux container root suite plus isolated service-environment and interpreter-resolution regressions |
@@ -53,7 +53,7 @@ Each requirement has an implementation task and failure-oriented evidence. Share
 | FR-047      | T081-T085,T091                                    | Hostile module/capability non-escalation tests                                                            |
 | FR-048      | T008,T050,T051                                    | Ancestry guard and reviewed port map/diffs                                                                |
 | FR-049      | T050-T053                                         | Storybook/token/component/state contracts                                                                 |
-| FR-050      | T052-T054,T069,T111                               | Deterministic full visual state matrix                                                                    |
+| FR-050      | T052-T054,T069,T111,T138                          | Deterministic full visual state matrix and async-render stability                                         |
 | FR-051      | T093,T094,T099,T117,T118,T124                     | Fault/resource/capacity telemetry and alert evidence                                                      |
 | FR-052      | T095,T096,T099,T112,T127,T128                     | Bounded state/restore/DR/cert drills with RPO/RTO                                                         |
 | FR-053      | T042,T097,T098,T112                               | Immutable/migration/traffic/rollback observations                                                         |
@@ -68,7 +68,7 @@ Each requirement has an implementation task and failure-oriented evidence. Share
 | Story | Completion evidence                                     |
 | ----- | ------------------------------------------------------- |
 | US1   | T045 three exact live lease/teardown receipts           |
-| US2   | T025 then T109-T114 honest complete gates and analysis  |
+| US2   | T025 then T109-T114 and T136-T137 exact gates/analysis  |
 | US3   | T048-T055 two manifest-driven fixture brands            |
 | US4   | T069 public experience acceptance bundle                |
 | US5   | T080 two-tenant identity/admin acceptance bundle        |
