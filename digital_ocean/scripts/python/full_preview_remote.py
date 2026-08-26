@@ -26,15 +26,20 @@ TOKEN_SHAPE = re.compile(r"(?<![A-Za-z0-9])[A-Za-z0-9_./+=-]{32,}(?![A-Za-z0-9])
 def safe_diagnostic(stdout: str, stderr: str) -> str:
     """Return a bounded, line-filtered build diagnostic safe for operator evidence."""
     retained = []
+    stage_markers = []
     for raw in (stderr + "\n" + stdout).splitlines():
         line = raw.strip()
         if not line:
+            continue
+        if line.startswith("full-preview-stage-failed:"):
+            stage_markers.append(line)
             continue
         if SENSITIVE_LINE.search(line):
             retained.append("[redacted sensitive diagnostic line]")
             continue
         retained.append(TOKEN_SHAPE.sub("[redacted-token]", line))
-    return " | ".join(retained[-12:])[:2000] or "no safe remote diagnostic"
+    selected = retained[-11:] + stage_markers[-1:]
+    return " | ".join(selected)[:2000] or "no safe remote diagnostic"
 
 class FullPreviewSshBootstrap:
     def __init__(self, *, known_hosts: Path, owner_cidr: str, operator_auth: Path, flower_auth: Path,
