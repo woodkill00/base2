@@ -87,15 +87,15 @@
 
 ## Phase 9 - Live acceptance and closeout
 
-- [ ] T062 Commit and push the exact feature branch.
-- [ ] T063 Publish a PR and require all checks green before merge.
-- [ ] T064 Merge and deploy one bounded staging-certificate canary from exact `main`.
-- [ ] T065 Verify authoritative/public/system DNS and exact-address browser evidence separately.
-- [ ] T066 Review the generated visual evidence index and authenticated operator screenshots.
-- [ ] T067 Prove persistent expiry is armed and observable.
-- [ ] T068 Perform exact teardown and immediate idempotent replay.
-- [ ] T069 Verify zero exact-owned provider resources and no unrelated mutation.
-- [ ] T070 Record final evidence, mark every task complete, and close the feature.
+- [x] T062 Commit and push the exact feature branch.
+- [x] T063 Publish a PR and require all checks green before merge.
+- [x] T064 Merge and deploy one bounded staging-certificate canary from exact `main`.
+- [x] T065 Verify authoritative/public/system DNS and exact-address browser evidence separately.
+- [x] T066 Review the generated visual evidence index and authenticated operator screenshots.
+- [x] T067 Prove persistent expiry is armed and observable.
+- [x] T068 Perform exact teardown and immediate idempotent replay.
+- [x] T069 Verify zero exact-owned provider resources and no unrelated mutation.
+- [x] T070 Record final evidence, mark every task complete, and close the feature.
 
 ## Additional tasks from refinement
 
@@ -125,3 +125,7 @@
 - [x] T094 Add crash-before-lease, crash-during-DNS, all-controllers-offline, and next-boot recovery tests.
 - [x] T095 Add deterministic contact-sheet generation and evidence-bundle integrity verification.
 - [x] T096 Re-run complete traceability after all additional tasks and require zero uncovered requirements.
+- [x] T097 Normalize signed fractional RFC 3339 expiry timestamps into portable systemd calendar syntax.
+- [x] T098 Replace session-scoped transient timers with owner-only durable enabled user service/timer files.
+- [x] T099 Prove the durable timer survives a fresh WSL session and user-manager daemon re-exec.
+- [x] T100 Remove exact durable expiry unit files during teardown and prove idempotent cleanup replay.
