@@ -1,0 +1,12 @@
+[Unit]
+Description=Bounded expiry timer for Base2 full preview %i
+
+[Timer]
+OnActiveSec=1min
+OnUnitActiveSec=1min
+AccuracySec=10s
+Persistent=true
+Unit=base2-full-preview-expiry@%i.service
+
+[Install]
+WantedBy=timers.target

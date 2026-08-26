@@ -39,10 +39,20 @@ if [ -f "$STATIC_TEMPLATE_PATH" ]; then
   envsubst < "$STATIC_TEMPLATE_PATH" > "$STATIC_OUTPUT_PATH"
 fi
 
-DYNAMIC_TEMPLATE_PATH="/etc/traefik/templates/dynamic.yml.template"
-if [ "${TRAEFIK_CANARY_MODE:-false}" = "true" ]; then
-  DYNAMIC_TEMPLATE_PATH="/etc/traefik/templates/dynamic-canary.yml.template"
+mode="${TRAEFIK_PREVIEW_MODE:-}"
+if [ -z "$mode" ]; then
+  if [ "${TRAEFIK_CANARY_MODE:-false}" = "true" ]; then mode="minimal-canary"; else mode="local"; fi
 fi
+case "$mode" in
+  local) DYNAMIC_TEMPLATE_PATH="/etc/traefik/templates/dynamic.yml.template" ;;
+  minimal-canary) DYNAMIC_TEMPLATE_PATH="/etc/traefik/templates/dynamic-canary.yml.template" ;;
+  full-preview)
+    [ -n "${OWNER_ALLOWLIST_CSV:-}" ] || { echo "Full preview owner allowlist is missing" >&2; exit 78; }
+    [ -n "${TRAEFIK_DASH_BASIC_USERS:-}" ] || { echo "Full preview edge authentication is missing" >&2; exit 78; }
+    DYNAMIC_TEMPLATE_PATH="/etc/traefik/templates/dynamic-full-preview.yml.template"
+    ;;
+  *) echo "Unknown Traefik preview mode" >&2; exit 78 ;;
+esac
 DYNAMIC_OUTPUT_PATH="/tmp/dynamic.yml"
 if [ -f "$DYNAMIC_TEMPLATE_PATH" ]; then
   envsubst < "$DYNAMIC_TEMPLATE_PATH" > "$DYNAMIC_OUTPUT_PATH"

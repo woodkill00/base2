@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://base2.invalid/schemas/preview-lease-v2.json",
+  "title": "Base2 Preview Lease V2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "runId",
+    "state",
+    "armedAt",
+    "expiresAt",
+    "sourceCommit",
+    "sourceArchiveSha256",
+    "profileId",
+    "profileDigest",
+    "droplet",
+    "dnsRecords",
+    "ownerAdmissionDigest",
+    "certificateMode",
+    "integritySha256"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "runId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{7,80}$" },
+    "state": {
+      "enum": [
+        "prepared",
+        "compute-bound",
+        "dns-bound",
+        "deploying",
+        "live-verified",
+        "teardown-requested",
+        "compute-delete-pending",
+        "dns-cleanup-pending",
+        "destroyed",
+        "blocked"
+      ]
+    },
+    "armedAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" },
+    "sourceCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "sourceArchiveSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "profileId": { "const": "base2-obsidian" },
+    "profileDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "droplet": { "type": ["object", "null"] },
+    "dnsRecords": { "type": "array", "maxItems": 8, "items": { "type": "object" } },
+    "ownerAdmissionDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "certificateMode": { "const": "letsencrypt-staging-only" },
+    "integritySha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}

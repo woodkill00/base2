@@ -2,12 +2,14 @@
   "algorithm": "sha256",
   "groups": {
     "config": {
-      ".env.example": "a775fcf91e94fe48a6a373807ffc11964fabd5f42497a013489381caf9cb4358",
+      ".env.example": "efec10c680bbc4aec573a704b751b041a6fa69e6bfa8185837b93382a4d74577",
+      "api/site_profiles/base2-obsidian.json": "55d8c456c9b5e0144651de543a5b7dafa0b9595e49fa823c2cce9d7209d9e920",
       "api/site_profiles/ember-studio.json": "b6b57abe7c80247917a1cc0ccdf08f3cddb2efd503091b73fb9d0e58d4c7fcae",
-      "api/site_profiles/index.json": "8226b1bc4267d0aa856395d7a2b883cca8bdd88e34c31d840c2522b07e57f4a1",
+      "api/site_profiles/index.json": "887765b4c6d39198f2025ef28fd0f2ba075b92a169b4a4fc1dc2bfb5edede7fb",
       "api/site_profiles/northstar-library.json": "286850ced5758a336b8c7a82e345f57baa9d4686b39d209311178b6eaa5351f5",
+      "django/site_profiles/base2-obsidian.json": "55d8c456c9b5e0144651de543a5b7dafa0b9595e49fa823c2cce9d7209d9e920",
       "django/site_profiles/ember-studio.json": "b6b57abe7c80247917a1cc0ccdf08f3cddb2efd503091b73fb9d0e58d4c7fcae",
-      "django/site_profiles/index.json": "8226b1bc4267d0aa856395d7a2b883cca8bdd88e34c31d840c2522b07e57f4a1",
+      "django/site_profiles/index.json": "887765b4c6d39198f2025ef28fd0f2ba075b92a169b4a4fc1dc2bfb5edede7fb",
       "django/site_profiles/northstar-library.json": "286850ced5758a336b8c7a82e345f57baa9d4686b39d209311178b6eaa5351f5",
       "scripts/config/complete-gate-v1.json": "fc7913f420392849dbfdade76401d807f1d7853b78fe1e54f17622642a399ea2",
       "shared/config/design-system-v1.json": "dc6ceb96c6a608f71c105ad928ab57acdfd7d9ad404d7dca32e6c7cf2d2a9dea",
@@ -26,8 +28,9 @@
       "docs/website-factory.md": "6fbe524d06e3d0a06625d27cffca95282532b46f5f59673aa07cb866581373ad"
     },
     "generatedClient": {
+      "react-app/src/config/generated/base2-obsidian.json": "55d8c456c9b5e0144651de543a5b7dafa0b9595e49fa823c2cce9d7209d9e920",
       "react-app/src/config/generated/ember-studio.json": "b6b57abe7c80247917a1cc0ccdf08f3cddb2efd503091b73fb9d0e58d4c7fcae",
-      "react-app/src/config/generated/index.json": "8226b1bc4267d0aa856395d7a2b883cca8bdd88e34c31d840c2522b07e57f4a1",
+      "react-app/src/config/generated/index.json": "887765b4c6d39198f2025ef28fd0f2ba075b92a169b4a4fc1dc2bfb5edede7fb",
       "react-app/src/config/generated/northstar-library.json": "286850ced5758a336b8c7a82e345f57baa9d4686b39d209311178b6eaa5351f5",
       "react-app/src/lib/apiClient.js": "91b54b08ff584ea16ff36d69a7b82428f65486cec3a4ccb6ae152e026cdf8eb9",
       "react-app/src/lib/apiErrors.js": "b0a44297eaf887077e7656d1cdb3f1f5741bcdfa60e4e70ffdabe60d59b0741d"
@@ -76,7 +79,7 @@
       "specs/001-django-fastapi-react/contracts/openapi.yaml": "f96ae1b450ed0e54406f0b40a301dab36c1b09d9eb9886fd2cb9d18db728deed"
     },
     "routeInventory": {
-      "api/main.py": "a08e69bcbe382dd330f72111589eada7d1b7049624074c0d8aa816b6ca09b368",
+      "api/main.py": "76120bb82429023aee25eff9970713576988a011177420736455883cf8a67527",
       "api/routes/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "api/routes/auth.py": "961cc074c8457957aaf5a799f82dd53b51f88599f9eae24dd65878218d4e9ad8",
       "api/routes/engagement.py": "f26e86d78daab93ef74a8d547b2b4ec1a3035ebf2f13e9a886a2accd772f016e",

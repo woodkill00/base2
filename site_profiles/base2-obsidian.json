@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "siteId": "base2-obsidian",
+  "slug": "base2",
+  "name": "Base2",
+  "legalName": "Base2 Reference Foundation",
+  "domains": [
+    { "host": "base2.example", "kind": "canonical" },
+    { "host": "preview.base2.example", "kind": "preview" }
+  ],
+  "brand": {
+    "theme": "obsidian",
+    "logo": "/base2-mark.svg",
+    "voice": "A secure, observable, full-stack foundation for building distinctive websites without starting over."
+  },
+  "navigation": [
+    { "label": "Home", "path": "/" },
+    { "label": "Explore", "path": "/content", "module": "content" },
+    { "label": "Search", "path": "/search", "module": "search" },
+    { "label": "Contact", "path": "/contact", "module": "forms" }
+  ],
+  "seo": {
+    "titleTemplate": "%s · Base2",
+    "description": "Base2 is the reusable Obsidian full-stack website foundation.",
+    "indexing": "deny"
+  },
+  "legal": {
+    "privacyPath": "/privacy",
+    "termsPath": "/terms",
+    "accessibilityPath": "/accessibility"
+  },
+  "locales": ["en"],
+  "defaultLocale": "en",
+  "consent": { "mode": "essential-only" },
+  "analytics": { "enabled": false, "provider": "none" },
+  "contact": { "enabled": true, "retentionDays": 30 },
+  "media": { "maxBytes": 10485760, "allowedTypes": ["image/jpeg", "image/png", "image/webp"] },
+  "search": { "enabled": true },
+  "modules": [
+    { "id": "accounts", "version": "1.0.0", "enabled": true },
+    { "id": "content", "version": "1.0.0", "enabled": true },
+    { "id": "forms", "version": "1.0.0", "enabled": true },
+    { "id": "search", "version": "1.0.0", "enabled": true },
+    { "id": "commerce", "version": "1.0.0", "enabled": true }
+  ],
+  "operationsProfile": "preview",
+  "previewPolicy": { "ttlMinutes": 60, "idleAction": "destroy" }
+}

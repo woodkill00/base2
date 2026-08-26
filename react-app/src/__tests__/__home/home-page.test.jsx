@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import TestMemoryRouter from '../../test/TestMemoryRouter';
 
 import Home from '../../pages/Home';
+import { siteManifest } from '../../config/siteRuntime';
 
 describe('Home page (public)', () => {
   test('renders all main sections', () => {
@@ -17,7 +18,11 @@ describe('Home page (public)', () => {
     expect(screen.getByRole('heading', { name: /build better with/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /enabled capabilities/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /beautiful by design/i })).toBeInTheDocument();
-    expect(screen.getByText(/consent: opt-in/i)).toBeInTheDocument();
+    expect(screen.getByText(`Consent: ${siteManifest.consent.mode}`)).toBeInTheDocument();
+    expect(screen.getByTestId('base2-obsidian-navigation')).toBeInTheDocument();
+    expect(screen.getByTestId('base2-obsidian-ops')).toBeInTheDocument();
+    expect(screen.getByTestId('base2-thermal-security')).toBeInTheDocument();
+    expect(screen.getByTestId('base2-contact-section')).toBeInTheDocument();
     expect(screen.getByRole('contentinfo', { name: /footer/i })).toBeInTheDocument();
   });
 
@@ -34,7 +39,7 @@ describe('Home page (public)', () => {
     const secondary = screen.getByRole('button', { name: /accessibility/i });
 
     // Tab through focusables until we hit the hero CTAs.
-    for (let i = 0; i < 20; i += 1) {
+    for (let i = 0; i < 50; i += 1) {
       // eslint-disable-next-line no-await-in-loop
       await user.tab();
 

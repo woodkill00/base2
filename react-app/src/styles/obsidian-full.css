@@ -1,0 +1,116 @@
+/* Complete Base2 Obsidian experience layered over the compact shared home styles. */
+.home-page-root {
+  --obsidian-primary: #ff3131;
+  --obsidian-accent: #ff6321;
+  --obsidian-surface: #0b0b0d;
+  color: #f8f8fa;
+  background:
+    radial-gradient(circle at 15% 15%, rgba(255,49,49,.13), transparent 28rem),
+    radial-gradient(circle at 85% 45%, rgba(255,99,33,.08), transparent 30rem),
+    linear-gradient(155deg, #121216 0%, #070708 52%, #101014 100%);
+}
+.home-page-root .gradient-background {
+  position: fixed; inset: 0; pointer-events: none;
+  background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(to bottom, black, transparent 88%);
+}
+.home-page-root main { overflow: clip; }
+.home-obsidian-title { color: var(--obsidian-primary); text-shadow: 0 0 28px rgba(255,49,49,.34); }
+.home-obsidian-eyebrow,.home-section-kicker,.home-panel-title,.home-command-topline,
+.home-runtime-header,.home-secure-pill,.home-obsidian-status-pill {
+  color: #ffb3a0; font: 700 .72rem/1.3 ui-monospace,monospace;
+  letter-spacing: .12em; text-transform: uppercase;
+}
+.home-obsidian-panel,.home-command-stack,.home-visual-console,.home-boot-panel,
+.home-command-palette-preview,.home-utility-rail-preview,.home-thermal-panel,
+.home-security-log-panel,.home-seismic-panel,.base2-section-shell {
+  border: 1px solid rgba(255,99,33,.25);
+  background: linear-gradient(145deg,rgba(25,25,29,.9),rgba(7,7,9,.92));
+  box-shadow: 0 24px 70px rgba(0,0,0,.42),inset 0 1px rgba(255,255,255,.06);
+}
+.home-obsidian-section,.base2-viewport-section {
+  position: relative; min-height: min(900px,100svh); display: grid; align-items: center;
+  padding: clamp(5rem,8vw,8rem) max(1rem,calc((100vw - 1200px)/2));
+}
+.home-obsidian-section-head { max-width: 760px; margin-bottom: 2rem; }
+.home-obsidian-section-head h2 { margin:.55rem 0; font-size:clamp(2rem,4vw,3.75rem); }
+.home-obsidian-section-head p { color:rgba(248,248,250,.67); font-size:clamp(1rem,1.4vw,1.2rem); }
+.home-ops-grid,.home-thermal-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; }
+.home-panel-title,.home-security-heading,.home-command-search-row,.home-command-preview-item,
+.home-boot-line,.home-security-log-row,.home-thermal-zone {
+  display:flex; align-items:center; justify-content:space-between; gap:.75rem;
+}
+.home-boot-panel,.home-command-palette-preview,.home-utility-rail-preview,
+.home-thermal-panel,.home-security-log-panel,.home-seismic-panel { padding:1.25rem; border-radius:14px; }
+.home-boot-lines,.home-command-preview-list,.home-security-log-list { display:grid; gap:.65rem; margin-top:1rem; }
+.home-boot-line,.home-command-preview-item,.home-security-log-row,.home-command-search-row,.home-thermal-zone {
+  padding:.7rem .8rem; border:1px solid rgba(255,255,255,.07); border-radius:8px;
+  background:rgba(255,255,255,.025); font:600 .75rem/1.3 ui-monospace,monospace;
+}
+.home-boot-line span,.home-command-preview-item span,.home-security-log-row span,
+.home-thermal-zone span,.home-command-search-row span { color:rgba(248,248,250,.57); }
+.home-boot-line strong,.home-command-preview-item strong,.home-security-log-row strong,
+.home-thermal-zone strong { color:#f8f8fa; }
+.home-boot-progress,.home-thermal-meter { height:5px; overflow:hidden; border-radius:9px;background:#242429; }
+.home-boot-progress span,.home-thermal-meter i { display:block;height:100%;background:linear-gradient(90deg,#ff3131,#ff8a30);box-shadow:0 0 14px #ff3131; }
+.home-utility-icons,.home-seismic-bars { display:flex;align-items:end;justify-content:space-between;gap:.45rem;margin-top:1rem; }
+.home-utility-icon { display:grid;place-items:center;width:2.4rem;height:2.4rem;border-radius:50%;background:#1c1c20;color:#ff8266; }
+.home-seismic-bars span { flex:1;min-height:8px;background:linear-gradient(#ff6321,#ff3131);border-radius:2px; }
+.base2-section-shell { width:min(1100px,100%); margin:auto; padding:clamp(1.4rem,3vw,2.8rem); border-radius:18px; }
+.base2-integrated-about .base2-section-shell,.base2-integrated-contact .base2-section-shell {
+  display:grid;grid-template-columns:.9fr 1.1fr;gap:clamp(1.5rem,4vw,3.5rem);align-items:center;
+}
+.base2-integrated-projects .base2-project-grid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem; }
+.base2-integrated-projects article,.base2-integrated-contact form {
+  padding:1.2rem;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(255,255,255,.025);
+}
+.base2-integrated-contact input,.base2-integrated-contact textarea {
+  width:100%;margin:.35rem 0 1rem;padding:.8rem;border:1px solid rgba(255,255,255,.14);
+  border-radius:8px;background:#101014;color:#fff;
+}
+.base2-integrated-contact button { padding:.8rem 1.15rem;border:0;border-radius:8px;background:linear-gradient(90deg,#ff3131,#ff6321);color:#fff;font-weight:800; }
+.home-obsidian-nav-layer { position:relative;z-index:9000;--obsidian-primary:#ff3131;--obsidian-accent:#ff6321; }
+.home-left-menu-toggle,.home-right-utility-toggle,.home-movement-button {
+  position:fixed;z-index:9020;display:grid;place-items:center;width:46px;height:46px;border:1px solid rgba(255,99,33,.45);
+  border-radius:50%;background:rgba(10,10,12,.92);color:#ff8064;box-shadow:0 10px 30px #0008;
+}
+.home-left-menu-toggle { left:18px;top:82px; }
+.home-right-utility-toggle { right:18px;top:82px; }
+.home-left-command-backdrop { position:fixed;inset:0;z-index:8990;border:0;background:#0006; }
+.home-left-command-menu,.home-right-utility-panel {
+  position:fixed;z-index:9010;top:74px;bottom:18px;width:min(420px,calc(100vw - 28px));padding:1.25rem;
+  overflow:auto;border:1px solid rgba(255,99,33,.28);border-radius:12px;background:rgba(9,9,11,.97);
+  box-shadow:0 30px 80px #000b;transition:transform .22s ease;
+}
+.home-left-command-menu { left:7px;transform:translateX(calc(-100% - 20px)); }
+.home-left-command-menu.is-open { transform:none; }
+.home-right-utility-panel { right:7px;transform:translateX(calc(100% + 20px)); }
+.home-right-utility-menu.is-open .home-right-utility-panel { transform:none; }
+.home-left-command-list,.home-left-command-switches,.home-right-utility-scroll { display:grid;gap:.55rem;margin-top:1rem; }
+.home-left-command-list button,.home-right-utility-icon,.home-right-utility-nav-toggle button {
+  display:flex;align-items:center;gap:.75rem;width:100%;padding:.75rem;border:1px solid rgba(255,255,255,.07);
+  border-radius:8px;background:#151519;color:#eee;text-align:left;
+}
+.home-left-command-list button:hover,.home-left-command-list button:focus-visible,
+.home-right-utility-icon:hover { border-color:#ff6321;background:#211512; }
+.home-left-command-switches label { display:flex;justify-content:space-between;padding:.5rem;color:#bbb; }
+.home-bottom-movement-controls { position:fixed;right:18px;bottom:18px;z-index:9020;display:flex;gap:.5rem; }
+.home-bottom-movement-controls .home-movement-button { position:static; }
+.home-command-palette-modal { position:fixed;z-index:9050;inset:12vh max(1rem,calc((100vw - 700px)/2)) auto;padding:1rem;border:1px solid #ff632166;border-radius:12px;background:#0a0a0df5;box-shadow:0 35px 90px #000d; }
+.home-command-palette-list { display:grid;gap:.45rem;margin-top:.75rem; }
+.home-command-palette-list button { width:100%;padding:.8rem;border:1px solid #ffffff12;border-radius:7px;background:#151519;color:#fff;text-align:left; }
+.home-active-section-output { position:fixed;left:76px;bottom:22px;z-index:9010;padding:.5rem .75rem;border:1px solid #ff632144;border-radius:20px;background:#0a0a0ddd;color:#ffb09d;font:700 .68rem ui-monospace,monospace; }
+@media(max-width:900px){
+  .home-ops-grid,.home-thermal-grid,.base2-integrated-projects .base2-project-grid{grid-template-columns:1fr}
+  .base2-integrated-about .base2-section-shell,.base2-integrated-contact .base2-section-shell{grid-template-columns:1fr}
+}
+@media(max-width:620px){
+  .home-obsidian-section,.base2-viewport-section{min-height:auto;padding-block:5rem}
+  .home-left-menu-toggle{left:10px}.home-right-utility-toggle{right:10px}
+  .home-bottom-movement-controls{right:10px;bottom:10px}
+}
+@media(prefers-reduced-motion:reduce){
+  .home-left-command-menu,.home-right-utility-panel{transition:none}
+}

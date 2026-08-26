@@ -1,0 +1,152 @@
+http:
+  routers:
+    http-catchall:
+      rule: HostRegexp(`{host:.+}`)
+      entryPoints: [web]
+      middlewares: [redirect-to-https]
+      service: noop@internal
+
+    frontend:
+      rule: Host(`${WEBSITE_DOMAIN}`) && PathPrefix(`/`)
+      priority: 100
+      entryPoints: [websecure]
+      middlewares: [preview-public-security, preview-rate-limit]
+      tls:
+        certResolver: ${TRAEFIK_CERT_RESOLVER}
+        domains:
+          - main: ${WEBSITE_DOMAIN}
+            sans:
+              - admin.${WEBSITE_DOMAIN}
+              - swagger.${WEBSITE_DOMAIN}
+              - traefik.${WEBSITE_DOMAIN}
+              - pgadmin.${WEBSITE_DOMAIN}
+              - flower.${WEBSITE_DOMAIN}
+      service: frontend
+
+    api:
+      rule: Host(`${WEBSITE_DOMAIN}`) && PathPrefix(`/api`)
+      priority: 200
+      entryPoints: [websecure]
+      middlewares: [preview-public-security, preview-rate-limit]
+      tls: {certResolver: ${TRAEFIK_CERT_RESOLVER}}
+      service: api
+
+    django-admin-root:
+      rule: Host(`admin.${WEBSITE_DOMAIN}`) && Path(`/`)
+      priority: 211
+      entryPoints: [websecure]
+      middlewares: [owner-allow-ip, operator-basic-auth, preview-operator-security, admin-root-redirect]
+      tls: {certResolver: ${TRAEFIK_CERT_RESOLVER}}
+      service: noop@internal
+
+    django-admin:
+      rule: Host(`admin.${WEBSITE_DOMAIN}`) && PathPrefix(`/admin`)
+      priority: 210
+      entryPoints: [websecure]
+      middlewares: [owner-allow-ip, operator-basic-auth, preview-operator-security]
+      tls: {certResolver: ${TRAEFIK_CERT_RESOLVER}}
+      service: django
+
+    django-static:
+      rule: Host(`admin.${WEBSITE_DOMAIN}`) && PathPrefix(`/static`)
+      priority: 212
+      entryPoints: [websecure]
+      middlewares: [owner-allow-ip, operator-basic-auth, preview-operator-security]
+      tls: {certResolver: ${TRAEFIK_CERT_RESOLVER}}
+      service: django-static
+
+    swagger-root:
+      rule: Host(`swagger.${WEBSITE_DOMAIN}`) && Path(`/`)
+      priority: 221
+      entryPoints: [websecure]
+      middlewares: [owner-allow-ip, operator-basic-auth, preview-operator-security, swagger-root-redirect]
+      tls: {certResolver: ${TRAEFIK_CERT_RESOLVER}}
+      service: noop@internal
+
+    swagger:
+      rule: Host(`swagger.${WEBSITE_DOMAIN}`) && (PathPrefix(`/docs`) || Path(`/openapi.json`) || PathPrefix(`/redoc`))
+      priority: 220
+      entryPoints: [websecure]
+      middlewares: [owner-allow-ip, operator-basic-auth, preview-swagger-security, preview-rate-limit]
+      tls: {certResolver: ${TRAEFIK_CERT_RESOLVER}}
+      service: api
+
+    traefik-dashboard:
+      rule: Host(`traefik.${WEBSITE_DOMAIN}`)
+      priority: 230
+      entryPoints: [websecure]
+      middlewares: [owner-allow-ip, operator-basic-auth, preview-operator-security]
+      tls: {certResolver: ${TRAEFIK_CERT_RESOLVER}}
+      service: api@internal
+
+    pgadmin:
+      rule: Host(`pgadmin.${WEBSITE_DOMAIN}`)
+      priority: 230
+      entryPoints: [websecure]
+      middlewares: [owner-allow-ip, operator-basic-auth, preview-operator-security]
+      tls: {certResolver: ${TRAEFIK_CERT_RESOLVER}}
+      service: pgadmin
+
+    flower:
+      rule: Host(`flower.${WEBSITE_DOMAIN}`)
+      priority: 230
+      entryPoints: [websecure]
+      middlewares: [owner-allow-ip, operator-basic-auth, preview-operator-security]
+      tls: {certResolver: ${TRAEFIK_CERT_RESOLVER}}
+      service: flower
+
+  services:
+    frontend:
+      loadBalancer: {servers: [{url: "http://react-app:8080"}]}
+    api:
+      loadBalancer: {servers: [{url: "http://api:${FASTAPI_PORT}"}]}
+    django:
+      loadBalancer: {servers: [{url: "http://django:${DJANGO_PORT}"}]}
+    django-static:
+      loadBalancer: {servers: [{url: "http://nginx-static:8081"}]}
+    pgadmin:
+      loadBalancer: {servers: [{url: "http://pgadmin:8080"}]}
+    flower:
+      loadBalancer: {servers: [{url: "http://flower:5555"}]}
+
+  middlewares:
+    redirect-to-https:
+      redirectScheme: {scheme: https, port: 443, permanent: true}
+    owner-allow-ip:
+      ipAllowList:
+        sourceRange: [${OWNER_ALLOWLIST_CSV}]
+    operator-basic-auth:
+      basicAuth:
+        users: ['${TRAEFIK_DASH_BASIC_USERS}']
+        removeHeader: true
+    preview-rate-limit:
+      rateLimit: {average: 100, burst: 50}
+    preview-public-security:
+      headers:
+        stsSeconds: 0
+        frameDeny: true
+        contentTypeNosniff: true
+        referrerPolicy: no-referrer
+        permissionsPolicy: camera=(), geolocation=(), microphone=(), payment=(), usb=()
+        contentSecurityPolicy: "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; font-src 'self' data:"
+        customResponseHeaders: {X-Robots-Tag: 'noindex, nofollow, noarchive'}
+    preview-operator-security:
+      headers:
+        stsSeconds: 0
+        frameDeny: true
+        contentTypeNosniff: true
+        referrerPolicy: no-referrer
+        permissionsPolicy: camera=(), geolocation=(), microphone=(), payment=(), usb=()
+        customResponseHeaders: {X-Robots-Tag: 'noindex, nofollow, noarchive', Cache-Control: 'no-store'}
+    preview-swagger-security:
+      headers:
+        stsSeconds: 0
+        frameDeny: true
+        contentTypeNosniff: true
+        referrerPolicy: no-referrer
+        contentSecurityPolicy: "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' data:; worker-src 'self' blob:"
+        customResponseHeaders: {X-Robots-Tag: 'noindex, nofollow, noarchive', Cache-Control: 'no-store'}
+    admin-root-redirect:
+      redirectRegex: {regex: '^https?://([^/]+)/?$', replacement: 'https://$1/admin/', permanent: false}
+    swagger-root-redirect:
+      redirectRegex: {regex: '^https?://([^/]+)/?$', replacement: 'https://$1/docs', permanent: false}

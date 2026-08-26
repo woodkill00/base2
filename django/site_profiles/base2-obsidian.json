@@ -1,0 +1,111 @@
+{
+  "analytics": {
+    "enabled": false,
+    "provider": "none"
+  },
+  "brand": {
+    "logo": "/base2-mark.svg",
+    "theme": "obsidian",
+    "voice": "A secure, observable, full-stack foundation for building distinctive websites without starting over."
+  },
+  "consent": {
+    "mode": "essential-only"
+  },
+  "contact": {
+    "enabled": true,
+    "retentionDays": 30
+  },
+  "defaultLocale": "en",
+  "domains": [
+    {
+      "host": "base2.example",
+      "kind": "canonical"
+    },
+    {
+      "host": "preview.base2.example",
+      "kind": "preview"
+    }
+  ],
+  "legal": {
+    "accessibilityPath": "/accessibility",
+    "privacyPath": "/privacy",
+    "termsPath": "/terms"
+  },
+  "legalName": "Base2 Reference Foundation",
+  "locales": [
+    "en"
+  ],
+  "media": {
+    "allowedTypes": [
+      "image/jpeg",
+      "image/png",
+      "image/webp"
+    ],
+    "maxBytes": 10485760
+  },
+  "modules": [
+    {
+      "enabled": true,
+      "id": "accounts",
+      "version": "1.0.0"
+    },
+    {
+      "enabled": true,
+      "id": "content",
+      "version": "1.0.0"
+    },
+    {
+      "enabled": true,
+      "id": "forms",
+      "version": "1.0.0"
+    },
+    {
+      "enabled": true,
+      "id": "search",
+      "version": "1.0.0"
+    },
+    {
+      "enabled": true,
+      "id": "commerce",
+      "version": "1.0.0"
+    }
+  ],
+  "name": "Base2",
+  "navigation": [
+    {
+      "label": "Home",
+      "path": "/"
+    },
+    {
+      "label": "Explore",
+      "module": "content",
+      "path": "/content"
+    },
+    {
+      "label": "Search",
+      "module": "search",
+      "path": "/search"
+    },
+    {
+      "label": "Contact",
+      "module": "forms",
+      "path": "/contact"
+    }
+  ],
+  "operationsProfile": "preview",
+  "previewPolicy": {
+    "idleAction": "destroy",
+    "ttlMinutes": 60
+  },
+  "schemaVersion": 1,
+  "search": {
+    "enabled": true
+  },
+  "seo": {
+    "description": "Base2 is the reusable Obsidian full-stack website foundation.",
+    "indexing": "deny",
+    "titleTemplate": "%s · Base2"
+  },
+  "siteId": "base2-obsidian",
+  "slug": "base2"
+}

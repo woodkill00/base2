@@ -77,7 +77,7 @@ const generatedProfilePlugin = () => {
       return html
         .replace(
           '<html',
-          `<html lang="${escapeHtml(profile.defaultLocale)}" data-site-id="${selected}"`
+          `<html lang="${escapeHtml(profile.defaultLocale)}" data-site-id="${selected}" data-theme="${escapeHtml(profile.brand.theme)}"`
         )
         .replace(/<title>.*?<\/title>/, `<title>${siteName}</title>`)
         .replace(

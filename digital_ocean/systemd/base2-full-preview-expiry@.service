@@ -1,0 +1,17 @@
+[Unit]
+Description=Expire exact Base2 full preview %i
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=base2-preview
+Group=base2-preview
+EnvironmentFile=/etc/base2/full-preview-lifecycle.env
+ExecStart=/usr/bin/python3 -m digital_ocean.scripts.python.full_preview_expire --state-root /var/lib/base2/full-preview/leases --run-id %i --credential-file ${BASE2_DO_CREDENTIAL_FILE}
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/base2/full-preview
+UMask=0077

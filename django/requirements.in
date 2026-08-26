@@ -7,3 +7,4 @@ django-countries
 celery[redis]
 pytest
 pytest-django
+pytest-cov

@@ -2,14 +2,7 @@
 
 import { parseSiteManifest, type SiteManifest } from './siteManifest';
 
-import index from './generated/index.json';
-import emberStudio from './generated/ember-studio.json';
-import northstarLibrary from './generated/northstar-library.json';
-
-const profiles: Record<string, unknown> = {
-  'ember-studio': emberStudio,
-  'northstar-library': northstarLibrary,
-};
+import { index, profiles } from './generated/siteRegistry';
 
 export function selectSiteManifest(profileId?: string): SiteManifest {
   const selected = profileId || import.meta.env.VITE_SITE_PROFILE || index.defaultProfile;
