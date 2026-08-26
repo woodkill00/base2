@@ -230,7 +230,9 @@ def test_dns_unexpected_ipv6_and_duplicate_answer_fail_closed():
 
 
 def test_expiry_plan_is_fixed_integrity_bound_and_persistent(tmp_path):
-    _, lease_root = state_with_lease(tmp_path)
+    _, lease_root = state_with_lease(
+        tmp_path, expiresAt="2026-08-26T13:00:43.578547Z"
+    )
     credential = tmp_path / "credential.json"
     credential.write_text("{}")
     credential.chmod(0o600)
@@ -243,6 +245,7 @@ def test_expiry_plan_is_fixed_integrity_bound_and_persistent(tmp_path):
     )
     args = systemd_run_arguments(plan)
     assert "--timer-property=Persistent=true" in args
+    assert "--on-calendar=2026-08-26 13:00:43 UTC" in args
     assert "digital_ocean.scripts.python.full_preview_expire" in args
     assert "--early-approved" not in args
     assert str(credential) in args and plan["secretValuesEmitted"] == 0

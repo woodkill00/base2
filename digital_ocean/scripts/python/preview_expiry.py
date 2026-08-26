@@ -29,6 +29,15 @@ def _digest(value: object) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
+def _systemd_calendar(value: str) -> str:
+    """Convert the signed RFC 3339 lease expiry to portable systemd syntax."""
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(UTC)
+    except (AttributeError, ValueError) as exc:
+        raise ExpiryPlanError("EXPIRY_PLAN_DRIFT", "expiry timestamp is invalid") from exc
+    return parsed.strftime("%Y-%m-%d %H:%M:%S UTC")
+
+
 def _private_file(path: str | os.PathLike[str], label: str) -> Path:
     candidate = Path(path)
     if (
@@ -102,7 +111,7 @@ def systemd_run_arguments(plan: dict) -> list[str]:
         "systemd-run",
         "--user",
         f"--unit={plan['unit']}",
-        f"--on-calendar={plan['expiresAt']}",
+        f"--on-calendar={_systemd_calendar(plan['expiresAt'])}",
         "--timer-property=Persistent=true",
         "--property=UMask=0077",
         "--working-directory",
