@@ -81,3 +81,10 @@ def test_full_preview_template_contains_only_expected_host_families_and_staging_
     static = (ROOT / "traefik/traefik.yml").read_text()
     assert "acme-staging-v02.api.letsencrypt.org" in static
     assert "acme-v02.api.letsencrypt.org/directory" not in static
+
+
+def test_pgadmin_has_authenticated_session_memory_headroom():
+    compose = (ROOT / "development.docker.yml").read_text()
+    pgadmin = compose.split("  pgadmin:", 1)[1].split("\n  redis:", 1)[0]
+    assert "mem_limit: 512m" in pgadmin
+    assert "mem_limit: 256m" not in pgadmin
