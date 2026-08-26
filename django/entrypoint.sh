@@ -29,5 +29,6 @@ exec gunicorn project.wsgi:application \
   --bind "0.0.0.0:${PORT:-8000}" \
   --workers "${DJANGO_WORKERS:-2}" \
   --timeout "${DJANGO_TIMEOUT:-60}" \
+  --no-control-socket \
   --access-logfile - \
   --error-logfile -
