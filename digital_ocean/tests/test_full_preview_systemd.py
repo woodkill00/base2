@@ -22,3 +22,23 @@ def test_timer_has_no_parallel_or_legacy_dns_cleanup_command():
     assert "delete_record" not in combined
     assert "destroy_droplet" not in combined
     assert combined.count("ExecStart=") == 1
+
+
+def test_remote_bootstrap_identifies_every_silent_failure_stage_without_values():
+    script = (ROOT / "digital_ocean/scripts/bash/full-preview-remote.sh").read_text()
+    assert 'full-preview-stage-failed:%s exit=%s' in script
+    for stage in (
+        "cloud-init-wait",
+        "docker-install",
+        "docker-start",
+        "env-render",
+        "acme-bootstrap",
+        "compose-build",
+        "compose-up",
+        "service-inventory",
+        "service-health",
+        "traefik-policy",
+        "receipt",
+    ):
+        assert f'stage="{stage}"' in script
+    assert "password" not in script.split("full-preview-stage-failed", 1)[1].split("ERR", 1)[0]
