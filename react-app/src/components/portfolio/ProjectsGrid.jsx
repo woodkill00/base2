@@ -50,7 +50,7 @@ const ProjectsGrid = () => (
     data-base2-section-panel="security"
     data-testid="base2-projects-section"
   >
-    <div className="base2-section-shell">
+    <div className="base2-section-shell" tabIndex={0}>
       <div className="base2-integrated-copy">
         <span className="base2-section-kicker">Operational modules</span>
         <h2>The page below the hero now belongs to the same system.</h2>

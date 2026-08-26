@@ -17,6 +17,7 @@ class PublicExperienceCheckpointTests(TestCase):
             'javascriptChunkBytes: 460 * 1024',
             'stylesheetBytes: 40 * 1024',
             'totalInitialBytes: 540 * 1024',
+            'gzipSync(Buffer.from(payload)).byteLength',
             'performance_budget_javascript',
             'performance_budget_stylesheet',
             'performance_budget_total',
