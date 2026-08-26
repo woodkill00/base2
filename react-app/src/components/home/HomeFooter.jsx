@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { Activity, Layers3, ShieldCheck } from 'lucide-react';
 import { siteManifest } from '../../config/siteRuntime';
 
 const HomeFooter = ({ manifest = siteManifest }) => {
@@ -12,16 +13,12 @@ const HomeFooter = ({ manifest = siteManifest }) => {
     <footer
       aria-label="Footer"
       data-testid="base2-footer"
-      className="home-integrated-footer base2-integrated-footer backdrop-blur-2xl bg-white/20 dark:bg-black/30 border-t border-white/30 dark:border-white/20"
-      style={{ marginTop: 'calc(4rem)' }}
+      className="home-integrated-footer base2-integrated-footer"
     >
-      <div style={{ padding: 'calc(3rem) calc(max(1rem, calc((100vw - 1200px) / 2))) calc(2rem)' }}>
-        <div
-          className="grid gap-8 mb-8"
-          style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}
-        >
-          <div>
-            <div className="flex items-center gap-2 mb-4">
+      <div className="base2-footer-shell">
+        <section className="base2-footer-identity" aria-labelledby="base2-footer-title">
+          <div className="base2-footer-wordmark">
+            <span className="base2-footer-logo" aria-hidden="true">
               <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
                 <path d="M16 4L4 10L16 16L28 10L16 4Z" fill="currentColor" opacity="0.3" />
                 <path
@@ -32,42 +29,63 @@ const HomeFooter = ({ manifest = siteManifest }) => {
                   strokeLinejoin="round"
                 />
               </svg>
-              <span className="text-lg font-medium">{manifest.name}</span>
-            </div>
-            <p className="text-sm text-foreground/60 dark:text-foreground/50 mb-4">
-              {manifest.seo.description}
-            </p>
+            </span>
+            <span>
+              <small>Foundation system</small>
+              <strong id="base2-footer-title">{manifest.name}</strong>
+            </span>
           </div>
+          <p>{manifest.seo.description}</p>
+          <div className="base2-footer-proof" aria-label="Base2 delivery assurances">
+            <span>
+              <ShieldCheck aria-hidden="true" /> Security first
+            </span>
+            <span>
+              <Layers3 aria-hidden="true" /> Manifest driven
+            </span>
+          </div>
+        </section>
 
-          <nav aria-label="Footer navigation">
-            <h2 className="font-medium mb-3">Explore</h2>
-            <ul className="space-y-2">
+        <div className="base2-footer-directory">
+          <nav aria-label="Footer navigation" className="base2-footer-links">
+            <h2>Explore</h2>
+            <ul>
               {manifest.navigation.map((item) => (
                 <li key={`${item.path}:${item.label}`}>
-                  <Link className="text-sm text-foreground/60 hover:text-foreground" to={item.path}>
-                    {item.label}
-                  </Link>
+                  <Link to={item.path}>{item.label}</Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <nav className="base2-footer-links" aria-label="Legal">
+            <h2>Policies</h2>
+            <ul>
+              {legalLinks.map((item) => (
+                <li key={item.path}>
+                  <Link to={item.path}>{item.label}</Link>
                 </li>
               ))}
             </ul>
           </nav>
         </div>
 
-        <div className="pt-6 border-t border-white/20 dark:border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-foreground/50">
+        <div className="base2-footer-status" aria-label="Base2 preview status">
+          <span className="base2-footer-status-label">
+            <Activity aria-hidden="true" /> Preview status
+          </span>
+          <strong>Ready for review</strong>
+          <p>
+            Responsive proof, guarded operator routes, and staging-only delivery remain visible.
+          </p>
+          <span className="base2-footer-status-pulse">System evidence current</span>
+        </div>
+
+        <div className="base2-footer-bottom">
+          <p>
             © {new Date().getUTCFullYear()} {manifest.legalName || manifest.name}
           </p>
-          <nav className="flex gap-6" aria-label="Legal">
-            {legalLinks.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className="text-sm text-foreground/50 hover:text-foreground focus-visible:underline"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+          <span>Built to branch, verify, and roll back cleanly.</span>
         </div>
       </div>
     </footer>

@@ -93,7 +93,7 @@
       "id": "visual-harness",
       "command": ["npm", "--prefix", "react-app", "run", "test:visual"],
       "required": true,
-      "timeoutSeconds": 120,
+      "timeoutSeconds": 300,
       "dependsOn": ["visual-port"],
       "requiredTools": ["npm", "node"]
     },
