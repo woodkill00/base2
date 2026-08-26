@@ -2,9 +2,11 @@
 """Transactional exact-record DNS migration for a Base2 full preview."""
 from __future__ import annotations
 import ipaddress
+import re
 from typing import Any, Protocol
 
-REQUIRED_NAMES = ("@", "admin", "swagger", "traefik", "pgadmin", "flower")
+REQUIRED_SUBDOMAINS = ("admin", "swagger", "traefik", "pgadmin", "flower")
+DOMAIN = re.compile(r"^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
 
 class DnsMigrationError(RuntimeError):
     pass
@@ -14,6 +16,14 @@ class DnsProvider(Protocol):
     def create_record(self, domain: str, payload: dict[str, Any]) -> dict[str, Any]: ...
     def delete_record(self, domain: str, record_id: int) -> None: ...
 
+
+def required_names(domain: str) -> tuple[str, ...]:
+    """Return the DigitalOcean API names, using the FQDN for the zone apex."""
+    normalized = str(domain).strip().lower()
+    if not DOMAIN.fullmatch(normalized):
+        raise DnsMigrationError("DNS domain is invalid")
+    return (normalized, *REQUIRED_SUBDOMAINS)
+
 def _row(payload: dict) -> dict:
     value = payload.get("domain_record", payload)
     required = ("id", "type", "name", "data")
@@ -22,6 +32,7 @@ def _row(payload: dict) -> dict:
     return {"id": str(value["id"]), "type": str(value["type"]), "name": str(value["name"]), "value": str(value["data"])}
 
 def migrate_required_records(provider: DnsProvider, domain: str, ip_address: str, *, ttl: int = 60) -> dict:
+    names = required_names(domain)
     parsed_address = ipaddress.IPv4Address(ip_address)
     if not parsed_address.is_global:
         raise DnsMigrationError("DNS target must be one public IPv4 address")
@@ -34,12 +45,16 @@ def migrate_required_records(provider: DnsProvider, domain: str, ip_address: str
     if not isinstance(listed, list):
         raise DnsMigrationError("provider returned malformed DNS inventory")
     inventory = [_row(row) for row in listed]
-    prior = [row for row in inventory if row["type"] == "A" and row["name"] in REQUIRED_NAMES]
+    prior_names = set(names) | {"@"}
+    prior = [row for row in inventory if row["type"] == "A" and row["name"] in prior_names]
     created: list[dict] = []
     deleted_prior: list[dict] = []
     try:
-        for name in REQUIRED_NAMES:
-            created.append(_row(provider.create_record(domain, {"type": "A", "name": name, "data": address, "ttl": ttl})))
+        for name in names:
+            row = _row(provider.create_record(domain, {"type": "A", "name": name, "data": address, "ttl": ttl}))
+            created.append(row)
+            if row["type"] != "A" or row["name"] != name or row["value"] != address:
+                raise DnsMigrationError("provider returned a different DNS record")
         for row in prior:
             provider.delete_record(domain, int(row["id"]))
             deleted_prior.append(row)

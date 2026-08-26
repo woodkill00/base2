@@ -58,7 +58,9 @@ def test_providerless_complete_launch_binds_six_records_and_private_lease(tmp_pa
     assert result["dnsRecordCount"] == 6
     lease = FullPreviewLeaseStore(tmp_path / "state" / "leases").load(result["runId"])
     assert len(lease["dnsRecords"]) == 6
-    assert [row["name"] for row in client.domains.rows] == ["@", "admin", "swagger", "traefik", "pgadmin", "flower"]
+    assert [row["name"] for row in client.domains.rows] == [
+        "woodkilldev.com", "admin", "swagger", "traefik", "pgadmin", "flower",
+    ]
 
 
 def test_probe_failure_restores_legacy_dns_and_deletes_compute(tmp_path):
