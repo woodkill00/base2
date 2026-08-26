@@ -90,6 +90,14 @@
       "requiredTools": ["python3", "git"]
     },
     {
+      "id": "visual-asset-policy",
+      "command": ["python3", "scripts/python/visual_asset_policy.py", "react-app/src/assets"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["visual-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
       "id": "visual-harness",
       "command": ["npm", "--prefix", "react-app", "run", "test:visual"],
       "required": true,
@@ -98,11 +106,19 @@
       "requiredTools": ["npm", "node"]
     },
     {
+      "id": "visual-release-matrix",
+      "command": ["npm", "--prefix", "react-app", "run", "test:visual-release"],
+      "required": true,
+      "timeoutSeconds": 300,
+      "dependsOn": ["visual-harness", "visual-asset-policy"],
+      "requiredTools": ["npm", "node"]
+    },
+    {
       "id": "visual-baseline-contract",
       "command": ["python3", "-m", "unittest", "scripts.tests.test_visual_baseline_contract"],
       "required": true,
       "timeoutSeconds": 30,
-      "dependsOn": ["visual-harness"],
+      "dependsOn": ["visual-release-matrix"],
       "requiredTools": ["python3", "bash", "git"]
     },
     {

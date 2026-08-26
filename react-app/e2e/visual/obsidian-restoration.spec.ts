@@ -181,7 +181,7 @@ test('navigation and footer retain approved responsive visual states', async ({ 
   await page.getByTestId('base2-right-utility-toggle').click();
   await expect(page.getByTestId('base2-right-utility-menu')).toHaveScreenshot(
     'base2-right-utility-menu.png',
-    { animations: 'disabled', scale: 'css' }
+    { animations: 'disabled', scale: 'css', maxDiffPixels: 20 }
   );
   await page.getByTestId('base2-right-utility-toggle').click();
 

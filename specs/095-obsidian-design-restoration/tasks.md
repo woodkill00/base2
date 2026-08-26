@@ -15,7 +15,7 @@
 - [x] T013 Run tracked-secret, build, unit, integration, E2E, and production gates.
 - [x] T014 Run tasks-analysis-additional-tasks refinement to zero findings.
 - [x] T015 Commit and push the exact feature branch.
-- [ ] T016 Publish PR and require green CI before merge.
-- [ ] T017 Deploy a bounded staging-certificate live preview.
-- [ ] T018 Run public visual and authenticated application browser gates.
-- [ ] T019 Verify exact teardown, empty provider inventory, and closeout evidence.
+- [x] T016 Publish PR and require green CI before merge.
+- [x] T017 Deploy a bounded staging-certificate live preview.
+- [x] T018 Run public visual and authenticated application browser gates.
+- [x] T019 Verify exact teardown, empty provider inventory, and closeout evidence.
