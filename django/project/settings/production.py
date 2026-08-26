@@ -18,14 +18,20 @@ SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "SAMEORIGIN"
 
-# Build CSRF trusted origins from comma-separated hosts
+# Build CSRF trusted origins from an explicit deployment boundary when supplied,
+# otherwise derive the public HTTPS hosts for backwards compatibility.
 _hosts = os.environ.get("DJANGO_ALLOWED_HOSTS", "")
 _internal = {"django", "api", "postgres", "pgadmin", "traefik"}
-CSRF_TRUSTED_ORIGINS = [
-    f"https://{h.strip()}"
-    for h in _hosts.split(",")
-    if h.strip() and ("." in h.strip()) and h.strip().lower() not in _internal
-]
+_trusted = os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").strip()
+CSRF_TRUSTED_ORIGINS = (
+    [origin.strip() for origin in _trusted.split(",") if origin.strip()]
+    if _trusted
+    else [
+        f"https://{h.strip()}"
+        for h in _hosts.split(",")
+        if h.strip() and ("." in h.strip()) and h.strip().lower() not in _internal
+    ]
+)
 
 # Internal base URL for reverse proxy integrations
 DJANGO_INTERNAL_BASE_URL = os.environ.get("DJANGO_INTERNAL_BASE_URL", "http://django:8000")

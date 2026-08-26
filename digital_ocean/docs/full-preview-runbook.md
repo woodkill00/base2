@@ -42,6 +42,9 @@ run_id="base2-full-$(date -u +%Y%m%d-%H%M%S)"
   --ssh-private-key "$PRIVATE/id_ed25519" --ssh-key-id "$DO_SSH_KEY_ID" \
   --operator-auth-file "$PRIVATE/operator.htpasswd" --flower-auth-file "$PRIVATE/flower.htpasswd" \
   --probe-username-file "$PRIVATE/operator.username" --probe-password-file "$PRIVATE/operator.password" \
+  --django-username-file "$PRIVATE/django.username" --django-email-file "$PRIVATE/django.email" \
+  --django-password-file "$PRIVATE/django.password" --pgadmin-email-file "$PRIVATE/pgadmin.email" \
+  --pgadmin-password-file "$PRIVATE/pgadmin.password" \
   --source-commit "$commit" --profile-digest "$profile_digest" \
   --domain woodkilldev.com --owner-cidr "PUBLIC_IP/32" --run-id "$run_id" \
   --state-root "$HOME/.local/state/base2-full-preview/$run_id" --ttl-minutes 60
@@ -58,11 +61,15 @@ cd react-app
 BASE2_LIVE_DOMAIN=woodkilldev.com \
 BASE2_LIVE_USERNAME="$(<"$PRIVATE/operator.username")" \
 BASE2_LIVE_PASSWORD="$(<"$PRIVATE/operator.password")" \
+BASE2_DJANGO_USERNAME="$(<"$PRIVATE/django.username")" \
+BASE2_DJANGO_PASSWORD="$(<"$PRIVATE/django.password")" \
+BASE2_PGADMIN_EMAIL="$(<"$PRIVATE/pgadmin.email")" \
+BASE2_PGADMIN_PASSWORD="$(<"$PRIVATE/pgadmin.password")" \
 BASE2_LIVE_EVIDENCE_DIR="$HOME/.local/state/base2-full-preview/$run_id/browser" \
 npm run test:live-full-preview
 ```
 
-Review the full-page Obsidian screenshot plus the five operator screenshots. The gate also verifies the keyboard command palette, browser console, failed requests, anonymous denial, and authorized access.
+Review the full-page Obsidian screenshot, the five operator screenshots, and the authenticated Django/pgAdmin screenshots. The gate also verifies the keyboard command palette, browser console, failed requests, anonymous denial, edge authorization, a successful Django CSRF-protected form submission, and both application logins. A preview with random or unavailable second-login credentials is not complete.
 
 ## Expiry, teardown, and owner-IP refresh
 

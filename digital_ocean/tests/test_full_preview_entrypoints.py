@@ -24,6 +24,16 @@ def private_file(path: Path, value: str) -> Path:
     return path
 
 
+def application_inputs(tmp_path: Path) -> dict[str, Path]:
+    return {
+        "django_username": private_file(tmp_path / "django.username", "owner"),
+        "django_email": private_file(tmp_path / "django.email", "owner@woodkilldev.com"),
+        "django_password": private_file(tmp_path / "django.password", "django-safe-password"),
+        "pgadmin_email": private_file(tmp_path / "pgadmin.email", "db@woodkilldev.com"),
+        "pgadmin_password": private_file(tmp_path / "pgadmin.password", "pgadmin-safe-password"),
+    }
+
+
 def remote_config(tmp_path: Path) -> LivePreviewConfig:
     archive = private_file(tmp_path / "source.tar", "archive")
     key = private_file(tmp_path / "id_ed25519", "key")
@@ -55,6 +65,7 @@ def test_cli_policy_and_probe_entrypoints(tmp_path, monkeypatch, capsys):
 
     username = private_file(tmp_path / "username", "owner")
     password = private_file(tmp_path / "password", "secret")
+    app_inputs = application_inputs(tmp_path)
     monkeypatch.setattr(
         full_preview_cli,
         "verify_full_preview",
@@ -192,6 +203,7 @@ def test_remote_bootstrap_deploy_health_and_failures(tmp_path):
         owner_cidr="8.8.4.4/32",
         operator_auth=operator,
         flower_auth=flower,
+        **application_inputs(tmp_path),
         runner=runner,
         sleep=lambda _: None,
         attempts=2,
@@ -199,7 +211,7 @@ def test_remote_bootstrap_deploy_health_and_failures(tmp_path):
     config = remote_config(tmp_path)
     remote.deploy("8.8.8.8", config)
     assert remote.health("8.8.8.8", "woodkilldev.com") is True
-    assert sum(1 for call in calls if call[0] == "scp") == 3
+    assert sum(1 for call in calls if call[0] == "scp") == 8
     assert (tmp_path / "ssh" / "known_hosts").stat().st_mode & 0o777 == 0o600
 
     with pytest.raises(FullPreviewRemoteError, match="digest"):
@@ -210,6 +222,7 @@ def test_remote_bootstrap_deploy_health_and_failures(tmp_path):
             owner_cidr="8.8.4.4/32",
             operator_auth=operator,
             flower_auth=flower,
+            **application_inputs(tmp_path),
             attempts=0,
         )
 
@@ -234,6 +247,7 @@ def test_remote_bootstrap_failure_retains_only_bounded_redacted_diagnostics(tmp_
         owner_cidr="8.8.4.4/32",
         operator_auth=operator,
         flower_auth=flower,
+        **application_inputs(tmp_path),
         runner=runner,
         attempts=1,
     )
@@ -266,6 +280,7 @@ def test_live_main_constructs_exact_dependencies(tmp_path, monkeypatch, capsys):
     flower = private_file(tmp_path / "flower", "flower")
     username = private_file(tmp_path / "username", "owner")
     password = private_file(tmp_path / "password", "secret")
+    app_inputs = application_inputs(tmp_path)
     client = object()
     remote = object()
     monkeypatch.setattr(full_preview_live, "DigitalOceanHttpClient", lambda token: client)
@@ -287,6 +302,11 @@ def test_live_main_constructs_exact_dependencies(tmp_path, monkeypatch, capsys):
             "--flower-auth-file", str(flower),
             "--probe-username-file", str(username),
             "--probe-password-file", str(password),
+            "--django-username-file", str(app_inputs["django_username"]),
+            "--django-email-file", str(app_inputs["django_email"]),
+            "--django-password-file", str(app_inputs["django_password"]),
+            "--pgadmin-email-file", str(app_inputs["pgadmin_email"]),
+            "--pgadmin-password-file", str(app_inputs["pgadmin_password"]),
             "--source-commit", "a" * 40,
             "--profile-digest", "b" * 64,
             "--domain", "woodkilldev.com",

@@ -2,7 +2,7 @@
   "algorithm": "sha256",
   "groups": {
     "config": {
-      ".env.example": "efec10c680bbc4aec573a704b751b041a6fa69e6bfa8185837b93382a4d74577",
+      ".env.example": "ce9aedc490d46ac50f22504b9f0339d75106c3d53aabf0b4730629449bca5ae0",
       "api/site_profiles/base2-obsidian.json": "55d8c456c9b5e0144651de543a5b7dafa0b9595e49fa823c2cce9d7209d9e920",
       "api/site_profiles/ember-studio.json": "b6b57abe7c80247917a1cc0ccdf08f3cddb2efd503091b73fb9d0e58d4c7fcae",
       "api/site_profiles/index.json": "887765b4c6d39198f2025ef28fd0f2ba075b92a169b4a4fc1dc2bfb5edede7fb",

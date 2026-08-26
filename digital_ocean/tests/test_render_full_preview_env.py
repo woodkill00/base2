@@ -28,6 +28,9 @@ def test_private_full_preview_render_is_explicit_and_secret_silent(tmp_path, cap
         ["8.8.8.8/32"],
         operator_basic_auth="preview:$apr1$abc$hash",
         flower_basic_auth="flower:$apr1$def$hash",
+        django_username="owner", django_email="owner@woodkilldev.com",
+        django_password="django-safe-password", pgadmin_email="db@woodkilldev.com",
+        pgadmin_password="pgadmin-safe-password",
     )
     values = parse_env_text(target.read_text())
     assert values["SITE_PROFILE"] == "base2-obsidian"
@@ -36,6 +39,9 @@ def test_private_full_preview_render_is_explicit_and_secret_silent(tmp_path, cap
     assert values["API_DOCS_ENABLED"] == "true"
     assert values["OWNER_ALLOWLIST_CSV"] == "8.8.8.8/32"
     assert values["DJANGO_ALLOWED_HOSTS"] == "woodkilldev.com,admin.woodkilldev.com,django,api"
+    assert values["DJANGO_CSRF_TRUSTED_ORIGINS"] == "https://admin.woodkilldev.com"
+    assert values["PGADMIN_CONFIG_PROXY_X_PROTO_COUNT"] == "1"
+    assert values["PGADMIN_DEFAULT_EMAIL"] == "db@woodkilldev.com"
     assert values["CORS_ALLOW_ORIGINS"] == "https://woodkilldev.com"
     assert "$$apr1$$" in values["TRAEFIK_DASH_BASIC_USERS"]
     assert receipt == {"ok": True, "mode": "full-preview", "secretValuesEmitted": 0, "ownerCidrCount": 1}
@@ -56,14 +62,14 @@ def test_invalid_or_reused_edge_credentials_fail_closed(tmp_path, operator, flow
     source = tmp_path / "source.env"
     source.write_text("PROJECT_NAME=x\nWEBSITE_DOMAIN=x.example\n", encoding="utf-8")
     with pytest.raises(RenderError):
-        render(source, tmp_path / "out.env", "woodkilldev.com", "base2-full-preview", ["8.8.8.8/32"], operator_basic_auth=operator, flower_basic_auth=flower)
+        render(source, tmp_path / "out.env", "woodkilldev.com", "base2-full-preview", ["8.8.8.8/32"], operator_basic_auth=operator, flower_basic_auth=flower, django_username="owner", django_email="owner@woodkilldev.com", django_password="django-safe-password", pgadmin_email="db@woodkilldev.com", pgadmin_password="pgadmin-safe-password")
 
 
 def test_renderer_rejects_private_or_broad_owner_network_before_output(tmp_path):
     source = tmp_path / "source.env"
     source.write_text("PROJECT_NAME=x\n", encoding="utf-8")
     with pytest.raises(Exception):
-        render(source, tmp_path / "out.env", "woodkilldev.com", "base2-full-preview", ["192.168.1.0/24"], operator_basic_auth="preview:$apr1$abc$hash", flower_basic_auth="flower:$apr1$def$hash")
+        render(source, tmp_path / "out.env", "woodkilldev.com", "base2-full-preview", ["192.168.1.0/24"], operator_basic_auth="preview:$apr1$abc$hash", flower_basic_auth="flower:$apr1$def$hash", django_username="owner", django_email="owner@woodkilldev.com", django_password="django-safe-password", pgadmin_email="db@woodkilldev.com", pgadmin_password="pgadmin-safe-password")
     assert not (tmp_path / "out.env").exists()
 
 
@@ -74,6 +80,14 @@ def test_renderer_command_entrypoint_reads_private_inputs_without_echoing_them(t
     operator.write_text("preview:$apr1$abc$hash\n", encoding="utf-8")
     flower = tmp_path / "flower"
     flower.write_text("flower:$apr1$def$hash\n", encoding="utf-8")
+    private = {}
+    for name, value in {
+        "django-username": "owner", "django-email": "owner@woodkilldev.com",
+        "django-password": "django-safe-password", "pgadmin-email": "db@woodkilldev.com",
+        "pgadmin-password": "pgadmin-safe-password",
+    }.items():
+        private[name] = tmp_path / name
+        private[name].write_text(value + "\n", encoding="utf-8")
     target = tmp_path / "private.env"
     assert render_full_preview_env.main(
         [
@@ -84,6 +98,11 @@ def test_renderer_command_entrypoint_reads_private_inputs_without_echoing_them(t
             "--owner-cidr", "8.8.4.4/32",
             "--operator-basic-auth-file", str(operator),
             "--flower-basic-auth-file", str(flower),
+            "--django-username-file", str(private["django-username"]),
+            "--django-email-file", str(private["django-email"]),
+            "--django-password-file", str(private["django-password"]),
+            "--pgadmin-email-file", str(private["pgadmin-email"]),
+            "--pgadmin-password-file", str(private["pgadmin-password"]),
         ]
     ) == 0
     receipt = json.loads(capsys.readouterr().out)
@@ -94,3 +113,14 @@ def test_renderer_command_entrypoint_reads_private_inputs_without_echoing_them(t
         "secretValuesEmitted": 0,
     }
     assert "$apr1$abc$hash" not in json.dumps(receipt)
+    assert "django-safe-password" not in json.dumps(receipt)
+
+
+@pytest.mark.parametrize("field,value", [("django_email", "not-email"), ("pgadmin_email", "bad"), ("django_username", "bad name"), ("pgadmin_password", "bad\nvalue")])
+def test_application_auth_inputs_fail_closed(field, value, tmp_path):
+    source = tmp_path / "source.env"
+    source.write_text("PROJECT_NAME=x\n", encoding="utf-8")
+    kwargs = dict(operator_basic_auth="preview:$apr1$abc$hash", flower_basic_auth="flower:$apr1$def$hash", django_username="owner", django_email="owner@woodkilldev.com", django_password="django-safe-password", pgadmin_email="db@woodkilldev.com", pgadmin_password="pgadmin-safe-password")
+    kwargs[field] = value
+    with pytest.raises(RenderError):
+        render(source, tmp_path / "out.env", "woodkilldev.com", "base2-full-preview", ["8.8.8.8/32"], **kwargs)
