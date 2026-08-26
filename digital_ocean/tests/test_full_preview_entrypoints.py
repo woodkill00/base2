@@ -246,7 +246,14 @@ def test_remote_bootstrap_failure_retains_only_bounded_redacted_diagnostics(tmp_
     assert "[redacted" in message
 
     bounded = safe_diagnostic("\n".join(f"safe line {index}" for index in range(20)), "")
-    assert "safe line 8" in bounded and "safe line 7" not in bounded
+    assert "safe line 9" in bounded and "safe line 8" not in bounded
+
+    noisy = safe_diagnostic(
+        "\n".join(f"apt output {index}" for index in range(100)),
+        "full-preview-stage-failed:docker-start exit=1",
+    )
+    assert "full-preview-stage-failed:docker-start exit=1" in noisy
+    assert len(noisy) <= 2000
 
 
 def test_live_main_constructs_exact_dependencies(tmp_path, monkeypatch, capsys):
