@@ -28,6 +28,7 @@ COPY traefik/traefik.yml /etc/traefik/templates/traefik.yml.template
 # Copy dynamic config template (rendered at runtime)
 COPY traefik/dynamic.yml /etc/traefik/templates/dynamic.yml.template
 COPY traefik/dynamic-canary.yml /etc/traefik/templates/dynamic-canary.yml.template
+COPY traefik/dynamic-full-preview.yml /etc/traefik/templates/dynamic-full-preview.yml.template
 
 # Set environment variables
 ENV TRAEFIK_LOG_LEVEL=${TRAEFIK_LOG_LEVEL:-INFO} \

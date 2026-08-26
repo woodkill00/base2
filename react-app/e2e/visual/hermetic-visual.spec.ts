@@ -37,12 +37,14 @@ test('repeated home captures are byte stable under frozen inputs', async ({ page
         transition: none !important;
       }
       [aria-label="Open menu"] { visibility: hidden !important; }
+      .home-left-menu-toggle, .home-right-utility-toggle,
+      .home-bottom-movement-controls, .home-active-section-output { visibility: hidden !important; }
     `,
   });
   await page.evaluate(async () => document.fonts.ready);
   const target = page.locator('[data-testid="manifest-home-hero"]');
   await expect(target).toBeVisible();
-  await expect(page.locator('html')).toHaveAttribute('data-site-id', 'ember-studio');
+  await expect(page.locator('html')).toHaveAttribute('data-site-id', 'base2-obsidian');
   await page.waitForTimeout(1_000);
   await page.evaluate(() => {
     window.requestAnimationFrame = () => 0;
@@ -70,8 +72,15 @@ test('repeated home captures are byte stable under frozen inputs', async ({ page
   writeFileSync(testInfo.outputPath('current-capture.png'), current);
   expect(stable).toBe(true);
   expect(previous.byteLength).toBeGreaterThan(10_000);
-  await expect(target).toHaveScreenshot('ember-home-hero.png', {
+  await expect(target).toHaveScreenshot('base2-obsidian-home-hero.png', {
     animations: 'disabled',
+    scale: 'css',
+  });
+  await expect(page.locator('[data-testid="base2-obsidian-ops"]')).toBeVisible();
+  await expect(page.locator('[data-testid="base2-thermal-security"]')).toBeVisible();
+  await expect(page).toHaveScreenshot('base2-obsidian-full-page.png', {
+    animations: 'disabled',
+    fullPage: true,
     scale: 'css',
   });
 });
@@ -94,7 +103,7 @@ test('harness blocks non-local assets and fixes environment identity', async ({ 
     timezone: 'UTC',
     time: FIXED_TIME,
     reduced: true,
-    theme: 'volcanic',
+    theme: 'obsidian',
   });
   expect(externalResponses).toEqual([]);
 });

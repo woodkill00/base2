@@ -1,0 +1,14 @@
+# Traceability: Base2 Full-Stack Obsidian Preview
+
+The implemented evidence map below binds every requirement family to executable checks and retained evidence. Live-only outcomes remain pending until T074.
+
+| Requirement family                                            | Primary tasks                                                                                                                                                                                                                              |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Canonical profile and visual parity (FR-001–FR-007)           | `scripts/tests/test_base2_obsidian_profile.py`; generated profile copies/registry; `react-app/src/__tests__/`; `react-app/e2e/visual/`; six `base2-obsidian-*.png` references; live harness `react-app/e2e/live/full-preview-live.spec.ts` |
+| Routing and API (FR-008–FR-014)                               | `api/tests/test_service_index.py`; `scripts/tests/test_traefik_full_preview_contract.py`; `traefik/dynamic-full-preview.yml`; Compose render in the complete gate                                                                          |
+| Owner admission and secrets (FR-015–FR-018)                   | `test_full_preview_policy.py`; `test_render_full_preview_env.py`; `test_refresh_full_preview_allowlist.py`; `digital_ocean/docs/full-preview-runbook.md`; zero-finding filtered tracked/staged/history scans                               |
+| DNS and lease lifecycle (FR-019–FR-024)                       | `test_full_preview_dns.py`; `test_preview_lease_v2.py`; `test_full_preview_systemd.py`; `test_full_preview_live.py` providerless create/failure rollback                                                                                   |
+| Orchestration and evidence (FR-025–FR-031)                    | `test_full_preview_live.py`; `test_full_preview_probe.py`; `full_preview_remote.py`; 47-test focused matrix; 125-test React run; complete-gate result `20260825T235910Z`                                                                   |
+| Legacy migration, approval, replay, reporting (FR-032–FR-036) | Transaction/rollback receipts in `full_preview_dns.py`; integrity lease/evidence; readiness policy CLI; live runbook and browser gate; T072–T074 delivery evidence                                                                         |
+
+SC-001, SC-004, SC-005, and SC-006 are closed by the local evidence above. SC-002, SC-003, SC-007, and the live-artifact portion of SC-008 close only through the separately approved T074 launch, review, and eventual exact teardown.

@@ -25,7 +25,9 @@ PROFILES = sorted((ROOT / "site_profiles").glob("*.json"))
 class SiteManifestTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.base = load_manifest(PROFILES[0])
+        # Hostile mutations use the intentionally small fixture so adding
+        # capabilities to the canonical Base2 profile cannot weaken negatives.
+        cls.base = load_manifest(ROOT / "site_profiles" / "ember-studio.json")
 
     def rejected(self, mutation, message):
         payload = copy.deepcopy(self.base)
@@ -33,11 +35,11 @@ class SiteManifestTests(unittest.TestCase):
         with self.assertRaisesRegex(ManifestError, message):
             validate_manifest(payload)
 
-    def test_two_profiles_validate_and_digest_differently(self):
-        self.assertEqual(2, len(PROFILES))
+    def test_profiles_validate_and_digest_differently(self):
+        self.assertGreaterEqual(len(PROFILES), 3)
         payloads = [load_manifest(path) for path in PROFILES]
         digests = [manifest_digest(payload) for payload in payloads]
-        self.assertEqual(2, len(set(digests)))
+        self.assertEqual(len(PROFILES), len(set(digests)))
         self.assertNotEqual(payloads[0]["brand"], payloads[1]["brand"])
         self.assertNotEqual(payloads[0]["modules"], payloads[1]["modules"])
 

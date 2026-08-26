@@ -61,6 +61,18 @@ app = FastAPI(
 )
 
 
+@app.get('/api', tags=['service'])
+async def service_index():
+    """Return a stable public entrypoint without internal topology or credentials."""
+    return {
+        'service': 'base2-api',
+        'status': 'ready',
+        'health': '/api/health',
+        'site': '/api/site',
+        'documentation': 'protected',
+    }
+
+
 @app.get('/api/site', tags=['site'])
 async def site_metadata():
     """Return only public, generated site metadata."""

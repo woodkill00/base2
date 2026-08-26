@@ -8,13 +8,13 @@ services:
         - NODE_VERSION=${REACT_APP_NODE_VERSION}
         - REACT_APP_API_URL=https://${WEBSITE_DOMAIN:-localhost}/api
         - REACT_APP_GOOGLE_CLIENT_ID=${REACT_APP_GOOGLE_CLIENT_ID}
-        - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
+        - SITE_PROFILE=${SITE_PROFILE:-base2-obsidian}
     container_name: ${COMPOSE_PROJECT_NAME}_react-app
     environment:
       - NODE_ENV=production
       - REACT_APP_API_URL=https://${WEBSITE_DOMAIN:-localhost}/api
       - REACT_APP_GOOGLE_CLIENT_ID=${REACT_APP_GOOGLE_CLIENT_ID}
-      - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
+      - SITE_PROFILE=${SITE_PROFILE:-base2-obsidian}
     networks: [app_network]
     restart: unless-stopped
     security_opt: [no-new-privileges:true]
@@ -39,7 +39,7 @@ services:
       # Mount external OpenAPI contract for runtime contract checks
       - ./specs/001-django-fastapi-react/contracts:/app/specs/001-django-fastapi-react/contracts:ro
     environment:
-      - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
+      - SITE_PROFILE=${SITE_PROFILE:-base2-obsidian}
       - PORT=${FASTAPI_PORT}
       - DB_HOST=postgres
       - DB_PORT=${POSTGRES_PORT}
@@ -82,7 +82,7 @@ services:
         - PYTHON_VERSION=${DJANGO_PYTHON_VERSION}
     container_name: ${COMPOSE_PROJECT_NAME}_django
     environment:
-      - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
+      - SITE_PROFILE=${SITE_PROFILE:-base2-obsidian}
       - DJANGO_SETTINGS_MODULE=project.settings.production
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
       - DJANGO_DEBUG=${DJANGO_DEBUG}
@@ -184,6 +184,8 @@ services:
     environment:
       - WEBSITE_DOMAIN=${WEBSITE_DOMAIN:-localhost}
       - TRAEFIK_CERT_EMAIL=${TRAEFIK_CERT_EMAIL}
+      - TRAEFIK_PREVIEW_MODE=${TRAEFIK_PREVIEW_MODE:-local}
+      - OWNER_ALLOWLIST_CSV=${OWNER_ALLOWLIST_CSV:-127.0.0.1/32}
     restart: unless-stopped
     user: '1000:1000'
     cap_drop: [ALL]
@@ -279,7 +281,7 @@ services:
         - PYTHON_VERSION=${FASTAPI_PYTHON_VERSION}
     container_name: ${COMPOSE_PROJECT_NAME}_celery_worker
     environment:
-      - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
+      - SITE_PROFILE=${SITE_PROFILE:-base2-obsidian}
       - DB_HOST=postgres
       - DB_PORT=${POSTGRES_PORT}
       - DB_NAME=${POSTGRES_DB}

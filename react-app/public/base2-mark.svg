@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Base2</title>
+  <desc id="desc">Two interlocking violet and green geometric layers</desc>
+  <rect width="64" height="64" rx="16" fill="#090b10"/>
+  <path d="M14 18h24c8 0 13 4 13 11 0 4-2 7-6 9 5 2 7 5 7 10 0 8-6 12-15 12H14V18zm12 10v7h11c2 0 4-1 4-4s-2-3-4-3H26zm0 16v7h12c3 0 4-1 4-4s-2-3-5-3H26z" fill="#8b5cf6"/>
+  <path d="M10 10h12v44H10z" fill="#39ff14" opacity=".9"/>
+</svg>

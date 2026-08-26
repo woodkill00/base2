@@ -15,10 +15,13 @@ UPDATE = ROOT / "scripts/bash/update-visual-baselines.sh"
 class VisualBaselineContractTests(unittest.TestCase):
     def test_reviewed_baseline_is_required_by_browser_test(self):
         source = SPEC.read_text(encoding="utf-8")
-        self.assertIn("toHaveScreenshot('ember-home-hero.png'", source)
-        snapshots = list((SPEC.parent / "hermetic-visual.spec.ts-snapshots").glob("ember-home-hero-*.png"))
-        self.assertEqual(1, len(snapshots), snapshots)
-        self.assertGreater(snapshots[0].stat().st_size, 10_000)
+        self.assertIn("toHaveScreenshot('base2-obsidian-home-hero.png'", source)
+        self.assertIn("toHaveScreenshot('base2-obsidian-full-page.png'", source)
+        snapshots = list((SPEC.parent / "hermetic-visual.spec.ts-snapshots").glob("base2-obsidian-home-hero-*.png"))
+        full_pages = list((SPEC.parent / "hermetic-visual.spec.ts-snapshots").glob("base2-obsidian-full-page-*.png"))
+        self.assertEqual(3, len(snapshots), snapshots)
+        self.assertEqual(3, len(full_pages), full_pages)
+        self.assertTrue(all(path.stat().st_size > 10_000 for path in snapshots + full_pages))
 
     def test_update_workflow_is_explicit_local_and_review_only(self):
         source = UPDATE.read_text(encoding="utf-8")
@@ -38,8 +41,8 @@ class VisualBaselineContractTests(unittest.TestCase):
         self.assertIn("Refusing baseline update", result.stderr)
 
     def test_intentional_baseline_mutation_is_detectable(self):
-        snapshots = list((SPEC.parent / "hermetic-visual.spec.ts-snapshots").glob("ember-home-hero-*.png"))
-        self.assertEqual(1, len(snapshots), snapshots)
+        snapshots = list((SPEC.parent / "hermetic-visual.spec.ts-snapshots").glob("base2-obsidian-home-hero-*.png"))
+        self.assertEqual(3, len(snapshots), snapshots)
         with tempfile.TemporaryDirectory() as directory:
             candidate = Path(directory) / snapshots[0].name
             shutil.copy2(snapshots[0], candidate)
