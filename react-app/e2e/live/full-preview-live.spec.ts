@@ -36,8 +36,11 @@ test('all operator hosts challenge anonymously and load for the owner', async ({
   ];
   for (const [host, path] of routes) {
     const anonymous = await browser.newContext({ ignoreHTTPSErrors: true });
-    const response = await anonymous.request.get(`https://${host}.${domain}${path}`, { maxRedirects: 0 });
-    expect([401, 403]).toContain(response.status());
+    const anonymousPage = await anonymous.newPage();
+    const response = await anonymousPage.goto(`https://${host}.${domain}${path}`, {
+      waitUntil: 'domcontentloaded',
+    });
+    expect([401, 403]).toContain(response?.status());
     await anonymous.close();
     const authorized = await browser.newContext({
       ignoreHTTPSErrors: true,

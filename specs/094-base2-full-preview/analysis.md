@@ -116,3 +116,32 @@ Verification:
 
 **Result**: `NO_UNRESOLVED_PUBLICATION_FINDINGS`
 **Next state**: push the corrective commit and require all pull-request checks to pass before merge.
+
+## Cycle 7 - Live acceptance and provider convergence audit
+
+Findings:
+
+1. DigitalOcean's raw domain-record API requires an apex request as the fully qualified domain with a trailing dot, then returns the canonical identity `@`; the CLI-facing form and recursive DNS caches obscured this distinction.
+2. Legacy AAAA records could route browsers to a retired IPv6 address even when all new A records were correct.
+3. The live visual assertion expected a generic light/dark token instead of the approved `obsidian` profile identity.
+4. The full-preview CSP loaded Google Identity Services under a self-only script policy, producing a blocked-script console error.
+5. Workstation and ISP recursive caches could retain retired preview addresses after authoritative DNS had converged, allowing a browser gate to test the wrong server.
+
+Corrections:
+
+- Encoded the raw apex request/canonical response distinction, exact-ID rollback, and prior-apex restoration with live and providerless regression coverage.
+- Transactionally displaced required-host A and AAAA routes, with exact launch-failure restoration.
+- Required `data-theme="obsidian"` in live visual acceptance.
+- Aligned the preview CSP with the bounded Google Identity origin allowlist already used by Base2; wildcard script/connect/frame sources remain forbidden.
+- Added an optional validated exact-IPv4 browser target. Public DNS is verified separately, while browser/auth/screenshot traffic is integrity-pinned to the leased droplet so stale recursive caches cannot redirect evidence.
+
+Verification:
+
+- PRs #8, #9, and #10 passed every required API, Django, integration, contract, frontend, e2e, smoke, security, audit, license, SBOM, and repository check before merge.
+- Focused suites reached 18 passing security/DNS/live checks; complete gates `20260826T032412Z`, `20260826T034822Z`, and `20260826T041246Z` passed.
+- Failed live candidates were destroyed by exact lease, with six DNS records and one droplet removed each time.
+- Final live run `base2-full-20260826-042100` is bound to merged source `c08dc27dc0e79e4eb752338a6afc2f7e8b9e0f5a`, profile digest `d0a7f3499a528c7d73c5d461fa4c46b626d117be78048222cc721c403a7c2ac6`, and public IPv4 `139.59.138.200`.
+- Public DNS reports all required A records and zero AAAA routes. Exact-target Playwright acceptance passed both suites, including the Obsidian interaction, zero console/request failures, five anonymous denials, five authenticated loads, and retained screenshots.
+
+**Result**: `NO_UNRESOLVED_LIVE_FINDINGS`
+**Next state**: retain the bounded site for owner review, then perform exact lease teardown after the review window.
