@@ -13,6 +13,7 @@ from digital_ocean.scripts.python.full_preview_expire import ExpiryError, LeaseD
 from digital_ocean.scripts.python.full_preview_remote import (
     FullPreviewRemoteError,
     FullPreviewSshBootstrap,
+    safe_diagnostic,
 )
 from digital_ocean.scripts.python.live_preview_provider import LivePreviewConfig
 
@@ -211,6 +212,41 @@ def test_remote_bootstrap_deploy_health_and_failures(tmp_path):
             flower_auth=flower,
             attempts=0,
         )
+
+
+def test_remote_bootstrap_failure_retains_only_bounded_redacted_diagnostics(tmp_path):
+    operator = private_file(tmp_path / "operator", "owner:$apr1$abc$hash")
+    flower = private_file(tmp_path / "flower", "flower:$apr1$def$hash")
+
+    def runner(argv, **kwargs):
+        if argv[0] == "ssh" and argv[-1] == "true":
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+        if argv[0] == "scp":
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+        return SimpleNamespace(
+            returncode=17,
+            stdout="build stage api failed\nTOKEN=abcdefghijklmnopqrstuvwxyz0123456789\n",
+            stderr="password=never-print\nexecutor returned non-zero\n",
+        )
+
+    remote = FullPreviewSshBootstrap(
+        known_hosts=tmp_path / "known_hosts",
+        owner_cidr="8.8.4.4/32",
+        operator_auth=operator,
+        flower_auth=flower,
+        runner=runner,
+        attempts=1,
+    )
+    with pytest.raises(FullPreviewRemoteError, match="exit=17") as failure:
+        remote.deploy("8.8.8.8", remote_config(tmp_path))
+    message = str(failure.value)
+    assert "executor returned non-zero" in message
+    assert "never-print" not in message
+    assert "abcdefghijklmnopqrstuvwxyz0123456789" not in message
+    assert "[redacted" in message
+
+    bounded = safe_diagnostic("\n".join(f"safe line {index}" for index in range(20)), "")
+    assert "safe line 8" in bounded and "safe line 7" not in bounded
 
 
 def test_live_main_constructs_exact_dependencies(tmp_path, monkeypatch, capsys):
