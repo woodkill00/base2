@@ -64,6 +64,32 @@ def test_replaces_the_canonical_apex_record_using_the_raw_fqdn_request_form():
     assert [(row["name"], row["data"]) for row in provider.rows if row["name"] == "@"] == [("@", "8.8.8.8")]
 
 
+def test_removes_stale_ipv6_routes_for_every_required_host():
+    provider = Provider()
+    provider.rows = [
+        {"id": index, "type": "AAAA", "name": name, "data": "2001:4860:4860::8888"}
+        for index, name in enumerate(required_names("woodkilldev.com"), start=100)
+    ]
+    receipt = migrate_required_records(provider, "woodkilldev.com", "8.8.8.8")
+    assert receipt["replacedRecordCount"] == 6
+    assert all(row["type"] == "AAAA" for row in receipt["replacedRecords"])
+    assert all(row["type"] != "AAAA" for row in provider.rows)
+
+
+def test_failure_restores_stale_ipv6_routes_exactly():
+    provider = Provider(fail_delete=101)
+    provider.rows = [
+        {"id": 100, "type": "AAAA", "name": "@", "data": "2001:4860:4860::8888"},
+        {"id": 101, "type": "AAAA", "name": "admin", "data": "2001:4860:4860::8844"},
+    ]
+    with pytest.raises(DnsMigrationError, match="rolled back"):
+        migrate_required_records(provider, "woodkilldev.com", "8.8.8.8")
+    assert [(row["type"], row["name"], row["data"]) for row in provider.rows] == [
+        ("AAAA", "admin", "2001:4860:4860::8844"),
+        ("AAAA", "@", "2001:4860:4860::8888"),
+    ]
+
+
 def test_invalid_domain_rejects_before_provider_access():
     provider = Provider()
     with pytest.raises(DnsMigrationError, match="domain"):

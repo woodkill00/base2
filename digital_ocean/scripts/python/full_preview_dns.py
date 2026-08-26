@@ -51,7 +51,10 @@ def migrate_required_records(provider: DnsProvider, domain: str, ip_address: str
         raise DnsMigrationError("provider returned malformed DNS inventory")
     inventory = [_row(row) for row in listed]
     prior_names = set(names) | {domain, f"{domain}."}
-    prior = [row for row in inventory if row["type"] == "A" and row["name"] in prior_names]
+    prior = [
+        row for row in inventory
+        if row["type"] in {"A", "AAAA"} and row["name"] in prior_names
+    ]
     created: list[dict] = []
     deleted_prior: list[dict] = []
     try:
