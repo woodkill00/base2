@@ -18,14 +18,21 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)"
 env_file="/run/base2-full-preview.env"
 operator_auth="/run/base2-operator.htpasswd"
 flower_auth="/run/base2-flower.htpasswd"
+django_username="/run/base2-django.username"
+django_email="/run/base2-django.email"
+django_password="/run/base2-django.password"
+pgadmin_email="/run/base2-pgadmin.email"
+pgadmin_password="/run/base2-pgadmin.password"
 compose_file="$repo_root/development.docker.yml"
 
 [[ "$domain" =~ ^[a-z0-9][a-z0-9.-]+\.[a-z]{2,63}$ ]] || exit 2
 [[ "$project" =~ ^[a-z0-9][a-z0-9-]{6,62}$ ]] || exit 2
 [[ "$source_commit" =~ ^[0-9a-f]{40}$ ]] || exit 2
 [[ "$archive_sha256" =~ ^[0-9a-f]{64}$ ]] || exit 2
-[[ -f "$operator_auth" && -f "$flower_auth" ]] || { echo "private edge-auth files are missing" >&2; exit 2; }
-chmod 600 "$operator_auth" "$flower_auth"
+for private_input in "$operator_auth" "$flower_auth" "$django_username" "$django_email" "$django_password" "$pgadmin_email" "$pgadmin_password"; do
+  [[ -f "$private_input" && ! -L "$private_input" ]] || { echo "private authentication input is missing" >&2; exit 2; }
+  chmod 600 "$private_input"
+done
 
 export DEBIAN_FRONTEND=noninteractive
 stage="cloud-init-wait"
@@ -44,10 +51,13 @@ stage="env-render"
   python3 -m digital_ocean.scripts.python.render_full_preview_env \
     --source .env.example --target "$env_file" \
     --domain "$domain" --project "$project" --owner-cidr "$owner_cidr" \
-    --operator-basic-auth-file "$operator_auth" --flower-basic-auth-file "$flower_auth" >/dev/null
+    --operator-basic-auth-file "$operator_auth" --flower-basic-auth-file "$flower_auth" \
+    --django-username-file "$django_username" --django-email-file "$django_email" \
+    --django-password-file "$django_password" --pgadmin-email-file "$pgadmin_email" \
+    --pgadmin-password-file "$pgadmin_password" >/dev/null
 )
 chmod 600 "$env_file"
-rm -f -- "$operator_auth" "$flower_auth"
+rm -f -- "$operator_auth" "$flower_auth" "$django_username" "$django_email" "$django_password" "$pgadmin_email" "$pgadmin_password"
 
 stage="acme-bootstrap"
 "$repo_root/scripts/bash/bootstrap-acme.sh" --directory "$repo_root/letsencrypt" --uid 1000 --gid 1000

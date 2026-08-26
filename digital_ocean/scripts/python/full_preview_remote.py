@@ -43,17 +43,31 @@ def safe_diagnostic(stdout: str, stderr: str) -> str:
 
 class FullPreviewSshBootstrap:
     def __init__(self, *, known_hosts: Path, owner_cidr: str, operator_auth: Path, flower_auth: Path,
+                 django_username: Path, django_email: Path, django_password: Path,
+                 pgadmin_email: Path, pgadmin_password: Path,
                  runner: Callable = subprocess.run, sleep=time.sleep, attempts: int = 60):
         self.known_hosts = known_hosts
         self.owner_cidr = validate_owner_cidrs([owner_cidr])[0]
         self.operator_auth = operator_auth
         self.flower_auth = flower_auth
+        self.application_inputs = (
+            (django_username, "/run/base2-django.username"),
+            (django_email, "/run/base2-django.email"),
+            (django_password, "/run/base2-django.password"),
+            (pgadmin_email, "/run/base2-pgadmin.email"),
+            (pgadmin_password, "/run/base2-pgadmin.password"),
+        )
         self.runner = runner
         self.sleep = sleep
         self.attempts = attempts
         if not 1 <= attempts <= 60:
             raise FullPreviewRemoteError("SSH attempts exceed bounded policy")
-        for label, path in (("operator auth", operator_auth), ("Flower auth", flower_auth)):
+        for label, path in (
+            ("operator auth", operator_auth), ("Flower auth", flower_auth),
+            ("Django username", django_username), ("Django email", django_email),
+            ("Django password", django_password), ("pgAdmin email", pgadmin_email),
+            ("pgAdmin password", pgadmin_password),
+        ):
             if not path.is_file() or path.is_symlink() or stat.S_IMODE(path.stat().st_mode) & 0o077:
                 raise FullPreviewRemoteError(f"{label} must be an owner-only real file")
 
@@ -86,6 +100,7 @@ class FullPreviewSshBootstrap:
             (config.source_archive, "/tmp/base2-full-preview-source.tar"),
             (self.operator_auth, "/run/base2-operator.htpasswd"),
             (self.flower_auth, "/run/base2-flower.htpasswd"),
+            *self.application_inputs,
         )
         for source, destination in copies:
             result = self._run(["scp", *options, str(source), f"{target}:{destination}"], timeout=180)

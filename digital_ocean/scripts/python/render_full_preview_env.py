@@ -15,6 +15,8 @@ from digital_ocean.scripts.python.render_live_canary_env import render as render
 
 AUTH = re.compile(r"^[A-Za-z0-9._-]{1,64}:(?:\$apr1\$[^\s:]{3,128}|\$2[aby]\$[0-9]{2}\$[^\s:]{53})$")
 DOMAIN = re.compile(r"^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
+EMAIL = re.compile(r"^[^\s@]{1,128}@[^\s@]{1,128}$")
+USERNAME = re.compile(r"^[A-Za-z0-9._@+-]{1,150}$")
 
 
 class RenderError(ValueError): pass
@@ -26,6 +28,14 @@ def _auth(value: str, label: str) -> str:
     return value.replace("$", "$$")
 
 
+def _application_value(value: str, label: str, *, pattern: re.Pattern | None = None) -> str:
+    if not isinstance(value, str) or not value or len(value) > 512 or "\n" in value or "\r" in value:
+        raise RenderError(f"{label} is invalid")
+    if pattern is not None and not pattern.fullmatch(value):
+        raise RenderError(f"{label} is invalid")
+    return value
+
+
 def _write_env(path: Path, values: dict[str, str]) -> None:
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.parent.mkdir(parents=True, exist_ok=True)
@@ -34,7 +44,7 @@ def _write_env(path: Path, values: dict[str, str]) -> None:
     os.replace(temporary, path)
 
 
-def render(source: Path, target: Path, domain: str, project: str, owner_cidrs: list[str], *, operator_basic_auth: str, flower_basic_auth: str) -> dict:
+def render(source: Path, target: Path, domain: str, project: str, owner_cidrs: list[str], *, operator_basic_auth: str, flower_basic_auth: str, django_username: str, django_email: str, django_password: str, pgadmin_email: str, pgadmin_password: str) -> dict:
     domain = str(domain).strip().lower()
     if not DOMAIN.fullmatch(domain):
         raise RenderError("preview domain is invalid")
@@ -44,6 +54,11 @@ def render(source: Path, target: Path, domain: str, project: str, owner_cidrs: l
         raise RenderError(str(exc)) from exc
     operator = _auth(operator_basic_auth, "operator")
     flower = _auth(flower_basic_auth, "flower")
+    django_username = _application_value(django_username, "Django username", pattern=USERNAME)
+    django_email = _application_value(django_email, "Django email", pattern=EMAIL)
+    django_password = _application_value(django_password, "Django password")
+    pgadmin_email = _application_value(pgadmin_email, "pgAdmin email", pattern=EMAIL)
+    pgadmin_password = _application_value(pgadmin_password, "pgAdmin password")
     if operator.split(":", 1)[1] == flower.split(":", 1)[1]:
         raise RenderError("operator and Flower credentials must be independent")
     staging = target.with_suffix(target.suffix + ".base")
@@ -64,10 +79,20 @@ def render(source: Path, target: Path, domain: str, project: str, owner_cidrs: l
         "PGADMIN_ALLOWLIST": cidrs[0],
         "FLOWER_ALLOWLIST": cidrs[0],
         "DJANGO_ALLOWED_HOSTS": f"{domain},admin.{domain},django,api",
+        "DJANGO_CSRF_TRUSTED_ORIGINS": f"https://admin.{domain}",
         "CORS_ALLOW_ORIGINS": f"https://{domain}",
         "FRONTEND_URL": f"https://{domain}",
         "TRAEFIK_DASH_BASIC_USERS": operator,
         "FLOWER_BASIC_USERS": flower,
+        "USER_MAIN_NAME": django_username,
+        "USER_MAIN_EMAIL": django_email,
+        "TP_DJANGO_SUPERUSER_PASSWORD": django_password,
+        "PGADMIN_DEFAULT_EMAIL": pgadmin_email,
+        "TP_PGADMIN_PASSWORD": pgadmin_password,
+        "PGADMIN_CONFIG_PROXY_X_FOR_COUNT": "1",
+        "PGADMIN_CONFIG_PROXY_X_PROTO_COUNT": "1",
+        "PGADMIN_CONFIG_PROXY_X_HOST_COUNT": "1",
+        "PGADMIN_CONFIG_SESSION_COOKIE_SECURE": "True",
     })
     _write_env(target, values)
     return {"ok": True, "mode": "full-preview", "secretValuesEmitted": 0, "ownerCidrCount": len(cidrs)}
@@ -82,10 +107,23 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--owner-cidr", action="append", required=True)
     parser.add_argument("--operator-basic-auth-file", type=Path, required=True)
     parser.add_argument("--flower-basic-auth-file", type=Path, required=True)
+    parser.add_argument("--django-username-file", type=Path, required=True)
+    parser.add_argument("--django-email-file", type=Path, required=True)
+    parser.add_argument("--django-password-file", type=Path, required=True)
+    parser.add_argument("--pgadmin-email-file", type=Path, required=True)
+    parser.add_argument("--pgadmin-password-file", type=Path, required=True)
     args = parser.parse_args(argv)
     operator = args.operator_basic_auth_file.read_text(encoding="utf-8").strip()
     flower = args.flower_basic_auth_file.read_text(encoding="utf-8").strip()
-    receipt = render(args.source, args.target, args.domain, args.project, args.owner_cidr, operator_basic_auth=operator, flower_basic_auth=flower)
+    receipt = render(
+        args.source, args.target, args.domain, args.project, args.owner_cidr,
+        operator_basic_auth=operator, flower_basic_auth=flower,
+        django_username=args.django_username_file.read_text(encoding="utf-8").strip(),
+        django_email=args.django_email_file.read_text(encoding="utf-8").strip(),
+        django_password=args.django_password_file.read_text(encoding="utf-8").strip(),
+        pgadmin_email=args.pgadmin_email_file.read_text(encoding="utf-8").strip(),
+        pgadmin_password=args.pgadmin_password_file.read_text(encoding="utf-8").strip(),
+    )
     print('{"mode":"full-preview","ok":true,"ownerCidrCount":%d,"secretValuesEmitted":0}' % receipt["ownerCidrCount"])
     return 0
 

@@ -166,6 +166,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--flower-auth-file", type=Path, required=True)
     parser.add_argument("--probe-username-file", type=Path, required=True)
     parser.add_argument("--probe-password-file", type=Path, required=True)
+    parser.add_argument("--django-username-file", type=Path, required=True)
+    parser.add_argument("--django-email-file", type=Path, required=True)
+    parser.add_argument("--django-password-file", type=Path, required=True)
+    parser.add_argument("--pgadmin-email-file", type=Path, required=True)
+    parser.add_argument("--pgadmin-password-file", type=Path, required=True)
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--profile-digest", required=True)
     parser.add_argument("--domain", required=True)
@@ -178,6 +183,9 @@ def main(argv: list[str] | None = None) -> int:
     remote = FullPreviewSshBootstrap(
         known_hosts=args.state_root / "known_hosts", owner_cidr=args.owner_cidr,
         operator_auth=args.operator_auth_file, flower_auth=args.flower_auth_file,
+        django_username=args.django_username_file, django_email=args.django_email_file,
+        django_password=args.django_password_file, pgadmin_email=args.pgadmin_email_file,
+        pgadmin_password=args.pgadmin_password_file,
     )
     result = launch(
         client=client, remote=remote, source_archive=args.source_archive, ssh_key=args.ssh_private_key,
