@@ -18,11 +18,16 @@ class DnsProvider(Protocol):
 
 
 def required_names(domain: str) -> tuple[str, ...]:
-    """Return the DigitalOcean API names, using the FQDN for the zone apex."""
+    """Return canonical provider identities for the required records."""
     normalized = str(domain).strip().lower()
     if not DOMAIN.fullmatch(normalized):
         raise DnsMigrationError("DNS domain is invalid")
-    return (normalized, *REQUIRED_SUBDOMAINS)
+    return ("@", *REQUIRED_SUBDOMAINS)
+
+
+def _request_name(domain: str, canonical_name: str) -> str:
+    """Translate DigitalOcean's apex identity into its raw-API request form."""
+    return f"{domain}." if canonical_name == "@" else canonical_name
 
 def _row(payload: dict) -> dict:
     value = payload.get("domain_record", payload)
@@ -45,13 +50,14 @@ def migrate_required_records(provider: DnsProvider, domain: str, ip_address: str
     if not isinstance(listed, list):
         raise DnsMigrationError("provider returned malformed DNS inventory")
     inventory = [_row(row) for row in listed]
-    prior_names = set(names) | {"@"}
+    prior_names = set(names) | {domain, f"{domain}."}
     prior = [row for row in inventory if row["type"] == "A" and row["name"] in prior_names]
     created: list[dict] = []
     deleted_prior: list[dict] = []
     try:
         for name in names:
-            row = _row(provider.create_record(domain, {"type": "A", "name": name, "data": address, "ttl": ttl}))
+            request_name = _request_name(domain, name)
+            row = _row(provider.create_record(domain, {"type": "A", "name": request_name, "data": address, "ttl": ttl}))
             created.append(row)
             if row["type"] != "A" or row["name"] != name or row["value"] != address:
                 raise DnsMigrationError("provider returned a different DNS record")
@@ -62,7 +68,7 @@ def migrate_required_records(provider: DnsProvider, domain: str, ip_address: str
         rollback_errors = []
         for row in reversed(deleted_prior):
             try:
-                provider.create_record(domain, {"type": row["type"], "name": row["name"], "data": row["value"], "ttl": ttl})
+                provider.create_record(domain, {"type": row["type"], "name": _request_name(domain, row["name"]), "data": row["value"], "ttl": ttl})
             except Exception as rollback:
                 rollback_errors.append(type(rollback).__name__)
         for row in reversed(created):
@@ -94,7 +100,7 @@ def restore_migration(provider: DnsProvider, receipt: dict, *, ttl: int = 60) ->
         for row in receipt.get("replacedRecords") or []:
             provider.create_record(
                 receipt["domain"],
-                {"type": row["type"], "name": row["name"], "data": row["value"], "ttl": ttl},
+                {"type": row["type"], "name": _request_name(receipt["domain"], row["name"]), "data": row["value"], "ttl": ttl},
             )
             restored += 1
     except Exception as exc:

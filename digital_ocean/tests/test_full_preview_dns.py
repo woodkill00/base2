@@ -14,7 +14,8 @@ class Provider:
         self.calls.append(("create", payload["name"], payload["data"]))
         if self.fail_create == payload["name"]:
             raise RuntimeError("create")
-        row = {"id": self.next_id, "type": payload["type"], "name": payload["name"], "data": payload["data"]}
+        canonical_name = "@" if payload["name"] == f"{domain}." else payload["name"]
+        row = {"id": self.next_id, "type": payload["type"], "name": canonical_name, "data": payload["data"]}
         self.next_id += 1
         self.rows.append(row)
         return {"domain_record": dict(row)}
@@ -28,7 +29,7 @@ def test_creates_all_names_before_removing_legacy_and_returns_exact_ids():
     provider = Provider()
     receipt = migrate_required_records(provider, "woodkilldev.com", "8.8.8.8")
     assert [row["name"] for row in receipt["records"]] == list(required_names("woodkilldev.com"))
-    assert provider.calls[0] == ("create", "woodkilldev.com", "8.8.8.8")
+    assert provider.calls[0] == ("create", "woodkilldev.com.", "8.8.8.8")
     assert all(call[:2] != ("create", "@") for call in provider.calls)
     assert provider.calls[-1] == ("delete", 10)
     assert all(call[0] == "create" for call in provider.calls[:6])
@@ -55,12 +56,12 @@ def test_accepts_the_real_digitalocean_inventory_shape():
     assert receipt["createdRecordCount"] == len(required_names("woodkilldev.com"))
 
 
-def test_replaces_a_legacy_literal_at_record_but_never_recreates_it_on_success():
+def test_replaces_the_canonical_apex_record_using_the_raw_fqdn_request_form():
     provider = Provider()
     provider.rows.append({"id": 11, "type": "A", "name": "@", "data": "198.51.100.2"})
     receipt = migrate_required_records(provider, "woodkilldev.com", "8.8.8.8")
     assert {row["name"] for row in receipt["replacedRecords"]} == {"admin", "@"}
-    assert all(row["name"] != "@" for row in provider.rows)
+    assert [(row["name"], row["data"]) for row in provider.rows if row["name"] == "@"] == [("@", "8.8.8.8")]
 
 
 def test_invalid_domain_rejects_before_provider_access():
@@ -76,8 +77,8 @@ def test_provider_name_rewrite_fails_closed_and_rolls_back():
 
     def rewritten(domain, payload):
         response = original(domain, payload)
-        if payload["name"] == domain:
-            response["domain_record"]["name"] = "@"
+        if payload["name"] == f"{domain}.":
+            response["domain_record"]["name"] = domain
         return response
 
     provider.create_record = rewritten
@@ -91,3 +92,12 @@ def test_exact_rollback_restores_the_prior_record_set():
     result = restore_migration(provider, receipt)
     assert result == {"ok": True, "createdRecordsDeleted": 6, "priorRecordsRestored": 1, "secretValuesEmitted": 0}
     assert [(row["type"], row["name"], row["data"]) for row in provider.rows] == [("A", "admin", "198.51.100.1")]
+
+
+def test_exact_rollback_restores_a_prior_apex_through_the_fqdn_request_form():
+    provider = Provider()
+    provider.rows = [{"id": 11, "type": "A", "name": "@", "data": "198.51.100.2"}]
+    receipt = migrate_required_records(provider, "woodkilldev.com", "8.8.8.8")
+    restore_migration(provider, receipt)
+    assert provider.calls[-1] == ("create", "woodkilldev.com.", "198.51.100.2")
+    assert [(row["name"], row["data"]) for row in provider.rows] == [("@", "198.51.100.2")]

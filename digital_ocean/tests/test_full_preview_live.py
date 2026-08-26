@@ -22,7 +22,9 @@ class Domains:
     def __init__(self): self.rows = [{"id": 1, "type": "A", "name": "admin", "data": "9.9.9.9"}]; self.next = 10
     def list_records(self, domain): return {"domain_records": list(self.rows)}
     def create_record(self, domain, payload):
-        row = {"id": self.next, **payload}; self.next += 1; self.rows.append(row)
+        row = {"id": self.next, **payload}
+        if row["name"] == f"{domain}.": row["name"] = "@"
+        self.next += 1; self.rows.append(row)
         return {"domain_record": row}
     def delete_record(self, domain, record_id): self.rows = [row for row in self.rows if row["id"] != record_id]
 
@@ -59,7 +61,7 @@ def test_providerless_complete_launch_binds_six_records_and_private_lease(tmp_pa
     lease = FullPreviewLeaseStore(tmp_path / "state" / "leases").load(result["runId"])
     assert len(lease["dnsRecords"]) == 6
     assert [row["name"] for row in client.domains.rows] == [
-        "woodkilldev.com", "admin", "swagger", "traefik", "pgadmin", "flower",
+        "@", "admin", "swagger", "traefik", "pgadmin", "flower",
     ]
 
 
