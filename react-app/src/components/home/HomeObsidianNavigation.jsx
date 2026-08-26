@@ -397,6 +397,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     setScrollState(getScrollMetrics());
     const nextActiveSection = readActiveSection();
     if (Date.now() > movementScrollLockUntilRef.current) {
+      activeSectionRef.current = nextActiveSection;
       setActiveSection(nextActiveSection);
     }
   }, []);
@@ -815,7 +816,10 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       root.style.scrollBehavior = previousRootBehavior;
       if (body) body.style.scrollBehavior = previousBodyBehavior;
     };
-    movementScrollLockUntilRef.current = Date.now() + 760;
+    // Leave a deterministic margin before the final state refresh. Scheduling
+    // the lock expiry and refresh for the same millisecond created a race where
+    // a quiet desktop viewport could retain the previous section indefinitely.
+    movementScrollLockUntilRef.current = Date.now() + 680;
     jump();
     window.requestAnimationFrame(jump);
     [16, 50, 100, 180, 280, 420, 600].forEach((delay) => {
@@ -823,7 +827,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     });
     updateScrollState();
     window.requestAnimationFrame(updateScrollState);
-    window.setTimeout(updateScrollState, 760);
+    window.setTimeout(updateScrollState, 800);
   };
 
   const queueSingleMovement = (direction) => {
