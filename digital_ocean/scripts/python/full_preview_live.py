@@ -34,6 +34,17 @@ def _private(path: Path, label: str) -> str:
     return value
 
 
+def _owner_identity(path: Path, label: str, *, email: bool = False) -> str:
+    value = _private(path, label)
+    normalized = value.casefold()
+    local, separator, domain = normalized.partition("@")
+    forbidden_locals = {"canary", "demo", "fixture", "test"}
+    forbidden_domains = {"example.com", "example.net", "example.org", "invalid"}
+    if local in forbidden_locals or (email and (not separator or domain in forbidden_domains)):
+        raise FullPreviewLaunchError(f"{label} must identify the preview owner, not a fixture")
+    return value
+
+
 def _token(path: Path) -> str:
     payload = json.loads(_private(path, "resolved credential"))
     value = (payload.get("secrets") or {}).get("DO_API_TOKEN") or (payload.get("secrets") or {}).get("DIGITAL_OCEAN_API_TOKEN")
@@ -179,6 +190,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--state-root", type=Path, required=True)
     parser.add_argument("--ttl-minutes", type=int, default=60)
     args = parser.parse_args(argv)
+    probe_username = _owner_identity(args.probe_username_file, "probe username")
+    _owner_identity(args.django_username_file, "Django username")
+    _owner_identity(args.django_email_file, "Django email", email=True)
+    _owner_identity(args.pgadmin_email_file, "pgAdmin email", email=True)
     client = DigitalOceanHttpClient(_token(args.credential_file))
     remote = FullPreviewSshBootstrap(
         known_hosts=args.state_root / "known_hosts", owner_cidr=args.owner_cidr,
@@ -191,7 +206,7 @@ def main(argv: list[str] | None = None) -> int:
         client=client, remote=remote, source_archive=args.source_archive, ssh_key=args.ssh_private_key,
         source_commit=args.source_commit, profile_digest=args.profile_digest, domain=args.domain,
         owner_cidr=args.owner_cidr, run_id=args.run_id,
-        probe_username=_private(args.probe_username_file, "probe username"),
+        probe_username=probe_username,
         probe_password=_private(args.probe_password_file, "probe password"),
         state_root=args.state_root, ssh_key_id=args.ssh_key_id, ttl_minutes=args.ttl_minutes,
     )
