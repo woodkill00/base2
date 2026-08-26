@@ -30,7 +30,7 @@ const About = () => (
     data-base2-section-panel="command"
     data-testid="base2-about-section"
   >
-    <div className="base2-section-shell">
+    <div className="base2-section-shell" tabIndex={0}>
       <div className="base2-integrated-copy">
         <span className="base2-section-kicker">About Base2</span>
         <h2>Project teams that can ship without exposing the controls.</h2>

@@ -21,73 +21,65 @@ function renderNavigation(onNavigate = vi.fn()) {
     </>
   );
   sectionIds.forEach((id, index) => {
-    document.getElementById(id).getBoundingClientRect = () => ({ top: index * 300 });
+    document.getElementById(id).getBoundingClientRect = () => ({
+      top: index * 300,
+      width: 1000,
+      height: 300,
+    });
   });
   return { ...result, onNavigate };
 }
 
-describe('Base2 Obsidian navigation', () => {
-  test('supports menu, palettes, utilities, command search, movement, and keyboard closure', () => {
+describe('Base2 restored Obsidian navigation', () => {
+  test('supports the full command, palette, utility, and movement surfaces', () => {
     Object.defineProperty(document.documentElement, 'scrollHeight', {
       configurable: true,
       value: 2000,
     });
     Object.defineProperty(window, 'innerHeight', { configurable: true, value: 1000 });
     Object.defineProperty(window, 'scrollY', { configurable: true, value: 500 });
-    const { onNavigate, unmount } = renderNavigation();
+    const { onNavigate } = renderNavigation();
 
     fireEvent.scroll(window);
-    expect(screen.getByText(/home · 50%/i)).toBeInTheDocument();
-    fireEvent.resize(window);
+    expect(screen.getByTestId('base2-section-active')).toHaveTextContent('home');
+    expect(screen.getByTestId('base2-scroll-ascend')).toBeInTheDocument();
+    expect(screen.getByTestId('base2-scroll-descend')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open command menu' }));
-    expect(screen.getByRole('navigation', { name: 'Obsidian sections' })).toBeVisible();
-    fireEvent.click(screen.getByLabelText('basalt'));
+    fireEvent.click(screen.getByRole('button', { name: 'Open Base2 command menu' }));
+    expect(screen.getByTestId('base2-left-command-menu')).toHaveAttribute('aria-hidden', 'false');
+    expect(screen.getByRole('navigation', { name: 'Base2 page sections' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('base2-command-palette-open'));
+    expect(screen.getByRole('dialog', { name: 'Base2 command palette' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Use Basalt color scheme' }));
     expect(screen.getByTestId('base2-obsidian-navigation')).toHaveAttribute(
       'data-active-palette',
       'basalt'
     );
-    expect(
-      screen.getByTestId('base2-obsidian-navigation').style.getPropertyValue('--obsidian-primary')
-    ).toBe('#66e3ff');
-    fireEvent.click(screen.getByRole('button', { name: 'Features' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Review Base2 features' }));
     expect(onNavigate).toHaveBeenLastCalledWith('features');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open utility rail' }));
-    expect(screen.getByRole('complementary', { name: 'Preview utilities' })).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Close utility rail' }));
-
-    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
-    const query = screen.getByLabelText('Find a section');
-    fireEvent.change(query, { target: { value: 'security' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Security' }));
-    expect(onNavigate).toHaveBeenLastCalledWith('security');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Next section' }));
-    expect(onNavigate).toHaveBeenLastCalledWith('contact');
-    fireEvent.click(screen.getByRole('button', { name: 'Previous section' }));
-    expect(onNavigate).toHaveBeenLastCalledWith('security');
-
-    fireEvent.keyDown(window, { key: 'k', metaKey: true });
-    expect(screen.getByRole('dialog', { name: 'Command palette' })).toBeVisible();
-    fireEvent.keyDown(window, { key: 'Escape' });
-    expect(screen.queryByRole('dialog', { name: 'Command palette' })).not.toBeInTheDocument();
-    unmount();
+    fireEvent.click(screen.getByRole('button', { name: 'Open Base2 utility menu' }));
+    expect(screen.getByRole('listbox', { name: 'Base2 utility shortcuts' })).toBeVisible();
+    expect(
+      screen.getAllByRole('option', { name: /Automation unavailable on public site/ })[0]
+    ).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Close Base2 utility menu' }));
   });
 
-  test('closes the command menu through its backdrop and opens palette from the menu', () => {
+  test('dismisses overlays and supports keyboard palette controls', () => {
     renderNavigation();
-    fireEvent.click(screen.getByRole('button', { name: 'Open command menu' }));
-    const closeButtons = screen.getAllByRole('button', { name: 'Close command menu' });
-    fireEvent.click(closeButtons[1]);
-    expect(screen.getByRole('button', { name: 'Open command menu' })).toHaveAttribute(
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open Base2 command menu' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss Base2 command overlay' }));
+    expect(screen.getByRole('button', { name: 'Open Base2 command menu' })).toHaveAttribute(
       'aria-expanded',
       'false'
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Open command menu' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Open command palette' }));
-    expect(screen.getByRole('dialog', { name: 'Command palette' })).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+    expect(screen.getByRole('dialog', { name: 'Base2 command palette' })).toBeVisible();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Base2 command palette' })).not.toBeInTheDocument();
   });
 });

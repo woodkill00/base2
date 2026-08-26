@@ -23,6 +23,7 @@ const HomeHero = ({ onPrimary, onSecondary, onSearch }) => {
     <section
       className="home-obsidian-hero relative flex items-center justify-center"
       data-testid="manifest-home-hero"
+      tabIndex={0}
       style={{
         minHeight: 'calc(100vh - 3.5rem - 1px)',
         padding: 'calc(2rem) calc(max(1rem, calc((100vw - 1200px) / 2)))',
@@ -40,8 +41,8 @@ const HomeHero = ({ onPrimary, onSecondary, onSearch }) => {
         >
           <div className="home-obsidian-grid" aria-hidden="true" />
 
-          <div className="home-hero-layout relative z-10">
-            <div className="home-hero-copy">
+          <div className="home-hero-layout relative z-10 grid items-center gap-8 lg:grid-cols-[1.12fr_0.88fr]">
+            <div className="home-hero-copy flex flex-col items-start text-left">
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -122,6 +123,7 @@ const HomeHero = ({ onPrimary, onSecondary, onSearch }) => {
               transition={{ delay: 0.45, duration: 0.7, ease: 'easeOut' }}
               className="home-command-stack"
               aria-label="Site profile summary"
+              data-testid="base2-visual-command-stack"
             >
               <div className="home-command-topline">
                 <span>Site profile</span>

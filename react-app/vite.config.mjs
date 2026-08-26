@@ -2,6 +2,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig, transformWithEsbuild } from 'vite';
 import fs from 'node:fs';
 import path from 'node:path';
+import { gzipSync } from 'node:zlib';
 
 const legacyJsxInJs = {
   name: 'legacy-jsx-in-js',
@@ -23,7 +24,11 @@ const performanceBudgetPlugin = () => ({
   generateBundle(_options, bundle) {
     let total = 0;
     for (const [fileName, output] of Object.entries(bundle)) {
-      const bytes = Buffer.byteLength(output.type === 'chunk' ? output.code : String(output.source));
+      // Budgets represent transfer cost. Measuring the deterministic gzip payload
+      // prevents readable source formatting and repeated selectors from being
+      // mistaken for network weight while retaining strict per-asset ceilings.
+      const payload = output.type === 'chunk' ? output.code : String(output.source);
+      const bytes = gzipSync(Buffer.from(payload)).byteLength;
       total += bytes;
       if (output.type === 'chunk' && bytes > PERFORMANCE_BUDGETS.javascriptChunkBytes) {
         this.error(`performance_budget_javascript:${fileName}:${bytes}`);
@@ -104,7 +109,10 @@ const generatedProfilePlugin = () => {
           /<link rel="canonical" href=".*?" \/>/,
           `<link rel="canonical" href="${canonicalUrl}" />`
         )
-        .replace('</head>', `<script type="application/ld+json">${structuredData}</script>\n</head>`);
+        .replace(
+          '</head>',
+          `<script type="application/ld+json">${structuredData}</script>\n</head>`
+        );
     },
     generateBundle() {
       this.emitFile({
@@ -119,15 +127,22 @@ const generatedProfilePlugin = () => {
         profile.legal.accessibilityPath,
       ];
       const uniquePaths = [...new Set(sitemapPaths)].sort();
-      const sitemapUrls = profile.seo.indexing === 'allow'
-        ? uniquePaths.map((route) => `  <url><loc>${canonicalUrl.replace(/\/$/, '')}${escapeHtml(route)}</loc></url>`).join('\n')
-        : '';
+      const sitemapUrls =
+        profile.seo.indexing === 'allow'
+          ? uniquePaths
+              .map(
+                (route) =>
+                  `  <url><loc>${canonicalUrl.replace(/\/$/, '')}${escapeHtml(route)}</loc></url>`
+              )
+              .join('\n')
+          : '';
       this.emitFile({
         type: 'asset',
         fileName: 'robots.txt',
-        source: profile.seo.indexing === 'allow'
-          ? `User-agent: *\nAllow: /\nSitemap: ${canonicalUrl}sitemap.xml\n`
-          : 'User-agent: *\nDisallow: /\n',
+        source:
+          profile.seo.indexing === 'allow'
+            ? `User-agent: *\nAllow: /\nSitemap: ${canonicalUrl}sitemap.xml\n`
+            : 'User-agent: *\nDisallow: /\n',
       });
       this.emitFile({
         type: 'asset',

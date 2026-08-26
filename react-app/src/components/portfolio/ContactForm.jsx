@@ -16,7 +16,7 @@ const ContactForm = () => {
       data-base2-section-panel="contact"
       data-testid="base2-contact-section"
     >
-      <div className="base2-section-shell">
+      <div className="base2-section-shell" tabIndex={0}>
         <div className="base2-integrated-copy">
           <span className="base2-section-kicker">Handoff</span>
           <h2>Keep feedback actionable for the next agent pass.</h2>

@@ -1,0 +1,21 @@
+# Ordered Tasks
+
+- [ ] T001 Freeze current and historical source commits in feature evidence.
+- [ ] T002 Inventory historical components, selectors, interactions, breakpoints, and tests.
+- [ ] T003 Map historical behavior to current profile and route contracts.
+- [ ] T004 Restore the complete navigation and command interaction model.
+- [ ] T005 Restore palette, utility rail, section movement, and scroll feedback.
+- [ ] T006 Restore full volcanic/Obsidian responsive styling without removing current tokens.
+- [ ] T007 Reconcile hero, feature, operations, portfolio, contact, visual, security, trust, and footer markup.
+- [ ] T008 Preserve current manifest-driven copy, actions, localization, consent, and public routes.
+- [ ] T009 Add deterministic component and keyboard interaction tests.
+- [ ] T010 Add accessibility, reduced-motion, and responsive tests.
+- [ ] T011 Refresh and review desktop, tablet, and mobile visual baselines.
+- [ ] T012 Prove current auth, CSRF, proxy, pgAdmin, deployment, and operator-route regressions remain fixed.
+- [ ] T013 Run tracked-secret, build, unit, integration, E2E, and production gates.
+- [ ] T014 Run tasks-analysis-additional-tasks refinement to zero findings.
+- [ ] T015 Commit and push the exact feature branch.
+- [ ] T016 Publish PR and require green CI before merge.
+- [ ] T017 Deploy a bounded staging-certificate live preview.
+- [ ] T018 Run public visual and authenticated application browser gates.
+- [ ] T019 Verify exact teardown, empty provider inventory, and closeout evidence.
