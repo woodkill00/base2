@@ -2554,6 +2554,13 @@
     grid-template-columns: 1fr;
   }
 
+  .base2-integrated-about .base2-section-shell,
+  .base2-integrated-contact .base2-section-shell,
+  .base2-integrated-projects .base2-section-shell {
+    align-content: start;
+    align-items: start;
+  }
+
   .base2-integrated-contact .base2-section-shell {
     width: min(620px, calc(100% * 1));
     gap: clamp(16px, calc(2vh + 6px), 24px);
