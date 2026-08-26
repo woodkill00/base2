@@ -28,6 +28,7 @@ from digital_ocean.scripts.python.preview_expiry import (
     arm_expiry,
     build_expiry_plan,
     extend_lease,
+    remove_expiry_units,
 )
 from digital_ocean.scripts.python.preview_inventory import (
     InventoryError,
@@ -268,6 +269,7 @@ def launch_from_config(
     runner: Callable = subprocess.run,
     timer_runner: Callable = subprocess.run,
     provider_factory: Callable = DigitalOceanHttpClient,
+    unit_root: str | os.PathLike[str] | None = None,
 ) -> dict:
     config = validate_launch_config(value)
     repo = Path(config["repoRoot"]).resolve(strict=True)
@@ -378,7 +380,7 @@ def launch_from_config(
             python_executable=config["pythonExecutable"],
             repo_root=repo,
         )
-        armed = arm_expiry(plan, runner=timer_runner)
+        armed = arm_expiry(plan, runner=timer_runner, unit_root=unit_root)
     except Exception as exc:
         cleanup_args = [
             config["pythonExecutable"],
@@ -569,9 +571,11 @@ def execute(args: argparse.Namespace) -> tuple[dict, int]:
                         "owned provider resources remain",
                         cleanup_state="reconciliation-required",
                     )
+                expiry_cleanup = remove_expiry_units(args.run_id)
                 details = {
                     "teardown": teardown,
                     "providerInventory": provider_receipt,
+                    "expiryCleanup": expiry_cleanup,
                     "secretValuesEmitted": 0,
                 }
         elif command == "launch":

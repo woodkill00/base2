@@ -38,6 +38,74 @@ def _systemd_calendar(value: str) -> str:
     return parsed.strftime("%Y-%m-%d %H:%M:%S UTC")
 
 
+def _systemd_quote(value: str) -> str:
+    if any(character in value for character in "\r\n\0"):
+        raise ExpiryPlanError("EXPIRY_PLAN_DRIFT", "expiry command contains invalid text")
+    return '"' + value.replace("\\", "\\\\").replace('"', '\\"').replace("%", "%%") + '"'
+
+
+def _systemd_path(value: str) -> str:
+    if not value.startswith("/home/") or any(character.isspace() for character in value):
+        raise ExpiryPlanError("EXPIRY_PLAN_DRIFT", "expiry working directory is invalid")
+    if any(character in value for character in '"\\%'):
+        raise ExpiryPlanError("EXPIRY_PLAN_DRIFT", "expiry working directory is invalid")
+    return value
+
+
+def _unit_directory(unit_root: str | os.PathLike[str] | None = None) -> Path:
+    root = Path(unit_root) if unit_root is not None else Path.home() / ".config/systemd/user"
+    root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if root.is_symlink() or not root.is_dir() or stat.S_IMODE(root.stat().st_mode) & 0o077:
+        raise ExpiryPlanError("STATE_PERMISSION_INVALID", "user unit root must be owner-only")
+    return root.resolve(strict=True)
+
+
+def _atomic_unit(path: Path, content: str) -> None:
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
+def _unit_paths(plan: dict, unit_root: str | os.PathLike[str] | None = None) -> tuple[Path, Path]:
+    root = _unit_directory(unit_root)
+    return root / f"{plan['unit']}.service", root / f"{plan['unit']}.timer"
+
+
+def _install_unit_files(plan: dict, unit_root: str | os.PathLike[str] | None = None) -> tuple[Path, Path]:
+    service, timer = _unit_paths(plan, unit_root)
+    command = " ".join(_systemd_quote(part) for part in plan["command"])
+    service_text = (
+        "[Unit]\n"
+        f"Description=Expire exact Base2 preview {plan['runId']}\n\n"
+        "[Service]\n"
+        "Type=oneshot\n"
+        "UMask=0077\n"
+        f"WorkingDirectory={_systemd_path(plan['repository'])}\n"
+        f"ExecStart={command}\n"
+    )
+    timer_text = (
+        "[Unit]\n"
+        f"Description=Persistent expiry for exact Base2 preview {plan['runId']}\n\n"
+        "[Timer]\n"
+        f"OnCalendar={_systemd_calendar(plan['expiresAt'])}\n"
+        "Persistent=true\n"
+        f"Unit={plan['unit']}.service\n\n"
+        "[Install]\n"
+        "WantedBy=timers.target\n"
+    )
+    _atomic_unit(service, service_text)
+    _atomic_unit(timer, timer_text)
+    return service, timer
+
+
 def _private_file(path: str | os.PathLike[str], label: str) -> Path:
     candidate = Path(path)
     if (
@@ -121,12 +189,28 @@ def systemd_run_arguments(plan: dict) -> list[str]:
     ]
 
 
-def arm_expiry(plan: dict, *, runner: Callable = subprocess.run) -> dict:
-    args = systemd_run_arguments(plan)
-    completed = runner(args, check=False, capture_output=True, text=True, timeout=20)
-    if completed.returncode != 0:
-        raise ExpiryPlanError("EXPIRY_NOT_ARMED", "persistent expiry timer could not be armed")
-    verified = verify_expiry(plan, runner=runner)
+def arm_expiry(
+    plan: dict,
+    *,
+    runner: Callable = subprocess.run,
+    unit_root: str | os.PathLike[str] | None = None,
+) -> dict:
+    systemd_run_arguments(plan)
+    _install_unit_files(plan, unit_root)
+    try:
+        for args in (
+            ["systemctl", "--user", "daemon-reload"],
+            ["systemctl", "--user", "enable", "--now", plan["unit"] + ".timer"],
+        ):
+            completed = runner(args, check=False, capture_output=True, text=True, timeout=20)
+            if completed.returncode != 0:
+                raise ExpiryPlanError(
+                    "EXPIRY_NOT_ARMED", "persistent expiry timer could not be armed"
+                )
+        verified = verify_expiry(plan, runner=runner)
+    except Exception:
+        remove_expiry_units(plan["runId"], runner=runner, unit_root=unit_root)
+        raise
     return {
         "schemaVersion": 1,
         "ok": True,
@@ -137,6 +221,7 @@ def arm_expiry(plan: dict, *, runner: Callable = subprocess.run) -> dict:
         "planDigest": plan["planDigest"],
         "armed": True,
         "persistent": True,
+        "durableUnitFiles": True,
         "controllerCoverage": {"primary": "armed", "backup": "not-configured"},
         "verification": verified,
         "secretValuesEmitted": 0,
@@ -153,6 +238,7 @@ def verify_expiry(plan: dict, *, runner: Callable = subprocess.run) -> dict:
             plan["unit"] + ".timer",
             "--property=ActiveState",
             "--property=LoadState",
+            "--property=UnitFileState",
             "--no-pager",
         ],
         check=False,
@@ -169,9 +255,50 @@ def verify_expiry(plan: dict, *, runner: Callable = subprocess.run) -> dict:
         completed.returncode != 0
         or fields.get("LoadState") != "loaded"
         or fields.get("ActiveState") != "active"
+        or fields.get("UnitFileState") != "enabled"
     ):
         raise ExpiryPlanError("EXPIRY_NOT_ARMED", "persistent expiry timer did not verify active")
-    return {"unit": plan["unit"] + ".timer", "loadState": "loaded", "activeState": "active"}
+    return {
+        "unit": plan["unit"] + ".timer",
+        "loadState": "loaded",
+        "activeState": "active",
+        "unitFileState": "enabled",
+    }
+
+
+def remove_expiry_units(
+    run_id: str,
+    *,
+    runner: Callable = subprocess.run,
+    unit_root: str | os.PathLike[str] | None = None,
+) -> dict:
+    if not RUN_ID.fullmatch(run_id):
+        raise ExpiryPlanError("EXPIRY_PLAN_DRIFT", "run ID is invalid")
+    unit = f"base2-full-preview-expiry-{run_id}"
+    root = _unit_directory(unit_root)
+    runner(
+        ["systemctl", "--user", "disable", "--now", unit + ".timer"],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=20,
+    )
+    removed = []
+    for suffix in ("service", "timer"):
+        path = root / f"{unit}.{suffix}"
+        if path.is_symlink():
+            raise ExpiryPlanError("STATE_PERMISSION_INVALID", "expiry unit must not be a symlink")
+        if path.exists():
+            path.unlink()
+            removed.append(path.name)
+    runner(
+        ["systemctl", "--user", "daemon-reload"],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=20,
+    )
+    return {"runId": run_id, "removed": sorted(removed), "secretValuesEmitted": 0}
 
 
 def extend_lease(

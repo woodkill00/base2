@@ -28,6 +28,7 @@ from digital_ocean.scripts.python.preview_expiry import (
     arm_expiry,
     build_expiry_plan,
     extend_lease,
+    remove_expiry_units,
     systemd_run_arguments,
 )
 from digital_ocean.scripts.python.preview_inventory import (
@@ -284,19 +285,31 @@ def test_arm_expiry_uses_argument_vector_and_reports_failure(tmp_path):
 
     class Result:
         returncode = 0
-        stdout = "ActiveState=active\nLoadState=loaded\n"
+        stdout = "ActiveState=active\nLoadState=loaded\nUnitFileState=enabled\n"
         stderr = ""
 
     def runner(args, **kwargs):
         calls.append((args, kwargs))
         return Result()
 
-    assert arm_expiry(plan, runner=runner)["armed"] is True
+    unit_root = tmp_path / "units"
+    result = arm_expiry(plan, runner=runner, unit_root=unit_root)
+    assert result["armed"] is True and result["durableUnitFiles"] is True
+    service = unit_root / f"{plan['unit']}.service"
+    timer = unit_root / f"{plan['unit']}.timer"
+    assert service.is_file() and timer.is_file()
+    assert "Persistent=true" in timer.read_text()
+    assert "OnCalendar=2026-08-26 13:00:00 UTC" in timer.read_text()
+    assert f"WorkingDirectory={ROOT}" in service.read_text()
+    assert str(credential) in service.read_text()
+    removed = remove_expiry_units(RUN, runner=runner, unit_root=unit_root)
+    assert len(removed["removed"]) == 2 and not service.exists() and not timer.exists()
     assert isinstance(calls[0][0], list) and calls[0][1]["timeout"] == 20
     Result.returncode = 1
     with pytest.raises(ExpiryPlanError) as failure:
-        arm_expiry(plan, runner=runner)
+        arm_expiry(plan, runner=runner, unit_root=unit_root)
     assert failure.value.code == "EXPIRY_NOT_ARMED"
+    assert not service.exists() and not timer.exists()
 
 
 def test_provider_inventory_is_read_only_exact_and_rate_limit_is_typed(tmp_path):
@@ -533,7 +546,7 @@ def test_launch_orchestration_arms_expiry_and_cleans_up_if_arming_fails(tmp_path
 
     class TimerResult:
         returncode = 0
-        stdout = "ActiveState=active\nLoadState=loaded\n"
+        stdout = "ActiveState=active\nLoadState=loaded\nUnitFileState=enabled\n"
         stderr = ""
 
     result = launch_from_config(
@@ -541,6 +554,7 @@ def test_launch_orchestration_arms_expiry_and_cleans_up_if_arming_fails(tmp_path
         runner=lifecycle_runner,
         timer_runner=lambda *args, **kwargs: TimerResult(),
         provider_factory=lambda token: Client(),
+        unit_root=tmp_path / "units",
     )
     assert result["expiry"]["armed"] and result["budgetCeilingUsd"] == "0.25"
     intent = json.loads((state / "intents" / f"{RUN}.json").read_text())
@@ -561,6 +575,7 @@ def test_launch_orchestration_arms_expiry_and_cleans_up_if_arming_fails(tmp_path
             runner=lifecycle_runner,
             timer_runner=lambda *args, **kwargs: FailedTimer(),
             provider_factory=lambda token: Client(),
+            unit_root=tmp_path / "units",
         )
     assert failure.value.code == "EXPIRY_NOT_ARMED"
     assert failure.value.cleanup_state == "destroyed"
