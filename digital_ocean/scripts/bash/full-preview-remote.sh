@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+stage="argument-validation"
+trap 'code=$?; printf "full-preview-stage-failed:%s exit=%s\n" "$stage" "$code" >&2' ERR
+
 if [[ "$#" -ne 5 ]]; then
   echo "usage: full-preview-remote.sh <domain> <project> <commit> <archive-sha256> <owner-cidr>" >&2
   exit 2
@@ -25,13 +28,17 @@ compose_file="$repo_root/development.docker.yml"
 chmod 600 "$operator_auth" "$flower_auth"
 
 export DEBIAN_FRONTEND=noninteractive
+stage="cloud-init-wait"
 if command -v cloud-init >/dev/null 2>&1; then cloud-init status --wait >/dev/null; fi
+stage="docker-install"
 if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
   apt-get update -qq
   apt-get install -y -qq ca-certificates curl docker.io docker-compose-v2
 fi
+stage="docker-start"
 systemctl enable --now docker >/dev/null
 
+stage="env-render"
 python3 "$repo_root/digital_ocean/scripts/python/render_full_preview_env.py" \
   --source "$repo_root/.env.example" --target "$env_file" \
   --domain "$domain" --project "$project" --owner-cidr "$owner_cidr" \
@@ -39,14 +46,19 @@ python3 "$repo_root/digital_ocean/scripts/python/render_full_preview_env.py" \
 chmod 600 "$env_file"
 rm -f -- "$operator_auth" "$flower_auth"
 
+stage="acme-bootstrap"
 "$repo_root/scripts/bash/bootstrap-acme.sh" --directory "$repo_root/letsencrypt" --uid 1000 --gid 1000
 compose=(docker compose --profile celery --project-name "$project" --env-file "$env_file" -f "$compose_file")
 export COMPOSE_ENV_FILE="$env_file" COMPOSE_PARALLEL_LIMIT=1
+stage="compose-build"
 "${compose[@]}" build
+stage="compose-up"
 "${compose[@]}" up -d --no-build
+stage="service-inventory"
 mapfile -t services < <("${compose[@]}" config --services)
 [[ "${#services[@]}" -gt 0 ]] || exit 3
 
+stage="service-health"
 for attempt in $(seq 1 180); do
   ready=0
   pending=()
@@ -71,6 +83,7 @@ for attempt in $(seq 1 180); do
   sleep 2
 done
 
+stage="traefik-policy"
 traefik_id="$("${compose[@]}" ps -q traefik)"
 docker exec "$traefik_id" sh -ec '
   grep -F "https://acme-staging-v02.api.letsencrypt.org/directory" /tmp/traefik.yml >/dev/null
@@ -80,6 +93,7 @@ docker exec "$traefik_id" sh -ec '
   grep -F "owner-allow-ip" /tmp/dynamic.yml >/dev/null
 '
 
+stage="receipt"
 python3 - "$source_commit" "$archive_sha256" "${#services[@]}" <<'PY'
 import json, sys
 print(json.dumps({
