@@ -654,6 +654,7 @@
     width 260ms ease,
     box-shadow 260ms ease;
   width: 1.85rem;
+  min-width: 24px;
   z-index: 93;
 }
 
@@ -927,10 +928,11 @@
   overflow: hidden;
   transition: width 260ms ease;
   width: 2rem;
+  min-width: 24px;
 }
 
 .home-right-utility-menu:not(.is-open) .home-right-utility-toggle {
-  width: 0.85rem;
+  width: clamp(24px, calc(1vw + 1.1rem), 1.9rem);
 }
 
 .home-right-utility-menu.is-open .home-right-utility-toggle svg {
@@ -1040,6 +1042,15 @@
 @media (prefers-reduced-motion: reduce) {
   .home-left-menu-pulse {
     animation: none;
+  }
+
+  .home-left-menu-toggle,
+  .home-left-command-menu,
+  .home-right-utility-menu,
+  .home-right-utility-toggle,
+  .home-right-utility-panel,
+  .home-movement-button {
+    transition: none;
   }
 }
 
@@ -2904,5 +2915,23 @@
     align-items: flex-start;
     flex-direction: column;
     gap: 7px;
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .base2-integrated-footer {
+    --base2-nav-safe-top: clamp(78px, calc(16vh + 22px), 112px);
+    --base2-nav-safe-bottom: clamp(58px, calc(12vh + 18px), 82px);
+  }
+
+  .base2-footer-shell {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-inline: clamp(72px, calc(8vw + 22px), 104px);
+    scrollbar-gutter: stable both-edges;
+  }
+
+  .base2-footer-identity,
+  .base2-footer-bottom {
+    grid-column: 1 / -1;
   }
 }
