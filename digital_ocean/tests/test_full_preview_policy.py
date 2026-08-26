@@ -75,6 +75,9 @@ def test_full_preview_template_contains_only_expected_host_families_and_staging_
         assert f"{label}." in template or f"${{{label.upper()}_DNS_LABEL}}" in template
     assert "owner-allow-ip" in template
     assert "operator-basic-auth" in template
+    operator = template.split("preview-operator-security:", 1)[1].split("preview-swagger-security:", 1)[0]
+    assert "referrerPolicy: same-origin" in operator
+    assert "referrerPolicy: no-referrer" not in operator
     static = (ROOT / "traefik/traefik.yml").read_text()
     assert "acme-staging-v02.api.letsencrypt.org" in static
     assert "acme-v02.api.letsencrypt.org/directory" not in static

@@ -135,7 +135,10 @@ http:
         stsSeconds: 0
         frameDeny: true
         contentTypeNosniff: true
-        referrerPolicy: no-referrer
+        # Django's HTTPS CSRF checks require a non-opaque same-origin form
+        # origin. `no-referrer` makes browser form submissions emit Origin:
+        # null, so retain only same-origin provenance on private surfaces.
+        referrerPolicy: same-origin
         permissionsPolicy: camera=(), geolocation=(), microphone=(), payment=(), usb=()
         customResponseHeaders: {X-Robots-Tag: 'noindex, nofollow, noarchive', Cache-Control: 'no-store'}
     preview-swagger-security:
