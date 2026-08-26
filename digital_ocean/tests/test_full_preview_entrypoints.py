@@ -328,3 +328,28 @@ def test_live_private_helpers_and_cleanup_reconciliation(tmp_path):
     full_preview_live._write(receipt, {"ok": True})
     assert json.loads(receipt.read_text())["ok"] is True
     assert receipt.stat().st_mode & 0o777 == 0o600
+
+
+@pytest.mark.parametrize(
+    ("value", "email"),
+    [
+        ("canary", False),
+        ("demo@woodkilldev.com", True),
+        ("owner@example.com", True),
+        ("fixture@example.org", True),
+    ],
+)
+def test_live_owner_identity_rejects_fixture_accounts(tmp_path, value, email):
+    identity = private_file(tmp_path / "identity", value)
+    with pytest.raises(full_preview_live.FullPreviewLaunchError, match="preview owner"):
+        full_preview_live._owner_identity(identity, "identity", email=email)
+
+
+def test_live_owner_identity_accepts_owner_accounts(tmp_path):
+    username = private_file(tmp_path / "username", "woodkill")
+    email = private_file(tmp_path / "email", "owner@woodkilldev.com")
+    assert full_preview_live._owner_identity(username, "username") == "woodkill"
+    assert (
+        full_preview_live._owner_identity(email, "email", email=True)
+        == "owner@woodkilldev.com"
+    )
