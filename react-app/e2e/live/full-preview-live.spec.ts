@@ -18,7 +18,7 @@ test('public Obsidian site identity and owner interaction are live', async ({ br
   page.on('requestfailed', (request) => failedRequests.push(`${request.method()} ${new URL(request.url()).pathname}`));
   await page.goto(`https://${domain}/`, { waitUntil: 'networkidle' });
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  await expect(page.locator('html')).toHaveAttribute('data-theme', /dark|light/);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'obsidian');
   await page.keyboard.press('Control+k');
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
