@@ -78,13 +78,6 @@ const colorSchemes = [
   },
 ];
 
-const UTILITY_SELECTOR_FALLBACK = {
-  top: '183px',
-  left: '50%',
-  width: '42px',
-  height: '42px',
-};
-
 const findSection = (item) => {
   if (typeof document === 'undefined') return null;
   return (
@@ -207,7 +200,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   const [activeSection, setActiveSection] = useState('home');
   const [activeLeftSectionSlot, setActiveLeftSectionSlot] = useState(sectionItems.length);
   const [activeUtilitySlot, setActiveUtilitySlot] = useState(utilityItems.length + 4);
-  const [utilitySelectorStyle, setUtilitySelectorStyle] = useState(UTILITY_SELECTOR_FALLBACK);
   const [colorSchemeId, setColorSchemeId] = useState('volcanic');
   const [scrollState, setScrollState] = useState(getScrollMetrics);
   const movementClickTimer = useRef(null);
@@ -217,7 +209,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   const leftSectionListRef = useRef(null);
   const leftSectionButtonRefs = useRef([]);
   const leftSectionSnapTimer = useRef(null);
-  const leftSectionWheelLockUntilRef = useRef(0);
   const activeLeftSectionSlotRef = useRef(sectionItems.length);
   const activeSectionRef = useRef('home');
   const utilityScrollRef = useRef(null);
@@ -271,15 +262,24 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
         }
       });
       const item = visibleSectionItems[closestIndex];
-      const canonicalIndex = normalizeSectionSlot(closestIndex);
-      activeLeftSectionSlotRef.current = canonicalIndex;
-      setActiveLeftSectionSlot(canonicalIndex);
+      let selectedIndex = closestIndex;
+      if (snap) {
+        const canonicalIndex = normalizeSectionSlot(closestIndex);
+        const currentEl = buttons[closestIndex];
+        const canonicalEl = leftSectionButtonRefs.current[canonicalIndex];
+        if (canonicalIndex !== closestIndex && currentEl && canonicalEl) {
+          scrollEl.scrollTop += canonicalEl.offsetTop - currentEl.offsetTop;
+          selectedIndex = canonicalIndex;
+        }
+      }
+      activeLeftSectionSlotRef.current = selectedIndex;
+      setActiveLeftSectionSlot(selectedIndex);
       if (item && item.id !== activeSection) {
         activeSectionRef.current = item.id;
         setActiveSection(item.id);
       }
       if (snap) {
-        centerLeftSectionSlot(canonicalIndex, true);
+        centerLeftSectionSlot(selectedIndex, true);
       }
     },
     [activeSection, centerLeftSectionSlot, normalizeSectionSlot, visibleSectionItems]
@@ -295,7 +295,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
         setActiveSection(nextItem.id);
         setActiveLeftSectionSlot(nextSlot);
       }
-      leftSectionWheelLockUntilRef.current = Date.now() + 900;
       centerLeftSectionSlot(nextSlot, smooth);
       window.clearTimeout(leftSectionSnapTimer.current);
     },
@@ -315,35 +314,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     [activeLeftSectionSlot, sectionLoopOffset]
   );
 
-  const handleLeftSectionWheel = useCallback(
-    (event) => {
-      const node = event.currentTarget || leftSectionListRef.current;
-      const buttons = leftSectionButtonRefs.current.filter(Boolean);
-      const maxScroll = Math.max(0, node.scrollHeight - node.clientHeight);
-      if (maxScroll <= 2 || !buttons.length) return;
-      event.preventDefault();
-
-      const direction = event.deltaY >= 0 ? 1 : -1;
-      const edge = Math.max(4, Math.min(24, node.clientHeight * 0.08));
-      const activeBaseIndex = Math.max(
-        0,
-        sectionItems.findIndex((item) => item.id === activeSectionRef.current)
-      );
-      const nextBaseIndex =
-        (activeBaseIndex + direction + sectionItems.length) % sectionItems.length;
-      const nextSlot =
-        direction > 0 && node.scrollTop >= maxScroll - edge
-          ? normalizeSectionSlot(0)
-          : direction < 0 && node.scrollTop <= edge
-            ? normalizeSectionSlot(sectionItems.length - 1)
-            : normalizeSectionSlot(nextBaseIndex);
-      moveLeftSectionSlot(nextSlot, false);
-    },
-    [moveLeftSectionSlot, normalizeSectionSlot]
-  );
-
   const handleLeftSectionScroll = useCallback(() => {
-    if (Date.now() < leftSectionWheelLockUntilRef.current) return;
     updateActiveLeftSectionFromScroll(false);
     window.clearTimeout(leftSectionSnapTimer.current);
     leftSectionSnapTimer.current = window.setTimeout(
@@ -458,35 +429,10 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
           }
         });
 
-        const normalizedSlot = normalizeUtilitySlot(nextSlot);
-        if (normalizedSlot !== nextSlot && utilityItemRefs.current[nextSlot]) {
-          const currentLoopEl = utilityItemRefs.current[nextSlot];
-          const middleLoopEl = utilityItemRefs.current[normalizedSlot];
-          if (currentLoopEl && middleLoopEl) {
-            scrollEl.scrollTop += middleLoopEl.offsetTop - currentLoopEl.offsetTop;
-          }
-        }
-        const selectedEl = utilityItemRefs.current[normalizedSlot];
+        const selectedEl = utilityItemRefs.current[nextSlot];
         if (!selectedEl) return;
-        const iconEl = selectedEl.querySelector('svg');
-        const scrollRect = scrollEl.getBoundingClientRect();
-        const iconRect = iconEl ? iconEl.getBoundingClientRect() : null;
-        const iconTop = iconRect
-          ? iconRect.top - scrollRect.top + scrollEl.scrollTop
-          : selectedEl.offsetTop + Math.max(0, (selectedEl.offsetHeight - 26) / 2);
-        const iconLeft = iconRect
-          ? iconRect.left - scrollRect.left
-          : selectedEl.offsetLeft + Math.max(0, (selectedEl.offsetWidth - 26) / 2);
-        const iconHeight = iconRect ? iconRect.height : 26;
-        const iconWidth = iconRect ? iconRect.width : 26;
-        activeUtilitySlotRef.current = normalizedSlot;
-        setActiveUtilitySlot(normalizedSlot);
-        setUtilitySelectorStyle({
-          top: `${iconTop + iconHeight / 2 - 32}px`,
-          left: `${iconLeft + iconWidth / 2}px`,
-          width: '64px',
-          height: '64px',
-        });
+        activeUtilitySlotRef.current = nextSlot;
+        setActiveUtilitySlot(nextSlot);
 
         if (shouldSettle) {
           if (utilitySnapTimer.current) {
@@ -494,56 +440,20 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
           }
           utilitySnapTimer.current = window.setTimeout(() => {
             utilitySnapTimer.current = null;
-            centerUtilitySlot(normalizedSlot, 'smooth');
-          }, 120);
+            const canonicalSlot = normalizeUtilitySlot(nextSlot);
+            const currentLoopEl = utilityItemRefs.current[nextSlot];
+            const middleLoopEl = utilityItemRefs.current[canonicalSlot];
+            if (canonicalSlot !== nextSlot && currentLoopEl && middleLoopEl) {
+              scrollEl.scrollTop += middleLoopEl.offsetTop - currentLoopEl.offsetTop;
+            }
+            activeUtilitySlotRef.current = canonicalSlot;
+            setActiveUtilitySlot(canonicalSlot);
+            centerUtilitySlot(canonicalSlot, 'smooth');
+          }, 180);
         }
       });
     },
     [centerUtilitySlot, normalizeUtilitySlot]
-  );
-
-  const handleUtilityWheel = useCallback(
-    (event) => {
-      event.preventDefault();
-      const direction = event.deltaY >= 0 ? 1 : -1;
-      const length = utilityItems.length;
-      const activeBaseIndex =
-        (((activeUtilitySlotRef.current - utilityLoopOffset) % length) + length) % length;
-      let nextIndex = normalizeUtilitySlot(activeBaseIndex + direction);
-
-      for (let step = 1; step <= length; step += 1) {
-        const candidateBaseIndex = (activeBaseIndex + direction * step + length) % length;
-        const candidate = normalizeUtilitySlot(candidateBaseIndex);
-        const candidateItem = visibleUtilityItems[candidate];
-        const candidateEl = utilityItemRefs.current[candidate];
-        if (
-          candidateItem?.safe &&
-          candidateEl &&
-          candidateEl.getAttribute('aria-disabled') !== 'true'
-        ) {
-          nextIndex = candidate;
-          break;
-        }
-      }
-
-      if (nextIndex !== activeUtilitySlotRef.current) {
-        const nextItem = visibleUtilityItems[nextIndex];
-        activeUtilitySlotRef.current = nextIndex;
-        setActiveUtilitySlot(nextIndex);
-        centerUtilitySlot(nextIndex, 'auto');
-        window.requestAnimationFrame(() => {
-          window.requestAnimationFrame(() => updateUtilitySelectionFromScroll(false));
-        });
-        if (!nextItem?.safe) return;
-      }
-    },
-    [
-      centerUtilitySlot,
-      normalizeUtilitySlot,
-      updateUtilitySelectionFromScroll,
-      utilityLoopOffset,
-      visibleUtilityItems,
-    ]
   );
 
   useEffect(() => {
@@ -567,6 +477,9 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       if (utilitySnapTimer.current) {
         window.clearTimeout(utilitySnapTimer.current);
       }
+      if (leftSectionSnapTimer.current) {
+        window.clearTimeout(leftSectionSnapTimer.current);
+      }
     },
     []
   );
@@ -579,19 +492,17 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     updateUtilitySelectionFromScroll();
     const handleUtilityScroll = () => updateUtilitySelectionFromScroll(true);
     scrollEl.addEventListener('scroll', handleUtilityScroll, { passive: true });
-    scrollEl.addEventListener('wheel', handleUtilityWheel, { passive: false });
     window.addEventListener('resize', updateUtilitySelectionFromScroll);
 
     return () => {
       scrollEl.removeEventListener('scroll', handleUtilityScroll);
-      scrollEl.removeEventListener('wheel', handleUtilityWheel);
       window.removeEventListener('resize', updateUtilitySelectionFromScroll);
       if (utilityScrollFrame.current) {
         window.cancelAnimationFrame(utilityScrollFrame.current);
         utilityScrollFrame.current = null;
       }
     };
-  }, [centerUtilitySlot, handleUtilityWheel, isRightOpen, updateUtilitySelectionFromScroll]);
+  }, [centerUtilitySlot, isRightOpen, updateUtilitySelectionFromScroll]);
 
   useEffect(() => {
     const menu = leftMenuRef.current;
@@ -635,15 +546,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       scrollEl.scrollTop = targetTop;
     }
   }, [activeSection, isLeftOpen, normalizeSectionSlot]);
-
-  useEffect(() => {
-    const scrollEl = leftSectionListRef.current;
-    if (!isLeftOpen || !scrollEl) return undefined;
-    scrollEl.addEventListener('wheel', handleLeftSectionWheel, { passive: false });
-    return () => {
-      scrollEl.removeEventListener('wheel', handleLeftSectionWheel);
-    };
-  }, [handleLeftSectionWheel, isLeftOpen]);
 
   useEffect(() => {
     if (isLeftOpen) return;
@@ -917,23 +819,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     setActiveUtilitySlot(normalizedIndex);
 
     if (selectedEl && scrollEl) {
-      const iconEl = selectedEl.querySelector('svg');
-      const scrollRect = scrollEl.getBoundingClientRect();
-      const iconRect = iconEl ? iconEl.getBoundingClientRect() : null;
-      const iconTop = iconRect
-        ? iconRect.top - scrollRect.top + scrollEl.scrollTop
-        : selectedEl.offsetTop + Math.max(0, (selectedEl.offsetHeight - 26) / 2);
-      const iconLeft = iconRect
-        ? iconRect.left - scrollRect.left
-        : selectedEl.offsetLeft + Math.max(0, (selectedEl.offsetWidth - 26) / 2);
-      const iconHeight = iconRect ? iconRect.height : 26;
-      const iconWidth = iconRect ? iconRect.width : 26;
-      setUtilitySelectorStyle({
-        top: `${iconTop + iconHeight / 2 - 32}px`,
-        left: `${iconLeft + iconWidth / 2}px`,
-        width: '64px',
-        height: '64px',
-      });
       centerUtilitySlot(normalizedIndex, 'smooth');
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => updateUtilitySelectionFromScroll(false));
@@ -1183,13 +1068,6 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
               role="listbox"
               aria-label="Base2 utility shortcuts"
               ref={utilityScrollRef}
-              onScroll={updateUtilitySelectionFromScroll}
-              style={{
-                '--utility-selected-offset': utilitySelectorStyle.top,
-                '--utility-selected-left': utilitySelectorStyle.left,
-                '--utility-selected-width': utilitySelectorStyle.width,
-                '--utility-selected-height': utilitySelectorStyle.height,
-              }}
               data-testid="base2-right-utility-scroll"
             >
               {visibleUtilityItems.map((item, index) => {

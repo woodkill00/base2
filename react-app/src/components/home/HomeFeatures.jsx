@@ -35,8 +35,9 @@ const HomeFeatures = ({ items }) => {
         data-testid="base2-preserved-feature-grid"
         className="grid gap-6 home-obsidian-features"
         style={{
-          gridTemplateColumns: 'repeat(auto-fit, minmax(calc(280px), 1fr))',
-          maxWidth: '1200px',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(calc(100% * 1), calc(280px)), 1fr))',
+          width: 'min(calc(100% * 1), calc(1200px))',
+          minWidth: 0,
           margin: '0 auto',
         }}
       >
