@@ -1,5 +1,27 @@
 /* Home page micro-interactions (ported intent from junk/idea hero) */
 
+/*
+ * Modern semantic-token bridge. The reviewed Obsidian reference keeps its
+ * explicit volcanic palette, while generated profiles retain discoverable
+ * canvas, surface, text, and accent inputs for focus and future variants.
+ */
+.home-page-root {
+  --base2-semantic-canvas: var(--color-canvas);
+  --base2-semantic-surface: var(--color-surface);
+  --base2-semantic-text: var(--color-text);
+  --base2-semantic-accent: var(--color-accent);
+}
+
+.home-page-root :focus-visible {
+  outline-color: var(--color-accent);
+}
+
+@media (max-width: 768px) {
+  .home-page-root {
+    --base2-responsive-surface: var(--color-surface);
+  }
+}
+
 .home-hero-float {
   animation: homeHeroFloat 10s ease-in-out infinite;
 }
