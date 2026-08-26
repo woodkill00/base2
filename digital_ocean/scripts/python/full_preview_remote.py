@@ -8,12 +8,33 @@ from pathlib import Path
 import stat
 import subprocess
 import time
+import re
 from typing import Callable
 from digital_ocean.scripts.python.full_preview_policy import validate_owner_cidrs
 from digital_ocean.scripts.python.live_preview_provider import LivePreviewConfig
 
 class FullPreviewRemoteError(RuntimeError):
     pass
+
+
+SENSITIVE_LINE = re.compile(
+    r"(?i)(password|passwd|secret|token|authorization|credential|private[_ -]?key|htpasswd)"
+)
+TOKEN_SHAPE = re.compile(r"(?<![A-Za-z0-9])[A-Za-z0-9_./+=-]{32,}(?![A-Za-z0-9])")
+
+
+def safe_diagnostic(stdout: str, stderr: str) -> str:
+    """Return a bounded, line-filtered build diagnostic safe for operator evidence."""
+    retained = []
+    for raw in (stderr + "\n" + stdout).splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if SENSITIVE_LINE.search(line):
+            retained.append("[redacted sensitive diagnostic line]")
+            continue
+        retained.append(TOKEN_SHAPE.sub("[redacted-token]", line))
+    return " | ".join(retained[-12:])[:2000] or "no safe remote diagnostic"
 
 class FullPreviewSshBootstrap:
     def __init__(self, *, known_hosts: Path, owner_cidr: str, operator_auth: Path, flower_auth: Path,
@@ -75,7 +96,10 @@ class FullPreviewSshBootstrap:
         )
         deployed = self._run(["ssh", *options, target, "bash", "-lc", command], timeout=1800)
         if deployed.returncode != 0:
-            raise FullPreviewRemoteError("full preview bootstrap failed")
+            diagnostic = safe_diagnostic(deployed.stdout, deployed.stderr)
+            raise FullPreviewRemoteError(
+                f"full preview bootstrap failed (exit={deployed.returncode}): {diagnostic}"
+            )
         try:
             receipt = json.loads([line for line in deployed.stdout.splitlines() if line.strip()][-1])
         except (IndexError, json.JSONDecodeError) as exc:
