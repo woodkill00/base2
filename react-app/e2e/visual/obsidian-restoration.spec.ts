@@ -85,3 +85,38 @@ test('movement controls advance through the restored full-screen sections', asyn
   await expect.poll(() => page.getByTestId('base2-section-active').textContent()).toContain('home');
   await expect.poll(() => page.evaluate(() => window.scrollY <= 4)).toBe(true);
 });
+
+test('mobile section panels expose both their first and final content', async ({ page }) => {
+  test.skip((page.viewportSize()?.width || 0) > 720, 'mobile overflow contract');
+  await page.addStyleTag({
+    content: 'html,body,*{scroll-behavior:auto!important;scroll-snap-type:none!important;}',
+  });
+
+  for (const testId of ['base2-about-section', 'base2-projects-section', 'base2-contact-section']) {
+    const reachability = await page.getByTestId(testId).evaluate(async (element) => {
+      element.scrollIntoView({ block: 'start', behavior: 'instant' });
+      const shell = element.querySelector('.base2-section-shell') || element;
+      element.scrollTop = 0;
+      shell.scrollTop = 0;
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      );
+      element.scrollTop = 0;
+      shell.scrollTop = 0;
+      const shellBox = shell.getBoundingClientRect();
+      const firstBox = shell.firstElementChild?.getBoundingClientRect();
+      const firstVisible = Boolean(
+        firstBox && firstBox.top >= shellBox.top - 2 && firstBox.top < shellBox.bottom
+      );
+
+      element.scrollTop = element.scrollHeight;
+      shell.scrollTop = shell.scrollHeight;
+      const lastBox = shell.lastElementChild?.getBoundingClientRect();
+      return {
+        firstVisible,
+        lastVisible: Boolean(lastBox && lastBox.bottom <= shellBox.bottom + 2),
+      };
+    });
+    expect(reachability).toEqual({ firstVisible: true, lastVisible: true });
+  }
+});

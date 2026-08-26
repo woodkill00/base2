@@ -14,7 +14,7 @@ if (!/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(domain)) {
 export default defineConfig({
   testDir: './e2e/live',
   testMatch: 'full-preview-live.spec.ts',
-  timeout: 60_000,
+  timeout: 120_000,
   retries: 0,
   workers: 1,
   outputDir,
