@@ -5,6 +5,7 @@ import json
 import pytest
 
 from digital_ocean.scripts.python.deploy_config import parse_env_text
+from digital_ocean.scripts.python import render_full_preview_env
 from digital_ocean.scripts.python.render_full_preview_env import RenderError, render
 
 
@@ -64,3 +65,32 @@ def test_renderer_rejects_private_or_broad_owner_network_before_output(tmp_path)
     with pytest.raises(Exception):
         render(source, tmp_path / "out.env", "woodkilldev.com", "base2-full-preview", ["192.168.1.0/24"], operator_basic_auth="preview:$apr1$abc$hash", flower_basic_auth="flower:$apr1$def$hash")
     assert not (tmp_path / "out.env").exists()
+
+
+def test_renderer_command_entrypoint_reads_private_inputs_without_echoing_them(tmp_path, capsys):
+    source = tmp_path / "source.env"
+    source.write_text("PROJECT_NAME=x\nWEBSITE_DOMAIN=x.example\n", encoding="utf-8")
+    operator = tmp_path / "operator"
+    operator.write_text("preview:$apr1$abc$hash\n", encoding="utf-8")
+    flower = tmp_path / "flower"
+    flower.write_text("flower:$apr1$def$hash\n", encoding="utf-8")
+    target = tmp_path / "private.env"
+    assert render_full_preview_env.main(
+        [
+            "--source", str(source),
+            "--target", str(target),
+            "--domain", "woodkilldev.com",
+            "--project", "base2-full-preview",
+            "--owner-cidr", "8.8.4.4/32",
+            "--operator-basic-auth-file", str(operator),
+            "--flower-basic-auth-file", str(flower),
+        ]
+    ) == 0
+    receipt = json.loads(capsys.readouterr().out)
+    assert receipt == {
+        "mode": "full-preview",
+        "ok": True,
+        "ownerCidrCount": 1,
+        "secretValuesEmitted": 0,
+    }
+    assert "$apr1$abc$hash" not in json.dumps(receipt)

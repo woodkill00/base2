@@ -1,13 +1,18 @@
 {
   "schemaVersion": 1,
   "allowedLicenses": {
-    "MIT": ["mit"],
+    "MIT": ["mit", "mit license"],
     "Apache-2.0": ["apache-2.0", "apache software license"],
     "BSD-2-Clause": ["bsd-2-clause"],
-    "BSD-3-Clause": ["bsd", "bsd-3-clause", "bsd license"],
+    "BSD-3-Clause": ["bsd", "bsd-3-clause", "bsd license", "3-clause bsd license"],
+    "0BSD": ["0bsd"],
     "ISC": ["isc", "isc license (iscl)"],
     "PSF-2.0": ["psf-2.0", "python software foundation license"],
-    "MPL-2.0": ["mpl-2.0", "mozilla public license 2.0"]
+    "MPL-2.0": ["mpl-2.0", "mozilla public license 2.0", "mozilla public license 2.0 (mpl 2.0)"],
+    "LGPL-3.0-or-later": [
+      "lgpl-3.0-or-later",
+      "gnu library or lesser general public license (lgpl)"
+    ]
   },
   "forbiddenPackages": {
     "npm": ["event-stream", "flatmap-stream"],

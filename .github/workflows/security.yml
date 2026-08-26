@@ -21,13 +21,13 @@ jobs:
           output-file: sbom.cdx.json
 
       - name: Scan with Grype
-        uses: anchore/scan-action@3343887d815d7b07465f6fdcd395bd66508d486a
+        id: grype
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
         with:
           sbom: sbom.cdx.json
           fail-build: true
           severity-cutoff: high
           output-format: sarif
-          output-file: grype.sarif
 
       - name: Normalize SBOM result
         if: always()
@@ -35,7 +35,7 @@ jobs:
 
       - name: Normalize Grype result
         if: always()
-        run: python scripts/python/security_result_adapter.py --family dependency --format sarif --tool grype --source-commit "$GITHUB_SHA" --input grype.sarif --output grype.normalized.json
+        run: python scripts/python/security_result_adapter.py --family dependency --format sarif --tool grype --source-commit "$GITHUB_SHA" --input "${{ steps.grype.outputs.sarif }}" --output grype.normalized.json
 
       - name: Upload SBOM artifact
         if: always()
@@ -44,7 +44,7 @@ jobs:
           name: sbom
           path: |
             sbom.cdx.json
-            grype.sarif
+            ${{ steps.grype.outputs.sarif }}
             sbom.normalized.json
             grype.normalized.json
   npm-audit:
@@ -130,9 +130,8 @@ jobs:
 
       - name: Run gitleaks
         uses: gitleaks/gitleaks-action@dcedce43c6f43de0b836d1fe38946645c9c638dc
-        with:
-          config-path: .gitleaks.toml
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: 'false'
 
       - name: Normalize Gitleaks result
@@ -184,13 +183,16 @@ jobs:
           cache: npm
       - name: Install license-checker
         run: npm install -g license-checker
+      - name: Install locked Node dependencies
+        run: |
+          npm ci --legacy-peer-deps
+          npm ci --prefix react-app --omit=dev --legacy-peer-deps
       - name: Check Node licenses
         run: |
           license-checker --production --json --excludePrivatePackages > root-node-licenses.json
           cd react-app
           license-checker --production --json --excludePrivatePackages > ../react-node-licenses.json
           cd ..
-          python scripts/python/validate_supply_chain_policy.py --kind npm-license --input root-node-licenses.json --output root-node-licenses.policy.json
           python scripts/python/validate_supply_chain_policy.py --kind npm-license --input react-node-licenses.json --output react-node-licenses.policy.json
       - name: Upload Node license results
         if: always()

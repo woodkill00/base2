@@ -10,6 +10,9 @@ on:
 
 jobs:
   perf:
+    # Pull requests have no approved live target. Scheduled/manual/main runs may
+    # exercise the separately operated site, but PR validation stays hermetic.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
