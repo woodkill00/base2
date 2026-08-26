@@ -1,5 +1,5 @@
 import pytest
-from digital_ocean.scripts.python.full_preview_dns import DnsMigrationError, REQUIRED_NAMES, migrate_required_records, restore_migration
+from digital_ocean.scripts.python.full_preview_dns import DnsMigrationError, migrate_required_records, required_names, restore_migration
 
 class Provider:
     def __init__(self, fail_create=None, fail_delete=None):
@@ -27,7 +27,9 @@ class Provider:
 def test_creates_all_names_before_removing_legacy_and_returns_exact_ids():
     provider = Provider()
     receipt = migrate_required_records(provider, "woodkilldev.com", "8.8.8.8")
-    assert [row["name"] for row in receipt["records"]] == list(REQUIRED_NAMES)
+    assert [row["name"] for row in receipt["records"]] == list(required_names("woodkilldev.com"))
+    assert provider.calls[0] == ("create", "woodkilldev.com", "8.8.8.8")
+    assert all(call[:2] != ("create", "@") for call in provider.calls)
     assert provider.calls[-1] == ("delete", 10)
     assert all(call[0] == "create" for call in provider.calls[:6])
 
@@ -50,7 +52,38 @@ def test_accepts_the_real_digitalocean_inventory_shape():
     original = provider.list_records
     provider.list_records = lambda domain: {"domain_records": original(domain)}
     receipt = migrate_required_records(provider, "woodkilldev.com", "8.8.8.8")
-    assert receipt["createdRecordCount"] == len(REQUIRED_NAMES)
+    assert receipt["createdRecordCount"] == len(required_names("woodkilldev.com"))
+
+
+def test_replaces_a_legacy_literal_at_record_but_never_recreates_it_on_success():
+    provider = Provider()
+    provider.rows.append({"id": 11, "type": "A", "name": "@", "data": "198.51.100.2"})
+    receipt = migrate_required_records(provider, "woodkilldev.com", "8.8.8.8")
+    assert {row["name"] for row in receipt["replacedRecords"]} == {"admin", "@"}
+    assert all(row["name"] != "@" for row in provider.rows)
+
+
+def test_invalid_domain_rejects_before_provider_access():
+    provider = Provider()
+    with pytest.raises(DnsMigrationError, match="domain"):
+        migrate_required_records(provider, "../unsafe", "8.8.8.8")
+    assert provider.calls == []
+
+
+def test_provider_name_rewrite_fails_closed_and_rolls_back():
+    provider = Provider()
+    original = provider.create_record
+
+    def rewritten(domain, payload):
+        response = original(domain, payload)
+        if payload["name"] == domain:
+            response["domain_record"]["name"] = "@"
+        return response
+
+    provider.create_record = rewritten
+    with pytest.raises(DnsMigrationError, match="rolled back"):
+        migrate_required_records(provider, "woodkilldev.com", "8.8.8.8")
+    assert provider.rows == [{"id": 10, "type": "A", "name": "admin", "data": "198.51.100.1"}]
 
 def test_exact_rollback_restores_the_prior_record_set():
     provider = Provider()
