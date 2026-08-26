@@ -39,10 +39,13 @@ stage="docker-start"
 systemctl enable --now docker >/dev/null
 
 stage="env-render"
-python3 "$repo_root/digital_ocean/scripts/python/render_full_preview_env.py" \
-  --source "$repo_root/.env.example" --target "$env_file" \
-  --domain "$domain" --project "$project" --owner-cidr "$owner_cidr" \
-  --operator-basic-auth-file "$operator_auth" --flower-basic-auth-file "$flower_auth" >/dev/null
+(
+  cd "$repo_root"
+  python3 -m digital_ocean.scripts.python.render_full_preview_env \
+    --source .env.example --target "$env_file" \
+    --domain "$domain" --project "$project" --owner-cidr "$owner_cidr" \
+    --operator-basic-auth-file "$operator_auth" --flower-basic-auth-file "$flower_auth" >/dev/null
+)
 chmod 600 "$env_file"
 rm -f -- "$operator_auth" "$flower_auth"
 

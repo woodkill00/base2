@@ -42,3 +42,10 @@ def test_remote_bootstrap_identifies_every_silent_failure_stage_without_values()
     ):
         assert f'stage="{stage}"' in script
     assert "password" not in script.split("full-preview-stage-failed", 1)[1].split("ERR", 1)[0]
+
+
+def test_remote_renderer_runs_as_repository_module_on_a_fresh_host():
+    script = (ROOT / "digital_ocean/scripts/bash/full-preview-remote.sh").read_text()
+    assert 'cd "$repo_root"' in script
+    assert "python3 -m digital_ocean.scripts.python.render_full_preview_env" in script
+    assert 'python3 "$repo_root/digital_ocean/scripts/python/render_full_preview_env.py"' not in script
