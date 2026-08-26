@@ -1,6 +1,6 @@
 # Traceability: Base2 Full-Stack Obsidian Preview
 
-The implemented evidence map below binds every requirement family to executable checks and retained evidence. Live-only outcomes remain pending until T074.
+The implemented evidence map below binds every requirement family to executable checks and retained evidence. Live acceptance completed through T074.
 
 | Requirement family                                            | Primary tasks                                                                                                                                                                                                                                 |
 | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -9,6 +9,6 @@ The implemented evidence map below binds every requirement family to executable 
 | Owner admission and secrets (FR-015–FR-018)                   | `test_full_preview_policy.py`; `test_render_full_preview_env.py`; `test_refresh_full_preview_allowlist.py`; `digital_ocean/docs/full-preview-runbook.md`; zero-finding filtered tracked/staged/history scans                                  |
 | DNS and lease lifecycle (FR-019–FR-024)                       | `test_full_preview_dns.py`; `test_preview_lease_v2.py`; `test_full_preview_systemd.py`; `test_full_preview_live.py` providerless create/failure rollback                                                                                      |
 | Orchestration and evidence (FR-025–FR-031)                    | `test_full_preview_live.py`; `test_full_preview_entrypoints.py`; `test_full_preview_probe.py`; `full_preview_remote.py`; 23-test command/guard matrix; 128-test React run; complete-gate result `20260826T004917Z`; changed-line policy green |
-| Legacy migration, approval, replay, reporting (FR-032–FR-036) | Transaction/rollback receipts in `full_preview_dns.py`; integrity lease/evidence; readiness policy CLI; live runbook and browser gate; T072–T074 delivery evidence                                                                            |
+| Legacy migration, approval, replay, reporting (FR-032–FR-036) | Transaction/rollback receipts in `full_preview_dns.py`; integrity lease/evidence; readiness policy CLI; live run `base2-full-20260826-042100`; exact-target browser screenshots; T072–T074 delivery evidence                                  |
 
-SC-001, SC-004, SC-005, and SC-006 are closed by the local evidence above. SC-002, SC-003, SC-007, and the live-artifact portion of SC-008 close only through the separately approved T074 launch, review, and eventual exact teardown.
+SC-001 through SC-008 are closed by the local, CI, public-DNS, and exact-target live evidence above. Final exact teardown remains the required post-review lifecycle operation rather than an implementation gap.

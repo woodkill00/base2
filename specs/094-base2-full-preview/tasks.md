@@ -94,9 +94,9 @@
 - [x] T069 Run the full repository complete gate with zero required gaps.
 - [x] T070 Run tracked/staged/history/generated/evidence secret scans with zero findings.
 - [x] T071 Complete traceability from all 36 requirements and 8 success criteria to evidence.
-- [ ] T072 Commit, push, open a draft PR, validate required CI, review, and merge.
-- [ ] T073 Confirm merged-main local readiness and produce `ready_for_live_approval` without provider mutation.
-- [ ] T074 Launch the separately approved bounded live preview, validate it, and present the live site for owner review.
+- [x] T072 Commit, push, open a draft PR, validate required CI, review, and merge.
+- [x] T073 Confirm merged-main local readiness and produce `ready_for_live_approval` without provider mutation.
+- [x] T074 Launch the separately approved bounded live preview, validate it, and present the live site for owner review.
 
 ## Dependencies
 
