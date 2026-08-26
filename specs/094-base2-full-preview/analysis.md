@@ -97,6 +97,7 @@ Findings:
 2. Pull-request CI attempted the intentionally destroyed production hostname in the performance job instead of reserving that external probe for explicit non-PR execution.
 3. Security CI used an obsolete Grype action incompatible with current CycloneDX output, omitted the GitHub token required by the Gitleaks pull-request action, and generated Node license evidence without installing locked dependencies.
 4. The Python lockfiles contained late-2025 packages with known 2026 advisories, and the license allowlist omitted legitimate SPDX/name aliases emitted by current scanners.
+5. CI had relied on an undeclared `pytest-cov` package, and cffi 2.1.1 exposed no machine-readable license value to the required license scanner.
 
 Corrections:
 
@@ -104,12 +105,13 @@ Corrections:
 - Restricted the external performance smoke away from pull requests while retaining its explicit/manual and protected-branch paths.
 - Updated the pinned Grype action and SARIF handoff, supplied only the scoped workflow GitHub token to Gitleaks, and installed locked Node dependencies before validating license evidence.
 - Regenerated both Python locks from their existing inputs, verified zero findings with current `pip-audit`, and added only scanner-equivalent license aliases.
+- Declared `pytest-cov` in both dependency inputs and constrained cffi to audited 2.0.0, whose MIT metadata is verifiable; regenerated locks remain zero-finding under `pip-audit`.
 
 Verification:
 
 - The focused command/guard matrix passes 23 tests.
 - The React suite passes 55 files and 128 tests.
-- The complete gate passes at `.artifacts/complete-gate/20260826T003039Z/result.json`.
+- The complete gate passes after final dependency-source correction at `.artifacts/complete-gate/20260826T004917Z/result.json`.
 - Changed-line coverage is 838/929 lines, or 90.20%, against the unchanged 90% floor.
 
 **Result**: `NO_UNRESOLVED_PUBLICATION_FINDINGS`
