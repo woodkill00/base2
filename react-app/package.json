@@ -68,6 +68,7 @@
     "test:visual": "playwright test --config=playwright.visual.config.mjs",
     "test:visual-release": "playwright test --config=playwright.visual-release.config.mjs",
     "test:live-full-preview": "playwright test --config=playwright.live-full-preview.config.mjs",
+    "test:live-edge-auth": "node --test e2e/live/owner-edge-auth.test.mjs",
     "test:account-e2e": "playwright test --config=playwright.account.config.mjs",
     "test:compatibility": "playwright test --config=playwright.compatibility.config.mjs",
     "e2e:install": "playwright install",

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { installOwnerEdgeAuth } from './owner-edge-auth.mjs';
 
 const domain = process.env.BASE2_LIVE_DOMAIN || '';
 const username = process.env.BASE2_LIVE_USERNAME || '';
@@ -197,10 +198,8 @@ test('all operator hosts challenge anonymously and load for the owner', async ({
     });
     expect([401, 403]).toContain(response?.status());
     await anonymous.close();
-    const authorized = await browser.newContext({
-      ignoreHTTPSErrors: true,
-      httpCredentials: { username, password },
-    });
+    const authorized = await browser.newContext({ ignoreHTTPSErrors: true });
+    await installOwnerEdgeAuth(authorized, { domain, username, password, hosts: [host] });
     const page = await authorized.newPage();
     const loaded = await page.goto(`https://${host}.${domain}${path}`, {
       waitUntil: 'domcontentloaded',
@@ -219,9 +218,12 @@ test('Django and pgAdmin application logins complete behind the owner edge', asy
     !djangoUsername || !djangoPassword || !pgadminEmail || !pgadminPassword,
     'private application-login inputs are required'
   );
-  const context = await browser.newContext({
-    ignoreHTTPSErrors: true,
-    httpCredentials: { username, password },
+  const context = await browser.newContext({ ignoreHTTPSErrors: true });
+  await installOwnerEdgeAuth(context, {
+    domain,
+    username,
+    password,
+    hosts: ['admin', 'pgadmin'],
   });
   const page = await context.newPage();
 
