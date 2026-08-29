@@ -9,6 +9,7 @@ import pytest
 
 from api.repositories.site_content import PostgresSiteContentRepository
 from api.services.site_content import SiteContentService
+from api.site_manifest import load_runtime_manifest
 
 
 class RecordingRepository:
@@ -39,7 +40,8 @@ def test_service_validates_cursor_and_binds_form_digest_and_retention():
         request_id='req-1',
     )
     assert repository.kwargs['site_id'] == 'site-a'
-    assert repository.kwargs['retention_days'] == 90
+    manifest, _ = load_runtime_manifest()
+    assert repository.kwargs['retention_days'] == manifest['contact']['retentionDays']
     assert len(repository.kwargs['request_digest']) == 64
 
 

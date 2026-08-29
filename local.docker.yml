@@ -38,6 +38,8 @@ services:
     volumes:
       # Mount external OpenAPI contract for runtime contract checks
       - ./specs/001-django-fastapi-react/contracts:/app/specs/001-django-fastapi-react/contracts:ro
+      # Mount shared security contracts used by fail-closed matrix tests.
+      - ./shared/config:/app/shared/config:ro
     environment:
       - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
       - PORT=${FASTAPI_PORT}
