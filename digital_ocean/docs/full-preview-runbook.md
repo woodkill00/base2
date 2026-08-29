@@ -71,6 +71,12 @@ npm run test:live-full-preview
 
 Review the full-page Obsidian screenshot, the five operator screenshots, and the authenticated Django/pgAdmin screenshots. The gate also verifies the keyboard command palette, browser console, failed requests, anonymous denial, edge authorization, a successful Django CSRF-protected form submission, and both application logins. A preview with random or unavailable second-login credentials is not complete.
 
+The browser gate injects the Basic authorization header before navigation only
+for the exact allowlisted HTTPS operator origins. This avoids Chromium's stale
+challenge/cache behavior after the anonymous-denial probe while ensuring the
+credential is never attached to sibling, deceptive, insecure, or third-party
+origins.
+
 ## Expiry, teardown, and owner-IP refresh
 
 The versioned service/timer templates in `digital_ocean/systemd/` call the same integrity-bound teardown operation every minute. Before expiry, it performs zero provider actions. At expiry it deletes compute first and then only the six exact DNS record IDs. An earlier teardown requires `--early-approved` on the same command.

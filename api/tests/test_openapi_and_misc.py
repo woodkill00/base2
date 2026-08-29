@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 # Import the FastAPI app
 from api.main import app
+from api.site_manifest import load_runtime_manifest
 
 
 def _client() -> TestClient:
@@ -32,8 +33,10 @@ def test_site_endpoint_exposes_only_integrity_bound_public_metadata():
     response = _client().get('/api/site')
     assert response.status_code == 200
     payload = response.json()
-    assert payload['siteId'] == 'ember-studio'
-    assert payload['name'] == 'Ember Studio'
+    manifest, expected_digest = load_runtime_manifest()
+    assert payload['siteId'] == manifest['siteId']
+    assert payload['name'] == manifest['name']
+    assert payload['manifestDigest'] == expected_digest
     assert len(payload['manifestDigest']) == 64
     assert set(payload) == {
         'siteId',
