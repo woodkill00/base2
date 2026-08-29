@@ -982,6 +982,11 @@ def test_control_error_catalog_destroy_route_and_direct_main(tmp_path, monkeypat
     monkeypatch.setattr(control, "inventory", lambda root: destroyed_inventory)
     monkeypatch.setattr(control, "_token", lambda path: "test")
     monkeypatch.setattr(control, "DigitalOceanHttpClient", lambda token: Client())
+    monkeypatch.setattr(
+        control,
+        "remove_expiry_units",
+        lambda run_id: {"runId": run_id, "removed": [], "secretValuesEmitted": 0},
+    )
     destroyed, code = execute(
         _parser().parse_args(
             [
