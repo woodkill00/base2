@@ -75,6 +75,21 @@ class ServiceHealthContractTests(unittest.TestCase):
         self.assertNotIn("redis://", command)
         self.assertNotIn("--broker", command)
 
+    def test_privacy_worker_receives_only_its_required_runtime_secrets(self):
+        api_environment = SERVICES["api"].get("environment") or []
+        worker_environment = SERVICES["celery-worker"].get("environment") or []
+        for binding in (
+            "TOKEN_PEPPER=${TOKEN_PEPPER}",
+            "IDENTITY_ENCRYPTION_KEY=${IDENTITY_ENCRYPTION_KEY}",
+        ):
+            self.assertIn(binding, api_environment)
+            self.assertIn(binding, worker_environment)
+        worker_command = " ".join(
+            str(part) for part in (SERVICES["celery-worker"].get("command") or [])
+        )
+        self.assertNotIn("TOKEN_PEPPER", worker_command)
+        self.assertNotIn("IDENTITY_ENCRYPTION_KEY", worker_command)
+
     def test_traefik_image_has_ping_health_contract(self):
         dockerfile = (ROOT / "traefik/Dockerfile").read_text(encoding="utf-8")
         self.assertIn("HEALTHCHECK", dockerfile)

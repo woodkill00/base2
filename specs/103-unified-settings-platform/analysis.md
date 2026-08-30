@@ -262,3 +262,23 @@ Corrections:
   service health, completed export, and preference-audit counts.
 
 **Cycle result**: `CORRECTIVE_TENANT_TRANSACTION_IMPLEMENTED_VALIDATION_PENDING`.
+
+## Cycle 14 - Live privacy-worker secret-parity analysis
+
+The transaction-corrected exact-main replay accepted and dispatched the encrypted export,
+but the Celery worker failed it with the stable error `identity_encryption_unavailable`.
+The API container received the generated ephemeral encryption key, while the worker that
+must decrypt the queued request and sign the export receipt did not receive that key or
+the receipt pepper.
+
+Corrections:
+
+- Added only `IDENTITY_ENCRYPTION_KEY` and `TOKEN_PEPPER` to the privacy worker's runtime
+  environment and added the previously omitted receipt pepper to the API container.
+- Kept both values environment-only and absent from worker command arguments and evidence.
+- Applied the same least-secret contract to development, local, and isolated E2E Compose
+  definitions so test and generated-site behavior cannot drift.
+- Added a Compose regression requiring API/worker parity for these two exact bindings and
+  proving neither is present in worker argv.
+
+**Cycle result**: `CORRECTIVE_PRIVACY_WORKER_SECRET_PARITY_IMPLEMENTED_VALIDATION_PENDING`.
