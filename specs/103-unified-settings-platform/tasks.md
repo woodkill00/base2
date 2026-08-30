@@ -108,8 +108,8 @@
 
 - [x] T081 Commit exact feature changes and verify clean status.
 - [x] T082 Push branch and publish reviewed PR.
-- [ ] T083 Require all executable CI checks green and classify infrastructure-only failures explicitly.
-- [ ] T084 Merge exact reviewed head and verify remote/local `main` alignment.
+- [x] T083 Require all executable CI checks green and classify infrastructure-only failures explicitly.
+- [x] T084 Merge exact reviewed head and verify remote/local `main` alignment.
 - [ ] T085 Separately admit one bounded exact-main staging-certificate canary.
 - [ ] T086 Run all public, authenticated, operator, settings interaction, accessibility, responsive, and visual checks live.
 - [ ] T087 Verify health, performance, audit, migration, privacy-worker, and evidence integrity.
