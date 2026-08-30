@@ -297,7 +297,15 @@ Purpose: Cross-cutting hardening, docs, and operational safety.
 
 - [x] T061 Add cache guidance for index.html vs hashed assets (purge strategy) in docs/DEPLOY.md
 - [x] T062 Add a mobile regression checklist (iOS Safari + Android Chrome + dark mode) in docs/RELEASE.md
-- [ ] T063 (Optional) Add frontend crash monitoring (Sentry) scaffolding in react-app/src/index.js
+- [ ] T063 (Deferred future feature; inactive) Build a first-party frontend reliability
+      monitor instead of Sentry or another third-party telemetry service. Before any
+      runtime enablement, specify and test data minimization, recursive secret and personal
+      data redaction, authenticated owner-only access, tenant isolation, bounded retention,
+      storage encryption, rate and volume limits, alert deduplication, network-egress/CSP
+      boundaries, monitor failure isolation, deletion/export behavior, backup/restore, and
+      visible degraded-state reporting. Activation requires a separate reviewed Spec-Kit
+      feature and explicit approval; this deferred task grants no collection or external
+      transmission authority.
 
 ---
 
