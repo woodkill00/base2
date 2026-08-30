@@ -35,6 +35,7 @@ def test_remote_bootstrap_identifies_every_silent_failure_stage_without_values()
         "acme-bootstrap",
         "compose-build",
         "compose-up",
+        "api-migrations",
         "service-inventory",
         "service-health",
         "traefik-policy",
@@ -49,3 +50,10 @@ def test_remote_renderer_runs_as_repository_module_on_a_fresh_host():
     assert 'cd "$repo_root"' in script
     assert "python3 -m digital_ocean.scripts.python.render_full_preview_env" in script
     assert 'python3 "$repo_root/digital_ocean/scripts/python/render_full_preview_env.py"' not in script
+
+
+def test_remote_bootstrap_applies_api_migrations_before_acceptance():
+    script = (ROOT / "digital_ocean/scripts/bash/full-preview-remote.sh").read_text()
+    assert "python -m api.scripts.migrate" in script
+    assert script.index('stage="api-migrations"') < script.index('stage="service-inventory"')
+    assert script.index('stage="api-migrations"') < script.index('stage="receipt"')

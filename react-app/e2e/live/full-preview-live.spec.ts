@@ -277,10 +277,18 @@ test('authenticated settings platform works accessibly and responsively live', a
   const page = await context.newPage();
   const consoleErrors: string[] = [];
   const failedRequests: string[] = [];
+  const failedResponses: string[] = [];
   page.on('console', (message) => message.type() === 'error' && consoleErrors.push(message.text()));
   page.on('requestfailed', (request) =>
     failedRequests.push(`${request.method()} ${new URL(request.url()).pathname}`)
   );
+  page.on('response', (response) => {
+    if (response.status() >= 400) {
+      failedResponses.push(
+        `${response.request().method()} ${new URL(response.url()).pathname} ${response.status()}`
+      );
+    }
+  });
 
   await page.goto(`https://${domain}/signup`, { waitUntil: 'networkidle' });
   await page.getByLabel('Email').fill(applicationEmail);
@@ -303,7 +311,10 @@ test('authenticated settings platform works accessibly and responsively live', a
     const path = route === 'overview' ? '/settings' : `/settings/${route}`;
     await page.goto(`https://${domain}${path}`, { waitUntil: 'networkidle' });
     await expect(page.locator('#settings-detail')).not.toHaveAttribute('aria-busy', 'true');
-    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(
+      page.getByRole('alert'),
+      `HTTP failures: ${failedResponses.join(', ') || 'none'}`
+    ).toHaveCount(0);
     await page.evaluate(axeSource);
     const violations = await page.evaluate(async () =>
       (await window.axe.run(document, { resultTypes: ['violations'] })).violations.map(
@@ -368,6 +379,7 @@ test('authenticated settings platform works accessibly and responsively live', a
 
   expect(consoleErrors).toEqual([]);
   expect(failedRequests).toEqual([]);
+  expect(failedResponses).toEqual([]);
   await context.close();
 });
 
