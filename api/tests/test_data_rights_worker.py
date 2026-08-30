@@ -133,10 +133,19 @@ def test_deactivation_fails_closed_for_final_owner_before_account_mutation(monke
         def fetchone(self): return ('organization-a',)
 
     class Connection:
-        def __init__(self): self.value = Cursor(); self.rollbacks = 0; self.commits = 0
-        def cursor(self): return self.value
-        def rollback(self): self.rollbacks += 1
-        def commit(self): self.commits += 1
+        def __init__(self):
+            self.value = Cursor()
+            self.rollbacks = 0
+            self.commits = 0
+
+        def cursor(self):
+            return self.value
+
+        def rollback(self):
+            self.rollbacks += 1
+
+        def commit(self):
+            self.commits += 1
 
     connection = Connection()
     class Context:
@@ -160,10 +169,19 @@ def test_deactivation_revokes_sessions_suspends_memberships_and_commits_atomical
         def fetchone(self): return None
 
     class Connection:
-        def __init__(self): self.value = Cursor(); self.rollbacks = 0; self.commits = 0
-        def cursor(self): return self.value
-        def rollback(self): self.rollbacks += 1
-        def commit(self): self.commits += 1
+        def __init__(self):
+            self.value = Cursor()
+            self.rollbacks = 0
+            self.commits = 0
+
+        def cursor(self):
+            return self.value
+
+        def rollback(self):
+            self.rollbacks += 1
+
+        def commit(self):
+            self.commits += 1
 
     connection = Connection()
     class Context:

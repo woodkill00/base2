@@ -82,7 +82,7 @@ def test_django_and_api_settings_schema_contracts_exist():
 def test_api_migration_runner_executes_every_checked_in_sql_migration_in_order():
     root = Path(__file__).resolve().parents[2]
     checked_in = tuple(path.stem for path in sorted((root / 'api/migrations/sql').glob('*.sql')))
-    assert MIGRATIONS == checked_in
+    assert checked_in == MIGRATIONS
     assert MIGRATIONS[-2:] == ('008_create_settings_tables', '009_add_deactivation_operation')
 
 
