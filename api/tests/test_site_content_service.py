@@ -113,8 +113,24 @@ def test_repository_creates_submission_and_outbox_in_one_transaction():
     assert 'INSERT INTO sitecontent_formdeliveryoutbox' in sql
     assert connection.commits == 1
     assert connection.rollbacks == 0
+    assert connection.autocommit is None
     assert connection.tenant_ids == ['site-a']
     assert receipt['replayed'] is False
+
+
+def test_community_post_uses_tenant_transaction_without_autocommit_switch():
+    connection = FakeConnection([])
+    repository = PostgresSiteContentRepository()
+    with patch('api.repositories.site_content.db_conn', connection_context(connection)):
+        result = repository.create_community_post(
+            site_id='site-a',
+            author_ref='owner-a',
+            payload={'title': 'Hello', 'body': 'World', 'abuseScore': 0},
+        )
+    assert result['moderationStatus'] == 'pending'
+    assert connection.commits == 1
+    assert connection.autocommit is None
+    assert connection.tenant_ids == ['site-a']
 
 
 def test_repository_reads_are_tenant_bound_and_map_public_rows():

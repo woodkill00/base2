@@ -29,7 +29,6 @@ class SchedulingRepository:
     def reserve(self, *, site_id: str, event_id: UUID, attendee_ref: str, seats: int):
         booking_id = uuid4()
         with db_conn(tenant_id=site_id) as conn:
-            conn.autocommit = False
             try:
                 with conn.cursor() as cur:
                     cur.execute(
