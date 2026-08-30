@@ -382,15 +382,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    command:
-      [
-        'python',
-        '-m',
-        'flower',
-        '--broker=redis://:${REDIS_PASSWORD}@redis:6379/0',
-        'flower',
-        '--port=5555',
-      ]
+    command: ['python', '-m', 'flower', 'flower', '--port=5555']
     restart: unless-stopped
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
