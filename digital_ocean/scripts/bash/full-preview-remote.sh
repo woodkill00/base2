@@ -67,6 +67,8 @@ stage="compose-build"
 "${compose[@]}" build
 stage="compose-up"
 "${compose[@]}" up -d --no-build
+stage="api-migrations"
+"${compose[@]}" exec -T api python -m api.scripts.migrate >/dev/null
 stage="service-inventory"
 mapfile -t services < <("${compose[@]}" config --services)
 [[ "${#services[@]}" -gt 0 ]] || exit 3

@@ -217,3 +217,25 @@ Corrections:
   teardown remains mandatory and no production identity is used.
 
 **Cycle result**: `CORRECTIVE_LIVE_JOURNEY_IMPLEMENTED_VALIDATION_PENDING`.
+
+## Cycle 12 - Live migration-admission analysis
+
+The exact-main canary carried the corrected tenant header, but the expanded live journey
+then isolated HTTP 500 responses from preferences and notifications. The deployment path
+started healthy containers without applying the API-owned SQL migration ledger, so generic
+health was green while Feature 103 tables were absent.
+
+Corrections:
+
+- Added API migration application as an explicit named remote-bootstrap stage after
+  Compose startup and before service inventory, route verification, or a live receipt.
+- Kept the operation fixed-argv and inside the ephemeral API container with its existing
+  private database environment; no credential values are passed on the command line or
+  emitted.
+- Added a deployment-contract regression proving migration execution is ordered before
+  acceptance.
+- Added secret-free live HTTP failure evidence containing only method, path, and status so
+  future partial schema failures identify themselves without exposing identities, bodies,
+  tokens, or credentials.
+
+**Cycle result**: `CORRECTIVE_MIGRATION_BOOTSTRAP_IMPLEMENTED_LIVE_REPLAY_PENDING`.
