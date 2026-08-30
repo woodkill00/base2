@@ -32,7 +32,7 @@
       "react-app/src/config/generated/ember-studio.json": "b6b57abe7c80247917a1cc0ccdf08f3cddb2efd503091b73fb9d0e58d4c7fcae",
       "react-app/src/config/generated/index.json": "887765b4c6d39198f2025ef28fd0f2ba075b92a169b4a4fc1dc2bfb5edede7fb",
       "react-app/src/config/generated/northstar-library.json": "286850ced5758a336b8c7a82e345f57baa9d4686b39d209311178b6eaa5351f5",
-      "react-app/src/lib/apiClient.js": "91b54b08ff584ea16ff36d69a7b82428f65486cec3a4ccb6ae152e026cdf8eb9",
+      "react-app/src/lib/apiClient.js": "552e46e8bba953ec1cb0d0347dac0282dec5aee9b6ad699000ac6d33f976410c",
       "react-app/src/lib/apiErrors.js": "b0a44297eaf887077e7656d1cdb3f1f5741bcdfa60e4e70ffdabe60d59b0741d"
     },
     "moduleInventory": {

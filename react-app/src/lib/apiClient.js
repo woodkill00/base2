@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { siteManifest } from '../config/siteRuntime';
 
 // Always use relative path for API, so Traefik can route correctly
 const API_URL = '/api';
@@ -144,14 +145,14 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   (config) => {
+    config.headers = config.headers || {};
+    config.headers['X-Tenant-Id'] = siteManifest.siteId;
     const csrf = _getCsrfToken();
     if (csrf) {
-      config.headers = config.headers || {};
       config.headers['X-CSRF-Token'] = csrf;
     }
     const token = _getAccessToken();
     if (token) {
-      config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;

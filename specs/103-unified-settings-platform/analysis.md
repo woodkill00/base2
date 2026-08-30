@@ -191,3 +191,29 @@ Corrections:
   task can be closed.
 
 **Cycle result**: `CORRECTIVE_IMPLEMENTATION_COMPLETE_LIVE_REPLAY_PENDING`.
+
+## Cycle 11 - Live settings-journey coverage analysis
+
+The replacement canary proved all existing public and operator routes were available, but
+analysis of the executable live-browser suite found that it did not exercise the Feature
+103 authenticated settings experience. Passing that suite alone therefore could not close
+T086. The first expanded live journey then found that the shared browser API client omitted
+the required tenant header, so settings and identity reads failed visibly and a valid
+appearance save returned `tenant_required`.
+
+Corrections:
+
+- Added a live-only ephemeral account journey that visits all nine settings areas and
+  records full-page visual evidence for each.
+- Added live axe checks, horizontal-overflow checks, compact-viewport target geometry,
+  settings search, persisted appearance changes, mandatory security-notification
+  protection, and destructive-confirmation behavior.
+- Bound the shared browser API client to the generated immutable site-profile tenant on
+  every request, overriding request-supplied drift, and added a focused interceptor
+  regression.
+- Required every live settings route to render with zero alerts before accessibility or
+  visual evidence can pass.
+- Kept the account and all mutations inside the exact-owned ephemeral canary database;
+  teardown remains mandatory and no production identity is used.
+
+**Cycle result**: `CORRECTIVE_LIVE_JOURNEY_IMPLEMENTED_VALIDATION_PENDING`.
