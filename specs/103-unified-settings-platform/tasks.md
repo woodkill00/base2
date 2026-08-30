@@ -110,12 +110,12 @@
 - [x] T082 Push branch and publish reviewed PR.
 - [x] T083 Require all executable CI checks green and classify infrastructure-only failures explicitly.
 - [x] T084 Merge exact reviewed head and verify remote/local `main` alignment.
-- [ ] T085 Separately admit one bounded exact-main staging-certificate canary.
-- [ ] T086 Run all public, authenticated, operator, settings interaction, accessibility, responsive, and visual checks live.
-- [ ] T087 Verify health, performance, audit, migration, privacy-worker, and evidence integrity.
-- [ ] T088 Perform exact teardown and immediate idempotent replay.
-- [ ] T089 Verify empty exact-owned provider inventory and no unrelated mutation.
-- [ ] T090 Record final evidence, mark tasks complete, and close Feature 103.
+- [x] T085 Separately admit one bounded exact-main staging-certificate canary.
+- [x] T086 Run all public, authenticated, operator, settings interaction, accessibility, responsive, and visual checks live.
+- [x] T087 Verify health, performance, audit, migration, privacy-worker, and evidence integrity.
+- [x] T088 Perform exact teardown and immediate idempotent replay.
+- [x] T089 Verify empty exact-owned provider inventory and no unrelated mutation.
+- [x] T090 Record final evidence, mark tasks complete, and close Feature 103.
 
 ## Dependencies
 
