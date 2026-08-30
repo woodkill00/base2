@@ -62,6 +62,19 @@ class ServiceHealthContractTests(unittest.TestCase):
         self.assertEqual("service_healthy", dependencies["postgres"]["condition"])
         self.assertEqual("service_healthy", dependencies["redis"]["condition"])
 
+    def test_flower_broker_secret_is_environment_only_and_never_in_argv(self):
+        flower = SERVICES["flower"]
+        environment = flower.get("environment") or []
+        command = " ".join(str(part) for part in (flower.get("command") or []))
+
+        self.assertIn(
+            "CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0",
+            environment,
+        )
+        self.assertNotIn("REDIS_PASSWORD", command)
+        self.assertNotIn("redis://", command)
+        self.assertNotIn("--broker", command)
+
     def test_traefik_image_has_ping_health_contract(self):
         dockerfile = (ROOT / "traefik/Dockerfile").read_text(encoding="utf-8")
         self.assertIn("HEALTHCHECK", dockerfile)

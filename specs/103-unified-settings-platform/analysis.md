@@ -169,3 +169,25 @@ Closure evidence:
 
 **Cycle result**: `NO_UNRESOLVED_PUBLICATION_OR_RUNTIME_CLASSIFICATION_FINDINGS`.
 Live provider acceptance remains a separately admitted phase.
+
+## Cycle 10 - Live canary process-argument secret analysis
+
+The first bounded staging-certificate canary reached `live-verified`, but a read-only
+runtime diagnostic found that Flower received its generated Redis broker credential in
+an explicit `--broker` command-line argument. Although the credential was ephemeral and
+the exact-owned droplet and DNS records were immediately destroyed, process arguments
+are an unnecessarily broad disclosure surface and the canary was rejected rather than
+accepted.
+
+Corrections:
+
+- Removed the broker URL from Flower's command and retained it only in the established
+  `CELERY_BROKER_URL` environment contract supported by Celery/Flower.
+- Added a compose-contract regression requiring the broker environment entry while
+  forbidding `REDIS_PASSWORD`, `redis://`, and `--broker` in Flower argv.
+- Required the replacement canary to use a newly generated ephemeral Redis credential
+  and to report only a sanitized pass/fail result when checking runtime argv.
+- Required exact teardown replay and zero exact-owned provider inventory before any live
+  task can be closed.
+
+**Cycle result**: `CORRECTIVE_IMPLEMENTATION_COMPLETE_LIVE_REPLAY_PENDING`.
