@@ -134,3 +134,27 @@ Corrections:
 - The full frontend coverage suite completed under the stabilized command.
 
 **Cycle result**: `NO_UNRESOLVED_COVERAGE_OR_VITEST_WORKER_FINDINGS`.
+
+## Cycle 9 - Publication lint and interpreter-fault analysis
+
+The first publication CI run found five API-test lint violations that the feature-focused
+and complete gates did not report: four semicolon-compressed fixture statements and one
+SIM300 assertion ordering issue. After those deterministic findings were corrected, the
+next exact-commit complete gate failed closed when the Python standard-library JSON encoder
+entered an impossible internal state (`_indent=None` while executing the indented-output
+branch). The same module checkpoint had passed in the prior exact gate, and a separate
+DigitalOcean coverage process recovered from a native interpreter crash in the same run.
+
+Corrections:
+
+- Reformatted the worker fixtures, corrected the assertion order, and reproduced the exact
+  GitHub Ruff command successfully in a fresh Python 3.12 container.
+- Added an exact three-part JSON-encoder corruption signature to the complete gate's existing
+  one-retry infrastructure boundary.
+- Added regression proof that the exact impossible stdlib state receives one bounded retry,
+  while application `TypeError` output and ordinary assertions remain non-retryable.
+- Kept the gate fail-closed after the single retry and retained retry count plus diagnostic in
+  integrity-bound evidence.
+
+**Cycle result**: corrective implementation is complete; exact-commit gate replay and GitHub
+CI replay remain required before this cycle can be declared closed.

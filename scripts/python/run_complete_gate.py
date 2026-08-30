@@ -44,6 +44,15 @@ def validate_runtime_capacity() -> None:
         )
 
 
+def retryable_interpreter_corruption(output: str) -> bool:
+    """Recognize the observed impossible JSON encoder state without masking app failures."""
+    return (
+        "/json/encoder.py" in output
+        and "yield '\\n' + _indent * _current_indent_level" in output
+        and "TypeError: unsupported operand type(s) for *: 'NoneType' and 'int'" in output
+    )
+
+
 def validate_manifest(manifest: dict) -> None:
     if manifest.get("schemaVersion") != 1 or not isinstance(manifest.get("checks"), list):
         raise ValueError("unsupported complete-gate manifest")
@@ -261,6 +270,7 @@ def run_gate(
                         infrastructure_crash = (
                             completed.returncode in {-11, 139}
                             or INFRASTRUCTURE_CRASH.search(captured_output) is not None
+                            or retryable_interpreter_corruption(captured_output)
                         )
                         if not infrastructure_crash and not incomplete:
                             break

@@ -106,8 +106,8 @@
 
 ## Phase 9 - Publication and live acceptance
 
-- [ ] T081 Commit exact feature changes and verify clean status.
-- [ ] T082 Push branch and publish reviewed PR.
+- [x] T081 Commit exact feature changes and verify clean status.
+- [x] T082 Push branch and publish reviewed PR.
 - [ ] T083 Require all executable CI checks green and classify infrastructure-only failures explicitly.
 - [ ] T084 Merge exact reviewed head and verify remote/local `main` alignment.
 - [ ] T085 Separately admit one bounded exact-main staging-certificate canary.

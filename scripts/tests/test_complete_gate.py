@@ -216,6 +216,36 @@ class CompleteGateTests(unittest.TestCase):
         self.assertEqual("passed", result["overallStatus"])
         self.assertEqual(2, result["checks"][0]["attempts"])
 
+    def test_retries_exact_json_encoder_corruption_but_not_application_type_error(self):
+        corruption = (
+            "/usr/lib/python3.12/json/encoder.py\n"
+            "yield '\\n' + _indent * _current_indent_level\n"
+            "TypeError: unsupported operand type(s) for *: 'NoneType' and 'int'"
+        )
+        command = [
+            "/bin/sh",
+            "-c",
+            f"if test -f marker; then echo passed; exit 0; "
+            f"else touch marker; printf '%s\\n' \"{corruption}\"; exit 1; fi",
+        ]
+        result, _ = self.run_gate(
+            [check("json-corruption", command, tools=["/bin/sh"], max_attempts=2)]
+        )
+        self.assertEqual("passed", result["overallStatus"])
+        self.assertEqual(2, result["checks"][0]["attempts"])
+
+        self.assertFalse(
+            self.gate.retryable_interpreter_corruption(
+                "api/routes/settings.py TypeError: unsupported operand type(s) for *: "
+                "'NoneType' and 'int'"
+            )
+        )
+        self.assertFalse(
+            self.gate.retryable_interpreter_corruption(
+                "/usr/lib/python3.12/json/encoder.py AssertionError: expected 200"
+            )
+        )
+
     def test_redacts_secret_environment_values_and_binds_digest(self):
         secret = "fixture-super-secret-value"
         result, output = self.run_gate(
