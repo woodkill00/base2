@@ -51,9 +51,11 @@ test('public Obsidian site identity and owner interaction are live', async ({ br
   const consoleErrors: string[] = [];
   const failedRequests: string[] = [];
   page.on('console', (message) => message.type() === 'error' && consoleErrors.push(message.text()));
-  page.on('requestfailed', (request) =>
-    failedRequests.push(`${request.method()} ${new URL(request.url()).pathname}`)
-  );
+  page.on('requestfailed', (request) => {
+    if (!request.failure()?.errorText.includes('ERR_ABORTED')) {
+      failedRequests.push(`${request.method()} ${new URL(request.url()).pathname}`);
+    }
+  });
   await page.goto(`https://${domain}/`, { waitUntil: 'networkidle' });
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'obsidian');
@@ -279,9 +281,11 @@ test('authenticated settings platform works accessibly and responsively live', a
   const failedRequests: string[] = [];
   const failedResponses: string[] = [];
   page.on('console', (message) => message.type() === 'error' && consoleErrors.push(message.text()));
-  page.on('requestfailed', (request) =>
-    failedRequests.push(`${request.method()} ${new URL(request.url()).pathname}`)
-  );
+  page.on('requestfailed', (request) => {
+    if (!request.failure()?.errorText.includes('ERR_ABORTED')) {
+      failedRequests.push(`${request.method()} ${new URL(request.url()).pathname}`);
+    }
+  });
   page.on('response', (response) => {
     if (response.status() >= 400) {
       failedResponses.push(
@@ -360,7 +364,7 @@ test('authenticated settings platform works accessibly and responsively live', a
       },
       { message: 'privacy export worker did not complete', timeout: 30_000 }
     )
-    .toMatch(/export completed/i);
+    .toMatch(/export\s*completed/i);
 
   await page.goto(`https://${domain}/settings/organization`, { waitUntil: 'networkidle' });
   await expect(page.getByText('user.preferences_updated')).toBeVisible();

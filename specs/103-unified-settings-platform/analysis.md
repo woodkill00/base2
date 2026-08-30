@@ -282,3 +282,61 @@ Corrections:
   proving neither is present in worker argv.
 
 **Cycle result**: `CORRECTIVE_PRIVACY_WORKER_SECRET_PARITY_IMPLEMENTED_VALIDATION_PENDING`.
+
+## Cycle 15 - Live worker completion assertion analysis
+
+The secret-parity replay completed the export successfully, but the live test matcher
+expected a literal space between the adjacent `export` and `completed` flex spans. DOM
+`textContent` concatenates adjacent span text without inserting whitespace, so the received
+semantic state was `exportcompleted` and the product had already succeeded.
+
+Correction:
+
+- Made the assertion accept zero or more whitespace characters between the separately
+  rendered kind and status while retaining exact `export`/`completed` ordering.
+
+**Cycle result**: `CORRECTIVE_LIVE_MATCHER_IMPLEMENTED_REPLAY_PENDING`.
+
+## Cycle 16 - Live navigation-cancellation analysis
+
+The corrected worker-completion assertion passed. A subsequent route transition reported
+the already-rendered site-mark request through Playwright's `requestfailed` event because
+the browser canceled it during navigation. There was no HTTP failure, console error, alert,
+or missing visual asset.
+
+Correction:
+
+- Ignore only explicit browser `ERR_ABORTED` navigation cancellations in request-failure
+  collection. DNS, TLS, connection, timeout, and all other request failures remain fatal,
+  while every HTTP 4xx/5xx remains independently fatal through response collection.
+
+**Cycle result**: `CORRECTIVE_NAVIGATION_CANCELLATION_IMPLEMENTED_REPLAY_PENDING`.
+
+## Cycle 17 - Final exact-main live acceptance and zero-finding closeout
+
+Exact-main run `base2-full-20260830-174011` deployed commit
+`33b20810c643cdac69184d9125e2b8335fff2449` with staging certificates only. The
+controller verified all eight routes and six DNS records with zero secret values emitted.
+
+Final proof:
+
+- All five unfiltered live browser suites passed, covering public Obsidian identity,
+  responsive section geometry and scrolling, anonymous operator denial, owner operator
+  access, Django and pgAdmin second logins, all nine settings routes, axe, search,
+  persisted appearance, mandatory notification delivery, destructive confirmation,
+  encrypted export completion, and redacted audit visibility.
+- The independent read-only runtime verifier proved 9/9 automatic API migrations, 6/6
+  critical services healthy, three completed exports, three preference audit events, and
+  a secret-free Flower command with exactly one broker environment binding.
+- Public and API live requests returned HTTP 200 in 0.2094s and 0.164358s respectively.
+- The retained private browser evidence contains 56 PNG screenshots and 2 structured
+  files; its aggregate SHA-256 is
+  `0d48ad615622feb202066d7a32fa9e01b1f03d2e50b3e6e5b8f3a075b94b2cdf`.
+- Exact teardown deleted one owned Droplet and six bound DNS records. Immediate replay
+  returned the same terminal `destroyed` evidence, and independent provider inventory
+  reported zero Droplets, zero managed DNS records, and zero mutation requests.
+
+No unresolved specification, implementation, security, accessibility, visual, runtime,
+worker, migration, evidence, teardown, or provider-inventory finding remains.
+
+**Cycle result**: `ZERO_UNRESOLVED_FINDINGS_FEATURE_103_COMPLETE`.
