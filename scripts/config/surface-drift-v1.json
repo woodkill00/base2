@@ -2,7 +2,7 @@
   "algorithm": "sha256",
   "groups": {
     "config": {
-      ".env.example": "ce9aedc490d46ac50f22504b9f0339d75106c3d53aabf0b4730629449bca5ae0",
+      ".env.example": "0163a9332b1ebc608507ccce49a04172398aa2413fe7e8c0499bc778d7812819",
       "api/site_profiles/base2-obsidian.json": "55d8c456c9b5e0144651de543a5b7dafa0b9595e49fa823c2cce9d7209d9e920",
       "api/site_profiles/ember-studio.json": "b6b57abe7c80247917a1cc0ccdf08f3cddb2efd503091b73fb9d0e58d4c7fcae",
       "api/site_profiles/index.json": "887765b4c6d39198f2025ef28fd0f2ba075b92a169b4a4fc1dc2bfb5edede7fb",
@@ -79,25 +79,26 @@
       "specs/001-django-fastapi-react/contracts/openapi.yaml": "f96ae1b450ed0e54406f0b40a301dab36c1b09d9eb9886fd2cb9d18db728deed"
     },
     "routeInventory": {
-      "api/main.py": "76120bb82429023aee25eff9970713576988a011177420736455883cf8a67527",
+      "api/main.py": "bc384a4be095283a0330cc7eccbe7b9c816a8eec946679e0bcb7ea079390567e",
       "api/routes/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "api/routes/auth.py": "961cc074c8457957aaf5a799f82dd53b51f88599f9eae24dd65878218d4e9ad8",
       "api/routes/engagement.py": "f26e86d78daab93ef74a8d547b2b4ec1a3035ebf2f13e9a886a2accd772f016e",
       "api/routes/identity.py": "c1617c121c136eab5f8341e2b1c2993fe6def7c71e9cb834d148ff0a26a4b35e",
       "api/routes/metrics.py": "e9e270a535b8bc6a480913fac9e475b8aadfa805fbb3b0494c8983e6dce45183",
       "api/routes/oauth.py": "2fbe1617292b76caecdd5b0b6def27cbbd11fe0c847af70ebfc7a71952739d00",
-      "api/routes/privacy.py": "02178dc0d8bb9cc04348efb929e54f1a300b060e1405bb70c858dd6f51abc42f",
+      "api/routes/privacy.py": "edf8eb20a167399a9c3fec3c1b9039892a13a41b3962ac4657f54cd7930fcc39",
       "api/routes/scheduling.py": "2bc71ee22ff666d22e7275e00394f6a885f94e04d20e97c44a4e93778ce859fa",
+      "api/routes/settings.py": "42894f829845f6c8faf1ca3dd5899dde7ac9570474ff0d31f49850fc695a36c8",
       "api/routes/site_content.py": "719c357b1419d09b1c0b2913d7ed40603e1fe9aabe90e676ea222a4b0e1ae256",
       "api/routes/tenant.py": "79db5f55ca653eb3362d6e3e9aeb8448bca08246ff9292111436060ec7eec8c7",
       "api/routes/test_support.py": "2d719feced29efa077926a093859c5087db577015d2bb2825dd88f2c04b2c70f",
-      "api/routes/users.py": "ce9aeae0854696a57a05e6fce4a1fee0807781869bb1c8392379d23b5680cdc1",
+      "api/routes/users.py": "a9482b12a463feb8a46033455135d863efc6cdbf8c130b40c38524af21a6943d",
       "django/catalog/urls.py": "ee319a920fbb34f3d78e8f85dc0b6893b829cfb0a3b2a096ce7be92fd6982491",
       "django/project/urls.py": "d42f4027cc1be8c8d4bd7470d39d1fac3af6904cec38ae523de6cc5cea7042f7",
       "django/users/urls.py": "e1c30bf7c17d01975286d91dac4f45f686118503200be85a54c86e143bae8c40",
       "react-app/src/App.js": "d259ff46ea77be8a3dbb0d338ed9baea8be6d19971f5ac79392b10726e18d0ec",
       "react-app/src/routes/LocalizedExperience.jsx": "2ef2f7460d57f1ca8488716c84e7d3d89eb41975cb426eaf85f71b5a8479ec58",
-      "react-app/src/routes/PublicRoutes.jsx": "3289700298e78386d721c8b5dcec03f9a663c75d469ce8a0c1af139a237deccf"
+      "react-app/src/routes/PublicRoutes.jsx": "1941f40fa7c231e6e17849260f1180662cd3a38e4941537f754c42d875d86257"
     }
   },
   "schemaVersion": 1

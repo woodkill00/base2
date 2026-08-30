@@ -23,6 +23,21 @@ def test_partition_rejects_unbounded_or_empty_size():
         MODULE.partition([Path('test_one.py')], size=0)
 
 
+def test_interpreter_corruption_signature_is_narrow_and_does_not_match_app_errors():
+    observed = """
+    /usr/lib/python3.12/re/_compiler.py:263
+    elif op is RANGE:
+    TypeError: 'str' object is not callable
+    """
+    assert MODULE._retryable_interpreter_corruption(observed)
+    assert not MODULE._retryable_interpreter_corruption(
+        "api/routes/settings.py:10 TypeError: 'str' object is not callable"
+    )
+    assert not MODULE._retryable_interpreter_corruption(
+        "/usr/lib/python3.12/re/_compiler.py AssertionError: expected 200"
+    )
+
+
 def test_bounded_command_retries_native_abort_and_removes_partial_output(monkeypatch, tmp_path):
     output = tmp_path / 'partial.json'
     calls = []

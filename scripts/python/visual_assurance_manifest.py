@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SNAPSHOT_ROOT = "react-app/e2e/visual"
+SNAPSHOT_ROOTS = ("react-app/e2e/visual", "react-app/e2e/account")
 MAX_MEMBER_BYTES = 8 * 1024 * 1024
 PROJECT = re.compile(r"-(desktop|tablet|mobile)-linux\.png$")
 ROUTES = (
@@ -25,6 +25,7 @@ ROUTES = (
     {"id": "swagger", "path": "/docs", "host": "swagger.woodkilldev.com", "auth": "edge", "hermetic": False},
     {"id": "pgadmin", "path": "/", "host": "pgadmin.woodkilldev.com", "auth": "edge+pgadmin", "hermetic": False},
     {"id": "traefik", "path": "/", "host": "traefik.woodkilldev.com", "auth": "edge", "hermetic": False},
+    {"id": "settings", "path": "/settings", "host": "woodkilldev.com", "auth": "credential-free fixture", "hermetic": True},
 )
 
 
@@ -34,7 +35,7 @@ def sha256(raw: bytes) -> str:
 
 def tracked(root: Path = ROOT) -> list[str]:
     result = subprocess.run(
-        ["git", "ls-files", "-z", "--", SNAPSHOT_ROOT], cwd=root,
+        ["git", "ls-files", "-z", "--", *SNAPSHOT_ROOTS], cwd=root,
         capture_output=True, check=True,
     )
     return sorted(item.decode() for item in result.stdout.split(b"\0") if item)
@@ -70,7 +71,7 @@ def build(root: Path = ROOT, *, commit: str | None = None) -> dict:
             "size": len(raw),
             "sha256": sha256(raw),
             "project": project,
-            "routeClass": "public",
+            "routeClass": "settings" if "/account/settings-" in relative else "public",
             "area": Path(relative).name.rsplit("-", 2)[0],
         })
     if not members or len({row["path"] for row in members}) != len(members):

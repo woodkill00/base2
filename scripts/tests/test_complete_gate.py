@@ -5,6 +5,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 MODULE_PATH = Path(__file__).parents[1] / "python" / "run_complete_gate.py"
 COMPOSE_MODULE_PATH = Path(__file__).parents[1] / "python" / "validate_compose_config.py"
@@ -90,6 +91,17 @@ class CompleteGateTests(unittest.TestCase):
         self.assertEqual("incomplete", result["overallStatus"])
         self.assertEqual("unavailable", result["checks"][0]["status"])
 
+    def test_wsl_single_processor_runtime_fails_early_with_remedy(self):
+        with patch.object(self.gate.platform, "release", return_value="microsoft-standard-WSL2"), patch.object(
+            self.gate.os, "cpu_count", return_value=1
+        ):
+            with self.assertRaisesRegex(RuntimeError, r"processors=2.*wsl --shutdown"):
+                self.gate.validate_runtime_capacity()
+        with patch.object(self.gate.platform, "release", return_value="microsoft-standard-WSL2"), patch.object(
+            self.gate.os, "cpu_count", return_value=2
+        ):
+            self.gate.validate_runtime_capacity()
+
     def test_timeout_is_failure(self):
         result, _ = self.run_gate(
             [check("slow", ["/bin/sh", "-c", "sleep 2"], tools=["/bin/sh"], timeout=1)]
@@ -169,6 +181,70 @@ class CompleteGateTests(unittest.TestCase):
             ]
         )
         self.assertEqual(1, failed["checks"][0]["attempts"])
+
+    def test_intentional_error_text_is_not_a_terminal_test_summary(self):
+        command = [
+            "/bin/sh",
+            "-c",
+            "if test -f marker; then echo 'Test Files 1 passed'; exit 0; "
+            "else touch marker; echo 'Error: boom'; exit 1; fi",
+        ]
+        result, _ = self.run_gate(
+            [
+                check(
+                    "abrupt",
+                    command,
+                    tools=["/bin/sh"],
+                    max_attempts=2,
+                    retry_on=["incomplete-test-output"],
+                )
+            ]
+        )
+        self.assertEqual("passed", result["overallStatus"])
+        self.assertEqual(2, result["checks"][0]["attempts"])
+
+    def test_retries_explicit_worker_crash_signature_once(self):
+        command = [
+            "/bin/sh",
+            "-c",
+            "if test -f marker; then echo passed; exit 0; "
+            "else touch marker; echo 'Worker exited unexpectedly'; exit 1; fi",
+        ]
+        result, _ = self.run_gate(
+            [check("worker", command, tools=["/bin/sh"], max_attempts=2)]
+        )
+        self.assertEqual("passed", result["overallStatus"])
+        self.assertEqual(2, result["checks"][0]["attempts"])
+
+    def test_retries_exact_json_encoder_corruption_but_not_application_type_error(self):
+        corruption = (
+            "/usr/lib/python3.12/json/encoder.py\n"
+            "yield '\\n' + _indent * _current_indent_level\n"
+            "TypeError: unsupported operand type(s) for *: 'NoneType' and 'int'"
+        )
+        command = [
+            "/bin/sh",
+            "-c",
+            f"if test -f marker; then echo passed; exit 0; "
+            f"else touch marker; printf '%s\\n' \"{corruption}\"; exit 1; fi",
+        ]
+        result, _ = self.run_gate(
+            [check("json-corruption", command, tools=["/bin/sh"], max_attempts=2)]
+        )
+        self.assertEqual("passed", result["overallStatus"])
+        self.assertEqual(2, result["checks"][0]["attempts"])
+
+        self.assertFalse(
+            self.gate.retryable_interpreter_corruption(
+                "api/routes/settings.py TypeError: unsupported operand type(s) for *: "
+                "'NoneType' and 'int'"
+            )
+        )
+        self.assertFalse(
+            self.gate.retryable_interpreter_corruption(
+                "/usr/lib/python3.12/json/encoder.py AssertionError: expected 200"
+            )
+        )
 
     def test_redacts_secret_environment_values_and_binds_digest(self):
         secret = "fixture-super-secret-value"

@@ -96,7 +96,7 @@ def test_sensitive_requests_require_recent_reauthentication(monkeypatch):
     assert response.json() == {'detail': 'recent_reauthentication_required'}
 
 
-def test_correction_and_deletion_validate_before_storage(monkeypatch):
+def test_correction_deactivation_and_deletion_validate_before_storage(monkeypatch):
     monkeypatch.setattr(
         'api.routes.privacy.require_authenticated_principal', lambda request: _principal()
     )
@@ -112,10 +112,15 @@ def test_correction_and_deletion_validate_before_storage(monkeypatch):
     deletion = client.post(
         '/api/privacy/delete', headers=headers, json={'confirmation': 'yes'}
     )
+    deactivation = client.post(
+        '/api/privacy/deactivate', headers=headers, json={'confirmation': 'yes'}
+    )
     assert correction.status_code == 422
     assert correction.json()['detail'] == 'correction_field_not_allowed'
     assert deletion.status_code == 422
     assert deletion.json()['detail'] == 'deletion_confirmation_invalid'
+    assert deactivation.status_code == 422
+    assert deactivation.json()['detail'] == 'deactivation_confirmation_invalid'
 
 
 def test_export_download_is_integrity_checked_and_never_cached(monkeypatch):

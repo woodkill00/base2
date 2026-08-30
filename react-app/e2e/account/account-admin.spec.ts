@@ -98,6 +98,6 @@ test('missing admin permission redirects to account without flashing controls', 
     localStorage.setItem('user', JSON.stringify(stored));
   });
   await page.goto('/admin');
-  await expect(page).toHaveURL(/\/account$/);
+  await expect(page).toHaveURL(/\/settings\/security$/);
   await expect(page.getByRole('heading', { name: 'Invitations' })).toHaveCount(0);
 });

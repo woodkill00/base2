@@ -1,6 +1,7 @@
 import React, { useId, useMemo, useState } from 'react';
 import GlassHeader from './GlassHeader';
 import GlassSidebar from './GlassSidebar';
+import { siteManifest } from '../../config/siteRuntime';
 
 type Props = {
   children?: React.ReactNode;
@@ -21,7 +22,7 @@ export const AppShell: React.FC<Props> = ({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <div className="relative min-h-screen">
+    <div className="app-shell-root relative min-h-screen text-slate-900 dark:text-slate-100">
       <div className="gradient-background" />
 
       <div
@@ -66,7 +67,13 @@ export const AppShell: React.FC<Props> = ({
         </div>
 
         {isPublic ? null : (
-          <footer className="app-shell-footer glass" style={{ height: 'var(--footer-h)' }} />
+          <footer
+            className="app-shell-footer glass flex items-center justify-between gap-3 px-4 text-xs opacity-80"
+            style={{ minHeight: 'var(--footer-h)' }}
+          >
+            <span>{siteManifest.name}</span>
+            <span>Private workspace</span>
+          </footer>
         )}
       </div>
     </div>

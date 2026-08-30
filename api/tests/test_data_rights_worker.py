@@ -26,6 +26,7 @@ def _operation(kind, key, payload):
     (
         ('export', {'schema_version': 1}, 'account'),
         ('correction', {'fields': {'display_name': 'New Name'}}, 'corrected'),
+        ('deactivation', {'confirmation': 'DEACTIVATE'}, 'deactivated'),
         ('deletion', {'confirmation': 'DELETE'}, 'deleted'),
     ),
 )
@@ -49,6 +50,10 @@ def test_worker_completes_exact_supported_operation(monkeypatch, kind, request_p
     monkeypatch.setattr(
         worker, '_delete_account',
         lambda **kwargs: {'schema_version': 1, 'deleted': True, 'tenant_id': 'tenant-a'},
+    )
+    monkeypatch.setattr(
+        worker, '_deactivate_account',
+        lambda **kwargs: {'schema_version': 1, 'deactivated': True, 'tenant_id': 'tenant-a'},
     )
     monkeypatch.setattr(
         worker.repository, 'complete_operation', lambda **kwargs: captured.update(kwargs)
@@ -116,3 +121,77 @@ def test_export_timestamp_serialization_is_explicit(monkeypatch):
     payload = worker._export_payload(tenant_id='tenant-a', user_id=USER_ID)
     assert payload['account']['created_at'] == '2026-08-25T00:00:00+00:00'
     assert payload['memberships'] == []
+
+
+def test_deactivation_fails_closed_for_final_owner_before_account_mutation(monkeypatch):
+    class Cursor:
+        rowcount = 1
+        calls = []
+        def __enter__(self): return self
+        def __exit__(self, *_args): return False
+        def execute(self, query, params): self.calls.append((' '.join(query.split()), params))
+        def fetchone(self): return ('organization-a',)
+
+    class Connection:
+        def __init__(self):
+            self.value = Cursor()
+            self.rollbacks = 0
+            self.commits = 0
+
+        def cursor(self):
+            return self.value
+
+        def rollback(self):
+            self.rollbacks += 1
+
+        def commit(self):
+            self.commits += 1
+
+    connection = Connection()
+    class Context:
+        def __enter__(self): return connection
+        def __exit__(self, *_args): return False
+    monkeypatch.setattr(worker, 'db_conn', lambda **kwargs: Context())
+    with pytest.raises(ValueError, match='last_owner_required'):
+        worker._deactivate_account(tenant_id='tenant-a', user_id=USER_ID)
+    assert connection.rollbacks == 1 and connection.commits == 0
+    assert len(connection.value.calls) == 1
+    assert 'UPDATE api_auth_users' not in connection.value.calls[0][0]
+
+
+def test_deactivation_revokes_sessions_suspends_memberships_and_commits_atomically(monkeypatch):
+    class Cursor:
+        rowcount = 1
+        def __init__(self): self.calls = []
+        def __enter__(self): return self
+        def __exit__(self, *_args): return False
+        def execute(self, query, params): self.calls.append((' '.join(query.split()), params))
+        def fetchone(self): return None
+
+    class Connection:
+        def __init__(self):
+            self.value = Cursor()
+            self.rollbacks = 0
+            self.commits = 0
+
+        def cursor(self):
+            return self.value
+
+        def rollback(self):
+            self.rollbacks += 1
+
+        def commit(self):
+            self.commits += 1
+
+    connection = Connection()
+    class Context:
+        def __enter__(self): return connection
+        def __exit__(self, *_args): return False
+    monkeypatch.setattr(worker, 'db_conn', lambda **kwargs: Context())
+    result = worker._deactivate_account(tenant_id='tenant-a', user_id=USER_ID)
+    assert result == {'schema_version': 1, 'deactivated': True, 'tenant_id': 'tenant-a'}
+    assert connection.commits == 1 and connection.rollbacks == 0
+    statements = ' '.join(query for query, _ in connection.value.calls)
+    assert 'api_auth_refresh_tokens' in statements
+    assert "status='suspended'" in statements
+    assert 'is_active=FALSE' in statements

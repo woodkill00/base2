@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 if ! command -v node >/dev/null 2>&1; then
-  echo "ERROR: node is required. Install Node.js 24.13.1+ and re-run." >&2
+  echo "ERROR: node is required. Install Node.js 24.20.0+ and re-run." >&2
   exit 127
 fi
 

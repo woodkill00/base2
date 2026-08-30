@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { Route, Routes, useParams } from 'react-router-dom';
+import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import ContentPage from '../pages/public/ContentPage';
 import ContactPage from '../pages/public/ContactPage';
 import SearchPage from '../pages/public/SearchPage';
@@ -15,8 +15,7 @@ const Home = lazy(() => import('../pages/Home'));
 const Login = lazy(() => import('../pages/Login'));
 const Signup = lazy(() => import('../pages/Signup'));
 const Dashboard = lazy(() => import('../pages/Dashboard.jsx'));
-const Settings = lazy(() => import('../pages/Settings'));
-const AccountCenter = lazy(() => import('../pages/AccountCenter'));
+const Settings = lazy(() => import('../pages/SettingsCenter'));
 const AdminConsole = lazy(() => import('../pages/AdminConsole'));
 const AcceptInvitation = lazy(() => import('../pages/AcceptInvitation'));
 const VerifyEmail = lazy(() => import('../pages/VerifyEmail'));
@@ -47,11 +46,6 @@ const PackDetailRoute = ({ moduleId, title, contentType }) => {
   ) : (
     <NotFoundPage />
   );
-};
-
-const AccountRoute = () => {
-  const { user } = useAuth();
-  return <AccountCenter user={user} />;
 };
 
 const AdminRoute = () => {
@@ -149,7 +143,7 @@ const PublicRoutes = () => (
       element={
         <ProtectedRoute>
           <AccountsModuleRoute>
-            <AccountRoute />
+            <Navigate to="/settings/security" replace />
           </AccountsModuleRoute>
         </ProtectedRoute>
       }
@@ -175,7 +169,7 @@ const PublicRoutes = () => (
       }
     />
     <Route
-      path="/settings"
+      path="/settings/*"
       element={
         <ProtectedRoute>
           <Settings />

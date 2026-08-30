@@ -86,6 +86,46 @@ def _delete_account(*, tenant_id: str, user_id: UUID) -> dict:
     return {'schema_version': 1, 'deleted': True, 'tenant_id': tenant_id}
 
 
+def _deactivate_account(*, tenant_id: str, user_id: UUID) -> dict:
+    with db_conn(tenant_id=tenant_id) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT mine.organization_id
+                FROM api_identity_memberships mine
+                WHERE mine.user_id=%s AND mine.role='owner' AND mine.status='active'
+                  AND NOT EXISTS (
+                    SELECT 1 FROM api_identity_memberships other
+                    WHERE other.organization_id=mine.organization_id
+                      AND other.user_id<>mine.user_id
+                      AND other.role='owner' AND other.status='active'
+                  )
+                LIMIT 1
+                """,
+                (str(user_id),),
+            )
+            if cur.fetchone():
+                conn.rollback()
+                raise ValueError('last_owner_required')
+            cur.execute(
+                "UPDATE api_auth_refresh_tokens SET revoked_at=NOW() WHERE user_id=%s AND revoked_at IS NULL",
+                (str(user_id),),
+            )
+            cur.execute(
+                "UPDATE api_identity_memberships SET status='suspended', updated_at=NOW() WHERE user_id=%s AND status='active'",
+                (str(user_id),),
+            )
+            cur.execute(
+                "UPDATE api_auth_users SET is_active=FALSE, updated_at=NOW() WHERE id=%s AND is_active=TRUE",
+                (str(user_id),),
+            )
+            if cur.rowcount != 1:
+                conn.rollback()
+                raise RuntimeError('account_state_changed')
+        conn.commit()
+    return {'schema_version': 1, 'deactivated': True, 'tenant_id': tenant_id}
+
+
 def process_operation(operation_id: UUID) -> str:
     operation = repository.claim_operation(operation_id=operation_id)
     if operation is None:
@@ -115,6 +155,12 @@ def process_operation(operation_id: UUID) -> str:
             if request_payload.get('confirmation') != 'DELETE':
                 raise ValueError('deletion_confirmation_invalid')
             result = _delete_account(
+                tenant_id=operation['tenant_id'], user_id=operation['user_id']
+            )
+        elif operation['kind'] == 'deactivation':
+            if request_payload.get('confirmation') != 'DEACTIVATE':
+                raise ValueError('deactivation_confirmation_invalid')
+            result = _deactivate_account(
                 tenant_id=operation['tenant_id'], user_id=operation['user_id']
             )
         else:

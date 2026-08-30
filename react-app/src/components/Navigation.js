@@ -41,26 +41,24 @@ const Navigation = () => {
             'px-4 py-3',
           ].join(' ')}
         >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="flex items-center justify-between gap-3">
-              <Link to="/dashboard" className="flex items-center gap-2">
+              <Link
+                to="/dashboard"
+                className="flex min-h-11 items-center gap-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-300"
+              >
                 <img src={siteManifest.brand.logo} alt="" className="w-6 h-6" />
                 <span className="text-sm font-semibold tracking-tight">{siteManifest.name}</span>
               </Link>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Link to="/dashboard" className={linkClass('/dashboard')}>
                 Dashboard
               </Link>
               <Link to="/settings" className={linkClass('/settings')}>
                 Settings
               </Link>
-              {accountsEnabled ? (
-                <Link to="/account" className={linkClass('/account')}>
-                  Account
-                </Link>
-              ) : null}
               {accountsEnabled &&
               Array.isArray(user?.permissions) &&
               user.permissions.includes('audit.read') ? (
@@ -70,8 +68,8 @@ const Navigation = () => {
               ) : null}
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-3">
+              <div className="flex min-w-0 items-center gap-2">
                 {avatarUrl ? (
                   <img
                     src={avatarUrl}
@@ -87,7 +85,7 @@ const Navigation = () => {
                     {avatarLabel}
                   </span>
                 )}
-                <span className="text-sm opacity-90">
+                <span className="min-w-0 break-words text-sm opacity-90">
                   {user?.display_name || user?.name || user?.email}
                 </span>
               </div>

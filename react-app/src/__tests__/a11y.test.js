@@ -1,11 +1,11 @@
-import { render } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import { MemoryRouter } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import Login from '../pages/Login';
 import Signup from '../pages/Signup';
 import Dashboard from '../pages/Dashboard';
-import Settings from '../pages/Settings';
+import Settings from '../pages/SettingsCenter';
 import { AuthProvider } from '../contexts/AuthContext';
 
 expect.extend(toHaveNoViolations);
@@ -42,6 +42,9 @@ describe('Accessibility checks', () => {
 
   test('Settings has no obvious a11y violations', async () => {
     const { container } = renderWithProviders(<Settings />);
+    await waitFor(() =>
+      expect(screen.getByRole('region', { name: /details/i })).toHaveAttribute('aria-busy', 'false')
+    );
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });

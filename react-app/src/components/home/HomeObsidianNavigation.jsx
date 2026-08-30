@@ -107,76 +107,6 @@ const getScrollMetrics = () => {
   };
 };
 
-const clampScrollTarget = (target) => {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return 0;
-  const root = document.documentElement;
-  const body = document.body;
-  const scrollRoot = document.scrollingElement || root;
-  const scrollHeight = Math.max(
-    root.scrollHeight,
-    body?.scrollHeight || 0,
-    scrollRoot?.scrollHeight || 0
-  );
-  const maxScroll = Math.max(0, scrollHeight - window.innerHeight);
-  return Math.min(maxScroll, Math.max(0, Math.round(target)));
-};
-
-const getSnapStopElements = () => {
-  if (typeof document === 'undefined' || typeof window === 'undefined') return [];
-  const selectors = [
-    '[data-testid="base2-preserved-home-hero"]',
-    '#features',
-    '[data-base2-section-panel]',
-    'main > section',
-    'main > footer',
-    'main > [data-testid]',
-    '#home-page > section',
-    '#home-page > footer',
-    '#home-page > [data-testid]',
-  ];
-  const seen = new Set();
-  return selectors
-    .flatMap((selector) => Array.from(document.querySelectorAll(selector)))
-    .filter((element) => {
-      if (seen.has(element)) return false;
-      seen.add(element);
-      const style = getComputedStyle(element);
-      const rect = element.getBoundingClientRect();
-      return (
-        style.display !== 'none' &&
-        style.visibility !== 'hidden' &&
-        rect.width >= Math.min(280, window.innerWidth * 0.6) &&
-        rect.height >= Math.min(180, window.innerHeight * 0.24)
-      );
-    });
-};
-
-const getMovementStops = () => {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return [0];
-  const root = document.documentElement;
-  const body = document.body;
-  const scrollRoot = document.scrollingElement || root;
-  const scrollHeight = Math.max(
-    root.scrollHeight,
-    body?.scrollHeight || 0,
-    scrollRoot?.scrollHeight || 0
-  );
-  const maxScroll = Math.max(0, scrollHeight - window.innerHeight);
-  const elementStops = getSnapStopElements()
-    .map((element) => element.getBoundingClientRect().top + window.scrollY)
-    .map((top) => clampScrollTarget(top));
-  const viewportStops = Array.from(
-    { length: Math.ceil(maxScroll / Math.max(1, window.innerHeight)) + 1 },
-    (_, index) => clampScrollTarget(index * window.innerHeight)
-  );
-  const sourceStops = elementStops.length >= 4 ? elementStops : viewportStops;
-  const duplicateTopTolerance = Math.max(72, Math.round(window.innerHeight * 0.1));
-  const stops = [0, ...sourceStops, maxScroll]
-    .map((stop) => (stop <= duplicateTopTolerance ? 0 : stop))
-    .sort((a, b) => a - b);
-  return stops.filter((value, index) => index === 0 || Math.abs(value - stops[index - 1]) > 24);
-};
-
 const readActiveSection = () => {
   if (typeof window === 'undefined') return sectionItems[0].id;
   const sections = getSectionElements();
@@ -669,6 +599,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     (id) => {
       const item = sectionItems.find((candidate) => candidate.id === id) || sectionItems[0];
       movementScrollLockUntilRef.current = Date.now() + 7600;
+      activeSectionRef.current = item.id;
       setActiveSection(item.id);
       setIsLeftOpen(false);
       setIsCommandPaletteOpen(false);
@@ -686,50 +617,15 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
 
   const moveSection = (direction) => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
-    clearMovementAlignTimers();
-    const root = document.documentElement;
-    const body = document.body;
-    const scrollRoot = document.scrollingElement || root;
-    const scrollHeight = Math.max(
-      root.scrollHeight,
-      body?.scrollHeight || 0,
-      scrollRoot?.scrollHeight || 0
+    const currentIndex = Math.max(
+      0,
+      sectionItems.findIndex((item) => item.id === activeSectionRef.current)
     );
-    const maxScroll = Math.max(0, scrollHeight - window.innerHeight);
-    const currentScroll =
-      window.scrollY || scrollRoot?.scrollTop || root.scrollTop || body.scrollTop || 0;
-    const stops = getMovementStops();
-    const targetStop =
-      direction > 0
-        ? stops.find((stop) => stop > currentScroll + 24)
-        : [...stops].reverse().find((stop) => stop < currentScroll - 24);
-    const targetTop = typeof targetStop === 'number' ? targetStop : direction > 0 ? maxScroll : 0;
-    const jump = () => {
-      const previousRootBehavior = root.style.scrollBehavior;
-      const previousBodyBehavior = body?.style.scrollBehavior;
-      root.style.scrollBehavior = 'auto';
-      if (body) body.style.scrollBehavior = 'auto';
-      window.scrollTo(0, targetTop);
-      [document.scrollingElement, document.documentElement, document.body]
-        .filter(Boolean)
-        .forEach((element) => {
-          element.scrollTop = targetTop;
-        });
-      root.style.scrollBehavior = previousRootBehavior;
-      if (body) body.style.scrollBehavior = previousBodyBehavior;
-    };
-    // Leave a deterministic margin before the final state refresh. Scheduling
-    // the lock expiry and refresh for the same millisecond created a race where
-    // a quiet desktop viewport could retain the previous section indefinitely.
-    movementScrollLockUntilRef.current = Date.now() + 680;
-    jump();
-    window.requestAnimationFrame(jump);
-    [16, 50, 100, 180, 280, 420, 600].forEach((delay) => {
-      scheduleMovementTimeout(jump, delay);
-    });
-    updateScrollState();
-    window.requestAnimationFrame(updateScrollState);
-    window.setTimeout(updateScrollState, 800);
+    const targetIndex = Math.min(
+      sectionItems.length - 1,
+      Math.max(0, currentIndex + (direction > 0 ? 1 : -1))
+    );
+    goToSection(sectionItems[targetIndex].id);
   };
 
   const queueSingleMovement = (direction) => {
@@ -787,6 +683,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   const scrollToEdge = (top) => {
     const target = top ? sectionItems[0] : sectionItems[sectionItems.length - 1];
     movementScrollLockUntilRef.current = Date.now() + 7600;
+    activeSectionRef.current = target.id;
     setActiveSection(target.id);
     setIsLeftOpen(false);
     setIsCommandPaletteOpen(false);

@@ -112,7 +112,7 @@ services:
       dockerfile: Dockerfile
       args:
         DOCKER_LIBRARY_REGISTRY: public.ecr.aws/docker/library
-        NODE_VERSION: 24.13.1-alpine
+        NODE_VERSION: 24.20.0-alpine
         NGINX_VERSION: 1.27.3-alpine
         REACT_APP_API_URL: http://localhost:5001/api
     ports:

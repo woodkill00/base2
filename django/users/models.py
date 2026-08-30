@@ -147,6 +147,131 @@ class UserProfile(UUIDMixin, TimestampedModel):
         return self.display_name or getattr(self.user, "username", "user")
 
 
+class UserPreferenceSet(UUIDMixin, TimestampedModel):
+    class Theme(models.TextChoices):
+        SYSTEM = "system", _("System")
+        LIGHT = "light", _("Light")
+        DARK = "dark", _("Dark")
+
+    class Contrast(models.TextChoices):
+        SYSTEM = "system", _("System")
+        STANDARD = "standard", _("Standard")
+        HIGH = "high", _("High contrast")
+
+    class Motion(models.TextChoices):
+        SYSTEM = "system", _("System")
+        FULL = "full", _("Full motion")
+        REDUCED = "reduced", _("Reduced motion")
+
+    class Density(models.TextChoices):
+        COMFORTABLE = "comfortable", _("Comfortable")
+        COMPACT = "compact", _("Compact")
+
+    class WeekStart(models.TextChoices):
+        SYSTEM = "system", _("System")
+        MONDAY = "monday", _("Monday")
+        SUNDAY = "sunday", _("Sunday")
+        SATURDAY = "saturday", _("Saturday")
+
+    user = models.ForeignKey(AuthUser, on_delete=models.CASCADE, related_name="preference_sets")
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="user_preference_sets",
+        null=True,
+        blank=True,
+    )
+    schema_version = models.PositiveSmallIntegerField(default=1)
+    version = models.PositiveIntegerField(default=1)
+    theme = models.CharField(max_length=16, choices=Theme.choices, default=Theme.SYSTEM)
+    contrast = models.CharField(max_length=16, choices=Contrast.choices, default=Contrast.SYSTEM)
+    motion = models.CharField(max_length=16, choices=Motion.choices, default=Motion.SYSTEM)
+    density = models.CharField(
+        max_length=16, choices=Density.choices, default=Density.COMFORTABLE
+    )
+    locale = models.CharField(max_length=32, default="en")
+    timezone = models.CharField(max_length=255, default="UTC")
+    week_start = models.CharField(
+        max_length=16, choices=WeekStart.choices, default=WeekStart.SYSTEM
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("user",),
+                condition=models.Q(organization__isnull=True),
+                name="users_preferences_user_default_uniq",
+            ),
+            models.UniqueConstraint(
+                fields=("user", "organization"),
+                condition=models.Q(organization__isnull=False),
+                name="users_preferences_owner_uniq",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(schema_version=1), name="users_preferences_schema_v1"
+            ),
+            models.CheckConstraint(condition=models.Q(version__gte=1), name="users_preferences_ver_gte1"),
+        ]
+        indexes = [models.Index(fields=("user", "organization"), name="users_preferences_owner_idx")]
+
+
+class NotificationPreference(UUIDMixin, TimestampedModel):
+    class EventFamily(models.TextChoices):
+        SECURITY = "security", _("Security")
+        TRANSACTIONAL = "transactional", _("Transactional")
+        PRODUCT = "product", _("Product")
+        MARKETING = "marketing", _("Marketing")
+
+    class Channel(models.TextChoices):
+        EMAIL = "email", _("Email")
+        IN_APP = "in_app", _("In app")
+        BROWSER = "browser", _("Browser")
+
+    class Delivery(models.TextChoices):
+        IMMEDIATE = "immediate", _("Immediate")
+        DIGEST = "digest", _("Digest")
+        DISABLED = "disabled", _("Disabled")
+
+    user = models.ForeignKey(
+        AuthUser, on_delete=models.CASCADE, related_name="notification_preferences"
+    )
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="notification_preferences",
+        null=True,
+        blank=True,
+    )
+    event_family = models.CharField(max_length=24, choices=EventFamily.choices)
+    channel = models.CharField(max_length=16, choices=Channel.choices)
+    delivery = models.CharField(max_length=16, choices=Delivery.choices)
+    mandatory = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("user", "event_family", "channel"),
+                condition=models.Q(organization__isnull=True),
+                name="users_notification_user_default_uniq",
+            ),
+            models.UniqueConstraint(
+                fields=("user", "organization", "event_family", "channel"),
+                condition=models.Q(organization__isnull=False),
+                name="users_notification_owner_family_channel_uniq",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(mandatory=False) | ~models.Q(delivery="disabled"),
+                name="users_notification_mandatory_delivery",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=("user", "organization", "event_family"),
+                name="users_notification_owner_idx",
+            )
+        ]
+
+
 class EmailAddress(Email, TimestampedModel):
     user = models.ForeignKey(AuthUser, on_delete=models.CASCADE, related_name="emails")
     is_primary = models.BooleanField(default=False)

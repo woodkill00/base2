@@ -22,7 +22,7 @@ export const ThemeToggle: React.FC = () => {
   return (
     <button
       aria-label="Toggle theme"
-      className="glass glass-interactive glass-pill"
+      className="glass glass-interactive glass-pill min-h-11 min-w-11"
       onClick={toggle}
     >
       {theme === 'dark' ? '🌙' : '☀️'}

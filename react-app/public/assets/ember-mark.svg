@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Ember Studio</title>
+  <desc id="desc">A warm ember flame in orange and violet</desc>
+  <rect width="64" height="64" rx="16" fill="#140d20"/>
+  <path d="M35 8c3 12-8 16-8 27 0 5 3 9 7 11-1-7 5-10 8-16 6 8 8 14 5 20-3 7-10 10-17 8-10-2-16-10-15-20 1-13 13-20 20-30z" fill="#fb923c"/>
+  <path d="M33 35c6 6 5 14 0 18-5-2-8-6-7-10 1-4 4-6 7-8z" fill="#a78bfa"/>
+</svg>

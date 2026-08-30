@@ -34,7 +34,7 @@ if (-not $env:VIRTUAL_ENV) {
 
 $node = Get-Command node -ErrorAction SilentlyContinue
 if (-not $node) {
-  Write-Error 'node is required. Install Node.js 24.13.1+ and re-run.'
+  Write-Error 'node is required. Install Node.js 24.20.0+ and re-run.'
   exit 127
 }
 

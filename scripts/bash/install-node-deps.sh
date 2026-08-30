@@ -10,7 +10,7 @@ if [[ -z "${VIRTUAL_ENV:-}" ]]; then
 fi
 
 if ! command -v node >/dev/null 2>&1; then
-  echo "node executable not found in PATH. Install Node.js 24.13.1+ and retry." >&2
+  echo "node executable not found in PATH. Install Node.js 24.20.0+ and retry." >&2
   exit 1
 fi
 
@@ -50,7 +50,7 @@ version_ge() {
   return 1
 }
 
-required_node="24.13.1"
+required_node="24.20.0"
 node_version="$(node --version)"
 if ! version_ge "$node_version" "$required_node"; then
   echo "Node.js version ${required_node}+ is required but found ${node_version}." >&2

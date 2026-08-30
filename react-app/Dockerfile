@@ -3,7 +3,7 @@
 
 # Declare all ARG used in any FROM before the first FROM
 ARG DOCKER_LIBRARY_REGISTRY=public.ecr.aws/docker/library
-ARG NODE_VERSION=24.13.1-alpine
+ARG NODE_VERSION=24.20.0-alpine
 ARG NGINX_VERSION=1.27.3-alpine
 FROM ${DOCKER_LIBRARY_REGISTRY}/node:${NODE_VERSION} AS build
 

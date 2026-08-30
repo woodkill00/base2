@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Northstar</title>
+  <desc id="desc">An eight-point polar star in blue and violet</desc>
+  <rect width="64" height="64" rx="16" fill="#10172a"/>
+  <path d="M32 7l6 18 19 7-19 7-6 18-7-18-18-7 18-7z" fill="#7dd3fc"/>
+  <circle cx="32" cy="32" r="7" fill="#8b5cf6"/>
+</svg>
