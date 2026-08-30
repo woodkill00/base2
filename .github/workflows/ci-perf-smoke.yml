@@ -10,31 +10,45 @@ on:
 
 jobs:
   perf:
-    # Pull requests have no approved live target. Scheduled/manual/main runs may
-    # exercise the separately operated site, but PR validation stays hermetic.
-    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: '3.12'
+      - name: Test live-target policy
+        run: python scripts/python/test_perf_target_policy.py
+      - name: Resolve approved live target
+        id: target
+        env:
+          PERF_EVENT_NAME: ${{ github.event_name }}
+          PERF_LIVE_ENABLED: ${{ vars.PERF_LIVE_ENABLED }}
+          PERF_BASE_URL: ${{ vars.PERF_BASE_URL }}
+        run: python scripts/python/perf_target_policy.py --github-output "$GITHUB_OUTPUT"
+      - name: Explain disabled live probe
+        if: steps.target.outputs.enabled != 'true'
+        run: echo "Performance smoke skipped safely - ${{ steps.target.outputs.reason }}"
       - name: Install deps
+        if: steps.target.outputs.enabled == 'true'
         run: pip install requests
       - name: Warmup HEAD to base URL
+        if: steps.target.outputs.enabled == 'true'
+        env:
+          PERF_BASE_URL: ${{ steps.target.outputs.base_url }}
         run: |
           python - <<'PY'
           import os, requests
-          base = os.getenv('PERF_BASE_URL','https://woodkilldev.com')
+          base = os.environ['PERF_BASE_URL']
           try:
             requests.head(base, timeout=10)
           except Exception as e:
             print(f"WARN: warmup failed: {e}")
           PY
       - name: Perf smoke
+        if: steps.target.outputs.enabled == 'true'
         env:
-          PERF_BASE_URL: https://woodkilldev.com
+          PERF_BASE_URL: ${{ steps.target.outputs.base_url }}
           PERF_P95_BUDGET_MS: '5000'
           PERF_SAMPLES: '10'
-          PERF_INSECURE: '1'
+          PERF_INSECURE: '0'
         run: python scripts/python/perf_smoke.py
