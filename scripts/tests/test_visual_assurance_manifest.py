@@ -23,7 +23,7 @@ def test_inventory_is_deterministic_complete_and_integrity_bound():
     assert first["baselineCount"] >= 50
     assert {"desktop", "tablet", "mobile"}.issubset(first["projects"])
     assert {row["id"] for row in first["routes"]} == {
-        "public", "admin", "api", "swagger", "pgadmin", "traefik"
+        "public", "admin", "api", "swagger", "pgadmin", "traefik", "settings"
     }
     assert all(row["size"] > 8 and len(row["sha256"]) == 64 for row in first["members"])
 

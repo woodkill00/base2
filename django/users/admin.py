@@ -10,10 +10,12 @@ from .models import (
     Membership,
     OAuthAccount,
     Organization,
+    NotificationPreference,
     PhoneNumber,
     RecoveryCode,
     UserAddress,
     UserProfile,
+    UserPreferenceSet,
     UserSession,
     UserUrl,
 )
@@ -24,6 +26,19 @@ admin.site.register(Invitation)
 admin.site.register(Authenticator)
 admin.site.register(UserSession)
 admin.site.register(ApiCredential)
+
+
+@admin.register(UserPreferenceSet)
+class UserPreferenceSetAdmin(admin.ModelAdmin):
+    list_display = ("user", "organization", "schema_version", "version", "locale", "timezone")
+    list_filter = ("theme", "contrast", "motion", "density", "week_start")
+    readonly_fields = ("schema_version", "version", "created", "updated")
+
+
+@admin.register(NotificationPreference)
+class NotificationPreferenceAdmin(admin.ModelAdmin):
+    list_display = ("user", "organization", "event_family", "channel", "delivery", "mandatory")
+    list_filter = ("event_family", "channel", "delivery", "mandatory")
 
 
 @admin.register(UserProfile)

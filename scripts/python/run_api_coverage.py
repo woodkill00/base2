@@ -12,12 +12,22 @@ from pathlib import Path
 
 PARTITION_SIZE = 4
 MAX_ATTEMPTS = 3
+NATIVE_FAILURES = {-11, 134, 139}
 
 
 def partition(values: list[Path], size: int = PARTITION_SIZE) -> list[list[Path]]:
     if size < 1:
         raise ValueError('partition_size_invalid')
     return [values[index : index + size] for index in range(0, len(values), size)]
+
+
+def _retryable_interpreter_corruption(output: str) -> bool:
+    """Recognize the observed impossible stdlib state without masking app failures."""
+    return (
+        '/re/_compiler.py' in output
+        and 'elif op is RANGE' in output
+        and "TypeError: 'str' object is not callable" in output
+    )
 
 
 def _run_bounded(
@@ -29,7 +39,7 @@ def _run_bounded(
         completed = subprocess.run(command, cwd=root, env=environment, check=False)
         if completed.returncode == 0:
             return
-        if attempt == MAX_ATTEMPTS or completed.returncode not in {-11, 134, 139}:
+        if attempt == MAX_ATTEMPTS or completed.returncode not in NATIVE_FAILURES:
             raise RuntimeError(f'coverage_command_failed:exit_{completed.returncode}')
     raise RuntimeError('coverage_command_failed')  # pragma: no cover
 
@@ -74,8 +84,13 @@ def main() -> None:
                 [*base_command, *(str(path.relative_to(root)) for path in group)],
                 cwd=root,
                 env=environment,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
                 check=False,
             )
+            captured = completed.stdout or ''
+            print(captured, end='' if captured.endswith('\n') else '\n', flush=True)
             if completed.returncode == 0:
                 if attempt > 1:
                     print(
@@ -86,7 +101,11 @@ def main() -> None:
                 break
             for artifact in set(raw_dir.iterdir()) - before:
                 artifact.unlink(missing_ok=True)
-            if attempt == MAX_ATTEMPTS or completed.returncode not in {-11, 134, 139}:
+            retryable = (
+                completed.returncode in NATIVE_FAILURES
+                or _retryable_interpreter_corruption(captured)
+            )
+            if attempt == MAX_ATTEMPTS or not retryable:
                 raise RuntimeError(
                     f'api_coverage_partition_failed:{index}:exit_{completed.returncode}'
                 )

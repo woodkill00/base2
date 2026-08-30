@@ -8,6 +8,18 @@ from api.db import db_conn
 
 _MIGRATIONS_DIR = Path(__file__).resolve().parent / 'sql'
 
+MIGRATIONS = (
+    '001_create_auth_tables',
+    '002_create_email_outbox',
+    '003_add_refresh_token_last_seen',
+    '004_add_user_lockout_fields',
+    '005_create_identity_admin_tables',
+    '006_create_data_rights_operations',
+    '007_protect_audit_events',
+    '008_create_settings_tables',
+    '009_add_deactivation_operation',
+)
+
 
 def _read_sql(version: str) -> str:
     path = _MIGRATIONS_DIR / f'{version}.sql'
@@ -25,16 +37,6 @@ def apply_migrations() -> None:
     if os.getenv('API_DISABLE_MIGRATIONS', '').strip().lower() in {'1', 'true', 'yes', 'on'}:
         return
 
-    migrations = [
-        '001_create_auth_tables',
-        '002_create_email_outbox',
-        '003_add_refresh_token_last_seen',
-        '004_add_user_lockout_fields',
-        '005_create_identity_admin_tables',
-        '006_create_data_rights_operations',
-        '007_protect_audit_events',
-    ]
-
     with db_conn() as conn:
         conn.autocommit = True
         with conn.cursor() as cur:
@@ -48,7 +50,7 @@ def apply_migrations() -> None:
                 """
             )
 
-            for version in migrations:
+            for version in MIGRATIONS:
                 cur.execute('SELECT 1 FROM api_schema_migrations WHERE version=%s', (version,))
                 already = cur.fetchone() is not None
                 if already:

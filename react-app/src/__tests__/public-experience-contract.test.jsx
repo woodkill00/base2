@@ -88,10 +88,12 @@ describe('manifest public experience contract', () => {
       replayed: false,
     });
     renderRoute('/contact');
-    await user.type(screen.getByLabelText('Name'), 'Avery');
-    await user.type(screen.getByLabelText('Email'), 'avery@example.test');
-    await user.type(screen.getByLabelText('Message'), 'Please send details.');
-    await user.click(screen.getByRole('button', { name: 'Send message' }));
+    await act(async () => {
+      await user.type(screen.getByLabelText('Name'), 'Avery');
+      await user.type(screen.getByLabelText('Email'), 'avery@example.test');
+      await user.type(screen.getByLabelText('Message'), 'Please send details.');
+      await user.click(screen.getByRole('button', { name: 'Send message' }));
+    });
     expect(await screen.findByRole('status')).toHaveTextContent(/received/i);
     expect(siteContentAPI.submitForm).toHaveBeenCalledTimes(1);
   });
@@ -114,19 +116,23 @@ describe('manifest public experience contract', () => {
         <SearchPage manifest={enabledManifest} />
       </MemoryRouter>
     );
-    await user.type(screen.getByLabelText('Search this site'), 'guide');
-    await user.click(screen.getByRole('button', { name: 'Search' }));
+    await act(async () => {
+      await user.type(screen.getByLabelText('Search this site'), 'guide');
+      await user.click(screen.getByRole('button', { name: 'Search' }));
+    });
     expect(await screen.findByRole('link', { name: 'Field Guide' })).toHaveAttribute(
       'href',
       '/guide'
     );
 
     siteContentAPI.search.mockResolvedValueOnce({ items: [] });
-    await user.click(screen.getByRole('button', { name: 'Search' }));
+    await act(async () => user.click(screen.getByRole('button', { name: 'Search' })));
     expect(await screen.findByText('No results found.')).toBeInTheDocument();
-    await user.clear(screen.getByLabelText('Search this site'));
-    await user.type(screen.getByLabelText('Search this site'), 'x');
-    await user.click(screen.getByRole('button', { name: 'Search' }));
+    await act(async () => {
+      await user.clear(screen.getByLabelText('Search this site'));
+      await user.type(screen.getByLabelText('Search this site'), 'x');
+      await user.click(screen.getByRole('button', { name: 'Search' }));
+    });
     expect(screen.getByRole('alert')).toHaveTextContent('at least two');
     view.unmount();
 
@@ -139,7 +145,7 @@ describe('manifest public experience contract', () => {
         <SearchPage manifest={enabledManifest} />
       </MemoryRouter>
     );
-    await user.click(screen.getByRole('button', { name: 'Search' }));
+    await act(async () => user.click(screen.getByRole('button', { name: 'Search' })));
     expect(await screen.findByRole('alert')).toHaveTextContent('temporarily unavailable');
   });
 

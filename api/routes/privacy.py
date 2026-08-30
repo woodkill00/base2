@@ -28,6 +28,10 @@ class DeletionRequest(BaseModel):
     confirmation: str = Field(min_length=1, max_length=20)
 
 
+class DeactivationRequest(BaseModel):
+    confirmation: str = Field(min_length=1, max_length=20)
+
+
 def _recent_principal(request: Request):
     principal = require_authenticated_principal(request)
     if not principal.recently_authenticated:
@@ -126,6 +130,21 @@ async def delete_data(request: Request):
     if payload.confirmation != 'DELETE':
         raise HTTPException(status_code=422, detail='deletion_confirmation_invalid')
     return _enqueue(request=request, kind='deletion', payload={'confirmation': 'DELETE'})
+
+
+@router.post('/deactivate', status_code=status.HTTP_202_ACCEPTED)
+async def deactivate_account(request: Request):
+    _recent_principal(request)
+    require_tenant(request)
+    try:
+        payload = DeactivationRequest.model_validate(await request.json())
+    except (ValidationError, ValueError, json.JSONDecodeError) as exc:
+        raise HTTPException(status_code=422, detail='request_invalid') from exc
+    if payload.confirmation != 'DEACTIVATE':
+        raise HTTPException(status_code=422, detail='deactivation_confirmation_invalid')
+    return _enqueue(
+        request=request, kind='deactivation', payload={'confirmation': 'DEACTIVATE'}
+    )
 
 
 @router.get('/operations')

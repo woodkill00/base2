@@ -6,6 +6,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import platform
 import re
 import shutil
 import subprocess
@@ -15,6 +16,14 @@ from pathlib import Path
 
 SECRET_KEY = re.compile(r"(?:TOKEN|PASSWORD|SECRET|PRIVATE|CREDENTIAL|API_KEY)", re.I)
 INLINE_SECRET = re.compile(r"(?i)(bearer\s+)[A-Za-z0-9._~+/=-]+")
+TERMINAL_TEST_SUMMARY = re.compile(
+    r"(?im)^(?:\s*(?:Test Files|Tests)\s+|\s*Ran \d+ tests?\b|"
+    r"\s*\d+\s+(?:passed|failed|errors?)\b|\s*=+.*\b(?:passed|failed|errors?)\b.*=+\s*$)"
+)
+INFRASTRUCTURE_CRASH = re.compile(
+    r"(?i)\b(?:SIGSEGV|segmentation fault|Worker exited unexpectedly|"
+    r"Worker forks emitted error)\b"
+)
 TOOL_TOKENS = {
     "{python-api}": (".venv-api/bin/python", ".venv-api/Scripts/python.exe"),
     "{python-django}": (".venv-django/bin/python", ".venv-django/Scripts/python.exe"),
@@ -24,6 +33,15 @@ TOOL_TOKENS = {
 
 def now() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+
+def validate_runtime_capacity() -> None:
+    """Fail early on a WSL allocation known to destabilize browser/V8 gates."""
+    if "microsoft" in platform.release().lower() and (os.cpu_count() or 1) < 2:
+        raise RuntimeError(
+            "complete gate requires at least 2 WSL processors; set processors=2 or higher "
+            "under [wsl2] in the Windows user .wslconfig, then run wsl --shutdown"
+        )
 
 
 def validate_manifest(manifest: dict) -> None:
@@ -230,20 +248,21 @@ def run_gate(
                         outputs.append(
                             f"=== attempt {attempts} exit {completed.returncode} ===\n{completed.stdout or ''}"
                         )
+                        captured_output = completed.stdout or ""
                         incomplete = (
                             completed.returncode != 0
                             and "incomplete-test-output" in retry_on
-                            and not re.search(
-                                r"(?im)(test files|\bpassed\b|\bfailed\b|\berror\b|\bfail\b)",
-                                completed.stdout or "",
-                            )
+                            and not TERMINAL_TEST_SUMMARY.search(captured_output)
                         )
                         # Direct processes report SIGSEGV as -11 while shell/npm
                         # wrappers conventionally translate the same signal to
                         # 128 + 11. Treat both as the existing bounded
                         # infrastructure retry, never as an application pass.
-                        segfault_exit = completed.returncode in {-11, 139}
-                        if not segfault_exit and not incomplete:
+                        infrastructure_crash = (
+                            completed.returncode in {-11, 139}
+                            or INFRASTRUCTURE_CRASH.search(captured_output) is not None
+                        )
+                        if not infrastructure_crash and not incomplete:
                             break
                     artifact.write_text(redact("\n".join(outputs), environment), encoding="utf-8")
                     exit_code = None if timed_out else completed.returncode
@@ -302,6 +321,7 @@ def git_commit(repo_root: Path) -> str:
 
 
 def main() -> int:
+    validate_runtime_capacity()
     repo_root = Path(__file__).resolve().parents[2]
     manifest_path = repo_root / "scripts" / "config" / "complete-gate-v1.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))

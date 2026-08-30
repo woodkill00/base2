@@ -136,14 +136,14 @@ export const GlassHeader: React.FC<Props> = ({
     <header
       className="glass"
       style={{
-        height: 'var(--header-h)',
+        minHeight: 'var(--header-h)',
         position: 'sticky',
         top: 0,
         zIndex: 50,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 16px',
+        padding: '0.5rem 16px',
       }}
     >
       <button
@@ -153,7 +153,7 @@ export const GlassHeader: React.FC<Props> = ({
         aria-controls={menuControlsId}
         aria-expanded={Boolean(isMenuOpen)}
         onClick={onToggleMenu}
-        style={{ width: 40, height: 40, display: 'grid', placeItems: 'center', padding: 0 }}
+        style={{ width: 44, height: 44, flex: '0 0 44px', display: 'grid', placeItems: 'center', padding: 0 }}
       >
         <svg
           role="img"
@@ -173,7 +173,7 @@ export const GlassHeader: React.FC<Props> = ({
         </svg>
       </button>
 
-      <h1 style={{ fontSize: 18, margin: 0 }}>{title}</h1>
+      <h1 className="text-lg" style={{ margin: 0 }}>{title}</h1>
       <div style={{ flex: 1 }} />
       <ThemeToggle />
     </header>

@@ -8,6 +8,16 @@
   opacity: 1;
 }
 
+/* A non-fixed base keeps long authenticated pages visually continuous in full-page
+   captures and browsers that composite fixed layers one viewport at a time. */
+.app-shell-root {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+.dark .app-shell-root {
+  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+}
+
 .dark .gradient-background {
   background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
   opacity: 1;

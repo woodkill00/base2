@@ -3,6 +3,8 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request
 from contextlib import suppress
 from pydantic import BaseModel
+from urllib.parse import urlsplit
+import ipaddress
 
 from api.routes.auth import _client_ip
 
@@ -32,6 +34,26 @@ class _PatchMeRequest(BaseModel):
     avatar_url: str | None = None
     bio: str | None = None
     email: str | None = None
+
+
+def _safe_avatar_url(value: str | None) -> str | None:
+    if value is None or value == '':
+        return value
+    if len(value) > 2048:
+        raise ValueError('avatar_url_invalid')
+    parsed = urlsplit(value)
+    if parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password:
+        raise ValueError('avatar_url_invalid')
+    host = parsed.hostname.rstrip('.').lower()
+    if host == 'localhost' or host.endswith('.localhost'):
+        raise ValueError('avatar_url_invalid')
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return value
+    if not address.is_global:
+        raise ValueError('avatar_url_invalid')
+    return value
 
 
 @router.get('/users/me')
@@ -111,7 +133,7 @@ async def users_me_patch(request: Request, payload: _PatchMeRequest):
         user = repo.update_profile(
             user_id=user_id,
             display_name=payload.display_name,
-            avatar_url=payload.avatar_url,
+            avatar_url=_safe_avatar_url(payload.avatar_url),
             bio=payload.bio,
         )
 

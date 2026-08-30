@@ -14,7 +14,7 @@ Write-Host '==> Node dependency installation starting' -ForegroundColor Cyan
 
 $nodeCmd = Get-Command node -ErrorAction SilentlyContinue
 if (-not $nodeCmd) {
-    throw 'node executable not found in PATH. Install Node.js 24.13.1+ and retry.'
+    throw 'node executable not found in PATH. Install Node.js 24.20.0+ and retry.'
 }
 
 $npmCmd = Get-Command npm -ErrorAction SilentlyContinue
@@ -64,7 +64,7 @@ if ($nodeVersionParts.Count -lt 1) {
 $requiredNode = @(24, 13, 1)
 if (-not (Test-VersionAtLeast -actual $nodeVersionParts -required $requiredNode)) {
     $nodeReported = (& $nodeCmd.Path --version).Trim()
-    throw "Node.js version 24.13.1+ is required but found $nodeReported."
+    throw "Node.js version 24.20.0+ is required but found $nodeReported."
 }
 
 $npmVersionParts = @(Get-NumericVersion (& $npmCmd.Path --version))

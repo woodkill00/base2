@@ -425,7 +425,7 @@ To enable web access to pgAdmin:
 ## Development Versions
 
 - **Python**: 3.12 (pin via .python-version)
-- **Node.js**: 24.13.1 (pin via react-app/.nvmrc)
+- **Node.js**: 24.20.0 (pin via react-app/.nvmrc)
 
 Fresh clone: install these versions before running builds/tests.
 

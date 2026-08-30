@@ -45,7 +45,7 @@ sysctl -w fs.inotify.max_user_watches=524288 || true
 sysctl -w fs.inotify.max_user_instances=1024 || true
 
 stage "ensure nodejs 24"
-log "Ensuring Node.js 24.13.1+ is installed for frontend tests..."
+log "Ensuring Node.js 24.20.0+ is installed for frontend tests..."
 if command -v node >/dev/null 2>&1; then
 	NODE_MAJOR=$(node -v | sed 's/^v//' | cut -d'.' -f1)
 else
