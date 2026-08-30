@@ -27,7 +27,6 @@ class PostgresSiteContentRepository:
         record_id, now = uuid4(), datetime.now(UTC)
         slug = f'post-{record_id.hex[:16]}'
         with db_conn(tenant_id=site_id) as conn:
-            conn.autocommit = True
             with conn.cursor() as cur:
                 cur.execute(
                     """INSERT INTO sitecontent_contentrecord
@@ -38,6 +37,7 @@ class PostgresSiteContentRepository:
                      json.dumps({'authorRef':author_ref,'moderationStatus':'pending',
                                  'abuseScore':payload['abuseScore']}),now,now),
                 )
+            conn.commit()
         return {'id':record_id,'slug':slug,'moderationStatus':'pending'}
 
     def list_content(
@@ -149,7 +149,6 @@ class PostgresSiteContentRepository:
     ):
         now = datetime.now(UTC)
         with db_conn(tenant_id=site_id) as conn:
-            conn.autocommit = False
             try:
                 with conn.cursor() as cur:
                     cur.execute(

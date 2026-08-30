@@ -239,3 +239,26 @@ Corrections:
   tokens, or credentials.
 
 **Cycle result**: `CORRECTIVE_MIGRATION_BOOTSTRAP_IMPLEMENTED_LIVE_REPLAY_PENDING`.
+
+## Cycle 13 - Live tenant-transaction and privacy-worker analysis
+
+The exact-main replay proved automatic admission of all nine API migrations and passed
+the existing public, operator, Django, pgAdmin, settings, accessibility, responsive, and
+visual paths until the newly added privacy-worker exercise. The export request returned
+HTTP 500 before dispatch because `create_operation` bound PostgreSQL's transaction-local
+tenant context and then attempted to change `autocommit` inside that active transaction.
+The same unsafe pattern existed in two older tenant-scoped content/scheduling write paths.
+
+Corrections:
+
+- Kept every tenant-scoped write in the transaction that owns its RLS tenant binding and
+  committed explicitly; no repository changes transaction mode after tenant admission.
+- Added focused regressions for privacy-operation commit/replay, community-post commit,
+  form submission, and scheduling reservation behavior.
+- Extended the durable live settings journey to require an encrypted export to reach
+  `completed` through Celery and require the preference update's redacted audit event to
+  be visible through the owner projection.
+- Added a read-only secret-free runtime verifier for the exact migration ledger, critical
+  service health, completed export, and preference-audit counts.
+
+**Cycle result**: `CORRECTIVE_TENANT_TRANSACTION_IMPLEMENTED_VALIDATION_PENDING`.

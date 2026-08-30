@@ -12,7 +12,6 @@ def create_operation(
 ) -> tuple[UUID, bool]:
     operation_id = uuid4()
     with db_conn(tenant_id=tenant_id) as conn:
-        conn.autocommit = True
         with conn.cursor() as cur:
             cur.execute(
                 """
@@ -43,6 +42,7 @@ def create_operation(
                 if not row:
                     raise RuntimeError('operation_conflict_unresolved')
                 operation_id = UUID(str(row[0]))
+        conn.commit()
     return operation_id, created
 
 

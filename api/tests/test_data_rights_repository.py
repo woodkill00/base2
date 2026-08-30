@@ -62,13 +62,15 @@ def install(monkeypatch, cursor):
 
 def test_create_reuses_exact_active_kind_after_unique_conflict(monkeypatch):
     cursor = Cursor(rows=[(OPERATION_ID,)], rowcount=0)
-    install(monkeypatch, cursor)
+    connection = install(monkeypatch, cursor)
     operation_id, created = repository.create_operation(
         tenant_id='tenant-a', user_id=USER_ID, kind='export',
         request_ciphertext='encrypted',
     )
     assert operation_id == OPERATION_ID
     assert created is False
+    assert connection.committed is True
+    assert connection.autocommit is False
     assert 'ON CONFLICT (tenant_id, user_id, kind)' in cursor.calls[0][0]
     assert cursor.calls[1][1] == ('tenant-a', str(USER_ID), 'export')
 

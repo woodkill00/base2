@@ -348,6 +348,24 @@ test('authenticated settings platform works accessibly and responsively live', a
   ).toHaveCount(0);
 
   await page.goto(`https://${domain}/settings/privacy`, { waitUntil: 'networkidle' });
+  await page.getByRole('button', { name: 'Request data export' }).click();
+  await expect(page.getByRole('status')).toContainText('data export was queued securely');
+  await expect
+    .poll(
+      async () => {
+        await page.reload({ waitUntil: 'networkidle' });
+        return (
+          (await page.locator('li').filter({ hasText: 'export' }).first().textContent()) || ''
+        ).replace(/\s+/g, ' ');
+      },
+      { message: 'privacy export worker did not complete', timeout: 30_000 }
+    )
+    .toMatch(/export completed/i);
+
+  await page.goto(`https://${domain}/settings/organization`, { waitUntil: 'networkidle' });
+  await expect(page.getByText('user.preferences_updated')).toBeVisible();
+
+  await page.goto(`https://${domain}/settings/privacy`, { waitUntil: 'networkidle' });
   const deletion = page.getByRole('button', { name: 'Request account deletion' });
   await expect(deletion).toBeDisabled();
   await page.getByLabel('Confirmation', { exact: true }).fill('DELETE');

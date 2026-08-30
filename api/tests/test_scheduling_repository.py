@@ -79,6 +79,7 @@ def test_lists_tenant_events_and_reserves_atomically():
             site_id='tenant-one', event_id=UUID(int=1), attendee_ref='user', seats=1
         )
     assert result['status'] == 'confirmed' and reserved.committed and reserved.cursor_value.inserted
+    assert not hasattr(reserved, 'autocommit')
 
 
 def test_missing_event_rolls_back_without_insert():
