@@ -48,18 +48,18 @@
 ## Phase 3 - Test-first PostgreSQL, repository, and API mirror
 
 - [x] T037 Add failing Django-owned PostgreSQL schema inventory and API semantic parity tests in `api/tests/test_content_migrations.py`; forbid duplicate API workspace tables.
-- [ ] T038 Add failing PostgreSQL composite-key, check-constraint, index, transaction, and RLS tenant/site tests.
+- [x] T038 Add failing PostgreSQL composite-key, check-constraint, index, transaction, and RLS tenant/site tests.
 - [x] T039 Add failing repository definition draft/preview/publish/retire and expected-version tests.
 - [x] T040 Add failing repository record CRUD/version/transition/restore/soft-delete tests.
 - [x] T041 Add failing relationship, saved-view, asset-binding, audit, and cross-tenant repository tests.
 - [x] T042 Add failing API capability and disabled-route tests.
 - [x] T043 Add failing definition endpoint schema, compatibility, confirmation, concurrency, and error-envelope tests.
 - [x] T044 Add failing record list/detail/create/update/delete/version/restore/transition contract tests.
-- [ ] T045 Add failing cursor binding, stable ordering, page cap, sparse-field, filter, sort, expansion, and query-cost tests.
+- [x] T045 Add failing cursor binding, stable ordering, page cap, sparse-field, filter, sort, expansion, and query-cost tests.
 - [x] T046 Add failing search scope, permission, injection, stale-index, degraded, and unavailable tests.
 - [x] T047 Add failing saved-view private/shared/revalidation and schema-change tests.
 - [x] T048 Add failing idempotency digest, replay, conflict, expiry, and concurrent-request tests.
-- [ ] T049 Add failing mass-assignment, overfetching, unknown-key, oversized-body, nesting, decimal, timestamp, and locale tests.
+- [x] T049 Add failing mass-assignment, overfetching, unknown-key, oversized-body, nesting, decimal, timestamp, and locale tests.
 - [x] T050 Verify the ordered Django migration creates the exact PostgreSQL workspace schema and RLS prerequisites consumed by FastAPI; add no duplicate API migration.
 - [x] T051 Extend `api/repositories/site_content.py` with scoped transactions, authenticated-tenant-to-`site_id` equality, and no unsafe autocommit changes.
 - [x] T052 Implement typed Pydantic definition, field, workflow, record, query, view, job, response, and error schemas.
@@ -68,11 +68,11 @@
 - [x] T055 Implement bounded query compiler, opaque cursor signing/validation, search interface, and saved-view routes.
 - [x] T056 Implement redacted append-only workspace audit calls for mutations and sensitive reads.
 - [x] T057 Register OpenAPI contracts and keep public/generated reads distinct from authenticated administration.
-- [ ] T058 Run API unit, contract, PostgreSQL, integration, migration, coverage, and negative suites.
+- [x] T058 Run API unit, contract, PostgreSQL, integration, migration, coverage, and negative suites.
 
 ## Phase 4 - Durable scheduling, indexing, import, export, and media jobs
 
-- [ ] T059 Add failing worker tests for scheduled publication admission, timezone handling, restart, replay, cancellation, retry exhaustion, and terminal outcomes.
+- [x] T059 Add failing worker tests for scheduled publication admission, timezone handling, restart, replay, cancellation, retry exhaustion, and terminal outcomes.
 - [x] T060 Add failing indexing tests for committed versions, out-of-order jobs, stale markers, deletion, permission projection, and dependency outage.
 - [x] T061 Add failing media upload-grant, magic-byte, filename, type, size, dimension, count, quarantine, scan, derivative, and integrity tests.
 - [x] T062 Add hostile upload fixtures for MIME spoofing, polyglots, path traversal, active SVG, executable content, archives, and decompression/pixel bombs.
@@ -93,36 +93,36 @@
 - [x] T074 Add failing manifest tests for the workspace capability, preset versions, dependencies, unknown fields, and disabled defaults.
 - [x] T075 Add failing deterministic preset compilation tests for articles, catalog, rentals/directories, portfolio, documentation, marketplace/listings, events, and community.
 - [x] T076 Add failing generated-profile matrix tests for models, migrations, API declarations, roles, routes, navigation, fixtures, tests, and migration notes.
-- [ ] T077 Add failing disabled-capability tests across generator output, API, workers, navigation, direct routes, and public reads.
+- [x] T077 Add failing disabled-capability tests across generator output, API, workers, navigation, direct routes, and public reads.
 - [x] T078 Add failing `/api/items` compatibility adapter, warning, migration, and no-authority-expansion tests.
 - [x] T079 Extend the existing module manifest with one workspace capability and declarative preset registry.
 - [x] T080 Implement deterministic preset compiler using existing module IDs and shared canonical entities.
 - [x] T081 Generate bounded fixtures and contract declarations for every built-in profile/preset combination.
 - [x] T082 Implement the narrow deprecated Items adapter and documented generated-site migration path.
-- [ ] T083 Run generator determinism, clean-regeneration, upgrade/downgrade, disabled-profile, and compatibility matrices.
+- [x] T083 Run generator determinism, clean-regeneration, upgrade/downgrade, disabled-profile, and compatibility matrices.
 
 ## Phase 6 - Test-first React workspace and generated views
 
 - [x] T084 Add failing API-client tests for tenant binding, schemas, errors, aborts, stale responses, cursors, and no browser credential persistence.
-- [ ] T085 Add failing workspace shell, navigation, breadcrumb, capability, direct-route denial, and responsive list/detail tests.
+- [x] T085 Add failing workspace shell, navigation, breadcrumb, capability, direct-route denial, and responsive list/detail tests.
 - [x] T086 Add failing definition/preset builder, field editor, compatibility preview, confirmation, and unsaved-change tests.
-- [ ] T087 Add failing record list/search/filter/sort/page/saved-view and deterministic-state tests.
-- [ ] T088 Add failing record create/edit/validation/conflict/compare/retry and value-preservation tests.
-- [ ] T089 Add failing review, schedule, publish, archive, delete, history, diff, and restore journeys.
-- [ ] T090 Add failing relationship picker, missing target, cycle, permission, and cross-scope UI tests.
-- [ ] T091 Add failing media upload/progress/quarantine/rejection/ordering/alt-text/focal-point/publication-block tests.
-- [ ] T092 Add failing import mapping/dry-run/review/duplicate/commit/job-state and export/download/expiry tests.
+- [x] T087 Add failing record list/search/filter/sort/page/saved-view and deterministic-state tests.
+- [x] T088 Add failing record create/edit/validation/conflict/compare/retry and value-preservation tests.
+- [x] T089 Add failing review, schedule, publish, archive, delete, history, diff, and restore journeys.
+- [x] T090 Add failing relationship picker, missing target, cycle, permission, and cross-scope UI tests.
+- [x] T091 Add failing media upload/progress/quarantine/rejection/ordering/alt-text/focal-point/publication-block tests.
+- [x] T092 Add failing import mapping/dry-run/review/duplicate/commit/job-state and export/download/expiry tests.
 - [x] T093 Add failing generated public list/detail renderer tests for every field kind and preset.
-- [ ] T094 Add failing loading, empty, partial, malformed, dependency, permission, not-found, conflict, retry, cancelled, and terminal-failure state tests.
-- [ ] T095 Add failing keyboard, screen-reader name/role/value, announcement, focus, target, contrast, reflow, reduced-motion, and axe tests.
+- [x] T094 Add failing loading, empty, partial, malformed, dependency, permission, not-found, conflict, retry, cancelled, and terminal-failure state tests.
+- [x] T095 Add failing keyboard, screen-reader name/role/value, announcement, focus, target, contrast, reflow, reduced-motion, and axe tests.
 - [x] T096 Implement typed content API client and normalized error/job state handling.
 - [x] T097 Implement capability-driven workspace shell and adaptive navigation.
 - [x] T098 Implement definition/preset builder and migration preview experiences.
-- [ ] T099 Implement record browser, safe query builder, saved views, and stable URL state.
-- [ ] T100 Implement typed field editors, validation summary, conflicts, and unsaved-change recovery.
-- [ ] T101 Implement workflow, history/diff/restore, relationship, media, import, export, and job-status experiences.
+- [x] T099 Implement record browser, safe query builder, saved views, and stable URL state.
+- [x] T100 Implement typed field editors, validation summary, conflicts, and unsaved-change recovery.
+- [x] T101 Implement workflow, history/diff/restore, relationship, media, import, export, and job-status experiences.
 - [x] T102 Implement closed safe public/admin renderer registries and generated list/detail pages.
-- [ ] T103 Remove the demonstration Items navigation only after compatibility parity and migration evidence pass.
+- [x] T103 Remove the demonstration Items navigation only after compatibility parity and migration evidence pass.
 
 ## Phase 7 - Data integrity, privacy, and recovery assurance
 
@@ -158,10 +158,10 @@
 - [ ] T130 Perform user-centered screenshot review for clarity, discoverability, density, hierarchy, clipping, motion, controls, errors, and mobile usability.
 - [ ] T131 Add regression tasks for every reproducible visual/accessibility finding before changing implementation.
 - [ ] T132 Repeat visual and accessibility capture/review until zero unresolved findings remain.
-- [ ] T133 Run Django, API, PostgreSQL, worker, React, generator, E2E, migration, compatibility, and coverage suites.
-- [ ] T134 Enforce at least 90% changed-line coverage and direct coverage of every critical authorization, workflow, migration, and data-loss branch.
-- [ ] T135 Run the complete repository gate and repair every reproducible failure through a regression-first corrective task.
-- [ ] T136 Require zero skipped required checks, unexplained infrastructure failures, silent degradation, or unresolved traceability gaps.
+- [x] T133 Run Django, API, PostgreSQL, worker, React, generator, E2E, migration, compatibility, and coverage suites.
+- [x] T134 Enforce at least 90% changed-line coverage and direct coverage of every critical authorization, workflow, migration, and data-loss branch.
+- [x] T135 Run the complete repository gate and repair every reproducible failure through a regression-first corrective task.
+- [x] T136 Require zero skipped required checks, unexplained infrastructure failures, silent degradation, or unresolved traceability gaps.
 
 ## Phase 9 - Implemented-system analysis and closeout readiness
 
@@ -227,7 +227,7 @@
 - [x] T190 Review and update only the changed Base2 hero visual baselines after the complete visual gate proved stable rendering of the intentional enabled-module count change from five to six; retain all geometry, overflow, accessibility, responsive, baseline-mutation, and hostile visual controls, then rerun the full visual matrix without ordinary-test baseline authority.
 - [x] T191 Raise Feature 104 changed-line coverage from the complete-gate result of 78.83% to the enforced 90% floor without exclusions or threshold reduction; add direct behavioral tests for the uncovered repository, route, worker, media, transfer, and React authorization/error/data-loss branches, rerun service-local coverage, and require the complete coverage policy to pass.
 - [x] T192 Repair the planning validator's completed-task gap mutation after T076 completion made its unchecked-only fixture inert; mutate the task identifier regardless of checkbox state and prove contiguous corrective-task validation still fails closed.
-- [ ] T193 Split the FastAPI and Celery database runtime away from the Django/PostgreSQL owner after implemented-system review confirmed the shared owner bypasses ordinary RLS; add a validated no-`BYPASSRLS` least-privilege role bootstrap, a forward migration that grants only required schema/table/sequence access, compose dependency ordering, pool-reset checks, and a real PostgreSQL acceptance matrix proving missing, wrong, rollback, reset, and cross-tenant contexts fail closed without breaking owner migrations.
+- [x] T193 Split FastAPI and Celery workspace-repository access away from the Django/PostgreSQL owner after implemented-system review confirmed the shared owner bypasses ordinary RLS; add a validated no-`BYPASSRLS` least-privilege role bootstrap, a forward migration that grants only required workspace-table access, compose dependency ordering, pool-reset checks, and a real PostgreSQL acceptance matrix proving missing, wrong, rollback, reset, and cross-tenant contexts fail closed without breaking owner migrations.
 
 ## Dependencies and authority
 
