@@ -42,6 +42,7 @@ def test_workspace_mutation_tasks_have_bounded_dependency_retries():
         tasks.index_workspace_record_task,
         tasks.scan_workspace_asset_task,
         tasks.process_workspace_export,
+        tasks.validate_workspace_import,
     ):
         assert task.max_retries == 3
         assert task.autoretry_for == (Exception,)
@@ -129,3 +130,31 @@ def test_export_task_terminal_failure_hook_redacts_and_records(monkeypatch):
 def test_expire_export_task_calls_bounded_worker(monkeypatch):
     monkeypatch.setattr(tasks, 'expire_workspace_export_jobs', lambda *, limit: limit)
     assert tasks.expire_workspace_exports(limit=100) == 100
+
+
+def test_import_validation_replay_and_task_use_only_discovered_fixed_ids(monkeypatch):
+    discovered = [('site-a', '00000000-0000-0000-0000-000000005104')]
+    delivered = []
+    monkeypatch.setattr(tasks, 'due_import_validations', lambda *, limit: discovered)
+    monkeypatch.setattr(
+        tasks.validate_workspace_import,
+        'delay',
+        lambda site_id, job_id: delivered.append((site_id, job_id)),
+    )
+    assert tasks.replay_workspace_import_validations(limit=10) == 1
+    assert delivered == discovered
+
+    store = object()
+    calls = []
+    monkeypatch.setattr(tasks, '_workspace_artifact_store', lambda: store)
+    monkeypatch.setattr(
+        tasks, 'validate_import_job', lambda **kwargs: calls.append(kwargs) or 'validated'
+    )
+    assert tasks.validate_workspace_import(*discovered[0]) == 'validated'
+    assert calls == [
+        {
+            'site_id': 'site-a',
+            'job_id': tasks.UUID(discovered[0][1]),
+            'artifact_store': store,
+        }
+    ]

@@ -8,11 +8,20 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from api.db import db_conn
+from api.repositories.content_workspace import _validate_values
 from api.security.content_workspace import canonical_digest
 from api.services.content_workspace_derivative import generate_safe_derivative
 from api.services.content_workspace_scanner import scan_content
 from api.services.content_workspace_transfer import MAX_BYTES as MAX_TRANSFER_BYTES
-from api.services.content_workspace_transfer import MAX_ROWS, export_csv
+from api.services.content_workspace_transfer import (
+    MAX_ROWS,
+    ImportOutcome,
+    ParsedRows,
+    export_csv,
+    parse_csv,
+    parse_json,
+    plan_import,
+)
 
 
 def due_publication_ids(*, limit: int = 25) -> list[tuple[str, str]]:
@@ -515,3 +524,199 @@ def expire_export_jobs(*, limit: int = 100) -> int:
             conn.rollback()
             raise
     return expired
+
+
+def due_import_validations(*, limit: int = 10) -> list[tuple[str, str]]:
+    if not 1 <= limit <= 50:
+        raise ValueError('content_limit_exceeded')
+    with db_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT site_id, id FROM sitecontent_importjob
+               WHERE status='uploaded' AND source_object_key<>''
+               ORDER BY updated_at, id LIMIT %s""",
+            (limit,),
+        )
+        return [(row[0], str(row[1])) for row in cur.fetchall()]
+
+
+def _mapped_import_rows(parsed: ParsedRows, mapping: dict, fields: list[tuple]):
+    allowed = {row[0] for row in fields}
+    valid_rows: list[dict[str, Any]] = []
+    ordinals: list[int] = []
+    rejected: list[ImportOutcome] = []
+    for ordinal, source in enumerate(parsed.rows, start=1):
+        mapped: dict[str, Any] = {}
+        invalid = False
+        for source_key, value in source.items():
+            target = mapping.get(source_key, source_key)
+            if target in mapped or target not in allowed | {'slug', 'title'}:
+                invalid = True
+                break
+            mapped[target] = value
+        values = {key: value for key, value in mapped.items() if key in allowed}
+        try:
+            if (
+                invalid
+                or not isinstance(mapped.get('slug'), str)
+                or not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', mapped['slug'])
+                or not isinstance(mapped.get('title'), str)
+                or not 1 <= len(mapped['title']) <= 300
+            ):
+                raise ValueError('content_schema_invalid')
+            _validate_values(values, fields)
+        except (TypeError, ValueError):
+            rejected.append(
+                ImportOutcome(
+                    ordinal=ordinal,
+                    source_row_sha256=hashlib.sha256(
+                        json.dumps(
+                            source,
+                            sort_keys=True,
+                            separators=(',', ':'),
+                            ensure_ascii=False,
+                        ).encode()
+                    ).hexdigest(),
+                    action='reject',
+                )
+            )
+            continue
+        valid_rows.append({'slug': mapped['slug'], 'title': mapped['title'], **values})
+        ordinals.append(ordinal)
+    return valid_rows, ordinals, rejected
+
+
+def validate_import_job(*, site_id: str, job_id: UUID, artifact_store) -> str:
+    """Parse and stage row outcomes without mutating content records."""
+    with db_conn(tenant_id=site_id) as conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """SELECT j.status, j.schema_version, j.source_sha256, j.source_format,
+                              j.source_object_key, j.mapping, j.duplicate_policy,
+                              j.atomic_policy, d.type_key, j.definition_id
+                       FROM sitecontent_importjob j
+                       JOIN sitecontent_contenttypedefinition d ON d.id=j.definition_id
+                       WHERE j.id=%s AND j.site_id=%s AND d.site_id=%s FOR UPDATE""",
+                    (str(job_id), site_id, site_id),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return 'not_found'
+                if row[0] in {'validated', 'review_required'}:
+                    return 'already_validated'
+                if row[0] != 'uploaded' or not row[4]:
+                    return 'not_ready'
+                content = artifact_store.get(row[4], expected_sha256=row[2])
+                parsed = parse_json(content) if row[3] == 'json' else parse_csv(content)
+                cur.execute(
+                    """SELECT field_key, field_kind, required, nullable, default_value, validation
+                       FROM sitecontent_contentfielddefinition
+                       WHERE definition_id=%s ORDER BY "order", field_key""",
+                    (str(row[9]),),
+                )
+                fields = cur.fetchall()
+                mapping = row[5] if isinstance(row[5], dict) else {}
+                valid_rows, ordinals, rejected = _mapped_import_rows(parsed, mapping, fields)
+                cur.execute(
+                    """SELECT id, slug, title, values FROM sitecontent_contentrecord
+                       WHERE site_id=%s AND content_type=%s AND deleted_at IS NULL
+                       ORDER BY slug, id LIMIT %s""",
+                    (site_id, row[8], MAX_ROWS + 1),
+                )
+                existing_rows = cur.fetchall()
+                if len(existing_rows) > MAX_ROWS:
+                    raise ValueError('content_limit_exceeded')
+                existing = [
+                    {'id': str(item[0]), 'slug': item[1], 'title': item[2], **(item[3] or {})}
+                    for item in existing_rows
+                ]
+                plan = plan_import(
+                    ParsedRows(tuple(valid_rows), parsed.sha256),
+                    existing=existing,
+                    exact_fields=['slug'],
+                    similarity_fields=['title'],
+                )
+                outcomes = [
+                    ImportOutcome(
+                        ordinal=ordinals[item.ordinal - 1],
+                        source_row_sha256=item.source_row_sha256,
+                        action=(
+                            'skip'
+                            if item.action == 'update' and row[6] == 'skip_exact'
+                            else 'review'
+                            if item.action == 'update' and row[6] == 'review'
+                            else item.action
+                        ),
+                        exact_match_id=item.exact_match_id,
+                        candidate_ids=(
+                            (item.exact_match_id,)
+                            if item.action == 'update'
+                            and row[6] == 'review'
+                            and item.exact_match_id
+                            else item.candidate_ids
+                        ),
+                    )
+                    for item in plan.outcomes
+                ] + rejected
+                outcomes.sort(key=lambda item: item.ordinal)
+                for item in outcomes:
+                    issues = (
+                        [{'field': 'row', 'code': 'schema_invalid'}]
+                        if item.action == 'reject'
+                        else []
+                    )
+                    cur.execute(
+                        """INSERT INTO sitecontent_importrowoutcome
+                           (id, site_id, job_id, ordinal, source_row_sha256, proposed_action,
+                            field_issues, exact_match_id, candidate_ids, result_record_id,
+                            result_version, created_at, updated_at)
+                           VALUES (%s,%s,%s,%s,%s,%s,%s::jsonb,%s,%s::jsonb,NULL,NULL,NOW(),NOW())
+                           ON CONFLICT (job_id, ordinal) DO NOTHING""",
+                        (
+                            str(uuid4()),
+                            site_id,
+                            str(job_id),
+                            item.ordinal,
+                            item.source_row_sha256,
+                            item.action,
+                            json.dumps(issues),
+                            item.exact_match_id,
+                            json.dumps(list(item.candidate_ids)),
+                        ),
+                    )
+                counters = {
+                    'total': len(parsed.rows),
+                    'valid': len(valid_rows),
+                    'invalid': len(rejected),
+                    'created': sum(item.action == 'create' for item in outcomes),
+                    'updated': sum(item.action == 'update' for item in outcomes),
+                    'skipped': sum(item.action == 'skip' for item in outcomes),
+                    'review': sum(item.action == 'review' for item in outcomes),
+                }
+                next_status = 'review_required' if rejected or counters['review'] else 'validated'
+                cur.execute(
+                    """UPDATE sitecontent_importjob SET status=%s, counters=%s::jsonb,
+                              error_code='', updated_at=NOW()
+                       WHERE id=%s AND site_id=%s AND status='uploaded' RETURNING id""",
+                    (next_status, json.dumps(counters), str(job_id), site_id),
+                )
+                if not cur.fetchone():
+                    raise ValueError('content_job_transition_invalid')
+                cur.execute(
+                    """INSERT INTO sitecontent_workspaceauditevent
+                       (id, site_id, actor_ref, object_type, object_ref, action, outcome,
+                        correlation_id, metadata, created_at)
+                       VALUES (%s,%s,'system:import-worker','import_job',%s,
+                               'content.import_validate','accepted','',%s::jsonb,NOW())""",
+                    (
+                        str(uuid4()),
+                        site_id,
+                        str(job_id),
+                        json.dumps({'count': len(parsed.rows), 'status': next_status}),
+                    ),
+                )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+    return next_status

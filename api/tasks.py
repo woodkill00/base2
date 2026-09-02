@@ -11,6 +11,7 @@ from api.services.data_rights_worker import process_operation
 from api.services.content_workspace_worker import (
     due_export_jobs,
     due_index_records,
+    due_import_validations,
     due_media_scans,
     due_publication_ids,
     expire_export_jobs as expire_workspace_export_jobs,
@@ -19,6 +20,7 @@ from api.services.content_workspace_worker import (
     process_export_job,
     publish_scheduled_record,
     scan_workspace_asset,
+    validate_import_job,
 )
 from api.services.content_workspace_storage import configured_artifact_store
 from api.settings import settings
@@ -73,6 +75,10 @@ app.conf.update(
         'workspace-expire-exports': {
             'task': 'app.expire_workspace_exports',
             'schedule': 300.0,
+        },
+        'workspace-validate-imports': {
+            'task': 'app.replay_workspace_import_validations',
+            'schedule': 60.0,
         },
     },
 )
@@ -237,3 +243,27 @@ def replay_workspace_exports(limit: int = 10) -> int:
 @app.task(name='app.expire_workspace_exports')
 def expire_workspace_exports(limit: int = 100) -> int:
     return expire_workspace_export_jobs(limit=limit)
+
+
+@app.task(
+    name='app.validate_workspace_import',
+    autoretry_for=(Exception,),
+    dont_autoretry_for=(ValueError,),
+    retry_backoff=True,
+    retry_jitter=True,
+    max_retries=3,
+)
+def validate_workspace_import(site_id: str, job_id: str) -> str:
+    return validate_import_job(
+        site_id=site_id,
+        job_id=UUID(job_id),
+        artifact_store=_workspace_artifact_store(),
+    )
+
+
+@app.task(name='app.replay_workspace_import_validations')
+def replay_workspace_import_validations(limit: int = 10) -> int:
+    jobs = due_import_validations(limit=limit)
+    for site_id, job_id in jobs:
+        validate_workspace_import.delay(site_id, job_id)
+    return len(jobs)

@@ -416,3 +416,90 @@ def test_export_terminal_failure_is_redacted_and_expiry_is_bounded(monkeypatch):
     assert 'FOR UPDATE SKIP LOCKED' in expired_cursor.calls[0][0]
     assert expired_cursor.calls[0][1] == (100,)
     assert expired_connection.commits == 1
+
+
+def test_import_mapping_rejects_unknown_or_invalid_rows_without_losing_ordinals():
+    parsed = worker.ParsedRows(
+        (
+            {'Slug': 'safe-one', 'Title': 'Safe one'},
+            {'Slug': '../unsafe', 'Title': 'Unsafe'},
+            {'Slug': 'unknown', 'Title': 'Unknown', 'Secret': 'not-declared'},
+        ),
+        'a' * 64,
+    )
+    fields = [('title', 'short_text', True, False, None, {})]
+    valid, ordinals, rejected = worker._mapped_import_rows(
+        parsed, {'Slug': 'slug', 'Title': 'title'}, fields
+    )
+    assert valid == [{'slug': 'safe-one', 'title': 'Safe one'}]
+    assert ordinals == [1]
+    assert [item.ordinal for item in rejected] == [2, 3]
+    assert all(item.action == 'reject' for item in rejected)
+
+
+def test_due_import_validations_require_an_uploaded_private_source(monkeypatch):
+    job_id = UUID(int=5104)
+    cursor = Cursor([('site-a', job_id)])
+    bind(monkeypatch, Connection(cursor))
+    assert worker.due_import_validations(limit=10) == [('site-a', str(job_id))]
+    assert "status='uploaded'" in cursor.calls[0][0]
+    assert "source_object_key<>''" in cursor.calls[0][0]
+
+
+def test_import_validation_stages_outcomes_without_mutating_records(monkeypatch):
+    job_id = UUID(int=5104)
+    content = b'[{"slug":"safe-one","title":"Safe one"}]'
+    digest = worker.hashlib.sha256(content).hexdigest()
+
+    class ImportCursor(Cursor):
+        def __init__(self):
+            super().__init__([])
+            self.statement = ''
+
+        def execute(self, sql, params=()):
+            super().execute(sql, params)
+            self.statement = ' '.join(sql.split())
+
+        def fetchone(self):
+            if 'SELECT j.status' in self.statement:
+                return (
+                    'uploaded',
+                    1,
+                    digest,
+                    'json',
+                    f'imports/site-a/{job_id}.bin',
+                    {},
+                    'update_exact',
+                    'all_or_nothing',
+                    'article',
+                    UUID(int=2104),
+                )
+            if 'UPDATE sitecontent_importjob' in self.statement:
+                return (job_id,)
+            return None
+
+        def fetchall(self):
+            if 'SELECT field_key' in self.statement:
+                return [('title', 'short_text', True, False, None, {})]
+            if 'SELECT id, slug, title, values' in self.statement:
+                return []
+            return []
+
+    cursor = ImportCursor()
+    connection = Connection(cursor)
+    scopes = bind(monkeypatch, connection)
+
+    class Store:
+        def get(self, key, *, expected_sha256):
+            assert key == f'imports/site-a/{job_id}.bin' and expected_sha256 == digest
+            return content
+
+    assert (
+        worker.validate_import_job(site_id='site-a', job_id=job_id, artifact_store=Store())
+        == 'validated'
+    )
+    assert scopes == ['site-a'] and connection.commits == 1
+    statements = ' '.join(sql for sql, _ in cursor.calls)
+    assert 'sitecontent_importrowoutcome' in statements
+    assert 'sitecontent_workspaceauditevent' in statements
+    assert 'INSERT INTO sitecontent_contentrecord' not in statements
