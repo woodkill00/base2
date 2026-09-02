@@ -31,10 +31,14 @@ export const contentWorkspaceAPI = {
         { signal }
       )
     ),
-  records: async (typeKey, { limit = 25, cursor, signal } = {}) =>
+  records: async (typeKey, { limit = 25, cursor, query, signal } = {}) =>
     unwrap(
       await apiClient.get(`${typeBase(typeKey)}/records`, {
-        params: { limit, ...(cursor ? { cursor } : {}) },
+        params: {
+          limit,
+          ...(cursor ? { cursor } : {}),
+          ...(query ? { q: JSON.stringify(query) } : {}),
+        },
         signal,
       })
     ),

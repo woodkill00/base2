@@ -73,6 +73,7 @@ def test_scheduled_content_requires_a_future_publication_time():
     with pytest.raises(ValidationError):
         record.full_clean()
     record.publish_at = timezone.now() + timedelta(hours=1)
+    record.schedule_timezone = "UTC"
     record.full_clean()
 
 

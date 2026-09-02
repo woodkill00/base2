@@ -40,4 +40,19 @@ describe('content workspace API client', () => {
     await contentWorkspaceAPI.updateView('article', 'view-1', 2, { title: 'Recent' });
     expect(apiClient.patch.mock.calls[0][2].headers['If-Match']).toBe('"2"');
   });
+
+  test('serializes only the bounded record query object', async () => {
+    const query = {
+      filters: [{ field: 'title', operator: 'contains', value: 'safe' }],
+      sort: ['slug'],
+      fields: ['title'],
+      expand: [],
+      limit: 20,
+    };
+    await contentWorkspaceAPI.records('article', { limit: 20, query });
+    expect(apiClient.get).toHaveBeenCalledWith('/content/v1/types/article/records', {
+      params: { limit: 20, q: JSON.stringify(query) },
+      signal: undefined,
+    });
+  });
 });

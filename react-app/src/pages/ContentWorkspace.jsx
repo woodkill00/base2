@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import AppShell from '../components/glass/AppShell';
 import GlassButton from '../components/glass/GlassButton';
 import GlassCard from '../components/glass/GlassCard';
@@ -16,6 +17,8 @@ const messageFor = (error) => {
 };
 
 export default function ContentWorkspace() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeSearch = searchParams.get('workspace_q') || '';
   const [tab, setTab] = useState('Records');
   const [definitions, setDefinitions] = useState([]);
   const [selectedType, setSelectedType] = useState('');
@@ -25,9 +28,16 @@ export default function ContentWorkspace() {
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState({ title: '', slug: '', values: {} });
   const [saving, setSaving] = useState(false);
+  const [searchDraft, setSearchDraft] = useState(activeSearch);
+  const [views, setViews] = useState([]);
+  const [showViewEditor, setShowViewEditor] = useState(false);
+  const [viewTitle, setViewTitle] = useState('');
+  const [savingView, setSavingView] = useState(false);
   const [loading, setLoading] = useState(true);
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [error, setError] = useState('');
+  const activeSearchSchemaVersion = activeSearch ? schema?.version : null;
+  const titleSearchAvailable = Boolean(schema?.fields?.some((field) => field.fieldKey === 'title'));
 
   useEffect(() => {
     const controller = new AbortController();
@@ -52,11 +62,29 @@ export default function ContentWorkspace() {
 
   useEffect(() => {
     if (!selectedType || tab !== 'Records') return undefined;
+    if (activeSearch && typeof activeSearchSchemaVersion !== 'number') return undefined;
+    if (activeSearch && !titleSearchAvailable) {
+      setError('This content type does not expose a searchable title field.');
+      return undefined;
+    }
     const controller = new AbortController();
     setRecordsLoading(true);
     setError('');
     contentWorkspaceAPI
-      .records(selectedType, { signal: controller.signal })
+      .records(selectedType, {
+        signal: controller.signal,
+        ...(activeSearch
+          ? {
+              query: {
+                filters: [{ field: 'title', operator: 'contains', value: activeSearch }],
+                sort: ['slug'],
+                fields: [],
+                expand: [],
+                limit: 25,
+              },
+            }
+          : {}),
+      })
       .then((result) => {
         if (!controller.signal.aborted) {
           setRecords(Array.isArray(result?.items) ? result.items : []);
@@ -69,7 +97,7 @@ export default function ContentWorkspace() {
         if (!controller.signal.aborted) setRecordsLoading(false);
       });
     return () => controller.abort();
-  }, [selectedType, tab]);
+  }, [activeSearch, activeSearchSchemaVersion, selectedType, tab, titleSearchAvailable]);
 
   useEffect(() => {
     if (!selectedType) return undefined;
@@ -86,6 +114,22 @@ export default function ContentWorkspace() {
       });
     return () => controller.abort();
   }, [definitions, selectedType]);
+
+  useEffect(() => {
+    if (!selectedType) return undefined;
+    const controller = new AbortController();
+    contentWorkspaceAPI
+      .views(selectedType, { signal: controller.signal })
+      .then((result) => {
+        if (!controller.signal.aborted) {
+          setViews(Array.isArray(result?.items) ? result.items : []);
+        }
+      })
+      .catch((caught) => {
+        if (caught?.name !== 'CanceledError') setError(messageFor(caught));
+      });
+    return () => controller.abort();
+  }, [selectedType]);
 
   const openRecord = async (record) => {
     setError('');
@@ -148,6 +192,64 @@ export default function ContentWorkspace() {
       setError(messageFor(caught));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const submitSearch = (event) => {
+    event.preventDefault();
+    const next = new URLSearchParams(searchParams);
+    const value = searchDraft.trim();
+    if (value) next.set('workspace_q', value);
+    else next.delete('workspace_q');
+    setSearchParams(next, { replace: true });
+    setActiveRecord(null);
+  };
+
+  const currentQuery = () => ({
+    filters: activeSearch ? [{ field: 'title', operator: 'contains', value: activeSearch }] : [],
+    sort: ['slug'],
+    fields: [],
+    expand: [],
+    limit: 25,
+  });
+
+  const saveView = async (event) => {
+    event.preventDefault();
+    if (!viewTitle.trim()) {
+      setError('View name is required.');
+      return;
+    }
+    setSavingView(true);
+    setError('');
+    try {
+      const created = await contentWorkspaceAPI.createView(selectedType, {
+        title: viewTitle.trim(),
+        query: currentQuery(),
+        visibility: 'private',
+        sharedRoles: [],
+      });
+      setViews((current) => [...current.filter((item) => item.id !== created.id), created]);
+      setViewTitle('');
+      setShowViewEditor(false);
+    } catch (caught) {
+      setError(messageFor(caught));
+    } finally {
+      setSavingView(false);
+    }
+  };
+
+  const executeView = async (viewId) => {
+    if (!viewId) return;
+    setRecordsLoading(true);
+    setError('');
+    try {
+      const result = await contentWorkspaceAPI.executeView(selectedType, viewId);
+      setRecords(Array.isArray(result?.items) ? result.items : []);
+      setActiveRecord(null);
+    } catch (caught) {
+      setError(messageFor(caught));
+    } finally {
+      setRecordsLoading(false);
     }
   };
 
@@ -215,7 +317,10 @@ export default function ContentWorkspace() {
                 <select
                   id="workspace-type"
                   value={selectedType}
-                  onChange={(event) => setSelectedType(event.target.value)}
+                  onChange={(event) => {
+                    setSchema(null);
+                    setSelectedType(event.target.value);
+                  }}
                   className="mt-2 min-h-11 w-full rounded-xl border border-white/20 bg-slate-950/80 px-3"
                 >
                   <option value="">Choose a type</option>
@@ -257,6 +362,94 @@ export default function ContentWorkspace() {
                 </div>
                 {tab === 'Records' ? (
                   <>
+                    <form
+                      role="search"
+                      aria-label="Search records"
+                      onSubmit={submitSearch}
+                      className="mt-5 flex flex-col gap-3 sm:flex-row"
+                    >
+                      <label className="flex-1 space-y-1 text-sm font-medium">
+                        <span>Search records</span>
+                        <input
+                          type="search"
+                          value={searchDraft}
+                          onChange={(event) => setSearchDraft(event.target.value)}
+                          maxLength={200}
+                          className="min-h-11 w-full rounded-xl border border-white/20 bg-slate-950/80 px-3"
+                        />
+                      </label>
+                      <div className="flex items-end gap-2">
+                        <GlassButton type="submit" variant="primary">
+                          Search
+                        </GlassButton>
+                        {activeSearch ? (
+                          <GlassButton
+                            type="button"
+                            variant="ghost"
+                            onClick={() => {
+                              setSearchDraft('');
+                              const next = new URLSearchParams(searchParams);
+                              next.delete('workspace_q');
+                              setSearchParams(next, { replace: true });
+                            }}
+                          >
+                            Clear
+                          </GlassButton>
+                        ) : null}
+                      </div>
+                    </form>
+                    <div className="mt-3 flex flex-col gap-3 rounded-xl border border-white/10 p-3 sm:flex-row sm:items-end">
+                      <label className="flex-1 space-y-1 text-sm font-medium">
+                        <span>Saved views</span>
+                        <select
+                          defaultValue=""
+                          onChange={(event) => executeView(event.target.value)}
+                          className="min-h-11 w-full rounded-xl border border-white/20 bg-slate-950/80 px-3"
+                        >
+                          <option value="">Choose a saved view</option>
+                          {views.map((view) => (
+                            <option key={view.id} value={view.id}>
+                              {view.title}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <GlassButton
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setShowViewEditor(true)}
+                      >
+                        Save view
+                      </GlassButton>
+                    </div>
+                    {showViewEditor ? (
+                      <form
+                        onSubmit={saveView}
+                        className="mt-3 flex flex-col gap-3 rounded-xl border border-white/10 p-3 sm:flex-row sm:items-end"
+                      >
+                        <label className="flex-1 space-y-1 text-sm font-medium">
+                          <span>View name</span>
+                          <input
+                            value={viewTitle}
+                            onChange={(event) => setViewTitle(event.target.value)}
+                            maxLength={120}
+                            required
+                            className="min-h-11 w-full rounded-xl border border-white/20 bg-slate-950/80 px-3"
+                          />
+                        </label>
+                        <GlassButton type="submit" variant="primary" disabled={savingView}>
+                          {savingView ? 'Saving…' : 'Save private view'}
+                        </GlassButton>
+                        <GlassButton
+                          type="button"
+                          variant="ghost"
+                          disabled={savingView}
+                          onClick={() => setShowViewEditor(false)}
+                        >
+                          Cancel
+                        </GlassButton>
+                      </form>
+                    ) : null}
                     {creating ? (
                       <form
                         onSubmit={createRecord}

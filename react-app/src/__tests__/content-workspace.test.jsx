@@ -17,6 +17,8 @@ vi.mock('../services/contentWorkspace', () => ({
     createRecord: vi.fn(),
     versions: vi.fn(),
     views: vi.fn(),
+    createView: vi.fn(),
+    executeView: vi.fn(),
   },
 }));
 
@@ -79,6 +81,14 @@ describe('content workspace', () => {
       values: { title: 'Second', summary: 'New safe summary' },
     });
     contentWorkspaceAPI.views.mockResolvedValue({ items: [] });
+    contentWorkspaceAPI.createView.mockResolvedValue({
+      id: 'view-1',
+      title: 'Safe records',
+      visibility: 'private',
+      schemaVersion: 1,
+      lockVersion: 1,
+    });
+    contentWorkspaceAPI.executeView.mockResolvedValue({ items: [], nextCursor: null });
   });
 
   test('renders an accessible, capability-driven record workspace', async () => {
@@ -187,5 +197,68 @@ describe('content workspace', () => {
       })
     );
     expect(await screen.findByRole('heading', { name: 'Second' })).toBeVisible();
+  });
+
+  test('stores a bounded title search in URL state and sends the closed query AST', async () => {
+    const user = userEvent.setup();
+    renderWorkspace();
+    await waitFor(() =>
+      expect(screen.getByRole('region', { name: /records · articles/i })).toHaveAttribute(
+        'aria-busy',
+        'false'
+      )
+    );
+    await act(async () => {
+      await user.type(screen.getByRole('searchbox', { name: 'Search records' }), 'safe');
+      await user.click(screen.getByRole('button', { name: 'Search' }));
+    });
+    await waitFor(() =>
+      expect(contentWorkspaceAPI.records).toHaveBeenLastCalledWith(
+        'article',
+        expect.objectContaining({
+          query: {
+            filters: [{ field: 'title', operator: 'contains', value: 'safe' }],
+            sort: ['slug'],
+            fields: [],
+            expand: [],
+            limit: 25,
+          },
+        })
+      )
+    );
+    expect(screen.getByRole('button', { name: 'Clear' })).toBeVisible();
+  });
+
+  test('saves the current bounded query as a private view', async () => {
+    const user = userEvent.setup();
+    renderWorkspace();
+    await waitFor(() =>
+      expect(contentWorkspaceAPI.views).toHaveBeenCalledWith('article', expect.anything())
+    );
+    await act(async () => {
+      await user.type(screen.getByRole('searchbox', { name: 'Search records' }), 'safe');
+      await user.click(screen.getByRole('button', { name: 'Search' }));
+    });
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: 'Save view' }));
+    });
+    await act(async () => {
+      await user.type(screen.getByLabelText('View name'), 'Safe records');
+    });
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: 'Save private view' }));
+      await Promise.resolve();
+    });
+    await waitFor(() =>
+      expect(contentWorkspaceAPI.createView).toHaveBeenCalledWith(
+        'article',
+        expect.objectContaining({
+          title: 'Safe records',
+          visibility: 'private',
+          sharedRoles: [],
+        })
+      )
+    );
+    expect(await screen.findByRole('option', { name: 'Safe records' })).toBeVisible();
   });
 });
