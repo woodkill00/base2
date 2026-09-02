@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import GlassButton from '../glass/GlassButton';
 import { contentWorkspaceAPI } from '../../services/contentWorkspace';
+import RecordStructuredFields from './RecordStructuredFields';
 
 const STATE_ACTIONS = {
   draft: ['submit_review', 'publish', 'delete'],
@@ -231,6 +232,14 @@ export default function RecordInspector({ typeKey, schema, record, onChanged, on
           </GlassButton>
         </>
       )}
+
+      <RecordStructuredFields
+        typeKey={typeKey}
+        schema={schema}
+        record={record}
+        onChanged={onChanged}
+        onError={onError}
+      />
 
       <section
         aria-labelledby="record-workflow-title"

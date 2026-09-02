@@ -54,9 +54,9 @@
   "scripts": {
     "start": "vite",
     "build": "vite build",
-    "test": "node --no-concurrent-recompilation --no-concurrent-marking node_modules/vitest/vitest.mjs run --coverage --pool=threads --maxWorkers=1",
-    "test:watch": "node --no-concurrent-recompilation --no-concurrent-marking node_modules/vitest/vitest.mjs",
-    "test:ci": "cross-env CI=true node --no-concurrent-recompilation --no-concurrent-marking node_modules/vitest/vitest.mjs run --coverage --pool=threads --maxWorkers=1",
+    "test": "node --max-old-space-size=4096 --no-concurrent-recompilation --no-concurrent-marking node_modules/vitest/vitest.mjs run --coverage --pool=threads --maxWorkers=1",
+    "test:watch": "node --max-old-space-size=4096 --no-concurrent-recompilation --no-concurrent-marking node_modules/vitest/vitest.mjs",
+    "test:ci": "cross-env CI=true node --max-old-space-size=4096 --no-concurrent-recompilation --no-concurrent-marking node_modules/vitest/vitest.mjs run --coverage --pool=threads --maxWorkers=1",
     "test:public-contract": "node --no-concurrent-recompilation --no-concurrent-marking node_modules/vitest/vitest.mjs run src/__tests__/public-experience-contract.test.jsx src/__tests__/site-content-api.test.js --coverage=false --pool=threads --maxWorkers=1",
     "test:privacy-contract": "node --no-concurrent-recompilation --no-concurrent-marking node_modules/vitest/vitest.mjs run src/__tests__/consent-localization.test.jsx --coverage=false",
     "lint": "eslint src --ext .js,.jsx,.ts,.tsx",

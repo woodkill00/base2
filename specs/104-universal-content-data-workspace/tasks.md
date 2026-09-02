@@ -210,6 +210,8 @@
 - [x] T173 Replace inert import/export placeholders with bounded accessible job forms; hash sources locally, keep grants memory-only, require explicit review and commit decisions, poll without job replay, expose terminal outcomes, constrain field projections, and revoke each export object URL immediately after use.
 - [x] T174 Replace the read-only record inspector with optimistic scalar field editing, unsaved-exit protection, state-bounded confirmed workflow actions, immutable history metadata, and restore-as-new-version controls; keep structured field kinds closed until their dedicated safe controls exist and preserve the visible record on conflicts.
 - [x] T175 Repair the stale planning-only validator after corrective tasks made its fixed T001-T150 assumption impossible; require the exact base sequence plus contiguous corrective IDs, keep separately governed lifecycle tasks incomplete, add the missing row-level-security concept, and report active-not-published implementation honestly.
+- [x] T176 Add dedicated safe media and relationship controls after implementation analysis found structured record fields remained intentionally inert; hash and bound uploads in memory, preserve quarantine until explicit validation, require image alternative text, inherit schema deletion policy, use optimistic versions, refresh canonical state, surface failures, and pass focused interaction and accessibility tests.
+- [x] T177 Apply the proven 4 GiB Node heap ceiling to canonical React test scripts after one full coverage finalization terminated at the runtime boundary while two explicit bounded reruns passed; keep single-worker admission and verify focused suites through the canonical configuration.
 
 ## Dependencies and authority
 
