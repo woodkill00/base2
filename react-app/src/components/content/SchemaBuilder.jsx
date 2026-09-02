@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import GlassButton from '../glass/GlassButton';
 import presets from '../../config/generated/content-workspace-presets.json';
 import { contentWorkspaceAPI } from '../../services/contentWorkspace';
@@ -49,17 +49,34 @@ export default function SchemaBuilder({ currentSchema, onCreated, onError }) {
   const [typeKey, setTypeKey] = useState('');
   const [name, setName] = useState('');
   const [fields, setFields] = useState([]);
+  const [baseline, setBaseline] = useState('');
   const [fieldLabel, setFieldLabel] = useState('');
   const [fieldKind, setFieldKind] = useState('short_text');
   const [preview, setPreview] = useState(null);
   const [created, setCreated] = useState(null);
   const [busy, setBusy] = useState(false);
+  const currentDraft = JSON.stringify({ typeKey, name, fields });
+  const dirty = Boolean(baseline && currentDraft !== baseline && !created);
+
+  useEffect(() => {
+    if (!dirty) return undefined;
+    const protect = (event) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    globalThis.addEventListener('beforeunload', protect);
+    return () => globalThis.removeEventListener('beforeunload', protect);
+  }, [dirty]);
 
   const loadPreset = () => {
     const source = currentSchema || selectedPreset;
-    setTypeKey(currentSchema?.typeKey || source?.typeKey || '');
-    setName(currentSchema?.name || source?.name || '');
-    setFields((source?.fields || []).map((field) => ({ ...field })));
+    const nextTypeKey = currentSchema?.typeKey || source?.typeKey || '';
+    const nextName = currentSchema?.name || source?.name || '';
+    const nextFields = (source?.fields || []).map((field) => ({ ...field }));
+    setTypeKey(nextTypeKey);
+    setName(nextName);
+    setFields(nextFields);
+    setBaseline(JSON.stringify({ typeKey: nextTypeKey, name: nextName, fields: nextFields }));
     setCreated(null);
     setPreview(null);
   };
@@ -102,6 +119,7 @@ export default function SchemaBuilder({ currentSchema, onCreated, onError }) {
       const migration = await contentWorkspaceAPI.previewDefinition(result.typeKey, result.version);
       setCreated(result);
       setPreview(migration);
+      setBaseline(currentDraft);
       onCreated(result);
     } catch (error) {
       onError(error);
@@ -186,10 +204,44 @@ export default function SchemaBuilder({ currentSchema, onCreated, onError }) {
           <ul aria-label="Draft fields" className="grid gap-2 sm:grid-cols-2">
             {fields.map((field) => (
               <li key={field.fieldKey} className="rounded-xl bg-white/5 p-3 text-sm">
-                <strong>{field.label}</strong>
-                <span className="block opacity-65">
-                  {field.fieldKind} · {field.fieldKey}
-                </span>
+                <div className="flex items-start justify-between gap-2">
+                  <span>
+                    <strong>{field.label}</strong>
+                    <span className="block opacity-65">
+                      {field.fieldKind} · {field.fieldKey}
+                    </span>
+                  </span>
+                  <label className="flex min-h-11 items-center gap-2">
+                    <input
+                      type="checkbox"
+                      aria-label={`${field.label} required`}
+                      checked={Boolean(field.required)}
+                      onChange={(event) =>
+                        setFields((current) =>
+                          current.map((candidate) =>
+                            candidate.fieldKey === field.fieldKey
+                              ? { ...candidate, required: event.target.checked }
+                              : candidate
+                          )
+                        )
+                      }
+                    />
+                    Required
+                  </label>
+                </div>
+                {!['title', 'slug'].includes(field.fieldKey) ? (
+                  <GlassButton
+                    type="button"
+                    variant="ghost"
+                    onClick={() =>
+                      setFields((current) =>
+                        current.filter((candidate) => candidate.fieldKey !== field.fieldKey)
+                      )
+                    }
+                  >
+                    Remove {field.label}
+                  </GlassButton>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -225,6 +277,11 @@ export default function SchemaBuilder({ currentSchema, onCreated, onError }) {
             <GlassButton type="button" variant="primary" onClick={createDraft} disabled={busy}>
               {busy ? 'Creating…' : 'Create draft and preview'}
             </GlassButton>
+          ) : null}
+          {dirty ? (
+            <p role="status" className="text-sm text-amber-200">
+              Unsaved schema changes are protected from accidental page exit.
+            </p>
           ) : null}
         </div>
       ) : null}

@@ -105,7 +105,7 @@
 
 - [x] T084 Add failing API-client tests for tenant binding, schemas, errors, aborts, stale responses, cursors, and no browser credential persistence.
 - [ ] T085 Add failing workspace shell, navigation, breadcrumb, capability, direct-route denial, and responsive list/detail tests.
-- [ ] T086 Add failing definition/preset builder, field editor, compatibility preview, confirmation, and unsaved-change tests.
+- [x] T086 Add failing definition/preset builder, field editor, compatibility preview, confirmation, and unsaved-change tests.
 - [ ] T087 Add failing record list/search/filter/sort/page/saved-view and deterministic-state tests.
 - [ ] T088 Add failing record create/edit/validation/conflict/compare/retry and value-preservation tests.
 - [ ] T089 Add failing review, schedule, publish, archive, delete, history, diff, and restore journeys.
@@ -117,7 +117,7 @@
 - [ ] T095 Add failing keyboard, screen-reader name/role/value, announcement, focus, target, contrast, reflow, reduced-motion, and axe tests.
 - [x] T096 Implement typed content API client and normalized error/job state handling.
 - [x] T097 Implement capability-driven workspace shell and adaptive navigation.
-- [ ] T098 Implement definition/preset builder and migration preview experiences.
+- [x] T098 Implement definition/preset builder and migration preview experiences.
 - [ ] T099 Implement record browser, safe query builder, saved views, and stable URL state.
 - [ ] T100 Implement typed field editors, validation summary, conflicts, and unsaved-change recovery.
 - [ ] T101 Implement workflow, history/diff/restore, relationship, media, import, export, and job-status experiences.
@@ -220,6 +220,8 @@
 - [x] T183 Add the missing bounded worker-health evidence projection after implementation analysis found terminal database state but no safe aggregate report; hash tenant identity, bound counts and durations, close state vocabularies, redact malformed error text, integrity-bind output, and prove no submitted content or object location appears.
 - [x] T184 Add an encrypted workspace recovery bundle and isolated restore verifier after implementation analysis found no workspace-wide recovery inventory; cover definitions, fields, workflows, records, versions, relationships, views, jobs, audit references, assets, bindings, exact counts and hashes, referential integrity, key/tamper failure, live-target refusal, owner-only output, and replay refusal.
 - [x] T185 Bind the documented workload ceilings to executable schema, media, transfer, relationship, and recovery contracts after implementation analysis found no single operator limit reference; exercise exact-limit and one-beyond fixtures so drift fails visibly.
+- [x] T186 Protect in-progress schema evolution after the full React coverage review found draft field edits could be lost on navigation; support required-constraint changes and deliberate non-canonical removal, retain title/slug controls, warn before unload, and clear protection only after a durable draft exists.
+- [x] T187 Document the repository's partitioned Python gate boundary after an unscoped root Pytest command mixed API, Django, provider, and visual environments; require service-local virtual environments for local gates and reserve cross-service integration for the complete container gate.
 
 ## Dependencies and authority
 

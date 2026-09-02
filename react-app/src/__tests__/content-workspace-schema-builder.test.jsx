@@ -54,6 +54,10 @@ describe('workspace schema builder', () => {
     await act(async () => user.click(screen.getByRole('button', { name: 'Start next version' })));
     await act(async () => user.type(screen.getByLabelText('New field label'), 'Subtitle'));
     await act(async () => user.click(screen.getByRole('button', { name: 'Add field' })));
+    const exit = new Event('beforeunload', { cancelable: true });
+    globalThis.dispatchEvent(exit);
+    expect(exit.defaultPrevented).toBe(true);
+    expect(screen.getByRole('status')).toHaveTextContent('Unsaved schema changes');
     await act(async () =>
       user.click(screen.getByRole('button', { name: 'Create draft and preview' }))
     );
@@ -73,6 +77,30 @@ describe('workspace schema builder', () => {
     await act(async () => user.click(screen.getByRole('button', { name: 'Publish schema' })));
     expect(contentWorkspaceAPI.publishDefinition).toHaveBeenCalledWith('article', 2, 1, false);
     expect(onCreated).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'published' }));
+  });
+
+  test('edits required constraints and deliberately removes a non-canonical field', async () => {
+    const user = userEvent.setup();
+    render(
+      <SchemaBuilder
+        currentSchema={{
+          typeKey: 'article',
+          name: 'Articles',
+          fields: [
+            { fieldKey: 'title', label: 'Title', fieldKind: 'short_text', required: true },
+            { fieldKey: 'summary', label: 'Summary', fieldKind: 'long_text', required: false },
+          ],
+        }}
+        onCreated={vi.fn()}
+        onError={vi.fn()}
+      />
+    );
+    await act(async () => user.click(screen.getByRole('button', { name: 'Start next version' })));
+    await act(async () => user.click(screen.getByRole('checkbox', { name: 'Summary required' })));
+    expect(screen.getByRole('checkbox', { name: 'Summary required' })).toBeChecked();
+    await act(async () => user.click(screen.getByRole('button', { name: 'Remove Summary' })));
+    expect(screen.queryByText('summary')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Remove Title' })).not.toBeInTheDocument();
   });
 
   test('requires deliberate impact confirmation wording for non-additive changes', async () => {
