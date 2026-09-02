@@ -62,7 +62,7 @@ const WorkspaceRoute = () => {
   const { user } = useAuth();
   if (!moduleEnabled('content-workspace')) return <NotFoundPage />;
   return (
-    <PermissionRoute user={user} permission="content.read">
+    <PermissionRoute user={user} permission="content-workspace.read">
       <ContentWorkspace />
     </PermissionRoute>
   );

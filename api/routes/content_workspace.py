@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from api.middleware.tenant import require_tenant
 from api.repositories.content_workspace import PostgresContentWorkspaceRepository
 from api.security.request_auth import require_authenticated_principal
+from api.settings import SITE_MANIFEST
 
 
 router = APIRouter(prefix='/content/v1', tags=['content-workspace'])
@@ -206,7 +207,16 @@ def get_repository() -> PostgresContentWorkspaceRepository:
     return PostgresContentWorkspaceRepository()
 
 
+def workspace_enabled() -> bool:
+    return any(
+        item.get('id') == 'content-workspace' and item.get('enabled') is True
+        for item in SITE_MANIFEST.get('modules', [])
+    )
+
+
 def _scope(request: Request):
+    if not workspace_enabled():
+        raise HTTPException(status_code=404, detail='content_capability_disabled')
     principal = require_authenticated_principal(request)
     tenant = require_tenant(request)
     return principal, tenant
@@ -268,9 +278,9 @@ def capabilities(request: Request):
 def list_types(
     request: Request,
     limit: Annotated[int, Query(ge=1, le=100)] = 25,
-    cursor: UUID | None = None,
+    cursor: str | None = Query(default=None, min_length=16, max_length=2_048),
 ):
-    _, tenant = _authorized_scope(request, 'content.read')
+    _, tenant = _authorized_scope(request, 'content-workspace.read')
     try:
         return get_repository().list_definitions(site_id=tenant, limit=limit, cursor=cursor)
     except ValueError as exc:
@@ -281,7 +291,7 @@ def list_types(
 
 @router.post('/types', status_code=status.HTTP_201_CREATED)
 def create_type(payload: DefinitionCreate, request: Request):
-    principal, tenant = _authorized_scope(request, 'content.write')
+    principal, tenant = _authorized_scope(request, 'content-workspace.write')
     try:
         return get_repository().create_definition(
             site_id=tenant,
@@ -296,7 +306,7 @@ def create_type(payload: DefinitionCreate, request: Request):
 
 @router.get('/types/{type_key}/versions/{version}')
 def get_type(type_key: str, version: Annotated[int, Path(ge=1)], request: Request):
-    _, tenant = _authorized_scope(request, 'content.read')
+    _, tenant = _authorized_scope(request, 'content-workspace.read')
     try:
         return get_repository().get_definition(site_id=tenant, type_key=type_key, version=version)
     except ValueError as exc:
@@ -307,7 +317,7 @@ def get_type(type_key: str, version: Annotated[int, Path(ge=1)], request: Reques
 
 @router.post('/types/{type_key}/versions/{version}/preview')
 def preview_type(type_key: str, version: int, request: Request):
-    _, tenant = _authorized_scope(request, 'content.write')
+    _, tenant = _authorized_scope(request, 'content-workspace.write')
     try:
         return get_repository().preview_definition(
             site_id=tenant, type_key=type_key, version=version
@@ -320,7 +330,7 @@ def preview_type(type_key: str, version: int, request: Request):
 
 @router.post('/types/{type_key}/versions/{version}/publish')
 def publish_type(type_key: str, version: int, payload: DefinitionMutation, request: Request):
-    principal, tenant = _authorized_scope(request, 'content.write')
+    principal, tenant = _authorized_scope(request, 'content-workspace.write')
     try:
         return get_repository().publish_definition(
             site_id=tenant,
@@ -339,7 +349,7 @@ def publish_type(type_key: str, version: int, payload: DefinitionMutation, reque
 
 @router.post('/types/{type_key}/versions/{version}/retire')
 def retire_type(type_key: str, version: int, payload: DefinitionMutation, request: Request):
-    principal, tenant = _authorized_scope(request, 'content.write')
+    principal, tenant = _authorized_scope(request, 'content-workspace.write')
     try:
         return get_repository().retire_definition(
             site_id=tenant,
@@ -362,7 +372,7 @@ def list_records(
     limit: Annotated[int, Query(ge=1, le=100)] = 25,
     cursor: str | None = Query(default=None, min_length=16, max_length=2_048),
 ):
-    _, tenant = _authorized_scope(request, 'content.read')
+    _, tenant = _authorized_scope(request, 'content-workspace.read')
     if not IDENTIFIER.fullmatch(type_key):
         raise HTTPException(status_code=422, detail='content_identifier_invalid')
     try:
@@ -377,7 +387,7 @@ def list_records(
 
 @router.post('/types/{type_key}/records', status_code=status.HTTP_201_CREATED)
 def create_record(type_key: str, payload: RecordCreate, request: Request):
-    principal, tenant = _authorized_scope(request, 'content.write')
+    principal, tenant = _authorized_scope(request, 'content-workspace.write')
     if not IDENTIFIER.fullmatch(type_key):
         raise HTTPException(status_code=422, detail='content_identifier_invalid')
     try:
@@ -401,7 +411,7 @@ def update_record(
     request: Request,
     if_match: Annotated[str | None, Header(alias='If-Match')] = None,
 ):
-    principal, tenant = _authorized_scope(request, 'content.write')
+    principal, tenant = _authorized_scope(request, 'content-workspace.write')
     expected = _expected_version(if_match, payload.expected_version)
     try:
         return get_repository().update_record(
@@ -429,7 +439,7 @@ def transition_record(
     payload: TransitionRequest,
     request: Request,
 ):
-    principal, tenant = _authorized_scope(request, 'content.write')
+    principal, tenant = _authorized_scope(request, 'content-workspace.write')
     if action not in TRANSITION_ACTIONS:
         raise HTTPException(status_code=422, detail='content_transition_invalid')
     try:
@@ -459,7 +469,7 @@ def delete_record(
     request: Request,
     expected_version: Annotated[int, Query(ge=1)],
 ):
-    principal, tenant = _authorized_scope(request, 'content.write')
+    principal, tenant = _authorized_scope(request, 'content-workspace.write')
     try:
         return get_repository().soft_delete_record(
             site_id=tenant,
@@ -479,7 +489,7 @@ def delete_record(
 
 @router.get('/types/{type_key}/records/{record_id}/versions')
 def list_record_versions(type_key: str, record_id: UUID, request: Request):
-    _, tenant = _authorized_scope(request, 'content.read')
+    _, tenant = _authorized_scope(request, 'content-workspace.read')
     try:
         return get_repository().list_versions(
             site_id=tenant, type_key=type_key, record_id=record_id
@@ -498,7 +508,7 @@ def restore_record(
     payload: RestoreRequest,
     request: Request,
 ):
-    principal, tenant = _authorized_scope(request, 'content.write')
+    principal, tenant = _authorized_scope(request, 'content-workspace.write')
     try:
         return get_repository().restore_record(
             site_id=tenant,
@@ -519,7 +529,7 @@ def restore_record(
 
 @router.get('/types/{type_key}/views')
 def list_saved_views(type_key: str, request: Request):
-    principal, tenant = _authorized_scope(request, 'content.read')
+    principal, tenant = _authorized_scope(request, 'content-workspace.read')
     try:
         return get_repository().list_views(
             site_id=tenant, type_key=type_key, owner_ref=f'user:{principal.user_id}'
@@ -532,7 +542,7 @@ def list_saved_views(type_key: str, request: Request):
 
 @router.post('/types/{type_key}/views', status_code=status.HTTP_201_CREATED)
 def create_saved_view(type_key: str, payload: SavedViewCreate, request: Request):
-    principal, tenant = _authorized_scope(request, 'content.write')
+    principal, tenant = _authorized_scope(request, 'content-workspace.write')
     if payload.visibility == 'private' and payload.shared_roles:
         raise HTTPException(status_code=422, detail='saved_view_roles_invalid')
     try:

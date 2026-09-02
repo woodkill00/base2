@@ -176,11 +176,23 @@ def _audit(cur, *, site_id: str, actor_ref: str, object_type: str, object_ref: s
 
 
 class PostgresContentWorkspaceRepository:
-    def list_definitions(self, *, site_id: str, limit: int, cursor: UUID | None):
-        cursor_clause = 'AND id > %s' if cursor else ''
-        params: list[Any] = [site_id]
+    def list_definitions(self, *, site_id: str, limit: int, cursor: str | None):
+        scope = {
+            'site': site_id,
+            'query': canonical_digest({'sort': ['type_key', 'version', 'id']}),
+            'limit': limit,
+        }
+        codec = CursorCodec(str(settings.TOKEN_PEPPER))
+        position = None
         if cursor:
-            params.append(str(cursor))
+            try:
+                position = codec.decode(cursor, expected_scope=scope)
+            except CursorError as exc:
+                raise ValueError('content_query_invalid') from exc
+        cursor_clause = 'AND (type_key, version, id) > (%s, %s, %s)' if position else ''
+        params: list[Any] = [site_id]
+        if position:
+            params.extend([position.get('typeKey'), position.get('version'), position.get('id')])
         params.append(limit + 1)
         with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
             cur.execute(
@@ -193,10 +205,18 @@ class PostgresContentWorkspaceRepository:
             )
             rows = cur.fetchall()
         items = [_definition(row) for row in rows[:limit]]
-        return {
-            'items': items,
-            'nextCursor': str(items[-1]['id']) if len(rows) > limit else None,
-        }
+        next_cursor = None
+        if len(rows) > limit:
+            last = items[-1]
+            next_cursor = codec.encode(
+                scope=scope,
+                position={
+                    'typeKey': last['typeKey'],
+                    'version': last['version'],
+                    'id': str(last['id']),
+                },
+            )
+        return {'items': items, 'nextCursor': next_cursor}
 
     def create_definition(self, *, site_id: str, actor_ref: str, payload: dict[str, Any]):
         definition_id = uuid4()

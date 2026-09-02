@@ -83,6 +83,7 @@ def scoped(monkeypatch):
         content_workspace, 'require_authenticated_principal', lambda request: principal
     )
     monkeypatch.setattr(content_workspace, 'require_tenant', lambda request: 'site-a')
+    monkeypatch.setattr(content_workspace, 'workspace_enabled', lambda: True)
     monkeypatch.setattr(content_workspace, 'authorize', lambda **kwargs: None)
     monkeypatch.setattr(content_workspace, 'get_repository', lambda: FakeRecordRepository())
 

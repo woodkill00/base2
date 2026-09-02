@@ -69,6 +69,7 @@ def authenticated(monkeypatch):
         content_workspace, 'require_authenticated_principal', lambda request: principal
     )
     monkeypatch.setattr(content_workspace, 'require_tenant', lambda request: 'site-a')
+    monkeypatch.setattr(content_workspace, 'workspace_enabled', lambda: True)
     monkeypatch.setattr(content_workspace, 'authorize', lambda **kwargs: None)
     monkeypatch.setattr(content_workspace, 'get_repository', lambda: FakeRepository())
 
@@ -86,6 +87,16 @@ def test_definition_schema_rejects_unknown_and_executable_fields():
                 'fieldKind': 'python',
             }
         )
+
+
+def test_disabled_workspace_exposes_no_working_route(monkeypatch):
+    monkeypatch.setattr(content_workspace, 'workspace_enabled', lambda: False)
+    response = TestClient(app).get(
+        '/api/content/v1/capabilities',
+        headers={'Authorization': 'Bearer synthetic', 'X-Tenant-ID': 'site-a'},
+    )
+    assert response.status_code == 404
+    assert response.json()['error']['code'] == 'content_capability_disabled'
 
 
 def test_capabilities_are_closed_bounded_and_do_not_expose_secrets():
@@ -138,6 +149,10 @@ def test_unknown_body_key_and_unbounded_page_fail_closed():
     )
     assert invalid.status_code == 422
     assert client.get('/api/content/v1/types?limit=101', headers=headers).status_code == 422
+    envelope = invalid.json()
+    assert envelope['error']['code'] == 'content_schema_invalid'
+    assert envelope['error']['retryable'] is False
+    assert 'input' not in str(envelope['error']['field_issues'])
 
 
 def test_definition_lifecycle_requires_expected_lock_and_explicit_lossy_confirmation():

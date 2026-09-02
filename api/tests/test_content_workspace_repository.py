@@ -56,6 +56,7 @@ def bind(monkeypatch, connection):
 
 
 def test_definition_listing_binds_tenant_and_uses_stable_cursor(monkeypatch):
+    monkeypatch.setattr(repository.settings, 'TOKEN_PEPPER', 'synthetic-test-pepper-104')
     cursor = Cursor()
     scopes = bind(monkeypatch, Connection(cursor))
     result = repository.PostgresContentWorkspaceRepository().list_definitions(
@@ -67,6 +68,34 @@ def test_definition_listing_binds_tenant_and_uses_stable_cursor(monkeypatch):
     assert 'ORDER BY type_key, version, id' in sql
     assert params == ('site-a', 26)
     assert result == {'items': [], 'nextCursor': None}
+
+
+def test_definition_cursor_is_opaque_and_bound_to_page_scope(monkeypatch):
+    monkeypatch.setattr(repository.settings, 'TOKEN_PEPPER', 'synthetic-test-pepper-104')
+    rows = [
+        (UUID(int=1), 'site-a', 'article', 1, 'Article', '', 'draft', 1),
+        (UUID(int=2), 'site-a', 'catalog', 1, 'Catalog', '', 'draft', 1),
+    ]
+    first_cursor = Cursor(rows=rows)
+    bind(monkeypatch, Connection(first_cursor))
+    first = repository.PostgresContentWorkspaceRepository().list_definitions(
+        site_id='site-a', limit=1, cursor=None
+    )
+    assert first['nextCursor'] and 'site-a' not in first['nextCursor']
+    second_cursor = Cursor()
+    bind(monkeypatch, Connection(second_cursor))
+    repository.PostgresContentWorkspaceRepository().list_definitions(
+        site_id='site-a', limit=1, cursor=first['nextCursor']
+    )
+    assert second_cursor.calls[0][1][:4] == ('site-a', 'article', 1, str(UUID(int=1)))
+    try:
+        repository.PostgresContentWorkspaceRepository().list_definitions(
+            site_id='site-a', limit=2, cursor=first['nextCursor']
+        )
+    except ValueError as exc:
+        assert str(exc) == 'content_query_invalid'
+    else:
+        raise AssertionError('cursor replayed under a different page bound')
 
 
 def test_create_definition_is_one_transaction_and_never_accepts_site_from_payload(monkeypatch):

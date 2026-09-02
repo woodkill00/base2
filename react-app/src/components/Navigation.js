@@ -62,7 +62,7 @@ const Navigation = () => {
               <Link to="/settings" className={linkClass('/settings')}>
                 Settings
               </Link>
-              {workspaceEnabled && user?.permissions?.includes('content.read') ? (
+              {workspaceEnabled && user?.permissions?.includes('content-workspace.read') ? (
                 <Link to="/workspace" className={linkClass('/workspace')}>
                   Content
                 </Link>
