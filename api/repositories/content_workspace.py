@@ -711,6 +711,95 @@ class PostgresContentWorkspaceRepository:
             )
         return {'items': items, 'nextCursor': next_cursor}
 
+    def search_records(
+        self,
+        *,
+        site_id: str,
+        type_key: str,
+        term: str,
+        limit: int,
+        cursor: str | None,
+    ):
+        normalized = ' '.join(term.split())
+        if not 2 <= len(normalized) <= 200 or not 1 <= limit <= 100:
+            raise ValueError('content_query_invalid')
+        scope = {
+            'site': site_id,
+            'type': type_key,
+            'query': canonical_digest({'term': normalized.casefold(), 'sort': ['-source', '-id']}),
+            'limit': limit,
+        }
+        codec = CursorCodec(str(settings.TOKEN_PEPPER))
+        position = None
+        if cursor:
+            try:
+                position = codec.decode(cursor, expected_scope=scope)
+            except CursorError as exc:
+                raise ValueError('content_query_invalid') from exc
+        escaped = normalized.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+        pattern = f'%{escaped}%'
+        cursor_clause = 'AND (d.source_updated_at, d.id) < (%s, %s)' if position else ''
+        params: list[Any] = [site_id, site_id, type_key, pattern, pattern]
+        if position:
+            params.extend([position.get('sourceUpdatedAt'), position.get('id')])
+        params.append(limit + 1)
+        with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
+            cur.execute(
+                f"""SELECT d.id, c.id, d.title, LEFT(d.body, 500), d.url_path,
+                           d.visibility, d.source_updated_at, d.indexed_at,
+                           (d.source_updated_at<c.updated_at) AS stale
+                    FROM sitecontent_searchdocument d
+                    JOIN sitecontent_contentrecord c ON c.id=d.content_id AND c.site_id=d.site_id
+                    WHERE d.site_id=%s AND c.site_id=%s AND c.content_type=%s
+                      AND c.deleted_at IS NULL AND d.tombstoned_at IS NULL
+                      AND (d.title ILIKE %s ESCAPE '\\' OR d.body ILIKE %s ESCAPE '\\')
+                      {cursor_clause}
+                    ORDER BY d.source_updated_at DESC, d.id DESC LIMIT %s""",
+                tuple(params),
+            )
+            rows = cur.fetchall()
+            cur.execute(
+                """SELECT EXISTS(
+                       SELECT 1 FROM sitecontent_contentrecord c
+                       LEFT JOIN sitecontent_searchdocument d
+                         ON d.content_id=c.id AND d.site_id=c.site_id
+                       WHERE c.site_id=%s AND c.content_type=%s AND c.deleted_at IS NULL
+                         AND c.search_visible=TRUE
+                         AND (d.id IS NULL OR d.tombstoned_at IS NOT NULL
+                              OR d.source_updated_at<c.updated_at)
+                    )""",
+                (site_id, type_key),
+            )
+            index_stale = bool(cur.fetchone()[0])
+        items = [
+            {
+                'id': str(row[1]),
+                'title': row[2],
+                'excerpt': row[3],
+                'path': row[4],
+                'visibility': row[5],
+                'sourceUpdatedAt': row[6].isoformat() if hasattr(row[6], 'isoformat') else row[6],
+                'indexedAt': row[7].isoformat() if hasattr(row[7], 'isoformat') else row[7],
+                'stale': bool(row[8]),
+            }
+            for row in rows[:limit]
+        ]
+        next_cursor = None
+        if len(rows) > limit:
+            last = rows[limit - 1]
+            source_updated = last[6].isoformat() if hasattr(last[6], 'isoformat') else last[6]
+            next_cursor = codec.encode(
+                scope=scope,
+                position={'sourceUpdatedAt': source_updated, 'id': str(last[0])},
+            )
+        return {
+            'items': items,
+            'nextCursor': next_cursor,
+            'indexState': 'stale'
+            if index_stale or any(item['stale'] for item in items)
+            else 'current',
+        }
+
     def create_record(self, *, site_id: str, type_key: str, actor_ref: str, payload: dict):
         record_id = uuid4()
         with db_conn(tenant_id=site_id) as conn:

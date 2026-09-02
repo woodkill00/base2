@@ -18,6 +18,10 @@ class FakeRecordRepository:
         self.calls.append(('list', kwargs))
         return {'items': [], 'nextCursor': None}
 
+    def search_records(self, **kwargs):
+        self.calls.append(('search', kwargs))
+        return {'items': [], 'nextCursor': None, 'indexState': 'current'}
+
     def get_record(self, **kwargs):
         self.calls.append(('detail', kwargs))
         return {
@@ -191,6 +195,51 @@ def test_record_queries_and_mutations_fail_closed_on_unbounded_or_unknown_input(
         ).status_code
         == 422
     )
+
+
+def test_search_is_tenant_scoped_bounded_and_reports_index_state():
+    client = TestClient(app)
+    headers = {'Authorization': 'Bearer synthetic', 'X-Tenant-ID': 'site-a'}
+    response = client.get(
+        '/api/content/v1/types/article/search',
+        headers=headers,
+        params={'q': 'safe guide', 'limit': 10},
+    )
+    assert response.status_code == 200
+    assert response.json()['indexState'] == 'current'
+    assert FakeRecordRepository.calls[-1] == (
+        'search',
+        {
+            'site_id': 'site-a',
+            'type_key': 'article',
+            'term': 'safe guide',
+            'limit': 10,
+            'cursor': None,
+        },
+    )
+    assert (
+        client.get(
+            '/api/content/v1/types/article/search', headers=headers, params={'q': 'x'}
+        ).status_code
+        == 422
+    )
+
+
+def test_search_dependency_failure_is_explicit_not_an_empty_success(monkeypatch):
+    monkeypatch.setattr(
+        FakeRecordRepository,
+        'search_records',
+        lambda self, **kwargs: (_ for _ in ()).throw(RuntimeError('database unavailable')),
+    )
+    response = TestClient(app).get(
+        '/api/content/v1/types/article/search',
+        headers={'Authorization': 'Bearer synthetic', 'X-Tenant-ID': 'site-a'},
+        params={'q': 'safe guide'},
+    )
+    assert response.status_code == 503
+    assert response.json()['detail'] == 'content_search_unavailable'
+    assert response.json()['error']['code'] == 'content_search_unavailable'
+    assert 'database unavailable' not in response.text
 
 
 def test_schedule_rejects_unknown_timezone_before_repository_execution():

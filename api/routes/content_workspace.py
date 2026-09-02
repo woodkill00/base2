@@ -583,6 +583,30 @@ def list_records(
         raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
 
 
+@router.get('/types/{type_key}/search')
+def search_records(
+    type_key: str,
+    request: Request,
+    q: Annotated[str, Query(min_length=2, max_length=200)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    cursor: str | None = Query(default=None, min_length=16, max_length=2_048),
+):
+    _, tenant = _authorized_scope(request, 'content-workspace.read')
+    _valid_type_key(type_key)
+    try:
+        return get_repository().search_records(
+            site_id=tenant,
+            type_key=type_key,
+            term=q,
+            limit=limit,
+            cursor=cursor,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_search_unavailable') from exc
+
+
 @router.post('/types/{type_key}/records', status_code=status.HTTP_201_CREATED)
 def create_record(type_key: str, payload: RecordCreate, request: Request):
     principal, tenant = _authorized_scope(request, 'content-workspace.write')

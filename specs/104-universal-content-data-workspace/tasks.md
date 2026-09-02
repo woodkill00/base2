@@ -56,7 +56,7 @@
 - [ ] T043 Add failing definition endpoint schema, compatibility, confirmation, concurrency, and error-envelope tests.
 - [ ] T044 Add failing record list/detail/create/update/delete/version/restore/transition contract tests.
 - [ ] T045 Add failing cursor binding, stable ordering, page cap, sparse-field, filter, sort, expansion, and query-cost tests.
-- [ ] T046 Add failing search scope, permission, injection, stale-index, degraded, and unavailable tests.
+- [x] T046 Add failing search scope, permission, injection, stale-index, degraded, and unavailable tests.
 - [ ] T047 Add failing saved-view private/shared/revalidation and schema-change tests.
 - [ ] T048 Add failing idempotency digest, replay, conflict, expiry, and concurrent-request tests.
 - [ ] T049 Add failing mass-assignment, overfetching, unknown-key, oversized-body, nesting, decimal, timestamp, and locale tests.
@@ -204,6 +204,7 @@
 - [x] T167 Harden canonical workspace invariants after test-first analysis reproduced duplicate workflow declarations, invalid scheduling flags, relationship cycles, inert deletion policies, mutable record versions, and under-validated saved-view shapes; enforce bounded transactional behavior while retaining the legacy revision uniqueness contract.
 - [x] T168 Fail closed when a saved view's definition version is no longer the currently published schema, while rechecking tenant, type, owner/role sharing, query fields, and bounds at each execution.
 - [x] T169 Add an executable Django migration round trip after analysis found only static migration inspection; prove legacy records survive reverse/forward transitions and verify final defaults, constraints, indexes, and restored latest state.
+- [x] T170 Add the missing authenticated search interface over the durable index; bind tenant/type/query/page to an opaque cursor, escape wildcard input, exclude deleted/tombstoned rows, report stale evidence explicitly, and return a redacted non-successful dependency error instead of silent empty results.
 
 ## Dependencies and authority
 

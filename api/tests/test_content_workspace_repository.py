@@ -528,6 +528,56 @@ def test_query_compiler_uses_typed_parameterized_comparisons():
     assert params == ['count', '10', 'available', 'true', 'published_on', '2026-09-03']
 
 
+def test_search_is_tenant_type_cursor_and_staleness_bound(monkeypatch):
+    monkeypatch.setattr(repository.settings, 'TOKEN_PEPPER', 'synthetic-test-pepper-104')
+    now = datetime.now(UTC)
+
+    class SearchCursor(Cursor):
+        def __init__(self):
+            super().__init__()
+            self.statement = ''
+
+        def execute(self, sql, params=()):
+            super().execute(sql, params)
+            self.statement = ' '.join(sql.split())
+
+        def fetchall(self):
+            if 'FROM sitecontent_searchdocument d' in self.statement:
+                return [
+                    (
+                        UUID(int=9104),
+                        UUID(int=3104),
+                        'Safe guide',
+                        'Synthetic excerpt',
+                        '/article/safe-guide',
+                        'public',
+                        now,
+                        now,
+                        False,
+                    )
+                ]
+            return []
+
+        def fetchone(self):
+            if 'SELECT EXISTS' in self.statement:
+                return (True,)
+            return None
+
+    cursor = SearchCursor()
+    scopes = bind(monkeypatch, Connection(cursor))
+    result = repository.PostgresContentWorkspaceRepository().search_records(
+        site_id='site-a', type_key='article', term='100%_safe', limit=25, cursor=None
+    )
+    assert result['items'][0]['id'] == str(UUID(int=3104))
+    assert result['indexState'] == 'stale'
+    assert scopes == ['site-a']
+    sql, params = cursor.calls[0]
+    assert 'c.site_id=%s' in sql and 'c.content_type=%s' in sql
+    assert "ILIKE %s ESCAPE '\\'" in sql
+    assert params[3] == r'%100\%\_safe%'
+    assert '100%_safe' not in sql
+
+
 def test_saved_view_executes_the_exact_bounded_query(monkeypatch):
     repo = repository.PostgresContentWorkspaceRepository()
     query = {
