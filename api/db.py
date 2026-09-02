@@ -11,6 +11,7 @@ from api.security.tenant_context import canonical_tenant_id
 
 
 _pool: ThreadedConnectionPool | None = None
+_workspace_pool: ThreadedConnectionPool | None = None
 _pool_lock = threading.Lock()
 
 
@@ -36,10 +37,39 @@ def _build_dsn() -> str:
     return f'postgresql://{user}:{password}@{host}:{port}/{name}'
 
 
+def _build_workspace_dsn() -> str:
+    host = os.getenv('DB_HOST', 'postgres')
+    port = os.getenv('DB_PORT', '5432')
+    name = os.getenv('DB_NAME')
+    user = os.getenv('WORKSPACE_DB_USER')
+    password = os.getenv('WORKSPACE_DB_PASSWORD')
+    if not all([name, user, password]):
+        raise RuntimeError('Missing WORKSPACE_DB_USER/WORKSPACE_DB_PASSWORD')
+    return f'postgresql://{user}:{password}@{host}:{port}/{name}'
+
+
 def _get_pool() -> ThreadedConnectionPool:
     global _pool
     if _pool is not None:
         return _pool
+
+
+def _get_workspace_pool() -> ThreadedConnectionPool:
+    global _workspace_pool
+    if _workspace_pool is not None:
+        return _workspace_pool
+    with _pool_lock:
+        if _workspace_pool is None:
+            options = f'-c statement_timeout={settings.DB_STATEMENT_TIMEOUT_MS}'
+            _workspace_pool = ThreadedConnectionPool(
+                minconn=settings.DB_POOL_MIN,
+                maxconn=settings.DB_POOL_MAX,
+                dsn=_build_workspace_dsn(),
+                connect_timeout=settings.DB_CONNECT_TIMEOUT_SEC,
+                options=options,
+                application_name=f'{_project_slug()}-workspace',
+            )
+        return _workspace_pool
 
     with _pool_lock:
         if _pool is not None:
@@ -111,14 +141,30 @@ def db_conn(*, tenant_id: str | None = None):
             pool.putconn(conn)
 
 
-def close_pool() -> None:
-    global _pool
-    if _pool is None:
-        return
+@contextmanager
+def workspace_db_conn(*, tenant_id: str):
+    """Use the non-owner, RLS-enforced role for workspace repository access."""
+    pool = _get_workspace_pool()
+    conn = pool.getconn()
     try:
-        _pool.closeall()
+        if getattr(conn, 'closed', 0):
+            pool.putconn(conn, close=True)
+            conn = pool.getconn()
+        _bind_tenant(conn, tenant_id)
+        yield conn
     finally:
-        _pool = None
+        _reset_connection(conn)
+        with suppress(Exception):
+            pool.putconn(conn)
+
+
+def close_pool() -> None:
+    global _pool, _workspace_pool
+    for pool in (_pool, _workspace_pool):
+        if pool is not None:
+            pool.closeall()
+    _pool = None
+    _workspace_pool = None
 
 
 def db_ping() -> bool:

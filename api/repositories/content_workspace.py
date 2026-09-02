@@ -9,7 +9,7 @@ from typing import Any
 from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
-from api.db import db_conn
+from api.db import workspace_db_conn as db_conn
 from api.security.content_workspace import CursorCodec, CursorError, canonical_digest
 from api.services.content_workspace_media import admit_upload
 from api.services.content_workspace_transfer import parse_csv, parse_json

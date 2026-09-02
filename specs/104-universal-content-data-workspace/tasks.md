@@ -227,6 +227,7 @@
 - [x] T190 Review and update only the changed Base2 hero visual baselines after the complete visual gate proved stable rendering of the intentional enabled-module count change from five to six; retain all geometry, overflow, accessibility, responsive, baseline-mutation, and hostile visual controls, then rerun the full visual matrix without ordinary-test baseline authority.
 - [x] T191 Raise Feature 104 changed-line coverage from the complete-gate result of 78.83% to the enforced 90% floor without exclusions or threshold reduction; add direct behavioral tests for the uncovered repository, route, worker, media, transfer, and React authorization/error/data-loss branches, rerun service-local coverage, and require the complete coverage policy to pass.
 - [x] T192 Repair the planning validator's completed-task gap mutation after T076 completion made its unchecked-only fixture inert; mutate the task identifier regardless of checkbox state and prove contiguous corrective-task validation still fails closed.
+- [ ] T193 Split the FastAPI and Celery database runtime away from the Django/PostgreSQL owner after implemented-system review confirmed the shared owner bypasses ordinary RLS; add a validated no-`BYPASSRLS` least-privilege role bootstrap, a forward migration that grants only required schema/table/sequence access, compose dependency ordering, pool-reset checks, and a real PostgreSQL acceptance matrix proving missing, wrong, rollback, reset, and cross-tenant contexts fail closed without breaking owner migrations.
 
 ## Dependencies and authority
 

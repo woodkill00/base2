@@ -214,6 +214,14 @@
       "requiredTools": ["{python-api}"]
     },
     {
+      "id": "workspace-postgres-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_workspace_postgres_contract"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["identity-postgres-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
       "id": "account-admin-browser",
       "command": ["npm", "--prefix", "react-app", "run", "test:account-e2e"],
       "required": true,

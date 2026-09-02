@@ -47,6 +47,8 @@ services:
       - DB_NAME=${POSTGRES_DB}
       - DB_USER=${POSTGRES_USER}
       - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - WORKSPACE_DB_USER=${WORKSPACE_DB_USER}
+      - WORKSPACE_DB_PASSWORD=${WORKSPACE_DB_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
       - TOKEN_PEPPER=${TOKEN_PEPPER}
       - IDENTITY_ENCRYPTION_KEY=${IDENTITY_ENCRYPTION_KEY}
@@ -57,6 +59,8 @@ services:
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
     networks: [app_network]
     depends_on:
+      django:
+        condition: service_healthy
       postgres:
         condition: service_healthy
       redis:
@@ -100,6 +104,7 @@ services:
       - DB_NAME=${POSTGRES_DB}
       - DB_USER=${POSTGRES_USER}
       - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - WORKSPACE_DB_USER=${WORKSPACE_DB_USER}
       - PORT=${DJANGO_PORT}
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
@@ -107,6 +112,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      workspace-db-role:
+        condition: service_completed_successfully
     volumes:
       - django_static:/app/static
     restart: unless-stopped
@@ -234,6 +241,27 @@ services:
     mem_limit: 1024m
     cpus: '1.0'
 
+  workspace-db-role:
+    image: postgres:${POSTGRES_VERSION}
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - WORKSPACE_DB_USER=${WORKSPACE_DB_USER}
+      - WORKSPACE_DB_PASSWORD=${WORKSPACE_DB_PASSWORD}
+    volumes:
+      - ./postgres/bootstrap-workspace-role.sh:/bootstrap-workspace-role.sh:ro
+    networks: [app_network]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ['/bin/sh', '/bootstrap-workspace-role.sh']
+    restart: 'no'
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: [/tmp]
+
   # pgAdmin (internal-only; routed via Traefik, guarded)
   pgadmin:
     image: dpage/pgadmin4:${PGADMIN_VERSION}
@@ -310,6 +338,8 @@ services:
       - DB_NAME=${POSTGRES_DB}
       - DB_USER=${POSTGRES_USER}
       - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - WORKSPACE_DB_USER=${WORKSPACE_DB_USER}
+      - WORKSPACE_DB_PASSWORD=${WORKSPACE_DB_PASSWORD}
       - TOKEN_PEPPER=${TOKEN_PEPPER}
       - IDENTITY_ENCRYPTION_KEY=${IDENTITY_ENCRYPTION_KEY}
       - CONTENT_WORKSPACE_STORAGE_ROOT=${CONTENT_WORKSPACE_STORAGE_ROOT}
@@ -322,6 +352,8 @@ services:
     volumes:
       - content_workspace_artifacts:/var/lib/base2/content-workspace
     depends_on:
+      django:
+        condition: service_healthy
       redis:
         condition: service_healthy
       postgres:
@@ -363,11 +395,15 @@ services:
       - DB_NAME=${POSTGRES_DB}
       - DB_USER=${POSTGRES_USER}
       - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - WORKSPACE_DB_USER=${WORKSPACE_DB_USER}
+      - WORKSPACE_DB_PASSWORD=${WORKSPACE_DB_PASSWORD}
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
       - CELERY_LOG_LEVEL=${CELERY_LOG_LEVEL}
     networks: [app_network]
     depends_on:
+      django:
+        condition: service_healthy
       redis:
         condition: service_healthy
       postgres:

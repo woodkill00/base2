@@ -146,6 +146,59 @@ def test_pool_checkout_resets_after_exception(monkeypatch):
     assert pool.returned == [(conn, False)]
 
 
+def test_workspace_pool_uses_a_separate_connection_and_resets_it(monkeypatch):
+    from api import db
+
+    conn = _Connection()
+    pool = _Pool(conn)
+    monkeypatch.setattr(db, "_workspace_pool", pool)
+    with db.workspace_db_conn(tenant_id="tenant-a") as checked_out:
+        assert checked_out is conn
+    assert conn.calls == [
+        ("SELECT set_config('app.tenant_id', %s, true)", ("tenant-a",))
+    ]
+    assert conn.rollbacks == conn.resets == 1
+    assert pool.returned == [(conn, False)]
+
+
+def test_workspace_pool_uses_only_the_dedicated_runtime_credentials(monkeypatch):
+    from api import db
+
+    for key, value in {
+        "DB_HOST": "db.internal",
+        "DB_PORT": "5433",
+        "DB_NAME": "base2",
+        "WORKSPACE_DB_USER": "workspace_runtime",
+        "WORKSPACE_DB_PASSWORD": "synthetic-private-password",
+    }.items():
+        monkeypatch.setenv(key, value)
+    assert db._build_workspace_dsn() == (
+        "postgresql://workspace_runtime:synthetic-private-password@db.internal:5433/base2"
+    )
+    monkeypatch.delenv("WORKSPACE_DB_PASSWORD")
+    with pytest.raises(RuntimeError, match="Missing WORKSPACE_DB_USER/WORKSPACE_DB_PASSWORD"):
+        db._build_workspace_dsn()
+
+
+def test_close_pool_closes_owner_and_workspace_pools(monkeypatch):
+    from api import db
+
+    class ClosingPool:
+        def __init__(self):
+            self.closed = 0
+
+        def closeall(self):
+            self.closed += 1
+
+    owner = ClosingPool()
+    workspace = ClosingPool()
+    monkeypatch.setattr(db, "_pool", owner)
+    monkeypatch.setattr(db, "_workspace_pool", workspace)
+    db.close_pool()
+    assert owner.closed == workspace.closed == 1
+    assert db._pool is db._workspace_pool is None
+
+
 def test_every_site_content_query_has_explicit_tenant_predicate_and_context():
     source = (Path(__file__).parents[2] / "repositories" / "site_content.py").read_text()
     assert source.count("db_conn(tenant_id=site_id)") == 6
@@ -167,6 +220,13 @@ def test_database_defense_status_cannot_claim_rls_before_role_separation():
     assert rls["status"] == "deferred"
     assert "dedicated-non-owner-runtime-role" in rls["activationRequirements"]
     assert "pool-reuse-reset-matrix" in rls["activationRequirements"]
+    assert policy["workspacePostgresqlRls"] == {
+        "status": "active",
+        "scope": "api/repositories/content_workspace.py",
+        "runtimeRole": "dedicated-non-owner-no-bypassrls",
+        "migrationRole": "django-owner",
+        "evidence": "scripts/python/run_workspace_postgres_acceptance.py",
+    }
 
 
 def test_tenant_rate_limit_uses_private_tenant_namespace(monkeypatch):

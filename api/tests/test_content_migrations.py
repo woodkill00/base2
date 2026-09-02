@@ -37,3 +37,13 @@ def test_workspace_rls_inventory_is_closed_and_migration_is_reversible():
     assert 'WITH CHECK' in text
     assert "current_setting('app.tenant_id', true)" in text
     assert 'disable_workspace_rls' in text
+
+
+def test_workspace_runtime_role_grants_are_closed_and_reversible():
+    text = (MIGRATIONS / '0009_workspace_runtime_role.py').read_text()
+    assert 'WORKSPACE_DB_USER' in text
+    assert 'workspace_runtime_role_missing' in text
+    assert 'GRANT SELECT, INSERT, UPDATE, DELETE' in text
+    assert 'REVOKE ALL PRIVILEGES' in text
+    assert 'BYPASSRLS' not in text
+    assert 'GRANT ALL' not in text

@@ -136,3 +136,15 @@ merge, deployment, DNS, certificates, provider resources, and live acceptance re
 and separately governed.
 
 **Current implementation status**: `IMPLEMENTATION_ACTIVE_NOT_PUBLISHED`
+
+## Cycle 8 - Exact-head database isolation review
+
+Finding:
+
+1. The exact-head complete gate passed, but the workspace RLS check remained a static migration inventory. The deployed compose contracts still supplied the table-owning PostgreSQL role to FastAPI and Celery. PostgreSQL owners bypass ordinary RLS, so this could not truthfully satisfy the planned second tenant boundary or T038 even though repository predicates and transaction-local tenant binding were present.
+
+Correction:
+
+- Added T193 to split migration ownership from API/worker runtime, provision a least-privilege no-`BYPASSRLS` role, grant it only the workspace access it needs, and prove real cross-tenant behavior against PostgreSQL including pool reset and rollback paths.
+
+**Cycle result**: `IMPLEMENTATION_FINDING_T193_OPEN`
