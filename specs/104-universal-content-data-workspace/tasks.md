@@ -136,17 +136,17 @@
 - [x] T111 Add upgrade and rollback tests from current `main`, empty database, populated fixtures, old generated profile, and interrupted migration checkpoints.
 - [x] T112 Add safe rollback and restore operator support through both Bash and PowerShell entrypoints if a new command is required.
 - [x] T113 Verify shell parity, fixed arguments, path confinement, no arbitrary command/environment injection, and redacted artifacts for T112.
-- [ ] T114 Run backup/restore, migration, rollback, retention, privacy, performance, and concurrency gates.
+- [x] T114 Run backup/restore, migration, rollback, retention, privacy, performance, and concurrency gates.
 - [x] T115 Record exact measured limits and operator recovery guidance in repository documentation.
-- [ ] T116 Verify no duplicate canonical media, capability, role, audit, job, or tenant vocabulary was introduced.
-- [ ] T117 Verify no public route exposes draft, private field, history, audit, owner identity, quarantined asset, or expiring internal URL.
-- [ ] T118 Verify cache keys, search documents, cursor payloads, and exported projections bind tenant/site/type/schema/permission digests.
-- [ ] T119 Verify every migration and background-job failure remains actionable, redacted, and explicitly non-successful.
+- [x] T116 Verify no duplicate canonical media, capability, role, audit, job, or tenant vocabulary was introduced.
+- [x] T117 Verify no public route exposes draft, private field, history, audit, owner identity, quarantined asset, or expiring internal URL.
+- [x] T118 Verify cache keys, search documents, cursor payloads, and exported projections bind tenant/site/type/schema/permission digests.
+- [x] T119 Verify every migration and background-job failure remains actionable, redacted, and explicitly non-successful.
 
 ## Phase 8 - Security, accessibility, visual, and full gates
 
-- [ ] T120 Run direct tenant-crossing, role/object authorization, CSRF, IDOR, replay, concurrency, and anti-enumeration tests.
-- [ ] T121 Run injection, XSS, structured-rich-text, mass-assignment, overfetching, unsafe URL, SSRF-boundary, path, MIME, archive, and CSV-formula tests.
+- [x] T120 Run direct tenant-crossing, role/object authorization, CSRF, IDOR, replay, concurrency, and anti-enumeration tests.
+- [x] T121 Run injection, XSS, structured-rich-text, mass-assignment, overfetching, unsafe URL, SSRF-boundary, path, MIME, archive, and CSV-formula tests.
 - [ ] T122 Run dependency, static analysis, Semgrep, package audit, license, SBOM, supply-chain, and container/configuration security gates.
 - [ ] T123 Run tracked, staged, history, artifact, screenshot, log, export, and fixture secret/private-data scans with zero findings.
 - [x] T124 Add deterministic synthetic visual fixtures for all field kinds, states, jobs, media outcomes, relationships, presets, errors, and long/RTL content.
