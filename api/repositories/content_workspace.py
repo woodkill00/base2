@@ -2066,6 +2066,7 @@ class PostgresContentWorkspaceRepository:
                             status, mapping, duplicate_policy, atomic_policy, created_at, updated_at)
                            VALUES (%s,%s,%s,%s,%s,%s,%s,'','{}'::jsonb,NULL,%s,%s,'','uploaded',
                                    %s::jsonb,%s,%s,NOW(),NOW())
+                           ON CONFLICT (site_id, idempotency_key) DO NOTHING
                            RETURNING id, status, schema_version, counters, error_code""",
                         (
                             str(job_id),
@@ -2083,6 +2084,36 @@ class PostgresContentWorkspaceRepository:
                         ),
                     )
                     created = cur.fetchone()
+                    if not created:
+                        cur.execute(
+                            """SELECT j.id, j.status, j.schema_version, j.counters, j.error_code,
+                                      j.request_digest, j.source_object_key
+                               FROM sitecontent_importjob j
+                               JOIN sitecontent_contenttypedefinition d ON d.id=j.definition_id
+                               WHERE j.site_id=%s AND d.site_id=%s AND d.type_key=%s
+                                 AND j.requester_ref=%s AND j.idempotency_key=%s""",
+                            (site_id, site_id, type_key, requester_ref, idempotency_key),
+                        )
+                        concurrent = cur.fetchone()
+                        if not concurrent or concurrent[5] != request_digest:
+                            raise ValueError('content_idempotency_conflict')
+                        return {
+                            **self._job_result(concurrent[:5]),
+                            'replayed': True,
+                            'sourceReady': bool(concurrent[6]),
+                            **(
+                                {}
+                                if concurrent[6]
+                                else self._import_upload_grant(
+                                    site_id=site_id,
+                                    type_key=type_key,
+                                    requester_ref=requester_ref,
+                                    job_id=concurrent[0],
+                                    source_sha256=payload['source_sha256'],
+                                    source_format=payload['format'],
+                                )
+                            ),
+                        }
                     _audit(
                         cur,
                         site_id=site_id,
@@ -2534,6 +2565,7 @@ class PostgresContentWorkspaceRepository:
                             created_at, updated_at)
                            VALUES (%s,%s,%s,%s,%s,%s,%s,'','{}'::jsonb,NULL,'queued',%s,%s,
                                    '','',NOW()+INTERVAL '1 hour',%s::jsonb,NOW(),NOW())
+                           ON CONFLICT (site_id, idempotency_key) DO NOTHING
                            RETURNING id, status, schema_version, counters, error_code, output_sha256""",
                         (
                             str(job_id),
@@ -2549,6 +2581,20 @@ class PostgresContentWorkspaceRepository:
                         ),
                     )
                     created = cur.fetchone()
+                    if not created:
+                        cur.execute(
+                            """SELECT j.id, j.status, j.schema_version, j.counters, j.error_code,
+                                      j.output_sha256, j.request_digest
+                               FROM sitecontent_exportjob j
+                               JOIN sitecontent_contenttypedefinition d ON d.id=j.definition_id
+                               WHERE j.site_id=%s AND d.site_id=%s AND d.type_key=%s
+                                 AND j.requester_ref=%s AND j.idempotency_key=%s""",
+                            (site_id, site_id, type_key, requester_ref, idempotency_key),
+                        )
+                        concurrent = cur.fetchone()
+                        if not concurrent or concurrent[6] != request_digest:
+                            raise ValueError('content_idempotency_conflict')
+                        return {**self._job_result(concurrent[:6]), 'replayed': True}
                     _audit(
                         cur,
                         site_id=site_id,

@@ -58,7 +58,7 @@
 - [ ] T045 Add failing cursor binding, stable ordering, page cap, sparse-field, filter, sort, expansion, and query-cost tests.
 - [x] T046 Add failing search scope, permission, injection, stale-index, degraded, and unavailable tests.
 - [ ] T047 Add failing saved-view private/shared/revalidation and schema-change tests.
-- [ ] T048 Add failing idempotency digest, replay, conflict, expiry, and concurrent-request tests.
+- [x] T048 Add failing idempotency digest, replay, conflict, expiry, and concurrent-request tests.
 - [ ] T049 Add failing mass-assignment, overfetching, unknown-key, oversized-body, nesting, decimal, timestamp, and locale tests.
 - [ ] T050 Verify the ordered Django migration creates the exact PostgreSQL workspace schema and RLS prerequisites consumed by FastAPI; add no duplicate API migration.
 - [ ] T051 Extend `api/repositories/site_content.py` with scoped transactions, authenticated-tenant-to-`site_id` equality, and no unsafe autocommit changes.
@@ -205,6 +205,7 @@
 - [x] T168 Fail closed when a saved view's definition version is no longer the currently published schema, while rechecking tenant, type, owner/role sharing, query fields, and bounds at each execution.
 - [x] T169 Add an executable Django migration round trip after analysis found only static migration inspection; prove legacy records survive reverse/forward transitions and verify final defaults, constraints, indexes, and restored latest state.
 - [x] T170 Add the missing authenticated search interface over the durable index; bind tenant/type/query/page to an opaque cursor, escape wildcard input, exclude deleted/tombstoned rows, report stale evidence explicitly, and return a redacted non-successful dependency error instead of silent empty results.
+- [x] T171 Close the import/export idempotency race by using PostgreSQL conflict arbitration and re-reading the committed winner; accept only an identical tenant/type/requester/request digest and return a true replay while conflicting payloads remain rejected.
 
 ## Dependencies and authority
 

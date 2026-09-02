@@ -487,6 +487,133 @@ def test_import_source_completion_validates_parses_encrypts_and_marks_ready(monk
     assert 'sitecontent_workspaceauditevent' in sql
 
 
+def test_concurrent_import_creation_converges_to_the_committed_replay(monkeypatch):
+    monkeypatch.setattr(repository.settings, 'TOKEN_PEPPER', 'synthetic-test-pepper-104')
+    job_id = UUID(int=5104)
+    payload = {
+        'format': 'json',
+        'source_sha256': 'b' * 64,
+        'schema_version': 1,
+        'mapping': {},
+        'duplicate_policy': 'review',
+        'atomic_policy': 'all_or_nothing',
+    }
+    request_digest = repository.canonical_digest(
+        {
+            'operation': 'import',
+            'site': 'site-a',
+            'type': 'article',
+            'requester': 'user:test',
+            'payload': payload,
+        }
+    )
+
+    class RaceCursor(Cursor):
+        def __init__(self):
+            super().__init__()
+            self.statement = ''
+            self.replay_reads = 0
+
+        def execute(self, sql, params=()):
+            super().execute(sql, params)
+            self.statement = ' '.join(sql.split())
+
+        def fetchone(self):
+            if self.statement.startswith('SELECT j.id'):
+                self.replay_reads += 1
+                if self.replay_reads == 1:
+                    return None
+                return (job_id, 'uploaded', 1, {}, '', request_digest, '')
+            if self.statement.startswith('SELECT id, version'):
+                return (UUID(int=2104), 1)
+            if self.statement.startswith('INSERT INTO sitecontent_importjob'):
+                return None
+            return None
+
+        def fetchall(self):
+            return []
+
+    cursor = RaceCursor()
+    connection = Connection(cursor)
+    bind(monkeypatch, connection)
+    result = repository.PostgresContentWorkspaceRepository().create_import(
+        site_id='site-a',
+        type_key='article',
+        requester_ref='user:test',
+        idempotency_key='concurrent-import-104',
+        payload=payload,
+    )
+    assert result['id'] == str(job_id) and result['replayed'] is True
+    assert result['uploadGrant']
+    insert_sql = next(sql for sql, _ in cursor.calls if 'INSERT INTO sitecontent_importjob' in sql)
+    assert 'ON CONFLICT (site_id, idempotency_key) DO NOTHING' in insert_sql
+    assert connection.commits == 0
+
+
+def test_concurrent_export_creation_converges_to_the_committed_replay(monkeypatch):
+    job_id = UUID(int=6104)
+    payload = {'format': 'json', 'schema_version': 1, 'fields': ['title']}
+    request_digest = repository.canonical_digest(
+        {
+            'operation': 'export',
+            'site': 'site-a',
+            'type': 'article',
+            'requester': 'user:test',
+            'payload': payload,
+        }
+    )
+
+    class RaceCursor(Cursor):
+        def __init__(self):
+            super().__init__()
+            self.statement = ''
+            self.replay_reads = 0
+
+        def execute(self, sql, params=()):
+            super().execute(sql, params)
+            self.statement = ' '.join(sql.split())
+
+        def fetchone(self):
+            if self.statement.startswith('SELECT j.id'):
+                self.replay_reads += 1
+                if self.replay_reads == 1:
+                    return None
+                return (job_id, 'queued', 1, {}, '', '', request_digest)
+            if self.statement.startswith('SELECT id, version'):
+                return (UUID(int=2104), 1)
+            if self.statement.startswith('INSERT INTO sitecontent_exportjob'):
+                return None
+            return None
+
+        def fetchall(self):
+            if self.statement.startswith('SELECT field_key'):
+                return [('title', 'short_text', True, False, None, {})]
+            return []
+
+    cursor = RaceCursor()
+    connection = Connection(cursor)
+    bind(monkeypatch, connection)
+    result = repository.PostgresContentWorkspaceRepository().create_export(
+        site_id='site-a',
+        type_key='article',
+        requester_ref='user:test',
+        idempotency_key='concurrent-export-104',
+        payload=payload,
+    )
+    assert result == {
+        'id': str(job_id),
+        'status': 'queued',
+        'schemaVersion': 1,
+        'counters': {},
+        'errorCode': '',
+        'outputSha256': '',
+        'replayed': True,
+    }
+    insert_sql = next(sql for sql, _ in cursor.calls if 'INSERT INTO sitecontent_exportjob' in sql)
+    assert 'ON CONFLICT (site_id, idempotency_key) DO NOTHING' in insert_sql
+    assert connection.commits == 0
+
+
 def test_query_compiler_rejects_unknown_fields_operators_and_excess_complexity():
     allowed = {'title': 'short_text', 'published_at': 'datetime'}
     sql, params = repository.compile_filters(
