@@ -16,6 +16,7 @@ from sitecontent.models import (
     ContentTypeDefinition,
     ExportJob,
     ImportJob,
+    ImportRowOutcome,
     SavedView,
     WorkflowDefinition,
     WorkspaceAuditEvent,
@@ -79,6 +80,40 @@ def test_field_definitions_use_closed_kinds_and_bounded_configuration():
     field.validation = {"regularExpression": ".*"}
     with pytest.raises(ValidationError, match="field_validation_key_invalid"):
         field.full_clean()
+
+
+def test_field_bounds_defaults_and_relationship_metadata_fail_closed():
+    content_type = definition()
+    relation = ContentFieldDefinition(
+        definition=content_type,
+        field_key="authors",
+        label="Authors",
+        field_kind="references",
+        validation={
+            "targetType": "person",
+            "maximumItems": 3,
+            "deletionPolicy": "restrict",
+            "maximumDepth": 2,
+        },
+        presentation={"renderer": "relationship"},
+    )
+    relation.full_clean()
+    relation.validation["maximumItems"] = 51
+    with pytest.raises(ValidationError, match="field_validation_bound_invalid"):
+        relation.full_clean()
+    relation.validation = {"targetType": "Person"}
+    with pytest.raises(ValidationError, match="field_relationship_invalid"):
+        relation.full_clean()
+    number = ContentFieldDefinition(
+        definition=content_type,
+        field_key="price",
+        label="Price",
+        field_kind="decimal",
+        default_value="4.50",
+        validation={"minimum": 5, "maximum": 2},
+    )
+    with pytest.raises(ValidationError, match="field_validation_bound_invalid"):
+        number.full_clean()
 
 
 def test_workflow_graph_rejects_unknown_states_actions_and_destinations():
@@ -403,3 +438,116 @@ def test_workspace_audit_metadata_rejects_sensitive_keys():
     event.metadata = {"token": "not-allowed"}
     with pytest.raises(ValidationError, match="audit_metadata_key_invalid"):
         event.full_clean()
+
+
+def test_relationship_rejects_wrong_declared_target_and_excess_cardinality():
+    source_type = definition(status="published")
+    target_type = ContentTypeDefinition.objects.create(
+        site_id="site-a", type_key="person", version=1, name="Person", status="published"
+    )
+    source = ContentRecord.objects.create(
+        site_id="site-a",
+        content_type="article",
+        slug="source-two",
+        title="Source",
+        definition=source_type,
+    )
+    first = ContentRecord.objects.create(
+        site_id="site-a",
+        content_type="person",
+        slug="first",
+        title="First",
+        definition=target_type,
+    )
+    wrong = ContentRecord.objects.create(
+        site_id="site-a",
+        content_type="article",
+        slug="wrong",
+        title="Wrong",
+        definition=source_type,
+    )
+    ContentRelationship.objects.create(
+        site_id="site-a",
+        source=source,
+        target=first,
+        field_key="author",
+        target_type="person",
+        maximum_items=1,
+    )
+    invalid_type = ContentRelationship(
+        site_id="site-a",
+        source=source,
+        target=wrong,
+        field_key="editor",
+        target_type="person",
+        maximum_items=1,
+    )
+    with pytest.raises(ValidationError, match="relationship_target_type_invalid"):
+        invalid_type.full_clean()
+    excess = ContentRelationship(
+        site_id="site-a",
+        source=source,
+        target=wrong,
+        field_key="author",
+        target_type="article",
+        maximum_items=1,
+    )
+    with pytest.raises(ValidationError, match="relationship_cardinality_invalid"):
+        excess.full_clean()
+
+
+def test_import_row_outcome_is_bounded_scoped_and_unique():
+    content_type = definition(status="published")
+    job = ImportJob.objects.create(
+        site_id="site-a",
+        definition=content_type,
+        requester_ref="user:test",
+        source_sha256="b" * 64,
+        request_digest="c" * 64,
+        idempotency_key="import-row-001",
+        schema_version=1,
+    )
+    outcome = ImportRowOutcome(
+        site_id="site-a",
+        job=job,
+        ordinal=1,
+        source_row_sha256="d" * 64,
+        proposed_action="create",
+        field_issues=[{"field": "title", "code": "required"}],
+        candidate_ids=[],
+    )
+    outcome.full_clean()
+    outcome.field_issues = [{"field": "title", "message": "raw submitted secret"}]
+    with pytest.raises(ValidationError, match="import_row_issue_invalid"):
+        outcome.full_clean()
+
+
+def test_jobs_reject_invalid_terminal_transitions_and_audit_is_immutable():
+    content_type = definition(status="published")
+    job = ImportJob.objects.create(
+        site_id="site-a",
+        definition=content_type,
+        requester_ref="user:test",
+        source_sha256="b" * 64,
+        request_digest="c" * 64,
+        idempotency_key="import-state-001",
+        schema_version=1,
+    )
+    job.transition_status("parsing")
+    job.transition_status("mapped")
+    job.transition_status("validated")
+    job.transition_status("committing")
+    job.transition_status("completed")
+    with pytest.raises(ValidationError, match="content_job_terminal"):
+        job.transition_status("failed")
+    event = WorkspaceAuditEvent.objects.create(
+        site_id="site-a",
+        actor_ref="user:test",
+        object_type="import_job",
+        object_ref=str(job.id),
+        action="content.import",
+        outcome="accepted",
+    )
+    event.outcome = "changed"
+    with pytest.raises(ValidationError, match="audit_event_immutable"):
+        event.save()

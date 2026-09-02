@@ -8,7 +8,13 @@ from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import ValidationError
-from django.core.validators import EmailValidator, MinValueValidator, RegexValidator, URLValidator
+from django.core.validators import (
+    EmailValidator,
+    MaxValueValidator,
+    MinValueValidator,
+    RegexValidator,
+    URLValidator,
+)
 from django.db import models, transaction
 from django.utils import timezone
 
@@ -254,6 +260,8 @@ class ContentFieldDefinition(models.Model):
         "choices",
         "maximumItems",
         "maximumDepth",
+        "targetType",
+        "deletionPolicy",
     }
     PRESENTATION_KEYS = {"renderer", "width", "helpText", "placeholder", "group"}
     RENDERERS = {
@@ -299,7 +307,7 @@ class ContentFieldDefinition(models.Model):
         ]
         ordering = ["definition_id", "order", "field_key"]
 
-    def clean(self) -> None:
+    def clean(self) -> None:  # noqa: C901 - closed schema validation dispatch
         super().clean()
         if self.field_kind not in self.FIELD_KINDS:
             raise ValidationError({"field_kind": "field_kind_invalid"})
@@ -318,6 +326,51 @@ class ContentFieldDefinition(models.Model):
             raise ValidationError({"presentation": "field_renderer_invalid"})
         if self.required and self.nullable:
             raise ValidationError({"nullable": "required_field_cannot_be_nullable"})
+        minimum = self.validation.get("minimum")
+        maximum = self.validation.get("maximum")
+        if minimum is not None and maximum is not None:
+            try:
+                if Decimal(str(minimum)) > Decimal(str(maximum)):
+                    raise ValidationError("field_validation_bound_invalid")
+            except (InvalidOperation, ValueError):
+                raise ValidationError("field_validation_bound_invalid") from None
+        if "minLength" in self.validation or "maxLength" in self.validation:
+            min_length = self.validation.get("minLength", 0)
+            max_length = self.validation.get("maxLength", 20_000)
+            if (
+                not isinstance(min_length, int)
+                or isinstance(min_length, bool)
+                or not isinstance(max_length, int)
+                or isinstance(max_length, bool)
+                or min_length < 0
+                or max_length > 20_000
+                or min_length > max_length
+            ):
+                raise ValidationError("field_validation_bound_invalid")
+        if "maximumItems" in self.validation:
+            maximum_items = self.validation["maximumItems"]
+            if (
+                not isinstance(maximum_items, int)
+                or isinstance(maximum_items, bool)
+                or not 1 <= maximum_items <= 50
+            ):
+                raise ValidationError("field_validation_bound_invalid")
+        relationship_keys = {"targetType", "deletionPolicy", "maximumDepth"}
+        if relationship_keys & set(self.validation):
+            if self.field_kind not in {"reference", "references"}:
+                raise ValidationError("field_relationship_invalid")
+            target_type = self.validation.get("targetType")
+            deletion_policy = self.validation.get("deletionPolicy", "restrict")
+            maximum_depth = self.validation.get("maximumDepth", 2)
+            if (
+                not isinstance(target_type, str)
+                or not re.fullmatch(r"[a-z][a-z0-9_]{1,62}", target_type)
+                or deletion_policy not in {"restrict", "detach", "cascade_soft"}
+                or not isinstance(maximum_depth, int)
+                or isinstance(maximum_depth, bool)
+                or not 1 <= maximum_depth <= 2
+            ):
+                raise ValidationError("field_relationship_invalid")
         if self.default_value is not None:
             self.validate_value(self.default_value)
 
@@ -775,6 +828,15 @@ class ContentRelationship(SiteOwnedModel):
     deletion_policy = models.CharField(
         max_length=16, choices=[(item, item) for item in DELETION_POLICIES], default="restrict"
     )
+    target_type = models.CharField(
+        max_length=63, blank=True, default="", validators=[content_identifier_validator]
+    )
+    maximum_items = models.PositiveSmallIntegerField(
+        default=50, validators=[MinValueValidator(1), MaxValueValidator(50)]
+    )
+    maximum_depth = models.PositiveSmallIntegerField(
+        default=2, validators=[MinValueValidator(1), MaxValueValidator(2)]
+    )
 
     class Meta:
         constraints = [
@@ -798,6 +860,19 @@ class ContentRelationship(SiteOwnedModel):
                 raise ValidationError("relationship_scope_invalid")
             if self.target.deleted_at is not None:
                 raise ValidationError("relationship_target_deleted")
+            if self.target_type and self.target.content_type != self.target_type:
+                raise ValidationError("relationship_target_type_invalid")
+            existing = ContentRelationship.objects.filter(
+                source=self.source, field_key=self.field_key
+            )
+            if self.pk:
+                existing = existing.exclude(pk=self.pk)
+            if existing.count() >= self.maximum_items:
+                raise ValidationError("relationship_cardinality_invalid")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
 
 class SavedView(SiteOwnedModel):
@@ -924,6 +999,72 @@ class ImportJob(WorkspaceJob):
                 fields=["site_id", "idempotency_key"], name="sitecontent_import_replay_uq"
             ),
         ]
+
+    TRANSITIONS = {
+        "uploaded": {"parsing", "cancelled", "failed"},
+        "parsing": {"mapped", "failed", "cancelled"},
+        "mapped": {"validated", "review_required", "failed", "cancelled"},
+        "validated": {"committing", "cancelled", "failed"},
+        "review_required": {"validated", "cancelled", "failed"},
+        "committing": {"completed", "failed"},
+        "completed": set(),
+        "failed": set(),
+        "cancelled": set(),
+    }
+
+    def transition_status(self, destination: str) -> None:
+        if destination not in self.TRANSITIONS.get(self.status, set()):
+            if self.status in {"completed", "failed", "cancelled"}:
+                raise ValidationError("content_job_terminal")
+            raise ValidationError("content_job_transition_invalid")
+        self.status = destination
+        if destination in {"completed", "failed", "cancelled"}:
+            self.completed_at = timezone.now()
+        self.full_clean()
+        self.save(update_fields=["status", "completed_at", "updated_at"])
+
+
+class ImportRowOutcome(SiteOwnedModel):
+    ACTIONS = ("create", "update", "skip", "review", "reject")
+    ISSUE_KEYS = {"field", "code"}
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    job = models.ForeignKey(ImportJob, on_delete=models.CASCADE, related_name="row_outcomes")
+    ordinal = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    source_row_sha256 = models.CharField(max_length=64, validators=[sha256_validator])
+    proposed_action = models.CharField(max_length=16, choices=[(item, item) for item in ACTIONS])
+    field_issues = models.JSONField(default=list, blank=True)
+    exact_match_id = models.UUIDField(null=True, blank=True)
+    candidate_ids = models.JSONField(default=list, blank=True)
+    result_record_id = models.UUIDField(null=True, blank=True)
+    result_version = models.PositiveIntegerField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["job", "ordinal"], name="sitecontent_import_row_ordinal_uq"
+            )
+        ]
+        ordering = ["job_id", "ordinal"]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.job_id and self.job.site_id != self.site_id:
+            raise ValidationError("workspace_job_scope_invalid")
+        if (
+            not isinstance(self.field_issues, list)
+            or len(self.field_issues) > 128
+            or any(
+                not isinstance(item, dict)
+                or set(item) != self.ISSUE_KEYS
+                or not re.fullmatch(r"[a-z][a-z0-9_]{1,62}", str(item.get("field", "")))
+                or not re.fullmatch(r"[a-z][a-z0-9_]{1,62}", str(item.get("code", "")))
+                for item in self.field_issues
+            )
+        ):
+            raise ValidationError("import_row_issue_invalid")
+        if not isinstance(self.candidate_ids, list) or len(self.candidate_ids) > 10:
+            raise ValidationError("import_row_candidate_invalid")
 
 
 class ExportJob(WorkspaceJob):

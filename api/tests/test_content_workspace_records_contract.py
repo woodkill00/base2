@@ -18,6 +18,16 @@ class FakeRecordRepository:
         self.calls.append(('list', kwargs))
         return {'items': [], 'nextCursor': None}
 
+    def get_record(self, **kwargs):
+        self.calls.append(('detail', kwargs))
+        return {
+            'id': str(kwargs['record_id']),
+            'siteId': kwargs['site_id'],
+            'typeKey': kwargs['type_key'],
+            'version': 3,
+            'state': 'draft',
+        }
+
     def create_record(self, **kwargs):
         self.calls.append(('create', kwargs))
         return {
@@ -73,6 +83,22 @@ class FakeRecordRepository:
             'id': '00000000-0000-0000-0000-000000004104',
             'visibility': kwargs['payload']['visibility'],
         }
+
+    def get_view(self, **kwargs):
+        self.calls.append(('view-detail', kwargs))
+        return {'id': str(kwargs['view_id']), 'lockVersion': 1, 'visibility': 'private'}
+
+    def update_view(self, **kwargs):
+        self.calls.append(('view-update', kwargs))
+        return {'id': str(kwargs['view_id']), 'lockVersion': kwargs['expected_version'] + 1}
+
+    def delete_view(self, **kwargs):
+        self.calls.append(('view-delete', kwargs))
+        return {'id': str(kwargs['view_id']), 'deleted': True}
+
+    def execute_view(self, **kwargs):
+        self.calls.append(('view-execute', kwargs))
+        return {'items': [], 'nextCursor': None}
 
 
 @pytest.fixture(autouse=True)
@@ -187,3 +213,51 @@ def test_history_restore_and_saved_views_remain_scoped_and_closed():
         json={'title': 'Unsafe', 'query': {'sql': 'select secrets'}},
     )
     assert unsafe.status_code == 422
+
+
+def test_record_detail_and_saved_view_lifecycle_are_owner_and_version_bound():
+    client = TestClient(app)
+    headers = {'Authorization': 'Bearer synthetic', 'X-Tenant-ID': 'site-a'}
+    record_id = '00000000-0000-0000-0000-000000003104'
+    view_id = '00000000-0000-0000-0000-000000004104'
+    detail = client.get(f'/api/content/v1/types/article/records/{record_id}', headers=headers)
+    assert detail.status_code == 200 and detail.json()['version'] == 3
+    assert (
+        client.get(f'/api/content/v1/types/article/views/{view_id}', headers=headers).status_code
+        == 200
+    )
+    changed = client.patch(
+        f'/api/content/v1/types/article/views/{view_id}',
+        headers={**headers, 'If-Match': '"1"'},
+        json={'title': 'Changed'},
+    )
+    assert changed.status_code == 200 and changed.json()['lockVersion'] == 2
+    assert (
+        client.post(
+            f'/api/content/v1/types/article/views/{view_id}/execute', headers=headers
+        ).status_code
+        == 200
+    )
+    assert (
+        client.delete(
+            f'/api/content/v1/types/article/views/{view_id}?expected_version=2', headers=headers
+        ).status_code
+        == 200
+    )
+    assert all(call[1]['site_id'] == 'site-a' for call in FakeRecordRepository.calls)
+
+
+def test_saved_view_patch_requires_optimistic_version_and_rejects_unknown_keys():
+    client = TestClient(app)
+    headers = {'Authorization': 'Bearer synthetic', 'X-Tenant-ID': 'site-a'}
+    view_id = '00000000-0000-0000-0000-000000004104'
+    endpoint = f'/api/content/v1/types/article/views/{view_id}'
+    assert client.patch(endpoint, headers=headers, json={'title': 'Changed'}).status_code == 428
+    assert (
+        client.patch(
+            endpoint,
+            headers={**headers, 'If-Match': '"1"'},
+            json={'title': 'Changed', 'command': 'unsafe'},
+        ).status_code
+        == 422
+    )

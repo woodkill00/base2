@@ -6,7 +6,7 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Header, HTTPException, Path, Query, Request, status
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from api.middleware.tenant import require_tenant
 from api.repositories.content_workspace import PostgresContentWorkspaceRepository
@@ -101,6 +101,8 @@ class FieldDefinition(ContractModel):
             'choices',
             'maximumItems',
             'maximumDepth',
+            'targetType',
+            'deletionPolicy',
         }
         if len(value) > 32 or set(value) - allowed:
             raise ValueError('field_validation_key_invalid')
@@ -188,8 +190,110 @@ class SavedViewCreate(ContractModel):
         return value
 
 
+class SavedViewUpdate(ContractModel):
+    title: str | None = Field(default=None, min_length=1, max_length=120)
+    query: QueryDescription | None = None
+    visibility: Literal['private', 'role_shared'] | None = None
+    shared_roles: list[Literal['owner', 'admin', 'editor', 'viewer']] | None = Field(
+        default=None, max_length=4
+    )
+    expected_version: int | None = Field(default=None, ge=1)
+
+    @field_validator('shared_roles')
+    @classmethod
+    def distinct_roles(cls, value: list[str] | None) -> list[str] | None:
+        if value is not None and len(value) != len(set(value)):
+            raise ValueError('saved_view_roles_invalid')
+        return value
+
+    @model_validator(mode='after')
+    def has_mutation(self):
+        if all(
+            value is None for value in (self.title, self.query, self.visibility, self.shared_roles)
+        ):
+            raise ValueError('saved_view_update_empty')
+        return self
+
+
 class RestoreRequest(ContractModel):
     expected_version: int = Field(ge=1)
+
+
+class ImportCreate(ContractModel):
+    source_sha256: str = Field(pattern=r'^[a-f0-9]{64}$')
+    schema_version: int = Field(ge=1)
+    mapping: dict[str, str] = Field(default_factory=dict)
+    duplicate_policy: Literal['review', 'skip_exact', 'update_exact'] = 'review'
+    atomic_policy: Literal['all_or_nothing', 'valid_rows'] = 'all_or_nothing'
+
+    @field_validator('mapping')
+    @classmethod
+    def bounded_mapping(cls, value: dict[str, str]) -> dict[str, str]:
+        if (
+            len(value) > 128
+            or any(not key or len(key) > 120 for key in value)
+            or any(not IDENTIFIER.fullmatch(target) for target in value.values())
+        ):
+            raise ValueError('content_schema_invalid')
+        return value
+
+
+class ExportCreate(ContractModel):
+    format: Literal['json', 'csv'] = 'json'
+    schema_version: int = Field(ge=1)
+    fields: list[str] = Field(default_factory=list, max_length=64)
+
+    @field_validator('fields')
+    @classmethod
+    def bounded_fields(cls, value: list[str]) -> list[str]:
+        if len(value) != len(set(value)) or any(not IDENTIFIER.fullmatch(item) for item in value):
+            raise ValueError('content_schema_invalid')
+        return value
+
+
+class AssetUploadCreate(ContractModel):
+    filename: str = Field(min_length=1, max_length=200)
+    media_type: Literal['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+    byte_size: int = Field(ge=1, le=10 * 1024 * 1024)
+    sha256: str = Field(pattern=r'^[a-f0-9]{64}$')
+
+    @field_validator('filename')
+    @classmethod
+    def safe_filename(cls, value: str) -> str:
+        if (
+            '/' in value
+            or '\\' in value
+            or value in {'.', '..'}
+            or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._ -]{0,199}', value)
+        ):
+            raise ValueError('content_media_filename_invalid')
+        return value
+
+
+class AssetBindingCreate(ContractModel):
+    asset_id: UUID
+    expected_version: int = Field(ge=1)
+    alt_text: str = Field(default='', max_length=500)
+    caption: str = Field(default='', max_length=2_000)
+    credit: str = Field(default='', max_length=500)
+    order: int = Field(default=0, ge=0, le=50)
+    focal_x: float | None = Field(default=None, ge=0, le=1)
+    focal_y: float | None = Field(default=None, ge=0, le=1)
+
+
+class RelationshipCreate(ContractModel):
+    field_key: str = Field(min_length=2, max_length=63)
+    target_id: UUID
+    expected_version: int = Field(ge=1)
+    order: int = Field(default=0, ge=0, le=50)
+    deletion_policy: Literal['restrict', 'detach', 'cascade_soft'] = 'restrict'
+
+    @field_validator('field_key')
+    @classmethod
+    def safe_field_key(cls, value: str) -> str:
+        if not IDENTIFIER.fullmatch(value):
+            raise ValueError('content_identifier_invalid')
+        return value
 
 
 TRANSITION_ACTIONS = {
@@ -222,18 +326,21 @@ def _scope(request: Request):
     return principal, tenant
 
 
-def authorize(*, principal, site_id: str, permission: str) -> None:
+def authorize(*, principal, site_id: str, permission: str):
     from api.repositories.identity_admin import require_permission
 
     try:
-        require_permission(user_id=principal.user_id, tenant_id=site_id, permission=permission)
+        return require_permission(
+            user_id=principal.user_id, tenant_id=site_id, permission=permission
+        )
     except PermissionError as exc:
         raise HTTPException(status_code=404, detail='content_not_found') from exc
 
 
 def _authorized_scope(request: Request, permission: str):
     principal, tenant = _scope(request)
-    authorize(principal=principal, site_id=tenant, permission=permission)
+    membership = authorize(principal=principal, site_id=tenant, permission=permission)
+    request.state.content_workspace_role = membership.get('role') if membership else None
     return principal, tenant
 
 
@@ -246,6 +353,11 @@ def _expected_version(if_match: str | None, body_version: int | None = None) -> 
     if not candidate.isdigit() or int(candidate) < 1:
         raise HTTPException(status_code=422, detail='content_expected_version_invalid')
     return int(candidate)
+
+
+def _valid_type_key(type_key: str) -> None:
+    if not IDENTIFIER.fullmatch(type_key):
+        raise HTTPException(status_code=422, detail='content_identifier_invalid')
 
 
 @router.get('/capabilities')
@@ -306,6 +418,7 @@ def create_type(payload: DefinitionCreate, request: Request):
 
 @router.get('/types/{type_key}/versions/{version}')
 def get_type(type_key: str, version: Annotated[int, Path(ge=1)], request: Request):
+    _valid_type_key(type_key)
     _, tenant = _authorized_scope(request, 'content-workspace.read')
     try:
         return get_repository().get_definition(site_id=tenant, type_key=type_key, version=version)
@@ -316,7 +429,8 @@ def get_type(type_key: str, version: Annotated[int, Path(ge=1)], request: Reques
 
 
 @router.post('/types/{type_key}/versions/{version}/preview')
-def preview_type(type_key: str, version: int, request: Request):
+def preview_type(type_key: str, version: Annotated[int, Path(ge=1)], request: Request):
+    _valid_type_key(type_key)
     _, tenant = _authorized_scope(request, 'content-workspace.write')
     try:
         return get_repository().preview_definition(
@@ -329,7 +443,13 @@ def preview_type(type_key: str, version: int, request: Request):
 
 
 @router.post('/types/{type_key}/versions/{version}/publish')
-def publish_type(type_key: str, version: int, payload: DefinitionMutation, request: Request):
+def publish_type(
+    type_key: str,
+    version: Annotated[int, Path(ge=1)],
+    payload: DefinitionMutation,
+    request: Request,
+):
+    _valid_type_key(type_key)
     principal, tenant = _authorized_scope(request, 'content-workspace.write')
     try:
         return get_repository().publish_definition(
@@ -348,7 +468,13 @@ def publish_type(type_key: str, version: int, payload: DefinitionMutation, reque
 
 
 @router.post('/types/{type_key}/versions/{version}/retire')
-def retire_type(type_key: str, version: int, payload: DefinitionMutation, request: Request):
+def retire_type(
+    type_key: str,
+    version: Annotated[int, Path(ge=1)],
+    payload: DefinitionMutation,
+    request: Request,
+):
+    _valid_type_key(type_key)
     principal, tenant = _authorized_scope(request, 'content-workspace.write')
     try:
         return get_repository().retire_definition(
@@ -373,8 +499,7 @@ def list_records(
     cursor: str | None = Query(default=None, min_length=16, max_length=2_048),
 ):
     _, tenant = _authorized_scope(request, 'content-workspace.read')
-    if not IDENTIFIER.fullmatch(type_key):
-        raise HTTPException(status_code=422, detail='content_identifier_invalid')
+    _valid_type_key(type_key)
     try:
         return get_repository().list_records(
             site_id=tenant, type_key=type_key, limit=limit, cursor=cursor
@@ -388,8 +513,7 @@ def list_records(
 @router.post('/types/{type_key}/records', status_code=status.HTTP_201_CREATED)
 def create_record(type_key: str, payload: RecordCreate, request: Request):
     principal, tenant = _authorized_scope(request, 'content-workspace.write')
-    if not IDENTIFIER.fullmatch(type_key):
-        raise HTTPException(status_code=422, detail='content_identifier_invalid')
+    _valid_type_key(type_key)
     try:
         return get_repository().create_record(
             site_id=tenant,
@@ -411,6 +535,7 @@ def update_record(
     request: Request,
     if_match: Annotated[str | None, Header(alias='If-Match')] = None,
 ):
+    _valid_type_key(type_key)
     principal, tenant = _authorized_scope(request, 'content-workspace.write')
     expected = _expected_version(if_match, payload.expected_version)
     try:
@@ -439,6 +564,7 @@ def transition_record(
     payload: TransitionRequest,
     request: Request,
 ):
+    _valid_type_key(type_key)
     principal, tenant = _authorized_scope(request, 'content-workspace.write')
     if action not in TRANSITION_ACTIONS:
         raise HTTPException(status_code=422, detail='content_transition_invalid')
@@ -469,6 +595,7 @@ def delete_record(
     request: Request,
     expected_version: Annotated[int, Query(ge=1)],
 ):
+    _valid_type_key(type_key)
     principal, tenant = _authorized_scope(request, 'content-workspace.write')
     try:
         return get_repository().soft_delete_record(
@@ -487,8 +614,21 @@ def delete_record(
         raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
 
 
+@router.get('/types/{type_key}/records/{record_id}')
+def get_record(type_key: str, record_id: UUID, request: Request):
+    _valid_type_key(type_key)
+    _, tenant = _authorized_scope(request, 'content-workspace.read')
+    try:
+        return get_repository().get_record(site_id=tenant, type_key=type_key, record_id=record_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail='content_not_found') from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
 @router.get('/types/{type_key}/records/{record_id}/versions')
 def list_record_versions(type_key: str, record_id: UUID, request: Request):
+    _valid_type_key(type_key)
     _, tenant = _authorized_scope(request, 'content-workspace.read')
     try:
         return get_repository().list_versions(
@@ -504,10 +644,11 @@ def list_record_versions(type_key: str, record_id: UUID, request: Request):
 def restore_record(
     type_key: str,
     record_id: UUID,
-    version: int,
+    version: Annotated[int, Path(ge=1)],
     payload: RestoreRequest,
     request: Request,
 ):
+    _valid_type_key(type_key)
     principal, tenant = _authorized_scope(request, 'content-workspace.write')
     try:
         return get_repository().restore_record(
@@ -529,10 +670,14 @@ def restore_record(
 
 @router.get('/types/{type_key}/views')
 def list_saved_views(type_key: str, request: Request):
+    _valid_type_key(type_key)
     principal, tenant = _authorized_scope(request, 'content-workspace.read')
     try:
         return get_repository().list_views(
-            site_id=tenant, type_key=type_key, owner_ref=f'user:{principal.user_id}'
+            site_id=tenant,
+            type_key=type_key,
+            owner_ref=f'user:{principal.user_id}',
+            caller_role=getattr(request.state, 'content_workspace_role', None),
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -542,6 +687,7 @@ def list_saved_views(type_key: str, request: Request):
 
 @router.post('/types/{type_key}/views', status_code=status.HTTP_201_CREATED)
 def create_saved_view(type_key: str, payload: SavedViewCreate, request: Request):
+    _valid_type_key(type_key)
     principal, tenant = _authorized_scope(request, 'content-workspace.write')
     if payload.visibility == 'private' and payload.shared_roles:
         raise HTTPException(status_code=422, detail='saved_view_roles_invalid')
@@ -554,5 +700,398 @@ def create_saved_view(type_key: str, payload: SavedViewCreate, request: Request)
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.get('/types/{type_key}/views/{view_id}')
+def get_saved_view(type_key: str, view_id: UUID, request: Request):
+    _valid_type_key(type_key)
+    principal, tenant = _authorized_scope(request, 'content-workspace.read')
+    try:
+        return get_repository().get_view(
+            site_id=tenant,
+            type_key=type_key,
+            view_id=view_id,
+            owner_ref=f'user:{principal.user_id}',
+            caller_role=getattr(request.state, 'content_workspace_role', None),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail='content_not_found') from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.patch('/types/{type_key}/views/{view_id}')
+def update_saved_view(
+    type_key: str,
+    view_id: UUID,
+    payload: SavedViewUpdate,
+    request: Request,
+    if_match: Annotated[str | None, Header(alias='If-Match')] = None,
+):
+    _valid_type_key(type_key)
+    principal, tenant = _authorized_scope(request, 'content-workspace.write')
+    expected = _expected_version(if_match, payload.expected_version)
+    changes = payload.model_dump(exclude_none=True, exclude={'expected_version'})
+    try:
+        return get_repository().update_view(
+            site_id=tenant,
+            type_key=type_key,
+            view_id=view_id,
+            owner_ref=f'user:{principal.user_id}',
+            expected_version=expected,
+            payload=changes,
+        )
+    except ValueError as exc:
+        code = str(exc)
+        raise HTTPException(
+            status_code=409 if code == 'content_version_conflict' else 422, detail=code
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.delete('/types/{type_key}/views/{view_id}')
+def delete_saved_view(
+    type_key: str,
+    view_id: UUID,
+    request: Request,
+    expected_version: Annotated[int, Query(ge=1)],
+):
+    _valid_type_key(type_key)
+    principal, tenant = _authorized_scope(request, 'content-workspace.write')
+    try:
+        return get_repository().delete_view(
+            site_id=tenant,
+            type_key=type_key,
+            view_id=view_id,
+            owner_ref=f'user:{principal.user_id}',
+            expected_version=expected_version,
+        )
+    except ValueError as exc:
+        code = str(exc)
+        raise HTTPException(
+            status_code=409 if code == 'content_version_conflict' else 404, detail=code
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.post('/types/{type_key}/views/{view_id}/execute')
+def execute_saved_view(type_key: str, view_id: UUID, request: Request):
+    _valid_type_key(type_key)
+    principal, tenant = _authorized_scope(request, 'content-workspace.read')
+    try:
+        return get_repository().execute_view(
+            site_id=tenant,
+            type_key=type_key,
+            view_id=view_id,
+            owner_ref=f'user:{principal.user_id}',
+            caller_role=getattr(request.state, 'content_workspace_role', None),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.post('/assets/uploads', status_code=status.HTTP_201_CREATED)
+def create_asset_upload(payload: AssetUploadCreate, request: Request):
+    principal, tenant = _authorized_scope(request, 'content-workspace.write')
+    try:
+        return get_repository().create_asset_upload(
+            site_id=tenant,
+            owner_ref=f'user:{principal.user_id}',
+            payload=payload.model_dump(),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.get('/assets/{asset_id}')
+def get_asset(asset_id: UUID, request: Request):
+    principal, tenant = _authorized_scope(request, 'content-workspace.read')
+    try:
+        return get_repository().get_asset(
+            site_id=tenant, asset_id=asset_id, requester_ref=f'user:{principal.user_id}'
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail='content_not_found') from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.post(
+    '/types/{type_key}/records/{record_id}/assets/{field_key}',
+    status_code=status.HTTP_201_CREATED,
+)
+def bind_asset(
+    type_key: str,
+    record_id: UUID,
+    field_key: str,
+    payload: AssetBindingCreate,
+    request: Request,
+):
+    _valid_type_key(type_key)
+    _valid_type_key(field_key)
+    principal, tenant = _authorized_scope(request, 'content-workspace.write')
+    try:
+        return get_repository().bind_asset(
+            site_id=tenant,
+            type_key=type_key,
+            record_id=record_id,
+            field_key=field_key,
+            expected_version=payload.expected_version,
+            actor_ref=f'user:{principal.user_id}',
+            payload=payload.model_dump(exclude={'expected_version'}),
+        )
+    except ValueError as exc:
+        code = str(exc)
+        raise HTTPException(
+            status_code=409 if code == 'content_version_conflict' else 422, detail=code
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.delete('/types/{type_key}/records/{record_id}/assets/{field_key}')
+def unbind_asset(
+    type_key: str,
+    record_id: UUID,
+    field_key: str,
+    asset_id: UUID,
+    expected_version: Annotated[int, Query(ge=1)],
+    request: Request,
+):
+    _valid_type_key(type_key)
+    _valid_type_key(field_key)
+    principal, tenant = _authorized_scope(request, 'content-workspace.write')
+    try:
+        return get_repository().unbind_asset(
+            site_id=tenant,
+            type_key=type_key,
+            record_id=record_id,
+            field_key=field_key,
+            asset_id=asset_id,
+            expected_version=expected_version,
+            actor_ref=f'user:{principal.user_id}',
+        )
+    except ValueError as exc:
+        code = str(exc)
+        raise HTTPException(
+            status_code=409 if code == 'content_version_conflict' else 422, detail=code
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.get('/types/{type_key}/records/{record_id}/relationships')
+def list_relationships(type_key: str, record_id: UUID, request: Request):
+    _valid_type_key(type_key)
+    _, tenant = _authorized_scope(request, 'content-workspace.read')
+    try:
+        return get_repository().list_relationships(
+            site_id=tenant, type_key=type_key, record_id=record_id
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail='content_not_found') from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.post(
+    '/types/{type_key}/records/{record_id}/relationships',
+    status_code=status.HTTP_201_CREATED,
+)
+def create_relationship(
+    type_key: str, record_id: UUID, payload: RelationshipCreate, request: Request
+):
+    _valid_type_key(type_key)
+    principal, tenant = _authorized_scope(request, 'content-workspace.write')
+    try:
+        return get_repository().create_relationship(
+            site_id=tenant,
+            type_key=type_key,
+            record_id=record_id,
+            expected_version=payload.expected_version,
+            actor_ref=f'user:{principal.user_id}',
+            payload=payload.model_dump(exclude={'expected_version'}),
+        )
+    except ValueError as exc:
+        code = str(exc)
+        raise HTTPException(
+            status_code=409 if code == 'content_version_conflict' else 422, detail=code
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.delete('/types/{type_key}/records/{record_id}/relationships/{relationship_id}')
+def delete_relationship(
+    type_key: str,
+    record_id: UUID,
+    relationship_id: UUID,
+    expected_version: Annotated[int, Query(ge=1)],
+    request: Request,
+):
+    _valid_type_key(type_key)
+    principal, tenant = _authorized_scope(request, 'content-workspace.write')
+    try:
+        return get_repository().delete_relationship(
+            site_id=tenant,
+            type_key=type_key,
+            record_id=record_id,
+            relationship_id=relationship_id,
+            expected_version=expected_version,
+            actor_ref=f'user:{principal.user_id}',
+        )
+    except ValueError as exc:
+        code = str(exc)
+        raise HTTPException(
+            status_code=409 if code == 'content_version_conflict' else 422, detail=code
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.post('/types/{type_key}/imports', status_code=status.HTTP_201_CREATED)
+def create_import(
+    type_key: str,
+    payload: ImportCreate,
+    request: Request,
+    idempotency_key: Annotated[str, Header(alias='Idempotency-Key', min_length=8, max_length=128)],
+):
+    _valid_type_key(type_key)
+    principal, tenant = _authorized_scope(request, 'content-workspace.write')
+    try:
+        return get_repository().create_import(
+            site_id=tenant,
+            type_key=type_key,
+            requester_ref=f'user:{principal.user_id}',
+            idempotency_key=idempotency_key,
+            payload=payload.model_dump(),
+        )
+    except ValueError as exc:
+        code = str(exc)
+        raise HTTPException(
+            status_code=409 if code == 'content_idempotency_conflict' else 422, detail=code
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.get('/types/{type_key}/imports/{job_id}')
+def get_import(type_key: str, job_id: UUID, request: Request):
+    _valid_type_key(type_key)
+    principal, tenant = _authorized_scope(request, 'content-workspace.read')
+    try:
+        return get_repository().get_import(
+            site_id=tenant,
+            type_key=type_key,
+            job_id=job_id,
+            requester_ref=f'user:{principal.user_id}',
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail='content_not_found') from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.post('/types/{type_key}/imports/{job_id}/commit')
+def commit_import(type_key: str, job_id: UUID, request: Request):
+    _valid_type_key(type_key)
+    principal, tenant = _authorized_scope(request, 'content-workspace.write')
+    try:
+        return get_repository().commit_import(
+            site_id=tenant,
+            type_key=type_key,
+            job_id=job_id,
+            requester_ref=f'user:{principal.user_id}',
+        )
+    except ValueError as exc:
+        code = str(exc)
+        raise HTTPException(
+            status_code=409 if code == 'content_job_terminal' else 422, detail=code
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.post('/types/{type_key}/imports/{job_id}/cancel')
+def cancel_import(type_key: str, job_id: UUID, request: Request):
+    _valid_type_key(type_key)
+    principal, tenant = _authorized_scope(request, 'content-workspace.write')
+    try:
+        return get_repository().cancel_import(
+            site_id=tenant,
+            type_key=type_key,
+            job_id=job_id,
+            requester_ref=f'user:{principal.user_id}',
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.post('/types/{type_key}/exports', status_code=status.HTTP_201_CREATED)
+def create_export(
+    type_key: str,
+    payload: ExportCreate,
+    request: Request,
+    idempotency_key: Annotated[str, Header(alias='Idempotency-Key', min_length=8, max_length=128)],
+):
+    _valid_type_key(type_key)
+    principal, tenant = _authorized_scope(request, 'content-workspace.read')
+    try:
+        return get_repository().create_export(
+            site_id=tenant,
+            type_key=type_key,
+            requester_ref=f'user:{principal.user_id}',
+            idempotency_key=idempotency_key,
+            payload=payload.model_dump(),
+        )
+    except ValueError as exc:
+        code = str(exc)
+        raise HTTPException(
+            status_code=409 if code == 'content_idempotency_conflict' else 422, detail=code
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.get('/types/{type_key}/exports/{job_id}')
+def get_export(type_key: str, job_id: UUID, request: Request):
+    _valid_type_key(type_key)
+    principal, tenant = _authorized_scope(request, 'content-workspace.read')
+    try:
+        return get_repository().get_export(
+            site_id=tenant,
+            type_key=type_key,
+            job_id=job_id,
+            requester_ref=f'user:{principal.user_id}',
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail='content_not_found') from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.post('/types/{type_key}/exports/{job_id}/download')
+def create_export_download(type_key: str, job_id: UUID, request: Request):
+    _valid_type_key(type_key)
+    principal, tenant = _authorized_scope(request, 'content-workspace.read')
+    try:
+        return get_repository().create_export_download(
+            site_id=tenant,
+            type_key=type_key,
+            job_id=job_id,
+            requester_ref=f'user:{principal.user_id}',
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc

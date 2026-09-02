@@ -1,0 +1,128 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime
+from uuid import UUID
+
+import pytest
+from fastapi.testclient import TestClient
+
+from api.main import app
+from api.routes import content_workspace
+from api.security.request_auth import PublicPrincipal
+
+
+class FakeRepository:
+    calls: list[tuple[str, dict]] = []
+
+    def create_asset_upload(self, **kwargs):
+        self.calls.append(('upload', kwargs))
+        return {'id': str(UUID(int=7104)), 'status': 'pending', 'uploadGrant': 'opaque'}
+
+    def get_asset(self, **kwargs):
+        self.calls.append(('asset', kwargs))
+        return {'id': str(kwargs['asset_id']), 'status': 'validated', 'mediaType': 'image/png'}
+
+    def bind_asset(self, **kwargs):
+        self.calls.append(('bind', kwargs))
+        return {'id': str(UUID(int=8104)), 'recordVersion': kwargs['expected_version'] + 1}
+
+    def unbind_asset(self, **kwargs):
+        self.calls.append(('unbind', kwargs))
+        return {'deleted': True, 'recordVersion': kwargs['expected_version'] + 1}
+
+    def list_relationships(self, **kwargs):
+        self.calls.append(('relationships', kwargs))
+        return {'items': []}
+
+    def create_relationship(self, **kwargs):
+        self.calls.append(('relationship-create', kwargs))
+        return {'id': str(UUID(int=9104)), 'recordVersion': kwargs['expected_version'] + 1}
+
+    def delete_relationship(self, **kwargs):
+        self.calls.append(('relationship-delete', kwargs))
+        return {'deleted': True, 'recordVersion': kwargs['expected_version'] + 1}
+
+
+@pytest.fixture(autouse=True)
+def scoped(monkeypatch):
+    FakeRepository.calls = []
+    principal = PublicPrincipal(UUID(int=104), datetime.now(UTC), True)
+    monkeypatch.setattr(
+        content_workspace, 'require_authenticated_principal', lambda request: principal
+    )
+    monkeypatch.setattr(content_workspace, 'require_tenant', lambda request: 'site-a')
+    monkeypatch.setattr(content_workspace, 'workspace_enabled', lambda: True)
+    monkeypatch.setattr(content_workspace, 'authorize', lambda **kwargs: {'role': 'owner'})
+    monkeypatch.setattr(content_workspace, 'get_repository', lambda: FakeRepository())
+
+
+def test_asset_admission_status_and_binding_are_scoped_and_versioned():
+    client = TestClient(app)
+    headers = {'Authorization': 'Bearer synthetic', 'X-Tenant-ID': 'site-a'}
+    admitted = client.post(
+        '/api/content/v1/assets/uploads',
+        headers=headers,
+        json={
+            'filename': 'safe.png',
+            'mediaType': 'image/png',
+            'byteSize': 32,
+            'sha256': 'a' * 64,
+        },
+    )
+    assert admitted.status_code == 201 and admitted.json()['status'] == 'pending'
+    asset_id = admitted.json()['id']
+    assert client.get(f'/api/content/v1/assets/{asset_id}', headers=headers).status_code == 200
+    record_id = str(UUID(int=3104))
+    bound = client.post(
+        f'/api/content/v1/types/article/records/{record_id}/assets/hero',
+        headers=headers,
+        json={'assetId': asset_id, 'expectedVersion': 1, 'altText': 'Synthetic image'},
+    )
+    assert bound.status_code == 201 and bound.json()['recordVersion'] == 2
+    assert (
+        client.delete(
+            f'/api/content/v1/types/article/records/{record_id}/assets/hero'
+            f'?asset_id={asset_id}&expected_version=2',
+            headers=headers,
+        ).status_code
+        == 200
+    )
+    assert all(call[1]['site_id'] == 'site-a' for call in FakeRepository.calls)
+
+
+def test_relationship_lifecycle_is_bounded_and_never_accepts_scope_from_body():
+    client = TestClient(app)
+    headers = {'Authorization': 'Bearer synthetic', 'X-Tenant-ID': 'site-a'}
+    record_id = str(UUID(int=3104))
+    target_id = str(UUID(int=3204))
+    endpoint = f'/api/content/v1/types/article/records/{record_id}/relationships'
+    assert client.get(endpoint, headers=headers).status_code == 200
+    created = client.post(
+        endpoint,
+        headers=headers,
+        json={
+            'fieldKey': 'related',
+            'targetId': target_id,
+            'expectedVersion': 1,
+            'deletionPolicy': 'restrict',
+        },
+    )
+    assert created.status_code == 201 and created.json()['recordVersion'] == 2
+    relationship_id = created.json()['id']
+    assert (
+        client.delete(
+            f'{endpoint}/{relationship_id}?expected_version=2', headers=headers
+        ).status_code
+        == 200
+    )
+    unsafe = client.post(
+        endpoint,
+        headers=headers,
+        json={
+            'fieldKey': 'related',
+            'targetId': target_id,
+            'expectedVersion': 1,
+            'siteId': 'site-b',
+        },
+    )
+    assert unsafe.status_code == 422
