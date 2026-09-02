@@ -3,7 +3,7 @@ import os
 from contextlib import suppress
 from uuid import UUID
 
-from celery import Celery
+from celery import Celery, Task
 
 from api.services.email_service import process_outbox_email
 from api.repositories.data_rights import expire_results, queued_operation_ids
@@ -13,7 +13,9 @@ from api.services.content_workspace_worker import (
     due_index_records,
     due_media_scans,
     due_publication_ids,
+    expire_export_jobs as expire_workspace_export_jobs,
     index_workspace_record,
+    mark_export_failed,
     process_export_job,
     publish_scheduled_record,
     scan_workspace_asset,
@@ -68,6 +70,10 @@ app.conf.update(
             'task': 'app.replay_workspace_exports',
             'schedule': 60.0,
         },
+        'workspace-expire-exports': {
+            'task': 'app.expire_workspace_exports',
+            'schedule': 300.0,
+        },
     },
 )
 
@@ -115,6 +121,17 @@ def replay_data_rights_operations(limit: int = 25) -> int:
     for operation_id in operation_ids:
         process_data_rights_operation.delay(str(operation_id))
     return len(operation_ids)
+
+
+class WorkspaceExportTask(Task):
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        del task_id, kwargs, einfo
+        if len(args) >= 2:
+            error_code = str(exc) if isinstance(exc, ValueError) else ''
+            with suppress(Exception):
+                mark_export_failed(
+                    site_id=str(args[0]), job_id=UUID(str(args[1])), error_code=error_code
+                )
 
 
 @app.task(
@@ -193,6 +210,7 @@ def replay_workspace_media_scans(limit: int = 10) -> int:
 
 
 @app.task(
+    base=WorkspaceExportTask,
     name='app.process_workspace_export',
     autoretry_for=(Exception,),
     dont_autoretry_for=(ValueError,),
@@ -214,3 +232,8 @@ def replay_workspace_exports(limit: int = 10) -> int:
     for site_id, job_id in jobs:
         process_workspace_export.delay(site_id, job_id)
     return len(jobs)
+
+
+@app.task(name='app.expire_workspace_exports')
+def expire_workspace_exports(limit: int = 100) -> int:
+    return expire_workspace_export_jobs(limit=limit)

@@ -104,3 +104,28 @@ def test_workspace_export_replay_and_task_use_only_discovered_fixed_ids(monkeypa
             'artifact_store': store,
         }
     ]
+
+
+def test_export_task_terminal_failure_hook_redacts_and_records(monkeypatch):
+    calls = []
+    monkeypatch.setattr(tasks, 'mark_export_failed', lambda **kwargs: calls.append(kwargs))
+    task = tasks.WorkspaceExportTask()
+    task.on_failure(
+        RuntimeError('provider password=private'),
+        'task-id',
+        ('site-a', '00000000-0000-0000-0000-000000006104'),
+        {},
+        None,
+    )
+    assert calls == [
+        {
+            'site_id': 'site-a',
+            'job_id': tasks.UUID('00000000-0000-0000-0000-000000006104'),
+            'error_code': '',
+        }
+    ]
+
+
+def test_expire_export_task_calls_bounded_worker(monkeypatch):
+    monkeypatch.setattr(tasks, 'expire_workspace_export_jobs', lambda *, limit: limit)
+    assert tasks.expire_workspace_exports(limit=100) == 100

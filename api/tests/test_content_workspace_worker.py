@@ -394,3 +394,25 @@ def test_export_worker_rejects_tampered_projection_without_output(monkeypatch):
     with pytest.raises(ValueError, match='content_integrity_failed'):
         worker.process_export_job(site_id='site-a', job_id=job_id, artifact_store=Store())
     assert connection.rollbacks == 1 and connection.commits == 0
+
+
+def test_export_terminal_failure_is_redacted_and_expiry_is_bounded(monkeypatch):
+    job_id = UUID(int=6104)
+    failed_cursor = Cursor([(job_id,)])
+    failed_connection = Connection(failed_cursor)
+    bind(monkeypatch, failed_connection)
+    assert worker.mark_export_failed(
+        site_id='site-a', job_id=job_id, error_code='secret=https://private.example'
+    )
+    update = failed_cursor.calls[0]
+    assert update[1][0] == 'content_dependency_unavailable'
+    assert 'private.example' not in str(failed_cursor.calls)
+    assert failed_connection.commits == 1
+
+    expired_cursor = Cursor([(UUID(int=6104),), (UUID(int=6105),)])
+    expired_connection = Connection(expired_cursor)
+    bind(monkeypatch, expired_connection)
+    assert worker.expire_export_jobs(limit=100) == 2
+    assert 'FOR UPDATE SKIP LOCKED' in expired_cursor.calls[0][0]
+    assert expired_cursor.calls[0][1] == (100,)
+    assert expired_connection.commits == 1

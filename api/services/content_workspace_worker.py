@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
@@ -452,3 +453,65 @@ def process_export_job(*, site_id: str, job_id: UUID, artifact_store) -> str:
             conn.rollback()
             raise
     return 'completed'
+
+
+def mark_export_failed(*, site_id: str, job_id: UUID, error_code: str) -> bool:
+    safe_code = (
+        error_code
+        if re.fullmatch(r'content_[a-z0-9_]{3,55}', error_code or '')
+        else 'content_dependency_unavailable'
+    )
+    with db_conn(tenant_id=site_id) as conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """UPDATE sitecontent_exportjob
+                       SET status='failed', error_code=%s, completed_at=NOW(), updated_at=NOW()
+                       WHERE id=%s AND site_id=%s AND status IN ('queued','running')
+                       RETURNING id""",
+                    (safe_code, str(job_id), site_id),
+                )
+                changed = bool(cur.fetchone())
+                if changed:
+                    cur.execute(
+                        """INSERT INTO sitecontent_workspaceauditevent
+                           (id, site_id, actor_ref, object_type, object_ref, action, outcome,
+                            correlation_id, metadata, created_at)
+                           VALUES (%s,%s,'system:export-worker','export_job',%s,
+                                   'content.export_failed','rejected','',%s::jsonb,NOW())""",
+                        (
+                            str(uuid4()),
+                            site_id,
+                            str(job_id),
+                            json.dumps({'errorCode': safe_code}),
+                        ),
+                    )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+    return changed
+
+
+def expire_export_jobs(*, limit: int = 100) -> int:
+    if not 1 <= limit <= 500:
+        raise ValueError('content_limit_exceeded')
+    with db_conn() as conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """UPDATE sitecontent_exportjob SET status='expired', completed_at=NOW(),
+                              error_code='content_export_expired', updated_at=NOW()
+                       WHERE id IN (
+                         SELECT id FROM sitecontent_exportjob
+                         WHERE status IN ('queued','running') AND expires_at<=NOW()
+                         ORDER BY expires_at, id LIMIT %s FOR UPDATE SKIP LOCKED
+                       ) RETURNING id""",
+                    (limit,),
+                )
+                expired = len(cur.fetchall())
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+    return expired
