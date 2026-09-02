@@ -224,6 +224,7 @@
 - [x] T187 Document the repository's partitioned Python gate boundary after an unscoped root Pytest command mixed API, Django, provider, and visual environments; require service-local virtual environments for local gates and reserve cross-service integration for the complete container gate.
 - [x] T188 Refresh the exact surface-drift inventory only after the new workspace documentation, configuration, generated clients, module manifests, and route surfaces pass their focused contracts; rerun both ordinary and hostile drift checks so new, missing, or modified surfaces still fail closed.
 - [x] T189 Replace the obsolete 120-second complete-gate API ceiling after the expanded isolated partition suite exceeded it twice without a test failure; retain a finite bounded timeout, lock the bound with a manifest regression, and require the complete API coverage command to pass within it.
+- [x] T190 Review and update only the changed Base2 hero visual baselines after the complete visual gate proved stable rendering of the intentional enabled-module count change from five to six; retain all geometry, overflow, accessibility, responsive, baseline-mutation, and hostile visual controls, then rerun the full visual matrix without ordinary-test baseline authority.
 
 ## Dependencies and authority
 
