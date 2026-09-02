@@ -137,6 +137,53 @@ def test_workflow_graph_rejects_unknown_states_actions_and_destinations():
         workflow.full_clean()
 
 
+def test_workflow_graph_rejects_duplicates_conflicts_and_invalid_scheduling_flags():
+    content_type = definition()
+    workflow = WorkflowDefinition(
+        definition=content_type,
+        states=["draft", "scheduled", "published"],
+        initial_state="draft",
+        transitions=[
+            {
+                "action": "schedule",
+                "from": ["draft"],
+                "to": "scheduled",
+                "permission": "content.schedule",
+                "schedulable": True,
+            },
+            {
+                "action": "publish",
+                "from": ["scheduled"],
+                "to": "published",
+                "permission": "content.publish",
+            },
+        ],
+    )
+    workflow.full_clean()
+
+    workflow.states.append("draft")
+    with pytest.raises(ValidationError, match="workflow_state_invalid"):
+        workflow.full_clean()
+    workflow.states = ["draft", "scheduled", "published"]
+
+    workflow.transitions.append(
+        {
+            "action": "schedule",
+            "from": ["draft"],
+            "to": "published",
+            "permission": "content.schedule",
+            "schedulable": True,
+        }
+    )
+    with pytest.raises(ValidationError, match="workflow_transition_conflict"):
+        workflow.full_clean()
+    workflow.transitions.pop()
+
+    workflow.transitions[0]["schedulable"] = False
+    with pytest.raises(ValidationError, match="workflow_schedule_invalid"):
+        workflow.full_clean()
+
+
 def test_definition_preview_classifies_loss_and_publication_requires_confirmation():
     first = definition()
     ContentFieldDefinition.objects.create(
@@ -242,6 +289,37 @@ def test_records_bind_exact_schema_and_reject_stale_expected_version():
     assert version.snapshot_sha256 and len(version.snapshot_sha256) == 64
 
 
+def test_record_versions_are_hash_bound_immutable_and_have_a_safe_diff():
+    content_type = published_definition_with_title()
+    record = ContentRecord.objects.create(
+        site_id="site-a",
+        content_type="article",
+        slug="version-integrity",
+        title="Version integrity",
+        definition=content_type,
+        values={"title": "First"},
+    )
+    record.update_values({"title": "Second"}, expected_version=1, actor_ref="user:test")
+    first = ContentRecordVersion.objects.get(record=record, version=1)
+    assert first.diff_values({"title": "Second"}) == {
+        "added": [],
+        "removed": [],
+        "changed": ["title"],
+    }
+    first.snapshot = {"title": "tampered"}
+    with pytest.raises(ValidationError, match="content_version_immutable"):
+        first.save()
+    forged = ContentRecordVersion(
+        content=record,
+        revision=99,
+        schema_version=1,
+        snapshot={"title": "Forged"},
+        snapshot_sha256="0" * 64,
+    )
+    with pytest.raises(ValidationError, match="content_version_digest_invalid"):
+        forged.save()
+
+
 def test_record_workflow_soft_delete_and_restore_append_history():
     content_type = published_definition_with_title()
     workflow = WorkflowDefinition.objects.create(
@@ -302,53 +380,53 @@ def test_scheduled_transition_requires_and_retains_a_valid_iana_timezone():
     content_type = published_definition_with_title()
     WorkflowDefinition.objects.create(
         definition=content_type,
-        states=['draft', 'scheduled'],
-        initial_state='draft',
+        states=["draft", "scheduled"],
+        initial_state="draft",
         transitions=[
             {
-                'action': 'schedule',
-                'from': ['draft'],
-                'to': 'scheduled',
-                'permission': 'content.schedule',
-                'schedulable': True,
+                "action": "schedule",
+                "from": ["draft"],
+                "to": "scheduled",
+                "permission": "content.schedule",
+                "schedulable": True,
             }
         ],
     )
     record = ContentRecord.objects.create(
-        site_id='site-a',
-        content_type='article',
-        slug='scheduled',
-        title='Scheduled',
+        site_id="site-a",
+        content_type="article",
+        slug="scheduled",
+        title="Scheduled",
         definition=content_type,
-        values={'title': 'Scheduled'},
+        values={"title": "Scheduled"},
     )
     publish_at = timezone.now() + timedelta(hours=2)
     record.transition_action(
-        'schedule',
+        "schedule",
         expected_version=1,
-        actor_ref='user:editor',
+        actor_ref="user:editor",
         publish_at=publish_at,
-        timezone_name='Europe/Berlin',
+        timezone_name="Europe/Berlin",
     )
     record.refresh_from_db()
-    assert record.state == 'scheduled'
-    assert record.schedule_timezone == 'Europe/Berlin'
+    assert record.state == "scheduled"
+    assert record.schedule_timezone == "Europe/Berlin"
 
     second = ContentRecord.objects.create(
-        site_id='site-a',
-        content_type='article',
-        slug='invalid-zone',
-        title='Invalid zone',
+        site_id="site-a",
+        content_type="article",
+        slug="invalid-zone",
+        title="Invalid zone",
         definition=content_type,
-        values={'title': 'Invalid'},
+        values={"title": "Invalid"},
     )
-    with pytest.raises(ValidationError, match='schedule_timezone_invalid'):
+    with pytest.raises(ValidationError, match="schedule_timezone_invalid"):
         second.transition_action(
-            'schedule',
+            "schedule",
             expected_version=1,
-            actor_ref='user:editor',
+            actor_ref="user:editor",
             publish_at=publish_at,
-            timezone_name='Mars/Olympus',
+            timezone_name="Mars/Olympus",
         )
 
 
@@ -555,6 +633,169 @@ def test_relationship_rejects_wrong_declared_target_and_excess_cardinality():
     )
     with pytest.raises(ValidationError, match="relationship_cardinality_invalid"):
         excess.full_clean()
+
+
+def test_relationship_rejects_indirect_cycles_within_the_declared_depth():
+    content_type = definition(status="published")
+    first, second, third = (
+        ContentRecord.objects.create(
+            site_id="site-a",
+            content_type="article",
+            slug=slug,
+            title=slug.title(),
+            definition=content_type,
+        )
+        for slug in ("first-node", "second-node", "third-node")
+    )
+    ContentRelationship.objects.create(
+        site_id="site-a", source=first, target=second, field_key="related", maximum_depth=2
+    )
+    ContentRelationship.objects.create(
+        site_id="site-a", source=second, target=third, field_key="related", maximum_depth=2
+    )
+    closing_edge = ContentRelationship(
+        site_id="site-a", source=third, target=first, field_key="related", maximum_depth=2
+    )
+    with pytest.raises(ValidationError, match="relationship_cycle_invalid"):
+        closing_edge.full_clean()
+
+
+def test_soft_delete_applies_restrict_and_detach_relationship_policies_atomically():
+    content_type = published_definition_with_title()
+    WorkflowDefinition.objects.create(
+        definition=content_type,
+        states=["draft", "deleted"],
+        initial_state="draft",
+        transitions=[
+            {
+                "action": "delete",
+                "from": ["draft"],
+                "to": "deleted",
+                "permission": "content.delete",
+            }
+        ],
+    )
+    source = ContentRecord.objects.create(
+        site_id="site-a",
+        content_type="article",
+        slug="deletion-source",
+        title="Source",
+        definition=content_type,
+        values={"title": "Source"},
+    )
+    target = ContentRecord.objects.create(
+        site_id="site-a",
+        content_type="article",
+        slug="deletion-target",
+        title="Target",
+        definition=content_type,
+        values={"title": "Target"},
+    )
+    relationship = ContentRelationship.objects.create(
+        site_id="site-a",
+        source=source,
+        target=target,
+        field_key="related",
+        deletion_policy="restrict",
+    )
+    with pytest.raises(ValidationError, match="relationship_delete_restricted"):
+        target.soft_delete(expected_version=1, actor_ref="user:test")
+    target.refresh_from_db()
+    assert target.state == "draft" and target.version == 1
+
+    relationship.deletion_policy = "detach"
+    relationship.save()
+    target.soft_delete(expected_version=1, actor_ref="user:test")
+    target.refresh_from_db()
+    assert target.state == "deleted"
+    assert not ContentRelationship.objects.filter(pk=relationship.pk).exists()
+
+
+def test_soft_delete_cascade_is_bounded_and_versions_each_affected_record():
+    content_type = published_definition_with_title()
+    WorkflowDefinition.objects.create(
+        definition=content_type,
+        states=["draft", "deleted"],
+        initial_state="draft",
+        transitions=[
+            {
+                "action": "delete",
+                "from": ["draft"],
+                "to": "deleted",
+                "permission": "content.delete",
+            }
+        ],
+    )
+    parent = ContentRecord.objects.create(
+        site_id="site-a",
+        content_type="article",
+        slug="cascade-parent",
+        title="Parent",
+        definition=content_type,
+        values={"title": "Parent"},
+    )
+    child = ContentRecord.objects.create(
+        site_id="site-a",
+        content_type="article",
+        slug="cascade-child",
+        title="Child",
+        definition=content_type,
+        values={"title": "Child"},
+    )
+    ContentRelationship.objects.create(
+        site_id="site-a",
+        source=child,
+        target=parent,
+        field_key="owned_by",
+        deletion_policy="cascade_soft",
+        maximum_depth=2,
+    )
+    parent.soft_delete(expected_version=1, actor_ref="user:test")
+    parent.refresh_from_db()
+    child.refresh_from_db()
+    assert (parent.state, parent.version) == ("deleted", 2)
+    assert (child.state, child.version) == ("deleted", 2)
+    child_version = ContentRecordVersion.objects.get(record=child, version=1)
+    assert child_version.action == "cascade_delete"
+
+
+def test_saved_view_revalidates_roles_schema_fields_and_bounds():
+    content_type = definition()
+    ContentFieldDefinition.objects.create(
+        definition=content_type,
+        field_key="category",
+        label="Category",
+        field_kind="short_text",
+    )
+    content_type.publish(expected_lock_version=1)
+    view = SavedView(
+        site_id="site-a",
+        definition=content_type,
+        owner_ref="user:test",
+        title="Shared",
+        visibility="role_shared",
+        shared_roles=["editor"],
+        schema_version=content_type.version,
+        query={
+            "filters": [{"field": "category", "operator": "eq", "value": "guide"}],
+            "sort": ["slug", "-category"],
+            "fields": ["title", "category"],
+            "expand": [],
+            "limit": 50,
+        },
+    )
+    view.full_clean()
+    view.shared_roles = ["superuser"]
+    with pytest.raises(ValidationError, match="saved_view_roles_invalid"):
+        view.full_clean()
+    view.shared_roles = ["editor"]
+    view.query["fields"] = ["private_unknown"]
+    with pytest.raises(ValidationError, match="saved_view_query_invalid"):
+        view.full_clean()
+    view.query["fields"] = ["title"]
+    view.schema_version = content_type.version + 1
+    with pytest.raises(ValidationError, match="saved_view_schema_invalid"):
+        view.full_clean()
 
 
 def test_import_row_outcome_is_bounded_scoped_and_unique():

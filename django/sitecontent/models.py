@@ -493,12 +493,14 @@ class WorkflowDefinition(models.Model):
             not isinstance(self.states, list)
             or not self.states
             or len(self.states) > len(self.ALLOWED_STATES)
+            or len(self.states) != len(set(self.states))
             or any(state not in self.ALLOWED_STATES for state in self.states)
             or self.initial_state not in self.states
         ):
             raise ValidationError({"states": "workflow_state_invalid"})
         if not isinstance(self.transitions, list) or len(self.transitions) > 32:
             raise ValidationError({"transitions": "workflow_transition_invalid"})
+        action_sources: set[tuple[str, str]] = set()
         for item in self.transitions:
             if not isinstance(item, dict) or set(item) - self.TRANSITION_KEYS:
                 raise ValidationError({"transitions": "workflow_transition_invalid"})
@@ -512,6 +514,17 @@ class WorkflowDefinition(models.Model):
                 or not re.fullmatch(r"content\.[a-z_]{2,48}", str(item.get("permission", "")))
             ):
                 raise ValidationError({"transitions": "workflow_state_invalid"})
+            action = item["action"]
+            schedulable = item.get("schedulable", False)
+            if not isinstance(schedulable, bool) or (
+                (action == "schedule" or item["to"] == "scheduled") != schedulable
+            ):
+                raise ValidationError({"transitions": "workflow_schedule_invalid"})
+            for source in sources:
+                key = (source, action)
+                if key in action_sources:
+                    raise ValidationError({"transitions": "workflow_transition_conflict"})
+                action_sources.add(key)
 
 
 class ContentRecord(SiteOwnedModel):
@@ -532,7 +545,7 @@ class ContentRecord(SiteOwnedModel):
     metadata = models.JSONField(default=dict, blank=True)
     state = models.CharField(max_length=16, choices=State.choices, default=State.DRAFT)
     publish_at = models.DateTimeField(null=True, blank=True)
-    schedule_timezone = models.CharField(max_length=64, blank=True, default='')
+    schedule_timezone = models.CharField(max_length=64, blank=True, default="")
     published_at = models.DateTimeField(null=True, blank=True)
     sitemap_include = models.BooleanField(default=True)
     search_visible = models.BooleanField(default=True)
@@ -602,9 +615,9 @@ class ContentRecord(SiteOwnedModel):
             try:
                 ZoneInfo(self.schedule_timezone)
             except (ZoneInfoNotFoundError, ValueError):
-                raise ValidationError('schedule_timezone_invalid') from None
+                raise ValidationError("schedule_timezone_invalid") from None
         elif self.schedule_timezone:
-            raise ValidationError('schedule_timezone_without_schedule')
+            raise ValidationError("schedule_timezone_without_schedule")
 
     def create_revision(self, actor_ref: str = "") -> ContentRevision:
         if self._state.adding:
@@ -636,7 +649,7 @@ class ContentRecord(SiteOwnedModel):
         )
 
     def transition_to(
-        self, state: str, *, actor_ref: str = "", publish_at=None, timezone_name: str = ''
+        self, state: str, *, actor_ref: str = "", publish_at=None, timezone_name: str = ""
     ) -> ContentRevision | None:
         if state == self.state:
             return None
@@ -647,7 +660,7 @@ class ContentRecord(SiteOwnedModel):
         revision = self.create_revision(actor_ref=actor_ref)
         self.state = state
         self.publish_at = publish_at if state == self.State.SCHEDULED else None
-        self.schedule_timezone = timezone_name if state == self.State.SCHEDULED else ''
+        self.schedule_timezone = timezone_name if state == self.State.SCHEDULED else ""
         self.published_at = timezone.now() if state == self.State.PUBLISHED else self.published_at
         self.version += 1
         self.full_clean()
@@ -693,7 +706,7 @@ class ContentRecord(SiteOwnedModel):
         expected_version: int,
         actor_ref: str = "",
         publish_at=None,
-        timezone_name: str = '',
+        timezone_name: str = "",
     ) -> None:
         with transaction.atomic():
             current = (
@@ -716,6 +729,9 @@ class ContentRecord(SiteOwnedModel):
             )
             if transition_spec is None:
                 raise ValidationError("content_transition_invalid")
+            destination = transition_spec["to"]
+            if destination == self.State.DELETED:
+                current._apply_incoming_deletion_policies(actor_ref=actor_ref)
             ContentRecordVersion.objects.create(
                 record=current,
                 version=current.version,
@@ -725,12 +741,9 @@ class ContentRecord(SiteOwnedModel):
                 actor_ref=actor_ref,
                 action=action,
             )
-            destination = transition_spec["to"]
             current.state = destination
             current.publish_at = publish_at if destination == self.State.SCHEDULED else None
-            current.schedule_timezone = (
-                timezone_name if destination == self.State.SCHEDULED else ''
-            )
+            current.schedule_timezone = timezone_name if destination == self.State.SCHEDULED else ""
             if destination == self.State.PUBLISHED:
                 current.published_at = timezone.now()
             if destination == self.State.DELETED:
@@ -751,6 +764,65 @@ class ContentRecord(SiteOwnedModel):
             self.state = current.state
             self.version = current.version
             self.deleted_at = current.deleted_at
+
+    def _apply_incoming_deletion_policies(
+        self,
+        *,
+        actor_ref: str,
+        visited: set[uuid.UUID] | None = None,
+        depth: int = 0,
+    ) -> None:
+        visited = set(visited or ())
+        if self.pk in visited or depth > 2:
+            raise ValidationError("relationship_delete_depth_invalid")
+        visited.add(self.pk)
+        incoming = ContentRelationship.objects.select_for_update().filter(target=self)
+        if incoming.filter(deletion_policy="restrict").exists():
+            raise ValidationError("relationship_delete_restricted")
+        incoming.filter(deletion_policy="detach").delete()
+        cascading = list(
+            incoming.filter(deletion_policy="cascade_soft")
+            .select_related("source")
+            .order_by("source_id")[:51]
+        )
+        if len(cascading) > 50:
+            raise ValidationError("relationship_cardinality_invalid")
+        for relationship in cascading:
+            if depth >= relationship.maximum_depth:
+                raise ValidationError("relationship_delete_depth_invalid")
+            source = type(self).objects.select_for_update().get(pk=relationship.source_id)
+            if source.state == self.State.DELETED:
+                continue
+            source._apply_incoming_deletion_policies(
+                actor_ref=actor_ref,
+                visited=visited,
+                depth=depth + 1,
+            )
+            ContentRecordVersion.objects.create(
+                record=source,
+                version=source.version,
+                schema_version=source.schema_version,
+                snapshot=source.values,
+                snapshot_sha256=_snapshot_digest(source.values),
+                actor_ref=actor_ref,
+                action="cascade_delete",
+            )
+            source.state = self.State.DELETED
+            source.deleted_at = timezone.now()
+            source.publish_at = None
+            source.schedule_timezone = ""
+            source.version += 1
+            source.full_clean()
+            source.save(
+                update_fields=[
+                    "state",
+                    "deleted_at",
+                    "publish_at",
+                    "schedule_timezone",
+                    "version",
+                    "updated_at",
+                ]
+            )
 
     def restore_version(
         self, version: int, *, expected_version: int, actor_ref: str = ""
@@ -802,6 +874,50 @@ class ContentRevision(models.Model):
             models.UniqueConstraint(fields=["content", "revision"], name="sitecontent_revision_uq"),
         ]
         ordering = ["content_id", "revision"]
+
+    def clean(self) -> None:
+        super().clean()
+        if not isinstance(self.snapshot, dict) or len(self.snapshot) > 128:
+            raise ValidationError("content_version_snapshot_invalid")
+        try:
+            encoded = json.dumps(
+                self.snapshot, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+            ).encode()
+        except (TypeError, ValueError):
+            raise ValidationError("content_version_snapshot_invalid") from None
+        if len(encoded) > 1024 * 1024:
+            raise ValidationError("content_version_snapshot_invalid")
+        digest = hashlib.sha256(encoded).hexdigest()
+        if self.snapshot_sha256 and self.snapshot_sha256 != digest:
+            raise ValidationError("content_version_digest_invalid")
+        self.snapshot_sha256 = digest
+
+    def save(self, *args, **kwargs):
+        if self.pk and type(self).objects.filter(pk=self.pk).exists():
+            raise ValidationError("content_version_immutable")
+        # Empty legacy snapshots are valid JSON; leave uniqueness/constraint races to
+        # PostgreSQL so concurrent revision inserts preserve their IntegrityError contract.
+        self.full_clean(exclude={"snapshot"}, validate_unique=False, validate_constraints=False)
+        return super().save(*args, **kwargs)
+
+    def diff_values(self, other: dict) -> dict[str, list[str]]:
+        current = self.snapshot.get("values", self.snapshot)
+        if (
+            not isinstance(current, dict)
+            or not isinstance(other, dict)
+            or len(current) > 128
+            or len(other) > 128
+        ):
+            raise ValidationError("content_version_diff_invalid")
+        current_keys = set(current)
+        other_keys = set(other)
+        return {
+            "added": sorted(other_keys - current_keys),
+            "removed": sorted(current_keys - other_keys),
+            "changed": sorted(
+                key for key in current_keys & other_keys if current[key] != other[key]
+            ),
+        }
 
 
 def _snapshot_digest(snapshot: dict) -> str:
@@ -882,6 +998,24 @@ class ContentRelationship(SiteOwnedModel):
         ]
         ordering = ["source_id", "field_key", "order", "target_id"]
 
+    def _would_create_cycle(self) -> bool:
+        frontier = {self.target_id}
+        visited: set[uuid.UUID] = set()
+        for _depth in range(self.maximum_depth):
+            if self.source_id in frontier:
+                return True
+            visited.update(frontier)
+            next_ids = ContentRelationship.objects.filter(
+                site_id=self.site_id,
+                source_id__in=frontier,
+            )
+            if self.pk:
+                next_ids = next_ids.exclude(pk=self.pk)
+            frontier = set(next_ids.values_list("target_id", flat=True)) - visited
+            if not frontier:
+                return False
+        return self.source_id in frontier
+
     def clean(self) -> None:
         super().clean()
         if self.source_id and self.target_id:
@@ -902,6 +1036,8 @@ class ContentRelationship(SiteOwnedModel):
                 existing = existing.exclude(pk=self.pk)
             if existing.count() >= self.maximum_items:
                 raise ValidationError("relationship_cardinality_invalid")
+            if self._would_create_cycle():
+                raise ValidationError("relationship_cycle_invalid")
 
     def save(self, *args, **kwargs):
         self.full_clean()
@@ -913,6 +1049,8 @@ class SavedView(SiteOwnedModel):
     QUERY_KEYS = {"filters", "sort", "fields", "expand", "limit"}
     FILTER_KEYS = {"field", "operator", "value"}
     OPERATORS = {"eq", "ne", "contains", "starts_with", "in", "lt", "lte", "gt", "gte", "is_null"}
+    SHARED_ROLES = {"owner", "admin", "editor", "viewer"}
+    BUILTIN_FIELDS = {"id", "slug", "title", "state", "created_at", "updated_at", "published_at"}
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     definition = models.ForeignKey(
@@ -932,8 +1070,16 @@ class SavedView(SiteOwnedModel):
         super().clean()
         if self.definition_id and self.definition.site_id != self.site_id:
             raise ValidationError("saved_view_scope_invalid")
+        if self.definition_id and self.schema_version != self.definition.version:
+            raise ValidationError("saved_view_schema_invalid")
         if not isinstance(self.query, dict) or set(self.query) - self.QUERY_KEYS:
             raise ValidationError("saved_view_query_invalid")
+        declared = (
+            {field.field_key: field.field_kind for field in self.definition.fields.all()}
+            if self.definition_id
+            else {}
+        )
+        allowed_fields = self.BUILTIN_FIELDS | set(declared)
         filters = self.query.get("filters", [])
         if not isinstance(filters, list) or len(filters) > 16:
             raise ValidationError("saved_view_query_invalid")
@@ -942,9 +1088,41 @@ class SavedView(SiteOwnedModel):
                 not isinstance(item, dict)
                 or set(item) != self.FILTER_KEYS
                 or item.get("operator") not in self.OPERATORS
+                or item.get("field") not in allowed_fields
             ):
                 raise ValidationError("saved_view_query_invalid")
-        if self.visibility == "private" and self.shared_roles:
+        sorts = self.query.get("sort", [])
+        fields = self.query.get("fields", [])
+        expands = self.query.get("expand", [])
+        limit = self.query.get("limit", 25)
+        if (
+            not isinstance(sorts, list)
+            or len(sorts) > 4
+            or any(
+                not isinstance(item, str) or item.removeprefix("-") not in allowed_fields
+                for item in sorts
+            )
+            or not isinstance(fields, list)
+            or len(fields) > 64
+            or len(fields) != len(set(fields))
+            or any(item not in allowed_fields for item in fields)
+            or not isinstance(expands, list)
+            or len(expands) > 4
+            or len(expands) != len(set(expands))
+            or any(declared.get(item) not in {"reference", "references"} for item in expands)
+            or not isinstance(limit, int)
+            or isinstance(limit, bool)
+            or not 1 <= limit <= 100
+        ):
+            raise ValidationError("saved_view_query_invalid")
+        if (
+            not isinstance(self.shared_roles, list)
+            or len(self.shared_roles) > len(self.SHARED_ROLES)
+            or len(self.shared_roles) != len(set(self.shared_roles))
+            or any(role not in self.SHARED_ROLES for role in self.shared_roles)
+            or (self.visibility == "private" and self.shared_roles)
+            or (self.visibility == "role_shared" and not self.shared_roles)
+        ):
             raise ValidationError("saved_view_roles_invalid")
 
 

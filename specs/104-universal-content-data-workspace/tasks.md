@@ -27,20 +27,20 @@
 ## Phase 2 - Test-first canonical Django definitions and records
 
 - [x] T019 Add failing Django tests for content type keys, versions, statuses, canonical site uniqueness, and published immutability in `django/tests/test_content_workspace_models.py`.
-- [ ] T020 Add failing field-kind, validation-key, bound, default, relationship, and presentation-hint tests.
-- [ ] T021 Add failing workflow graph, action-role, schedule, and invalid-transition tests.
-- [ ] T022 Add failing record value, slug, optimistic version, lifecycle, soft-delete, and cross-scope tests.
-- [ ] T023 Add failing immutable version, snapshot hash, diff, and restore-as-new-version tests.
-- [ ] T024 Add failing relationship cardinality, target type, scope, cycle/depth, and deletion-policy tests.
+- [x] T020 Add failing field-kind, validation-key, bound, default, relationship, and presentation-hint tests.
+- [x] T021 Add failing workflow graph, action-role, schedule, and invalid-transition tests.
+- [x] T022 Add failing record value, slug, optimistic version, lifecycle, soft-delete, and cross-scope tests.
+- [x] T023 Add failing immutable version, snapshot hash, diff, and restore-as-new-version tests.
+- [x] T024 Add failing relationship cardinality, target type, scope, cycle/depth, and deletion-policy tests.
 - [ ] T025 Add failing saved-view ownership, query-schema, sharing, and permission-revalidation tests.
-- [ ] T026 Add failing media binding, import/export job, idempotency, terminal-state, and audit entity tests.
+- [x] T026 Add failing media binding, import/export job, idempotency, terminal-state, and audit entity tests.
 - [ ] T027 Add failing forward/reverse migration, model-state, constraint, and clean-default tests.
 - [x] T028 Implement shared closed enums, limits, validators, and structured-rich-text primitives in `django/common/models.py` and focused helpers.
 - [x] T029 Evolve existing `django/sitecontent/models.py` content records/revisions and add canonical definitions, fields, workflows, versions, and relationships without parallel record tables.
-- [ ] T030 Evolve existing media entities and add canonical saved views, asset bindings, import/export jobs, row outcomes, and audit references in `django/sitecontent/models.py`.
+- [x] T030 Evolve existing media entities and add canonical saved views, asset bindings, import/export jobs, row outcomes, and audit references in `django/sitecontent/models.py`.
 - [x] T031 Add `django/sitecontent` migration with canonical site ownership constraints, uniqueness, indexes, data migration, and reversible operations.
 - [x] T032 Add transactional services for definition preview/publication and record mutation/version creation.
-- [ ] T033 Add transactional workflow transition, schedule, archive, restore, and soft-delete services.
+- [x] T033 Add transactional workflow transition, schedule, archive, restore, and soft-delete services.
 - [x] T034 Register read-safe Django admin inspection with no raw secrets, files, submitted content, or expiring URLs.
 - [x] T035 Run Django focused and migration suites and repair only after a failing regression exists.
 - [ ] T036 Record Django model/migration evidence and update traceability without closing downstream work.
@@ -201,6 +201,7 @@
 - [x] T164 Add durable import-source validation without record mutation: rediscover only ready encrypted sources, recheck the exact hash, parse within JSON/CSV bounds, apply a closed collision-safe mapping, validate canonical field types and required values, preserve original row ordinals, classify exact duplicates according to policy, keep similarity review-only, persist redacted row outcomes/counters, and expose explicit validated or review-required state.
 - [x] T165 Upgrade only Coverage.py from 7.15.4 to 7.16.0 after the temporary pure-Python tracer later reproduced a second low-level crash; explicitly pin the corrected native core and require two consecutive full 327-test API coverage runs before restoring the gate.
 - [x] T166 Complete import review and atomic application after analysis found staged outcomes had no safe resolution or mutation path; add requester-bound decisions, exact-candidate validation, partial-policy handling, source/digest revalidation, transactional draft create/update/skip application, durable replay, bounded row-outcome inspection, and redacted terminal failure recording.
+- [x] T167 Harden canonical workspace invariants after test-first analysis reproduced duplicate workflow declarations, invalid scheduling flags, relationship cycles, inert deletion policies, mutable record versions, and under-validated saved-view shapes; enforce bounded transactional behavior while retaining the legacy revision uniqueness contract.
 
 ## Dependencies and authority
 
