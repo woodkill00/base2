@@ -34,7 +34,7 @@
 - [x] T024 Add failing relationship cardinality, target type, scope, cycle/depth, and deletion-policy tests.
 - [x] T025 Add failing saved-view ownership, query-schema, sharing, and permission-revalidation tests.
 - [x] T026 Add failing media binding, import/export job, idempotency, terminal-state, and audit entity tests.
-- [ ] T027 Add failing forward/reverse migration, model-state, constraint, and clean-default tests.
+- [x] T027 Add failing forward/reverse migration, model-state, constraint, and clean-default tests.
 - [x] T028 Implement shared closed enums, limits, validators, and structured-rich-text primitives in `django/common/models.py` and focused helpers.
 - [x] T029 Evolve existing `django/sitecontent/models.py` content records/revisions and add canonical definitions, fields, workflows, versions, and relationships without parallel record tables.
 - [x] T030 Evolve existing media entities and add canonical saved views, asset bindings, import/export jobs, row outcomes, and audit references in `django/sitecontent/models.py`.
@@ -203,6 +203,7 @@
 - [x] T166 Complete import review and atomic application after analysis found staged outcomes had no safe resolution or mutation path; add requester-bound decisions, exact-candidate validation, partial-policy handling, source/digest revalidation, transactional draft create/update/skip application, durable replay, bounded row-outcome inspection, and redacted terminal failure recording.
 - [x] T167 Harden canonical workspace invariants after test-first analysis reproduced duplicate workflow declarations, invalid scheduling flags, relationship cycles, inert deletion policies, mutable record versions, and under-validated saved-view shapes; enforce bounded transactional behavior while retaining the legacy revision uniqueness contract.
 - [x] T168 Fail closed when a saved view's definition version is no longer the currently published schema, while rechecking tenant, type, owner/role sharing, query fields, and bounds at each execution.
+- [x] T169 Add an executable Django migration round trip after analysis found only static migration inspection; prove legacy records survive reverse/forward transitions and verify final defaults, constraints, indexes, and restored latest state.
 
 ## Dependencies and authority
 
