@@ -156,7 +156,7 @@ describe('content workspace', () => {
     });
     expect(await screen.findByRole('heading', { name: 'Hello' })).toBeVisible();
     expect(screen.getByText('Safe synthetic summary')).toBeVisible();
-    expect(await screen.findByText(/0 retained historical versions/i)).toBeVisible();
+    expect(await screen.findByText(/no earlier versions are retained/i)).toBeVisible();
     await act(async () => {
       await user.click(screen.getByRole('tab', { name: 'Schemas' }));
     });

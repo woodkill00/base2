@@ -5,6 +5,7 @@ import GlassButton from '../components/glass/GlassButton';
 import GlassCard from '../components/glass/GlassCard';
 import Navigation from '../components/Navigation';
 import { ExportWorkspace, ImportWorkspace } from '../components/content/WorkspaceJobs';
+import RecordInspector from '../components/content/RecordInspector';
 import { contentWorkspaceAPI, normalizeWorkspaceError } from '../services/contentWorkspace';
 
 const TABS = ['Records', 'Schemas', 'Imports', 'Exports'];
@@ -604,35 +605,20 @@ export default function ContentWorkspace() {
                           className="min-h-48 rounded-2xl border border-white/10 bg-black/10 p-5"
                         >
                           {activeRecord ? (
-                            <div className="space-y-4">
-                              <div>
-                                <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">
-                                  {activeRecord.state} · version {activeRecord.version}
-                                </p>
-                                <h3 className="mt-1 text-2xl font-semibold">
-                                  {activeRecord.title}
-                                </h3>
-                                <p className="text-sm opacity-65">/{activeRecord.slug}</p>
-                              </div>
-                              <dl className="grid gap-3 sm:grid-cols-2">
-                                {Object.entries(activeRecord.values || {}).map(([key, value]) => (
-                                  <div key={key} className="rounded-xl bg-white/5 p-3">
-                                    <dt className="text-xs font-semibold uppercase tracking-wider opacity-60">
-                                      {key.replaceAll('_', ' ')}
-                                    </dt>
-                                    <dd className="mt-1 break-words text-sm">
-                                      {typeof value === 'object'
-                                        ? JSON.stringify(value)
-                                        : String(value)}
-                                    </dd>
-                                  </div>
-                                ))}
-                              </dl>
-                              <p className="text-xs opacity-60">
-                                {activeRecord.history.length} retained historical{' '}
-                                {activeRecord.history.length === 1 ? 'version' : 'versions'}
-                              </p>
-                            </div>
+                            <RecordInspector
+                              typeKey={selectedType}
+                              schema={schema}
+                              record={activeRecord}
+                              onChanged={(updated) => {
+                                setActiveRecord(updated);
+                                setRecords((current) =>
+                                  current.map((item) =>
+                                    item.id === updated.id ? { ...item, ...updated } : item
+                                  )
+                                );
+                              }}
+                              onError={reportJobError}
+                            />
                           ) : (
                             <div className="grid min-h-40 place-items-center text-center text-sm opacity-70">
                               Choose a record to inspect its fields and history.

@@ -208,6 +208,7 @@
 - [x] T171 Close the import/export idempotency race by using PostgreSQL conflict arbitration and re-reading the committed winner; accept only an identical tenant/type/requester/request digest and return a true replay while conflicting payloads remain rejected.
 - [x] T172 Complete the header-grant-only browser API surface for schemas, records, workflows, media, relationships, imports, exports, and search; normalize closed job and redacted error states, preserve explicit stale-index evidence, propagate abort signals, encode identifiers, and prove no feature-level credential persistence.
 - [x] T173 Replace inert import/export placeholders with bounded accessible job forms; hash sources locally, keep grants memory-only, require explicit review and commit decisions, poll without job replay, expose terminal outcomes, constrain field projections, and revoke each export object URL immediately after use.
+- [x] T174 Replace the read-only record inspector with optimistic scalar field editing, unsaved-exit protection, state-bounded confirmed workflow actions, immutable history metadata, and restore-as-new-version controls; keep structured field kinds closed until their dedicated safe controls exist and preserve the visible record on conflicts.
 
 ## Dependencies and authority
 
