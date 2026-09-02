@@ -129,13 +129,13 @@
 - [ ] T104 Define measured schema, query, page, relationship, upload, import/export, job, bundle, and retention defaults/maxima from repeatable fixtures.
 - [ ] T105 Add maximum-bound query-plan tests proving tenant/site leading indexes and bounded relationship expansion without N+1 growth.
 - [ ] T106 Add concurrency tests for schema publication, record mutation, transition, saved-view edit, import commit, and schedule firing.
-- [ ] T107 Add backup manifest tests covering definitions, records, versions, relationships, views, jobs, audit references, asset metadata, and object hashes.
-- [ ] T108 Add isolated restore tests with exact counts, schema versions, referential integrity, content hashes, and no live-target access.
+- [x] T107 Add backup manifest tests covering definitions, records, versions, relationships, views, jobs, audit references, asset metadata, and object hashes.
+- [x] T108 Add isolated restore tests with exact counts, schema versions, referential integrity, content hashes, and no live-target access.
 - [ ] T109 Add retention and hard-deletion tests for active relationships, recovery windows, audit preservation, export expiry, and exact-owned object cleanup.
 - [ ] T110 Add privacy/data-rights projection tests proving workspace records enter authorized export/correction/deletion flows without leaking other tenants.
 - [ ] T111 Add upgrade and rollback tests from current `main`, empty database, populated fixtures, old generated profile, and interrupted migration checkpoints.
-- [ ] T112 Add safe rollback and restore operator support through both Bash and PowerShell entrypoints if a new command is required.
-- [ ] T113 Verify shell parity, fixed arguments, path confinement, no arbitrary command/environment injection, and redacted artifacts for T112.
+- [x] T112 Add safe rollback and restore operator support through both Bash and PowerShell entrypoints if a new command is required.
+- [x] T113 Verify shell parity, fixed arguments, path confinement, no arbitrary command/environment injection, and redacted artifacts for T112.
 - [ ] T114 Run backup/restore, migration, rollback, retention, privacy, performance, and concurrency gates.
 - [ ] T115 Record exact measured limits and operator recovery guidance in repository documentation.
 - [ ] T116 Verify no duplicate canonical media, capability, role, audit, job, or tenant vocabulary was introduced.
@@ -218,6 +218,7 @@
 - [x] T181 Protect the canonical shared generated preset artifact from a competing Prettier rewrite after clean-generation analysis reproduced formatter drift; retain generator ownership and prove immediate check-mode idempotency.
 - [x] T182 Add a closed public workspace renderer registry after implementation analysis found generic pages handled only legacy title/excerpt/body fields; render all supported scalar and structured kinds without HTML interpretation, reject active URLs and unknown kinds, bound declared projections, omit undeclared values, and pass focused accessibility tests.
 - [x] T183 Add the missing bounded worker-health evidence projection after implementation analysis found terminal database state but no safe aggregate report; hash tenant identity, bound counts and durations, close state vocabularies, redact malformed error text, integrity-bind output, and prove no submitted content or object location appears.
+- [x] T184 Add an encrypted workspace recovery bundle and isolated restore verifier after implementation analysis found no workspace-wide recovery inventory; cover definitions, fields, workflows, records, versions, relationships, views, jobs, audit references, assets, bindings, exact counts and hashes, referential integrity, key/tamper failure, live-target refusal, owner-only output, and replay refusal.
 
 ## Dependencies and authority
 
