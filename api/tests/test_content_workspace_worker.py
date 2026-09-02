@@ -191,9 +191,12 @@ def test_due_media_scans_only_discovers_unresolved_quarantine(monkeypatch):
 
 @pytest.mark.parametrize(
     ('verdict', 'expected_status', 'expected_result'),
-    [('clean', 'quarantined', 'scanned_clean'), ('infected', 'rejected', 'scanned_infected')],
+    [
+        ('clean', 'validated', 'validated_safe_derivative'),
+        ('infected', 'rejected', 'scanned_infected'),
+    ],
 )
-def test_media_scanner_is_content_bound_and_clean_scan_does_not_promote(
+def test_media_scanner_is_content_bound_and_promotes_only_a_safe_derivative(
     monkeypatch, verdict, expected_status, expected_result
 ):
     asset_id = UUID(int=7104)
@@ -204,6 +207,7 @@ def test_media_scanner_is_content_bound_and_clean_scan_does_not_promote(
                 'a' * 64,
                 'quarantined',
                 {'admission': 'content_verified', 'width': 20, 'height': 10},
+                'image/png',
             )
         ]
     )
@@ -211,16 +215,44 @@ def test_media_scanner_is_content_bound_and_clean_scan_does_not_promote(
     scopes = bind(monkeypatch, connection)
 
     class Store:
+        puts = []
+
         def get(self, key, *, expected_sha256):
             assert key.endswith(f'{asset_id}.bin') and expected_sha256 == 'a' * 64
             return b'synthetic'
+
+        def put(self, **kwargs):
+            self.puts.append(kwargs)
+            return type(
+                'Stored',
+                (),
+                {
+                    'object_key': 'variants/site-a/safe.bin',
+                    'sha256': 'b' * 64,
+                    'byte_size': 4,
+                },
+            )()
+
+    derivative = type(
+        'Derivative',
+        (),
+        {
+            'content': b'safe',
+            'media_type': 'image/png',
+            'sha256': 'b' * 64,
+            'width': 20,
+            'height': 10,
+        },
+    )()
+    store = Store()
 
     assert (
         worker.scan_workspace_asset(
             site_id='site-a',
             asset_id=asset_id,
-            artifact_store=Store(),
+            artifact_store=store,
             scanner=lambda content: verdict if content == b'synthetic' else 'error',
+            derivative_builder=lambda **_kwargs: derivative,
         )
         == expected_result
     )
@@ -228,7 +260,10 @@ def test_media_scanner_is_content_bound_and_clean_scan_does_not_promote(
     update = next(call for call in cursor.calls if call[0].startswith('UPDATE'))
     assert update[1][0] == expected_status
     if verdict == 'clean':
-        assert update[1][0] != 'validated'
+        assert store.puts[0]['namespace'] == 'variants'
+        assert any('INSERT INTO sitecontent_mediavariant' in call[0] for call in cursor.calls)
+    else:
+        assert store.puts == []
 
 
 def test_media_scanner_failure_rolls_back_without_false_clean_state(monkeypatch):
@@ -240,6 +275,7 @@ def test_media_scanner_failure_rolls_back_without_false_clean_state(monkeypatch)
                 'a' * 64,
                 'quarantined',
                 {'admission': 'content_verified'},
+                'image/png',
             )
         ]
     )

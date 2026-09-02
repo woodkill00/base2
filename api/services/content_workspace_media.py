@@ -129,5 +129,7 @@ def apply_scan_result(
         raise MediaAdmissionError('content_media_scan_invalid')
     if scanned_sha256 != admission.sha256:
         raise MediaAdmissionError('content_integrity_failed')
-    state = {'clean': 'validated', 'infected': 'rejected', 'error': 'quarantined'}[outcome]
+    # A scanner only answers whether the exact upload contains a known threat.
+    # Validation additionally requires a separately generated safe derivative.
+    state = {'clean': 'quarantined', 'infected': 'rejected', 'error': 'quarantined'}[outcome]
     return replace(admission, state=state)

@@ -194,6 +194,7 @@
 - [x] T157 Add a durable import-source upload contract after analysis found source hashes had no corresponding artifact handoff; bind format/site/type/requester/job/hash to an expiring grant, stream within the parser ceiling, reject malformed input before persistence, encrypt the exact source, expose readiness explicitly, and cover migration/replay boundaries.
 - [x] T158 Replace Coverage.py's crashing native tracer with its supported pure-Python core after two distinct interpreter-level failures on Python 3.12 under WSL; lock the choice with a regression test and pass the full API coverage suite twice consecutively.
 - [x] T159 Add a fail-closed malware-scanning boundary for admitted media using bounded ClamAV INSTREAM requests, exact encrypted-object/hash binding, non-promoting clean verdicts, explicit infected rejection, durable retry discovery, and an opt-in private resource-bounded Compose runtime; verify protocol, state, retry, migration, and runtime contracts.
+- [x] T160 Correct the legacy clean-scan promotion contract and require a deterministic safe derivative before validation; re-encode bounded single-frame JPEG/PNG/WebP input as metadata-free PNG, rewrite bounded passive PDFs without metadata/annotations or active-document tokens, store the derivative under exact encrypted ownership, and transactionally bind its digest before marking the asset validated.
 
 ## Dependencies and authority
 

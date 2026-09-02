@@ -146,6 +146,8 @@ packaging==26.3
     #   pytest
 passlib==1.7.4
     # via -r api/requirements.in
+pillow==12.3.0
+    # via -r api/requirements.in
 pluggy==1.6.0
     # via
     #   pytest
@@ -176,6 +178,8 @@ pydantic-settings==2.15.0
 pygments==2.21.0
     # via pytest
 pyjwt[crypto]==2.13.0
+    # via -r api/requirements.in
+pypdf==6.16.2
     # via -r api/requirements.in
 pytest==9.1.1
     # via

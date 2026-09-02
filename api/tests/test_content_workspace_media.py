@@ -68,10 +68,10 @@ def test_pixel_bombs_truncated_images_and_late_active_payloads_fail_closed():
             admit_upload(filename='unsafe.png', claimed_type='image/png', content=content)
 
 
-def test_scan_results_are_closed_content_bound_and_never_promote_on_error():
+def test_scan_results_are_closed_content_bound_and_never_promote_without_derivative():
     admitted = admit_upload(filename='synthetic.png', claimed_type='image/png', content=png())
     clean = apply_scan_result(admitted, outcome='clean', scanned_sha256=admitted.sha256)
-    assert clean.state == 'validated'
+    assert clean.state == 'quarantined'
     assert apply_scan_result(
         admitted, outcome='infected', scanned_sha256=admitted.sha256
     ).state == ('rejected')

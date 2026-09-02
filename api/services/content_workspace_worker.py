@@ -7,6 +7,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from api.db import db_conn
+from api.services.content_workspace_derivative import generate_safe_derivative
 from api.services.content_workspace_scanner import scan_content
 
 
@@ -224,14 +225,19 @@ def due_media_scans(*, limit: int = 10) -> list[tuple[str, str]]:
 
 
 def scan_workspace_asset(
-    *, site_id: str, asset_id: UUID, artifact_store, scanner=scan_content
+    *,
+    site_id: str,
+    asset_id: UUID,
+    artifact_store,
+    scanner=scan_content,
+    derivative_builder=generate_safe_derivative,
 ) -> str:
-    """Scan an exact encrypted object and record a truthful non-promoting verdict."""
+    """Scan an exact encrypted object and promote only a stored safe derivative."""
     with db_conn(tenant_id=site_id) as conn:
         try:
             with conn.cursor() as cur:
                 cur.execute(
-                    """SELECT storage_key, sha256, status, metadata
+                    """SELECT storage_key, sha256, status, metadata, media_type
                        FROM sitecontent_mediaasset
                        WHERE id=%s AND site_id=%s FOR UPDATE""",
                     (str(asset_id), site_id),
@@ -250,7 +256,20 @@ def scan_workspace_asset(
                 verdict = scanner(content)
                 if verdict not in {'clean', 'infected'}:
                     raise ValueError('content_scanner_response_invalid')
-                next_status = 'quarantined' if verdict == 'clean' else 'rejected'
+                next_status = 'rejected'
+                derivative = None
+                stored_derivative = None
+                if verdict == 'clean':
+                    derivative = derivative_builder(content=content, media_type=row[4])
+                    stored_derivative = artifact_store.put(
+                        namespace='variants',
+                        site_id=site_id,
+                        object_id=f'{asset_id}-safe',
+                        content=derivative.content,
+                    )
+                    if stored_derivative.sha256 != derivative.sha256:
+                        raise ValueError('content_integrity_failed')
+                    next_status = 'validated'
                 safe_metadata = {
                     'admission': 'content_verified',
                     'scanStatus': verdict,
@@ -259,6 +278,25 @@ def scan_workspace_asset(
                 for key in ('width', 'height'):
                     if isinstance(metadata.get(key), int):
                         safe_metadata[key] = metadata[key]
+                if stored_derivative is not None:
+                    safe_metadata['derivativeSha256'] = stored_derivative.sha256
+                    cur.execute(
+                        """INSERT INTO sitecontent_mediavariant
+                           (id, asset_id, name, storage_key, media_type, byte_size,
+                            sha256, width, height, created_at)
+                           VALUES (%s,%s,'safe',%s,%s,%s,%s,%s,%s,NOW())
+                           ON CONFLICT (asset_id, name) DO NOTHING""",
+                        (
+                            str(uuid4()),
+                            str(asset_id),
+                            stored_derivative.object_key,
+                            derivative.media_type,
+                            stored_derivative.byte_size,
+                            stored_derivative.sha256,
+                            derivative.width,
+                            derivative.height,
+                        ),
+                    )
                 cur.execute(
                     """UPDATE sitecontent_mediaasset SET status=%s, metadata=%s::jsonb,
                            updated_at=NOW()
@@ -283,4 +321,4 @@ def scan_workspace_asset(
         except Exception:
             conn.rollback()
             raise
-    return 'scanned_clean' if verdict == 'clean' else 'scanned_infected'
+    return 'validated_safe_derivative' if verdict == 'clean' else 'scanned_infected'
