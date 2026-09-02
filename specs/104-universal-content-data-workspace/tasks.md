@@ -85,8 +85,8 @@
 - [x] T069 Implement bounded streaming JSON/CSV parsing and staged validation outcomes.
 - [x] T070 Implement import review/commit with exact-first deduplication and review-only similarity candidates.
 - [x] T071 Implement permission-bound JSON/CSV exports with encryption, hashes, and expiring delivery.
-- [ ] T072 Add worker health/evidence summaries containing only safe IDs, counts, hashes, durations, states, and error codes.
-- [ ] T073 Run worker failure injection, restart, concurrency, replay, and secret-output suites.
+- [x] T072 Add worker health/evidence summaries containing only safe IDs, counts, hashes, durations, states, and error codes.
+- [x] T073 Run worker failure injection, restart, concurrency, replay, and secret-output suites.
 
 ## Phase 5 - Generator, presets, compatibility, and migrations
 
@@ -217,6 +217,7 @@
 - [x] T180 Generate one deterministic cross-service workspace contract matrix after implementation analysis found presets were copied without explicit enabled/disabled profile surfaces; include bounded synthetic fixture IDs, models, migrations, routes, navigation, permissions, jobs, tests, and migration notes while disabled profiles receive no workspace authority.
 - [x] T181 Protect the canonical shared generated preset artifact from a competing Prettier rewrite after clean-generation analysis reproduced formatter drift; retain generator ownership and prove immediate check-mode idempotency.
 - [x] T182 Add a closed public workspace renderer registry after implementation analysis found generic pages handled only legacy title/excerpt/body fields; render all supported scalar and structured kinds without HTML interpretation, reject active URLs and unknown kinds, bound declared projections, omit undeclared values, and pass focused accessibility tests.
+- [x] T183 Add the missing bounded worker-health evidence projection after implementation analysis found terminal database state but no safe aggregate report; hash tenant identity, bound counts and durations, close state vocabularies, redact malformed error text, integrity-bind output, and prove no submitted content or object location appears.
 
 ## Dependencies and authority
 

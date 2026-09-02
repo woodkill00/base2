@@ -63,6 +63,29 @@ def test_due_publications_are_ordered_and_bounded(monkeypatch):
     assert 'ORDER BY publish_at, id LIMIT %s' in cursor.calls[0][0]
 
 
+def test_worker_health_summary_is_bounded_deterministic_and_redacted(monkeypatch):
+    rows = [
+        ('import', 'failed', 'secret=https://private.example', 2, 12.5),
+        ('export', 'completed', '', 3, 4.0),
+    ]
+    cursor = Cursor(rows)
+    scopes = bind(monkeypatch, Connection(cursor))
+    result = worker.workspace_health_summary(site_id='site-a')
+    assert scopes == ['site-a']
+    assert result['schemaVersion'] == 1
+    assert result['siteRef'] != 'site-a'
+    assert result['outcomes'][0] == {
+        'kind': 'import',
+        'state': 'failed',
+        'errorCode': 'content_dependency_unavailable',
+        'count': 2,
+        'maximumDurationSeconds': 12.5,
+    }
+    assert len(result['digest']) == 64
+    assert 'private.example' not in str(result)
+    assert cursor.calls[0][1] == ('site-a', 'site-a')
+
+
 def test_publication_is_tenant_bound_transactional_and_replay_safe(monkeypatch):
     record_id = UUID(int=104)
     cursor = Cursor([(record_id, 3, 1, {'title': 'Safe'}, 'scheduled', 'future'), (True,)])

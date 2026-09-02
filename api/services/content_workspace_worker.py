@@ -37,6 +37,67 @@ def due_publication_ids(*, limit: int = 25) -> list[tuple[str, str]]:
         return [(row[0], str(row[1])) for row in cur.fetchall()]
 
 
+def workspace_health_summary(*, site_id: str) -> dict[str, Any]:
+    """Return bounded operational evidence without submitted content or object locations."""
+    with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT kind, status, error_code, count(*),
+                      COALESCE(MAX(duration_seconds), 0)
+               FROM (
+                 SELECT 'import' AS kind, status, error_code,
+                        EXTRACT(EPOCH FROM (updated_at-created_at)) AS duration_seconds
+                 FROM sitecontent_importjob WHERE site_id=%s
+                 UNION ALL
+                 SELECT 'export' AS kind, status, error_code,
+                        EXTRACT(EPOCH FROM (updated_at-created_at)) AS duration_seconds
+                 FROM sitecontent_exportjob WHERE site_id=%s
+               ) jobs
+               GROUP BY kind, status, error_code
+               ORDER BY kind, status, error_code LIMIT 100""",
+            (site_id, site_id),
+        )
+        rows = cur.fetchall()
+    outcomes = []
+    for kind, state, error_code, count, duration in rows:
+        safe_error = (
+            error_code
+            if re.fullmatch(r'content_[a-z0-9_]{3,55}', error_code or '')
+            else 'content_dependency_unavailable'
+            if error_code
+            else ''
+        )
+        outcomes.append(
+            {
+                'kind': kind if kind in {'import', 'export'} else 'unknown',
+                'state': state
+                if state
+                in {
+                    'uploaded',
+                    'validated',
+                    'review_required',
+                    'committing',
+                    'queued',
+                    'running',
+                    'completed',
+                    'failed',
+                    'cancelled',
+                    'expired',
+                }
+                else 'unknown',
+                'errorCode': safe_error,
+                'count': min(max(int(count), 0), 1_000_000),
+                'maximumDurationSeconds': min(max(float(duration), 0.0), 31_536_000.0),
+            }
+        )
+    payload = {
+        'schemaVersion': 1,
+        'siteRef': hashlib.sha256(site_id.encode()).hexdigest()[:16],
+        'outcomes': outcomes,
+    }
+    payload['digest'] = canonical_digest(payload)
+    return payload
+
+
 def publish_scheduled_record(*, site_id: str, record_id: UUID) -> str:
     """Publish one due record exactly once; replay is a bounded no-op."""
     with db_conn(tenant_id=site_id) as conn:
