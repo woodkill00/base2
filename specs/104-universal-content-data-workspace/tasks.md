@@ -188,6 +188,7 @@
 - [x] T151 Replace the nested record-detail complementary landmark with an explicitly named region after the workspace axe regression reproduced `landmark-complementary-is-top-level`; rerun focused accessibility and interaction tests.
 - [x] T152 Update the canonical Base2 Obsidian generated-profile assertion after the full affected gate reproduced a stale exact module set that omitted the enabled `content-workspace`; rerun the generator/profile matrix.
 - [x] T153 Update the legacy scheduled-content fixture after the complete Django suite reproduced its missing now-required IANA display timezone; rerun the full Django suite before downstream gates.
+- [x] T154 Add an encrypted exact-owned private artifact store after implementation analysis found no existing canonical object adapter for workspace media/import/export payloads; prove path confinement, authenticated context, integrity, permissions, replay, conflict, size bounds, and symlink rejection before integration.
 
 ## Dependencies and authority
 
