@@ -29,13 +29,13 @@ class Feature104PlanValidatorTests(unittest.TestCase):
             validator.validate_spec(spec)
 
     def test_task_gap_fails(self) -> None:
-        tasks = validator.read("tasks.md").replace("- [ ] T075 ", "- [ ] T175 ", 1)
-        with self.assertRaisesRegex(AssertionError, "T001..T150"):
+        tasks = validator.read("tasks.md").replace("- [ ] T076 ", "- [ ] T175 ", 1)
+        with self.assertRaisesRegex(AssertionError, "contiguous"):
             validator.validate_tasks(tasks)
 
-    def test_premature_completion_fails(self) -> None:
-        tasks = validator.read("tasks.md").replace("- [ ] T019 ", "- [x] T019 ", 1)
-        with self.assertRaisesRegex(AssertionError, "only planning tasks"):
+    def test_guarded_lifecycle_completion_fails(self) -> None:
+        tasks = validator.read("tasks.md").replace("- [ ] T142 ", "- [x] T142 ", 1)
+        with self.assertRaisesRegex(AssertionError, "may not be pre-completed"):
             validator.validate_tasks(tasks)
 
     def test_missing_traceability_row_fails(self) -> None:

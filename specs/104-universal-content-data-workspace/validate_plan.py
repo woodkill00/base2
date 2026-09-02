@@ -25,7 +25,7 @@ REQUIRED_FILES = (
     "analysis.md",
 )
 EXPECTED_REQUIREMENTS = tuple(f"FR-{number:03d}" for number in range(1, 63))
-EXPECTED_TASKS = tuple(f"T{number:03d}" for number in range(1, 151))
+BASE_TASKS = tuple(f"T{number:03d}" for number in range(1, 151))
 
 
 def fail(message: str) -> None:
@@ -67,14 +67,16 @@ def validate_spec(spec: str) -> None:
             fail(f"missing explicit boundary: {boundary}")
 
 
-def validate_tasks(tasks: str) -> None:
+def validate_tasks(tasks: str) -> int:
     task_rows = re.findall(r"^- \[([ x])\] (T\d{3})\b", tasks, flags=re.MULTILINE)
     found = tuple(task_id for _, task_id in task_rows)
-    if found != EXPECTED_TASKS:
-        fail(f"tasks must be exactly sequential T001..T150; found {len(found)} entries")
-    completed = tuple(task_id for mark, task_id in task_rows if mark == "x")
-    if completed != EXPECTED_TASKS[:18]:
-        fail("only planning tasks T001..T018 may be complete before implementation")
+    expected = tuple(f"T{number:03d}" for number in range(1, len(found) + 1))
+    if len(found) < len(BASE_TASKS) or found != expected:
+        fail(
+            "tasks must contain contiguous T001..T150 base tasks followed only by "
+            f"contiguous corrective tasks; found {len(found)} entries"
+        )
+    completed = {task_id for mark, task_id in task_rows if mark == "x"}
     phase_numbers = tuple(
         int(number)
         for number in re.findall(r"^## Phase (\d+)\b", tasks, flags=re.MULTILINE)
@@ -85,12 +87,15 @@ def validate_tasks(tasks: str) -> None:
         fail("task graph must state test-first ordering")
     if "Django precedes FastAPI, which precedes React" not in tasks:
         fail("task graph must state constitutional build order")
-    for task_id in EXPECTED_TASKS[18:140]:
+    for task_id in BASE_TASKS[18:140]:
         if task_id not in tasks:
             fail(f"missing implementation/verification task {task_id}")
     for guarded in ("T142", "T144", "T145", "T148", "T149"):
         if guarded not in tasks:
             fail(f"missing separately governed lifecycle task {guarded}")
+        if guarded in completed:
+            fail(f"separately governed lifecycle task may not be pre-completed: {guarded}")
+    return len(found)
 
 
 def validate_traceability(traceability: str) -> None:
@@ -106,7 +111,7 @@ def validate_traceability(traceability: str) -> None:
             "traceability rows must be exactly sequential FR-001..FR-062; "
             f"found {len(rows)} rows"
         )
-    valid_task_ids = set(EXPECTED_TASKS)
+    valid_task_ids = set(BASE_TASKS)
     for requirement, columns in rows.items():
         if len(columns) != 3:
             fail(f"{requirement} must have implementation, automated test, and evidence columns")
@@ -159,19 +164,20 @@ def validate_cross_document_contract(documents: dict[str, str]) -> None:
             fail(f"unresolved planning marker present: {marker}")
     if "NO_UNRESOLVED_PLANNING_FINDINGS" not in documents["analysis.md"]:
         fail("analysis has no explicit planning closure result")
-    if "Implementation has not started" not in documents["analysis.md"]:
-        fail("analysis must state implementation status honestly")
+    if "IMPLEMENTATION_ACTIVE_NOT_PUBLISHED" not in documents["analysis.md"]:
+        fail("analysis must state the current implementation/publication status honestly")
 
 
 def main() -> int:
     documents = {relative: read(relative) for relative in REQUIRED_FILES}
     validate_spec(documents["spec.md"])
-    validate_tasks(documents["tasks.md"])
+    task_count = validate_tasks(documents["tasks.md"])
     validate_traceability(documents["traceability.md"])
     validate_cross_document_contract(documents)
     print(
         "Feature 104 planning validation: PASS "
-        "(62 requirements, 150 ordered tasks, complete task/test/evidence traceability, "
+        f"(62 requirements, {task_count} ordered base/corrective tasks, complete "
+        "task/test/evidence traceability, "
         "zero unresolved planning findings)"
     )
     return 0
