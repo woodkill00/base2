@@ -1019,6 +1019,10 @@ class ImportJob(WorkspaceJob):
         "cancelled",
     )
     source_sha256 = models.CharField(max_length=64, validators=[sha256_validator])
+    source_format = models.CharField(
+        max_length=8, choices=(("json", "JSON"), ("csv", "CSV")), default="json"
+    )
+    source_object_key = models.CharField(max_length=500, blank=True, default="")
     status = models.CharField(
         max_length=24, choices=[(item, item) for item in STATUSES], default="uploaded"
     )

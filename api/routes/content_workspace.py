@@ -14,6 +14,7 @@ from api.middleware.tenant import require_tenant
 from api.repositories.content_workspace import PostgresContentWorkspaceRepository
 from api.security.request_auth import require_authenticated_principal
 from api.services.content_workspace_media import MAX_UPLOAD_BYTES
+from api.services.content_workspace_transfer import MAX_BYTES as MAX_IMPORT_BYTES
 from api.services.content_workspace_storage import (
     ArtifactIntegrityError,
     configured_artifact_store,
@@ -247,6 +248,7 @@ class RestoreRequest(ContractModel):
 
 
 class ImportCreate(ContractModel):
+    format: Literal['json', 'csv'] = 'json'
     source_sha256: str = Field(pattern=r'^[a-f0-9]{64}$')
     schema_version: int = Field(ge=1)
     mapping: dict[str, str] = Field(default_factory=dict)
@@ -1076,6 +1078,42 @@ def get_import(type_key: str, job_id: UUID, request: Request):
         )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail='content_not_found') from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.put('/types/{type_key}/imports/{job_id}/source')
+async def complete_import_source(
+    type_key: str,
+    job_id: UUID,
+    request: Request,
+    upload_grant: Annotated[str, Header(alias='Upload-Grant', min_length=32, max_length=4096)],
+):
+    _valid_type_key(type_key)
+    principal, tenant = _authorized_scope(request, 'content-workspace.write')
+    content_buffer = bytearray()
+    async for chunk in request.stream():
+        content_buffer.extend(chunk)
+        if len(content_buffer) > MAX_IMPORT_BYTES:
+            raise HTTPException(status_code=413, detail='content_limit_exceeded')
+    try:
+        return get_repository().complete_import_source(
+            site_id=tenant,
+            type_key=type_key,
+            job_id=job_id,
+            requester_ref=f'user:{principal.user_id}',
+            upload_grant=upload_grant,
+            content=bytes(content_buffer),
+            artifact_store=get_artifact_store(),
+        )
+    except ArtifactIntegrityError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ValueError as exc:
+        code = str(exc)
+        raise HTTPException(
+            status_code=404 if code == 'content_not_found' else 422,
+            detail=code,
+        ) from exc
     except Exception as exc:
         raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
 

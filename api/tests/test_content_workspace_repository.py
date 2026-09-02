@@ -193,6 +193,54 @@ def test_asset_content_completion_binds_grant_hash_owner_and_quarantine(monkeypa
     assert 'sitecontent_workspaceauditevent' in combined_sql
 
 
+def test_import_source_completion_validates_parses_encrypts_and_marks_ready(monkeypatch):
+    monkeypatch.setattr(repository.settings, 'TOKEN_PEPPER', 'synthetic-test-pepper-104')
+    job_id = UUID(int=5104)
+    content = b'[{"title":"Synthetic"}]'
+    digest = hashlib.sha256(content).hexdigest()
+    scope = {
+        'site': 'site-a',
+        'type': 'article',
+        'requester': 'user:test',
+        'job': str(job_id),
+        'sha256': digest,
+        'format': 'json',
+        'purpose': 'import-source-upload',
+    }
+    grant = CursorCodec('synthetic-test-pepper-104', ttl_seconds=300).encode(
+        scope=scope, position={'jobId': str(job_id)}
+    )
+    cursor = Cursor(rows=[(job_id, digest, 'json', '', 'uploaded'), (job_id,)])
+    connection = Connection(cursor)
+    scopes = bind(monkeypatch, connection)
+
+    class Store:
+        def put(self, **kwargs):
+            assert kwargs['namespace'] == 'imports'
+            assert kwargs['site_id'] == 'site-a'
+            assert kwargs['content'] == content
+            return StoredArtifact(
+                object_key=f'imports/site-a/{job_id}.bin',
+                sha256=digest,
+                byte_size=len(content),
+            )
+
+    result = repository.PostgresContentWorkspaceRepository().complete_import_source(
+        site_id='site-a',
+        type_key='article',
+        job_id=job_id,
+        requester_ref='user:test',
+        upload_grant=grant,
+        content=content,
+        artifact_store=Store(),
+    )
+    assert result['sourceReady'] is True and result['replayed'] is False
+    assert scopes == ['site-a'] and connection.commits == 1
+    sql = ' '.join(statement for statement, _ in cursor.calls)
+    assert 'source_object_key' in sql and 'FOR UPDATE' in sql
+    assert 'sitecontent_workspaceauditevent' in sql
+
+
 def test_query_compiler_rejects_unknown_fields_operators_and_excess_complexity():
     allowed = {'title': 'short_text', 'published_at': 'datetime'}
     sql, params = repository.compile_filters(

@@ -465,6 +465,8 @@ def test_job_idempotency_binds_request_digest_and_terminal_state():
         expires_at=timezone.now() + timedelta(hours=1),
     )
     assert imported.status == "uploaded"
+    assert imported.source_format == "json"
+    assert imported.source_object_key == ""
     assert exported.status == "queued"
     with pytest.raises(IntegrityError), transaction.atomic():
         ImportJob.objects.create(

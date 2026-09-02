@@ -12,6 +12,7 @@ from uuid import UUID, uuid4
 from api.db import db_conn
 from api.security.content_workspace import CursorCodec, CursorError, canonical_digest
 from api.services.content_workspace_media import admit_upload
+from api.services.content_workspace_transfer import parse_csv, parse_json
 from api.settings import settings
 
 
@@ -1861,7 +1862,7 @@ class PostgresContentWorkspaceRepository:
                 with conn.cursor() as cur:
                     cur.execute(
                         """SELECT j.id, j.status, j.schema_version, j.counters, j.error_code,
-                                  j.request_digest
+                                  j.request_digest, j.source_object_key
                            FROM sitecontent_importjob j
                            JOIN sitecontent_contenttypedefinition d ON d.id=j.definition_id
                            WHERE j.site_id=%s AND d.site_id=%s AND d.type_key=%s
@@ -1872,7 +1873,23 @@ class PostgresContentWorkspaceRepository:
                     if existing:
                         if existing[5] != request_digest:
                             raise ValueError('content_idempotency_conflict')
-                        return {**self._job_result(existing[:5]), 'replayed': True}
+                        result = {
+                            **self._job_result(existing[:5]),
+                            'replayed': True,
+                            'sourceReady': bool(existing[6]),
+                        }
+                        if not existing[6]:
+                            result.update(
+                                self._import_upload_grant(
+                                    site_id=site_id,
+                                    type_key=type_key,
+                                    requester_ref=requester_ref,
+                                    job_id=existing[0],
+                                    source_sha256=payload['source_sha256'],
+                                    source_format=payload['format'],
+                                )
+                            )
+                        return result
                     definition, _fields = self._schema(cur, site_id=site_id, type_key=type_key)
                     if definition[1] != payload['schema_version']:
                         raise ValueError('content_schema_invalid')
@@ -1881,9 +1898,9 @@ class PostgresContentWorkspaceRepository:
                         """INSERT INTO sitecontent_importjob
                            (id, site_id, definition_id, requester_ref, request_digest,
                             idempotency_key, schema_version, error_code, counters,
-                            completed_at, source_sha256, status, mapping, duplicate_policy,
-                            atomic_policy, created_at, updated_at)
-                           VALUES (%s,%s,%s,%s,%s,%s,%s,'','{}'::jsonb,NULL,%s,'uploaded',
+                            completed_at, source_sha256, source_format, source_object_key,
+                            status, mapping, duplicate_policy, atomic_policy, created_at, updated_at)
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,'','{}'::jsonb,NULL,%s,%s,'','uploaded',
                                    %s::jsonb,%s,%s,NOW(),NOW())
                            RETURNING id, status, schema_version, counters, error_code""",
                         (
@@ -1895,6 +1912,7 @@ class PostgresContentWorkspaceRepository:
                             idempotency_key,
                             payload['schema_version'],
                             payload['source_sha256'],
+                            payload['format'],
                             _json(payload.get('mapping', {})),
                             payload.get('duplicate_policy', 'review'),
                             payload.get('atomic_policy', 'all_or_nothing'),
@@ -1913,12 +1931,140 @@ class PostgresContentWorkspaceRepository:
             except Exception:
                 conn.rollback()
                 raise
-        return {**self._job_result(created), 'replayed': False}
+        return {
+            **self._job_result(created),
+            'replayed': False,
+            'sourceReady': False,
+            **self._import_upload_grant(
+                site_id=site_id,
+                type_key=type_key,
+                requester_ref=requester_ref,
+                job_id=created[0],
+                source_sha256=payload['source_sha256'],
+                source_format=payload['format'],
+            ),
+        }
+
+    @staticmethod
+    def _import_upload_grant(
+        *,
+        site_id: str,
+        type_key: str,
+        requester_ref: str,
+        job_id,
+        source_sha256: str,
+        source_format: str,
+    ) -> dict[str, Any]:
+        scope = {
+            'site': site_id,
+            'type': type_key,
+            'requester': requester_ref,
+            'job': str(job_id),
+            'sha256': source_sha256,
+            'format': source_format,
+            'purpose': 'import-source-upload',
+        }
+        grant = CursorCodec(str(settings.TOKEN_PEPPER), ttl_seconds=300).encode(
+            scope=scope,
+            position={'jobId': str(job_id)},
+        )
+        return {'uploadGrant': grant, 'expiresIn': 300}
+
+    def complete_import_source(
+        self,
+        *,
+        site_id: str,
+        type_key: str,
+        job_id: UUID,
+        requester_ref: str,
+        upload_grant: str,
+        content: bytes,
+        artifact_store,
+    ):
+        with db_conn(tenant_id=site_id) as conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """SELECT j.id, j.source_sha256, j.source_format, j.source_object_key,
+                                  j.status
+                           FROM sitecontent_importjob j
+                           JOIN sitecontent_contenttypedefinition d ON d.id=j.definition_id
+                           WHERE j.id=%s AND j.site_id=%s AND d.site_id=%s AND d.type_key=%s
+                             AND j.requester_ref=%s FOR UPDATE""",
+                        (str(job_id), site_id, site_id, type_key, requester_ref),
+                    )
+                    row = cur.fetchone()
+                    if not row:
+                        raise ValueError('content_not_found')
+                    if row[4] != 'uploaded':
+                        raise ValueError('content_job_terminal')
+                    scope = {
+                        'site': site_id,
+                        'type': type_key,
+                        'requester': requester_ref,
+                        'job': str(job_id),
+                        'sha256': row[1],
+                        'format': row[2],
+                        'purpose': 'import-source-upload',
+                    }
+                    try:
+                        CursorCodec(str(settings.TOKEN_PEPPER), ttl_seconds=300).decode(
+                            upload_grant,
+                            expected_scope=scope,
+                        )
+                    except CursorError as exc:
+                        raise ValueError('content_upload_grant_invalid') from exc
+                    parsed = parse_json(content) if row[2] == 'json' else parse_csv(content)
+                    if parsed.sha256 != row[1]:
+                        raise ValueError('content_integrity_failed')
+                    stored = artifact_store.put(
+                        namespace='imports',
+                        site_id=site_id,
+                        object_id=str(job_id),
+                        content=content,
+                    )
+                    if row[3]:
+                        if row[3] != stored.object_key:
+                            raise ValueError('content_integrity_failed')
+                        return {
+                            'id': str(job_id),
+                            'status': 'uploaded',
+                            'sourceReady': True,
+                            'replayed': True,
+                        }
+                    cur.execute(
+                        """UPDATE sitecontent_importjob SET source_object_key=%s, updated_at=NOW()
+                           WHERE id=%s AND site_id=%s AND requester_ref=%s
+                             AND source_object_key=''
+                           RETURNING id""",
+                        (stored.object_key, str(job_id), site_id, requester_ref),
+                    )
+                    if not cur.fetchone():
+                        raise ValueError('content_job_transition_invalid')
+                    _audit(
+                        cur,
+                        site_id=site_id,
+                        actor_ref=requester_ref,
+                        object_type='import_job',
+                        object_ref=str(job_id),
+                        action='content.import_source_upload',
+                    )
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        return {
+            'id': str(job_id),
+            'status': 'uploaded',
+            'sourceReady': True,
+            'replayed': False,
+        }
 
     def get_import(self, *, site_id: str, type_key: str, job_id: UUID, requester_ref: str):
         with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
             cur.execute(
-                """SELECT j.id, j.status, j.schema_version, j.counters, j.error_code
+                """SELECT j.id, j.status, j.schema_version, j.counters, j.error_code,
+                          j.source_object_key
                    FROM sitecontent_importjob j
                    JOIN sitecontent_contenttypedefinition d ON d.id=j.definition_id
                    WHERE j.id=%s AND j.site_id=%s AND d.site_id=%s AND d.type_key=%s
@@ -1928,7 +2074,7 @@ class PostgresContentWorkspaceRepository:
             row = cur.fetchone()
         if not row:
             raise ValueError('content_not_found')
-        return self._job_result(row)
+        return {**self._job_result(row[:5]), 'sourceReady': bool(row[5])}
 
     def commit_import(self, *, site_id: str, type_key: str, job_id: UUID, requester_ref: str):
         with db_conn(tenant_id=site_id) as conn:

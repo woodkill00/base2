@@ -16,7 +16,22 @@ class FakeJobRepository:
 
     def create_import(self, **kwargs):
         self.calls.append(('import-create', kwargs))
-        return {'id': str(UUID(int=5104)), 'status': 'uploaded', 'replayed': False}
+        return {
+            'id': str(UUID(int=5104)),
+            'status': 'uploaded',
+            'sourceReady': False,
+            'uploadGrant': 'opaque-upload-grant-that-is-long-enough',
+            'replayed': False,
+        }
+
+    def complete_import_source(self, **kwargs):
+        self.calls.append(('import-source', kwargs))
+        return {
+            'id': str(kwargs['job_id']),
+            'status': 'uploaded',
+            'sourceReady': True,
+            'replayed': False,
+        }
 
     def get_import(self, **kwargs):
         self.calls.append(('import-get', kwargs))
@@ -58,6 +73,7 @@ def scoped(monkeypatch):
         lambda **kwargs: {'role': 'owner'},
     )
     monkeypatch.setattr(content_workspace, 'get_repository', lambda: FakeJobRepository())
+    monkeypatch.setattr(content_workspace, 'get_artifact_store', lambda: object())
 
 
 def test_import_and_export_lifecycle_is_tenant_principal_and_idempotency_bound():
@@ -71,6 +87,7 @@ def test_import_and_export_lifecycle_is_tenant_principal_and_idempotency_bound()
         '/api/content/v1/types/article/imports',
         headers=headers,
         json={
+            'format': 'json',
             'sourceSha256': 'b' * 64,
             'schemaVersion': 1,
             'mapping': {'Title': 'title'},
@@ -80,6 +97,17 @@ def test_import_and_export_lifecycle_is_tenant_principal_and_idempotency_bound()
     )
     assert imported.status_code == 201 and imported.json()['status'] == 'uploaded'
     import_id = imported.json()['id']
+    source = client.put(
+        f'/api/content/v1/types/article/imports/{import_id}/source',
+        headers={
+            **headers,
+            'Upload-Grant': imported.json()['uploadGrant'],
+            'Content-Type': 'application/json',
+        },
+        content=b'[{"title":"Synthetic"}]',
+
+    )
+    assert source.status_code == 200 and source.json()['sourceReady'] is True
     assert (
         client.get(
             f'/api/content/v1/types/article/imports/{import_id}', headers=headers
