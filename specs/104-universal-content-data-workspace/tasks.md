@@ -127,7 +127,7 @@
 ## Phase 7 - Data integrity, privacy, and recovery assurance
 
 - [x] T104 Define measured schema, query, page, relationship, upload, import/export, job, bundle, and retention defaults/maxima from repeatable fixtures.
-- [ ] T105 Add maximum-bound query-plan tests proving tenant/site leading indexes and bounded relationship expansion without N+1 growth.
+- [x] T105 Add maximum-bound query-plan tests proving tenant/site leading indexes and bounded relationship expansion without N+1 growth.
 - [ ] T106 Add concurrency tests for schema publication, record mutation, transition, saved-view edit, import commit, and schedule firing.
 - [x] T107 Add backup manifest tests covering definitions, records, versions, relationships, views, jobs, audit references, asset metadata, and object hashes.
 - [x] T108 Add isolated restore tests with exact counts, schema versions, referential integrity, content hashes, and no live-target access.
@@ -228,6 +228,10 @@
 - [x] T191 Raise Feature 104 changed-line coverage from the complete-gate result of 78.83% to the enforced 90% floor without exclusions or threshold reduction; add direct behavioral tests for the uncovered repository, route, worker, media, transfer, and React authorization/error/data-loss branches, rerun service-local coverage, and require the complete coverage policy to pass.
 - [x] T192 Repair the planning validator's completed-task gap mutation after T076 completion made its unchecked-only fixture inert; mutate the task identifier regardless of checkbox state and prove contiguous corrective-task validation still fails closed.
 - [x] T193 Split FastAPI and Celery workspace-repository access away from the Django/PostgreSQL owner after implemented-system review confirmed the shared owner bypasses ordinary RLS; add a validated no-`BYPASSRLS` least-privilege role bootstrap, a forward migration that grants only required workspace-table access, compose dependency ordering, pool-reset checks, and a real PostgreSQL acceptance matrix proving missing, wrong, rollback, reset, and cross-tenant contexts fail closed without breaking owner migrations.
+- [ ] T194 Close physical performance and concurrency evidence gaps: add real PostgreSQL query-plan assertions for tenant-leading workspace access, fixed-query relationship expansion, and two-connection winner/loser checks for definition publication, record mutation/transition, saved-view edit, import commit, and schedule firing without weakening bounded timeouts.
+- [ ] T195 Complete workspace retention and privacy projection: preserve restricted relationship/audit evidence through recovery windows, expire and exactly delete only owned export/media objects, project authorized workspace records into correction/export/deletion flows, and prove cross-tenant/private-field exclusion with restart/replay-safe tests.
+- [ ] T196 Expand upgrade and rollback assurance from current `main`, empty and populated databases, prior generated profiles, and interrupted migration checkpoints; require exact schema/data comparison and no orphaned runtime role grants after reverse/forward replay.
+- [ ] T197 Add a dedicated workspace visual-assurance pack with deterministic synthetic fixtures for every field/state/job/media/relationship/error plus long/RTL content; cover compact/DPR3/landscape/tablet/desktop/ultrawide/200%/400%, themes/contrast/reduced-motion/keyboard/touch/Chromium/Firefox/WebKit, integrity-bound manifests/contact sheets/review sidecars, and fail-closed baseline mutation.
 
 ## Dependencies and authority
 

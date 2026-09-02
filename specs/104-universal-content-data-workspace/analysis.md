@@ -153,3 +153,24 @@ Evidence:
 - The exact-head complete gate at `e2f94d8b5635d94f92c3ab464377918e6ab050ef` passed all 80 required checks with no failure; changed-line coverage was 90.84%.
 
 **Cycle result**: `IMPLEMENTATION_FINDING_T193_CLOSED`
+
+## Cycle 9 - Remaining acceptance-depth review
+
+Findings:
+
+1. Repository and bound-limit tests exist, but the disposable PostgreSQL evidence does not yet prove tenant-leading execution plans, fixed-query relationship expansion, or all planned two-connection conflict classes.
+2. Export expiry exists, while complete workspace retention, exact-owned media cleanup, and integration into the existing privacy/data-rights flow are not yet evidenced.
+3. Migration round trips cover the current workspace schema, but the planned current-main/populated/prior-profile/interruption matrix and runtime-role grant rollback are incomplete.
+4. Component accessibility and global Base2 visual matrices pass, but there is no dedicated workspace screenshot corpus covering every planned state, viewport, input mode, theme, engine, manifest, and review sidecar.
+
+Corrections:
+
+- Added T194-T197 as contiguous corrective tasks. T105-T132 and implemented-system closeout remain open until these deeper acceptance contracts pass.
+
+**Cycle result**: `IMPLEMENTATION_FINDINGS_T194_T197_OPEN`
+
+T194 progress: the disposable PostgreSQL matrix now retains an actual planner
+assertion showing tenant/type access through `sitecontent_type_version_uq`, and
+the relationship repository is regression-tested to return 25 expansions with
+one bounded `LIMIT 200` query. T105 is closed; the multi-connection mutation
+matrix remains open under T106/T194.

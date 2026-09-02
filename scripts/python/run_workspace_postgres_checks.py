@@ -66,6 +66,15 @@ def main() -> None:
         assert count(runtime, None) == 0
         runtime.rollback()
         assert count(runtime, "site-a") == 1
+        with runtime.cursor() as cursor:
+            cursor.execute("SET LOCAL enable_seqscan=off")
+            cursor.execute(
+                """EXPLAIN SELECT id FROM sitecontent_contenttypedefinition
+                   WHERE site_id='site-a' AND type_key='article' AND status='draft'
+                   ORDER BY version,id LIMIT 25"""
+            )
+            plan = "\n".join(row[0] for row in cursor.fetchall())
+            assert "sitecontent_type_version_uq" in plan and "Index Scan" in plan, plan
         runtime.rollback()
         assert count(runtime, "site-b") == 1
         runtime.rollback()

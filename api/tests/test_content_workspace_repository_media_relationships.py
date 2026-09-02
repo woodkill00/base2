@@ -276,6 +276,19 @@ def test_relationship_listing_creation_and_deletion(monkeypatch):
     assert connection.commits == 1
 
 
+def test_relationship_expansion_uses_one_bounded_query_regardless_of_result_count(monkeypatch):
+    repo = repository.PostgresContentWorkspaceRepository()
+    rows = [
+        (UUID(int=8200 + number), "related", UUID(int=8300 + number), number, "restrict", "article")
+        for number in range(25)
+    ]
+    cursor = QueueCursor(alls=[rows])
+    bind(monkeypatch, cursor)
+    result = repo.list_relationships(site_id="site-a", type_key="article", record_id=RECORD_ID)
+    assert len(result["items"]) == 25
+    assert len(cursor.calls) == 1
+    assert "LIMIT 200" in cursor.calls[0][0]
+
 @pytest.mark.parametrize(
     ("payload", "ones", "error"),
     [
