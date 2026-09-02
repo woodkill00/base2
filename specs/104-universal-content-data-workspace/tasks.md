@@ -112,7 +112,7 @@
 - [ ] T090 Add failing relationship picker, missing target, cycle, permission, and cross-scope UI tests.
 - [ ] T091 Add failing media upload/progress/quarantine/rejection/ordering/alt-text/focal-point/publication-block tests.
 - [ ] T092 Add failing import mapping/dry-run/review/duplicate/commit/job-state and export/download/expiry tests.
-- [ ] T093 Add failing generated public list/detail renderer tests for every field kind and preset.
+- [x] T093 Add failing generated public list/detail renderer tests for every field kind and preset.
 - [ ] T094 Add failing loading, empty, partial, malformed, dependency, permission, not-found, conflict, retry, cancelled, and terminal-failure state tests.
 - [ ] T095 Add failing keyboard, screen-reader name/role/value, announcement, focus, target, contrast, reflow, reduced-motion, and axe tests.
 - [x] T096 Implement typed content API client and normalized error/job state handling.
@@ -121,7 +121,7 @@
 - [ ] T099 Implement record browser, safe query builder, saved views, and stable URL state.
 - [ ] T100 Implement typed field editors, validation summary, conflicts, and unsaved-change recovery.
 - [ ] T101 Implement workflow, history/diff/restore, relationship, media, import, export, and job-status experiences.
-- [ ] T102 Implement closed safe public/admin renderer registries and generated list/detail pages.
+- [x] T102 Implement closed safe public/admin renderer registries and generated list/detail pages.
 - [ ] T103 Remove the demonstration Items navigation only after compatibility parity and migration evidence pass.
 
 ## Phase 7 - Data integrity, privacy, and recovery assurance
@@ -216,6 +216,7 @@
 - [x] T179 Add the missing administrator schema journey after implementation analysis found only read-only schema cards; load closed versioned presets, add normalized typed fields, create a private draft, require a deterministic migration preview, use distinct impact-aware publication confirmation, surface failures, and pass focused interaction and accessibility tests.
 - [x] T180 Generate one deterministic cross-service workspace contract matrix after implementation analysis found presets were copied without explicit enabled/disabled profile surfaces; include bounded synthetic fixture IDs, models, migrations, routes, navigation, permissions, jobs, tests, and migration notes while disabled profiles receive no workspace authority.
 - [x] T181 Protect the canonical shared generated preset artifact from a competing Prettier rewrite after clean-generation analysis reproduced formatter drift; retain generator ownership and prove immediate check-mode idempotency.
+- [x] T182 Add a closed public workspace renderer registry after implementation analysis found generic pages handled only legacy title/excerpt/body fields; render all supported scalar and structured kinds without HTML interpretation, reject active URLs and unknown kinds, bound declared projections, omit undeclared values, and pass focused accessibility tests.
 
 ## Dependencies and authority
 
