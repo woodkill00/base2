@@ -212,6 +212,8 @@
 - [x] T175 Repair the stale planning-only validator after corrective tasks made its fixed T001-T150 assumption impossible; require the exact base sequence plus contiguous corrective IDs, keep separately governed lifecycle tasks incomplete, add the missing row-level-security concept, and report active-not-published implementation honestly.
 - [x] T176 Add dedicated safe media and relationship controls after implementation analysis found structured record fields remained intentionally inert; hash and bound uploads in memory, preserve quarantine until explicit validation, require image alternative text, inherit schema deletion policy, use optimistic versions, refresh canonical state, surface failures, and pass focused interaction and accessibility tests.
 - [x] T177 Apply the proven 4 GiB Node heap ceiling to canonical React test scripts after one full coverage finalization terminated at the runtime boundary while two explicit bounded reruns passed; keep single-worker admission and verify focused suites through the canonical configuration.
+- [x] T178 Complete safe schema evolution after implementation analysis found draft creation hard-coded version one; serialize each tenant/type evolution, allocate the next immutable version, reject parallel outstanding drafts, and cover rollback behavior.
+- [x] T179 Add the missing administrator schema journey after implementation analysis found only read-only schema cards; load closed versioned presets, add normalized typed fields, create a private draft, require a deterministic migration preview, use distinct impact-aware publication confirmation, surface failures, and pass focused interaction and accessibility tests.
 
 ## Dependencies and authority
 

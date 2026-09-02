@@ -6,6 +6,7 @@ import GlassCard from '../components/glass/GlassCard';
 import Navigation from '../components/Navigation';
 import { ExportWorkspace, ImportWorkspace } from '../components/content/WorkspaceJobs';
 import RecordInspector from '../components/content/RecordInspector';
+import SchemaBuilder from '../components/content/SchemaBuilder';
 import { contentWorkspaceAPI, normalizeWorkspaceError } from '../services/contentWorkspace';
 
 const TABS = ['Records', 'Schemas', 'Imports', 'Exports'];
@@ -654,6 +655,20 @@ export default function ContentWorkspace() {
                         Published schemas are immutable. Changes are previewed in a new version
                         before publication.
                       </p>
+                      <SchemaBuilder
+                        currentSchema={schema}
+                        onCreated={(result) => {
+                          setDefinitions((current) => [
+                            ...current.filter((item) => item.typeKey !== result.typeKey),
+                            {
+                              ...result,
+                              name:
+                                result.typeKey === schema?.typeKey ? schema.name : result.typeKey,
+                            },
+                          ]);
+                        }}
+                        onError={reportJobError}
+                      />
                     </div>
                   ) : (
                     <p role="status" className="mt-5">

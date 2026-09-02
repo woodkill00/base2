@@ -304,13 +304,30 @@ class PostgresContentWorkspaceRepository:
             try:
                 with conn.cursor() as cur:
                     cur.execute(
-                        """INSERT INTO sitecontent_contenttypedefinition
+                        'SELECT pg_advisory_xact_lock(hashtextextended(%s, 104))',
+                        (f'{site_id}:{payload["type_key"]}',),
+                    )
+                    cur.execute(
+                        """WITH next_definition AS (
+                               SELECT COALESCE(MAX(version), 0) + 1 AS version
+                               FROM sitecontent_contenttypedefinition
+                               WHERE site_id=%s AND type_key=%s
+                           )
+                           INSERT INTO sitecontent_contenttypedefinition
                            (id, site_id, type_key, version, name, description, status,
                             preset_id, preset_version, compatibility, migration_digest,
                             lock_version, created_by, updated_by, created_at, updated_at)
-                           VALUES (%s,%s,%s,1,%s,%s,'draft',%s,1,'additive','',1,%s,%s,NOW(),NOW())
+                           SELECT %s,%s,%s,next_definition.version,%s,%s,'draft',%s,1,
+                                  'additive','',1,%s,%s,NOW(),NOW()
+                           FROM next_definition
+                           WHERE NOT EXISTS (
+                               SELECT 1 FROM sitecontent_contenttypedefinition
+                               WHERE site_id=%s AND type_key=%s AND status='draft'
+                           )
                            RETURNING id, version, status, lock_version""",
                         (
+                            site_id,
+                            payload['type_key'],
                             str(definition_id),
                             site_id,
                             payload['type_key'],
@@ -319,9 +336,13 @@ class PostgresContentWorkspaceRepository:
                             payload.get('preset_id', 'custom'),
                             actor_ref,
                             actor_ref,
+                            site_id,
+                            payload['type_key'],
                         ),
                     )
                     created = cur.fetchone()
+                    if not created:
+                        raise ValueError('content_version_conflict')
                     for order, field in enumerate(payload.get('fields', [])):
                         cur.execute(
                             """INSERT INTO sitecontent_contentfielddefinition

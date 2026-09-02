@@ -125,8 +125,31 @@ def test_create_definition_is_one_transaction_and_never_accepts_site_from_payloa
     assert result['siteId'] == 'site-a'
     assert all('site-b' not in str(call) for call in cursor.calls)
     statements = ' '.join(sql for sql, _ in cursor.calls)
+    assert 'pg_advisory_xact_lock' in statements
+    assert 'COALESCE(MAX(version), 0) + 1' in statements
+    assert "status='draft'" in statements
     assert 'sitecontent_workflowdefinition' in statements
     assert 'sitecontent_workspaceauditevent' in statements
+
+
+def test_definition_creation_fails_closed_when_an_unpublished_draft_exists(monkeypatch):
+    cursor = Cursor(rows=[])
+    connection = Connection(cursor)
+    bind(monkeypatch, connection)
+    with pytest.raises(ValueError, match='content_version_conflict'):
+        repository.PostgresContentWorkspaceRepository().create_definition(
+            site_id='site-a',
+            actor_ref='user:test',
+            payload={
+                'type_key': 'article',
+                'name': 'Article',
+                'description': '',
+                'preset_id': 'custom',
+                'fields': [],
+            },
+        )
+    assert connection.commits == 0
+    assert connection.rollbacks == 1
 
 
 def test_asset_content_completion_binds_grant_hash_owner_and_quarantine(monkeypatch):
