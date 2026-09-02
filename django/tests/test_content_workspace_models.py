@@ -35,6 +35,19 @@ def definition(*, site_id: str = "site-a", version: int = 1, status: str = "draf
     )
 
 
+def published_definition_with_title(*, site_id: str = "site-a"):
+    content_type = definition(site_id=site_id)
+    ContentFieldDefinition.objects.create(
+        definition=content_type,
+        field_key="title",
+        label="Title",
+        field_kind="short_text",
+        required=True,
+    )
+    content_type.publish(expected_lock_version=1)
+    return content_type
+
+
 def test_definition_version_is_site_scoped_and_published_rows_are_immutable():
     first = definition(status="published")
     definition(site_id="site-b", status="published")
@@ -90,7 +103,7 @@ def test_workflow_graph_rejects_unknown_states_actions_and_destinations():
 
 
 def test_definition_preview_classifies_loss_and_publication_requires_confirmation():
-    first = definition(status="published")
+    first = definition()
     ContentFieldDefinition.objects.create(
         definition=first,
         field_key="title",
@@ -98,6 +111,7 @@ def test_definition_preview_classifies_loss_and_publication_requires_confirmatio
         field_kind="short_text",
         required=True,
     )
+    first.publish(expected_lock_version=1)
     candidate = definition(version=2)
     preview = candidate.preview_compatibility(previous=first)
     assert preview["classification"] == "lossy"
@@ -125,8 +139,55 @@ def test_definition_publication_rejects_stale_lock_and_unpublished_field_default
     candidate.publish(expected_lock_version=1)
 
 
+def test_published_field_contract_is_immutable_and_record_values_are_typed():
+    content_type = definition()
+    title = ContentFieldDefinition.objects.create(
+        definition=content_type,
+        field_key="title",
+        label="Title",
+        field_kind="short_text",
+        required=True,
+        validation={"maxLength": 10},
+    )
+    ContentFieldDefinition.objects.create(
+        definition=content_type,
+        field_key="body",
+        label="Body",
+        field_kind="rich_text",
+    )
+    content_type.publish(expected_lock_version=1)
+    title.label = "Changed"
+    with pytest.raises(ValidationError, match="published_definition_immutable"):
+        title.save()
+
+    record = ContentRecord(
+        site_id="site-a",
+        content_type="article",
+        slug="typed",
+        title="Typed",
+        definition=content_type,
+        values={"title": "too long for the bound"},
+    )
+    with pytest.raises(ValidationError, match="field_value_length_invalid"):
+        record.full_clean()
+    record.values = {"unknown": "rejected"}
+    with pytest.raises(ValidationError, match="record_unknown_field"):
+        record.full_clean()
+    record.values = {
+        "title": "Safe",
+        "body": {"type": "document", "children": [{"type": "script", "text": "bad"}]},
+    }
+    with pytest.raises(ValidationError, match="rich_text_invalid"):
+        record.full_clean()
+    record.values["body"] = {
+        "type": "document",
+        "children": [{"type": "paragraph", "children": [{"type": "text", "text": "Safe"}]}],
+    }
+    record.full_clean()
+
+
 def test_records_bind_exact_schema_and_reject_stale_expected_version():
-    content_type = definition(status="published")
+    content_type = published_definition_with_title()
     record = ContentRecord.objects.create(
         site_id="site-a",
         content_type="article",
@@ -147,7 +208,7 @@ def test_records_bind_exact_schema_and_reject_stale_expected_version():
 
 
 def test_record_workflow_soft_delete_and_restore_append_history():
-    content_type = definition(status="published")
+    content_type = published_definition_with_title()
     workflow = WorkflowDefinition.objects.create(
         definition=content_type,
         states=["draft", "in_review", "published", "archived", "deleted"],

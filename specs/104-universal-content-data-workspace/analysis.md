@@ -113,3 +113,15 @@ Corrections:
 **Final planning result after repository reconciliation**: `NO_UNRESOLVED_PLANNING_FINDINGS`
 
 Implementation remains unstarted. T019-T150 remain pending, and publication, merge, or live-provider work remains separately governed.
+
+## Cycle 6 - Physical schema ownership review
+
+Finding:
+
+1. Base2's API test bootstrap explicitly declares that Django owns the database schema. The original Phase 3 wording could have caused an API SQL migration to create a second copy of workspace tables or conflict with Django's migration state.
+
+Correction:
+
+- Kept the Django `sitecontent` migration as the sole physical schema owner. FastAPI will consume those exact tables, and API parity tests will verify PostgreSQL constraints, indexes, RLS prerequisites, and migration inventory while expressly forbidding duplicate `api_content_*` domain tables.
+
+**Cycle result**: `NO_UNRESOLVED_SCHEMA_OWNERSHIP_FINDINGS`

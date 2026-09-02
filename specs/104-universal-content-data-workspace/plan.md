@@ -42,7 +42,7 @@ Extend Django's existing `sitecontent.ContentRecord`, `ContentRevision`, `MediaA
 
 ### 2. PostgreSQL and FastAPI mirror
 
-Create ordered SQL migrations with canonical site-scope constraints, row-level security, indexes, bounded JSON validation, and transaction-safe repository operations. Extend the existing site-content repository and public routes, and expose authenticated workspace endpoints under `/api/content/v1` with typed errors, optimistic preconditions, cursor pagination, sparse field selection, allowlisted filters/sorts, idempotency keys, and no mass assignment.
+Use the ordered Django migration as the sole physical schema owner, then verify its PostgreSQL tables, constraints, indexes, and RLS policies through API parity tests. Do not create duplicate API tables. Extend the existing site-content repository and public routes, and expose authenticated workspace endpoints under `/api/content/v1` with typed errors, optimistic preconditions, cursor pagination, sparse field selection, allowlisted filters/sorts, idempotency keys, and no mass assignment.
 
 ### 3. Durable worker layer
 

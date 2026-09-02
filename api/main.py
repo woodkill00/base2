@@ -263,6 +263,7 @@ def _include_external_routes() -> None:
         'tenant',
         'privacy',
         'settings',
+        'content_workspace',
         'site_content',
         'scheduling',
         'engagement',

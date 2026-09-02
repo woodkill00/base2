@@ -1,0 +1,127 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime
+from uuid import UUID
+
+import pytest
+from fastapi.testclient import TestClient
+
+from api.main import app
+from api.routes import content_workspace
+from api.security.request_auth import PublicPrincipal
+
+
+class FakeRecordRepository:
+    calls: list[tuple[str, dict]] = []
+
+    def list_records(self, **kwargs):
+        self.calls.append(('list', kwargs))
+        return {'items': [], 'nextCursor': None}
+
+    def create_record(self, **kwargs):
+        self.calls.append(('create', kwargs))
+        return {
+            'id': '00000000-0000-0000-0000-000000003104',
+            'version': 1,
+            'state': 'draft',
+            'siteId': kwargs['site_id'],
+        }
+
+    def update_record(self, **kwargs):
+        self.calls.append(('update', kwargs))
+        return {
+            'id': str(kwargs['record_id']),
+            'version': kwargs['expected_version'] + 1,
+            'state': 'draft',
+        }
+
+    def transition_record(self, **kwargs):
+        self.calls.append(('transition', kwargs))
+        return {
+            'id': str(kwargs['record_id']),
+            'version': kwargs['expected_version'] + 1,
+            'state': 'in_review',
+        }
+
+    def soft_delete_record(self, **kwargs):
+        self.calls.append(('delete', kwargs))
+        return {
+            'id': str(kwargs['record_id']),
+            'version': kwargs['expected_version'] + 1,
+            'state': 'deleted',
+        }
+
+
+@pytest.fixture(autouse=True)
+def scoped(monkeypatch):
+    FakeRecordRepository.calls = []
+    principal = PublicPrincipal(UUID(int=104), datetime.now(UTC), True)
+    monkeypatch.setattr(
+        content_workspace, 'require_authenticated_principal', lambda request: principal
+    )
+    monkeypatch.setattr(content_workspace, 'require_tenant', lambda request: 'site-a')
+    monkeypatch.setattr(content_workspace, 'authorize', lambda **kwargs: None)
+    monkeypatch.setattr(content_workspace, 'get_repository', lambda: FakeRecordRepository())
+
+
+def test_record_create_update_transition_delete_bind_scope_and_versions():
+    client = TestClient(app)
+    headers = {'Authorization': 'Bearer synthetic', 'X-Tenant-ID': 'site-a'}
+    created = client.post(
+        '/api/content/v1/types/article/records',
+        headers=headers,
+        json={'slug': 'hello', 'title': 'Hello', 'values': {'title': 'Hello'}},
+    )
+    assert created.status_code == 201
+    record_id = created.json()['id']
+    updated = client.patch(
+        f'/api/content/v1/types/article/records/{record_id}',
+        headers={**headers, 'If-Match': '"1"'},
+        json={'values': {'title': 'Updated'}},
+    )
+    assert updated.status_code == 200 and updated.json()['version'] == 2
+    transitioned = client.post(
+        f'/api/content/v1/types/article/records/{record_id}/transitions/submit_review',
+        headers=headers,
+        json={'expectedVersion': 2},
+    )
+    assert transitioned.status_code == 200
+    deleted = client.delete(
+        f'/api/content/v1/types/article/records/{record_id}?expected_version=3', headers=headers
+    )
+    assert deleted.status_code == 200 and deleted.json()['state'] == 'deleted'
+    assert all(call[1]['site_id'] == 'site-a' for call in FakeRecordRepository.calls)
+
+
+def test_record_queries_and_mutations_fail_closed_on_unbounded_or_unknown_input():
+    client = TestClient(app)
+    headers = {'Authorization': 'Bearer synthetic', 'X-Tenant-ID': 'site-a'}
+    assert (
+        client.get('/api/content/v1/types/article/records?limit=101', headers=headers).status_code
+        == 422
+    )
+    assert (
+        client.post(
+            '/api/content/v1/types/article/records',
+            headers=headers,
+            json={'slug': 'hello', 'title': 'Hello', 'values': {}, 'command': 'rm'},
+        ).status_code
+        == 422
+    )
+    record_id = '00000000-0000-0000-0000-000000003104'
+    assert (
+        client.patch(
+            f'/api/content/v1/types/article/records/{record_id}',
+            headers=headers,
+            json={'values': {}},
+        ).status_code
+        == 428
+    )
+    assert (
+        client.post(
+            f'/api/content/v1/types/article/records/{record_id}/transitions/execute_shell',
+            headers=headers,
+            json={'expectedVersion': 1},
+        ).status_code
+        == 422
+    )

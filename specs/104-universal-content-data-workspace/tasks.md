@@ -47,7 +47,7 @@
 
 ## Phase 3 - Test-first PostgreSQL, repository, and API mirror
 
-- [ ] T037 Add failing SQL migration inventory and Django/API semantic parity tests in `api/tests/test_content_migrations.py`.
+- [ ] T037 Add failing Django-owned PostgreSQL schema inventory and API semantic parity tests in `api/tests/test_content_migrations.py`; forbid duplicate API workspace tables.
 - [ ] T038 Add failing PostgreSQL composite-key, check-constraint, index, transaction, and RLS tenant/site tests.
 - [ ] T039 Add failing repository definition draft/preview/publish/retire and expected-version tests.
 - [ ] T040 Add failing repository record CRUD/version/transition/restore/soft-delete tests.
@@ -60,7 +60,7 @@
 - [ ] T047 Add failing saved-view private/shared/revalidation and schema-change tests.
 - [ ] T048 Add failing idempotency digest, replay, conflict, expiry, and concurrent-request tests.
 - [ ] T049 Add failing mass-assignment, overfetching, unknown-key, oversized-body, nesting, decimal, timestamp, and locale tests.
-- [ ] T050 Add ordered API SQL migration that evolves existing `sitecontent_*` tables and register it in the exact executable migration inventory.
+- [ ] T050 Verify the ordered Django migration creates the exact PostgreSQL workspace schema and RLS prerequisites consumed by FastAPI; add no duplicate API migration.
 - [ ] T051 Extend `api/repositories/site_content.py` with scoped transactions, authenticated-tenant-to-`site_id` equality, and no unsafe autocommit changes.
 - [ ] T052 Implement typed Pydantic definition, field, workflow, record, query, view, job, response, and error schemas.
 - [ ] T053 Implement capability and definition routes under `api/routes/content_workspace.py` with the `/api/content/v1` contract.

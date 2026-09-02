@@ -4,9 +4,11 @@ import hashlib
 import json
 import re
 import uuid
+from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator, RegexValidator
+from django.core.validators import EmailValidator, MinValueValidator, RegexValidator, URLValidator
 from django.db import models, transaction
 from django.utils import timezone
 
@@ -16,6 +18,46 @@ SITE_ID_PATTERN = r"^[a-z][a-z0-9-]{2,62}$"
 SHA256_PATTERN = r"^[a-f0-9]{64}$"
 site_id_validator = RegexValidator(SITE_ID_PATTERN, "Enter a canonical site identifier.")
 sha256_validator = RegexValidator(SHA256_PATTERN, "Enter a lowercase SHA-256 digest.")
+email_validator = EmailValidator()
+url_validator = URLValidator(schemes=["http", "https"])
+
+RICH_TEXT_NODE_TYPES = {
+    "document",
+    "paragraph",
+    "heading",
+    "text",
+    "bullet_list",
+    "ordered_list",
+    "list_item",
+    "blockquote",
+    "code_block",
+    "hard_break",
+    "link",
+}
+RICH_TEXT_KEYS = {"type", "text", "children", "level", "href"}
+
+
+def validate_structured_rich_text(value, *, depth: int = 0) -> None:
+    """Validate a bounded document tree with no HTML or executable attributes."""
+    if depth > 8 or not isinstance(value, dict) or set(value) - RICH_TEXT_KEYS:
+        raise ValidationError("rich_text_invalid")
+    node_type = value.get("type")
+    if node_type not in RICH_TEXT_NODE_TYPES:
+        raise ValidationError("rich_text_invalid")
+    text = value.get("text")
+    if text is not None and (not isinstance(text, str) or len(text) > 20_000):
+        raise ValidationError("rich_text_invalid")
+    href = value.get("href")
+    if href is not None:
+        try:
+            url_validator(href)
+        except ValidationError as exc:
+            raise ValidationError("rich_text_invalid") from exc
+    children = value.get("children", [])
+    if not isinstance(children, list) or len(children) > 256:
+        raise ValidationError("rich_text_invalid")
+    for child in children:
+        validate_structured_rich_text(child, depth=depth + 1)
 
 
 def validate_local_path(value: str) -> None:
@@ -276,6 +318,89 @@ class ContentFieldDefinition(models.Model):
             raise ValidationError({"presentation": "field_renderer_invalid"})
         if self.required and self.nullable:
             raise ValidationError({"nullable": "required_field_cannot_be_nullable"})
+        if self.default_value is not None:
+            self.validate_value(self.default_value)
+
+    def save(self, *args, **kwargs):
+        if self.definition_id:
+            status_value = (
+                ContentTypeDefinition.objects.filter(pk=self.definition_id)
+                .values_list("status", flat=True)
+                .first()
+            )
+            if status_value == ContentTypeDefinition.Status.PUBLISHED:
+                raise ValidationError("published_definition_immutable")
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def validate_value(self, value) -> None:  # noqa: C901 - closed field-kind dispatch
+        if value is None:
+            if self.required and not self.nullable:
+                raise ValidationError({self.field_key: "required_value_missing"})
+            return
+        kind = self.field_kind
+        if kind in {"short_text", "long_text", "slug", "url", "email", "enum"}:
+            if not isinstance(value, str):
+                raise ValidationError({self.field_key: "field_value_type_invalid"})
+            maximum = int(self.validation.get("maxLength", 20_000 if kind == "long_text" else 500))
+            minimum = int(self.validation.get("minLength", 0))
+            if not minimum <= len(value) <= maximum:
+                raise ValidationError({self.field_key: "field_value_length_invalid"})
+            if kind == "slug" and not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", value):
+                raise ValidationError({self.field_key: "field_value_slug_invalid"})
+            if kind == "url":
+                url_validator(value)
+            if kind == "email":
+                email_validator(value)
+            if kind == "enum" and value not in self.validation.get("choices", []):
+                raise ValidationError({self.field_key: "field_value_choice_invalid"})
+        elif kind == "rich_text":
+            validate_structured_rich_text(value)
+        elif kind == "integer":
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise ValidationError({self.field_key: "field_value_type_invalid"})
+        elif kind == "decimal":
+            try:
+                Decimal(str(value))
+            except (InvalidOperation, ValueError):
+                raise ValidationError({self.field_key: "field_value_type_invalid"}) from None
+        elif kind == "boolean" and not isinstance(value, bool):
+            raise ValidationError({self.field_key: "field_value_type_invalid"})
+        elif kind == "date":
+            try:
+                date.fromisoformat(value) if isinstance(value, str) else value.isoformat()
+            except (AttributeError, ValueError):
+                raise ValidationError({self.field_key: "field_value_type_invalid"}) from None
+        elif kind == "datetime":
+            try:
+                parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                if parsed.tzinfo is None:
+                    raise ValueError
+            except (AttributeError, ValueError):
+                raise ValidationError({self.field_key: "field_value_type_invalid"}) from None
+        elif kind in {"reference", "image", "file"}:
+            try:
+                uuid.UUID(str(value))
+            except (TypeError, ValueError):
+                raise ValidationError({self.field_key: "field_value_type_invalid"}) from None
+        elif kind == "references":
+            maximum_items = int(self.validation.get("maximumItems", 50))
+            if not isinstance(value, list) or len(value) > maximum_items:
+                raise ValidationError({self.field_key: "field_value_type_invalid"})
+            for item in value:
+                try:
+                    uuid.UUID(str(item))
+                except (TypeError, ValueError):
+                    raise ValidationError({self.field_key: "field_value_type_invalid"}) from None
+        elif kind in {"location", "json_object"} and not isinstance(value, dict):
+            raise ValidationError({self.field_key: "field_value_type_invalid"})
+
+        if kind in {"integer", "decimal"}:
+            numeric = Decimal(str(value))
+            if "minimum" in self.validation and numeric < Decimal(str(self.validation["minimum"])):
+                raise ValidationError({self.field_key: "field_value_minimum_invalid"})
+            if "maximum" in self.validation and numeric > Decimal(str(self.validation["maximum"])):
+                raise ValidationError({self.field_key: "field_value_maximum_invalid"})
 
 
 class WorkflowDefinition(models.Model):
@@ -379,7 +504,7 @@ class ContentRecord(SiteOwnedModel):
         State.ARCHIVED: {State.DRAFT},
     }
 
-    def clean(self) -> None:
+    def clean(self) -> None:  # noqa: C901 - canonical record invariant aggregation
         super().clean()
         if self.definition_id:
             if (
@@ -393,6 +518,18 @@ class ContentRecord(SiteOwnedModel):
                 raise ValidationError({"schema_version": "record_schema_version_invalid"})
         if not isinstance(self.values, dict) or len(self.values) > 128:
             raise ValidationError({"values": "record_values_invalid"})
+        if self.definition_id:
+            fields = list(self.definition.fields.all())
+            declared = {field.field_key: field for field in fields}
+            unknown = set(self.values) - set(declared)
+            if unknown:
+                raise ValidationError({"values": "record_unknown_field"})
+            for field in fields:
+                if field.field_key not in self.values:
+                    if field.required and field.default_value is None:
+                        raise ValidationError({field.field_key: "required_value_missing"})
+                    continue
+                field.validate_value(self.values[field.field_key])
         if self.state == self.State.SCHEDULED:
             if self.publish_at is None or self.publish_at <= timezone.now():
                 raise ValidationError(
