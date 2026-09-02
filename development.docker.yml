@@ -148,6 +148,19 @@ services:
     mem_limit: 128m
     cpus: '0.5'
 
+  # Malware scanner is opt-in because official guidance requires at least 3 GiB RAM.
+  # Its unauthenticated TCP protocol remains private to app_network and is never published.
+  clamav:
+    image: clamav/clamav:${CLAMAV_VERSION}
+    container_name: ${COMPOSE_PROJECT_NAME}_clamav
+    profiles: [media-scan]
+    networks: [app_network]
+    volumes:
+      - clamav_db:/var/lib/clamav
+    restart: unless-stopped
+    mem_limit: 3g
+    cpus: '1.0'
+
   # Django static files
   nginx-static:
     image: nginx:1.25-alpine
@@ -416,6 +429,7 @@ networks:
     name: ${NETWORK_NAME}
 
 volumes:
+  clamav_db:
   content_workspace_artifacts:
   postgres_data:
   django_static:

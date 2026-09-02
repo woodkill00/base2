@@ -1,0 +1,5 @@
+[run]
+# Coverage.py's native C tracer has crashed this Python 3.12 WSL runtime in
+# both collection and report generation.  The supported pure-Python core is
+# slower, but keeps the required full coverage gate deterministic.
+core = pytrace

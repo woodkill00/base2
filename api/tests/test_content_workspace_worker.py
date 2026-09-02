@@ -164,9 +164,10 @@ def test_index_worker_is_tenant_bound_replay_safe_and_rejects_future_job(monkeyp
     stale_cursor = Cursor([row])
     stale_connection = Connection(stale_cursor)
     bind(monkeypatch, stale_connection)
-    assert worker.index_workspace_record(
-        site_id='site-a', record_id=record_id, job_version=6
-    ) == 'stale_job'
+    assert (
+        worker.index_workspace_record(site_id='site-a', record_id=record_id, job_version=6)
+        == 'stale_job'
+    )
     assert stale_connection.commits == 0
 
     future_cursor = Cursor([row])
@@ -175,3 +176,86 @@ def test_index_worker_is_tenant_bound_replay_safe_and_rejects_future_job(monkeyp
     with pytest.raises(ValueError, match='content_index_version_invalid'):
         worker.index_workspace_record(site_id='site-a', record_id=record_id, job_version=8)
     assert future_connection.rollbacks == 1
+
+
+def test_due_media_scans_only_discovers_unresolved_quarantine(monkeypatch):
+    asset_id = UUID(int=7104)
+    cursor = Cursor([('site-a', asset_id)])
+    bind(monkeypatch, Connection(cursor))
+    assert worker.due_media_scans(limit=10) == [('site-a', str(asset_id))]
+    sql = cursor.calls[0][0]
+    assert "status='quarantined'" in sql
+    assert "metadata->>'admission'='content_verified'" in sql
+    assert "NOT IN ('clean','infected')" in sql
+
+
+@pytest.mark.parametrize(
+    ('verdict', 'expected_status', 'expected_result'),
+    [('clean', 'quarantined', 'scanned_clean'), ('infected', 'rejected', 'scanned_infected')],
+)
+def test_media_scanner_is_content_bound_and_clean_scan_does_not_promote(
+    monkeypatch, verdict, expected_status, expected_result
+):
+    asset_id = UUID(int=7104)
+    cursor = Cursor(
+        [
+            (
+                f'media/site-a/{asset_id}.bin',
+                'a' * 64,
+                'quarantined',
+                {'admission': 'content_verified', 'width': 20, 'height': 10},
+            )
+        ]
+    )
+    connection = Connection(cursor)
+    scopes = bind(monkeypatch, connection)
+
+    class Store:
+        def get(self, key, *, expected_sha256):
+            assert key.endswith(f'{asset_id}.bin') and expected_sha256 == 'a' * 64
+            return b'synthetic'
+
+    assert (
+        worker.scan_workspace_asset(
+            site_id='site-a',
+            asset_id=asset_id,
+            artifact_store=Store(),
+            scanner=lambda content: verdict if content == b'synthetic' else 'error',
+        )
+        == expected_result
+    )
+    assert scopes == ['site-a'] and connection.commits == 1
+    update = next(call for call in cursor.calls if call[0].startswith('UPDATE'))
+    assert update[1][0] == expected_status
+    if verdict == 'clean':
+        assert update[1][0] != 'validated'
+
+
+def test_media_scanner_failure_rolls_back_without_false_clean_state(monkeypatch):
+    asset_id = UUID(int=7104)
+    cursor = Cursor(
+        [
+            (
+                f'media/site-a/{asset_id}.bin',
+                'a' * 64,
+                'quarantined',
+                {'admission': 'content_verified'},
+            )
+        ]
+    )
+    connection = Connection(cursor)
+    bind(monkeypatch, connection)
+
+    class Store:
+        def get(self, *_args, **_kwargs):
+            return b'synthetic'
+
+    with pytest.raises(RuntimeError, match='scanner unavailable'):
+        worker.scan_workspace_asset(
+            site_id='site-a',
+            asset_id=asset_id,
+            artifact_store=Store(),
+            scanner=lambda _content: (_ for _ in ()).throw(RuntimeError('scanner unavailable')),
+        )
+    assert connection.rollbacks == 1 and connection.commits == 0
+    assert all(not call[0].startswith('UPDATE') for call in cursor.calls)

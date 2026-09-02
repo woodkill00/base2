@@ -7,6 +7,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from api.db import db_conn
+from api.services.content_workspace_scanner import scan_content
 
 
 def due_publication_ids(*, limit: int = 25) -> list[tuple[str, str]]:
@@ -116,9 +117,7 @@ def build_search_projection(
         'body': body,
         'url_path': f'/{content_type}/{slug}',
         'visibility': (
-            'public'
-            if state == 'published' and search_visible and not tombstoned
-            else 'private'
+            'public' if state == 'published' and search_visible and not tombstoned else 'private'
         ),
         'source_updated_at': updated_at,
         'tombstoned': tombstoned,
@@ -207,3 +206,81 @@ def index_workspace_record(*, site_id: str, record_id: UUID, job_version: int) -
             conn.rollback()
             raise
     return 'indexed'
+
+
+def due_media_scans(*, limit: int = 10) -> list[tuple[str, str]]:
+    if not 1 <= limit <= 50:
+        raise ValueError('content_limit_exceeded')
+    with db_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT site_id, id FROM sitecontent_mediaasset
+               WHERE status='quarantined'
+                 AND metadata->>'admission'='content_verified'
+                 AND COALESCE(metadata->>'scanStatus','') NOT IN ('clean','infected')
+               ORDER BY updated_at, id LIMIT %s""",
+            (limit,),
+        )
+        return [(row[0], str(row[1])) for row in cur.fetchall()]
+
+
+def scan_workspace_asset(
+    *, site_id: str, asset_id: UUID, artifact_store, scanner=scan_content
+) -> str:
+    """Scan an exact encrypted object and record a truthful non-promoting verdict."""
+    with db_conn(tenant_id=site_id) as conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """SELECT storage_key, sha256, status, metadata
+                       FROM sitecontent_mediaasset
+                       WHERE id=%s AND site_id=%s FOR UPDATE""",
+                    (str(asset_id), site_id),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return 'not_found'
+                if row[2] in {'validated', 'rejected', 'deleted'}:
+                    return f'already_{row[2]}'
+                if row[2] != 'quarantined':
+                    return 'not_ready'
+                metadata = row[3] if isinstance(row[3], dict) else {}
+                if metadata.get('scanStatus') == 'clean':
+                    return 'already_scanned'
+                content = artifact_store.get(row[0], expected_sha256=row[1])
+                verdict = scanner(content)
+                if verdict not in {'clean', 'infected'}:
+                    raise ValueError('content_scanner_response_invalid')
+                next_status = 'quarantined' if verdict == 'clean' else 'rejected'
+                safe_metadata = {
+                    'admission': 'content_verified',
+                    'scanStatus': verdict,
+                    'scannerRef': 'clamav:instream',
+                }
+                for key in ('width', 'height'):
+                    if isinstance(metadata.get(key), int):
+                        safe_metadata[key] = metadata[key]
+                cur.execute(
+                    """UPDATE sitecontent_mediaasset SET status=%s, metadata=%s::jsonb,
+                           updated_at=NOW()
+                       WHERE id=%s AND site_id=%s AND status='quarantined'""",
+                    (next_status, json.dumps(safe_metadata), str(asset_id), site_id),
+                )
+                cur.execute(
+                    """INSERT INTO sitecontent_workspaceauditevent
+                       (id, site_id, actor_ref, object_type, object_ref, action, outcome,
+                        correlation_id, metadata, created_at)
+                       VALUES (%s,%s,'system:media-scanner','media_asset',%s,
+                               'content.asset_scan',%s,'',%s::jsonb,NOW())""",
+                    (
+                        str(uuid4()),
+                        site_id,
+                        str(asset_id),
+                        'accepted' if verdict == 'clean' else 'rejected',
+                        json.dumps({'status': verdict, 'sha256': row[1]}),
+                    ),
+                )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+    return 'scanned_clean' if verdict == 'clean' else 'scanned_infected'

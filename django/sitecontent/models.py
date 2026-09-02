@@ -1191,6 +1191,7 @@ class MediaAsset(SiteOwnedModel):
         PENDING = "pending", "Pending"
         VALIDATED = "validated", "Validated"
         QUARANTINED = "quarantined", "Quarantined"
+        REJECTED = "rejected", "Rejected"
         DELETED = "deleted", "Deleted"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

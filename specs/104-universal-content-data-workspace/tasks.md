@@ -192,6 +192,8 @@
 - [x] T155 Complete the grant-bound raw media admission path after analysis found metadata-only grants had no content completion contract; add bounded streaming, exact owner/site/asset/hash/size binding, quarantine-only completion, encrypted storage, fail-fast production key validation, and setup/canary secret generation tests.
 - [x] T156 Mount one shared private workspace-artifact volume into the read-only API and worker containers after Compose analysis found the new encrypted store was otherwise unwritable and unavailable across processes; pre-create its non-root path in the API image and validate the rendered Compose configuration.
 - [x] T157 Add a durable import-source upload contract after analysis found source hashes had no corresponding artifact handoff; bind format/site/type/requester/job/hash to an expiring grant, stream within the parser ceiling, reject malformed input before persistence, encrypt the exact source, expose readiness explicitly, and cover migration/replay boundaries.
+- [x] T158 Replace Coverage.py's crashing native tracer with its supported pure-Python core after two distinct interpreter-level failures on Python 3.12 under WSL; lock the choice with a regression test and pass the full API coverage suite twice consecutively.
+- [x] T159 Add a fail-closed malware-scanning boundary for admitted media using bounded ClamAV INSTREAM requests, exact encrypted-object/hash binding, non-promoting clean verdicts, explicit infected rejection, durable retry discovery, and an opt-in private resource-bounded Compose runtime; verify protocol, state, retry, migration, and runtime contracts.
 
 ## Dependencies and authority
 

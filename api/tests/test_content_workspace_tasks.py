@@ -24,9 +24,7 @@ def test_workspace_index_task_calls_version_bound_worker(monkeypatch):
     )
 
     assert (
-        tasks.index_workspace_record_task(
-            'site-a', '00000000-0000-0000-0000-000000000104', 3
-        )
+        tasks.index_workspace_record_task('site-a', '00000000-0000-0000-0000-000000000104', 3)
         == 'indexed'
     )
     assert called == [
@@ -39,8 +37,41 @@ def test_workspace_index_task_calls_version_bound_worker(monkeypatch):
 
 
 def test_workspace_mutation_tasks_have_bounded_dependency_retries():
-    for task in (tasks.publish_workspace_record, tasks.index_workspace_record_task):
+    for task in (
+        tasks.publish_workspace_record,
+        tasks.index_workspace_record_task,
+        tasks.scan_workspace_asset_task,
+    ):
         assert task.max_retries == 3
         assert task.autoretry_for == (Exception,)
         assert task.dont_autoretry_for == (ValueError,)
         assert task.retry_backoff is True
+
+
+def test_workspace_media_scan_replay_dispatches_only_discovered_ids(monkeypatch):
+    discovered = [('site-a', '00000000-0000-0000-0000-000000007104')]
+    delivered = []
+    monkeypatch.setattr(tasks, 'due_media_scans', lambda *, limit: discovered)
+    monkeypatch.setattr(
+        tasks.scan_workspace_asset_task,
+        'delay',
+        lambda site_id, asset_id: delivered.append((site_id, asset_id)),
+    )
+    assert tasks.replay_workspace_media_scans(limit=10) == 1
+    assert delivered == discovered
+
+
+def test_workspace_media_scan_task_uses_private_store(monkeypatch):
+    store = object()
+    calls = []
+    monkeypatch.setattr(tasks, '_workspace_artifact_store', lambda: store)
+    monkeypatch.setattr(
+        tasks,
+        'scan_workspace_asset',
+        lambda **kwargs: calls.append(kwargs) or 'scanned_clean',
+    )
+    asset_id = '00000000-0000-0000-0000-000000007104'
+    assert tasks.scan_workspace_asset_task('site-a', asset_id) == 'scanned_clean'
+    assert calls == [
+        {'site_id': 'site-a', 'asset_id': tasks.UUID(asset_id), 'artifact_store': store}
+    ]

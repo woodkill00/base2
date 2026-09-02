@@ -10,10 +10,14 @@ from api.repositories.data_rights import expire_results, queued_operation_ids
 from api.services.data_rights_worker import process_operation
 from api.services.content_workspace_worker import (
     due_index_records,
+    due_media_scans,
     due_publication_ids,
     index_workspace_record,
     publish_scheduled_record,
+    scan_workspace_asset,
 )
+from api.services.content_workspace_storage import configured_artifact_store
+from api.settings import settings
 
 
 logger = logging.getLogger('api.tasks')
@@ -52,6 +56,10 @@ app.conf.update(
         },
         'workspace-refresh-search-index': {
             'task': 'app.replay_workspace_indexing',
+            'schedule': 60.0,
+        },
+        'workspace-scan-quarantined-media': {
+            'task': 'app.replay_workspace_media_scans',
             'schedule': 60.0,
         },
     },
@@ -145,3 +153,34 @@ def replay_workspace_indexing(limit: int = 25) -> int:
     for site_id, record_id, version in records:
         index_workspace_record_task.delay(site_id, record_id, version)
     return len(records)
+
+
+def _workspace_artifact_store():
+    return configured_artifact_store(
+        root=settings.CONTENT_WORKSPACE_STORAGE_ROOT,
+        encoded_key=settings.CONTENT_WORKSPACE_STORAGE_KEY or '',
+    )
+
+
+@app.task(
+    name='app.scan_workspace_asset',
+    autoretry_for=(Exception,),
+    dont_autoretry_for=(ValueError,),
+    retry_backoff=True,
+    retry_jitter=True,
+    max_retries=3,
+)
+def scan_workspace_asset_task(site_id: str, asset_id: str) -> str:
+    return scan_workspace_asset(
+        site_id=site_id,
+        asset_id=UUID(asset_id),
+        artifact_store=_workspace_artifact_store(),
+    )
+
+
+@app.task(name='app.replay_workspace_media_scans')
+def replay_workspace_media_scans(limit: int = 10) -> int:
+    assets = due_media_scans(limit=limit)
+    for site_id, asset_id in assets:
+        scan_workspace_asset_task.delay(site_id, asset_id)
+    return len(assets)
