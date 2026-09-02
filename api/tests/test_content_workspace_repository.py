@@ -215,6 +215,41 @@ def test_record_value_mirror_rejects_unknown_required_and_wrong_types():
             raise AssertionError('invalid record values were accepted')
 
 
+def test_record_value_mirror_enforces_formats_bounds_and_finite_decimals():
+    fields = [
+        ('slug', 'slug', True, False, None, {}),
+        ('price', 'decimal', False, False, None, {'minimum': 1, 'maximum': 100}),
+        ('published_at', 'datetime', False, False, None, {}),
+        ('kind', 'enum', False, False, None, {'choices': ['news', 'guide']}),
+        ('related', 'references', False, False, None, {'maximumItems': 2}),
+    ]
+    repository._validate_values(
+        {
+            'slug': 'safe-slug',
+            'price': '4.50',
+            'published_at': '2026-09-02T12:00:00Z',
+            'kind': 'guide',
+            'related': [str(UUID(int=1)), str(UUID(int=2))],
+        },
+        fields,
+    )
+    invalid_values = [
+        {'slug': 'Unsafe Slug'},
+        {'slug': 'safe', 'price': 'NaN'},
+        {'slug': 'safe', 'price': '101'},
+        {'slug': 'safe', 'published_at': '2026-09-02T12:00:00'},
+        {'slug': 'safe', 'kind': 'unknown'},
+        {'slug': 'safe', 'related': [str(UUID(int=1))] * 3},
+    ]
+    for values in invalid_values:
+        try:
+            repository._validate_values(values, fields)
+        except ValueError as exc:
+            assert str(exc) == 'content_schema_invalid'
+        else:
+            raise AssertionError(f'invalid value mirror was accepted: {values!r}')
+
+
 def test_structured_rich_text_mirror_rejects_script_nodes_and_unsafe_links():
     fields = [('body', 'rich_text', True, False, None, {})]
     repository._validate_values(

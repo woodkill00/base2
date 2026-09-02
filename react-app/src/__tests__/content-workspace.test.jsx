@@ -14,6 +14,7 @@ vi.mock('../services/contentWorkspace', () => ({
     definition: vi.fn(),
     records: vi.fn(),
     record: vi.fn(),
+    createRecord: vi.fn(),
     versions: vi.fn(),
     views: vi.fn(),
   },
@@ -69,6 +70,14 @@ describe('content workspace', () => {
       values: { title: 'Hello', summary: 'Safe synthetic summary' },
     });
     contentWorkspaceAPI.versions.mockResolvedValue({ items: [] });
+    contentWorkspaceAPI.createRecord.mockResolvedValue({
+      id: 'record-2',
+      title: 'Second',
+      slug: 'second',
+      state: 'draft',
+      version: 1,
+      values: { title: 'Second', summary: 'New safe summary' },
+    });
     contentWorkspaceAPI.views.mockResolvedValue({ items: [] });
   });
 
@@ -145,5 +154,38 @@ describe('content workspace', () => {
     const { container } = renderWorkspace();
     await screen.findByRole('heading', { name: /records · articles/i });
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  test('creates a schema-driven draft and keeps it in the current workspace', async () => {
+    const user = userEvent.setup();
+    renderWorkspace();
+    await screen.findByRole('button', { name: /new record/i });
+    await waitFor(() =>
+      expect(screen.getByRole('region', { name: /records · articles/i })).toHaveAttribute(
+        'aria-busy',
+        'false'
+      )
+    );
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: /new record/i }));
+    });
+    expect(screen.getByRole('heading', { name: /create article record/i })).toBeVisible();
+    await act(async () => {
+      await user.type(screen.getByLabelText('Title'), 'Second');
+      await user.type(screen.getByLabelText('Slug'), 'second');
+      await user.type(screen.getByLabelText('Summary'), 'New safe summary');
+    });
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: /create draft/i }));
+      await Promise.resolve();
+    });
+    await waitFor(() =>
+      expect(contentWorkspaceAPI.createRecord).toHaveBeenCalledWith('article', {
+        title: 'Second',
+        slug: 'second',
+        values: { title: 'Second', summary: 'New safe summary' },
+      })
+    );
+    expect(await screen.findByRole('heading', { name: 'Second' })).toBeVisible();
   });
 });

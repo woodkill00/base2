@@ -91,14 +91,14 @@
 ## Phase 5 - Generator, presets, compatibility, and migrations
 
 - [ ] T074 Add failing manifest tests for the workspace capability, preset versions, dependencies, unknown fields, and disabled defaults.
-- [ ] T075 Add failing deterministic preset compilation tests for articles, catalog, rentals/directories, portfolio, documentation, marketplace/listings, events, and community.
+- [x] T075 Add failing deterministic preset compilation tests for articles, catalog, rentals/directories, portfolio, documentation, marketplace/listings, events, and community.
 - [ ] T076 Add failing generated-profile matrix tests for models, migrations, API declarations, roles, routes, navigation, fixtures, tests, and migration notes.
 - [ ] T077 Add failing disabled-capability tests across generator output, API, workers, navigation, direct routes, and public reads.
-- [ ] T078 Add failing `/api/items` compatibility adapter, warning, migration, and no-authority-expansion tests.
+- [x] T078 Add failing `/api/items` compatibility adapter, warning, migration, and no-authority-expansion tests.
 - [x] T079 Extend the existing module manifest with one workspace capability and declarative preset registry.
-- [ ] T080 Implement deterministic preset compiler using existing module IDs and shared canonical entities.
+- [x] T080 Implement deterministic preset compiler using existing module IDs and shared canonical entities.
 - [ ] T081 Generate bounded fixtures and contract declarations for every built-in profile/preset combination.
-- [ ] T082 Implement the narrow deprecated Items adapter and documented generated-site migration path.
+- [x] T082 Implement the narrow deprecated Items adapter and documented generated-site migration path.
 - [ ] T083 Run generator determinism, clean-regeneration, upgrade/downgrade, disabled-profile, and compatibility matrices.
 
 ## Phase 6 - Test-first React workspace and generated views

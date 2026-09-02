@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
+from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
 from typing import Any
+from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
 from api.db import db_conn
@@ -35,6 +39,8 @@ RICH_TEXT_TYPES = {
     'link',
 }
 RICH_TEXT_KEYS = {'type', 'text', 'children', 'level', 'href'}
+SLUG_VALUE = re.compile(r'^[a-z0-9]+(?:-[a-z0-9]+)*$')
+EMAIL_VALUE = re.compile(r'^[^\s@]+@[^\s@]+\.[^\s@]+$')
 
 
 def _valid_rich_text(value: Any, depth: int = 0) -> bool:
@@ -142,7 +148,7 @@ def _validate_values(values: dict[str, Any], fields: list[tuple]) -> None:
     declared = {row[0]: row for row in fields}
     if len(values) > 128 or set(values) - set(declared):
         raise ValueError('content_schema_invalid')
-    for field_key, field_kind, required, nullable, default_value, _validation in fields:
+    for field_key, field_kind, required, nullable, default_value, validation in fields:
         if field_key not in values:
             if required and default_value is None:
                 raise ValueError('content_schema_invalid')
@@ -174,6 +180,67 @@ def _validate_values(values: dict[str, Any], fields: list[tuple]) -> None:
         }.get(field_kind, False)
         if not valid:
             raise ValueError('content_schema_invalid')
+        if field_kind in {'short_text', 'long_text', 'slug', 'url', 'email', 'enum'}:
+            minimum = validation.get('minLength', 0)
+            maximum = validation.get('maxLength', 20_000 if field_kind == 'long_text' else 500)
+            if not minimum <= len(value) <= maximum:
+                raise ValueError('content_schema_invalid')
+            if field_kind == 'slug' and not SLUG_VALUE.fullmatch(value):
+                raise ValueError('content_schema_invalid')
+            if field_kind == 'url':
+                parsed = urlsplit(value)
+                if (
+                    parsed.scheme not in {'http', 'https'}
+                    or not parsed.hostname
+                    or parsed.username is not None
+                    or parsed.password is not None
+                ):
+                    raise ValueError('content_schema_invalid')
+            if field_kind == 'email' and not EMAIL_VALUE.fullmatch(value):
+                raise ValueError('content_schema_invalid')
+            if field_kind == 'enum' and value not in validation.get('choices', []):
+                raise ValueError('content_schema_invalid')
+        if field_kind in {'integer', 'decimal'}:
+            try:
+                numeric = Decimal(str(value))
+            except (InvalidOperation, ValueError):
+                raise ValueError('content_schema_invalid') from None
+            if not numeric.is_finite():
+                raise ValueError('content_schema_invalid')
+            if 'minimum' in validation and numeric < Decimal(str(validation['minimum'])):
+                raise ValueError('content_schema_invalid')
+            if 'maximum' in validation and numeric > Decimal(str(validation['maximum'])):
+                raise ValueError('content_schema_invalid')
+            decimal_places = validation.get('decimalPlaces')
+            if decimal_places is not None and max(0, -numeric.as_tuple().exponent) > decimal_places:
+                raise ValueError('content_schema_invalid')
+        if field_kind == 'date':
+            try:
+                date.fromisoformat(value)
+            except (TypeError, ValueError):
+                raise ValueError('content_schema_invalid') from None
+        if field_kind == 'datetime':
+            try:
+                parsed_datetime = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                if parsed_datetime.tzinfo is None:
+                    raise ValueError
+            except (AttributeError, ValueError):
+                raise ValueError('content_schema_invalid') from None
+        if field_kind in {'reference', 'image', 'file'}:
+            try:
+                UUID(str(value))
+            except (TypeError, ValueError):
+                raise ValueError('content_schema_invalid') from None
+        if field_kind == 'references':
+            maximum_items = validation.get('maximumItems', 50)
+            normalized_references = [str(item) for item in value]
+            if len(value) > maximum_items or len(value) != len(set(normalized_references)):
+                raise ValueError('content_schema_invalid')
+            try:
+                for item in normalized_references:
+                    UUID(item)
+            except (TypeError, ValueError):
+                raise ValueError('content_schema_invalid') from None
 
 
 def _audit(cur, *, site_id: str, actor_ref: str, object_type: str, object_ref: str, action: str):

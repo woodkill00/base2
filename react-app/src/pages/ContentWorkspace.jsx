@@ -22,6 +22,9 @@ export default function ContentWorkspace() {
   const [records, setRecords] = useState([]);
   const [schema, setSchema] = useState(null);
   const [activeRecord, setActiveRecord] = useState(null);
+  const [creating, setCreating] = useState(false);
+  const [draft, setDraft] = useState({ title: '', slug: '', values: {} });
+  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -97,6 +100,54 @@ export default function ContentWorkspace() {
       });
     } catch (caught) {
       setError(messageFor(caught));
+    }
+  };
+
+  const updateDraft = (fieldKey, value) => {
+    setDraft((current) => {
+      const next = { ...current, values: { ...current.values, [fieldKey]: value } };
+      if (fieldKey === 'title') next.title = value;
+      if (fieldKey === 'slug') next.slug = value;
+      return next;
+    });
+  };
+
+  const createRecord = async (event) => {
+    event.preventDefault();
+    const values = {};
+    for (const field of schema?.fields || []) {
+      const value =
+        field.fieldKey === 'title'
+          ? draft.title
+          : field.fieldKey === 'slug'
+            ? draft.slug
+            : draft.values[field.fieldKey];
+      if (value !== undefined && value !== '') values[field.fieldKey] = value;
+      if (field.required && (value === undefined || value === '')) {
+        setError(`${field.label} is required.`);
+        return;
+      }
+    }
+    if (!draft.title.trim() || !draft.slug.trim()) {
+      setError('Title and slug are required.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const created = await contentWorkspaceAPI.createRecord(selectedType, {
+        title: draft.title.trim(),
+        slug: draft.slug.trim(),
+        values,
+      });
+      setRecords((current) => [created, ...current.filter((item) => item.id !== created.id)]);
+      setActiveRecord({ ...created, history: [] });
+      setDraft({ title: '', slug: '', values: {} });
+      setCreating(false);
+    } catch (caught) {
+      setError(messageFor(caught));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -195,77 +246,207 @@ export default function ContentWorkspace() {
                     </p>
                   </div>
                   {tab === 'Records' ? (
-                    <GlassButton variant="primary">New record</GlassButton>
+                    <GlassButton
+                      variant="primary"
+                      disabled={!schema || saving}
+                      onClick={() => setCreating(true)}
+                    >
+                      New record
+                    </GlassButton>
                   ) : null}
                 </div>
                 {tab === 'Records' ? (
-                  recordsLoading ? (
-                    <p role="status" className="mt-5">
-                      Loading records…
-                    </p>
-                  ) : records.length ? (
-                    <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(15rem,0.8fr)_minmax(18rem,1.2fr)]">
-                      <ul className="divide-y divide-white/10" aria-label="Records">
-                        {records.map((record) => (
-                          <li key={record.id} className="py-4">
-                            <button
-                              type="button"
-                              aria-label={`Open ${record.title}`}
-                              aria-current={activeRecord?.id === record.id ? 'true' : undefined}
-                              onClick={() => openRecord(record)}
-                              className="min-h-11 w-full rounded-xl p-2 text-left hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
-                            >
-                              <strong>{record.title}</strong>
-                              <p className="text-sm opacity-70">
-                                /{record.slug} · {record.state} · version {record.version}
-                              </p>
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                      <div
-                        role="region"
-                        aria-label="Record details"
-                        className="min-h-48 rounded-2xl border border-white/10 bg-black/10 p-5"
+                  <>
+                    {creating ? (
+                      <form
+                        onSubmit={createRecord}
+                        className="mt-5 space-y-4 rounded-2xl border border-violet-300/30 bg-violet-950/15 p-5"
                       >
-                        {activeRecord ? (
-                          <div className="space-y-4">
-                            <div>
-                              <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">
-                                {activeRecord.state} · version {activeRecord.version}
+                        <div>
+                          <h3 className="text-lg font-semibold">Create {selectedType} record</h3>
+                          <p className="mt-1 text-sm opacity-70">
+                            The draft remains private until its workflow explicitly publishes it.
+                          </p>
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <label className="space-y-1 text-sm font-medium">
+                            <span>Title</span>
+                            <input
+                              value={draft.title}
+                              onChange={(event) => updateDraft('title', event.target.value)}
+                              required
+                              maxLength={240}
+                              className="min-h-11 w-full rounded-xl border border-white/20 bg-slate-950/80 px-3"
+                            />
+                          </label>
+                          <label className="space-y-1 text-sm font-medium">
+                            <span>Slug</span>
+                            <input
+                              value={draft.slug}
+                              onChange={(event) => updateDraft('slug', event.target.value)}
+                              required
+                              pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                              maxLength={160}
+                              className="min-h-11 w-full rounded-xl border border-white/20 bg-slate-950/80 px-3"
+                            />
+                          </label>
+                          {(schema?.fields || [])
+                            .filter((field) => !['title', 'slug'].includes(field.fieldKey))
+                            .map((field) => (
+                              <label key={field.fieldKey} className="space-y-1 text-sm font-medium">
+                                <span>{field.label}</span>
+                                {field.fieldKind === 'long_text' ? (
+                                  <textarea
+                                    value={draft.values[field.fieldKey] || ''}
+                                    onChange={(event) =>
+                                      updateDraft(field.fieldKey, event.target.value)
+                                    }
+                                    required={field.required}
+                                    rows={4}
+                                    className="w-full rounded-xl border border-white/20 bg-slate-950/80 p-3"
+                                  />
+                                ) : field.fieldKind === 'boolean' ? (
+                                  <input
+                                    type="checkbox"
+                                    checked={Boolean(draft.values[field.fieldKey])}
+                                    onChange={(event) =>
+                                      updateDraft(field.fieldKey, event.target.checked)
+                                    }
+                                    className="block size-6"
+                                  />
+                                ) : field.fieldKind === 'enum' ? (
+                                  <select
+                                    value={draft.values[field.fieldKey] || ''}
+                                    onChange={(event) =>
+                                      updateDraft(field.fieldKey, event.target.value)
+                                    }
+                                    required={field.required}
+                                    className="min-h-11 w-full rounded-xl border border-white/20 bg-slate-950/80 px-3"
+                                  >
+                                    <option value="">Choose {field.label.toLowerCase()}</option>
+                                    {(field.validation?.choices || []).map((choice) => (
+                                      <option key={choice} value={choice}>
+                                        {choice}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <input
+                                    type={
+                                      {
+                                        integer: 'number',
+                                        decimal: 'number',
+                                        date: 'date',
+                                        datetime: 'datetime-local',
+                                        email: 'email',
+                                        url: 'url',
+                                      }[field.fieldKind] || 'text'
+                                    }
+                                    value={draft.values[field.fieldKey] || ''}
+                                    onChange={(event) =>
+                                      updateDraft(
+                                        field.fieldKey,
+                                        field.fieldKind === 'integer'
+                                          ? event.target.value === ''
+                                            ? ''
+                                            : Number.parseInt(event.target.value, 10)
+                                          : field.fieldKind === 'datetime' && event.target.value
+                                            ? new Date(event.target.value).toISOString()
+                                            : event.target.value
+                                      )
+                                    }
+                                    required={field.required}
+                                    className="min-h-11 w-full rounded-xl border border-white/20 bg-slate-950/80 px-3"
+                                  />
+                                )}
+                              </label>
+                            ))}
+                        </div>
+                        <div className="flex flex-wrap gap-3">
+                          <GlassButton type="submit" variant="primary" disabled={saving}>
+                            {saving ? 'Creating…' : 'Create draft'}
+                          </GlassButton>
+                          <GlassButton
+                            type="button"
+                            variant="ghost"
+                            disabled={saving}
+                            onClick={() => setCreating(false)}
+                          >
+                            Cancel
+                          </GlassButton>
+                        </div>
+                      </form>
+                    ) : null}
+                    {recordsLoading ? (
+                      <p role="status" className="mt-5">
+                        Loading records…
+                      </p>
+                    ) : records.length ? (
+                      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(15rem,0.8fr)_minmax(18rem,1.2fr)]">
+                        <ul className="divide-y divide-white/10" aria-label="Records">
+                          {records.map((record) => (
+                            <li key={record.id} className="py-4">
+                              <button
+                                type="button"
+                                aria-label={`Open ${record.title}`}
+                                aria-current={activeRecord?.id === record.id ? 'true' : undefined}
+                                onClick={() => openRecord(record)}
+                                className="min-h-11 w-full rounded-xl p-2 text-left hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
+                              >
+                                <strong>{record.title}</strong>
+                                <p className="text-sm opacity-70">
+                                  /{record.slug} · {record.state} · version {record.version}
+                                </p>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                        <div
+                          role="region"
+                          aria-label="Record details"
+                          className="min-h-48 rounded-2xl border border-white/10 bg-black/10 p-5"
+                        >
+                          {activeRecord ? (
+                            <div className="space-y-4">
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">
+                                  {activeRecord.state} · version {activeRecord.version}
+                                </p>
+                                <h3 className="mt-1 text-2xl font-semibold">
+                                  {activeRecord.title}
+                                </h3>
+                                <p className="text-sm opacity-65">/{activeRecord.slug}</p>
+                              </div>
+                              <dl className="grid gap-3 sm:grid-cols-2">
+                                {Object.entries(activeRecord.values || {}).map(([key, value]) => (
+                                  <div key={key} className="rounded-xl bg-white/5 p-3">
+                                    <dt className="text-xs font-semibold uppercase tracking-wider opacity-60">
+                                      {key.replaceAll('_', ' ')}
+                                    </dt>
+                                    <dd className="mt-1 break-words text-sm">
+                                      {typeof value === 'object'
+                                        ? JSON.stringify(value)
+                                        : String(value)}
+                                    </dd>
+                                  </div>
+                                ))}
+                              </dl>
+                              <p className="text-xs opacity-60">
+                                {activeRecord.history.length} retained historical{' '}
+                                {activeRecord.history.length === 1 ? 'version' : 'versions'}
                               </p>
-                              <h3 className="mt-1 text-2xl font-semibold">{activeRecord.title}</h3>
-                              <p className="text-sm opacity-65">/{activeRecord.slug}</p>
                             </div>
-                            <dl className="grid gap-3 sm:grid-cols-2">
-                              {Object.entries(activeRecord.values || {}).map(([key, value]) => (
-                                <div key={key} className="rounded-xl bg-white/5 p-3">
-                                  <dt className="text-xs font-semibold uppercase tracking-wider opacity-60">
-                                    {key.replaceAll('_', ' ')}
-                                  </dt>
-                                  <dd className="mt-1 break-words text-sm">
-                                    {typeof value === 'object'
-                                      ? JSON.stringify(value)
-                                      : String(value)}
-                                  </dd>
-                                </div>
-                              ))}
-                            </dl>
-                            <p className="text-xs opacity-60">
-                              {activeRecord.history.length} retained historical{' '}
-                              {activeRecord.history.length === 1 ? 'version' : 'versions'}
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="grid min-h-40 place-items-center text-center text-sm opacity-70">
-                            Choose a record to inspect its fields and history.
-                          </div>
-                        )}
+                          ) : (
+                            <div className="grid min-h-40 place-items-center text-center text-sm opacity-70">
+                              Choose a record to inspect its fields and history.
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <p className="mt-5 text-sm opacity-75">No records match this view.</p>
-                  )
+                    ) : (
+                      <p className="mt-5 text-sm opacity-75">No records match this view.</p>
+                    )}
+                  </>
                 ) : tab === 'Schemas' ? (
                   schema ? (
                     <div className="mt-5 space-y-3">
