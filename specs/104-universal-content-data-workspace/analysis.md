@@ -174,3 +174,13 @@ assertion showing tenant/type access through `sitecontent_type_version_uq`, and
 the relationship repository is regression-tested to return 25 expansions with
 one bounded `LIMIT 200` query. T105 is closed; the multi-connection mutation
 matrix remains open under T106/T194.
+
+T194 closeout: the disposable PostgreSQL matrix now launches two physical
+least-privilege runtime-role sessions through a bounded barrier for each of six
+critical collision classes. Definition publication, record mutation, workflow
+transition, saved-view edit, import commit, and due-schedule firing each produce
+exactly one affected-row winner and one zero-row loser. The disposable database
+is destroyed even on failure, and the static contract locks the race classes,
+physical barrier, and winner/loser assertion into the required gate.
+
+**Cycle result**: `IMPLEMENTATION_FINDING_T194_CLOSED_T195_T197_OPEN`

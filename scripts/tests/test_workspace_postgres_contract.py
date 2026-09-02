@@ -43,6 +43,11 @@ class WorkspacePostgresContractTests(unittest.TestCase):
             "cross_tenant_insert_was_not_blocked",
             "same_tenant_composite_uniqueness_not_enforced",
             "sitecontent_type_state_idx",
+            "threading.Barrier(2)",
+            "sitecontent_savedview",
+            "sitecontent_importjob",
+            "state='scheduled'",
+            "assert sorted(results) == [0, 1]",
         ):
             self.assertIn(marker, checks)
 
