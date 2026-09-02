@@ -51,6 +51,27 @@ scripts/bash/content-workspace-recovery.sh restore \
 
 Restore refuses existing targets, configured live data roots, out-of-root paths, wrong keys, modified manifests, changed ciphertext, mismatched counts/hashes, and broken references. It never restores directly into a database. Importing a verified snapshot into any database is a separate reviewed operation.
 
+## Retention and data rights
+
+Soft-deleted records retain a fixed 30-day recovery window. Daily cleanup skips
+every record that still has an incoming/outgoing relationship or media binding,
+then preserves an append-only hard-deletion audit marker. Expired deleted media
+is likewise skipped while bound. Eligible originals and safe variants are
+integrity-checked and matched to their server-derived tenant/object keys before
+encrypted bytes and metadata are removed. Export expiry clears its object hash
+and key only after the same exact-owned deletion; a restart safely replays a
+missing object without expanding the deletion target.
+
+Authenticated privacy exports use the tenant-bound non-owner workspace role and
+include only records whose first create audit belongs to that subject. Only
+fields with the ordinary `content.read` permission enter the projection; other
+tenants, private fields, audit internals, object keys, and owner references are
+excluded. Correction receipts include this same current projection. Account
+deletion removes private views, queues owned media for immediate retention
+cleanup, pseudonymizes mutable job subject references, and retains immutable
+audit facts needed for business and security integrity under their separate
+retention policy.
+
 ## Failure response
 
 Do not reinterpret a failed, cancelled, expired, quarantined, or dependency-unavailable state as success. Preserve the closed error code and integrity digest, correct the underlying cause, and replay only through the same idempotent job identifier. Never bypass schema-version, tenant, permission, hash, scan, or approval checks. If evidence is malformed or stale, generate new evidence rather than editing the receipt.

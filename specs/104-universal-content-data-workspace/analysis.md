@@ -229,3 +229,17 @@ tenants, and the full tenant-boundary module plus static deployment contract
 passed.
 
 **Cycle result**: `IMPLEMENTATION_FINDINGS_T198_T199_CLOSED_T195_T197_OPEN`
+
+T195 closeout: the encrypted store now deletes only a server-derived exact
+tenant/object key after authenticating its digest, rejects owner mismatch and
+tamper, and treats a missing exact object as a replay-safe no-op only when the
+retention caller explicitly requests it. Daily cleanup holds row locks, skips
+active relationship/media bindings, enforces the 30-day record recovery window,
+removes expired unbound media variants/originals and export artifacts, and
+retains append-only audit evidence. Privacy export and correction use the
+tenant-bound non-owner role to project only subject-created records and
+`content.read` fields; deletion removes mutable owner references, pseudonymizes
+job subject references, and leaves append-only audit events unchanged. The focused 52-test
+storage, worker, task, and data-rights suite passed, including replay.
+
+**Cycle result**: `IMPLEMENTATION_FINDING_T195_CLOSED_T196_T197_OPEN`

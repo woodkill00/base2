@@ -19,6 +19,7 @@ from api.services.content_workspace_worker import (
     index_workspace_record,
     mark_export_failed,
     mark_import_failed,
+    purge_workspace_retention,
     process_export_job,
     process_import_commit,
     publish_scheduled_record,
@@ -78,6 +79,10 @@ app.conf.update(
         'workspace-expire-exports': {
             'task': 'app.expire_workspace_exports',
             'schedule': 300.0,
+        },
+        'workspace-retention-cleanup': {
+            'task': 'app.purge_workspace_retained_data',
+            'schedule': 86400.0,
         },
         'workspace-validate-imports': {
             'task': 'app.replay_workspace_import_validations',
@@ -260,7 +265,12 @@ def replay_workspace_exports(limit: int = 10) -> int:
 
 @app.task(name='app.expire_workspace_exports')
 def expire_workspace_exports(limit: int = 100) -> int:
-    return expire_workspace_export_jobs(limit=limit)
+    return expire_workspace_export_jobs(artifact_store=_workspace_artifact_store(), limit=limit)
+
+
+@app.task(name='app.purge_workspace_retained_data')
+def purge_workspace_retained_data(limit: int = 100) -> dict:
+    return purge_workspace_retention(artifact_store=_workspace_artifact_store(), limit=limit)
 
 
 @app.task(

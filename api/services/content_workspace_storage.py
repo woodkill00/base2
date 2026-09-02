@@ -127,8 +127,43 @@ class PrivateArtifactStore:
             raise ArtifactIntegrityError('content_integrity_failed')
         return content
 
+    def delete(
+        self,
+        *,
+        namespace: str,
+        site_id: str,
+        object_id: str,
+        object_key: str,
+        expected_sha256: str,
+        missing_ok: bool = False,
+    ) -> bool:
+        """Delete only the exact server-derived object after integrity verification."""
+        expected_key = self.object_key(
+            namespace=namespace, site_id=site_id, object_id=object_id
+        )
+        if object_key != expected_key:
+            raise ArtifactIntegrityError('content_artifact_owner_mismatch')
+        path = self._path(object_key)
+        if path.is_symlink():
+            raise ArtifactIntegrityError('content_artifact_key_invalid')
+        try:
+            self.get(object_key, expected_sha256=expected_sha256)
+        except ArtifactIntegrityError as exc:
+            if missing_ok and str(exc) == 'content_artifact_unavailable':
+                return False
+            raise
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            if missing_ok:
+                return False
+            raise ArtifactIntegrityError('content_artifact_unavailable') from None
+        return True
+
     def _read_decrypted(self, object_key: str) -> bytes:
         path = self._path(object_key)
+        if path.is_symlink():
+            raise ArtifactIntegrityError('content_artifact_key_invalid')
         try:
             envelope = path.read_bytes()
         except (FileNotFoundError, OSError) as exc:

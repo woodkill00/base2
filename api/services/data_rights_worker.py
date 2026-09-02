@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from uuid import UUID
 
 from api.auth.repo import insert_audit_event, update_profile
-from api.db import db_conn
+from api.db import db_conn, workspace_db_conn
 from api.repositories import data_rights as repository
 from api.security.secret_box import SecretBox
 from api.services.data_rights import receipt_digest, validate_correction
@@ -40,6 +41,7 @@ def _export_payload(*, tenant_id: str, user_id: UUID) -> dict:
             (str(user_id), tenant_id),
         )
         memberships = cur.fetchall() or []
+    workspace = _workspace_payload(tenant_id=tenant_id, user_id=user_id)
     return {
         'schema_version': 1,
         'account': {
@@ -55,12 +57,99 @@ def _export_payload(*, tenant_id: str, user_id: UUID) -> dict:
             }
             for row in memberships
         ],
+        'workspace': workspace,
     }
+
+
+def _workspace_projection(cur, *, tenant_id: str, user_id: UUID) -> dict:
+    """Project only subject-created records and ordinary-readable typed fields."""
+    actor_ref = str(user_id)
+    cur.execute(
+        """SELECT DISTINCT r.id, r.content_type, r.slug, r.title, r.state,
+                          r.schema_version, r.version, r.values, r.definition_id
+           FROM sitecontent_contentrecord r
+           JOIN sitecontent_workspaceauditevent a
+             ON a.site_id=r.site_id AND a.object_type='content_record'
+            AND a.object_ref=r.id::text AND a.action='content.create'
+           WHERE r.site_id=%s AND a.site_id=%s AND a.actor_ref=%s
+           ORDER BY r.id LIMIT 1001""",
+        (tenant_id, tenant_id, actor_ref),
+    )
+    rows = cur.fetchall() or []
+    if len(rows) > 1000:
+        raise RuntimeError('workspace_privacy_projection_too_large')
+    definition_ids = sorted({str(row[8]) for row in rows if row[8]})
+    readable: dict[str, set[str]] = {}
+    if definition_ids:
+        cur.execute(
+            """SELECT definition_id, field_key
+               FROM sitecontent_contentfielddefinition
+               WHERE definition_id=ANY(%s) AND read_permission='content.read'
+               ORDER BY definition_id, field_key""",
+            (definition_ids,),
+        )
+        for definition_id, field_key in cur.fetchall() or []:
+            readable.setdefault(str(definition_id), set()).add(field_key)
+    return {
+        'schema_version': 1,
+        'records': [
+            {
+                'id': str(row[0]),
+                'content_type': row[1],
+                'slug': row[2],
+                'title': row[3],
+                'state': row[4],
+                'schema_version': int(row[5]),
+                'version': int(row[6]),
+                'values': {
+                    key: value
+                    for key, value in (row[7] if isinstance(row[7], dict) else {}).items()
+                    if key in readable.get(str(row[8]), set())
+                },
+            }
+            for row in rows
+        ],
+    }
+
+
+def _workspace_payload(*, tenant_id: str, user_id: UUID) -> dict:
+    with workspace_db_conn(tenant_id=tenant_id) as conn, conn.cursor() as cur:
+        return _workspace_projection(cur, tenant_id=tenant_id, user_id=user_id)
+
+
+def _unlink_workspace_subject(cur, *, tenant_id: str, user_id: UUID) -> None:
+    """Erase mutable subject references while retaining business and audit evidence."""
+    subject = str(user_id)
+    anonymous = 'deleted:' + hashlib.sha256(
+        f'{tenant_id}:{subject}'.encode()
+    ).hexdigest()[:24]
+    cur.execute(
+        "DELETE FROM sitecontent_savedview WHERE site_id=%s AND owner_ref=%s",
+        (tenant_id, subject),
+    )
+    cur.execute(
+        """UPDATE sitecontent_mediaasset
+           SET owner_ref='', status='deleted', retention_until=NOW(), updated_at=NOW()
+           WHERE site_id=%s AND owner_ref=%s""",
+        (tenant_id, subject),
+    )
+    cur.execute(
+        """UPDATE sitecontent_importjob SET requester_ref=%s, updated_at=NOW()
+           WHERE site_id=%s AND requester_ref=%s""",
+        (anonymous, tenant_id, subject),
+    )
+    cur.execute(
+        """UPDATE sitecontent_exportjob SET requester_ref=%s, updated_at=NOW()
+           WHERE site_id=%s AND requester_ref=%s""",
+        (anonymous, tenant_id, subject),
+    )
 
 
 def _delete_account(*, tenant_id: str, user_id: UUID) -> dict:
     with db_conn(tenant_id=tenant_id) as conn:
         with conn.cursor() as cur:
+            workspace = _workspace_projection(cur, tenant_id=tenant_id, user_id=user_id)
+            _unlink_workspace_subject(cur, tenant_id=tenant_id, user_id=user_id)
             cur.execute(
                 "DELETE FROM api_identity_memberships USING api_identity_organizations o WHERE api_identity_memberships.organization_id=o.id AND o.tenant_id=%s AND api_identity_memberships.user_id=%s",
                 (tenant_id, str(user_id)),
@@ -83,7 +172,12 @@ def _delete_account(*, tenant_id: str, user_id: UUID) -> dict:
                 conn.rollback()
                 raise RuntimeError('account_state_changed')
         conn.commit()
-    return {'schema_version': 1, 'deleted': True, 'tenant_id': tenant_id}
+    return {
+        'schema_version': 1,
+        'deleted': True,
+        'tenant_id': tenant_id,
+        'workspace_records_unlinked': len(workspace['records']),
+    }
 
 
 def _deactivate_account(*, tenant_id: str, user_id: UUID) -> dict:
@@ -150,6 +244,9 @@ def process_operation(operation_id: UUID) -> str:
                 'corrected': sorted(correction),
                 'updated_at': 'committed',
                 'account_id': str(updated.id),
+                'workspace': _workspace_payload(
+                    tenant_id=operation['tenant_id'], user_id=operation['user_id']
+                ),
             }
         elif operation['kind'] == 'deletion':
             if request_payload.get('confirmation') != 'DELETE':

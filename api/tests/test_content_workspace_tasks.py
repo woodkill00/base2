@@ -129,8 +129,25 @@ def test_export_task_terminal_failure_hook_redacts_and_records(monkeypatch):
 
 
 def test_expire_export_task_calls_bounded_worker(monkeypatch):
-    monkeypatch.setattr(tasks, 'expire_workspace_export_jobs', lambda *, limit: limit)
+    store = object()
+    monkeypatch.setattr(tasks, '_workspace_artifact_store', lambda: store)
+    monkeypatch.setattr(
+        tasks, 'expire_workspace_export_jobs',
+        lambda *, artifact_store, limit: limit if artifact_store is store else 0,
+    )
     assert tasks.expire_workspace_exports(limit=100) == 100
+
+
+def test_retention_task_uses_exact_private_store(monkeypatch):
+    store = object()
+    monkeypatch.setattr(tasks, '_workspace_artifact_store', lambda: store)
+    monkeypatch.setattr(
+        tasks, 'purge_workspace_retention',
+        lambda *, artifact_store, limit: {'assets': 1, 'records': limit}
+        if artifact_store is store else {},
+    )
+    assert tasks.purge_workspace_retained_data(limit=7) == {'assets': 1, 'records': 7}
+    assert tasks.app.conf.beat_schedule['workspace-retention-cleanup']['schedule'] == 86400.0
 
 
 def test_import_validation_replay_and_task_use_only_discovered_fixed_ids(monkeypatch):

@@ -563,28 +563,128 @@ def mark_export_failed(*, site_id: str, job_id: UUID, error_code: str) -> bool:
     return changed
 
 
-def expire_export_jobs(*, limit: int = 100) -> int:
+def expire_export_jobs(*, artifact_store, limit: int = 100) -> int:
     if not 1 <= limit <= 500:
         raise ValueError('content_limit_exceeded')
     with db_conn() as conn:
         try:
             with conn.cursor() as cur:
                 cur.execute(
-                    """UPDATE sitecontent_exportjob SET status='expired', completed_at=NOW(),
-                              error_code='content_export_expired', updated_at=NOW()
-                       WHERE id IN (
-                         SELECT id FROM sitecontent_exportjob
-                         WHERE status IN ('queued','running') AND expires_at<=NOW()
-                         ORDER BY expires_at, id LIMIT %s FOR UPDATE SKIP LOCKED
-                       ) RETURNING id""",
+                    """SELECT id, site_id, encrypted_object_key, output_sha256
+                       FROM sitecontent_exportjob
+                       WHERE status<>'expired' AND expires_at<=NOW()
+                       ORDER BY expires_at, id LIMIT %s FOR UPDATE SKIP LOCKED""",
                     (limit,),
                 )
-                expired = len(cur.fetchall())
+                rows = cur.fetchall()
+                for job_id, site_id, object_key, output_sha256 in rows:
+                    if object_key:
+                        artifact_store.delete(
+                            namespace='exports', site_id=site_id, object_id=str(job_id),
+                            object_key=object_key, expected_sha256=output_sha256,
+                            missing_ok=True,
+                        )
+                    cur.execute(
+                        """UPDATE sitecontent_exportjob
+                           SET status='expired', encrypted_object_key='', output_sha256='',
+                               completed_at=NOW(), error_code='content_export_expired',
+                               updated_at=NOW()
+                           WHERE id=%s AND site_id=%s AND status<>'expired'""",
+                        (str(job_id), site_id),
+                    )
+                expired = len(rows)
             conn.commit()
         except Exception:
             conn.rollback()
             raise
     return expired
+
+
+def purge_workspace_retention(*, artifact_store, recovery_days: int = 30, limit: int = 100):
+    """Purge only unreferenced, expired exact-owned workspace objects and tombstones."""
+    if not 1 <= recovery_days <= 365 or not 1 <= limit <= 500:
+        raise ValueError('content_limit_exceeded')
+    result = {'assets': 0, 'records': 0}
+    with db_conn() as conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """SELECT a.id, a.site_id, a.storage_key, a.sha256
+                       FROM sitecontent_mediaasset a
+                       WHERE a.status='deleted' AND a.retention_until<=NOW()
+                         AND NOT EXISTS (
+                           SELECT 1 FROM sitecontent_assetbinding b WHERE b.asset_id=a.id
+                         )
+                       ORDER BY a.retention_until, a.id
+                       LIMIT %s FOR UPDATE OF a SKIP LOCKED""",
+                    (limit,),
+                )
+                assets = cur.fetchall()
+                for asset_id, site_id, storage_key, sha256 in assets:
+                    cur.execute(
+                        """SELECT name, storage_key, sha256
+                           FROM sitecontent_mediavariant WHERE asset_id=%s ORDER BY name""",
+                        (str(asset_id),),
+                    )
+                    variants = cur.fetchall()
+                    for name, variant_key, variant_sha256 in variants:
+                        artifact_store.delete(
+                            namespace='variants', site_id=site_id,
+                            object_id=f'{asset_id}-{name}', object_key=variant_key,
+                            expected_sha256=variant_sha256, missing_ok=True,
+                        )
+                    artifact_store.delete(
+                        namespace='media', site_id=site_id, object_id=str(asset_id),
+                        object_key=storage_key, expected_sha256=sha256, missing_ok=True,
+                    )
+                    cur.execute(
+                        """INSERT INTO sitecontent_workspaceauditevent
+                           (id,site_id,actor_ref,object_type,object_ref,action,outcome,
+                            correlation_id,metadata,created_at)
+                           VALUES (%s,%s,'system:retention','media_asset',%s,
+                                   'content.asset_hard_delete','accepted','',%s::jsonb,NOW())""",
+                        (str(uuid4()), site_id, str(asset_id), json.dumps({'count': 1})),
+                    )
+                    cur.execute(
+                        "DELETE FROM sitecontent_mediaasset WHERE id=%s AND site_id=%s",
+                        (str(asset_id), site_id),
+                    )
+                    result['assets'] += cur.rowcount
+
+                cur.execute(
+                    """SELECT r.id, r.site_id FROM sitecontent_contentrecord r
+                       WHERE r.state='deleted' AND r.deleted_at<=NOW()-(%s*INTERVAL '1 day')
+                         AND NOT EXISTS (
+                           SELECT 1 FROM sitecontent_contentrelationship rel
+                           WHERE rel.source_id=r.id OR rel.target_id=r.id
+                         )
+                         AND NOT EXISTS (
+                           SELECT 1 FROM sitecontent_assetbinding b WHERE b.record_id=r.id
+                         )
+                       ORDER BY r.deleted_at, r.id
+                       LIMIT %s FOR UPDATE OF r SKIP LOCKED""",
+                    (recovery_days, limit),
+                )
+                records = cur.fetchall()
+                for record_id, site_id in records:
+                    cur.execute(
+                        """INSERT INTO sitecontent_workspaceauditevent
+                           (id,site_id,actor_ref,object_type,object_ref,action,outcome,
+                            correlation_id,metadata,created_at)
+                           VALUES (%s,%s,'system:retention','content_record',%s,
+                                   'content.record_hard_delete','accepted','',%s::jsonb,NOW())""",
+                        (str(uuid4()), site_id, str(record_id), json.dumps({'count': 1})),
+                    )
+                    cur.execute(
+                        "DELETE FROM sitecontent_contentrecord WHERE id=%s AND site_id=%s",
+                        (str(record_id), site_id),
+                    )
+                    result['records'] += cur.rowcount
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+    return result
 
 
 def due_import_validations(*, limit: int = 10) -> list[tuple[str, str]]:

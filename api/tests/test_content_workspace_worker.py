@@ -432,13 +432,76 @@ def test_export_terminal_failure_is_redacted_and_expiry_is_bounded(monkeypatch):
     assert 'private.example' not in str(failed_cursor.calls)
     assert failed_connection.commits == 1
 
-    expired_cursor = Cursor([(UUID(int=6104),), (UUID(int=6105),)])
+    expired_cursor = Cursor(
+        [
+            (UUID(int=6104), 'site-a', 'exports/site-a/00000000-0000-0000-0000-0000000017d8.bin', 'a' * 64),
+            (UUID(int=6105), 'site-b', '', ''),
+        ]
+    )
     expired_connection = Connection(expired_cursor)
     bind(monkeypatch, expired_connection)
-    assert worker.expire_export_jobs(limit=100) == 2
+    deleted = []
+
+    class Store:
+        def delete(self, **kwargs):
+            deleted.append(kwargs)
+            return True
+
+    assert worker.expire_export_jobs(artifact_store=Store(), limit=100) == 2
     assert 'FOR UPDATE SKIP LOCKED' in expired_cursor.calls[0][0]
     assert expired_cursor.calls[0][1] == (100,)
+    assert deleted[0]['site_id'] == 'site-a'
+    assert deleted[0]['missing_ok'] is True
     assert expired_connection.commits == 1
+
+
+def test_retention_cleanup_preserves_relationships_and_audit_and_deletes_exact_objects(monkeypatch):
+    asset_id = UUID(int=7104)
+    record_id = UUID(int=7105)
+
+    class RetentionCursor(Cursor):
+        rowcount = 1
+
+        def __init__(self):
+            super().__init__([])
+            self.result_sets = [
+                [(asset_id, 'site-a', f'media/site-a/{asset_id}.bin', 'a' * 64)],
+                [('safe', f'variants/site-a/{asset_id}-safe.bin', 'b' * 64)],
+                [(record_id, 'site-a')],
+            ]
+
+        def fetchall(self):
+            return self.result_sets.pop(0) if self.result_sets else []
+
+    cursor = RetentionCursor()
+    connection = Connection(cursor)
+    bind(monkeypatch, connection)
+    deleted = []
+
+    class Store:
+        def delete(self, **kwargs):
+            deleted.append(kwargs)
+            return True
+
+    assert worker.purge_workspace_retention(
+        artifact_store=Store(), recovery_days=30, limit=50
+    ) == {'assets': 1, 'records': 1}
+    assert [item['namespace'] for item in deleted] == ['variants', 'media']
+    statements = ' '.join(sql for sql, _ in cursor.calls)
+    assert 'NOT EXISTS ( SELECT 1 FROM sitecontent_contentrelationship' in statements
+    assert 'NOT EXISTS ( SELECT 1 FROM sitecontent_assetbinding' in statements
+    assert statements.count('sitecontent_workspaceauditevent') == 2
+    assert connection.commits == 1 and connection.rollbacks == 0
+
+    replay_cursor = RetentionCursor()
+    replay_cursor.result_sets = [[], []]
+    replay_connection = Connection(replay_cursor)
+    bind(monkeypatch, replay_connection)
+    assert worker.purge_workspace_retention(
+        artifact_store=Store(), recovery_days=30, limit=50
+    ) == {'assets': 0, 'records': 0}
+    assert len(deleted) == 2
+    assert replay_connection.commits == 1 and replay_connection.rollbacks == 0
 
 
 def test_import_mapping_rejects_unknown_or_invalid_rows_without_losing_ordinals():

@@ -79,3 +79,28 @@ def test_configured_store_requires_absolute_root_and_urlsafe_32_byte_key(tmp_pat
             ArtifactIntegrityError, match='content_artifact_configuration_invalid'
         ):
             configured_artifact_store(root=root, encoded_key=key)
+
+
+def test_private_store_deletes_only_exact_owned_integrity_checked_object(tmp_path):
+    store = PrivateArtifactStore(tmp_path / 'workspace', key=b'k' * 32)
+    stored = store.put(
+        namespace='exports', site_id='site-a', object_id='job-104', content=b'private'
+    )
+    with pytest.raises(ArtifactIntegrityError, match='content_artifact_owner_mismatch'):
+        store.delete(
+            namespace='exports', site_id='site-b', object_id='job-104',
+            object_key=stored.object_key, expected_sha256=stored.sha256,
+        )
+    with pytest.raises(ArtifactIntegrityError, match='content_integrity_failed'):
+        store.delete(
+            namespace='exports', site_id='site-a', object_id='job-104',
+            object_key=stored.object_key, expected_sha256='0' * 64,
+        )
+    assert store.delete(
+        namespace='exports', site_id='site-a', object_id='job-104',
+        object_key=stored.object_key, expected_sha256=stored.sha256,
+    )
+    assert not store.delete(
+        namespace='exports', site_id='site-a', object_id='job-104',
+        object_key=stored.object_key, expected_sha256=stored.sha256, missing_ok=True,
+    )
