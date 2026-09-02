@@ -537,7 +537,11 @@ def test_saved_view_executes_the_exact_bounded_query(monkeypatch):
         'expand': [],
         'limit': 10,
     }
-    monkeypatch.setattr(repo, 'get_view', lambda **_: {'query': query})
+    monkeypatch.setattr(
+        repo,
+        'get_view',
+        lambda **_: {'query': query, 'schemaVersion': 2, 'currentSchemaVersion': 2},
+    )
     calls = []
 
     def list_records(**kwargs):
@@ -562,6 +566,32 @@ def test_saved_view_executes_the_exact_bounded_query(monkeypatch):
             'query': query,
         }
     ]
+
+
+def test_saved_view_execution_fails_closed_after_schema_change(monkeypatch):
+    repo = repository.PostgresContentWorkspaceRepository()
+    monkeypatch.setattr(
+        repo,
+        'get_view',
+        lambda **_: {
+            'query': {'filters': [], 'sort': ['slug'], 'fields': [], 'expand': [], 'limit': 25},
+            'schemaVersion': 1,
+            'currentSchemaVersion': 2,
+        },
+    )
+    monkeypatch.setattr(
+        repo,
+        'list_records',
+        lambda **_: (_ for _ in ()).throw(AssertionError('stale view executed')),
+    )
+    with pytest.raises(ValueError, match='saved_view_schema_stale'):
+        repo.execute_view(
+            site_id='site-a',
+            type_key='article',
+            view_id=UUID(int=104),
+            owner_ref='user:test',
+            caller_role='editor',
+        )
 
 
 def test_record_value_mirror_rejects_unknown_required_and_wrong_types():

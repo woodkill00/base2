@@ -1136,7 +1136,11 @@ class PostgresContentWorkspaceRepository:
         with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
             cur.execute(
                 """SELECT v.id, v.title, v.query, v.visibility, v.shared_roles,
-                          v.schema_version, v.lock_version
+                          v.schema_version, v.lock_version,
+                          (SELECT MAX(current.version)
+                           FROM sitecontent_contenttypedefinition current
+                           WHERE current.site_id=v.site_id AND current.type_key=d.type_key
+                             AND current.status='published') AS current_schema_version
                    FROM sitecontent_savedview v
                    JOIN sitecontent_contenttypedefinition d ON d.id=v.definition_id
                    WHERE v.id=%s AND v.site_id=%s AND d.site_id=%s AND d.type_key=%s
@@ -1147,7 +1151,9 @@ class PostgresContentWorkspaceRepository:
             row = cur.fetchone()
         if not row:
             raise ValueError('content_not_found')
-        return self._view_result(row)
+        result = self._view_result(row)
+        result['currentSchemaVersion'] = row[7]
+        return result
 
     def update_view(
         self,
@@ -1279,6 +1285,8 @@ class PostgresContentWorkspaceRepository:
             owner_ref=owner_ref,
             caller_role=caller_role,
         )
+        if view['schemaVersion'] != view.get('currentSchemaVersion'):
+            raise ValueError('saved_view_schema_stale')
         query = view['query']
         return self.list_records(
             site_id=site_id,
