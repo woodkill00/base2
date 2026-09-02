@@ -195,6 +195,7 @@
 - [x] T158 Replace Coverage.py's crashing native tracer with its supported pure-Python core after two distinct interpreter-level failures on Python 3.12 under WSL; lock the choice with a regression test and pass the full API coverage suite twice consecutively.
 - [x] T159 Add a fail-closed malware-scanning boundary for admitted media using bounded ClamAV INSTREAM requests, exact encrypted-object/hash binding, non-promoting clean verdicts, explicit infected rejection, durable retry discovery, and an opt-in private resource-bounded Compose runtime; verify protocol, state, retry, migration, and runtime contracts.
 - [x] T160 Correct the legacy clean-scan promotion contract and require a deterministic safe derivative before validation; re-encode bounded single-frame JPEG/PNG/WebP input as metadata-free PNG, rewrite bounded passive PDFs without metadata/annotations or active-document tokens, store the derivative under exact encrypted ownership, and transactionally bind its digest before marking the asset validated.
+- [x] T161 Add private safe-derivative delivery after analysis found validated media had no usable content handoff; issue only short-lived tenant/requester/asset/type/digest-bound header grants, revalidate the exact canonical variant, decrypt with integrity checking, audit the read, and return `private, no-store`/`nosniff` content without exposing object keys or original filenames.
 
 ## Dependencies and authority
 

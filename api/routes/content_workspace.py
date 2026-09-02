@@ -7,7 +7,7 @@ from typing import Annotated, Literal
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from fastapi import APIRouter, Header, HTTPException, Path, Query, Request, status
+from fastapi import APIRouter, Header, HTTPException, Path, Query, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from api.middleware.tenant import require_tenant
@@ -902,6 +902,43 @@ async def complete_asset_upload(
         code = str(exc)
         status_code = 404 if code == 'content_not_found' else 422
         raise HTTPException(status_code=status_code, detail=code) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.get('/assets/{asset_id}/content')
+def read_asset_content(
+    asset_id: UUID,
+    request: Request,
+    download_grant: Annotated[str, Header(alias='Download-Grant', min_length=32, max_length=4096)],
+):
+    principal, tenant = _authorized_scope(request, 'content-workspace.read')
+    try:
+        result = get_repository().read_asset_content(
+            site_id=tenant,
+            asset_id=asset_id,
+            requester_ref=f'user:{principal.user_id}',
+            download_grant=download_grant,
+            artifact_store=get_artifact_store(),
+        )
+        extension = 'png' if result['media_type'] == 'image/png' else 'pdf'
+        return Response(
+            content=result['content'],
+            media_type=result['media_type'],
+            headers={
+                'Cache-Control': 'private, no-store',
+                'Content-Disposition': f'inline; filename="asset-safe.{extension}"',
+                'X-Content-Type-Options': 'nosniff',
+                'X-Content-SHA256': result['sha256'],
+            },
+        )
+    except ArtifactIntegrityError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ValueError as exc:
+        code = str(exc)
+        raise HTTPException(
+            status_code=404 if code == 'content_not_found' else 422, detail=code
+        ) from exc
     except Exception as exc:
         raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
 

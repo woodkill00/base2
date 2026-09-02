@@ -31,6 +31,10 @@ class FakeRepository:
             'replayed': False,
         }
 
+    def read_asset_content(self, **kwargs):
+        self.calls.append(('asset-content', kwargs))
+        return {'content': b'safe-png', 'media_type': 'image/png', 'sha256': 'b' * 64}
+
     def bind_asset(self, **kwargs):
         self.calls.append(('bind', kwargs))
         return {'id': str(UUID(int=8104)), 'recordVersion': kwargs['expected_version'] + 1}
@@ -137,6 +141,27 @@ def test_asset_content_upload_rejects_oversize_before_repository(monkeypatch):
     assert response.status_code == 413
     assert response.json()['detail'] == 'content_limit_exceeded'
     assert not any(item[0] == 'upload-content' for item in FakeRepository.calls)
+
+
+def test_asset_content_download_requires_header_grant_and_is_private_nosniff():
+    client = TestClient(app)
+    asset_id = str(UUID(int=7104))
+    base_headers = {'Authorization': 'Bearer synthetic', 'X-Tenant-ID': 'site-a'}
+
+    assert (
+        client.get(f'/api/content/v1/assets/{asset_id}/content', headers=base_headers).status_code
+        == 422
+    )
+    headers = {**base_headers, 'Download-Grant': 'opaque-download-grant-that-is-long-enough'}
+    response = client.get(f'/api/content/v1/assets/{asset_id}/content', headers=headers)
+
+    assert response.status_code == 200 and response.content == b'safe-png'
+    assert response.headers['content-type'] == 'image/png'
+    assert response.headers['cache-control'] == 'private, no-store'
+    assert response.headers['x-content-type-options'] == 'nosniff'
+    call = next(item for item in FakeRepository.calls if item[0] == 'asset-content')
+    assert call[1]['site_id'] == 'site-a'
+    assert call[1]['download_grant'] == headers['Download-Grant']
 
 
 def test_relationship_lifecycle_is_bounded_and_never_accepts_scope_from_body():

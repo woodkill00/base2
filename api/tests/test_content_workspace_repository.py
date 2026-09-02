@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import hashlib
 from contextlib import contextmanager
+from datetime import UTC, datetime
 from uuid import UUID
+
+import pytest
 
 from api.repositories import content_workspace as repository
 from api.security.content_workspace import CursorCodec
@@ -191,6 +194,110 @@ def test_asset_content_completion_binds_grant_hash_owner_and_quarantine(monkeypa
     assert 'FOR UPDATE' in combined_sql
     assert "status='quarantined'" in combined_sql
     assert 'sitecontent_workspaceauditevent' in combined_sql
+
+
+def test_validated_asset_download_is_grant_tenant_requester_and_derivative_bound(monkeypatch):
+    monkeypatch.setattr(repository.settings, 'TOKEN_PEPPER', 'synthetic-test-pepper-104')
+    asset_id = UUID(int=7104)
+    digest = 'b' * 64
+    scope = {
+        'site': 'site-a',
+        'requester': 'user:test',
+        'asset': str(asset_id),
+        'sha256': digest,
+        'mediaType': 'image/png',
+        'purpose': 'asset-download',
+    }
+    grant = CursorCodec('synthetic-test-pepper-104', ttl_seconds=60).encode(
+        scope=scope, position={'assetId': str(asset_id)}
+    )
+    cursor = Cursor(rows=[('variants/site-a/safe.bin', digest, 'image/png')])
+    connection = Connection(cursor)
+    scopes = bind(monkeypatch, connection)
+
+    class Store:
+        def get(self, key, *, expected_sha256):
+            assert key == 'variants/site-a/safe.bin'
+            assert expected_sha256 == digest
+            return b'safe-png'
+
+    result = repository.PostgresContentWorkspaceRepository().read_asset_content(
+        site_id='site-a',
+        asset_id=asset_id,
+        requester_ref='user:test',
+        download_grant=grant,
+        artifact_store=Store(),
+    )
+    assert result == {'content': b'safe-png', 'sha256': digest, 'media_type': 'image/png'}
+    assert scopes == ['site-a'] and connection.commits == 1
+    statements = ' '.join(sql for sql, _ in cursor.calls)
+    assert "asset.status='validated'" in statements
+    assert "variant.name='safe'" in statements
+    assert 'sitecontent_workspaceauditevent' in statements
+
+    rejected_cursor = Cursor(rows=[('variants/site-a/safe.bin', digest, 'image/png')])
+    rejected_connection = Connection(rejected_cursor)
+    bind(monkeypatch, rejected_connection)
+    with pytest.raises(ValueError, match='content_download_grant_invalid'):
+        repository.PostgresContentWorkspaceRepository().read_asset_content(
+            site_id='site-a',
+            asset_id=asset_id,
+            requester_ref='user:different',
+            download_grant=grant,
+            artifact_store=Store(),
+        )
+    assert rejected_connection.rollbacks == 1
+
+
+def test_asset_metadata_exposes_a_short_grant_only_for_validated_safe_variant(monkeypatch):
+    monkeypatch.setattr(repository.settings, 'TOKEN_PEPPER', 'synthetic-test-pepper-104')
+    asset_id = UUID(int=7104)
+    now = datetime.now(UTC)
+    validated = Cursor(
+        rows=[
+            (
+                asset_id,
+                'original.png',
+                'image/png',
+                10,
+                'a' * 64,
+                'validated',
+                '',
+                {'scanStatus': 'clean'},
+                now,
+                'b' * 64,
+                'image/png',
+            )
+        ]
+    )
+    bind(monkeypatch, Connection(validated))
+    result = repository.PostgresContentWorkspaceRepository().get_asset(
+        site_id='site-a', asset_id=asset_id, requester_ref='user:test'
+    )
+    assert result['expiresIn'] == 60 and result['downloadGrant']
+
+    quarantined = Cursor(
+        rows=[
+            (
+                asset_id,
+                'original.png',
+                'image/png',
+                10,
+                'a' * 64,
+                'quarantined',
+                '',
+                {},
+                now,
+                None,
+                None,
+            )
+        ]
+    )
+    bind(monkeypatch, Connection(quarantined))
+    result = repository.PostgresContentWorkspaceRepository().get_asset(
+        site_id='site-a', asset_id=asset_id, requester_ref='user:test'
+    )
+    assert 'downloadGrant' not in result
 
 
 def test_import_source_completion_validates_parses_encrypts_and_marks_ready(monkeypatch):

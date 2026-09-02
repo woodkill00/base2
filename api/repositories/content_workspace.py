@@ -1382,19 +1382,20 @@ class PostgresContentWorkspaceRepository:
         return {'id': str(row[0]), 'status': row[1], 'uploadGrant': grant, 'expiresIn': 300}
 
     def get_asset(self, *, site_id: str, asset_id: UUID, requester_ref: str):
-        del requester_ref
         with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
             cur.execute(
                 """SELECT id, original_name, media_type, byte_size, sha256, status,
-                          attribution, metadata, updated_at
-                   FROM sitecontent_mediaasset WHERE id=%s AND site_id=%s
-                     AND status<>'deleted'""",
+                          attribution, metadata, updated_at, variant.sha256, variant.media_type
+                   FROM sitecontent_mediaasset asset
+                   LEFT JOIN sitecontent_mediavariant variant
+                     ON variant.asset_id=asset.id AND variant.name='safe'
+                   WHERE asset.id=%s AND asset.site_id=%s AND asset.status<>'deleted'""",
                 (str(asset_id), site_id),
             )
             row = cur.fetchone()
         if not row:
             raise ValueError('content_not_found')
-        return {
+        result = {
             'id': str(row[0]),
             'filename': row[1],
             'mediaType': row[2],
@@ -1405,6 +1406,72 @@ class PostgresContentWorkspaceRepository:
             'metadata': row[7],
             'updatedAt': row[8].isoformat(),
         }
+        if row[5] == 'validated' and row[9] and row[10]:
+            scope = {
+                'site': site_id,
+                'requester': requester_ref,
+                'asset': str(asset_id),
+                'sha256': row[9],
+                'mediaType': row[10],
+                'purpose': 'asset-download',
+            }
+            result['downloadGrant'] = CursorCodec(
+                str(settings.TOKEN_PEPPER), ttl_seconds=60
+            ).encode(scope=scope, position={'assetId': str(asset_id)})
+            result['expiresIn'] = 60
+        return result
+
+    def read_asset_content(
+        self,
+        *,
+        site_id: str,
+        asset_id: UUID,
+        requester_ref: str,
+        download_grant: str,
+        artifact_store,
+    ):
+        with db_conn(tenant_id=site_id) as conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """SELECT variant.storage_key, variant.sha256, variant.media_type
+                           FROM sitecontent_mediaasset asset
+                           JOIN sitecontent_mediavariant variant
+                             ON variant.asset_id=asset.id AND variant.name='safe'
+                           WHERE asset.id=%s AND asset.site_id=%s AND asset.status='validated'""",
+                        (str(asset_id), site_id),
+                    )
+                    row = cur.fetchone()
+                    if not row:
+                        raise ValueError('content_not_found')
+                    scope = {
+                        'site': site_id,
+                        'requester': requester_ref,
+                        'asset': str(asset_id),
+                        'sha256': row[1],
+                        'mediaType': row[2],
+                        'purpose': 'asset-download',
+                    }
+                    try:
+                        CursorCodec(str(settings.TOKEN_PEPPER), ttl_seconds=60).decode(
+                            download_grant, expected_scope=scope
+                        )
+                    except CursorError as exc:
+                        raise ValueError('content_download_grant_invalid') from exc
+                    content = artifact_store.get(row[0], expected_sha256=row[1])
+                    _audit(
+                        cur,
+                        site_id=site_id,
+                        actor_ref=requester_ref,
+                        object_type='media_asset',
+                        object_ref=str(asset_id),
+                        action='content.asset_download',
+                    )
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        return {'content': content, 'sha256': row[1], 'media_type': row[2]}
 
     def complete_asset_upload(
         self,
