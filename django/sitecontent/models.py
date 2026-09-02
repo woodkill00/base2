@@ -6,6 +6,7 @@ import re
 import uuid
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.core.exceptions import ValidationError
 from django.core.validators import (
@@ -531,6 +532,7 @@ class ContentRecord(SiteOwnedModel):
     metadata = models.JSONField(default=dict, blank=True)
     state = models.CharField(max_length=16, choices=State.choices, default=State.DRAFT)
     publish_at = models.DateTimeField(null=True, blank=True)
+    schedule_timezone = models.CharField(max_length=64, blank=True, default='')
     published_at = models.DateTimeField(null=True, blank=True)
     sitemap_include = models.BooleanField(default=True)
     search_visible = models.BooleanField(default=True)
@@ -597,6 +599,12 @@ class ContentRecord(SiteOwnedModel):
                 raise ValidationError(
                     {"publish_at": "Scheduled content requires a future publication time."}
                 )
+            try:
+                ZoneInfo(self.schedule_timezone)
+            except (ZoneInfoNotFoundError, ValueError):
+                raise ValidationError('schedule_timezone_invalid') from None
+        elif self.schedule_timezone:
+            raise ValidationError('schedule_timezone_without_schedule')
 
     def create_revision(self, actor_ref: str = "") -> ContentRevision:
         if self._state.adding:
@@ -612,6 +620,7 @@ class ContentRecord(SiteOwnedModel):
             "values": self.values,
             "state": self.state,
             "publishAt": self.publish_at.isoformat() if self.publish_at else None,
+            "scheduleTimezone": self.schedule_timezone or None,
             "sitemapInclude": self.sitemap_include,
             "searchVisible": self.search_visible,
             "version": self.version,
@@ -627,7 +636,7 @@ class ContentRecord(SiteOwnedModel):
         )
 
     def transition_to(
-        self, state: str, *, actor_ref: str = "", publish_at=None
+        self, state: str, *, actor_ref: str = "", publish_at=None, timezone_name: str = ''
     ) -> ContentRevision | None:
         if state == self.state:
             return None
@@ -638,10 +647,20 @@ class ContentRecord(SiteOwnedModel):
         revision = self.create_revision(actor_ref=actor_ref)
         self.state = state
         self.publish_at = publish_at if state == self.State.SCHEDULED else None
+        self.schedule_timezone = timezone_name if state == self.State.SCHEDULED else ''
         self.published_at = timezone.now() if state == self.State.PUBLISHED else self.published_at
         self.version += 1
         self.full_clean()
-        self.save(update_fields=["state", "publish_at", "published_at", "version", "updated_at"])
+        self.save(
+            update_fields=[
+                "state",
+                "publish_at",
+                "schedule_timezone",
+                "published_at",
+                "version",
+                "updated_at",
+            ]
+        )
         return revision
 
     def update_values(self, values: dict, *, expected_version: int, actor_ref: str = "") -> None:
@@ -674,6 +693,7 @@ class ContentRecord(SiteOwnedModel):
         expected_version: int,
         actor_ref: str = "",
         publish_at=None,
+        timezone_name: str = '',
     ) -> None:
         with transaction.atomic():
             current = (
@@ -708,6 +728,9 @@ class ContentRecord(SiteOwnedModel):
             destination = transition_spec["to"]
             current.state = destination
             current.publish_at = publish_at if destination == self.State.SCHEDULED else None
+            current.schedule_timezone = (
+                timezone_name if destination == self.State.SCHEDULED else ''
+            )
             if destination == self.State.PUBLISHED:
                 current.published_at = timezone.now()
             if destination == self.State.DELETED:
@@ -718,6 +741,7 @@ class ContentRecord(SiteOwnedModel):
                 update_fields=[
                     "state",
                     "publish_at",
+                    "schedule_timezone",
                     "published_at",
                     "deleted_at",
                     "version",

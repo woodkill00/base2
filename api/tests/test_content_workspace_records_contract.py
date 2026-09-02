@@ -193,6 +193,42 @@ def test_record_queries_and_mutations_fail_closed_on_unbounded_or_unknown_input(
     )
 
 
+def test_schedule_rejects_unknown_timezone_before_repository_execution():
+    client = TestClient(app)
+    headers = {'Authorization': 'Bearer synthetic', 'X-Tenant-ID': 'site-a'}
+    response = client.post(
+        '/api/content/v1/types/article/records/'
+        '00000000-0000-0000-0000-000000003104/transitions/schedule',
+        headers=headers,
+        json={
+            'expectedVersion': 1,
+            'publishAt': '2030-01-01T12:00:00Z',
+            'timezone': 'Mars/Olympus',
+        },
+    )
+    assert response.status_code == 422
+    assert FakeRecordRepository.calls == []
+
+
+def test_privileged_transitions_require_their_specific_permission(monkeypatch):
+    permissions = []
+
+    def capture(**kwargs):
+        permissions.append(kwargs['permission'])
+        return {'role': 'owner'}
+
+    monkeypatch.setattr(content_workspace, 'authorize', capture)
+    client = TestClient(app)
+    response = client.post(
+        '/api/content/v1/types/article/records/'
+        '00000000-0000-0000-0000-000000003104/transitions/publish',
+        headers={'Authorization': 'Bearer synthetic', 'X-Tenant-ID': 'site-a'},
+        json={'expectedVersion': 1},
+    )
+    assert response.status_code == 200
+    assert permissions == ['content-workspace.publish']
+
+
 def test_history_restore_and_saved_views_remain_scoped_and_closed():
     client = TestClient(app)
     headers = {'Authorization': 'Bearer synthetic', 'X-Tenant-ID': 'site-a'}

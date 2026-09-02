@@ -58,6 +58,7 @@ def publish_scheduled_record(*, site_id: str, record_id: UUID) -> str:
                 )
                 cur.execute(
                     """UPDATE sitecontent_contentrecord SET state='published', publish_at=NULL,
+                       schedule_timezone='',
                        published_at=NOW(), version=version+1, updated_at=NOW()
                        WHERE id=%s AND site_id=%s AND state='scheduled'""",
                     (str(record_id), site_id),

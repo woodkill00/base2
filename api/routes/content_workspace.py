@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 from uuid import UUID
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Header, HTTPException, Path, Query, Request, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -152,6 +153,19 @@ class TransitionRequest(ContractModel):
     expected_version: int = Field(ge=1)
     publish_at: datetime | None = None
     timezone: str | None = Field(default=None, min_length=1, max_length=64)
+
+    @model_validator(mode='after')
+    def valid_schedule_metadata(self):
+        if (self.publish_at is None) != (self.timezone is None):
+            raise ValueError('content_schedule_metadata_invalid')
+        if self.publish_at is not None:
+            if self.publish_at.tzinfo is None or self.publish_at <= datetime.now(UTC):
+                raise ValueError('content_schedule_time_invalid')
+            try:
+                ZoneInfo(self.timezone)
+            except (ZoneInfoNotFoundError, ValueError, TypeError):
+                raise ValueError('schedule_timezone_invalid') from None
+        return self
 
 
 class DefinitionMutation(ContractModel):
@@ -305,6 +319,15 @@ TRANSITION_ACTIONS = {
     'archive',
     'restore',
     'delete',
+}
+TRANSITION_PERMISSIONS = {
+    'submit_review': 'content-workspace.write',
+    'return_draft': 'content-workspace.write',
+    'schedule': 'content-workspace.schedule',
+    'publish': 'content-workspace.publish',
+    'archive': 'content-workspace.publish',
+    'restore': 'content-workspace.write',
+    'delete': 'content-workspace.delete',
 }
 
 
@@ -578,9 +601,9 @@ def transition_record(
     request: Request,
 ):
     _valid_type_key(type_key)
-    principal, tenant = _authorized_scope(request, 'content-workspace.write')
     if action not in TRANSITION_ACTIONS:
         raise HTTPException(status_code=422, detail='content_transition_invalid')
+    principal, tenant = _authorized_scope(request, TRANSITION_PERMISSIONS[action])
     try:
         return get_repository().transition_record(
             site_id=tenant,

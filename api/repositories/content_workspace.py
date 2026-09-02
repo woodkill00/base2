@@ -778,7 +778,6 @@ class PostgresContentWorkspaceRepository:
         publish_at,
         timezone: str | None,
     ):
-        del timezone  # Reserved for the durable scheduling metadata slice.
         with db_conn(tenant_id=site_id) as conn:
             try:
                 with conn.cursor() as cur:
@@ -807,7 +806,7 @@ class PostgresContentWorkspaceRepository:
                     if not transition:
                         raise ValueError('content_transition_invalid')
                     destination = transition['to']
-                    if destination == 'scheduled' and publish_at is None:
+                    if destination == 'scheduled' and (publish_at is None or not timezone):
                         raise ValueError('content_transition_invalid')
                     snapshot_json = _json(existing[3])
                     cur.execute(
@@ -828,7 +827,7 @@ class PostgresContentWorkspaceRepository:
                     )
                     cur.execute(
                         """UPDATE sitecontent_contentrecord
-                           SET state=%s, publish_at=%s,
+                           SET state=%s, publish_at=%s, schedule_timezone=%s,
                                published_at=CASE WHEN %s='published' THEN NOW() ELSE published_at END,
                                deleted_at=CASE WHEN %s='deleted' THEN NOW() ELSE deleted_at END,
                                version=version+1, updated_at=NOW()
@@ -838,6 +837,7 @@ class PostgresContentWorkspaceRepository:
                         (
                             destination,
                             publish_at if destination == 'scheduled' else None,
+                            timezone if destination == 'scheduled' else '',
                             destination,
                             destination,
                             str(record_id),

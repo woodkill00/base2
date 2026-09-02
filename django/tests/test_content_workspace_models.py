@@ -298,6 +298,60 @@ def test_record_workflow_soft_delete_and_restore_append_history():
     assert ContentRecordVersion.objects.filter(record=record).count() == 6
 
 
+def test_scheduled_transition_requires_and_retains_a_valid_iana_timezone():
+    content_type = published_definition_with_title()
+    WorkflowDefinition.objects.create(
+        definition=content_type,
+        states=['draft', 'scheduled'],
+        initial_state='draft',
+        transitions=[
+            {
+                'action': 'schedule',
+                'from': ['draft'],
+                'to': 'scheduled',
+                'permission': 'content.schedule',
+                'schedulable': True,
+            }
+        ],
+    )
+    record = ContentRecord.objects.create(
+        site_id='site-a',
+        content_type='article',
+        slug='scheduled',
+        title='Scheduled',
+        definition=content_type,
+        values={'title': 'Scheduled'},
+    )
+    publish_at = timezone.now() + timedelta(hours=2)
+    record.transition_action(
+        'schedule',
+        expected_version=1,
+        actor_ref='user:editor',
+        publish_at=publish_at,
+        timezone_name='Europe/Berlin',
+    )
+    record.refresh_from_db()
+    assert record.state == 'scheduled'
+    assert record.schedule_timezone == 'Europe/Berlin'
+
+    second = ContentRecord.objects.create(
+        site_id='site-a',
+        content_type='article',
+        slug='invalid-zone',
+        title='Invalid zone',
+        definition=content_type,
+        values={'title': 'Invalid'},
+    )
+    with pytest.raises(ValidationError, match='schedule_timezone_invalid'):
+        second.transition_action(
+            'schedule',
+            expected_version=1,
+            actor_ref='user:editor',
+            publish_at=publish_at,
+            timezone_name='Mars/Olympus',
+        )
+
+
 def test_relationship_scope_cardinality_and_soft_deleted_target_are_enforced():
     content_type = definition(status="published")
     source = ContentRecord.objects.create(

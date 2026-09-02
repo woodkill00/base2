@@ -17,7 +17,10 @@ _ROLE_PERMISSIONS = {
             'audit.read',
             'content.read',
             'content.write',
+            'content-workspace.delete',
+            'content-workspace.publish',
             'content-workspace.read',
+            'content-workspace.schedule',
             'content-workspace.write',
             'credential.create',
             'credential.revoke',
@@ -32,7 +35,10 @@ _ROLE_PERMISSIONS = {
             'audit.read',
             'content.read',
             'content.write',
+            'content-workspace.delete',
+            'content-workspace.publish',
             'content-workspace.read',
+            'content-workspace.schedule',
             'content-workspace.write',
             'credential.create',
             'credential.revoke',
@@ -42,7 +48,13 @@ _ROLE_PERMISSIONS = {
         }
     ),
     'editor': frozenset(
-        {'content.read', 'content.write', 'content-workspace.read', 'content-workspace.write'}
+        {
+            'content.read',
+            'content.write',
+            'content-workspace.read',
+            'content-workspace.schedule',
+            'content-workspace.write',
+        }
     ),
     'viewer': frozenset({'content.read', 'content-workspace.read'}),
 }
