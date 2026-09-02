@@ -539,6 +539,46 @@ def due_import_validations(*, limit: int = 10) -> list[tuple[str, str]]:
         return [(row[0], str(row[1])) for row in cur.fetchall()]
 
 
+def mark_import_failed(*, site_id: str, job_id: UUID, error_code: str) -> bool:
+    """Close a worker-owned import without persisting exception text."""
+    safe_code = (
+        error_code
+        if re.fullmatch(r'content_[a-z0-9_]{3,55}', error_code or '')
+        else 'content_dependency_unavailable'
+    )
+    with db_conn(tenant_id=site_id) as conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """UPDATE sitecontent_importjob
+                       SET status='failed', error_code=%s, completed_at=NOW(), updated_at=NOW()
+                       WHERE id=%s AND site_id=%s
+                         AND status IN ('uploaded','validated','committing')
+                       RETURNING id""",
+                    (safe_code, str(job_id), site_id),
+                )
+                changed = bool(cur.fetchone())
+                if changed:
+                    cur.execute(
+                        """INSERT INTO sitecontent_workspaceauditevent
+                           (id, site_id, actor_ref, object_type, object_ref, action, outcome,
+                            correlation_id, metadata, created_at)
+                           VALUES (%s,%s,'system:import-worker','import_job',%s,
+                                   'content.import_failed','rejected','',%s::jsonb,NOW())""",
+                        (
+                            str(uuid4()),
+                            site_id,
+                            str(job_id),
+                            json.dumps({'errorCode': safe_code}),
+                        ),
+                    )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+    return changed
+
+
 def _mapped_import_rows(parsed: ParsedRows, mapping: dict, fields: list[tuple]):
     allowed = {row[0] for row in fields}
     valid_rows: list[dict[str, Any]] = []
@@ -720,3 +760,201 @@ def validate_import_job(*, site_id: str, job_id: UUID, artifact_store) -> str:
             conn.rollback()
             raise
     return next_status
+
+
+def due_import_commits(*, limit: int = 10) -> list[tuple[str, str]]:
+    if not 1 <= limit <= 50:
+        raise ValueError('content_limit_exceeded')
+    with db_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT site_id, id FROM sitecontent_importjob
+               WHERE status='committing' AND source_object_key<>''
+               ORDER BY updated_at, id LIMIT %s""",
+            (limit,),
+        )
+        return [(row[0], str(row[1])) for row in cur.fetchall()]
+
+
+def process_import_commit(*, site_id: str, job_id: UUID, artifact_store) -> str:
+    """Apply one fully reviewed import atomically and bind every resulting row."""
+    with db_conn(tenant_id=site_id) as conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """SELECT j.status, j.schema_version, j.source_sha256, j.source_format,
+                              j.source_object_key, j.mapping, d.type_key, j.definition_id
+                       FROM sitecontent_importjob j
+                       JOIN sitecontent_contenttypedefinition d ON d.id=j.definition_id
+                       WHERE j.id=%s AND j.site_id=%s AND d.site_id=%s FOR UPDATE""",
+                    (str(job_id), site_id, site_id),
+                )
+                job = cur.fetchone()
+                if not job:
+                    return 'not_found'
+                if job[0] == 'completed':
+                    return 'already_completed'
+                if job[0] != 'committing' or not job[4]:
+                    return 'not_ready'
+                content = artifact_store.get(job[4], expected_sha256=job[2])
+                parsed = parse_json(content) if job[3] == 'json' else parse_csv(content)
+                cur.execute(
+                    """SELECT field_key, field_kind, required, nullable, default_value, validation
+                       FROM sitecontent_contentfielddefinition
+                       WHERE definition_id=%s ORDER BY "order", field_key""",
+                    (str(job[7]),),
+                )
+                fields = cur.fetchall()
+                valid_rows, ordinals, rejected = _mapped_import_rows(
+                    parsed, job[5] if isinstance(job[5], dict) else {}, fields
+                )
+                if rejected or len(valid_rows) != len(parsed.rows):
+                    raise ValueError('content_integrity_failed')
+                rows_by_ordinal = dict(zip(ordinals, valid_rows, strict=True))
+                cur.execute(
+                    """SELECT ordinal, source_row_sha256, proposed_action, exact_match_id
+                       FROM sitecontent_importrowoutcome
+                       WHERE job_id=%s AND site_id=%s ORDER BY ordinal FOR UPDATE""",
+                    (str(job_id), site_id),
+                )
+                outcomes = cur.fetchall()
+                if len(outcomes) != len(parsed.rows):
+                    raise ValueError('content_integrity_failed')
+                allowed = {field[0] for field in fields}
+                completed_counts = {'created': 0, 'updated': 0, 'skipped': 0}
+                for ordinal, source_digest, action, exact_match_id in outcomes:
+                    imported = rows_by_ordinal.get(int(ordinal))
+                    if imported is None or action not in {'create', 'update', 'skip'}:
+                        raise ValueError('content_integrity_failed')
+                    calculated = hashlib.sha256(
+                        json.dumps(
+                            imported,
+                            sort_keys=True,
+                            separators=(',', ':'),
+                            ensure_ascii=False,
+                        ).encode()
+                    ).hexdigest()
+                    if calculated != source_digest:
+                        raise ValueError('content_integrity_failed')
+                    values = {key: value for key, value in imported.items() if key in allowed}
+                    result_id = None
+                    result_version = None
+                    if action == 'create':
+                        result_id = uuid4()
+                        cur.execute(
+                            """INSERT INTO sitecontent_contentrecord
+                               (id, site_id, content_type, slug, title, excerpt, body, metadata,
+                                state, publish_at, published_at, sitemap_include, search_visible,
+                                version, definition_id, schema_version, values, deleted_at,
+                                created_at, updated_at)
+                               VALUES (%s,%s,%s,%s,%s,'','',%s::jsonb,'draft',NULL,NULL,TRUE,TRUE,
+                                       1,%s,%s,%s::jsonb,NULL,NOW(),NOW())""",
+                            (
+                                str(result_id),
+                                site_id,
+                                job[6],
+                                imported['slug'],
+                                imported['title'],
+                                '{}',
+                                str(job[7]),
+                                job[1],
+                                json.dumps(values),
+                            ),
+                        )
+                        result_version = 1
+                        completed_counts['created'] += 1
+                    elif action == 'update':
+                        if exact_match_id is None:
+                            raise ValueError('content_integrity_failed')
+                        cur.execute(
+                            """SELECT id, version, schema_version, values
+                               FROM sitecontent_contentrecord
+                               WHERE id=%s AND site_id=%s AND content_type=%s
+                                 AND deleted_at IS NULL FOR UPDATE""",
+                            (str(exact_match_id), site_id, job[6]),
+                        )
+                        existing = cur.fetchone()
+                        if not existing:
+                            raise ValueError('content_integrity_failed')
+                        snapshot = json.dumps(
+                            existing[3], sort_keys=True, separators=(',', ':'), ensure_ascii=False
+                        )
+                        cur.execute(
+                            """INSERT INTO sitecontent_contentrevision
+                               (id, content_id, revision, snapshot, actor_ref, created_at,
+                                schema_version, snapshot_sha256, action, restored_from_version)
+                               VALUES (%s,%s,%s,%s::jsonb,'system:import-worker',NOW(),%s,%s,
+                                       'import_update',NULL)""",
+                            (
+                                str(uuid4()),
+                                str(existing[0]),
+                                existing[1],
+                                snapshot,
+                                existing[2],
+                                hashlib.sha256(snapshot.encode()).hexdigest(),
+                            ),
+                        )
+                        cur.execute(
+                            """UPDATE sitecontent_contentrecord
+                               SET slug=%s, title=%s, values=%s::jsonb, version=version+1,
+                                   updated_at=NOW()
+                               WHERE id=%s AND site_id=%s RETURNING id, version""",
+                            (
+                                imported['slug'],
+                                imported['title'],
+                                json.dumps(values),
+                                str(existing[0]),
+                                site_id,
+                            ),
+                        )
+                        changed = cur.fetchone()
+                        if not changed:
+                            raise ValueError('content_integrity_failed')
+                        result_id, result_version = changed
+                        completed_counts['updated'] += 1
+                    else:
+                        completed_counts['skipped'] += 1
+                    cur.execute(
+                        """UPDATE sitecontent_importrowoutcome
+                           SET result_record_id=%s, result_version=%s, updated_at=NOW()
+                           WHERE job_id=%s AND site_id=%s AND ordinal=%s""",
+                        (
+                            str(result_id) if result_id else None,
+                            result_version,
+                            str(job_id),
+                            site_id,
+                            ordinal,
+                        ),
+                    )
+                counters = {
+                    'total': len(outcomes),
+                    'valid': len(outcomes),
+                    'invalid': 0,
+                    **completed_counts,
+                    'review': 0,
+                }
+                cur.execute(
+                    """UPDATE sitecontent_importjob SET status='completed', counters=%s::jsonb,
+                              error_code='', completed_at=NOW(), updated_at=NOW()
+                       WHERE id=%s AND site_id=%s AND status='committing' RETURNING id""",
+                    (json.dumps(counters), str(job_id), site_id),
+                )
+                if not cur.fetchone():
+                    raise ValueError('content_job_transition_invalid')
+                cur.execute(
+                    """INSERT INTO sitecontent_workspaceauditevent
+                       (id, site_id, actor_ref, object_type, object_ref, action, outcome,
+                        correlation_id, metadata, created_at)
+                       VALUES (%s,%s,'system:import-worker','import_job',%s,
+                               'content.import_complete','accepted','',%s::jsonb,NOW())""",
+                    (
+                        str(uuid4()),
+                        site_id,
+                        str(job_id),
+                        json.dumps({'count': len(outcomes), 'status': 'completed'}),
+                    ),
+                )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+    return 'completed'

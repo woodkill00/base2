@@ -200,6 +200,7 @@
 - [x] T163 Prevent silent export-job limbo by recording terminal failures through a redacting Celery failure hook, converting unknown exception text to a closed dependency error code, expiring overdue queued/running jobs in bounded skip-locked batches, and retaining ordinary task failure visibility if the status write itself is unavailable.
 - [x] T164 Add durable import-source validation without record mutation: rediscover only ready encrypted sources, recheck the exact hash, parse within JSON/CSV bounds, apply a closed collision-safe mapping, validate canonical field types and required values, preserve original row ordinals, classify exact duplicates according to policy, keep similarity review-only, persist redacted row outcomes/counters, and expose explicit validated or review-required state.
 - [x] T165 Upgrade only Coverage.py from 7.15.4 to 7.16.0 after the temporary pure-Python tracer later reproduced a second low-level crash; explicitly pin the corrected native core and require two consecutive full 327-test API coverage runs before restoring the gate.
+- [x] T166 Complete import review and atomic application after analysis found staged outcomes had no safe resolution or mutation path; add requester-bound decisions, exact-candidate validation, partial-policy handling, source/digest revalidation, transactional draft create/update/skip application, durable replay, bounded row-outcome inspection, and redacted terminal failure recording.
 
 ## Dependencies and authority
 

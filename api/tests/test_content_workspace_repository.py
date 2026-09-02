@@ -341,6 +341,104 @@ def test_export_content_read_is_expiry_requester_grant_and_digest_bound(monkeypa
     assert 'sitecontent_workspaceauditevent' in statements
 
 
+def test_import_review_can_skip_invalid_rows_only_under_explicit_partial_policy(monkeypatch):
+    job_id = UUID(int=5104)
+
+    class ReviewCursor(Cursor):
+        def __init__(self):
+            super().__init__()
+            self.statement = ''
+
+        def execute(self, sql, params=()):
+            super().execute(sql, params)
+            self.statement = ' '.join(sql.split())
+
+        def fetchone(self):
+            if 'SELECT j.atomic_policy' in self.statement:
+                return ('valid_rows', {'valid': 0, 'invalid': 1})
+            if self.statement.startswith('UPDATE sitecontent_importrowoutcome'):
+                return (UUID(int=5204),)
+            if self.statement.startswith('UPDATE sitecontent_importjob'):
+                return (job_id,)
+            return None
+
+        def fetchall(self):
+            if 'proposed_action IN' in self.statement:
+                return [(1, 'reject', None, [])]
+            if 'GROUP BY proposed_action' in self.statement:
+                return [('skip', 1)]
+            return []
+
+    cursor = ReviewCursor()
+    connection = Connection(cursor)
+    scopes = bind(monkeypatch, connection)
+    result = repository.PostgresContentWorkspaceRepository().resolve_import_review(
+        site_id='site-a',
+        type_key='article',
+        job_id=job_id,
+        requester_ref='user:test',
+        decisions=[{'ordinal': 1, 'action': 'skip', 'match_id': None}],
+    )
+    assert result['status'] == 'validated'
+    assert result['counters']['skipped'] == 1
+    assert scopes == ['site-a'] and connection.commits == 1
+    assert 'sitecontent_workspaceauditevent' in ' '.join(sql for sql, _ in cursor.calls)
+
+
+def test_import_row_listing_is_requester_bound_bounded_and_stably_paginated(monkeypatch):
+    job_id = UUID(int=5104)
+
+    class RowCursor(Cursor):
+        def __init__(self):
+            super().__init__()
+            self.statement = ''
+
+        def execute(self, sql, params=()):
+            super().execute(sql, params)
+            self.statement = ' '.join(sql.split())
+
+        def fetchone(self):
+            if 'SELECT j.status' in self.statement:
+                return ('review_required',)
+            return None
+
+        def fetchall(self):
+            if 'SELECT ordinal, proposed_action' in self.statement:
+                return [
+                    (1, 'review', [], None, [UUID(int=3104)], None, None),
+                    (2, 'skip', [], None, [], None, None),
+                ]
+            return []
+
+    cursor = RowCursor()
+    scopes = bind(monkeypatch, Connection(cursor))
+    result = repository.PostgresContentWorkspaceRepository().list_import_rows(
+        site_id='site-a',
+        type_key='article',
+        job_id=job_id,
+        requester_ref='user:test',
+        after_ordinal=0,
+        limit=1,
+    )
+    assert result['status'] == 'review_required'
+    assert result['items'][0]['candidateIds'] == [str(UUID(int=3104))]
+    assert result['nextOrdinal'] == 1
+    assert scopes == ['site-a']
+    assert cursor.calls[0][1][-1] == 'user:test'
+    assert 'ORDER BY ordinal LIMIT %s' in cursor.calls[1][0]
+    assert cursor.calls[1][1][-1] == 2
+
+    with pytest.raises(ValueError, match='content_limit_exceeded'):
+        repository.PostgresContentWorkspaceRepository().list_import_rows(
+            site_id='site-a',
+            type_key='article',
+            job_id=job_id,
+            requester_ref='user:test',
+            after_ordinal=0,
+            limit=201,
+        )
+
+
 def test_import_source_completion_validates_parses_encrypts_and_marks_ready(monkeypatch):
     monkeypatch.setattr(repository.settings, 'TOKEN_PEPPER', 'synthetic-test-pepper-104')
     job_id = UUID(int=5104)

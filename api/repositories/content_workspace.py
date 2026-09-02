@@ -2143,6 +2143,164 @@ class PostgresContentWorkspaceRepository:
             raise ValueError('content_not_found')
         return {**self._job_result(row[:5]), 'sourceReady': bool(row[5])}
 
+    def resolve_import_review(
+        self,
+        *,
+        site_id: str,
+        type_key: str,
+        job_id: UUID,
+        requester_ref: str,
+        decisions: list[dict],
+    ):
+        with db_conn(tenant_id=site_id) as conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """SELECT j.atomic_policy, j.counters
+                           FROM sitecontent_importjob j
+                           JOIN sitecontent_contenttypedefinition d ON d.id=j.definition_id
+                           WHERE j.id=%s AND j.site_id=%s AND d.site_id=%s AND d.type_key=%s
+                             AND j.requester_ref=%s AND j.status='review_required' FOR UPDATE""",
+                        (str(job_id), site_id, site_id, type_key, requester_ref),
+                    )
+                    job = cur.fetchone()
+                    if not job:
+                        raise ValueError('content_job_not_ready')
+                    cur.execute(
+                        """SELECT ordinal, proposed_action, exact_match_id, candidate_ids
+                           FROM sitecontent_importrowoutcome
+                           WHERE job_id=%s AND site_id=%s
+                             AND proposed_action IN ('review','reject')
+                           ORDER BY ordinal FOR UPDATE""",
+                        (str(job_id), site_id),
+                    )
+                    unresolved = {int(row[0]): row for row in cur.fetchall()}
+                    if not decisions or any(
+                        item['ordinal'] not in unresolved for item in decisions
+                    ):
+                        raise ValueError('content_import_review_invalid')
+                    for decision in decisions:
+                        current = unresolved[decision['ordinal']]
+                        action = decision['action']
+                        match_id = decision.get('match_id')
+                        candidates = {str(item) for item in (current[3] or [])}
+                        if current[1] == 'reject' and not (
+                            job[0] == 'valid_rows' and action == 'skip' and match_id is None
+                        ):
+                            raise ValueError('content_import_review_invalid')
+                        if action == 'update' and str(match_id) not in candidates:
+                            raise ValueError('content_import_review_invalid')
+                        if action != 'update' and match_id is not None:
+                            raise ValueError('content_import_review_invalid')
+                        cur.execute(
+                            """UPDATE sitecontent_importrowoutcome
+                               SET proposed_action=%s, exact_match_id=%s, candidate_ids='[]'::jsonb,
+                                   field_issues='[]'::jsonb, updated_at=NOW()
+                               WHERE job_id=%s AND site_id=%s AND ordinal=%s
+                                 AND proposed_action IN ('review','reject') RETURNING id""",
+                            (
+                                action,
+                                str(match_id) if match_id else None,
+                                str(job_id),
+                                site_id,
+                                decision['ordinal'],
+                            ),
+                        )
+                        if not cur.fetchone():
+                            raise ValueError('content_import_review_invalid')
+                    cur.execute(
+                        """SELECT proposed_action, COUNT(*)
+                           FROM sitecontent_importrowoutcome
+                           WHERE job_id=%s AND site_id=%s GROUP BY proposed_action""",
+                        (str(job_id), site_id),
+                    )
+                    counts = {row[0]: int(row[1]) for row in cur.fetchall()}
+                    remaining = counts.get('review', 0) + counts.get('reject', 0)
+                    next_status = 'review_required' if remaining else 'validated'
+                    previous = job[1] if isinstance(job[1], dict) else {}
+                    counters = {
+                        'total': sum(counts.values()),
+                        'valid': previous.get('valid', 0),
+                        'invalid': previous.get('invalid', 0),
+                        'created': counts.get('create', 0),
+                        'updated': counts.get('update', 0),
+                        'skipped': counts.get('skip', 0),
+                        'review': remaining,
+                    }
+                    cur.execute(
+                        """UPDATE sitecontent_importjob SET status=%s, counters=%s::jsonb,
+                                  updated_at=NOW() WHERE id=%s AND site_id=%s RETURNING id""",
+                        (next_status, _json(counters), str(job_id), site_id),
+                    )
+                    if not cur.fetchone():
+                        raise ValueError('content_job_transition_invalid')
+                    _audit(
+                        cur,
+                        site_id=site_id,
+                        actor_ref=requester_ref,
+                        object_type='import_job',
+                        object_ref=str(job_id),
+                        action='content.import_review',
+                    )
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        return {'id': str(job_id), 'status': next_status, 'counters': counters}
+
+    def list_import_rows(
+        self,
+        *,
+        site_id: str,
+        type_key: str,
+        job_id: UUID,
+        requester_ref: str,
+        after_ordinal: int,
+        limit: int,
+    ):
+        if not 1 <= limit <= 200 or after_ordinal < 0:
+            raise ValueError('content_limit_exceeded')
+        with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
+            cur.execute(
+                """SELECT j.status
+                   FROM sitecontent_importjob j
+                   JOIN sitecontent_contenttypedefinition d ON d.id=j.definition_id
+                   WHERE j.id=%s AND j.site_id=%s AND d.site_id=%s AND d.type_key=%s
+                     AND j.requester_ref=%s""",
+                (str(job_id), site_id, site_id, type_key, requester_ref),
+            )
+            job = cur.fetchone()
+            if not job:
+                raise ValueError('content_not_found')
+            cur.execute(
+                """SELECT ordinal, proposed_action, field_issues, exact_match_id,
+                          candidate_ids, result_record_id, result_version
+                   FROM sitecontent_importrowoutcome
+                   WHERE job_id=%s AND site_id=%s AND ordinal>%s
+                   ORDER BY ordinal LIMIT %s""",
+                (str(job_id), site_id, after_ordinal, limit + 1),
+            )
+            rows = cur.fetchall()
+        has_more = len(rows) > limit
+        rows = rows[:limit]
+        return {
+            'jobId': str(job_id),
+            'status': job[0],
+            'items': [
+                {
+                    'ordinal': int(row[0]),
+                    'action': row[1],
+                    'issues': row[2] or [],
+                    'exactMatchId': str(row[3]) if row[3] else None,
+                    'candidateIds': [str(item) for item in (row[4] or [])],
+                    'resultRecordId': str(row[5]) if row[5] else None,
+                    'resultVersion': row[6],
+                }
+                for row in rows
+            ],
+            'nextOrdinal': int(rows[-1][0]) if has_more and rows else None,
+        }
+
     def commit_import(self, *, site_id: str, type_key: str, job_id: UUID, requester_ref: str):
         with db_conn(tenant_id=site_id) as conn:
             try:

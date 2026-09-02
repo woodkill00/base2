@@ -446,6 +446,32 @@ def test_due_import_validations_require_an_uploaded_private_source(monkeypatch):
     assert "source_object_key<>''" in cursor.calls[0][0]
 
 
+def test_import_terminal_failure_is_redacted_audited_and_replay_safe(monkeypatch):
+    job_id = UUID(int=5104)
+    cursor = Cursor([(job_id,)])
+    connection = Connection(cursor)
+    scopes = bind(monkeypatch, connection)
+    assert worker.mark_import_failed(
+        site_id='site-a',
+        job_id=job_id,
+        error_code='provider password=private',
+    )
+    assert scopes == ['site-a'] and connection.commits == 1
+    statements = ' '.join(sql for sql, _ in cursor.calls)
+    assert "status IN ('uploaded','validated','committing')" in statements
+    assert 'content.import_failed' in statements
+    combined_params = repr([params for _, params in cursor.calls])
+    assert 'content_dependency_unavailable' in combined_params
+    assert 'password=private' not in combined_params
+
+    replay = Connection(Cursor([]))
+    bind(monkeypatch, replay)
+    assert not worker.mark_import_failed(
+        site_id='site-a', job_id=job_id, error_code='content_integrity_failed'
+    )
+    assert replay.commits == 1
+
+
 def test_import_validation_stages_outcomes_without_mutating_records(monkeypatch):
     job_id = UUID(int=5104)
     content = b'[{"slug":"safe-one","title":"Safe one"}]'
@@ -503,3 +529,121 @@ def test_import_validation_stages_outcomes_without_mutating_records(monkeypatch)
     assert 'sitecontent_importrowoutcome' in statements
     assert 'sitecontent_workspaceauditevent' in statements
     assert 'INSERT INTO sitecontent_contentrecord' not in statements
+
+
+def test_import_commit_revalidates_source_and_applies_all_rows_atomically(monkeypatch):
+    job_id = UUID(int=5104)
+    definition_id = UUID(int=2104)
+    content = b'[{"slug":"safe-one","title":"Safe one"}]'
+    digest = worker.hashlib.sha256(content).hexdigest()
+    row_digest = worker.hashlib.sha256(b'{"slug":"safe-one","title":"Safe one"}').hexdigest()
+
+    class CommitCursor(Cursor):
+        def __init__(self):
+            super().__init__([])
+            self.statement = ''
+
+        def execute(self, sql, params=()):
+            super().execute(sql, params)
+            self.statement = ' '.join(sql.split())
+
+        def fetchone(self):
+            if 'SELECT j.status' in self.statement:
+                return (
+                    'committing',
+                    1,
+                    digest,
+                    'json',
+                    f'imports/site-a/{job_id}.bin',
+                    {},
+                    'article',
+                    definition_id,
+                )
+            if "UPDATE sitecontent_importjob SET status='completed'" in self.statement:
+                return (job_id,)
+            return None
+
+        def fetchall(self):
+            if 'SELECT field_key' in self.statement:
+                return [('title', 'short_text', True, False, None, {})]
+            if 'SELECT ordinal, source_row_sha256' in self.statement:
+                return [(1, row_digest, 'create', None)]
+            return []
+
+    cursor = CommitCursor()
+    connection = Connection(cursor)
+    scopes = bind(monkeypatch, connection)
+
+    class Store:
+        def get(self, key, *, expected_sha256):
+            assert key == f'imports/site-a/{job_id}.bin' and expected_sha256 == digest
+            return content
+
+    assert (
+        worker.process_import_commit(site_id='site-a', job_id=job_id, artifact_store=Store())
+        == 'completed'
+    )
+    assert scopes == ['site-a'] and connection.commits == 1
+    statements = ' '.join(sql for sql, _ in cursor.calls)
+    assert 'INSERT INTO sitecontent_contentrecord' in statements
+    assert "'draft'" in statements
+    assert 'sitecontent_importrowoutcome' in statements
+    assert 'sitecontent_workspaceauditevent' in statements
+
+
+def test_due_import_commits_require_committing_state_and_private_source(monkeypatch):
+    job_id = UUID(int=5104)
+    cursor = Cursor([('site-a', job_id)])
+    bind(monkeypatch, Connection(cursor))
+    assert worker.due_import_commits(limit=10) == [('site-a', str(job_id))]
+    assert "status='committing'" in cursor.calls[0][0]
+    assert "source_object_key<>''" in cursor.calls[0][0]
+
+
+def test_import_commit_rolls_back_if_staged_row_digest_changed(monkeypatch):
+    job_id = UUID(int=5104)
+    content = b'[{"slug":"safe-one","title":"Safe one"}]'
+    digest = worker.hashlib.sha256(content).hexdigest()
+
+    class TamperedCursor(Cursor):
+        def __init__(self):
+            super().__init__([])
+            self.statement = ''
+
+        def execute(self, sql, params=()):
+            super().execute(sql, params)
+            self.statement = ' '.join(sql.split())
+
+        def fetchone(self):
+            if 'SELECT j.status' in self.statement:
+                return (
+                    'committing',
+                    1,
+                    digest,
+                    'json',
+                    f'imports/site-a/{job_id}.bin',
+                    {},
+                    'article',
+                    UUID(int=2104),
+                )
+            return None
+
+        def fetchall(self):
+            if 'SELECT field_key' in self.statement:
+                return [('title', 'short_text', True, False, None, {})]
+            if 'SELECT ordinal, source_row_sha256' in self.statement:
+                return [(1, '0' * 64, 'create', None)]
+            return []
+
+    cursor = TamperedCursor()
+    connection = Connection(cursor)
+    bind(monkeypatch, connection)
+
+    class Store:
+        def get(self, *_args, **_kwargs):
+            return content
+
+    with pytest.raises(ValueError, match='content_integrity_failed'):
+        worker.process_import_commit(site_id='site-a', job_id=job_id, artifact_store=Store())
+    assert connection.rollbacks == 1 and connection.commits == 0
+    assert all('INSERT INTO sitecontent_contentrecord' not in sql for sql, _ in cursor.calls)

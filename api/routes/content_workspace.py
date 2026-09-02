@@ -267,6 +267,29 @@ class ImportCreate(ContractModel):
         return value
 
 
+class ImportReviewDecision(ContractModel):
+    ordinal: int = Field(ge=1, le=10_000)
+    action: Literal['create', 'update', 'skip']
+    match_id: UUID | None = None
+
+    @model_validator(mode='after')
+    def match_required_only_for_update(self):
+        if (self.action == 'update') != (self.match_id is not None):
+            raise ValueError('content_import_review_invalid')
+        return self
+
+
+class ImportReviewResolution(ContractModel):
+    decisions: list[ImportReviewDecision] = Field(min_length=1, max_length=1_000)
+
+    @field_validator('decisions')
+    @classmethod
+    def unique_ordinals(cls, value: list[ImportReviewDecision]):
+        if len({item.ordinal for item in value}) != len(value):
+            raise ValueError('content_import_review_invalid')
+        return value
+
+
 class ExportCreate(ContractModel):
     format: Literal['json', 'csv'] = 'json'
     schema_version: int = Field(ge=1)
@@ -1170,6 +1193,57 @@ def commit_import(type_key: str, job_id: UUID, request: Request):
         code = str(exc)
         raise HTTPException(
             status_code=409 if code == 'content_job_terminal' else 422, detail=code
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.post('/types/{type_key}/imports/{job_id}/review')
+def resolve_import_review(
+    type_key: str,
+    job_id: UUID,
+    payload: ImportReviewResolution,
+    request: Request,
+):
+    _valid_type_key(type_key)
+    principal, tenant = _authorized_scope(request, 'content-workspace.write')
+    try:
+        return get_repository().resolve_import_review(
+            site_id=tenant,
+            type_key=type_key,
+            job_id=job_id,
+            requester_ref=f'user:{principal.user_id}',
+            decisions=[item.model_dump() for item in payload.decisions],
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.get('/types/{type_key}/imports/{job_id}/rows')
+def list_import_rows(
+    type_key: str,
+    job_id: UUID,
+    request: Request,
+    after_ordinal: int = 0,
+    limit: int = 100,
+):
+    _valid_type_key(type_key)
+    principal, tenant = _authorized_scope(request, 'content-workspace.read')
+    try:
+        return get_repository().list_import_rows(
+            site_id=tenant,
+            type_key=type_key,
+            job_id=job_id,
+            requester_ref=f'user:{principal.user_id}',
+            after_ordinal=after_ordinal,
+            limit=limit,
+        )
+    except ValueError as exc:
+        code = str(exc)
+        raise HTTPException(
+            status_code=404 if code == 'content_not_found' else 422, detail=code
         ) from exc
     except Exception as exc:
         raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc

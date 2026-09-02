@@ -12,12 +12,15 @@ from api.services.content_workspace_worker import (
     due_export_jobs,
     due_index_records,
     due_import_validations,
+    due_import_commits,
     due_media_scans,
     due_publication_ids,
     expire_export_jobs as expire_workspace_export_jobs,
     index_workspace_record,
     mark_export_failed,
+    mark_import_failed,
     process_export_job,
+    process_import_commit,
     publish_scheduled_record,
     scan_workspace_asset,
     validate_import_job,
@@ -80,6 +83,10 @@ app.conf.update(
             'task': 'app.replay_workspace_import_validations',
             'schedule': 60.0,
         },
+        'workspace-commit-imports': {
+            'task': 'app.replay_workspace_import_commits',
+            'schedule': 60.0,
+        },
     },
 )
 
@@ -136,6 +143,17 @@ class WorkspaceExportTask(Task):
             error_code = str(exc) if isinstance(exc, ValueError) else ''
             with suppress(Exception):
                 mark_export_failed(
+                    site_id=str(args[0]), job_id=UUID(str(args[1])), error_code=error_code
+                )
+
+
+class WorkspaceImportTask(Task):
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        del task_id, kwargs, einfo
+        if len(args) >= 2:
+            error_code = str(exc) if isinstance(exc, ValueError) else ''
+            with suppress(Exception):
+                mark_import_failed(
                     site_id=str(args[0]), job_id=UUID(str(args[1])), error_code=error_code
                 )
 
@@ -246,6 +264,7 @@ def expire_workspace_exports(limit: int = 100) -> int:
 
 
 @app.task(
+    base=WorkspaceImportTask,
     name='app.validate_workspace_import',
     autoretry_for=(Exception,),
     dont_autoretry_for=(ValueError,),
@@ -266,4 +285,29 @@ def replay_workspace_import_validations(limit: int = 10) -> int:
     jobs = due_import_validations(limit=limit)
     for site_id, job_id in jobs:
         validate_workspace_import.delay(site_id, job_id)
+    return len(jobs)
+
+
+@app.task(
+    base=WorkspaceImportTask,
+    name='app.commit_workspace_import',
+    autoretry_for=(Exception,),
+    dont_autoretry_for=(ValueError,),
+    retry_backoff=True,
+    retry_jitter=True,
+    max_retries=3,
+)
+def commit_workspace_import(site_id: str, job_id: str) -> str:
+    return process_import_commit(
+        site_id=site_id,
+        job_id=UUID(job_id),
+        artifact_store=_workspace_artifact_store(),
+    )
+
+
+@app.task(name='app.replay_workspace_import_commits')
+def replay_workspace_import_commits(limit: int = 10) -> int:
+    jobs = due_import_commits(limit=limit)
+    for site_id, job_id in jobs:
+        commit_workspace_import.delay(site_id, job_id)
     return len(jobs)

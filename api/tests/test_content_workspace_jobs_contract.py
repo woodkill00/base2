@@ -41,6 +41,19 @@ class FakeJobRepository:
         self.calls.append(('import-commit', kwargs))
         return {'id': str(kwargs['job_id']), 'status': 'completed', 'replayed': False}
 
+    def resolve_import_review(self, **kwargs):
+        self.calls.append(('import-review', kwargs))
+        return {'id': str(kwargs['job_id']), 'status': 'validated', 'counters': {'review': 0}}
+
+    def list_import_rows(self, **kwargs):
+        self.calls.append(('import-rows', kwargs))
+        return {
+            'jobId': str(kwargs['job_id']),
+            'status': 'review_required',
+            'items': [{'ordinal': 1, 'action': 'review'}],
+            'nextOrdinal': None,
+        }
+
     def cancel_import(self, **kwargs):
         self.calls.append(('import-cancel', kwargs))
         return {'id': str(kwargs['job_id']), 'status': 'cancelled'}
@@ -117,6 +130,28 @@ def test_import_and_export_lifecycle_is_tenant_principal_and_idempotency_bound()
         ).status_code
         == 200
     )
+    assert (
+        client.post(
+            f'/api/content/v1/types/article/imports/{import_id}/review',
+            headers=headers,
+            json={
+                'decisions': [
+                    {
+                        'ordinal': 1,
+                        'action': 'update',
+                        'matchId': '00000000-0000-0000-0000-000000003104',
+                    }
+                ]
+            },
+        ).status_code
+        == 200
+    )
+    rows = client.get(
+        f'/api/content/v1/types/article/imports/{import_id}/rows?after_ordinal=0&limit=25',
+        headers=headers,
+    )
+    assert rows.status_code == 200
+    assert rows.json()['items'] == [{'ordinal': 1, 'action': 'review'}]
     assert (
         client.post(
             f'/api/content/v1/types/article/imports/{import_id}/commit', headers=headers
