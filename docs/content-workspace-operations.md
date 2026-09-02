@@ -75,3 +75,31 @@ retention policy.
 ## Failure response
 
 Do not reinterpret a failed, cancelled, expired, quarantined, or dependency-unavailable state as success. Preserve the closed error code and integrity digest, correct the underlying cause, and replay only through the same idempotent job identifier. Never bypass schema-version, tenant, permission, hash, scan, or approval checks. If evidence is malformed or stale, generate new evidence rather than editing the receipt.
+
+## Visual release assurance
+
+The dedicated hermetic visual suite uses synthetic, credential-free data and blocks non-loopback
+requests:
+
+```bash
+cd react-app
+npm run test:workspace-release
+```
+
+It covers compact and DPR3 phones, short landscape touch, tablet, desktop, ultrawide, 200% text,
+explicit 400% reflow, light/dark/high-contrast presentation, reduced motion, keyboard focus,
+touch targets, Chromium, Firefox, and WebKit. Ordinary test commands cannot update baselines.
+An intentional baseline change is allowed only on the Feature 104 branch, from a clean tracked
+tree, with `WORKSPACE_VISUAL_BASELINE_UPDATE_APPROVAL=reviewed-local-only` through
+`scripts/bash/update-workspace-visual-baselines.sh`.
+
+Generate a private integrity-bound manifest, review sidecar, and contact sheet with:
+
+```bash
+.venv-api/bin/python scripts/python/workspace_visual_assurance.py export \
+  --destination .artifacts/workspace-visual/<run-id> \
+  --review-status pending
+```
+
+Only set `reviewed-no-findings` after reviewing every contact-sheet row and representative
+full-resolution captures. These artifacts are local evidence, not a claim of live deployment.

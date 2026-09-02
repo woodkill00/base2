@@ -255,3 +255,42 @@ exact data counts remain, then resumes 0010 and verifies the grants/policy and
 data return exactly. Both migration tests and the physical matrix passed.
 
 **Cycle result**: `IMPLEMENTATION_FINDING_T196_CLOSED_T197_OPEN`
+
+## Cycle 11 - Dedicated visual-assurance review
+
+Findings:
+
+1. The first ordinary screenshot replay failed closed on the landscape-touch Imports surface.
+   The capture inherited a scroll offset from the longer Schema surface, making fixed navigation
+   placement depend on the preceding tab height.
+2. The original viewport matrix represented 400% reflow only implicitly through a 320 CSS-pixel
+   compact viewport; the task requires an explicit, named assurance case.
+3. The initial visual manifest enumerated rendered surfaces but did not bind the complete planned
+   field, record-state, job-state, media, relationship, error, long-content, and RTL fixture
+   vocabulary.
+
+Corrections:
+
+- Every post-navigation capture now resets to the document origin before geometry and image
+  assertions. The corrected matrix passed two complete ordinary no-update replays.
+- Added the explicit `chromium-400-zoom` reflow project and increased the exact matrix to 48 PNG
+  members across 12 projects and four primary workspace surfaces.
+- Added an executable fixture-vocabulary contract and bound that coverage into the deterministic
+  visual manifest. Baseline mutation is absent from the ordinary package command and the separate
+  updater requires the exact Feature 104 branch, a clean tracked tree, and explicit local-review
+  authority.
+- The integrity-bound contact sheet and representative full-resolution records, 400% schema, and
+  high-contrast imports were reviewed for hierarchy, clipping, reflow, directionality, focus,
+  control size, contrast, density, and navigation. No unresolved visual or accessibility finding
+  remains.
+
+Evidence:
+
+- Two consecutive 24-test Playwright runs passed across Chromium, Firefox, and WebKit with no
+  network dependency and no baseline mutation.
+- The eight visual-manifest regressions passed, including tamper, missing-member, false-review,
+  private permissions, and ordinary-command mutation refusal.
+- Private reviewed evidence is retained under
+  `.artifacts/workspace-visual/20260903T-feature104-reviewed/` and is not a live-deployment claim.
+
+**Cycle result**: `IMPLEMENTATION_FINDING_T197_CLOSED_NO_UNRESOLVED_VISUAL_FINDINGS`
