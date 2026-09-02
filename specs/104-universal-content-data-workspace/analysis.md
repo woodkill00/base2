@@ -184,3 +184,36 @@ is destroyed even on failure, and the static contract locks the race classes,
 physical barrier, and winner/loser assertion into the required gate.
 
 **Cycle result**: `IMPLEMENTATION_FINDING_T194_CLOSED_T195_T197_OPEN`
+
+## Cycle 10 - Retention prerequisite review
+
+Finding:
+
+- The workspace-role split accidentally placed the ordinary API pool's locked
+  construction block after an unconditional workspace-pool return. Cached-pool
+  tests passed, but a fresh ordinary process would receive `None` and fail at
+  first database checkout.
+
+Correction:
+
+- Added T198 to restore the ordinary initializer in its own function and lock
+  fresh construction with a regression that invokes the uncached path.
+
+Evidence:
+
+- The uncached constructor regression passed with the full 22-test tenant
+  boundary module; the ordinary and workspace pools remain separately closed
+  and every checkout is reset before reuse.
+
+Follow-up finding:
+
+- Celery workspace discovery still imports the owner-backed generic connection
+  helper. Reusing the API runtime role for global discovery would either return
+  no rows under RLS or require unsafe cross-tenant API visibility.
+
+Correction:
+
+- Closed T198 and added T199 for a distinct least-privilege worker discovery
+  boundary followed by tenant-bound claims and disposable PostgreSQL proof.
+
+**Cycle result**: `IMPLEMENTATION_FINDING_T198_CLOSED_T199_OPEN`

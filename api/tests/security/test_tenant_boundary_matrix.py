@@ -180,6 +180,25 @@ def test_workspace_pool_uses_only_the_dedicated_runtime_credentials(monkeypatch)
         db._build_workspace_dsn()
 
 
+def test_owner_pool_initializer_is_reachable_and_returns_created_pool(monkeypatch):
+    from api import db
+
+    captured = {}
+
+    class ConstructedPool:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    monkeypatch.setattr(db, "_pool", None)
+    monkeypatch.setattr(db, "ThreadedConnectionPool", ConstructedPool)
+    monkeypatch.setattr(db, "_build_dsn", lambda: "postgresql://owner@db/base2")
+    pool = db._get_pool()
+    assert isinstance(pool, ConstructedPool)
+    assert captured["dsn"] == "postgresql://owner@db/base2"
+    assert captured["application_name"].endswith("-api")
+    monkeypatch.setattr(db, "_pool", None)
+
+
 def test_close_pool_closes_owner_and_workspace_pools(monkeypatch):
     from api import db
 

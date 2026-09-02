@@ -232,6 +232,8 @@
 - [ ] T195 Complete workspace retention and privacy projection: preserve restricted relationship/audit evidence through recovery windows, expire and exactly delete only owned export/media objects, project authorized workspace records into correction/export/deletion flows, and prove cross-tenant/private-field exclusion with restart/replay-safe tests.
 - [ ] T196 Expand upgrade and rollback assurance from current `main`, empty and populated databases, prior generated profiles, and interrupted migration checkpoints; require exact schema/data comparison and no orphaned runtime role grants after reverse/forward replay.
 - [ ] T197 Add a dedicated workspace visual-assurance pack with deterministic synthetic fixtures for every field/state/job/media/relationship/error plus long/RTL content; cover compact/DPR3/landscape/tablet/desktop/ultrawide/200%/400%, themes/contrast/reduced-motion/keyboard/touch/Chromium/Firefox/WebKit, integrity-bound manifests/contact sheets/review sidecars, and fail-closed baseline mutation.
+- [x] T198 Repair the ordinary API connection-pool initializer after retention review found its lock/construction block unreachable beneath the workspace-pool return; prove fresh initialization, checkout/reset, independent pool closure, and the complete API gate before retention integration.
+- [ ] T199 Remove Celery workspace processing from the database-owner pool without granting API requests cross-tenant discovery; provide a distinct least-privilege worker role or fixed security-definer discovery contract, tenant-bind every claimed mutation, and prove API/worker credential and RLS separation in disposable PostgreSQL.
 
 ## Dependencies and authority
 

@@ -52,6 +52,21 @@ def _get_pool() -> ThreadedConnectionPool:
     global _pool
     if _pool is not None:
         return _pool
+    with _pool_lock:
+        if _pool is not None:
+            return _pool
+
+        dsn = _build_dsn()
+        options = f'-c statement_timeout={settings.DB_STATEMENT_TIMEOUT_MS}'
+        _pool = ThreadedConnectionPool(
+            minconn=settings.DB_POOL_MIN,
+            maxconn=settings.DB_POOL_MAX,
+            dsn=dsn,
+            connect_timeout=settings.DB_CONNECT_TIMEOUT_SEC,
+            options=options,
+            application_name=f'{_project_slug()}-api',
+        )
+        return _pool
 
 
 def _get_workspace_pool() -> ThreadedConnectionPool:
@@ -70,23 +85,6 @@ def _get_workspace_pool() -> ThreadedConnectionPool:
                 application_name=f'{_project_slug()}-workspace',
             )
         return _workspace_pool
-
-    with _pool_lock:
-        if _pool is not None:
-            return _pool
-
-        dsn = _build_dsn()
-        options = f'-c statement_timeout={settings.DB_STATEMENT_TIMEOUT_MS}'
-        _pool = ThreadedConnectionPool(
-            minconn=settings.DB_POOL_MIN,
-            maxconn=settings.DB_POOL_MAX,
-            dsn=dsn,
-            connect_timeout=settings.DB_CONNECT_TIMEOUT_SEC,
-            options=options,
-            application_name=f'{_project_slug()}-api',
-        )
-        return _pool
-
 
 def _get_conn() -> PsycopgConnection:
     pool = _get_pool()
