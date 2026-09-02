@@ -1,14 +1,48 @@
+import re
 import uuid
 import zoneinfo
 
 from django.contrib.auth import get_user_model
-from django.core.validators import MaxValueValidator, MinValueValidator
+from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django_countries.fields import CountryField
 from phonenumber_field.modelfields import PhoneNumberField
 
 User = get_user_model()
+
+CONTENT_IDENTIFIER_PATTERN = r"^[a-z][a-z0-9_]{1,62}$"
+content_identifier_validator = RegexValidator(
+    CONTENT_IDENTIFIER_PATTERN,
+    _("Use a lowercase identifier beginning with a letter."),
+)
+
+
+def validate_closed_mapping(
+    value,
+    *,
+    allowed_keys: set[str],
+    error_code: str,
+    maximum_keys: int = 32,
+) -> None:
+    """Validate a bounded JSON object without accepting executable extensions."""
+
+    if not isinstance(value, dict) or len(value) > maximum_keys:
+        raise ValidationError(error_code)
+    if any(not isinstance(key, str) or key not in allowed_keys for key in value):
+        raise ValidationError(error_code)
+    for item in value.values():
+        if isinstance(item, str) and len(item) > 2_000:
+            raise ValidationError(error_code)
+        if isinstance(item, dict | list):
+            raise ValidationError(error_code)
+
+
+def validate_safe_identifier(value: str) -> None:
+    if not re.fullmatch(CONTENT_IDENTIFIER_PATTERN, str(value or "")):
+        raise ValidationError("content_identifier_invalid")
+
 
 # Notes / optional imports kept for future reference:
 # from django.contrib.gis.db import models
