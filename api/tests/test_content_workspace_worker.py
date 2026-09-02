@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from uuid import UUID
+from datetime import UTC, datetime
+
+import pytest
 
 from api.services import content_workspace_worker as worker
 
@@ -79,3 +82,96 @@ def test_publication_is_tenant_bound_transactional_and_replay_safe(monkeypatch):
         == 'already_published'
     )
     assert all('UPDATE sitecontent_contentrecord' not in call[0] for call in replay_cursor.calls)
+
+
+def test_due_index_records_are_restart_discoverable_ordered_and_bounded(monkeypatch):
+    record_id = UUID(int=105)
+    cursor = Cursor([('site-a', record_id, 7)])
+    bind(monkeypatch, Connection(cursor))
+
+    assert worker.due_index_records(limit=25) == [('site-a', str(record_id), 7)]
+    sql = cursor.calls[0][0]
+    assert 'LEFT JOIN sitecontent_searchdocument' in sql
+    assert 'ORDER BY c.updated_at, c.id LIMIT %s' in sql
+    with pytest.raises(ValueError, match='content_limit_exceeded'):
+        worker.due_index_records(limit=0)
+
+
+def test_search_projection_is_closed_and_never_indexes_private_values():
+    updated_at = datetime(2026, 9, 2, tzinfo=UTC)
+    projection = worker.build_search_projection(
+        content_type='article',
+        slug='safe-title',
+        title='Safe title',
+        body='Public body',
+        state='published',
+        search_visible=True,
+        updated_at=updated_at,
+        deleted_at=None,
+    )
+    assert projection == {
+        'title': 'Safe title',
+        'body': 'Public body',
+        'url_path': '/article/safe-title',
+        'visibility': 'public',
+        'source_updated_at': updated_at,
+        'tombstoned': False,
+    }
+    assert 'values' not in projection
+
+    private = worker.build_search_projection(
+        content_type='article',
+        slug='draft',
+        title='Draft',
+        body='Private',
+        state='draft',
+        search_visible=True,
+        updated_at=updated_at,
+        deleted_at=None,
+    )
+    assert private['visibility'] == 'private'
+    assert private['tombstoned'] is False
+
+
+def test_index_worker_is_tenant_bound_replay_safe_and_rejects_future_job(monkeypatch):
+    record_id = UUID(int=106)
+    updated_at = datetime(2026, 9, 2, tzinfo=UTC)
+    row = (
+        record_id,
+        'article',
+        'safe-title',
+        'Safe title',
+        'Public body',
+        'published',
+        True,
+        updated_at,
+        None,
+        7,
+    )
+    cursor = Cursor([row, None])
+    connection = Connection(cursor)
+    scopes = bind(monkeypatch, connection)
+
+    assert worker.index_workspace_record(site_id='site-a', record_id=record_id, job_version=7) == (
+        'indexed'
+    )
+    assert scopes == ['site-a'] and connection.commits == 1
+    sql = ' '.join(statement for statement, _ in cursor.calls)
+    assert 'FOR UPDATE' in sql
+    assert 'ON CONFLICT (content_id)' in sql
+    assert 'sitecontent_workspaceauditevent' in sql
+
+    stale_cursor = Cursor([row])
+    stale_connection = Connection(stale_cursor)
+    bind(monkeypatch, stale_connection)
+    assert worker.index_workspace_record(
+        site_id='site-a', record_id=record_id, job_version=6
+    ) == 'stale_job'
+    assert stale_connection.commits == 0
+
+    future_cursor = Cursor([row])
+    future_connection = Connection(future_cursor)
+    bind(monkeypatch, future_connection)
+    with pytest.raises(ValueError, match='content_index_version_invalid'):
+        worker.index_workspace_record(site_id='site-a', record_id=record_id, job_version=8)
+    assert future_connection.rollbacks == 1

@@ -8,7 +8,12 @@ from celery import Celery
 from api.services.email_service import process_outbox_email
 from api.repositories.data_rights import expire_results, queued_operation_ids
 from api.services.data_rights_worker import process_operation
-from api.services.content_workspace_worker import due_publication_ids, publish_scheduled_record
+from api.services.content_workspace_worker import (
+    due_index_records,
+    due_publication_ids,
+    index_workspace_record,
+    publish_scheduled_record,
+)
 
 
 logger = logging.getLogger('api.tasks')
@@ -43,6 +48,10 @@ app.conf.update(
         },
         'workspace-publish-scheduled': {
             'task': 'app.replay_workspace_publications',
+            'schedule': 60.0,
+        },
+        'workspace-refresh-search-index': {
+            'task': 'app.replay_workspace_indexing',
             'schedule': 60.0,
         },
     },
@@ -94,7 +103,14 @@ def replay_data_rights_operations(limit: int = 25) -> int:
     return len(operation_ids)
 
 
-@app.task(name='app.publish_workspace_record')
+@app.task(
+    name='app.publish_workspace_record',
+    autoretry_for=(Exception,),
+    dont_autoretry_for=(ValueError,),
+    retry_backoff=True,
+    retry_jitter=True,
+    max_retries=3,
+)
 def publish_workspace_record(site_id: str, record_id: str) -> str:
     return publish_scheduled_record(site_id=site_id, record_id=UUID(record_id))
 
@@ -104,4 +120,28 @@ def replay_workspace_publications(limit: int = 25) -> int:
     records = due_publication_ids(limit=limit)
     for site_id, record_id in records:
         publish_workspace_record.delay(site_id, record_id)
+    return len(records)
+
+
+@app.task(
+    name='app.index_workspace_record',
+    autoretry_for=(Exception,),
+    dont_autoretry_for=(ValueError,),
+    retry_backoff=True,
+    retry_jitter=True,
+    max_retries=3,
+)
+def index_workspace_record_task(site_id: str, record_id: str, version: int) -> str:
+    return index_workspace_record(
+        site_id=site_id,
+        record_id=UUID(record_id),
+        job_version=version,
+    )
+
+
+@app.task(name='app.replay_workspace_indexing')
+def replay_workspace_indexing(limit: int = 25) -> int:
+    records = due_index_records(limit=limit)
+    for site_id, record_id, version in records:
+        index_workspace_record_task.delay(site_id, record_id, version)
     return len(records)

@@ -73,14 +73,14 @@
 ## Phase 4 - Durable scheduling, indexing, import, export, and media jobs
 
 - [ ] T059 Add failing worker tests for scheduled publication admission, timezone handling, restart, replay, cancellation, retry exhaustion, and terminal outcomes.
-- [ ] T060 Add failing indexing tests for committed versions, out-of-order jobs, stale markers, deletion, permission projection, and dependency outage.
+- [x] T060 Add failing indexing tests for committed versions, out-of-order jobs, stale markers, deletion, permission projection, and dependency outage.
 - [ ] T061 Add failing media upload-grant, magic-byte, filename, type, size, dimension, count, quarantine, scan, derivative, and integrity tests.
 - [ ] T062 Add hostile upload fixtures for MIME spoofing, polyglots, path traversal, active SVG, executable content, archives, and decompression/pixel bombs.
 - [ ] T063 Add failing asset visibility, expiring delivery, cross-tenant binding, public/private mismatch, and required-asset publication tests.
 - [ ] T064 Add failing JSON/CSV parser bound, encoding, heading, nesting, formula, unknown-field, and content-redaction tests.
 - [ ] T065 Add failing import dry-run, mapping, row outcome, exact duplicate, fuzzy candidate, atomic commit, partial policy, replay, and interruption tests.
 - [ ] T066 Add failing export authorization snapshot, redaction, formula neutralization, streaming, encryption, integrity, expiry, replay, and interruption tests.
-- [ ] T067 Implement durable scheduled publication and indexing tasks with bounded checkpoint/retry policy.
+- [x] T067 Implement durable scheduled publication and indexing tasks with bounded checkpoint/retry policy.
 - [ ] T068 Extend canonical `sitecontent` media admission, quarantine, scan-state, safe derivative, binding, and access services without a second asset store.
 - [ ] T069 Implement bounded streaming JSON/CSV parsing and staged validation outcomes.
 - [ ] T070 Implement import review/commit with exact-first deduplication and review-only similarity candidates.
