@@ -235,6 +235,7 @@
 - [x] T198 Repair the ordinary API connection-pool initializer after retention review found its lock/construction block unreachable beneath the workspace-pool return; prove fresh initialization, checkout/reset, independent pool closure, and the complete API gate before retention integration.
 - [x] T199 Remove Celery workspace processing from the database-owner pool without granting API requests cross-tenant discovery; provide a distinct least-privilege worker role or fixed security-definer discovery contract, tenant-bind every claimed mutation, and prove API/worker credential and RLS separation in disposable PostgreSQL.
 - [x] T200 Make the dedicated workspace visual manifest/tamper suite and no-update multi-browser matrix required nodes in the fixed complete repository gate.
+- [x] T201 Repair exact-head gate drift after worker-role and visual-gate integration: update the tenant-policy regression to require the separate worker role and refresh only the changed locked configuration hashes after focused validation.
 
 ## Dependencies and authority
 

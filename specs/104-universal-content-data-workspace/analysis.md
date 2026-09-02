@@ -308,3 +308,21 @@ Correction:
   unavailable browser, or nonzero test result remains explicitly non-successful.
 
 **Cycle result**: `IMPLEMENTATION_FINDINGS_T197_T200_CLOSED`
+
+## Cycle 12 - Exact-head complete-gate review
+
+Findings:
+
+1. The 82-check complete gate failed the API partition because a static policy assertion still
+   required the pre-T199 API-only RLS object and therefore rejected the intended separate worker
+   role fields.
+2. The fail-closed surface inventory correctly rejected three changed configuration members:
+   `.env.example`, the complete-gate graph, and the shared tenant-security policy.
+
+Corrections:
+
+- Added and closed T201. The regression now requires both least-privilege role boundaries and
+  their combined fixed scope. The locked surface inventory is refreshed only after the focused
+  policy, graph, and hostile-drift tests pass.
+
+**Cycle result**: `IMPLEMENTATION_FINDING_T201_CLOSED_PENDING_GATE_REPLAY`

@@ -2,7 +2,7 @@
   "algorithm": "sha256",
   "groups": {
     "config": {
-      ".env.example": "83dd6ed52c72bed3c50ff7af309cc466b1d78edaccff0e96caf964206e734f86",
+      ".env.example": "cfbe306d771fcfa3648fe476bcb0b31c19fc91cb2a7cbd6a5b6696b3624ffe5c",
       "api/site_profiles/base2-obsidian.json": "7e632b6f5ae3a5f05e3ff28d79e4c8c794497ef93126d873de290ef7e340c3c5",
       "api/site_profiles/content-workspace-contracts.json": "b8202643502ab5257a92a7370dd2ef4afbc11d75b2fd1772d2b99cb8f7f6beee",
       "api/site_profiles/content-workspace-presets.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
@@ -15,12 +15,12 @@
       "django/site_profiles/ember-studio.json": "b6b57abe7c80247917a1cc0ccdf08f3cddb2efd503091b73fb9d0e58d4c7fcae",
       "django/site_profiles/index.json": "a8dc9e6e3753cbb3acd8e2c9cac6c88360228a25e086def48aab746b0588353a",
       "django/site_profiles/northstar-library.json": "286850ced5758a336b8c7a82e345f57baa9d4686b39d209311178b6eaa5351f5",
-      "scripts/config/complete-gate-v1.json": "cb5fc9064bd1d82b873a29cca6375ae009d3b3552bcabc32ccf9b59d7a1c6b34",
+      "scripts/config/complete-gate-v1.json": "a3b4d5ed4e53737876d6823fab9eff89ac65bf3a86962dcd5004ca275ad719c3",
       "shared/config/content-workspace-presets.generated.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
       "shared/config/design-system-v1.json": "dc6ceb96c6a608f71c105ad928ab57acdfd7d9ad404d7dca32e6c7cf2d2a9dea",
       "shared/config/identity-realms.json": "c11cd97a6808983182e96774499ae5d9b63e38d8dbe1464846cbca9b6127719f",
       "shared/config/module-catalog.json": "741f9c5d88f1e3cda7fd26bb6876d8adf03fa5388c50ec17c76d5a5feee1cb6b",
-      "shared/config/tenant-security.json": "141d9d816e185e2c564ebc63304f90f490ed82bc822f2643057b172e9eb64cba"
+      "shared/config/tenant-security.json": "ff35fd89e50fc66a0dd504bf631a297b52c8f9f888d030201ac3cff6896d117e"
     },
     "docs": {
       "docs/ARCHITECTURE.md": "98c9ed467d4b3b69204f493a3260fcd4e366a3e400d6a31e4d4acaf5a19f0286",

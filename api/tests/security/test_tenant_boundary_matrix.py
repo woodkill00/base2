@@ -261,8 +261,9 @@ def test_database_defense_status_cannot_claim_rls_before_role_separation():
     assert "pool-reuse-reset-matrix" in rls["activationRequirements"]
     assert policy["workspacePostgresqlRls"] == {
         "status": "active",
-        "scope": "api/repositories/content_workspace.py",
+        "scope": "api/repositories/content_workspace.py and api/services/content_workspace_worker.py",
         "runtimeRole": "dedicated-non-owner-no-bypassrls",
+        "workerRole": "separate-worker-only-non-owner-no-bypassrls",
         "migrationRole": "django-owner",
         "evidence": "scripts/python/run_workspace_postgres_acceptance.py",
     }
