@@ -4,6 +4,7 @@ import AppShell from '../components/glass/AppShell';
 import GlassButton from '../components/glass/GlassButton';
 import GlassCard from '../components/glass/GlassCard';
 import Navigation from '../components/Navigation';
+import { ExportWorkspace, ImportWorkspace } from '../components/content/WorkspaceJobs';
 import { contentWorkspaceAPI, normalizeWorkspaceError } from '../services/contentWorkspace';
 
 const TABS = ['Records', 'Schemas', 'Imports', 'Exports'];
@@ -259,6 +260,7 @@ export default function ContentWorkspace() {
     () => definitions.find((item) => item.typeKey === selectedType),
     [definitions, selectedType]
   );
+  const reportJobError = (value) => setError(typeof value === 'string' ? value : messageFor(value));
 
   return (
     <AppShell headerTitle="Content workspace" sidebarItems={TABS}>
@@ -672,14 +674,20 @@ export default function ContentWorkspace() {
                       Loading schema…
                     </p>
                   )
+                ) : tab === 'Imports' ? (
+                  <ImportWorkspace
+                    key={`import-${selectedType}`}
+                    typeKey={selectedType}
+                    schemaVersion={schema?.version}
+                    onError={reportJobError}
+                  />
                 ) : (
-                  <div className="mt-5 rounded-2xl border border-dashed border-white/20 p-8 text-center">
-                    <h3 className="font-semibold">No {tab.toLowerCase()} jobs</h3>
-                    <p className="mt-2 text-sm opacity-75">
-                      Bounded {tab.toLowerCase()} jobs show explicit outcomes, progress, row counts,
-                      integrity hashes, and terminal states here.
-                    </p>
-                  </div>
+                  <ExportWorkspace
+                    key={`export-${selectedType}`}
+                    typeKey={selectedType}
+                    schema={schema}
+                    onError={reportJobError}
+                  />
                 )}
               </section>
             </GlassCard>

@@ -110,7 +110,7 @@ describe('content workspace', () => {
     const first = renderWorkspace();
     expect(await screen.findByText(/no records match/i)).toBeVisible();
     await act(async () => user.click(screen.getByRole('tab', { name: 'Imports' })));
-    expect(screen.getByText(/explicit outcomes/i)).toBeVisible();
+    expect(screen.getByLabelText('Import file')).toBeVisible();
     first.unmount();
     contentWorkspaceAPI.definitions.mockRejectedValueOnce({ response: { status: 503 } });
     renderWorkspace();
