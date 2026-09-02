@@ -40,6 +40,7 @@ services:
       - ./specs/001-django-fastapi-react/contracts:/app/specs/001-django-fastapi-react/contracts:ro
       # Mount shared security contracts used by fail-closed matrix tests.
       - ./shared/config:/app/shared/config:ro
+      - content_workspace_artifacts:/var/lib/base2/content-workspace
     environment:
       - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
       - PORT=${FASTAPI_PORT}
@@ -51,6 +52,8 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - TOKEN_PEPPER=${TOKEN_PEPPER}
       - IDENTITY_ENCRYPTION_KEY=${IDENTITY_ENCRYPTION_KEY}
+      - CONTENT_WORKSPACE_STORAGE_ROOT=${CONTENT_WORKSPACE_STORAGE_ROOT}
+      - CONTENT_WORKSPACE_STORAGE_KEY=${CONTENT_WORKSPACE_STORAGE_KEY}
       - JWT_EXPIRE=${JWT_EXPIRE}
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
@@ -282,11 +285,15 @@ services:
       - DB_PASSWORD=${POSTGRES_PASSWORD}
       - TOKEN_PEPPER=${TOKEN_PEPPER}
       - IDENTITY_ENCRYPTION_KEY=${IDENTITY_ENCRYPTION_KEY}
+      - CONTENT_WORKSPACE_STORAGE_ROOT=${CONTENT_WORKSPACE_STORAGE_ROOT}
+      - CONTENT_WORKSPACE_STORAGE_KEY=${CONTENT_WORKSPACE_STORAGE_KEY}
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
       - CELERY_LOG_LEVEL=${CELERY_LOG_LEVEL}
       - CELERY_CONCURRENCY=${CELERY_CONCURRENCY}
     networks: [app_network]
+    volumes:
+      - content_workspace_artifacts:/var/lib/base2/content-workspace
     depends_on:
       redis:
         condition: service_healthy
@@ -399,6 +406,7 @@ networks:
     name: ${NETWORK_NAME}
 
 volumes:
+  content_workspace_artifacts:
   postgres_data:
   django_static:
   pgadmin_data:

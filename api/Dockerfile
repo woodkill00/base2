@@ -15,7 +15,9 @@ RUN apt-get update \
      && rm -rf /var/lib/apt/lists/*
 
 # Non-root user for runtime and ensure /app is writable
-RUN useradd -m appuser && chown -R appuser:appuser /app
+RUN useradd -m appuser \
+    && mkdir -p /var/lib/base2/content-workspace \
+    && chown -R appuser:appuser /app /var/lib/base2
 USER appuser
 
 RUN mkdir -p /app/api
