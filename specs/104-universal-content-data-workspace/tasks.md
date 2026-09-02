@@ -222,6 +222,8 @@
 - [x] T185 Bind the documented workload ceilings to executable schema, media, transfer, relationship, and recovery contracts after implementation analysis found no single operator limit reference; exercise exact-limit and one-beyond fixtures so drift fails visibly.
 - [x] T186 Protect in-progress schema evolution after the full React coverage review found draft field edits could be lost on navigation; support required-constraint changes and deliberate non-canonical removal, retain title/slug controls, warn before unload, and clear protection only after a durable draft exists.
 - [x] T187 Document the repository's partitioned Python gate boundary after an unscoped root Pytest command mixed API, Django, provider, and visual environments; require service-local virtual environments for local gates and reserve cross-service integration for the complete container gate.
+- [x] T188 Refresh the exact surface-drift inventory only after the new workspace documentation, configuration, generated clients, module manifests, and route surfaces pass their focused contracts; rerun both ordinary and hostile drift checks so new, missing, or modified surfaces still fail closed.
+- [x] T189 Replace the obsolete 120-second complete-gate API ceiling after the expanded isolated partition suite exceeded it twice without a test failure; retain a finite bounded timeout, lock the bound with a manifest regression, and require the complete API coverage command to pass within it.
 
 ## Dependencies and authority
 

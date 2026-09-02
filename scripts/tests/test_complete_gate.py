@@ -322,6 +322,10 @@ class CompleteGateTests(unittest.TestCase):
             ["{python-api}", "scripts/python/run_api_coverage.py"],
             commands["api-tests"],
         )
+        api_check = next(item for item in manifest["checks"] if item["id"] == "api-tests")
+        self.assertEqual(300, api_check["timeoutSeconds"])
+        self.assertGreater(api_check["timeoutSeconds"], 120)
+        self.assertLessEqual(api_check["timeoutSeconds"], 300)
         self.assertEqual(
             ["{python-django}", "scripts/python/run_django_coverage.py"],
             commands["django-tests"],

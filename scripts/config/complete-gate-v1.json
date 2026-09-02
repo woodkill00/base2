@@ -733,7 +733,7 @@
       "id": "api-tests",
       "command": ["{python-api}", "scripts/python/run_api_coverage.py"],
       "required": true,
-      "timeoutSeconds": 120,
+      "timeoutSeconds": 300,
       "dependsOn": ["env-tools"],
       "requiredTools": ["{python-api}"],
       "maxAttempts": 2,
