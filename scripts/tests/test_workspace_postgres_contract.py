@@ -59,6 +59,11 @@ class WorkspacePostgresContractTests(unittest.TestCase):
         ):
             self.assertIn(marker, checks)
 
+        self.assertIn('django_migration + ["0009", "--noinput"]', runner)
+        self.assertIn('role_check + ["reversed"]', runner)
+        self.assertIn('django_migration + ["0010", "--noinput"]', runner)
+        self.assertIn('role_check + ["forward"]', runner)
+
 
 if __name__ == "__main__":
     unittest.main()

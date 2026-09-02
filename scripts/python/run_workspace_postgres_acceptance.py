@@ -96,6 +96,30 @@ def main() -> None:
                 api_image, "scripts/python/run_workspace_postgres_checks.py",
             ]
         )
+        django_migration = common + [
+            "--read-only", "--tmpfs", "/tmp:rw,noexec,nosuid,size=64m",
+            "-v", f"{root}:/workspace:ro", "-w", "/workspace/django",
+            "-e", "PYTHONPATH=/workspace", "-e", "DJANGO_SETTINGS_MODULE=project.settings.base",
+            "-e", "DB_HOST=127.0.0.1", "-e", "DB_PORT=5432", "-e", "DB_NAME=base2",
+            "-e", "DB_USER=base2", "-e", f"DB_PASSWORD={owner_password}",
+            "-e", "WORKSPACE_DB_USER=base2_workspace_runtime",
+            "-e", "WORKSPACE_WORKER_DB_USER=base2_workspace_worker",
+            "--entrypoint", "python", django_image, "manage.py", "migrate", "sitecontent",
+        ]
+        role_check = common + [
+            "--read-only", "--tmpfs", "/tmp:rw,noexec,nosuid,size=64m",
+            "-v", f"{root}:/workspace:ro", "-w", "/workspace", "-e", "PYTHONPATH=/workspace",
+            "-e", "DB_HOST=127.0.0.1", "-e", "DB_PORT=5432", "-e", "DB_NAME=base2",
+            "-e", "DB_USER=base2", "-e", f"DB_PASSWORD={owner_password}",
+            "-e", "WORKSPACE_DB_USER=base2_workspace_runtime",
+            "-e", "WORKSPACE_WORKER_DB_USER=base2_workspace_worker",
+            "--entrypoint", "python", api_image,
+            "scripts/python/run_workspace_role_migration_checks.py",
+        ]
+        run(django_migration + ["0009", "--noinput"], stdout=subprocess.DEVNULL)
+        run(role_check + ["reversed"])
+        run(django_migration + ["0010", "--noinput"], stdout=subprocess.DEVNULL)
+        run(role_check + ["forward"])
     finally:
         if started:
             subprocess.run(

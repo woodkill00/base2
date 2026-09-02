@@ -7,7 +7,7 @@ from django.db.migrations.executor import MigrationExecutor
 pytestmark = pytest.mark.django_db(transaction=True)
 
 BASE = ("sitecontent", "0001_initial")
-LATEST = ("sitecontent", "0008_exportjob_projection_fields")
+LATEST = ("sitecontent", "0010_workspace_worker_role")
 
 
 def _executor() -> MigrationExecutor:
@@ -15,6 +15,8 @@ def _executor() -> MigrationExecutor:
 
 
 def test_workspace_migrations_reverse_and_forward_without_losing_legacy_records():
+    # 0001 is the exact workspace-free schema on current Base2 main. The
+    # populated row represents a previously generated site profile.
     executor = _executor()
     executor.migrate([BASE])
     base_apps = executor.loader.project_state([BASE]).apps

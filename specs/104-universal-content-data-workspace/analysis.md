@@ -243,3 +243,15 @@ job subject references, and leaves append-only audit events unchanged. The focus
 storage, worker, task, and data-rights suite passed, including replay.
 
 **Cycle result**: `IMPLEMENTATION_FINDING_T195_CLOSED_T196_T197_OPEN`
+
+T196 closeout: current Base2 `main` contains only `sitecontent` migration 0001,
+which is the executable BASE used by the populated legacy-profile round trip.
+SQLite proves the complete model migration forward, reverse to exact current-main
+state, and forward again without losing the legacy record. A new disposable
+PostgreSQL interruption matrix begins from an empty database, migrates to latest,
+populates two tenants plus records/jobs, reverses only the worker-role checkpoint
+to 0009, verifies every worker table grant is absent while runtime grants and
+exact data counts remain, then resumes 0010 and verifies the grants/policy and
+data return exactly. Both migration tests and the physical matrix passed.
+
+**Cycle result**: `IMPLEMENTATION_FINDING_T196_CLOSED_T197_OPEN`
