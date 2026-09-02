@@ -234,6 +234,7 @@
 - [x] T197 Add a dedicated workspace visual-assurance pack with deterministic synthetic fixtures for every field/state/job/media/relationship/error plus long/RTL content; cover compact/DPR3/landscape/tablet/desktop/ultrawide/200%/400%, themes/contrast/reduced-motion/keyboard/touch/Chromium/Firefox/WebKit, integrity-bound manifests/contact sheets/review sidecars, and fail-closed baseline mutation.
 - [x] T198 Repair the ordinary API connection-pool initializer after retention review found its lock/construction block unreachable beneath the workspace-pool return; prove fresh initialization, checkout/reset, independent pool closure, and the complete API gate before retention integration.
 - [x] T199 Remove Celery workspace processing from the database-owner pool without granting API requests cross-tenant discovery; provide a distinct least-privilege worker role or fixed security-definer discovery contract, tenant-bind every claimed mutation, and prove API/worker credential and RLS separation in disposable PostgreSQL.
+- [x] T200 Make the dedicated workspace visual manifest/tamper suite and no-update multi-browser matrix required nodes in the fixed complete repository gate.
 
 ## Dependencies and authority
 

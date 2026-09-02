@@ -294,3 +294,17 @@ Evidence:
   `.artifacts/workspace-visual/20260903T-feature104-reviewed/` and is not a live-deployment claim.
 
 **Cycle result**: `IMPLEMENTATION_FINDING_T197_CLOSED_NO_UNRESOLVED_VISUAL_FINDINGS`
+
+Follow-up finding:
+
+- The dedicated workspace visual pack passed independently but was not a required node in the
+  fixed complete-gate graph, so a future release could omit it while the older shared visual
+  matrix remained green.
+
+Correction:
+
+- Added and closed T200. The complete gate now requires the workspace manifest/tamper contract
+  and then the ordinary no-update 12-project browser matrix. Any missing dependency, image drift,
+  unavailable browser, or nonzero test result remains explicitly non-successful.
+
+**Cycle result**: `IMPLEMENTATION_FINDINGS_T197_T200_CLOSED`
