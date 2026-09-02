@@ -1,10 +1,12 @@
 import os
+import base64
 
 import pytest
 
 from api.services.content_workspace_storage import (
     ArtifactIntegrityError,
     PrivateArtifactStore,
+    configured_artifact_store,
 )
 
 
@@ -64,3 +66,16 @@ def test_private_store_requires_exact_key_and_bounded_nonempty_content(tmp_path)
     for content in (b'', b'12345'):
         with pytest.raises(ArtifactIntegrityError, match='content_limit_exceeded'):
             store.put(namespace='media', site_id='site-a', object_id='x', content=content)
+
+
+def test_configured_store_requires_absolute_root_and_urlsafe_32_byte_key(tmp_path):
+    encoded = base64.urlsafe_b64encode(b'k' * 32).decode()
+    assert isinstance(
+        configured_artifact_store(root=str(tmp_path / 'workspace'), encoded_key=encoded),
+        PrivateArtifactStore,
+    )
+    for root, key in [('relative', encoded), (str(tmp_path / 'workspace'), 'invalid')]:
+        with pytest.raises(
+            ArtifactIntegrityError, match='content_artifact_configuration_invalid'
+        ):
+            configured_artifact_store(root=root, encoded_key=key)

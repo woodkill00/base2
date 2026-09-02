@@ -22,6 +22,15 @@ class FakeRepository:
         self.calls.append(('asset', kwargs))
         return {'id': str(kwargs['asset_id']), 'status': 'validated', 'mediaType': 'image/png'}
 
+    def complete_asset_upload(self, **kwargs):
+        self.calls.append(('upload-content', kwargs))
+        return {
+            'id': str(kwargs['asset_id']),
+            'status': 'quarantined',
+            'sha256': 'a' * 64,
+            'replayed': False,
+        }
+
     def bind_asset(self, **kwargs):
         self.calls.append(('bind', kwargs))
         return {'id': str(UUID(int=8104)), 'recordVersion': kwargs['expected_version'] + 1}
@@ -54,6 +63,7 @@ def scoped(monkeypatch):
     monkeypatch.setattr(content_workspace, 'workspace_enabled', lambda: True)
     monkeypatch.setattr(content_workspace, 'authorize', lambda **kwargs: {'role': 'owner'})
     monkeypatch.setattr(content_workspace, 'get_repository', lambda: FakeRepository())
+    monkeypatch.setattr(content_workspace, 'get_artifact_store', lambda: object())
 
 
 def test_asset_admission_status_and_binding_are_scoped_and_versioned():
@@ -88,6 +98,45 @@ def test_asset_admission_status_and_binding_are_scoped_and_versioned():
         == 200
     )
     assert all(call[1]['site_id'] == 'site-a' for call in FakeRepository.calls)
+
+
+def test_asset_content_upload_is_raw_bounded_grant_bound_and_starts_quarantined():
+    client = TestClient(app)
+    headers = {
+        'Authorization': 'Bearer synthetic',
+        'X-Tenant-ID': 'site-a',
+        'Upload-Grant': 'opaque-upload-grant-that-is-long-enough',
+        'Content-Type': 'image/png',
+    }
+    asset_id = str(UUID(int=7104))
+    response = client.put(
+        f'/api/content/v1/assets/{asset_id}/content',
+        headers=headers,
+        content=b'synthetic raw body',
+    )
+    assert response.status_code == 200
+    assert response.json()['status'] == 'quarantined'
+    call = next(item for item in FakeRepository.calls if item[0] == 'upload-content')
+    assert call[1]['site_id'] == 'site-a'
+    assert call[1]['content'] == b'synthetic raw body'
+    assert call[1]['upload_grant'] == headers['Upload-Grant']
+
+
+def test_asset_content_upload_rejects_oversize_before_repository(monkeypatch):
+    monkeypatch.setattr(content_workspace, 'MAX_UPLOAD_BYTES', 4)
+    client = TestClient(app)
+    response = client.put(
+        f'/api/content/v1/assets/{UUID(int=7104)}/content',
+        headers={
+            'Authorization': 'Bearer synthetic',
+            'X-Tenant-ID': 'site-a',
+            'Upload-Grant': 'opaque-upload-grant-that-is-long-enough',
+        },
+        content=b'12345',
+    )
+    assert response.status_code == 413
+    assert response.json()['detail'] == 'content_limit_exceeded'
+    assert not any(item[0] == 'upload-content' for item in FakeRepository.calls)
 
 
 def test_relationship_lifecycle_is_bounded_and_never_accepts_scope_from_body():

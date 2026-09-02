@@ -4,6 +4,7 @@ import hashlib
 import os
 import re
 import tempfile
+import base64
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
@@ -145,3 +146,17 @@ class PrivateArtifactStore:
         if len(content) > self._max_bytes:
             raise ArtifactIntegrityError('content_integrity_failed')
         return content
+
+
+def configured_artifact_store(*, root: str, encoded_key: str) -> PrivateArtifactStore:
+    """Build the store from explicit settings without accepting ambient paths or weak keys."""
+    if not isinstance(root, str) or not root.startswith('/') or not encoded_key:
+        raise ArtifactIntegrityError('content_artifact_configuration_invalid')
+    try:
+        padded = encoded_key + '=' * (-len(encoded_key) % 4)
+        key = base64.urlsafe_b64decode(padded.encode())
+    except (ValueError, TypeError) as exc:
+        raise ArtifactIntegrityError('content_artifact_configuration_invalid') from exc
+    if len(key) != 32:
+        raise ArtifactIntegrityError('content_artifact_configuration_invalid')
+    return PrivateArtifactStore(root, key=key)

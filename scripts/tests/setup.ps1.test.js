@@ -21,6 +21,7 @@ test('setup.ps1 generates TP_ secrets for placeholders', { skip: !powershell }, 
     'TP_DJANGO_SECRET_KEY=change_me_django_secret_key',
     'TP_JWT_SECRET=change_me_jwt_secret',
     'TP_TOKEN_PEPPER=change_me_token_pepper',
+    'TP_CONTENT_WORKSPACE_STORAGE_KEY=change_me_workspace_storage_key',
     'TP_OAUTH_STATE_SECRET=change_me_oauth_state_secret',
     'TP_SEED_ADMIN_PASSWORD=change_me_admin_password',
     'TP_SEED_DEMO_PASSWORD=change_me_demo_password',
@@ -58,6 +59,10 @@ test('setup.ps1 generates TP_ secrets for placeholders', { skip: !powershell }, 
 
   const templateKeys = Object.keys(parseEnv(template));
   for (const key of templateKeys) {
-    assert.match(envMap[key], /^[a-f0-9]{64}$/);
+    if (key === 'TP_CONTENT_WORKSPACE_STORAGE_KEY') {
+      assert.equal(Buffer.from(envMap[key], 'base64url').length, 32);
+    } else {
+      assert.match(envMap[key], /^[a-f0-9]{64}$/);
+    }
   }
 });

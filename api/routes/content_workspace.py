@@ -13,7 +13,12 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from api.middleware.tenant import require_tenant
 from api.repositories.content_workspace import PostgresContentWorkspaceRepository
 from api.security.request_auth import require_authenticated_principal
-from api.settings import SITE_MANIFEST
+from api.services.content_workspace_media import MAX_UPLOAD_BYTES
+from api.services.content_workspace_storage import (
+    ArtifactIntegrityError,
+    configured_artifact_store,
+)
+from api.settings import SITE_MANIFEST, settings
 
 
 router = APIRouter(prefix='/content/v1', tags=['content-workspace'])
@@ -39,6 +44,13 @@ FIELD_KINDS = (
     'json_object',
 )
 IDENTIFIER = re.compile(r'^[a-z][a-z0-9_]{1,62}$')
+
+
+def get_artifact_store():
+    return configured_artifact_store(
+        root=settings.CONTENT_WORKSPACE_STORAGE_ROOT,
+        encoded_key=settings.CONTENT_WORKSPACE_STORAGE_KEY or '',
+    )
 
 
 def _camel(value: str) -> str:
@@ -856,6 +868,38 @@ def get_asset(asset_id: UUID, request: Request):
         )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail='content_not_found') from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.put('/assets/{asset_id}/content')
+async def complete_asset_upload(
+    asset_id: UUID,
+    request: Request,
+    upload_grant: Annotated[str, Header(alias='Upload-Grant', min_length=32, max_length=4096)],
+):
+    principal, tenant = _authorized_scope(request, 'content-workspace.write')
+    content_buffer = bytearray()
+    async for chunk in request.stream():
+        content_buffer.extend(chunk)
+        if len(content_buffer) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail='content_limit_exceeded')
+    content = bytes(content_buffer)
+    try:
+        return get_repository().complete_asset_upload(
+            site_id=tenant,
+            asset_id=asset_id,
+            owner_ref=f'user:{principal.user_id}',
+            upload_grant=upload_grant,
+            content=content,
+            artifact_store=get_artifact_store(),
+        )
+    except ArtifactIntegrityError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ValueError as exc:
+        code = str(exc)
+        status_code = 404 if code == 'content_not_found' else 422
+        raise HTTPException(status_code=status_code, detail=code) from exc
     except Exception as exc:
         raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
 

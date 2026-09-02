@@ -189,6 +189,7 @@
 - [x] T152 Update the canonical Base2 Obsidian generated-profile assertion after the full affected gate reproduced a stale exact module set that omitted the enabled `content-workspace`; rerun the generator/profile matrix.
 - [x] T153 Update the legacy scheduled-content fixture after the complete Django suite reproduced its missing now-required IANA display timezone; rerun the full Django suite before downstream gates.
 - [x] T154 Add an encrypted exact-owned private artifact store after implementation analysis found no existing canonical object adapter for workspace media/import/export payloads; prove path confinement, authenticated context, integrity, permissions, replay, conflict, size bounds, and symlink rejection before integration.
+- [x] T155 Complete the grant-bound raw media admission path after analysis found metadata-only grants had no content completion contract; add bounded streaming, exact owner/site/asset/hash/size binding, quarantine-only completion, encrypted storage, fail-fast production key validation, and setup/canary secret generation tests.
 
 ## Dependencies and authority
 

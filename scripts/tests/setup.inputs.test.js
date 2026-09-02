@@ -21,6 +21,7 @@ test('setup fills TP_ defaults and preserves template references', async () => {
     'TP_DJANGO_SECRET_KEY=YOUR_DJANGO_SECRET_KEY',
     'TP_JWT_SECRET=YOUR_JWT_SECRET',
     'TP_TOKEN_PEPPER=YOUR_TOKEN_PEPPER',
+    'TP_CONTENT_WORKSPACE_STORAGE_KEY=YOUR_URLSAFE_BASE64_32_BYTE_KEY',
     'TP_OAUTH_STATE_SECRET=YOUR_OAUTH_STATE_SECRET',
     'TP_SEED_ADMIN_PASSWORD=YOUR_ADMIN_PASSWORD',
     'TP_SEED_DEMO_PASSWORD=YOUR_DEMO_PASSWORD',
@@ -81,6 +82,7 @@ test('setup fills TP_ defaults and preserves template references', async () => {
   assert.equal(envMap.TP_SEED_DEMO_PASSWORD, 'Pass123!');
   assert.equal(envMap.TP_FLOWER_PASSWORD, 'Pass123!');
   assert.equal(envMap.TP_TRAEFIK_PASSWORD, 'Pass123!');
+  assert.equal(Buffer.from(envMap.TP_CONTENT_WORKSPACE_STORAGE_KEY, 'base64url').length, 32);
 
   assert.equal(envMap.REDIS_PASSWORD, '${TP_REDIS_PASSWORD}');
   assert.equal(envMap.DJANGO_SECRET_KEY, '${TP_DJANGO_SECRET_KEY}');

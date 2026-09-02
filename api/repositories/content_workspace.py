@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 
 from api.db import db_conn
 from api.security.content_workspace import CursorCodec, CursorError, canonical_digest
+from api.services.content_workspace_media import admit_upload
 from api.settings import settings
 
 
@@ -1402,6 +1403,106 @@ class PostgresContentWorkspaceRepository:
             'attribution': row[6],
             'metadata': row[7],
             'updatedAt': row[8].isoformat(),
+        }
+
+    def complete_asset_upload(
+        self,
+        *,
+        site_id: str,
+        asset_id: UUID,
+        owner_ref: str,
+        upload_grant: str,
+        content: bytes,
+        artifact_store,
+    ):
+        """Verify, persist, and quarantine one exact grant-bound media payload."""
+        with db_conn(tenant_id=site_id) as conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """SELECT id, original_name, media_type, byte_size, sha256, status
+                           FROM sitecontent_mediaasset
+                           WHERE id=%s AND site_id=%s AND owner_ref=%s FOR UPDATE""",
+                        (str(asset_id), site_id, owner_ref),
+                    )
+                    row = cur.fetchone()
+                    if not row:
+                        raise ValueError('content_not_found')
+                    scope = {
+                        'site': site_id,
+                        'owner': owner_ref,
+                        'asset': str(asset_id),
+                        'sha256': row[4],
+                        'bytes': row[3],
+                        'purpose': 'asset-upload',
+                    }
+                    try:
+                        CursorCodec(str(settings.TOKEN_PEPPER), ttl_seconds=300).decode(
+                            upload_grant,
+                            expected_scope=scope,
+                        )
+                    except CursorError as exc:
+                        raise ValueError('content_upload_grant_invalid') from exc
+                    if row[5] not in {'pending', 'quarantined'}:
+                        raise ValueError('content_media_state_invalid')
+                    admission = admit_upload(
+                        filename=row[1],
+                        claimed_type=row[2],
+                        content=content,
+                    )
+                    if admission.byte_size != row[3] or admission.sha256 != row[4]:
+                        raise ValueError('content_integrity_failed')
+                    stored = artifact_store.put(
+                        namespace='media',
+                        site_id=site_id,
+                        object_id=str(asset_id),
+                        content=content,
+                    )
+                    if row[5] == 'quarantined':
+                        return {
+                            'id': str(asset_id),
+                            'status': 'quarantined',
+                            'sha256': stored.sha256,
+                            'replayed': True,
+                        }
+                    metadata = {
+                        'admission': 'content_verified',
+                        'width': admission.width,
+                        'height': admission.height,
+                    }
+                    cur.execute(
+                        """UPDATE sitecontent_mediaasset
+                           SET storage_key=%s, status='quarantined', metadata=%s::jsonb,
+                               updated_at=NOW()
+                           WHERE id=%s AND site_id=%s AND owner_ref=%s AND status='pending'
+                           RETURNING id""",
+                        (
+                            stored.object_key,
+                            _json(metadata),
+                            str(asset_id),
+                            site_id,
+                            owner_ref,
+                        ),
+                    )
+                    if not cur.fetchone():
+                        raise ValueError('content_media_state_invalid')
+                    _audit(
+                        cur,
+                        site_id=site_id,
+                        actor_ref=owner_ref,
+                        object_type='media_asset',
+                        object_ref=str(asset_id),
+                        action='content.asset_upload',
+                    )
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        return {
+            'id': str(asset_id),
+            'status': 'quarantined',
+            'sha256': stored.sha256,
+            'replayed': False,
         }
 
     def bind_asset(

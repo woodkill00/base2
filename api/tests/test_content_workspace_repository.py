@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import hashlib
 from contextlib import contextmanager
 from uuid import UUID
 
 from api.repositories import content_workspace as repository
+from api.security.content_workspace import CursorCodec
+from api.services.content_workspace_storage import StoredArtifact
 
 
 class Cursor:
@@ -121,6 +124,73 @@ def test_create_definition_is_one_transaction_and_never_accepts_site_from_payloa
     statements = ' '.join(sql for sql, _ in cursor.calls)
     assert 'sitecontent_workflowdefinition' in statements
     assert 'sitecontent_workspaceauditevent' in statements
+
+
+def test_asset_content_completion_binds_grant_hash_owner_and_quarantine(monkeypatch):
+    monkeypatch.setattr(repository.settings, 'TOKEN_PEPPER', 'synthetic-test-pepper-104')
+    asset_id = UUID(int=7104)
+    content = (
+        b'\x89PNG\r\n\x1a\n'
+        + (13).to_bytes(4, 'big')
+        + b'IHDR'
+        + (1).to_bytes(4, 'big')
+        + (1).to_bytes(4, 'big')
+        + b'\x08\x06\x00\x00\x00\x00\x00\x00\x00fixture'
+    )
+    digest = hashlib.sha256(content).hexdigest()
+    scope = {
+        'site': 'site-a',
+        'owner': 'user:test',
+        'asset': str(asset_id),
+        'sha256': digest,
+        'bytes': len(content),
+        'purpose': 'asset-upload',
+    }
+    grant = CursorCodec('synthetic-test-pepper-104', ttl_seconds=300).encode(
+        scope=scope, position={'assetId': str(asset_id)}
+    )
+    cursor = Cursor(
+        rows=[
+            (asset_id, 'safe.png', 'image/png', len(content), digest, 'pending'),
+            (asset_id,),
+        ]
+    )
+    connection = Connection(cursor)
+    scopes = bind(monkeypatch, connection)
+
+    class Store:
+        def put(self, **kwargs):
+            assert kwargs == {
+                'namespace': 'media',
+                'site_id': 'site-a',
+                'object_id': str(asset_id),
+                'content': content,
+            }
+            return StoredArtifact(
+                object_key=f'media/site-a/{asset_id}.bin',
+                sha256=digest,
+                byte_size=len(content),
+            )
+
+    result = repository.PostgresContentWorkspaceRepository().complete_asset_upload(
+        site_id='site-a',
+        asset_id=asset_id,
+        owner_ref='user:test',
+        upload_grant=grant,
+        content=content,
+        artifact_store=Store(),
+    )
+    assert result == {
+        'id': str(asset_id),
+        'status': 'quarantined',
+        'sha256': digest,
+        'replayed': False,
+    }
+    assert scopes == ['site-a'] and connection.commits == 1
+    combined_sql = ' '.join(sql for sql, _ in cursor.calls)
+    assert 'FOR UPDATE' in combined_sql
+    assert "status='quarantined'" in combined_sql
+    assert 'sitecontent_workspaceauditevent' in combined_sql
 
 
 def test_query_compiler_rejects_unknown_fields_operators_and_excess_complexity():
