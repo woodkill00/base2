@@ -355,7 +355,16 @@ class ContentFieldDefinition(models.Model):
                 or not 1 <= maximum_items <= 50
             ):
                 raise ValidationError("field_validation_bound_invalid")
-        relationship_keys = {"targetType", "deletionPolicy", "maximumDepth"}
+        if "maximumDepth" in self.validation:
+            maximum_depth = self.validation["maximumDepth"]
+            allowed_maximum = 2 if self.field_kind in {"reference", "references"} else 8
+            if (
+                not isinstance(maximum_depth, int)
+                or isinstance(maximum_depth, bool)
+                or not 1 <= maximum_depth <= allowed_maximum
+            ):
+                raise ValidationError("field_validation_bound_invalid")
+        relationship_keys = {"targetType", "deletionPolicy"}
         if relationship_keys & set(self.validation):
             if self.field_kind not in {"reference", "references"}:
                 raise ValidationError("field_relationship_invalid")

@@ -144,6 +144,62 @@ def test_query_compiler_rejects_unknown_fields_operators_and_excess_complexity()
             raise AssertionError('unsafe query was accepted')
 
 
+def test_query_compiler_uses_typed_parameterized_comparisons():
+    allowed = {
+        'count': 'integer',
+        'available': 'boolean',
+        'published_on': 'date',
+    }
+    sql, params = repository.compile_filters(
+        [
+            {'field': 'count', 'operator': 'gte', 'value': 10},
+            {'field': 'available', 'operator': 'eq', 'value': True},
+            {'field': 'published_on', 'operator': 'lt', 'value': '2026-09-03'},
+        ],
+        allowed,
+    )
+    assert '(values ->> %s)::numeric >= %s' in sql
+    assert '(values ->> %s)::boolean = %s' in sql
+    assert '(values ->> %s)::date < %s' in sql
+    assert params == ['count', '10', 'available', 'true', 'published_on', '2026-09-03']
+
+
+def test_saved_view_executes_the_exact_bounded_query(monkeypatch):
+    repo = repository.PostgresContentWorkspaceRepository()
+    query = {
+        'filters': [{'field': 'title', 'operator': 'contains', 'value': 'safe'}],
+        'sort': ['slug'],
+        'fields': ['title'],
+        'expand': [],
+        'limit': 10,
+    }
+    monkeypatch.setattr(repo, 'get_view', lambda **_: {'query': query})
+    calls = []
+
+    def list_records(**kwargs):
+        calls.append(kwargs)
+        return {'items': [], 'nextCursor': None}
+
+    monkeypatch.setattr(repo, 'list_records', list_records)
+    result = repo.execute_view(
+        site_id='site-a',
+        type_key='article',
+        view_id=UUID(int=104),
+        owner_ref='user:test',
+        caller_role='editor',
+    )
+    assert result == {'items': [], 'nextCursor': None}
+    assert calls == [
+        {
+            'site_id': 'site-a',
+            'type_key': 'article',
+            'limit': 10,
+            'cursor': None,
+            'query': query,
+        }
+    ]
+
+
 def test_record_value_mirror_rejects_unknown_required_and_wrong_types():
     fields = [
         ('title', 'short_text', True, False, None, {}),

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from datetime import datetime
 from typing import Annotated, Literal
@@ -497,12 +498,24 @@ def list_records(
     request: Request,
     limit: Annotated[int, Query(ge=1, le=100)] = 25,
     cursor: str | None = Query(default=None, min_length=16, max_length=2_048),
+    q: str | None = Query(default=None, max_length=8_192),
 ):
     _, tenant = _authorized_scope(request, 'content-workspace.read')
     _valid_type_key(type_key)
+    query = QueryDescription().model_dump()
+    if q:
+        try:
+            query = QueryDescription.model_validate(json.loads(q)).model_dump()
+        except (ValueError, TypeError, json.JSONDecodeError) as exc:
+            raise HTTPException(status_code=422, detail='content_query_invalid') from exc
+    query['limit'] = min(query['limit'], limit)
     try:
         return get_repository().list_records(
-            site_id=tenant, type_key=type_key, limit=limit, cursor=cursor
+            site_id=tenant,
+            type_key=type_key,
+            limit=query['limit'],
+            cursor=cursor,
+            query=query,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

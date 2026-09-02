@@ -183,6 +183,11 @@
 - [ ] T149 Verify empty Feature 104 provider inventory, no unrelated mutation, no production certificate, and no retained credential/material leak.
 - [ ] T150 Record final evidence and close the feature only when every required task and requirement is complete.
 
+## Implementation corrective tasks
+
+- [x] T151 Replace the nested record-detail complementary landmark with an explicitly named region after the workspace axe regression reproduced `landmark-complementary-is-top-level`; rerun focused accessibility and interaction tests.
+- [x] T152 Update the canonical Base2 Obsidian generated-profile assertion after the full affected gate reproduced a stale exact module set that omitted the enabled `content-workspace`; rerun the generator/profile matrix.
+
 ## Dependencies and authority
 
 Tasks are sequential by default. Within a phase, independent failing tests may run in bounded parallel only when they touch distinct files and resource admission permits it. Django canonical work blocks FastAPI mirror work; FastAPI blocks React integration; focused gates block full gates; implementation analysis blocks publication. T142, T144, and T145-T149 are separately governed actions and are not pre-approved by completion of earlier tasks.

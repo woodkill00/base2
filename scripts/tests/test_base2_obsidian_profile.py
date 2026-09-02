@@ -21,6 +21,7 @@ def test_canonical_base2_obsidian_profile_is_complete_and_generated():
         "accounts",
         "commerce",
         "content",
+        "content-workspace",
         "forms",
         "search",
     }

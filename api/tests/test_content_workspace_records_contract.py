@@ -158,6 +158,22 @@ def test_record_queries_and_mutations_fail_closed_on_unbounded_or_unknown_input(
         ).status_code
         == 422
     )
+    queried = client.get(
+        '/api/content/v1/types/article/records',
+        headers=headers,
+        params={
+            'q': '{"filters":[{"field":"title","operator":"contains","value":"safe"}],'
+            '"sort":["slug"],"fields":["title"],"expand":[],"limit":10}'
+        },
+    )
+    assert queried.status_code == 200
+    assert FakeRecordRepository.calls[-1][1]['query']['fields'] == ['title']
+    assert (
+        client.get(
+            '/api/content/v1/types/article/records', headers=headers, params={'q': '{bad'}
+        ).status_code
+        == 422
+    )
     record_id = '00000000-0000-0000-0000-000000003104'
     assert (
         client.patch(

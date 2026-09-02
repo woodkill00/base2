@@ -72,6 +72,14 @@ def compile_filters(filters: list[dict[str, Any]], allowed_fields: dict[str, str
         if field_kind is None or operator not in FILTER_OPERATORS.get(field_kind, set()):
             raise ValueError('content_query_invalid')
         expression = 'values ->> %s'
+        if field_kind in {'integer', 'decimal'}:
+            expression = f'({expression})::numeric'
+        elif field_kind == 'boolean':
+            expression = f'({expression})::boolean'
+        elif field_kind == 'date':
+            expression = f'({expression})::date'
+        elif field_kind == 'datetime':
+            expression = f'({expression})::timestamptz'
         params.append(field)
         if operator == 'contains':
             clauses.append(f'{expression} ILIKE %s')
@@ -91,7 +99,10 @@ def compile_filters(filters: list[dict[str, Any]], allowed_fields: dict[str, str
                 operator
             ]
             clauses.append(f'{expression} {sql_operator} %s')
-            params.append(str(item['value']))
+            value = item['value']
+            if field_kind == 'boolean' and isinstance(value, bool):
+                value = 'true' if value else 'false'
+            params.append(str(value))
     return ' AND '.join(clauses), params
 
 
@@ -558,11 +569,28 @@ class PostgresContentWorkspaceRepository:
         )
         return definition, cur.fetchall()
 
-    def list_records(self, *, site_id: str, type_key: str, limit: int, cursor: str | None):
+    def list_records(
+        self,
+        *,
+        site_id: str,
+        type_key: str,
+        limit: int,
+        cursor: str | None,
+        query: dict[str, Any] | None = None,
+    ):
+        query = query or {
+            'filters': [],
+            'sort': ['slug'],
+            'fields': [],
+            'expand': [],
+            'limit': limit,
+        }
+        if query.get('sort', ['slug']) != ['slug'] or query.get('expand'):
+            raise ValueError('content_query_invalid')
         scope = {
             'site': site_id,
             'type': type_key,
-            'query': canonical_digest({'sort': ['slug', 'id']}),
+            'query': canonical_digest(query),
             'limit': limit,
         }
         codec = CursorCodec(str(settings.TOKEN_PEPPER))
@@ -572,23 +600,40 @@ class PostgresContentWorkspaceRepository:
                 position = codec.decode(cursor, expected_scope=scope)
             except CursorError as exc:
                 raise ValueError('content_query_invalid') from exc
-        params: list[Any] = [site_id, type_key]
-        position_clause = ''
-        if position:
-            position_clause = 'AND (slug, id) > (%s, %s)'
-            params.extend([position.get('slug'), position.get('id')])
-        params.append(limit + 1)
         with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
+            _definition, fields = self._schema(cur, site_id=site_id, type_key=type_key)
+            allowed = {row[0]: row[1] for row in fields}
+            selected_fields = query.get('fields', [])
+            if any(field not in allowed for field in selected_fields):
+                raise ValueError('content_query_invalid')
+            filter_sql, filter_params = compile_filters(query.get('filters', []), allowed)
+            params: list[Any] = [site_id, type_key]
+            predicates = []
+            if filter_sql:
+                predicates.append(filter_sql)
+                params.extend(filter_params)
+            if position:
+                predicates.append('(slug, id) > (%s, %s)')
+                params.extend([position.get('slug'), position.get('id')])
+            extra_where = ''.join(f' AND {predicate}' for predicate in predicates)
+            params.append(limit + 1)
             cur.execute(
                 f"""SELECT id, site_id, content_type, slug, title, values, state,
                            schema_version, version, updated_at
                     FROM sitecontent_contentrecord
-                    WHERE site_id=%s AND content_type=%s AND deleted_at IS NULL {position_clause}
+                    WHERE site_id=%s AND content_type=%s AND deleted_at IS NULL {extra_where}
                     ORDER BY slug, id LIMIT %s""",
                 tuple(params),
             )
             rows = cur.fetchall()
         items = [_record(row) for row in rows[:limit]]
+        if selected_fields:
+            for item in items:
+                item['values'] = {
+                    field: item['values'][field]
+                    for field in selected_fields
+                    if field in item['values']
+                }
         next_cursor = None
         if len(rows) > limit:
             last = items[-1]
@@ -1166,15 +1211,12 @@ class PostgresContentWorkspaceRepository:
             caller_role=caller_role,
         )
         query = view['query']
-        # The current bounded record repository supports stable paging only. Reject
-        # saved query features until their exact compiled execution path is present.
-        if query.get('filters') or query.get('sort') not in (None, [], ['slug']):
-            raise ValueError('content_query_invalid')
         return self.list_records(
             site_id=site_id,
             type_key=type_key,
             limit=min(int(query.get('limit', 25)), 100),
             cursor=None,
+            query=query,
         )
 
     @staticmethod

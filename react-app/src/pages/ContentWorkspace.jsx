@@ -20,6 +20,8 @@ export default function ContentWorkspace() {
   const [definitions, setDefinitions] = useState([]);
   const [selectedType, setSelectedType] = useState('');
   const [records, setRecords] = useState([]);
+  const [schema, setSchema] = useState(null);
+  const [activeRecord, setActiveRecord] = useState(null);
   const [loading, setLoading] = useState(true);
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -65,6 +67,38 @@ export default function ContentWorkspace() {
       });
     return () => controller.abort();
   }, [selectedType, tab]);
+
+  useEffect(() => {
+    if (!selectedType) return undefined;
+    const selectedDefinition = definitions.find((item) => item.typeKey === selectedType);
+    if (!selectedDefinition?.version) return undefined;
+    const controller = new AbortController();
+    contentWorkspaceAPI
+      .definition(selectedType, selectedDefinition.version, { signal: controller.signal })
+      .then((result) => {
+        if (!controller.signal.aborted) setSchema(result);
+      })
+      .catch((caught) => {
+        if (caught?.name !== 'CanceledError') setError(messageFor(caught));
+      });
+    return () => controller.abort();
+  }, [definitions, selectedType]);
+
+  const openRecord = async (record) => {
+    setError('');
+    try {
+      const [detail, versions] = await Promise.all([
+        contentWorkspaceAPI.record(selectedType, record.id),
+        contentWorkspaceAPI.versions(selectedType, record.id),
+      ]);
+      setActiveRecord({
+        ...detail,
+        history: Array.isArray(versions?.items) ? versions.items : [],
+      });
+    } catch (caught) {
+      setError(messageFor(caught));
+    }
+  };
 
   const selected = useMemo(
     () => definitions.find((item) => item.typeKey === selectedType),
@@ -148,34 +182,128 @@ export default function ContentWorkspace() {
                 aria-busy={recordsLoading}
                 className="min-h-64 p-6"
               >
-                <h2 id="workspace-panel-title" className="text-xl font-semibold">
-                  {tab}
-                  {selected ? ` · ${selected.name}` : ''}
-                </h2>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h2 id="workspace-panel-title" className="text-xl font-semibold">
+                      {tab === 'Schemas' ? 'Schema' : tab}
+                      {selected ? ` · ${selected.name}` : ''}
+                    </h2>
+                    <p className="mt-1 text-xs uppercase tracking-wider opacity-65">
+                      {tab === 'Schemas' && schema
+                        ? `${schema.status} · version ${schema.version}`
+                        : 'Tenant-scoped · version protected'}
+                    </p>
+                  </div>
+                  {tab === 'Records' ? (
+                    <GlassButton variant="primary">New record</GlassButton>
+                  ) : null}
+                </div>
                 {tab === 'Records' ? (
                   recordsLoading ? (
                     <p role="status" className="mt-5">
                       Loading records…
                     </p>
                   ) : records.length ? (
-                    <ul className="mt-5 divide-y divide-white/10">
-                      {records.map((record) => (
-                        <li key={record.id} className="py-4">
-                          <strong>{record.title}</strong>
-                          <p className="text-sm opacity-70">
-                            /{record.slug} · {record.state} · version {record.version}
-                          </p>
-                        </li>
-                      ))}
-                    </ul>
+                    <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(15rem,0.8fr)_minmax(18rem,1.2fr)]">
+                      <ul className="divide-y divide-white/10" aria-label="Records">
+                        {records.map((record) => (
+                          <li key={record.id} className="py-4">
+                            <button
+                              type="button"
+                              aria-label={`Open ${record.title}`}
+                              aria-current={activeRecord?.id === record.id ? 'true' : undefined}
+                              onClick={() => openRecord(record)}
+                              className="min-h-11 w-full rounded-xl p-2 text-left hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
+                            >
+                              <strong>{record.title}</strong>
+                              <p className="text-sm opacity-70">
+                                /{record.slug} · {record.state} · version {record.version}
+                              </p>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                      <div
+                        role="region"
+                        aria-label="Record details"
+                        className="min-h-48 rounded-2xl border border-white/10 bg-black/10 p-5"
+                      >
+                        {activeRecord ? (
+                          <div className="space-y-4">
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">
+                                {activeRecord.state} · version {activeRecord.version}
+                              </p>
+                              <h3 className="mt-1 text-2xl font-semibold">{activeRecord.title}</h3>
+                              <p className="text-sm opacity-65">/{activeRecord.slug}</p>
+                            </div>
+                            <dl className="grid gap-3 sm:grid-cols-2">
+                              {Object.entries(activeRecord.values || {}).map(([key, value]) => (
+                                <div key={key} className="rounded-xl bg-white/5 p-3">
+                                  <dt className="text-xs font-semibold uppercase tracking-wider opacity-60">
+                                    {key.replaceAll('_', ' ')}
+                                  </dt>
+                                  <dd className="mt-1 break-words text-sm">
+                                    {typeof value === 'object'
+                                      ? JSON.stringify(value)
+                                      : String(value)}
+                                  </dd>
+                                </div>
+                              ))}
+                            </dl>
+                            <p className="text-xs opacity-60">
+                              {activeRecord.history.length} retained historical{' '}
+                              {activeRecord.history.length === 1 ? 'version' : 'versions'}
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="grid min-h-40 place-items-center text-center text-sm opacity-70">
+                            Choose a record to inspect its fields and history.
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   ) : (
                     <p className="mt-5 text-sm opacity-75">No records match this view.</p>
                   )
+                ) : tab === 'Schemas' ? (
+                  schema ? (
+                    <div className="mt-5 space-y-3">
+                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                        {(schema.fields || []).map((field) => (
+                          <article
+                            key={field.fieldKey}
+                            className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                          >
+                            <h3 className="font-semibold">{field.label}</h3>
+                            <p className="mt-1 text-sm opacity-70">
+                              {field.fieldKind.replaceAll('_', ' ')} ·{' '}
+                              {field.required ? 'required' : 'optional'}
+                            </p>
+                            <code className="mt-3 block text-xs text-violet-300">
+                              {field.fieldKey}
+                            </code>
+                          </article>
+                        ))}
+                      </div>
+                      <p className="text-sm opacity-70">
+                        Published schemas are immutable. Changes are previewed in a new version
+                        before publication.
+                      </p>
+                    </div>
+                  ) : (
+                    <p role="status" className="mt-5">
+                      Loading schema…
+                    </p>
+                  )
                 ) : (
-                  <p className="mt-5 text-sm opacity-75">
-                    This section will show bounded {tab.toLowerCase()} jobs and their explicit
-                    outcomes.
-                  </p>
+                  <div className="mt-5 rounded-2xl border border-dashed border-white/20 p-8 text-center">
+                    <h3 className="font-semibold">No {tab.toLowerCase()} jobs</h3>
+                    <p className="mt-2 text-sm opacity-75">
+                      Bounded {tab.toLowerCase()} jobs show explicit outcomes, progress, row counts,
+                      integrity hashes, and terminal states here.
+                    </p>
+                  </div>
                 )}
               </section>
             </GlassCard>

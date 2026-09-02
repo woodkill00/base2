@@ -16,6 +16,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.python.site_manifest import load_manifest, manifest_digest  # noqa: E402
+from scripts.python.content_workspace_presets import compile_presets  # noqa: E402
 
 TARGETS = (
     ROOT / "api" / "site_profiles",
@@ -54,6 +55,10 @@ def generate(*, check: bool = False) -> dict[str, str]:
         raise ValueError("at least one canonical site profile is required")
 
     outputs: dict[Path, str] = {}
+    compiled_presets = compile_presets(ROOT / "modules/content-workspace/presets.json")
+    compiled_preset_json = (
+        json.dumps(compiled_presets, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+    )
     index = (
         json.dumps(
             {"schemaVersion": 1, "defaultProfile": DEFAULT_PROFILE, "profiles": digests},
@@ -66,6 +71,7 @@ def generate(*, check: bool = False) -> dict[str, str]:
         raise ValueError(f"canonical default {DEFAULT_PROFILE} is missing")
     for target in TARGETS:
         outputs[target / "index.json"] = index
+        outputs[target / "content-workspace-presets.json"] = compiled_preset_json
         for profile_id, payload in profiles.items():
             outputs[target / f"{profile_id}.json"] = (
                 json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
@@ -89,6 +95,9 @@ def generate(*, check: bool = False) -> dict[str, str]:
         "",
     ])
     outputs[ROOT / "react-app" / "src" / "config" / "generated" / "siteRegistry.ts"] = "\n".join(registry_lines)
+    outputs[ROOT / "shared" / "config" / "content-workspace-presets.generated.json"] = (
+        compiled_preset_json
+    )
 
     stale: list[str] = []
     expected = set(outputs)
