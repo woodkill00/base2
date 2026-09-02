@@ -103,7 +103,7 @@
 
 ## Phase 6 - Test-first React workspace and generated views
 
-- [ ] T084 Add failing API-client tests for tenant binding, schemas, errors, aborts, stale responses, cursors, and no browser credential persistence.
+- [x] T084 Add failing API-client tests for tenant binding, schemas, errors, aborts, stale responses, cursors, and no browser credential persistence.
 - [ ] T085 Add failing workspace shell, navigation, breadcrumb, capability, direct-route denial, and responsive list/detail tests.
 - [ ] T086 Add failing definition/preset builder, field editor, compatibility preview, confirmation, and unsaved-change tests.
 - [ ] T087 Add failing record list/search/filter/sort/page/saved-view and deterministic-state tests.
@@ -115,7 +115,7 @@
 - [ ] T093 Add failing generated public list/detail renderer tests for every field kind and preset.
 - [ ] T094 Add failing loading, empty, partial, malformed, dependency, permission, not-found, conflict, retry, cancelled, and terminal-failure state tests.
 - [ ] T095 Add failing keyboard, screen-reader name/role/value, announcement, focus, target, contrast, reflow, reduced-motion, and axe tests.
-- [ ] T096 Implement typed content API client and normalized error/job state handling.
+- [x] T096 Implement typed content API client and normalized error/job state handling.
 - [x] T097 Implement capability-driven workspace shell and adaptive navigation.
 - [ ] T098 Implement definition/preset builder and migration preview experiences.
 - [ ] T099 Implement record browser, safe query builder, saved views, and stable URL state.
@@ -206,6 +206,7 @@
 - [x] T169 Add an executable Django migration round trip after analysis found only static migration inspection; prove legacy records survive reverse/forward transitions and verify final defaults, constraints, indexes, and restored latest state.
 - [x] T170 Add the missing authenticated search interface over the durable index; bind tenant/type/query/page to an opaque cursor, escape wildcard input, exclude deleted/tombstoned rows, report stale evidence explicitly, and return a redacted non-successful dependency error instead of silent empty results.
 - [x] T171 Close the import/export idempotency race by using PostgreSQL conflict arbitration and re-reading the committed winner; accept only an identical tenant/type/requester/request digest and return a true replay while conflicting payloads remain rejected.
+- [x] T172 Complete the header-grant-only browser API surface for schemas, records, workflows, media, relationships, imports, exports, and search; normalize closed job and redacted error states, preserve explicit stale-index evidence, propagate abort signals, encode identifiers, and prove no feature-level credential persistence.
 
 ## Dependencies and authority
 

@@ -4,15 +4,17 @@ import AppShell from '../components/glass/AppShell';
 import GlassButton from '../components/glass/GlassButton';
 import GlassCard from '../components/glass/GlassCard';
 import Navigation from '../components/Navigation';
-import { contentWorkspaceAPI } from '../services/contentWorkspace';
+import { contentWorkspaceAPI, normalizeWorkspaceError } from '../services/contentWorkspace';
 
 const TABS = ['Records', 'Schemas', 'Imports', 'Exports'];
 
 const messageFor = (error) => {
-  if (error?.response?.status === 403 || error?.response?.status === 404)
+  const normalized = normalizeWorkspaceError(error);
+  if (normalized.status === 403 || normalized.status === 404)
     return 'This workspace is not available for your account.';
-  if (error?.response?.status === 409)
+  if (normalized.status === 409)
     return 'The workspace changed elsewhere. Refresh before trying again.';
+  if (normalized.status === 422) return 'Review the highlighted workspace values and try again.';
   return 'The content workspace is temporarily unavailable. Your data was not changed.';
 };
 

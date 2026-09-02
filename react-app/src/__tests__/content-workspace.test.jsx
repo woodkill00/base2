@@ -8,6 +8,11 @@ import { contentWorkspaceAPI } from '../services/contentWorkspace';
 expect.extend(toHaveNoViolations);
 
 vi.mock('../services/contentWorkspace', () => ({
+  normalizeWorkspaceError: (error) => ({
+    status: error?.response?.status ?? null,
+    code: error?.response?.data?.error?.code ?? 'unknown_error',
+    retryable: error?.response?.data?.error?.retryable === true,
+  }),
   contentWorkspaceAPI: {
     capabilities: vi.fn(),
     definitions: vi.fn(),
