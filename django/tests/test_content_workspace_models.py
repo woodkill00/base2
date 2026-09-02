@@ -462,12 +462,17 @@ def test_job_idempotency_binds_request_digest_and_terminal_state():
         request_digest="d" * 64,
         idempotency_key="export-001",
         schema_version=1,
+        projection_fields=["title"],
         expires_at=timezone.now() + timedelta(hours=1),
     )
     assert imported.status == "uploaded"
     assert imported.source_format == "json"
     assert imported.source_object_key == ""
     assert exported.status == "queued"
+    exported.full_clean()
+    exported.projection_fields = ["title", "title"]
+    with pytest.raises(ValidationError, match="export_projection_invalid"):
+        exported.full_clean()
     with pytest.raises(IntegrityError), transaction.atomic():
         ImportJob.objects.create(
             site_id="site-a",

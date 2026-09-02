@@ -1250,3 +1250,40 @@ def create_export_download(type_key: str, job_id: UUID, request: Request):
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.get('/types/{type_key}/exports/{job_id}/content')
+def read_export_content(
+    type_key: str,
+    job_id: UUID,
+    request: Request,
+    download_grant: Annotated[str, Header(alias='Download-Grant', min_length=32, max_length=4096)],
+):
+    _valid_type_key(type_key)
+    principal, tenant = _authorized_scope(request, 'content-workspace.read')
+    try:
+        result = get_repository().read_export_content(
+            site_id=tenant,
+            type_key=type_key,
+            job_id=job_id,
+            requester_ref=f'user:{principal.user_id}',
+            download_grant=download_grant,
+            artifact_store=get_artifact_store(),
+        )
+        media_type = 'application/json' if result['format'] == 'json' else 'text/csv; charset=utf-8'
+        return Response(
+            content=result['content'],
+            media_type=media_type,
+            headers={
+                'Cache-Control': 'private, no-store',
+                'Content-Disposition': f'attachment; filename="workspace-export.{result["format"]}"',
+                'X-Content-Type-Options': 'nosniff',
+                'X-Content-SHA256': result['sha256'],
+            },
+        )
+    except ArtifactIntegrityError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc

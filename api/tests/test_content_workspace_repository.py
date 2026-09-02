@@ -300,6 +300,47 @@ def test_asset_metadata_exposes_a_short_grant_only_for_validated_safe_variant(mo
     assert 'downloadGrant' not in result
 
 
+def test_export_content_read_is_expiry_requester_grant_and_digest_bound(monkeypatch):
+    monkeypatch.setattr(repository.settings, 'TOKEN_PEPPER', 'synthetic-test-pepper-104')
+    job_id = UUID(int=6104)
+    digest = 'c' * 64
+    scope = {
+        'site': 'site-a',
+        'type': 'article',
+        'requester': 'user:test',
+        'job': str(job_id),
+        'sha256': digest,
+        'format': 'json',
+        'purpose': 'export-download',
+    }
+    grant = CursorCodec('synthetic-test-pepper-104', ttl_seconds=60).encode(
+        scope=scope, position={'jobId': str(job_id)}
+    )
+    cursor = Cursor(rows=[(digest, 'json', f'exports/site-a/{job_id}.bin')])
+    connection = Connection(cursor)
+    scopes = bind(monkeypatch, connection)
+
+    class Store:
+        def get(self, key, *, expected_sha256):
+            assert key == f'exports/site-a/{job_id}.bin' and expected_sha256 == digest
+            return b'[{"title":"Synthetic"}]'
+
+    result = repository.PostgresContentWorkspaceRepository().read_export_content(
+        site_id='site-a',
+        type_key='article',
+        job_id=job_id,
+        requester_ref='user:test',
+        download_grant=grant,
+        artifact_store=Store(),
+    )
+    assert result['content'] == b'[{"title":"Synthetic"}]'
+    assert result['format'] == 'json' and result['sha256'] == digest
+    assert scopes == ['site-a'] and connection.commits == 1
+    statements = ' '.join(sql for sql, _ in cursor.calls)
+    assert "j.status='completed'" in statements and 'j.expires_at>NOW()' in statements
+    assert 'sitecontent_workspaceauditevent' in statements
+
+
 def test_import_source_completion_validates_parses_encrypts_and_marks_ready(monkeypatch):
     monkeypatch.setattr(repository.settings, 'TOKEN_PEPPER', 'synthetic-test-pepper-104')
     job_id = UUID(int=5104)

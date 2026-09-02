@@ -7,8 +7,11 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from api.db import db_conn
+from api.security.content_workspace import canonical_digest
 from api.services.content_workspace_derivative import generate_safe_derivative
 from api.services.content_workspace_scanner import scan_content
+from api.services.content_workspace_transfer import MAX_BYTES as MAX_TRANSFER_BYTES
+from api.services.content_workspace_transfer import MAX_ROWS, export_csv
 
 
 def due_publication_ids(*, limit: int = 25) -> list[tuple[str, str]]:
@@ -322,3 +325,130 @@ def scan_workspace_asset(
             conn.rollback()
             raise
     return 'validated_safe_derivative' if verdict == 'clean' else 'scanned_infected'
+
+
+def due_export_jobs(*, limit: int = 10) -> list[tuple[str, str]]:
+    if not 1 <= limit <= 50:
+        raise ValueError('content_limit_exceeded')
+    with db_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT site_id, id FROM sitecontent_exportjob
+               WHERE status='queued' AND expires_at>NOW()
+               ORDER BY created_at, id LIMIT %s""",
+            (limit,),
+        )
+        return [(row[0], str(row[1])) for row in cur.fetchall()]
+
+
+def _export_payload(rows: list[dict[str, Any]], fields: list[str], output_format: str) -> bytes:
+    projected = [{field: row.get(field) for field in fields} for row in rows]
+    if output_format == 'json':
+        return json.dumps(
+            projected, sort_keys=True, separators=(',', ':'), ensure_ascii=False
+        ).encode()
+    if output_format == 'csv':
+        normalized = [
+            {
+                field: (
+                    json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
+                    if isinstance(value, (dict, list))
+                    else value
+                )
+                for field, value in row.items()
+            }
+            for row in projected
+        ]
+        return export_csv(normalized, fields)
+    raise ValueError('content_schema_invalid')
+
+
+def process_export_job(*, site_id: str, job_id: UUID, artifact_store) -> str:
+    """Create one bounded permission-snapshot export and retain it encrypted at rest."""
+    with db_conn(tenant_id=site_id) as conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """SELECT j.status, j.schema_version, j.format, j.projection_digest,
+                              j.projection_fields, j.requester_ref, d.type_key,
+                              j.output_sha256, j.encrypted_object_key
+                       FROM sitecontent_exportjob j
+                       JOIN sitecontent_contenttypedefinition d ON d.id=j.definition_id
+                       WHERE j.id=%s AND j.site_id=%s AND d.site_id=%s FOR UPDATE""",
+                    (str(job_id), site_id, site_id),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return 'not_found'
+                if row[0] == 'completed':
+                    return 'already_completed'
+                if row[0] != 'queued':
+                    return 'not_ready'
+                fields = row[4] if isinstance(row[4], list) else []
+                if (
+                    not fields
+                    or len(fields) > 64
+                    or len(fields) != len(set(fields))
+                    or canonical_digest(
+                        {
+                            'site': site_id,
+                            'type': row[6],
+                            'schema': row[1],
+                            'requester': row[5],
+                            'fields': fields,
+                        }
+                    )
+                    != row[3]
+                ):
+                    raise ValueError('content_integrity_failed')
+                cur.execute(
+                    """SELECT values FROM sitecontent_contentrecord
+                       WHERE site_id=%s AND content_type=%s AND deleted_at IS NULL
+                       ORDER BY slug, id LIMIT %s""",
+                    (site_id, row[6], MAX_ROWS + 1),
+                )
+                records = cur.fetchall()
+                if len(records) > MAX_ROWS:
+                    raise ValueError('content_limit_exceeded')
+                values = [item[0] if isinstance(item[0], dict) else {} for item in records]
+                content = _export_payload(values, fields, row[2])
+                if not content or len(content) > MAX_TRANSFER_BYTES:
+                    raise ValueError('content_limit_exceeded')
+                stored = artifact_store.put(
+                    namespace='exports',
+                    site_id=site_id,
+                    object_id=str(job_id),
+                    content=content,
+                )
+                cur.execute(
+                    """UPDATE sitecontent_exportjob
+                       SET status='completed', output_sha256=%s, encrypted_object_key=%s,
+                           counters=%s::jsonb, completed_at=NOW(), updated_at=NOW()
+                       WHERE id=%s AND site_id=%s AND status='queued' RETURNING id""",
+                    (
+                        stored.sha256,
+                        stored.object_key,
+                        json.dumps({'total': len(values)}),
+                        str(job_id),
+                        site_id,
+                    ),
+                )
+                if not cur.fetchone():
+                    raise ValueError('content_job_transition_invalid')
+                cur.execute(
+                    """INSERT INTO sitecontent_workspaceauditevent
+                       (id, site_id, actor_ref, object_type, object_ref, action, outcome,
+                        correlation_id, metadata, created_at)
+                       VALUES (%s,%s,'system:export-worker','export_job',%s,
+                               'content.export_complete','accepted','',%s::jsonb,NOW())""",
+                    (
+                        str(uuid4()),
+                        site_id,
+                        str(job_id),
+                        json.dumps({'count': len(values), 'sha256': stored.sha256}),
+                    ),
+                )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+    return 'completed'

@@ -295,3 +295,102 @@ def test_media_scanner_failure_rolls_back_without_false_clean_state(monkeypatch)
         )
     assert connection.rollbacks == 1 and connection.commits == 0
     assert all(not call[0].startswith('UPDATE') for call in cursor.calls)
+
+
+def test_due_exports_are_restart_discoverable_ordered_and_bounded(monkeypatch):
+    job_id = UUID(int=6104)
+    cursor = Cursor([('site-a', job_id)])
+    bind(monkeypatch, Connection(cursor))
+    assert worker.due_export_jobs(limit=10) == [('site-a', str(job_id))]
+    assert "status='queued'" in cursor.calls[0][0]
+    assert 'expires_at>NOW()' in cursor.calls[0][0]
+    assert 'ORDER BY created_at, id LIMIT %s' in cursor.calls[0][0]
+
+
+def test_export_payload_is_deterministic_and_csv_formulas_are_neutralized():
+    rows = [{'title': '=cmd', 'nested': {'safe': True}, 'ignored': 'private'}]
+    first = worker._export_payload(rows, ['title', 'nested'], 'json')
+    second = worker._export_payload(rows, ['title', 'nested'], 'json')
+    assert first == second == b'[{"nested":{"safe":true},"title":"=cmd"}]'
+    csv_output = worker._export_payload(rows, ['title', 'nested'], 'csv').decode()
+    assert "'=cmd" in csv_output
+    assert 'ignored' not in csv_output
+    with pytest.raises(ValueError, match='content_schema_invalid'):
+        worker._export_payload(rows, ['title'], 'xml')
+
+
+def test_export_worker_binds_projection_stores_encrypted_artifact_and_completes(monkeypatch):
+    job_id = UUID(int=6104)
+    fields = ['title', 'count']
+    projection = worker.canonical_digest(
+        {
+            'site': 'site-a',
+            'type': 'article',
+            'schema': 3,
+            'requester': 'user:test',
+            'fields': fields,
+        }
+    )
+
+    class ExportCursor(Cursor):
+        def __init__(self):
+            super().__init__([])
+            self.statement = ''
+
+        def execute(self, sql, params=()):
+            super().execute(sql, params)
+            self.statement = ' '.join(sql.split())
+
+        def fetchone(self):
+            if 'SELECT j.status' in self.statement:
+                return ('queued', 3, 'json', projection, fields, 'user:test', 'article', '', '')
+            if 'UPDATE sitecontent_exportjob' in self.statement:
+                return (job_id,)
+            return None
+
+        def fetchall(self):
+            if 'SELECT values FROM sitecontent_contentrecord' in self.statement:
+                return [({'title': 'Synthetic', 'count': 2, 'private': 'omitted'},)]
+            return []
+
+    cursor = ExportCursor()
+    connection = Connection(cursor)
+    scopes = bind(monkeypatch, connection)
+
+    class Store:
+        def put(self, **kwargs):
+            assert kwargs['namespace'] == 'exports' and kwargs['site_id'] == 'site-a'
+            assert kwargs['content'] == b'[{"count":2,"title":"Synthetic"}]'
+            return type(
+                'Stored',
+                (),
+                {
+                    'object_key': f'exports/site-a/{job_id}.bin',
+                    'sha256': 'c' * 64,
+                    'byte_size': len(kwargs['content']),
+                },
+            )()
+
+    assert (
+        worker.process_export_job(site_id='site-a', job_id=job_id, artifact_store=Store())
+        == 'completed'
+    )
+    assert scopes == ['site-a'] and connection.commits == 1
+    statements = ' '.join(sql for sql, _ in cursor.calls)
+    assert 'FOR UPDATE' in statements
+    assert 'sitecontent_workspaceauditevent' in statements
+
+
+def test_export_worker_rejects_tampered_projection_without_output(monkeypatch):
+    job_id = UUID(int=6104)
+    cursor = Cursor([('queued', 3, 'json', '0' * 64, ['title'], 'user:test', 'article', '', '')])
+    connection = Connection(cursor)
+    bind(monkeypatch, connection)
+
+    class Store:
+        def put(self, **_kwargs):
+            raise AssertionError('tampered projection must not be stored')
+
+    with pytest.raises(ValueError, match='content_integrity_failed'):
+        worker.process_export_job(site_id='site-a', job_id=job_id, artifact_store=Store())
+    assert connection.rollbacks == 1 and connection.commits == 0

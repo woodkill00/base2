@@ -57,6 +57,10 @@ class FakeJobRepository:
         self.calls.append(('export-download', kwargs))
         return {'grant': 'opaque-synthetic-grant', 'expiresIn': 60}
 
+    def read_export_content(self, **kwargs):
+        self.calls.append(('export-content', kwargs))
+        return {'content': b'title\nSynthetic\n', 'format': 'csv', 'sha256': 'a' * 64}
+
 
 @pytest.fixture(autouse=True)
 def scoped(monkeypatch):
@@ -105,7 +109,6 @@ def test_import_and_export_lifecycle_is_tenant_principal_and_idempotency_bound()
             'Content-Type': 'application/json',
         },
         content=b'[{"title":"Synthetic"}]',
-
     )
     assert source.status_code == 200 and source.json()['sourceReady'] is True
     assert (
@@ -144,6 +147,13 @@ def test_import_and_export_lifecycle_is_tenant_principal_and_idempotency_bound()
         f'/api/content/v1/types/article/exports/{export_id}/download', headers=headers
     )
     assert download.status_code == 200 and download.json()['expiresIn'] == 60
+    content = client.get(
+        f'/api/content/v1/types/article/exports/{export_id}/content',
+        headers={**headers, 'Download-Grant': 'opaque-download-grant-that-is-long-enough'},
+    )
+    assert content.status_code == 200 and content.content == b'title\nSynthetic\n'
+    assert content.headers['cache-control'] == 'private, no-store'
+    assert content.headers['content-disposition'] == 'attachment; filename="workspace-export.csv"'
     assert all(call[1]['site_id'] == 'site-a' for call in FakeJobRepository.calls)
 
 

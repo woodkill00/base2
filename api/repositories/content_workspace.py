@@ -2257,13 +2257,16 @@ class PostgresContentWorkspaceRepository:
                     allowed = {field[0] for field in fields}
                     if set(payload.get('fields', [])) - allowed:
                         raise ValueError('content_schema_invalid')
+                    selected_fields = payload.get('fields') or sorted(allowed)
+                    if not selected_fields:
+                        raise ValueError('content_schema_invalid')
                     projection_digest = canonical_digest(
                         {
                             'site': site_id,
                             'type': type_key,
                             'schema': payload['schema_version'],
                             'requester': requester_ref,
-                            'fields': payload.get('fields', []),
+                            'fields': selected_fields,
                         }
                     )
                     job_id = uuid4()
@@ -2272,9 +2275,10 @@ class PostgresContentWorkspaceRepository:
                            (id, site_id, definition_id, requester_ref, request_digest,
                             idempotency_key, schema_version, error_code, counters,
                             completed_at, status, format, projection_digest, output_sha256,
-                            encrypted_object_key, expires_at, created_at, updated_at)
+                            encrypted_object_key, expires_at, projection_fields,
+                            created_at, updated_at)
                            VALUES (%s,%s,%s,%s,%s,%s,%s,'','{}'::jsonb,NULL,'queued',%s,%s,
-                                   '','',NOW()+INTERVAL '1 hour',NOW(),NOW())
+                                   '','',NOW()+INTERVAL '1 hour',%s::jsonb,NOW(),NOW())
                            RETURNING id, status, schema_version, counters, error_code, output_sha256""",
                         (
                             str(job_id),
@@ -2286,6 +2290,7 @@ class PostgresContentWorkspaceRepository:
                             payload['schema_version'],
                             payload['format'],
                             projection_digest,
+                            _json(selected_fields),
                         ),
                     )
                     created = cur.fetchone()
@@ -2324,7 +2329,7 @@ class PostgresContentWorkspaceRepository:
     ):
         with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
             cur.execute(
-                """SELECT j.output_sha256
+                """SELECT j.output_sha256, j.format
                    FROM sitecontent_exportjob j
                    JOIN sitecontent_contenttypedefinition d ON d.id=j.definition_id
                    WHERE j.id=%s AND j.site_id=%s AND d.site_id=%s AND d.type_key=%s
@@ -2341,9 +2346,66 @@ class PostgresContentWorkspaceRepository:
             'requester': requester_ref,
             'job': str(job_id),
             'sha256': row[0],
+            'format': row[1],
             'purpose': 'export-download',
         }
         grant = CursorCodec(str(settings.TOKEN_PEPPER), ttl_seconds=60).encode(
             scope=scope, position={'jobId': str(job_id)}
         )
         return {'grant': grant, 'expiresIn': 60}
+
+    def read_export_content(
+        self,
+        *,
+        site_id: str,
+        type_key: str,
+        job_id: UUID,
+        requester_ref: str,
+        download_grant: str,
+        artifact_store,
+    ):
+        with db_conn(tenant_id=site_id) as conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """SELECT j.output_sha256, j.format, j.encrypted_object_key
+                           FROM sitecontent_exportjob j
+                           JOIN sitecontent_contenttypedefinition d ON d.id=j.definition_id
+                           WHERE j.id=%s AND j.site_id=%s AND d.site_id=%s AND d.type_key=%s
+                             AND j.requester_ref=%s AND j.status='completed'
+                             AND j.expires_at>NOW() AND j.output_sha256<>''
+                             AND j.encrypted_object_key<>''""",
+                        (str(job_id), site_id, site_id, type_key, requester_ref),
+                    )
+                    row = cur.fetchone()
+                    if not row:
+                        raise ValueError('content_job_not_ready')
+                    scope = {
+                        'site': site_id,
+                        'type': type_key,
+                        'requester': requester_ref,
+                        'job': str(job_id),
+                        'sha256': row[0],
+                        'format': row[1],
+                        'purpose': 'export-download',
+                    }
+                    try:
+                        CursorCodec(str(settings.TOKEN_PEPPER), ttl_seconds=60).decode(
+                            download_grant, expected_scope=scope
+                        )
+                    except CursorError as exc:
+                        raise ValueError('content_download_grant_invalid') from exc
+                    content = artifact_store.get(row[2], expected_sha256=row[0])
+                    _audit(
+                        cur,
+                        site_id=site_id,
+                        actor_ref=requester_ref,
+                        object_type='export_job',
+                        object_ref=str(job_id),
+                        action='content.export_download',
+                    )
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        return {'content': content, 'sha256': row[0], 'format': row[1]}

@@ -9,10 +9,12 @@ from api.services.email_service import process_outbox_email
 from api.repositories.data_rights import expire_results, queued_operation_ids
 from api.services.data_rights_worker import process_operation
 from api.services.content_workspace_worker import (
+    due_export_jobs,
     due_index_records,
     due_media_scans,
     due_publication_ids,
     index_workspace_record,
+    process_export_job,
     publish_scheduled_record,
     scan_workspace_asset,
 )
@@ -60,6 +62,10 @@ app.conf.update(
         },
         'workspace-scan-quarantined-media': {
             'task': 'app.replay_workspace_media_scans',
+            'schedule': 60.0,
+        },
+        'workspace-process-exports': {
+            'task': 'app.replay_workspace_exports',
             'schedule': 60.0,
         },
     },
@@ -184,3 +190,27 @@ def replay_workspace_media_scans(limit: int = 10) -> int:
     for site_id, asset_id in assets:
         scan_workspace_asset_task.delay(site_id, asset_id)
     return len(assets)
+
+
+@app.task(
+    name='app.process_workspace_export',
+    autoretry_for=(Exception,),
+    dont_autoretry_for=(ValueError,),
+    retry_backoff=True,
+    retry_jitter=True,
+    max_retries=3,
+)
+def process_workspace_export(site_id: str, job_id: str) -> str:
+    return process_export_job(
+        site_id=site_id,
+        job_id=UUID(job_id),
+        artifact_store=_workspace_artifact_store(),
+    )
+
+
+@app.task(name='app.replay_workspace_exports')
+def replay_workspace_exports(limit: int = 10) -> int:
+    jobs = due_export_jobs(limit=limit)
+    for site_id, job_id in jobs:
+        process_workspace_export.delay(site_id, job_id)
+    return len(jobs)

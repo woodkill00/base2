@@ -41,6 +41,7 @@ def test_workspace_mutation_tasks_have_bounded_dependency_retries():
         tasks.publish_workspace_record,
         tasks.index_workspace_record_task,
         tasks.scan_workspace_asset_task,
+        tasks.process_workspace_export,
     ):
         assert task.max_retries == 3
         assert task.autoretry_for == (Exception,)
@@ -74,4 +75,32 @@ def test_workspace_media_scan_task_uses_private_store(monkeypatch):
     assert tasks.scan_workspace_asset_task('site-a', asset_id) == 'scanned_clean'
     assert calls == [
         {'site_id': 'site-a', 'asset_id': tasks.UUID(asset_id), 'artifact_store': store}
+    ]
+
+
+def test_workspace_export_replay_and_task_use_only_discovered_fixed_ids(monkeypatch):
+    discovered = [('site-a', '00000000-0000-0000-0000-000000006104')]
+    delivered = []
+    monkeypatch.setattr(tasks, 'due_export_jobs', lambda *, limit: discovered)
+    monkeypatch.setattr(
+        tasks.process_workspace_export,
+        'delay',
+        lambda site_id, job_id: delivered.append((site_id, job_id)),
+    )
+    assert tasks.replay_workspace_exports(limit=10) == 1
+    assert delivered == discovered
+
+    store = object()
+    calls = []
+    monkeypatch.setattr(tasks, '_workspace_artifact_store', lambda: store)
+    monkeypatch.setattr(
+        tasks, 'process_export_job', lambda **kwargs: calls.append(kwargs) or 'completed'
+    )
+    assert tasks.process_workspace_export(*discovered[0]) == 'completed'
+    assert calls == [
+        {
+            'site_id': 'site-a',
+            'job_id': tasks.UUID(discovered[0][1]),
+            'artifact_store': store,
+        }
     ]

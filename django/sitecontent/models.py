@@ -1115,6 +1115,7 @@ class ExportJob(WorkspaceJob):
     projection_digest = models.CharField(
         max_length=64, blank=True, default="", validators=[sha256_validator]
     )
+    projection_fields = models.JSONField(default=list, blank=True)
     output_sha256 = models.CharField(
         max_length=64, blank=True, default="", validators=[sha256_validator]
     )
@@ -1127,6 +1128,19 @@ class ExportJob(WorkspaceJob):
                 fields=["site_id", "idempotency_key"], name="sitecontent_export_replay_uq"
             ),
         ]
+
+    def clean(self) -> None:
+        super().clean()
+        if (
+            not isinstance(self.projection_fields, list)
+            or not 1 <= len(self.projection_fields) <= 64
+            or len(self.projection_fields) != len(set(self.projection_fields))
+            or any(
+                not isinstance(item, str) or not content_identifier_validator.regex.fullmatch(item)
+                for item in self.projection_fields
+            )
+        ):
+            raise ValidationError("export_projection_invalid")
 
 
 class WorkspaceAuditEvent(models.Model):
