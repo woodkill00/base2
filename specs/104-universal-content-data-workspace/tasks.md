@@ -43,30 +43,30 @@
 - [x] T033 Add transactional workflow transition, schedule, archive, restore, and soft-delete services.
 - [x] T034 Register read-safe Django admin inspection with no raw secrets, files, submitted content, or expiring URLs.
 - [x] T035 Run Django focused and migration suites and repair only after a failing regression exists.
-- [ ] T036 Record Django model/migration evidence and update traceability without closing downstream work.
+- [x] T036 Record Django model/migration evidence and update traceability without closing downstream work.
 
 ## Phase 3 - Test-first PostgreSQL, repository, and API mirror
 
 - [x] T037 Add failing Django-owned PostgreSQL schema inventory and API semantic parity tests in `api/tests/test_content_migrations.py`; forbid duplicate API workspace tables.
 - [ ] T038 Add failing PostgreSQL composite-key, check-constraint, index, transaction, and RLS tenant/site tests.
-- [ ] T039 Add failing repository definition draft/preview/publish/retire and expected-version tests.
-- [ ] T040 Add failing repository record CRUD/version/transition/restore/soft-delete tests.
-- [ ] T041 Add failing relationship, saved-view, asset-binding, audit, and cross-tenant repository tests.
-- [ ] T042 Add failing API capability and disabled-route tests.
-- [ ] T043 Add failing definition endpoint schema, compatibility, confirmation, concurrency, and error-envelope tests.
-- [ ] T044 Add failing record list/detail/create/update/delete/version/restore/transition contract tests.
+- [x] T039 Add failing repository definition draft/preview/publish/retire and expected-version tests.
+- [x] T040 Add failing repository record CRUD/version/transition/restore/soft-delete tests.
+- [x] T041 Add failing relationship, saved-view, asset-binding, audit, and cross-tenant repository tests.
+- [x] T042 Add failing API capability and disabled-route tests.
+- [x] T043 Add failing definition endpoint schema, compatibility, confirmation, concurrency, and error-envelope tests.
+- [x] T044 Add failing record list/detail/create/update/delete/version/restore/transition contract tests.
 - [ ] T045 Add failing cursor binding, stable ordering, page cap, sparse-field, filter, sort, expansion, and query-cost tests.
 - [x] T046 Add failing search scope, permission, injection, stale-index, degraded, and unavailable tests.
-- [ ] T047 Add failing saved-view private/shared/revalidation and schema-change tests.
+- [x] T047 Add failing saved-view private/shared/revalidation and schema-change tests.
 - [x] T048 Add failing idempotency digest, replay, conflict, expiry, and concurrent-request tests.
 - [ ] T049 Add failing mass-assignment, overfetching, unknown-key, oversized-body, nesting, decimal, timestamp, and locale tests.
-- [ ] T050 Verify the ordered Django migration creates the exact PostgreSQL workspace schema and RLS prerequisites consumed by FastAPI; add no duplicate API migration.
-- [ ] T051 Extend `api/repositories/site_content.py` with scoped transactions, authenticated-tenant-to-`site_id` equality, and no unsafe autocommit changes.
-- [ ] T052 Implement typed Pydantic definition, field, workflow, record, query, view, job, response, and error schemas.
+- [x] T050 Verify the ordered Django migration creates the exact PostgreSQL workspace schema and RLS prerequisites consumed by FastAPI; add no duplicate API migration.
+- [x] T051 Extend `api/repositories/site_content.py` with scoped transactions, authenticated-tenant-to-`site_id` equality, and no unsafe autocommit changes.
+- [x] T052 Implement typed Pydantic definition, field, workflow, record, query, view, job, response, and error schemas.
 - [x] T053 Implement capability and definition routes under `api/routes/content_workspace.py` with the `/api/content/v1` contract.
-- [ ] T054 Implement record, history, transition, and relationship routes.
-- [ ] T055 Implement bounded query compiler, opaque cursor signing/validation, search interface, and saved-view routes.
-- [ ] T056 Implement redacted append-only workspace audit calls for mutations and sensitive reads.
+- [x] T054 Implement record, history, transition, and relationship routes.
+- [x] T055 Implement bounded query compiler, opaque cursor signing/validation, search interface, and saved-view routes.
+- [x] T056 Implement redacted append-only workspace audit calls for mutations and sensitive reads.
 - [x] T057 Register OpenAPI contracts and keep public/generated reads distinct from authenticated administration.
 - [ ] T058 Run API unit, contract, PostgreSQL, integration, migration, coverage, and negative suites.
 
@@ -74,23 +74,23 @@
 
 - [ ] T059 Add failing worker tests for scheduled publication admission, timezone handling, restart, replay, cancellation, retry exhaustion, and terminal outcomes.
 - [x] T060 Add failing indexing tests for committed versions, out-of-order jobs, stale markers, deletion, permission projection, and dependency outage.
-- [ ] T061 Add failing media upload-grant, magic-byte, filename, type, size, dimension, count, quarantine, scan, derivative, and integrity tests.
-- [ ] T062 Add hostile upload fixtures for MIME spoofing, polyglots, path traversal, active SVG, executable content, archives, and decompression/pixel bombs.
-- [ ] T063 Add failing asset visibility, expiring delivery, cross-tenant binding, public/private mismatch, and required-asset publication tests.
-- [ ] T064 Add failing JSON/CSV parser bound, encoding, heading, nesting, formula, unknown-field, and content-redaction tests.
-- [ ] T065 Add failing import dry-run, mapping, row outcome, exact duplicate, fuzzy candidate, atomic commit, partial policy, replay, and interruption tests.
-- [ ] T066 Add failing export authorization snapshot, redaction, formula neutralization, streaming, encryption, integrity, expiry, replay, and interruption tests.
+- [x] T061 Add failing media upload-grant, magic-byte, filename, type, size, dimension, count, quarantine, scan, derivative, and integrity tests.
+- [x] T062 Add hostile upload fixtures for MIME spoofing, polyglots, path traversal, active SVG, executable content, archives, and decompression/pixel bombs.
+- [x] T063 Add failing asset visibility, expiring delivery, cross-tenant binding, public/private mismatch, and required-asset publication tests.
+- [x] T064 Add failing JSON/CSV parser bound, encoding, heading, nesting, formula, unknown-field, and content-redaction tests.
+- [x] T065 Add failing import dry-run, mapping, row outcome, exact duplicate, fuzzy candidate, atomic commit, partial policy, replay, and interruption tests.
+- [x] T066 Add failing export authorization snapshot, redaction, formula neutralization, streaming, encryption, integrity, expiry, replay, and interruption tests.
 - [x] T067 Implement durable scheduled publication and indexing tasks with bounded checkpoint/retry policy.
-- [ ] T068 Extend canonical `sitecontent` media admission, quarantine, scan-state, safe derivative, binding, and access services without a second asset store.
-- [ ] T069 Implement bounded streaming JSON/CSV parsing and staged validation outcomes.
-- [ ] T070 Implement import review/commit with exact-first deduplication and review-only similarity candidates.
-- [ ] T071 Implement permission-bound JSON/CSV exports with encryption, hashes, and expiring delivery.
+- [x] T068 Extend canonical `sitecontent` media admission, quarantine, scan-state, safe derivative, binding, and access services without a second asset store.
+- [x] T069 Implement bounded streaming JSON/CSV parsing and staged validation outcomes.
+- [x] T070 Implement import review/commit with exact-first deduplication and review-only similarity candidates.
+- [x] T071 Implement permission-bound JSON/CSV exports with encryption, hashes, and expiring delivery.
 - [ ] T072 Add worker health/evidence summaries containing only safe IDs, counts, hashes, durations, states, and error codes.
 - [ ] T073 Run worker failure injection, restart, concurrency, replay, and secret-output suites.
 
 ## Phase 5 - Generator, presets, compatibility, and migrations
 
-- [ ] T074 Add failing manifest tests for the workspace capability, preset versions, dependencies, unknown fields, and disabled defaults.
+- [x] T074 Add failing manifest tests for the workspace capability, preset versions, dependencies, unknown fields, and disabled defaults.
 - [x] T075 Add failing deterministic preset compilation tests for articles, catalog, rentals/directories, portfolio, documentation, marketplace/listings, events, and community.
 - [ ] T076 Add failing generated-profile matrix tests for models, migrations, API declarations, roles, routes, navigation, fixtures, tests, and migration notes.
 - [ ] T077 Add failing disabled-capability tests across generator output, API, workers, navigation, direct routes, and public reads.
