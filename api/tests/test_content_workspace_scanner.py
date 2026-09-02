@@ -59,3 +59,10 @@ def test_scanner_network_failure_is_actionable_and_never_clean():
     with pytest.raises(ScannerError, match='content_scanner_unavailable') as caught:
         scan_content(b'x', connector=unavailable)
     assert 'private detail' not in str(caught.value)
+
+
+def test_scanner_empty_and_oversized_replies_fail_closed():
+    with pytest.raises(ScannerError, match='content_scanner_response_invalid'):
+        scan_content(b'x', connector=lambda *_args, **_kwargs: FakeSocket(b''))
+    with pytest.raises(ScannerError, match='content_scanner_response_invalid'):
+        scan_content(b'x', connector=lambda *_args, **_kwargs: FakeSocket(b'x' * 4097))

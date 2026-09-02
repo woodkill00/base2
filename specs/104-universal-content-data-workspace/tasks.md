@@ -225,6 +225,8 @@
 - [x] T188 Refresh the exact surface-drift inventory only after the new workspace documentation, configuration, generated clients, module manifests, and route surfaces pass their focused contracts; rerun both ordinary and hostile drift checks so new, missing, or modified surfaces still fail closed.
 - [x] T189 Replace the obsolete 120-second complete-gate API ceiling after the expanded isolated partition suite exceeded it twice without a test failure; retain a finite bounded timeout, lock the bound with a manifest regression, and require the complete API coverage command to pass within it.
 - [x] T190 Review and update only the changed Base2 hero visual baselines after the complete visual gate proved stable rendering of the intentional enabled-module count change from five to six; retain all geometry, overflow, accessibility, responsive, baseline-mutation, and hostile visual controls, then rerun the full visual matrix without ordinary-test baseline authority.
+- [x] T191 Raise Feature 104 changed-line coverage from the complete-gate result of 78.83% to the enforced 90% floor without exclusions or threshold reduction; add direct behavioral tests for the uncovered repository, route, worker, media, transfer, and React authorization/error/data-loss branches, rerun service-local coverage, and require the complete coverage policy to pass.
+- [x] T192 Repair the planning validator's completed-task gap mutation after T076 completion made its unchecked-only fixture inert; mutate the task identifier regardless of checkbox state and prove contiguous corrective-task validation still fails closed.
 
 ## Dependencies and authority
 

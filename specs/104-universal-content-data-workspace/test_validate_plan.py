@@ -29,7 +29,13 @@ class Feature104PlanValidatorTests(unittest.TestCase):
             validator.validate_spec(spec)
 
     def test_task_gap_fails(self) -> None:
-        tasks = validator.read("tasks.md").replace("- [ ] T076 ", "- [ ] T175 ", 1)
+        tasks = re.sub(
+            r"^- \[([ x])\] T076 ",
+            r"- [\1] T175 ",
+            validator.read("tasks.md"),
+            count=1,
+            flags=re.MULTILINE,
+        )
         with self.assertRaisesRegex(AssertionError, "contiguous"):
             validator.validate_tasks(tasks)
 

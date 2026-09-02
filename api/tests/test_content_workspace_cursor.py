@@ -29,3 +29,9 @@ def test_cursor_configuration_rejects_weak_secrets_and_unbounded_ttl():
         CursorCodec('short')
     with pytest.raises(ValueError, match='cursor_configuration_invalid'):
         CursorCodec('synthetic-test-secret-104', ttl_seconds=86_400)
+
+
+def test_malformed_cursor_is_normalized_to_the_public_error():
+    codec = CursorCodec('synthetic-test-secret-104')
+    with pytest.raises(CursorError, match='content_query_invalid'):
+        codec.decode('not-json', expected_scope={}, now=100)
