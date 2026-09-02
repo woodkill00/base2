@@ -25,6 +25,14 @@ The workspace rejects work beyond these server-owned ceilings. Tests use determi
 
 Queries bind tenant, type, schema, permission projection, filters, ordering, and page limit into opaque cursors. Relationship reads are capped and never accept arbitrary recursive expansion. Import/export workers rediscover durable work in bounded batches and terminal failures retain closed error codes.
 
+Interactive workspace requests use a dedicated non-owner PostgreSQL role whose
+RLS policy requires an exact transaction-local tenant. Celery workspace jobs use
+a different non-owner, non-`BYPASSRLS` role that may discover bounded work across
+tenants and then binds the discovered tenant for every claim or mutation. The API
+container is never given the worker credential. Django alone retains migration
+ownership; reversing the worker-role migration revokes its table and schema
+grants and restores tenant-only policies.
+
 ## Backup and isolated restore
 
 Workspace recovery includes definitions, fields, workflows, records, versions, relationships, views, import/export jobs, audit references, asset metadata, asset bindings, and per-collection hashes. The bundle payload is encrypted; output contains no raw key and has owner-only permissions.

@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from api.db import db_conn
+from api.db import workspace_worker_db_conn as db_conn
 from api.repositories.content_workspace import _validate_values
 from api.security.content_workspace import canonical_digest
 from api.services.content_workspace_derivative import generate_safe_derivative

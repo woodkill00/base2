@@ -180,6 +180,24 @@ def test_workspace_pool_uses_only_the_dedicated_runtime_credentials(monkeypatch)
         db._build_workspace_dsn()
 
 
+def test_worker_pool_uses_distinct_credentials_and_resets(monkeypatch):
+    from api import db
+
+    conn = _Connection()
+    pool = _Pool(conn)
+    monkeypatch.setattr(db, "_workspace_worker_pool", pool)
+    with db.workspace_worker_db_conn() as checked_out:
+        assert checked_out is conn
+    assert conn.calls == []
+    assert conn.rollbacks == conn.resets == 1
+    assert pool.returned == [(conn, False)]
+
+    monkeypatch.setenv("DB_NAME", "base2")
+    monkeypatch.setenv("WORKSPACE_WORKER_DB_USER", "workspace_worker")
+    monkeypatch.setenv("WORKSPACE_WORKER_DB_PASSWORD", "synthetic-worker-password")
+    assert "workspace_worker:synthetic-worker-password" in db._build_workspace_worker_dsn()
+
+
 def test_owner_pool_initializer_is_reachable_and_returns_created_pool(monkeypatch):
     from api import db
 
@@ -211,11 +229,13 @@ def test_close_pool_closes_owner_and_workspace_pools(monkeypatch):
 
     owner = ClosingPool()
     workspace = ClosingPool()
+    worker = ClosingPool()
     monkeypatch.setattr(db, "_pool", owner)
     monkeypatch.setattr(db, "_workspace_pool", workspace)
+    monkeypatch.setattr(db, "_workspace_worker_pool", worker)
     db.close_pool()
-    assert owner.closed == workspace.closed == 1
-    assert db._pool is db._workspace_pool is None
+    assert owner.closed == workspace.closed == worker.closed == 1
+    assert db._pool is db._workspace_pool is db._workspace_worker_pool is None
 
 
 def test_every_site_content_query_has_explicit_tenant_predicate_and_context():

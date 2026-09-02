@@ -73,8 +73,11 @@ def main() -> None:
     owner_password = os.environ["DB_PASSWORD"]
     runtime_user = os.environ["WORKSPACE_DB_USER"]
     runtime_password = os.environ["WORKSPACE_DB_PASSWORD"]
+    worker_user = os.environ["WORKSPACE_WORKER_DB_USER"]
+    worker_password = os.environ["WORKSPACE_WORKER_DB_PASSWORD"]
     owner = connect(owner_user, owner_password)
     runtime = connect(runtime_user, runtime_password)
+    worker = connect(worker_user, worker_password)
     try:
         with owner, owner.cursor() as cursor:
             cursor.execute("DELETE FROM sitecontent_contenttypedefinition")
@@ -91,6 +94,10 @@ def main() -> None:
             )
             cursor.execute(
                 "SELECT rolbypassrls, rolsuper FROM pg_roles WHERE rolname=%s", (runtime_user,)
+            )
+            assert cursor.fetchone() == (False, False)
+            cursor.execute(
+                "SELECT rolbypassrls, rolsuper FROM pg_roles WHERE rolname=%s", (worker_user,)
             )
             assert cursor.fetchone() == (False, False)
             cursor.execute(
@@ -151,6 +158,8 @@ def main() -> None:
 
         assert count(runtime, None) == 0
         runtime.rollback()
+        assert count(worker, None) == 2
+        worker.rollback()
         assert count(runtime, "site-a") == 1
         with runtime.cursor() as cursor:
             cursor.execute("SET LOCAL enable_seqscan=off")
@@ -250,6 +259,7 @@ def main() -> None:
         raise AssertionError("same_tenant_composite_uniqueness_not_enforced")
     finally:
         runtime.close()
+        worker.close()
         owner.close()
     print("Workspace PostgreSQL RLS acceptance: PASS")
 

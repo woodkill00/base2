@@ -217,3 +217,15 @@ Correction:
   boundary followed by tenant-bound claims and disposable PostgreSQL proof.
 
 **Cycle result**: `IMPLEMENTATION_FINDING_T198_CLOSED_T199_OPEN`
+
+T199 closeout: a separate validated worker-only role now owns cross-tenant due
+work discovery while retaining `NOSUPERUSER` and `NOBYPASSRLS`; every claimed
+mutation continues to set the exact tenant locally. Interactive API containers
+receive only the tenant-bound runtime credential. The migration owns the fixed
+table grants and worker-aware policies, with a reverse path that revokes the
+worker grants and restores tenant-only RLS. Disposable PostgreSQL proved the API
+role sees zero rows without context while the worker discovers both synthetic
+tenants, and the full tenant-boundary module plus static deployment contract
+passed.
+
+**Cycle result**: `IMPLEMENTATION_FINDINGS_T198_T199_CLOSED_T195_T197_OPEN`

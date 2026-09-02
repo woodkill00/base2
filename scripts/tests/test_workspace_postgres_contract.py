@@ -14,14 +14,19 @@ class WorkspacePostgresContractTests(unittest.TestCase):
         self.assertIn("NOBYPASSRLS", bootstrap)
         self.assertIn("NOSUPERUSER", bootstrap)
         self.assertIn("NOCREATEROLE", bootstrap)
+        self.assertIn("WORKSPACE_WORKER_DB_USER", bootstrap)
         self.assertNotIn("echo \"$WORKSPACE_DB_PASSWORD", bootstrap)
         for compose_name in ("local.docker.yml", "development.docker.yml"):
             compose = (ROOT / compose_name).read_text()
             self.assertIn("workspace-db-role:", compose)
             self.assertIn("condition: service_completed_successfully", compose)
             self.assertIn("WORKSPACE_DB_PASSWORD=${WORKSPACE_DB_PASSWORD}", compose)
+            self.assertIn("WORKSPACE_WORKER_DB_PASSWORD=${WORKSPACE_WORKER_DB_PASSWORD}", compose)
             role_block = compose[compose.rindex("  workspace-db-role:") : compose.index("  # pgAdmin")]
             self.assertNotIn("ports:", role_block)
+
+            api_block = compose[compose.index("  api:") : compose.index("  # Django")]
+            self.assertNotIn("WORKSPACE_WORKER_DB_PASSWORD", api_block)
 
     def test_repository_and_policy_bind_the_dedicated_pool(self):
         repository = (ROOT / "api/repositories/content_workspace.py").read_text()
@@ -30,6 +35,9 @@ class WorkspacePostgresContractTests(unittest.TestCase):
         self.assertIn("workspace_db_conn as db_conn", repository)
         self.assertIn("WORKSPACE_DB_USER", database)
         self.assertIn("WORKSPACE_DB_PASSWORD", database)
+        self.assertIn("WORKSPACE_WORKER_DB_PASSWORD", database)
+        worker = (ROOT / "api/services/content_workspace_worker.py").read_text()
+        self.assertIn("workspace_worker_db_conn as db_conn", worker)
         self.assertEqual(policy["workspacePostgresqlRls"]["status"], "active")
 
     def test_acceptance_is_disposable_synthetic_and_checks_hostile_paths(self):
