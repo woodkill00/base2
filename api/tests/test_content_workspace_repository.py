@@ -89,6 +89,9 @@ def test_create_definition_is_one_transaction_and_never_accepts_site_from_payloa
     assert connection.commits == 1
     assert result['siteId'] == 'site-a'
     assert all('site-b' not in str(call) for call in cursor.calls)
+    statements = ' '.join(sql for sql, _ in cursor.calls)
+    assert 'sitecontent_workflowdefinition' in statements
+    assert 'sitecontent_workspaceauditevent' in statements
 
 
 def test_query_compiler_rejects_unknown_fields_operators_and_excess_complexity():
@@ -110,3 +113,36 @@ def test_query_compiler_rejects_unknown_fields_operators_and_excess_complexity()
             assert str(exc) == 'content_query_invalid'
         else:
             raise AssertionError('unsafe query was accepted')
+
+
+def test_record_value_mirror_rejects_unknown_required_and_wrong_types():
+    fields = [
+        ('title', 'short_text', True, False, None, {}),
+        ('count', 'integer', False, False, None, {}),
+    ]
+    repository._validate_values({'title': 'Safe', 'count': 2}, fields)
+    for values in ({}, {'title': 'Safe', 'unknown': 1}, {'title': 'Safe', 'count': True}):
+        try:
+            repository._validate_values(values, fields)
+        except ValueError as exc:
+            assert str(exc) == 'content_schema_invalid'
+        else:
+            raise AssertionError('invalid record values were accepted')
+
+
+def test_structured_rich_text_mirror_rejects_script_nodes_and_unsafe_links():
+    fields = [('body', 'rich_text', True, False, None, {})]
+    repository._validate_values(
+        {'body': {'type': 'document', 'children': [{'type': 'text', 'text': 'Safe'}]}}, fields
+    )
+    for body in (
+        {'type': 'script', 'text': 'bad'},
+        {'type': 'link', 'href': 'javascript:alert(1)', 'children': []},
+        {'type': 'document', 'onclick': 'bad', 'children': []},
+    ):
+        try:
+            repository._validate_values({'body': body}, fields)
+        except ValueError as exc:
+            assert str(exc) == 'content_schema_invalid'
+        else:
+            raise AssertionError('unsafe structured content was accepted')

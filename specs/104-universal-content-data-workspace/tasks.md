@@ -26,7 +26,7 @@
 
 ## Phase 2 - Test-first canonical Django definitions and records
 
-- [ ] T019 Add failing Django tests for content type keys, versions, statuses, canonical site uniqueness, and published immutability in `django/tests/test_content_workspace_models.py`.
+- [x] T019 Add failing Django tests for content type keys, versions, statuses, canonical site uniqueness, and published immutability in `django/tests/test_content_workspace_models.py`.
 - [ ] T020 Add failing field-kind, validation-key, bound, default, relationship, and presentation-hint tests.
 - [ ] T021 Add failing workflow graph, action-role, schedule, and invalid-transition tests.
 - [ ] T022 Add failing record value, slug, optimistic version, lifecycle, soft-delete, and cross-scope tests.
@@ -35,19 +35,19 @@
 - [ ] T025 Add failing saved-view ownership, query-schema, sharing, and permission-revalidation tests.
 - [ ] T026 Add failing media binding, import/export job, idempotency, terminal-state, and audit entity tests.
 - [ ] T027 Add failing forward/reverse migration, model-state, constraint, and clean-default tests.
-- [ ] T028 Implement shared closed enums, limits, validators, and structured-rich-text primitives in `django/common/models.py` and focused helpers.
-- [ ] T029 Evolve existing `django/sitecontent/models.py` content records/revisions and add canonical definitions, fields, workflows, versions, and relationships without parallel record tables.
+- [x] T028 Implement shared closed enums, limits, validators, and structured-rich-text primitives in `django/common/models.py` and focused helpers.
+- [x] T029 Evolve existing `django/sitecontent/models.py` content records/revisions and add canonical definitions, fields, workflows, versions, and relationships without parallel record tables.
 - [ ] T030 Evolve existing media entities and add canonical saved views, asset bindings, import/export jobs, row outcomes, and audit references in `django/sitecontent/models.py`.
-- [ ] T031 Add `django/sitecontent` migration with canonical site ownership constraints, uniqueness, indexes, data migration, and reversible operations.
-- [ ] T032 Add transactional services for definition preview/publication and record mutation/version creation.
+- [x] T031 Add `django/sitecontent` migration with canonical site ownership constraints, uniqueness, indexes, data migration, and reversible operations.
+- [x] T032 Add transactional services for definition preview/publication and record mutation/version creation.
 - [ ] T033 Add transactional workflow transition, schedule, archive, restore, and soft-delete services.
-- [ ] T034 Register read-safe Django admin inspection with no raw secrets, files, submitted content, or expiring URLs.
-- [ ] T035 Run Django focused and migration suites and repair only after a failing regression exists.
+- [x] T034 Register read-safe Django admin inspection with no raw secrets, files, submitted content, or expiring URLs.
+- [x] T035 Run Django focused and migration suites and repair only after a failing regression exists.
 - [ ] T036 Record Django model/migration evidence and update traceability without closing downstream work.
 
 ## Phase 3 - Test-first PostgreSQL, repository, and API mirror
 
-- [ ] T037 Add failing Django-owned PostgreSQL schema inventory and API semantic parity tests in `api/tests/test_content_migrations.py`; forbid duplicate API workspace tables.
+- [x] T037 Add failing Django-owned PostgreSQL schema inventory and API semantic parity tests in `api/tests/test_content_migrations.py`; forbid duplicate API workspace tables.
 - [ ] T038 Add failing PostgreSQL composite-key, check-constraint, index, transaction, and RLS tenant/site tests.
 - [ ] T039 Add failing repository definition draft/preview/publish/retire and expected-version tests.
 - [ ] T040 Add failing repository record CRUD/version/transition/restore/soft-delete tests.
@@ -63,11 +63,11 @@
 - [ ] T050 Verify the ordered Django migration creates the exact PostgreSQL workspace schema and RLS prerequisites consumed by FastAPI; add no duplicate API migration.
 - [ ] T051 Extend `api/repositories/site_content.py` with scoped transactions, authenticated-tenant-to-`site_id` equality, and no unsafe autocommit changes.
 - [ ] T052 Implement typed Pydantic definition, field, workflow, record, query, view, job, response, and error schemas.
-- [ ] T053 Implement capability and definition routes under `api/routes/content_workspace.py` with the `/api/content/v1` contract.
+- [x] T053 Implement capability and definition routes under `api/routes/content_workspace.py` with the `/api/content/v1` contract.
 - [ ] T054 Implement record, history, transition, and relationship routes.
 - [ ] T055 Implement bounded query compiler, opaque cursor signing/validation, search interface, and saved-view routes.
 - [ ] T056 Implement redacted append-only workspace audit calls for mutations and sensitive reads.
-- [ ] T057 Register OpenAPI contracts and keep public/generated reads distinct from authenticated administration.
+- [x] T057 Register OpenAPI contracts and keep public/generated reads distinct from authenticated administration.
 - [ ] T058 Run API unit, contract, PostgreSQL, integration, migration, coverage, and negative suites.
 
 ## Phase 4 - Durable scheduling, indexing, import, export, and media jobs
@@ -95,7 +95,7 @@
 - [ ] T076 Add failing generated-profile matrix tests for models, migrations, API declarations, roles, routes, navigation, fixtures, tests, and migration notes.
 - [ ] T077 Add failing disabled-capability tests across generator output, API, workers, navigation, direct routes, and public reads.
 - [ ] T078 Add failing `/api/items` compatibility adapter, warning, migration, and no-authority-expansion tests.
-- [ ] T079 Extend the existing module manifest with one workspace capability and declarative preset registry.
+- [x] T079 Extend the existing module manifest with one workspace capability and declarative preset registry.
 - [ ] T080 Implement deterministic preset compiler using existing module IDs and shared canonical entities.
 - [ ] T081 Generate bounded fixtures and contract declarations for every built-in profile/preset combination.
 - [ ] T082 Implement the narrow deprecated Items adapter and documented generated-site migration path.
@@ -116,7 +116,7 @@
 - [ ] T094 Add failing loading, empty, partial, malformed, dependency, permission, not-found, conflict, retry, cancelled, and terminal-failure state tests.
 - [ ] T095 Add failing keyboard, screen-reader name/role/value, announcement, focus, target, contrast, reflow, reduced-motion, and axe tests.
 - [ ] T096 Implement typed content API client and normalized error/job state handling.
-- [ ] T097 Implement capability-driven workspace shell and adaptive navigation.
+- [x] T097 Implement capability-driven workspace shell and adaptive navigation.
 - [ ] T098 Implement definition/preset builder and migration preview experiences.
 - [ ] T099 Implement record browser, safe query builder, saved views, and stable URL state.
 - [ ] T100 Implement typed field editors, validation summary, conflicts, and unsaved-change recovery.

@@ -1,12 +1,7 @@
 import React from 'react';
 
-type Props = {
+type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: 'primary' | 'secondary' | 'ghost';
-  disabled?: boolean;
-  className?: string;
-  children?: React.ReactNode;
-  onClick?: React.MouseEventHandler<HTMLButtonElement>;
-  type?: 'button' | 'submit' | 'reset';
 };
 
 export const GlassButton: React.FC<Props> = ({
@@ -16,6 +11,7 @@ export const GlassButton: React.FC<Props> = ({
   children,
   onClick,
   type = 'button',
+  ...buttonProps
 }) => {
   const baseStyles =
     'backdrop-blur-2xl rounded-[var(--radius-lg)] transition-all duration-300 ease-out border px-6 py-3 ' +
@@ -36,7 +32,7 @@ export const GlassButton: React.FC<Props> = ({
 
   const classes = [baseStyles, variants[variant], className].filter(Boolean).join(' ');
   return (
-    <button type={type} className={classes} disabled={disabled} onClick={onClick}>
+    <button type={type} className={classes} disabled={disabled} onClick={onClick} {...buttonProps}>
       {children}
     </button>
   );

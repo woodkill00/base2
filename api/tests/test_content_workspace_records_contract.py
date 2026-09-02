@@ -51,6 +51,29 @@ class FakeRecordRepository:
             'state': 'deleted',
         }
 
+    def list_versions(self, **kwargs):
+        self.calls.append(('versions', kwargs))
+        return {'items': [{'version': 1, 'snapshotSha256': 'a' * 64}]}
+
+    def restore_record(self, **kwargs):
+        self.calls.append(('restore', kwargs))
+        return {
+            'id': str(kwargs['record_id']),
+            'version': kwargs['expected_version'] + 1,
+            'state': 'draft',
+        }
+
+    def list_views(self, **kwargs):
+        self.calls.append(('views', kwargs))
+        return {'items': []}
+
+    def create_view(self, **kwargs):
+        self.calls.append(('view-create', kwargs))
+        return {
+            'id': '00000000-0000-0000-0000-000000004104',
+            'visibility': kwargs['payload']['visibility'],
+        }
+
 
 @pytest.fixture(autouse=True)
 def scoped(monkeypatch):
@@ -125,3 +148,41 @@ def test_record_queries_and_mutations_fail_closed_on_unbounded_or_unknown_input(
         ).status_code
         == 422
     )
+
+
+def test_history_restore_and_saved_views_remain_scoped_and_closed():
+    client = TestClient(app)
+    headers = {'Authorization': 'Bearer synthetic', 'X-Tenant-ID': 'site-a'}
+    record_id = '00000000-0000-0000-0000-000000003104'
+    history = client.get(
+        f'/api/content/v1/types/article/records/{record_id}/versions', headers=headers
+    )
+    assert history.status_code == 200 and history.json()['items'][0]['version'] == 1
+    restored = client.post(
+        f'/api/content/v1/types/article/records/{record_id}/versions/1/restore',
+        headers=headers,
+        json={'expectedVersion': 4},
+    )
+    assert restored.status_code == 200 and restored.json()['version'] == 5
+    view = client.post(
+        '/api/content/v1/types/article/views',
+        headers=headers,
+        json={
+            'title': 'Recent',
+            'query': {
+                'filters': [{'field': 'title', 'operator': 'contains', 'value': 'safe'}],
+                'sort': ['slug'],
+                'fields': ['title'],
+                'expand': [],
+                'limit': 25,
+            },
+        },
+    )
+    assert view.status_code == 201 and view.json()['visibility'] == 'private'
+    assert client.get('/api/content/v1/types/article/views', headers=headers).status_code == 200
+    unsafe = client.post(
+        '/api/content/v1/types/article/views',
+        headers=headers,
+        json={'title': 'Unsafe', 'query': {'sql': 'select secrets'}},
+    )
+    assert unsafe.status_code == 422

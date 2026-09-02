@@ -56,6 +56,11 @@
     },
     {
       "enabled": true,
+      "id": "content-workspace",
+      "version": "1.0.0"
+    },
+    {
+      "enabled": true,
       "id": "forms",
       "version": "1.0.0"
     },

@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Header, HTTPException, Query, Request, status
+from fastapi import APIRouter, Header, HTTPException, Path, Query, Request, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from api.middleware.tenant import require_tenant
@@ -150,6 +150,47 @@ class TransitionRequest(ContractModel):
     timezone: str | None = Field(default=None, min_length=1, max_length=64)
 
 
+class DefinitionMutation(ContractModel):
+    expected_lock_version: int = Field(ge=1)
+    confirm_lossy: bool = False
+
+
+class FilterRule(ContractModel):
+    field: str = Field(min_length=2, max_length=63)
+    operator: Literal[
+        'eq', 'ne', 'contains', 'starts_with', 'in', 'lt', 'lte', 'gt', 'gte', 'is_null'
+    ]
+    value: str | int | bool | list[str] | None
+
+
+class QueryDescription(ContractModel):
+    filters: list[FilterRule] = Field(default_factory=list, max_length=16)
+    sort: list[str] = Field(default_factory=lambda: ['slug'], max_length=3)
+    fields: list[str] = Field(default_factory=list, max_length=64)
+    expand: list[str] = Field(default_factory=list, max_length=4)
+    limit: int = Field(default=25, ge=1, le=100)
+
+
+class SavedViewCreate(ContractModel):
+    title: str = Field(min_length=1, max_length=120)
+    query: QueryDescription
+    visibility: Literal['private', 'role_shared'] = 'private'
+    shared_roles: list[Literal['owner', 'admin', 'editor', 'viewer']] = Field(
+        default_factory=list, max_length=4
+    )
+
+    @field_validator('shared_roles')
+    @classmethod
+    def distinct_roles(cls, value: list[str]) -> list[str]:
+        if len(value) != len(set(value)):
+            raise ValueError('saved_view_roles_invalid')
+        return value
+
+
+class RestoreRequest(ContractModel):
+    expected_version: int = Field(ge=1)
+
+
 TRANSITION_ACTIONS = {
     'submit_review',
     'return_draft',
@@ -249,6 +290,67 @@ def create_type(payload: DefinitionCreate, request: Request):
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.get('/types/{type_key}/versions/{version}')
+def get_type(type_key: str, version: Annotated[int, Path(ge=1)], request: Request):
+    _, tenant = _authorized_scope(request, 'content.read')
+    try:
+        return get_repository().get_definition(site_id=tenant, type_key=type_key, version=version)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail='content_not_found') from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.post('/types/{type_key}/versions/{version}/preview')
+def preview_type(type_key: str, version: int, request: Request):
+    _, tenant = _authorized_scope(request, 'content.write')
+    try:
+        return get_repository().preview_definition(
+            site_id=tenant, type_key=type_key, version=version
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.post('/types/{type_key}/versions/{version}/publish')
+def publish_type(type_key: str, version: int, payload: DefinitionMutation, request: Request):
+    principal, tenant = _authorized_scope(request, 'content.write')
+    try:
+        return get_repository().publish_definition(
+            site_id=tenant,
+            type_key=type_key,
+            version=version,
+            expected_lock_version=payload.expected_lock_version,
+            confirm_lossy=payload.confirm_lossy,
+            actor_ref=f'user:{principal.user_id}',
+        )
+    except ValueError as exc:
+        code = str(exc)
+        raise HTTPException(status_code=409 if 'conflict' in code else 422, detail=code) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.post('/types/{type_key}/versions/{version}/retire')
+def retire_type(type_key: str, version: int, payload: DefinitionMutation, request: Request):
+    principal, tenant = _authorized_scope(request, 'content.write')
+    try:
+        return get_repository().retire_definition(
+            site_id=tenant,
+            type_key=type_key,
+            version=version,
+            expected_lock_version=payload.expected_lock_version,
+            actor_ref=f'user:{principal.user_id}',
+        )
+    except ValueError as exc:
+        code = str(exc)
+        raise HTTPException(status_code=409 if 'conflict' in code else 422, detail=code) from exc
     except Exception as exc:
         raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
 
@@ -371,5 +473,76 @@ def delete_record(
         raise HTTPException(
             status_code=409 if code == 'content_version_conflict' else 422, detail=code
         ) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.get('/types/{type_key}/records/{record_id}/versions')
+def list_record_versions(type_key: str, record_id: UUID, request: Request):
+    _, tenant = _authorized_scope(request, 'content.read')
+    try:
+        return get_repository().list_versions(
+            site_id=tenant, type_key=type_key, record_id=record_id
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail='content_not_found') from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.post('/types/{type_key}/records/{record_id}/versions/{version}/restore')
+def restore_record(
+    type_key: str,
+    record_id: UUID,
+    version: int,
+    payload: RestoreRequest,
+    request: Request,
+):
+    principal, tenant = _authorized_scope(request, 'content.write')
+    try:
+        return get_repository().restore_record(
+            site_id=tenant,
+            type_key=type_key,
+            record_id=record_id,
+            version=version,
+            expected_version=payload.expected_version,
+            actor_ref=f'user:{principal.user_id}',
+        )
+    except ValueError as exc:
+        code = str(exc)
+        raise HTTPException(
+            status_code=409 if code == 'content_version_conflict' else 422, detail=code
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.get('/types/{type_key}/views')
+def list_saved_views(type_key: str, request: Request):
+    principal, tenant = _authorized_scope(request, 'content.read')
+    try:
+        return get_repository().list_views(
+            site_id=tenant, type_key=type_key, owner_ref=f'user:{principal.user_id}'
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+@router.post('/types/{type_key}/views', status_code=status.HTTP_201_CREATED)
+def create_saved_view(type_key: str, payload: SavedViewCreate, request: Request):
+    principal, tenant = _authorized_scope(request, 'content.write')
+    if payload.visibility == 'private' and payload.shared_roles:
+        raise HTTPException(status_code=422, detail='saved_view_roles_invalid')
+    try:
+        return get_repository().create_view(
+            site_id=tenant,
+            type_key=type_key,
+            owner_ref=f'user:{principal.user_id}',
+            payload=payload.model_dump(),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc

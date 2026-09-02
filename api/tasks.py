@@ -8,6 +8,7 @@ from celery import Celery
 from api.services.email_service import process_outbox_email
 from api.repositories.data_rights import expire_results, queued_operation_ids
 from api.services.data_rights_worker import process_operation
+from api.services.content_workspace_worker import due_publication_ids, publish_scheduled_record
 
 
 logger = logging.getLogger('api.tasks')
@@ -39,6 +40,10 @@ app.conf.update(
         'expire-data-rights-results': {
             'task': 'app.expire_data_rights_results',
             'schedule': 86400.0,
+        },
+        'workspace-publish-scheduled': {
+            'task': 'app.replay_workspace_publications',
+            'schedule': 60.0,
         },
     },
 )
@@ -87,3 +92,16 @@ def replay_data_rights_operations(limit: int = 25) -> int:
     for operation_id in operation_ids:
         process_data_rights_operation.delay(str(operation_id))
     return len(operation_ids)
+
+
+@app.task(name='app.publish_workspace_record')
+def publish_workspace_record(site_id: str, record_id: str) -> str:
+    return publish_scheduled_record(site_id=site_id, record_id=UUID(record_id))
+
+
+@app.task(name='app.replay_workspace_publications')
+def replay_workspace_publications(limit: int = 25) -> int:
+    records = due_publication_ids(limit=limit)
+    for site_id, record_id in records:
+        publish_workspace_record.delay(site_id, record_id)
+    return len(records)

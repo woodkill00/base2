@@ -39,6 +39,7 @@
   "modules": [
     { "id": "accounts", "version": "1.0.0", "enabled": true },
     { "id": "content", "version": "1.0.0", "enabled": true },
+    { "id": "content-workspace", "version": "1.0.0", "enabled": true },
     { "id": "forms", "version": "1.0.0", "enabled": true },
     { "id": "search", "version": "1.0.0", "enabled": true },
     { "id": "commerce", "version": "1.0.0", "enabled": true }

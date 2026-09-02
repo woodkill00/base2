@@ -21,6 +21,41 @@ FILTER_OPERATORS = {
     'slug': {'eq', 'ne', 'starts_with', 'in', 'is_null'},
     'enum': {'eq', 'ne', 'in', 'is_null'},
 }
+RICH_TEXT_TYPES = {
+    'document',
+    'paragraph',
+    'heading',
+    'text',
+    'bullet_list',
+    'ordered_list',
+    'list_item',
+    'blockquote',
+    'code_block',
+    'hard_break',
+    'link',
+}
+RICH_TEXT_KEYS = {'type', 'text', 'children', 'level', 'href'}
+
+
+def _valid_rich_text(value: Any, depth: int = 0) -> bool:
+    if depth > 8 or not isinstance(value, dict) or set(value) - RICH_TEXT_KEYS:
+        return False
+    if value.get('type') not in RICH_TEXT_TYPES:
+        return False
+    text = value.get('text')
+    if text is not None and (not isinstance(text, str) or len(text) > 20_000):
+        return False
+    href = value.get('href')
+    if href is not None and not (
+        isinstance(href, str) and (href.startswith('https://') or href.startswith('http://'))
+    ):
+        return False
+    children = value.get('children', [])
+    return (
+        isinstance(children, list)
+        and len(children) <= 256
+        and all(_valid_rich_text(child, depth + 1) for child in children)
+    )
 
 
 def compile_filters(filters: list[dict[str, Any]], allowed_fields: dict[str, str]):
@@ -96,9 +131,9 @@ def _validate_values(values: dict[str, Any], fields: list[tuple]) -> None:
     declared = {row[0]: row for row in fields}
     if len(values) > 128 or set(values) - set(declared):
         raise ValueError('content_schema_invalid')
-    for field_key, field_kind, required, nullable, _validation in fields:
+    for field_key, field_kind, required, nullable, default_value, _validation in fields:
         if field_key not in values:
-            if required:
+            if required and default_value is None:
                 raise ValueError('content_schema_invalid')
             continue
         value = values[field_key]
@@ -109,7 +144,7 @@ def _validate_values(values: dict[str, Any], fields: list[tuple]) -> None:
         valid = {
             'short_text': isinstance(value, str),
             'long_text': isinstance(value, str),
-            'rich_text': isinstance(value, dict),
+            'rich_text': _valid_rich_text(value),
             'integer': isinstance(value, int) and not isinstance(value, bool),
             'decimal': isinstance(value, (str, int)) and not isinstance(value, bool),
             'boolean': isinstance(value, bool),
@@ -214,6 +249,66 @@ class PostgresContentWorkspaceRepository:
                                 field.get('write_permission', 'content.write'),
                             ),
                         )
+                    states = ['draft', 'in_review', 'scheduled', 'published', 'archived', 'deleted']
+                    transitions = [
+                        {
+                            'action': 'submit_review',
+                            'from': ['draft'],
+                            'to': 'in_review',
+                            'permission': 'content.write',
+                        },
+                        {
+                            'action': 'return_draft',
+                            'from': ['in_review'],
+                            'to': 'draft',
+                            'permission': 'content.write',
+                        },
+                        {
+                            'action': 'schedule',
+                            'from': ['in_review'],
+                            'to': 'scheduled',
+                            'permission': 'content.write',
+                            'schedulable': True,
+                        },
+                        {
+                            'action': 'publish',
+                            'from': ['in_review', 'scheduled'],
+                            'to': 'published',
+                            'permission': 'content.write',
+                        },
+                        {
+                            'action': 'archive',
+                            'from': ['published'],
+                            'to': 'archived',
+                            'permission': 'content.write',
+                        },
+                        {
+                            'action': 'restore',
+                            'from': ['archived'],
+                            'to': 'draft',
+                            'permission': 'content.write',
+                        },
+                        {
+                            'action': 'delete',
+                            'from': ['draft', 'archived'],
+                            'to': 'deleted',
+                            'permission': 'content.write',
+                        },
+                    ]
+                    cur.execute(
+                        """INSERT INTO sitecontent_workflowdefinition
+                           (id, definition_id, states, initial_state, transitions)
+                           VALUES (%s,%s,%s::jsonb,'draft',%s::jsonb)""",
+                        (str(uuid4()), str(definition_id), _json(states), _json(transitions)),
+                    )
+                    _audit(
+                        cur,
+                        site_id=site_id,
+                        actor_ref=actor_ref,
+                        object_type='content_type',
+                        object_ref=str(definition_id),
+                        action='content.definition_create',
+                    )
                 conn.commit()
             except Exception:
                 conn.rollback()
@@ -225,6 +320,203 @@ class PostgresContentWorkspaceRepository:
             'version': created[1],
             'status': created[2],
             'lockVersion': created[3],
+        }
+
+    def get_definition(self, *, site_id: str, type_key: str, version: int):
+        with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
+            cur.execute(
+                """SELECT id, site_id, type_key, version, name, description, status, lock_version
+                   FROM sitecontent_contenttypedefinition
+                   WHERE site_id=%s AND type_key=%s AND version=%s""",
+                (site_id, type_key, version),
+            )
+            row = cur.fetchone()
+            if not row:
+                raise ValueError('content_not_found')
+            cur.execute(
+                """SELECT field_key, label, field_kind, required, nullable, default_value,
+                          validation, presentation, indexed, "unique", read_permission, write_permission
+                   FROM sitecontent_contentfielddefinition WHERE definition_id=%s
+                   ORDER BY "order", field_key""",
+                (str(row[0]),),
+            )
+            fields = [
+                {
+                    'fieldKey': item[0],
+                    'label': item[1],
+                    'fieldKind': item[2],
+                    'required': item[3],
+                    'nullable': item[4],
+                    'defaultValue': item[5],
+                    'validation': item[6],
+                    'presentation': item[7],
+                    'indexed': item[8],
+                    'unique': item[9],
+                    'readPermission': item[10],
+                    'writePermission': item[11],
+                }
+                for item in cur.fetchall()
+            ]
+        return {**_definition(row), 'fields': fields}
+
+    @staticmethod
+    def _preview(cur, *, site_id: str, type_key: str, version: int):
+        cur.execute(
+            """SELECT id FROM sitecontent_contenttypedefinition
+               WHERE site_id=%s AND type_key=%s AND version=%s""",
+            (site_id, type_key, version),
+        )
+        current = cur.fetchone()
+        if not current:
+            raise ValueError('content_not_found')
+        cur.execute(
+            """SELECT id FROM sitecontent_contenttypedefinition
+               WHERE site_id=%s AND type_key=%s AND status='published' AND version<%s
+               ORDER BY version DESC LIMIT 1""",
+            (site_id, type_key, version),
+        )
+        previous = cur.fetchone()
+
+        def fields(definition_id):
+            if not definition_id:
+                return {}
+            cur.execute(
+                """SELECT field_key, field_kind, required, nullable, validation
+                   FROM sitecontent_contentfielddefinition WHERE definition_id=%s""",
+                (str(definition_id),),
+            )
+            return {row[0]: row[1:] for row in cur.fetchall()}
+
+        current_fields = fields(current[0])
+        previous_fields = fields(previous[0] if previous else None)
+        removed = sorted(set(previous_fields) - set(current_fields))
+        added = sorted(set(current_fields) - set(previous_fields))
+        changed = sorted(
+            key
+            for key in set(current_fields) & set(previous_fields)
+            if current_fields[key] != previous_fields[key]
+        )
+        backfill = sorted(key for key in added if previous and current_fields[key][1] is True)
+        classification = (
+            'lossy' if removed or changed else 'backfill_required' if backfill else 'additive'
+        )
+        result = {
+            'classification': classification,
+            'addedFields': added,
+            'removedFields': removed,
+            'changedFields': changed,
+            'backfillFields': backfill,
+        }
+        result['digest'] = canonical_digest(result)
+        result['mutated'] = False
+        return result
+
+    def preview_definition(self, *, site_id: str, type_key: str, version: int):
+        with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
+            return self._preview(cur, site_id=site_id, type_key=type_key, version=version)
+
+    def publish_definition(
+        self,
+        *,
+        site_id: str,
+        type_key: str,
+        version: int,
+        expected_lock_version: int,
+        confirm_lossy: bool,
+        actor_ref: str,
+    ):
+        with db_conn(tenant_id=site_id) as conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """SELECT id, status, lock_version FROM sitecontent_contenttypedefinition
+                           WHERE site_id=%s AND type_key=%s AND version=%s FOR UPDATE""",
+                        (site_id, type_key, version),
+                    )
+                    row = cur.fetchone()
+                    if not row:
+                        raise ValueError('content_not_found')
+                    if row[1] != 'draft':
+                        raise ValueError('content_schema_incompatible')
+                    if row[2] != expected_lock_version:
+                        raise ValueError('content_version_conflict')
+                    preview = self._preview(
+                        cur, site_id=site_id, type_key=type_key, version=version
+                    )
+                    if (
+                        preview['classification'] in {'lossy', 'backfill_required'}
+                        and not confirm_lossy
+                    ):
+                        raise ValueError('lossy_confirmation_required')
+                    cur.execute(
+                        """UPDATE sitecontent_contenttypedefinition
+                           SET status='published', compatibility=%s, migration_digest=%s,
+                               published_at=NOW(), lock_version=lock_version+1,
+                               updated_by=%s, updated_at=NOW()
+                           WHERE id=%s RETURNING type_key, version, status, lock_version""",
+                        (preview['classification'], preview['digest'], actor_ref, str(row[0])),
+                    )
+                    updated = cur.fetchone()
+                    _audit(
+                        cur,
+                        site_id=site_id,
+                        actor_ref=actor_ref,
+                        object_type='content_type',
+                        object_ref=str(row[0]),
+                        action='content.definition_publish',
+                    )
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        return {
+            'typeKey': updated[0],
+            'version': updated[1],
+            'status': updated[2],
+            'lockVersion': updated[3],
+        }
+
+    def retire_definition(
+        self,
+        *,
+        site_id: str,
+        type_key: str,
+        version: int,
+        expected_lock_version: int,
+        actor_ref: str,
+    ):
+        with db_conn(tenant_id=site_id) as conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """UPDATE sitecontent_contenttypedefinition
+                           SET status='retired', lock_version=lock_version+1,
+                               updated_by=%s, updated_at=NOW()
+                           WHERE site_id=%s AND type_key=%s AND version=%s
+                             AND status='published' AND lock_version=%s
+                           RETURNING id, type_key, version, status, lock_version""",
+                        (actor_ref, site_id, type_key, version, expected_lock_version),
+                    )
+                    updated = cur.fetchone()
+                    if not updated:
+                        raise ValueError('content_version_conflict')
+                    _audit(
+                        cur,
+                        site_id=site_id,
+                        actor_ref=actor_ref,
+                        object_type='content_type',
+                        object_ref=str(updated[0]),
+                        action='content.definition_retire',
+                    )
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        return {
+            'typeKey': updated[1],
+            'version': updated[2],
+            'status': updated[3],
+            'lockVersion': updated[4],
         }
 
     @staticmethod
@@ -239,7 +531,7 @@ class PostgresContentWorkspaceRepository:
         if not definition:
             raise ValueError('content_not_found')
         cur.execute(
-            """SELECT field_key, field_kind, required, nullable, validation
+            """SELECT field_key, field_kind, required, nullable, default_value, validation
                FROM sitecontent_contentfielddefinition WHERE definition_id=%s
                ORDER BY "order", field_key""",
             (str(definition[0]),),
@@ -490,3 +782,183 @@ class PostgresContentWorkspaceRepository:
 
     def soft_delete_record(self, **kwargs):
         return self.transition_record(action='delete', publish_at=None, timezone=None, **kwargs)
+
+    def list_versions(self, *, site_id: str, type_key: str, record_id: UUID):
+        with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
+            cur.execute(
+                """SELECT v.revision, v.schema_version, v.snapshot_sha256, v.action,
+                          v.restored_from_version, v.created_at
+                   FROM sitecontent_contentrevision v
+                   JOIN sitecontent_contentrecord r ON r.id=v.content_id
+                   WHERE r.id=%s AND r.site_id=%s AND r.content_type=%s
+                   ORDER BY v.revision DESC LIMIT 100""",
+                (str(record_id), site_id, type_key),
+            )
+            rows = cur.fetchall()
+        return {
+            'items': [
+                {
+                    'version': row[0],
+                    'schemaVersion': row[1],
+                    'snapshotSha256': row[2],
+                    'action': row[3],
+                    'restoredFromVersion': row[4],
+                    'createdAt': row[5].isoformat(),
+                }
+                for row in rows
+            ]
+        }
+
+    def restore_record(
+        self,
+        *,
+        site_id: str,
+        type_key: str,
+        record_id: UUID,
+        version: int,
+        expected_version: int,
+        actor_ref: str,
+    ):
+        with db_conn(tenant_id=site_id) as conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """SELECT id, version, schema_version, values
+                           FROM sitecontent_contentrecord
+                           WHERE id=%s AND site_id=%s AND content_type=%s AND deleted_at IS NULL
+                           FOR UPDATE""",
+                        (str(record_id), site_id, type_key),
+                    )
+                    current = cur.fetchone()
+                    if not current:
+                        raise ValueError('content_not_found')
+                    if current[1] != expected_version:
+                        raise ValueError('content_version_conflict')
+                    cur.execute(
+                        """SELECT snapshot FROM sitecontent_contentrevision
+                           WHERE content_id=%s AND revision=%s""",
+                        (str(record_id), version),
+                    )
+                    restored = cur.fetchone()
+                    if not restored:
+                        raise ValueError('content_not_found')
+                    restored_values = restored[0].get('values', restored[0])
+                    _definition_row, fields = self._schema(cur, site_id=site_id, type_key=type_key)
+                    _validate_values(restored_values, fields)
+                    snapshot_json = _json(current[3])
+                    cur.execute(
+                        """INSERT INTO sitecontent_contentrevision
+                           (id, content_id, revision, snapshot, actor_ref, created_at,
+                            schema_version, snapshot_sha256, action, restored_from_version)
+                           VALUES (%s,%s,%s,%s::jsonb,%s,NOW(),%s,%s,'restore',%s)""",
+                        (
+                            str(uuid4()),
+                            str(record_id),
+                            current[1],
+                            snapshot_json,
+                            actor_ref,
+                            current[2],
+                            hashlib.sha256(snapshot_json.encode()).hexdigest(),
+                            version,
+                        ),
+                    )
+                    cur.execute(
+                        """UPDATE sitecontent_contentrecord SET values=%s::jsonb,
+                           version=version+1, updated_at=NOW()
+                           WHERE id=%s AND site_id=%s
+                           RETURNING id, site_id, content_type, slug, title, values, state,
+                                     schema_version, version, updated_at""",
+                        (_json(restored_values), str(record_id), site_id),
+                    )
+                    row = cur.fetchone()
+                    _audit(
+                        cur,
+                        site_id=site_id,
+                        actor_ref=actor_ref,
+                        object_type='content_record',
+                        object_ref=str(record_id),
+                        action='content.restore',
+                    )
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        return _record(row)
+
+    def list_views(self, *, site_id: str, type_key: str, owner_ref: str):
+        with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
+            cur.execute(
+                """SELECT v.id, v.title, v.query, v.visibility, v.shared_roles,
+                          v.schema_version, v.lock_version
+                   FROM sitecontent_savedview v
+                   JOIN sitecontent_contenttypedefinition d ON d.id=v.definition_id
+                   WHERE v.site_id=%s AND d.site_id=%s AND d.type_key=%s
+                     AND (v.owner_ref=%s OR v.visibility='role_shared')
+                   ORDER BY v.title, v.id LIMIT 100""",
+                (site_id, site_id, type_key, owner_ref),
+            )
+            rows = cur.fetchall()
+        return {
+            'items': [
+                {
+                    'id': str(row[0]),
+                    'title': row[1],
+                    'query': row[2],
+                    'visibility': row[3],
+                    'sharedRoles': row[4],
+                    'schemaVersion': row[5],
+                    'lockVersion': row[6],
+                }
+                for row in rows
+            ]
+        }
+
+    def create_view(self, *, site_id: str, type_key: str, owner_ref: str, payload: dict):
+        view_id = uuid4()
+        with db_conn(tenant_id=site_id) as conn:
+            try:
+                with conn.cursor() as cur:
+                    definition, fields = self._schema(cur, site_id=site_id, type_key=type_key)
+                    allowed = {row[0]: row[1] for row in fields}
+                    query = payload['query']
+                    compile_filters(query.get('filters', []), allowed)
+                    if any(field not in allowed for field in query.get('fields', [])):
+                        raise ValueError('content_query_invalid')
+                    cur.execute(
+                        """INSERT INTO sitecontent_savedview
+                           (id, site_id, definition_id, owner_ref, title, query, visibility,
+                            shared_roles, schema_version, lock_version, created_at, updated_at)
+                           VALUES (%s,%s,%s,%s,%s,%s::jsonb,%s,%s::jsonb,%s,1,NOW(),NOW())
+                           RETURNING id, title, visibility, schema_version, lock_version""",
+                        (
+                            str(view_id),
+                            site_id,
+                            str(definition[0]),
+                            owner_ref,
+                            payload['title'],
+                            _json(query),
+                            payload['visibility'],
+                            _json(payload['shared_roles']),
+                            definition[1],
+                        ),
+                    )
+                    row = cur.fetchone()
+                    _audit(
+                        cur,
+                        site_id=site_id,
+                        actor_ref=owner_ref,
+                        object_type='saved_view',
+                        object_ref=str(view_id),
+                        action='content.view_create',
+                    )
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        return {
+            'id': str(row[0]),
+            'title': row[1],
+            'visibility': row[2],
+            'schemaVersion': row[3],
+            'lockVersion': row[4],
+        }

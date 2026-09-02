@@ -29,6 +29,34 @@ class FakeRepository:
             'lockVersion': 1,
         }
 
+    def get_definition(self, **kwargs):
+        return {
+            'siteId': kwargs['site_id'],
+            'typeKey': kwargs['type_key'],
+            'version': kwargs['version'],
+            'status': 'draft',
+            'lockVersion': 1,
+        }
+
+    def preview_definition(self, **kwargs):
+        return {'classification': 'additive', 'digest': 'a' * 64, 'mutated': False}
+
+    def publish_definition(self, **kwargs):
+        return {
+            'typeKey': kwargs['type_key'],
+            'version': kwargs['version'],
+            'status': 'published',
+            'lockVersion': 2,
+        }
+
+    def retire_definition(self, **kwargs):
+        return {
+            'typeKey': kwargs['type_key'],
+            'version': kwargs['version'],
+            'status': 'retired',
+            'lockVersion': 3,
+        }
+
 
 @pytest.fixture(autouse=True)
 def authenticated(monkeypatch):
@@ -110,3 +138,19 @@ def test_unknown_body_key_and_unbounded_page_fail_closed():
     )
     assert invalid.status_code == 422
     assert client.get('/api/content/v1/types?limit=101', headers=headers).status_code == 422
+
+
+def test_definition_lifecycle_requires_expected_lock_and_explicit_lossy_confirmation():
+    client = TestClient(app)
+    headers = {'Authorization': 'Bearer synthetic', 'X-Tenant-ID': 'site-a'}
+    base = '/api/content/v1/types/article/versions/1'
+    assert client.get(base, headers=headers).status_code == 200
+    preview = client.post(f'{base}/preview', headers=headers)
+    assert preview.status_code == 200 and preview.json()['mutated'] is False
+    assert client.post(f'{base}/publish', headers=headers, json={}).status_code == 422
+    published = client.post(
+        f'{base}/publish', headers=headers, json={'expectedLockVersion': 1, 'confirmLossy': False}
+    )
+    assert published.status_code == 200 and published.json()['status'] == 'published'
+    retired = client.post(f'{base}/retire', headers=headers, json={'expectedLockVersion': 2})
+    assert retired.status_code == 200 and retired.json()['status'] == 'retired'
