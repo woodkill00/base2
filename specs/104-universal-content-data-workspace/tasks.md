@@ -92,12 +92,12 @@
 
 - [x] T074 Add failing manifest tests for the workspace capability, preset versions, dependencies, unknown fields, and disabled defaults.
 - [x] T075 Add failing deterministic preset compilation tests for articles, catalog, rentals/directories, portfolio, documentation, marketplace/listings, events, and community.
-- [ ] T076 Add failing generated-profile matrix tests for models, migrations, API declarations, roles, routes, navigation, fixtures, tests, and migration notes.
+- [x] T076 Add failing generated-profile matrix tests for models, migrations, API declarations, roles, routes, navigation, fixtures, tests, and migration notes.
 - [ ] T077 Add failing disabled-capability tests across generator output, API, workers, navigation, direct routes, and public reads.
 - [x] T078 Add failing `/api/items` compatibility adapter, warning, migration, and no-authority-expansion tests.
 - [x] T079 Extend the existing module manifest with one workspace capability and declarative preset registry.
 - [x] T080 Implement deterministic preset compiler using existing module IDs and shared canonical entities.
-- [ ] T081 Generate bounded fixtures and contract declarations for every built-in profile/preset combination.
+- [x] T081 Generate bounded fixtures and contract declarations for every built-in profile/preset combination.
 - [x] T082 Implement the narrow deprecated Items adapter and documented generated-site migration path.
 - [ ] T083 Run generator determinism, clean-regeneration, upgrade/downgrade, disabled-profile, and compatibility matrices.
 
@@ -214,6 +214,8 @@
 - [x] T177 Apply the proven 4 GiB Node heap ceiling to canonical React test scripts after one full coverage finalization terminated at the runtime boundary while two explicit bounded reruns passed; keep single-worker admission and verify focused suites through the canonical configuration.
 - [x] T178 Complete safe schema evolution after implementation analysis found draft creation hard-coded version one; serialize each tenant/type evolution, allocate the next immutable version, reject parallel outstanding drafts, and cover rollback behavior.
 - [x] T179 Add the missing administrator schema journey after implementation analysis found only read-only schema cards; load closed versioned presets, add normalized typed fields, create a private draft, require a deterministic migration preview, use distinct impact-aware publication confirmation, surface failures, and pass focused interaction and accessibility tests.
+- [x] T180 Generate one deterministic cross-service workspace contract matrix after implementation analysis found presets were copied without explicit enabled/disabled profile surfaces; include bounded synthetic fixture IDs, models, migrations, routes, navigation, permissions, jobs, tests, and migration notes while disabled profiles receive no workspace authority.
+- [x] T181 Protect the canonical shared generated preset artifact from a competing Prettier rewrite after clean-generation analysis reproduced formatter drift; retain generator ownership and prove immediate check-mode idempotency.
 
 ## Dependencies and authority
 

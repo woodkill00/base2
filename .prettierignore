@@ -54,6 +54,7 @@ DO_userdata.json
 api/site_profiles/
 django/site_profiles/
 react-app/src/config/generated/
+shared/config/content-workspace-presets.generated.json
 
 # Runtime-substituted YAML is intentionally not parseable before env expansion.
 traefik/dynamic-full-preview.yml

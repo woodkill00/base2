@@ -1,0 +1,99 @@
+{
+  "profiles": {
+    "base2-obsidian": {
+      "apiRoutes": [
+        "/api/content/v1"
+      ],
+      "contractTests": [
+        "schema",
+        "record",
+        "workflow",
+        "relationship",
+        "media",
+        "import-export",
+        "public-renderer"
+      ],
+      "enabled": true,
+      "fixtures": [
+        "article:synthetic-v1",
+        "catalog:synthetic-v1",
+        "community:synthetic-v1",
+        "documentation:synthetic-v1",
+        "event:synthetic-v1",
+        "listing:synthetic-v1",
+        "portfolio:synthetic-v1",
+        "rental:synthetic-v1"
+      ],
+      "jobs": [
+        "workspace.publish-scheduled",
+        "workspace.import",
+        "workspace.export"
+      ],
+      "migrationNotes": "versioned-forward-and-rollback-required",
+      "migrations": [
+        "django/sitecontent/migrations/0002_workspaceauditevent_contentrecordversion_and_more.py",
+        "django/sitecontent/migrations/0003_workspace_row_security.py",
+        "django/sitecontent/migrations/0004_contentrelationship_maximum_depth_and_more.py",
+        "django/sitecontent/migrations/0005_contentrecord_schedule_timezone.py"
+      ],
+      "models": [
+        "workspace.definition",
+        "workspace.record",
+        "workspace.view",
+        "workspace.job"
+      ],
+      "navigation": [
+        "workspace.index"
+      ],
+      "permissions": [
+        "content-workspace.delete",
+        "content-workspace.publish",
+        "content-workspace.read",
+        "content-workspace.schedule",
+        "content-workspace.write"
+      ],
+      "presets": [
+        "article",
+        "catalog",
+        "community",
+        "documentation",
+        "event",
+        "listing",
+        "portfolio",
+        "rental"
+      ],
+      "uiRoutes": [
+        "/workspace"
+      ]
+    },
+    "ember-studio": {
+      "apiRoutes": [],
+      "contractTests": [],
+      "enabled": false,
+      "fixtures": [],
+      "jobs": [],
+      "migrationNotes": "disabled-no-op",
+      "migrations": [],
+      "models": [],
+      "navigation": [],
+      "permissions": [],
+      "presets": [],
+      "uiRoutes": []
+    },
+    "northstar-library": {
+      "apiRoutes": [],
+      "contractTests": [],
+      "enabled": false,
+      "fixtures": [],
+      "jobs": [],
+      "migrationNotes": "disabled-no-op",
+      "migrations": [],
+      "models": [],
+      "navigation": [],
+      "permissions": [],
+      "presets": [],
+      "uiRoutes": []
+    }
+  },
+  "schemaVersion": 1
+}

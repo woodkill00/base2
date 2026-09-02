@@ -15,8 +15,8 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.python.site_manifest import load_manifest, manifest_digest  # noqa: E402
 from scripts.python.content_workspace_presets import compile_presets  # noqa: E402
+from scripts.python.site_manifest import load_manifest, manifest_digest  # noqa: E402
 
 TARGETS = (
     ROOT / "api" / "site_profiles",
@@ -59,6 +59,47 @@ def generate(*, check: bool = False) -> dict[str, str]:
     compiled_preset_json = (
         json.dumps(compiled_presets, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
     )
+    workspace_manifest = json.loads(
+        (ROOT / "modules/content-workspace/module.json").read_text(encoding="utf-8")
+    )
+    workspace_contracts = {"schemaVersion": 1, "profiles": {}}
+    for profile_id, profile in sorted(profiles.items()):
+        enabled = any(
+            item["id"] == "content-workspace" and item["enabled"] for item in profile["modules"]
+        )
+        workspace_contracts["profiles"][profile_id] = {
+            "enabled": enabled,
+            "models": workspace_manifest["models"] if enabled else [],
+            "migrations": workspace_manifest["migrations"] if enabled else [],
+            "apiRoutes": workspace_manifest["apiRoutes"] if enabled else [],
+            "uiRoutes": workspace_manifest["uiRoutes"] if enabled else [],
+            "navigation": workspace_manifest["navigation"] if enabled else [],
+            "permissions": workspace_manifest["permissions"] if enabled else [],
+            "jobs": workspace_manifest["jobs"] if enabled else [],
+            "presets": sorted(compiled_presets["definitions"]) if enabled else [],
+            "fixtures": [
+                f"{preset_id}:synthetic-v1" for preset_id in sorted(compiled_presets["definitions"])
+            ]
+            if enabled
+            else [],
+            "contractTests": [
+                "schema",
+                "record",
+                "workflow",
+                "relationship",
+                "media",
+                "import-export",
+                "public-renderer",
+            ]
+            if enabled
+            else [],
+            "migrationNotes": "versioned-forward-and-rollback-required"
+            if enabled
+            else "disabled-no-op",
+        }
+    workspace_contract_json = (
+        json.dumps(workspace_contracts, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+    )
     index = (
         json.dumps(
             {"schemaVersion": 1, "defaultProfile": DEFAULT_PROFILE, "profiles": digests},
@@ -72,6 +113,7 @@ def generate(*, check: bool = False) -> dict[str, str]:
     for target in TARGETS:
         outputs[target / "index.json"] = index
         outputs[target / "content-workspace-presets.json"] = compiled_preset_json
+        outputs[target / "content-workspace-contracts.json"] = workspace_contract_json
         for profile_id, payload in profiles.items():
             outputs[target / f"{profile_id}.json"] = (
                 json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
@@ -86,15 +128,19 @@ def generate(*, check: bool = False) -> dict[str, str]:
         binding = f"profile{position}"
         bindings.append((profile_id, binding))
         registry_lines.append(f"import {binding} from './{profile_id}.json';")
-    registry_lines.extend([
-        "",
-        "export { index };",
-        "export const profiles: Record<string, unknown> = {",
-        *[f"  '{profile_id}': {binding}," for profile_id, binding in bindings],
-        "};",
-        "",
-    ])
-    outputs[ROOT / "react-app" / "src" / "config" / "generated" / "siteRegistry.ts"] = "\n".join(registry_lines)
+    registry_lines.extend(
+        [
+            "",
+            "export { index };",
+            "export const profiles: Record<string, unknown> = {",
+            *[f"  '{profile_id}': {binding}," for profile_id, binding in bindings],
+            "};",
+            "",
+        ]
+    )
+    outputs[ROOT / "react-app" / "src" / "config" / "generated" / "siteRegistry.ts"] = "\n".join(
+        registry_lines
+    )
     outputs[ROOT / "shared" / "config" / "content-workspace-presets.generated.json"] = (
         compiled_preset_json
     )

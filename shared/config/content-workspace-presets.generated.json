@@ -59,41 +59,64 @@
       "typeKey": "article",
       "workflow": {
         "initialState": "draft",
-        "states": ["draft", "in_review", "scheduled", "published", "archived", "deleted"],
+        "states": [
+          "draft",
+          "in_review",
+          "scheduled",
+          "published",
+          "archived",
+          "deleted"
+        ],
         "transitions": [
           {
             "action": "submit_review",
-            "from": ["draft"],
+            "from": [
+              "draft"
+            ],
             "to": "in_review"
           },
           {
             "action": "return_draft",
-            "from": ["in_review"],
+            "from": [
+              "in_review"
+            ],
             "to": "draft"
           },
           {
             "action": "schedule",
-            "from": ["in_review"],
+            "from": [
+              "in_review"
+            ],
             "to": "scheduled"
           },
           {
             "action": "publish",
-            "from": ["in_review", "scheduled"],
+            "from": [
+              "in_review",
+              "scheduled"
+            ],
             "to": "published"
           },
           {
             "action": "archive",
-            "from": ["published"],
+            "from": [
+              "published"
+            ],
             "to": "archived"
           },
           {
             "action": "restore",
-            "from": ["archived"],
+            "from": [
+              "archived"
+            ],
             "to": "draft"
           },
           {
             "action": "delete",
-            "from": ["draft", "archived"],
+            "from": [
+              "draft",
+              "archived"
+            ],
             "to": "deleted"
           }
         ]
@@ -162,41 +185,64 @@
       "typeKey": "catalog",
       "workflow": {
         "initialState": "draft",
-        "states": ["draft", "in_review", "scheduled", "published", "archived", "deleted"],
+        "states": [
+          "draft",
+          "in_review",
+          "scheduled",
+          "published",
+          "archived",
+          "deleted"
+        ],
         "transitions": [
           {
             "action": "submit_review",
-            "from": ["draft"],
+            "from": [
+              "draft"
+            ],
             "to": "in_review"
           },
           {
             "action": "return_draft",
-            "from": ["in_review"],
+            "from": [
+              "in_review"
+            ],
             "to": "draft"
           },
           {
             "action": "schedule",
-            "from": ["in_review"],
+            "from": [
+              "in_review"
+            ],
             "to": "scheduled"
           },
           {
             "action": "publish",
-            "from": ["in_review", "scheduled"],
+            "from": [
+              "in_review",
+              "scheduled"
+            ],
             "to": "published"
           },
           {
             "action": "archive",
-            "from": ["published"],
+            "from": [
+              "published"
+            ],
             "to": "archived"
           },
           {
             "action": "restore",
-            "from": ["archived"],
+            "from": [
+              "archived"
+            ],
             "to": "draft"
           },
           {
             "action": "delete",
-            "from": ["draft", "archived"],
+            "from": [
+              "draft",
+              "archived"
+            ],
             "to": "deleted"
           }
         ]
@@ -265,41 +311,64 @@
       "typeKey": "community",
       "workflow": {
         "initialState": "draft",
-        "states": ["draft", "in_review", "scheduled", "published", "archived", "deleted"],
+        "states": [
+          "draft",
+          "in_review",
+          "scheduled",
+          "published",
+          "archived",
+          "deleted"
+        ],
         "transitions": [
           {
             "action": "submit_review",
-            "from": ["draft"],
+            "from": [
+              "draft"
+            ],
             "to": "in_review"
           },
           {
             "action": "return_draft",
-            "from": ["in_review"],
+            "from": [
+              "in_review"
+            ],
             "to": "draft"
           },
           {
             "action": "schedule",
-            "from": ["in_review"],
+            "from": [
+              "in_review"
+            ],
             "to": "scheduled"
           },
           {
             "action": "publish",
-            "from": ["in_review", "scheduled"],
+            "from": [
+              "in_review",
+              "scheduled"
+            ],
             "to": "published"
           },
           {
             "action": "archive",
-            "from": ["published"],
+            "from": [
+              "published"
+            ],
             "to": "archived"
           },
           {
             "action": "restore",
-            "from": ["archived"],
+            "from": [
+              "archived"
+            ],
             "to": "draft"
           },
           {
             "action": "delete",
-            "from": ["draft", "archived"],
+            "from": [
+              "draft",
+              "archived"
+            ],
             "to": "deleted"
           }
         ]
@@ -357,41 +426,64 @@
       "typeKey": "documentation",
       "workflow": {
         "initialState": "draft",
-        "states": ["draft", "in_review", "scheduled", "published", "archived", "deleted"],
+        "states": [
+          "draft",
+          "in_review",
+          "scheduled",
+          "published",
+          "archived",
+          "deleted"
+        ],
         "transitions": [
           {
             "action": "submit_review",
-            "from": ["draft"],
+            "from": [
+              "draft"
+            ],
             "to": "in_review"
           },
           {
             "action": "return_draft",
-            "from": ["in_review"],
+            "from": [
+              "in_review"
+            ],
             "to": "draft"
           },
           {
             "action": "schedule",
-            "from": ["in_review"],
+            "from": [
+              "in_review"
+            ],
             "to": "scheduled"
           },
           {
             "action": "publish",
-            "from": ["in_review", "scheduled"],
+            "from": [
+              "in_review",
+              "scheduled"
+            ],
             "to": "published"
           },
           {
             "action": "archive",
-            "from": ["published"],
+            "from": [
+              "published"
+            ],
             "to": "archived"
           },
           {
             "action": "restore",
-            "from": ["archived"],
+            "from": [
+              "archived"
+            ],
             "to": "draft"
           },
           {
             "action": "delete",
-            "from": ["draft", "archived"],
+            "from": [
+              "draft",
+              "archived"
+            ],
             "to": "deleted"
           }
         ]
@@ -452,41 +544,64 @@
       "typeKey": "event",
       "workflow": {
         "initialState": "draft",
-        "states": ["draft", "in_review", "scheduled", "published", "archived", "deleted"],
+        "states": [
+          "draft",
+          "in_review",
+          "scheduled",
+          "published",
+          "archived",
+          "deleted"
+        ],
         "transitions": [
           {
             "action": "submit_review",
-            "from": ["draft"],
+            "from": [
+              "draft"
+            ],
             "to": "in_review"
           },
           {
             "action": "return_draft",
-            "from": ["in_review"],
+            "from": [
+              "in_review"
+            ],
             "to": "draft"
           },
           {
             "action": "schedule",
-            "from": ["in_review"],
+            "from": [
+              "in_review"
+            ],
             "to": "scheduled"
           },
           {
             "action": "publish",
-            "from": ["in_review", "scheduled"],
+            "from": [
+              "in_review",
+              "scheduled"
+            ],
             "to": "published"
           },
           {
             "action": "archive",
-            "from": ["published"],
+            "from": [
+              "published"
+            ],
             "to": "archived"
           },
           {
             "action": "restore",
-            "from": ["archived"],
+            "from": [
+              "archived"
+            ],
             "to": "draft"
           },
           {
             "action": "delete",
-            "from": ["draft", "archived"],
+            "from": [
+              "draft",
+              "archived"
+            ],
             "to": "deleted"
           }
         ]
@@ -552,41 +667,64 @@
       "typeKey": "listing",
       "workflow": {
         "initialState": "draft",
-        "states": ["draft", "in_review", "scheduled", "published", "archived", "deleted"],
+        "states": [
+          "draft",
+          "in_review",
+          "scheduled",
+          "published",
+          "archived",
+          "deleted"
+        ],
         "transitions": [
           {
             "action": "submit_review",
-            "from": ["draft"],
+            "from": [
+              "draft"
+            ],
             "to": "in_review"
           },
           {
             "action": "return_draft",
-            "from": ["in_review"],
+            "from": [
+              "in_review"
+            ],
             "to": "draft"
           },
           {
             "action": "schedule",
-            "from": ["in_review"],
+            "from": [
+              "in_review"
+            ],
             "to": "scheduled"
           },
           {
             "action": "publish",
-            "from": ["in_review", "scheduled"],
+            "from": [
+              "in_review",
+              "scheduled"
+            ],
             "to": "published"
           },
           {
             "action": "archive",
-            "from": ["published"],
+            "from": [
+              "published"
+            ],
             "to": "archived"
           },
           {
             "action": "restore",
-            "from": ["archived"],
+            "from": [
+              "archived"
+            ],
             "to": "draft"
           },
           {
             "action": "delete",
-            "from": ["draft", "archived"],
+            "from": [
+              "draft",
+              "archived"
+            ],
             "to": "deleted"
           }
         ]
@@ -654,41 +792,64 @@
       "typeKey": "portfolio",
       "workflow": {
         "initialState": "draft",
-        "states": ["draft", "in_review", "scheduled", "published", "archived", "deleted"],
+        "states": [
+          "draft",
+          "in_review",
+          "scheduled",
+          "published",
+          "archived",
+          "deleted"
+        ],
         "transitions": [
           {
             "action": "submit_review",
-            "from": ["draft"],
+            "from": [
+              "draft"
+            ],
             "to": "in_review"
           },
           {
             "action": "return_draft",
-            "from": ["in_review"],
+            "from": [
+              "in_review"
+            ],
             "to": "draft"
           },
           {
             "action": "schedule",
-            "from": ["in_review"],
+            "from": [
+              "in_review"
+            ],
             "to": "scheduled"
           },
           {
             "action": "publish",
-            "from": ["in_review", "scheduled"],
+            "from": [
+              "in_review",
+              "scheduled"
+            ],
             "to": "published"
           },
           {
             "action": "archive",
-            "from": ["published"],
+            "from": [
+              "published"
+            ],
             "to": "archived"
           },
           {
             "action": "restore",
-            "from": ["archived"],
+            "from": [
+              "archived"
+            ],
             "to": "draft"
           },
           {
             "action": "delete",
-            "from": ["draft", "archived"],
+            "from": [
+              "draft",
+              "archived"
+            ],
             "to": "deleted"
           }
         ]
@@ -765,41 +926,64 @@
       "typeKey": "rental",
       "workflow": {
         "initialState": "draft",
-        "states": ["draft", "in_review", "scheduled", "published", "archived", "deleted"],
+        "states": [
+          "draft",
+          "in_review",
+          "scheduled",
+          "published",
+          "archived",
+          "deleted"
+        ],
         "transitions": [
           {
             "action": "submit_review",
-            "from": ["draft"],
+            "from": [
+              "draft"
+            ],
             "to": "in_review"
           },
           {
             "action": "return_draft",
-            "from": ["in_review"],
+            "from": [
+              "in_review"
+            ],
             "to": "draft"
           },
           {
             "action": "schedule",
-            "from": ["in_review"],
+            "from": [
+              "in_review"
+            ],
             "to": "scheduled"
           },
           {
             "action": "publish",
-            "from": ["in_review", "scheduled"],
+            "from": [
+              "in_review",
+              "scheduled"
+            ],
             "to": "published"
           },
           {
             "action": "archive",
-            "from": ["published"],
+            "from": [
+              "published"
+            ],
             "to": "archived"
           },
           {
             "action": "restore",
-            "from": ["archived"],
+            "from": [
+              "archived"
+            ],
             "to": "draft"
           },
           {
             "action": "delete",
-            "from": ["draft", "archived"],
+            "from": [
+              "draft",
+              "archived"
+            ],
             "to": "deleted"
           }
         ]
