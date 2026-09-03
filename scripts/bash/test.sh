@@ -152,11 +152,44 @@ if [ "$USE_LOCAL_STACK" = true ]; then
     $COMPOSE_CMD exec -T redis sh -lc 'redis-cli -a "$REDIS_PASSWORD" FLUSHALL' >/dev/null 2>&1 || true
 fi
 
+run_api_tests() {
+    if [ "$USE_LOCAL_STACK" = true ]; then
+        # Repository-contract tests intentionally inspect a small, fixed set of
+        # cross-service sources. Keep those sources out of the long-running API
+        # container and expose them read-only only to this ephemeral test runner.
+        $COMPOSE_CMD run --rm -T --no-deps \
+            -v "$PWD/django:/app/django:ro" \
+            -v "$PWD/docs:/app/docs:ro" \
+            -v "$PWD/local.docker.yml:/app/local.docker.yml:ro" \
+            -v "$PWD/development.docker.yml:/app/development.docker.yml:ro" \
+            -v "$PWD/.coveragerc:/app/.coveragerc:ro" \
+            $COVERAGE_ENV_ARGS $YAML_ENV_ARGS api \
+            pytest "${PYTEST_MARKS[@]}" "${PYTEST_CACHE_ARGS[@]}" "${API_PYTEST_CONFIG[@]}" api/tests
+    else
+        $COMPOSE_CMD exec -T $COVERAGE_ENV_ARGS $YAML_ENV_ARGS api pytest "${PYTEST_MARKS[@]}" "${PYTEST_CACHE_ARGS[@]}" "${API_PYTEST_CONFIG[@]}" api/tests
+    fi
+}
+
+run_django_tests() {
+    $COMPOSE_CMD exec -T $COVERAGE_ENV_ARGS $YAML_ENV_ARGS django pytest "${PYTEST_MARKS[@]}" "${PYTEST_CACHE_ARGS[@]}" "${DJANGO_PYTEST_CONFIG[@]}"
+}
+
 set +e
-$COMPOSE_CMD exec -T $COVERAGE_ENV_ARGS $YAML_ENV_ARGS api pytest "${PYTEST_MARKS[@]}" "${PYTEST_CACHE_ARGS[@]}" "${API_PYTEST_CONFIG[@]}"
+run_api_tests
 API_EXIT_CODE=$?
-$COMPOSE_CMD exec -T $COVERAGE_ENV_ARGS $YAML_ENV_ARGS django pytest "${PYTEST_MARKS[@]}" "${PYTEST_CACHE_ARGS[@]}" "${DJANGO_PYTEST_CONFIG[@]}"
+if [ "$API_EXIT_CODE" -eq 139 ]; then
+    echo -e "${RED}API Python runtime crashed with SIGSEGV; retrying once.${NC}"
+    run_api_tests
+    API_EXIT_CODE=$?
+fi
+
+run_django_tests
 DJANGO_EXIT_CODE=$?
+if [ "$DJANGO_EXIT_CODE" -eq 139 ]; then
+    echo -e "${RED}Django Python runtime crashed with SIGSEGV; retrying once.${NC}"
+    run_django_tests
+    DJANGO_EXIT_CODE=$?
+fi
 set -e
 
 if [ $API_EXIT_CODE -ne 0 ] || [ $DJANGO_EXIT_CODE -ne 0 ]; then
@@ -172,15 +205,31 @@ if [ ! -d "node_modules" ]; then
     exit 1
 fi
 
-if [ -n "$WATCH_FLAG" ]; then
-    npm run test:watch
-elif [ -n "$COVERAGE_FLAG" ]; then
-    npm run test
-else
-    npm run test:ci
-fi
+run_frontend_tests() {
+    if [ -n "$WATCH_FLAG" ]; then
+        npm run test:watch
+    elif [ -n "$COVERAGE_FLAG" ]; then
+        npm run test
+    else
+        npm run test:ci
+    fi
+}
 
+set +e
+run_frontend_tests
 FRONTEND_EXIT_CODE=$?
+set -e
+
+# A native V8 crash is an infrastructure failure, not a test assertion. Retry
+# that exact runtime once so a transient WSL fault cannot silently terminate the
+# gate; a second crash or any ordinary test failure remains a hard failure.
+if [ "$FRONTEND_EXIT_CODE" -eq 139 ]; then
+    echo -e "${RED}Frontend Node runtime crashed with SIGSEGV; retrying once.${NC}"
+    set +e
+    run_frontend_tests
+    FRONTEND_EXIT_CODE=$?
+    set -e
+fi
 
 cd ..
 

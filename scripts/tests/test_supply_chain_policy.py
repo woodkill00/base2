@@ -50,9 +50,19 @@ class SupplyChainPolicyTests(unittest.TestCase):
 
     def test_allowed_node_and_python_reports_pass(self):
         node = {"@scope/pkg@1.0.0": {"licenses": "MIT OR Apache-2.0"}}
-        python = [{"Name": "fixture", "Version": "1.0", "License": "BSD-3-Clause"}]
+        python = [
+            {"Name": "fixture", "Version": "1.0", "License": "BSD-3-Clause"},
+            {"Name": "pillow", "Version": "12.3.0", "License": "MIT-CMU"},
+        ]
         self.assertEqual([], self.validator.validate_license_report(node, "npm", self.policy))
         self.assertEqual([], self.validator.validate_license_report(python, "python", self.policy))
+
+    def test_unlisted_mit_like_license_remains_rejected(self):
+        python = [{"Name": "fixture", "Version": "1.0", "License": "MIT-Unknown"}]
+        self.assertEqual(
+            ["unapproved or unknown license: python:fixture"],
+            self.validator.validate_license_report(python, "python", self.policy),
+        )
 
     def test_unknown_or_missing_license_fails(self):
         report = {

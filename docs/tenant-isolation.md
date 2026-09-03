@@ -27,3 +27,17 @@ must then run against PostgreSQL and prove missing, wrong, reset, rollback, and
 migration-role behavior. Until that role split is supplied, explicit query
 scoping plus transaction-local binding is required and the production RLS
 control is reported as `deferred`, never `passed`.
+
+The universal content workspace now supplies that split for its own repository
+surface. Django retains the migration-owner connection. Workspace repository
+calls use `WORKSPACE_DB_USER` through a separate pool; the role bootstrap forces
+`NOSUPERUSER`, `NOCREATEDB`, `NOCREATEROLE`, `NOINHERIT`, and `NOBYPASSRLS`, and
+the forward Django migration grants only the fixed workspace table inventory.
+API authentication and other legacy repositories remain on the earlier shared
+role and therefore keep the global RLS status above honestly `deferred`.
+
+The required disposable-PostgreSQL acceptance proves missing context sees no
+rows, each exact tenant sees only its own row, a cross-tenant insert is blocked,
+rollback clears transaction-local context, the runtime role cannot bypass RLS,
+the owner can still migrate, composite uniqueness remains enforced, and the
+tenant-leading index and policy are physically present.

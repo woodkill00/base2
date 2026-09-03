@@ -1,5 +1,7 @@
 import os
 import re
+import base64
+import binascii
 from typing import Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings
@@ -53,6 +55,8 @@ class Settings(BaseSettings):
     GOOGLE_OAUTH_ENABLED: bool = Field(default=False)
     OAUTH_STATE_SECRET: Optional[str] = None
     IDENTITY_ENCRYPTION_KEY: Optional[str] = None
+    CONTENT_WORKSPACE_STORAGE_ROOT: str = Field(default='/var/lib/base2/content-workspace')
+    CONTENT_WORKSPACE_STORAGE_KEY: Optional[str] = None
     IDENTITY_ALLOW_FIRST_OWNER_BOOTSTRAP: bool = Field(default=False)
     WEBAUTHN_ENABLED: bool = Field(default=False)
 
@@ -119,8 +123,23 @@ class Settings(BaseSettings):
                 missing.append('OAUTH_STATE_SECRET')
             if not (self.IDENTITY_ENCRYPTION_KEY or '').strip():
                 missing.append('IDENTITY_ENCRYPTION_KEY')
+            if not (self.CONTENT_WORKSPACE_STORAGE_KEY or '').strip():
+                missing.append('CONTENT_WORKSPACE_STORAGE_KEY')
             if missing:
                 raise RuntimeError('Missing required env var(s): ' + ', '.join(missing))
+
+            storage_root = (self.CONTENT_WORKSPACE_STORAGE_ROOT or '').strip()
+            try:
+                encoded_key = (self.CONTENT_WORKSPACE_STORAGE_KEY or '').strip()
+                storage_key = base64.b64decode(
+                    encoded_key + '=' * (-len(encoded_key) % 4),
+                    altchars=b'-_',
+                    validate=True,
+                )
+            except (ValueError, binascii.Error) as exc:
+                raise RuntimeError('Invalid CONTENT_WORKSPACE_STORAGE_KEY') from exc
+            if not storage_root.startswith('/') or len(storage_key) != 32:
+                raise RuntimeError('Invalid content workspace storage configuration')
 
             if env == 'production' and self.GOOGLE_OAUTH_ENABLED:
                 oauth_missing = []

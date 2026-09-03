@@ -1,7 +1,7 @@
 {
   "defaultProfile": "ember-studio",
   "profiles": {
-    "base2-obsidian": "f227400dc117a29ba2f060ea9f2a4c46f8480914ea944e2578995baa49bf29bc",
+    "base2-obsidian": "3a61455f226fc9e0d6e0eab713c807a68c393ce28bb9b7c17b9a8607815c70fe",
     "ember-studio": "caeca976b87fad158ed46b4fe92fdc9aef9d7485c7e8e33cfda2a635b007858b",
     "northstar-library": "f9809d52dfc22ce4d65b898c5dae7506109495da21bb405cfe1767b4dd83cb22"
   },

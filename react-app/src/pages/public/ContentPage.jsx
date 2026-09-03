@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { siteContentAPI } from '../../services/siteContent';
 import PublicShell from '../../components/public/PublicShell';
+import { PublicWorkspaceFields } from '../../components/content/PublicFieldRenderer';
 
 const ContentPage = ({ slug, fallbackTitle, locale, contentType = 'page' }) => {
   const [state, setState] = useState({ status: 'loading', item: null });
@@ -58,6 +59,7 @@ const ContentPage = ({ slug, fallbackTitle, locale, contentType = 'page' }) => {
             .map((paragraph) => (
               <p key={paragraph}>{paragraph}</p>
             ))}
+          <PublicWorkspaceFields item={state.item} />
         </article>
       )}
     </PublicShell>

@@ -6,10 +6,9 @@ from __future__ import annotations
 import argparse
 import base64
 import os
-from pathlib import Path
 import re
 import secrets
-
+from pathlib import Path
 
 SAFE_PROJECT = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 SAFE_DOMAIN = re.compile(
@@ -28,6 +27,8 @@ SECRET_KEYS = {
     "TP_DJANGO_SUPERUSER_PASSWORD",
     "TP_REDIS_PASSWORD",
     "TP_POSTGRES_PASSWORD",
+    "TP_WORKSPACE_DB_PASSWORD",
+    "TP_WORKSPACE_WORKER_DB_PASSWORD",
     "TP_PGADMIN_PASSWORD",
     "TP_FLOWER_PASSWORD",
     "TP_TRAEFIK_PASSWORD",
@@ -83,6 +84,7 @@ def render(source: Path, target: Path, domain: str, project: str) -> None:
     }
     overrides.update({key: _secret() for key in SECRET_KEYS})
     overrides["TP_IDENTITY_ENCRYPTION_KEY"] = _fernet_key()
+    overrides["TP_CONTENT_WORKSPACE_STORAGE_KEY"] = _fernet_key()
 
     rendered: list[str] = []
     seen: set[str] = set()

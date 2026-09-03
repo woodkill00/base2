@@ -21,12 +21,15 @@ test('setup fills TP_ defaults and preserves template references', async () => {
     'TP_DJANGO_SECRET_KEY=YOUR_DJANGO_SECRET_KEY',
     'TP_JWT_SECRET=YOUR_JWT_SECRET',
     'TP_TOKEN_PEPPER=YOUR_TOKEN_PEPPER',
+    'TP_CONTENT_WORKSPACE_STORAGE_KEY=YOUR_URLSAFE_BASE64_32_BYTE_KEY',
     'TP_OAUTH_STATE_SECRET=YOUR_OAUTH_STATE_SECRET',
     'TP_SEED_ADMIN_PASSWORD=YOUR_ADMIN_PASSWORD',
     'TP_SEED_DEMO_PASSWORD=YOUR_DEMO_PASSWORD',
     'TP_DJANGO_SUPERUSER_PASSWORD=YOUR_SUPERUSER_PASSWORD',
     'TP_REDIS_PASSWORD=YOUR_REDIS_PASSWORD',
     'TP_POSTGRES_PASSWORD=YOUR_POSTGRES_PASSWORD',
+    'TP_WORKSPACE_DB_PASSWORD=YOUR_WORKSPACE_DB_PASSWORD',
+    'TP_WORKSPACE_WORKER_DB_PASSWORD=YOUR_WORKSPACE_WORKER_DB_PASSWORD',
     'TP_PGADMIN_PASSWORD=YOUR_PGADMIN_PASSWORD',
     'TP_FLOWER_PASSWORD=YOUR_FLOWER_PASSWORD',
     'TP_TRAEFIK_PASSWORD=YOUR_TRAEFIK_PASSWORD',
@@ -75,12 +78,15 @@ test('setup fills TP_ defaults and preserves template references', async () => {
 
   assert.equal(envMap.TP_REDIS_PASSWORD, 'Pass123!');
   assert.equal(envMap.TP_POSTGRES_PASSWORD, 'Pass123!');
+  assert.equal(envMap.TP_WORKSPACE_DB_PASSWORD, 'Pass123!');
+  assert.equal(envMap.TP_WORKSPACE_WORKER_DB_PASSWORD, 'Pass123!');
   assert.equal(envMap.TP_PGADMIN_PASSWORD, 'Pass123!');
   assert.equal(envMap.TP_DJANGO_SUPERUSER_PASSWORD, 'Pass123!');
   assert.equal(envMap.TP_SEED_ADMIN_PASSWORD, 'Pass123!');
   assert.equal(envMap.TP_SEED_DEMO_PASSWORD, 'Pass123!');
   assert.equal(envMap.TP_FLOWER_PASSWORD, 'Pass123!');
   assert.equal(envMap.TP_TRAEFIK_PASSWORD, 'Pass123!');
+  assert.equal(Buffer.from(envMap.TP_CONTENT_WORKSPACE_STORAGE_KEY, 'base64url').length, 32);
 
   assert.equal(envMap.REDIS_PASSWORD, '${TP_REDIS_PASSWORD}');
   assert.equal(envMap.DJANGO_SECRET_KEY, '${TP_DJANGO_SECRET_KEY}');
@@ -90,4 +96,41 @@ test('setup fills TP_ defaults and preserves template references', async () => {
   assert.equal(envMap.EMAIL_USER, 'user@example.com');
   assert.equal(envMap.DEFAULT_FROM_EMAIL, 'user@example.com');
   assert.equal(envMap.EMAIL_FROM, 'user@example.com');
+});
+
+test('setup independently generates both workspace database secrets', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'setup-workspace-secrets-'));
+  fs.writeFileSync(
+    path.join(root, '.env.example'),
+    [
+      'PROJECT_NAME=YOUR_PROJECT_NAME',
+      'WEBSITE_DOMAIN=YOUR_DOMAIN_HERE',
+      'TP_WORKSPACE_DB_PASSWORD=YOUR_WORKSPACE_DB_PASSWORD',
+      'TP_WORKSPACE_WORKER_DB_PASSWORD=YOUR_WORKSPACE_WORKER_DB_PASSWORD',
+      'WORKSPACE_DB_PASSWORD=${TP_WORKSPACE_DB_PASSWORD}',
+      'WORKSPACE_WORKER_DB_PASSWORD=${TP_WORKSPACE_WORKER_DB_PASSWORD}',
+      'ENV=development',
+      'DEPLOY_MODE=local',
+      'APPLY_DEV_DEFAULTS=false',
+    ].join('\n'),
+    'utf8'
+  );
+  const prompt = async (questions) => {
+    const out = {};
+    for (const question of questions) {
+      if (question.name === 'projectName') out[question.name] = 'alpha';
+      if (question.name === 'websiteDomain') out[question.name] = 'example.com';
+      if (question.name === 'applyPasswordDefaults') out[question.name] = false;
+      if (question.name === 'env') out[question.name] = 'development';
+      if (question.name === 'deployMode') out[question.name] = 'local';
+      if (question.name === 'applyDevDefaults') out[question.name] = true;
+    }
+    return out;
+  };
+
+  await runSetup({ rootDir: root, prompt, stdout: () => {}, stderr: () => {} });
+  const envMap = parseEnv(fs.readFileSync(path.join(root, '.env.build'), 'utf8'));
+  assert.match(envMap.TP_WORKSPACE_DB_PASSWORD, /^[a-f0-9]{64}$/);
+  assert.match(envMap.TP_WORKSPACE_WORKER_DB_PASSWORD, /^[a-f0-9]{64}$/);
+  assert.notEqual(envMap.TP_WORKSPACE_DB_PASSWORD, envMap.TP_WORKSPACE_WORKER_DB_PASSWORD);
 });

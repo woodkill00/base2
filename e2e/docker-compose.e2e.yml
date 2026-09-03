@@ -19,6 +19,28 @@ services:
       timeout: 5s
       retries: 20
 
+  workspace-db-role:
+    image: public.ecr.aws/docker/library/postgres:16-alpine
+    environment:
+      POSTGRES_USER: e2e
+      POSTGRES_PASSWORD: e2e
+      POSTGRES_DB: e2e
+      WORKSPACE_DB_USER: base2_workspace_runtime_e2e
+      WORKSPACE_DB_PASSWORD: e2e_workspace_runtime_password
+      WORKSPACE_WORKER_DB_USER: base2_workspace_worker_e2e
+      WORKSPACE_WORKER_DB_PASSWORD: e2e_workspace_worker_password
+    volumes:
+      - ../postgres/bootstrap-workspace-role.sh:/bootstrap-workspace-role.sh:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ['/bin/sh', '/bootstrap-workspace-role.sh']
+    restart: 'no'
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: [/tmp]
+
   django-migrate:
     build:
       context: ../django
@@ -37,9 +59,13 @@ services:
       DB_NAME: e2e
       DB_USER: e2e
       DB_PASSWORD: e2e
+      WORKSPACE_DB_USER: base2_workspace_runtime_e2e
+      WORKSPACE_WORKER_DB_USER: base2_workspace_worker_e2e
     depends_on:
       postgres:
         condition: service_healthy
+      workspace-db-role:
+        condition: service_completed_successfully
     entrypoint: ['bash', '-lc']
     command: ['python manage.py migrate --noinput']
 
@@ -59,6 +85,10 @@ services:
       POSTGRES_DB: e2e
       DB_USER: e2e
       DB_PASSWORD: e2e
+      WORKSPACE_DB_USER: base2_workspace_runtime_e2e
+      WORKSPACE_DB_PASSWORD: e2e_workspace_runtime_password
+      WORKSPACE_WORKER_DB_USER: base2_workspace_worker_e2e
+      WORKSPACE_WORKER_DB_PASSWORD: e2e_workspace_worker_password
       JWT_SECRET: e2e_jwt_secret
       TOKEN_PEPPER: e2e_token_pepper
       IDENTITY_ENCRYPTION_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
@@ -103,9 +133,20 @@ services:
       TOKEN_PEPPER: e2e_token_pepper
       IDENTITY_ENCRYPTION_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
       PYTHONPATH: /app
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: e2e
+      DB_USER: e2e
+      DB_PASSWORD: e2e
+      WORKSPACE_DB_USER: base2_workspace_runtime_e2e
+      WORKSPACE_DB_PASSWORD: e2e_workspace_runtime_password
+      WORKSPACE_WORKER_DB_USER: base2_workspace_worker_e2e
+      WORKSPACE_WORKER_DB_PASSWORD: e2e_workspace_worker_password
     depends_on:
       redis:
         condition: service_healthy
+      django-migrate:
+        condition: service_completed_successfully
     command: ['bash', '-lc', 'celery -A api.tasks.app worker --loglevel=info']
 
   react-app:

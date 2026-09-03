@@ -48,6 +48,10 @@ def test_worker_completes_exact_supported_operation(monkeypatch, kind, request_p
         lambda **kwargs: SimpleNamespace(id=USER_ID),
     )
     monkeypatch.setattr(
+        worker, '_workspace_payload',
+        lambda **kwargs: {'schema_version': 1, 'records': []},
+    )
+    monkeypatch.setattr(
         worker, '_delete_account',
         lambda **kwargs: {'schema_version': 1, 'deleted': True, 'tenant_id': 'tenant-a'},
     )
@@ -118,9 +122,70 @@ def test_export_timestamp_serialization_is_explicit(monkeypatch):
             return False
 
     monkeypatch.setattr(worker, 'db_conn', lambda **kwargs: Context())
+    monkeypatch.setattr(
+        worker, '_workspace_payload',
+        lambda **kwargs: {'schema_version': 1, 'records': []},
+    )
     payload = worker._export_payload(tenant_id='tenant-a', user_id=USER_ID)
     assert payload['account']['created_at'] == '2026-08-25T00:00:00+00:00'
     assert payload['memberships'] == []
+    assert payload['workspace'] == {'schema_version': 1, 'records': []}
+
+
+def test_workspace_privacy_projection_is_tenant_subject_and_field_permission_bound():
+    record_id = UUID(int=9104)
+    definition_id = UUID(int=9105)
+
+    class Cursor:
+        def __init__(self):
+            self.calls = []
+            self.results = [
+                [
+                    (
+                        record_id, 'article', 'safe', 'Safe', 'draft', 2, 3,
+                        {'public_name': 'Shown', 'private_note': 'Never export'}, definition_id,
+                    )
+                ],
+                [(definition_id, 'public_name')],
+            ]
+
+        def execute(self, query, params):
+            self.calls.append((' '.join(query.split()), params))
+
+        def fetchall(self):
+            return self.results.pop(0)
+
+    cursor = Cursor()
+    projection = worker._workspace_projection(
+        cursor, tenant_id='tenant-a', user_id=USER_ID
+    )
+    assert projection['records'][0]['values'] == {'public_name': 'Shown'}
+    assert 'private_note' not in json.dumps(projection)
+    assert cursor.calls[0][1] == ('tenant-a', 'tenant-a', str(USER_ID))
+    assert "a.action='content.create'" in cursor.calls[0][0]
+    assert "read_permission='content.read'" in cursor.calls[1][0]
+
+
+def test_workspace_subject_unlink_preserves_immutable_audit_and_pseudonymizes_jobs():
+    class Cursor:
+        def __init__(self):
+            self.calls = []
+
+        def execute(self, query, params):
+            self.calls.append((' '.join(query.split()), params))
+
+    cursor = Cursor()
+    worker._unlink_workspace_subject(cursor, tenant_id='tenant-a', user_id=USER_ID)
+    statements = ' '.join(query for query, _ in cursor.calls)
+    assert 'DELETE FROM sitecontent_savedview' in statements
+    assert "status='deleted'" in statements
+    assert 'UPDATE sitecontent_workspaceauditevent' not in statements
+    assert 'DELETE FROM sitecontent_workspaceauditevent' not in statements
+    pseudonyms = [
+        params[0] for query, params in cursor.calls if 'requester_ref=%s' in query
+    ]
+    assert len(set(pseudonyms)) == 1
+    assert pseudonyms[0].startswith('deleted:') and str(USER_ID) not in pseudonyms[0]
 
 
 def test_deactivation_fails_closed_for_final_owner_before_account_mutation(monkeypatch):

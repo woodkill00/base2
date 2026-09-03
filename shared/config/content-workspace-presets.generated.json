@@ -1,0 +1,994 @@
+{
+  "definitions": {
+    "article": {
+      "fields": [
+        {
+          "fieldKey": "title",
+          "fieldKind": "short_text",
+          "label": "Title",
+          "order": 0,
+          "required": true,
+          "validation": {
+            "maxLength": 240,
+            "minLength": 1
+          }
+        },
+        {
+          "fieldKey": "slug",
+          "fieldKind": "slug",
+          "label": "Slug",
+          "order": 1,
+          "required": true,
+          "validation": {
+            "maxLength": 160,
+            "minLength": 1
+          }
+        },
+        {
+          "fieldKey": "summary",
+          "fieldKind": "long_text",
+          "label": "Summary",
+          "order": 2,
+          "required": false,
+          "validation": {
+            "maxLength": 1000
+          }
+        },
+        {
+          "fieldKey": "body",
+          "fieldKind": "rich_text",
+          "label": "Body",
+          "order": 3,
+          "required": false,
+          "validation": {
+            "maximumDepth": 8
+          }
+        },
+        {
+          "fieldKey": "hero_image",
+          "fieldKind": "image",
+          "label": "Hero Image",
+          "order": 4,
+          "required": false,
+          "validation": {}
+        }
+      ],
+      "name": "Article",
+      "presetId": "article",
+      "presetVersion": 1,
+      "typeKey": "article",
+      "workflow": {
+        "initialState": "draft",
+        "states": [
+          "draft",
+          "in_review",
+          "scheduled",
+          "published",
+          "archived",
+          "deleted"
+        ],
+        "transitions": [
+          {
+            "action": "submit_review",
+            "from": [
+              "draft"
+            ],
+            "to": "in_review"
+          },
+          {
+            "action": "return_draft",
+            "from": [
+              "in_review"
+            ],
+            "to": "draft"
+          },
+          {
+            "action": "schedule",
+            "from": [
+              "in_review"
+            ],
+            "to": "scheduled"
+          },
+          {
+            "action": "publish",
+            "from": [
+              "in_review",
+              "scheduled"
+            ],
+            "to": "published"
+          },
+          {
+            "action": "archive",
+            "from": [
+              "published"
+            ],
+            "to": "archived"
+          },
+          {
+            "action": "restore",
+            "from": [
+              "archived"
+            ],
+            "to": "draft"
+          },
+          {
+            "action": "delete",
+            "from": [
+              "draft",
+              "archived"
+            ],
+            "to": "deleted"
+          }
+        ]
+      }
+    },
+    "catalog": {
+      "fields": [
+        {
+          "fieldKey": "title",
+          "fieldKind": "short_text",
+          "label": "Title",
+          "order": 0,
+          "required": true,
+          "validation": {
+            "maxLength": 240,
+            "minLength": 1
+          }
+        },
+        {
+          "fieldKey": "slug",
+          "fieldKind": "slug",
+          "label": "Slug",
+          "order": 1,
+          "required": true,
+          "validation": {
+            "maxLength": 160,
+            "minLength": 1
+          }
+        },
+        {
+          "fieldKey": "description",
+          "fieldKind": "long_text",
+          "label": "Description",
+          "order": 2,
+          "required": false,
+          "validation": {
+            "maxLength": 20000
+          }
+        },
+        {
+          "fieldKey": "price",
+          "fieldKind": "decimal",
+          "label": "Price",
+          "order": 3,
+          "required": false,
+          "validation": {
+            "decimalPlaces": 2,
+            "minimum": 0
+          }
+        },
+        {
+          "fieldKey": "images",
+          "fieldKind": "references",
+          "label": "Images",
+          "order": 4,
+          "required": false,
+          "validation": {
+            "maximumItems": 20,
+            "targetType": "media_asset"
+          }
+        }
+      ],
+      "name": "Catalog",
+      "presetId": "catalog",
+      "presetVersion": 1,
+      "typeKey": "catalog",
+      "workflow": {
+        "initialState": "draft",
+        "states": [
+          "draft",
+          "in_review",
+          "scheduled",
+          "published",
+          "archived",
+          "deleted"
+        ],
+        "transitions": [
+          {
+            "action": "submit_review",
+            "from": [
+              "draft"
+            ],
+            "to": "in_review"
+          },
+          {
+            "action": "return_draft",
+            "from": [
+              "in_review"
+            ],
+            "to": "draft"
+          },
+          {
+            "action": "schedule",
+            "from": [
+              "in_review"
+            ],
+            "to": "scheduled"
+          },
+          {
+            "action": "publish",
+            "from": [
+              "in_review",
+              "scheduled"
+            ],
+            "to": "published"
+          },
+          {
+            "action": "archive",
+            "from": [
+              "published"
+            ],
+            "to": "archived"
+          },
+          {
+            "action": "restore",
+            "from": [
+              "archived"
+            ],
+            "to": "draft"
+          },
+          {
+            "action": "delete",
+            "from": [
+              "draft",
+              "archived"
+            ],
+            "to": "deleted"
+          }
+        ]
+      }
+    },
+    "community": {
+      "fields": [
+        {
+          "fieldKey": "title",
+          "fieldKind": "short_text",
+          "label": "Title",
+          "order": 0,
+          "required": true,
+          "validation": {
+            "maxLength": 240,
+            "minLength": 1
+          }
+        },
+        {
+          "fieldKey": "slug",
+          "fieldKind": "slug",
+          "label": "Slug",
+          "order": 1,
+          "required": true,
+          "validation": {
+            "maxLength": 160,
+            "minLength": 1
+          }
+        },
+        {
+          "fieldKey": "body",
+          "fieldKind": "rich_text",
+          "label": "Body",
+          "order": 2,
+          "required": false,
+          "validation": {
+            "maximumDepth": 8
+          }
+        },
+        {
+          "fieldKey": "author",
+          "fieldKind": "reference",
+          "label": "Author",
+          "order": 3,
+          "required": false,
+          "validation": {
+            "maximumDepth": 1,
+            "targetType": "person"
+          }
+        },
+        {
+          "fieldKey": "attachments",
+          "fieldKind": "references",
+          "label": "Attachments",
+          "order": 4,
+          "required": false,
+          "validation": {
+            "maximumItems": 20,
+            "targetType": "media_asset"
+          }
+        }
+      ],
+      "name": "Community",
+      "presetId": "community",
+      "presetVersion": 1,
+      "typeKey": "community",
+      "workflow": {
+        "initialState": "draft",
+        "states": [
+          "draft",
+          "in_review",
+          "scheduled",
+          "published",
+          "archived",
+          "deleted"
+        ],
+        "transitions": [
+          {
+            "action": "submit_review",
+            "from": [
+              "draft"
+            ],
+            "to": "in_review"
+          },
+          {
+            "action": "return_draft",
+            "from": [
+              "in_review"
+            ],
+            "to": "draft"
+          },
+          {
+            "action": "schedule",
+            "from": [
+              "in_review"
+            ],
+            "to": "scheduled"
+          },
+          {
+            "action": "publish",
+            "from": [
+              "in_review",
+              "scheduled"
+            ],
+            "to": "published"
+          },
+          {
+            "action": "archive",
+            "from": [
+              "published"
+            ],
+            "to": "archived"
+          },
+          {
+            "action": "restore",
+            "from": [
+              "archived"
+            ],
+            "to": "draft"
+          },
+          {
+            "action": "delete",
+            "from": [
+              "draft",
+              "archived"
+            ],
+            "to": "deleted"
+          }
+        ]
+      }
+    },
+    "documentation": {
+      "fields": [
+        {
+          "fieldKey": "title",
+          "fieldKind": "short_text",
+          "label": "Title",
+          "order": 0,
+          "required": true,
+          "validation": {
+            "maxLength": 240,
+            "minLength": 1
+          }
+        },
+        {
+          "fieldKey": "slug",
+          "fieldKind": "slug",
+          "label": "Slug",
+          "order": 1,
+          "required": true,
+          "validation": {
+            "maxLength": 160,
+            "minLength": 1
+          }
+        },
+        {
+          "fieldKey": "body",
+          "fieldKind": "rich_text",
+          "label": "Body",
+          "order": 2,
+          "required": false,
+          "validation": {
+            "maximumDepth": 8
+          }
+        },
+        {
+          "fieldKey": "parent",
+          "fieldKind": "reference",
+          "label": "Parent",
+          "order": 3,
+          "required": false,
+          "validation": {
+            "maximumDepth": 2,
+            "targetType": "documentation"
+          }
+        }
+      ],
+      "name": "Documentation",
+      "presetId": "documentation",
+      "presetVersion": 1,
+      "typeKey": "documentation",
+      "workflow": {
+        "initialState": "draft",
+        "states": [
+          "draft",
+          "in_review",
+          "scheduled",
+          "published",
+          "archived",
+          "deleted"
+        ],
+        "transitions": [
+          {
+            "action": "submit_review",
+            "from": [
+              "draft"
+            ],
+            "to": "in_review"
+          },
+          {
+            "action": "return_draft",
+            "from": [
+              "in_review"
+            ],
+            "to": "draft"
+          },
+          {
+            "action": "schedule",
+            "from": [
+              "in_review"
+            ],
+            "to": "scheduled"
+          },
+          {
+            "action": "publish",
+            "from": [
+              "in_review",
+              "scheduled"
+            ],
+            "to": "published"
+          },
+          {
+            "action": "archive",
+            "from": [
+              "published"
+            ],
+            "to": "archived"
+          },
+          {
+            "action": "restore",
+            "from": [
+              "archived"
+            ],
+            "to": "draft"
+          },
+          {
+            "action": "delete",
+            "from": [
+              "draft",
+              "archived"
+            ],
+            "to": "deleted"
+          }
+        ]
+      }
+    },
+    "event": {
+      "fields": [
+        {
+          "fieldKey": "title",
+          "fieldKind": "short_text",
+          "label": "Title",
+          "order": 0,
+          "required": true,
+          "validation": {
+            "maxLength": 240,
+            "minLength": 1
+          }
+        },
+        {
+          "fieldKey": "slug",
+          "fieldKind": "slug",
+          "label": "Slug",
+          "order": 1,
+          "required": true,
+          "validation": {
+            "maxLength": 160,
+            "minLength": 1
+          }
+        },
+        {
+          "fieldKey": "starts_at",
+          "fieldKind": "datetime",
+          "label": "Starts At",
+          "order": 2,
+          "required": true,
+          "validation": {}
+        },
+        {
+          "fieldKey": "ends_at",
+          "fieldKind": "datetime",
+          "label": "Ends At",
+          "order": 3,
+          "required": false,
+          "validation": {}
+        },
+        {
+          "fieldKey": "location",
+          "fieldKind": "location",
+          "label": "Location",
+          "order": 4,
+          "required": false,
+          "validation": {}
+        }
+      ],
+      "name": "Event",
+      "presetId": "event",
+      "presetVersion": 1,
+      "typeKey": "event",
+      "workflow": {
+        "initialState": "draft",
+        "states": [
+          "draft",
+          "in_review",
+          "scheduled",
+          "published",
+          "archived",
+          "deleted"
+        ],
+        "transitions": [
+          {
+            "action": "submit_review",
+            "from": [
+              "draft"
+            ],
+            "to": "in_review"
+          },
+          {
+            "action": "return_draft",
+            "from": [
+              "in_review"
+            ],
+            "to": "draft"
+          },
+          {
+            "action": "schedule",
+            "from": [
+              "in_review"
+            ],
+            "to": "scheduled"
+          },
+          {
+            "action": "publish",
+            "from": [
+              "in_review",
+              "scheduled"
+            ],
+            "to": "published"
+          },
+          {
+            "action": "archive",
+            "from": [
+              "published"
+            ],
+            "to": "archived"
+          },
+          {
+            "action": "restore",
+            "from": [
+              "archived"
+            ],
+            "to": "draft"
+          },
+          {
+            "action": "delete",
+            "from": [
+              "draft",
+              "archived"
+            ],
+            "to": "deleted"
+          }
+        ]
+      }
+    },
+    "listing": {
+      "fields": [
+        {
+          "fieldKey": "title",
+          "fieldKind": "short_text",
+          "label": "Title",
+          "order": 0,
+          "required": true,
+          "validation": {
+            "maxLength": 240,
+            "minLength": 1
+          }
+        },
+        {
+          "fieldKey": "slug",
+          "fieldKind": "slug",
+          "label": "Slug",
+          "order": 1,
+          "required": true,
+          "validation": {
+            "maxLength": 160,
+            "minLength": 1
+          }
+        },
+        {
+          "fieldKey": "description",
+          "fieldKind": "long_text",
+          "label": "Description",
+          "order": 2,
+          "required": false,
+          "validation": {
+            "maxLength": 20000
+          }
+        },
+        {
+          "fieldKey": "location",
+          "fieldKind": "location",
+          "label": "Location",
+          "order": 3,
+          "required": false,
+          "validation": {}
+        },
+        {
+          "fieldKey": "images",
+          "fieldKind": "references",
+          "label": "Images",
+          "order": 4,
+          "required": false,
+          "validation": {
+            "maximumItems": 20,
+            "targetType": "media_asset"
+          }
+        }
+      ],
+      "name": "Listing",
+      "presetId": "listing",
+      "presetVersion": 1,
+      "typeKey": "listing",
+      "workflow": {
+        "initialState": "draft",
+        "states": [
+          "draft",
+          "in_review",
+          "scheduled",
+          "published",
+          "archived",
+          "deleted"
+        ],
+        "transitions": [
+          {
+            "action": "submit_review",
+            "from": [
+              "draft"
+            ],
+            "to": "in_review"
+          },
+          {
+            "action": "return_draft",
+            "from": [
+              "in_review"
+            ],
+            "to": "draft"
+          },
+          {
+            "action": "schedule",
+            "from": [
+              "in_review"
+            ],
+            "to": "scheduled"
+          },
+          {
+            "action": "publish",
+            "from": [
+              "in_review",
+              "scheduled"
+            ],
+            "to": "published"
+          },
+          {
+            "action": "archive",
+            "from": [
+              "published"
+            ],
+            "to": "archived"
+          },
+          {
+            "action": "restore",
+            "from": [
+              "archived"
+            ],
+            "to": "draft"
+          },
+          {
+            "action": "delete",
+            "from": [
+              "draft",
+              "archived"
+            ],
+            "to": "deleted"
+          }
+        ]
+      }
+    },
+    "portfolio": {
+      "fields": [
+        {
+          "fieldKey": "title",
+          "fieldKind": "short_text",
+          "label": "Title",
+          "order": 0,
+          "required": true,
+          "validation": {
+            "maxLength": 240,
+            "minLength": 1
+          }
+        },
+        {
+          "fieldKey": "slug",
+          "fieldKind": "slug",
+          "label": "Slug",
+          "order": 1,
+          "required": true,
+          "validation": {
+            "maxLength": 160,
+            "minLength": 1
+          }
+        },
+        {
+          "fieldKey": "summary",
+          "fieldKind": "long_text",
+          "label": "Summary",
+          "order": 2,
+          "required": false,
+          "validation": {
+            "maxLength": 1000
+          }
+        },
+        {
+          "fieldKey": "body",
+          "fieldKind": "rich_text",
+          "label": "Body",
+          "order": 3,
+          "required": false,
+          "validation": {
+            "maximumDepth": 8
+          }
+        },
+        {
+          "fieldKey": "gallery",
+          "fieldKind": "references",
+          "label": "Gallery",
+          "order": 4,
+          "required": false,
+          "validation": {
+            "maximumItems": 20,
+            "targetType": "media_asset"
+          }
+        }
+      ],
+      "name": "Portfolio",
+      "presetId": "portfolio",
+      "presetVersion": 1,
+      "typeKey": "portfolio",
+      "workflow": {
+        "initialState": "draft",
+        "states": [
+          "draft",
+          "in_review",
+          "scheduled",
+          "published",
+          "archived",
+          "deleted"
+        ],
+        "transitions": [
+          {
+            "action": "submit_review",
+            "from": [
+              "draft"
+            ],
+            "to": "in_review"
+          },
+          {
+            "action": "return_draft",
+            "from": [
+              "in_review"
+            ],
+            "to": "draft"
+          },
+          {
+            "action": "schedule",
+            "from": [
+              "in_review"
+            ],
+            "to": "scheduled"
+          },
+          {
+            "action": "publish",
+            "from": [
+              "in_review",
+              "scheduled"
+            ],
+            "to": "published"
+          },
+          {
+            "action": "archive",
+            "from": [
+              "published"
+            ],
+            "to": "archived"
+          },
+          {
+            "action": "restore",
+            "from": [
+              "archived"
+            ],
+            "to": "draft"
+          },
+          {
+            "action": "delete",
+            "from": [
+              "draft",
+              "archived"
+            ],
+            "to": "deleted"
+          }
+        ]
+      }
+    },
+    "rental": {
+      "fields": [
+        {
+          "fieldKey": "title",
+          "fieldKind": "short_text",
+          "label": "Title",
+          "order": 0,
+          "required": true,
+          "validation": {
+            "maxLength": 240,
+            "minLength": 1
+          }
+        },
+        {
+          "fieldKey": "slug",
+          "fieldKind": "slug",
+          "label": "Slug",
+          "order": 1,
+          "required": true,
+          "validation": {
+            "maxLength": 160,
+            "minLength": 1
+          }
+        },
+        {
+          "fieldKey": "location",
+          "fieldKind": "location",
+          "label": "Location",
+          "order": 2,
+          "required": false,
+          "validation": {}
+        },
+        {
+          "fieldKey": "price",
+          "fieldKind": "decimal",
+          "label": "Price",
+          "order": 3,
+          "required": false,
+          "validation": {
+            "decimalPlaces": 2,
+            "minimum": 0
+          }
+        },
+        {
+          "fieldKey": "amenities",
+          "fieldKind": "json_object",
+          "label": "Amenities",
+          "order": 4,
+          "required": false,
+          "validation": {
+            "maximumDepth": 3
+          }
+        },
+        {
+          "fieldKey": "images",
+          "fieldKind": "references",
+          "label": "Images",
+          "order": 5,
+          "required": false,
+          "validation": {
+            "maximumItems": 20,
+            "targetType": "media_asset"
+          }
+        }
+      ],
+      "name": "Rental",
+      "presetId": "rental",
+      "presetVersion": 1,
+      "typeKey": "rental",
+      "workflow": {
+        "initialState": "draft",
+        "states": [
+          "draft",
+          "in_review",
+          "scheduled",
+          "published",
+          "archived",
+          "deleted"
+        ],
+        "transitions": [
+          {
+            "action": "submit_review",
+            "from": [
+              "draft"
+            ],
+            "to": "in_review"
+          },
+          {
+            "action": "return_draft",
+            "from": [
+              "in_review"
+            ],
+            "to": "draft"
+          },
+          {
+            "action": "schedule",
+            "from": [
+              "in_review"
+            ],
+            "to": "scheduled"
+          },
+          {
+            "action": "publish",
+            "from": [
+              "in_review",
+              "scheduled"
+            ],
+            "to": "published"
+          },
+          {
+            "action": "archive",
+            "from": [
+              "published"
+            ],
+            "to": "archived"
+          },
+          {
+            "action": "restore",
+            "from": [
+              "archived"
+            ],
+            "to": "draft"
+          },
+          {
+            "action": "delete",
+            "from": [
+              "draft",
+              "archived"
+            ],
+            "to": "deleted"
+          }
+        ]
+      }
+    }
+  },
+  "schemaVersion": 1
+}

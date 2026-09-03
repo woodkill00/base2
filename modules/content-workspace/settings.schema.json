@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "enabledPresets": {
+      "type": "array",
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "article",
+          "catalog",
+          "rental",
+          "portfolio",
+          "documentation",
+          "listing",
+          "event",
+          "community"
+        ]
+      }
+    },
+    "maximumPageSize": { "type": "integer", "minimum": 1, "maximum": 100, "default": 25 }
+  }
+}

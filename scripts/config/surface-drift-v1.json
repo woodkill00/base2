@@ -2,35 +2,42 @@
   "algorithm": "sha256",
   "groups": {
     "config": {
-      ".env.example": "0163a9332b1ebc608507ccce49a04172398aa2413fe7e8c0499bc778d7812819",
-      "api/site_profiles/base2-obsidian.json": "55d8c456c9b5e0144651de543a5b7dafa0b9595e49fa823c2cce9d7209d9e920",
+      ".env.example": "cfbe306d771fcfa3648fe476bcb0b31c19fc91cb2a7cbd6a5b6696b3624ffe5c",
+      "api/site_profiles/base2-obsidian.json": "7e632b6f5ae3a5f05e3ff28d79e4c8c794497ef93126d873de290ef7e340c3c5",
+      "api/site_profiles/content-workspace-contracts.json": "b8202643502ab5257a92a7370dd2ef4afbc11d75b2fd1772d2b99cb8f7f6beee",
+      "api/site_profiles/content-workspace-presets.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
       "api/site_profiles/ember-studio.json": "b6b57abe7c80247917a1cc0ccdf08f3cddb2efd503091b73fb9d0e58d4c7fcae",
-      "api/site_profiles/index.json": "887765b4c6d39198f2025ef28fd0f2ba075b92a169b4a4fc1dc2bfb5edede7fb",
+      "api/site_profiles/index.json": "a8dc9e6e3753cbb3acd8e2c9cac6c88360228a25e086def48aab746b0588353a",
       "api/site_profiles/northstar-library.json": "286850ced5758a336b8c7a82e345f57baa9d4686b39d209311178b6eaa5351f5",
-      "django/site_profiles/base2-obsidian.json": "55d8c456c9b5e0144651de543a5b7dafa0b9595e49fa823c2cce9d7209d9e920",
+      "django/site_profiles/base2-obsidian.json": "7e632b6f5ae3a5f05e3ff28d79e4c8c794497ef93126d873de290ef7e340c3c5",
+      "django/site_profiles/content-workspace-contracts.json": "b8202643502ab5257a92a7370dd2ef4afbc11d75b2fd1772d2b99cb8f7f6beee",
+      "django/site_profiles/content-workspace-presets.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
       "django/site_profiles/ember-studio.json": "b6b57abe7c80247917a1cc0ccdf08f3cddb2efd503091b73fb9d0e58d4c7fcae",
-      "django/site_profiles/index.json": "887765b4c6d39198f2025ef28fd0f2ba075b92a169b4a4fc1dc2bfb5edede7fb",
+      "django/site_profiles/index.json": "a8dc9e6e3753cbb3acd8e2c9cac6c88360228a25e086def48aab746b0588353a",
       "django/site_profiles/northstar-library.json": "286850ced5758a336b8c7a82e345f57baa9d4686b39d209311178b6eaa5351f5",
-      "scripts/config/complete-gate-v1.json": "339a31ec162ccf65447a8ba78a3ed6830c16efe4dedcba695d00f73e6697df27",
+      "scripts/config/complete-gate-v1.json": "a3b4d5ed4e53737876d6823fab9eff89ac65bf3a86962dcd5004ca275ad719c3",
+      "shared/config/content-workspace-presets.generated.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
       "shared/config/design-system-v1.json": "dc6ceb96c6a608f71c105ad928ab57acdfd7d9ad404d7dca32e6c7cf2d2a9dea",
       "shared/config/identity-realms.json": "c11cd97a6808983182e96774499ae5d9b63e38d8dbe1464846cbca9b6127719f",
-      "shared/config/module-catalog.json": "53bb308e1d7367b1646585bf78ff8d9994c3418edca4665855114536ce5d2f5a",
-      "shared/config/tenant-security.json": "925ce5a3c9a45ee82f83f6369c0e4dd170ad0a8063a6a794b7902818eb90aff1"
+      "shared/config/module-catalog.json": "741f9c5d88f1e3cda7fd26bb6876d8adf03fa5388c50ec17c76d5a5feee1cb6b",
+      "shared/config/tenant-security.json": "ff35fd89e50fc66a0dd504bf631a297b52c8f9f888d030201ac3cff6896d117e"
     },
     "docs": {
       "docs/ARCHITECTURE.md": "98c9ed467d4b3b69204f493a3260fcd4e366a3e400d6a31e4d4acaf5a19f0286",
       "docs/CONFIG.md": "3b66020546cb34a1916c938671f1840a7f9ebf84d12258bbc69f0e9af3600dbe",
       "docs/DEPLOY.md": "f14c440859aa9dd37327308baef30ae2ee89fd73d89f3b32a90e8955bb3e21ca",
       "docs/SECURITY.md": "f6dfb9f5726fd3600ef62b992527c83b576163bd7fa7e30b91675e666dbc41f6",
-      "docs/TESTING.md": "2be3b68c8d4e04cd2a6a8a645d86dfac192136da8e22c452ae85b4b6215d3088",
+      "docs/TESTING.md": "0f36a8fcf6540e8a5c1c93974fa9530d67be969d290e71a7a73c326d8fa205b2",
       "docs/feature-093-production-readiness.md": "a072302df8fd844102ae84f994161f697a4b8f5c73d7a6ee7b2ad6e37d3eeff1",
       "docs/module-sdk.md": "1987f71798ec98f7c476c3591313584085a3004aac86d8df37d6b88dd811ea27",
       "docs/website-factory.md": "6fbe524d06e3d0a06625d27cffca95282532b46f5f59673aa07cb866581373ad"
     },
     "generatedClient": {
-      "react-app/src/config/generated/base2-obsidian.json": "55d8c456c9b5e0144651de543a5b7dafa0b9595e49fa823c2cce9d7209d9e920",
+      "react-app/src/config/generated/base2-obsidian.json": "7e632b6f5ae3a5f05e3ff28d79e4c8c794497ef93126d873de290ef7e340c3c5",
+      "react-app/src/config/generated/content-workspace-contracts.json": "b8202643502ab5257a92a7370dd2ef4afbc11d75b2fd1772d2b99cb8f7f6beee",
+      "react-app/src/config/generated/content-workspace-presets.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
       "react-app/src/config/generated/ember-studio.json": "b6b57abe7c80247917a1cc0ccdf08f3cddb2efd503091b73fb9d0e58d4c7fcae",
-      "react-app/src/config/generated/index.json": "887765b4c6d39198f2025ef28fd0f2ba075b92a169b4a4fc1dc2bfb5edede7fb",
+      "react-app/src/config/generated/index.json": "a8dc9e6e3753cbb3acd8e2c9cac6c88360228a25e086def48aab746b0588353a",
       "react-app/src/config/generated/northstar-library.json": "286850ced5758a336b8c7a82e345f57baa9d4686b39d209311178b6eaa5351f5",
       "react-app/src/lib/apiClient.js": "552e46e8bba953ec1cb0d0347dac0282dec5aee9b6ad699000ac6d33f976410c",
       "react-app/src/lib/apiErrors.js": "b0a44297eaf887077e7656d1cdb3f1f5741bcdfa60e4e70ffdabe60d59b0741d"
@@ -46,6 +53,8 @@
       "modules/commerce/settings.schema.json": "908d8573accb2df8fc68e3ec29db9c4cf6803e94f2304dd3b034182e87db4a71",
       "modules/community/module.json": "4d9c3ea03c1ff82ff6d628344d5f2c403977f7f24883c018e4b4fa82769476cc",
       "modules/community/settings.schema.json": "2dfc26d678755b83d14e3fc071ee7c235c053508afa112aef3297caeab146f21",
+      "modules/content-workspace/module.json": "99edafb68c69d9476a2e989dc576ad9710115ee7aa7c8b8853ad08887eb9e605",
+      "modules/content-workspace/settings.schema.json": "ecebee6271c58b542b308a67edf7e37b5653173adadbc5c83e941b756071ce50",
       "modules/content/module.json": "89cd133389ab075d26214b8f34396cfe4eae3a611255ef3e144665f938ab600a",
       "modules/content/settings.schema.json": "91e1556fb053be7728bab4ce7b2823ca64807c5ffa117a3e8fbba79c683a2344",
       "modules/documentation/module.json": "1cb9c9ee70abecbba5298d206ccb20f7582bd1757a5da794b207704b14e2b2e8",
@@ -72,16 +81,17 @@
       "modules/subscription/settings.schema.json": "908d8573accb2df8fc68e3ec29db9c4cf6803e94f2304dd3b034182e87db4a71",
       "modules/support/module.json": "4d7427eb2dd208d908adbac3967a47eafbe8e2ec48d56a14c2d59211bc3e8b08",
       "modules/support/settings.schema.json": "23aded1f2399dcff1e48abdf5292756f535e4a3358cd53b0f64f80785701fbda",
-      "shared/config/module-catalog.json": "53bb308e1d7367b1646585bf78ff8d9994c3418edca4665855114536ce5d2f5a"
+      "shared/config/module-catalog.json": "741f9c5d88f1e3cda7fd26bb6876d8adf03fa5388c50ec17c76d5a5feee1cb6b"
     },
     "openapi": {
       "digital_ocean/contracts/openapi.yaml": "c20303cab89fdeefc019bab2f3d8ac81dd1de4de567c242f3305d43b2f267975",
       "specs/001-django-fastapi-react/contracts/openapi.yaml": "f96ae1b450ed0e54406f0b40a301dab36c1b09d9eb9886fd2cb9d18db728deed"
     },
     "routeInventory": {
-      "api/main.py": "bc384a4be095283a0330cc7eccbe7b9c816a8eec946679e0bcb7ea079390567e",
+      "api/main.py": "d1b60ba80892ef65833dba843c9ab59096e83e504f3eed2997061053361a7460",
       "api/routes/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "api/routes/auth.py": "961cc074c8457957aaf5a799f82dd53b51f88599f9eae24dd65878218d4e9ad8",
+      "api/routes/content_workspace.py": "a8853313f41313b2ae66317ec8238025332e1de46913fd7c580fe4147563f8a9",
       "api/routes/engagement.py": "f26e86d78daab93ef74a8d547b2b4ec1a3035ebf2f13e9a886a2accd772f016e",
       "api/routes/identity.py": "c1617c121c136eab5f8341e2b1c2993fe6def7c71e9cb834d148ff0a26a4b35e",
       "api/routes/metrics.py": "e9e270a535b8bc6a480913fac9e475b8aadfa805fbb3b0494c8983e6dce45183",
@@ -98,7 +108,7 @@
       "django/users/urls.py": "e1c30bf7c17d01975286d91dac4f45f686118503200be85a54c86e143bae8c40",
       "react-app/src/App.js": "d259ff46ea77be8a3dbb0d338ed9baea8be6d19971f5ac79392b10726e18d0ec",
       "react-app/src/routes/LocalizedExperience.jsx": "2ef2f7460d57f1ca8488716c84e7d3d89eb41975cb426eaf85f71b5a8479ec58",
-      "react-app/src/routes/PublicRoutes.jsx": "1941f40fa7c231e6e17849260f1180662cd3a38e4941537f754c42d875d86257"
+      "react-app/src/routes/PublicRoutes.jsx": "c79d9a37dde4e76de840bfad4c7542389f3f53ce5d2034bafc729e1bf4b2b295"
     }
   },
   "schemaVersion": 1

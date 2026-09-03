@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SNAPSHOT_ROOTS = ("react-app/e2e/visual", "react-app/e2e/account")
+SNAPSHOT_ROOTS = ("react-app/e2e/visual", "react-app/e2e/account", "react-app/e2e/workspace")
 MAX_MEMBER_BYTES = 8 * 1024 * 1024
 PROJECT = re.compile(r"-(desktop|tablet|mobile)-linux\.png$")
 ROUTES = (
@@ -26,6 +26,7 @@ ROUTES = (
     {"id": "pgadmin", "path": "/", "host": "pgadmin.woodkilldev.com", "auth": "edge+pgadmin", "hermetic": False},
     {"id": "traefik", "path": "/", "host": "traefik.woodkilldev.com", "auth": "edge", "hermetic": False},
     {"id": "settings", "path": "/settings", "host": "woodkilldev.com", "auth": "credential-free fixture", "hermetic": True},
+    {"id": "workspace", "path": "/workspace", "host": "woodkilldev.com", "auth": "credential-free fixture", "hermetic": True},
 )
 
 
@@ -71,7 +72,7 @@ def build(root: Path = ROOT, *, commit: str | None = None) -> dict:
             "size": len(raw),
             "sha256": sha256(raw),
             "project": project,
-            "routeClass": "settings" if "/account/settings-" in relative else "public",
+            "routeClass": "workspace" if "/workspace/" in relative else "settings" if "/account/settings-" in relative else "public",
             "area": Path(relative).name.rsplit("-", 2)[0],
         })
     if not members or len({row["path"] for row in members}) != len(members):

@@ -22,6 +22,7 @@ const VerifyEmail = lazy(() => import('../pages/VerifyEmail'));
 const ForgotPassword = lazy(() => import('../pages/ForgotPassword'));
 const ResetPassword = lazy(() => import('../pages/ResetPassword'));
 const EventsPage = lazy(() => import('../pages/public/EventsPage'));
+const ContentWorkspace = lazy(() => import('../pages/ContentWorkspace'));
 
 const accountsEnabled = siteManifest.modules.some(
   (module) => module.id === 'accounts' && module.enabled
@@ -53,6 +54,16 @@ const AdminRoute = () => {
   return (
     <PermissionRoute user={user} permission="audit.read">
       <AdminConsole user={user} />
+    </PermissionRoute>
+  );
+};
+
+const WorkspaceRoute = () => {
+  const { user } = useAuth();
+  if (!moduleEnabled('content-workspace')) return <NotFoundPage />;
+  return (
+    <PermissionRoute user={user} permission="content-workspace.read">
+      <ContentWorkspace />
     </PermissionRoute>
   );
 };
@@ -135,6 +146,14 @@ const PublicRoutes = () => (
       element={
         <ProtectedRoute>
           <Dashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/workspace"
+      element={
+        <ProtectedRoute>
+          <WorkspaceRoute />
         </ProtectedRoute>
       }
     />

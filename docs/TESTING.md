@@ -1,5 +1,9 @@
 # Testing Guide
 
+## Python environment boundaries
+
+Do not invoke bare `pytest` from the repository root. The API, Django, provider, and visual tooling intentionally use different dependency environments; root discovery mixes them and produces misleading collection failures. Run API tests with `.venv-api/bin/pytest api/tests`, Django tests with `.venv-django/bin/pytest django/tests`, and repository Python/script tests with `.venv/bin/python -m pytest scripts/tests`. Cross-service PostgreSQL, Redis, Celery, and browser integration belongs to `scripts/bash/complete-gate.sh`, which provisions and validates the expected stack.
+
 ## Categories
 
 - Unit: default fast tests (pytest.ini excludes integration/perf)

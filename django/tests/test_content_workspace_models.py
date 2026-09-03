@@ -1,0 +1,855 @@
+from __future__ import annotations
+
+from datetime import timedelta
+
+import pytest
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
+from django.utils import timezone
+
+from sitecontent.models import (
+    AssetBinding,
+    ContentFieldDefinition,
+    ContentRecord,
+    ContentRecordVersion,
+    ContentRelationship,
+    ContentTypeDefinition,
+    ExportJob,
+    ImportJob,
+    ImportRowOutcome,
+    SavedView,
+    WorkflowDefinition,
+    WorkspaceAuditEvent,
+)
+
+pytestmark = pytest.mark.django_db
+
+
+def definition(*, site_id: str = "site-a", version: int = 1, status: str = "draft"):
+    return ContentTypeDefinition.objects.create(
+        site_id=site_id,
+        type_key="article",
+        version=version,
+        name="Article",
+        status=status,
+        lock_version=1,
+    )
+
+
+def published_definition_with_title(*, site_id: str = "site-a"):
+    content_type = definition(site_id=site_id)
+    ContentFieldDefinition.objects.create(
+        definition=content_type,
+        field_key="title",
+        label="Title",
+        field_kind="short_text",
+        required=True,
+    )
+    content_type.publish(expected_lock_version=1)
+    return content_type
+
+
+def test_definition_version_is_site_scoped_and_published_rows_are_immutable():
+    first = definition(status="published")
+    definition(site_id="site-b", status="published")
+    with pytest.raises((IntegrityError, ValidationError)), transaction.atomic():
+        definition(status="published")
+
+    first.name = "Changed in place"
+    with pytest.raises(ValidationError, match="published_definition_immutable"):
+        first.save()
+
+
+def test_field_definitions_use_closed_kinds_and_bounded_configuration():
+    content_type = definition()
+    field = ContentFieldDefinition(
+        definition=content_type,
+        field_key="title",
+        label="Title",
+        field_kind="short_text",
+        required=True,
+        validation={"minLength": 1, "maxLength": 240},
+        presentation={"renderer": "text", "width": "full"},
+    )
+    field.full_clean()
+
+    field.field_kind = "python"
+    with pytest.raises(ValidationError):
+        field.full_clean()
+    field.field_kind = "short_text"
+    field.validation = {"regularExpression": ".*"}
+    with pytest.raises(ValidationError, match="field_validation_key_invalid"):
+        field.full_clean()
+
+
+def test_field_bounds_defaults_and_relationship_metadata_fail_closed():
+    content_type = definition()
+    relation = ContentFieldDefinition(
+        definition=content_type,
+        field_key="authors",
+        label="Authors",
+        field_kind="references",
+        validation={
+            "targetType": "person",
+            "maximumItems": 3,
+            "deletionPolicy": "restrict",
+            "maximumDepth": 2,
+        },
+        presentation={"renderer": "relationship"},
+    )
+    relation.full_clean()
+    relation.validation["maximumItems"] = 51
+    with pytest.raises(ValidationError, match="field_validation_bound_invalid"):
+        relation.full_clean()
+    relation.validation = {"targetType": "Person"}
+    with pytest.raises(ValidationError, match="field_relationship_invalid"):
+        relation.full_clean()
+    number = ContentFieldDefinition(
+        definition=content_type,
+        field_key="price",
+        label="Price",
+        field_kind="decimal",
+        default_value="4.50",
+        validation={"minimum": 5, "maximum": 2},
+    )
+    with pytest.raises(ValidationError, match="field_validation_bound_invalid"):
+        number.full_clean()
+
+
+def test_workflow_graph_rejects_unknown_states_actions_and_destinations():
+    content_type = definition()
+    workflow = WorkflowDefinition(
+        definition=content_type,
+        states=["draft", "in_review", "published", "archived"],
+        initial_state="draft",
+        transitions=[
+            {
+                "action": "submit_review",
+                "from": ["draft"],
+                "to": "in_review",
+                "permission": "content.review",
+            }
+        ],
+    )
+    workflow.full_clean()
+    workflow.transitions[0]["to"] = "execute-shell"
+    with pytest.raises(ValidationError, match="workflow_state_invalid"):
+        workflow.full_clean()
+
+
+def test_workflow_graph_rejects_duplicates_conflicts_and_invalid_scheduling_flags():
+    content_type = definition()
+    workflow = WorkflowDefinition(
+        definition=content_type,
+        states=["draft", "scheduled", "published"],
+        initial_state="draft",
+        transitions=[
+            {
+                "action": "schedule",
+                "from": ["draft"],
+                "to": "scheduled",
+                "permission": "content.schedule",
+                "schedulable": True,
+            },
+            {
+                "action": "publish",
+                "from": ["scheduled"],
+                "to": "published",
+                "permission": "content.publish",
+            },
+        ],
+    )
+    workflow.full_clean()
+
+    workflow.states.append("draft")
+    with pytest.raises(ValidationError, match="workflow_state_invalid"):
+        workflow.full_clean()
+    workflow.states = ["draft", "scheduled", "published"]
+
+    workflow.transitions.append(
+        {
+            "action": "schedule",
+            "from": ["draft"],
+            "to": "published",
+            "permission": "content.schedule",
+            "schedulable": True,
+        }
+    )
+    with pytest.raises(ValidationError, match="workflow_transition_conflict"):
+        workflow.full_clean()
+    workflow.transitions.pop()
+
+    workflow.transitions[0]["schedulable"] = False
+    with pytest.raises(ValidationError, match="workflow_schedule_invalid"):
+        workflow.full_clean()
+
+
+def test_definition_preview_classifies_loss_and_publication_requires_confirmation():
+    first = definition()
+    ContentFieldDefinition.objects.create(
+        definition=first,
+        field_key="title",
+        label="Title",
+        field_kind="short_text",
+        required=True,
+    )
+    first.publish(expected_lock_version=1)
+    candidate = definition(version=2)
+    preview = candidate.preview_compatibility(previous=first)
+    assert preview["classification"] == "lossy"
+    assert preview["removedFields"] == ["title"]
+    with pytest.raises(ValidationError, match="lossy_confirmation_required"):
+        candidate.publish(expected_lock_version=1)
+    candidate.publish(expected_lock_version=1, confirm_lossy=True)
+    candidate.refresh_from_db()
+    assert candidate.status == "published"
+    assert candidate.published_at is not None
+
+
+def test_definition_publication_rejects_stale_lock_and_unpublished_field_defaults():
+    candidate = definition()
+    ContentFieldDefinition.objects.create(
+        definition=candidate,
+        field_key="title",
+        label="Title",
+        field_kind="short_text",
+        required=True,
+        validation={"minLength": 1, "maxLength": 10},
+    )
+    with pytest.raises(ValidationError, match="definition_version_conflict"):
+        candidate.publish(expected_lock_version=2)
+    candidate.publish(expected_lock_version=1)
+
+
+def test_published_field_contract_is_immutable_and_record_values_are_typed():
+    content_type = definition()
+    title = ContentFieldDefinition.objects.create(
+        definition=content_type,
+        field_key="title",
+        label="Title",
+        field_kind="short_text",
+        required=True,
+        validation={"maxLength": 10},
+    )
+    ContentFieldDefinition.objects.create(
+        definition=content_type,
+        field_key="body",
+        label="Body",
+        field_kind="rich_text",
+    )
+    content_type.publish(expected_lock_version=1)
+    title.label = "Changed"
+    with pytest.raises(ValidationError, match="published_definition_immutable"):
+        title.save()
+
+    record = ContentRecord(
+        site_id="site-a",
+        content_type="article",
+        slug="typed",
+        title="Typed",
+        definition=content_type,
+        values={"title": "too long for the bound"},
+    )
+    with pytest.raises(ValidationError, match="field_value_length_invalid"):
+        record.full_clean()
+    record.values = {"unknown": "rejected"}
+    with pytest.raises(ValidationError, match="record_unknown_field"):
+        record.full_clean()
+    record.values = {
+        "title": "Safe",
+        "body": {"type": "document", "children": [{"type": "script", "text": "bad"}]},
+    }
+    with pytest.raises(ValidationError, match="rich_text_invalid"):
+        record.full_clean()
+    record.values["body"] = {
+        "type": "document",
+        "children": [{"type": "paragraph", "children": [{"type": "text", "text": "Safe"}]}],
+    }
+    record.full_clean()
+
+
+def test_records_bind_exact_schema_and_reject_stale_expected_version():
+    content_type = published_definition_with_title()
+    record = ContentRecord.objects.create(
+        site_id="site-a",
+        content_type="article",
+        slug="hello",
+        title="Hello",
+        definition=content_type,
+        schema_version=1,
+        values={"title": "Hello"},
+    )
+    record.update_values({"title": "Updated"}, expected_version=1, actor_ref="user:test")
+    record.refresh_from_db()
+    assert record.version == 2
+    assert record.values == {"title": "Updated"}
+    with pytest.raises(ValidationError, match="content_version_conflict"):
+        record.update_values({"title": "Stale"}, expected_version=1, actor_ref="user:test")
+    version = ContentRecordVersion.objects.get(record=record, version=1)
+    assert version.snapshot_sha256 and len(version.snapshot_sha256) == 64
+
+
+def test_record_versions_are_hash_bound_immutable_and_have_a_safe_diff():
+    content_type = published_definition_with_title()
+    record = ContentRecord.objects.create(
+        site_id="site-a",
+        content_type="article",
+        slug="version-integrity",
+        title="Version integrity",
+        definition=content_type,
+        values={"title": "First"},
+    )
+    record.update_values({"title": "Second"}, expected_version=1, actor_ref="user:test")
+    first = ContentRecordVersion.objects.get(record=record, version=1)
+    assert first.diff_values({"title": "Second"}) == {
+        "added": [],
+        "removed": [],
+        "changed": ["title"],
+    }
+    first.snapshot = {"title": "tampered"}
+    with pytest.raises(ValidationError, match="content_version_immutable"):
+        first.save()
+    forged = ContentRecordVersion(
+        content=record,
+        revision=99,
+        schema_version=1,
+        snapshot={"title": "Forged"},
+        snapshot_sha256="0" * 64,
+    )
+    with pytest.raises(ValidationError, match="content_version_digest_invalid"):
+        forged.save()
+
+
+def test_record_workflow_soft_delete_and_restore_append_history():
+    content_type = published_definition_with_title()
+    workflow = WorkflowDefinition.objects.create(
+        definition=content_type,
+        states=["draft", "in_review", "published", "archived", "deleted"],
+        initial_state="draft",
+        transitions=[
+            {
+                "action": "submit_review",
+                "from": ["draft"],
+                "to": "in_review",
+                "permission": "content.review",
+            },
+            {
+                "action": "publish",
+                "from": ["in_review"],
+                "to": "published",
+                "permission": "content.publish",
+            },
+            {
+                "action": "archive",
+                "from": ["published"],
+                "to": "archived",
+                "permission": "content.archive",
+            },
+            {
+                "action": "delete",
+                "from": ["archived"],
+                "to": "deleted",
+                "permission": "content.delete",
+            },
+        ],
+    )
+    workflow.full_clean()
+    record = ContentRecord.objects.create(
+        site_id="site-a",
+        content_type="article",
+        slug="workflow",
+        title="Workflow",
+        definition=content_type,
+        values={"title": "First"},
+    )
+    record.transition_action("submit_review", expected_version=1, actor_ref="user:reviewer")
+    record.transition_action("publish", expected_version=2, actor_ref="user:publisher")
+    record.update_values({"title": "Second"}, expected_version=3, actor_ref="user:editor")
+    restored = record.restore_version(1, expected_version=4, actor_ref="user:editor")
+    assert restored.version == 5
+    assert restored.values == {"title": "First"}
+    record.transition_action("archive", expected_version=5, actor_ref="user:publisher")
+    record.soft_delete(expected_version=6, actor_ref="user:admin")
+    record.refresh_from_db()
+    assert record.state == "deleted"
+    assert record.deleted_at is not None
+    assert ContentRecordVersion.objects.filter(record=record).count() == 6
+
+
+def test_scheduled_transition_requires_and_retains_a_valid_iana_timezone():
+    content_type = published_definition_with_title()
+    WorkflowDefinition.objects.create(
+        definition=content_type,
+        states=["draft", "scheduled"],
+        initial_state="draft",
+        transitions=[
+            {
+                "action": "schedule",
+                "from": ["draft"],
+                "to": "scheduled",
+                "permission": "content.schedule",
+                "schedulable": True,
+            }
+        ],
+    )
+    record = ContentRecord.objects.create(
+        site_id="site-a",
+        content_type="article",
+        slug="scheduled",
+        title="Scheduled",
+        definition=content_type,
+        values={"title": "Scheduled"},
+    )
+    publish_at = timezone.now() + timedelta(hours=2)
+    record.transition_action(
+        "schedule",
+        expected_version=1,
+        actor_ref="user:editor",
+        publish_at=publish_at,
+        timezone_name="Europe/Berlin",
+    )
+    record.refresh_from_db()
+    assert record.state == "scheduled"
+    assert record.schedule_timezone == "Europe/Berlin"
+
+    second = ContentRecord.objects.create(
+        site_id="site-a",
+        content_type="article",
+        slug="invalid-zone",
+        title="Invalid zone",
+        definition=content_type,
+        values={"title": "Invalid"},
+    )
+    with pytest.raises(ValidationError, match="schedule_timezone_invalid"):
+        second.transition_action(
+            "schedule",
+            expected_version=1,
+            actor_ref="user:editor",
+            publish_at=publish_at,
+            timezone_name="Mars/Olympus",
+        )
+
+
+def test_relationship_scope_cardinality_and_soft_deleted_target_are_enforced():
+    content_type = definition(status="published")
+    source = ContentRecord.objects.create(
+        site_id="site-a",
+        content_type="article",
+        slug="source",
+        title="Source",
+        definition=content_type,
+    )
+    target = ContentRecord.objects.create(
+        site_id="site-a",
+        content_type="article",
+        slug="target",
+        title="Target",
+        definition=content_type,
+    )
+    relation = ContentRelationship(
+        site_id="site-a",
+        source=source,
+        target=target,
+        field_key="related",
+        order=0,
+        deletion_policy="restrict",
+    )
+    relation.full_clean()
+    cross_site = ContentRecord.objects.create(
+        site_id="site-b",
+        content_type="article",
+        slug="foreign",
+        title="Foreign",
+        definition=definition(site_id="site-b", status="published"),
+    )
+    relation.target = cross_site
+    with pytest.raises(ValidationError, match="relationship_scope_invalid"):
+        relation.full_clean()
+
+
+def test_saved_views_are_private_by_default_and_queries_are_closed():
+    content_type = definition(status="published")
+    view = SavedView(
+        site_id="site-a",
+        definition=content_type,
+        owner_ref="user:test",
+        title="Recent",
+        query={"filters": [{"field": "title", "operator": "contains", "value": "safe"}]},
+    )
+    view.full_clean()
+    assert view.visibility == "private"
+    view.query = {"sql": "select * from secrets"}
+    with pytest.raises(ValidationError, match="saved_view_query_invalid"):
+        view.full_clean()
+
+
+def test_asset_bindings_require_matching_site_and_accessible_image_metadata(media_asset):
+    content_type = definition(status="published")
+    record = ContentRecord.objects.create(
+        site_id="site-a",
+        content_type="article",
+        slug="asset",
+        title="Asset",
+        definition=content_type,
+    )
+    binding = AssetBinding(
+        site_id="site-a",
+        record=record,
+        asset=media_asset,
+        field_key="hero",
+        alt_text="A synthetic test image",
+        order=0,
+    )
+    binding.full_clean()
+    binding.alt_text = ""
+    with pytest.raises(ValidationError, match="asset_alt_text_required"):
+        binding.full_clean()
+
+
+@pytest.fixture
+def media_asset():
+    from sitecontent.models import MediaAsset
+
+    return MediaAsset.objects.create(
+        site_id="site-a",
+        storage_key="sha256/aa/test.png",
+        original_name="test.png",
+        media_type="image/png",
+        byte_size=32,
+        sha256="a" * 64,
+        status="validated",
+        owner_ref="user:test",
+    )
+
+
+def test_job_idempotency_binds_request_digest_and_terminal_state():
+    content_type = definition(status="published")
+    imported = ImportJob.objects.create(
+        site_id="site-a",
+        definition=content_type,
+        requester_ref="user:test",
+        source_sha256="b" * 64,
+        request_digest="c" * 64,
+        idempotency_key="import-001",
+        schema_version=1,
+    )
+    exported = ExportJob.objects.create(
+        site_id="site-a",
+        definition=content_type,
+        requester_ref="user:test",
+        request_digest="d" * 64,
+        idempotency_key="export-001",
+        schema_version=1,
+        projection_fields=["title"],
+        expires_at=timezone.now() + timedelta(hours=1),
+    )
+    assert imported.status == "uploaded"
+    assert imported.source_format == "json"
+    assert imported.source_object_key == ""
+    assert exported.status == "queued"
+    exported.full_clean()
+    exported.projection_fields = ["title", "title"]
+    with pytest.raises(ValidationError, match="export_projection_invalid"):
+        exported.full_clean()
+    with pytest.raises(IntegrityError), transaction.atomic():
+        ImportJob.objects.create(
+            site_id="site-a",
+            definition=content_type,
+            requester_ref="user:test",
+            source_sha256="e" * 64,
+            request_digest="f" * 64,
+            idempotency_key="import-001",
+            schema_version=1,
+        )
+
+
+def test_workspace_audit_metadata_rejects_sensitive_keys():
+    event = WorkspaceAuditEvent(
+        site_id="site-a",
+        actor_ref="user:test",
+        object_type="content_record",
+        object_ref="record:test",
+        action="content.create",
+        outcome="accepted",
+        metadata={"count": 1, "sha256": "a" * 64},
+    )
+    event.full_clean()
+    event.metadata = {"token": "not-allowed"}
+    with pytest.raises(ValidationError, match="audit_metadata_key_invalid"):
+        event.full_clean()
+
+
+def test_relationship_rejects_wrong_declared_target_and_excess_cardinality():
+    source_type = definition(status="published")
+    target_type = ContentTypeDefinition.objects.create(
+        site_id="site-a", type_key="person", version=1, name="Person", status="published"
+    )
+    source = ContentRecord.objects.create(
+        site_id="site-a",
+        content_type="article",
+        slug="source-two",
+        title="Source",
+        definition=source_type,
+    )
+    first = ContentRecord.objects.create(
+        site_id="site-a",
+        content_type="person",
+        slug="first",
+        title="First",
+        definition=target_type,
+    )
+    wrong = ContentRecord.objects.create(
+        site_id="site-a",
+        content_type="article",
+        slug="wrong",
+        title="Wrong",
+        definition=source_type,
+    )
+    ContentRelationship.objects.create(
+        site_id="site-a",
+        source=source,
+        target=first,
+        field_key="author",
+        target_type="person",
+        maximum_items=1,
+    )
+    invalid_type = ContentRelationship(
+        site_id="site-a",
+        source=source,
+        target=wrong,
+        field_key="editor",
+        target_type="person",
+        maximum_items=1,
+    )
+    with pytest.raises(ValidationError, match="relationship_target_type_invalid"):
+        invalid_type.full_clean()
+    excess = ContentRelationship(
+        site_id="site-a",
+        source=source,
+        target=wrong,
+        field_key="author",
+        target_type="article",
+        maximum_items=1,
+    )
+    with pytest.raises(ValidationError, match="relationship_cardinality_invalid"):
+        excess.full_clean()
+
+
+def test_relationship_rejects_indirect_cycles_within_the_declared_depth():
+    content_type = definition(status="published")
+    first, second, third = (
+        ContentRecord.objects.create(
+            site_id="site-a",
+            content_type="article",
+            slug=slug,
+            title=slug.title(),
+            definition=content_type,
+        )
+        for slug in ("first-node", "second-node", "third-node")
+    )
+    ContentRelationship.objects.create(
+        site_id="site-a", source=first, target=second, field_key="related", maximum_depth=2
+    )
+    ContentRelationship.objects.create(
+        site_id="site-a", source=second, target=third, field_key="related", maximum_depth=2
+    )
+    closing_edge = ContentRelationship(
+        site_id="site-a", source=third, target=first, field_key="related", maximum_depth=2
+    )
+    with pytest.raises(ValidationError, match="relationship_cycle_invalid"):
+        closing_edge.full_clean()
+
+
+def test_soft_delete_applies_restrict_and_detach_relationship_policies_atomically():
+    content_type = published_definition_with_title()
+    WorkflowDefinition.objects.create(
+        definition=content_type,
+        states=["draft", "deleted"],
+        initial_state="draft",
+        transitions=[
+            {
+                "action": "delete",
+                "from": ["draft"],
+                "to": "deleted",
+                "permission": "content.delete",
+            }
+        ],
+    )
+    source = ContentRecord.objects.create(
+        site_id="site-a",
+        content_type="article",
+        slug="deletion-source",
+        title="Source",
+        definition=content_type,
+        values={"title": "Source"},
+    )
+    target = ContentRecord.objects.create(
+        site_id="site-a",
+        content_type="article",
+        slug="deletion-target",
+        title="Target",
+        definition=content_type,
+        values={"title": "Target"},
+    )
+    relationship = ContentRelationship.objects.create(
+        site_id="site-a",
+        source=source,
+        target=target,
+        field_key="related",
+        deletion_policy="restrict",
+    )
+    with pytest.raises(ValidationError, match="relationship_delete_restricted"):
+        target.soft_delete(expected_version=1, actor_ref="user:test")
+    target.refresh_from_db()
+    assert target.state == "draft" and target.version == 1
+
+    relationship.deletion_policy = "detach"
+    relationship.save()
+    target.soft_delete(expected_version=1, actor_ref="user:test")
+    target.refresh_from_db()
+    assert target.state == "deleted"
+    assert not ContentRelationship.objects.filter(pk=relationship.pk).exists()
+
+
+def test_soft_delete_cascade_is_bounded_and_versions_each_affected_record():
+    content_type = published_definition_with_title()
+    WorkflowDefinition.objects.create(
+        definition=content_type,
+        states=["draft", "deleted"],
+        initial_state="draft",
+        transitions=[
+            {
+                "action": "delete",
+                "from": ["draft"],
+                "to": "deleted",
+                "permission": "content.delete",
+            }
+        ],
+    )
+    parent = ContentRecord.objects.create(
+        site_id="site-a",
+        content_type="article",
+        slug="cascade-parent",
+        title="Parent",
+        definition=content_type,
+        values={"title": "Parent"},
+    )
+    child = ContentRecord.objects.create(
+        site_id="site-a",
+        content_type="article",
+        slug="cascade-child",
+        title="Child",
+        definition=content_type,
+        values={"title": "Child"},
+    )
+    ContentRelationship.objects.create(
+        site_id="site-a",
+        source=child,
+        target=parent,
+        field_key="owned_by",
+        deletion_policy="cascade_soft",
+        maximum_depth=2,
+    )
+    parent.soft_delete(expected_version=1, actor_ref="user:test")
+    parent.refresh_from_db()
+    child.refresh_from_db()
+    assert (parent.state, parent.version) == ("deleted", 2)
+    assert (child.state, child.version) == ("deleted", 2)
+    child_version = ContentRecordVersion.objects.get(record=child, version=1)
+    assert child_version.action == "cascade_delete"
+
+
+def test_saved_view_revalidates_roles_schema_fields_and_bounds():
+    content_type = definition()
+    ContentFieldDefinition.objects.create(
+        definition=content_type,
+        field_key="category",
+        label="Category",
+        field_kind="short_text",
+    )
+    content_type.publish(expected_lock_version=1)
+    view = SavedView(
+        site_id="site-a",
+        definition=content_type,
+        owner_ref="user:test",
+        title="Shared",
+        visibility="role_shared",
+        shared_roles=["editor"],
+        schema_version=content_type.version,
+        query={
+            "filters": [{"field": "category", "operator": "eq", "value": "guide"}],
+            "sort": ["slug", "-category"],
+            "fields": ["title", "category"],
+            "expand": [],
+            "limit": 50,
+        },
+    )
+    view.full_clean()
+    view.shared_roles = ["superuser"]
+    with pytest.raises(ValidationError, match="saved_view_roles_invalid"):
+        view.full_clean()
+    view.shared_roles = ["editor"]
+    view.query["fields"] = ["private_unknown"]
+    with pytest.raises(ValidationError, match="saved_view_query_invalid"):
+        view.full_clean()
+    view.query["fields"] = ["title"]
+    view.schema_version = content_type.version + 1
+    with pytest.raises(ValidationError, match="saved_view_schema_invalid"):
+        view.full_clean()
+
+
+def test_import_row_outcome_is_bounded_scoped_and_unique():
+    content_type = definition(status="published")
+    job = ImportJob.objects.create(
+        site_id="site-a",
+        definition=content_type,
+        requester_ref="user:test",
+        source_sha256="b" * 64,
+        request_digest="c" * 64,
+        idempotency_key="import-row-001",
+        schema_version=1,
+    )
+    outcome = ImportRowOutcome(
+        site_id="site-a",
+        job=job,
+        ordinal=1,
+        source_row_sha256="d" * 64,
+        proposed_action="create",
+        field_issues=[{"field": "title", "code": "required"}],
+        candidate_ids=[],
+    )
+    outcome.full_clean()
+    outcome.field_issues = [{"field": "title", "message": "raw submitted secret"}]
+    with pytest.raises(ValidationError, match="import_row_issue_invalid"):
+        outcome.full_clean()
+
+
+def test_jobs_reject_invalid_terminal_transitions_and_audit_is_immutable():
+    content_type = definition(status="published")
+    job = ImportJob.objects.create(
+        site_id="site-a",
+        definition=content_type,
+        requester_ref="user:test",
+        source_sha256="b" * 64,
+        request_digest="c" * 64,
+        idempotency_key="import-state-001",
+        schema_version=1,
+    )
+    job.transition_status("parsing")
+    job.transition_status("mapped")
+    job.transition_status("validated")
+    job.transition_status("committing")
+    job.transition_status("completed")
+    with pytest.raises(ValidationError, match="content_job_terminal"):
+        job.transition_status("failed")
+    event = WorkspaceAuditEvent.objects.create(
+        site_id="site-a",
+        actor_ref="user:test",
+        object_type="import_job",
+        object_ref=str(job.id),
+        action="content.import",
+        outcome="accepted",
+    )
+    event.outcome = "changed"
+    with pytest.raises(ValidationError, match="audit_event_immutable"):
+        event.save()

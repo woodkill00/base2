@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "content-workspace",
+  "version": "1.0.0",
+  "compatibility": ">=2.0.0,<3.0.0",
+  "models": ["workspace.definition", "workspace.record", "workspace.view", "workspace.job"],
+  "migrations": [
+    "django/sitecontent/migrations/0002_workspaceauditevent_contentrecordversion_and_more.py",
+    "django/sitecontent/migrations/0003_workspace_row_security.py",
+    "django/sitecontent/migrations/0004_contentrelationship_maximum_depth_and_more.py",
+    "django/sitecontent/migrations/0005_contentrecord_schedule_timezone.py"
+  ],
+  "apiRoutes": ["/api/content/v1"],
+  "uiRoutes": ["/workspace"],
+  "navigation": ["workspace.index"],
+  "permissions": [
+    "content-workspace.delete",
+    "content-workspace.publish",
+    "content-workspace.read",
+    "content-workspace.schedule",
+    "content-workspace.write"
+  ],
+  "jobs": ["workspace.publish-scheduled", "workspace.import", "workspace.export"],
+  "settingsSchema": "modules/content-workspace/settings.schema.json",
+  "healthChecks": ["workspace.ready", "workspace.jobs-ready"],
+  "providerCapabilities": [],
+  "dependencies": ["content"],
+  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+}

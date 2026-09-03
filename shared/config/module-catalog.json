@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "modules": {
     "content": { "versions": ["1.0.0"], "requires": [] },
+    "content-workspace": { "versions": ["1.0.0"], "requires": ["content"] },
     "forms": { "versions": ["1.0.0"], "requires": ["content"] },
     "search": { "versions": ["1.0.0"], "requires": ["content"] },
     "accounts": { "versions": ["1.0.0"], "requires": [] },

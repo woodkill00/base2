@@ -309,12 +309,15 @@ async function runSetup(options = {}) {
     'TP_JWT_SECRET',
     'TP_TOKEN_PEPPER',
     'TP_IDENTITY_ENCRYPTION_KEY',
+    'TP_CONTENT_WORKSPACE_STORAGE_KEY',
     'TP_OAUTH_STATE_SECRET',
     'TP_SEED_ADMIN_PASSWORD',
     'TP_SEED_DEMO_PASSWORD',
     'TP_DJANGO_SUPERUSER_PASSWORD',
     'TP_REDIS_PASSWORD',
     'TP_POSTGRES_PASSWORD',
+    'TP_WORKSPACE_DB_PASSWORD',
+    'TP_WORKSPACE_WORKER_DB_PASSWORD',
     'TP_PGADMIN_PASSWORD',
     'TP_FLOWER_PASSWORD',
     'TP_TRAEFIK_PASSWORD',
@@ -335,6 +338,8 @@ async function runSetup(options = {}) {
     'TP_DJANGO_SUPERUSER_PASSWORD',
     'TP_REDIS_PASSWORD',
     'TP_POSTGRES_PASSWORD',
+    'TP_WORKSPACE_DB_PASSWORD',
+    'TP_WORKSPACE_WORKER_DB_PASSWORD',
     'TP_PGADMIN_PASSWORD',
     'TP_FLOWER_PASSWORD',
     'TP_TRAEFIK_PASSWORD',
@@ -350,7 +355,10 @@ async function runSetup(options = {}) {
       updates[key] = passwordValue;
       continue;
     }
-    updates[key] = crypto.randomBytes(32).toString('hex');
+    updates[key] =
+      key === 'TP_CONTENT_WORKSPACE_STORAGE_KEY'
+        ? crypto.randomBytes(32).toString('base64url')
+        : crypto.randomBytes(32).toString('hex');
   }
 
   const existingFlowerUser = existingEnv.TP_FLOWER_USERNAME;

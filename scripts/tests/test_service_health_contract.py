@@ -17,6 +17,46 @@ def health_command(service: str) -> str:
 
 
 class ServiceHealthContractTests(unittest.TestCase):
+    def test_start_parses_environment_override_before_validation(self):
+        script = (ROOT / "scripts/bash/start.sh").read_text(encoding="utf-8")
+        parse_end = script.index("# Validate the selected environment")
+        self.assertLess(script.index("--env-file|-e)"), parse_end)
+        self.assertLess(script.index('ENV_FILE="$2"'), parse_end)
+        self.assertGreater(script.index('if [ ! -f "$ENV_FILE" ]', parse_end), parse_end)
+        self.assertNotIn("cp .env.example .env.build", script)
+        self.assertIn('bash "$SCRIPT_DIR/sync-env.sh"', script)
+
+    def test_local_api_gate_uses_ephemeral_read_only_contract_mounts(self):
+        script = (ROOT / "scripts/bash/test.sh").read_text(encoding="utf-8")
+        local_branch = script[script.index('if [ "$USE_LOCAL_STACK" = true ]') :]
+        self.assertIn("run --rm -T --no-deps", local_branch)
+        self.assertEqual(2, script.count('"${API_PYTEST_CONFIG[@]}" api/tests'))
+        for binding in (
+            '"$PWD/django:/app/django:ro"',
+            '"$PWD/docs:/app/docs:ro"',
+            '"$PWD/local.docker.yml:/app/local.docker.yml:ro"',
+            '"$PWD/development.docker.yml:/app/development.docker.yml:ro"',
+            '"$PWD/.coveragerc:/app/.coveragerc:ro"',
+        ):
+            self.assertIn(binding, local_branch)
+        self.assertIn("else\n        $COMPOSE_CMD exec -T", local_branch)
+
+    def test_frontend_native_crash_retry_is_bounded_and_fail_closed(self):
+        script = (ROOT / "scripts/bash/test.sh").read_text(encoding="utf-8")
+        self.assertEqual(2, script.count("run_frontend_tests\n"))
+        self.assertEqual(1, script.count('if [ "$FRONTEND_EXIT_CODE" -eq 139 ]'))
+        self.assertIn("a second crash or any ordinary test failure remains a hard failure", script)
+        self.assertIn("if [ $BACKEND_EXIT_CODE -eq 0 ] && [ $FRONTEND_EXIT_CODE -eq 0 ]", script)
+
+    def test_python_native_crash_retries_are_bounded_and_fail_closed(self):
+        script = (ROOT / "scripts/bash/test.sh").read_text(encoding="utf-8")
+        self.assertEqual(2, script.count("run_api_tests\n"))
+        self.assertEqual(2, script.count("run_django_tests\n"))
+        self.assertEqual(1, script.count('if [ "$API_EXIT_CODE" -eq 139 ]'))
+        self.assertEqual(1, script.count('if [ "$DJANGO_EXIT_CODE" -eq 139 ]'))
+        self.assertIn("a second crash or any ordinary test failure remains a hard failure", script)
+        self.assertIn("if [ $API_EXIT_CODE -ne 0 ] || [ $DJANGO_EXIT_CODE -ne 0 ]", script)
+
     def test_every_runtime_service_has_meaningful_health(self):
         expected = {
             "react-app": ("wget", "http://localhost:8080/"),
@@ -97,9 +137,7 @@ class ServiceHealthContractTests(unittest.TestCase):
         self.assertIn("apk add --no-cache su-exec gettext wget", dockerfile)
 
     def test_compose_observer_is_isolated_staging_only_and_self_cleaning(self):
-        observer = (ROOT / "scripts/bash/observe-compose-health.sh").read_text(
-            encoding="utf-8"
-        )
+        observer = (ROOT / "scripts/bash/observe-compose-health.sh").read_text(encoding="utf-8")
         self.assertIn('PROJECT_NAME="base2-f093-$$"', observer)
         self.assertIn("handle_signal 130", observer)
         self.assertIn("handle_signal 143", observer)

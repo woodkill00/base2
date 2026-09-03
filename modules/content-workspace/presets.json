@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "presets": {
+    "article": { "version": 1, "fields": ["title", "slug", "summary", "body", "hero_image"] },
+    "catalog": { "version": 1, "fields": ["title", "slug", "description", "price", "images"] },
+    "rental": {
+      "version": 1,
+      "fields": ["title", "slug", "location", "price", "amenities", "images"]
+    },
+    "portfolio": { "version": 1, "fields": ["title", "slug", "summary", "body", "gallery"] },
+    "documentation": { "version": 1, "fields": ["title", "slug", "body", "parent"] },
+    "listing": { "version": 1, "fields": ["title", "slug", "description", "location", "images"] },
+    "event": { "version": 1, "fields": ["title", "slug", "starts_at", "ends_at", "location"] },
+    "community": { "version": 1, "fields": ["title", "slug", "body", "author", "attachments"] }
+  }
+}

@@ -15,6 +15,9 @@ const Navigation = () => {
   const accountsEnabled = siteManifest.modules.some(
     (module) => module.id === 'accounts' && module.enabled
   );
+  const workspaceEnabled = siteManifest.modules.some(
+    (module) => module.id === 'content-workspace' && module.enabled
+  );
 
   const handleLogout = async () => {
     await logout();
@@ -59,6 +62,11 @@ const Navigation = () => {
               <Link to="/settings" className={linkClass('/settings')}>
                 Settings
               </Link>
+              {workspaceEnabled && user?.permissions?.includes('content-workspace.read') ? (
+                <Link to="/workspace" className={linkClass('/workspace')}>
+                  Content
+                </Link>
+              ) : null}
               {accountsEnabled &&
               Array.isArray(user?.permissions) &&
               user.permissions.includes('audit.read') ? (

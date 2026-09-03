@@ -7,16 +7,20 @@ def client() -> TestClient:
     return TestClient(app)
 
 
-def test_items_endpoints_return_not_implemented():
+def test_items_endpoints_remain_non_mutating_and_advertise_the_workspace_migration():
     c = client()
     r1 = c.get('/api/items')
     assert r1.status_code == 501
+    assert r1.headers['deprecation'] == 'true'
+    assert r1.headers['link'] == '</workspace>; rel="successor-version"'
 
     r2 = c.get('/api/items/123')
     assert r2.status_code == 501
 
     r3 = c.post('/api/items', json={'name': 'x'})
     assert r3.status_code == 501
+    assert r3.headers['deprecation'] == 'true'
+    assert r3.json()['detail'] == 'items_compatibility_read_only'
 
 
 def test_auth_me_requires_bearer_token():

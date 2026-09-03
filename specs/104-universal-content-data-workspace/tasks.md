@@ -1,0 +1,260 @@
+# Ordered Tasks: Universal Content and Data Workspace
+
+**Input**: `spec.md`, `plan.md`, `research.md`, `data-model.md`, `contracts/content-api.md`, `traceability.md`, and `analysis.md`
+**Rule**: Execute in numeric order unless the plan explicitly proves independence. Tests precede implementation. Django precedes FastAPI, which precedes React. A reproducible defect adds a regression task before correction.
+
+## Phase 1 - Specification, inventory, and refinement
+
+- [x] T001 Create `vscode-codex/104-universal-content-data-workspace` from clean aligned `main`.
+- [x] T002 Inventory existing Django, FastAPI, PostgreSQL, worker, React, module, generator, visual, and provider-lifecycle foundations.
+- [x] T003 Inventory placeholder `/api/items` and Items UI behavior and require an explicit compatibility path.
+- [x] T004 Define seven independently testable user stories, edge cases, boundaries, FR-001..FR-062, and SC-001..SC-011.
+- [x] T005 Define constitutional implementation order, architecture, security design, schema evolution, performance boundaries, rollback, and authority limits.
+- [x] T006 Define canonical entities, states, ownership, constraints, invariants, and migration compatibility.
+- [x] T007 Define `/content/v1` definition, record, workflow, saved-view, asset, import, export, public-read, error, cursor, and idempotency contracts.
+- [x] T008 Record decisions and rejected alternatives in `research.md`.
+- [x] T009 Define implementation and evidence quickstart through repository entrypoints.
+- [x] T010 Build exact requirement-to-implementation/test/evidence traceability.
+- [x] T011 Analyze product/preset completeness and identify missing end-user states.
+- [x] T012 Analyze tenant, role, object, query, rich-text, upload, import/export, and audit threats.
+- [x] T013 Analyze migration, compatibility, data-loss, backup, restore, replay, and worker failure modes.
+- [x] T014 Analyze accessibility, responsive, browser, interaction, visual, and artifact-review coverage.
+- [x] T015 Analyze generator, module-manifest, legacy Items, and disabled-capability drift.
+- [x] T016 Add all corrective requirements and tasks found in cycles T011-T015.
+- [x] T017 Repeat the tasks -> analysis -> corrective-tasks cycle until no unresolved planning finding remains.
+- [x] T018 Add and run `validate_plan.py` for document presence, sequential tasks, requirement count, boundaries, task/test/evidence traceability, and unresolved-marker rejection.
+
+## Phase 2 - Test-first canonical Django definitions and records
+
+- [x] T019 Add failing Django tests for content type keys, versions, statuses, canonical site uniqueness, and published immutability in `django/tests/test_content_workspace_models.py`.
+- [x] T020 Add failing field-kind, validation-key, bound, default, relationship, and presentation-hint tests.
+- [x] T021 Add failing workflow graph, action-role, schedule, and invalid-transition tests.
+- [x] T022 Add failing record value, slug, optimistic version, lifecycle, soft-delete, and cross-scope tests.
+- [x] T023 Add failing immutable version, snapshot hash, diff, and restore-as-new-version tests.
+- [x] T024 Add failing relationship cardinality, target type, scope, cycle/depth, and deletion-policy tests.
+- [x] T025 Add failing saved-view ownership, query-schema, sharing, and permission-revalidation tests.
+- [x] T026 Add failing media binding, import/export job, idempotency, terminal-state, and audit entity tests.
+- [x] T027 Add failing forward/reverse migration, model-state, constraint, and clean-default tests.
+- [x] T028 Implement shared closed enums, limits, validators, and structured-rich-text primitives in `django/common/models.py` and focused helpers.
+- [x] T029 Evolve existing `django/sitecontent/models.py` content records/revisions and add canonical definitions, fields, workflows, versions, and relationships without parallel record tables.
+- [x] T030 Evolve existing media entities and add canonical saved views, asset bindings, import/export jobs, row outcomes, and audit references in `django/sitecontent/models.py`.
+- [x] T031 Add `django/sitecontent` migration with canonical site ownership constraints, uniqueness, indexes, data migration, and reversible operations.
+- [x] T032 Add transactional services for definition preview/publication and record mutation/version creation.
+- [x] T033 Add transactional workflow transition, schedule, archive, restore, and soft-delete services.
+- [x] T034 Register read-safe Django admin inspection with no raw secrets, files, submitted content, or expiring URLs.
+- [x] T035 Run Django focused and migration suites and repair only after a failing regression exists.
+- [x] T036 Record Django model/migration evidence and update traceability without closing downstream work.
+
+## Phase 3 - Test-first PostgreSQL, repository, and API mirror
+
+- [x] T037 Add failing Django-owned PostgreSQL schema inventory and API semantic parity tests in `api/tests/test_content_migrations.py`; forbid duplicate API workspace tables.
+- [x] T038 Add failing PostgreSQL composite-key, check-constraint, index, transaction, and RLS tenant/site tests.
+- [x] T039 Add failing repository definition draft/preview/publish/retire and expected-version tests.
+- [x] T040 Add failing repository record CRUD/version/transition/restore/soft-delete tests.
+- [x] T041 Add failing relationship, saved-view, asset-binding, audit, and cross-tenant repository tests.
+- [x] T042 Add failing API capability and disabled-route tests.
+- [x] T043 Add failing definition endpoint schema, compatibility, confirmation, concurrency, and error-envelope tests.
+- [x] T044 Add failing record list/detail/create/update/delete/version/restore/transition contract tests.
+- [x] T045 Add failing cursor binding, stable ordering, page cap, sparse-field, filter, sort, expansion, and query-cost tests.
+- [x] T046 Add failing search scope, permission, injection, stale-index, degraded, and unavailable tests.
+- [x] T047 Add failing saved-view private/shared/revalidation and schema-change tests.
+- [x] T048 Add failing idempotency digest, replay, conflict, expiry, and concurrent-request tests.
+- [x] T049 Add failing mass-assignment, overfetching, unknown-key, oversized-body, nesting, decimal, timestamp, and locale tests.
+- [x] T050 Verify the ordered Django migration creates the exact PostgreSQL workspace schema and RLS prerequisites consumed by FastAPI; add no duplicate API migration.
+- [x] T051 Extend `api/repositories/site_content.py` with scoped transactions, authenticated-tenant-to-`site_id` equality, and no unsafe autocommit changes.
+- [x] T052 Implement typed Pydantic definition, field, workflow, record, query, view, job, response, and error schemas.
+- [x] T053 Implement capability and definition routes under `api/routes/content_workspace.py` with the `/api/content/v1` contract.
+- [x] T054 Implement record, history, transition, and relationship routes.
+- [x] T055 Implement bounded query compiler, opaque cursor signing/validation, search interface, and saved-view routes.
+- [x] T056 Implement redacted append-only workspace audit calls for mutations and sensitive reads.
+- [x] T057 Register OpenAPI contracts and keep public/generated reads distinct from authenticated administration.
+- [x] T058 Run API unit, contract, PostgreSQL, integration, migration, coverage, and negative suites.
+
+## Phase 4 - Durable scheduling, indexing, import, export, and media jobs
+
+- [x] T059 Add failing worker tests for scheduled publication admission, timezone handling, restart, replay, cancellation, retry exhaustion, and terminal outcomes.
+- [x] T060 Add failing indexing tests for committed versions, out-of-order jobs, stale markers, deletion, permission projection, and dependency outage.
+- [x] T061 Add failing media upload-grant, magic-byte, filename, type, size, dimension, count, quarantine, scan, derivative, and integrity tests.
+- [x] T062 Add hostile upload fixtures for MIME spoofing, polyglots, path traversal, active SVG, executable content, archives, and decompression/pixel bombs.
+- [x] T063 Add failing asset visibility, expiring delivery, cross-tenant binding, public/private mismatch, and required-asset publication tests.
+- [x] T064 Add failing JSON/CSV parser bound, encoding, heading, nesting, formula, unknown-field, and content-redaction tests.
+- [x] T065 Add failing import dry-run, mapping, row outcome, exact duplicate, fuzzy candidate, atomic commit, partial policy, replay, and interruption tests.
+- [x] T066 Add failing export authorization snapshot, redaction, formula neutralization, streaming, encryption, integrity, expiry, replay, and interruption tests.
+- [x] T067 Implement durable scheduled publication and indexing tasks with bounded checkpoint/retry policy.
+- [x] T068 Extend canonical `sitecontent` media admission, quarantine, scan-state, safe derivative, binding, and access services without a second asset store.
+- [x] T069 Implement bounded streaming JSON/CSV parsing and staged validation outcomes.
+- [x] T070 Implement import review/commit with exact-first deduplication and review-only similarity candidates.
+- [x] T071 Implement permission-bound JSON/CSV exports with encryption, hashes, and expiring delivery.
+- [x] T072 Add worker health/evidence summaries containing only safe IDs, counts, hashes, durations, states, and error codes.
+- [x] T073 Run worker failure injection, restart, concurrency, replay, and secret-output suites.
+
+## Phase 5 - Generator, presets, compatibility, and migrations
+
+- [x] T074 Add failing manifest tests for the workspace capability, preset versions, dependencies, unknown fields, and disabled defaults.
+- [x] T075 Add failing deterministic preset compilation tests for articles, catalog, rentals/directories, portfolio, documentation, marketplace/listings, events, and community.
+- [x] T076 Add failing generated-profile matrix tests for models, migrations, API declarations, roles, routes, navigation, fixtures, tests, and migration notes.
+- [x] T077 Add failing disabled-capability tests across generator output, API, workers, navigation, direct routes, and public reads.
+- [x] T078 Add failing `/api/items` compatibility adapter, warning, migration, and no-authority-expansion tests.
+- [x] T079 Extend the existing module manifest with one workspace capability and declarative preset registry.
+- [x] T080 Implement deterministic preset compiler using existing module IDs and shared canonical entities.
+- [x] T081 Generate bounded fixtures and contract declarations for every built-in profile/preset combination.
+- [x] T082 Implement the narrow deprecated Items adapter and documented generated-site migration path.
+- [x] T083 Run generator determinism, clean-regeneration, upgrade/downgrade, disabled-profile, and compatibility matrices.
+
+## Phase 6 - Test-first React workspace and generated views
+
+- [x] T084 Add failing API-client tests for tenant binding, schemas, errors, aborts, stale responses, cursors, and no browser credential persistence.
+- [x] T085 Add failing workspace shell, navigation, breadcrumb, capability, direct-route denial, and responsive list/detail tests.
+- [x] T086 Add failing definition/preset builder, field editor, compatibility preview, confirmation, and unsaved-change tests.
+- [x] T087 Add failing record list/search/filter/sort/page/saved-view and deterministic-state tests.
+- [x] T088 Add failing record create/edit/validation/conflict/compare/retry and value-preservation tests.
+- [x] T089 Add failing review, schedule, publish, archive, delete, history, diff, and restore journeys.
+- [x] T090 Add failing relationship picker, missing target, cycle, permission, and cross-scope UI tests.
+- [x] T091 Add failing media upload/progress/quarantine/rejection/ordering/alt-text/focal-point/publication-block tests.
+- [x] T092 Add failing import mapping/dry-run/review/duplicate/commit/job-state and export/download/expiry tests.
+- [x] T093 Add failing generated public list/detail renderer tests for every field kind and preset.
+- [x] T094 Add failing loading, empty, partial, malformed, dependency, permission, not-found, conflict, retry, cancelled, and terminal-failure state tests.
+- [x] T095 Add failing keyboard, screen-reader name/role/value, announcement, focus, target, contrast, reflow, reduced-motion, and axe tests.
+- [x] T096 Implement typed content API client and normalized error/job state handling.
+- [x] T097 Implement capability-driven workspace shell and adaptive navigation.
+- [x] T098 Implement definition/preset builder and migration preview experiences.
+- [x] T099 Implement record browser, safe query builder, saved views, and stable URL state.
+- [x] T100 Implement typed field editors, validation summary, conflicts, and unsaved-change recovery.
+- [x] T101 Implement workflow, history/diff/restore, relationship, media, import, export, and job-status experiences.
+- [x] T102 Implement closed safe public/admin renderer registries and generated list/detail pages.
+- [x] T103 Remove the demonstration Items navigation only after compatibility parity and migration evidence pass.
+
+## Phase 7 - Data integrity, privacy, and recovery assurance
+
+- [x] T104 Define measured schema, query, page, relationship, upload, import/export, job, bundle, and retention defaults/maxima from repeatable fixtures.
+- [x] T105 Add maximum-bound query-plan tests proving tenant/site leading indexes and bounded relationship expansion without N+1 growth.
+- [x] T106 Add concurrency tests for schema publication, record mutation, transition, saved-view edit, import commit, and schedule firing.
+- [x] T107 Add backup manifest tests covering definitions, records, versions, relationships, views, jobs, audit references, asset metadata, and object hashes.
+- [x] T108 Add isolated restore tests with exact counts, schema versions, referential integrity, content hashes, and no live-target access.
+- [x] T109 Add retention and hard-deletion tests for active relationships, recovery windows, audit preservation, export expiry, and exact-owned object cleanup.
+- [x] T110 Add privacy/data-rights projection tests proving workspace records enter authorized export/correction/deletion flows without leaking other tenants.
+- [x] T111 Add upgrade and rollback tests from current `main`, empty database, populated fixtures, old generated profile, and interrupted migration checkpoints.
+- [x] T112 Add safe rollback and restore operator support through both Bash and PowerShell entrypoints if a new command is required.
+- [x] T113 Verify shell parity, fixed arguments, path confinement, no arbitrary command/environment injection, and redacted artifacts for T112.
+- [x] T114 Run backup/restore, migration, rollback, retention, privacy, performance, and concurrency gates.
+- [x] T115 Record exact measured limits and operator recovery guidance in repository documentation.
+- [x] T116 Verify no duplicate canonical media, capability, role, audit, job, or tenant vocabulary was introduced.
+- [x] T117 Verify no public route exposes draft, private field, history, audit, owner identity, quarantined asset, or expiring internal URL.
+- [x] T118 Verify cache keys, search documents, cursor payloads, and exported projections bind tenant/site/type/schema/permission digests.
+- [x] T119 Verify every migration and background-job failure remains actionable, redacted, and explicitly non-successful.
+
+## Phase 8 - Security, accessibility, visual, and full gates
+
+- [x] T120 Run direct tenant-crossing, role/object authorization, CSRF, IDOR, replay, concurrency, and anti-enumeration tests.
+- [x] T121 Run injection, XSS, structured-rich-text, mass-assignment, overfetching, unsafe URL, SSRF-boundary, path, MIME, archive, and CSV-formula tests.
+- [x] T122 Run dependency, static analysis, Semgrep, package audit, license, SBOM, supply-chain, and container/configuration security gates.
+- [x] T123 Run tracked, staged, history, artifact, screenshot, log, export, and fixture secret/private-data scans with zero findings.
+- [x] T124 Add deterministic synthetic visual fixtures for all field kinds, states, jobs, media outcomes, relationships, presets, errors, and long/RTL content.
+- [x] T125 Add representative Chromium route/state screenshots plus geometry, overflow, focus, target, hierarchy, image-fit, stability, and interaction assertions.
+- [x] T126 Add compact phone, DPR3 phone, short landscape, tablet, desktop, ultrawide, 200% text, and 400% zoom coverage.
+- [x] T127 Add light, dark, high contrast, reduced motion, keyboard, touch, Chromium, Firefox, and WebKit coverage where deterministic.
+- [x] T128 Add explicit visual manifest, artifact integrity, dimensions, route/state metadata, contact sheets, and human-readable review sidecar.
+- [x] T129 Prove ordinary tests cannot create/update baselines and unreviewed image drift fails closed.
+- [x] T130 Perform user-centered screenshot review for clarity, discoverability, density, hierarchy, clipping, motion, controls, errors, and mobile usability.
+- [x] T131 Add regression tasks for every reproducible visual/accessibility finding before changing implementation.
+- [x] T132 Repeat visual and accessibility capture/review until zero unresolved findings remain.
+- [x] T133 Run Django, API, PostgreSQL, worker, React, generator, E2E, migration, compatibility, and coverage suites.
+- [x] T134 Enforce at least 90% changed-line coverage and direct coverage of every critical authorization, workflow, migration, and data-loss branch.
+- [x] T135 Run the complete repository gate and repair every reproducible failure through a regression-first corrective task.
+- [x] T136 Require zero skipped required checks, unexplained infrastructure failures, silent degradation, or unresolved traceability gaps.
+
+## Phase 9 - Implemented-system analysis and closeout readiness
+
+- [x] T137 Re-run product, architecture, security, migration, reliability, accessibility, visual, performance, compatibility, and operational analysis against the implemented system.
+- [x] T138 Add numbered corrective tasks for every new finding and link each to a regression test and evidence result.
+- [x] T139 Repeat implementation -> tests -> analysis -> corrective tasks until `NO_UNRESOLVED_IMPLEMENTATION_FINDINGS` is evidence-backed.
+- [x] T140 Re-run `validate_plan.py`, traceability, diff, documentation, and clean-tree review against the exact feature head.
+
+## Phase 10 - Separate publication and optional live acceptance
+
+- [x] T141 Commit the exact reviewed feature changes and verify a clean tree without disturbing unrelated files.
+- [x] T142 Push the feature branch and publish a reviewed pull request only under the repository's publication authority.
+- [x] T143 Require every executable CI check green and classify infrastructure-only failures with retained evidence rather than bypassing them.
+- [ ] T144 Merge only the exact reviewed head through a separate authorized decision and verify local/remote `main` alignment.
+- [ ] T145 Admit an optional exact-main ephemeral canary only through separate provider, cost, lifetime, DNS, and deployment authorization.
+- [ ] T146 Use synthetic tenant/accounts/content and staging-only certificates for live acceptance.
+- [ ] T147 Run public, authenticated, admin, workflow, import/export, media, accessibility, responsive, visual, migration, worker, evidence, and rollback journeys live.
+- [ ] T148 Perform exact-owned teardown and immediate idempotent teardown replay.
+- [ ] T149 Verify empty Feature 104 provider inventory, no unrelated mutation, no production certificate, and no retained credential/material leak.
+- [ ] T150 Record final evidence and close the feature only when every required task and requirement is complete.
+
+## Implementation corrective tasks
+
+- [x] T151 Replace the nested record-detail complementary landmark with an explicitly named region after the workspace axe regression reproduced `landmark-complementary-is-top-level`; rerun focused accessibility and interaction tests.
+- [x] T152 Update the canonical Base2 Obsidian generated-profile assertion after the full affected gate reproduced a stale exact module set that omitted the enabled `content-workspace`; rerun the generator/profile matrix.
+- [x] T153 Update the legacy scheduled-content fixture after the complete Django suite reproduced its missing now-required IANA display timezone; rerun the full Django suite before downstream gates.
+- [x] T154 Add an encrypted exact-owned private artifact store after implementation analysis found no existing canonical object adapter for workspace media/import/export payloads; prove path confinement, authenticated context, integrity, permissions, replay, conflict, size bounds, and symlink rejection before integration.
+- [x] T155 Complete the grant-bound raw media admission path after analysis found metadata-only grants had no content completion contract; add bounded streaming, exact owner/site/asset/hash/size binding, quarantine-only completion, encrypted storage, fail-fast production key validation, and setup/canary secret generation tests.
+- [x] T156 Mount one shared private workspace-artifact volume into the read-only API and worker containers after Compose analysis found the new encrypted store was otherwise unwritable and unavailable across processes; pre-create its non-root path in the API image and validate the rendered Compose configuration.
+- [x] T157 Add a durable import-source upload contract after analysis found source hashes had no corresponding artifact handoff; bind format/site/type/requester/job/hash to an expiring grant, stream within the parser ceiling, reject malformed input before persistence, encrypt the exact source, expose readiness explicitly, and cover migration/replay boundaries.
+- [x] T158 Move the initial Coverage.py 7.15.4 gate away from its crashing native tracer after two distinct interpreter-level failures on Python 3.12 under WSL; lock the temporary pure-Python choice with a regression test and pass the full API coverage suite twice consecutively. Superseded by T165 after that version also failed under longer repetition.
+- [x] T159 Add a fail-closed malware-scanning boundary for admitted media using bounded ClamAV INSTREAM requests, exact encrypted-object/hash binding, non-promoting clean verdicts, explicit infected rejection, durable retry discovery, and an opt-in private resource-bounded Compose runtime; verify protocol, state, retry, migration, and runtime contracts.
+- [x] T160 Correct the legacy clean-scan promotion contract and require a deterministic safe derivative before validation; re-encode bounded single-frame JPEG/PNG/WebP input as metadata-free PNG, rewrite bounded passive PDFs without metadata/annotations or active-document tokens, store the derivative under exact encrypted ownership, and transactionally bind its digest before marking the asset validated.
+- [x] T161 Add private safe-derivative delivery after analysis found validated media had no usable content handoff; issue only short-lived tenant/requester/asset/type/digest-bound header grants, revalidate the exact canonical variant, decrypt with integrity checking, audit the read, and return `private, no-store`/`nosniff` content without exposing object keys or original filenames.
+- [x] T162 Complete the durable bounded export happy path after analysis found selected fields were not retained and queued jobs had no executor or content delivery; migrate exact projection fields, revalidate the tenant/type/schema/requester digest, produce deterministic JSON or formula-neutralized CSV, encrypt the output in the private store, persist hash/counters/terminal state, replay from a durable queue, and require a short-lived header-bound grant for no-store download.
+- [x] T163 Prevent silent export-job limbo by recording terminal failures through a redacting Celery failure hook, converting unknown exception text to a closed dependency error code, expiring overdue queued/running jobs in bounded skip-locked batches, and retaining ordinary task failure visibility if the status write itself is unavailable.
+- [x] T164 Add durable import-source validation without record mutation: rediscover only ready encrypted sources, recheck the exact hash, parse within JSON/CSV bounds, apply a closed collision-safe mapping, validate canonical field types and required values, preserve original row ordinals, classify exact duplicates according to policy, keep similarity review-only, persist redacted row outcomes/counters, and expose explicit validated or review-required state.
+- [x] T165 Upgrade only Coverage.py from 7.15.4 to 7.16.0 after the temporary pure-Python tracer later reproduced a second low-level crash; explicitly pin the corrected native core and require two consecutive full 327-test API coverage runs before restoring the gate.
+- [x] T166 Complete import review and atomic application after analysis found staged outcomes had no safe resolution or mutation path; add requester-bound decisions, exact-candidate validation, partial-policy handling, source/digest revalidation, transactional draft create/update/skip application, durable replay, bounded row-outcome inspection, and redacted terminal failure recording.
+- [x] T167 Harden canonical workspace invariants after test-first analysis reproduced duplicate workflow declarations, invalid scheduling flags, relationship cycles, inert deletion policies, mutable record versions, and under-validated saved-view shapes; enforce bounded transactional behavior while retaining the legacy revision uniqueness contract.
+- [x] T168 Fail closed when a saved view's definition version is no longer the currently published schema, while rechecking tenant, type, owner/role sharing, query fields, and bounds at each execution.
+- [x] T169 Add an executable Django migration round trip after analysis found only static migration inspection; prove legacy records survive reverse/forward transitions and verify final defaults, constraints, indexes, and restored latest state.
+- [x] T170 Add the missing authenticated search interface over the durable index; bind tenant/type/query/page to an opaque cursor, escape wildcard input, exclude deleted/tombstoned rows, report stale evidence explicitly, and return a redacted non-successful dependency error instead of silent empty results.
+- [x] T171 Close the import/export idempotency race by using PostgreSQL conflict arbitration and re-reading the committed winner; accept only an identical tenant/type/requester/request digest and return a true replay while conflicting payloads remain rejected.
+- [x] T172 Complete the header-grant-only browser API surface for schemas, records, workflows, media, relationships, imports, exports, and search; normalize closed job and redacted error states, preserve explicit stale-index evidence, propagate abort signals, encode identifiers, and prove no feature-level credential persistence.
+- [x] T173 Replace inert import/export placeholders with bounded accessible job forms; hash sources locally, keep grants memory-only, require explicit review and commit decisions, poll without job replay, expose terminal outcomes, constrain field projections, and revoke each export object URL immediately after use.
+- [x] T174 Replace the read-only record inspector with optimistic scalar field editing, unsaved-exit protection, state-bounded confirmed workflow actions, immutable history metadata, and restore-as-new-version controls; keep structured field kinds closed until their dedicated safe controls exist and preserve the visible record on conflicts.
+- [x] T175 Repair the stale planning-only validator after corrective tasks made its fixed T001-T150 assumption impossible; require the exact base sequence plus contiguous corrective IDs, keep separately governed lifecycle tasks incomplete, add the missing row-level-security concept, and report active-not-published implementation honestly.
+- [x] T176 Add dedicated safe media and relationship controls after implementation analysis found structured record fields remained intentionally inert; hash and bound uploads in memory, preserve quarantine until explicit validation, require image alternative text, inherit schema deletion policy, use optimistic versions, refresh canonical state, surface failures, and pass focused interaction and accessibility tests.
+- [x] T177 Apply the proven 4 GiB Node heap ceiling to canonical React test scripts after one full coverage finalization terminated at the runtime boundary while two explicit bounded reruns passed; keep single-worker admission and verify focused suites through the canonical configuration.
+- [x] T178 Complete safe schema evolution after implementation analysis found draft creation hard-coded version one; serialize each tenant/type evolution, allocate the next immutable version, reject parallel outstanding drafts, and cover rollback behavior.
+- [x] T179 Add the missing administrator schema journey after implementation analysis found only read-only schema cards; load closed versioned presets, add normalized typed fields, create a private draft, require a deterministic migration preview, use distinct impact-aware publication confirmation, surface failures, and pass focused interaction and accessibility tests.
+- [x] T180 Generate one deterministic cross-service workspace contract matrix after implementation analysis found presets were copied without explicit enabled/disabled profile surfaces; include bounded synthetic fixture IDs, models, migrations, routes, navigation, permissions, jobs, tests, and migration notes while disabled profiles receive no workspace authority.
+- [x] T181 Protect the canonical shared generated preset artifact from a competing Prettier rewrite after clean-generation analysis reproduced formatter drift; retain generator ownership and prove immediate check-mode idempotency.
+- [x] T182 Add a closed public workspace renderer registry after implementation analysis found generic pages handled only legacy title/excerpt/body fields; render all supported scalar and structured kinds without HTML interpretation, reject active URLs and unknown kinds, bound declared projections, omit undeclared values, and pass focused accessibility tests.
+- [x] T183 Add the missing bounded worker-health evidence projection after implementation analysis found terminal database state but no safe aggregate report; hash tenant identity, bound counts and durations, close state vocabularies, redact malformed error text, integrity-bind output, and prove no submitted content or object location appears.
+- [x] T184 Add an encrypted workspace recovery bundle and isolated restore verifier after implementation analysis found no workspace-wide recovery inventory; cover definitions, fields, workflows, records, versions, relationships, views, jobs, audit references, assets, bindings, exact counts and hashes, referential integrity, key/tamper failure, live-target refusal, owner-only output, and replay refusal.
+- [x] T185 Bind the documented workload ceilings to executable schema, media, transfer, relationship, and recovery contracts after implementation analysis found no single operator limit reference; exercise exact-limit and one-beyond fixtures so drift fails visibly.
+- [x] T186 Protect in-progress schema evolution after the full React coverage review found draft field edits could be lost on navigation; support required-constraint changes and deliberate non-canonical removal, retain title/slug controls, warn before unload, and clear protection only after a durable draft exists.
+- [x] T187 Document the repository's partitioned Python gate boundary after an unscoped root Pytest command mixed API, Django, provider, and visual environments; require service-local virtual environments for local gates and reserve cross-service integration for the complete container gate.
+- [x] T188 Refresh the exact surface-drift inventory only after the new workspace documentation, configuration, generated clients, module manifests, and route surfaces pass their focused contracts; rerun both ordinary and hostile drift checks so new, missing, or modified surfaces still fail closed.
+- [x] T189 Replace the obsolete 120-second complete-gate API ceiling after the expanded isolated partition suite exceeded it twice without a test failure; retain a finite bounded timeout, lock the bound with a manifest regression, and require the complete API coverage command to pass within it.
+- [x] T190 Review and update only the changed Base2 hero visual baselines after the complete visual gate proved stable rendering of the intentional enabled-module count change from five to six; retain all geometry, overflow, accessibility, responsive, baseline-mutation, and hostile visual controls, then rerun the full visual matrix without ordinary-test baseline authority.
+- [x] T191 Raise Feature 104 changed-line coverage from the complete-gate result of 78.83% to the enforced 90% floor without exclusions or threshold reduction; add direct behavioral tests for the uncovered repository, route, worker, media, transfer, and React authorization/error/data-loss branches, rerun service-local coverage, and require the complete coverage policy to pass.
+- [x] T192 Repair the planning validator's completed-task gap mutation after T076 completion made its unchecked-only fixture inert; mutate the task identifier regardless of checkbox state and prove contiguous corrective-task validation still fails closed.
+- [x] T193 Split FastAPI and Celery workspace-repository access away from the Django/PostgreSQL owner after implemented-system review confirmed the shared owner bypasses ordinary RLS; add a validated no-`BYPASSRLS` least-privilege role bootstrap, a forward migration that grants only required workspace-table access, compose dependency ordering, pool-reset checks, and a real PostgreSQL acceptance matrix proving missing, wrong, rollback, reset, and cross-tenant contexts fail closed without breaking owner migrations.
+- [x] T194 Close physical performance and concurrency evidence gaps: add real PostgreSQL query-plan assertions for tenant-leading workspace access, fixed-query relationship expansion, and two-connection winner/loser checks for definition publication, record mutation/transition, saved-view edit, import commit, and schedule firing without weakening bounded timeouts.
+- [x] T195 Complete workspace retention and privacy projection: preserve restricted relationship/audit evidence through recovery windows, expire and exactly delete only owned export/media objects, project authorized workspace records into correction/export/deletion flows, and prove cross-tenant/private-field exclusion with restart/replay-safe tests.
+- [x] T196 Expand upgrade and rollback assurance from current `main`, empty and populated databases, prior generated profiles, and interrupted migration checkpoints; require exact schema/data comparison and no orphaned runtime role grants after reverse/forward replay.
+- [x] T197 Add a dedicated workspace visual-assurance pack with deterministic synthetic fixtures for every field/state/job/media/relationship/error plus long/RTL content; cover compact/DPR3/landscape/tablet/desktop/ultrawide/200%/400%, themes/contrast/reduced-motion/keyboard/touch/Chromium/Firefox/WebKit, integrity-bound manifests/contact sheets/review sidecars, and fail-closed baseline mutation.
+- [x] T198 Repair the ordinary API connection-pool initializer after retention review found its lock/construction block unreachable beneath the workspace-pool return; prove fresh initialization, checkout/reset, independent pool closure, and the complete API gate before retention integration.
+- [x] T199 Remove Celery workspace processing from the database-owner pool without granting API requests cross-tenant discovery; provide a distinct least-privilege worker role or fixed security-definer discovery contract, tenant-bind every claimed mutation, and prove API/worker credential and RLS separation in disposable PostgreSQL.
+- [x] T200 Make the dedicated workspace visual manifest/tamper suite and no-update multi-browser matrix required nodes in the fixed complete repository gate.
+- [x] T201 Repair exact-head gate drift after worker-role and visual-gate integration: update the tenant-policy regression to require the separate worker role and refresh only the changed locked configuration hashes after focused validation.
+- [x] T202 Repair pre-push local-stack startup so command-line compose/environment overrides are parsed before validating the selected environment; prove `.env.local` is honored without creating or reading the default `.env`.
+- [x] T203 Add both workspace database passwords to the setup generator's secure secret inventory and prove password-default and independent-random generation paths cannot leave their template placeholders unresolved.
+- [x] T204 Make WSL startup invoke the tracked non-executable configuration synchronizer through Bash and lock the clean-checkout portability contract.
+- [x] T205 Run repository-crossing API contracts in an ephemeral local test container with only the fixed required repository members mounted read-only; keep the long-running API runtime free of source-tree mounts and preserve the existing non-local gate path.
+- [x] T206 Remove the nullable definition outer join from the PostgreSQL record lock path after the guarded push reproduced `FOR UPDATE` rejection; retain transactional workflow resolution and prove delete, schedule, detach, restrict, and cascade behavior through the existing physical model regressions.
+- [x] T207 Isolate the settings capability contract from the selected generated site profile so its disabled and enabled account-module cases are deterministic in the complete local stack.
+- [x] T208 Keep the ephemeral API contract mounts from widening Pytest discovery into Django by naming the API test root explicitly on both local and non-local Compose paths; lock the partition in the service-health regression.
+- [x] T209 Preserve the exact supported Node runtime while making the local frontend gate report and retry one native SIGSEGV only; retain hard failure for a repeated crash and every ordinary test failure, and prove the retry is bounded by regression.
+- [x] T210 Restore the reachable least-privilege workspace API pool initializer after CI Ruff exposed its construction block below the worker initializer's terminal return; directly prove fresh API and worker pool creation uses distinct DSNs and application identities.
+- [x] T211 Close the six Feature 104 Mypy findings exposed after the Ruff repair by narrowing finite decimal exponents and safe derivatives, declaring mixed preview results explicitly, and typing the repository lifecycle fixture without changing runtime behavior.
+- [x] T212 Admit Pillow 12.3.0's exact SPDX `MIT-CMU` identifier after publication CI reported it as unknown; retain fail-closed rejection for every unlisted MIT-like value and rerun the Python license policy locally before exact-head CI replay.
+- [x] T213 Repair the E2E/smoke Compose graph after publication CI proved migrations lacked the required workspace roles; bootstrap two fixed least-privilege test roles before migration, bind API and worker credentials separately, and lock ordering plus container confinement in a repository regression.
+- [x] T214 Make structured-media interaction tests await the observable completion of browser-side hashing, upload, and status refresh after both publication runners reproduced premature assertions; retain the same production behavior and verify the focused suite repeatedly.
+- [x] T215 Apply the already-proven Coverage.py 7.16.0 crash correction to Django after the guarded corrective push reproduced the old 7.15.4 interpreter fault there; require both Python service locks to retain the corrected C tracer and rerun the full guarded gate.
+- [x] T216 Remove host Web Crypto availability from the structured-media unit-test contract after one publication runner lacked the browser primitive and failed before exercising the mocked upload API; install a deterministic SHA-256 test boundary, assert its algorithm and buffer contract, and retain real-browser coverage in E2E.
+- [x] T217 Make API and Django native-runtime crash handling match the existing bounded frontend policy after Coverage.py 7.16.0 still faulted once during an otherwise passing API report; retry the exact partition only for exit 139, at most once, while every repeated crash and ordinary assertion or coverage failure remains fatal.
+- [x] T218 Repair the lifecycle validator after authorized publication made its permanent T142 prohibition and active-not-published marker contradictory; require T142 to transition only with evidence-backed published-not-merged status while merge, provider, and teardown tasks remain fail-closed.
+- [x] T219 Make the workspace readiness assertion re-query the committed record DOM after one slow publication runner returned a transient `Hello` node that React replaced before visibility evaluation; preserve the same accessible-content requirement and verify it repeatedly under the canonical single-worker runtime.
+
+## Dependencies and authority
+
+Tasks are sequential by default. Within a phase, independent failing tests may run in bounded parallel only when they touch distinct files and resource admission permits it. Django canonical work blocks FastAPI mirror work; FastAPI blocks React integration; focused gates block full gates; implementation analysis blocks publication. T142, T144, and T145-T149 are separately governed actions and are not pre-approved by completion of earlier tasks.

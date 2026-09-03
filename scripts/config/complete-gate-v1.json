@@ -214,6 +214,37 @@
       "requiredTools": ["{python-api}"]
     },
     {
+      "id": "workspace-postgres-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_workspace_postgres_contract"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["identity-postgres-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "workspace-visual-contract",
+      "command": [
+        "{python-api}",
+        "-m",
+        "pytest",
+        "scripts/tests/test_workspace_visual_assurance.py",
+        "scripts/tests/test_visual_assurance_manifest.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 45,
+      "dependsOn": ["workspace-postgres-contract", "visual-baseline-contract"],
+      "requiredTools": ["{python-api}", "git"]
+    },
+    {
+      "id": "workspace-visual-release",
+      "command": ["npm", "--prefix", "react-app", "run", "test:workspace-release"],
+      "required": true,
+      "timeoutSeconds": 300,
+      "dependsOn": ["workspace-visual-contract"],
+      "requiredTools": ["npm", "node"]
+    },
+    {
       "id": "account-admin-browser",
       "command": ["npm", "--prefix", "react-app", "run", "test:account-e2e"],
       "required": true,
@@ -733,7 +764,7 @@
       "id": "api-tests",
       "command": ["{python-api}", "scripts/python/run_api_coverage.py"],
       "required": true,
-      "timeoutSeconds": 120,
+      "timeoutSeconds": 300,
       "dependsOn": ["env-tools"],
       "requiredTools": ["{python-api}"],
       "maxAttempts": 2,

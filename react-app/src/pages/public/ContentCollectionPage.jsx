@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import PublicShell from '../../components/public/PublicShell';
 import { siteContentAPI } from '../../services/siteContent';
+import { PublicWorkspaceFields } from '../../components/content/PublicFieldRenderer';
 
 const ContentCollectionPage = ({ title, contentType, basePath }) => {
   const [state, setState] = useState({ status: 'loading', items: [] });
@@ -32,6 +33,7 @@ const ContentCollectionPage = ({ title, contentType, basePath }) => {
             <li key={item.id}>
               <h2>{item.title}</h2>
               <p>{item.excerpt}</p>
+              <PublicWorkspaceFields item={item} />
               {basePath && (
                 <Link to={`${basePath}/${encodeURIComponent(item.slug)}`}>Read {item.title}</Link>
               )}

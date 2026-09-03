@@ -74,17 +74,26 @@ function New-RandomHex([int]$bytes = 32) {
   return ($buffer | ForEach-Object { $_.ToString('x2') }) -join ''
 }
 
+function New-RandomBase64Url([int]$bytes = 32) {
+  $buffer = New-Object byte[] $bytes
+  [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($buffer)
+  return [Convert]::ToBase64String($buffer).TrimEnd('=').Replace('+', '-').Replace('/', '_')
+}
+
 $targetKeys = @(
   'TP_DJANGO_SECRET_KEY',
   'TP_JWT_SECRET',
   'TP_TOKEN_PEPPER',
   'TP_IDENTITY_ENCRYPTION_KEY',
+  'TP_CONTENT_WORKSPACE_STORAGE_KEY',
   'TP_OAUTH_STATE_SECRET',
   'TP_SEED_ADMIN_PASSWORD',
   'TP_SEED_DEMO_PASSWORD',
   'TP_DJANGO_SUPERUSER_PASSWORD',
   'TP_REDIS_PASSWORD',
   'TP_POSTGRES_PASSWORD',
+  'TP_WORKSPACE_DB_PASSWORD',
+  'TP_WORKSPACE_WORKER_DB_PASSWORD',
   'TP_PGADMIN_PASSWORD',
   'TP_FLOWER_PASSWORD',
   'TP_TRAEFIK_PASSWORD'
@@ -96,7 +105,11 @@ $lines = Get-Content -Path $envPath
 $updated = $false
 $newValues = @{}
 foreach ($key in $targetKeys) {
-  $newValues[$key] = New-RandomHex 32
+  $newValues[$key] = if ($key -eq 'TP_CONTENT_WORKSPACE_STORAGE_KEY') {
+    New-RandomBase64Url 32
+  } else {
+    New-RandomHex 32
+  }
 }
 
 for ($i = 0; $i -lt $lines.Count; $i++) {

@@ -4,32 +4,46 @@ from datetime import timedelta
 
 import pytest
 from django.contrib import admin
-from django.core.management import call_command
 from django.core.exceptions import ValidationError
+from django.core.management import call_command
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from sitecontent.models import (
+    AssetBinding,
+    ContentFieldDefinition,
     ContentRecord,
+    ContentRelationship,
     ContentRevision,
-    FormSubmission,
+    ContentTypeDefinition,
+    ExportJob,
     FormDeliveryOutbox,
+    FormSubmission,
+    ImportJob,
     MediaAsset,
     MediaVariant,
     RedirectRule,
+    SavedView,
     SearchDocument,
+    WorkflowDefinition,
+    WorkspaceAuditEvent,
 )
-
 
 pytestmark = pytest.mark.django_db
 
 
 def test_content_lifecycle_revision_and_tenant_slug_contract():
-    first = ContentRecord.objects.create(site_id="site-a", content_type="page", slug="about", title="About")
-    second = ContentRecord.objects.create(site_id="site-b", content_type="page", slug="about", title="About B")
+    first = ContentRecord.objects.create(
+        site_id="site-a", content_type="page", slug="about", title="About"
+    )
+    second = ContentRecord.objects.create(
+        site_id="site-b", content_type="page", slug="about", title="About B"
+    )
     assert first.pk != second.pk
     with pytest.raises(IntegrityError), transaction.atomic():
-        ContentRecord.objects.create(site_id="site-a", content_type="page", slug="about", title="Duplicate")
+        ContentRecord.objects.create(
+            site_id="site-a", content_type="page", slug="about", title="Duplicate"
+        )
 
     revision = ContentRevision.objects.create(
         content=first,
@@ -53,10 +67,13 @@ def test_content_lifecycle_revision_and_tenant_slug_contract():
 
 
 def test_scheduled_content_requires_a_future_publication_time():
-    record = ContentRecord(site_id="site-a", content_type="page", slug="news", title="News", state="scheduled")
+    record = ContentRecord(
+        site_id="site-a", content_type="page", slug="news", title="News", state="scheduled"
+    )
     with pytest.raises(ValidationError):
         record.full_clean()
     record.publish_at = timezone.now() + timedelta(hours=1)
+    record.schedule_timezone = "UTC"
     record.full_clean()
 
 
@@ -64,7 +81,9 @@ def test_redirect_paths_are_local_and_tenant_scoped():
     RedirectRule.objects.create(site_id="site-a", source_path="/old", target_path="/new")
     RedirectRule.objects.create(site_id="site-b", source_path="/old", target_path="/elsewhere")
     with pytest.raises(ValidationError):
-        RedirectRule(site_id="site-a", source_path="https://hostile.example", target_path="/safe").full_clean()
+        RedirectRule(
+            site_id="site-a", source_path="https://hostile.example", target_path="/safe"
+        ).full_clean()
 
 
 def test_media_integrity_variants_and_quarantine_contract():
@@ -198,7 +217,9 @@ def test_expired_form_data_is_redacted_and_queued_delivery_is_stopped():
         retained_until=timezone.now() + timedelta(days=1),
     )
     delivery = FormDeliveryOutbox.objects.create(submission=submission)
-    FormSubmission.objects.filter(pk=submission.pk).update(retained_until=timezone.now() - timedelta(seconds=1))
+    FormSubmission.objects.filter(pk=submission.pk).update(
+        retained_until=timezone.now() - timedelta(seconds=1)
+    )
     assert FormSubmission.expire_due() == 1
     submission.refresh_from_db()
     delivery.refresh_from_db()
@@ -221,6 +242,15 @@ def test_admin_registration_and_migrations_are_current():
         MediaVariant,
         RedirectRule,
         SearchDocument,
+        ContentTypeDefinition,
+        ContentFieldDefinition,
+        WorkflowDefinition,
+        ContentRelationship,
+        SavedView,
+        AssetBinding,
+        ImportJob,
+        ExportJob,
+        WorkspaceAuditEvent,
     ):
         assert admin.site.is_registered(model)
     call_command("makemigrations", "sitecontent", check=True, dry_run=True, verbosity=0)

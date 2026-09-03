@@ -1,0 +1,105 @@
+# Content workspace operations
+
+## Measured bounds
+
+The workspace rejects work beyond these server-owned ceilings. Tests use deterministic boundary fixtures at the exact limit and one unit beyond it.
+
+| Surface                                 |        Default |               Maximum |
+| --------------------------------------- | -------------: | --------------------: |
+| Fields per schema                       | preset-defined |                    64 |
+| Filters per query                       |              0 |                    16 |
+| Sort fields                             |         `slug` |                     3 |
+| Page size                               |             25 |                   100 |
+| Relationship expansions                 |              0 |                     4 |
+| Relationship traversal depth            |              1 |                     2 |
+| Relationships per field                 | schema-defined |                    50 |
+| Upload                                  |           none |                10 MiB |
+| Image edge / decoded pixels             |           none |   12,000 / 40,000,000 |
+| Import/export source                    |           none |       5,000,000 bytes |
+| Import rows / columns / cell characters |           none | 10,000 / 128 / 20,000 |
+| Structured nesting / collection members |           none |               8 / 256 |
+| Asset/import upload grant               |           none |           300 seconds |
+| Asset/export download grant             |           none |            60 seconds |
+| Export artifact availability            |           none |                1 hour |
+| Recovery members / plaintext            |           none |     100,000 / 100 MiB |
+
+Queries bind tenant, type, schema, permission projection, filters, ordering, and page limit into opaque cursors. Relationship reads are capped and never accept arbitrary recursive expansion. Import/export workers rediscover durable work in bounded batches and terminal failures retain closed error codes.
+
+Interactive workspace requests use a dedicated non-owner PostgreSQL role whose
+RLS policy requires an exact transaction-local tenant. Celery workspace jobs use
+a different non-owner, non-`BYPASSRLS` role that may discover bounded work across
+tenants and then binds the discovered tenant for every claim or mutation. The API
+container is never given the worker credential. Django alone retains migration
+ownership; reversing the worker-role migration revokes its table and schema
+grants and restores tenant-only policies.
+
+## Backup and isolated restore
+
+Workspace recovery includes definitions, fields, workflows, records, versions, relationships, views, import/export jobs, audit references, asset metadata, asset bindings, and per-collection hashes. The bundle payload is encrypted; output contains no raw key and has owner-only permissions.
+
+Set `CONTENT_WORKSPACE_RECOVERY_KEY` from an approved runtime secret reference. Do not place it in an argument, repository file, shell history, report, or Discord message. Inputs and outputs are confined beneath `.artifacts/workspace-recovery/`.
+
+```bash
+scripts/bash/content-workspace-recovery.sh backup \
+  .artifacts/workspace-recovery/synthetic-snapshot.json \
+  .artifacts/workspace-recovery/synthetic-backup.json
+
+scripts/bash/content-workspace-recovery.sh restore \
+  .artifacts/workspace-recovery/synthetic-backup.json \
+  .artifacts/workspace-recovery/isolated/restored.json
+```
+
+Restore refuses existing targets, configured live data roots, out-of-root paths, wrong keys, modified manifests, changed ciphertext, mismatched counts/hashes, and broken references. It never restores directly into a database. Importing a verified snapshot into any database is a separate reviewed operation.
+
+## Retention and data rights
+
+Soft-deleted records retain a fixed 30-day recovery window. Daily cleanup skips
+every record that still has an incoming/outgoing relationship or media binding,
+then preserves an append-only hard-deletion audit marker. Expired deleted media
+is likewise skipped while bound. Eligible originals and safe variants are
+integrity-checked and matched to their server-derived tenant/object keys before
+encrypted bytes and metadata are removed. Export expiry clears its object hash
+and key only after the same exact-owned deletion; a restart safely replays a
+missing object without expanding the deletion target.
+
+Authenticated privacy exports use the tenant-bound non-owner workspace role and
+include only records whose first create audit belongs to that subject. Only
+fields with the ordinary `content.read` permission enter the projection; other
+tenants, private fields, audit internals, object keys, and owner references are
+excluded. Correction receipts include this same current projection. Account
+deletion removes private views, queues owned media for immediate retention
+cleanup, pseudonymizes mutable job subject references, and retains immutable
+audit facts needed for business and security integrity under their separate
+retention policy.
+
+## Failure response
+
+Do not reinterpret a failed, cancelled, expired, quarantined, or dependency-unavailable state as success. Preserve the closed error code and integrity digest, correct the underlying cause, and replay only through the same idempotent job identifier. Never bypass schema-version, tenant, permission, hash, scan, or approval checks. If evidence is malformed or stale, generate new evidence rather than editing the receipt.
+
+## Visual release assurance
+
+The dedicated hermetic visual suite uses synthetic, credential-free data and blocks non-loopback
+requests:
+
+```bash
+cd react-app
+npm run test:workspace-release
+```
+
+It covers compact and DPR3 phones, short landscape touch, tablet, desktop, ultrawide, 200% text,
+explicit 400% reflow, light/dark/high-contrast presentation, reduced motion, keyboard focus,
+touch targets, Chromium, Firefox, and WebKit. Ordinary test commands cannot update baselines.
+An intentional baseline change is allowed only on the Feature 104 branch, from a clean tracked
+tree, with `WORKSPACE_VISUAL_BASELINE_UPDATE_APPROVAL=reviewed-local-only` through
+`scripts/bash/update-workspace-visual-baselines.sh`.
+
+Generate a private integrity-bound manifest, review sidecar, and contact sheet with:
+
+```bash
+.venv-api/bin/python scripts/python/workspace_visual_assurance.py export \
+  --destination .artifacts/workspace-visual/<run-id> \
+  --review-status pending
+```
+
+Only set `reviewed-no-findings` after reviewing every contact-sheet row and representative
+full-resolution captures. These artifacts are local evidence, not a claim of live deployment.

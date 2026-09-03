@@ -38,6 +38,7 @@ services:
     volumes:
       # Mount external OpenAPI contract for runtime contract checks
       - ./specs/001-django-fastapi-react/contracts:/app/specs/001-django-fastapi-react/contracts:ro
+      - content_workspace_artifacts:/var/lib/base2/content-workspace
     environment:
       - SITE_PROFILE=${SITE_PROFILE:-base2-obsidian}
       - PORT=${FASTAPI_PORT}
@@ -46,14 +47,20 @@ services:
       - DB_NAME=${POSTGRES_DB}
       - DB_USER=${POSTGRES_USER}
       - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - WORKSPACE_DB_USER=${WORKSPACE_DB_USER}
+      - WORKSPACE_DB_PASSWORD=${WORKSPACE_DB_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
       - TOKEN_PEPPER=${TOKEN_PEPPER}
       - IDENTITY_ENCRYPTION_KEY=${IDENTITY_ENCRYPTION_KEY}
+      - CONTENT_WORKSPACE_STORAGE_ROOT=${CONTENT_WORKSPACE_STORAGE_ROOT}
+      - CONTENT_WORKSPACE_STORAGE_KEY=${CONTENT_WORKSPACE_STORAGE_KEY}
       - JWT_EXPIRE=${JWT_EXPIRE}
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
     networks: [app_network]
     depends_on:
+      django:
+        condition: service_healthy
       postgres:
         condition: service_healthy
       redis:
@@ -97,6 +104,8 @@ services:
       - DB_NAME=${POSTGRES_DB}
       - DB_USER=${POSTGRES_USER}
       - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - WORKSPACE_DB_USER=${WORKSPACE_DB_USER}
+      - WORKSPACE_WORKER_DB_USER=${WORKSPACE_WORKER_DB_USER}
       - PORT=${DJANGO_PORT}
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
@@ -104,6 +113,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      workspace-db-role:
+        condition: service_completed_successfully
     volumes:
       - django_static:/app/static
     restart: unless-stopped
@@ -144,6 +155,19 @@ services:
       test: ['CMD-SHELL', 'curl -fsS http://localhost:${NGINX_PORT}/ > /dev/null || exit 1']
     mem_limit: 128m
     cpus: '0.5'
+
+  # Malware scanner is opt-in because official guidance requires at least 3 GiB RAM.
+  # Its unauthenticated TCP protocol remains private to app_network and is never published.
+  clamav:
+    image: clamav/clamav:${CLAMAV_VERSION}
+    container_name: ${COMPOSE_PROJECT_NAME}_clamav
+    profiles: [media-scan]
+    networks: [app_network]
+    volumes:
+      - clamav_db:/var/lib/clamav
+    restart: unless-stopped
+    mem_limit: 3g
+    cpus: '1.0'
 
   # Django static files
   nginx-static:
@@ -217,6 +241,29 @@ services:
       retries: 10
     mem_limit: 1024m
     cpus: '1.0'
+
+  workspace-db-role:
+    image: postgres:${POSTGRES_VERSION}
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - WORKSPACE_DB_USER=${WORKSPACE_DB_USER}
+      - WORKSPACE_DB_PASSWORD=${WORKSPACE_DB_PASSWORD}
+      - WORKSPACE_WORKER_DB_USER=${WORKSPACE_WORKER_DB_USER}
+      - WORKSPACE_WORKER_DB_PASSWORD=${WORKSPACE_WORKER_DB_PASSWORD}
+    volumes:
+      - ./postgres/bootstrap-workspace-role.sh:/bootstrap-workspace-role.sh:ro
+    networks: [app_network]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ['/bin/sh', '/bootstrap-workspace-role.sh']
+    restart: 'no'
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: [/tmp]
 
   # pgAdmin (internal-only; routed via Traefik, guarded)
   pgadmin:
@@ -294,14 +341,24 @@ services:
       - DB_NAME=${POSTGRES_DB}
       - DB_USER=${POSTGRES_USER}
       - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - WORKSPACE_DB_USER=${WORKSPACE_DB_USER}
+      - WORKSPACE_DB_PASSWORD=${WORKSPACE_DB_PASSWORD}
+      - WORKSPACE_WORKER_DB_USER=${WORKSPACE_WORKER_DB_USER}
+      - WORKSPACE_WORKER_DB_PASSWORD=${WORKSPACE_WORKER_DB_PASSWORD}
       - TOKEN_PEPPER=${TOKEN_PEPPER}
       - IDENTITY_ENCRYPTION_KEY=${IDENTITY_ENCRYPTION_KEY}
+      - CONTENT_WORKSPACE_STORAGE_ROOT=${CONTENT_WORKSPACE_STORAGE_ROOT}
+      - CONTENT_WORKSPACE_STORAGE_KEY=${CONTENT_WORKSPACE_STORAGE_KEY}
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
       - CELERY_LOG_LEVEL=${CELERY_LOG_LEVEL}
       - CELERY_CONCURRENCY=${CELERY_CONCURRENCY}
     networks: [app_network]
+    volumes:
+      - content_workspace_artifacts:/var/lib/base2/content-workspace
     depends_on:
+      django:
+        condition: service_healthy
       redis:
         condition: service_healthy
       postgres:
@@ -343,11 +400,15 @@ services:
       - DB_NAME=${POSTGRES_DB}
       - DB_USER=${POSTGRES_USER}
       - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - WORKSPACE_DB_USER=${WORKSPACE_DB_USER}
+      - WORKSPACE_DB_PASSWORD=${WORKSPACE_DB_PASSWORD}
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
       - CELERY_LOG_LEVEL=${CELERY_LOG_LEVEL}
     networks: [app_network]
     depends_on:
+      django:
+        condition: service_healthy
       redis:
         condition: service_healthy
       postgres:
@@ -409,6 +470,8 @@ networks:
     name: ${NETWORK_NAME}
 
 volumes:
+  clamav_db:
+  content_workspace_artifacts:
   postgres_data:
   django_static:
   pgadmin_data:

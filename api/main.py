@@ -263,6 +263,7 @@ def _include_external_routes() -> None:
         'tenant',
         'privacy',
         'settings',
+        'content_workspace',
         'site_content',
         'scheduling',
         'engagement',
@@ -313,14 +314,30 @@ async def flags():
 
 
 # --- Catalog (proxy to Django internal) ---
+ITEMS_COMPATIBILITY_HEADERS = {
+    'Deprecation': 'true',
+    'Link': '</workspace>; rel="successor-version"',
+    'Warning': '299 Base2 "The placeholder Items API is deprecated; use Content Workspace"',
+}
+
+
+def _items_compatibility_stop() -> None:
+    raise HTTPException(
+        status_code=501,
+        detail='items_compatibility_read_only',
+        headers=ITEMS_COMPATIBILITY_HEADERS,
+    )
+
+
 @app.get('/api/items')
 async def list_items():
-    raise HTTPException(status_code=501, detail='/api/items is not implemented yet')
+    _items_compatibility_stop()
 
 
 @app.get('/api/items/{item_id}')
 async def get_item(item_id: int):
-    raise HTTPException(status_code=501, detail='/api/items/{item_id} is not implemented yet')
+    del item_id
+    _items_compatibility_stop()
 
 
 DEFAULT_CREATE_ITEM_BODY = Body(...)
@@ -328,7 +345,8 @@ DEFAULT_CREATE_ITEM_BODY = Body(...)
 
 @app.post('/api/items')
 async def create_item(payload: dict = DEFAULT_CREATE_ITEM_BODY):
-    raise HTTPException(status_code=501, detail='/api/items POST is not implemented yet')
+    del payload
+    _items_compatibility_stop()
 
 
 # --- Celery helper endpoints (optional) ---

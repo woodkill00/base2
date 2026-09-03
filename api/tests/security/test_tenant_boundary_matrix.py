@@ -146,6 +146,131 @@ def test_pool_checkout_resets_after_exception(monkeypatch):
     assert pool.returned == [(conn, False)]
 
 
+def test_workspace_pool_uses_a_separate_connection_and_resets_it(monkeypatch):
+    from api import db
+
+    conn = _Connection()
+    pool = _Pool(conn)
+    monkeypatch.setattr(db, "_workspace_pool", pool)
+    with db.workspace_db_conn(tenant_id="tenant-a") as checked_out:
+        assert checked_out is conn
+    assert conn.calls == [
+        ("SELECT set_config('app.tenant_id', %s, true)", ("tenant-a",))
+    ]
+    assert conn.rollbacks == conn.resets == 1
+    assert pool.returned == [(conn, False)]
+
+
+def test_workspace_pool_uses_only_the_dedicated_runtime_credentials(monkeypatch):
+    from api import db
+
+    for key, value in {
+        "DB_HOST": "db.internal",
+        "DB_PORT": "5433",
+        "DB_NAME": "base2",
+        "WORKSPACE_DB_USER": "workspace_runtime",
+        "WORKSPACE_DB_PASSWORD": "synthetic-private-password",
+    }.items():
+        monkeypatch.setenv(key, value)
+    assert db._build_workspace_dsn() == (
+        "postgresql://workspace_runtime:synthetic-private-password@db.internal:5433/base2"
+    )
+    monkeypatch.delenv("WORKSPACE_DB_PASSWORD")
+    with pytest.raises(RuntimeError, match="Missing WORKSPACE_DB_USER/WORKSPACE_DB_PASSWORD"):
+        db._build_workspace_dsn()
+
+
+def test_worker_pool_uses_distinct_credentials_and_resets(monkeypatch):
+    from api import db
+
+    conn = _Connection()
+    pool = _Pool(conn)
+    monkeypatch.setattr(db, "_workspace_worker_pool", pool)
+    with db.workspace_worker_db_conn() as checked_out:
+        assert checked_out is conn
+    assert conn.calls == []
+    assert conn.rollbacks == conn.resets == 1
+    assert pool.returned == [(conn, False)]
+
+    monkeypatch.setenv("DB_NAME", "base2")
+    monkeypatch.setenv("WORKSPACE_WORKER_DB_USER", "workspace_worker")
+    monkeypatch.setenv("WORKSPACE_WORKER_DB_PASSWORD", "synthetic-worker-password")
+    assert "workspace_worker:synthetic-worker-password" in db._build_workspace_worker_dsn()
+
+
+def test_owner_pool_initializer_is_reachable_and_returns_created_pool(monkeypatch):
+    from api import db
+
+    captured = {}
+
+    class ConstructedPool:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    monkeypatch.setattr(db, "_pool", None)
+    monkeypatch.setattr(db, "ThreadedConnectionPool", ConstructedPool)
+    monkeypatch.setattr(db, "_build_dsn", lambda: "postgresql://owner@db/base2")
+    pool = db._get_pool()
+    assert isinstance(pool, ConstructedPool)
+    assert captured["dsn"] == "postgresql://owner@db/base2"
+    assert captured["application_name"].endswith("-api")
+    monkeypatch.setattr(db, "_pool", None)
+
+
+@pytest.mark.parametrize(
+    ("pool_name", "initializer_name", "dsn_builder_name", "expected_suffix"),
+    (
+        ("_workspace_pool", "_get_workspace_pool", "_build_workspace_dsn", "-workspace"),
+        (
+            "_workspace_worker_pool",
+            "_get_workspace_worker_pool",
+            "_build_workspace_worker_dsn",
+            "-workspace-worker",
+        ),
+    ),
+)
+def test_workspace_pool_initializers_are_reachable_and_role_specific(
+    monkeypatch, pool_name, initializer_name, dsn_builder_name, expected_suffix
+):
+    from api import db
+
+    captured = {}
+
+    class ConstructedPool:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    monkeypatch.setattr(db, pool_name, None)
+    monkeypatch.setattr(db, "ThreadedConnectionPool", ConstructedPool)
+    monkeypatch.setattr(db, dsn_builder_name, lambda: f"postgresql://{pool_name}@db/base2")
+    pool = getattr(db, initializer_name)()
+    assert isinstance(pool, ConstructedPool)
+    assert captured["dsn"] == f"postgresql://{pool_name}@db/base2"
+    assert captured["application_name"].endswith(expected_suffix)
+    monkeypatch.setattr(db, pool_name, None)
+
+
+def test_close_pool_closes_owner_and_workspace_pools(monkeypatch):
+    from api import db
+
+    class ClosingPool:
+        def __init__(self):
+            self.closed = 0
+
+        def closeall(self):
+            self.closed += 1
+
+    owner = ClosingPool()
+    workspace = ClosingPool()
+    worker = ClosingPool()
+    monkeypatch.setattr(db, "_pool", owner)
+    monkeypatch.setattr(db, "_workspace_pool", workspace)
+    monkeypatch.setattr(db, "_workspace_worker_pool", worker)
+    db.close_pool()
+    assert owner.closed == workspace.closed == worker.closed == 1
+    assert db._pool is db._workspace_pool is db._workspace_worker_pool is None
+
+
 def test_every_site_content_query_has_explicit_tenant_predicate_and_context():
     source = (Path(__file__).parents[2] / "repositories" / "site_content.py").read_text()
     assert source.count("db_conn(tenant_id=site_id)") == 6
@@ -167,6 +292,14 @@ def test_database_defense_status_cannot_claim_rls_before_role_separation():
     assert rls["status"] == "deferred"
     assert "dedicated-non-owner-runtime-role" in rls["activationRequirements"]
     assert "pool-reuse-reset-matrix" in rls["activationRequirements"]
+    assert policy["workspacePostgresqlRls"] == {
+        "status": "active",
+        "scope": "api/repositories/content_workspace.py and api/services/content_workspace_worker.py",
+        "runtimeRole": "dedicated-non-owner-no-bypassrls",
+        "workerRole": "separate-worker-only-non-owner-no-bypassrls",
+        "migrationRole": "django-owner",
+        "evidence": "scripts/python/run_workspace_postgres_acceptance.py",
+    }
 
 
 def test_tenant_rate_limit_uses_private_tenant_namespace(monkeypatch):

@@ -19,3 +19,5 @@ opentelemetry-instrumentation-fastapi
 opentelemetry-instrumentation-psycopg2
 pydantic-settings
 cffi==2.0.0
+Pillow==12.3.0
+pypdf==6.16.2

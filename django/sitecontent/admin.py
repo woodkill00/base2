@@ -2,14 +2,23 @@ from django.contrib import admin
 from django.core.exceptions import PermissionDenied
 
 from .models import (
+    AssetBinding,
+    ContentFieldDefinition,
     ContentRecord,
+    ContentRelationship,
     ContentRevision,
+    ContentTypeDefinition,
+    ExportJob,
     FormDeliveryOutbox,
     FormSubmission,
+    ImportJob,
     MediaAsset,
     MediaVariant,
     RedirectRule,
+    SavedView,
     SearchDocument,
+    WorkflowDefinition,
+    WorkspaceAuditEvent,
 )
 
 
@@ -79,6 +88,34 @@ class MediaVariantAdmin(TenantScopedAdmin):
     tenant_filter = "asset__site_id"
 
 
+class DefinitionChildAdmin(TenantScopedAdmin):
+    tenant_filter = "definition__site_id"
+
+
+class WorkspaceAuditAdmin(TenantScopedAdmin):
+    readonly_fields = (
+        "id",
+        "site_id",
+        "actor_ref",
+        "object_type",
+        "object_ref",
+        "action",
+        "outcome",
+        "correlation_id",
+        "metadata",
+        "created_at",
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
 admin.site.register(ContentRecord, TenantScopedAdmin)
 admin.site.register(ContentRevision, ContentRevisionAdmin)
 admin.site.register(FormSubmission, TenantScopedAdmin)
@@ -87,3 +124,12 @@ admin.site.register(MediaAsset, TenantScopedAdmin)
 admin.site.register(MediaVariant, MediaVariantAdmin)
 admin.site.register(RedirectRule, TenantScopedAdmin)
 admin.site.register(SearchDocument, TenantScopedAdmin)
+admin.site.register(ContentTypeDefinition, TenantScopedAdmin)
+admin.site.register(ContentFieldDefinition, DefinitionChildAdmin)
+admin.site.register(WorkflowDefinition, DefinitionChildAdmin)
+admin.site.register(ContentRelationship, TenantScopedAdmin)
+admin.site.register(SavedView, TenantScopedAdmin)
+admin.site.register(AssetBinding, TenantScopedAdmin)
+admin.site.register(ImportJob, TenantScopedAdmin)
+admin.site.register(ExportJob, TenantScopedAdmin)
+admin.site.register(WorkspaceAuditEvent, WorkspaceAuditAdmin)
