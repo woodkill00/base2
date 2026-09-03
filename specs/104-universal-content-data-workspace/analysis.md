@@ -516,3 +516,37 @@ Correction:
   lock. Publication remains blocked until the complete guarded hook passes.
 
 **Cycle result**: `IMPLEMENTATION_FINDING_T215_CLOSED_PENDING_GUARDED_PUSH_REPLAY`
+
+## Cycle 19 - Publication runner Web Crypto boundary
+
+Finding:
+
+- The corrected head passed all 196 frontend tests locally and on one publication runner, while
+  the duplicate runner never reached the mocked upload API in both media tests. Its DOM remained
+  at the pre-admission control, identifying the runner-provided Web Crypto primitive—not React
+  state timing—as the remaining host-dependent unit-test boundary.
+
+Correction:
+
+- Added and closed T216. The component unit test now installs a deterministic Web Crypto digest
+  boundary and asserts the exact SHA-256 algorithm and `ArrayBuffer` input. Production hashing is
+  unchanged, and real-browser/E2E coverage remains responsible for the native Web Crypto path.
+
+**Cycle result**: `IMPLEMENTATION_FINDING_T216_CLOSED_PENDING_EXACT_HEAD_CI_REPLAY`
+
+## Cycle 20 - Native Python report crash recovery
+
+Finding:
+
+- The guarded T216 push completed all 522 API assertions, then Coverage.py 7.16.0 faulted while
+  constructing its report. Django and all 196 frontend tests passed, and the hook correctly
+  refused publication. The same partition had passed immediately beforehand, identifying a native
+  runtime fault rather than an assertion or policy failure.
+
+Correction:
+
+- Added and closed T217. API and Django now match the existing frontend native-crash policy: exit
+  139 retries that exact partition once, while a repeated crash or any other nonzero result remains
+  fatal. Static regressions lock the one-retry ceiling and the combined backend fail-closed gate.
+
+**Cycle result**: `IMPLEMENTATION_FINDING_T217_CLOSED_PENDING_GUARDED_PUSH_REPLAY`

@@ -250,6 +250,8 @@
 - [x] T213 Repair the E2E/smoke Compose graph after publication CI proved migrations lacked the required workspace roles; bootstrap two fixed least-privilege test roles before migration, bind API and worker credentials separately, and lock ordering plus container confinement in a repository regression.
 - [x] T214 Make structured-media interaction tests await the observable completion of browser-side hashing, upload, and status refresh after both publication runners reproduced premature assertions; retain the same production behavior and verify the focused suite repeatedly.
 - [x] T215 Apply the already-proven Coverage.py 7.16.0 crash correction to Django after the guarded corrective push reproduced the old 7.15.4 interpreter fault there; require both Python service locks to retain the corrected C tracer and rerun the full guarded gate.
+- [x] T216 Remove host Web Crypto availability from the structured-media unit-test contract after one publication runner lacked the browser primitive and failed before exercising the mocked upload API; install a deterministic SHA-256 test boundary, assert its algorithm and buffer contract, and retain real-browser coverage in E2E.
+- [x] T217 Make API and Django native-runtime crash handling match the existing bounded frontend policy after Coverage.py 7.16.0 still faulted once during an otherwise passing API report; retry the exact partition only for exit 139, at most once, while every repeated crash and ordinary assertion or coverage failure remains fatal.
 
 ## Dependencies and authority
 

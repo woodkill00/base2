@@ -28,7 +28,7 @@ class ServiceHealthContractTests(unittest.TestCase):
 
     def test_local_api_gate_uses_ephemeral_read_only_contract_mounts(self):
         script = (ROOT / "scripts/bash/test.sh").read_text(encoding="utf-8")
-        local_branch = script[script.index('if [ "$USE_LOCAL_STACK" = true ]'):]
+        local_branch = script[script.index('if [ "$USE_LOCAL_STACK" = true ]') :]
         self.assertIn("run --rm -T --no-deps", local_branch)
         self.assertEqual(2, script.count('"${API_PYTEST_CONFIG[@]}" api/tests'))
         for binding in (
@@ -39,7 +39,7 @@ class ServiceHealthContractTests(unittest.TestCase):
             '"$PWD/.coveragerc:/app/.coveragerc:ro"',
         ):
             self.assertIn(binding, local_branch)
-        self.assertIn("else\n    $COMPOSE_CMD exec -T", local_branch)
+        self.assertIn("else\n        $COMPOSE_CMD exec -T", local_branch)
 
     def test_frontend_native_crash_retry_is_bounded_and_fail_closed(self):
         script = (ROOT / "scripts/bash/test.sh").read_text(encoding="utf-8")
@@ -47,6 +47,15 @@ class ServiceHealthContractTests(unittest.TestCase):
         self.assertEqual(1, script.count('if [ "$FRONTEND_EXIT_CODE" -eq 139 ]'))
         self.assertIn("a second crash or any ordinary test failure remains a hard failure", script)
         self.assertIn("if [ $BACKEND_EXIT_CODE -eq 0 ] && [ $FRONTEND_EXIT_CODE -eq 0 ]", script)
+
+    def test_python_native_crash_retries_are_bounded_and_fail_closed(self):
+        script = (ROOT / "scripts/bash/test.sh").read_text(encoding="utf-8")
+        self.assertEqual(2, script.count("run_api_tests\n"))
+        self.assertEqual(2, script.count("run_django_tests\n"))
+        self.assertEqual(1, script.count('if [ "$API_EXIT_CODE" -eq 139 ]'))
+        self.assertEqual(1, script.count('if [ "$DJANGO_EXIT_CODE" -eq 139 ]'))
+        self.assertIn("a second crash or any ordinary test failure remains a hard failure", script)
+        self.assertIn("if [ $API_EXIT_CODE -ne 0 ] || [ $DJANGO_EXIT_CODE -ne 0 ]", script)
 
     def test_every_runtime_service_has_meaningful_health(self):
         expected = {
@@ -128,9 +137,7 @@ class ServiceHealthContractTests(unittest.TestCase):
         self.assertIn("apk add --no-cache su-exec gettext wget", dockerfile)
 
     def test_compose_observer_is_isolated_staging_only_and_self_cleaning(self):
-        observer = (ROOT / "scripts/bash/observe-compose-health.sh").read_text(
-            encoding="utf-8"
-        )
+        observer = (ROOT / "scripts/bash/observe-compose-health.sh").read_text(encoding="utf-8")
         self.assertIn('PROJECT_NAME="base2-f093-$$"', observer)
         self.assertIn("handle_signal 130", observer)
         self.assertIn("handle_signal 143", observer)

@@ -41,9 +41,18 @@ const setup = () => {
 describe('structured record controls', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal('crypto', {
+      subtle: {
+        digest: vi.fn().mockResolvedValue(new Uint8Array(32).buffer),
+      },
+    });
     contentWorkspaceAPI.relationships.mockResolvedValue({ items: [] });
     contentWorkspaceAPI.record.mockResolvedValue({ ...record, version: 5 });
     contentWorkspaceAPI.versions.mockResolvedValue({ items: [] });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   test('hashes and uploads in memory but refuses attachment while quarantined', async () => {
@@ -70,6 +79,10 @@ describe('structured record controls', () => {
           sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
         })
       )
+    );
+    expect(globalThis.crypto.subtle.digest).toHaveBeenCalledWith(
+      'SHA-256',
+      expect.any(ArrayBuffer)
     );
     expect(contentWorkspaceAPI.uploadAssetContent).toHaveBeenCalledWith(
       'asset-1',
