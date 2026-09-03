@@ -247,6 +247,9 @@
 - [x] T210 Restore the reachable least-privilege workspace API pool initializer after CI Ruff exposed its construction block below the worker initializer's terminal return; directly prove fresh API and worker pool creation uses distinct DSNs and application identities.
 - [x] T211 Close the six Feature 104 Mypy findings exposed after the Ruff repair by narrowing finite decimal exponents and safe derivatives, declaring mixed preview results explicitly, and typing the repository lifecycle fixture without changing runtime behavior.
 - [x] T212 Admit Pillow 12.3.0's exact SPDX `MIT-CMU` identifier after publication CI reported it as unknown; retain fail-closed rejection for every unlisted MIT-like value and rerun the Python license policy locally before exact-head CI replay.
+- [x] T213 Repair the E2E/smoke Compose graph after publication CI proved migrations lacked the required workspace roles; bootstrap two fixed least-privilege test roles before migration, bind API and worker credentials separately, and lock ordering plus container confinement in a repository regression.
+- [x] T214 Make structured-media interaction tests await the observable completion of browser-side hashing, upload, and status refresh after both publication runners reproduced premature assertions; retain the same production behavior and verify the focused suite repeatedly.
+- [x] T215 Apply the already-proven Coverage.py 7.16.0 crash correction to Django after the guarded corrective push reproduced the old 7.15.4 interpreter fault there; require both Python service locks to retain the corrected C tracer and rerun the full guarded gate.
 
 ## Dependencies and authority
 

@@ -92,13 +92,15 @@ class CompleteGateTests(unittest.TestCase):
         self.assertEqual("unavailable", result["checks"][0]["status"])
 
     def test_wsl_single_processor_runtime_fails_early_with_remedy(self):
-        with patch.object(self.gate.platform, "release", return_value="microsoft-standard-WSL2"), patch.object(
-            self.gate.os, "cpu_count", return_value=1
+        with (
+            patch.object(self.gate.platform, "release", return_value="microsoft-standard-WSL2"),
+            patch.object(self.gate.os, "cpu_count", return_value=1),
         ):
             with self.assertRaisesRegex(RuntimeError, r"processors=2.*wsl --shutdown"):
                 self.gate.validate_runtime_capacity()
-        with patch.object(self.gate.platform, "release", return_value="microsoft-standard-WSL2"), patch.object(
-            self.gate.os, "cpu_count", return_value=2
+        with (
+            patch.object(self.gate.platform, "release", return_value="microsoft-standard-WSL2"),
+            patch.object(self.gate.os, "cpu_count", return_value=2),
         ):
             self.gate.validate_runtime_capacity()
 
@@ -142,9 +144,7 @@ class CompleteGateTests(unittest.TestCase):
             "-c",
             "if test -f marker; then echo passed; else touch marker; exit 139; fi",
         ]
-        result, _ = self.run_gate(
-            [check("segfault", command, tools=["/bin/sh"], max_attempts=2)]
-        )
+        result, _ = self.run_gate([check("segfault", command, tools=["/bin/sh"], max_attempts=2)])
         self.assertEqual("passed", result["overallStatus"])
         self.assertEqual(2, result["checks"][0]["attempts"])
         self.assertIn("bounded infrastructure retry", result["checks"][0]["diagnostic"])
@@ -210,9 +210,7 @@ class CompleteGateTests(unittest.TestCase):
             "if test -f marker; then echo passed; exit 0; "
             "else touch marker; echo 'Worker exited unexpectedly'; exit 1; fi",
         ]
-        result, _ = self.run_gate(
-            [check("worker", command, tools=["/bin/sh"], max_attempts=2)]
-        )
+        result, _ = self.run_gate([check("worker", command, tools=["/bin/sh"], max_attempts=2)])
         self.assertEqual("passed", result["overallStatus"])
         self.assertEqual(2, result["checks"][0]["attempts"])
 
@@ -359,9 +357,9 @@ class CompleteGateTests(unittest.TestCase):
             ],
             commands["live-canary-preflight-contract"],
         )
-        django_wrapper = (
-            repo_root / "scripts/python/run_django_coverage.py"
-        ).read_text(encoding="utf-8")
+        django_wrapper = (repo_root / "scripts/python/run_django_coverage.py").read_text(
+            encoding="utf-8"
+        )
         self.assertIn('"django/pytest.ini"', django_wrapper)
         self.assertEqual(
             ["python3", "scripts/python/validate_compose_config.py"], commands["compose-config"]
@@ -401,9 +399,11 @@ class CompleteGateTests(unittest.TestCase):
 
     def test_python_coverage_surfaces_use_their_verified_tracing_core(self):
         repo_root = MODULE_PATH.parents[2]
-        api_wrapper = (repo_root / "scripts/python/run_api_coverage.py").read_text(
-            encoding="utf-8"
-        )
+        for service in ("api", "django"):
+            requirements = (repo_root / service / "requirements.txt").read_text(encoding="utf-8")
+            self.assertIn("coverage[toml]==7.16.0", requirements)
+            self.assertNotIn("coverage[toml]==7.15.4", requirements)
+        api_wrapper = (repo_root / "scripts/python/run_api_coverage.py").read_text(encoding="utf-8")
         self.assertIn("environment['COVERAGE_CORE'] = 'ctrace'", api_wrapper)
         self.assertIn("(root / 'api' / 'tests').rglob('test_*.py')", api_wrapper)
         self.assertIn("coverage_dir / 'api.json'", api_wrapper)

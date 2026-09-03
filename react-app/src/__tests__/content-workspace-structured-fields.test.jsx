@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import RecordStructuredFields from '../components/content/RecordStructuredFields';
@@ -61,13 +61,15 @@ describe('structured record controls', () => {
     const file = new File(['safe synthetic png'], 'safe.png', { type: 'image/png' });
     await act(async () => user.upload(screen.getByLabelText('Choose image'), file));
     await act(async () => user.click(screen.getByRole('button', { name: 'Secure file' })));
-    expect(contentWorkspaceAPI.createAssetUpload).toHaveBeenCalledWith(
-      expect.objectContaining({
-        filename: 'safe.png',
-        mediaType: 'image/png',
-        byteSize: file.size,
-        sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
-      })
+    await waitFor(() =>
+      expect(contentWorkspaceAPI.createAssetUpload).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filename: 'safe.png',
+          mediaType: 'image/png',
+          byteSize: file.size,
+          sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+        })
+      )
     );
     expect(contentWorkspaceAPI.uploadAssetContent).toHaveBeenCalledWith(
       'asset-1',
@@ -75,7 +77,7 @@ describe('structured record controls', () => {
       'secret-grant',
       'image/png'
     );
-    expect(screen.getByRole('status')).toHaveTextContent('quarantined');
+    expect(await screen.findByRole('status')).toHaveTextContent('quarantined');
     expect(screen.queryByRole('button', { name: 'Attach validated file' })).not.toBeInTheDocument();
     expect(props.onChanged).not.toHaveBeenCalled();
   });
@@ -104,9 +106,11 @@ describe('structured record controls', () => {
       )
     );
     await act(async () => user.click(screen.getByRole('button', { name: 'Secure file' })));
-    await act(async () => user.click(screen.getByRole('button', { name: 'Check scan status' })));
     await act(async () =>
-      user.click(screen.getByRole('button', { name: 'Attach validated file' }))
+      user.click(await screen.findByRole('button', { name: 'Check scan status' }))
+    );
+    await act(async () =>
+      user.click(await screen.findByRole('button', { name: 'Attach validated file' }))
     );
     expect(props.onError).toHaveBeenLastCalledWith(
       'Alternative text is required before an image can be attached.'

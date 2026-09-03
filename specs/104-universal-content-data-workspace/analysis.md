@@ -477,3 +477,42 @@ Correction:
   real generated row passes while a different unlisted MIT-like value remains rejected.
 
 **Cycle result**: `IMPLEMENTATION_FINDING_T212_CLOSED_PENDING_EXACT_HEAD_CI_REPLAY`
+
+## Cycle 17 - Publication CI full-stack and interaction timing
+
+Findings:
+
+1. Both E2E and smoke publication runs failed identically because their isolated Compose graph
+   reached migrations without creating or naming the two new least-privilege workspace roles.
+2. Both frontend publication runs completed 194 tests but two structured-media assertions raced
+   browser-side SHA-256 and upload state. The local single-worker gate passed, while slower CI
+   runners consistently observed the controls before the asynchronous operation completed.
+
+Corrections:
+
+- Added and closed T213. The E2E graph now runs the same confined, no-port role bootstrap before
+  migrations, supplies distinct runtime and worker identities, and makes the worker wait for
+  schema completion. A static regression locks role ordering, credential separation, and bootstrap
+  confinement.
+- Added and closed T214. The affected tests now wait for observable calls and controls produced by
+  hashing, upload, and status refresh. They retain the same security assertions and application
+  behavior while removing machine-speed dependence.
+
+**Cycle result**: `IMPLEMENTATION_FINDINGS_T213_T214_CLOSED_PENDING_EXACT_HEAD_CI_REPLAY`
+
+## Cycle 18 - Guarded push Django coverage runtime
+
+Finding:
+
+- The guarded corrective push passed all 522 API assertions, then Django's remaining Coverage.py
+  7.15.4 process hit the same interpreter-level crash previously corrected for the API service.
+  The hook retained the failure and refused publication even though the independently executed
+  frontend suite completed all 196 tests.
+
+Correction:
+
+- Added and closed T215. Django now uses the same pinned Coverage.py 7.16.0 C tracer already proven
+  by the API partition, and the complete-gate regression forbids 7.15.4 in either Python service
+  lock. Publication remains blocked until the complete guarded hook passes.
+
+**Cycle result**: `IMPLEMENTATION_FINDING_T215_CLOSED_PENDING_GUARDED_PUSH_REPLAY`
