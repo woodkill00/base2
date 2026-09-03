@@ -253,6 +253,7 @@
 - [x] T216 Remove host Web Crypto availability from the structured-media unit-test contract after one publication runner lacked the browser primitive and failed before exercising the mocked upload API; install a deterministic SHA-256 test boundary, assert its algorithm and buffer contract, and retain real-browser coverage in E2E.
 - [x] T217 Make API and Django native-runtime crash handling match the existing bounded frontend policy after Coverage.py 7.16.0 still faulted once during an otherwise passing API report; retry the exact partition only for exit 139, at most once, while every repeated crash and ordinary assertion or coverage failure remains fatal.
 - [x] T218 Repair the lifecycle validator after authorized publication made its permanent T142 prohibition and active-not-published marker contradictory; require T142 to transition only with evidence-backed published-not-merged status while merge, provider, and teardown tasks remain fail-closed.
+- [x] T219 Make the workspace readiness assertion re-query the committed record DOM after one slow publication runner returned a transient `Hello` node that React replaced before visibility evaluation; preserve the same accessible-content requirement and verify it repeatedly under the canonical single-worker runtime.
 
 ## Dependencies and authority
 

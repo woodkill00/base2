@@ -571,6 +571,23 @@ Evidence:
 
 **Cycle result**: `NO_UNRESOLVED_IMPLEMENTATION_FINDINGS`
 
+## Cycle 23 - Publication-runner detached DOM assertion
+
+Finding:
+
+- One duplicate frontend run passed 195 assertions but captured the `Hello` text node during a
+  slow render transition; React replaced that node before `toBeVisible()` evaluated it. The other
+  exact-head runner and local suite passed, and the failure reported a detached element rather than
+  absent content.
+
+Correction:
+
+- Added and closed T219. The readiness assertion now re-queries the current DOM inside `waitFor`,
+  so it still requires visible record content but cannot retain a transient detached node. No
+  application behavior, timeout, or required assertion was weakened.
+
+**Cycle result**: `IMPLEMENTATION_FINDING_T219_CLOSED_PENDING_EXACT_HEAD_CI_REPLAY`
+
 Merge, provider admission, live canary, deployment, teardown, and final feature closeout remain
 separately governed by T144-T150 and were not performed.
 

@@ -100,7 +100,7 @@ describe('content workspace', () => {
     renderWorkspace();
     expect(screen.getByRole('status')).toHaveTextContent(/loading workspace/i);
     expect(await screen.findByRole('heading', { name: /records · articles/i })).toBeVisible();
-    expect(await screen.findByText('Hello')).toBeVisible();
+    await waitFor(() => expect(screen.getByText('Hello')).toBeVisible());
     expect(screen.getByRole('tab', { name: 'Records' })).toHaveAttribute('aria-selected', 'true');
   });
 
