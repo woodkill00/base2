@@ -17,6 +17,14 @@ def health_command(service: str) -> str:
 
 
 class ServiceHealthContractTests(unittest.TestCase):
+    def test_start_parses_environment_override_before_validation(self):
+        script = (ROOT / "scripts/bash/start.sh").read_text(encoding="utf-8")
+        parse_end = script.index("# Validate the selected environment")
+        self.assertLess(script.index("--env-file|-e)"), parse_end)
+        self.assertLess(script.index('ENV_FILE="$2"'), parse_end)
+        self.assertGreater(script.index('if [ ! -f "$ENV_FILE" ]', parse_end), parse_end)
+        self.assertNotIn("cp .env.example .env.build", script)
+
     def test_every_runtime_service_has_meaningful_health(self):
         expected = {
             "react-app": ("wget", "http://localhost:8080/"),

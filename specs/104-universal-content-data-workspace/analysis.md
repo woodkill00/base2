@@ -345,3 +345,35 @@ Gate replay evidence:
   governed publication CI; local contract validation is not misreported as their execution.
 
 **Cycle result**: `LOCAL_IMPLEMENTATION_GATES_PASS_T122_T123_AWAIT_PUBLICATION_CI`
+
+## Cycle 13 - Publication startup admission
+
+Finding:
+
+- The first authorized push failed closed because the pre-push hook requires the local Compose
+  stack, while the documented startup command rejected a valid `.env.local` override by checking
+  the default `.env` before parsing command-line arguments.
+
+Correction:
+
+- Added and closed T202. Startup now parses fixed command-line options first and validates only the
+  selected environment file. It no longer creates `.env.build` as a side effect of a missing
+  unrelated default file. The service-health contract locks this ordering before the local stack
+  is admitted for a publication retry.
+
+**Cycle result**: `IMPLEMENTATION_FINDING_T202_CLOSED_PENDING_LOCAL_STACK_REPLAY`
+
+Follow-up finding:
+
+- The selected historical `.env.local` lacked both workspace role bindings. Review of the setup
+  generator found that its password-default allowlist referenced the two workspace secrets, but
+  its authoritative generated-secret list omitted them, so untouched placeholders could survive
+  setup.
+
+Correction:
+
+- Added and closed T203. Both workspace database passwords are generated as independent random
+  secrets by default or deliberately inherit the operator's password default when that option is
+  selected. The setup-input regression requires both resolved outputs.
+
+**Cycle result**: `IMPLEMENTATION_FINDING_T203_CLOSED_PENDING_LOCAL_ENV_REFRESH`

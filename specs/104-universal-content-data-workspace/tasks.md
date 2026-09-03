@@ -236,6 +236,8 @@
 - [x] T199 Remove Celery workspace processing from the database-owner pool without granting API requests cross-tenant discovery; provide a distinct least-privilege worker role or fixed security-definer discovery contract, tenant-bind every claimed mutation, and prove API/worker credential and RLS separation in disposable PostgreSQL.
 - [x] T200 Make the dedicated workspace visual manifest/tamper suite and no-update multi-browser matrix required nodes in the fixed complete repository gate.
 - [x] T201 Repair exact-head gate drift after worker-role and visual-gate integration: update the tenant-policy regression to require the separate worker role and refresh only the changed locked configuration hashes after focused validation.
+- [x] T202 Repair pre-push local-stack startup so command-line compose/environment overrides are parsed before validating the selected environment; prove `.env.local` is honored without creating or reading the default `.env`.
+- [x] T203 Add both workspace database passwords to the setup generator's secure secret inventory and prove password-default and independent-random generation paths cannot leave their template placeholders unresolved.
 
 ## Dependencies and authority
 

@@ -45,32 +45,7 @@ fi
 echo "ðŸš€ Starting Docker Environment..."
 echo "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”"
 
-# Check if env file exists and validate required variables
-stage "env file validation"
-if [ ! -f "$ENV_FILE" ]; then
-    if [ -f .env.build ]; then
-        echo "Error: .env is missing. Run: node scripts/setup.js --render-env"
-        exit 1
-    fi
-    if [ -f .env.example ]; then
-        cp .env.example .env.build
-        echo "Created .env.build from .env.example."
-        echo "Run: node scripts/setup.js (fill values), then node scripts/setup.js --render-env"
-        exit 1
-    fi
-    echo "Error: .env, .env.build, and .env.example are missing."
-    exit 1
-fi
-
-# Validate required .env variables relevant to this stack
-# Keep concise: domain and core service ports/credentials
 REQUIRED_VARS=(WEBSITE_DOMAIN NETWORK_NAME TRAEFIK_PORT FASTAPI_PORT DJANGO_PORT POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB WORKSPACE_DB_USER WORKSPACE_DB_PASSWORD WORKSPACE_WORKER_DB_USER WORKSPACE_WORKER_DB_PASSWORD)
-for VAR in "${REQUIRED_VARS[@]}"; do
-    if ! grep -q "^$VAR=" "$ENV_FILE"; then
-        echo "âŒ Error: Required environment variable $VAR is missing in .env."
-        exit 1
-    fi
-done
 
 # Parse command line arguments
 stage "parse CLI args"
@@ -124,6 +99,20 @@ while [[ $# -gt 0 ]]; do
             exit 1
             ;;
     esac
+done
+
+# Validate the selected environment only after command-line overrides are known.
+stage "env file validation"
+if [ ! -f "$ENV_FILE" ]; then
+    echo "Error: selected environment file is missing: $ENV_FILE"
+    echo "Run: node scripts/setup.js --render-env"
+    exit 1
+fi
+for VAR in "${REQUIRED_VARS[@]}"; do
+    if ! grep -q "^$VAR=" "$ENV_FILE"; then
+        echo "âŒ Error: Required environment variable $VAR is missing in $ENV_FILE."
+        exit 1
+    fi
 done
 
 # Synchronize configuration with .env before starting
