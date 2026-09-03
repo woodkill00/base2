@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "allowedLicenses": {
     "MIT": ["mit", "mit license"],
+    "MIT-CMU": ["mit-cmu"],
     "Apache-2.0": ["apache-2.0", "apache software license"],
     "BSD-2-Clause": ["bsd-2-clause"],
     "BSD-3-Clause": ["bsd", "bsd-3-clause", "bsd license", "3-clause bsd license"],

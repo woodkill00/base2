@@ -246,6 +246,7 @@
 - [x] T209 Preserve the exact supported Node runtime while making the local frontend gate report and retry one native SIGSEGV only; retain hard failure for a repeated crash and every ordinary test failure, and prove the retry is bounded by regression.
 - [x] T210 Restore the reachable least-privilege workspace API pool initializer after CI Ruff exposed its construction block below the worker initializer's terminal return; directly prove fresh API and worker pool creation uses distinct DSNs and application identities.
 - [x] T211 Close the six Feature 104 Mypy findings exposed after the Ruff repair by narrowing finite decimal exponents and safe derivatives, declaring mixed preview results explicitly, and typing the repository lifecycle fixture without changing runtime behavior.
+- [x] T212 Admit Pillow 12.3.0's exact SPDX `MIT-CMU` identifier after publication CI reported it as unknown; retain fail-closed rejection for every unlisted MIT-like value and rerun the Python license policy locally before exact-head CI replay.
 
 ## Dependencies and authority
 

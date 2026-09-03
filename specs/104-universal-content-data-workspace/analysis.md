@@ -461,3 +461,19 @@ Follow-up finding and correction:
   values being present. Runtime policy and accepted inputs remain unchanged.
 
 **Cycle result**: `IMPLEMENTATION_FINDING_T211_CLOSED_PENDING_EXACT_HEAD_CI_REPLAY`
+
+## Cycle 16 - Publication CI dependency-license metadata
+
+Finding:
+
+- Exact-head publication CI generated Pillow 12.3.0 metadata with the SPDX identifier
+  `MIT-CMU`, while the closed allowlist knew only the generic `MIT` identifiers. The Python
+  license job therefore failed closed rather than silently accepting an unfamiliar value.
+
+Correction:
+
+- Added and closed T212. Pillow's upstream license and package metadata both identify the exact
+  license as `MIT-CMU`; the policy now admits only that exact identifier. A regression proves the
+  real generated row passes while a different unlisted MIT-like value remains rejected.
+
+**Cycle result**: `IMPLEMENTATION_FINDING_T212_CLOSED_PENDING_EXACT_HEAD_CI_REPLAY`
