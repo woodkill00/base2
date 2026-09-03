@@ -571,6 +571,26 @@ Evidence:
 
 **Cycle result**: `NO_UNRESOLVED_IMPLEMENTATION_FINDINGS`
 
+## Cycle 24 - Live one-shot service health admission
+
+Finding:
+
+- The first separately approved launch of merged commit
+  `024e1efb9f1ab547637c8d3842c2d88e6b041687` built and started every service,
+  including a successful `workspace-db-role` bootstrap container. The generic health loop treated
+  its required `Exited (0)` terminal state as unhealthy, so it could never advance to DNS. The
+  launch remained unexposed and its exact-owned Droplet was rolled back with zero managed DNS
+  records left behind.
+
+Correction:
+
+- Added and closed T220. The remote gate now names only `workspace-db-role` as an admitted
+  one-shot and accepts it only when Docker reports exact `exited` state and exit code zero. A
+  missing, running, failed, or differently named service remains pending and ultimately fails
+  closed; every ordinary service still requires running plus healthy.
+
+**Cycle result**: `IMPLEMENTATION_FINDING_T220_CLOSED_PENDING_CORRECTIVE_PUBLICATION`
+
 ## Cycle 23 - Publication-runner detached DOM assertion
 
 Finding:

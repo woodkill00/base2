@@ -57,3 +57,14 @@ def test_remote_bootstrap_applies_api_migrations_before_acceptance():
     assert "python -m api.scripts.migrate" in script
     assert script.index('stage="api-migrations"') < script.index('stage="service-inventory"')
     assert script.index('stage="api-migrations"') < script.index('stage="receipt"')
+
+
+def test_remote_bootstrap_accepts_only_the_successful_workspace_role_one_shot():
+    script = (ROOT / "digital_ocean/scripts/bash/full-preview-remote.sh").read_text()
+    assert "one_shot_services=(workspace-db-role)" in script
+    assert "'{{.State.ExitCode}}'" in script
+    assert '[[ "$state" == "exited" && "$exit_code" == "0" ]]' in script
+    assert 'pending+=("$service:$state:exit-$exit_code")' in script
+    assert script.index("one_shot_services=(workspace-db-role)") < script.index(
+        'stage="service-health"'
+    )

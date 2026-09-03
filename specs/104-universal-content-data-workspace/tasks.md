@@ -254,6 +254,7 @@
 - [x] T217 Make API and Django native-runtime crash handling match the existing bounded frontend policy after Coverage.py 7.16.0 still faulted once during an otherwise passing API report; retry the exact partition only for exit 139, at most once, while every repeated crash and ordinary assertion or coverage failure remains fatal.
 - [x] T218 Repair the lifecycle validator after authorized publication made its permanent T142 prohibition and active-not-published marker contradictory; require T142 to transition only with evidence-backed published-not-merged status while merge, provider, and teardown tasks remain fail-closed.
 - [x] T219 Make the workspace readiness assertion re-query the committed record DOM after one slow publication runner returned a transient `Hello` node that React replaced before visibility evaluation; preserve the same accessible-content requirement and verify it repeatedly under the canonical single-worker runtime.
+- [x] T220 Repair the live full-preview health contract after the first exact-merged-commit launch exposed a successful `workspace-db-role` one-shot as a permanently unhealthy service; accept only that fixed service in exact `exited`/zero state, keep every failed or unexpected state fail-closed, and lock the behavior with focused deployment regressions before a new launch.
 
 ## Dependencies and authority
 
