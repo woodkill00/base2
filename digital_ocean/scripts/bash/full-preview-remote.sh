@@ -72,6 +72,7 @@ stage="api-migrations"
 stage="service-inventory"
 mapfile -t services < <("${compose[@]}" config --services)
 [[ "${#services[@]}" -gt 0 ]] || exit 3
+one_shot_services=(workspace-db-role)
 
 stage="service-health"
 for attempt in $(seq 1 180); do
@@ -82,6 +83,15 @@ for attempt in $(seq 1 180); do
     if [[ -z "$container_id" ]]; then pending+=("$service:absent"); continue; fi
     state="$(docker inspect --format '{{.State.Status}}' "$container_id")"
     health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$container_id")"
+    exit_code="$(docker inspect --format '{{.State.ExitCode}}' "$container_id")"
+    if [[ " ${one_shot_services[*]} " == *" $service "* ]]; then
+      if [[ "$state" == "exited" && "$exit_code" == "0" ]]; then
+        ready=$((ready + 1))
+      else
+        pending+=("$service:$state:exit-$exit_code")
+      fi
+      continue
+    fi
     if [[ "$state" == "running" && "$health" == "healthy" ]]; then
       ready=$((ready + 1))
     else
