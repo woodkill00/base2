@@ -147,8 +147,8 @@
 
 - [x] T120 Run direct tenant-crossing, role/object authorization, CSRF, IDOR, replay, concurrency, and anti-enumeration tests.
 - [x] T121 Run injection, XSS, structured-rich-text, mass-assignment, overfetching, unsafe URL, SSRF-boundary, path, MIME, archive, and CSV-formula tests.
-- [ ] T122 Run dependency, static analysis, Semgrep, package audit, license, SBOM, supply-chain, and container/configuration security gates.
-- [ ] T123 Run tracked, staged, history, artifact, screenshot, log, export, and fixture secret/private-data scans with zero findings.
+- [x] T122 Run dependency, static analysis, Semgrep, package audit, license, SBOM, supply-chain, and container/configuration security gates.
+- [x] T123 Run tracked, staged, history, artifact, screenshot, log, export, and fixture secret/private-data scans with zero findings.
 - [x] T124 Add deterministic synthetic visual fixtures for all field kinds, states, jobs, media outcomes, relationships, presets, errors, and long/RTL content.
 - [x] T125 Add representative Chromium route/state screenshots plus geometry, overflow, focus, target, hierarchy, image-fit, stability, and interaction assertions.
 - [x] T126 Add compact phone, DPR3 phone, short landscape, tablet, desktop, ultrawide, 200% text, and 400% zoom coverage.
@@ -165,16 +165,16 @@
 
 ## Phase 9 - Implemented-system analysis and closeout readiness
 
-- [ ] T137 Re-run product, architecture, security, migration, reliability, accessibility, visual, performance, compatibility, and operational analysis against the implemented system.
-- [ ] T138 Add numbered corrective tasks for every new finding and link each to a regression test and evidence result.
-- [ ] T139 Repeat implementation -> tests -> analysis -> corrective tasks until `NO_UNRESOLVED_IMPLEMENTATION_FINDINGS` is evidence-backed.
-- [ ] T140 Re-run `validate_plan.py`, traceability, diff, documentation, and clean-tree review against the exact feature head.
+- [x] T137 Re-run product, architecture, security, migration, reliability, accessibility, visual, performance, compatibility, and operational analysis against the implemented system.
+- [x] T138 Add numbered corrective tasks for every new finding and link each to a regression test and evidence result.
+- [x] T139 Repeat implementation -> tests -> analysis -> corrective tasks until `NO_UNRESOLVED_IMPLEMENTATION_FINDINGS` is evidence-backed.
+- [x] T140 Re-run `validate_plan.py`, traceability, diff, documentation, and clean-tree review against the exact feature head.
 
 ## Phase 10 - Separate publication and optional live acceptance
 
-- [ ] T141 Commit the exact reviewed feature changes and verify a clean tree without disturbing unrelated files.
-- [ ] T142 Push the feature branch and publish a reviewed pull request only under the repository's publication authority.
-- [ ] T143 Require every executable CI check green and classify infrastructure-only failures with retained evidence rather than bypassing them.
+- [x] T141 Commit the exact reviewed feature changes and verify a clean tree without disturbing unrelated files.
+- [x] T142 Push the feature branch and publish a reviewed pull request only under the repository's publication authority.
+- [x] T143 Require every executable CI check green and classify infrastructure-only failures with retained evidence rather than bypassing them.
 - [ ] T144 Merge only the exact reviewed head through a separate authorized decision and verify local/remote `main` alignment.
 - [ ] T145 Admit an optional exact-main ephemeral canary only through separate provider, cost, lifetime, DNS, and deployment authorization.
 - [ ] T146 Use synthetic tenant/accounts/content and staging-only certificates for live acceptance.
@@ -252,6 +252,7 @@
 - [x] T215 Apply the already-proven Coverage.py 7.16.0 crash correction to Django after the guarded corrective push reproduced the old 7.15.4 interpreter fault there; require both Python service locks to retain the corrected C tracer and rerun the full guarded gate.
 - [x] T216 Remove host Web Crypto availability from the structured-media unit-test contract after one publication runner lacked the browser primitive and failed before exercising the mocked upload API; install a deterministic SHA-256 test boundary, assert its algorithm and buffer contract, and retain real-browser coverage in E2E.
 - [x] T217 Make API and Django native-runtime crash handling match the existing bounded frontend policy after Coverage.py 7.16.0 still faulted once during an otherwise passing API report; retry the exact partition only for exit 139, at most once, while every repeated crash and ordinary assertion or coverage failure remains fatal.
+- [x] T218 Repair the lifecycle validator after authorized publication made its permanent T142 prohibition and active-not-published marker contradictory; require T142 to transition only with evidence-backed published-not-merged status while merge, provider, and teardown tasks remain fail-closed.
 
 ## Dependencies and authority
 

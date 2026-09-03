@@ -49,7 +49,9 @@ def validate_spec(spec: str) -> None:
             "functional requirements must be exactly sequential FR-001..FR-062; "
             f"found {len(found)} entries"
         )
-    stories = re.findall(r"^### User Story \d+ - .+ \(Priority: P[123]\)$", spec, flags=re.MULTILINE)
+    stories = re.findall(
+        r"^### User Story \d+ - .+ \(Priority: P[123]\)$", spec, flags=re.MULTILINE
+    )
     if len(stories) != 7:
         fail(f"expected 7 prioritized user stories, found {len(stories)}")
     criteria = re.findall(r"^- \*\*SC-\d{3}\*\*:", spec, flags=re.MULTILINE)
@@ -67,7 +69,7 @@ def validate_spec(spec: str) -> None:
             fail(f"missing explicit boundary: {boundary}")
 
 
-def validate_tasks(tasks: str) -> int:
+def validate_tasks(tasks: str, analysis: str) -> int:
     task_rows = re.findall(r"^- \[([ x])\] (T\d{3})\b", tasks, flags=re.MULTILINE)
     found = tuple(task_id for _, task_id in task_rows)
     expected = tuple(f"T{number:03d}" for number in range(1, len(found) + 1))
@@ -78,8 +80,7 @@ def validate_tasks(tasks: str) -> int:
         )
     completed = {task_id for mark, task_id in task_rows if mark == "x"}
     phase_numbers = tuple(
-        int(number)
-        for number in re.findall(r"^## Phase (\d+)\b", tasks, flags=re.MULTILINE)
+        int(number) for number in re.findall(r"^## Phase (\d+)\b", tasks, flags=re.MULTILINE)
     )
     if phase_numbers != tuple(range(1, 11)):
         fail(f"phases must be sequential 1..10; found {phase_numbers}")
@@ -90,11 +91,20 @@ def validate_tasks(tasks: str) -> int:
     for task_id in BASE_TASKS[18:140]:
         if task_id not in tasks:
             fail(f"missing implementation/verification task {task_id}")
-    for guarded in ("T142", "T144", "T145", "T148", "T149"):
+    for guarded in ("T144", "T145", "T148", "T149"):
         if guarded not in tasks:
             fail(f"missing separately governed lifecycle task {guarded}")
         if guarded in completed:
             fail(f"separately governed lifecycle task may not be pre-completed: {guarded}")
+    published = bool(
+        re.search(
+            r"^\*\*Current implementation status\*\*: " r"`IMPLEMENTATION_PUBLISHED_NOT_MERGED`$",
+            analysis,
+            flags=re.MULTILINE,
+        )
+    )
+    if ("T142" in completed) != published:
+        fail("T142 completion must exactly match the published-not-merged lifecycle status")
     return len(found)
 
 
@@ -164,14 +174,24 @@ def validate_cross_document_contract(documents: dict[str, str]) -> None:
             fail(f"unresolved planning marker present: {marker}")
     if "NO_UNRESOLVED_PLANNING_FINDINGS" not in documents["analysis.md"]:
         fail("analysis has no explicit planning closure result")
-    if "IMPLEMENTATION_ACTIVE_NOT_PUBLISHED" not in documents["analysis.md"]:
-        fail("analysis must state the current implementation/publication status honestly")
+    present_states = re.findall(
+        r"^\*\*Current implementation status\*\*: "
+        r"`(IMPLEMENTATION_ACTIVE_NOT_PUBLISHED|IMPLEMENTATION_PUBLISHED_NOT_MERGED)`$",
+        documents["analysis.md"],
+        flags=re.MULTILINE,
+    )
+    if len(present_states) != 1:
+        fail("analysis must state exactly one current implementation/publication status")
+    if present_states[0] == "IMPLEMENTATION_PUBLISHED_NOT_MERGED" and (
+        "NO_UNRESOLVED_IMPLEMENTATION_FINDINGS" not in documents["analysis.md"]
+    ):
+        fail("published lifecycle status requires evidence-backed implementation closure")
 
 
 def main() -> int:
     documents = {relative: read(relative) for relative in REQUIRED_FILES}
     validate_spec(documents["spec.md"])
-    task_count = validate_tasks(documents["tasks.md"])
+    task_count = validate_tasks(documents["tasks.md"], documents["analysis.md"])
     validate_traceability(documents["traceability.md"])
     validate_cross_document_contract(documents)
     print(

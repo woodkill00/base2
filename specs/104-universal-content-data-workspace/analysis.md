@@ -135,7 +135,7 @@ each reproduced implementation defect retains a regression and evidence path. Pu
 merge, deployment, DNS, certificates, provider resources, and live acceptance remain unperformed
 and separately governed.
 
-**Current implementation status**: `IMPLEMENTATION_ACTIVE_NOT_PUBLISHED`
+**Current implementation status**: `IMPLEMENTATION_PUBLISHED_NOT_MERGED`
 
 ## Cycle 8 - Exact-head database isolation review
 
@@ -550,3 +550,45 @@ Correction:
   fatal. Static regressions lock the one-retry ceiling and the combined backend fail-closed gate.
 
 **Cycle result**: `IMPLEMENTATION_FINDING_T217_CLOSED_PENDING_GUARDED_PUSH_REPLAY`
+
+## Cycle 21 - Exact-head publication readiness
+
+Evidence:
+
+- The guarded push for exact head `fd340e539aee2c7859795995c9a8e3de8f8233a7` passed 522 API,
+  69 Django, and 196 frontend tests.
+- Both independent GitHub publication matrices passed API, Django, backend integration, contract,
+  frontend, E2E, smoke, repository guards, dependency audits, Semgrep, Gitleaks, node and Python
+  licenses, SBOM, and supply-chain policy. The optional Chromatic follow-up passed on its applicable
+  run and skipped normally on the duplicate event.
+- The fixed complete gate passed all 82 checks against that exact source commit with no failed
+  checks. Its result is retained at
+  `.artifacts/complete-gate/20260903T024654Z/result.json` with evidence digest
+  `8ddc1e882b9bad8abf09f0cf6e756fa72c4ada4c34301babe4c78d9053c36aa3`.
+- The implementation-analysis loop produced contiguous corrective tasks T151-T217 for every
+  reproducible finding. Each correction has a regression or exact-gate result, and no finding was
+  waived or converted into a silent success.
+
+**Cycle result**: `NO_UNRESOLVED_IMPLEMENTATION_FINDINGS`
+
+Merge, provider admission, live canary, deployment, teardown, and final feature closeout remain
+separately governed by T144-T150 and were not performed.
+
+## Cycle 22 - Lifecycle-validator publication transition
+
+Finding:
+
+- Final lifecycle reconciliation correctly marked the authorized PR publication complete, but the
+  planning validator still prohibited T142 forever and required the obsolete
+  `IMPLEMENTATION_ACTIVE_NOT_PUBLISHED` status. It failed closed instead of accepting dishonest
+  task state.
+
+Correction:
+
+- Added and closed T218. The validator now requires T142 and the
+  `IMPLEMENTATION_PUBLISHED_NOT_MERGED` marker to transition together, and requires the
+  evidence-backed implementation-closure marker before accepting that state. T144, T145, T148,
+  and T149 remain unconditionally prohibited before their separate authority. Positive and
+  hostile lifecycle-state regressions cover both boundaries.
+
+**Cycle result**: `NO_UNRESOLVED_IMPLEMENTATION_FINDINGS`

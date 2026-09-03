@@ -37,12 +37,19 @@ class Feature104PlanValidatorTests(unittest.TestCase):
             flags=re.MULTILINE,
         )
         with self.assertRaisesRegex(AssertionError, "contiguous"):
-            validator.validate_tasks(tasks)
+            validator.validate_tasks(tasks, validator.read("analysis.md"))
 
     def test_guarded_lifecycle_completion_fails(self) -> None:
-        tasks = validator.read("tasks.md").replace("- [ ] T142 ", "- [x] T142 ", 1)
+        tasks = validator.read("tasks.md").replace("- [ ] T144 ", "- [x] T144 ", 1)
         with self.assertRaisesRegex(AssertionError, "may not be pre-completed"):
-            validator.validate_tasks(tasks)
+            validator.validate_tasks(tasks, validator.read("analysis.md"))
+
+    def test_publication_completion_requires_matching_lifecycle_status(self) -> None:
+        analysis = validator.read("analysis.md").replace(
+            "IMPLEMENTATION_PUBLISHED_NOT_MERGED", "IMPLEMENTATION_ACTIVE_NOT_PUBLISHED", 1
+        )
+        with self.assertRaisesRegex(AssertionError, "must exactly match"):
+            validator.validate_tasks(validator.read("tasks.md"), analysis)
 
     def test_missing_traceability_row_fails(self) -> None:
         traceability = re.sub(
