@@ -119,7 +119,7 @@ done
 stage "sync configuration"
 echo "ðŸ”„ Synchronizing configuration..."
 if [ -f "$SCRIPT_DIR/sync-env.sh" ]; then
-    "$SCRIPT_DIR/sync-env.sh" --compose-file "$COMPOSE_FILE" --env-file "$ENV_FILE"
+    bash "$SCRIPT_DIR/sync-env.sh" --compose-file "$COMPOSE_FILE" --env-file "$ENV_FILE"
     echo ""
 fi
 

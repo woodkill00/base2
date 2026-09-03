@@ -238,6 +238,7 @@
 - [x] T201 Repair exact-head gate drift after worker-role and visual-gate integration: update the tenant-policy regression to require the separate worker role and refresh only the changed locked configuration hashes after focused validation.
 - [x] T202 Repair pre-push local-stack startup so command-line compose/environment overrides are parsed before validating the selected environment; prove `.env.local` is honored without creating or reading the default `.env`.
 - [x] T203 Add both workspace database passwords to the setup generator's secure secret inventory and prove password-default and independent-random generation paths cannot leave their template placeholders unresolved.
+- [x] T204 Make WSL startup invoke the tracked non-executable configuration synchronizer through Bash and lock the clean-checkout portability contract.
 
 ## Dependencies and authority
 

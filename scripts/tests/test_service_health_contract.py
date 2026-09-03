@@ -24,6 +24,7 @@ class ServiceHealthContractTests(unittest.TestCase):
         self.assertLess(script.index('ENV_FILE="$2"'), parse_end)
         self.assertGreater(script.index('if [ ! -f "$ENV_FILE" ]', parse_end), parse_end)
         self.assertNotIn("cp .env.example .env.build", script)
+        self.assertIn('bash "$SCRIPT_DIR/sync-env.sh"', script)
 
     def test_every_runtime_service_has_meaningful_health(self):
         expected = {

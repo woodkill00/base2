@@ -377,3 +377,12 @@ Correction:
   selected. The setup-input regression requires both resolved outputs.
 
 **Cycle result**: `IMPLEMENTATION_FINDING_T203_CLOSED_PENDING_LOCAL_ENV_REFRESH`
+
+Follow-up finding and correction:
+
+- After the owner-only local environment received distinct generated role secrets, startup reached
+  configuration synchronization but failed because the repository intentionally tracks
+  `sync-env.sh` without an executable bit. Added and closed T204 by invoking that fixed internal
+  script through Bash and locking the call in the service-health contract.
+
+**Cycle result**: `IMPLEMENTATION_FINDING_T204_CLOSED_PENDING_STACK_START`
