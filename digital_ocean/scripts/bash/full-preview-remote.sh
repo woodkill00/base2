@@ -79,7 +79,7 @@ for attempt in $(seq 1 180); do
   ready=0
   pending=()
   for service in "${services[@]}"; do
-    container_id="$("${compose[@]}" ps -q "$service")"
+    container_id="$("${compose[@]}" ps -a -q "$service")"
     if [[ -z "$container_id" ]]; then pending+=("$service:absent"); continue; fi
     state="$(docker inspect --format '{{.State.Status}}' "$container_id")"
     health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$container_id")"
