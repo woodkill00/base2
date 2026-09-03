@@ -244,6 +244,7 @@
 - [x] T207 Isolate the settings capability contract from the selected generated site profile so its disabled and enabled account-module cases are deterministic in the complete local stack.
 - [x] T208 Keep the ephemeral API contract mounts from widening Pytest discovery into Django by naming the API test root explicitly on both local and non-local Compose paths; lock the partition in the service-health regression.
 - [x] T209 Preserve the exact supported Node runtime while making the local frontend gate report and retry one native SIGSEGV only; retain hard failure for a repeated crash and every ordinary test failure, and prove the retry is bounded by regression.
+- [x] T210 Restore the reachable least-privilege workspace API pool initializer after CI Ruff exposed its construction block below the worker initializer's terminal return; directly prove fresh API and worker pool creation uses distinct DSNs and application identities.
 
 ## Dependencies and authority
 

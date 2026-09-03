@@ -217,6 +217,39 @@ def test_owner_pool_initializer_is_reachable_and_returns_created_pool(monkeypatc
     monkeypatch.setattr(db, "_pool", None)
 
 
+@pytest.mark.parametrize(
+    ("pool_name", "initializer_name", "dsn_builder_name", "expected_suffix"),
+    (
+        ("_workspace_pool", "_get_workspace_pool", "_build_workspace_dsn", "-workspace"),
+        (
+            "_workspace_worker_pool",
+            "_get_workspace_worker_pool",
+            "_build_workspace_worker_dsn",
+            "-workspace-worker",
+        ),
+    ),
+)
+def test_workspace_pool_initializers_are_reachable_and_role_specific(
+    monkeypatch, pool_name, initializer_name, dsn_builder_name, expected_suffix
+):
+    from api import db
+
+    captured = {}
+
+    class ConstructedPool:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    monkeypatch.setattr(db, pool_name, None)
+    monkeypatch.setattr(db, "ThreadedConnectionPool", ConstructedPool)
+    monkeypatch.setattr(db, dsn_builder_name, lambda: f"postgresql://{pool_name}@db/base2")
+    pool = getattr(db, initializer_name)()
+    assert isinstance(pool, ConstructedPool)
+    assert captured["dsn"] == f"postgresql://{pool_name}@db/base2"
+    assert captured["application_name"].endswith(expected_suffix)
+    monkeypatch.setattr(db, pool_name, None)
+
+
 def test_close_pool_closes_owner_and_workspace_pools(monkeypatch):
     from api import db
 

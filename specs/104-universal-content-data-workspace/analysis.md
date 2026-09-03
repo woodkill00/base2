@@ -433,3 +433,21 @@ Follow-up finding and correction:
   success.
 
 **Cycle result**: `IMPLEMENTATION_FINDING_T209_CLOSED_PENDING_REPEATED_GATE_PROOF`
+
+## Cycle 15 - Publication CI static analysis
+
+Finding:
+
+- The first GitHub API job failed closed at Ruff F823 before tests. Its report exposed that the
+  workspace API pool's construction block had been displaced below the worker initializer's
+  terminal return. Injected-pool and physical acceptance paths were green, but no unit regression
+  constructed both least-privilege pools from an empty process state.
+
+Correction:
+
+- Added and closed T210. The API workspace initializer again performs its own locked, double-checked
+  construction using only the API workspace DSN and identity. A parameterized regression now
+  constructs both API and worker pools from `None` and verifies distinct DSN builders and
+  application-name boundaries. Publication remains blocked pending a green exact-head CI replay.
+
+**Cycle result**: `IMPLEMENTATION_FINDING_T210_CLOSED_PENDING_EXACT_HEAD_CI_REPLAY`
