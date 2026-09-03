@@ -332,6 +332,7 @@ def scan_workspace_asset(
                     raise ValueError('content_scanner_response_invalid')
                 next_status = 'rejected'
                 derivative = None
+                derivative = None
                 stored_derivative = None
                 if verdict == 'clean':
                     derivative = derivative_builder(content=content, media_type=row[4])
@@ -352,7 +353,7 @@ def scan_workspace_asset(
                 for key in ('width', 'height'):
                     if isinstance(metadata.get(key), int):
                         safe_metadata[key] = metadata[key]
-                if stored_derivative is not None:
+                if stored_derivative is not None and derivative is not None:
                     safe_metadata['derivativeSha256'] = stored_derivative.sha256
                     cur.execute(
                         """INSERT INTO sitecontent_mediavariant

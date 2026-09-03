@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 import pytest
@@ -13,7 +14,7 @@ NOW = datetime(2026, 9, 2, 20, 0, tzinfo=UTC)
 DEFINITION_ID = UUID(int=2104)
 RECORD_ID = UUID(int=3104)
 VIEW_ID = UUID(int=4104)
-FIELDS = [("title", "short_text", True, False, None, {})]
+FIELDS: list[tuple[Any, ...]] = [("title", "short_text", True, False, None, {})]
 RECORD = (RECORD_ID, "site-a", "article", "safe", "Safe", {"title": "Safe"}, "draft", 1, 2, NOW)
 
 

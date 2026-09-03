@@ -451,3 +451,13 @@ Correction:
   application-name boundaries. Publication remains blocked pending a green exact-head CI replay.
 
 **Cycle result**: `IMPLEMENTATION_FINDING_T210_CLOSED_PENDING_EXACT_HEAD_CI_REPLAY`
+
+Follow-up finding and correction:
+
+- With Ruff green, the same API job advanced to Mypy and exposed six unchecked annotations across
+  decimal validation, migration-preview accumulation, nullable derivative construction, and one
+  mixed test fixture. Added and closed T211 by narrowing the already finite decimal exponent,
+  explicitly typing the mixed result/fixture containers, and coupling safe-derivative use to both
+  values being present. Runtime policy and accepted inputs remain unchanged.
+
+**Cycle result**: `IMPLEMENTATION_FINDING_T211_CLOSED_PENDING_EXACT_HEAD_CI_REPLAY`

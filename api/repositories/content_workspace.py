@@ -214,8 +214,10 @@ def _validate_values(values: dict[str, Any], fields: list[tuple]) -> None:
             if 'maximum' in validation and numeric > Decimal(str(validation['maximum'])):
                 raise ValueError('content_schema_invalid')
             decimal_places = validation.get('decimalPlaces')
-            if decimal_places is not None and max(0, -numeric.as_tuple().exponent) > decimal_places:
-                raise ValueError('content_schema_invalid')
+            if decimal_places is not None:
+                exponent = numeric.as_tuple().exponent
+                if not isinstance(exponent, int) or max(0, -exponent) > decimal_places:
+                    raise ValueError('content_schema_invalid')
         if field_kind == 'date':
             try:
                 date.fromisoformat(value)
@@ -521,7 +523,7 @@ class PostgresContentWorkspaceRepository:
         classification = (
             'lossy' if removed or changed else 'backfill_required' if backfill else 'additive'
         )
-        result = {
+        result: dict[str, Any] = {
             'classification': classification,
             'addedFields': added,
             'removedFields': removed,
