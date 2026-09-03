@@ -239,6 +239,11 @@
 - [x] T202 Repair pre-push local-stack startup so command-line compose/environment overrides are parsed before validating the selected environment; prove `.env.local` is honored without creating or reading the default `.env`.
 - [x] T203 Add both workspace database passwords to the setup generator's secure secret inventory and prove password-default and independent-random generation paths cannot leave their template placeholders unresolved.
 - [x] T204 Make WSL startup invoke the tracked non-executable configuration synchronizer through Bash and lock the clean-checkout portability contract.
+- [x] T205 Run repository-crossing API contracts in an ephemeral local test container with only the fixed required repository members mounted read-only; keep the long-running API runtime free of source-tree mounts and preserve the existing non-local gate path.
+- [x] T206 Remove the nullable definition outer join from the PostgreSQL record lock path after the guarded push reproduced `FOR UPDATE` rejection; retain transactional workflow resolution and prove delete, schedule, detach, restrict, and cascade behavior through the existing physical model regressions.
+- [x] T207 Isolate the settings capability contract from the selected generated site profile so its disabled and enabled account-module cases are deterministic in the complete local stack.
+- [x] T208 Keep the ephemeral API contract mounts from widening Pytest discovery into Django by naming the API test root explicitly on both local and non-local Compose paths; lock the partition in the service-health regression.
+- [x] T209 Preserve the exact supported Node runtime while making the local frontend gate report and retry one native SIGSEGV only; retain hard failure for a repeated crash and every ordinary test failure, and prove the retry is bounded by regression.
 
 ## Dependencies and authority
 

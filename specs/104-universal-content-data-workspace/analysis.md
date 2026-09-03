@@ -386,3 +386,50 @@ Follow-up finding and correction:
   script through Bash and locking the call in the service-health contract.
 
 **Cycle result**: `IMPLEMENTATION_FINDING_T204_CLOSED_PENDING_STACK_START`
+
+## Cycle 14 - Guarded publication integration
+
+Findings:
+
+1. The first complete local pre-push run executed API tests inside the production-shaped API
+   container, where repository-crossing migration, documentation, Compose, and coverage contracts
+   were correctly absent. Eight tests therefore failed on unavailable repository members, while
+   adding the full source tree to the long-running service would unnecessarily widen its runtime
+   read surface.
+2. Physical PostgreSQL execution rejected a record lock combined with an outer join across the
+   nullable definition relation. Four workflow/deletion tests failed before mutation.
+3. The settings capability test inherited the enabled accounts module from the selected local site
+   profile and therefore did not deterministically exercise its intended disabled case.
+
+Corrections:
+
+- Added and closed T205. The local API gate uses an ephemeral no-dependency test container and
+  mounts only five fixed contract sources read-only. The running API container remains unchanged,
+  and non-local Compose gates retain their prior execution path.
+- Added and closed T206. Record mutation locks only the `ContentRecord` row; the immutable
+  definition is resolved separately inside the same transaction, avoiding PostgreSQL's forbidden
+  nullable-side outer-join lock.
+- Added and closed T207. The capability regression now explicitly fixes the account-module state
+  for both disabled and enabled assertions instead of depending on ambient profile configuration.
+
+**Cycle result**: `IMPLEMENTATION_FINDINGS_T205_T207_CLOSED_PENDING_GUARDED_PUSH_REPLAY`
+
+Follow-up finding and correction:
+
+- The first ephemeral replay proved all fixed mounts were readable, but Pytest also discovered the
+  mounted Django suite because the legacy API command relied on implicit root discovery. Added and
+  closed T208 by naming `api/tests` on both API execution paths. This preserves cross-service
+  contract reads while maintaining the documented service-local test partition.
+
+**Cycle result**: `IMPLEMENTATION_FINDING_T208_CLOSED_PENDING_GUARDED_PUSH_REPLAY`
+
+Follow-up finding and correction:
+
+- After both backend partitions passed, the supported Node 24.20.0 process terminated with native
+  SIGSEGV while 29 GiB remained available; no Vitest assertion failed and the kernel recorded the
+  crash. Added and closed T209. The frontend runner now captures its result, visibly retries the
+  exact command once only for exit 139, and still fails for a second crash or any ordinary nonzero
+  test result. This does not downgrade Node, lower coverage, skip tests, or turn an assertion into
+  success.
+
+**Cycle result**: `IMPLEMENTATION_FINDING_T209_CLOSED_PENDING_REPEATED_GATE_PROOF`

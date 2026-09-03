@@ -26,6 +26,28 @@ class ServiceHealthContractTests(unittest.TestCase):
         self.assertNotIn("cp .env.example .env.build", script)
         self.assertIn('bash "$SCRIPT_DIR/sync-env.sh"', script)
 
+    def test_local_api_gate_uses_ephemeral_read_only_contract_mounts(self):
+        script = (ROOT / "scripts/bash/test.sh").read_text(encoding="utf-8")
+        local_branch = script[script.index('if [ "$USE_LOCAL_STACK" = true ]'):]
+        self.assertIn("run --rm -T --no-deps", local_branch)
+        self.assertEqual(2, script.count('"${API_PYTEST_CONFIG[@]}" api/tests'))
+        for binding in (
+            '"$PWD/django:/app/django:ro"',
+            '"$PWD/docs:/app/docs:ro"',
+            '"$PWD/local.docker.yml:/app/local.docker.yml:ro"',
+            '"$PWD/development.docker.yml:/app/development.docker.yml:ro"',
+            '"$PWD/.coveragerc:/app/.coveragerc:ro"',
+        ):
+            self.assertIn(binding, local_branch)
+        self.assertIn("else\n    $COMPOSE_CMD exec -T", local_branch)
+
+    def test_frontend_native_crash_retry_is_bounded_and_fail_closed(self):
+        script = (ROOT / "scripts/bash/test.sh").read_text(encoding="utf-8")
+        self.assertEqual(2, script.count("run_frontend_tests\n"))
+        self.assertEqual(1, script.count('if [ "$FRONTEND_EXIT_CODE" -eq 139 ]'))
+        self.assertIn("a second crash or any ordinary test failure remains a hard failure", script)
+        self.assertIn("if [ $BACKEND_EXIT_CODE -eq 0 ] && [ $FRONTEND_EXIT_CODE -eq 0 ]", script)
+
     def test_every_runtime_service_has_meaningful_health(self):
         expected = {
             "react-app": ("wget", "http://localhost:8080/"),

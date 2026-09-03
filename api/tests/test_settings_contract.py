@@ -146,6 +146,7 @@ def test_notification_endpoint_preserves_required_families_and_audits_exact_coun
 
 def test_capability_contract_uses_closed_known_category_ids(monkeypatch):
     _admit_settings(monkeypatch)
+    monkeypatch.setattr('api.routes.settings._accounts_enabled', lambda: False)
     response = TestClient(app).get('/api/settings/capabilities')
     assert response.status_code == 200
     body = response.json()

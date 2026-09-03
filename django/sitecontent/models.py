@@ -709,9 +709,10 @@ class ContentRecord(SiteOwnedModel):
         timezone_name: str = "",
     ) -> None:
         with transaction.atomic():
-            current = (
-                type(self).objects.select_for_update().select_related("definition").get(pk=self.pk)
-            )
+            # PostgreSQL rejects FOR UPDATE when an outer join reaches the
+            # nullable definition relation. Lock only the record row, then
+            # resolve the immutable definition inside the same transaction.
+            current = type(self).objects.select_for_update().get(pk=self.pk)
             if current.version != expected_version:
                 raise ValidationError("content_version_conflict")
             if not current.definition_id:
