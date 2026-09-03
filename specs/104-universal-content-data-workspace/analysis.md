@@ -591,6 +591,23 @@ Correction:
 
 **Cycle result**: `IMPLEMENTATION_FINDING_T220_CLOSED_PENDING_CORRECTIVE_PUBLICATION`
 
+## Cycle 25 - Stopped one-shot discovery
+
+Finding:
+
+- The T220 corrective canary proved Docker's state contract but exposed that default
+  `docker compose ps -q` excludes stopped containers. The successful `workspace-db-role` was
+  therefore classified as absent before its exact exited/zero state could be inspected. DNS was
+  never changed, and the second exact-owned Droplet was rolled back to an empty inventory.
+
+Correction:
+
+- Added and closed T221. Health discovery now uses exact `docker compose ps -a -q` for every
+  configured service. This makes the stopped one-shot visible to T220 without weakening ordinary
+  service admission, which still requires running plus healthy.
+
+**Cycle result**: `IMPLEMENTATION_FINDING_T221_CLOSED_PENDING_CORRECTIVE_PUBLICATION`
+
 ## Cycle 23 - Publication-runner detached DOM assertion
 
 Finding:
