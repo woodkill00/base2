@@ -1,0 +1,26 @@
+# Ordered tasks
+
+- [x] B001 Pin exact Base2 and OpenClaw baselines.
+- [x] B002 Evaluate upload, delivery, accessibility, and tenant threats.
+- [x] B003 Add closed module and policy manifests.
+- [x] B004 Add enabled and disabled generated-profile proof.
+- [x] B005 Add media domain models and forward migrations.
+- [x] B006 Add forced-RLS role migration and contract checks.
+- [x] B007 Add filename, format, checksum, scanner-freshness, and header policy.
+- [x] B008 Add lifecycle, transition, quota, grant, and dedup contracts.
+- [x] B009 Extend mixed-format admission and deterministic safe previews.
+- [x] B010 Add tenant-scoped repository list, detail, and metadata revisions.
+- [x] B011 Add enabled-only FastAPI routes and permission vocabulary.
+- [x] B012 Add bounded upload and authorization-aware delivery adapters.
+- [x] B013 Add accessible responsive library, upload queue, search, and filters.
+- [x] B014 Add API, repository, model, processor, UI, and accessibility tests.
+- [ ] B015 Add PostgreSQL migration/RLS integration proof.
+- [ ] B016 Add media release browser matrix and reviewed screenshot sidecars.
+- [ ] B017 Run all Base2 local gates and repeated critical suites.
+- [ ] B018 Review exact diff, residual risks, and sanitized evidence inventory.
+- [ ] B019 Obtain exact owner approval and publish one draft PR.
+- [ ] B020 Require hosted checks and independent review.
+- [ ] B021 Obtain separate approval and merge exact reviewed head.
+- [ ] B022 Obtain separate provider approval for a bounded staging canary.
+- [ ] B023 Run live journeys, destroy exact resources, and prove empty inventory.
+- [ ] B024 Close OpenClaw Feature 110 only after all exact evidence is present.

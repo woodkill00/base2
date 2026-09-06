@@ -72,6 +72,7 @@
     "test:account-e2e": "playwright test --config=playwright.account.config.mjs",
     "test:settings-release": "playwright test --config=playwright.settings-release.config.mjs",
     "test:workspace-release": "playwright test --config=playwright.workspace-release.config.mjs",
+    "test:media-release": "playwright test --config=playwright.media-release.config.mjs",
     "test:compatibility": "playwright test --config=playwright.compatibility.config.mjs",
     "e2e:install": "playwright install",
     "analyze": "vite build --mode analyze",

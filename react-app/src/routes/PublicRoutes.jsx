@@ -23,6 +23,7 @@ const ForgotPassword = lazy(() => import('../pages/ForgotPassword'));
 const ResetPassword = lazy(() => import('../pages/ResetPassword'));
 const EventsPage = lazy(() => import('../pages/public/EventsPage'));
 const ContentWorkspace = lazy(() => import('../pages/ContentWorkspace'));
+const MediaLibrary = lazy(() => import('../pages/MediaLibrary'));
 
 const accountsEnabled = siteManifest.modules.some(
   (module) => module.id === 'accounts' && module.enabled
@@ -64,6 +65,16 @@ const WorkspaceRoute = () => {
   return (
     <PermissionRoute user={user} permission="content-workspace.read">
       <ContentWorkspace />
+    </PermissionRoute>
+  );
+};
+
+const MediaRoute = () => {
+  const { user } = useAuth();
+  if (!moduleEnabled('media')) return <NotFoundPage />;
+  return (
+    <PermissionRoute user={user} permission="media.read">
+      <MediaLibrary />
     </PermissionRoute>
   );
 };
@@ -154,6 +165,14 @@ const PublicRoutes = () => (
       element={
         <ProtectedRoute>
           <WorkspaceRoute />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/media"
+      element={
+        <ProtectedRoute>
+          <MediaRoute />
         </ProtectedRoute>
       }
     />

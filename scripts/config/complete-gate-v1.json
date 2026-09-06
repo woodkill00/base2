@@ -222,6 +222,44 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "media-library-contract",
+      "command": [
+        "{python-api}",
+        "-m",
+        "pytest",
+        "api/tests/test_media_library_formats.py",
+        "api/tests/test_media_library_lifecycle.py",
+        "api/tests/test_media_library_policy.py",
+        "api/tests/test_media_library_processor.py",
+        "api/tests/test_media_library_repository.py",
+        "api/tests/test_media_library_routes.py",
+        "django/tests/test_media_library_models.py",
+        "scripts/tests/test_media_library_manifest.py",
+        "scripts/tests/test_media_library_migration.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 90,
+      "dependsOn": ["workspace-postgres-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "media-library-plan",
+      "command": ["python3", "specs/105-universal-media-library/validate_plan.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["media-library-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "media-library-visual-release",
+      "command": ["npm", "--prefix", "react-app", "run", "test:media-release"],
+      "required": true,
+      "timeoutSeconds": 300,
+      "dependsOn": ["media-library-plan", "visual-baseline-contract"],
+      "requiredTools": ["npm", "node"]
+    },
+    {
       "id": "workspace-visual-contract",
       "command": [
         "{python-api}",
@@ -233,7 +271,7 @@
       ],
       "required": true,
       "timeoutSeconds": 45,
-      "dependsOn": ["workspace-postgres-contract", "visual-baseline-contract"],
+      "dependsOn": ["workspace-postgres-contract", "visual-baseline-contract", "media-library-plan"],
       "requiredTools": ["{python-api}", "git"]
     },
     {

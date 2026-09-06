@@ -7,6 +7,7 @@ from pathlib import PurePath
 
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+MEDIA_LIBRARY_MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 MAX_IMAGE_EDGE = 12_000
 MAX_IMAGE_PIXELS = 40_000_000
 ALLOWED_MEDIA = {
@@ -14,6 +15,10 @@ ALLOWED_MEDIA = {
     'image/png': (b'\x89PNG\r\n\x1a\n',),
     'image/webp': (b'RIFF',),
     'application/pdf': (b'%PDF-',),
+    'audio/mpeg': (b'ID3', b'\xff\xfb', b'\xff\xf3', b'\xff\xf2'),
+    'audio/ogg': (b'OggS',),
+    'video/mp4': (),
+    'video/webm': (b'\x1aE\xdf\xa3',),
 }
 SAFE_NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._ -]{0,199}$')
 
@@ -34,7 +39,7 @@ class MediaAdmission:
 
 
 def _image_dimensions(content: bytes, media_type: str) -> tuple[int, int] | tuple[None, None]:
-    if media_type == 'application/pdf':
+    if media_type in {'application/pdf', 'audio/mpeg', 'audio/ogg', 'video/mp4', 'video/webm'}:
         return None, None
     if media_type == 'image/png':
         if len(content) < 33 or content[12:16] != b'IHDR':
@@ -89,7 +94,9 @@ def _validate_dimensions(width: int | None, height: int | None) -> None:
         raise MediaAdmissionError('content_media_dimensions_invalid')
 
 
-def admit_upload(*, filename: str, claimed_type: str, content: bytes) -> MediaAdmission:
+def admit_upload(
+    *, filename: str, claimed_type: str, content: bytes, maximum_bytes: int = MAX_UPLOAD_BYTES
+) -> MediaAdmission:
     if (
         not isinstance(filename, str)
         or not SAFE_NAME.fullmatch(filename)
@@ -100,14 +107,29 @@ def admit_upload(*, filename: str, claimed_type: str, content: bytes) -> MediaAd
         raise MediaAdmissionError('content_media_filename_invalid')
     if claimed_type not in ALLOWED_MEDIA:
         raise MediaAdmissionError('content_media_type_invalid')
-    if not isinstance(content, bytes) or not content or len(content) > MAX_UPLOAD_BYTES:
+    if (
+        not isinstance(maximum_bytes, int)
+        or isinstance(maximum_bytes, bool)
+        or not 1 <= maximum_bytes <= MEDIA_LIBRARY_MAX_UPLOAD_BYTES
+        or not isinstance(content, bytes)
+        or not content
+        or len(content) > maximum_bytes
+    ):
         raise MediaAdmissionError('content_limit_exceeded')
-    if not any(content.startswith(signature) for signature in ALLOWED_MEDIA[claimed_type]):
+    signatures = ALLOWED_MEDIA[claimed_type]
+    if signatures and not any(content.startswith(signature) for signature in signatures):
+        raise MediaAdmissionError('content_media_signature_invalid')
+    if claimed_type == 'video/mp4' and (
+        len(content) < 12 or content[4:8] != b'ftyp' or content[8:12] in {b'qt  ', b'M4A '}
+    ):
         raise MediaAdmissionError('content_media_signature_invalid')
     if claimed_type == 'image/webp' and content[8:12] != b'WEBP':
         raise MediaAdmissionError('content_media_signature_invalid')
     lowered = content.lower()
-    if any(marker in lowered for marker in (b'<script', b'javascript:', b'<?php', b'mz\x90')):
+    if any(
+        marker in lowered
+        for marker in (b'<script', b'<html', b'javascript:', b'<?php', b'mz\x90', b'#!/bin/')
+    ):
         raise MediaAdmissionError('content_media_active_content')
     width, height = _image_dimensions(content, claimed_type)
     _validate_dimensions(width, height)

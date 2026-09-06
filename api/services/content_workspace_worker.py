@@ -10,7 +10,6 @@ from uuid import UUID, uuid4
 from api.db import workspace_worker_db_conn as db_conn
 from api.repositories.content_workspace import _validate_values
 from api.security.content_workspace import canonical_digest
-from api.services.content_workspace_derivative import generate_safe_derivative
 from api.services.content_workspace_scanner import scan_content
 from api.services.content_workspace_transfer import MAX_BYTES as MAX_TRANSFER_BYTES
 from api.services.content_workspace_transfer import (
@@ -22,6 +21,7 @@ from api.services.content_workspace_transfer import (
     parse_json,
     plan_import,
 )
+from api.services.media_library_processor import generate_media_preview
 
 
 def due_publication_ids(*, limit: int = 25) -> list[tuple[str, str]]:
@@ -304,7 +304,7 @@ def scan_workspace_asset(
     asset_id: UUID,
     artifact_store,
     scanner=scan_content,
-    derivative_builder=generate_safe_derivative,
+    derivative_builder=generate_media_preview,
 ) -> str:
     """Scan an exact encrypted object and promote only a stored safe derivative."""
     with db_conn(tenant_id=site_id) as conn:
@@ -332,7 +332,6 @@ def scan_workspace_asset(
                     raise ValueError('content_scanner_response_invalid')
                 next_status = 'rejected'
                 derivative = None
-                derivative = None
                 stored_derivative = None
                 if verdict == 'clean':
                     derivative = derivative_builder(content=content, media_type=row[4])
@@ -358,8 +357,10 @@ def scan_workspace_asset(
                     cur.execute(
                         """INSERT INTO sitecontent_mediavariant
                            (id, asset_id, name, storage_key, media_type, byte_size,
-                            sha256, width, height, created_at)
-                           VALUES (%s,%s,'safe',%s,%s,%s,%s,%s,%s,NOW())
+                            sha256, width, height, recipe_id, recipe_version,
+                            source_sha256, processor_ref, inline_safe, created_at)
+                           VALUES (%s,%s,'safe',%s,%s,%s,%s,%s,%s,
+                                   'safe-preview',1,%s,'base2:media-preview-v1',%s,NOW())
                            ON CONFLICT (asset_id, name) DO NOTHING""",
                         (
                             str(uuid4()),
@@ -370,6 +371,8 @@ def scan_workspace_asset(
                             stored_derivative.sha256,
                             derivative.width,
                             derivative.height,
+                            row[1],
+                            derivative.media_type.startswith('image/'),
                         ),
                     )
                 cur.execute(

@@ -1460,9 +1460,10 @@ class PostgresContentWorkspaceRepository:
                         """INSERT INTO sitecontent_mediaasset
                            (id, site_id, storage_key, original_name, media_type, byte_size,
                             sha256, status, owner_ref, attribution, retention_until,
-                            metadata, created_at, updated_at)
+                            metadata, visibility, lock_version, current_object_version,
+                            created_at, updated_at)
                            VALUES (%s,%s,%s,%s,%s,%s,%s,'pending',%s,'',NULL,
-                                   '{"admission":"metadata_only"}'::jsonb,NOW(),NOW())
+                                   '{"admission":"metadata_only"}'::jsonb,'private',1,1,NOW(),NOW())
                            RETURNING id, status""",
                         (
                             str(asset_id),
@@ -1602,6 +1603,7 @@ class PostgresContentWorkspaceRepository:
         upload_grant: str,
         content: bytes,
         artifact_store,
+        maximum_bytes: int = 10 * 1024 * 1024,
     ):
         """Verify, persist, and quarantine one exact grant-bound media payload."""
         with db_conn(tenant_id=site_id) as conn:
@@ -1637,6 +1639,7 @@ class PostgresContentWorkspaceRepository:
                         filename=row[1],
                         claimed_type=row[2],
                         content=content,
+                        maximum_bytes=maximum_bytes,
                     )
                     if admission.byte_size != row[3] or admission.sha256 != row[4]:
                         raise ValueError('content_integrity_failed')

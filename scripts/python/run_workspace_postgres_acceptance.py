@@ -120,6 +120,23 @@ def main() -> None:
         run(role_check + ["reversed"])
         run(django_migration + ["0010", "--noinput"], stdout=subprocess.DEVNULL)
         run(role_check + ["forward"])
+        media_check = common + [
+            "--read-only", "--tmpfs", "/tmp:rw,noexec,nosuid,size=64m",
+            "-v", f"{root}:/workspace:ro", "-w", "/workspace", "-e", "PYTHONPATH=/workspace",
+            "-e", "DB_HOST=127.0.0.1", "-e", "DB_PORT=5432", "-e", "DB_NAME=base2",
+            "-e", "DB_USER=base2", "-e", f"DB_PASSWORD={owner_password}",
+            "-e", "WORKSPACE_DB_USER=base2_workspace_runtime",
+            "-e", f"WORKSPACE_DB_PASSWORD={runtime_password}",
+            "-e", "WORKSPACE_WORKER_DB_USER=base2_workspace_worker",
+            "-e", f"WORKSPACE_WORKER_DB_PASSWORD={worker_password}",
+            "--entrypoint", "python", api_image, "scripts/python/run_media_postgres_checks.py",
+        ]
+        run(django_migration + ["0012", "--noinput"], stdout=subprocess.DEVNULL)
+        run(media_check + ["forward"])
+        run(django_migration + ["0010", "--noinput"], stdout=subprocess.DEVNULL)
+        run(media_check + ["reversed"])
+        run(django_migration + ["0012", "--noinput"], stdout=subprocess.DEVNULL)
+        run(media_check + ["forward"])
     finally:
         if started:
             subprocess.run(

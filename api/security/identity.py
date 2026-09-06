@@ -27,6 +27,14 @@ _ROLE_PERMISSIONS = {
             'invitation.create',
             'invitation.revoke',
             'member.manage',
+            'media.archive',
+            'media.audit',
+            'media.delete',
+            'media.policy',
+            'media.publish',
+            'media.read',
+            'media.upload',
+            'media.write',
             'tenant.manage',
         }
     ),
@@ -45,6 +53,14 @@ _ROLE_PERMISSIONS = {
             'invitation.create',
             'invitation.revoke',
             'member.manage',
+            'media.archive',
+            'media.audit',
+            'media.delete',
+            'media.policy',
+            'media.publish',
+            'media.read',
+            'media.upload',
+            'media.write',
         }
     ),
     'editor': frozenset(
@@ -54,9 +70,14 @@ _ROLE_PERMISSIONS = {
             'content-workspace.read',
             'content-workspace.schedule',
             'content-workspace.write',
+            'media.archive',
+            'media.publish',
+            'media.read',
+            'media.upload',
+            'media.write',
         }
     ),
-    'viewer': frozenset({'content.read', 'content-workspace.read'}),
+    'viewer': frozenset({'content.read', 'content-workspace.read', 'media.read'}),
 }
 _REDACTED_KEYS = frozenset(
     {

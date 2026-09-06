@@ -183,7 +183,9 @@ class PrivateArtifactStore:
         return content
 
 
-def configured_artifact_store(*, root: str, encoded_key: str) -> PrivateArtifactStore:
+def configured_artifact_store(
+    *, root: str, encoded_key: str, max_bytes: int = 10 * 1024 * 1024
+) -> PrivateArtifactStore:
     """Build the store from explicit settings without accepting ambient paths or weak keys."""
     if not isinstance(root, str) or not root.startswith('/') or not encoded_key:
         raise ArtifactIntegrityError('content_artifact_configuration_invalid')
@@ -194,4 +196,4 @@ def configured_artifact_store(*, root: str, encoded_key: str) -> PrivateArtifact
         raise ArtifactIntegrityError('content_artifact_configuration_invalid') from exc
     if len(key) != 32:
         raise ArtifactIntegrityError('content_artifact_configuration_invalid')
-    return PrivateArtifactStore(root, key=key)
+    return PrivateArtifactStore(root, key=key, max_bytes=max_bytes)

@@ -27,7 +27,7 @@ from api.services.content_workspace_worker import (
     validate_import_job,
 )
 from api.services.content_workspace_storage import configured_artifact_store
-from api.settings import settings
+from api.settings import SITE_MANIFEST, settings
 
 
 logger = logging.getLogger('api.tasks')
@@ -211,6 +211,7 @@ def _workspace_artifact_store():
     return configured_artifact_store(
         root=settings.CONTENT_WORKSPACE_STORAGE_ROOT,
         encoded_key=settings.CONTENT_WORKSPACE_STORAGE_KEY or '',
+        max_bytes=int(SITE_MANIFEST.get('media', {}).get('maxBytes', 10 * 1024 * 1024)),
     )
 
 

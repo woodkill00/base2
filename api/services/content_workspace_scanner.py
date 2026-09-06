@@ -5,7 +5,7 @@ import struct
 from collections.abc import Callable
 
 
-MAX_SCAN_BYTES = 10 * 1024 * 1024
+MAX_SCAN_BYTES = 100 * 1024 * 1024
 MAX_REPLY_BYTES = 4096
 CHUNK_BYTES = 64 * 1024
 ALLOWED_HOSTS = {'clamav', '127.0.0.1', '::1'}
