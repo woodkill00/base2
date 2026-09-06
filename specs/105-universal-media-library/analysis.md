@@ -48,10 +48,17 @@ prove unknown defects impossible.
    `f7aced8a4448aae3a43453ddb2159467e6657a70`; evidence digest
    `9c53496c17832f9442b2a4d9f13fdc261fbdb0f549befc8ae1ff12f3927fcb1b`.
 7. The exact critical media lifecycle, replay, governance, worker, and policy
-   suites then passed 100 consecutive repetitions. The reviewed branch now
-   contains 117 tracked files across 19 commits and no committed credential or
-   provider state. Three local virtual-environment links and generated gate
-   artifacts remain untracked and are excluded from publication.
+   suites then passed 100 consecutive repetitions.
+8. The final gap pass added signed stable cursors, bounded metadata history, a
+   reusable focus-trapped picker, exact collection assignment, consequence-aware
+   confirmations, immutable replacement and rollback with grant epoch rotation,
+   deterministic audio waveforms, and active-content/page-bounded document
+   probes. The enlarged lifecycle, replay, governance, worker, policy,
+   processor, and storage matrix passed another 100 consecutive repetitions.
+   The reviewed branch contains 119 tracked files across 24 commits and no
+   committed credential or provider state. Three local virtual-environment
+   links and generated gate artifacts remain untracked and are excluded from
+   publication.
 
 ## Honest residual boundary
 
