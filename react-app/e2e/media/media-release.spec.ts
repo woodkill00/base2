@@ -74,6 +74,7 @@ test('media detail preserves safe preview usage and consequence context', async 
   await expect(dialog.getByText('No blocking references or holds.')).toBeVisible();
   await page.addScriptTag({ content: axeSource });
   expect((await page.evaluate(async () => (await window.axe.run(document)).violations)).map((item) => item.id)).toEqual([]);
+  await dialog.evaluate((node) => { node.scrollTop = 0; });
   await expect(dialog).toHaveScreenshot('media-detail-chromium-desktop.png', {
     animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.01,
   });

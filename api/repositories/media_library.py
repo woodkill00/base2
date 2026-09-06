@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -429,4 +430,201 @@ class PostgresMediaLibraryRepository:
             'status': row[1],
             'expiresAt': row[2].isoformat() if hasattr(row[2], 'isoformat') else row[2],
             'replayed': replayed,
+        }
+
+    def list_collections(self, *, site_id: str, actor_ref: str, roles: list[str]):
+        with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
+            cur.execute(
+                """SELECT c.id, c.title, c.visibility, c.shared_roles, c.lock_version,
+                          COUNT(m.id)
+                   FROM sitecontent_mediacollection c
+                   LEFT JOIN sitecontent_mediacollectionmembership m
+                     ON m.collection_id=c.id AND m.site_id=c.site_id
+                   WHERE c.site_id=%s AND (
+                     c.owner_ref=%s OR (c.visibility='role_shared' AND c.shared_roles ?| %s)
+                   )
+                   GROUP BY c.id ORDER BY c.title, c.id""",
+                (site_id, actor_ref, roles),
+            )
+            rows = cur.fetchall()
+        return {
+            'items': [
+                {
+                    'id': str(row[0]),
+                    'title': row[1],
+                    'visibility': row[2],
+                    'sharedRoles': list(row[3]),
+                    'version': int(row[4]),
+                    'assetCount': int(row[5]),
+                }
+                for row in rows
+            ]
+        }
+
+    def create_collection(
+        self,
+        *,
+        site_id: str,
+        actor_ref: str,
+        title: str,
+        visibility: str,
+        shared_roles: list[str],
+    ):
+        with db_conn(tenant_id=site_id) as conn:
+            try:
+                with conn.cursor() as cur:
+                    identifier = uuid4()
+                    cur.execute(
+                        """INSERT INTO sitecontent_mediacollection
+                           (id, site_id, title, owner_ref, visibility, shared_roles,
+                            lock_version, created_at, updated_at)
+                           VALUES (%s,%s,%s,%s,%s,%s,1,NOW(),NOW())""",
+                        (
+                            str(identifier),
+                            site_id,
+                            title,
+                            actor_ref,
+                            visibility,
+                            json.dumps(shared_roles),
+                        ),
+                    )
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        return {'id': str(identifier), 'title': title, 'version': 1}
+
+    def add_collection_assets(
+        self,
+        *,
+        site_id: str,
+        actor_ref: str,
+        roles: list[str],
+        collection_id: UUID,
+        asset_ids: list[UUID],
+    ):
+        with db_conn(tenant_id=site_id) as conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """SELECT id FROM sitecontent_mediacollection
+                           WHERE site_id=%s AND id=%s AND (
+                             owner_ref=%s OR (visibility='role_shared' AND shared_roles ?| %s)
+                           ) FOR UPDATE""",
+                        (site_id, str(collection_id), actor_ref, roles),
+                    )
+                    if not cur.fetchone():
+                        raise ValueError('media_not_found')
+                    cur.execute(
+                        """SELECT id FROM sitecontent_mediaasset
+                           WHERE site_id=%s AND id=ANY(%s::uuid[]) AND status<>'purged'""",
+                        (site_id, [str(value) for value in asset_ids]),
+                    )
+                    found = {str(row[0]) for row in cur.fetchall()}
+                    if found != {str(value) for value in asset_ids}:
+                        raise ValueError('media_not_found')
+                    added = 0
+                    for order, asset_id in enumerate(asset_ids):
+                        cur.execute(
+                            """INSERT INTO sitecontent_mediacollectionmembership
+                               (id, site_id, collection_id, asset_id, \"order\",
+                                created_at, updated_at)
+                               VALUES (%s,%s,%s,%s,%s,NOW(),NOW())
+                               ON CONFLICT (collection_id, asset_id) DO NOTHING""",
+                            (str(uuid4()), site_id, str(collection_id), str(asset_id), order),
+                        )
+                        added += cur.rowcount
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        return {'collectionId': str(collection_id), 'added': added, 'requested': len(asset_ids)}
+
+    def list_jobs(self, *, site_id: str, asset_id: UUID | None, limit: int):
+        params: list[Any] = [site_id]
+        asset_clause = ''
+        if asset_id:
+            asset_clause = 'AND asset_id=%s'
+            params.append(str(asset_id))
+        params.append(limit)
+        with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
+            cur.execute(
+                f"""SELECT id, asset_id, kind, status, attempt, maximum_attempts,
+                           error_code, available_at, completed_at, updated_at
+                    FROM sitecontent_mediajob
+                    WHERE site_id=%s {asset_clause}
+                    ORDER BY updated_at DESC, id DESC LIMIT %s""",
+                params,
+            )
+            rows = cur.fetchall()
+        return {
+            'items': [
+                {
+                    'id': str(row[0]),
+                    'assetId': str(row[1]) if row[1] else None,
+                    'kind': row[2],
+                    'status': row[3],
+                    'attempt': int(row[4]),
+                    'maximumAttempts': int(row[5]),
+                    'errorCode': row[6],
+                    'availableAt': row[7].isoformat(),
+                    'completedAt': row[8].isoformat() if row[8] else None,
+                    'updatedAt': row[9].isoformat(),
+                }
+                for row in rows
+            ]
+        }
+
+    def retry_job(self, *, site_id: str, job_id: UUID, actor_ref: str):
+        with db_conn(tenant_id=site_id) as conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """UPDATE sitecontent_mediajob
+                           SET status='queued', available_at=NOW(), error_code='',
+                               lease_expires_at=NULL, updated_at=NOW()
+                           WHERE site_id=%s AND id=%s AND status IN ('retryable','failed')
+                             AND attempt < maximum_attempts
+                           RETURNING asset_id, kind, attempt, maximum_attempts""",
+                        (site_id, str(job_id)),
+                    )
+                    row = cur.fetchone()
+                    if not row:
+                        raise ValueError('media_job_retry_blocked')
+                    digest = hashlib.sha256(
+                        f'{site_id}\0{job_id}\0{actor_ref}\0{row[2]}'.encode()
+                    ).hexdigest()
+                    cur.execute(
+                        """INSERT INTO sitecontent_mediaoutboxevent
+                           (id, site_id, aggregate_ref, event_kind, idempotency_key,
+                            payload_digest, status, attempt, maximum_attempts, available_at,
+                            error_code, created_at, updated_at)
+                           VALUES (%s,%s,%s,'job.retry',%s,%s,'pending',0,5,NOW(),'',NOW(),NOW())
+                           ON CONFLICT (site_id, event_kind, idempotency_key) DO NOTHING""",
+                        (str(uuid4()), site_id, f'job:{job_id}', f'retry:{job_id}:{row[2]}', digest),
+                    )
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        return {'id': str(job_id), 'status': 'queued', 'attempt': int(row[2])}
+
+    def get_export(self, *, site_id: str, export_id: UUID, actor_ref: str):
+        with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
+            cur.execute(
+                """SELECT id, output_format, status, artifact_sha256, expires_at, error_code
+                   FROM sitecontent_mediaexportpackage
+                   WHERE site_id=%s AND id=%s AND requested_by=%s""",
+                (site_id, str(export_id), actor_ref),
+            )
+            row = cur.fetchone()
+        if not row:
+            raise ValueError('media_not_found')
+        return {
+            'id': str(row[0]),
+            'outputFormat': row[1],
+            'status': 'expired' if row[4] <= datetime.now(row[4].tzinfo) else row[2],
+            'sha256': row[3] or None,
+            'expiresAt': row[4].isoformat(),
+            'errorCode': row[5] or None,
         }

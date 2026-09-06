@@ -40,6 +40,8 @@ function AssetCard({ asset, selected, onSelect, onOpen }) {
 
 export default function MediaLibrary() {
   const fileInput = useRef(null);
+  const detailOpener = useRef(null);
+  const closeButton = useRef(null);
   const [capabilities, setCapabilities] = useState(null);
   const [assets, setAssets] = useState([]);
   const [selected, setSelected] = useState(new Set());
@@ -54,6 +56,9 @@ export default function MediaLibrary() {
   const [preview, setPreview] = useState(null);
   const [detailError, setDetailError] = useState('');
   const [actionStatus, setActionStatus] = useState('');
+  const [jobs, setJobs] = useState([]);
+  const [metadata, setMetadata] = useState({ altText: '', decorative: false, caption: '' });
+  const [metadataStatus, setMetadataStatus] = useState('');
 
   const load = useCallback((signal) => {
     setLoading(true);
@@ -127,21 +132,61 @@ export default function MediaLibrary() {
   };
 
   const openAsset = async (asset) => {
+    detailOpener.current = document.activeElement;
     setActiveAsset(asset);
     setReferences([]);
     setPreview(null);
     setDetailError('');
     try {
-      const [detail, usage] = await Promise.all([
+      const [detail, usage, work] = await Promise.all([
         mediaLibraryAPI.asset(asset.id),
         mediaLibraryAPI.references(asset.id),
+        mediaLibraryAPI.jobs({ assetId: asset.id }),
       ]);
       setActiveAsset(detail);
       setReferences(Array.isArray(usage?.items) ? usage.items : []);
+      setJobs(Array.isArray(work?.items) ? work.items : []);
+      setMetadata({
+        altText: detail.altText || '', decorative: Boolean(detail.decorative),
+        caption: detail.caption || '',
+      });
     } catch (caught) {
       setDetailError('Details are temporarily unavailable. No media was changed.');
     }
   };
+
+  const closeAsset = useCallback(() => {
+    setActiveAsset(null);
+    requestAnimationFrame(() => detailOpener.current?.focus());
+  }, []);
+
+  const saveMetadata = async (event) => {
+    event.preventDefault();
+    setMetadataStatus('Saving metadata…');
+    try {
+      const result = await mediaLibraryAPI.updateMetadata(activeAsset.id, activeAsset.version, {
+        locale: 'en', altText: metadata.altText, decorative: metadata.decorative,
+        caption: metadata.caption, credit: '', licenseCode: '', visibility: 'private',
+      });
+      setActiveAsset((current) => ({ ...current, version: result.version }));
+      setMetadataStatus('Metadata saved as a new revision.');
+    } catch (caught) {
+      const normalized = normalizeMediaError(caught);
+      setMetadataStatus(normalized.code === 'media_version_conflict'
+        ? 'This asset changed elsewhere. Close and reopen it before saving.'
+        : 'Metadata was not saved. No existing revision was changed.');
+    }
+  };
+
+  useEffect(() => {
+    if (!activeAsset) return undefined;
+    closeButton.current?.focus();
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') closeAsset();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [activeAsset?.id, closeAsset]);
 
   const loadPreview = async () => {
     try {
@@ -287,7 +332,7 @@ export default function MediaLibrary() {
                   <p className="media-eyebrow">Asset detail</p>
                   <h2 id="media-detail-title">{activeAsset.filename}</h2>
                 </div>
-                <button type="button" autoFocus onClick={() => setActiveAsset(null)}>Close</button>
+                <button ref={closeButton} type="button" onClick={closeAsset}>Close</button>
               </header>
               <div className="media-detail-layout">
                 <div className="media-safe-preview" role="img" aria-label={`Safe preview placeholder for ${activeAsset.filename}`}>
@@ -305,6 +350,58 @@ export default function MediaLibrary() {
                 {references.length ? (
                   <ul>{references.map((item) => <li key={item.id}>{item.ownerType} · {item.fieldKey} · {item.ownerState}</li>)}</ul>
                 ) : <p>No visible references.</p>}
+              </section>
+              <form className="media-metadata-editor" onSubmit={saveMetadata}>
+                <h3>Accessible metadata</h3>
+                <label>
+                  Alternative text
+                  <input
+                    value={metadata.altText}
+                    maxLength={500}
+                    disabled={metadata.decorative}
+                    onChange={(event) => setMetadata((current) => ({
+                      ...current, altText: event.target.value,
+                    }))}
+                  />
+                </label>
+                <label className="media-check-label">
+                  <input
+                    type="checkbox"
+                    checked={metadata.decorative}
+                    onChange={(event) => setMetadata((current) => ({
+                      ...current, decorative: event.target.checked,
+                      altText: event.target.checked ? '' : current.altText,
+                    }))}
+                  />
+                  This image is decorative
+                </label>
+                <label>
+                  Caption
+                  <textarea
+                    value={metadata.caption}
+                    maxLength={2000}
+                    onChange={(event) => setMetadata((current) => ({
+                      ...current, caption: event.target.value,
+                    }))}
+                  />
+                </label>
+                <button type="submit">Save new revision</button>
+                {metadataStatus ? <p role="status">{metadataStatus}</p> : null}
+              </form>
+              <section aria-labelledby="jobs-heading">
+                <h3 id="jobs-heading">Inspection and processing</h3>
+                {jobs.length ? <ul>{jobs.map((job) => (
+                  <li key={job.id}>
+                    {statusLabel(job.kind)} · {statusLabel(job.status)} · attempt {job.attempt} of {job.maximumAttempts}
+                    {['failed', 'retryable'].includes(job.status) && job.attempt < job.maximumAttempts ? (
+                      <button type="button" onClick={async () => {
+                        await mediaLibraryAPI.retryJob(job.id);
+                        setJobs((current) => current.map((item) => item.id === job.id
+                          ? { ...item, status: 'queued' } : item));
+                      }}>Retry</button>
+                    ) : null}
+                  </li>
+                ))}</ul> : <p>No active processing jobs.</p>}
               </section>
               <section aria-labelledby="consequence-heading">
                 <h3 id="consequence-heading">Archive and deletion safety</h3>

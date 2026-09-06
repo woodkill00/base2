@@ -77,6 +77,24 @@ export const mediaLibraryAPI = {
         { headers: { 'Idempotency-Key': idempotencyKey }, signal }
       )
     ),
+  exportStatus: async (exportId, { signal } = {}) =>
+    unwrap(await apiClient.get(`/media/v1/exports/${encoded(exportId)}`, { signal })),
+  collections: async ({ signal } = {}) =>
+    unwrap(await apiClient.get('/media/v1/collections', { signal })),
+  createCollection: async (payload, { signal } = {}) =>
+    unwrap(await apiClient.post('/media/v1/collections', payload, { signal })),
+  addCollectionAssets: async (collectionId, assetIds, { signal } = {}) =>
+    unwrap(
+      await apiClient.post(`/media/v1/collections/${encoded(collectionId)}/assets`, {
+        assetIds,
+      }, { signal })
+    ),
+  jobs: async ({ assetId, limit = 25, signal } = {}) =>
+    unwrap(await apiClient.get('/media/v1/jobs', {
+      params: { limit, ...(assetId ? { asset_id: assetId } : {}) }, signal,
+    })),
+  retryJob: async (jobId, { signal } = {}) =>
+    unwrap(await apiClient.post(`/media/v1/jobs/${encoded(jobId)}/retry`, {}, { signal })),
 };
 
 export async function sha256File(file) {

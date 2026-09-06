@@ -136,6 +136,44 @@ class ExportCreate(ContractModel):
         return value
 
 
+class CollectionCreate(ContractModel):
+    title: str = Field(min_length=1, max_length=120)
+    visibility: Literal['private', 'role_shared'] = 'private'
+    shared_roles: list[Literal['owner', 'admin', 'editor', 'viewer']] = Field(
+        default_factory=list, max_length=4
+    )
+
+    @model_validator(mode='after')
+    def sharing_valid(self):
+        if len(self.shared_roles) != len(set(self.shared_roles)):
+            raise ValueError('media_collection_roles_invalid')
+        if (self.visibility == 'private' and self.shared_roles) or (
+            self.visibility == 'role_shared' and not self.shared_roles
+        ):
+            raise ValueError('media_collection_roles_invalid')
+        return self
+
+
+class CollectionAssets(ContractModel):
+    asset_ids: list[UUID] = Field(min_length=1, max_length=100)
+
+    @field_validator('asset_ids')
+    @classmethod
+    def unique_assets(cls, value):
+        if len(value) != len(set(value)):
+            raise ValueError('media_collection_assets_invalid')
+        return value
+
+
+def _collection_roles(request: Request, principal, tenant: str) -> list[str]:
+    try:
+        member = authorize(principal=principal, site_id=tenant, permission='media.read')
+    except PermissionError as exc:
+        raise HTTPException(status_code=404, detail='media_not_found') from exc
+    role = member.get('role') if isinstance(member, dict) else None
+    return [role] if role in {'owner', 'admin', 'editor', 'viewer'} else []
+
+
 def get_repository() -> PostgresMediaLibraryRepository:
     return PostgresMediaLibraryRepository()
 
@@ -477,6 +515,95 @@ def create_export(
             projection=payload.projection,
             request_digest=request_digest,
             expires_at=datetime.now(UTC) + timedelta(hours=24),
+        )
+    except ValueError as exc:
+        raise _map_operation_error(exc) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='media_dependency_unavailable') from exc
+
+
+@router.get('/collections')
+def list_collections(request: Request):
+    principal, tenant = _authorized_scope(request, 'media.read')
+    try:
+        return get_repository().list_collections(
+            site_id=tenant,
+            actor_ref=f'user:{principal.user_id}',
+            roles=_collection_roles(request, principal, tenant),
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='media_dependency_unavailable') from exc
+
+
+@router.post('/collections', status_code=201)
+def create_collection(payload: CollectionCreate, request: Request):
+    principal, tenant = _authorized_scope(request, 'media.write')
+    _sensitive_guard(request, principal)
+    try:
+        return get_repository().create_collection(
+            site_id=tenant,
+            actor_ref=f'user:{principal.user_id}',
+            title=payload.title.strip(),
+            visibility=payload.visibility,
+            shared_roles=list(payload.shared_roles),
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='media_dependency_unavailable') from exc
+
+
+@router.post('/collections/{collection_id}/assets')
+def add_collection_assets(collection_id: UUID, payload: CollectionAssets, request: Request):
+    principal, tenant = _authorized_scope(request, 'media.write')
+    _sensitive_guard(request, principal)
+    try:
+        return get_repository().add_collection_assets(
+            site_id=tenant,
+            actor_ref=f'user:{principal.user_id}',
+            roles=_collection_roles(request, principal, tenant),
+            collection_id=collection_id,
+            asset_ids=payload.asset_ids,
+        )
+    except ValueError as exc:
+        raise _map_operation_error(exc) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='media_dependency_unavailable') from exc
+
+
+@router.get('/jobs')
+def list_jobs(
+    request: Request,
+    asset_id: Annotated[UUID | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 25,
+):
+    _principal, tenant = _authorized_scope(request, 'media.read')
+    try:
+        return get_repository().list_jobs(site_id=tenant, asset_id=asset_id, limit=limit)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='media_dependency_unavailable') from exc
+
+
+@router.post('/jobs/{job_id}/retry')
+def retry_job(job_id: UUID, request: Request):
+    principal, tenant = _authorized_scope(request, 'media.write')
+    _sensitive_guard(request, principal)
+    try:
+        return get_repository().retry_job(
+            site_id=tenant, job_id=job_id, actor_ref=f'user:{principal.user_id}'
+        )
+    except ValueError as exc:
+        code = str(exc)
+        status = 409 if code == 'media_job_retry_blocked' else 404
+        raise HTTPException(status_code=status, detail=code) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='media_dependency_unavailable') from exc
+
+
+@router.get('/exports/{export_id}')
+def get_export(export_id: UUID, request: Request):
+    principal, tenant = _authorized_scope(request, 'media.read')
+    try:
+        return get_repository().get_export(
+            site_id=tenant, export_id=export_id, actor_ref=f'user:{principal.user_id}'
         )
     except ValueError as exc:
         raise _map_operation_error(exc) from exc

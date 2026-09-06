@@ -43,6 +43,27 @@ class Repository:
         assert len(kwargs['request_digest']) == 64
         return {'id': ASSET_ID, 'status': 'queued', 'replayed': False}
 
+    def list_collections(self, **kwargs):
+        assert kwargs['site_id'] == 'base2-obsidian'
+        return {'items': []}
+
+    def create_collection(self, **kwargs):
+        assert kwargs['title'] == 'Launch assets'
+        return {'id': ASSET_ID, 'title': kwargs['title'], 'version': 1}
+
+    def add_collection_assets(self, **kwargs):
+        assert kwargs['asset_ids'] == [UUID(ASSET_ID)]
+        return {'collectionId': str(kwargs['collection_id']), 'added': 1, 'requested': 1}
+
+    def list_jobs(self, **kwargs):
+        return {'items': []}
+
+    def retry_job(self, **kwargs):
+        return {'id': str(kwargs['job_id']), 'status': 'queued', 'attempt': 1}
+
+    def get_export(self, **kwargs):
+        return {'id': str(kwargs['export_id']), 'status': 'ready', 'sha256': 'a' * 64}
+
 
 @pytest.fixture(autouse=True)
 def scoped(monkeypatch):
@@ -205,3 +226,49 @@ def test_sensitive_media_action_requires_recent_auth_and_cookie_csrf(monkeypatch
         ).status_code
         == 200
     )
+
+
+def test_collection_job_and_export_routes_are_closed_and_scoped():
+    client = TestClient(app)
+    assert client.get('/api/media/v1/collections').status_code == 200
+    response = client.post(
+        '/api/media/v1/collections',
+        json={'title': 'Launch assets', 'visibility': 'private', 'sharedRoles': []},
+    )
+    assert response.status_code == 201
+    assert (
+        client.post(
+            '/api/media/v1/collections',
+            json={'title': 'Bad', 'visibility': 'private', 'sharedRoles': ['viewer']},
+        ).status_code
+        == 422
+    )
+    response = client.post(
+        f'/api/media/v1/collections/{ASSET_ID}/assets',
+        json={'assetIds': [ASSET_ID]},
+    )
+    assert response.status_code == 200 and response.json()['added'] == 1
+    assert client.get('/api/media/v1/jobs?limit=25').status_code == 200
+    response = client.post(f'/api/media/v1/jobs/{ASSET_ID}/retry')
+    assert response.status_code == 200 and response.json()['status'] == 'queued'
+    response = client.get(f'/api/media/v1/exports/{ASSET_ID}')
+    assert response.status_code == 200 and response.json()['status'] == 'ready'
+
+
+def test_collection_unknown_fields_duplicates_and_bounds_fail_before_repository():
+    client = TestClient(app)
+    assert (
+        client.post(
+            '/api/media/v1/collections',
+            json={'title': 'Bad', 'visibility': 'private', 'sharedRoles': [], 'extra': True},
+        ).status_code
+        == 422
+    )
+    assert (
+        client.post(
+            f'/api/media/v1/collections/{ASSET_ID}/assets',
+            json={'assetIds': [ASSET_ID, ASSET_ID]},
+        ).status_code
+        == 422
+    )
+    assert client.get('/api/media/v1/jobs?limit=101').status_code == 422

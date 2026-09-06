@@ -50,4 +50,27 @@ describe('media library API', () => {
       expect.objectContaining({ headers: { 'Idempotency-Key': 'export-123' } })
     );
   });
+
+  it('uses encoded fixed collection, job, and export routes', async () => {
+    apiClient.get.mockResolvedValue({ data: { items: [] } });
+    apiClient.post.mockResolvedValue({ data: { status: 'queued' } });
+    await mediaLibraryAPI.collections();
+    await mediaLibraryAPI.addCollectionAssets('collection/id', ['asset-1']);
+    await mediaLibraryAPI.jobs({ assetId: 'asset-1', limit: 10 });
+    await mediaLibraryAPI.retryJob('job/id');
+    await mediaLibraryAPI.exportStatus('export/id');
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/media/v1/collections/collection%2Fid/assets', { assetIds: ['asset-1'] },
+      expect.objectContaining({ signal: undefined })
+    );
+    expect(apiClient.get).toHaveBeenCalledWith('/media/v1/jobs', expect.objectContaining({
+      params: { limit: 10, asset_id: 'asset-1' },
+    }));
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/media/v1/jobs/job%2Fid/retry', {}, expect.objectContaining({ signal: undefined })
+    );
+    expect(apiClient.get).toHaveBeenCalledWith(
+      '/media/v1/exports/export%2Fid', expect.objectContaining({ signal: undefined })
+    );
+  });
 });

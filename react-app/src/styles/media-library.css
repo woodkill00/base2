@@ -96,6 +96,13 @@
 .media-detail-dialog dl { display: grid; grid-template-columns: auto minmax(0, 1fr); align-content: start; gap: .5rem 1rem; }
 .media-detail-dialog dt { font-weight: 700; }
 .media-detail-dialog dd { margin: 0; overflow-wrap: anywhere; }
+.media-metadata-editor { display: grid; gap: .75rem; margin-block: 1rem; padding: 1rem; border: 1px solid color-mix(in srgb, currentColor 22%, transparent); border-radius: 1rem; }
+.media-metadata-editor label:not(.media-check-label) { display: grid; gap: .5rem; font-weight: 650; }
+.media-metadata-editor input:not([type="checkbox"]),
+.media-metadata-editor textarea { inline-size: 100%; min-block-size: 2.75rem; }
+.media-metadata-editor textarea { min-block-size: 6rem; resize: vertical; }
+.media-check-label { display: flex; align-items: center; gap: .5rem; }
+.media-check-label input { inline-size: 1.25rem; block-size: 1.25rem; flex: 0 0 auto; }
 
 @media (max-width: 44rem) {
   .media-toolbar { grid-template-columns: 1fr; }

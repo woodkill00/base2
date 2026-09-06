@@ -15,8 +15,14 @@ vi.mock('../services/mediaLibrary', () => ({
     createExport: vi.fn(),
     createUpload: vi.fn(),
     uploadContent: vi.fn(),
+    updateMetadata: vi.fn(),
+    jobs: vi.fn(),
+    retryJob: vi.fn(),
   },
-  normalizeMediaError: vi.fn(() => ({ status: 503, code: 'media_dependency_unavailable' })),
+  normalizeMediaError: vi.fn((error) => ({
+    status: error?.response?.status || 503,
+    code: error?.response?.data?.detail || 'media_dependency_unavailable',
+  })),
   sha256File: vi.fn(async () => 'a'.repeat(64)),
 }));
 
@@ -51,6 +57,9 @@ beforeEach(() => {
     status: 'ready', version: 1, variants: [],
   });
   mediaLibraryAPI.references.mockResolvedValue({ items: [] });
+  mediaLibraryAPI.jobs.mockResolvedValue({ items: [] });
+  mediaLibraryAPI.updateMetadata.mockResolvedValue({ revision: 2, version: 2 });
+  mediaLibraryAPI.retryJob.mockResolvedValue({ status: 'queued' });
   mediaLibraryAPI.destructivePreview.mockResolvedValue({ allowed: true });
   mediaLibraryAPI.transition.mockResolvedValue({ status: 'archived', version: 2 });
   mediaLibraryAPI.createExport.mockResolvedValue({ status: 'queued' });
@@ -118,4 +127,35 @@ it('reports truthful partial bulk results and queues a bounded export', async ()
   expect(mediaLibraryAPI.createExport).toHaveBeenCalledWith(
     'csv', ['id', 'filename', 'mediaType', 'status', 'visibility'], 'media-export-asset-1'
   );
+});
+
+it('edits metadata with optimistic versioning and reports a safe conflict', async () => {
+  renderPage();
+  fireEvent.click(await screen.findByRole('button', { name: 'View details' }));
+  fireEvent.change(await screen.findByLabelText('Alternative text'), {
+    target: { value: 'A safe description' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save new revision' }));
+  expect(await screen.findByText('Metadata saved as a new revision.')).toBeInTheDocument();
+  expect(mediaLibraryAPI.updateMetadata).toHaveBeenCalledWith(
+    'asset-1', 1, expect.objectContaining({ altText: 'A safe description' })
+  );
+
+  mediaLibraryAPI.updateMetadata.mockRejectedValueOnce({
+    response: { status: 409, data: { detail: 'media_version_conflict' } },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save new revision' }));
+  expect(await screen.findByText(/changed elsewhere/)).toBeInTheDocument();
+});
+
+it('shows bounded processing state and permits only eligible manual retry', async () => {
+  mediaLibraryAPI.jobs.mockResolvedValue({ items: [{
+    id: 'job-1', kind: 'inspect', status: 'retryable', attempt: 1, maximumAttempts: 3,
+  }] });
+  renderPage();
+  fireEvent.click(await screen.findByRole('button', { name: 'View details' }));
+  expect(await screen.findByText(/attempt 1 of 3/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  await waitFor(() => expect(mediaLibraryAPI.retryJob).toHaveBeenCalledWith('job-1'));
+  expect(screen.getByText(/queued/)).toBeInTheDocument();
 });
