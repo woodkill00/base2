@@ -114,7 +114,7 @@ it('accepts dropped and pasted files and truthfully aborts active uploads', asyn
   fireEvent.click(cancel);
   await waitFor(() => expect(aborted).toBe(true));
   expect(await screen.findByText('cancelled')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Resume upload of drop.png' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Restart upload of drop.png' })).toBeInTheDocument();
 
   mediaLibraryAPI.uploadContent.mockResolvedValue({ status: 'quarantined' });
   const pasted = new File(['paste'], 'paste.png', { type: 'image/png' });
@@ -136,9 +136,9 @@ it('pauses active work offline and offers a bounded resume when online', async (
   fireEvent(window, new Event('offline'));
   expect(await screen.findByText(/Offline. Active uploads are paused/)).toBeInTheDocument();
   expect(await screen.findByText('paused offline')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Resume upload of offline.png' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Restart upload of offline.png' })).toBeDisabled();
   fireEvent(window, new Event('online'));
-  expect(await screen.findByRole('button', { name: 'Resume upload of offline.png' })).toBeEnabled();
+  expect(await screen.findByRole('button', { name: 'Restart upload of offline.png' })).toBeEnabled();
 });
 
 it('shows a safe failure state and preserves the shell', async () => {

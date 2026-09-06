@@ -225,7 +225,7 @@ export default function MediaLibrary() {
       ? { ...item, status: 'cancelled', progress: 0 } : item));
   };
 
-  const resumeUpload = (item) => {
+  const restartUpload = (item) => {
     cancelledUploads.current.delete(item.id);
     offlinePausedUploads.current.delete(item.id);
     setUploadQueue((current) => current.map((entry) => entry.id === item.id
@@ -485,7 +485,7 @@ export default function MediaLibrary() {
           <strong>Drop files here, or focus this area and paste files.</strong>
           <span>The Add media button provides the equivalent keyboard file chooser.</span>
         </section>
-        {!networkOnline ? <p className="media-notice" role="status">Offline. Active uploads are paused and can resume when the connection returns.</p> : null}
+        {!networkOnline ? <p className="media-notice" role="status">Offline. Active uploads are paused and can restart safely when the connection returns.</p> : null}
         {pickerStatus ? <p className="media-action-status" role="status">{pickerStatus}</p> : null}
 
         <GlassCard className="media-toolbar">
@@ -546,7 +546,7 @@ export default function MediaLibrary() {
                 <span>{item.name}</span><progress value={item.progress} max="100" aria-label={`${item.name} upload progress`} />
                 <span aria-live="polite">{statusLabel(item.status)}</span>
                 {['failed', 'cancelled', 'paused_offline', 'expired'].includes(item.status) ? (
-                  <button type="button" disabled={!networkOnline} aria-label={`Resume upload of ${item.name}`} onClick={() => resumeUpload(item)}>Resume</button>
+                  <button type="button" disabled={!networkOnline} aria-label={`Restart upload of ${item.name}`} onClick={() => restartUpload(item)}>Restart</button>
                 ) : null}
                 {['checking', 'uploading'].includes(item.status) ? (
                   <button
