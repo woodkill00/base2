@@ -3,23 +3,23 @@
   "groups": {
     "config": {
       ".env.example": "cfbe306d771fcfa3648fe476bcb0b31c19fc91cb2a7cbd6a5b6696b3624ffe5c",
-      "api/site_profiles/base2-obsidian.json": "7e632b6f5ae3a5f05e3ff28d79e4c8c794497ef93126d873de290ef7e340c3c5",
+      "api/site_profiles/base2-obsidian.json": "6a4d2dd56494647083632fcaee8ce7586fbbad4c4767b7a00d58359b4546881f",
       "api/site_profiles/content-workspace-contracts.json": "b8202643502ab5257a92a7370dd2ef4afbc11d75b2fd1772d2b99cb8f7f6beee",
       "api/site_profiles/content-workspace-presets.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
       "api/site_profiles/ember-studio.json": "b6b57abe7c80247917a1cc0ccdf08f3cddb2efd503091b73fb9d0e58d4c7fcae",
-      "api/site_profiles/index.json": "a8dc9e6e3753cbb3acd8e2c9cac6c88360228a25e086def48aab746b0588353a",
+      "api/site_profiles/index.json": "19bff8c5a636397b55b3a9c9d174e9d79727f473997cb4dc75789dfc88f08c1d",
       "api/site_profiles/northstar-library.json": "286850ced5758a336b8c7a82e345f57baa9d4686b39d209311178b6eaa5351f5",
-      "django/site_profiles/base2-obsidian.json": "7e632b6f5ae3a5f05e3ff28d79e4c8c794497ef93126d873de290ef7e340c3c5",
+      "django/site_profiles/base2-obsidian.json": "6a4d2dd56494647083632fcaee8ce7586fbbad4c4767b7a00d58359b4546881f",
       "django/site_profiles/content-workspace-contracts.json": "b8202643502ab5257a92a7370dd2ef4afbc11d75b2fd1772d2b99cb8f7f6beee",
       "django/site_profiles/content-workspace-presets.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
       "django/site_profiles/ember-studio.json": "b6b57abe7c80247917a1cc0ccdf08f3cddb2efd503091b73fb9d0e58d4c7fcae",
-      "django/site_profiles/index.json": "a8dc9e6e3753cbb3acd8e2c9cac6c88360228a25e086def48aab746b0588353a",
+      "django/site_profiles/index.json": "19bff8c5a636397b55b3a9c9d174e9d79727f473997cb4dc75789dfc88f08c1d",
       "django/site_profiles/northstar-library.json": "286850ced5758a336b8c7a82e345f57baa9d4686b39d209311178b6eaa5351f5",
-      "scripts/config/complete-gate-v1.json": "a3b4d5ed4e53737876d6823fab9eff89ac65bf3a86962dcd5004ca275ad719c3",
+      "scripts/config/complete-gate-v1.json": "2080daf986a811cdfaeb02899c19e32baa6a00584d611d634595d42062a2d205",
       "shared/config/content-workspace-presets.generated.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
       "shared/config/design-system-v1.json": "dc6ceb96c6a608f71c105ad928ab57acdfd7d9ad404d7dca32e6c7cf2d2a9dea",
       "shared/config/identity-realms.json": "c11cd97a6808983182e96774499ae5d9b63e38d8dbe1464846cbca9b6127719f",
-      "shared/config/module-catalog.json": "741f9c5d88f1e3cda7fd26bb6876d8adf03fa5388c50ec17c76d5a5feee1cb6b",
+      "shared/config/module-catalog.json": "ae322048e2b26ca38b430e275df172d650e0d5c0f7366d4571138842237b4cc7",
       "shared/config/tenant-security.json": "ff35fd89e50fc66a0dd504bf631a297b52c8f9f888d030201ac3cff6896d117e"
     },
     "docs": {
@@ -33,11 +33,11 @@
       "docs/website-factory.md": "6fbe524d06e3d0a06625d27cffca95282532b46f5f59673aa07cb866581373ad"
     },
     "generatedClient": {
-      "react-app/src/config/generated/base2-obsidian.json": "7e632b6f5ae3a5f05e3ff28d79e4c8c794497ef93126d873de290ef7e340c3c5",
+      "react-app/src/config/generated/base2-obsidian.json": "6a4d2dd56494647083632fcaee8ce7586fbbad4c4767b7a00d58359b4546881f",
       "react-app/src/config/generated/content-workspace-contracts.json": "b8202643502ab5257a92a7370dd2ef4afbc11d75b2fd1772d2b99cb8f7f6beee",
       "react-app/src/config/generated/content-workspace-presets.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
       "react-app/src/config/generated/ember-studio.json": "b6b57abe7c80247917a1cc0ccdf08f3cddb2efd503091b73fb9d0e58d4c7fcae",
-      "react-app/src/config/generated/index.json": "a8dc9e6e3753cbb3acd8e2c9cac6c88360228a25e086def48aab746b0588353a",
+      "react-app/src/config/generated/index.json": "19bff8c5a636397b55b3a9c9d174e9d79727f473997cb4dc75789dfc88f08c1d",
       "react-app/src/config/generated/northstar-library.json": "286850ced5758a336b8c7a82e345f57baa9d4686b39d209311178b6eaa5351f5",
       "react-app/src/lib/apiClient.js": "552e46e8bba953ec1cb0d0347dac0282dec5aee9b6ad699000ac6d33f976410c",
       "react-app/src/lib/apiErrors.js": "b0a44297eaf887077e7656d1cdb3f1f5741bcdfa60e4e70ffdabe60d59b0741d"
@@ -71,8 +71,8 @@
       "modules/listing/settings.schema.json": "29b4366280d4f107029b6a72e0b2dd02a8423eb652c4ed663f5822efeaa9e048",
       "modules/marketplace/module.json": "1835fb4b15e644e86587d3e47e611e17cdf83b1d98a1da781a7e47d3eaf12c28",
       "modules/marketplace/settings.schema.json": "908d8573accb2df8fc68e3ec29db9c4cf6803e94f2304dd3b034182e87db4a71",
-      "modules/media/module.json": "892d759efcecfe729c090580ce6d471a2961f5272750fc1a6feb22ad976d7599",
-      "modules/media/settings.schema.json": "a8466b4ac33fa70452e1b13a13e5ee532d953038da914082500ca1208d2b8491",
+      "modules/media/module.json": "95cfdadc61b8358b76ca7197ce6ba50ebfecdbbb19f7888a2488ed38e77dd9a8",
+      "modules/media/settings.schema.json": "144ef5214bc6d155edc91df863a8b7eb4991b242de7fd97b20c06ab9e18dbdb0",
       "modules/membership/module.json": "d573ed6b36df4f4115106e172accec244de027206d527acc6d3e9354b2f1e913",
       "modules/membership/settings.schema.json": "1d41186bbe2911b51e1fac8393665acbdda4a59897b28e93faa52e8a56627ff0",
       "modules/portfolio/module.json": "70c48c2e27ad9626d966ec24902194c44c823df9a1294ea4a37e0b849d4409ae",
@@ -81,19 +81,20 @@
       "modules/subscription/settings.schema.json": "908d8573accb2df8fc68e3ec29db9c4cf6803e94f2304dd3b034182e87db4a71",
       "modules/support/module.json": "4d7427eb2dd208d908adbac3967a47eafbe8e2ec48d56a14c2d59211bc3e8b08",
       "modules/support/settings.schema.json": "23aded1f2399dcff1e48abdf5292756f535e4a3358cd53b0f64f80785701fbda",
-      "shared/config/module-catalog.json": "741f9c5d88f1e3cda7fd26bb6876d8adf03fa5388c50ec17c76d5a5feee1cb6b"
+      "shared/config/module-catalog.json": "ae322048e2b26ca38b430e275df172d650e0d5c0f7366d4571138842237b4cc7"
     },
     "openapi": {
       "digital_ocean/contracts/openapi.yaml": "c20303cab89fdeefc019bab2f3d8ac81dd1de4de567c242f3305d43b2f267975",
       "specs/001-django-fastapi-react/contracts/openapi.yaml": "f96ae1b450ed0e54406f0b40a301dab36c1b09d9eb9886fd2cb9d18db728deed"
     },
     "routeInventory": {
-      "api/main.py": "d1b60ba80892ef65833dba843c9ab59096e83e504f3eed2997061053361a7460",
+      "api/main.py": "d0fcb8f61b5f9645482aa700131bf0f7910d5514e69ac96b5d2753df2c60defd",
       "api/routes/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "api/routes/auth.py": "961cc074c8457957aaf5a799f82dd53b51f88599f9eae24dd65878218d4e9ad8",
       "api/routes/content_workspace.py": "a8853313f41313b2ae66317ec8238025332e1de46913fd7c580fe4147563f8a9",
       "api/routes/engagement.py": "f26e86d78daab93ef74a8d547b2b4ec1a3035ebf2f13e9a886a2accd772f016e",
       "api/routes/identity.py": "c1617c121c136eab5f8341e2b1c2993fe6def7c71e9cb834d148ff0a26a4b35e",
+      "api/routes/media_library.py": "ac1e90278d9b24f2007e6e3ee0b262fa89aa1b1abc60d1ddd311b5a2b334b3c8",
       "api/routes/metrics.py": "e9e270a535b8bc6a480913fac9e475b8aadfa805fbb3b0494c8983e6dce45183",
       "api/routes/oauth.py": "2fbe1617292b76caecdd5b0b6def27cbbd11fe0c847af70ebfc7a71952739d00",
       "api/routes/privacy.py": "edf8eb20a167399a9c3fec3c1b9039892a13a41b3962ac4657f54cd7930fcc39",
@@ -108,7 +109,7 @@
       "django/users/urls.py": "e1c30bf7c17d01975286d91dac4f45f686118503200be85a54c86e143bae8c40",
       "react-app/src/App.js": "d259ff46ea77be8a3dbb0d338ed9baea8be6d19971f5ac79392b10726e18d0ec",
       "react-app/src/routes/LocalizedExperience.jsx": "2ef2f7460d57f1ca8488716c84e7d3d89eb41975cb426eaf85f71b5a8479ec58",
-      "react-app/src/routes/PublicRoutes.jsx": "c79d9a37dde4e76de840bfad4c7542389f3f53ce5d2034bafc729e1bf4b2b295"
+      "react-app/src/routes/PublicRoutes.jsx": "d2a626f87892e25ee7e4caf736d5eedd017f8bc80937dd58d93790bbe6c5b2a9"
     }
   },
   "schemaVersion": 1
