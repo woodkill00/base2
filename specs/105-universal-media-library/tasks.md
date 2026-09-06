@@ -14,8 +14,8 @@
 - [x] B012 Add bounded upload and authorization-aware delivery adapters.
 - [x] B013 Add accessible responsive library, upload queue, search, and filters.
 - [x] B014 Add API, repository, model, processor, UI, and accessibility tests.
-- [ ] B015 Add PostgreSQL migration/RLS integration proof.
-- [ ] B016 Add media release browser matrix and reviewed screenshot sidecars.
+- [x] B015 Add PostgreSQL migration/RLS integration proof.
+- [x] B016 Add media release browser matrix and reviewed screenshot sidecars.
 - [ ] B017 Run all Base2 local gates and repeated critical suites.
 - [ ] B018 Review exact diff, residual risks, and sanitized evidence inventory.
 - [ ] B019 Obtain exact owner approval and publish one draft PR.

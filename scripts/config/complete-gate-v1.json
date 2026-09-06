@@ -236,6 +236,7 @@
         "django/tests/test_media_library_models.py",
         "scripts/tests/test_media_library_manifest.py",
         "scripts/tests/test_media_library_migration.py",
+        "scripts/tests/test_media_visual_review.py",
         "-q"
       ],
       "required": true,

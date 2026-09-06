@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "e5489433468439a93bab61247c302167e4e021b5",
+  "status": "accepted",
+  "screenshots": [
+    "media-library-chromium-400-zoom-chromium-400-zoom-linux.png",
+    "media-library-chromium-compact-chromium-compact-linux.png",
+    "media-library-chromium-desktop-chromium-desktop-linux.png",
+    "media-library-chromium-high-contrast-chromium-high-contrast-linux.png",
+    "media-library-chromium-landscape-touch-chromium-landscape-touch-linux.png",
+    "media-library-chromium-large-text-chromium-large-text-linux.png",
+    "media-library-chromium-light-chromium-light-linux.png",
+    "media-library-chromium-phone-dpr3-chromium-phone-dpr3-linux.png",
+    "media-library-chromium-reduced-motion-chromium-reduced-motion-linux.png",
+    "media-library-chromium-rtl-chromium-rtl-linux.png",
+    "media-library-chromium-tablet-chromium-tablet-linux.png",
+    "media-library-chromium-ultrawide-chromium-ultrawide-linux.png"
+  ],
+  "assertions": {
+    "overflow": "pass",
+    "focus": "pass",
+    "accessibility": "pass",
+    "console": "pass",
+    "requests": "pass",
+    "targets": "pass"
+  }
+}
