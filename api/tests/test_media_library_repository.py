@@ -46,6 +46,18 @@ class Connection:
         self.rollbacks += 1
 
 
+class SequenceCursor(Cursor):
+    def __init__(self, responses):
+        super().__init__()
+        self.responses = list(responses)
+        self.rowcount = 1
+
+    def execute(self, sql, params=()):
+        super().execute(sql, params)
+        response = self.responses.pop(0) if self.responses else []
+        self.rows = list(response)
+
+
 def bind(monkeypatch, connection):
     scopes = []
 
@@ -116,3 +128,90 @@ def test_metadata_update_rolls_back_on_conflict(monkeypatch):
             payload={},
         )
     assert connection.commits == 0 and connection.rollbacks == 1
+
+
+def test_reference_inventory_and_destructive_preview_are_scope_bound(monkeypatch):
+    reference = (UUID(int=2), "content-record", UUID(int=3), "hero", "published", "public", True, 1)
+    cursor = SequenceCursor([
+        [reference],
+        [(2, "ready")],
+        [("content-record", UUID(int=3), "hero", "published", True)],
+        [("legal_hold",)],
+        [(1, "a" * 64, 10)],
+    ])
+    bind(monkeypatch, Connection(cursor))
+    repo = repository.PostgresMediaLibraryRepository()
+    inventory = repo.list_references(site_id="site-a", asset_id=UUID(int=1))
+    preview = repo.destructive_preview(site_id="site-a", asset_id=UUID(int=1))
+    assert inventory["items"][0]["ownerState"] == "published"
+    assert preview["allowed"] is False
+    assert preview["activeHolds"] == ["legal_hold"]
+    assert all(params[0] == "site-a" for _sql, params in cursor.calls)
+
+
+def test_transition_is_versioned_transactional_and_emits_outbox(monkeypatch):
+    cursor = SequenceCursor([[(2, "ready")], [(UUID(int=4),)], [(3,)]])
+    connection = Connection(cursor)
+    bind(monkeypatch, connection)
+    result = repository.PostgresMediaLibraryRepository().transition_asset(
+        site_id="site-a", asset_id=UUID(int=1), actor_ref="user:test",
+        target="archived", expected_version=2, idempotency_key="archive-1",
+    )
+    assert result == {
+        "id": str(UUID(int=1)), "status": "archived", "version": 3, "replayed": False,
+    }
+    assert connection.commits == 1
+    assert any("sitecontent_mediaoutboxevent" in sql for sql, _params in cursor.calls)
+
+
+def test_transition_blocks_destructive_reference_and_rolls_back(monkeypatch):
+    cursor = SequenceCursor([[(2, "ready")], [(True, False)]])
+    connection = Connection(cursor)
+    bind(monkeypatch, connection)
+    with pytest.raises(ValueError, match="media_transition_blocked"):
+        repository.PostgresMediaLibraryRepository().transition_asset(
+            site_id="site-a", asset_id=UUID(int=1), actor_ref="user:test",
+            target="soft_deleted", expected_version=2, idempotency_key="delete-1",
+        )
+    assert connection.rollbacks == 1 and connection.commits == 0
+
+
+def test_export_collection_job_and_retrieval_workflows_are_scoped(monkeypatch):
+    now = datetime(2026, 9, 6, tzinfo=UTC)
+    cursor = SequenceCursor([
+        [(UUID(int=8), "queued", now)],
+        [(UUID(int=9), "Launch", "private", [], 1, 2)],
+        [],
+        [(UUID(int=10),)],
+        [(UUID(int=1),)],
+        [],
+        [(UUID(int=11), UUID(int=1), "inspect", "retryable", 1, 3, "media_scan_down", now, None, now)],
+        [(UUID(int=1), "inspect", 1, 3)],
+        [],
+        [(UUID(int=8), "csv", "ready", "a" * 64, datetime(2099, 1, 1, tzinfo=UTC), "")],
+    ])
+    connection = Connection(cursor)
+    bind(monkeypatch, connection)
+    repo = repository.PostgresMediaLibraryRepository()
+    export = repo.create_export(
+        site_id="site-a", actor_ref="user:test", output_format="csv",
+        projection=["id"], request_digest="a" * 64, expires_at=now,
+    )
+    collections = repo.list_collections(site_id="site-a", actor_ref="user:test", roles=[])
+    created = repo.create_collection(
+        site_id="site-a", actor_ref="user:test", title="Launch",
+        visibility="private", shared_roles=[],
+    )
+    added = repo.add_collection_assets(
+        site_id="site-a", actor_ref="user:test", roles=[], collection_id=UUID(int=10),
+        asset_ids=[UUID(int=1)],
+    )
+    jobs = repo.list_jobs(site_id="site-a", asset_id=UUID(int=1), limit=10)
+    retry = repo.retry_job(site_id="site-a", job_id=UUID(int=11), actor_ref="user:test")
+    status = repo.get_export(site_id="site-a", export_id=UUID(int=8), actor_ref="user:test")
+    assert export["status"] == "queued"
+    assert collections["items"][0]["assetCount"] == 2
+    assert created["title"] == "Launch" and added["added"] == 1
+    assert jobs["items"][0]["errorCode"] == "media_scan_down"
+    assert retry["status"] == "queued" and status["status"] == "ready"
+    assert connection.commits == 4

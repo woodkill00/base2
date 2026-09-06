@@ -272,3 +272,73 @@ def test_collection_unknown_fields_duplicates_and_bounds_fail_before_repository(
         == 422
     )
     assert client.get('/api/media/v1/jobs?limit=101').status_code == 422
+
+
+class FailureRepository:
+    def __init__(self, code='dependency'):
+        self.code = code
+
+    def __getattr__(self, _name):
+        def fail(**_kwargs):
+            if self.code == 'dependency':
+                raise RuntimeError('private dependency detail')
+            raise ValueError(self.code)
+
+        return fail
+
+
+@pytest.mark.parametrize(
+    ('method', 'path', 'kwargs'),
+    [
+        ('get', '/api/media/v1/assets', {}),
+        ('get', f'/api/media/v1/assets/{ASSET_ID}', {}),
+        ('get', f'/api/media/v1/assets/{ASSET_ID}/references', {}),
+        ('get', f'/api/media/v1/assets/{ASSET_ID}/destructive-preview', {}),
+        ('post', f'/api/media/v1/assets/{ASSET_ID}/lifecycle', {
+            'json': {'target': 'archived'},
+            'headers': {'If-Match': '2', 'Idempotency-Key': 'request-123'},
+        }),
+        ('post', '/api/media/v1/exports', {
+            'json': {'outputFormat': 'csv', 'projection': ['id']},
+            'headers': {'Idempotency-Key': 'request-123'},
+        }),
+        ('get', '/api/media/v1/collections', {}),
+        ('post', '/api/media/v1/collections', {
+            'json': {'title': 'Safe', 'visibility': 'private', 'sharedRoles': []},
+        }),
+        ('post', f'/api/media/v1/collections/{ASSET_ID}/assets', {
+            'json': {'assetIds': [ASSET_ID]},
+        }),
+        ('get', '/api/media/v1/jobs', {}),
+        ('post', f'/api/media/v1/jobs/{ASSET_ID}/retry', {}),
+        ('get', f'/api/media/v1/exports/{ASSET_ID}', {}),
+    ],
+)
+def test_dependency_failures_are_redacted_and_typed(monkeypatch, method, path, kwargs):
+    monkeypatch.setattr(media_library, 'get_repository', lambda: FailureRepository())
+    response = getattr(TestClient(app), method)(path, **kwargs)
+    assert response.status_code == 503
+    assert response.json() == {'detail': 'media_dependency_unavailable'}
+    assert 'private' not in response.text
+
+
+@pytest.mark.parametrize(
+    ('code', 'method', 'path', 'kwargs', 'status'),
+    [
+        ('media_not_found', 'get', f'/api/media/v1/assets/{ASSET_ID}/references', {}, 404),
+        ('media_transition_blocked', 'get', f'/api/media/v1/assets/{ASSET_ID}/destructive-preview', {}, 423),
+        ('media_version_conflict', 'post', f'/api/media/v1/assets/{ASSET_ID}/lifecycle', {
+            'json': {'target': 'archived'},
+            'headers': {'If-Match': '2', 'Idempotency-Key': 'request-123'},
+        }, 409),
+        ('media_not_found', 'post', f'/api/media/v1/collections/{ASSET_ID}/assets', {
+            'json': {'assetIds': [ASSET_ID]},
+        }, 404),
+        ('media_job_retry_blocked', 'post', f'/api/media/v1/jobs/{ASSET_ID}/retry', {}, 409),
+        ('media_not_found', 'get', f'/api/media/v1/exports/{ASSET_ID}', {}, 404),
+    ],
+)
+def test_domain_failures_use_bounded_status_codes(monkeypatch, code, method, path, kwargs, status):
+    monkeypatch.setattr(media_library, 'get_repository', lambda: FailureRepository(code))
+    response = getattr(TestClient(app), method)(path, **kwargs)
+    assert response.status_code == status and response.json() == {'detail': code}
