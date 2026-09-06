@@ -1,0 +1,19 @@
+ARG DOCKER_LIBRARY_REGISTRY=public.ecr.aws/docker/library
+ARG PYTHON_VERSION=3.12-slim-bookworm
+FROM ${DOCKER_LIBRARY_REGISTRY}/python:${PYTHON_VERSION}
+WORKDIR /app
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends ca-certificates clamav ffmpeg util-linux \
+    && update-ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+RUN useradd --uid 1000 --create-home inspector \
+    && mkdir -p /var/lib/base2/media-inspector \
+    && chown -R inspector:inspector /app /var/lib/base2/media-inspector
+COPY --chown=inspector:inspector requirements.txt ./api/requirements.txt
+ENV PATH="/home/inspector/.local/bin:${PATH}" PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app
+USER inspector
+RUN pip install --user --no-cache-dir -r api/requirements.txt
+COPY --chown=inspector:inspector . ./api
+USER root
+CMD ["python", "-m", "api.services.media_inspector_service"]

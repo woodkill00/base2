@@ -169,6 +169,33 @@ services:
     mem_limit: 3g
     cpus: '1.0'
 
+  media-inspector:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.media-inspector
+      args:
+        - PYTHON_VERSION=${FASTAPI_PYTHON_VERSION}
+    profiles: [media-scan]
+    environment:
+      - MEDIA_INSPECTOR_SPOOL_ROOT=/var/lib/base2/media-inspector
+      - MEDIA_INSPECTOR_SIGNING_KEY=${MEDIA_INSPECTOR_SIGNING_KEY}
+      - MEDIA_INSPECTOR_BUILD_IDENTITY=${MEDIA_INSPECTOR_BUILD_IDENTITY}
+    network_mode: none
+    pid: private
+    ipc: private
+    volumes:
+      - media_inspector_spool:/var/lib/base2/media-inspector
+      - clamav_db:/var/lib/clamav:ro
+    restart: unless-stopped
+    cap_drop: [ALL]
+    cap_add: [SETUID, SETGID, SETPCAP]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: [/tmp]
+    pids_limit: 16
+    mem_limit: 512m
+    cpus: '0.75'
+
   # Django static files
   nginx-static:
     image: nginx:1.25-alpine
@@ -349,6 +376,8 @@ services:
       - IDENTITY_ENCRYPTION_KEY=${IDENTITY_ENCRYPTION_KEY}
       - CONTENT_WORKSPACE_STORAGE_ROOT=${CONTENT_WORKSPACE_STORAGE_ROOT}
       - CONTENT_WORKSPACE_STORAGE_KEY=${CONTENT_WORKSPACE_STORAGE_KEY}
+      - MEDIA_INSPECTOR_SPOOL_ROOT=/var/lib/base2/media-inspector
+      - MEDIA_INSPECTOR_VERIFY_KEY=${MEDIA_INSPECTOR_VERIFY_KEY}
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
       - CELERY_LOG_LEVEL=${CELERY_LOG_LEVEL}
@@ -356,6 +385,7 @@ services:
     networks: [app_network]
     volumes:
       - content_workspace_artifacts:/var/lib/base2/content-workspace
+      - media_inspector_spool:/var/lib/base2/media-inspector
     depends_on:
       django:
         condition: service_healthy
@@ -472,6 +502,7 @@ networks:
 volumes:
   clamav_db:
   content_workspace_artifacts:
+  media_inspector_spool:
   postgres_data:
   django_static:
   pgadmin_data:

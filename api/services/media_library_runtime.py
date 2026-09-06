@@ -11,16 +11,25 @@ from typing import Any, Callable
 from uuid import UUID, uuid4
 
 from api.db import workspace_worker_db_conn as db_conn
-from api.services.content_workspace_scanner import ScannerHealth, clamav_health, scan_content
+from api.services.content_workspace_scanner import ScannerHealth
+from api.services.media_inspector_client import MediaInspectorClientError, inspect_media_via_spool
 from api.services.media_library_operations import audit_hash, build_export
-from api.services.media_library_parser import probe_media_no_network
 from api.services.media_library_policy import scanner_is_ready, validate_digest
-from api.services.media_library_processor import generate_media_preview
 
 
 SAFE_DETAIL_KEYS = frozenset(
-    {'code', 'status', 'version', 'reason', 'method', 'objectVersion', 'mediaType',
-     'byteSize', 'sha256', 'count'}
+    {
+        'code',
+        'status',
+        'version',
+        'reason',
+        'method',
+        'objectVersion',
+        'mediaType',
+        'byteSize',
+        'sha256',
+        'count',
+    }
 )
 SAFE_CODE = re.compile(r'^media_[a-z0-9_]{3,63}$')
 SAFE_ACTOR = re.compile(r'^[a-z][a-z0-9:._-]{2,199}$')
@@ -40,6 +49,8 @@ class InspectionOutcome:
     definitions_at: datetime
     observed_media_type: str
     result_sha256: str
+    decoder_ref: str = 'test:injected'
+    measurements: dict[str, int | float] | None = None
 
 
 def _safe_detail(detail: dict[str, Any]) -> dict[str, Any]:
@@ -98,8 +109,17 @@ def append_media_audit(
            (id,site_id,sequence,event_type,actor_ref,subject_ref,detail,
             previous_hash,event_hash,created_at,updated_at)
            VALUES (%s,%s,%s,%s,%s,%s,%s::jsonb,%s,%s,NOW(),NOW())""",
-        (str(uuid4()), site_id, sequence, event_type, actor_ref, subject_ref,
-         json.dumps(safe, sort_keys=True, separators=(',', ':')), previous_hash, digest),
+        (
+            str(uuid4()),
+            site_id,
+            sequence,
+            event_type,
+            actor_ref,
+            subject_ref,
+            json.dumps(safe, sort_keys=True, separators=(',', ':')),
+            previous_hash,
+            digest,
+        ),
     )
     return digest
 
@@ -113,9 +133,19 @@ def inspect_media_payload(
     health: ScannerHealth,
     observed_at: datetime,
     maximum_signature_age_hours: int,
-    probe: Callable[[bytes, str], Any] = probe_media_no_network,
-    preview_builder: Callable[..., Any] = generate_media_preview,
+    probe: Callable[[bytes, str], Any] | None = None,
+    preview_builder: Callable[..., Any] | None = None,
 ) -> InspectionOutcome:
+    # Test-only compatibility seam. Production processing always uses the
+    # isolated inspector client and does not import decoders into this worker.
+    if probe is None:
+        from api.services.media_library_parser import probe_media_no_network
+
+        probe = probe_media_no_network
+    if preview_builder is None:
+        from api.services.media_library_processor import generate_media_preview
+
+        preview_builder = generate_media_preview
     validate_digest(expected_sha256)
     if hashlib.sha256(content).hexdigest() != expected_sha256:
         raise MediaRuntimeError('media_integrity_failed')
@@ -145,7 +175,9 @@ def inspect_media_payload(
     result = hashlib.sha256(
         f'{expected_sha256}\0{preview_digest}\0{scanner_ref}\0{health.definitions_updated_at.isoformat()}'.encode()
     ).hexdigest()
-    return InspectionOutcome(preview, scanner_ref, health.definitions_updated_at, media_type, result)
+    return InspectionOutcome(
+        preview, scanner_ref, health.definitions_updated_at, media_type, result
+    )
 
 
 def process_governed_media_asset(
@@ -153,11 +185,11 @@ def process_governed_media_asset(
     site_id: str,
     asset_id: UUID,
     artifact_store,
-    scanner: Callable[[bytes], str] = scan_content,
-    health_reader: Callable[[], ScannerHealth] = clamav_health,
+    scanner: Callable[[bytes], str] | None = None,
+    health_reader: Callable[[], ScannerHealth] | None = None,
     observed_at: datetime | None = None,
     maximum_signature_age_hours: int = 24,
-    inspector: Callable[..., InspectionOutcome] = inspect_media_payload,
+    inspector: Callable[..., InspectionOutcome] | None = None,
 ) -> str:
     observed = observed_at or datetime.now(UTC)
     with db_conn(tenant_id=site_id) as conn:
@@ -178,19 +210,49 @@ def process_governed_media_asset(
                 if row[2] != 'quarantined':
                     return 'not_ready'
                 content = artifact_store.get(row[0], expected_sha256=row[1])
-                health = health_reader()
                 try:
-                    outcome = inspector(
-                        content=content,
-                        expected_sha256=row[1],
-                        media_type=row[3],
-                        scanner=scanner,
-                        health=health,
-                        observed_at=observed,
-                        maximum_signature_age_hours=maximum_signature_age_hours,
+                    if inspector is None:
+                        isolated = inspect_media_via_spool(
+                            content=content,
+                            expected_sha256=row[1],
+                            media_type=row[3],
+                            asset_id=asset_id,
+                            object_version=int(row[5]),
+                            observed_at=observed,
+                        )
+                        outcome = InspectionOutcome(
+                            isolated.preview,
+                            isolated.scanner_ref,
+                            isolated.definitions_at,
+                            isolated.observed_media_type,
+                            isolated.result_sha256,
+                            isolated.decoder_ref,
+                            isolated.measurements,
+                        )
+                    else:
+                        if scanner is None:
+                            from api.services.content_workspace_scanner import scan_content
+
+                            scanner = scan_content
+                        if health_reader is None:
+                            from api.services.content_workspace_scanner import clamav_health
+
+                            health_reader = clamav_health
+                        outcome = inspector(
+                            content=content,
+                            expected_sha256=row[1],
+                            media_type=row[3],
+                            scanner=scanner,
+                            health=health_reader(),
+                            observed_at=observed,
+                            maximum_signature_age_hours=maximum_signature_age_hours,
+                        )
+                except (MediaRuntimeError, MediaInspectorClientError) as exc:
+                    code = (
+                        str(exc)
+                        if SAFE_CODE.fullmatch(str(exc))
+                        else 'media_dependency_unavailable'
                     )
-                except MediaRuntimeError as exc:
-                    code = str(exc) if SAFE_CODE.fullmatch(str(exc)) else 'media_dependency_unavailable'
                     cur.execute(
                         """UPDATE sitecontent_mediaasset
                            SET status=CASE WHEN %s='media_inspection_rejected' THEN 'rejected' ELSE 'failed' END,
@@ -199,15 +261,20 @@ def process_governed_media_asset(
                         (code, site_id, str(asset_id), row[6]),
                     )
                     append_media_audit(
-                        cur, site_id=site_id, event_type='media.inspection.failed',
-                        actor_ref='system:media-worker', subject_ref=f'asset:{asset_id}',
+                        cur,
+                        site_id=site_id,
+                        event_type='media.inspection.failed',
+                        actor_ref='system:media-worker',
+                        subject_ref=f'asset:{asset_id}',
                         detail={'code': code, 'sha256': row[1]},
                     )
                     conn.commit()
                     return 'rejected' if code == 'media_inspection_rejected' else 'failed'
                 stored = artifact_store.put(
-                    namespace='variants', site_id=site_id,
-                    object_id=f'{asset_id}-v{row[5]}-safe', content=outcome.preview.content,
+                    namespace='variants',
+                    site_id=site_id,
+                    object_id=f'{asset_id}-v{row[5]}-safe',
+                    content=outcome.preview.content,
                 )
                 if stored.sha256 != outcome.preview.sha256:
                     raise MediaRuntimeError('media_derivative_integrity_failed')
@@ -217,8 +284,18 @@ def process_governed_media_asset(
                         inspection_state,scanner_ref,scanner_definitions_at,created_at,updated_at)
                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,'accepted',%s,%s,NOW(),NOW())
                        ON CONFLICT (asset_id,version) DO NOTHING""",
-                    (str(uuid4()), site_id, str(asset_id), row[5], row[0], row[1], row[4],
-                     outcome.observed_media_type, outcome.scanner_ref, outcome.definitions_at),
+                    (
+                        str(uuid4()),
+                        site_id,
+                        str(asset_id),
+                        row[5],
+                        row[0],
+                        row[1],
+                        row[4],
+                        outcome.observed_media_type,
+                        outcome.scanner_ref,
+                        outcome.definitions_at,
+                    ),
                 )
                 cur.execute(
                     """SELECT id FROM sitecontent_mediaobjectversion
@@ -234,26 +311,47 @@ def process_governed_media_asset(
                         decoder_ref,definitions_at,observed_media_type,measurements,result_sha256,
                         created_at,updated_at)
                        VALUES (%s,%s,%s,1,'accepted','media_inspection_accepted',%s,
-                               'base2:bounded-parser-v1',%s,%s,'{}'::jsonb,%s,NOW(),NOW())
+                               %s,%s,%s,%s::jsonb,%s,NOW(),NOW())
                        ON CONFLICT (object_version_id,attempt) DO NOTHING""",
-                    (str(uuid4()), site_id, str(object_row[0]), outcome.scanner_ref,
-                     outcome.definitions_at, outcome.observed_media_type, outcome.result_sha256),
+                    (
+                        str(uuid4()),
+                        site_id,
+                        str(object_row[0]),
+                        outcome.scanner_ref,
+                        outcome.decoder_ref,
+                        outcome.definitions_at,
+                        outcome.observed_media_type,
+                        json.dumps(
+                            outcome.measurements or {}, sort_keys=True, separators=(',', ':')
+                        ),
+                        outcome.result_sha256,
+                    ),
                 )
                 cur.execute(
                     """INSERT INTO sitecontent_mediavariant
                        (id,asset_id,name,storage_key,media_type,byte_size,sha256,width,height,
                         recipe_id,recipe_version,source_sha256,processor_ref,inline_safe,created_at)
                        VALUES (%s,%s,'safe',%s,%s,%s,%s,%s,%s,'safe-preview',1,%s,
-                               'base2:bounded-parser-v1',%s,NOW())
+                               %s,%s,NOW())
                        ON CONFLICT (asset_id,name) DO UPDATE SET
                          storage_key=EXCLUDED.storage_key,media_type=EXCLUDED.media_type,
                          byte_size=EXCLUDED.byte_size,sha256=EXCLUDED.sha256,
                          width=EXCLUDED.width,height=EXCLUDED.height,
                          source_sha256=EXCLUDED.source_sha256,processor_ref=EXCLUDED.processor_ref,
                          inline_safe=EXCLUDED.inline_safe""",
-                    (str(uuid4()), str(asset_id), stored.object_key, outcome.preview.media_type,
-                     stored.byte_size, stored.sha256, outcome.preview.width, outcome.preview.height,
-                     row[1], outcome.preview.media_type.startswith('image/')),
+                    (
+                        str(uuid4()),
+                        str(asset_id),
+                        stored.object_key,
+                        outcome.preview.media_type,
+                        stored.byte_size,
+                        stored.sha256,
+                        outcome.preview.width,
+                        outcome.preview.height,
+                        row[1],
+                        outcome.decoder_ref,
+                        outcome.preview.media_type.startswith('image/'),
+                    ),
                 )
                 cur.execute(
                     """INSERT INTO sitecontent_mediajob
@@ -262,8 +360,14 @@ def process_governed_media_asset(
                         created_at,updated_at)
                        VALUES (%s,%s,%s,'inspect','completed',%s,%s,1,3,'',%s,NOW(),NOW(),NOW(),NOW())
                        ON CONFLICT (site_id,kind,idempotency_key) DO NOTHING""",
-                    (str(uuid4()), site_id, str(asset_id), f'inspect:{asset_id}:{row[5]}',
-                     row[1], outcome.result_sha256),
+                    (
+                        str(uuid4()),
+                        site_id,
+                        str(asset_id),
+                        f'inspect:{asset_id}:{row[5]}',
+                        row[1],
+                        outcome.result_sha256,
+                    ),
                 )
                 cur.execute(
                     """UPDATE sitecontent_mediaasset
@@ -275,10 +379,18 @@ def process_governed_media_asset(
                 if not updated:
                     raise MediaRuntimeError('media_version_conflict')
                 append_media_audit(
-                    cur, site_id=site_id, event_type='media.inspection.completed',
-                    actor_ref='system:media-worker', subject_ref=f'asset:{asset_id}',
-                    detail={'status': 'ready', 'version': int(updated[0]), 'sha256': row[1],
-                            'mediaType': row[3], 'byteSize': int(row[4])},
+                    cur,
+                    site_id=site_id,
+                    event_type='media.inspection.completed',
+                    actor_ref='system:media-worker',
+                    subject_ref=f'asset:{asset_id}',
+                    detail={
+                        'status': 'ready',
+                        'version': int(updated[0]),
+                        'sha256': row[1],
+                        'mediaType': row[3],
+                        'byteSize': int(row[4]),
+                    },
                 )
             conn.commit()
         except Exception:
@@ -292,9 +404,13 @@ def normalize_export_selection(value: Any) -> dict[str, Any]:
         raise MediaRuntimeError('media_export_selection_required')
     fields, asset_ids, filters = value['fields'], value['assetIds'], value['filters']
     if (
-        not isinstance(fields, list) or not fields or len(fields) != len(set(fields))
-        or set(fields) - EXPORT_FIELDS or not isinstance(asset_ids, list)
-        or not 1 <= len(asset_ids) <= 10_000 or len(asset_ids) != len(set(asset_ids))
+        not isinstance(fields, list)
+        or not fields
+        or len(fields) != len(set(fields))
+        or set(fields) - EXPORT_FIELDS
+        or not isinstance(asset_ids, list)
+        or not 1 <= len(asset_ids) <= 10_000
+        or len(asset_ids) != len(set(asset_ids))
         or filters != {}
     ):
         raise MediaRuntimeError('media_export_selection_invalid')
@@ -319,7 +435,10 @@ def due_media_exports(*, limit: int = 10) -> list[tuple[str, str]]:
 
 
 def process_media_export(
-    *, site_id: str, export_id: UUID, artifact_store,
+    *,
+    site_id: str,
+    export_id: UUID,
+    artifact_store,
 ) -> str:
     with db_conn(tenant_id=site_id) as conn:
         try:
@@ -350,15 +469,26 @@ def process_media_export(
                 if {str(row[0]) for row in rows} != set(selection['assetIds']):
                     raise MediaRuntimeError('media_export_asset_missing')
                 payload = [
-                    {'id': str(row[0]), 'filename': row[1], 'mediaType': row[2],
-                     'byteSize': int(row[3]), 'sha256': row[4], 'status': row[5],
-                     'visibility': row[6], 'updatedAt': row[7].isoformat()}
+                    {
+                        'id': str(row[0]),
+                        'filename': row[1],
+                        'mediaType': row[2],
+                        'byteSize': int(row[3]),
+                        'sha256': row[4],
+                        'status': row[5],
+                        'visibility': row[6],
+                        'updatedAt': row[7].isoformat(),
+                    }
                     for row in rows
                 ]
-                output = build_export(payload, output_format=package[1], fields=tuple(selection['fields']))
+                output = build_export(
+                    payload, output_format=package[1], fields=tuple(selection['fields'])
+                )
                 stored = artifact_store.put(
-                    namespace='media-exports', site_id=site_id,
-                    object_id=str(export_id), content=output,
+                    namespace='media-exports',
+                    site_id=site_id,
+                    object_id=str(export_id),
+                    content=output,
                 )
                 cur.execute(
                     """UPDATE sitecontent_mediaexportpackage
@@ -367,8 +497,11 @@ def process_media_export(
                     (stored.object_key, stored.sha256, site_id, str(export_id)),
                 )
                 append_media_audit(
-                    cur, site_id=site_id, event_type='media.export.completed',
-                    actor_ref='system:media-worker', subject_ref=f'export:{export_id}',
+                    cur,
+                    site_id=site_id,
+                    event_type='media.export.completed',
+                    actor_ref='system:media-worker',
+                    subject_ref=f'export:{export_id}',
                     detail={'status': 'ready', 'count': len(rows), 'sha256': stored.sha256},
                 )
             conn.commit()
@@ -398,8 +531,11 @@ def apply_due_media_governance(*, limit: int = 100) -> dict[str, int]:
                 holds = len(expired)
                 for site, asset, reason in expired:
                     append_media_audit(
-                        cur, site_id=site, event_type='media.hold.expired',
-                        actor_ref='system:media-worker', subject_ref=f'asset:{asset}',
+                        cur,
+                        site_id=site,
+                        event_type='media.hold.expired',
+                        actor_ref='system:media-worker',
+                        subject_ref=f'asset:{asset}',
                         detail={'status': 'expired', 'reason': reason},
                     )
                 cur.execute(
@@ -427,10 +563,16 @@ def apply_due_media_governance(*, limit: int = 100) -> dict[str, int]:
                         (site, str(asset_id)),
                     )
                     append_media_audit(
-                        cur, site_id=site, event_type='media.abuse.enforced',
-                        actor_ref='system:media-worker', subject_ref=f'asset:{asset_id}',
-                        detail={'status': target, 'reason': f'case:{case_id}',
-                                'version': int(version) + 1},
+                        cur,
+                        site_id=site,
+                        event_type='media.abuse.enforced',
+                        actor_ref='system:media-worker',
+                        subject_ref=f'asset:{asset_id}',
+                        detail={
+                            'status': target,
+                            'reason': f'case:{case_id}',
+                            'version': int(version) + 1,
+                        },
                     )
                     cases += 1
             conn.commit()
