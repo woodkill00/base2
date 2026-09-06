@@ -60,6 +60,13 @@ class CiPolicyTests(unittest.TestCase):
         self.assertIn("viteFinal(config)", main)
         self.assertIn("plugin.name !== 'base2-performance-budget'", main)
 
+    def test_frontend_security_job_audits_the_complete_graph_at_moderate(self):
+        repo_root = MODULE_PATH.parents[2]
+        workflow = (repo_root / ".github/workflows/security.yml").read_text(encoding="utf-8")
+        self.assertIn("npm ci --legacy-peer-deps", workflow)
+        self.assertIn("npm audit --audit-level=moderate --json", workflow)
+        self.assertNotIn("npm audit --omit=dev", workflow)
+
 
 if __name__ == "__main__":
     unittest.main()

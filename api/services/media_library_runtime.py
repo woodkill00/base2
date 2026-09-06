@@ -295,7 +295,7 @@ def normalize_export_selection(value: Any) -> dict[str, Any]:
         not isinstance(fields, list) or not fields or len(fields) != len(set(fields))
         or set(fields) - EXPORT_FIELDS or not isinstance(asset_ids, list)
         or not 1 <= len(asset_ids) <= 10_000 or len(asset_ids) != len(set(asset_ids))
-        or not isinstance(filters, dict) or set(filters) - {'state', 'mediaType'}
+        or filters != {}
     ):
         raise MediaRuntimeError('media_export_selection_invalid')
     try:

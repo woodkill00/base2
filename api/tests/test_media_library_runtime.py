@@ -150,6 +150,11 @@ def test_export_selection_is_exact_bounded_and_canonical():
         normalize_export_selection(['id'])
     with pytest.raises(MediaRuntimeError, match='media_export_selection_invalid'):
         normalize_export_selection({'fields': ['id'], 'assetIds': [], 'filters': {}})
+    with pytest.raises(MediaRuntimeError, match='media_export_selection_invalid'):
+        normalize_export_selection({
+            'fields': ['id'], 'assetIds': [str(UUID(int=110))],
+            'filters': {'state': 'ready'},
+        })
 
 
 def test_media_runtime_tasks_dispatch_only_discovered_fixed_ids(monkeypatch):

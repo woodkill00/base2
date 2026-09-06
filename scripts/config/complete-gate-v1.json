@@ -867,7 +867,7 @@
     },
     {
       "id": "frontend-production-audit",
-      "command": ["npm", "--prefix", "react-app", "audit", "--omit=dev", "--audit-level=high"],
+      "command": ["npm", "--prefix", "react-app", "audit", "--audit-level=moderate"],
       "required": true,
       "timeoutSeconds": 180,
       "dependsOn": ["frontend-build"],

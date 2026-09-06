@@ -169,8 +169,9 @@ class PostgresMediaLibraryRepository:
                     cur.execute(
                         """SELECT lock_version, media_type FROM sitecontent_mediaasset
                            WHERE site_id=%s AND id=%s AND status NOT IN ('purged','soft_deleted')
+                             AND (owner_ref=%s OR visibility IN ('authenticated','public'))
                            FOR UPDATE""",
-                        (site_id, str(asset_id)),
+                        (site_id, str(asset_id), actor_ref),
                     )
                     current = cur.fetchone()
                     if not current:
@@ -217,8 +218,12 @@ class PostgresMediaLibraryRepository:
                         """UPDATE sitecontent_mediaasset
                            SET visibility=%s, lock_version=lock_version+1, updated_at=NOW()
                            WHERE site_id=%s AND id=%s AND lock_version=%s
+                             AND (owner_ref=%s OR visibility IN ('authenticated','public'))
                            RETURNING lock_version""",
-                        (payload['visibility'], site_id, str(asset_id), expected_version),
+                        (
+                            payload['visibility'], site_id, str(asset_id), expected_version,
+                            actor_ref,
+                        ),
                     )
                     next_version = int(cur.fetchone()[0])
                 conn.commit()
@@ -348,8 +353,10 @@ class PostgresMediaLibraryRepository:
                 with conn.cursor() as cur:
                     cur.execute(
                         """SELECT lock_version, status FROM sitecontent_mediaasset
-                           WHERE site_id=%s AND id=%s AND status<>'purged' FOR UPDATE""",
-                        (site_id, str(asset_id)),
+                           WHERE site_id=%s AND id=%s AND status<>'purged'
+                             AND (owner_ref=%s OR visibility IN ('authenticated','public'))
+                           FOR UPDATE""",
+                        (site_id, str(asset_id), actor_ref),
                     )
                     current = cur.fetchone()
                     if not current:
@@ -418,6 +425,7 @@ class PostgresMediaLibraryRepository:
                                                WHEN %s='ready' THEN NULL ELSE deleted_at END,
                                updated_at=NOW()
                            WHERE site_id=%s AND id=%s AND lock_version=%s
+                             AND (owner_ref=%s OR visibility IN ('authenticated','public'))
                            RETURNING lock_version""",
                         (
                             target,
@@ -427,6 +435,7 @@ class PostgresMediaLibraryRepository:
                             site_id,
                             str(asset_id),
                             expected_version,
+                            actor_ref,
                         ),
                     )
                     updated = cur.fetchone()
@@ -656,8 +665,14 @@ class PostgresMediaLibraryRepository:
                                lease_expires_at=NULL, updated_at=NOW()
                            WHERE site_id=%s AND id=%s AND status IN ('retryable','failed')
                              AND attempt < maximum_attempts
+                             AND EXISTS (
+                               SELECT 1 FROM sitecontent_mediaasset asset
+                               WHERE asset.site_id=sitecontent_mediajob.site_id
+                                 AND asset.id=sitecontent_mediajob.asset_id
+                                 AND (asset.owner_ref=%s OR asset.visibility IN ('authenticated','public'))
+                             )
                            RETURNING asset_id, kind, attempt, maximum_attempts""",
-                        (site_id, str(job_id)),
+                        (site_id, str(job_id), actor_ref),
                     )
                     row = cur.fetchone()
                     if not row:

@@ -324,6 +324,10 @@ class CompleteGateTests(unittest.TestCase):
             ["{python-api}", "-m", "mypy", "api"],
             commands["api-typecheck"],
         )
+        self.assertEqual(
+            ["npm", "--prefix", "react-app", "audit", "--audit-level=moderate"],
+            commands["frontend-production-audit"],
+        )
         api_check = next(item for item in manifest["checks"] if item["id"] == "api-tests")
         self.assertEqual(300, api_check["timeoutSeconds"])
         self.assertGreater(api_check["timeoutSeconds"], 120)

@@ -63,11 +63,11 @@ jobs:
       - name: Install root deps
         run: npm ci --legacy-peer-deps
 
-      - name: Install frontend deps (prod only)
-        run: cd react-app && npm ci --omit=dev --legacy-peer-deps
+      - name: Install frontend dependency graph
+        run: cd react-app && npm ci --legacy-peer-deps
 
       - name: Audit frontend deps
-        run: cd react-app && npm audit --omit=dev --audit-level=high --json > ../frontend-npm-audit.json
+        run: cd react-app && npm audit --audit-level=moderate --json > ../frontend-npm-audit.json
 
       - name: Normalize npm audit result
         if: always()

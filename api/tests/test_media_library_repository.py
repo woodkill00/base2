@@ -148,6 +148,7 @@ def test_metadata_update_is_version_bound_and_transactional(monkeypatch):
     assert result == {"id": str(UUID(int=1)), "revision": 5, "version": 4}
     assert connection.commits == 1 and connection.rollbacks == 0
     assert "FOR UPDATE" in cursor.calls[0][0]
+    assert cursor.calls[0][1] == ("site-a", str(UUID(int=1)), "user:test")
 
 
 def test_metadata_update_rolls_back_on_conflict(monkeypatch):
@@ -210,6 +211,7 @@ def test_transition_is_versioned_transactional_and_emits_outbox(monkeypatch):
     }
     assert connection.commits == 1
     assert any("sitecontent_mediaoutboxevent" in sql for sql, _params in cursor.calls)
+    assert cursor.calls[0][1] == ("site-a", str(UUID(int=1)), "user:test")
 
 
 def test_transition_blocks_destructive_reference_and_rolls_back(monkeypatch):
@@ -265,4 +267,9 @@ def test_export_collection_job_and_retrieval_workflows_are_scoped(monkeypatch):
     assert created["title"] == "Launch" and added["added"] == 1
     assert jobs["items"][0]["errorCode"] == "media_scan_down"
     assert retry["status"] == "queued" and status["status"] == "ready"
+    retry_query = next(
+        (sql, params) for sql, params in cursor.calls if sql.startswith("UPDATE sitecontent_mediajob")
+    )
+    assert "asset.owner_ref=%s OR asset.visibility" in retry_query[0]
+    assert retry_query[1] == ("site-a", str(UUID(int=11)), "user:test")
     assert connection.commits == 4
