@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "safe": [
+    {"id": "image-landscape", "kind": "image", "mediaType": "image/png", "state": "ready"},
+    {"id": "document-one-page", "kind": "document", "mediaType": "application/pdf", "state": "ready"},
+    {"id": "audio-captioned", "kind": "audio", "mediaType": "audio/mpeg", "state": "ready"},
+    {"id": "video-captioned", "kind": "video", "mediaType": "video/mp4", "state": "ready"}
+  ],
+  "hostile": [
+    {"id": "spoofed-type", "expectedCode": "media_type_mismatch"},
+    {"id": "path-traversal", "expectedCode": "media_storage_key_invalid"},
+    {"id": "unicode-confusable", "expectedCode": "media_filename_invalid"},
+    {"id": "polyglot", "expectedCode": "media_structure_ambiguous"},
+    {"id": "appended-payload", "expectedCode": "media_structure_ambiguous"},
+    {"id": "active-document", "expectedCode": "media_active_content_rejected"}
+  ],
+  "resourceAbuse": [
+    {"id": "pixel-bomb", "expectedCode": "media_dimensions_limit_exceeded"},
+    {"id": "frame-bomb", "expectedCode": "media_frame_limit_exceeded"},
+    {"id": "page-bomb", "expectedCode": "media_page_limit_exceeded"},
+    {"id": "decode-timeout", "expectedCode": "media_processing_timeout"},
+    {"id": "memory-pressure", "expectedCode": "media_memory_budget_exceeded"},
+    {"id": "output-expansion", "expectedCode": "media_output_budget_exceeded"}
+  ],
+  "authorization": [
+    {"id": "cross-tenant", "expectedCode": "media_not_found"},
+    {"id": "stale-version", "expectedCode": "media_version_conflict"},
+    {"id": "grant-replay", "expectedCode": "media_grant_scope_invalid"},
+    {"id": "csrf", "expectedCode": "csrf_failed"},
+    {"id": "stale-auth", "expectedCode": "recent_reauthentication_required"},
+    {"id": "mass-assignment", "expectedCode": "extra_forbidden"}
+  ],
+  "outages": [
+    {"id": "interrupted-upload", "expectedState": "receiving"},
+    {"id": "scanner-outage", "expectedState": "quarantined"},
+    {"id": "worker-crash", "expectedState": "retryable"},
+    {"id": "missing-object", "expectedState": "failed"},
+    {"id": "corrupt-derivative", "expectedState": "retryable"},
+    {"id": "stale-index", "expectedState": "degraded"},
+    {"id": "restore-interruption", "expectedState": "failed"}
+  ],
+  "references": [
+    {"id": "required-public", "blocking": true},
+    {"id": "replacement-rollback", "blocking": false},
+    {"id": "active-hold", "blocking": true},
+    {"id": "cancelled-purge", "blocking": false},
+    {"id": "broken-publication", "blocking": true}
+  ],
+  "accessibility": [
+    {"id": "long-text", "locale": "en"},
+    {"id": "rtl", "locale": "ar"},
+    {"id": "zoom-400", "zoom": 400},
+    {"id": "reduced-motion", "reducedMotion": true},
+    {"id": "keyboard-only", "input": "keyboard"},
+    {"id": "touch-target", "input": "touch"},
+    {"id": "screen-reader", "input": "screen-reader"}
+  ]
+}
