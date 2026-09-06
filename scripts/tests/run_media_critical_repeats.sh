@@ -17,6 +17,8 @@ for ((iteration = 1; iteration <= iterations; iteration += 1)); do
     tests/test_media_library_governance.py \
     tests/test_media_library_worker.py \
     tests/test_media_library_policy.py \
+    tests/test_media_library_processor.py \
+    tests/test_media_library_storage.py \
     >/tmp/base2-media-critical-repeat.log 2>&1 || {
       cat /tmp/base2-media-critical-repeat.log
       exit 1
