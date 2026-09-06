@@ -38,6 +38,10 @@ class MediaLibraryManifestTests(unittest.TestCase):
             "django/sitecontent/migrations/0015_media_portability_and_abuse.py",
             module["migrations"],
         )
+        self.assertIn(
+            "django/sitecontent/migrations/0016_media_security_boundaries.py",
+            module["migrations"],
+        )
 
     def test_reference_profile_install_order_places_media_after_workspace(self):
         profile = load_manifest(ROOT / "site_profiles/base2-obsidian.json")

@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import json
 import re
+import tempfile
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
@@ -18,6 +19,8 @@ from api.middleware.tenant import require_tenant
 from api.repositories.content_workspace import PostgresContentWorkspaceRepository
 from api.repositories.media_library import PostgresMediaLibraryRepository
 from api.security.request_auth import require_authenticated_principal
+from api.security.identity import require_recent_reauthentication
+from api.security.rate_limit import incr_and_check_tenant_detailed
 from api.services.content_workspace_storage import ArtifactIntegrityError, configured_artifact_store
 from api.services.media_library_policy import (
     DEFAULT_POLICY,
@@ -223,6 +226,10 @@ def _authorized_scope(request: Request, permission: str):
 def _sensitive_guard(request: Request, principal) -> None:
     if not principal.recently_authenticated:
         raise HTTPException(status_code=401, detail='recent_reauthentication_required')
+    try:
+        require_recent_reauthentication(authenticated_at=principal.authenticated_at)
+    except PermissionError as exc:
+        raise HTTPException(status_code=401, detail='recent_reauthentication_required') from exc
     session_name = str(settings.SESSION_COOKIE_NAME or '')
     if session_name and request.cookies.get(session_name):
         csrf_name = str(settings.CSRF_COOKIE_NAME or '')
@@ -246,20 +253,32 @@ def _cursor_key() -> bytes:
     return value.encode()
 
 
-def _encode_cursor(anchor: dict) -> str:
-    body = json.dumps(anchor, sort_keys=True, separators=(',', ':')).encode()
+def _cursor_scope(*, tenant: str, state: str | None, media_type: str | None, search: str | None) -> str:
+    return hashlib.sha256(
+        json.dumps(
+            {'tenant': tenant, 'state': state, 'mediaType': media_type, 'search': search},
+            sort_keys=True,
+            separators=(',', ':'),
+        ).encode()
+    ).hexdigest()
+
+
+def _encode_cursor(anchor: dict, *, scope: str) -> str:
+    body = json.dumps({**anchor, 'scope': scope}, sort_keys=True, separators=(',', ':')).encode()
     signature = hmac.new(_cursor_key(), body, hashlib.sha256).digest()
     return urlsafe_b64encode(body + signature).decode().rstrip('=')
 
 
-def _decode_cursor(value: str) -> tuple[datetime, UUID]:
+def _decode_cursor(value: str, *, expected_scope: str) -> tuple[datetime, UUID]:
     try:
         raw = urlsafe_b64decode(value + '=' * (-len(value) % 4))
         body, signature = raw[:-32], raw[-32:]
         if not hmac.compare_digest(signature, hmac.new(_cursor_key(), body, hashlib.sha256).digest()):
             raise ValueError
         payload = json.loads(body)
-        if set(payload) != {'id', 'updatedAt'}:
+        if set(payload) != {'id', 'scope', 'updatedAt'} or not hmac.compare_digest(
+            str(payload['scope']), expected_scope
+        ):
             raise ValueError
         updated_at = datetime.fromisoformat(payload['updatedAt'])
         identifier = UUID(payload['id'])
@@ -314,17 +333,19 @@ def list_assets(
     search: str | None = Query(default=None, min_length=1, max_length=100),
     cursor: str | None = Query(default=None, min_length=40, max_length=512),
 ):
-    _, tenant = _authorized_scope(request, 'media.read')
+    principal, tenant = _authorized_scope(request, 'media.read')
     if state and state not in ASSET_STATES:
         raise HTTPException(status_code=422, detail='media_filter_invalid')
     if media_type and media_type not in FORMAT_RULES:
         raise HTTPException(status_code=422, detail='media_filter_invalid')
     if cursor and offset:
         raise HTTPException(status_code=422, detail='media_cursor_invalid')
-    cursor_after = _decode_cursor(cursor) if cursor else None
+    scope = _cursor_scope(tenant=tenant, state=state, media_type=media_type, search=search)
+    cursor_after = _decode_cursor(cursor, expected_scope=scope) if cursor else None
     try:
         result = get_repository().list_assets(
             site_id=tenant,
+            actor_ref=f'user:{principal.user_id}',
             limit=limit,
             offset=offset,
             state=state,
@@ -333,7 +354,7 @@ def list_assets(
             cursor_after=cursor_after,
         )
         anchor = result.pop('nextAnchor', None)
-        result['nextCursor'] = _encode_cursor(anchor) if anchor else None
+        result['nextCursor'] = _encode_cursor(anchor, scope=scope) if anchor else None
         return result
     except Exception as exc:
         raise HTTPException(status_code=503, detail='media_dependency_unavailable') from exc
@@ -341,9 +362,11 @@ def list_assets(
 
 @router.get('/assets/{asset_id}')
 def get_asset(asset_id: UUID, request: Request):
-    _, tenant = _authorized_scope(request, 'media.read')
+    principal, tenant = _authorized_scope(request, 'media.read')
     try:
-        return get_repository().get_asset(site_id=tenant, asset_id=asset_id)
+        return get_repository().get_asset(
+            site_id=tenant, asset_id=asset_id, actor_ref=f'user:{principal.user_id}'
+        )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail='media_not_found') from exc
     except Exception as exc:
@@ -351,8 +374,32 @@ def get_asset(asset_id: UUID, request: Request):
 
 
 @router.post('/uploads', status_code=201)
-def create_upload(payload: UploadCreate, request: Request):
+def create_upload(
+    payload: UploadCreate,
+    request: Request,
+    idempotency_key: Annotated[
+        str,
+        Header(
+            alias='Idempotency-Key',
+            min_length=8,
+            max_length=128,
+            pattern=r'^[A-Za-z0-9._:-]+$',
+        ),
+    ],
+):
     principal, tenant = _authorized_scope(request, 'media.upload')
+    try:
+        _count, limited, retry_after = incr_and_check_tenant_detailed(
+            tenant, str(principal.user_id), 'media_upload_create'
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='media_rate_limit_unavailable') from exc
+    if limited:
+        raise HTTPException(
+            status_code=429,
+            detail='media_rate_limit_exceeded',
+            headers={'Retry-After': str(retry_after)},
+        )
     policy = runtime_policy()
     if (
         payload.media_type not in policy['allowedTypes']
@@ -364,9 +411,16 @@ def create_upload(payload: UploadCreate, request: Request):
             site_id=tenant,
             owner_ref=f'user:{principal.user_id}',
             payload=payload.model_dump(),
+            idempotency_key=idempotency_key,
+            maximum_stored_bytes=max(1024 * 1024 * 1024, policy['maximumObjectBytes'] * 20),
+            maximum_active_uploads=100,
+            maximum_pending_processing=200,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        code = str(exc).replace('content_', 'media_')
+        raise HTTPException(
+            status_code=409 if code == 'media_idempotency_conflict' else 422, detail=code
+        ) from exc
     except Exception as exc:
         raise HTTPException(status_code=503, detail='media_dependency_unavailable') from exc
 
@@ -379,18 +433,22 @@ async def complete_upload(
 ):
     principal, tenant = _authorized_scope(request, 'media.upload')
     maximum = runtime_policy()['maximumObjectBytes']
-    buffer = bytearray()
-    async for chunk in request.stream():
-        buffer.extend(chunk)
-        if len(buffer) > maximum:
-            raise HTTPException(status_code=413, detail='media_quota_object_exceeded')
+    received = 0
+    with tempfile.SpooledTemporaryFile(max_size=min(maximum, 1024 * 1024), mode='w+b') as stream:
+        async for chunk in request.stream():
+            received += len(chunk)
+            if received > maximum:
+                raise HTTPException(status_code=413, detail='media_quota_object_exceeded')
+            stream.write(chunk)
+        stream.seek(0)
+        content = stream.read(maximum + 1)
     try:
         return PostgresContentWorkspaceRepository().complete_asset_upload(
             site_id=tenant,
             asset_id=asset_id,
             owner_ref=f'user:{principal.user_id}',
             upload_grant=upload_grant,
-            content=bytes(buffer),
+            content=content,
             artifact_store=get_artifact_store(),
             maximum_bytes=maximum,
         )

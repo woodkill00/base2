@@ -29,7 +29,8 @@
     "django/sitecontent/migrations/0012_universal_media_library_roles.py",
     "django/sitecontent/migrations/0013_media_governance.py",
     "django/sitecontent/migrations/0014_media_processing_governance.py",
-    "django/sitecontent/migrations/0015_media_portability_and_abuse.py"
+    "django/sitecontent/migrations/0015_media_portability_and_abuse.py",
+    "django/sitecontent/migrations/0016_media_security_boundaries.py"
   ],
   "apiRoutes": ["/api/media/v1"],
   "uiRoutes": ["/media"],

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import tempfile
 from datetime import UTC, datetime
 from typing import Annotated, Literal
 from uuid import UUID
@@ -13,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from api.middleware.tenant import require_tenant
 from api.repositories.content_workspace import PostgresContentWorkspaceRepository
 from api.security.request_auth import require_authenticated_principal
+from api.security.rate_limit import incr_and_check_tenant_detailed
 from api.services.content_workspace_media import MAX_UPLOAD_BYTES
 from api.services.content_workspace_transfer import MAX_BYTES as MAX_IMPORT_BYTES
 from api.services.content_workspace_storage import (
@@ -894,16 +896,45 @@ def execute_saved_view(type_key: str, view_id: UUID, request: Request):
 
 
 @router.post('/assets/uploads', status_code=status.HTTP_201_CREATED)
-def create_asset_upload(payload: AssetUploadCreate, request: Request):
+def create_asset_upload(
+    payload: AssetUploadCreate,
+    request: Request,
+    idempotency_key: Annotated[
+        str,
+        Header(
+            alias='Idempotency-Key', min_length=8, max_length=128,
+            pattern=r'^[A-Za-z0-9._:-]+$',
+        ),
+    ],
+):
     principal, tenant = _authorized_scope(request, 'content-workspace.write')
+    try:
+        _count, limited, retry_after = incr_and_check_tenant_detailed(
+            tenant, str(principal.user_id), 'media_upload_create'
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_rate_limit_unavailable') from exc
+    if limited:
+        raise HTTPException(
+            status_code=429,
+            detail='content_rate_limit_exceeded',
+            headers={'Retry-After': str(retry_after)},
+        )
     try:
         return get_repository().create_asset_upload(
             site_id=tenant,
             owner_ref=f'user:{principal.user_id}',
             payload=payload.model_dump(),
+            idempotency_key=idempotency_key,
+            maximum_stored_bytes=1024 * 1024 * 1024,
+            maximum_active_uploads=100,
+            maximum_pending_processing=200,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        code = str(exc)
+        raise HTTPException(
+            status_code=409 if code == 'content_idempotency_conflict' else 422, detail=code
+        ) from exc
     except Exception as exc:
         raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
 
@@ -928,12 +959,15 @@ async def complete_asset_upload(
     upload_grant: Annotated[str, Header(alias='Upload-Grant', min_length=32, max_length=4096)],
 ):
     principal, tenant = _authorized_scope(request, 'content-workspace.write')
-    content_buffer = bytearray()
-    async for chunk in request.stream():
-        content_buffer.extend(chunk)
-        if len(content_buffer) > MAX_UPLOAD_BYTES:
-            raise HTTPException(status_code=413, detail='content_limit_exceeded')
-    content = bytes(content_buffer)
+    received = 0
+    with tempfile.SpooledTemporaryFile(max_size=1024 * 1024, mode='w+b') as stream:
+        async for chunk in request.stream():
+            received += len(chunk)
+            if received > MAX_UPLOAD_BYTES:
+                raise HTTPException(status_code=413, detail='content_limit_exceeded')
+            stream.write(chunk)
+        stream.seek(0)
+        content = stream.read(MAX_UPLOAD_BYTES + 1)
     try:
         return get_repository().complete_asset_upload(
             site_id=tenant,

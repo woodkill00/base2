@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import pytest
@@ -74,6 +74,9 @@ def scoped(monkeypatch):
     monkeypatch.setattr(media_library, 'require_tenant', lambda _request: 'base2-obsidian')
     monkeypatch.setattr(media_library, 'authorize', lambda **_kwargs: {})
     monkeypatch.setattr(media_library, 'get_repository', Repository)
+    monkeypatch.setattr(
+        media_library, 'incr_and_check_tenant_detailed', lambda *_args: (1, False, 0)
+    )
 
 
 def test_capabilities_are_closed_and_do_not_expose_storage_details():
@@ -112,6 +115,10 @@ def test_asset_cursor_is_opaque_signed_and_offset_exclusive(monkeypatch):
     assert client.get(f"/api/media/v1/assets?cursor={first['nextCursor']}").status_code == 200
     assert client.get(f"/api/media/v1/assets?cursor={first['nextCursor']}x").status_code == 422
     assert client.get(f"/api/media/v1/assets?cursor={first['nextCursor']}&offset=1").status_code == 422
+    assert (
+        client.get(f"/api/media/v1/assets?cursor={first['nextCursor']}&state=ready").status_code
+        == 422
+    )
 
 
 def test_metadata_contract_rejects_unknown_fields_and_requires_version():
@@ -200,6 +207,38 @@ def test_upload_contract_rejects_hostile_metadata_before_repository(monkeypatch,
     assert response.status_code == 422
 
 
+def test_upload_admission_is_idempotent_bounded_and_rate_limited(monkeypatch):
+    observed = {}
+
+    def create(_self, **kwargs):
+        observed.update(kwargs)
+        return {'id': ASSET_ID, 'status': 'pending', 'uploadGrant': 'g' * 64}
+
+    monkeypatch.setattr(
+        media_library.PostgresContentWorkspaceRepository, 'create_asset_upload', create
+    )
+    client = TestClient(app)
+    payload = {
+        'filename': 'safe.png', 'mediaType': 'image/png', 'byteSize': 8,
+        'sha256': 'a' * 64,
+    }
+    assert client.post('/api/media/v1/uploads', json=payload).status_code == 422
+    response = client.post(
+        '/api/media/v1/uploads', json=payload, headers={'Idempotency-Key': 'upload-110'}
+    )
+    assert response.status_code == 201
+    assert observed['idempotency_key'] == 'upload-110'
+    assert observed['maximum_active_uploads'] == 100
+    assert observed['maximum_pending_processing'] == 200
+    monkeypatch.setattr(
+        media_library, 'incr_and_check_tenant_detailed', lambda *_args: (31, True, 17)
+    )
+    response = client.post(
+        '/api/media/v1/uploads', json=payload, headers={'Idempotency-Key': 'upload-111'}
+    )
+    assert response.status_code == 429 and response.headers['retry-after'] == '17'
+
+
 def test_reference_preview_lifecycle_and_export_contracts_are_bounded():
     client = TestClient(app)
     assert client.get(f'/api/media/v1/assets/{ASSET_ID}/references').status_code == 200
@@ -229,6 +268,15 @@ def test_reference_preview_lifecycle_and_export_contracts_are_bounded():
 def test_sensitive_media_action_requires_recent_auth_and_cookie_csrf(monkeypatch):
     stale = PublicPrincipal(UUID(int=110), datetime.now(UTC), False)
     monkeypatch.setattr(media_library, 'require_authenticated_principal', lambda _request: stale)
+    response = TestClient(app).get(f'/api/media/v1/assets/{ASSET_ID}/destructive-preview')
+    assert response.status_code == 401
+
+    stale_claim = PublicPrincipal(
+        UUID(int=110), datetime.now(UTC) - timedelta(minutes=6), True
+    )
+    monkeypatch.setattr(
+        media_library, 'require_authenticated_principal', lambda _request: stale_claim
+    )
     response = TestClient(app).get(f'/api/media/v1/assets/{ASSET_ID}/destructive-preview')
     assert response.status_code == 401
 

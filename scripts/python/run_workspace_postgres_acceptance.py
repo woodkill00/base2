@@ -273,11 +273,11 @@ def main() -> None:
             api_image,
             "scripts/python/run_media_postgres_checks.py",
         ]
-        run(django_migration + ["0015", "--noinput"], stdout=subprocess.DEVNULL)
+        run(django_migration + ["0016", "--noinput"], stdout=subprocess.DEVNULL)
         run(media_check + ["forward"])
         run(django_migration + ["0010", "--noinput"], stdout=subprocess.DEVNULL)
         run(media_check + ["reversed"])
-        run(django_migration + ["0015", "--noinput"], stdout=subprocess.DEVNULL)
+        run(django_migration + ["0016", "--noinput"], stdout=subprocess.DEVNULL)
         run(media_check + ["forward"])
     finally:
         if started:

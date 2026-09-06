@@ -9,6 +9,7 @@ MIGRATION = ROOT / "django/sitecontent/migrations/0012_universal_media_library_r
 GOVERNANCE_MIGRATION = ROOT / "django/sitecontent/migrations/0013_media_governance.py"
 PROCESSING_MIGRATION = ROOT / "django/sitecontent/migrations/0014_media_processing_governance.py"
 PORTABILITY_MIGRATION = ROOT / "django/sitecontent/migrations/0015_media_portability_and_abuse.py"
+SECURITY_MIGRATION = ROOT / "django/sitecontent/migrations/0016_media_security_boundaries.py"
 
 
 class MediaLibraryMigrationTests(unittest.TestCase):
@@ -44,7 +45,7 @@ class MediaLibraryMigrationTests(unittest.TestCase):
     def test_disposable_postgres_acceptance_proves_forward_reverse_and_tenant_isolation(self):
         runner = (ROOT / "scripts/python/run_workspace_postgres_acceptance.py").read_text()
         checks = (ROOT / "scripts/python/run_media_postgres_checks.py").read_text()
-        self.assertIn('django_migration + ["0015", "--noinput"]', runner)
+        self.assertIn('django_migration + ["0016", "--noinput"]', runner)
         self.assertIn('media_check + ["forward"]', runner)
         self.assertIn('media_check + ["reversed"]', runner)
         self.assertIn("media_cross_tenant_insert_was_not_blocked", checks)
@@ -91,6 +92,18 @@ class MediaLibraryMigrationTests(unittest.TestCase):
         self.assertIn("FORCE ROW LEVEL SECURITY", source)
         reverse = source.split("def remove_media_portability_roles", 1)[1]
         self.assertLess(reverse.index("DROP POLICY"), reverse.index("DISABLE ROW LEVEL SECURITY"))
+
+    def test_security_migration_binds_tenant_relations_and_worker_mutations(self):
+        source = SECURITY_MIGRATION.read_text()
+        ast.parse(source)
+        self.assertIn("media_upload_asset_ref_uq", source)
+        self.assertIn("FOREIGN KEY (site_id", source)
+        self.assertIn("VALIDATE CONSTRAINT", source)
+        self.assertIn("FOR SELECT", source)
+        self.assertIn("OR current_user = '{worker}'", source)
+        self.assertIn("FOR INSERT", source)
+        self.assertIn("WITH CHECK ({tenant})", source)
+        self.assertNotIn("WITH CHECK ({tenant} OR current_user", source)
 
 
 if __name__ == "__main__":

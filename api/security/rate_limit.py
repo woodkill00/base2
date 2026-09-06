@@ -22,6 +22,8 @@ SCOPE_LIMITS: dict[str, tuple[int, int]] = {
     'public_form': (60_000, 10),
     # Authenticated community writes remain bounded per tenant and source.
     'community_submit': (60_000, 10),
+    # Authenticated media admission is bounded per tenant and principal.
+    'media_upload_create': (60_000, 30),
 }
 
 

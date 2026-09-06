@@ -71,7 +71,7 @@ def bind(monkeypatch, cursor):
 def test_asset_upload_creation_and_detail_are_grant_and_derivative_bound(monkeypatch):
     monkeypatch.setattr(repository.settings, "TOKEN_PEPPER", "synthetic-test-pepper-104")
     repo = repository.PostgresContentWorkspaceRepository()
-    cursor = QueueCursor(ones=[(ASSET_ID, "pending")])
+    cursor = QueueCursor(ones=[None, (0, 0, 0, 0), (ASSET_ID, "pending")])
     connection = bind(monkeypatch, cursor)
     created = repo.create_asset_upload(
         site_id="site-a",
@@ -82,11 +82,19 @@ def test_asset_upload_creation_and_detail_are_grant_and_derivative_bound(monkeyp
             "byte_size": 32,
             "sha256": "a" * 64,
         },
+        idempotency_key="asset-upload-104",
+        maximum_stored_bytes=1024,
+        maximum_active_uploads=10,
+        maximum_pending_processing=10,
     )
     assert created["id"] == str(ASSET_ID)
     assert created["status"] == "pending" and created["expiresIn"] == 300
     assert "site-a" not in created["uploadGrant"]
     assert connection.commits == 1
+    quota_query = cursor.calls[2]
+    assert "sitecontent_mediauploadsession" in quota_query[0]
+    assert "expires_at>NOW()" in quota_query[0]
+    assert quota_query[1] == ("site-a", "site-a", "site-a", "site-a")
 
     row = (
         ASSET_ID,
@@ -117,6 +125,46 @@ def test_asset_upload_creation_and_detail_are_grant_and_derivative_bound(monkeyp
     bind(monkeypatch, cursor)
     with pytest.raises(ValueError, match="content_not_found"):
         repo.get_asset(site_id="site-a", asset_id=ASSET_ID, requester_ref="user:reader")
+
+
+def test_asset_upload_replay_is_exact_and_quota_admission_is_atomic(monkeypatch):
+    monkeypatch.setattr(repository.settings, "TOKEN_PEPPER", "synthetic-test-pepper-104")
+    repo = repository.PostgresContentWorkspaceRepository()
+    payload = {
+        "filename": "safe.png", "media_type": "image/png", "byte_size": 32,
+        "sha256": "a" * 64,
+    }
+    replay = (ASSET_ID, "pending", "safe.png", "image/png", 32, "a" * 64)
+    cursor = QueueCursor(ones=[replay])
+    connection = bind(monkeypatch, cursor)
+    result = repo.create_asset_upload(
+        site_id="site-a", owner_ref="user:test", payload=payload,
+        idempotency_key="asset-upload-104", maximum_stored_bytes=1024,
+        maximum_active_uploads=10, maximum_pending_processing=10,
+    )
+    assert result["replayed"] is True and result["id"] == str(ASSET_ID)
+    assert connection.commits == 1
+    assert "pg_advisory_xact_lock" in cursor.calls[0][0]
+
+    cursor = QueueCursor(ones=[(*replay[:2], "other.png", *replay[3:])])
+    connection = bind(monkeypatch, cursor)
+    with pytest.raises(ValueError, match="content_idempotency_conflict"):
+        repo.create_asset_upload(
+            site_id="site-a", owner_ref="user:test", payload=payload,
+            idempotency_key="asset-upload-104", maximum_stored_bytes=1024,
+            maximum_active_uploads=10, maximum_pending_processing=10,
+        )
+    assert connection.rollbacks == 1
+
+    cursor = QueueCursor(ones=[None, (800, 200, 3, 0)])
+    connection = bind(monkeypatch, cursor)
+    with pytest.raises(ValueError, match="content_quota_storage_exceeded"):
+        repo.create_asset_upload(
+            site_id="site-a", owner_ref="user:test", payload=payload,
+            idempotency_key="asset-upload-105", maximum_stored_bytes=1024,
+            maximum_active_uploads=10, maximum_pending_processing=10,
+        )
+    assert connection.rollbacks == 1
 
 
 def test_record_lock_and_bump_enforce_presence_and_version():

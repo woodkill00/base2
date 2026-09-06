@@ -32,6 +32,7 @@ class PostgresMediaLibraryRepository:
         self,
         *,
         site_id: str,
+        actor_ref: str,
         limit: int,
         offset: int,
         cursor_after: tuple[datetime, UUID] | None = None,
@@ -39,8 +40,12 @@ class PostgresMediaLibraryRepository:
         media_type: str | None = None,
         search: str | None = None,
     ) -> dict[str, Any]:
-        clauses = ['site_id=%s', "status<>'purged'"]
-        params: list[Any] = [site_id]
+        clauses = [
+            'site_id=%s',
+            "status<>'purged'",
+            "(owner_ref=%s OR visibility IN ('authenticated','public'))",
+        ]
+        params: list[Any] = [site_id, actor_ref]
         if state:
             clauses.append('status=%s')
             params.append(state)
@@ -79,14 +84,15 @@ class PostgresMediaLibraryRepository:
             'indexStatus': 'current',
         }
 
-    def get_asset(self, *, site_id: str, asset_id: UUID) -> dict[str, Any]:
+    def get_asset(self, *, site_id: str, asset_id: UUID, actor_ref: str) -> dict[str, Any]:
         with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
             cur.execute(
                 """SELECT id, original_name, media_type, byte_size, sha256, status,
                           visibility, lock_version, updated_at
                    FROM sitecontent_mediaasset
-                   WHERE site_id=%s AND id=%s AND status<>'purged'""",
-                (site_id, str(asset_id)),
+                   WHERE site_id=%s AND id=%s AND status<>'purged'
+                     AND (owner_ref=%s OR visibility IN ('authenticated','public'))""",
+                (site_id, str(asset_id), actor_ref),
             )
             row = cur.fetchone()
             if not row:

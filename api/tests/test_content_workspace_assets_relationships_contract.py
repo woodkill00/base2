@@ -68,11 +68,17 @@ def scoped(monkeypatch):
     monkeypatch.setattr(content_workspace, 'authorize', lambda **kwargs: {'role': 'owner'})
     monkeypatch.setattr(content_workspace, 'get_repository', lambda: FakeRepository())
     monkeypatch.setattr(content_workspace, 'get_artifact_store', lambda: object())
+    monkeypatch.setattr(
+        content_workspace, 'incr_and_check_tenant_detailed', lambda *_args: (1, False, 0)
+    )
 
 
 def test_asset_admission_status_and_binding_are_scoped_and_versioned():
     client = TestClient(app)
-    headers = {'Authorization': 'Bearer synthetic', 'X-Tenant-ID': 'site-a'}
+    headers = {
+        'Authorization': 'Bearer synthetic', 'X-Tenant-ID': 'site-a',
+        'Idempotency-Key': 'asset-upload-104',
+    }
     admitted = client.post(
         '/api/content/v1/assets/uploads',
         headers=headers,
@@ -102,6 +108,27 @@ def test_asset_admission_status_and_binding_are_scoped_and_versioned():
         == 200
     )
     assert all(call[1]['site_id'] == 'site-a' for call in FakeRepository.calls)
+    upload = next(call[1] for call in FakeRepository.calls if call[0] == 'upload')
+    assert upload['idempotency_key'] == 'asset-upload-104'
+    assert upload['maximum_active_uploads'] == 100
+
+
+def test_asset_upload_rate_limit_returns_retry_after(monkeypatch):
+    monkeypatch.setattr(
+        content_workspace, 'incr_and_check_tenant_detailed', lambda *_args: (31, True, 19)
+    )
+    response = TestClient(app).post(
+        '/api/content/v1/assets/uploads',
+        headers={
+            'Authorization': 'Bearer synthetic', 'X-Tenant-ID': 'site-a',
+            'Idempotency-Key': 'asset-upload-105',
+        },
+        json={
+            'filename': 'safe.png', 'mediaType': 'image/png', 'byteSize': 32,
+            'sha256': 'a' * 64,
+        },
+    )
+    assert response.status_code == 429 and response.headers['retry-after'] == '19'
 
 
 def test_asset_content_upload_is_raw_bounded_grant_bound_and_starts_quarantined():

@@ -81,13 +81,15 @@ def test_list_assets_is_tenant_scoped_parameterized_and_stable(monkeypatch):
     cursor = Cursor([asset_row(1), asset_row(2)])
     scopes = bind(monkeypatch, Connection(cursor))
     result = repository.PostgresMediaLibraryRepository().list_assets(
-        site_id="site-a", limit=1, offset=0, state="ready",
+        site_id="site-a", actor_ref="user:test", limit=1, offset=0, state="ready",
         media_type="image/png", search="safe",
     )
     assert scopes == ["site-a"]
     sql, params = cursor.calls[0]
     assert "site_id=%s" in sql and "ORDER BY updated_at DESC, id DESC" in sql
-    assert "safe" not in sql and params == ("site-a", "ready", "image/png", "%safe%", 2, 0)
+    assert "safe" not in sql and params == (
+        "site-a", "user:test", "ready", "image/png", "%safe%", 2, 0
+    )
     assert result["nextOffset"] == 1 and len(result["items"]) == 1
 
 
@@ -96,11 +98,12 @@ def test_list_assets_keyset_cursor_is_parameterized(monkeypatch):
     cursor = Cursor([asset_row(1)])
     bind(monkeypatch, Connection(cursor))
     result = repository.PostgresMediaLibraryRepository().list_assets(
-        site_id="site-a", limit=25, offset=0, cursor_after=(anchor, UUID(int=9)),
+        site_id="site-a", actor_ref="user:test", limit=25, offset=0,
+        cursor_after=(anchor, UUID(int=9)),
     )
     sql, params = cursor.calls[0]
     assert "(updated_at,id)<(%s,%s)" in sql
-    assert params == ("site-a", anchor, str(UUID(int=9)), 26, 0)
+    assert params == ("site-a", "user:test", anchor, str(UUID(int=9)), 26, 0)
     assert result["nextAnchor"] is None
 
 
@@ -108,7 +111,7 @@ def test_get_asset_never_selects_storage_keys(monkeypatch):
     cursor = Cursor([asset_row()])
     bind(monkeypatch, Connection(cursor))
     result = repository.PostgresMediaLibraryRepository().get_asset(
-        site_id="site-a", asset_id=UUID(int=1)
+        site_id="site-a", asset_id=UUID(int=1), actor_ref="user:test"
     )
     assert result["id"] == str(UUID(int=1)) and result["variants"] == []
     assert all("storage_key" not in sql for sql, _ in cursor.calls)
@@ -123,7 +126,7 @@ def test_get_asset_returns_bounded_metadata_history(monkeypatch):
     ])
     bind(monkeypatch, Connection(cursor))
     result = repository.PostgresMediaLibraryRepository().get_asset(
-        site_id="site-a", asset_id=UUID(int=1)
+        site_id="site-a", asset_id=UUID(int=1), actor_ref="user:test"
     )
     assert result["altText"] == "Safe"
     assert result["metadataHistory"][0]["revision"] == 2
