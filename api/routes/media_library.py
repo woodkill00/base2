@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import json
 import re
+from base64 import urlsafe_b64decode, urlsafe_b64encode
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
 from uuid import UUID
@@ -238,6 +239,37 @@ def _expected_version(value: str) -> int:
     return int(version)
 
 
+def _cursor_key() -> bytes:
+    value = str(settings.JWT_SECRET or '')
+    if len(value) < 32:
+        raise RuntimeError('media_cursor_key_invalid')
+    return value.encode()
+
+
+def _encode_cursor(anchor: dict) -> str:
+    body = json.dumps(anchor, sort_keys=True, separators=(',', ':')).encode()
+    signature = hmac.new(_cursor_key(), body, hashlib.sha256).digest()
+    return urlsafe_b64encode(body + signature).decode().rstrip('=')
+
+
+def _decode_cursor(value: str) -> tuple[datetime, UUID]:
+    try:
+        raw = urlsafe_b64decode(value + '=' * (-len(value) % 4))
+        body, signature = raw[:-32], raw[-32:]
+        if not hmac.compare_digest(signature, hmac.new(_cursor_key(), body, hashlib.sha256).digest()):
+            raise ValueError
+        payload = json.loads(body)
+        if set(payload) != {'id', 'updatedAt'}:
+            raise ValueError
+        updated_at = datetime.fromisoformat(payload['updatedAt'])
+        identifier = UUID(payload['id'])
+        if updated_at.tzinfo is None:
+            raise ValueError
+        return updated_at, identifier
+    except (ValueError, TypeError, json.JSONDecodeError) as exc:
+        raise HTTPException(status_code=422, detail='media_cursor_invalid') from exc
+
+
 def _map_operation_error(exc: ValueError) -> HTTPException:
     code = str(exc)
     if code == 'media_not_found':
@@ -280,21 +312,29 @@ def list_assets(
     state: str | None = Query(default=None, max_length=24),
     media_type: str | None = Query(default=None, max_length=127),
     search: str | None = Query(default=None, min_length=1, max_length=100),
+    cursor: str | None = Query(default=None, min_length=40, max_length=512),
 ):
     _, tenant = _authorized_scope(request, 'media.read')
     if state and state not in ASSET_STATES:
         raise HTTPException(status_code=422, detail='media_filter_invalid')
     if media_type and media_type not in FORMAT_RULES:
         raise HTTPException(status_code=422, detail='media_filter_invalid')
+    if cursor and offset:
+        raise HTTPException(status_code=422, detail='media_cursor_invalid')
+    cursor_after = _decode_cursor(cursor) if cursor else None
     try:
-        return get_repository().list_assets(
+        result = get_repository().list_assets(
             site_id=tenant,
             limit=limit,
             offset=offset,
             state=state,
             media_type=media_type,
             search=search,
+            cursor_after=cursor_after,
         )
+        anchor = result.pop('nextAnchor', None)
+        result['nextCursor'] = _encode_cursor(anchor) if anchor else None
+        return result
     except Exception as exc:
         raise HTTPException(status_code=503, detail='media_dependency_unavailable') from exc
 

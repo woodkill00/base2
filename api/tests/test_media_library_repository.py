@@ -91,6 +91,19 @@ def test_list_assets_is_tenant_scoped_parameterized_and_stable(monkeypatch):
     assert result["nextOffset"] == 1 and len(result["items"]) == 1
 
 
+def test_list_assets_keyset_cursor_is_parameterized(monkeypatch):
+    anchor = datetime(2026, 9, 6, tzinfo=UTC)
+    cursor = Cursor([asset_row(1)])
+    bind(monkeypatch, Connection(cursor))
+    result = repository.PostgresMediaLibraryRepository().list_assets(
+        site_id="site-a", limit=25, offset=0, cursor_after=(anchor, UUID(int=9)),
+    )
+    sql, params = cursor.calls[0]
+    assert "(updated_at,id)<(%s,%s)" in sql
+    assert params == ("site-a", anchor, str(UUID(int=9)), 26, 0)
+    assert result["nextAnchor"] is None
+
+
 def test_get_asset_never_selects_storage_keys(monkeypatch):
     cursor = Cursor([asset_row()])
     bind(monkeypatch, Connection(cursor))
@@ -99,6 +112,22 @@ def test_get_asset_never_selects_storage_keys(monkeypatch):
     )
     assert result["id"] == str(UUID(int=1)) and result["variants"] == []
     assert all("storage_key" not in sql for sql, _ in cursor.calls)
+
+
+def test_get_asset_returns_bounded_metadata_history(monkeypatch):
+    created = datetime(2026, 9, 6, tzinfo=UTC)
+    cursor = SequenceCursor([
+        [asset_row()], [],
+        [(2, "en", "Safe", False, "Caption", "Credit", "cc-by", None, None,
+          "user:test", created)],
+    ])
+    bind(monkeypatch, Connection(cursor))
+    result = repository.PostgresMediaLibraryRepository().get_asset(
+        site_id="site-a", asset_id=UUID(int=1)
+    )
+    assert result["altText"] == "Safe"
+    assert result["metadataHistory"][0]["revision"] == 2
+    assert "LIMIT 50" in cursor.calls[2][0]
 
 
 def test_metadata_update_is_version_bound_and_transactional(monkeypatch):

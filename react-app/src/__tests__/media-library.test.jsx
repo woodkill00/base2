@@ -18,6 +18,8 @@ vi.mock('../services/mediaLibrary', () => ({
     updateMetadata: vi.fn(),
     jobs: vi.fn(),
     retryJob: vi.fn(),
+    collections: vi.fn(),
+    addCollectionAssets: vi.fn(),
   },
   normalizeMediaError: vi.fn((error) => ({
     status: error?.response?.status || 503,
@@ -60,6 +62,8 @@ beforeEach(() => {
   mediaLibraryAPI.jobs.mockResolvedValue({ items: [] });
   mediaLibraryAPI.updateMetadata.mockResolvedValue({ revision: 2, version: 2 });
   mediaLibraryAPI.retryJob.mockResolvedValue({ status: 'queued' });
+  mediaLibraryAPI.collections.mockResolvedValue({ items: [] });
+  mediaLibraryAPI.addCollectionAssets.mockResolvedValue({ added: 1, requested: 1 });
   mediaLibraryAPI.destructivePreview.mockResolvedValue({ allowed: true });
   mediaLibraryAPI.transition.mockResolvedValue({ status: 'archived', version: 2 });
   mediaLibraryAPI.createExport.mockResolvedValue({ status: 'queued' });
@@ -158,4 +162,27 @@ it('shows bounded processing state and permits only eligible manual retry', asyn
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
   await waitFor(() => expect(mediaLibraryAPI.retryJob).toHaveBeenCalledWith('job-1'));
   expect(screen.getByText(/queued/)).toBeInTheDocument();
+});
+
+it('requires an explicit consequence-aware confirmation before deletion', async () => {
+  renderPage();
+  fireEvent.click(await screen.findByRole('button', { name: 'View details' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Prepare deletion' }));
+  const confirmation = await screen.findByRole('alertdialog', { name: 'Confirm media action' });
+  expect(within(confirmation).getByText(/exact asset and version/)).toBeInTheDocument();
+  expect(mediaLibraryAPI.transition).not.toHaveBeenCalled();
+  fireEvent.click(within(confirmation).getByRole('button', { name: 'Confirm action' }));
+  await waitFor(() => expect(mediaLibraryAPI.transition).toHaveBeenCalledWith(
+    'asset-1', 1, 'soft_deleted', 'media-soft_deleted-asset-1-1'
+  ));
+});
+
+it('adds exact selected assets to a permitted collection with truthful counts', async () => {
+  mediaLibraryAPI.collections.mockResolvedValue({ items: [{ id: 'collection-1', title: 'Launch' }] });
+  renderPage();
+  fireEvent.click(await screen.findByRole('button', { name: 'Select safe.png' }));
+  fireEvent.change(await screen.findByLabelText('Collection'), { target: { value: 'collection-1' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Add to collection' }));
+  expect(await screen.findByText('1 added; 0 already present.')).toBeInTheDocument();
+  expect(mediaLibraryAPI.addCollectionAssets).toHaveBeenCalledWith('collection-1', ['asset-1']);
 });

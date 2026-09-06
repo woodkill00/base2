@@ -20,12 +20,13 @@ export const normalizeMediaError = (error) => {
 export const mediaLibraryAPI = {
   capabilities: async ({ signal } = {}) =>
     unwrap(await apiClient.get('/media/v1/capabilities', { signal })),
-  assets: async ({ limit = 25, offset = 0, state, mediaType, search, signal } = {}) =>
+  assets: async ({ limit = 25, offset = 0, cursor, state, mediaType, search, signal } = {}) =>
     unwrap(
       await apiClient.get('/media/v1/assets', {
         params: {
           limit,
           offset,
+          ...(cursor ? { cursor } : {}),
           ...(state ? { state } : {}),
           ...(mediaType ? { media_type: mediaType } : {}),
           ...(search ? { search } : {}),

@@ -34,6 +34,7 @@ class PostgresMediaLibraryRepository:
         site_id: str,
         limit: int,
         offset: int,
+        cursor_after: tuple[datetime, UUID] | None = None,
         state: str | None = None,
         media_type: str | None = None,
         search: str | None = None,
@@ -49,6 +50,9 @@ class PostgresMediaLibraryRepository:
         if search:
             clauses.append('original_name ILIKE %s')
             params.append(f'%{search}%')
+        if cursor_after:
+            clauses.append('(updated_at,id)<(%s,%s)')
+            params.extend((cursor_after[0], str(cursor_after[1])))
         where = ' AND '.join(clauses)
         with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
             cur.execute(
@@ -64,6 +68,14 @@ class PostgresMediaLibraryRepository:
         return {
             'items': [_asset(row) for row in rows[:limit]],
             'nextOffset': offset + limit if more else None,
+            'nextAnchor': (
+                {
+                    'updatedAt': rows[limit - 1][8].isoformat(),
+                    'id': str(rows[limit - 1][0]),
+                }
+                if more
+                else None
+            ),
             'indexStatus': 'current',
         }
 
@@ -87,6 +99,15 @@ class PostgresMediaLibraryRepository:
                 (str(asset_id),),
             )
             variants = cur.fetchall()
+            cur.execute(
+                """SELECT revision, locale, alt_text, decorative, caption, credit,
+                          license_code, focal_x, focal_y, actor_ref, created_at
+                   FROM sitecontent_mediametadatarevision
+                   WHERE site_id=%s AND asset_id=%s
+                   ORDER BY revision DESC, locale LIMIT 50""",
+                (site_id, str(asset_id)),
+            )
+            metadata = cur.fetchall()
         result = _asset(row)
         result['variants'] = [
             {
@@ -102,6 +123,29 @@ class PostgresMediaLibraryRepository:
             }
             for item in variants
         ]
+        result['metadataHistory'] = [
+            {
+                'revision': int(item[0]),
+                'locale': item[1],
+                'altText': item[2],
+                'decorative': bool(item[3]),
+                'caption': item[4],
+                'credit': item[5],
+                'licenseCode': item[6],
+                'focalX': float(item[7]) if item[7] is not None else None,
+                'focalY': float(item[8]) if item[8] is not None else None,
+                'actorRef': item[9],
+                'createdAt': item[10].isoformat(),
+            }
+            for item in metadata
+        ]
+        if result['metadataHistory']:
+            result.update(
+                {
+                    key: result['metadataHistory'][0][key]
+                    for key in ('altText', 'decorative', 'caption', 'credit', 'licenseCode')
+                }
+            )
         return result
 
     def update_metadata(

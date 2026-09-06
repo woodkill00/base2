@@ -44,6 +44,7 @@ export default function MediaLibrary() {
   const closeButton = useRef(null);
   const [capabilities, setCapabilities] = useState(null);
   const [assets, setAssets] = useState([]);
+  const [nextCursor, setNextCursor] = useState(null);
   const [selected, setSelected] = useState(new Set());
   const [query, setQuery] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState('');
@@ -59,6 +60,9 @@ export default function MediaLibrary() {
   const [jobs, setJobs] = useState([]);
   const [metadata, setMetadata] = useState({ altText: '', decorative: false, caption: '' });
   const [metadataStatus, setMetadataStatus] = useState('');
+  const [collections, setCollections] = useState([]);
+  const [collectionId, setCollectionId] = useState('');
+  const [confirmationTarget, setConfirmationTarget] = useState('');
 
   const load = useCallback((signal) => {
     setLoading(true);
@@ -70,6 +74,7 @@ export default function MediaLibrary() {
       .then(([caps, result]) => {
         setCapabilities(caps);
         setAssets(Array.isArray(result?.items) ? result.items : []);
+        setNextCursor(result?.nextCursor || null);
       })
       .catch((caught) => {
         if (caught?.name !== 'CanceledError') {
@@ -82,11 +87,34 @@ export default function MediaLibrary() {
       .finally(() => setLoading(false));
   }, [state, submittedQuery]);
 
+  const loadMore = async () => {
+    if (!nextCursor) return;
+    setActionStatus('Loading the next stable page…');
+    try {
+      const result = await mediaLibraryAPI.assets({
+        state, search: submittedQuery, cursor: nextCursor,
+      });
+      setAssets((current) => [...current, ...(Array.isArray(result?.items) ? result.items : [])]);
+      setNextCursor(result?.nextCursor || null);
+      setActionStatus('Next page loaded.');
+    } catch (caught) {
+      setActionStatus('The next page could not be loaded. Existing results were preserved.');
+    }
+  };
+
   useEffect(() => {
     const controller = new AbortController();
     load(controller.signal);
     return () => controller.abort();
   }, [load]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    mediaLibraryAPI.collections({ signal: controller.signal })
+      .then((result) => setCollections(Array.isArray(result?.items) ? result.items : []))
+      .catch(() => setCollections([]));
+    return () => controller.abort();
+  }, []);
 
   const allowedTypes = useMemo(
     () => (capabilities?.formats || []).map((item) => item.mediaType),
@@ -190,10 +218,22 @@ export default function MediaLibrary() {
 
   const loadPreview = async () => {
     try {
-      setPreview(await mediaLibraryAPI.destructivePreview(activeAsset.id));
+      const result = await mediaLibraryAPI.destructivePreview(activeAsset.id);
+      setPreview(result);
+      return result;
     } catch (caught) {
       setDetailError('The consequence preview could not be loaded. The action remains blocked.');
+      return null;
     }
+  };
+
+  const prepareDetailTransition = async (target) => {
+    const consequence = await loadPreview();
+    if (!consequence || (target === 'soft_deleted' && !consequence.allowed)) {
+      setDetailError('The requested action remains blocked by its consequence review.');
+      return;
+    }
+    setConfirmationTarget(target);
   };
 
   const transitionSelected = async (target) => {
@@ -227,6 +267,35 @@ export default function MediaLibrary() {
       setActionStatus('Export queued. It will expire after the retrieval window.');
     } catch (caught) {
       setActionStatus('Export could not be queued. No data was changed.');
+    }
+  };
+
+  const addSelectedToCollection = async () => {
+    if (!collectionId || !selected.size) return;
+    setActionStatus('Adding selected media to the collection…');
+    try {
+      const result = await mediaLibraryAPI.addCollectionAssets(collectionId, [...selected]);
+      setActionStatus(`${result.added} added; ${result.requested - result.added} already present.`);
+      setSelected(new Set());
+    } catch (caught) {
+      setActionStatus('The collection was not changed. Recheck access and try again.');
+    }
+  };
+
+  const confirmDetailTransition = async () => {
+    const target = confirmationTarget;
+    if (!target) return;
+    try {
+      const result = await mediaLibraryAPI.transition(
+        activeAsset.id, activeAsset.version, target,
+        `media-${target}-${activeAsset.id}-${activeAsset.version}`
+      );
+      setActiveAsset((current) => ({ ...current, status: target, version: result.version }));
+      setConfirmationTarget('');
+      setPreview(null);
+      setActionStatus(`${statusLabel(target)} completed.`);
+    } catch (caught) {
+      setDetailError('The action was blocked or conflicted. No unsafe change was made.');
     }
   };
 
@@ -276,6 +345,16 @@ export default function MediaLibrary() {
           <section className="media-bulk-actions" aria-label="Selected media actions">
             <GlassButton type="button" variant="secondary" onClick={() => transitionSelected('archived')}>Archive</GlassButton>
             <GlassButton type="button" variant="secondary" onClick={exportSelected}>Export CSV</GlassButton>
+            {collections.length ? <>
+              <label className="media-collection-choice">
+                Collection
+                <select value={collectionId} onChange={(event) => setCollectionId(event.target.value)}>
+                  <option value="">Choose…</option>
+                  {collections.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+                </select>
+              </label>
+              <button type="button" disabled={!collectionId} onClick={addSelectedToCollection}>Add to collection</button>
+            </> : null}
             <button type="button" onClick={() => setSelected(new Set())}>Clear selection</button>
           </section>
         ) : null}
@@ -312,17 +391,20 @@ export default function MediaLibrary() {
           </div>
         ) : null}
         {!loading && assets.length ? (
-          <section className="media-grid" aria-label="Media assets">
-            {assets.map((asset) => (
-              <AssetCard
-                key={asset.id}
-                asset={asset}
-                selected={selected.has(asset.id)}
-                onSelect={toggle}
-                onOpen={openAsset}
-              />
-            ))}
-          </section>
+          <>
+            <section className="media-grid" aria-label="Media assets">
+              {assets.map((asset) => (
+                <AssetCard
+                  key={asset.id}
+                  asset={asset}
+                  selected={selected.has(asset.id)}
+                  onSelect={toggle}
+                  onOpen={openAsset}
+                />
+              ))}
+            </section>
+            {nextCursor ? <button type="button" onClick={loadMore}>Load more media</button> : null}
+          </>
         ) : null}
         {activeAsset ? (
           <div className="media-dialog-backdrop">
@@ -407,6 +489,23 @@ export default function MediaLibrary() {
                 <h3 id="consequence-heading">Archive and deletion safety</h3>
                 <button type="button" onClick={loadPreview}>Preview consequences</button>
                 {preview ? <p role="status">{preview.allowed ? 'No blocking references or holds.' : 'Blocked by references or retention holds.'}</p> : null}
+                <div className="media-detail-actions">
+                  {activeAsset.status === 'archived' || activeAsset.status === 'soft_deleted' ? (
+                    <button type="button" onClick={() => prepareDetailTransition('ready')}>Prepare restore</button>
+                  ) : <button type="button" onClick={() => prepareDetailTransition('archived')}>Prepare archive</button>}
+                  <button type="button" onClick={() => prepareDetailTransition('soft_deleted')}>Prepare deletion</button>
+                </div>
+                {confirmationTarget ? <div className="media-confirmation" role="alertdialog" aria-modal="true" aria-label="Confirm media action">
+                  <p>Confirm {statusLabel(confirmationTarget)} for this exact asset and version. References and holds remain enforced by the server.</p>
+                  <button type="button" onClick={confirmDetailTransition}>Confirm action</button>
+                  <button type="button" onClick={() => setConfirmationTarget('')}>Cancel</button>
+                </div> : null}
+              </section>
+              <section aria-labelledby="history-heading">
+                <h3 id="history-heading">Metadata version history</h3>
+                {activeAsset.metadataHistory?.length ? <ol>{activeAsset.metadataHistory.map((item) => (
+                  <li key={`${item.revision}-${item.locale}`}>Revision {item.revision} · {item.locale} · {item.actorRef}</li>
+                ))}</ol> : <p>No prior metadata revisions.</p>}
               </section>
               {detailError ? <p role="alert">{detailError}</p> : null}
             </section>

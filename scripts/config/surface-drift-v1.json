@@ -94,7 +94,7 @@
       "api/routes/content_workspace.py": "a8853313f41313b2ae66317ec8238025332e1de46913fd7c580fe4147563f8a9",
       "api/routes/engagement.py": "f26e86d78daab93ef74a8d547b2b4ec1a3035ebf2f13e9a886a2accd772f016e",
       "api/routes/identity.py": "c1617c121c136eab5f8341e2b1c2993fe6def7c71e9cb834d148ff0a26a4b35e",
-      "api/routes/media_library.py": "ca01b159d85beba4e70b48077c92f565d2085d00d80122c6a29bf1f5175bd325",
+      "api/routes/media_library.py": "9f4977b7a8cd6edc9ba2ced6e0c7107a6f6fef5d1ee82842c7e30fac47ee5385",
       "api/routes/metrics.py": "e9e270a535b8bc6a480913fac9e475b8aadfa805fbb3b0494c8983e6dce45183",
       "api/routes/oauth.py": "2fbe1617292b76caecdd5b0b6def27cbbd11fe0c847af70ebfc7a71952739d00",
       "api/routes/privacy.py": "edf8eb20a167399a9c3fec3c1b9039892a13a41b3962ac4657f54cd7930fcc39",

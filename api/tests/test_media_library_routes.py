@@ -93,6 +93,27 @@ def test_list_and_detail_are_scoped():
     assert client.get('/api/media/v1/assets?media_type=text/html').status_code == 422
 
 
+def test_asset_cursor_is_opaque_signed_and_offset_exclusive(monkeypatch):
+    class CursorRepository(Repository):
+        def list_assets(self, **kwargs):
+            if kwargs['cursor_after']:
+                assert kwargs['cursor_after'][1] == UUID(ASSET_ID)
+                return {'items': [], 'nextAnchor': None, 'nextOffset': None, 'indexStatus': 'current'}
+            return {
+                'items': [], 'nextOffset': 25, 'indexStatus': 'current',
+                'nextAnchor': {'id': ASSET_ID, 'updatedAt': '2026-09-06T12:00:00+00:00'},
+            }
+
+    monkeypatch.setattr(media_library.settings, 'JWT_SECRET', 'c' * 64)
+    monkeypatch.setattr(media_library, 'get_repository', CursorRepository)
+    client = TestClient(app)
+    first = client.get('/api/media/v1/assets').json()
+    assert first['nextCursor'] and ASSET_ID not in first['nextCursor']
+    assert client.get(f"/api/media/v1/assets?cursor={first['nextCursor']}").status_code == 200
+    assert client.get(f"/api/media/v1/assets?cursor={first['nextCursor']}x").status_code == 422
+    assert client.get(f"/api/media/v1/assets?cursor={first['nextCursor']}&offset=1").status_code == 422
+
+
 def test_metadata_contract_rejects_unknown_fields_and_requires_version():
     client = TestClient(app)
     good = {
