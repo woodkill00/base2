@@ -77,6 +77,38 @@ prove unknown defects impossible.
     release. B038 requires the supported patched major and a zero-finding audit;
     B039-B040 prevent completion until integrated gates and fresh independent
     review agree on the exact head.
+13. The corrective implementation enforced owner-scoped private mutations,
+    tenant-bound references and workers, recent-auth checks, signed query-bound
+    cursors, selected-asset exports, governed lifecycle and audit behavior, and
+    truthful accessible client interactions. Negative API, repository, worker,
+    PostgreSQL, React, Playwright, and visual tests now exercise those boundaries.
+14. Upload completion now preflights an owner-bound grant before consuming a
+    body, admits at most one memory-bearing request per process, clamps objects
+    to 25 MiB, enforces idle and total read deadlines, verifies exact length and
+    digest, throttles attempts, and releases capacity on every terminal path.
+15. Hostile inspection moved into a dedicated networkless, read-only container.
+    A disposable unprivileged child with no capabilities or inherited secrets
+    runs ClamAV and format decoders under resource limits. Ed25519 receipts bind
+    the job, object version, source digest, measured tool identities, verdict,
+    derivative, and configured build identity; the worker can verify but cannot
+    forge them.
+16. Fresh code, security, and UX passes closed every reported critical, high,
+    and medium finding. The corrected suites passed locally, including the full
+    frontend matrix, source-bound browser visuals, an actual hardened inspector
+    image probe, and 100 consecutive repetitions of critical media boundaries.
+17. The first corrected complete gate exposed two honest integration defects:
+    nullable dimensions rejected by full-project typing and a stale Vite process
+    occupying the visual-test port. Both were corrected and the exact gate was
+    rerun. Its only remaining failure was 87.49 percent changed-line coverage
+    against the fixed 90 percent floor; additional behavioral inspector tests
+    raised coverage to 90.96 percent without exclusions.
+18. The next exact-head complete gate passed all 87 required checks at commit
+    `c4920854badcf30a57d02b72dcbe7429db00457f`. Hosted checks then found that
+    `package.json` and `package-lock.json` disagreed about the patched `uuid`
+    override. The lockfile was regenerated and a mandatory dry-run `npm ci`
+    check was added to the complete gate so this class of packaging drift fails
+    locally before publication. The final exact-head gate and hosted checks
+    remain B039-B040 evidence and are intentionally not predeclared complete.
 
 ## Honest residual boundary
 

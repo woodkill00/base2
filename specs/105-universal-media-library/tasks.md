@@ -18,25 +18,25 @@
 - [x] B016 Add media release browser matrix and reviewed screenshot sidecars.
 - [x] B017 Run all Base2 local gates and repeated critical suites.
 - [x] B018 Review exact diff, residual risks, and sanitized evidence inventory.
-- [ ] B019 Obtain exact owner approval and publish one draft PR.
+- [x] B019 Obtain exact owner approval and publish one draft PR.
 - [ ] B020 Require hosted checks and independent review.
 - [ ] B021 Obtain separate approval and merge exact reviewed head.
 - [ ] B022 Obtain separate provider approval for a bounded staging canary.
 - [ ] B023 Run live journeys, destroy exact resources, and prove empty inventory.
 - [ ] B024 Close OpenClaw Feature 110 only after all exact evidence is present.
-- [ ] B025 Enforce private visibility for same-tenant viewers and add negative route/repository tests.
-- [ ] B026 Bind media foreign keys and worker writes to explicit tenant scope while retaining bounded global worker reads.
-- [ ] B027 Enforce recent-auth age on sensitive media actions with expiry and malformed-claim tests.
-- [ ] B028 Stream bounded uploads through replay-safe admission, quota, backpressure, and idempotency controls.
-- [ ] B029 Connect accepted uploads to the governed scan, parse, derivative, persistence, audit, and ready-state pipeline.
-- [ ] B030 Require measured scanner identity and definition freshness plus resource-bounded, no-network parser isolation.
-- [ ] B031 Make cancellation, retry, offline, expiry, drop, paste, and resumability behavior truthful and testable.
-- [ ] B032 Bind export packages to exact selected asset IDs, projection, filters, tenant, and a consuming worker.
-- [ ] B033 Bind signed cursors to tenant and normalized query semantics and reject cross-context replay.
-- [ ] B034 Connect retention, legal hold, abuse review, delivery-grant revocation, and redacted hash-chained audit behavior.
-- [ ] B035 Add accessible dialog focus traps, exact consequence copy, return focus, and named progress actions.
-- [ ] B036 Integrate the reusable picker with empty/limit feedback and keyboard/return-focus proof.
-- [ ] B037 Correct light-theme contrast and regenerate source-bound responsive, zoom, theme, detail, and picker visuals.
-- [ ] B038 Upgrade React Router to a patched supported line and require zero frontend dependency audit findings.
+- [x] B025 Enforce private visibility for same-tenant viewers and add negative route/repository tests.
+- [x] B026 Bind media foreign keys and worker writes to explicit tenant scope while retaining bounded global worker reads.
+- [x] B027 Enforce recent-auth age on sensitive media actions with expiry and malformed-claim tests.
+- [x] B028 Stream bounded uploads through replay-safe admission, quota, backpressure, and idempotency controls.
+- [x] B029 Connect accepted uploads to the governed scan, parse, derivative, persistence, audit, and ready-state pipeline.
+- [x] B030 Require measured scanner identity and definition freshness plus resource-bounded, no-network parser isolation.
+- [x] B031 Make cancellation, retry, offline, expiry, drop, paste, and resumability behavior truthful and testable.
+- [x] B032 Bind export packages to exact selected asset IDs, projection, filters, tenant, and a consuming worker.
+- [x] B033 Bind signed cursors to tenant and normalized query semantics and reject cross-context replay.
+- [x] B034 Connect retention, legal hold, abuse review, delivery-grant revocation, and redacted hash-chained audit behavior.
+- [x] B035 Add accessible dialog focus traps, exact consequence copy, return focus, and named progress actions.
+- [x] B036 Integrate the reusable picker with empty/limit feedback and keyboard/return-focus proof.
+- [x] B037 Correct light-theme contrast and regenerate source-bound responsive, zoom, theme, detail, and picker visuals.
+- [x] B038 Upgrade React Router to a patched supported line and require zero frontend dependency audit findings.
 - [ ] B039 Run complete local, PostgreSQL, browser, type, security, coverage, and repeated critical regression gates.
 - [ ] B040 Repeat independent code, security, and UX review and close every critical, high, and medium finding.
