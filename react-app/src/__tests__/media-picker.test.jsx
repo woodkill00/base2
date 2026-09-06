@@ -22,15 +22,23 @@ it('is bounded, searchable, keyboard-contained, and returns exact selections', a
   const result = render(<MediaPicker open onClose={onClose} onConfirm={onConfirm} limit={1} />);
   const dialog = await screen.findByRole('dialog', { name: 'Choose media' });
   await waitFor(() => expect(screen.getByText('one.png')).toBeInTheDocument());
+  const close = screen.getByRole('button', { name: 'Close' });
+  expect(close).toHaveFocus();
+  fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true });
+  expect(screen.getByLabelText(/two.pdf/)).toHaveFocus();
   fireEvent.click(screen.getByLabelText(/one.png/));
   fireEvent.click(screen.getByLabelText(/two.pdf/));
   expect(screen.getByText('1 of 1 selected')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Use selected media' }));
   expect(onConfirm).toHaveBeenCalledWith(['one']);
   fireEvent.change(screen.getByLabelText('Search media'), { target: { value: 'one' } });
+  fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'archived' } });
   await waitFor(() => expect(mediaLibraryAPI.assets).toHaveBeenLastCalledWith(
-    expect.objectContaining({ search: 'one', state: 'ready' })
+    expect.objectContaining({ search: 'one', state: 'archived' })
   ));
+  screen.getByRole('button', { name: 'Use selected media' }).focus();
+  fireEvent.keyDown(dialog, { key: 'Tab' });
+  expect(close).toHaveFocus();
   expect(await axe(result.container)).toHaveNoViolations();
   fireEvent.keyDown(dialog, { key: 'Escape' });
   expect(onClose).toHaveBeenCalled();
