@@ -233,7 +233,6 @@
         "api/tests/test_media_library_processor.py",
         "api/tests/test_media_library_repository.py",
         "api/tests/test_media_library_routes.py",
-        "django/tests/test_media_library_models.py",
         "scripts/tests/test_media_library_manifest.py",
         "scripts/tests/test_media_library_migration.py",
         "scripts/tests/test_media_visual_review.py",
@@ -245,11 +244,25 @@
       "requiredTools": ["{python-api}"]
     },
     {
+      "id": "media-library-django-contract",
+      "command": [
+        "{python-django}",
+        "-m",
+        "pytest",
+        "django/tests/test_media_library_models.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": ["workspace-postgres-contract"],
+      "requiredTools": ["{python-django}"]
+    },
+    {
       "id": "media-library-plan",
       "command": ["python3", "specs/105-universal-media-library/validate_plan.py"],
       "required": true,
       "timeoutSeconds": 30,
-      "dependsOn": ["media-library-contract"],
+      "dependsOn": ["media-library-contract", "media-library-django-contract"],
       "requiredTools": ["python3"]
     },
     {

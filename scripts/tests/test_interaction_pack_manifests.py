@@ -10,10 +10,13 @@ class InteractionPackManifestTests(unittest.TestCase):
         root = Path(__file__).parents[2]
         manifests = [
             json.loads((root / f'modules/{name}/module.json').read_text(encoding='utf-8'))
-            for name in ('gallery', 'forms', 'media')
+            for name in ('content', 'content-workspace', 'gallery', 'forms', 'media')
         ]
         plan = ModuleRegistry(manifests).install_plan()
-        self.assertEqual(['forms', 'media', 'gallery'], [item['id'] for item in plan])
+        self.assertEqual(
+            ['content', 'forms', 'content-workspace', 'media', 'gallery'],
+            [item['id'] for item in plan],
+        )
         capabilities = {item['id']: item['capabilities'] for item in plan}
         self.assertEqual(['email'], capabilities['forms'])
         self.assertEqual(['storage'], capabilities['media'])
