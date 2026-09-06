@@ -9,6 +9,7 @@ from api.services.media_library_operations import (
     MediaOperationError,
     MultipartSnapshot,
     PartReceipt,
+    ReplacementSnapshot,
     ToolHealth,
     add_part,
     admit_tools,
@@ -18,6 +19,8 @@ from api.services.media_library_operations import (
     complete_multipart,
     derivative_identity,
     destructive_preview,
+    replace_object,
+    rollback_replacement,
     similarity_suggestion,
     verify_audit_chain,
 )
@@ -69,6 +72,38 @@ def test_multipart_rejects_conflicts_gaps_expiry_overflow_and_bad_cancel():
         )
     cancelled = cancel_multipart(snapshot(), expected_version=1)
     assert cancel_multipart(cancelled, expected_version=999) == cancelled
+
+
+def test_replacement_preserves_immutable_history_references_and_revokes_grants():
+    original = ReplacementSnapshot(
+        site_id='base2-site', asset_id='asset-1', current_version=2,
+        current_sha256='a' * 64, authorization_epoch=4,
+        references=('content:hero',),
+    )
+    replaced = replace_object(
+        original, new_sha256='b' * 64, expected_version=2, preserve_references=True
+    )
+    assert replaced.current_version == 3 and replaced.authorization_epoch == 5
+    assert replaced.history == ('a' * 64,) and replaced.references == original.references
+    assert replace_object(
+        replaced, new_sha256='b' * 64, expected_version=3, preserve_references=True
+    ) == replaced
+    rolled_back = rollback_replacement(replaced, expected_version=3)
+    assert rolled_back.current_sha256 == 'a' * 64
+    assert rolled_back.current_version == 4 and rolled_back.authorization_epoch == 6
+
+
+def test_replacement_requires_version_reference_policy_and_rollback_history():
+    original = ReplacementSnapshot(
+        site_id='base2-site', asset_id='asset-1', current_version=1,
+        current_sha256='a' * 64, authorization_epoch=1, references=('content:hero',),
+    )
+    with pytest.raises(MediaOperationError, match='version_conflict'):
+        replace_object(original, new_sha256='b' * 64, expected_version=2, preserve_references=True)
+    with pytest.raises(MediaOperationError, match='reference_policy_required'):
+        replace_object(original, new_sha256='b' * 64, expected_version=1, preserve_references=False)
+    with pytest.raises(MediaOperationError, match='rollback_invalid'):
+        rollback_replacement(original, expected_version=1)
 
 
 def test_tool_freshness_recipe_and_similarity_are_closed_and_deterministic():

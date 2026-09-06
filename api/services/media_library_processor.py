@@ -30,6 +30,31 @@ class ProbeResult:
     tool_ref: str
 
 
+@dataclass(frozen=True)
+class DocumentProbeResult:
+    media_type: str
+    page_count: int
+    active_content: bool
+    tool_ref: str
+
+
+def normalize_document_probe(payload: Any, *, tool_ref: str) -> DocumentProbeResult:
+    if (
+        not isinstance(payload, dict)
+        or set(payload) != {'mediaType', 'pageCount', 'activeContent'}
+        or payload.get('mediaType') != 'application/pdf'
+        or not isinstance(payload.get('pageCount'), int)
+        or isinstance(payload.get('pageCount'), bool)
+        or not 1 <= payload['pageCount'] <= 500
+        or payload.get('activeContent') is not False
+        or not isinstance(tool_ref, str)
+        or not tool_ref.startswith('pypdf:')
+        or len(tool_ref) > 64
+    ):
+        raise MediaProcessorError('media_document_probe_invalid')
+    return DocumentProbeResult('application/pdf', payload['pageCount'], False, tool_ref)
+
+
 def normalize_probe(payload: Any, *, expected_type: str, tool_ref: str) -> ProbeResult:
     """Admit only the small typed subset produced by a sandboxed probe process."""
     if (
@@ -81,11 +106,26 @@ def _placeholder(content: bytes, label: str) -> SafeDerivative:
     return SafeDerivative(output.getvalue(), "image/png", 640, 360)
 
 
+def _waveform(content: bytes) -> SafeDerivative:
+    if not content:
+        raise MediaProcessorError('media_content_empty')
+    image = Image.new('RGB', (640, 160), (16, 24, 40))
+    draw = ImageDraw.Draw(image)
+    samples = hashlib.sha512(content).digest()
+    for index, value in enumerate(samples):
+        x = 12 + index * 9
+        height = 8 + value % 110
+        draw.line((x, 80 - height // 2, x, 80 + height // 2), fill=(167, 139, 250), width=5)
+    output = io.BytesIO()
+    image.save(output, format='PNG', compress_level=9, optimize=False)
+    return SafeDerivative(output.getvalue(), 'image/png', 640, 160)
+
+
 def generate_media_preview(*, content: bytes, media_type: str) -> SafeDerivative:
     if media_type in {"image/jpeg", "image/png", "image/webp", "application/pdf"}:
         return generate_safe_derivative(content=content, media_type=media_type)
     if media_type in {"audio/mpeg", "audio/ogg"}:
-        return _placeholder(content, "AUDIO PREVIEW")
+        return _waveform(content)
     if media_type in {"video/mp4", "video/webm"}:
         return _placeholder(content, "VIDEO PREVIEW")
     raise MediaProcessorError("media_type_invalid")

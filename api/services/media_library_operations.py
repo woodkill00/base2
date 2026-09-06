@@ -83,6 +83,58 @@ class MultipartSnapshot:
     terminal_digest: str = ''
 
 
+@dataclass(frozen=True)
+class ReplacementSnapshot:
+    site_id: str
+    asset_id: str
+    current_version: int
+    current_sha256: str
+    authorization_epoch: int
+    references: tuple[str, ...] = ()
+    history: tuple[str, ...] = ()
+
+
+def replace_object(
+    snapshot: ReplacementSnapshot,
+    *,
+    new_sha256: str,
+    expected_version: int,
+    preserve_references: bool,
+) -> ReplacementSnapshot:
+    validate_digest(snapshot.current_sha256)
+    validate_digest(new_sha256)
+    if expected_version != snapshot.current_version:
+        raise MediaOperationError('media_version_conflict')
+    if hmac.compare_digest(snapshot.current_sha256, new_sha256):
+        return snapshot
+    if snapshot.references and not preserve_references:
+        raise MediaOperationError('media_replacement_reference_policy_required')
+    return replace(
+        snapshot,
+        current_version=snapshot.current_version + 1,
+        current_sha256=new_sha256,
+        authorization_epoch=snapshot.authorization_epoch + 1,
+        history=(*snapshot.history, snapshot.current_sha256),
+        references=snapshot.references if preserve_references else (),
+    )
+
+
+def rollback_replacement(
+    snapshot: ReplacementSnapshot, *, expected_version: int
+) -> ReplacementSnapshot:
+    if expected_version != snapshot.current_version or not snapshot.history:
+        raise MediaOperationError('media_replacement_rollback_invalid')
+    prior = snapshot.history[-1]
+    validate_digest(prior)
+    return replace(
+        snapshot,
+        current_version=snapshot.current_version + 1,
+        current_sha256=prior,
+        authorization_epoch=snapshot.authorization_epoch + 1,
+        history=snapshot.history[:-1],
+    )
+
+
 def add_part(
     snapshot: MultipartSnapshot,
     *,
