@@ -48,15 +48,6 @@ test.beforeEach(async ({ page }, testInfo) => {
     if (url.pathname === '/api/media/v1/assets') return send({ items: assets, nextOffset: null, indexStatus: 'current' });
     return send({});
   });
-  if (testInfo.project.name === 'chromium-large-text') {
-    await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
-  }
-  if (testInfo.project.name === 'chromium-rtl') {
-    await page.addInitScript(() => { document.documentElement.dir = 'rtl'; });
-  }
-  await page.addStyleTag({
-    content: '*,*::before,*::after{animation-duration:0s!important;transition-duration:0s!important;scroll-behavior:auto!important}',
-  });
   test.info().annotations.push({ type: 'failure-buffer', description: JSON.stringify(failures) });
 });
 
@@ -65,6 +56,38 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
   page.on('console', (message) => { if (message.type() === 'error') runtimeErrors.push(message.text()); });
   page.on('requestfailed', (request) => runtimeErrors.push(request.url()));
   await page.goto('/media');
+  if (testInfo.project.name === 'chromium-large-text') {
+    await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
+    expect(await page.locator('html').evaluate((node) => getComputedStyle(node).fontSize)).toBe('32px');
+  }
+  if (testInfo.project.name === 'chromium-rtl') {
+    await page.locator('html').evaluate((node) => { node.dir = 'rtl'; });
+    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  }
+  if (testInfo.project.name === 'chromium-light') {
+    await page.emulateMedia({ colorScheme: 'light' });
+    expect(await page.evaluate(() => matchMedia('(prefers-color-scheme: light)').matches)).toBe(true);
+  }
+  if (testInfo.project.name === 'chromium-high-contrast') {
+    await page.emulateMedia({ forcedColors: 'active' });
+    expect(await page.evaluate(() => matchMedia('(forced-colors: active)').matches)).toBe(true);
+  }
+  if (testInfo.project.name === 'chromium-reduced-motion') {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(true);
+  }
+  if (testInfo.project.name === 'chromium-phone-dpr3') {
+    expect(await page.evaluate(() => [devicePixelRatio, navigator.maxTouchPoints])).toEqual([3, 1]);
+  }
+  if (testInfo.project.name === 'chromium-landscape-touch') {
+    expect(await page.evaluate(() => [innerWidth > innerHeight, navigator.maxTouchPoints > 0])).toEqual([true, true]);
+  }
+  if (testInfo.project.name === 'chromium-400-zoom') {
+    expect(await page.evaluate(() => innerWidth)).toBe(320);
+  }
+  await page.addStyleTag({
+    content: '*,*::before,*::after{animation-duration:0s!important;transition-duration:0s!important;scroll-behavior:auto!important}',
+  });
   await expect(page.getByRole('heading', { name: 'Media library' })).toBeVisible();
   await expect(page.getByRole('button', { name: /select aurora landscape/i })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
@@ -75,7 +98,14 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
   }).length);
   expect(clipped).toBe(0);
   await page.addScriptTag({ content: axeSource });
-  expect(await page.evaluate(async () => (await window.axe.run(document)).violations.map((item) => item.id))).toEqual([]);
+  const axeViolations = await page.evaluate(async () => (await window.axe.run(document)).violations);
+  expect(
+    axeViolations.map((item) => item.id),
+    JSON.stringify(axeViolations.map((item) => ({
+      id: item.id,
+      nodes: item.nodes.map((node) => ({ target: node.target, summary: node.failureSummary })),
+    }))),
+  ).toEqual([]);
   await page.keyboard.press('Tab');
   await expect(page.locator(':focus')).toBeVisible();
   await page.getByRole('button', { name: /select aurora landscape/i }).click();
@@ -83,9 +113,13 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
   expect(runtimeErrors).toEqual([]);
   const shellHeader = page.locator('.app-shell > header');
   await expect(shellHeader).toHaveCSS('position', 'sticky');
+  const appNavigation = page.getByRole('navigation', { name: 'App navigation' });
+  await expect(appNavigation).toHaveCSS('position', 'sticky');
   // Full-page screenshots are stitched from multiple viewports. Chromium otherwise
   // paints sticky content at an arbitrary stitch boundary, obscuring document order.
-  await page.addStyleTag({ content: '.app-shell > header { position: static !important; }' });
+  await page.addStyleTag({
+    content: '.app-shell > header, .app-shell-content > nav { position: static !important; }',
+  });
   await expect(page).toHaveScreenshot(`media-library-${testInfo.project.name}.png`, {
     fullPage: true, animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.01,
   });
@@ -93,6 +127,13 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
 
 declare global {
   interface Window {
-    axe: { run: (root: Document) => Promise<{ violations: Array<{ id: string }> }> };
+    axe: {
+      run: (root: Document) => Promise<{
+        violations: Array<{
+          id: string;
+          nodes: Array<{ target: string[]; failureSummary: string }>;
+        }>;
+      }>;
+    };
   }
 }
