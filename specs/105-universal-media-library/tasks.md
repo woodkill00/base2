@@ -16,8 +16,8 @@
 - [x] B014 Add API, repository, model, processor, UI, and accessibility tests.
 - [x] B015 Add PostgreSQL migration/RLS integration proof.
 - [x] B016 Add media release browser matrix and reviewed screenshot sidecars.
-- [ ] B017 Run all Base2 local gates and repeated critical suites.
-- [ ] B018 Review exact diff, residual risks, and sanitized evidence inventory.
+- [x] B017 Run all Base2 local gates and repeated critical suites.
+- [x] B018 Review exact diff, residual risks, and sanitized evidence inventory.
 - [ ] B019 Obtain exact owner approval and publish one draft PR.
 - [ ] B020 Require hosted checks and independent review.
 - [ ] B021 Obtain separate approval and merge exact reviewed head.
