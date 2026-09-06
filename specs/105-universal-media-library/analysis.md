@@ -117,6 +117,15 @@ prove unknown defects impossible.
     `3400841143d83ffe1fbb3afa7f6c85a32b5529df56579be4a26db9a601a809b1`.
     Hosted checks and final exact-head independent review remain required by
     B020 and B040; merge and provider work remain separately gated.
+20. Hosted push and pull-request matrices at `709f0dd7` completed with 37
+    successful checks, one intentionally non-applicable Storybook publication
+    skip, and zero failures or cancellations. Both frontend, E2E, audit,
+    licensing, smoke, backend, integration, contract, repository, and security
+    variants passed. The runs exposed one non-failing GitHub annotation: the
+    former checkout pin used the deprecated Node 20 action runtime. Every
+    workflow now uses the exact official `actions/checkout` v5 commit
+    `fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09`; CI-policy and surface-drift
+    validation passed before the next exact-head complete gate.
 
 ## Honest residual boundary
 
