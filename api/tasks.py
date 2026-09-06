@@ -23,10 +23,15 @@ from api.services.content_workspace_worker import (
     process_export_job,
     process_import_commit,
     publish_scheduled_record,
-    scan_workspace_asset,
     validate_import_job,
 )
 from api.services.content_workspace_storage import configured_artifact_store
+from api.services.media_library_runtime import (
+    apply_due_media_governance,
+    due_media_exports,
+    process_governed_media_asset as scan_workspace_asset,
+    process_media_export,
+)
 from api.settings import SITE_MANIFEST, settings
 
 
@@ -71,6 +76,14 @@ app.conf.update(
         'workspace-scan-quarantined-media': {
             'task': 'app.replay_workspace_media_scans',
             'schedule': 60.0,
+        },
+        'media-process-exports': {
+            'task': 'app.replay_media_exports',
+            'schedule': 60.0,
+        },
+        'media-apply-reviewed-governance': {
+            'task': 'app.apply_media_governance',
+            'schedule': 300.0,
         },
         'workspace-process-exports': {
             'task': 'app.replay_workspace_exports',
@@ -237,6 +250,35 @@ def replay_workspace_media_scans(limit: int = 10) -> int:
     for site_id, asset_id in assets:
         scan_workspace_asset_task.delay(site_id, asset_id)
     return len(assets)
+
+
+@app.task(
+    name='app.process_media_export',
+    autoretry_for=(Exception,),
+    dont_autoretry_for=(ValueError,),
+    retry_backoff=True,
+    retry_jitter=True,
+    max_retries=3,
+)
+def process_media_export_task(site_id: str, export_id: str) -> str:
+    return process_media_export(
+        site_id=site_id,
+        export_id=UUID(export_id),
+        artifact_store=_workspace_artifact_store(),
+    )
+
+
+@app.task(name='app.replay_media_exports')
+def replay_media_exports(limit: int = 10) -> int:
+    packages = due_media_exports(limit=limit)
+    for site_id, export_id in packages:
+        process_media_export_task.delay(site_id, export_id)
+    return len(packages)
+
+
+@app.task(name='app.apply_media_governance')
+def apply_media_governance(limit: int = 100) -> dict[str, int]:
+    return apply_due_media_governance(limit=limit)
 
 
 @app.task(
