@@ -214,6 +214,7 @@ def runtime_policy() -> dict:
     configured = SITE_MANIFEST.get('media', {})
     allowed = configured.get('allowedTypes', DEFAULT_POLICY['allowedTypes'])
     maximum = configured.get('maxBytes', DEFAULT_POLICY['maximumObjectBytes'])
+    default_maximum = DEFAULT_POLICY.get('maximumObjectBytes')
     if (
         not isinstance(allowed, list)
         or not allowed
@@ -222,11 +223,13 @@ def runtime_policy() -> dict:
         or not isinstance(maximum, int)
         or isinstance(maximum, bool)
         or not 1 <= maximum <= 100 * 1024 * 1024
+        or not isinstance(default_maximum, int)
+        or isinstance(default_maximum, bool)
     ):
         raise RuntimeError('media_policy_invalid')
     return {
         'allowedTypes': allowed,
-        'maximumObjectBytes': min(maximum, int(DEFAULT_POLICY['maximumObjectBytes'])),
+        'maximumObjectBytes': min(maximum, default_maximum),
     }
 
 

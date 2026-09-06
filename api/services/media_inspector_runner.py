@@ -54,7 +54,7 @@ def decode(content: bytes, media_type: str) -> dict:
         if probe.duration_seconds is not None:
             measurements['durationSeconds'] = probe.duration_seconds
         measurements['streams'] = probe.stream_count
-        if probe.width is not None:
+        if probe.width is not None and probe.height is not None:
             measurements['pixels'] = probe.width * probe.height
         decoder_name, decoder_version = 'ffprobe', _ffprobe_version()
     elif media_type == 'application/pdf':
@@ -62,7 +62,7 @@ def decode(content: bytes, media_type: str) -> dict:
     else:
         decoder_name, decoder_version = 'pillow', importlib.metadata.version('Pillow')
     preview = generate_media_preview(content=content, media_type=media_type)
-    if preview.width is not None:
+    if preview.width is not None and preview.height is not None:
         measurements['pixels'] = preview.width * preview.height
     return {
         'decoderName': decoder_name,
