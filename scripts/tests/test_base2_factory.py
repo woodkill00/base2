@@ -35,6 +35,21 @@ class Base2FactoryTests(unittest.TestCase):
                 digests.append(tree_digest(first)); inventories.append(tuple(one['moduleInventory']))
             self.assertEqual(3,len(set(digests))); self.assertEqual(3,len(set(inventories)))
 
+    def test_generation_resolves_transitive_module_dependencies(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            child=Path(temporary)/'child'
+            provenance=generate(
+                profile_path=ROOT/'factory_profiles/blog-portfolio.json', output=child
+            )
+            self.assertIn('content-workspace', provenance['moduleInventory'])
+            profile=json.loads((child/'factory-profile.json').read_text())
+            self.assertEqual(provenance['moduleInventory'], profile['modules'])
+            self.assertLess(
+                profile['modules'].index('content-workspace'),
+                profile['modules'].index('media'),
+            )
+            self.assertEqual('passed', validate(child)['status'])
+
     def test_generation_uses_exact_commit_and_excludes_worktree_untracked_git_cache_logs_receipts(self):
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary); untracked=ROOT/'factory-untracked-sentinel.txt'; untracked.write_text('must-not-export')

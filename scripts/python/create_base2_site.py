@@ -11,6 +11,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 from pathlib import Path, PurePosixPath
@@ -18,6 +19,12 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.python.module_registry import ModuleRegistry
+
+
 GENERATOR_VERSION = '1.0.0'
 PROFILE_KEYS = {'schemaVersion','id','name','description','modules','owner','license','secretRefs'}
 ID = re.compile(r'^[a-z][a-z0-9-]{2,62}$')
@@ -65,6 +72,26 @@ def _safe_member(name: str) -> bool:
     return not path.is_absolute() and '..' not in path.parts and not set(path.parts)&EXCLUDED_PARTS and not name.endswith(('.log','.pyc')) and 'receipt' not in name.lower()
 
 
+def _resolve_module_closure(requested: list[str]) -> list[str]:
+    manifests = {
+        payload['id']: payload
+        for path in sorted((ROOT / 'modules').glob('*/module.json'))
+        for payload in [json.loads(path.read_text(encoding='utf-8'))]
+    }
+    selected = set(requested)
+    pending = list(requested)
+    while pending:
+        module_id = pending.pop()
+        manifest = manifests.get(module_id)
+        if manifest is None:
+            raise FactoryError(f'profile:module_unknown:{module_id}')
+        for dependency in manifest['dependencies']:
+            if dependency not in selected:
+                selected.add(dependency)
+                pending.append(dependency)
+    return [item['id'] for item in ModuleRegistry([manifests[item] for item in selected]).install_plan()]
+
+
 def _archive(commit: str, target: Path) -> None:
     completed=subprocess.run(['git','archive','--format=tar',commit],cwd=ROOT,capture_output=True,check=False)
     if completed.returncode: raise FactoryError('factory:archive_failed')
@@ -85,6 +112,7 @@ def _archive(commit: str, target: Path) -> None:
 
 def generate(*, profile_path: Path, output: Path, commit: str = 'HEAD') -> dict[str, Any]:
     profile=load_profile(profile_path)
+    profile={**profile, 'modules': _resolve_module_closure(profile['modules'])}
     exact=_run(['git','rev-parse','--verify',f'{commit}^{{commit}}'])
     if not re.fullmatch(r'[0-9a-f]{40}',exact): raise FactoryError('factory:commit_invalid')
     tree=_run(['git','show','-s','--format=%T',exact])
