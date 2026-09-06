@@ -322,6 +322,11 @@ def test_media_export_worker_uses_exact_selection_and_completes_atomically(monke
     assert connection.commits == 1 and connection.rollbacks == 0
     statements = ' '.join(sql for sql, _params in cursor.calls)
     assert 'id=ANY(%s::uuid[])' in statements
+    export_query = next(
+        (sql, params) for sql, params in cursor.calls if sql.startswith('SELECT id,original_name')
+    )
+    assert "owner_ref=%s OR visibility IN ('authenticated','public')" in export_query[0]
+    assert export_query[1] == ('site-a', [str(UUID(int=110))], 'user:test')
     assert "SET status='ready'" in statements
     assert 'sitecontent_mediaauditevent' in statements
 

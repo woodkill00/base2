@@ -342,8 +342,9 @@ def process_media_export(
                     """SELECT id,original_name,media_type,byte_size,sha256,status,visibility,updated_at
                        FROM sitecontent_mediaasset
                        WHERE site_id=%s AND id=ANY(%s::uuid[]) AND status<>'purged'
+                         AND (owner_ref=%s OR visibility IN ('authenticated','public'))
                        ORDER BY id LIMIT 10000""",
-                    (site_id, selection['assetIds']),
+                    (site_id, selection['assetIds'], package[3]),
                 )
                 rows = cur.fetchall()
                 if {str(row[0]) for row in rows} != set(selection['assetIds']):

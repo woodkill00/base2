@@ -531,9 +531,11 @@ def update_metadata(
 
 @router.get('/assets/{asset_id}/references')
 def list_references(asset_id: UUID, request: Request):
-    _, tenant = _authorized_scope(request, 'media.read')
+    principal, tenant = _authorized_scope(request, 'media.read')
     try:
-        return get_repository().list_references(site_id=tenant, asset_id=asset_id)
+        return get_repository().list_references(
+            site_id=tenant, asset_id=asset_id, actor_ref=f'user:{principal.user_id}'
+        )
     except ValueError as exc:
         raise _map_operation_error(exc) from exc
     except Exception as exc:
@@ -545,7 +547,9 @@ def get_destructive_preview(asset_id: UUID, request: Request):
     principal, tenant = _authorized_scope(request, 'media.delete')
     _sensitive_guard(request, principal)
     try:
-        return get_repository().destructive_preview(site_id=tenant, asset_id=asset_id)
+        return get_repository().destructive_preview(
+            site_id=tenant, asset_id=asset_id, actor_ref=f'user:{principal.user_id}'
+        )
     except ValueError as exc:
         raise _map_operation_error(exc) from exc
     except Exception as exc:
@@ -686,9 +690,14 @@ def list_jobs(
     asset_id: Annotated[UUID | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 25,
 ):
-    _principal, tenant = _authorized_scope(request, 'media.read')
+    principal, tenant = _authorized_scope(request, 'media.read')
     try:
-        return get_repository().list_jobs(site_id=tenant, asset_id=asset_id, limit=limit)
+        return get_repository().list_jobs(
+            site_id=tenant,
+            actor_ref=f'user:{principal.user_id}',
+            asset_id=asset_id,
+            limit=limit,
+        )
     except Exception as exc:
         raise HTTPException(status_code=503, detail='media_dependency_unavailable') from exc
 

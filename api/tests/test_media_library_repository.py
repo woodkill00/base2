@@ -165,6 +165,7 @@ def test_metadata_update_rolls_back_on_conflict(monkeypatch):
 def test_reference_inventory_and_destructive_preview_are_scope_bound(monkeypatch):
     reference = (UUID(int=2), "content-record", UUID(int=3), "hero", "published", "public", True, 1)
     cursor = SequenceCursor([
+        [(1,)],
         [reference],
         [(2, "ready")],
         [("content-record", UUID(int=3), "hero", "published", True)],
@@ -173,12 +174,27 @@ def test_reference_inventory_and_destructive_preview_are_scope_bound(monkeypatch
     ])
     bind(monkeypatch, Connection(cursor))
     repo = repository.PostgresMediaLibraryRepository()
-    inventory = repo.list_references(site_id="site-a", asset_id=UUID(int=1))
-    preview = repo.destructive_preview(site_id="site-a", asset_id=UUID(int=1))
+    inventory = repo.list_references(
+        site_id="site-a", asset_id=UUID(int=1), actor_ref="user:test"
+    )
+    preview = repo.destructive_preview(
+        site_id="site-a", asset_id=UUID(int=1), actor_ref="user:test"
+    )
     assert inventory["items"][0]["ownerState"] == "published"
     assert preview["allowed"] is False
     assert preview["activeHolds"] == ["legal_hold"]
     assert all(params[0] == "site-a" for _sql, params in cursor.calls)
+    assert sum("owner_ref=%s OR visibility" in sql for sql, _params in cursor.calls) == 2
+
+
+def test_private_reference_inventory_is_hidden_from_another_tenant_member(monkeypatch):
+    cursor = SequenceCursor([[]])
+    bind(monkeypatch, Connection(cursor))
+    with pytest.raises(ValueError, match="media_not_found"):
+        repository.PostgresMediaLibraryRepository().list_references(
+            site_id="site-a", asset_id=UUID(int=1), actor_ref="user:other"
+        )
+    assert cursor.calls[0][1] == ("site-a", str(UUID(int=1)), "user:other")
 
 
 def test_transition_is_versioned_transactional_and_emits_outbox(monkeypatch):
@@ -239,7 +255,9 @@ def test_export_collection_job_and_retrieval_workflows_are_scoped(monkeypatch):
         site_id="site-a", actor_ref="user:test", roles=[], collection_id=UUID(int=10),
         asset_ids=[UUID(int=1)],
     )
-    jobs = repo.list_jobs(site_id="site-a", asset_id=UUID(int=1), limit=10)
+    jobs = repo.list_jobs(
+        site_id="site-a", actor_ref="user:test", asset_id=UUID(int=1), limit=10
+    )
     retry = repo.retry_job(site_id="site-a", job_id=UUID(int=11), actor_ref="user:test")
     status = repo.get_export(site_id="site-a", export_id=UUID(int=8), actor_ref="user:test")
     assert export["status"] == "queued"

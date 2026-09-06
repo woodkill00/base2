@@ -227,8 +227,18 @@ class PostgresMediaLibraryRepository:
                 raise
         return {'id': str(asset_id), 'revision': revision, 'version': next_version}
 
-    def list_references(self, *, site_id: str, asset_id: UUID) -> dict[str, Any]:
+    def list_references(
+        self, *, site_id: str, asset_id: UUID, actor_ref: str
+    ) -> dict[str, Any]:
         with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
+            cur.execute(
+                """SELECT 1 FROM sitecontent_mediaasset
+                   WHERE site_id=%s AND id=%s AND status<>'purged'
+                     AND (owner_ref=%s OR visibility IN ('authenticated','public'))""",
+                (site_id, str(asset_id), actor_ref),
+            )
+            if not cur.fetchone():
+                raise ValueError('media_not_found')
             cur.execute(
                 """SELECT id, owner_type, owner_id, field_key, owner_state,
                           owner_visibility, required, lock_version
@@ -254,12 +264,15 @@ class PostgresMediaLibraryRepository:
             ]
         }
 
-    def destructive_preview(self, *, site_id: str, asset_id: UUID) -> dict[str, Any]:
+    def destructive_preview(
+        self, *, site_id: str, asset_id: UUID, actor_ref: str
+    ) -> dict[str, Any]:
         with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
             cur.execute(
                 """SELECT lock_version, status FROM sitecontent_mediaasset
-                   WHERE site_id=%s AND id=%s AND status<>'purged'""",
-                (site_id, str(asset_id)),
+                   WHERE site_id=%s AND id=%s AND status<>'purged'
+                     AND (owner_ref=%s OR visibility IN ('authenticated','public'))""",
+                (site_id, str(asset_id), actor_ref),
             )
             asset = cur.fetchone()
             if not asset:
@@ -567,8 +580,9 @@ class PostgresMediaLibraryRepository:
                         raise ValueError('media_not_found')
                     cur.execute(
                         """SELECT id FROM sitecontent_mediaasset
-                           WHERE site_id=%s AND id=ANY(%s::uuid[]) AND status<>'purged'""",
-                        (site_id, [str(value) for value in asset_ids]),
+                           WHERE site_id=%s AND id=ANY(%s::uuid[]) AND status<>'purged'
+                             AND (owner_ref=%s OR visibility IN ('authenticated','public'))""",
+                        (site_id, [str(value) for value in asset_ids], actor_ref),
                     )
                     found = {str(row[0]) for row in cur.fetchall()}
                     if found != {str(value) for value in asset_ids}:
@@ -590,20 +604,27 @@ class PostgresMediaLibraryRepository:
                 raise
         return {'collectionId': str(collection_id), 'added': added, 'requested': len(asset_ids)}
 
-    def list_jobs(self, *, site_id: str, asset_id: UUID | None, limit: int):
-        params: list[Any] = [site_id]
+    def list_jobs(
+        self, *, site_id: str, actor_ref: str, asset_id: UUID | None, limit: int
+    ):
+        params: list[Any] = [site_id, actor_ref]
         asset_clause = ''
         if asset_id:
-            asset_clause = 'AND asset_id=%s'
+            asset_clause = 'AND job.asset_id=%s'
             params.append(str(asset_id))
         params.append(limit)
         with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
             cur.execute(
-                f"""SELECT id, asset_id, kind, status, attempt, maximum_attempts,
-                           error_code, available_at, completed_at, updated_at
-                    FROM sitecontent_mediajob
-                    WHERE site_id=%s {asset_clause}
-                    ORDER BY updated_at DESC, id DESC LIMIT %s""",
+                f"""SELECT job.id, job.asset_id, job.kind, job.status, job.attempt,
+                           job.maximum_attempts, job.error_code, job.available_at,
+                           job.completed_at, job.updated_at
+                    FROM sitecontent_mediajob job
+                    JOIN sitecontent_mediaasset asset
+                      ON asset.site_id=job.site_id AND asset.id=job.asset_id
+                    WHERE job.site_id=%s
+                      AND (asset.owner_ref=%s OR asset.visibility IN ('authenticated','public'))
+                      {asset_clause}
+                    ORDER BY job.updated_at DESC, job.id DESC LIMIT %s""",
                 params,
             )
             rows = cur.fetchall()
