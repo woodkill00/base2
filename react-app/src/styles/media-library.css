@@ -55,7 +55,7 @@
 .media-error { border-color: #ef4444; }
 .media-card-actions, .media-bulk-actions { gap: .5rem; }
 .media-card-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 0 .9rem .9rem; }
-.media-card-actions button { inline-size: 100%; min-inline-size: 0; padding-inline: .35rem; }
+.media-card-actions button { inline-size: 100%; min-inline-size: 0; padding-inline: .35rem; font-size: .875rem; }
 .media-bulk-actions { display: flex; flex-wrap: wrap; }
 .media-card-actions button, .media-bulk-actions > button, .media-detail-dialog button {
   min-block-size: 2.75rem;

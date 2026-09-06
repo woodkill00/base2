@@ -21,7 +21,7 @@ def test_media_visual_review_is_schema_valid_exact_and_source_bound():
     assert set(review["assertions"]) == expected_assertions
     assert all(value == "pass" for value in review["assertions"].values())
     member_pattern = schema["properties"]["screenshots"]["items"]["pattern"]
-    assert len(review["screenshots"]) == 12 == len(set(review["screenshots"]))
+    assert len(review["screenshots"]) == 13 == len(set(review["screenshots"]))
     assert all(re.fullmatch(member_pattern, member) for member in review["screenshots"])
     assert review["status"] == "accepted"
     assert review["screenshots"] == sorted(review["screenshots"])

@@ -46,9 +46,37 @@ test.beforeEach(async ({ page }, testInfo) => {
       limits: { maximumObjectBytes: 26214400, maximumBatchFiles: 20, maximumBatchBytes: 104857600 },
     });
     if (url.pathname === '/api/media/v1/assets') return send({ items: assets, nextOffset: null, indexStatus: 'current' });
+    const assetMatch = url.pathname.match(/^\/api\/media\/v1\/assets\/([^/]+)$/);
+    if (assetMatch) {
+      const item = assets.find((asset) => asset.id === assetMatch[1]);
+      return send({ ...item, variants: [{ name: 'safe-preview', mediaType: 'image/png' }] });
+    }
+    if (url.pathname.endsWith('/references')) return send({
+      items: [{ id: 'reference-1', ownerType: 'article', fieldKey: 'hero', ownerState: 'draft' }],
+    });
+    if (url.pathname.endsWith('/destructive-preview')) return send({
+      allowed: true, blockingReferences: [], activeHolds: [], objectCount: 1,
+    });
     return send({});
   });
   test.info().annotations.push({ type: 'failure-buffer', description: JSON.stringify(failures) });
+});
+
+test('media detail preserves safe preview usage and consequence context', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-desktop', 'single deterministic detail proof');
+  await page.goto('/media');
+  await page.getByRole('button', { name: 'View details' }).first().click();
+  const dialog = page.getByRole('dialog', { name: 'Aurora landscape.png' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: 'Usage and references' })).toBeVisible();
+  await expect(dialog.getByText('article · hero · draft')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Preview consequences' }).click();
+  await expect(dialog.getByText('No blocking references or holds.')).toBeVisible();
+  await page.addScriptTag({ content: axeSource });
+  expect((await page.evaluate(async () => (await window.axe.run(document)).violations)).map((item) => item.id)).toEqual([]);
+  await expect(dialog).toHaveScreenshot('media-detail-chromium-desktop.png', {
+    animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.01,
+  });
 });
 
 test('media library is accessible responsive and visually reviewed', async ({ page }, testInfo) => {

@@ -9,8 +9,8 @@
     "sourceCommit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
     "status": { "enum": ["candidate", "accepted", "rejected"] },
     "screenshots": {
-      "type": "array", "minItems": 12, "maxItems": 12, "uniqueItems": true,
-      "items": { "type": "string", "pattern": "^media-library-[a-z0-9-]+-linux\\.png$" }
+      "type": "array", "minItems": 13, "maxItems": 13, "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^media-(?:library|detail)-[a-z0-9-]+-linux\\.png$" }
     },
     "assertions": {
       "type": "object", "additionalProperties": false,
