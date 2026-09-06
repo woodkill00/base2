@@ -59,6 +59,24 @@ prove unknown defects impossible.
    committed credential or provider state. Three local virtual-environment
    links and generated gate artifacts remain untracked and are excluded from
    publication.
+9. Independent code review rejected the green implementation because private
+   visibility was not enforced within a tenant, upload admission was detached
+   from the governed worker path, export selection was not consumed, and cursor
+   signatures were not query-bound. Corrective tasks B025-B034 make each runtime
+   boundary explicit instead of treating helper-level tests as integration proof.
+10. Independent security review additionally found whole-body upload buffering,
+    unused quota/backpressure controls, missing recent-auth age enforcement,
+    insufficient tenant-bound worker writes, stale scanner evidence, and
+    in-process hostile parsing. B026-B030 and B034 require negative integration
+    tests, disposable PostgreSQL migration proof, and measured runtime evidence.
+11. Independent UX review found broken light-theme contrast, incomplete dialog
+    focus management, cosmetic cancellation, incomplete picker integration, and
+    stale screenshots bound to an ancestor. B031 and B035-B037 require real
+    interactions and source-bound reviewed visuals across the existing matrix.
+12. Dependency review found two React Router advisories with no corrected 6.x
+    release. B038 requires the supported patched major and a zero-finding audit;
+    B039-B040 prevent completion until integrated gates and fresh independent
+    review agree on the exact head.
 
 ## Honest residual boundary
 
