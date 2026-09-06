@@ -802,11 +802,27 @@
       "requiredTools": ["node", "npm"]
     },
     {
+      "id": "frontend-lockfile-sync",
+      "command": [
+        "npm",
+        "--prefix",
+        "react-app",
+        "ci",
+        "--dry-run",
+        "--ignore-scripts",
+        "--legacy-peer-deps"
+      ],
+      "required": true,
+      "timeoutSeconds": 180,
+      "dependsOn": ["env-tools"],
+      "requiredTools": ["node", "npm"]
+    },
+    {
       "id": "frontend-lint",
       "command": ["npm", "--prefix", "react-app", "run", "lint"],
       "required": true,
       "timeoutSeconds": 180,
-      "dependsOn": ["env-tools", "account-admin-browser"],
+      "dependsOn": ["frontend-lockfile-sync", "account-admin-browser"],
       "requiredTools": ["node", "npm"]
     },
     {
