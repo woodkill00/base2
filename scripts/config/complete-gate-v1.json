@@ -243,6 +243,7 @@
         "api/tests/test_media_library_processor.py",
         "api/tests/test_media_library_repository.py",
         "api/tests/test_media_library_routes.py",
+        "api/tests/test_upload_capacity.py",
         "api/tests/test_media_library_storage.py",
         "api/tests/test_media_library_worker.py",
         "scripts/tests/test_media_library_fixtures.py",

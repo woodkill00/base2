@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 from api.routes import media_library
 from api.security.request_auth import PublicPrincipal
+from api.security.upload_capacity import UploadCapacityError
 
 
 ASSET_ID = '00000000-0000-0000-0000-000000000110'
@@ -187,6 +188,25 @@ def test_content_transfer_uses_header_grants_and_safe_delivery_headers(monkeypat
     assert response.headers['x-content-type-options'] == 'nosniff'
     assert response.headers['content-security-policy'] == "default-src 'none'; sandbox"
     assert response.headers['referrer-policy'] == 'no-referrer'
+
+
+def test_content_transfer_rejects_exhausted_upload_capacity(monkeypatch):
+    class Exhausted:
+        async def __aenter__(self):
+            raise UploadCapacityError('upload_capacity_exhausted')
+
+        async def __aexit__(self, *_args):
+            return False
+
+    monkeypatch.setattr(media_library, 'upload_completion_slot', lambda: Exhausted())
+    response = TestClient(app).put(
+        f'/api/media/v1/assets/{ASSET_ID}/content',
+        content=b'safe-png',
+        headers={'Upload-Grant': 'g' * 64, 'Content-Type': 'image/png'},
+    )
+    assert response.status_code == 429
+    assert response.json()['detail'] == 'media_upload_capacity_exhausted'
+    assert response.headers['retry-after'] == '2'
 
 
 @pytest.mark.parametrize(

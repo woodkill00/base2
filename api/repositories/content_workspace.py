@@ -1805,8 +1805,9 @@ class PostgresContentWorkspaceRepository:
                     )
                     cur.execute(
                         """SELECT media_type, status FROM sitecontent_mediaasset
-                           WHERE id=%s AND site_id=%s""",
-                        (str(payload['asset_id']), site_id),
+                           WHERE id=%s AND site_id=%s
+                             AND (owner_ref=%s OR visibility IN ('authenticated','public'))""",
+                        (str(payload['asset_id']), site_id, actor_ref),
                     )
                     asset = cur.fetchone()
                     if not asset or asset[1] not in {'validated', 'ready'}:
@@ -1886,10 +1887,16 @@ class PostgresContentWorkspaceRepository:
                         expected_version=expected_version,
                     )
                     cur.execute(
-                        """DELETE FROM sitecontent_assetbinding
-                           WHERE site_id=%s AND record_id=%s AND field_key=%s AND asset_id=%s
-                           RETURNING id""",
-                        (site_id, str(record_id), field_key, str(asset_id)),
+                        """DELETE FROM sitecontent_assetbinding binding
+                           WHERE binding.site_id=%s AND binding.record_id=%s
+                             AND binding.field_key=%s AND binding.asset_id=%s
+                             AND EXISTS (
+                               SELECT 1 FROM sitecontent_mediaasset asset
+                               WHERE asset.site_id=binding.site_id AND asset.id=binding.asset_id
+                                 AND (asset.owner_ref=%s OR asset.visibility IN ('authenticated','public'))
+                             )
+                           RETURNING binding.id""",
+                        (site_id, str(record_id), field_key, str(asset_id), actor_ref),
                     )
                     deleted = cur.fetchone()
                     if not deleted:

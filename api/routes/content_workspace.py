@@ -15,6 +15,7 @@ from api.middleware.tenant import require_tenant
 from api.repositories.content_workspace import PostgresContentWorkspaceRepository
 from api.security.request_auth import require_authenticated_principal
 from api.security.rate_limit import incr_and_check_tenant_detailed
+from api.security.upload_capacity import UploadCapacityError, upload_completion_slot
 from api.services.content_workspace_media import MAX_UPLOAD_BYTES
 from api.services.content_workspace_transfer import MAX_BYTES as MAX_IMPORT_BYTES
 from api.services.content_workspace_storage import (
@@ -959,24 +960,33 @@ async def complete_asset_upload(
     upload_grant: Annotated[str, Header(alias='Upload-Grant', min_length=32, max_length=4096)],
 ):
     principal, tenant = _authorized_scope(request, 'content-workspace.write')
-    received = 0
-    with tempfile.SpooledTemporaryFile(max_size=1024 * 1024, mode='w+b') as stream:
-        async for chunk in request.stream():
-            received += len(chunk)
-            if received > MAX_UPLOAD_BYTES:
-                raise HTTPException(status_code=413, detail='content_limit_exceeded')
-            stream.write(chunk)
-        stream.seek(0)
-        content = stream.read(MAX_UPLOAD_BYTES + 1)
     try:
-        return get_repository().complete_asset_upload(
-            site_id=tenant,
-            asset_id=asset_id,
-            owner_ref=f'user:{principal.user_id}',
-            upload_grant=upload_grant,
-            content=content,
-            artifact_store=get_artifact_store(),
-        )
+        async with upload_completion_slot():
+            received = 0
+            with tempfile.SpooledTemporaryFile(max_size=1024 * 1024, mode='w+b') as stream:
+                async for chunk in request.stream():
+                    received += len(chunk)
+                    if received > MAX_UPLOAD_BYTES:
+                        raise HTTPException(status_code=413, detail='content_limit_exceeded')
+                    stream.write(chunk)
+                stream.seek(0)
+                content = stream.read(MAX_UPLOAD_BYTES + 1)
+            return get_repository().complete_asset_upload(
+                site_id=tenant,
+                asset_id=asset_id,
+                owner_ref=f'user:{principal.user_id}',
+                upload_grant=upload_grant,
+                content=content,
+                artifact_store=get_artifact_store(),
+            )
+    except UploadCapacityError as exc:
+        raise HTTPException(
+            status_code=429,
+            detail='content_upload_capacity_exhausted',
+            headers={'Retry-After': '2'},
+        ) from exc
+    except HTTPException:
+        raise
     except ArtifactIntegrityError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except ValueError as exc:

@@ -169,7 +169,7 @@ class PostgresMediaLibraryRepository:
                     cur.execute(
                         """SELECT lock_version, media_type FROM sitecontent_mediaasset
                            WHERE site_id=%s AND id=%s AND status NOT IN ('purged','soft_deleted')
-                             AND (owner_ref=%s OR visibility IN ('authenticated','public'))
+                             AND owner_ref=%s
                            FOR UPDATE""",
                         (site_id, str(asset_id), actor_ref),
                     )
@@ -218,7 +218,7 @@ class PostgresMediaLibraryRepository:
                         """UPDATE sitecontent_mediaasset
                            SET visibility=%s, lock_version=lock_version+1, updated_at=NOW()
                            WHERE site_id=%s AND id=%s AND lock_version=%s
-                             AND (owner_ref=%s OR visibility IN ('authenticated','public'))
+                             AND owner_ref=%s
                            RETURNING lock_version""",
                         (
                             payload['visibility'], site_id, str(asset_id), expected_version,
@@ -354,7 +354,7 @@ class PostgresMediaLibraryRepository:
                     cur.execute(
                         """SELECT lock_version, status FROM sitecontent_mediaasset
                            WHERE site_id=%s AND id=%s AND status<>'purged'
-                             AND (owner_ref=%s OR visibility IN ('authenticated','public'))
+                             AND owner_ref=%s
                            FOR UPDATE""",
                         (site_id, str(asset_id), actor_ref),
                     )
@@ -425,7 +425,7 @@ class PostgresMediaLibraryRepository:
                                                WHEN %s='ready' THEN NULL ELSE deleted_at END,
                                updated_at=NOW()
                            WHERE site_id=%s AND id=%s AND lock_version=%s
-                             AND (owner_ref=%s OR visibility IN ('authenticated','public'))
+                             AND owner_ref=%s
                            RETURNING lock_version""",
                         (
                             target,
@@ -669,7 +669,7 @@ class PostgresMediaLibraryRepository:
                                SELECT 1 FROM sitecontent_mediaasset asset
                                WHERE asset.site_id=sitecontent_mediajob.site_id
                                  AND asset.id=sitecontent_mediajob.asset_id
-                                 AND (asset.owner_ref=%s OR asset.visibility IN ('authenticated','public'))
+                                 AND asset.owner_ref=%s
                              )
                            RETURNING asset_id, kind, attempt, maximum_attempts""",
                         (site_id, str(job_id), actor_ref),

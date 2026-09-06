@@ -219,6 +219,8 @@ def test_asset_binding_and_unbinding_are_versioned_transactions(monkeypatch):
     )
     assert UUID(bound["id"]) and bound["recordVersion"] == 3
     assert connection.commits == 1
+    assert "owner_ref=%s OR visibility" in cursor.calls[1][0]
+    assert cursor.calls[1][1] == (str(ASSET_ID), "site-a", "user:test")
 
     cursor = QueueCursor(ones=[RECORD, (binding_id,), (3,)])
     connection = bind(monkeypatch, cursor)
@@ -233,6 +235,45 @@ def test_asset_binding_and_unbinding_are_versioned_transactions(monkeypatch):
     )
     assert unbound == {"deleted": True, "recordVersion": 3}
     assert connection.commits == 1
+    assert "EXISTS" in cursor.calls[1][0]
+    assert "asset.owner_ref=%s OR asset.visibility" in cursor.calls[1][0]
+    assert cursor.calls[1][1] == (
+        "site-a", str(RECORD_ID), "hero", str(ASSET_ID), "user:test"
+    )
+
+
+def test_private_asset_binding_and_unbinding_fail_closed_for_non_owner(monkeypatch):
+    repo = repository.PostgresContentWorkspaceRepository()
+
+    cursor = QueueCursor(ones=[RECORD, None])
+    connection = bind(monkeypatch, cursor)
+    with pytest.raises(ValueError, match="content_asset_quarantined"):
+        repo.bind_asset(
+            site_id="site-a",
+            type_key="article",
+            record_id=RECORD_ID,
+            field_key="hero",
+            expected_version=2,
+            actor_ref="user:other",
+            payload={"asset_id": ASSET_ID, "alt_text": "Private image"},
+        )
+    assert connection.rollbacks == 1
+    assert cursor.calls[1][1][-1] == "user:other"
+
+    cursor = QueueCursor(ones=[RECORD, None])
+    connection = bind(monkeypatch, cursor)
+    with pytest.raises(ValueError, match="content_not_found"):
+        repo.unbind_asset(
+            site_id="site-a",
+            type_key="article",
+            record_id=RECORD_ID,
+            field_key="hero",
+            asset_id=ASSET_ID,
+            expected_version=2,
+            actor_ref="user:other",
+        )
+    assert connection.rollbacks == 1
+    assert cursor.calls[1][1][-1] == "user:other"
 
 
 @pytest.mark.parametrize(

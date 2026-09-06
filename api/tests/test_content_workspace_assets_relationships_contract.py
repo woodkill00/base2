@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from api.main import app
 from api.routes import content_workspace
 from api.security.request_auth import PublicPrincipal
+from api.security.upload_capacity import UploadCapacityError
 
 
 class FakeRepository:
@@ -167,6 +168,30 @@ def test_asset_content_upload_rejects_oversize_before_repository(monkeypatch):
     )
     assert response.status_code == 413
     assert response.json()['detail'] == 'content_limit_exceeded'
+    assert not any(item[0] == 'upload-content' for item in FakeRepository.calls)
+
+
+def test_asset_content_upload_rejects_exhausted_capacity(monkeypatch):
+    class Exhausted:
+        async def __aenter__(self):
+            raise UploadCapacityError('upload_capacity_exhausted')
+
+        async def __aexit__(self, *_args):
+            return False
+
+    monkeypatch.setattr(content_workspace, 'upload_completion_slot', lambda: Exhausted())
+    response = TestClient(app).put(
+        f'/api/content/v1/assets/{UUID(int=7104)}/content',
+        headers={
+            'Authorization': 'Bearer synthetic',
+            'X-Tenant-ID': 'site-a',
+            'Upload-Grant': 'opaque-upload-grant-that-is-long-enough',
+        },
+        content=b'safe',
+    )
+    assert response.status_code == 429
+    assert response.json()['detail'] == 'content_upload_capacity_exhausted'
+    assert response.headers['retry-after'] == '2'
     assert not any(item[0] == 'upload-content' for item in FakeRepository.calls)
 
 
