@@ -254,7 +254,7 @@ def test_validated_asset_download_is_grant_tenant_requester_and_derivative_bound
     assert result == {'content': b'safe-png', 'sha256': digest, 'media_type': 'image/png'}
     assert scopes == ['site-a'] and connection.commits == 1
     statements = ' '.join(sql for sql, _ in cursor.calls)
-    assert "asset.status='validated'" in statements
+    assert "asset.status IN ('validated','ready')" in statements
     assert "variant.name='safe'" in statements
     assert 'sitecontent_workspaceauditevent' in statements
 
@@ -298,6 +298,29 @@ def test_asset_metadata_exposes_a_short_grant_only_for_validated_safe_variant(mo
         site_id='site-a', asset_id=asset_id, requester_ref='user:test'
     )
     assert result['expiresIn'] == 60 and result['downloadGrant']
+
+    ready = Cursor(
+        rows=[
+            (
+                asset_id,
+                'original.png',
+                'image/png',
+                10,
+                'a' * 64,
+                'ready',
+                '',
+                {'scanStatus': 'clean'},
+                now,
+                'b' * 64,
+                'image/png',
+            )
+        ]
+    )
+    bind(monkeypatch, Connection(ready))
+    ready_result = repository.PostgresContentWorkspaceRepository().get_asset(
+        site_id='site-a', asset_id=asset_id, requester_ref='user:test'
+    )
+    assert ready_result['expiresIn'] == 60 and ready_result['downloadGrant']
 
     quarantined = Cursor(
         rows=[

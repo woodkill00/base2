@@ -205,7 +205,7 @@ def test_asset_binding_and_unbinding_are_versioned_transactions(monkeypatch):
     repo = repository.PostgresContentWorkspaceRepository()
     binding_id = UUID(int=9104)
     cursor = QueueCursor(
-        ones=[RECORD, ("image/png", "validated"), ("image",), (binding_id,), (3,)]
+        ones=[RECORD, ("image/png", "ready"), ("image",), (binding_id,), (3,)]
     )
     connection = bind(monkeypatch, cursor)
     bound = repo.bind_asset(

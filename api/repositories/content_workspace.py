@@ -1611,7 +1611,7 @@ class PostgresContentWorkspaceRepository:
             'metadata': row[7],
             'updatedAt': row[8].isoformat(),
         }
-        if row[5] == 'validated' and row[9] and row[10]:
+        if row[5] in {'validated', 'ready'} and row[9] and row[10]:
             scope = {
                 'site': site_id,
                 'requester': requester_ref,
@@ -1643,7 +1643,8 @@ class PostgresContentWorkspaceRepository:
                            FROM sitecontent_mediaasset asset
                            JOIN sitecontent_mediavariant variant
                              ON variant.asset_id=asset.id AND variant.name='safe'
-                           WHERE asset.id=%s AND asset.site_id=%s AND asset.status='validated'
+                           WHERE asset.id=%s AND asset.site_id=%s
+                             AND asset.status IN ('validated','ready')
                              AND (asset.owner_ref=%s OR asset.visibility IN ('authenticated','public'))""",
                         (str(asset_id), site_id, requester_ref),
                     )
@@ -1808,7 +1809,7 @@ class PostgresContentWorkspaceRepository:
                         (str(payload['asset_id']), site_id),
                     )
                     asset = cur.fetchone()
-                    if not asset or asset[1] != 'validated':
+                    if not asset or asset[1] not in {'validated', 'ready'}:
                         raise ValueError('content_asset_quarantined')
                     cur.execute(
                         """SELECT field_kind FROM sitecontent_contentfielddefinition
