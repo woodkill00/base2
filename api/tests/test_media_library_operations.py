@@ -146,6 +146,9 @@ def test_exports_neutralize_formulas_and_audit_chain_detects_tampering():
     assert verify_audit_chain(chain)
     chain[0]['event']['status'] = 'tampered'
     assert not verify_audit_chain(chain)
+    assert not verify_audit_chain(
+        [{'sequence': 1, 'previousHash': '0' * 64, 'event': None, 'eventHash': digest}]
+    )
 
 
 def test_destructive_preview_is_non_mutating_and_truthful():

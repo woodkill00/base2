@@ -552,7 +552,7 @@ def create_export(
             site_id=tenant,
             actor_ref=f'user:{principal.user_id}',
             output_format=payload.output_format,
-            projection=payload.projection,
+            projection=[str(field) for field in payload.projection],
             request_digest=request_digest,
             expires_at=datetime.now(UTC) + timedelta(hours=24),
         )

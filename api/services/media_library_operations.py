@@ -296,6 +296,8 @@ def verify_audit_chain(events: list[dict[str, Any]]) -> bool:
         if item.get('sequence') != expected_sequence or item.get('previousHash') != previous:
             return False
         content = item.get('event')
+        if not isinstance(content, dict):
+            return False
         try:
             calculated = audit_hash(
                 previous_hash=previous, sequence=expected_sequence, event=content
