@@ -181,6 +181,14 @@ async function assertUsable(page) {
   expect(tiny).toEqual([]);
 }
 
+async function prepareStableFullPageCapture(page) {
+  await page.evaluate(() => scrollTo(0, 0));
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+  await page.addStyleTag({
+    content: 'header[style*="position: sticky"]{position:static!important}',
+  });
+}
+
 test('workspace release corpus is accessible, responsive, and visually stable', async ({
   page,
 }, testInfo) => {
@@ -197,6 +205,8 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
   ).toEqual([]);
   await page.keyboard.press('Tab');
   await expect(page.locator(':focus')).toBeVisible();
+  await expect(page.locator('header').first()).toHaveCSS('position', 'sticky');
+  await prepareStableFullPageCapture(page);
   await expect(page).toHaveScreenshot(`workspace-records-${testInfo.project.name}.png`, {
     fullPage: true,
     animations: 'disabled',
