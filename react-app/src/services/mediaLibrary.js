@@ -52,6 +52,31 @@ export const mediaLibraryAPI = {
         signal,
       })
     ),
+  references: async (assetId, { signal } = {}) =>
+    unwrap(await apiClient.get(`/media/v1/assets/${encoded(assetId)}/references`, { signal })),
+  destructivePreview: async (assetId, { signal } = {}) =>
+    unwrap(
+      await apiClient.get(`/media/v1/assets/${encoded(assetId)}/destructive-preview`, { signal })
+    ),
+  transition: async (assetId, version, target, idempotencyKey, { signal } = {}) =>
+    unwrap(
+      await apiClient.post(
+        `/media/v1/assets/${encoded(assetId)}/lifecycle`,
+        { target },
+        {
+          headers: { 'If-Match': `"${version}"`, 'Idempotency-Key': idempotencyKey },
+          signal,
+        }
+      )
+    ),
+  createExport: async (outputFormat, projection, idempotencyKey, { signal } = {}) =>
+    unwrap(
+      await apiClient.post(
+        '/media/v1/exports',
+        { outputFormat, projection },
+        { headers: { 'Idempotency-Key': idempotencyKey }, signal }
+      )
+    ),
 };
 
 export async function sha256File(file) {

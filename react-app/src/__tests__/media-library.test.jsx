@@ -8,6 +8,11 @@ vi.mock('../services/mediaLibrary', () => ({
   mediaLibraryAPI: {
     capabilities: vi.fn(),
     assets: vi.fn(),
+    asset: vi.fn(),
+    references: vi.fn(),
+    destructivePreview: vi.fn(),
+    transition: vi.fn(),
+    createExport: vi.fn(),
     createUpload: vi.fn(),
     uploadContent: vi.fn(),
   },
@@ -41,6 +46,14 @@ beforeEach(() => {
       status: 'ready', version: 1,
     }],
   });
+  mediaLibraryAPI.asset.mockResolvedValue({
+    id: 'asset-1', filename: 'safe.png', mediaType: 'image/png', byteSize: 1024,
+    status: 'ready', version: 1, variants: [],
+  });
+  mediaLibraryAPI.references.mockResolvedValue({ items: [] });
+  mediaLibraryAPI.destructivePreview.mockResolvedValue({ allowed: true });
+  mediaLibraryAPI.transition.mockResolvedValue({ status: 'archived', version: 2 });
+  mediaLibraryAPI.createExport.mockResolvedValue({ status: 'queued' });
 });
 
 it('renders an accessible searchable selectable library', async () => {
@@ -76,4 +89,33 @@ it('shows a safe failure state and preserves the shell', async () => {
   renderPage();
   expect(await screen.findByRole('alert')).toHaveTextContent('temporarily unavailable');
   expect(screen.queryByText(/private database detail/i)).not.toBeInTheDocument();
+});
+
+it('opens an accessible detail and usage dialog with consequence preview', async () => {
+  const result = renderPage();
+  fireEvent.click(await screen.findByRole('button', { name: 'View details' }));
+  expect(await screen.findByRole('dialog', { name: 'safe.png' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Usage and references' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Preview consequences' }));
+  expect(await screen.findByText('No blocking references or holds.')).toBeInTheDocument();
+  expect(await axe(result.container)).toHaveNoViolations();
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+});
+
+it('reports truthful partial bulk results and queues a bounded export', async () => {
+  renderPage();
+  fireEvent.click(await screen.findByRole('button', { name: 'Select safe.png' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Archive' }));
+  expect(await screen.findByText('1 succeeded; 0 blocked or failed.')).toBeInTheDocument();
+  expect(mediaLibraryAPI.transition).toHaveBeenCalledWith(
+    'asset-1', 1, 'archived', 'media-archived-asset-1-1'
+  );
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Select safe.png' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }));
+  expect(await screen.findByText(/Export queued/)).toBeInTheDocument();
+  expect(mediaLibraryAPI.createExport).toHaveBeenCalledWith(
+    'csv', ['id', 'filename', 'mediaType', 'status', 'visibility'], 'media-export-asset-1'
+  );
 });

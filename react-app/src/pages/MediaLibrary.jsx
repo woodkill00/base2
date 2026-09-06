@@ -9,17 +9,11 @@ import '../styles/media-library.css';
 const STATE_OPTIONS = ['', 'ready', 'processing', 'quarantined', 'failed', 'archived'];
 const statusLabel = (value) => String(value || 'unknown').replaceAll('_', ' ');
 
-function AssetCard({ asset, selected, onSelect }) {
+function AssetCard({ asset, selected, onSelect, onOpen }) {
   const kind = asset.mediaType?.split('/')[0] || 'file';
   return (
     <article className={`media-asset-card${selected ? ' is-selected' : ''}`}>
-      <button
-        type="button"
-        className="media-asset-hitbox"
-        aria-pressed={selected}
-        aria-label={`${selected ? 'Deselect' : 'Select'} ${asset.filename}`}
-        onClick={() => onSelect(asset.id)}
-      >
+      <div className="media-asset-hitbox">
         <span className="media-asset-preview" aria-hidden="true">
           <span>{kind === 'image' ? 'IMG' : kind === 'video' ? 'VID' : kind === 'audio' ? 'AUD' : 'DOC'}</span>
         </span>
@@ -28,7 +22,18 @@ function AssetCard({ asset, selected, onSelect }) {
           <span>{asset.mediaType} · {Math.max(1, Math.round(asset.byteSize / 1024))} KB</span>
           <span className={`media-status media-status-${asset.status}`}>{statusLabel(asset.status)}</span>
         </span>
-      </button>
+        <span className="media-card-actions">
+          <button
+            type="button"
+            aria-pressed={selected}
+            aria-label={`${selected ? 'Deselect' : 'Select'} ${asset.filename}`}
+            onClick={() => onSelect(asset.id)}
+          >
+            {selected ? 'Selected' : 'Select'}
+          </button>
+          <button type="button" onClick={() => onOpen(asset)}>View details</button>
+        </span>
+      </div>
     </article>
   );
 }
@@ -44,6 +49,11 @@ export default function MediaLibrary() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [uploadQueue, setUploadQueue] = useState([]);
+  const [activeAsset, setActiveAsset] = useState(null);
+  const [references, setReferences] = useState([]);
+  const [preview, setPreview] = useState(null);
+  const [detailError, setDetailError] = useState('');
+  const [actionStatus, setActionStatus] = useState('');
 
   const load = useCallback((signal) => {
     setLoading(true);
@@ -85,32 +95,94 @@ export default function MediaLibrary() {
     return next;
   });
 
+  const uploadOne = async (file, index) => {
+    const update = (values) => setUploadQueue((current) => current.map((item, itemIndex) =>
+      itemIndex === index ? { ...item, ...values } : item));
+    try {
+      if (!allowedTypes.includes(file.type)) throw new Error('media_type_invalid');
+      const sha256 = await sha256File(file);
+      update({ status: 'uploading', progress: 1 });
+      const admitted = await mediaLibraryAPI.createUpload({
+        filename: file.name, mediaType: file.type, byteSize: file.size, sha256,
+      });
+      await mediaLibraryAPI.uploadContent(admitted.id, file, admitted.uploadGrant, {
+        onUploadProgress: (event) => update({
+          progress: event.total ? Math.min(99, Math.round((event.loaded / event.total) * 100)) : 50,
+        }),
+      });
+      update({ status: 'quarantined', progress: 100 });
+    } catch (caught) {
+      update({ status: 'failed', progress: 0 });
+    }
+  };
+
   const uploadFiles = async (files) => {
     const incoming = Array.from(files).slice(0, capabilities?.limits?.maximumBatchFiles || 20);
-    const queue = incoming.map((file) => ({ name: file.name, progress: 0, status: 'checking' }));
+    const queue = incoming.map((file) => ({ file, name: file.name, progress: 0, status: 'checking' }));
     setUploadQueue(queue);
     for (let index = 0; index < incoming.length; index += 1) {
-      const file = incoming[index];
-      const update = (values) => setUploadQueue((current) => current.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, ...values } : item));
-      try {
-        if (!allowedTypes.includes(file.type)) throw new Error('media_type_invalid');
-        const sha256 = await sha256File(file);
-        update({ status: 'uploading', progress: 1 });
-        const admitted = await mediaLibraryAPI.createUpload({
-          filename: file.name, mediaType: file.type, byteSize: file.size, sha256,
-        });
-        await mediaLibraryAPI.uploadContent(admitted.id, file, admitted.uploadGrant, {
-          onUploadProgress: (event) => update({
-            progress: event.total ? Math.min(99, Math.round((event.loaded / event.total) * 100)) : 50,
-          }),
-        });
-        update({ status: 'quarantined', progress: 100 });
-      } catch (caught) {
-        update({ status: 'failed', progress: 0 });
-      }
+      await uploadOne(incoming[index], index);
     }
     await load();
+  };
+
+  const openAsset = async (asset) => {
+    setActiveAsset(asset);
+    setReferences([]);
+    setPreview(null);
+    setDetailError('');
+    try {
+      const [detail, usage] = await Promise.all([
+        mediaLibraryAPI.asset(asset.id),
+        mediaLibraryAPI.references(asset.id),
+      ]);
+      setActiveAsset(detail);
+      setReferences(Array.isArray(usage?.items) ? usage.items : []);
+    } catch (caught) {
+      setDetailError('Details are temporarily unavailable. No media was changed.');
+    }
+  };
+
+  const loadPreview = async () => {
+    try {
+      setPreview(await mediaLibraryAPI.destructivePreview(activeAsset.id));
+    } catch (caught) {
+      setDetailError('The consequence preview could not be loaded. The action remains blocked.');
+    }
+  };
+
+  const transitionSelected = async (target) => {
+    const chosen = assets.filter((item) => selected.has(item.id));
+    setActionStatus(`Starting ${target} preview for ${chosen.length} item${chosen.length === 1 ? '' : 's'}…`);
+    const outcomes = [];
+    for (const item of chosen) {
+      try {
+        const consequence = await mediaLibraryAPI.destructivePreview(item.id);
+        if (!consequence.allowed && target !== 'archived') throw new Error('blocked');
+        await mediaLibraryAPI.transition(
+          item.id, item.version, target, `media-${target}-${item.id}-${item.version}`
+        );
+        outcomes.push(true);
+      } catch (caught) {
+        outcomes.push(false);
+      }
+    }
+    setActionStatus(`${outcomes.filter(Boolean).length} succeeded; ${outcomes.filter((item) => !item).length} blocked or failed.`);
+    setSelected(new Set());
+    await load();
+  };
+
+  const exportSelected = async () => {
+    setActionStatus('Creating an authorized CSV export…');
+    try {
+      await mediaLibraryAPI.createExport(
+        'csv', ['id', 'filename', 'mediaType', 'status', 'visibility'],
+        `media-export-${Array.from(selected).sort().join('-')}`
+      );
+      setActionStatus('Export queued. It will expire after the retrieval window.');
+    } catch (caught) {
+      setActionStatus('Export could not be queued. No data was changed.');
+    }
   };
 
   return (
@@ -155,6 +227,15 @@ export default function MediaLibrary() {
           <p className="media-selection" aria-live="polite">{selected.size} selected</p>
         </GlassCard>
 
+        {selected.size ? (
+          <section className="media-bulk-actions" aria-label="Selected media actions">
+            <GlassButton type="button" variant="secondary" onClick={() => transitionSelected('archived')}>Archive</GlassButton>
+            <GlassButton type="button" variant="secondary" onClick={exportSelected}>Export CSV</GlassButton>
+            <button type="button" onClick={() => setSelected(new Set())}>Clear selection</button>
+          </section>
+        ) : null}
+        {actionStatus ? <p className="media-action-status" role="status">{actionStatus}</p> : null}
+
         {uploadQueue.length ? (
           <section className="media-upload-queue" aria-labelledby="upload-heading">
             <h2 id="upload-heading">Upload queue</h2>
@@ -162,6 +243,16 @@ export default function MediaLibrary() {
               <div key={`${item.name}-${index}`} className="media-upload-item">
                 <span>{item.name}</span><progress value={item.progress} max="100" />
                 <span aria-live="polite">{statusLabel(item.status)}</span>
+                {item.status === 'failed' ? (
+                  <button type="button" onClick={() => uploadOne(item.file, index)}>Retry</button>
+                ) : null}
+                {['checking', 'failed'].includes(item.status) ? (
+                  <button
+                    type="button"
+                    onClick={() => setUploadQueue((current) => current.map((entry, itemIndex) =>
+                      itemIndex === index ? { ...entry, status: 'cancelled', progress: 0 } : entry))}
+                  >Cancel</button>
+                ) : null}
               </div>
             ))}
           </section>
@@ -178,9 +269,51 @@ export default function MediaLibrary() {
         {!loading && assets.length ? (
           <section className="media-grid" aria-label="Media assets">
             {assets.map((asset) => (
-              <AssetCard key={asset.id} asset={asset} selected={selected.has(asset.id)} onSelect={toggle} />
+              <AssetCard
+                key={asset.id}
+                asset={asset}
+                selected={selected.has(asset.id)}
+                onSelect={toggle}
+                onOpen={openAsset}
+              />
             ))}
           </section>
+        ) : null}
+        {activeAsset ? (
+          <div className="media-dialog-backdrop">
+            <section className="media-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="media-detail-title">
+              <header>
+                <div>
+                  <p className="media-eyebrow">Asset detail</p>
+                  <h2 id="media-detail-title">{activeAsset.filename}</h2>
+                </div>
+                <button type="button" autoFocus onClick={() => setActiveAsset(null)}>Close</button>
+              </header>
+              <div className="media-detail-layout">
+                <div className="media-safe-preview" role="img" aria-label={`Safe preview placeholder for ${activeAsset.filename}`}>
+                  {activeAsset.mediaType?.split('/')[0]?.toUpperCase() || 'FILE'}
+                </div>
+                <dl>
+                  <dt>Status</dt><dd>{statusLabel(activeAsset.status)}</dd>
+                  <dt>Type</dt><dd>{activeAsset.mediaType}</dd>
+                  <dt>Size</dt><dd>{activeAsset.byteSize} bytes</dd>
+                  <dt>Version</dt><dd>{activeAsset.version}</dd>
+                </dl>
+              </div>
+              <section aria-labelledby="usage-heading">
+                <h3 id="usage-heading">Usage and references</h3>
+                {references.length ? (
+                  <ul>{references.map((item) => <li key={item.id}>{item.ownerType} · {item.fieldKey} · {item.ownerState}</li>)}</ul>
+                ) : <p>No visible references.</p>}
+              </section>
+              <section aria-labelledby="consequence-heading">
+                <h3 id="consequence-heading">Archive and deletion safety</h3>
+                <button type="button" onClick={loadPreview}>Preview consequences</button>
+                {preview ? <p role="status">{preview.allowed ? 'No blocking references or holds.' : 'Blocked by references or retention holds.'}</p> : null}
+              </section>
+              {detailError ? <p role="alert">{detailError}</p> : null}
+            </section>
+          </div>
         ) : null}
       </div>
     </AppShell>

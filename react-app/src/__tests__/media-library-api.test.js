@@ -32,4 +32,22 @@ describe('media library API', () => {
     });
     expect(result.code).not.toContain('private');
   });
+
+  it('binds lifecycle and export mutations to replay-safe headers', async () => {
+    apiClient.post.mockResolvedValue({ data: { status: 'queued' } });
+    await mediaLibraryAPI.transition('asset/id', 4, 'archived', 'request-123');
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/media/v1/assets/asset%2Fid/lifecycle',
+      { target: 'archived' },
+      expect.objectContaining({
+        headers: { 'If-Match': '"4"', 'Idempotency-Key': 'request-123' },
+      })
+    );
+    await mediaLibraryAPI.createExport('csv', ['id'], 'export-123');
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/media/v1/exports',
+      { outputFormat: 'csv', projection: ['id'] },
+      expect.objectContaining({ headers: { 'Idempotency-Key': 'export-123' } })
+    );
+  });
 });
