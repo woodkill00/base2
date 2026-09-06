@@ -2,12 +2,37 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AppShell from '../components/glass/AppShell';
 import GlassButton from '../components/glass/GlassButton';
 import GlassCard from '../components/glass/GlassCard';
+import MediaPicker from '../components/media/MediaPicker';
 import Navigation from '../components/Navigation';
 import { mediaLibraryAPI, normalizeMediaError, sha256File } from '../services/mediaLibrary';
 import '../styles/media-library.css';
 
 const STATE_OPTIONS = ['', 'ready', 'processing', 'quarantined', 'failed', 'archived'];
 const statusLabel = (value) => String(value || 'unknown').replaceAll('_', ' ');
+const dialogFocusable = [
+  'button:not([disabled])', 'input:not([disabled])', 'select:not([disabled])',
+  'textarea:not([disabled])', 'a[href]', '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+const trapDialogFocus = (event, root, onEscape) => {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    onEscape();
+    return;
+  }
+  if (event.key !== 'Tab' || !root) return;
+  const nodes = [...root.querySelectorAll(dialogFocusable)];
+  if (!nodes.length) return;
+  const first = nodes[0];
+  const last = nodes[nodes.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+};
 
 function AssetCard({ asset, selected, onSelect, onOpen }) {
   const kind = asset.mediaType?.split('/')[0] || 'file';
@@ -40,8 +65,16 @@ function AssetCard({ asset, selected, onSelect, onOpen }) {
 
 export default function MediaLibrary() {
   const fileInput = useRef(null);
+  const uploadControllers = useRef(new Map());
+  const cancelledUploads = useRef(new Set());
+  const offlinePausedUploads = useRef(new Set());
   const detailOpener = useRef(null);
+  const detailDialog = useRef(null);
   const closeButton = useRef(null);
+  const confirmationDialog = useRef(null);
+  const confirmationButton = useRef(null);
+  const confirmationOpener = useRef(null);
+  const pickerOpener = useRef(null);
   const [capabilities, setCapabilities] = useState(null);
   const [assets, setAssets] = useState([]);
   const [nextCursor, setNextCursor] = useState(null);
@@ -63,6 +96,10 @@ export default function MediaLibrary() {
   const [collections, setCollections] = useState([]);
   const [collectionId, setCollectionId] = useState('');
   const [confirmationTarget, setConfirmationTarget] = useState('');
+  const [bulkReview, setBulkReview] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerStatus, setPickerStatus] = useState('');
+  const [networkOnline, setNetworkOnline] = useState(() => navigator.onLine !== false);
 
   const load = useCallback((signal) => {
     setLoading(true);
@@ -128,36 +165,95 @@ export default function MediaLibrary() {
     return next;
   });
 
-  const uploadOne = async (file, index) => {
-    const update = (values) => setUploadQueue((current) => current.map((item, itemIndex) =>
-      itemIndex === index ? { ...item, ...values } : item));
+  const uploadOne = async (file, queueId) => {
+    const update = (values) => setUploadQueue((current) => current.map((item) =>
+      item.id === queueId ? { ...item, ...values } : item));
+    if (cancelledUploads.current.has(queueId) || navigator.onLine === false) {
+      update({ status: navigator.onLine === false ? 'paused_offline' : 'cancelled', progress: 0 });
+      return;
+    }
+    const controller = new AbortController();
+    uploadControllers.current.set(queueId, controller);
     try {
       if (!allowedTypes.includes(file.type)) throw new Error('media_type_invalid');
       const sha256 = await sha256File(file);
+      if (cancelledUploads.current.has(queueId)) return;
       update({ status: 'uploading', progress: 1 });
       const admitted = await mediaLibraryAPI.createUpload({
         filename: file.name, mediaType: file.type, byteSize: file.size, sha256,
-      });
+      }, { signal: controller.signal });
+      if (cancelledUploads.current.has(queueId)) return;
+      update({ expiresAt: admitted.expiresAt || '' });
       await mediaLibraryAPI.uploadContent(admitted.id, file, admitted.uploadGrant, {
+        signal: controller.signal,
         onUploadProgress: (event) => update({
           progress: event.total ? Math.min(99, Math.round((event.loaded / event.total) * 100)) : 50,
         }),
       });
       update({ status: 'quarantined', progress: 100 });
     } catch (caught) {
-      update({ status: 'failed', progress: 0 });
+      if (offlinePausedUploads.current.has(queueId)) {
+        update({ status: 'paused_offline', progress: 0 });
+      } else if (cancelledUploads.current.has(queueId) || caught?.name === 'CanceledError') {
+        update({ status: 'cancelled', progress: 0 });
+      } else {
+        const normalized = normalizeMediaError(caught);
+        update({ status: normalized.code === 'media_upload_expired' ? 'expired' : 'failed', progress: 0 });
+      }
+    } finally {
+      uploadControllers.current.delete(queueId);
     }
   };
 
   const uploadFiles = async (files) => {
     const incoming = Array.from(files).slice(0, capabilities?.limits?.maximumBatchFiles || 20);
-    const queue = incoming.map((file) => ({ file, name: file.name, progress: 0, status: 'checking' }));
+    const queue = incoming.map((file, index) => ({
+      id: `${file.name}-${file.size}-${file.lastModified}-${index}-${Date.now()}`,
+      file, name: file.name, progress: 0, status: networkOnline ? 'checking' : 'paused_offline',
+    }));
     setUploadQueue(queue);
-    for (let index = 0; index < incoming.length; index += 1) {
-      await uploadOne(incoming[index], index);
+    for (const item of queue) {
+      if (!cancelledUploads.current.has(item.id)) await uploadOne(item.file, item.id);
     }
     await load();
   };
+
+  const cancelUpload = (queueId) => {
+    cancelledUploads.current.add(queueId);
+    uploadControllers.current.get(queueId)?.abort();
+    setUploadQueue((current) => current.map((item) => item.id === queueId
+      ? { ...item, status: 'cancelled', progress: 0 } : item));
+  };
+
+  const resumeUpload = (item) => {
+    cancelledUploads.current.delete(item.id);
+    offlinePausedUploads.current.delete(item.id);
+    setUploadQueue((current) => current.map((entry) => entry.id === item.id
+      ? { ...entry, status: 'checking', progress: 0 } : entry));
+    uploadOne(item.file, item.id);
+  };
+
+  useEffect(() => {
+    const controllers = uploadControllers.current;
+    const onOffline = () => {
+      setNetworkOnline(false);
+      setUploadQueue((current) => {
+        current.filter((item) => ['checking', 'uploading'].includes(item.status))
+          .forEach((item) => offlinePausedUploads.current.add(item.id));
+        return current.map((item) => ['checking', 'uploading'].includes(item.status)
+          ? { ...item, status: 'paused_offline', progress: 0 } : item);
+      });
+      uploadControllers.current.forEach((controller) => controller.abort());
+    };
+    const onOnline = () => setNetworkOnline(true);
+    window.addEventListener('offline', onOffline);
+    window.addEventListener('online', onOnline);
+    return () => {
+      window.removeEventListener('offline', onOffline);
+      window.removeEventListener('online', onOnline);
+      controllers.forEach((controller) => controller.abort());
+    };
+  }, []);
 
   const openAsset = async (asset) => {
     detailOpener.current = document.activeElement;
@@ -206,15 +302,23 @@ export default function MediaLibrary() {
     }
   };
 
+  const activeAssetId = activeAsset?.id;
   useEffect(() => {
-    if (!activeAsset) return undefined;
+    if (!activeAssetId) return undefined;
+    const backgroundNodes = [...document.querySelectorAll(
+      '.app-shell > header, .app-shell-content > nav, .app-shell-footer, .media-library > :not(.media-dialog-backdrop)'
+    )];
+    backgroundNodes.forEach((node) => { node.inert = true; });
     closeButton.current?.focus();
-    const onKeyDown = (event) => {
-      if (event.key === 'Escape') closeAsset();
+    return () => {
+      backgroundNodes.forEach((node) => { node.inert = false; });
     };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [activeAsset?.id, closeAsset]);
+  }, [activeAssetId, closeAsset]);
+
+  useEffect(() => {
+    if (!confirmationTarget) return;
+    confirmationButton.current?.focus();
+  }, [confirmationTarget]);
 
   const loadPreview = async () => {
     try {
@@ -228,22 +332,44 @@ export default function MediaLibrary() {
   };
 
   const prepareDetailTransition = async (target) => {
+    confirmationOpener.current = document.activeElement;
     const consequence = await loadPreview();
-    if (!consequence || (target === 'soft_deleted' && !consequence.allowed)) {
+    if (!consequence || !consequence.allowed) {
       setDetailError('The requested action remains blocked by its consequence review.');
       return;
     }
     setConfirmationTarget(target);
   };
 
-  const transitionSelected = async (target) => {
+  const cancelDetailTransition = () => {
+    setConfirmationTarget('');
+    requestAnimationFrame(() => confirmationOpener.current?.focus());
+  };
+
+  const prepareBulkTransition = async (target) => {
     const chosen = assets.filter((item) => selected.has(item.id));
-    setActionStatus(`Starting ${target} preview for ${chosen.length} item${chosen.length === 1 ? '' : 's'}…`);
-    const outcomes = [];
+    setActionStatus(`Loading ${target} consequences for ${chosen.length} item${chosen.length === 1 ? '' : 's'}…`);
+    const reviewed = [];
     for (const item of chosen) {
       try {
         const consequence = await mediaLibraryAPI.destructivePreview(item.id);
-        if (!consequence.allowed && target !== 'archived') throw new Error('blocked');
+        reviewed.push({ asset: item, consequence, available: true });
+      } catch (caught) {
+        reviewed.push({ asset: item, consequence: null, available: false });
+      }
+    }
+    setBulkReview({ target, items: reviewed });
+    setActionStatus('Review every item below before confirming. No media has changed.');
+  };
+
+  const confirmBulkTransition = async () => {
+    if (!bulkReview) return;
+    const { target, items } = bulkReview;
+    const outcomes = [];
+    for (const review of items) {
+      const item = review.asset;
+      try {
+        if (!review.available || !review.consequence?.allowed) throw new Error('blocked');
         await mediaLibraryAPI.transition(
           item.id, item.version, target, `media-${target}-${item.id}-${item.version}`
         );
@@ -253,6 +379,7 @@ export default function MediaLibrary() {
       }
     }
     setActionStatus(`${outcomes.filter(Boolean).length} succeeded; ${outcomes.filter((item) => !item).length} blocked or failed.`);
+    setBulkReview(null);
     setSelected(new Set());
     await load();
   };
@@ -309,9 +436,14 @@ export default function MediaLibrary() {
             <h1>Media library</h1>
             <p>Upload, inspect, organize, and safely reuse site assets.</p>
           </div>
-          <GlassButton type="button" onClick={() => fileInput.current?.click()}>
-            Add media
-          </GlassButton>
+          <div className="media-header-actions">
+            <GlassButton type="button" onClick={() => fileInput.current?.click()}>
+              Add media
+            </GlassButton>
+            <button ref={pickerOpener} type="button" onClick={() => setPickerOpen(true)}>
+              Choose existing media
+            </button>
+          </div>
           <input
             ref={fileInput}
             className="sr-only"
@@ -323,6 +455,29 @@ export default function MediaLibrary() {
             aria-label="Choose media files"
           />
         </header>
+
+        <section
+          className="media-drop-zone"
+          aria-label="Add media by dropping or pasting files"
+          tabIndex="0"
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={(event) => {
+            event.preventDefault();
+            if (event.dataTransfer.files?.length) uploadFiles(event.dataTransfer.files);
+          }}
+          onPaste={(event) => {
+            const files = Array.from(event.clipboardData?.items || [])
+              .filter((item) => item.kind === 'file')
+              .map((item) => item.getAsFile())
+              .filter(Boolean);
+            if (files.length) uploadFiles(files);
+          }}
+        >
+          <strong>Drop files here, or focus this area and paste files.</strong>
+          <span>The Add media button provides the equivalent keyboard file chooser.</span>
+        </section>
+        {!networkOnline ? <p className="media-notice" role="status">Offline. Active uploads are paused and can resume when the connection returns.</p> : null}
+        {pickerStatus ? <p className="media-action-status" role="status">{pickerStatus}</p> : null}
 
         <GlassCard className="media-toolbar">
           <form onSubmit={(event) => { event.preventDefault(); setSubmittedQuery(query.trim()); }} role="search">
@@ -343,7 +498,7 @@ export default function MediaLibrary() {
 
         {selected.size ? (
           <section className="media-bulk-actions" aria-label="Selected media actions">
-            <GlassButton type="button" variant="secondary" onClick={() => transitionSelected('archived')}>Archive</GlassButton>
+            <GlassButton type="button" variant="secondary" onClick={() => prepareBulkTransition('archived')}>Review archive</GlassButton>
             <GlassButton type="button" variant="secondary" onClick={exportSelected}>Export CSV</GlassButton>
             {collections.length ? <>
               <label className="media-collection-choice">
@@ -358,23 +513,37 @@ export default function MediaLibrary() {
             <button type="button" onClick={() => setSelected(new Set())}>Clear selection</button>
           </section>
         ) : null}
+        {bulkReview ? (
+          <section className="media-bulk-review" role="region" aria-live="polite" aria-labelledby="bulk-review-heading">
+            <h2 id="bulk-review-heading">Confirm bulk {statusLabel(bulkReview.target)}</h2>
+            <p>Review the exact server-reported consequences. Blocked or unavailable items will not change.</p>
+            <ul>{bulkReview.items.map(({ asset, consequence, available }) => (
+              <li key={asset.id}>
+                <strong>{asset.filename}</strong>: {!available ? 'preview unavailable'
+                  : consequence.allowed ? 'allowed' : 'blocked'}; {consequence?.blockingReferences?.length || 0} blocking references; {consequence?.activeHolds?.length || 0} active holds; {consequence?.objectCount ?? 0} objects affected.
+              </li>
+            ))}</ul>
+            <button type="button" onClick={confirmBulkTransition}>Confirm permitted items</button>
+            <button type="button" onClick={() => setBulkReview(null)}>Cancel bulk action</button>
+          </section>
+        ) : null}
         {actionStatus ? <p className="media-action-status" role="status">{actionStatus}</p> : null}
 
         {uploadQueue.length ? (
           <section className="media-upload-queue" aria-labelledby="upload-heading">
             <h2 id="upload-heading">Upload queue</h2>
-            {uploadQueue.map((item, index) => (
-              <div key={`${item.name}-${index}`} className="media-upload-item">
-                <span>{item.name}</span><progress value={item.progress} max="100" />
+            {uploadQueue.map((item) => (
+              <div key={item.id} className="media-upload-item">
+                <span>{item.name}</span><progress value={item.progress} max="100" aria-label={`${item.name} upload progress`} />
                 <span aria-live="polite">{statusLabel(item.status)}</span>
-                {item.status === 'failed' ? (
-                  <button type="button" onClick={() => uploadOne(item.file, index)}>Retry</button>
+                {['failed', 'cancelled', 'paused_offline', 'expired'].includes(item.status) ? (
+                  <button type="button" disabled={!networkOnline} aria-label={`Resume upload of ${item.name}`} onClick={() => resumeUpload(item)}>Resume</button>
                 ) : null}
-                {['checking', 'failed'].includes(item.status) ? (
+                {['checking', 'uploading'].includes(item.status) ? (
                   <button
                     type="button"
-                    onClick={() => setUploadQueue((current) => current.map((entry, itemIndex) =>
-                      itemIndex === index ? { ...entry, status: 'cancelled', progress: 0 } : entry))}
+                    aria-label={`Cancel upload of ${item.name}`}
+                    onClick={() => cancelUpload(item.id)}
                   >Cancel</button>
                 ) : null}
               </div>
@@ -408,7 +577,16 @@ export default function MediaLibrary() {
         ) : null}
         {activeAsset ? (
           <div className="media-dialog-backdrop">
-            <section className="media-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="media-detail-title">
+            <section
+              ref={detailDialog}
+              className="media-detail-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="media-detail-title"
+              onKeyDown={(event) => {
+                if (!confirmationTarget) trapDialogFocus(event, detailDialog.current, closeAsset);
+              }}
+            >
               <header>
                 <div>
                   <p className="media-eyebrow">Asset detail</p>
@@ -476,7 +654,7 @@ export default function MediaLibrary() {
                   <li key={job.id}>
                     {statusLabel(job.kind)} · {statusLabel(job.status)} · attempt {job.attempt} of {job.maximumAttempts}
                     {['failed', 'retryable'].includes(job.status) && job.attempt < job.maximumAttempts ? (
-                      <button type="button" onClick={async () => {
+                      <button type="button" aria-label={`Retry ${statusLabel(job.kind)} job`} onClick={async () => {
                         await mediaLibraryAPI.retryJob(job.id);
                         setJobs((current) => current.map((item) => item.id === job.id
                           ? { ...item, status: 'queued' } : item));
@@ -488,17 +666,30 @@ export default function MediaLibrary() {
               <section aria-labelledby="consequence-heading">
                 <h3 id="consequence-heading">Archive and deletion safety</h3>
                 <button type="button" onClick={loadPreview}>Preview consequences</button>
-                {preview ? <p role="status">{preview.allowed ? 'No blocking references or holds.' : 'Blocked by references or retention holds.'}</p> : null}
+                {preview ? <div role="status">
+                  <p>{preview.allowed ? 'No blocking references or holds.' : 'Blocked by references or retention holds.'}</p>
+                  <p>{preview.blockingReferences?.length || 0} blocking references; {preview.activeHolds?.length || 0} active holds; {preview.objectCount ?? 0} objects affected.</p>
+                </div> : null}
                 <div className="media-detail-actions">
                   {activeAsset.status === 'archived' || activeAsset.status === 'soft_deleted' ? (
                     <button type="button" onClick={() => prepareDetailTransition('ready')}>Prepare restore</button>
                   ) : <button type="button" onClick={() => prepareDetailTransition('archived')}>Prepare archive</button>}
                   <button type="button" onClick={() => prepareDetailTransition('soft_deleted')}>Prepare deletion</button>
                 </div>
-                {confirmationTarget ? <div className="media-confirmation" role="alertdialog" aria-modal="true" aria-label="Confirm media action">
+                {confirmationTarget ? <div
+                  ref={confirmationDialog}
+                  className="media-confirmation"
+                  role="alertdialog"
+                  aria-modal="true"
+                  aria-label="Confirm media action"
+                  onKeyDown={(event) => {
+                    event.stopPropagation();
+                    trapDialogFocus(event, confirmationDialog.current, cancelDetailTransition);
+                  }}
+                >
                   <p>Confirm {statusLabel(confirmationTarget)} for this exact asset and version. References and holds remain enforced by the server.</p>
-                  <button type="button" onClick={confirmDetailTransition}>Confirm action</button>
-                  <button type="button" onClick={() => setConfirmationTarget('')}>Cancel</button>
+                  <button ref={confirmationButton} type="button" onClick={confirmDetailTransition}>Confirm action</button>
+                  <button type="button" onClick={cancelDetailTransition}>Cancel</button>
                 </div> : null}
               </section>
               <section aria-labelledby="history-heading">
@@ -511,6 +702,13 @@ export default function MediaLibrary() {
             </section>
           </div>
         ) : null}
+        <MediaPicker
+          open={pickerOpen}
+          limit={5}
+          returnFocusRef={pickerOpener}
+          onClose={() => setPickerOpen(false)}
+          onConfirm={(assetIds) => setPickerStatus(`${assetIds.length} existing media item${assetIds.length === 1 ? '' : 's'} chosen for reuse.`)}
+        />
       </div>
     </AppShell>
   );

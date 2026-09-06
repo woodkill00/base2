@@ -94,7 +94,51 @@ it('provides keyboard-equivalent multi-file input and truthful progress', async 
   await waitFor(() => expect(within(heading.closest('section')).getByText('quarantined')).toBeInTheDocument());
   expect(mediaLibraryAPI.createUpload).toHaveBeenCalledWith(expect.objectContaining({
     filename: 'safe.png', mediaType: 'image/png', byteSize: 4,
+  }), expect.objectContaining({ signal: expect.any(AbortSignal) }));
+});
+
+it('accepts dropped and pasted files and truthfully aborts active uploads', async () => {
+  mediaLibraryAPI.createUpload.mockResolvedValue({ id: 'asset-2', uploadGrant: 'g'.repeat(64) });
+  let aborted = false;
+  mediaLibraryAPI.uploadContent.mockImplementation((_id, _file, _grant, options) => new Promise((resolve, reject) => {
+    options.signal.addEventListener('abort', () => {
+      aborted = true;
+      reject({ name: 'CanceledError' });
+    });
   }));
+  renderPage();
+  const zone = await screen.findByRole('region', { name: 'Add media by dropping or pasting files' });
+  const dropped = new File(['drop'], 'drop.png', { type: 'image/png' });
+  fireEvent.drop(zone, { dataTransfer: { files: [dropped] } });
+  const cancel = await screen.findByRole('button', { name: 'Cancel upload of drop.png' });
+  fireEvent.click(cancel);
+  await waitFor(() => expect(aborted).toBe(true));
+  expect(await screen.findByText('cancelled')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Resume upload of drop.png' })).toBeInTheDocument();
+
+  mediaLibraryAPI.uploadContent.mockResolvedValue({ status: 'quarantined' });
+  const pasted = new File(['paste'], 'paste.png', { type: 'image/png' });
+  fireEvent.paste(zone, { clipboardData: { items: [{ kind: 'file', getAsFile: () => pasted }] } });
+  await waitFor(() => expect(mediaLibraryAPI.createUpload).toHaveBeenCalledWith(
+    expect.objectContaining({ filename: 'paste.png' }), expect.any(Object)
+  ));
+});
+
+it('pauses active work offline and offers a bounded resume when online', async () => {
+  mediaLibraryAPI.createUpload.mockResolvedValue({ id: 'asset-2', uploadGrant: 'g'.repeat(64) });
+  mediaLibraryAPI.uploadContent.mockImplementation((_id, _file, _grant, options) => new Promise((resolve, reject) => {
+    options.signal.addEventListener('abort', () => reject({ name: 'CanceledError' }));
+  }));
+  renderPage();
+  const input = await screen.findByLabelText('Choose media files');
+  fireEvent.change(input, { target: { files: [new File(['safe'], 'offline.png', { type: 'image/png' })] } });
+  await screen.findByRole('button', { name: 'Cancel upload of offline.png' });
+  fireEvent(window, new Event('offline'));
+  expect(await screen.findByText(/Offline. Active uploads are paused/)).toBeInTheDocument();
+  expect(await screen.findByText('paused offline')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Resume upload of offline.png' })).toBeDisabled();
+  fireEvent(window, new Event('online'));
+  expect(await screen.findByRole('button', { name: 'Resume upload of offline.png' })).toBeEnabled();
 });
 
 it('shows a safe failure state and preserves the shell', async () => {
@@ -116,10 +160,50 @@ it('opens an accessible detail and usage dialog with consequence preview', async
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });
 
+it('contains detail and confirmation focus and restores each opener', async () => {
+  renderPage();
+  const opener = await screen.findByRole('button', { name: 'View details' });
+  opener.focus();
+  fireEvent.click(opener);
+  const dialog = await screen.findByRole('dialog', { name: 'safe.png' });
+  const close = within(dialog).getByRole('button', { name: 'Close' });
+  expect(close).toHaveFocus();
+  fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true });
+  expect(within(dialog).getByRole('button', { name: 'Prepare deletion' })).toHaveFocus();
+
+  const prepare = within(dialog).getByRole('button', { name: 'Prepare deletion' });
+  fireEvent.click(prepare);
+  const confirmation = await screen.findByRole('alertdialog', { name: 'Confirm media action' });
+  expect(within(confirmation).getByRole('button', { name: 'Confirm action' })).toHaveFocus();
+  fireEvent.keyDown(confirmation, { key: 'Tab', shiftKey: true });
+  expect(within(confirmation).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+  fireEvent.keyDown(confirmation, { key: 'Escape' });
+  await waitFor(() => expect(prepare).toHaveFocus());
+
+  fireEvent.keyDown(dialog, { key: 'Escape' });
+  await waitFor(() => expect(opener).toHaveFocus());
+});
+
+it('integrates the reusable picker and returns focus after exact selection', async () => {
+  renderPage();
+  const opener = await screen.findByRole('button', { name: 'Choose existing media' });
+  opener.focus();
+  fireEvent.click(opener);
+  const picker = await screen.findByRole('dialog', { name: 'Choose media' });
+  fireEvent.click(await within(picker).findByLabelText(/safe.png/));
+  fireEvent.click(within(picker).getByRole('button', { name: 'Use selected media' }));
+  expect(await screen.findByText('1 existing media item chosen for reuse.')).toBeInTheDocument();
+  await waitFor(() => expect(opener).toHaveFocus());
+});
+
 it('reports truthful partial bulk results and queues a bounded export', async () => {
   renderPage();
   fireEvent.click(await screen.findByRole('button', { name: 'Select safe.png' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Archive' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Review archive' }));
+  const review = await screen.findByRole('region', { name: 'Confirm bulk archived' });
+  expect(within(review).getByText(/0 blocking references; 0 active holds/)).toBeInTheDocument();
+  expect(mediaLibraryAPI.transition).not.toHaveBeenCalled();
+  fireEvent.click(within(review).getByRole('button', { name: 'Confirm permitted items' }));
   expect(await screen.findByText('1 succeeded; 0 blocked or failed.')).toBeInTheDocument();
   expect(mediaLibraryAPI.transition).toHaveBeenCalledWith(
     'asset-1', 1, 'archived', 'media-archived-asset-1-1'
@@ -159,7 +243,7 @@ it('shows bounded processing state and permits only eligible manual retry', asyn
   renderPage();
   fireEvent.click(await screen.findByRole('button', { name: 'View details' }));
   expect(await screen.findByText(/attempt 1 of 3/)).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Retry inspect job' }));
   await waitFor(() => expect(mediaLibraryAPI.retryJob).toHaveBeenCalledWith('job-1'));
   expect(screen.getByText(/queued/)).toBeInTheDocument();
 });

@@ -68,16 +68,48 @@ test('media detail preserves safe preview usage and consequence context', async 
   await page.getByRole('button', { name: 'View details' }).first().click();
   const dialog = page.getByRole('dialog', { name: 'Aurora landscape.png' });
   await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Close' })).toBeFocused();
+  await expect(page.locator('.app-shell > header')).toHaveJSProperty('inert', true);
   await expect(dialog.getByRole('heading', { name: 'Usage and references' })).toBeVisible();
   await expect(dialog.getByText('article · hero · draft')).toBeVisible();
   await dialog.getByRole('button', { name: 'Preview consequences' }).click();
   await expect(dialog.getByText('No blocking references or holds.')).toBeVisible();
+  await expect(dialog.getByText('0 blocking references; 0 active holds; 1 objects affected.')).toBeVisible();
+  const prepareDeletion = dialog.getByRole('button', { name: 'Prepare deletion' });
+  await prepareDeletion.click();
+  const confirmation = dialog.getByRole('alertdialog', { name: 'Confirm media action' });
+  await expect(confirmation.getByRole('button', { name: 'Confirm action' })).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(confirmation.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(prepareDeletion).toBeFocused();
   await page.addScriptTag({ content: axeSource });
   expect((await page.evaluate(async () => (await window.axe.run(document)).violations)).map((item) => item.id)).toEqual([]);
-  await dialog.evaluate((node) => { node.scrollTop = 0; });
+  await prepareDeletion.click();
+  await dialog.evaluate((node) => { node.scrollTop = node.scrollHeight; });
   await expect(dialog).toHaveScreenshot('media-detail-chromium-desktop.png', {
     animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.01,
   });
+});
+
+test('media picker is visually and keyboard contained in a real workflow', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-desktop', 'single deterministic picker proof');
+  await page.goto('/media');
+  const opener = page.getByRole('button', { name: 'Choose existing media' });
+  await opener.click();
+  const picker = page.getByRole('dialog', { name: 'Choose media' });
+  await expect(picker.getByRole('button', { name: 'Close' })).toBeFocused();
+  await expect(page.locator('.app-shell-root')).toHaveJSProperty('inert', true);
+  await picker.getByLabel(/Aurora landscape\.png/).check();
+  await expect(picker.getByText('1 of 5 selected')).toBeVisible();
+  await page.addScriptTag({ content: axeSource });
+  expect((await page.evaluate(async () => (await window.axe.run(document)).violations)).map((item) => item.id)).toEqual([]);
+  await expect(picker).toHaveScreenshot('media-picker-chromium-desktop.png', {
+    animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.01,
+  });
+  await picker.getByRole('button', { name: 'Use selected media' }).click();
+  await expect(opener).toBeFocused();
+  await expect(page.getByText('1 existing media item chosen for reuse.')).toBeVisible();
 });
 
 test('media library is accessible responsive and visually reviewed', async ({ page }, testInfo) => {
@@ -139,6 +171,26 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
   await expect(page.locator(':focus')).toBeVisible();
   await page.getByRole('button', { name: /select aurora landscape/i }).click();
   await expect(page.getByText('1 selected')).toBeVisible();
+  const contrastFailures = await page.locator(
+    '.media-card-actions button, .media-header-actions > button, .media-bulk-actions > button'
+  ).evaluateAll((nodes) => {
+    const channel = (value: number) => {
+      const normalized = value / 255;
+      return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+    };
+    const luminance = (value: string) => {
+      const parts = value.match(/[\d.]+/g)?.slice(0, 3).map(Number) || [0, 0, 0];
+      return (0.2126 * channel(parts[0])) + (0.7152 * channel(parts[1])) + (0.0722 * channel(parts[2]));
+    };
+    return nodes.flatMap((node) => {
+      const style = getComputedStyle(node);
+      const foreground = luminance(style.color);
+      const background = luminance(style.backgroundColor);
+      const ratio = (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+      return ratio < 4.5 ? [{ text: node.textContent, ratio, color: style.color, background: style.backgroundColor }] : [];
+    });
+  });
+  expect(contrastFailures).toEqual([]);
   expect(runtimeErrors).toEqual([]);
   const shellHeader = page.locator('.app-shell > header');
   await expect(shellHeader).toHaveCSS('position', 'sticky');

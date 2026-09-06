@@ -21,7 +21,7 @@ def test_media_visual_review_is_schema_valid_exact_and_source_bound():
     assert set(review["assertions"]) == expected_assertions
     assert all(value == "pass" for value in review["assertions"].values())
     member_pattern = schema["properties"]["screenshots"]["items"]["pattern"]
-    assert len(review["screenshots"]) == 13 == len(set(review["screenshots"]))
+    assert len(review["screenshots"]) == 14 == len(set(review["screenshots"]))
     assert all(re.fullmatch(member_pattern, member) for member in review["screenshots"])
     assert review["status"] == "accepted"
     assert review["screenshots"] == sorted(review["screenshots"])
@@ -36,6 +36,20 @@ def test_media_visual_review_is_schema_valid_exact_and_source_bound():
         cwd=ROOT,
         check=True,
     )
+    reviewed_surfaces = [
+        "react-app/src/pages/MediaLibrary.jsx",
+        "react-app/src/components/media/MediaPicker.jsx",
+        "react-app/src/styles/media-library.css",
+        "react-app/e2e/media/media-release.spec.ts",
+        "react-app/playwright.media-release.config.mjs",
+        "react-app/e2e/media/media-release.spec.ts-snapshots",
+    ]
+    unchanged = subprocess.run(
+        ["git", "diff", "--quiet", review["sourceCommit"], "HEAD", "--", *reviewed_surfaces],
+        cwd=ROOT,
+        check=False,
+    )
+    assert unchanged.returncode == 0, "visual review predates a media UI or proof change"
     for member in review["screenshots"]:
         committed = subprocess.run(
             ["git", "cat-file", "-e", f'{review["sourceCommit"]}:react-app/e2e/media/media-release.spec.ts-snapshots/{member}'],

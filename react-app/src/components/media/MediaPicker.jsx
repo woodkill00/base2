@@ -1,7 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { mediaLibraryAPI } from '../../services/mediaLibrary';
 
-const focusable = 'button:not([disabled]), input:not([disabled]), select:not([disabled])';
+const focusable = [
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  'a[href]',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
 
 export default function MediaPicker({ open, onClose, onConfirm, limit = 1, returnFocusRef }) {
   const panel = useRef(null);
@@ -10,6 +18,7 @@ export default function MediaPicker({ open, onClose, onConfirm, limit = 1, retur
   const [assets, setAssets] = useState([]);
   const [selected, setSelected] = useState(new Set());
   const [message, setMessage] = useState('');
+  const [feedback, setFeedback] = useState('');
 
   useEffect(() => {
     if (!open) return undefined;
@@ -27,7 +36,13 @@ export default function MediaPicker({ open, onClose, onConfirm, limit = 1, retur
   }, [open, query, state]);
 
   useEffect(() => {
-    if (open) panel.current?.querySelector(focusable)?.focus();
+    if (!open) return undefined;
+    const background = document.querySelector('.app-shell-root');
+    if (background) background.inert = true;
+    panel.current?.querySelector(focusable)?.focus();
+    return () => {
+      if (background) background.inert = false;
+    };
   }, [open]);
 
   if (!open) return null;
@@ -37,7 +52,11 @@ export default function MediaPicker({ open, onClose, onConfirm, limit = 1, retur
     requestAnimationFrame(() => returnFocusRef?.current?.focus());
   };
   const onKeyDown = (event) => {
-    if (event.key === 'Escape') close();
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      close();
+      return;
+    }
     if (event.key !== 'Tab') return;
     const nodes = [...panel.current.querySelectorAll(focusable)];
     if (!nodes.length) return;
@@ -53,12 +72,23 @@ export default function MediaPicker({ open, onClose, onConfirm, limit = 1, retur
   };
   const toggle = (id) => setSelected((current) => {
     const next = new Set(current);
-    if (next.has(id)) next.delete(id);
-    else if (next.size < limit) next.add(id);
+    if (next.has(id)) {
+      next.delete(id);
+      setFeedback('');
+    } else if (next.size < limit) {
+      next.add(id);
+      setFeedback('');
+    } else {
+      setFeedback(`Selection limit reached. Choose no more than ${limit}.`);
+    }
     return next;
   });
+  const confirm = () => {
+    onConfirm([...selected]);
+    close();
+  };
 
-  return (
+  return createPortal(
     <div className="media-dialog-backdrop">
       <section
         ref={panel}
@@ -66,12 +96,14 @@ export default function MediaPicker({ open, onClose, onConfirm, limit = 1, retur
         role="dialog"
         aria-modal="true"
         aria-labelledby="media-picker-title"
+        aria-describedby="media-picker-status"
         onKeyDown={onKeyDown}
       >
         <header><h2 id="media-picker-title">Choose media</h2><button type="button" onClick={close}>Close</button></header>
         <label>Search media<input value={query} onChange={(event) => setQuery(event.target.value)} /></label>
         <label>Status<select value={state} onChange={(event) => setState(event.target.value)}><option value="ready">Ready</option><option value="archived">Archived</option></select></label>
-        <p aria-live="polite">{message || `${selected.size} of ${limit} selected`}</p>
+        <p id="media-picker-status" aria-live="polite">{feedback || message || `${selected.size} of ${limit} selected`}</p>
+        {!message && assets.length === 0 ? <p>No matching media. Change the search or status filter.</p> : null}
         <ul className="media-picker-results">
           {assets.map((asset) => <li key={asset.id}>
             <label>
@@ -80,10 +112,11 @@ export default function MediaPicker({ open, onClose, onConfirm, limit = 1, retur
             </label>
           </li>)}
         </ul>
-        <button type="button" disabled={!selected.size} onClick={() => onConfirm([...selected])}>
+        <button type="button" disabled={!selected.size} onClick={confirm}>
           Use selected media
         </button>
       </section>
-    </div>
+    </div>,
+    document.body
   );
 }
