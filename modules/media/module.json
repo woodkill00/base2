@@ -30,7 +30,8 @@
     "django/sitecontent/migrations/0013_media_governance.py",
     "django/sitecontent/migrations/0014_media_processing_governance.py",
     "django/sitecontent/migrations/0015_media_portability_and_abuse.py",
-    "django/sitecontent/migrations/0016_media_security_boundaries.py"
+    "django/sitecontent/migrations/0016_media_security_boundaries.py",
+    "django/sitecontent/migrations/0017_media_worker_rls_completion.py"
   ],
   "apiRoutes": ["/api/media/v1"],
   "uiRoutes": ["/media"],

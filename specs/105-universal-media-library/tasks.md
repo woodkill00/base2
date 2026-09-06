@@ -38,5 +38,15 @@
 - [x] B036 Integrate the reusable picker with empty/limit feedback and keyboard/return-focus proof.
 - [x] B037 Correct light-theme contrast and regenerate source-bound responsive, zoom, theme, detail, and picker visuals.
 - [x] B038 Upgrade React Router to a patched supported line and require zero frontend dependency audit findings.
-- [x] B039 Run complete local, PostgreSQL, browser, type, security, coverage, and repeated critical regression gates.
+- [ ] B039 Run complete local, PostgreSQL, browser, type, security, coverage, and repeated critical regression gates.
 - [ ] B040 Repeat independent code, security, and UX review and close every critical, high, and medium finding.
+- [x] B041 Activate the isolated inspector in every Media-enabled runtime profile and provision a matched ephemeral signing/verification pair plus immutable image identity without exposing private key material.
+- [x] B042 Discover due governance tenants read-only, then perform every mutation and audit append in a separately tenant-bound transaction with real two-tenant PostgreSQL proof.
+- [x] B043 Replace legacy worker-bypass RLS on media assets and variants with tenant-bound mutation policies while retaining only the bounded global reads workers require.
+- [x] B044 Persist bounded retryable jobs for transient inspector failures and prove failure, retry, and terminal ready behavior without duplicate processing.
+- [x] B045 Replace the upload loop with an explicit queued single-owner scheduler, attempt generations, controller ownership, append-only active batches, and adversarial cancel/restart/offline tests.
+- [x] B046 Cancel and generation-bind detail requests, expose truthful loading/failure state, and block metadata saves until the current asset detail is ready.
+- [x] B047 Restore or deliberately move focus after every successful nested confirmation and cover both confirm and cancel paths.
+- [x] B048 Extend modal interaction and visual proof to compact, zoom, theme, RTL, and high-contrast projects without weakening deterministic source binding.
+- [x] B049 Pin every workflow to the official Node-24 checkout action and prove immutable-action, CI-policy, and surface-drift compliance.
+- [ ] B050 Repeat the exact-head complete gate, both hosted workflow variants, critical repetitions, and three independent zero-medium-or-higher reviews after all late findings are closed.

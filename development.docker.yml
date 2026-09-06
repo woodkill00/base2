@@ -195,6 +195,12 @@ services:
     pids_limit: 16
     mem_limit: 512m
     cpus: '0.75'
+    healthcheck:
+      test: ['CMD', 'python', '-c', 'import os; os.kill(1, 0)']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   # Django static files
   nginx-static:

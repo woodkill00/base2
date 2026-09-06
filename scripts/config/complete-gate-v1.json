@@ -230,6 +230,14 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "workspace-postgres-acceptance",
+      "command": ["python3", "scripts/python/run_workspace_postgres_acceptance.py"],
+      "required": true,
+      "timeoutSeconds": 600,
+      "dependsOn": ["workspace-postgres-contract"],
+      "requiredTools": ["python3", "docker"]
+    },
+    {
       "id": "media-library-contract",
       "command": [
         "{python-api}",
@@ -244,6 +252,7 @@
         "api/tests/test_media_library_processor.py",
         "api/tests/test_media_library_repository.py",
         "api/tests/test_media_library_routes.py",
+        "api/tests/test_media_library_runtime.py",
         "api/tests/test_upload_capacity.py",
         "api/tests/test_media_library_storage.py",
         "api/tests/test_media_library_worker.py",
@@ -255,7 +264,7 @@
       ],
       "required": true,
       "timeoutSeconds": 90,
-      "dependsOn": ["workspace-postgres-contract"],
+      "dependsOn": ["workspace-postgres-acceptance"],
       "requiredTools": ["{python-api}"]
     },
     {
@@ -269,7 +278,7 @@
       ],
       "required": true,
       "timeoutSeconds": 60,
-      "dependsOn": ["workspace-postgres-contract"],
+      "dependsOn": ["workspace-postgres-acceptance"],
       "requiredTools": ["{python-django}"]
     },
     {
@@ -897,7 +906,7 @@
       "required": true,
       "timeoutSeconds": 60,
       "dependsOn": ["env-tools"],
-      "requiredTools": ["docker", "python3"]
+      "requiredTools": ["docker", "python3", "openssl"]
     }
   ]
 }

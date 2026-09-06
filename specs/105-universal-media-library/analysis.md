@@ -126,6 +126,16 @@ prove unknown defects impossible.
     workflow now uses the exact official `actions/checkout` v5 commit
     `fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09`; CI-policy and surface-drift
     validation passed before the next exact-head complete gate.
+21. Fresh independent review correctly rejected closure despite the green
+    matrices. Deployment did not activate or provision the required isolated
+    inspector; governance attempted unbound mutations forbidden by its own RLS;
+    legacy worker-bypass policies remained on assets and variants; transient
+    inspector failures had no durable retry path; and client interleavings could
+    duplicate upload attempts, lose cancellation control, apply stale detail
+    responses, permit stale metadata saves, or lose focus after confirmation.
+    Compact and alternate-theme modal proof was also incomplete. B039 was
+    reopened, and B041-B050 make remediation, real PostgreSQL/compose/browser
+    proof, exact-head hosted checks, and repeated independent review mandatory.
 
 ## Honest residual boundary
 

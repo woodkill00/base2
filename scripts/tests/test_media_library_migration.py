@@ -10,6 +10,9 @@ GOVERNANCE_MIGRATION = ROOT / "django/sitecontent/migrations/0013_media_governan
 PROCESSING_MIGRATION = ROOT / "django/sitecontent/migrations/0014_media_processing_governance.py"
 PORTABILITY_MIGRATION = ROOT / "django/sitecontent/migrations/0015_media_portability_and_abuse.py"
 SECURITY_MIGRATION = ROOT / "django/sitecontent/migrations/0016_media_security_boundaries.py"
+WORKER_COMPLETION_MIGRATION = (
+    ROOT / "django/sitecontent/migrations/0017_media_worker_rls_completion.py"
+)
 
 
 class MediaLibraryMigrationTests(unittest.TestCase):
@@ -45,7 +48,7 @@ class MediaLibraryMigrationTests(unittest.TestCase):
     def test_disposable_postgres_acceptance_proves_forward_reverse_and_tenant_isolation(self):
         runner = (ROOT / "scripts/python/run_workspace_postgres_acceptance.py").read_text()
         checks = (ROOT / "scripts/python/run_media_postgres_checks.py").read_text()
-        self.assertIn('django_migration + ["0016", "--noinput"]', runner)
+        self.assertIn('django_migration + ["0017", "--noinput"]', runner)
         self.assertIn('media_check + ["forward"]', runner)
         self.assertIn('media_check + ["reversed"]', runner)
         self.assertIn("media_cross_tenant_insert_was_not_blocked", checks)
@@ -104,6 +107,35 @@ class MediaLibraryMigrationTests(unittest.TestCase):
         self.assertIn("FOR INSERT", source)
         self.assertIn("WITH CHECK ({tenant})", source)
         self.assertNotIn("WITH CHECK ({tenant} OR current_user", source)
+
+    def test_worker_completion_migration_hardens_assets_and_variants(self):
+        source = WORKER_COMPLETION_MIGRATION.read_text()
+        ast.parse(source)
+        self.assertIn('ASSET_TABLE = "sitecontent_mediaasset"', source)
+        self.assertIn('VARIANT_TABLE = "sitecontent_mediavariant"', source)
+        self.assertIn("ENABLE ROW LEVEL SECURITY", source)
+        self.assertIn("FORCE ROW LEVEL SECURITY", source)
+        self.assertIn("FOR SELECT", source)
+        self.assertIn("FOR UPDATE", source)
+        self.assertIn("WITH CHECK ({tenant_asset})", source)
+        self.assertNotIn("WITH CHECK ({tenant_asset} OR", source)
+
+    def test_complete_gate_requires_real_postgres_media_acceptance(self):
+        import json
+
+        manifest = json.loads((ROOT / "scripts/config/complete-gate-v1.json").read_text())
+        checks = {item["id"]: item for item in manifest["checks"]}
+        acceptance = checks["workspace-postgres-acceptance"]
+        self.assertTrue(acceptance["required"])
+        self.assertEqual(
+            acceptance["command"],
+            ["python3", "scripts/python/run_workspace_postgres_acceptance.py"],
+        )
+        self.assertIn("docker", acceptance["requiredTools"])
+        self.assertIn(
+            "workspace-postgres-acceptance",
+            checks["media-library-contract"]["dependsOn"],
+        )
 
 
 if __name__ == "__main__":

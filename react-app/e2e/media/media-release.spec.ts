@@ -2,6 +2,14 @@ import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
 const axeSource = readFileSync('node_modules/axe-core/axe.min.js', 'utf8');
+const modalProofProjects = new Set([
+  'chromium-desktop',
+  'chromium-compact',
+  'chromium-400-zoom',
+  'chromium-light',
+  'chromium-high-contrast',
+  'chromium-rtl',
+]);
 const fixtureUser = {
   id: '00000000-0000-0000-0000-000000010599',
   email: 'media-fixture@example.test',
@@ -57,14 +65,18 @@ test.beforeEach(async ({ page }, testInfo) => {
     if (url.pathname.endsWith('/destructive-preview')) return send({
       allowed: true, blockingReferences: [], activeHolds: [], objectCount: 1,
     });
+    if (url.pathname.endsWith('/lifecycle')) return send({ status: 'soft_deleted', version: 2 });
     return send({});
   });
   test.info().annotations.push({ type: 'failure-buffer', description: JSON.stringify(failures) });
 });
 
 test('media detail preserves safe preview usage and consequence context', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium-desktop', 'single deterministic detail proof');
+  test.skip(!modalProofProjects.has(testInfo.project.name), 'bounded representative modal matrix');
   await page.goto('/media');
+  if (testInfo.project.name === 'chromium-rtl') {
+    await page.locator('html').evaluate((node) => { node.dir = 'rtl'; });
+  }
   await page.getByRole('button', { name: 'View details' }).first().click();
   const dialog = page.getByRole('dialog', { name: 'Aurora landscape.png' });
   await expect(dialog).toBeVisible();
@@ -85,17 +97,26 @@ test('media detail preserves safe preview usage and consequence context', async 
   await page.keyboard.press('Escape');
   await expect(prepareDeletion).toBeFocused();
   await page.addScriptTag({ content: axeSource });
-  expect((await page.evaluate(async () => (await window.axe.run(document)).violations)).map((item) => item.id)).toEqual([]);
+  const detailViolations = await page.evaluate(async () => (await window.axe.run(document)).violations);
+  expect(detailViolations.map((item) => ({
+    id: item.id,
+    nodes: item.nodes.map((node) => ({ target: node.target, summary: node.failureSummary })),
+  }))).toEqual([]);
   await prepareDeletion.click();
   await dialog.evaluate((node) => { node.scrollTop = node.scrollHeight; });
-  await expect(dialog).toHaveScreenshot('media-detail-chromium-desktop.png', {
+  await expect(dialog).toHaveScreenshot(`media-detail-${testInfo.project.name}.png`, {
     animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.01,
   });
+  await confirmation.getByRole('button', { name: 'Confirm action' }).click();
+  await expect(dialog.getByRole('heading', { name: 'Archive and deletion safety' })).toBeFocused();
 });
 
 test('media picker is visually and keyboard contained in a real workflow', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium-desktop', 'single deterministic picker proof');
+  test.skip(!modalProofProjects.has(testInfo.project.name), 'bounded representative modal matrix');
   await page.goto('/media');
+  if (testInfo.project.name === 'chromium-rtl') {
+    await page.locator('html').evaluate((node) => { node.dir = 'rtl'; });
+  }
   const opener = page.getByRole('button', { name: 'Choose existing media' });
   await opener.click();
   const picker = page.getByRole('dialog', { name: 'Choose media' });
@@ -103,9 +124,16 @@ test('media picker is visually and keyboard contained in a real workflow', async
   await expect(page.locator('.app-shell-root')).toHaveJSProperty('inert', true);
   await picker.getByLabel(/Aurora landscape\.png/).check();
   await expect(picker.getByText('1 of 5 selected')).toBeVisible();
+  if (testInfo.project.name === 'chromium-rtl') {
+    await expect(picker.locator('#media-picker-status')).toHaveCSS('direction', 'ltr');
+  }
   await page.addScriptTag({ content: axeSource });
-  expect((await page.evaluate(async () => (await window.axe.run(document)).violations)).map((item) => item.id)).toEqual([]);
-  await expect(picker).toHaveScreenshot('media-picker-chromium-desktop.png', {
+  const pickerViolations = await page.evaluate(async () => (await window.axe.run(document)).violations);
+  expect(pickerViolations.map((item) => ({
+    id: item.id,
+    nodes: item.nodes.map((node) => ({ target: node.target, summary: node.failureSummary })),
+  }))).toEqual([]);
+  await expect(picker).toHaveScreenshot(`media-picker-${testInfo.project.name}.png`, {
     animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.01,
   });
   await picker.getByRole('button', { name: 'Use selected media' }).click();

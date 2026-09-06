@@ -27,6 +27,10 @@ TABLES = (
     "sitecontent_mediaabusecase",
     "sitecontent_mediaencryptionenvelope",
 )
+HARDENED_TABLES = (
+    "sitecontent_mediaasset",
+    "sitecontent_mediavariant",
+)
 
 TENANT_CONSTRAINTS = (
     "media_hold_asset_scope_fk",
@@ -84,19 +88,21 @@ def main() -> None:
                    FROM pg_class AS cls
                    JOIN pg_namespace AS ns ON ns.oid = cls.relnamespace
                    WHERE ns.nspname='public' AND cls.relname = ANY(%s)""",
-                (list(TABLES),),
+                (list(TABLES + HARDENED_TABLES),),
             )
             assert all(row[1:] == (True, True) for row in cursor.fetchall())
             cursor.execute(
                 """SELECT tablename, policyname, cmd, qual, with_check FROM pg_policies
                    WHERE schemaname='public' AND tablename = ANY(%s)""",
-                (list(TABLES),),
+                (list(TABLES + HARDENED_TABLES),),
             )
             policies = {}
             for table, policy, command, qualifier, check in cursor.fetchall():
                 policies.setdefault(table, {})[command] = (policy, qualifier or "", check or "")
-            assert set(policies) == set(TABLES), f"media_policy_inventory_mismatch:{policies}"
-            for table in TABLES:
+            assert set(policies) == set(
+                TABLES + HARDENED_TABLES
+            ), f"media_policy_inventory_mismatch:{policies}"
+            for table in TABLES + HARDENED_TABLES:
                 commands = policies[table]
                 assert set(commands) == {"SELECT", "INSERT", "UPDATE", "DELETE"}, commands
                 assert "current_user" in commands["SELECT"][1].lower()
@@ -123,6 +129,8 @@ def main() -> None:
                     (role,),
                 )
                 assert cursor.fetchone() == (False, False, False)
+            cursor.execute("DELETE FROM sitecontent_mediavariant")
+            cursor.execute("DELETE FROM sitecontent_mediaasset")
             cursor.execute("DELETE FROM sitecontent_mediacollection")
             cursor.execute(
                 """INSERT INTO sitecontent_mediacollection
@@ -130,6 +138,30 @@ def main() -> None:
                    VALUES (%s,'site-a','Tenant A','owner','private','[]',1,NOW(),NOW()),
                           (%s,'site-b','Tenant B','owner','private','[]',1,NOW(),NOW())""",
                 (str(UUID(int=601)), str(UUID(int=602))),
+            )
+            cursor.execute(
+                """INSERT INTO sitecontent_mediaasset
+                   (id,site_id,storage_key,original_name,media_type,byte_size,sha256,status,
+                    owner_ref,attribution,retention_until,metadata,visibility,current_object_version,
+                    authorization_epoch,lock_version,deleted_at,created_at,updated_at)
+                   VALUES (%s,'site-a','a.bin','a.bin','application/octet-stream',1,%s,
+                           'quarantined','owner','','2099-01-01','{}','private',1,1,1,NULL,NOW(),NOW()),
+                          (%s,'site-b','b.bin','b.bin','application/octet-stream',1,%s,
+                           'quarantined','owner','','2099-01-01','{}','private',1,1,1,NULL,NOW(),NOW())""",
+                (str(UUID(int=610)), "a" * 64, str(UUID(int=611)), "b" * 64),
+            )
+            cursor.execute(
+                """INSERT INTO sitecontent_mediavariant
+                   (id,asset_id,name,storage_key,media_type,byte_size,sha256,width,height,
+                    inline_safe,processor_ref,recipe_id,recipe_version,source_sha256,created_at)
+                   VALUES (%s,%s,'safe','a-safe.bin','application/octet-stream',1,%s,NULL,NULL,
+                           FALSE,'test','test-v1',1,%s,NOW()),
+                          (%s,%s,'safe','b-safe.bin','application/octet-stream',1,%s,NULL,NULL,
+                           FALSE,'test','test-v1',1,%s,NOW())""",
+                (
+                    str(UUID(int=620)), str(UUID(int=610)), "c" * 64, "a" * 64,
+                    str(UUID(int=621)), str(UUID(int=611)), "d" * 64, "b" * 64,
+                ),
             )
 
         runtime = connect(runtime_user, runtime_password)
@@ -153,6 +185,10 @@ def main() -> None:
             with worker, worker.cursor() as cursor:
                 cursor.execute("SELECT COUNT(*) FROM sitecontent_mediacollection")
                 assert cursor.fetchone()[0] == 2
+                cursor.execute("SELECT COUNT(*) FROM sitecontent_mediaasset")
+                assert cursor.fetchone()[0] == 2
+                cursor.execute("SELECT COUNT(*) FROM sitecontent_mediavariant")
+                assert cursor.fetchone()[0] == 2
                 try:
                     cursor.execute(
                         """INSERT INTO sitecontent_mediacollection
@@ -164,6 +200,15 @@ def main() -> None:
                     worker.rollback()
                 else:
                     raise AssertionError("media_worker_unscoped_mutation_was_not_blocked")
+            with worker, worker.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE sitecontent_mediaasset SET original_name='unbound'"
+                )
+                assert cursor.rowcount == 0, "media_asset_unbound_update_was_not_blocked"
+                cursor.execute(
+                    "UPDATE sitecontent_mediavariant SET storage_key='unbound'"
+                )
+                assert cursor.rowcount == 0, "media_variant_unbound_update_was_not_blocked"
             with worker, worker.cursor() as cursor:
                 cursor.execute("SELECT set_config('app.tenant_id', 'site-a', true)")
                 try:
@@ -177,6 +222,66 @@ def main() -> None:
                     worker.rollback()
                 else:
                     raise AssertionError("media_worker_cross_tenant_mutation_was_not_blocked")
+            with worker, worker.cursor() as cursor:
+                cursor.execute("SELECT set_config('app.tenant_id', 'site-a', true)")
+                cursor.execute(
+                    "UPDATE sitecontent_mediaasset SET original_name='a-updated' WHERE site_id='site-a'"
+                )
+                assert cursor.rowcount == 1
+                cursor.execute(
+                    "UPDATE sitecontent_mediaasset SET original_name='blocked' WHERE site_id='site-b'"
+                )
+                assert cursor.rowcount == 0, "media_asset_cross_tenant_update_was_not_blocked"
+                cursor.execute(
+                    """UPDATE sitecontent_mediavariant SET storage_key='a-updated.bin'
+                       WHERE asset_id=%s""",
+                    (str(UUID(int=610)),),
+                )
+                assert cursor.rowcount == 1
+                cursor.execute(
+                    """UPDATE sitecontent_mediavariant SET storage_key='blocked.bin'
+                       WHERE asset_id=%s""",
+                    (str(UUID(int=611)),),
+                )
+                assert cursor.rowcount == 0, "media_variant_cross_tenant_update_was_not_blocked"
+            with worker, worker.cursor() as cursor:
+                cursor.execute("SELECT set_config('app.tenant_id', 'site-b', true)")
+                cursor.execute(
+                    "UPDATE sitecontent_mediaasset SET original_name='b-updated' WHERE site_id='site-b'"
+                )
+                assert cursor.rowcount == 1
+                cursor.execute(
+                    "UPDATE sitecontent_mediaasset SET original_name='blocked' WHERE site_id='site-a'"
+                )
+                assert cursor.rowcount == 0, "media_asset_reverse_cross_tenant_update_not_blocked"
+                cursor.execute(
+                    """UPDATE sitecontent_mediavariant SET storage_key='b-updated.bin'
+                       WHERE asset_id=%s""",
+                    (str(UUID(int=611)),),
+                )
+                assert cursor.rowcount == 1
+                cursor.execute(
+                    """UPDATE sitecontent_mediavariant SET storage_key='blocked.bin'
+                       WHERE asset_id=%s""",
+                    (str(UUID(int=610)),),
+                )
+                assert cursor.rowcount == 0, "media_variant_reverse_cross_tenant_update_not_blocked"
+            with owner, owner.cursor() as cursor:
+                cursor.execute(
+                    "SELECT site_id,original_name FROM sitecontent_mediaasset ORDER BY site_id"
+                )
+                assert cursor.fetchall() == [
+                    ('site-a', 'a-updated'), ('site-b', 'b-updated')
+                ]
+                cursor.execute(
+                    """SELECT asset.site_id,variant.storage_key
+                       FROM sitecontent_mediavariant variant
+                       JOIN sitecontent_mediaasset asset ON asset.id=variant.asset_id
+                       ORDER BY asset.site_id"""
+                )
+                assert cursor.fetchall() == [
+                    ('site-a', 'a-updated.bin'), ('site-b', 'b-updated.bin')
+                ]
         finally:
             runtime.close()
             worker.close()

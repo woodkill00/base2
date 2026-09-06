@@ -267,6 +267,120 @@ def test_governed_worker_reaches_ready_with_job_inspection_and_hash_chain(monkey
     assert "SET status='ready'" in statements
 
 
+class RetryRuntimeCursor(RuntimeCursor):
+    def __init__(self, asset_id):
+        super().__init__(asset_id)
+        self.job_attempt = 0
+        self.job_status = None
+
+    def execute(self, sql, params=()):
+        super().execute(sql, params)
+        compact = ' '.join(sql.split())
+        if compact.startswith('INSERT INTO sitecontent_mediajob'):
+            if 'RETURNING status,attempt,maximum_attempts' in compact:
+                self.job_attempt = min(self.job_attempt + 1, 3)
+                self.job_status = 'retryable' if self.job_attempt < 3 else 'failed'
+                self.response = (self.job_status, self.job_attempt, 3)
+            else:
+                self.job_attempt = min(self.job_attempt + 1, 3)
+                self.job_status = 'completed'
+
+
+def test_transient_inspector_failure_is_durable_bounded_and_recovers(monkeypatch):
+    from api.services import media_library_runtime as runtime
+
+    asset_id = UUID(int=110)
+    cursor = RetryRuntimeCursor(asset_id)
+    connection = RuntimeConnection(cursor)
+
+    @contextmanager
+    def bound(*, tenant_id=None):
+        assert tenant_id == 'site-a'
+        yield connection
+
+    monkeypatch.setattr(runtime, 'db_conn', bound)
+    preview = type(
+        'Preview', (),
+        {'content': b'preview', 'sha256': hashlib.sha256(b'preview').hexdigest(),
+         'media_type': 'image/png', 'width': 640, 'height': 160},
+    )()
+    outcome = InspectionOutcome(preview, 'clamav:1.4.3-27788', NOW, 'audio/mpeg', 'b' * 64)
+
+    class Store:
+        def get(self, _key, *, expected_sha256):
+            assert expected_sha256 == DIGEST
+            return CONTENT
+
+        def put(self, **_kwargs):
+            return type('Stored', (), {
+                'object_key': 'variants/site-a/safe.bin',
+                'sha256': preview.sha256,
+                'byte_size': len(preview.content),
+            })()
+
+    failed = process_governed_media_asset(
+        site_id='site-a', asset_id=asset_id, artifact_store=Store(),
+        scanner=lambda _content: 'clean',
+        health_reader=lambda: ScannerHealth('clamav', '1.4.3', '27788', NOW),
+        observed_at=NOW,
+        inspector=lambda **_kwargs: (_ for _ in ()).throw(
+            MediaRuntimeError('media_dependency_unavailable')
+        ),
+    )
+    assert failed == 'quarantined'
+    assert cursor.job_status == 'retryable' and cursor.job_attempt == 1
+    failure_update = next(
+        params for sql, params in cursor.calls
+        if sql.startswith('UPDATE sitecontent_mediaasset') and "SET status=%s" in sql
+    )
+    assert failure_update[0] == 'quarantined'
+
+    recovered = process_governed_media_asset(
+        site_id='site-a', asset_id=asset_id, artifact_store=Store(),
+        health_reader=lambda: ScannerHealth('clamav', '1.4.3', '27788', NOW),
+        observed_at=NOW, inspector=lambda **_kwargs: outcome,
+    )
+    assert recovered == 'ready'
+    assert cursor.job_status == 'completed' and cursor.job_attempt == 2
+    assert connection.commits == 2 and connection.rollbacks == 0
+
+
+def test_transient_inspector_retry_attempts_stop_at_durable_limit(monkeypatch):
+    from api.services import media_library_runtime as runtime
+
+    asset_id = UUID(int=110)
+    cursor = RetryRuntimeCursor(asset_id)
+    connection = RuntimeConnection(cursor)
+
+    @contextmanager
+    def bound(*, tenant_id=None):
+        assert tenant_id == 'site-a'
+        yield connection
+
+    monkeypatch.setattr(runtime, 'db_conn', bound)
+
+    class Store:
+        def get(self, _key, *, expected_sha256):
+            assert expected_sha256 == DIGEST
+            return CONTENT
+
+    def unavailable(**_kwargs):
+        raise MediaRuntimeError('media_dependency_unavailable')
+
+    results = [
+        process_governed_media_asset(
+            site_id='site-a', asset_id=asset_id, artifact_store=Store(),
+            scanner=lambda _content: 'clean',
+            health_reader=lambda: ScannerHealth('clamav', '1.4.3', '27788', NOW),
+            observed_at=NOW, inspector=unavailable,
+        )
+        for _attempt in range(3)
+    ]
+    assert results == ['quarantined', 'quarantined', 'failed']
+    assert cursor.job_status == 'failed' and cursor.job_attempt == 3
+    assert connection.commits == 3 and connection.rollbacks == 0
+
+
 def test_audit_rejects_private_or_unbounded_detail_before_insert():
     cursor = RuntimeCursor(UUID(int=110))
     with pytest.raises(MediaRuntimeError, match='media_audit_detail_invalid'):
@@ -336,7 +450,7 @@ def test_media_export_worker_uses_exact_selection_and_completes_atomically(monke
     assert 'sitecontent_mediaauditevent' in statements
 
 
-class GovernanceCursor(RuntimeCursor):
+class GovernanceDiscoveryCursor(RuntimeCursor):
     def __init__(self):
         super().__init__(UUID(int=110))
         self.result_sets = []
@@ -344,15 +458,41 @@ class GovernanceCursor(RuntimeCursor):
     def execute(self, sql, params=()):
         super().execute(sql, params)
         compact = ' '.join(sql.split())
-        if compact.startswith('UPDATE sitecontent_mediaretentionhold'):
-            self.result_sets = [('site-a', UUID(int=110), 'legal_hold')]
-        elif compact.startswith('SELECT c.site_id'):
+        if compact.startswith('SELECT site_id,id FROM sitecontent_mediaretentionhold'):
+            self.result_sets = [('site-a', UUID(int=701))]
+        elif compact.startswith('SELECT c.site_id,c.id'):
             self.result_sets = [
-                ('site-a', UUID(int=601), UUID(int=110), 'quarantined', 'ready', 2),
-                ('site-b', UUID(int=602), UUID(int=111), 'removed', 'archived', 4),
+                ('site-a', UUID(int=601)),
+                ('site-b', UUID(int=602)),
             ]
-        elif compact.startswith('SELECT sequence, event_hash'):
-            self.response = None
+
+    def fetchall(self):
+        values, self.result_sets = self.result_sets, []
+        return values
+
+
+class GovernanceTenantCursor(RuntimeCursor):
+    def __init__(self, site):
+        super().__init__(UUID(int=110))
+        self.site = site
+        self.result_sets = []
+        self.rowcount = 0
+
+    def execute(self, sql, params=()):
+        super().execute(sql, params)
+        compact = ' '.join(sql.split())
+        self.rowcount = 0
+        if compact.startswith('UPDATE sitecontent_mediaretentionhold'):
+            assert self.site == 'site-a' and params[0] == self.site
+            self.result_sets = [(UUID(int=110), 'legal_hold')]
+        elif compact.startswith('SELECT c.id,c.asset_id'):
+            if self.site == 'site-a':
+                self.result_sets = [(UUID(int=601), UUID(int=110), 'quarantined', 'ready', 2)]
+            else:
+                self.result_sets = [(UUID(int=602), UUID(int=111), 'removed', 'archived', 4)]
+        elif compact.startswith('UPDATE sitecontent_mediaasset'):
+            assert params[1] == self.site
+            self.rowcount = 1
 
     def fetchall(self):
         values, self.result_sets = self.result_sets, []
@@ -362,23 +502,33 @@ class GovernanceCursor(RuntimeCursor):
 def test_governance_worker_expires_holds_and_enforces_only_reviewed_states(monkeypatch):
     from api.services import media_library_runtime as runtime
 
-    cursor = GovernanceCursor()
-    connection = RuntimeConnection(cursor)
+    discovery_cursor = GovernanceDiscoveryCursor()
+    discovery = RuntimeConnection(discovery_cursor)
+    tenant_connections = {}
 
     @contextmanager
     def bound(*, tenant_id=None):
-        assert tenant_id is None
+        if tenant_id is None:
+            yield discovery
+            return
+        cursor = GovernanceTenantCursor(tenant_id)
+        connection = RuntimeConnection(cursor)
+        tenant_connections[tenant_id] = connection
         yield connection
 
     monkeypatch.setattr(runtime, 'db_conn', bound)
     assert apply_due_media_governance(limit=10) == {
         'holdsExpired': 1, 'abuseCasesEnforced': 2,
     }
-    assert connection.commits == 1 and connection.rollbacks == 0
-    updates = [call for call in cursor.calls if call[0].startswith('UPDATE sitecontent_mediaasset')]
+    assert set(tenant_connections) == {'site-a', 'site-b'}
+    assert all(value.commits == 1 and value.rollbacks == 0 for value in tenant_connections.values())
+    calls = [
+        call for connection in tenant_connections.values() for call in connection.value.calls
+    ]
+    updates = [call for call in calls if call[0].startswith('UPDATE sitecontent_mediaasset')]
     assert [item[1][0] for item in updates] == ['archived', 'soft_deleted']
-    statements = ' '.join(sql for sql, _params in cursor.calls)
+    statements = ' '.join(sql for sql, _params in calls)
     assert 'sitecontent_mediadeliverygrant' in statements
     assert sum(
-        sql.startswith('INSERT INTO sitecontent_mediaauditevent') for sql, _params in cursor.calls
+        sql.startswith('INSERT INTO sitecontent_mediaauditevent') for sql, _params in calls
     ) == 3

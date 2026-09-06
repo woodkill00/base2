@@ -253,12 +253,55 @@ def process_governed_media_asset(
                         if SAFE_CODE.fullmatch(str(exc))
                         else 'media_dependency_unavailable'
                     )
+                    rejected = code == 'media_inspection_rejected'
+                    cur.execute(
+                        """INSERT INTO sitecontent_mediajob
+                           (id,site_id,asset_id,kind,status,idempotency_key,request_digest,attempt,
+                            maximum_attempts,error_code,output_digest,available_at,completed_at,
+                            created_at,updated_at)
+                           VALUES (%s,%s,%s,'inspect',%s,%s,%s,1,3,%s,'',NOW(),
+                                   CASE WHEN %s THEN NOW() ELSE NULL END,NOW(),NOW())
+                           ON CONFLICT (site_id,kind,idempotency_key) DO UPDATE SET
+                             attempt=LEAST(sitecontent_mediajob.attempt+1,
+                                           sitecontent_mediajob.maximum_attempts),
+                             status=CASE
+                               WHEN %s THEN 'failed'
+                               WHEN sitecontent_mediajob.attempt+1 >=
+                                    sitecontent_mediajob.maximum_attempts THEN 'failed'
+                               ELSE 'retryable' END,
+                             error_code=EXCLUDED.error_code,
+                             available_at=NOW(),
+                             completed_at=CASE
+                               WHEN %s OR sitecontent_mediajob.attempt+1 >=
+                                    sitecontent_mediajob.maximum_attempts THEN NOW()
+                               ELSE NULL END,
+                             updated_at=NOW()
+                           RETURNING status,attempt,maximum_attempts""",
+                        (
+                            str(uuid4()),
+                            site_id,
+                            str(asset_id),
+                            'failed' if rejected else 'retryable',
+                            f'inspect:{asset_id}:{row[5]}',
+                            row[1],
+                            code,
+                            rejected,
+                            rejected,
+                            rejected,
+                        ),
+                    )
+                    job = cur.fetchone()
+                    if not job:
+                        raise MediaRuntimeError('media_job_state_invalid') from exc
+                    next_state = 'rejected' if rejected else (
+                        'failed' if job[0] == 'failed' else 'quarantined'
+                    )
                     cur.execute(
                         """UPDATE sitecontent_mediaasset
-                           SET status=CASE WHEN %s='media_inspection_rejected' THEN 'rejected' ELSE 'failed' END,
+                           SET status=%s,
                                lock_version=lock_version+1,updated_at=NOW()
                            WHERE site_id=%s AND id=%s AND lock_version=%s""",
-                        (code, site_id, str(asset_id), row[6]),
+                        (next_state, site_id, str(asset_id), row[6]),
                     )
                     append_media_audit(
                         cur,
@@ -266,10 +309,15 @@ def process_governed_media_asset(
                         event_type='media.inspection.failed',
                         actor_ref='system:media-worker',
                         subject_ref=f'asset:{asset_id}',
-                        detail={'code': code, 'sha256': row[1]},
+                        detail={
+                            'code': code,
+                            'status': next_state,
+                            'count': int(job[1]),
+                            'sha256': row[1],
+                        },
                     )
                     conn.commit()
-                    return 'rejected' if code == 'media_inspection_rejected' else 'failed'
+                    return next_state
                 stored = artifact_store.put(
                     namespace='variants',
                     site_id=site_id,
@@ -359,7 +407,12 @@ def process_governed_media_asset(
                         maximum_attempts,error_code,output_digest,available_at,completed_at,
                         created_at,updated_at)
                        VALUES (%s,%s,%s,'inspect','completed',%s,%s,1,3,'',%s,NOW(),NOW(),NOW(),NOW())
-                       ON CONFLICT (site_id,kind,idempotency_key) DO NOTHING""",
+                       ON CONFLICT (site_id,kind,idempotency_key) DO UPDATE SET
+                         status='completed',
+                         attempt=LEAST(sitecontent_mediajob.attempt+1,
+                                       sitecontent_mediajob.maximum_attempts),
+                         error_code='',output_digest=EXCLUDED.output_digest,
+                         completed_at=NOW(),updated_at=NOW()""",
                     (
                         str(uuid4()),
                         site_id,
@@ -515,68 +568,102 @@ def apply_due_media_governance(*, limit: int = 100) -> dict[str, int]:
     """Expire due holds and enforce already-reviewed abuse decisions; never approve them."""
     if not 1 <= limit <= 500:
         raise MediaRuntimeError('media_limit_invalid')
+    with db_conn() as discovery, discovery.cursor() as cur:
+        cur.execute(
+            """SELECT site_id,id FROM sitecontent_mediaretentionhold
+               WHERE active=TRUE AND expires_at IS NOT NULL AND expires_at<=NOW()
+               ORDER BY expires_at,id LIMIT %s""",
+            (limit,),
+        )
+        hold_candidates = [(str(site), str(identifier)) for site, identifier in cur.fetchall()]
+        cur.execute(
+            """SELECT c.site_id,c.id FROM sitecontent_mediaabusecase c
+               JOIN sitecontent_mediaasset a ON a.id=c.asset_id AND a.site_id=c.site_id
+               WHERE (c.status='quarantined'
+                      AND a.status NOT IN ('archived','soft_deleted','purged'))
+                  OR (c.status='removed' AND a.status NOT IN ('soft_deleted','purged'))
+               ORDER BY c.updated_at,c.id LIMIT %s""",
+            (limit,),
+        )
+        case_candidates = [(str(site), str(identifier)) for site, identifier in cur.fetchall()]
+
+    sites = sorted({site for site, _identifier in hold_candidates + case_candidates})
     holds = cases = 0
-    with db_conn() as conn:
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """UPDATE sitecontent_mediaretentionhold SET active=FALSE,updated_at=NOW()
-                       WHERE id IN (SELECT id FROM sitecontent_mediaretentionhold
-                         WHERE active=TRUE AND expires_at IS NOT NULL AND expires_at<=NOW()
-                         ORDER BY expires_at,id FOR UPDATE SKIP LOCKED LIMIT %s)
-                       RETURNING site_id,asset_id,reason_code""",
-                    (limit,),
-                )
-                expired = cur.fetchall()
-                holds = len(expired)
-                for site, asset, reason in expired:
-                    append_media_audit(
-                        cur,
-                        site_id=site,
-                        event_type='media.hold.expired',
-                        actor_ref='system:media-worker',
-                        subject_ref=f'asset:{asset}',
-                        detail={'status': 'expired', 'reason': reason},
-                    )
-                cur.execute(
-                    """SELECT c.site_id,c.id,c.asset_id,c.status,a.status,a.lock_version
-                       FROM sitecontent_mediaabusecase c
-                       JOIN sitecontent_mediaasset a ON a.id=c.asset_id AND a.site_id=c.site_id
-                       WHERE (c.status='quarantined' AND a.status NOT IN ('archived','soft_deleted','purged'))
-                          OR (c.status='removed' AND a.status NOT IN ('soft_deleted','purged'))
-                       ORDER BY c.updated_at,c.id FOR UPDATE OF c,a SKIP LOCKED LIMIT %s""",
-                    (limit,),
-                )
-                decisions = cur.fetchall()
-                for site, case_id, asset_id, decision, _state, version in decisions:
-                    target = 'archived' if decision == 'quarantined' else 'soft_deleted'
-                    cur.execute(
-                        """UPDATE sitecontent_mediaasset
-                           SET status=%s,authorization_epoch=authorization_epoch+1,
-                               lock_version=lock_version+1,updated_at=NOW()
-                           WHERE site_id=%s AND id=%s AND lock_version=%s""",
-                        (target, site, str(asset_id), version),
-                    )
-                    cur.execute(
-                        """UPDATE sitecontent_mediadeliverygrant SET revoked_at=NOW(),updated_at=NOW()
-                           WHERE site_id=%s AND asset_id=%s AND revoked_at IS NULL""",
-                        (site, str(asset_id)),
-                    )
-                    append_media_audit(
-                        cur,
-                        site_id=site,
-                        event_type='media.abuse.enforced',
-                        actor_ref='system:media-worker',
-                        subject_ref=f'asset:{asset_id}',
-                        detail={
-                            'status': target,
-                            'reason': f'case:{case_id}',
-                            'version': int(version) + 1,
-                        },
-                    )
-                    cases += 1
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
+    for site in sites:
+        hold_ids = [identifier for candidate_site, identifier in hold_candidates if candidate_site == site]
+        case_ids = [identifier for candidate_site, identifier in case_candidates if candidate_site == site]
+        with db_conn(tenant_id=site) as conn:
+            try:
+                with conn.cursor() as cur:
+                    expired = []
+                    if hold_ids:
+                        cur.execute(
+                            """UPDATE sitecontent_mediaretentionhold
+                               SET active=FALSE,updated_at=NOW()
+                               WHERE site_id=%s AND id=ANY(%s::uuid[]) AND active=TRUE
+                                 AND expires_at IS NOT NULL AND expires_at<=NOW()
+                               RETURNING asset_id,reason_code""",
+                            (site, hold_ids),
+                        )
+                        expired = cur.fetchall()
+                    holds += len(expired)
+                    for asset, reason in expired:
+                        append_media_audit(
+                            cur,
+                            site_id=site,
+                            event_type='media.hold.expired',
+                            actor_ref='system:media-worker',
+                            subject_ref=f'asset:{asset}',
+                            detail={'status': 'expired', 'reason': reason},
+                        )
+                    decisions = []
+                    if case_ids:
+                        cur.execute(
+                            """SELECT c.id,c.asset_id,c.status,a.status,a.lock_version
+                               FROM sitecontent_mediaabusecase c
+                               JOIN sitecontent_mediaasset a
+                                 ON a.id=c.asset_id AND a.site_id=c.site_id
+                               WHERE c.site_id=%s AND c.id=ANY(%s::uuid[])
+                                 AND ((c.status='quarantined'
+                                       AND a.status NOT IN ('archived','soft_deleted','purged'))
+                                   OR (c.status='removed'
+                                       AND a.status NOT IN ('soft_deleted','purged')))
+                               ORDER BY c.updated_at,c.id FOR UPDATE OF c,a""",
+                            (site, case_ids),
+                        )
+                        decisions = cur.fetchall()
+                    for case_id, asset_id, decision, _state, version in decisions:
+                        target = 'archived' if decision == 'quarantined' else 'soft_deleted'
+                        cur.execute(
+                            """UPDATE sitecontent_mediaasset
+                               SET status=%s,authorization_epoch=authorization_epoch+1,
+                                   lock_version=lock_version+1,updated_at=NOW()
+                               WHERE site_id=%s AND id=%s AND lock_version=%s""",
+                            (target, site, str(asset_id), version),
+                        )
+                        if cur.rowcount != 1:
+                            raise MediaRuntimeError('media_version_conflict')
+                        cur.execute(
+                            """UPDATE sitecontent_mediadeliverygrant
+                               SET revoked_at=NOW(),updated_at=NOW()
+                               WHERE site_id=%s AND asset_id=%s AND revoked_at IS NULL""",
+                            (site, str(asset_id)),
+                        )
+                        append_media_audit(
+                            cur,
+                            site_id=site,
+                            event_type='media.abuse.enforced',
+                            actor_ref='system:media-worker',
+                            subject_ref=f'asset:{asset_id}',
+                            detail={
+                                'status': target,
+                                'reason': f'case:{case_id}',
+                                'version': int(version) + 1,
+                            },
+                        )
+                        cases += 1
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
     return {'holdsExpired': holds, 'abuseCasesEnforced': cases}

@@ -3,7 +3,12 @@
   "sourceCommit": "ea89e797121fcc2a5b83817eab3e1d5407785c49",
   "status": "accepted",
   "screenshots": [
+    "media-detail-chromium-400-zoom-chromium-400-zoom-linux.png",
+    "media-detail-chromium-compact-chromium-compact-linux.png",
     "media-detail-chromium-desktop-chromium-desktop-linux.png",
+    "media-detail-chromium-high-contrast-chromium-high-contrast-linux.png",
+    "media-detail-chromium-light-chromium-light-linux.png",
+    "media-detail-chromium-rtl-chromium-rtl-linux.png",
     "media-library-chromium-400-zoom-chromium-400-zoom-linux.png",
     "media-library-chromium-compact-chromium-compact-linux.png",
     "media-library-chromium-desktop-chromium-desktop-linux.png",
@@ -16,7 +21,12 @@
     "media-library-chromium-rtl-chromium-rtl-linux.png",
     "media-library-chromium-tablet-chromium-tablet-linux.png",
     "media-library-chromium-ultrawide-chromium-ultrawide-linux.png",
-    "media-picker-chromium-desktop-chromium-desktop-linux.png"
+    "media-picker-chromium-400-zoom-chromium-400-zoom-linux.png",
+    "media-picker-chromium-compact-chromium-compact-linux.png",
+    "media-picker-chromium-desktop-chromium-desktop-linux.png",
+    "media-picker-chromium-high-contrast-chromium-high-contrast-linux.png",
+    "media-picker-chromium-light-chromium-light-linux.png",
+    "media-picker-chromium-rtl-chromium-rtl-linux.png"
   ],
   "assertions": {
     "overflow": "pass",

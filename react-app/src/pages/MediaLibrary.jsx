@@ -66,6 +66,10 @@ function AssetCard({ asset, selected, onSelect, onOpen }) {
 export default function MediaLibrary() {
   const fileInput = useRef(null);
   const uploadControllers = useRef(new Map());
+  const uploadAttempts = useRef(new Map());
+  const pendingUploads = useRef([]);
+  const uploadWorkerRunning = useRef(false);
+  const uploadBatchSequence = useRef(0);
   const cancelledUploads = useRef(new Set());
   const offlinePausedUploads = useRef(new Set());
   const detailOpener = useRef(null);
@@ -74,6 +78,8 @@ export default function MediaLibrary() {
   const confirmationDialog = useRef(null);
   const confirmationButton = useRef(null);
   const confirmationOpener = useRef(null);
+  const consequenceHeading = useRef(null);
+  const detailRequest = useRef({ generation: 0, controller: null });
   const pickerOpener = useRef(null);
   const [capabilities, setCapabilities] = useState(null);
   const [assets, setAssets] = useState([]);
@@ -89,6 +95,8 @@ export default function MediaLibrary() {
   const [references, setReferences] = useState([]);
   const [preview, setPreview] = useState(null);
   const [detailError, setDetailError] = useState('');
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailReady, setDetailReady] = useState(false);
   const [actionStatus, setActionStatus] = useState('');
   const [jobs, setJobs] = useState([]);
   const [metadata, setMetadata] = useState({ altText: '', decorative: false, caption: '' });
@@ -165,24 +173,31 @@ export default function MediaLibrary() {
     return next;
   });
 
-  const uploadOne = async (file, queueId, idempotencyKey) => {
-    const update = (values) => setUploadQueue((current) => current.map((item) =>
-      item.id === queueId ? { ...item, ...values } : item));
+  const uploadOne = async (file, queueId, idempotencyKey, generation) => {
+    const ownsAttempt = () => uploadAttempts.current.get(queueId) === generation;
+    const update = (values) => {
+      if (!ownsAttempt()) return;
+      setUploadQueue((current) => current.map((item) =>
+        item.id === queueId ? { ...item, ...values } : item));
+    };
+    if (!ownsAttempt()) return;
     if (cancelledUploads.current.has(queueId) || navigator.onLine === false) {
       update({ status: navigator.onLine === false ? 'paused_offline' : 'cancelled', progress: 0 });
       return;
     }
     const controller = new AbortController();
-    uploadControllers.current.set(queueId, controller);
+    const owner = { controller, generation };
+    uploadControllers.current.set(queueId, owner);
     try {
+      update({ status: 'checking', progress: 0 });
       if (!allowedTypes.includes(file.type)) throw new Error('media_type_invalid');
       const sha256 = await sha256File(file);
-      if (cancelledUploads.current.has(queueId)) return;
+      if (!ownsAttempt() || cancelledUploads.current.has(queueId)) return;
       update({ status: 'uploading', progress: 1 });
       const admitted = await mediaLibraryAPI.createUpload({
         filename: file.name, mediaType: file.type, byteSize: file.size, sha256,
       }, idempotencyKey, { signal: controller.signal });
-      if (cancelledUploads.current.has(queueId)) return;
+      if (!ownsAttempt() || cancelledUploads.current.has(queueId)) return;
       update({ expiresAt: admitted.expiresAt || '' });
       await mediaLibraryAPI.uploadContent(admitted.id, file, admitted.uploadGrant, {
         signal: controller.signal,
@@ -201,40 +216,66 @@ export default function MediaLibrary() {
         update({ status: normalized.code === 'media_upload_expired' ? 'expired' : 'failed', progress: 0 });
       }
     } finally {
-      uploadControllers.current.delete(queueId);
+      if (uploadControllers.current.get(queueId) === owner) {
+        uploadControllers.current.delete(queueId);
+      }
+    }
+  };
+
+  const drainUploadQueue = async () => {
+    if (uploadWorkerRunning.current) return;
+    uploadWorkerRunning.current = true;
+    try {
+      while (pendingUploads.current.length) {
+        const item = pendingUploads.current.shift();
+        if (uploadAttempts.current.get(item.id) !== item.generation) continue;
+        if (cancelledUploads.current.has(item.id)) {
+          setUploadQueue((current) => current.map((entry) => entry.id === item.id
+            ? { ...entry, status: 'cancelled', progress: 0 } : entry));
+          continue;
+        }
+        await uploadOne(item.file, item.id, item.idempotencyKey, item.generation);
+      }
+      await load();
+    } finally {
+      uploadWorkerRunning.current = false;
+      if (pendingUploads.current.length) void drainUploadQueue();
     }
   };
 
   const uploadFiles = async (files) => {
     const incoming = Array.from(files).slice(0, capabilities?.limits?.maximumBatchFiles || 20);
     const batchKey = Date.now();
+    const batchSequence = uploadBatchSequence.current + 1;
+    uploadBatchSequence.current = batchSequence;
     const queue = incoming.map((file, index) => ({
-      id: `${file.name}-${file.size}-${file.lastModified}-${index}-${Date.now()}`,
-      idempotencyKey: `media-upload-${batchKey}-${index}`,
-      file, name: file.name, progress: 0, status: networkOnline ? 'checking' : 'paused_offline',
+      id: `${file.name}-${file.size}-${file.lastModified}-${batchKey}-${batchSequence}-${index}`,
+      idempotencyKey: `media-upload-${batchKey}-${batchSequence}-${index}`,
+      generation: 1,
+      file, name: file.name, progress: 0, status: networkOnline ? 'queued' : 'paused_offline',
     }));
-    setUploadQueue(queue);
-    for (const item of queue) {
-      if (!cancelledUploads.current.has(item.id)) {
-        await uploadOne(item.file, item.id, item.idempotencyKey);
-      }
-    }
-    await load();
+    queue.forEach((item) => uploadAttempts.current.set(item.id, item.generation));
+    pendingUploads.current.push(...queue);
+    setUploadQueue((current) => [...current, ...queue]);
+    await drainUploadQueue();
   };
 
   const cancelUpload = (queueId) => {
     cancelledUploads.current.add(queueId);
-    uploadControllers.current.get(queueId)?.abort();
+    uploadControllers.current.get(queueId)?.controller.abort();
     setUploadQueue((current) => current.map((item) => item.id === queueId
       ? { ...item, status: 'cancelled', progress: 0 } : item));
   };
 
   const restartUpload = (item) => {
+    const generation = (uploadAttempts.current.get(item.id) || item.generation || 0) + 1;
+    uploadAttempts.current.set(item.id, generation);
     cancelledUploads.current.delete(item.id);
     offlinePausedUploads.current.delete(item.id);
     setUploadQueue((current) => current.map((entry) => entry.id === item.id
-      ? { ...entry, status: 'checking', progress: 0 } : entry));
-    uploadOne(item.file, item.id, item.idempotencyKey);
+      ? { ...entry, generation, status: networkOnline ? 'queued' : 'paused_offline', progress: 0 } : entry));
+    pendingUploads.current.push({ ...item, generation });
+    void drainUploadQueue();
   };
 
   useEffect(() => {
@@ -242,12 +283,12 @@ export default function MediaLibrary() {
     const onOffline = () => {
       setNetworkOnline(false);
       setUploadQueue((current) => {
-        current.filter((item) => ['checking', 'uploading'].includes(item.status))
+        current.filter((item) => ['queued', 'checking', 'uploading'].includes(item.status))
           .forEach((item) => offlinePausedUploads.current.add(item.id));
-        return current.map((item) => ['checking', 'uploading'].includes(item.status)
+        return current.map((item) => ['queued', 'checking', 'uploading'].includes(item.status)
           ? { ...item, status: 'paused_offline', progress: 0 } : item);
       });
-      uploadControllers.current.forEach((controller) => controller.abort());
+      uploadControllers.current.forEach(({ controller }) => controller.abort());
     };
     const onOnline = () => setNetworkOnline(true);
     window.addEventListener('offline', onOffline);
@@ -255,22 +296,32 @@ export default function MediaLibrary() {
     return () => {
       window.removeEventListener('offline', onOffline);
       window.removeEventListener('online', onOnline);
-      controllers.forEach((controller) => controller.abort());
+      controllers.forEach(({ controller }) => controller.abort());
     };
   }, []);
 
   const openAsset = async (asset) => {
+    const generation = detailRequest.current.generation + 1;
+    detailRequest.current.controller?.abort();
+    const controller = new AbortController();
+    detailRequest.current = { generation, controller };
     detailOpener.current = document.activeElement;
     setActiveAsset(asset);
     setReferences([]);
+    setJobs([]);
     setPreview(null);
     setDetailError('');
+    setDetailLoading(true);
+    setDetailReady(false);
+    setMetadata({ altText: '', decorative: false, caption: '' });
+    setMetadataStatus('');
     try {
       const [detail, usage, work] = await Promise.all([
-        mediaLibraryAPI.asset(asset.id),
-        mediaLibraryAPI.references(asset.id),
-        mediaLibraryAPI.jobs({ assetId: asset.id }),
+        mediaLibraryAPI.asset(asset.id, { signal: controller.signal }),
+        mediaLibraryAPI.references(asset.id, { signal: controller.signal }),
+        mediaLibraryAPI.jobs({ assetId: asset.id, signal: controller.signal }),
       ]);
+      if (detailRequest.current.generation !== generation) return;
       setActiveAsset(detail);
       setReferences(Array.isArray(usage?.items) ? usage.items : []);
       setJobs(Array.isArray(work?.items) ? work.items : []);
@@ -278,18 +329,34 @@ export default function MediaLibrary() {
         altText: detail.altText || '', decorative: Boolean(detail.decorative),
         caption: detail.caption || '',
       });
+      setDetailReady(true);
     } catch (caught) {
-      setDetailError('Details are temporarily unavailable. No media was changed.');
+      if (detailRequest.current.generation === generation && caught?.name !== 'CanceledError') {
+        setDetailError('Details are temporarily unavailable. No media was changed.');
+      }
+    } finally {
+      if (detailRequest.current.generation === generation) setDetailLoading(false);
     }
   };
 
   const closeAsset = useCallback(() => {
+    detailRequest.current.generation += 1;
+    detailRequest.current.controller?.abort();
+    detailRequest.current.controller = null;
+    setDetailLoading(false);
+    setDetailReady(false);
     setActiveAsset(null);
     requestAnimationFrame(() => detailOpener.current?.focus());
   }, []);
 
+  useEffect(() => () => {
+    detailRequest.current.generation += 1;
+    detailRequest.current.controller?.abort();
+  }, []);
+
   const saveMetadata = async (event) => {
     event.preventDefault();
+    if (!detailReady || detailLoading) return;
     setMetadataStatus('Saving metadata…');
     try {
       const result = await mediaLibraryAPI.updateMetadata(activeAsset.id, activeAsset.version, {
@@ -435,6 +502,7 @@ export default function MediaLibrary() {
       setConfirmationTarget('');
       setPreview(null);
       setActionStatus(`${statusLabel(target)} completed.`);
+      requestAnimationFrame(() => consequenceHeading.current?.focus());
     } catch (caught) {
       setDetailError('The action was blocked or conflicted. No unsafe change was made.');
     }
@@ -553,7 +621,7 @@ export default function MediaLibrary() {
                 {['failed', 'cancelled', 'paused_offline', 'expired'].includes(item.status) ? (
                   <button type="button" disabled={!networkOnline} aria-label={`Restart upload of ${item.name}`} onClick={() => restartUpload(item)}>Restart</button>
                 ) : null}
-                {['checking', 'uploading'].includes(item.status) ? (
+                {['queued', 'checking', 'uploading'].includes(item.status) ? (
                   <button
                     type="button"
                     aria-label={`Cancel upload of ${item.name}`}
@@ -597,6 +665,7 @@ export default function MediaLibrary() {
               role="dialog"
               aria-modal="true"
               aria-labelledby="media-detail-title"
+              aria-busy={detailLoading}
               onKeyDown={(event) => {
                 if (!confirmationTarget) trapDialogFocus(event, detailDialog.current, closeAsset);
               }}
@@ -608,6 +677,7 @@ export default function MediaLibrary() {
                 </div>
                 <button ref={closeButton} type="button" onClick={closeAsset}>Close</button>
               </header>
+              {detailLoading ? <p role="status">Loading current asset details…</p> : null}
               <div className="media-detail-layout">
                 <div className="media-safe-preview" role="img" aria-label={`Safe preview placeholder for ${activeAsset.filename}`}>
                   {activeAsset.mediaType?.split('/')[0]?.toUpperCase() || 'FILE'}
@@ -632,7 +702,7 @@ export default function MediaLibrary() {
                   <input
                     value={metadata.altText}
                     maxLength={500}
-                    disabled={metadata.decorative}
+                    disabled={!detailReady || detailLoading || metadata.decorative}
                     onChange={(event) => setMetadata((current) => ({
                       ...current, altText: event.target.value,
                     }))}
@@ -642,6 +712,7 @@ export default function MediaLibrary() {
                   <input
                     type="checkbox"
                     checked={metadata.decorative}
+                    disabled={!detailReady || detailLoading}
                     onChange={(event) => setMetadata((current) => ({
                       ...current, decorative: event.target.checked,
                       altText: event.target.checked ? '' : current.altText,
@@ -654,12 +725,13 @@ export default function MediaLibrary() {
                   <textarea
                     value={metadata.caption}
                     maxLength={2000}
+                    disabled={!detailReady || detailLoading}
                     onChange={(event) => setMetadata((current) => ({
                       ...current, caption: event.target.value,
                     }))}
                   />
                 </label>
-                <button type="submit">Save new revision</button>
+                <button type="submit" disabled={!detailReady || detailLoading}>Save new revision</button>
                 {metadataStatus ? <p role="status">{metadataStatus}</p> : null}
               </form>
               <section aria-labelledby="jobs-heading">
@@ -678,17 +750,17 @@ export default function MediaLibrary() {
                 ))}</ul> : <p>No active processing jobs.</p>}
               </section>
               <section aria-labelledby="consequence-heading">
-                <h3 id="consequence-heading">Archive and deletion safety</h3>
-                <button type="button" onClick={loadPreview}>Preview consequences</button>
+                <h3 ref={consequenceHeading} id="consequence-heading" tabIndex="-1">Archive and deletion safety</h3>
+                <button type="button" disabled={!detailReady || detailLoading} onClick={loadPreview}>Preview consequences</button>
                 {preview ? <div role="status">
                   <p>{preview.allowed ? 'No blocking references or holds.' : 'Blocked by references or retention holds.'}</p>
                   <p>{preview.blockingReferences?.length || 0} blocking references; {preview.activeHolds?.length || 0} active holds; {preview.objectCount ?? 0} objects affected.</p>
                 </div> : null}
                 <div className="media-detail-actions">
                   {activeAsset.status === 'archived' || activeAsset.status === 'soft_deleted' ? (
-                    <button type="button" onClick={() => prepareDetailTransition('ready')}>Prepare restore</button>
-                  ) : <button type="button" onClick={() => prepareDetailTransition('archived')}>Prepare archive</button>}
-                  <button type="button" onClick={() => prepareDetailTransition('soft_deleted')}>Prepare deletion</button>
+                    <button type="button" disabled={!detailReady || detailLoading} onClick={() => prepareDetailTransition('ready')}>Prepare restore</button>
+                  ) : <button type="button" disabled={!detailReady || detailLoading} onClick={() => prepareDetailTransition('archived')}>Prepare archive</button>}
+                  <button type="button" disabled={!detailReady || detailLoading} onClick={() => prepareDetailTransition('soft_deleted')}>Prepare deletion</button>
                 </div>
                 {confirmationTarget ? <div
                   ref={confirmationDialog}

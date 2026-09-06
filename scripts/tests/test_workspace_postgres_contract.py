@@ -85,6 +85,15 @@ class WorkspacePostgresContractTests(unittest.TestCase):
         self.assertIn('role_check + ["reversed"]', runner)
         self.assertIn('django_migration + ["0010", "--noinput"]', runner)
         self.assertIn('role_check + ["forward"]', runner)
+        self.assertIn('django_migration + ["0017", "--noinput"]', runner)
+        media_checks = (ROOT / "scripts/python/run_media_postgres_checks.py").read_text()
+        for marker in (
+            "media_asset_unbound_update_was_not_blocked",
+            "media_variant_unbound_update_was_not_blocked",
+            "media_asset_cross_tenant_update_was_not_blocked",
+            "media_variant_cross_tenant_update_was_not_blocked",
+        ):
+            self.assertIn(marker, media_checks)
 
 
 if __name__ == "__main__":

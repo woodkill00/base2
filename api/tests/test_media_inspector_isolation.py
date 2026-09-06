@@ -545,6 +545,9 @@ def test_main_worker_has_no_decoder_import_and_manifests_isolate_service():
             and inspector['cap_add'] == ['SETUID', 'SETGID', 'SETPCAP']
             and inspector['pids_limit'] == 16
         )
+        assert inspector['healthcheck']['test'] == [
+            'CMD', 'python', '-c', 'import os; os.kill(1, 0)'
+        ]
         env = '\n'.join(inspector['environment'])
         assert all(
             secret not in env

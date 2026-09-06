@@ -94,7 +94,7 @@ it('provides keyboard-equivalent multi-file input and truthful progress', async 
   await waitFor(() => expect(within(heading.closest('section')).getByText('quarantined')).toBeInTheDocument());
   expect(mediaLibraryAPI.createUpload).toHaveBeenCalledWith(expect.objectContaining({
     filename: 'safe.png', mediaType: 'image/png', byteSize: 4,
-  }), expect.stringMatching(/^media-upload-[0-9]+-0$/),
+  }), expect.stringMatching(/^media-upload-[0-9]+-[0-9]+-0$/),
   expect.objectContaining({ signal: expect.any(AbortSignal) }));
 });
 
@@ -123,6 +123,61 @@ it('accepts dropped and pasted files and truthfully aborts active uploads', asyn
   await waitFor(() => expect(mediaLibraryAPI.createUpload).toHaveBeenCalledWith(
     expect.objectContaining({ filename: 'paste.png' }), expect.any(String), expect.any(Object)
   ));
+});
+
+it('keeps queued cancellation and restart single-owner without duplicate attempts', async () => {
+  let releaseFirst;
+  const firstAdmission = new Promise((resolve) => { releaseFirst = resolve; });
+  mediaLibraryAPI.createUpload.mockImplementation(({ filename }) => filename === 'first.png'
+    ? firstAdmission
+    : Promise.resolve({ id: `asset-${filename}`, uploadGrant: 'g'.repeat(64) }));
+  mediaLibraryAPI.uploadContent.mockResolvedValue({ status: 'quarantined' });
+  renderPage();
+  const input = await screen.findByLabelText('Choose media files');
+  const first = new File(['first'], 'first.png', { type: 'image/png' });
+  const second = new File(['second'], 'second.png', { type: 'image/png' });
+  fireEvent.change(input, { target: { files: [first, second] } });
+
+  expect(await screen.findByText('queued')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel upload of second.png' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Restart upload of second.png' }));
+  expect(mediaLibraryAPI.createUpload).not.toHaveBeenCalledWith(
+    expect.objectContaining({ filename: 'second.png' }), expect.any(String), expect.any(Object)
+  );
+
+  releaseFirst({ id: 'asset-first', uploadGrant: 'g'.repeat(64) });
+  await waitFor(() => expect(mediaLibraryAPI.createUpload).toHaveBeenCalledWith(
+    expect.objectContaining({ filename: 'second.png' }), expect.any(String), expect.any(Object)
+  ));
+  expect(mediaLibraryAPI.createUpload.mock.calls.filter(([payload]) => payload.filename === 'second.png')).toHaveLength(1);
+  expect(mediaLibraryAPI.uploadContent.mock.calls.filter(([_id, file]) => file.name === 'second.png')).toHaveLength(1);
+});
+
+it('appends a new batch while preserving visible control of active work', async () => {
+  let releaseFirst;
+  mediaLibraryAPI.createUpload.mockImplementation(({ filename }, _key, { signal }) => {
+    if (filename !== 'first.png') return Promise.resolve({ id: 'asset-next', uploadGrant: 'g'.repeat(64) });
+    return new Promise((resolve, reject) => {
+      releaseFirst = resolve;
+      signal.addEventListener('abort', () => reject({ name: 'CanceledError' }));
+    });
+  });
+  mediaLibraryAPI.uploadContent.mockResolvedValue({ status: 'quarantined' });
+  renderPage();
+  const zone = await screen.findByRole('region', { name: 'Add media by dropping or pasting files' });
+  fireEvent.drop(zone, { dataTransfer: { files: [new File(['first'], 'first.png', { type: 'image/png' })] } });
+  await screen.findByRole('button', { name: 'Cancel upload of first.png' });
+  fireEvent.paste(zone, { clipboardData: { items: [{
+    kind: 'file', getAsFile: () => new File(['next'], 'next.png', { type: 'image/png' }),
+  }] } });
+  expect(screen.getByText('first.png')).toBeInTheDocument();
+  expect(screen.getByText('next.png')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Cancel upload of first.png' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel upload of first.png' }));
+  await waitFor(() => expect(mediaLibraryAPI.createUpload).toHaveBeenCalledWith(
+    expect.objectContaining({ filename: 'next.png' }), expect.any(String), expect.any(Object)
+  ));
+  releaseFirst?.({ id: 'unused', uploadGrant: 'g'.repeat(64) });
 });
 
 it('pauses active work offline and offers a bounded resume when online', async () => {
@@ -154,7 +209,9 @@ it('opens an accessible detail and usage dialog with consequence preview', async
   fireEvent.click(await screen.findByRole('button', { name: 'View details' }));
   expect(await screen.findByRole('dialog', { name: 'safe.png' })).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: 'Usage and references' })).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Preview consequences' }));
+  const previewButton = screen.getByRole('button', { name: 'Preview consequences' });
+  await waitFor(() => expect(previewButton).toBeEnabled());
+  fireEvent.click(previewButton);
   expect(await screen.findByText('No blocking references or holds.')).toBeInTheDocument();
   expect(await axe(result.container)).toHaveNoViolations();
   fireEvent.click(screen.getByRole('button', { name: 'Close' }));
@@ -173,6 +230,7 @@ it('contains detail and confirmation focus and restores each opener', async () =
   expect(within(dialog).getByRole('button', { name: 'Prepare deletion' })).toHaveFocus();
 
   const prepare = within(dialog).getByRole('button', { name: 'Prepare deletion' });
+  await waitFor(() => expect(prepare).toBeEnabled());
   fireEvent.click(prepare);
   const confirmation = await screen.findByRole('alertdialog', { name: 'Confirm media action' });
   expect(within(confirmation).getByRole('button', { name: 'Confirm action' })).toHaveFocus();
@@ -185,6 +243,40 @@ it('contains detail and confirmation focus and restores each opener', async () =
 
   fireEvent.keyDown(dialog, { key: 'Escape' });
   await waitFor(() => expect(opener).toHaveFocus());
+});
+
+it('cancels stale detail work and never reopens a dialog the user closed', async () => {
+  let resolveDetail;
+  let detailSignal;
+  mediaLibraryAPI.asset.mockImplementation((_id, { signal }) => new Promise((resolve) => {
+    detailSignal = signal;
+    resolveDetail = resolve;
+  }));
+  renderPage();
+  fireEvent.click(await screen.findByRole('button', { name: 'View details' }));
+  const dialog = await screen.findByRole('dialog', { name: 'safe.png' });
+  expect(within(dialog).getByText('Loading current asset details…')).toBeInTheDocument();
+  expect(within(dialog).getByRole('button', { name: 'Save new revision' })).toBeDisabled();
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
+  expect(detailSignal.aborted).toBe(true);
+  resolveDetail({
+    id: 'asset-1', filename: 'safe.png', mediaType: 'image/png', byteSize: 1024,
+    status: 'ready', version: 1, altText: 'stale response', variants: [],
+  });
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(mediaLibraryAPI.updateMetadata).not.toHaveBeenCalled();
+});
+
+it('keeps metadata mutation disabled when current detail loading fails', async () => {
+  mediaLibraryAPI.asset.mockRejectedValue(new Error('unavailable private detail'));
+  renderPage();
+  fireEvent.click(await screen.findByRole('button', { name: 'View details' }));
+  const dialog = await screen.findByRole('dialog', { name: 'safe.png' });
+  expect(await within(dialog).findByRole('alert')).toHaveTextContent('temporarily unavailable');
+  expect(within(dialog).getByRole('button', { name: 'Save new revision' })).toBeDisabled();
+  expect(within(dialog).getByRole('button', { name: 'Prepare deletion' })).toBeDisabled();
+  fireEvent.submit(within(dialog).getByRole('button', { name: 'Save new revision' }).closest('form'));
+  expect(mediaLibraryAPI.updateMetadata).not.toHaveBeenCalled();
 });
 
 it('integrates the reusable picker and returns focus after exact selection', async () => {
@@ -255,7 +347,9 @@ it('shows bounded processing state and permits only eligible manual retry', asyn
 it('requires an explicit consequence-aware confirmation before deletion', async () => {
   renderPage();
   fireEvent.click(await screen.findByRole('button', { name: 'View details' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Prepare deletion' }));
+  const prepareDeletion = screen.getByRole('button', { name: 'Prepare deletion' });
+  await waitFor(() => expect(prepareDeletion).toBeEnabled());
+  fireEvent.click(prepareDeletion);
   const confirmation = await screen.findByRole('alertdialog', { name: 'Confirm media action' });
   expect(within(confirmation).getByText(/exact asset and version/)).toBeInTheDocument();
   expect(mediaLibraryAPI.transition).not.toHaveBeenCalled();
@@ -263,6 +357,7 @@ it('requires an explicit consequence-aware confirmation before deletion', async 
   await waitFor(() => expect(mediaLibraryAPI.transition).toHaveBeenCalledWith(
     'asset-1', 1, 'soft_deleted', 'media-soft_deleted-asset-1-1'
   ));
+  await waitFor(() => expect(screen.getByRole('heading', { name: 'Archive and deletion safety' })).toHaveFocus());
 });
 
 it('adds exact selected assets to a permitted collection with truthful counts', async () => {
