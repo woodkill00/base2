@@ -167,6 +167,40 @@ def test_asset_upload_replay_is_exact_and_quota_admission_is_atomic(monkeypatch)
     assert connection.rollbacks == 1
 
 
+def test_upload_grant_preflight_is_owner_bound_and_stateless(monkeypatch):
+    monkeypatch.setattr(repository.settings, "TOKEN_PEPPER", "synthetic-test-pepper-104")
+    repo = repository.PostgresContentWorkspaceRepository()
+    scope = {
+        "site": "site-a",
+        "owner": "user:test",
+        "asset": str(ASSET_ID),
+        "sha256": "a" * 64,
+        "bytes": 32,
+        "purpose": "asset-upload",
+    }
+    grant = repository.CursorCodec(
+        str(repository.settings.TOKEN_PEPPER), ttl_seconds=300
+    ).encode(scope=scope, position={"assetId": str(ASSET_ID)})
+    cursor = QueueCursor(ones=[(32, "a" * 64, "pending")])
+    bind(monkeypatch, cursor)
+    assert repo.validate_asset_upload_grant(
+        site_id="site-a",
+        asset_id=ASSET_ID,
+        owner_ref="user:test",
+        upload_grant=grant,
+    ) == {"expectedBytes": 32}
+    assert cursor.calls[0][1] == (str(ASSET_ID), "site-a", "user:test")
+
+    cursor = QueueCursor(ones=[(32, "a" * 64, "pending")])
+    bind(monkeypatch, cursor)
+    with pytest.raises(ValueError, match="content_upload_grant_invalid"):
+        repo.validate_asset_upload_grant(
+            site_id="site-a",
+            asset_id=ASSET_ID,
+            owner_ref="user:test",
+            upload_grant=grant + "x",
+        )
+
 def test_record_lock_and_bump_enforce_presence_and_version():
     repo = repository.PostgresContentWorkspaceRepository()
     cursor = QueueCursor(ones=[RECORD])

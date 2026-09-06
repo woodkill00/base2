@@ -1782,6 +1782,41 @@ class PostgresContentWorkspaceRepository:
             'replayed': False,
         }
 
+    def validate_asset_upload_grant(
+        self,
+        *,
+        site_id: str,
+        asset_id: UUID,
+        owner_ref: str,
+        upload_grant: str,
+    ) -> dict[str, int]:
+        """Validate the exact upload session before admitting request-body work."""
+        with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
+            cur.execute(
+                """SELECT byte_size, sha256, status FROM sitecontent_mediaasset
+                   WHERE id=%s AND site_id=%s AND owner_ref=%s""",
+                (str(asset_id), site_id, owner_ref),
+            )
+            row = cur.fetchone()
+        if not row or row[2] not in {'pending', 'quarantined'}:
+            raise ValueError('content_not_found')
+        scope = {
+            'site': site_id,
+            'owner': owner_ref,
+            'asset': str(asset_id),
+            'sha256': row[1],
+            'bytes': row[0],
+            'purpose': 'asset-upload',
+        }
+        try:
+            CursorCodec(str(settings.TOKEN_PEPPER), ttl_seconds=300).decode(
+                upload_grant,
+                expected_scope=scope,
+            )
+        except CursorError as exc:
+            raise ValueError('content_upload_grant_invalid') from exc
+        return {'expectedBytes': int(row[0])}
+
     def bind_asset(
         self,
         *,

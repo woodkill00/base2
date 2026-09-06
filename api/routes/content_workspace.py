@@ -966,11 +966,35 @@ async def complete_asset_upload(
 ):
     principal, tenant = _authorized_scope(request, 'content-workspace.write')
     try:
+        _count, limited, retry_after = incr_and_check_tenant_detailed(
+            tenant, str(principal.user_id), 'media_upload_complete'
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_rate_limit_unavailable') from exc
+    if limited:
+        raise HTTPException(
+            status_code=429,
+            detail='content_rate_limit_exceeded',
+            headers={'Retry-After': str(retry_after)},
+        )
+    repository = get_repository()
+    try:
+        admission = repository.validate_asset_upload_grant(
+            site_id=tenant,
+            asset_id=asset_id,
+            owner_ref=f'user:{principal.user_id}',
+            upload_grant=upload_grant,
+        )
+        length = request.headers.get('content-length')
+        if length is not None and (
+            not length.isdigit() or int(length) != admission['expectedBytes']
+        ):
+            raise HTTPException(status_code=422, detail='content_integrity_failed')
         async with upload_completion_slot():
             content = await read_bounded_upload(
-                request.stream(), maximum_bytes=MAX_UPLOAD_BYTES
+                request.stream(), maximum_bytes=min(MAX_UPLOAD_BYTES, admission['expectedBytes'])
             )
-            return get_repository().complete_asset_upload(
+            return repository.complete_asset_upload(
                 site_id=tenant,
                 asset_id=asset_id,
                 owner_ref=f'user:{principal.user_id}',

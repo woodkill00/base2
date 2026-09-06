@@ -157,6 +157,11 @@ def test_content_transfer_uses_header_grants_and_safe_delivery_headers(monkeypat
     monkeypatch.setattr(media_library, 'get_artifact_store', lambda: object())
     monkeypatch.setattr(
         media_library.PostgresContentWorkspaceRepository,
+        'validate_asset_upload_grant',
+        lambda _self, **_kwargs: {'expectedBytes': 8},
+    )
+    monkeypatch.setattr(
+        media_library.PostgresContentWorkspaceRepository,
         'complete_asset_upload',
         lambda _self, **kwargs: {
             'id': str(kwargs['asset_id']),
@@ -199,6 +204,11 @@ def test_content_transfer_rejects_exhausted_upload_capacity(monkeypatch):
             return False
 
     monkeypatch.setattr(media_library, 'upload_completion_slot', lambda: Exhausted())
+    monkeypatch.setattr(
+        media_library.PostgresContentWorkspaceRepository,
+        'validate_asset_upload_grant',
+        lambda _self, **_kwargs: {'expectedBytes': 8},
+    )
     response = TestClient(app).put(
         f'/api/media/v1/assets/{ASSET_ID}/content',
         content=b'safe-png',
@@ -207,6 +217,37 @@ def test_content_transfer_rejects_exhausted_upload_capacity(monkeypatch):
     assert response.status_code == 429
     assert response.json()['detail'] == 'media_upload_capacity_exhausted'
     assert response.headers['retry-after'] == '2'
+
+
+def test_content_transfer_rejects_invalid_grant_before_capacity(monkeypatch):
+    entered = False
+
+    class ForbiddenSlot:
+        async def __aenter__(self):
+            nonlocal entered
+            entered = True
+            raise AssertionError('capacity must not be acquired')
+
+        async def __aexit__(self, *_args):
+            return False
+
+    def reject(_self, **_kwargs):
+        raise ValueError('content_upload_grant_invalid')
+
+    monkeypatch.setattr(
+        media_library.PostgresContentWorkspaceRepository,
+        'validate_asset_upload_grant',
+        reject,
+    )
+    monkeypatch.setattr(media_library, 'upload_completion_slot', lambda: ForbiddenSlot())
+    response = TestClient(app).put(
+        f'/api/media/v1/assets/{ASSET_ID}/content',
+        content=b'slow-body-never-admitted',
+        headers={'Upload-Grant': 'invalid-grant-that-is-long-enough'},
+    )
+    assert response.status_code == 422
+    assert response.json()['detail'] == 'media_upload_grant_invalid'
+    assert entered is False
 
 
 @pytest.mark.parametrize(

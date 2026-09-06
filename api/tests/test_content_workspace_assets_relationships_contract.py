@@ -32,6 +32,10 @@ class FakeRepository:
             'replayed': False,
         }
 
+    def validate_asset_upload_grant(self, **kwargs):
+        self.calls.append(('upload-validate', kwargs))
+        return {'expectedBytes': 18}
+
     def read_asset_content(self, **kwargs):
         self.calls.append(('asset-content', kwargs))
         return {'content': b'safe-png', 'media_type': 'image/png', 'sha256': 'b' * 64}
@@ -156,6 +160,11 @@ def test_asset_content_upload_is_raw_bounded_grant_bound_and_starts_quarantined(
 
 def test_asset_content_upload_rejects_oversize_before_repository(monkeypatch):
     monkeypatch.setattr(content_workspace, 'MAX_UPLOAD_BYTES', 4)
+    monkeypatch.setattr(
+        FakeRepository,
+        'validate_asset_upload_grant',
+        lambda self, **kwargs: {'expectedBytes': 5},
+    )
     client = TestClient(app)
     response = client.put(
         f'/api/content/v1/assets/{UUID(int=7104)}/content',
@@ -180,6 +189,11 @@ def test_asset_content_upload_rejects_exhausted_capacity(monkeypatch):
             return False
 
     monkeypatch.setattr(content_workspace, 'upload_completion_slot', lambda: Exhausted())
+    monkeypatch.setattr(
+        FakeRepository,
+        'validate_asset_upload_grant',
+        lambda self, **kwargs: {'expectedBytes': 4},
+    )
     response = TestClient(app).put(
         f'/api/content/v1/assets/{UUID(int=7104)}/content',
         headers={
@@ -193,6 +207,37 @@ def test_asset_content_upload_rejects_exhausted_capacity(monkeypatch):
     assert response.json()['detail'] == 'content_upload_capacity_exhausted'
     assert response.headers['retry-after'] == '2'
     assert not any(item[0] == 'upload-content' for item in FakeRepository.calls)
+
+
+def test_invalid_upload_grant_is_rejected_before_capacity_or_body(monkeypatch):
+    entered = False
+
+    class ForbiddenSlot:
+        async def __aenter__(self):
+            nonlocal entered
+            entered = True
+            raise AssertionError('capacity must not be acquired')
+
+        async def __aexit__(self, *_args):
+            return False
+
+    def reject(self, **_kwargs):
+        raise ValueError('content_upload_grant_invalid')
+
+    monkeypatch.setattr(FakeRepository, 'validate_asset_upload_grant', reject)
+    monkeypatch.setattr(content_workspace, 'upload_completion_slot', lambda: ForbiddenSlot())
+    response = TestClient(app).put(
+        f'/api/content/v1/assets/{UUID(int=7104)}/content',
+        headers={
+            'Authorization': 'Bearer synthetic',
+            'X-Tenant-ID': 'site-a',
+            'Upload-Grant': 'invalid-grant-that-is-long-enough',
+        },
+        content=b'slow-body-never-admitted',
+    )
+    assert response.status_code == 422
+    assert response.json()['detail'] == 'content_upload_grant_invalid'
+    assert entered is False
 
 
 def test_asset_content_download_requires_header_grant_and_is_private_nosniff():

@@ -451,11 +451,35 @@ async def complete_upload(
     principal, tenant = _authorized_scope(request, 'media.upload')
     maximum = runtime_policy()['maximumObjectBytes']
     try:
+        _count, limited, retry_after = incr_and_check_tenant_detailed(
+            tenant, str(principal.user_id), 'media_upload_complete'
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='media_rate_limit_unavailable') from exc
+    if limited:
+        raise HTTPException(
+            status_code=429,
+            detail='media_rate_limit_exceeded',
+            headers={'Retry-After': str(retry_after)},
+        )
+    repository = PostgresContentWorkspaceRepository()
+    try:
+        admission = repository.validate_asset_upload_grant(
+            site_id=tenant,
+            asset_id=asset_id,
+            owner_ref=f'user:{principal.user_id}',
+            upload_grant=upload_grant,
+        )
+        length = request.headers.get('content-length')
+        if length is not None and (
+            not length.isdigit() or int(length) != admission['expectedBytes']
+        ):
+            raise HTTPException(status_code=422, detail='media_integrity_failed')
         async with upload_completion_slot():
             content = await read_bounded_upload(
-                request.stream(), maximum_bytes=maximum
+                request.stream(), maximum_bytes=min(maximum, admission['expectedBytes'])
             )
-            return PostgresContentWorkspaceRepository().complete_asset_upload(
+            return repository.complete_asset_upload(
                 site_id=tenant,
                 asset_id=asset_id,
                 owner_ref=f'user:{principal.user_id}',
