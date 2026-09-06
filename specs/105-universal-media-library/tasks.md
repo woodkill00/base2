@@ -38,5 +38,5 @@
 - [x] B036 Integrate the reusable picker with empty/limit feedback and keyboard/return-focus proof.
 - [x] B037 Correct light-theme contrast and regenerate source-bound responsive, zoom, theme, detail, and picker visuals.
 - [x] B038 Upgrade React Router to a patched supported line and require zero frontend dependency audit findings.
-- [ ] B039 Run complete local, PostgreSQL, browser, type, security, coverage, and repeated critical regression gates.
+- [x] B039 Run complete local, PostgreSQL, browser, type, security, coverage, and repeated critical regression gates.
 - [ ] B040 Repeat independent code, security, and UX review and close every critical, high, and medium finding.

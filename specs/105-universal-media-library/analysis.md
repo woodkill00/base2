@@ -109,6 +109,14 @@ prove unknown defects impossible.
     check was added to the complete gate so this class of packaging drift fails
     locally before publication. The final exact-head gate and hosted checks
     remain B039-B040 evidence and are intentionally not predeclared complete.
+19. The lockfile-corrected candidate passed all 88 required complete-gate checks
+    with zero failures at commit
+    `4ec57c3d12b1fe4be0e6e446b621688bef5128fe`. The run covered the complete
+    local, PostgreSQL, browser, type, security, dependency, packaging, coverage,
+    and visual matrix. Result SHA-256:
+    `3400841143d83ffe1fbb3afa7f6c85a32b5529df56579be4a26db9a601a809b1`.
+    Hosted checks and final exact-head independent review remain required by
+    B020 and B040; merge and provider work remain separately gated.
 
 ## Honest residual boundary
 
