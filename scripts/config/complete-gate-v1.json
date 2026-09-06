@@ -237,6 +237,7 @@
         "pytest",
         "api/tests/test_media_library_formats.py",
         "api/tests/test_media_library_governance.py",
+        "api/tests/test_media_inspector_isolation.py",
         "api/tests/test_media_library_lifecycle.py",
         "api/tests/test_media_library_operations.py",
         "api/tests/test_media_library_policy.py",
