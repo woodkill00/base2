@@ -2,7 +2,13 @@ import asyncio
 
 import pytest
 
-from api.security.upload_capacity import UploadCapacityError, upload_completion_slot
+from api.security.upload_capacity import (
+    UploadBodyLimitError,
+    UploadBodyTimeoutError,
+    UploadCapacityError,
+    read_bounded_upload,
+    upload_completion_slot,
+)
 
 
 @pytest.mark.asyncio
@@ -31,5 +37,46 @@ async def test_upload_completion_releases_slot_after_failure():
     with pytest.raises(RuntimeError, match='synthetic'):
         async with upload_completion_slot():
             raise RuntimeError('synthetic')
+    async with upload_completion_slot(timeout_seconds=0.01):
+        pass
+
+
+@pytest.mark.asyncio
+async def test_upload_reader_enforces_byte_idle_and_total_bounds():
+    async def finite():
+        yield b'ab'
+        yield b'cd'
+
+    assert await read_bounded_upload(finite(), maximum_bytes=4) == b'abcd'
+    with pytest.raises(UploadBodyLimitError, match='upload_body_limit_exceeded'):
+        await read_bounded_upload(finite(), maximum_bytes=3)
+
+    async def slow():
+        await asyncio.sleep(1)
+        yield b'a'
+
+    with pytest.raises(UploadBodyTimeoutError, match='upload_body_timeout'):
+        await read_bounded_upload(
+            slow(),
+            maximum_bytes=4,
+            idle_timeout_seconds=0.01,
+            total_timeout_seconds=0.02,
+        )
+
+
+@pytest.mark.asyncio
+async def test_timed_out_body_releases_completion_slot():
+    async def slow():
+        await asyncio.sleep(1)
+        yield b'a'
+
+    with pytest.raises(UploadBodyTimeoutError):
+        async with upload_completion_slot():
+            await read_bounded_upload(
+                slow(),
+                maximum_bytes=4,
+                idle_timeout_seconds=0.01,
+                total_timeout_seconds=0.02,
+            )
     async with upload_completion_slot(timeout_seconds=0.01):
         pass

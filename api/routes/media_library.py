@@ -6,7 +6,6 @@ import hashlib
 import hmac
 import json
 import re
-import tempfile
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
@@ -21,7 +20,13 @@ from api.repositories.media_library import PostgresMediaLibraryRepository
 from api.security.request_auth import require_authenticated_principal
 from api.security.identity import require_recent_reauthentication
 from api.security.rate_limit import incr_and_check_tenant_detailed
-from api.security.upload_capacity import UploadCapacityError, upload_completion_slot
+from api.security.upload_capacity import (
+    UploadBodyLimitError,
+    UploadBodyTimeoutError,
+    UploadCapacityError,
+    read_bounded_upload,
+    upload_completion_slot,
+)
 from api.services.content_workspace_storage import ArtifactIntegrityError, configured_artifact_store
 from api.services.media_library_policy import (
     DEFAULT_POLICY,
@@ -447,17 +452,9 @@ async def complete_upload(
     maximum = runtime_policy()['maximumObjectBytes']
     try:
         async with upload_completion_slot():
-            received = 0
-            with tempfile.SpooledTemporaryFile(
-                max_size=min(maximum, 1024 * 1024), mode='w+b'
-            ) as stream:
-                async for chunk in request.stream():
-                    received += len(chunk)
-                    if received > maximum:
-                        raise HTTPException(status_code=413, detail='media_quota_object_exceeded')
-                    stream.write(chunk)
-                stream.seek(0)
-                content = stream.read(maximum + 1)
+            content = await read_bounded_upload(
+                request.stream(), maximum_bytes=maximum
+            )
             return PostgresContentWorkspaceRepository().complete_asset_upload(
                 site_id=tenant,
                 asset_id=asset_id,
@@ -473,6 +470,10 @@ async def complete_upload(
             detail='media_upload_capacity_exhausted',
             headers={'Retry-After': '2'},
         ) from exc
+    except UploadBodyLimitError as exc:
+        raise HTTPException(status_code=413, detail='media_quota_object_exceeded') from exc
+    except UploadBodyTimeoutError as exc:
+        raise HTTPException(status_code=408, detail='media_upload_timeout') from exc
     except HTTPException:
         raise
     except (ValueError, ArtifactIntegrityError) as exc:
