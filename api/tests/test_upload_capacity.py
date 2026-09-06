@@ -9,6 +9,7 @@ from api.security.upload_capacity import (
     read_bounded_upload,
     upload_completion_slot,
 )
+from api.security import rate_limit
 
 
 @pytest.mark.asyncio
@@ -80,3 +81,9 @@ async def test_timed_out_body_releases_completion_slot():
             )
     async with upload_completion_slot(timeout_seconds=0.01):
         pass
+
+
+def test_upload_completion_has_an_explicit_conservative_rate_limit(monkeypatch):
+    monkeypatch.delenv('RATE_LIMIT_MEDIA_UPLOAD_COMPLETE_WINDOW_MS', raising=False)
+    monkeypatch.delenv('RATE_LIMIT_MEDIA_UPLOAD_COMPLETE_MAX_REQUESTS', raising=False)
+    assert rate_limit._limit_for_scope('media_upload_complete') == (60_000, 1)

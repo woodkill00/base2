@@ -24,6 +24,9 @@ SCOPE_LIMITS: dict[str, tuple[int, int]] = {
     'community_submit': (60_000, 10),
     # Authenticated media admission is bounded per tenant and principal.
     'media_upload_create': (60_000, 30),
+    # Body completion is memory-bearing: one attempt per principal per minute
+    # prevents valid-grant slow-body replay from monopolizing upload workers.
+    'media_upload_complete': (60_000, 1),
 }
 
 
