@@ -119,6 +119,7 @@ class LifecycleAction(ContractModel):
 
 class ExportCreate(ContractModel):
     output_format: Literal['json', 'csv']
+    asset_ids: list[UUID] = Field(min_length=1, max_length=100)
     projection: list[
         Literal[
             'id',
@@ -137,6 +138,13 @@ class ExportCreate(ContractModel):
     def unique_projection(cls, value):
         if len(value) != len(set(value)):
             raise ValueError('media_export_projection_invalid')
+        return value
+
+    @field_validator('asset_ids')
+    @classmethod
+    def unique_asset_ids(cls, value):
+        if len(value) != len(set(value)):
+            raise ValueError('media_export_selection_invalid')
         return value
 
 
@@ -598,6 +606,7 @@ def create_export(
         json.dumps(
             {
                 'format': payload.output_format,
+                'assetIds': sorted(str(asset_id) for asset_id in payload.asset_ids),
                 'projection': payload.projection,
                 'idempotencyKey': idempotency_key,
             },
@@ -610,7 +619,11 @@ def create_export(
             site_id=tenant,
             actor_ref=f'user:{principal.user_id}',
             output_format=payload.output_format,
-            projection=[str(field) for field in payload.projection],
+            projection={
+                'fields': [str(field) for field in payload.projection],
+                'assetIds': sorted(str(asset_id) for asset_id in payload.asset_ids),
+                'filters': {},
+            },
             request_digest=request_digest,
             expires_at=datetime.now(UTC) + timedelta(hours=24),
         )

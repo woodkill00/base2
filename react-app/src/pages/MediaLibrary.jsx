@@ -165,7 +165,7 @@ export default function MediaLibrary() {
     return next;
   });
 
-  const uploadOne = async (file, queueId) => {
+  const uploadOne = async (file, queueId, idempotencyKey) => {
     const update = (values) => setUploadQueue((current) => current.map((item) =>
       item.id === queueId ? { ...item, ...values } : item));
     if (cancelledUploads.current.has(queueId) || navigator.onLine === false) {
@@ -181,7 +181,7 @@ export default function MediaLibrary() {
       update({ status: 'uploading', progress: 1 });
       const admitted = await mediaLibraryAPI.createUpload({
         filename: file.name, mediaType: file.type, byteSize: file.size, sha256,
-      }, { signal: controller.signal });
+      }, idempotencyKey, { signal: controller.signal });
       if (cancelledUploads.current.has(queueId)) return;
       update({ expiresAt: admitted.expiresAt || '' });
       await mediaLibraryAPI.uploadContent(admitted.id, file, admitted.uploadGrant, {
@@ -207,13 +207,17 @@ export default function MediaLibrary() {
 
   const uploadFiles = async (files) => {
     const incoming = Array.from(files).slice(0, capabilities?.limits?.maximumBatchFiles || 20);
+    const batchKey = Date.now();
     const queue = incoming.map((file, index) => ({
       id: `${file.name}-${file.size}-${file.lastModified}-${index}-${Date.now()}`,
+      idempotencyKey: `media-upload-${batchKey}-${index}`,
       file, name: file.name, progress: 0, status: networkOnline ? 'checking' : 'paused_offline',
     }));
     setUploadQueue(queue);
     for (const item of queue) {
-      if (!cancelledUploads.current.has(item.id)) await uploadOne(item.file, item.id);
+      if (!cancelledUploads.current.has(item.id)) {
+        await uploadOne(item.file, item.id, item.idempotencyKey);
+      }
     }
     await load();
   };
@@ -230,7 +234,7 @@ export default function MediaLibrary() {
     offlinePausedUploads.current.delete(item.id);
     setUploadQueue((current) => current.map((entry) => entry.id === item.id
       ? { ...entry, status: 'checking', progress: 0 } : entry));
-    uploadOne(item.file, item.id);
+    uploadOne(item.file, item.id, item.idempotencyKey);
   };
 
   useEffect(() => {
@@ -398,6 +402,7 @@ export default function MediaLibrary() {
     try {
       await mediaLibraryAPI.createExport(
         'csv', ['id', 'filename', 'mediaType', 'status', 'visibility'],
+        Array.from(selected).sort(),
         `media-export-${Array.from(selected).sort().join('-')}`
       );
       setActionStatus('Export queued. It will expire after the retrieval window.');

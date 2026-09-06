@@ -94,7 +94,8 @@ it('provides keyboard-equivalent multi-file input and truthful progress', async 
   await waitFor(() => expect(within(heading.closest('section')).getByText('quarantined')).toBeInTheDocument());
   expect(mediaLibraryAPI.createUpload).toHaveBeenCalledWith(expect.objectContaining({
     filename: 'safe.png', mediaType: 'image/png', byteSize: 4,
-  }), expect.objectContaining({ signal: expect.any(AbortSignal) }));
+  }), expect.stringMatching(/^media-upload-[0-9]+-0$/),
+  expect.objectContaining({ signal: expect.any(AbortSignal) }));
 });
 
 it('accepts dropped and pasted files and truthfully aborts active uploads', async () => {
@@ -120,7 +121,7 @@ it('accepts dropped and pasted files and truthfully aborts active uploads', asyn
   const pasted = new File(['paste'], 'paste.png', { type: 'image/png' });
   fireEvent.paste(zone, { clipboardData: { items: [{ kind: 'file', getAsFile: () => pasted }] } });
   await waitFor(() => expect(mediaLibraryAPI.createUpload).toHaveBeenCalledWith(
-    expect.objectContaining({ filename: 'paste.png' }), expect.any(Object)
+    expect.objectContaining({ filename: 'paste.png' }), expect.any(String), expect.any(Object)
   ));
 });
 
@@ -215,7 +216,8 @@ it('reports truthful partial bulk results and queues a bounded export', async ()
   fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }));
   expect(await screen.findByText(/Export queued/)).toBeInTheDocument();
   expect(mediaLibraryAPI.createExport).toHaveBeenCalledWith(
-    'csv', ['id', 'filename', 'mediaType', 'status', 'visibility'], 'media-export-asset-1'
+    'csv', ['id', 'filename', 'mediaType', 'status', 'visibility'], ['asset-1'],
+    'media-export-asset-1'
   );
 });
 

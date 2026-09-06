@@ -436,7 +436,7 @@ class PostgresMediaLibraryRepository:
         site_id: str,
         actor_ref: str,
         output_format: str,
-        projection: list[str],
+        projection: dict[str, Any],
         request_digest: str,
         expires_at,
     ) -> dict[str, Any]:

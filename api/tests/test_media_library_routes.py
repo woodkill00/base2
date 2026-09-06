@@ -41,6 +41,11 @@ class Repository:
 
     def create_export(self, **kwargs):
         assert len(kwargs['request_digest']) == 64
+        assert kwargs['projection'] == {
+            'fields': ['id', 'filename'],
+            'assetIds': [ASSET_ID],
+            'filters': {},
+        }
         return {'id': ASSET_ID, 'status': 'queued', 'replayed': False}
 
     def list_collections(self, **kwargs):
@@ -251,14 +256,30 @@ def test_reference_preview_lifecycle_and_export_contracts_are_bounded():
     assert response.status_code == 200 and response.json()['status'] == 'archived'
     response = client.post(
         '/api/media/v1/exports',
-        json={'outputFormat': 'csv', 'projection': ['id', 'filename']},
+        json={'outputFormat': 'csv', 'assetIds': [ASSET_ID], 'projection': ['id', 'filename']},
         headers={'Idempotency-Key': 'request-123'},
     )
     assert response.status_code == 202 and response.json()['status'] == 'queued'
     assert (
         client.post(
             '/api/media/v1/exports',
-            json={'outputFormat': 'csv', 'projection': ['id', 'id']},
+            json={'outputFormat': 'csv', 'projection': ['id'], 'assetIds': []},
+            headers={'Idempotency-Key': 'request-123'},
+        ).status_code
+        == 422
+    )
+    assert (
+        client.post(
+            '/api/media/v1/exports',
+            json={'outputFormat': 'csv', 'projection': ['id'], 'assetIds': [ASSET_ID, ASSET_ID]},
+            headers={'Idempotency-Key': 'request-123'},
+        ).status_code
+        == 422
+    )
+    assert (
+        client.post(
+            '/api/media/v1/exports',
+            json={'outputFormat': 'csv', 'assetIds': [ASSET_ID], 'projection': ['id', 'id']},
             headers={'Idempotency-Key': 'request-123'},
         ).status_code
         == 422
@@ -368,7 +389,7 @@ class FailureRepository:
             'headers': {'If-Match': '2', 'Idempotency-Key': 'request-123'},
         }),
         ('post', '/api/media/v1/exports', {
-            'json': {'outputFormat': 'csv', 'projection': ['id']},
+            'json': {'outputFormat': 'csv', 'assetIds': [ASSET_ID], 'projection': ['id']},
             'headers': {'Idempotency-Key': 'request-123'},
         }),
         ('get', '/api/media/v1/collections', {}),

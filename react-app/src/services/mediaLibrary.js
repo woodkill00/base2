@@ -36,8 +36,10 @@ export const mediaLibraryAPI = {
     ),
   asset: async (assetId, { signal } = {}) =>
     unwrap(await apiClient.get(`/media/v1/assets/${encoded(assetId)}`, { signal })),
-  createUpload: async (payload, { signal } = {}) =>
-    unwrap(await apiClient.post('/media/v1/uploads', payload, { signal })),
+  createUpload: async (payload, idempotencyKey, { signal } = {}) =>
+    unwrap(await apiClient.post('/media/v1/uploads', payload, {
+      headers: { 'Idempotency-Key': idempotencyKey }, signal,
+    })),
   uploadContent: async (assetId, file, uploadGrant, { signal, onUploadProgress } = {}) =>
     unwrap(
       await apiClient.put(`/media/v1/assets/${encoded(assetId)}/content`, file, {
@@ -70,11 +72,11 @@ export const mediaLibraryAPI = {
         }
       )
     ),
-  createExport: async (outputFormat, projection, idempotencyKey, { signal } = {}) =>
+  createExport: async (outputFormat, projection, assetIds, idempotencyKey, { signal } = {}) =>
     unwrap(
       await apiClient.post(
         '/media/v1/exports',
-        { outputFormat, projection },
+        { outputFormat, projection, assetIds },
         { headers: { 'Idempotency-Key': idempotencyKey }, signal }
       )
     ),

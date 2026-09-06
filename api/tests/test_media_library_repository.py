@@ -227,7 +227,8 @@ def test_export_collection_job_and_retrieval_workflows_are_scoped(monkeypatch):
     repo = repository.PostgresMediaLibraryRepository()
     export = repo.create_export(
         site_id="site-a", actor_ref="user:test", output_format="csv",
-        projection=["id"], request_digest="a" * 64, expires_at=now,
+        projection={"fields": ["id"], "assetIds": [str(UUID(int=1))], "filters": {}},
+        request_digest="a" * 64, expires_at=now,
     )
     collections = repo.list_collections(site_id="site-a", actor_ref="user:test", roles=[])
     created = repo.create_collection(

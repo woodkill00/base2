@@ -43,11 +43,23 @@ describe('media library API', () => {
         headers: { 'If-Match': '"4"', 'Idempotency-Key': 'request-123' },
       })
     );
-    await mediaLibraryAPI.createExport('csv', ['id'], 'export-123');
+    await mediaLibraryAPI.createExport('csv', ['id'], ['asset-1'], 'export-123');
     expect(apiClient.post).toHaveBeenCalledWith(
       '/media/v1/exports',
-      { outputFormat: 'csv', projection: ['id'] },
+      { outputFormat: 'csv', projection: ['id'], assetIds: ['asset-1'] },
       expect.objectContaining({ headers: { 'Idempotency-Key': 'export-123' } })
+    );
+  });
+
+  it('binds upload creation to an idempotency key', async () => {
+    apiClient.post.mockResolvedValue({ data: { id: 'asset-1' } });
+    await mediaLibraryAPI.createUpload(
+      { filename: 'safe.png' }, 'media-upload-digest-4'
+    );
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/media/v1/uploads',
+      { filename: 'safe.png' },
+      expect.objectContaining({ headers: { 'Idempotency-Key': 'media-upload-digest-4' } })
     );
   });
 
