@@ -33,12 +33,25 @@ prove unknown defects impossible.
    The factory now resolves the complete transitive dependency graph, writes
    the effective ordered inventory into provenance and the child profile, and
    has a direct regression test.
-4. The final exact-source gate passed all 86 required checks at commit
-   `aeb57eb9257f068154de32c2e3295c349c8b1a21`. Its local sanitized evidence
-   digest is `74939acd3a5f4b90901e0f90e6feb4440a11812bd30c4f13587387cc313b36e8`.
-   The reviewed diff contains 100 tracked files and no committed credential or
-   provider state. Local virtual-environment links and generated gate artifacts
-   remain untracked and are excluded from publication.
+4. The persistence expansion added governance, processing, portability,
+   encryption-envelope, and abuse-review models through migration `0015`.
+   Disposable PostgreSQL acceptance proved forward, reverse, repeat-forward,
+   forced-RLS, runtime-role isolation, and bounded worker-role access.
+5. The governed workflow pass added collections, reference/consequence
+   inventory, optimistic metadata revisions, jobs and bounded retry, replay-safe
+   lifecycle actions, and expiring export status. Its first complete gate
+   correctly failed because changed-line coverage was 82.93% against the fixed
+   90% floor.
+6. Added transaction, outbox, scope, failure-redaction, and domain-status tests
+   raised changed-line coverage to 90.28%. The corrected complete gate passed
+   all 86 required checks with zero skips at commit
+   `f7aced8a4448aae3a43453ddb2159467e6657a70`; evidence digest
+   `9c53496c17832f9442b2a4d9f13fdc261fbdb0f549befc8ae1ff12f3927fcb1b`.
+7. The exact critical media lifecycle, replay, governance, worker, and policy
+   suites then passed 100 consecutive repetitions. The reviewed branch now
+   contains 117 tracked files across 19 commits and no committed credential or
+   provider state. Three local virtual-environment links and generated gate
+   artifacts remain untracked and are excluded from publication.
 
 ## Honest residual boundary
 
