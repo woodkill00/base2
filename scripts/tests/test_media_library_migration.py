@@ -6,6 +6,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION = ROOT / "django/sitecontent/migrations/0012_universal_media_library_roles.py"
+GOVERNANCE_MIGRATION = ROOT / "django/sitecontent/migrations/0013_media_governance.py"
+PROCESSING_MIGRATION = ROOT / "django/sitecontent/migrations/0014_media_processing_governance.py"
 
 
 class MediaLibraryMigrationTests(unittest.TestCase):
@@ -41,13 +43,41 @@ class MediaLibraryMigrationTests(unittest.TestCase):
     def test_disposable_postgres_acceptance_proves_forward_reverse_and_tenant_isolation(self):
         runner = (ROOT / "scripts/python/run_workspace_postgres_acceptance.py").read_text()
         checks = (ROOT / "scripts/python/run_media_postgres_checks.py").read_text()
-        self.assertIn('django_migration + ["0012", "--noinput"]', runner)
+        self.assertIn('django_migration + ["0014", "--noinput"]', runner)
         self.assertIn('media_check + ["forward"]', runner)
         self.assertIn('media_check + ["reversed"]', runner)
         self.assertIn("media_cross_tenant_insert_was_not_blocked", checks)
         self.assertIn("relforcerowsecurity", checks)
         self.assertIn("rolbypassrls", checks)
         self.assertIn("docker", runner)
+
+    def test_governance_tables_are_forced_rls_and_reversed_safely(self):
+        source = GOVERNANCE_MIGRATION.read_text()
+        ast.parse(source)
+        for table in (
+            "sitecontent_mediaauditevent",
+            "sitecontent_mediadeliverygrant",
+            "sitecontent_mediaexportpackage",
+            "sitecontent_mediaoutboxevent",
+            "sitecontent_mediareference",
+        ):
+            self.assertIn(f'"{table}"', source)
+        self.assertIn("FORCE ROW LEVEL SECURITY", source)
+        reverse = source.split("def remove_media_governance_roles", 1)[1]
+        self.assertLess(reverse.index("DROP POLICY"), reverse.index("DISABLE ROW LEVEL SECURITY"))
+
+    def test_processing_tables_are_forced_rls_and_reversed_safely(self):
+        source = PROCESSING_MIGRATION.read_text()
+        ast.parse(source)
+        for table in (
+            "sitecontent_mediainspectionresult",
+            "sitecontent_mediapurgeplan",
+            "sitecontent_mediauploadpart",
+        ):
+            self.assertIn(f'"{table}"', source)
+        self.assertIn("FORCE ROW LEVEL SECURITY", source)
+        reverse = source.split("def remove_media_processing_roles", 1)[1]
+        self.assertLess(reverse.index("DROP POLICY"), reverse.index("DISABLE ROW LEVEL SECURITY"))
 
 
 if __name__ == "__main__":

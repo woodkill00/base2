@@ -16,6 +16,14 @@ TABLES = (
     "sitecontent_mediaobjectversion",
     "sitecontent_mediaretentionhold",
     "sitecontent_mediauploadsession",
+    "sitecontent_mediaauditevent",
+    "sitecontent_mediadeliverygrant",
+    "sitecontent_mediaexportpackage",
+    "sitecontent_mediaoutboxevent",
+    "sitecontent_mediareference",
+    "sitecontent_mediainspectionresult",
+    "sitecontent_mediapurgeplan",
+    "sitecontent_mediauploadpart",
 )
 
 

@@ -15,11 +15,23 @@ class MediaLibraryManifestTests(unittest.TestCase):
         payload = json.loads((ROOT / "modules/media/module.json").read_text())
         module = validate_manifest(payload).payload
         self.assertEqual("media", module["id"])
-        self.assertEqual("2.0.0", module["version"])
+        self.assertEqual("2.1.0", module["version"])
         self.assertEqual(["content-workspace"], module["dependencies"])
         self.assertEqual(["/api/media/v1"], module["apiRoutes"])
         self.assertEqual(["/media"], module["uiRoutes"])
         self.assertEqual(["storage"], module["providerCapabilities"])
+        self.assertIn("media.outbox-event", module["models"])
+        self.assertIn("media.upload-part", module["models"])
+        self.assertIn("media.inspection-result", module["models"])
+        self.assertIn("media.derivative-recipe", module["models"])
+        self.assertIn("media.purge-plan", module["models"])
+        self.assertIn(
+            "django/sitecontent/migrations/0013_media_governance.py", module["migrations"]
+        )
+        self.assertIn(
+            "django/sitecontent/migrations/0014_media_processing_governance.py",
+            module["migrations"],
+        )
 
     def test_reference_profile_install_order_places_media_after_workspace(self):
         profile = load_manifest(ROOT / "site_profiles/base2-obsidian.json")
