@@ -175,10 +175,12 @@ it('contains detail and confirmation focus and restores each opener', async () =
   fireEvent.click(prepare);
   const confirmation = await screen.findByRole('alertdialog', { name: 'Confirm media action' });
   expect(within(confirmation).getByRole('button', { name: 'Confirm action' })).toHaveFocus();
+  expect(close.closest('header').inert).toBe(true);
   fireEvent.keyDown(confirmation, { key: 'Tab', shiftKey: true });
   expect(within(confirmation).getByRole('button', { name: 'Cancel' })).toHaveFocus();
   fireEvent.keyDown(confirmation, { key: 'Escape' });
   await waitFor(() => expect(prepare).toHaveFocus());
+  expect(close.closest('header').inert).toBe(false);
 
   fireEvent.keyDown(dialog, { key: 'Escape' });
   await waitFor(() => expect(opener).toHaveFocus());

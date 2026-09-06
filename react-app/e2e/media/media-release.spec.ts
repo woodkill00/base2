@@ -79,6 +79,7 @@ test('media detail preserves safe preview usage and consequence context', async 
   await prepareDeletion.click();
   const confirmation = dialog.getByRole('alertdialog', { name: 'Confirm media action' });
   await expect(confirmation.getByRole('button', { name: 'Confirm action' })).toBeFocused();
+  await expect(dialog.locator('header').first()).toHaveJSProperty('inert', true);
   await page.keyboard.press('Shift+Tab');
   await expect(confirmation.getByRole('button', { name: 'Cancel' })).toBeFocused();
   await page.keyboard.press('Escape');

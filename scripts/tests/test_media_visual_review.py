@@ -50,6 +50,13 @@ def test_media_visual_review_is_schema_valid_exact_and_source_bound():
         check=False,
     )
     assert unchanged.returncode == 0, "visual review predates a media UI or proof change"
+    for diff_args in (["git", "diff", "--quiet"], ["git", "diff", "--cached", "--quiet"]):
+        clean = subprocess.run(
+            [*diff_args, "--", *reviewed_surfaces],
+            cwd=ROOT,
+            check=False,
+        )
+        assert clean.returncode == 0, "uncommitted media UI or proof change is not visually reviewed"
     for member in review["screenshots"]:
         committed = subprocess.run(
             ["git", "cat-file", "-e", f'{review["sourceCommit"]}:react-app/e2e/media/media-release.spec.ts-snapshots/{member}'],

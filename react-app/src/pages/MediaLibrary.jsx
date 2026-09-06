@@ -316,8 +316,17 @@ export default function MediaLibrary() {
   }, [activeAssetId, closeAsset]);
 
   useEffect(() => {
-    if (!confirmationTarget) return;
+    if (!confirmationTarget) return undefined;
+    const confirmation = confirmationDialog.current;
+    const consequenceSection = confirmation?.parentElement;
+    const detail = detailDialog.current;
+    const backgroundNodes = [
+      ...[...(detail?.children || [])].filter((node) => !node.contains(confirmation)),
+      ...[...(consequenceSection?.children || [])].filter((node) => node !== confirmation),
+    ];
+    backgroundNodes.forEach((node) => { node.inert = true; });
     confirmationButton.current?.focus();
+    return () => backgroundNodes.forEach((node) => { node.inert = false; });
   }, [confirmationTarget]);
 
   const loadPreview = async () => {
