@@ -18,6 +18,8 @@
     "media.export-package",
     "media.audit-event",
     "media.outbox-event",
+    "media.encryption-envelope",
+    "media.abuse-case",
     "media.job",
     "media.retention-hold",
     "media.purge-plan"
@@ -26,7 +28,8 @@
     "django/sitecontent/migrations/0011_universal_media_library.py",
     "django/sitecontent/migrations/0012_universal_media_library_roles.py",
     "django/sitecontent/migrations/0013_media_governance.py",
-    "django/sitecontent/migrations/0014_media_processing_governance.py"
+    "django/sitecontent/migrations/0014_media_processing_governance.py",
+    "django/sitecontent/migrations/0015_media_portability_and_abuse.py"
   ],
   "apiRoutes": ["/api/media/v1"],
   "uiRoutes": ["/media"],

@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 MIGRATION = ROOT / "django/sitecontent/migrations/0012_universal_media_library_roles.py"
 GOVERNANCE_MIGRATION = ROOT / "django/sitecontent/migrations/0013_media_governance.py"
 PROCESSING_MIGRATION = ROOT / "django/sitecontent/migrations/0014_media_processing_governance.py"
+PORTABILITY_MIGRATION = ROOT / "django/sitecontent/migrations/0015_media_portability_and_abuse.py"
 
 
 class MediaLibraryMigrationTests(unittest.TestCase):
@@ -43,7 +44,7 @@ class MediaLibraryMigrationTests(unittest.TestCase):
     def test_disposable_postgres_acceptance_proves_forward_reverse_and_tenant_isolation(self):
         runner = (ROOT / "scripts/python/run_workspace_postgres_acceptance.py").read_text()
         checks = (ROOT / "scripts/python/run_media_postgres_checks.py").read_text()
-        self.assertIn('django_migration + ["0014", "--noinput"]', runner)
+        self.assertIn('django_migration + ["0015", "--noinput"]', runner)
         self.assertIn('media_check + ["forward"]', runner)
         self.assertIn('media_check + ["reversed"]', runner)
         self.assertIn("media_cross_tenant_insert_was_not_blocked", checks)
@@ -77,6 +78,18 @@ class MediaLibraryMigrationTests(unittest.TestCase):
             self.assertIn(f'"{table}"', source)
         self.assertIn("FORCE ROW LEVEL SECURITY", source)
         reverse = source.split("def remove_media_processing_roles", 1)[1]
+        self.assertLess(reverse.index("DROP POLICY"), reverse.index("DISABLE ROW LEVEL SECURITY"))
+
+    def test_portability_tables_are_forced_rls_and_reversed_safely(self):
+        source = PORTABILITY_MIGRATION.read_text()
+        ast.parse(source)
+        for table in (
+            "sitecontent_mediaabusecase",
+            "sitecontent_mediaencryptionenvelope",
+        ):
+            self.assertIn(f'"{table}"', source)
+        self.assertIn("FORCE ROW LEVEL SECURITY", source)
+        reverse = source.split("def remove_media_portability_roles", 1)[1]
         self.assertLess(reverse.index("DROP POLICY"), reverse.index("DISABLE ROW LEVEL SECURITY"))
 
 

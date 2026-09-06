@@ -24,6 +24,8 @@ TABLES = (
     "sitecontent_mediainspectionresult",
     "sitecontent_mediapurgeplan",
     "sitecontent_mediauploadpart",
+    "sitecontent_mediaabusecase",
+    "sitecontent_mediaencryptionenvelope",
 )
 
 

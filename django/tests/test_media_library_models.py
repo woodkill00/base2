@@ -5,12 +5,14 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 from sitecontent.models import (
+    MediaAbuseCase,
     MediaAsset,
     MediaAuditEvent,
     MediaCollection,
     MediaCollectionMembership,
     MediaDeliveryGrant,
     MediaDerivativeRecipe,
+    MediaEncryptionEnvelope,
     MediaExportPackage,
     MediaInspectionResult,
     MediaJob,
@@ -288,3 +290,38 @@ def test_reference_grant_export_audit_and_outbox_contracts_fail_closed():
     )
     with pytest.raises(ValidationError, match="media_outbox_attempt_invalid"):
         outbox.full_clean()
+
+
+def test_replacement_encryption_abuse_and_rich_metadata_contracts_fail_closed():
+    value = asset()
+    first = MediaObjectVersion.objects.create(
+        site_id="site-a", asset=value, version=1, storage_key="v1", sha256="a" * 64,
+        byte_size=8, detected_type="image/png",
+    )
+    replacement = MediaObjectVersion(
+        site_id="site-a", asset=value, version=1, replaces=first, storage_key="v2",
+        sha256="b" * 64, byte_size=8, detected_type="image/png",
+    )
+    with pytest.raises(ValidationError, match="media_replacement_ancestry_invalid"):
+        replacement.full_clean()
+
+    envelope = MediaEncryptionEnvelope(
+        site_id="site-a", object_version=first, key_ref="plaintext", key_version=1,
+        wrapped_data_key_sha256="c" * 64, content_sha256="a" * 64,
+    )
+    with pytest.raises(ValidationError, match="media_encryption_keyref_invalid"):
+        envelope.full_clean()
+
+    abuse = MediaAbuseCase(
+        site_id="site-a", asset=value, reporter_ref="user:same", reviewer_ref="user:same",
+        reason_code="media_policy_violation", status="quarantined",
+    )
+    with pytest.raises(ValidationError, match="media_abuse_separation_required"):
+        abuse.full_clean()
+
+    metadata = MediaMetadataRevision(
+        site_id="site-a", asset=value, revision=1, locale="en", decorative=True,
+        actor_ref="user:test", width=100, height=None,
+    )
+    with pytest.raises(ValidationError, match="media_dimensions_invalid"):
+        metadata.full_clean()

@@ -25,11 +25,17 @@ class MediaLibraryManifestTests(unittest.TestCase):
         self.assertIn("media.inspection-result", module["models"])
         self.assertIn("media.derivative-recipe", module["models"])
         self.assertIn("media.purge-plan", module["models"])
+        self.assertIn("media.encryption-envelope", module["models"])
+        self.assertIn("media.abuse-case", module["models"])
         self.assertIn(
             "django/sitecontent/migrations/0013_media_governance.py", module["migrations"]
         )
         self.assertIn(
             "django/sitecontent/migrations/0014_media_processing_governance.py",
+            module["migrations"],
+        )
+        self.assertIn(
+            "django/sitecontent/migrations/0015_media_portability_and_abuse.py",
             module["migrations"],
         )
 
