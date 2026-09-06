@@ -1,8 +1,9 @@
 {
   "schemaVersion": 1,
-  "sourceCommit": "e5489433468439a93bab61247c302167e4e021b5",
+  "sourceCommit": "b97bc755ec0d3494838b607a750c5f3b0b20818b",
   "status": "accepted",
   "screenshots": [
+    "media-detail-chromium-desktop-chromium-desktop-linux.png",
     "media-library-chromium-400-zoom-chromium-400-zoom-linux.png",
     "media-library-chromium-compact-chromium-compact-linux.png",
     "media-library-chromium-desktop-chromium-desktop-linux.png",
