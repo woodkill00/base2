@@ -86,3 +86,4 @@
 - [x] B084 Replace the ineffective attempt budget with a 120-second wall-clock deadline, cap each authentic health probe at 30 seconds, and provide 512 MiB so signature verification cannot be OOM-killed.
 - [x] B085 Keep production freshness bound to real time while making networkless acceptance deterministic through an explicit numeric reference epoch derived from the cryptographically verified CVD timestamp.
 - [x] B086 Establish one 120-second evidence ceiling before updater startup, reserve termination and scheduling margin inside it, cap every Docker evidence operation by the smaller remaining budget, and verify a fake hung Docker client stays within the evidence ceiling plus the separately bounded exact-container-and-volume cleanup allowance.
+- [x] B087 Align the complete-gate scanner-runtime contract with the measured 512 MiB updater boundary while preserving its opt-in, private-network, capability-drop, read-only, PID, and CPU restrictions.

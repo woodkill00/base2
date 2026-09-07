@@ -381,6 +381,12 @@ prove unknown defects impossible.
     killed and the whole script exits within its equivalent evidence ceiling
     plus explicit cleanup allowance. Expected negative health results remain
     distinct from timeout and cannot accidentally satisfy a rejection proof.
+53. The exact-head complete gate then exposed a stale independent runtime-policy
+    assertion that still required the superseded 256 MiB updater ceiling even
+    though the measured signature-verification minimum and every other contract
+    now require 512 MiB. B087 aligns that assertion while retaining its checks
+    for explicit opt-in, updater-only egress, no published port, read-only root,
+    capability drop, PID limit, CPU limit, and immutable health command.
 
 ## Honest residual boundary
 

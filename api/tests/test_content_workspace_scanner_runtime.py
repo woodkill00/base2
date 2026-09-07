@@ -14,7 +14,7 @@ def test_clamav_runtime_is_opt_in_private_and_resource_bounded():
         assert service['profiles'] == ['media-scan']
         assert service['networks'] == ['clamav_egress']
         assert 'ports' not in service
-        assert service['mem_limit'] == '256m'
+        assert service['mem_limit'] == '512m'
         assert service['cpus'] == '0.25'
         assert service['read_only'] is True
         assert service['cap_drop'] == ['ALL']
