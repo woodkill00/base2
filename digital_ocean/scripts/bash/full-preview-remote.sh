@@ -98,8 +98,7 @@ compose=(docker compose --profile celery --profile media-scan --project-name "$p
 export COMPOSE_ENV_FILE="$env_file" COMPOSE_PARALLEL_LIMIT=1
 stage="compose-build"
 "${compose[@]}" build
-inspector_image_ref="$("${compose[@]}" images -q media-inspector)"
-[[ -n "$inspector_image_ref" && "$inspector_image_ref" != *$'\n'* ]] || fail_stage 3
+inspector_image_ref="${project}-media-inspector"
 inspector_image_id="$(docker image inspect --format '{{.Id}}' "$inspector_image_ref")"
 [[ "$inspector_image_id" =~ ^sha256:[a-f0-9]{64}$ ]] || fail_stage 3
 inspector_build_identity="base2-media-inspector:${inspector_image_id#sha256:}"
