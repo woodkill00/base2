@@ -95,6 +95,9 @@ def test_asset_upload_creation_and_detail_are_grant_and_derivative_bound(monkeyp
     assert "sitecontent_mediauploadsession" in quota_query[0]
     assert "expires_at>NOW()" in quota_query[0]
     assert quota_query[1] == ("site-a", "site-a", "site-a", "site-a")
+    asset_insert = cursor.calls[3]
+    assert "authorization_epoch" in asset_insert[0]
+    assert "'private',1,1,1,NOW(),NOW()" in asset_insert[0]
 
     row = (
         ASSET_ID,

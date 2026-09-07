@@ -405,6 +405,134 @@ test('authenticated settings platform works accessibly and responsively live', a
   await context.close();
 });
 
+test('authenticated media library accepts safe synthetic media and rejects hostile admission', async ({
+  browser,
+}) => {
+  test.skip(
+    !applicationEmail || !applicationPassword,
+    'ephemeral application-account inputs are required'
+  );
+  const mediaEmail = applicationEmail.replace('@', '+media@');
+  const context = await browser.newContext({
+    ignoreHTTPSErrors: true,
+    reducedMotion: 'reduce',
+    viewport: { width: 1440, height: 1000 },
+  });
+  const page = await context.newPage();
+  const consoleErrors: string[] = [];
+  const failedRequests: string[] = [];
+  page.on('console', (message) => message.type() === 'error' && consoleErrors.push(message.text()));
+  page.on('requestfailed', (request) => {
+    if (!request.failure()?.errorText.includes('ERR_ABORTED')) {
+      failedRequests.push(`${request.method()} ${new URL(request.url()).pathname}`);
+    }
+  });
+
+  await page.goto(`https://${domain}/signup`, { waitUntil: 'networkidle' });
+  await page.getByLabel('Email').fill(mediaEmail);
+  await page.getByLabel('Password').fill(applicationPassword);
+  await page.getByRole('button', { name: 'Create account' }).click();
+  try {
+    await expect(page).toHaveURL(/\/dashboard$/, { timeout: 10_000 });
+  } catch {
+    await page.goto(`https://${domain}/login`, { waitUntil: 'networkidle' });
+    await page.getByLabel('Email').fill(mediaEmail);
+    await page.getByLabel('Password').fill(applicationPassword);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page).toHaveURL(/\/dashboard$/, { timeout: 30_000 });
+  }
+  await page.evaluate(() => {
+    const raw = localStorage.getItem('user');
+    if (!raw) throw new Error('authenticated user was not retained');
+    const user = JSON.parse(raw);
+    user.permissions = ['media.read', 'media.upload', 'media.write'];
+    localStorage.setItem('user', JSON.stringify(user));
+  });
+  await page.goto(`https://${domain}/media`, { waitUntil: 'networkidle' });
+  await expect(page.getByRole('heading', { name: 'Media library' })).toBeVisible();
+
+  const hostileStatus = await page.evaluate(async () => {
+    const token = localStorage.getItem('token');
+    const response = await fetch('/api/media/v1/uploads', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Idempotency-Key': `live-hostile-${Date.now()}`,
+      },
+      body: JSON.stringify({
+        filename: 'synthetic-hostile.svg',
+        mediaType: 'image/svg+xml',
+        byteSize: 48,
+        sha256: '0'.repeat(64),
+      }),
+    });
+    return response.status;
+  });
+  expect([413, 422]).toContain(hostileStatus);
+
+  const safePng = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    'base64'
+  );
+  await page.getByLabel('Choose media files').setInputFiles({
+    name: 'feature-105-live-safe.png',
+    mimeType: 'image/png',
+    buffer: safePng,
+  });
+  const queue = page.locator('.media-upload-item').filter({ hasText: 'feature-105-live-safe.png' });
+  await expect(queue).toContainText('quarantined', { timeout: 30_000 });
+
+  await expect
+    .poll(
+      async () => {
+        await page.reload({ waitUntil: 'networkidle' });
+        const card = page.locator('.media-asset-card').filter({
+          hasText: 'feature-105-live-safe.png',
+        });
+        return (await card.first().textContent()) || '';
+      },
+      { message: 'synthetic media did not reach a terminal worker state', timeout: 90_000 }
+    )
+    .toMatch(/ready|failed/);
+  const safeCard = page
+    .locator('.media-asset-card')
+    .filter({ hasText: 'feature-105-live-safe.png' });
+  await expect(safeCard).toContainText('ready');
+
+  await page.evaluate(axeSource);
+  const violations = await page.evaluate(async () =>
+    (await window.axe.run(document, { resultTypes: ['violations'] })).violations.map(
+      (item) => item.id
+    )
+  );
+  expect(violations).toEqual([]);
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)
+  ).toBeLessThanOrEqual(1);
+  await page.screenshot({
+    path: `${evidence}/media-live-ready-desktop.png`,
+    fullPage: true,
+    animations: 'disabled',
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload({ waitUntil: 'networkidle' });
+  await expect(page.getByRole('heading', { name: 'Media library' })).toBeVisible();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)
+  ).toBeLessThanOrEqual(1);
+  await page.screenshot({
+    path: `${evidence}/media-live-ready-mobile.png`,
+    fullPage: true,
+    animations: 'disabled',
+  });
+
+  expect(consoleErrors).toEqual([]);
+  expect(failedRequests).toEqual([]);
+  await context.close();
+});
+
 declare global {
   interface Window {
     axe: {
