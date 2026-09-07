@@ -61,8 +61,12 @@ def _stamp(value: datetime) -> str:
     return value.astimezone(UTC).isoformat(timespec='microseconds').replace('+00:00', 'Z')
 
 
-def _limits(address_space_bytes: int = DECODER_ADDRESS_SPACE_BYTES) -> None:
-    resource.setrlimit(resource.RLIMIT_CPU, (20, 20))
+def _limits(
+    address_space_bytes: int = DECODER_ADDRESS_SPACE_BYTES,
+    *,
+    cpu_seconds: int = 20,
+) -> None:
+    resource.setrlimit(resource.RLIMIT_CPU, (cpu_seconds, cpu_seconds))
     resource.setrlimit(resource.RLIMIT_AS, (address_space_bytes,) * 2)
     resource.setrlimit(resource.RLIMIT_FSIZE, (MAX_RUNNER_OUTPUT,) * 2)
     resource.setrlimit(resource.RLIMIT_NOFILE, (32, 32))
@@ -72,8 +76,9 @@ def _limits(address_space_bytes: int = DECODER_ADDRESS_SPACE_BYTES) -> None:
 
 def _scanner_limits() -> None:
     # Current signed ClamAV databases need a larger virtual address-space ceiling
-    # than decoders. The container memory and PID ceilings remain authoritative.
-    _limits(SCANNER_ADDRESS_SPACE_BYTES)
+    # and CPU budget than decoders on the bounded preview host. The scanner wall
+    # timeout plus the container memory, CPU, and PID ceilings remain authoritative.
+    _limits(SCANNER_ADDRESS_SPACE_BYTES, cpu_seconds=45)
 
 
 SANDBOX_PREFIX = [

@@ -35,6 +35,28 @@ DIGEST = 'a' * 64
 BUILD_IDENTITY = 'base2-media-inspector:' + 'b' * 64
 
 
+def test_scanner_has_a_separate_bounded_cpu_budget(monkeypatch):
+    observed = []
+    monkeypatch.setattr(
+        service.resource,
+        'setrlimit',
+        lambda resource_id, limits: observed.append((resource_id, limits)),
+    )
+
+    service._limits()
+    decoder_cpu = next(
+        limits for resource_id, limits in observed if resource_id == service.resource.RLIMIT_CPU
+    )
+    observed.clear()
+    service._scanner_limits()
+    scanner_cpu = next(
+        limits for resource_id, limits in observed if resource_id == service.resource.RLIMIT_CPU
+    )
+
+    assert decoder_cpu == (20, 20)
+    assert scanner_cpu == (45, 45)
+
+
 def test_acceptance_reference_entrypoint_is_explicit_numeric_and_health_only(monkeypatch):
     monkeypatch.setattr(acceptance_entrypoint.sys, 'argv', ['entrypoint'])
     assert acceptance_entrypoint.main() == 64
