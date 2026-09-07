@@ -65,7 +65,7 @@ def test_media_enabled_preview_builds_and_starts_isolated_inspector_with_image_i
     assert '--profile celery --profile media-scan' in script
     assert 'openssl genpkey -algorithm ED25519' in script
     assert "'/^MEDIA_INSPECTOR_SIGNING_KEY=/d'" in script
-    assert 'images -q media-inspector' in script
+    assert 'inspector_image_ref="${project}-media-inspector"' in script
     assert "docker image inspect --format '{{.Id}}'" in script
     assert 'inspector_image_id#sha256:' in script
     assert "running_inspector_image" in script
