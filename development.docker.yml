@@ -228,7 +228,6 @@ services:
       - MEDIA_INSPECTOR_SIGNING_KEY=${MEDIA_INSPECTOR_SIGNING_KEY}
       - MEDIA_INSPECTOR_BUILD_IDENTITY=${MEDIA_INSPECTOR_BUILD_IDENTITY}
     network_mode: none
-    pid: private
     ipc: private
     volumes:
       - media_inspector_spool:/var/lib/base2/media-inspector
