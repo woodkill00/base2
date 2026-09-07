@@ -203,13 +203,157 @@ def test_index_worker_is_tenant_bound_replay_safe_and_rejects_future_job(monkeyp
 
 def test_due_media_scans_only_discovers_unresolved_quarantine(monkeypatch):
     asset_id = UUID(int=7104)
-    cursor = Cursor([('site-a', asset_id)])
-    bind(monkeypatch, Connection(cursor))
-    assert worker.due_media_scans(limit=10) == [('site-a', str(asset_id))]
-    sql = cursor.calls[0][0]
+    job_id = UUID(int=7105)
+    expires = datetime(2026, 9, 7, 12, 2, tzinfo=UTC)
+    discovery = Cursor([('site-a', asset_id, 1, 'a' * 64)])
+    claim = Cursor([(1,), (job_id, 1, expires)])
+    connections = {None: Connection(discovery), 'site-a': Connection(claim)}
+    scopes = []
+
+    @contextmanager
+    def fake_db_conn(*, tenant_id=None):
+        scopes.append(tenant_id)
+        yield connections[tenant_id]
+
+    monkeypatch.setattr(worker, 'db_conn', fake_db_conn)
+    assert worker.due_media_scans(limit=10) == [
+        ('site-a', str(asset_id), str(job_id), 1, expires.isoformat())
+    ]
+    assert scopes == [None, 'site-a']
+    sql = discovery.calls[0][0]
     assert "status='quarantined'" in sql
     assert "metadata->>'admission'='content_verified'" in sql
     assert "NOT IN ('clean','infected')" in sql
+    assert "job.status IN ('leased','running')" in sql
+    assert "lease_expires_at<=NOW()" in sql
+    assert "FOR UPDATE" in claim.calls[0][0]
+    assert "status='leased'" in claim.calls[2][0]
+
+
+class LeaseCursor(Cursor):
+    def __init__(self, rowcounts):
+        super().__init__([])
+        self.rowcounts = list(rowcounts)
+        self.rowcount = 0
+
+    def execute(self, sql, params=()):
+        super().execute(sql, params)
+        self.rowcount = self.rowcounts.pop(0)
+
+
+def test_media_scan_attempt_token_is_single_use_and_backoff_bound(monkeypatch):
+    expires = datetime(2026, 9, 7, 12, 2, tzinfo=UTC)
+    job_id, asset_id = UUID(int=7105), UUID(int=7104)
+    begin_cursor = LeaseCursor([1])
+    begin_connection = Connection(begin_cursor)
+    bind(monkeypatch, begin_connection)
+    assert worker.begin_media_scan_attempt(
+        site_id='site-a', asset_id=asset_id, job_id=job_id, attempt=2, lease_token=expires
+    ) is True
+    assert begin_connection.commits == 1
+    assert begin_cursor.calls[0][1][3:] == (1, expires)
+
+    duplicate_cursor = LeaseCursor([0])
+    bind(monkeypatch, Connection(duplicate_cursor))
+    assert worker.begin_media_scan_attempt(
+        site_id='site-a', asset_id=asset_id, job_id=job_id, attempt=2, lease_token=expires
+    ) is False
+
+    finish_cursor = LeaseCursor([1])
+    finish_connection = Connection(finish_cursor)
+    bind(monkeypatch, finish_connection)
+    worker.finish_media_scan_attempt(
+        site_id='site-a', job_id=job_id, attempt=2,
+        lease_token=expires, result='quarantined',
+    )
+    assert finish_connection.commits == 1
+    assert finish_cursor.calls[0][1][5:7] == (30, 30)
+    assert "status=%s AND attempt=%s" in finish_cursor.calls[0][0]
+
+
+@pytest.mark.parametrize(
+    ('result', 'expected_status', 'expected_error'),
+    [
+        ('validated_safe_derivative', 'completed', ''),
+        ('scanned_infected', 'failed', 'media_inspection_rejected'),
+    ],
+)
+def test_media_scan_worker_results_complete_running_lease(
+    monkeypatch, result, expected_status, expected_error
+):
+    cursor = LeaseCursor([1])
+    connection = Connection(cursor)
+    bind(monkeypatch, connection)
+    worker.finish_media_scan_attempt(
+        site_id='site-a',
+        job_id=UUID(int=7105),
+        attempt=1,
+        lease_token=datetime(2026, 9, 7, 12, 2, tzinfo=UTC),
+        result=result,
+    )
+    assert cursor.calls[0][1][:3] == (expected_status, 1, expected_error)
+    assert connection.commits == 1
+
+
+def test_media_scan_ineligible_after_claim_is_cancelled_and_audited(monkeypatch):
+    asset_id = UUID(int=7104)
+    cursor = LeaseCursor([1, 0, 0, 1])
+    cursor.rows = [(asset_id,)]
+    connection = Connection(cursor)
+    bind(monkeypatch, connection)
+
+    worker.finish_media_scan_attempt(
+        site_id='site-a',
+        job_id=UUID(int=7105),
+        attempt=2,
+        lease_token=datetime(2026, 9, 7, 12, 2, tzinfo=UTC),
+        result='not_ready',
+    )
+
+    assert connection.commits == 1 and connection.rollbacks == 0
+    assert "status='cancelled'" in cursor.calls[0][0]
+    assert "asset.status<>'quarantined'" in cursor.calls[0][0]
+    audit_insert = next(
+        call for call in cursor.calls if 'INSERT INTO sitecontent_mediaauditevent' in call[0]
+    )
+    assert audit_insert[1][3:6] == (
+        'media.inspection.superseded',
+        'system:media-worker',
+        f'asset:{asset_id}',
+    )
+    assert 'asset_ineligible' in audit_insert[1][6]
+
+
+def test_media_scan_not_ready_does_not_cancel_stale_or_still_eligible_claim(monkeypatch):
+    cursor = LeaseCursor([0])
+    connection = Connection(cursor)
+    bind(monkeypatch, connection)
+
+    with pytest.raises(ValueError, match='content_media_attempt_stale'):
+        worker.finish_media_scan_attempt(
+            site_id='site-a',
+            job_id=UUID(int=7105),
+            attempt=2,
+            lease_token=datetime(2026, 9, 7, 12, 2, tzinfo=UTC),
+            result='not_ready',
+        )
+
+    assert connection.rollbacks == 1 and connection.commits == 0
+
+
+def test_unexpected_media_scan_failure_is_recovered_immediately(monkeypatch):
+    cursor = LeaseCursor([1])
+    connection = Connection(cursor)
+    bind(monkeypatch, connection)
+    assert worker.recover_media_scan_attempt(
+        site_id='site-a',
+        job_id=UUID(int=7105),
+        attempt=2,
+        lease_token=datetime(2026, 9, 7, 12, 2, tzinfo=UTC),
+    ) is True
+    assert cursor.calls[0][1][:4] == (2, 2, 30, 2)
+    assert "status='running'" in cursor.calls[0][0]
+    assert connection.commits == 1
 
 
 @pytest.mark.parametrize(

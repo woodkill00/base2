@@ -2,3 +2,4 @@
 # Uses the compiled API requirements.
 
 -r api/requirements.txt
+mypy==2.3.1

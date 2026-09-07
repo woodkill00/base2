@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: public.ecr.aws/docker/library/postgres:16-alpine
+    image: mirror.gcr.io/library/postgres@sha256:075f7ba66bc9b3ce7d6b8b635208ff61cd7cf1a67d71ec530eec5d7ae0cbe571
     environment:
       POSTGRES_USER: e2e
       POSTGRES_PASSWORD: e2e
@@ -12,7 +12,7 @@ services:
       retries: 20
 
   redis:
-    image: public.ecr.aws/docker/library/redis:7-alpine
+    image: mirror.gcr.io/library/redis@sha256:b5dee736fa6758052556cc97b5d5423177dcd8e26ce9746e6e3d58484a5a4143
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
@@ -20,7 +20,7 @@ services:
       retries: 20
 
   workspace-db-role:
-    image: public.ecr.aws/docker/library/postgres:16-alpine
+    image: mirror.gcr.io/library/postgres@sha256:075f7ba66bc9b3ce7d6b8b635208ff61cd7cf1a67d71ec530eec5d7ae0cbe571
     environment:
       POSTGRES_USER: e2e
       POSTGRES_PASSWORD: e2e
@@ -46,7 +46,7 @@ services:
       context: ../django
       dockerfile: Dockerfile
       args:
-        DOCKER_LIBRARY_REGISTRY: public.ecr.aws/docker/library
+        DOCKER_LIBRARY_REGISTRY: mirror.gcr.io/library
         PYTHON_VERSION: 3.12-slim-bookworm
     environment:
       DJANGO_SETTINGS_MODULE: project.settings.production
@@ -74,7 +74,7 @@ services:
       context: ../api
       dockerfile: Dockerfile
       args:
-        DOCKER_LIBRARY_REGISTRY: public.ecr.aws/docker/library
+        DOCKER_LIBRARY_REGISTRY: mirror.gcr.io/library
         PYTHON_VERSION: 3.12-slim-bookworm
     environment:
       ENV: test
@@ -124,7 +124,7 @@ services:
       context: ../api
       dockerfile: Dockerfile
       args:
-        DOCKER_LIBRARY_REGISTRY: public.ecr.aws/docker/library
+        DOCKER_LIBRARY_REGISTRY: mirror.gcr.io/library
         PYTHON_VERSION: 3.12-slim-bookworm
     environment:
       ENV: test
@@ -154,7 +154,7 @@ services:
       context: ../react-app
       dockerfile: Dockerfile
       args:
-        DOCKER_LIBRARY_REGISTRY: public.ecr.aws/docker/library
+        DOCKER_LIBRARY_REGISTRY: mirror.gcr.io/library
         NODE_VERSION: 24.20.0-alpine
         NGINX_VERSION: 1.27.3-alpine
         REACT_APP_API_URL: http://localhost:5001/api

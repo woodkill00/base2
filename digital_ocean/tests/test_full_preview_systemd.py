@@ -59,6 +59,30 @@ def test_remote_bootstrap_applies_api_migrations_before_acceptance():
     assert script.index('stage="api-migrations"') < script.index('stage="receipt"')
 
 
+def test_media_enabled_preview_builds_and_starts_isolated_inspector_with_image_identity():
+    script = (ROOT / "digital_ocean/scripts/bash/full-preview-remote.sh").read_text()
+    example = (ROOT / ".env.example").read_text()
+    validator = (ROOT / "scripts/python/validate_compose_config.py").read_text()
+    assert '--profile celery --profile media-scan' in script
+    assert 'openssl genpkey -algorithm ED25519' in script
+    assert "'/^MEDIA_INSPECTOR_SIGNING_KEY=/d'" in script
+    assert 'images -q media-inspector' in script
+    assert 'inspector_image_id#sha256:' in script
+    assert "running_inspector_image" in script
+    assert '[[ "$running_inspector_image" == "$inspector_image_id" ]]' in script
+    assert 'rm -f -- "$inspector_private_pem"' in script
+    for key in (
+        'MEDIA_INSPECTOR_SIGNING_KEY=',
+        'MEDIA_INSPECTOR_VERIFY_KEY=',
+        'MEDIA_INSPECTOR_BUILD_IDENTITY=',
+    ):
+        assert example.count(key) == 1
+        assert key + '\n' in example
+    assert 'ephemeral_inspector_attestation' in validator
+    assert '"media-inspector", "celery-worker", "celery-beat"' in validator
+    assert '"--profile", "media-scan"' in validator
+
+
 def test_remote_bootstrap_accepts_only_the_successful_workspace_role_one_shot():
     script = (ROOT / "digital_ocean/scripts/bash/full-preview-remote.sh").read_text()
     assert "one_shot_services=(workspace-db-role)" in script

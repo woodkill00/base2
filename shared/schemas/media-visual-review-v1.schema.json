@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://base2.local/contracts/media-visual-review-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "sourceCommit", "status", "screenshots", "assertions"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "sourceCommit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "status": { "enum": ["candidate", "accepted", "rejected"] },
+    "screenshots": {
+      "type": "array", "minItems": 24, "maxItems": 24, "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^media-(?:library|detail|picker)-[a-z0-9-]+-linux\\.png$" }
+    },
+    "assertions": {
+      "type": "object", "additionalProperties": false,
+      "required": ["overflow", "focus", "accessibility", "console", "requests", "targets"],
+      "properties": {
+        "overflow": { "const": "pass" }, "focus": { "const": "pass" },
+        "accessibility": { "const": "pass" }, "console": { "const": "pass" },
+        "requests": { "const": "pass" }, "targets": { "const": "pass" }
+      }
+    }
+  }
+}

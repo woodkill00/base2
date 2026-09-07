@@ -13,18 +13,16 @@
     "motion": "^12.26.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.20.0"
+    "react-router-dom": "7.18.3"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.7.0",
-    "@vitest/coverage-istanbul": "^4.1.11",
-    "@playwright/test": "^1.47.0",
     "@babel/preset-react": "^7.27.1",
     "@babel/preset-typescript": "^7.27.1",
-    "@storybook/addon-essentials": "^8.6.15",
-    "@storybook/react": "^8.6.15",
-    "@storybook/react-vite": "^8.6.15",
-    "@storybook/test": "^8.6.15",
+    "@playwright/test": "^1.47.0",
+    "@storybook/addon-essentials": "8.6.18",
+    "@storybook/react": "8.6.18",
+    "@storybook/react-vite": "8.6.18",
+    "@storybook/test": "8.6.18",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.1.4",
     "@testing-library/react": "^14.1.0",
@@ -32,6 +30,8 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@typescript-eslint/parser": "^8.41.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "@vitest/coverage-istanbul": "^4.1.11",
     "autoprefixer": "^10.4.23",
     "cross-env": "^7.0.3",
     "eslint": "^8.50.0",
@@ -44,7 +44,7 @@
     "openapi-typescript": "^7.13.0",
     "postcss": "^8.5.6",
     "prettier": "^3.0.0",
-    "storybook": "^8.6.15",
+    "storybook": "8.6.18",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3",
     "vite": "^6.4.3",
@@ -72,6 +72,7 @@
     "test:account-e2e": "playwright test --config=playwright.account.config.mjs",
     "test:settings-release": "playwright test --config=playwright.settings-release.config.mjs",
     "test:workspace-release": "playwright test --config=playwright.workspace-release.config.mjs",
+    "test:media-release": "playwright test --config=playwright.media-release.config.mjs",
     "test:compatibility": "playwright test --config=playwright.compatibility.config.mjs",
     "e2e:install": "playwright install",
     "analyze": "vite build --mode analyze",
@@ -90,5 +91,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "overrides": {
+    "uuid": "11.1.1"
   }
 }

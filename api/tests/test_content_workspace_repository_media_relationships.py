@@ -71,7 +71,7 @@ def bind(monkeypatch, cursor):
 def test_asset_upload_creation_and_detail_are_grant_and_derivative_bound(monkeypatch):
     monkeypatch.setattr(repository.settings, "TOKEN_PEPPER", "synthetic-test-pepper-104")
     repo = repository.PostgresContentWorkspaceRepository()
-    cursor = QueueCursor(ones=[(ASSET_ID, "pending")])
+    cursor = QueueCursor(ones=[None, (0, 0, 0, 0), (ASSET_ID, "pending")])
     connection = bind(monkeypatch, cursor)
     created = repo.create_asset_upload(
         site_id="site-a",
@@ -82,11 +82,19 @@ def test_asset_upload_creation_and_detail_are_grant_and_derivative_bound(monkeyp
             "byte_size": 32,
             "sha256": "a" * 64,
         },
+        idempotency_key="asset-upload-104",
+        maximum_stored_bytes=1024,
+        maximum_active_uploads=10,
+        maximum_pending_processing=10,
     )
     assert created["id"] == str(ASSET_ID)
     assert created["status"] == "pending" and created["expiresIn"] == 300
     assert "site-a" not in created["uploadGrant"]
     assert connection.commits == 1
+    quota_query = cursor.calls[2]
+    assert "sitecontent_mediauploadsession" in quota_query[0]
+    assert "expires_at>NOW()" in quota_query[0]
+    assert quota_query[1] == ("site-a", "site-a", "site-a", "site-a")
 
     row = (
         ASSET_ID,
@@ -118,6 +126,80 @@ def test_asset_upload_creation_and_detail_are_grant_and_derivative_bound(monkeyp
     with pytest.raises(ValueError, match="content_not_found"):
         repo.get_asset(site_id="site-a", asset_id=ASSET_ID, requester_ref="user:reader")
 
+
+def test_asset_upload_replay_is_exact_and_quota_admission_is_atomic(monkeypatch):
+    monkeypatch.setattr(repository.settings, "TOKEN_PEPPER", "synthetic-test-pepper-104")
+    repo = repository.PostgresContentWorkspaceRepository()
+    payload = {
+        "filename": "safe.png", "media_type": "image/png", "byte_size": 32,
+        "sha256": "a" * 64,
+    }
+    replay = (ASSET_ID, "pending", "safe.png", "image/png", 32, "a" * 64)
+    cursor = QueueCursor(ones=[replay])
+    connection = bind(monkeypatch, cursor)
+    result = repo.create_asset_upload(
+        site_id="site-a", owner_ref="user:test", payload=payload,
+        idempotency_key="asset-upload-104", maximum_stored_bytes=1024,
+        maximum_active_uploads=10, maximum_pending_processing=10,
+    )
+    assert result["replayed"] is True and result["id"] == str(ASSET_ID)
+    assert connection.commits == 1
+    assert "pg_advisory_xact_lock" in cursor.calls[0][0]
+
+    cursor = QueueCursor(ones=[(*replay[:2], "other.png", *replay[3:])])
+    connection = bind(monkeypatch, cursor)
+    with pytest.raises(ValueError, match="content_idempotency_conflict"):
+        repo.create_asset_upload(
+            site_id="site-a", owner_ref="user:test", payload=payload,
+            idempotency_key="asset-upload-104", maximum_stored_bytes=1024,
+            maximum_active_uploads=10, maximum_pending_processing=10,
+        )
+    assert connection.rollbacks == 1
+
+    cursor = QueueCursor(ones=[None, (800, 200, 3, 0)])
+    connection = bind(monkeypatch, cursor)
+    with pytest.raises(ValueError, match="content_quota_storage_exceeded"):
+        repo.create_asset_upload(
+            site_id="site-a", owner_ref="user:test", payload=payload,
+            idempotency_key="asset-upload-105", maximum_stored_bytes=1024,
+            maximum_active_uploads=10, maximum_pending_processing=10,
+        )
+    assert connection.rollbacks == 1
+
+
+def test_upload_grant_preflight_is_owner_bound_and_stateless(monkeypatch):
+    monkeypatch.setattr(repository.settings, "TOKEN_PEPPER", "synthetic-test-pepper-104")
+    repo = repository.PostgresContentWorkspaceRepository()
+    scope = {
+        "site": "site-a",
+        "owner": "user:test",
+        "asset": str(ASSET_ID),
+        "sha256": "a" * 64,
+        "bytes": 32,
+        "purpose": "asset-upload",
+    }
+    grant = repository.CursorCodec(
+        str(repository.settings.TOKEN_PEPPER), ttl_seconds=300
+    ).encode(scope=scope, position={"assetId": str(ASSET_ID)})
+    cursor = QueueCursor(ones=[(32, "a" * 64, "pending")])
+    bind(monkeypatch, cursor)
+    assert repo.validate_asset_upload_grant(
+        site_id="site-a",
+        asset_id=ASSET_ID,
+        owner_ref="user:test",
+        upload_grant=grant,
+    ) == {"expectedBytes": 32}
+    assert cursor.calls[0][1] == (str(ASSET_ID), "site-a", "user:test")
+
+    cursor = QueueCursor(ones=[(32, "a" * 64, "pending")])
+    bind(monkeypatch, cursor)
+    with pytest.raises(ValueError, match="content_upload_grant_invalid"):
+        repo.validate_asset_upload_grant(
+            site_id="site-a",
+            asset_id=ASSET_ID,
+            owner_ref="user:test",
+            upload_grant=grant + "x",
+        )
 
 def test_record_lock_and_bump_enforce_presence_and_version():
     repo = repository.PostgresContentWorkspaceRepository()
@@ -157,7 +239,7 @@ def test_asset_binding_and_unbinding_are_versioned_transactions(monkeypatch):
     repo = repository.PostgresContentWorkspaceRepository()
     binding_id = UUID(int=9104)
     cursor = QueueCursor(
-        ones=[RECORD, ("image/png", "validated"), ("image",), (binding_id,), (3,)]
+        ones=[RECORD, ("image/png", "ready"), ("image",), (binding_id,), (3,)]
     )
     connection = bind(monkeypatch, cursor)
     bound = repo.bind_asset(
@@ -171,6 +253,8 @@ def test_asset_binding_and_unbinding_are_versioned_transactions(monkeypatch):
     )
     assert UUID(bound["id"]) and bound["recordVersion"] == 3
     assert connection.commits == 1
+    assert "owner_ref=%s OR visibility" in cursor.calls[1][0]
+    assert cursor.calls[1][1] == (str(ASSET_ID), "site-a", "user:test")
 
     cursor = QueueCursor(ones=[RECORD, (binding_id,), (3,)])
     connection = bind(monkeypatch, cursor)
@@ -185,6 +269,45 @@ def test_asset_binding_and_unbinding_are_versioned_transactions(monkeypatch):
     )
     assert unbound == {"deleted": True, "recordVersion": 3}
     assert connection.commits == 1
+    assert "EXISTS" in cursor.calls[1][0]
+    assert "asset.owner_ref=%s OR asset.visibility" in cursor.calls[1][0]
+    assert cursor.calls[1][1] == (
+        "site-a", str(RECORD_ID), "hero", str(ASSET_ID), "user:test"
+    )
+
+
+def test_private_asset_binding_and_unbinding_fail_closed_for_non_owner(monkeypatch):
+    repo = repository.PostgresContentWorkspaceRepository()
+
+    cursor = QueueCursor(ones=[RECORD, None])
+    connection = bind(monkeypatch, cursor)
+    with pytest.raises(ValueError, match="content_asset_quarantined"):
+        repo.bind_asset(
+            site_id="site-a",
+            type_key="article",
+            record_id=RECORD_ID,
+            field_key="hero",
+            expected_version=2,
+            actor_ref="user:other",
+            payload={"asset_id": ASSET_ID, "alt_text": "Private image"},
+        )
+    assert connection.rollbacks == 1
+    assert cursor.calls[1][1][-1] == "user:other"
+
+    cursor = QueueCursor(ones=[RECORD, None])
+    connection = bind(monkeypatch, cursor)
+    with pytest.raises(ValueError, match="content_not_found"):
+        repo.unbind_asset(
+            site_id="site-a",
+            type_key="article",
+            record_id=RECORD_ID,
+            field_key="hero",
+            asset_id=ASSET_ID,
+            expected_version=2,
+            actor_ref="user:other",
+        )
+    assert connection.rollbacks == 1
+    assert cursor.calls[1][1][-1] == "user:other"
 
 
 @pytest.mark.parametrize(

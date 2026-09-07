@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from api.main import app
 from api.routes import content_workspace
 from api.security.request_auth import PublicPrincipal
+from api.security.upload_capacity import UploadCapacityError
 
 
 class FakeRepository:
@@ -30,6 +31,10 @@ class FakeRepository:
             'sha256': 'a' * 64,
             'replayed': False,
         }
+
+    def validate_asset_upload_grant(self, **kwargs):
+        self.calls.append(('upload-validate', kwargs))
+        return {'expectedBytes': 18}
 
     def read_asset_content(self, **kwargs):
         self.calls.append(('asset-content', kwargs))
@@ -68,11 +73,17 @@ def scoped(monkeypatch):
     monkeypatch.setattr(content_workspace, 'authorize', lambda **kwargs: {'role': 'owner'})
     monkeypatch.setattr(content_workspace, 'get_repository', lambda: FakeRepository())
     monkeypatch.setattr(content_workspace, 'get_artifact_store', lambda: object())
+    monkeypatch.setattr(
+        content_workspace, 'incr_and_check_tenant_detailed', lambda *_args: (1, False, 0)
+    )
 
 
 def test_asset_admission_status_and_binding_are_scoped_and_versioned():
     client = TestClient(app)
-    headers = {'Authorization': 'Bearer synthetic', 'X-Tenant-ID': 'site-a'}
+    headers = {
+        'Authorization': 'Bearer synthetic', 'X-Tenant-ID': 'site-a',
+        'Idempotency-Key': 'asset-upload-104',
+    }
     admitted = client.post(
         '/api/content/v1/assets/uploads',
         headers=headers,
@@ -102,6 +113,27 @@ def test_asset_admission_status_and_binding_are_scoped_and_versioned():
         == 200
     )
     assert all(call[1]['site_id'] == 'site-a' for call in FakeRepository.calls)
+    upload = next(call[1] for call in FakeRepository.calls if call[0] == 'upload')
+    assert upload['idempotency_key'] == 'asset-upload-104'
+    assert upload['maximum_active_uploads'] == 100
+
+
+def test_asset_upload_rate_limit_returns_retry_after(monkeypatch):
+    monkeypatch.setattr(
+        content_workspace, 'incr_and_check_tenant_detailed', lambda *_args: (31, True, 19)
+    )
+    response = TestClient(app).post(
+        '/api/content/v1/assets/uploads',
+        headers={
+            'Authorization': 'Bearer synthetic', 'X-Tenant-ID': 'site-a',
+            'Idempotency-Key': 'asset-upload-105',
+        },
+        json={
+            'filename': 'safe.png', 'mediaType': 'image/png', 'byteSize': 32,
+            'sha256': 'a' * 64,
+        },
+    )
+    assert response.status_code == 429 and response.headers['retry-after'] == '19'
 
 
 def test_asset_content_upload_is_raw_bounded_grant_bound_and_starts_quarantined():
@@ -128,6 +160,11 @@ def test_asset_content_upload_is_raw_bounded_grant_bound_and_starts_quarantined(
 
 def test_asset_content_upload_rejects_oversize_before_repository(monkeypatch):
     monkeypatch.setattr(content_workspace, 'MAX_UPLOAD_BYTES', 4)
+    monkeypatch.setattr(
+        FakeRepository,
+        'validate_asset_upload_grant',
+        lambda self, **kwargs: {'expectedBytes': 5},
+    )
     client = TestClient(app)
     response = client.put(
         f'/api/content/v1/assets/{UUID(int=7104)}/content',
@@ -141,6 +178,66 @@ def test_asset_content_upload_rejects_oversize_before_repository(monkeypatch):
     assert response.status_code == 413
     assert response.json()['detail'] == 'content_limit_exceeded'
     assert not any(item[0] == 'upload-content' for item in FakeRepository.calls)
+
+
+def test_asset_content_upload_rejects_exhausted_capacity(monkeypatch):
+    class Exhausted:
+        async def __aenter__(self):
+            raise UploadCapacityError('upload_capacity_exhausted')
+
+        async def __aexit__(self, *_args):
+            return False
+
+    monkeypatch.setattr(content_workspace, 'upload_completion_slot', lambda: Exhausted())
+    monkeypatch.setattr(
+        FakeRepository,
+        'validate_asset_upload_grant',
+        lambda self, **kwargs: {'expectedBytes': 4},
+    )
+    response = TestClient(app).put(
+        f'/api/content/v1/assets/{UUID(int=7104)}/content',
+        headers={
+            'Authorization': 'Bearer synthetic',
+            'X-Tenant-ID': 'site-a',
+            'Upload-Grant': 'opaque-upload-grant-that-is-long-enough',
+        },
+        content=b'safe',
+    )
+    assert response.status_code == 429
+    assert response.json()['detail'] == 'content_upload_capacity_exhausted'
+    assert response.headers['retry-after'] == '2'
+    assert not any(item[0] == 'upload-content' for item in FakeRepository.calls)
+
+
+def test_invalid_upload_grant_is_rejected_before_capacity_or_body(monkeypatch):
+    entered = False
+
+    class ForbiddenSlot:
+        async def __aenter__(self):
+            nonlocal entered
+            entered = True
+            raise AssertionError('capacity must not be acquired')
+
+        async def __aexit__(self, *_args):
+            return False
+
+    def reject(self, **_kwargs):
+        raise ValueError('content_upload_grant_invalid')
+
+    monkeypatch.setattr(FakeRepository, 'validate_asset_upload_grant', reject)
+    monkeypatch.setattr(content_workspace, 'upload_completion_slot', lambda: ForbiddenSlot())
+    response = TestClient(app).put(
+        f'/api/content/v1/assets/{UUID(int=7104)}/content',
+        headers={
+            'Authorization': 'Bearer synthetic',
+            'X-Tenant-ID': 'site-a',
+            'Upload-Grant': 'invalid-grant-that-is-long-enough',
+        },
+        content=b'slow-body-never-admitted',
+    )
+    assert response.status_code == 422
+    assert response.json()['detail'] == 'content_upload_grant_invalid'
+    assert entered is False
 
 
 def test_asset_content_download_requires_header_grant_and_is_private_nosniff():
@@ -162,6 +259,24 @@ def test_asset_content_download_requires_header_grant_and_is_private_nosniff():
     call = next(item for item in FakeRepository.calls if item[0] == 'asset-content')
     assert call[1]['site_id'] == 'site-a'
     assert call[1]['download_grant'] == headers['Download-Grant']
+
+
+def test_asset_download_rate_limit_backend_failure_is_typed_fail_closed(monkeypatch):
+    monkeypatch.setattr(
+        content_workspace,
+        'incr_and_check_tenant_detailed',
+        lambda *_args: (_ for _ in ()).throw(RuntimeError('redis unavailable')),
+    )
+    response = TestClient(app).get(
+        f'/api/content/v1/assets/{UUID(int=7104)}/content',
+        headers={
+            'Authorization': 'Bearer synthetic',
+            'X-Tenant-ID': 'site-a',
+            'Download-Grant': 'opaque-download-grant-that-is-long-enough',
+        },
+    )
+    assert response.status_code == 503
+    assert response.json()['detail'] == 'content_rate_limit_unavailable'
 
 
 def test_relationship_lifecycle_is_bounded_and_never_accepts_scope_from_body():

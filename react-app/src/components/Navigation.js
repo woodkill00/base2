@@ -18,6 +18,9 @@ const Navigation = () => {
   const workspaceEnabled = siteManifest.modules.some(
     (module) => module.id === 'content-workspace' && module.enabled
   );
+  const mediaEnabled = siteManifest.modules.some(
+    (module) => module.id === 'media' && module.enabled
+  );
 
   const handleLogout = async () => {
     await logout();
@@ -65,6 +68,11 @@ const Navigation = () => {
               {workspaceEnabled && user?.permissions?.includes('content-workspace.read') ? (
                 <Link to="/workspace" className={linkClass('/workspace')}>
                   Content
+                </Link>
+              ) : null}
+              {mediaEnabled && user?.permissions?.includes('media.read') ? (
+                <Link to="/media" className={linkClass('/media')}>
+                  Media
                 </Link>
               ) : null}
               {accountsEnabled &&

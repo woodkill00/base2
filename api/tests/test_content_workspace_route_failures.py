@@ -195,6 +195,9 @@ def scoped(monkeypatch):
     monkeypatch.setattr(content_workspace, "workspace_enabled", lambda: True)
     monkeypatch.setattr(content_workspace, "authorize", lambda **kwargs: None)
     monkeypatch.setattr(content_workspace, "get_artifact_store", lambda: object())
+    monkeypatch.setattr(
+        content_workspace, "incr_and_check_tenant_detailed", lambda *_args: (1, False, 0)
+    )
 
 
 @pytest.mark.parametrize(("method", "url", "options"), REQUESTS)

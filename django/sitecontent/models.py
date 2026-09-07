@@ -1382,10 +1382,20 @@ class RedirectRule(SiteOwnedModel):
 class MediaAsset(SiteOwnedModel):
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
+        UPLOADED = "uploaded", "Uploaded"
+        INSPECTING = "inspecting", "Inspecting"
+        ACCEPTED = "accepted", "Accepted"
+        PROCESSING = "processing", "Processing"
+        READY = "ready", "Ready"
+        FAILED = "failed", "Failed"
         VALIDATED = "validated", "Validated"
         QUARANTINED = "quarantined", "Quarantined"
         REJECTED = "rejected", "Rejected"
+        ARCHIVED = "archived", "Archived"
         DELETED = "deleted", "Deleted"
+        SOFT_DELETED = "soft_deleted", "Soft deleted"
+        PURGE_PLANNED = "purge_planned", "Purge planned"
+        PURGED = "purged", "Purged"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     storage_key = models.CharField(max_length=500)
@@ -1398,6 +1408,20 @@ class MediaAsset(SiteOwnedModel):
     attribution = models.TextField(blank=True, default="")
     retention_until = models.DateTimeField(null=True, blank=True)
     metadata = models.JSONField(default=dict, blank=True)
+    visibility = models.CharField(
+        max_length=16,
+        choices=(("private", "Private"), ("authenticated", "Authenticated"), ("public", "Public")),
+        default="private",
+    )
+    lock_version = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
+    current_object_version = models.PositiveIntegerField(
+        default=1, validators=[MinValueValidator(1)]
+    )
+    authorization_epoch = models.PositiveIntegerField(
+        default=1, validators=[MinValueValidator(1)]
+    )
+    archived_at = models.DateTimeField(null=True, blank=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         constraints = [
@@ -1456,12 +1480,734 @@ class MediaVariant(models.Model):
     sha256 = models.CharField(max_length=64, validators=[sha256_validator])
     width = models.PositiveIntegerField(null=True, blank=True)
     height = models.PositiveIntegerField(null=True, blank=True)
+    recipe_id = models.CharField(max_length=64, blank=True, default="legacy-safe-v1")
+    recipe_version = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
+    source_sha256 = models.CharField(max_length=64, blank=True, default="")
+    processor_ref = models.CharField(max_length=128, blank=True, default="")
+    inline_safe = models.BooleanField(default=False)
+    duration_seconds = models.DecimalField(
+        max_digits=10, decimal_places=3, null=True, blank=True
+    )
+    page_number = models.PositiveIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=["asset", "name"], name="sitecontent_variant_uq")
         ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.source_sha256 and not re.fullmatch(SHA256_PATTERN, self.source_sha256):
+            raise ValidationError({"source_sha256": "media_source_digest_invalid"})
+        if self.inline_safe and not self.media_type.startswith("image/"):
+            raise ValidationError({"inline_safe": "media_inline_type_invalid"})
+
+
+class MediaObjectVersion(SiteOwnedModel):
+    class InspectionState(models.TextChoices):
+        UPLOADED = "uploaded", "Uploaded"
+        INSPECTING = "inspecting", "Inspecting"
+        ACCEPTED = "accepted", "Accepted"
+        REJECTED = "rejected", "Rejected"
+        FAILED = "failed", "Failed"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    asset = models.ForeignKey(MediaAsset, on_delete=models.PROTECT, related_name="object_versions")
+    version = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    storage_key = models.CharField(max_length=500)
+    sha256 = models.CharField(max_length=64, validators=[sha256_validator])
+    byte_size = models.PositiveBigIntegerField(validators=[MinValueValidator(1)])
+    detected_type = models.CharField(max_length=127)
+    inspection_state = models.CharField(
+        max_length=16, choices=InspectionState.choices, default=InspectionState.UPLOADED
+    )
+    scanner_ref = models.CharField(max_length=128, blank=True, default="")
+    scanner_definitions_at = models.DateTimeField(null=True, blank=True)
+    source_upload_ref = models.UUIDField(null=True, blank=True)
+    replaces = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.PROTECT, related_name="replacements"
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["asset", "version"], name="sitecontent_media_object_version_uq"
+            ),
+            models.UniqueConstraint(
+                fields=["site_id", "storage_key"], name="sitecontent_media_object_key_uq"
+            ),
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.asset_id and self.asset.site_id != self.site_id:
+            raise ValidationError("media_object_scope_invalid")
+        if self.replaces_id and (
+            self.replaces.site_id != self.site_id
+            or self.replaces.asset_id != self.asset_id
+            or self.replaces.version >= self.version
+        ):
+            raise ValidationError("media_replacement_ancestry_invalid")
+
+
+class MediaUploadSession(SiteOwnedModel):
+    class Status(models.TextChoices):
+        CREATED = "created", "Created"
+        RECEIVING = "receiving", "Receiving"
+        UPLOADED = "uploaded", "Uploaded"
+        COMPLETED = "completed", "Completed"
+        EXPIRED = "expired", "Expired"
+        CANCELLED = "cancelled", "Cancelled"
+        FAILED = "failed", "Failed"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    actor_ref = models.CharField(max_length=200)
+    idempotency_key = models.CharField(max_length=128)
+    expected_sha256 = models.CharField(max_length=64, validators=[sha256_validator])
+    expected_bytes = models.PositiveBigIntegerField(validators=[MinValueValidator(1)])
+    received_bytes = models.PositiveBigIntegerField(default=0)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.CREATED)
+    lock_version = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
+    expires_at = models.DateTimeField()
+    completed_at = models.DateTimeField(null=True, blank=True)
+    terminal_digest = models.CharField(max_length=64, blank=True, default="")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "actor_ref", "idempotency_key"],
+                name="sitecontent_media_upload_replay_uq",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["site_id", "status", "expires_at"], name="media_upload_due_idx")
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.received_bytes > self.expected_bytes:
+            raise ValidationError("media_upload_length_invalid")
+        if self.terminal_digest and not re.fullmatch(SHA256_PATTERN, self.terminal_digest):
+            raise ValidationError("media_upload_terminal_digest_invalid")
+        if self.status == self.Status.COMPLETED and not self.terminal_digest:
+            raise ValidationError("media_upload_terminal_digest_missing")
+
+
+class MediaUploadPart(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    session = models.ForeignKey(MediaUploadSession, on_delete=models.CASCADE, related_name="parts")
+    part_number = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(10_000)]
+    )
+    byte_size = models.PositiveBigIntegerField(validators=[MinValueValidator(1)])
+    sha256 = models.CharField(max_length=64, validators=[sha256_validator])
+    storage_key = models.CharField(max_length=500)
+    completed_at = models.DateTimeField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["session", "part_number"], name="sitecontent_media_upload_part_uq"
+            ),
+            models.UniqueConstraint(
+                fields=["site_id", "storage_key"], name="sitecontent_media_part_key_uq"
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["site_id", "session", "part_number"], name="media_part_idx")
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.session_id and self.session.site_id != self.site_id:
+            raise ValidationError("media_upload_part_scope_invalid")
+        if self.session_id and self.byte_size > self.session.expected_bytes:
+            raise ValidationError("media_upload_part_length_invalid")
+
+
+class MediaInspectionResult(SiteOwnedModel):
+    DECISIONS = tuple((value, value.title()) for value in ("accepted", "rejected", "failed"))
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    object_version = models.ForeignKey(
+        MediaObjectVersion, on_delete=models.PROTECT, related_name="inspection_results"
+    )
+    attempt = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(10)]
+    )
+    decision = models.CharField(max_length=16, choices=DECISIONS)
+    safe_code = models.CharField(max_length=64)
+    scanner_ref = models.CharField(max_length=128)
+    decoder_ref = models.CharField(max_length=128)
+    definitions_at = models.DateTimeField()
+    observed_media_type = models.CharField(max_length=127)
+    measurements = models.JSONField(default=dict)
+    result_sha256 = models.CharField(max_length=64, validators=[sha256_validator])
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["object_version", "attempt"], name="sitecontent_media_inspection_uq"
+            )
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.object_version_id and self.object_version.site_id != self.site_id:
+            raise ValidationError("media_inspection_scope_invalid")
+        if not re.fullmatch(r"media_[a-z0-9_]{3,63}", self.safe_code or ""):
+            raise ValidationError("media_inspection_code_invalid")
+        validate_closed_mapping(
+            self.measurements,
+            allowed_keys={
+                "pixels",
+                "frames",
+                "pages",
+                "durationSeconds",
+                "expandedBytes",
+                "streams",
+            },
+            error_code="media_inspection_measurements_invalid",
+            maximum_keys=6,
+        )
+
+
+class MediaDerivativeRecipe(models.Model):
+    recipe_id = models.SlugField(max_length=64)
+    version = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    output_media_type = models.CharField(max_length=127)
+    processor_ref = models.CharField(max_length=128)
+    parameters = models.JSONField(default=dict)
+    recipe_sha256 = models.CharField(max_length=64, validators=[sha256_validator])
+    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["recipe_id", "version"], name="sitecontent_media_recipe_uq"
+            )
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        validate_closed_mapping(
+            self.parameters,
+            allowed_keys={
+                "width",
+                "height",
+                "fit",
+                "quality",
+                "page",
+                "durationSeconds",
+                "noUpscale",
+                "stripMetadata",
+            },
+            error_code="media_recipe_parameters_invalid",
+            maximum_keys=8,
+        )
+        if self.parameters.get("noUpscale") is not True:
+            raise ValidationError("media_recipe_upscale_policy_invalid")
+        if self.parameters.get("stripMetadata") is not True:
+            raise ValidationError("media_recipe_metadata_policy_invalid")
+
+
+class MediaMetadataRevision(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    asset = models.ForeignKey(
+        MediaAsset, on_delete=models.PROTECT, related_name="metadata_revisions"
+    )
+    revision = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    locale = models.CharField(max_length=32, default="en")
+    alt_text = models.CharField(max_length=500, blank=True, default="")
+    decorative = models.BooleanField(default=False)
+    caption = models.TextField(blank=True, default="")
+    transcript = models.TextField(blank=True, default="")
+    credit = models.CharField(max_length=500, blank=True, default="")
+    license_code = models.CharField(max_length=64, blank=True, default="")
+    focal_x = models.DecimalField(max_digits=5, decimal_places=4, null=True, blank=True)
+    focal_y = models.DecimalField(max_digits=5, decimal_places=4, null=True, blank=True)
+    duration_seconds = models.DecimalField(
+        max_digits=10, decimal_places=3, null=True, blank=True
+    )
+    page_count = models.PositiveIntegerField(null=True, blank=True)
+    width = models.PositiveIntegerField(null=True, blank=True)
+    height = models.PositiveIntegerField(null=True, blank=True)
+    ordering_hint = models.PositiveIntegerField(default=0)
+    actor_ref = models.CharField(max_length=200)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["asset", "revision", "locale"], name="sitecontent_media_metadata_uq"
+            )
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.asset_id and self.asset.site_id != self.site_id:
+            raise ValidationError("media_metadata_scope_invalid")
+        if self.decorative and self.alt_text:
+            raise ValidationError("media_decorative_alt_conflict")
+        if (
+            not self.decorative
+            and self.asset_id
+            and self.asset.media_type.startswith("image/")
+            and not self.alt_text.strip()
+        ):
+            raise ValidationError("media_alt_or_decorative_required")
+        if (self.width is None) != (self.height is None):
+            raise ValidationError("media_dimensions_invalid")
+        if len(self.caption) > 10_000 or len(self.transcript) > 100_000:
+            raise ValidationError("media_localized_metadata_too_large")
+
+
+class MediaCollection(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=120)
+    owner_ref = models.CharField(max_length=200)
+    visibility = models.CharField(
+        max_length=16,
+        choices=(("private", "Private"), ("role_shared", "Role shared")),
+        default="private",
+    )
+    shared_roles = models.JSONField(default=list, blank=True)
+    lock_version = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
+
+    def clean(self) -> None:
+        super().clean()
+        allowed = {"owner", "admin", "editor", "viewer"}
+        if (
+            not isinstance(self.shared_roles, list)
+            or len(self.shared_roles) != len(set(self.shared_roles))
+            or any(role not in allowed for role in self.shared_roles)
+            or (self.visibility == "private" and self.shared_roles)
+            or (self.visibility == "role_shared" and not self.shared_roles)
+        ):
+            raise ValidationError("media_collection_roles_invalid")
+
+
+class MediaCollectionMembership(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    collection = models.ForeignKey(
+        MediaCollection, on_delete=models.CASCADE, related_name="memberships"
+    )
+    asset = models.ForeignKey(
+        MediaAsset, on_delete=models.CASCADE, related_name="collection_memberships"
+    )
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["collection", "asset"], name="sitecontent_media_collection_asset_uq"
+            )
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if (
+            self.collection_id
+            and self.asset_id
+            and (self.site_id != self.collection.site_id or self.site_id != self.asset.site_id)
+        ):
+            raise ValidationError("media_collection_scope_invalid")
+
+
+class MediaJob(SiteOwnedModel):
+    JOB_KINDS = tuple(
+        (kind, kind.title())
+        for kind in ("inspect", "derive", "reconcile", "export", "expire", "purge")
+    )
+    STATUSES = tuple(
+        (state, state.title())
+        for state in (
+            "queued",
+            "leased",
+            "running",
+            "completed",
+            "retryable",
+            "failed",
+            "cancelled",
+        )
+    )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    asset = models.ForeignKey(
+        MediaAsset, null=True, blank=True, on_delete=models.PROTECT, related_name="jobs"
+    )
+    kind = models.CharField(max_length=16, choices=JOB_KINDS)
+    status = models.CharField(max_length=16, choices=STATUSES, default="queued")
+    idempotency_key = models.CharField(max_length=128)
+    request_digest = models.CharField(max_length=64, validators=[sha256_validator])
+    attempt = models.PositiveSmallIntegerField(default=0)
+    maximum_attempts = models.PositiveSmallIntegerField(
+        default=3,
+        validators=[MinValueValidator(1), MaxValueValidator(10)],
+    )
+    error_code = models.CharField(max_length=64, blank=True, default="")
+    lease_expires_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    output_digest = models.CharField(max_length=64, blank=True, default="")
+    available_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "kind", "idempotency_key"],
+                name="sitecontent_media_job_replay_uq",
+            )
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.asset_id and self.asset.site_id != self.site_id:
+            raise ValidationError("media_job_scope_invalid")
+        if self.attempt > self.maximum_attempts:
+            raise ValidationError("media_job_attempt_invalid")
+        if self.error_code and not re.fullmatch(r"media_[a-z0-9_]{3,63}", self.error_code):
+            raise ValidationError("media_job_error_invalid")
+        if self.output_digest and not re.fullmatch(SHA256_PATTERN, self.output_digest):
+            raise ValidationError("media_job_output_invalid")
+        if self.status == "completed" and not self.output_digest:
+            raise ValidationError("media_job_output_missing")
+
+
+class MediaRetentionHold(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    asset = models.ForeignKey(MediaAsset, on_delete=models.PROTECT, related_name="retention_holds")
+    reason_code = models.CharField(max_length=64)
+    owner_ref = models.CharField(max_length=200)
+    active = models.BooleanField(default=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+
+    def clean(self) -> None:
+        super().clean()
+        if self.asset_id and self.asset.site_id != self.site_id:
+            raise ValidationError("media_hold_scope_invalid")
+        if not re.fullmatch(r"[a-z][a-z0-9_]{2,63}", self.reason_code or ""):
+            raise ValidationError("media_hold_reason_invalid")
+
+
+class MediaPurgePlan(SiteOwnedModel):
+    STATUSES = tuple(
+        (value, value.title())
+        for value in ("draft", "approved", "scheduled", "cancelled", "completed", "failed")
+    )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    asset = models.ForeignKey(MediaAsset, on_delete=models.PROTECT, related_name="purge_plans")
+    requested_by = models.CharField(max_length=200)
+    reason_code = models.CharField(max_length=64)
+    expected_version = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    object_manifest = models.JSONField(default=list)
+    reference_preview = models.JSONField(default=list)
+    status = models.CharField(max_length=16, choices=STATUSES, default="draft")
+    scheduled_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    result_sha256 = models.CharField(max_length=64, blank=True, default="")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "asset", "expected_version"],
+                name="sitecontent_media_purge_plan_uq",
+            )
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.asset_id and self.asset.site_id != self.site_id:
+            raise ValidationError("media_purge_scope_invalid")
+        if not re.fullmatch(r"[a-z][a-z0-9_]{2,63}", self.reason_code or ""):
+            raise ValidationError("media_purge_reason_invalid")
+        if not isinstance(self.object_manifest, list) or len(self.object_manifest) > 128:
+            raise ValidationError("media_purge_manifest_invalid")
+        if not isinstance(self.reference_preview, list) or len(self.reference_preview) > 128:
+            raise ValidationError("media_purge_reference_preview_invalid")
+        if self.status == "scheduled" and self.scheduled_at is None:
+            raise ValidationError("media_purge_schedule_invalid")
+        if self.status == "completed" and not self.result_sha256:
+            raise ValidationError("media_purge_result_missing")
+
+
+class MediaReference(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    asset = models.ForeignKey(MediaAsset, on_delete=models.PROTECT, related_name="references")
+    owner_type = models.SlugField(max_length=64)
+    owner_id = models.UUIDField()
+    content_record = models.ForeignKey(
+        ContentRecord,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="media_references",
+    )
+    field_key = models.SlugField(max_length=100)
+    owner_state = models.CharField(max_length=32)
+    owner_visibility = models.CharField(
+        max_length=16,
+        choices=(("private", "Private"), ("authenticated", "Authenticated"), ("public", "Public")),
+    )
+    required = models.BooleanField(default=False)
+    lock_version = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "asset", "owner_type", "owner_id", "field_key"],
+                name="sitecontent_media_reference_uq",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["site_id", "asset", "owner_state"], name="media_reference_idx")
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.asset_id and self.asset.site_id != self.site_id:
+            raise ValidationError("media_reference_scope_invalid")
+        if (
+            self.owner_visibility == "public"
+            and self.asset_id
+            and self.asset.visibility != "public"
+        ):
+            raise ValidationError("media_reference_visibility_invalid")
+        if self.required and self.asset_id and self.asset.status != MediaAsset.Status.READY:
+            raise ValidationError("media_reference_not_ready")
+        if self.content_record_id and (
+            self.content_record.site_id != self.site_id
+            or self.owner_id != self.content_record_id
+            or self.owner_state != self.content_record.state
+            or self.owner_type != "content-record"
+        ):
+            raise ValidationError("media_reference_owner_invalid")
+        if self.owner_type == "content-record" and not self.content_record_id:
+            raise ValidationError("media_reference_owner_invalid")
+
+
+class MediaDeliveryGrant(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    asset = models.ForeignKey(MediaAsset, on_delete=models.CASCADE, related_name="delivery_grants")
+    object_version = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    method = models.CharField(max_length=4, choices=(("GET", "GET"), ("HEAD", "HEAD")))
+    audience_ref = models.CharField(max_length=200)
+    token_digest = models.CharField(max_length=64, validators=[sha256_validator])
+    authorization_epoch = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
+    expires_at = models.DateTimeField()
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "token_digest"], name="sitecontent_media_grant_digest_uq"
+            )
+        ]
+        indexes = [
+            models.Index(fields=["site_id", "asset", "expires_at"], name="media_grant_expiry_idx")
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.asset_id and self.asset.site_id != self.site_id:
+            raise ValidationError("media_grant_scope_invalid")
+        if self.expires_at <= timezone.now():
+            raise ValidationError("media_grant_expiry_invalid")
+        if self.revoked_at and self.revoked_at > timezone.now():
+            raise ValidationError("media_grant_revocation_invalid")
+
+
+class MediaExportPackage(SiteOwnedModel):
+    STATUSES = tuple(
+        (value, value.title()) for value in ("queued", "running", "ready", "failed", "expired")
+    )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    requested_by = models.CharField(max_length=200)
+    output_format = models.CharField(
+        max_length=8, choices=(("json", "JSON"), ("csv", "CSV"), ("binary", "Binary"))
+    )
+    projection = models.JSONField(default=list)
+    status = models.CharField(max_length=16, choices=STATUSES, default="queued")
+    artifact_key = models.CharField(max_length=500, blank=True, default="")
+    artifact_sha256 = models.CharField(max_length=64, blank=True, default="")
+    request_digest = models.CharField(max_length=64, validators=[sha256_validator])
+    expires_at = models.DateTimeField()
+    error_code = models.CharField(max_length=64, blank=True, default="")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "requested_by", "request_digest"],
+                name="sitecontent_media_export_replay_uq",
+            )
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if not isinstance(self.projection, list) or len(self.projection) > 64:
+            raise ValidationError("media_export_projection_invalid")
+        if self.artifact_sha256 and not re.fullmatch(SHA256_PATTERN, self.artifact_sha256):
+            raise ValidationError("media_export_digest_invalid")
+        if self.status == "ready" and (not self.artifact_key or not self.artifact_sha256):
+            raise ValidationError("media_export_artifact_missing")
+        if self.error_code and not re.fullmatch(r"media_[a-z0-9_]{3,63}", self.error_code):
+            raise ValidationError("media_export_error_invalid")
+
+
+class MediaAuditEvent(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    sequence = models.PositiveBigIntegerField(validators=[MinValueValidator(1)])
+    event_type = models.CharField(max_length=64)
+    actor_ref = models.CharField(max_length=200)
+    subject_ref = models.CharField(max_length=200)
+    detail = models.JSONField(default=dict)
+    previous_hash = models.CharField(max_length=64, validators=[sha256_validator])
+    event_hash = models.CharField(max_length=64, validators=[sha256_validator])
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "sequence"], name="sitecontent_media_audit_seq_uq"
+            ),
+            models.UniqueConstraint(
+                fields=["site_id", "event_hash"], name="sitecontent_media_audit_hash_uq"
+            ),
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        validate_closed_mapping(
+            self.detail,
+            allowed_keys={
+                "code",
+                "status",
+                "requestId",
+                "version",
+                "reason",
+                "method",
+                "objectVersion",
+                "mediaType",
+                "byteSize",
+                "sha256",
+                "count",
+            },
+            error_code="media_audit_detail_invalid",
+            maximum_keys=11,
+        )
+        if not re.fullmatch(r"media\.[a-z0-9_.-]{2,58}", self.event_type or ""):
+            raise ValidationError("media_audit_type_invalid")
+
+    def save(self, *args, **kwargs):
+        if self.pk and type(self).objects.filter(pk=self.pk).exists():
+            raise ValidationError("media_audit_immutable")
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("media_audit_immutable")
+
+
+class MediaOutboxEvent(SiteOwnedModel):
+    STATUSES = tuple(
+        (value, value.title())
+        for value in ("pending", "leased", "completed", "retryable", "failed")
+    )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    aggregate_ref = models.CharField(max_length=200)
+    event_kind = models.CharField(max_length=64)
+    idempotency_key = models.CharField(max_length=128)
+    payload_digest = models.CharField(max_length=64, validators=[sha256_validator])
+    status = models.CharField(max_length=16, choices=STATUSES, default="pending")
+    attempt = models.PositiveSmallIntegerField(default=0)
+    maximum_attempts = models.PositiveSmallIntegerField(
+        default=5, validators=[MinValueValidator(1), MaxValueValidator(10)]
+    )
+    available_at = models.DateTimeField(default=timezone.now)
+    lease_expires_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    error_code = models.CharField(max_length=64, blank=True, default="")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "event_kind", "idempotency_key"],
+                name="sitecontent_media_outbox_replay_uq",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["site_id", "status", "available_at"], name="media_outbox_due_idx")
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.attempt > self.maximum_attempts:
+            raise ValidationError("media_outbox_attempt_invalid")
+        if self.error_code and not re.fullmatch(r"media_[a-z0-9_]{3,63}", self.error_code):
+            raise ValidationError("media_outbox_error_invalid")
+
+
+class MediaEncryptionEnvelope(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    object_version = models.OneToOneField(
+        MediaObjectVersion, on_delete=models.PROTECT, related_name="encryption_envelope"
+    )
+    key_ref = models.CharField(max_length=160)
+    key_version = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    wrapped_data_key_sha256 = models.CharField(max_length=64, validators=[sha256_validator])
+    content_sha256 = models.CharField(max_length=64, validators=[sha256_validator])
+    status = models.CharField(
+        max_length=16,
+        choices=(("active", "Active"), ("revoked", "Revoked")),
+        default="active",
+    )
+
+    def clean(self) -> None:
+        super().clean()
+        if self.object_version_id and self.object_version.site_id != self.site_id:
+            raise ValidationError("media_encryption_scope_invalid")
+        if not re.fullmatch(r"secretref:[a-z][a-z0-9/_-]{2,127}", self.key_ref or ""):
+            raise ValidationError("media_encryption_keyref_invalid")
+        if self.object_version_id and self.content_sha256 != self.object_version.sha256:
+            raise ValidationError("media_encryption_digest_invalid")
+
+
+class MediaAbuseCase(SiteOwnedModel):
+    STATUSES = tuple(
+        (value, value.title())
+        for value in (
+            "reported",
+            "quarantined",
+            "dismissed",
+            "appealed",
+            "restored",
+            "removed",
+        )
+    )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    asset = models.ForeignKey(MediaAsset, on_delete=models.PROTECT, related_name="abuse_cases")
+    reporter_ref = models.CharField(max_length=200)
+    reviewer_ref = models.CharField(max_length=200, blank=True, default="")
+    appellant_ref = models.CharField(max_length=200, blank=True, default="")
+    reason_code = models.CharField(max_length=64)
+    status = models.CharField(max_length=16, choices=STATUSES, default="reported")
+    lock_version = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["site_id", "status", "created_at"], name="media_abuse_idx")
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.asset_id and self.asset.site_id != self.site_id:
+            raise ValidationError("media_abuse_scope_invalid")
+        if not re.fullmatch(r"media_[a-z0-9_]{3,63}", self.reason_code or ""):
+            raise ValidationError("media_abuse_reason_invalid")
+        actors = [
+            value
+            for value in (self.reporter_ref, self.reviewer_ref, self.appellant_ref)
+            if value
+        ]
+        if len(actors) != len(set(actors)):
+            raise ValidationError("media_abuse_separation_required")
 
 
 class FormSubmission(SiteOwnedModel):

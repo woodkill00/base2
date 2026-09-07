@@ -1450,40 +1450,121 @@ class PostgresContentWorkspaceRepository:
         )
         return int(cur.fetchone()[0])
 
-    def create_asset_upload(self, *, site_id: str, owner_ref: str, payload: dict):
+    def create_asset_upload(
+        self,
+        *,
+        site_id: str,
+        owner_ref: str,
+        payload: dict,
+        idempotency_key: str,
+        maximum_stored_bytes: int,
+        maximum_active_uploads: int,
+        maximum_pending_processing: int,
+    ):
         asset_id = uuid4()
         storage_key = f'quarantine/{site_id}/{asset_id}'
         with db_conn(tenant_id=site_id) as conn:
             try:
                 with conn.cursor() as cur:
                     cur.execute(
-                        """INSERT INTO sitecontent_mediaasset
+                        'SELECT pg_advisory_xact_lock(hashtextextended(%s, 110))', (site_id,)
+                    )
+                    cur.execute(
+                        """SELECT asset.id, asset.status, asset.original_name, asset.media_type,
+                                  asset.byte_size, asset.sha256
+                           FROM sitecontent_mediauploadsession session
+                           JOIN sitecontent_mediaasset asset
+                             ON asset.id=session.asset_ref AND asset.site_id=session.site_id
+                           WHERE session.site_id=%s AND session.actor_ref=%s
+                             AND session.idempotency_key=%s""",
+                        (site_id, owner_ref, idempotency_key),
+                    )
+                    replay = cur.fetchone()
+                    if replay:
+                        supplied = (
+                            payload['filename'], payload['media_type'], payload['byte_size'],
+                            payload['sha256'],
+                        )
+                        if tuple(replay[2:]) != supplied:
+                            raise ValueError('content_idempotency_conflict')
+                        asset_id = replay[0]
+                        row = (replay[0], replay[1])
+                        replayed = True
+                    else:
+                        cur.execute(
+                            """SELECT
+                                 (SELECT COALESCE(SUM(byte_size),0)
+                                    FROM sitecontent_mediaasset
+                                   WHERE site_id=%s AND status NOT IN ('pending','purged')),
+                                 (SELECT COALESCE(SUM(expected_bytes),0)
+                                    FROM sitecontent_mediauploadsession
+                                   WHERE site_id=%s AND status IN ('created','receiving')
+                                     AND expires_at>NOW()),
+                                 (SELECT COUNT(*)
+                                    FROM sitecontent_mediauploadsession
+                                   WHERE site_id=%s AND status IN ('created','receiving')
+                                     AND expires_at>NOW()),
+                                 (SELECT COUNT(*)
+                                    FROM sitecontent_mediaasset
+                                   WHERE site_id=%s
+                                     AND status IN ('quarantined','inspecting','accepted','processing'))""",
+                            (site_id, site_id, site_id, site_id),
+                        )
+                        stored_bytes, reserved_bytes, active_uploads, pending_processing = (
+                            cur.fetchone()
+                        )
+                        if (
+                            int(stored_bytes) + int(reserved_bytes) + int(payload['byte_size'])
+                            > maximum_stored_bytes
+                        ):
+                            raise ValueError('content_quota_storage_exceeded')
+                        if int(active_uploads) >= maximum_active_uploads:
+                            raise ValueError('content_quota_uploads_exceeded')
+                        if int(pending_processing) >= maximum_pending_processing:
+                            raise ValueError('content_quota_processing_exceeded')
+                        cur.execute(
+                            """INSERT INTO sitecontent_mediaasset
                            (id, site_id, storage_key, original_name, media_type, byte_size,
                             sha256, status, owner_ref, attribution, retention_until,
-                            metadata, created_at, updated_at)
+                            metadata, visibility, lock_version, current_object_version,
+                            created_at, updated_at)
                            VALUES (%s,%s,%s,%s,%s,%s,%s,'pending',%s,'',NULL,
-                                   '{"admission":"metadata_only"}'::jsonb,NOW(),NOW())
+                                   '{"admission":"metadata_only"}'::jsonb,'private',1,1,NOW(),NOW())
                            RETURNING id, status""",
-                        (
-                            str(asset_id),
-                            site_id,
-                            storage_key,
-                            payload['filename'],
-                            payload['media_type'],
-                            payload['byte_size'],
-                            payload['sha256'],
-                            owner_ref,
-                        ),
-                    )
-                    row = cur.fetchone()
-                    _audit(
-                        cur,
-                        site_id=site_id,
-                        actor_ref=owner_ref,
-                        object_type='media_asset',
-                        object_ref=str(asset_id),
-                        action='content.asset_admit',
-                    )
+                            (
+                                str(asset_id),
+                                site_id,
+                                storage_key,
+                                payload['filename'],
+                                payload['media_type'],
+                                payload['byte_size'],
+                                payload['sha256'],
+                                owner_ref,
+                            ),
+                        )
+                        row = cur.fetchone()
+                        cur.execute(
+                            """INSERT INTO sitecontent_mediauploadsession
+                               (id, site_id, actor_ref, idempotency_key, expected_sha256,
+                                expected_bytes, received_bytes, status, lock_version,
+                                expires_at, completed_at, created_at, updated_at, terminal_digest,
+                                asset_ref)
+                               VALUES (%s,%s,%s,%s,%s,%s,0,'created',1,
+                                       NOW()+INTERVAL '30 minutes',NULL,NOW(),NOW(),'',%s)""",
+                            (
+                                str(uuid4()), site_id, owner_ref, idempotency_key,
+                                payload['sha256'], payload['byte_size'], str(asset_id),
+                            ),
+                        )
+                        _audit(
+                            cur,
+                            site_id=site_id,
+                            actor_ref=owner_ref,
+                            object_type='media_asset',
+                            object_ref=str(asset_id),
+                            action='content.asset_admit',
+                        )
+                        replayed = False
                 conn.commit()
             except Exception:
                 conn.rollback()
@@ -1499,7 +1580,10 @@ class PostgresContentWorkspaceRepository:
         grant = CursorCodec(str(settings.TOKEN_PEPPER), ttl_seconds=300).encode(
             scope=scope, position={'assetId': str(asset_id)}
         )
-        return {'id': str(row[0]), 'status': row[1], 'uploadGrant': grant, 'expiresIn': 300}
+        return {
+            'id': str(row[0]), 'status': row[1], 'uploadGrant': grant,
+            'expiresIn': 300, 'replayed': replayed,
+        }
 
     def get_asset(self, *, site_id: str, asset_id: UUID, requester_ref: str):
         with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
@@ -1509,8 +1593,9 @@ class PostgresContentWorkspaceRepository:
                    FROM sitecontent_mediaasset asset
                    LEFT JOIN sitecontent_mediavariant variant
                      ON variant.asset_id=asset.id AND variant.name='safe'
-                   WHERE asset.id=%s AND asset.site_id=%s AND asset.status<>'deleted'""",
-                (str(asset_id), site_id),
+                   WHERE asset.id=%s AND asset.site_id=%s AND asset.status<>'deleted'
+                     AND (asset.owner_ref=%s OR asset.visibility IN ('authenticated','public'))""",
+                (str(asset_id), site_id, requester_ref),
             )
             row = cur.fetchone()
         if not row:
@@ -1526,7 +1611,7 @@ class PostgresContentWorkspaceRepository:
             'metadata': row[7],
             'updatedAt': row[8].isoformat(),
         }
-        if row[5] == 'validated' and row[9] and row[10]:
+        if row[5] in {'validated', 'ready'} and row[9] and row[10]:
             scope = {
                 'site': site_id,
                 'requester': requester_ref,
@@ -1558,8 +1643,10 @@ class PostgresContentWorkspaceRepository:
                            FROM sitecontent_mediaasset asset
                            JOIN sitecontent_mediavariant variant
                              ON variant.asset_id=asset.id AND variant.name='safe'
-                           WHERE asset.id=%s AND asset.site_id=%s AND asset.status='validated'""",
-                        (str(asset_id), site_id),
+                           WHERE asset.id=%s AND asset.site_id=%s
+                             AND asset.status IN ('validated','ready')
+                             AND (asset.owner_ref=%s OR asset.visibility IN ('authenticated','public'))""",
+                        (str(asset_id), site_id, requester_ref),
                     )
                     row = cur.fetchone()
                     if not row:
@@ -1602,6 +1689,7 @@ class PostgresContentWorkspaceRepository:
         upload_grant: str,
         content: bytes,
         artifact_store,
+        maximum_bytes: int = 10 * 1024 * 1024,
     ):
         """Verify, persist, and quarantine one exact grant-bound media payload."""
         with db_conn(tenant_id=site_id) as conn:
@@ -1637,6 +1725,7 @@ class PostgresContentWorkspaceRepository:
                         filename=row[1],
                         claimed_type=row[2],
                         content=content,
+                        maximum_bytes=maximum_bytes,
                     )
                     if admission.byte_size != row[3] or admission.sha256 != row[4]:
                         raise ValueError('content_integrity_failed')
@@ -1693,6 +1782,41 @@ class PostgresContentWorkspaceRepository:
             'replayed': False,
         }
 
+    def validate_asset_upload_grant(
+        self,
+        *,
+        site_id: str,
+        asset_id: UUID,
+        owner_ref: str,
+        upload_grant: str,
+    ) -> dict[str, int]:
+        """Validate the exact upload session before admitting request-body work."""
+        with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
+            cur.execute(
+                """SELECT byte_size, sha256, status FROM sitecontent_mediaasset
+                   WHERE id=%s AND site_id=%s AND owner_ref=%s""",
+                (str(asset_id), site_id, owner_ref),
+            )
+            row = cur.fetchone()
+        if not row or row[2] not in {'pending', 'quarantined'}:
+            raise ValueError('content_not_found')
+        scope = {
+            'site': site_id,
+            'owner': owner_ref,
+            'asset': str(asset_id),
+            'sha256': row[1],
+            'bytes': row[0],
+            'purpose': 'asset-upload',
+        }
+        try:
+            CursorCodec(str(settings.TOKEN_PEPPER), ttl_seconds=300).decode(
+                upload_grant,
+                expected_scope=scope,
+            )
+        except CursorError as exc:
+            raise ValueError('content_upload_grant_invalid') from exc
+        return {'expectedBytes': int(row[0])}
+
     def bind_asset(
         self,
         *,
@@ -1716,11 +1840,12 @@ class PostgresContentWorkspaceRepository:
                     )
                     cur.execute(
                         """SELECT media_type, status FROM sitecontent_mediaasset
-                           WHERE id=%s AND site_id=%s""",
-                        (str(payload['asset_id']), site_id),
+                           WHERE id=%s AND site_id=%s
+                             AND (owner_ref=%s OR visibility IN ('authenticated','public'))""",
+                        (str(payload['asset_id']), site_id, actor_ref),
                     )
                     asset = cur.fetchone()
-                    if not asset or asset[1] != 'validated':
+                    if not asset or asset[1] not in {'validated', 'ready'}:
                         raise ValueError('content_asset_quarantined')
                     cur.execute(
                         """SELECT field_kind FROM sitecontent_contentfielddefinition
@@ -1797,10 +1922,16 @@ class PostgresContentWorkspaceRepository:
                         expected_version=expected_version,
                     )
                     cur.execute(
-                        """DELETE FROM sitecontent_assetbinding
-                           WHERE site_id=%s AND record_id=%s AND field_key=%s AND asset_id=%s
-                           RETURNING id""",
-                        (site_id, str(record_id), field_key, str(asset_id)),
+                        """DELETE FROM sitecontent_assetbinding binding
+                           WHERE binding.site_id=%s AND binding.record_id=%s
+                             AND binding.field_key=%s AND binding.asset_id=%s
+                             AND EXISTS (
+                               SELECT 1 FROM sitecontent_mediaasset asset
+                               WHERE asset.site_id=binding.site_id AND asset.id=binding.asset_id
+                                 AND (asset.owner_ref=%s OR asset.visibility IN ('authenticated','public'))
+                             )
+                           RETURNING binding.id""",
+                        (site_id, str(record_id), field_key, str(asset_id), actor_ref),
                     )
                     deleted = cur.fetchone()
                     if not deleted:

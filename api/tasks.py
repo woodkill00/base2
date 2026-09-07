@@ -1,6 +1,7 @@
 import logging
 import os
 from contextlib import suppress
+from datetime import datetime
 from uuid import UUID
 
 from celery import Celery, Task
@@ -9,6 +10,7 @@ from api.services.email_service import process_outbox_email
 from api.repositories.data_rights import expire_results, queued_operation_ids
 from api.services.data_rights_worker import process_operation
 from api.services.content_workspace_worker import (
+    begin_media_scan_attempt,
     due_export_jobs,
     due_index_records,
     due_import_validations,
@@ -16,6 +18,7 @@ from api.services.content_workspace_worker import (
     due_media_scans,
     due_publication_ids,
     expire_export_jobs as expire_workspace_export_jobs,
+    finish_media_scan_attempt,
     index_workspace_record,
     mark_export_failed,
     mark_import_failed,
@@ -23,11 +26,17 @@ from api.services.content_workspace_worker import (
     process_export_job,
     process_import_commit,
     publish_scheduled_record,
-    scan_workspace_asset,
+    recover_media_scan_attempt,
     validate_import_job,
 )
 from api.services.content_workspace_storage import configured_artifact_store
-from api.settings import settings
+from api.services.media_library_runtime import (
+    apply_due_media_governance,
+    due_media_exports,
+    process_governed_media_asset as scan_workspace_asset,
+    process_media_export,
+)
+from api.settings import SITE_MANIFEST, settings
 
 
 logger = logging.getLogger('api.tasks')
@@ -71,6 +80,14 @@ app.conf.update(
         'workspace-scan-quarantined-media': {
             'task': 'app.replay_workspace_media_scans',
             'schedule': 60.0,
+        },
+        'media-process-exports': {
+            'task': 'app.replay_media_exports',
+            'schedule': 60.0,
+        },
+        'media-apply-reviewed-governance': {
+            'task': 'app.apply_media_governance',
+            'schedule': 300.0,
         },
         'workspace-process-exports': {
             'task': 'app.replay_workspace_exports',
@@ -211,31 +228,87 @@ def _workspace_artifact_store():
     return configured_artifact_store(
         root=settings.CONTENT_WORKSPACE_STORAGE_ROOT,
         encoded_key=settings.CONTENT_WORKSPACE_STORAGE_KEY or '',
+        max_bytes=int(SITE_MANIFEST.get('media', {}).get('maxBytes', 10 * 1024 * 1024)),
     )
 
 
 @app.task(
     name='app.scan_workspace_asset',
+)
+def scan_workspace_asset_task(
+    site_id: str, asset_id: str, job_id: str, attempt: int, lease_token: str
+) -> str:
+    token = datetime.fromisoformat(lease_token)
+    if not begin_media_scan_attempt(
+        site_id=site_id,
+        asset_id=UUID(asset_id),
+        job_id=UUID(job_id),
+        attempt=attempt,
+        lease_token=token,
+    ):
+        return 'stale_attempt'
+    try:
+        result = scan_workspace_asset(
+            site_id=site_id,
+            asset_id=UUID(asset_id),
+            artifact_store=_workspace_artifact_store(),
+        )
+    except Exception:
+        try:
+            recover_media_scan_attempt(
+                site_id=site_id,
+                job_id=UUID(job_id),
+                attempt=attempt,
+                lease_token=token,
+            )
+        except Exception:
+            logger.error('media_scan_recovery_failed')
+        raise
+    finish_media_scan_attempt(
+        site_id=site_id,
+        job_id=UUID(job_id),
+        attempt=attempt,
+        lease_token=token,
+        result=result,
+    )
+    return result
+
+
+@app.task(name='app.replay_workspace_media_scans')
+def replay_workspace_media_scans(limit: int = 10) -> int:
+    assets = due_media_scans(limit=limit)
+    for site_id, asset_id, job_id, attempt, lease_token in assets:
+        scan_workspace_asset_task.delay(site_id, asset_id, job_id, attempt, lease_token)
+    return len(assets)
+
+
+@app.task(
+    name='app.process_media_export',
     autoretry_for=(Exception,),
     dont_autoretry_for=(ValueError,),
     retry_backoff=True,
     retry_jitter=True,
     max_retries=3,
 )
-def scan_workspace_asset_task(site_id: str, asset_id: str) -> str:
-    return scan_workspace_asset(
+def process_media_export_task(site_id: str, export_id: str) -> str:
+    return process_media_export(
         site_id=site_id,
-        asset_id=UUID(asset_id),
+        export_id=UUID(export_id),
         artifact_store=_workspace_artifact_store(),
     )
 
 
-@app.task(name='app.replay_workspace_media_scans')
-def replay_workspace_media_scans(limit: int = 10) -> int:
-    assets = due_media_scans(limit=limit)
-    for site_id, asset_id in assets:
-        scan_workspace_asset_task.delay(site_id, asset_id)
-    return len(assets)
+@app.task(name='app.replay_media_exports')
+def replay_media_exports(limit: int = 10) -> int:
+    packages = due_media_exports(limit=limit)
+    for site_id, export_id in packages:
+        process_media_export_task.delay(site_id, export_id)
+    return len(packages)
+
+
+@app.task(name='app.apply_media_governance')
+def apply_media_governance(limit: int = 100) -> dict[str, int]:
+    return apply_due_media_governance(limit=limit)
 
 
 @app.task(

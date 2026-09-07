@@ -22,6 +22,20 @@ SCOPE_LIMITS: dict[str, tuple[int, int]] = {
     'public_form': (60_000, 10),
     # Authenticated community writes remain bounded per tenant and source.
     'community_submit': (60_000, 10),
+    # Authenticated media admission is bounded per tenant and principal.
+    'media_upload_create': (60_000, 30),
+    # Body completion is memory-bearing: one attempt per principal per minute
+    # prevents valid-grant slow-body replay from monopolizing upload workers.
+    'media_upload_complete': (60_000, 1),
+    # Whole-object delivery is bounded per tenant/principal as well as by the
+    # process-wide materialization slots in upload_capacity.py.
+    'media_download': (60_000, 12),
+    'media_download_tenant': (60_000, 60),
+    # Export requests enqueue durable global-worker work. Bound each tenant
+    # principal before database admission; repository quotas provide the
+    # tenant-wide backstop across principals.
+    'media_export_create': (60_000, 5),
+    'media_export_tenant': (60_000, 20),
 }
 
 

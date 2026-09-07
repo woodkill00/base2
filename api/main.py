@@ -270,6 +270,12 @@ def _include_external_routes() -> None:
     ):
         module = importlib.import_module(f'api.routes.{module_name}')
         app.include_router(module.router, prefix='/api')
+    if any(
+        item.get('id') == 'media' and item.get('enabled') is True
+        for item in SITE_MANIFEST.get('modules', [])
+    ):
+        module = importlib.import_module('api.routes.media_library')
+        app.include_router(module.router, prefix='/api')
 
 
 startup_registry.initialize('routes', required=True, initializer=_include_external_routes)

@@ -320,6 +320,26 @@ class CompleteGateTests(unittest.TestCase):
             ["{python-api}", "scripts/python/run_api_coverage.py"],
             commands["api-tests"],
         )
+        self.assertEqual(
+            ["{python-api}", "-m", "mypy", "api"],
+            commands["api-typecheck"],
+        )
+        self.assertEqual(
+            ["npm", "--prefix", "react-app", "audit", "--audit-level=moderate"],
+            commands["frontend-production-audit"],
+        )
+        self.assertEqual(
+            [
+                "npm",
+                "--prefix",
+                "react-app",
+                "ci",
+                "--dry-run",
+                "--ignore-scripts",
+                "--legacy-peer-deps",
+            ],
+            commands["frontend-lockfile-sync"],
+        )
         api_check = next(item for item in manifest["checks"] if item["id"] == "api-tests")
         self.assertEqual(300, api_check["timeoutSeconds"])
         self.assertGreater(api_check["timeoutSeconds"], 120)

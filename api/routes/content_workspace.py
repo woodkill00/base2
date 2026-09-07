@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from datetime import UTC, datetime
@@ -13,6 +14,16 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from api.middleware.tenant import require_tenant
 from api.repositories.content_workspace import PostgresContentWorkspaceRepository
 from api.security.request_auth import require_authenticated_principal
+from api.security.rate_limit import incr_and_check_tenant_detailed
+from api.security.upload_capacity import (
+    DownloadCapacityError,
+    UploadBodyLimitError,
+    UploadBodyTimeoutError,
+    UploadCapacityError,
+    download_delivery_slot,
+    read_bounded_upload,
+    upload_completion_slot,
+)
 from api.services.content_workspace_media import MAX_UPLOAD_BYTES
 from api.services.content_workspace_transfer import MAX_BYTES as MAX_IMPORT_BYTES
 from api.services.content_workspace_storage import (
@@ -894,16 +905,45 @@ def execute_saved_view(type_key: str, view_id: UUID, request: Request):
 
 
 @router.post('/assets/uploads', status_code=status.HTTP_201_CREATED)
-def create_asset_upload(payload: AssetUploadCreate, request: Request):
+def create_asset_upload(
+    payload: AssetUploadCreate,
+    request: Request,
+    idempotency_key: Annotated[
+        str,
+        Header(
+            alias='Idempotency-Key', min_length=8, max_length=128,
+            pattern=r'^[A-Za-z0-9._:-]+$',
+        ),
+    ],
+):
     principal, tenant = _authorized_scope(request, 'content-workspace.write')
+    try:
+        _count, limited, retry_after = incr_and_check_tenant_detailed(
+            tenant, str(principal.user_id), 'media_upload_create'
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_rate_limit_unavailable') from exc
+    if limited:
+        raise HTTPException(
+            status_code=429,
+            detail='content_rate_limit_exceeded',
+            headers={'Retry-After': str(retry_after)},
+        )
     try:
         return get_repository().create_asset_upload(
             site_id=tenant,
             owner_ref=f'user:{principal.user_id}',
             payload=payload.model_dump(),
+            idempotency_key=idempotency_key,
+            maximum_stored_bytes=1024 * 1024 * 1024,
+            maximum_active_uploads=100,
+            maximum_pending_processing=200,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        code = str(exc)
+        raise HTTPException(
+            status_code=409 if code == 'content_idempotency_conflict' else 422, detail=code
+        ) from exc
     except Exception as exc:
         raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
 
@@ -928,21 +968,55 @@ async def complete_asset_upload(
     upload_grant: Annotated[str, Header(alias='Upload-Grant', min_length=32, max_length=4096)],
 ):
     principal, tenant = _authorized_scope(request, 'content-workspace.write')
-    content_buffer = bytearray()
-    async for chunk in request.stream():
-        content_buffer.extend(chunk)
-        if len(content_buffer) > MAX_UPLOAD_BYTES:
-            raise HTTPException(status_code=413, detail='content_limit_exceeded')
-    content = bytes(content_buffer)
     try:
-        return get_repository().complete_asset_upload(
+        _count, limited, retry_after = incr_and_check_tenant_detailed(
+            tenant, str(principal.user_id), 'media_upload_complete'
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='content_rate_limit_unavailable') from exc
+    if limited:
+        raise HTTPException(
+            status_code=429,
+            detail='content_rate_limit_exceeded',
+            headers={'Retry-After': str(retry_after)},
+        )
+    repository = get_repository()
+    try:
+        admission = repository.validate_asset_upload_grant(
             site_id=tenant,
             asset_id=asset_id,
             owner_ref=f'user:{principal.user_id}',
             upload_grant=upload_grant,
-            content=content,
-            artifact_store=get_artifact_store(),
         )
+        length = request.headers.get('content-length')
+        if length is not None and (
+            not length.isdigit() or int(length) != admission['expectedBytes']
+        ):
+            raise HTTPException(status_code=422, detail='content_integrity_failed')
+        async with upload_completion_slot():
+            content = await read_bounded_upload(
+                request.stream(), maximum_bytes=min(MAX_UPLOAD_BYTES, admission['expectedBytes'])
+            )
+            return repository.complete_asset_upload(
+                site_id=tenant,
+                asset_id=asset_id,
+                owner_ref=f'user:{principal.user_id}',
+                upload_grant=upload_grant,
+                content=content,
+                artifact_store=get_artifact_store(),
+            )
+    except UploadCapacityError as exc:
+        raise HTTPException(
+            status_code=429,
+            detail='content_upload_capacity_exhausted',
+            headers={'Retry-After': '2'},
+        ) from exc
+    except UploadBodyLimitError as exc:
+        raise HTTPException(status_code=413, detail='content_limit_exceeded') from exc
+    except UploadBodyTimeoutError as exc:
+        raise HTTPException(status_code=408, detail='content_upload_timeout') from exc
+    except HTTPException:
+        raise
     except ArtifactIntegrityError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except ValueError as exc:
@@ -954,20 +1028,40 @@ async def complete_asset_upload(
 
 
 @router.get('/assets/{asset_id}/content')
-def read_asset_content(
+async def read_asset_content(
     asset_id: UUID,
     request: Request,
     download_grant: Annotated[str, Header(alias='Download-Grant', min_length=32, max_length=4096)],
 ):
     principal, tenant = _authorized_scope(request, 'content-workspace.read')
     try:
-        result = get_repository().read_asset_content(
-            site_id=tenant,
-            asset_id=asset_id,
-            requester_ref=f'user:{principal.user_id}',
-            download_grant=download_grant,
-            artifact_store=get_artifact_store(),
-        )
+        try:
+            _count, limited, retry_after = incr_and_check_tenant_detailed(
+                tenant, str(principal.user_id), 'media_download'
+            )
+            if not limited:
+                _count, limited, retry_after = incr_and_check_tenant_detailed(
+                    tenant, 'tenant-aggregate', 'media_download_tenant'
+                )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503, detail='content_rate_limit_unavailable'
+            ) from exc
+        if limited:
+            raise HTTPException(
+                status_code=429,
+                detail='content_rate_limit_exceeded',
+                headers={'Retry-After': str(retry_after)},
+            )
+        async with download_delivery_slot():
+            result = await asyncio.to_thread(
+                get_repository().read_asset_content,
+                site_id=tenant,
+                asset_id=asset_id,
+                requester_ref=f'user:{principal.user_id}',
+                download_grant=download_grant,
+                artifact_store=get_artifact_store(),
+            )
         extension = 'png' if result['media_type'] == 'image/png' else 'pdf'
         return Response(
             content=result['content'],
@@ -979,6 +1073,14 @@ def read_asset_content(
                 'X-Content-SHA256': result['sha256'],
             },
         )
+    except DownloadCapacityError as exc:
+        raise HTTPException(
+            status_code=429,
+            detail='content_download_capacity_exhausted',
+            headers={'Retry-After': '1'},
+        ) from exc
+    except HTTPException:
+        raise
     except ArtifactIntegrityError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except ValueError as exc:
@@ -1351,7 +1453,7 @@ def create_export_download(type_key: str, job_id: UUID, request: Request):
 
 
 @router.get('/types/{type_key}/exports/{job_id}/content')
-def read_export_content(
+async def read_export_content(
     type_key: str,
     job_id: UUID,
     request: Request,
@@ -1360,14 +1462,34 @@ def read_export_content(
     _valid_type_key(type_key)
     principal, tenant = _authorized_scope(request, 'content-workspace.read')
     try:
-        result = get_repository().read_export_content(
-            site_id=tenant,
-            type_key=type_key,
-            job_id=job_id,
-            requester_ref=f'user:{principal.user_id}',
-            download_grant=download_grant,
-            artifact_store=get_artifact_store(),
-        )
+        try:
+            _count, limited, retry_after = incr_and_check_tenant_detailed(
+                tenant, str(principal.user_id), 'media_download'
+            )
+            if not limited:
+                _count, limited, retry_after = incr_and_check_tenant_detailed(
+                    tenant, 'tenant-aggregate', 'media_download_tenant'
+                )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503, detail='content_rate_limit_unavailable'
+            ) from exc
+        if limited:
+            raise HTTPException(
+                status_code=429,
+                detail='content_rate_limit_exceeded',
+                headers={'Retry-After': str(retry_after)},
+            )
+        async with download_delivery_slot():
+            result = await asyncio.to_thread(
+                get_repository().read_export_content,
+                site_id=tenant,
+                type_key=type_key,
+                job_id=job_id,
+                requester_ref=f'user:{principal.user_id}',
+                download_grant=download_grant,
+                artifact_store=get_artifact_store(),
+            )
         media_type = 'application/json' if result['format'] == 'json' else 'text/csv; charset=utf-8'
         return Response(
             content=result['content'],
@@ -1379,6 +1501,14 @@ def read_export_content(
                 'X-Content-SHA256': result['sha256'],
             },
         )
+    except DownloadCapacityError as exc:
+        raise HTTPException(
+            status_code=429,
+            detail='content_download_capacity_exhausted',
+            headers={'Retry-After': '1'},
+        ) from exc
+    except HTTPException:
+        raise
     except ArtifactIntegrityError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except ValueError as exc:

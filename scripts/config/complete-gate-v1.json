@@ -18,6 +18,22 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "api-typecheck",
+      "command": ["{python-api}", "-m", "mypy", "api"],
+      "required": true,
+      "timeoutSeconds": 120,
+      "dependsOn": ["feature-093-plan"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "api-lint",
+      "command": ["{python-api}", "-m", "ruff", "check", "api"],
+      "required": true,
+      "timeoutSeconds": 120,
+      "dependsOn": ["feature-093-plan"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
       "id": "surface-drift-contract",
       "command": ["python3", "scripts/python/validate_surface_drift.py"],
       "required": true,
@@ -222,6 +238,74 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "workspace-postgres-acceptance",
+      "command": ["python3", "scripts/python/run_workspace_postgres_acceptance.py"],
+      "required": true,
+      "timeoutSeconds": 600,
+      "dependsOn": ["workspace-postgres-contract"],
+      "requiredTools": ["python3", "docker"]
+    },
+    {
+      "id": "media-library-contract",
+      "command": [
+        "{python-api}",
+        "-m",
+        "pytest",
+        "api/tests/test_media_library_formats.py",
+        "api/tests/test_media_library_governance.py",
+        "api/tests/test_media_inspector_isolation.py",
+        "api/tests/test_media_library_lifecycle.py",
+        "api/tests/test_media_library_operations.py",
+        "api/tests/test_media_library_policy.py",
+        "api/tests/test_media_library_processor.py",
+        "api/tests/test_media_library_repository.py",
+        "api/tests/test_media_library_routes.py",
+        "api/tests/test_media_library_runtime.py",
+        "api/tests/test_upload_capacity.py",
+        "api/tests/test_media_library_storage.py",
+        "api/tests/test_media_library_worker.py",
+        "scripts/tests/test_media_library_fixtures.py",
+        "scripts/tests/test_media_library_manifest.py",
+        "scripts/tests/test_media_library_migration.py",
+        "scripts/tests/test_media_visual_review.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 90,
+      "dependsOn": ["workspace-postgres-acceptance"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "media-library-django-contract",
+      "command": [
+        "{python-django}",
+        "-m",
+        "pytest",
+        "django/tests/test_media_library_models.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": ["workspace-postgres-acceptance"],
+      "requiredTools": ["{python-django}"]
+    },
+    {
+      "id": "media-library-plan",
+      "command": ["python3", "specs/105-universal-media-library/validate_plan.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["media-library-contract", "media-library-django-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "media-library-visual-release",
+      "command": ["npm", "--prefix", "react-app", "run", "test:media-release"],
+      "required": true,
+      "timeoutSeconds": 300,
+      "dependsOn": ["media-library-plan", "visual-baseline-contract"],
+      "requiredTools": ["npm", "node"]
+    },
+    {
       "id": "workspace-visual-contract",
       "command": [
         "{python-api}",
@@ -233,7 +317,7 @@
       ],
       "required": true,
       "timeoutSeconds": 45,
-      "dependsOn": ["workspace-postgres-contract", "visual-baseline-contract"],
+      "dependsOn": ["workspace-postgres-contract", "visual-baseline-contract", "media-library-plan"],
       "requiredTools": ["{python-api}", "git"]
     },
     {
@@ -735,11 +819,27 @@
       "requiredTools": ["node", "npm"]
     },
     {
+      "id": "frontend-lockfile-sync",
+      "command": [
+        "npm",
+        "--prefix",
+        "react-app",
+        "ci",
+        "--dry-run",
+        "--ignore-scripts",
+        "--legacy-peer-deps"
+      ],
+      "required": true,
+      "timeoutSeconds": 180,
+      "dependsOn": ["env-tools"],
+      "requiredTools": ["node", "npm"]
+    },
+    {
       "id": "frontend-lint",
       "command": ["npm", "--prefix", "react-app", "run", "lint"],
       "required": true,
       "timeoutSeconds": 180,
-      "dependsOn": ["env-tools", "account-admin-browser"],
+      "dependsOn": ["frontend-lockfile-sync", "account-admin-browser"],
       "requiredTools": ["node", "npm"]
     },
     {
@@ -802,7 +902,7 @@
     },
     {
       "id": "frontend-production-audit",
-      "command": ["npm", "--prefix", "react-app", "audit", "--omit=dev", "--audit-level=high"],
+      "command": ["npm", "--prefix", "react-app", "audit", "--audit-level=moderate"],
       "required": true,
       "timeoutSeconds": 180,
       "dependsOn": ["frontend-build"],
@@ -814,7 +914,7 @@
       "required": true,
       "timeoutSeconds": 60,
       "dependsOn": ["env-tools"],
-      "requiredTools": ["docker", "python3"]
+      "requiredTools": ["docker", "python3", "openssl"]
     }
   ]
 }

@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -16,6 +17,17 @@ if str(ROOT) not in sys.path:
 
 from scripts.python.module_lifecycle import ModuleLifecycle
 from scripts.python.module_registry import ModuleRegistry
+
+
+SEMANTIC_VERSION = re.compile(r'^(\d+)\.(\d+)\.(\d+)$')
+
+
+def _next_patch(version: str) -> str:
+    match = SEMANTIC_VERSION.fullmatch(version)
+    if match is None:
+        raise RuntimeError(f'invalid semantic version: {version}')
+    major, minor, patch = (int(part) for part in match.groups())
+    return f'{major}.{minor}.{patch + 1}'
 
 
 def _digest(value) -> str:
@@ -52,12 +64,12 @@ def run() -> dict:
             lifecycle.apply(operation_id=f'enable-{item["id"]}', action='enable', manifest_payload=module)
             lifecycle_counts['enable'] += 1
             upgraded = json.loads(json.dumps(module))
-            upgraded['version'] = '1.0.1'
+            upgraded['version'] = _next_patch(module['version'])
             lifecycle.upgrade_preview(upgraded)
             lifecycle.apply(operation_id=f'upgrade-{item["id"]}', action='upgrade', manifest_payload=upgraded)
             lifecycle_counts['upgrade'] += 1
             exported = lifecycle.export_inventory(item['id'])
-            if exported['version'] != '1.0.1':
+            if exported['version'] != upgraded['version']:
                 raise RuntimeError(f'export mismatch: {item["id"]}')
             lifecycle_counts['export'] += 1
         overview = lifecycle.admin_overview()

@@ -306,6 +306,7 @@ services:
       dockerfile: Dockerfile
       args:
         - PYTHON_VERSION=${FASTAPI_PYTHON_VERSION}
+    profiles: [celery]
     container_name: ${COMPOSE_PROJECT_NAME}_celery_worker
     environment:
       - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
@@ -322,6 +323,8 @@ services:
       - IDENTITY_ENCRYPTION_KEY=${IDENTITY_ENCRYPTION_KEY}
       - CONTENT_WORKSPACE_STORAGE_ROOT=${CONTENT_WORKSPACE_STORAGE_ROOT}
       - CONTENT_WORKSPACE_STORAGE_KEY=${CONTENT_WORKSPACE_STORAGE_KEY}
+      - MEDIA_INSPECTOR_SPOOL_ROOT=/var/lib/base2/media-inspector
+      - MEDIA_INSPECTOR_VERIFY_KEY=${MEDIA_INSPECTOR_VERIFY_KEY}
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
       - CELERY_LOG_LEVEL=${CELERY_LOG_LEVEL}
@@ -329,7 +332,10 @@ services:
     networks: [app_network]
     volumes:
       - content_workspace_artifacts:/var/lib/base2/content-workspace
+      - media_inspector_spool:/var/lib/base2/media-inspector
     depends_on:
+      media-inspector-spool-init:
+        condition: service_completed_successfully
       django:
         condition: service_healthy
       redis:
@@ -358,18 +364,106 @@ services:
     mem_limit: 256m
     cpus: '0.5'
 
-  # Malware scanner is opt-in because official guidance requires at least 3 GiB RAM.
-  # Its unauthenticated TCP protocol remains private to app_network and is never published.
+  media-inspector-spool-init:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.media-inspector
+    profiles: [media-scan, celery]
+    platform: linux/amd64
+    user: '0:0'
+    entrypoint: ['/usr/bin/python']
+    command: ['/app/api/scripts/media_inspector_spool_init.py']
+    network_mode: none
+    volumes:
+      - media_inspector_spool:/var/lib/base2/media-inspector
+    restart: 'no'
+    cap_drop: [ALL]
+    cap_add: [CHOWN]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    pids_limit: 8
+    mem_limit: 32m
+    cpus: '0.1'
+
+  # Network authority is isolated to the non-root definitions updater. The
+  # networkless inspector consumes its read-only signed database volume.
   clamav:
-    image: clamav/clamav:${CLAMAV_VERSION}
+    image: clamav/clamav@sha256:1fdfd24c6f0a0fb60788481487459a6d4eda8a9b448641594e04db8410d34422
+    platform: linux/amd64
     container_name: ${COMPOSE_PROJECT_NAME}_clamav
     profiles: [media-scan]
-    networks: [app_network]
+    user: '100:101'
+    entrypoint: ['/usr/bin/freshclam']
+    command:
+      - --daemon
+      - --foreground
+      - --stdout
+      - --checks=24
+      - --user=clamav
+      - --config-file=/etc/clamav/freshclam-base2.conf
+    networks: [clamav_egress]
     volumes:
       - clamav_db:/var/lib/clamav
+      - ./api/config/freshclam.conf:/etc/clamav/freshclam-base2.conf:ro
+      - ./api/scripts/clamav_updater_health.sh:/usr/local/bin/base2-clamav-health:ro
     restart: unless-stopped
-    mem_limit: 3g
-    cpus: '1.0'
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=32m
+      - /run:rw,nosuid,nodev,noexec,size=8m
+    pids_limit: 32
+    mem_limit: 512m
+    cpus: '0.25'
+    healthcheck:
+      test: ['CMD', '/bin/sh', '/usr/local/bin/base2-clamav-health']
+      interval: 30s
+      timeout: 30s
+      retries: 5
+      start_period: 10s
+
+  # Hostile media is decoded only here. Jobs cross a private spool because this
+  # container intentionally has no network, database, broker, or app secrets.
+  media-inspector:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.media-inspector
+    profiles: [media-scan]
+    platform: linux/amd64
+    environment:
+      - MEDIA_INSPECTOR_SPOOL_ROOT=/var/lib/base2/media-inspector
+      - MEDIA_INSPECTOR_SPOOL_PRODUCER_UID=1000
+      - MEDIA_INSPECTOR_SPOOL_PRODUCER_GID=1000
+      - MEDIA_INSPECTOR_SIGNING_KEY=${MEDIA_INSPECTOR_SIGNING_KEY}
+      - MEDIA_INSPECTOR_BUILD_IDENTITY=${MEDIA_INSPECTOR_BUILD_IDENTITY}
+    network_mode: none
+    pid: private
+    ipc: private
+    volumes:
+      - media_inspector_spool:/var/lib/base2/media-inspector
+      - clamav_db:/var/lib/clamav:ro
+    restart: unless-stopped
+    group_add: ['1000']
+    depends_on:
+      media-inspector-spool-init:
+        condition: service_completed_successfully
+      clamav:
+        condition: service_healthy
+    cap_drop: [ALL]
+    cap_add: [SETUID, SETGID, SETPCAP]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: ['/tmp:rw,nosuid,nodev,noexec,size=64m']
+    pids_limit: 16
+    mem_limit: 1536m
+    cpus: '0.75'
+    healthcheck:
+      test: ['CMD', 'python', '-m', 'api.services.media_inspector_service', '--healthcheck']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   # Celery beat (optional; enable with `--profile celery`)
   celery-beat:
@@ -458,10 +552,15 @@ services:
 networks:
   app_network:
     name: ${NETWORK_NAME}
+  # Outbound definition retrieval only; no application service joins it.
+  clamav_egress:
+    name: ${COMPOSE_PROJECT_NAME}_clamav_egress
+    internal: false
 
 volumes:
   clamav_db:
   content_workspace_artifacts:
+  media_inspector_spool:
   postgres_data:
   django_static:
   pgadmin_data:

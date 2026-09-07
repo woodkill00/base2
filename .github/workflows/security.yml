@@ -11,7 +11,7 @@ jobs:
   sbom-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
 
       - name: Generate SBOMs with Syft
         uses: anchore/sbom-action@fc46e51fd3cb168ffb36c6d1915723c47db58abb
@@ -29,6 +29,59 @@ jobs:
           severity-cutoff: high
           output-format: sarif
 
+      - name: Build immutable media inspector image
+        run: |
+          docker build --platform linux/amd64 --file api/Dockerfile.media-inspector --target media-inspector-production --tag base2-media-inspector:security api
+          docker build --platform linux/amd64 --file api/Dockerfile.media-inspector --target media-inspector-acceptance --tag base2-media-inspector:acceptance api
+
+      - name: Exercise hardened ClamAV updater lifecycle
+        run: bash api/tests/clamav_updater_container_acceptance.sh
+
+      - name: Verify production inspector excludes acceptance code
+        run: >-
+          docker run --rm --entrypoint /usr/bin/python
+          base2-media-inspector:security -c
+          "from pathlib import Path; raise SystemExit(Path('/app/api/tests/media_inspector_acceptance_entrypoint.py').exists())"
+
+      - name: Exercise hardened media inspector supervisor
+        run: |
+          docker run --rm \
+            --network none \
+            --ipc=private \
+            --read-only \
+            --cap-drop ALL \
+            --cap-add SETUID \
+            --cap-add SETGID \
+            --cap-add SETPCAP \
+            --security-opt no-new-privileges \
+            --pids-limit 16 \
+            --memory 1536m \
+            --cpus 0.75 \
+            --tmpfs /tmp:rw,nosuid,nodev,noexec,size=64m \
+            --tmpfs /var/lib/base2/media-inspector:rw,nosuid,nodev,noexec,size=128m \
+            --entrypoint /usr/bin/python \
+            base2-media-inspector:acceptance \
+            /app/api/tests/media_inspector_container_acceptance.py
+
+      - name: Exercise fresh-volume two-UID spool lifecycle
+        run: MEDIA_INSPECTOR_TEST_IMAGE=base2-media-inspector:acceptance bash api/tests/media_inspector_two_uid_container_acceptance.sh
+
+      - name: Generate media inspector image SBOM
+        uses: anchore/sbom-action@fc46e51fd3cb168ffb36c6d1915723c47db58abb
+        with:
+          image: base2-media-inspector:security
+          format: cyclonedx-json
+          output-file: media-inspector-sbom.cdx.json
+
+      - name: Scan media inspector image
+        id: inspector-grype
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2
+        with:
+          sbom: media-inspector-sbom.cdx.json
+          fail-build: true
+          severity-cutoff: high
+          output-format: sarif
+
       - name: Normalize SBOM result
         if: always()
         run: python scripts/python/security_result_adapter.py --family sbom --format cyclonedx --tool syft --source-commit "$GITHUB_SHA" --input sbom.cdx.json --output sbom.normalized.json
@@ -37,9 +90,13 @@ jobs:
         if: always()
         run: python scripts/python/security_result_adapter.py --family dependency --format sarif --tool grype --source-commit "$GITHUB_SHA" --input "${{ steps.grype.outputs.sarif }}" --output grype.normalized.json
 
+      - name: Normalize media inspector Grype result
+        if: always() && steps.inspector-grype.outputs.sarif != ''
+        run: python scripts/python/security_result_adapter.py --family dependency --format sarif --tool grype-media-inspector --source-commit "$GITHUB_SHA" --input "${{ steps.inspector-grype.outputs.sarif }}" --output media-inspector-grype.normalized.json
+
       - name: Upload SBOM artifact
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: sbom
           path: |
@@ -47,10 +104,13 @@ jobs:
             ${{ steps.grype.outputs.sarif }}
             sbom.normalized.json
             grype.normalized.json
+            media-inspector-sbom.cdx.json
+            ${{ steps.inspector-grype.outputs.sarif }}
+            media-inspector-grype.normalized.json
   npm-audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
@@ -63,11 +123,11 @@ jobs:
       - name: Install root deps
         run: npm ci --legacy-peer-deps
 
-      - name: Install frontend deps (prod only)
-        run: cd react-app && npm ci --omit=dev --legacy-peer-deps
+      - name: Install frontend dependency graph
+        run: cd react-app && npm ci --legacy-peer-deps
 
       - name: Audit frontend deps
-        run: cd react-app && npm audit --omit=dev --audit-level=high --json > ../frontend-npm-audit.json
+        run: cd react-app && npm audit --audit-level=moderate --json > ../frontend-npm-audit.json
 
       - name: Normalize npm audit result
         if: always()
@@ -75,7 +135,7 @@ jobs:
 
       - name: Upload npm audit result
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: npm-audit
           path: |
@@ -85,7 +145,7 @@ jobs:
   pip-audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
 
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
@@ -112,7 +172,7 @@ jobs:
 
       - name: Upload pip audit results
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: pip-audit
           path: |
@@ -124,7 +184,7 @@ jobs:
   gitleaks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           fetch-depth: 0
 
@@ -140,7 +200,7 @@ jobs:
 
       - name: Upload Gitleaks results
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: gitleaks-sarif
           path: |
@@ -150,7 +210,7 @@ jobs:
   semgrep:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           fetch-depth: 0
       - name: Setup Python
@@ -165,7 +225,7 @@ jobs:
         if: always()
         run: python scripts/python/security_result_adapter.py --family sast --format sarif --tool semgrep --source-commit "$GITHUB_SHA" --input semgrep.sarif --output semgrep.normalized.json
       - name: Upload Semgrep SARIF
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         if: always()
         with:
           name: semgrep-sarif
@@ -176,7 +236,7 @@ jobs:
   node-licenses:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24.20.0
@@ -196,7 +256,7 @@ jobs:
           python scripts/python/validate_supply_chain_policy.py --kind npm-license --input react-node-licenses.json --output react-node-licenses.policy.json
       - name: Upload Node license results
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: node-licenses
           path: |
@@ -208,7 +268,7 @@ jobs:
   python-licenses:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: '3.12'
@@ -230,7 +290,7 @@ jobs:
           python scripts/python/validate_supply_chain_policy.py --kind python-license --input django-licenses.json --output django-licenses.policy.json
       - name: Upload Python license results
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: python-licenses
           path: |
@@ -242,7 +302,7 @@ jobs:
   supply-chain-policy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: '3.12'
@@ -252,7 +312,7 @@ jobs:
           python scripts/python/validate_supply_chain_policy.py --output supply-chain-policy.json
       - name: Upload supply-chain policy result
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: supply-chain-policy
           path: supply-chain-policy.json
