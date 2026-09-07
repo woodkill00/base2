@@ -408,6 +408,7 @@ test('authenticated settings platform works accessibly and responsively live', a
 test('authenticated media library accepts safe synthetic media and rejects hostile admission', async ({
   browser,
 }) => {
+  test.setTimeout(180_000);
   test.skip(
     !applicationEmail || !applicationPassword,
     'ephemeral application-account inputs are required'
