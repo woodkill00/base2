@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "certificateModes": {
+    "development": "disabled",
+    "test": "disabled",
+    "preview": "staging-only",
+    "staging": "staging-only",
+    "production": "separate-approval"
+  },
+  "privateSurfaces": ["django-admin", "pgadmin", "traefik", "metrics", "diagnostics", "api-schema"],
+  "cacheClasses": {
+    "public-static": "versioned-public-immutable",
+    "public-media": "versioned-public-revalidate",
+    "authenticated": "private-no-store",
+    "tenant-private": "private-no-store",
+    "signed": "private-no-store"
+  },
+  "limits": {
+    "bodyBytes": 10485760,
+    "headerBytes": 32768,
+    "requestSeconds": 30,
+    "upstreamSeconds": 30,
+    "requestsPerMinute": 120,
+    "concurrentPerTenant": 16
+  },
+  "network": {
+    "metadataCidrsDenied": ["169.254.0.0/16", "fe80::/10"],
+    "serviceDefault": "deny",
+    "egressDefault": "deny",
+    "dnsRebindingProtection": true,
+    "encryptedOrigin": true
+  }
+}

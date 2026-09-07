@@ -119,11 +119,19 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "edge-readiness-contract",
+      "command": ["python3", "-m", "pytest", "-q", "scripts/tests/test_edge_readiness.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["data-readiness-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
       "id": "gate-runtime-recovery-contract",
       "command": ["python3", "-m", "unittest", "scripts.tests.test_gate_runtime_recovery"],
       "required": true,
       "timeoutSeconds": 30,
-      "dependsOn": ["data-readiness-contract"],
+      "dependsOn": ["edge-readiness-contract"],
       "requiredTools": ["python3"]
     },
     {
