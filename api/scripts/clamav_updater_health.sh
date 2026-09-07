@@ -25,8 +25,16 @@ case "$command_line" in
 esac
 
 for database in main daily bytecode; do
-  test -s "$database_root/$database.cvd"
-  sigtool --verify "$database_root/$database.cvd" --cvdcertsdir /etc/clamav/certs >/dev/null
+  database_file=''
+  for suffix in cld cvd; do
+    candidate="$database_root/$database.$suffix"
+    if test -s "$candidate"; then
+      database_file="$candidate"
+      break
+    fi
+  done
+  test -n "$database_file"
+  sigtool --info "$database_file" | grep -Fqx 'Verification OK.'
 done
 
 version_line="$(clamscan --database="$database_root" --version)"

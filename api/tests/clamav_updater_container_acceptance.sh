@@ -131,6 +131,12 @@ run_health
 test "$(docker_call exec --user 100:101 "$container" cut -d' ' -f1 \
   /var/lib/clamav/.base2-updater-health)" = "$definition_version"
 
+# FreshClam normally converts an incrementally updated CVD database into CLD.
+# The real-clock updater health gate must accept that signed native format.
+docker_call exec --user 100:101 "$container" mv \
+  /var/lib/clamav/daily.cvd /var/lib/clamav/daily.cld
+run_health
+
 # The health command must require updater-volume write authority.
 if docker_call exec --user 65534:65534 "$container" /bin/sh /usr/local/bin/base2-clamav-health \
   --reference-epoch "$reference_epoch" \

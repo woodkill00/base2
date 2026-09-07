@@ -1079,13 +1079,16 @@ def test_updater_health_requires_live_exact_process_signed_fresh_advancing_datab
     acceptance = (root / 'tests/clamav_updater_container_acceptance.sh').read_text()
     assert '/proc/1/comm' in health and "test \"$(cat /proc/1/comm)\" = freshclam" in health
     assert '--checks=24' in health and '--config-file=/etc/clamav/freshclam-base2.conf' in health
-    assert 'sigtool --verify' in health and 'maximum_age_seconds=86400' in health
+    assert 'for suffix in cld cvd' in health
+    assert "sigtool --info" in health and "grep -Fqx 'Verification OK.'" in health
+    assert 'maximum_age_seconds=86400' in health
     assert '.base2-updater-health' in health and 'definition_version' in health
     assert 'CVDCertsDirectory /etc/clamav/certs' in config
     assert 'TestDatabases yes' in config and 'DatabaseMirror database.clamav.net' in config
     assert '--network none' in acceptance and '--user 100:101' in acceptance
     assert '--checks=1' not in acceptance
     assert 'start_updater 1' in acceptance
+    assert '/var/lib/clamav/daily.cvd /var/lib/clamav/daily.cld' in acceptance
     assert 'non-advancing definition set' in acceptance
     assert 'docker_call kill --signal KILL' in acceptance
     assert 'evidence_timeout_seconds=120' in acceptance
