@@ -136,8 +136,8 @@ found by the pre-implementation analysis.
 
 - Functional requirements: 78, sequentially identified FR-001 through FR-078.
 - Ordered tasks: 160, sequentially identified B001 through B160.
-- Current completed tasks after the first implementation train: 12.
-- Current pending tasks: 148.
+- Current completed tasks after the native-operations train: 27.
+- Current pending tasks: 133.
 - Publication, merge, canary, teardown, and production activation remain
   distinct exact-scope decisions and cannot be inherited from this planning work.
 
@@ -156,6 +156,38 @@ tests pass. The Feature 106 planning and production-readiness validators are now
 required nodes in the repository complete gate. Current-state documentation was
 reconciled with the exact 2026-09-08 baseline; no credential, provider, release,
 or deployment operation was performed.
+
+## Implementation cycle 2 — Native operations and real isolation
+
+The native operations train added tenant-owned service, health, synthetic,
+objective, incident, timeline, and alert-delivery records; tenant-bound API and
+repository operations; private role-gated UI; and closed probe, incident,
+objective, alert, collection, and retention contracts. Eleven deterministic
+browser profiles now enforce accessibility, keyboard focus, responsive reflow,
+contrast, theme, direction, motion, request, console, and overflow behavior.
+Every capture and relevant source file is SHA-256 bound into the reviewed visual
+manifest.
+
+The first integrated gate found two real issues: newly added surfaces were not
+yet locked and changed-line coverage was 86.72%, below the required 90% floor.
+Repository, client, UI-failure, and hostile-contract tests closed the coverage
+gap, and the surface lock was regenerated. Disposable PostgreSQL acceptance then
+found that forced RLS policies existed but the new tables lacked least-privilege
+role grants. Migration 0019 now grants tenant-scoped CRUD only to the application
+role and read-only discovery to the worker, with symmetric revocation. The real
+container proof verifies all seven tables are force-RLS, all 28 policies exist,
+role bypass is disabled, cross-tenant reads and inserts fail, and composite
+cross-tenant links fail. A fault matrix also proves visible monitor, dependency,
+clock, stale, flapping, queue, alert-provider, restart, deduplication, and expiry
+behavior without storms.
+
+The second complete gate ran 98 checks and every runnable product, browser,
+database, security, edge, deployment, recovery, and supply-chain check passed.
+Its sole failure was a stale hash caused when the pre-commit formatter rewrote
+the complete-gate configuration after the surface lock was generated; the lock
+was regenerated after formatting and now validates at the exact current head.
+No external provider, credential, publication, merge, DNS, certificate, or live
+deployment action occurred.
 
 ## Honest residual boundary
 
