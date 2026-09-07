@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import replace
 import hashlib
 import json
+import subprocess
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -11,6 +12,8 @@ import pytest
 from digital_ocean.scripts.python import full_preview_cli, full_preview_expire, full_preview_live
 from digital_ocean.scripts.python.full_preview_expire import ExpiryError, LeaseDigitalOceanProvider
 from digital_ocean.scripts.python.full_preview_remote import (
+    PRIVATE_TRANSFER_TIMEOUT_SECONDS,
+    SOURCE_TRANSFER_TIMEOUT_SECONDS,
     FullPreviewRemoteError,
     FullPreviewSshBootstrap,
     safe_diagnostic,
@@ -65,7 +68,6 @@ def test_cli_policy_and_probe_entrypoints(tmp_path, monkeypatch, capsys):
 
     username = private_file(tmp_path / "username", "owner")
     password = private_file(tmp_path / "password", "secret")
-    app_inputs = application_inputs(tmp_path)
     monkeypatch.setattr(
         full_preview_cli,
         "verify_full_preview",
@@ -268,6 +270,49 @@ def test_remote_bootstrap_failure_retains_only_bounded_redacted_diagnostics(tmp_
     )
     assert "full-preview-stage-failed:docker-start exit=1" in noisy
     assert len(noisy) <= 2000
+
+
+def test_remote_bootstrap_uses_bounded_size_appropriate_transfer_timeouts(tmp_path):
+    operator = private_file(tmp_path / "operator", "owner:$apr1$abc$hash")
+    flower = private_file(tmp_path / "flower", "flower:$apr1$def$hash")
+    calls = []
+
+    def runner(argv, **kwargs):
+        calls.append((argv, kwargs))
+        if argv[0] == "ssh" and "bash" in argv:
+            return SimpleNamespace(
+                returncode=0,
+                stdout='{"ok":true,"mode":"full-preview","secretValuesEmitted":0}\n',
+                stderr="",
+            )
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    remote = FullPreviewSshBootstrap(
+        known_hosts=tmp_path / "known_hosts",
+        owner_cidr="8.8.4.4/32",
+        operator_auth=operator,
+        flower_auth=flower,
+        **application_inputs(tmp_path),
+        runner=runner,
+        attempts=1,
+    )
+    config = remote_config(tmp_path)
+    remote.deploy("8.8.8.8", config)
+    transfers = [(argv, kwargs) for argv, kwargs in calls if argv[0] == "scp"]
+    assert transfers[0][1]["timeout"] == SOURCE_TRANSFER_TIMEOUT_SECONDS
+    assert all(
+        kwargs["timeout"] == PRIVATE_TRANSFER_TIMEOUT_SECONDS
+        for _argv, kwargs in transfers[1:]
+    )
+
+    def timeout_runner(argv, **kwargs):
+        if argv[0] == "scp":
+            raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    remote.runner = timeout_runner
+    with pytest.raises(FullPreviewRemoteError, match="bounded private preview transfer timed out"):
+        remote.deploy("8.8.8.8", config)
 
 
 def test_live_main_constructs_exact_dependencies(tmp_path, monkeypatch, capsys):
