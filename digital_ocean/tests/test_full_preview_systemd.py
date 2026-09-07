@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -67,10 +66,12 @@ def test_media_enabled_preview_builds_and_starts_isolated_inspector_with_image_i
     assert 'openssl genpkey -algorithm ED25519' in script
     assert "'/^MEDIA_INSPECTOR_SIGNING_KEY=/d'" in script
     assert 'images -q media-inspector' in script
+    assert "docker image inspect --format '{{.Id}}'" in script
     assert 'inspector_image_id#sha256:' in script
     assert "running_inspector_image" in script
     assert '[[ "$running_inspector_image" == "$inspector_image_id" ]]' in script
     assert 'rm -f -- "$inspector_private_pem"' in script
+    assert '|| fail_stage 3' in script
     for key in (
         'MEDIA_INSPECTOR_SIGNING_KEY=',
         'MEDIA_INSPECTOR_VERIFY_KEY=',

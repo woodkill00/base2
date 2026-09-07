@@ -4,6 +4,12 @@ set -euo pipefail
 stage="argument-validation"
 trap 'code=$?; printf "full-preview-stage-failed:%s exit=%s\n" "$stage" "$code" >&2' ERR
 
+fail_stage() {
+  local code="$1"
+  printf 'full-preview-stage-failed:%s exit=%s\n' "$stage" "$code" >&2
+  exit "$code"
+}
+
 if [[ "$#" -ne 5 ]]; then
   echo "usage: full-preview-remote.sh <domain> <project> <commit> <archive-sha256> <owner-cidr>" >&2
   exit 2
@@ -31,10 +37,10 @@ cleanup_private_inputs() {
 }
 trap cleanup_private_inputs EXIT
 
-[[ "$domain" =~ ^[a-z0-9][a-z0-9.-]+\.[a-z]{2,63}$ ]] || exit 2
-[[ "$project" =~ ^[a-z0-9][a-z0-9-]{6,62}$ ]] || exit 2
-[[ "$source_commit" =~ ^[0-9a-f]{40}$ ]] || exit 2
-[[ "$archive_sha256" =~ ^[0-9a-f]{64}$ ]] || exit 2
+[[ "$domain" =~ ^[a-z0-9][a-z0-9.-]+\.[a-z]{2,63}$ ]] || fail_stage 2
+[[ "$project" =~ ^[a-z0-9][a-z0-9-]{6,62}$ ]] || fail_stage 2
+[[ "$source_commit" =~ ^[0-9a-f]{40}$ ]] || fail_stage 2
+[[ "$archive_sha256" =~ ^[0-9a-f]{64}$ ]] || fail_stage 2
 for private_input in "$operator_auth" "$flower_auth" "$django_username" "$django_email" "$django_password" "$pgadmin_email" "$pgadmin_password"; do
   [[ -f "$private_input" && ! -L "$private_input" ]] || { echo "private authentication input is missing" >&2; exit 2; }
   chmod 600 "$private_input"
@@ -70,8 +76,8 @@ umask 077
 openssl genpkey -algorithm ED25519 -out "$inspector_private_pem" >/dev/null 2>&1
 inspector_signing_key="$(openssl pkey -in "$inspector_private_pem" -outform DER | tail -c 32 | base64 -w0)"
 inspector_verify_key="$(openssl pkey -in "$inspector_private_pem" -pubout -outform DER | tail -c 32 | base64 -w0)"
-[[ "$(printf '%s' "$inspector_signing_key" | base64 -d | wc -c)" -eq 32 ]] || exit 3
-[[ "$(printf '%s' "$inspector_verify_key" | base64 -d | wc -c)" -eq 32 ]] || exit 3
+[[ "$(printf '%s' "$inspector_signing_key" | base64 -d | wc -c)" -eq 32 ]] || fail_stage 3
+[[ "$(printf '%s' "$inspector_verify_key" | base64 -d | wc -c)" -eq 32 ]] || fail_stage 3
 sed -i \
   -e '/^MEDIA_INSPECTOR_SIGNING_KEY=/d' \
   -e '/^MEDIA_INSPECTOR_VERIFY_KEY=/d' \
@@ -92,8 +98,10 @@ compose=(docker compose --profile celery --profile media-scan --project-name "$p
 export COMPOSE_ENV_FILE="$env_file" COMPOSE_PARALLEL_LIMIT=1
 stage="compose-build"
 "${compose[@]}" build
-inspector_image_id="$("${compose[@]}" images -q media-inspector)"
-[[ "$inspector_image_id" =~ ^sha256:[a-f0-9]{64}$ ]] || exit 3
+inspector_image_ref="$("${compose[@]}" images -q media-inspector)"
+[[ -n "$inspector_image_ref" && "$inspector_image_ref" != *$'\n'* ]] || fail_stage 3
+inspector_image_id="$(docker image inspect --format '{{.Id}}' "$inspector_image_ref")"
+[[ "$inspector_image_id" =~ ^sha256:[a-f0-9]{64}$ ]] || fail_stage 3
 inspector_build_identity="base2-media-inspector:${inspector_image_id#sha256:}"
 env_replacement="$(mktemp /run/base2-preview-env.XXXXXX)"
 chmod 600 "$env_replacement"
@@ -101,16 +109,16 @@ awk -v identity="$inspector_build_identity" \
   'BEGIN { replaced=0 }
    /^MEDIA_INSPECTOR_BUILD_IDENTITY=/ { print "MEDIA_INSPECTOR_BUILD_IDENTITY=" identity; replaced=1; next }
    { print }
-   END { if (!replaced) exit 3 }' "$env_file" >"$env_replacement"
+   END { if (!replaced) exit 3 }' "$env_file" >"$env_replacement" || fail_stage 3
 mv -f -- "$env_replacement" "$env_file"
 stage="compose-up"
 "${compose[@]}" up -d --no-build
 stage="media-inspector-identity"
 inspector_container_id="$("${compose[@]}" ps -q media-inspector)"
-[[ -n "$inspector_container_id" ]] || exit 3
+[[ -n "$inspector_container_id" ]] || fail_stage 3
 running_inspector_image="$(docker inspect --format '{{.Image}}' "$inspector_container_id")"
-[[ "$running_inspector_image" == "$inspector_image_id" ]] || exit 3
-unset inspector_image_id inspector_build_identity inspector_container_id running_inspector_image
+[[ "$running_inspector_image" == "$inspector_image_id" ]] || fail_stage 3
+unset inspector_image_ref inspector_image_id inspector_build_identity inspector_container_id running_inspector_image
 stage="api-migrations"
 "${compose[@]}" exec -T api python -m api.scripts.migrate >/dev/null
 stage="service-inventory"
@@ -147,7 +155,7 @@ for attempt in $(seq 1 180); do
     printf 'full preview services did not become healthy: %s\n' "${pending[*]}" >&2
     "${compose[@]}" ps >&2
     for service in "${services[@]}"; do "${compose[@]}" logs --tail 40 "$service" >&2 || true; done
-    exit 4
+    fail_stage 4
   fi
   sleep 2
 done
