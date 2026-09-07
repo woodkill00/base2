@@ -82,3 +82,7 @@
 - [x] B080 Skip media-inspector result normalization when an earlier workflow step produced no SARIF path, preserving the primary failure without a misleading secondary traceback.
 - [x] B081 Forbid every producer-side recursive spool deletion while the supervisor is live and delegate all fixture disposal to the exact stop-then-volume-remove shell trap.
 - [x] B082 Run the deterministic crowded-job/sentinel proof before bulk recovery fixtures exceed one raw scan window, while retaining shell-only teardown ownership.
+- [x] B083 Give fresh-runner ClamAV updater initialization a bounded 60-attempt readiness budget and emit exact container diagnostics on early death or timeout.
+- [x] B084 Replace the ineffective attempt budget with a 120-second wall-clock deadline, cap each authentic health probe at 30 seconds, and provide 512 MiB so signature verification cannot be OOM-killed.
+- [x] B085 Keep production freshness bound to real time while making networkless acceptance deterministic through an explicit numeric reference epoch derived from the cryptographically verified CVD timestamp.
+- [x] B086 Establish one 120-second evidence ceiling before updater startup, reserve termination and scheduling margin inside it, cap every Docker evidence operation by the smaller remaining budget, and verify a fake hung Docker client stays within the evidence ceiling plus the separately bounded exact-container-and-volume cleanup allowance.

@@ -954,12 +954,13 @@ def test_main_worker_has_no_decoder_import_and_manifests_isolate_service():
         ]
         assert updater['cap_drop'] == ['ALL'] and updater['read_only'] is True
         assert updater['security_opt'] == ['no-new-privileges:true']
-        assert updater['pids_limit'] == 32 and updater['mem_limit'] == '256m'
+        assert updater['pids_limit'] == 32 and updater['mem_limit'] == '512m'
         assert updater['healthcheck']['test'] == [
             'CMD',
             '/bin/sh',
             '/usr/local/bin/base2-clamav-health',
         ]
+        assert updater['healthcheck']['timeout'] == '30s'
         assert './api/config/freshclam.conf:/etc/clamav/freshclam-base2.conf:ro' in updater[
             'volumes'
         ]
@@ -1058,4 +1059,14 @@ def test_updater_health_requires_live_exact_process_signed_fresh_advancing_datab
     assert '--checks=1' not in acceptance
     assert 'start_updater 1' in acceptance
     assert 'non-advancing definition set' in acceptance
-    assert 'docker kill --signal KILL' in acceptance
+    assert 'docker_call kill --signal KILL' in acceptance
+    assert 'evidence_timeout_seconds=120' in acceptance
+    assert 'evidence_safety_margin_seconds=6' in acceptance
+    assert 'command_timeout_seconds=30' in acceptance
+    assert 'evidence_kill_grace_seconds=5' in acceptance
+    assert 'cleanup_timeout_seconds=10' in acceptance
+    assert 'cleanup_kill_grace_seconds=5' in acceptance
+    assert acceptance.index('evidence_deadline=') < acceptance.index('start_updater 24')
+    assert '--kill-after="$evidence_kill_grace_seconds"' in acceptance
+    assert 'reject_timeout "$identity_status"' in acceptance
+    assert 'reject_timeout "$health_status"' in acceptance

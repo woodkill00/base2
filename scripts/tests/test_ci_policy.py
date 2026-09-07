@@ -1,4 +1,8 @@
 import importlib.util
+import os
+import subprocess
+import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -139,6 +143,84 @@ class CiPolicyTests(unittest.TestCase):
             repo_root / "api/tests/media_inspector_two_uid_producer.py"
         ).read_text(encoding="utf-8")
         self.assertNotIn("shutil.rmtree", producer)
+        updater_acceptance = (
+            repo_root / "api/tests/clamav_updater_container_acceptance.sh"
+        ).read_text(encoding="utf-8")
+        self.assertIn("readonly evidence_timeout_seconds=120", updater_acceptance)
+        self.assertIn("readonly evidence_safety_margin_seconds=6", updater_acceptance)
+        self.assertIn("readonly command_timeout_seconds=30", updater_acceptance)
+        self.assertIn("readonly evidence_kill_grace_seconds=5", updater_acceptance)
+        self.assertIn("readonly cleanup_timeout_seconds=10", updater_acceptance)
+        self.assertIn("readonly cleanup_kill_grace_seconds=5", updater_acceptance)
+        self.assertLess(
+            updater_acceptance.index('evidence_deadline='),
+            updater_acceptance.index('start_updater 24'),
+        )
+        self.assertIn(
+            '--kill-after="$evidence_kill_grace_seconds"',
+            updater_acceptance,
+        )
+        self.assertIn('reject_timeout "$identity_status"', updater_acceptance)
+        self.assertIn('reject_timeout "$health_status"', updater_acceptance)
+        self.assertIn('bounded cleanup will now remove the exact container and volume', updater_acceptance)
+        self.assertNotIn("$(docker exec", updater_acceptance)
+        self.assertIn("--memory 512m", updater_acceptance)
+        self.assertIn('--reference-epoch "$reference_epoch"', updater_acceptance)
+        self.assertIn('fixedReferenceClock', updater_acceptance)
+        self.assertIn('docker_call logs "$container" >&2 || true', updater_acceptance)
+
+    def test_updater_acceptance_hung_docker_stays_inside_total_bounded_window(self):
+        repo_root = MODULE_PATH.parents[2]
+        source = (
+            repo_root / "api/tests/clamav_updater_container_acceptance.sh"
+        ).read_text(encoding="utf-8")
+        source = source.replace("evidence_timeout_seconds=120", "evidence_timeout_seconds=4")
+        source = source.replace(
+            "evidence_safety_margin_seconds=6", "evidence_safety_margin_seconds=2"
+        )
+        source = source.replace("command_timeout_seconds=30", "command_timeout_seconds=1")
+        source = source.replace(
+            "evidence_kill_grace_seconds=5", "evidence_kill_grace_seconds=1"
+        )
+        source = source.replace("cleanup_timeout_seconds=10", "cleanup_timeout_seconds=1")
+        source = source.replace("cleanup_kill_grace_seconds=5", "cleanup_kill_grace_seconds=1")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            script = root / "acceptance.sh"
+            script.write_text(source, encoding="utf-8")
+            fake_docker = root / "docker"
+            fake_docker.write_text(
+                "#!/bin/sh\n"
+                "if test ! -e \"$FAKE_DOCKER_STATE\"; then\n"
+                "  test \"${1-}\" = rm && exit 0\n"
+                "  if test \"${1-}:${2-}\" = volume:rm; then\n"
+                "    : > \"$FAKE_DOCKER_STATE\"\n"
+                "    exit 0\n"
+                "  fi\n"
+                "fi\n"
+                "exec python3 -c 'import signal,time; "
+                "signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(60)'\n",
+                encoding="utf-8",
+            )
+            fake_docker.chmod(0o755)
+            started = time.monotonic()
+            completed = subprocess.run(
+                ["/bin/sh", str(script)],
+                capture_output=True,
+                check=False,
+                env={
+                    **os.environ,
+                    "FAKE_DOCKER_STATE": str(root / "initial-cleanup-complete"),
+                    "PATH": f"{root}:{os.environ['PATH']}",
+                },
+                text=True,
+            )
+            elapsed = time.monotonic() - started
+        self.assertIn(completed.returncode, (124, 137))
+        # Four seconds for the public evidence ceiling plus at most four for
+        # the reduced two-command cleanup allowance used by this fixture.
+        self.assertLess(elapsed, 8.0)
+        self.assertIn("bounded Docker operation timed out", completed.stderr)
 
     def test_storybook_excludes_only_the_application_bundle_budget(self):
         repo_root = MODULE_PATH.parents[2]

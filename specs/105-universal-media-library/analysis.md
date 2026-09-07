@@ -350,6 +350,37 @@ prove unknown defects impossible.
     raw scan cap. B082 moves crowded-plus-sentinel validation before bulk
     recovery staging, where all existing terminal and proof entries fit in one
     window and explicit ready mtimes deterministically order crowded first.
+49. Both clean-runner hosted security jobs then exhausted the updater test's
+    ten-attempt readiness loop while the digest-pinned image initialized its
+    fresh definition volume. B083 retains a finite fail-closed budget but raises
+    it to 60 attempts and emits exact container logs on death or timeout, so
+    slower first startup is admitted without silent or unbounded waiting.
+50. Reproducing the delay under trace showed the authentic `sigtool` child was
+    OOM-killed while verifying `main.cvd` inside the updater's 256 MiB cgroup;
+    retry count could not repair that. B084 raises only this updater boundary to
+    512 MiB, aligns the production health timeout at 30 seconds, and replaces
+    attempt counting with a 120-second wall-clock deadline plus 30-second probe
+    caps. Early death and deadline exhaustion retain explicit diagnostics.
+51. A higher-memory trace then showed the next failure was the intended
+    freshness check: the immutable embedded CVD crossed 24 hours during this
+    work. B085 keeps production health on real time but lets the networkless
+    acceptance pass one explicit numeric reference epoch derived from the
+    signed CVD timestamp. Signatures, advancement, liveness, configuration,
+    ownership, and stale-state rejection still execute unchanged.
+52. Independent review found that the first and second scanner-identity reads
+    were outside the stated readiness deadline and that a final fixed-length
+    health probe could overrun it. B086 establishes one 120-second evidence
+    ceiling before any updater operation, reserves six seconds inside it for
+    five-second SIGKILL grace plus clock/sleep granularity, caps every evidence
+    operation at the smaller of 30 seconds or the remaining operational budget, parses scanner identity only
+    after successful bounded capture, and then gives exact container and volume
+    teardown two separately bounded ten-second commands with five-second kill
+    grace. The evidence phase cannot exceed 120 seconds; cleanup has an explicit
+    maximum 30-second allowance rather than being misrepresented as part of
+    that ceiling. A reduced-budget fake Docker client that ignores SIGTERM is
+    killed and the whole script exits within its equivalent evidence ceiling
+    plus explicit cleanup allowance. Expected negative health results remain
+    distinct from timeout and cannot accidentally satisfy a rejection proof.
 
 ## Honest residual boundary
 

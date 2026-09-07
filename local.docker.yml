@@ -414,12 +414,12 @@ services:
       - /tmp:rw,nosuid,nodev,noexec,size=32m
       - /run:rw,nosuid,nodev,noexec,size=8m
     pids_limit: 32
-    mem_limit: 256m
+    mem_limit: 512m
     cpus: '0.25'
     healthcheck:
       test: ['CMD', '/bin/sh', '/usr/local/bin/base2-clamav-health']
       interval: 30s
-      timeout: 5s
+      timeout: 30s
       retries: 5
       start_period: 10s
 

@@ -5,6 +5,17 @@ readonly database_root=/var/lib/clamav
 readonly state_file="$database_root/.base2-updater-health"
 readonly maximum_age_seconds=86400
 
+case "$#:${1-}" in
+  0:)
+    now_epoch="$(date -u +%s)"
+    ;;
+  2:--reference-epoch)
+    case "$2" in ''|*[!0-9]*) exit 64 ;; esac
+    now_epoch="$2"
+    ;;
+  *) exit 64 ;;
+esac
+
 test "$(cat /proc/1/comm)" = freshclam
 kill -0 1
 command_line="$(tr '\000' ' ' </proc/1/cmdline)"
@@ -24,7 +35,6 @@ definition_date="$(printf '%s\n' "$version_line" | cut -d/ -f3-)"
 case "$definition_version" in
   ''|*[!0-9]*) exit 1 ;;
 esac
-now_epoch="$(date -u +%s)"
 definition_epoch="$(date -u -D '%a %b %e %H:%M:%S %Y' -d "$definition_date" +%s)"
 age_seconds="$((now_epoch - definition_epoch))"
 test "$age_seconds" -ge -300
