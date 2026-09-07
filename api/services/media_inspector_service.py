@@ -7,12 +7,14 @@ import ctypes
 import hashlib
 import json
 import os
+import platform
 import re
 import resource
 import subprocess
+import sys
 import tempfile
 import time
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any, Callable
@@ -20,6 +22,12 @@ from api.services.media_inspector_receipt import load_signing_key, sign_receipt
 
 MAX_INPUT_BYTES = 100 * 1024 * 1024
 MAX_RUNNER_OUTPUT = 15 * 1024 * 1024
+# The decoder may launch the separately bounded 512 MiB ffprobe subprocess;
+# its parent's hard ceiling must remain above that nested limit.
+DECODER_ADDRESS_SPACE_BYTES = 640 * 1024 * 1024
+SCANNER_ADDRESS_SPACE_BYTES = 1024 * 1024 * 1024
+MAX_DEFINITION_AGE = timedelta(hours=24)
+MAX_DEFINITION_FUTURE_SKEW = timedelta(minutes=5)
 REQUEST_KEYS = {
     'schemaVersion',
     'jobId',
@@ -52,13 +60,19 @@ def _stamp(value: datetime) -> str:
     return value.astimezone(UTC).isoformat(timespec='microseconds').replace('+00:00', 'Z')
 
 
-def _limits() -> None:
+def _limits(address_space_bytes: int = DECODER_ADDRESS_SPACE_BYTES) -> None:
     resource.setrlimit(resource.RLIMIT_CPU, (20, 20))
-    resource.setrlimit(resource.RLIMIT_AS, (384 * 1024 * 1024,) * 2)
+    resource.setrlimit(resource.RLIMIT_AS, (address_space_bytes,) * 2)
     resource.setrlimit(resource.RLIMIT_FSIZE, (MAX_RUNNER_OUTPUT,) * 2)
     resource.setrlimit(resource.RLIMIT_NOFILE, (32, 32))
     resource.setrlimit(resource.RLIMIT_NPROC, (8, 8))
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+
+
+def _scanner_limits() -> None:
+    # Current signed ClamAV databases need a larger virtual address-space ceiling
+    # than decoders. The container memory and PID ceilings remain authoritative.
+    _limits(SCANNER_ADDRESS_SPACE_BYTES)
 
 
 SANDBOX_PREFIX = [
@@ -79,6 +93,7 @@ def _fixed_run(
     content: bytes | None = None,
     timeout: int = 25,
     maximum_output: int = 64 * 1024,
+    scanner_memory: bool = False,
 ) -> subprocess.CompletedProcess[bytes]:
     command = [*SANDBOX_PREFIX, *argv]
     with tempfile.TemporaryFile() as output, tempfile.TemporaryFile() as errors:
@@ -97,9 +112,10 @@ def _fixed_run(
                     'PATH': '/usr/bin:/bin',
                     'LC_ALL': 'C',
                     'HOME': '/nonexistent',
-                    'PYTHONPATH': '/app',
+                    'LD_LIBRARY_PATH': '/usr/local/lib',
+                    'PYTHONPATH': '/app/vendor:/app',
                 },
-                preexec_fn=_limits,
+                preexec_fn=_scanner_limits if scanner_memory else _limits,
             )
         except (OSError, subprocess.SubprocessError) as exc:
             raise MediaInspectorServiceError('media_inspector_dependency_unavailable') from exc
@@ -114,8 +130,14 @@ def _fixed_run(
 
 def _scanner_health(
     run: Callable[..., subprocess.CompletedProcess[bytes]] = _fixed_run,
+    now: Callable[[], datetime] = _utc_now,
 ) -> dict[str, Any]:
-    completed = run(['/usr/bin/clamscan', '--version'], timeout=5, maximum_output=4096)
+    completed = run(
+        ['/usr/bin/clamscan', '--database=/var/lib/clamav', '--version'],
+        timeout=5,
+        maximum_output=4096,
+        scanner_memory=True,
+    )
     if completed.returncode != 0:
         raise MediaInspectorServiceError('media_scanner_unavailable')
     try:
@@ -131,6 +153,9 @@ def _scanner_health(
         raise MediaInspectorServiceError('media_scanner_response_invalid') from exc
     if updated.tzinfo is None:
         updated = updated.replace(tzinfo=UTC)
+    age = now().astimezone(UTC) - updated.astimezone(UTC)
+    if age > MAX_DEFINITION_AGE or age < -MAX_DEFINITION_FUTURE_SKEW:
+        raise MediaInspectorServiceError('media_scanner_definitions_stale')
     return {
         'engine': 'clamav',
         'version': match.group(1),
@@ -143,10 +168,17 @@ def _scan(
     content: bytes, run: Callable[..., subprocess.CompletedProcess[bytes]] = _fixed_run
 ) -> str:
     completed = run(
-        ['/usr/bin/clamscan', '--stdout', '--no-summary', '-'],
+        [
+            '/usr/bin/clamscan',
+            '--database=/var/lib/clamav',
+            '--stdout',
+            '--no-summary',
+            '-',
+        ],
         content=content,
         timeout=25,
         maximum_output=4096,
+        scanner_memory=True,
     )
     if completed.returncode == 0 and completed.stdout.endswith(b': OK\n'):
         return 'clean'
@@ -161,7 +193,7 @@ def _decode(
     run: Callable[..., subprocess.CompletedProcess[bytes]] = _fixed_run,
 ) -> dict[str, Any]:
     completed = run(
-        ['/usr/local/bin/python', '-m', 'api.services.media_inspector_runner', media_type],
+        ['/usr/bin/python', '-m', 'api.services.media_inspector_runner', media_type],
         content=content,
         timeout=25,
         maximum_output=MAX_RUNNER_OUTPUT,
@@ -291,6 +323,14 @@ def serve_once(root: Path, *, key, build_identity: str) -> bool:
 
 
 def main() -> int:
+    if platform.machine().lower() not in {'x86_64', 'amd64'}:
+        return 68
+    if sys.argv[1:] == ['--healthcheck']:
+        try:
+            _scanner_health()
+        except MediaInspectorServiceError:
+            return 73
+        return 0
     if os.geteuid() != 0:
         return 69
     if ctypes.CDLL(None).prctl(4, 0, 0, 0, 0) != 0:
@@ -302,6 +342,10 @@ def main() -> int:
     build_identity = os.getenv('MEDIA_INSPECTOR_BUILD_IDENTITY', '')
     if not re.fullmatch(r'base2-media-inspector:[a-f0-9]{64}', build_identity):
         return 72
+    try:
+        _scanner_health()
+    except MediaInspectorServiceError:
+        return 73
     root = Path(os.getenv('MEDIA_INSPECTOR_SPOOL_ROOT', '/var/lib/base2/media-inspector'))
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
     while True:

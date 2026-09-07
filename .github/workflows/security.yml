@@ -30,7 +30,30 @@ jobs:
           output-format: sarif
 
       - name: Build immutable media inspector image
-        run: docker build --file api/Dockerfile.media-inspector --tag base2-media-inspector:security api
+        run: docker build --platform linux/amd64 --file api/Dockerfile.media-inspector --tag base2-media-inspector:security api
+
+      - name: Exercise hardened ClamAV updater lifecycle
+        run: bash api/tests/clamav_updater_container_acceptance.sh
+
+      - name: Exercise hardened media inspector supervisor
+        run: |
+          docker run --rm \
+            --network none \
+            --ipc=private \
+            --read-only \
+            --cap-drop ALL \
+            --cap-add SETUID \
+            --cap-add SETGID \
+            --cap-add SETPCAP \
+            --security-opt no-new-privileges \
+            --pids-limit 16 \
+            --memory 1536m \
+            --cpus 0.75 \
+            --tmpfs /tmp:rw,nosuid,nodev,noexec,size=64m \
+            --tmpfs /var/lib/base2/media-inspector:rw,nosuid,nodev,noexec,size=128m \
+            --entrypoint /usr/bin/python \
+            base2-media-inspector:security \
+            /app/api/tests/media_inspector_container_acceptance.py
 
       - name: Generate media inspector image SBOM
         uses: anchore/sbom-action@fc46e51fd3cb168ffb36c6d1915723c47db58abb

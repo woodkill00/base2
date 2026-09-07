@@ -193,6 +193,66 @@ prove unknown defects impossible.
     advisory-key and psycopg percent-escaping errors; the first image smoke also
     exposed and closed an inaccessible user-site installation. B056-B060 and
     their critical repetitions now cover every discovered path.
+28. The first hosted built-image scan correctly rejected B060 rather than
+    turning configuration presence into a false pass. Both push and pull-request
+    variants found numerous high/critical vulnerabilities in the Debian 12,
+    Python, ClamAV, FFmpeg, and transitive system package set. The other hosted
+    jobs passed, but B060 is reopened until a supported/minimized immutable
+    image passes the actual blocking hosted scanner without suppressions or
+    allowlists. The downloaded SARIF/SBOM remain private diagnostic evidence;
+    no vulnerable image was deployed or published.
+29. A functional follow-up found that a green shell smoke would not have
+    exercised the actual supervisor, signed spool protocol, runtime definition
+    freshness, updater isolation, architecture, or representative decoder
+    paths. It also found mutable APK resolution and insufficient cgroup
+    headroom for authentic definitions. B061-B066 therefore require a
+    digest-pinned non-root updater, a true main-loop/client/receipt E2E,
+    24-hour fail-closed readiness, package-bearing immutable stages, an explicit
+    amd64 boundary, measured resource headroom, representative formats and
+    size boundaries, and another complete independent closeout cycle.
+30. The immutable inspector follow-up replaces runtime package-manager
+    resolution with digest-pinned package-bearing stages and checksum-bound
+    artifacts, while enforcing linux/amd64 at build and runtime. The updater is
+    separately digest-pinned, non-root, read-only, network-minimized, and
+    resource bounded. A true networkless supervisor/client E2E now verifies a
+    signed clean receipt, deterministic EICAR rejection, dropped-child key
+    absence, no-new-privileges, zero effective capabilities, fresh authentic
+    definitions, representative image/PDF/audio/video handling, a 100 MiB
+    admission boundary, and measured cgroup headroom. Focused lint, typing,
+    policy and runtime tests pass; the rebuilt amd64 image has zero critical or
+    high Grype findings without suppression. B066 remains open for hosted and
+    independent exact-head closeout rather than treating local evidence as a
+    substitute.
+31. Independent review found two final proof gaps despite the green container
+    gate. The updater health could outlive a failed background freshclam
+    process because PID 1 only tailed forever, and the child-isolation probe
+    checked only its own sanitized environment rather than attempting access to
+    the privileged supervisor. B067-B068 require foreground freshclam as the
+    container lifecycle, exact command identity, detached-signature validation,
+    embedded-date and monotonic-advancement bounds, writable-volume and failure
+    drills, plus direct denied reads of supervisor environ, memory, and root-only
+    signing-material paths from the actual dropped child.
+32. The bounded offline updater acceptance now proves foreground freshclam is
+    PID 1 with the exact expected arguments, authenticates all three detached
+    CVD signatures, requires an embedded definition date no older than 24
+    hours, persists monotonic advancement state, and fails for wrong volume
+    permissions, non-advancement, command drift, and process death. The rebuilt
+    inspector's actual dropped child is denied direct and supervisor-root paths
+    to a root-only signer probe as well as `/proc` supervisor environment and
+    memory, while retaining the established keyless/capability/no-new-privilege
+    properties. B067-B068 are complete; B066 still requires hosted and
+    independent exact-head closeout.
+33. Final topology review found the least-privilege updater still shared the
+    application bridge despite requiring only outbound definition retrieval.
+    B069 moves it to one dedicated non-internal egress network and requires
+    structural proof in both Compose profiles that no API, database, broker,
+    proxy, worker, or other application service can become its network peer.
+34. Both runtime profiles now attach only the updater to the dedicated
+    `clamav_egress` bridge. It remains non-internal so freshclam can retrieve
+    signed upstream definitions, while no application service shares its DNS,
+    broadcast, or direct container-peer boundary. Structural policy tests,
+    rendered Compose validation, and the complete offline updater failure drill
+    pass, completing B069 without changing inspector or application networking.
 
 ## Honest residual boundary
 

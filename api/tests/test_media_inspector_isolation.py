@@ -532,8 +532,16 @@ def test_scanner_decoder_and_health_protocols_are_strict():
     healthy = subprocess.CompletedProcess(
         [], 0, b'ClamAV 1.4.3/27788/Sun Sep  6 23:00:00 2026\n', b''
     )
-    evidence = service._scanner_health(run=lambda *_args, **_kwargs: healthy)
+    evidence = service._scanner_health(
+        run=lambda *_args, **_kwargs: healthy,
+        now=lambda: datetime(2026, 9, 7, 0, 0, tzinfo=UTC),
+    )
     assert evidence['version'] == '1.4.3' and evidence['definitionsVersion'] == '27788'
+    with pytest.raises(service.MediaInspectorServiceError, match='definitions_stale'):
+        service._scanner_health(
+            run=lambda *_args, **_kwargs: healthy,
+            now=lambda: datetime(2026, 9, 8, 0, 0, 1, tzinfo=UTC),
+        )
     for completed in (
         subprocess.CompletedProcess([], 1, b'', b''),
         subprocess.CompletedProcess([], 0, b'garbage', b''),
@@ -620,6 +628,23 @@ def test_service_main_refuses_missing_process_and_attestation_guards(monkeypatch
     assert service.main() == 72
 
 
+def test_service_healthcheck_requires_amd64_and_fresh_scanner(monkeypatch):
+    monkeypatch.setattr(sys, 'argv', ['media_inspector_service', '--healthcheck'])
+    monkeypatch.setattr(service.platform, 'machine', lambda: 'aarch64')
+    assert service.main() == 68
+    monkeypatch.setattr(service.platform, 'machine', lambda: 'x86_64')
+    monkeypatch.setattr(service, '_scanner_health', lambda: {'engine': 'clamav'})
+    assert service.main() == 0
+    monkeypatch.setattr(
+        service,
+        '_scanner_health',
+        lambda: (_ for _ in ()).throw(
+            service.MediaInspectorServiceError('media_scanner_definitions_stale')
+        ),
+    )
+    assert service.main() == 73
+
+
 def test_main_worker_has_no_decoder_import_and_manifests_isolate_service():
     from api.services import media_library_runtime
 
@@ -629,18 +654,59 @@ def test_main_worker_has_no_decoder_import_and_manifests_isolate_service():
     for name in ('local.docker.yml', 'development.docker.yml'):
         manifest = yaml.safe_load((root / name).read_text())
         inspector = manifest['services']['media-inspector']
+        updater = manifest['services']['clamav']
+        assert updater['image'] == (
+            'clamav/clamav@sha256:'
+            '1fdfd24c6f0a0fb60788481487459a6d4eda8a9b448641594e04db8410d34422'
+        )
+        assert updater['platform'] == 'linux/amd64'
+        assert updater['networks'] == ['clamav_egress']
+        assert manifest['networks']['clamav_egress']['internal'] is False
+        assert [
+            service_name
+            for service_name, service_config in manifest['services'].items()
+            if 'clamav_egress' in service_config.get('networks', [])
+        ] == ['clamav']
+        assert updater['user'] == '100:101'
+        assert updater['entrypoint'] == ['/usr/bin/freshclam']
+        assert updater['command'] == [
+            '--daemon',
+            '--foreground',
+            '--stdout',
+            '--checks=24',
+            '--user=clamav',
+            '--config-file=/etc/clamav/freshclam-base2.conf',
+        ]
+        assert updater['cap_drop'] == ['ALL'] and updater['read_only'] is True
+        assert updater['security_opt'] == ['no-new-privileges:true']
+        assert updater['pids_limit'] == 32 and updater['mem_limit'] == '256m'
+        assert updater['healthcheck']['test'] == [
+            'CMD',
+            '/bin/sh',
+            '/usr/local/bin/base2-clamav-health',
+        ]
+        assert './api/config/freshclam.conf:/etc/clamav/freshclam-base2.conf:ro' in updater[
+            'volumes'
+        ]
+        assert (
+            './api/scripts/clamav_updater_health.sh:/usr/local/bin/base2-clamav-health:ro'
+            in updater['volumes']
+        )
         assert inspector['network_mode'] == 'none' and inspector['read_only'] is True
+        assert inspector['platform'] == 'linux/amd64'
         assert inspector['pid'] == 'private' and inspector['ipc'] == 'private'
         assert (
             inspector['cap_drop'] == ['ALL']
             and inspector['cap_add'] == ['SETUID', 'SETGID', 'SETPCAP']
             and inspector['pids_limit'] == 16
         )
+        assert inspector['mem_limit'] == '1536m'
         assert inspector['healthcheck']['test'] == [
             'CMD',
             'python',
-            '-c',
-            'import os; os.kill(1, 0)',
+            '-m',
+            'api.services.media_inspector_service',
+            '--healthcheck',
         ]
         env = '\n'.join(inspector['environment'])
         assert all(
@@ -663,9 +729,38 @@ def test_main_worker_has_no_decoder_import_and_manifests_isolate_service():
 
 def test_inspector_image_ships_fixed_scanner_and_ffprobe():
     dockerfile = (Path(__file__).resolve().parents[1] / 'Dockerfile.media-inspector').read_text()
-    assert 'clamav=1.4.3+dfsg-1~deb12u2' in dockerfile
-    assert 'ffmpeg=7:5.1.9-0+deb12u1' in dockerfile
-    assert 'USER inspector' in dockerfile
-    assert 'FROM mirror.gcr.io/library/python@sha256:' in dockerfile
-    assert 'snapshot.debian.org/archive/debian/20260824T000000Z' in dockerfile
-    assert 'apt-get upgrade' not in dockerfile
+    assert 'clamav-1.5.4.linux.x86_64.deb' in dockerfile
+    assert '28d6efc5b4423e7830c3559339552eb53870a9eac51ac4efb37d60530d329886' in dockerfile
+    assert 'mwader/static-ffmpeg@sha256:54e55b0c' in dockerfile
+    assert 'USER root' in dockerfile
+    assert 'python@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6 AS privilege-runtime' in dockerfile
+    assert 'FROM --platform=linux/amd64 clamav/clamav@sha256:1fdfd24c6f0a0fb60788481487459a6d4eda8a9b448641594e04db8410d34422 AS clamav-definitions' in dockerfile
+    assert 'cgr.dev/chainguard/python@sha256:c23539f' in dockerfile
+    assert 'cgr.dev/chainguard/python@sha256:1f37785' in dockerfile
+    assert 'apk add' not in dockerfile and 'apt-get' not in dockerfile
+    assert 'COPY --from=inspector-builder /tmp/clamav/usr/local/bin/clamscan /usr/bin/clamscan' in dockerfile
+    assert '/usr/local/etc/certs/clamav.crt' in dockerfile
+    assert '/var/lib/clamav/main.cvd' in dockerfile
+    assert '/var/lib/clamav/daily.cvd' in dockerfile
+    assert '/var/lib/clamav/bytecode.cvd' in dockerfile
+    assert '/app/vendor:/app' in inspect.getsource(service._fixed_run)
+    assert service.DECODER_ADDRESS_SPACE_BYTES == 640 * 1024 * 1024
+    assert service.SCANNER_ADDRESS_SPACE_BYTES == 1024 * 1024 * 1024
+
+
+def test_updater_health_requires_live_exact_process_signed_fresh_advancing_database():
+    root = Path(__file__).resolve().parents[1]
+    health = (root / 'scripts/clamav_updater_health.sh').read_text()
+    config = (root / 'config/freshclam.conf').read_text()
+    acceptance = (root / 'tests/clamav_updater_container_acceptance.sh').read_text()
+    assert '/proc/1/comm' in health and "test \"$(cat /proc/1/comm)\" = freshclam" in health
+    assert '--checks=24' in health and '--config-file=/etc/clamav/freshclam-base2.conf' in health
+    assert 'sigtool --verify' in health and 'maximum_age_seconds=86400' in health
+    assert '.base2-updater-health' in health and 'definition_version' in health
+    assert 'CVDCertsDirectory /etc/clamav/certs' in config
+    assert 'TestDatabases yes' in config and 'DatabaseMirror database.clamav.net' in config
+    assert '--network none' in acceptance and '--user 100:101' in acceptance
+    assert '--checks=1' not in acceptance
+    assert 'start_updater 1' in acceptance
+    assert 'non-advancing definition set' in acceptance
+    assert 'docker kill --signal KILL' in acceptance

@@ -59,4 +59,13 @@
 - [x] B057 Preserve exact lifecycle replay after a later purge while keeping altered replay and every new purged-asset mutation fail-closed.
 - [x] B058 Enforce bounded per-user and per-tenant download rate/concurrency admission before whole-object read or decryption, including parallel grant-replay proof.
 - [x] B059 Enforce idempotent per-tenant export rate/outstanding quotas and fair tenant discovery so unique keys cannot exhaust the queue or starve another tenant.
-- [x] B060 Build the inspector from immutable approved upstream inputs and include the resulting inspector image in SBOM, vulnerability, and CI-policy proof.
+- [ ] B060 Build the inspector from immutable approved upstream inputs and include the resulting inspector image in SBOM, vulnerability, and CI-policy proof.
+- [x] B061 Digest-pin and least-privilege the isolated ClamAV definitions updater and verify its exact runtime identity and configuration.
+- [x] B062 Exercise the real supervisor main loop through the shared-spool client, verify its signed receipt, and prove the signing key is absent from every dropped child.
+- [x] B063 Make container health fail closed unless the scanner is usable and signed definitions are no more than 24 hours old, with startup ordering proof.
+- [x] B064 Remove mutable OS-package resolution from the inspector build and enforce an explicit fail-fast linux/amd64 contract across build and runtime.
+- [x] B065 Measure and enforce cgroup headroom above child limits, then accept representative PDF, audio, video, and a meaningful large payload while rejecting the exact oversized boundary before spooling.
+- [ ] B066 Repeat focused, compose, image E2E, type, lint, vulnerability, and independent-review gates before supply-chain or final-review closure.
+- [x] B067 Replace file-presence updater health with exact foreground liveness, cryptographically verified definition freshness/advancement, and bounded writable-volume lifecycle proof.
+- [x] B068 Adversarially prove every dropped parser child is denied the supervisor environment, process memory, and signing-material filesystem paths.
+- [x] B069 Isolate the definitions updater on a dedicated outbound-only network with no application peers and enforce the topology in both runtime profiles.

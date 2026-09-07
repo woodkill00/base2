@@ -69,7 +69,10 @@ def test_fixed_parser_is_stdin_only_shell_free_and_protocol_closed():
         return subprocess.CompletedProcess(
             argv,
             0,
-            stdout=b'{"format":{"duration":"24.5"},"streams":[{"codec_type":"audio"}]}',
+            stdout=(
+                b'{"programs":[],"stream_groups":[],"format":{"duration":"24.5"},'
+                b'"streams":[{"codec_type":"audio"}]}'
+            ),
             stderr=b'',
         )
 

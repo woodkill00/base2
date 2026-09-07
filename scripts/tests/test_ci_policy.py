@@ -77,14 +77,26 @@ class CiPolicyTests(unittest.TestCase):
         )
         workflow = (repo_root / ".github/workflows/security.yml").read_text(encoding="utf-8")
 
-        self.assertRegex(
-            dockerfile.splitlines()[0],
-            r"^FROM mirror\.gcr\.io/library/python@sha256:[0-9a-f]{64}$",
+        self.assertEqual("ARG TARGETPLATFORM=linux/amd64", dockerfile.splitlines()[0])
+        self.assertIn("RUN test \"$TARGETPLATFORM\" = 'linux/amd64'", dockerfile)
+        self.assertIn(
+            "FROM --platform=linux/amd64 clamav/clamav@sha256:1fdfd24c6f0a0fb60788481487459a6d4eda8a9b448641594e04db8410d34422 AS clamav-definitions",
+            dockerfile,
         )
-        self.assertIn("snapshot.debian.org/archive/debian/20260824T000000Z", dockerfile)
-        self.assertNotIn("apt-get upgrade", dockerfile)
+        self.assertIn("cgr.dev/chainguard/python@sha256:c23539f", dockerfile)
+        self.assertIn("cgr.dev/chainguard/python@sha256:1f37785", dockerfile)
+        self.assertIn("mwader/static-ffmpeg@sha256:54e55b0c", dockerfile)
+        self.assertIn("clamav-1.5.4.linux.x86_64.deb", dockerfile)
+        self.assertIn(
+            "28d6efc5b4423e7830c3559339552eb53870a9eac51ac4efb37d60530d329886",
+            dockerfile,
+        )
+        self.assertNotIn("clamav-1.5-scanner=", dockerfile)
+        self.assertIn("/tmp/clamav/control /var/lib/dpkg/status", dockerfile)
+        self.assertNotIn("apk add", dockerfile)
+        self.assertNotIn("apt-get", dockerfile)
         self.assertIn("--only-binary=:all: --no-deps --require-hashes", dockerfile)
-        self.assertIn("--target /app/vendor", dockerfile)
+        self.assertIn("--target /tmp/vendor", dockerfile)
         self.assertIn("PYTHONPATH=/app/vendor:/app", dockerfile)
         package_lines = [
             line for line in requirements.splitlines() if line and not line.startswith("#")
@@ -95,7 +107,27 @@ class CiPolicyTests(unittest.TestCase):
         self.assertEqual(5, len(pins))
         self.assertEqual(5, len(hashes))
         self.assertTrue(all(len(line.rsplit(":", 1)[1]) == 64 for line in hashes))
-        self.assertIn("docker build --file api/Dockerfile.media-inspector", workflow)
+        self.assertIn("docker build --platform linux/amd64", workflow)
+        self.assertIn("Exercise hardened media inspector supervisor", workflow)
+        self.assertIn("Exercise hardened ClamAV updater lifecycle", workflow)
+        self.assertIn("bash api/tests/clamav_updater_container_acceptance.sh", workflow)
+        for compose_name in ("local.docker.yml", "development.docker.yml"):
+            compose = __import__("yaml").safe_load(
+                (repo_root / compose_name).read_text(encoding="utf-8")
+            )
+            self.assertEqual(["clamav_egress"], compose["services"]["clamav"]["networks"])
+            self.assertFalse(compose["networks"]["clamav_egress"]["internal"])
+            peers = [
+                name
+                for name, service in compose["services"].items()
+                if "clamav_egress" in service.get("networks", [])
+            ]
+            self.assertEqual(["clamav"], peers)
+        self.assertIn("--network none", workflow)
+        self.assertIn("--read-only", workflow)
+        self.assertIn("--cap-drop ALL", workflow)
+        self.assertIn("--security-opt no-new-privileges", workflow)
+        self.assertIn("media_inspector_container_acceptance.py", workflow)
         self.assertIn("media-inspector-sbom.cdx.json", workflow)
         self.assertIn("media-inspector-grype.normalized.json", workflow)
 

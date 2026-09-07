@@ -97,7 +97,12 @@ def execute_fixed_parser(
         payload = json.loads(stdout)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise MediaParserError('media_parser_response_invalid') from exc
-    if not isinstance(payload, dict) or set(payload) != {'format', 'streams'}:
+    if not isinstance(payload, dict) or set(payload) not in (
+        {'format', 'streams'},
+        {'format', 'streams', 'programs', 'stream_groups'},
+    ):
+        raise MediaParserError('media_parser_response_invalid')
+    if payload.get('programs', []) != [] or payload.get('stream_groups', []) != []:
         raise MediaParserError('media_parser_response_invalid')
     streams = payload['streams']
     values = payload['format']

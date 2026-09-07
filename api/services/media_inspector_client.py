@@ -33,6 +33,7 @@ INSPECTOR_FAILURE_CODES = frozenset(
         'media_inspector_request_invalid',
         'media_integrity_failed',
         'media_scanner_identity_changed',
+        'media_scanner_definitions_stale',
         'media_scanner_response_invalid',
         'media_scanner_unavailable',
     }

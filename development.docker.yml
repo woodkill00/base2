@@ -156,24 +156,50 @@ services:
     mem_limit: 128m
     cpus: '0.5'
 
-  # Malware scanner is opt-in because official guidance requires at least 3 GiB RAM.
-  # Its unauthenticated TCP protocol remains private to app_network and is never published.
+  # Network authority is isolated to the non-root definitions updater. The
+  # networkless inspector consumes its read-only signed database volume.
   clamav:
-    image: clamav/clamav:${CLAMAV_VERSION}
+    image: clamav/clamav@sha256:1fdfd24c6f0a0fb60788481487459a6d4eda8a9b448641594e04db8410d34422
+    platform: linux/amd64
     container_name: ${COMPOSE_PROJECT_NAME}_clamav
     profiles: [media-scan]
-    networks: [app_network]
+    user: '100:101'
+    entrypoint: ['/usr/bin/freshclam']
+    command:
+      - --daemon
+      - --foreground
+      - --stdout
+      - --checks=24
+      - --user=clamav
+      - --config-file=/etc/clamav/freshclam-base2.conf
+    networks: [clamav_egress]
     volumes:
       - clamav_db:/var/lib/clamav
+      - ./api/config/freshclam.conf:/etc/clamav/freshclam-base2.conf:ro
+      - ./api/scripts/clamav_updater_health.sh:/usr/local/bin/base2-clamav-health:ro
     restart: unless-stopped
-    mem_limit: 3g
-    cpus: '1.0'
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=32m
+      - /run:rw,nosuid,nodev,noexec,size=8m
+    pids_limit: 32
+    mem_limit: 256m
+    cpus: '0.25'
+    healthcheck:
+      test: ['CMD', '/bin/sh', '/usr/local/bin/base2-clamav-health']
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   media-inspector:
     build:
       context: ./api
       dockerfile: Dockerfile.media-inspector
     profiles: [media-scan]
+    platform: linux/amd64
     environment:
       - MEDIA_INSPECTOR_SPOOL_ROOT=/var/lib/base2/media-inspector
       - MEDIA_INSPECTOR_SIGNING_KEY=${MEDIA_INSPECTOR_SIGNING_KEY}
@@ -185,16 +211,19 @@ services:
       - media_inspector_spool:/var/lib/base2/media-inspector
       - clamav_db:/var/lib/clamav:ro
     restart: unless-stopped
+    depends_on:
+      clamav:
+        condition: service_healthy
     cap_drop: [ALL]
     cap_add: [SETUID, SETGID, SETPCAP]
     security_opt: [no-new-privileges:true]
     read_only: true
     tmpfs: [/tmp]
     pids_limit: 16
-    mem_limit: 512m
+    mem_limit: 1536m
     cpus: '0.75'
     healthcheck:
-      test: ['CMD', 'python', '-c', 'import os; os.kill(1, 0)']
+      test: ['CMD', 'python', '-m', 'api.services.media_inspector_service', '--healthcheck']
       interval: 10s
       timeout: 5s
       retries: 10
@@ -502,6 +531,10 @@ services:
 networks:
   app_network:
     name: ${NETWORK_NAME}
+  # Outbound definition retrieval only; no application service joins it.
+  clamav_egress:
+    name: ${COMPOSE_PROJECT_NAME}_clamav_egress
+    internal: false
 
 volumes:
   clamav_db:
