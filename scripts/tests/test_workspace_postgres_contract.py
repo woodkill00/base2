@@ -4,7 +4,6 @@ import json
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -78,6 +77,10 @@ class WorkspacePostgresContractTests(unittest.TestCase):
             "sitecontent_importjob",
             "state='scheduled'",
             "assert sorted(results) == [0, 1]",
+            "operations_cross_tenant_insert_was_not_blocked",
+            "operations_cross_tenant_link_was_not_blocked",
+            "relforcerowsecurity",
+            "sitecontent_operationsservice",
         ):
             self.assertIn(marker, checks)
 

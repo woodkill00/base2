@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import inspect
 from datetime import timedelta
 from decimal import Decimal
 
@@ -160,3 +161,14 @@ def test_operations_migrations_are_forward_and_reverse_capable():
     assert expected == self_tables
     assert len(models_migration.Migration.operations) == 7
     assert all(operation.reversible for operation in rls_migration.Migration.operations)
+
+
+def test_operations_rls_migration_grants_only_required_role_capabilities():
+    migration = importlib.import_module("sitecontent.migrations.0019_operations_center_rls")
+    source = inspect.getsource(migration)
+    assert "GRANT SELECT, INSERT, UPDATE, DELETE" in source
+    assert "GRANT SELECT ON TABLE" in source
+    assert "WORKSPACE_DB_USER" in source
+    assert "WORKSPACE_WORKER_DB_USER" in source
+    assert "GRANT ALL" not in source
+    assert "BYPASSRLS" not in source

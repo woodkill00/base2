@@ -27,6 +27,14 @@ def count(conn, tenant: str | None) -> int:
         return int(cursor.fetchone()[0])
 
 
+def operations_count(conn, tenant: str | None) -> int:
+    with conn.cursor() as cursor:
+        if tenant is not None:
+            cursor.execute("SELECT set_config('app.tenant_id', %s, true)", (tenant,))
+        cursor.execute("SELECT COUNT(*) FROM sitecontent_operationsservice")
+        return int(cursor.fetchone()[0])
+
+
 def optimistic_race(
     *,
     runtime_user: str,
@@ -80,6 +88,7 @@ def main() -> None:
     worker = connect(worker_user, worker_password)
     try:
         with owner, owner.cursor() as cursor:
+            cursor.execute("DELETE FROM sitecontent_operationsservice")
             cursor.execute("DELETE FROM sitecontent_contenttypedefinition")
             cursor.execute(
                 """INSERT INTO sitecontent_contenttypedefinition
@@ -91,6 +100,13 @@ def main() -> None:
                           (%s,'site-b','article',1,'B','','draft','custom',1,
                            'additive','',1,'','','2026-09-02','2026-09-02')""",
                 (str(UUID(int=1)), str(UUID(int=2))),
+            )
+            cursor.execute(
+                """INSERT INTO sitecontent_operationsservice
+                   (id,site_id,service_key,environment,enabled,release_id,created_at,updated_at)
+                   VALUES (%s,'site-a','api.health','staging',true,'release-a',NOW(),NOW()),
+                          (%s,'site-b','api.health','staging',true,'release-b',NOW(),NOW())""",
+                (str(UUID(int=20)), str(UUID(int=21))),
             )
             cursor.execute(
                 "SELECT rolbypassrls, rolsuper FROM pg_roles WHERE rolname=%s", (runtime_user,)
@@ -105,6 +121,17 @@ def main() -> None:
                    WHERE schemaname='public' AND tablename='sitecontent_contenttypedefinition'"""
             )
             assert cursor.fetchone()[0] == 1
+            cursor.execute(
+                """SELECT COUNT(*) FROM pg_class
+                   WHERE relname LIKE 'sitecontent_operations%'
+                     AND relrowsecurity AND relforcerowsecurity"""
+            )
+            assert cursor.fetchone()[0] == 7
+            cursor.execute(
+                """SELECT COUNT(*) FROM pg_policies
+                   WHERE tablename LIKE 'sitecontent_operations%'"""
+            )
+            assert cursor.fetchone()[0] == 28
             cursor.execute(
                 """SELECT indexname FROM pg_indexes
                    WHERE tablename='sitecontent_contenttypedefinition'"""
@@ -158,9 +185,15 @@ def main() -> None:
 
         assert count(runtime, None) == 0
         runtime.rollback()
+        assert operations_count(runtime, None) == 0
+        runtime.rollback()
         assert count(worker, None) == 2
         worker.rollback()
+        assert operations_count(worker, None) == 2
+        worker.rollback()
         assert count(runtime, "site-a") == 1
+        runtime.rollback()
+        assert operations_count(runtime, "site-a") == 1
         with runtime.cursor() as cursor:
             cursor.execute("SET LOCAL enable_seqscan=off")
             cursor.execute(
@@ -191,6 +224,37 @@ def main() -> None:
                 raise AssertionError("cross_tenant_insert_was_not_blocked")
         assert count(runtime, None) == 0
         runtime.rollback()
+        with runtime.cursor() as cursor:
+            cursor.execute("SELECT set_config('app.tenant_id', 'site-a', true)")
+            try:
+                cursor.execute(
+                    """INSERT INTO sitecontent_operationsservice
+                       (id,site_id,service_key,environment,enabled,release_id,
+                        created_at,updated_at)
+                       VALUES (%s,'site-b','blocked.health','staging',true,'',NOW(),NOW())""",
+                    (str(UUID(int=22)),),
+                )
+            except errors.InsufficientPrivilege:
+                runtime.rollback()
+            else:
+                raise AssertionError("operations_cross_tenant_insert_was_not_blocked")
+        assert operations_count(runtime, None) == 0
+        runtime.rollback()
+
+        with owner.cursor() as cursor:
+            try:
+                cursor.execute(
+                    """INSERT INTO sitecontent_operationshealthsample
+                       (id,site_id,service_id,state,code,latency_ms,dimensions,
+                        observed_at,expires_at,created_at,updated_at)
+                       VALUES (%s,'site-b',%s,'healthy','api.ready',1,'{}',
+                               NOW(),NOW()+INTERVAL '1 minute',NOW(),NOW())""",
+                    (str(UUID(int=23)), str(UUID(int=20))),
+                )
+            except errors.ForeignKeyViolation:
+                owner.rollback()
+            else:
+                raise AssertionError("operations_cross_tenant_link_was_not_blocked")
 
         optimistic_race(
             runtime_user=runtime_user,

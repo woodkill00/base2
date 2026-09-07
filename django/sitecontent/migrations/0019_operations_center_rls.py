@@ -41,22 +41,25 @@ LINKS = (
 )
 
 
-def _worker(schema_editor) -> str:
-    worker = os.environ.get("WORKSPACE_WORKER_DB_USER", "").strip()
-    if not ROLE_NAME.fullmatch(worker):
-        raise RuntimeError("operations_worker_role_invalid")
+def _role(schema_editor, variable: str, error_prefix: str) -> str:
+    role = os.environ.get(variable, "").strip()
+    if not ROLE_NAME.fullmatch(role):
+        raise RuntimeError(f"{error_prefix}_role_invalid")
     with schema_editor.connection.cursor() as cursor:
-        cursor.execute("SELECT 1 FROM pg_roles WHERE rolname=%s", (worker,))
+        cursor.execute("SELECT 1 FROM pg_roles WHERE rolname=%s", (role,))
         if not cursor.fetchone():
-            raise RuntimeError("operations_worker_role_missing")
-    return worker
+            raise RuntimeError(f"{error_prefix}_role_missing")
+    return role
 
 
 def install_operations_boundaries(apps, schema_editor):
     del apps
     if schema_editor.connection.vendor != "postgresql":
         return
-    worker = _worker(schema_editor).replace("'", "''")
+    runtime = _role(schema_editor, "WORKSPACE_DB_USER", "operations_runtime").replace("'", "''")
+    worker = _role(schema_editor, "WORKSPACE_WORKER_DB_USER", "operations_worker").replace(
+        "'", "''"
+    )
     with schema_editor.connection.cursor() as cursor:
         for table in PARENTS:
             cursor.execute(
@@ -92,14 +95,26 @@ def install_operations_boundaries(apps, schema_editor):
                 f"""CREATE POLICY "{table}_delete" ON "{table}" FOR DELETE
                     USING ({tenant})"""
             )
+            cursor.execute(
+                f'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "{table}" TO "{runtime}"'
+            )
+            cursor.execute(f'GRANT SELECT ON TABLE "{table}" TO "{worker}"')
 
 
 def remove_operations_boundaries(apps, schema_editor):
     del apps
     if schema_editor.connection.vendor != "postgresql":
         return
+    runtime = _role(schema_editor, "WORKSPACE_DB_USER", "operations_runtime").replace("'", "''")
+    worker = _role(schema_editor, "WORKSPACE_WORKER_DB_USER", "operations_worker").replace(
+        "'", "''"
+    )
     with schema_editor.connection.cursor() as cursor:
         for table in reversed(TABLES):
+            cursor.execute(
+                f'REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE "{table}" FROM "{runtime}"'
+            )
+            cursor.execute(f'REVOKE SELECT ON TABLE "{table}" FROM "{worker}"')
             for suffix in ("select", "insert", "update", "delete"):
                 cursor.execute(f'DROP POLICY IF EXISTS "{table}_{suffix}" ON "{table}"')
             cursor.execute(f'ALTER TABLE "{table}" NO FORCE ROW LEVEL SECURITY')
