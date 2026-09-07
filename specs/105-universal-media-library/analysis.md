@@ -406,6 +406,16 @@ prove unknown defects impossible.
     assertion. Both the representative-media and real two-UID spool E2Es use
     the acceptance target and the same CVD-derived clock; no reference-clock
     code exists in the production artifact.
+55. The exact B088 complete gate exposed two independent acceptance-only
+    regressions: direct test monkeypatch assignments violated the strict mypy
+    module contract, and one Chromium light-theme run observed focus before the
+    nested confirmation dialog had committed its removal. B089 uses explicit
+    dynamic `setattr` only in the isolated test harnesses, while production
+    remains statically unchanged. The UI now records successful-return intent
+    before closing the alert dialog and restores focus from an effect after the
+    state commit, avoiding an animation-frame race with modal teardown. Focused
+    type checking, unit coverage, and repeated light-profile browser execution
+    prove both corrections before another exact-head complete gate.
 
 ## Honest residual boundary
 

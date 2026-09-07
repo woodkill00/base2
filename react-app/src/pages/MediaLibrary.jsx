@@ -79,6 +79,7 @@ export default function MediaLibrary() {
   const confirmationButton = useRef(null);
   const confirmationOpener = useRef(null);
   const consequenceHeading = useRef(null);
+  const confirmationSuccessFocus = useRef(false);
   const detailRequest = useRef({ generation: 0, controller: null });
   const pickerOpener = useRef(null);
   const [capabilities, setCapabilities] = useState(null);
@@ -426,6 +427,13 @@ export default function MediaLibrary() {
     requestAnimationFrame(() => confirmationOpener.current?.focus());
   };
 
+  useEffect(() => {
+    if (!confirmationTarget && confirmationSuccessFocus.current) {
+      confirmationSuccessFocus.current = false;
+      consequenceHeading.current?.focus();
+    }
+  }, [confirmationTarget]);
+
   const prepareBulkTransition = async (target) => {
     const chosen = assets.filter((item) => selected.has(item.id));
     setActionStatus(`Loading ${target} consequences for ${chosen.length} item${chosen.length === 1 ? '' : 's'}…`);
@@ -499,10 +507,10 @@ export default function MediaLibrary() {
         `media-${target}-${activeAsset.id}-${activeAsset.version}`
       );
       setActiveAsset((current) => ({ ...current, status: target, version: result.version }));
+      confirmationSuccessFocus.current = true;
       setConfirmationTarget('');
       setPreview(null);
       setActionStatus(`${statusLabel(target)} completed.`);
-      requestAnimationFrame(() => consequenceHeading.current?.focus());
     } catch (caught) {
       setDetailError('The action was blocked or conflicted. No unsafe change was made.');
     }
