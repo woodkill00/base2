@@ -55,6 +55,9 @@ jobs:
             base2-media-inspector:security \
             /app/api/tests/media_inspector_container_acceptance.py
 
+      - name: Exercise fresh-volume two-UID spool lifecycle
+        run: MEDIA_INSPECTOR_TEST_IMAGE=base2-media-inspector:security bash api/tests/media_inspector_two_uid_container_acceptance.sh
+
       - name: Generate media inspector image SBOM
         uses: anchore/sbom-action@fc46e51fd3cb168ffb36c6d1915723c47db58abb
         with:

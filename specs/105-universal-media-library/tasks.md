@@ -70,3 +70,9 @@
 - [x] B068 Adversarially prove every dropped parser child is denied the supervisor environment, process memory, and signing-material filesystem paths.
 - [x] B069 Isolate the definitions updater on a dedicated outbound-only network with no application peers and enforce the topology in both runtime profiles.
 - [x] B070 Reconcile the legacy scanner-runtime contract with the dedicated updater-only network and hardened resource boundary exposed by the exact complete gate.
+- [x] B071 Reject spool symlinks, devices, FIFOs, unsafe ownership, and oversized regular files through descriptor-relative no-follow admission before reading hostile bytes.
+- [x] B072 Provision every fresh inspector spool for only the fixed UID/GID 1000 producer through a bounded one-shot initializer with no network and only `CAP_CHOWN`, then gate producer and supervisor startup on its successful exit.
+- [x] B073 Write claims and terminal receipts as the producer with mode `0600` and prove the real root supervisor/UID-1000 producer boundary on a fresh named volume across signed success, permanent failure, and crash-residue retry.
+- [x] B074 Make spool provisioning one exact idempotent transition from a fresh root-owned volume to `1000:1000/0770`, no-op only at that final state, and reject every third state while retaining only `CAP_CHOWN`.
+- [x] B075 Recover only stale, exact producer-owned claims and bounded regular temp residues after supervisor restart, preserving active and hostile state and fixed discovery/work limits without audit or external side effects.
+- [x] B076 Advance a bounded persistent descriptor-relative directory cursor across hostile and terminal prefixes so only claimable jobs consume execution and valid arrivals make fair progress across polls, EOF, deletion, and restart without descriptor leaks.

@@ -10,6 +10,7 @@ import os
 import platform
 import re
 import resource
+import stat
 import subprocess
 import sys
 import tempfile
@@ -279,47 +280,327 @@ def inspect_request(
     return sign_receipt(payload, key), preview
 
 
-def _atomic_write(path: Path, content: bytes) -> None:
-    temporary = path.with_suffix(path.suffix + '.tmp')
-    with temporary.open('xb') as stream:
-        stream.write(content)
-        stream.flush()
-        os.fsync(stream.fileno())
-    temporary.replace(path)
+def _read_spool_file(
+    job_fd: int, name: str, maximum: int, *, owner_uid: int, owner_gid: int
+) -> bytes:
+    try:
+        descriptor = os.open(
+            name,
+            os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW | os.O_NONBLOCK,
+            dir_fd=job_fd,
+        )
+    except OSError as exc:
+        raise MediaInspectorServiceError('media_inspector_request_invalid') from exc
+    with os.fdopen(descriptor, 'rb') as stream:
+        info = os.fstat(stream.fileno())
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_uid != owner_uid
+            or info.st_gid != owner_gid
+            or stat.S_IMODE(info.st_mode) not in {0o600, 0o640}
+            or not 1 <= info.st_size <= maximum
+        ):
+            raise MediaInspectorServiceError('media_inspector_request_invalid')
+        content = stream.read(maximum + 1)
+    if len(content) > maximum:
+        raise MediaInspectorServiceError('media_inspector_request_invalid')
+    return content
 
 
-def serve_once(root: Path, *, key, build_identity: str) -> bool:
-    for ready in sorted(root.glob('*/ready'), key=lambda item: item.stat().st_mtime):
-        job = ready.parent
+MAX_SPOOL_SCAN_ENTRIES = 256
+MAX_CLIENT_WAIT_SECONDS = 60
+MAX_INSPECTION_RUNTIME_SECONDS = 60
+RECOVERY_SAFETY_MARGIN_SECONDS = 60
+CLAIM_STALE_SECONDS = (
+    MAX_CLIENT_WAIT_SECONDS
+    + MAX_INSPECTION_RUNTIME_SECONDS
+    + RECOVERY_SAFETY_MARGIN_SECONDS
+)
+RECOVERABLE_TEMP_LIMITS = {
+    'preview.bin.tmp': 10 * 1024 * 1024,
+    'receipt.json.tmp': 32 * 1024,
+    'complete.tmp': 1,
+    'failed.tmp': 128,
+}
+_SCAN_CURSOR: tuple[tuple[int, int], Any] | None = None
+
+
+def _reset_scan_cursor() -> None:
+    global _SCAN_CURSOR
+    if _SCAN_CURSOR is not None:
+        _SCAN_CURSOR[1].close()
+        _SCAN_CURSOR = None
+
+
+def _next_scan_window(root_fd: int) -> list[os.DirEntry[str]]:
+    """Return a bounded persistent directory window and close at EOF."""
+    global _SCAN_CURSOR
+    root_info = os.fstat(root_fd)
+    identity = (root_info.st_dev, root_info.st_ino)
+    if _SCAN_CURSOR is None or _SCAN_CURSOR[0] != identity:
+        _reset_scan_cursor()
+        _SCAN_CURSOR = (identity, os.scandir(root_fd))
+    iterator = _SCAN_CURSOR[1]
+    window: list[os.DirEntry[str]] = []
+    for _ in range(MAX_SPOOL_SCAN_ENTRIES):
         try:
-            (job / 'claimed').touch(exist_ok=False)
-        except FileExistsError:
+            window.append(next(iterator))
+        except StopIteration:
+            _reset_scan_cursor()
+            break
+    return window
+
+
+def _recover_stale_claim(
+    job_fd: int,
+    *,
+    owner_uid: int,
+    owner_gid: int,
+    now_seconds: float,
+) -> bool:
+    """Remove only an exact stale local claim and its bounded safe temp files."""
+    try:
+        claimed = os.stat('claimed', dir_fd=job_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return False
+    cutoff = now_seconds - CLAIM_STALE_SECONDS
+    if (
+        not stat.S_ISREG(claimed.st_mode)
+        or claimed.st_uid != owner_uid
+        or claimed.st_gid != owner_gid
+        or stat.S_IMODE(claimed.st_mode) != 0o600
+        or claimed.st_size != 0
+        or claimed.st_mtime > cutoff
+    ):
+        return False
+    try:
+        names = os.listdir(job_fd)
+    except OSError:
+        return False
+    if len(names) > 16:
+        return False
+    if any(name in names for name in ('complete', 'failed')):
+        return False
+    temp_names = [name for name in names if name.endswith('.tmp')]
+    if any(name not in RECOVERABLE_TEMP_LIMITS for name in temp_names):
+        return False
+    for name in temp_names:
+        try:
+            info = os.stat(name, dir_fd=job_fd, follow_symlinks=False)
+        except OSError:
+            return False
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_uid != owner_uid
+            or info.st_gid != owner_gid
+            or stat.S_IMODE(info.st_mode) != 0o600
+            or info.st_size > RECOVERABLE_TEMP_LIMITS[name]
+            or info.st_mtime > cutoff
+        ):
+            return False
+    try:
+        for name in temp_names:
+            os.unlink(name, dir_fd=job_fd)
+        os.unlink('claimed', dir_fd=job_fd)
+    except OSError:
+        return False
+    return True
+
+
+def _atomic_write_at(
+    job_fd: int, name: str, content: bytes, *, owner_uid: int, owner_gid: int
+) -> None:
+    temporary = name + '.tmp'
+    original_euid = os.geteuid()
+    original_egid = os.getegid()
+    try:
+        if original_egid != owner_gid:
+            os.setegid(owner_gid)
+        if original_euid != owner_uid:
+            os.seteuid(owner_uid)
+        descriptor = os.open(
+            temporary,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC,
+            0o600,
+            dir_fd=job_fd,
+        )
+        with os.fdopen(descriptor, 'wb') as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, name, src_dir_fd=job_fd, dst_dir_fd=job_fd)
+    finally:
+        if os.geteuid() != original_euid:
+            os.seteuid(original_euid)
+        if os.getegid() != original_egid:
+            os.setegid(original_egid)
+
+
+def _job_candidates(root_fd: int, *, owner_uid: int, owner_gid: int) -> list[str]:
+    candidates: list[tuple[int, str]] = []
+    for entry in _next_scan_window(root_fd):
+        try:
+            job_info = entry.stat(follow_symlinks=False)
+            if (
+                not stat.S_ISDIR(job_info.st_mode)
+                or job_info.st_uid != owner_uid
+                or job_info.st_gid != owner_gid
+                or stat.S_IMODE(job_info.st_mode) not in {0o700, 0o770}
+            ):
+                continue
+            job_fd = os.open(
+                entry.name,
+                os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+                dir_fd=root_fd,
+            )
+            try:
+                ready_info = os.stat('ready', dir_fd=job_fd, follow_symlinks=False)
+            finally:
+                os.close(job_fd)
+        except OSError:
             continue
+        if (
+            stat.S_ISREG(ready_info.st_mode)
+            and ready_info.st_uid == owner_uid
+            and ready_info.st_gid == owner_gid
+            and stat.S_IMODE(ready_info.st_mode) in {0o600, 0o640}
+            and ready_info.st_size == 1
+        ):
+            candidates.append((ready_info.st_mtime_ns, entry.name))
+    return [name for _, name in sorted(candidates)]
+
+
+def _has_terminal(job_fd: int) -> bool:
+    for name in ('complete', 'failed'):
         try:
-            request_bytes = (job / 'request.json').read_bytes()
-            content = (job / 'content.bin').read_bytes()
-            if len(request_bytes) > 8192 or len(content) > MAX_INPUT_BYTES:
-                raise MediaInspectorServiceError('media_inspector_request_invalid')
-            receipt, preview = inspect_request(
-                json.loads(request_bytes), content, key=key, build_identity=build_identity
-            )
-            _atomic_write(job / 'preview.bin', preview)
-            _atomic_write(
-                job / 'receipt.json',
-                json.dumps(receipt, sort_keys=True, separators=(',', ':')).encode('ascii'),
-            )
-            _atomic_write(job / 'complete', b'1')
-        except Exception as exc:
-            code = str(exc) if str(exc).startswith('media_') else 'media_inspector_failed'
-            # The bounded client may have timed out and removed its private
-            # spool directory. That must not terminate the supervisor.
-            with contextlib.suppress(OSError):
-                _atomic_write(
-                    job / 'failed',
-                    code.encode('ascii', 'ignore')[:128] or b'media_inspector_failed',
-                )
+            os.stat(name, dir_fd=job_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            continue
+        except OSError:
+            return True
         return True
     return False
+
+
+def serve_once(
+    root: Path, *, key, build_identity: str, producer_uid: int, producer_gid: int
+) -> bool:
+    root_fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    try:
+        for name in _job_candidates(root_fd, owner_uid=producer_uid, owner_gid=producer_gid):
+            job_fd: int | None = None
+            try:
+                job_fd = os.open(
+                    name,
+                    os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+                    dir_fd=root_fd,
+                )
+                job_info = os.fstat(job_fd)
+                if (
+                    job_info.st_uid != producer_uid
+                    or job_info.st_gid != producer_gid
+                    or stat.S_IMODE(job_info.st_mode) not in {0o700, 0o770}
+                    or not stat.S_ISDIR(job_info.st_mode)
+                ):
+                    os.close(job_fd)
+                    job_fd = None
+                    continue
+                if _has_terminal(job_fd):
+                    os.close(job_fd)
+                    job_fd = None
+                    continue
+                _recover_stale_claim(
+                    job_fd,
+                    owner_uid=producer_uid,
+                    owner_gid=producer_gid,
+                    now_seconds=time.time(),
+                )
+                original_euid = os.geteuid()
+                original_egid = os.getegid()
+                try:
+                    if original_egid != producer_gid:
+                        os.setegid(producer_gid)
+                    if original_euid != producer_uid:
+                        os.seteuid(producer_uid)
+                    claimed_fd = os.open(
+                        'claimed',
+                        os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC,
+                        0o600,
+                        dir_fd=job_fd,
+                    )
+                    os.close(claimed_fd)
+                finally:
+                    if os.geteuid() != original_euid:
+                        os.seteuid(original_euid)
+                    if os.getegid() != original_egid:
+                        os.setegid(original_egid)
+            except OSError:
+                if job_fd is not None:
+                    os.close(job_fd)
+                continue
+            assert job_fd is not None
+            try:
+                _read_spool_file(
+                    job_fd, 'ready', 1, owner_uid=producer_uid, owner_gid=producer_gid
+                )
+                request_bytes = _read_spool_file(
+                    job_fd,
+                    'request.json',
+                    8192,
+                    owner_uid=producer_uid,
+                    owner_gid=producer_gid,
+                )
+                content = _read_spool_file(
+                    job_fd,
+                    'content.bin',
+                    MAX_INPUT_BYTES,
+                    owner_uid=producer_uid,
+                    owner_gid=producer_gid,
+                )
+                receipt, preview = inspect_request(
+                    json.loads(request_bytes), content, key=key, build_identity=build_identity
+                )
+                _atomic_write_at(
+                    job_fd,
+                    'preview.bin',
+                    preview,
+                    owner_uid=producer_uid,
+                    owner_gid=producer_gid,
+                )
+                _atomic_write_at(
+                    job_fd,
+                    'receipt.json',
+                    json.dumps(receipt, sort_keys=True, separators=(',', ':')).encode('ascii'),
+                    owner_uid=producer_uid,
+                    owner_gid=producer_gid,
+                )
+                _atomic_write_at(
+                    job_fd,
+                    'complete',
+                    b'1',
+                    owner_uid=producer_uid,
+                    owner_gid=producer_gid,
+                )
+            except Exception as exc:
+                code = str(exc) if str(exc).startswith('media_') else 'media_inspector_failed'
+                # The bounded client may have timed out and removed its private
+                # spool directory. That must not terminate the supervisor.
+                with contextlib.suppress(OSError):
+                    _atomic_write_at(
+                        job_fd,
+                        'failed',
+                        code.encode('ascii', 'ignore')[:128] or b'media_inspector_failed',
+                        owner_uid=producer_uid,
+                        owner_gid=producer_gid,
+                    )
+            finally:
+                os.close(job_fd)
+            return True
+        return False
+    finally:
+        os.close(root_fd)
 
 
 def main() -> int:
@@ -346,10 +627,23 @@ def main() -> int:
         _scanner_health()
     except MediaInspectorServiceError:
         return 73
+    try:
+        producer_uid = int(os.getenv('MEDIA_INSPECTOR_SPOOL_PRODUCER_UID', ''))
+        producer_gid = int(os.getenv('MEDIA_INSPECTOR_SPOOL_PRODUCER_GID', ''))
+    except ValueError:
+        return 74
+    if not 0 <= producer_uid <= 2**32 - 2 or not 0 <= producer_gid <= 2**32 - 2:
+        return 74
     root = Path(os.getenv('MEDIA_INSPECTOR_SPOOL_ROOT', '/var/lib/base2/media-inspector'))
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
     while True:
-        if not serve_once(root, key=key, build_identity=build_identity):
+        if not serve_once(
+            root,
+            key=key,
+            build_identity=build_identity,
+            producer_uid=producer_uid,
+            producer_gid=producer_gid,
+        ):
             time.sleep(0.1)
 
 

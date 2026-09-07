@@ -152,6 +152,8 @@ def main() -> int:
         'MEDIA_INSPECTOR_SIGNING_KEY': signing_key,
         'MEDIA_INSPECTOR_BUILD_IDENTITY': BUILD_IDENTITY,
         'MEDIA_INSPECTOR_SPOOL_ROOT': SPOOL_ROOT,
+        'MEDIA_INSPECTOR_SPOOL_PRODUCER_UID': '0',
+        'MEDIA_INSPECTOR_SPOOL_PRODUCER_GID': '0',
     }
     supervisor = subprocess.Popen(
         [sys.executable, '-m', 'api.services.media_inspector_service'],
@@ -215,6 +217,37 @@ print(json.dumps({
             'signerFileDenied': True,
             'signerThroughSupervisorRootDenied': True,
         }
+        for name in ('dev-zero-symlink', 'fifo', 'oversized-regular'):
+            hostile_job = Path(SPOOL_ROOT) / name
+            hostile_job.mkdir(mode=0o700)
+            hostile_request = {
+                'schemaVersion': 'base2-media-inspection-request-v1',
+                'jobId': name,
+                'nonce': name,
+                'assetId': str(UUID(int=100)),
+                'objectVersion': 1,
+                'sourceSha256': hashlib.sha256(b'source').hexdigest(),
+                'mediaType': 'image/png',
+            }
+            (hostile_job / 'request.json').write_text(
+                json.dumps(hostile_request), encoding='ascii'
+            )
+            (hostile_job / 'ready').write_bytes(b'1')
+            (hostile_job / 'request.json').chmod(0o600)
+            (hostile_job / 'ready').chmod(0o600)
+            if name == 'dev-zero-symlink':
+                (hostile_job / 'content.bin').symlink_to('/dev/zero')
+            elif name == 'fifo':
+                os.mkfifo(hostile_job / 'content.bin', mode=0o600)
+            else:
+                with (hostile_job / 'content.bin').open('wb') as stream:
+                    stream.truncate(MAX_SOURCE_BYTES + 1)
+                (hostile_job / 'content.bin').chmod(0o600)
+            deadline = time.monotonic() + 2
+            while not (hostile_job / 'failed').is_file() and time.monotonic() < deadline:
+                time.sleep(0.02)
+            assert (hostile_job / 'failed').read_bytes() == b'media_inspector_request_invalid'
+            assert supervisor.poll() is None
         observed = []
         for sequence, (media_type, content) in enumerate(_fixtures(), start=1):
             try:

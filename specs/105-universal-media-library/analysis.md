@@ -261,6 +261,64 @@ prove unknown defects impossible.
     finding; no production code path failed. The same gate also recovered one
     host Python/coverage segmentation fault on its bounded retry, which remains
     recorded separately from the deterministic assertion failure.
+36. Final independent review found one low defense-in-depth availability gap:
+    the privileged inspector followed producer-controlled spool paths and read
+    them before enforcing size. B071 requires directory-descriptor-relative
+    `O_NOFOLLOW` admission, regular-file type, owner, mode, and size checks
+    before a bounded read, plus live supervisor proof that `/dev/zero` symlinks
+    and FIFOs fail immediately without blocking, leaking, or killing service.
+37. B071 now opens the root, job directory, claim, and every input relative to
+    already-validated directory descriptors with `O_NOFOLLOW`; it requires the
+    configured producer UID, restrictive modes, regular-file type, and bounded
+    `fstat` size before any read. Unit tests reject symlinked and unsafe job
+    directories, `/dev/zero`, FIFO, and oversized sparse content in under one
+    second. The rebuilt networkless supervisor rejects the same hostile inputs,
+    remains alive, then completes the signed clean/infected representative-media
+    E2E. The prior low finding is closed.
+38. Independent review of B071 found that a Docker-created named volume starts
+    root-owned and therefore denied the fixed UID-1000 producer, while terminal
+    files created by the root signer were not constrained to that producer.
+    B072-B073 require a real fresh-volume, two-identity acceptance boundary:
+    one bounded initializer may hold only `CAP_CHOWN`, and the long-lived
+    supervisor must create claims and terminal files as the producer rather
+    than granting world or broad discretionary-access permissions.
+39. Both Compose profiles now gate the inspector and worker on a networkless,
+    read-only, one-shot spool initializer that changes the empty volume to
+    exact owner `1000:1000` and mode `0770` using only `CAP_CHOWN`. The
+    long-lived root signer retains only its existing identity-drop capabilities,
+    traverses producer input through supplementary group 1000, and temporarily
+    adopts UID 1000 only for atomic claim/terminal creation at mode `0600`.
+    A fresh named-volume E2E proves exact ownership and modes, signed clean
+    success, deterministic infected permanent failure, crash residue blocking,
+    bounded retry after residue removal, and supervisor survival. No network,
+    writable root filesystem, world access, or signing-key access was added.
+40. Review of the two-identity boundary found that its initializer would repair
+    arbitrary pre-existing ownership/modes and that a crash-created `claimed`
+    or atomic-write temp file had no production recovery path. B074-B075 narrow
+    initialization to one auditable fresh-state transition and require bounded,
+    age-safe local recovery whose stale threshold exceeds both the maximum
+    client wait and maximum inspection runtime.
+41. Provisioning now no-ops only at exact `1000:1000/0770`, converts only an
+    exact fresh `0:0/0755` named-volume root using chmod-before-`CAP_CHOWN`, and
+    rejects every other state. Recovery scans at most 256 entries and executes
+    at most one claimable job per poll, waits 180 seconds (60-second client maximum plus 60-second
+    processing maximum plus a 60-second margin), and unlinks only exact stale
+    producer-owned `0600` regular claims and four named size-bounded temp files.
+    Active, symlink, FIFO, oversized, foreign-owner, terminal, and unknown-temp
+    states remain untouched. A fresh-volume test runs initialization twice,
+    rejects a third state, persists crash residue while the supervisor is down,
+    restarts it, observes automatic retry without client unlink, and proves the
+    supervisor survives both valid and hostile residue.
+42. Final availability review found that slicing the first 16 ready entries
+    before claim admission let preserved terminal or unrecoverable claimed jobs
+    consume the candidate budget forever. B076 separates the raw-entry window
+    from execution: one process-local descriptor-relative scandir cursor reads
+    at most 256 raw entries per poll, advances across non-actionable entries,
+    closes and resets at EOF or root replacement, and permits only an actually
+    claimed job to consume the single execution slot. More than 256 preserved
+    terminal entries now coexist ahead of a valid stale recovery without
+    starvation. Focused tests also cover continuous arrivals, deletion under an
+    open cursor, EOF reset, simulated process restart, and descriptor cleanup.
 
 ## Honest residual boundary
 

@@ -10,16 +10,16 @@ def main() -> int:
     missing = sorted(name for name in required if not (ROOT / name).is_file())
     tasks = (ROOT / "tasks.md").read_text(encoding="utf-8")
     identifiers = [int(value) for value in re.findall(r"B(\d{3})", tasks)]
-    if missing or identifiers != list(range(1, 71)):
+    if missing or identifiers != list(range(1, 77)):
         raise SystemExit(f"media_plan_invalid missing={missing} tasks={identifiers}")
     pending = tasks.count("- [ ]")
     complete = tasks.count("- [x]")
-    if pending + complete != 70:
+    if pending + complete != 76:
         raise SystemExit("media_plan_status_invalid")
     for marker in ("PostgreSQL", "browser matrix", "draft PR", "staging canary", "destroy"):
         if marker not in tasks:
             raise SystemExit(f"media_plan_boundary_missing:{marker}")
-    print(f"media_plan_valid tasks=70 complete={complete} pending={pending}")
+    print(f"media_plan_valid tasks=76 complete={complete} pending={pending}")
     return 0
 
 

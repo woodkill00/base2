@@ -57,4 +57,5 @@ COPY --from=inspector-builder --chown=65532:65532 /tmp/vendor /app/vendor
 COPY --chown=65532:65532 . ./api
 ENV LD_LIBRARY_PATH=/usr/local/lib PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app/vendor:/app
 USER root
-CMD ["python", "-m", "api.services.media_inspector_service"]
+ENTRYPOINT ["/usr/bin/python"]
+CMD ["-m", "api.services.media_inspector_service"]

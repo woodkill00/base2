@@ -68,8 +68,9 @@ class VerifiedInspection:
 
 
 def _write_exclusive(path: Path, content: bytes) -> None:
-    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o640)
     with os.fdopen(descriptor, 'wb') as stream:
+        os.fchmod(stream.fileno(), 0o640)
         stream.write(content)
         stream.flush()
         os.fsync(stream.fileno())
@@ -133,7 +134,8 @@ def inspect_media_via_spool(
     job_id, nonce = str(uuid4()), uuid4().hex
     job = root / job_id
     try:
-        job.mkdir(mode=0o700)
+        job.mkdir(mode=0o770)
+        job.chmod(0o770)
         request = {
             'schemaVersion': 'base2-media-inspection-request-v1',
             'jobId': job_id,

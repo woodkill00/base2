@@ -306,6 +306,7 @@ services:
       dockerfile: Dockerfile
       args:
         - PYTHON_VERSION=${FASTAPI_PYTHON_VERSION}
+    profiles: [celery]
     container_name: ${COMPOSE_PROJECT_NAME}_celery_worker
     environment:
       - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
@@ -333,6 +334,8 @@ services:
       - content_workspace_artifacts:/var/lib/base2/content-workspace
       - media_inspector_spool:/var/lib/base2/media-inspector
     depends_on:
+      media-inspector-spool-init:
+        condition: service_completed_successfully
       django:
         condition: service_healthy
       redis:
@@ -360,6 +363,27 @@ services:
       retries: 10
     mem_limit: 256m
     cpus: '0.5'
+
+  media-inspector-spool-init:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.media-inspector
+    profiles: [media-scan, celery]
+    platform: linux/amd64
+    user: '0:0'
+    entrypoint: ['/usr/bin/python']
+    command: ['/app/api/scripts/media_inspector_spool_init.py']
+    network_mode: none
+    volumes:
+      - media_inspector_spool:/var/lib/base2/media-inspector
+    restart: 'no'
+    cap_drop: [ALL]
+    cap_add: [CHOWN]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    pids_limit: 8
+    mem_limit: 32m
+    cpus: '0.1'
 
   # Network authority is isolated to the non-root definitions updater. The
   # networkless inspector consumes its read-only signed database volume.
@@ -409,6 +433,8 @@ services:
     platform: linux/amd64
     environment:
       - MEDIA_INSPECTOR_SPOOL_ROOT=/var/lib/base2/media-inspector
+      - MEDIA_INSPECTOR_SPOOL_PRODUCER_UID=1000
+      - MEDIA_INSPECTOR_SPOOL_PRODUCER_GID=1000
       - MEDIA_INSPECTOR_SIGNING_KEY=${MEDIA_INSPECTOR_SIGNING_KEY}
       - MEDIA_INSPECTOR_BUILD_IDENTITY=${MEDIA_INSPECTOR_BUILD_IDENTITY}
     network_mode: none
@@ -418,7 +444,10 @@ services:
       - media_inspector_spool:/var/lib/base2/media-inspector
       - clamav_db:/var/lib/clamav:ro
     restart: unless-stopped
+    group_add: ['1000']
     depends_on:
+      media-inspector-spool-init:
+        condition: service_completed_successfully
       clamav:
         condition: service_healthy
     cap_drop: [ALL]

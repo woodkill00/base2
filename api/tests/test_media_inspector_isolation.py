@@ -3,6 +3,7 @@ import hashlib
 import io
 import inspect
 import json
+import os
 import subprocess
 import sys
 from datetime import UTC, datetime, timedelta
@@ -362,7 +363,13 @@ def test_service_failure_marker_preserves_bounded_classification(
                 service.MediaInspectorServiceError(service_code)
             ),
         )
-        assert service.serve_once(tmp_path, key=SIGNING_KEY, build_identity=BUILD_IDENTITY) is True
+        assert service.serve_once(
+            tmp_path,
+            key=SIGNING_KEY,
+            build_identity=BUILD_IDENTITY,
+            producer_uid=os.getuid(),
+            producer_gid=os.getgid(),
+        ) is True
         handled = True
 
     monkeypatch.setattr(client.time, 'sleep', fail_job)
@@ -591,23 +598,239 @@ def test_scanner_decoder_and_health_protocols_are_strict():
 
 def test_serve_once_writes_terminal_files_and_contains_job_failure(monkeypatch, tmp_path):
     job = tmp_path / 'job'
-    job.mkdir()
+    job.mkdir(mode=0o700)
     (job / 'ready').write_bytes(b'1')
     (job / 'request.json').write_text(json.dumps(request()))
     (job / 'content.bin').write_bytes(b'source')
+    for path in job.iterdir():
+        path.chmod(0o600)
     monkeypatch.setattr(service, 'inspect_request', lambda *_args, **_kwargs: ({'ok': True}, b'p'))
-    assert service.serve_once(tmp_path, key=SIGNING_KEY, build_identity=BUILD_IDENTITY) is True
+    def call():
+        return service.serve_once(
+            tmp_path,
+            key=SIGNING_KEY,
+            build_identity=BUILD_IDENTITY,
+            producer_uid=os.getuid(),
+            producer_gid=os.getgid(),
+        )
+    assert call() is True
     assert (job / 'complete').read_bytes() == b'1'
     assert json.loads((job / 'receipt.json').read_text()) == {'ok': True}
-    assert service.serve_once(tmp_path, key=SIGNING_KEY, build_identity=BUILD_IDENTITY) is False
+    assert call() is False
 
     failed_job = tmp_path / 'failed-job'
-    failed_job.mkdir()
+    failed_job.mkdir(mode=0o700)
     (failed_job / 'ready').write_bytes(b'1')
     (failed_job / 'request.json').write_bytes(b'not-json')
     (failed_job / 'content.bin').write_bytes(b'source')
-    assert service.serve_once(tmp_path, key=SIGNING_KEY, build_identity=BUILD_IDENTITY) is True
+    for path in failed_job.iterdir():
+        path.chmod(0o600)
+    assert call() is True
     assert (failed_job / 'failed').read_bytes() == b'media_inspector_failed'
+
+
+@pytest.mark.parametrize('special_kind', ['dev-zero-symlink', 'fifo', 'oversized-regular'])
+def test_serve_once_rejects_unbounded_and_special_content_without_blocking(tmp_path, special_kind):
+    job = tmp_path / special_kind
+    job.mkdir(mode=0o700)
+    (job / 'ready').write_bytes(b'1')
+    (job / 'request.json').write_text(json.dumps(request()))
+    (job / 'ready').chmod(0o600)
+    (job / 'request.json').chmod(0o600)
+    content = job / 'content.bin'
+    if special_kind == 'dev-zero-symlink':
+        content.symlink_to('/dev/zero')
+    elif special_kind == 'fifo':
+        os.mkfifo(content, mode=0o600)
+    else:
+        with content.open('wb') as stream:
+            stream.truncate(service.MAX_INPUT_BYTES + 1)
+        content.chmod(0o600)
+    started = __import__('time').monotonic()
+    assert service.serve_once(
+        tmp_path,
+        key=SIGNING_KEY,
+        build_identity=BUILD_IDENTITY,
+        producer_uid=os.getuid(),
+        producer_gid=os.getgid(),
+    ) is True
+    assert __import__('time').monotonic() - started < 1
+    assert (job / 'failed').read_bytes() == b'media_inspector_request_invalid'
+
+
+def test_serve_once_ignores_symlinked_or_unsafe_job_directories(tmp_path):
+    outside = tmp_path.parent / f'{tmp_path.name}-outside'
+    outside.mkdir(mode=0o700)
+    (outside / 'ready').write_bytes(b'1')
+    (outside / 'ready').chmod(0o600)
+    (tmp_path / 'linked-job').symlink_to(outside, target_is_directory=True)
+    unsafe = tmp_path / 'unsafe-job'
+    unsafe.mkdir(mode=0o777)
+    unsafe.chmod(0o777)
+    (unsafe / 'ready').write_bytes(b'1')
+    assert service.serve_once(
+        tmp_path,
+        key=SIGNING_KEY,
+        build_identity=BUILD_IDENTITY,
+        producer_uid=os.getuid(),
+        producer_gid=os.getgid(),
+    ) is False
+
+
+def test_stale_claim_recovery_is_bounded_and_removes_only_safe_residue(tmp_path):
+    job = tmp_path / 'job'
+    job.mkdir(mode=0o700)
+    claimed = job / 'claimed'
+    temporary = job / 'failed.tmp'
+    claimed.write_bytes(b'')
+    temporary.write_bytes(b'crash')
+    claimed.chmod(0o600)
+    temporary.chmod(0o600)
+    old = __import__('time').time() - service.CLAIM_STALE_SECONDS - 1
+    os.utime(claimed, (old, old))
+    os.utime(temporary, (old, old))
+    descriptor = os.open(job, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        assert service._recover_stale_claim(
+            descriptor,
+            owner_uid=os.getuid(),
+            owner_gid=os.getgid(),
+            now_seconds=__import__('time').time(),
+        )
+    finally:
+        os.close(descriptor)
+    assert not claimed.exists() and not temporary.exists()
+    assert service.CLAIM_STALE_SECONDS >= (
+        service.MAX_CLIENT_WAIT_SECONDS + service.MAX_INSPECTION_RUNTIME_SECONDS
+    )
+
+
+@pytest.mark.parametrize('unsafe', ['active', 'symlink', 'fifo', 'foreign', 'oversized'])
+def test_claim_recovery_rejects_active_special_foreign_and_oversized_state(tmp_path, unsafe):
+    job = tmp_path / unsafe
+    job.mkdir(mode=0o700)
+    claimed = job / 'claimed'
+    if unsafe == 'symlink':
+        claimed.symlink_to('/dev/zero')
+    else:
+        claimed.write_bytes(b'')
+        claimed.chmod(0o600)
+    old = __import__('time').time() - service.CLAIM_STALE_SECONDS - 1
+    if unsafe != 'active':
+        os.utime(claimed, (old, old), follow_symlinks=False)
+    if unsafe in {'fifo', 'oversized'}:
+        temporary = job / 'failed.tmp'
+        if unsafe == 'fifo':
+            os.mkfifo(temporary, mode=0o600)
+        else:
+            temporary.write_bytes(b'x' * 129)
+            temporary.chmod(0o600)
+        os.utime(temporary, (old, old), follow_symlinks=False)
+    descriptor = os.open(job, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        assert not service._recover_stale_claim(
+            descriptor,
+            owner_uid=os.getuid() + (1 if unsafe == 'foreign' else 0),
+            owner_gid=os.getgid(),
+            now_seconds=__import__('time').time(),
+        )
+    finally:
+        os.close(descriptor)
+    assert claimed.exists() or claimed.is_symlink()
+
+
+def test_candidate_discovery_has_fixed_raw_scan_cap(tmp_path):
+    service._reset_scan_cursor()
+    for index in range(service.MAX_SPOOL_SCAN_ENTRIES + 20):
+        job = tmp_path / f'job-{index:04d}'
+        job.mkdir(mode=0o700)
+        ready = job / 'ready'
+        ready.write_bytes(b'1')
+        ready.chmod(0o600)
+    descriptor = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        candidates = service._job_candidates(
+            descriptor, owner_uid=os.getuid(), owner_gid=os.getgid()
+        )
+    finally:
+        os.close(descriptor)
+    assert len(candidates) == service.MAX_SPOOL_SCAN_ENTRIES
+    service._reset_scan_cursor()
+
+
+def _make_spool_job(root: Path, name: str, *, terminal: bool = False) -> Path:
+    job = root / name
+    job.mkdir(mode=0o700)
+    (job / 'ready').write_bytes(b'1')
+    (job / 'ready').chmod(0o600)
+    if terminal:
+        (job / 'complete').write_bytes(b'1')
+        (job / 'complete').chmod(0o600)
+    else:
+        (job / 'request.json').write_text(json.dumps(request()))
+        (job / 'content.bin').write_bytes(b'source')
+        (job / 'request.json').chmod(0o600)
+        (job / 'content.bin').chmod(0o600)
+    return job
+
+
+def test_cursor_progresses_past_256_preserved_terminal_jobs(monkeypatch, tmp_path):
+    service._reset_scan_cursor()
+    for index in range(272):
+        _make_spool_job(tmp_path, f'preserved-{index:04d}', terminal=True)
+    valid = _make_spool_job(tmp_path, 'valid')
+    monkeypatch.setattr(service, 'inspect_request', lambda *_a, **_k: ({'ok': True}, b'p'))
+    outcomes = [
+        service.serve_once(
+            tmp_path,
+            key=SIGNING_KEY,
+            build_identity=BUILD_IDENTITY,
+            producer_uid=os.getuid(),
+            producer_gid=os.getgid(),
+        )
+        for _ in range(3)
+    ]
+    assert any(outcomes) and (valid / 'complete').is_file()
+    assert sum((tmp_path / f'preserved-{index:04d}' / 'complete').is_file() for index in range(272)) == 272
+    service._reset_scan_cursor()
+
+
+def test_cursor_handles_new_arrival_deleted_entries_eof_restart_and_fd_cleanup(
+    monkeypatch, tmp_path
+):
+    service._reset_scan_cursor()
+    baseline_fds = len(os.listdir('/proc/self/fd'))
+    preserved = [
+        _make_spool_job(tmp_path, f'blocked-{index:04d}', terminal=True)
+        for index in range(300)
+    ]
+    common = {
+        'key': SIGNING_KEY,
+        'build_identity': BUILD_IDENTITY,
+        'producer_uid': os.getuid(),
+        'producer_gid': os.getgid(),
+    }
+    assert service.serve_once(tmp_path, **common) is False
+    for job in preserved:
+        __import__('shutil').rmtree(job)
+    first = _make_spool_job(tmp_path, 'new-after-delete')
+    monkeypatch.setattr(service, 'inspect_request', lambda *_a, **_k: ({'ok': True}, b'p'))
+    assert any(service.serve_once(tmp_path, **common) for _ in range(4))
+    assert (first / 'complete').is_file()
+
+    # EOF closes the cursor; an arrival after EOF is visible on the next poll.
+    assert service.serve_once(tmp_path, **common) is False
+    second = _make_spool_job(tmp_path, 'new-after-eof')
+    assert service.serve_once(tmp_path, **common) is True
+    assert (second / 'complete').is_file()
+
+    # Process restart discards cursor state without touching spool contents.
+    service._reset_scan_cursor()
+    third = _make_spool_job(tmp_path, 'new-after-restart')
+    assert service.serve_once(tmp_path, **common) is True
+    assert (third / 'complete').is_file()
+    service._reset_scan_cursor()
+    assert len(os.listdir('/proc/self/fd')) <= baseline_fds + 1
 
 
 def test_service_main_refuses_missing_process_and_attestation_guards(monkeypatch):
@@ -626,6 +849,10 @@ def test_service_main_refuses_missing_process_and_attestation_guards(monkeypatch
     monkeypatch.setenv('MEDIA_INSPECTOR_SIGNING_KEY', base64.urlsafe_b64encode(b'k' * 32).decode())
     monkeypatch.delenv('MEDIA_INSPECTOR_BUILD_IDENTITY', raising=False)
     assert service.main() == 72
+    monkeypatch.setenv('MEDIA_INSPECTOR_BUILD_IDENTITY', BUILD_IDENTITY)
+    monkeypatch.setattr(service, '_scanner_health', lambda: {'engine': 'clamav'})
+    monkeypatch.delenv('MEDIA_INSPECTOR_SPOOL_PRODUCER_UID', raising=False)
+    assert service.main() == 74
 
 
 def test_service_healthcheck_requires_amd64_and_fresh_scanner(monkeypatch):
@@ -654,6 +881,7 @@ def test_main_worker_has_no_decoder_import_and_manifests_isolate_service():
     for name in ('local.docker.yml', 'development.docker.yml'):
         manifest = yaml.safe_load((root / name).read_text())
         inspector = manifest['services']['media-inspector']
+        spool_init = manifest['services']['media-inspector-spool-init']
         updater = manifest['services']['clamav']
         assert updater['image'] == (
             'clamav/clamav@sha256:'
@@ -693,6 +921,7 @@ def test_main_worker_has_no_decoder_import_and_manifests_isolate_service():
             in updater['volumes']
         )
         assert inspector['network_mode'] == 'none' and inspector['read_only'] is True
+        assert inspector['group_add'] == ['1000']
         assert inspector['platform'] == 'linux/amd64'
         assert inspector['pid'] == 'private' and inspector['ipc'] == 'private'
         assert (
@@ -709,6 +938,21 @@ def test_main_worker_has_no_decoder_import_and_manifests_isolate_service():
             '--healthcheck',
         ]
         env = '\n'.join(inspector['environment'])
+        assert 'MEDIA_INSPECTOR_SPOOL_PRODUCER_UID=1000' in inspector['environment']
+        assert 'MEDIA_INSPECTOR_SPOOL_PRODUCER_GID=1000' in inspector['environment']
+        assert spool_init['network_mode'] == 'none' and spool_init['read_only'] is True
+        assert spool_init['user'] == '0:0'
+        assert spool_init['entrypoint'] == ['/usr/bin/python']
+        assert spool_init['command'] == ['/app/api/scripts/media_inspector_spool_init.py']
+        assert spool_init['cap_drop'] == ['ALL'] and spool_init['cap_add'] == ['CHOWN']
+        assert spool_init['pids_limit'] == 8 and spool_init['mem_limit'] == '32m'
+        assert spool_init['restart'] == 'no'
+        assert inspector['depends_on']['media-inspector-spool-init']['condition'] == (
+            'service_completed_successfully'
+        )
+        assert manifest['services']['celery-worker']['depends_on'][
+            'media-inspector-spool-init'
+        ]['condition'] == 'service_completed_successfully'
         assert all(
             secret not in env
             for secret in (
@@ -719,6 +963,7 @@ def test_main_worker_has_no_decoder_import_and_manifests_isolate_service():
             )
         )
         worker = manifest['services']['celery-worker']
+        assert worker['profiles'] == ['celery']
         assert 'media_inspector_spool:/var/lib/base2/media-inspector' in worker['volumes']
         worker_env = '\n'.join(worker['environment'])
         assert 'MEDIA_INSPECTOR_VERIFY_KEY=' in worker_env
@@ -733,6 +978,8 @@ def test_inspector_image_ships_fixed_scanner_and_ffprobe():
     assert '28d6efc5b4423e7830c3559339552eb53870a9eac51ac4efb37d60530d329886' in dockerfile
     assert 'mwader/static-ffmpeg@sha256:54e55b0c' in dockerfile
     assert 'USER root' in dockerfile
+    assert 'ENTRYPOINT ["/usr/bin/python"]' in dockerfile
+    assert 'CMD ["-m", "api.services.media_inspector_service"]' in dockerfile
     assert 'python@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6 AS privilege-runtime' in dockerfile
     assert 'FROM --platform=linux/amd64 clamav/clamav@sha256:1fdfd24c6f0a0fb60788481487459a6d4eda8a9b448641594e04db8410d34422 AS clamav-definitions' in dockerfile
     assert 'cgr.dev/chainguard/python@sha256:c23539f' in dockerfile

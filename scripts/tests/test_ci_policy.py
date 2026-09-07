@@ -128,6 +128,7 @@ class CiPolicyTests(unittest.TestCase):
         self.assertIn("--cap-drop ALL", workflow)
         self.assertIn("--security-opt no-new-privileges", workflow)
         self.assertIn("media_inspector_container_acceptance.py", workflow)
+        self.assertIn("media_inspector_two_uid_container_acceptance.sh", workflow)
         self.assertIn("media-inspector-sbom.cdx.json", workflow)
         self.assertIn("media-inspector-grype.normalized.json", workflow)
 
