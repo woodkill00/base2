@@ -179,7 +179,7 @@ class CiPolicyTests(unittest.TestCase):
         self.assertIn('reject_timeout "$health_status"', updater_acceptance)
         self.assertIn('bounded cleanup will now remove the exact container and volume', updater_acceptance)
         self.assertNotIn("$(docker exec", updater_acceptance)
-        self.assertIn("--memory 512m", updater_acceptance)
+        self.assertIn("--memory 1024m", updater_acceptance)
         self.assertIn('--reference-epoch "$reference_epoch"', updater_acceptance)
         self.assertIn('fixedReferenceClock', updater_acceptance)
         self.assertIn('docker_call logs "$container" >&2 || true', updater_acceptance)
