@@ -427,6 +427,17 @@ prove unknown defects impossible.
     dialog. A deferred-promise regression covers double activation, Escape,
     settlement, focus, and announcement. The exact visual-review manifest is
     then rebound to the committed UI source after the full matrix passes.
+57. Re-review found native `disabled` removed the focused confirmation button
+    from Chromium's focus order while a slow request was pending, leaving the
+    nested modal with no focusable descendant. It also found that a failed
+    attempt used the outer detail error and could survive a successful retry.
+    B091 retains focusable buttons with truthful `aria-disabled` state while
+    synchronous guards reject activation and dismissal, scopes transition
+    failure to the alert dialog, and clears it before retry. A deferred browser
+    route now holds the request while focus containment, Escape resistance,
+    Axe results, and the pending visual are checked before settlement; a unit
+    regression proves failure, guard release, successful retry, and removal of
+    contradictory error copy.
 
 ## Honest residual boundary
 

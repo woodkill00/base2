@@ -107,6 +107,7 @@ export default function MediaLibrary() {
   const [collectionId, setCollectionId] = useState('');
   const [confirmationTarget, setConfirmationTarget] = useState('');
   const [detailTransitionPending, setDetailTransitionPending] = useState(false);
+  const [detailTransitionError, setDetailTransitionError] = useState('');
   const [bulkReview, setBulkReview] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerStatus, setPickerStatus] = useState('');
@@ -416,6 +417,7 @@ export default function MediaLibrary() {
 
   const prepareDetailTransition = async (target) => {
     confirmationOpener.current = document.activeElement;
+    setDetailTransitionError('');
     const consequence = await loadPreview();
     if (!consequence || !consequence.allowed) {
       setDetailError('The requested action remains blocked by its consequence review.');
@@ -506,6 +508,7 @@ export default function MediaLibrary() {
     if (!target || detailTransitionRunning.current) return;
     detailTransitionRunning.current = true;
     setDetailTransitionPending(true);
+    setDetailTransitionError('');
     try {
       const result = await mediaLibraryAPI.transition(
         activeAsset.id, activeAsset.version, target,
@@ -517,7 +520,7 @@ export default function MediaLibrary() {
       setPreview(null);
       setActionStatus(`${statusLabel(target)} completed.`);
     } catch (caught) {
-      setDetailError('The action was blocked or conflicted. No unsafe change was made.');
+      setDetailTransitionError('The action was blocked or conflicted. No unsafe change was made.');
     } finally {
       detailTransitionRunning.current = false;
       setDetailTransitionPending(false);
@@ -785,6 +788,7 @@ export default function MediaLibrary() {
                   className="media-confirmation"
                   role="alertdialog"
                   aria-modal="true"
+                  aria-busy={detailTransitionPending}
                   aria-label="Confirm media action"
                   onKeyDown={(event) => {
                     event.stopPropagation();
@@ -792,10 +796,11 @@ export default function MediaLibrary() {
                   }}
                 >
                   <p>Confirm {statusLabel(confirmationTarget)} for this exact asset and version. References and holds remain enforced by the server.</p>
-                  <button ref={confirmationButton} type="button" disabled={detailTransitionPending} onClick={confirmDetailTransition}>
+                  {detailTransitionError ? <p role="alert">{detailTransitionError}</p> : null}
+                  <button ref={confirmationButton} type="button" aria-disabled={detailTransitionPending} onClick={confirmDetailTransition}>
                     {detailTransitionPending ? 'Applying action…' : 'Confirm action'}
                   </button>
-                  <button type="button" disabled={detailTransitionPending} onClick={cancelDetailTransition}>Cancel</button>
+                  <button type="button" aria-disabled={detailTransitionPending} onClick={cancelDetailTransition}>Cancel</button>
                 </div> : null}
               </section>
               <section aria-labelledby="history-heading">

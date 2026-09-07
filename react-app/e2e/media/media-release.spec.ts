@@ -102,13 +102,36 @@ test('media detail preserves safe preview usage and consequence context', async 
     id: item.id,
     nodes: item.nodes.map((node) => ({ target: node.target, summary: node.failureSummary })),
   }))).toEqual([]);
+  let releaseLifecycle!: () => void;
+  const lifecycleRelease = new Promise<void>((resolve) => { releaseLifecycle = resolve; });
+  await page.route('**/api/media/v1/assets/*/lifecycle', async (route) => {
+    await lifecycleRelease;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ status: 'soft_deleted', version: 2 }),
+    });
+  });
   await prepareDeletion.click();
   await dialog.evaluate((node) => { node.scrollTop = node.scrollHeight; });
+  await confirmation.getByRole('button', { name: 'Confirm action' }).click();
+  const applying = confirmation.getByRole('button', { name: 'Applying action…' });
+  await expect(applying).toHaveAttribute('aria-disabled', 'true');
+  await expect(applying).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(confirmation).toBeVisible();
+  await expect(applying).toBeFocused();
+  const pendingViolations = await page.evaluate(async () => (await window.axe.run(document)).violations);
+  expect(pendingViolations.map((item) => ({
+    id: item.id,
+    nodes: item.nodes.map((node) => ({ target: node.target, summary: node.failureSummary })),
+  }))).toEqual([]);
   await expect(dialog).toHaveScreenshot(`media-detail-${testInfo.project.name}.png`, {
     animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.01,
   });
-  await confirmation.getByRole('button', { name: 'Confirm action' }).click();
+  releaseLifecycle();
   await expect(dialog.getByRole('heading', { name: 'Archive and deletion safety' })).toBeFocused();
+  await expect(dialog.getByRole('status')).toContainText('soft deleted completed.');
 });
 
 test('media picker is visually and keyboard contained in a real workflow', async ({ page }, testInfo) => {

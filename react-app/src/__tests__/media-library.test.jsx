@@ -381,12 +381,33 @@ it('single-owns a pending destructive transition and blocks dismissal until comp
   fireEvent.keyDown(confirmation, { key: 'Escape' });
   expect(mediaLibraryAPI.transition).toHaveBeenCalledTimes(1);
   expect(screen.getByRole('alertdialog', { name: 'Confirm media action' })).toBeInTheDocument();
-  expect(within(confirmation).getByRole('button', { name: 'Applying action…' })).toBeDisabled();
-  expect(within(confirmation).getByRole('button', { name: 'Cancel' })).toBeDisabled();
+  expect(within(confirmation).getByRole('button', { name: 'Applying action…' })).toHaveAttribute('aria-disabled', 'true');
+  expect(within(confirmation).getByRole('button', { name: 'Applying action…' })).toHaveFocus();
+  expect(within(confirmation).getByRole('button', { name: 'Cancel' })).toHaveAttribute('aria-disabled', 'true');
   await act(async () => resolveTransition({ status: 'soft_deleted', version: 2 }));
   await waitFor(() => expect(screen.queryByRole('alertdialog', { name: 'Confirm media action' })).not.toBeInTheDocument());
   expect(screen.getByRole('heading', { name: 'Archive and deletion safety' })).toHaveFocus();
   expect(within(screen.getByRole('dialog', { name: 'safe.png' })).getByRole('status')).toHaveTextContent('soft deleted completed.');
+});
+
+it('keeps transition failure in its confirmation and clears it on successful retry', async () => {
+  mediaLibraryAPI.transition
+    .mockRejectedValueOnce(new Error('bounded failure'))
+    .mockResolvedValueOnce({ status: 'soft_deleted', version: 2 });
+  renderPage();
+  fireEvent.click(await screen.findByRole('button', { name: 'View details' }));
+  const prepareDeletion = screen.getByRole('button', { name: 'Prepare deletion' });
+  await waitFor(() => expect(prepareDeletion).toBeEnabled());
+  fireEvent.click(prepareDeletion);
+  const confirmation = await screen.findByRole('alertdialog', { name: 'Confirm media action' });
+  fireEvent.click(within(confirmation).getByRole('button', { name: 'Confirm action' }));
+  expect(await within(confirmation).findByRole('alert')).toHaveTextContent('No unsafe change was made.');
+  expect(within(confirmation).getByRole('button', { name: 'Confirm action' })).toHaveAttribute('aria-disabled', 'false');
+  fireEvent.click(within(confirmation).getByRole('button', { name: 'Confirm action' }));
+  await waitFor(() => expect(screen.queryByRole('alertdialog', { name: 'Confirm media action' })).not.toBeInTheDocument());
+  expect(screen.queryByText('No unsafe change was made.')).not.toBeInTheDocument();
+  expect(within(screen.getByRole('dialog', { name: 'safe.png' })).getByRole('status')).toHaveTextContent('soft deleted completed.');
+  expect(mediaLibraryAPI.transition).toHaveBeenCalledTimes(2);
 });
 
 it('adds exact selected assets to a permitted collection with truthful counts', async () => {
