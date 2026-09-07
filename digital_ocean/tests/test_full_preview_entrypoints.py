@@ -271,6 +271,13 @@ def test_remote_bootstrap_failure_retains_only_bounded_redacted_diagnostics(tmp_
     assert "full-preview-stage-failed:docker-start exit=1" in noisy
     assert len(noisy) <= 2000
 
+    terminal = safe_diagnostic(
+        "\n".join(f"build output {index}" for index in range(100)),
+        "compose startup failed safely",
+    )
+    assert "compose startup failed safely" in terminal
+    assert "build output 88" not in terminal
+
 
 def test_remote_bootstrap_uses_bounded_size_appropriate_transfer_timeouts(tmp_path):
     operator = private_file(tmp_path / "operator", "owner:$apr1$abc$hash")
