@@ -98,7 +98,7 @@ def inspect_media_via_spool(
     observed_at: datetime,
     spool_root: str | None = None,
     encoded_verify_key: str | None = None,
-    timeout_seconds: float = 55.0,
+    timeout_seconds: float = 90.0,
 ) -> VerifiedInspection:
     if (
         not isinstance(content, bytes)
@@ -110,7 +110,7 @@ def inspect_media_via_spool(
         not isinstance(object_version, int)
         or isinstance(object_version, bool)
         or object_version < 1
-        or not 1 <= timeout_seconds <= 60
+        or not 1 <= timeout_seconds <= 120
     ):
         raise MediaInspectorClientError('media_inspector_request_invalid')
     root_value = (

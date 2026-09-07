@@ -343,6 +343,7 @@ def test_spool_client_rejection_timeout_and_request_guards(monkeypatch, tmp_path
         ({'expected_sha256': '0' * 64}, 'integrity_failed'),
         ({'object_version': True}, 'request_invalid'),
         ({'timeout_seconds': 0}, 'request_invalid'),
+        ({'timeout_seconds': 121}, 'request_invalid'),
         ({'spool_root': 'relative'}, 'isolation_unavailable'),
     ):
         with pytest.raises(MediaInspectorClientError, match=error):
@@ -603,6 +604,17 @@ def test_scanner_decoder_and_health_protocols_are_strict():
         service._scan(
             b'x', run=lambda *_args, **_kwargs: subprocess.CompletedProcess([], 2, b'', b'')
         )
+
+    scan_call = {}
+
+    def capture_scan(*args, **kwargs):
+        scan_call['args'] = args
+        scan_call['kwargs'] = kwargs
+        return subprocess.CompletedProcess([], 0, b'stdin: OK\n', b'')
+
+    assert service._scan(b'x', run=capture_scan) == 'clean'
+    assert scan_call['kwargs']['timeout'] == 50
+    assert scan_call['kwargs']['scanner_memory'] is True
 
     decoded = {
         'decoderName': 'pillow',

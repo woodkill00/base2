@@ -79,7 +79,9 @@ app.conf.update(
         },
         'workspace-scan-quarantined-media': {
             'task': 'app.replay_workspace_media_scans',
-            'schedule': 60.0,
+            # Keep admission responsive while due_media_scans retains the
+            # durable lease, retry, and concurrency boundary.
+            'schedule': 15.0,
         },
         'media-process-exports': {
             'task': 'app.replay_media_exports',

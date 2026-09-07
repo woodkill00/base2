@@ -3,6 +3,14 @@ import pytest
 from api import tasks
 
 
+def test_media_scan_schedule_is_bounded_and_responsive():
+    entry = tasks.app.conf.beat_schedule['workspace-scan-quarantined-media']
+    assert entry == {
+        'task': 'app.replay_workspace_media_scans',
+        'schedule': 15.0,
+    }
+
+
 def test_workspace_index_replay_dispatches_only_discovered_fixed_arguments(monkeypatch):
     discovered = [('site-a', '00000000-0000-0000-0000-000000000104', 3)]
     delivered = []
