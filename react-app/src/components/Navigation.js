@@ -75,6 +75,11 @@ const Navigation = () => {
                   Media
                 </Link>
               ) : null}
+              {user?.permissions?.includes('operations.read') ? (
+                <Link to="/operations" className={linkClass('/operations')}>
+                  Operations
+                </Link>
+              ) : null}
               {accountsEnabled &&
               Array.isArray(user?.permissions) &&
               user.permissions.includes('audit.read') ? (

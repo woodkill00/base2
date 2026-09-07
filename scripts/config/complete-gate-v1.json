@@ -26,11 +26,52 @@
       "requiredTools": ["python3", "git"]
     },
     {
+      "id": "operations-domain-contract",
+      "command": [
+        "{python-django}",
+        "-m",
+        "pytest",
+        "django/tests/test_operations_domain_models.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 45,
+      "dependsOn": ["production-readiness-contract"],
+      "requiredTools": ["{python-django}"]
+    },
+    {
+      "id": "operations-api-contract",
+      "command": [
+        "{python-api}",
+        "-m",
+        "pytest",
+        "api/tests/test_operations_center_contract.py",
+        "api/tests/contract/test_operations_api_contract.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": ["operations-domain-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "operations-ui-contract",
+      "command": [
+        "bash",
+        "-lc",
+        "cd react-app && node node_modules/vitest/vitest.mjs run src/__tests__/operations-center.test.jsx --coverage=false --pool=threads --maxWorkers=1"
+      ],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": ["operations-api-contract"],
+      "requiredTools": ["bash", "node"]
+    },
+    {
       "id": "gate-runtime-recovery-contract",
       "command": ["python3", "-m", "unittest", "scripts.tests.test_gate_runtime_recovery"],
       "required": true,
       "timeoutSeconds": 30,
-      "dependsOn": ["production-readiness-contract"],
+      "dependsOn": ["operations-ui-contract"],
       "requiredTools": ["python3"]
     },
     {

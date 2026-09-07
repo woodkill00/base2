@@ -35,6 +35,9 @@ _ROLE_PERMISSIONS = {
             'media.read',
             'media.upload',
             'media.write',
+            'operations.manage',
+            'operations.read',
+            'operations.recover',
             'tenant.manage',
         }
     ),
@@ -61,6 +64,8 @@ _ROLE_PERMISSIONS = {
             'media.read',
             'media.upload',
             'media.write',
+            'operations.manage',
+            'operations.read',
         }
     ),
     'editor': frozenset(
