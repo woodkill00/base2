@@ -253,6 +253,14 @@ prove unknown defects impossible.
     broadcast, or direct container-peer boundary. Structural policy tests,
     rendered Compose validation, and the complete offline updater failure drill
     pass, completing B069 without changing inspector or application networking.
+35. The first exact-commit complete gate after B069 found one obsolete runtime
+    assertion that still required the updater to join `app_network` with its
+    former 3 GiB daemon allocation. B070 replaces that stale expectation with
+    the digest-pinned, non-root, capability-dropped, read-only, 256 MiB
+    updater-only egress contract. This was a useful fail-closed test-contract
+    finding; no production code path failed. The same gate also recovered one
+    host Python/coverage segmentation fault on its bounded retry, which remains
+    recorded separately from the deterministic assertion failure.
 
 ## Honest residual boundary
 

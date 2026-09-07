@@ -69,3 +69,4 @@
 - [x] B067 Replace file-presence updater health with exact foreground liveness, cryptographically verified definition freshness/advancement, and bounded writable-volume lifecycle proof.
 - [x] B068 Adversarially prove every dropped parser child is denied the supervisor environment, process memory, and signing-material filesystem paths.
 - [x] B069 Isolate the definitions updater on a dedicated outbound-only network with no application peers and enforce the topology in both runtime profiles.
+- [x] B070 Reconcile the legacy scanner-runtime contract with the dedicated updater-only network and hardened resource boundary exposed by the exact complete gate.
