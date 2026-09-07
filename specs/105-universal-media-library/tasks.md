@@ -91,3 +91,4 @@
 - [x] B089 Keep historical acceptance monkeypatches type-safe and restore nested-confirmation focus only after React has committed the alert-dialog removal, with focused type, unit, and repeated visual-profile proof.
 - [x] B090 Single-own each destructive detail transition, prevent dismissal and repeat activation while it is pending, announce completion inside the active dialog, and rebind the reviewed 24-screenshot visual proof to the exact changed UI source.
 - [x] B091 Keep a pending confirmation focusable with guarded aria-disabled controls, scope failure feedback to that modal and clear it on retry, and capture the deferred pending state in real-browser accessibility and visual evidence.
+- [x] B092 Resolve the hosted Ruff/mypy test-harness rule conflict explicitly and add API Ruff to the required local complete gate so the same hosted-only drift cannot recur silently.

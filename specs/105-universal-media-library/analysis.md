@@ -438,6 +438,13 @@ prove unknown defects impossible.
     Axe results, and the pending visual are checked before settlement; a unit
     regression proves failure, guard release, successful retry, and removal of
     contradictory error copy.
+58. Both hosted backend variants then rejected the B089 test-only `setattr`
+    calls under Ruff B010 even though strict mypy required their dynamic typing.
+    B092 documents the intentional test-module patch at each exact call site,
+    retaining mypy safety without weakening B010 repository-wide. It also adds
+    the same required `ruff check api` command to the local complete gate and
+    surface-drift lock, closing the local/hosted parity gap that allowed the
+    failure to appear only after publication.
 
 ## Honest residual boundary
 

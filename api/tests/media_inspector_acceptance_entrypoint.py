@@ -45,8 +45,8 @@ def main() -> int:
             return 73
         return 0
 
-    setattr(service, "_scanner_health", referenced_health)
-    setattr(service, "inspect_request", referenced_inspect)
+    setattr(service, "_scanner_health", referenced_health)  # noqa: B010 - test-only module patch
+    setattr(service, "inspect_request", referenced_inspect)  # noqa: B010 - test-only module patch
     sys.argv = [sys.argv[0]]
     return service.main()
 

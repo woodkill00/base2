@@ -26,6 +26,14 @@
       "requiredTools": ["{python-api}"]
     },
     {
+      "id": "api-lint",
+      "command": ["{python-api}", "-m", "ruff", "check", "api"],
+      "required": true,
+      "timeoutSeconds": 120,
+      "dependsOn": ["feature-093-plan"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
       "id": "surface-drift-contract",
       "command": ["python3", "scripts/python/validate_surface_drift.py"],
       "required": true,

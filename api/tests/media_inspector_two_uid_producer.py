@@ -37,7 +37,7 @@ class AcceptanceDateTime(datetime):
         return REFERENCE_NOW if tz is not None else REFERENCE_NOW.replace(tzinfo=None)
 
 
-setattr(inspector_client, "datetime", AcceptanceDateTime)
+setattr(inspector_client, "datetime", AcceptanceDateTime)  # noqa: B010 - test-only clock
 
 
 def _write(path: Path, content: bytes) -> None:

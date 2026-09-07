@@ -152,7 +152,7 @@ def main() -> int:
 
     # This process is the networkless historical-image acceptance only. The
     # production client module and runtime profiles retain their real clock.
-    setattr(inspector_client, "datetime", AcceptanceDateTime)
+    setattr(inspector_client, "datetime", AcceptanceDateTime)  # noqa: B010 - test-only clock
     health = _scanner_health(now=lambda: reference_now)
     assert health['engine'] == 'clamav' and health['version'] == '1.5.4'
     assert health['definitionsVersion'].isdigit() and health['definitionsAt'].endswith('Z')
