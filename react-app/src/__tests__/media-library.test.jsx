@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import { MemoryRouter } from 'react-router-dom';
 import MediaLibrary from '../pages/MediaLibrary';
@@ -361,6 +361,32 @@ it('requires an explicit consequence-aware confirmation before deletion', async 
     'asset-1', 1, 'soft_deleted', 'media-soft_deleted-asset-1-1'
   ));
   await waitFor(() => expect(screen.getByRole('heading', { name: 'Archive and deletion safety' })).toHaveFocus());
+  expect(within(screen.getByRole('dialog', { name: 'safe.png' })).getByRole('status')).toHaveTextContent('soft deleted completed.');
+});
+
+it('single-owns a pending destructive transition and blocks dismissal until completion', async () => {
+  let resolveTransition;
+  mediaLibraryAPI.transition.mockImplementationOnce(() => new Promise((resolve) => {
+    resolveTransition = resolve;
+  }));
+  renderPage();
+  fireEvent.click(await screen.findByRole('button', { name: 'View details' }));
+  const prepareDeletion = screen.getByRole('button', { name: 'Prepare deletion' });
+  await waitFor(() => expect(prepareDeletion).toBeEnabled());
+  fireEvent.click(prepareDeletion);
+  const confirmation = await screen.findByRole('alertdialog', { name: 'Confirm media action' });
+  const confirm = within(confirmation).getByRole('button', { name: 'Confirm action' });
+  fireEvent.click(confirm);
+  fireEvent.click(confirm);
+  fireEvent.keyDown(confirmation, { key: 'Escape' });
+  expect(mediaLibraryAPI.transition).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole('alertdialog', { name: 'Confirm media action' })).toBeInTheDocument();
+  expect(within(confirmation).getByRole('button', { name: 'Applying action…' })).toBeDisabled();
+  expect(within(confirmation).getByRole('button', { name: 'Cancel' })).toBeDisabled();
+  await act(async () => resolveTransition({ status: 'soft_deleted', version: 2 }));
+  await waitFor(() => expect(screen.queryByRole('alertdialog', { name: 'Confirm media action' })).not.toBeInTheDocument());
+  expect(screen.getByRole('heading', { name: 'Archive and deletion safety' })).toHaveFocus();
+  expect(within(screen.getByRole('dialog', { name: 'safe.png' })).getByRole('status')).toHaveTextContent('soft deleted completed.');
 });
 
 it('adds exact selected assets to a permitted collection with truthful counts', async () => {

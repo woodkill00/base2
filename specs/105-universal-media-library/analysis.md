@@ -416,6 +416,17 @@ prove unknown defects impossible.
     state commit, avoiding an animation-frame race with modal teardown. Focused
     type checking, unit coverage, and repeated light-profile browser execution
     prove both corrections before another exact-head complete gate.
+56. Independent UX review of B089 found a deeper pending-operation edge: the
+    confirmation remained dismissible and repeat-activatable while its request
+    was unresolved, which could leave a stale focus-return flag and issue two
+    transitions. Its success status also lived outside the modal subtree and
+    was inert to assistive technology while asset detail remained open. B090
+    adds a synchronous single-owner guard plus visible pending state, disables
+    both confirmation controls and ignores Escape until the bounded request
+    settles, and renders the completion live region inside the active detail
+    dialog. A deferred-promise regression covers double activation, Escape,
+    settlement, focus, and announcement. The exact visual-review manifest is
+    then rebound to the committed UI source after the full matrix passes.
 
 ## Honest residual boundary
 

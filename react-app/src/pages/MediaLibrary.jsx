@@ -80,6 +80,7 @@ export default function MediaLibrary() {
   const confirmationOpener = useRef(null);
   const consequenceHeading = useRef(null);
   const confirmationSuccessFocus = useRef(false);
+  const detailTransitionRunning = useRef(false);
   const detailRequest = useRef({ generation: 0, controller: null });
   const pickerOpener = useRef(null);
   const [capabilities, setCapabilities] = useState(null);
@@ -105,6 +106,7 @@ export default function MediaLibrary() {
   const [collections, setCollections] = useState([]);
   const [collectionId, setCollectionId] = useState('');
   const [confirmationTarget, setConfirmationTarget] = useState('');
+  const [detailTransitionPending, setDetailTransitionPending] = useState(false);
   const [bulkReview, setBulkReview] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerStatus, setPickerStatus] = useState('');
@@ -423,6 +425,7 @@ export default function MediaLibrary() {
   };
 
   const cancelDetailTransition = () => {
+    if (detailTransitionRunning.current) return;
     setConfirmationTarget('');
     requestAnimationFrame(() => confirmationOpener.current?.focus());
   };
@@ -500,7 +503,9 @@ export default function MediaLibrary() {
 
   const confirmDetailTransition = async () => {
     const target = confirmationTarget;
-    if (!target) return;
+    if (!target || detailTransitionRunning.current) return;
+    detailTransitionRunning.current = true;
+    setDetailTransitionPending(true);
     try {
       const result = await mediaLibraryAPI.transition(
         activeAsset.id, activeAsset.version, target,
@@ -513,6 +518,9 @@ export default function MediaLibrary() {
       setActionStatus(`${statusLabel(target)} completed.`);
     } catch (caught) {
       setDetailError('The action was blocked or conflicted. No unsafe change was made.');
+    } finally {
+      detailTransitionRunning.current = false;
+      setDetailTransitionPending(false);
     }
   };
 
@@ -619,7 +627,7 @@ export default function MediaLibrary() {
             <button type="button" onClick={() => setBulkReview(null)}>Cancel bulk action</button>
           </section>
         ) : null}
-        {actionStatus ? <p className="media-action-status media-ltr-copy" lang="en" dir="ltr" role="status">{actionStatus}</p> : null}
+        {actionStatus && !activeAsset ? <p className="media-action-status media-ltr-copy" lang="en" dir="ltr" role="status">{actionStatus}</p> : null}
 
         {uploadQueue.length ? (
           <section className="media-upload-queue" aria-labelledby="upload-heading">
@@ -784,8 +792,10 @@ export default function MediaLibrary() {
                   }}
                 >
                   <p>Confirm {statusLabel(confirmationTarget)} for this exact asset and version. References and holds remain enforced by the server.</p>
-                  <button ref={confirmationButton} type="button" onClick={confirmDetailTransition}>Confirm action</button>
-                  <button type="button" onClick={cancelDetailTransition}>Cancel</button>
+                  <button ref={confirmationButton} type="button" disabled={detailTransitionPending} onClick={confirmDetailTransition}>
+                    {detailTransitionPending ? 'Applying action…' : 'Confirm action'}
+                  </button>
+                  <button type="button" disabled={detailTransitionPending} onClick={cancelDetailTransition}>Cancel</button>
                 </div> : null}
               </section>
               <section aria-labelledby="history-heading">
@@ -794,6 +804,7 @@ export default function MediaLibrary() {
                   <li key={`${item.revision}-${item.locale}`}>Revision {item.revision} · {item.locale} · {item.actorRef}</li>
                 ))}</ol> : <p>No prior metadata revisions.</p>}
               </section>
+              {actionStatus ? <p className="media-action-status media-ltr-copy" lang="en" dir="ltr" role="status">{actionStatus}</p> : null}
               {detailError ? <p role="alert">{detailError}</p> : null}
             </section>
           </div>
