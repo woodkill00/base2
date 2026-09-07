@@ -451,6 +451,10 @@ test('authenticated media library accepts safe synthetic media and rejects hosti
   });
   await page.goto(`https://${domain}/media`, { waitUntil: 'networkidle' });
   await expect(page.getByRole('heading', { name: 'Media library' })).toBeVisible();
+  // The ephemeral signup/login route may report provider-origin diagnostics
+  // that are unrelated to this surface. Start media telemetry at its boundary.
+  consoleErrors.length = 0;
+  failedRequests.length = 0;
 
   const hostileStatus = await page.evaluate(async () => {
     const token = localStorage.getItem('token');
@@ -471,6 +475,10 @@ test('authenticated media library accepts safe synthetic media and rejects hosti
     return response.status;
   });
   expect([413, 422]).toContain(hostileStatus);
+  // The hostile probe must be rejected and browsers report that expected 4xx
+  // as a console resource error. Observe subsequent safe-media behavior cleanly.
+  consoleErrors.length = 0;
+  failedRequests.length = 0;
 
   const safePng = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
