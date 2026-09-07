@@ -475,12 +475,13 @@ test('authenticated media library accepts safe synthetic media and rejects hosti
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
     'base64'
   );
+  const safeFilename = `feature-105-live-safe-${Date.now()}.png`;
   await page.getByLabel('Choose media files').setInputFiles({
-    name: 'feature-105-live-safe.png',
+    name: safeFilename,
     mimeType: 'image/png',
     buffer: safePng,
   });
-  const queue = page.locator('.media-upload-item').filter({ hasText: 'feature-105-live-safe.png' });
+  const queue = page.locator('.media-upload-item').filter({ hasText: safeFilename });
   await expect(queue).toContainText('quarantined', { timeout: 30_000 });
 
   await expect
@@ -488,16 +489,16 @@ test('authenticated media library accepts safe synthetic media and rejects hosti
       async () => {
         await page.reload({ waitUntil: 'networkidle' });
         const card = page.locator('.media-asset-card').filter({
-          hasText: 'feature-105-live-safe.png',
+          hasText: safeFilename,
         });
         return (await card.first().textContent()) || '';
       },
-      { message: 'synthetic media did not reach a terminal worker state', timeout: 90_000 }
+      { message: 'synthetic media did not reach a terminal worker state', timeout: 150_000 }
     )
     .toMatch(/ready|failed/);
   const safeCard = page
     .locator('.media-asset-card')
-    .filter({ hasText: 'feature-105-live-safe.png' });
+    .filter({ hasText: safeFilename });
   await expect(safeCard).toContainText('ready');
 
   await page.evaluate(axeSource);

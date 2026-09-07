@@ -177,7 +177,9 @@ def _scan(
             '-',
         ],
         content=content,
-        timeout=25,
+        # Loading the signed ClamAV database is deliberately bounded but can
+        # take around 40 seconds on the fixed low-cost preview profile.
+        timeout=50,
         maximum_output=4096,
         scanner_memory=True,
     )

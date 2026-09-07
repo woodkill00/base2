@@ -57,6 +57,30 @@ fi
 stage="docker-start"
 systemctl enable --now docker >/dev/null
 
+# The fixed 2 GiB preview profile intentionally keeps provider cost low, while
+# the isolated ClamAV process may briefly need close to 1 GiB in addition to the
+# application stack.  Give only this disposable host bounded encrypted-at-rest
+# backing storage so the kernel does not kill a scanner process under that
+# transient peak.  The file disappears with the lease-owned droplet and is not
+# made persistent across boots.
+stage="swap-admission"
+swap_file="/swapfile"
+if [[ -e "$swap_file" ]]; then
+  [[ -f "$swap_file" && ! -L "$swap_file" ]] || fail_stage 4
+else
+  fallocate -l 2G "$swap_file"
+fi
+chown root:root "$swap_file"
+chmod 600 "$swap_file"
+swap_size="$(stat -c '%s' "$swap_file")"
+[[ "$swap_size" -eq 2147483648 ]] || fail_stage 4
+if ! swapon --noheadings --show=NAME | grep -Fxq "$swap_file"; then
+  mkswap "$swap_file" >/dev/null
+  swapon "$swap_file"
+fi
+swapon --noheadings --show=NAME | grep -Fxq "$swap_file" || fail_stage 4
+unset swap_file swap_size
+
 stage="env-render"
 (
   cd "$repo_root"

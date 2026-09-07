@@ -30,6 +30,7 @@ def test_remote_bootstrap_identifies_every_silent_failure_stage_without_values()
         "cloud-init-wait",
         "docker-install",
         "docker-start",
+        "swap-admission",
         "env-render",
         "acme-bootstrap",
         "compose-build",
@@ -77,6 +78,12 @@ def test_media_enabled_preview_builds_and_starts_isolated_inspector_with_image_i
     assert "'{{.State.OOMKilled}}'" in script
     assert '[[ "$clamav_state" == "running" && "$clamav_health" == "healthy" && "$clamav_oom" == "false" ]]' in script
     assert script.index('stage="clamav-warmup"') < script.index('stage="compose-up"')
+    assert 'swap_file="/swapfile"' in script
+    assert 'fallocate -l 2G "$swap_file"' in script
+    assert 'chmod 600 "$swap_file"' in script
+    assert '[[ "$swap_size" -eq 2147483648 ]]' in script
+    assert 'swapon "$swap_file"' in script
+    assert script.index('stage="swap-admission"') < script.index('stage="compose-build"')
     for key in (
         'MEDIA_INSPECTOR_SIGNING_KEY=',
         'MEDIA_INSPECTOR_VERIFY_KEY=',
