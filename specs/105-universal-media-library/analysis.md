@@ -445,12 +445,23 @@ prove unknown defects impossible.
     the same required `ruff check api` command to the local complete gate and
     surface-drift lock, closing the local/hosted parity gap that allowed the
     failure to appear only after publication.
+59. Exact head `179edae87bab393d504e7df45ad3898f3424939f`
+    passed the expanded 90-check complete gate with an empty failed list and
+    then passed 100 consecutive critical media repetitions. Independent code,
+    security, and UX reviews each reported C0/H0/M0/L0. Both hosted trigger
+    variants passed API, Django, PostgreSQL integration, contract, E2E,
+    frontend, smoke, repository, audit, license, leak, static-analysis,
+    supply-chain, and production-image SBOM/vulnerability jobs. The two SBOM
+    jobs completed in 3m49s and 4m06s, proving the immutable acceptance clock
+    no longer expires while the scanned production image excludes acceptance
+    helpers. This closes B020, B039, B040, B050, B060, and B066 without granting
+    merge, provider, DNS, certificate, deployment, teardown, or live authority.
 
 ## Honest residual boundary
 
 Repository evidence validates deterministic fakes, PostgreSQL RLS/migration
-behavior, browser accessibility and visual contracts, and zero-provider local
-gates. It does not establish hosted CI, independent review, live object-store or
-scanner behavior, provider deployment, cost controls, teardown, or empty live
-inventory. Those remain B019-B024 and require their separately approved source,
-merge, and provider boundaries.
+behavior, browser accessibility and visual contracts, isolated real scanner
+containers, hosted CI, independent review, and zero-provider local gates. It
+does not establish live object-store behavior, provider deployment, cost
+controls, teardown, or empty live inventory. Those remain B021-B024 and require
+their separately approved merge and provider boundaries.

@@ -19,7 +19,7 @@
 - [x] B017 Run all Base2 local gates and repeated critical suites.
 - [x] B018 Review exact diff, residual risks, and sanitized evidence inventory.
 - [x] B019 Obtain exact owner approval and publish one draft PR.
-- [ ] B020 Require hosted checks and independent review.
+- [x] B020 Require hosted checks and independent review.
 - [ ] B021 Obtain separate approval and merge exact reviewed head.
 - [ ] B022 Obtain separate provider approval for a bounded staging canary.
 - [ ] B023 Run live journeys, destroy exact resources, and prove empty inventory.
@@ -38,8 +38,8 @@
 - [x] B036 Integrate the reusable picker with empty/limit feedback and keyboard/return-focus proof.
 - [x] B037 Correct light-theme contrast and regenerate source-bound responsive, zoom, theme, detail, and picker visuals.
 - [x] B038 Upgrade React Router to a patched supported line and require zero frontend dependency audit findings.
-- [ ] B039 Run complete local, PostgreSQL, browser, type, security, coverage, and repeated critical regression gates.
-- [ ] B040 Repeat independent code, security, and UX review and close every critical, high, and medium finding.
+- [x] B039 Run complete local, PostgreSQL, browser, type, security, coverage, and repeated critical regression gates.
+- [x] B040 Repeat independent code, security, and UX review and close every critical, high, and medium finding.
 - [x] B041 Activate the isolated inspector in every Media-enabled runtime profile and provision a matched ephemeral signing/verification pair plus immutable image identity without exposing private key material.
 - [x] B042 Discover due governance tenants read-only, then perform every mutation and audit append in a separately tenant-bound transaction with real two-tenant PostgreSQL proof.
 - [x] B043 Replace legacy worker-bypass RLS on media assets and variants with tenant-bound mutation policies while retaining only the bounded global reads workers require.
@@ -49,7 +49,7 @@
 - [x] B047 Restore or deliberately move focus after every successful nested confirmation and cover both confirm and cancel paths.
 - [x] B048 Extend modal interaction and visual proof to compact, zoom, theme, RTL, and high-contrast projects without weakening deterministic source binding.
 - [x] B049 Pin every workflow to the official Node-24 checkout action and prove immutable-action, CI-policy, and surface-drift compliance.
-- [ ] B050 Repeat the exact-head complete gate, both hosted workflow variants, critical repetitions, and three independent zero-medium-or-higher reviews after all late findings are closed.
+- [x] B050 Repeat the exact-head complete gate, both hosted workflow variants, critical repetitions, and three independent zero-medium-or-higher reviews after all late findings are closed.
 - [x] B051 Make lifecycle transition idempotency reachable before stale-version rejection and prove exact replay plus changed-payload conflict behavior.
 - [x] B052 Add durable lease- and attempt-token-bound scan discovery so duplicate Celery delivery is a no-op and expired leases recover without consuming retry budget.
 - [x] B053 Preserve permanent inspector failure codes through a bounded no-follow marker read and prove infected media reaches rejected without transient rescans.
@@ -59,13 +59,13 @@
 - [x] B057 Preserve exact lifecycle replay after a later purge while keeping altered replay and every new purged-asset mutation fail-closed.
 - [x] B058 Enforce bounded per-user and per-tenant download rate/concurrency admission before whole-object read or decryption, including parallel grant-replay proof.
 - [x] B059 Enforce idempotent per-tenant export rate/outstanding quotas and fair tenant discovery so unique keys cannot exhaust the queue or starve another tenant.
-- [ ] B060 Build the inspector from immutable approved upstream inputs and include the resulting inspector image in SBOM, vulnerability, and CI-policy proof.
+- [x] B060 Build the inspector from immutable approved upstream inputs and include the resulting inspector image in SBOM, vulnerability, and CI-policy proof.
 - [x] B061 Digest-pin and least-privilege the isolated ClamAV definitions updater and verify its exact runtime identity and configuration.
 - [x] B062 Exercise the real supervisor main loop through the shared-spool client, verify its signed receipt, and prove the signing key is absent from every dropped child.
 - [x] B063 Make container health fail closed unless the scanner is usable and signed definitions are no more than 24 hours old, with startup ordering proof.
 - [x] B064 Remove mutable OS-package resolution from the inspector build and enforce an explicit fail-fast linux/amd64 contract across build and runtime.
 - [x] B065 Measure and enforce cgroup headroom above child limits, then accept representative PDF, audio, video, and a meaningful large payload while rejecting the exact oversized boundary before spooling.
-- [ ] B066 Repeat focused, compose, image E2E, type, lint, vulnerability, and independent-review gates before supply-chain or final-review closure.
+- [x] B066 Repeat focused, compose, image E2E, type, lint, vulnerability, and independent-review gates before supply-chain or final-review closure.
 - [x] B067 Replace file-presence updater health with exact foreground liveness, cryptographically verified definition freshness/advancement, and bounded writable-volume lifecycle proof.
 - [x] B068 Adversarially prove every dropped parser child is denied the supervisor environment, process memory, and signing-material filesystem paths.
 - [x] B069 Isolate the definitions updater on a dedicated outbound-only network with no application peers and enforce the topology in both runtime profiles.
