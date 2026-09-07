@@ -14,6 +14,7 @@ from pathlib import Path
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+from api.services import media_inspector_client as inspector_client
 from api.services.media_inspector_client import inspect_media_via_spool
 from api.services.media_inspector_receipt import verify_receipt
 from api.services.media_inspector_service import CLAIM_STALE_SECONDS
@@ -24,6 +25,19 @@ PNG = base64.b64decode(
 )
 EICAR = b'X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*'
 VERIFY_KEY = Ed25519PrivateKey.from_private_bytes(b'k' * 32).public_key()
+REFERENCE_EPOCH = os.getenv('MEDIA_INSPECTOR_ACCEPTANCE_REFERENCE_EPOCH', '')
+if not REFERENCE_EPOCH.isdigit() or str(int(REFERENCE_EPOCH)) != REFERENCE_EPOCH:
+    raise SystemExit('acceptance_reference_epoch_invalid')
+REFERENCE_NOW = datetime.fromtimestamp(int(REFERENCE_EPOCH), tz=UTC)
+
+
+class AcceptanceDateTime(datetime):
+    @classmethod
+    def now(cls, tz=None):
+        return REFERENCE_NOW if tz is not None else REFERENCE_NOW.replace(tzinfo=None)
+
+
+inspector_client.datetime = AcceptanceDateTime
 
 
 def _write(path: Path, content: bytes) -> None:
@@ -172,7 +186,7 @@ def main() -> int:
         media_type='image/png',
         asset_id=__import__('uuid').UUID(int=110),
         object_version=1,
-        observed_at=datetime.now(UTC),
+        observed_at=REFERENCE_NOW,
         spool_root=str(ROOT),
         encoded_verify_key=verify_key,
         timeout_seconds=30,
@@ -193,7 +207,7 @@ def main() -> int:
         expected_object_version=1,
         expected_source_sha256=hashlib.sha256(PNG).hexdigest(),
         expected_media_type='image/png',
-        now=datetime.now(UTC),
+        now=REFERENCE_NOW,
     )
 
     infected, terminal = _submit('manual-infected', EICAR)

@@ -5,6 +5,9 @@ readonly image="${MEDIA_INSPECTOR_TEST_IMAGE:-base2-media-inspector:two-uid}"
 readonly volume=base2-media-inspector-two-uid-spool
 readonly supervisor=base2-media-inspector-two-uid-supervisor
 signing_key="$(python3 -c "import base64; print(base64.urlsafe_b64encode(b'k'*32).decode())")"
+definition_date="$(docker run --rm --platform linux/amd64 --network none --read-only \
+  --entrypoint /usr/bin/clamscan "$image" --database=/var/lib/clamav --version | cut -d/ -f3-)"
+reference_epoch="$(( $(date -u -d "$definition_date" +%s) + 3600 ))"
 
 cleanup() {
   docker rm -f "$supervisor" >/dev/null 2>&1 || true
@@ -26,6 +29,7 @@ run_producer() {
   docker run --rm --platform linux/amd64 --network none --user 1000:1000 --read-only \
     --cap-drop ALL --security-opt no-new-privileges --pids-limit 8 --memory 256m --cpus 0.25 \
     --volume "$volume:/var/lib/base2/media-inspector" \
+    --env MEDIA_INSPECTOR_ACCEPTANCE_REFERENCE_EPOCH="$reference_epoch" \
     --entrypoint /usr/bin/python "$image" /app/api/tests/media_inspector_two_uid_producer.py "$@"
 }
 
@@ -41,7 +45,9 @@ start_supervisor() {
     --env MEDIA_INSPECTOR_SPOOL_ROOT=/var/lib/base2/media-inspector \
     --env MEDIA_INSPECTOR_SPOOL_PRODUCER_UID=1000 \
     --env MEDIA_INSPECTOR_SPOOL_PRODUCER_GID=1000 \
-    "$image" >/dev/null
+    --entrypoint /usr/bin/python \
+    "$image" /app/api/tests/media_inspector_acceptance_entrypoint.py \
+    --reference-epoch "$reference_epoch" >/dev/null
   sleep 1
   test "$(docker inspect "$supervisor" --format '{{.State.Running}}')" = true
 }

@@ -112,6 +112,21 @@ class CiPolicyTests(unittest.TestCase):
         self.assertEqual(5, len(hashes))
         self.assertTrue(all(len(line.rsplit(":", 1)[1]) == 64 for line in hashes))
         self.assertIn("docker build --platform linux/amd64", workflow)
+        self.assertIn("--target media-inspector-production", workflow)
+        self.assertIn("--target media-inspector-acceptance", workflow)
+        self.assertIn("base2-media-inspector:acceptance", workflow)
+        self.assertIn("Verify production inspector excludes acceptance code", workflow)
+        self.assertIn(
+            "Path('/app/api/tests/media_inspector_acceptance_entrypoint.py').exists()",
+            workflow,
+        )
+        self.assertIn("FROM media-inspector-production AS media-inspector-acceptance", dockerfile)
+        self.assertIn("FROM media-inspector-production AS media-inspector-final", dockerfile)
+        production_section = dockerfile.split(
+            "FROM media-inspector-production AS media-inspector-acceptance", 1
+        )[0]
+        self.assertNotIn("media_inspector_acceptance_entrypoint", production_section)
+        self.assertNotIn("media_inspector_container_acceptance", production_section)
         self.assertIn("Exercise hardened media inspector supervisor", workflow)
         self.assertIn("Exercise hardened ClamAV updater lifecycle", workflow)
         self.assertIn("bash api/tests/clamav_updater_container_acceptance.sh", workflow)
@@ -168,6 +183,18 @@ class CiPolicyTests(unittest.TestCase):
         self.assertIn('--reference-epoch "$reference_epoch"', updater_acceptance)
         self.assertIn('fixedReferenceClock', updater_acceptance)
         self.assertIn('docker_call logs "$container" >&2 || true', updater_acceptance)
+        inspector_acceptance = (
+            repo_root / "api/tests/media_inspector_container_acceptance.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("media_inspector_acceptance_entrypoint.py", inspector_acceptance)
+        self.assertIn("reference_now = definitions_at + timedelta(hours=1)", inspector_acceptance)
+        self.assertIn("observed_at=observed_at", inspector_acceptance)
+        production_profiles = "\n".join(
+            (repo_root / name).read_text(encoding="utf-8")
+            for name in ("local.docker.yml", "development.docker.yml")
+        )
+        self.assertNotIn("media_inspector_acceptance_entrypoint", production_profiles)
+        self.assertNotIn("--reference-epoch", production_profiles)
 
     def test_updater_acceptance_hung_docker_stays_inside_total_bounded_window(self):
         repo_root = MODULE_PATH.parents[2]

@@ -37,7 +37,7 @@ RUN printf '%s  %s\n' \
       '6d4aa01f219e988060fc419f495d07f27e0cdf1a2cccc065971da922c76f7ffb' \
       '/var/lib/clamav/bytecode.cvd' | sha256sum -c -
 
-FROM --platform=linux/amd64 cgr.dev/chainguard/python@sha256:1f37785e5cdb70151f36aaa15e1e3cef4571424dbefbf4b0d8a9222535cb13ff
+FROM --platform=linux/amd64 cgr.dev/chainguard/python@sha256:1f37785e5cdb70151f36aaa15e1e3cef4571424dbefbf4b0d8a9222535cb13ff AS media-inspector-production
 WORKDIR /app
 COPY --from=privilege-runtime /usr/bin/setpriv /usr/bin/setpriv
 COPY --from=privilege-runtime /lib/x86_64-linux-gnu/libcap-ng.so.0.0.0 /usr/lib/libcap-ng.so.0
@@ -54,8 +54,23 @@ COPY --from=definition-verifier /var/lib/clamav/main.cvd /var/lib/clamav/main.cv
 COPY --from=definition-verifier /var/lib/clamav/daily.cvd /var/lib/clamav/daily.cvd
 COPY --from=definition-verifier /var/lib/clamav/bytecode.cvd /var/lib/clamav/bytecode.cvd
 COPY --from=inspector-builder --chown=65532:65532 /tmp/vendor /app/vendor
-COPY --chown=65532:65532 . ./api
+COPY --chown=65532:65532 __init__.py ./api/__init__.py
+COPY --chown=65532:65532 services/media_inspector_client.py ./api/services/media_inspector_client.py
+COPY --chown=65532:65532 services/media_inspector_receipt.py ./api/services/media_inspector_receipt.py
+COPY --chown=65532:65532 services/media_inspector_runner.py ./api/services/media_inspector_runner.py
+COPY --chown=65532:65532 services/media_inspector_service.py ./api/services/media_inspector_service.py
+COPY --chown=65532:65532 services/media_library_parser.py ./api/services/media_library_parser.py
+COPY --chown=65532:65532 services/media_library_processor.py ./api/services/media_library_processor.py
+COPY --chown=65532:65532 services/content_workspace_derivative.py ./api/services/content_workspace_derivative.py
+COPY --chown=65532:65532 scripts/media_inspector_spool_init.py ./api/scripts/media_inspector_spool_init.py
 ENV LD_LIBRARY_PATH=/usr/local/lib PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app/vendor:/app
 USER root
 ENTRYPOINT ["/usr/bin/python"]
 CMD ["-m", "api.services.media_inspector_service"]
+
+FROM media-inspector-production AS media-inspector-acceptance
+COPY --chown=65532:65532 tests/media_inspector_acceptance_entrypoint.py ./api/tests/media_inspector_acceptance_entrypoint.py
+COPY --chown=65532:65532 tests/media_inspector_container_acceptance.py ./api/tests/media_inspector_container_acceptance.py
+COPY --chown=65532:65532 tests/media_inspector_two_uid_producer.py ./api/tests/media_inspector_two_uid_producer.py
+
+FROM media-inspector-production AS media-inspector-final

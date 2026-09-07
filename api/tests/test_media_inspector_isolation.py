@@ -18,6 +18,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from api.services import media_inspector_client as client
 from api.services import media_inspector_runner as runner
 from api.services import media_inspector_service as service
+from api.tests import media_inspector_acceptance_entrypoint as acceptance_entrypoint
 from api.services.media_inspector_client import MediaInspectorClientError, inspect_media_via_spool
 from api.services.media_inspector_receipt import (
     InspectorReceiptError,
@@ -32,6 +33,31 @@ SIGNING_KEY = Ed25519PrivateKey.from_private_bytes(b'k' * 32)
 VERIFY_KEY = SIGNING_KEY.public_key()
 DIGEST = 'a' * 64
 BUILD_IDENTITY = 'base2-media-inspector:' + 'b' * 64
+
+
+def test_acceptance_reference_entrypoint_is_explicit_numeric_and_health_only(monkeypatch):
+    monkeypatch.setattr(acceptance_entrypoint.sys, 'argv', ['entrypoint'])
+    assert acceptance_entrypoint.main() == 64
+    monkeypatch.setattr(
+        acceptance_entrypoint.sys,
+        'argv',
+        ['entrypoint', '--reference-epoch', 'not-numeric', '--healthcheck'],
+    )
+    assert acceptance_entrypoint.main() == 64
+    observed = []
+
+    def health(*, now):
+        observed.append(now())
+        return {'engine': 'clamav'}
+
+    monkeypatch.setattr(acceptance_entrypoint.service, '_scanner_health', health)
+    monkeypatch.setattr(
+        acceptance_entrypoint.sys,
+        'argv',
+        ['entrypoint', '--reference-epoch', '1788739200', '--healthcheck'],
+    )
+    assert acceptance_entrypoint.main() == 0
+    assert observed == [datetime.fromtimestamp(1788739200, tz=UTC)]
 
 
 def payload(**changes):

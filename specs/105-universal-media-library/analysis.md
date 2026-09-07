@@ -387,6 +387,25 @@ prove unknown defects impossible.
     now require 512 MiB. B087 aligns that assertion while retaining its checks
     for explicit opt-in, updater-only egress, no published port, read-only root,
     capability drop, PID limit, CPU limit, and immutable health command.
+54. Both hosted SBOM variants subsequently passed the updater lifecycle but
+    failed when the separate immutable-image supervisor E2E applied today's
+    clock to its intentionally frozen embedded CVD. Production does not use
+    that isolated fixture: it mounts the updater-owned definition volume and
+    waits for its no-argument, real-time health check. B088 gives only the
+    networkless acceptance entrypoint an explicit numeric reference derived
+    from the embedded CVD's parsed signed timestamp, binds supervisor receipts
+    and client verification to the same historical instant, and asserts that
+    neither production Compose profile can invoke the test entrypoint or pass a
+    reference-clock argument. Freshness rejection remains covered separately,
+    while the immutable scanner/decoder/spool E2E no longer expires with wall
+    time. Review then found the test helper was present in the default image
+    because its Dockerfile copied the full API tree. The final split explicitly
+    copies only the inspector's production dependency closure into the
+    production target, layers the three acceptance harnesses into a separate CI
+    target, SBOM-scans only production, and executes an image-level absence
+    assertion. Both the representative-media and real two-UID spool E2Es use
+    the acceptance target and the same CVD-derived clock; no reference-clock
+    code exists in the production artifact.
 
 ## Honest residual boundary
 

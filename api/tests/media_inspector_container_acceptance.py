@@ -10,7 +10,8 @@ import os
 import subprocess
 import sys
 import time
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from uuid import UUID
 
@@ -18,12 +19,14 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from pypdf import PdfWriter
 
+from api.services import media_inspector_client as inspector_client
 from api.services.media_inspector_client import (
     MAX_SOURCE_BYTES,
     MediaInspectorClientError,
     inspect_media_via_spool,
 )
 from api.services.media_inspector_service import (
+    CLAM_VERSION,
     SCANNER_ADDRESS_SPACE_BYTES,
     _fixed_run,
     _scanner_health,
@@ -94,14 +97,20 @@ def _fixtures() -> list[tuple[str, bytes]]:
     ]
 
 
-def _inspect(content: bytes, media_type: str, verify_key: str, sequence: int):
+def _inspect(
+    content: bytes,
+    media_type: str,
+    verify_key: str,
+    sequence: int,
+    observed_at: datetime,
+):
     return inspect_media_via_spool(
         content=content,
         expected_sha256=hashlib.sha256(content).hexdigest(),
         media_type=media_type,
         asset_id=UUID(int=sequence),
         object_version=1,
-        observed_at=datetime.now(UTC),
+        observed_at=observed_at,
         spool_root=SPOOL_ROOT,
         encoded_verify_key=verify_key,
         timeout_seconds=60,
@@ -123,11 +132,38 @@ def main() -> int:
     assert memory_limit == 1536 * 1024 * 1024
     assert memory_limit > SCANNER_ADDRESS_SPACE_BYTES
 
-    health = _scanner_health()
+    identity = _fixed_run(
+        ['/usr/bin/clamscan', '--database=/var/lib/clamav', '--version'],
+        timeout=5,
+        maximum_output=4096,
+        scanner_memory=True,
+    )
+    assert identity.returncode == 0
+    match = CLAM_VERSION.fullmatch(identity.stdout.decode('ascii').strip())
+    assert match is not None
+    definitions_at = parsedate_to_datetime(match.group(3)).astimezone(UTC)
+    reference_now = definitions_at + timedelta(hours=1)
+    reference_epoch = str(int(reference_now.timestamp()))
+
+    class AcceptanceDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return reference_now if tz is not None else reference_now.replace(tzinfo=None)
+
+    # This process is the networkless historical-image acceptance only. The
+    # production client module and runtime profiles retain their real clock.
+    inspector_client.datetime = AcceptanceDateTime
+    health = _scanner_health(now=lambda: reference_now)
     assert health['engine'] == 'clamav' and health['version'] == '1.5.4'
     assert health['definitionsVersion'].isdigit() and health['definitionsAt'].endswith('Z')
     health_process = subprocess.run(
-        [sys.executable, '-m', 'api.services.media_inspector_service', '--healthcheck'],
+        [
+            sys.executable,
+            '/app/api/tests/media_inspector_acceptance_entrypoint.py',
+            '--reference-epoch',
+            reference_epoch,
+            '--healthcheck',
+        ],
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
@@ -156,7 +192,12 @@ def main() -> int:
         'MEDIA_INSPECTOR_SPOOL_PRODUCER_GID': '0',
     }
     supervisor = subprocess.Popen(
-        [sys.executable, '-m', 'api.services.media_inspector_service'],
+        [
+            sys.executable,
+            '/app/api/tests/media_inspector_acceptance_entrypoint.py',
+            '--reference-epoch',
+            reference_epoch,
+        ],
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
@@ -251,7 +292,7 @@ print(json.dumps({
         observed = []
         for sequence, (media_type, content) in enumerate(_fixtures(), start=1):
             try:
-                result = _inspect(content, media_type, verify_key, sequence)
+                result = _inspect(content, media_type, verify_key, sequence, reference_now)
             except Exception as exc:
                 raise AssertionError(f'{media_type} E2E failed: {exc}') from exc
             assert result.observed_media_type == media_type
@@ -260,7 +301,7 @@ print(json.dumps({
             observed.append(media_type)
 
         try:
-            _inspect(EICAR, 'image/png', verify_key, 10)
+            _inspect(EICAR, 'image/png', verify_key, 10, reference_now)
         except MediaInspectorClientError as exc:
             assert str(exc) == 'media_inspection_rejected'
         else:
@@ -268,7 +309,7 @@ print(json.dumps({
 
         oversized = b'x' * (MAX_SOURCE_BYTES + 1)
         try:
-            _inspect(oversized, 'image/png', verify_key, 11)
+            _inspect(oversized, 'image/png', verify_key, 11, reference_now)
         except MediaInspectorClientError as exc:
             assert str(exc) == 'media_integrity_failed'
         else:
