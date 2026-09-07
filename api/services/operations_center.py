@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import re
 from datetime import datetime, timedelta, timezone
@@ -150,6 +151,60 @@ def sanitized_alert(
         json.dumps(payload, sort_keys=True, separators=(',', ':')).encode()
     ).hexdigest()
     return payload
+
+
+def verify_sanitized_alert(payload: Any, *, now: datetime) -> dict[str, Any]:
+    if not isinstance(payload, dict) or set(payload) != {
+        'schemaVersion',
+        'incidentId',
+        'severity',
+        'summaryCode',
+        'expiresAt',
+        'actions',
+        'digest',
+    }:
+        raise OperationsContractError('operations:alert_invalid')
+    unsigned = {key: payload[key] for key in payload if key != 'digest'}
+    expected = hashlib.sha256(
+        json.dumps(unsigned, sort_keys=True, separators=(',', ':')).encode()
+    ).hexdigest()
+    if not hmac.compare_digest(str(payload['digest']), expected):
+        raise OperationsContractError('operations:alert_integrity_invalid')
+    rebuilt = sanitized_alert(
+        incident_id=payload['incidentId'],
+        severity=payload['severity'],
+        summary_code=payload['summaryCode'],
+        expires_at=datetime.fromisoformat(payload['expiresAt']),
+    )
+    if rebuilt != payload:
+        raise OperationsContractError('operations:alert_invalid')
+    if now.tzinfo is None:
+        raise OperationsContractError('operations:timezone_required')
+    if now >= datetime.fromisoformat(payload['expiresAt']):
+        raise OperationsContractError('operations:alert_expired')
+    return json.loads(json.dumps(payload))
+
+
+def deliver_sanitized_alert(
+    *, payload: dict[str, Any], now: datetime, sender: Any
+) -> dict[str, Any]:
+    admitted = verify_sanitized_alert(payload, now=now)
+    delivery = {
+        'incidentId': admitted['incidentId'],
+        'alertDigest': admitted['digest'],
+        'channel': 'discord',
+    }
+    try:
+        provider_id = sender(json.loads(json.dumps(admitted)))
+        if not isinstance(provider_id, str) or not CODE.fullmatch(provider_id):
+            raise OperationsContractError('operations:delivery_receipt_invalid')
+    except Exception:
+        return {**delivery, 'status': 'queued', 'errorCode': 'delivery.provider_failed'}
+    receipt = {**delivery, 'status': 'sent', 'providerReceipt': provider_id}
+    receipt['receiptDigest'] = hashlib.sha256(
+        json.dumps(receipt, sort_keys=True, separators=(',', ':')).encode()
+    ).hexdigest()
+    return receipt
 
 
 def canonical_dimensions(value: Any) -> dict[str, str | int | float | bool]:

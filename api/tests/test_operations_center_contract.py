@@ -8,6 +8,7 @@ from api.services.operations_center import (
     OperationsContractError,
     alert_schedule,
     collect_probe_results,
+    deliver_sanitized_alert,
     canonical_dimensions,
     classify_health,
     incident_fingerprint,
@@ -16,6 +17,7 @@ from api.services.operations_center import (
     synthetic_result,
     sanitized_alert,
     validate_probe_catalog,
+    verify_sanitized_alert,
 )
 
 NOW = datetime(2026, 9, 8, 12, tzinfo=timezone.utc)
@@ -213,3 +215,52 @@ def test_alert_contains_only_bounded_codes_actions_and_integrity():
     }
     assert payload['actions'] == ['acknowledge', 'open-private-evidence']
     assert len(payload['digest']) == 64
+
+
+def test_alert_delivery_is_sanitized_observed_and_provider_failure_is_durable():
+    payload = sanitized_alert(
+        incident_id='a' * 64,
+        severity='critical',
+        summary_code='database.unavailable',
+        expires_at=NOW + timedelta(minutes=15),
+    )
+    delivered = deliver_sanitized_alert(
+        payload=payload,
+        now=NOW,
+        sender=lambda value: 'discord.message-0001'
+        if value['summaryCode'] == 'database.unavailable'
+        else None,
+    )
+    assert delivered['status'] == 'sent'
+    assert len(delivered['receiptDigest']) == 64
+    queued = deliver_sanitized_alert(
+        payload=payload,
+        now=NOW,
+        sender=lambda _value: (_ for _ in ()).throw(ConnectionError('private endpoint')),
+    )
+    assert queued == {
+        'incidentId': 'a' * 64,
+        'alertDigest': payload['digest'],
+        'channel': 'discord',
+        'status': 'queued',
+        'errorCode': 'delivery.provider_failed',
+    }
+
+
+def test_alert_tamper_and_expiry_fail_before_delivery():
+    payload = sanitized_alert(
+        incident_id='b' * 64,
+        severity='high',
+        summary_code='queue.stalled',
+        expires_at=NOW + timedelta(minutes=1),
+    )
+    changed = dict(payload)
+    changed['summaryCode'] = 'queue.healthy'
+    with pytest.raises(OperationsContractError, match='integrity'):
+        verify_sanitized_alert(changed, now=NOW)
+    with pytest.raises(OperationsContractError, match='expired'):
+        deliver_sanitized_alert(
+            payload=payload,
+            now=NOW + timedelta(minutes=2),
+            sender=None,
+        )
