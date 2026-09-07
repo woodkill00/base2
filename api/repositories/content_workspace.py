@@ -1527,9 +1527,9 @@ class PostgresContentWorkspaceRepository:
                            (id, site_id, storage_key, original_name, media_type, byte_size,
                             sha256, status, owner_ref, attribution, retention_until,
                             metadata, visibility, lock_version, current_object_version,
-                            created_at, updated_at)
+                            authorization_epoch, created_at, updated_at)
                            VALUES (%s,%s,%s,%s,%s,%s,%s,'pending',%s,'',NULL,
-                                   '{"admission":"metadata_only"}'::jsonb,'private',1,1,NOW(),NOW())
+                                   '{"admission":"metadata_only"}'::jsonb,'private',1,1,1,NOW(),NOW())
                            RETURNING id, status""",
                             (
                                 str(asset_id),
