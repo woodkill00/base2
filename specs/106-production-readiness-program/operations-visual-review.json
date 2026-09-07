@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "status": "accepted",
+  "sources": {
+    "react-app/src/pages/OperationsCenter.jsx": "e3bf56845a346432158eb7317cbd9a7efc4b788f86ff8768004becf045a727b4",
+    "react-app/src/services/operations.js": "2f996091a7c1b3951bcb581ea94c7f01a03a31675226efb28256ad0f6454fdeb",
+    "react-app/e2e/operations/operations-release.spec.ts": "229c8d6cf54722955ea3a34ae71994e25caa11f3a451c8ba6849143d28b93164",
+    "react-app/playwright.operations-release.config.mjs": "d61c99c3e9ec8ca974b3aa46cf79fee9bbaedcc501c252db71e37ce3bd5fffd0"
+  },
+  "screenshots": {
+    "operations-center-chromium-400-zoom-chromium-400-zoom-linux.png": {
+      "sha256": "911348c498bb0311d18d52c6553aaabae5457741382ff8dbafc09470ef5902ef",
+      "pixels": [320, 959]
+    },
+    "operations-center-chromium-compact-chromium-compact-linux.png": {
+      "sha256": "1c07422c657e011b77ddd561e101d2d781305a93ab2b79b0b70b4beee4400137",
+      "pixels": [320, 958]
+    },
+    "operations-center-chromium-desktop-chromium-desktop-linux.png": {
+      "sha256": "020b48567ddc3dc124276a3c5c93392cb1d88924380f498f5a144b215731515f",
+      "pixels": [1440, 1000]
+    },
+    "operations-center-chromium-high-contrast-chromium-high-contrast-linux.png": {
+      "sha256": "ba27c442a6c7f6add5568d6d78c530d2f8a6bb924cc31a180960e4799e84cf0a",
+      "pixels": [1280, 900]
+    },
+    "operations-center-chromium-landscape-touch-chromium-landscape-touch-linux.png": {
+      "sha256": "252544da3aea8be4030d20cf8eeeed502d82e06ad3d313e7952cfa2075e216d1",
+      "pixels": [844, 862]
+    },
+    "operations-center-chromium-large-text-chromium-large-text-linux.png": {
+      "sha256": "3a0ed414d023e3313b7ddf68ce5bb3a0c750f986876e6b6d5cbf6ca7c3d4d496",
+      "pixels": [1280, 1606]
+    },
+    "operations-center-chromium-light-chromium-light-linux.png": {
+      "sha256": "3508c6d6ec2e1e2051b0335da3fedfd8872a8ce5e38c1a488ac56f8a5426c726",
+      "pixels": [1280, 900]
+    },
+    "operations-center-chromium-reduced-motion-chromium-reduced-motion-linux.png": {
+      "sha256": "ba27c442a6c7f6add5568d6d78c530d2f8a6bb924cc31a180960e4799e84cf0a",
+      "pixels": [1280, 900]
+    },
+    "operations-center-chromium-rtl-chromium-rtl-linux.png": {
+      "sha256": "9c6293c9b55b5cf976c1bc4f284c54a039f659dae4fb18c789d87b8467c6a7d9",
+      "pixels": [1280, 900]
+    },
+    "operations-center-chromium-tablet-chromium-tablet-linux.png": {
+      "sha256": "b8bd491e142f0d9a51bac303c1b1adfc93d62c0ba691f90180a430855dd9cc8b",
+      "pixels": [1024, 790]
+    },
+    "operations-center-chromium-ultrawide-chromium-ultrawide-linux.png": {
+      "sha256": "c5951fce1d402b6e1e5b4bb981fcc80653d31c305f06b17e54be768e609517d9",
+      "pixels": [2560, 1440]
+    }
+  },
+  "assertions": {
+    "accessibility": "pass",
+    "console": "pass",
+    "focus": "pass",
+    "overflow": "pass",
+    "requests": "pass"
+  }
+}

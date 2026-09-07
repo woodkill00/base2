@@ -77,20 +77,20 @@ def install_operations_boundaries(apps, schema_editor):
             for suffix in ("select", "insert", "update", "delete"):
                 cursor.execute(f'DROP POLICY IF EXISTS "{table}_{suffix}" ON "{table}"')
             cursor.execute(
-                f'''CREATE POLICY "{table}_select" ON "{table}" FOR SELECT
-                    USING ({tenant} OR current_user = '{worker}')'''
+                f"""CREATE POLICY "{table}_select" ON "{table}" FOR SELECT
+                    USING ({tenant} OR current_user = '{worker}')"""
             )
             cursor.execute(
-                f'''CREATE POLICY "{table}_insert" ON "{table}" FOR INSERT
-                    WITH CHECK ({tenant})'''
+                f"""CREATE POLICY "{table}_insert" ON "{table}" FOR INSERT
+                    WITH CHECK ({tenant})"""
             )
             cursor.execute(
-                f'''CREATE POLICY "{table}_update" ON "{table}" FOR UPDATE
-                    USING ({tenant}) WITH CHECK ({tenant})'''
+                f"""CREATE POLICY "{table}_update" ON "{table}" FOR UPDATE
+                    USING ({tenant}) WITH CHECK ({tenant})"""
             )
             cursor.execute(
-                f'''CREATE POLICY "{table}_delete" ON "{table}" FOR DELETE
-                    USING ({tenant})'''
+                f"""CREATE POLICY "{table}_delete" ON "{table}" FOR DELETE
+                    USING ({tenant})"""
             )
 
 
@@ -112,6 +112,4 @@ def remove_operations_boundaries(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [("sitecontent", "0018_production_operations_center")]
-    operations = [
-        migrations.RunPython(install_operations_boundaries, remove_operations_boundaries)
-    ]
+    operations = [migrations.RunPython(install_operations_boundaries, remove_operations_boundaries)]

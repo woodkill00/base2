@@ -67,11 +67,33 @@
       "requiredTools": ["bash", "node"]
     },
     {
+      "id": "operations-visual-contract",
+      "command": [
+        "{python-api}",
+        "-m",
+        "pytest",
+        "-q",
+        "scripts/tests/test_operations_visual_evidence.py"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["operations-ui-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "production-release-contract",
+      "command": ["{python-api}", "-m", "pytest", "-q", "scripts/tests/test_production_release.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["operations-visual-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
       "id": "gate-runtime-recovery-contract",
       "command": ["python3", "-m", "unittest", "scripts.tests.test_gate_runtime_recovery"],
       "required": true,
       "timeoutSeconds": 30,
-      "dependsOn": ["operations-ui-contract"],
+      "dependsOn": ["production-release-contract"],
       "requiredTools": ["python3"]
     },
     {

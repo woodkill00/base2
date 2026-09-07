@@ -71,7 +71,9 @@ class ProductionReadinessContractTests(unittest.TestCase):
     def test_workflow_inventory_drift_fails(self):
         candidate = copy.deepcopy(self.policy)
         candidate["workflows"].append("unknown.yml")
-        self.assertTrue(any("workflows inventory drift" in item for item in self.findings(candidate)))
+        self.assertTrue(
+            any("workflows inventory drift" in item for item in self.findings(candidate))
+        )
 
     def test_missing_protected_action_fails(self):
         candidate = copy.deepcopy(self.policy)
@@ -107,9 +109,7 @@ class ProductionReadinessContractTests(unittest.TestCase):
         self.assertIn("planningBaseline must be an exact commit", self.findings(candidate))
 
     def test_repository_baseline_is_an_ancestor(self):
-        self.assertTrue(
-            self.validator.baseline_is_ancestor(self.policy["planningBaseline"], ROOT)
-        )
+        self.assertTrue(self.validator.baseline_is_ancestor(self.policy["planningBaseline"], ROOT))
 
     def test_all_inventory_modules_use_the_closed_manifest_contract(self):
         validated = set()

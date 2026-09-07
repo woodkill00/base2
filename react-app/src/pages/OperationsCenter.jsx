@@ -61,7 +61,7 @@ export default function OperationsCenter() {
   return (
     <AppShell>
       <Navigation />
-      <main className="mx-auto w-full max-w-6xl px-4 py-8" aria-busy={loading}>
+      <div className="mx-auto w-full max-w-6xl px-4 py-8" aria-busy={loading}>
         <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-sm uppercase tracking-[0.18em] opacity-70">Private control plane</p>
@@ -145,7 +145,7 @@ export default function OperationsCenter() {
             ))}
           </div>
         </section>
-      </main>
+      </div>
     </AppShell>
   );
 }

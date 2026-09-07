@@ -1422,9 +1422,7 @@ class MediaAsset(SiteOwnedModel):
     current_object_version = models.PositiveIntegerField(
         default=1, validators=[MinValueValidator(1)]
     )
-    authorization_epoch = models.PositiveIntegerField(
-        default=1, validators=[MinValueValidator(1)]
-    )
+    authorization_epoch = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
     archived_at = models.DateTimeField(null=True, blank=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
 
@@ -1490,9 +1488,7 @@ class MediaVariant(models.Model):
     source_sha256 = models.CharField(max_length=64, blank=True, default="")
     processor_ref = models.CharField(max_length=128, blank=True, default="")
     inline_safe = models.BooleanField(default=False)
-    duration_seconds = models.DecimalField(
-        max_digits=10, decimal_places=3, null=True, blank=True
-    )
+    duration_seconds = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
     page_number = models.PositiveIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -1732,9 +1728,7 @@ class MediaMetadataRevision(SiteOwnedModel):
     license_code = models.CharField(max_length=64, blank=True, default="")
     focal_x = models.DecimalField(max_digits=5, decimal_places=4, null=True, blank=True)
     focal_y = models.DecimalField(max_digits=5, decimal_places=4, null=True, blank=True)
-    duration_seconds = models.DecimalField(
-        max_digits=10, decimal_places=3, null=True, blank=True
-    )
+    duration_seconds = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
     page_count = models.PositiveIntegerField(null=True, blank=True)
     width = models.PositiveIntegerField(null=True, blank=True)
     height = models.PositiveIntegerField(null=True, blank=True)
@@ -2196,9 +2190,7 @@ class MediaAbuseCase(SiteOwnedModel):
     lock_version = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
 
     class Meta:
-        indexes = [
-            models.Index(fields=["site_id", "status", "created_at"], name="media_abuse_idx")
-        ]
+        indexes = [models.Index(fields=["site_id", "status", "created_at"], name="media_abuse_idx")]
 
     def clean(self) -> None:
         super().clean()
@@ -2207,9 +2199,7 @@ class MediaAbuseCase(SiteOwnedModel):
         if not re.fullmatch(r"media_[a-z0-9_]{3,63}", self.reason_code or ""):
             raise ValidationError("media_abuse_reason_invalid")
         actors = [
-            value
-            for value in (self.reporter_ref, self.reviewer_ref, self.appellant_ref)
-            if value
+            value for value in (self.reporter_ref, self.reviewer_ref, self.appellant_ref) if value
         ]
         if len(actors) != len(set(actors)):
             raise ValidationError("media_abuse_separation_required")
@@ -2408,8 +2398,7 @@ class OperationsSyntheticRun(SiteOwnedModel):
     role = models.CharField(
         max_length=16,
         choices=tuple(
-            (value, value.title())
-            for value in ("anonymous", "member", "editor", "administrator")
+            (value, value.title()) for value in ("anonymous", "member", "editor", "administrator")
         ),
     )
     source_commit = models.CharField(max_length=40)

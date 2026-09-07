@@ -100,9 +100,7 @@ def _unique_strings(value: Any, label: str, minimum: int) -> set[str]:
 
 def repository_inventory(root: Path = ROOT) -> dict[str, set[str]]:
     return {
-        "modules": {
-            path.parent.name for path in (root / "modules").glob("*/module.json")
-        },
+        "modules": {path.parent.name for path in (root / "modules").glob("*/module.json")},
         "siteProfiles": {path.stem for path in (root / "site_profiles").glob("*.json")},
         "workflows": {path.name for path in (root / ".github/workflows").glob("*.yml")},
     }
@@ -126,8 +124,7 @@ def validate_policy(policy: dict[str, Any], root: Path = ROOT) -> list[str]:
                 findings.append(f"environment fields differ: {name}")
                 continue
             if name in {"development", "test"} and (
-                profile["certificateMode"] != "disabled"
-                or profile["providerAccess"] is not False
+                profile["certificateMode"] != "disabled" or profile["providerAccess"] is not False
             ):
                 findings.append(f"local environment has provider or certificate access: {name}")
             if name in {"preview", "staging"} and profile["certificateMode"] != "staging-only":
@@ -192,7 +189,11 @@ def validate_policy(policy: dict[str, Any], root: Path = ROOT) -> list[str]:
         }
         for field, (minimum, maximum) in integer_bounds.items():
             value = resources.get(field)
-            if not isinstance(value, int) or isinstance(value, bool) or not minimum <= value <= maximum:
+            if (
+                not isinstance(value, int)
+                or isinstance(value, bool)
+                or not minimum <= value <= maximum
+            ):
                 findings.append(f"resource default outside bounds: {field}")
         ceiling = resources.get("ephemeralCostCeilingUsd")
         if (
