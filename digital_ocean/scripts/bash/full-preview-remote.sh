@@ -110,6 +110,29 @@ awk -v identity="$inspector_build_identity" \
    { print }
    END { if (!replaced) exit 3 }' "$env_file" >"$env_replacement" || fail_stage 3
 mv -f -- "$env_replacement" "$env_file"
+stage="clamav-warmup"
+"${compose[@]}" up -d --no-build clamav
+for attempt in $(seq 1 180); do
+  clamav_id="$("${compose[@]}" ps -q clamav)"
+  if [[ -n "$clamav_id" ]]; then
+    clamav_state="$(docker inspect --format '{{.State.Status}}' "$clamav_id")"
+    clamav_health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$clamav_id")"
+    clamav_oom="$(docker inspect --format '{{.State.OOMKilled}}' "$clamav_id")"
+    if [[ "$clamav_state" == "running" && "$clamav_health" == "healthy" && "$clamav_oom" == "false" ]]; then
+      break
+    fi
+    if [[ "$clamav_oom" == "true" || "$clamav_state" == "exited" || "$clamav_health" == "unhealthy" ]]; then
+      "${compose[@]}" logs --tail 40 clamav >&2 || true
+      fail_stage 4
+    fi
+  fi
+  if [[ "$attempt" -eq 180 ]]; then
+    "${compose[@]}" logs --tail 40 clamav >&2 || true
+    fail_stage 4
+  fi
+  sleep 2
+done
+unset clamav_id clamav_state clamav_health clamav_oom
 stage="compose-up"
 "${compose[@]}" up -d --no-build
 stage="media-inspector-identity"

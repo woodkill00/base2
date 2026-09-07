@@ -33,6 +33,7 @@ def test_remote_bootstrap_identifies_every_silent_failure_stage_without_values()
         "env-render",
         "acme-bootstrap",
         "compose-build",
+        "clamav-warmup",
         "compose-up",
         "api-migrations",
         "service-inventory",
@@ -72,6 +73,10 @@ def test_media_enabled_preview_builds_and_starts_isolated_inspector_with_image_i
     assert '[[ "$running_inspector_image" == "$inspector_image_id" ]]' in script
     assert 'rm -f -- "$inspector_private_pem"' in script
     assert '|| fail_stage 3' in script
+    assert '"${compose[@]}" up -d --no-build clamav' in script
+    assert "'{{.State.OOMKilled}}'" in script
+    assert '[[ "$clamav_state" == "running" && "$clamav_health" == "healthy" && "$clamav_oom" == "false" ]]' in script
+    assert script.index('stage="clamav-warmup"') < script.index('stage="compose-up"')
     for key in (
         'MEDIA_INSPECTOR_SIGNING_KEY=',
         'MEDIA_INSPECTOR_VERIFY_KEY=',
