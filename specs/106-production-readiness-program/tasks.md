@@ -6,18 +6,18 @@ substitute for the integration proof named by the task.
 
 ## Phase 0 — Program baseline and closed contracts
 
-- [ ] B001 Pin the exact clean Base2 baseline and inventory every service, route, module, profile, data store, workflow, and provider boundary. (FR-001, FR-002, FR-072)
-- [ ] B002 Record current functionality and explicitly distinguish existing capability, production gap, extension, and optional future capability. (FR-068, FR-070)
-- [ ] B003 Define environment-profile schemas and a machine-readable difference allowlist. (FR-001, FR-026, FR-069)
-- [ ] B004 Build the release-manifest schema for source, images, migrations, configuration, SBOM, provenance, and checksums. (FR-002, FR-059)
-- [ ] B005 Model assets, identities, data classes, trust boundaries, cryptographic keys, service networks, attackers, abuse cases, and recovery authorities. (FR-019, FR-031, FR-065, FR-071, FR-073, FR-074)
-- [ ] B006 Define the tenant-isolation invariant across every synchronous, asynchronous, cached, indexed, exported, stored, and observed surface. (FR-019)
-- [ ] B007 Define service indicators, objectives, error budgets, recovery objectives, and capacity budgets without inventing unsupported guarantees. (FR-013, FR-057, FR-060, FR-068)
-- [ ] B008 Define typed approval scopes and exact-target receipts for publication, merge, deployment, provider, DNS, certificate, destruction, and destructive data work. (FR-007, FR-069)
-- [ ] B009 Define bounded size, time, retry, concurrency, retention, cardinality, and cost defaults for every new resource consumer. (FR-028, FR-042, FR-057, FR-058, FR-071)
-- [ ] B010 Define capability manifests that prove disabled modules leave no runtime or allocation residue. (FR-054, FR-072)
-- [ ] B011 Define release-train entry, blocking-review, evidence, rollback, and exit gates. (FR-008, FR-063, FR-068)
-- [ ] B012 Add an executable Feature 106 plan validator covering task order, requirement traceability, authority phrases, and completion honesty. (FR-007, FR-063, FR-068, FR-069)
+- [x] B001 Pin the exact clean Base2 baseline and inventory every service, route, module, profile, data store, workflow, and provider boundary. (FR-001, FR-002, FR-072)
+- [x] B002 Record current functionality and explicitly distinguish existing capability, production gap, extension, and optional future capability. (FR-068, FR-070)
+- [x] B003 Define environment-profile schemas and a machine-readable difference allowlist. (FR-001, FR-026, FR-069)
+- [x] B004 Build the release-manifest schema for source, images, migrations, configuration, SBOM, provenance, and checksums. (FR-002, FR-059)
+- [x] B005 Model assets, identities, data classes, trust boundaries, cryptographic keys, service networks, attackers, abuse cases, and recovery authorities. (FR-019, FR-031, FR-065, FR-071, FR-073, FR-074)
+- [x] B006 Define the tenant-isolation invariant across every synchronous, asynchronous, cached, indexed, exported, stored, and observed surface. (FR-019)
+- [x] B007 Define service indicators, objectives, error budgets, recovery objectives, and capacity budgets without inventing unsupported guarantees. (FR-013, FR-057, FR-060, FR-068)
+- [x] B008 Define typed approval scopes and exact-target receipts for publication, merge, deployment, provider, DNS, certificate, destruction, and destructive data work. (FR-007, FR-069)
+- [x] B009 Define bounded size, time, retry, concurrency, retention, cardinality, and cost defaults for every new resource consumer. (FR-028, FR-042, FR-057, FR-058, FR-071)
+- [x] B010 Define capability manifests that prove disabled modules leave no runtime or allocation residue. (FR-054, FR-072)
+- [x] B011 Define release-train entry, blocking-review, evidence, rollback, and exit gates. (FR-008, FR-063, FR-068)
+- [x] B012 Add an executable Feature 106 plan validator covering task order, requirement traceability, authority phrases, and completion honesty. (FR-007, FR-063, FR-068, FR-069)
 
 ## Phase 1 — Native observability and incident center
 

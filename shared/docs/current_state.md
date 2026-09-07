@@ -1,35 +1,25 @@
-# Current State and Drift Risks (as of 2025-12-21)
+# Current Base2 State
 
-## 1. Current Behavior
+Last reviewed: 2026-09-08
 
-**Traefik**: File provider only, le-staging ACME, correct entrypoints, no Docker provider. Routers for API (pass-through /api), Django admin, static, frontend, dashboard, pgAdmin, Flower, all with correct middlewares and priorities.
+Base2 uses Django as the domain source of truth, FastAPI as the versioned API,
+React as the untrusted browser client, PostgreSQL for durable relational state,
+Redis/Celery for queued work, Traefik/Nginx at the edge, and isolated supporting
+services. The deprecated Node application backend is not part of the production
+architecture.
 
-- **Scripts**: All present and up to date for deploy, test, validation, logs, status, etc.
-- **backend/**: Node backend present for deprecation/removal.
-- **digital_ocean/**: Orchestration scripts and docs.
-- **.github/workflows/**: CI/CD configs.
-- **package.json**: Still references backend and react-app for test/lint/format.
-- **.env/.env.example**: Present, but may need updates for new stack.
+The repository includes a deterministic website factory, closed module
+manifests, generated site profiles, the Obsidian design system, identity and
+settings foundations, content/data and media workspaces, staging-certificate
+preview orchestration, bounded provider lifecycle controls, visual assurance,
+recovery checks, supply-chain policy, and a manifest-driven complete gate.
 
-## 2. Drift Risks
+Feature 106 is the active production-readiness program. Its reviewed inventory,
+classification of existing capabilities versus remaining production work,
+environment boundaries, release contract, trust model, resource defaults, and
+evidence rules are documented in `docs/PRODUCTION_READINESS_PROGRAM.md` and
+enforced by `shared/config/production-readiness-v1.json`.
 
-- **Node backend**: Still present in codebase and package.json; risk of accidental deployment or confusion.
-- **Compose/Traefik configs**: Must ensure no references to Node backend remain; all routers and services should point to Django, FastAPI, or React only.
-- **Environment files**: .env and .env.example may have legacy or missing variables for Django/FastAPI/React.
-- **Documentation**: Diagrams and stack docs may be outdated or reference deprecated services.
-- **Scripts**: Any scripts referencing backend/ or Node.js must be updated or removed.
-- **CI/CD**: Workflows must not build/test/deploy Node backend.
-
-## 3. Planned Changes
-
-- Remove Node.js backend from Compose, Traefik, scripts, and documentation.
-- Add/verify Django and FastAPI services in Compose and Traefik.
-- Update .env.example for Django, FastAPI, React.
-- Update architecture diagrams and stack documentation.
-- Ensure only Traefik exposes host ports (80/443).
-- Validate all routers and middlewares in Traefik configs.
-- Audit and update scripts and CI/CD workflows for new stack.
-
----
-
-_This file is auto-generated as part of T000 (Inventory & sanity pass)._
+Production deployment, DNS mutation, production certificate issuance,
+credential use, spending, destructive migration, and provider teardown remain
+separately approved operations. No checked-in profile grants those actions.

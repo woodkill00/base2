@@ -136,10 +136,26 @@ found by the pre-implementation analysis.
 
 - Functional requirements: 78, sequentially identified FR-001 through FR-078.
 - Ordered tasks: 160, sequentially identified B001 through B160.
-- Pre-implementation completed tasks: 0.
-- Pre-implementation pending tasks: 160.
+- Current completed tasks after the first implementation train: 12.
+- Current pending tasks: 148.
 - Publication, merge, canary, teardown, and production activation remain
   distinct exact-scope decisions and cannot be inherited from this planning work.
+
+## Implementation cycle 1 — Executable production baseline
+
+The first implementation train added a closed machine-readable inventory of
+environments, services, route surfaces, modules, generated profiles, workflows,
+data stores, trust boundaries, protected actions, resource defaults, release
+fields, and capability-absence surfaces. Repository module, profile, or workflow
+drift now fails the readiness contract instead of silently aging the inventory.
+
+The first negative suite exposed generic diagnostics for missing protected
+actions and capability surfaces. Validation was corrected to report the exact
+closed-contract violation. Sixteen readiness tests plus the complete-gate graph
+tests pass. The Feature 106 planning and production-readiness validators are now
+required nodes in the repository complete gate. Current-state documentation was
+reconciled with the exact 2026-09-08 baseline; no credential, provider, release,
+or deployment operation was performed.
 
 ## Honest residual boundary
 

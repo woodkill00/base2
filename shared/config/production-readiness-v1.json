@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 1,
+  "planningBaseline": "dc2ffa14e992586afba8461cd6567fd364c96088",
+  "environments": {
+    "development": {
+      "dataClass": "synthetic-or-local",
+      "certificateMode": "disabled",
+      "providerAccess": false,
+      "productionAuthority": false
+    },
+    "test": {
+      "dataClass": "synthetic-only",
+      "certificateMode": "disabled",
+      "providerAccess": false,
+      "productionAuthority": false
+    },
+    "preview": {
+      "dataClass": "synthetic-only",
+      "certificateMode": "staging-only",
+      "providerAccess": "exact-approval-only",
+      "productionAuthority": false
+    },
+    "staging": {
+      "dataClass": "synthetic-only",
+      "certificateMode": "staging-only",
+      "providerAccess": "exact-approval-only",
+      "productionAuthority": false
+    },
+    "production": {
+      "dataClass": "classified-live",
+      "certificateMode": "external-approved-only",
+      "providerAccess": "exact-approval-only",
+      "productionAuthority": "separate-activation-only"
+    }
+  },
+  "services": [
+    "traefik",
+    "nginx",
+    "react",
+    "fastapi",
+    "django",
+    "postgres",
+    "redis",
+    "celery",
+    "flower",
+    "pgadmin",
+    "media-inspector",
+    "clamav-updater"
+  ],
+  "modules": [
+    "blog",
+    "booking",
+    "catalog",
+    "commerce",
+    "community",
+    "content",
+    "content-workspace",
+    "documentation",
+    "events",
+    "fixture-notes",
+    "forms",
+    "gallery",
+    "listing",
+    "marketplace",
+    "media",
+    "membership",
+    "portfolio",
+    "subscription",
+    "support"
+  ],
+  "siteProfiles": ["base2-obsidian", "ember-studio", "northstar-library"],
+  "workflows": [
+    "ci-backend.yml",
+    "ci-chaos.yml",
+    "ci-contract.yml",
+    "ci-e2e.yml",
+    "ci-frontend.yml",
+    "ci-load.yml",
+    "ci-perf-smoke.yml",
+    "ci-repo-guards.yml",
+    "ci-smoke.yml",
+    "option1-guard.yml",
+    "security.yml",
+    "sync-config.yml"
+  ],
+  "routeSurfaces": [
+    "public-site",
+    "fastapi-v1",
+    "django-admin",
+    "api-schema",
+    "traefik-dashboard",
+    "pgadmin",
+    "flower",
+    "module-api-routes",
+    "module-ui-routes"
+  ],
+  "dataStores": [
+    "postgresql",
+    "redis-queue",
+    "private-object-store",
+    "search-index",
+    "audit-ledger",
+    "operations-store"
+  ],
+  "trustBoundaries": [
+    "public-edge",
+    "untrusted-browser",
+    "application-services",
+    "tenant-data-plane",
+    "bounded-global-worker-discovery",
+    "hostile-media-inspector",
+    "private-operations-plane",
+    "jit-secret-resolver",
+    "provider-control-plane"
+  ],
+  "protectedActions": [
+    "publish",
+    "merge",
+    "deploy-live",
+    "spend",
+    "read-credential",
+    "mutate-dns",
+    "issue-production-certificate",
+    "destructive-migration",
+    "destroy-provider-resource"
+  ],
+  "resourceDefaults": {
+    "requestTimeoutSeconds": 30,
+    "jobLeaseSeconds": 300,
+    "maxAttempts": 5,
+    "maxConcurrentPerTenant": 8,
+    "telemetryRetentionDays": 30,
+    "incidentRetentionDays": 365,
+    "ephemeralLifetimeMinutes": 120,
+    "ephemeralCostCeilingUsd": 1.0
+  },
+  "releaseRequiredFields": [
+    "schemaVersion",
+    "releaseId",
+    "sourceCommit",
+    "sourceClean",
+    "images",
+    "migrationsDigest",
+    "configurationSchemaVersion",
+    "configurationDigest",
+    "sbomDigest",
+    "provenanceDigest",
+    "artifactDigest",
+    "createdAt",
+    "signature"
+  ],
+  "capabilityAbsence": [
+    "routes",
+    "navigation",
+    "workers",
+    "schedules",
+    "storageAllocation",
+    "credentialResolution",
+    "providerActions"
+  ]
+}

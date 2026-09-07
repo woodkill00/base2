@@ -54,10 +54,13 @@ def main() -> int:
 
     checked = len(re.findall(r"^- \[x\] B\d{3}\b", tasks, re.MULTILINE))
     pending = len(re.findall(r"^- \[ \] B\d{3}\b", tasks, re.MULTILINE))
-    if checked != 0 or pending != 160:
+    if checked + pending != 160:
         raise SystemExit(
             f"production_readiness_status_invalid:checked={checked}:pending={pending}"
         )
+    statuses = re.findall(r"^- \[([ x])\] B\d{3}\b", tasks, re.MULTILINE)
+    if statuses != ["x"] * checked + [" "] * pending:
+        raise SystemExit("production_readiness_status_not_contiguous")
 
     expected_requirements = set(range(1, 79))
     task_requirements = set(ids(r"FR-(\d{3})", tasks))

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://base2.local/schemas/release-bundle-v2.schema.json",
+  "title": "Base2 immutable release bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "releaseId",
+    "sourceCommit",
+    "sourceClean",
+    "images",
+    "migrationsDigest",
+    "configurationSchemaVersion",
+    "configurationDigest",
+    "sbomDigest",
+    "provenanceDigest",
+    "artifactDigest",
+    "createdAt",
+    "signature"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "releaseId": { "type": "string", "pattern": "^release-[A-Za-z0-9._-]{4,120}$" },
+    "sourceCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "sourceClean": { "const": true },
+    "images": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9./_-]{2,190}@sha256:[0-9a-f]{64}$"
+      }
+    },
+    "migrationsDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "configurationSchemaVersion": { "type": "integer", "minimum": 1 },
+    "configurationDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "sbomDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "provenanceDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "artifactDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "signature": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}

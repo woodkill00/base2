@@ -10,11 +10,27 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "feature-106-plan",
+      "command": ["python3", "specs/106-production-readiness-program/validate_plan.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["feature-093-plan"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "production-readiness-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_production_readiness_contract"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["feature-106-plan"],
+      "requiredTools": ["python3", "git"]
+    },
+    {
       "id": "gate-runtime-recovery-contract",
       "command": ["python3", "-m", "unittest", "scripts.tests.test_gate_runtime_recovery"],
       "required": true,
       "timeoutSeconds": 30,
-      "dependsOn": ["feature-093-plan"],
+      "dependsOn": ["production-readiness-contract"],
       "requiredTools": ["python3"]
     },
     {
@@ -317,7 +333,11 @@
       ],
       "required": true,
       "timeoutSeconds": 45,
-      "dependsOn": ["workspace-postgres-contract", "visual-baseline-contract", "media-library-plan"],
+      "dependsOn": [
+        "workspace-postgres-contract",
+        "visual-baseline-contract",
+        "media-library-plan"
+      ],
       "requiredTools": ["{python-api}", "git"]
     },
     {
