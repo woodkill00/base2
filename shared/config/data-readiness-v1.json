@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "transport": "tls-verify-full",
+  "storageEncryption": "provider-managed-key-ref",
+  "pool": {
+    "maximumConnections": 40,
+    "maximumPerProcess": 10,
+    "statementTimeoutMs": 30000,
+    "transactionTimeoutMs": 60000,
+    "saturationPercent": 85
+  },
+  "roles": {
+    "application": "tenant-crud-no-bypassrls",
+    "worker": "bounded-discovery-tenant-mutation",
+    "migration": "schema-owner-no-application-login",
+    "breakGlass": "disabled-by-default-expiring"
+  },
+  "backup": {
+    "maximumAgeHours": 24,
+    "retentionDays": 30,
+    "restoreTargetClasses": ["isolated", "preview", "test"]
+  }
+}

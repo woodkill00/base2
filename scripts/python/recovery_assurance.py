@@ -16,6 +16,8 @@ from typing import Any
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+from scripts.python.data_readiness import restore_target
+
 
 class RecoveryDenied(ValueError):
     pass
@@ -86,9 +88,23 @@ def create_backup(*, payload: bytes, target_id: str, data_schema: int, key: byte
     }
 
 
-def restore_isolated(*, backup: Path, key: bytes, expected_target: str, expected_schema: int, output: Path) -> dict[str, Any]:
+def restore_isolated(
+    *,
+    backup: Path,
+    key: bytes,
+    expected_target: str,
+    expected_schema: int,
+    output: Path,
+    target_class: str = 'isolated',
+) -> dict[str, Any]:
     if output.exists() or output.is_symlink():
         raise RecoveryDenied('restore:target_must_be_absent')
+    restore_target(
+        target_id=expected_target,
+        target_class=target_class,
+        owned=True,
+        empty=True,
+    )
     try:
         envelope = json.loads(backup.read_text(encoding='utf-8'))
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
@@ -116,7 +132,14 @@ def restore_isolated(*, backup: Path, key: bytes, expected_target: str, expected
         stream.write(plaintext)
         stream.flush()
         os.fsync(stream.fileno())
-    return {'targetId': expected_target, 'dataSchema': expected_schema, 'sha256': hashlib.sha256(plaintext).hexdigest(), 'size': len(plaintext), 'isolated': True}
+    return {
+        'targetId': expected_target,
+        'targetClass': target_class,
+        'dataSchema': expected_schema,
+        'sha256': hashlib.sha256(plaintext).hexdigest(),
+        'size': len(plaintext),
+        'isolated': True,
+    }
 
 
 def migration_preflight(*, current_schema: int, target_schema: int, backup_schema: int) -> dict[str, Any]:

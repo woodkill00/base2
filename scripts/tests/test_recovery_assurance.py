@@ -53,6 +53,14 @@ class RecoveryAssuranceTests(unittest.TestCase):
         with self.assertRaisesRegex(RecoveryDenied, 'production_forbidden'):
             certificate_drill(acme_mode='production', days_remaining=20)
 
+    def test_live_or_production_restore_target_is_rejected_before_decryption(self):
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            backup = root / 'backup.enc'
+            create_backup(payload=b'state', target_id='production', data_schema=1, key=self.key, key_ref=self.key_ref, output=backup, now=self.now)
+            with self.assertRaisesRegex(ValueError, 'target_denied'):
+                restore_isolated(backup=backup, key=self.key, expected_target='production', expected_schema=1, output=root / 'restore')
+
     def test_preview_snapshot_authorizes_destroy_then_exact_recreation(self):
         with TemporaryDirectory() as temporary:
             backup = Path(temporary) / 'preview.enc'

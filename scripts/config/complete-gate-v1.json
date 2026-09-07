@@ -111,11 +111,19 @@
       "requiredTools": ["{python-api}"]
     },
     {
+      "id": "data-readiness-contract",
+      "command": ["python3", "-m", "pytest", "-q", "scripts/tests/test_data_readiness.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["typed-feature-flag-contract"],
+      "requiredTools": ["python3"]
+    },
+    {
       "id": "gate-runtime-recovery-contract",
       "command": ["python3", "-m", "unittest", "scripts.tests.test_gate_runtime_recovery"],
       "required": true,
       "timeoutSeconds": 30,
-      "dependsOn": ["typed-feature-flag-contract"],
+      "dependsOn": ["data-readiness-contract"],
       "requiredTools": ["python3"]
     },
     {
