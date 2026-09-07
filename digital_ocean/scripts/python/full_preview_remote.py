@@ -32,7 +32,9 @@ def safe_diagnostic(stdout: str, stderr: str) -> str:
     """Return a bounded, line-filtered build diagnostic safe for operator evidence."""
     retained = []
     stage_markers = []
-    for raw in (stderr + "\n" + stdout).splitlines():
+    # Process stdout first so terminal stderr remains inside the bounded tail.
+    # Stage markers are retained separately below regardless of stream volume.
+    for raw in (stdout + "\n" + stderr).splitlines():
         line = raw.strip()
         if not line:
             continue
