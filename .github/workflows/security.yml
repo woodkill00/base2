@@ -83,7 +83,7 @@ jobs:
         run: python scripts/python/security_result_adapter.py --family dependency --format sarif --tool grype --source-commit "$GITHUB_SHA" --input "${{ steps.grype.outputs.sarif }}" --output grype.normalized.json
 
       - name: Normalize media inspector Grype result
-        if: always()
+        if: always() && steps.inspector-grype.outputs.sarif != ''
         run: python scripts/python/security_result_adapter.py --family dependency --format sarif --tool grype-media-inspector --source-commit "$GITHUB_SHA" --input "${{ steps.inspector-grype.outputs.sarif }}" --output media-inspector-grype.normalized.json
 
       - name: Upload SBOM artifact

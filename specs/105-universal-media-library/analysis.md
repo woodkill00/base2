@@ -329,6 +329,16 @@ prove unknown defects impossible.
     inspector `/tmp` even though CI exercised a bounded hardened tmpfs. B078
     applies `rw,nosuid,nodev,noexec,size=64m` in both runtime profiles and adds
     rendered-manifest assertions so production and acceptance cannot drift.
+45. The first hosted B077 proof exposed a cleanup-only race: its producer
+    recursively removed the crowded directory while the still-live supervisor
+    could retain a scan descriptor. B079 leaves those final fixtures inside the
+    exact disposable volume until the shell trap stops the supervisor and
+    removes the whole volume, eliminating concurrent traversal mutation.
+46. Because that primary E2E failure skipped image scanning, the always-run
+    result adapter also received an empty SARIF path and emitted a misleading
+    secondary traceback. B080 conditions media-inspector normalization on a
+    real scanner output path; the primary step remains failed and visible while
+    absent evidence is never fabricated or parsed as the repository root.
 
 ## Honest residual boundary
 

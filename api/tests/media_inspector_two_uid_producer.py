@@ -158,8 +158,6 @@ def _verify_crowded_bound() -> int:
     assert terminal == 'complete'
     assert (crowded / 'claimed').is_file()
     assert not (crowded / 'complete').exists() and not (crowded / 'failed').exists()
-    shutil.rmtree(crowded)
-    shutil.rmtree(sentinel)
     print(json.dumps({'crowdedResidueVisitedAndRejected': True, 'sentinelCompleted': True}))
     return 0
 

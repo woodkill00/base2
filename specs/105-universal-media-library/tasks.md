@@ -78,3 +78,5 @@
 - [x] B076 Advance a bounded persistent descriptor-relative directory cursor across hostile and terminal prefixes so only claimable jobs consume execution and valid arrivals make fair progress across polls, EOF, deletion, and restart without descriptor leaks.
 - [x] B077 Stream stale-job entry discovery descriptor-relatively and reject at entry 17 so one hostile producer directory cannot create unbounded supervisor allocation or CPU work.
 - [x] B078 Apply the tested bounded `rw,nosuid,nodev,noexec,size=64m` inspector `/tmp` mount to every production Compose profile and enforce rendered parity.
+- [x] B079 Remove concurrent producer cleanup from the live hostile-spool proof so exact lease cleanup occurs only after the supervisor stops and cannot race an open directory traversal.
+- [x] B080 Skip media-inspector result normalization when an earlier workflow step produced no SARIF path, preserving the primary failure without a misleading secondary traceback.

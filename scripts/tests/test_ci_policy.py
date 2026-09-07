@@ -130,6 +130,10 @@ class CiPolicyTests(unittest.TestCase):
         self.assertIn("media_inspector_container_acceptance.py", workflow)
         self.assertIn("media_inspector_two_uid_container_acceptance.sh", workflow)
         self.assertIn("media-inspector-sbom.cdx.json", workflow)
+        self.assertIn(
+            "if: always() && steps.inspector-grype.outputs.sarif != ''",
+            workflow,
+        )
         self.assertIn("media-inspector-grype.normalized.json", workflow)
 
     def test_storybook_excludes_only_the_application_bundle_budget(self):
