@@ -139,8 +139,16 @@ def validate_release(value: Any, *, key: bytes) -> dict[str, Any]:
 
 
 def approval(
-    *, approval_id: str, action: str, release_id: str, environment: str, expires_at: str
+    *,
+    approval_id: str,
+    action: str,
+    release_id: str,
+    environment: str,
+    expires_at: str,
+    key: bytes,
 ) -> dict[str, Any]:
+    if len(key) < 32 or not re.fullmatch(r"approval-[A-Za-z0-9._-]{4,120}", approval_id or ""):
+        raise ReleaseError("approval:identity_invalid")
     value = {
         "schemaVersion": 1,
         "approvalId": approval_id,
@@ -149,12 +157,18 @@ def approval(
         "environment": environment,
         "expiresAt": expires_at,
     }
-    value["digest"] = _digest(value)
+    value["digest"] = hmac.new(key, _canonical(value), hashlib.sha256).hexdigest()
     return value
 
 
 def validate_approval(
-    value: Any, *, action: str, release_id: str, environment: str, now: datetime
+    value: Any,
+    *,
+    action: str,
+    release_id: str,
+    environment: str,
+    now: datetime,
+    key: bytes,
 ) -> None:
     if (
         not isinstance(value, dict)
@@ -163,7 +177,8 @@ def validate_approval(
     ):
         raise ReleaseError("approval:invalid")
     unsigned = {key: value[key] for key in APPROVAL_FIELDS - {"digest"}}
-    if value["digest"] != _digest(unsigned):
+    expected = hmac.new(key, _canonical(unsigned), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(str(value["digest"]), expected):
         raise ReleaseError("approval:integrity_invalid")
     if (
         action not in ACTIONS
@@ -245,11 +260,12 @@ class ReleaseJournal:
 
 
 class ProductionReleaseController:
-    def __init__(self, path: Path, *, key: bytes):
-        if len(key) < 32:
+    def __init__(self, path: Path, *, release_key: bytes, approval_key: bytes):
+        if len(release_key) < 32 or len(approval_key) < 32 or release_key == approval_key:
             raise ReleaseError("release:key_invalid")
-        self.store = ReleaseJournal(path, key=key)
-        self.key = key
+        self.store = ReleaseJournal(path, key=release_key)
+        self.release_key = release_key
+        self.approval_key = approval_key
 
     def _receipt(self, state: dict[str, Any], action: str, status: str) -> dict[str, Any]:
         value = {
@@ -259,7 +275,7 @@ class ProductionReleaseController:
             "releaseId": state["candidate"]["releaseId"] if state["candidate"] else None,
             "checkpointCount": len(state["checkpoints"]),
         }
-        value["digest"] = _digest(value)
+        value["digest"] = hmac.new(self.release_key, _canonical(value), hashlib.sha256).hexdigest()
         return value
 
     def transition(
@@ -272,15 +288,18 @@ class ProductionReleaseController:
         now: datetime,
         health: Callable[[str], bool] = lambda _: True,
     ) -> dict[str, Any]:
-        candidate = validate_release(release, key=self.key)
+        candidate = validate_release(release, key=self.release_key)
         if environment not in ENVIRONMENTS:
             raise ReleaseError("release:environment_invalid")
+        if environment == "production":
+            raise ReleaseError("release:production_activation_outside_feature")
         validate_approval(
             owner_approval,
             action=action,
             release_id=candidate["releaseId"],
             environment=environment,
             now=now,
+            key=self.approval_key,
         )
         with self.store.locked():
             state = self.store.load()

@@ -103,11 +103,19 @@
       "requiredTools": ["{python-api}"]
     },
     {
+      "id": "typed-feature-flag-contract",
+      "command": ["{python-api}", "-m", "pytest", "-q", "api/tests/test_typed_feature_flags.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["production-release-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
       "id": "gate-runtime-recovery-contract",
       "command": ["python3", "-m", "unittest", "scripts.tests.test_gate_runtime_recovery"],
       "required": true,
       "timeoutSeconds": 30,
-      "dependsOn": ["production-release-contract"],
+      "dependsOn": ["typed-feature-flag-contract"],
       "requiredTools": ["python3"]
     },
     {

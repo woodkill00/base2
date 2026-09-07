@@ -13,6 +13,7 @@ from scripts.python.production_release import (
 )
 
 KEY = b"production-release-test-key-material-0001"
+OWNER_KEY = b"independent-owner-approval-key-material-1"
 NOW = datetime(2026, 9, 8, 12, tzinfo=UTC)
 
 
@@ -43,6 +44,7 @@ def permit(action, item, environment="staging", offset=10):
         release_id=item["releaseId"],
         environment=environment,
         expires_at=(NOW + timedelta(minutes=offset)).isoformat(),
+        key=OWNER_KEY,
     )
 
 
@@ -67,7 +69,9 @@ def test_approval_is_exact_scoped_integrity_bound_and_expiring():
     changed = dict(value)
     changed["environment"] = "production"
     with TemporaryDirectory() as temporary:
-        controller = ProductionReleaseController(Path(temporary) / "journal.json", key=KEY)
+        controller = ProductionReleaseController(
+            Path(temporary) / "journal.json", release_key=KEY, approval_key=OWNER_KEY
+        )
         with pytest.raises(ReleaseError, match="integrity_invalid"):
             controller.transition(
                 action="prepare",
@@ -89,7 +93,9 @@ def test_approval_is_exact_scoped_integrity_bound_and_expiring():
 def test_prepare_stage_canary_promote_is_checkpointed_and_replay_safe():
     item = release()
     with TemporaryDirectory() as temporary:
-        controller = ProductionReleaseController(Path(temporary) / "journal.json", key=KEY)
+        controller = ProductionReleaseController(
+            Path(temporary) / "journal.json", release_key=KEY, approval_key=OWNER_KEY
+        )
         for action in ("prepare", "stage", "canary", "promote"):
             receipt = controller.transition(
                 action=action,
@@ -119,7 +125,9 @@ def test_prepare_stage_canary_promote_is_checkpointed_and_replay_safe():
 def test_failed_canary_halts_before_traffic_and_rollback_selects_previous():
     first, second = release(1), release(2)
     with TemporaryDirectory() as temporary:
-        controller = ProductionReleaseController(Path(temporary) / "journal.json", key=KEY)
+        controller = ProductionReleaseController(
+            Path(temporary) / "journal.json", release_key=KEY, approval_key=OWNER_KEY
+        )
         for action in ("prepare", "stage", "canary", "promote"):
             controller.transition(
                 action=action,
@@ -166,7 +174,7 @@ def test_interrupted_state_resumes_but_changed_candidate_and_corruption_fail_clo
     item = release()
     with TemporaryDirectory() as temporary:
         path = Path(temporary) / "journal.json"
-        first = ProductionReleaseController(path, key=KEY)
+        first = ProductionReleaseController(path, release_key=KEY, approval_key=OWNER_KEY)
         first.transition(
             action="prepare",
             release=item,
@@ -174,7 +182,7 @@ def test_interrupted_state_resumes_but_changed_candidate_and_corruption_fail_clo
             owner_approval=permit("prepare", item, "preview"),
             now=NOW,
         )
-        resumed = ProductionReleaseController(path, key=KEY)
+        resumed = ProductionReleaseController(path, release_key=KEY, approval_key=OWNER_KEY)
         resumed.transition(
             action="stage",
             release=item,
@@ -199,3 +207,23 @@ def test_nonproduction_lifecycle_never_requests_production_certificates():
     for environment in ("development", "test", "preview", "staging"):
         certificate_mode = "disabled" if environment in {"development", "test"} else "staging-only"
         assert certificate_mode != "production"
+
+
+def test_release_and_approval_keys_are_independent_and_production_is_outside_feature():
+    item = release()
+    with TemporaryDirectory() as temporary:
+        with pytest.raises(ReleaseError, match="key_invalid"):
+            ProductionReleaseController(
+                Path(temporary) / "same-key.json", release_key=KEY, approval_key=KEY
+            )
+        controller = ProductionReleaseController(
+            Path(temporary) / "journal.json", release_key=KEY, approval_key=OWNER_KEY
+        )
+        with pytest.raises(ReleaseError, match="production_activation_outside_feature"):
+            controller.transition(
+                action="prepare",
+                release=item,
+                environment="production",
+                owner_approval=permit("prepare", item, "production"),
+                now=NOW,
+            )
