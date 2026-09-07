@@ -81,11 +81,25 @@
       "requiredTools": ["{python-api}"]
     },
     {
+      "id": "operations-fault-contract",
+      "command": [
+        "{python-api}",
+        "-m",
+        "pytest",
+        "-q",
+        "scripts/tests/test_operations_fault_matrix.py"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["operations-visual-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
       "id": "production-release-contract",
       "command": ["{python-api}", "-m", "pytest", "-q", "scripts/tests/test_production_release.py"],
       "required": true,
       "timeoutSeconds": 30,
-      "dependsOn": ["operations-visual-contract"],
+      "dependsOn": ["operations-fault-contract"],
       "requiredTools": ["{python-api}"]
     },
     {
