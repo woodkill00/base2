@@ -86,3 +86,26 @@ def acknowledge(*, tenant_id: str, incident_id: UUID, owner_ref: str) -> bool:
         )
         changed = cursor.fetchone() is not None
     return changed
+
+
+def prune(*, tenant_id: str, batch_size: int = 500) -> dict[str, int]:
+    bounded = max(1, min(int(batch_size), 1000))
+    policies = {
+        'health': ('sitecontent_operationshealthsample', 30),
+        'synthetics': ('sitecontent_operationssyntheticrun', 30),
+        'incidents': ('sitecontent_operationsincident', 365),
+    }
+    removed: dict[str, int] = {}
+    with workspace_db_conn(tenant_id=tenant_id) as conn, conn.cursor() as cursor:
+        for label, (table, days) in policies.items():
+            state = "AND state='resolved'" if label == 'incidents' else ''
+            cursor.execute(
+                f"""DELETE FROM {table} WHERE id IN (
+                        SELECT id FROM {table}
+                        WHERE site_id=%s AND created_at < NOW() - (%s * INTERVAL '1 day')
+                        {state} ORDER BY created_at LIMIT %s
+                    )""",
+                (tenant_id, days, bounded),
+            )
+            removed[label] = cursor.rowcount
+    return removed

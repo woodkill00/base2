@@ -87,6 +87,11 @@ def validate_probe_catalog(value: Any) -> dict[str, Any]:
         'maximumDimensions': 16,
     }:
         raise OperationsContractError('operations:collection_policy_invalid')
+    if (
+        sum(probe['timeoutSeconds'] for probe in probes)
+        > value['collection']['maximumBatchSeconds']
+    ):
+        raise OperationsContractError('operations:collection_budget_exceeded')
     if value.get('retention') != {'healthDays': 30, 'syntheticDays': 30, 'incidentDays': 365}:
         raise OperationsContractError('operations:retention_policy_invalid')
     return json.loads(json.dumps(value, sort_keys=True))

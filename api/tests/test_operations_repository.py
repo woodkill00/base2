@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
-from api.repositories.operations import acknowledge, list_incidents, summary
+from api.repositories.operations import acknowledge, list_incidents, prune, summary
 
 
 @contextmanager
@@ -74,3 +74,24 @@ def test_acknowledgement_reports_changed_and_noop():
             'tenant-one',
             str(incident_id),
         )
+
+
+def test_retention_pruning_is_tenant_scoped_batched_and_policy_specific():
+    cursor = MagicMock()
+    cursor.rowcount = 4
+    with patch(
+        'api.repositories.operations.workspace_db_conn',
+        return_value=repository_connection(cursor),
+    ):
+        assert prune(tenant_id='tenant-one', batch_size=10000) == {
+            'health': 4,
+            'synthetics': 4,
+            'incidents': 4,
+        }
+    assert [call.args[1] for call in cursor.execute.call_args_list] == [
+        ('tenant-one', 30, 1000),
+        ('tenant-one', 30, 1000),
+        ('tenant-one', 365, 1000),
+    ]
+    assert "state='resolved'" not in cursor.execute.call_args_list[0].args[0]
+    assert "state='resolved'" in cursor.execute.call_args_list[2].args[0]

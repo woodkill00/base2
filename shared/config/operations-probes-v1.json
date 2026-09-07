@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "probes": [
-    { "id": "public.root", "kind": "http", "freshnessSeconds": 300, "timeoutSeconds": 10 },
-    { "id": "api.health", "kind": "http", "freshnessSeconds": 180, "timeoutSeconds": 10 },
+    { "id": "public.root", "kind": "http", "freshnessSeconds": 300, "timeoutSeconds": 5 },
+    { "id": "api.health", "kind": "http", "freshnessSeconds": 180, "timeoutSeconds": 5 },
     { "id": "database.ready", "kind": "database", "freshnessSeconds": 180, "timeoutSeconds": 5 },
     { "id": "workers.ready", "kind": "worker", "freshnessSeconds": 180, "timeoutSeconds": 5 },
     { "id": "queues.delay", "kind": "queue", "freshnessSeconds": 180, "timeoutSeconds": 5 },
@@ -10,16 +10,16 @@
       "id": "objects.ready",
       "kind": "object-storage",
       "freshnessSeconds": 300,
-      "timeoutSeconds": 10
+      "timeoutSeconds": 5
     },
-    { "id": "dns.canonical", "kind": "dns", "freshnessSeconds": 900, "timeoutSeconds": 10 },
+    { "id": "dns.canonical", "kind": "dns", "freshnessSeconds": 900, "timeoutSeconds": 5 },
     {
       "id": "certificate.expiry",
       "kind": "certificate",
       "freshnessSeconds": 3600,
-      "timeoutSeconds": 10
+      "timeoutSeconds": 5
     },
-    { "id": "email.delivery", "kind": "email", "freshnessSeconds": 900, "timeoutSeconds": 10 },
+    { "id": "email.delivery", "kind": "email", "freshnessSeconds": 900, "timeoutSeconds": 5 },
     {
       "id": "schedules.freshness",
       "kind": "schedule",

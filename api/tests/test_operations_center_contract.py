@@ -180,6 +180,15 @@ def test_probe_catalog_covers_every_required_dependency_and_is_bounded():
     catalog = json.loads((root / 'shared/config/operations-probes-v1.json').read_text())
     assert validate_probe_catalog(catalog) == json.loads(json.dumps(catalog, sort_keys=True))
     assert len(catalog['probes']) == 12
+    assert sum(item['timeoutSeconds'] for item in catalog['probes']) <= 60
+
+
+def test_probe_catalog_rejects_a_batch_that_can_exceed_its_deadline():
+    root = Path(__file__).resolve().parents[2]
+    catalog = json.loads((root / 'shared/config/operations-probes-v1.json').read_text())
+    catalog['probes'][0]['timeoutSeconds'] = 30
+    with pytest.raises(OperationsContractError, match='budget_exceeded'):
+        validate_probe_catalog(catalog)
 
 
 def test_collection_makes_missing_and_failed_adapters_visible():
