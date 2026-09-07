@@ -100,7 +100,7 @@ async def read_bounded_upload(
     ):
         raise UploadCapacityError('upload_capacity_invalid')
     received = 0
-    iterator = aiter(chunks)
+    iterator = chunks.__aiter__()
     try:
         async with asyncio.timeout(total_timeout_seconds):
             with tempfile.SpooledTemporaryFile(
@@ -109,7 +109,7 @@ async def read_bounded_upload(
                 while True:
                     try:
                         chunk = await asyncio.wait_for(
-                            anext(iterator), timeout=idle_timeout_seconds
+                            iterator.__anext__(), timeout=idle_timeout_seconds
                         )
                     except StopAsyncIteration:
                         break
