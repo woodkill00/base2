@@ -339,6 +339,17 @@ prove unknown defects impossible.
     secondary traceback. B080 conditions media-inspector normalization on a
     real scanner output path; the primary step remains failed and visible while
     absent evidence is never fabricated or parsed as the repository root.
+47. Exact-head re-review found B079 had removed only the final crowded-fixture
+    cleanup while earlier producer phases still recursively deleted processed,
+    recovery, hostile, and terminal directories under the live supervisor.
+    B081 removes all producer-side recursive spool deletion and enforces its
+    absence; the exact shell trap is now the sole cleanup owner and always stops
+    the named supervisor before removing the disposable named volume.
+48. Retaining every fixture then invalidated the crowded proof's one-window
+    premise because the later recovery phase contains more than the 256-entry
+    raw scan cap. B082 moves crowded-plus-sentinel validation before bulk
+    recovery staging, where all existing terminal and proof entries fit in one
+    window and explicit ready mtimes deterministically order crowded first.
 
 ## Honest residual boundary
 

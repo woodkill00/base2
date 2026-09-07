@@ -6,7 +6,6 @@ import base64
 import hashlib
 import json
 import os
-import shutil
 import stat
 import sys
 import time
@@ -123,15 +122,6 @@ def _verify_recovery() -> int:
         job = ROOT / name
         assert (job / 'claimed').exists() or (job / 'claimed').is_symlink()
         assert not (job / 'complete').exists() and not (job / 'failed').exists()
-    for name in (
-        'crash-residue',
-        'active-residue',
-        'symlink-residue',
-        'special-residue',
-    ):
-        shutil.rmtree(ROOT / name)
-    for index in range(272):
-        shutil.rmtree(ROOT / f'preserved-terminal-{index:04d}')
     print(
         json.dumps(
             {
@@ -144,10 +134,10 @@ def _verify_recovery() -> int:
 
 
 def _verify_crowded_bound() -> int:
-    # With the earlier recovery fixtures removed, both entries share one
-    # supervisor scan window. Their explicit ready mtimes make crowded first,
-    # so a terminal sentinel proves the supervisor visited and boundedly
-    # rejected the 4,096-entry stale job before proceeding.
+    # This phase runs before the bulk recovery fixtures are staged, so both
+    # entries share one supervisor scan window. Their explicit ready mtimes
+    # make crowded first, so a terminal sentinel proves the supervisor visited
+    # and boundedly rejected the 4,096-entry stale job before proceeding.
     crowded = _job_with_residue('crowded-residue')
     old = time.time() - CLAIM_STALE_SECONDS - 1
     os.utime(crowded / 'claimed', (old, old), follow_symlinks=False)
@@ -211,8 +201,6 @@ def main() -> int:
     _assert_private_producer_file(infected / 'failed')
     assert (infected / 'failed').read_bytes() == b'media_inspection_rejected'
 
-    shutil.rmtree(clean)
-    shutil.rmtree(infected)
     print(
         json.dumps(
             {

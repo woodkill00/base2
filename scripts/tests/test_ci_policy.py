@@ -135,6 +135,10 @@ class CiPolicyTests(unittest.TestCase):
             workflow,
         )
         self.assertIn("media-inspector-grype.normalized.json", workflow)
+        producer = (
+            repo_root / "api/tests/media_inspector_two_uid_producer.py"
+        ).read_text(encoding="utf-8")
+        self.assertNotIn("shutil.rmtree", producer)
 
     def test_storybook_excludes_only_the_application_bundle_budget(self):
         repo_root = MODULE_PATH.parents[2]

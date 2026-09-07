@@ -67,6 +67,7 @@ docker run --rm --platform linux/amd64 --network none --user 1000:1000 --read-on
 
 start_supervisor
 run_producer
+run_producer --verify-crowded-bound
 test "$(docker inspect "$supervisor" --format '{{.State.Running}}')" = true
 docker rm -f "$supervisor" >/dev/null
 
@@ -75,5 +76,4 @@ docker rm -f "$supervisor" >/dev/null
 run_producer --stage-recovery
 start_supervisor
 run_producer --verify-recovery
-run_producer --verify-crowded-bound
 test "$(docker inspect "$supervisor" --format '{{.State.Running}}')" = true

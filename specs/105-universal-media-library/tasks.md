@@ -80,3 +80,5 @@
 - [x] B078 Apply the tested bounded `rw,nosuid,nodev,noexec,size=64m` inspector `/tmp` mount to every production Compose profile and enforce rendered parity.
 - [x] B079 Remove concurrent producer cleanup from the live hostile-spool proof so exact lease cleanup occurs only after the supervisor stops and cannot race an open directory traversal.
 - [x] B080 Skip media-inspector result normalization when an earlier workflow step produced no SARIF path, preserving the primary failure without a misleading secondary traceback.
+- [x] B081 Forbid every producer-side recursive spool deletion while the supervisor is live and delegate all fixture disposal to the exact stop-then-volume-remove shell trap.
+- [x] B082 Run the deterministic crowded-job/sentinel proof before bulk recovery fixtures exceed one raw scan window, while retaining shell-only teardown ownership.
