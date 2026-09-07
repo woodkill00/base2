@@ -63,6 +63,14 @@ test('acknowledges once and refreshes evidence', async () => {
   await waitFor(() => expect(operationsAPI.summary).toHaveBeenCalledTimes(2));
 });
 
+test('reports acknowledgement failure without hiding current evidence', async () => {
+  operationsAPI.acknowledge.mockRejectedValueOnce(new Error('offline'));
+  renderPage();
+  fireEvent.click(await screen.findByRole('button', { name: 'Acknowledge' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('temporarily unavailable');
+  expect(screen.getByText('api.unavailable')).toBeInTheDocument();
+});
+
 test('shows explicit failure and supports retry', async () => {
   operationsAPI.summary.mockRejectedValueOnce(new Error('offline'));
   renderPage();
