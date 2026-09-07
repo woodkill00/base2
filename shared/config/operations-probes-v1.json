@@ -4,13 +4,13 @@
     { "id": "public.root", "kind": "http", "freshnessSeconds": 300, "timeoutSeconds": 5 },
     { "id": "api.health", "kind": "http", "freshnessSeconds": 180, "timeoutSeconds": 5 },
     { "id": "database.ready", "kind": "database", "freshnessSeconds": 180, "timeoutSeconds": 5 },
-    { "id": "workers.ready", "kind": "worker", "freshnessSeconds": 180, "timeoutSeconds": 5 },
+    { "id": "workers.ready", "kind": "worker", "freshnessSeconds": 180, "timeoutSeconds": 1 },
     { "id": "queues.delay", "kind": "queue", "freshnessSeconds": 180, "timeoutSeconds": 5 },
     {
       "id": "objects.ready",
       "kind": "object-storage",
       "freshnessSeconds": 300,
-      "timeoutSeconds": 5
+      "timeoutSeconds": 1
     },
     { "id": "dns.canonical", "kind": "dns", "freshnessSeconds": 900, "timeoutSeconds": 5 },
     {
@@ -26,8 +26,22 @@
       "freshnessSeconds": 300,
       "timeoutSeconds": 5
     },
-    { "id": "capacity.headroom", "kind": "capacity", "freshnessSeconds": 180, "timeoutSeconds": 5 },
-    { "id": "monitoring.self", "kind": "monitor", "freshnessSeconds": 180, "timeoutSeconds": 5 }
+    { "id": "capacity.headroom", "kind": "capacity", "freshnessSeconds": 180, "timeoutSeconds": 1 },
+    { "id": "monitoring.self", "kind": "monitor", "freshnessSeconds": 180, "timeoutSeconds": 1 },
+    {
+      "id": "database.performance",
+      "kind": "database",
+      "freshnessSeconds": 300,
+      "timeoutSeconds": 4
+    },
+    { "id": "backup.freshness", "kind": "backup", "freshnessSeconds": 3600, "timeoutSeconds": 4 },
+    {
+      "id": "restore.last-drill",
+      "kind": "restore",
+      "freshnessSeconds": 86400,
+      "timeoutSeconds": 4
+    },
+    { "id": "migrations.state", "kind": "migration", "freshnessSeconds": 300, "timeoutSeconds": 4 }
   ],
   "collection": { "maximumProbes": 32, "maximumBatchSeconds": 60, "maximumDimensions": 16 },
   "retention": { "healthDays": 30, "syntheticDays": 30, "incidentDays": 365 }

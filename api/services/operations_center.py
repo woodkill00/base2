@@ -23,6 +23,9 @@ PROBE_KINDS = {
     'schedule',
     'capacity',
     'monitor',
+    'backup',
+    'restore',
+    'migration',
 }
 JOURNEYS = {
     'anonymous.public_page',

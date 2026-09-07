@@ -179,7 +179,7 @@ def test_probe_catalog_covers_every_required_dependency_and_is_bounded():
     root = Path(__file__).resolve().parents[2]
     catalog = json.loads((root / 'shared/config/operations-probes-v1.json').read_text())
     assert validate_probe_catalog(catalog) == json.loads(json.dumps(catalog, sort_keys=True))
-    assert len(catalog['probes']) == 12
+    assert len(catalog['probes']) == 16
     assert sum(item['timeoutSeconds'] for item in catalog['probes']) <= 60
 
 
@@ -203,7 +203,7 @@ def test_collection_makes_missing_and_failed_adapters_visible():
     assert indexed['public.root']['state'] == 'healthy'
     assert indexed['api.health']['code'] == 'probe.adapter_failed'
     assert indexed['monitoring.self']['state'] == 'unknown'
-    assert len(results) == 12
+    assert len(results) == 16
 
 
 def test_alert_contains_only_bounded_codes_actions_and_integrity():

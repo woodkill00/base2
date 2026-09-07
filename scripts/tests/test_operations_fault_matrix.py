@@ -31,6 +31,9 @@ def catalog():
         "schedule",
         "capacity",
         "monitor",
+        "backup",
+        "restore",
+        "migration",
     )
     return {
         "schemaVersion": 1,
