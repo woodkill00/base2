@@ -997,7 +997,9 @@ def test_main_worker_has_no_decoder_import_and_manifests_isolate_service():
         assert inspector['network_mode'] == 'none' and inspector['read_only'] is True
         assert inspector['group_add'] == ['1000']
         assert inspector['platform'] == 'linux/amd64'
-        assert inspector['pid'] == 'private' and inspector['ipc'] == 'private'
+        # Docker's default is a private PID namespace. An explicit `private`
+        # value is invalid, while omitting `pid` preserves the isolation.
+        assert 'pid' not in inspector and inspector['ipc'] == 'private'
         assert (
             inspector['cap_drop'] == ['ALL']
             and inspector['cap_add'] == ['SETUID', 'SETGID', 'SETPCAP']
