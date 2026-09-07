@@ -123,7 +123,7 @@ stage="api-migrations"
 stage="service-inventory"
 mapfile -t services < <("${compose[@]}" config --services)
 [[ "${#services[@]}" -gt 0 ]] || exit 3
-one_shot_services=(workspace-db-role)
+one_shot_services=(workspace-db-role media-inspector-spool-init)
 
 stage="service-health"
 for attempt in $(seq 1 180); do

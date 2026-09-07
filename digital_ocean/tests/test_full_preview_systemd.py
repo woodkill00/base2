@@ -86,12 +86,14 @@ def test_media_enabled_preview_builds_and_starts_isolated_inspector_with_image_i
 
 def test_remote_bootstrap_accepts_only_the_successful_workspace_role_one_shot():
     script = (ROOT / "digital_ocean/scripts/bash/full-preview-remote.sh").read_text()
-    assert "one_shot_services=(workspace-db-role)" in script
+    assert (
+        "one_shot_services=(workspace-db-role media-inspector-spool-init)" in script
+    )
     assert '"${compose[@]}" ps -a -q "$service"' in script
     assert '"${compose[@]}" ps -q "$service"' not in script
     assert "'{{.State.ExitCode}}'" in script
     assert '[[ "$state" == "exited" && "$exit_code" == "0" ]]' in script
     assert 'pending+=("$service:$state:exit-$exit_code")' in script
-    assert script.index("one_shot_services=(workspace-db-role)") < script.index(
-        'stage="service-health"'
-    )
+    assert script.index(
+        "one_shot_services=(workspace-db-role media-inspector-spool-init)"
+    ) < script.index('stage="service-health"')

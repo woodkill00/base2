@@ -72,7 +72,13 @@ def _submit(name: str, content: bytes) -> tuple[Path, str]:
     raise AssertionError(f'{name} did not reach a terminal state')
 
 
-def _job_with_residue(name: str, *, claim: str = 'regular', temp: str | None = None) -> Path:
+def _job_with_residue(
+    name: str,
+    *,
+    claim: str = 'regular',
+    temp: str | None = None,
+    ready: bool = True,
+) -> Path:
     job = ROOT / name
     job.mkdir(mode=0o770)
     job.chmod(0o770)
@@ -97,7 +103,8 @@ def _job_with_residue(name: str, *, claim: str = 'regular', temp: str | None = N
         (job / 'failed.tmp').chmod(0o600)
     elif temp == 'fifo':
         os.mkfifo(job / 'failed.tmp', mode=0o600)
-    _write(job / 'ready', b'1')
+    if ready:
+        _write(job / 'ready', b'1')
     return job
 
 
@@ -152,12 +159,14 @@ def _verify_crowded_bound() -> int:
     # entries share one supervisor scan window. Their explicit ready mtimes
     # make crowded first, so a terminal sentinel proves the supervisor visited
     # and boundedly rejected the 4,096-entry stale job before proceeding.
-    crowded = _job_with_residue('crowded-residue')
+    crowded = _job_with_residue('crowded-residue', ready=False)
     old = time.time() - CLAIM_STALE_SECONDS - 1
     os.utime(crowded / 'claimed', (old, old), follow_symlinks=False)
-    os.utime(crowded / 'ready', (old, old), follow_symlinks=False)
     for index in range(4096):
         _write(crowded / f'untrusted-{index:04d}', b'x')
+    # Publish readiness only after the adversarial directory is complete.
+    _write(crowded / 'ready', b'1')
+    os.utime(crowded / 'ready', (old, old), follow_symlinks=False)
     sentinel, terminal = _submit('sentinel-after-crowded', PNG)
     assert terminal == 'complete'
     assert (crowded / 'claimed').is_file()
