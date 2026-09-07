@@ -61,7 +61,7 @@ jobs:
             pytest -q -m "not integration" --cov=project --cov-report=xml:coverage.xml --cov-report=term --cov-fail-under=60 -c pytest.ini .
           fi
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: coverage-${{ matrix.service }}
           path: ${{ matrix.service == 'api' && 'coverage.xml' || 'django/coverage.xml' }}

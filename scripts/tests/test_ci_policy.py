@@ -67,6 +67,27 @@ class CiPolicyTests(unittest.TestCase):
         self.assertIn("npm audit --audit-level=moderate --json", workflow)
         self.assertNotIn("npm audit --omit=dev", workflow)
 
+    def test_e2e_stack_uses_the_documented_docker_hub_mirror(self):
+        repo_root = MODULE_PATH.parents[2]
+        compose = (repo_root / "e2e/docker-compose.e2e.yml").read_text(encoding="utf-8")
+        self.assertNotIn("public.ecr.aws/docker/library", compose)
+        self.assertNotIn("image: postgres:", compose)
+        self.assertNotIn("image: redis:", compose)
+        self.assertEqual(7, compose.count("mirror.gcr.io/library"))
+        self.assertEqual(2, compose.count("mirror.gcr.io/library/postgres@sha256:"))
+        self.assertEqual(1, compose.count("mirror.gcr.io/library/redis@sha256:"))
+
+    def test_workflows_pin_node24_checkout_and_artifact_actions(self):
+        repo_root = MODULE_PATH.parents[2]
+        workflows = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in sorted((repo_root / ".github/workflows").glob("*.yml"))
+        )
+        self.assertNotIn("actions/checkout@11d5960a326750d5838078e36cf38b85af677262", workflows)
+        self.assertNotIn("actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02", workflows)
+        self.assertIn("actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09", workflows)
+        self.assertIn("actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f", workflows)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -142,6 +142,17 @@ prove unknown defects impossible.
     exactly 40 identifiers. The validator now requires the complete ordered
     B001-B050 sequence and a matching total status count, preventing either an
     omitted remediation task or an undocumented extra task from passing.
+23. The corrected exact-head gate then passed all 89 required checks, and 100
+    consecutive runtime plus 100 consecutive client critical repetitions also
+    passed. Hosted push and pull-request matrices passed every product check
+    except one push-side smoke runner, which exhausted six retries before any
+    container started because anonymous public ECR returned rate-limit errors;
+    the duplicate smoke on another runner passed. E2E service images now use
+    Google Cloud's documented Docker Hub mirror with exact PostgreSQL and Redis
+    digests, image build arguments use the same mirror, and a CI-policy test
+    forbids regression to the rate-limited endpoints. The remaining Node 20
+    upload-artifact annotation was closed with the exact official v6 Node 24
+    action pin.
 
 ## Honest residual boundary
 
