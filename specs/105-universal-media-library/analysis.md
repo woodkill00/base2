@@ -136,6 +136,12 @@ prove unknown defects impossible.
     Compact and alternate-theme modal proof was also incomplete. B039 was
     reopened, and B041-B050 make remediation, real PostgreSQL/compose/browser
     proof, exact-head hosted checks, and repeated independent review mandatory.
+22. The first post-remediation complete gate passed every product, database,
+    browser, security, coverage, dependency, and visual check but correctly
+    rejected the expanded task ledger because `validate_plan.py` still required
+    exactly 40 identifiers. The validator now requires the complete ordered
+    B001-B050 sequence and a matching total status count, preventing either an
+    omitted remediation task or an undocumented extra task from passing.
 
 ## Honest residual boundary
 
