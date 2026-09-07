@@ -206,7 +206,8 @@ services:
       - /tmp:rw,nosuid,nodev,noexec,size=32m
       - /run:rw,nosuid,nodev,noexec,size=8m
     pids_limit: 32
-    mem_limit: 512m
+    # A cold signed-definition test can exceed 512 MiB before FreshClam settles.
+    mem_limit: 1024m
     cpus: '0.25'
     healthcheck:
       test: ['CMD', '/bin/sh', '/usr/local/bin/base2-clamav-health']

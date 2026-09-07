@@ -980,7 +980,7 @@ def test_main_worker_has_no_decoder_import_and_manifests_isolate_service():
         ]
         assert updater['cap_drop'] == ['ALL'] and updater['read_only'] is True
         assert updater['security_opt'] == ['no-new-privileges:true']
-        assert updater['pids_limit'] == 32 and updater['mem_limit'] == '512m'
+        assert updater['pids_limit'] == 32 and updater['mem_limit'] == '1024m'
         assert updater['healthcheck']['test'] == [
             'CMD',
             '/bin/sh',

@@ -70,7 +70,7 @@ start_updater() {
     --cap-drop ALL \
     --security-opt no-new-privileges \
     --pids-limit 32 \
-    --memory 512m \
+    --memory 1024m \
     --cpus 0.25 \
     --tmpfs /tmp:rw,nosuid,nodev,noexec,size=32m \
     --tmpfs /run:rw,nosuid,nodev,noexec,size=8m \
