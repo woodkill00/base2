@@ -4,10 +4,8 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import re
-import sys
-
+from pathlib import Path
 
 ACTION = re.compile(r"^\s*-?\s*uses:\s*([^\s#]+)", re.MULTILINE)
 FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
@@ -23,7 +21,13 @@ def scan_workflow(name: str, text: str, required_jobs: list[str], marker: str, *
     for job in required_jobs:
         if job not in jobs:
             findings.append(f"{name}: missing required job {job}")
+    action_with_indent = None
     for line_number, line in enumerate(text.splitlines(), 1):
+        indent = len(line) - len(line.lstrip())
+        if line.strip() and action_with_indent is not None and indent <= action_with_indent:
+            action_with_indent = None
+        if re.match(r"^\s*with:\s*$", line):
+            action_with_indent = indent
         if re.search(r"\bcontinue-on-error:\s*true\b", line):
             findings.append(f"{name}:{line_number}: continue-on-error true is forbidden")
         if re.search(r"\bfail-build:\s*false\b", line):
@@ -31,7 +35,12 @@ def scan_workflow(name: str, text: str, required_jobs: list[str], marker: str, *
         if "|| true" in line and marker not in line:
             findings.append(f"{name}:{line_number}: failure suppression is forbidden")
         image = re.match(r"^\s*image:\s*([^\s#]+)", line)
-        if image and "@sha256:" not in image.group(1):
+        # `image:` under an action's `with:` is scanner input, not an executable
+        # job/service declaration. All image declarations outside that exact
+        # YAML context remain subject to immutable-digest enforcement at any
+        # indentation depth.
+        action_input = action_with_indent is not None and indent > action_with_indent
+        if image and not action_input and "@sha256:" not in image.group(1):
             findings.append(f"{name}:{line_number}: mutable image {image.group(1)}")
     for action in ACTION.findall(text):
         if action.startswith("./") or action.startswith("docker://") or "@" not in action:

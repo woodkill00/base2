@@ -29,6 +29,25 @@ jobs:
           severity-cutoff: high
           output-format: sarif
 
+      - name: Build immutable media inspector image
+        run: docker build --file api/Dockerfile.media-inspector --tag base2-media-inspector:security api
+
+      - name: Generate media inspector image SBOM
+        uses: anchore/sbom-action@fc46e51fd3cb168ffb36c6d1915723c47db58abb
+        with:
+          image: base2-media-inspector:security
+          format: cyclonedx-json
+          output-file: media-inspector-sbom.cdx.json
+
+      - name: Scan media inspector image
+        id: inspector-grype
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2
+        with:
+          sbom: media-inspector-sbom.cdx.json
+          fail-build: true
+          severity-cutoff: high
+          output-format: sarif
+
       - name: Normalize SBOM result
         if: always()
         run: python scripts/python/security_result_adapter.py --family sbom --format cyclonedx --tool syft --source-commit "$GITHUB_SHA" --input sbom.cdx.json --output sbom.normalized.json
@@ -36,6 +55,10 @@ jobs:
       - name: Normalize Grype result
         if: always()
         run: python scripts/python/security_result_adapter.py --family dependency --format sarif --tool grype --source-commit "$GITHUB_SHA" --input "${{ steps.grype.outputs.sarif }}" --output grype.normalized.json
+
+      - name: Normalize media inspector Grype result
+        if: always()
+        run: python scripts/python/security_result_adapter.py --family dependency --format sarif --tool grype-media-inspector --source-commit "$GITHUB_SHA" --input "${{ steps.inspector-grype.outputs.sarif }}" --output media-inspector-grype.normalized.json
 
       - name: Upload SBOM artifact
         if: always()
@@ -47,6 +70,9 @@ jobs:
             ${{ steps.grype.outputs.sarif }}
             sbom.normalized.json
             grype.normalized.json
+            media-inspector-sbom.cdx.json
+            ${{ steps.inspector-grype.outputs.sarif }}
+            media-inspector-grype.normalized.json
   npm-audit:
     runs-on: ubuntu-latest
     steps:

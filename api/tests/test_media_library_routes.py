@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from api.routes import media_library
 from api.security.request_auth import PublicPrincipal
-from api.security.upload_capacity import UploadCapacityError
+from api.security.upload_capacity import DownloadCapacityError, UploadCapacityError
 
 
 ASSET_ID = '00000000-0000-0000-0000-000000000110'
@@ -42,6 +42,7 @@ class Repository:
 
     def create_export(self, **kwargs):
         assert len(kwargs['request_digest']) == 64
+        assert kwargs['maximum_outstanding'] == 10
         assert kwargs['projection'] == {
             'fields': ['id', 'filename'],
             'assetIds': [ASSET_ID],
@@ -226,6 +227,105 @@ def test_content_transfer_rejects_exhausted_upload_capacity(monkeypatch):
     assert response.status_code == 429
     assert response.json()['detail'] == 'media_upload_capacity_exhausted'
     assert response.headers['retry-after'] == '2'
+
+
+def test_download_rejects_capacity_before_materializing_object(monkeypatch):
+    read = False
+
+    class Exhausted:
+        async def __aenter__(self):
+            raise DownloadCapacityError('download_capacity_exhausted')
+
+        async def __aexit__(self, *_args):
+            return False
+
+    def forbidden_read(_self, **_kwargs):
+        nonlocal read
+        read = True
+        raise AssertionError('object must not be materialized')
+
+    monkeypatch.setattr(media_library, 'download_delivery_slot', lambda: Exhausted())
+    monkeypatch.setattr(
+        media_library.PostgresContentWorkspaceRepository, 'read_asset_content', forbidden_read
+    )
+    response = TestClient(app).get(
+        f'/api/media/v1/assets/{ASSET_ID}/content', headers={'Download-Grant': 'g' * 64}
+    )
+    assert response.status_code == 429
+    assert response.json()['detail'] == 'media_download_capacity_exhausted'
+    assert read is False
+
+
+def test_download_and_export_have_principal_rate_limits(monkeypatch):
+    def limited(_tenant, _principal, scope):
+        if scope in {'media_download', 'media_export_create'}:
+            return 99, True, 23
+        return 1, False, 0
+
+    monkeypatch.setattr(media_library, 'incr_and_check_tenant_detailed', limited)
+    client = TestClient(app)
+    download = client.get(
+        f'/api/media/v1/assets/{ASSET_ID}/content', headers={'Download-Grant': 'g' * 64}
+    )
+    export = client.post(
+        '/api/media/v1/exports',
+        json={
+            'outputFormat': 'csv',
+            'assetIds': [ASSET_ID],
+            'projection': ['id', 'filename'],
+        },
+        headers={'Idempotency-Key': 'export-rate-110'},
+    )
+    assert download.status_code == export.status_code == 429
+    assert download.headers['retry-after'] == export.headers['retry-after'] == '23'
+
+
+def test_download_and_export_also_consume_tenant_aggregate_limits(monkeypatch):
+    calls = []
+
+    def allowed(tenant, principal, scope):
+        calls.append((tenant, principal, scope))
+        return 1, False, 0
+
+    monkeypatch.setattr(media_library, 'incr_and_check_tenant_detailed', allowed)
+    monkeypatch.setattr(media_library, 'get_artifact_store', lambda: object())
+    monkeypatch.setattr(
+        media_library.PostgresContentWorkspaceRepository,
+        'read_asset_content',
+        lambda _self, **_kwargs: {
+            'content': b'safe-png',
+            'media_type': 'image/png',
+            'sha256': 'a' * 64,
+        },
+    )
+    client = TestClient(app)
+    assert client.get(
+        f'/api/media/v1/assets/{ASSET_ID}/content', headers={'Download-Grant': 'g' * 64}
+    ).status_code == 200
+    assert client.post(
+        '/api/media/v1/exports',
+        json={
+            'outputFormat': 'csv',
+            'assetIds': [ASSET_ID],
+            'projection': ['id', 'filename'],
+        },
+        headers={'Idempotency-Key': 'export-tenant-rate-110'},
+    ).status_code == 202
+    assert ('base2-obsidian', 'tenant-aggregate', 'media_download_tenant') in calls
+    assert ('base2-obsidian', 'tenant-aggregate', 'media_export_tenant') in calls
+
+
+def test_download_rate_limit_backend_failure_is_typed_fail_closed(monkeypatch):
+    monkeypatch.setattr(
+        media_library,
+        'incr_and_check_tenant_detailed',
+        lambda *_args: (_ for _ in ()).throw(RuntimeError('redis unavailable')),
+    )
+    response = TestClient(app).get(
+        f'/api/media/v1/assets/{ASSET_ID}/content', headers={'Download-Grant': 'g' * 64}
+    )
+    assert response.status_code == 503
+    assert response.json()['detail'] == 'media_rate_limit_unavailable'
 
 
 def test_content_transfer_rejects_invalid_grant_before_capacity(monkeypatch):

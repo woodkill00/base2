@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import json
@@ -21,9 +22,11 @@ from api.security.request_auth import require_authenticated_principal
 from api.security.identity import require_recent_reauthentication
 from api.security.rate_limit import incr_and_check_tenant_detailed
 from api.security.upload_capacity import (
+    DownloadCapacityError,
     UploadBodyLimitError,
     UploadBodyTimeoutError,
     UploadCapacityError,
+    download_delivery_slot,
     read_bounded_upload,
     upload_completion_slot,
 )
@@ -514,26 +517,54 @@ async def complete_upload(
 
 
 @router.get('/assets/{asset_id}/content')
-def read_content(
+async def read_content(
     asset_id: UUID,
     request: Request,
     download_grant: Annotated[str, Header(alias='Download-Grant', min_length=32, max_length=4096)],
 ):
     principal, tenant = _authorized_scope(request, 'media.read')
     try:
-        result = PostgresContentWorkspaceRepository().read_asset_content(
-            site_id=tenant,
-            asset_id=asset_id,
-            requester_ref=f'user:{principal.user_id}',
-            download_grant=download_grant,
-            artifact_store=get_artifact_store(),
-        )
+        try:
+            _count, limited, retry_after = incr_and_check_tenant_detailed(
+                tenant, str(principal.user_id), 'media_download'
+            )
+            if not limited:
+                _count, limited, retry_after = incr_and_check_tenant_detailed(
+                    tenant, 'tenant-aggregate', 'media_download_tenant'
+                )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503, detail='media_rate_limit_unavailable'
+            ) from exc
+        if limited:
+            raise HTTPException(
+                status_code=429,
+                detail='media_rate_limit_exceeded',
+                headers={'Retry-After': str(retry_after)},
+            )
+        async with download_delivery_slot():
+            result = await asyncio.to_thread(
+                PostgresContentWorkspaceRepository().read_asset_content,
+                site_id=tenant,
+                asset_id=asset_id,
+                requester_ref=f'user:{principal.user_id}',
+                download_grant=download_grant,
+                artifact_store=get_artifact_store(),
+            )
         headers = delivery_headers(
             media_type=result['media_type'],
             inline_safe_derivative=result['media_type'].startswith('image/'),
         )
         headers['X-Content-SHA256'] = result['sha256']
         return Response(content=result['content'], media_type=result['media_type'], headers=headers)
+    except DownloadCapacityError as exc:
+        raise HTTPException(
+            status_code=429,
+            detail='media_download_capacity_exhausted',
+            headers={'Retry-After': '1'},
+        ) from exc
+    except HTTPException:
+        raise
     except (ValueError, ArtifactIntegrityError) as exc:
         code = str(exc)
         status_code = 404 if code == 'content_not_found' else 422
@@ -649,6 +680,22 @@ def create_export(
 ):
     principal, tenant = _authorized_scope(request, 'media.read')
     _sensitive_guard(request, principal)
+    try:
+        _count, limited, retry_after = incr_and_check_tenant_detailed(
+            tenant, str(principal.user_id), 'media_export_create'
+        )
+        if not limited:
+            _count, limited, retry_after = incr_and_check_tenant_detailed(
+                tenant, 'tenant-aggregate', 'media_export_tenant'
+            )
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='media_rate_limit_unavailable') from exc
+    if limited:
+        raise HTTPException(
+            status_code=429,
+            detail='media_rate_limit_exceeded',
+            headers={'Retry-After': str(retry_after)},
+        )
     request_digest = hashlib.sha256(
         json.dumps(
             {
@@ -673,8 +720,15 @@ def create_export(
             },
             request_digest=request_digest,
             expires_at=datetime.now(UTC) + timedelta(hours=24),
+            maximum_outstanding=10,
         )
     except ValueError as exc:
+        if str(exc) == 'media_export_capacity_exceeded':
+            raise HTTPException(
+                status_code=429,
+                detail='media_export_capacity_exceeded',
+                headers={'Retry-After': '60'},
+            ) from exc
         raise _map_operation_error(exc) from exc
     except Exception as exc:
         raise HTTPException(status_code=503, detail='media_dependency_unavailable') from exc

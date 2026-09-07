@@ -72,7 +72,7 @@ def test_workspace_media_scan_replay_dispatches_only_discovered_ids(monkeypatch)
     assert delivered == discovered
 
 
-@pytest.mark.parametrize('worker_result', ['ready', 'rejected'])
+@pytest.mark.parametrize('worker_result', ['ready', 'rejected', 'not_ready'])
 def test_workspace_media_scan_task_completes_clean_and_infected_results(
     monkeypatch, worker_result
 ):

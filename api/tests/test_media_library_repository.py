@@ -271,6 +271,8 @@ def test_transition_is_versioned_transactional_and_emits_outbox(monkeypatch):
     assert connection.commits == 1
     assert any('sitecontent_mediaoutboxevent' in sql for sql, _params in cursor.calls)
     assert 'pg_advisory_xact_lock' in cursor.calls[0][0]
+    assert '\0' not in cursor.calls[0][1][0]
+    assert len(cursor.calls[0][1][0]) == 64
     assert 'AND owner_ref=%s' in cursor.calls[1][0]
     assert 'visibility IN' not in cursor.calls[1][0]
     update_query = next(
@@ -308,6 +310,53 @@ def test_transition_exact_replay_precedes_stale_version_rejection(monkeypatch):
     }
     assert connection.rollbacks == 1 and connection.commits == 0
     assert not any(sql.startswith('UPDATE sitecontent_mediaasset') for sql, _ in cursor.calls)
+
+
+def test_transition_exact_replay_survives_later_purge(monkeypatch):
+    asset_id = UUID(int=1)
+    digest = repository.hashlib.sha256(
+        f'site-a\0{asset_id}\0user:test\0soft_deleted\0{3}'.encode()
+    ).hexdigest()
+    cursor = SequenceCursor(
+        [[], [(8, 'purged')], [(f'asset:{asset_id}', 'asset.soft_deleted', digest)]]
+    )
+    connection = Connection(cursor)
+    bind(monkeypatch, connection)
+
+    result = repository.PostgresMediaLibraryRepository().transition_asset(
+        site_id='site-a',
+        asset_id=asset_id,
+        actor_ref='user:test',
+        target='soft_deleted',
+        expected_version=3,
+        idempotency_key='delete-1',
+    )
+
+    assert result == {
+        'id': str(asset_id),
+        'status': 'soft_deleted',
+        'version': 4,
+        'replayed': True,
+    }
+    assert connection.rollbacks == 1 and connection.commits == 0
+
+
+def test_transition_new_mutation_of_purged_asset_is_denied(monkeypatch):
+    cursor = SequenceCursor([[], [(8, 'purged')], []])
+    connection = Connection(cursor)
+    bind(monkeypatch, connection)
+
+    with pytest.raises(ValueError, match='media_not_found'):
+        repository.PostgresMediaLibraryRepository().transition_asset(
+            site_id='site-a',
+            asset_id=UUID(int=1),
+            actor_ref='user:test',
+            target='archived',
+            expected_version=8,
+            idempotency_key='new-after-purge',
+        )
+
+    assert connection.rollbacks == 1 and connection.commits == 0
 
 
 @pytest.mark.parametrize(
@@ -354,6 +403,9 @@ def test_export_collection_job_and_retrieval_workflows_are_scoped(monkeypatch):
     now = datetime(2026, 9, 6, tzinfo=UTC)
     cursor = SequenceCursor(
         [
+            [],
+            [],
+            [(0,)],
             [(UUID(int=8), 'queued', now)],
             [(UUID(int=9), 'Launch', 'private', [], 1, 2)],
             [],
@@ -422,3 +474,38 @@ def test_export_collection_job_and_retrieval_workflows_are_scoped(monkeypatch):
     assert 'asset.visibility' not in retry_query[0]
     assert retry_query[1] == ('site-a', str(UUID(int=11)), 'user:test')
     assert connection.commits == 4
+
+
+def test_export_admission_preserves_replay_and_rejects_new_work_at_capacity(monkeypatch):
+    now = datetime(2026, 9, 6, tzinfo=UTC)
+    replay_cursor = SequenceCursor([[], [(UUID(int=8), 'queued', now)]])
+    replay_connection = Connection(replay_cursor)
+    bind(monkeypatch, replay_connection)
+    result = repository.PostgresMediaLibraryRepository().create_export(
+        site_id='site-a',
+        actor_ref='user:test',
+        output_format='csv',
+        projection={'fields': ['id'], 'assetIds': [str(UUID(int=1))], 'filters': {}},
+        request_digest='a' * 64,
+        expires_at=now,
+        maximum_outstanding=10,
+    )
+    assert result['replayed'] is True
+    assert len(replay_cursor.calls) == 2
+    lock_ref = replay_cursor.calls[0][1][0]
+    assert '\0' not in lock_ref and len(lock_ref) == 64
+
+    capacity_cursor = SequenceCursor([[], [], [(10,)]])
+    capacity_connection = Connection(capacity_cursor)
+    bind(monkeypatch, capacity_connection)
+    with pytest.raises(ValueError, match='media_export_capacity_exceeded'):
+        repository.PostgresMediaLibraryRepository().create_export(
+            site_id='site-a',
+            actor_ref='user:test',
+            output_format='csv',
+            projection={'fields': ['id'], 'assetIds': [str(UUID(int=1))], 'filters': {}},
+            request_digest='b' * 64,
+            expires_at=now,
+            maximum_outstanding=10,
+        )
+    assert capacity_connection.rollbacks == 1

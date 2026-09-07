@@ -663,4 +663,9 @@ def test_main_worker_has_no_decoder_import_and_manifests_isolate_service():
 
 def test_inspector_image_ships_fixed_scanner_and_ffprobe():
     dockerfile = (Path(__file__).resolve().parents[1] / 'Dockerfile.media-inspector').read_text()
-    assert 'clamav ffmpeg' in dockerfile and 'USER inspector' in dockerfile
+    assert 'clamav=1.4.3+dfsg-1~deb12u2' in dockerfile
+    assert 'ffmpeg=7:5.1.9-0+deb12u1' in dockerfile
+    assert 'USER inspector' in dockerfile
+    assert 'FROM mirror.gcr.io/library/python@sha256:' in dockerfile
+    assert 'snapshot.debian.org/archive/debian/20260824T000000Z' in dockerfile
+    assert 'apt-get upgrade' not in dockerfile

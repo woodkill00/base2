@@ -171,6 +171,28 @@ prove unknown defects impossible.
     scheduler, expired-lease, and recovery-storage-failure paths. The critical
     repetition runner now includes the late replay, marker, lease, duplicate,
     and recovery regressions rather than relying only on the original suite.
+26. The first exact-head review after those repairs cleared UX but rejected
+    code/security closure. A governance transition could race a claimed scan
+    into an ineligible state and strand its running job; delayed exact replay
+    after purge was unreachable. Reusable delivery grants lacked admission
+    before whole-object reads, and unbounded unique export requests plus global
+    FIFO discovery allowed resource exhaustion and tenant starvation. The
+    inspector build also retained mutable upstream package inputs without a
+    built-image SBOM/scan proof. B056-B060 convert all five findings—including
+    the two low findings—into implementation, real concurrency/fairness, and
+    supply-chain regression work before another exact-head review.
+27. Remediation now terminally supersedes and audits an ineligible claimed scan,
+    preserves exact replay after purge, and denies changed or new purged-state
+    mutations. Whole-object reads are admitted before materialization through
+    principal/tenant rates, one slot per process, and a two-worker/150 MiB
+    invariant; limiter loss fails closed with typed 503 responses. Export replay
+    precedes an atomically locked tenant quota, while ranked discovery gives
+    each tenant a first turn before a second. The inspector uses a digest-pinned
+    base, dated Debian snapshot, exact apt versions, hash-required wheels, and a
+    hosted built-image SBOM/blocking scan. Real PostgreSQL exposed and closed NUL
+    advisory-key and psycopg percent-escaping errors; the first image smoke also
+    exposed and closed an inaccessible user-site installation. B056-B060 and
+    their critical repetitions now cover every discovered path.
 
 ## Honest residual boundary
 

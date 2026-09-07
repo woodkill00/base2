@@ -426,6 +426,49 @@ def finish_media_scan_attempt(
     result: str,
 ) -> None:
     """Release an exact completed attempt and schedule bounded exponential retry."""
+    if result == 'not_ready':
+        with db_conn(tenant_id=site_id) as conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """UPDATE sitecontent_mediajob job
+                           SET status='cancelled',attempt=%s,
+                               error_code='media_scan_superseded',completed_at=NOW(),
+                               lease_expires_at=NULL,updated_at=NOW()
+                           WHERE job.site_id=%s AND job.id=%s AND job.kind='inspect'
+                             AND job.status='running' AND job.attempt=%s
+                             AND job.lease_expires_at=%s
+                             AND EXISTS (
+                               SELECT 1 FROM sitecontent_mediaasset asset
+                               WHERE asset.site_id=job.site_id AND asset.id=job.asset_id
+                                 AND asset.status<>'quarantined'
+                             )
+                           RETURNING job.asset_id""",
+                        (attempt, site_id, str(job_id), attempt - 1, lease_token),
+                    )
+                    superseded = cur.fetchone()
+                    if not superseded:
+                        raise ValueError('content_media_attempt_stale')
+                    from api.services.media_library_runtime import append_media_audit
+
+                    append_media_audit(
+                        cur,
+                        site_id=site_id,
+                        event_type='media.inspection.superseded',
+                        actor_ref='system:media-worker',
+                        subject_ref=f'asset:{superseded[0]}',
+                        detail={
+                            'code': 'media_scan_superseded',
+                            'status': 'cancelled',
+                            'reason': 'asset_ineligible',
+                            'count': attempt,
+                        },
+                    )
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        return
     states = {
         'quarantined': 'retryable',
         'ready': 'completed',

@@ -261,6 +261,24 @@ def test_asset_content_download_requires_header_grant_and_is_private_nosniff():
     assert call[1]['download_grant'] == headers['Download-Grant']
 
 
+def test_asset_download_rate_limit_backend_failure_is_typed_fail_closed(monkeypatch):
+    monkeypatch.setattr(
+        content_workspace,
+        'incr_and_check_tenant_detailed',
+        lambda *_args: (_ for _ in ()).throw(RuntimeError('redis unavailable')),
+    )
+    response = TestClient(app).get(
+        f'/api/content/v1/assets/{UUID(int=7104)}/content',
+        headers={
+            'Authorization': 'Bearer synthetic',
+            'X-Tenant-ID': 'site-a',
+            'Download-Grant': 'opaque-download-grant-that-is-long-enough',
+        },
+    )
+    assert response.status_code == 503
+    assert response.json()['detail'] == 'content_rate_limit_unavailable'
+
+
 def test_relationship_lifecycle_is_bounded_and_never_accepts_scope_from_body():
     client = TestClient(app)
     headers = {'Authorization': 'Bearer synthetic', 'X-Tenant-ID': 'site-a'}

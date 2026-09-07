@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from api.main import app
 from api.routes import content_workspace
 from api.security.request_auth import PublicPrincipal
+from api.security.upload_capacity import DownloadCapacityError
 
 
 class FakeJobRepository:
@@ -91,6 +92,9 @@ def scoped(monkeypatch):
     )
     monkeypatch.setattr(content_workspace, 'get_repository', lambda: FakeJobRepository())
     monkeypatch.setattr(content_workspace, 'get_artifact_store', lambda: object())
+    monkeypatch.setattr(
+        content_workspace, 'incr_and_check_tenant_detailed', lambda *_args: (1, False, 0)
+    )
 
 
 def test_import_and_export_lifecycle_is_tenant_principal_and_idempotency_bound():
@@ -210,3 +214,52 @@ def test_job_creation_rejects_missing_idempotency_and_unknown_or_unsafe_fields()
         ).status_code
         == 422
     )
+
+
+def test_export_download_rejects_capacity_before_materializing_object(monkeypatch):
+    read = False
+
+    class Exhausted:
+        async def __aenter__(self):
+            raise DownloadCapacityError('download_capacity_exhausted')
+
+        async def __aexit__(self, *_args):
+            return False
+
+    def forbidden_read(self, **kwargs):
+        nonlocal read
+        read = True
+        raise AssertionError('export object must not be materialized')
+
+    monkeypatch.setattr(content_workspace, 'download_delivery_slot', lambda: Exhausted())
+    monkeypatch.setattr(FakeJobRepository, 'read_export_content', forbidden_read)
+    response = TestClient(app).get(
+        f'/api/content/v1/types/article/exports/{UUID(int=6104)}/content',
+        headers={
+            'Authorization': 'Bearer synthetic',
+            'X-Tenant-ID': 'site-a',
+            'Download-Grant': 'opaque-download-grant-that-is-long-enough',
+        },
+    )
+    assert response.status_code == 429
+    assert response.json()['detail'] == 'content_download_capacity_exhausted'
+    assert response.headers['retry-after'] == '1'
+    assert read is False
+
+
+def test_export_download_rate_limit_backend_failure_is_typed_fail_closed(monkeypatch):
+    monkeypatch.setattr(
+        content_workspace,
+        'incr_and_check_tenant_detailed',
+        lambda *_args: (_ for _ in ()).throw(RuntimeError('redis unavailable')),
+    )
+    response = TestClient(app).get(
+        f'/api/content/v1/types/article/exports/{UUID(int=6104)}/content',
+        headers={
+            'Authorization': 'Bearer synthetic',
+            'X-Tenant-ID': 'site-a',
+            'Download-Grant': 'opaque-download-grant-that-is-long-enough',
+        },
+    )
+    assert response.status_code == 503
+    assert response.json()['detail'] == 'content_rate_limit_unavailable'

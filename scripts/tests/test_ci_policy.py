@@ -46,11 +46,58 @@ class CiPolicyTests(unittest.TestCase):
         self.assertTrue(any("nonblocking scanner" in item for item in findings))
         self.assertTrue(any("mutable image" in item for item in findings))
 
+    def test_does_not_confuse_scanner_action_input_with_service_image(self):
+        body = (
+            "on:\n  pull_request:\njobs:\n  gate:\n    steps:\n"
+            "      - uses: anchore/sbom-action@" + "a" * 40 + "\n"
+            "        with:\n          image: locally-built:security\n"
+        )
+        self.assertEqual([], self.scan(body))
+
+    def test_rejects_deeply_indented_mutable_service_image(self):
+        body = (
+            "on:\n  pull_request:\njobs:\n  gate:\n    services:\n"
+            "          unusual-db:\n            image: postgres:16\n"
+            "    steps:\n      - run: scan\n"
+        )
+        findings = self.scan(body)
+        self.assertTrue(any("mutable image postgres:16" in item for item in findings))
+
     def test_current_repository_satisfies_t019_policy(self):
         repo_root = MODULE_PATH.parents[2]
         policy = __import__("json").loads((repo_root / "scripts/config/ci-policy.json").read_text(encoding="utf-8"))
         findings = self.policy.validate(repo_root, policy)
         self.assertEqual([], findings)
+
+    def test_media_inspector_build_inputs_are_immutable_and_scanned(self):
+        repo_root = MODULE_PATH.parents[2]
+        dockerfile = (repo_root / "api/Dockerfile.media-inspector").read_text(encoding="utf-8")
+        requirements = (repo_root / "api/requirements-media-inspector.txt").read_text(
+            encoding="utf-8"
+        )
+        workflow = (repo_root / ".github/workflows/security.yml").read_text(encoding="utf-8")
+
+        self.assertRegex(
+            dockerfile.splitlines()[0],
+            r"^FROM mirror\.gcr\.io/library/python@sha256:[0-9a-f]{64}$",
+        )
+        self.assertIn("snapshot.debian.org/archive/debian/20260824T000000Z", dockerfile)
+        self.assertNotIn("apt-get upgrade", dockerfile)
+        self.assertIn("--only-binary=:all: --no-deps --require-hashes", dockerfile)
+        self.assertIn("--target /app/vendor", dockerfile)
+        self.assertIn("PYTHONPATH=/app/vendor:/app", dockerfile)
+        package_lines = [
+            line for line in requirements.splitlines() if line and not line.startswith("#")
+        ]
+        self.assertTrue(package_lines)
+        pins = [line for line in package_lines if "==" in line]
+        hashes = [line for line in package_lines if "--hash=sha256:" in line]
+        self.assertEqual(5, len(pins))
+        self.assertEqual(5, len(hashes))
+        self.assertTrue(all(len(line.rsplit(":", 1)[1]) == 64 for line in hashes))
+        self.assertIn("docker build --file api/Dockerfile.media-inspector", workflow)
+        self.assertIn("media-inspector-sbom.cdx.json", workflow)
+        self.assertIn("media-inspector-grype.normalized.json", workflow)
 
     def test_storybook_excludes_only_the_application_bundle_budget(self):
         repo_root = MODULE_PATH.parents[2]

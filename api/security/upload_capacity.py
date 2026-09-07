@@ -21,10 +21,33 @@ class UploadBodyTimeoutError(RuntimeError):
     pass
 
 
+class DownloadCapacityError(RuntimeError):
+    pass
+
+
 # Each ASGI process may materialize at most one policy-bounded object while
 # validating and encrypting it. Additional requests remain under server/socket
 # backpressure and fail quickly instead of accumulating request bodies in RAM.
 _completion_slot = asyncio.BoundedSemaphore(1)
+# A response may transiently hold the encrypted envelope, decrypted object, and
+# framework response bytes at once. Keep that work bounded independently from
+# request-body admission so valid delivery-grant replay cannot exhaust memory.
+# Production is intentionally capped at two API workers (api/entrypoint.sh).
+# One 25 MiB delivery per process permits a conservative three resident copies
+# (encrypted envelope, decrypted bytes, framework response) while keeping the
+# aggregate delivery allowance at 150 MiB. Raising workers or this slot count
+# requires an explicit memory-budget review and regression update.
+DOWNLOAD_SLOTS_PER_PROCESS = 1
+MAX_API_WORKERS = 2
+MAX_DOWNLOAD_OBJECT_BYTES = 25 * 1024 * 1024
+MAX_DOWNLOAD_RESIDENT_COPIES = 3
+MAX_DOWNLOAD_MEMORY_BUDGET_BYTES = (
+    DOWNLOAD_SLOTS_PER_PROCESS
+    * MAX_API_WORKERS
+    * MAX_DOWNLOAD_OBJECT_BYTES
+    * MAX_DOWNLOAD_RESIDENT_COPIES
+)
+_download_slots = asyncio.BoundedSemaphore(DOWNLOAD_SLOTS_PER_PROCESS)
 
 
 @asynccontextmanager
@@ -41,6 +64,23 @@ async def upload_completion_slot(*, timeout_seconds: float = 1.0) -> AsyncIterat
     finally:
         if acquired:
             _completion_slot.release()
+
+
+@asynccontextmanager
+async def download_delivery_slot(*, timeout_seconds: float = 0.25) -> AsyncIterator[None]:
+    """Admit only a fixed number of whole-object delivery materializations."""
+    if not 0.01 <= timeout_seconds <= 5.0:
+        raise DownloadCapacityError('download_capacity_invalid')
+    acquired = False
+    try:
+        await asyncio.wait_for(_download_slots.acquire(), timeout=timeout_seconds)
+        acquired = True
+        yield
+    except TimeoutError as exc:
+        raise DownloadCapacityError('download_capacity_exhausted') from exc
+    finally:
+        if acquired:
+            _download_slots.release()
 
 
 async def read_bounded_upload(

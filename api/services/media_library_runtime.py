@@ -495,9 +495,16 @@ def due_media_exports(*, limit: int = 10) -> list[tuple[str, str]]:
         raise MediaRuntimeError('media_limit_invalid')
     with db_conn() as conn, conn.cursor() as cur:
         cur.execute(
-            """SELECT site_id,id FROM sitecontent_mediaexportpackage
-               WHERE status='queued' AND expires_at>NOW()
-               ORDER BY created_at,id LIMIT %s""",
+            """WITH ranked AS (
+                 SELECT site_id,id,created_at,
+                        ROW_NUMBER() OVER (
+                          PARTITION BY site_id ORDER BY created_at,id
+                        ) AS tenant_rank
+                 FROM sitecontent_mediaexportpackage
+                 WHERE status='queued' AND expires_at>NOW()
+               )
+               SELECT site_id,id FROM ranked
+               ORDER BY tenant_rank,created_at,id LIMIT %s""",
             (limit,),
         )
         return [(row[0], str(row[1])) for row in cur.fetchall()]

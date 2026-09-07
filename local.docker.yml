@@ -380,8 +380,6 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile.media-inspector
-      args:
-        - PYTHON_VERSION=${FASTAPI_PYTHON_VERSION}
     profiles: [media-scan]
     environment:
       - MEDIA_INSPECTOR_SPOOL_ROOT=/var/lib/base2/media-inspector

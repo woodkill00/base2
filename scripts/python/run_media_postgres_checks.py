@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import hashlib
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -296,12 +297,62 @@ def main() -> None:
                     ('{"admission":"content_verified"}', str(UUID(int=610))),
                 )
             from api.db import close_pool
+            from api.repositories.media_library import PostgresMediaLibraryRepository
             from api.services.content_workspace_worker import (
                 begin_media_scan_attempt,
                 due_media_scans,
                 finish_media_scan_attempt,
                 recover_media_scan_attempt,
             )
+            from api.services.media_library_runtime import due_media_exports
+
+            # Exercise the exact tenant-wide export admission lock and quota.
+            # Exact replay remains available at capacity while new work fails
+            # closed, and global discovery interleaves tenant ranks.
+            with owner, owner.cursor() as cursor:
+                for index in range(10):
+                    cursor.execute(
+                        """INSERT INTO sitecontent_mediaexportpackage
+                           (id,site_id,requested_by,output_format,projection,status,
+                            artifact_key,artifact_sha256,request_digest,expires_at,error_code,
+                            created_at,updated_at)
+                           VALUES (%s,'site-a','user:test','csv','{}'::jsonb,'queued',
+                                   '','',%s,NOW()+INTERVAL '1 hour','',
+                                   NOW()+(%s*INTERVAL '1 second'),NOW())""",
+                        (str(UUID(int=700 + index)), f'{index:064x}', index),
+                    )
+                for index in range(2):
+                    cursor.execute(
+                        """INSERT INTO sitecontent_mediaexportpackage
+                           (id,site_id,requested_by,output_format,projection,status,
+                            artifact_key,artifact_sha256,request_digest,expires_at,error_code,
+                            created_at,updated_at)
+                           VALUES (%s,'site-b','user:test','csv','{}'::jsonb,'queued',
+                                   '','',%s,NOW()+INTERVAL '1 hour','',
+                                   NOW()+((20+%s)*INTERVAL '1 second'),NOW())""",
+                        (str(UUID(int=800 + index)), f'{index + 100:064x}', index),
+                    )
+            export_repository = PostgresMediaLibraryRepository()
+            replay = export_repository.create_export(
+                site_id='site-a', actor_ref='user:test', output_format='csv',
+                projection={}, request_digest=f'{0:064x}',
+                expires_at=datetime.now().astimezone(), maximum_outstanding=10,
+            )
+            assert replay['replayed'] is True
+            try:
+                export_repository.create_export(
+                    site_id='site-a', actor_ref='user:test', output_format='csv',
+                    projection={}, request_digest='f' * 64,
+                    expires_at=datetime.now().astimezone(), maximum_outstanding=10,
+                )
+            except ValueError as exc:
+                assert str(exc) == 'media_export_capacity_exceeded'
+            else:
+                raise AssertionError('media_export_capacity_was_not_enforced')
+            fair = due_media_exports(limit=4)
+            assert [site for site, _identifier in fair] == [
+                'site-a', 'site-b', 'site-a', 'site-b'
+            ], f'media_export_discovery_unfair:{fair}'
 
             with ThreadPoolExecutor(max_workers=2) as executor:
                 deliveries = list(executor.map(lambda _index: due_media_scans(limit=10), range(2)))
@@ -388,6 +439,157 @@ def main() -> None:
                 )
                 assert cursor.fetchone() == ('failed', 2, 'media_inspection_rejected', None)
 
+                cursor.execute(
+                    """INSERT INTO sitecontent_mediaasset
+                       (id,site_id,storage_key,original_name,media_type,byte_size,sha256,status,
+                        owner_ref,attribution,retention_until,metadata,visibility,
+                        current_object_version,authorization_epoch,lock_version,deleted_at,
+                        created_at,updated_at)
+                       VALUES (%s,'site-a','superseded.bin','superseded.bin',
+                               'application/octet-stream',1,%s,'quarantined','owner','',
+                               '2099-01-01',%s::jsonb,'private',1,1,1,NULL,NOW(),NOW())""",
+                    (
+                        str(UUID(int=612)),
+                        'f' * 64,
+                        '{"admission":"content_verified"}',
+                    ),
+                )
+            superseded_claims = due_media_scans(limit=10)
+            assert len(superseded_claims) == 1, superseded_claims
+            sup_site, sup_asset, sup_job, sup_attempt, sup_lease = superseded_claims[0]
+            sup_token = datetime.fromisoformat(sup_lease)
+            assert begin_media_scan_attempt(
+                site_id=sup_site,
+                asset_id=UUID(sup_asset),
+                job_id=UUID(sup_job),
+                attempt=sup_attempt,
+                lease_token=sup_token,
+            )
+            with owner, owner.cursor() as cursor:
+                cursor.execute(
+                    """INSERT INTO sitecontent_mediaabusecase
+                       (id,site_id,asset_id,reporter_ref,reviewer_ref,appellant_ref,
+                        reason_code,status,lock_version,created_at,updated_at)
+                       VALUES (%s,'site-a',%s,'user:reporter','user:reviewer','',
+                               'media_abuse_reviewed','quarantined',1,NOW(),NOW())""",
+                    (str(UUID(int=630)), sup_asset),
+                )
+            from api.services.media_library_runtime import apply_due_media_governance
+
+            assert apply_due_media_governance(limit=10) == {
+                'holdsExpired': 0,
+                'abuseCasesEnforced': 1,
+            }
+            finish_media_scan_attempt(
+                site_id=sup_site,
+                job_id=UUID(sup_job),
+                attempt=sup_attempt,
+                lease_token=sup_token,
+                result='not_ready',
+            )
+            with owner, owner.cursor() as cursor:
+                cursor.execute(
+                    """SELECT job.status,job.attempt,job.error_code,job.lease_expires_at,
+                              asset.status
+                       FROM sitecontent_mediajob job
+                       JOIN sitecontent_mediaasset asset ON asset.id=job.asset_id
+                       WHERE job.id=%s""",
+                    (sup_job,),
+                )
+                assert cursor.fetchone() == (
+                    'cancelled', 1, 'media_scan_superseded', None, 'archived'
+                )
+                cursor.execute(
+                    """SELECT event_type,actor_ref,detail
+                       FROM sitecontent_mediaauditevent
+                       WHERE site_id='site-a' AND subject_ref=%s
+                       ORDER BY sequence DESC LIMIT 1""",
+                    (f'asset:{sup_asset}',),
+                )
+                event_type, actor_ref, detail = cursor.fetchone()
+                assert event_type == 'media.inspection.superseded'
+                assert actor_ref == 'system:media-worker'
+                assert detail == {
+                    'code': 'media_scan_superseded',
+                    'status': 'cancelled',
+                    'reason': 'asset_ineligible',
+                    'count': 1,
+                }
+            assert due_media_scans(limit=10) == [], 'superseded_scan_was_rediscovered'
+
+            delayed_asset = UUID(int=613)
+            delayed_version = 3
+            delayed_digest = hashlib.sha256(
+                f'site-a\0{delayed_asset}\0owner\0soft_deleted\0{delayed_version}'.encode()
+            ).hexdigest()
+            with owner, owner.cursor() as cursor:
+                cursor.execute(
+                    """INSERT INTO sitecontent_mediaasset
+                       (id,site_id,storage_key,original_name,media_type,byte_size,sha256,status,
+                        owner_ref,attribution,retention_until,metadata,visibility,
+                        current_object_version,authorization_epoch,lock_version,deleted_at,
+                        created_at,updated_at)
+                       VALUES (%s,'site-a','purged.bin','purged.bin','application/octet-stream',
+                               1,%s,'purged','owner','','2099-01-01','{}','private',1,1,8,
+                               NOW(),NOW(),NOW())""",
+                    (str(delayed_asset), '9' * 64),
+                )
+                cursor.execute(
+                    """INSERT INTO sitecontent_mediaoutboxevent
+                       (id,site_id,aggregate_ref,event_kind,idempotency_key,payload_digest,
+                        status,attempt,maximum_attempts,available_at,error_code,created_at,updated_at)
+                       VALUES (%s,'site-a',%s,'asset.soft_deleted','delayed-delete',%s,
+                               'completed',1,5,NOW(),'',NOW(),NOW())""",
+                    (
+                        str(UUID(int=640)),
+                        f'asset:{delayed_asset}',
+                        delayed_digest,
+                    ),
+                )
+            from api.repositories.media_library import PostgresMediaLibraryRepository
+
+            media_repository = PostgresMediaLibraryRepository()
+            assert media_repository.transition_asset(
+                site_id='site-a',
+                asset_id=delayed_asset,
+                actor_ref='owner',
+                target='soft_deleted',
+                expected_version=delayed_version,
+                idempotency_key='delayed-delete',
+            ) == {
+                'id': str(delayed_asset),
+                'status': 'soft_deleted',
+                'version': 4,
+                'replayed': True,
+            }
+            try:
+                media_repository.transition_asset(
+                    site_id='site-a',
+                    asset_id=delayed_asset,
+                    actor_ref='owner',
+                    target='archived',
+                    expected_version=delayed_version,
+                    idempotency_key='delayed-delete',
+                )
+            except ValueError as exc:
+                assert str(exc) == 'media_idempotency_conflict'
+            else:
+                raise AssertionError('media_changed_delayed_replay_was_not_rejected')
+            try:
+                media_repository.transition_asset(
+                    site_id='site-a',
+                    asset_id=delayed_asset,
+                    actor_ref='owner',
+                    target='archived',
+                    expected_version=8,
+                    idempotency_key='new-after-purge',
+                )
+            except ValueError as exc:
+                assert str(exc) == 'media_not_found'
+            else:
+                raise AssertionError('media_new_purge_state_mutation_was_not_rejected')
+
+            with owner, owner.cursor() as cursor:
                 cursor.execute(
                     """UPDATE sitecontent_mediaasset
                        SET metadata=%s::jsonb,updated_at=NOW()

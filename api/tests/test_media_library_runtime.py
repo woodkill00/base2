@@ -19,6 +19,7 @@ from api.services.media_library_runtime import (
     MediaRuntimeError,
     append_media_audit,
     apply_due_media_governance,
+    due_media_exports,
     inspect_media_payload,
     normalize_export_selection,
     process_governed_media_asset,
@@ -179,6 +180,50 @@ def test_export_selection_is_exact_bounded_and_canonical():
                 'filters': {'state': 'ready'},
             }
         )
+
+
+def test_due_export_discovery_round_robins_tenants(monkeypatch):
+    from api.services import media_library_runtime as runtime
+
+    class FairCursor:
+        def __init__(self):
+            self.sql = ''
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def execute(self, sql, params=()):
+            self.sql = ' '.join(sql.split())
+            assert params == (4,)
+
+        def fetchall(self):
+            return [
+                ('site-a', UUID(int=701)),
+                ('site-b', UUID(int=801)),
+                ('site-a', UUID(int=702)),
+                ('site-b', UUID(int=802)),
+            ]
+
+    cursor = FairCursor()
+
+    @contextmanager
+    def global_worker(*, tenant_id=None):
+        assert tenant_id is None
+        connection = type('Connection', (), {'cursor': lambda _self: cursor})()
+        yield connection
+
+    monkeypatch.setattr(runtime, 'db_conn', global_worker)
+    assert due_media_exports(limit=4) == [
+        ('site-a', str(UUID(int=701))),
+        ('site-b', str(UUID(int=801))),
+        ('site-a', str(UUID(int=702))),
+        ('site-b', str(UUID(int=802))),
+    ]
+    assert 'ROW_NUMBER() OVER ( PARTITION BY site_id' in cursor.sql
+    assert 'ORDER BY tenant_rank,created_at,id' in cursor.sql
 
 
 def test_media_runtime_tasks_dispatch_only_discovered_fixed_ids(monkeypatch):

@@ -295,6 +295,52 @@ def test_media_scan_worker_results_complete_running_lease(
     assert connection.commits == 1
 
 
+def test_media_scan_ineligible_after_claim_is_cancelled_and_audited(monkeypatch):
+    asset_id = UUID(int=7104)
+    cursor = LeaseCursor([1, 0, 0, 1])
+    cursor.rows = [(asset_id,)]
+    connection = Connection(cursor)
+    bind(monkeypatch, connection)
+
+    worker.finish_media_scan_attempt(
+        site_id='site-a',
+        job_id=UUID(int=7105),
+        attempt=2,
+        lease_token=datetime(2026, 9, 7, 12, 2, tzinfo=UTC),
+        result='not_ready',
+    )
+
+    assert connection.commits == 1 and connection.rollbacks == 0
+    assert "status='cancelled'" in cursor.calls[0][0]
+    assert "asset.status<>'quarantined'" in cursor.calls[0][0]
+    audit_insert = next(
+        call for call in cursor.calls if 'INSERT INTO sitecontent_mediaauditevent' in call[0]
+    )
+    assert audit_insert[1][3:6] == (
+        'media.inspection.superseded',
+        'system:media-worker',
+        f'asset:{asset_id}',
+    )
+    assert 'asset_ineligible' in audit_insert[1][6]
+
+
+def test_media_scan_not_ready_does_not_cancel_stale_or_still_eligible_claim(monkeypatch):
+    cursor = LeaseCursor([0])
+    connection = Connection(cursor)
+    bind(monkeypatch, connection)
+
+    with pytest.raises(ValueError, match='content_media_attempt_stale'):
+        worker.finish_media_scan_attempt(
+            site_id='site-a',
+            job_id=UUID(int=7105),
+            attempt=2,
+            lease_token=datetime(2026, 9, 7, 12, 2, tzinfo=UTC),
+            result='not_ready',
+        )
+
+    assert connection.rollbacks == 1 and connection.commits == 0
+
+
 def test_unexpected_media_scan_failure_is_recovered_immediately(monkeypatch):
     cursor = LeaseCursor([1])
     connection = Connection(cursor)

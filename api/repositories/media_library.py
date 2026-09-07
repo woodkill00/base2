@@ -354,17 +354,19 @@ class PostgresMediaLibraryRepository:
         replay_digest = hashlib.sha256(
             f'{site_id}\0{asset_id}\0{actor_ref}\0{target}\0{expected_version}'.encode()
         ).hexdigest()
+        lock_ref = hashlib.sha256(
+            f'{site_id}\0media-lifecycle\0{idempotency_key}'.encode()
+        ).hexdigest()
         with db_conn(tenant_id=site_id) as conn:
             try:
                 with conn.cursor() as cur:
                     cur.execute(
                         'SELECT pg_advisory_xact_lock(hashtextextended(%s, 110))',
-                        (f'{site_id}\0media-lifecycle\0{idempotency_key}',),
+                        (lock_ref,),
                     )
                     cur.execute(
                         """SELECT lock_version, status FROM sitecontent_mediaasset
-                           WHERE site_id=%s AND id=%s AND status<>'purged'
-                             AND owner_ref=%s
+                           WHERE site_id=%s AND id=%s AND owner_ref=%s
                            FOR UPDATE""",
                         (site_id, str(asset_id), actor_ref),
                     )
@@ -375,7 +377,7 @@ class PostgresMediaLibraryRepository:
                         """SELECT aggregate_ref,event_kind,payload_digest
                            FROM sitecontent_mediaoutboxevent
                            WHERE site_id=%s AND idempotency_key=%s
-                             AND event_kind LIKE 'asset.%'
+                             AND event_kind LIKE 'asset.%%'
                            ORDER BY created_at,id LIMIT 1 FOR UPDATE""",
                         (site_id, idempotency_key),
                     )
@@ -390,6 +392,8 @@ class PostgresMediaLibraryRepository:
                             'version': expected_version + 1,
                             'replayed': True,
                         }
+                    if current[1] == 'purged':
+                        raise ValueError('media_not_found')
                     if int(current[0]) != expected_version:
                         raise ValueError('media_version_conflict')
                     if target not in transitions.get(current[1], set()):
@@ -432,7 +436,7 @@ class PostgresMediaLibraryRepository:
                             """SELECT aggregate_ref,event_kind,payload_digest
                                FROM sitecontent_mediaoutboxevent
                                WHERE site_id=%s AND idempotency_key=%s
-                                 AND event_kind LIKE 'asset.%'
+                                 AND event_kind LIKE 'asset.%%'
                                ORDER BY created_at,id LIMIT 1 FOR UPDATE""",
                             (site_id, idempotency_key),
                         )
@@ -494,10 +498,44 @@ class PostgresMediaLibraryRepository:
         projection: dict[str, Any],
         request_digest: str,
         expires_at,
+        maximum_outstanding: int = 10,
     ) -> dict[str, Any]:
+        if not 1 <= maximum_outstanding <= 100:
+            raise ValueError('media_export_capacity_invalid')
         with db_conn(tenant_id=site_id) as conn:
             try:
                 with conn.cursor() as cur:
+                    cur.execute(
+                        'SELECT pg_advisory_xact_lock(hashtextextended(%s, 110))',
+                        (hashlib.sha256(f'{site_id}:media-export-admission'.encode()).hexdigest(),),
+                    )
+                    # Preserve exact idempotent replay even while the tenant is
+                    # at capacity; only genuinely new work consumes a slot.
+                    cur.execute(
+                        """SELECT id,status,expires_at
+                           FROM sitecontent_mediaexportpackage
+                           WHERE site_id=%s AND requested_by=%s AND request_digest=%s
+                           FOR UPDATE""",
+                        (site_id, actor_ref, request_digest),
+                    )
+                    row = cur.fetchone()
+                    if row is not None:
+                        conn.commit()
+                        return {
+                            'id': str(row[0]),
+                            'status': row[1],
+                            'expiresAt': (
+                                row[2].isoformat() if hasattr(row[2], 'isoformat') else row[2]
+                            ),
+                            'replayed': True,
+                        }
+                    cur.execute(
+                        """SELECT COUNT(*) FROM sitecontent_mediaexportpackage
+                           WHERE site_id=%s AND status='queued' AND expires_at>NOW()""",
+                        (site_id,),
+                    )
+                    if int(cur.fetchone()[0]) >= maximum_outstanding:
+                        raise ValueError('media_export_capacity_exceeded')
                     identifier = uuid4()
                     cur.execute(
                         """INSERT INTO sitecontent_mediaexportpackage
@@ -518,14 +556,22 @@ class PostgresMediaLibraryRepository:
                         ),
                     )
                     row = cur.fetchone()
-                    replayed = row is None
-                    if replayed:
+                    if row is None:
+                        # A concurrent exact replay can only arrive outside this
+                        # admission lock through a legacy caller; recover it
+                        # without consuming another capacity slot.
                         cur.execute(
-                            """SELECT id, status, expires_at FROM sitecontent_mediaexportpackage
+                            """SELECT id,status,expires_at
+                               FROM sitecontent_mediaexportpackage
                                WHERE site_id=%s AND requested_by=%s AND request_digest=%s""",
                             (site_id, actor_ref, request_digest),
                         )
                         row = cur.fetchone()
+                        if row is None:
+                            raise ValueError('media_export_capacity_exceeded')
+                        replayed = True
+                    else:
+                        replayed = False
                 conn.commit()
             except Exception:
                 conn.rollback()

@@ -55,3 +55,8 @@
 - [x] B053 Preserve permanent inspector failure codes through a bounded no-follow marker read and prove infected media reaches rejected without transient rescans.
 - [x] B054 Remove remaining anonymous public-ECR PostgreSQL acceptance and backend-CI dependencies using documented mirrored digest pins with policy regressions.
 - [x] B055 Isolate English counters and status copy in RTL layouts and regenerate/review only the affected source-bound visual evidence.
+- [x] B056 Reconcile a claimed scan that governance makes ineligible into one audited terminal superseded job, with no stranded lease or rediscovery.
+- [x] B057 Preserve exact lifecycle replay after a later purge while keeping altered replay and every new purged-asset mutation fail-closed.
+- [x] B058 Enforce bounded per-user and per-tenant download rate/concurrency admission before whole-object read or decryption, including parallel grant-replay proof.
+- [x] B059 Enforce idempotent per-tenant export rate/outstanding quotas and fair tenant discovery so unique keys cannot exhaust the queue or starve another tenant.
+- [x] B060 Build the inspector from immutable approved upstream inputs and include the resulting inspector image in SBOM, vulnerability, and CI-policy proof.
