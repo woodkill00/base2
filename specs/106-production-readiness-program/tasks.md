@@ -1,0 +1,198 @@
+# Ordered tasks
+
+Unchecked tasks are required implementation or evidence work. A task may be
+checked only from exact-source evidence; a passing helper-level test is not a
+substitute for the integration proof named by the task.
+
+## Phase 0 — Program baseline and closed contracts
+
+- [ ] B001 Pin the exact clean Base2 baseline and inventory every service, route, module, profile, data store, workflow, and provider boundary. (FR-001, FR-002, FR-072)
+- [ ] B002 Record current functionality and explicitly distinguish existing capability, production gap, extension, and optional future capability. (FR-068, FR-070)
+- [ ] B003 Define environment-profile schemas and a machine-readable difference allowlist. (FR-001, FR-026, FR-069)
+- [ ] B004 Build the release-manifest schema for source, images, migrations, configuration, SBOM, provenance, and checksums. (FR-002, FR-059)
+- [ ] B005 Model assets, identities, data classes, trust boundaries, cryptographic keys, service networks, attackers, abuse cases, and recovery authorities. (FR-019, FR-031, FR-065, FR-071, FR-073, FR-074)
+- [ ] B006 Define the tenant-isolation invariant across every synchronous, asynchronous, cached, indexed, exported, stored, and observed surface. (FR-019)
+- [ ] B007 Define service indicators, objectives, error budgets, recovery objectives, and capacity budgets without inventing unsupported guarantees. (FR-013, FR-057, FR-060, FR-068)
+- [ ] B008 Define typed approval scopes and exact-target receipts for publication, merge, deployment, provider, DNS, certificate, destruction, and destructive data work. (FR-007, FR-069)
+- [ ] B009 Define bounded size, time, retry, concurrency, retention, cardinality, and cost defaults for every new resource consumer. (FR-028, FR-042, FR-057, FR-058, FR-071)
+- [ ] B010 Define capability manifests that prove disabled modules leave no runtime or allocation residue. (FR-054, FR-072)
+- [ ] B011 Define release-train entry, blocking-review, evidence, rollback, and exit gates. (FR-008, FR-063, FR-068)
+- [ ] B012 Add an executable Feature 106 plan validator covering task order, requirement traceability, authority phrases, and completion honesty. (FR-007, FR-063, FR-068, FR-069)
+
+## Phase 1 — Native observability and incident center
+
+- [ ] B013 Write tests first for telemetry minimization, redaction, tenant separation, cardinality, retention, and deletion. (FR-063, FR-065, FR-071)
+- [ ] B014 Add Django models and migrations for sites, services, health samples, synthetic runs, objectives, incidents, alerts, acknowledgements, and evidence references. (FR-009, FR-013, FR-014)
+- [ ] B015 Add forced-RLS and scoped repository proof for tenant-owned operational records and separately bounded platform records. (FR-019, FR-071)
+- [ ] B016 Add a bounded structured event and metric vocabulary shared by modules without accepting arbitrary sensitive labels. (FR-009, FR-071)
+- [ ] B017 Implement health adapters for public routes, APIs, PostgreSQL, workers, queues, object storage, DNS, certificates, email, schedules, and capacity. (FR-010)
+- [ ] B018 Implement truthful dependency states for healthy, degraded, unavailable, stale, unknown, muted, and intentionally disabled. (FR-010, FR-016, FR-070)
+- [ ] B019 Implement rate-bounded collection, aggregation, retention, and backpressure that cannot harm the monitored workload. (FR-016, FR-057, FR-071)
+- [ ] B020 Implement safe synthetic journeys for anonymous, member, editor, administrator, forms, uploads, search, and logout using synthetic tenants and data. (FR-011, FR-019)
+- [ ] B021 Add source-bound visual synthetic checks with deterministic capture, masks, thresholds, baseline review, and drift rejection. (FR-012, FR-064)
+- [ ] B022 Add incident correlation, deduplication, severity, ownership, timeline, acknowledgement, resolution, recurrence, and post-incident records. (FR-014)
+- [ ] B023 Add sanitized Discord delivery with expiry, acknowledgement, deduplication, retry, fallback queue, and delivery observation. (FR-015, FR-016)
+- [ ] B024 Build the private accessible operations UI for fleet, site, service, release, objective, incident, and evidence views. (FR-009, FR-014, FR-064)
+- [ ] B025 Add role and recent-auth enforcement for incident mutation and bounded recovery controls. (FR-033, FR-045)
+- [ ] B026 Prove monitor loss, alert loss, stale evidence, flapping, queue pressure, restart, clock shift, and dependency outage fail visibly without alert storms. (FR-016, FR-060, FR-070)
+- [ ] B027 Run telemetry privacy, accessibility, visual, load, fault, and tenant-isolation gates and close all blocking findings. (FR-019, FR-063, FR-064, FR-065, FR-071)
+
+## Phase 2 — Immutable environments, deployment, and rollback
+
+- [ ] B028 Write tests first for profile separation, artifact identity, stale approval, replay, concurrency, interruption, promotion, and rollback. (FR-001, FR-002, FR-003, FR-004, FR-006)
+- [ ] B029 Implement validated development, test, preview, staging, and production configuration profiles with no secret values in generated artifacts. (FR-001, FR-031)
+- [ ] B030 Render and verify immutable image digests, migration set, schema version, configuration digest, SBOM, provenance, and source identity. (FR-002, FR-059)
+- [ ] B031 Implement build-once promotion and reject rebuilt, mutable-tagged, dirty, divergent, or incomplete candidates. (FR-003, FR-059)
+- [ ] B032 Implement an integrity-bound deployment lease, journal, checkpoint, resume, replay no-op, and stale/concurrent rejection. (FR-004, FR-008)
+- [ ] B033 Implement fixed canary or blue/green traffic states and typed expiring feature flags with pre-switch and post-switch health and synthetic gates. (FR-005, FR-011, FR-077)
+- [ ] B034 Implement automatic traffic halt and exact previous-release selection when blocking checks fail. (FR-005, FR-006, FR-070)
+- [ ] B035 Implement compatibility-aware code rollback that never deletes durable data or performs implicit reverse migration. (FR-006, FR-018)
+- [ ] B036 Extend the single deployment entrypoint with typed preview, stage, canary, promote, rollback, status, and evidence operations. (FR-004, FR-062)
+- [ ] B037 Add independent approval verification for each protected release and provider transition. (FR-007, FR-069)
+- [ ] B038 Produce integrity-bound, redacted, exact-source operation receipts with honest pending and terminal states. (FR-008, FR-034, FR-068)
+- [ ] B039 Test crash at every deployment checkpoint, lost responses, exact replay, altered replay, expired approval, concurrent runner, and partial provider outcome. (FR-004, FR-060, FR-065)
+- [ ] B040 Test staged certificate use and prove preview/test cannot issue or request production certificates. (FR-001, FR-026)
+- [ ] B041 Run production-like local deployment, canary, failure, resume, rollback, and evidence-integrity acceptance with synthetic data. (FR-005, FR-006, FR-063, FR-066)
+
+## Phase 3 — PostgreSQL, durability, retention, and restore
+
+- [ ] B042 Write tests first for pooling, pressure, mixed versions, RLS, backup, PITR capability, isolated restore, retention, and reconciliation. (FR-017 through FR-024, FR-066)
+- [ ] B043 Add verified encrypted database transport/storage configuration, measured connection pooling, transaction/statement timeouts, role limits, saturation admission, and pool health. (FR-017, FR-024, FR-073)
+- [ ] B044 Inventory all tenant-owned tables and add or repair forced-RLS policies with application, worker, migration, and break-glass roles. (FR-019, FR-033)
+- [ ] B045 Prove two-tenant and hostile-context isolation through real disposable PostgreSQL across APIs, repositories, jobs, exports, search, media, audit, cache keys, and telemetry. (FR-019, FR-065)
+- [ ] B046 Add migration metadata for expand, migrate, contract, compatibility window, expected lock, runtime, rollback, and destructive classification. (FR-018, FR-066)
+- [ ] B047 Add mixed-old/new application migration tests and prevent contraction before compatibility and separate destructive approval. (FR-007, FR-018)
+- [ ] B048 Implement encrypted database and object inventory backups with explicit key identity, isolated credentials, checksums, retention, rotation, recovery, and manifests. (FR-020, FR-031, FR-073)
+- [ ] B049 Implement provider-capability detection for PITR and an explicit tested backup fallback when PITR is unavailable. (FR-021, FR-068)
+- [ ] B050 Implement an isolated restore target guard that rejects every live, production, ambiguous, or unowned destination. (FR-022, FR-065)
+- [ ] B051 Reconcile restored relational rows, object manifests, search indexes, configuration, tenant boundaries, and audit chains. (FR-022, FR-024)
+- [ ] B052 Implement retention, archive, legal hold, anonymization, export, and erasure state machines with idempotent audit. (FR-023, FR-034)
+- [ ] B053 Add backup age, integrity, capacity, slow query, missing index, migration, PITR, restore, and reconciliation signals to operations. (FR-010, FR-024)
+- [ ] B054 Prove corrupt, incomplete, stale, wrong-key, cross-tenant, interrupted, and malicious restore inputs fail closed. (FR-020, FR-022, FR-065, FR-066)
+- [ ] B055 Run repeated database migration, RLS, backup, restore, and recovery suites and close all blocking findings. (FR-018, FR-019, FR-020, FR-022, FR-063, FR-066)
+
+## Phase 4 — Edge, domains, certificates, CDN, and private surfaces
+
+- [ ] B056 Write tests first for ownership challenge, takeover, canonical hosts, redirects, proxy trust, cache isolation, abuse, and privileged surfaces. (FR-025 through FR-030, FR-065)
+- [ ] B057 Model tenant domain claims, challenges, verification evidence, canonical selection, lifecycle, and release binding. (FR-025, FR-030)
+- [ ] B058 Implement replay-safe domain ownership verification and prevent abandoned, reused, wildcard, homograph, and cross-tenant takeover. (FR-025, FR-065)
+- [ ] B059 Implement deterministic apex, `www`, tenant subdomain, custom domain, canonical URL, and redirect behavior for IPv4 and IPv6. (FR-030)
+- [ ] B060 Implement environment-scoped staging certificate request, renewal, expiry, revocation, rollback, and alert states. (FR-026)
+- [ ] B061 Prove test and preview configurations cannot reach production certificate endpoints or inherit production account material. (FR-026, FR-031, FR-069)
+- [ ] B062 Add encrypted origin transport plus static and public-media CDN policies with versioned cache keys, invalidation, safe headers, and origin protection. (FR-027, FR-049, FR-073)
+- [ ] B063 Prove authenticated, signed, private, tenant-specific, and revoked content cannot be cached or disclosed incorrectly. (FR-019, FR-027, FR-065)
+- [ ] B064 Enforce edge body/header limits, request and upstream timeouts, rate/concurrency limits, trusted proxies, security headers, CORS, cookies, abuse controls, service-network segmentation, and outbound allowlists. (FR-028, FR-074)
+- [ ] B065 Keep Django admin, pgAdmin, Traefik, metrics, diagnostics, and API schema private by default with explicit role and network gates. (FR-029, FR-045)
+- [ ] B066 Add domain, DNS, certificate, edge, CDN, and privileged-surface health to native operations. (FR-010, FR-016)
+- [ ] B067 Test DNS delay, certificate failure, cache poisoning, host confusion, proxy spoofing, rate exhaustion, private-surface bypass, SSRF, metadata access, DNS rebinding, lateral movement, and egress denial. (FR-025 through FR-030, FR-060, FR-065, FR-074)
+- [ ] B068 Run source-bound browser, redirect, header, cache, accessibility, and staging-certificate acceptance without production issuance. (FR-026, FR-063, FR-064)
+
+## Phase 5 — Secrets, audit, jobs, schedules, email, and notifications
+
+- [ ] B069 Write tests first for secret resolution, redaction, rotation, break-glass, audit integrity, job replay, schedule time, and notification delivery. (FR-031 through FR-040, FR-065)
+- [ ] B070 Inventory each credential class, owner, scope, source, consumer, lifetime, rotation, revocation, and recovery contract without recording values. (FR-031, FR-032)
+- [ ] B071 Implement JIT secret references and prove values do not enter source, images, environment snapshots, logs, evidence, client bundles, or browser storage. (FR-031, FR-065)
+- [ ] B072 Implement and drill expiry, rotation, revocation, overlap, consumer restart, and recovery for each credential class. (FR-032, FR-060)
+- [ ] B073 Implement time-bound break-glass request, use, observation, expiry, revocation, and mandatory follow-up review. (FR-033, FR-034)
+- [ ] B074 Implement redacted integrity-bound operator and security audit chains with tenant scope, access control, retention, and verified export. (FR-034, FR-071)
+- [ ] B075 Add the canonical durable job schema with tenant, owner, generation, payload digest/schema, state, attempts, leases, idempotency, and receipts. (FR-035)
+- [ ] B076 Implement bounded fair discovery, admission, leases, backoff, jitter, idempotent side effects, stale recovery, and duplicate-delivery no-op. (FR-036, FR-042)
+- [ ] B077 Implement visible dead-letter review, acknowledgement, safe replay, cancellation, and resolution without arbitrary commands. (FR-037, FR-069)
+- [ ] B078 Implement scheduler state for next/last run, lateness, missed policy, catch-up, timezone, DST, overlap, resource admission, and restart. (FR-038)
+- [ ] B079 Add job, dead-letter, schedule, delay, saturation, and replay evidence to native operations. (FR-010, FR-016, FR-070)
+- [ ] B080 Implement production transactional email sender verification, accessible templates, safe expiring links, delivery, bounce, complaint, and suppression handling. (FR-039)
+- [ ] B081 Implement tenant-aware in-app/email history, preferences, urgency, quiet time, deduplication, unsubscribe, and mandatory-security exceptions. (FR-040)
+- [ ] B082 Prove email and operator alert providers can fail without losing durable state, leaking content, or reporting false success. (FR-015, FR-039, FR-040, FR-070)
+- [ ] B083 Run crash, replay, clock/DST, provider-outage, secret-rotation, audit-tamper, accessibility, and tenant-isolation acceptance. (FR-019, FR-032 through FR-040, FR-063 through FR-066)
+
+## Phase 6 — Tenant lifecycle, quotas, identity, policy, and settings
+
+- [ ] B084 Write tests first for tenant lifecycle, quota races, recovery, MFA/passkeys, sessions, policy parity, settings scope, and destructive confirmation. (FR-041 through FR-046, FR-063, FR-065)
+- [ ] B085 Implement provision, configure, suspend, archive, restore, ownership transfer, export, and separately approved deletion state machines. (FR-007, FR-041)
+- [ ] B086 Make tenant disable and suspension remove serving and allocation authority without silently deleting recoverable data. (FR-041, FR-072)
+- [ ] B087 Implement atomic per-tenant user, storage, media, API, job, email, search, and cost quotas with reservations and reconciliation. (FR-042)
+- [ ] B088 Add quota state, forecasts, denial reasons, alerts, and safe operator/user remediation without cross-tenant comparison. (FR-014, FR-042)
+- [ ] B089 Implement verified identity recovery, optional standards-based MFA, recovery codes, and passkeys with downgrade resistance. (FR-043, FR-065)
+- [ ] B090 Implement active session/device inventory, remote revocation, rotation, anomaly evidence, and bounded security alerts. (FR-044)
+- [ ] B091 Define versioned role and policy vocabulary with deny-by-default resolution and consequence classification. (FR-045)
+- [ ] B092 Enforce policy parity across Django, FastAPI, React affordances, workers, exports, search, media, administration, and operations. (FR-019, FR-045)
+- [ ] B093 Separate account, tenant, site, module, and operator settings scopes with schema ownership and safe defaults. (FR-046)
+- [ ] B094 Add searchable accessible settings, unsaved-change protection, optimistic conflict handling, recent-auth gates, consequence copy, sensitive history, and user-versus-site locale/timezone preferences. (FR-046, FR-064, FR-075)
+- [ ] B095 Prove disabled capabilities and expired feature flags leave no settings, roles, routes, jobs, schedules, allocations, configuration, authority, or navigation residue. (FR-045, FR-046, FR-072, FR-077)
+- [ ] B096 Run cross-role, cross-tenant, race, recovery, session, browser, accessibility, visual, and lifecycle recovery acceptance. (FR-019, FR-041 through FR-046, FR-063 through FR-066)
+
+## Phase 7 — Search, editorial, media delivery, and website essentials
+
+- [ ] B097 Write tests first for authorization-aware indexing, editorial conflicts, object delivery, privacy, SEO, forms, and optional-surface absence. (FR-047 through FR-050, FR-063, FR-065, FR-072)
+- [ ] B098 Define the optional search manifest, document schema, permission projection, cursor, filters, facets, ranking, limits, and freshness contract. (FR-047, FR-072)
+- [ ] B099 Implement tenant-scoped indexing and query across authorized content, records, media, members, and enabled modules. (FR-019, FR-047)
+- [ ] B100 Implement bounded reindex, deletion, permission-change invalidation, outage recovery, consistency checks, and operations signals. (FR-010, FR-047, FR-070)
+- [ ] B101 Implement editorial draft, revision, schedule, preview, review, publish, archive, conflict, and rollback state machines. (FR-048)
+- [ ] B102 Add expiring permission-aware preview links and prove they cannot bypass tenant, role, publication, or cache boundaries. (FR-019, FR-027, FR-048, FR-065)
+- [ ] B103 Integrate production object storage and safe CDN delivery behind the existing Media contracts without weakening quarantine. (FR-027, FR-049)
+- [ ] B104 Add resumable/multipart upload, lifecycle tiers, reference tracking, and deletion consequences within fixed resource limits. (FR-049, FR-057)
+- [ ] B105 Build reusable accessible navigation, breadcrumb, header, footer, loading, empty, degraded, denial, and error patterns with translation, pluralization, direction, and fallback contracts. (FR-050, FR-064, FR-075)
+- [ ] B106 Implement legal/privacy/consent surfaces and consent-aware analytics boundaries with no dark patterns. (FR-050, FR-061)
+- [ ] B107 Implement locale-aware canonical URLs plus metadata, sitemap, robots, Open Graph, structured data, share, and print contracts. (FR-025, FR-030, FR-050, FR-075)
+- [ ] B108 Implement accessible forms, validation, spam/abuse controls, rate limits, durable submission receipts, and safe notification linkage. (FR-028, FR-035, FR-039, FR-050)
+- [ ] B109 Prove search, preview, object, metadata, consent, form, and cache state remain tenant and permission isolated under change and deletion. (FR-019, FR-023, FR-047 through FR-050, FR-065)
+- [ ] B110 Run content-scale load, browser, accessibility, visual, SEO contract, privacy, security, restore, and disabled-profile acceptance. (FR-022, FR-057, FR-063 through FR-066, FR-072)
+
+## Phase 8 — Visual builder, themes, archetypes, modules, integrations, and commerce
+
+- [ ] B111 Write tests first for constrained composition, token validity, upgrades, module graphs, webhooks, key scope, and commerce replay. (FR-051 through FR-056, FR-063, FR-065)
+- [ ] B112 Define a closed accessible component and layout schema with bounded nesting, responsive constraints, and no executable markup/style path. (FR-051, FR-065)
+- [ ] B113 Implement deterministic page composition, preview, validation, publication, version history, and rollback through the content workflow. (FR-048, FR-051)
+- [ ] B114 Define versioned semantic design tokens for color, typography, spacing, layout, elevation, motion, and interaction states. (FR-052)
+- [ ] B115 Implement theme inheritance, compatibility, migration, preview, accessibility validation, upgrade, and rollback. (FR-052, FR-064)
+- [ ] B116 Specify and generate business, portfolio, documentation, publication, community, directory, event, booking, catalog, marketplace, subscription, support, and nonprofit archetypes. (FR-053)
+- [ ] B117 Bind each archetype to exact modules, routes, roles, data, journeys, visual profiles, capacity assumptions, and estimated provider cost. (FR-053, FR-058)
+- [ ] B118 Extend module manifests with dependencies, conflicts, compatibility, migrations, permissions, routes, jobs, schedules, storage, observability, backup, resources, and test packs. (FR-054)
+- [ ] B119 Implement deterministic module enable, disable, upgrade, downgrade, and data-preserving uninstall plans with exact rollback. (FR-054, FR-066, FR-072)
+- [ ] B120 Build a private module catalog and reject unsigned, incompatible, over-authorized, or undeclared third-party extensions. (FR-054, FR-059, FR-065)
+- [ ] B121 Implement scoped expiring API keys and OAuth integrations with rotation, quotas, audit, and revocation. (FR-031, FR-032, FR-055)
+- [ ] B122 Implement signed replay-safe webhooks with delivery history, bounded retry, dead letters, endpoint verification, and secret rotation. (FR-035 through FR-037, FR-055)
+- [ ] B123 Build a versioned developer API and webhook portal with compatibility, deprecation, consumer-contract evidence, synthetic test identities, and no production secrets. (FR-055, FR-062, FR-076)
+- [ ] B124 Define commerce as a disabled-by-default module with provider abstraction, prohibited-data boundaries, and explicit activation approval. (FR-007, FR-056, FR-069, FR-072)
+- [ ] B125 Implement idempotent product, price, order, subscription, invoice, tax, refund, and reconciliation state contracts using a fake provider first. (FR-036, FR-056)
+- [ ] B126 Prove provider webhook forgery, replay, reordering, duplication, outage, refund race, and cross-tenant access fail safely. (FR-019, FR-055, FR-056, FR-065)
+- [ ] B127 Run generator determinism, archetype, module lifecycle, accessibility, visual, integration, commerce, security, and rollback acceptance. (FR-051 through FR-056, FR-063 through FR-066)
+
+## Phase 9 — Performance, supply chain, resilience, governance, and golden paths
+
+- [ ] B128 Write tests first for performance budgets, scaling transitions, cost ceilings, artifact policy, faults, privacy controls, and shell parity. (FR-057 through FR-062, FR-063)
+- [ ] B129 Establish representative small, medium, and large tenant datasets and public, member, editor, operator, and background load models. (FR-057)
+- [ ] B130 Enforce budgets for web vitals, frontend bundles, API latency, queries, pool use, worker throughput, CPU, memory, storage, and telemetry overhead. (FR-057)
+- [ ] B131 Add cache policy and invalidation proof, N+1/slow-query detection, compression, code splitting, responsive media, and graceful degradation. (FR-027, FR-057)
+- [ ] B132 Define vertical/horizontal scaling triggers, queue and database pressure responses, safe degradation, and scale-down behavior. (FR-013, FR-058)
+- [ ] B133 Calculate provider resources, maximum runtime, region, cost ceiling, teardown deadline, and cleanup ownership before any provider-backed run. (FR-007, FR-058, FR-069)
+- [ ] B134 Implement automatic ephemeral expiry and exact verified teardown with no authority to delete unowned or production resources. (FR-058, FR-069)
+- [ ] B135 Pin build and runtime dependencies and images and enforce protected-branch, required-check, code-owner, least-workflow-permission, dependency-update, immutable-action, license, vulnerability, secret, SBOM, signature, and provenance policies. (FR-059, FR-078)
+- [ ] B136 Add bounded fault drills for application, worker, queue, database, object storage, search, DNS, certificates, email, alerting, and provider responses. (FR-060)
+- [ ] B137 Measure recovery objectives, detect incomplete recovery, and link every drill to incident and residual-risk evidence. (FR-013, FR-014, FR-060, FR-068)
+- [ ] B138 Build the documented inventory for data classes, purposes, consent, retention, vendors, regions, accessibility, incidents, and user rights without unsupported certification claims. (FR-023, FR-061, FR-068)
+- [ ] B139 Implement one Bash and one PowerShell golden path for setup, generate, migrate, test, preview, release, recover, and rollback without cross-shell calls. (FR-062)
+- [ ] B140 Prove fresh-machine and recovered-WSL operation with documented prerequisites, deterministic seed data, clear errors, and no hidden state. (FR-062, FR-070)
+
+## Phase 10 — Integrated assurance, staged acceptance, and closeout
+
+- [ ] B141 Build the complete test matrix mapping every requirement to unit, integration, contract, migration, API, frontend, E2E, negative, and operational proof. (FR-063)
+- [ ] B142 Capture and review exact-source keyboard, screen-reader, zoom, motion, contrast, RTL, locale, timezone, translation-fallback, responsive, cross-browser, interaction, and visual evidence for every user-facing state. (FR-012, FR-064, FR-075)
+- [ ] B143 Run authorization, tenant escape, hostile input, SSRF, metadata, DNS-rebinding, egress, injection, replay, race, exhaustion, encryption/key-rotation, supply-chain, workflow-policy, and secret-leak suites. (FR-019, FR-031, FR-059, FR-065, FR-073, FR-074, FR-078)
+- [ ] B144 Run forward migration, compatibility window, backup, isolated restore, code rollback, interrupted operation, and disaster recovery proof. (FR-018, FR-020 through FR-023, FR-060, FR-066)
+- [ ] B145 Run complete local and CI gates twice at the exact clean candidate head, verify repository/workflow governance, and repeat critical state-machine and isolation suites. (FR-063, FR-065, FR-068, FR-078)
+- [ ] B146 Obtain fresh independent code, security, UX/accessibility, data, and operations reviews and close every critical, high, and medium finding. (FR-063 through FR-068)
+- [ ] B147 Review the exact diff, generated surface, dependencies, migrations, residual risks, evidence inventory, and absence of secret or provider state. (FR-008, FR-059, FR-068, FR-069)
+- [ ] B148 Obtain separate exact-head approval before publication and create only the approved draft pull request. (FR-007, FR-069)
+- [ ] B149 Require all hosted checks and exact-head review before requesting a separately approved merge. (FR-003, FR-007, FR-063)
+- [ ] B150 Obtain separate provider approval for a bounded production-like ephemeral canary with staging certificates and synthetic data. (FR-007, FR-026, FR-058, FR-067, FR-069)
+- [ ] B151 Run the exact-source ephemeral canary, synthetic journeys, visual matrix, performance budgets, security probes, backup, restore, and rollback. (FR-005, FR-011, FR-012, FR-057, FR-063 through FR-067)
+- [ ] B152 Destroy only the exact approved ephemeral resources and prove empty provider inventory, cost receipt, and terminal evidence. (FR-008, FR-058, FR-067, FR-069)
+- [ ] B153 Re-run the tasks-to-analysis cycle against canary findings and add, implement, and verify every newly required task before closeout. (FR-063, FR-068, FR-070)
+- [ ] B154 Produce the production activation runbook, explicit remaining approvals, rollback point, recovery contacts, and honest residual-risk statement. (FR-006, FR-007, FR-060, FR-068, FR-069)
+- [ ] B155 Validate disabled optional modules have no routes, navigation, jobs, schedules, allocation, credentials, or provider residue in every profile. (FR-010, FR-054, FR-072)
+- [ ] B156 Validate monitoring, incident, audit, backup, restore, and alert evidence is tenant-safe, redacted, integrity-bound, fresh, and retention-bounded. (FR-008, FR-014 through FR-016, FR-020, FR-022, FR-034, FR-071)
+- [ ] B157 Validate documentation, configuration references, API schemas, compatibility/deprecation guidance, localization behavior, migration guidance, operator procedures, and generated-site instructions match exact behavior. (FR-002, FR-046, FR-055, FR-061, FR-062, FR-075, FR-076)
+- [ ] B158 Mark no task complete from elapsed time alone and report all pending external, provider, approval, and real-time evidence honestly. (FR-068, FR-069, FR-070)
+- [ ] B159 Remove Feature 106 from active lifecycle authority only after all required tasks and exact evidence are complete. (FR-007, FR-008, FR-068)
+- [ ] B160 Treat actual production activation as a new exact-source, exact-environment, separately approved operation outside implicit feature authority. (FR-007, FR-067, FR-069)
