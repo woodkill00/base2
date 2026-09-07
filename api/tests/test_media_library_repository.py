@@ -19,7 +19,7 @@ class Cursor:
         return False
 
     def execute(self, sql, params=()):
-        self.calls.append((" ".join(sql.split()), params))
+        self.calls.append((' '.join(sql.split()), params))
 
     def fetchone(self):
         return self.rows.pop(0) if self.rows else None
@@ -66,14 +66,21 @@ def bind(monkeypatch, connection):
         scopes.append(tenant_id)
         yield connection
 
-    monkeypatch.setattr(repository, "db_conn", fake_db_conn)
+    monkeypatch.setattr(repository, 'db_conn', fake_db_conn)
     return scopes
 
 
 def asset_row(number=1):
     return (
-        UUID(int=number), "safe.png", "image/png", 10, "a" * 64, "ready",
-        "private", 2, datetime(2026, 9, 6, tzinfo=UTC),
+        UUID(int=number),
+        'safe.png',
+        'image/png',
+        10,
+        'a' * 64,
+        'ready',
+        'private',
+        2,
+        datetime(2026, 9, 6, tzinfo=UTC),
     )
 
 
@@ -81,16 +88,27 @@ def test_list_assets_is_tenant_scoped_parameterized_and_stable(monkeypatch):
     cursor = Cursor([asset_row(1), asset_row(2)])
     scopes = bind(monkeypatch, Connection(cursor))
     result = repository.PostgresMediaLibraryRepository().list_assets(
-        site_id="site-a", actor_ref="user:test", limit=1, offset=0, state="ready",
-        media_type="image/png", search="safe",
+        site_id='site-a',
+        actor_ref='user:test',
+        limit=1,
+        offset=0,
+        state='ready',
+        media_type='image/png',
+        search='safe',
     )
-    assert scopes == ["site-a"]
+    assert scopes == ['site-a']
     sql, params = cursor.calls[0]
-    assert "site_id=%s" in sql and "ORDER BY updated_at DESC, id DESC" in sql
-    assert "safe" not in sql and params == (
-        "site-a", "user:test", "ready", "image/png", "%safe%", 2, 0
+    assert 'site_id=%s' in sql and 'ORDER BY updated_at DESC, id DESC' in sql
+    assert 'safe' not in sql and params == (
+        'site-a',
+        'user:test',
+        'ready',
+        'image/png',
+        '%safe%',
+        2,
+        0,
     )
-    assert result["nextOffset"] == 1 and len(result["items"]) == 1
+    assert result['nextOffset'] == 1 and len(result['items']) == 1
 
 
 def test_list_assets_keyset_cursor_is_parameterized(monkeypatch):
@@ -98,188 +116,309 @@ def test_list_assets_keyset_cursor_is_parameterized(monkeypatch):
     cursor = Cursor([asset_row(1)])
     bind(monkeypatch, Connection(cursor))
     result = repository.PostgresMediaLibraryRepository().list_assets(
-        site_id="site-a", actor_ref="user:test", limit=25, offset=0,
+        site_id='site-a',
+        actor_ref='user:test',
+        limit=25,
+        offset=0,
         cursor_after=(anchor, UUID(int=9)),
     )
     sql, params = cursor.calls[0]
-    assert "(updated_at,id)<(%s,%s)" in sql
-    assert params == ("site-a", "user:test", anchor, str(UUID(int=9)), 26, 0)
-    assert result["nextAnchor"] is None
+    assert '(updated_at,id)<(%s,%s)' in sql
+    assert params == ('site-a', 'user:test', anchor, str(UUID(int=9)), 26, 0)
+    assert result['nextAnchor'] is None
 
 
 def test_get_asset_never_selects_storage_keys(monkeypatch):
     cursor = Cursor([asset_row()])
     bind(monkeypatch, Connection(cursor))
     result = repository.PostgresMediaLibraryRepository().get_asset(
-        site_id="site-a", asset_id=UUID(int=1), actor_ref="user:test"
+        site_id='site-a', asset_id=UUID(int=1), actor_ref='user:test'
     )
-    assert result["id"] == str(UUID(int=1)) and result["variants"] == []
-    assert all("storage_key" not in sql for sql, _ in cursor.calls)
+    assert result['id'] == str(UUID(int=1)) and result['variants'] == []
+    assert all('storage_key' not in sql for sql, _ in cursor.calls)
 
 
 def test_get_asset_returns_bounded_metadata_history(monkeypatch):
     created = datetime(2026, 9, 6, tzinfo=UTC)
-    cursor = SequenceCursor([
-        [asset_row()], [],
-        [(2, "en", "Safe", False, "Caption", "Credit", "cc-by", None, None,
-          "user:test", created)],
-    ])
+    cursor = SequenceCursor(
+        [
+            [asset_row()],
+            [],
+            [
+                (
+                    2,
+                    'en',
+                    'Safe',
+                    False,
+                    'Caption',
+                    'Credit',
+                    'cc-by',
+                    None,
+                    None,
+                    'user:test',
+                    created,
+                )
+            ],
+        ]
+    )
     bind(monkeypatch, Connection(cursor))
     result = repository.PostgresMediaLibraryRepository().get_asset(
-        site_id="site-a", asset_id=UUID(int=1), actor_ref="user:test"
+        site_id='site-a', asset_id=UUID(int=1), actor_ref='user:test'
     )
-    assert result["altText"] == "Safe"
-    assert result["metadataHistory"][0]["revision"] == 2
-    assert "LIMIT 50" in cursor.calls[2][0]
+    assert result['altText'] == 'Safe'
+    assert result['metadataHistory'][0]['revision'] == 2
+    assert 'LIMIT 50' in cursor.calls[2][0]
 
 
 def test_metadata_update_is_version_bound_and_transactional(monkeypatch):
-    cursor = Cursor([(3, "image/png"), (5,), (4,)])
+    cursor = Cursor([(3, 'image/png'), (5,), (4,)])
     connection = Connection(cursor)
     bind(monkeypatch, connection)
     result = repository.PostgresMediaLibraryRepository().update_metadata(
-        site_id="site-a", asset_id=UUID(int=1), actor_ref="user:test", expected_version=3,
+        site_id='site-a',
+        asset_id=UUID(int=1),
+        actor_ref='user:test',
+        expected_version=3,
         payload={
-            "locale": "en", "altText": "Safe preview", "decorative": False,
-            "caption": "", "credit": "", "licenseCode": "", "focalX": None,
-            "focalY": None, "visibility": "private",
+            'locale': 'en',
+            'altText': 'Safe preview',
+            'decorative': False,
+            'caption': '',
+            'credit': '',
+            'licenseCode': '',
+            'focalX': None,
+            'focalY': None,
+            'visibility': 'private',
         },
     )
-    assert result == {"id": str(UUID(int=1)), "revision": 5, "version": 4}
+    assert result == {'id': str(UUID(int=1)), 'revision': 5, 'version': 4}
     assert connection.commits == 1 and connection.rollbacks == 0
-    assert "FOR UPDATE" in cursor.calls[0][0]
-    assert "AND owner_ref=%s" in cursor.calls[0][0]
-    assert "visibility IN" not in cursor.calls[0][0]
-    assert "AND owner_ref=%s" in cursor.calls[3][0]
-    assert cursor.calls[0][1] == ("site-a", str(UUID(int=1)), "user:test")
+    assert 'FOR UPDATE' in cursor.calls[0][0]
+    assert 'AND owner_ref=%s' in cursor.calls[0][0]
+    assert 'visibility IN' not in cursor.calls[0][0]
+    assert 'AND owner_ref=%s' in cursor.calls[3][0]
+    assert cursor.calls[0][1] == ('site-a', str(UUID(int=1)), 'user:test')
 
 
 def test_metadata_update_rolls_back_on_conflict(monkeypatch):
-    cursor = Cursor([(4, "image/png")])
+    cursor = Cursor([(4, 'image/png')])
     connection = Connection(cursor)
     bind(monkeypatch, connection)
-    with pytest.raises(ValueError, match="media_version_conflict"):
+    with pytest.raises(ValueError, match='media_version_conflict'):
         repository.PostgresMediaLibraryRepository().update_metadata(
-            site_id="site-a", asset_id=UUID(int=1), actor_ref="user:test", expected_version=3,
+            site_id='site-a',
+            asset_id=UUID(int=1),
+            actor_ref='user:test',
+            expected_version=3,
             payload={},
         )
     assert connection.commits == 0 and connection.rollbacks == 1
 
 
 def test_reference_inventory_and_destructive_preview_are_scope_bound(monkeypatch):
-    reference = (UUID(int=2), "content-record", UUID(int=3), "hero", "published", "public", True, 1)
-    cursor = SequenceCursor([
-        [(1,)],
-        [reference],
-        [(2, "ready")],
-        [("content-record", UUID(int=3), "hero", "published", True)],
-        [("legal_hold",)],
-        [(1, "a" * 64, 10)],
-    ])
+    reference = (UUID(int=2), 'content-record', UUID(int=3), 'hero', 'published', 'public', True, 1)
+    cursor = SequenceCursor(
+        [
+            [(1,)],
+            [reference],
+            [(2, 'ready')],
+            [('content-record', UUID(int=3), 'hero', 'published', True)],
+            [('legal_hold',)],
+            [(1, 'a' * 64, 10)],
+        ]
+    )
     bind(monkeypatch, Connection(cursor))
     repo = repository.PostgresMediaLibraryRepository()
-    inventory = repo.list_references(
-        site_id="site-a", asset_id=UUID(int=1), actor_ref="user:test"
-    )
+    inventory = repo.list_references(site_id='site-a', asset_id=UUID(int=1), actor_ref='user:test')
     preview = repo.destructive_preview(
-        site_id="site-a", asset_id=UUID(int=1), actor_ref="user:test"
+        site_id='site-a', asset_id=UUID(int=1), actor_ref='user:test'
     )
-    assert inventory["items"][0]["ownerState"] == "published"
-    assert preview["allowed"] is False
-    assert preview["activeHolds"] == ["legal_hold"]
-    assert all(params[0] == "site-a" for _sql, params in cursor.calls)
-    assert sum("owner_ref=%s OR visibility" in sql for sql, _params in cursor.calls) == 2
+    assert inventory['items'][0]['ownerState'] == 'published'
+    assert preview['allowed'] is False
+    assert preview['activeHolds'] == ['legal_hold']
+    assert all(params[0] == 'site-a' for _sql, params in cursor.calls)
+    assert sum('owner_ref=%s OR visibility' in sql for sql, _params in cursor.calls) == 2
 
 
 def test_private_reference_inventory_is_hidden_from_another_tenant_member(monkeypatch):
     cursor = SequenceCursor([[]])
     bind(monkeypatch, Connection(cursor))
-    with pytest.raises(ValueError, match="media_not_found"):
+    with pytest.raises(ValueError, match='media_not_found'):
         repository.PostgresMediaLibraryRepository().list_references(
-            site_id="site-a", asset_id=UUID(int=1), actor_ref="user:other"
+            site_id='site-a', asset_id=UUID(int=1), actor_ref='user:other'
         )
-    assert cursor.calls[0][1] == ("site-a", str(UUID(int=1)), "user:other")
+    assert cursor.calls[0][1] == ('site-a', str(UUID(int=1)), 'user:other')
 
 
 def test_transition_is_versioned_transactional_and_emits_outbox(monkeypatch):
-    cursor = SequenceCursor([[(2, "ready")], [(UUID(int=4),)], [(3,)]])
+    cursor = SequenceCursor([[], [(2, 'ready')], [], [(UUID(int=4),)], [(3,)]])
     connection = Connection(cursor)
     bind(monkeypatch, connection)
     result = repository.PostgresMediaLibraryRepository().transition_asset(
-        site_id="site-a", asset_id=UUID(int=1), actor_ref="user:test",
-        target="archived", expected_version=2, idempotency_key="archive-1",
+        site_id='site-a',
+        asset_id=UUID(int=1),
+        actor_ref='user:test',
+        target='archived',
+        expected_version=2,
+        idempotency_key='archive-1',
     )
     assert result == {
-        "id": str(UUID(int=1)), "status": "archived", "version": 3, "replayed": False,
+        'id': str(UUID(int=1)),
+        'status': 'archived',
+        'version': 3,
+        'replayed': False,
     }
     assert connection.commits == 1
-    assert any("sitecontent_mediaoutboxevent" in sql for sql, _params in cursor.calls)
-    assert "AND owner_ref=%s" in cursor.calls[0][0]
-    assert "visibility IN" not in cursor.calls[0][0]
+    assert any('sitecontent_mediaoutboxevent' in sql for sql, _params in cursor.calls)
+    assert 'pg_advisory_xact_lock' in cursor.calls[0][0]
+    assert 'AND owner_ref=%s' in cursor.calls[1][0]
+    assert 'visibility IN' not in cursor.calls[1][0]
     update_query = next(
-        sql for sql, _params in cursor.calls if sql.startswith("UPDATE sitecontent_mediaasset")
+        sql for sql, _params in cursor.calls if sql.startswith('UPDATE sitecontent_mediaasset')
     )
-    assert "AND owner_ref=%s" in update_query
-    assert cursor.calls[0][1] == ("site-a", str(UUID(int=1)), "user:test")
+    assert 'AND owner_ref=%s' in update_query
+    assert cursor.calls[1][1] == ('site-a', str(UUID(int=1)), 'user:test')
+
+
+def test_transition_exact_replay_precedes_stale_version_rejection(monkeypatch):
+    asset_id = UUID(int=1)
+    digest = repository.hashlib.sha256(
+        f'site-a\0{asset_id}\0user:test\0archived\0{2}'.encode()
+    ).hexdigest()
+    cursor = SequenceCursor(
+        [[], [(3, 'archived')], [(f'asset:{asset_id}', 'asset.archived', digest)]]
+    )
+    connection = Connection(cursor)
+    bind(monkeypatch, connection)
+
+    result = repository.PostgresMediaLibraryRepository().transition_asset(
+        site_id='site-a',
+        asset_id=asset_id,
+        actor_ref='user:test',
+        target='archived',
+        expected_version=2,
+        idempotency_key='archive-1',
+    )
+
+    assert result == {
+        'id': str(asset_id),
+        'status': 'archived',
+        'version': 3,
+        'replayed': True,
+    }
+    assert connection.rollbacks == 1 and connection.commits == 0
+    assert not any(sql.startswith('UPDATE sitecontent_mediaasset') for sql, _ in cursor.calls)
+
+
+@pytest.mark.parametrize(
+    'existing',
+    [
+        (f'asset:{UUID(int=2)}', 'asset.archived', 'a' * 64),
+        (f'asset:{UUID(int=1)}', 'asset.soft_deleted', 'b' * 64),
+        (f'asset:{UUID(int=1)}', 'asset.archived', 'c' * 64),
+    ],
+)
+def test_transition_changed_replay_is_an_idempotency_conflict(monkeypatch, existing):
+    cursor = SequenceCursor([[], [(2, 'ready')], [existing]])
+    connection = Connection(cursor)
+    bind(monkeypatch, connection)
+    with pytest.raises(ValueError, match='media_idempotency_conflict'):
+        repository.PostgresMediaLibraryRepository().transition_asset(
+            site_id='site-a',
+            asset_id=UUID(int=1),
+            actor_ref='user:test',
+            target='archived',
+            expected_version=2,
+            idempotency_key='archive-1',
+        )
+    assert connection.rollbacks == 1 and connection.commits == 0
 
 
 def test_transition_blocks_destructive_reference_and_rolls_back(monkeypatch):
-    cursor = SequenceCursor([[(2, "ready")], [(True, False)]])
+    cursor = SequenceCursor([[], [(2, 'ready')], [], [(True, False)]])
     connection = Connection(cursor)
     bind(monkeypatch, connection)
-    with pytest.raises(ValueError, match="media_transition_blocked"):
+    with pytest.raises(ValueError, match='media_transition_blocked'):
         repository.PostgresMediaLibraryRepository().transition_asset(
-            site_id="site-a", asset_id=UUID(int=1), actor_ref="user:test",
-            target="soft_deleted", expected_version=2, idempotency_key="delete-1",
+            site_id='site-a',
+            asset_id=UUID(int=1),
+            actor_ref='user:test',
+            target='soft_deleted',
+            expected_version=2,
+            idempotency_key='delete-1',
         )
     assert connection.rollbacks == 1 and connection.commits == 0
 
 
 def test_export_collection_job_and_retrieval_workflows_are_scoped(monkeypatch):
     now = datetime(2026, 9, 6, tzinfo=UTC)
-    cursor = SequenceCursor([
-        [(UUID(int=8), "queued", now)],
-        [(UUID(int=9), "Launch", "private", [], 1, 2)],
-        [],
-        [(UUID(int=10),)],
-        [(UUID(int=1),)],
-        [],
-        [(UUID(int=11), UUID(int=1), "inspect", "retryable", 1, 3, "media_scan_down", now, None, now)],
-        [(UUID(int=1), "inspect", 1, 3)],
-        [],
-        [(UUID(int=8), "csv", "ready", "a" * 64, datetime(2099, 1, 1, tzinfo=UTC), "")],
-    ])
+    cursor = SequenceCursor(
+        [
+            [(UUID(int=8), 'queued', now)],
+            [(UUID(int=9), 'Launch', 'private', [], 1, 2)],
+            [],
+            [(UUID(int=10),)],
+            [(UUID(int=1),)],
+            [],
+            [
+                (
+                    UUID(int=11),
+                    UUID(int=1),
+                    'inspect',
+                    'retryable',
+                    1,
+                    3,
+                    'media_scan_down',
+                    now,
+                    None,
+                    now,
+                )
+            ],
+            [(UUID(int=1), 'inspect', 1, 3)],
+            [],
+            [(UUID(int=8), 'csv', 'ready', 'a' * 64, datetime(2099, 1, 1, tzinfo=UTC), '')],
+        ]
+    )
     connection = Connection(cursor)
     bind(monkeypatch, connection)
     repo = repository.PostgresMediaLibraryRepository()
     export = repo.create_export(
-        site_id="site-a", actor_ref="user:test", output_format="csv",
-        projection={"fields": ["id"], "assetIds": [str(UUID(int=1))], "filters": {}},
-        request_digest="a" * 64, expires_at=now,
+        site_id='site-a',
+        actor_ref='user:test',
+        output_format='csv',
+        projection={'fields': ['id'], 'assetIds': [str(UUID(int=1))], 'filters': {}},
+        request_digest='a' * 64,
+        expires_at=now,
     )
-    collections = repo.list_collections(site_id="site-a", actor_ref="user:test", roles=[])
+    collections = repo.list_collections(site_id='site-a', actor_ref='user:test', roles=[])
     created = repo.create_collection(
-        site_id="site-a", actor_ref="user:test", title="Launch",
-        visibility="private", shared_roles=[],
+        site_id='site-a',
+        actor_ref='user:test',
+        title='Launch',
+        visibility='private',
+        shared_roles=[],
     )
     added = repo.add_collection_assets(
-        site_id="site-a", actor_ref="user:test", roles=[], collection_id=UUID(int=10),
+        site_id='site-a',
+        actor_ref='user:test',
+        roles=[],
+        collection_id=UUID(int=10),
         asset_ids=[UUID(int=1)],
     )
-    jobs = repo.list_jobs(
-        site_id="site-a", actor_ref="user:test", asset_id=UUID(int=1), limit=10
-    )
-    retry = repo.retry_job(site_id="site-a", job_id=UUID(int=11), actor_ref="user:test")
-    status = repo.get_export(site_id="site-a", export_id=UUID(int=8), actor_ref="user:test")
-    assert export["status"] == "queued"
-    assert collections["items"][0]["assetCount"] == 2
-    assert created["title"] == "Launch" and added["added"] == 1
-    assert jobs["items"][0]["errorCode"] == "media_scan_down"
-    assert retry["status"] == "queued" and status["status"] == "ready"
+    jobs = repo.list_jobs(site_id='site-a', actor_ref='user:test', asset_id=UUID(int=1), limit=10)
+    retry = repo.retry_job(site_id='site-a', job_id=UUID(int=11), actor_ref='user:test')
+    status = repo.get_export(site_id='site-a', export_id=UUID(int=8), actor_ref='user:test')
+    assert export['status'] == 'queued'
+    assert collections['items'][0]['assetCount'] == 2
+    assert created['title'] == 'Launch' and added['added'] == 1
+    assert jobs['items'][0]['errorCode'] == 'media_scan_down'
+    assert retry['status'] == 'queued' and status['status'] == 'ready'
     retry_query = next(
-        (sql, params) for sql, params in cursor.calls if sql.startswith("UPDATE sitecontent_mediajob")
+        (sql, params)
+        for sql, params in cursor.calls
+        if sql.startswith('UPDATE sitecontent_mediajob')
     )
-    assert "asset.owner_ref=%s" in retry_query[0]
-    assert "asset.visibility" not in retry_query[0]
-    assert retry_query[1] == ("site-a", str(UUID(int=11)), "user:test")
+    assert 'asset.owner_ref=%s' in retry_query[0]
+    assert 'asset.visibility' not in retry_query[0]
+    assert retry_query[1] == ('site-a', str(UUID(int=11)), 'user:test')
     assert connection.commits == 4

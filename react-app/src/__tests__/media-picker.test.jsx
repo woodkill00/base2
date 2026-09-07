@@ -29,6 +29,10 @@ it('is bounded, searchable, keyboard-contained, and returns exact selections', a
   fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true });
   expect(screen.getByLabelText(/two.pdf/)).toHaveFocus();
   fireEvent.click(screen.getByLabelText(/one.png/));
+  const selectionStatus = screen.getByText('1 of 1 selected');
+  expect(selectionStatus.closest('p')).toHaveAttribute('dir', 'ltr');
+  expect(selectionStatus.closest('p')).toHaveAttribute('lang', 'en');
+  expect(selectionStatus).toHaveAttribute('dir', 'ltr');
   fireEvent.click(screen.getByLabelText(/two.pdf/));
   expect(screen.getByText('Selection limit reached. Choose no more than 1.')).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Search media'), { target: { value: 'one' } });

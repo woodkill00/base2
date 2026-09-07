@@ -21,7 +21,6 @@ from api.services.content_workspace_transfer import (
     parse_json,
     plan_import,
 )
-from api.services.media_library_processor import generate_media_preview
 
 
 def due_publication_ids(*, limit: int = 25) -> list[tuple[str, str]]:
@@ -283,19 +282,249 @@ def index_workspace_record(*, site_id: str, record_id: UUID, job_version: int) -
     return 'indexed'
 
 
-def due_media_scans(*, limit: int = 10) -> list[tuple[str, str]]:
+MEDIA_SCAN_LEASE_SECONDS = 120
+
+
+def due_media_scans(
+    *, limit: int = 10, lease_seconds: int = MEDIA_SCAN_LEASE_SECONDS
+) -> list[tuple[str, str, str, int, str]]:
+    """Atomically lease due scans and return one durable attempt token per asset.
+
+    Global worker access is used only to discover candidate tenant/asset pairs.
+    Every insert or lease mutation is then performed in a tenant-bound worker
+    transaction so database RLS remains the final authority.
+    """
     if not 1 <= limit <= 50:
         raise ValueError('content_limit_exceeded')
+    if not 30 <= lease_seconds <= 600:
+        raise ValueError('content_media_lease_invalid')
     with db_conn() as conn, conn.cursor() as cur:
         cur.execute(
-            """SELECT site_id, id FROM sitecontent_mediaasset
-               WHERE status='quarantined'
-                 AND metadata->>'admission'='content_verified'
-                 AND COALESCE(metadata->>'scanStatus','') NOT IN ('clean','infected')
-               ORDER BY updated_at, id LIMIT %s""",
+            """SELECT asset.site_id,asset.id,asset.current_object_version,asset.sha256
+               FROM sitecontent_mediaasset asset
+               LEFT JOIN sitecontent_mediajob job
+                 ON job.site_id=asset.site_id AND job.asset_id=asset.id
+                AND job.kind='inspect'
+                AND job.idempotency_key=(
+                  'inspect:' || asset.id::text || ':' || asset.current_object_version::text
+                )
+               WHERE asset.status='quarantined'
+                 AND asset.metadata->>'admission'='content_verified'
+                 AND COALESCE(asset.metadata->>'scanStatus','') NOT IN ('clean','infected')
+                 AND (
+                   job.id IS NULL OR (
+                     job.attempt < job.maximum_attempts AND (
+                       (job.status IN ('queued','retryable')
+                        AND job.available_at<=NOW()
+                        AND (job.lease_expires_at IS NULL OR job.lease_expires_at<=NOW()))
+                       OR (job.status IN ('leased','running')
+                           AND job.lease_expires_at<=NOW())
+                     )
+                   )
+                 )
+               ORDER BY asset.updated_at,asset.id LIMIT %s""",
             (limit,),
         )
-        return [(row[0], str(row[1])) for row in cur.fetchall()]
+        candidates = [
+            (str(site_id), str(asset_id), int(version), str(digest))
+            for site_id, asset_id, version, digest in cur.fetchall()
+        ]
+
+    leased: list[tuple[str, str, str, int, str]] = []
+    for site_id, asset_id, version, digest in candidates:
+        idempotency_key = f'inspect:{asset_id}:{version}'
+        with db_conn(tenant_id=site_id) as conn:
+            try:
+                with conn.cursor() as cur:
+                    # Serialize admission with the worker transaction, which
+                    # holds this same asset row while inspecting. An expired
+                    # lease therefore cannot create overlapping decoding; the
+                    # candidate is re-evaluated after the prior transaction.
+                    cur.execute(
+                        """SELECT 1 FROM sitecontent_mediaasset
+                           WHERE site_id=%s AND id=%s AND status='quarantined'
+                             AND current_object_version=%s AND sha256=%s
+                           FOR UPDATE""",
+                        (site_id, asset_id, version, digest),
+                    )
+                    if not cur.fetchone():
+                        conn.rollback()
+                        continue
+                    cur.execute(
+                        """INSERT INTO sitecontent_mediajob
+                           (id,site_id,asset_id,kind,status,idempotency_key,request_digest,
+                            attempt,maximum_attempts,error_code,output_digest,available_at,
+                            lease_expires_at,completed_at,created_at,updated_at)
+                           VALUES (%s,%s,%s,'inspect','queued',%s,%s,0,3,'','',NOW(),
+                                   NULL,NULL,NOW(),NOW())
+                           ON CONFLICT (site_id,kind,idempotency_key) DO NOTHING""",
+                        (str(uuid4()), site_id, asset_id, idempotency_key, digest),
+                    )
+                    cur.execute(
+                        """UPDATE sitecontent_mediajob
+                           SET status='leased',
+                               lease_expires_at=NOW()+(%s*INTERVAL '1 second'),
+                               updated_at=NOW()
+                           WHERE site_id=%s AND asset_id=%s AND kind='inspect'
+                             AND idempotency_key=%s AND request_digest=%s
+                             AND attempt<maximum_attempts
+                             AND (
+                               (status IN ('queued','retryable') AND available_at<=NOW()
+                                AND (lease_expires_at IS NULL OR lease_expires_at<=NOW()))
+                               OR (status IN ('leased','running') AND lease_expires_at<=NOW())
+                             )
+                           RETURNING id,attempt+1,lease_expires_at""",
+                        (lease_seconds, site_id, asset_id, idempotency_key, digest),
+                    )
+                    row = cur.fetchone()
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        if row:
+            leased.append((site_id, asset_id, str(row[0]), int(row[1]), row[2].isoformat()))
+    return leased
+
+
+def begin_media_scan_attempt(
+    *, site_id: str, asset_id: UUID, job_id: UUID, attempt: int, lease_token: datetime
+) -> bool:
+    """Consume one exact lease token; redelivery of that token is a no-op."""
+    if attempt < 1 or lease_token.tzinfo is None:
+        raise ValueError('content_media_attempt_invalid')
+    with db_conn(tenant_id=site_id) as conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """UPDATE sitecontent_mediajob job
+                       SET status='running',updated_at=NOW()
+                       WHERE job.site_id=%s AND job.id=%s AND job.asset_id=%s
+                         AND job.kind='inspect' AND job.status='leased'
+                         AND job.attempt=%s AND job.lease_expires_at=%s
+                         AND job.lease_expires_at>NOW()
+                         AND EXISTS (
+                           SELECT 1 FROM sitecontent_mediaasset asset
+                           WHERE asset.site_id=job.site_id AND asset.id=job.asset_id
+                             AND asset.status='quarantined'
+                         )""",
+                    (site_id, str(job_id), str(asset_id), attempt - 1, lease_token),
+                )
+                claimed = cur.rowcount == 1
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+    return claimed
+
+
+def finish_media_scan_attempt(
+    *,
+    site_id: str,
+    job_id: UUID,
+    attempt: int,
+    lease_token: datetime,
+    result: str,
+) -> None:
+    """Release an exact completed attempt and schedule bounded exponential retry."""
+    states = {
+        'quarantined': 'retryable',
+        'ready': 'completed',
+        'rejected': 'failed',
+        'failed': 'failed',
+        'validated_safe_derivative': 'completed',
+        'scanned_infected': 'failed',
+    }
+    expected = states.get(result)
+    if expected is None or attempt < 1 or lease_token.tzinfo is None:
+        raise ValueError('content_media_attempt_invalid')
+    retry_delay = min(300, 15 * (2 ** (attempt - 1))) if result == 'quarantined' else 0
+    error_code = (
+        'media_inspection_rejected'
+        if result in {'rejected', 'scanned_infected'}
+        else 'media_dependency_unavailable' if result in {'failed', 'quarantined'} else ''
+    )
+    with db_conn(tenant_id=site_id) as conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """UPDATE sitecontent_mediajob
+                       SET status=CASE WHEN status='running' THEN %s ELSE status END,
+                           attempt=CASE WHEN status='running' THEN %s ELSE attempt END,
+                           error_code=CASE WHEN status='running' THEN %s ELSE error_code END,
+                           output_digest=CASE
+                             WHEN status='running' AND %s='completed' THEN request_digest
+                             ELSE output_digest END,
+                           completed_at=CASE
+                             WHEN status='running' AND %s IN ('completed','failed') THEN NOW()
+                             ELSE completed_at END,
+                           available_at=CASE WHEN %s>0
+                             THEN NOW()+(%s*INTERVAL '1 second') ELSE available_at END,
+                           lease_expires_at=NULL,updated_at=NOW()
+                       WHERE site_id=%s AND id=%s AND lease_expires_at=%s
+                         AND ((status=%s AND attempt=%s)
+                              OR (status='running' AND attempt=%s))""",
+                    (
+                        expected,
+                        attempt,
+                        error_code,
+                        expected,
+                        expected,
+                        retry_delay,
+                        retry_delay,
+                        site_id,
+                        str(job_id),
+                        lease_token,
+                        expected,
+                        attempt,
+                        attempt - 1,
+                    ),
+                )
+                if cur.rowcount != 1:
+                    raise ValueError('content_media_attempt_stale')
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+
+
+def recover_media_scan_attempt(
+    *, site_id: str, job_id: UUID, attempt: int, lease_token: datetime
+) -> bool:
+    """Persist an unexpected worker exception without waiting for lease expiry."""
+    if attempt < 1 or lease_token.tzinfo is None:
+        raise ValueError('content_media_attempt_invalid')
+    retry_delay = min(300, 15 * (2 ** (attempt - 1)))
+    with db_conn(tenant_id=site_id) as conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """UPDATE sitecontent_mediajob
+                       SET status=CASE WHEN %s>=maximum_attempts THEN 'failed'
+                                       ELSE 'retryable' END,
+                           attempt=%s,error_code='media_dependency_unavailable',
+                           available_at=NOW()+(%s*INTERVAL '1 second'),
+                           completed_at=CASE WHEN %s>=maximum_attempts THEN NOW()
+                                             ELSE NULL END,
+                           lease_expires_at=NULL,updated_at=NOW()
+                       WHERE site_id=%s AND id=%s AND status='running'
+                         AND attempt=%s AND lease_expires_at=%s""",
+                    (
+                        attempt,
+                        attempt,
+                        retry_delay,
+                        attempt,
+                        site_id,
+                        str(job_id),
+                        attempt - 1,
+                        lease_token,
+                    ),
+                )
+                recovered = cur.rowcount == 1
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+    return recovered
 
 
 def scan_workspace_asset(
@@ -304,9 +533,13 @@ def scan_workspace_asset(
     asset_id: UUID,
     artifact_store,
     scanner=scan_content,
-    derivative_builder=generate_media_preview,
+    derivative_builder=None,
 ) -> str:
     """Scan an exact encrypted object and promote only a stored safe derivative."""
+    if derivative_builder is None:
+        from api.services.media_library_processor import generate_media_preview
+
+        derivative_builder = generate_media_preview
     with db_conn(tenant_id=site_id) as conn:
         try:
             with conn.cursor() as cur:

@@ -1,3 +1,5 @@
+import pytest
+
 from api import tasks
 
 
@@ -40,7 +42,6 @@ def test_workspace_mutation_tasks_have_bounded_dependency_retries():
     for task in (
         tasks.publish_workspace_record,
         tasks.index_workspace_record_task,
-        tasks.scan_workspace_asset_task,
         tasks.process_workspace_export,
         tasks.validate_workspace_import,
         tasks.commit_workspace_import,
@@ -49,35 +50,125 @@ def test_workspace_mutation_tasks_have_bounded_dependency_retries():
         assert task.autoretry_for == (Exception,)
         assert task.dont_autoretry_for == (ValueError,)
         assert task.retry_backoff is True
+    assert not hasattr(tasks.scan_workspace_asset_task, 'autoretry_for')
 
 
 def test_workspace_media_scan_replay_dispatches_only_discovered_ids(monkeypatch):
-    discovered = [('site-a', '00000000-0000-0000-0000-000000007104')]
+    discovered = [(
+        'site-a',
+        '00000000-0000-0000-0000-000000007104',
+        '00000000-0000-0000-0000-000000007105',
+        2,
+        '2026-09-07T12:02:00+00:00',
+    )]
     delivered = []
     monkeypatch.setattr(tasks, 'due_media_scans', lambda *, limit: discovered)
     monkeypatch.setattr(
         tasks.scan_workspace_asset_task,
         'delay',
-        lambda site_id, asset_id: delivered.append((site_id, asset_id)),
+        lambda *arguments: delivered.append(arguments),
     )
     assert tasks.replay_workspace_media_scans(limit=10) == 1
     assert delivered == discovered
 
 
-def test_workspace_media_scan_task_uses_private_store(monkeypatch):
+@pytest.mark.parametrize('worker_result', ['ready', 'rejected'])
+def test_workspace_media_scan_task_completes_clean_and_infected_results(
+    monkeypatch, worker_result
+):
     store = object()
     calls = []
     monkeypatch.setattr(tasks, '_workspace_artifact_store', lambda: store)
     monkeypatch.setattr(
         tasks,
         'scan_workspace_asset',
-        lambda **kwargs: calls.append(kwargs) or 'scanned_clean',
+        lambda **kwargs: calls.append(kwargs) or worker_result,
+    )
+    lifecycle = []
+    monkeypatch.setattr(
+        tasks,
+        'begin_media_scan_attempt',
+        lambda **kwargs: lifecycle.append(('begin', kwargs)) or True,
+    )
+    monkeypatch.setattr(
+        tasks,
+        'finish_media_scan_attempt',
+        lambda **kwargs: lifecycle.append(('finish', kwargs)),
     )
     asset_id = '00000000-0000-0000-0000-000000007104'
-    assert tasks.scan_workspace_asset_task('site-a', asset_id) == 'scanned_clean'
+    job_id = '00000000-0000-0000-0000-000000007105'
+    token = '2026-09-07T12:02:00+00:00'
+    assert tasks.scan_workspace_asset_task('site-a', asset_id, job_id, 2, token) == worker_result
     assert calls == [
         {'site_id': 'site-a', 'asset_id': tasks.UUID(asset_id), 'artifact_store': store}
     ]
+    assert lifecycle[0][0] == 'begin' and lifecycle[1][0] == 'finish'
+    assert lifecycle[0][1]['attempt'] == 2
+    assert lifecycle[1][1]['result'] == worker_result
+
+
+def test_workspace_media_scan_duplicate_token_is_noop(monkeypatch):
+    monkeypatch.setattr(tasks, 'begin_media_scan_attempt', lambda **_kwargs: False)
+    monkeypatch.setattr(
+        tasks,
+        'scan_workspace_asset',
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError('duplicate processed')),
+    )
+    assert tasks.scan_workspace_asset_task(
+        'site-a',
+        '00000000-0000-0000-0000-000000007104',
+        '00000000-0000-0000-0000-000000007105',
+        2,
+        '2026-09-07T12:02:00+00:00',
+    ) == 'stale_attempt'
+
+
+def test_workspace_media_scan_unexpected_exception_is_durably_recovered(monkeypatch):
+    lifecycle = []
+    monkeypatch.setattr(tasks, 'begin_media_scan_attempt', lambda **_kwargs: True)
+    monkeypatch.setattr(tasks, '_workspace_artifact_store', object)
+    monkeypatch.setattr(
+        tasks,
+        'scan_workspace_asset',
+        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError('private worker failure')),
+    )
+    monkeypatch.setattr(
+        tasks,
+        'recover_media_scan_attempt',
+        lambda **kwargs: lifecycle.append(kwargs) or True,
+    )
+    with pytest.raises(RuntimeError, match='private worker failure'):
+        tasks.scan_workspace_asset_task(
+            'site-a',
+            '00000000-0000-0000-0000-000000007104',
+            '00000000-0000-0000-0000-000000007105',
+            2,
+            '2026-09-07T12:02:00+00:00',
+        )
+    assert len(lifecycle) == 1 and lifecycle[0]['attempt'] == 2
+
+
+def test_workspace_media_scan_recovery_failure_preserves_original_error(monkeypatch):
+    monkeypatch.setattr(tasks, 'begin_media_scan_attempt', lambda **_kwargs: True)
+    monkeypatch.setattr(tasks, '_workspace_artifact_store', object)
+    monkeypatch.setattr(
+        tasks,
+        'scan_workspace_asset',
+        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError('original worker failure')),
+    )
+    monkeypatch.setattr(
+        tasks,
+        'recover_media_scan_attempt',
+        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError('recovery unavailable')),
+    )
+    with pytest.raises(RuntimeError, match='original worker failure'):
+        tasks.scan_workspace_asset_task(
+            'site-a',
+            '00000000-0000-0000-0000-000000007104',
+            '00000000-0000-0000-0000-000000007105',
+            2,
+            '2026-09-07T12:02:00+00:00',
+        )
 
 
 def test_workspace_export_replay_and_task_use_only_discovered_fixed_ids(monkeypatch):

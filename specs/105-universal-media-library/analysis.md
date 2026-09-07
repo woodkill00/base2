@@ -153,6 +153,24 @@ prove unknown defects impossible.
     forbids regression to the rate-limited endpoints. The remaining Node 20
     upload-artifact annotation was closed with the exact official v6 Node 24
     action pin.
+24. The mirror-corrected hosted matrix passed all 37 applicable jobs with one
+    intentional Storybook skip, but fresh exact-head review again rejected
+    closure. Exact lifecycle replay was checked after stale-version rejection;
+    scan discovery had no lease or attempt token, allowing duplicate delivery
+    to consume retry budget; and the client discarded the inspector's permanent
+    rejection code. Review also retained low-severity RTL English ordering and
+    remaining anonymous public-ECR PostgreSQL dependencies. B051-B055 require
+    each behavior and regression proof before the final B050 cycle can close.
+25. Integration review caught a result-vocabulary mismatch after the first
+    lease repair: the task's governed worker and the retained legacy worker did
+    not return identical terminal labels. Completion now accepts both fixed
+    vocabularies, atomically reconciles already-persisted governed state or
+    completes a still-running legacy lease, and immediately releases unexpected
+    exceptions into bounded durable backoff. Unit, task, and real-PostgreSQL
+    checks cover clean, infected, transient, duplicate-token, concurrent
+    scheduler, expired-lease, and recovery-storage-failure paths. The critical
+    repetition runner now includes the late replay, marker, lease, duplicate,
+    and recovery regressions rather than relying only on the original suite.
 
 ## Honest residual boundary
 

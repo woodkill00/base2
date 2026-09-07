@@ -50,3 +50,8 @@
 - [x] B048 Extend modal interaction and visual proof to compact, zoom, theme, RTL, and high-contrast projects without weakening deterministic source binding.
 - [x] B049 Pin every workflow to the official Node-24 checkout action and prove immutable-action, CI-policy, and surface-drift compliance.
 - [ ] B050 Repeat the exact-head complete gate, both hosted workflow variants, critical repetitions, and three independent zero-medium-or-higher reviews after all late findings are closed.
+- [x] B051 Make lifecycle transition idempotency reachable before stale-version rejection and prove exact replay plus changed-payload conflict behavior.
+- [x] B052 Add durable lease- and attempt-token-bound scan discovery so duplicate Celery delivery is a no-op and expired leases recover without consuming retry budget.
+- [x] B053 Preserve permanent inspector failure codes through a bounded no-follow marker read and prove infected media reaches rejected without transient rescans.
+- [x] B054 Remove remaining anonymous public-ECR PostgreSQL acceptance and backend-CI dependencies using documented mirrored digest pins with policy regressions.
+- [x] B055 Isolate English counters and status copy in RTL layouts and regenerate/review only the affected source-bound visual evidence.

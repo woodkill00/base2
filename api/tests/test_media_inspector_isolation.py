@@ -323,10 +323,10 @@ def test_spool_client_rejection_timeout_and_request_guards(monkeypatch, tmp_path
 
     def reject(_delay):
         job = next(path for path in tmp_path.iterdir() if path.is_dir())
-        (job / 'failed').write_bytes(b'rejected')
+        (job / 'failed').write_bytes(b'media_inspection_rejected')
 
     monkeypatch.setattr(client.time, 'sleep', reject)
-    with pytest.raises(MediaInspectorClientError, match='rejected'):
+    with pytest.raises(MediaInspectorClientError, match='^media_inspection_rejected$'):
         inspect_media_via_spool(**common)
     assert not list(tmp_path.iterdir())
 
@@ -335,6 +335,97 @@ def test_spool_client_rejection_timeout_and_request_guards(monkeypatch, tmp_path
     monkeypatch.setattr(client.time, 'sleep', lambda _delay: None)
     with pytest.raises(MediaInspectorClientError, match='timeout'):
         inspect_media_via_spool(**common)
+
+
+@pytest.mark.parametrize(
+    ('service_code', 'client_code'),
+    [
+        ('media_inspection_rejected', 'media_inspection_rejected'),
+        ('media_inspector_dependency_unavailable', 'media_inspector_dependency_unavailable'),
+    ],
+)
+def test_service_failure_marker_preserves_bounded_classification(
+    monkeypatch, tmp_path, service_code, client_code
+):
+    content = b'source'
+    encoded_verify_key = base64.urlsafe_b64encode(VERIFY_KEY.public_bytes_raw()).decode()
+    handled = False
+
+    def fail_job(_delay):
+        nonlocal handled
+        if handled:
+            return
+        monkeypatch.setattr(
+            service,
+            'inspect_request',
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                service.MediaInspectorServiceError(service_code)
+            ),
+        )
+        assert service.serve_once(tmp_path, key=SIGNING_KEY, build_identity=BUILD_IDENTITY) is True
+        handled = True
+
+    monkeypatch.setattr(client.time, 'sleep', fail_job)
+    with pytest.raises(MediaInspectorClientError, match=f'^{client_code}$'):
+        inspect_media_via_spool(
+            content=content,
+            expected_sha256=hashlib.sha256(content).hexdigest(),
+            media_type='image/png',
+            asset_id=UUID(int=110),
+            object_version=1,
+            observed_at=NOW,
+            spool_root=str(tmp_path),
+            encoded_verify_key=encoded_verify_key,
+            timeout_seconds=1,
+        )
+    assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize('marker', [b'unknown_failure', b'x' * 129, b'\xff'])
+def test_spool_client_rejects_untrusted_failure_markers(monkeypatch, tmp_path, marker):
+    content = b'source'
+
+    def fail_job(_delay):
+        job = next(path for path in tmp_path.iterdir() if path.is_dir())
+        (job / 'failed').write_bytes(marker)
+
+    monkeypatch.setattr(client.time, 'sleep', fail_job)
+    with pytest.raises(MediaInspectorClientError, match='^media_inspector_response_invalid$'):
+        inspect_media_via_spool(
+            content=content,
+            expected_sha256=hashlib.sha256(content).hexdigest(),
+            media_type='image/png',
+            asset_id=UUID(int=110),
+            object_version=1,
+            observed_at=NOW,
+            spool_root=str(tmp_path),
+            encoded_verify_key=base64.urlsafe_b64encode(VERIFY_KEY.public_bytes_raw()).decode(),
+            timeout_seconds=1,
+        )
+
+
+def test_spool_client_does_not_follow_failure_marker_symlink(monkeypatch, tmp_path):
+    content = b'source'
+    outside = tmp_path / 'outside-marker'
+    outside.write_bytes(b'media_inspection_rejected')
+
+    def fail_job(_delay):
+        job = next(path for path in tmp_path.iterdir() if path.is_dir())
+        (job / 'failed').symlink_to(outside)
+
+    monkeypatch.setattr(client.time, 'sleep', fail_job)
+    with pytest.raises(MediaInspectorClientError, match='^media_inspector_response_invalid$'):
+        inspect_media_via_spool(
+            content=content,
+            expected_sha256=hashlib.sha256(content).hexdigest(),
+            media_type='image/png',
+            asset_id=UUID(int=110),
+            object_version=1,
+            observed_at=NOW,
+            spool_root=str(tmp_path),
+            encoded_verify_key=base64.urlsafe_b64encode(VERIFY_KEY.public_bytes_raw()).decode(),
+            timeout_seconds=1,
+        )
 
 
 def test_receipt_schema_rejects_malformed_nested_evidence():
@@ -546,7 +637,10 @@ def test_main_worker_has_no_decoder_import_and_manifests_isolate_service():
             and inspector['pids_limit'] == 16
         )
         assert inspector['healthcheck']['test'] == [
-            'CMD', 'python', '-c', 'import os; os.kill(1, 0)'
+            'CMD',
+            'python',
+            '-c',
+            'import os; os.kill(1, 0)',
         ]
         env = '\n'.join(inspector['environment'])
         assert all(

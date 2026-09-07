@@ -7,6 +7,11 @@ import subprocess
 import time
 from pathlib import Path
 
+POSTGRES_IMAGE = (
+    "mirror.gcr.io/library/postgres@sha256:"
+    "075f7ba66bc9b3ce7d6b8b635208ff61cd7cf1a67d71ec530eec5d7ae0cbe571"
+)
+
 
 def run(command, **kwargs):
     return subprocess.run(command, check=True, **kwargs)
@@ -40,7 +45,7 @@ def main() -> None:
                 "POSTGRES_USER=base2",
                 "-e",
                 "POSTGRES_DB=base2",
-                "postgres:16-alpine",
+                POSTGRES_IMAGE,
             ],
             stdout=subprocess.DEVNULL,
         )
@@ -95,7 +100,7 @@ def main() -> None:
                 "WORKSPACE_WORKER_DB_USER=base2_workspace_worker",
                 "-e",
                 f"WORKSPACE_WORKER_DB_PASSWORD={worker_password}",
-                "postgres:16-alpine",
+                POSTGRES_IMAGE,
                 "/bin/sh",
                 "/bootstrap.sh",
             ],

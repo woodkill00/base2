@@ -107,9 +107,16 @@ def test_asset_cursor_is_opaque_signed_and_offset_exclusive(monkeypatch):
         def list_assets(self, **kwargs):
             if kwargs['cursor_after']:
                 assert kwargs['cursor_after'][1] == UUID(ASSET_ID)
-                return {'items': [], 'nextAnchor': None, 'nextOffset': None, 'indexStatus': 'current'}
+                return {
+                    'items': [],
+                    'nextAnchor': None,
+                    'nextOffset': None,
+                    'indexStatus': 'current',
+                }
             return {
-                'items': [], 'nextOffset': 25, 'indexStatus': 'current',
+                'items': [],
+                'nextOffset': 25,
+                'indexStatus': 'current',
                 'nextAnchor': {'id': ASSET_ID, 'updatedAt': '2026-09-06T12:00:00+00:00'},
             }
 
@@ -118,11 +125,13 @@ def test_asset_cursor_is_opaque_signed_and_offset_exclusive(monkeypatch):
     client = TestClient(app)
     first = client.get('/api/media/v1/assets').json()
     assert first['nextCursor'] and ASSET_ID not in first['nextCursor']
-    assert client.get(f"/api/media/v1/assets?cursor={first['nextCursor']}").status_code == 200
-    assert client.get(f"/api/media/v1/assets?cursor={first['nextCursor']}x").status_code == 422
-    assert client.get(f"/api/media/v1/assets?cursor={first['nextCursor']}&offset=1").status_code == 422
+    assert client.get(f'/api/media/v1/assets?cursor={first["nextCursor"]}').status_code == 200
+    assert client.get(f'/api/media/v1/assets?cursor={first["nextCursor"]}x').status_code == 422
     assert (
-        client.get(f"/api/media/v1/assets?cursor={first['nextCursor']}&state=ready").status_code
+        client.get(f'/api/media/v1/assets?cursor={first["nextCursor"]}&offset=1').status_code == 422
+    )
+    assert (
+        client.get(f'/api/media/v1/assets?cursor={first["nextCursor"]}&state=ready').status_code
         == 422
     )
 
@@ -285,7 +294,9 @@ def test_upload_admission_is_idempotent_bounded_and_rate_limited(monkeypatch):
     )
     client = TestClient(app)
     payload = {
-        'filename': 'safe.png', 'mediaType': 'image/png', 'byteSize': 8,
+        'filename': 'safe.png',
+        'mediaType': 'image/png',
+        'byteSize': 8,
         'sha256': 'a' * 64,
     }
     assert client.post('/api/media/v1/uploads', json=payload).status_code == 422
@@ -347,15 +358,40 @@ def test_reference_preview_lifecycle_and_export_contracts_are_bounded():
     )
 
 
+def test_lifecycle_route_returns_first_and_exact_replay_receipts(monkeypatch):
+    class ReplayRepository(Repository):
+        calls = 0
+
+        def transition_asset(self, **kwargs):
+            self.calls += 1
+            return {
+                'id': str(kwargs['asset_id']),
+                'status': kwargs['target'],
+                'version': 3,
+                'replayed': self.calls > 1,
+            }
+
+    repository = ReplayRepository()
+    monkeypatch.setattr(media_library, 'get_repository', lambda: repository)
+    request = {
+        'json': {'target': 'archived'},
+        'headers': {'If-Match': '2', 'Idempotency-Key': 'request-123'},
+    }
+    client = TestClient(app)
+    first = client.post(f'/api/media/v1/assets/{ASSET_ID}/lifecycle', **request)
+    replay = client.post(f'/api/media/v1/assets/{ASSET_ID}/lifecycle', **request)
+    assert first.status_code == replay.status_code == 200
+    assert first.json()['replayed'] is False
+    assert replay.json() == {**first.json(), 'replayed': True}
+
+
 def test_sensitive_media_action_requires_recent_auth_and_cookie_csrf(monkeypatch):
     stale = PublicPrincipal(UUID(int=110), datetime.now(UTC), False)
     monkeypatch.setattr(media_library, 'require_authenticated_principal', lambda _request: stale)
     response = TestClient(app).get(f'/api/media/v1/assets/{ASSET_ID}/destructive-preview')
     assert response.status_code == 401
 
-    stale_claim = PublicPrincipal(
-        UUID(int=110), datetime.now(UTC) - timedelta(minutes=6), True
-    )
+    stale_claim = PublicPrincipal(UUID(int=110), datetime.now(UTC) - timedelta(minutes=6), True)
     monkeypatch.setattr(
         media_library, 'require_authenticated_principal', lambda _request: stale_claim
     )
@@ -445,21 +481,37 @@ class FailureRepository:
         ('get', f'/api/media/v1/assets/{ASSET_ID}', {}),
         ('get', f'/api/media/v1/assets/{ASSET_ID}/references', {}),
         ('get', f'/api/media/v1/assets/{ASSET_ID}/destructive-preview', {}),
-        ('post', f'/api/media/v1/assets/{ASSET_ID}/lifecycle', {
-            'json': {'target': 'archived'},
-            'headers': {'If-Match': '2', 'Idempotency-Key': 'request-123'},
-        }),
-        ('post', '/api/media/v1/exports', {
-            'json': {'outputFormat': 'csv', 'assetIds': [ASSET_ID], 'projection': ['id']},
-            'headers': {'Idempotency-Key': 'request-123'},
-        }),
+        (
+            'post',
+            f'/api/media/v1/assets/{ASSET_ID}/lifecycle',
+            {
+                'json': {'target': 'archived'},
+                'headers': {'If-Match': '2', 'Idempotency-Key': 'request-123'},
+            },
+        ),
+        (
+            'post',
+            '/api/media/v1/exports',
+            {
+                'json': {'outputFormat': 'csv', 'assetIds': [ASSET_ID], 'projection': ['id']},
+                'headers': {'Idempotency-Key': 'request-123'},
+            },
+        ),
         ('get', '/api/media/v1/collections', {}),
-        ('post', '/api/media/v1/collections', {
-            'json': {'title': 'Safe', 'visibility': 'private', 'sharedRoles': []},
-        }),
-        ('post', f'/api/media/v1/collections/{ASSET_ID}/assets', {
-            'json': {'assetIds': [ASSET_ID]},
-        }),
+        (
+            'post',
+            '/api/media/v1/collections',
+            {
+                'json': {'title': 'Safe', 'visibility': 'private', 'sharedRoles': []},
+            },
+        ),
+        (
+            'post',
+            f'/api/media/v1/collections/{ASSET_ID}/assets',
+            {
+                'json': {'assetIds': [ASSET_ID]},
+            },
+        ),
         ('get', '/api/media/v1/jobs', {}),
         ('post', f'/api/media/v1/jobs/{ASSET_ID}/retry', {}),
         ('get', f'/api/media/v1/exports/{ASSET_ID}', {}),
@@ -477,14 +529,42 @@ def test_dependency_failures_are_redacted_and_typed(monkeypatch, method, path, k
     ('code', 'method', 'path', 'kwargs', 'status'),
     [
         ('media_not_found', 'get', f'/api/media/v1/assets/{ASSET_ID}/references', {}, 404),
-        ('media_transition_blocked', 'get', f'/api/media/v1/assets/{ASSET_ID}/destructive-preview', {}, 423),
-        ('media_version_conflict', 'post', f'/api/media/v1/assets/{ASSET_ID}/lifecycle', {
-            'json': {'target': 'archived'},
-            'headers': {'If-Match': '2', 'Idempotency-Key': 'request-123'},
-        }, 409),
-        ('media_not_found', 'post', f'/api/media/v1/collections/{ASSET_ID}/assets', {
-            'json': {'assetIds': [ASSET_ID]},
-        }, 404),
+        (
+            'media_transition_blocked',
+            'get',
+            f'/api/media/v1/assets/{ASSET_ID}/destructive-preview',
+            {},
+            423,
+        ),
+        (
+            'media_version_conflict',
+            'post',
+            f'/api/media/v1/assets/{ASSET_ID}/lifecycle',
+            {
+                'json': {'target': 'archived'},
+                'headers': {'If-Match': '2', 'Idempotency-Key': 'request-123'},
+            },
+            409,
+        ),
+        (
+            'media_idempotency_conflict',
+            'post',
+            f'/api/media/v1/assets/{ASSET_ID}/lifecycle',
+            {
+                'json': {'target': 'archived'},
+                'headers': {'If-Match': '2', 'Idempotency-Key': 'request-123'},
+            },
+            409,
+        ),
+        (
+            'media_not_found',
+            'post',
+            f'/api/media/v1/collections/{ASSET_ID}/assets',
+            {
+                'json': {'assetIds': [ASSET_ID]},
+            },
+            404,
+        ),
         ('media_job_retry_blocked', 'post', f'/api/media/v1/jobs/{ASSET_ID}/retry', {}, 409),
         ('media_not_found', 'get', f'/api/media/v1/exports/{ASSET_ID}', {}, 404),
     ],

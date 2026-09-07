@@ -74,7 +74,10 @@ it('renders an accessible searchable selectable library', async () => {
   expect(await screen.findByRole('heading', { name: 'Media library' })).toBeInTheDocument();
   expect(await screen.findByText('safe.png')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Select safe.png' }));
-  expect(screen.getByText('1 selected')).toBeInTheDocument();
+  const selectionStatus = screen.getByText('1 selected');
+  expect(selectionStatus).toHaveAttribute('dir', 'ltr');
+  expect(selectionStatus).toHaveAttribute('lang', 'en');
+  expect(screen.getByRole('region', { name: 'Add media by dropping or pasting files' })).toHaveAttribute('dir', 'ltr');
   fireEvent.change(screen.getByLabelText('Search assets'), { target: { value: 'safe' } });
   fireEvent.submit(screen.getByRole('search'));
   await waitFor(() => expect(mediaLibraryAPI.assets).toHaveBeenLastCalledWith(

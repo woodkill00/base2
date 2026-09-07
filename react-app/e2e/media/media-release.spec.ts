@@ -126,6 +126,7 @@ test('media picker is visually and keyboard contained in a real workflow', async
   await expect(picker.getByText('1 of 5 selected')).toBeVisible();
   if (testInfo.project.name === 'chromium-rtl') {
     await expect(picker.locator('#media-picker-status')).toHaveCSS('direction', 'ltr');
+    await expect(picker.locator('#media-picker-status')).toHaveAttribute('lang', 'en');
   }
   await page.addScriptTag({ content: axeSource });
   const pickerViolations = await page.evaluate(async () => (await window.axe.run(document)).violations);
@@ -199,7 +200,13 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
   await page.keyboard.press('Tab');
   await expect(page.locator(':focus')).toBeVisible();
   await page.getByRole('button', { name: /select aurora landscape/i }).click();
-  await expect(page.getByText('1 selected')).toBeVisible();
+  const selectionStatus = page.getByText('1 selected');
+  await expect(selectionStatus).toBeVisible();
+  if (testInfo.project.name === 'chromium-rtl') {
+    await expect(selectionStatus).toHaveCSS('direction', 'ltr');
+    await expect(page.getByText('Upload, inspect, organize, and safely reuse site assets.')).toHaveCSS('direction', 'ltr');
+    await expect(page.getByRole('region', { name: 'Add media by dropping or pasting files' })).toHaveCSS('direction', 'ltr');
+  }
   const contrastFailures = await page.locator(
     '.media-card-actions button, .media-header-actions > button, .media-bulk-actions > button'
   ).evaluateAll((nodes) => {

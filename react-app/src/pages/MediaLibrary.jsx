@@ -516,7 +516,7 @@ export default function MediaLibrary() {
           <div>
             <p className="media-eyebrow">Content operations</p>
             <h1>Media library</h1>
-            <p>Upload, inspect, organize, and safely reuse site assets.</p>
+            <p className="media-ltr-copy" lang="en" dir="ltr">Upload, inspect, organize, and safely reuse site assets.</p>
           </div>
           <div className="media-header-actions">
             <GlassButton type="button" onClick={() => fileInput.current?.click()}>
@@ -540,6 +540,8 @@ export default function MediaLibrary() {
 
         <section
           className="media-drop-zone"
+          lang="en"
+          dir="ltr"
           aria-label="Add media by dropping or pasting files"
           tabIndex="0"
           onDragOver={(event) => event.preventDefault()}
@@ -558,8 +560,8 @@ export default function MediaLibrary() {
           <strong>Drop files here, or focus this area and paste files.</strong>
           <span>The Add media button provides the equivalent keyboard file chooser.</span>
         </section>
-        {!networkOnline ? <p className="media-notice" role="status">Offline. Active uploads are paused and can restart safely when the connection returns.</p> : null}
-        {pickerStatus ? <p className="media-action-status" role="status">{pickerStatus}</p> : null}
+        {!networkOnline ? <p className="media-notice media-ltr-copy" lang="en" dir="ltr" role="status">Offline. Active uploads are paused and can restart safely when the connection returns.</p> : null}
+        {pickerStatus ? <p className="media-action-status media-ltr-copy" lang="en" dir="ltr" role="status">{pickerStatus}</p> : null}
 
         <GlassCard className="media-toolbar">
           <form onSubmit={(event) => { event.preventDefault(); setSubmittedQuery(query.trim()); }} role="search">
@@ -575,7 +577,7 @@ export default function MediaLibrary() {
               {STATE_OPTIONS.map((value) => <option key={value || 'all'} value={value}>{value ? statusLabel(value) : 'All active'}</option>)}
             </select>
           </label>
-          <p className="media-selection" aria-live="polite">{selected.size} selected</p>
+          <p className="media-selection media-ltr-copy" lang="en" dir="ltr" aria-live="polite">{selected.size} selected</p>
         </GlassCard>
 
         {selected.size ? (
@@ -609,7 +611,7 @@ export default function MediaLibrary() {
             <button type="button" onClick={() => setBulkReview(null)}>Cancel bulk action</button>
           </section>
         ) : null}
-        {actionStatus ? <p className="media-action-status" role="status">{actionStatus}</p> : null}
+        {actionStatus ? <p className="media-action-status media-ltr-copy" lang="en" dir="ltr" role="status">{actionStatus}</p> : null}
 
         {uploadQueue.length ? (
           <section className="media-upload-queue" aria-labelledby="upload-heading">
@@ -617,7 +619,7 @@ export default function MediaLibrary() {
             {uploadQueue.map((item) => (
               <div key={item.id} className="media-upload-item">
                 <span>{item.name}</span><progress value={item.progress} max="100" aria-label={`${item.name} upload progress`} />
-                <span aria-live="polite">{statusLabel(item.status)}</span>
+                <span className="media-ltr-copy" lang="en" dir="ltr" aria-live="polite">{statusLabel(item.status)}</span>
                 {['failed', 'cancelled', 'paused_offline', 'expired'].includes(item.status) ? (
                   <button type="button" disabled={!networkOnline} aria-label={`Restart upload of ${item.name}`} onClick={() => restartUpload(item)}>Restart</button>
                 ) : null}
@@ -636,7 +638,7 @@ export default function MediaLibrary() {
         {error ? <div className="media-notice media-error" role="alert">{error}</div> : null}
         {loading ? <div className="media-notice" role="status">Loading media…</div> : null}
         {!loading && !error && assets.length === 0 ? (
-          <div className="media-empty">
+          <div className="media-empty media-ltr-copy" lang="en" dir="ltr">
             <strong>No matching media</strong>
             <p>Try another filter or add an allowed file. Drag and drop is optional; the file chooser is always available.</p>
           </div>

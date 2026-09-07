@@ -1,8 +1,6 @@
 import importlib.util
-from pathlib import Path
-import tempfile
 import unittest
-
+from pathlib import Path
 
 MODULE_PATH = Path(__file__).parents[1] / "python" / "validate_ci_policy.py"
 
@@ -76,6 +74,18 @@ class CiPolicyTests(unittest.TestCase):
         self.assertEqual(7, compose.count("mirror.gcr.io/library"))
         self.assertEqual(2, compose.count("mirror.gcr.io/library/postgres@sha256:"))
         self.assertEqual(1, compose.count("mirror.gcr.io/library/redis@sha256:"))
+
+    def test_backend_and_postgres_acceptance_avoid_anonymous_public_ecr(self):
+        repo_root = MODULE_PATH.parents[2]
+        workflow = (repo_root / ".github" / "workflows" / "ci-backend.yml").read_text()
+        acceptance = (
+            repo_root / "scripts" / "python" / "run_workspace_postgres_acceptance.py"
+        ).read_text()
+        combined = workflow + acceptance
+        self.assertNotIn("public.ecr.aws/docker/library", combined)
+        self.assertNotIn('"postgres:16-alpine"', acceptance)
+        self.assertEqual(2, workflow.count("mirror.gcr.io/library/"))
+        self.assertEqual(1, acceptance.count("mirror.gcr.io/library/postgres@sha256:"))
 
     def test_workflows_pin_node24_checkout_and_artifact_actions(self):
         repo_root = MODULE_PATH.parents[2]

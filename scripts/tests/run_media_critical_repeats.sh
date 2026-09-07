@@ -19,6 +19,14 @@ for ((iteration = 1; iteration <= iterations; iteration += 1)); do
     tests/test_media_library_policy.py \
     tests/test_media_library_processor.py \
     tests/test_media_library_storage.py \
+    tests/test_media_library_repository.py::test_transition_exact_replay_precedes_stale_version_rejection \
+    tests/test_media_library_repository.py::test_transition_changed_replay_is_an_idempotency_conflict \
+    tests/test_media_inspector_isolation.py::test_service_failure_marker_preserves_bounded_classification \
+    tests/test_content_workspace_worker.py::test_media_scan_attempt_token_is_single_use_and_backoff_bound \
+    tests/test_content_workspace_worker.py::test_media_scan_worker_results_complete_running_lease \
+    tests/test_content_workspace_worker.py::test_unexpected_media_scan_failure_is_recovered_immediately \
+    tests/test_content_workspace_tasks.py::test_workspace_media_scan_duplicate_token_is_noop \
+    tests/test_content_workspace_tasks.py::test_workspace_media_scan_unexpected_exception_is_durably_recovered \
     >/tmp/base2-media-critical-repeat.log 2>&1 || {
       cat /tmp/base2-media-critical-repeat.log
       exit 1

@@ -102,8 +102,8 @@ export default function MediaPicker({ open, onClose, onConfirm, limit = 1, retur
         <header><h2 id="media-picker-title">Choose media</h2><button type="button" onClick={close}>Close</button></header>
         <label>Search media<input value={query} onChange={(event) => setQuery(event.target.value)} /></label>
         <label>Status<select value={state} onChange={(event) => setState(event.target.value)}><option value="ready">Ready</option><option value="archived">Archived</option></select></label>
-        <p id="media-picker-status" className="media-picker-status" dir="ltr" aria-live="polite">
-          <bdi dir="ltr">{feedback || message || `${selected.size} of ${limit} selected`}</bdi>
+        <p id="media-picker-status" className="media-picker-status" lang="en" dir="ltr" aria-live="polite">
+          <bdi lang="en" dir="ltr">{feedback || message || `${selected.size} of ${limit} selected`}</bdi>
         </p>
         {!message && assets.length === 0 ? <p>No matching media. Change the search or status filter.</p> : null}
         <ul className="media-picker-results">

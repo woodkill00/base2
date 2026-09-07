@@ -86,6 +86,7 @@
 .media-detail-dialog button:focus-visible { outline: .2rem solid #f5d0fe; outline-offset: .15rem; }
 .media-bulk-actions { align-items: center; margin-block: -0.5rem 1rem; }
 .media-action-status { min-block-size: 1.5rem; }
+.media-ltr-copy { direction: ltr; unicode-bidi: isolate; text-align: start; }
 .media-dialog-backdrop {
   position: fixed;
   inset: 0;

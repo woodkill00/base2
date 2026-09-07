@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from uuid import UUID
 
 import psycopg2
@@ -282,6 +284,176 @@ def main() -> None:
                 assert cursor.fetchall() == [
                     ('site-a', 'a-updated.bin'), ('site-b', 'b-updated.bin')
                 ]
+
+            # Exercise the production lease helpers against real RLS. Two
+            # overlapping schedulers may discover the same asset, but the
+            # tenant-bound CAS must return exactly one delivery token.
+            with owner, owner.cursor() as cursor:
+                cursor.execute(
+                    """UPDATE sitecontent_mediaasset
+                       SET metadata=%s::jsonb,updated_at=NOW()
+                       WHERE site_id='site-a' AND id=%s""",
+                    ('{"admission":"content_verified"}', str(UUID(int=610))),
+                )
+            from api.db import close_pool
+            from api.services.content_workspace_worker import (
+                begin_media_scan_attempt,
+                due_media_scans,
+                finish_media_scan_attempt,
+                recover_media_scan_attempt,
+            )
+
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                deliveries = list(executor.map(lambda _index: due_media_scans(limit=10), range(2)))
+            claims = [claim for batch in deliveries for claim in batch]
+            assert len(claims) == 1, f"media_overlapping_scheduler_duplicate:{claims}"
+            site_id, asset_id, job_id, attempt, lease_value = claims[0]
+            lease_token = datetime.fromisoformat(lease_value)
+            assert attempt == 1
+            assert begin_media_scan_attempt(
+                site_id=site_id,
+                asset_id=UUID(asset_id),
+                job_id=UUID(job_id),
+                attempt=attempt,
+                lease_token=lease_token,
+            )
+            assert not begin_media_scan_attempt(
+                site_id=site_id,
+                asset_id=UUID(asset_id),
+                job_id=UUID(job_id),
+                attempt=attempt,
+                lease_token=lease_token,
+            ), "media_duplicate_delivery_was_not_noop"
+
+            with worker, worker.cursor() as cursor:
+                cursor.execute("SELECT set_config('app.tenant_id', 'site-a', true)")
+                cursor.execute(
+                    """UPDATE sitecontent_mediajob
+                       SET status='retryable',attempt=%s,available_at=NOW()
+                       WHERE site_id=%s AND id=%s""",
+                    (attempt, site_id, job_id),
+                )
+                assert cursor.rowcount == 1
+            finish_media_scan_attempt(
+                site_id=site_id,
+                job_id=UUID(job_id),
+                attempt=attempt,
+                lease_token=lease_token,
+                result='quarantined',
+            )
+            assert due_media_scans(limit=10) == [], "media_retry_backoff_was_not_enforced"
+
+            # A crashed running attempt becomes claimable only after its exact
+            # lease expires. The old token remains unusable after recovery.
+            with worker, worker.cursor() as cursor:
+                cursor.execute("SELECT set_config('app.tenant_id', 'site-a', true)")
+                cursor.execute(
+                    """UPDATE sitecontent_mediajob
+                       SET status='running',available_at=NOW()-INTERVAL '1 minute',
+                           lease_expires_at=NOW()-INTERVAL '1 second'
+                       WHERE site_id=%s AND id=%s""",
+                    (site_id, job_id),
+                )
+                assert cursor.rowcount == 1
+            recovered = due_media_scans(limit=10)
+            assert len(recovered) == 1 and recovered[0][3] == 2, recovered
+            recovered_token = datetime.fromisoformat(recovered[0][4])
+            assert recovered_token != lease_token
+            assert not begin_media_scan_attempt(
+                site_id=site_id,
+                asset_id=UUID(asset_id),
+                job_id=UUID(job_id),
+                attempt=attempt,
+                lease_token=lease_token,
+            )
+            assert begin_media_scan_attempt(
+                site_id=site_id,
+                asset_id=UUID(asset_id),
+                job_id=UUID(job_id),
+                attempt=2,
+                lease_token=recovered_token,
+            )
+            finish_media_scan_attempt(
+                site_id=site_id,
+                job_id=UUID(job_id),
+                attempt=2,
+                lease_token=recovered_token,
+                result='scanned_infected',
+            )
+            with owner, owner.cursor() as cursor:
+                cursor.execute(
+                    """SELECT status,attempt,error_code,lease_expires_at
+                       FROM sitecontent_mediajob WHERE id=%s""",
+                    (job_id,),
+                )
+                assert cursor.fetchone() == ('failed', 2, 'media_inspection_rejected', None)
+
+                cursor.execute(
+                    """UPDATE sitecontent_mediaasset
+                       SET metadata=%s::jsonb,updated_at=NOW()
+                       WHERE site_id='site-b' AND id=%s""",
+                    ('{"admission":"content_verified"}', str(UUID(int=611))),
+                )
+            clean_claims = due_media_scans(limit=10)
+            assert len(clean_claims) == 1 and clean_claims[0][0] == 'site-b', clean_claims
+            clean_site, clean_asset, clean_job, clean_attempt, clean_lease = clean_claims[0]
+            clean_token = datetime.fromisoformat(clean_lease)
+            assert begin_media_scan_attempt(
+                site_id=clean_site,
+                asset_id=UUID(clean_asset),
+                job_id=UUID(clean_job),
+                attempt=clean_attempt,
+                lease_token=clean_token,
+            )
+            finish_media_scan_attempt(
+                site_id=clean_site,
+                job_id=UUID(clean_job),
+                attempt=clean_attempt,
+                lease_token=clean_token,
+                result='validated_safe_derivative',
+            )
+            with owner, owner.cursor() as cursor:
+                cursor.execute(
+                    """SELECT status,attempt,error_code,output_digest,lease_expires_at
+                       FROM sitecontent_mediajob WHERE id=%s""",
+                    (clean_job,),
+                )
+                clean_row = cursor.fetchone()
+                assert clean_row == ('completed', 1, '', 'b' * 64, None), clean_row
+                cursor.execute(
+                    """UPDATE sitecontent_mediaasset
+                       SET current_object_version=2,sha256=%s,status='quarantined',updated_at=NOW()
+                       WHERE site_id='site-b' AND id=%s""",
+                    ('e' * 64, str(UUID(int=611))),
+                )
+            exception_claims = due_media_scans(limit=10)
+            assert len(exception_claims) == 1, exception_claims
+            error_site, error_asset, error_job, error_attempt, error_lease = exception_claims[0]
+            error_token = datetime.fromisoformat(error_lease)
+            assert begin_media_scan_attempt(
+                site_id=error_site,
+                asset_id=UUID(error_asset),
+                job_id=UUID(error_job),
+                attempt=error_attempt,
+                lease_token=error_token,
+            )
+            assert recover_media_scan_attempt(
+                site_id=error_site,
+                job_id=UUID(error_job),
+                attempt=error_attempt,
+                lease_token=error_token,
+            )
+            with owner, owner.cursor() as cursor:
+                cursor.execute(
+                    """SELECT status,attempt,error_code,lease_expires_at,available_at>NOW()
+                       FROM sitecontent_mediajob WHERE id=%s""",
+                    (error_job,),
+                )
+                assert cursor.fetchone() == (
+                    'retryable', 1, 'media_dependency_unavailable', None, True
+                )
+            assert due_media_scans(limit=10) == [], "media_exception_backoff_was_not_enforced"
+            close_pool()
         finally:
             runtime.close()
             worker.close()

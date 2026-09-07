@@ -293,6 +293,22 @@ def process_governed_media_asset(
                     job = cur.fetchone()
                     if not job:
                         raise MediaRuntimeError('media_job_state_invalid') from exc
+                    if job[0] == 'retryable':
+                        retry_delay = min(300, 15 * (2 ** (int(job[1]) - 1)))
+                        cur.execute(
+                            """UPDATE sitecontent_mediajob
+                               SET available_at=NOW()+(%s*INTERVAL '1 second'),updated_at=NOW()
+                               WHERE site_id=%s AND kind='inspect' AND idempotency_key=%s
+                                 AND status='retryable' AND attempt=%s""",
+                            (
+                                retry_delay,
+                                site_id,
+                                f'inspect:{asset_id}:{row[5]}',
+                                int(job[1]),
+                            ),
+                        )
+                        if cur.rowcount != 1:
+                            raise MediaRuntimeError('media_job_state_invalid') from exc
                     next_state = 'rejected' if rejected else (
                         'failed' if job[0] == 'failed' else 'quarantined'
                     )

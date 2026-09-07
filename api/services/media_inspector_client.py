@@ -20,6 +20,23 @@ from api.services.media_inspector_receipt import (
 MAX_SOURCE_BYTES = 100 * 1024 * 1024
 MAX_PREVIEW_BYTES = 10 * 1024 * 1024
 MAX_RECEIPT_BYTES = 32 * 1024
+MAX_FAILURE_CODE_BYTES = 128
+INSPECTOR_FAILURE_CODES = frozenset(
+    {
+        'media_decoder_failed',
+        'media_decoder_response_invalid',
+        'media_inspection_rejected',
+        'media_inspector_dependency_unavailable',
+        'media_inspector_failed',
+        'media_inspector_identity_unavailable',
+        'media_inspector_output_invalid',
+        'media_inspector_request_invalid',
+        'media_integrity_failed',
+        'media_scanner_identity_changed',
+        'media_scanner_response_invalid',
+        'media_scanner_unavailable',
+    }
+)
 
 
 class MediaInspectorClientError(ValueError):
@@ -134,7 +151,13 @@ def inspect_media_via_spool(
         deadline = time.monotonic() + timeout_seconds
         while time.monotonic() < deadline:
             if (job / 'failed').is_file():
-                raise MediaInspectorClientError('media_inspector_rejected')
+                try:
+                    code = _read_regular(job / 'failed', MAX_FAILURE_CODE_BYTES).decode('ascii')
+                except (UnicodeDecodeError, MediaInspectorClientError) as exc:
+                    raise MediaInspectorClientError('media_inspector_response_invalid') from exc
+                if code not in INSPECTOR_FAILURE_CODES:
+                    raise MediaInspectorClientError('media_inspector_response_invalid')
+                raise MediaInspectorClientError(code)
             if (job / 'complete').is_file():
                 break
             time.sleep(0.05)

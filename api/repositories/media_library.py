@@ -221,7 +221,10 @@ class PostgresMediaLibraryRepository:
                              AND owner_ref=%s
                            RETURNING lock_version""",
                         (
-                            payload['visibility'], site_id, str(asset_id), expected_version,
+                            payload['visibility'],
+                            site_id,
+                            str(asset_id),
+                            expected_version,
                             actor_ref,
                         ),
                     )
@@ -232,9 +235,7 @@ class PostgresMediaLibraryRepository:
                 raise
         return {'id': str(asset_id), 'revision': revision, 'version': next_version}
 
-    def list_references(
-        self, *, site_id: str, asset_id: UUID, actor_ref: str
-    ) -> dict[str, Any]:
+    def list_references(self, *, site_id: str, asset_id: UUID, actor_ref: str) -> dict[str, Any]:
         with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
             cur.execute(
                 """SELECT 1 FROM sitecontent_mediaasset
@@ -348,9 +349,18 @@ class PostgresMediaLibraryRepository:
             'archived': {'ready', 'soft_deleted'},
             'soft_deleted': {'ready', 'purge_planned'},
         }
+        event_kind = f'asset.{target}'
+        aggregate_ref = f'asset:{asset_id}'
+        replay_digest = hashlib.sha256(
+            f'{site_id}\0{asset_id}\0{actor_ref}\0{target}\0{expected_version}'.encode()
+        ).hexdigest()
         with db_conn(tenant_id=site_id) as conn:
             try:
                 with conn.cursor() as cur:
+                    cur.execute(
+                        'SELECT pg_advisory_xact_lock(hashtextextended(%s, 110))',
+                        (f'{site_id}\0media-lifecycle\0{idempotency_key}',),
+                    )
                     cur.execute(
                         """SELECT lock_version, status FROM sitecontent_mediaasset
                            WHERE site_id=%s AND id=%s AND status<>'purged'
@@ -361,6 +371,25 @@ class PostgresMediaLibraryRepository:
                     current = cur.fetchone()
                     if not current:
                         raise ValueError('media_not_found')
+                    cur.execute(
+                        """SELECT aggregate_ref,event_kind,payload_digest
+                           FROM sitecontent_mediaoutboxevent
+                           WHERE site_id=%s AND idempotency_key=%s
+                             AND event_kind LIKE 'asset.%'
+                           ORDER BY created_at,id LIMIT 1 FOR UPDATE""",
+                        (site_id, idempotency_key),
+                    )
+                    existing = cur.fetchone()
+                    if existing:
+                        if tuple(existing) != (aggregate_ref, event_kind, replay_digest):
+                            raise ValueError('media_idempotency_conflict')
+                        conn.rollback()
+                        return {
+                            'id': str(asset_id),
+                            'status': target,
+                            'version': expected_version + 1,
+                            'replayed': True,
+                        }
                     if int(current[0]) != expected_version:
                         raise ValueError('media_version_conflict')
                     if target not in transitions.get(current[1], set()):
@@ -380,9 +409,6 @@ class PostgresMediaLibraryRepository:
                         blocked = cur.fetchone()
                         if blocked and any(blocked):
                             raise ValueError('media_transition_blocked')
-                    replay_digest = hashlib.sha256(
-                        f'{site_id}\0{asset_id}\0{target}\0{expected_version}'.encode()
-                    ).hexdigest()
                     cur.execute(
                         """INSERT INTO sitecontent_mediaoutboxevent
                            (id, site_id, aggregate_ref, event_kind, idempotency_key,
@@ -394,8 +420,8 @@ class PostgresMediaLibraryRepository:
                         (
                             str(uuid4()),
                             site_id,
-                            f'asset:{asset_id}',
-                            f'asset.{target}',
+                            aggregate_ref,
+                            event_kind,
                             idempotency_key,
                             replay_digest,
                         ),
@@ -403,17 +429,24 @@ class PostgresMediaLibraryRepository:
                     outbox = cur.fetchone()
                     if not outbox:
                         cur.execute(
-                            """SELECT lock_version, status FROM sitecontent_mediaasset
-                               WHERE site_id=%s AND id=%s""",
-                            (site_id, str(asset_id)),
+                            """SELECT aggregate_ref,event_kind,payload_digest
+                               FROM sitecontent_mediaoutboxevent
+                               WHERE site_id=%s AND idempotency_key=%s
+                                 AND event_kind LIKE 'asset.%'
+                               ORDER BY created_at,id LIMIT 1 FOR UPDATE""",
+                            (site_id, idempotency_key),
                         )
                         replayed = cur.fetchone()
-                        if replayed and replayed[1] == target:
+                        if replayed and tuple(replayed) == (
+                            aggregate_ref,
+                            event_kind,
+                            replay_digest,
+                        ):
                             conn.rollback()
                             return {
                                 'id': str(asset_id),
                                 'status': target,
-                                'version': int(replayed[0]),
+                                'version': expected_version + 1,
                                 'replayed': True,
                             }
                         raise ValueError('media_idempotency_conflict')
@@ -613,9 +646,7 @@ class PostgresMediaLibraryRepository:
                 raise
         return {'collectionId': str(collection_id), 'added': added, 'requested': len(asset_ids)}
 
-    def list_jobs(
-        self, *, site_id: str, actor_ref: str, asset_id: UUID | None, limit: int
-    ):
+    def list_jobs(self, *, site_id: str, actor_ref: str, asset_id: UUID | None, limit: int):
         params: list[Any] = [site_id, actor_ref]
         asset_clause = ''
         if asset_id:
@@ -687,7 +718,13 @@ class PostgresMediaLibraryRepository:
                             error_code, created_at, updated_at)
                            VALUES (%s,%s,%s,'job.retry',%s,%s,'pending',0,5,NOW(),'',NOW(),NOW())
                            ON CONFLICT (site_id, event_kind, idempotency_key) DO NOTHING""",
-                        (str(uuid4()), site_id, f'job:{job_id}', f'retry:{job_id}:{row[2]}', digest),
+                        (
+                            str(uuid4()),
+                            site_id,
+                            f'job:{job_id}',
+                            f'retry:{job_id}:{row[2]}',
+                            digest,
+                        ),
                     )
                 conn.commit()
             except Exception:
