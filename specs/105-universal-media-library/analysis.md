@@ -319,6 +319,16 @@ prove unknown defects impossible.
     terminal entries now coexist ahead of a valid stale recovery without
     starvation. Focused tests also cover continuous arrivals, deletion under an
     open cursor, EOF reset, simulated process restart, and descriptor cleanup.
+43. The next exact-head security review found that stale-claim recovery still
+    materialized every name inside one producer-controlled job before checking
+    its 16-entry bound. B077 replaces that allocation with descriptor-relative
+    streaming iteration, rejects as soon as entry 17 is observed, and requires
+    iterator closure plus live cgroup-contained supervisor survival with a
+    4,096-entry hostile job followed by valid recovery work.
+44. The same review found that production Compose declared a bare writable
+    inspector `/tmp` even though CI exercised a bounded hardened tmpfs. B078
+    applies `rw,nosuid,nodev,noexec,size=64m` in both runtime profiles and adds
+    rendered-manifest assertions so production and acceptance cannot drift.
 
 ## Honest residual boundary
 

@@ -705,6 +705,53 @@ def test_stale_claim_recovery_is_bounded_and_removes_only_safe_residue(tmp_path)
     )
 
 
+def test_stale_claim_recovery_stops_streaming_at_seventeenth_entry(monkeypatch, tmp_path):
+    job = tmp_path / 'job'
+    job.mkdir(mode=0o700)
+    claimed = job / 'claimed'
+    claimed.write_bytes(b'')
+    claimed.chmod(0o600)
+    old = __import__('time').time() - service.CLAIM_STALE_SECONDS - 1
+    os.utime(claimed, (old, old))
+
+    class EndlessEntries:
+        def __init__(self):
+            self.closed = False
+            self.yielded = 0
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            self.close()
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            self.yielded += 1
+            return SimpleNamespace(name=f'entry-{self.yielded}')
+
+        def close(self):
+            self.closed = True
+
+    entries = EndlessEntries()
+    monkeypatch.setattr(service.os, 'scandir', lambda _fd: entries)
+    descriptor = os.open(job, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        assert not service._recover_stale_claim(
+            descriptor,
+            owner_uid=os.getuid(),
+            owner_gid=os.getgid(),
+            now_seconds=__import__('time').time(),
+        )
+    finally:
+        os.close(descriptor)
+    assert entries.yielded == 17
+    assert entries.closed is True
+    assert claimed.exists()
+
+
 @pytest.mark.parametrize('unsafe', ['active', 'symlink', 'fifo', 'foreign', 'oversized'])
 def test_claim_recovery_rejects_active_special_foreign_and_oversized_state(tmp_path, unsafe):
     job = tmp_path / unsafe
@@ -930,6 +977,7 @@ def test_main_worker_has_no_decoder_import_and_manifests_isolate_service():
             and inspector['pids_limit'] == 16
         )
         assert inspector['mem_limit'] == '1536m'
+        assert inspector['tmpfs'] == ['/tmp:rw,nosuid,nodev,noexec,size=64m']
         assert inspector['healthcheck']['test'] == [
             'CMD',
             'python',

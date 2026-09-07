@@ -76,3 +76,5 @@
 - [x] B074 Make spool provisioning one exact idempotent transition from a fresh root-owned volume to `1000:1000/0770`, no-op only at that final state, and reject every third state while retaining only `CAP_CHOWN`.
 - [x] B075 Recover only stale, exact producer-owned claims and bounded regular temp residues after supervisor restart, preserving active and hostile state and fixed discovery/work limits without audit or external side effects.
 - [x] B076 Advance a bounded persistent descriptor-relative directory cursor across hostile and terminal prefixes so only claimable jobs consume execution and valid arrivals make fair progress across polls, EOF, deletion, and restart without descriptor leaks.
+- [x] B077 Stream stale-job entry discovery descriptor-relatively and reject at entry 17 so one hostile producer directory cannot create unbounded supervisor allocation or CPU work.
+- [x] B078 Apply the tested bounded `rw,nosuid,nodev,noexec,size=64m` inspector `/tmp` mount to every production Compose profile and enforce rendered parity.

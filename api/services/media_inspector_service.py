@@ -375,11 +375,14 @@ def _recover_stale_claim(
         or claimed.st_mtime > cutoff
     ):
         return False
+    names: list[str] = []
     try:
-        names = os.listdir(job_fd)
+        with os.scandir(job_fd) as entries:
+            for entry in entries:
+                names.append(entry.name)
+                if len(names) > 16:
+                    return False
     except OSError:
-        return False
-    if len(names) > 16:
         return False
     if any(name in names for name in ('complete', 'failed')):
         return False

@@ -123,11 +123,44 @@ def _verify_recovery() -> int:
         job = ROOT / name
         assert (job / 'claimed').exists() or (job / 'claimed').is_symlink()
         assert not (job / 'complete').exists() and not (job / 'failed').exists()
-    for name in ('crash-residue', 'active-residue', 'symlink-residue', 'special-residue'):
+    for name in (
+        'crash-residue',
+        'active-residue',
+        'symlink-residue',
+        'special-residue',
+    ):
         shutil.rmtree(ROOT / name)
     for index in range(272):
         shutil.rmtree(ROOT / f'preserved-terminal-{index:04d}')
-    print(json.dumps({'restartRecovery': True, 'unsafeResidueRejected': True}))
+    print(
+        json.dumps(
+            {
+                'restartRecovery': True,
+                'unsafeResidueRejected': True,
+            }
+        )
+    )
+    return 0
+
+
+def _verify_crowded_bound() -> int:
+    # With the earlier recovery fixtures removed, both entries share one
+    # supervisor scan window. Their explicit ready mtimes make crowded first,
+    # so a terminal sentinel proves the supervisor visited and boundedly
+    # rejected the 4,096-entry stale job before proceeding.
+    crowded = _job_with_residue('crowded-residue')
+    old = time.time() - CLAIM_STALE_SECONDS - 1
+    os.utime(crowded / 'claimed', (old, old), follow_symlinks=False)
+    os.utime(crowded / 'ready', (old, old), follow_symlinks=False)
+    for index in range(4096):
+        _write(crowded / f'untrusted-{index:04d}', b'x')
+    sentinel, terminal = _submit('sentinel-after-crowded', PNG)
+    assert terminal == 'complete'
+    assert (crowded / 'claimed').is_file()
+    assert not (crowded / 'complete').exists() and not (crowded / 'failed').exists()
+    shutil.rmtree(crowded)
+    shutil.rmtree(sentinel)
+    print(json.dumps({'crowdedResidueVisitedAndRejected': True, 'sentinelCompleted': True}))
     return 0
 
 
@@ -202,4 +235,6 @@ if __name__ == '__main__':
         raise SystemExit(_stage_recovery())
     if sys.argv[1:] == ['--verify-recovery']:
         raise SystemExit(_verify_recovery())
+    if sys.argv[1:] == ['--verify-crowded-bound']:
+        raise SystemExit(_verify_crowded_bound())
     raise SystemExit(main())
