@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 """Fixed-argv, credential-safe SSH bootstrap for the complete preview stack."""
 from __future__ import annotations
+
 import hashlib
 import ipaddress
 import json
-from pathlib import Path
+import re
 import stat
 import subprocess
 import time
-import re
-from typing import Callable
+from collections.abc import Callable
+from pathlib import Path
+
 from digital_ocean.scripts.python.full_preview_policy import validate_owner_cidrs
 from digital_ocean.scripts.python.live_preview_provider import LivePreviewConfig
+
 
 class FullPreviewRemoteError(RuntimeError):
     pass
@@ -21,6 +24,8 @@ SENSITIVE_LINE = re.compile(
     r"(?i)(password|passwd|secret|token|authorization|credential|private[_ -]?key|htpasswd)"
 )
 TOKEN_SHAPE = re.compile(r"(?<![A-Za-z0-9])[A-Za-z0-9_./+=-]{32,}(?![A-Za-z0-9])")
+SOURCE_TRANSFER_TIMEOUT_SECONDS = 900
+PRIVATE_TRANSFER_TIMEOUT_SECONDS = 180
 
 
 def safe_diagnostic(stdout: str, stderr: str) -> str:
@@ -103,7 +108,18 @@ class FullPreviewSshBootstrap:
             *self.application_inputs,
         )
         for source, destination in copies:
-            result = self._run(["scp", *options, str(source), f"{target}:{destination}"], timeout=180)
+            timeout = (
+                SOURCE_TRANSFER_TIMEOUT_SECONDS
+                if source == config.source_archive
+                else PRIVATE_TRANSFER_TIMEOUT_SECONDS
+            )
+            try:
+                result = self._run(
+                    ["scp", *options, str(source), f"{target}:{destination}"],
+                    timeout=timeout,
+                )
+            except subprocess.TimeoutExpired as exc:
+                raise FullPreviewRemoteError("bounded private preview transfer timed out") from exc
             if result.returncode != 0:
                 raise FullPreviewRemoteError("private preview transfer failed")
         command = (
