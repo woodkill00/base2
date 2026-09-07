@@ -125,9 +125,11 @@ def validate_policy(policy: dict[str, Any], root: Path = ROOT) -> list[str]:
             if not isinstance(profile, dict) or set(profile) != ENVIRONMENT_FIELDS:
                 findings.append(f"environment fields differ: {name}")
                 continue
-            if name in {"development", "test"}:
-                if profile["certificateMode"] != "disabled" or profile["providerAccess"] is not False:
-                    findings.append(f"local environment has provider or certificate access: {name}")
+            if name in {"development", "test"} and (
+                profile["certificateMode"] != "disabled"
+                or profile["providerAccess"] is not False
+            ):
+                findings.append(f"local environment has provider or certificate access: {name}")
             if name in {"preview", "staging"} and profile["certificateMode"] != "staging-only":
                 findings.append(f"non-production certificate mode is unsafe: {name}")
             if name != "production" and profile["productionAuthority"] is not False:
@@ -193,7 +195,11 @@ def validate_policy(policy: dict[str, Any], root: Path = ROOT) -> list[str]:
             if not isinstance(value, int) or isinstance(value, bool) or not minimum <= value <= maximum:
                 findings.append(f"resource default outside bounds: {field}")
         ceiling = resources.get("ephemeralCostCeilingUsd")
-        if not isinstance(ceiling, (int, float)) or isinstance(ceiling, bool) or not 0 < ceiling <= 25:
+        if (
+            not isinstance(ceiling, int | float)
+            or isinstance(ceiling, bool)
+            or not 0 < ceiling <= 25
+        ):
             findings.append("resource default outside bounds: ephemeralCostCeilingUsd")
 
     release_fields = policy.get("releaseRequiredFields")

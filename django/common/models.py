@@ -18,6 +18,30 @@ content_identifier_validator = RegexValidator(
     _("Use a lowercase identifier beginning with a letter."),
 )
 
+OPERATIONS_IDENTIFIER_PATTERN = r"^[a-z][a-z0-9_.-]{2,95}$"
+operations_identifier_validator = RegexValidator(
+    OPERATIONS_IDENTIFIER_PATTERN,
+    _("Use a bounded lowercase operations identifier."),
+)
+
+
+def validate_operations_dimensions(value) -> None:
+    """Keep operations dimensions bounded, scalar, and secret-free."""
+
+    forbidden = re.compile(r"token|password|secret|credential|authorization|private.?key", re.I)
+    if not isinstance(value, dict) or len(value) > 16:
+        raise ValidationError("operations_dimensions_invalid")
+    for key, item in value.items():
+        if (
+            not isinstance(key, str)
+            or not re.fullmatch(OPERATIONS_IDENTIFIER_PATTERN, key)
+            or forbidden.search(key)
+            or not isinstance(item, str | int | float | bool)
+            or isinstance(item, str)
+            and len(item) > 200
+        ):
+            raise ValidationError("operations_dimensions_invalid")
+
 
 def validate_closed_mapping(
     value,

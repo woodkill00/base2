@@ -19,7 +19,12 @@ from django.core.validators import (
 from django.db import models, transaction
 from django.utils import timezone
 
-from common.models import content_identifier_validator, validate_closed_mapping
+from common.models import (
+    content_identifier_validator,
+    operations_identifier_validator,
+    validate_closed_mapping,
+    validate_operations_dimensions,
+)
 
 SITE_ID_PATTERN = r"^[a-z][a-z0-9-]{2,62}$"
 SHA256_PATTERN = r"^[a-f0-9]{64}$"
@@ -2339,3 +2344,214 @@ class SearchDocument(SiteOwnedModel):
     def save(self, *args, **kwargs):
         self.full_clean()
         return super().save(*args, **kwargs)
+
+
+class OperationsService(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    service_key = models.CharField(max_length=96, validators=[operations_identifier_validator])
+    environment = models.CharField(
+        max_length=16,
+        choices=tuple((value, value.title()) for value in ("preview", "staging", "production")),
+    )
+    enabled = models.BooleanField(default=True)
+    release_id = models.CharField(max_length=128, blank=True, default="")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "environment", "service_key"],
+                name="operations_service_scope_uq",
+            )
+        ]
+
+
+class OperationsHealthSample(SiteOwnedModel):
+    class State(models.TextChoices):
+        HEALTHY = "healthy", "Healthy"
+        DEGRADED = "degraded", "Degraded"
+        UNAVAILABLE = "unavailable", "Unavailable"
+        STALE = "stale", "Stale"
+        UNKNOWN = "unknown", "Unknown"
+        MUTED = "muted", "Muted"
+        DISABLED = "disabled", "Disabled"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    service = models.ForeignKey(
+        OperationsService, on_delete=models.CASCADE, related_name="health_samples"
+    )
+    state = models.CharField(max_length=16, choices=State.choices)
+    code = models.CharField(max_length=96, validators=[operations_identifier_validator])
+    latency_ms = models.PositiveIntegerField(null=True, blank=True)
+    dimensions = models.JSONField(default=dict, validators=[validate_operations_dimensions])
+    observed_at = models.DateTimeField()
+    expires_at = models.DateTimeField()
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=["site_id", "service", "-observed_at"],
+                name="operations_health_recent_idx",
+            )
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.service_id and self.site_id != self.service.site_id:
+            raise ValidationError("operations_health_scope_invalid")
+        if self.expires_at <= self.observed_at:
+            raise ValidationError("operations_health_expiry_invalid")
+
+
+class OperationsSyntheticRun(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    journey_key = models.CharField(max_length=96, validators=[operations_identifier_validator])
+    role = models.CharField(
+        max_length=16,
+        choices=tuple(
+            (value, value.title())
+            for value in ("anonymous", "member", "editor", "administrator")
+        ),
+    )
+    source_commit = models.CharField(max_length=40)
+    status = models.CharField(
+        max_length=16,
+        choices=tuple((value, value.title()) for value in ("running", "passed", "failed")),
+    )
+    result_digest = models.CharField(max_length=64, blank=True, default="")
+    started_at = models.DateTimeField()
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    def clean(self) -> None:
+        super().clean()
+        if not re.fullmatch(r"[0-9a-f]{40}", self.source_commit or ""):
+            raise ValidationError("operations_synthetic_commit_invalid")
+        if self.result_digest and not re.fullmatch(SHA256_PATTERN, self.result_digest):
+            raise ValidationError("operations_synthetic_digest_invalid")
+        if self.status == "running" and self.completed_at is not None:
+            raise ValidationError("operations_synthetic_state_invalid")
+        if self.status != "running" and self.completed_at is None:
+            raise ValidationError("operations_synthetic_state_invalid")
+
+
+class OperationsObjective(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    objective_key = models.CharField(max_length=96, validators=[operations_identifier_validator])
+    indicator = models.CharField(max_length=96, validators=[operations_identifier_validator])
+    target = models.DecimalField(max_digits=8, decimal_places=5)
+    window_minutes = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    warning_threshold = models.DecimalField(max_digits=8, decimal_places=5)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "objective_key"], name="operations_objective_scope_uq"
+            )
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if not Decimal("0") <= self.target <= Decimal("1"):
+            raise ValidationError("operations_objective_target_invalid")
+        if not Decimal("0") <= self.warning_threshold <= self.target:
+            raise ValidationError("operations_objective_warning_invalid")
+
+
+class OperationsIncident(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    fingerprint = models.CharField(max_length=64, validators=[sha256_validator])
+    severity = models.CharField(
+        max_length=16,
+        choices=tuple((value, value.title()) for value in ("info", "warning", "high", "critical")),
+    )
+    state = models.CharField(
+        max_length=16,
+        choices=tuple(
+            (value, value.replace("_", " ").title())
+            for value in ("firing", "acknowledged", "resolved", "recurring")
+        ),
+        default="firing",
+    )
+    summary_code = models.CharField(max_length=96, validators=[operations_identifier_validator])
+    owner_ref = models.CharField(max_length=200, blank=True, default="")
+    occurrence_count = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
+    first_observed_at = models.DateTimeField()
+    last_observed_at = models.DateTimeField()
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "fingerprint"], name="operations_incident_scope_uq"
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["site_id", "state", "-last_observed_at"],
+                name="operations_incident_idx",
+            )
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.last_observed_at < self.first_observed_at:
+            raise ValidationError("operations_incident_time_invalid")
+        if self.state == "resolved" and self.resolved_at is None:
+            raise ValidationError("operations_incident_resolution_invalid")
+        if self.state != "resolved" and self.resolved_at is not None:
+            raise ValidationError("operations_incident_resolution_invalid")
+
+
+class OperationsIncidentEvent(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    incident = models.ForeignKey(
+        OperationsIncident, on_delete=models.CASCADE, related_name="timeline"
+    )
+    event_key = models.CharField(max_length=96, validators=[operations_identifier_validator])
+    actor_ref = models.CharField(max_length=200, blank=True, default="system")
+    details = models.JSONField(default=dict, validators=[validate_operations_dimensions])
+    occurred_at = models.DateTimeField()
+
+    def clean(self) -> None:
+        super().clean()
+        if self.incident_id and self.site_id != self.incident.site_id:
+            raise ValidationError("operations_event_scope_invalid")
+
+
+class OperationsAlertDelivery(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    incident = models.ForeignKey(
+        OperationsIncident, on_delete=models.CASCADE, related_name="deliveries"
+    )
+    channel = models.CharField(max_length=32, default="discord")
+    generation = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
+    status = models.CharField(
+        max_length=16,
+        choices=tuple(
+            (value, value.replace("_", " ").title())
+            for value in ("queued", "sent", "acknowledged", "failed", "expired")
+        ),
+        default="queued",
+    )
+    attempts = models.PositiveSmallIntegerField(default=0)
+    maximum_attempts = models.PositiveSmallIntegerField(default=5)
+    next_attempt_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField()
+    receipt_digest = models.CharField(max_length=64, blank=True, default="")
+    error_code = models.CharField(max_length=96, blank=True, default="")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "incident", "channel", "generation"],
+                name="operations_delivery_replay_uq",
+            )
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.incident_id and self.site_id != self.incident.site_id:
+            raise ValidationError("operations_delivery_scope_invalid")
+        if self.attempts > self.maximum_attempts:
+            raise ValidationError("operations_delivery_attempt_invalid")
+        if self.receipt_digest and not re.fullmatch(SHA256_PATTERN, self.receipt_digest):
+            raise ValidationError("operations_delivery_digest_invalid")
