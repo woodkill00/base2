@@ -198,6 +198,26 @@ describe('US3 Settings', () => {
     );
   });
 
+  test('keeps German notification controls and success feedback localized', async () => {
+    localStorage.setItem(
+      'user',
+      JSON.stringify({ id: '1', email: 'test@example.com', display_name: 'Test', locale: 'de' })
+    );
+    const user = userEvent.setup();
+    apiClient.put.mockResolvedValue({ data: { preferences: [] } });
+    renderSettings('/settings/notifications');
+    await waitFor(() =>
+      expect(screen.getByRole('region', { name: /details/i })).toHaveAttribute('aria-busy', 'false')
+    );
+    expect(screen.getByText('Zustellung')).toBeInTheDocument();
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: 'Benachrichtigungen speichern' }));
+    });
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Benachrichtigungseinstellungen gespeichert.'
+    );
+  });
+
   test('separates reversible deactivation from deletion with exact confirmations', async () => {
     const user = userEvent.setup();
     apiClient.post.mockResolvedValue({ data: { accepted: true } });

@@ -133,12 +133,24 @@ class ServiceHealthContractTests(unittest.TestCase):
     def test_worker_and_scheduler_use_only_the_narrow_worker_database_identity(self):
         for name in ("celery-worker", "celery-beat"):
             environment = SERVICES[name].get("environment") or []
-            self.assertIn("DB_USER=${WORKSPACE_WORKER_DB_USER}", environment)
-            self.assertIn("DB_PASSWORD=${WORKSPACE_WORKER_DB_PASSWORD}", environment)
-            self.assertIn("WORKSPACE_DB_USER=${WORKSPACE_WORKER_DB_USER}", environment)
-            self.assertIn("WORKSPACE_DB_PASSWORD=${WORKSPACE_WORKER_DB_PASSWORD}", environment)
+            self.assertIn("DB_USER=${RUNTIME_WORKER_DB_USER}", environment)
+            self.assertIn("DB_PASSWORD=${RUNTIME_WORKER_DB_PASSWORD}", environment)
+            self.assertIn("WORKSPACE_DB_USER=${RUNTIME_WORKER_DB_USER}", environment)
+            self.assertIn("WORKSPACE_DB_PASSWORD=${RUNTIME_WORKER_DB_PASSWORD}", environment)
             self.assertNotIn("DB_USER=${POSTGRES_USER}", environment)
             self.assertNotIn("WORKSPACE_DB_USER=${WORKSPACE_DB_USER}", environment)
+
+    def test_content_and_email_workers_use_distinct_least_privilege_identities(self):
+        content = SERVICES["celery-content-worker"].get("environment") or []
+        email = SERVICES["celery-email-worker"].get("environment") or []
+        self.assertIn("DB_USER=${WORKSPACE_WORKER_DB_USER}", content)
+        self.assertIn("DB_PASSWORD=${WORKSPACE_WORKER_DB_PASSWORD}", content)
+        self.assertIn("WORKSPACE_WORKER_DB_USER=${WORKSPACE_WORKER_DB_USER}", content)
+        self.assertNotIn("RUNTIME_WORKER_DB_PASSWORD=${RUNTIME_WORKER_DB_PASSWORD}", content)
+        self.assertIn("DB_USER=${EMAIL_WORKER_DB_USER}", email)
+        self.assertIn("DB_PASSWORD=${EMAIL_WORKER_DB_PASSWORD}", email)
+        self.assertNotIn("WORKSPACE_DB_PASSWORD=${WORKSPACE_DB_PASSWORD}", email)
+        self.assertNotIn("WORKSPACE_WORKER_DB_PASSWORD=${WORKSPACE_WORKER_DB_PASSWORD}", email)
 
     def test_traefik_image_has_ping_health_contract(self):
         dockerfile = (ROOT / "traefik/Dockerfile").read_text(encoding="utf-8")

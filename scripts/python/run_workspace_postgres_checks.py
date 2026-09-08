@@ -48,6 +48,30 @@ def quota_count(conn, tenant: str | None) -> int:
         return int(cursor.fetchone()[0])
 
 
+def outbox_count(conn) -> int:
+    with conn.cursor() as cursor:
+        cursor.execute("SELECT COUNT(*) FROM api_email_outbox")
+        return int(cursor.fetchone()[0])
+
+
+def insert_outbox(conn) -> None:
+    with conn.cursor() as cursor:
+        cursor.execute(
+            "INSERT INTO api_email_outbox "
+            "(id,to_email,subject,body_text) VALUES (%s,'x@example.invalid','x','x')",
+            (str(UUID(int=41)),),
+        )
+
+
+def assert_permission_denied(call, connection, marker: str) -> None:
+    try:
+        call()
+    except errors.InsufficientPrivilege:
+        connection.rollback()
+    else:
+        raise AssertionError(marker)
+
+
 def quota_reservation_race() -> None:
     """Prove two real API-role sessions cannot over-reserve one quota."""
     barrier = threading.Barrier(2)
@@ -69,7 +93,9 @@ def quota_reservation_race() -> None:
         with result_lock:
             results.append(outcome)
 
-    contenders = [threading.Thread(target=contender, args=(index,), daemon=True) for index in (1, 2)]
+    contenders = [
+        threading.Thread(target=contender, args=(index,), daemon=True) for index in (1, 2)
+    ]
     for contender_thread in contenders:
         contender_thread.start()
     for contender_thread in contenders:
@@ -124,13 +150,21 @@ def main() -> None:
     owner_password = os.environ["DB_PASSWORD"]
     runtime_user = os.environ["WORKSPACE_DB_USER"]
     runtime_password = os.environ["WORKSPACE_DB_PASSWORD"]
-    worker_user = os.environ["WORKSPACE_WORKER_DB_USER"]
-    worker_password = os.environ["WORKSPACE_WORKER_DB_PASSWORD"]
+    content_worker_user = os.environ["WORKSPACE_WORKER_DB_USER"]
+    content_worker_password = os.environ["WORKSPACE_WORKER_DB_PASSWORD"]
+    worker_user = os.environ["RUNTIME_WORKER_DB_USER"]
+    worker_password = os.environ["RUNTIME_WORKER_DB_PASSWORD"]
+    email_worker_user = os.environ["EMAIL_WORKER_DB_USER"]
+    email_worker_password = os.environ["EMAIL_WORKER_DB_PASSWORD"]
     owner = connect(owner_user, owner_password)
     runtime = connect(runtime_user, runtime_password)
+    content_worker = connect(content_worker_user, content_worker_password)
     worker = connect(worker_user, worker_password)
+    email_worker = connect(email_worker_user, email_worker_password)
     try:
         with owner, owner.cursor() as cursor:
+            cursor.execute("DELETE FROM sitecontent_tenantlifecycleevent")
+            cursor.execute("DELETE FROM sitecontent_tenantlifecyclestate")
             cursor.execute("DELETE FROM sitecontent_tenantquotareservation")
             cursor.execute("DELETE FROM sitecontent_durablejob")
             cursor.execute("DELETE FROM sitecontent_durableschedule")
@@ -166,11 +200,44 @@ def main() -> None:
                 (str(UUID(int=30)), str(UUID(int=31))),
             )
             cursor.execute(
+                """INSERT INTO api_email_outbox
+                   (id,to_email,subject,body_text,body_html,status,provider,
+                    provider_message_id,error,created_at,sent_at)
+                   VALUES (%s,'owner@example.invalid','Synthetic','Body','','queued',
+                           'local_outbox','','',NOW(),NULL)""",
+                (str(UUID(int=40)),),
+            )
+            cursor.execute(
+                """INSERT INTO sitecontent_tenantlifecyclestate
+                   (id,site_id,state,owner_ref,configuration,revision,last_operation_id,
+                    last_receipt_digest,created_at,updated_at)
+                   VALUES (%s,'site-a','active','owner','{}',1,%s,%s,NOW(),NOW()),
+                          (%s,'site-b','active','owner','{}',1,%s,%s,NOW(),NOW())""",
+                (
+                    str(UUID(int=42)),
+                    str(UUID(int=43)),
+                    "a" * 64,
+                    str(UUID(int=44)),
+                    str(UUID(int=45)),
+                    "b" * 64,
+                ),
+            )
+            cursor.execute(
                 "SELECT rolbypassrls, rolsuper FROM pg_roles WHERE rolname=%s", (runtime_user,)
             )
             assert cursor.fetchone() == (False, False)
             cursor.execute(
                 "SELECT rolbypassrls, rolsuper FROM pg_roles WHERE rolname=%s", (worker_user,)
+            )
+            assert cursor.fetchone() == (False, False)
+            cursor.execute(
+                "SELECT rolbypassrls, rolsuper FROM pg_roles WHERE rolname=%s",
+                (content_worker_user,),
+            )
+            assert cursor.fetchone() == (False, False)
+            cursor.execute(
+                "SELECT rolbypassrls, rolsuper FROM pg_roles WHERE rolname=%s",
+                (email_worker_user,),
             )
             assert cursor.fetchone() == (False, False)
             cursor.execute(
@@ -262,10 +329,31 @@ def main() -> None:
         runtime.rollback()
         assert operations_count(runtime, None) == 0
         runtime.rollback()
-        # Legacy content workers retain their bounded discovery contract; the
-        # new operations and quota workers must establish one tenant context.
-        assert count(worker, None) == 2
-        worker.rollback()
+        # Runtime workers have only operations/job authority. Content workers
+        # use a separately credentialed content/media identity, never this role.
+        assert_permission_denied(
+            lambda: count(worker, None), worker, "runtime_worker_content_read_was_not_blocked"
+        )
+        assert_permission_denied(
+            lambda: outbox_count(worker), worker, "runtime_worker_outbox_read_was_not_blocked"
+        )
+        assert count(content_worker, None) == 2
+        content_worker.rollback()
+        assert_permission_denied(
+            lambda: operations_count(content_worker, None),
+            content_worker,
+            "content_worker_operations_read_was_not_blocked",
+        )
+        assert_permission_denied(
+            lambda: quota_count(content_worker, "site-a"),
+            content_worker,
+            "content_worker_quota_read_was_not_blocked",
+        )
+        assert_permission_denied(
+            lambda: outbox_count(content_worker),
+            content_worker,
+            "content_worker_outbox_read_was_not_blocked",
+        )
         assert operations_count(worker, None) == 0
         worker.rollback()
         assert operations_count(worker, "site-a") == 1
@@ -282,25 +370,64 @@ def main() -> None:
         runtime.rollback()
         assert quota_count(runtime, "site-b") == 1
         runtime.rollback()
+        with email_worker.cursor() as cursor:
+            cursor.execute("SELECT status FROM api_email_outbox WHERE id=%s", (str(UUID(int=40)),))
+            assert cursor.fetchone() == ("queued",)
+            cursor.execute(
+                "UPDATE api_email_outbox SET status='sending' WHERE id=%s", (str(UUID(int=40)),)
+            )
+            assert cursor.rowcount == 1
+        email_worker.commit()
+        assert_permission_denied(
+            lambda: count(email_worker, None),
+            email_worker,
+            "email_worker_content_read_was_not_blocked",
+        )
+        assert_permission_denied(
+            lambda: operations_count(email_worker, None),
+            email_worker,
+            "email_worker_operations_read_was_not_blocked",
+        )
+        assert_permission_denied(
+            lambda: insert_outbox(email_worker),
+            email_worker,
+            "email_worker_outbox_insert_was_not_blocked",
+        )
         created = enqueue_job(
-            tenant_id="site-a", owner_ref="owner", job_type="search.reindex",
-            payload_digest="d" * 64, payload_schema=1,
-            idempotency_key="search.reindex-001", available_at=datetime.now(UTC),
+            tenant_id="site-a",
+            owner_ref="owner",
+            job_type="search.reindex",
+            payload_digest="d" * 64,
+            payload_schema=1,
+            idempotency_key="search.reindex-001",
+            available_at=datetime.now(UTC),
         )
         replayed = enqueue_job(
-            tenant_id="site-a", owner_ref="owner", job_type="search.reindex",
-            payload_digest="d" * 64, payload_schema=1,
-            idempotency_key="search.reindex-001", available_at=datetime.now(UTC),
+            tenant_id="site-a",
+            owner_ref="owner",
+            job_type="search.reindex",
+            payload_digest="d" * 64,
+            payload_schema=1,
+            idempotency_key="search.reindex-001",
+            available_at=datetime.now(UTC),
         )
         assert replayed == {**created, "replayed": True}
         claimed = claim_jobs(tenant_id="site-a", worker="worker-one", now=datetime.now(UTC))
         assert len(claimed) == 1 and claimed[0]["jobId"] == created["jobId"]
         assert claim_jobs(tenant_id="site-b", worker="worker-one", now=datetime.now(UTC)) == []
-        assert settle_job(
-            tenant_id="site-a", job_id=UUID(created["jobId"]), worker="worker-one",
-            lease_token=UUID(claimed[0]["leaseToken"]), generation=claimed[0]["generation"],
-            outcome="succeeded", now=datetime.now(UTC), result_digest="e" * 64,
-        ) == "succeeded"
+        assert (
+            settle_job(
+                tenant_id="site-a",
+                job_id=UUID(created["jobId"]),
+                worker="worker-one",
+                lease_token=UUID(claimed[0]["leaseToken"]),
+                generation=claimed[0]["generation"],
+                outcome="succeeded",
+                now=datetime.now(UTC),
+                result_digest="e" * 64,
+            )
+            == "succeeded"
+        )
         with runtime.cursor() as cursor:
             cursor.execute("SET LOCAL enable_seqscan=off")
             cursor.execute(
@@ -504,7 +631,9 @@ def main() -> None:
         raise AssertionError("same_tenant_composite_uniqueness_not_enforced")
     finally:
         runtime.close()
+        content_worker.close()
         worker.close()
+        email_worker.close()
         owner.close()
     print("Workspace PostgreSQL RLS acceptance: PASS")
 

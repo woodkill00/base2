@@ -20,7 +20,10 @@ JOB_GRANTS = {
     "sitecontent_durablejob": "SELECT, INSERT, UPDATE",
     "sitecontent_durableschedule": "SELECT, UPDATE",
 }
-EMAIL_GRANTS = {"api_email_outbox": "SELECT, UPDATE"}
+QUOTA_GRANTS = {
+    "sitecontent_tenantquota": "SELECT, INSERT, UPDATE",
+    "sitecontent_tenantquotareservation": "SELECT, INSERT, UPDATE",
+}
 HISTORICAL_WORKSPACE_TABLES = (
     "sitecontent_assetbinding",
     "sitecontent_contentfielddefinition",
@@ -63,23 +66,53 @@ DIRECT_TENANT_RLS_TABLES = (
     "sitecontent_mediaretentionhold",
     "sitecontent_mediauploadsession",
 )
+CONTENT_FORBIDDEN_TABLES = (
+    *OPERATIONS_TABLES,
+    *JOB_GRANTS,
+    *QUOTA_GRANTS,
+    "sitecontent_breakglassgrant",
+    "sitecontent_tenantnotification",
+    "sitecontent_tenantdomainclaim",
+)
 
 
 def _worker_role(schema_editor) -> str:
-    configured = os.environ.get("WORKSPACE_WORKER_DB_USER", "").strip()
+    configured = os.environ.get("RUNTIME_WORKER_DB_USER", "").strip()
     with schema_editor.connection.cursor() as cursor:
-        cursor.execute("SELECT current_setting('base2.workspace_worker_role', true)")
+        cursor.execute("SELECT current_setting('base2.runtime_worker_role', true)")
         session_role = str((cursor.fetchone() or ("",))[0] or "").strip()
         if not ROLE.fullmatch(configured):
-            raise RuntimeError("runtime:workspace_worker_role_invalid")
+            raise RuntimeError("runtime:runtime_worker_role_invalid")
         if session_role and configured and session_role != configured:
-            raise RuntimeError("runtime:workspace_worker_role_mismatch")
+            raise RuntimeError("runtime:runtime_worker_role_mismatch")
         role = configured
         cursor.execute("SELECT 1 FROM pg_roles WHERE rolname=%s", (role,))
         if not cursor.fetchone():
-            raise RuntimeError("runtime:workspace_worker_role_missing")
-        cursor.execute("SELECT set_config('base2.workspace_worker_role', %s, false)", (role,))
+            raise RuntimeError("runtime:runtime_worker_role_missing")
+        cursor.execute("SELECT set_config('base2.runtime_worker_role', %s, false)", (role,))
     return schema_editor.connection.ops.quote_name(role)
+
+
+def _content_worker_role(schema_editor) -> str:
+    configured = os.environ.get("WORKSPACE_WORKER_DB_USER", "").strip()
+    if not ROLE.fullmatch(configured):
+        raise RuntimeError("runtime:content_worker_role_invalid")
+    with schema_editor.connection.cursor() as cursor:
+        cursor.execute("SELECT 1 FROM pg_roles WHERE rolname=%s", (configured,))
+        if not cursor.fetchone():
+            raise RuntimeError("runtime:content_worker_role_missing")
+    return schema_editor.connection.ops.quote_name(configured)
+
+
+def _email_worker_role(schema_editor) -> str:
+    configured = os.environ.get("EMAIL_WORKER_DB_USER", "").strip()
+    if not ROLE.fullmatch(configured):
+        raise RuntimeError("runtime:email_worker_role_invalid")
+    with schema_editor.connection.cursor() as cursor:
+        cursor.execute("SELECT 1 FROM pg_roles WHERE rolname=%s", (configured,))
+        if not cursor.fetchone():
+            raise RuntimeError("runtime:email_worker_role_missing")
+    return schema_editor.connection.ops.quote_name(configured)
 
 
 def narrow_worker_runtime_grants(apps, schema_editor):
@@ -87,10 +120,12 @@ def narrow_worker_runtime_grants(apps, schema_editor):
     if schema_editor.connection.vendor != "postgresql":
         return
     worker = _worker_role(schema_editor)
+    content_worker = _content_worker_role(schema_editor)
+    email_worker = _email_worker_role(schema_editor)
     grants = {
         **{table: "SELECT, INSERT, UPDATE, DELETE" for table in OPERATIONS_TABLES},
         **JOB_GRANTS,
-        **EMAIL_GRANTS,
+        **QUOTA_GRANTS,
     }
     with schema_editor.connection.cursor() as cursor:
         cursor.execute(f"GRANT USAGE ON SCHEMA public TO {worker}")
@@ -99,31 +134,39 @@ def narrow_worker_runtime_grants(apps, schema_editor):
         for table in HISTORICAL_WORKSPACE_TABLES:
             quoted_table = schema_editor.connection.ops.quote_name(table)
             cursor.execute(f"REVOKE ALL PRIVILEGES ON TABLE {quoted_table} FROM {worker}")
-        tenant = "site_id = current_setting('app.tenant_id', true)"
-        for table in DIRECT_TENANT_RLS_TABLES:
-            for suffix in ("tenant_scope", "select", "insert", "update", "delete"):
-                cursor.execute(f'DROP POLICY IF EXISTS "{table}_{suffix}" ON "{table}"')
-            cursor.execute(
-                f"""CREATE POLICY "{table}_tenant_scope" ON "{table}"
-                    USING ({tenant}) WITH CHECK ({tenant})"""
-            )
-        variant = "sitecontent_mediavariant"
-        for suffix in ("tenant_scope", "select", "insert", "update", "delete"):
-            cursor.execute(f'DROP POLICY IF EXISTS "{variant}_{suffix}" ON "{variant}"')
-        tenant_asset = (
-            "EXISTS (SELECT 1 FROM sitecontent_mediaasset asset "
-            "WHERE asset.id = asset_id AND "
-            "asset.site_id = current_setting('app.tenant_id', true))"
-        )
-        cursor.execute(
-            f"""CREATE POLICY "{variant}_tenant_scope" ON "{variant}"
-                USING ({tenant_asset}) WITH CHECK ({tenant_asset})"""
-        )
+        for table in CONTENT_FORBIDDEN_TABLES:
+            quoted_table = schema_editor.connection.ops.quote_name(table)
+            cursor.execute(f"REVOKE ALL PRIVILEGES ON TABLE {quoted_table} FROM {content_worker}")
         for table, privileges in grants.items():
             quoted_table = schema_editor.connection.ops.quote_name(table)
             cursor.execute(f"REVOKE ALL PRIVILEGES ON TABLE {quoted_table} FROM PUBLIC")
             cursor.execute(f"REVOKE ALL PRIVILEGES ON TABLE {quoted_table} FROM {worker}")
             cursor.execute(f"GRANT {privileges} ON TABLE {quoted_table} TO {worker}")
+        cursor.execute(f"GRANT USAGE ON SCHEMA public TO {email_worker}")
+        cursor.execute("REVOKE ALL PRIVILEGES ON TABLE api_email_outbox FROM PUBLIC")
+        cursor.execute(f"REVOKE ALL PRIVILEGES ON TABLE api_email_outbox FROM {worker}")
+        cursor.execute(f"REVOKE ALL PRIVILEGES ON TABLE api_email_outbox FROM {content_worker}")
+        cursor.execute(f"REVOKE ALL PRIVILEGES ON TABLE api_email_outbox FROM {email_worker}")
+        cursor.execute(f"GRANT SELECT, UPDATE ON TABLE api_email_outbox TO {email_worker}")
+
+
+def remove_worker_runtime_grants(apps, schema_editor):
+    """Remove only this migration's grants and policies during a rollback.
+
+    Historical broad worker grants are intentionally never restored. Earlier
+    migration reverse functions may then rebuild their own era-specific policy
+    shapes without colliding with this migration's consolidated policies.
+    """
+    del apps
+    if schema_editor.connection.vendor != "postgresql":
+        return
+    worker = _worker_role(schema_editor)
+    email_worker = _email_worker_role(schema_editor)
+    with schema_editor.connection.cursor() as cursor:
+        for table in (*OPERATIONS_TABLES, *JOB_GRANTS, *QUOTA_GRANTS):
+            quoted_table = schema_editor.connection.ops.quote_name(table)
+            cursor.execute(f"REVOKE ALL PRIVILEGES ON TABLE {quoted_table} FROM {worker}")
+        cursor.execute(f"REVOKE ALL PRIVILEGES ON TABLE api_email_outbox FROM {email_worker}")
 
 
 class Migration(migrations.Migration):
@@ -133,6 +176,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # Reversal deliberately never restores historical broad grants.
-        migrations.RunPython(narrow_worker_runtime_grants, migrations.RunPython.noop),
+        migrations.RunPython(narrow_worker_runtime_grants, remove_worker_runtime_grants),
     ]

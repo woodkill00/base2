@@ -479,3 +479,27 @@ surface-drift, and exact-source visual checks are green. Tasks remain unchecked 
 the ordered ledger until the earlier review/publication/canary checkpoints permit
 contiguous completion; implementation evidence does not silently satisfy those
 separate approvals.
+
+## Analysis cycle 13 — failed-candidate gate and worker authority correction
+
+The first cycle-12 candidate was rejected by its own complete gate before any
+publication update. The gate found three concrete defects: the visual-evidence
+contract retained an obsolete capture count, notification success exposed a
+button label instead of completed-state copy, and the PostgreSQL lifecycle
+backfill referenced a nonexistent membership primary key. Focused regressions now
+cover the 35-capture manifest, localized notification completion, and the real
+membership schema. The PostgreSQL run then exposed a deeper issue: narrowing the
+historical shared worker role removed content/media discovery required by the
+content queue.
+
+The authority model is therefore four distinct database identities rather than a
+shared compromise: tenant-bound request/API access, narrowly global content/media
+discovery with tenant-fenced mutation, operations/runtime tables plus quota and
+durable-job access, and select/update-only email outbox delivery. Bootstrap,
+migrations, Compose, setup, E2E fixtures, and disposable PostgreSQL acceptance all
+carry independent credentials. The acceptance now proves forward migration,
+rollback, reapply, role denial, RLS isolation, media discovery, quota/job behavior,
+and email read/update with content, operations, and insert denial. Tasks B195-B199
+capture these test-discovered obligations. The rejected candidate and its gate are
+historical evidence only; a new clean head still requires two complete gates and
+fresh independent review.

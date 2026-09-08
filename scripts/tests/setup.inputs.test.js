@@ -30,6 +30,8 @@ test('setup fills TP_ defaults and preserves template references', async () => {
     'TP_POSTGRES_PASSWORD=YOUR_POSTGRES_PASSWORD',
     'TP_WORKSPACE_DB_PASSWORD=YOUR_WORKSPACE_DB_PASSWORD',
     'TP_WORKSPACE_WORKER_DB_PASSWORD=YOUR_WORKSPACE_WORKER_DB_PASSWORD',
+    'TP_RUNTIME_WORKER_DB_PASSWORD=YOUR_RUNTIME_WORKER_DB_PASSWORD',
+    'TP_EMAIL_WORKER_DB_PASSWORD=YOUR_EMAIL_WORKER_DB_PASSWORD',
     'TP_PGADMIN_PASSWORD=YOUR_PGADMIN_PASSWORD',
     'TP_FLOWER_PASSWORD=YOUR_FLOWER_PASSWORD',
     'TP_TRAEFIK_PASSWORD=YOUR_TRAEFIK_PASSWORD',
@@ -80,6 +82,8 @@ test('setup fills TP_ defaults and preserves template references', async () => {
   assert.equal(envMap.TP_POSTGRES_PASSWORD, 'Pass123!');
   assert.equal(envMap.TP_WORKSPACE_DB_PASSWORD, 'Pass123!');
   assert.equal(envMap.TP_WORKSPACE_WORKER_DB_PASSWORD, 'Pass123!');
+  assert.equal(envMap.TP_RUNTIME_WORKER_DB_PASSWORD, 'Pass123!');
+  assert.equal(envMap.TP_EMAIL_WORKER_DB_PASSWORD, 'Pass123!');
   assert.equal(envMap.TP_PGADMIN_PASSWORD, 'Pass123!');
   assert.equal(envMap.TP_DJANGO_SUPERUSER_PASSWORD, 'Pass123!');
   assert.equal(envMap.TP_SEED_ADMIN_PASSWORD, 'Pass123!');
@@ -98,7 +102,7 @@ test('setup fills TP_ defaults and preserves template references', async () => {
   assert.equal(envMap.EMAIL_FROM, 'user@example.com');
 });
 
-test('setup independently generates both workspace database secrets', async () => {
+test('setup independently generates all bounded worker database secrets', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'setup-workspace-secrets-'));
   fs.writeFileSync(
     path.join(root, '.env.example'),
@@ -107,8 +111,12 @@ test('setup independently generates both workspace database secrets', async () =
       'WEBSITE_DOMAIN=YOUR_DOMAIN_HERE',
       'TP_WORKSPACE_DB_PASSWORD=YOUR_WORKSPACE_DB_PASSWORD',
       'TP_WORKSPACE_WORKER_DB_PASSWORD=YOUR_WORKSPACE_WORKER_DB_PASSWORD',
+      'TP_RUNTIME_WORKER_DB_PASSWORD=YOUR_RUNTIME_WORKER_DB_PASSWORD',
+      'TP_EMAIL_WORKER_DB_PASSWORD=YOUR_EMAIL_WORKER_DB_PASSWORD',
       'WORKSPACE_DB_PASSWORD=${TP_WORKSPACE_DB_PASSWORD}',
       'WORKSPACE_WORKER_DB_PASSWORD=${TP_WORKSPACE_WORKER_DB_PASSWORD}',
+      'RUNTIME_WORKER_DB_PASSWORD=${TP_RUNTIME_WORKER_DB_PASSWORD}',
+      'EMAIL_WORKER_DB_PASSWORD=${TP_EMAIL_WORKER_DB_PASSWORD}',
       'ENV=development',
       'DEPLOY_MODE=local',
       'APPLY_DEV_DEFAULTS=false',
@@ -132,5 +140,12 @@ test('setup independently generates both workspace database secrets', async () =
   const envMap = parseEnv(fs.readFileSync(path.join(root, '.env.build'), 'utf8'));
   assert.match(envMap.TP_WORKSPACE_DB_PASSWORD, /^[a-f0-9]{64}$/);
   assert.match(envMap.TP_WORKSPACE_WORKER_DB_PASSWORD, /^[a-f0-9]{64}$/);
+  assert.match(envMap.TP_RUNTIME_WORKER_DB_PASSWORD, /^[a-f0-9]{64}$/);
+  assert.match(envMap.TP_EMAIL_WORKER_DB_PASSWORD, /^[a-f0-9]{64}$/);
   assert.notEqual(envMap.TP_WORKSPACE_DB_PASSWORD, envMap.TP_WORKSPACE_WORKER_DB_PASSWORD);
+  assert.notEqual(envMap.TP_WORKSPACE_DB_PASSWORD, envMap.TP_EMAIL_WORKER_DB_PASSWORD);
+  assert.notEqual(envMap.TP_WORKSPACE_DB_PASSWORD, envMap.TP_RUNTIME_WORKER_DB_PASSWORD);
+  assert.notEqual(envMap.TP_WORKSPACE_WORKER_DB_PASSWORD, envMap.TP_RUNTIME_WORKER_DB_PASSWORD);
+  assert.notEqual(envMap.TP_RUNTIME_WORKER_DB_PASSWORD, envMap.TP_EMAIL_WORKER_DB_PASSWORD);
+  assert.notEqual(envMap.TP_WORKSPACE_WORKER_DB_PASSWORD, envMap.TP_EMAIL_WORKER_DB_PASSWORD);
 });

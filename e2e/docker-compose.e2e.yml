@@ -29,6 +29,10 @@ services:
       WORKSPACE_DB_PASSWORD: e2e_workspace_runtime_password
       WORKSPACE_WORKER_DB_USER: base2_workspace_worker_e2e
       WORKSPACE_WORKER_DB_PASSWORD: e2e_workspace_worker_password
+      RUNTIME_WORKER_DB_USER: base2_runtime_worker_e2e
+      RUNTIME_WORKER_DB_PASSWORD: e2e_runtime_worker_password
+      EMAIL_WORKER_DB_USER: base2_email_worker_e2e
+      EMAIL_WORKER_DB_PASSWORD: e2e_email_worker_password
     volumes:
       - ../postgres/bootstrap-workspace-role.sh:/bootstrap-workspace-role.sh:ro
     depends_on:
@@ -61,6 +65,8 @@ services:
       DB_PASSWORD: e2e
       WORKSPACE_DB_USER: base2_workspace_runtime_e2e
       WORKSPACE_WORKER_DB_USER: base2_workspace_worker_e2e
+      RUNTIME_WORKER_DB_USER: base2_runtime_worker_e2e
+      EMAIL_WORKER_DB_USER: base2_email_worker_e2e
     depends_on:
       postgres:
         condition: service_healthy

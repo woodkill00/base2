@@ -29,7 +29,7 @@ def backfill_active_organizations(apps, schema_editor):
                           WHERE membership.organization_id=organization.id
                             AND membership.status='active'
                           ORDER BY CASE membership.role WHEN 'owner' THEN 0 ELSE 1 END,
-                                   membership.created_at, membership.id LIMIT 1),
+                                   membership.created_at, membership.user_id LIMIT 1),
                                   'system:legacy') AS owner_ref,
                          gen_random_uuid() AS operation_id
                     FROM api_identity_organizations organization
@@ -39,7 +39,8 @@ def backfill_active_organizations(apps, schema_editor):
                      last_receipt_digest,created_at,updated_at)
                   SELECT gen_random_uuid(),tenant_id,'active',owner_ref,'{{}}'::jsonb,1,
                          operation_id,
-                         encode(digest('legacy-lifecycle:' || tenant_id,'sha256'),'hex'),NOW(),NOW()
+                         encode(sha256(convert_to('legacy-lifecycle:' || tenant_id,'UTF8')),'hex'),
+                         NOW(),NOW()
                     FROM legacy
                   ON CONFLICT (site_id) DO NOTHING
                   RETURNING site_id,owner_ref,last_operation_id,last_receipt_digest

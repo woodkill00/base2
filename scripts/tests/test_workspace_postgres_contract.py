@@ -14,6 +14,8 @@ class WorkspacePostgresContractTests(unittest.TestCase):
         self.assertIn("NOSUPERUSER", bootstrap)
         self.assertIn("NOCREATEROLE", bootstrap)
         self.assertIn("WORKSPACE_WORKER_DB_USER", bootstrap)
+        self.assertIn("RUNTIME_WORKER_DB_USER", bootstrap)
+        self.assertIn("EMAIL_WORKER_DB_USER", bootstrap)
         self.assertNotIn('echo "$WORKSPACE_DB_PASSWORD', bootstrap)
         for compose_name in ("local.docker.yml", "development.docker.yml"):
             compose = (ROOT / compose_name).read_text()
@@ -21,6 +23,8 @@ class WorkspacePostgresContractTests(unittest.TestCase):
             self.assertIn("condition: service_completed_successfully", compose)
             self.assertIn("WORKSPACE_DB_PASSWORD=${WORKSPACE_DB_PASSWORD}", compose)
             self.assertIn("WORKSPACE_WORKER_DB_PASSWORD=${WORKSPACE_WORKER_DB_PASSWORD}", compose)
+            self.assertIn("RUNTIME_WORKER_DB_PASSWORD=${RUNTIME_WORKER_DB_PASSWORD}", compose)
+            self.assertIn("EMAIL_WORKER_DB_PASSWORD=${EMAIL_WORKER_DB_PASSWORD}", compose)
             role_block = compose[
                 compose.rindex("  workspace-db-role:") : compose.index("  # pgAdmin")
             ]
@@ -52,8 +56,12 @@ class WorkspacePostgresContractTests(unittest.TestCase):
         )
         self.assertIn("WORKSPACE_DB_USER: base2_workspace_runtime_e2e", compose)
         self.assertIn("WORKSPACE_WORKER_DB_USER: base2_workspace_worker_e2e", compose)
+        self.assertIn("RUNTIME_WORKER_DB_USER: base2_runtime_worker_e2e", compose)
+        self.assertIn("EMAIL_WORKER_DB_USER: base2_email_worker_e2e", compose)
         self.assertIn("WORKSPACE_DB_PASSWORD: e2e_workspace_runtime_password", compose)
         self.assertIn("WORKSPACE_WORKER_DB_PASSWORD: e2e_workspace_worker_password", compose)
+        self.assertIn("RUNTIME_WORKER_DB_PASSWORD: e2e_runtime_worker_password", compose)
+        self.assertIn("EMAIL_WORKER_DB_PASSWORD: e2e_email_worker_password", compose)
         role_block = compose[
             compose.index("  workspace-db-role:") : compose.index("  django-migrate:")
         ]
@@ -86,6 +94,10 @@ class WorkspacePostgresContractTests(unittest.TestCase):
             "sitecontent_tenantquotareservation",
             "record_probe_batch(",
             'assert recovered == {"samples": 1, "opened": 0, "resolved": 1, "alerts": 0}',
+            "runtime_worker_content_read_was_not_blocked",
+            "email_worker_content_read_was_not_blocked",
+            "email_worker_operations_read_was_not_blocked",
+            "email_worker_outbox_insert_was_not_blocked",
         ):
             self.assertIn(marker, checks)
 

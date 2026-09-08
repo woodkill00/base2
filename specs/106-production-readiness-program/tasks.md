@@ -236,3 +236,11 @@ substitute for the integration proof named by the task.
 - [ ] B192 Preserve exactly one page-level heading while retaining localized shell context and deterministic screen-reader navigation on every authenticated route. (FR-012, FR-050, FR-064)
 - [ ] B193 Bind visual assurance to an exact successful runner receipt, exercise German plus Arabic/RTL, and cover degraded, stale, reauthentication, and read-only states across reflow/mobile and supported browser engines without overstating finite automation. (FR-012, FR-063, FR-064, FR-068, FR-075)
 - [ ] B194 Re-run critical suites, complete gates twice, fresh exact-head C/H/M reviews, diff/secret/provider-state checks, and iterate again until no critical, high, or medium finding remains. (FR-063, FR-065, FR-068, FR-069, FR-078)
+
+## Phase 13 — Complete-gate-discovered corrections
+
+- [ ] B195 Bind the operations visual contract to all 35 exact-source captures and reject stale count expectations. (FR-063, FR-064, FR-068)
+- [ ] B196 Return and test localized notification completion feedback independently from the initiating button label. (FR-012, FR-046, FR-064, FR-075)
+- [ ] B197 Repair lifecycle backfill against the real membership schema and prove it in disposable PostgreSQL migration acceptance. (FR-018, FR-045, FR-066)
+- [ ] B198 Separate request, content, runtime, and email database identities across bootstrap, migration, setup, Compose, and E2E surfaces with independent credentials and least-privilege grants. (FR-019, FR-031, FR-065, FR-073)
+- [ ] B199 Prove content discovery plus tenant-fenced mutation, runtime operation/quota/job access, email outbox select/update, and cross-duty denial through real PostgreSQL forward, rollback, and reapply checks. (FR-019, FR-036, FR-060, FR-065, FR-073)

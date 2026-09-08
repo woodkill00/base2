@@ -75,6 +75,8 @@ def test_worker_runtime_grants_are_explicit_and_public_access_is_revoked(monkeyp
     database.ops.quote_name.side_effect = lambda value: f'"{value}"'
     editor = SimpleNamespace(connection=database)
     monkeypatch.setattr(migration, "_worker_role", lambda _: '"base2_worker"')
+    monkeypatch.setattr(migration, "_content_worker_role", lambda _: '"base2_content_worker"')
+    monkeypatch.setattr(migration, "_email_worker_role", lambda _: '"base2_email_worker"')
 
     migration.narrow_worker_runtime_grants(None, editor)
 
@@ -82,18 +84,23 @@ def test_worker_runtime_grants_are_explicit_and_public_access_is_revoked(monkeyp
     targets = {
         **{table: "SELECT, INSERT, UPDATE, DELETE" for table in migration.OPERATIONS_TABLES},
         **migration.JOB_GRANTS,
-        **migration.EMAIL_GRANTS,
+        **migration.QUOTA_GRANTS,
     }
     for table, privileges in targets.items():
         assert f'REVOKE ALL PRIVILEGES ON TABLE "{table}" FROM PUBLIC' in statements
         assert f'REVOKE ALL PRIVILEGES ON TABLE "{table}" FROM "base2_worker"' in statements
         assert f'GRANT {privileges} ON TABLE "{table}" TO "base2_worker"' in statements
-    assert 'GRANT SELECT, UPDATE ON TABLE "api_email_outbox" TO "base2_worker"' in statements
-    assert all("sitecontent_breakglassgrant" not in statement for statement in statements)
-    policy_statements = [statement for statement in statements if "CREATE POLICY" in statement]
-    assert policy_statements
-    assert all("current_user" not in statement for statement in policy_statements)
-    assert any("sitecontent_mediavariant_tenant_scope" in statement for statement in statements)
+    assert 'REVOKE ALL PRIVILEGES ON TABLE api_email_outbox FROM "base2_worker"' in statements
+    assert (
+        'REVOKE ALL PRIVILEGES ON TABLE api_email_outbox FROM "base2_content_worker"'
+        in statements
+    )
+    assert 'GRANT SELECT, UPDATE ON TABLE api_email_outbox TO "base2_email_worker"' in statements
+    assert all(
+        not ("GRANT" in statement and "sitecontent_breakglassgrant" in statement)
+        for statement in statements
+    )
+    assert all("CREATE POLICY" not in statement for statement in statements)
 
 
 def test_worker_role_fails_closed_on_session_environment_mismatch(monkeypatch):
@@ -103,6 +110,6 @@ def test_worker_role_fails_closed_on_session_environment_mismatch(monkeypatch):
     database = MagicMock()
     database.cursor.return_value.__enter__.return_value = cursor
     editor = SimpleNamespace(connection=database)
-    monkeypatch.setenv("WORKSPACE_WORKER_DB_USER", "environment_worker")
+    monkeypatch.setenv("RUNTIME_WORKER_DB_USER", "environment_worker")
     with pytest.raises(RuntimeError, match="role_mismatch"):
         migration._worker_role(editor)
