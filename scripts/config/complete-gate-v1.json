@@ -151,11 +151,33 @@
       "requiredTools": ["{python-api}"]
     },
     {
+      "id": "extension-platform-contract",
+      "command": ["{python-api}", "-m", "pytest", "-q", "api/tests/test_extension_platform.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["universal-product-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "production-assurance-contract",
+      "command": [
+        "{python-api}",
+        "-m",
+        "pytest",
+        "-q",
+        "scripts/tests/test_production_assurance.py"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["extension-platform-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
       "id": "gate-runtime-recovery-contract",
       "command": ["python3", "-m", "unittest", "scripts.tests.test_gate_runtime_recovery"],
       "required": true,
       "timeoutSeconds": 30,
-      "dependsOn": ["universal-product-contract"],
+      "dependsOn": ["production-assurance-contract"],
       "requiredTools": ["python3"]
     },
     {
