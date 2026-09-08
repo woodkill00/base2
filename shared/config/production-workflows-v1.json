@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "credentials": [
+    {
+      "class": "database",
+      "owner": "platform",
+      "scope": "site-runtime",
+      "source": "vaultwarden-ref",
+      "maximumLifetimeDays": 90
+    },
+    {
+      "class": "signing",
+      "owner": "security",
+      "scope": "release",
+      "source": "vaultwarden-ref",
+      "maximumLifetimeDays": 90
+    },
+    {
+      "class": "email",
+      "owner": "platform",
+      "scope": "transactional",
+      "source": "vaultwarden-ref",
+      "maximumLifetimeDays": 90
+    },
+    {
+      "class": "object-storage",
+      "owner": "platform",
+      "scope": "tenant-media",
+      "source": "vaultwarden-ref",
+      "maximumLifetimeDays": 90
+    },
+    {
+      "class": "oauth",
+      "owner": "identity",
+      "scope": "integration",
+      "source": "vaultwarden-ref",
+      "maximumLifetimeDays": 30
+    },
+    {
+      "class": "provider",
+      "owner": "operations",
+      "scope": "ephemeral-only",
+      "source": "vaultwarden-ref",
+      "maximumLifetimeDays": 30
+    }
+  ],
+  "jobs": {
+    "maximumAttempts": 5,
+    "leaseSeconds": 300,
+    "maximumConcurrentPerTenant": 8,
+    "deadLetterRetentionDays": 30
+  },
+  "schedules": { "maximumCatchUpRuns": 1, "maximumLatenessSeconds": 3600, "overlap": "forbid" },
+  "notifications": {
+    "maximumAttempts": 5,
+    "historyDays": 90,
+    "quietTimeDefault": "respect",
+    "securityException": "mandatory"
+  }
+}

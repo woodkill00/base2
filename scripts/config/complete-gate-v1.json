@@ -127,11 +127,19 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "production-workflow-contract",
+      "command": ["{python-api}", "-m", "pytest", "-q", "api/tests/test_production_workflows.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["edge-readiness-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
       "id": "gate-runtime-recovery-contract",
       "command": ["python3", "-m", "unittest", "scripts.tests.test_gate_runtime_recovery"],
       "required": true,
       "timeoutSeconds": 30,
-      "dependsOn": ["edge-readiness-contract"],
+      "dependsOn": ["production-workflow-contract"],
       "requiredTools": ["python3"]
     },
     {
