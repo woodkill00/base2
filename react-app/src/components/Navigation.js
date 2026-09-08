@@ -35,6 +35,7 @@ const Navigation = () => {
       'hover:bg-white/20 dark:hover:bg-black/30',
       isActive(path) ? 'bg-white/20 dark:bg-black/30' : 'opacity-80 hover:opacity-100',
     ].join(' ');
+  const activeProps = (path) => (isActive(path) ? { 'aria-current': 'page' } : {});
 
   return (
     <nav aria-label="App navigation" className="sticky top-[calc(var(--nav-h)+0px)] z-40">
@@ -59,31 +60,43 @@ const Navigation = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <Link to="/dashboard" className={linkClass('/dashboard')}>
+              <Link
+                to="/dashboard"
+                className={linkClass('/dashboard')}
+                {...activeProps('/dashboard')}
+              >
                 Dashboard
               </Link>
-              <Link to="/settings" className={linkClass('/settings')}>
+              <Link to="/settings" className={linkClass('/settings')} {...activeProps('/settings')}>
                 Settings
               </Link>
               {workspaceEnabled && user?.permissions?.includes('content-workspace.read') ? (
-                <Link to="/workspace" className={linkClass('/workspace')}>
+                <Link
+                  to="/workspace"
+                  className={linkClass('/workspace')}
+                  {...activeProps('/workspace')}
+                >
                   Content
                 </Link>
               ) : null}
               {mediaEnabled && user?.permissions?.includes('media.read') ? (
-                <Link to="/media" className={linkClass('/media')}>
+                <Link to="/media" className={linkClass('/media')} {...activeProps('/media')}>
                   Media
                 </Link>
               ) : null}
               {user?.permissions?.includes('operations.read') ? (
-                <Link to="/operations" className={linkClass('/operations')}>
+                <Link
+                  to="/operations"
+                  className={linkClass('/operations')}
+                  {...activeProps('/operations')}
+                >
                   Operations
                 </Link>
               ) : null}
               {accountsEnabled &&
               Array.isArray(user?.permissions) &&
               user.permissions.includes('audit.read') ? (
-                <Link to="/admin" className={linkClass('/admin')}>
+                <Link to="/admin" className={linkClass('/admin')} {...activeProps('/admin')}>
                   Admin
                 </Link>
               ) : null}

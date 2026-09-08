@@ -58,6 +58,38 @@ def test_summary_and_incidents_are_tenant_bound(monkeypatch):
     assert captured == [{'tenant_id': 'tenant-one'}, {'tenant_id': 'tenant-one', 'limit': 20}]
 
 
+def test_overview_and_incident_detail_are_tenant_bound(monkeypatch):
+    permit(monkeypatch)
+    captured = []
+    monkeypatch.setattr(
+        'api.routes.operations.repository.overview',
+        lambda **kwargs: captured.append(kwargs)
+        or {
+            'site': {'id': 'tenant-one'},
+            'services': [],
+            'releases': [],
+            'objectives': [],
+            'synthetics': [],
+        },
+    )
+    monkeypatch.setattr(
+        'api.routes.operations.repository.incident_detail',
+        lambda **kwargs: captured.append(kwargs) or {'id': str(INCIDENT_ID), 'timeline': []},
+    )
+    client = TestClient(app)
+    overview = client.get('/api/operations/v1/overview', headers={'X-Tenant-Id': 'tenant-one'})
+    incident = client.get(
+        f'/api/operations/v1/incidents/{INCIDENT_ID}', headers={'X-Tenant-Id': 'tenant-one'}
+    )
+    assert overview.status_code == incident.status_code == 200
+    assert overview.json()['site']['id'] == 'tenant-one'
+    assert incident.json()['incident']['id'] == str(INCIDENT_ID)
+    assert captured == [
+        {'tenant_id': 'tenant-one'},
+        {'tenant_id': 'tenant-one', 'incident_id': INCIDENT_ID},
+    ]
+
+
 def test_permission_denial_is_generic(monkeypatch):
     monkeypatch.setattr(
         'api.routes.operations.require_authenticated_principal', lambda request: principal()

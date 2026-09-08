@@ -73,6 +73,141 @@ def list_incidents(*, tenant_id: str, limit: int = 50) -> list[dict[str, Any]]:
     ]
 
 
+def overview(*, tenant_id: str) -> dict[str, Any]:
+    """Return the bounded tenant-private operations read model."""
+    with workspace_db_conn(tenant_id=tenant_id) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT service.id, service.service_key, service.environment, service.enabled,
+                   service.release_id, sample.state, sample.code, sample.latency_ms,
+                   sample.observed_at, sample.expires_at
+            FROM sitecontent_operationsservice AS service
+            LEFT JOIN LATERAL (
+                SELECT state, code, latency_ms, observed_at, expires_at
+                FROM sitecontent_operationshealthsample
+                WHERE site_id=%s AND service_id=service.id
+                ORDER BY observed_at DESC LIMIT 1
+            ) AS sample ON TRUE
+            WHERE service.site_id=%s
+            ORDER BY service.environment, service.service_key
+            LIMIT 100
+            """,
+            (tenant_id, tenant_id),
+        )
+        services = cursor.fetchall()
+        cursor.execute(
+            """
+            SELECT objective_key, indicator, target, warning_threshold, window_minutes
+            FROM sitecontent_operationsobjective
+            WHERE site_id=%s ORDER BY objective_key LIMIT 100
+            """,
+            (tenant_id,),
+        )
+        objectives = cursor.fetchall()
+        cursor.execute(
+            """
+            SELECT id, journey_key, role, source_commit, status, result_digest,
+                   started_at, completed_at
+            FROM sitecontent_operationssyntheticrun
+            WHERE site_id=%s ORDER BY started_at DESC LIMIT 50
+            """,
+            (tenant_id,),
+        )
+        synthetics = cursor.fetchall()
+    releases = sorted({str(row[4]) for row in services if row[4]})
+    return {
+        'site': {'id': tenant_id, 'serviceCount': len(services), 'releaseCount': len(releases)},
+        'releases': releases,
+        'services': [
+            {
+                'id': str(row[0]),
+                'serviceKey': row[1],
+                'environment': row[2],
+                'enabled': row[3],
+                'releaseId': row[4] or None,
+                'health': {
+                    'state': row[5] or ('unknown' if row[3] else 'disabled'),
+                    'code': row[6] or 'probe.no_evidence',
+                    'latencyMs': row[7],
+                    'observedAt': row[8],
+                    'expiresAt': row[9],
+                },
+            }
+            for row in services
+        ],
+        'objectives': [
+            {
+                'objectiveKey': row[0],
+                'indicator': row[1],
+                'target': float(row[2]),
+                'warningThreshold': float(row[3]),
+                'windowMinutes': row[4],
+            }
+            for row in objectives
+        ],
+        'synthetics': [
+            {
+                'id': str(row[0]),
+                'journeyKey': row[1],
+                'role': row[2],
+                'sourceCommit': row[3],
+                'status': row[4],
+                'resultDigest': row[5] or None,
+                'startedAt': row[6],
+                'completedAt': row[7],
+            }
+            for row in synthetics
+        ],
+    }
+
+
+def incident_detail(*, tenant_id: str, incident_id: UUID) -> dict[str, Any] | None:
+    with workspace_db_conn(tenant_id=tenant_id) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT id, severity, state, summary_code, owner_ref, occurrence_count,
+                   first_observed_at, last_observed_at, resolved_at
+            FROM sitecontent_operationsincident
+            WHERE site_id=%s AND id=%s
+            """,
+            (tenant_id, str(incident_id)),
+        )
+        incident = cursor.fetchone()
+        if incident is None:
+            return None
+        cursor.execute(
+            """
+            SELECT id, event_key, actor_ref, details, occurred_at
+            FROM sitecontent_operationsincidentevent
+            WHERE site_id=%s AND incident_id=%s
+            ORDER BY occurred_at, id LIMIT 200
+            """,
+            (tenant_id, str(incident_id)),
+        )
+        events = cursor.fetchall()
+    return {
+        'id': str(incident[0]),
+        'severity': incident[1],
+        'state': incident[2],
+        'summaryCode': incident[3],
+        'ownerRef': incident[4] or None,
+        'occurrenceCount': incident[5],
+        'firstObservedAt': incident[6],
+        'lastObservedAt': incident[7],
+        'resolvedAt': incident[8],
+        'timeline': [
+            {
+                'id': str(row[0]),
+                'eventKey': row[1],
+                'actorRef': row[2],
+                'details': row[3],
+                'occurredAt': row[4],
+            }
+            for row in events
+        ],
+    }
+
+
 def acknowledge(*, tenant_id: str, incident_id: UUID, owner_ref: str) -> bool:
     with workspace_db_conn(tenant_id=tenant_id) as conn:
         with conn.cursor() as cursor:

@@ -3,7 +3,14 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
-from api.repositories.operations import acknowledge, list_incidents, prune, summary
+from api.repositories.operations import (
+    acknowledge,
+    incident_detail,
+    list_incidents,
+    overview,
+    prune,
+    summary,
+)
 
 
 @contextmanager
@@ -100,3 +107,68 @@ def test_retention_pruning_is_tenant_scoped_batched_and_policy_specific():
     assert "state='resolved'" in cursor.execute.call_args_list[2].args[0]
     assert 'resolved_at <' in cursor.execute.call_args_list[2].args[0]
     assert 'ORDER BY resolved_at' in cursor.execute.call_args_list[2].args[0]
+
+
+def test_overview_exposes_bounded_service_release_objective_and_evidence_views():
+    now = datetime(2026, 9, 8, tzinfo=UTC)
+    cursor = MagicMock()
+    cursor.fetchall.side_effect = [
+        [
+            (
+                UUID(int=3),
+                'api.health',
+                'staging',
+                True,
+                'release-one',
+                'healthy',
+                'api.ready',
+                4,
+                now,
+                now,
+            )
+        ],
+        [('api.availability', 'request.success', 0.999, 0.995, 1440)],
+        [(UUID(int=4), 'member.login', 'member', 'a' * 40, 'passed', 'b' * 64, now, now)],
+    ]
+    with patch(
+        'api.repositories.operations.workspace_db_conn',
+        return_value=repository_connection(cursor),
+    ):
+        result = overview(tenant_id='tenant-one')
+    assert result['site'] == {'id': 'tenant-one', 'serviceCount': 1, 'releaseCount': 1}
+    assert result['services'][0]['health']['state'] == 'healthy'
+    assert result['objectives'][0]['target'] == 0.999
+    assert result['synthetics'][0]['sourceCommit'] == 'a' * 40
+    assert [call.args[1] for call in cursor.execute.call_args_list] == [
+        ('tenant-one', 'tenant-one'),
+        ('tenant-one',),
+        ('tenant-one',),
+    ]
+
+
+def test_incident_detail_is_tenant_bound_and_includes_timeline():
+    now = datetime(2026, 9, 8, tzinfo=UTC)
+    incident_id = UUID(int=5)
+    cursor = MagicMock()
+    cursor.fetchone.return_value = (
+        incident_id,
+        'high',
+        'firing',
+        'api.failed',
+        'owner-one',
+        2,
+        now,
+        now,
+        None,
+    )
+    cursor.fetchall.return_value = [(UUID(int=6), 'incident.opened', 'system', {}, now)]
+    with patch(
+        'api.repositories.operations.workspace_db_conn',
+        return_value=repository_connection(cursor),
+    ):
+        result = incident_detail(tenant_id='tenant-one', incident_id=incident_id)
+    assert result and result['timeline'][0]['eventKey'] == 'incident.opened'
+    assert [call.args[1] for call in cursor.execute.call_args_list] == [
+        ('tenant-one', str(incident_id)),
+        ('tenant-one', str(incident_id)),
+    ]

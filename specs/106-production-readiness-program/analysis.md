@@ -287,6 +287,24 @@ it does not call them impossible. Actual production use also requires concrete
 service objectives, capacity measurements, legal review where applicable, and
 separately approved environment-specific activation.
 
+## Implementation repair cycle 7 — connected operations views
+
+B024 and B025 were rebuilt against the tenant-scoped PostgreSQL repository and
+FastAPI boundary. The private UI now renders the current site/fleet summary,
+release identities, latest service evidence, objectives, synthetic runs,
+incidents, ownership, timestamps, and an on-demand incident timeline. Incident
+mutation is absent for read-only users and remains permission plus explicit
+recent-auth gated server-side. Repository mutations commit; incident retention
+uses resolution time.
+
+Focused API/repository tests passed 11 checks and frontend service/component
+tests passed 9 checks. The source-bound browser run passed 26 checks across
+responsive/touch, large text, 400%-equivalent reflow, light, high contrast, RTL,
+reduced motion, Chromium, Firefox, and WebKit projects, including safe loading,
+empty, failure, timeline, and acknowledgement interactions. B026 remains pending
+because deterministic fault helpers are not a substitute for a connected runtime
+collector, durable alert dispatcher, and restart/outage drill.
+
 ## Independent review cycle 6 — completion reset and repair plan
 
 Fresh code, security, UX/accessibility, data, and operations reviews rejected the

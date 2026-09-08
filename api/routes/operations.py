@@ -44,6 +44,21 @@ def get_incidents(request: Request, limit: int = Query(default=50, ge=1, le=100)
     }
 
 
+@router.get('/overview')
+def get_overview(request: Request):
+    _principal, tenant_id, _membership = _scope(request, 'operations.read')
+    return {'schemaVersion': 1, **repository.overview(tenant_id=tenant_id)}
+
+
+@router.get('/incidents/{incident_id}')
+def get_incident(request: Request, incident_id: UUID):
+    _principal, tenant_id, _membership = _scope(request, 'operations.read')
+    incident = repository.incident_detail(tenant_id=tenant_id, incident_id=incident_id)
+    if incident is None:
+        raise HTTPException(status_code=404, detail='incident_not_found')
+    return {'schemaVersion': 1, 'incident': incident}
+
+
 @router.post('/incidents/{incident_id}/acknowledge')
 def acknowledge_incident(request: Request, incident_id: UUID):
     principal, tenant_id, membership = _scope(request, 'operations.manage')

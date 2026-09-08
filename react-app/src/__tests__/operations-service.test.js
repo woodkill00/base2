@@ -35,5 +35,24 @@ test('encodes incident identity for acknowledgement and normalizes failures', as
   );
   expect(normalizeOperationsError(new Error('private detail'))).toEqual({
     fallbackMessage: 'Operations information is temporarily unavailable.',
+    message: 'Operations information is temporarily unavailable. Try refreshing the evidence.',
+  });
+});
+
+test('loads the full operations overview and incident timeline', async () => {
+  const signal = new AbortController().signal;
+  apiClient.get
+    .mockResolvedValueOnce({ data: { data: { services: [], releases: [] } } })
+    .mockResolvedValueOnce({ data: { incident: { id: 'incident-one', timeline: [] } } });
+  await expect(operationsAPI.overview({ signal })).resolves.toEqual({
+    services: [],
+    releases: [],
+  });
+  await expect(operationsAPI.incident('incident/one', { signal })).resolves.toEqual({
+    incident: { id: 'incident-one', timeline: [] },
+  });
+  expect(apiClient.get).toHaveBeenNthCalledWith(1, '/operations/v1/overview', { signal });
+  expect(apiClient.get).toHaveBeenNthCalledWith(2, '/operations/v1/incidents/incident%2Fone', {
+    signal,
   });
 });

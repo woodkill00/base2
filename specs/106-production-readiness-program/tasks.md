@@ -32,8 +32,8 @@ substitute for the integration proof named by the task.
 - [x] B021 Add source-bound visual synthetic checks with deterministic capture, masks, thresholds, baseline review, and drift rejection. (FR-012, FR-064)
 - [x] B022 Add incident correlation, deduplication, severity, ownership, timeline, acknowledgement, resolution, recurrence, and post-incident records. (FR-014)
 - [x] B023 Add sanitized Discord delivery with expiry, acknowledgement, deduplication, retry, fallback queue, and delivery observation. (FR-015, FR-016)
-- [ ] B024 Build the private accessible operations UI for fleet, site, service, release, objective, incident, and evidence views. (FR-009, FR-014, FR-064)
-- [ ] B025 Add role and recent-auth enforcement for incident mutation and bounded recovery controls. (FR-033, FR-045)
+- [x] B024 Build the private accessible operations UI for fleet, site, service, release, objective, incident, and evidence views. (FR-009, FR-014, FR-064)
+- [x] B025 Add role and recent-auth enforcement for incident mutation and bounded recovery controls. (FR-033, FR-045)
 - [ ] B026 Prove monitor loss, alert loss, stale evidence, flapping, queue pressure, restart, clock shift, and dependency outage fail visibly without alert storms. (FR-016, FR-060, FR-070)
 - [ ] B027 Run telemetry privacy, accessibility, visual, load, fault, and tenant-isolation gates and close all blocking findings. (FR-019, FR-063, FR-064, FR-065, FR-071)
 

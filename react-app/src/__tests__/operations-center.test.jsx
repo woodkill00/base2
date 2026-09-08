@@ -3,8 +3,21 @@ import { MemoryRouter } from 'react-router-dom';
 import OperationsCenter from '../pages/OperationsCenter';
 import { operationsAPI } from '../services/operations';
 
+const authState = vi.hoisted(() => ({
+  user: {
+    email: 'owner@example.test',
+    permissions: ['operations.read', 'operations.manage'],
+  },
+}));
+
 vi.mock('../services/operations', () => ({
-  operationsAPI: { summary: jest.fn(), incidents: jest.fn(), acknowledge: jest.fn() },
+  operationsAPI: {
+    summary: jest.fn(),
+    incidents: jest.fn(),
+    overview: jest.fn(),
+    incident: jest.fn(),
+    acknowledge: jest.fn(),
+  },
   normalizeOperationsError: () => ({
     message: 'Operations information is temporarily unavailable.',
   }),
@@ -12,7 +25,7 @@ vi.mock('../services/operations', () => ({
 
 vi.mock('../contexts/AuthContext', () => ({
   useAuth: () => ({
-    user: { email: 'owner@example.test', permissions: ['operations.read'] },
+    user: authState.user,
     logout: jest.fn(),
   }),
 }));
@@ -26,6 +39,7 @@ const renderPage = () =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  authState.user.permissions = ['operations.read', 'operations.manage'];
   operationsAPI.summary.mockResolvedValue({
     services: { enabled: 3, total: 4 },
     incidents: { firing: 1 },
@@ -39,8 +53,57 @@ beforeEach(() => {
         state: 'firing',
         summaryCode: 'api.unavailable',
         occurrenceCount: 2,
+        ownerRef: 'owner:one',
+        lastObservedAt: '2026-09-08T12:00:00Z',
       },
     ],
+  });
+  operationsAPI.overview.mockResolvedValue({
+    site: { id: 'tenant-one', serviceCount: 1, releaseCount: 1 },
+    releases: ['release-one'],
+    services: [
+      {
+        id: 'service-one',
+        serviceKey: 'api.health',
+        environment: 'staging',
+        releaseId: 'release-one',
+        health: {
+          state: 'healthy',
+          code: 'api.ready',
+          observedAt: '2026-09-08T12:00:00Z',
+        },
+      },
+    ],
+    objectives: [
+      {
+        objectiveKey: 'api.availability',
+        target: 0.999,
+        windowMinutes: 1440,
+      },
+    ],
+    synthetics: [
+      {
+        id: 'run-one',
+        journeyKey: 'member.login',
+        status: 'passed',
+        sourceCommit: 'a'.repeat(40),
+        startedAt: '2026-09-08T12:00:00Z',
+      },
+    ],
+  });
+  operationsAPI.incident.mockResolvedValue({
+    incident: {
+      id: 'incident-1',
+      summaryCode: 'api.unavailable',
+      timeline: [
+        {
+          id: 'event-one',
+          eventKey: 'incident.opened',
+          actorRef: 'system',
+          occurredAt: '2026-09-08T12:00:00Z',
+        },
+      ],
+    },
   });
   operationsAPI.acknowledge.mockResolvedValue({ status: 'acknowledged' });
 });
@@ -51,8 +114,11 @@ test('renders truthful service synthetic and incident evidence', async () => {
   expect(await screen.findByText('3/4')).toBeInTheDocument();
   expect(screen.getByText('8 passed')).toBeInTheDocument();
   expect(screen.getByText('1 failed')).toBeInTheDocument();
-  expect(screen.getByText('api.unavailable')).toBeInTheDocument();
+  expect(screen.getByText('Api Unavailable')).toBeInTheDocument();
   expect(screen.getByText('Observed 2 times')).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Service health' })).toBeInTheDocument();
+  expect(screen.getAllByText('release-one')).toHaveLength(2);
+  expect(screen.getByText(/99.90% over/)).toBeInTheDocument();
 });
 
 test('acknowledges once and refreshes evidence', async () => {
@@ -68,7 +134,7 @@ test('reports acknowledgement failure without hiding current evidence', async ()
   renderPage();
   fireEvent.click(await screen.findByRole('button', { name: 'Acknowledge' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('temporarily unavailable');
-  expect(screen.getByText('api.unavailable')).toBeInTheDocument();
+  expect(screen.getByText('Api Unavailable')).toBeInTheDocument();
 });
 
 test('shows explicit failure and supports retry', async () => {
@@ -77,4 +143,19 @@ test('shows explicit failure and supports retry', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent('temporarily unavailable');
   fireEvent.click(screen.getByRole('button', { name: 'Refresh evidence' }));
   expect(await screen.findByText('3/4')).toBeInTheDocument();
+});
+
+test('opens the tenant-bound incident timeline', async () => {
+  renderPage();
+  fireEvent.click(await screen.findByRole('button', { name: 'View timeline' }));
+  expect(await screen.findByRole('heading', { name: 'Incident timeline' })).toBeInTheDocument();
+  expect(screen.getByText('Incident Opened')).toBeInTheDocument();
+  expect(operationsAPI.incident).toHaveBeenCalledWith('incident-1');
+});
+
+test('does not offer incident mutation to a read-only operator', async () => {
+  authState.user.permissions = ['operations.read'];
+  renderPage();
+  expect(await screen.findByRole('button', { name: 'View timeline' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Acknowledge' })).not.toBeInTheDocument();
 });
