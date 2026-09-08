@@ -8,6 +8,8 @@ from uuid import UUID
 import psycopg2
 from psycopg2 import errors
 
+from api.repositories.tenant_quota import QuotaRepositoryError, reserve
+
 
 def connect(user: str, password: str):
     return psycopg2.connect(
@@ -33,6 +35,44 @@ def operations_count(conn, tenant: str | None) -> int:
             cursor.execute("SELECT set_config('app.tenant_id', %s, true)", (tenant,))
         cursor.execute("SELECT COUNT(*) FROM sitecontent_operationsservice")
         return int(cursor.fetchone()[0])
+
+
+def quota_count(conn, tenant: str | None) -> int:
+    with conn.cursor() as cursor:
+        if tenant is not None:
+            cursor.execute("SELECT set_config('app.tenant_id', %s, true)", (tenant,))
+        cursor.execute("SELECT COUNT(*) FROM sitecontent_tenantquota")
+        return int(cursor.fetchone()[0])
+
+
+def quota_reservation_race() -> None:
+    """Prove two real API-role sessions cannot over-reserve one quota."""
+    barrier = threading.Barrier(2)
+    results: list[str] = []
+    result_lock = threading.Lock()
+
+    def contender(index: int) -> None:
+        barrier.wait(timeout=5)
+        try:
+            result = reserve(
+                tenant_id="site-a",
+                quota_key="jobs",
+                amount=6,
+                reservation_id=f"job.race-{index}",
+            )
+            outcome = result["status"]
+        except QuotaRepositoryError as exc:
+            outcome = str(exc)
+        with result_lock:
+            results.append(outcome)
+
+    contenders = [threading.Thread(target=contender, args=(index,), daemon=True) for index in (1, 2)]
+    for contender_thread in contenders:
+        contender_thread.start()
+    for contender_thread in contenders:
+        contender_thread.join(timeout=10)
+        assert not contender_thread.is_alive(), "quota_concurrency_contender_timed_out"
+    assert sorted(results) == ["quota:exhausted", "reserved"], results
 
 
 def optimistic_race(
@@ -88,6 +128,8 @@ def main() -> None:
     worker = connect(worker_user, worker_password)
     try:
         with owner, owner.cursor() as cursor:
+            cursor.execute("DELETE FROM sitecontent_tenantquotareservation")
+            cursor.execute("DELETE FROM sitecontent_tenantquota")
             cursor.execute("DELETE FROM sitecontent_operationsservice")
             cursor.execute("DELETE FROM sitecontent_contenttypedefinition")
             cursor.execute(
@@ -107,6 +149,13 @@ def main() -> None:
                    VALUES (%s,'site-a','api.health','staging',true,'release-a',NOW(),NOW()),
                           (%s,'site-b','api.health','staging',true,'release-b',NOW(),NOW())""",
                 (str(UUID(int=20)), str(UUID(int=21))),
+            )
+            cursor.execute(
+                """INSERT INTO sitecontent_tenantquota
+                   (id,site_id,quota_key,"limit",used,reserved,revision,created_at,updated_at)
+                   VALUES (%s,'site-a','jobs',10,0,0,1,NOW(),NOW()),
+                          (%s,'site-b','jobs',20,0,0,1,NOW(),NOW())""",
+                (str(UUID(int=30)), str(UUID(int=31))),
             )
             cursor.execute(
                 "SELECT rolbypassrls, rolsuper FROM pg_roles WHERE rolname=%s", (runtime_user,)
@@ -132,6 +181,17 @@ def main() -> None:
                    WHERE tablename LIKE 'sitecontent_operations%'"""
             )
             assert cursor.fetchone()[0] == 28
+            cursor.execute(
+                """SELECT COUNT(*) FROM pg_class
+                   WHERE relname LIKE 'sitecontent_tenantquota%'
+                     AND relrowsecurity AND relforcerowsecurity"""
+            )
+            assert cursor.fetchone()[0] == 2
+            cursor.execute(
+                """SELECT COUNT(*) FROM pg_policies
+                   WHERE tablename LIKE 'sitecontent_tenantquota%'"""
+            )
+            assert cursor.fetchone()[0] == 8
             cursor.execute(
                 """SELECT indexname FROM pg_indexes
                    WHERE tablename='sitecontent_contenttypedefinition'"""
@@ -187,13 +247,26 @@ def main() -> None:
         runtime.rollback()
         assert operations_count(runtime, None) == 0
         runtime.rollback()
+        # Legacy content workers retain their bounded discovery contract; the
+        # new operations and quota workers must establish one tenant context.
         assert count(worker, None) == 2
         worker.rollback()
-        assert operations_count(worker, None) == 2
+        assert operations_count(worker, None) == 0
+        worker.rollback()
+        assert operations_count(worker, "site-a") == 1
+        worker.rollback()
+        assert quota_count(worker, None) == 0
+        worker.rollback()
+        assert quota_count(worker, "site-a") == 1
         worker.rollback()
         assert count(runtime, "site-a") == 1
         runtime.rollback()
         assert operations_count(runtime, "site-a") == 1
+        runtime.rollback()
+        assert quota_count(runtime, "site-a") == 1
+        runtime.rollback()
+        assert quota_count(runtime, "site-b") == 1
+        runtime.rollback()
         with runtime.cursor() as cursor:
             cursor.execute("SET LOCAL enable_seqscan=off")
             cursor.execute(
@@ -240,6 +313,33 @@ def main() -> None:
                 raise AssertionError("operations_cross_tenant_insert_was_not_blocked")
         assert operations_count(runtime, None) == 0
         runtime.rollback()
+
+        with runtime.cursor() as cursor:
+            cursor.execute("SELECT set_config('app.tenant_id', 'site-a', true)")
+            try:
+                cursor.execute(
+                    """INSERT INTO sitecontent_tenantquotareservation
+                       (id,site_id,reservation_id,amount,state,quota_id,created_at,updated_at)
+                       VALUES (%s,'site-b','job.blocked',1,'reserved',%s,NOW(),NOW())""",
+                    (str(UUID(int=32)), str(UUID(int=31))),
+                )
+            except errors.InsufficientPrivilege:
+                runtime.rollback()
+            else:
+                raise AssertionError("quota_cross_tenant_insert_was_not_blocked")
+
+        quota_reservation_race()
+        with owner, owner.cursor() as cursor:
+            cursor.execute(
+                """SELECT used,reserved,revision FROM sitecontent_tenantquota
+                   WHERE site_id='site-a' AND quota_key='jobs'"""
+            )
+            assert cursor.fetchone() == (0, 6, 2)
+            cursor.execute(
+                """SELECT COUNT(*) FROM sitecontent_tenantquotareservation
+                   WHERE site_id='site-a' AND state='reserved'"""
+            )
+            assert cursor.fetchone()[0] == 1
 
         with owner.cursor() as cursor:
             try:

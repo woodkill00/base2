@@ -81,6 +81,9 @@ class WorkspacePostgresContractTests(unittest.TestCase):
             "operations_cross_tenant_link_was_not_blocked",
             "relforcerowsecurity",
             "sitecontent_operationsservice",
+            "quota_cross_tenant_insert_was_not_blocked",
+            "quota_reservation_race()",
+            "sitecontent_tenantquotareservation",
         ):
             self.assertIn(marker, checks)
 

@@ -23,8 +23,10 @@ def main() -> None:
     owner_password = secrets.token_urlsafe(32)
     runtime_password = secrets.token_urlsafe(32)
     worker_password = secrets.token_urlsafe(32)
-    django_image = os.getenv("WORKSPACE_ACCEPTANCE_DJANGO_IMAGE", "base2-f093-1115-django:latest")
-    api_image = os.getenv("WORKSPACE_ACCEPTANCE_API_IMAGE", "base2-f093-1115-api:latest")
+    # The compose-built images track the current toolchain. The source under
+    # test is still mounted read-only from the exact checkout below.
+    django_image = os.getenv("WORKSPACE_ACCEPTANCE_DJANGO_IMAGE", "base2-local-django:latest")
+    api_image = os.getenv("WORKSPACE_ACCEPTANCE_API_IMAGE", "base2-local-api:latest")
     started = False
     try:
         for image in (django_image, api_image):

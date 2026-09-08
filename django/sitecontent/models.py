@@ -2544,3 +2544,61 @@ class OperationsAlertDelivery(SiteOwnedModel):
             raise ValidationError("operations_delivery_attempt_invalid")
         if self.receipt_digest and not re.fullmatch(SHA256_PATTERN, self.receipt_digest):
             raise ValidationError("operations_delivery_digest_invalid")
+
+
+class TenantQuota(SiteOwnedModel):
+    QUOTA_KEYS = tuple(
+        (value, value.title())
+        for value in ("users", "storage", "media", "api", "jobs", "email", "search", "cost")
+    )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    quota_key = models.CharField(max_length=16, choices=QUOTA_KEYS)
+    limit = models.PositiveBigIntegerField()
+    used = models.PositiveBigIntegerField(default=0)
+    reserved = models.PositiveBigIntegerField(default=0)
+    revision = models.PositiveBigIntegerField(default=1)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["site_id", "quota_key"], name="tenant_quota_scope_uq"),
+            models.CheckConstraint(
+                condition=models.Q(used__lte=models.F("limit")), name="tenant_quota_used_lte_limit"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(reserved__lte=models.F("limit")),
+                name="tenant_quota_reserved_lte_limit",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(used__lte=models.F("limit") - models.F("reserved")),
+                name="tenant_quota_total_lte_limit",
+            ),
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.used + self.reserved > self.limit:
+            raise ValidationError("tenant_quota_capacity_invalid")
+
+
+class TenantQuotaReservation(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    quota = models.ForeignKey(TenantQuota, on_delete=models.CASCADE, related_name="reservations")
+    reservation_id = models.CharField(max_length=128, validators=[operations_identifier_validator])
+    amount = models.PositiveBigIntegerField(validators=[MinValueValidator(1)])
+    state = models.CharField(
+        max_length=16,
+        choices=tuple((value, value.title()) for value in ("reserved", "committed", "released")),
+        default="reserved",
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "reservation_id"], name="tenant_quota_reservation_scope_uq"
+            )
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.quota_id and self.site_id != self.quota.site_id:
+            raise ValidationError("tenant_quota_reservation_scope_invalid")
