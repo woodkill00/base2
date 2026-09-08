@@ -180,7 +180,7 @@ substitute for the integration proof named by the task.
 - [x] B142 Capture and review exact-source keyboard, screen-reader, zoom, motion, contrast, RTL, locale, timezone, translation-fallback, responsive, cross-browser, interaction, and visual evidence for every user-facing state. (FR-012, FR-064, FR-075)
 - [x] B143 Run authorization, tenant escape, hostile input, SSRF, metadata, DNS-rebinding, egress, injection, replay, race, exhaustion, encryption/key-rotation, supply-chain, workflow-policy, and secret-leak suites. (FR-019, FR-031, FR-059, FR-065, FR-073, FR-074, FR-078)
 - [x] B144 Run forward migration, compatibility window, backup, isolated restore, code rollback, interrupted operation, and disaster recovery proof. (FR-018, FR-020 through FR-023, FR-060, FR-066)
-- [ ] B145 Run complete local and CI gates twice at the exact clean candidate head, verify repository/workflow governance, and repeat critical state-machine and isolation suites. (FR-063, FR-065, FR-068, FR-078)
+- [x] B145 Run complete local and CI gates twice at the exact clean candidate head, verify repository/workflow governance, and repeat critical state-machine and isolation suites. (FR-063, FR-065, FR-068, FR-078)
 - [ ] B146 Obtain fresh independent code, security, UX/accessibility, data, and operations reviews and close every critical, high, and medium finding. (FR-063 through FR-068)
 - [ ] B147 Review the exact diff, generated surface, dependencies, migrations, residual risks, evidence inventory, and absence of secret or provider state. (FR-008, FR-059, FR-068, FR-069)
 - [ ] B148 Obtain separate exact-head approval before publication and create only the approved draft pull request. (FR-007, FR-069)

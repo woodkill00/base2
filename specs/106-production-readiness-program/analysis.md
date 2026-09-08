@@ -367,3 +367,31 @@ responsive, zoom, contrast, motion, RTL, empty, failure, Chromium, Firefox, and
 WebKit captures. One complete 106-node integration gate passed after the visual
 manifest was regenerated; final identical-head repetition and fresh independent
 review remain required before publication.
+
+## Implementation repair cycle 9 — exact-head closure and honest review boundary
+
+The full API suite, all 239 frontend component tests, the 90-test Django suite,
+changed-surface lint, API type checking, compose rendering, real PostgreSQL
+migration/RLS exercises, encrypted isolated restore, and the 26-case Operations
+browser matrix passed. The broad Django run exposed one backend-specific migration
+statement (`NOW()`) that failed under SQLite; it was replaced by a historical-model
+`RunPython` repair and the entire suite then passed. The first complete-gate attempt
+also correctly rejected obsolete homepage baselines after the supported locale
+count changed from one to three. Expected, actual, and diff images were inspected,
+the three-locale baselines were approved, and the regenerated visual harness passed.
+The next gate caught an old route-set assertion that omitted the newly governed
+Operations route; the contract now requires that route and its focused suite passes.
+
+Two subsequent clean runs passed every one of the 106 required checks at identical
+source `faefe88e2631ca41db8c90b3e3e6657362f441a9` with no skip or failure:
+
+- `.artifacts/complete-gate/20260908T103450Z/result.json`
+- `.artifacts/complete-gate/20260908T104503Z/result.json`
+
+This completes B145 and demonstrates that the repair candidate is repeatable under
+the repository's local production-readiness policy. It does not convert automation
+into independent human review. B146 therefore remains pending until fresh code,
+security, UX/accessibility, data, and operations reviewers evaluate the repaired
+exact source and every critical, high, and medium finding is closed. Publication,
+hosted checks, merge, provider canary, provider teardown, and actual production
+activation likewise retain their explicit approval and evidence boundaries.
