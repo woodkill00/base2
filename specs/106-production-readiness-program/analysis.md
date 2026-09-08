@@ -517,3 +517,39 @@ adapter construction and invalid configuration, and successful and empty fenced
 outbox claims. Tasks B200-B201 preserve both gate-discovered obligations. The
 failed candidate remains rejected; a new exact head must restart both complete
 gates and independent review.
+
+## Analysis cycle 15 — independent UX, data, and operations rejection
+
+Candidate `6b154f74c31e63b73b2775987140440fd8ac80b8` passed 107 complete-gate
+checks twice and ten repetitions of its critical state-machine suites. Fresh
+independent UX/accessibility, data, and operations review nevertheless rejected
+publication readiness with zero critical findings but multiple high and medium
+gaps. The green gates remain historical evidence only; they cannot authorize a
+changed source head.
+
+The deduplicated findings were incomplete account/settings localization and
+immediate locale application, missing Operations enum translations, Compose
+environment/TLS bypasses, incomplete worker startup and observation, excessive
+runtime SMTP configuration, missing content-worker grants, historical
+cross-tenant mutation policies, disconnected lifecycle admission and ownership,
+unsupported terminal deletion claims, overwritable and race-prone S3 objects,
+S3 backup absence, shared worker/queue observations, interruption-sensitive
+email contraction, a mutable cross-surface backup window, unbounded quarantine,
+and readiness evidence that did not require the newest API migration.
+
+Tasks B202-B213 convert every finding into implementation and exact regression
+evidence. The repair uses no provider, DNS, certificate, credential,
+publication, merge, deployment, or destructive authority. Production S3 is
+explicitly unavailable until versioned S3 backup/restore exists; deletion remains
+in the recoverable `deleting` state until a future reconciler can prove every
+declared surface terminal. Those fail-closed boundaries are intentional and are
+not presented as completed capabilities. A new exact clean commit must pass two
+complete gates and fresh independent review with zero critical, high, or medium
+findings before publication approval may be requested.
+
+The first broad API run in cycle 15 also found one brittle test that required a
+single-line `SELECT` spelling and failed after the formatter correctly wrapped
+the readiness query. B214 replaces that textual accident with whitespace-
+normalized SQL-shape validation and explicit assertions for the exact Django 30
+and API 11 ledgers. The product behavior was correct; the failed suite remains
+recorded and the broad API run must pass again.

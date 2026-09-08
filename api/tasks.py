@@ -8,7 +8,13 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from celery import Celery, Task
-from celery.signals import before_task_publish, heartbeat_sent, task_prerun, worker_ready
+from celery.signals import (
+    before_task_publish,
+    heartbeat_sent,
+    task_prerun,
+    worker_init,
+    worker_ready,
+)
 
 from api.services.email_service import process_outbox_email, replayable_outbox_ids
 from api.redis_client import get_client as redis_client, tenant_key as redis_tenant_key
@@ -64,6 +70,24 @@ from api.services.operations_runtime import (
 
 logger = logging.getLogger('api.tasks')
 
+
+def _tenant_serving(site_id: str) -> bool:
+    """Fail closed for asynchronous mutation when production lifecycle is not active."""
+    if settings.ENV != 'production':
+        return True
+    try:
+        from api.repositories.tenant_lifecycle import get_state
+
+        return get_state(tenant_id=site_id)['state'] == 'active'
+    except Exception:
+        return False
+
+
+def _require_tenant_serving(site_id: str) -> None:
+    if not _tenant_serving(site_id):
+        raise ValueError('tenant_not_serving')
+
+
 # Broker/backends from environment; defaults align with .env.example
 BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://redis:6379/0')
 RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://redis:6379/1')
@@ -85,17 +109,27 @@ app.conf.update(
     include=['api.tasks'],
     task_default_queue='runtime',
     task_routes={
+        'app.ping': {'queue': 'runtime'},
+        'app.add': {'queue': 'runtime'},
+        'app.collect_operations_site': {'queue': 'runtime'},
+        'app.collect_operations_health': {'queue': 'runtime'},
+        'app.dispatch_operations_site_alerts': {'queue': 'runtime'},
+        'app.dispatch_operations_alerts': {'queue': 'runtime'},
+        'app.prune_operations_evidence': {'queue': 'runtime'},
+        'app.materialize_runtime_schedules': {'queue': 'runtime'},
+        'app.run_runtime_job': {'queue': 'runtime'},
+        'app.claim_runtime_jobs': {'queue': 'runtime'},
         'app.send_email_outbox': {'queue': 'email'},
         'app.replay_email_outbox': {'queue': 'email'},
         'app.process_data_rights_operation': {'queue': 'content'},
         'app.replay_data_rights_operations': {'queue': 'content'},
         'app.expire_data_rights_results': {'queue': 'content'},
-        'app.publish_scheduled_content': {'queue': 'content'},
+        'app.publish_workspace_record': {'queue': 'content'},
         'app.replay_workspace_publications': {'queue': 'content'},
-        'app.process_workspace_media_scan': {'queue': 'content'},
+        'app.scan_workspace_asset': {'queue': 'content'},
         'app.replay_workspace_media_scans': {'queue': 'content'},
         'app.index_workspace_record': {'queue': 'content'},
-        'app.replay_workspace_index': {'queue': 'content'},
+        'app.replay_workspace_indexing': {'queue': 'content'},
         'app.process_workspace_export': {'queue': 'content'},
         'app.replay_workspace_exports': {'queue': 'content'},
         'app.expire_workspace_exports': {'queue': 'content'},
@@ -190,6 +224,15 @@ app.conf.update(
 app.autodiscover_tasks(['api'])
 
 
+@worker_init.connect
+def _validate_closed_task_routing(**_kwargs):
+    registered = {name for name in app.tasks if name.startswith('app.')}
+    routed = set(app.conf.task_routes)
+    missing = sorted(registered - routed)
+    if missing:
+        raise RuntimeError(f'task_routes_unclassified:{",".join(missing)}')
+
+
 @before_task_publish.connect
 def _stamp_published_at(headers=None, **_kwargs):
     if isinstance(headers, dict):
@@ -200,7 +243,9 @@ def _stamp_published_at(headers=None, **_kwargs):
 @heartbeat_sent.connect
 def _observe_worker(**_kwargs):
     with suppress(Exception):
-        mark_runtime_heartbeat('workers')
+        role = str(settings.BASE2_PROCESS_ROLE or '').strip()
+        if role in {'runtime-worker', 'content-worker', 'email-worker'}:
+            mark_runtime_heartbeat(f'workers:{role}')
 
 
 @task_prerun.connect
@@ -252,6 +297,7 @@ def _runtime_fanout_has_capacity(*, reserve: int = 16) -> bool:
 
 @app.task(name='app.collect_operations_site')
 def collect_operations_site(site_id: str, dispatch_token: str | None = None) -> dict[str, int]:
+    _require_tenant_serving(site_id)
     environment = (
         settings.ENV if settings.ENV in {'preview', 'staging', 'production'} else 'preview'
     )
@@ -269,6 +315,8 @@ def collect_operations_health() -> int:
     tenants = fair_tenant_batch(configured_tenants(), cursor_name='collect')
     admitted = 0
     for tenant_id in tenants:
+        if not _tenant_serving(tenant_id):
+            continue
         token = _reserve_tenant_dispatch('collect', tenant_id)
         if token:
             try:
@@ -284,6 +332,7 @@ def collect_operations_health() -> int:
 def dispatch_operations_site_alerts(
     site_id: str, dispatch_token: str | None = None
 ) -> dict[str, int]:
+    _require_tenant_serving(site_id)
     try:
         return dispatch_alerts(tenant_id=site_id, sender=discord_webhook_sender)
     finally:
@@ -300,6 +349,8 @@ def dispatch_operations_alerts_task() -> int:
     tenants = fair_tenant_batch(configured_tenants(), cursor_name='alerts')
     admitted = 0
     for tenant_id in tenants:
+        if not _tenant_serving(tenant_id):
+            continue
         token = _reserve_tenant_dispatch('alerts', tenant_id)
         if token:
             try:
@@ -313,7 +364,11 @@ def dispatch_operations_alerts_task() -> int:
 
 @app.task(name='app.prune_operations_evidence')
 def prune_operations_evidence() -> dict[str, dict[str, int]]:
-    return {tenant_id: prune_operations(tenant_id=tenant_id) for tenant_id in configured_tenants()}
+    return {
+        tenant_id: prune_operations(tenant_id=tenant_id)
+        for tenant_id in configured_tenants()
+        if _tenant_serving(tenant_id)
+    }
 
 
 RUNTIME_JOB_TYPES = frozenset({'operations.collect', 'operations.alerts', 'operations.prune'})
@@ -331,6 +386,8 @@ def materialize_runtime_schedules() -> int:
     now = datetime.now(UTC)
     materialized = 0
     for tenant_id in configured_tenants():
+        if not _tenant_serving(tenant_id):
+            continue
         for schedule in claim_due_schedules(tenant_id=tenant_id, now=now, limit=25):
             original_due = datetime.fromisoformat(schedule['scheduledFor'])
             succeeded = False
@@ -372,6 +429,7 @@ def materialize_runtime_schedules() -> int:
 
 @app.task(name='app.run_runtime_job')
 def run_runtime_job(tenant_id: str, job: dict) -> str:
+    _require_tenant_serving(tenant_id)
     worker = 'base2-runtime-v1'
     now = datetime.now(UTC)
     renew_job_lease(
@@ -449,6 +507,8 @@ def claim_runtime_jobs_task() -> int:
     now = datetime.now(UTC)
     claimed = 0
     for tenant_id in configured_tenants():
+        if not _tenant_serving(tenant_id):
+            continue
         jobs = claim_jobs(tenant_id=tenant_id, worker='base2-runtime-v1', now=now, limit=10)
         for job in jobs:
             run_runtime_job.delay(tenant_id, job)
@@ -525,6 +585,7 @@ class WorkspaceImportTask(Task):
     max_retries=3,
 )
 def publish_workspace_record(site_id: str, record_id: str) -> str:
+    _require_tenant_serving(site_id)
     return publish_scheduled_record(site_id=site_id, record_id=UUID(record_id))
 
 
@@ -532,6 +593,8 @@ def publish_workspace_record(site_id: str, record_id: str) -> str:
 def replay_workspace_publications(limit: int = 25) -> int:
     records = due_publication_ids(limit=limit)
     for site_id, record_id in records:
+        if not _tenant_serving(site_id):
+            continue
         publish_workspace_record.delay(site_id, record_id)
     return len(records)
 
@@ -545,6 +608,7 @@ def replay_workspace_publications(limit: int = 25) -> int:
     max_retries=3,
 )
 def index_workspace_record_task(site_id: str, record_id: str, version: int) -> str:
+    _require_tenant_serving(site_id)
     return index_workspace_record(
         site_id=site_id,
         record_id=UUID(record_id),
@@ -556,6 +620,8 @@ def index_workspace_record_task(site_id: str, record_id: str, version: int) -> s
 def replay_workspace_indexing(limit: int = 25) -> int:
     records = due_index_records(limit=limit)
     for site_id, record_id, version in records:
+        if not _tenant_serving(site_id):
+            continue
         index_workspace_record_task.delay(site_id, record_id, version)
     return len(records)
 
@@ -573,6 +639,7 @@ def _workspace_artifact_store():
 def scan_workspace_asset_task(
     site_id: str, asset_id: str, job_id: str, attempt: int, lease_token: str
 ) -> str:
+    _require_tenant_serving(site_id)
     token = datetime.fromisoformat(lease_token)
     if not begin_media_scan_attempt(
         site_id=site_id,
@@ -613,6 +680,8 @@ def scan_workspace_asset_task(
 def replay_workspace_media_scans(limit: int = 10) -> int:
     assets = due_media_scans(limit=limit)
     for site_id, asset_id, job_id, attempt, lease_token in assets:
+        if not _tenant_serving(site_id):
+            continue
         scan_workspace_asset_task.delay(site_id, asset_id, job_id, attempt, lease_token)
     return len(assets)
 
@@ -626,6 +695,7 @@ def replay_workspace_media_scans(limit: int = 10) -> int:
     max_retries=3,
 )
 def process_media_export_task(site_id: str, export_id: str) -> str:
+    _require_tenant_serving(site_id)
     return process_media_export(
         site_id=site_id,
         export_id=UUID(export_id),
@@ -637,6 +707,8 @@ def process_media_export_task(site_id: str, export_id: str) -> str:
 def replay_media_exports(limit: int = 10) -> int:
     packages = due_media_exports(limit=limit)
     for site_id, export_id in packages:
+        if not _tenant_serving(site_id):
+            continue
         process_media_export_task.delay(site_id, export_id)
     return len(packages)
 
@@ -656,6 +728,7 @@ def apply_media_governance(limit: int = 100) -> dict[str, int]:
     max_retries=3,
 )
 def process_workspace_export(site_id: str, job_id: str) -> str:
+    _require_tenant_serving(site_id)
     return process_export_job(
         site_id=site_id,
         job_id=UUID(job_id),
@@ -667,6 +740,8 @@ def process_workspace_export(site_id: str, job_id: str) -> str:
 def replay_workspace_exports(limit: int = 10) -> int:
     jobs = due_export_jobs(limit=limit)
     for site_id, job_id in jobs:
+        if not _tenant_serving(site_id):
+            continue
         process_workspace_export.delay(site_id, job_id)
     return len(jobs)
 
@@ -691,6 +766,7 @@ def purge_workspace_retained_data(limit: int = 100) -> dict:
     max_retries=3,
 )
 def validate_workspace_import(site_id: str, job_id: str) -> str:
+    _require_tenant_serving(site_id)
     return validate_import_job(
         site_id=site_id,
         job_id=UUID(job_id),
@@ -702,6 +778,8 @@ def validate_workspace_import(site_id: str, job_id: str) -> str:
 def replay_workspace_import_validations(limit: int = 10) -> int:
     jobs = due_import_validations(limit=limit)
     for site_id, job_id in jobs:
+        if not _tenant_serving(site_id):
+            continue
         validate_workspace_import.delay(site_id, job_id)
     return len(jobs)
 
@@ -716,6 +794,7 @@ def replay_workspace_import_validations(limit: int = 10) -> int:
     max_retries=3,
 )
 def commit_workspace_import(site_id: str, job_id: str) -> str:
+    _require_tenant_serving(site_id)
     return process_import_commit(
         site_id=site_id,
         job_id=UUID(job_id),
@@ -727,5 +806,7 @@ def commit_workspace_import(site_id: str, job_id: str) -> str:
 def replay_workspace_import_commits(limit: int = 10) -> int:
     jobs = due_import_commits(limit=limit)
     for site_id, job_id in jobs:
+        if not _tenant_serving(site_id):
+            continue
         commit_workspace_import.delay(site_id, job_id)
     return len(jobs)

@@ -27,6 +27,7 @@ from api.services.operations_center import (
     deliver_sanitized_alert,
     sanitized_alert,
 )
+from api.services.content_workspace_storage import configured_runtime_artifact_store
 from api.settings import settings
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -54,9 +55,10 @@ def fair_tenant_batch(
     if not values or not 1 <= limit <= 16 or cursor_name not in {'collect', 'alerts'}:
         raise ValueError('operations:tenant_batch_invalid')
     client = redis_client.get_client()
-    cursor = int(
-        client.incrby(redis_client.key('operations', f'{cursor_name}-tenant-cursor'), limit)
-    ) - limit
+    cursor = (
+        int(client.incrby(redis_client.key('operations', f'{cursor_name}-tenant-cursor'), limit))
+        - limit
+    )
     start = cursor % len(values)
     count = min(limit, len(values))
     return [values[(start + offset) % len(values)] for offset in range(count)]
@@ -163,7 +165,10 @@ def configured_probe_adapters(
 
     def storage(timeout: int):
         return _timed(
-            lambda: storage_root.is_dir(), 'objects.ready', 'objects.unavailable', timeout
+            lambda: configured_runtime_artifact_store(settings, max_bytes=1).ready(),
+            'objects.ready',
+            'objects.unavailable',
+            timeout,
         )
 
     def capacity(timeout: int):
@@ -172,9 +177,6 @@ def configured_probe_adapters(
             return usage.free / max(usage.total, 1) >= 0.10
 
         return _timed(check, 'capacity.ready', 'capacity.low', timeout)
-
-    def configured(code: str):
-        return lambda timeout: ('degraded', f'{code}.not-configured', min(timeout, 1))
 
     def database_performance(timeout: int):
         started = time.monotonic()
@@ -194,7 +196,14 @@ def configured_probe_adapters(
         'database.ready': lambda timeout: _timed(
             db_ping, 'database.ready', 'database.unavailable', timeout
         ),
-        'workers.ready': lambda timeout: _runtime_heartbeat('workers', timeout),
+        'workers.ready': lambda timeout: (
+            ('healthy', 'workers.ready', 0)
+            if all(
+                _runtime_heartbeat(f'workers:{role}', timeout)[0] == 'healthy'
+                for role in ('runtime-worker', 'content-worker', 'email-worker')
+            )
+            else ('degraded', 'workers.stale', 0)
+        ),
         'queues.delay': _queue_health,
         'objects.ready': storage,
         # These consume integrity-bound receipts from the separately bounded
@@ -203,7 +212,7 @@ def configured_probe_adapters(
         # certificate mutation authority.
         'dns.canonical': lambda timeout: _receipt('dns', timeout),
         'certificate.expiry': lambda timeout: _receipt('certificate', timeout),
-        'email.delivery': configured('email'),
+        'email.delivery': lambda timeout: _receipt('email', timeout),
         'schedules.freshness': lambda timeout: _runtime_heartbeat('schedules', timeout),
         'capacity.headroom': capacity,
         'monitoring.self': lambda timeout: _runtime_heartbeat(
@@ -293,8 +302,11 @@ def _queue_health(timeout: int) -> tuple[str, str, int]:
     del timeout
     try:
         client = redis_client.get_client()
-        depth = int(client.llen('celery'))
-        worker_ok = _runtime_heartbeat('workers', 1)[0] == 'healthy'
+        queues = ('runtime', 'content', 'email')
+        depth = sum(int(client.llen(queue)) for queue in queues)
+        worker_ok = all(
+            _runtime_heartbeat(f'workers:{role}-worker', 1)[0] == 'healthy' for role in queues
+        )
         if depth == 0 and worker_ok:
             return 'healthy', 'queues.empty', 0
         raw = client.get(redis_client.key('operations', 'queue-delay'))

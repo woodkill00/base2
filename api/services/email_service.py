@@ -150,39 +150,6 @@ def claim_outbox_email(outbox_id: UUID) -> EmailOutboxRow | None:
     )
 
 
-def mark_outbox_sent(
-    *,
-    outbox_id: UUID,
-    provider: str = 'local_outbox',
-    provider_message_id: str = 'local',
-) -> None:
-    with db_conn() as conn:
-        conn.autocommit = True
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                UPDATE api_email_outbox
-                SET status='sent', sent_at=NOW(), provider=%s, provider_message_id=%s, error=''
-                WHERE id=%s
-                """,
-                (provider, provider_message_id or '', str(outbox_id)),
-            )
-
-
-def mark_outbox_failed(*, outbox_id: UUID, error: str) -> None:
-    with db_conn() as conn:
-        conn.autocommit = True
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                UPDATE api_email_outbox
-                SET status='failed', error=%s
-                WHERE id=%s
-                """,
-                (error[:2000], str(outbox_id)),
-            )
-
-
 def mark_outbox_status(
     *,
     outbox_id: UUID,
@@ -302,7 +269,7 @@ def process_outbox_email(*, outbox_id: UUID) -> None:
         attempt=attempt,
         max_attempts=3,
     )
-    mark_outbox_status(
+    settled = mark_outbox_status(
         outbox_id=outbox_id,
         claim_token=existing.claim_token,
         status='retry' if result.status == 'disabled' else result.status,
@@ -316,24 +283,34 @@ def process_outbox_email(*, outbox_id: UUID) -> None:
             else f'delivery_{result.status}'
         ),
     )
+    if not settled:
+        raise RuntimeError('outbox_claim_lost')
 
 
 def replayable_outbox_ids(*, limit: int = 100) -> list[UUID]:
     if limit < 1 or limit > 500:
         raise ValueError('outbox_replay_limit_invalid')
-    with db_conn() as conn, conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT id FROM api_email_outbox
-            WHERE (
-                status IN ('queued', 'retry') OR
-                (status='sending' AND claim_expires_at < NOW())
-            ) AND sent_at IS NULL
-            ORDER BY created_at ASC, id ASC LIMIT %s
-            """,
-            (limit,),
-        )
-        return [UUID(str(row[0])) for row in cur.fetchall()]
+    with db_conn() as conn:
+        with conn.cursor() as cur:
+            # SMTP acceptance and the terminal database write cannot be atomic.
+            # Never silently resend an expired in-flight delivery; surface it
+            # for explicit provider/manual reconciliation.
+            cur.execute(
+                """UPDATE api_email_outbox
+                      SET status='failed', error='delivery_uncertain_manual_reconciliation',
+                          claim_token=NULL, claim_expires_at=NULL
+                    WHERE status='sending' AND claim_expires_at < NOW()
+                      AND sent_at IS NULL"""
+            )
+            cur.execute(
+                """SELECT id FROM api_email_outbox
+                    WHERE status IN ('queued', 'retry') AND sent_at IS NULL
+                    ORDER BY created_at ASC, id ASC LIMIT %s""",
+                (limit,),
+            )
+            rows = cur.fetchall()
+        conn.commit()
+    return [UUID(str(row[0])) for row in rows]
 
 
 def queue_email(

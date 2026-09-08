@@ -112,6 +112,10 @@ def test_staging_s3_storage_requires_allowlisted_https_and_secret_files(monkeypa
     monkeypatch.setenv('CONTENT_WORKSPACE_S3_ENDPOINT', 'http://objects.example.net')
     with pytest.raises(RuntimeError, match='S3 endpoint'):
         Settings()
+    monkeypatch.setenv('CONTENT_WORKSPACE_S3_ENDPOINT', 'https://objects.example.net')
+    monkeypatch.setenv('ENV', 'production')
+    with pytest.raises(RuntimeError, match='Production S3 is disabled'):
+        Settings()
 
 
 def test_operations_alert_activation_requires_distinct_absolute_secret_files(monkeypatch):
@@ -142,6 +146,30 @@ def test_operations_alert_activation_requires_distinct_absolute_secret_files(mon
     ):
         monkeypatch.setenv(name, f'/run/secrets/{name.lower()}')
     assert Settings().OPERATIONS_ALERTS_ENABLED is True
-    monkeypatch.setenv('OPERATIONS_ALERT_WEBHOOK_URL_FILE', '/run/secrets/operations_alert_receipt_key_file')
+    monkeypatch.setenv(
+        'OPERATIONS_ALERT_WEBHOOK_URL_FILE', '/run/secrets/operations_alert_receipt_key_file'
+    )
     with pytest.raises(RuntimeError, match='independently scoped'):
+        Settings()
+
+
+def test_only_production_email_worker_requires_or_receives_smtp_configuration(monkeypatch):
+    from api.settings import Settings
+
+    monkeypatch.setenv('ENV', 'production')
+    monkeypatch.setenv('BASE2_PROCESS_ROLE', 'runtime-worker')
+    monkeypatch.setenv('DB_SSLMODE', 'verify-full')
+    monkeypatch.setenv('DB_SSLROOTCERT', '/run/secrets/database-ca.pem')
+    monkeypatch.setenv('BASE2_EMAIL_ADAPTER', 'disabled')
+    for name in (
+        'BASE2_EMAIL_SMTP_HOST',
+        'BASE2_EMAIL_FROM_ADDRESS',
+        'BASE2_EMAIL_SMTP_USERNAME_FILE',
+        'BASE2_EMAIL_SMTP_PASSWORD_FILE',
+    ):
+        monkeypatch.setenv(name, '')
+    assert Settings().BASE2_PROCESS_ROLE == 'runtime-worker'
+
+    monkeypatch.setenv('BASE2_PROCESS_ROLE', 'email-worker')
+    with pytest.raises(RuntimeError, match='email worker requires'):
         Settings()

@@ -6,6 +6,7 @@ import { siteManifest } from '../../config/siteRuntime';
 
 type Props = {
   items?: string[];
+  label?: string;
   id?: string;
   isOpen?: boolean;
   onClose?: () => void;
@@ -17,6 +18,7 @@ const defaultItems = ['Home', 'Dashboard', 'Settings', 'Users', 'Help'];
 
 export const GlassSidebar: React.FC<Props> = ({
   items = defaultItems,
+  label = 'Sidebar',
   id,
   isOpen = true,
   onClose,
@@ -353,7 +355,7 @@ export const GlassSidebar: React.FC<Props> = ({
           id={id}
           className="glass glass-sidebar"
           style={{ width: 'var(--sidebar-w)', maxWidth: '400px' }}
-          aria-label="Sidebar"
+          aria-label={label}
           hidden={!isOpen}
         >
           <ul className="glass-sidebar-list">

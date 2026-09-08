@@ -115,7 +115,7 @@ class ServiceHealthContractTests(unittest.TestCase):
         self.assertNotIn("redis://", command)
         self.assertNotIn("--broker", command)
 
-    def test_privacy_worker_receives_only_its_required_runtime_secrets(self):
+    def test_runtime_worker_does_not_receive_identity_secrets(self):
         api_environment = SERVICES["api"].get("environment") or []
         worker_environment = SERVICES["celery-worker"].get("environment") or []
         for binding in (
@@ -123,7 +123,7 @@ class ServiceHealthContractTests(unittest.TestCase):
             "IDENTITY_ENCRYPTION_KEY=${IDENTITY_ENCRYPTION_KEY}",
         ):
             self.assertIn(binding, api_environment)
-            self.assertIn(binding, worker_environment)
+            self.assertNotIn(binding, worker_environment)
         worker_command = " ".join(
             str(part) for part in (SERVICES["celery-worker"].get("command") or [])
         )
@@ -141,6 +141,8 @@ class ServiceHealthContractTests(unittest.TestCase):
             self.assertNotIn("WORKSPACE_DB_USER=${WORKSPACE_DB_USER}", environment)
 
     def test_content_and_email_workers_use_distinct_least_privilege_identities(self):
+        api = SERVICES["api"].get("environment") or []
+        runtime = SERVICES["celery-worker"].get("environment") or []
         content = SERVICES["celery-content-worker"].get("environment") or []
         email = SERVICES["celery-email-worker"].get("environment") or []
         self.assertIn("DB_USER=${WORKSPACE_WORKER_DB_USER}", content)
@@ -151,6 +153,27 @@ class ServiceHealthContractTests(unittest.TestCase):
         self.assertIn("DB_PASSWORD=${EMAIL_WORKER_DB_PASSWORD}", email)
         self.assertNotIn("WORKSPACE_DB_PASSWORD=${WORKSPACE_DB_PASSWORD}", email)
         self.assertNotIn("WORKSPACE_WORKER_DB_PASSWORD=${WORKSPACE_WORKER_DB_PASSWORD}", email)
+        for environment in (api, runtime, content):
+            self.assertFalse(any(value.startswith("BASE2_EMAIL_") for value in environment))
+        self.assertIn("BASE2_EMAIL_ADAPTER=${BASE2_EMAIL_ADAPTER:-disabled}", email)
+        self.assertIn("BASE2_EMAIL_SMTP_PASSWORD_FILE=/run/secrets/email-smtp-password", email)
+
+    def test_every_python_process_receives_explicit_environment_tls_and_role(self):
+        expected_roles = {
+            "api": "api",
+            "celery-worker": "runtime-worker",
+            "celery-content-worker": "content-worker",
+            "celery-email-worker": "email-worker",
+            "celery-beat": "runtime-worker",
+        }
+        for name, role in expected_roles.items():
+            environment = SERVICES[name].get("environment") or []
+            self.assertIn("ENV=${ENV:-development}", environment)
+            self.assertIn(f"BASE2_PROCESS_ROLE={role}", environment)
+            self.assertIn("DB_SSLMODE=${DB_SSLMODE:-disable}", environment)
+            self.assertIn("DB_SSLROOTCERT=${DB_SSLROOTCERT:-/run/secrets/db-ca.pem}", environment)
+            volumes = SERVICES[name].get("volumes") or []
+            self.assertIn("${DB_SSLROOTCERT_HOST:-/dev/null}:/run/secrets/db-ca.pem:ro", volumes)
 
     def test_traefik_image_has_ping_health_contract(self):
         dockerfile = (ROOT / "traefik/Dockerfile").read_text(encoding="utf-8")

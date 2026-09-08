@@ -163,6 +163,11 @@ def main() -> None:
     email_worker = connect(email_worker_user, email_worker_password)
     try:
         with owner, owner.cursor() as cursor:
+            cursor.execute("DELETE FROM api_data_rights_operations")
+            cursor.execute("DELETE FROM api_identity_memberships")
+            cursor.execute("DELETE FROM api_identity_organizations")
+            cursor.execute("DELETE FROM api_auth_refresh_tokens")
+            cursor.execute("DELETE FROM api_auth_users")
             cursor.execute("DELETE FROM sitecontent_tenantlifecycleevent")
             cursor.execute("DELETE FROM sitecontent_tenantlifecyclestate")
             cursor.execute("DELETE FROM sitecontent_tenantquotareservation")
@@ -208,6 +213,29 @@ def main() -> None:
                 (str(UUID(int=40)),),
             )
             cursor.execute(
+                """INSERT INTO api_auth_users
+                   (id,email,password_hash,is_active,is_email_verified,display_name,
+                    avatar_url,bio,created_at,updated_at,failed_login_attempts)
+                   VALUES (%s,'rights@example.invalid','hash',true,true,'Rights','','',NOW(),NOW(),0)""",
+                (str(UUID(int=50)),),
+            )
+            cursor.execute(
+                "INSERT INTO api_identity_organizations (id,tenant_id,name) VALUES (%s,'site-a','A')",
+                (str(UUID(int=51)),),
+            )
+            cursor.execute(
+                """INSERT INTO api_identity_memberships
+                   (organization_id,user_id,role,status,created_at,updated_at)
+                   VALUES (%s,%s,'owner','active',NOW(),NOW())""",
+                (str(UUID(int=51)), str(UUID(int=50))),
+            )
+            cursor.execute(
+                """INSERT INTO api_data_rights_operations
+                   (id,tenant_id,user_id,kind,status,request_ciphertext,retention_until)
+                   VALUES (%s,'site-a',%s,'export','queued','ciphertext',NOW()+INTERVAL '1 day')""",
+                (str(UUID(int=52)), str(UUID(int=50))),
+            )
+            cursor.execute(
                 """INSERT INTO sitecontent_tenantlifecyclestate
                    (id,site_id,state,owner_ref,configuration,revision,last_operation_id,
                     last_receipt_digest,created_at,updated_at)
@@ -244,7 +272,7 @@ def main() -> None:
                 """SELECT COUNT(*) FROM pg_policies
                    WHERE schemaname='public' AND tablename='sitecontent_contenttypedefinition'"""
             )
-            assert cursor.fetchone()[0] == 1
+            assert cursor.fetchone()[0] == 4
             cursor.execute(
                 """SELECT COUNT(*) FROM pg_class
                    WHERE relname LIKE 'sitecontent_operations%'
@@ -339,6 +367,42 @@ def main() -> None:
         )
         assert count(content_worker, None) == 2
         content_worker.rollback()
+        with content_worker.cursor() as cursor:
+            cursor.execute(
+                "SELECT status FROM api_data_rights_operations WHERE id=%s",
+                (str(UUID(int=52)),),
+            )
+            assert cursor.fetchone() == ("queued",)
+            cursor.execute(
+                "UPDATE api_data_rights_operations SET status='running' WHERE id=%s",
+                (str(UUID(int=52)),),
+            )
+            assert cursor.rowcount == 1
+            cursor.execute("SELECT email FROM api_auth_users WHERE id=%s", (str(UUID(int=50)),))
+            assert cursor.fetchone() == ("rights@example.invalid",)
+        content_worker.commit()
+        with content_worker.cursor() as cursor:
+            cursor.execute("SELECT set_config('app.tenant_id', 'site-a', true)")
+            cursor.execute(
+                "UPDATE sitecontent_contenttypedefinition SET name='blocked' WHERE site_id='site-b'"
+            )
+            assert cursor.rowcount == 0, "content_worker_cross_tenant_update_was_not_blocked"
+            cursor.execute("DELETE FROM sitecontent_contenttypedefinition WHERE site_id='site-b'")
+            assert cursor.rowcount == 0, "content_worker_cross_tenant_delete_was_not_blocked"
+            try:
+                cursor.execute(
+                    """INSERT INTO sitecontent_contenttypedefinition
+                       (id,site_id,type_key,version,name,description,status,preset_id,
+                        preset_version,compatibility,migration_digest,lock_version,
+                        created_by,updated_by,created_at,updated_at)
+                       VALUES (%s,'site-b','blocked-content',1,'Blocked','','draft','custom',1,
+                               'additive','',1,'','','2026-09-08','2026-09-08')""",
+                    (str(UUID(int=301)),),
+                )
+            except errors.InsufficientPrivilege:
+                content_worker.rollback()
+            else:
+                raise AssertionError("content_worker_cross_tenant_insert_was_not_blocked")
         assert_permission_denied(
             lambda: operations_count(content_worker, None),
             content_worker,

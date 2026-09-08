@@ -299,7 +299,7 @@ def test_durable_provision_and_operations_delegate_validated_revisioned_state():
 
     with (
         patch('api.repositories.tenant_lifecycle.apply_operation') as apply_operation,
-        patch('api.repositories.identity_admin.membership', return_value={'role': 'member'}),
+        patch('api.repositories.identity_admin.membership', return_value={'role': 'admin'}),
     ):
         apply_operation.return_value = {'state': 'active', 'revision': 4}
         result = persist_operation(
@@ -387,3 +387,19 @@ def test_recovery_sessions_policy_and_settings_fail_closed():
             current_revision=2,
             recent_auth=True,
         )
+
+
+def test_production_request_middleware_denies_nonactive_serving_but_keeps_recovery_route(
+    monkeypatch,
+):
+    monkeypatch.setattr('api.settings.settings.ENV', 'production')
+    monkeypatch.setattr(
+        'api.repositories.tenant_lifecycle.get_state',
+        lambda **_kwargs: {'state': 'suspended'},
+    )
+    client = TestClient(app)
+    denied = client.get('/api/tenants/alpha/echo', headers={'X-Tenant-Id': 'alpha'})
+    assert denied.status_code == 423
+    assert denied.json() == {'detail': 'tenant_not_serving'}
+    recovery = client.get('/api/tenants/alpha/lifecycle', headers={'X-Tenant-Id': 'alpha'})
+    assert recovery.status_code != 423

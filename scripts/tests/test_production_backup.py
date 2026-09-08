@@ -3,6 +3,7 @@ import json
 import subprocess
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -28,7 +29,7 @@ def _config(tmp_path: Path):
     return {
         "schemaVersion": 1,
         "targetId": "base2-backup",
-        "dataSchema": 29,
+        "dataSchema": 30,
         "pgServiceFile": str(service),
         "pgService": "base2_backup",
         "objectRoot": str(objects),
@@ -49,7 +50,7 @@ def _config(tmp_path: Path):
 def _runner(command, **kwargs):
     del kwargs
     if command[0] == "psql":
-        return subprocess.CompletedProcess(command, 0, "29\n", "")
+        return subprocess.CompletedProcess(command, 0, "30\n", "")
     output = Path(command[command.index("--file") + 1])
     output.write_bytes(b"PGDUMP\x00production-schema-and-data")
     return subprocess.CompletedProcess(command, 0, "", "")
@@ -123,6 +124,21 @@ def test_invalid_receipts_and_exact_owned_orphans_are_quarantined(tmp_path):
     assert len(list(quarantine.glob("orphan-backup-*.tar.enc"))) == 1
 
 
+def test_quarantine_capacity_fails_closed_without_deleting_excess_unknown_files(tmp_path):
+    config = _config(tmp_path)
+    receipts = Path(config["receiptRoot"])
+    receipts.mkdir()
+    for index in range(11):
+        path = receipts / f"base2-backup-20260908T0000{index:02d}Z.json"
+        path.write_text(json.dumps({"invalid": index}) + "\n", encoding="utf-8")
+        path.chmod(0o600)
+    with pytest.raises(ProductionBackupError, match="quarantine_capacity_exceeded"):
+        prune_owned_backups(config, now=datetime(2026, 9, 8, tzinfo=UTC))
+    quarantine = Path(config["backupRoot"]) / "quarantine"
+    assert len(list(quarantine.glob("rejected-receipt-*.json"))) == 10
+    assert len(list(receipts.glob("*.json"))) == 1
+
+
 def test_backup_refuses_configuration_schema_that_differs_from_live_ledger(tmp_path):
     config = _config(tmp_path)
 
@@ -133,6 +149,41 @@ def test_backup_refuses_configuration_schema_that_differs_from_live_ledger(tmp_p
 
     with pytest.raises(ProductionBackupError, match="schema_mismatch"):
         create_production_backup(config, now=datetime(2026, 9, 8, tzinfo=UTC), runner=stale_ledger)
+
+
+def test_backup_archives_only_a_private_single_read_object_snapshot(tmp_path):
+    config = _config(tmp_path)
+    captured = {}
+    from scripts.python import production_backup
+
+    real_bundle = production_backup.create_database_object_bundle
+
+    def observe_bundle(**kwargs):
+        captured["root"] = kwargs["object_root"]
+        assert kwargs["object_root"] != Path(config["objectRoot"])
+        assert kwargs["object_root"].parent.name.startswith("base2-production-backup-")
+        return real_bundle(**kwargs)
+
+    with patch.object(production_backup, "create_database_object_bundle", observe_bundle):
+        create_production_backup(config, now=datetime(2026, 9, 8, tzinfo=UTC), runner=_runner)
+    assert not captured["root"].exists()
+
+
+def test_backup_removes_output_when_cross_surface_reference_ledger_changes(tmp_path):
+    config = _config(tmp_path)
+    calls = {"references": 0}
+
+    def changing_ledger(command, **kwargs):
+        if command[0] == "psql" and "SELECT kind" in command[-1]:
+            calls["references"] += 1
+            return subprocess.CompletedProcess(command, 0, f"reference-{calls['references']}\n", "")
+        return _runner(command, **kwargs)
+
+    with pytest.raises(ProductionBackupError, match="cross_surface_snapshot_changed"):
+        create_production_backup(
+            config, now=datetime(2026, 9, 8, tzinfo=UTC), runner=changing_ledger
+        )
+    assert not list(Path(config["backupRoot"]).glob("*.tar.enc"))
 
 
 def test_database_restore_requires_exact_empty_isolated_database(tmp_path):

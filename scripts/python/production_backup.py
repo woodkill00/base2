@@ -16,6 +16,7 @@ import hmac
 import json
 import os
 import re
+import shutil
 import stat
 import subprocess
 import tarfile
@@ -260,10 +261,50 @@ def create_production_backup(
             raise ProductionBackupError("backup:already_running") from exc
         with tempfile.TemporaryDirectory(prefix="base2-production-backup-") as temporary:
             dump = Path(temporary) / "database.dump"
+            staged_objects = Path(temporary) / "objects"
             environment = {
                 "PATH": os.environ.get("PATH", ""),
                 "PGSERVICEFILE": str(config["pgServiceFile"]),
             }
+            reference_command = [
+                "psql",
+                f"service={config['pgService']}",
+                "--tuples-only",
+                "--no-align",
+                "--command",
+                """SELECT kind || ':' || site_id || ':' || object_key || ':' || digest
+                     FROM (
+                       SELECT 'asset' kind,site_id,storage_key object_key,sha256 digest
+                         FROM sitecontent_mediaasset
+                       UNION ALL
+                       SELECT 'variant',asset.site_id,variant.storage_key,variant.sha256
+                         FROM sitecontent_mediavariant variant
+                         JOIN sitecontent_mediaasset asset ON asset.id=variant.asset_id
+                       UNION ALL
+                       SELECT 'object-version',site_id,storage_key,sha256
+                         FROM sitecontent_mediaobjectversion
+                       UNION ALL
+                       SELECT 'upload-part',site_id,storage_key,sha256
+                         FROM sitecontent_mediauploadpart
+                       UNION ALL
+                       SELECT 'import',site_id,source_object_key,source_sha256
+                         FROM sitecontent_importjob WHERE source_object_key<>''
+                       UNION ALL
+                       SELECT 'export',site_id,encrypted_object_key,output_sha256
+                         FROM sitecontent_exportjob WHERE encrypted_object_key<>''
+                     ) object_refs
+                    ORDER BY kind,site_id,object_key,digest""",
+            ]
+            before_references = runner(
+                reference_command,
+                env=environment,
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
+            )
+            if before_references.returncode != 0:
+                raise ProductionBackupError("backup:object_reference_ledger_invalid")
             ledger = runner(
                 [
                     "psql",
@@ -305,11 +346,19 @@ def create_production_backup(
             if completed.returncode != 0 or not dump.is_file() or dump.stat().st_size < 1:
                 raise ProductionBackupError("backup:pg_dump_failed")
             dump_digest = _sha256_file(dump)
+            # Read the live object tree exactly once into a private temporary
+            # boundary. The archive never rereads mutable production paths.
+            # The reference-ledger comparison below proves no database-visible
+            # object identity changed around this stable copy.
+            try:
+                shutil.copytree(object_root, staged_objects, symlinks=False)
+            except (OSError, shutil.Error) as exc:
+                raise ProductionBackupError("backup:object_snapshot_failed") from exc
             output = backup_root / f"{config['targetId']}-{stamp}.tar.enc"
             try:
                 bundle = create_database_object_bundle(
                     database_dump=dump,
-                    object_root=object_root,
+                    object_root=staged_objects,
                     output=output,
                     target_id=config["targetId"],
                     data_schema=config["dataSchema"],
@@ -319,6 +368,20 @@ def create_production_backup(
                 )
             except RecoveryDenied as exc:
                 raise ProductionBackupError(str(exc)) from exc
+            after_references = runner(
+                reference_command,
+                env=environment,
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
+            )
+            if (
+                after_references.returncode != 0
+                or before_references.stdout != after_references.stdout
+            ):
+                output.unlink(missing_ok=True)
+                raise ProductionBackupError("backup:cross_surface_snapshot_changed")
         receipt = {
             "schemaVersion": 1,
             "targetId": config["targetId"],
@@ -351,6 +414,14 @@ def prune_owned_backups(config: dict[str, Any], *, now: datetime | None = None) 
     current = (now or datetime.now(UTC)).astimezone(UTC)
     receipt_root, backup_root = Path(config["receiptRoot"]), Path(config["backupRoot"])
     quarantine = backup_root / "quarantine"
+
+    def admit_quarantine(size: int) -> None:
+        existing = [path for path in quarantine.iterdir()] if quarantine.exists() else []
+        bytes_used = sum(path.stat().st_size for path in existing if path.is_file())
+        maximum_items = max(10, int(config["maximumBackups"]) * 2)
+        if len(existing) >= maximum_items or bytes_used + size > 1024 * 1024 * 1024:
+            raise ProductionBackupError("backup:quarantine_capacity_exceeded")
+
     valid: list[tuple[datetime, Path, Path]] = []
     rejected = 0
     for path in sorted(receipt_root.glob(f"{config['targetId']}-*.json")):
@@ -365,7 +436,8 @@ def prune_owned_backups(config: dict[str, Any], *, now: datetime | None = None) 
                 str(receipt["retentionExpiresAt"]).replace("Z", "+00:00")
             )
         except (ProductionBackupError, ValueError, json.JSONDecodeError):
-            quarantine.mkdir(mode=0o700, exist_ok=True)
+            admit_quarantine(path.stat().st_size)
+            quarantine.mkdir(mode=0o700, parents=True, exist_ok=True)
             quarantine.chmod(0o700)
             suffix = hashlib.sha256(path.read_bytes()).hexdigest()[:12]
             os.replace(path, quarantine / f"rejected-receipt-{suffix}.json")
@@ -377,7 +449,8 @@ def prune_owned_backups(config: dict[str, Any], *, now: datetime | None = None) 
     for backup in sorted(backup_root.glob(f"{config['targetId']}-*.tar.enc")):
         if backup.is_symlink() or not backup.is_file() or backup.resolve() in referenced:
             continue
-        quarantine.mkdir(mode=0o700, exist_ok=True)
+        admit_quarantine(backup.stat().st_size)
+        quarantine.mkdir(mode=0o700, parents=True, exist_ok=True)
         quarantine.chmod(0o700)
         suffix = hashlib.sha256(backup.read_bytes()).hexdigest()[:12]
         os.replace(backup, quarantine / f"orphan-backup-{suffix}.tar.enc")

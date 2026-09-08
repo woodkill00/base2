@@ -16,12 +16,19 @@ class Client:
 
     def put_object(self, **kwargs):
         self.values[(kwargs['Bucket'], kwargs['Key'])] = kwargs
+        return {'VersionId': 'version-1'}
 
     def get_object(self, **kwargs):
-        return {'Body': io.BytesIO(self.values[(kwargs['Bucket'], kwargs['Key'])]['Body'])}
+        return {
+            'Body': io.BytesIO(self.values[(kwargs['Bucket'], kwargs['Key'])]['Body']),
+            'VersionId': kwargs.get('VersionId', 'version-1'),
+        }
 
     def delete_object(self, **kwargs):
         del self.values[(kwargs['Bucket'], kwargs['Key'])]
+
+    def head_bucket(self, **kwargs):
+        return {'ResponseMetadata': {'HTTPStatusCode': 200}}
 
 
 def test_s3_store_is_https_allowlisted_tenant_keyed_encrypted_and_integrity_checked():
@@ -40,6 +47,8 @@ def test_s3_store_is_https_allowlisted_tenant_keyed_encrypted_and_integrity_chec
     assert receipt.key == 'tenant-one/media/asset-1'
     assert request['ServerSideEncryption'] == 'AES256'
     assert request['CacheControl'] == 'private,no-store'
+    assert request['IfNoneMatch'] == '*'
+    assert receipt.version_id == 'version-1'
     assert store.get(tenant_id='tenant-one', receipt=receipt) == b'hello'
     with pytest.raises(ObjectStorageError, match='ownership'):
         store.get(tenant_id='tenant-two', receipt=receipt)

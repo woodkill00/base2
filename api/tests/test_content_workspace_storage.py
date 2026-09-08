@@ -121,14 +121,14 @@ def test_private_store_deletes_only_exact_owned_integrity_checked_object(tmp_pat
 def test_s3_store_adapts_put_get_and_exact_owned_delete():
     backend = MagicMock(bucket='base2-media')
     backend.put.return_value = SimpleNamespace(
-        key='site-a/media/asset-104', sha256='a' * 64, byte_size=7
+        key='site-a/media/asset-104', sha256='a' * 64, byte_size=7, version_id='version-1'
     )
     backend.get.return_value = b'payload'
     store = S3ArtifactStore(backend, max_bytes=8)
     stored = store.put(
         namespace='media', site_id='site-a', object_id='asset-104', content=b'payload'
     )
-    assert stored.object_key == 'site-a/media/asset-104'
+    assert stored.object_key.startswith('site-a/media/asset-104::')
     assert store.get(stored.object_key, expected_sha256='a' * 64) == b'payload'
     assert store.delete(
         namespace='media',
@@ -149,17 +149,17 @@ def test_s3_store_rejects_limits_bad_keys_and_backend_failures():
     backend.put.side_effect = ValueError('object:provider_unavailable')
     with pytest.raises(ArtifactIntegrityError, match='provider_unavailable'):
         store.put(namespace='media', site_id='site-a', object_id='asset-104', content=b'1234')
-    with pytest.raises(ArtifactIntegrityError, match='content_artifact_key_invalid'):
+    with pytest.raises(ArtifactIntegrityError, match='content_artifact_version_invalid'):
         store.get('bad-key', expected_sha256='a' * 64)
     backend.get.side_effect = ValueError('object:integrity_invalid')
     with pytest.raises(ArtifactIntegrityError, match='integrity_invalid'):
-        store.get('site-a/media/asset-104', expected_sha256='a' * 64)
+        store.get('site-a/media/asset-104::dmVyc2lvbi0x', expected_sha256='a' * 64)
     with pytest.raises(ArtifactIntegrityError, match='content_artifact_owner_mismatch'):
         store.delete(
             namespace='media',
             site_id='site-b',
             object_id='asset-104',
-            object_key='site-a/media/asset-104',
+            object_key='site-a/media/asset-104::dmVyc2lvbi0x',
             expected_sha256='a' * 64,
         )
     backend.delete.side_effect = ValueError('object:unavailable')
@@ -167,7 +167,7 @@ def test_s3_store_rejects_limits_bad_keys_and_backend_failures():
         namespace='media',
         site_id='site-a',
         object_id='asset-104',
-        object_key='site-a/media/asset-104',
+        object_key='site-a/media/asset-104::dmVyc2lvbi0x',
         expected_sha256='a' * 64,
         missing_ok=True,
     )
@@ -176,7 +176,7 @@ def test_s3_store_rejects_limits_bad_keys_and_backend_failures():
             namespace='media',
             site_id='site-a',
             object_id='asset-104',
-            object_key='site-a/media/asset-104',
+            object_key='site-a/media/asset-104::dmVyc2lvbi0x',
             expected_sha256='a' * 64,
         )
 

@@ -285,7 +285,7 @@ echo "Rolling back to $PREV"
 git reset --hard "$PREV" || true
 
 # Recreate core services to match the rolled-back code.
-docker compose -f development.docker.yml up -d --build --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat >/root/logs/build/rollback-compose-up.txt 2>&1 || true
+docker compose -f development.docker.yml --profile celery up -d --build --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-content-worker celery-email-worker celery-beat >/root/logs/build/rollback-compose-up.txt 2>&1 || true
 
 echo "Rollback completed. Current HEAD: $(git rev-parse HEAD 2>/dev/null || true)"
 '@
@@ -317,7 +317,7 @@ function Get-ServiceFolderForServiceLog([string]$logFileName) {
     '^postgres$' { return 'database' }
     '^redis$' { return 'database' }
     '^pgadmin$' { return 'database' }
-    '^(celery-worker|celery-beat|flower)$' { return 'celery' }
+    '^(celery-worker|celery-content-worker|celery-email-worker|celery-beat|flower)$' { return 'celery' }
     '^react-app$' { return 'react-app' }
     default { return '' }
   }
@@ -1122,14 +1122,14 @@ PY
   # Bring up core services without forcing builds (fast path).
   status "up" "docker compose up core services (no build)"
   set +e
-  docker compose -f development.docker.yml up -d --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat > /root/logs/build/compose-up-core.txt 2>&1
+  docker compose -f development.docker.yml --profile celery up -d --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-content-worker celery-email-worker celery-beat > /root/logs/build/compose-up-core.txt 2>&1
   CORE_UP_CODE=$?
   echo $CORE_UP_CODE > /root/logs/build/compose-up-core.status 2>/dev/null || true
   set -e
   if [ "$CORE_UP_CODE" != "0" ]; then
     # Fallback for first-time builds or missing images.
     status "up" "compose up failed; retrying with --build"
-    docker compose -f development.docker.yml up -d --build --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-beat > /root/logs/build/compose-up-core-build.txt 2>&1 || true
+    docker compose -f development.docker.yml --profile celery up -d --build --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-content-worker celery-email-worker celery-beat > /root/logs/build/compose-up-core-build.txt 2>&1 || true
   fi
 
   # Selective rebuilds/recreates based on diff.
@@ -1240,10 +1240,10 @@ PY
     # Tune host sysctl for Redis memory overcommit (best-effort, ignore errors)
     (sysctl -w vm.overcommit_memory=1 && echo 'vm.overcommit_memory=1' > /etc/sysctl.d/99-redis.conf && sysctl --system) || true
     # Build Celery services (Django-based) if present; ignore if missing
-    docker compose -f development.docker.yml build celery-worker > /root/logs/build/celery-worker-build.txt 2>&1 || true
+    docker compose -f development.docker.yml build celery-worker celery-content-worker celery-email-worker > /root/logs/build/celery-worker-build.txt 2>&1 || true
     docker compose -f development.docker.yml build celery-beat > /root/logs/build/celery-beat-build.txt 2>&1 || true
     # Start Redis, Celery worker and beat under the celery profile; ignore if services not defined
-    docker compose -f development.docker.yml --profile celery up -d --build redis celery-worker celery-beat > /root/logs/build/celery-up.txt 2>&1 || true
+    docker compose -f development.docker.yml --profile celery up -d --build redis celery-worker celery-content-worker celery-email-worker celery-beat > /root/logs/build/celery-up.txt 2>&1 || true
     # Start Flower if defined
     docker compose -f development.docker.yml up -d --build flower > /root/logs/build/flower-up.txt 2>&1 || true
   fi
@@ -1257,7 +1257,7 @@ PY
     echo "--- attempt $i ---" >> /root/logs/build/health-wait.txt
     echo "$PS_OUT" >> /root/logs/build/health-wait.txt
     OK=1
-    for s in traefik nginx nginx-static django api postgres redis react-app celery-worker celery-beat flower; do
+    for s in traefik nginx nginx-static django api postgres redis react-app celery-worker celery-content-worker celery-email-worker celery-beat flower; do
       echo "$PS_OUT" | grep -E "\s${s}\s" >/dev/null 2>&1 || { OK=0; break; }
       echo "$PS_OUT" | grep -E "\s${s}\s.*\(healthy\)" >/dev/null 2>&1 || { OK=0; break; }
     done

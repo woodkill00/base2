@@ -25,6 +25,21 @@ def test_workers_are_partitioned_by_fixed_task_routes():
     assert routes['app.process_data_rights_operation'] == {'queue': 'content'}
     assert routes['app.process_workspace_export'] == {'queue': 'content'}
     assert tasks.app.conf.task_default_queue == 'runtime'
+    registered = {name for name in tasks.app.tasks if name.startswith('app.')}
+    assert set(routes) == registered
+    tasks._validate_closed_task_routing()
+
+
+def test_worker_heartbeat_is_role_specific_and_unknown_roles_emit_nothing(monkeypatch):
+    heartbeat = MagicMock()
+    monkeypatch.setattr(tasks, 'mark_runtime_heartbeat', heartbeat)
+    monkeypatch.setattr(tasks.settings, 'BASE2_PROCESS_ROLE', 'content-worker')
+    tasks._observe_worker()
+    heartbeat.assert_called_once_with('workers:content-worker')
+    heartbeat.reset_mock()
+    monkeypatch.setattr(tasks.settings, 'BASE2_PROCESS_ROLE', 'api')
+    tasks._observe_worker()
+    heartbeat.assert_not_called()
 
 
 def test_collection_and_dispatch_fan_out_only_configured_tenants(monkeypatch):
@@ -41,6 +56,24 @@ def test_collection_and_dispatch_fan_out_only_configured_tenants(monkeypatch):
     assert tasks.dispatch_operations_alerts_task.run() == 2
     assert collect.call_args_list[0].args == ('tenant-one', 'collect-tenant-one')
     assert dispatch.call_args_list[1].args == ('tenant-two', 'alerts-tenant-two')
+
+
+def test_production_fanout_and_site_work_fail_closed_for_nonactive_tenants(monkeypatch):
+    monkeypatch.setattr(tasks.settings, 'ENV', 'production')
+    monkeypatch.setattr(tasks, '_runtime_fanout_has_capacity', lambda: True)
+    monkeypatch.setattr(tasks, 'configured_tenants', lambda: ['tenant-one'])
+    monkeypatch.setattr(tasks, 'fair_tenant_batch', lambda values, **_kwargs: values)
+    monkeypatch.setattr(tasks, '_tenant_serving', lambda _tenant: False)
+    delayed = MagicMock()
+    monkeypatch.setattr(tasks.collect_operations_site, 'delay', delayed)
+    assert tasks.collect_operations_health.run() == 0
+    delayed.assert_not_called()
+    try:
+        tasks.collect_operations_site.run('tenant-one')
+    except ValueError as exc:
+        assert str(exc) == 'tenant_not_serving'
+    else:
+        raise AssertionError('nonactive production tenant was served')
 
 
 def test_operations_fanout_skips_already_reserved_tenant(monkeypatch):

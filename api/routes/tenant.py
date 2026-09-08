@@ -144,8 +144,11 @@ def run_lifecycle_operation(tenant_id: str, body: TenantOperationRequest, reques
         tid = ensure_path_tenant_matches(request, tenant_id)
         principal = require_authenticated_principal(request)
         try:
-            if membership(user_id=principal.user_id, tenant_id=tid) is None:
+            accepting_membership = membership(user_id=principal.user_id, tenant_id=tid)
+            if accepting_membership is None:
                 raise PermissionError('not_found')
+            if accepting_membership['role'] not in {'owner', 'admin'}:
+                raise PermissionError('tenant:target_owner_not_administrator')
             if not principal.recently_authenticated:
                 raise PermissionError('recent_reauthentication_required')
             require_recent_reauthentication(authenticated_at=principal.authenticated_at)

@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from queue import Empty, Queue
 from threading import Thread
@@ -106,8 +107,9 @@ def collect_probe_results(
     *, catalog: dict[str, Any], adapters: dict[str, Any], now: datetime
 ) -> list[dict[str, Any]]:
     validated = validate_probe_catalog(catalog)
-    results = []
-    for probe in validated['probes']:
+    probes = validated['probes']
+
+    def collect_one(probe: dict[str, Any]) -> dict[str, Any]:
         adapter = adapters.get(probe['id'])
         if adapter is None:
             state, code, latency = 'unknown', 'probe.adapter_missing', None
@@ -144,17 +146,20 @@ def collect_probe_results(
                     raise OperationsContractError('operations:adapter_result_invalid')
             except Exception:
                 state, code, latency = 'unavailable', 'probe.adapter_failed', None
-        results.append(
-            {
-                'probeId': probe['id'],
-                'state': state,
-                'code': code,
-                'latencyMs': latency,
-                'observedAt': now.isoformat(),
-                'expiresAt': (now + timedelta(seconds=probe['freshnessSeconds'])).isoformat(),
-            }
-        )
-    return results
+        return {
+            'probeId': probe['id'],
+            'state': state,
+            'code': code,
+            'latencyMs': latency,
+            'observedAt': now.isoformat(),
+            'expiresAt': (now + timedelta(seconds=probe['freshnessSeconds'])).isoformat(),
+        }
+
+    # Probe wall time is bounded by the slowest fixed adapter, rather than the
+    # sum of all adapters. This preserves the catalog order in the returned
+    # evidence while keeping the 32-tenant rotation inside its freshness SLA.
+    with ThreadPoolExecutor(max_workers=len(probes), thread_name_prefix='base2-probe') as executor:
+        return list(executor.map(collect_one, probes))
 
 
 def sanitized_alert(

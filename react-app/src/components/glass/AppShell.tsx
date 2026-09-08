@@ -7,6 +7,7 @@ type Props = {
   children?: React.ReactNode;
   headerTitle?: string;
   sidebarItems?: string[];
+  sidebarLabel?: string;
   variant?: 'public' | 'app';
   footerLabel?: string;
   menuLabel?: string;
@@ -18,6 +19,7 @@ export const AppShell: React.FC<Props> = ({
   children,
   headerTitle,
   sidebarItems,
+  sidebarLabel = 'Sidebar',
   variant = 'app',
   footerLabel = 'Private workspace',
   menuLabel = 'Menu',
@@ -61,6 +63,7 @@ export const AppShell: React.FC<Props> = ({
             <GlassSidebar
               id={sidebarId}
               items={sidebarItems}
+              label={sidebarLabel}
               isOpen={isMenuOpen}
               onClose={() => setIsMenuOpen(false)}
             />

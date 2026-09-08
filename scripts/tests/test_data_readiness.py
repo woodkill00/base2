@@ -55,7 +55,7 @@ def test_expand_and_migrate_are_compatible_while_contract_needs_approval():
 
 def test_migration_catalog_is_contiguous_compatible_and_non_destructive():
     catalog = json.loads((ROOT / "shared/config/migration-compatibility-v1.json").read_text())
-    assert validate_migration_catalog(catalog)["currentSchema"] == 29
+    assert validate_migration_catalog(catalog)["currentSchema"] == 30
     changed = json.loads(json.dumps(catalog))
     changed["migrations"][1]["toSchema"] = 99
     with pytest.raises(DataReadinessError, match="sequence_invalid"):

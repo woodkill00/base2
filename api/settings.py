@@ -173,6 +173,10 @@ class Settings(BaseSettings):
             ):
                 missing.append('CONTENT_WORKSPACE_STORAGE_KEY')
             if storage_required and storage_backend == 's3':
+                if env == 'production':
+                    raise RuntimeError(
+                        'Production S3 is disabled until versioned backup/restore is configured'
+                    )
                 for name in (
                     'CONTENT_WORKSPACE_S3_ENDPOINT',
                     'CONTENT_WORKSPACE_S3_BUCKET',
@@ -198,42 +202,41 @@ class Settings(BaseSettings):
                     'email-worker',
                 }:
                     raise RuntimeError('Invalid BASE2_PROCESS_ROLE')
-                if self.BASE2_EMAIL_ADAPTER.strip().lower() != 'smtp':
-                    raise RuntimeError('Production requires BASE2_EMAIL_ADAPTER=smtp')
-                if (
-                    not self.BASE2_EMAIL_SMTP_HOST.strip()
-                    or self.BASE2_EMAIL_SMTP_PORT not in {465, 587}
-                    or not 0 < self.BASE2_EMAIL_SMTP_TIMEOUT_SECONDS <= 30
-                    or '@' not in self.BASE2_EMAIL_FROM_ADDRESS
-                ):
-                    raise RuntimeError('Invalid production SMTP configuration')
-                for name in (
-                    ()
-                    if self.BASE2_PROCESS_ROLE != 'email-worker'
-                    else (
+                if self.BASE2_PROCESS_ROLE == 'email-worker':
+                    if self.BASE2_EMAIL_ADAPTER.strip().lower() != 'smtp':
+                        raise RuntimeError(
+                            'Production email worker requires BASE2_EMAIL_ADAPTER=smtp'
+                        )
+                    if (
+                        not self.BASE2_EMAIL_SMTP_HOST.strip()
+                        or self.BASE2_EMAIL_SMTP_PORT not in {465, 587}
+                        or not 0 < self.BASE2_EMAIL_SMTP_TIMEOUT_SECONDS <= 30
+                        or '@' not in self.BASE2_EMAIL_FROM_ADDRESS
+                    ):
+                        raise RuntimeError('Invalid production SMTP configuration')
+                    for name in (
                         'BASE2_EMAIL_SMTP_USERNAME_FILE',
                         'BASE2_EMAIL_SMTP_PASSWORD_FILE',
-                    )
-                ):
-                    value = str(getattr(self, name) or '').strip()
-                    if not value:
-                        missing.append(name)
-                    elif not value.startswith('/'):
-                        raise RuntimeError(f'{name} must be an absolute secret-file path')
-                    else:
-                        path = Path(value)
-                        try:
-                            metadata = path.stat(follow_symlinks=False)
-                        except OSError as exc:
-                            raise RuntimeError(f'{name} secret file is unavailable') from exc
-                        if (
-                            path.is_symlink()
-                            or not stat.S_ISREG(metadata.st_mode)
-                            or metadata.st_mode & 0o077
-                            or metadata.st_size < 1
-                            or metadata.st_size > 4096
-                        ):
-                            raise RuntimeError(f'{name} secret file is invalid')
+                    ):
+                        value = str(getattr(self, name) or '').strip()
+                        if not value:
+                            missing.append(name)
+                        elif not value.startswith('/'):
+                            raise RuntimeError(f'{name} must be an absolute secret-file path')
+                        else:
+                            path = Path(value)
+                            try:
+                                metadata = path.stat(follow_symlinks=False)
+                            except OSError as exc:
+                                raise RuntimeError(f'{name} secret file is unavailable') from exc
+                            if (
+                                path.is_symlink()
+                                or not stat.S_ISREG(metadata.st_mode)
+                                or metadata.st_mode & 0o077
+                                or metadata.st_size < 1
+                                or metadata.st_size > 4096
+                            ):
+                                raise RuntimeError(f'{name} secret file is invalid')
             operation_file_names = (
                 (
                     'OPERATIONS_ALERT_INTEGRITY_KEY_FILE',

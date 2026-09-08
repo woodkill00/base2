@@ -181,9 +181,9 @@ describe('US3 Settings', () => {
     apiClient.put.mockResolvedValue({ data: { preferences: [] } });
     renderSettings('/settings/notifications');
     await waitSettingsReady();
-    const security = await screen.findByLabelText(/security-email/i);
+    const security = await screen.findByLabelText(/security email delivery/i);
     expect(Array.from(security.options).map((option) => option.value)).not.toContain('disabled');
-    const marketing = screen.getByLabelText(/marketing-email/i);
+    const marketing = screen.getByLabelText(/marketing email delivery/i);
     await act(async () => {
       await user.selectOptions(marketing, 'disabled');
       await user.click(screen.getByRole('button', { name: /save notifications/i }));
@@ -216,6 +216,31 @@ describe('US3 Settings', () => {
     expect(await screen.findByRole('status')).toHaveTextContent(
       'Benachrichtigungseinstellungen gespeichert.'
     );
+  });
+
+  test('applies a newly saved locale and direction immediately', async () => {
+    const user = userEvent.setup();
+    apiClient.put.mockResolvedValue({
+      data: {
+        version: 1,
+        theme: 'system',
+        contrast: 'system',
+        motion: 'system',
+        density: 'comfortable',
+        locale: 'ar',
+        timezone: 'UTC',
+        week_start: 'system',
+      },
+    });
+    renderSettings('/settings/language-region');
+    await waitSettingsReady();
+    await act(async () => {
+      await user.selectOptions(screen.getByLabelText('Language'), 'ar');
+      await user.click(screen.getByRole('button', { name: 'Save preferences' }));
+    });
+    expect(await screen.findByRole('heading', { name: 'اللغة والمنطقة' })).toBeInTheDocument();
+    expect(document.documentElement).toHaveAttribute('lang', 'ar');
+    expect(document.documentElement).toHaveAttribute('dir', 'rtl');
   });
 
   test('separates reversible deactivation from deletion with exact confirmations', async () => {

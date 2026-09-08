@@ -19,6 +19,7 @@ MIGRATIONS = (
     '008_create_settings_tables',
     '009_add_deactivation_operation',
     '010_add_email_delivery_fencing',
+    '011_contract_email_delivery_fencing',
 )
 
 
@@ -57,8 +58,25 @@ def apply_migrations() -> None:
                 if already:
                     continue
 
-                sql = _read_sql(version)
-                cur.execute(sql)
+                if version == '011_contract_email_delivery_fencing':
+                    while True:
+                        cur.execute(
+                            """WITH batch AS (
+                                   SELECT ctid FROM api_email_outbox
+                                    WHERE delivery_key IS NULL LIMIT 500
+                               )
+                               UPDATE api_email_outbox outbox
+                                  SET delivery_key=outbox.id::text
+                                 FROM batch WHERE outbox.ctid=batch.ctid"""
+                        )
+                        if cur.rowcount == 0:
+                            break
+                    for statement in _read_sql(version).split(';'):
+                        if statement.strip():
+                            cur.execute(statement)
+                else:
+                    sql = _read_sql(version)
+                    cur.execute(sql)
                 cur.execute(
                     'INSERT INTO api_schema_migrations(version) VALUES (%s)',
                     (version,),

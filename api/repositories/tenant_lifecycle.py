@@ -192,6 +192,31 @@ def apply_transition(
                 )
                 if cursor.rowcount != 1:
                     raise TenantLifecycleRepositoryError('tenant:deletion_approval_invalid')
+            if target != 'active':
+                cursor.execute(
+                    """UPDATE sitecontent_durablejob
+                          SET state='cancelled',lease_owner='',lease_token=NULL,
+                              lease_expires_at=NULL,error_code='tenant.not_serving',updated_at=NOW()
+                        WHERE site_id=%s AND state IN ('queued','retry','leased')""",
+                    (tenant_id,),
+                )
+                cursor.execute(
+                    """UPDATE sitecontent_durableschedule
+                          SET enabled=FALSE,claim_token=NULL,claim_expires_at=NULL,updated_at=NOW()
+                        WHERE site_id=%s AND enabled=TRUE""",
+                    (tenant_id,),
+                )
+                cursor.execute(
+                    """UPDATE api_auth_refresh_tokens refresh
+                          SET revoked_at=NOW()
+                         FROM api_identity_memberships membership
+                         JOIN api_identity_organizations organization
+                           ON organization.id=membership.organization_id
+                        WHERE organization.tenant_id=%s
+                          AND refresh.user_id=membership.user_id
+                          AND refresh.revoked_at IS NULL""",
+                    (tenant_id,),
+                )
             cursor.execute(
                 """UPDATE sitecontent_tenantlifecyclestate
                       SET state=%s,revision=%s,last_operation_id=%s,last_receipt_digest=%s,
@@ -316,6 +341,35 @@ def apply_operation(
                 ):
                     raise TenantLifecycleRepositoryError('tenant:transfer_acceptance_invalid')
                 next_owner = owner_ref
+                # Keep lifecycle ownership and authorization ownership in one
+                # transaction so neither the old nor new owner is stranded.
+                cursor.execute(
+                    """SELECT organization.id
+                         FROM api_identity_organizations organization
+                         JOIN api_identity_memberships target
+                           ON target.organization_id=organization.id
+                        WHERE organization.tenant_id=%s
+                          AND target.user_id=%s
+                          AND target.status='active'
+                          AND target.role IN ('owner','admin')
+                        FOR UPDATE""",
+                    (tenant_id, owner_ref),
+                )
+                organization = cursor.fetchone()
+                if not organization:
+                    raise TenantLifecycleRepositoryError('tenant:target_owner_not_administrator')
+                cursor.execute(
+                    """UPDATE api_identity_memberships
+                          SET role=CASE
+                            WHEN user_id=%s THEN 'owner'
+                            WHEN user_id=%s AND role='owner' THEN 'admin'
+                            ELSE role END,
+                              updated_at=NOW()
+                        WHERE organization_id=%s AND user_id IN (%s,%s)""",
+                    (owner_ref, row[1], str(organization[0]), owner_ref, row[1]),
+                )
+                if cursor.rowcount != 2:
+                    raise TenantLifecycleRepositoryError('tenant:ownership_membership_incomplete')
                 next_configuration = {
                     key: value
                     for key, value in current_configuration.items()

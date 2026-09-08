@@ -291,12 +291,28 @@ def db_ping() -> bool:
 
 
 def db_schema_ready() -> bool:
-    """Verify the Django-owned schema exists without mutating it."""
+    """Verify the exact required Django and API ledgers without mutating them."""
     try:
         with db_conn() as conn, conn.cursor() as cur:
             cur.execute(
-                "SELECT to_regclass('public.django_migrations'), "
-                "to_regclass('public.api_auth_users')"
+                """SELECT
+                     to_regclass('public.django_migrations'),
+                     to_regclass('public.api_schema_migrations'),
+                     to_regclass('public.api_auth_users'),
+                     EXISTS (
+                       SELECT 1 FROM django_migrations
+                        WHERE app='sitecontent'
+                          AND name='0030_worker_scope_and_lifecycle_repair'
+                     ),
+                     EXISTS (
+                       SELECT 1 FROM django_migrations
+                        WHERE app='api_schema'
+                          AND name='0004_protect_api_audit_events'
+                     ),
+                     EXISTS (
+                       SELECT 1 FROM api_schema_migrations
+                        WHERE version='011_contract_email_delivery_fencing'
+                     )"""
             )
             row = cur.fetchone()
         return bool(row and all(row))

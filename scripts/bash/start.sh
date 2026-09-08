@@ -195,7 +195,7 @@ fi
 if [ "$DETACHED" = true ]; then
     stage "docker compose up (detached)"
     echo "ðŸ³ Starting services in detached mode..."
-    "${compose_cmd[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d
+    "${compose_cmd[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" --profile celery up -d
 
     echo ""
     echo "âœ… Services started successfully!"
@@ -238,5 +238,5 @@ if [ "$DETACHED" = true ]; then
 else
     stage "docker compose up (foreground)"
     echo "ðŸ³ Starting services in foreground mode..."
-    "${compose_cmd[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up
+    "${compose_cmd[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" --profile celery up
 fi

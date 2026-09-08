@@ -55,6 +55,9 @@ class PrivateArtifactStore:
         self._key = key
         self._max_bytes = max_bytes
 
+    def ready(self) -> bool:
+        return self._root.is_dir() and not self._root.is_symlink()
+
     @staticmethod
     def object_key(*, namespace: str, site_id: str, object_id: str) -> str:
         if (
@@ -205,6 +208,9 @@ class S3ArtifactStore:
         self._store = store
         self._max_bytes = max_bytes
 
+    def ready(self) -> bool:
+        return bool(self._store.ready())
+
     def put(
         self, *, namespace: str, site_id: str, object_id: str, content: bytes
     ) -> StoredArtifact:
@@ -216,21 +222,36 @@ class S3ArtifactStore:
             )
         except ValueError as exc:
             raise ArtifactIntegrityError(str(exc)) from exc
+        version = base64.urlsafe_b64encode(receipt.version_id.encode()).decode().rstrip('=')
         return StoredArtifact(
-            object_key=receipt.key, sha256=receipt.sha256, byte_size=receipt.byte_size
+            object_key=f'{receipt.key}::{version}',
+            sha256=receipt.sha256,
+            byte_size=receipt.byte_size,
         )
+
+    @staticmethod
+    def _versioned_key(object_key: str) -> tuple[str, str]:
+        try:
+            key, encoded = object_key.rsplit('::', 1)
+            version = base64.urlsafe_b64decode(encoded + '=' * (-len(encoded) % 4)).decode()
+        except (ValueError, UnicodeDecodeError) as exc:
+            raise ArtifactIntegrityError('content_artifact_version_invalid') from exc
+        if not key or not version:
+            raise ArtifactIntegrityError('content_artifact_version_invalid')
+        return key, version
 
     def get(self, object_key: str, *, expected_sha256: str) -> bytes:
         from api.services.object_storage import ObjectReceipt
 
-        parts = object_key.split('/', 2)
+        key, version = self._versioned_key(object_key)
+        parts = key.split('/', 2)
         if len(parts) != 3:
             raise ArtifactIntegrityError('content_artifact_key_invalid')
         try:
             return self._store.get(
                 tenant_id=parts[0],
                 receipt=ObjectReceipt(
-                    parts[0], self._store.bucket, object_key, expected_sha256, -1
+                    parts[0], self._store.bucket, key, expected_sha256, -1, version
                 ),
             )
         except ValueError as exc:
@@ -248,13 +269,16 @@ class S3ArtifactStore:
     ) -> bool:
         from api.services.object_storage import ObjectReceipt
 
+        key, version = self._versioned_key(object_key)
         expected = f'{site_id}/{namespace}/{object_id}'
-        if object_key != expected:
+        if key != expected:
             raise ArtifactIntegrityError('content_artifact_owner_mismatch')
         try:
             self._store.delete(
                 tenant_id=site_id,
-                receipt=ObjectReceipt(site_id, self._store.bucket, object_key, expected_sha256, -1),
+                receipt=ObjectReceipt(
+                    site_id, self._store.bucket, key, expected_sha256, -1, version
+                ),
             )
             return True
         except ValueError as exc:

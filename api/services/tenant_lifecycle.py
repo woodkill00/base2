@@ -248,6 +248,10 @@ def persist_transition(
         return {**state, 'idempotent': True}
     state = repository.get_state(tenant_id=tenant_id)
     current = str(state['state'])
+    if target == 'deleted':
+        # Only a dedicated reconciler with per-surface integrity receipts may
+        # commit the terminal state. An owner transition alone is insufficient.
+        raise TenantLifecycleError('tenant:deletion_reconciliation_required')
     # Exercise the same closed transition graph without consuming the approval.
     transition_tenant(
         tenant_id=tenant_id,
@@ -350,8 +354,11 @@ def persist_operation(
             from api.repositories.identity_admin import membership
 
             target_id = UUID(str(target_owner))
-            if membership(user_id=target_id, tenant_id=tenant_id) is None:
+            target_membership = membership(user_id=target_id, tenant_id=tenant_id)
+            if target_membership is None:
                 raise TenantLifecycleError('tenant:target_owner_not_member')
+            if target_membership['role'] not in {'owner', 'admin'}:
+                raise TenantLifecycleError('tenant:target_owner_not_administrator')
         except (ValueError, TypeError) as exc:
             raise TenantLifecycleError('tenant:target_owner_invalid') from exc
     try:

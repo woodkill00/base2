@@ -257,7 +257,9 @@ def test_ownership_transfer_is_prepared_then_accepted_by_exact_target():
     cursor.fetchone.side_effect = [prior, None, (expires_at,), prepared]
 
     def execute(statement, _arguments=None):
-        if 'UPDATE sitecontent_tenantlifecyclestate' in statement:
+        if 'UPDATE api_identity_memberships' in statement:
+            cursor.rowcount = 2
+        elif 'UPDATE sitecontent_tenantlifecyclestate' in statement:
             cursor.rowcount = 1
 
     cursor.execute.side_effect = execute
@@ -280,7 +282,13 @@ def test_ownership_transfer_is_prepared_then_accepted_by_exact_target():
     accepted = ('active', target, {'locale': 'en'}, 5, accepted_id, 'c' * 64)
     cursor = MagicMock()
     cursor.__enter__.return_value = cursor
-    cursor.fetchone.side_effect = [prepared, None, (database_now,), accepted]
+    cursor.fetchone.side_effect = [
+        prepared,
+        None,
+        (database_now,),
+        ('00000000-0000-4000-8000-000000000333',),
+        accepted,
+    ]
     cursor.execute.side_effect = execute
     with patch(
         'api.repositories.tenant_lifecycle.workspace_db_conn',

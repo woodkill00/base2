@@ -5,6 +5,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from api.db import db_conn
+from api.settings import settings
 
 
 def create_operation(
@@ -23,7 +24,11 @@ def create_operation(
                 DO NOTHING
                 """,
                 (
-                    str(operation_id), tenant_id, str(user_id), kind, request_ciphertext,
+                    str(operation_id),
+                    tenant_id,
+                    str(user_id),
+                    kind,
+                    request_ciphertext,
                     datetime.now(timezone.utc) + timedelta(days=max(1, min(retention_days, 90))),
                 ),
             )
@@ -61,14 +66,22 @@ def owned_operation(*, operation_id: UUID, tenant_id: str, user_id: UUID) -> dic
     if not row:
         return None
     return {
-        'id': UUID(str(row[0])), 'kind': row[1], 'status': row[2],
-        'request_ciphertext': row[3], 'result_ciphertext': row[4],
-        'receipt_digest': row[5], 'error_code': row[6], 'created_at': row[7],
-        'completed_at': row[8], 'retention_until': row[9],
+        'id': UUID(str(row[0])),
+        'kind': row[1],
+        'status': row[2],
+        'request_ciphertext': row[3],
+        'result_ciphertext': row[4],
+        'receipt_digest': row[5],
+        'error_code': row[6],
+        'created_at': row[7],
+        'completed_at': row[8],
+        'retention_until': row[9],
     }
 
 
-def list_owned_operations(*, tenant_id: str, user_id: UUID, limit: int = 50) -> list[dict[str, Any]]:
+def list_owned_operations(
+    *, tenant_id: str, user_id: UUID, limit: int = 50
+) -> list[dict[str, Any]]:
     with db_conn(tenant_id=tenant_id) as conn, conn.cursor() as cur:
         cur.execute(
             """
@@ -82,8 +95,12 @@ def list_owned_operations(*, tenant_id: str, user_id: UUID, limit: int = 50) -> 
         rows = cur.fetchall() or []
     return [
         {
-            'id': UUID(str(row[0])), 'kind': row[1], 'status': row[2],
-            'error_code': row[3], 'created_at': row[4], 'completed_at': row[5],
+            'id': UUID(str(row[0])),
+            'kind': row[1],
+            'status': row[2],
+            'error_code': row[3],
+            'created_at': row[4],
+            'completed_at': row[5],
             'retention_until': row[6],
         }
         for row in rows
@@ -104,9 +121,14 @@ def list_tenant_operations(*, tenant_id: str, limit: int = 100) -> list[dict[str
         rows = cur.fetchall() or []
     return [
         {
-            'id': UUID(str(row[0])), 'user_id': UUID(str(row[1])), 'kind': row[2],
-            'status': row[3], 'error_code': row[4], 'created_at': row[5],
-            'completed_at': row[6], 'retention_until': row[7],
+            'id': UUID(str(row[0])),
+            'user_id': UUID(str(row[1])),
+            'kind': row[2],
+            'status': row[3],
+            'error_code': row[4],
+            'created_at': row[5],
+            'completed_at': row[6],
+            'retention_until': row[7],
         }
         for row in rows
     ]
@@ -114,12 +136,17 @@ def list_tenant_operations(*, tenant_id: str, limit: int = 100) -> list[dict[str
 
 def queued_operation_ids(*, limit: int = 25) -> list[UUID]:
     with db_conn() as conn, conn.cursor() as cur:
+        lifecycle = (
+            'AND EXISTS (SELECT 1 FROM sitecontent_tenantlifecyclestate lifecycle '
+            'WHERE lifecycle.site_id=api_data_rights_operations.tenant_id '
+            "AND lifecycle.state='active')"
+            if settings.ENV == 'production'
+            else ''
+        )
         cur.execute(
-            """
-            SELECT id FROM api_data_rights_operations
-            WHERE status='queued' AND retention_until > NOW()
-            ORDER BY created_at ASC LIMIT %s
-            """,
+            f"""SELECT id FROM api_data_rights_operations
+                WHERE status='queued' AND retention_until > NOW() {lifecycle}
+                ORDER BY created_at ASC LIMIT %s""",
             (max(1, min(limit, 100)),),
         )
         return [UUID(str(row[0])) for row in (cur.fetchall() or [])]
@@ -128,10 +155,17 @@ def queued_operation_ids(*, limit: int = 25) -> list[UUID]:
 def claim_operation(*, operation_id: UUID) -> dict[str, Any] | None:
     with db_conn() as conn:
         with conn.cursor() as cur:
+            lifecycle = (
+                'AND EXISTS (SELECT 1 FROM sitecontent_tenantlifecyclestate lifecycle '
+                'WHERE lifecycle.site_id=api_data_rights_operations.tenant_id '
+                "AND lifecycle.state='active')"
+                if settings.ENV == 'production'
+                else ''
+            )
             cur.execute(
-                """
+                f"""
                 UPDATE api_data_rights_operations SET status='running', started_at=NOW(), updated_at=NOW()
-                WHERE id=%s AND status='queued' AND retention_until > NOW()
+                WHERE id=%s AND status='queued' AND retention_until > NOW() {lifecycle}
                 RETURNING id, tenant_id, user_id, kind, request_ciphertext
                 """,
                 (str(operation_id),),
@@ -142,8 +176,11 @@ def claim_operation(*, operation_id: UUID) -> dict[str, Any] | None:
                 return None
         conn.commit()
     return {
-        'id': UUID(str(row[0])), 'tenant_id': row[1], 'user_id': UUID(str(row[2])),
-        'kind': row[3], 'request_ciphertext': row[4],
+        'id': UUID(str(row[0])),
+        'tenant_id': row[1],
+        'user_id': UUID(str(row[2])),
+        'kind': row[3],
+        'request_ciphertext': row[4],
     }
 
 

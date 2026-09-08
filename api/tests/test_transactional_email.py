@@ -251,12 +251,52 @@ def test_outbox_retry_is_durable_and_becomes_dead_letter_after_bound(monkeypatch
         '_configured_adapter',
         lambda: LocalFakeEmailAdapter(AdapterResult('failed', retryable=True)),
     )
-    mark = MagicMock()
+    mark = MagicMock(return_value=True)
     monkeypatch.setattr(email_service, 'mark_outbox_status', mark)
     email_service.process_outbox_email(outbox_id=row.id)
     assert mark.call_args.kwargs['status'] == 'dead_letter'
     assert mark.call_args.kwargs['error'] == 'delivery_dead_letter'
     assert mark.call_args.kwargs['claim_token'] == claim_token
+
+
+def test_outbox_delivery_rejects_stale_claim_settlement(monkeypatch):
+    claim_token = uuid4()
+    row = EmailOutboxRow(
+        uuid4(),
+        'private@example.test',
+        'subject',
+        'body',
+        '',
+        'sending',
+        'worker_claim',
+        '',
+        '',
+        datetime.now(timezone.utc),
+        None,
+        claim_token,
+        'stable-delivery-key',
+    )
+    monkeypatch.setattr(email_service, 'claim_outbox_email', lambda _outbox_id: row)
+    monkeypatch.setattr(email_service, '_configured_adapter', LocalFakeEmailAdapter)
+    monkeypatch.setattr(email_service, 'mark_outbox_status', lambda **_kwargs: False)
+    with pytest.raises(RuntimeError, match='outbox_claim_lost'):
+        email_service.process_outbox_email(outbox_id=row.id)
+
+
+def test_replay_quarantines_uncertain_expired_claims_before_selecting_due_rows(monkeypatch):
+    due_id = uuid4()
+    connection = MagicMock()
+    cursor = MagicMock()
+    connection.__enter__.return_value = connection
+    connection.cursor.return_value.__enter__.return_value = cursor
+    cursor.fetchall.return_value = [(due_id,)]
+    monkeypatch.setattr(email_service, 'db_conn', lambda: connection)
+
+    assert email_service.replayable_outbox_ids(limit=5) == [due_id]
+    statements = [call.args[0] for call in cursor.execute.call_args_list]
+    assert 'delivery_uncertain_manual_reconciliation' in statements[0]
+    assert "status IN ('queued', 'retry')" in statements[1]
+    connection.commit.assert_called_once()
 
 
 def test_disabled_runtime_delivery_is_retained_for_retry(monkeypatch):
@@ -304,9 +344,12 @@ def test_stale_worker_claim_cannot_settle_a_newer_delivery(monkeypatch):
 def test_email_fencing_migration_has_stable_unique_delivery_identity():
     from pathlib import Path
 
-    migration = (
-        Path(__file__).parents[1] / 'migrations/sql/010_add_email_delivery_fencing.sql'
-    ).read_text(encoding='utf-8')
+    migration_root = Path(__file__).parents[1] / 'migrations/sql'
+    migration = (migration_root / '010_add_email_delivery_fencing.sql').read_text(encoding='utf-8')
+    contract = (migration_root / '011_contract_email_delivery_fencing.sql').read_text(
+        encoding='utf-8'
+    )
     assert 'claim_token UUID' in migration
     assert 'claim_expires_at TIMESTAMPTZ' in migration
-    assert 'UNIQUE INDEX' in migration and 'delivery_key' in migration
+    assert 'UNIQUE INDEX' in contract and 'delivery_key' in contract
+    assert 'SET NOT NULL' in contract

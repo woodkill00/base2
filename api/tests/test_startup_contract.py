@@ -123,7 +123,10 @@ def test_schema_readiness_is_read_only(monkeypatch, tables, expected):
     monkeypatch.setattr(db, 'db_conn', fake_db_conn)
     assert db.db_schema_ready() is expected
     cursor.execute.assert_called_once()
-    assert cursor.execute.call_args.args[0].startswith('SELECT to_regclass')
+    query = ' '.join(cursor.execute.call_args.args[0].split())
+    assert query.startswith('SELECT to_regclass')
+    assert "name='0030_worker_scope_and_lifecycle_repair'" in query
+    assert "version='011_contract_email_delivery_fencing'" in query
 
 
 def test_schema_readiness_fails_closed(monkeypatch):

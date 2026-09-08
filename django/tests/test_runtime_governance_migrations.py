@@ -14,7 +14,7 @@ pytestmark = pytest.mark.django_db(transaction=True)
 
 BEFORE = ("sitecontent", "0025_runtime_governance_rls")
 AFTER = ("sitecontent", "0028_worker_runtime_least_privilege")
-LATEST = ("sitecontent", "0029_tenant_lifecycle_state")
+LATEST = ("sitecontent", "0030_worker_scope_and_lifecycle_repair")
 
 
 def _executor() -> MigrationExecutor:
@@ -92,8 +92,7 @@ def test_worker_runtime_grants_are_explicit_and_public_access_is_revoked(monkeyp
         assert f'GRANT {privileges} ON TABLE "{table}" TO "base2_worker"' in statements
     assert 'REVOKE ALL PRIVILEGES ON TABLE api_email_outbox FROM "base2_worker"' in statements
     assert (
-        'REVOKE ALL PRIVILEGES ON TABLE api_email_outbox FROM "base2_content_worker"'
-        in statements
+        'REVOKE ALL PRIVILEGES ON TABLE api_email_outbox FROM "base2_content_worker"' in statements
     )
     assert 'GRANT SELECT, UPDATE ON TABLE api_email_outbox TO "base2_email_worker"' in statements
     assert all(

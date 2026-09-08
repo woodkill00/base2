@@ -22,6 +22,7 @@ class S3Client(Protocol):
     def put_object(self, **kwargs: Any) -> dict[str, Any]: ...
     def get_object(self, **kwargs: Any) -> dict[str, Any]: ...
     def delete_object(self, **kwargs: Any) -> dict[str, Any]: ...
+    def head_bucket(self, **kwargs: Any) -> dict[str, Any]: ...
 
 
 @dataclass(frozen=True)
@@ -31,6 +32,7 @@ class ObjectReceipt:
     key: str
     sha256: str
     byte_size: int
+    version_id: str = ''
 
 
 class S3ObjectStore:
@@ -94,6 +96,12 @@ class S3ObjectStore:
         except (OSError, TypeError, ValueError) as exc:
             raise ObjectStorageError('object:configuration_invalid') from exc
 
+    def ready(self) -> bool:
+        self._validate_live_endpoint()
+        response = self.client.head_bucket(Bucket=self.bucket)
+        status = int(response.get('ResponseMetadata', {}).get('HTTPStatusCode', 0))
+        return status in {200, 204}
+
     @staticmethod
     def _key(*, tenant_id: str, namespace: str, object_id: str) -> str:
         candidate = f'{tenant_id}/{namespace}/{object_id}'
@@ -109,16 +117,33 @@ class S3ObjectStore:
         key = self._key(tenant_id=tenant_id, namespace=namespace, object_id=object_id)
         self._validate_live_endpoint()
         digest = hashlib.sha256(content).hexdigest()
-        self.client.put_object(
-            Bucket=self.bucket,
-            Key=key,
-            Body=content,
-            ContentType='application/octet-stream',
-            Metadata={'sha256': digest},
-            ServerSideEncryption='AES256',
-            CacheControl='private,no-store',
-        )
-        return ObjectReceipt(tenant_id, self.bucket, key, digest, len(content))
+        try:
+            response = self.client.put_object(
+                Bucket=self.bucket,
+                Key=key,
+                Body=content,
+                ContentType='application/octet-stream',
+                Metadata={'sha256': digest},
+                ServerSideEncryption='AES256',
+                CacheControl='private,no-store',
+                IfNoneMatch='*',
+            )
+        except Exception as exc:
+            status = getattr(exc, 'response', {}).get('ResponseMetadata', {}).get('HTTPStatusCode')
+            if status not in {409, 412}:
+                raise
+            existing = self.client.get_object(Bucket=self.bucket, Key=key)
+            prior = existing['Body'].read()
+            if hashlib.sha256(prior).hexdigest() != digest or len(prior) != len(content):
+                raise ObjectStorageError('object:conflicting_replay') from exc
+            version_id = str(existing.get('VersionId') or '')
+            if not version_id:
+                raise ObjectStorageError('object:versioning_required') from exc
+            return ObjectReceipt(tenant_id, self.bucket, key, digest, len(content), version_id)
+        version_id = str(response.get('VersionId') or '')
+        if not version_id:
+            raise ObjectStorageError('object:versioning_required')
+        return ObjectReceipt(tenant_id, self.bucket, key, digest, len(content), version_id)
 
     def get(self, *, tenant_id: str, receipt: ObjectReceipt) -> bytes:
         if (
@@ -129,7 +154,11 @@ class S3ObjectStore:
         ):
             raise ObjectStorageError('object:ownership_invalid')
         self._validate_live_endpoint()
-        response = self.client.get_object(Bucket=self.bucket, Key=receipt.key)
+        if not receipt.version_id:
+            raise ObjectStorageError('object:version_required')
+        response = self.client.get_object(
+            Bucket=self.bucket, Key=receipt.key, VersionId=receipt.version_id
+        )
         content = response['Body'].read()
         if (receipt.byte_size >= 0 and len(content) != receipt.byte_size) or hashlib.sha256(
             content
@@ -140,4 +169,4 @@ class S3ObjectStore:
     def delete(self, *, tenant_id: str, receipt: ObjectReceipt) -> None:
         self.get(tenant_id=tenant_id, receipt=receipt)
         self._validate_live_endpoint()
-        self.client.delete_object(Bucket=self.bucket, Key=receipt.key)
+        self.client.delete_object(Bucket=self.bucket, Key=receipt.key, VersionId=receipt.version_id)

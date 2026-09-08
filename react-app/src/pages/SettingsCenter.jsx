@@ -119,6 +119,8 @@ const SETTINGS_COPY = {
     themeToggle: 'Toggle color theme',
     privateWorkspace: 'Private workspace',
     menu: 'Menu',
+    sidebar: 'Sidebar',
+    sidebarItems: ['Home', 'Dashboard', 'Settings', 'Users', 'Help'],
     breadcrumb: 'Breadcrumb',
     settings: 'Settings',
     controlCenter: 'Account control center',
@@ -142,6 +144,8 @@ const SETTINGS_COPY = {
     themeToggle: 'Farbschema wechseln',
     privateWorkspace: 'Privater Arbeitsbereich',
     menu: 'Menü',
+    sidebar: 'Seitenleiste',
+    sidebarItems: ['Start', 'Übersicht', 'Einstellungen', 'Benutzer', 'Hilfe'],
     breadcrumb: 'Brotkrümelnavigation',
     settings: 'Einstellungen',
     controlCenter: 'Kontozentrale',
@@ -165,6 +169,8 @@ const SETTINGS_COPY = {
     themeToggle: 'تبديل سمة الألوان',
     privateWorkspace: 'مساحة عمل خاصة',
     menu: 'القائمة',
+    sidebar: 'الشريط الجانبي',
+    sidebarItems: ['الرئيسية', 'لوحة المعلومات', 'الإعدادات', 'المستخدمون', 'المساعدة'],
     breadcrumb: 'مسار التنقل',
     settings: 'الإعدادات',
     controlCenter: 'مركز التحكم بالحساب',
@@ -253,6 +259,15 @@ const DETAIL_COPY = {
     off: 'Off',
     saveNotifications: 'Save notifications',
     notificationSaved: 'Notification preferences saved.',
+    notificationDeliveryLabel: (eventFamily, channel) => `${eventFamily} ${channel} delivery`,
+    notificationTerms: {
+      security: 'Security',
+      transactional: 'Transactional',
+      product: 'Product',
+      marketing: 'Marketing',
+      email: 'Email',
+      in_app: 'In-app',
+    },
     exportData: 'Export your data',
     exportHelp:
       'Exports are encrypted, integrity checked, and require recent authentication to download.',
@@ -331,6 +346,16 @@ const DETAIL_COPY = {
     off: 'Aus',
     saveNotifications: 'Benachrichtigungen speichern',
     notificationSaved: 'Benachrichtigungseinstellungen gespeichert.',
+    notificationDeliveryLabel: (eventFamily, channel) =>
+      `Zustellung für ${eventFamily} über ${channel}`,
+    notificationTerms: {
+      security: 'Sicherheit',
+      transactional: 'Transaktionen',
+      product: 'Produkt',
+      marketing: 'Marketing',
+      email: 'E-Mail',
+      in_app: 'In-App',
+    },
     exportData: 'Daten exportieren',
     exportHelp:
       'Exporte werden verschlüsselt, auf Integrität geprüft und erfordern für den Download eine kürzliche Anmeldung.',
@@ -408,6 +433,15 @@ const DETAIL_COPY = {
     off: 'إيقاف',
     saveNotifications: 'حفظ الإشعارات',
     notificationSaved: 'تم حفظ تفضيلات الإشعارات.',
+    notificationDeliveryLabel: (eventFamily, channel) => `تسليم ${eventFamily} عبر ${channel}`,
+    notificationTerms: {
+      security: 'الأمان',
+      transactional: 'المعاملات',
+      product: 'المنتج',
+      marketing: 'التسويق',
+      email: 'البريد الإلكتروني',
+      in_app: 'داخل التطبيق',
+    },
     exportData: 'تصدير بياناتك',
     exportHelp: 'تُشفّر عمليات التصدير ويُتحقق من سلامتها، ويتطلب تنزيلها مصادقة حديثة.',
     requestExport: 'طلب تصدير البيانات',
@@ -490,7 +524,10 @@ const SettingsCenter = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const requestedLocale = String(user?.locale || preferences.locale || 'en').split('-')[0];
+  const [activeLocale, setActiveLocale] = useState(
+    () => String(user?.locale || 'en').split('-')[0]
+  );
+  const requestedLocale = String(activeLocale || 'en').split('-')[0];
   const locale = Object.prototype.hasOwnProperty.call(SETTINGS_COPY, requestedLocale)
     ? requestedLocale
     : 'en';
@@ -534,7 +571,13 @@ const SettingsCenter = () => {
           setCategories(FALLBACK_CATEGORIES.filter((item) => enabled.has(item.id)));
         }
         if (preferenceResult.status === 'fulfilled') {
-          setPreferences({ ...preferenceDefaults, ...preferenceResult.value });
+          const nextPreferences = {
+            ...preferenceDefaults,
+            ...preferenceResult.value,
+            locale: preferenceResult.value?.locale || user?.locale || preferenceDefaults.locale,
+          };
+          setPreferences(nextPreferences);
+          setActiveLocale(String(nextPreferences.locale || 'en').split('-')[0]);
         }
         if (privacyResult.status === 'fulfilled') {
           setOperations(privacyResult.value?.operations || []);
@@ -548,7 +591,10 @@ const SettingsCenter = () => {
         if (securityResult.status === 'fulfilled')
           setSecurityEvents(securityResult.value?.events || []);
         if ([capabilityResult, preferenceResult].some((result) => result.status === 'rejected')) {
-          setError(detail.partialError);
+          const responseLocale = String(
+            preferenceResult.value?.locale || user?.locale || 'en'
+          ).split('-')[0];
+          setError((DETAIL_COPY[responseLocale] || DETAIL_COPY.en).partialError);
         }
         setLoading(false);
       }
@@ -556,7 +602,7 @@ const SettingsCenter = () => {
     return () => {
       current = false;
     };
-  }, [detail.partialError]);
+  }, [user?.locale]);
 
   useEffect(() => {
     if (!loading && !localizedCategories.some((item) => item.id === active))
@@ -604,6 +650,8 @@ const SettingsCenter = () => {
         week_start: preferences.week_start,
       });
       setPreferences({ ...preferenceDefaults, ...next });
+      setActiveLocale(String(next.locale || preferences.locale || 'en').split('-')[0]);
+      updateUser({ ...user, locale: next.locale || preferences.locale || 'en' });
       setStatus(detail.preferencesSaved);
     } catch (reason) {
       if (reason?.status === 409 || reason?.code === 'settings_version_conflict') {
@@ -887,7 +935,8 @@ const SettingsCenter = () => {
             >
               <div>
                 <p className="font-medium capitalize">
-                  {item.event_family} · {item.channel.replace('_', ' ')}
+                  {detail.notificationTerms[item.event_family] || item.event_family} ·{' '}
+                  {detail.notificationTerms[item.channel] || item.channel.replace('_', ' ')}
                 </p>
                 <p className="text-xs opacity-70">
                   {item.mandatory ? detail.requiredMessage : detail.optionalMessage}
@@ -895,7 +944,10 @@ const SettingsCenter = () => {
               </div>
               <Select
                 id={`notification-${item.event_family}-${item.channel}`}
-                aria-label={`${item.event_family}-${item.channel} delivery`}
+                aria-label={detail.notificationDeliveryLabel(
+                  detail.notificationTerms[item.event_family] || item.event_family,
+                  detail.notificationTerms[item.channel] || item.channel.replace('_', ' ')
+                )}
                 value={item.delivery}
                 onChange={(event) =>
                   setNotifications(
@@ -1083,7 +1135,7 @@ const SettingsCenter = () => {
   );
 
   const renderSimple = () => {
-    if (active === 'security') return <AccountCenter user={user} embedded />;
+    if (active === 'security') return <AccountCenter user={user} embedded locale={locale} />;
     if (active === 'privacy') return renderPrivacy();
     if (active === 'notifications') return renderNotifications();
     if (active === 'organization') return renderOrganization();
@@ -1099,6 +1151,8 @@ const SettingsCenter = () => {
       footerLabel={copy.privateWorkspace}
       menuLabel={copy.menu}
       themeLabel={copy.themeToggle}
+      sidebarLabel={copy.sidebar}
+      sidebarItems={copy.sidebarItems}
     >
       <div
         className="mx-auto max-w-7xl space-y-6 px-4 py-8"
