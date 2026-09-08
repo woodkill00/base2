@@ -2456,8 +2456,10 @@ class OperationsIncident(SiteOwnedModel):
     fingerprint = models.CharField(max_length=64, validators=[sha256_validator])
     environment = models.CharField(
         max_length=16,
-        choices=tuple((value, value.title()) for value in ("preview", "staging", "production")),
-        default="preview",
+        choices=tuple(
+            (value, value.title()) for value in ("unknown", "preview", "staging", "production")
+        ),
+        default="unknown",
     )
     severity = models.CharField(
         max_length=16,
@@ -2723,6 +2725,34 @@ class TenantDomainClaim(SiteOwnedModel):
             raise ValidationError("tenant_domain_canonical_state_invalid")
 
 
+class DestructiveApprovalUse(SiteOwnedModel):
+    """Durable one-time ledger for destructive approval nonces."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    nonce = models.CharField(max_length=128)
+    approval_digest = models.CharField(max_length=64, validators=[sha256_validator])
+    expires_at = models.DateTimeField()
+    consumed_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "nonce"], name="destructive_approval_nonce_uq"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(expires_at__gt=models.F("consumed_at")),
+                name="destructive_approval_lifetime_ck",
+            ),
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{15,127}", self.nonce or ""):
+            raise ValidationError("destructive_approval_nonce_invalid")
+        if self.expires_at.tzinfo is None or self.consumed_at.tzinfo is None:
+            raise ValidationError("destructive_approval_time_invalid")
+
+
 class DurableJob(SiteOwnedModel):
     """Canonical tenant job envelope; payload values live in protected storage."""
 
@@ -2772,6 +2802,21 @@ class DurableJob(SiteOwnedModel):
                     )
                 ),
                 name="durable_job_lease_ck",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(payload_digest__regex=r"^[0-9a-f]{64}$"),
+                name="durable_job_payload_digest_ck",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(result_digest="")
+                | models.Q(result_digest__regex=r"^[0-9a-f]{64}$"),
+                name="durable_job_result_digest_ck",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(job_type__regex=r"^[a-z][a-z0-9_.:-]{2,95}$")
+                & models.Q(idempotency_key__regex=r"^[a-z][a-z0-9_.:-]{2,127}$")
+                & models.Q(owner_ref__regex=r"^[a-z][a-z0-9_.:-]{2,127}$"),
+                name="durable_job_identity_ck",
             ),
         ]
         indexes = [

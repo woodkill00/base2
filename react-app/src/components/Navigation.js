@@ -21,6 +21,38 @@ const Navigation = () => {
   const mediaEnabled = siteManifest.modules.some(
     (module) => module.id === 'media' && module.enabled
   );
+  const locale = String(user?.locale || 'en').split('-')[0];
+  const labels = {
+    de: {
+      dashboard: 'Übersicht',
+      settings: 'Einstellungen',
+      content: 'Inhalte',
+      media: 'Medien',
+      operations: 'Betrieb',
+      admin: 'Verwaltung',
+      logout: 'Abmelden',
+      profile: 'Profil',
+    },
+    ar: {
+      dashboard: 'لوحة المعلومات',
+      settings: 'الإعدادات',
+      content: 'المحتوى',
+      media: 'الوسائط',
+      operations: 'العمليات',
+      admin: 'الإدارة',
+      logout: 'تسجيل الخروج',
+      profile: 'الملف الشخصي',
+    },
+  }[locale] || {
+    dashboard: 'Dashboard',
+    settings: 'Settings',
+    content: 'Content',
+    media: 'Media',
+    operations: 'Operations',
+    admin: 'Admin',
+    logout: 'Logout',
+    profile: 'Profile',
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -65,10 +97,10 @@ const Navigation = () => {
                 className={linkClass('/dashboard')}
                 {...activeProps('/dashboard')}
               >
-                Dashboard
+                {labels.dashboard}
               </Link>
               <Link to="/settings" className={linkClass('/settings')} {...activeProps('/settings')}>
-                Settings
+                {labels.settings}
               </Link>
               {workspaceEnabled && user?.permissions?.includes('content-workspace.read') ? (
                 <Link
@@ -76,12 +108,12 @@ const Navigation = () => {
                   className={linkClass('/workspace')}
                   {...activeProps('/workspace')}
                 >
-                  Content
+                  {labels.content}
                 </Link>
               ) : null}
               {mediaEnabled && user?.permissions?.includes('media.read') ? (
                 <Link to="/media" className={linkClass('/media')} {...activeProps('/media')}>
-                  Media
+                  {labels.media}
                 </Link>
               ) : null}
               {user?.permissions?.includes('operations.read') ? (
@@ -90,14 +122,14 @@ const Navigation = () => {
                   className={linkClass('/operations')}
                   {...activeProps('/operations')}
                 >
-                  Operations
+                  {labels.operations}
                 </Link>
               ) : null}
               {accountsEnabled &&
               Array.isArray(user?.permissions) &&
               user.permissions.includes('audit.read') ? (
                 <Link to="/admin" className={linkClass('/admin')} {...activeProps('/admin')}>
-                  Admin
+                  {labels.admin}
                 </Link>
               ) : null}
             </div>
@@ -107,12 +139,12 @@ const Navigation = () => {
                 {avatarUrl ? (
                   <img
                     src={avatarUrl}
-                    alt="Profile"
+                    alt={labels.profile}
                     className="w-9 h-9 rounded-full object-cover border border-white/30 dark:border-white/20"
                   />
                 ) : (
                   <span
-                    aria-label="Profile"
+                    aria-label={labels.profile}
                     role="img"
                     className="w-9 h-9 rounded-full border border-white/30 dark:border-white/20 grid place-items-center"
                   >
@@ -129,7 +161,7 @@ const Navigation = () => {
                 className="text-sm px-4 py-2"
                 onClick={handleLogout}
               >
-                Logout
+                {labels.logout}
               </GlassButton>
             </div>
           </div>

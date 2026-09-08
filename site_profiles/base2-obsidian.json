@@ -30,7 +30,7 @@
     "termsPath": "/terms",
     "accessibilityPath": "/accessibility"
   },
-  "locales": ["en"],
+  "locales": ["en", "de", "ar"],
   "defaultLocale": "en",
   "consent": { "mode": "essential-only" },
   "analytics": { "enabled": false, "provider": "none" },

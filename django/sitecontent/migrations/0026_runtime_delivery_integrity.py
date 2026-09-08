@@ -4,6 +4,7 @@ import os
 import re
 
 from django.db import migrations, models
+from django.utils import timezone
 
 ROLE = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,62}$")
 
@@ -43,6 +44,18 @@ def restore_worker_grants(apps, schema_editor):
             "sitecontent_tenantnotification",
         ):
             cursor.execute(f'GRANT INSERT, UPDATE ON TABLE "{table}" TO {quoted}')
+
+
+def recover_legacy_job_leases(apps, schema_editor):
+    """Clear leases that predate the cryptographic lease-token invariant."""
+    durable_job = apps.get_model("sitecontent", "DurableJob")
+    durable_job.objects.using(schema_editor.connection.alias).filter(state="leased").update(
+        state="retry",
+        lease_owner="",
+        lease_expires_at=None,
+        error_code="job.lease_upgrade_recovery",
+        updated_at=timezone.now(),
+    )
 
 
 class Migration(migrations.Migration):
@@ -85,11 +98,12 @@ class Migration(migrations.Migration):
             name="environment",
             field=models.CharField(
                 choices=[
+                    ("unknown", "Unknown"),
                     ("preview", "Preview"),
                     ("staging", "Staging"),
                     ("production", "Production"),
                 ],
-                default="preview",
+                default="unknown",
                 max_length=16,
             ),
         ),
@@ -109,6 +123,10 @@ class Migration(migrations.Migration):
                 max_length=16,
             ),
         ),
+        # A pre-0026 lease has no cryptographic lease token. It cannot be
+        # safely grandfathered, so make it retryable and clear its stale lease
+        # before enforcing the new all-or-nothing lease invariant.
+        migrations.RunPython(recover_legacy_job_leases, migrations.RunPython.noop),
         migrations.AddConstraint(
             model_name="breakglassgrant",
             constraint=models.CheckConstraint(
@@ -146,6 +164,35 @@ class Migration(migrations.Migration):
                     _connector="OR",
                 ),
                 name="durable_schedule_claim_ck",
+            ),
+        ),
+        migrations.AddConstraint(
+            model_name="durablejob",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("payload_digest__regex", "^[0-9a-f]{64}$")),
+                name="durable_job_payload_digest_ck",
+            ),
+        ),
+        migrations.AddConstraint(
+            model_name="durablejob",
+            constraint=models.CheckConstraint(
+                condition=models.Q(
+                    ("result_digest", ""),
+                    ("result_digest__regex", "^[0-9a-f]{64}$"),
+                    _connector="OR",
+                ),
+                name="durable_job_result_digest_ck",
+            ),
+        ),
+        migrations.AddConstraint(
+            model_name="durablejob",
+            constraint=models.CheckConstraint(
+                condition=models.Q(
+                    ("job_type__regex", "^[a-z][a-z0-9_.:-]{2,95}$"),
+                    ("idempotency_key__regex", "^[a-z][a-z0-9_.:-]{2,127}$"),
+                    ("owner_ref__regex", "^[a-z][a-z0-9_.:-]{2,127}$"),
+                ),
+                name="durable_job_identity_ck",
             ),
         ),
         migrations.AddConstraint(

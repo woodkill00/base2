@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "currentSchema": 26,
+  "currentSchema": 27,
   "minimumCompatibleSchema": 17,
   "migrations": [
     {
@@ -89,6 +89,16 @@
       "toSchema": 26,
       "phase": "migrate",
       "compatibleFrom": 25,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "durable_destructive_approval_ledger",
+      "fromSchema": 26,
+      "toSchema": 27,
+      "phase": "expand",
+      "compatibleFrom": 26,
       "expectedLockMs": 1000,
       "expectedRuntimeMs": 30000,
       "destructive": false

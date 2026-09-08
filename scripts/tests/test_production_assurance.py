@@ -65,19 +65,42 @@ def test_ephemeral_plan_requires_approval_and_exact_owned_teardown():
         approval_key=APPROVAL_KEY,
         plan_key=PLAN_KEY,
     )
-    result = teardown(plan, discovered_resources=["app-106", "db-106"], plan_key=PLAN_KEY)
+    resources = {"app-106", "db-106"}
+    result = teardown(
+        plan,
+        inventory=lambda: sorted(resources),
+        delete=lambda resource: (resources.remove(resource) or f"deleted.{resource}"),
+        plan_key=PLAN_KEY,
+    )
     assert result["status"] == "destroyed" and not result["remainingOwned"]
+    assert result["verifiedInventory"] == [] and len(result["deleted"]) == 2
     with pytest.raises(AssuranceError, match="unowned"):
-        teardown(plan, discovered_resources=["app-106", "foreign-production"], plan_key=PLAN_KEY)
-    pending = teardown(plan, discovered_resources=["app-106"], plan_key=PLAN_KEY)
+        teardown(
+            plan,
+            inventory=lambda: ["app-106", "foreign-production"],
+            delete=lambda resource: f"deleted.{resource}",
+            plan_key=PLAN_KEY,
+        )
+    remaining = {"app-106"}
+    pending = teardown(
+        plan,
+        inventory=lambda: sorted(remaining),
+        delete=lambda resource: f"pending.{resource}",
+        plan_key=PLAN_KEY,
+    )
     assert pending == {
         "status": "pending",
-        "destroyed": ["app-106"],
-        "remainingOwned": ["db-106"],
+        "deleted": [{"resource": "app-106", "receipt": "pending.app-106"}],
+        "remainingOwned": ["app-106"],
     }
     changed = {**plan, "costCeilingUsd": 0.01}
     with pytest.raises(AssuranceError, match="integrity"):
-        teardown(changed, discovered_resources=["app-106", "db-106"], plan_key=PLAN_KEY)
+        teardown(
+            changed,
+            inventory=lambda: ["app-106", "db-106"],
+            delete=lambda resource: f"deleted.{resource}",
+            plan_key=PLAN_KEY,
+        )
     with pytest.raises(AssuranceError, match="production"):
         ephemeral_plan(
             source_commit="a" * 40,

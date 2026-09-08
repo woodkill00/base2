@@ -10,7 +10,7 @@ export const normalizeOperationsError = (error) => {
   return {
     ...normalized,
     message:
-      normalized.status === 403
+      normalized.status === 403 && normalized.message === 'recent_reauthentication_required'
         ? 'Recent authentication is required. Reauthenticate, then retry this operation.'
         : 'Operations information is temporarily unavailable. Try refreshing the evidence.',
   };
@@ -30,5 +30,11 @@ export const operationsAPI = {
   acknowledge: async (incidentId) =>
     unwrap(
       await apiClient.post(`/operations/v1/incidents/${encodeURIComponent(incidentId)}/acknowledge`)
+    ),
+  actOnDeadLetter: async (jobId, action) =>
+    unwrap(
+      await apiClient.post(
+        `/operations/v1/runtime/dead-letters/${encodeURIComponent(jobId)}/${encodeURIComponent(action)}`
+      )
     ),
 };

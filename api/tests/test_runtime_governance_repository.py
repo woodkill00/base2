@@ -12,6 +12,7 @@ from api.repositories.runtime_governance import (
     dead_letters,
     due_schedules,
     enqueue_job,
+    renew_job_lease,
     settle_schedule_claim,
     settle_job,
 )
@@ -83,6 +84,34 @@ def test_enqueue_changed_replay_fails_closed():
             idempotency_key='job-1',
             available_at=NOW,
         )
+
+
+@pytest.mark.parametrize(
+    ('field', 'value'),
+    (
+        ('owner_ref', '../owner'),
+        ('job_type', 'UPPER'),
+        ('payload_digest', 'not-a-digest'),
+        ('idempotency_key', 'x'),
+    ),
+)
+def test_enqueue_rejects_malformed_durable_identity_before_database(field, value):
+    values = {
+        'tenant_id': 'tenant-one',
+        'owner_ref': 'owner:1',
+        'job_type': 'email',
+        'payload_digest': 'a' * 64,
+        'payload_schema': 1,
+        'idempotency_key': 'job-1',
+        'available_at': NOW,
+    }
+    values[field] = value
+    with (
+        patch('api.repositories.runtime_governance.workspace_db_conn') as connect,
+        pytest.raises(RuntimeRepositoryError, match='input_invalid'),
+    ):
+        enqueue_job(**values)
+    connect.assert_not_called()
 
 
 def test_claim_jobs_validates_limit_and_maps_rows():
@@ -159,6 +188,41 @@ def test_settle_job_validates_outcome_and_lease_ownership():
         )
 
 
+def test_job_lease_is_revalidated_and_renewed_immediately_before_work():
+    cursor = MagicMock()
+    cursor.rowcount = 1
+    with patch(
+        'api.repositories.runtime_governance.workspace_db_conn',
+        return_value=connection(cursor),
+    ):
+        renew_job_lease(
+            tenant_id='tenant-one',
+            job_id=JOB_ID,
+            worker='worker-1',
+            lease_token=UUID(int=3),
+            generation=2,
+            now=NOW,
+        )
+    assert 'lease_expires_at>%s' in cursor.execute.call_args.args[0]
+
+    cursor.rowcount = 0
+    with (
+        patch(
+            'api.repositories.runtime_governance.workspace_db_conn',
+            return_value=connection(cursor),
+        ),
+        pytest.raises(RuntimeRepositoryError, match='lease_lost'),
+    ):
+        renew_job_lease(
+            tenant_id='tenant-one',
+            job_id=JOB_ID,
+            worker='worker-1',
+            lease_token=UUID(int=3),
+            generation=2,
+            now=NOW,
+        )
+
+
 def test_dead_letter_inventory_actions_and_due_schedules():
     cursor = MagicMock()
     cursor.fetchall.return_value = [(JOB_ID, 'email', 'failed', 5, NOW)]
@@ -217,6 +281,7 @@ def test_dead_letter_inventory_actions_and_due_schedules():
         )
 
     schedules = MagicMock()
+    schedules.rowcount = 1
     schedules.fetchall.return_value = [
         (UUID(int=2), 'daily', 'email', 'UTC', 'every:60', 'once', 'forbid', NOW, None, 3),
     ]
@@ -225,9 +290,18 @@ def test_dead_letter_inventory_actions_and_due_schedules():
         return_value=connection(schedules),
     ):
         due = due_schedules(tenant_id='tenant-one', now=NOW, limit=0)
-    assert due[0]['lastRunAt'] is None
+    assert due[0]['scheduledFor'] == NOW.isoformat()
+    assert due[0]['lastRunAt'] == NOW.isoformat()
     assert due[0]['revision'] == 4
-    assert schedules.execute.call_args_list[0].args[1] == ('tenant-one', NOW, NOW, 1)
+    assert schedules.execute.call_args_list[0].args[1] == (
+        'tenant-one',
+        NOW,
+        NOW,
+        'tenant-one',
+        'tenant-one',
+        'tenant-one',
+        1,
+    )
 
     settled = MagicMock()
     settled.rowcount = 1
@@ -251,3 +325,34 @@ def test_dead_letter_inventory_actions_and_due_schedules():
         str(UUID(int=3)),
         4,
     )
+
+
+def test_schedule_policy_validation_and_replace_are_enforced_atomically():
+    invalid = MagicMock()
+    invalid.rowcount = 1
+    invalid.fetchall.return_value = [
+        (UUID(int=2), 'daily', 'email', 'Not/AZone', 'every:60', 'once', 'forbid', NOW, None, 1),
+    ]
+    with (
+        patch(
+            'api.repositories.runtime_governance.workspace_db_conn',
+            return_value=connection(invalid),
+        ),
+        pytest.raises(RuntimeRepositoryError, match='timezone_invalid'),
+    ):
+        due_schedules(tenant_id='tenant-one', now=NOW)
+
+    replacement = MagicMock()
+    replacement.rowcount = 1
+    replacement.fetchall.return_value = [
+        (UUID(int=2), 'daily', 'email', 'UTC', 'every:60', 'skip', 'replace', NOW, None, 1),
+    ]
+    with patch(
+        'api.repositories.runtime_governance.workspace_db_conn',
+        return_value=connection(replacement),
+    ):
+        claimed = due_schedules(tenant_id='tenant-one', now=NOW)
+    assert claimed[0]['missedPolicy'] == 'skip'
+    assert claimed[0]['overlapPolicy'] == 'replace'
+    assert "state='cancelled'" in replacement.execute.call_args_list[1].args[0]
+    assert 'claim_token=%s' in replacement.execute.call_args_list[2].args[0]

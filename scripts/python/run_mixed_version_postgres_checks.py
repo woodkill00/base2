@@ -41,6 +41,16 @@ def main() -> int:
                        VALUES (%s,'mixed-version','api.health','staging',true,'release-old',NOW(),NOW())""",
                     (str(UUID(int=106)),),
                 )
+                cursor.execute(
+                    """INSERT INTO sitecontent_durablejob
+                       (id,site_id,owner_ref,generation,job_type,payload_digest,payload_schema,
+                        idempotency_key,state,attempts,maximum_attempts,available_at,lease_owner,
+                        lease_expires_at,result_digest,error_code,created_at,updated_at)
+                       VALUES (%s,'mixed-version','worker-old',1,'operations.collect',%s,1,
+                        'mixed-version-lease','leased',1,5,NOW(),'worker-old',
+                        NOW()+INTERVAL '5 minutes','','',NOW(),NOW())""",
+                    (str(UUID(int=107)), "a" * 64),
+                )
             else:
                 assert lease_token_exists is True
                 cursor.execute(
@@ -48,6 +58,18 @@ def main() -> int:
                        WHERE site_id='mixed-version' AND service_key='api.health'"""
                 )
                 assert cursor.fetchone() == (True, "release-old")
+                cursor.execute(
+                    """SELECT state,lease_owner,lease_token,lease_expires_at,error_code
+                       FROM sitecontent_durablejob WHERE id=%s""",
+                    (str(UUID(int=107)),),
+                )
+                assert cursor.fetchone() == (
+                    "retry",
+                    "",
+                    None,
+                    None,
+                    "job.lease_upgrade_recovery",
+                )
     finally:
         connection.close()
     print(f"mixed-version-{sys.argv[1]}: PASS")

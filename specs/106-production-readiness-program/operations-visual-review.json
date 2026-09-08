@@ -2,71 +2,71 @@
   "schemaVersion": 1,
   "status": "accepted",
   "sources": {
-    "react-app/src/pages/OperationsCenter.jsx": "af1fe1ed01f6f9c74f51010e13948c173e3690b911e10c86b1d62d28ee619238",
-    "react-app/src/services/operations.js": "acc9d295e86857d6466efd3c92dfe808874e1b093ab57b0e07c8839f26e7e063",
-    "react-app/e2e/operations/operations-release.spec.ts": "c765dcfe0caaa8b073e7e689f02e6aae6a8ca8324ceacb6e375f507f519837d4",
+    "react-app/src/pages/OperationsCenter.jsx": "f60e744e91e08f9b7a52e5df80a3fe2fa2a7b292e3b1b76864ac9bd644a6b8f5",
+    "react-app/src/services/operations.js": "a1cfef8a26b47317022bad8745c620885989e89f06b65567a44393051a35bfb5",
+    "react-app/e2e/operations/operations-release.spec.ts": "0f4f8887ffd9bc61995c3ff810843583f212fe73a15d57da4dbcfe768a85d01a",
     "react-app/playwright.operations-release.config.mjs": "6e630bfb94fdf68cdbf5e6eb1b0c3aa19bfa28aeca3088dd17e448d6cc049ab3"
   },
   "screenshots": {
     "operations-center-chromium-400-zoom-chromium-400-zoom-linux.png": {
-      "sha256": "d753781f85ae8c2d6f79a9d39ca38338af3eabdbadb86da752de60e907adfd09",
-      "pixels": [320, 2874]
+      "sha256": "8cdb7c9bb0c0e2b8d00ebdabd2a9e7c8c6933aa2aa38d64ec74f57c3ea4fd5e4",
+      "pixels": [320, 3439]
     },
     "operations-center-chromium-compact-chromium-compact-linux.png": {
-      "sha256": "7bd2648e7a9cc627428e6dc051a458754e1f853c88f71f08d63bbbb4d5f9620a",
-      "pixels": [320, 2873]
+      "sha256": "e4be7d7ae5ba459c2000b4a55039f942e6f67bf8477fd3fa7cb04ad18354aa06",
+      "pixels": [320, 3437]
     },
     "operations-center-chromium-desktop-chromium-desktop-linux.png": {
-      "sha256": "bfa0d7845cd4769b924a32e5577d9e323f991b4b47ae19221afd653c08ef645d",
-      "pixels": [1440, 2051]
+      "sha256": "ffa4cf32a10a1fc030d432a6dcd09327f420c63fdaddd7d1742771f550586ec5",
+      "pixels": [1440, 2340]
     },
     "operations-center-chromium-high-contrast-chromium-high-contrast-linux.png": {
-      "sha256": "bdff0fde4dff6127419317096f4c20b1fc708e882e6cbc5dcf9669be1db97556",
-      "pixels": [1280, 2035]
+      "sha256": "cfd9d0ec4d817962dcf5eba8df30c3ead27f0de85590796116ab00dab9ecf9d0",
+      "pixels": [1280, 2324]
     },
     "operations-center-chromium-landscape-touch-chromium-landscape-touch-linux.png": {
-      "sha256": "9abf18d48e3d51992eef8d62d2b030ea66ec4c16e005d20247803f2f6ec88440",
-      "pixels": [844, 2398]
+      "sha256": "071b9a4664d8b612265769566dfc622627ee67a46eed73033ce7110550b7b3c3",
+      "pixels": [844, 3069]
     },
     "operations-center-chromium-large-text-chromium-large-text-linux.png": {
-      "sha256": "38ad5036747fb08c496ad6b5b59832f8da3d6a44f2dafd3c54c9d3087869cd3e",
-      "pixels": [1280, 3958]
+      "sha256": "d842980e866decd9b85f7ffe640fd5bb9a9f955d61a29810d0d39346c4e9364b",
+      "pixels": [1280, 4776]
     },
     "operations-center-chromium-light-chromium-light-linux.png": {
-      "sha256": "b4e28f72f066c3ac736db37b14d892187f70bbc09e79a730923d3fb001f345aa",
-      "pixels": [1280, 2035]
+      "sha256": "d14cfd9e3b424e503342aaca14a8a7a609395dd03c9dd43d3333f27e918df8cc",
+      "pixels": [1280, 2324]
     },
     "operations-center-chromium-reduced-motion-chromium-reduced-motion-linux.png": {
-      "sha256": "bdff0fde4dff6127419317096f4c20b1fc708e882e6cbc5dcf9669be1db97556",
-      "pixels": [1280, 2035]
+      "sha256": "b5a25f04149fe5e9f955eca18a36f366ef654c8479e35c3ee74bdc24da121105",
+      "pixels": [1280, 2324]
     },
     "operations-center-chromium-rtl-chromium-rtl-linux.png": {
-      "sha256": "0460901906b584605936981cc6f7853c9f317d45478fc08e7c1944ad0d2567c9",
-      "pixels": [1280, 2035]
+      "sha256": "14854c8477cc5bb1f3492fedc4f1009503c2ce190879f49898f66de8b2e8a52e",
+      "pixels": [1280, 2293]
     },
     "operations-center-chromium-tablet-chromium-tablet-linux.png": {
-      "sha256": "390726e862d363d54063001059671130f4f4010925b53a49c100b9f03a9b126f",
-      "pixels": [1024, 2022]
+      "sha256": "5821cd88e5b3b10cf3134852797d008d52084c4675c71105dddb88d65f87021b",
+      "pixels": [1024, 2402]
     },
     "operations-center-chromium-ultrawide-chromium-ultrawide-linux.png": {
-      "sha256": "399ded91a108e41d3f2ab2f3b894f7d1f72b08f23469f8a32322d0a69936fa65",
-      "pixels": [2560, 2122]
+      "sha256": "7abcbcd639dd952130fba64359f76a808a6130508593e63de6ff459a8d5e9efc",
+      "pixels": [2560, 2410]
     },
     "operations-center-empty-chromium-desktop-linux.png": {
-      "sha256": "b77440788e2b61832461d07ba29c7303b8ba7c010b45eaec5e40669a4b9dee10",
-      "pixels": [1440, 1533]
+      "sha256": "ca21aee5bce1c65c3115865451c9e331e140658484798548a3c3f5ea80144edb",
+      "pixels": [1440, 1672]
     },
     "operations-center-error-chromium-desktop-linux.png": {
-      "sha256": "a91e7d2758425deca0057fb1d6141756860c4c31565a92adf029143060f50a8c",
-      "pixels": [1440, 1470]
+      "sha256": "d9e8b3fce8f97ac3f04396a056ef357684e7767ad01d75ccb5e0a2c8bc50561b",
+      "pixels": [1440, 1533]
     },
     "operations-center-firefox-desktop-firefox-desktop-linux.png": {
-      "sha256": "3c5e195e56274c6434c156770cd1b3671a74b387a49770427fbf4edaac7581e5",
-      "pixels": [1440, 2051]
+      "sha256": "47eb999732dfa7fed2944234e1cbe0bf8eff1a144b9eceffbc08a58e83b4ef89",
+      "pixels": [1440, 2340]
     },
     "operations-center-webkit-desktop-webkit-desktop-linux.png": {
-      "sha256": "4447b26346b29b34fc00e6e33c2372411cb22f0bf45332841b5ccc69b54a9eb6",
-      "pixels": [1430, 2034]
+      "sha256": "902e66544fc5c44862df423007cd225b29667c49425248baf00165127763effa",
+      "pixels": [1430, 2320]
     }
   },
   "assertions": {

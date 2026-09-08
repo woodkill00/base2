@@ -10,6 +10,9 @@ const user = {
 };
 
 test.beforeEach(async ({ page }, testInfo) => {
+  if (testInfo.project.name === 'chromium-reduced-motion') {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+  }
   const localizedUser = {
     ...user,
     locale: testInfo.project.name === 'chromium-rtl' ? 'ar' : 'en',
@@ -85,9 +88,51 @@ test.beforeEach(async ({ page }, testInfo) => {
           },
         ],
         runtime: {
-          jobs: { ready: 2, leased: 1, deadLetters: 0 },
-          schedules: { enabled: 3, late: 0 },
-          alerts: { pending: 1, terminal: 0 },
+          jobs: {
+            ready: 2,
+            leased: 1,
+            deadLetters: 1,
+            items: [
+              {
+                jobId: '00000000-0000-0000-0000-000000010601',
+                jobType: 'operations.collect',
+                errorCode: 'job.attempts_exhausted',
+                attempts: 5,
+                maximumAttempts: 5,
+                updatedAt: '2026-09-08T11:58:00Z',
+              },
+            ],
+          },
+          schedules: {
+            enabled: 3,
+            late: 0,
+            items: [
+              {
+                scheduleId: '00000000-0000-0000-0000-000000010602',
+                scheduleKey: 'operations.health',
+                timezone: 'UTC',
+                rule: 'every:300',
+                nextRunAt: '2026-09-08T12:05:00Z',
+                lastRunAt: '2026-09-08T12:00:00Z',
+                missedPolicy: 'once',
+                overlapPolicy: 'forbid',
+              },
+            ],
+          },
+          alerts: {
+            pending: 1,
+            terminal: 0,
+            items: [
+              {
+                deliveryId: '00000000-0000-0000-0000-000000010603',
+                status: 'retry',
+                attempts: 2,
+                maximumAttempts: 5,
+                errorCode: 'provider.transient',
+                updatedAt: '2026-09-08T11:59:00Z',
+              },
+            ],
+          },
         },
       };
     } else if (url.pathname.endsWith('/incidents')) {
@@ -152,16 +197,14 @@ test('operations center is accessible responsive and visually stable', async ({
   await page.goto('/operations', { waitUntil: 'networkidle' });
   if (testInfo.project.name === 'chromium-large-text')
     await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
-  await page.addStyleTag({
-    content:
-      '*,*::before,*::after{animation-duration:0s!important;transition-duration:0s!important;scroll-behavior:auto!important}',
-  });
   const rtl = testInfo.project.name === 'chromium-rtl';
   await expect(
     page.getByRole('heading', { name: rtl ? 'مركز العمليات' : 'Operations center' })
   ).toBeVisible();
   await expect(page.getByText('11/12')).toBeVisible();
-  await expect(page.getByText('Database Unavailable')).toBeVisible();
+  await expect(
+    page.getByText(rtl ? 'قاعدة البيانات غير متاحة' : 'Database Unavailable')
+  ).toBeVisible();
   await expect(
     page.getByRole('heading', { name: rtl ? 'حالة الخدمات' : 'Service health' })
   ).toBeVisible();
@@ -185,6 +228,11 @@ test('operations center is accessible responsive and visually stable', async ({
   expect(violations.map((item) => item.id)).toEqual([]);
   await page.keyboard.press('Tab');
   await expect(page.locator(':focus')).toBeVisible();
+  if (testInfo.project.name === 'chromium-reduced-motion') {
+    expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(
+      true
+    );
+  }
   expect(runtimeErrors).toEqual([]);
   await page.addStyleTag({
     content: '.app-shell > header, .app-shell-content > nav { position: static !important; }',
@@ -195,11 +243,22 @@ test('operations center is accessible responsive and visually stable', async ({
     caret: 'hide',
     maxDiffPixelRatio: 0.01,
   });
-  await page.getByRole('button', { name: 'View timeline' }).first().click();
-  await expect(page.getByRole('heading', { name: 'Incident timeline' })).toBeVisible();
-  await expect(page.getByText('Incident Opened')).toBeVisible();
-  await page.getByRole('button', { name: 'Close timeline' }).click();
-  await page.getByRole('button', { name: 'Acknowledge' }).click();
+  const timelineButton = page
+    .getByRole('button', { name: rtl ? 'عرض التسلسل الزمني' : 'View timeline' })
+    .first();
+  await timelineButton.focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    page.getByRole('heading', { name: rtl ? 'التسلسل الزمني للحادث' : 'Incident timeline' })
+  ).toBeVisible();
+  await expect(page.getByText(rtl ? 'فُتح الحادث' : 'Incident Opened')).toBeVisible();
+  await page.getByRole('button', { name: rtl ? 'إغلاق التسلسل' : 'Close timeline' }).click();
+  const replayRequest = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().endsWith('/replay')
+  );
+  await page.getByRole('button', { name: rtl ? 'إعادة آمنة' : 'Replay safely' }).click();
+  await replayRequest;
+  await page.getByRole('button', { name: rtl ? 'إقرار' : 'Acknowledge' }).click();
   await expect(
     page.getByRole('heading', { name: rtl ? 'مركز العمليات' : 'Operations center' })
   ).toBeVisible();

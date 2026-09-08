@@ -5,6 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from digital_ocean.scripts.python.preview_state import authorize_destructive_transition
+from scripts.python.data_readiness import provision_restore_root
 from scripts.python.recovery_assurance import (
     RecoveryDenied,
     certificate_drill,
@@ -27,6 +28,7 @@ class RecoveryAssuranceTests(unittest.TestCase):
 
     def test_encrypted_backup_isolated_restore_and_no_secret_exposure(self):
         with TemporaryDirectory() as temporary:
+            provision_restore_root(root=Path(temporary), target_class="isolated")
             backup, restored = (
                 Path(temporary) / "backup.enc",
                 Path(temporary) / "isolated" / "data.bin",
@@ -57,6 +59,7 @@ class RecoveryAssuranceTests(unittest.TestCase):
     def test_corruption_wrong_target_schema_partial_and_live_restore_fail_closed(self):
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
+            provision_restore_root(root=root, target_class="isolated")
             backup = root / "backup.enc"
             create_backup(
                 payload=b"state",
@@ -126,6 +129,7 @@ class RecoveryAssuranceTests(unittest.TestCase):
     def test_live_or_production_restore_target_is_rejected_before_decryption(self):
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
+            provision_restore_root(root=root, target_class="isolated")
             backup = root / "backup.enc"
             create_backup(
                 payload=b"state",
@@ -147,6 +151,7 @@ class RecoveryAssuranceTests(unittest.TestCase):
 
     def test_preview_snapshot_authorizes_destroy_then_exact_recreation(self):
         with TemporaryDirectory() as temporary:
+            provision_restore_root(root=Path(temporary), target_class="isolated")
             backup = Path(temporary) / "preview.enc"
             expiry = self.now + timedelta(hours=1)
             receipt = preview_snapshot(
@@ -196,6 +201,7 @@ class RecoveryAssuranceTests(unittest.TestCase):
     def test_stream_backup_restores_large_input_without_plaintext_residue(self):
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
+            provision_restore_root(root=root, target_class="isolated")
             source = root / "database.dump"
             source.write_bytes((b"exact-database-page-" * 131072) + b"end")
             backup = root / "database.enc"
@@ -223,6 +229,7 @@ class RecoveryAssuranceTests(unittest.TestCase):
     def test_stream_backup_corruption_wrong_key_and_live_target_fail_closed(self):
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
+            provision_restore_root(root=root, target_class="isolated")
             source = root / "source"
             source.write_bytes(b"database")
             backup = root / "backup.enc"

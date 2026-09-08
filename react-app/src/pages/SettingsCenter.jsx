@@ -435,6 +435,8 @@ const SettingsCenter = () => {
                 onChange={(event) => setPreferences({ ...preferences, locale: event.target.value })}
               >
                 <option value="en">English</option>
+                <option value="de">Deutsch</option>
+                <option value="ar">العربية</option>
               </Select>
             </Field>
             <Field label="Time zone" htmlFor="timezone">

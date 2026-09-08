@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from celery import Celery, Task
+from celery.signals import before_task_publish, heartbeat_sent, task_prerun, worker_ready
 
 from api.services.email_service import process_outbox_email
 from api.repositories.operations import prune as prune_operations
@@ -44,6 +45,7 @@ from api.repositories.runtime_governance import (
     claim_due_schedules,
     claim_jobs,
     enqueue_job,
+    renew_job_lease,
     settle_job,
     settle_schedule_claim,
 )
@@ -52,6 +54,8 @@ from api.services.operations_runtime import (
     configured_tenants,
     discord_webhook_sender,
     dispatch_alerts,
+    fair_tenant_batch,
+    mark_queue_observation,
     mark_runtime_heartbeat,
 )
 
@@ -155,6 +159,26 @@ app.conf.update(
 app.autodiscover_tasks(['api'])
 
 
+@before_task_publish.connect
+def _stamp_published_at(headers=None, **_kwargs):
+    if isinstance(headers, dict):
+        headers['base2PublishedAt'] = datetime.now(UTC).isoformat()
+
+
+@worker_ready.connect
+@heartbeat_sent.connect
+def _observe_worker(**_kwargs):
+    with suppress(Exception):
+        mark_runtime_heartbeat('workers')
+
+
+@task_prerun.connect
+def _observe_queue_delay(task=None, **_kwargs):
+    with suppress(Exception):
+        raw = getattr(getattr(task, 'request', None), 'headers', {}).get('base2PublishedAt')
+        mark_queue_observation(published_at=datetime.fromisoformat(str(raw)))
+
+
 @app.task(name='app.ping')
 def ping(request_id: str | None = None):
     with suppress(Exception):
@@ -177,10 +201,9 @@ def collect_operations_site(site_id: str) -> dict[str, int]:
 
 @app.task(name='app.collect_operations_health')
 def collect_operations_health() -> int:
-    tenants = configured_tenants()
+    tenants = fair_tenant_batch(configured_tenants())
     for tenant_id in tenants:
-        collect_operations_site(tenant_id)
-    mark_runtime_heartbeat('monitoring')
+        collect_operations_site.delay(tenant_id)
     return len(tenants)
 
 
@@ -220,7 +243,7 @@ def materialize_runtime_schedules() -> int:
     materialized = 0
     for tenant_id in configured_tenants():
         for schedule in claim_due_schedules(tenant_id=tenant_id, now=now, limit=25):
-            original_due = datetime.fromisoformat(schedule['nextRunAt'])
+            original_due = datetime.fromisoformat(schedule['scheduledFor'])
             succeeded = False
             try:
                 if schedule['jobType'] not in RUNTIME_JOB_TYPES:
@@ -229,7 +252,7 @@ def materialize_runtime_schedules() -> int:
                     'scheduleId': schedule['scheduleId'],
                     'scheduleKey': schedule['scheduleKey'],
                     'jobType': schedule['jobType'],
-                    'scheduledFor': schedule['nextRunAt'],
+                    'scheduledFor': schedule['scheduledFor'],
                     'revision': schedule['revision'],
                 }
                 enqueue_job(
@@ -239,7 +262,7 @@ def materialize_runtime_schedules() -> int:
                     payload_digest=_runtime_digest(identity),
                     payload_schema=1,
                     idempotency_key=(
-                        f"schedule:{schedule['scheduleId']}:{schedule['nextRunAt']}"
+                        f"schedule:{schedule['scheduleId']}:{schedule['scheduledFor']}"
                     ),
                     available_at=now,
                 )
@@ -262,6 +285,14 @@ def materialize_runtime_schedules() -> int:
 def run_runtime_job(tenant_id: str, job: dict) -> str:
     worker = 'base2-runtime-v1'
     now = datetime.now(UTC)
+    renew_job_lease(
+        tenant_id=tenant_id,
+        job_id=UUID(job['jobId']),
+        worker=worker,
+        lease_token=UUID(job['leaseToken']),
+        generation=int(job['generation']),
+        now=now,
+    )
     try:
         job_type = str(job['jobType'])
         if job_type == 'operations.collect':

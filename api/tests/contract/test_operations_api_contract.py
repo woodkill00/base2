@@ -149,3 +149,34 @@ def test_acknowledgement_uses_tenant_owner_and_uuid(monkeypatch):
         'incident_id': INCIDENT_ID,
         'owner_ref': f'admin:{USER_ID}',
     }
+
+
+def test_dead_letter_action_is_recent_auth_tenant_bound_and_closed(monkeypatch):
+    permit(monkeypatch)
+    captured = {}
+    monkeypatch.setattr(
+        'api.routes.operations.dead_letter_action',
+        lambda **kwargs: captured.update(kwargs) or 'queued',
+    )
+    response = TestClient(app).post(
+        f'/api/operations/v1/runtime/dead-letters/{INCIDENT_ID}/replay',
+        headers={'X-Tenant-Id': 'tenant-two'},
+    )
+    assert response.status_code == 200
+    assert response.json() == {
+        'status': 'queued',
+        'jobId': str(INCIDENT_ID),
+        'action': 'replay',
+    }
+    assert captured['tenant_id'] == 'tenant-two'
+    assert captured['job_id'] == INCIDENT_ID
+    assert captured['action'] == 'replay'
+    assert captured['now'].tzinfo is not None
+
+    permit(monkeypatch, age_seconds=301)
+    denied = TestClient(app).post(
+        f'/api/operations/v1/runtime/dead-letters/{INCIDENT_ID}/cancel',
+        headers={'X-Tenant-Id': 'tenant-two'},
+    )
+    assert denied.status_code == 403
+    assert denied.json() == {'detail': 'recent_reauthentication_required'}

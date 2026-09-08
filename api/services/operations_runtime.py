@@ -8,6 +8,7 @@ import hashlib
 import hmac
 import json
 import os
+import stat
 import shutil
 import time
 from datetime import datetime, timezone
@@ -15,10 +16,10 @@ from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import urlparse, urlunparse
 from urllib.request import Request, urlopen
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from api import redis_client
-from api.db import db_ping, db_schema_ready
+from api.db import db_ping, db_schema_ready, pool_snapshot
 from api.repositories import operations
 from api.services.operations_center import (
     alert_schedule,
@@ -35,13 +36,24 @@ CATALOG = ROOT / 'shared/config/operations-probes-v1.json'
 def configured_tenants(raw: str | None = None) -> list[str]:
     source = raw if raw is not None else os.getenv('OPERATIONS_TENANT_IDS', settings.SITE_PROFILE)
     values = [item.strip() for item in source.split(',') if item.strip()]
-    if not 1 <= len(values) <= 16:
+    if not 1 <= len(values) <= 256:
         raise ValueError('operations:tenant_configuration_invalid')
     import re
 
     if any(not re.fullmatch(r'[a-z][a-z0-9-]{2,62}', item) for item in values):
         raise ValueError('operations:tenant_configuration_invalid')
     return list(dict.fromkeys(values))
+
+
+def fair_tenant_batch(values: list[str], *, limit: int = 16) -> list[str]:
+    """Select a bounded round-robin batch from the explicit tenant registry."""
+    if not values or not 1 <= limit <= 16:
+        raise ValueError('operations:tenant_batch_invalid')
+    client = redis_client.get_client()
+    cursor = int(client.incrby(redis_client.key('operations', 'tenant-cursor'), limit)) - limit
+    start = cursor % len(values)
+    count = min(limit, len(values))
+    return [values[(start + offset) % len(values)] for offset in range(count)]
 
 
 def _timed(check: Callable[[], bool], healthy: str, failed: str, timeout: int):
@@ -71,7 +83,12 @@ def _read_secret_file(path: str, *, maximum_bytes: int = 4096) -> str:
     target = Path(path)
     if not target.is_absolute() or target.is_symlink() or not target.is_file():
         raise ValueError('operations:secret_file_invalid')
-    if target.stat().st_size > maximum_bytes:
+    metadata = target.stat()
+    if (
+        metadata.st_size > maximum_bytes
+        or metadata.st_uid not in {0, os.geteuid()}
+        or stat.S_IMODE(metadata.st_mode) & 0o077
+    ):
         raise ValueError('operations:secret_file_invalid')
     value = target.read_text(encoding='utf-8').strip()
     if not value:
@@ -151,18 +168,26 @@ def configured_probe_adapters() -> dict[str, Callable[[int], tuple[str, str, int
     def configured(code: str):
         return lambda timeout: ('degraded', f'{code}.not-configured', min(timeout, 1))
 
+    def database_performance(timeout: int):
+        started = time.monotonic()
+        available = db_ping()
+        latency = min(int((time.monotonic() - started) * 1000), timeout * 1000)
+        saturated = any(value['state'] == 'saturated' for value in pool_snapshot().values())
+        ok = available and not saturated and latency < min(timeout * 1000, 1000)
+        return (
+            'healthy' if ok else 'degraded',
+            'database.performance-ready' if ok else 'database.performance-degraded',
+            latency,
+        )
+
     return {
         'public.root': lambda timeout: _internal_http('/', timeout),
         'api.health': lambda timeout: _internal_http('/api/health', timeout),
         'database.ready': lambda timeout: _timed(
             db_ping, 'database.ready', 'database.unavailable', timeout
         ),
-        'workers.ready': lambda timeout: _timed(
-            redis_client.ping, 'workers.broker-ready', 'workers.unavailable', timeout
-        ),
-        'queues.delay': lambda timeout: _timed(
-            redis_client.ping, 'queues.ready', 'queues.unavailable', timeout
-        ),
+        'workers.ready': lambda timeout: _runtime_heartbeat('workers', timeout),
+        'queues.delay': _queue_health,
         'objects.ready': storage,
         # These consume integrity-bound receipts from the separately bounded
         # domain/certificate controller. Absence is visible degradation, never
@@ -174,9 +199,7 @@ def configured_probe_adapters() -> dict[str, Callable[[int], tuple[str, str, int
         'schedules.freshness': lambda timeout: _runtime_heartbeat('schedules', timeout),
         'capacity.headroom': capacity,
         'monitoring.self': lambda timeout: _runtime_heartbeat('monitoring', timeout),
-        'database.performance': lambda timeout: _timed(
-            db_ping, 'database.performance-ready', 'database.performance-failed', timeout
-        ),
+        'database.performance': database_performance,
         'backup.freshness': lambda timeout: _receipt('backup', timeout),
         'restore.last-drill': lambda timeout: _receipt('restore', timeout),
         'migrations.state': lambda timeout: _timed(
@@ -193,20 +216,49 @@ def collect_site(
     adapters: dict[str, Any] | None = None,
 ) -> dict[str, int]:
     current = now or datetime.now(timezone.utc)
-    catalog = json.loads(CATALOG.read_text(encoding='utf-8'))
-    results = collect_probe_results(
-        catalog=catalog,
-        adapters=configured_probe_adapters() if adapters is None else adapters,
-        now=current,
-    )
-    return operations.record_probe_batch(
-        tenant_id=tenant_id, environment=environment, results=results, now=current
-    )
+    client = None
+    lock_key = None
+    lock_token = None
+    if adapters is None:
+        client = redis_client.get_client()
+        lock_key = redis_client.tenant_key('operations-collection', tenant_id)
+        lock_token = str(uuid4())
+        if not client.set(lock_key, lock_token, nx=True, ex=120):
+            raise RuntimeError('operations:collection_in_progress')
+    try:
+        catalog = json.loads(CATALOG.read_text(encoding='utf-8'))
+        results = collect_probe_results(
+            catalog=catalog,
+            adapters=configured_probe_adapters() if adapters is None else adapters,
+            now=current,
+        )
+        result = operations.record_probe_batch(
+            tenant_id=tenant_id, environment=environment, results=results, now=current
+        )
+        if adapters is None:
+            mark_runtime_heartbeat('monitoring', now=current)
+        return result
+    finally:
+        if client is not None and lock_key and lock_token:
+            client.eval(
+                "if redis.call('get',KEYS[1]) == ARGV[1] then "
+                "return redis.call('del',KEYS[1]) else return 0 end",
+                1,
+                lock_key,
+                lock_token,
+            )
 
 
 def mark_runtime_heartbeat(name: str, *, now: datetime | None = None) -> None:
     current = now or datetime.now(timezone.utc)
     redis_client.get_client().set(redis_client.key('operations', name), current.isoformat(), ex=180)
+
+
+def mark_queue_observation(*, published_at: datetime, now: datetime | None = None) -> None:
+    current = now or datetime.now(timezone.utc)
+    delay_ms = max(0, int((current - published_at).total_seconds() * 1000))
+    payload = json.dumps({'observedAt': current.isoformat(), 'delayMs': delay_ms})
+    redis_client.get_client().set(redis_client.key('operations', 'queue-delay'), payload, ex=180)
 
 
 def _runtime_heartbeat(name: str, timeout: int) -> tuple[str, str, int]:
@@ -224,6 +276,31 @@ def _runtime_heartbeat(name: str, timeout: int) -> tuple[str, str, int]:
         'healthy' if ok else 'degraded',
         f'{name}.ready' if ok else f'{name}.stale',
         0,
+    )
+
+
+def _queue_health(timeout: int) -> tuple[str, str, int]:
+    del timeout
+    try:
+        client = redis_client.get_client()
+        depth = int(client.llen('celery'))
+        worker_ok = _runtime_heartbeat('workers', 1)[0] == 'healthy'
+        if depth == 0 and worker_ok:
+            return 'healthy', 'queues.empty', 0
+        raw = client.get(redis_client.key('operations', 'queue-delay'))
+        if isinstance(raw, bytes):
+            raw = raw.decode('utf-8')
+        value = json.loads(str(raw))
+        observed = datetime.fromisoformat(str(value['observedAt']))
+        delay_ms = int(value['delayMs'])
+        fresh = 0 <= (datetime.now(timezone.utc) - observed).total_seconds() <= 120
+        ok = worker_ok and fresh and depth <= 100 and delay_ms <= 60_000
+    except Exception:
+        return 'degraded', 'queues.unknown', 0
+    return (
+        'healthy' if ok else 'degraded',
+        'queues.ready' if ok else 'queues.delayed',
+        delay_ms,
     )
 
 

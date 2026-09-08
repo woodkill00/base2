@@ -58,15 +58,34 @@ class S3ObjectStore:
                 raise ObjectStorageError('object:configuration_invalid')
         except ValueError:
             pass
+        port = parsed.port or 443
         try:
-            addresses = {item[4][0] for item in resolver(parsed.hostname, 443)}
+            addresses = {item[4][0] for item in resolver(parsed.hostname, port)}
             if not addresses or any(
                 not ipaddress.ip_address(value).is_global for value in addresses
             ):
                 raise ObjectStorageError('object:configuration_invalid')
         except (OSError, TypeError, ValueError) as exc:
             raise ObjectStorageError('object:configuration_invalid') from exc
+        client_endpoint = str(getattr(getattr(client, 'meta', None), 'endpoint_url', ''))
+        if client_endpoint.rstrip('/') != endpoint.rstrip('/'):
+            raise ObjectStorageError('object:client_endpoint_mismatch')
         self.endpoint, self.bucket, self.client = endpoint.rstrip('/'), bucket, client
+        self._resolver, self._hostname, self._port = resolver, parsed.hostname, port
+
+    def _validate_live_endpoint(self) -> None:
+        """Re-resolve immediately before every request to reject DNS rebinding."""
+        client_endpoint = str(getattr(getattr(self.client, 'meta', None), 'endpoint_url', ''))
+        if client_endpoint.rstrip('/') != self.endpoint:
+            raise ObjectStorageError('object:client_endpoint_mismatch')
+        try:
+            addresses = {item[4][0] for item in self._resolver(self._hostname, self._port)}
+            if not addresses or any(
+                not ipaddress.ip_address(value).is_global for value in addresses
+            ):
+                raise ObjectStorageError('object:configuration_invalid')
+        except (OSError, TypeError, ValueError) as exc:
+            raise ObjectStorageError('object:configuration_invalid') from exc
 
     @staticmethod
     def _key(*, tenant_id: str, namespace: str, object_id: str) -> str:
@@ -81,6 +100,7 @@ class S3ObjectStore:
         if not isinstance(content, bytes) or not 1 <= len(content) <= 100 * 1024 * 1024:
             raise ObjectStorageError('object:size_invalid')
         key = self._key(tenant_id=tenant_id, namespace=namespace, object_id=object_id)
+        self._validate_live_endpoint()
         digest = hashlib.sha256(content).hexdigest()
         self.client.put_object(
             Bucket=self.bucket,
@@ -101,6 +121,7 @@ class S3ObjectStore:
             or not receipt.key.startswith(f'{tenant_id}/')
         ):
             raise ObjectStorageError('object:ownership_invalid')
+        self._validate_live_endpoint()
         response = self.client.get_object(Bucket=self.bucket, Key=receipt.key)
         content = response['Body'].read()
         if (
@@ -112,4 +133,5 @@ class S3ObjectStore:
 
     def delete(self, *, tenant_id: str, receipt: ObjectReceipt) -> None:
         self.get(tenant_id=tenant_id, receipt=receipt)
+        self._validate_live_endpoint()
         self.client.delete_object(Bucket=self.bucket, Key=receipt.key)

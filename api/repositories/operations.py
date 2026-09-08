@@ -141,6 +141,30 @@ def overview(*, tenant_id: str) -> dict[str, Any]:
             (tenant_id,),
         )
         alerts = cursor.fetchone() or (0, 0)
+        cursor.execute(
+            """SELECT id,job_type,error_code,attempts,maximum_attempts,updated_at
+               FROM sitecontent_durablejob
+               WHERE site_id=%s AND state='dead_letter'
+               ORDER BY updated_at DESC,id LIMIT 25""",
+            (tenant_id,),
+        )
+        dead_letters = cursor.fetchall()
+        cursor.execute(
+            """SELECT id,schedule_key,job_type,timezone,rule,missed_policy,overlap_policy,
+                      enabled,next_run_at,last_run_at
+               FROM sitecontent_durableschedule WHERE site_id=%s
+               ORDER BY schedule_key,id LIMIT 25""",
+            (tenant_id,),
+        )
+        schedule_details = cursor.fetchall()
+        cursor.execute(
+            """SELECT id,status,attempts,maximum_attempts,next_attempt_at,error_code,
+                      created_at,updated_at
+               FROM sitecontent_operationsalertdelivery WHERE site_id=%s
+               ORDER BY updated_at DESC,id LIMIT 25""",
+            (tenant_id,),
+        )
+        alert_details = cursor.fetchall()
     releases = sorted({str(row[4]) for row in services if row[4]})
     return {
         'site': {'id': tenant_id, 'serviceCount': len(services), 'releaseCount': len(releases)},
@@ -186,9 +210,58 @@ def overview(*, tenant_id: str) -> dict[str, Any]:
             for row in synthetics
         ],
         'runtime': {
-            'jobs': {'ready': int(jobs[0]), 'leased': int(jobs[1]), 'deadLetters': int(jobs[2])},
-            'schedules': {'enabled': int(schedules[0]), 'late': int(schedules[1])},
-            'alerts': {'pending': int(alerts[0]), 'terminal': int(alerts[1])},
+            'jobs': {
+                'ready': int(jobs[0]),
+                'leased': int(jobs[1]),
+                'deadLetters': int(jobs[2]),
+                'items': [
+                    {
+                        'jobId': str(row[0]),
+                        'jobType': row[1],
+                        'errorCode': row[2],
+                        'attempts': row[3],
+                        'maximumAttempts': row[4],
+                        'updatedAt': row[5],
+                    }
+                    for row in dead_letters
+                ],
+            },
+            'schedules': {
+                'enabled': int(schedules[0]),
+                'late': int(schedules[1]),
+                'items': [
+                    {
+                        'scheduleId': str(row[0]),
+                        'scheduleKey': row[1],
+                        'jobType': row[2],
+                        'timezone': row[3],
+                        'rule': row[4],
+                        'missedPolicy': row[5],
+                        'overlapPolicy': row[6],
+                        'enabled': row[7],
+                        'nextRunAt': row[8],
+                        'lastRunAt': row[9],
+                    }
+                    for row in schedule_details
+                ],
+            },
+            'alerts': {
+                'pending': int(alerts[0]),
+                'terminal': int(alerts[1]),
+                'items': [
+                    {
+                        'deliveryId': str(row[0]),
+                        'status': row[1],
+                        'attempts': row[2],
+                        'maximumAttempts': row[3],
+                        'nextAttemptAt': row[4],
+                        'errorCode': row[5] or None,
+                        'createdAt': row[6],
+                        'updatedAt': row[7],
+                    }
+                    for row in alert_details
+                ],
+            },
         },
     }
 

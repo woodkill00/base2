@@ -162,6 +162,34 @@ def recovery_strategy(capabilities: Any) -> dict[str, Any]:
     }
 
 
+RESTORE_ROOT_MARKER = ".base2-restore-root.json"
+
+
+def provision_restore_root(*, root: Path, target_class: str) -> dict[str, Any]:
+    """Create an explicit, non-overwritable operator boundary for isolated restores."""
+    path = Path(root)
+    if target_class not in TARGET_CLASSES or target_class != "isolated" or path.is_symlink():
+        raise DataReadinessError("restore:root_denied")
+    try:
+        path.mkdir(parents=True, exist_ok=True, mode=0o700)
+        path.chmod(0o700)
+        resolved = path.resolve(strict=True)
+        marker = resolved / RESTORE_ROOT_MARKER
+        payload = json.dumps(
+            {"schemaVersion": 1, "root": str(resolved), "targetClass": target_class},
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
+        descriptor = os.open(marker, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+    except (FileExistsError, OSError, RuntimeError, ValueError):
+        raise DataReadinessError("restore:root_denied") from None
+    return {"root": str(resolved), "targetClass": target_class, "marker": str(marker)}
+
+
 def restore_target(*, target_id: str, target_class: str, target_path: Path) -> dict[str, Any]:
     """Validate a restore destination from observable filesystem state.
 
@@ -171,6 +199,7 @@ def restore_target(*, target_id: str, target_class: str, target_path: Path) -> d
     """
     target = Path(target_path)
     ancestor = target.parent
+    restore_root = None
     try:
         if not target.is_absolute() or target.exists() or target.is_symlink():
             raise DataReadinessError("restore:target_denied")
@@ -178,14 +207,36 @@ def restore_target(*, target_id: str, target_class: str, target_path: Path) -> d
             if ancestor == ancestor.parent or ancestor.is_symlink():
                 raise DataReadinessError("restore:target_denied")
             ancestor = ancestor.parent
-        resolved_ancestor = ancestor.resolve(strict=True)
+        candidate = ancestor
+        while candidate != candidate.parent:
+            marker = candidate / RESTORE_ROOT_MARKER
+            if marker.is_file() and not marker.is_symlink():
+                marker_metadata = marker.stat()
+                if (
+                    marker_metadata.st_uid != os.geteuid()
+                    or stat.S_IMODE(marker_metadata.st_mode) != 0o600
+                ):
+                    raise DataReadinessError("restore:target_denied")
+                declaration = json.loads(marker.read_text(encoding="utf-8"))
+                resolved_candidate = candidate.resolve(strict=True)
+                if declaration != {
+                    "schemaVersion": 1,
+                    "root": str(resolved_candidate),
+                    "targetClass": target_class,
+                }:
+                    raise DataReadinessError("restore:target_denied")
+                restore_root = resolved_candidate
+                break
+            candidate = candidate.parent
+        if restore_root is None:
+            raise DataReadinessError("restore:target_denied")
         resolved_target = target.resolve(strict=False)
-        resolved_target.relative_to(resolved_ancestor)
-        metadata = resolved_ancestor.stat()
+        resolved_target.relative_to(restore_root)
+        metadata = restore_root.stat()
         securely_owned = metadata.st_uid == os.geteuid() and not (
             stat.S_IMODE(metadata.st_mode) & (stat.S_IWGRP | stat.S_IWOTH)
         )
-    except (OSError, RuntimeError, ValueError):
+    except (json.JSONDecodeError, OSError, RuntimeError, ValueError):
         raise DataReadinessError("restore:target_denied") from None
     if (
         target_class not in TARGET_CLASSES
@@ -199,6 +250,7 @@ def restore_target(*, target_id: str, target_class: str, target_path: Path) -> d
         "targetClass": target_class,
         "isolated": True,
         "targetPath": str(resolved_target),
+        "restoreRoot": str(restore_root),
         "ownerUid": metadata.st_uid,
     }
 

@@ -15,18 +15,66 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SNAPSHOT_ROOTS = ("react-app/e2e/visual", "react-app/e2e/account", "react-app/e2e/workspace")
+SNAPSHOT_ROOTS = (
+    "react-app/e2e/visual",
+    "react-app/e2e/account",
+    "react-app/e2e/workspace",
+    "react-app/e2e/operations",
+)
 MAX_MEMBER_BYTES = 8 * 1024 * 1024
 PROJECT = re.compile(r"-(desktop|tablet|mobile)-linux\.png$")
 ROUTES = (
     {"id": "public", "path": "/", "host": "woodkilldev.com", "auth": "public", "hermetic": True},
-    {"id": "admin", "path": "/admin", "host": "admin.woodkilldev.com", "auth": "edge+django+csrf", "hermetic": False},
+    {
+        "id": "admin",
+        "path": "/admin",
+        "host": "admin.woodkilldev.com",
+        "auth": "edge+django+csrf",
+        "hermetic": False,
+    },
     {"id": "api", "path": "/api", "host": "woodkilldev.com", "auth": "edge+api", "hermetic": False},
-    {"id": "swagger", "path": "/docs", "host": "swagger.woodkilldev.com", "auth": "edge", "hermetic": False},
-    {"id": "pgadmin", "path": "/", "host": "pgadmin.woodkilldev.com", "auth": "edge+pgadmin", "hermetic": False},
-    {"id": "traefik", "path": "/", "host": "traefik.woodkilldev.com", "auth": "edge", "hermetic": False},
-    {"id": "settings", "path": "/settings", "host": "woodkilldev.com", "auth": "credential-free fixture", "hermetic": True},
-    {"id": "workspace", "path": "/workspace", "host": "woodkilldev.com", "auth": "credential-free fixture", "hermetic": True},
+    {
+        "id": "swagger",
+        "path": "/docs",
+        "host": "swagger.woodkilldev.com",
+        "auth": "edge",
+        "hermetic": False,
+    },
+    {
+        "id": "pgadmin",
+        "path": "/",
+        "host": "pgadmin.woodkilldev.com",
+        "auth": "edge+pgadmin",
+        "hermetic": False,
+    },
+    {
+        "id": "traefik",
+        "path": "/",
+        "host": "traefik.woodkilldev.com",
+        "auth": "edge",
+        "hermetic": False,
+    },
+    {
+        "id": "settings",
+        "path": "/settings",
+        "host": "woodkilldev.com",
+        "auth": "credential-free fixture",
+        "hermetic": True,
+    },
+    {
+        "id": "workspace",
+        "path": "/workspace",
+        "host": "woodkilldev.com",
+        "auth": "credential-free fixture",
+        "hermetic": True,
+    },
+    {
+        "id": "operations",
+        "path": "/operations",
+        "host": "woodkilldev.com",
+        "auth": "credential-free fixture",
+        "hermetic": True,
+    },
 )
 
 
@@ -36,8 +84,10 @@ def sha256(raw: bytes) -> str:
 
 def tracked(root: Path = ROOT) -> list[str]:
     result = subprocess.run(
-        ["git", "ls-files", "-z", "--", *SNAPSHOT_ROOTS], cwd=root,
-        capture_output=True, check=True,
+        ["git", "ls-files", "-z", "--", *SNAPSHOT_ROOTS],
+        cwd=root,
+        capture_output=True,
+        check=True,
     )
     return sorted(item.decode() for item in result.stdout.split(b"\0") if item)
 
@@ -67,14 +117,24 @@ def build(root: Path = ROOT, *, commit: str | None = None) -> dict:
             raise ValueError("visual baseline member is not PNG")
         match = PROJECT.search(relative)
         project = match.group(1) if match else "shared"
-        members.append({
-            "path": relative,
-            "size": len(raw),
-            "sha256": sha256(raw),
-            "project": project,
-            "routeClass": "workspace" if "/workspace/" in relative else "settings" if "/account/settings-" in relative else "public",
-            "area": Path(relative).name.rsplit("-", 2)[0],
-        })
+        members.append(
+            {
+                "path": relative,
+                "size": len(raw),
+                "sha256": sha256(raw),
+                "project": project,
+                "routeClass": (
+                    "workspace"
+                    if "/workspace/" in relative
+                    else "settings"
+                    if "/account/settings-" in relative
+                    else "operations"
+                    if "/operations/" in relative
+                    else "public"
+                ),
+                "area": Path(relative).name.rsplit("-", 2)[0],
+            }
+        )
     if not members or len({row["path"] for row in members}) != len(members):
         raise ValueError("visual baseline inventory missing or duplicated")
     payload = {
@@ -91,7 +151,9 @@ def build(root: Path = ROOT, *, commit: str | None = None) -> dict:
             "productionCertificatesAllowed": False,
         },
     }
-    payload["inventoryDigest"] = sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode())
+    payload["inventoryDigest"] = sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    )
     return payload
 
 
@@ -144,18 +206,30 @@ def export(payload: dict, destination: Path) -> dict:
     files = {"visual-assurance.json": raw, "visual-assurance.html": page}
     for name, content in files.items():
         path = destination / name
-        path.write_bytes(content); os.chmod(path, 0o600)
+        path.write_bytes(content)
+        os.chmod(path, 0o600)
     manifest = {
-        "version": 1, "kind": "base2-visual-assurance", "category": "reliability",
-        "title": "Base2 visual assurance", "generated_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-        "quality": "verified", "files": [
+        "version": 1,
+        "kind": "base2-visual-assurance",
+        "category": "reliability",
+        "title": "Base2 visual assurance",
+        "generated_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        "quality": "verified",
+        "files": [
             {"path": name, "size": len(content), "sha256": sha256(content)}
             for name, content in sorted(files.items())
         ],
     }
-    (destination / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    (destination / "manifest.json").write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n"
+    )
     os.chmod(destination / "manifest.json", 0o600)
-    return {"ok": True, "baselineCount": payload["baselineCount"], "inventoryDigest": payload["inventoryDigest"], "secretValuesEmitted": 0}
+    return {
+        "ok": True,
+        "baselineCount": payload["baselineCount"],
+        "inventoryDigest": payload["inventoryDigest"],
+        "secretValuesEmitted": 0,
+    }
 
 
 def main() -> int:

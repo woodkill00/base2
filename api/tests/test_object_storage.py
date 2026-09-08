@@ -1,4 +1,5 @@
 import io
+from types import SimpleNamespace
 
 import pytest
 
@@ -6,8 +7,9 @@ from api.services.object_storage import ObjectStorageError, S3ObjectStore
 
 
 class Client:
-    def __init__(self):
+    def __init__(self, endpoint='https://objects.example.net'):
         self.values = {}
+        self.meta = SimpleNamespace(endpoint_url=endpoint)
 
     def put_object(self, **kwargs):
         self.values[(kwargs['Bucket'], kwargs['Key'])] = kwargs
@@ -66,3 +68,29 @@ def test_s3_store_rejects_allowlisted_host_resolving_private():
             allowed_hosts={'objects.example.net'},
             resolver=lambda *_: [(None, None, None, None, ('169.254.169.254', 443))],
         )
+
+
+def test_s3_store_rechecks_dns_and_rejects_client_endpoint_mismatch():
+    answers = ['93.184.216.34']
+
+    def resolver(*_):
+        return [(None, None, None, None, (answers[-1], 443))]
+
+    with pytest.raises(ObjectStorageError, match='endpoint_mismatch'):
+        S3ObjectStore(
+            endpoint='https://objects.example.net',
+            bucket='base2-media',
+            client=Client('https://169.254.169.254'),
+            allowed_hosts={'objects.example.net'},
+            resolver=resolver,
+        )
+    store = S3ObjectStore(
+        endpoint='https://objects.example.net',
+        bucket='base2-media',
+        client=Client(),
+        allowed_hosts={'objects.example.net'},
+        resolver=resolver,
+    )
+    answers.append('127.0.0.1')
+    with pytest.raises(ObjectStorageError, match='configuration'):
+        store.put(tenant_id='tenant-one', namespace='media', object_id='asset-1', content=b'x')

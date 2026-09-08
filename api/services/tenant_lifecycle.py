@@ -7,6 +7,7 @@ import hmac
 import json
 import re
 from datetime import UTC, datetime, timedelta
+from collections.abc import Callable
 from typing import Any
 
 TENANT = re.compile(r'^[a-z][a-z0-9-]{2,62}$')
@@ -29,7 +30,7 @@ def transition_tenant(
     now: datetime | None = None,
     approval_key: bytes | None = None,
     expected_revision: int | None = None,
-    consumed_nonces: set[str] | None = None,
+    consume_nonce: Callable[[str, str, str, datetime], bool] | None = None,
 ) -> dict[str, Any]:
     allowed = {
         'provisioning': {'active'},
@@ -47,7 +48,7 @@ def transition_tenant(
     ):
         raise TenantLifecycleError('tenant:transition_invalid')
     if target in {'deleting', 'deleted'}:
-        nonce = _verify_deletion_approval(
+        _verify_deletion_approval(
             deletion_approval,
             tenant_id=tenant_id,
             current=current,
@@ -55,10 +56,8 @@ def transition_tenant(
             now=now,
             key=approval_key,
             expected_revision=expected_revision,
-            consumed_nonces=consumed_nonces,
+            consume_nonce=consume_nonce,
         )
-        assert consumed_nonces is not None
-        consumed_nonces.add(nonce)
     receipt = {
         'tenantId': tenant_id,
         'from': current,
@@ -118,7 +117,7 @@ def _verify_deletion_approval(
     now: datetime | None,
     key: bytes | None,
     expected_revision: int | None,
-    consumed_nonces: set[str] | None,
+    consume_nonce: Callable[[str, str, str, datetime], bool] | None,
 ) -> str:
     required = {'tenantId', 'from', 'to', 'owner', 'revision', 'expiresAt', 'nonce', 'signature'}
     if (
@@ -128,7 +127,7 @@ def _verify_deletion_approval(
         or now.tzinfo is None
         or type(expected_revision) is not int
         or expected_revision < 1
-        or not isinstance(consumed_nonces, set)
+        or not callable(consume_nonce)
     ):
         raise TenantLifecycleError('tenant:deletion_approval_required')
     if key is None or len(key) < 32:
@@ -147,12 +146,14 @@ def _verify_deletion_approval(
         or value['from'] != current
         or value['to'] != target
         or value['revision'] != expected_revision
-        or value['nonce'] in consumed_nonces
         or expiry <= now
         or expiry > now + timedelta(minutes=15)
     ):
         raise TenantLifecycleError('tenant:deletion_approval_invalid')
-    return str(value['nonce'])
+    nonce = str(value['nonce'])
+    if not consume_nonce(tenant_id, nonce, expected, expiry):
+        raise TenantLifecycleError('tenant:deletion_approval_invalid')
+    return nonce
 
 
 def tenant_operation(

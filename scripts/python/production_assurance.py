@@ -7,6 +7,7 @@ import hashlib
 import hmac
 import json
 import re
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -177,7 +178,11 @@ def ephemeral_plan(
 
 
 def teardown(
-    plan: dict[str, Any], *, discovered_resources: list[str], plan_key: bytes
+    plan: dict[str, Any],
+    *,
+    inventory: Callable[[], list[str]],
+    delete: Callable[[str], str],
+    plan_key: bytes,
 ) -> dict[str, Any]:
     if (
         not isinstance(plan, dict)
@@ -200,17 +205,32 @@ def teardown(
     if not hmac.compare_digest(str(plan["signature"]), expected):
         raise AssuranceError("teardown:plan_integrity")
     owned = set(plan["ownedResources"])
-    discovered = set(discovered_resources)
+    discovered = set(inventory())
     foreign = sorted(discovered - owned)
     if foreign:
         raise AssuranceError("teardown:unowned_resource")
-    missing = sorted(owned - discovered)
-    if missing:
-        return {"status": "pending", "destroyed": sorted(discovered), "remainingOwned": missing}
+    receipts = []
+    for resource in sorted(discovered):
+        receipt = delete(resource)
+        if not isinstance(receipt, str) or not re.fullmatch(r"[a-z][a-z0-9._-]{2,127}", receipt):
+            raise AssuranceError("teardown:delete_receipt_invalid")
+        receipts.append({"resource": resource, "receipt": receipt})
+    remaining = set(inventory())
+    foreign_after = sorted(remaining - owned)
+    if foreign_after:
+        raise AssuranceError("teardown:unowned_resource")
+    remaining_owned = sorted(remaining & owned)
+    if remaining_owned:
+        return {
+            "status": "pending",
+            "deleted": receipts,
+            "remainingOwned": remaining_owned,
+        }
     return {
         "status": "destroyed",
-        "destroyed": sorted(discovered),
-        "remainingOwned": sorted(owned - discovered),
+        "deleted": receipts,
+        "remainingOwned": [],
+        "verifiedInventory": [],
     }
 
 
@@ -233,6 +253,13 @@ def fault_evidence(
 def shell_parity(root: Path) -> dict[str, Any]:
     bash = {path.stem for path in (root / "scripts/bash").glob("*.sh")}
     powershell = {path.stem for path in (root / "scripts/powershell").glob("*.ps1")}
-    required = {"setup", "migrate", "test", "start", "content-workspace-recovery", "production-ready"}
+    required = {
+        "setup",
+        "migrate",
+        "test",
+        "start",
+        "content-workspace-recovery",
+        "production-ready",
+    }
     missing = sorted(name for name in required if name not in bash or name not in powershell)
     return {"status": "passed" if not missing else "failed", "missing": missing}

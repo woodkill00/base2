@@ -20,17 +20,15 @@ def test_operations_beat_schedule_is_bounded_and_persistent():
 def test_collection_and_dispatch_fan_out_only_configured_tenants(monkeypatch):
     monkeypatch.setattr(tasks.settings, 'OPERATIONS_ALERTS_ENABLED', True)
     monkeypatch.setattr(tasks, 'configured_tenants', lambda: ['tenant-one', 'tenant-two'])
+    monkeypatch.setattr(tasks, 'fair_tenant_batch', lambda values: values)
     collect = MagicMock()
     dispatch = MagicMock()
-    monkeypatch.setattr(tasks.collect_operations_site, 'run', collect)
+    monkeypatch.setattr(tasks.collect_operations_site, 'delay', collect)
     monkeypatch.setattr(tasks.dispatch_operations_site_alerts, 'delay', dispatch)
-    heartbeat = MagicMock()
-    monkeypatch.setattr(tasks, 'mark_runtime_heartbeat', heartbeat)
     assert tasks.collect_operations_health.run() == 2
     assert tasks.dispatch_operations_alerts_task.run() == 2
     assert collect.call_args_list[0].args == ('tenant-one',)
     assert dispatch.call_args_list[1].args == ('tenant-two',)
-    assert [call.args[0] for call in heartbeat.call_args_list] == ['monitoring']
 
 
 def test_alert_dispatch_has_no_runtime_or_secret_reads_while_disabled(monkeypatch):
@@ -48,6 +46,7 @@ def test_schedule_materialization_is_allowlisted_idempotent_and_always_settled(m
         'scheduleKey': 'operations.collect',
         'jobType': 'operations.collect',
         'nextRunAt': due.isoformat(),
+        'scheduledFor': due.isoformat(),
         'revision': 2,
         'claimToken': str(UUID(int=2)),
     }
@@ -91,6 +90,7 @@ def test_runtime_job_claim_and_settlement_are_lease_bound(monkeypatch):
     monkeypatch.setattr(tasks.collect_operations_site, 'run', MagicMock(return_value={'samples': 1}))
     settle = MagicMock(return_value='succeeded')
     monkeypatch.setattr(tasks, 'settle_job', settle)
+    monkeypatch.setattr(tasks, 'renew_job_lease', MagicMock())
     assert tasks.run_runtime_job.run('tenant-one', job) == 'succeeded'
     assert settle.call_args.kwargs['lease_token'] == UUID(int=4)
     assert settle.call_args.kwargs['generation'] == 3

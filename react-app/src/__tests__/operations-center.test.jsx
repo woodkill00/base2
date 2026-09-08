@@ -17,9 +17,13 @@ vi.mock('../services/operations', () => ({
     overview: jest.fn(),
     incident: jest.fn(),
     acknowledge: jest.fn(),
+    actOnDeadLetter: jest.fn(),
   },
-  normalizeOperationsError: () => ({
-    message: 'Operations information is temporarily unavailable.',
+  normalizeOperationsError: (error) => ({
+    message:
+      error?.message === 'recent_reauthentication_required'
+        ? 'Recent authentication is required.'
+        : 'Operations information is temporarily unavailable.',
   }),
 }));
 
@@ -92,9 +96,23 @@ beforeEach(() => {
       },
     ],
     runtime: {
-      jobs: { ready: 2, leased: 1, deadLetters: 0 },
-      schedules: { enabled: 3, late: 0 },
-      alerts: { pending: 1, terminal: 0 },
+      jobs: {
+        ready: 2,
+        leased: 1,
+        deadLetters: 1,
+        items: [
+          {
+            jobId: 'job-one',
+            jobType: 'operations.collect',
+            errorCode: 'job.attempts_exhausted',
+            attempts: 5,
+            maximumAttempts: 5,
+            updatedAt: '2026-09-08T12:00:00Z',
+          },
+        ],
+      },
+      schedules: { enabled: 3, late: 0, items: [] },
+      alerts: { pending: 1, terminal: 0, items: [] },
     },
   });
   operationsAPI.incident.mockResolvedValue({
@@ -112,6 +130,7 @@ beforeEach(() => {
     },
   });
   operationsAPI.acknowledge.mockResolvedValue({ status: 'acknowledged' });
+  operationsAPI.actOnDeadLetter.mockResolvedValue({ status: 'queued' });
 });
 
 test('renders truthful service synthetic and incident evidence', async () => {
@@ -121,7 +140,7 @@ test('renders truthful service synthetic and incident evidence', async () => {
   expect(screen.getByText('8 passed')).toBeInTheDocument();
   expect(screen.getByText('1 failed')).toBeInTheDocument();
   expect(screen.getByText('Api Unavailable')).toBeInTheDocument();
-  expect(screen.getByText('Observed 2 times')).toBeInTheDocument();
+  expect(screen.getByText('Observed: 2')).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: 'Service health' })).toBeInTheDocument();
   expect(screen.getAllByText('release-one')).toHaveLength(2);
   expect(screen.getByText(/99.90% over/)).toBeInTheDocument();
@@ -144,14 +163,50 @@ test('reports acknowledgement failure without hiding current evidence', async ()
   expect(screen.getByText('Api Unavailable')).toBeInTheDocument();
 });
 
+test('replays a dead-letter job once and refreshes current evidence', async () => {
+  renderPage();
+  fireEvent.click(await screen.findByRole('button', { name: 'Replay safely' }));
+  await waitFor(() =>
+    expect(operationsAPI.actOnDeadLetter).toHaveBeenCalledWith('job-one', 'replay')
+  );
+  await waitFor(() => expect(operationsAPI.overview).toHaveBeenCalledTimes(2));
+});
+
+test('offers a real sign-in route only for recent-authentication failures', async () => {
+  operationsAPI.acknowledge.mockRejectedValueOnce(new Error('recent_reauthentication_required'));
+  renderPage();
+  fireEvent.click(await screen.findByRole('button', { name: 'Acknowledge' }));
+  const link = await screen.findByRole('link', { name: 'Sign in again' });
+  expect(link).toHaveAttribute('href', '/login?next=%2Foperations');
+});
+
 test('shows explicit failure and supports retry', async () => {
   operationsAPI.summary.mockRejectedValueOnce(new Error('offline'));
   renderPage();
   expect(await screen.findByRole('alert')).toHaveTextContent('temporarily unavailable');
-  expect(screen.getAllByText('Unavailable')).toHaveLength(4);
+  expect(screen.getAllByText('Unavailable')).toHaveLength(3);
   expect(screen.queryByText('0 passed')).not.toBeInTheDocument();
+  expect(screen.getByText('tenant-one')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Refresh evidence' }));
   expect(await screen.findByText('3/4')).toBeInTheDocument();
+});
+
+test('keeps successful panels and marks retained evidence stale on partial refresh failure', async () => {
+  renderPage();
+  expect(await screen.findByText('tenant-one')).toBeInTheDocument();
+  operationsAPI.overview.mockRejectedValueOnce(new Error('offline'));
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh evidence' }));
+  expect(await screen.findByText('Stale evidence')).toBeInTheDocument();
+  expect(screen.getByText('tenant-one')).toBeInTheDocument();
+});
+
+test('never renders unavailable overview panels as empty facts', async () => {
+  operationsAPI.overview.mockRejectedValueOnce(new Error('offline'));
+  renderPage();
+  await screen.findByRole('alert');
+  expect(screen.queryByText('Current site')).not.toBeInTheDocument();
+  expect(screen.queryByText('No objectives are configured.')).not.toBeInTheDocument();
+  expect(screen.queryByText('No synthetic evidence is recorded.')).not.toBeInTheDocument();
 });
 
 test('shows an explicit service empty state only after evidence loads', async () => {

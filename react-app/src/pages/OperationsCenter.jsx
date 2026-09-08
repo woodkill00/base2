@@ -22,6 +22,69 @@ const COPY = {
     noServices: 'No services are configured for this site.',
     passed: 'passed',
     failed: 'failed',
+    description:
+      'Current fleet, release, service, objective, journey, incident, and evidence state for this site.',
+    stale: 'Stale evidence',
+    partial:
+      'Some operations evidence is unavailable. Available panels remain visible and are marked stale when retained.',
+    reauthenticate: 'Sign in again',
+    runtime: 'Runtime delivery',
+    jobs: 'Durable jobs',
+    ready: 'ready',
+    leased: 'leased',
+    deadLetters: 'dead letters',
+    schedules: 'Schedules',
+    enabled: 'enabled',
+    late: 'late',
+    alerts: 'Alert delivery',
+    pending: 'pending',
+    terminal: 'terminal',
+    fleet: 'Site and fleet',
+    site: 'Site',
+    releases: 'Releases',
+    noRelease: 'No release identity is currently recorded.',
+    objectives: 'Objectives',
+    noObjectives: 'No objectives are configured.',
+    syntheticEvidence: 'Synthetic evidence',
+    noSynthetics: 'No synthetic evidence is recorded.',
+    latestEvidence: 'Latest evidence',
+    observed: 'Observed',
+    release: 'Release',
+    notRecorded: 'Not recorded',
+    noEvidence: 'No evidence yet',
+    loading: 'Loading current operations evidence…',
+    noIncidents: 'No incidents are currently recorded.',
+    owner: 'Owner',
+    unassigned: 'Unassigned',
+    lastObserved: 'Last observed',
+    viewTimeline: 'View timeline',
+    opening: 'Opening…',
+    acknowledge: 'Acknowledge',
+    acknowledging: 'Acknowledging…',
+    acknowledgeHelp: 'Acknowledge this incident after reviewing its evidence.',
+    acknowledgeConsequence:
+      'Acknowledgement assigns the incident to you and records an audit event.',
+    timeline: 'Incident timeline',
+    closeTimeline: 'Close timeline',
+    noTimeline: 'No timeline events are recorded.',
+    system: 'System',
+    currentSite: 'Current site',
+    target: 'Target',
+    over: 'over',
+    minutes: 'minutes',
+    attempts: 'attempts',
+    nextRun: 'Next run',
+    lastRun: 'Last run',
+    missedPolicy: 'Missed policy',
+    overlapPolicy: 'Overlap policy',
+    errorCode: 'Error',
+    replay: 'Replay safely',
+    cancel: 'Cancel',
+    noDeadLetters: 'No dead-letter jobs require review.',
+    noSchedules: 'No schedules are configured.',
+    noAlerts: 'No alert deliveries are recorded.',
+    actionComplete: 'Runtime action completed and evidence refreshed.',
+    terms: {},
   },
   de: {
     eyebrow: 'Private Steuerung',
@@ -36,6 +99,90 @@ const COPY = {
     noServices: 'Für diese Website sind keine Dienste konfiguriert.',
     passed: 'bestanden',
     failed: 'fehlgeschlagen',
+    description: 'Aktueller Flotten-, Release-, Dienst-, Ziel-, Ablauf- und Vorfallstatus.',
+    stale: 'Veraltete Nachweise',
+    partial: 'Einige Betriebsnachweise sind nicht verfügbar.',
+    reauthenticate: 'Erneut anmelden',
+    runtime: 'Laufzeitzustellung',
+    jobs: 'Dauerhafte Aufträge',
+    ready: 'bereit',
+    leased: 'zugewiesen',
+    deadLetters: 'Fehleraufträge',
+    schedules: 'Zeitpläne',
+    enabled: 'aktiv',
+    late: 'verspätet',
+    alerts: 'Alarmzustellung',
+    pending: 'ausstehend',
+    terminal: 'beendet',
+    fleet: 'Website und Flotte',
+    site: 'Website',
+    releases: 'Releases',
+    noRelease: 'Keine Release-Identität erfasst.',
+    objectives: 'Ziele',
+    noObjectives: 'Keine Ziele konfiguriert.',
+    syntheticEvidence: 'Synthetische Nachweise',
+    noSynthetics: 'Keine synthetischen Nachweise erfasst.',
+    latestEvidence: 'Neuester Nachweis',
+    observed: 'Beobachtet',
+    release: 'Release',
+    notRecorded: 'Nicht erfasst',
+    noEvidence: 'Noch kein Nachweis',
+    loading: 'Betriebsnachweise werden geladen…',
+    noIncidents: 'Keine Vorfälle erfasst.',
+    owner: 'Verantwortlich',
+    unassigned: 'Nicht zugewiesen',
+    lastObserved: 'Zuletzt beobachtet',
+    viewTimeline: 'Zeitachse anzeigen',
+    opening: 'Wird geöffnet…',
+    acknowledge: 'Bestätigen',
+    acknowledging: 'Wird bestätigt…',
+    acknowledgeHelp: 'Nach Prüfung der Nachweise bestätigen.',
+    acknowledgeConsequence: 'Die Bestätigung weist den Vorfall zu und wird protokolliert.',
+    timeline: 'Vorfallzeitachse',
+    closeTimeline: 'Zeitachse schließen',
+    noTimeline: 'Keine Zeitachsenereignisse erfasst.',
+    system: 'System',
+    currentSite: 'Aktuelle Website',
+    target: 'Ziel',
+    over: 'über',
+    minutes: 'Minuten',
+    attempts: 'Versuche',
+    nextRun: 'Nächster Lauf',
+    lastRun: 'Letzter Lauf',
+    missedPolicy: 'Versäumnisregel',
+    overlapPolicy: 'Überlappungsregel',
+    errorCode: 'Fehler',
+    replay: 'Sicher wiederholen',
+    cancel: 'Abbrechen',
+    noDeadLetters: 'Keine Fehleraufträge zu prüfen.',
+    noSchedules: 'Keine Zeitpläne konfiguriert.',
+    noAlerts: 'Keine Alarmzustellungen erfasst.',
+    actionComplete: 'Laufzeitaktion abgeschlossen und Nachweise aktualisiert.',
+    terms: {
+      'operations.collect': 'Betriebsdaten erfassen',
+      'operations.health': 'Betriebsstatus',
+      'job.attempts_exhausted': 'Maximale Versuche erreicht',
+      'provider.transient': 'Vorübergehender Anbieterfehler',
+      'api.health': 'API-Status',
+      'worker.queue': 'Arbeitswarteschlange',
+      healthy: 'Gesund',
+      unknown: 'Unbekannt',
+      'api.ready': 'API bereit',
+      'probe.no_evidence': 'Kein Prüfnachweis',
+      'api.availability': 'API-Verfügbarkeit',
+      'member.login': 'Mitgliederanmeldung',
+      passed: 'Bestanden',
+      'database.unavailable': 'Datenbank nicht verfügbar',
+      'certificate.expiring': 'Zertifikat läuft ab',
+      'incident.opened': 'Vorfall eröffnet',
+      critical: 'Kritisch',
+      warning: 'Warnung',
+      firing: 'Aktiv',
+      acknowledged: 'Bestätigt',
+      once: 'Einmal',
+      forbid: 'Verhindern',
+      retry: 'Wiederholung',
+    },
   },
   ar: {
     eyebrow: 'لوحة تحكم خاصة',
@@ -50,13 +197,102 @@ const COPY = {
     noServices: 'لا توجد خدمات مهيأة لهذا الموقع.',
     passed: 'ناجحة',
     failed: 'فاشلة',
+    description: 'الحالة الحالية للأسطول والإصدارات والخدمات والأهداف والرحلات والحوادث والأدلة.',
+    stale: 'أدلة قديمة',
+    partial: 'بعض أدلة العمليات غير متاحة.',
+    reauthenticate: 'تسجيل الدخول مجدداً',
+    runtime: 'تسليم وقت التشغيل',
+    jobs: 'المهام الدائمة',
+    ready: 'جاهزة',
+    leased: 'قيد التنفيذ',
+    deadLetters: 'مهام فاشلة',
+    schedules: 'الجداول',
+    enabled: 'مفعلة',
+    late: 'متأخرة',
+    alerts: 'تسليم التنبيهات',
+    pending: 'معلقة',
+    terminal: 'منتهية',
+    fleet: 'الموقع والأسطول',
+    site: 'الموقع',
+    releases: 'الإصدارات',
+    noRelease: 'لا توجد هوية إصدار مسجلة.',
+    objectives: 'الأهداف',
+    noObjectives: 'لا توجد أهداف مهيأة.',
+    syntheticEvidence: 'الأدلة الاصطناعية',
+    noSynthetics: 'لا توجد أدلة اصطناعية مسجلة.',
+    latestEvidence: 'أحدث دليل',
+    observed: 'وقت الرصد',
+    release: 'الإصدار',
+    notRecorded: 'غير مسجل',
+    noEvidence: 'لا يوجد دليل بعد',
+    loading: 'جارٍ تحميل أدلة العمليات…',
+    noIncidents: 'لا توجد حوادث مسجلة.',
+    owner: 'المسؤول',
+    unassigned: 'غير معيّن',
+    lastObserved: 'آخر رصد',
+    viewTimeline: 'عرض التسلسل الزمني',
+    opening: 'جارٍ الفتح…',
+    acknowledge: 'إقرار',
+    acknowledging: 'جارٍ الإقرار…',
+    acknowledgeHelp: 'أقر بالحادث بعد مراجعة أدلته.',
+    acknowledgeConsequence: 'يؤدي الإقرار إلى تعيين الحادث لك وتسجيل حدث تدقيق.',
+    timeline: 'التسلسل الزمني للحادث',
+    closeTimeline: 'إغلاق التسلسل',
+    noTimeline: 'لا توجد أحداث في التسلسل.',
+    system: 'النظام',
+    currentSite: 'الموقع الحالي',
+    target: 'الهدف',
+    over: 'خلال',
+    minutes: 'دقيقة',
+    attempts: 'محاولات',
+    nextRun: 'التشغيل التالي',
+    lastRun: 'التشغيل الأخير',
+    missedPolicy: 'سياسة الفوات',
+    overlapPolicy: 'سياسة التداخل',
+    errorCode: 'الخطأ',
+    replay: 'إعادة آمنة',
+    cancel: 'إلغاء',
+    noDeadLetters: 'لا توجد مهام فاشلة للمراجعة.',
+    noSchedules: 'لا توجد جداول مهيأة.',
+    noAlerts: 'لا توجد عمليات تسليم تنبيه.',
+    actionComplete: 'اكتمل الإجراء وتم تحديث الأدلة.',
+    terms: {
+      'operations.collect': 'جمع بيانات العمليات',
+      'operations.health': 'صحة العمليات',
+      'job.attempts_exhausted': 'استُنفدت المحاولات',
+      'provider.transient': 'خطأ مؤقت لدى المزود',
+      'api.health': 'صحة الواجهة البرمجية',
+      'worker.queue': 'قائمة انتظار العامل',
+      healthy: 'سليمة',
+      unknown: 'غير معروفة',
+      'api.ready': 'الواجهة جاهزة',
+      'probe.no_evidence': 'لا يوجد دليل فحص',
+      'api.availability': 'توفر الواجهة البرمجية',
+      'member.login': 'تسجيل دخول العضو',
+      passed: 'ناجح',
+      'database.unavailable': 'قاعدة البيانات غير متاحة',
+      'certificate.expiring': 'الشهادة قاربت الانتهاء',
+      'incident.opened': 'فُتح الحادث',
+      critical: 'حرج',
+      warning: 'تحذير',
+      firing: 'نشط',
+      acknowledged: 'تم الإقرار',
+      once: 'مرة واحدة',
+      forbid: 'منع',
+      retry: 'إعادة المحاولة',
+    },
   },
 };
 
 export default function OperationsCenter() {
   const { user } = useAuth();
-  const locale = String(user?.locale || document.documentElement.lang || 'en').split('-')[0];
-  const copy = COPY[locale] || COPY.en;
+  const requestedLocale = String(user?.locale || document.documentElement.lang || 'en').split(
+    '-'
+  )[0];
+  const locale = Object.prototype.hasOwnProperty.call(COPY, requestedLocale)
+    ? requestedLocale
+    : 'en';
+  const copy = COPY[locale];
   const direction = locale === 'ar' ? 'rtl' : 'ltr';
   const [summary, setSummary] = useState(emptySummary);
   const [overview, setOverview] = useState({
@@ -67,10 +303,15 @@ export default function OperationsCenter() {
     synthetics: [],
   });
   const [incidents, setIncidents] = useState([]);
+  const [evidence, setEvidence] = useState({
+    summary: 'unavailable',
+    overview: 'unavailable',
+    incidents: 'unavailable',
+  });
   const [selectedIncident, setSelectedIncident] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [hasEvidence, setHasEvidence] = useState(false);
   const [error, setError] = useState('');
+  const [status, setStatus] = useState('');
   const [pending, setPending] = useState('');
   const timelineHeading = useRef(null);
   const timelineTrigger = useRef(null);
@@ -78,22 +319,33 @@ export default function OperationsCenter() {
   const load = useCallback(async (signal) => {
     setLoading(true);
     setError('');
-    try {
-      const [nextSummary, nextIncidents, nextOverview] = await Promise.all([
-        operationsAPI.summary({ signal }),
-        operationsAPI.incidents({ signal }),
-        operationsAPI.overview({ signal }),
-      ]);
-      if (signal?.aborted) return;
-      setSummary(nextSummary || emptySummary);
-      setIncidents(Array.isArray(nextIncidents?.incidents) ? nextIncidents.incidents : []);
-      setOverview(nextOverview || {});
-      setHasEvidence(true);
-    } catch (caught) {
-      if (!signal?.aborted) setError(normalizeOperationsError(caught).message);
-    } finally {
-      if (!signal?.aborted) setLoading(false);
+    const results = await Promise.allSettled([
+      operationsAPI.summary({ signal }),
+      operationsAPI.incidents({ signal }),
+      operationsAPI.overview({ signal }),
+    ]);
+    if (signal?.aborted) return;
+    const names = ['summary', 'incidents', 'overview'];
+    setEvidence((previous) => {
+      const next = { ...previous };
+      results.forEach((result, index) => {
+        next[names[index]] =
+          result.status === 'fulfilled'
+            ? 'fresh'
+            : previous[names[index]] === 'fresh'
+              ? 'stale'
+              : previous[names[index]];
+      });
+      return next;
+    });
+    if (results[0].status === 'fulfilled') setSummary(results[0].value || emptySummary);
+    if (results[1].status === 'fulfilled') {
+      setIncidents(Array.isArray(results[1].value?.incidents) ? results[1].value.incidents : []);
     }
+    if (results[2].status === 'fulfilled') setOverview(results[2].value || {});
+    const rejection = results.find((result) => result.status === 'rejected');
+    if (rejection) setError(normalizeOperationsError(rejection.reason).message);
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -102,11 +354,37 @@ export default function OperationsCenter() {
     return () => controller.abort();
   }, [load]);
 
+  useEffect(() => {
+    const prior = { lang: document.documentElement.lang, dir: document.documentElement.dir };
+    document.documentElement.lang = locale;
+    document.documentElement.dir = direction;
+    return () => {
+      document.documentElement.lang = prior.lang;
+      document.documentElement.dir = prior.dir;
+    };
+  }, [direction, locale]);
+
   const acknowledge = async (incidentId) => {
     setPending(incidentId);
     setError('');
     try {
       await operationsAPI.acknowledge(incidentId);
+      setStatus(copy.actionComplete);
+      await load();
+    } catch (caught) {
+      setError(normalizeOperationsError(caught).message);
+    } finally {
+      setPending('');
+    }
+  };
+
+  const actOnDeadLetter = async (jobId, action) => {
+    setPending(`job:${jobId}`);
+    setError('');
+    setStatus('');
+    try {
+      await operationsAPI.actOnDeadLetter(jobId, action);
+      setStatus(copy.actionComplete);
       await load();
     } catch (caught) {
       setError(normalizeOperationsError(caught).message);
@@ -131,13 +409,24 @@ export default function OperationsCenter() {
   };
 
   const canManage = Boolean(user?.permissions?.includes('operations.manage'));
-  const formatDate = (value) =>
-    value
-      ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(
-          new Date(value)
-        )
-      : 'No evidence yet';
+  const formatDate = (value) => {
+    if (!value) return copy.noEvidence;
+    try {
+      return new Intl.DateTimeFormat(locale, {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+        timeZone: user?.timezone || 'UTC',
+      }).format(new Date(value));
+    } catch (_) {
+      return new Intl.DateTimeFormat(locale, {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+        timeZone: 'UTC',
+      }).format(new Date(value));
+    }
+  };
   const readable = (value) =>
+    copy.terms?.[String(value || 'unknown')] ||
     String(value || 'unknown')
       .replace(/[._-]+/g, ' ')
       .replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -148,7 +437,9 @@ export default function OperationsCenter() {
   );
   const syntheticPassed = Number(summary.synthetics24h?.passed || 0);
   const syntheticFailed = Number(summary.synthetics24h?.failed || 0);
-  const summaryValue = (value) => (hasEvidence ? value : copy.unavailable);
+  const available = (name) => evidence[name] !== 'unavailable';
+  const summaryValue = (value) => (available('summary') ? value : copy.unavailable);
+  const evidenceLabel = (name) => (evidence[name] === 'stale' ? copy.stale : null);
 
   return (
     <AppShell>
@@ -163,10 +454,7 @@ export default function OperationsCenter() {
           <div>
             <p className="text-sm uppercase tracking-[0.18em] opacity-70">{copy.eyebrow}</p>
             <h1 className="text-3xl font-semibold">{copy.title}</h1>
-            <p className="mt-2 max-w-2xl opacity-80">
-              Current fleet, release, service, objective, journey, incident, and evidence state for
-              this site.
-            </p>
+            <p className="mt-2 max-w-2xl opacity-80">{copy.description}</p>
           </div>
           <GlassButton type="button" variant="ghost" onClick={() => load()} disabled={loading}>
             {copy.refresh}
@@ -177,10 +465,15 @@ export default function OperationsCenter() {
           <div role="alert" className="mb-5 rounded-xl border border-red-400/50 p-4">
             {error}
             {error.startsWith('Recent authentication') ? (
-              <Link className="ms-2 underline" to="/account">
-                Open account security
+              <Link className="ms-2 underline" to="/login?next=%2Foperations">
+                {copy.reauthenticate}
               </Link>
             ) : null}
+          </div>
+        ) : null}
+        {status ? (
+          <div role="status" className="mb-5 rounded-xl border border-emerald-400/50 p-4">
+            {status}
           </div>
         ) : null}
 
@@ -200,7 +493,7 @@ export default function OperationsCenter() {
             <p className="mt-2 text-3xl font-semibold">
               {summaryValue(`${syntheticPassed} ${copy.passed}`)}
             </p>
-            {hasEvidence ? (
+            {available('summary') ? (
               <p className="text-sm opacity-70">
                 {syntheticFailed} {copy.failed}
               </p>
@@ -210,32 +503,128 @@ export default function OperationsCenter() {
 
         <section className="mt-8" aria-labelledby="runtime-heading">
           <h2 id="runtime-heading" className="text-xl font-semibold">
-            Runtime delivery
+            {copy.runtime}
           </h2>
-          {hasEvidence ? (
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <GlassCard className="p-5">
-                <h3 className="font-semibold">Durable jobs</h3>
-                <p className="mt-2 text-sm">
-                  {overview.runtime?.jobs?.ready || 0} ready · {overview.runtime?.jobs?.leased || 0}{' '}
-                  leased
-                </p>
-                <p className="text-sm opacity-70">
-                  {overview.runtime?.jobs?.deadLetters || 0} dead letters
-                </p>
-              </GlassCard>
-              <GlassCard className="p-5">
-                <h3 className="font-semibold">Schedules</h3>
-                <p className="mt-2 text-sm">{overview.runtime?.schedules?.enabled || 0} enabled</p>
-                <p className="text-sm opacity-70">{overview.runtime?.schedules?.late || 0} late</p>
-              </GlassCard>
-              <GlassCard className="p-5">
-                <h3 className="font-semibold">Alert delivery</h3>
-                <p className="mt-2 text-sm">{overview.runtime?.alerts?.pending || 0} pending</p>
-                <p className="text-sm opacity-70">
-                  {overview.runtime?.alerts?.terminal || 0} terminal
-                </p>
-              </GlassCard>
+          {available('overview') ? (
+            <div className="mt-4 space-y-4">
+              {evidenceLabel('overview') ? <p role="status">{evidenceLabel('overview')}</p> : null}
+              <div className="grid gap-3 sm:grid-cols-3">
+                <GlassCard className="p-5">
+                  <h3 className="font-semibold">{copy.jobs}</h3>
+                  <p className="mt-2 text-sm">
+                    {overview.runtime?.jobs?.ready || 0} {copy.ready} ·{' '}
+                    {overview.runtime?.jobs?.leased || 0} {copy.leased}
+                  </p>
+                  <p className="text-sm opacity-70">
+                    {overview.runtime?.jobs?.deadLetters || 0} {copy.deadLetters}
+                  </p>
+                </GlassCard>
+                <GlassCard className="p-5">
+                  <h3 className="font-semibold">{copy.schedules}</h3>
+                  <p className="mt-2 text-sm">
+                    {overview.runtime?.schedules?.enabled || 0} {copy.enabled}
+                  </p>
+                  <p className="text-sm opacity-70">
+                    {overview.runtime?.schedules?.late || 0} {copy.late}
+                  </p>
+                </GlassCard>
+                <GlassCard className="p-5">
+                  <h3 className="font-semibold">{copy.alerts}</h3>
+                  <p className="mt-2 text-sm">
+                    {overview.runtime?.alerts?.pending || 0} {copy.pending}
+                  </p>
+                  <p className="text-sm opacity-70">
+                    {overview.runtime?.alerts?.terminal || 0} {copy.terminal}
+                  </p>
+                </GlassCard>
+              </div>
+              <div className="grid gap-3 lg:grid-cols-3">
+                <GlassCard className="p-5">
+                  <h3 className="font-semibold">{copy.deadLetters}</h3>
+                  {overview.runtime?.jobs?.items?.length ? (
+                    <ul className="mt-3 space-y-4">
+                      {overview.runtime.jobs.items.map((job) => (
+                        <li key={job.jobId}>
+                          <p className="font-medium">{readable(job.jobType)}</p>
+                          <p className="text-sm opacity-70">
+                            {job.attempts}/{job.maximumAttempts} {copy.attempts} · {copy.errorCode}:{' '}
+                            {readable(job.errorCode)}
+                          </p>
+                          <p className="text-sm opacity-70">{formatDate(job.updatedAt)}</p>
+                          {canManage ? (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              <GlassButton
+                                type="button"
+                                variant="secondary"
+                                disabled={Boolean(pending)}
+                                onClick={() => actOnDeadLetter(job.jobId, 'replay')}
+                              >
+                                {copy.replay}
+                              </GlassButton>
+                              <GlassButton
+                                type="button"
+                                variant="ghost"
+                                disabled={Boolean(pending)}
+                                onClick={() => actOnDeadLetter(job.jobId, 'cancel')}
+                              >
+                                {copy.cancel}
+                              </GlassButton>
+                            </div>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-3 opacity-70">{copy.noDeadLetters}</p>
+                  )}
+                </GlassCard>
+                <GlassCard className="p-5">
+                  <h3 className="font-semibold">{copy.schedules}</h3>
+                  {overview.runtime?.schedules?.items?.length ? (
+                    <ul className="mt-3 space-y-4">
+                      {overview.runtime.schedules.items.map((schedule) => (
+                        <li key={schedule.scheduleId}>
+                          <p className="font-medium">{readable(schedule.scheduleKey)}</p>
+                          <p className="text-sm opacity-70">
+                            {schedule.timezone} · {readable(schedule.rule)}
+                          </p>
+                          <p className="text-sm opacity-70">
+                            {copy.nextRun}: {formatDate(schedule.nextRunAt)} · {copy.lastRun}:{' '}
+                            {formatDate(schedule.lastRunAt)}
+                          </p>
+                          <p className="text-sm opacity-70">
+                            {copy.missedPolicy}: {readable(schedule.missedPolicy)} ·{' '}
+                            {copy.overlapPolicy}: {readable(schedule.overlapPolicy)}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-3 opacity-70">{copy.noSchedules}</p>
+                  )}
+                </GlassCard>
+                <GlassCard className="p-5">
+                  <h3 className="font-semibold">{copy.alerts}</h3>
+                  {overview.runtime?.alerts?.items?.length ? (
+                    <ul className="mt-3 space-y-4">
+                      {overview.runtime.alerts.items.map((alert) => (
+                        <li key={alert.deliveryId}>
+                          <p className="font-medium">{readable(alert.status)}</p>
+                          <p className="text-sm opacity-70">
+                            {alert.attempts}/{alert.maximumAttempts} {copy.attempts}
+                            {alert.errorCode
+                              ? ` · ${copy.errorCode}: ${readable(alert.errorCode)}`
+                              : ''}
+                          </p>
+                          <p className="text-sm opacity-70">{formatDate(alert.updatedAt)}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-3 opacity-70">{copy.noAlerts}</p>
+                  )}
+                </GlassCard>
+              </div>
             </div>
           ) : (
             <GlassCard className="mt-4 p-5">
@@ -246,21 +635,27 @@ export default function OperationsCenter() {
 
         <section className="mt-8 grid gap-4 lg:grid-cols-2" aria-label="Fleet and releases">
           <GlassCard className="p-5">
-            <h2 className="text-xl font-semibold">Site and fleet</h2>
-            <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <dt className="opacity-70">Site</dt>
-                <dd className="font-medium">{overview.site?.id || 'Current site'}</dd>
-              </div>
-              <div>
-                <dt className="opacity-70">Services</dt>
-                <dd className="font-medium">{overview.site?.serviceCount || 0}</dd>
-              </div>
-            </dl>
+            <h2 className="text-xl font-semibold">{copy.fleet}</h2>
+            {!available('overview') ? (
+              <p className="mt-4">{copy.unavailable}</p>
+            ) : (
+              <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <dt className="opacity-70">{copy.site}</dt>
+                  <dd className="font-medium">{overview.site?.id || copy.currentSite}</dd>
+                </div>
+                <div>
+                  <dt className="opacity-70">{copy.services}</dt>
+                  <dd className="font-medium">{overview.site?.serviceCount || 0}</dd>
+                </div>
+              </dl>
+            )}
           </GlassCard>
           <GlassCard className="p-5">
-            <h2 className="text-xl font-semibold">Releases</h2>
-            {overview.releases?.length ? (
+            <h2 className="text-xl font-semibold">{copy.releases}</h2>
+            {!available('overview') ? (
+              <p className="mt-4">{copy.unavailable}</p>
+            ) : overview.releases?.length ? (
               <ul className="mt-4 space-y-2">
                 {overview.releases.map((release) => (
                   <li key={release} className="break-all font-mono text-sm">
@@ -269,7 +664,7 @@ export default function OperationsCenter() {
                 ))}
               </ul>
             ) : (
-              <p className="mt-4 opacity-70">No release identity is currently recorded.</p>
+              <p className="mt-4 opacity-70">{copy.noRelease}</p>
             )}
           </GlassCard>
         </section>
@@ -279,34 +674,42 @@ export default function OperationsCenter() {
             {copy.health}
           </h2>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {overview.services?.map((service) => (
-              <GlassCard key={service.id} className="p-5">
-                <div className="flex flex-wrap justify-between gap-3">
-                  <div>
-                    <h3 className="font-semibold">{readable(service.serviceKey)}</h3>
-                    <p className="text-sm opacity-70">{readable(service.environment)}</p>
-                  </div>
-                  <span className="rounded-full border px-3 py-1 text-xs font-medium">
-                    {readable(service.health?.state)}
-                  </span>
-                </div>
-                <dl className="mt-4 grid gap-2 text-sm">
-                  <div>
-                    <dt className="opacity-70">Latest evidence</dt>
-                    <dd>{readable(service.health?.code)}</dd>
-                  </div>
-                  <div>
-                    <dt className="opacity-70">Observed</dt>
-                    <dd>{formatDate(service.health?.observedAt)}</dd>
-                  </div>
-                  <div>
-                    <dt className="opacity-70">Release</dt>
-                    <dd className="break-all font-mono">{service.releaseId || 'Not recorded'}</dd>
-                  </div>
-                </dl>
+            {!available('overview') ? (
+              <GlassCard className="p-5">
+                <p>{copy.unavailable}</p>
               </GlassCard>
-            ))}
-            {!loading && hasEvidence && !overview.services?.length ? (
+            ) : (
+              overview.services?.map((service) => (
+                <GlassCard key={service.id} className="p-5">
+                  <div className="flex flex-wrap justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold">{readable(service.serviceKey)}</h3>
+                      <p className="text-sm opacity-70">{readable(service.environment)}</p>
+                    </div>
+                    <span className="rounded-full border px-3 py-1 text-xs font-medium">
+                      {readable(service.health?.state)}
+                    </span>
+                  </div>
+                  <dl className="mt-4 grid gap-2 text-sm">
+                    <div>
+                      <dt className="opacity-70">{copy.latestEvidence}</dt>
+                      <dd>{readable(service.health?.code)}</dd>
+                    </div>
+                    <div>
+                      <dt className="opacity-70">{copy.observed}</dt>
+                      <dd>{formatDate(service.health?.observedAt)}</dd>
+                    </div>
+                    <div>
+                      <dt className="opacity-70">{copy.release}</dt>
+                      <dd className="break-all font-mono">
+                        {service.releaseId || copy.notRecorded}
+                      </dd>
+                    </div>
+                  </dl>
+                </GlassCard>
+              ))
+            )}
+            {!loading && available('overview') && !overview.services?.length ? (
               <GlassCard className="p-5">
                 <p>{copy.noServices}</p>
               </GlassCard>
@@ -316,26 +719,30 @@ export default function OperationsCenter() {
 
         <section className="mt-8 grid gap-4 lg:grid-cols-2" aria-label="Objectives and evidence">
           <GlassCard className="p-5">
-            <h2 className="text-xl font-semibold">Objectives</h2>
-            {overview.objectives?.length ? (
+            <h2 className="text-xl font-semibold">{copy.objectives}</h2>
+            {!available('overview') ? (
+              <p className="mt-4">{copy.unavailable}</p>
+            ) : overview.objectives?.length ? (
               <ul className="mt-4 space-y-3">
                 {overview.objectives.map((objective) => (
                   <li key={objective.objectiveKey}>
                     <p className="font-medium">{readable(objective.objectiveKey)}</p>
                     <p className="text-sm opacity-70">
-                      Target {(Number(objective.target) * 100).toFixed(2)}% over{' '}
-                      {objective.windowMinutes} minutes
+                      {copy.target} {(Number(objective.target) * 100).toFixed(2)}% {copy.over}{' '}
+                      {objective.windowMinutes} {copy.minutes}
                     </p>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="mt-4 opacity-70">No objectives are configured.</p>
+              <p className="mt-4 opacity-70">{copy.noObjectives}</p>
             )}
           </GlassCard>
           <GlassCard className="p-5">
-            <h2 className="text-xl font-semibold">Synthetic evidence</h2>
-            {overview.synthetics?.length ? (
+            <h2 className="text-xl font-semibold">{copy.syntheticEvidence}</h2>
+            {!available('overview') ? (
+              <p className="mt-4">{copy.unavailable}</p>
+            ) : overview.synthetics?.length ? (
               <ul className="mt-4 space-y-3">
                 {overview.synthetics.map((run) => (
                   <li key={run.id}>
@@ -344,13 +751,13 @@ export default function OperationsCenter() {
                       {readable(run.status)} · {formatDate(run.startedAt)}
                     </p>
                     <p className="mt-1 break-all font-mono text-xs opacity-70">
-                      Source {run.sourceCommit}
+                      {copy.release} {run.sourceCommit}
                     </p>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="mt-4 opacity-70">No synthetic evidence is recorded.</p>
+              <p className="mt-4 opacity-70">{copy.noSynthetics}</p>
             )}
           </GlassCard>
         </section>
@@ -361,12 +768,17 @@ export default function OperationsCenter() {
           </h2>
           {loading ? (
             <p role="status" className="mt-4">
-              Loading current operations evidence…
+              {copy.loading}
             </p>
           ) : null}
-          {!loading && incidents.length === 0 ? (
+          {!loading && available('incidents') && incidents.length === 0 ? (
             <GlassCard className="mt-4 p-5">
-              <p>No incidents are currently recorded.</p>
+              <p>{copy.noIncidents}</p>
+            </GlassCard>
+          ) : null}
+          {!loading && !available('incidents') ? (
+            <GlassCard className="mt-4 p-5">
+              <p>{copy.unavailable}</p>
             </GlassCard>
           ) : null}
           <div className="mt-4 grid gap-3">
@@ -379,14 +791,13 @@ export default function OperationsCenter() {
                     </p>
                     <h3 className="mt-1 font-semibold">{readable(incident.summaryCode)}</h3>
                     <p className="mt-1 text-sm opacity-70">
-                      Observed {incident.occurrenceCount} time
-                      {incident.occurrenceCount === 1 ? '' : 's'}
+                      {copy.observed}: {incident.occurrenceCount}
                     </p>
                     <p className="mt-1 text-sm opacity-70">
-                      Last observed {formatDate(incident.lastObservedAt)}
+                      {copy.lastObserved} {formatDate(incident.lastObservedAt)}
                     </p>
                     <p className="mt-1 text-sm opacity-70">
-                      Owner {incident.ownerRef || 'Unassigned'}
+                      {copy.owner} {incident.ownerRef || copy.unassigned}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -396,7 +807,7 @@ export default function OperationsCenter() {
                       onClick={(event) => inspectIncident(incident.id, event.currentTarget)}
                       disabled={Boolean(pending)}
                     >
-                      {pending === `inspect:${incident.id}` ? 'Opening…' : 'View timeline'}
+                      {pending === `inspect:${incident.id}` ? copy.opening : copy.viewTimeline}
                     </GlassButton>
                     {canManage && ['firing', 'recurring'].includes(incident.state) ? (
                       <GlassButton
@@ -405,14 +816,17 @@ export default function OperationsCenter() {
                         disabled={Boolean(pending)}
                         aria-describedby={`incident-${incident.id}`}
                       >
-                        {pending === incident.id ? 'Acknowledging…' : 'Acknowledge'}
+                        {pending === incident.id ? copy.acknowledging : copy.acknowledge}
                       </GlassButton>
                     ) : null}
                   </div>
                 </div>
                 <span id={`incident-${incident.id}`} className="sr-only">
-                  Acknowledge this incident after reviewing its evidence.
+                  {copy.acknowledgeHelp}
                 </span>
+                {canManage && ['firing', 'recurring'].includes(incident.state) ? (
+                  <p className="mt-3 text-sm opacity-70">{copy.acknowledgeConsequence}</p>
+                ) : null}
               </GlassCard>
             ))}
           </div>
@@ -429,7 +843,7 @@ export default function OperationsCenter() {
                     ref={timelineHeading}
                     tabIndex={-1}
                   >
-                    Incident timeline
+                    {copy.timeline}
                   </h2>
                   <p className="mt-1 opacity-70">{readable(selectedIncident.summaryCode)}</p>
                 </div>
@@ -441,7 +855,7 @@ export default function OperationsCenter() {
                     window.requestAnimationFrame(() => timelineTrigger.current?.focus());
                   }}
                 >
-                  Close timeline
+                  {copy.closeTimeline}
                 </GlassButton>
               </div>
               {selectedIncident.timeline?.length ? (
@@ -450,13 +864,13 @@ export default function OperationsCenter() {
                     <li key={event.id}>
                       <p className="font-medium">{readable(event.eventKey)}</p>
                       <p className="text-sm opacity-70">
-                        {formatDate(event.occurredAt)} · {event.actorRef || 'System'}
+                        {formatDate(event.occurredAt)} · {event.actorRef || copy.system}
                       </p>
                     </li>
                   ))}
                 </ol>
               ) : (
-                <p className="mt-4 opacity-70">No timeline events are recorded.</p>
+                <p className="mt-4 opacity-70">{copy.noTimeline}</p>
               )}
             </GlassCard>
           </section>

@@ -23,7 +23,18 @@ def test_configured_tenants_are_bounded_canonical_and_deduplicated():
     with pytest.raises(ValueError):
         runtime.configured_tenants('../escape')
     with pytest.raises(ValueError):
-        runtime.configured_tenants(','.join(f'tenant-{index}' for index in range(17)))
+        runtime.configured_tenants(','.join(f'tenant-{index}' for index in range(257)))
+
+
+def test_fair_tenant_batch_rotates_without_exceeding_worker_capacity(monkeypatch):
+    client = MagicMock()
+    client.incrby.side_effect = [2, 4]
+    monkeypatch.setattr(runtime.redis_client, 'get_client', lambda: client)
+    tenants = ['tenant-one', 'tenant-two', 'tenant-three']
+    assert runtime.fair_tenant_batch(tenants, limit=2) == ['tenant-one', 'tenant-two']
+    assert runtime.fair_tenant_batch(tenants, limit=2) == ['tenant-three', 'tenant-one']
+    with pytest.raises(ValueError, match='batch_invalid'):
+        runtime.fair_tenant_batch(tenants, limit=17)
 
 
 def test_collect_site_connects_catalog_adapters_and_persistence(monkeypatch):
@@ -50,6 +61,43 @@ def test_collect_site_connects_catalog_adapters_and_persistence(monkeypatch):
         'results': [{'probeId': 'api.health'}],
         'now': NOW,
     }
+
+
+def test_live_collection_holds_and_conditionally_releases_a_tenant_lock(monkeypatch):
+    client = MagicMock()
+    client.set.return_value = True
+    monkeypatch.setattr(runtime.redis_client, 'get_client', lambda: client)
+    monkeypatch.setattr(runtime, 'configured_probe_adapters', lambda: {'api.health': object()})
+    monkeypatch.setattr(runtime, 'collect_probe_results', lambda **kwargs: [])
+    monkeypatch.setattr(runtime.operations, 'record_probe_batch', lambda **kwargs: {'samples': 0})
+    heartbeat = MagicMock()
+    monkeypatch.setattr(runtime, 'mark_runtime_heartbeat', heartbeat)
+    assert runtime.collect_site(tenant_id='tenant-one', environment='staging', now=NOW) == {
+        'samples': 0
+    }
+    assert client.set.call_args.kwargs == {'nx': True, 'ex': 120}
+    client.eval.assert_called_once()
+    heartbeat.assert_called_once_with('monitoring', now=NOW)
+
+    client.set.return_value = False
+    with pytest.raises(RuntimeError, match='collection_in_progress'):
+        runtime.collect_site(tenant_id='tenant-one', environment='staging', now=NOW)
+
+
+def test_queue_probe_uses_worker_liveness_depth_and_observed_delay(monkeypatch):
+    client = MagicMock()
+    client.llen.return_value = 0
+    monkeypatch.setattr(runtime.redis_client, 'get_client', lambda: client)
+    monkeypatch.setattr(runtime, '_runtime_heartbeat', lambda name, timeout: ('healthy', '', 0))
+    assert runtime._queue_health(1) == ('healthy', 'queues.empty', 0)
+
+    now = datetime.now(UTC)
+    client.llen.return_value = 4
+    client.get.return_value = json.dumps({'observedAt': now.isoformat(), 'delayMs': 1200})
+    assert runtime._queue_health(1) == ('healthy', 'queues.ready', 1200)
+
+    monkeypatch.setattr(runtime, '_runtime_heartbeat', lambda name, timeout: ('degraded', '', 0))
+    assert runtime._queue_health(1) == ('degraded', 'queues.delayed', 1200)
 
 
 def due_alert(*, attempts=0, expires_at=None):
@@ -140,6 +188,7 @@ def test_runtime_receipt_requires_fresh_exact_hmac_evidence(monkeypatch, tmp_pat
     key = b'r' * 32
     key_file = tmp_path / 'receipt.key'
     key_file.write_text(base64.urlsafe_b64encode(key).decode(), encoding='utf-8')
+    key_file.chmod(0o600)
     monkeypatch.setattr(runtime.settings, 'OPERATIONS_RECEIPT_INTEGRITY_KEY_FILE', str(key_file))
     monkeypatch.setenv('OPERATIONS_RECEIPT_ROOT', str(tmp_path))
     now = datetime.now(UTC)
@@ -167,6 +216,7 @@ def test_runtime_receipt_requires_fresh_exact_hmac_evidence(monkeypatch, tmp_pat
 def test_discord_sender_uses_stable_provider_deduplication_and_no_mentions(monkeypatch, tmp_path):
     webhook = tmp_path / 'webhook.url'
     webhook.write_text('https://discord.com/api/webhooks/123/token_value', encoding='utf-8')
+    webhook.chmod(0o600)
     monkeypatch.setattr(runtime.settings, 'OPERATIONS_ALERT_WEBHOOK_URL_FILE', str(webhook))
     response = MagicMock(status=200)
     response.read.return_value = b'{"id":"987654321"}'

@@ -7,14 +7,23 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
 import tarfile
 import tempfile
 import time
 from datetime import UTC, datetime
 from pathlib import Path
 
-from scripts.python.data_readiness import reconcile_restore, recovery_strategy
-from scripts.python.recovery_assurance import (
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.python.data_readiness import (  # noqa: E402
+    provision_restore_root,
+    reconcile_restore,
+    recovery_strategy,
+)
+from scripts.python.recovery_assurance import (  # noqa: E402
     create_database_object_bundle,
     restore_stream_backup,
 )
@@ -135,18 +144,19 @@ def main() -> int:
                 object_root=objects,
                 output=backup,
                 target_id="restore-drill-001",
-                data_schema=21,
+                data_schema=27,
                 key=key,
                 key_ref="vaultwarden://base2/disposable-recovery-key",
                 now=datetime.now(UTC),
             )
             dump.unlink()
             archive = root / "isolated/recovery.tar"
+            provision_restore_root(root=archive.parent, target_class="isolated")
             restore_stream_backup(
                 backup=backup,
                 key=key,
                 expected_target="restore-drill-001",
-                expected_schema=21,
+                expected_schema=27,
                 output=archive,
             )
             with tarfile.open(archive, "r") as bundle:
@@ -268,7 +278,7 @@ def main() -> int:
                     restored_objects["count"], restored_objects["digest"].encode()
                 ),
                 "search": component(0, b"disabled"),
-                "configuration": component(1, b"schema-21"),
+                "configuration": component(1, b"schema-27"),
                 "tenants": component(2, b"tenant-one\ntenant-two"),
                 "audit": component(0, b"empty-audit"),
             }

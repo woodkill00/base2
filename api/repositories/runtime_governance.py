@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 from uuid import uuid4
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from api.db import workspace_db_conn
 
 
 class RuntimeRepositoryError(ValueError):
     pass
+
+
+IDENTIFIER = re.compile(r'^[a-z][a-z0-9_.:-]{2,127}$')
+DIGEST = re.compile(r'^[0-9a-f]{64}$')
 
 
 def enqueue_job(
@@ -26,11 +32,11 @@ def enqueue_job(
 ) -> dict[str, Any]:
     if (
         not tenant_id
-        or not owner_ref
-        or not job_type
-        or len(payload_digest) != 64
+        or not IDENTIFIER.fullmatch(owner_ref)
+        or not IDENTIFIER.fullmatch(job_type)
+        or not DIGEST.fullmatch(payload_digest)
         or payload_schema < 1
-        or not idempotency_key
+        or not IDENTIFIER.fullmatch(idempotency_key)
         or available_at.tzinfo is None
     ):
         raise RuntimeRepositoryError('job:input_invalid')
@@ -103,7 +109,7 @@ def claim_jobs(
                    FROM candidates WHERE job.id=candidates.id
                    RETURNING job.id,job.job_type,job.payload_digest,job.payload_schema,
                      job.attempts,job.generation,job.lease_token""",
-                (tenant_id, now, now, limit, worker, str(lease_token), now + timedelta(seconds=60)),
+                (tenant_id, now, now, limit, worker, str(lease_token), now + timedelta(minutes=15)),
             )
             rows = cursor.fetchall()
         conn.commit()
@@ -119,6 +125,38 @@ def claim_jobs(
         }
         for row in rows
     ]
+
+
+def renew_job_lease(
+    *,
+    tenant_id: str,
+    job_id: UUID,
+    worker: str,
+    lease_token: UUID,
+    generation: int,
+    now: datetime,
+) -> None:
+    """Validate a delivered claim immediately before work and renew its bound lease."""
+    with workspace_db_conn(tenant_id=tenant_id) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """UPDATE sitecontent_durablejob
+                   SET lease_expires_at=%s,updated_at=NOW()
+                   WHERE site_id=%s AND id=%s AND state='leased' AND lease_owner=%s
+                     AND lease_token=%s AND generation=%s AND lease_expires_at>%s""",
+                (
+                    now + timedelta(minutes=15),
+                    tenant_id,
+                    str(job_id),
+                    worker,
+                    str(lease_token),
+                    generation,
+                    now,
+                ),
+            )
+            if cursor.rowcount != 1:
+                raise RuntimeRepositoryError('job:lease_lost')
+        conn.commit()
 
 
 def settle_job(
@@ -222,24 +260,64 @@ def claim_due_schedules(*, tenant_id: str, now: datetime, limit: int = 25) -> li
                    FROM sitecontent_durableschedule
                    WHERE site_id=%s AND enabled AND next_run_at<=%s
                      AND (claim_token IS NULL OR claim_expires_at<=%s)
+                     AND (SELECT COUNT(*) FROM sitecontent_durablejob
+                          WHERE site_id=%s AND state IN ('queued','retry','leased')) < 100
+                     AND NOT EXISTS (
+                         SELECT 1 FROM sitecontent_durablejob AS active
+                         WHERE active.site_id=%s
+                           AND active.owner_ref='schedule:' || sitecontent_durableschedule.id::text
+                           AND active.state='leased'
+                     )
+                     AND (
+                         overlap_policy='replace' OR NOT EXISTS (
+                             SELECT 1 FROM sitecontent_durablejob AS active
+                             WHERE active.site_id=%s
+                               AND active.owner_ref='schedule:' || sitecontent_durableschedule.id::text
+                               AND active.state IN ('queued','retry','leased')
+                         )
+                     )
                    ORDER BY next_run_at,id FOR UPDATE SKIP LOCKED LIMIT %s""",
-                (tenant_id, now, now, min(max(limit, 1), 25)),
+                (tenant_id, now, now, tenant_id, tenant_id, tenant_id, min(max(limit, 1), 25)),
             )
             rows = cursor.fetchall()
+            claimed = []
             for row in rows:
                 rule = str(row[4])
-                if not rule.startswith('every:') or not rule[6:].isdigit():
+                try:
+                    ZoneInfo(str(row[3]))
+                except ZoneInfoNotFoundError as exc:
+                    raise RuntimeRepositoryError('schedule:timezone_invalid') from exc
+                if (
+                    not rule.startswith('every:')
+                    or not rule[6:].isdigit()
+                    or row[5] not in {'skip', 'once'}
+                    or row[6] not in {'forbid', 'replace'}
+                ):
                     raise RuntimeRepositoryError('schedule:rule_invalid')
                 seconds = int(rule[6:])
                 if not 30 <= seconds <= 604800:
                     raise RuntimeRepositoryError('schedule:rule_invalid')
+                original_due = row[7]
+                if row[5] == 'once':
+                    next_due = now + timedelta(seconds=seconds)
+                else:
+                    next_due = original_due + timedelta(seconds=seconds)
+                    while next_due <= now:
+                        next_due += timedelta(seconds=seconds)
+                if row[6] == 'replace':
+                    cursor.execute(
+                        """UPDATE sitecontent_durablejob
+                           SET state='cancelled',error_code='job.replaced_by_schedule',updated_at=NOW()
+                           WHERE site_id=%s AND owner_ref=%s AND state IN ('queued','retry')""",
+                        (tenant_id, f'schedule:{row[0]}'),
+                    )
                 cursor.execute(
                     """UPDATE sitecontent_durableschedule
                        SET last_run_at=next_run_at,next_run_at=%s,revision=revision+1,
                            claim_token=%s,claim_expires_at=%s,updated_at=NOW()
                        WHERE site_id=%s AND id=%s AND revision=%s""",
                     (
-                        now + timedelta(seconds=seconds),
+                        next_due,
                         str(claim_token),
                         now + timedelta(seconds=60),
                         tenant_id,
@@ -247,23 +325,26 @@ def claim_due_schedules(*, tenant_id: str, now: datetime, limit: int = 25) -> li
                         row[9],
                     ),
                 )
+                if cursor.rowcount != 1:
+                    raise RuntimeRepositoryError('schedule:claim_lost')
+                claimed.append(
+                    {
+                        'scheduleId': str(row[0]),
+                        'scheduleKey': row[1],
+                        'jobType': row[2],
+                        'timezone': row[3],
+                        'rule': row[4],
+                        'missedPolicy': row[5],
+                        'overlapPolicy': row[6],
+                        'scheduledFor': original_due.isoformat(),
+                        'nextRunAt': next_due.isoformat(),
+                        'lastRunAt': original_due.isoformat(),
+                        'revision': row[9] + 1,
+                        'claimToken': str(claim_token),
+                    }
+                )
         conn.commit()
-    return [
-        {
-            'scheduleId': str(r[0]),
-            'scheduleKey': r[1],
-            'jobType': r[2],
-            'timezone': r[3],
-            'rule': r[4],
-            'missedPolicy': r[5],
-            'overlapPolicy': r[6],
-            'nextRunAt': r[7].isoformat(),
-            'lastRunAt': r[8].isoformat() if r[8] else None,
-            'revision': r[9] + 1,
-            'claimToken': str(claim_token),
-        }
-        for r in rows
-    ]
+    return claimed
 
 
 def due_schedules(*, tenant_id: str, now: datetime, limit: int = 25) -> list[dict[str, Any]]:

@@ -52,6 +52,14 @@ def test_deletion_is_separately_approved_and_irreversible():
         key=APPROVAL_KEY,
     )
     consumed = set()
+
+    def consume(tenant_id, nonce, approval_digest, expires_at):
+        del tenant_id, approval_digest, expires_at
+        if nonce in consumed:
+            return False
+        consumed.add(nonce)
+        return True
+
     deleting = transition_tenant(
         tenant_id='tenant-one',
         current='archived',
@@ -60,7 +68,7 @@ def test_deletion_is_separately_approved_and_irreversible():
         now=NOW,
         approval_key=APPROVAL_KEY,
         expected_revision=1,
-        consumed_nonces=consumed,
+        consume_nonce=consume,
     )
     final = create_deletion_approval(
         tenant_id='tenant-one',
@@ -80,7 +88,7 @@ def test_deletion_is_separately_approved_and_irreversible():
         now=NOW,
         approval_key=APPROVAL_KEY,
         expected_revision=2,
-        consumed_nonces=consumed,
+        consume_nonce=consume,
     )
     assert deleting['recoverableDataPreserved'] is True
     assert deleted['recoverableDataPreserved'] is False
@@ -95,7 +103,7 @@ def test_deletion_is_separately_approved_and_irreversible():
             now=NOW,
             approval_key=APPROVAL_KEY,
             expected_revision=1,
-            consumed_nonces=set(),
+            consume_nonce=lambda *_: True,
         )
     with pytest.raises(TenantLifecycleError, match='approval_invalid'):
         transition_tenant(
@@ -106,7 +114,7 @@ def test_deletion_is_separately_approved_and_irreversible():
             now=NOW,
             approval_key=APPROVAL_KEY,
             expected_revision=1,
-            consumed_nonces=consumed,
+            consume_nonce=consume,
         )
 
     long_lived = create_deletion_approval(
@@ -128,7 +136,7 @@ def test_deletion_is_separately_approved_and_irreversible():
             now=NOW,
             approval_key=APPROVAL_KEY,
             expected_revision=3,
-            consumed_nonces=set(),
+            consume_nonce=lambda *_: True,
         )
 
 

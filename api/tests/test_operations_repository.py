@@ -132,7 +132,10 @@ def test_overview_exposes_bounded_service_release_objective_and_evidence_views()
             )
         ],
         [('api.availability', 'request.success', 0.999, 0.995, 1440)],
-        [(UUID(int=4), 'member.login', 'member', 'a' * 40, 'passed', 'b' * 64, now, now)],
+            [(UUID(int=4), 'member.login', 'member', 'a' * 40, 'passed', 'b' * 64, now, now)],
+            [],
+            [],
+            [],
     ]
     cursor.fetchone.side_effect = [(2, 1, 3), (4, 1), (5, 2)]
     with patch(
@@ -145,12 +148,15 @@ def test_overview_exposes_bounded_service_release_objective_and_evidence_views()
     assert result['objectives'][0]['target'] == 0.999
     assert result['synthetics'][0]['sourceCommit'] == 'a' * 40
     assert result['runtime'] == {
-        'jobs': {'ready': 2, 'leased': 1, 'deadLetters': 3},
-        'schedules': {'enabled': 4, 'late': 1},
-        'alerts': {'pending': 5, 'terminal': 2},
+            'jobs': {'ready': 2, 'leased': 1, 'deadLetters': 3, 'items': []},
+            'schedules': {'enabled': 4, 'late': 1, 'items': []},
+            'alerts': {'pending': 5, 'terminal': 2, 'items': []},
     }
     assert [call.args[1] for call in cursor.execute.call_args_list] == [
         ('tenant-one', 'tenant-one'),
+        ('tenant-one',),
+        ('tenant-one',),
+        ('tenant-one',),
         ('tenant-one',),
         ('tenant-one',),
         ('tenant-one',),

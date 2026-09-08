@@ -13,7 +13,7 @@ import subprocess
 import tempfile
 from collections.abc import Callable
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -300,7 +300,12 @@ def validate_approval(
         or value["artifactDigest"] != artifact_digest
     ):
         raise ReleaseError("approval:scope_mismatch")
-    if now.tzinfo is None or now.astimezone(UTC) >= _time(value["expiresAt"]):
+    expiry = _time(value["expiresAt"])
+    if (
+        now.tzinfo is None
+        or now.astimezone(UTC) >= expiry
+        or expiry - now.astimezone(UTC) > timedelta(minutes=15)
+    ):
         raise ReleaseError("approval:expired")
 
 
@@ -329,6 +334,7 @@ def operation_receipt(
         or not HEX40.fullmatch(source_commit or "")
         or not HEX64.fullmatch(artifact_digest or "")
         or not observed_at < expires_at
+        or expires_at - observed_at > timedelta(minutes=15)
     ):
         raise ReleaseError("release:operation_receipt_invalid")
     value = {
@@ -414,6 +420,7 @@ def health_receipt(
         or not HEX40.fullmatch(source_commit or "")
         or not HEX64.fullmatch(artifact_digest or "")
         or not observed_at < expires_at
+        or expires_at - observed_at > timedelta(minutes=5)
     ):
         raise ReleaseError("release:health_receipt_invalid")
     value = {
@@ -551,7 +558,7 @@ class ProductionReleaseController:
     def _receipt(
         self, state: dict[str, Any], action: str, status: str, now: datetime
     ) -> dict[str, Any]:
-        candidate = state['candidate']
+        candidate = state["candidate"]
         value = {
             "schemaVersion": 1,
             "action": action,
@@ -561,7 +568,7 @@ class ProductionReleaseController:
             "sourceCommit": candidate["sourceCommit"] if candidate else None,
             "artifactDigest": candidate["artifactDigest"] if candidate else None,
             "checkpointCount": len(state["checkpoints"]),
-            "checkpointDigest": _digest(state['checkpoints']),
+            "checkpointDigest": _digest(state["checkpoints"]),
             "observedAt": now.astimezone(UTC).isoformat(),
         }
         value["digest"] = hmac.new(self.release_key, _canonical(value), hashlib.sha256).hexdigest()
