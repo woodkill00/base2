@@ -52,7 +52,7 @@ def list_incidents(*, tenant_id: str, limit: int = 50) -> list[dict[str, Any]]:
     with workspace_db_conn(tenant_id=tenant_id) as conn, conn.cursor() as cursor:
         cursor.execute(
             """
-            SELECT id, severity, state, summary_code, owner_ref, occurrence_count,
+            SELECT id, environment, severity, state, summary_code, owner_ref, occurrence_count,
                    first_observed_at, last_observed_at, resolved_at
             FROM sitecontent_operationsincident
             WHERE site_id=%s ORDER BY last_observed_at DESC LIMIT %s
@@ -63,14 +63,15 @@ def list_incidents(*, tenant_id: str, limit: int = 50) -> list[dict[str, Any]]:
     return [
         {
             'id': str(row[0]),
-            'severity': row[1],
-            'state': row[2],
-            'summaryCode': row[3],
-            'ownerRef': row[4],
-            'occurrenceCount': row[5],
-            'firstObservedAt': row[6],
-            'lastObservedAt': row[7],
-            'resolvedAt': row[8],
+            'environment': row[1],
+            'severity': row[2],
+            'state': row[3],
+            'summaryCode': row[4],
+            'ownerRef': row[5],
+            'occurrenceCount': row[6],
+            'firstObservedAt': row[7],
+            'lastObservedAt': row[8],
+            'resolvedAt': row[9],
         }
         for row in rows
     ]
@@ -117,6 +118,29 @@ def overview(*, tenant_id: str) -> dict[str, Any]:
             (tenant_id,),
         )
         synthetics = cursor.fetchall()
+        cursor.execute(
+            """SELECT
+                   COUNT(*) FILTER (WHERE state IN ('queued','retry')),
+                   COUNT(*) FILTER (WHERE state='leased'),
+                   COUNT(*) FILTER (WHERE state='dead_letter')
+               FROM sitecontent_durablejob WHERE site_id=%s""",
+            (tenant_id,),
+        )
+        jobs = cursor.fetchone() or (0, 0, 0)
+        cursor.execute(
+            """SELECT COUNT(*) FILTER (WHERE enabled),
+                      COUNT(*) FILTER (WHERE enabled AND next_run_at < NOW())
+               FROM sitecontent_durableschedule WHERE site_id=%s""",
+            (tenant_id,),
+        )
+        schedules = cursor.fetchone() or (0, 0)
+        cursor.execute(
+            """SELECT COUNT(*) FILTER (WHERE status IN ('queued','sending')),
+                      COUNT(*) FILTER (WHERE status IN ('failed','expired'))
+               FROM sitecontent_operationsalertdelivery WHERE site_id=%s""",
+            (tenant_id,),
+        )
+        alerts = cursor.fetchone() or (0, 0)
     releases = sorted({str(row[4]) for row in services if row[4]})
     return {
         'site': {'id': tenant_id, 'serviceCount': len(services), 'releaseCount': len(releases)},
@@ -161,6 +185,11 @@ def overview(*, tenant_id: str) -> dict[str, Any]:
             }
             for row in synthetics
         ],
+        'runtime': {
+            'jobs': {'ready': int(jobs[0]), 'leased': int(jobs[1]), 'deadLetters': int(jobs[2])},
+            'schedules': {'enabled': int(schedules[0]), 'late': int(schedules[1])},
+            'alerts': {'pending': int(alerts[0]), 'terminal': int(alerts[1])},
+        },
     }
 
 
@@ -168,7 +197,7 @@ def incident_detail(*, tenant_id: str, incident_id: UUID) -> dict[str, Any] | No
     with workspace_db_conn(tenant_id=tenant_id) as conn, conn.cursor() as cursor:
         cursor.execute(
             """
-            SELECT id, severity, state, summary_code, owner_ref, occurrence_count,
+            SELECT id, environment, severity, state, summary_code, owner_ref, occurrence_count,
                    first_observed_at, last_observed_at, resolved_at
             FROM sitecontent_operationsincident
             WHERE site_id=%s AND id=%s
@@ -190,14 +219,15 @@ def incident_detail(*, tenant_id: str, incident_id: UUID) -> dict[str, Any] | No
         events = cursor.fetchall()
     return {
         'id': str(incident[0]),
-        'severity': incident[1],
-        'state': incident[2],
-        'summaryCode': incident[3],
-        'ownerRef': incident[4] or None,
-        'occurrenceCount': incident[5],
-        'firstObservedAt': incident[6],
-        'lastObservedAt': incident[7],
-        'resolvedAt': incident[8],
+        'environment': incident[1],
+        'severity': incident[2],
+        'state': incident[3],
+        'summaryCode': incident[4],
+        'ownerRef': incident[5] or None,
+        'occurrenceCount': incident[6],
+        'firstObservedAt': incident[7],
+        'lastObservedAt': incident[8],
+        'resolvedAt': incident[9],
         'timeline': [
             {
                 'id': str(row[0]),
@@ -304,7 +334,8 @@ def record_probe_batch(
                     cursor.execute(
                         """SELECT incident.id
                            FROM sitecontent_operationsincident AS incident
-                           WHERE incident.site_id=%s AND incident.state <> 'resolved'
+                           WHERE incident.site_id=%s AND incident.environment=%s
+                             AND incident.state <> 'resolved'
                              AND EXISTS (
                                  SELECT 1 FROM sitecontent_operationsincidentevent AS event
                                  WHERE event.site_id=incident.site_id
@@ -312,7 +343,7 @@ def record_probe_batch(
                                    AND event.details->>'service-key'=%s
                              )
                            FOR UPDATE OF incident""",
-                        (tenant_id, probe_id),
+                        (tenant_id, environment, probe_id),
                     )
                     for (incident_id,) in cursor.fetchall():
                         cursor.execute(
@@ -330,7 +361,7 @@ def record_probe_batch(
                                 str(uuid4()),
                                 tenant_id,
                                 str(incident_id),
-                                json.dumps({'service-key': probe_id}),
+                                json.dumps({'service-key': probe_id, 'environment': environment}),
                                 now,
                                 now,
                                 now,
@@ -339,13 +370,20 @@ def record_probe_batch(
                         counters['resolved'] += 1
                     continue
                 fingerprint = incident_fingerprint(
-                    site_id=tenant_id, service_key=probe_id, code=code
+                    site_id=tenant_id,
+                    environment=environment,
+                    service_key=probe_id,
+                    code=code,
+                )
+                cursor.execute(
+                    'SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))',
+                    (f'{tenant_id}:{environment}:{fingerprint}',),
                 )
                 cursor.execute(
                     """SELECT id,state,occurrence_count
                        FROM sitecontent_operationsincident
-                       WHERE site_id=%s AND fingerprint=%s FOR UPDATE""",
-                    (tenant_id, fingerprint),
+                       WHERE site_id=%s AND environment=%s AND fingerprint=%s FOR UPDATE""",
+                    (tenant_id, environment, fingerprint),
                 )
                 prior = cursor.fetchone()
                 transition = prior is None or prior[1] == 'resolved'
@@ -356,13 +394,23 @@ def record_probe_batch(
                     incident_state = 'firing'
                     cursor.execute(
                         """INSERT INTO sitecontent_operationsincident
-                           (id,site_id,fingerprint,severity,state,summary_code,owner_ref,
+                           (id,site_id,fingerprint,environment,severity,state,summary_code,owner_ref,
                             occurrence_count,first_observed_at,last_observed_at,resolved_at,
                             created_at,updated_at)
-                           VALUES (%s,%s,%s,%s,%s,%s,'',%s,%s,%s,NULL,%s,%s)""",
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,'',%s,%s,%s,NULL,%s,%s)""",
                         (
-                            str(incident_id), tenant_id, fingerprint, severity, incident_state,
-                            code, occurrence, now, now, now, now,
+                            str(incident_id),
+                            tenant_id,
+                            fingerprint,
+                            environment,
+                            severity,
+                            incident_state,
+                            code,
+                            occurrence,
+                            now,
+                            now,
+                            now,
+                            now,
                         ),
                     )
                 else:
@@ -375,7 +423,12 @@ def record_probe_batch(
                                resolved_at=NULL,updated_at=%s
                            WHERE site_id=%s AND id=%s""",
                         (
-                            incident_state, severity, occurrence, now, now, tenant_id,
+                            incident_state,
+                            severity,
+                            occurrence,
+                            now,
+                            now,
+                            tenant_id,
                             str(incident_id),
                         ),
                     )
@@ -385,9 +438,14 @@ def record_probe_batch(
                         occurred_at,created_at,updated_at)
                        VALUES (%s,%s,%s,%s,'system',%s,%s,%s,%s)""",
                     (
-                        str(uuid4()), tenant_id, str(incident_id),
+                        str(uuid4()),
+                        tenant_id,
+                        str(incident_id),
                         'incident.opened' if prior is None else 'incident.observed',
-                        json.dumps({'service-key': probe_id}), now, now, now,
+                        json.dumps({'service-key': probe_id, 'environment': environment}),
+                        now,
+                        now,
+                        now,
                     ),
                 )
                 if transition and severity in {'high', 'critical'}:
@@ -399,8 +457,14 @@ def record_probe_batch(
                            VALUES (%s,%s,%s,'discord',%s,'queued',0,5,%s,%s,'','',%s,%s)
                            ON CONFLICT (site_id,incident_id,channel,generation) DO NOTHING""",
                         (
-                            str(uuid4()), tenant_id, str(incident_id), occurrence, now,
-                            now + timedelta(minutes=15), now, now,
+                            str(uuid4()),
+                            tenant_id,
+                            str(incident_id),
+                            occurrence,
+                            now,
+                            now + timedelta(minutes=15),
+                            now,
+                            now,
                         ),
                     )
                     counters['alerts'] += cursor.rowcount
@@ -410,24 +474,36 @@ def record_probe_batch(
     return counters
 
 
-def due_alert_deliveries(
+def claim_alert_deliveries(
     *, tenant_id: str, now: datetime, limit: int = 25
 ) -> list[dict[str, Any]]:
     bounded = max(1, min(int(limit), 50))
-    with workspace_db_conn(tenant_id=tenant_id) as conn, conn.cursor() as cursor:
-        cursor.execute(
-            """SELECT delivery.id,delivery.attempts,delivery.maximum_attempts,
-                      delivery.expires_at,incident.fingerprint,incident.severity,
-                      incident.summary_code
-               FROM sitecontent_operationsalertdelivery AS delivery
-               JOIN sitecontent_operationsincident AS incident
-                 ON incident.site_id=delivery.site_id AND incident.id=delivery.incident_id
-               WHERE delivery.site_id=%s AND delivery.status='queued'
-                 AND delivery.next_attempt_at <= %s
-               ORDER BY delivery.next_attempt_at,delivery.id LIMIT %s""",
-            (tenant_id, now, bounded),
-        )
-        rows = cursor.fetchall()
+    claim_token = uuid4()
+    with workspace_db_conn(tenant_id=tenant_id) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """WITH candidates AS (
+                       SELECT delivery.id
+                       FROM sitecontent_operationsalertdelivery AS delivery
+                       WHERE delivery.site_id=%s
+                         AND (delivery.status='queued' OR
+                              (delivery.status='sending' AND delivery.claim_expires_at<=%s))
+                         AND delivery.next_attempt_at<=%s
+                       ORDER BY delivery.next_attempt_at,delivery.id
+                       FOR UPDATE SKIP LOCKED LIMIT %s
+                   )
+                   UPDATE sitecontent_operationsalertdelivery AS delivery
+                   SET status='sending',claim_token=%s,claim_expires_at=%s,updated_at=NOW()
+                   FROM candidates,sitecontent_operationsincident AS incident
+                   WHERE delivery.id=candidates.id AND incident.site_id=delivery.site_id
+                     AND incident.id=delivery.incident_id
+                   RETURNING delivery.id,delivery.attempts,delivery.maximum_attempts,
+                     delivery.expires_at,incident.fingerprint,incident.severity,
+                     incident.summary_code,delivery.claim_token""",
+                (tenant_id, now, now, bounded, str(claim_token), now + timedelta(minutes=2)),
+            )
+            rows = cursor.fetchall()
+        conn.commit()
     return [
         {
             'deliveryId': str(row[0]),
@@ -437,16 +513,22 @@ def due_alert_deliveries(
             'incidentFingerprint': row[4],
             'severity': row[5],
             'summaryCode': row[6],
+            'claimToken': str(row[7]),
         }
         for row in rows
     ]
+
+
+def due_alert_deliveries(*, tenant_id: str, now: datetime, limit: int = 25) -> list[dict[str, Any]]:
+    """Compatibility entry point; claiming is intentionally state-changing."""
+    return claim_alert_deliveries(tenant_id=tenant_id, now=now, limit=limit)
 
 
 def update_alert_delivery(
     *,
     tenant_id: str,
     delivery_id: UUID,
-    expected_attempts: int,
+    claim_token: UUID,
     status: str,
     next_attempt_at: datetime | None,
     receipt_digest: str = '',
@@ -459,12 +541,18 @@ def update_alert_delivery(
             cursor.execute(
                 """UPDATE sitecontent_operationsalertdelivery
                    SET attempts=attempts+1,status=%s,next_attempt_at=COALESCE(%s,next_attempt_at),
-                       receipt_digest=%s,error_code=%s,updated_at=NOW()
-                   WHERE site_id=%s AND id=%s AND status='queued' AND attempts=%s
+                       receipt_digest=%s,error_code=%s,claim_token=NULL,claim_expires_at=NULL,
+                       updated_at=NOW()
+                   WHERE site_id=%s AND id=%s AND status='sending' AND claim_token=%s
                    RETURNING id""",
                 (
-                    status, next_attempt_at, receipt_digest, error_code, tenant_id,
-                    str(delivery_id), expected_attempts,
+                    status,
+                    next_attempt_at,
+                    receipt_digest,
+                    error_code,
+                    tenant_id,
+                    str(delivery_id),
+                    str(claim_token),
                 ),
             )
             changed = cursor.fetchone() is not None

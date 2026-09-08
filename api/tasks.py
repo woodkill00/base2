@@ -1,7 +1,9 @@
+import hashlib
+import json
 import logging
 import os
 from contextlib import suppress
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from celery import Celery, Task
@@ -38,7 +40,20 @@ from api.services.media_library_runtime import (
     process_media_export,
 )
 from api.settings import SITE_MANIFEST, settings
-from api.services.operations_runtime import collect_site, configured_tenants, dispatch_alerts
+from api.repositories.runtime_governance import (
+    claim_due_schedules,
+    claim_jobs,
+    enqueue_job,
+    settle_job,
+    settle_schedule_claim,
+)
+from api.services.operations_runtime import (
+    collect_site,
+    configured_tenants,
+    discord_webhook_sender,
+    dispatch_alerts,
+    mark_runtime_heartbeat,
+)
 
 
 logger = logging.getLogger('api.tasks')
@@ -125,6 +140,14 @@ app.conf.update(
             'task': 'app.prune_operations_evidence',
             'schedule': 86400.0,
         },
+        'runtime-materialize-schedules': {
+            'task': 'app.materialize_runtime_schedules',
+            'schedule': 30.0,
+        },
+        'runtime-claim-jobs': {
+            'task': 'app.claim_runtime_jobs',
+            'schedule': 15.0,
+        },
     },
 )
 
@@ -144,14 +167,11 @@ def add(x: int, y: int) -> int:
     return int(x) + int(y)
 
 
-def _unconfigured_alert_sender(payload: dict) -> str:
-    del payload
-    raise RuntimeError('operations:discord_sender_unconfigured')
-
-
 @app.task(name='app.collect_operations_site')
 def collect_operations_site(site_id: str) -> dict[str, int]:
-    environment = settings.ENV if settings.ENV in {'preview', 'staging', 'production'} else 'preview'
+    environment = (
+        settings.ENV if settings.ENV in {'preview', 'staging', 'production'} else 'preview'
+    )
     return collect_site(tenant_id=site_id, environment=environment)
 
 
@@ -159,17 +179,20 @@ def collect_operations_site(site_id: str) -> dict[str, int]:
 def collect_operations_health() -> int:
     tenants = configured_tenants()
     for tenant_id in tenants:
-        collect_operations_site.delay(tenant_id)
+        collect_operations_site(tenant_id)
+    mark_runtime_heartbeat('monitoring')
     return len(tenants)
 
 
 @app.task(name='app.dispatch_operations_site_alerts')
 def dispatch_operations_site_alerts(site_id: str) -> dict[str, int]:
-    return dispatch_alerts(tenant_id=site_id, sender=_unconfigured_alert_sender)
+    return dispatch_alerts(tenant_id=site_id, sender=discord_webhook_sender)
 
 
 @app.task(name='app.dispatch_operations_alerts')
 def dispatch_operations_alerts_task() -> int:
+    if not settings.OPERATIONS_ALERTS_ENABLED:
+        return 0
     tenants = configured_tenants()
     for tenant_id in tenants:
         dispatch_operations_site_alerts.delay(tenant_id)
@@ -179,6 +202,109 @@ def dispatch_operations_alerts_task() -> int:
 @app.task(name='app.prune_operations_evidence')
 def prune_operations_evidence() -> dict[str, dict[str, int]]:
     return {tenant_id: prune_operations(tenant_id=tenant_id) for tenant_id in configured_tenants()}
+
+
+RUNTIME_JOB_TYPES = frozenset({'operations.collect', 'operations.alerts', 'operations.prune'})
+
+
+def _runtime_digest(value: object) -> str:
+    return hashlib.sha256(
+        json.dumps(value, sort_keys=True, separators=(',', ':')).encode()
+    ).hexdigest()
+
+
+@app.task(name='app.materialize_runtime_schedules')
+def materialize_runtime_schedules() -> int:
+    """Turn due fixed schedules into replay-safe jobs and release every claim."""
+    now = datetime.now(UTC)
+    materialized = 0
+    for tenant_id in configured_tenants():
+        for schedule in claim_due_schedules(tenant_id=tenant_id, now=now, limit=25):
+            original_due = datetime.fromisoformat(schedule['nextRunAt'])
+            succeeded = False
+            try:
+                if schedule['jobType'] not in RUNTIME_JOB_TYPES:
+                    raise ValueError('schedule:job_type_not_allowed')
+                identity = {
+                    'scheduleId': schedule['scheduleId'],
+                    'scheduleKey': schedule['scheduleKey'],
+                    'jobType': schedule['jobType'],
+                    'scheduledFor': schedule['nextRunAt'],
+                    'revision': schedule['revision'],
+                }
+                enqueue_job(
+                    tenant_id=tenant_id,
+                    owner_ref=f"schedule:{schedule['scheduleId']}",
+                    job_type=schedule['jobType'],
+                    payload_digest=_runtime_digest(identity),
+                    payload_schema=1,
+                    idempotency_key=(
+                        f"schedule:{schedule['scheduleId']}:{schedule['nextRunAt']}"
+                    ),
+                    available_at=now,
+                )
+                succeeded = True
+                materialized += 1
+            finally:
+                settle_schedule_claim(
+                    tenant_id=tenant_id,
+                    schedule_id=UUID(schedule['scheduleId']),
+                    claim_token=UUID(schedule['claimToken']),
+                    revision=int(schedule['revision']),
+                    succeeded=succeeded,
+                    original_next_run_at=original_due,
+                )
+    mark_runtime_heartbeat('schedules', now=now)
+    return materialized
+
+
+@app.task(name='app.run_runtime_job')
+def run_runtime_job(tenant_id: str, job: dict) -> str:
+    worker = 'base2-runtime-v1'
+    now = datetime.now(UTC)
+    try:
+        job_type = str(job['jobType'])
+        if job_type == 'operations.collect':
+            result = collect_operations_site(tenant_id)
+        elif job_type == 'operations.alerts':
+            result = dispatch_operations_site_alerts(tenant_id)
+        elif job_type == 'operations.prune':
+            result = prune_operations(tenant_id=tenant_id)
+        else:
+            raise ValueError('job:type_not_allowed')
+    except Exception as exc:
+        return settle_job(
+            tenant_id=tenant_id,
+            job_id=UUID(job['jobId']),
+            worker=worker,
+            lease_token=UUID(job['leaseToken']),
+            generation=int(job['generation']),
+            outcome='retry',
+            now=now,
+            error_code=(str(exc) if isinstance(exc, ValueError) else 'job.execution_failed')[:96],
+        )
+    return settle_job(
+        tenant_id=tenant_id,
+        job_id=UUID(job['jobId']),
+        worker=worker,
+        lease_token=UUID(job['leaseToken']),
+        generation=int(job['generation']),
+        outcome='succeeded',
+        now=now,
+        result_digest=_runtime_digest(result),
+    )
+
+
+@app.task(name='app.claim_runtime_jobs')
+def claim_runtime_jobs_task() -> int:
+    now = datetime.now(UTC)
+    claimed = 0
+    for tenant_id in configured_tenants():
+        jobs = claim_jobs(tenant_id=tenant_id, worker='base2-runtime-v1', now=now, limit=10)
+        for job in jobs:
+            run_runtime_job.delay(tenant_id, job)
+        claimed += len(jobs)
+    return claimed
 
 
 @app.task(bind=True, name='app.send_email_outbox')

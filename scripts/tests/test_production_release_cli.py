@@ -1,3 +1,4 @@
+import hashlib
 import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -59,6 +60,8 @@ def test_cli_prepares_then_consumes_exact_executor_receipt(tmp_path, capsys):
                 action=action,
                 release_id=item['releaseId'],
                 environment='staging',
+                source_commit=item['sourceCommit'],
+                artifact_digest=item['artifactDigest'],
                 expires_at=(now + timedelta(minutes=10)).isoformat(),
                 key=APPROVAL_KEY,
             ),
@@ -70,15 +73,28 @@ def test_cli_prepares_then_consumes_exact_executor_receipt(tmp_path, capsys):
         '--environment', 'staging',
     ]
     assert main(['prepare', *common, '--approval', str(permit('prepare'))]) == 0
+    operation_scope = {
+        'action': 'stage',
+        'releaseId': item['releaseId'],
+        'environment': 'staging',
+        'sourceCommit': item['sourceCommit'],
+        'artifactDigest': item['artifactDigest'],
+    }
+    operation_id = 'operation-' + hashlib.sha256(
+        json.dumps(operation_scope, sort_keys=True, separators=(',', ':')).encode()
+    ).hexdigest()[:24]
     receipt = write(
         tmp_path / 'operation.json',
         operation_receipt(
-            operation_id='operation-stage-cli',
+            operation_id=operation_id,
             action='stage',
             release_id=item['releaseId'],
             environment='staging',
+            source_commit=item['sourceCommit'],
+            artifact_digest=item['artifactDigest'],
             status='succeeded',
             observed_at=now,
+            expires_at=now + timedelta(minutes=5),
             key=OPERATION_KEY,
         ),
     )
@@ -88,8 +104,11 @@ def test_cli_prepares_then_consumes_exact_executor_receipt(tmp_path, capsys):
             action='stage',
             release_id=item['releaseId'],
             environment='staging',
+            source_commit=item['sourceCommit'],
+            artifact_digest=item['artifactDigest'],
             healthy=True,
             observed_at=now,
+            expires_at=now + timedelta(minutes=5),
             key=HEALTH_KEY,
         ),
     )

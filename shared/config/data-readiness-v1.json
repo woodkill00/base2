@@ -6,7 +6,7 @@
     "maximumConnections": 40,
     "maximumPerProcess": 10,
     "statementTimeoutMs": 30000,
-    "transactionTimeoutMs": 60000,
+    "idleTransactionTimeoutMs": 60000,
     "saturationPercent": 85
   },
   "roles": {

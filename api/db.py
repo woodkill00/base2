@@ -3,7 +3,7 @@ from contextlib import contextmanager, suppress
 import threading
 import re
 import math
-from urllib.parse import quote
+from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 
 from psycopg2.pool import ThreadedConnectionPool
 from psycopg2.extensions import connection as PsycopgConnection
@@ -60,7 +60,7 @@ def _build_dsn() -> str:
     # Prefer an explicit DATABASE_URL if provided
     database_url = os.getenv('DATABASE_URL')
     if database_url:
-        return database_url
+        return _with_tls(database_url)
 
     host = os.getenv('DB_HOST', 'postgres')
     port = os.getenv('DB_PORT', '5432')
@@ -76,10 +76,14 @@ def _build_dsn() -> str:
 def _with_tls(dsn: str) -> str:
     if settings.DB_SSLMODE == 'disable':
         return dsn
-    query = f'sslmode={quote(settings.DB_SSLMODE, safe="-")}'
+    parsed = urlsplit(dsn)
+    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    query['sslmode'] = settings.DB_SSLMODE
     if settings.DB_SSLROOTCERT:
-        query += f'&sslrootcert={quote(settings.DB_SSLROOTCERT, safe="/")}'
-    return f'{dsn}{"&" if "?" in dsn else "?"}{query}'
+        query['sslrootcert'] = settings.DB_SSLROOTCERT
+    else:
+        query.pop('sslrootcert', None)
+    return urlunsplit(parsed._replace(query=urlencode(query, safe='/')))
 
 
 def _build_workspace_dsn() -> str:
@@ -119,7 +123,7 @@ def _get_pool() -> ThreadedConnectionPool:
         dsn = _build_dsn()
         options = (
             f'-c statement_timeout={settings.DB_STATEMENT_TIMEOUT_MS} '
-            f'-c idle_in_transaction_session_timeout={settings.DB_TRANSACTION_TIMEOUT_MS}'
+            f'-c idle_in_transaction_session_timeout={settings.DB_IDLE_TRANSACTION_TIMEOUT_MS}'
         )
         _pool = ThreadedConnectionPool(
             minconn=settings.DB_POOL_MIN,
@@ -140,7 +144,7 @@ def _get_workspace_pool() -> ThreadedConnectionPool:
         if _workspace_pool is None:
             options = (
                 f'-c statement_timeout={settings.DB_STATEMENT_TIMEOUT_MS} '
-                f'-c idle_in_transaction_session_timeout={settings.DB_TRANSACTION_TIMEOUT_MS}'
+                f'-c idle_in_transaction_session_timeout={settings.DB_IDLE_TRANSACTION_TIMEOUT_MS}'
             )
             _workspace_pool = ThreadedConnectionPool(
                 minconn=settings.DB_POOL_MIN,
@@ -161,7 +165,7 @@ def _get_workspace_worker_pool() -> ThreadedConnectionPool:
         if _workspace_worker_pool is None:
             options = (
                 f'-c statement_timeout={settings.DB_STATEMENT_TIMEOUT_MS} '
-                f'-c idle_in_transaction_session_timeout={settings.DB_TRANSACTION_TIMEOUT_MS}'
+                f'-c idle_in_transaction_session_timeout={settings.DB_IDLE_TRANSACTION_TIMEOUT_MS}'
             )
             _workspace_worker_pool = ThreadedConnectionPool(
                 minconn=settings.DB_POOL_MIN,

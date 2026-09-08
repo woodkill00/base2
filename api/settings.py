@@ -76,9 +76,19 @@ class Settings(BaseSettings):
     DB_POOL_MIN: int = Field(default=1)
     DB_POOL_MAX: int = Field(default=5)
     DB_POOL_SATURATION_PERCENT: int = Field(default=85)
-    DB_TRANSACTION_TIMEOUT_MS: int = Field(default=60000)
+    # PostgreSQL 16 cannot enforce a total multi-statement transaction wall
+    # clock. This is deliberately named for the timeout it actually sets.
+    DB_IDLE_TRANSACTION_TIMEOUT_MS: int = Field(default=60000)
     DB_SSLMODE: str = Field(default='disable')
     DB_SSLROOTCERT: Optional[str] = None
+
+    # Vaultwarden resolves these credentials into distinct runtime-only files.
+    OPERATIONS_ALERTS_ENABLED: bool = Field(default=False)
+    OPERATIONS_ALERT_INTEGRITY_KEY_FILE: str = Field(default='')
+    OPERATIONS_ALERT_RECEIPT_KEY_FILE: str = Field(default='')
+    OPERATIONS_ALERT_WEBHOOK_URL_FILE: str = Field(default='')
+    OPERATIONS_RECEIPT_INTEGRITY_KEY_FILE: str = Field(default='')
+    OPERATIONS_RECEIPT_MAX_AGE_SECONDS: int = Field(default=3600)
 
     # E2E test mode gate
     E2E_TEST_MODE: bool = Field(default=False)
@@ -131,10 +141,32 @@ class Settings(BaseSettings):
                 missing.append('IDENTITY_ENCRYPTION_KEY')
             if not (self.CONTENT_WORKSPACE_STORAGE_KEY or '').strip():
                 missing.append('CONTENT_WORKSPACE_STORAGE_KEY')
+            operation_file_names = (
+                (
+                    'OPERATIONS_ALERT_INTEGRITY_KEY_FILE',
+                    'OPERATIONS_ALERT_RECEIPT_KEY_FILE',
+                    'OPERATIONS_ALERT_WEBHOOK_URL_FILE',
+                )
+                if self.OPERATIONS_ALERTS_ENABLED
+                else ()
+            )
+            for name in operation_file_names:
+                value = str(getattr(self, name) or '').strip()
+                if not value:
+                    missing.append(name)
+                elif not value.startswith('/'):
+                    raise RuntimeError(f'{name} must be an absolute secret-file path')
             if missing:
                 raise RuntimeError('Missing required env var(s): ' + ', '.join(missing))
             if self.DB_SSLMODE != 'verify-full' or not (self.DB_SSLROOTCERT or '').startswith('/'):
                 raise RuntimeError('Database TLS verify-full configuration is required')
+            if not 60 <= self.OPERATIONS_RECEIPT_MAX_AGE_SECONDS <= 86400:
+                raise RuntimeError(
+                    'OPERATIONS_RECEIPT_MAX_AGE_SECONDS must be between 60 and 86400'
+                )
+            operations_files = {str(getattr(self, name)) for name in operation_file_names}
+            if operations_files and len(operations_files) != len(operation_file_names):
+                raise RuntimeError('Operations secret files must be independently scoped')
 
             storage_root = (self.CONTENT_WORKSPACE_STORAGE_ROOT or '').strip()
             try:

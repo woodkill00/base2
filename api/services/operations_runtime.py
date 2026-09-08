@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import base64
 import binascii
+import hashlib
+import hmac
 import json
 import os
 import shutil
@@ -11,7 +13,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 from urllib.request import Request, urlopen
 from uuid import UUID
 
@@ -65,15 +67,68 @@ def _internal_http(path: str, timeout: int) -> tuple[str, str, int]:
     return ('healthy' if ok else 'unavailable', 'http.ready' if ok else 'http.unavailable', latency)
 
 
+def _read_secret_file(path: str, *, maximum_bytes: int = 4096) -> str:
+    target = Path(path)
+    if not target.is_absolute() or target.is_symlink() or not target.is_file():
+        raise ValueError('operations:secret_file_invalid')
+    if target.stat().st_size > maximum_bytes:
+        raise ValueError('operations:secret_file_invalid')
+    value = target.read_text(encoding='utf-8').strip()
+    if not value:
+        raise ValueError('operations:secret_file_invalid')
+    return value
+
+
+def _key_file(setting_name: str) -> bytes:
+    encoded = _read_secret_file(str(getattr(settings, setting_name, '')))
+    try:
+        decoded = base64.urlsafe_b64decode(encoded + '=' * (-len(encoded) % 4))
+    except (ValueError, TypeError, binascii.Error) as exc:
+        raise ValueError(f'operations:{setting_name.lower()}_invalid') from exc
+    if len(decoded) < 32:
+        raise ValueError(f'operations:{setting_name.lower()}_invalid')
+    return decoded
+
+
 def _receipt(name: str, timeout: int) -> tuple[str, str, int]:
     del timeout
     root = Path(os.getenv('OPERATIONS_RECEIPT_ROOT', '/var/lib/base2/operations'))
     target = root / f'{name}.json'
     try:
-        age = time.time() - target.stat().st_mtime
         payload = json.loads(target.read_text(encoding='utf-8'))
-        ok = payload.get('status') == 'passed' and age <= 86400
-    except (OSError, ValueError, TypeError):
+        if not isinstance(payload, dict) or set(payload) != {
+            'schemaVersion',
+            'kind',
+            'status',
+            'sourceCommit',
+            'artifactDigest',
+            'observedAt',
+            'expiresAt',
+            'digest',
+        }:
+            raise ValueError('receipt:shape')
+        unsigned = {key: payload[key] for key in payload if key != 'digest'}
+        key = _key_file('OPERATIONS_RECEIPT_INTEGRITY_KEY_FILE')
+        expected = hmac.new(
+            key,
+            json.dumps(unsigned, sort_keys=True, separators=(',', ':')).encode(),
+            hashlib.sha256,
+        ).hexdigest()
+        observed = datetime.fromisoformat(str(payload['observedAt']))
+        expires = datetime.fromisoformat(str(payload['expiresAt']))
+        current = datetime.now(timezone.utc)
+        age = (current - observed).total_seconds()
+        ok = (
+            payload['schemaVersion'] == 1
+            and payload['kind'] == name
+            and payload['status'] == 'passed'
+            and bool(__import__('re').fullmatch(r'[0-9a-f]{40}', str(payload['sourceCommit'])))
+            and bool(__import__('re').fullmatch(r'[0-9a-f]{64}', str(payload['artifactDigest'])))
+            and hmac.compare_digest(str(payload['digest']), expected)
+            and 0 <= age <= settings.OPERATIONS_RECEIPT_MAX_AGE_SECONDS
+            and current < expires
+        )
+    except (OSError, ValueError, TypeError, binascii.Error):
         ok = False
     return ('healthy' if ok else 'degraded', f'{name}.ready' if ok else f'{name}.unknown', 0)
 
@@ -82,7 +137,9 @@ def configured_probe_adapters() -> dict[str, Callable[[int], tuple[str, str, int
     storage_root = Path(settings.CONTENT_WORKSPACE_STORAGE_ROOT)
 
     def storage(timeout: int):
-        return _timed(lambda: storage_root.is_dir(), 'objects.ready', 'objects.unavailable', timeout)
+        return _timed(
+            lambda: storage_root.is_dir(), 'objects.ready', 'objects.unavailable', timeout
+        )
 
     def capacity(timeout: int):
         def check() -> bool:
@@ -114,9 +171,9 @@ def configured_probe_adapters() -> dict[str, Callable[[int], tuple[str, str, int
         'dns.canonical': lambda timeout: _receipt('dns', timeout),
         'certificate.expiry': lambda timeout: _receipt('certificate', timeout),
         'email.delivery': configured('email'),
-        'schedules.freshness': lambda timeout: ('healthy', 'schedules.configured', 0),
+        'schedules.freshness': lambda timeout: _runtime_heartbeat('schedules', timeout),
         'capacity.headroom': capacity,
-        'monitoring.self': lambda timeout: ('healthy', 'monitoring.ready', 0),
+        'monitoring.self': lambda timeout: _runtime_heartbeat('monitoring', timeout),
         'database.performance': lambda timeout: _timed(
             db_ping, 'database.performance-ready', 'database.performance-failed', timeout
         ),
@@ -147,15 +204,68 @@ def collect_site(
     )
 
 
-def _key(name: str) -> bytes:
-    encoded = os.getenv(name, '').strip()
+def mark_runtime_heartbeat(name: str, *, now: datetime | None = None) -> None:
+    current = now or datetime.now(timezone.utc)
+    redis_client.get_client().set(redis_client.key('operations', name), current.isoformat(), ex=180)
+
+
+def _runtime_heartbeat(name: str, timeout: int) -> tuple[str, str, int]:
+    del timeout
     try:
-        decoded = base64.urlsafe_b64decode(encoded + '=' * (-len(encoded) % 4))
-    except (ValueError, TypeError, binascii.Error) as exc:
-        raise ValueError(f'operations:{name.lower()}_invalid') from exc
-    if len(decoded) < 32:
-        raise ValueError(f'operations:{name.lower()}_invalid')
-    return decoded
+        raw = redis_client.get_client().get(redis_client.key('operations', name))
+        if isinstance(raw, bytes):
+            raw = raw.decode('utf-8')
+        observed = datetime.fromisoformat(str(raw))
+        age = (datetime.now(timezone.utc) - observed).total_seconds()
+        ok = 0 <= age <= 120
+    except Exception:
+        ok = False
+    return (
+        'healthy' if ok else 'degraded',
+        f'{name}.ready' if ok else f'{name}.stale',
+        0,
+    )
+
+
+def discord_webhook_sender(payload: dict[str, Any]) -> str:
+    url = _read_secret_file(settings.OPERATIONS_ALERT_WEBHOOK_URL_FILE)
+    parsed = urlparse(url)
+    if (
+        parsed.scheme != 'https'
+        or parsed.hostname not in {'discord.com', 'discordapp.com'}
+        or not __import__('re').fullmatch(r'/api/webhooks/[0-9]+/[A-Za-z0-9._-]+', parsed.path)
+        or parsed.username
+        or parsed.password
+        or parsed.fragment
+    ):
+        raise ValueError('operations:webhook_url_invalid')
+    endpoint = urlunparse(parsed._replace(query='wait=true', fragment=''))
+    nonce = hashlib.sha256(str(payload['deliveryId']).encode()).hexdigest()[:25]
+    body = json.dumps(
+        {
+            'content': (
+                f"Base2 {payload['severity']} alert · {payload['summaryCode']} · "
+                f"incident {payload['incidentId'][:12]}"
+            ),
+            'nonce': nonce,
+            'enforce_nonce': True,
+            'allowed_mentions': {'parse': []},
+        }
+    ).encode()
+    request = Request(
+        endpoint,
+        data=body,
+        method='POST',
+        headers={'Content-Type': 'application/json', 'User-Agent': 'base2-operations/1'},
+    )
+    with urlopen(request, timeout=10) as response:  # noqa: S310 - strict HTTPS host/path allowlist
+        if not 200 <= response.status < 300:
+            raise RuntimeError('operations:webhook_delivery_failed')
+        result = json.loads(response.read(4096))
+    message_id = str(result.get('id', ''))
+    if not message_id.isdigit():
+        raise RuntimeError('operations:webhook_receipt_invalid')
+    return f'discord.{message_id}'
 
 
 def dispatch_alerts(
@@ -188,7 +298,7 @@ def dispatch_alerts(
         operations.update_alert_delivery(
             tenant_id=tenant_id,
             delivery_id=UUID(item['deliveryId']),
-            expected_attempts=item['attempts'],
+            claim_token=UUID(item['claimToken']),
             status=status,
             next_attempt_at=next_attempt,
             error_code=error_code,
@@ -204,8 +314,8 @@ def dispatch_alerts(
     if not active:
         return counters
     try:
-        alert_key = integrity_key or _key('OPERATIONS_ALERT_INTEGRITY_KEY')
-        delivery_key = receipt_key or _key('OPERATIONS_ALERT_RECEIPT_KEY')
+        alert_key = integrity_key or _key_file('OPERATIONS_ALERT_INTEGRITY_KEY_FILE')
+        delivery_key = receipt_key or _key_file('OPERATIONS_ALERT_RECEIPT_KEY_FILE')
     except ValueError:
         for item in active:
             defer(item, 'delivery.key-unavailable')
@@ -213,6 +323,7 @@ def dispatch_alerts(
     for item in active:
         expires_at = item['expiresAt']
         payload = sanitized_alert(
+            delivery_id=item['deliveryId'],
             incident_id=item['incidentFingerprint'],
             severity=item['severity'],
             summary_code=item['summaryCode'],
@@ -235,13 +346,16 @@ def dispatch_alerts(
         else:
             defer(item, result['errorCode'])
             continue
-        operations.update_alert_delivery(
+        changed = operations.update_alert_delivery(
             tenant_id=tenant_id,
             delivery_id=UUID(item['deliveryId']),
-            expected_attempts=item['attempts'],
+            claim_token=UUID(item['claimToken']),
             status=status,
             next_attempt_at=next_attempt,
             receipt_digest=receipt_digest,
             error_code=error_code,
         )
+        if not changed:
+            counters['sent'] -= 1
+            counters['terminal'] += 1
     return counters

@@ -12,6 +12,7 @@ from api.repositories.runtime_governance import (
     dead_letters,
     due_schedules,
     enqueue_job,
+    settle_schedule_claim,
     settle_job,
 )
 
@@ -88,7 +89,7 @@ def test_claim_jobs_validates_limit_and_maps_rows():
     with pytest.raises(RuntimeRepositoryError, match='limit_invalid'):
         claim_jobs(tenant_id='tenant-one', worker='worker-1', now=NOW, limit=0)
     cursor = MagicMock()
-    cursor.fetchall.return_value = [(JOB_ID, 'email', 'a' * 64, 1, 2)]
+    cursor.fetchall.return_value = [(JOB_ID, 'email', 'a' * 64, 1, 2, 1, UUID(int=3))]
     with patch(
         'api.repositories.runtime_governance.workspace_db_conn',
         return_value=connection(cursor),
@@ -101,8 +102,11 @@ def test_claim_jobs_validates_limit_and_maps_rows():
             'payloadDigest': 'a' * 64,
             'payloadSchema': 1,
             'attempts': 2,
+            'generation': 1,
+            'leaseToken': str(UUID(int=3)),
         }
     ]
+    assert 'attempts_exhausted' in cursor.execute.call_args_list[0].args[0]
     assert 'SKIP LOCKED' in cursor.execute.call_args.args[0]
 
 
@@ -112,11 +116,13 @@ def test_settle_job_validates_outcome_and_lease_ownership():
             tenant_id='tenant-one',
             job_id=JOB_ID,
             worker='worker-1',
+            lease_token=UUID(int=3),
+            generation=1,
             outcome='unknown',
             now=NOW,
         )
     cursor = MagicMock()
-    cursor.rowcount = 1
+    cursor.fetchone.return_value = ('retry',)
     with patch(
         'api.repositories.runtime_governance.workspace_db_conn',
         return_value=connection(cursor),
@@ -126,6 +132,8 @@ def test_settle_job_validates_outcome_and_lease_ownership():
                 tenant_id='tenant-one',
                 job_id=JOB_ID,
                 worker='worker-1',
+                lease_token=UUID(int=3),
+                generation=1,
                 outcome='retry',
                 now=NOW,
                 error_code='temporary',
@@ -133,7 +141,7 @@ def test_settle_job_validates_outcome_and_lease_ownership():
             == 'retry'
         )
     lost = MagicMock()
-    lost.rowcount = 0
+    lost.fetchone.return_value = None
     with (
         patch(
             'api.repositories.runtime_governance.workspace_db_conn', return_value=connection(lost)
@@ -144,6 +152,8 @@ def test_settle_job_validates_outcome_and_lease_ownership():
             tenant_id='tenant-one',
             job_id=JOB_ID,
             worker='worker-1',
+            lease_token=UUID(int=3),
+            generation=1,
             outcome='succeeded',
             now=NOW,
         )
@@ -208,7 +218,7 @@ def test_dead_letter_inventory_actions_and_due_schedules():
 
     schedules = MagicMock()
     schedules.fetchall.return_value = [
-        (UUID(int=2), 'daily', 'email', 'UTC', '0 1 * * *', 'catch_up', 'forbid', NOW, None, 3),
+        (UUID(int=2), 'daily', 'email', 'UTC', 'every:60', 'once', 'forbid', NOW, None, 3),
     ]
     with patch(
         'api.repositories.runtime_governance.workspace_db_conn',
@@ -216,4 +226,28 @@ def test_dead_letter_inventory_actions_and_due_schedules():
     ):
         due = due_schedules(tenant_id='tenant-one', now=NOW, limit=0)
     assert due[0]['lastRunAt'] is None
-    assert schedules.execute.call_args.args[1] == ('tenant-one', NOW, 1)
+    assert due[0]['revision'] == 4
+    assert schedules.execute.call_args_list[0].args[1] == ('tenant-one', NOW, NOW, 1)
+
+    settled = MagicMock()
+    settled.rowcount = 1
+    with patch(
+        'api.repositories.runtime_governance.workspace_db_conn',
+        return_value=connection(settled),
+    ):
+        settle_schedule_claim(
+            tenant_id='tenant-one',
+            schedule_id=UUID(int=2),
+            claim_token=UUID(int=3),
+            revision=4,
+            succeeded=False,
+            original_next_run_at=NOW,
+        )
+    assert settled.execute.call_args.args[1] == (
+        False,
+        NOW,
+        'tenant-one',
+        str(UUID(int=2)),
+        str(UUID(int=3)),
+        4,
+    )

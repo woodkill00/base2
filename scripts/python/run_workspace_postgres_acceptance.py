@@ -166,9 +166,9 @@ def main() -> None:
             api_image,
             "scripts/python/run_mixed_version_postgres_checks.py",
         ]
-        run(django_migration + ["0019", "--noinput"], stdout=subprocess.DEVNULL)
+        run(django_migration + ["0025", "--noinput"], stdout=subprocess.DEVNULL)
         run(mixed_check + ["old"])
-        run(django_migration + ["0021", "--noinput"], stdout=subprocess.DEVNULL)
+        run(django_migration + ["0026", "--noinput"], stdout=subprocess.DEVNULL)
         run(mixed_check + ["new"])
         run(
             common

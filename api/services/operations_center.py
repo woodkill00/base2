@@ -159,6 +159,7 @@ def collect_probe_results(
 
 def sanitized_alert(
     *,
+    delivery_id: str = '00000000-0000-0000-0000-000000000001',
     incident_id: str,
     severity: str,
     summary_code: str,
@@ -166,7 +167,8 @@ def sanitized_alert(
     integrity_key: bytes,
 ) -> dict[str, Any]:
     if (
-        not re.fullmatch(r'[0-9a-f]{64}', incident_id or '')
+        not re.fullmatch(r'[0-9a-f-]{36}', delivery_id or '')
+        or not re.fullmatch(r'[0-9a-f]{64}', incident_id or '')
         or severity not in SEVERITIES
         or not CODE.fullmatch(summary_code or '')
         or expires_at.tzinfo is None
@@ -176,6 +178,7 @@ def sanitized_alert(
         raise OperationsContractError('operations:alert_invalid')
     payload = {
         'schemaVersion': 1,
+        'deliveryId': delivery_id,
         'incidentId': incident_id,
         'severity': severity,
         'summaryCode': summary_code,
@@ -193,6 +196,7 @@ def sanitized_alert(
 def verify_sanitized_alert(payload: Any, *, now: datetime, integrity_key: bytes) -> dict[str, Any]:
     if not isinstance(payload, dict) or set(payload) != {
         'schemaVersion',
+        'deliveryId',
         'incidentId',
         'severity',
         'summaryCode',
@@ -212,6 +216,7 @@ def verify_sanitized_alert(payload: Any, *, now: datetime, integrity_key: bytes)
     if not hmac.compare_digest(str(payload['digest']), expected):
         raise OperationsContractError('operations:alert_integrity_invalid')
     rebuilt = sanitized_alert(
+        delivery_id=payload['deliveryId'],
         incident_id=payload['incidentId'],
         severity=payload['severity'],
         summary_code=payload['summaryCode'],
@@ -347,12 +352,14 @@ def synthetic_result(
     return payload
 
 
-def incident_fingerprint(*, site_id: str, service_key: str, code: str) -> str:
+def incident_fingerprint(*, site_id: str, environment: str, service_key: str, code: str) -> str:
     if not re.fullmatch(r'[a-z][a-z0-9-]{2,62}', site_id or ''):
         raise OperationsContractError('operations:site_invalid')
+    if environment not in {'preview', 'staging', 'production'}:
+        raise OperationsContractError('operations:environment_invalid')
     if not CODE.fullmatch(service_key or '') or not CODE.fullmatch(code or ''):
         raise OperationsContractError('operations:incident_invalid')
-    return hashlib.sha256(f'{site_id}\0{service_key}\0{code}'.encode()).hexdigest()
+    return hashlib.sha256(f'{site_id}\0{environment}\0{service_key}\0{code}'.encode()).hexdigest()
 
 
 def next_incident_state(*, prior: str | None, failing: bool, acknowledged: bool = False) -> str:

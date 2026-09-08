@@ -40,6 +40,7 @@ const renderPage = () =>
 beforeEach(() => {
   vi.clearAllMocks();
   authState.user.permissions = ['operations.read', 'operations.manage'];
+  authState.user.locale = 'en';
   operationsAPI.summary.mockResolvedValue({
     services: { enabled: 3, total: 4 },
     incidents: { firing: 1 },
@@ -90,6 +91,11 @@ beforeEach(() => {
         startedAt: '2026-09-08T12:00:00Z',
       },
     ],
+    runtime: {
+      jobs: { ready: 2, leased: 1, deadLetters: 0 },
+      schedules: { enabled: 3, late: 0 },
+      alerts: { pending: 1, terminal: 0 },
+    },
   });
   operationsAPI.incident.mockResolvedValue({
     incident: {
@@ -119,6 +125,7 @@ test('renders truthful service synthetic and incident evidence', async () => {
   expect(screen.getByRole('heading', { name: 'Service health' })).toBeInTheDocument();
   expect(screen.getAllByText('release-one')).toHaveLength(2);
   expect(screen.getByText(/99.90% over/)).toBeInTheDocument();
+  expect(screen.getByText('2 ready · 1 leased')).toBeInTheDocument();
 });
 
 test('acknowledges once and refreshes evidence', async () => {
@@ -141,14 +148,29 @@ test('shows explicit failure and supports retry', async () => {
   operationsAPI.summary.mockRejectedValueOnce(new Error('offline'));
   renderPage();
   expect(await screen.findByRole('alert')).toHaveTextContent('temporarily unavailable');
+  expect(screen.getAllByText('Unavailable')).toHaveLength(4);
+  expect(screen.queryByText('0 passed')).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Refresh evidence' }));
   expect(await screen.findByText('3/4')).toBeInTheDocument();
+});
+
+test('shows an explicit service empty state only after evidence loads', async () => {
+  operationsAPI.overview.mockResolvedValueOnce({
+    services: [],
+    releases: [],
+    objectives: [],
+    synthetics: [],
+  });
+  renderPage();
+  expect(await screen.findByText('No services are configured for this site.')).toBeInTheDocument();
 });
 
 test('opens the tenant-bound incident timeline', async () => {
   renderPage();
   fireEvent.click(await screen.findByRole('button', { name: 'View timeline' }));
-  expect(await screen.findByRole('heading', { name: 'Incident timeline' })).toBeInTheDocument();
+  const heading = await screen.findByRole('heading', { name: 'Incident timeline' });
+  expect(heading).toBeInTheDocument();
+  await waitFor(() => expect(heading).toHaveFocus());
   expect(screen.getByText('Incident Opened')).toBeInTheDocument();
   expect(operationsAPI.incident).toHaveBeenCalledWith('incident-1');
 });
@@ -158,4 +180,15 @@ test('does not offer incident mutation to a read-only operator', async () => {
   renderPage();
   expect(await screen.findByRole('button', { name: 'View timeline' })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Acknowledge' })).not.toBeInTheDocument();
+});
+
+test('renders a real localized RTL operations shell with English fallback', async () => {
+  authState.user.locale = 'ar';
+  const { container, unmount } = renderPage();
+  expect(await screen.findByRole('heading', { name: 'مركز العمليات' })).toBeInTheDocument();
+  expect(container.querySelector('[dir="rtl"]')).toBeInTheDocument();
+  unmount();
+  authState.user.locale = 'unsupported';
+  renderPage();
+  expect(await screen.findByRole('heading', { name: 'Operations center' })).toBeInTheDocument();
 });

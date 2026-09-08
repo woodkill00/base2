@@ -51,6 +51,7 @@ def test_deletion_is_separately_approved_and_irreversible():
         nonce='delete-start-0001',
         key=APPROVAL_KEY,
     )
+    consumed = set()
     deleting = transition_tenant(
         tenant_id='tenant-one',
         current='archived',
@@ -58,6 +59,8 @@ def test_deletion_is_separately_approved_and_irreversible():
         deletion_approval=start,
         now=NOW,
         approval_key=APPROVAL_KEY,
+        expected_revision=1,
+        consumed_nonces=consumed,
     )
     final = create_deletion_approval(
         tenant_id='tenant-one',
@@ -76,6 +79,8 @@ def test_deletion_is_separately_approved_and_irreversible():
         deletion_approval=final,
         now=NOW,
         approval_key=APPROVAL_KEY,
+        expected_revision=2,
+        consumed_nonces=consumed,
     )
     assert deleting['recoverableDataPreserved'] is True
     assert deleted['recoverableDataPreserved'] is False
@@ -89,6 +94,41 @@ def test_deletion_is_separately_approved_and_irreversible():
             deletion_approval=start,
             now=NOW,
             approval_key=APPROVAL_KEY,
+            expected_revision=1,
+            consumed_nonces=set(),
+        )
+    with pytest.raises(TenantLifecycleError, match='approval_invalid'):
+        transition_tenant(
+            tenant_id='tenant-one',
+            current='archived',
+            target='deleting',
+            deletion_approval=start,
+            now=NOW,
+            approval_key=APPROVAL_KEY,
+            expected_revision=1,
+            consumed_nonces=consumed,
+        )
+
+    long_lived = create_deletion_approval(
+        tenant_id='tenant-one',
+        current='archived',
+        target='deleting',
+        owner='owner-one',
+        revision=3,
+        expires_at=NOW + timedelta(hours=1),
+        nonce='delete-long-00001',
+        key=APPROVAL_KEY,
+    )
+    with pytest.raises(TenantLifecycleError, match='approval_invalid'):
+        transition_tenant(
+            tenant_id='tenant-one',
+            current='archived',
+            target='deleting',
+            deletion_approval=long_lived,
+            now=NOW,
+            approval_key=APPROVAL_KEY,
+            expected_revision=3,
+            consumed_nonces=set(),
         )
 
 

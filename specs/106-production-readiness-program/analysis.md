@@ -319,5 +319,51 @@ plans and deletion approvals, reports partial teardown as pending, rejects activ
 builder URLs, commits Operations mutations, requires the principal's explicit
 recent-auth state, authenticates alert and receipt integrity with separate HMAC
 keys, bounds preview lifetime, enforces probe adapter deadlines, and retains
-incidents from resolution time rather than initial creation time. B024 onward
-remains pending until each named runtime and evidence boundary is actually met.
+incidents from resolution time rather than initial creation time. At that review
+point B024 onward was reset pending until each named runtime and evidence
+boundary could be met; the following repair cycle records that closure.
+
+## Implementation repair cycle 8 — connected delivery and truthful evidence
+
+Independent review findings were converted into runtime repairs rather than
+accepted as residual implementation debt. Operations incidents are now scoped by
+tenant and environment and serialized on first creation. Alert delivery uses an
+atomic expiring claim token, stable Discord nonce, bounded retry, and separately
+scoped payload and receipt keys. Monitoring and scheduler state comes from fresh
+runtime heartbeats; DNS, certificate, backup, and restore state accepts only
+fresh source/artifact-bound HMAC receipts. Missing evidence remains degraded.
+
+Durable schedules now claim atomically and materialize fixed allowlisted jobs.
+Jobs carry generation and lease tokens, reject stale settlement, dead-letter
+exhausted work, and expose queue/schedule/alert state in the private Operations
+Center. Production alert delivery is disabled by default and, when enabled,
+requires three distinct secret files and a strict Discord HTTPS webhook adapter.
+No credential value enters repository state or evidence.
+
+Release approvals and health receipts now bind exact source commit, artifact
+digest, environment, operation identity, freshness, and expiry. A lost response
+reconciles the same operation identity instead of repeating mutation. Explicit
+database URLs are normalized to the configured TLS policy. Object reads and
+deletes require the owning tenant, and custom object endpoints reject private,
+metadata, loopback, and DNS-rebinding results. Domain verification requires a
+fresh signed independently scoped observation. Destructive tenant transitions
+bind revision, expiry, and a consumed replay nonce.
+
+The migration adds model-level and database-level state invariants and narrows
+worker grants. Real disposable PostgreSQL forward/rollback, forced-RLS, role,
+mixed-version, encrypted backup, target-absence, isolated restore, and
+six-surface reconciliation checks pass. Restore paths derive ownership,
+permissions, and emptiness from the actual filesystem or PostgreSQL catalog;
+caller assertions are not accepted. The database setting is named honestly as
+an idle-transaction timeout because PostgreSQL 16 does not provide a total
+multi-statement transaction wall-clock setting.
+
+The private Operations Center no longer renders unavailable data as zero, adds
+explicit empty and recent-auth recovery states, announces and focuses incident
+timelines, returns trigger focus, surfaces runtime delivery state, and provides
+English, German, Arabic RTL, and deterministic fallback behavior. The exact
+visual matrix passes 26 browser checks and its integrity manifest covers 15
+responsive, zoom, contrast, motion, RTL, empty, failure, Chromium, Firefox, and
+WebKit captures. One complete 106-node integration gate passed after the visual
+manifest was regenerated; final identical-head repetition and fresh independent
+review remain required before publication.

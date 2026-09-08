@@ -123,13 +123,16 @@ def test_synthetic_result_rejects_unknown_journey_and_extra_step_data():
 
 def test_incident_identity_is_tenant_bound_and_replay_stable():
     one = incident_fingerprint(
-        site_id='tenant-one', service_key='api.health', code='api.unavailable'
+        site_id='tenant-one', environment='staging', service_key='api.health', code='api.unavailable'
     )
     assert one == incident_fingerprint(
-        site_id='tenant-one', service_key='api.health', code='api.unavailable'
+        site_id='tenant-one', environment='staging', service_key='api.health', code='api.unavailable'
     )
     assert one != incident_fingerprint(
-        site_id='tenant-two', service_key='api.health', code='api.unavailable'
+        site_id='tenant-two', environment='staging', service_key='api.health', code='api.unavailable'
+    )
+    assert one != incident_fingerprint(
+        site_id='tenant-one', environment='production', service_key='api.health', code='api.unavailable'
     )
 
 
@@ -238,6 +241,7 @@ def test_alert_contains_only_bounded_codes_actions_and_integrity():
     )
     assert set(payload) == {
         'schemaVersion',
+        'deliveryId',
         'incidentId',
         'severity',
         'summaryCode',

@@ -156,6 +156,25 @@ def main() -> int:
                     raise RuntimeError("recovery_bundle_member_unsafe")
                 restored_dump = bundle.extractfile("database.dump").read()
                 restored_objects = json.loads(bundle.extractfile("objects.json").read())
+            target_count = run(
+                "docker",
+                "exec",
+                "-e",
+                f"PGPASSWORD={password}",
+                name,
+                "psql",
+                "-At",
+                "-h",
+                "127.0.0.1",
+                "-U",
+                "base2",
+                "-d",
+                "postgres",
+                "-c",
+                "SELECT count(*) FROM pg_database WHERE datname='restore_drill_001'",
+            ).stdout.strip()
+            if target_count != b"0":
+                raise RuntimeError("recovery_target_not_empty")
             run(
                 "docker",
                 "exec",
@@ -169,6 +188,25 @@ def main() -> int:
                 "base2",
                 "restore_drill_001",
             )
+            target_count = run(
+                "docker",
+                "exec",
+                "-e",
+                f"PGPASSWORD={password}",
+                name,
+                "psql",
+                "-At",
+                "-h",
+                "127.0.0.1",
+                "-U",
+                "base2",
+                "-d",
+                "postgres",
+                "-c",
+                "SELECT count(*) FROM pg_database WHERE datname='restore_drill_001'",
+            ).stdout.strip()
+            if target_count != b"1":
+                raise RuntimeError("recovery_target_creation_unverified")
             run(
                 "docker",
                 "exec",

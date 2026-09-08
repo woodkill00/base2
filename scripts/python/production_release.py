@@ -45,6 +45,8 @@ APPROVAL_FIELDS = {
     "action",
     "releaseId",
     "environment",
+    "sourceCommit",
+    "artifactDigest",
     "expiresAt",
     "digest",
 }
@@ -54,8 +56,11 @@ OPERATION_FIELDS = {
     "action",
     "releaseId",
     "environment",
+    "sourceCommit",
+    "artifactDigest",
     "status",
     "observedAt",
+    "expiresAt",
     "digest",
 }
 HEALTH_FIELDS = {
@@ -63,8 +68,11 @@ HEALTH_FIELDS = {
     "action",
     "releaseId",
     "environment",
+    "sourceCommit",
+    "artifactDigest",
     "healthy",
     "observedAt",
+    "expiresAt",
     "digest",
 }
 
@@ -108,12 +116,20 @@ def build_release_manifest(
     repository = root.resolve()
     try:
         commit = subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=repository, check=True,
-            text=True, capture_output=True, timeout=10,
+            ["git", "rev-parse", "HEAD"],
+            cwd=repository,
+            check=True,
+            text=True,
+            capture_output=True,
+            timeout=10,
         ).stdout.strip()
         status = subprocess.run(
-            ["git", "status", "--porcelain"], cwd=repository, check=True,
-            text=True, capture_output=True, timeout=10,
+            ["git", "status", "--porcelain"],
+            cwd=repository,
+            check=True,
+            text=True,
+            capture_output=True,
+            timeout=10,
         ).stdout
     except (OSError, subprocess.SubprocessError) as exc:
         raise ReleaseError("release:source_unavailable") from exc
@@ -233,6 +249,8 @@ def approval(
     action: str,
     release_id: str,
     environment: str,
+    source_commit: str,
+    artifact_digest: str,
     expires_at: str,
     key: bytes,
 ) -> dict[str, Any]:
@@ -244,6 +262,8 @@ def approval(
         "action": action,
         "releaseId": release_id,
         "environment": environment,
+        "sourceCommit": source_commit,
+        "artifactDigest": artifact_digest,
         "expiresAt": expires_at,
     }
     value["digest"] = hmac.new(key, _canonical(value), hashlib.sha256).hexdigest()
@@ -256,6 +276,8 @@ def validate_approval(
     action: str,
     release_id: str,
     environment: str,
+    source_commit: str,
+    artifact_digest: str,
     now: datetime,
     key: bytes,
 ) -> None:
@@ -274,6 +296,8 @@ def validate_approval(
         or value["action"] != action
         or value["releaseId"] != release_id
         or value["environment"] != environment
+        or value["sourceCommit"] != source_commit
+        or value["artifactDigest"] != artifact_digest
     ):
         raise ReleaseError("approval:scope_mismatch")
     if now.tzinfo is None or now.astimezone(UTC) >= _time(value["expiresAt"]):
@@ -286,8 +310,11 @@ def operation_receipt(
     action: str,
     release_id: str,
     environment: str,
+    source_commit: str,
+    artifact_digest: str,
     status: str,
     observed_at: datetime,
+    expires_at: datetime,
     key: bytes,
 ) -> dict[str, Any]:
     if (
@@ -298,6 +325,10 @@ def operation_receipt(
         or environment not in ENVIRONMENTS - {"production"}
         or status not in {"succeeded", "failed"}
         or observed_at.tzinfo is None
+        or expires_at.tzinfo is None
+        or not HEX40.fullmatch(source_commit or "")
+        or not HEX64.fullmatch(artifact_digest or "")
+        or not observed_at < expires_at
     ):
         raise ReleaseError("release:operation_receipt_invalid")
     value = {
@@ -306,8 +337,11 @@ def operation_receipt(
         "action": action,
         "releaseId": release_id,
         "environment": environment,
+        "sourceCommit": source_commit,
+        "artifactDigest": artifact_digest,
         "status": status,
         "observedAt": observed_at.astimezone(UTC).isoformat(),
+        "expiresAt": expires_at.astimezone(UTC).isoformat(),
     }
     value["digest"] = hmac.new(key, _canonical(value), hashlib.sha256).hexdigest()
     return value
@@ -319,6 +353,10 @@ def validate_operation_receipt(
     action: str,
     release_id: str,
     environment: str,
+    source_commit: str,
+    artifact_digest: str,
+    operation_id: str,
+    now: datetime,
     key: bytes,
 ) -> dict[str, Any]:
     if not isinstance(value, dict) or set(value) != OPERATION_FIELDS:
@@ -328,18 +366,28 @@ def validate_operation_receipt(
         action=value["action"],
         release_id=value["releaseId"],
         environment=value["environment"],
+        source_commit=value["sourceCommit"],
+        artifact_digest=value["artifactDigest"],
         status=value["status"],
         observed_at=_time(value["observedAt"]),
+        expires_at=_time(value["expiresAt"]),
         key=key,
     )
     if rebuilt != value:
         raise ReleaseError("release:operation_receipt_integrity")
     if (
         value["action"] != action
+        or value["operationId"] != operation_id
         or value["releaseId"] != release_id
         or value["environment"] != environment
+        or value["sourceCommit"] != source_commit
+        or value["artifactDigest"] != artifact_digest
     ):
         raise ReleaseError("release:operation_receipt_scope_mismatch")
+    if now.tzinfo is None or not _time(value["observedAt"]) <= now.astimezone(UTC) < _time(
+        value["expiresAt"]
+    ):
+        raise ReleaseError("release:operation_receipt_expired")
     return json.loads(json.dumps(value))
 
 
@@ -348,8 +396,11 @@ def health_receipt(
     action: str,
     release_id: str,
     environment: str,
+    source_commit: str,
+    artifact_digest: str,
     healthy: bool,
     observed_at: datetime,
+    expires_at: datetime,
     key: bytes,
 ) -> dict[str, Any]:
     if (
@@ -359,6 +410,10 @@ def health_receipt(
         or environment not in ENVIRONMENTS - {"production"}
         or type(healthy) is not bool
         or observed_at.tzinfo is None
+        or expires_at.tzinfo is None
+        or not HEX40.fullmatch(source_commit or "")
+        or not HEX64.fullmatch(artifact_digest or "")
+        or not observed_at < expires_at
     ):
         raise ReleaseError("release:health_receipt_invalid")
     value = {
@@ -366,8 +421,11 @@ def health_receipt(
         "action": action,
         "releaseId": release_id,
         "environment": environment,
+        "sourceCommit": source_commit,
+        "artifactDigest": artifact_digest,
         "healthy": healthy,
         "observedAt": observed_at.astimezone(UTC).isoformat(),
+        "expiresAt": expires_at.astimezone(UTC).isoformat(),
     }
     value["digest"] = hmac.new(key, _canonical(value), hashlib.sha256).hexdigest()
     return value
@@ -379,6 +437,9 @@ def validate_health_receipt(
     action: str,
     release_id: str,
     environment: str,
+    source_commit: str,
+    artifact_digest: str,
+    now: datetime,
     key: bytes,
 ) -> dict[str, Any]:
     if not isinstance(value, dict) or set(value) != HEALTH_FIELDS:
@@ -387,8 +448,11 @@ def validate_health_receipt(
         action=value["action"],
         release_id=value["releaseId"],
         environment=value["environment"],
+        source_commit=value["sourceCommit"],
+        artifact_digest=value["artifactDigest"],
         healthy=value["healthy"],
         observed_at=_time(value["observedAt"]),
+        expires_at=_time(value["expiresAt"]),
         key=key,
     )
     if rebuilt != value:
@@ -397,8 +461,14 @@ def validate_health_receipt(
         value["action"] != action
         or value["releaseId"] != release_id
         or value["environment"] != environment
+        or value["sourceCommit"] != source_commit
+        or value["artifactDigest"] != artifact_digest
     ):
         raise ReleaseError("release:health_receipt_scope_mismatch")
+    if now.tzinfo is None or not _time(value["observedAt"]) <= now.astimezone(UTC) < _time(
+        value["expiresAt"]
+    ):
+        raise ReleaseError("release:health_receipt_expired")
     return json.loads(json.dumps(value))
 
 
@@ -478,13 +548,21 @@ class ProductionReleaseController:
         self.release_key = release_key
         self.approval_key = approval_key
 
-    def _receipt(self, state: dict[str, Any], action: str, status: str) -> dict[str, Any]:
+    def _receipt(
+        self, state: dict[str, Any], action: str, status: str, now: datetime
+    ) -> dict[str, Any]:
+        candidate = state['candidate']
         value = {
+            "schemaVersion": 1,
             "action": action,
             "status": status,
             "environment": state["environment"],
-            "releaseId": state["candidate"]["releaseId"] if state["candidate"] else None,
+            "releaseId": candidate["releaseId"] if candidate else None,
+            "sourceCommit": candidate["sourceCommit"] if candidate else None,
+            "artifactDigest": candidate["artifactDigest"] if candidate else None,
             "checkpointCount": len(state["checkpoints"]),
+            "checkpointDigest": _digest(state['checkpoints']),
+            "observedAt": now.astimezone(UTC).isoformat(),
         }
         value["digest"] = hmac.new(self.release_key, _canonical(value), hashlib.sha256).hexdigest()
         return value
@@ -498,7 +576,7 @@ class ProductionReleaseController:
         owner_approval: dict[str, Any],
         now: datetime,
         health: Callable[[str], bool] | None = None,
-        execute: Callable[[str, dict[str, Any], str], dict[str, Any]] | None = None,
+        execute: Callable[[str, dict[str, Any], str, str, bool], dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         candidate = validate_release(release, key=self.release_key)
         if environment not in ENVIRONMENTS:
@@ -510,6 +588,8 @@ class ProductionReleaseController:
             action=action,
             release_id=candidate["releaseId"],
             environment=environment,
+            source_commit=candidate["sourceCommit"],
+            artifact_digest=candidate["artifactDigest"],
             now=now,
             key=self.approval_key,
         )
@@ -521,7 +601,7 @@ class ProductionReleaseController:
                 and state["environment"] == environment
                 and action in state["checkpoints"]
             ):
-                return self._receipt(state, action, "idempotent")
+                return self._receipt(state, action, "idempotent", now)
             if action in {"prepare", "preview"}:
                 if state["state"] not in {"empty", "promoted", "rolled-back", "halted"}:
                     raise ReleaseError("release:transition_invalid")
@@ -549,17 +629,32 @@ class ProductionReleaseController:
                 if execute is None:
                     raise ReleaseError("release:execution_adapter_required")
                 started = f"{action}:started"
-                if started not in state["checkpoints"]:
+                reconcile_only = started in state["checkpoints"]
+                operation_id = (
+                    "operation-"
+                    + _digest(
+                        {
+                            "action": action,
+                            "releaseId": candidate["releaseId"],
+                            "environment": environment,
+                            "sourceCommit": candidate["sourceCommit"],
+                            "artifactDigest": candidate["artifactDigest"],
+                        }
+                    )[:24]
+                )
+                if not reconcile_only:
                     state["checkpoints"].append(started)
-                    state["receipts"].append(self._receipt(state, action, "started"))
+                    state["receipts"].append(self._receipt(state, action, "started", now))
                     self.store.write(state)
                 try:
-                    operation = execute(action, candidate, environment)
+                    operation = execute(
+                        action, candidate, environment, operation_id, reconcile_only
+                    )
                 except Exception:
                     interrupted = f"{action}:interrupted"
                     if interrupted not in state["checkpoints"]:
                         state["checkpoints"].append(interrupted)
-                    state["receipts"].append(self._receipt(state, action, "pending"))
+                    state["receipts"].append(self._receipt(state, action, "pending", now))
                     self.store.write(state)
                     return state["receipts"][-1]
                 if (
@@ -568,16 +663,19 @@ class ProductionReleaseController:
                     or operation.get("action") != action
                     or operation.get("releaseId") != candidate["releaseId"]
                     or operation.get("environment") != environment
+                    or operation.get("operationId") != operation_id
+                    or operation.get("sourceCommit") != candidate["sourceCommit"]
+                    or operation.get("artifactDigest") != candidate["artifactDigest"]
                 ):
                     state["state"] = "halted"
                     state["checkpoints"].append(f"{action}:execution-failed")
-                    state["receipts"].append(self._receipt(state, action, "halted"))
+                    state["receipts"].append(self._receipt(state, action, "halted", now))
                     self.store.write(state)
                     return state["receipts"][-1]
                 if action in {"stage", "canary", "promote"} and not health(action):
                     state["state"] = "halted"
                     state["checkpoints"].append(f"{action}:failed")
-                    state["receipts"].append(self._receipt(state, action, "halted"))
+                    state["receipts"].append(self._receipt(state, action, "halted", now))
                     self.store.write(state)
                     return state["receipts"][-1]
                 if action == "promote":
@@ -593,7 +691,7 @@ class ProductionReleaseController:
                 else:
                     state["state"] = "staged" if action == "stage" else action
             state["checkpoints"].append(action)
-            receipt = self._receipt(state, action, state["state"])
+            receipt = self._receipt(state, action, state["state"], now)
             state["receipts"].append(receipt)
             self.store.write(state)
             return receipt

@@ -1,3 +1,7 @@
+import base64
+import hashlib
+import hmac
+import json
 from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 from uuid import UUID
@@ -57,6 +61,7 @@ def due_alert(*, attempts=0, expires_at=None):
         'incidentFingerprint': 'c' * 64,
         'severity': 'high',
         'summaryCode': 'api.unavailable',
+        'claimToken': str(UUID(int=9)),
     }
 
 
@@ -118,9 +123,7 @@ def test_expired_alert_and_missing_keys_are_terminal_or_backed_off(monkeypatch):
     update = MagicMock(return_value=True)
     monkeypatch.setattr(runtime.operations, 'update_alert_delivery', update)
     monkeypatch.delenv('OPERATIONS_ALERT_INTEGRITY_KEY', raising=False)
-    result = runtime.dispatch_alerts(
-        tenant_id='tenant-one', sender=MagicMock(), now=NOW
-    )
+    result = runtime.dispatch_alerts(tenant_id='tenant-one', sender=MagicMock(), now=NOW)
     assert result == {'due': 2, 'sent': 0, 'deferred': 1, 'terminal': 1}
     assert [call.kwargs['error_code'] for call in update.call_args_list] == [
         'delivery.expired',
@@ -131,3 +134,54 @@ def test_expired_alert_and_missing_keys_are_terminal_or_backed_off(monkeypatch):
 def test_configured_adapters_cover_the_whole_catalog():
     catalog = __import__('json').loads(runtime.CATALOG.read_text())
     assert set(runtime.configured_probe_adapters()) == {probe['id'] for probe in catalog['probes']}
+
+
+def test_runtime_receipt_requires_fresh_exact_hmac_evidence(monkeypatch, tmp_path):
+    key = b'r' * 32
+    key_file = tmp_path / 'receipt.key'
+    key_file.write_text(base64.urlsafe_b64encode(key).decode(), encoding='utf-8')
+    monkeypatch.setattr(runtime.settings, 'OPERATIONS_RECEIPT_INTEGRITY_KEY_FILE', str(key_file))
+    monkeypatch.setenv('OPERATIONS_RECEIPT_ROOT', str(tmp_path))
+    now = datetime.now(UTC)
+    value = {
+        'schemaVersion': 1,
+        'kind': 'backup',
+        'status': 'passed',
+        'sourceCommit': 'a' * 40,
+        'artifactDigest': 'b' * 64,
+        'observedAt': now.isoformat(),
+        'expiresAt': (now + timedelta(minutes=5)).isoformat(),
+    }
+    value['digest'] = hmac.new(
+        key,
+        json.dumps(value, sort_keys=True, separators=(',', ':')).encode(),
+        hashlib.sha256,
+    ).hexdigest()
+    (tmp_path / 'backup.json').write_text(json.dumps(value), encoding='utf-8')
+    assert runtime._receipt('backup', 2)[:2] == ('healthy', 'backup.ready')
+    value['sourceCommit'] = 'c' * 40
+    (tmp_path / 'backup.json').write_text(json.dumps(value), encoding='utf-8')
+    assert runtime._receipt('backup', 2)[:2] == ('degraded', 'backup.unknown')
+
+
+def test_discord_sender_uses_stable_provider_deduplication_and_no_mentions(monkeypatch, tmp_path):
+    webhook = tmp_path / 'webhook.url'
+    webhook.write_text('https://discord.com/api/webhooks/123/token_value', encoding='utf-8')
+    monkeypatch.setattr(runtime.settings, 'OPERATIONS_ALERT_WEBHOOK_URL_FILE', str(webhook))
+    response = MagicMock(status=200)
+    response.read.return_value = b'{"id":"987654321"}'
+    response.__enter__.return_value = response
+    opened = MagicMock(return_value=response)
+    monkeypatch.setattr(runtime, 'urlopen', opened)
+    payload = {
+        'deliveryId': str(UUID(int=1)),
+        'severity': 'high',
+        'summaryCode': 'api.unavailable',
+        'incidentId': 'a' * 64,
+    }
+    assert runtime.discord_webhook_sender(payload) == 'discord.987654321'
+    request = opened.call_args.args[0]
+    body = json.loads(request.data)
+    assert body['enforce_nonce'] is True
+    assert body['allowed_mentions'] == {'parse': []}
+    assert body['nonce'] == hashlib.sha256(payload['deliveryId'].encode()).hexdigest()[:25]

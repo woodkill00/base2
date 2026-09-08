@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import AppShell from '../components/glass/AppShell';
 import GlassButton from '../components/glass/GlassButton';
 import GlassCard from '../components/glass/GlassCard';
@@ -7,9 +8,56 @@ import { useAuth } from '../contexts/AuthContext';
 import { normalizeOperationsError, operationsAPI } from '../services/operations';
 
 const emptySummary = { services: { enabled: 0, total: 0 }, incidents: {}, synthetics24h: {} };
+const COPY = {
+  en: {
+    eyebrow: 'Private control plane',
+    title: 'Operations center',
+    refresh: 'Refresh evidence',
+    services: 'Services enabled',
+    incidents: 'Open incidents',
+    synthetics: 'Synthetic journeys · 24h',
+    health: 'Service health',
+    recent: 'Recent incidents',
+    unavailable: 'Unavailable',
+    noServices: 'No services are configured for this site.',
+    passed: 'passed',
+    failed: 'failed',
+  },
+  de: {
+    eyebrow: 'Private Steuerung',
+    title: 'Betriebszentrale',
+    refresh: 'Nachweise aktualisieren',
+    services: 'Aktive Dienste',
+    incidents: 'Offene Vorfälle',
+    synthetics: 'Synthetische Abläufe · 24 Std.',
+    health: 'Dienststatus',
+    recent: 'Aktuelle Vorfälle',
+    unavailable: 'Nicht verfügbar',
+    noServices: 'Für diese Website sind keine Dienste konfiguriert.',
+    passed: 'bestanden',
+    failed: 'fehlgeschlagen',
+  },
+  ar: {
+    eyebrow: 'لوحة تحكم خاصة',
+    title: 'مركز العمليات',
+    refresh: 'تحديث الأدلة',
+    services: 'الخدمات المفعلة',
+    incidents: 'الحوادث المفتوحة',
+    synthetics: 'الرحلات الاصطناعية · 24 ساعة',
+    health: 'حالة الخدمات',
+    recent: 'الحوادث الأخيرة',
+    unavailable: 'غير متاح',
+    noServices: 'لا توجد خدمات مهيأة لهذا الموقع.',
+    passed: 'ناجحة',
+    failed: 'فاشلة',
+  },
+};
 
 export default function OperationsCenter() {
   const { user } = useAuth();
+  const locale = String(user?.locale || document.documentElement.lang || 'en').split('-')[0];
+  const copy = COPY[locale] || COPY.en;
+  const direction = locale === 'ar' ? 'rtl' : 'ltr';
   const [summary, setSummary] = useState(emptySummary);
   const [overview, setOverview] = useState({
     site: {},
@@ -21,8 +69,11 @@ export default function OperationsCenter() {
   const [incidents, setIncidents] = useState([]);
   const [selectedIncident, setSelectedIncident] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [hasEvidence, setHasEvidence] = useState(false);
   const [error, setError] = useState('');
   const [pending, setPending] = useState('');
+  const timelineHeading = useRef(null);
+  const timelineTrigger = useRef(null);
 
   const load = useCallback(async (signal) => {
     setLoading(true);
@@ -37,6 +88,7 @@ export default function OperationsCenter() {
       setSummary(nextSummary || emptySummary);
       setIncidents(Array.isArray(nextIncidents?.incidents) ? nextIncidents.incidents : []);
       setOverview(nextOverview || {});
+      setHasEvidence(true);
     } catch (caught) {
       if (!signal?.aborted) setError(normalizeOperationsError(caught).message);
     } finally {
@@ -63,12 +115,14 @@ export default function OperationsCenter() {
     }
   };
 
-  const inspectIncident = async (incidentId) => {
+  const inspectIncident = async (incidentId, trigger) => {
+    timelineTrigger.current = trigger;
     setPending(`inspect:${incidentId}`);
     setError('');
     try {
       const result = await operationsAPI.incident(incidentId);
       setSelectedIncident(result?.incident || null);
+      window.requestAnimationFrame(() => timelineHeading.current?.focus());
     } catch (caught) {
       setError(normalizeOperationsError(caught).message);
     } finally {
@@ -94,47 +148,100 @@ export default function OperationsCenter() {
   );
   const syntheticPassed = Number(summary.synthetics24h?.passed || 0);
   const syntheticFailed = Number(summary.synthetics24h?.failed || 0);
+  const summaryValue = (value) => (hasEvidence ? value : copy.unavailable);
 
   return (
     <AppShell>
       <Navigation />
-      <div className="mx-auto w-full max-w-6xl px-4 py-8" aria-busy={loading}>
+      <div
+        className="mx-auto w-full max-w-6xl px-4 py-8"
+        aria-busy={loading}
+        lang={locale}
+        dir={direction}
+      >
         <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-sm uppercase tracking-[0.18em] opacity-70">Private control plane</p>
-            <h1 className="text-3xl font-semibold">Operations center</h1>
+            <p className="text-sm uppercase tracking-[0.18em] opacity-70">{copy.eyebrow}</p>
+            <h1 className="text-3xl font-semibold">{copy.title}</h1>
             <p className="mt-2 max-w-2xl opacity-80">
               Current fleet, release, service, objective, journey, incident, and evidence state for
               this site.
             </p>
           </div>
           <GlassButton type="button" variant="ghost" onClick={() => load()} disabled={loading}>
-            Refresh evidence
+            {copy.refresh}
           </GlassButton>
         </header>
 
         {error ? (
           <div role="alert" className="mb-5 rounded-xl border border-red-400/50 p-4">
             {error}
+            {error.startsWith('Recent authentication') ? (
+              <Link className="ms-2 underline" to="/account">
+                Open account security
+              </Link>
+            ) : null}
           </div>
         ) : null}
 
         <section aria-label="Operations summary" className="grid gap-4 sm:grid-cols-3">
           <GlassCard className="p-5">
-            <p className="text-sm opacity-70">Services enabled</p>
+            <p className="text-sm opacity-70">{copy.services}</p>
             <p className="mt-2 text-3xl font-semibold">
-              {summary.services?.enabled || 0}/{summary.services?.total || 0}
+              {summaryValue(`${summary.services?.enabled || 0}/${summary.services?.total || 0}`)}
             </p>
           </GlassCard>
           <GlassCard className="p-5">
-            <p className="text-sm opacity-70">Open incidents</p>
-            <p className="mt-2 text-3xl font-semibold">{openIncidents}</p>
+            <p className="text-sm opacity-70">{copy.incidents}</p>
+            <p className="mt-2 text-3xl font-semibold">{summaryValue(openIncidents)}</p>
           </GlassCard>
           <GlassCard className="p-5">
-            <p className="text-sm opacity-70">Synthetic journeys · 24h</p>
-            <p className="mt-2 text-3xl font-semibold">{syntheticPassed} passed</p>
-            <p className="text-sm opacity-70">{syntheticFailed} failed</p>
+            <p className="text-sm opacity-70">{copy.synthetics}</p>
+            <p className="mt-2 text-3xl font-semibold">
+              {summaryValue(`${syntheticPassed} ${copy.passed}`)}
+            </p>
+            {hasEvidence ? (
+              <p className="text-sm opacity-70">
+                {syntheticFailed} {copy.failed}
+              </p>
+            ) : null}
           </GlassCard>
+        </section>
+
+        <section className="mt-8" aria-labelledby="runtime-heading">
+          <h2 id="runtime-heading" className="text-xl font-semibold">
+            Runtime delivery
+          </h2>
+          {hasEvidence ? (
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <GlassCard className="p-5">
+                <h3 className="font-semibold">Durable jobs</h3>
+                <p className="mt-2 text-sm">
+                  {overview.runtime?.jobs?.ready || 0} ready · {overview.runtime?.jobs?.leased || 0}{' '}
+                  leased
+                </p>
+                <p className="text-sm opacity-70">
+                  {overview.runtime?.jobs?.deadLetters || 0} dead letters
+                </p>
+              </GlassCard>
+              <GlassCard className="p-5">
+                <h3 className="font-semibold">Schedules</h3>
+                <p className="mt-2 text-sm">{overview.runtime?.schedules?.enabled || 0} enabled</p>
+                <p className="text-sm opacity-70">{overview.runtime?.schedules?.late || 0} late</p>
+              </GlassCard>
+              <GlassCard className="p-5">
+                <h3 className="font-semibold">Alert delivery</h3>
+                <p className="mt-2 text-sm">{overview.runtime?.alerts?.pending || 0} pending</p>
+                <p className="text-sm opacity-70">
+                  {overview.runtime?.alerts?.terminal || 0} terminal
+                </p>
+              </GlassCard>
+            </div>
+          ) : (
+            <GlassCard className="mt-4 p-5">
+              <p>{copy.unavailable}</p>
+            </GlassCard>
+          )}
         </section>
 
         <section className="mt-8 grid gap-4 lg:grid-cols-2" aria-label="Fleet and releases">
@@ -169,7 +276,7 @@ export default function OperationsCenter() {
 
         <section className="mt-8" aria-labelledby="services-heading">
           <h2 id="services-heading" className="text-xl font-semibold">
-            Service health
+            {copy.health}
           </h2>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             {overview.services?.map((service) => (
@@ -199,6 +306,11 @@ export default function OperationsCenter() {
                 </dl>
               </GlassCard>
             ))}
+            {!loading && hasEvidence && !overview.services?.length ? (
+              <GlassCard className="p-5">
+                <p>{copy.noServices}</p>
+              </GlassCard>
+            ) : null}
           </div>
         </section>
 
@@ -245,7 +357,7 @@ export default function OperationsCenter() {
 
         <section className="mt-8" aria-labelledby="incident-heading">
           <h2 id="incident-heading" className="text-xl font-semibold">
-            Recent incidents
+            {copy.recent}
           </h2>
           {loading ? (
             <p role="status" className="mt-4">
@@ -281,7 +393,7 @@ export default function OperationsCenter() {
                     <GlassButton
                       type="button"
                       variant="ghost"
-                      onClick={() => inspectIncident(incident.id)}
+                      onClick={(event) => inspectIncident(incident.id, event.currentTarget)}
                       disabled={Boolean(pending)}
                     >
                       {pending === `inspect:${incident.id}` ? 'Opening…' : 'View timeline'}
@@ -307,11 +419,16 @@ export default function OperationsCenter() {
         </section>
 
         {selectedIncident ? (
-          <section className="mt-8" aria-labelledby="timeline-heading">
+          <section className="mt-8" aria-labelledby="timeline-heading" aria-live="polite">
             <GlassCard className="p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h2 id="timeline-heading" className="text-xl font-semibold">
+                  <h2
+                    id="timeline-heading"
+                    className="text-xl font-semibold"
+                    ref={timelineHeading}
+                    tabIndex={-1}
+                  >
                     Incident timeline
                   </h2>
                   <p className="mt-1 opacity-70">{readable(selectedIncident.summaryCode)}</p>
@@ -319,7 +436,10 @@ export default function OperationsCenter() {
                 <GlassButton
                   type="button"
                   variant="ghost"
-                  onClick={() => setSelectedIncident(null)}
+                  onClick={() => {
+                    setSelectedIncident(null);
+                    window.requestAnimationFrame(() => timelineTrigger.current?.focus());
+                  }}
                 >
                   Close timeline
                 </GlassButton>

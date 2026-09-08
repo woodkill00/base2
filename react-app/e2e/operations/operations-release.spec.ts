@@ -9,11 +9,15 @@ const user = {
   permissions: ['operations.read', 'operations.manage'],
 };
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page }, testInfo) => {
+  const localizedUser = {
+    ...user,
+    locale: testInfo.project.name === 'chromium-rtl' ? 'ar' : 'en',
+  };
   await page.addInitScript((fixture) => {
     localStorage.setItem('user', JSON.stringify(fixture));
     localStorage.setItem('token', 'non-secret-operations-fixture');
-  }, user);
+  }, localizedUser);
   await page.route('**/*', async (route) => {
     const url = new URL(route.request().url());
     if (url.href === 'https://accounts.google.com/gsi/client') {
@@ -80,6 +84,11 @@ test.beforeEach(async ({ page }) => {
             startedAt: '2026-09-08T11:55:00Z',
           },
         ],
+        runtime: {
+          jobs: { ready: 2, leased: 1, deadLetters: 0 },
+          schedules: { enabled: 3, late: 0 },
+          alerts: { pending: 1, terminal: 0 },
+        },
       };
     } else if (url.pathname.endsWith('/incidents')) {
       body = {
@@ -140,21 +149,22 @@ test('operations center is accessible responsive and visually stable', async ({
     if (message.type() === 'error') runtimeErrors.push(message.text());
   });
   page.on('requestfailed', (request) => runtimeErrors.push(request.url()));
-  await page.goto('/operations');
+  await page.goto('/operations', { waitUntil: 'networkidle' });
   if (testInfo.project.name === 'chromium-large-text')
     await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
-  if (testInfo.project.name === 'chromium-rtl')
-    await page.locator('html').evaluate((node) => {
-      node.dir = 'rtl';
-    });
   await page.addStyleTag({
     content:
       '*,*::before,*::after{animation-duration:0s!important;transition-duration:0s!important;scroll-behavior:auto!important}',
   });
-  await expect(page.getByRole('heading', { name: 'Operations center' })).toBeVisible();
+  const rtl = testInfo.project.name === 'chromium-rtl';
+  await expect(
+    page.getByRole('heading', { name: rtl ? 'مركز العمليات' : 'Operations center' })
+  ).toBeVisible();
   await expect(page.getByText('11/12')).toBeVisible();
   await expect(page.getByText('Database Unavailable')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Service health' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: rtl ? 'حالة الخدمات' : 'Service health' })
+  ).toBeVisible();
   const overflow = await page.evaluate(() => {
     const width = document.documentElement.clientWidth;
     return [...document.querySelectorAll('body *')]
@@ -190,7 +200,9 @@ test('operations center is accessible responsive and visually stable', async ({
   await expect(page.getByText('Incident Opened')).toBeVisible();
   await page.getByRole('button', { name: 'Close timeline' }).click();
   await page.getByRole('button', { name: 'Acknowledge' }).click();
-  await expect(page.getByRole('heading', { name: 'Operations center' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: rtl ? 'مركز العمليات' : 'Operations center' })
+  ).toBeVisible();
 });
 
 test('operations center shows truthful empty and failure states', async ({ page }, testInfo) => {

@@ -2383,6 +2383,12 @@ class OperationsHealthSample(SiteOwnedModel):
                 name="operations_health_recent_idx",
             )
         ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(expires_at__gt=models.F("observed_at")),
+                name="operations_health_expiry_ck",
+            )
+        ]
 
     def clean(self) -> None:
         super().clean()
@@ -2448,6 +2454,11 @@ class OperationsObjective(SiteOwnedModel):
 class OperationsIncident(SiteOwnedModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     fingerprint = models.CharField(max_length=64, validators=[sha256_validator])
+    environment = models.CharField(
+        max_length=16,
+        choices=tuple((value, value.title()) for value in ("preview", "staging", "production")),
+        default="preview",
+    )
     severity = models.CharField(
         max_length=16,
         choices=tuple((value, value.title()) for value in ("info", "warning", "high", "critical")),
@@ -2470,8 +2481,20 @@ class OperationsIncident(SiteOwnedModel):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["site_id", "fingerprint"], name="operations_incident_scope_uq"
-            )
+                fields=["site_id", "environment", "fingerprint"],
+                name="operations_incident_environment_scope_uq",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(last_observed_at__gte=models.F("first_observed_at")),
+                name="operations_incident_time_ck",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(state="resolved", resolved_at__isnull=False)
+                    | (~models.Q(state="resolved") & models.Q(resolved_at__isnull=True))
+                ),
+                name="operations_incident_resolution_ck",
+            ),
         ]
         indexes = [
             models.Index(
@@ -2517,7 +2540,7 @@ class OperationsAlertDelivery(SiteOwnedModel):
         max_length=16,
         choices=tuple(
             (value, value.replace("_", " ").title())
-            for value in ("queued", "sent", "acknowledged", "failed", "expired")
+            for value in ("queued", "sending", "sent", "acknowledged", "failed", "expired")
         ),
         default="queued",
     )
@@ -2527,13 +2550,27 @@ class OperationsAlertDelivery(SiteOwnedModel):
     expires_at = models.DateTimeField()
     receipt_digest = models.CharField(max_length=64, blank=True, default="")
     error_code = models.CharField(max_length=96, blank=True, default="")
+    claim_token = models.UUIDField(null=True, blank=True)
+    claim_expires_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
                 fields=["site_id", "incident", "channel", "generation"],
                 name="operations_delivery_replay_uq",
-            )
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        status="sending", claim_token__isnull=False, claim_expires_at__isnull=False
+                    )
+                    | (
+                        ~models.Q(status="sending")
+                        & models.Q(claim_token__isnull=True, claim_expires_at__isnull=True)
+                    )
+                ),
+                name="operations_delivery_claim_ck",
+            ),
         ]
 
     def clean(self) -> None:
@@ -2544,6 +2581,9 @@ class OperationsAlertDelivery(SiteOwnedModel):
             raise ValidationError("operations_delivery_attempt_invalid")
         if self.receipt_digest and not re.fullmatch(SHA256_PATTERN, self.receipt_digest):
             raise ValidationError("operations_delivery_digest_invalid")
+        claimed = self.status == "sending"
+        if claimed != bool(self.claim_token and self.claim_expires_at):
+            raise ValidationError("operations_delivery_claim_invalid")
 
 
 class TenantQuota(SiteOwnedModel):
@@ -2635,7 +2675,25 @@ class TenantDomainClaim(SiteOwnedModel):
                 fields=["site_id"],
                 condition=models.Q(canonical=True, state="active"),
                 name="tenant_one_active_canonical_uq",
-            )
+            ),
+            models.CheckConstraint(
+                condition=models.Q(canonical=False) | models.Q(state="active"),
+                name="tenant_domain_canonical_state_ck",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    ~models.Q(state__in=("verified", "active"))
+                    | (models.Q(verified_at__isnull=False) & ~models.Q(evidence_digest=""))
+                ),
+                name="tenant_domain_verification_ck",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    ~models.Q(state="active")
+                    | (~models.Q(approval_digest="") & ~models.Q(release_id=""))
+                ),
+                name="tenant_domain_activation_ck",
+            ),
         ]
 
     def clean(self) -> None:
@@ -2684,6 +2742,7 @@ class DurableJob(SiteOwnedModel):
     maximum_attempts = models.PositiveSmallIntegerField(default=5)
     available_at = models.DateTimeField(default=timezone.now)
     lease_owner = models.CharField(max_length=200, blank=True, default="")
+    lease_token = models.UUIDField(null=True, blank=True)
     lease_expires_at = models.DateTimeField(null=True, blank=True)
     result_digest = models.CharField(max_length=64, blank=True, default="")
     error_code = models.CharField(max_length=96, blank=True, default="")
@@ -2697,6 +2756,23 @@ class DurableJob(SiteOwnedModel):
                 condition=models.Q(attempts__lte=models.F("maximum_attempts")),
                 name="durable_job_attempts_lte_max",
             ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        state="leased",
+                        lease_token__isnull=False,
+                        lease_expires_at__isnull=False,
+                    )
+                    & ~models.Q(lease_owner="")
+                    | (
+                        ~models.Q(state="leased")
+                        & models.Q(lease_owner="")
+                        & models.Q(lease_token__isnull=True)
+                        & models.Q(lease_expires_at__isnull=True)
+                    )
+                ),
+                name="durable_job_lease_ck",
+            ),
         ]
         indexes = [
             models.Index(fields=["site_id", "state", "available_at"], name="durable_job_ready_idx")
@@ -2705,7 +2781,7 @@ class DurableJob(SiteOwnedModel):
     def clean(self) -> None:
         super().clean()
         leased = self.state == "leased"
-        if leased != bool(self.lease_owner and self.lease_expires_at):
+        if leased != bool(self.lease_owner and self.lease_token and self.lease_expires_at):
             raise ValidationError("durable_job_lease_invalid")
         if self.result_digest and not re.fullmatch(SHA256_PATTERN, self.result_digest):
             raise ValidationError("durable_job_result_invalid")
@@ -2727,12 +2803,21 @@ class DurableSchedule(SiteOwnedModel):
     last_run_at = models.DateTimeField(null=True, blank=True)
     enabled = models.BooleanField(default=True)
     revision = models.PositiveBigIntegerField(default=1)
+    claim_token = models.UUIDField(null=True, blank=True)
+    claim_expires_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
                 fields=["site_id", "schedule_key"], name="durable_schedule_scope_uq"
-            )
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(claim_token__isnull=True, claim_expires_at__isnull=True)
+                    | models.Q(claim_token__isnull=False, claim_expires_at__isnull=False)
+                ),
+                name="durable_schedule_claim_ck",
+            ),
         ]
 
     def clean(self) -> None:
@@ -2753,6 +2838,14 @@ class BreakGlassGrant(SiteOwnedModel):
     expires_at = models.DateTimeField()
     revoked_at = models.DateTimeField(null=True, blank=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(requester_ref=models.F("approver_ref")),
+                name="break_glass_independent_approver_ck",
+            )
+        ]
 
     def clean(self) -> None:
         super().clean()

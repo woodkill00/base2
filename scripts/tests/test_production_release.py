@@ -47,17 +47,23 @@ def permit(action, item, environment="staging", offset=10):
         action=action,
         release_id=item["releaseId"],
         environment=environment,
+        source_commit=item["sourceCommit"],
+        artifact_digest=item["artifactDigest"],
         expires_at=(NOW + timedelta(minutes=offset)).isoformat(),
         key=OWNER_KEY,
     )
 
 
-def execute(action, item, environment):
+def execute(action, item, environment, operation_id, reconcile_only):
+    del reconcile_only
     return {
         "status": "succeeded",
+        "operationId": operation_id,
         "action": action,
         "releaseId": item["releaseId"],
         "environment": environment,
+        "sourceCommit": item["sourceCommit"],
+        "artifactDigest": item["artifactDigest"],
     }
 
 
@@ -120,6 +126,9 @@ def test_prepare_stage_canary_promote_is_checkpointed_and_replay_safe():
                 execute=execute,
             )
             assert len(receipt["digest"]) == 64
+            assert receipt['sourceCommit'] == item['sourceCommit']
+            assert receipt['artifactDigest'] == item['artifactDigest']
+            assert len(receipt['checkpointDigest']) == 64
             replay = controller.transition(
                 action=action,
                 release=item,
@@ -387,11 +396,19 @@ def test_started_checkpoint_retries_only_through_idempotent_adapter():
             now=NOW,
         )
 
-        def interrupted(action, candidate, environment):
-            calls.append((action, candidate["releaseId"], environment))
+        def interrupted(action, candidate, environment, operation_id, reconcile_only):
+            calls.append(
+                (
+                    action,
+                    candidate["releaseId"],
+                    environment,
+                    operation_id,
+                    reconcile_only,
+                )
+            )
             if len(calls) == 1:
                 raise ConnectionError("response lost")
-            return execute(action, candidate, environment)
+            return execute(action, candidate, environment, operation_id, reconcile_only)
 
         first = controller.transition(
             action="stage",
@@ -414,7 +431,11 @@ def test_started_checkpoint_retries_only_through_idempotent_adapter():
             execute=interrupted,
         )
         assert second["status"] == "staged"
-        assert calls == [("stage", item["releaseId"], "staging")] * 2
+        assert calls[0][:3] == ("stage", item["releaseId"], "staging")
+        assert calls[1][:3] == calls[0][:3]
+        assert calls[0][3] == calls[1][3]
+        assert calls[0][4] is False
+        assert calls[1][4] is True
 
 
 def test_operation_receipt_is_independently_keyed_and_exact_scoped():
@@ -426,7 +447,10 @@ def test_operation_receipt_is_independently_keyed_and_exact_scoped():
         release_id=item["releaseId"],
         environment="staging",
         status="succeeded",
+        source_commit=item["sourceCommit"],
+        artifact_digest=item["artifactDigest"],
         observed_at=NOW,
+        expires_at=NOW + timedelta(minutes=5),
         key=operation_key,
     )
     assert validate_operation_receipt(
@@ -434,6 +458,10 @@ def test_operation_receipt_is_independently_keyed_and_exact_scoped():
         action="stage",
         release_id=item["releaseId"],
         environment="staging",
+        source_commit=item["sourceCommit"],
+        artifact_digest=item["artifactDigest"],
+        operation_id="operation-stage-0001",
+        now=NOW,
         key=operation_key,
     ) == value
     with pytest.raises(ReleaseError, match="scope_mismatch"):
@@ -442,6 +470,10 @@ def test_operation_receipt_is_independently_keyed_and_exact_scoped():
             action="canary",
             release_id=item["releaseId"],
             environment="staging",
+            source_commit=item["sourceCommit"],
+            artifact_digest=item["artifactDigest"],
+            operation_id="operation-stage-0001",
+            now=NOW,
             key=operation_key,
         )
 
@@ -466,12 +498,12 @@ def test_each_traffic_checkpoint_resumes_after_lost_executor_response(interrupte
             )
         attempts = 0
 
-        def flaky(action, candidate, environment):
+        def flaky(action, candidate, environment, operation_id, reconcile_only):
             nonlocal attempts
             attempts += 1
             if attempts == 1:
                 raise ConnectionError('lost response')
-            return execute(action, candidate, environment)
+            return execute(action, candidate, environment, operation_id, reconcile_only)
 
         pending = controller.transition(
             action=interrupted_action, release=item, environment='staging',
@@ -522,12 +554,12 @@ def test_rollback_checkpoint_resumes_after_lost_executor_response():
         )
         attempts = 0
 
-        def flaky(action, candidate, environment):
+        def flaky(action, candidate, environment, operation_id, reconcile_only):
             nonlocal attempts
             attempts += 1
             if attempts == 1:
                 raise ConnectionError('lost response')
-            return execute(action, candidate, environment)
+            return execute(action, candidate, environment, operation_id, reconcile_only)
 
         pending = controller.transition(
             action='rollback', release=second, environment='staging',

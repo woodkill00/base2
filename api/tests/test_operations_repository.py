@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
@@ -46,7 +46,7 @@ def test_incident_listing_bounds_limit_and_maps_safe_fields():
     now = datetime(2026, 9, 8, tzinfo=UTC)
     cursor = MagicMock()
     cursor.fetchall.return_value = [
-        (UUID(int=1), 'high', 'firing', 'api.failed', 'owner-1', 3, now, now, None)
+        (UUID(int=1), 'production', 'high', 'firing', 'api.failed', 'owner-1', 3, now, now, None)
     ]
     with patch(
         'api.repositories.operations.workspace_db_conn',
@@ -55,6 +55,7 @@ def test_incident_listing_bounds_limit_and_maps_safe_fields():
         result = list_incidents(tenant_id='tenant-one', limit=10000)
     assert result[0] == {
         'id': str(UUID(int=1)),
+        'environment': 'production',
         'severity': 'high',
         'state': 'firing',
         'summaryCode': 'api.failed',
@@ -133,6 +134,7 @@ def test_overview_exposes_bounded_service_release_objective_and_evidence_views()
         [('api.availability', 'request.success', 0.999, 0.995, 1440)],
         [(UUID(int=4), 'member.login', 'member', 'a' * 40, 'passed', 'b' * 64, now, now)],
     ]
+    cursor.fetchone.side_effect = [(2, 1, 3), (4, 1), (5, 2)]
     with patch(
         'api.repositories.operations.workspace_db_conn',
         return_value=repository_connection(cursor),
@@ -142,8 +144,16 @@ def test_overview_exposes_bounded_service_release_objective_and_evidence_views()
     assert result['services'][0]['health']['state'] == 'healthy'
     assert result['objectives'][0]['target'] == 0.999
     assert result['synthetics'][0]['sourceCommit'] == 'a' * 40
+    assert result['runtime'] == {
+        'jobs': {'ready': 2, 'leased': 1, 'deadLetters': 3},
+        'schedules': {'enabled': 4, 'late': 1},
+        'alerts': {'pending': 5, 'terminal': 2},
+    }
     assert [call.args[1] for call in cursor.execute.call_args_list] == [
         ('tenant-one', 'tenant-one'),
+        ('tenant-one',),
+        ('tenant-one',),
+        ('tenant-one',),
         ('tenant-one',),
         ('tenant-one',),
     ]
@@ -155,6 +165,7 @@ def test_incident_detail_is_tenant_bound_and_includes_timeline():
     cursor = MagicMock()
     cursor.fetchone.return_value = (
         incident_id,
+        'production',
         'high',
         'firing',
         'api.failed',
@@ -213,7 +224,7 @@ def test_due_alerts_and_optimistic_delivery_update_are_tenant_bounded():
     now = datetime(2026, 9, 8, tzinfo=UTC)
     cursor = MagicMock()
     cursor.fetchall.return_value = [
-        (UUID(int=11), 1, 5, now, 'a' * 64, 'high', 'api.unavailable')
+        (UUID(int=11), 1, 5, now, 'a' * 64, 'high', 'api.unavailable', UUID(int=12))
     ]
     with patch(
         'api.repositories.operations.workspace_db_conn',
@@ -221,7 +232,8 @@ def test_due_alerts_and_optimistic_delivery_update_are_tenant_bounded():
     ):
         due = due_alert_deliveries(tenant_id='tenant-one', now=now, limit=999)
     assert due[0]['incidentFingerprint'] == 'a' * 64
-    assert cursor.execute.call_args.args[1] == ('tenant-one', now, 50)
+    assert cursor.execute.call_args.args[1][:4] == ('tenant-one', now, now, 50)
+    assert cursor.execute.call_args.args[1][5] == now + timedelta(minutes=2)
 
     cursor = MagicMock()
     cursor.fetchone.return_value = (UUID(int=11),)
@@ -232,11 +244,13 @@ def test_due_alerts_and_optimistic_delivery_update_are_tenant_bounded():
         changed = update_alert_delivery(
             tenant_id='tenant-one',
             delivery_id=UUID(int=11),
-            expected_attempts=1,
+            claim_token=UUID(int=12),
             status='sent',
             next_attempt_at=None,
             receipt_digest='b' * 64,
         )
     assert changed
-    assert cursor.execute.call_args.args[1][-3:] == ('tenant-one', str(UUID(int=11)), 1)
+    assert cursor.execute.call_args.args[1][-3:] == (
+        'tenant-one', str(UUID(int=11)), str(UUID(int=12))
+    )
     cursor.connection.commit.assert_called_once()

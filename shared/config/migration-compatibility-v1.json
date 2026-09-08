@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "currentSchema": 25,
+  "currentSchema": 26,
   "minimumCompatibleSchema": 17,
   "migrations": [
     {
@@ -79,6 +79,16 @@
       "toSchema": 25,
       "phase": "migrate",
       "compatibleFrom": 24,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "runtime_delivery_integrity",
+      "fromSchema": 25,
+      "toSchema": 26,
+      "phase": "migrate",
+      "compatibleFrom": 25,
       "expectedLockMs": 1000,
       "expectedRuntimeMs": 30000,
       "destructive": false

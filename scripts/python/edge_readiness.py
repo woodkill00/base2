@@ -107,12 +107,43 @@ def domain_claim(
     return value
 
 
+def domain_verification_evidence(
+    *, claim: dict[str, Any], observed_challenge_digest: str,
+    observed_at: datetime, expires_at: datetime, key: bytes,
+) -> dict[str, Any]:
+    """Sign one short-lived observation from the separately scoped DNS verifier."""
+    if (
+        claim.get('state') != 'pending'
+        or claim.get('challengeDigest') != observed_challenge_digest
+        or not re.fullmatch(r'[0-9a-f]{64}', observed_challenge_digest or '')
+        or observed_at.tzinfo is None
+        or expires_at.tzinfo is None
+        or not observed_at < expires_at <= observed_at + timedelta(minutes=10)
+        or len(key) < 32
+    ):
+        raise EdgeReadinessError('domain:evidence_invalid')
+    value = {
+        'schemaVersion': 1,
+        'tenantId': claim['tenantId'],
+        'domain': claim['domain'],
+        'claimDigest': claim['claimDigest'],
+        'observedChallengeDigest': observed_challenge_digest,
+        'observedAt': observed_at.astimezone(UTC).isoformat(),
+        'expiresAt': expires_at.astimezone(UTC).isoformat(),
+    }
+    value['digest'] = hmac.new(
+        key, json.dumps(value, sort_keys=True, separators=(',', ':')).encode(), hashlib.sha256
+    ).hexdigest()
+    return value
+
+
 def transition_domain_claim(
     claim: dict[str, Any],
     *,
     action: str,
     now: datetime,
-    evidence_digest: str = "",
+    verification_evidence: dict[str, Any] | None = None,
+    verification_key: bytes | None = None,
     release_id: str = "",
     approval: str = "",
     approval_key: bytes | None = None,
@@ -128,11 +159,49 @@ def transition_domain_claim(
         value.update(state="expired", canonical=False)
         return value
     if action == "verify":
-        if value["state"] == "verified" and value.get("evidenceDigest") == evidence_digest:
+        if (
+            value['state'] == 'verified'
+            and isinstance(verification_evidence, dict)
+            and value.get('evidenceDigest') == verification_evidence.get('digest')
+        ):
             return value
-        if value["state"] != "pending" or not re.fullmatch(r"[0-9a-f]{64}", evidence_digest):
+        required = {
+            'schemaVersion', 'tenantId', 'domain', 'claimDigest', 'observedChallengeDigest',
+            'observedAt', 'expiresAt', 'digest',
+        }
+        if (
+            value['state'] != 'pending'
+            or not isinstance(verification_evidence, dict)
+            or set(verification_evidence) != required
+            or verification_key is None
+            or len(verification_key) < 32
+        ):
             raise EdgeReadinessError("domain:verification_invalid")
-        value.update(state="verified", evidenceDigest=evidence_digest, verifiedAt=now.isoformat())
+        try:
+            observed_at = datetime.fromisoformat(str(verification_evidence.get('observedAt', '')))
+            evidence_expires = datetime.fromisoformat(str(verification_evidence.get('expiresAt', '')))
+        except ValueError as exc:
+            raise EdgeReadinessError('domain:verification_invalid') from exc
+        unsigned = {name: verification_evidence[name] for name in verification_evidence if name != 'digest'}
+        expected = hmac.new(
+            verification_key,
+            json.dumps(unsigned, sort_keys=True, separators=(',', ':')).encode(),
+            hashlib.sha256,
+        ).hexdigest()
+        if (
+            not hmac.compare_digest(str(verification_evidence['digest']), expected)
+            or verification_evidence['schemaVersion'] != 1
+            or verification_evidence['tenantId'] != value['tenantId']
+            or verification_evidence['domain'] != value['domain']
+            or verification_evidence['claimDigest'] != value['claimDigest']
+            or verification_evidence['observedChallengeDigest'] != value['challengeDigest']
+            or not observed_at <= now.astimezone(UTC) < evidence_expires
+        ):
+            raise EdgeReadinessError('domain:verification_invalid')
+        value.update(
+            state='verified', evidenceDigest=verification_evidence['digest'],
+            verifiedAt=verification_evidence['observedAt'],
+        )
         return value
     if action in {"activate", "revoke"}:
         if not approval_key or len(approval_key) < 32 or not re.fullmatch(

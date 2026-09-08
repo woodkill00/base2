@@ -5,8 +5,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
+import stat
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 DIGEST = re.compile(r"^[0-9a-f]{64}$")
@@ -37,7 +40,7 @@ def validate_database_policy(value: Any) -> dict[str, Any]:
         "maximumConnections": 40,
         "maximumPerProcess": 10,
         "statementTimeoutMs": 30000,
-        "transactionTimeoutMs": 60000,
+        "idleTransactionTimeoutMs": 60000,
         "saturationPercent": 85,
     }:
         raise DataReadinessError("data:pool_invalid")
@@ -97,42 +100,51 @@ def migration_plan(
 
 def validate_migration_catalog(value: Any) -> dict[str, Any]:
     if not isinstance(value, dict) or set(value) != {
-        'schemaVersion', 'currentSchema', 'minimumCompatibleSchema', 'migrations'
+        "schemaVersion",
+        "currentSchema",
+        "minimumCompatibleSchema",
+        "migrations",
     }:
-        raise DataReadinessError('migration:catalog_invalid')
+        raise DataReadinessError("migration:catalog_invalid")
     if (
-        value['schemaVersion'] != 1
-        or type(value['currentSchema']) is not int
-        or type(value['minimumCompatibleSchema']) is not int
-        or not 1 <= value['minimumCompatibleSchema'] <= value['currentSchema']
-        or not isinstance(value['migrations'], list)
-        or not value['migrations']
+        value["schemaVersion"] != 1
+        or type(value["currentSchema"]) is not int
+        or type(value["minimumCompatibleSchema"]) is not int
+        or not 1 <= value["minimumCompatibleSchema"] <= value["currentSchema"]
+        or not isinstance(value["migrations"], list)
+        or not value["migrations"]
     ):
-        raise DataReadinessError('migration:catalog_invalid')
-    expected = value['minimumCompatibleSchema'] + 1
+        raise DataReadinessError("migration:catalog_invalid")
+    expected = value["minimumCompatibleSchema"] + 1
     normalized = []
-    for item in value['migrations']:
+    for item in value["migrations"]:
         if not isinstance(item, dict) or set(item) != {
-            'migrationId', 'fromSchema', 'toSchema', 'phase', 'compatibleFrom',
-            'expectedLockMs', 'expectedRuntimeMs', 'destructive',
+            "migrationId",
+            "fromSchema",
+            "toSchema",
+            "phase",
+            "compatibleFrom",
+            "expectedLockMs",
+            "expectedRuntimeMs",
+            "destructive",
         }:
-            raise DataReadinessError('migration:catalog_invalid')
+            raise DataReadinessError("migration:catalog_invalid")
         plan = migration_plan(
-            migration_id=item['migrationId'],
-            from_schema=item['fromSchema'],
-            to_schema=item['toSchema'],
-            phase=item['phase'],
-            compatible_from=item['compatibleFrom'],
-            expected_lock_ms=item['expectedLockMs'],
-            expected_runtime_ms=item['expectedRuntimeMs'],
-            destructive_approval=item['destructive'],
+            migration_id=item["migrationId"],
+            from_schema=item["fromSchema"],
+            to_schema=item["toSchema"],
+            phase=item["phase"],
+            compatible_from=item["compatibleFrom"],
+            expected_lock_ms=item["expectedLockMs"],
+            expected_runtime_ms=item["expectedRuntimeMs"],
+            destructive_approval=item["destructive"],
         )
-        if item['toSchema'] != expected or item['destructive'] != plan['destructive']:
-            raise DataReadinessError('migration:catalog_sequence_invalid')
+        if item["toSchema"] != expected or item["destructive"] != plan["destructive"]:
+            raise DataReadinessError("migration:catalog_sequence_invalid")
         normalized.append(item)
         expected += 1
-    if normalized[-1]['toSchema'] != value['currentSchema']:
-        raise DataReadinessError('migration:catalog_sequence_invalid')
+    if normalized[-1]["toSchema"] != value["currentSchema"]:
+        raise DataReadinessError("migration:catalog_sequence_invalid")
     return json.loads(json.dumps(value, sort_keys=True))
 
 
@@ -150,18 +162,45 @@ def recovery_strategy(capabilities: Any) -> dict[str, Any]:
     }
 
 
-def restore_target(
-    *, target_id: str, target_class: str, owned: bool, empty: bool
-) -> dict[str, Any]:
+def restore_target(*, target_id: str, target_class: str, target_path: Path) -> dict[str, Any]:
+    """Validate a restore destination from observable filesystem state.
+
+    Ownership and emptiness are never accepted as caller-provided booleans. The
+    destination must be absent and its nearest existing ancestor must be owned
+    by this process and not writable by its group or other users.
+    """
+    target = Path(target_path)
+    ancestor = target.parent
+    try:
+        if not target.is_absolute() or target.exists() or target.is_symlink():
+            raise DataReadinessError("restore:target_denied")
+        while not ancestor.exists():
+            if ancestor == ancestor.parent or ancestor.is_symlink():
+                raise DataReadinessError("restore:target_denied")
+            ancestor = ancestor.parent
+        resolved_ancestor = ancestor.resolve(strict=True)
+        resolved_target = target.resolve(strict=False)
+        resolved_target.relative_to(resolved_ancestor)
+        metadata = resolved_ancestor.stat()
+        securely_owned = metadata.st_uid == os.geteuid() and not (
+            stat.S_IMODE(metadata.st_mode) & (stat.S_IWGRP | stat.S_IWOTH)
+        )
+    except (OSError, RuntimeError, ValueError):
+        raise DataReadinessError("restore:target_denied") from None
     if (
         target_class not in TARGET_CLASSES
-        or not owned
-        or not empty
+        or not securely_owned
         or not re.fullmatch(r"[a-z][a-z0-9-]{2,63}", target_id or "")
         or re.search(r"(^|-)(prod|production|live)(-|$)", target_id)
     ):
         raise DataReadinessError("restore:target_denied")
-    return {"targetId": target_id, "targetClass": target_class, "isolated": True}
+    return {
+        "targetId": target_id,
+        "targetClass": target_class,
+        "isolated": True,
+        "targetPath": str(resolved_target),
+        "ownerUid": metadata.st_uid,
+    }
 
 
 def reconcile_restore(components: Any) -> dict[str, Any]:

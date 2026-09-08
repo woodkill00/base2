@@ -9,7 +9,10 @@ export const normalizeOperationsError = (error) => {
   });
   return {
     ...normalized,
-    message: 'Operations information is temporarily unavailable. Try refreshing the evidence.',
+    message:
+      normalized.status === 403
+        ? 'Recent authentication is required. Reauthenticate, then retry this operation.'
+        : 'Operations information is temporarily unavailable. Try refreshing the evidence.',
   };
 };
 

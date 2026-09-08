@@ -25,9 +25,16 @@ def main() -> int:
             cursor.execute("SELECT to_regclass('sitecontent_operationsservice') IS NOT NULL")
             assert cursor.fetchone()[0] is True
             cursor.execute("SELECT to_regclass('sitecontent_tenantquota') IS NOT NULL")
-            quota_exists = cursor.fetchone()[0]
+            assert cursor.fetchone()[0] is True
+            cursor.execute(
+                """SELECT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name='sitecontent_durablejob' AND column_name='lease_token'
+                )"""
+            )
+            lease_token_exists = cursor.fetchone()[0]
             if sys.argv[1] == "old":
-                assert quota_exists is False
+                assert lease_token_exists is False
                 cursor.execute(
                     """INSERT INTO sitecontent_operationsservice
                        (id,site_id,service_key,environment,enabled,release_id,created_at,updated_at)
@@ -35,7 +42,7 @@ def main() -> int:
                     (str(UUID(int=106)),),
                 )
             else:
-                assert quota_exists is True
+                assert lease_token_exists is True
                 cursor.execute(
                     """SELECT enabled,release_id FROM sitecontent_operationsservice
                        WHERE site_id='mixed-version' AND service_key='api.health'"""

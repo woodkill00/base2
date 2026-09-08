@@ -120,8 +120,7 @@ def restore_isolated(
     restore_target(
         target_id=expected_target,
         target_class=target_class,
-        owned=True,
-        empty=True,
+        target_path=output,
     )
     try:
         envelope = json.loads(backup.read_text(encoding="utf-8"))
@@ -354,7 +353,7 @@ def restore_stream_backup(
 ) -> dict[str, Any]:
     if output.exists() or output.is_symlink():
         raise RecoveryDenied("restore:target_must_be_absent")
-    restore_target(target_id=expected_target, target_class=target_class, owned=True, empty=True)
+    restore_target(target_id=expected_target, target_class=target_class, target_path=output)
     if backup.is_symlink() or not backup.is_file() or len(key) != 32:
         raise RecoveryDenied("restore:backup_invalid")
     with backup.open("rb") as source:

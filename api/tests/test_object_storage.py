@@ -26,6 +26,7 @@ def test_s3_store_is_https_allowlisted_tenant_keyed_encrypted_and_integrity_chec
         bucket='base2-media',
         client=client,
         allowed_hosts={'objects.example.net'},
+        resolver=lambda *_: [(None, None, None, None, ('93.184.216.34', 443))],
     )
     receipt = store.put(
         tenant_id='tenant-one', namespace='media', object_id='asset-1', content=b'hello'
@@ -34,10 +35,12 @@ def test_s3_store_is_https_allowlisted_tenant_keyed_encrypted_and_integrity_chec
     assert receipt.key == 'tenant-one/media/asset-1'
     assert request['ServerSideEncryption'] == 'AES256'
     assert request['CacheControl'] == 'private,no-store'
-    assert store.get(receipt) == b'hello'
+    assert store.get(tenant_id='tenant-one', receipt=receipt) == b'hello'
+    with pytest.raises(ObjectStorageError, match='ownership'):
+        store.get(tenant_id='tenant-two', receipt=receipt)
     client.values[(receipt.bucket, receipt.key)]['Body'] = b'tampered'
     with pytest.raises(ObjectStorageError, match='integrity'):
-        store.get(receipt)
+        store.get(tenant_id='tenant-one', receipt=receipt)
 
 
 @pytest.mark.parametrize(
@@ -50,4 +53,16 @@ def test_s3_store_rejects_insecure_private_and_unapproved_origins(endpoint):
             bucket='base2-media',
             client=Client(),
             allowed_hosts={'objects.example.net'},
+            resolver=lambda *_: [(None, None, None, None, ('93.184.216.34', 443))],
+        )
+
+
+def test_s3_store_rejects_allowlisted_host_resolving_private():
+    with pytest.raises(ObjectStorageError, match='configuration'):
+        S3ObjectStore(
+            endpoint='https://objects.example.net',
+            bucket='base2-media',
+            client=Client(),
+            allowed_hosts={'objects.example.net'},
+            resolver=lambda *_: [(None, None, None, None, ('169.254.169.254', 443))],
         )

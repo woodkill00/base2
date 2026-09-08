@@ -298,6 +298,7 @@ def main() -> None:
         assert claim_jobs(tenant_id="site-b", worker="worker-one", now=datetime.now(UTC)) == []
         assert settle_job(
             tenant_id="site-a", job_id=UUID(created["jobId"]), worker="worker-one",
+            lease_token=UUID(claimed[0]["leaseToken"]), generation=claimed[0]["generation"],
             outcome="succeeded", now=datetime.now(UTC), result_digest="e" * 64,
         ) == "succeeded"
         with runtime.cursor() as cursor:

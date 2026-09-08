@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -7,13 +9,14 @@ import pytest
 from scripts.python.edge_readiness import (
     EdgeReadinessError,
     cache_headers,
-    certificate_transition,
     canonical_redirect,
+    certificate_transition,
     domain_claim,
+    domain_verification_evidence,
     private_surface_access,
     transition_domain_claim,
-    validate_resolved_origin,
     validate_edge_policy,
+    validate_resolved_origin,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -102,12 +105,21 @@ def test_private_surfaces_require_role_recent_auth_and_private_network():
 
 def test_domain_lifecycle_requires_exact_release_approval_and_replays():
     key = b"k" * 32
+    verification_key = b"v" * 32
     claim = domain_claim(
         tenant_id="tenant-one", domain="example.com", challenge_digest="a" * 64,
         expires_at=NOW + timedelta(minutes=15),
     )
+    evidence = domain_verification_evidence(
+        claim=claim,
+        observed_challenge_digest='a' * 64,
+        observed_at=NOW,
+        expires_at=NOW + timedelta(minutes=5),
+        key=verification_key,
+    )
     verified = transition_domain_claim(
-        claim, action="verify", now=NOW, evidence_digest="b" * 64
+        claim, action="verify", now=NOW, verification_evidence=evidence,
+        verification_key=verification_key,
     )
     message = f'{claim["claimDigest"]}:activate:release-001'.encode()
     approval = hmac.new(key, message, hashlib.sha256).hexdigest()
@@ -125,6 +137,13 @@ def test_domain_lifecycle_requires_exact_release_approval_and_replays():
             verified, action="activate", now=NOW, release_id="release-002",
             approval=approval, approval_key=key,
         )
+    changed = dict(evidence)
+    changed['domain'] = 'attacker.example'
+    with pytest.raises(EdgeReadinessError, match='verification'):
+        transition_domain_claim(
+            claim, action='verify', now=NOW, verification_evidence=changed,
+            verification_key=verification_key,
+        )
 
 
 def test_expired_claim_fails_closed_and_staging_cert_lifecycle_is_bounded():
@@ -133,7 +152,7 @@ def test_expired_claim_fails_closed_and_staging_cert_lifecycle_is_bounded():
         expires_at=NOW + timedelta(minutes=1),
     )
     expired = transition_domain_claim(
-        claim, action="verify", now=NOW + timedelta(minutes=2), evidence_digest="b" * 64
+        claim, action="verify", now=NOW + timedelta(minutes=2)
     )
     assert expired["state"] == "expired"
     assert certificate_transition(
@@ -162,5 +181,3 @@ def test_origin_resolution_rejects_ssrf_metadata_private_and_rebinding_targets()
             validate_resolved_origin(
                 hostname=host, addresses=addresses, allowed_hosts={"objects.example.net"}
             )
-import hashlib
-import hmac

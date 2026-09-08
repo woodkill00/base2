@@ -2,7 +2,7 @@
   "algorithm": "sha256",
   "groups": {
     "config": {
-      ".env.example": "f226e9ccbcce1240b6ddfe7ca6b1c8d41dbf68388b211ecddc8924e8c125e0ea",
+      ".env.example": "f4bbd4796494ac22e39d4d2981482162aad8acdfe6446873ca2de3eabc7514f1",
       "api/site_profiles/base2-obsidian.json": "6a4d2dd56494647083632fcaee8ce7586fbbad4c4767b7a00d58359b4546881f",
       "api/site_profiles/content-workspace-contracts.json": "b8202643502ab5257a92a7370dd2ef4afbc11d75b2fd1772d2b99cb8f7f6beee",
       "api/site_profiles/content-workspace-presets.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
@@ -19,11 +19,11 @@
       "shared/config/archetypes-v1.json": "1c203b4f3e076adf87fed98698cec6473b7ac765dcbfb7b6ca4b67c090801ce3",
       "shared/config/content-workspace-presets.generated.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
       "shared/config/credential-inventory-v1.json": "e84852d85d25f994400fb21dc9aef098853856e4b84210cc07582b4f999b831c",
-      "shared/config/data-readiness-v1.json": "a6bd3909e9398bbad08387b38cd88fd6003dd37a19141910d80cf4d0100eaeb6",
+      "shared/config/data-readiness-v1.json": "b5ff6208f40dff554992707539bf623f4767a7f58678f4047ac8fe0dfa20b917",
       "shared/config/design-system-v1.json": "40a9bd6d00ef561488d3437d04699d6b2d1781ec4feab58d33c20fbe4a436d82",
       "shared/config/edge-readiness-v1.json": "c6adf440599413b21a70552c7b95e9474869003eb825872cea3ee18c4ae0b848",
       "shared/config/identity-realms.json": "c11cd97a6808983182e96774499ae5d9b63e38d8dbe1464846cbca9b6127719f",
-      "shared/config/migration-compatibility-v1.json": "740ce633ca6371ff77b8bbae7f7b93385469bc39adb49d20a9911c849f59f469",
+      "shared/config/migration-compatibility-v1.json": "13d0f05e407db233eef3b120a640d1b0bf9dffa3ebabe0e5f16f6541a22a5950",
       "shared/config/module-catalog.json": "ae322048e2b26ca38b430e275df172d650e0d5c0f7366d4571138842237b4cc7",
       "shared/config/operations-probes-v1.json": "85b92aacfff06818581b7460aa1471843e969a5fd32da369a5f0e05b2bc5ff36",
       "shared/config/optional-search-v1.json": "06adbb1bfe9cf53e06ee915ea6be40161a12bc9241cf91e95b4f325f0bc0edd8",

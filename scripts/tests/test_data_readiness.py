@@ -53,11 +53,11 @@ def test_expand_and_migrate_are_compatible_while_contract_needs_approval():
 
 
 def test_migration_catalog_is_contiguous_compatible_and_non_destructive():
-    catalog = json.loads((ROOT / 'shared/config/migration-compatibility-v1.json').read_text())
-    assert validate_migration_catalog(catalog)["currentSchema"] == 25
+    catalog = json.loads((ROOT / "shared/config/migration-compatibility-v1.json").read_text())
+    assert validate_migration_catalog(catalog)["currentSchema"] == 26
     changed = json.loads(json.dumps(catalog))
-    changed['migrations'][1]['toSchema'] = 99
-    with pytest.raises(DataReadinessError, match='sequence_invalid'):
+    changed["migrations"][1]["toSchema"] = 99
+    with pytest.raises(DataReadinessError, match="sequence_invalid"):
         validate_migration_catalog(changed)
 
 
@@ -71,21 +71,23 @@ def test_pitr_is_truthful_and_has_an_explicit_fallback():
     }
 
 
-def test_restore_target_rejects_live_ambiguous_unowned_and_nonempty_destinations():
+def test_restore_target_rejects_live_ambiguous_unowned_and_nonempty_destinations(tmp_path):
+    target = tmp_path / "restore.bin"
     assert restore_target(
-        target_id="restore-drill-001", target_class="isolated", owned=True, empty=True
+        target_id="restore-drill-001", target_class="isolated", target_path=target
     )["isolated"]
+    existing = tmp_path / "existing.bin"
+    existing.write_bytes(b"occupied")
     for overrides in (
         {"target_id": "production"},
         {"target_class": "live"},
-        {"owned": False},
-        {"empty": False},
+        {"target_path": existing},
+        {"target_path": Path("relative.bin")},
     ):
         values = {
             "target_id": "restore-drill-001",
             "target_class": "isolated",
-            "owned": True,
-            "empty": True,
+            "target_path": target,
             **overrides,
         }
         with pytest.raises(DataReadinessError, match="target_denied"):
