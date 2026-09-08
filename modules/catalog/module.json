@@ -17,5 +17,28 @@
   "healthChecks": ["catalog.ready"],
   "providerCapabilities": [],
   "dependencies": [],
-  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+  "dataLifecycle": {
+    "disable": "preserve",
+    "export": true,
+    "remove": "backup-required"
+  },
+  "conflicts": [],
+  "schedules": [],
+  "storage": {
+    "classes": ["private"],
+    "maximumBytes": 1073741824
+  },
+  "observability": ["catalog.ready"],
+  "backup": {
+    "included": true,
+    "restoreRequired": true
+  },
+  "resources": {
+    "cpuMillicores": 100,
+    "memoryMiB": 128,
+    "storageMiB": 1024
+  },
+  "testPacks": ["catalog.contract", "catalog.security"],
+  "publisher": "base2",
+  "signature": "builtin-sha256:455f01b551e638e0bba1fbde70bd1a4e02ccd0e6a646081ed8e8f8f6667c08bc"
 }

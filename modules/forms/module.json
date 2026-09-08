@@ -14,5 +14,28 @@
   "healthChecks": ["forms.outbox-ready"],
   "providerCapabilities": ["email"],
   "dependencies": [],
-  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+  "dataLifecycle": {
+    "disable": "preserve",
+    "export": true,
+    "remove": "backup-required"
+  },
+  "conflicts": [],
+  "schedules": ["forms.schedule"],
+  "storage": {
+    "classes": ["private"],
+    "maximumBytes": 1073741824
+  },
+  "observability": ["forms.outbox-ready"],
+  "backup": {
+    "included": true,
+    "restoreRequired": true
+  },
+  "resources": {
+    "cpuMillicores": 100,
+    "memoryMiB": 128,
+    "storageMiB": 1024
+  },
+  "testPacks": ["forms.contract", "forms.security"],
+  "publisher": "base2",
+  "signature": "builtin-sha256:1f673ab1f38b43a62e140358d352a649aff1693dc8d5f4b793d2ab30db306c01"
 }

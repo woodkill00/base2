@@ -58,5 +58,28 @@
   "healthChecks": ["media.storage-ready", "media.scanner-ready", "media.worker-ready"],
   "providerCapabilities": ["storage"],
   "dependencies": ["content-workspace"],
-  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+  "dataLifecycle": {
+    "disable": "preserve",
+    "export": true,
+    "remove": "backup-required"
+  },
+  "conflicts": [],
+  "schedules": ["media.schedule"],
+  "storage": {
+    "classes": ["private"],
+    "maximumBytes": 1073741824
+  },
+  "observability": ["media.storage-ready", "media.scanner-ready", "media.worker-ready"],
+  "backup": {
+    "included": true,
+    "restoreRequired": true
+  },
+  "resources": {
+    "cpuMillicores": 100,
+    "memoryMiB": 128,
+    "storageMiB": 1024
+  },
+  "testPacks": ["media.contract", "media.security"],
+  "publisher": "base2",
+  "signature": "builtin-sha256:5530bbb72714e5033316ef7ceebb6826c438abe2fb929778231484b6d1f39a2d"
 }

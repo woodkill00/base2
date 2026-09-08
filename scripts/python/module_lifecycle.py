@@ -166,6 +166,20 @@ class ModuleLifecycle:
                 manifest=manifest.payload,
                 jobsScheduled=existing['status'] == 'enabled' and bool(manifest.payload['jobs']),
             )
+        elif action == 'downgrade':
+            if not existing or existing['status'] not in {'enabled', 'disabled'}:
+                raise ModuleLifecycleError('downgrade:not_installed')
+            if tuple(map(int, manifest.version.split('.'))) >= tuple(map(int, existing['version'].split('.'))):
+                raise ModuleLifecycleError('downgrade:not_older')
+            if not backup_receipt:
+                raise ModuleLifecycleError('downgrade:backup_required')
+            existing.update(
+                version=manifest.version,
+                manifestDigest=_digest(manifest.payload),
+                manifest=manifest.payload,
+                jobsScheduled=existing['status'] == 'enabled' and bool(manifest.payload['jobs']),
+                dataState='preserved',
+            )
         elif action == 'remove':
             if not existing:
                 raise ModuleLifecycleError('remove:not_installed')

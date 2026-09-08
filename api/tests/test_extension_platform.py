@@ -10,6 +10,7 @@ from api.services.extension_platform import (
     api_contract,
     archetype_contract,
     commerce_transition,
+    commerce_record,
     compose_page,
     integration_grant,
     theme_upgrade,
@@ -155,3 +156,13 @@ def test_public_api_and_fake_commerce_are_versioned_and_safe():
             provider='live',
             idempotency_key='order-request-0001',
         )
+    records = [
+        commerce_record(
+            kind=kind, tenant_id='tenant-one', provider='fake', external_ref=f'{kind}-001',
+            amount_minor=0 if kind == 'product' else 1000, currency='EUR',
+            idempotency_key=f'{kind}-request-0001',
+        )
+        for kind in ('product', 'price', 'order', 'subscription', 'invoice', 'tax', 'refund')
+    ]
+    assert len({item['id'] for item in records}) == 7
+    assert all(not item['prohibitedPaymentDataStored'] for item in records)

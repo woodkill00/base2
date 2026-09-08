@@ -14,5 +14,28 @@
   "healthChecks": ["events.ready"],
   "providerCapabilities": [],
   "dependencies": [],
-  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+  "dataLifecycle": {
+    "disable": "preserve",
+    "export": true,
+    "remove": "backup-required"
+  },
+  "conflicts": [],
+  "schedules": ["events.schedule"],
+  "storage": {
+    "classes": ["private"],
+    "maximumBytes": 1073741824
+  },
+  "observability": ["events.ready"],
+  "backup": {
+    "included": true,
+    "restoreRequired": true
+  },
+  "resources": {
+    "cpuMillicores": 100,
+    "memoryMiB": 128,
+    "storageMiB": 1024
+  },
+  "testPacks": ["events.contract", "events.security"],
+  "publisher": "base2",
+  "signature": "builtin-sha256:59c24ea3cf2abff493e5a59bcca451f5978c14bcf9567ff91fd6a64927c22f07"
 }

@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from scripts.python.module_registry import ModuleContractError, ModuleRegistry, validate_manifest
+from scripts.python.sign_builtin_modules import enrich
 
 
 def manifest(module_id='content', **changes):
@@ -27,7 +28,7 @@ def manifest(module_id='content', **changes):
         'dataLifecycle': {'disable': 'preserve', 'export': True, 'remove': 'backup-required'},
     }
     value.update(changes)
-    return value
+    return enrich(value)
 
 
 class ModuleRegistryTests(unittest.TestCase):

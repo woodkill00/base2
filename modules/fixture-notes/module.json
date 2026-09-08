@@ -18,5 +18,24 @@
     "disable": "preserve",
     "export": true,
     "remove": "backup-required"
-  }
+  },
+  "conflicts": [],
+  "schedules": ["fixture-notes.schedule"],
+  "storage": {
+    "classes": ["private"],
+    "maximumBytes": 1073741824
+  },
+  "observability": ["fixture-notes.ready"],
+  "backup": {
+    "included": true,
+    "restoreRequired": true
+  },
+  "resources": {
+    "cpuMillicores": 100,
+    "memoryMiB": 128,
+    "storageMiB": 1024
+  },
+  "testPacks": ["fixture-notes.contract", "fixture-notes.security"],
+  "publisher": "base2",
+  "signature": "builtin-sha256:00535a7bd0514cd27edb8241df22f32e10f1849eb393b2a2831ba23bf692fca3"
 }

@@ -14,5 +14,28 @@
   "healthChecks": ["blog.ready"],
   "providerCapabilities": [],
   "dependencies": [],
-  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+  "dataLifecycle": {
+    "disable": "preserve",
+    "export": true,
+    "remove": "backup-required"
+  },
+  "conflicts": [],
+  "schedules": ["blog.schedule"],
+  "storage": {
+    "classes": ["private"],
+    "maximumBytes": 1073741824
+  },
+  "observability": ["blog.ready"],
+  "backup": {
+    "included": true,
+    "restoreRequired": true
+  },
+  "resources": {
+    "cpuMillicores": 100,
+    "memoryMiB": 128,
+    "storageMiB": 1024
+  },
+  "testPacks": ["blog.contract", "blog.security"],
+  "publisher": "base2",
+  "signature": "builtin-sha256:1cf954cec9e59fbbdba5f3a149917e1f6158509bf23147ac30101585bc6da71e"
 }

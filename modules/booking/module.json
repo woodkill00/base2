@@ -14,5 +14,28 @@
   "healthChecks": ["booking.ready"],
   "providerCapabilities": ["email"],
   "dependencies": ["events"],
-  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+  "dataLifecycle": {
+    "disable": "preserve",
+    "export": true,
+    "remove": "backup-required"
+  },
+  "conflicts": [],
+  "schedules": ["booking.schedule"],
+  "storage": {
+    "classes": ["private"],
+    "maximumBytes": 1073741824
+  },
+  "observability": ["booking.ready"],
+  "backup": {
+    "included": true,
+    "restoreRequired": true
+  },
+  "resources": {
+    "cpuMillicores": 100,
+    "memoryMiB": 128,
+    "storageMiB": 1024
+  },
+  "testPacks": ["booking.contract", "booking.security"],
+  "publisher": "base2",
+  "signature": "builtin-sha256:21b14d4329318170e3fec533c4ee967685eebc468202cb4e4600b1352ac4c2af"
 }

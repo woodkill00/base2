@@ -14,5 +14,28 @@
   "healthChecks": ["community.moderation-ready"],
   "providerCapabilities": [],
   "dependencies": ["content"],
-  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+  "dataLifecycle": {
+    "disable": "preserve",
+    "export": true,
+    "remove": "backup-required"
+  },
+  "conflicts": [],
+  "schedules": ["community.schedule"],
+  "storage": {
+    "classes": ["private"],
+    "maximumBytes": 1073741824
+  },
+  "observability": ["community.moderation-ready"],
+  "backup": {
+    "included": true,
+    "restoreRequired": true
+  },
+  "resources": {
+    "cpuMillicores": 100,
+    "memoryMiB": 128,
+    "storageMiB": 1024
+  },
+  "testPacks": ["community.contract", "community.security"],
+  "publisher": "base2",
+  "signature": "builtin-sha256:cd3f1447c98c14c17d538cc81b565ac6e50b88fbbe230b8da3e96758082f0919"
 }

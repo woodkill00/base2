@@ -41,6 +41,7 @@ COMMERCE_STATES = {
         'cancelled': set(),
     },
 }
+COMMERCE_ENTITIES = {'product', 'price', 'order', 'subscription', 'invoice', 'tax', 'refund'}
 
 
 class ExtensionContractError(ValueError):
@@ -238,4 +239,29 @@ def commerce_transition(
         'idempotencyKey': idempotency_key,
         'prohibitedPaymentDataStored': False,
         'reconciliationRequired': True,
+    }
+
+
+def commerce_record(
+    *, kind: str, tenant_id: str, provider: str, external_ref: str,
+    amount_minor: int, currency: str, idempotency_key: str,
+) -> dict[str, Any]:
+    if provider != 'fake' or kind not in COMMERCE_ENTITIES:
+        raise ExtensionContractError('commerce:provider_disabled')
+    if (
+        not re.fullmatch(r'[a-z][a-z0-9-]{2,62}', tenant_id or '')
+        or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._:-]{2,127}', external_ref or '')
+        or amount_minor < 0 or not re.fullmatch(r'[A-Z]{3}', currency or '')
+        or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._:-]{7,127}', idempotency_key or '')
+    ):
+        raise ExtensionContractError('commerce:record_invalid')
+    identity = hashlib.sha256(
+        f'{tenant_id}\0{kind}\0{idempotency_key}'.encode()
+    ).hexdigest()
+    return {
+        'id': identity, 'kind': kind, 'tenantId': tenant_id, 'provider': 'fake',
+        'externalRefDigest': hashlib.sha256(external_ref.encode()).hexdigest(),
+        'amountMinor': amount_minor, 'currency': currency,
+        'idempotencyKey': idempotency_key, 'reconciliationState': 'pending',
+        'prohibitedPaymentDataStored': False,
     }

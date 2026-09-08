@@ -5,6 +5,7 @@ from pathlib import Path
 
 from scripts.python.module_lifecycle import ModuleLifecycle, ModuleLifecycleError
 from scripts.tests.test_module_registry import manifest
+from scripts.python.sign_builtin_modules import enrich
 
 
 class ModuleLifecycleTests(unittest.TestCase):
@@ -31,6 +32,7 @@ class ModuleLifecycleTests(unittest.TestCase):
         self.assertEqual(first, self.lifecycle.apply(operation_id='same', action='install', manifest_payload=item))
         changed = copy.deepcopy(item)
         changed['version'] = '1.2.4'
+        changed = enrich(changed)
         with self.assertRaisesRegex(ModuleLifecycleError, 'request_mismatch'):
             self.lifecycle.apply(operation_id='same', action='upgrade', manifest_payload=changed)
 
@@ -60,6 +62,20 @@ class ModuleLifecycleTests(unittest.TestCase):
             operation_id='r2', action='remove', manifest_payload=item, backup_receipt='backup-sha256'
         )
         self.assertEqual({}, self.lifecycle.status())
+
+    def test_downgrade_requires_backup_and_preserves_data_with_exact_rollback(self):
+        current = manifest('blog', version='1.3.0')
+        older = manifest('blog', version='1.2.0')
+        self.lifecycle.apply(operation_id='i', action='install', manifest_payload=current)
+        with self.assertRaisesRegex(ModuleLifecycleError, 'backup_required'):
+            self.lifecycle.apply(operation_id='d1', action='downgrade', manifest_payload=older)
+        receipt = self.lifecycle.apply(
+            operation_id='d2', action='downgrade', manifest_payload=older,
+            backup_receipt='backup-sha256:verified',
+        )
+        self.assertEqual('1.2.0', self.lifecycle.status()['blog']['version'])
+        self.lifecycle.rollback(operation_id='d2', receipt=receipt)
+        self.assertEqual('1.3.0', self.lifecycle.status()['blog']['version'])
 
     def test_unsupported_transition_and_corrupt_state_fail_closed(self):
         with self.assertRaisesRegex(ModuleLifecycleError, 'unsupported'):

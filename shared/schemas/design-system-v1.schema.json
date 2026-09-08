@@ -9,11 +9,22 @@
     "tokens": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["color", "space", "radius", "motion", "typography", "breakpoint"],
+      "required": [
+        "color",
+        "space",
+        "radius",
+        "layout",
+        "elevation",
+        "motion",
+        "typography",
+        "breakpoint"
+      ],
       "properties": {
         "color": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
         "space": { "$ref": "#/$defs/numberMap" },
         "radius": { "$ref": "#/$defs/numberMap" },
+        "layout": { "$ref": "#/$defs/numberMap" },
+        "elevation": { "$ref": "#/$defs/numberMap" },
         "motion": {
           "type": "object",
           "additionalProperties": false,
