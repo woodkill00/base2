@@ -1,0 +1,187 @@
+import pytest
+
+from api.services.tenant_lifecycle import (
+    TenantLifecycleError,
+    authorize,
+    identity_recovery,
+    quota_state,
+    quota_report,
+    reconcile_quota,
+    reserve_quota,
+    session_action,
+    settings_change,
+    settle_quota,
+    tenant_operation,
+    transition_tenant,
+)
+
+
+def limits(value=10):
+    return {
+        name: value
+        for name in ('users', 'storage', 'media', 'api', 'jobs', 'email', 'search', 'cost')
+    }
+
+
+def test_suspend_and_archive_remove_authority_without_deleting_data():
+    suspended = transition_tenant(tenant_id='tenant-one', current='active', target='suspended')
+    assert suspended['servingAuthority'] is False
+    assert suspended['allocationAuthority'] is False
+    assert suspended['recoverableDataPreserved'] is True
+    archived = transition_tenant(tenant_id='tenant-one', current='suspended', target='archived')
+    assert archived['recoverableDataPreserved'] is True
+
+
+def test_deletion_is_separately_approved_and_irreversible():
+    with pytest.raises(TenantLifecycleError, match='deletion_approval'):
+        transition_tenant(tenant_id='tenant-one', current='archived', target='deleting')
+    deleting = transition_tenant(
+        tenant_id='tenant-one', current='archived', target='deleting', exact_deletion_approval=True
+    )
+    deleted = transition_tenant(
+        tenant_id='tenant-one', current='deleting', target='deleted', exact_deletion_approval=True
+    )
+    assert deleting['recoverableDataPreserved'] is True
+    assert deleted['recoverableDataPreserved'] is False
+    with pytest.raises(TenantLifecycleError):
+        transition_tenant(tenant_id='tenant-one', current='deleted', target='active')
+
+
+def test_quota_reservation_is_atomic_replay_safe_and_tenant_bound():
+    state = quota_state(tenant_id='tenant-one', limits=limits())
+    reserved = reserve_quota(
+        state, tenant_id='tenant-one', quota='storage', amount=6, reservation_id='upload-0001'
+    )
+    assert (
+        reserve_quota(
+            reserved,
+            tenant_id='tenant-one',
+            quota='storage',
+            amount=6,
+            reservation_id='upload-0001',
+        )
+        == reserved
+    )
+    with pytest.raises(TenantLifecycleError, match='conflict'):
+        reserve_quota(
+            reserved,
+            tenant_id='tenant-one',
+            quota='storage',
+            amount=5,
+            reservation_id='upload-0001',
+        )
+    with pytest.raises(TenantLifecycleError, match='exhausted'):
+        reserve_quota(
+            reserved,
+            tenant_id='tenant-one',
+            quota='storage',
+            amount=5,
+            reservation_id='upload-0002',
+        )
+    with pytest.raises(TenantLifecycleError, match='tenant_mismatch'):
+        reserve_quota(
+            reserved,
+            tenant_id='tenant-two',
+            quota='storage',
+            amount=1,
+            reservation_id='upload-0002',
+        )
+
+
+def test_quota_commit_release_and_reconciliation_are_explicit():
+    state = quota_state(tenant_id='tenant-one', limits=limits())
+    first = reserve_quota(
+        state, tenant_id='tenant-one', quota='jobs', amount=2, reservation_id='jobs-run-0001'
+    )
+    committed = settle_quota(first, reservation_id='jobs-run-0001', commit=True)
+    assert committed['used']['jobs'] == 2 and committed['reserved']['jobs'] == 0
+    second = reserve_quota(
+        committed, tenant_id='tenant-one', quota='jobs', amount=1, reservation_id='jobs-run-0002'
+    )
+    released = settle_quota(second, reservation_id='jobs-run-0002', commit=False)
+    assert released['used']['jobs'] == 2 and released['reserved']['jobs'] == 0
+    result = reconcile_quota(released, measured={**limits(0), 'jobs': 3})
+    assert result['drift']['jobs'] == 1
+    assert result['crossTenantComparison'] is False
+
+
+def test_tenant_transfer_export_and_configuration_are_recent_auth_bound():
+    transferred = tenant_operation(
+        tenant_id='tenant-one',
+        operation='transfer',
+        owner='owner-one',
+        target_owner='owner-two',
+        recent_auth=True,
+    )
+    assert transferred['dataPreserved'] and not transferred['destructive']
+    assert (
+        tenant_operation(
+            tenant_id='tenant-one', operation='export', owner='owner-one', recent_auth=True
+        )['operation']
+        == 'export'
+    )
+    with pytest.raises(TenantLifecycleError, match='recent_auth'):
+        tenant_operation(
+            tenant_id='tenant-one', operation='configure', owner='owner-one', recent_auth=False
+        )
+
+
+def test_quota_report_is_tenant_private_and_actionable():
+    report = quota_report(quota_state(tenant_id='tenant-one', limits=limits(2)), forecast=limits(3))
+    assert report['quotas']['users']['denialReason'] == 'quota-exhausted'
+    assert report['quotas']['users']['remediation']
+    assert report['crossTenantComparison'] is False
+
+
+def test_recovery_sessions_policy_and_settings_fail_closed():
+    recovery = identity_recovery(
+        user_id='user-one', proof_verified=True, method='passkey', existing_factors=1
+    )
+    assert recovery['rotateSessions'] and not recovery['removeExistingFactors']
+    with pytest.raises(TenantLifecycleError, match='downgrade'):
+        identity_recovery(
+            user_id='user-one', proof_verified=True, method='recovery-code', existing_factors=0
+        )
+    sessions = [
+        {'userId': 'user-one', 'sessionId': 's1', 'state': 'active'},
+        {'userId': 'user-two', 'sessionId': 's2', 'state': 'active'},
+    ]
+    visible = session_action(sessions, user_id='user-one', session_id='s1', action='revoke')
+    assert visible == [
+        {
+            'userId': 'user-one',
+            'sessionId': 's1',
+            'state': 'revoked',
+            'tokenRotationRequired': True,
+        }
+    ]
+    grants = {'editor': ['content.edit']}
+    for surface in (
+        'django',
+        'fastapi',
+        'react',
+        'worker',
+        'export',
+        'search',
+        'media',
+        'administration',
+        'operations',
+    ):
+        assert authorize(role='editor', action='content.edit', surface=surface, grants=grants)
+        assert not authorize(role='member', action='content.edit', surface=surface, grants=grants)
+    changed = settings_change(
+        scope='tenant',
+        key='security.mfa',
+        expected_revision=2,
+        current_revision=2,
+        recent_auth=True,
+    )
+    assert changed['historyRequired'] and changed['unsavedChangeGuard']
+    with pytest.raises(TenantLifecycleError, match='revision_conflict'):
+        settings_change(
+            scope='account',
+            key='locale.user',
+            expected_revision=1,
+            current_revision=2,
+            recent_auth=True,
+        )
