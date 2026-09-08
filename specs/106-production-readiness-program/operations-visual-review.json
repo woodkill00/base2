@@ -2,13 +2,14 @@
   "schemaVersion": 1,
   "status": "accepted",
   "sources": {
-    "react-app/src/pages/OperationsCenter.jsx": "16cd4932f58b9eed3b57bddc368fcdfa0fef73674b9de79788af32f04bb23a78",
+    "react-app/src/pages/OperationsCenter.jsx": "3372017974daba6ab989bcd10a3e1989f3cef024d00bdce04ee69e529a5ab209",
     "react-app/src/services/operations.js": "7bb0edb231daf7255973c885dabf0b93d7664c02ac0eb51a8b00d599c7209418",
-    "react-app/src/components/glass/AppShell.tsx": "8253de9fe4e0201ccf48cc2d880516fb0d10d9809a7576f979a71609268561e4",
+    "react-app/src/components/glass/AppShell.tsx": "d9efd6932b5616e0d52abbf87786d1ef8b2bc55490345305ffc0d34a6afadc02",
     "react-app/src/components/glass/GlassButton.tsx": "e32c90da113739bb526b2329519e964bd611a1be66d86852e2f4fb075d32e5a1",
-    "react-app/src/components/glass/GlassHeader.tsx": "0c458435107d55c8bd70fe7708aaf8d17a4af3c9e5fc70b39ff89954912e7fd8",
-    "react-app/e2e/operations/operations-release.spec.ts": "1eaae46b6d4e5aed2fcd5e4dcebb0f5ef6119a7b133c3de969bc3a5d87f5934f",
-    "react-app/playwright.operations-release.config.mjs": "6e630bfb94fdf68cdbf5e6eb1b0c3aa19bfa28aeca3088dd17e448d6cc049ab3"
+    "react-app/src/components/glass/GlassHeader.tsx": "5b995fabdad790b6887eabf5bfc0ecc66aeda70581908b435cfade1d4ab1e460",
+    "react-app/e2e/operations/operations-release.spec.ts": "44b93888719977b62c7feb93c23bbf66599da5831d9033a3926c9dc47733836a",
+    "react-app/playwright.operations-release.config.mjs": "74b18f1655cb55b9bcfcb290da0db6042700fdc01d964c3c748591f42ce3d1b9",
+    "react-app/e2e/operations/visual-receipt-reporter.mjs": "1f3423fa99acf34bf281dd92e5d47e36a60a6a79bf8e0d6b62b544eb7cc9db86"
   },
   "screenshots": {
     "operations-center-cancel-confirmation-chromium-desktop-linux.png": {
@@ -26,6 +27,10 @@
     "operations-center-chromium-desktop-chromium-desktop-linux.png": {
       "sha256": "949cf62d308619f16d69e39f210e9c148cd5d028f168e818421417a32bafd040",
       "pixels": [1440, 2340]
+    },
+    "operations-center-chromium-german-chromium-german-linux.png": {
+      "sha256": "f895d2e966554cf9d308864943fbad5b67ca504ddea7f3aed16983f1c584b19a",
+      "pixels": [1280, 2362]
     },
     "operations-center-chromium-high-contrast-chromium-high-contrast-linux.png": {
       "sha256": "6af7b906e819cc0cc0ac7e67fbc56555a28f48c2238fad59642edd96c9a5b0ee",
@@ -59,34 +64,98 @@
       "sha256": "70d9a7b13c26b82c5ca6e149e7661b2815c28a87692fc0c3c9dd71a5cba7df62",
       "pixels": [2560, 2410]
     },
+    "operations-center-empty-chromium-compact-linux.png": {
+      "sha256": "191ef214ae5e61cbe8c01c0f91f5b6bf8fcf59a050e1fe46601b2d8d88c2e6e4",
+      "pixels": [320, 2344]
+    },
     "operations-center-empty-chromium-desktop-linux.png": {
       "sha256": "2848543dd080c7b33e80a27a5b66bcfd97e11d5fbd966174e907b8584e3a780e",
       "pixels": [1440, 1672]
+    },
+    "operations-center-empty-firefox-desktop-linux.png": {
+      "sha256": "5a3653cfa975eb9b43d1969fa002d0b4961693431fc2b812129feb51e6cc6c7b",
+      "pixels": [1440, 1672]
+    },
+    "operations-center-empty-webkit-desktop-linux.png": {
+      "sha256": "44c801d6ee28583baeeb1553cc04a500c19b349dd9b7fb9ddf1c1bb67a56fe2a",
+      "pixels": [1430, 1662]
+    },
+    "operations-center-error-chromium-compact-linux.png": {
+      "sha256": "0f772d82001a1156ddb07c98875ff03f80abd45f04b2b1a1e348415693d9bed1",
+      "pixels": [320, 1828]
     },
     "operations-center-error-chromium-desktop-linux.png": {
       "sha256": "e2053e6da4a669e1b4aa04149996aa39a1fcd1d01634f37f571bf32222559941",
       "pixels": [1440, 1533]
     },
+    "operations-center-error-firefox-desktop-linux.png": {
+      "sha256": "695ff5a41fd93019252463f945e2eda92a8cf25e9e5671cd3043edaa6b5f1bd8",
+      "pixels": [1440, 1533]
+    },
+    "operations-center-error-webkit-desktop-linux.png": {
+      "sha256": "69a1ccfe9b2857ed76bfcbfa14b678c25144b972dd0be4e9f14aec6e32cff750",
+      "pixels": [1430, 1525]
+    },
     "operations-center-firefox-desktop-firefox-desktop-linux.png": {
       "sha256": "398b02cb369f5ed1f19546bddc278d7b2a2e124807c0d8ffc3f167a59c82344e",
       "pixels": [1440, 2340]
+    },
+    "operations-center-partial-chromium-compact-linux.png": {
+      "sha256": "6a9ae3ae67f40b6c610d71882d51ed8ac3df3fb6a03ed88f795c3ea8583f5974",
+      "pixels": [320, 3596]
     },
     "operations-center-partial-chromium-desktop-linux.png": {
       "sha256": "97100af05b3edec57989df6e248dc9852eee6bda066dab5f3cfc27015ebb4dba",
       "pixels": [1440, 2527]
     },
+    "operations-center-partial-firefox-desktop-linux.png": {
+      "sha256": "58c48e5f431f2ca7171b3476e10b114f3de52aefb9ecd55331ac42abe1170626",
+      "pixels": [1440, 2527]
+    },
+    "operations-center-partial-webkit-desktop-linux.png": {
+      "sha256": "abd08f80c355bbaa0252cf1bdb0d9545bea0aa5240e59a6042dd281b0098eea6",
+      "pixels": [1430, 2507]
+    },
+    "operations-center-read-only-chromium-compact-linux.png": {
+      "sha256": "ffe4a9ae12f2f32a4d7c5710511a9210774677762790c1f2517c7444ebc2078e",
+      "pixels": [320, 3288]
+    },
     "operations-center-read-only-chromium-desktop-linux.png": {
       "sha256": "8cb510807e00ab0caa1cc21ef9347b457875b139cad47c9a45f83389d7546c50",
       "pixels": [1440, 2280]
+    },
+    "operations-center-read-only-firefox-desktop-linux.png": {
+      "sha256": "7b88244f3bbdf025a30f4f2f6900a15f8fd18e8cf99bf5ea9a2a75ce8ed4f3e6",
+      "pixels": [1440, 2280]
+    },
+    "operations-center-read-only-webkit-desktop-linux.png": {
+      "sha256": "b2a134d40986af54ff00291dc5048a10fa54e21a20f8de075305c7fb66552661",
+      "pixels": [1430, 2261]
+    },
+    "operations-center-reauth-chromium-compact-linux.png": {
+      "sha256": "4cfd1e3039b28920445a07f815b2e9064369808af9da5e53c43e1d40d19a57d6",
+      "pixels": [320, 3596]
     },
     "operations-center-reauth-chromium-desktop-linux.png": {
       "sha256": "c042afdad115062daeec851940ebc4b7c2d1d99e8e8830c38212986cbd7632e0",
       "pixels": [1440, 2527]
     },
+    "operations-center-reauth-firefox-desktop-linux.png": {
+      "sha256": "953ec0312ba58e983b4234d53c186f5e20db8ec1c75c62cd9afc1e5cd51cf66c",
+      "pixels": [1440, 2527]
+    },
+    "operations-center-reauth-webkit-desktop-linux.png": {
+      "sha256": "39562f8f49a28a2e68ab013e4ac34c4d759ebca399022b863f90c6ef26c82a55",
+      "pixels": [1430, 2507]
+    },
     "operations-center-webkit-desktop-webkit-desktop-linux.png": {
       "sha256": "f069c0e65c8c725dcfbd980ec8c5090d822993e1ea72bb3646868a108c1ca182",
       "pixels": [1430, 2320]
     }
+  },
+  "runnerReceipt": {
+    "sha256": "86f7103e6fcc96b05ccd74ac96352cc7509164ff0e7a2c42872bb8e06e8cfbbd",
+    "digest": "c53f07736f10e93c6adb47436aabab0a163d89788816508709972c9bf7f3f2f2"
   },
   "assertions": {
     "accessibility": "pass",

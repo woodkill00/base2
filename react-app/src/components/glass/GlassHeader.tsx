@@ -17,6 +17,8 @@ type Props = {
   onToggleMenu?: () => void;
   manifest?: SiteManifest;
   menuLabel?: string;
+  titleAsHeading?: boolean;
+  themeLabel?: string;
 };
 
 export const GlassHeader: React.FC<Props> = ({
@@ -27,6 +29,8 @@ export const GlassHeader: React.FC<Props> = ({
   onToggleMenu,
   manifest = siteManifest,
   menuLabel = 'Menu',
+  titleAsHeading = true,
+  themeLabel = 'Toggle theme',
 }) => {
   const navigate = useNavigate();
   const inferredPublic = useMemo(() => title?.toLowerCase() === 'home', [title]);
@@ -181,11 +185,15 @@ export const GlassHeader: React.FC<Props> = ({
         </svg>
       </button>
 
-      <h1 className="text-lg font-semibold" style={{ margin: 0 }}>
-        {title}
-      </h1>
+      {titleAsHeading ? (
+        <h1 className="text-lg font-semibold" style={{ margin: 0 }}>
+          {title}
+        </h1>
+      ) : (
+        <span className="text-lg font-semibold">{title}</span>
+      )}
       <div style={{ flex: 1 }} />
-      <ThemeToggle />
+      <ThemeToggle label={themeLabel} />
     </header>
   );
 };

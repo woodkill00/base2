@@ -315,3 +315,29 @@ def configured_s3_artifact_store(
         resolver=resolver,
     )
     return S3ArtifactStore(store, max_bytes=max_bytes)
+
+
+def configured_runtime_artifact_store(settings, *, max_bytes: int):
+    """Select one artifact backend for every request and background path."""
+    backend = str(settings.CONTENT_WORKSPACE_STORAGE_BACKEND or '').strip().lower()
+    if backend == 'local':
+        return configured_artifact_store(
+            root=settings.CONTENT_WORKSPACE_STORAGE_ROOT,
+            encoded_key=settings.CONTENT_WORKSPACE_STORAGE_KEY or '',
+            max_bytes=max_bytes,
+        )
+    if backend == 's3':
+        return configured_s3_artifact_store(
+            endpoint=settings.CONTENT_WORKSPACE_S3_ENDPOINT,
+            bucket=settings.CONTENT_WORKSPACE_S3_BUCKET,
+            region=settings.CONTENT_WORKSPACE_S3_REGION,
+            allowed_hosts={
+                item.strip().lower()
+                for item in settings.CONTENT_WORKSPACE_S3_ALLOWED_HOSTS.split(',')
+                if item.strip()
+            },
+            access_key_file=settings.CONTENT_WORKSPACE_S3_ACCESS_KEY_FILE,
+            secret_key_file=settings.CONTENT_WORKSPACE_S3_SECRET_KEY_FILE,
+            max_bytes=max_bytes,
+        )
+    raise ArtifactIntegrityError('content_artifact_configuration_invalid')

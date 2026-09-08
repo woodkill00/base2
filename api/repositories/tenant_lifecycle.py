@@ -56,6 +56,30 @@ def get_state(*, tenant_id: str) -> dict[str, Any]:
         return _serialized_state(tenant_id, _state_row(cursor, tenant_id))
 
 
+def get_operation_event(*, tenant_id: str, operation_id: UUID) -> dict[str, Any] | None:
+    """Return the immutable replay identity without mutating current state."""
+    with workspace_db_conn(tenant_id=tenant_id) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            """SELECT operation,from_state,to_state,actor_ref,target_owner_ref,revision,
+                      receipt_digest
+                 FROM sitecontent_tenantlifecycleevent
+                WHERE site_id=%s AND operation_id=%s""",
+            (tenant_id, str(operation_id)),
+        )
+        row = cursor.fetchone()
+    if not row:
+        return None
+    return {
+        'operation': str(row[0]),
+        'from': str(row[1]),
+        'to': str(row[2]),
+        'actor': str(row[3]),
+        'targetOwner': str(row[4]),
+        'revision': int(row[5]),
+        'receiptDigest': str(row[6]),
+    }
+
+
 def provision(
     *, tenant_id: str, owner_ref: str, operation_id: UUID, configuration: dict[str, Any]
 ) -> dict[str, Any]:
@@ -222,22 +246,81 @@ def apply_operation(
             if not row:
                 raise TenantLifecycleRepositoryError('tenant:lifecycle_missing')
             cursor.execute(
-                """SELECT operation,actor_ref,target_owner_ref,revision
+                """SELECT operation,actor_ref,target_owner_ref,revision,from_state,to_state,
+                          receipt_digest
                      FROM sitecontent_tenantlifecycleevent
                     WHERE site_id=%s AND operation_id=%s""",
                 (tenant_id, str(operation_id)),
             )
             replay = cursor.fetchone()
             if replay:
-                if replay[:3] != (operation, owner_ref, target_owner_ref):
+                replay_receipt = {
+                    'tenantId': tenant_id,
+                    'operation': operation,
+                    'from': replay[4],
+                    'to': replay[5],
+                    'owner': owner_ref,
+                    'targetOwner': target_owner_ref,
+                    'revision': expected_revision + 1,
+                    'operationId': str(operation_id),
+                    'configuration': configuration if operation == 'configure' else {},
+                }
+                if (
+                    replay[:3] != (operation, owner_ref, target_owner_ref)
+                    or int(replay[3]) != expected_revision + 1
+                    or str(replay[6]) != _digest(replay_receipt)
+                ):
                     raise TenantLifecycleRepositoryError('tenant:operation_conflict')
                 conn.commit()
                 return _serialized_state(tenant_id, row, idempotent=True)
-            if int(row[3]) != expected_revision or row[1] != owner_ref or row[0] == 'deleted':
+            if (
+                int(row[3]) != expected_revision
+                or (operation != 'transfer_accept' and row[1] != owner_ref)
+                or row[0] == 'deleted'
+            ):
                 raise TenantLifecycleRepositoryError('tenant:revision_conflict')
             new_revision = expected_revision + 1
-            next_owner = target_owner_ref if operation == 'transfer' else owner_ref
-            next_configuration = configuration if operation == 'configure' else dict(row[2] or {})
+            current_configuration = dict(row[2] or {})
+            next_owner = owner_ref
+            next_configuration = (
+                configuration if operation == 'configure' else current_configuration
+            )
+            if operation == 'transfer_prepare':
+                cursor.execute("SELECT NOW() + INTERVAL '15 minutes'")
+                transfer_expires = cursor.fetchone()[0]
+                next_configuration = {
+                    **current_configuration,
+                    '_pendingOwnershipTransfer': {
+                        'targetOwner': target_owner_ref,
+                        'preparedBy': owner_ref,
+                        'operationId': str(operation_id),
+                        'expiresAt': transfer_expires.isoformat(),
+                    },
+                }
+            elif operation == 'transfer_accept':
+                pending = current_configuration.get('_pendingOwnershipTransfer')
+                cursor.execute('SELECT NOW()')
+                database_now = cursor.fetchone()[0]
+                if not isinstance(pending, dict):
+                    raise TenantLifecycleRepositoryError('tenant:transfer_acceptance_invalid')
+                try:
+                    transfer_expiry = datetime.fromisoformat(str(pending.get('expiresAt')))
+                except (AttributeError, ValueError, TypeError) as exc:
+                    raise TenantLifecycleRepositoryError(
+                        'tenant:transfer_acceptance_invalid'
+                    ) from exc
+                if (
+                    pending.get('targetOwner') != owner_ref
+                    or transfer_expiry.tzinfo is None
+                    or transfer_expiry <= database_now
+                ):
+                    raise TenantLifecycleRepositoryError('tenant:transfer_acceptance_invalid')
+                next_owner = owner_ref
+                next_configuration = {
+                    key: value
+                    for key, value in current_configuration.items()
+                    if key != '_pendingOwnershipTransfer'
+                }
             receipt = {
                 'tenantId': tenant_id,
                 'operation': operation,

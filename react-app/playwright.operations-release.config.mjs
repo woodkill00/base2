@@ -12,8 +12,11 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   timeout: 60_000,
-  expect: { timeout: 10_000 },
-  reporter: [['line']],
+  expect: {
+    timeout: 10_000,
+    toHaveScreenshot: { maxDiffPixelRatio: 0.02 },
+  },
+  reporter: [['line'], ['./e2e/operations/visual-receipt-reporter.mjs']],
   projects: [
     chromium('chromium-compact', { width: 320, height: 568 }),
     chromium('chromium-landscape-touch', { width: 844, height: 390 }, { hasTouch: true }),
@@ -27,6 +30,7 @@ export default defineConfig({
     chromium('chromium-light', { width: 1280, height: 900 }, { colorScheme: 'light' }),
     chromium('chromium-high-contrast', { width: 1280, height: 900 }, { forcedColors: 'active' }),
     chromium('chromium-rtl', { width: 1280, height: 900 }),
+    chromium('chromium-german', { width: 1280, height: 900 }),
     chromium('chromium-reduced-motion', { width: 1280, height: 900 }, { reducedMotion: 'reduce' }),
     {
       name: 'firefox-desktop',

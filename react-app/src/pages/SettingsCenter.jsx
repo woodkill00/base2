@@ -116,6 +116,7 @@ const preferenceDefaults = {
 const SETTINGS_COPY = {
   en: {
     appShell: 'Settings',
+    themeToggle: 'Toggle color theme',
     privateWorkspace: 'Private workspace',
     menu: 'Menu',
     breadcrumb: 'Breadcrumb',
@@ -138,6 +139,7 @@ const SETTINGS_COPY = {
   },
   de: {
     appShell: 'Einstellungen',
+    themeToggle: 'Farbschema wechseln',
     privateWorkspace: 'Privater Arbeitsbereich',
     menu: 'Menü',
     breadcrumb: 'Brotkrümelnavigation',
@@ -160,6 +162,7 @@ const SETTINGS_COPY = {
   },
   ar: {
     appShell: 'الإعدادات',
+    themeToggle: 'تبديل سمة الألوان',
     privateWorkspace: 'مساحة عمل خاصة',
     menu: 'القائمة',
     breadcrumb: 'مسار التنقل',
@@ -207,6 +210,89 @@ const CATEGORY_COPY = {
     'language-region': ['اللغة والمنطقة', 'اللغة والمنطقة الزمنية وتنسيق الأسبوع'],
     organization: ['المؤسسة', 'الأعضاء والأدوار والدعوات وسجل التدقيق'],
     developer: ['المطور', 'توثيق الواجهة البرمجية وبيانات التكامل'],
+  },
+};
+
+const DETAIL_COPY = {
+  en: {
+    partialError: 'Some settings are temporarily unavailable. Existing values were not changed.',
+    profileSaved: 'Profile saved.',
+    preferencesSaved: 'Preferences saved.',
+    settingsConflict: 'These settings changed elsewhere. Refresh before saving again.',
+    exportQueued: 'Your data export was queued securely.',
+    correctionQueued: 'Your correction request was queued securely.',
+    deletionQueued: 'Your account deletion request was queued securely.',
+    deactivationQueued: 'Your account deactivation request was queued securely.',
+    email: 'Email',
+    emailHint: 'Changing your email requires verification.',
+    displayName: 'Display name',
+    avatarUrl: 'Avatar URL',
+    avatarHint: 'Use a public HTTPS image. Local and credential-bearing URLs are rejected.',
+    bio: 'Bio',
+    saveProfile: 'Save profile',
+    theme: 'Theme',
+    contrast: 'Contrast',
+    motion: 'Motion',
+    density: 'Density',
+    useSystem: 'Use system',
+    light: 'Light',
+    dark: 'Dark',
+    standard: 'Standard',
+    highContrast: 'High contrast',
+    fullMotion: 'Full motion',
+    reducedMotion: 'Reduced motion',
+    comfortable: 'Comfortable',
+    compact: 'Compact',
+    deliveryControls: 'Delivery controls',
+    deliveryHelp:
+      'Required security and transactional email cannot be disabled. Optional messages remain under your control.',
+    requiredMessage: 'Required account message',
+    optionalMessage: 'Optional message',
+    immediately: 'Immediately',
+    digest: 'Digest',
+    off: 'Off',
+    saveNotifications: 'Save notifications',
+    exportData: 'Export your data',
+    exportHelp:
+      'Exports are encrypted, integrity checked, and require recent authentication to download.',
+    requestExport: 'Request data export',
+    correctData: 'Correct your data',
+    correctHelp:
+      'Submit only the fields that need correction. Requests are auditable and processed asynchronously.',
+    correctName: 'Correct display name',
+    correctBio: 'Correct bio',
+    requestCorrection: 'Request correction',
+    deactivate: 'Deactivate account',
+    deactivateHelp:
+      'Deactivation signs you out and suspends access without erasing your profile. A final organization owner must transfer ownership first. Type DEACTIVATE exactly.',
+    deactivateConfirmation: 'Deactivation confirmation',
+    requestDeactivation: 'Request deactivation',
+    deleteData: 'Delete account data',
+    deleteHelp:
+      'This starts a destructive, auditable workflow after recent authentication. Type DELETE exactly to continue.',
+    confirmation: 'Confirmation',
+    requestDeletion: 'Request account deletion',
+    recentRequests: 'Recent requests',
+    membersRoles: 'Members and roles',
+    membersHelp: 'Invite members, assign least-privilege roles, and review organization access.',
+    openAdministration: 'Open organization administration',
+    securityActivity: 'Recent security activity',
+    noSecurityEvents: 'No recent security events are available.',
+    accountEvent: 'Account event',
+    apiDocs: 'API documentation',
+    apiDocsHelp: 'Explore the generated API contract and integration schemas.',
+    openApiDocs: 'Open API documentation',
+    credentials: 'Integration credentials',
+    credentialsHelp: 'Credentials are created once, shown once, scoped, and revocable.',
+    manageCredentials: 'Manage credentials',
+    saving: 'Saving…',
+    actionFailed: 'The requested settings action could not be completed.',
+  },
+  de: {
+    actionFailed: 'Die angeforderte Einstellungsaktion konnte nicht abgeschlossen werden.',
+  },
+  ar: {
+    actionFailed: 'تعذر إكمال إجراء الإعدادات المطلوب.',
   },
 };
 
@@ -261,6 +347,7 @@ const SettingsCenter = () => {
     ? requestedLocale
     : 'en';
   const copy = SETTINGS_COPY[locale];
+  const detail = DETAIL_COPY[locale];
   const localizedCategories = useMemo(
     () =>
       categories.map((item) => {
@@ -313,7 +400,7 @@ const SettingsCenter = () => {
         if (securityResult.status === 'fulfilled')
           setSecurityEvents(securityResult.value?.events || []);
         if ([capabilityResult, preferenceResult].some((result) => result.status === 'rejected')) {
-          setError('Some settings are temporarily unavailable. Existing values were not changed.');
+          setError(detail.partialError);
         }
         setLoading(false);
       }
@@ -321,7 +408,7 @@ const SettingsCenter = () => {
     return () => {
       current = false;
     };
-  }, []);
+  }, [detail.partialError]);
 
   useEffect(() => {
     if (!loading && !localizedCategories.some((item) => item.id === active))
@@ -344,11 +431,9 @@ const SettingsCenter = () => {
     try {
       const response = await apiClient.patch('/users/me', profile);
       updateUser(response.data);
-      setStatus('Profile saved.');
+      setStatus(detail.profileSaved);
     } catch (reason) {
-      setError(
-        normalizeApiError(reason, { fallbackMessage: 'Profile could not be saved' }).message
-      );
+      setError(normalizeApiError(reason, { fallbackMessage: detail.actionFailed }).message);
     } finally {
       setSaving(false);
     }
@@ -371,11 +456,11 @@ const SettingsCenter = () => {
         week_start: preferences.week_start,
       });
       setPreferences({ ...preferenceDefaults, ...next });
-      setStatus('Preferences saved.');
+      setStatus(detail.preferencesSaved);
     } catch (reason) {
       if (reason?.status === 409 || reason?.code === 'settings_version_conflict') {
-        setError('These settings changed elsewhere. Refresh before saving again.');
-      } else setError(reason.message || 'Preferences could not be saved.');
+        setError(detail.settingsConflict);
+      } else setError(reason.message || detail.actionFailed);
     } finally {
       setSaving(false);
     }
@@ -387,9 +472,9 @@ const SettingsCenter = () => {
     setStatus('');
     try {
       await settingsAPI.requestExport();
-      setStatus('Your data export was queued securely.');
+      setStatus(detail.exportQueued);
     } catch (reason) {
-      setError(reason.message || 'Data export could not be queued.');
+      setError(reason.message || detail.actionFailed);
     } finally {
       setSaving(false);
     }
@@ -405,9 +490,9 @@ const SettingsCenter = () => {
         notifications.map(({ mandatory: _mandatory, ...item }) => item)
       );
       setNotifications(result.preferences);
-      setStatus('Notification preferences saved.');
+      setStatus(detail.saveNotifications);
     } catch (reason) {
-      setError(reason.message || 'Notification preferences could not be saved.');
+      setError(reason.message || detail.actionFailed);
     } finally {
       setSaving(false);
     }
@@ -424,9 +509,9 @@ const SettingsCenter = () => {
     try {
       await settingsAPI.requestCorrection(fields);
       setCorrection({ display_name: '', bio: '' });
-      setStatus('Your correction request was queued securely.');
+      setStatus(detail.correctionQueued);
     } catch (reason) {
-      setError(reason.message || 'Correction request could not be queued.');
+      setError(reason.message || detail.actionFailed);
     } finally {
       setSaving(false);
     }
@@ -440,9 +525,9 @@ const SettingsCenter = () => {
     try {
       await settingsAPI.requestDeletion(deleteConfirmation);
       setDeleteConfirmation('');
-      setStatus('Your account deletion request was queued securely.');
+      setStatus(detail.deletionQueued);
     } catch (reason) {
-      setError(reason.message || 'Deletion request could not be queued.');
+      setError(reason.message || detail.actionFailed);
     } finally {
       setSaving(false);
     }
@@ -456,9 +541,9 @@ const SettingsCenter = () => {
     try {
       await settingsAPI.requestDeactivation(deactivateConfirmation);
       setDeactivateConfirmation('');
-      setStatus('Your account deactivation request was queued securely.');
+      setStatus(detail.deactivationQueued);
     } catch (reason) {
-      setError(reason.message || 'Deactivation request could not be queued.');
+      setError(reason.message || detail.actionFailed);
     } finally {
       setSaving(false);
     }
@@ -500,7 +585,7 @@ const SettingsCenter = () => {
   const renderProfile = () => (
     <GlassCard>
       <form onSubmit={saveProfile} className="space-y-5 p-6">
-        <Field label="Email" htmlFor="email" hint="Changing your email requires verification.">
+        <Field label={detail.email} htmlFor="email" hint={detail.emailHint}>
           <GlassInput
             id="email"
             type="email"
@@ -508,18 +593,14 @@ const SettingsCenter = () => {
             onChange={(event) => setProfile({ ...profile, email: event.target.value })}
           />
         </Field>
-        <Field label="Display name" htmlFor="display-name">
+        <Field label={detail.displayName} htmlFor="display-name">
           <GlassInput
             id="display-name"
             value={profile.display_name}
             onChange={(event) => setProfile({ ...profile, display_name: event.target.value })}
           />
         </Field>
-        <Field
-          label="Avatar URL"
-          htmlFor="avatar-url"
-          hint="Use a public HTTPS image. Local and credential-bearing URLs are rejected."
-        >
+        <Field label={detail.avatarUrl} htmlFor="avatar-url" hint={detail.avatarHint}>
           <GlassInput
             id="avatar-url"
             type="url"
@@ -527,7 +608,7 @@ const SettingsCenter = () => {
             onChange={(event) => setProfile({ ...profile, avatar_url: event.target.value })}
           />
         </Field>
-        <Field label="Bio" htmlFor="bio">
+        <Field label={detail.bio} htmlFor="bio">
           <textarea
             id="bio"
             rows="5"
@@ -537,7 +618,7 @@ const SettingsCenter = () => {
           />
         </Field>
         <GlassButton type="submit" disabled={saving}>
-          {saving ? 'Saving…' : 'Save profile'}
+          {saving ? detail.saving : detail.saveProfile}
         </GlassButton>
       </form>
     </GlassCard>
@@ -585,18 +666,18 @@ const SettingsCenter = () => {
           </>
         ) : (
           <>
-            <Field label="Theme" htmlFor="theme">
+            <Field label={detail.theme} htmlFor="theme">
               <Select
                 id="theme"
                 value={preferences.theme}
                 onChange={(event) => setPreferences({ ...preferences, theme: event.target.value })}
               >
-                <option value="system">Use system</option>
-                <option value="light">Light</option>
-                <option value="dark">Dark</option>
+                <option value="system">{detail.useSystem}</option>
+                <option value="light">{detail.light}</option>
+                <option value="dark">{detail.dark}</option>
               </Select>
             </Field>
-            <Field label="Contrast" htmlFor="contrast">
+            <Field label={detail.contrast} htmlFor="contrast">
               <Select
                 id="contrast"
                 value={preferences.contrast}
@@ -604,23 +685,23 @@ const SettingsCenter = () => {
                   setPreferences({ ...preferences, contrast: event.target.value })
                 }
               >
-                <option value="system">Use system</option>
-                <option value="standard">Standard</option>
-                <option value="high">High contrast</option>
+                <option value="system">{detail.useSystem}</option>
+                <option value="standard">{detail.standard}</option>
+                <option value="high">{detail.highContrast}</option>
               </Select>
             </Field>
-            <Field label="Motion" htmlFor="motion">
+            <Field label={detail.motion} htmlFor="motion">
               <Select
                 id="motion"
                 value={preferences.motion}
                 onChange={(event) => setPreferences({ ...preferences, motion: event.target.value })}
               >
-                <option value="system">Use system</option>
-                <option value="full">Full motion</option>
-                <option value="reduced">Reduced motion</option>
+                <option value="system">{detail.useSystem}</option>
+                <option value="full">{detail.fullMotion}</option>
+                <option value="reduced">{detail.reducedMotion}</option>
               </Select>
             </Field>
-            <Field label="Density" htmlFor="density">
+            <Field label={detail.density} htmlFor="density">
               <Select
                 id="density"
                 value={preferences.density}
@@ -628,8 +709,8 @@ const SettingsCenter = () => {
                   setPreferences({ ...preferences, density: event.target.value })
                 }
               >
-                <option value="comfortable">Comfortable</option>
-                <option value="compact">Compact</option>
+                <option value="comfortable">{detail.comfortable}</option>
+                <option value="compact">{detail.compact}</option>
               </Select>
             </Field>
           </>
@@ -647,11 +728,8 @@ const SettingsCenter = () => {
     <GlassCard>
       <form onSubmit={saveNotifications} className="space-y-5 p-6">
         <div>
-          <h2 className="font-semibold">Delivery controls</h2>
-          <p className="mt-2 text-sm opacity-75">
-            Required security and transactional email cannot be disabled. Optional messages remain
-            under your control.
-          </p>
+          <h2 className="font-semibold">{detail.deliveryControls}</h2>
+          <p className="mt-2 text-sm opacity-75">{detail.deliveryHelp}</p>
         </div>
         <div className="divide-y divide-white/10 rounded-xl border border-white/15">
           {notifications.map((item, index) => (
@@ -664,7 +742,7 @@ const SettingsCenter = () => {
                   {item.event_family} · {item.channel.replace('_', ' ')}
                 </p>
                 <p className="text-xs opacity-70">
-                  {item.mandatory ? 'Required account message' : 'Optional message'}
+                  {item.mandatory ? detail.requiredMessage : detail.optionalMessage}
                 </p>
               </div>
               <Select
@@ -679,15 +757,15 @@ const SettingsCenter = () => {
                   )
                 }
               >
-                <option value="immediate">Immediately</option>
-                <option value="digest">Digest</option>
-                {!item.mandatory ? <option value="disabled">Off</option> : null}
+                <option value="immediate">{detail.immediately}</option>
+                <option value="digest">{detail.digest}</option>
+                {!item.mandatory ? <option value="disabled">{detail.off}</option> : null}
               </Select>
             </div>
           ))}
         </div>
         <GlassButton type="submit" disabled={saving}>
-          {saving ? 'Saving…' : 'Save notifications'}
+          {saving ? detail.saving : detail.saveNotifications}
         </GlassButton>
       </form>
     </GlassCard>
@@ -697,25 +775,20 @@ const SettingsCenter = () => {
     <div className="space-y-4">
       <GlassCard>
         <div className="p-6">
-          <h2 className="font-semibold">Export your data</h2>
-          <p className="mt-2 text-sm opacity-75">
-            Exports are encrypted, integrity checked, and require recent authentication to download.
-          </p>
+          <h2 className="font-semibold">{detail.exportData}</h2>
+          <p className="mt-2 text-sm opacity-75">{detail.exportHelp}</p>
           <GlassButton className="mt-4" onClick={requestExport} disabled={saving}>
-            Request data export
+            {detail.requestExport}
           </GlassButton>
         </div>
       </GlassCard>
       <GlassCard>
         <form onSubmit={requestCorrection} className="space-y-4 p-6">
           <div>
-            <h2 className="font-semibold">Correct your data</h2>
-            <p className="mt-2 text-sm opacity-75">
-              Submit only the fields that need correction. Requests are auditable and processed
-              asynchronously.
-            </p>
+            <h2 className="font-semibold">{detail.correctData}</h2>
+            <p className="mt-2 text-sm opacity-75">{detail.correctHelp}</p>
           </div>
-          <Field label="Correct display name" htmlFor="correct-display-name">
+          <Field label={detail.correctName} htmlFor="correct-display-name">
             <GlassInput
               id="correct-display-name"
               value={correction.display_name}
@@ -724,7 +797,7 @@ const SettingsCenter = () => {
               }
             />
           </Field>
-          <Field label="Correct bio" htmlFor="correct-bio">
+          <Field label={detail.correctBio} htmlFor="correct-bio">
             <textarea
               id="correct-bio"
               rows="3"
@@ -737,21 +810,17 @@ const SettingsCenter = () => {
             type="submit"
             disabled={saving || !Object.values(correction).some((value) => value.trim())}
           >
-            Request correction
+            {detail.requestCorrection}
           </GlassButton>
         </form>
       </GlassCard>
       <GlassCard>
         <form onSubmit={requestDeactivation} className="space-y-4 border border-amber-400/20 p-6">
           <div>
-            <h2 className="font-semibold text-amber-100">Deactivate account</h2>
-            <p className="mt-2 text-sm opacity-75">
-              Deactivation signs you out and suspends access without erasing your profile. A final
-              organization owner cannot deactivate until ownership is transferred. Type DEACTIVATE
-              exactly.
-            </p>
+            <h2 className="font-semibold text-amber-100">{detail.deactivate}</h2>
+            <p className="mt-2 text-sm opacity-75">{detail.deactivateHelp}</p>
           </div>
-          <Field label="Deactivation confirmation" htmlFor="deactivate-confirmation">
+          <Field label={detail.deactivateConfirmation} htmlFor="deactivate-confirmation">
             <GlassInput
               id="deactivate-confirmation"
               value={deactivateConfirmation}
@@ -760,20 +829,17 @@ const SettingsCenter = () => {
             />
           </Field>
           <GlassButton type="submit" disabled={saving || deactivateConfirmation !== 'DEACTIVATE'}>
-            Request deactivation
+            {detail.requestDeactivation}
           </GlassButton>
         </form>
       </GlassCard>
       <GlassCard>
         <form onSubmit={requestDeletion} className="space-y-4 border border-red-400/20 p-6">
           <div>
-            <h2 className="font-semibold text-red-200">Delete account data</h2>
-            <p className="mt-2 text-sm opacity-75">
-              This starts a destructive, auditable workflow after recent authentication. Type DELETE
-              exactly to continue.
-            </p>
+            <h2 className="font-semibold text-red-200">{detail.deleteData}</h2>
+            <p className="mt-2 text-sm opacity-75">{detail.deleteHelp}</p>
           </div>
-          <Field label="Confirmation" htmlFor="delete-confirmation">
+          <Field label={detail.confirmation} htmlFor="delete-confirmation">
             <GlassInput
               id="delete-confirmation"
               value={deleteConfirmation}
@@ -786,14 +852,14 @@ const SettingsCenter = () => {
             variant="danger"
             disabled={saving || deleteConfirmation !== 'DELETE'}
           >
-            Request account deletion
+            {detail.requestDeletion}
           </GlassButton>
         </form>
       </GlassCard>
       {operations.length ? (
         <GlassCard>
           <div className="p-6">
-            <h2 className="font-semibold">Recent requests</h2>
+            <h2 className="font-semibold">{detail.recentRequests}</h2>
             <ul className="mt-3 space-y-2 text-sm">
               {operations.map((item) => (
                 <li key={item.id} className="flex justify-between gap-3">
@@ -812,29 +878,27 @@ const SettingsCenter = () => {
     <div className="grid gap-4 sm:grid-cols-2">
       <GlassCard>
         <div className="p-6">
-          <h2 className="font-semibold">Members and roles</h2>
-          <p className="mt-2 text-sm opacity-75">
-            Invite members, assign least-privilege roles, and review organization access.
-          </p>
+          <h2 className="font-semibold">{detail.membersRoles}</h2>
+          <p className="mt-2 text-sm opacity-75">{detail.membersHelp}</p>
           <Link
             className="mt-4 inline-flex min-h-11 items-center font-semibold text-violet-200"
             to="/admin"
           >
-            Open organization administration
+            {detail.openAdministration}
           </Link>
         </div>
       </GlassCard>
       <GlassCard>
         <div className="p-6">
-          <h2 className="font-semibold">Recent security activity</h2>
+          <h2 className="font-semibold">{detail.securityActivity}</h2>
           {securityEvents.length ? (
             <ul className="mt-3 space-y-2 text-sm">
               {securityEvents.slice(0, 5).map((event, index) => (
-                <li key={event.id || index}>{event.action || 'Account event'}</li>
+                <li key={event.id || index}>{event.action || detail.accountEvent}</li>
               ))}
             </ul>
           ) : (
-            <p className="mt-2 text-sm opacity-75">No recent security events are available.</p>
+            <p className="mt-2 text-sm opacity-75">{detail.noSecurityEvents}</p>
           )}
         </div>
       </GlassCard>
@@ -845,29 +909,25 @@ const SettingsCenter = () => {
     <div className="grid gap-4 sm:grid-cols-2">
       <GlassCard>
         <div className="p-6">
-          <h2 className="font-semibold">API documentation</h2>
-          <p className="mt-2 text-sm opacity-75">
-            Explore the generated API contract and integration schemas.
-          </p>
+          <h2 className="font-semibold">{detail.apiDocs}</h2>
+          <p className="mt-2 text-sm opacity-75">{detail.apiDocsHelp}</p>
           <a
             className="mt-4 inline-flex min-h-11 items-center font-semibold text-violet-200"
             href="/docs"
           >
-            Open API documentation
+            {detail.openApiDocs}
           </a>
         </div>
       </GlassCard>
       <GlassCard>
         <div className="p-6">
-          <h2 className="font-semibold">Integration credentials</h2>
-          <p className="mt-2 text-sm opacity-75">
-            Credentials are created once, shown once, scoped, and revocable.
-          </p>
+          <h2 className="font-semibold">{detail.credentials}</h2>
+          <p className="mt-2 text-sm opacity-75">{detail.credentialsHelp}</p>
           <Link
             className="mt-4 inline-flex min-h-11 items-center font-semibold text-violet-200"
             to="/admin"
           >
-            Manage credentials
+            {detail.manageCredentials}
           </Link>
         </div>
       </GlassCard>
@@ -885,7 +945,13 @@ const SettingsCenter = () => {
 
   const current = localizedCategories.find((item) => item.id === active) || localizedCategories[0];
   return (
-    <AppShell headerTitle={copy.appShell} footerLabel={copy.privateWorkspace} menuLabel={copy.menu}>
+    <AppShell
+      headerTitle={copy.appShell}
+      headerIsPageHeading={false}
+      footerLabel={copy.privateWorkspace}
+      menuLabel={copy.menu}
+      themeLabel={copy.themeToggle}
+    >
       <div
         className="mx-auto max-w-7xl space-y-6 px-4 py-8"
         lang={locale}

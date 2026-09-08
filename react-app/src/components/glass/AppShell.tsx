@@ -10,6 +10,8 @@ type Props = {
   variant?: 'public' | 'app';
   footerLabel?: string;
   menuLabel?: string;
+  headerIsPageHeading?: boolean;
+  themeLabel?: string;
 };
 
 export const AppShell: React.FC<Props> = ({
@@ -19,6 +21,8 @@ export const AppShell: React.FC<Props> = ({
   variant = 'app',
   footerLabel = 'Private workspace',
   menuLabel = 'Menu',
+  headerIsPageHeading = true,
+  themeLabel = 'Toggle color theme',
 }) => {
   const uid = useId();
   const sidebarId = useMemo(() => `app-shell-sidebar-${uid}`, [uid]);
@@ -41,6 +45,8 @@ export const AppShell: React.FC<Props> = ({
           menuControlsId={sidebarId}
           isMenuOpen={isMenuOpen}
           menuLabel={menuLabel}
+          titleAsHeading={headerIsPageHeading}
+          themeLabel={themeLabel}
           onToggleMenu={isPublic ? undefined : () => setIsMenuOpen((v) => !v)}
         />
 

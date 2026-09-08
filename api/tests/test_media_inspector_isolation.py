@@ -1061,7 +1061,7 @@ def test_main_worker_has_no_decoder_import_and_manifests_isolate_service():
         assert inspector['depends_on']['media-inspector-spool-init']['condition'] == (
             'service_completed_successfully'
         )
-        assert manifest['services']['celery-worker']['depends_on'][
+        assert manifest['services']['celery-content-worker']['depends_on'][
             'media-inspector-spool-init'
         ]['condition'] == 'service_completed_successfully'
         assert all(
@@ -1073,9 +1073,12 @@ def test_main_worker_has_no_decoder_import_and_manifests_isolate_service():
                 'REDIS_PASSWORD',
             )
         )
-        worker = manifest['services']['celery-worker']
+        worker = manifest['services']['celery-content-worker']
         assert worker['profiles'] == ['celery']
         assert 'media_inspector_spool:/var/lib/base2/media-inspector' in worker['volumes']
+        runtime_worker = manifest['services']['celery-worker']
+        assert 'media_inspector_spool:/var/lib/base2/media-inspector' not in runtime_worker['volumes']
+        assert '-Q runtime' in runtime_worker['command'][0]
         worker_env = '\n'.join(worker['environment'])
         assert 'MEDIA_INSPECTOR_VERIFY_KEY=' in worker_env
         assert 'MEDIA_INSPECTOR_SIGNING_KEY' not in worker_env

@@ -36,7 +36,9 @@ CATALOG = ROOT / 'shared/config/operations-probes-v1.json'
 def configured_tenants(raw: str | None = None) -> list[str]:
     source = raw if raw is not None else os.getenv('OPERATIONS_TENANT_IDS', settings.SITE_PROFILE)
     values = [item.strip() for item in source.split(',') if item.strip()]
-    if not 1 <= len(values) <= 256:
+    # A 16-tenant batch every 60 seconds can revisit at most 32 tenants inside
+    # the 180-second probe freshness contract, including one interval of margin.
+    if not 1 <= len(values) <= 32:
         raise ValueError('operations:tenant_configuration_invalid')
     import re
 
@@ -154,7 +156,9 @@ def _receipt(name: str, timeout: int) -> tuple[str, str, int]:
     return ('healthy' if ok else 'degraded', f'{name}.ready' if ok else f'{name}.unknown', 0)
 
 
-def configured_probe_adapters() -> dict[str, Callable[[int], tuple[str, str, int]]]:
+def configured_probe_adapters(
+    tenant_id: str | None = None,
+) -> dict[str, Callable[[int], tuple[str, str, int]]]:
     storage_root = Path(settings.CONTENT_WORKSPACE_STORAGE_ROOT)
 
     def storage(timeout: int):
@@ -202,7 +206,9 @@ def configured_probe_adapters() -> dict[str, Callable[[int], tuple[str, str, int
         'email.delivery': configured('email'),
         'schedules.freshness': lambda timeout: _runtime_heartbeat('schedules', timeout),
         'capacity.headroom': capacity,
-        'monitoring.self': lambda timeout: _runtime_heartbeat('monitoring', timeout),
+        'monitoring.self': lambda timeout: _runtime_heartbeat(
+            f'monitoring:{tenant_id}' if tenant_id else 'monitoring', timeout
+        ),
         'database.performance': database_performance,
         'backup.freshness': lambda timeout: _receipt('backup', timeout),
         'restore.last-drill': lambda timeout: _receipt('restore', timeout),
@@ -233,14 +239,14 @@ def collect_site(
         catalog = json.loads(CATALOG.read_text(encoding='utf-8'))
         results = collect_probe_results(
             catalog=catalog,
-            adapters=configured_probe_adapters() if adapters is None else adapters,
+            adapters=configured_probe_adapters(tenant_id) if adapters is None else adapters,
             now=current,
         )
         result = operations.record_probe_batch(
             tenant_id=tenant_id, environment=environment, results=results, now=current
         )
         if adapters is None:
-            mark_runtime_heartbeat('monitoring', now=current)
+            mark_runtime_heartbeat(f'monitoring:{tenant_id}', now=current)
         return result
     finally:
         if client is not None and lock_key and lock_token:

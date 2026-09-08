@@ -2,6 +2,8 @@ import os
 import re
 import base64
 import binascii
+import stat
+from pathlib import Path
 from typing import Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings
@@ -95,7 +97,15 @@ class Settings(BaseSettings):
     OPERATIONS_ALERT_RECEIPT_KEY_FILE: str = Field(default='')
     OPERATIONS_ALERT_WEBHOOK_URL_FILE: str = Field(default='')
     OPERATIONS_RECEIPT_INTEGRITY_KEY_FILE: str = Field(default='')
-    OPERATIONS_RECEIPT_MAX_AGE_SECONDS: int = Field(default=3600)
+    OPERATIONS_RECEIPT_MAX_AGE_SECONDS: int = Field(default=90000)
+    BASE2_EMAIL_ADAPTER: str = Field(default='disabled')
+    BASE2_EMAIL_SMTP_HOST: str = Field(default='')
+    BASE2_EMAIL_SMTP_PORT: int = Field(default=587)
+    BASE2_EMAIL_SMTP_TIMEOUT_SECONDS: float = Field(default=10)
+    BASE2_EMAIL_FROM_ADDRESS: str = Field(default='')
+    BASE2_EMAIL_SMTP_USERNAME_FILE: str = Field(default='')
+    BASE2_EMAIL_SMTP_PASSWORD_FILE: str = Field(default='')
+    BASE2_PROCESS_ROLE: str = Field(default='api')
 
     # E2E test mode gate
     E2E_TEST_MODE: bool = Field(default=False)
@@ -136,22 +146,33 @@ class Settings(BaseSettings):
             raise RuntimeError('E2E_TEST_MODE cannot be enabled in production')
         if env in {'staging', 'production'}:
             missing = []
-            if not (self.JWT_SECRET or '').strip():
-                missing.append('JWT_SECRET')
-            if not (self.TOKEN_PEPPER or '').strip():
-                missing.append('TOKEN_PEPPER')
-            if not (self.FRONTEND_URL or '').strip():
-                missing.append('FRONTEND_URL')
-            if not (self.OAUTH_STATE_SECRET or '').strip():
-                missing.append('OAUTH_STATE_SECRET')
-            if not (self.IDENTITY_ENCRYPTION_KEY or '').strip():
+            process_role = self.BASE2_PROCESS_ROLE
+            if process_role == 'api':
+                for name in (
+                    'JWT_SECRET',
+                    'TOKEN_PEPPER',
+                    'FRONTEND_URL',
+                    'OAUTH_STATE_SECRET',
+                    'IDENTITY_ENCRYPTION_KEY',
+                ):
+                    if not str(getattr(self, name) or '').strip():
+                        missing.append(name)
+            if (
+                process_role == 'content-worker'
+                and not (self.IDENTITY_ENCRYPTION_KEY or '').strip()
+            ):
                 missing.append('IDENTITY_ENCRYPTION_KEY')
             storage_backend = (self.CONTENT_WORKSPACE_STORAGE_BACKEND or '').strip().lower()
-            if storage_backend not in {'local', 's3'}:
+            storage_required = process_role in {'api', 'content-worker'}
+            if storage_required and storage_backend not in {'local', 's3'}:
                 raise RuntimeError('Invalid CONTENT_WORKSPACE_STORAGE_BACKEND')
-            if storage_backend == 'local' and not (self.CONTENT_WORKSPACE_STORAGE_KEY or '').strip():
+            if (
+                storage_required
+                and storage_backend == 'local'
+                and not (self.CONTENT_WORKSPACE_STORAGE_KEY or '').strip()
+            ):
                 missing.append('CONTENT_WORKSPACE_STORAGE_KEY')
-            if storage_backend == 's3':
+            if storage_required and storage_backend == 's3':
                 for name in (
                     'CONTENT_WORKSPACE_S3_ENDPOINT',
                     'CONTENT_WORKSPACE_S3_BUCKET',
@@ -169,13 +190,57 @@ class Settings(BaseSettings):
                     value = str(getattr(self, name) or '').strip()
                     if value and not value.startswith('/'):
                         raise RuntimeError(f'{name} must be an absolute secret-file path')
+            if env == 'production':
+                if self.BASE2_PROCESS_ROLE not in {
+                    'api',
+                    'runtime-worker',
+                    'content-worker',
+                    'email-worker',
+                }:
+                    raise RuntimeError('Invalid BASE2_PROCESS_ROLE')
+                if self.BASE2_EMAIL_ADAPTER.strip().lower() != 'smtp':
+                    raise RuntimeError('Production requires BASE2_EMAIL_ADAPTER=smtp')
+                if (
+                    not self.BASE2_EMAIL_SMTP_HOST.strip()
+                    or self.BASE2_EMAIL_SMTP_PORT not in {465, 587}
+                    or not 0 < self.BASE2_EMAIL_SMTP_TIMEOUT_SECONDS <= 30
+                    or '@' not in self.BASE2_EMAIL_FROM_ADDRESS
+                ):
+                    raise RuntimeError('Invalid production SMTP configuration')
+                for name in (
+                    ()
+                    if self.BASE2_PROCESS_ROLE != 'email-worker'
+                    else (
+                        'BASE2_EMAIL_SMTP_USERNAME_FILE',
+                        'BASE2_EMAIL_SMTP_PASSWORD_FILE',
+                    )
+                ):
+                    value = str(getattr(self, name) or '').strip()
+                    if not value:
+                        missing.append(name)
+                    elif not value.startswith('/'):
+                        raise RuntimeError(f'{name} must be an absolute secret-file path')
+                    else:
+                        path = Path(value)
+                        try:
+                            metadata = path.stat(follow_symlinks=False)
+                        except OSError as exc:
+                            raise RuntimeError(f'{name} secret file is unavailable') from exc
+                        if (
+                            path.is_symlink()
+                            or not stat.S_ISREG(metadata.st_mode)
+                            or metadata.st_mode & 0o077
+                            or metadata.st_size < 1
+                            or metadata.st_size > 4096
+                        ):
+                            raise RuntimeError(f'{name} secret file is invalid')
             operation_file_names = (
                 (
                     'OPERATIONS_ALERT_INTEGRITY_KEY_FILE',
                     'OPERATIONS_ALERT_RECEIPT_KEY_FILE',
                     'OPERATIONS_ALERT_WEBHOOK_URL_FILE',
                 )
-                if self.OPERATIONS_ALERTS_ENABLED
+                if self.OPERATIONS_ALERTS_ENABLED and process_role == 'runtime-worker'
                 else ()
             )
             for name in operation_file_names:
@@ -188,15 +253,15 @@ class Settings(BaseSettings):
                 raise RuntimeError('Missing required env var(s): ' + ', '.join(missing))
             if self.DB_SSLMODE != 'verify-full' or not (self.DB_SSLROOTCERT or '').startswith('/'):
                 raise RuntimeError('Database TLS verify-full configuration is required')
-            if not 60 <= self.OPERATIONS_RECEIPT_MAX_AGE_SECONDS <= 86400:
+            if not 60 <= self.OPERATIONS_RECEIPT_MAX_AGE_SECONDS <= 172800:
                 raise RuntimeError(
-                    'OPERATIONS_RECEIPT_MAX_AGE_SECONDS must be between 60 and 86400'
+                    'OPERATIONS_RECEIPT_MAX_AGE_SECONDS must be between 60 and 172800'
                 )
             operations_files = {str(getattr(self, name)) for name in operation_file_names}
             if operations_files and len(operations_files) != len(operation_file_names):
                 raise RuntimeError('Operations secret files must be independently scoped')
 
-            if storage_backend == 'local':
+            if storage_required and storage_backend == 'local':
                 storage_root = (self.CONTENT_WORKSPACE_STORAGE_ROOT or '').strip()
                 try:
                     encoded_key = (self.CONTENT_WORKSPACE_STORAGE_KEY or '').strip()
@@ -209,7 +274,7 @@ class Settings(BaseSettings):
                     raise RuntimeError('Invalid CONTENT_WORKSPACE_STORAGE_KEY') from exc
                 if not storage_root.startswith('/') or len(storage_key) != 32:
                     raise RuntimeError('Invalid content workspace storage configuration')
-            else:
+            elif storage_required:
                 from urllib.parse import urlparse
 
                 endpoint = urlparse(self.CONTENT_WORKSPACE_S3_ENDPOINT)

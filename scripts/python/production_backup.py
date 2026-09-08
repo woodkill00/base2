@@ -264,6 +264,28 @@ def create_production_backup(
                 "PATH": os.environ.get("PATH", ""),
                 "PGSERVICEFILE": str(config["pgServiceFile"]),
             }
+            ledger = runner(
+                [
+                    "psql",
+                    f"service={config['pgService']}",
+                    "--tuples-only",
+                    "--no-align",
+                    "--command",
+                    "SELECT COALESCE(MAX((regexp_match(name, '^[0-9]+'))[1]::int),0) "
+                    "FROM django_migrations WHERE app='sitecontent'",
+                ],
+                env=environment,
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
+            )
+            try:
+                live_schema = int((ledger.stdout or "").strip())
+            except ValueError as exc:
+                raise ProductionBackupError("backup:schema_ledger_invalid") from exc
+            if ledger.returncode != 0 or live_schema != config["dataSchema"]:
+                raise ProductionBackupError("backup:schema_mismatch")
             completed = runner(
                 [
                     "pg_dump",
@@ -318,7 +340,7 @@ def create_production_backup(
         _write_private_json(receipt_root / f"{config['targetId']}-{stamp}.json", receipt)
         _write_operations_receipt(
             config,
-            kind="backup.freshness",
+            kind="backup",
             artifact_digest=bundle["sha256"],
             now=current,
         )
@@ -328,9 +350,12 @@ def create_production_backup(
 def prune_owned_backups(config: dict[str, Any], *, now: datetime | None = None) -> dict[str, int]:
     current = (now or datetime.now(UTC)).astimezone(UTC)
     receipt_root, backup_root = Path(config["receiptRoot"]), Path(config["backupRoot"])
+    quarantine = backup_root / "quarantine"
     valid: list[tuple[datetime, Path, Path]] = []
+    rejected = 0
     for path in sorted(receipt_root.glob(f"{config['targetId']}-*.json")):
         if path.is_symlink():
+            rejected += 1
             continue
         try:
             receipt = json.loads(_private_file(path, maximum_bytes=32_768))
@@ -340,8 +365,23 @@ def prune_owned_backups(config: dict[str, Any], *, now: datetime | None = None) 
                 str(receipt["retentionExpiresAt"]).replace("Z", "+00:00")
             )
         except (ProductionBackupError, ValueError, json.JSONDecodeError):
+            quarantine.mkdir(mode=0o700, exist_ok=True)
+            quarantine.chmod(0o700)
+            suffix = hashlib.sha256(path.read_bytes()).hexdigest()[:12]
+            os.replace(path, quarantine / f"rejected-receipt-{suffix}.json")
+            rejected += 1
             continue
         valid.append((max(created, expiry if expiry <= current else created), path, backup))
+    referenced = {backup.resolve() for _date, _receipt, backup in valid}
+    orphaned = 0
+    for backup in sorted(backup_root.glob(f"{config['targetId']}-*.tar.enc")):
+        if backup.is_symlink() or not backup.is_file() or backup.resolve() in referenced:
+            continue
+        quarantine.mkdir(mode=0o700, exist_ok=True)
+        quarantine.chmod(0o700)
+        suffix = hashlib.sha256(backup.read_bytes()).hexdigest()[:12]
+        os.replace(backup, quarantine / f"orphan-backup-{suffix}.tar.enc")
+        orphaned += 1
     valid.sort(key=lambda item: item[0], reverse=True)
     removed = 0
     for index, (_date, receipt_path, backup_path) in enumerate(valid):
@@ -352,7 +392,12 @@ def prune_owned_backups(config: dict[str, Any], *, now: datetime | None = None) 
         backup_path.unlink()
         receipt_path.unlink()
         removed += 1
-    return {"verified": len(valid), "removed": removed}
+    return {
+        "verified": len(valid),
+        "removed": removed,
+        "rejected": rejected,
+        "orphaned": orphaned,
+    }
 
 
 def isolated_restore(
@@ -517,7 +562,7 @@ def restore_database_isolated(
     ).hexdigest()
     _write_operations_receipt(
         config,
-        kind="restore.last-drill",
+        kind="restore",
         artifact_digest=restore_digest,
         now=datetime.now(UTC),
     )

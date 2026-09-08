@@ -99,7 +99,14 @@ def test_destructive_transition_consumes_nonce_and_updates_state_in_one_transact
 def test_get_state_serializes_the_tenant_private_record():
     operation_id = UUID('00000000-0000-4000-8000-000000000106')
     cursor = MagicMock()
-    cursor.fetchone.return_value = ('active', 'owner-one', {'locale': 'en'}, 4, operation_id, 'a' * 64)
+    cursor.fetchone.return_value = (
+        'active',
+        'owner-one',
+        {'locale': 'en'},
+        4,
+        operation_id,
+        'a' * 64,
+    )
     cursor.__enter__.return_value = cursor
     with patch(
         'api.repositories.tenant_lifecycle.workspace_db_conn',
@@ -144,9 +151,7 @@ def test_provision_creates_state_and_event_in_one_transaction():
 
     cursor.execute.side_effect = execute
     connection = Connection(cursor)
-    with patch(
-        'api.repositories.tenant_lifecycle.workspace_db_conn', return_value=connection
-    ):
+    with patch('api.repositories.tenant_lifecycle.workspace_db_conn', return_value=connection):
         result = provision(
             tenant_id='tenant-one',
             owner_ref='owner-one',
@@ -167,9 +172,7 @@ def test_provision_exact_replay_is_idempotent_and_changed_replay_conflicts():
     cursor.rowcount = 0
     connection = Connection(cursor)
     with (
-        patch(
-            'api.repositories.tenant_lifecycle.workspace_db_conn', return_value=connection
-        ),
+        patch('api.repositories.tenant_lifecycle.workspace_db_conn', return_value=connection),
         patch('api.repositories.tenant_lifecycle._digest', return_value='b' * 64),
     ):
         cursor.fetchone.return_value = (
@@ -217,9 +220,7 @@ def test_apply_operation_configures_and_transfers_with_revision_control():
 
     cursor.execute.side_effect = execute
     connection = Connection(cursor)
-    with patch(
-        'api.repositories.tenant_lifecycle.workspace_db_conn', return_value=connection
-    ):
+    with patch('api.repositories.tenant_lifecycle.workspace_db_conn', return_value=connection):
         result = apply_operation(
             tenant_id='tenant-one',
             operation='configure',
@@ -234,15 +235,125 @@ def test_apply_operation_configures_and_transfers_with_revision_control():
     connection.commit.assert_called_once()
 
 
+def test_ownership_transfer_is_prepared_then_accepted_by_exact_target():
+    prepared_id = UUID('00000000-0000-4000-8000-000000000108')
+    accepted_id = UUID('00000000-0000-4000-8000-000000000109')
+    database_now = datetime(2026, 9, 8, 12, 0, tzinfo=UTC)
+    expires_at = database_now + timedelta(minutes=15)
+    target = '00000000-0000-4000-8000-000000000222'
+    prior = ('active', 'owner-one', {'locale': 'en'}, 3, prepared_id, 'a' * 64)
+    pending_configuration = {
+        'locale': 'en',
+        '_pendingOwnershipTransfer': {
+            'targetOwner': target,
+            'preparedBy': 'owner-one',
+            'operationId': str(prepared_id),
+            'expiresAt': expires_at.isoformat(),
+        },
+    }
+    prepared = ('active', 'owner-one', pending_configuration, 4, prepared_id, 'b' * 64)
+    cursor = MagicMock()
+    cursor.__enter__.return_value = cursor
+    cursor.fetchone.side_effect = [prior, None, (expires_at,), prepared]
+
+    def execute(statement, _arguments=None):
+        if 'UPDATE sitecontent_tenantlifecyclestate' in statement:
+            cursor.rowcount = 1
+
+    cursor.execute.side_effect = execute
+    with patch(
+        'api.repositories.tenant_lifecycle.workspace_db_conn',
+        return_value=Connection(cursor),
+    ):
+        result = apply_operation(
+            tenant_id='tenant-one',
+            operation='transfer_prepare',
+            owner_ref='owner-one',
+            target_owner_ref=target,
+            configuration=None,
+            expected_revision=3,
+            operation_id=prepared_id,
+        )
+    assert result['owner'] == 'owner-one'
+    assert result['configuration']['_pendingOwnershipTransfer']['targetOwner'] == target
+
+    accepted = ('active', target, {'locale': 'en'}, 5, accepted_id, 'c' * 64)
+    cursor = MagicMock()
+    cursor.__enter__.return_value = cursor
+    cursor.fetchone.side_effect = [prepared, None, (database_now,), accepted]
+    cursor.execute.side_effect = execute
+    with patch(
+        'api.repositories.tenant_lifecycle.workspace_db_conn',
+        return_value=Connection(cursor),
+    ):
+        result = apply_operation(
+            tenant_id='tenant-one',
+            operation='transfer_accept',
+            owner_ref=target,
+            target_owner_ref='',
+            configuration=None,
+            expected_revision=4,
+            operation_id=accepted_id,
+        )
+    assert result['owner'] == target
+    assert result['configuration'] == {'locale': 'en'}
+
+
+def test_ownership_transfer_rejects_wrong_target_and_database_time_expiry():
+    operation_id = UUID('00000000-0000-4000-8000-000000000110')
+    database_now = datetime(2026, 9, 8, 12, 20, tzinfo=UTC)
+    pending = {
+        '_pendingOwnershipTransfer': {
+            'targetOwner': '00000000-0000-4000-8000-000000000222',
+            'preparedBy': 'owner-one',
+            'operationId': '00000000-0000-4000-8000-000000000108',
+            'expiresAt': (database_now - timedelta(seconds=1)).isoformat(),
+        }
+    }
+    prior = ('active', 'owner-one', pending, 4, operation_id, 'a' * 64)
+    for accepting_owner in (
+        '00000000-0000-4000-8000-000000000333',
+        '00000000-0000-4000-8000-000000000222',
+    ):
+        cursor = MagicMock()
+        cursor.__enter__.return_value = cursor
+        cursor.fetchone.side_effect = [prior, None, (database_now,)]
+        connection = Connection(cursor)
+        with (
+            patch(
+                'api.repositories.tenant_lifecycle.workspace_db_conn',
+                return_value=connection,
+            ),
+            pytest.raises(
+                TenantLifecycleRepositoryError,
+                match='transfer_acceptance_invalid',
+            ),
+        ):
+            apply_operation(
+                tenant_id='tenant-one',
+                operation='transfer_accept',
+                owner_ref=accepting_owner,
+                target_owner_ref='',
+                configuration=None,
+                expected_revision=4,
+                operation_id=operation_id,
+            )
+        connection.commit.assert_not_called()
+
+
 def test_apply_operation_exact_replay_and_conflicts_fail_closed():
     operation_id = UUID('00000000-0000-4000-8000-000000000106')
     prior = ('active', 'owner-one', {}, 3, operation_id, 'a' * 64)
     cursor = MagicMock()
     cursor.__enter__.return_value = cursor
-    cursor.fetchone.side_effect = [prior, ('export', 'owner-one', '', 4)]
+    cursor.fetchone.side_effect = [
+        prior,
+        ('export', 'owner-one', '', 4, 'active', 'active', 'a' * 64),
+    ]
     connection = Connection(cursor)
-    with patch(
-        'api.repositories.tenant_lifecycle.workspace_db_conn', return_value=connection
+    with (
+        patch('api.repositories.tenant_lifecycle.workspace_db_conn', return_value=connection),
+        patch('api.repositories.tenant_lifecycle._digest', return_value='a' * 64),
     ):
         assert apply_operation(
             tenant_id='tenant-one',
@@ -256,7 +367,10 @@ def test_apply_operation_exact_replay_and_conflicts_fail_closed():
 
     cursor = MagicMock()
     cursor.__enter__.return_value = cursor
-    cursor.fetchone.side_effect = [prior, ('transfer', 'owner-one', 'owner-two', 4)]
+    cursor.fetchone.side_effect = [
+        prior,
+        ('transfer', 'owner-one', 'owner-two', 4, 'active', 'active', 'b' * 64),
+    ]
     with (
         patch(
             'api.repositories.tenant_lifecycle.workspace_db_conn',

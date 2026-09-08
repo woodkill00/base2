@@ -89,7 +89,11 @@ def transition_tenant(
         'to': target,
         'servingAuthority': target in {'active'},
         'allocationAuthority': target in {'provisioning', 'active', 'restoring'},
-        'recoverableDataPreserved': target != 'deleted',
+        'recoverableDataPreserved': True if target != 'deleted' else None,
+        # The state revokes authority; it never fabricates proof that every
+        # data plane has completed erasure. A separate reconciler owns that proof.
+        'dataDeletionVerified': False,
+        'deletionVerificationRequired': target == 'deleted',
     }
     receipt['digest'] = hashlib.sha256(
         json.dumps(receipt, sort_keys=True, separators=(',', ':')).encode()
@@ -231,6 +235,17 @@ def persist_transition(
 
     if not re.fullmatch(r'[A-Za-z0-9._-]{3,127}', owner or ''):
         raise TenantLifecycleError('tenant:owner_invalid')
+    replay = repository.get_operation_event(tenant_id=tenant_id, operation_id=operation_id)
+    if replay:
+        if (
+            replay['operation'] != 'transition'
+            or replay['to'] != target
+            or replay['actor'] != owner
+            or replay['revision'] != expected_revision + 1
+        ):
+            raise TenantLifecycleError('tenant:operation_conflict')
+        state = repository.get_state(tenant_id=tenant_id)
+        return {**state, 'idempotent': True}
     state = repository.get_state(tenant_id=tenant_id)
     current = str(state['state'])
     # Exercise the same closed transition graph without consuming the approval.
@@ -330,6 +345,15 @@ def persist_operation(
             raise TenantLifecycleError('tenant:configuration_invalid')
     elif configuration is not None:
         raise TenantLifecycleError('tenant:configuration_forbidden')
+    if operation == 'transfer_prepare':
+        try:
+            from api.repositories.identity_admin import membership
+
+            target_id = UUID(str(target_owner))
+            if membership(user_id=target_id, tenant_id=tenant_id) is None:
+                raise TenantLifecycleError('tenant:target_owner_not_member')
+        except (ValueError, TypeError) as exc:
+            raise TenantLifecycleError('tenant:target_owner_invalid') from exc
     try:
         return repository.apply_operation(
             tenant_id=tenant_id,
@@ -353,13 +377,16 @@ def tenant_operation(
     target_owner: str | None = None,
 ) -> dict[str, Any]:
     """Create a bounded, auditable non-destructive tenant operation."""
-    if operation not in {'configure', 'transfer', 'export'} or not TENANT.fullmatch(
-        tenant_id or ''
-    ):
+    if operation not in {
+        'configure',
+        'transfer_prepare',
+        'transfer_accept',
+        'export',
+    } or not TENANT.fullmatch(tenant_id or ''):
         raise TenantLifecycleError('tenant:operation_invalid')
     if not re.fullmatch(r'[A-Za-z0-9._-]{3,127}', owner or '') or not recent_auth:
         raise TenantLifecycleError('tenant:recent_auth_required')
-    if operation == 'transfer':
+    if operation == 'transfer_prepare':
         if (
             not target_owner
             or target_owner == owner

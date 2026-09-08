@@ -19,6 +19,7 @@ class RenderedEmail:
     subject: str
     text: str
     html: str
+    delivery_key: str = ''
 
 
 @dataclass(frozen=True)
@@ -67,12 +68,18 @@ def render_email(kind: str, recipient: str, context: Mapping[str, object]) -> Re
     if kind == 'verification':
         subject, action, url = 'Verify your email', 'Verify email', _safe_url(context.get('url'))
     elif kind == 'password_reset':
-        subject, action, url = 'Reset your password', 'Reset password', _safe_url(context.get('url'))
+        subject, action, url = (
+            'Reset your password',
+            'Reset password',
+            _safe_url(context.get('url')),
+        )
     elif kind == 'invitation':
         subject, action, url = 'You are invited', 'Review invitation', _safe_url(context.get('url'))
     else:
-        subject, action, url = 'We received your message', 'View privacy information', _safe_url(
-            context.get('privacy_url')
+        subject, action, url = (
+            'We received your message',
+            'View privacy information',
+            _safe_url(context.get('privacy_url')),
         )
     text = f'Hello {name},\n\n{action}: {url}\n\nIf you did not expect this message, ignore it.'
     body = (
@@ -108,8 +115,16 @@ class SmtpEmailAdapter:
 
     name = 'smtp'
 
-    def __init__(self, *, host: str, port: int, username: str, password: str,
-                 from_address: str, timeout: float = 10.0):
+    def __init__(
+        self,
+        *,
+        host: str,
+        port: int,
+        username: str,
+        password: str,
+        from_address: str,
+        timeout: float = 10.0,
+    ):
         if not host or any(value in host for value in ('\r', '\n', '/', ':')):
             raise ValueError('smtp_host_invalid')
         if port not in {465, 587}:
@@ -125,16 +140,23 @@ class SmtpEmailAdapter:
     def send(self, message: RenderedEmail) -> AdapterResult:
         envelope = EmailMessage()
         envelope['From'], envelope['To'], envelope['Subject'] = (
-            self.from_address, message.recipient, message.subject
+            self.from_address,
+            message.recipient,
+            message.subject,
         )
+        if message.delivery_key:
+            identity = hashlib.sha256(message.delivery_key.encode()).hexdigest()[:32]
+            domain = self.from_address.rsplit('@', 1)[-1].lower()
+            envelope['Message-ID'] = f'<base2-{identity}@{domain}>'
         envelope.set_content(message.text)
         if message.html:
             envelope.add_alternative(message.html, subtype='html')
         context = ssl.create_default_context()
         try:
             if self.port == 465:
-                with smtplib.SMTP_SSL(self.host, self.port, timeout=self.timeout,
-                                      context=context) as client:
+                with smtplib.SMTP_SSL(
+                    self.host, self.port, timeout=self.timeout, context=context
+                ) as client:
                     client.login(self.username, self.password)
                     client.send_message(envelope)
             else:

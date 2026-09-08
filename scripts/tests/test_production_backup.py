@@ -28,7 +28,7 @@ def _config(tmp_path: Path):
     return {
         "schemaVersion": 1,
         "targetId": "base2-backup",
-        "dataSchema": 27,
+        "dataSchema": 29,
         "pgServiceFile": str(service),
         "pgService": "base2_backup",
         "objectRoot": str(objects),
@@ -48,6 +48,8 @@ def _config(tmp_path: Path):
 
 def _runner(command, **kwargs):
     del kwargs
+    if command[0] == "psql":
+        return subprocess.CompletedProcess(command, 0, "29\n", "")
     output = Path(command[command.index("--file") + 1])
     output.write_bytes(b"PGDUMP\x00production-schema-and-data")
     return subprocess.CompletedProcess(command, 0, "", "")
@@ -83,7 +85,7 @@ def test_real_dump_and_object_payload_are_encrypted_verified_and_restorable(tmp_
         config, receipt_path=receipt_path, restore_root=tmp_path / "isolated-restore"
     )
     assert backup.is_file() and restored["objectCount"] == 1
-    assert (Path(config["operationsReceiptRoot"]) / "backup.freshness.json").is_file()
+    assert (Path(config["operationsReceiptRoot"]) / "backup.json").is_file()
     assert Path(restored["databaseDump"]).read_bytes().startswith(b"PGDUMP")
     assert (
         Path(restored["objectRoot"]) / "tenant-one" / "photo.bin"
@@ -97,7 +99,7 @@ def test_retention_deletes_only_verified_owned_expired_artifacts(tmp_path):
     unrelated = Path(config["backupRoot"]) / "do-not-touch.bin"
     unrelated.write_bytes(b"unowned")
     result = prune_owned_backups(config, now=now + timedelta(days=31))
-    assert result == {"verified": 1, "removed": 1}
+    assert result == {"verified": 1, "removed": 1, "rejected": 0, "orphaned": 0}
     assert unrelated.read_bytes() == b"unowned"
 
 
@@ -107,6 +109,30 @@ def test_tampered_receipt_cannot_delete_or_restore(tmp_path):
     receipt["backupFile"] = "../outside"
     with pytest.raises(ProductionBackupError, match="receipt_invalid"):
         verify_receipt(receipt, key=config["_key"], backup_root=Path(config["backupRoot"]))
+
+
+def test_invalid_receipts_and_exact_owned_orphans_are_quarantined(tmp_path):
+    config = _config(tmp_path)
+    create_production_backup(config, now=datetime(2026, 9, 8, tzinfo=UTC), runner=_runner)
+    receipt_path = next(Path(config["receiptRoot"]).glob("*.json"))
+    receipt_path.write_text('{"tampered":true}\n', encoding="utf-8")
+    result = prune_owned_backups(config, now=datetime(2026, 9, 9, tzinfo=UTC))
+    assert result == {"verified": 0, "removed": 0, "rejected": 1, "orphaned": 1}
+    quarantine = Path(config["backupRoot"]) / "quarantine"
+    assert len(list(quarantine.glob("rejected-receipt-*.json"))) == 1
+    assert len(list(quarantine.glob("orphan-backup-*.tar.enc"))) == 1
+
+
+def test_backup_refuses_configuration_schema_that_differs_from_live_ledger(tmp_path):
+    config = _config(tmp_path)
+
+    def stale_ledger(command, **kwargs):
+        if command[0] == "psql":
+            return subprocess.CompletedProcess(command, 0, "28\n", "")
+        return _runner(command, **kwargs)
+
+    with pytest.raises(ProductionBackupError, match="schema_mismatch"):
+        create_production_backup(config, now=datetime(2026, 9, 8, tzinfo=UTC), runner=stale_ledger)
 
 
 def test_database_restore_requires_exact_empty_isolated_database(tmp_path):
@@ -133,4 +159,4 @@ def test_database_restore_requires_exact_empty_isolated_database(tmp_path):
     )
     assert result["databaseRestoreExecuted"] is True
     assert result["databaseTableCount"] == 3
-    assert (Path(config["operationsReceiptRoot"]) / "restore.last-drill.json").is_file()
+    assert (Path(config["operationsReceiptRoot"]) / "restore.json").is_file()

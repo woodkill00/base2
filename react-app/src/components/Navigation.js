@@ -32,6 +32,7 @@ const Navigation = () => {
       admin: 'Verwaltung',
       logout: 'Abmelden',
       profile: 'Profil',
+      appNavigation: 'Anwendungsnavigation',
     },
     ar: {
       dashboard: 'لوحة المعلومات',
@@ -42,6 +43,7 @@ const Navigation = () => {
       admin: 'الإدارة',
       logout: 'تسجيل الخروج',
       profile: 'الملف الشخصي',
+      appNavigation: 'التنقل في التطبيق',
     },
   }[locale] || {
     dashboard: 'Dashboard',
@@ -52,6 +54,7 @@ const Navigation = () => {
     admin: 'Admin',
     logout: 'Logout',
     profile: 'Profile',
+    appNavigation: 'App navigation',
   };
 
   const handleLogout = async () => {
@@ -70,7 +73,7 @@ const Navigation = () => {
   const activeProps = (path) => (isActive(path) ? { 'aria-current': 'page' } : {});
 
   return (
-    <nav aria-label="App navigation" className="sticky top-[calc(var(--nav-h)+0px)] z-40">
+    <nav aria-label={labels.appNavigation} className="sticky top-[calc(var(--nav-h)+0px)] z-40">
       <div className="mx-auto max-w-6xl px-4 pt-4">
         <div
           className={[

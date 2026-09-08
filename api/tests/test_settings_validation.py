@@ -129,6 +129,7 @@ def test_operations_alert_activation_requires_distinct_absolute_secret_files(mon
         'DB_SSLMODE': 'verify-full',
         'DB_SSLROOTCERT': '/run/secrets/database-ca.pem',
         'OPERATIONS_ALERTS_ENABLED': 'true',
+        'BASE2_PROCESS_ROLE': 'runtime-worker',
     }
     for key, value in required.items():
         monkeypatch.setenv(key, value)

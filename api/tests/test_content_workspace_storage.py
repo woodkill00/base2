@@ -10,6 +10,7 @@ from api.services.content_workspace_storage import (
     PrivateArtifactStore,
     S3ArtifactStore,
     configured_artifact_store,
+    configured_runtime_artifact_store,
     configured_s3_artifact_store,
 )
 
@@ -31,12 +32,8 @@ def test_private_store_encrypts_content_and_returns_only_content_addressed_refer
 
 def test_private_store_replay_is_noop_and_conflicting_overwrite_fails_closed(tmp_path):
     store = PrivateArtifactStore(tmp_path / 'workspace', key=b'k' * 32)
-    first = store.put(
-        namespace='imports', site_id='site-a', object_id='job-104', content=b'first'
-    )
-    replay = store.put(
-        namespace='imports', site_id='site-a', object_id='job-104', content=b'first'
-    )
+    first = store.put(namespace='imports', site_id='site-a', object_id='job-104', content=b'first')
+    replay = store.put(namespace='imports', site_id='site-a', object_id='job-104', content=b'first')
     assert replay == first
     with pytest.raises(ArtifactIntegrityError, match='content_artifact_conflict'):
         store.put(namespace='imports', site_id='site-a', object_id='job-104', content=b'second')
@@ -79,9 +76,7 @@ def test_configured_store_requires_absolute_root_and_urlsafe_32_byte_key(tmp_pat
         PrivateArtifactStore,
     )
     for root, key in [('relative', encoded), (str(tmp_path / 'workspace'), 'invalid')]:
-        with pytest.raises(
-            ArtifactIntegrityError, match='content_artifact_configuration_invalid'
-        ):
+        with pytest.raises(ArtifactIntegrityError, match='content_artifact_configuration_invalid'):
             configured_artifact_store(root=root, encoded_key=key)
 
 
@@ -92,21 +87,34 @@ def test_private_store_deletes_only_exact_owned_integrity_checked_object(tmp_pat
     )
     with pytest.raises(ArtifactIntegrityError, match='content_artifact_owner_mismatch'):
         store.delete(
-            namespace='exports', site_id='site-b', object_id='job-104',
-            object_key=stored.object_key, expected_sha256=stored.sha256,
+            namespace='exports',
+            site_id='site-b',
+            object_id='job-104',
+            object_key=stored.object_key,
+            expected_sha256=stored.sha256,
         )
     with pytest.raises(ArtifactIntegrityError, match='content_integrity_failed'):
         store.delete(
-            namespace='exports', site_id='site-a', object_id='job-104',
-            object_key=stored.object_key, expected_sha256='0' * 64,
+            namespace='exports',
+            site_id='site-a',
+            object_id='job-104',
+            object_key=stored.object_key,
+            expected_sha256='0' * 64,
         )
     assert store.delete(
-        namespace='exports', site_id='site-a', object_id='job-104',
-        object_key=stored.object_key, expected_sha256=stored.sha256,
+        namespace='exports',
+        site_id='site-a',
+        object_id='job-104',
+        object_key=stored.object_key,
+        expected_sha256=stored.sha256,
     )
     assert not store.delete(
-        namespace='exports', site_id='site-a', object_id='job-104',
-        object_key=stored.object_key, expected_sha256=stored.sha256, missing_ok=True,
+        namespace='exports',
+        site_id='site-a',
+        object_id='job-104',
+        object_key=stored.object_key,
+        expected_sha256=stored.sha256,
+        missing_ok=True,
     )
 
 
@@ -148,18 +156,28 @@ def test_s3_store_rejects_limits_bad_keys_and_backend_failures():
         store.get('site-a/media/asset-104', expected_sha256='a' * 64)
     with pytest.raises(ArtifactIntegrityError, match='content_artifact_owner_mismatch'):
         store.delete(
-            namespace='media', site_id='site-b', object_id='asset-104',
-            object_key='site-a/media/asset-104', expected_sha256='a' * 64,
+            namespace='media',
+            site_id='site-b',
+            object_id='asset-104',
+            object_key='site-a/media/asset-104',
+            expected_sha256='a' * 64,
         )
     backend.delete.side_effect = ValueError('object:unavailable')
     assert not store.delete(
-        namespace='media', site_id='site-a', object_id='asset-104',
-        object_key='site-a/media/asset-104', expected_sha256='a' * 64, missing_ok=True,
+        namespace='media',
+        site_id='site-a',
+        object_id='asset-104',
+        object_key='site-a/media/asset-104',
+        expected_sha256='a' * 64,
+        missing_ok=True,
     )
     with pytest.raises(ArtifactIntegrityError, match='object:unavailable'):
         store.delete(
-            namespace='media', site_id='site-a', object_id='asset-104',
-            object_key='site-a/media/asset-104', expected_sha256='a' * 64,
+            namespace='media',
+            site_id='site-a',
+            object_id='asset-104',
+            object_key='site-a/media/asset-104',
+            expected_sha256='a' * 64,
         )
 
 
@@ -170,9 +188,7 @@ def test_configured_s3_store_reads_private_files_and_pins_resolution(tmp_path):
     secret.write_text('secret-value', encoding='utf-8')
     access.chmod(0o600)
     secret.chmod(0o600)
-    resolver = MagicMock(
-        return_value=[(2, 1, 6, '', ('93.184.216.34', 443))]
-    )
+    resolver = MagicMock(return_value=[(2, 1, 6, '', ('93.184.216.34', 443))])
     store = configured_s3_artifact_store(
         endpoint='https://objects.example.net',
         bucket='base2-media',
@@ -192,19 +208,53 @@ def test_configured_s3_store_rejects_unsafe_secrets_and_resolution(tmp_path):
     secret.write_text('secret-value', encoding='utf-8')
     secret.chmod(0o600)
     for access in ('relative', str(tmp_path / 'missing')):
-        with pytest.raises(
-            ArtifactIntegrityError, match='content_artifact_configuration_invalid'
-        ):
+        with pytest.raises(ArtifactIntegrityError, match='content_artifact_configuration_invalid'):
             configured_s3_artifact_store(
-                endpoint='https://objects.example.net', bucket='base2-media', region='fra1',
-                allowed_hosts={'objects.example.net'}, access_key_file=access,
-                secret_key_file=str(secret), max_bytes=1024,
+                endpoint='https://objects.example.net',
+                bucket='base2-media',
+                region='fra1',
+                allowed_hosts={'objects.example.net'},
+                access_key_file=access,
+                secret_key_file=str(secret),
+                max_bytes=1024,
                 resolver=lambda *_args: [(2, 1, 6, '', ('93.184.216.34', 443))],
             )
     with pytest.raises(ArtifactIntegrityError, match='content_artifact_configuration_invalid'):
         configured_s3_artifact_store(
-            endpoint='https://objects.example.net', bucket='base2-media', region='fra1',
-            allowed_hosts={'objects.example.net'}, access_key_file=str(secret),
-            secret_key_file=str(secret), max_bytes=1024,
+            endpoint='https://objects.example.net',
+            bucket='base2-media',
+            region='fra1',
+            allowed_hosts={'objects.example.net'},
+            access_key_file=str(secret),
+            secret_key_file=str(secret),
+            max_bytes=1024,
             resolver=MagicMock(side_effect=OSError('dns unavailable')),
         )
+
+
+def test_runtime_store_factory_selects_one_backend_for_all_callers(monkeypatch):
+    settings = SimpleNamespace(
+        CONTENT_WORKSPACE_STORAGE_BACKEND='local',
+        CONTENT_WORKSPACE_STORAGE_ROOT='/private/artifacts',
+        CONTENT_WORKSPACE_STORAGE_KEY='encoded',
+    )
+    local = MagicMock()
+    monkeypatch.setattr('api.services.content_workspace_storage.configured_artifact_store', local)
+    configured_runtime_artifact_store(settings, max_bytes=1024)
+    assert local.call_args.kwargs['max_bytes'] == 1024
+
+    settings.CONTENT_WORKSPACE_STORAGE_BACKEND = 's3'
+    settings.CONTENT_WORKSPACE_S3_ENDPOINT = 'https://objects.example.net'
+    settings.CONTENT_WORKSPACE_S3_BUCKET = 'base2-media'
+    settings.CONTENT_WORKSPACE_S3_REGION = 'fra1'
+    settings.CONTENT_WORKSPACE_S3_ALLOWED_HOSTS = 'objects.example.net'
+    settings.CONTENT_WORKSPACE_S3_ACCESS_KEY_FILE = '/run/secrets/s3-access'
+    settings.CONTENT_WORKSPACE_S3_SECRET_KEY_FILE = '/run/secrets/s3-secret'
+    s3 = MagicMock()
+    monkeypatch.setattr('api.services.content_workspace_storage.configured_s3_artifact_store', s3)
+    configured_runtime_artifact_store(settings, max_bytes=2048)
+    assert s3.call_args.kwargs['allowed_hosts'] == {'objects.example.net'}
+
+    settings.CONTENT_WORKSPACE_STORAGE_BACKEND = 'unknown'
+    with pytest.raises(ArtifactIntegrityError, match='configuration_invalid'):
+        configured_runtime_artifact_store(settings, max_bytes=1024)

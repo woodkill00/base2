@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "currentSchema": 27,
+  "currentSchema": 29,
   "minimumCompatibleSchema": 17,
   "migrations": [
     {
@@ -99,6 +99,26 @@
       "toSchema": 27,
       "phase": "expand",
       "compatibleFrom": 26,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "worker_runtime_least_privilege",
+      "fromSchema": 27,
+      "toSchema": 28,
+      "phase": "contract",
+      "compatibleFrom": 27,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "tenant_lifecycle_state",
+      "fromSchema": 28,
+      "toSchema": 29,
+      "phase": "expand",
+      "compatibleFrom": 28,
       "expectedLockMs": 1000,
       "expectedRuntimeMs": 30000,
       "destructive": false

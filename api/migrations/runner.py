@@ -18,6 +18,7 @@ MIGRATIONS = (
     '007_protect_audit_events',
     '008_create_settings_tables',
     '009_add_deactivation_operation',
+    '010_add_email_delivery_fencing',
 )
 
 

@@ -40,12 +40,14 @@ def pool_snapshot() -> dict[str, dict[str, int | str]]:
             int(getattr(pool, 'maxconn', settings.DB_POOL_MAX)) if pool else settings.DB_POOL_MAX
         )
         used = len(getattr(pool, '_used', {})) if pool else 0
+        admitted = max(1, math.floor(maximum * settings.DB_POOL_SATURATION_PERCENT / 100))
         percent = round(used * 100 / max(maximum, 1))
         result[name] = {
             'used': used,
             'maximum': maximum,
             'utilizationPercent': percent,
-            'state': 'saturated' if percent >= settings.DB_POOL_SATURATION_PERCENT else 'ready',
+            'admitted': admitted,
+            'state': 'saturated' if used >= admitted else 'ready',
         }
     return result
 
@@ -219,8 +221,10 @@ def _reset_connection(conn: PsycopgConnection) -> None:
 
 @contextmanager
 def db_conn(*, tenant_id: str | None = None):
-    pool = _get_pool()
     conn = _get_conn()
+    # _get_conn may have replaced a poisoned pool. Always return the
+    # connection to the pool that is current after checkout.
+    pool = _get_pool()
     try:
         if tenant_id is not None:
             _bind_tenant(conn, tenant_id)

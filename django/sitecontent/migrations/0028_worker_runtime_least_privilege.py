@@ -21,6 +21,48 @@ JOB_GRANTS = {
     "sitecontent_durableschedule": "SELECT, UPDATE",
 }
 EMAIL_GRANTS = {"api_email_outbox": "SELECT, UPDATE"}
+HISTORICAL_WORKSPACE_TABLES = (
+    "sitecontent_assetbinding",
+    "sitecontent_contentfielddefinition",
+    "sitecontent_contentrecord",
+    "sitecontent_contentrelationship",
+    "sitecontent_contentrevision",
+    "sitecontent_contenttypedefinition",
+    "sitecontent_exportjob",
+    "sitecontent_importjob",
+    "sitecontent_importrowoutcome",
+    "sitecontent_mediaasset",
+    "sitecontent_mediavariant",
+    "sitecontent_savedview",
+    "sitecontent_searchdocument",
+    "sitecontent_workflowdefinition",
+    "sitecontent_workspaceauditevent",
+    "sitecontent_mediacollection",
+    "sitecontent_mediacollectionmembership",
+    "sitecontent_mediajob",
+    "sitecontent_mediametadatarevision",
+    "sitecontent_mediaobjectversion",
+    "sitecontent_mediaretentionhold",
+    "sitecontent_mediauploadsession",
+)
+DIRECT_TENANT_RLS_TABLES = (
+    "sitecontent_contenttypedefinition",
+    "sitecontent_contentrecord",
+    "sitecontent_contentrelationship",
+    "sitecontent_savedview",
+    "sitecontent_assetbinding",
+    "sitecontent_importjob",
+    "sitecontent_exportjob",
+    "sitecontent_workspaceauditevent",
+    "sitecontent_mediaasset",
+    "sitecontent_mediacollection",
+    "sitecontent_mediacollectionmembership",
+    "sitecontent_mediajob",
+    "sitecontent_mediametadatarevision",
+    "sitecontent_mediaobjectversion",
+    "sitecontent_mediaretentionhold",
+    "sitecontent_mediauploadsession",
+)
 
 
 def _worker_role(schema_editor) -> str:
@@ -52,6 +94,31 @@ def narrow_worker_runtime_grants(apps, schema_editor):
     }
     with schema_editor.connection.cursor() as cursor:
         cursor.execute(f"GRANT USAGE ON SCHEMA public TO {worker}")
+        # Remove every historical blanket grant before adding the small fixed
+        # runtime set. This also repairs databases upgraded through 0010/0012.
+        for table in HISTORICAL_WORKSPACE_TABLES:
+            quoted_table = schema_editor.connection.ops.quote_name(table)
+            cursor.execute(f"REVOKE ALL PRIVILEGES ON TABLE {quoted_table} FROM {worker}")
+        tenant = "site_id = current_setting('app.tenant_id', true)"
+        for table in DIRECT_TENANT_RLS_TABLES:
+            for suffix in ("tenant_scope", "select", "insert", "update", "delete"):
+                cursor.execute(f'DROP POLICY IF EXISTS "{table}_{suffix}" ON "{table}"')
+            cursor.execute(
+                f"""CREATE POLICY "{table}_tenant_scope" ON "{table}"
+                    USING ({tenant}) WITH CHECK ({tenant})"""
+            )
+        variant = "sitecontent_mediavariant"
+        for suffix in ("tenant_scope", "select", "insert", "update", "delete"):
+            cursor.execute(f'DROP POLICY IF EXISTS "{variant}_{suffix}" ON "{variant}"')
+        tenant_asset = (
+            "EXISTS (SELECT 1 FROM sitecontent_mediaasset asset "
+            "WHERE asset.id = asset_id AND "
+            "asset.site_id = current_setting('app.tenant_id', true))"
+        )
+        cursor.execute(
+            f"""CREATE POLICY "{variant}_tenant_scope" ON "{variant}"
+                USING ({tenant_asset}) WITH CHECK ({tenant_asset})"""
+        )
         for table, privileges in grants.items():
             quoted_table = schema_editor.connection.ops.quote_name(table)
             cursor.execute(f"REVOKE ALL PRIVILEGES ON TABLE {quoted_table} FROM PUBLIC")

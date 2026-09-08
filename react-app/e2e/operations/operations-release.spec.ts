@@ -15,7 +15,12 @@ test.beforeEach(async ({ page }, testInfo) => {
   }
   const localizedUser = {
     ...user,
-    locale: testInfo.project.name === 'chromium-rtl' ? 'ar' : 'en',
+    locale:
+      testInfo.project.name === 'chromium-rtl'
+        ? 'ar'
+        : testInfo.project.name === 'chromium-german'
+          ? 'de'
+          : 'en',
   };
   await page.addInitScript((fixture) => {
     localStorage.setItem('user', JSON.stringify(fixture));
@@ -199,16 +204,34 @@ test('operations center is accessible responsive and visually stable', async ({
   if (testInfo.project.name === 'chromium-large-text')
     await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
   const rtl = testInfo.project.name === 'chromium-rtl';
-  await expect(
-    page.getByRole('heading', { name: rtl ? 'مركز العمليات' : 'Operations center' })
-  ).toBeVisible();
+  const german = testInfo.project.name === 'chromium-german';
+  const label = {
+    title: rtl ? 'مركز العمليات' : german ? 'Betriebszentrale' : 'Operations center',
+    database: rtl
+      ? 'قاعدة البيانات غير متاحة'
+      : german
+        ? 'Datenbank nicht verfügbar'
+        : 'Database Unavailable',
+    health: rtl ? 'حالة الخدمات' : german ? 'Dienststatus' : 'Service health',
+    refresh: rtl ? 'تحديث الأدلة' : german ? 'Nachweise aktualisieren' : 'Refresh evidence',
+    viewTimeline: rtl ? 'عرض التسلسل الزمني' : german ? 'Zeitachse anzeigen' : 'View timeline',
+    timeline: rtl ? 'التسلسل الزمني للحادث' : german ? 'Vorfallzeitachse' : 'Incident timeline',
+    opened: rtl ? 'فُتح الحادث' : german ? 'Vorfall eröffnet' : 'Incident Opened',
+    closeTimeline: rtl ? 'إغلاق التسلسل' : german ? 'Zeitachse schließen' : 'Close timeline',
+    replay: rtl ? 'إعادة آمنة' : german ? 'Sicher wiederholen' : 'Replay safely',
+    cancel: rtl ? 'إلغاء' : german ? 'Abbrechen' : 'Cancel',
+    cancelTitle: rtl
+      ? 'هل تريد إلغاء هذه المهمة الفاشلة؟'
+      : german
+        ? 'Diesen Fehlerauftrag abbrechen?'
+        : 'Cancel this dead-letter job?',
+    cancelJob: rtl ? 'إلغاء المهمة' : german ? 'Auftrag abbrechen' : 'Cancel job',
+    acknowledge: rtl ? 'إقرار' : german ? 'Bestätigen' : 'Acknowledge',
+  };
+  await expect(page.getByRole('heading', { name: label.title })).toBeVisible();
   await expect(page.getByText('11/12')).toBeVisible();
-  await expect(
-    page.getByText(rtl ? 'قاعدة البيانات غير متاحة' : 'Database Unavailable')
-  ).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: rtl ? 'حالة الخدمات' : 'Service health' })
-  ).toBeVisible();
+  await expect(page.getByText(label.database)).toBeVisible();
+  await expect(page.getByRole('heading', { name: label.health })).toBeVisible();
   if (rtl) {
     await expect(page.getByText('Database Unavailable')).toHaveCount(0);
     await expect(page.getByText('Operations Collect')).toHaveCount(0);
@@ -262,7 +285,7 @@ test('operations center is accessible responsive and visually stable', async ({
       true
     );
     const transitionDuration = await page
-      .getByRole('button', { name: rtl ? 'تحديث الأدلة' : 'Refresh evidence' })
+      .getByRole('button', { name: label.refresh })
       .evaluate((button) => getComputedStyle(button).transitionDuration);
     expect(transitionDuration).toBe('0s');
   }
@@ -286,17 +309,13 @@ test('operations center is accessible responsive and visually stable', async ({
     caret: 'hide',
     maxDiffPixelRatio: 0.01,
   });
-  const timelineButton = page
-    .getByRole('button', { name: rtl ? 'عرض التسلسل الزمني' : 'View timeline' })
-    .first();
+  const timelineButton = page.getByRole('button', { name: label.viewTimeline }).first();
   await timelineButton.focus();
   await timelineButton.press('Enter');
-  await expect(
-    page.getByRole('heading', { name: rtl ? 'التسلسل الزمني للحادث' : 'Incident timeline' })
-  ).toBeVisible();
-  await expect(page.getByText(rtl ? 'فُتح الحادث' : 'Incident Opened')).toBeVisible();
+  await expect(page.getByRole('heading', { name: label.timeline })).toBeVisible();
+  await expect(page.getByText(label.opened)).toBeVisible();
   const closeTimeline = page.getByRole('button', {
-    name: rtl ? 'إغلاق التسلسل' : 'Close timeline',
+    name: label.closeTimeline,
   });
   await closeTimeline.focus();
   await closeTimeline.press('Enter');
@@ -304,16 +323,16 @@ test('operations center is accessible responsive and visually stable', async ({
   const replayRequest = page.waitForRequest(
     (request) => request.method() === 'POST' && request.url().endsWith('/replay')
   );
-  const replay = page.getByRole('button', { name: rtl ? 'إعادة آمنة' : 'Replay safely' });
+  const replay = page.getByRole('button', { name: label.replay });
   await replay.focus();
   await replay.press('Enter');
   await replayRequest;
-  const cancel = page.getByRole('button', { name: rtl ? 'إلغاء' : 'Cancel' });
+  const cancel = page.getByRole('button', { name: label.cancel });
   await expect(cancel).toBeEnabled();
   await cancel.focus();
   await cancel.press('Enter');
   const cancelHeading = page.getByRole('heading', {
-    name: rtl ? 'هل تريد إلغاء هذه المهمة الفاشلة؟' : 'Cancel this dead-letter job?',
+    name: label.cancelTitle,
   });
   await expect(cancelHeading).toBeFocused();
   if (testInfo.project.name === 'chromium-desktop') {
@@ -328,26 +347,30 @@ test('operations center is accessible responsive and visually stable', async ({
   await expect(cancel).toBeFocused();
   await cancel.press('Enter');
   const confirmCancel = page.getByRole('button', {
-    name: rtl ? 'إلغاء المهمة' : 'Cancel job',
+    name: label.cancelJob,
   });
-  await confirmCancel.focus();
+  await expect(confirmCancel).toBeVisible();
+  await expect(confirmCancel).toBeEnabled();
   await Promise.all([
     page.waitForRequest(
       (request) => request.method() === 'POST' && request.url().endsWith('/cancel')
     ),
-    confirmCancel.press('Enter'),
+    confirmCancel.click(),
   ]);
-  const acknowledge = page.getByRole('button', { name: rtl ? 'إقرار' : 'Acknowledge' });
+  const acknowledge = page.getByRole('button', { name: label.acknowledge });
   await expect(acknowledge).toBeEnabled();
   await acknowledge.focus();
   await acknowledge.press('Enter');
-  await expect(
-    page.getByRole('heading', { name: rtl ? 'مركز العمليات' : 'Operations center' })
-  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: label.title })).toBeVisible();
 });
 
 test('operations center shows truthful empty and failure states', async ({ page }, testInfo) => {
-  if (testInfo.project.name !== 'chromium-desktop') return;
+  if (
+    !['chromium-compact', 'chromium-desktop', 'firefox-desktop', 'webkit-desktop'].includes(
+      testInfo.project.name
+    )
+  )
+    return;
   const partialHandler = async (route) => {
     const url = new URL(route.request().url());
     const body = url.pathname.endsWith('/summary')
@@ -396,7 +419,12 @@ test('operations center shows truthful empty and failure states', async ({ page 
 test('operations center exposes stale, reauthentication, and read-only recovery states', async ({
   page,
 }, testInfo) => {
-  if (testInfo.project.name !== 'chromium-desktop') return;
+  if (
+    !['chromium-compact', 'chromium-desktop', 'firefox-desktop', 'webkit-desktop'].includes(
+      testInfo.project.name
+    )
+  )
+    return;
   await page.goto('/operations', { waitUntil: 'networkidle' });
   await expect(page.getByText('11/12')).toBeVisible();
 

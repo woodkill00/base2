@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 from uuid import uuid4
@@ -132,33 +133,55 @@ def test_smtp_adapter_requires_tls_port_and_sends_without_exposing_credentials(m
 
         def send_message(self, message):
             assert message['To'] == 'person@example.test'
+            assert str(message['Message-ID']).startswith('<base2-')
             calls.append(('send',))
 
     monkeypatch.setattr('api.services.transactional_email.smtplib.SMTP', FakeSmtp)
     adapter = SmtpEmailAdapter(
-        host='smtp.example.test', port=587, username='smtp-user',
-        password='smtp-password', from_address='no-reply@example.test', timeout=5,
+        host='smtp.example.test',
+        port=587,
+        username='smtp-user',
+        password='smtp-password',
+        from_address='no-reply@example.test',
+        timeout=5,
     )
-    message = render_email(
+    rendered = render_email(
         'verification', 'person@example.test', {'url': 'https://example.test/verify'}
     )
+    message = replace(rendered, delivery_key='stable-key')
     assert deliver_email(message, adapter).status == 'sent'
     assert ('starttls',) in calls and ('send',) in calls
     with pytest.raises(ValueError, match='smtp_port_invalid'):
         SmtpEmailAdapter(
-            host='smtp.example.test', port=25, username='user', password='password',
+            host='smtp.example.test',
+            port=25,
+            username='user',
+            password='password',
             from_address='no-reply@example.test',
         )
 
 
 def test_outbox_retry_is_durable_and_becomes_dead_letter_after_bound(monkeypatch):
+    claim_token = uuid4()
     row = EmailOutboxRow(
-        uuid4(), 'private@example.test', 'subject', 'body', '', 'sending',
-        'worker_claim', '', 'delivery_retry:2', datetime.now(timezone.utc), None,
+        uuid4(),
+        'private@example.test',
+        'subject',
+        'body',
+        '',
+        'sending',
+        'worker_claim',
+        '',
+        'delivery_retry:2',
+        datetime.now(timezone.utc),
+        None,
+        claim_token,
+        'stable-delivery-key',
     )
     monkeypatch.setattr(email_service, 'claim_outbox_email', lambda _outbox_id: row)
     monkeypatch.setattr(
-        email_service, '_configured_adapter',
+        email_service,
+        '_configured_adapter',
         lambda: LocalFakeEmailAdapter(AdapterResult('failed', retryable=True)),
     )
     mark = MagicMock()
@@ -166,3 +189,57 @@ def test_outbox_retry_is_durable_and_becomes_dead_letter_after_bound(monkeypatch
     email_service.process_outbox_email(outbox_id=row.id)
     assert mark.call_args.kwargs['status'] == 'dead_letter'
     assert mark.call_args.kwargs['error'] == 'delivery_dead_letter'
+    assert mark.call_args.kwargs['claim_token'] == claim_token
+
+
+def test_disabled_runtime_delivery_is_retained_for_retry(monkeypatch):
+    claim_token = uuid4()
+    row = EmailOutboxRow(
+        uuid4(),
+        'private@example.test',
+        'subject',
+        'body',
+        '',
+        'sending',
+        'worker_claim',
+        '',
+        '',
+        datetime.now(timezone.utc),
+        None,
+        claim_token,
+        'stable-delivery-key',
+    )
+    monkeypatch.setattr(email_service, 'claim_outbox_email', lambda _outbox_id: row)
+    monkeypatch.setattr(email_service, '_configured_adapter', DisabledEmailAdapter)
+    mark = MagicMock()
+    monkeypatch.setattr(email_service, 'mark_outbox_status', mark)
+    email_service.process_outbox_email(outbox_id=row.id)
+    assert mark.call_args.kwargs['status'] == 'retry'
+    assert mark.call_args.kwargs['error'] == 'delivery_retry:1'
+
+
+def test_stale_worker_claim_cannot_settle_a_newer_delivery(monkeypatch):
+    connection = MagicMock()
+    cursor = MagicMock()
+    connection.__enter__.return_value = connection
+    connection.cursor.return_value.__enter__.return_value = cursor
+    cursor.rowcount = 0
+    monkeypatch.setattr(email_service, 'db_conn', lambda: connection)
+    stale = uuid4()
+    assert not email_service.mark_outbox_status(
+        outbox_id=uuid4(), claim_token=stale, status='sent', provider='smtp'
+    )
+    statement, parameters = cursor.execute.call_args.args
+    assert "status='sending' AND claim_token=%s" in statement
+    assert parameters[-1] == str(stale)
+
+
+def test_email_fencing_migration_has_stable_unique_delivery_identity():
+    from pathlib import Path
+
+    migration = (
+        Path(__file__).parents[1] / 'migrations/sql/010_add_email_delivery_fencing.sql'
+    ).read_text(encoding='utf-8')
+    assert 'claim_token UUID' in migration
+    assert 'claim_expires_at TIMESTAMPTZ' in migration
+    assert 'UNIQUE INDEX' in migration and 'delivery_key' in migration

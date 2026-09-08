@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from api.middleware.tenant import ensure_path_tenant_matches
 from api.repositories import tenant_lifecycle as tenant_lifecycle_repository
 from api.repositories import tenant_quota
-from api.repositories.identity_admin import require_permission
+from api.repositories.identity_admin import membership, require_permission
 from api.security.identity import require_recent_reauthentication
 from api.security.request_auth import require_authenticated_principal
 from api.security.tenant_limits import incr_and_check_detailed
@@ -41,7 +41,7 @@ class TenantTransitionRequest(BaseModel):
 
 class TenantOperationRequest(BaseModel):
     operation_id: UUID = Field(alias='operationId')
-    operation: Literal['configure', 'transfer', 'export']
+    operation: Literal['configure', 'transfer_prepare', 'transfer_accept', 'export']
     expected_revision: int = Field(alias='expectedRevision', ge=1)
     target_owner: str | None = Field(default=None, alias='targetOwner', max_length=127)
     configuration: dict[str, Any] | None = None
@@ -140,7 +140,19 @@ def transition_lifecycle(tenant_id: str, body: TenantTransitionRequest, request:
 
 @router.post('/{tenant_id}/lifecycle/operations')
 def run_lifecycle_operation(tenant_id: str, body: TenantOperationRequest, request: Request):
-    principal, tid = _lifecycle_scope(request, tenant_id, recent=True)
+    if body.operation == 'transfer_accept':
+        tid = ensure_path_tenant_matches(request, tenant_id)
+        principal = require_authenticated_principal(request)
+        try:
+            if membership(user_id=principal.user_id, tenant_id=tid) is None:
+                raise PermissionError('not_found')
+            if not principal.recently_authenticated:
+                raise PermissionError('recent_reauthentication_required')
+            require_recent_reauthentication(authenticated_at=principal.authenticated_at)
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+    else:
+        principal, tid = _lifecycle_scope(request, tenant_id, recent=True)
     try:
         return tenant_lifecycle.persist_operation(
             tenant_id=tid,

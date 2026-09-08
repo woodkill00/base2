@@ -12,6 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SNAPSHOT_ROOT = ROOT / "react-app/e2e/operations/operations-release.spec.ts-snapshots"
 MANIFEST = ROOT / "specs/106-production-readiness-program/operations-visual-review.json"
+RUNNER_RECEIPT = ROOT / "specs/106-production-readiness-program/operations-visual-runner.json"
 SOURCES = (
     "react-app/src/pages/OperationsCenter.jsx",
     "react-app/src/services/operations.js",
@@ -20,27 +21,32 @@ SOURCES = (
     "react-app/src/components/glass/GlassHeader.tsx",
     "react-app/e2e/operations/operations-release.spec.ts",
     "react-app/playwright.operations-release.config.mjs",
+    "react-app/e2e/operations/visual-receipt-reporter.mjs",
 )
 CAPTURE_NAMES = {
-    *(f"operations-center-chromium-{mode}-chromium-{mode}-linux.png" for mode in (
-        "compact",
-        "landscape-touch",
-        "tablet",
-        "desktop",
-        "ultrawide",
-        "large-text",
-        "400-zoom",
-        "light",
-        "high-contrast",
-        "rtl",
-        "reduced-motion",
-    )),
-    "operations-center-empty-chromium-desktop-linux.png",
-    "operations-center-error-chromium-desktop-linux.png",
-    "operations-center-partial-chromium-desktop-linux.png",
+    *(
+        f"operations-center-chromium-{mode}-chromium-{mode}-linux.png"
+        for mode in (
+            "compact",
+            "landscape-touch",
+            "tablet",
+            "desktop",
+            "ultrawide",
+            "large-text",
+            "400-zoom",
+            "light",
+            "high-contrast",
+            "rtl",
+            "german",
+            "reduced-motion",
+        )
+    ),
     "operations-center-cancel-confirmation-chromium-desktop-linux.png",
-    "operations-center-reauth-chromium-desktop-linux.png",
-    "operations-center-read-only-chromium-desktop-linux.png",
+    *(
+        f"operations-center-{state}-{project}-linux.png"
+        for state in ("empty", "error", "partial", "reauth", "read-only")
+        for project in ("chromium-compact", "chromium-desktop", "firefox-desktop", "webkit-desktop")
+    ),
     "operations-center-firefox-desktop-firefox-desktop-linux.png",
     "operations-center-webkit-desktop-webkit-desktop-linux.png",
 }
@@ -70,6 +76,23 @@ def build() -> dict:
             f"missing={sorted(CAPTURE_NAMES - capture_names)} "
             f"extra={sorted(capture_names - CAPTURE_NAMES)}"
         )
+    try:
+        runner = json.loads(RUNNER_RECEIPT.read_text(encoding="utf-8"))
+        unsigned_runner = {key: runner[key] for key in runner if key != "digest"}
+        expected_runner_digest = hashlib.sha256(
+            json.dumps(unsigned_runner, separators=(",", ":")).encode()
+        ).hexdigest()
+        if (
+            set(runner) != {"schemaVersion", "status", "tests", "digest"}
+            or runner["schemaVersion"] != 1
+            or runner["status"] != "passed"
+            or not runner["tests"]
+            or any(test.get("status") != "passed" for test in runner["tests"])
+            or runner["digest"] != expected_runner_digest
+        ):
+            raise ValueError("runner receipt did not prove a passing run")
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise VisualEvidenceError(f"visual runner receipt invalid: {exc}") from exc
     return {
         "schemaVersion": 1,
         "status": "accepted",
@@ -77,6 +100,7 @@ def build() -> dict:
         "screenshots": {
             path.name: {"sha256": _sha256(path), "pixels": _png_size(path)} for path in screenshots
         },
+        "runnerReceipt": {"sha256": _sha256(RUNNER_RECEIPT), "digest": runner["digest"]},
         "assertions": {
             "accessibility": "pass",
             "console": "pass",

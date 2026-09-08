@@ -116,6 +116,13 @@ def enqueue_job(
     with workspace_db_conn(tenant_id=tenant_id) as conn:
         with conn.cursor() as cursor:
             cursor.execute(
+                'SELECT state FROM sitecontent_tenantlifecyclestate WHERE site_id=%s',
+                (tenant_id,),
+            )
+            lifecycle = cursor.fetchone()
+            if not lifecycle or lifecycle[0] != 'active':
+                raise RuntimeRepositoryError('job:tenant_not_active')
+            cursor.execute(
                 'SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))',
                 (f'{tenant_id}:{stored_idempotency_key}',),
             )
@@ -198,7 +205,7 @@ def claim_jobs(
             cursor.execute(
                 """WITH candidates AS (
                        SELECT id FROM sitecontent_durablejob
-                       WHERE site_id=%s AND available_at<=%s
+                       WHERE site_id=%s AND available_at<=NOW()
                          AND (state IN ('queued','retry') OR
                               (state='leased' AND lease_expires_at<=NOW()))
                          AND attempts<maximum_attempts
@@ -211,7 +218,7 @@ def claim_jobs(
                    FROM candidates WHERE job.id=candidates.id
                    RETURNING job.id,job.job_type,job.payload_digest,job.payload_schema,
                      job.attempts,job.generation,job.lease_token""",
-                (tenant_id, now, limit, worker, str(lease_token)),
+                (tenant_id, limit, worker, str(lease_token)),
             )
             rows = cursor.fetchall()
         conn.commit()
@@ -368,6 +375,8 @@ def claim_due_schedules(*, tenant_id: str, now: datetime, limit: int = 25) -> li
     claim_token = uuid4()
     with workspace_db_conn(tenant_id=tenant_id) as conn:
         with conn.cursor() as cursor:
+            cursor.execute('SELECT NOW()')
+            database_now = cursor.fetchone()[0]
             # Claims are capacity reservations. Count live jobs plus unexpired
             # schedule claims under one tenant-scoped transaction lock so
             # concurrent materializers cannot oversubscribe the fixed ceiling.
@@ -397,8 +406,8 @@ def claim_due_schedules(*, tenant_id: str, now: datetime, limit: int = 25) -> li
                 """SELECT id,schedule_key,job_type,timezone,rule,missed_policy,overlap_policy,
                           next_run_at,last_run_at,revision
                    FROM sitecontent_durableschedule
-                   WHERE site_id=%s AND enabled AND next_run_at<=%s
-                     AND (claim_token IS NULL OR claim_expires_at<=%s)
+                   WHERE site_id=%s AND enabled AND next_run_at<=NOW()
+                     AND (claim_token IS NULL OR claim_expires_at<=NOW())
                      AND NOT EXISTS (
                          SELECT 1 FROM sitecontent_durablejob AS active
                          WHERE active.site_id=%s
@@ -414,7 +423,7 @@ def claim_due_schedules(*, tenant_id: str, now: datetime, limit: int = 25) -> li
                          )
                      )
                    ORDER BY next_run_at,id FOR UPDATE SKIP LOCKED LIMIT %s""",
-                (tenant_id, now, now, tenant_id, tenant_id, capacity),
+                (tenant_id, tenant_id, tenant_id, capacity),
             )
             rows = cursor.fetchall()
             claimed = []
@@ -428,7 +437,7 @@ def claim_due_schedules(*, tenant_id: str, now: datetime, limit: int = 25) -> li
                     raise RuntimeRepositoryError('schedule:rule_invalid')
                 original_due = row[7]
                 next_due = _next_schedule_run(
-                    rule=rule, zone=zone, due=original_due, now=now, missed=str(row[5])
+                    rule=rule, zone=zone, due=original_due, now=database_now, missed=str(row[5])
                 )
                 if row[6] == 'replace':
                     cursor.execute(
@@ -445,7 +454,7 @@ def claim_due_schedules(*, tenant_id: str, now: datetime, limit: int = 25) -> li
                     (
                         next_due,
                         str(claim_token),
-                        now + timedelta(seconds=60),
+                        database_now + timedelta(seconds=60),
                         tenant_id,
                         str(row[0]),
                         row[9],

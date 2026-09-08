@@ -11,6 +11,7 @@ const emptySummary = { services: { enabled: 0, total: 0 }, incidents: {}, synthe
 const COPY = {
   en: {
     appShell: 'Application shell',
+    themeToggle: 'Toggle color theme',
     privateWorkspace: 'Private workspace',
     menu: 'Menu',
     operationsSummary: 'Operations summary',
@@ -97,10 +98,13 @@ const COPY = {
     noSchedules: 'No schedules are configured.',
     noAlerts: 'No alert deliveries are recorded.',
     actionComplete: 'Runtime action completed and evidence refreshed.',
+    fleetAndReleases: 'Fleet and releases',
+    objectivesAndEvidence: 'Objectives and evidence',
     terms: {},
   },
   de: {
     appShell: 'Anwendungsbereich',
+    themeToggle: 'Farbschema wechseln',
     privateWorkspace: 'Privater Arbeitsbereich',
     menu: 'Menü',
     operationsSummary: 'Betriebsübersicht',
@@ -184,6 +188,8 @@ const COPY = {
     noSchedules: 'Keine Zeitpläne konfiguriert.',
     noAlerts: 'Keine Alarmzustellungen erfasst.',
     actionComplete: 'Laufzeitaktion abgeschlossen und Nachweise aktualisiert.',
+    fleetAndReleases: 'Flotte und Releases',
+    objectivesAndEvidence: 'Ziele und Nachweise',
     terms: {
       'operations.collect': 'Betriebsdaten erfassen',
       'operations.health': 'Betriebsstatus',
@@ -215,6 +221,7 @@ const COPY = {
   },
   ar: {
     appShell: 'مساحة التطبيق',
+    themeToggle: 'تبديل سمة الألوان',
     privateWorkspace: 'مساحة عمل خاصة',
     menu: 'القائمة',
     operationsSummary: 'ملخص العمليات',
@@ -298,6 +305,8 @@ const COPY = {
     noSchedules: 'لا توجد جداول مهيأة.',
     noAlerts: 'لا توجد عمليات تسليم تنبيه.',
     actionComplete: 'اكتمل الإجراء وتم تحديث الأدلة.',
+    fleetAndReleases: 'المواقع والإصدارات',
+    objectivesAndEvidence: 'الأهداف والأدلة',
     terms: {
       'operations.collect': 'جمع بيانات العمليات',
       'operations.health': 'صحة العمليات',
@@ -556,7 +565,13 @@ export default function OperationsCenter() {
   const evidenceLabel = (name) => (evidence[name] === 'stale' ? copy.stale : null);
 
   return (
-    <AppShell headerTitle={copy.appShell} footerLabel={copy.privateWorkspace} menuLabel={copy.menu}>
+    <AppShell
+      headerTitle={copy.appShell}
+      headerIsPageHeading={false}
+      footerLabel={copy.privateWorkspace}
+      menuLabel={copy.menu}
+      themeLabel={copy.themeToggle}
+    >
       <Navigation />
       <div
         className="operations-center mx-auto w-full max-w-6xl px-4 py-8"
@@ -764,7 +779,7 @@ export default function OperationsCenter() {
           )}
         </section>
 
-        <section className="mt-8 grid gap-4 lg:grid-cols-2" aria-label="Fleet and releases">
+        <section className="mt-8 grid gap-4 lg:grid-cols-2" aria-label={copy.fleetAndReleases}>
           <GlassCard className="p-5">
             <h2 className="text-xl font-semibold">{copy.fleet}</h2>
             {!available('overview') ? (
@@ -848,7 +863,7 @@ export default function OperationsCenter() {
           </div>
         </section>
 
-        <section className="mt-8 grid gap-4 lg:grid-cols-2" aria-label="Objectives and evidence">
+        <section className="mt-8 grid gap-4 lg:grid-cols-2" aria-label={copy.objectivesAndEvidence}>
           <GlassCard className="p-5">
             <h2 className="text-xl font-semibold">{copy.objectives}</h2>
             {!available('overview') ? (

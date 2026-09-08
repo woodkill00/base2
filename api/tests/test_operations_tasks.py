@@ -18,7 +18,17 @@ def test_operations_beat_schedule_is_bounded_and_persistent():
     assert schedule['email-replay-outbox']['schedule'] == 60.0
 
 
+def test_workers_are_partitioned_by_fixed_task_routes():
+    routes = tasks.app.conf.task_routes
+    assert routes['app.send_email_outbox'] == {'queue': 'email'}
+    assert routes['app.replay_email_outbox'] == {'queue': 'email'}
+    assert routes['app.process_data_rights_operation'] == {'queue': 'content'}
+    assert routes['app.process_workspace_export'] == {'queue': 'content'}
+    assert tasks.app.conf.task_default_queue == 'runtime'
+
+
 def test_collection_and_dispatch_fan_out_only_configured_tenants(monkeypatch):
+    monkeypatch.setattr(tasks, '_runtime_fanout_has_capacity', lambda: True)
     monkeypatch.setattr(tasks.settings, 'OPERATIONS_ALERTS_ENABLED', True)
     monkeypatch.setattr(tasks, 'configured_tenants', lambda: ['tenant-one', 'tenant-two'])
     monkeypatch.setattr(tasks, 'fair_tenant_batch', lambda values, **_kwargs: values)
@@ -34,10 +44,12 @@ def test_collection_and_dispatch_fan_out_only_configured_tenants(monkeypatch):
 
 
 def test_operations_fanout_skips_already_reserved_tenant(monkeypatch):
+    monkeypatch.setattr(tasks, '_runtime_fanout_has_capacity', lambda: True)
     monkeypatch.setattr(tasks, 'configured_tenants', lambda: ['tenant-one', 'tenant-two'])
     monkeypatch.setattr(tasks, 'fair_tenant_batch', lambda values, **_kwargs: values)
     monkeypatch.setattr(
-        tasks, '_reserve_tenant_dispatch',
+        tasks,
+        '_reserve_tenant_dispatch',
         lambda kind, site: None if site == 'tenant-one' else 'dispatch-token',
     )
     delayed = MagicMock()
@@ -61,6 +73,16 @@ def test_alert_dispatch_has_no_runtime_or_secret_reads_while_disabled(monkeypatc
     configured = MagicMock()
     monkeypatch.setattr(tasks, 'configured_tenants', configured)
     assert tasks.dispatch_operations_alerts_task.run() == 0
+    configured.assert_not_called()
+
+
+def test_operations_fanout_fails_closed_before_queue_saturation(monkeypatch):
+    client = MagicMock()
+    client.llen.return_value = 85
+    monkeypatch.setattr(tasks, 'redis_client', lambda: client)
+    configured = MagicMock()
+    monkeypatch.setattr(tasks, 'configured_tenants', configured)
+    assert tasks.collect_operations_health.run() == 0
     configured.assert_not_called()
 
 
@@ -112,7 +134,9 @@ def test_runtime_job_claim_and_settlement_are_lease_bound(monkeypatch):
     assert tasks.claim_runtime_jobs_task.run() == 1
     delayed.assert_called_once_with('tenant-one', job)
 
-    monkeypatch.setattr(tasks.collect_operations_site, 'run', MagicMock(return_value={'samples': 1}))
+    monkeypatch.setattr(
+        tasks.collect_operations_site, 'run', MagicMock(return_value={'samples': 1})
+    )
     settle = MagicMock(return_value='succeeded')
     monkeypatch.setattr(tasks, 'settle_job', settle)
     monkeypatch.setattr(tasks, 'renew_job_lease', MagicMock())

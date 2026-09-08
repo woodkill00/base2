@@ -15,6 +15,44 @@ EVENT_TABLE = "sitecontent_tenantlifecycleevent"
 TABLES = (STATE_TABLE, EVENT_TABLE)
 
 
+def backfill_active_organizations(apps, schema_editor):
+    """Give every pre-lifecycle organization an explicit, auditable active state."""
+    del apps
+    if schema_editor.connection.vendor != "postgresql":
+        return
+    with schema_editor.connection.cursor() as cursor:
+        cursor.execute(
+            f"""WITH legacy AS (
+                  SELECT organization.tenant_id,
+                         COALESCE((SELECT membership.user_id::text
+                           FROM api_identity_memberships membership
+                          WHERE membership.organization_id=organization.id
+                            AND membership.status='active'
+                          ORDER BY CASE membership.role WHEN 'owner' THEN 0 ELSE 1 END,
+                                   membership.created_at, membership.id LIMIT 1),
+                                  'system:legacy') AS owner_ref,
+                         gen_random_uuid() AS operation_id
+                    FROM api_identity_organizations organization
+                ), inserted AS (
+                  INSERT INTO "{STATE_TABLE}"
+                    (id,site_id,state,owner_ref,configuration,revision,last_operation_id,
+                     last_receipt_digest,created_at,updated_at)
+                  SELECT gen_random_uuid(),tenant_id,'active',owner_ref,'{{}}'::jsonb,1,
+                         operation_id,
+                         encode(digest('legacy-lifecycle:' || tenant_id,'sha256'),'hex'),NOW(),NOW()
+                    FROM legacy
+                  ON CONFLICT (site_id) DO NOTHING
+                  RETURNING site_id,owner_ref,last_operation_id,last_receipt_digest
+                )
+                INSERT INTO "{EVENT_TABLE}"
+                  (id,site_id,operation_id,operation,from_state,to_state,actor_ref,
+                   target_owner_ref,revision,receipt_digest,created_at,updated_at)
+                SELECT gen_random_uuid(),site_id,last_operation_id,'migration.backfill',
+                       'absent','active',owner_ref,'',1,last_receipt_digest,NOW(),NOW()
+                  FROM inserted"""
+        )
+
+
 def _runtime_role(schema_editor):
     value = os.environ.get("WORKSPACE_DB_USER", "").strip()
     if not ROLE.fullmatch(value):
@@ -46,12 +84,7 @@ def install_rls(apps, schema_editor):
             f'CREATE POLICY "{STATE_TABLE}_update" ON "{STATE_TABLE}" FOR UPDATE '
             f"USING ({tenant}) WITH CHECK ({tenant})"
         )
-        cursor.execute(
-            f'CREATE POLICY "{STATE_TABLE}_delete" ON "{STATE_TABLE}" FOR DELETE USING ({tenant})'
-        )
-        cursor.execute(
-            f'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "{STATE_TABLE}" TO "{runtime}"'
-        )
+        cursor.execute(f'GRANT SELECT, INSERT, UPDATE ON TABLE "{STATE_TABLE}" TO "{runtime}"')
         cursor.execute(f'GRANT SELECT, INSERT ON TABLE "{EVENT_TABLE}" TO "{runtime}"')
         cursor.execute(
             """CREATE FUNCTION sitecontent_reject_tenant_lifecycle_event_mutation()
@@ -62,10 +95,10 @@ def install_rls(apps, schema_editor):
                $$"""
         )
         cursor.execute(
-            f'''CREATE TRIGGER tenant_lifecycle_event_immutable
+            f"""CREATE TRIGGER tenant_lifecycle_event_immutable
                   BEFORE UPDATE OR DELETE ON "{EVENT_TABLE}"
                   FOR EACH ROW EXECUTE FUNCTION
-                  sitecontent_reject_tenant_lifecycle_event_mutation()'''
+                  sitecontent_reject_tenant_lifecycle_event_mutation()"""
         )
 
 
@@ -216,5 +249,6 @@ class Migration(migrations.Migration):
                 ],
             },
         ),
+        migrations.RunPython(backfill_active_organizations, migrations.RunPython.noop),
         migrations.RunPython(install_rls, uninstall_rls),
     ]

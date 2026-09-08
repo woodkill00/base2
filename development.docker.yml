@@ -39,8 +39,11 @@ services:
       # Mount external OpenAPI contract for runtime contract checks
       - ./specs/001-django-fastapi-react/contracts:/app/specs/001-django-fastapi-react/contracts:ro
       - content_workspace_artifacts:/var/lib/base2/content-workspace
+      - ${CONTENT_WORKSPACE_S3_ACCESS_KEY_FILE_HOST:-/dev/null}:/run/secrets/content-s3-access-key:ro
+      - ${CONTENT_WORKSPACE_S3_SECRET_KEY_FILE_HOST:-/dev/null}:/run/secrets/content-s3-secret-key:ro
     environment:
       - SITE_PROFILE=${SITE_PROFILE:-base2-obsidian}
+      - BASE2_PROCESS_ROLE=api
       - PORT=${FASTAPI_PORT}
       - DB_HOST=postgres
       - DB_PORT=${POSTGRES_PORT}
@@ -54,11 +57,25 @@ services:
       - IDENTITY_ENCRYPTION_KEY=${IDENTITY_ENCRYPTION_KEY}
       - CONTENT_WORKSPACE_STORAGE_ROOT=${CONTENT_WORKSPACE_STORAGE_ROOT}
       - CONTENT_WORKSPACE_STORAGE_KEY=${CONTENT_WORKSPACE_STORAGE_KEY}
+      - CONTENT_WORKSPACE_STORAGE_BACKEND=${CONTENT_WORKSPACE_STORAGE_BACKEND:-local}
+      - CONTENT_WORKSPACE_S3_ENDPOINT=${CONTENT_WORKSPACE_S3_ENDPOINT:-}
+      - CONTENT_WORKSPACE_S3_BUCKET=${CONTENT_WORKSPACE_S3_BUCKET:-}
+      - CONTENT_WORKSPACE_S3_REGION=${CONTENT_WORKSPACE_S3_REGION:-}
+      - CONTENT_WORKSPACE_S3_ALLOWED_HOSTS=${CONTENT_WORKSPACE_S3_ALLOWED_HOSTS:-}
+      - CONTENT_WORKSPACE_S3_ACCESS_KEY_FILE=/run/secrets/content-s3-access-key
+      - CONTENT_WORKSPACE_S3_SECRET_KEY_FILE=/run/secrets/content-s3-secret-key
       - OPERATIONS_ALERTS_ENABLED=${OPERATIONS_ALERTS_ENABLED:-false}
       - OPERATIONS_ALERT_INTEGRITY_KEY_FILE=${OPERATIONS_ALERT_INTEGRITY_KEY_FILE:-}
       - OPERATIONS_ALERT_RECEIPT_KEY_FILE=${OPERATIONS_ALERT_RECEIPT_KEY_FILE:-}
       - OPERATIONS_ALERT_WEBHOOK_URL_FILE=${OPERATIONS_ALERT_WEBHOOK_URL_FILE:-}
       - OPERATIONS_RECEIPT_INTEGRITY_KEY_FILE=${OPERATIONS_RECEIPT_INTEGRITY_KEY_FILE:-}
+      - BASE2_EMAIL_ADAPTER=${BASE2_EMAIL_ADAPTER:-disabled}
+      - BASE2_EMAIL_SMTP_HOST=${BASE2_EMAIL_SMTP_HOST:-}
+      - BASE2_EMAIL_SMTP_PORT=${BASE2_EMAIL_SMTP_PORT:-587}
+      - BASE2_EMAIL_SMTP_TIMEOUT_SECONDS=${BASE2_EMAIL_SMTP_TIMEOUT_SECONDS:-10}
+      - BASE2_EMAIL_FROM_ADDRESS=${BASE2_EMAIL_FROM_ADDRESS:-}
+      - BASE2_EMAIL_SMTP_USERNAME_FILE=/run/secrets/email-smtp-username
+      - BASE2_EMAIL_SMTP_PASSWORD_FILE=/run/secrets/email-smtp-password
       - JWT_EXPIRE=${JWT_EXPIRE}
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
@@ -428,6 +445,7 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME}_celery_worker
     environment:
       - SITE_PROFILE=${SITE_PROFILE:-base2-obsidian}
+      - BASE2_PROCESS_ROLE=runtime-worker
       - DB_HOST=postgres
       - DB_PORT=${POSTGRES_PORT}
       - DB_NAME=${POSTGRES_DB}
@@ -440,7 +458,6 @@ services:
       - TOKEN_PEPPER=${TOKEN_PEPPER}
       - IDENTITY_ENCRYPTION_KEY=${IDENTITY_ENCRYPTION_KEY}
       - CONTENT_WORKSPACE_STORAGE_ROOT=${CONTENT_WORKSPACE_STORAGE_ROOT}
-      - CONTENT_WORKSPACE_STORAGE_KEY=${CONTENT_WORKSPACE_STORAGE_KEY}
       - OPERATIONS_ALERTS_ENABLED=${OPERATIONS_ALERTS_ENABLED:-false}
       - OPERATIONS_ALERT_INTEGRITY_KEY_FILE=/run/secrets/operations-alert-integrity-key
       - OPERATIONS_ALERT_RECEIPT_KEY_FILE=/run/secrets/operations-alert-receipt-key
@@ -451,25 +468,17 @@ services:
       - BASE2_EMAIL_SMTP_PORT=${BASE2_EMAIL_SMTP_PORT:-587}
       - BASE2_EMAIL_SMTP_TIMEOUT_SECONDS=${BASE2_EMAIL_SMTP_TIMEOUT_SECONDS:-10}
       - BASE2_EMAIL_FROM_ADDRESS=${BASE2_EMAIL_FROM_ADDRESS:-}
-      - BASE2_EMAIL_SMTP_USERNAME_FILE=/run/secrets/email-smtp-username
-      - BASE2_EMAIL_SMTP_PASSWORD_FILE=/run/secrets/email-smtp-password
-      - MEDIA_INSPECTOR_SPOOL_ROOT=/var/lib/base2/media-inspector
-      - MEDIA_INSPECTOR_VERIFY_KEY=${MEDIA_INSPECTOR_VERIFY_KEY}
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
       - CELERY_LOG_LEVEL=${CELERY_LOG_LEVEL}
       - CELERY_CONCURRENCY=${CELERY_CONCURRENCY}
     networks: [app_network]
     volumes:
-      - content_workspace_artifacts:/var/lib/base2/content-workspace
-      - media_inspector_spool:/var/lib/base2/media-inspector
       - operations_receipts:/var/lib/base2/operations
       - ${OPERATIONS_ALERT_INTEGRITY_KEY_FILE_HOST:-/dev/null}:/run/secrets/operations-alert-integrity-key:ro
       - ${OPERATIONS_ALERT_RECEIPT_KEY_FILE_HOST:-/dev/null}:/run/secrets/operations-alert-receipt-key:ro
       - ${OPERATIONS_ALERT_WEBHOOK_URL_FILE_HOST:-/dev/null}:/run/secrets/operations-alert-webhook-url:ro
       - ${OPERATIONS_RECEIPT_INTEGRITY_KEY_FILE_HOST:-/dev/null}:/run/secrets/operations-receipt-integrity-key:ro
-      - ${BASE2_EMAIL_SMTP_USERNAME_FILE_HOST:-/dev/null}:/run/secrets/email-smtp-username:ro
-      - ${BASE2_EMAIL_SMTP_PASSWORD_FILE_HOST:-/dev/null}:/run/secrets/email-smtp-password:ro
     depends_on:
       media-inspector-spool-init:
         condition: service_completed_successfully
@@ -481,7 +490,7 @@ services:
         condition: service_healthy
     entrypoint: ['sh', '-c']
     command:
-      - 'celery -A api.tasks worker -l $${CELERY_LOG_LEVEL:-INFO} --concurrency=$${CELERY_CONCURRENCY:-2}'
+      - 'celery -A api.tasks worker -Q runtime -l $${CELERY_LOG_LEVEL:-INFO} --concurrency=$${CELERY_CONCURRENCY:-2}'
     restart: unless-stopped
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
@@ -502,6 +511,113 @@ services:
     cpus: '0.5'
 
   # Celery beat (optional; enable with `--profile celery`)
+  celery-content-worker:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+      args:
+        - PYTHON_VERSION=${FASTAPI_PYTHON_VERSION}
+    profiles: [celery]
+    container_name: ${COMPOSE_PROJECT_NAME}_celery_content_worker
+    environment:
+      - BASE2_PROCESS_ROLE=content-worker
+      - SITE_PROFILE=${SITE_PROFILE:-base2-obsidian}
+      - DB_HOST=postgres
+      - DB_PORT=${POSTGRES_PORT}
+      - DB_NAME=${POSTGRES_DB}
+      - DB_USER=${WORKSPACE_WORKER_DB_USER}
+      - DB_PASSWORD=${WORKSPACE_WORKER_DB_PASSWORD}
+      - WORKSPACE_DB_USER=${WORKSPACE_WORKER_DB_USER}
+      - WORKSPACE_DB_PASSWORD=${WORKSPACE_WORKER_DB_PASSWORD}
+      - WORKSPACE_WORKER_DB_USER=${WORKSPACE_WORKER_DB_USER}
+      - WORKSPACE_WORKER_DB_PASSWORD=${WORKSPACE_WORKER_DB_PASSWORD}
+      - IDENTITY_ENCRYPTION_KEY=${IDENTITY_ENCRYPTION_KEY}
+      - CONTENT_WORKSPACE_STORAGE_ROOT=${CONTENT_WORKSPACE_STORAGE_ROOT}
+      - CONTENT_WORKSPACE_STORAGE_KEY=${CONTENT_WORKSPACE_STORAGE_KEY}
+      - CONTENT_WORKSPACE_STORAGE_BACKEND=${CONTENT_WORKSPACE_STORAGE_BACKEND:-local}
+      - CONTENT_WORKSPACE_S3_ENDPOINT=${CONTENT_WORKSPACE_S3_ENDPOINT:-}
+      - CONTENT_WORKSPACE_S3_BUCKET=${CONTENT_WORKSPACE_S3_BUCKET:-}
+      - CONTENT_WORKSPACE_S3_REGION=${CONTENT_WORKSPACE_S3_REGION:-}
+      - CONTENT_WORKSPACE_S3_ALLOWED_HOSTS=${CONTENT_WORKSPACE_S3_ALLOWED_HOSTS:-}
+      - CONTENT_WORKSPACE_S3_ACCESS_KEY_FILE=/run/secrets/content-s3-access-key
+      - CONTENT_WORKSPACE_S3_SECRET_KEY_FILE=/run/secrets/content-s3-secret-key
+      - MEDIA_INSPECTOR_SPOOL_ROOT=/var/lib/base2/media-inspector
+      - MEDIA_INSPECTOR_VERIFY_KEY=${MEDIA_INSPECTOR_VERIFY_KEY}
+      - BASE2_EMAIL_ADAPTER=${BASE2_EMAIL_ADAPTER:-disabled}
+      - BASE2_EMAIL_SMTP_HOST=${BASE2_EMAIL_SMTP_HOST:-}
+      - BASE2_EMAIL_SMTP_PORT=${BASE2_EMAIL_SMTP_PORT:-587}
+      - BASE2_EMAIL_SMTP_TIMEOUT_SECONDS=${BASE2_EMAIL_SMTP_TIMEOUT_SECONDS:-10}
+      - BASE2_EMAIL_FROM_ADDRESS=${BASE2_EMAIL_FROM_ADDRESS:-}
+      - DB_SSLMODE=${DB_SSLMODE:-disable}
+      - DB_SSLROOTCERT=${DB_SSLROOTCERT:-}
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
+    networks: [app_network]
+    volumes:
+      - content_workspace_artifacts:/var/lib/base2/content-workspace
+      - media_inspector_spool:/var/lib/base2/media-inspector
+      - ${CONTENT_WORKSPACE_S3_ACCESS_KEY_FILE_HOST:-/dev/null}:/run/secrets/content-s3-access-key:ro
+      - ${CONTENT_WORKSPACE_S3_SECRET_KEY_FILE_HOST:-/dev/null}:/run/secrets/content-s3-secret-key:ro
+    depends_on:
+      media-inspector-spool-init: { condition: service_completed_successfully }
+      django: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+    entrypoint: [sh, -c]
+    command: ['celery -A api.tasks worker -Q content -l INFO --concurrency=2']
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: [/tmp, /var/tmp]
+    mem_limit: 512m
+    cpus: '0.75'
+
+  celery-email-worker:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+      args:
+        - PYTHON_VERSION=${FASTAPI_PYTHON_VERSION}
+    profiles: [celery]
+    container_name: ${COMPOSE_PROJECT_NAME}_celery_email_worker
+    environment:
+      - BASE2_PROCESS_ROLE=email-worker
+      - SITE_PROFILE=${SITE_PROFILE:-base2-obsidian}
+      - DB_HOST=postgres
+      - DB_PORT=${POSTGRES_PORT}
+      - DB_NAME=${POSTGRES_DB}
+      - DB_USER=${WORKSPACE_WORKER_DB_USER}
+      - DB_PASSWORD=${WORKSPACE_WORKER_DB_PASSWORD}
+      - BASE2_EMAIL_ADAPTER=${BASE2_EMAIL_ADAPTER:-disabled}
+      - BASE2_EMAIL_SMTP_HOST=${BASE2_EMAIL_SMTP_HOST:-}
+      - BASE2_EMAIL_SMTP_PORT=${BASE2_EMAIL_SMTP_PORT:-587}
+      - BASE2_EMAIL_SMTP_TIMEOUT_SECONDS=${BASE2_EMAIL_SMTP_TIMEOUT_SECONDS:-10}
+      - BASE2_EMAIL_FROM_ADDRESS=${BASE2_EMAIL_FROM_ADDRESS:-}
+      - BASE2_EMAIL_SMTP_USERNAME_FILE=/run/secrets/email-smtp-username
+      - BASE2_EMAIL_SMTP_PASSWORD_FILE=/run/secrets/email-smtp-password
+      - DB_SSLMODE=${DB_SSLMODE:-disable}
+      - DB_SSLROOTCERT=${DB_SSLROOTCERT:-}
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
+    networks: [app_network]
+    volumes:
+      - ${BASE2_EMAIL_SMTP_USERNAME_FILE_HOST:-/dev/null}:/run/secrets/email-smtp-username:ro
+      - ${BASE2_EMAIL_SMTP_PASSWORD_FILE_HOST:-/dev/null}:/run/secrets/email-smtp-password:ro
+    depends_on:
+      django: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+    entrypoint: [sh, -c]
+    command: ['celery -A api.tasks worker -Q email -l INFO --concurrency=1']
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: [/tmp, /var/tmp]
+    mem_limit: 256m
+    cpus: '0.5'
+
   celery-beat:
     build:
       context: ./api

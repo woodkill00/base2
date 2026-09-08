@@ -90,10 +90,10 @@ def test_worker_runtime_grants_are_explicit_and_public_access_is_revoked(monkeyp
         assert f'GRANT {privileges} ON TABLE "{table}" TO "base2_worker"' in statements
     assert 'GRANT SELECT, UPDATE ON TABLE "api_email_outbox" TO "base2_worker"' in statements
     assert all("sitecontent_breakglassgrant" not in statement for statement in statements)
-    assert all(
-        "POLICY" not in statement and "ROW LEVEL SECURITY" not in statement
-        for statement in statements
-    )
+    policy_statements = [statement for statement in statements if "CREATE POLICY" in statement]
+    assert policy_statements
+    assert all("current_user" not in statement for statement in policy_statements)
+    assert any("sitecontent_mediavariant_tenant_scope" in statement for statement in statements)
 
 
 def test_worker_role_fails_closed_on_session_environment_mismatch(monkeypatch):

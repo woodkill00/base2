@@ -455,6 +455,28 @@ def create_database_object_bundle(
     inventory = object_inventory(object_root)
     with tempfile.TemporaryDirectory(prefix="base2-backup-bundle-") as temporary:
         root = Path(temporary)
+        snapshot = root / "objects"
+        snapshot.mkdir(mode=0o700)
+        # Copy every object once into a private stable boundary while hashing
+        # those exact bytes. The archive never reopens the live source tree.
+        for member in inventory["members"]:
+            source = object_root.resolve() / member["path"]
+            target = snapshot / member["path"]
+            if source.is_symlink() or not source.is_file():
+                raise RecoveryDenied("backup:object_changed")
+            target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            digest = hashlib.sha256()
+            size = 0
+            with source.open("rb") as input_stream, target.open("xb") as output_stream:
+                while chunk := input_stream.read(1024 * 1024):
+                    digest.update(chunk)
+                    size += len(chunk)
+                    output_stream.write(chunk)
+                output_stream.flush()
+                os.fsync(output_stream.fileno())
+            target.chmod(0o600)
+            if digest.hexdigest() != member["sha256"] or size != member["size"]:
+                raise RecoveryDenied("backup:object_changed")
         manifest = root / "objects.json"
         manifest.write_text(json.dumps(inventory, sort_keys=True), encoding="utf-8")
         archive = root / "recovery.tar"
@@ -462,18 +484,14 @@ def create_database_object_bundle(
             bundle.add(database_dump, arcname="database.dump", recursive=False)
             bundle.add(manifest, arcname="objects.json", recursive=False)
             # Inventory and payload are one encrypted recovery unit. Every name
-            # is derived from the already verified, symlink-free inventory.
+            # is derived from the verified private snapshot, never a second
+            # read of the mutable live object tree.
             for member in inventory["members"]:
-                source = object_root.resolve() / member["path"]
-                if source.is_symlink() or not source.is_file():
-                    raise RecoveryDenied("backup:object_changed")
-                current_digest = hashlib.sha256()
-                with source.open("rb") as stream:
-                    while chunk := stream.read(1024 * 1024):
-                        current_digest.update(chunk)
-                if current_digest.hexdigest() != member["sha256"]:
-                    raise RecoveryDenied("backup:object_changed")
-                bundle.add(source, arcname=f"objects/{member['path']}", recursive=False)
+                bundle.add(
+                    snapshot / member["path"],
+                    arcname=f"objects/{member['path']}",
+                    recursive=False,
+                )
         receipt = create_stream_backup(
             source=archive,
             target_id=target_id,

@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 import os
+import threading
 from contextlib import suppress
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
@@ -34,7 +35,7 @@ from api.services.content_workspace_worker import (
     recover_media_scan_attempt,
     validate_import_job,
 )
-from api.services.content_workspace_storage import configured_artifact_store
+from api.services.content_workspace_storage import configured_runtime_artifact_store
 from api.services.media_library_runtime import (
     apply_due_media_governance,
     due_media_exports,
@@ -82,6 +83,31 @@ app.conf.update(
     timezone='UTC',
     enable_utc=True,
     include=['api.tasks'],
+    task_default_queue='runtime',
+    task_routes={
+        'app.send_email_outbox': {'queue': 'email'},
+        'app.replay_email_outbox': {'queue': 'email'},
+        'app.process_data_rights_operation': {'queue': 'content'},
+        'app.replay_data_rights_operations': {'queue': 'content'},
+        'app.expire_data_rights_results': {'queue': 'content'},
+        'app.publish_scheduled_content': {'queue': 'content'},
+        'app.replay_workspace_publications': {'queue': 'content'},
+        'app.process_workspace_media_scan': {'queue': 'content'},
+        'app.replay_workspace_media_scans': {'queue': 'content'},
+        'app.index_workspace_record': {'queue': 'content'},
+        'app.replay_workspace_index': {'queue': 'content'},
+        'app.process_workspace_export': {'queue': 'content'},
+        'app.replay_workspace_exports': {'queue': 'content'},
+        'app.expire_workspace_exports': {'queue': 'content'},
+        'app.purge_workspace_retained_data': {'queue': 'content'},
+        'app.validate_workspace_import': {'queue': 'content'},
+        'app.replay_workspace_import_validations': {'queue': 'content'},
+        'app.commit_workspace_import': {'queue': 'content'},
+        'app.replay_workspace_import_commits': {'queue': 'content'},
+        'app.process_media_export': {'queue': 'content'},
+        'app.replay_media_exports': {'queue': 'content'},
+        'app.apply_media_governance': {'queue': 'content'},
+    },
     beat_schedule={
         'replay-data-rights-queue': {
             'task': 'app.replay_data_rights_operations',
@@ -208,8 +234,20 @@ def _release_tenant_dispatch(kind: str, site_id: str, token: str) -> None:
     redis_client().eval(
         "if redis.call('get', KEYS[1]) == ARGV[1] then "
         "return redis.call('del', KEYS[1]) else return 0 end",
-        1, redis_tenant_key('operations-dispatch', site_id, kind), token,
+        1,
+        redis_tenant_key('operations-dispatch', site_id, kind),
+        token,
     )
+
+
+def _runtime_fanout_has_capacity(*, reserve: int = 16) -> bool:
+    """Keep one full bounded fan-out batch below the runtime queue ceiling."""
+    if not 1 <= reserve <= 16:
+        return False
+    try:
+        return int(redis_client().llen('runtime')) <= 100 - reserve
+    except Exception:
+        return False
 
 
 @app.task(name='app.collect_operations_site')
@@ -226,6 +264,8 @@ def collect_operations_site(site_id: str, dispatch_token: str | None = None) -> 
 
 @app.task(name='app.collect_operations_health')
 def collect_operations_health() -> int:
+    if not _runtime_fanout_has_capacity():
+        return 0
     tenants = fair_tenant_batch(configured_tenants(), cursor_name='collect')
     admitted = 0
     for tenant_id in tenants:
@@ -254,6 +294,8 @@ def dispatch_operations_site_alerts(
 @app.task(name='app.dispatch_operations_alerts')
 def dispatch_operations_alerts_task() -> int:
     if not settings.OPERATIONS_ALERTS_ENABLED:
+        return 0
+    if not _runtime_fanout_has_capacity():
         return 0
     tenants = fair_tenant_batch(configured_tenants(), cursor_name='alerts')
     admitted = 0
@@ -340,6 +382,28 @@ def run_runtime_job(tenant_id: str, job: dict) -> str:
         generation=int(job['generation']),
         now=now,
     )
+    stop_renewal = threading.Event()
+    lease_lost = threading.Event()
+
+    def renew_until_stopped() -> None:
+        while not stop_renewal.wait(60):
+            try:
+                renew_job_lease(
+                    tenant_id=tenant_id,
+                    job_id=UUID(job['jobId']),
+                    worker=worker,
+                    lease_token=UUID(job['leaseToken']),
+                    generation=int(job['generation']),
+                    now=datetime.now(UTC),
+                )
+            except Exception:
+                lease_lost.set()
+                return
+
+    heartbeat = threading.Thread(
+        target=renew_until_stopped, name='base2-job-lease-renewal', daemon=True
+    )
+    heartbeat.start()
     try:
         job_type = str(job['jobType'])
         if job_type == 'operations.collect':
@@ -350,7 +414,11 @@ def run_runtime_job(tenant_id: str, job: dict) -> str:
             result = prune_operations(tenant_id=tenant_id)
         else:
             raise ValueError('job:type_not_allowed')
+        if lease_lost.is_set():
+            raise RuntimeError('job:lease_lost')
     except Exception as exc:
+        stop_renewal.set()
+        heartbeat.join(timeout=2)
         return settle_job(
             tenant_id=tenant_id,
             job_id=UUID(job['jobId']),
@@ -361,6 +429,9 @@ def run_runtime_job(tenant_id: str, job: dict) -> str:
             now=now,
             error_code=(str(exc) if isinstance(exc, ValueError) else 'job.execution_failed')[:96],
         )
+    finally:
+        stop_renewal.set()
+        heartbeat.join(timeout=2)
     return settle_job(
         tenant_id=tenant_id,
         job_id=UUID(job['jobId']),
@@ -490,9 +561,8 @@ def replay_workspace_indexing(limit: int = 25) -> int:
 
 
 def _workspace_artifact_store():
-    return configured_artifact_store(
-        root=settings.CONTENT_WORKSPACE_STORAGE_ROOT,
-        encoded_key=settings.CONTENT_WORKSPACE_STORAGE_KEY or '',
+    return configured_runtime_artifact_store(
+        settings,
         max_bytes=int(SITE_MANIFEST.get('media', {}).get('maxBytes', 10 * 1024 * 1024)),
     )
 

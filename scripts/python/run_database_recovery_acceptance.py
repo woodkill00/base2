@@ -144,7 +144,7 @@ def main() -> int:
                 object_root=objects,
                 output=backup,
                 target_id="restore-drill-001",
-                data_schema=27,
+                data_schema=29,
                 key=key,
                 key_ref="vaultwarden://base2/disposable-recovery-key",
                 now=datetime.now(UTC),
@@ -156,11 +156,17 @@ def main() -> int:
                 backup=backup,
                 key=key,
                 expected_target="restore-drill-001",
-                expected_schema=27,
+                expected_schema=29,
                 output=archive,
             )
             with tarfile.open(archive, "r") as bundle:
-                if sorted(bundle.getnames()) != ["database.dump", "objects.json"]:
+                expected_members = [
+                    "database.dump",
+                    "objects.json",
+                    "objects/tenant-one.bin",
+                    "objects/tenant-two.bin",
+                ]
+                if sorted(bundle.getnames()) != expected_members:
                     raise RuntimeError("recovery_bundle_members_invalid")
                 if any(not member.isfile() for member in bundle.getmembers()):
                     raise RuntimeError("recovery_bundle_member_unsafe")

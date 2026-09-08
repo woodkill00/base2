@@ -1,4 +1,7 @@
 import pytest
+from fastapi.testclient import TestClient
+
+from api.main import app
 import base64
 from unittest.mock import patch
 from uuid import UUID
@@ -98,7 +101,9 @@ def test_deletion_is_separately_approved_and_irreversible():
         consume_nonce=consume,
     )
     assert deleting['recoverableDataPreserved'] is True
-    assert deleted['recoverableDataPreserved'] is False
+    assert deleted['recoverableDataPreserved'] is None
+    assert deleted['dataDeletionVerified'] is False
+    assert deleted['deletionVerificationRequired'] is True
     with pytest.raises(TenantLifecycleError):
         transition_tenant(tenant_id='tenant-one', current='deleted', target='active')
     with pytest.raises(TenantLifecycleError, match='approval_invalid'):
@@ -208,9 +213,9 @@ def test_quota_commit_release_and_reconciliation_are_explicit():
 def test_tenant_transfer_export_and_configuration_are_recent_auth_bound():
     transferred = tenant_operation(
         tenant_id='tenant-one',
-        operation='transfer',
+        operation='transfer_prepare',
         owner='owner-one',
-        target_owner='owner-two',
+        target_owner='00000000-0000-4000-8000-000000000222',
         recent_auth=True,
     )
     assert transferred['dataPreserved'] and not transferred['destructive']
@@ -239,6 +244,7 @@ def test_durable_transition_defers_approval_consumption_to_atomic_repository():
     )
     operation_id = UUID('00000000-0000-4000-8000-000000000106')
     with (
+        patch('api.repositories.tenant_lifecycle.get_operation_event', return_value=None),
         patch('api.repositories.tenant_lifecycle.get_state') as get_state,
         patch('api.repositories.tenant_lifecycle.apply_transition') as apply_transition,
     ):
@@ -260,6 +266,24 @@ def test_durable_transition_defers_approval_consumption_to_atomic_repository():
     assert atomic_approval['digest'] == approval['signature']
 
 
+def test_production_serving_is_revoked_by_durable_lifecycle_state(monkeypatch):
+    monkeypatch.setattr('api.settings.settings.ENV', 'production')
+    monkeypatch.setattr(
+        'api.repositories.tenant_lifecycle.get_state',
+        lambda **_kwargs: {'state': 'suspended'},
+    )
+    denied = TestClient(app).get('/api/health', headers={'X-Tenant-Id': 'tenant-one'})
+    assert denied.status_code == 423
+    assert denied.json() == {'detail': 'tenant_not_serving'}
+
+    monkeypatch.setattr(
+        'api.repositories.tenant_lifecycle.get_state', lambda **_kwargs: {'state': 'active'}
+    )
+    admitted = TestClient(app).get('/api/health', headers={'X-Tenant-Id': 'tenant-one'})
+    assert admitted.status_code != 423
+    assert admitted.json().get('detail') != 'tenant_not_serving'
+
+
 def test_durable_provision_and_operations_delegate_validated_revisioned_state():
     operation_id = UUID('00000000-0000-4000-8000-000000000107')
     with patch('api.repositories.tenant_lifecycle.provision') as provision:
@@ -273,19 +297,25 @@ def test_durable_provision_and_operations_delegate_validated_revisioned_state():
     assert result['revision'] == 1
     assert provision.call_args.kwargs['configuration'] == {'locale': 'en'}
 
-    with patch('api.repositories.tenant_lifecycle.apply_operation') as apply_operation:
+    with (
+        patch('api.repositories.tenant_lifecycle.apply_operation') as apply_operation,
+        patch('api.repositories.identity_admin.membership', return_value={'role': 'member'}),
+    ):
         apply_operation.return_value = {'state': 'active', 'revision': 4}
         result = persist_operation(
             tenant_id='tenant-one',
-            operation='transfer',
+            operation='transfer_prepare',
             owner='owner-one',
-            target_owner='owner-two',
+            target_owner='00000000-0000-4000-8000-000000000222',
             recent_auth=True,
             expected_revision=3,
             operation_id=operation_id,
         )
     assert result['revision'] == 4
-    assert apply_operation.call_args.kwargs['target_owner_ref'] == 'owner-two'
+    assert (
+        apply_operation.call_args.kwargs['target_owner_ref']
+        == '00000000-0000-4000-8000-000000000222'
+    )
 
 
 def test_deletion_approval_key_file_is_absolute_owner_only_and_exact_length(tmp_path):

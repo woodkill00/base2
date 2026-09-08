@@ -23,7 +23,7 @@ def test_configured_tenants_are_bounded_canonical_and_deduplicated():
     with pytest.raises(ValueError):
         runtime.configured_tenants('../escape')
     with pytest.raises(ValueError):
-        runtime.configured_tenants(','.join(f'tenant-{index}' for index in range(257)))
+        runtime.configured_tenants(','.join(f'tenant-{index}' for index in range(33)))
 
 
 def test_fair_tenant_batch_rotates_without_exceeding_worker_capacity(monkeypatch):
@@ -67,7 +67,9 @@ def test_live_collection_holds_and_conditionally_releases_a_tenant_lock(monkeypa
     client = MagicMock()
     client.set.return_value = True
     monkeypatch.setattr(runtime.redis_client, 'get_client', lambda: client)
-    monkeypatch.setattr(runtime, 'configured_probe_adapters', lambda: {'api.health': object()})
+    monkeypatch.setattr(
+        runtime, 'configured_probe_adapters', lambda _tenant: {'api.health': object()}
+    )
     monkeypatch.setattr(runtime, 'collect_probe_results', lambda **kwargs: [])
     monkeypatch.setattr(runtime.operations, 'record_probe_batch', lambda **kwargs: {'samples': 0})
     heartbeat = MagicMock()
@@ -77,7 +79,7 @@ def test_live_collection_holds_and_conditionally_releases_a_tenant_lock(monkeypa
     }
     assert client.set.call_args.kwargs == {'nx': True, 'ex': 120}
     client.eval.assert_called_once()
-    heartbeat.assert_called_once_with('monitoring', now=NOW)
+    heartbeat.assert_called_once_with('monitoring:tenant-one', now=NOW)
 
     client.set.return_value = False
     with pytest.raises(RuntimeError, match='collection_in_progress'):
@@ -98,6 +100,13 @@ def test_queue_probe_uses_worker_liveness_depth_and_observed_delay(monkeypatch):
 
     monkeypatch.setattr(runtime, '_runtime_heartbeat', lambda name, timeout: ('degraded', '', 0))
     assert runtime._queue_health(1) == ('degraded', 'queues.delayed', 1200)
+
+
+def test_monitoring_self_probe_is_tenant_specific(monkeypatch):
+    heartbeat = MagicMock(return_value=('healthy', 'monitoring.ready', 0))
+    monkeypatch.setattr(runtime, '_runtime_heartbeat', heartbeat)
+    runtime.configured_probe_adapters('tenant-one')['monitoring.self'](1)
+    heartbeat.assert_called_once_with('monitoring:tenant-one', 1)
 
 
 def due_alert(*, attempts=0, expires_at=None):

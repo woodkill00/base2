@@ -427,3 +427,55 @@ evidence, exact-head gate, and repeated independent-review work. The ancestor-bo
 B145 evidence is retained as historical evidence only; after any repair changes the
 head, B175 requires two new complete gates at the new exact clean commit. No prior
 publication approval or hosted result may be reused for a changed head.
+
+## Independent review cycle 11 — repaired exact-head rejection
+
+Candidate `a10393f5555075d0ae6b52a2c96b1806d91833b9` passed all 107 complete-gate
+checks twice and the critical state-machine suite ten consecutive times. Fresh
+independent code/security, data/operations, and UX/accessibility review still
+rejected a production-readiness claim. The reviews found zero critical findings,
+but exposed six distinct high findings plus overlapping high and medium findings
+that automation had not detected.
+
+Root causes include lifecycle metadata disconnected from serving and deletion,
+historical cross-tenant worker grants and excessive secret co-location, split and
+undeployable S3 paths, production-disabled authentication mail, monitoring capacity
+that contradicts freshness SLAs, backup receipt/schema/snapshot inconsistencies,
+impossible database-plus-object recovery acceptance, incomplete lifecycle and mail
+fencing, caller-time schedule claims, and misleading database saturation evidence.
+UX review also found mixed-language accessible labels, incomplete Settings
+localization, duplicate page-level headings, missing German execution, and visual
+assertions not bound tightly enough to runner and scenario evidence.
+
+Tasks B177-B194 deduplicate every critical/high/medium finding and include the two
+low findings affecting least privilege and bounded backup inventory. The two green
+gates remain historical evidence only. A changed candidate must again pass two
+complete gates and fresh independent review with zero critical, high, or medium
+findings before publication can be requested.
+
+## Analysis cycle 12 — review repairs and test-discovered hardening
+
+The cycle-11 findings were implemented without extending provider, publication,
+merge, deployment, DNS, certificate, credential, or destructive authority. The
+repair connects lifecycle admission to production serving and background work,
+uses an accepted two-phase member ownership transfer, revokes historical worker
+grants, splits runtime/content/email worker duties and secret mounts, wires the
+pinned storage factory through synchronous and asynchronous paths, requires a
+production email transport, fences mail claims and job leases, bounds monitoring
+capacity, stages immutable backup bytes, validates the live migration ledger,
+quarantines invalid owned backup evidence, and aligns recovery receipts.
+
+The UI repair localizes the declared English, German, and Arabic shell, Settings,
+and Operations surfaces; preserves one page-level heading; and binds 35 visual
+captures to an actual-run receipt covering 42 browser scenarios. Expanded tests
+caught two additional issues before publication: a legacy accessible-name
+compatibility regression and nondeterministic cancellation/screenshot assertions.
+The accessible default was restored while localized callers remain explicit; the
+confirmation action now verifies visible enabled state and uses deterministic
+activation, and state screenshots use the same bounded 2% anti-alias tolerance as
+the primary captures. The RTL flow then passed three consecutive repetitions and
+the entire matrix passed 42/42. Full API, Django, frontend unit, lint, type, Compose,
+surface-drift, and exact-source visual checks are green. Tasks remain unchecked in
+the ordered ledger until the earlier review/publication/canary checkpoints permit
+contiguous completion; implementation evidence does not silently satisfy those
+separate approvals.

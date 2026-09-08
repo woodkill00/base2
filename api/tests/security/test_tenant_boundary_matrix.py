@@ -144,6 +144,25 @@ def test_pool_checkout_resets_after_exception(monkeypatch):
     assert pool.returned == [(conn, False)]
 
 
+def test_pool_checkout_returns_connection_to_replacement_pool(monkeypatch):
+    from api import db
+
+    conn = _Connection()
+    old_pool = _Pool(_Connection())
+    replacement = _Pool(conn)
+    monkeypatch.setattr(db, '_pool', old_pool)
+
+    def replace_during_checkout():
+        db._pool = replacement
+        return conn
+
+    monkeypatch.setattr(db, '_get_conn', replace_during_checkout)
+    with db.db_conn() as checked_out:
+        assert checked_out is conn
+    assert old_pool.returned == []
+    assert replacement.returned == [(conn, False)]
+
+
 def test_workspace_pool_uses_a_separate_connection_and_resets_it(monkeypatch):
     from api import db
 
@@ -289,6 +308,7 @@ def test_pool_saturation_fails_before_driver_exhaustion_and_is_observable(monkey
     assert snapshot == {
         'used': 8,
         'maximum': 10,
+        'admitted': 8,
         'utilizationPercent': 80,
         'state': 'saturated',
     }

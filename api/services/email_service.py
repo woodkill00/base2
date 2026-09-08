@@ -35,6 +35,8 @@ class EmailOutboxRow:
     error: str
     created_at: datetime
     sent_at: datetime | None
+    claim_token: UUID | None = None
+    delivery_key: str = ''
 
 
 def _utcnow() -> datetime:
@@ -52,7 +54,7 @@ def create_outbox_email(
                 """
                 INSERT INTO api_email_outbox(id, to_email, subject, body_text, body_html)
                 VALUES (%s, %s, %s, %s, %s)
-                RETURNING id, to_email, subject, body_text, body_html, status, provider, provider_message_id, error, created_at, sent_at
+                RETURNING id, to_email, subject, body_text, body_html, status, provider, provider_message_id, error, created_at, sent_at, claim_token, delivery_key
                 """,
                 (str(outbox_id), to_email, subject, body_text, body_html or ''),
             )
@@ -70,6 +72,8 @@ def create_outbox_email(
         error=row[8] or '',
         created_at=row[9],
         sent_at=row[10],
+        claim_token=UUID(str(row[11])) if row[11] else None,
+        delivery_key=row[12] or str(row[0]),
     )
 
 
@@ -77,7 +81,7 @@ def get_outbox_email(outbox_id: UUID) -> EmailOutboxRow | None:
     with db_conn() as conn, conn.cursor() as cur:
         cur.execute(
             """
-            SELECT id, to_email, subject, body_text, body_html, status, provider, provider_message_id, error, created_at, sent_at
+            SELECT id, to_email, subject, body_text, body_html, status, provider, provider_message_id, error, created_at, sent_at, claim_token, delivery_key
             FROM api_email_outbox
             WHERE id=%s
             """,
@@ -100,40 +104,49 @@ def get_outbox_email(outbox_id: UUID) -> EmailOutboxRow | None:
         error=row[8] or '',
         created_at=row[9],
         sent_at=row[10],
+        claim_token=UUID(str(row[11])) if row[11] else None,
+        delivery_key=row[12] or str(row[0]),
     )
 
 
 def claim_outbox_email(outbox_id: UUID) -> EmailOutboxRow | None:
     """Atomically lease a due row; abandoned leases become eligible after five minutes."""
+    claim_token = uuid4()
     with db_conn() as conn:
         conn.autocommit = True
         with conn.cursor() as cur:
             cur.execute(
                 """
                 UPDATE api_email_outbox
-                SET status='sending', provider='worker_claim',
-                    provider_message_id=NOW()::text
+                SET status='sending', provider='worker_claim', provider_message_id='',
+                    claim_token=%s, claim_expires_at=NOW() + INTERVAL '5 minutes'
                 WHERE id=%s AND (
                     status IN ('queued', 'retry') OR (
-                        status='sending' AND provider='worker_claim' AND
-                        CASE WHEN provider_message_id ~
-                            '^[0-9]{4}-[0-9]{2}-[0-9]{2} '
-                            THEN provider_message_id::timestamptz < NOW() - INTERVAL '5 minutes'
-                            ELSE FALSE END
+                        status='sending' AND claim_expires_at < NOW()
                     )
                 )
                 RETURNING id, to_email, subject, body_text, body_html, status, provider,
-                          provider_message_id, error, created_at, sent_at
+                          provider_message_id, error, created_at, sent_at, claim_token, delivery_key
                 """,
-                (str(outbox_id),),
+                (str(claim_token), str(outbox_id)),
             )
             row = cur.fetchone()
     if not row:
         return None
     return EmailOutboxRow(
-        id=UUID(str(row[0])), to_email=row[1], subject=row[2], body_text=row[3],
-        body_html=row[4] or '', status=row[5], provider=row[6],
-        provider_message_id=row[7] or '', error=row[8] or '', created_at=row[9], sent_at=row[10],
+        id=UUID(str(row[0])),
+        to_email=row[1],
+        subject=row[2],
+        body_text=row[3],
+        body_html=row[4] or '',
+        status=row[5],
+        provider=row[6],
+        provider_message_id=row[7] or '',
+        error=row[8] or '',
+        created_at=row[9],
+        sent_at=row[10],
+        claim_token=UUID(str(row[11])),
+        delivery_key=row[12] or str(row[0]),
     )
 
 
@@ -171,8 +184,14 @@ def mark_outbox_failed(*, outbox_id: UUID, error: str) -> None:
 
 
 def mark_outbox_status(
-    *, outbox_id: UUID, status: str, provider: str, provider_message_id: str = '', error: str = ''
-) -> None:
+    *,
+    outbox_id: UUID,
+    claim_token: UUID,
+    status: str,
+    provider: str,
+    provider_message_id: str = '',
+    error: str = '',
+) -> bool:
     if status not in {'queued', 'sent', 'disabled', 'suppressed', 'retry', 'dead_letter'}:
         raise ValueError('outbox_status_invalid')
     with db_conn() as conn:
@@ -182,11 +201,21 @@ def mark_outbox_status(
                 """
                 UPDATE api_email_outbox
                 SET status=%s, provider=%s, provider_message_id=%s, error=%s,
-                    sent_at=CASE WHEN %s='sent' THEN NOW() ELSE sent_at END
-                WHERE id=%s
+                    sent_at=CASE WHEN %s='sent' THEN NOW() ELSE sent_at END,
+                    claim_token=NULL, claim_expires_at=NULL
+                WHERE id=%s AND status='sending' AND claim_token=%s
                 """,
-                (status, provider, provider_message_id[:255], error[:2000], status, str(outbox_id)),
+                (
+                    status,
+                    provider,
+                    provider_message_id[:255],
+                    error[:2000],
+                    status,
+                    str(outbox_id),
+                    str(claim_token),
+                ),
             )
+            return cur.rowcount == 1
 
 
 def safe_outbox_diagnostic(row: EmailOutboxRow) -> dict[str, object]:
@@ -206,6 +235,7 @@ def _configured_adapter():
     if mode == 'local_fake':
         return LocalFakeEmailAdapter()
     if mode == 'smtp':
+
         def private_value(variable: str) -> str:
             path = os.getenv(variable, '').strip()
             if not path or not os.path.isabs(path) or os.path.islink(path):
@@ -227,10 +257,12 @@ def _configured_adapter():
         except ValueError as exc:
             raise RuntimeError('email_smtp_configuration_invalid') from exc
         return SmtpEmailAdapter(
-            host=os.getenv('BASE2_EMAIL_SMTP_HOST', '').strip(), port=port,
+            host=os.getenv('BASE2_EMAIL_SMTP_HOST', '').strip(),
+            port=port,
             username=private_value('BASE2_EMAIL_SMTP_USERNAME_FILE'),
             password=private_value('BASE2_EMAIL_SMTP_PASSWORD_FILE'),
-            from_address=os.getenv('BASE2_EMAIL_FROM_ADDRESS', '').strip(), timeout=timeout,
+            from_address=os.getenv('BASE2_EMAIL_FROM_ADDRESS', '').strip(),
+            timeout=timeout,
         )
     if mode != 'disabled':
         raise RuntimeError('email_adapter_not_allowed')
@@ -251,6 +283,8 @@ def process_outbox_email(*, outbox_id: UUID) -> None:
             raise RuntimeError('outbox_not_found')
         # Another worker owns the lease or this row is already terminal.
         return
+    if existing.claim_token is None:
+        raise RuntimeError('outbox_claim_fence_missing')
 
     adapter = _configured_adapter()
     match = re.fullmatch(r'delivery_retry:(\d+)', existing.error or '')
@@ -262,17 +296,23 @@ def process_outbox_email(*, outbox_id: UUID) -> None:
             subject=existing.subject,
             text=existing.body_text,
             html=existing.body_html,
+            delivery_key=existing.delivery_key or str(existing.id),
         ),
-        adapter, attempt=attempt, max_attempts=3,
+        adapter,
+        attempt=attempt,
+        max_attempts=3,
     )
     mark_outbox_status(
         outbox_id=outbox_id,
-        status=result.status,
+        claim_token=existing.claim_token,
+        status='retry' if result.status == 'disabled' else result.status,
         provider=result.provider,
         provider_message_id=result.message_id,
         error=(
-            '' if result.status == 'sent'
-            else f'delivery_retry:{attempt}' if result.status == 'retry'
+            ''
+            if result.status == 'sent'
+            else f'delivery_retry:{attempt}'
+            if result.status in {'retry', 'disabled'}
             else f'delivery_{result.status}'
         ),
     )
@@ -286,12 +326,8 @@ def replayable_outbox_ids(*, limit: int = 100) -> list[UUID]:
             """
             SELECT id FROM api_email_outbox
             WHERE (
-                status IN ('queued', 'retry') OR (
-                    status='sending' AND provider='worker_claim' AND
-                    CASE WHEN provider_message_id ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2} '
-                    THEN provider_message_id::timestamptz < NOW() - INTERVAL '5 minutes'
-                    ELSE FALSE END
-                )
+                status IN ('queued', 'retry') OR
+                (status='sending' AND claim_expires_at < NOW())
             ) AND sent_at IS NULL
             ORDER BY created_at ASC, id ASC LIMIT %s
             """,
