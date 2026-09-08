@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "status": "accepted",
   "sources": {
-    "react-app/src/pages/OperationsCenter.jsx": "3372017974daba6ab989bcd10a3e1989f3cef024d00bdce04ee69e529a5ab209",
+    "react-app/src/pages/OperationsCenter.jsx": "fbb96a68de96d98eab65202878f409010eee26faba686d9e83585b58fedbe0a6",
     "react-app/src/services/operations.js": "7bb0edb231daf7255973c885dabf0b93d7664c02ac0eb51a8b00d599c7209418",
-    "react-app/src/components/glass/AppShell.tsx": "d9efd6932b5616e0d52abbf87786d1ef8b2bc55490345305ffc0d34a6afadc02",
+    "react-app/src/components/glass/AppShell.tsx": "69d985a44ac7a8eaf0be4e0b6939a4facc5705b219346b857e9024fc11786721",
     "react-app/src/components/glass/GlassButton.tsx": "e32c90da113739bb526b2329519e964bd611a1be66d86852e2f4fb075d32e5a1",
     "react-app/src/components/glass/GlassHeader.tsx": "5b995fabdad790b6887eabf5bfc0ecc66aeda70581908b435cfade1d4ab1e460",
     "react-app/e2e/operations/operations-release.spec.ts": "44b93888719977b62c7feb93c23bbf66599da5831d9033a3926c9dc47733836a",

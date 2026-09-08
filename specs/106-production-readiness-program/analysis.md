@@ -553,3 +553,18 @@ the readiness query. B214 replaces that textual accident with whitespace-
 normalized SQL-shape validation and explicit assertions for the exact Django 30
 and API 11 ledgers. The product behavior was correct; the failed suite remains
 recorded and the broad API run must pass again.
+
+## Analysis cycle 16 — exact-head complete-gate rejection
+
+Complete gate 1 rejected candidate `794176c3e80f73d30613af844790535614032e45`
+before publication. The gate exposed four independently actionable gaps: the
+pinned S3 client did not yet satisfy the bucket-readiness protocol or carry
+conditional-write and exact-version semantics through its real transport; the
+surface-drift lock remained bound to ancestor configuration and route sources;
+the Operations visual manifest remained bound to ancestor source hashes; and the
+account browser journey still queried the legacy hyphenated notification label
+after the accessible copy became human-readable. Tasks B215-B218 bind each
+repair to focused proof. The rejected run is historical evidence only. Visual
+evidence must come from a newly executed browser matrix, not a source-hash-only
+manifest rewrite, and the repaired clean head must restart both complete gates
+from zero.

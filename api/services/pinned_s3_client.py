@@ -11,7 +11,7 @@ import ssl
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
-from urllib.parse import quote, urlparse
+from urllib.parse import quote, urlencode, urlparse
 
 
 class PinnedS3Error(ValueError):
@@ -74,12 +74,19 @@ class PinnedS3Client:
         return hmac.new(key, value.encode(), hashlib.sha256).digest()
 
     def _signature(
-        self, *, method: str, path: str, headers: dict[str, str], payload_hash: str, now: datetime
+        self,
+        *,
+        method: str,
+        path: str,
+        headers: dict[str, str],
+        payload_hash: str,
+        now: datetime,
+        query: str = '',
     ) -> str:
         lowered = {name.lower(): ' '.join(value.strip().split()) for name, value in headers.items()}
         names = ';'.join(sorted(lowered))
         canonical_headers = ''.join(f'{name}:{lowered[name]}\n' for name in sorted(lowered))
-        canonical_request = '\n'.join((method, path, '', canonical_headers, names, payload_hash))
+        canonical_request = '\n'.join((method, path, query, canonical_headers, names, payload_hash))
         stamp, moment = now.strftime('%Y%m%d'), now.strftime('%Y%m%dT%H%M%SZ')
         scope = f'{stamp}/{self.region}/s3/aws4_request'
         to_sign = '\n'.join(
@@ -105,8 +112,11 @@ class PinnedS3Client:
         key: str,
         body: bytes = b'',
         headers: dict[str, str] | None = None,
+        query: dict[str, str] | None = None,
     ) -> tuple[dict[str, str], bytes]:
         path = f"/{quote(bucket, safe='')}/{quote(key, safe='/')}"
+        canonical_query = urlencode(sorted((query or {}).items()), quote_via=quote, safe='-_.~')
+        request_target = f'{path}?{canonical_query}' if canonical_query else path
         current = datetime.now(UTC)
         payload_hash = hashlib.sha256(body).hexdigest()
         request_headers = {
@@ -121,6 +131,7 @@ class PinnedS3Client:
             headers=request_headers,
             payload_hash=payload_hash,
             now=current,
+            query=canonical_query,
         )
         last_error: Exception | None = None
         for address in sorted(self.pinned_addresses):
@@ -128,7 +139,9 @@ class PinnedS3Client:
                 self.hostname, address=address, port=self.port, timeout=self._timeout
             )
             try:
-                connection.request(method, path, body=body or None, headers=request_headers)
+                connection.request(
+                    method, request_target, body=body or None, headers=request_headers
+                )
                 response = connection.getresponse()
                 content = response.read(100 * 1024 * 1024 + 1)
                 if len(content) > 100 * 1024 * 1024:
@@ -148,6 +161,8 @@ class PinnedS3Client:
             'Cache-Control': str(kwargs.get('CacheControl', 'private,no-store')),
             'x-amz-server-side-encryption': str(kwargs.get('ServerSideEncryption', 'AES256')),
         }
+        if kwargs.get('IfNoneMatch'):
+            headers['If-None-Match'] = str(kwargs['IfNoneMatch'])
         for name, value in dict(kwargs.get('Metadata', {})).items():
             headers[f'x-amz-meta-{name.lower()}'] = str(value)
         response_headers, _body = self._request(
@@ -157,12 +172,30 @@ class PinnedS3Client:
             body=bytes(kwargs['Body']),
             headers=headers,
         )
-        return {'ETag': response_headers.get('etag', '')}
+        return {
+            'ETag': response_headers.get('etag', ''),
+            'VersionId': response_headers.get('x-amz-version-id', ''),
+        }
 
     def get_object(self, **kwargs: Any) -> dict[str, Any]:
-        headers, body = self._request('GET', bucket=str(kwargs['Bucket']), key=str(kwargs['Key']))
-        return {'Body': io.BytesIO(body), 'Metadata': headers}
+        query = {'versionId': str(kwargs['VersionId'])} if kwargs.get('VersionId') else None
+        headers, body = self._request(
+            'GET', bucket=str(kwargs['Bucket']), key=str(kwargs['Key']), query=query
+        )
+        return {
+            'Body': io.BytesIO(body),
+            'Metadata': headers,
+            'VersionId': headers.get('x-amz-version-id', ''),
+        }
 
     def delete_object(self, **kwargs: Any) -> dict[str, Any]:
-        self._request('DELETE', bucket=str(kwargs['Bucket']), key=str(kwargs['Key']))
+        query = {'versionId': str(kwargs['VersionId'])} if kwargs.get('VersionId') else None
+        self._request('DELETE', bucket=str(kwargs['Bucket']), key=str(kwargs['Key']), query=query)
         return {}
+
+    def head_bucket(self, **kwargs: Any) -> dict[str, Any]:
+        headers, _body = self._request('HEAD', bucket=str(kwargs['Bucket']), key='')
+        return {
+            'ResponseMetadata': {'HTTPStatusCode': 200},
+            'VersionId': headers.get('x-amz-version-id', ''),
+        }

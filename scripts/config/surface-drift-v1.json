@@ -2,7 +2,7 @@
   "algorithm": "sha256",
   "groups": {
     "config": {
-      ".env.example": "b854b21a5c73d9bca165d9ec37c0cbc32ab4454016c4df4782a0193f6b72c696",
+      ".env.example": "e73863d810708c754f5aa7b791d22aa78c4e07a2cb997321e380364fd1af4c36",
       "api/site_profiles/base2-obsidian.json": "c7d8f67ddd1ab6cd155000a741377d92a07e09ab8fe5bca73c1e961d092cbbd6",
       "api/site_profiles/content-workspace-contracts.json": "b8202643502ab5257a92a7370dd2ef4afbc11d75b2fd1772d2b99cb8f7f6beee",
       "api/site_profiles/content-workspace-presets.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
@@ -23,7 +23,7 @@
       "shared/config/design-system-v1.json": "40a9bd6d00ef561488d3437d04699d6b2d1781ec4feab58d33c20fbe4a436d82",
       "shared/config/edge-readiness-v1.json": "c6adf440599413b21a70552c7b95e9474869003eb825872cea3ee18c4ae0b848",
       "shared/config/identity-realms.json": "c11cd97a6808983182e96774499ae5d9b63e38d8dbe1464846cbca9b6127719f",
-      "shared/config/migration-compatibility-v1.json": "a65f922b5af53f8982e810c8158f99f39f04b1ec8581f790924fb56dc202210c",
+      "shared/config/migration-compatibility-v1.json": "c881da766de052fe9953f7bb05a985fdb111067e13daa534f973dcbeb2f58a79",
       "shared/config/module-catalog.json": "ae322048e2b26ca38b430e275df172d650e0d5c0f7366d4571138842237b4cc7",
       "shared/config/operations-probes-v1.json": "85b92aacfff06818581b7460aa1471843e969a5fd32da369a5f0e05b2bc5ff36",
       "shared/config/optional-search-v1.json": "06adbb1bfe9cf53e06ee915ea6be40161a12bc9241cf91e95b4f325f0bc0edd8",
@@ -112,7 +112,7 @@
       "api/routes/scheduling.py": "2bc71ee22ff666d22e7275e00394f6a885f94e04d20e97c44a4e93778ce859fa",
       "api/routes/settings.py": "42894f829845f6c8faf1ca3dd5899dde7ac9570474ff0d31f49850fc695a36c8",
       "api/routes/site_content.py": "719c357b1419d09b1c0b2913d7ed40603e1fe9aabe90e676ea222a4b0e1ae256",
-      "api/routes/tenant.py": "5b1413cb2ad91de694997357df8636e1da909c9f29b2f8d7e33a97ef9876642e",
+      "api/routes/tenant.py": "72eb2c4206bd1477aa93262154ba97c5b56f574aa2446cea597274fd7303d2df",
       "api/routes/test_support.py": "2d719feced29efa077926a093859c5087db577015d2bb2825dd88f2c04b2c70f",
       "api/routes/users.py": "a9482b12a463feb8a46033455135d863efc6cdbf8c130b40c38524af21a6943d",
       "django/catalog/urls.py": "ee319a920fbb34f3d78e8f85dc0b6893b829cfb0a3b2a096ce7be92fd6982491",

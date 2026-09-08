@@ -92,6 +92,7 @@ def test_signature_is_deterministic_and_binds_every_header():
         },
         payload_hash=hashlib.sha256(b'payload').hexdigest(),
         now=now,
+        query='versionId=version-1',
     )
     second = value._signature(
         method='PUT',
@@ -103,6 +104,7 @@ def test_signature_is_deterministic_and_binds_every_header():
         },
         payload_hash=hashlib.sha256(b'payload').hexdigest(),
         now=now,
+        query='versionId=version-1',
     )
     assert first == second
     assert 'Credential=access-key/20260908/fra1/s3/aws4_request' in first
@@ -163,34 +165,55 @@ def test_request_rejects_provider_status_oversize_and_unavailable_transport():
     unavailable = MagicMock()
     unavailable.request.side_effect = OSError('offline')
     with (
-        patch(
-            'api.services.pinned_s3_client._PinnedHTTPSConnection', return_value=unavailable
-        ),
+        patch('api.services.pinned_s3_client._PinnedHTTPSConnection', return_value=unavailable),
         pytest.raises(PinnedS3Error, match='provider_unavailable'),
     ):
         one_address._request('DELETE', bucket='base2-media', key='tenant/object')
 
 
-def test_public_object_methods_apply_security_headers_and_adapt_responses():
+def test_public_object_methods_apply_security_headers_versions_and_adapt_responses():
     value = client()
-    with patch.object(value, '_request', return_value=({'etag': 'quoted'}, b'')) as request:
+    with patch.object(
+        value,
+        '_request',
+        return_value=({'etag': 'quoted', 'x-amz-version-id': 'version-1'}, b''),
+    ) as request:
         assert value.put_object(
             Bucket='base2-media',
             Key='tenant/object',
             Body=b'payload',
             ContentType='image/png',
             Metadata={'Sha256': 'a' * 64},
-        ) == {'ETag': 'quoted'}
+            IfNoneMatch='*',
+        ) == {'ETag': 'quoted', 'VersionId': 'version-1'}
     sent_headers = request.call_args.kwargs['headers']
     assert sent_headers['x-amz-server-side-encryption'] == 'AES256'
     assert sent_headers['Cache-Control'] == 'private,no-store'
     assert sent_headers['x-amz-meta-sha256'] == 'a' * 64
+    assert sent_headers['If-None-Match'] == '*'
 
-    with patch.object(value, '_request', return_value=({'x-amz-meta-sha256': 'a'}, b'data')):
-        result = value.get_object(Bucket='base2-media', Key='tenant/object')
+    with patch.object(
+        value,
+        '_request',
+        return_value=({'x-amz-meta-sha256': 'a', 'x-amz-version-id': 'version-1'}, b'data'),
+    ) as request:
+        result = value.get_object(Bucket='base2-media', Key='tenant/object', VersionId='version-1')
     assert isinstance(result['Body'], io.BytesIO)
     assert result['Body'].read() == b'data'
+    assert result['VersionId'] == 'version-1'
+    assert request.call_args.kwargs['query'] == {'versionId': 'version-1'}
 
     with patch.object(value, '_request', return_value=({}, b'')) as request:
-        assert value.delete_object(Bucket='base2-media', Key='tenant/object') == {}
+        assert (
+            value.delete_object(Bucket='base2-media', Key='tenant/object', VersionId='version-1')
+            == {}
+        )
     assert request.call_args.args == ('DELETE',)
+    assert request.call_args.kwargs['query'] == {'versionId': 'version-1'}
+
+    with patch.object(value, '_request', return_value=({}, b'')) as request:
+        assert value.head_bucket(Bucket='base2-media') == {
+            'ResponseMetadata': {'HTTPStatusCode': 200},
+            'VersionId': '',
+        }
+    assert request.call_args.args == ('HEAD',)

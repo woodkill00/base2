@@ -262,3 +262,7 @@ substitute for the integration proof named by the task.
 - [ ] B212 Commit one clean repaired candidate and pass the complete local gate twice at that identical exact head; treat all ancestor and failed-candidate evidence as historical only. (FR-063, FR-065, FR-068, FR-078)
 - [ ] B213 Repeat fresh independent UX/accessibility, data, and code/security/operations reviews and iterate again until critical, high, and medium findings are all zero before requesting exact-head publication approval. (FR-063 through FR-069, FR-078)
 - [ ] B214 Replace the formatting-sensitive readiness-query assertion exposed by the broad API suite with normalized SQL-shape and exact latest-ledger checks, then rerun the complete API suite. (FR-018, FR-063, FR-068)
+- [ ] B215 Complete the pinned S3 protocol implementation with typed bucket readiness, conditional immutable writes, exact version receipts, and version-bound reads and deletes. (FR-025, FR-026, FR-049, FR-060, FR-065)
+- [ ] B216 Regenerate and validate the exact surface-drift inventory after reviewed configuration and route changes. (FR-002, FR-055, FR-061, FR-063, FR-068)
+- [ ] B217 Re-run the complete Operations visual matrix after localization changes and bind its generated captures, runner receipt, and evidence manifest to the repaired exact sources. (FR-012, FR-063, FR-064, FR-068, FR-075)
+- [ ] B218 Update the account browser contract to the localized human-readable notification accessible name and rerun the complete account/admin journey. (FR-012, FR-046, FR-063, FR-064, FR-075)
