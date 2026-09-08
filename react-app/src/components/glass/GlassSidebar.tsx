@@ -95,9 +95,9 @@ export const GlassSidebar: React.FC<Props> = ({
       }
       if (e.key === 'Tab') {
         const focusable = Array.from(
-          panelRef.current?.querySelectorAll<HTMLElement>(
+          panelRef.current!.querySelectorAll<HTMLElement>(
             'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-          ) || []
+          )
         ).filter((element) => !element.hidden);
         if (!focusable.length) {
           e.preventDefault();

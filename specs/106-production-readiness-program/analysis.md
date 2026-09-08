@@ -680,3 +680,27 @@ that transport heuristic with explicit UI readiness before regenerating
 current-run evidence. Tasks B263-B269 retain these integrated discoveries as
 ordered proof obligations. No provider, DNS, certificate, credential,
 publication, merge, deployment, or destructive action was performed.
+
+## Analysis cycle 22 — broad diagnostic gate corrections
+
+The intentionally non-authoritative dirty-tree diagnostic gate rejected two
+local checks before exact-head evidence began. Ruff identified one nested claim
+context that violated the repository's structural rule. The coverage policy
+also showed that the new drawer behavior had correct focused assertions but had
+not exercised every empty and keyboard branch required by the unchanged
+critical-glass floor. B270-B271 close those gaps directly. API lint now passes,
+the complete 261-test frontend suite passes, critical glass is 100% for lines,
+statements, functions, and branches, and changed-line coverage remains above
+the fixed 90% floor. The diagnostic gate remains historical only because its
+source label preceded the clean repaired commit.
+
+## Analysis cycle 23 — deterministic sticky-header capture
+
+The post-coverage visual rerun rejected one compact reauthentication capture.
+Expected, actual, and diff inspection showed identical page data with the sticky
+application header rendered at a different click-induced scroll offset. This was
+not accepted as a new baseline or dismissed as noise. B272 requires the capture
+helper to normalize scroll position before every comparison, regenerate only
+from that deterministic contract, and pass an immediate no-update rerun. This
+keeps the screenshot evidence sensitive to real layout drift without allowing
+the test runner's prior interaction position to create false failures.

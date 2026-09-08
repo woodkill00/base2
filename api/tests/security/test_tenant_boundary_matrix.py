@@ -182,9 +182,11 @@ def test_workspace_pool_binds_the_exact_data_rights_claim_when_present(monkeypat
     conn = _Connection()
     pool = _Pool(conn)
     monkeypatch.setattr(db, '_workspace_pool', pool)
-    with db.data_rights_claim_context('operation-106', 'claim-106'):
-        with db.workspace_db_conn(tenant_id='tenant-a'):
-            pass
+    with (
+        db.data_rights_claim_context('operation-106', 'claim-106'),
+        db.workspace_db_conn(tenant_id='tenant-a'),
+    ):
+        pass
     assert conn.calls == [
         ("SELECT set_config('app.tenant_id', %s, true)", ('tenant-a',)),
         ("SELECT set_config('app.data_rights_operation_id', %s, true)", ('operation-106',)),

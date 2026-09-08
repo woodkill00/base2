@@ -276,7 +276,13 @@ describe('GlassSidebar', () => {
     expect(footer.inert).toBe(true);
 
     const links = screen.getAllByRole('link');
+    const navigation = screen.getByRole('navigation', { name: 'Sidebar' });
+    expect(navigation).toHaveFocus();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true }));
+    expect(links.at(-1)).toHaveFocus();
     links.at(-1)!.focus();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
+    expect(links[0]).toHaveFocus();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
     expect(links[0]).toHaveFocus();
     links[0].focus();
@@ -288,6 +294,57 @@ describe('GlassSidebar', () => {
     expect(main.inert).not.toBe(true);
     expect(footer.inert).not.toBe(true);
     window.matchMedia = originalMatchMedia;
+  });
+
+  test('mobile drawer retains focus when it contains no interactive items', () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = (query) =>
+      ({
+        matches: query.includes('max-width'),
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+      }) as unknown as MediaQueryList;
+
+    renderSidebar(<GlassSidebar isOpen items={[]} onClose={() => {}} />);
+    const navigation = screen.getByRole('navigation', { name: 'Sidebar' });
+    document.body.focus();
+    const propagated = document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', cancelable: true })
+    );
+    expect(propagated).toBe(false);
+    expect(navigation).toHaveFocus();
+    window.matchMedia = originalMatchMedia;
+  });
+
+  test('normalizes legacy string navigation for workspace and fallback routes', () => {
+    const { unmount } = renderSidebar(
+      <GlassSidebar items={['Drafts', 'Review', 'Published', 'Archive']} />
+    );
+    expect(screen.getByRole('link', { name: 'Drafts' })).toHaveAttribute(
+      'href',
+      '/workspace#drafts'
+    );
+    unmount();
+
+    renderSidebar(
+      <GlassSidebar
+        items={[
+          { label: 'One', to: '/one' },
+          { label: 'Two', to: '/two' },
+          { label: 'Three', to: '/three' },
+          { label: 'Four', to: '/four' },
+          { label: 'Five', to: '/five' },
+          'Six',
+        ]}
+      />
+    );
+    expect(screen.getByRole('link', { name: 'One' })).toHaveAttribute('href', '/one');
+    expect(screen.getByRole('link', { name: 'Six' })).toHaveAttribute('href', '/');
   });
 
   test('marks the current route for assistive technology', () => {

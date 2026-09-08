@@ -12,6 +12,11 @@ const user = {
 
 async function captureCurrentRun(page, testInfo, name, maxDiffPixelRatio = 0.01) {
   const options = { fullPage: true, animations: 'disabled' as const, caret: 'hide' as const };
+  await page.evaluate(() => {
+    document.documentElement.style.scrollBehavior = 'auto';
+    window.scrollTo(0, 0);
+  });
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await expect(page).toHaveScreenshot(name, { ...options, maxDiffPixelRatio });
   const acceptedCapture = testInfo.snapshotPath(name);
   await testInfo.attach(`visual:${basename(testInfo.snapshotPath(name))}`, {

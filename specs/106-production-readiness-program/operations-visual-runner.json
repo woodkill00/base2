@@ -44,7 +44,7 @@
         },
         {
           "name": "operations-center-reauth-chromium-compact-linux.png",
-          "sha256": "10d48eaed68d66e2abd8ab6305a2dfc1b42373be9ec551b030e24a96fa011e04"
+          "sha256": "605f7366dd52bdfca7903d4b8f16853f95f73d9b0e6bed045aa60766fd8964d3"
         }
       ]
     },
@@ -92,7 +92,7 @@
         },
         {
           "name": "operations-center-reauth-chromium-desktop-linux.png",
-          "sha256": "c042afdad115062daeec851940ebc4b7c2d1d99e8e8830c38212986cbd7632e0"
+          "sha256": "4273a796a19fb2fac2f3dbd3905c108537c90261f3eaaf1273b0221571a52ebc"
         }
       ]
     },
@@ -104,7 +104,7 @@
       "captures": [
         {
           "name": "operations-center-cancel-confirmation-chromium-desktop-linux.png",
-          "sha256": "6b5723847acf09b503693ffca0dd09772cefeb160ef8cca9519c4faab2f6efec"
+          "sha256": "1f36b274744a74ac81c8e9b8c4309e3bd0e9004fcb1c5522a64458668fb0bab0"
         },
         {
           "name": "operations-center-chromium-desktop-chromium-desktop-linux.png",
@@ -378,7 +378,7 @@
         },
         {
           "name": "operations-center-reauth-firefox-desktop-linux.png",
-          "sha256": "953ec0312ba58e983b4234d53c186f5e20db8ec1c75c62cd9afc1e5cd51cf66c"
+          "sha256": "d63cfde598669b4ccdda73ae053428ce895300967e78e0d2e6dce701777cefd7"
         }
       ]
     },
@@ -426,7 +426,7 @@
         },
         {
           "name": "operations-center-reauth-webkit-desktop-linux.png",
-          "sha256": "39562f8f49a28a2e68ab013e4ac34c4d759ebca399022b863f90c6ef26c82a55"
+          "sha256": "2994a241cd9c4aabce61d84ec2019c450c3624968d6b089eae3177d8759ec92e"
         }
       ]
     },
@@ -459,5 +459,5 @@
       ]
     }
   ],
-  "digest": "508bffd6ffa3d50ed4ce41f1e5ffd76c3deca0ae5b5dc81540ff5eeb049b2e19"
+  "digest": "344ff499a77dab1ecd501a8dbd4fd252c259ddb80c1f5c5369f6fe966d1c4142"
 }
