@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def findings_for(*, dynamic: str, canary: str, nginx: str, api_main: str) -> list[str]:
+def findings_for(*, dynamic: str, canary: str, static: str, nginx: str, api_main: str) -> list[str]:
     findings: list[str] = []
     required_dynamic = [
         "stsSeconds: 31536000",
@@ -19,6 +19,9 @@ def findings_for(*, dynamic: str, canary: str, nginx: str, api_main: str) -> lis
         "default-src 'self'",
         "frame-ancestors 'none'",
         "rateLimit:",
+        "maxRequestBodyBytes: 10485760",
+        "inFlightReq:",
+        "responseHeaderTimeout: 30s",
     ]
     for value in required_dynamic:
         if value not in dynamic:
@@ -32,6 +35,9 @@ def findings_for(*, dynamic: str, canary: str, nginx: str, api_main: str) -> lis
         "X-Robots-Tag: 'noindex, nofollow, noarchive'",
         "default-src 'self'",
         "connect-src 'self'",
+        "maxRequestBodyBytes: 10485760",
+        "inFlightReq:",
+        "rateLimit:",
     ]
     for value in required_canary:
         if value not in canary:
@@ -50,6 +56,19 @@ def findings_for(*, dynamic: str, canary: str, nginx: str, api_main: str) -> lis
             findings.append(f'nginx_missing:{value}')
     if "if '*' in origins" not in api_main or 'allow_credentials = False' not in api_main:
         findings.append('cors_wildcard_credentials_not_blocked')
+    required_static = [
+        "insecure: false",
+        "127.0.0.1/32",
+        "::1/128",
+        "acme-staging-v02.api.letsencrypt.org/directory",
+        "acme-staging.json",
+    ]
+    for value in required_static:
+        if value not in static:
+            findings.append(f"static_missing:{value}")
+    production_acme = "acme-v02.api.letsencrypt.org/directory"
+    if production_acme in static or "/acme.json" in static:
+        findings.append("production_acme_reachable")
     return findings
 
 
@@ -57,6 +76,7 @@ def main() -> int:
     paths = {
         'dynamic': ROOT / 'traefik/dynamic.yml',
         'canary': ROOT / 'traefik/dynamic-canary.yml',
+        'static': ROOT / 'traefik/traefik.yml',
         'nginx': ROOT / 'react-app/nginx/default.conf',
         'api_main': ROOT / 'api/main.py',
     }

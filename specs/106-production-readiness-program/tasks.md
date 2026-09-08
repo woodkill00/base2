@@ -73,19 +73,19 @@ substitute for the integration proof named by the task.
 
 ## Phase 4 — Edge, domains, certificates, CDN, and private surfaces
 
-- [ ] B056 Write tests first for ownership challenge, takeover, canonical hosts, redirects, proxy trust, cache isolation, abuse, and privileged surfaces. (FR-025 through FR-030, FR-065)
-- [ ] B057 Model tenant domain claims, challenges, verification evidence, canonical selection, lifecycle, and release binding. (FR-025, FR-030)
-- [ ] B058 Implement replay-safe domain ownership verification and prevent abandoned, reused, wildcard, homograph, and cross-tenant takeover. (FR-025, FR-065)
-- [ ] B059 Implement deterministic apex, `www`, tenant subdomain, custom domain, canonical URL, and redirect behavior for IPv4 and IPv6. (FR-030)
-- [ ] B060 Implement environment-scoped staging certificate request, renewal, expiry, revocation, rollback, and alert states. (FR-026)
-- [ ] B061 Prove test and preview configurations cannot reach production certificate endpoints or inherit production account material. (FR-026, FR-031, FR-069)
-- [ ] B062 Add encrypted origin transport plus static and public-media CDN policies with versioned cache keys, invalidation, safe headers, and origin protection. (FR-027, FR-049, FR-073)
-- [ ] B063 Prove authenticated, signed, private, tenant-specific, and revoked content cannot be cached or disclosed incorrectly. (FR-019, FR-027, FR-065)
-- [ ] B064 Enforce edge body/header limits, request and upstream timeouts, rate/concurrency limits, trusted proxies, security headers, CORS, cookies, abuse controls, service-network segmentation, and outbound allowlists. (FR-028, FR-074)
-- [ ] B065 Keep Django admin, pgAdmin, Traefik, metrics, diagnostics, and API schema private by default with explicit role and network gates. (FR-029, FR-045)
-- [ ] B066 Add domain, DNS, certificate, edge, CDN, and privileged-surface health to native operations. (FR-010, FR-016)
-- [ ] B067 Test DNS delay, certificate failure, cache poisoning, host confusion, proxy spoofing, rate exhaustion, private-surface bypass, SSRF, metadata access, DNS rebinding, lateral movement, and egress denial. (FR-025 through FR-030, FR-060, FR-065, FR-074)
-- [ ] B068 Run source-bound browser, redirect, header, cache, accessibility, and staging-certificate acceptance without production issuance. (FR-026, FR-063, FR-064)
+- [x] B056 Write tests first for ownership challenge, takeover, canonical hosts, redirects, proxy trust, cache isolation, abuse, and privileged surfaces. (FR-025 through FR-030, FR-065)
+- [x] B057 Model tenant domain claims, challenges, verification evidence, canonical selection, lifecycle, and release binding. (FR-025, FR-030)
+- [x] B058 Implement replay-safe domain ownership verification and prevent abandoned, reused, wildcard, homograph, and cross-tenant takeover. (FR-025, FR-065)
+- [x] B059 Implement deterministic apex, `www`, tenant subdomain, custom domain, canonical URL, and redirect behavior for IPv4 and IPv6. (FR-030)
+- [x] B060 Implement environment-scoped staging certificate request, renewal, expiry, revocation, rollback, and alert states. (FR-026)
+- [x] B061 Prove test and preview configurations cannot reach production certificate endpoints or inherit production account material. (FR-026, FR-031, FR-069)
+- [x] B062 Add encrypted origin transport plus static and public-media CDN policies with versioned cache keys, invalidation, safe headers, and origin protection. (FR-027, FR-049, FR-073)
+- [x] B063 Prove authenticated, signed, private, tenant-specific, and revoked content cannot be cached or disclosed incorrectly. (FR-019, FR-027, FR-065)
+- [x] B064 Enforce edge body/header limits, request and upstream timeouts, rate/concurrency limits, trusted proxies, security headers, CORS, cookies, abuse controls, service-network segmentation, and outbound allowlists. (FR-028, FR-074)
+- [x] B065 Keep Django admin, pgAdmin, Traefik, metrics, diagnostics, and API schema private by default with explicit role and network gates. (FR-029, FR-045)
+- [x] B066 Add domain, DNS, certificate, edge, CDN, and privileged-surface health to native operations. (FR-010, FR-016)
+- [x] B067 Test DNS delay, certificate failure, cache poisoning, host confusion, proxy spoofing, rate exhaustion, private-surface bypass, SSRF, metadata access, DNS rebinding, lateral movement, and egress denial. (FR-025 through FR-030, FR-060, FR-065, FR-074)
+- [x] B068 Run source-bound browser, redirect, header, cache, accessibility, and staging-certificate acceptance without production issuance. (FR-026, FR-063, FR-064)
 
 ## Phase 5 — Secrets, audit, jobs, schedules, email, and notifications
 

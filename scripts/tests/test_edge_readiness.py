@@ -7,9 +7,12 @@ import pytest
 from scripts.python.edge_readiness import (
     EdgeReadinessError,
     cache_headers,
+    certificate_transition,
     canonical_redirect,
     domain_claim,
     private_surface_access,
+    transition_domain_claim,
+    validate_resolved_origin,
     validate_edge_policy,
 )
 
@@ -65,7 +68,11 @@ def test_private_and_signed_responses_never_enter_shared_cache():
             "Cache-Control": "private,no-store",
             "Vary": "Cookie,Authorization",
         }
-    assert "immutable" in cache_headers("public-static")["Cache-Control"]
+    public = cache_headers("public-static", version_digest="a" * 64)
+    assert "immutable" in public["Cache-Control"]
+    assert public["ETag"] == '"sha256-' + "a" * 64 + '"'
+    with pytest.raises(EdgeReadinessError, match="cache_version"):
+        cache_headers("public-media")
 
 
 def test_private_surfaces_require_role_recent_auth_and_private_network():
@@ -91,3 +98,69 @@ def test_private_surfaces_require_role_recent_auth_and_private_network():
             **changed,
         }
         assert private_surface_access(**context) is False
+
+
+def test_domain_lifecycle_requires_exact_release_approval_and_replays():
+    key = b"k" * 32
+    claim = domain_claim(
+        tenant_id="tenant-one", domain="example.com", challenge_digest="a" * 64,
+        expires_at=NOW + timedelta(minutes=15),
+    )
+    verified = transition_domain_claim(
+        claim, action="verify", now=NOW, evidence_digest="b" * 64
+    )
+    message = f'{claim["claimDigest"]}:activate:release-001'.encode()
+    approval = hmac.new(key, message, hashlib.sha256).hexdigest()
+    active = transition_domain_claim(
+        verified, action="activate", now=NOW, release_id="release-001",
+        approval=approval, approval_key=key,
+    )
+    assert active["state"] == "active" and active["canonical"] is True
+    assert transition_domain_claim(
+        active, action="activate", now=NOW, release_id="release-001",
+        approval=approval, approval_key=key,
+    ) == active
+    with pytest.raises(EdgeReadinessError, match="approval"):
+        transition_domain_claim(
+            verified, action="activate", now=NOW, release_id="release-002",
+            approval=approval, approval_key=key,
+        )
+
+
+def test_expired_claim_fails_closed_and_staging_cert_lifecycle_is_bounded():
+    claim = domain_claim(
+        tenant_id="tenant-one", domain="example.com", challenge_digest="a" * 64,
+        expires_at=NOW + timedelta(minutes=1),
+    )
+    expired = transition_domain_claim(
+        claim, action="verify", now=NOW + timedelta(minutes=2), evidence_digest="b" * 64
+    )
+    assert expired["state"] == "expired"
+    assert certificate_transition(
+        environment="preview", state="absent", action="request", now=NOW
+    )["endpoint"] == "acme-staging"
+    with pytest.raises(EdgeReadinessError, match="issuance_disabled"):
+        certificate_transition(environment="test", state="absent", action="request", now=NOW)
+    with pytest.raises(EdgeReadinessError, match="production_approval"):
+        certificate_transition(
+            environment="production", state="absent", action="request", now=NOW
+        )
+
+
+def test_origin_resolution_rejects_ssrf_metadata_private_and_rebinding_targets():
+    assert validate_resolved_origin(
+        hostname="objects.example.net", addresses=["93.184.216.34"],
+        allowed_hosts={"objects.example.net"},
+    )
+    for host, addresses in (
+        ("metadata.internal", ["169.254.169.254"]),
+        ("objects.example.net", ["127.0.0.1"]),
+        ("objects.example.net", ["10.0.0.3"]),
+        ("objects.example.net", ["fe80::1"]),
+    ):
+        with pytest.raises(EdgeReadinessError, match="egress_denied"):
+            validate_resolved_origin(
+                hostname=host, addresses=addresses, allowed_hosts={"objects.example.net"}
+            )
+import hashlib
+import hmac

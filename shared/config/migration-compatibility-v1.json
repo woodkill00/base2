@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "currentSchema": 21,
+  "currentSchema": 23,
   "minimumCompatibleSchema": 17,
   "migrations": [
     {
@@ -39,6 +39,26 @@
       "toSchema": 21,
       "phase": "migrate",
       "compatibleFrom": 20,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "tenant_domain_claim",
+      "fromSchema": 21,
+      "toSchema": 22,
+      "phase": "expand",
+      "compatibleFrom": 21,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "tenant_domain_rls",
+      "fromSchema": 22,
+      "toSchema": 23,
+      "phase": "migrate",
+      "compatibleFrom": 22,
       "expectedLockMs": 1000,
       "expectedRuntimeMs": 30000,
       "destructive": false

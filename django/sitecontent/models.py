@@ -2602,3 +2602,64 @@ class TenantQuotaReservation(SiteOwnedModel):
         super().clean()
         if self.quota_id and self.site_id != self.quota.site_id:
             raise ValidationError("tenant_quota_reservation_scope_invalid")
+
+
+class TenantDomainClaim(SiteOwnedModel):
+    """Globally unique, tenant-owned custom-domain lifecycle state."""
+
+    class State(models.TextChoices):
+        PENDING = "pending", "Pending"
+        VERIFIED = "verified", "Verified"
+        ACTIVE = "active", "Active"
+        REVOKED = "revoked", "Revoked"
+        EXPIRED = "expired", "Expired"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    domain = models.CharField(max_length=253, unique=True)
+    challenge_digest = models.CharField(max_length=64, validators=[sha256_validator])
+    evidence_digest = models.CharField(max_length=64, blank=True, default="")
+    approval_digest = models.CharField(max_length=64, blank=True, default="")
+    release_id = models.CharField(max_length=128, blank=True, default="")
+    state = models.CharField(max_length=16, choices=State.choices, default=State.PENDING)
+    canonical = models.BooleanField(default=False)
+    expires_at = models.DateTimeField()
+    verified_at = models.DateTimeField(null=True, blank=True)
+    revision = models.PositiveBigIntegerField(default=1)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["site_id", "state", "domain"], name="tenant_domain_state_idx")
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id"],
+                condition=models.Q(canonical=True, state="active"),
+                name="tenant_one_active_canonical_uq",
+            )
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        normalized = self.domain.strip().lower().rstrip(".")
+        domain_pattern = re.compile(
+            r"^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$"
+        )
+        if "*" in normalized or not domain_pattern.fullmatch(normalized):
+            raise ValidationError("tenant_domain_invalid")
+        if normalized.startswith("xn--") or ".xn--" in normalized:
+            raise ValidationError("tenant_domain_homograph_forbidden")
+        self.domain = normalized
+        for field in ("evidence_digest", "approval_digest"):
+            value = getattr(self, field)
+            if value and not re.fullmatch(SHA256_PATTERN, value):
+                raise ValidationError(f"tenant_domain_{field}_invalid")
+        if self.expires_at.tzinfo is None:
+            raise ValidationError("tenant_domain_expiry_invalid")
+        if self.state in {self.State.VERIFIED, self.State.ACTIVE} and not (
+            self.verified_at and self.evidence_digest
+        ):
+            raise ValidationError("tenant_domain_verification_required")
+        if self.state == self.State.ACTIVE and not (self.approval_digest and self.release_id):
+            raise ValidationError("tenant_domain_activation_binding_required")
+        if self.canonical and self.state != self.State.ACTIVE:
+            raise ValidationError("tenant_domain_canonical_state_invalid")

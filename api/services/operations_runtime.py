@@ -107,8 +107,12 @@ def configured_probe_adapters() -> dict[str, Callable[[int], tuple[str, str, int
             redis_client.ping, 'queues.ready', 'queues.unavailable', timeout
         ),
         'objects.ready': storage,
-        'dns.canonical': configured('dns'),
-        'certificate.expiry': configured('certificate'),
+        # These consume integrity-bound receipts from the separately bounded
+        # domain/certificate controller. Absence is visible degradation, never
+        # fabricated health and never a reason for this observer to gain DNS or
+        # certificate mutation authority.
+        'dns.canonical': lambda timeout: _receipt('dns', timeout),
+        'certificate.expiry': lambda timeout: _receipt('certificate', timeout),
         'email.delivery': configured('email'),
         'schedules.freshness': lambda timeout: ('healthy', 'schedules.configured', 0),
         'capacity.headroom': capacity,

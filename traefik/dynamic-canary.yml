@@ -4,7 +4,8 @@ http:
       rule: Host(`${WEBSITE_DOMAIN}`) && PathPrefix(`/api`)
       priority: 200
       entryPoints: [websecure]
-      middlewares: [canary-security-headers]
+      middlewares:
+        [canary-security-headers, canary-request-limits, canary-concurrency, canary-rate-limit]
       tls:
         certResolver: ${TRAEFIK_CERT_RESOLVER}
       service: canary-api
@@ -13,7 +14,8 @@ http:
       rule: Host(`${WEBSITE_DOMAIN}`) && PathPrefix(`/`)
       priority: 100
       entryPoints: [websecure]
-      middlewares: [canary-security-headers]
+      middlewares:
+        [canary-security-headers, canary-request-limits, canary-concurrency, canary-rate-limit]
       tls:
         certResolver: ${TRAEFIK_CERT_RESOLVER}
       service: canary-frontend
@@ -39,3 +41,14 @@ http:
         contentSecurityPolicy: "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; font-src 'self' data:"
         customResponseHeaders:
           X-Robots-Tag: 'noindex, nofollow, noarchive'
+    canary-request-limits:
+      buffering:
+        maxRequestBodyBytes: 10485760
+        memRequestBodyBytes: 1048576
+    canary-concurrency:
+      inFlightReq:
+        amount: 16
+    canary-rate-limit:
+      rateLimit:
+        average: 120
+        burst: 30

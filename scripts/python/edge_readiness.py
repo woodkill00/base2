@@ -4,10 +4,11 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import ipaddress
 import json
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 DOMAIN = re.compile(r"^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
@@ -106,6 +107,58 @@ def domain_claim(
     return value
 
 
+def transition_domain_claim(
+    claim: dict[str, Any],
+    *,
+    action: str,
+    now: datetime,
+    evidence_digest: str = "",
+    release_id: str = "",
+    approval: str = "",
+    approval_key: bytes | None = None,
+) -> dict[str, Any]:
+    """Advance a claim without network access or caller-selected commands/URLs."""
+    value = json.loads(json.dumps(claim, sort_keys=True))
+    if now.tzinfo is None or value.get("state") not in {
+        "pending", "verified", "active", "revoked", "expired"
+    }:
+        raise EdgeReadinessError("domain:state_invalid")
+    expires = datetime.fromisoformat(value["expiresAt"])
+    if now.astimezone(UTC) >= expires and value["state"] not in {"revoked", "expired"}:
+        value.update(state="expired", canonical=False)
+        return value
+    if action == "verify":
+        if value["state"] == "verified" and value.get("evidenceDigest") == evidence_digest:
+            return value
+        if value["state"] != "pending" or not re.fullmatch(r"[0-9a-f]{64}", evidence_digest):
+            raise EdgeReadinessError("domain:verification_invalid")
+        value.update(state="verified", evidenceDigest=evidence_digest, verifiedAt=now.isoformat())
+        return value
+    if action in {"activate", "revoke"}:
+        if not approval_key or len(approval_key) < 32 or not re.fullmatch(
+            r"[a-z0-9][a-z0-9_.-]{2,127}", release_id or ""
+        ):
+            raise EdgeReadinessError("domain:approval_invalid")
+        message = f'{value["claimDigest"]}:{action}:{release_id}'.encode()
+        expected = hmac.new(approval_key, message, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expected, approval):
+            raise EdgeReadinessError("domain:approval_invalid")
+        target = "active" if action == "activate" else "revoked"
+        allowed = {"activate": {"verified", "active"}, "revoke": {"verified", "active", "revoked"}}
+        if value["state"] not in allowed[action]:
+            raise EdgeReadinessError("domain:transition_invalid")
+        if value["state"] == target and value.get("releaseId") == release_id:
+            return value
+        value.update(
+            state=target,
+            canonical=action == "activate",
+            releaseId=release_id,
+            approvalDigest=hashlib.sha256(approval.encode()).hexdigest(),
+        )
+        return value
+    raise EdgeReadinessError("domain:action_invalid")
+
+
 def canonical_redirect(*, request_host: str, apex: str, https: bool) -> dict[str, Any]:
     request = request_host.lower().rstrip(".")
     target = apex.lower().rstrip(".")
@@ -117,14 +170,67 @@ def canonical_redirect(*, request_host: str, apex: str, https: bool) -> dict[str
     return {"redirect": request != target or not https, "status": 308, "canonicalOrigin": canonical}
 
 
-def cache_headers(classification: str) -> dict[str, str]:
+def cache_headers(classification: str, *, version_digest: str = "") -> dict[str, str]:
     if classification not in CACHE:
         raise EdgeReadinessError("edge:cache_class_invalid")
-    if classification == "public-static":
-        return {"Cache-Control": "public,max-age=31536000,immutable", "Vary": "Accept-Encoding"}
-    if classification == "public-media":
-        return {"Cache-Control": "public,max-age=3600,must-revalidate", "Vary": "Accept-Encoding"}
+    if classification in {"public-static", "public-media"}:
+        if not re.fullmatch(r"[0-9a-f]{64}", version_digest or ""):
+            raise EdgeReadinessError("edge:cache_version_invalid")
+        policy = (
+            "public,max-age=31536000,immutable"
+            if classification == "public-static"
+            else "public,max-age=3600,must-revalidate"
+        )
+        return {
+            "Cache-Control": policy,
+            "Vary": "Accept-Encoding",
+            "ETag": f'"sha256-{version_digest}"',
+        }
     return {"Cache-Control": "private,no-store", "Vary": "Cookie,Authorization"}
+
+
+def certificate_transition(
+    *, environment: str, state: str, action: str, now: datetime, expires_at: datetime | None = None
+) -> dict[str, Any]:
+    modes = {
+        "development": "disabled",
+        "test": "disabled",
+        "preview": "staging-only",
+        "staging": "staging-only",
+        "production": "separate-approval",
+    }
+    if environment not in modes or now.tzinfo is None:
+        raise EdgeReadinessError("certificate:environment_invalid")
+    if environment in {"development", "test"}:
+        raise EdgeReadinessError("certificate:issuance_disabled")
+    if environment == "production":
+        raise EdgeReadinessError("certificate:production_approval_required")
+    transitions = {
+        ("absent", "request"): "pending",
+        ("pending", "issue"): "active",
+        ("active", "renew"): "pending",
+        ("active", "revoke"): "revoked",
+        ("pending", "fail"): "failed",
+        ("failed", "retry"): "pending",
+    }
+    target = transitions.get((state, action))
+    if not target:
+        raise EdgeReadinessError("certificate:transition_invalid")
+    if target == "active" and (expires_at is None or expires_at <= now + timedelta(hours=1)):
+        raise EdgeReadinessError("certificate:expiry_invalid")
+    return {"environment": environment, "endpoint": "acme-staging", "state": target}
+
+
+def validate_resolved_origin(*, hostname: str, addresses: list[str], allowed_hosts: set[str]) -> bool:
+    """Reject unapproved names, rebinding, metadata, loopback, and private origins."""
+    host = hostname.lower().rstrip(".")
+    if host not in allowed_hosts or not addresses:
+        raise EdgeReadinessError("edge:egress_denied")
+    for raw in addresses:
+        address = ipaddress.ip_address(raw)
+        if not address.is_global:
+            raise EdgeReadinessError("edge:egress_denied")
+    return True
 
 
 def private_surface_access(
