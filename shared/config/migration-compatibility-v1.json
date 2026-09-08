@@ -107,7 +107,7 @@
       "migrationId": "worker_runtime_least_privilege",
       "fromSchema": 27,
       "toSchema": 28,
-      "phase": "contract",
+      "phase": "migrate",
       "compatibleFrom": 27,
       "expectedLockMs": 1000,
       "expectedRuntimeMs": 30000,

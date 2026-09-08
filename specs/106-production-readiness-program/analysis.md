@@ -503,3 +503,17 @@ and email read/update with content, operations, and insert denial. Tasks B195-B1
 capture these test-discovered obligations. The rejected candidate and its gate are
 historical evidence only; a new clean head still requires two complete gates and
 fresh independent review.
+
+## Analysis cycle 14 — gate-one catalog and changed-line coverage rejection
+
+Complete gate 1 rejected candidate `d0bd6665e3d1fe1e78090774da18f561c1cb0c0a`.
+The migration catalog described the non-data-destructive worker permission change
+as a destructive contract phase while explicitly declaring it non-destructive,
+and its test still expected schema 27 instead of the live schema 29. The catalog
+now classifies the permission transition as a migrate phase and the contract
+requires schema 29. The changed-line gate also measured 89.28% against the fixed
+90% floor. Focused email tests now exercise private secret-file validation, SMTP
+adapter construction and invalid configuration, and successful and empty fenced
+outbox claims. Tasks B200-B201 preserve both gate-discovered obligations. The
+failed candidate remains rejected; a new exact head must restart both complete
+gates and independent review.

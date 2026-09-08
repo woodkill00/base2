@@ -107,6 +107,73 @@ def test_runtime_adapter_allowlist_and_operator_diagnostic_are_safe(monkeypatch)
     assert 'secret body' not in str(diagnostic)
 
 
+def test_smtp_runtime_adapter_reads_only_private_regular_secret_files(monkeypatch, tmp_path):
+    username = tmp_path / 'username'
+    password = tmp_path / 'password'
+    username.write_text('smtp-user', encoding='utf-8')
+    password.write_text('smtp-password', encoding='utf-8')
+    username.chmod(0o600)
+    password.chmod(0o600)
+    monkeypatch.setenv('BASE2_EMAIL_ADAPTER', 'smtp')
+    monkeypatch.setenv('BASE2_EMAIL_SMTP_HOST', 'smtp.example.test')
+    monkeypatch.setenv('BASE2_EMAIL_SMTP_PORT', '587')
+    monkeypatch.setenv('BASE2_EMAIL_SMTP_TIMEOUT_SECONDS', '7')
+    monkeypatch.setenv('BASE2_EMAIL_FROM_ADDRESS', 'no-reply@example.test')
+    monkeypatch.setenv('BASE2_EMAIL_SMTP_USERNAME_FILE', str(username))
+    monkeypatch.setenv('BASE2_EMAIL_SMTP_PASSWORD_FILE', str(password))
+    adapter = _configured_adapter()
+    assert isinstance(adapter, SmtpEmailAdapter)
+    assert adapter.host == 'smtp.example.test'
+    assert adapter.timeout == 7
+
+    password.chmod(0o644)
+    with pytest.raises(RuntimeError, match='email_secret_file_permissions'):
+        _configured_adapter()
+    password.chmod(0o600)
+    password.write_text('', encoding='utf-8')
+    with pytest.raises(RuntimeError, match='email_secret_empty'):
+        _configured_adapter()
+    monkeypatch.setenv('BASE2_EMAIL_SMTP_PORT', 'not-a-port')
+    with pytest.raises(RuntimeError, match='email_smtp_configuration_invalid'):
+        _configured_adapter()
+
+
+def test_claim_outbox_email_materializes_the_fenced_row(monkeypatch):
+    outbox_id = uuid4()
+    claim_token = uuid4()
+    now = datetime.now(timezone.utc)
+    row = (
+        outbox_id,
+        'private@example.test',
+        'subject',
+        'body',
+        '',
+        'sending',
+        'worker_claim',
+        '',
+        '',
+        now,
+        None,
+        claim_token,
+        'stable-delivery-key',
+    )
+    connection = MagicMock()
+    cursor = MagicMock()
+    connection.__enter__.return_value = connection
+    connection.cursor.return_value.__enter__.return_value = cursor
+    cursor.fetchone.return_value = row
+    monkeypatch.setattr(email_service, 'db_conn', lambda: connection)
+    claimed = email_service.claim_outbox_email(outbox_id)
+    assert claimed is not None
+    assert claimed.id == outbox_id
+    assert claimed.claim_token == claim_token
+    assert claimed.delivery_key == 'stable-delivery-key'
+    assert "claim_expires_at=NOW() + INTERVAL '5 minutes'" in cursor.execute.call_args.args[0]
+
+    cursor.fetchone.return_value = None
+    assert email_service.claim_outbox_email(outbox_id) is None
+
+
 def test_smtp_adapter_requires_tls_port_and_sends_without_exposing_credentials(monkeypatch):
     calls = []
 

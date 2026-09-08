@@ -244,3 +244,5 @@ substitute for the integration proof named by the task.
 - [ ] B197 Repair lifecycle backfill against the real membership schema and prove it in disposable PostgreSQL migration acceptance. (FR-018, FR-045, FR-066)
 - [ ] B198 Separate request, content, runtime, and email database identities across bootstrap, migration, setup, Compose, and E2E surfaces with independent credentials and least-privilege grants. (FR-019, FR-031, FR-065, FR-073)
 - [ ] B199 Prove content discovery plus tenant-fenced mutation, runtime operation/quota/job access, email outbox select/update, and cross-duty denial through real PostgreSQL forward, rollback, and reapply checks. (FR-019, FR-036, FR-060, FR-065, FR-073)
+- [ ] B200 Align the migration compatibility catalog and contract with schema 29 and classify the permission-only transition without a false destructive claim. (FR-018, FR-066, FR-068)
+- [ ] B201 Restore the fixed 90% changed-line floor with focused private SMTP configuration and fenced outbox-claim coverage. (FR-038, FR-063, FR-065, FR-071)

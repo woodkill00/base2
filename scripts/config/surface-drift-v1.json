@@ -23,7 +23,7 @@
       "shared/config/design-system-v1.json": "40a9bd6d00ef561488d3437d04699d6b2d1781ec4feab58d33c20fbe4a436d82",
       "shared/config/edge-readiness-v1.json": "c6adf440599413b21a70552c7b95e9474869003eb825872cea3ee18c4ae0b848",
       "shared/config/identity-realms.json": "c11cd97a6808983182e96774499ae5d9b63e38d8dbe1464846cbca9b6127719f",
-      "shared/config/migration-compatibility-v1.json": "a82f9ba675ddef5c5ea7def08abe7c39a17e8e9af15dce89114de46fe635d080",
+      "shared/config/migration-compatibility-v1.json": "a65f922b5af53f8982e810c8158f99f39f04b1ec8581f790924fb56dc202210c",
       "shared/config/module-catalog.json": "ae322048e2b26ca38b430e275df172d650e0d5c0f7366d4571138842237b4cc7",
       "shared/config/operations-probes-v1.json": "85b92aacfff06818581b7460aa1471843e969a5fd32da369a5f0e05b2bc5ff36",
       "shared/config/optional-search-v1.json": "06adbb1bfe9cf53e06ee915ea6be40161a12bc9241cf91e95b4f325f0bc0edd8",
