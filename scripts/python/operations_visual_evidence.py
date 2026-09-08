@@ -50,6 +50,32 @@ CAPTURE_NAMES = {
     "operations-center-firefox-desktop-firefox-desktop-linux.png",
     "operations-center-webkit-desktop-webkit-desktop-linux.png",
 }
+PROJECTS = tuple(
+    [
+        f"chromium-{mode}"
+        for mode in (
+            "compact",
+            "landscape-touch",
+            "tablet",
+            "desktop",
+            "ultrawide",
+            "large-text",
+            "400-zoom",
+            "light",
+            "high-contrast",
+            "rtl",
+            "german",
+            "reduced-motion",
+        )
+    ]
+    + ["firefox-desktop", "webkit-desktop"]
+)
+STATE_PROJECTS = {"chromium-compact", "chromium-desktop", "firefox-desktop", "webkit-desktop"}
+TITLES = {
+    "operations center is accessible responsive and visually stable": "operations-primary",
+    "operations center shows truthful empty and failure states": "operations-empty-error",
+    "operations center exposes stale, reauthentication, and read-only recovery states": "operations-recovery",
+}
 
 
 class VisualEvidenceError(ValueError):
@@ -82,15 +108,32 @@ def build() -> dict:
         expected_runner_digest = hashlib.sha256(
             json.dumps(unsigned_runner, separators=(",", ":")).encode()
         ).hexdigest()
+        rows = runner.get("tests", [])
+        expected_pairs = {(project, title) for project in PROJECTS for title in TITLES}
+        actual_pairs = {(row.get("project"), row.get("title")) for row in rows}
+        receipt_captures = {capture for row in rows for capture in row.get("captures", [])}
+        rows_honest = all(
+            row.get("assertionId") == TITLES.get(row.get("title"))
+            and row.get("status")
+            == (
+                "passed"
+                if row.get("title") == next(iter(TITLES)) or row.get("project") in STATE_PROJECTS
+                else "skipped"
+            )
+            and bool(row.get("captures")) == (row.get("status") == "passed")
+            for row in rows
+        )
         if (
             set(runner) != {"schemaVersion", "status", "tests", "digest"}
             or runner["schemaVersion"] != 1
             or runner["status"] != "passed"
-            or not runner["tests"]
-            or any(test.get("status") != "passed" for test in runner["tests"])
+            or actual_pairs != expected_pairs
+            or len(rows) != len(expected_pairs)
+            or not rows_honest
+            or receipt_captures != CAPTURE_NAMES
             or runner["digest"] != expected_runner_digest
         ):
-            raise ValueError("runner receipt did not prove a passing run")
+            raise ValueError("runner receipt did not prove the exact asserted/skipped matrix")
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         raise VisualEvidenceError(f"visual runner receipt invalid: {exc}") from exc
     return {

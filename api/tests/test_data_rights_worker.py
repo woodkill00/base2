@@ -1,7 +1,6 @@
 import json
 from datetime import datetime, timezone
-from types import SimpleNamespace
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from cryptography.fernet import Fernet
@@ -16,8 +15,12 @@ OPERATION_ID = UUID('00000000-0000-0000-0000-000000000802')
 
 def _operation(kind, key, payload):
     return {
-        'id': OPERATION_ID, 'tenant_id': 'tenant-a', 'user_id': USER_ID, 'kind': kind,
+        'id': OPERATION_ID,
+        'tenant_id': 'tenant-a',
+        'user_id': USER_ID,
+        'kind': kind,
         'request_ciphertext': SecretBox(key).encrypt(json.dumps(payload)),
+        'claim_token': uuid4(),
     }
 
 
@@ -30,40 +33,43 @@ def _operation(kind, key, payload):
         ('deletion', {'confirmation': 'DELETE'}, 'deleted'),
     ),
 )
-def test_worker_completes_exact_supported_operation(monkeypatch, kind, request_payload, expected_key):
+def test_worker_completes_exact_supported_operation(
+    monkeypatch, kind, request_payload, expected_key
+):
     key = Fernet.generate_key().decode('ascii')
     captured = {}
     monkeypatch.setattr(worker.settings, 'IDENTITY_ENCRYPTION_KEY', key)
     monkeypatch.setattr(worker.settings, 'TOKEN_PEPPER', 'pepper')
     monkeypatch.setattr(
-        worker.repository, 'claim_operation',
+        worker.repository,
+        'claim_operation',
         lambda **kwargs: _operation(kind, key, request_payload),
     )
     monkeypatch.setattr(
-        worker, '_export_payload',
+        worker,
+        '_export_payload',
         lambda **kwargs: {'schema_version': 1, 'account': {'email': 'owner@example.test'}},
     )
+    monkeypatch.setattr(worker, '_correct_account', lambda **kwargs: USER_ID)
     monkeypatch.setattr(
-        worker, 'update_profile',
-        lambda **kwargs: SimpleNamespace(id=USER_ID),
-    )
-    monkeypatch.setattr(
-        worker, '_workspace_payload',
+        worker,
+        '_workspace_payload',
         lambda **kwargs: {'schema_version': 1, 'records': []},
     )
     monkeypatch.setattr(
-        worker, '_delete_account',
+        worker,
+        '_delete_account',
         lambda **kwargs: {'schema_version': 1, 'deleted': True, 'tenant_id': 'tenant-a'},
     )
     monkeypatch.setattr(
-        worker, '_deactivate_account',
+        worker,
+        '_deactivate_account',
         lambda **kwargs: {'schema_version': 1, 'deactivated': True, 'tenant_id': 'tenant-a'},
     )
     monkeypatch.setattr(
         worker.repository, 'complete_operation', lambda **kwargs: captured.update(kwargs)
     )
     monkeypatch.setattr(worker.repository, 'fail_operation', lambda **kwargs: pytest.fail('failed'))
-    monkeypatch.setattr(worker, 'insert_audit_event', lambda **kwargs: None)
     assert worker.process_operation(OPERATION_ID) == 'completed'
     result = json.loads(SecretBox(key).decrypt(captured['result_ciphertext']))
     assert expected_key in result
@@ -78,7 +84,8 @@ def test_worker_noops_claimed_replay_and_records_generic_failure(monkeypatch):
     failures = []
     monkeypatch.setattr(worker.settings, 'IDENTITY_ENCRYPTION_KEY', key)
     monkeypatch.setattr(
-        worker.repository, 'claim_operation',
+        worker.repository,
+        'claim_operation',
         lambda **kwargs: _operation('unsupported', key, {'secret': 'never-log'}),
     )
     monkeypatch.setattr(
@@ -86,7 +93,9 @@ def test_worker_noops_claimed_replay_and_records_generic_failure(monkeypatch):
     )
     with pytest.raises(ValueError, match='operation_kind_invalid'):
         worker.process_operation(OPERATION_ID)
-    assert failures == [{'operation_id': OPERATION_ID, 'error_code': 'processing_failed'}]
+    assert failures[0]['operation_id'] == OPERATION_ID
+    assert failures[0]['error_code'] == 'processing_failed'
+    assert failures[0]['claim_token']
 
 
 def test_export_timestamp_serialization_is_explicit(monkeypatch):
@@ -111,6 +120,9 @@ def test_export_timestamp_serialization_is_explicit(monkeypatch):
             return []
 
     class Connection:
+        def set_session(self, **kwargs):
+            assert kwargs == {'isolation_level': 'REPEATABLE READ', 'readonly': True}
+
         def cursor(self):
             return Cursor()
 
@@ -123,7 +135,8 @@ def test_export_timestamp_serialization_is_explicit(monkeypatch):
 
     monkeypatch.setattr(worker, 'db_conn', lambda **kwargs: Context())
     monkeypatch.setattr(
-        worker, '_workspace_payload',
+        worker,
+        '_workspace_payload',
         lambda **kwargs: {'schema_version': 1, 'records': []},
     )
     payload = worker._export_payload(tenant_id='tenant-a', user_id=USER_ID)
@@ -142,8 +155,15 @@ def test_workspace_privacy_projection_is_tenant_subject_and_field_permission_bou
             self.results = [
                 [
                     (
-                        record_id, 'article', 'safe', 'Safe', 'draft', 2, 3,
-                        {'public_name': 'Shown', 'private_note': 'Never export'}, definition_id,
+                        record_id,
+                        'article',
+                        'safe',
+                        'Safe',
+                        'draft',
+                        2,
+                        3,
+                        {'public_name': 'Shown', 'private_note': 'Never export'},
+                        definition_id,
                     )
                 ],
                 [(definition_id, 'public_name')],
@@ -156,9 +176,7 @@ def test_workspace_privacy_projection_is_tenant_subject_and_field_permission_bou
             return self.results.pop(0)
 
     cursor = Cursor()
-    projection = worker._workspace_projection(
-        cursor, tenant_id='tenant-a', user_id=USER_ID
-    )
+    projection = worker._workspace_projection(cursor, tenant_id='tenant-a', user_id=USER_ID)
     assert projection['records'][0]['values'] == {'public_name': 'Shown'}
     assert 'private_note' not in json.dumps(projection)
     assert cursor.calls[0][1] == ('tenant-a', 'tenant-a', str(USER_ID))
@@ -181,9 +199,7 @@ def test_workspace_subject_unlink_preserves_immutable_audit_and_pseudonymizes_jo
     assert "status='deleted'" in statements
     assert 'UPDATE sitecontent_workspaceauditevent' not in statements
     assert 'DELETE FROM sitecontent_workspaceauditevent' not in statements
-    pseudonyms = [
-        params[0] for query, params in cursor.calls if 'requester_ref=%s' in query
-    ]
+    pseudonyms = [params[0] for query, params in cursor.calls if 'requester_ref=%s' in query]
     assert len(set(pseudonyms)) == 1
     assert pseudonyms[0].startswith('deleted:') and str(USER_ID) not in pseudonyms[0]
 
@@ -192,10 +208,18 @@ def test_deactivation_fails_closed_for_final_owner_before_account_mutation(monke
     class Cursor:
         rowcount = 1
         calls = []
-        def __enter__(self): return self
-        def __exit__(self, *_args): return False
-        def execute(self, query, params): self.calls.append((' '.join(query.split()), params))
-        def fetchone(self): return ('organization-a',)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def execute(self, query, params):
+            self.calls.append((' '.join(query.split()), params))
+
+        def fetchone(self):
+            return ('organization-a',)
 
     class Connection:
         def __init__(self):
@@ -213,9 +237,14 @@ def test_deactivation_fails_closed_for_final_owner_before_account_mutation(monke
             self.commits += 1
 
     connection = Connection()
+
     class Context:
-        def __enter__(self): return connection
-        def __exit__(self, *_args): return False
+        def __enter__(self):
+            return connection
+
+        def __exit__(self, *_args):
+            return False
+
     monkeypatch.setattr(worker, 'db_conn', lambda **kwargs: Context())
     with pytest.raises(ValueError, match='last_owner_required'):
         worker._deactivate_account(tenant_id='tenant-a', user_id=USER_ID)
@@ -227,11 +256,21 @@ def test_deactivation_fails_closed_for_final_owner_before_account_mutation(monke
 def test_deactivation_revokes_sessions_suspends_memberships_and_commits_atomically(monkeypatch):
     class Cursor:
         rowcount = 1
-        def __init__(self): self.calls = []
-        def __enter__(self): return self
-        def __exit__(self, *_args): return False
-        def execute(self, query, params): self.calls.append((' '.join(query.split()), params))
-        def fetchone(self): return None
+
+        def __init__(self):
+            self.calls = []
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def execute(self, query, params):
+            self.calls.append((' '.join(query.split()), params))
+
+        def fetchone(self):
+            return None
 
     class Connection:
         def __init__(self):
@@ -249,9 +288,14 @@ def test_deactivation_revokes_sessions_suspends_memberships_and_commits_atomical
             self.commits += 1
 
     connection = Connection()
+
     class Context:
-        def __enter__(self): return connection
-        def __exit__(self, *_args): return False
+        def __enter__(self):
+            return connection
+
+        def __exit__(self, *_args):
+            return False
+
     monkeypatch.setattr(worker, 'db_conn', lambda **kwargs: Context())
     result = worker._deactivate_account(tenant_id='tenant-a', user_id=USER_ID)
     assert result == {'schema_version': 1, 'deactivated': True, 'tenant_id': 'tenant-a'}

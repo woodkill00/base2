@@ -577,3 +577,48 @@ probes, timing caps, worker and queue evidence, closed Celery route validation,
 production lifecycle admission, Redis dispatch reservation, capacity failure,
 and broker-enqueue cleanup. The floor is not reduced, rounded, or bypassed; both
 complete gates restart again on the next clean exact head.
+
+## Analysis cycle 17 — fresh independent review rejection
+
+Candidate `d9ba9511c7d99252529a24b794c2ab84335870d3` passed all 107 complete-gate
+checks twice, including a 90.74% changed-line result, and 67 critical isolation
+and state-machine tests ten consecutive times. Fresh UX, data, and operations
+review nevertheless rejected publication. Across the three lanes the maximum
+counts were zero critical, five deduplicated high, eleven medium, and two low
+findings. The automated evidence is therefore historical and insufficient.
+
+The highest-risk findings are a post-contract email insert missing its mandatory
+delivery key, crash-strandable data-rights work, a shared content/data-rights role
+with unrestricted global identity mutation, and backup/restore evidence that does
+not reconcile database references to captured object bytes. Operational findings
+cover global session collateral, mixed-time exports, incomplete migration reverse,
+concurrent migration races, contradictory production database TLS, helper-only
+ephemeral expiry, fail-open deployment health, and non-atomic fan-out capacity.
+UX findings cover a silent passkey control, inert and incorrectly controlled
+sidebars, stale-language feedback, and an untranslated running state. Two low
+findings require honest visual skip receipts and consistent production API-doc
+defaults. Tasks B220-B239 bind every correction and require new real PostgreSQL,
+fault, visual, and complete-gate evidence before review can be repeated.
+
+## Analysis cycle 18 — integrated acceptance corrections
+
+The cycle-17 repairs passed their lane-specific suites, but integrated acceptance
+found two concrete compatibility gaps before a candidate commit. The disposable
+PostgreSQL runner had not generated or passed credentials for the newly isolated
+data-rights role, so bootstrap correctly failed closed. The authenticated shell
+also had older callers and test doubles that still supplied string sidebar items;
+requiring only typed objects would have turned those controls inert and changed
+their accessible name. Tasks B240-B242 preserve these findings and their proof.
+
+The acceptance runner now carries the dedicated role through bootstrap, migration,
+workspace, and media checks, and the complete disposable PostgreSQL forward,
+reverse, concurrency, and isolation sequence passes. AppShell normalizes legacy
+strings into real links while typed callers retain exact routes, and the complete
+68-file/258-test frontend suite passes. The Operations browser matrix was then
+executed again from the integrated sources across Chromium layouts, German,
+Arabic/RTL, reduced motion, Firefox, and WebKit; 22 asserted scenarios passed and
+20 unsupported combinations were recorded explicitly as skips. Its 35 captures,
+runner receipt, visual manifest, and the 109-file surface-drift inventory were
+regenerated and validated. B239 remains open until one clean exact head passes two
+complete gates, ten critical-suite repetitions, and fresh independent review with
+zero critical, high, or medium findings.

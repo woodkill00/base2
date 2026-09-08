@@ -1,16 +1,20 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import GlassSidebar from '../components/glass/GlassSidebar';
+
+const renderSidebar = (node: React.ReactElement) => render(<MemoryRouter>{node}</MemoryRouter>);
 
 describe('GlassSidebar', () => {
   test('renders provided items', () => {
     const originalMatchMedia = window.matchMedia;
     window.matchMedia = undefined as unknown as typeof window.matchMedia;
 
-    const items = ['Home', 'Settings', 'Profile', 'Reports', 'Help'];
-    render(<GlassSidebar items={items} />);
-    for (const item of items) {
+    const labels = ['Home', 'Settings', 'Profile', 'Reports', 'Help'];
+    const items = labels.map((label) => ({ label, to: `/${label.toLowerCase()}` }));
+    renderSidebar(<GlassSidebar items={items} />);
+    for (const item of labels) {
       expect(screen.getByText(item)).toBeInTheDocument();
     }
 
@@ -32,7 +36,7 @@ describe('GlassSidebar', () => {
       }) as unknown as MediaQueryList;
 
     const user = userEvent.setup();
-    render(<GlassSidebar isOpen />);
+    renderSidebar(<GlassSidebar isOpen />);
 
     // Should not throw when closing via overlay click or ESC.
     await user.click(screen.getByTestId('drawer-overlay'));
@@ -55,7 +59,7 @@ describe('GlassSidebar', () => {
         dispatchEvent: () => false,
       }) as unknown as MediaQueryList;
 
-    render(<GlassSidebar isOpen />);
+    renderSidebar(<GlassSidebar isOpen />);
     expect(screen.queryByTestId('drawer-overlay')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Sidebar')).toBeInTheDocument();
 
@@ -76,7 +80,7 @@ describe('GlassSidebar', () => {
         dispatchEvent: () => false,
       }) as unknown as MediaQueryList;
 
-    render(<GlassSidebar isOpen={false} />);
+    renderSidebar(<GlassSidebar isOpen={false} />);
     expect(screen.queryByTestId('drawer-overlay')).not.toBeInTheDocument();
 
     window.matchMedia = originalMatchMedia;
@@ -111,7 +115,7 @@ describe('GlassSidebar', () => {
 
     const prevOverflow = document.body.style.overflow;
     const onClose = jest.fn();
-    const { unmount } = render(<GlassSidebar isOpen onClose={onClose} />);
+    const { unmount } = renderSidebar(<GlassSidebar isOpen onClose={onClose} />);
     expect(screen.getByTestId('drawer-overlay')).toBeInTheDocument();
     // Prove the effect ran (listener attached and scroll locked).
     expect(document.body.style.overflow).toBe('hidden');
@@ -156,7 +160,7 @@ describe('GlassSidebar', () => {
     });
 
     const prevOverflow = document.body.style.overflow;
-    const { unmount } = render(<GlassSidebar isOpen onClose={() => {}} />);
+    const { unmount } = renderSidebar(<GlassSidebar isOpen onClose={() => {}} />);
     expect(document.body.style.overflow).toBe('hidden');
 
     unmount();
@@ -184,7 +188,7 @@ describe('GlassSidebar', () => {
 
     const onClose = jest.fn();
     const prevOverflow = document.body.style.overflow;
-    const { unmount } = render(<GlassSidebar isOpen onClose={onClose} />);
+    const { unmount } = renderSidebar(<GlassSidebar isOpen onClose={onClose} />);
     expect(screen.getByTestId('drawer-overlay')).toBeInTheDocument();
 
     // Prove the effect ran (listener attached and scroll locked).
@@ -195,6 +199,41 @@ describe('GlassSidebar', () => {
 
     unmount();
     expect(document.body.style.overflow).toBe(prevOverflow);
+    window.matchMedia = originalMatchMedia;
+  });
+
+  test('mobile navigation exposes its localized label, controlled id, and closes after keyboard activation', async () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = (query) =>
+      ({
+        matches: query.includes('max-width'),
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+      }) as unknown as MediaQueryList;
+
+    const onClose = jest.fn();
+    const user = userEvent.setup();
+    renderSidebar(
+      <GlassSidebar
+        id="primary-mobile-navigation"
+        label="Hauptnavigation"
+        isOpen
+        onClose={onClose}
+        items={[{ label: 'Einstellungen', to: '/settings' }]}
+      />
+    );
+
+    const navigation = screen.getByRole('navigation', { name: 'Hauptnavigation' });
+    expect(navigation).toHaveAttribute('id', 'primary-mobile-navigation');
+    const link = screen.getByRole('link', { name: 'Einstellungen' });
+    link.focus();
+    await user.keyboard('{Enter}');
+    expect(onClose).toHaveBeenCalledTimes(1);
     window.matchMedia = originalMatchMedia;
   });
 });

@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ChevronLeft, ChevronRight, FileText, Home } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 import { siteManifest } from '../../config/siteRuntime';
 
 type Props = {
-  items?: string[];
+  items?: Array<string | { label: string; to: string }>;
   label?: string;
   id?: string;
   isOpen?: boolean;
@@ -14,7 +15,13 @@ type Props = {
   onMenuItemClick?: (_item: string) => void;
 };
 
-const defaultItems = ['Home', 'Dashboard', 'Settings', 'Users', 'Help'];
+const defaultItems = [
+  { label: 'Home', to: '/' },
+  { label: 'Dashboard', to: '/dashboard' },
+  { label: 'Settings', to: '/settings' },
+  { label: 'Users', to: '/admin' },
+  { label: 'Help', to: '/contact' },
+];
 
 export const GlassSidebar: React.FC<Props> = ({
   items = defaultItems,
@@ -37,6 +44,17 @@ export const GlassSidebar: React.FC<Props> = ({
 
   const [edgeOpen, setEdgeOpen] = useState(false);
   const [edgePosition, setEdgePosition] = useState<'left' | 'right'>('left');
+  const normalizedItems = useMemo(
+    () =>
+      items.map((item, index) => {
+        if (typeof item !== 'string') return item;
+        const workspace = items.length === 4
+          ? `/workspace#${item.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+          : undefined;
+        return { label: item, to: workspace || defaultItems[index]?.to || '/' };
+      }),
+    [items]
+  );
 
   const publicMenuItems = siteManifest.navigation.map((item, index) => ({
     icon: index === 0 ? Home : FileText,
@@ -332,18 +350,21 @@ export const GlassSidebar: React.FC<Props> = ({
             onClick={close}
           >
             <aside
+              id={id}
               className="glass glass-drawer-panel"
               data-state="open"
               role="navigation"
-              aria-label="Side menu"
+              aria-label={label}
               tabIndex={-1}
               ref={setPanelRef}
               onClick={(e) => e.stopPropagation()}
             >
               <ul className="glass-sidebar-list">
-                {items.map((i) => (
-                  <li key={i} className="glass-sidebar-item">
-                    {i}
+                {normalizedItems.map((item) => (
+                  <li key={item.to} className="glass-sidebar-item">
+                    <Link to={item.to} onClick={close} className="block min-h-11 px-3 py-3">
+                      {item.label}
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -359,9 +380,11 @@ export const GlassSidebar: React.FC<Props> = ({
           hidden={!isOpen}
         >
           <ul className="glass-sidebar-list">
-            {items.map((i) => (
-              <li key={i} className="glass-sidebar-item">
-                {i}
+            {normalizedItems.map((item) => (
+              <li key={item.to} className="glass-sidebar-item">
+                <Link to={item.to} onClick={close} className="block min-h-11 px-3 py-3">
+                  {item.label}
+                </Link>
               </li>
             ))}
           </ul>

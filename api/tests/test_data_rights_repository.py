@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from api.repositories import data_rights as repository
 
@@ -64,7 +64,9 @@ def test_create_reuses_exact_active_kind_after_unique_conflict(monkeypatch):
     cursor = Cursor(rows=[(OPERATION_ID,)], rowcount=0)
     connection = install(monkeypatch, cursor)
     operation_id, created = repository.create_operation(
-        tenant_id='tenant-a', user_id=USER_ID, kind='export',
+        tenant_id='tenant-a',
+        user_id=USER_ID,
+        kind='export',
         request_ciphertext='encrypted',
     )
     assert operation_id == OPERATION_ID
@@ -76,14 +78,17 @@ def test_create_reuses_exact_active_kind_after_unique_conflict(monkeypatch):
 
 
 def test_claim_is_atomic_and_replay_safe(monkeypatch):
-    row = (OPERATION_ID, 'tenant-a', USER_ID, 'export', 'encrypted')
+    claim_token = uuid4()
+    row = (OPERATION_ID, 'tenant-a', USER_ID, 'export', 'encrypted', claim_token)
     cursor = Cursor(rows=[row])
     connection = install(monkeypatch, cursor)
     operation = repository.claim_operation(operation_id=OPERATION_ID)
     assert operation['id'] == OPERATION_ID
     assert operation['tenant_id'] == 'tenant-a'
+    assert operation['claim_token'] == claim_token
     assert connection.committed is True
     assert "status='queued'" in cursor.calls[0][0]
+    assert "status='running' AND claim_expires_at < NOW()" in cursor.calls[0][0]
     assert 'retention_until > NOW()' in cursor.calls[0][0]
 
     empty_cursor = Cursor()
@@ -93,13 +98,22 @@ def test_claim_is_atomic_and_replay_safe(monkeypatch):
 
 
 def test_completion_requires_running_state_and_retention_wipes_all_sensitive_material(monkeypatch):
+    claim_token = uuid4()
     complete_cursor = Cursor(rowcount=1)
     install(monkeypatch, complete_cursor)
     repository.complete_operation(
-        operation_id=OPERATION_ID, result_ciphertext='encrypted-result', digest='a' * 64
+        operation_id=OPERATION_ID,
+        claim_token=claim_token,
+        tenant_id='tenant-a',
+        user_id=USER_ID,
+        kind='export',
+        result_ciphertext='encrypted-result',
+        digest='a' * 64,
     )
-    assert "status='completed'" in complete_cursor.calls[0][0]
-    assert "status='running'" in complete_cursor.calls[0][0]
+    assert 'api_auth_audit_events' in complete_cursor.calls[0][0]
+    assert "status='completed'" in complete_cursor.calls[1][0]
+    assert "status='running'" in complete_cursor.calls[1][0]
+    assert 'claim_token=%s' in complete_cursor.calls[1][0]
 
     retention_cursor = Cursor(rowcount=3)
     install(monkeypatch, retention_cursor)
@@ -109,6 +123,7 @@ def test_completion_requires_running_state_and_retention_wipes_all_sensitive_mat
     assert "result_ciphertext=''" in query
     assert "receipt_digest=''" in query
     assert "status='expired'" in query
+    assert "'running'" in query
 
 
 def test_owner_and_admin_lists_always_bind_tenant_and_are_bounded(monkeypatch):
@@ -119,9 +134,7 @@ def test_owner_and_admin_lists_always_bind_tenant_and_are_bounded(monkeypatch):
     assert owner[0]['id'] == OPERATION_ID
     assert owner_cursor.calls[0][1] == ('tenant-a', str(USER_ID), 100)
 
-    admin_cursor = Cursor(
-        rows=[(OPERATION_ID, USER_ID, 'export', 'queued', '', now, None, now)]
-    )
+    admin_cursor = Cursor(rows=[(OPERATION_ID, USER_ID, 'export', 'queued', '', now, None, now)])
     install(monkeypatch, admin_cursor)
     admin = repository.list_tenant_operations(tenant_id='tenant-b', limit=999)
     assert admin[0]['user_id'] == USER_ID

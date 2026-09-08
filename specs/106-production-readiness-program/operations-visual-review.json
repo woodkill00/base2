@@ -2,14 +2,14 @@
   "schemaVersion": 1,
   "status": "accepted",
   "sources": {
-    "react-app/src/pages/OperationsCenter.jsx": "fbb96a68de96d98eab65202878f409010eee26faba686d9e83585b58fedbe0a6",
+    "react-app/src/pages/OperationsCenter.jsx": "8b1d36a0c6c7d4d227c11b1f5d4c29ab28d9c0f6278449b45c3b2289e1c864b5",
     "react-app/src/services/operations.js": "7bb0edb231daf7255973c885dabf0b93d7664c02ac0eb51a8b00d599c7209418",
-    "react-app/src/components/glass/AppShell.tsx": "69d985a44ac7a8eaf0be4e0b6939a4facc5705b219346b857e9024fc11786721",
+    "react-app/src/components/glass/AppShell.tsx": "6f85d98b032a4b21baa644bffa510d276aba568703345242d9302a33c354c446",
     "react-app/src/components/glass/GlassButton.tsx": "e32c90da113739bb526b2329519e964bd611a1be66d86852e2f4fb075d32e5a1",
     "react-app/src/components/glass/GlassHeader.tsx": "5b995fabdad790b6887eabf5bfc0ecc66aeda70581908b435cfade1d4ab1e460",
-    "react-app/e2e/operations/operations-release.spec.ts": "44b93888719977b62c7feb93c23bbf66599da5831d9033a3926c9dc47733836a",
+    "react-app/e2e/operations/operations-release.spec.ts": "768a5f635451fd7986f306f576e2b631c00eeee98978b51b560b6d534464eb1d",
     "react-app/playwright.operations-release.config.mjs": "74b18f1655cb55b9bcfcb290da0db6042700fdc01d964c3c748591f42ce3d1b9",
-    "react-app/e2e/operations/visual-receipt-reporter.mjs": "1f3423fa99acf34bf281dd92e5d47e36a60a6a79bf8e0d6b62b544eb7cc9db86"
+    "react-app/e2e/operations/visual-receipt-reporter.mjs": "d6da62d4238b9d59f60d4f6da709b34d7180676fee7ec3d3e45a76792c3a49a2"
   },
   "screenshots": {
     "operations-center-cancel-confirmation-chromium-desktop-linux.png": {
@@ -154,8 +154,8 @@
     }
   },
   "runnerReceipt": {
-    "sha256": "86f7103e6fcc96b05ccd74ac96352cc7509164ff0e7a2c42872bb8e06e8cfbbd",
-    "digest": "c53f07736f10e93c6adb47436aabab0a163d89788816508709972c9bf7f3f2f2"
+    "sha256": "8e960d670e66843471998ab268079a2ac6fcd4e585700f87543b1414af53756f",
+    "digest": "88133f9c3d82588ba562da024a33f59af87bde7a48a42a2bef874fad272953a9"
   },
   "assertions": {
     "accessibility": "pass",

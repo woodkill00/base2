@@ -157,6 +157,10 @@ for attempt in $(seq 1 180); do
   sleep 2
 done
 unset clamav_id clamav_state clamav_health clamav_oom
+stage="migration-dependencies"
+"${compose[@]}" up -d --no-build postgres redis
+stage="api-migrations"
+"${compose[@]}" run --rm --no-deps api python -m api.scripts.migrate >/dev/null
 stage="compose-up"
 "${compose[@]}" up -d --no-build
 stage="media-inspector-identity"
@@ -165,8 +169,6 @@ inspector_container_id="$("${compose[@]}" ps -q media-inspector)"
 running_inspector_image="$(docker inspect --format '{{.Image}}' "$inspector_container_id")"
 [[ "$running_inspector_image" == "$inspector_image_id" ]] || fail_stage 3
 unset inspector_image_ref inspector_image_id inspector_build_identity inspector_container_id running_inspector_image
-stage="api-migrations"
-"${compose[@]}" exec -T api python -m api.scripts.migrate >/dev/null
 stage="service-inventory"
 mapfile -t services < <("${compose[@]}" config --services)
 [[ "${#services[@]}" -gt 0 ]] || exit 3

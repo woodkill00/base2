@@ -267,3 +267,32 @@ substitute for the integration proof named by the task.
 - [ ] B217 Re-run the complete Operations visual matrix after localization changes and bind its generated captures, runner receipt, and evidence manifest to the repaired exact sources. (FR-012, FR-063, FR-064, FR-068, FR-075)
 - [ ] B218 Update the account browser contract to the localized human-readable notification accessible name and rerun the complete account/admin journey. (FR-012, FR-046, FR-063, FR-064, FR-075)
 - [ ] B219 Restore the fixed 90% changed-line floor with direct failure-path coverage for bounded internal probes, worker and queue evidence, closed task routing, lifecycle admission, dispatch reservations, and enqueue cleanup. (FR-013, FR-014, FR-031, FR-057, FR-063, FR-065, FR-068)
+
+## Phase 15 — Exact-head review cycle 17 corrections
+
+- [ ] B220 Supply deterministic delivery keys on every email insert, prove creation through the real migrated schema, and stage rollout so old writers cannot race the contract migration. (FR-018, FR-036, FR-038, FR-060, FR-065, FR-066)
+- [ ] B221 Give data-rights claims fenced expiring leases, reclaim/quarantine and retention behavior, and crash-safe side-effect/completion/audit reconciliation with fault drills. (FR-019, FR-023, FR-036, FR-060, FR-065)
+- [ ] B222 Split data-rights into its own queue, database role, and secret set; revoke global identity DML from content workers and expose only tenant/subject-fenced operations with PostgreSQL denial proof. (FR-019, FR-031, FR-065, FR-073)
+- [ ] B223 Reconcile every database object reference to exact captured bytes and digest at backup and restored-database acceptance, including negative missing, wrong, and mixed-snapshot drills. (FR-020 through FR-023, FR-060, FR-066)
+- [ ] B224 Prevent tenant suspension from revoking user-global sessions for other active tenants and prove multi-tenant session behavior. (FR-019, FR-031, FR-045, FR-065)
+- [ ] B225 Produce privacy exports from one repeatable-read snapshot or equivalent fenced cut and prove concurrent correction/deletion cannot yield mixed-time output. (FR-019, FR-023, FR-060, FR-065)
+- [ ] B226 Make migration 0030 rollback exact or explicitly irreversible with rollback tooling that refuses to cross it, plus forward/backward ledger proof. (FR-018, FR-060, FR-066, FR-068)
+- [ ] B227 Serialize API migration runners with a PostgreSQL advisory lock and prove two concurrent runners converge without duplicate DDL or ledger races. (FR-018, FR-060, FR-065, FR-066)
+- [ ] B228 Make production database hosting/TLS configuration internally consistent and prove a verified TLS handshake rather than claiming verify-full against bundled non-TLS PostgreSQL. (FR-025, FR-026, FR-031, FR-062, FR-065)
+- [ ] B229 Connect ephemeral expiry to durable plan persistence, bounded scanner/CLI/service scheduling, exact-owned provider adapters, replay safety, and terminal inventory evidence. (FR-008, FR-058, FR-060, FR-067, FR-069)
+- [ ] B230 Remove deployment error suppression, add role/queue-aware worker healthchecks, fail hard on timeout, and prove deployment cannot continue without every required worker. (FR-013, FR-014, FR-060, FR-063, FR-068)
+- [ ] B231 Make monitoring fan-out capacity reservation atomic across collection and alert producers, release reservations on every outcome, and prove concurrent ticks cannot exceed the queue ceiling. (FR-013, FR-014, FR-036, FR-057, FR-065)
+- [ ] B232 Render passkey enrollment explicitly unavailable until a complete bounded enrollment/recovery implementation exists and test both capability states. (FR-012, FR-031, FR-064, FR-068)
+- [ ] B233 Render AppShell sidebar items as typed navigation controls, bind the mobile controlled id and localized label, close and restore focus on activation, and test keyboard/touch behavior. (FR-012, FR-050, FR-064, FR-075)
+- [ ] B234 Use post-save locale copy immediately and map settings failures to localized safe messages without leaking English service fallbacks; prove German and Arabic success/failure states. (FR-012, FR-046, FR-064, FR-075)
+- [ ] B235 Translate every Operations model enum including running and enforce table-driven model-to-locale coverage. (FR-012, FR-046, FR-064, FR-075)
+- [ ] B236 Make visual runner receipts distinguish skipped/no-assertion cases and bind assertion/capture identifiers to the intended matrix. (FR-012, FR-063, FR-064, FR-068)
+- [ ] B237 Disable production API docs and OpenAPI aliases by default with one consistent authenticated/configured exposure policy and matching documentation. (FR-002, FR-031, FR-055, FR-068)
+- [ ] B238 Re-run focused PostgreSQL, backup/restore, fault, deployment, capacity, frontend, visual, and security suites for every cycle-17 correction. (FR-063 through FR-068, FR-078)
+- [ ] B239 Commit a new clean exact head, restart and pass two complete gates, repeat critical suites, and obtain fresh independent reviews with C/H/M all zero. (FR-063 through FR-069, FR-078)
+
+## Phase 16 — Integration-discovered corrections
+
+- [ ] B240 Carry the dedicated data-rights database role and generated acceptance credential through every disposable PostgreSQL bootstrap and migration command, then prove the complete forward, reverse, concurrency, and role-isolation acceptance succeeds. (FR-018, FR-019, FR-031, FR-060, FR-065, FR-066, FR-073)
+- [ ] B241 Preserve functional navigation for legacy string sidebar inputs while retaining typed route controls, one consistent accessible name, mobile close/focus return, and complete frontend compatibility coverage. (FR-012, FR-050, FR-063, FR-064, FR-075)
+- [ ] B242 Regenerate Operations screenshots, exact runner evidence, and surface-drift inventory from the final integrated sources, and execute framework-specific suites in their correct isolated environments. (FR-012, FR-018, FR-063, FR-064, FR-068, FR-075, FR-078)

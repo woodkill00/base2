@@ -24,7 +24,9 @@ def test_workers_are_partitioned_by_fixed_task_routes():
     routes = tasks.app.conf.task_routes
     assert routes['app.send_email_outbox'] == {'queue': 'email'}
     assert routes['app.replay_email_outbox'] == {'queue': 'email'}
-    assert routes['app.process_data_rights_operation'] == {'queue': 'content'}
+    assert routes['app.process_data_rights_operation'] == {'queue': 'data-rights'}
+    assert routes['app.replay_data_rights_operations'] == {'queue': 'data-rights'}
+    assert routes['app.expire_data_rights_results'] == {'queue': 'data-rights'}
     assert routes['app.process_workspace_export'] == {'queue': 'content'}
     assert tasks.app.conf.task_default_queue == 'runtime'
     registered = {name for name in tasks.app.tasks if name.startswith('app.')}
@@ -83,21 +85,24 @@ def test_production_lifecycle_and_dispatch_admission_fail_closed(monkeypatch):
 
     client = MagicMock()
     client.set.side_effect = [True, False]
-    client.llen.return_value = 84
     monkeypatch.setattr(tasks, 'redis_client', lambda: client)
     token = tasks._reserve_tenant_dispatch('collect', 'tenant-one')
     assert token is not None
     assert tasks._reserve_tenant_dispatch('collect', 'tenant-one') is None
     tasks._release_tenant_dispatch('collect', 'tenant-one', token)
     client.eval.assert_called_once()
-    assert tasks._runtime_fanout_has_capacity(reserve=16) is True
-    assert tasks._runtime_fanout_has_capacity(reserve=17) is False
-    client.llen.side_effect = RuntimeError('redis unavailable')
-    assert tasks._runtime_fanout_has_capacity() is False
+    client.eval.reset_mock()
+    client.eval.side_effect = None
+    client.eval.return_value = 1
+    assert tasks._reserve_runtime_fanout(reserve=16) is True
+    assert tasks._reserve_runtime_fanout(reserve=17) is False
+    client.eval.side_effect = RuntimeError('redis unavailable')
+    assert tasks._reserve_runtime_fanout(reserve=16) is False
 
 
 def test_collection_fanout_releases_dispatch_reservation_when_enqueue_fails(monkeypatch):
-    monkeypatch.setattr(tasks, '_runtime_fanout_has_capacity', lambda: True)
+    monkeypatch.setattr(tasks, '_reserve_runtime_fanout', lambda **_kwargs: True)
+    monkeypatch.setattr(tasks, '_release_runtime_fanout', MagicMock())
     monkeypatch.setattr(tasks, 'configured_tenants', lambda: ['tenant-one'])
     monkeypatch.setattr(tasks, 'fair_tenant_batch', lambda values, **_kwargs: values)
     monkeypatch.setattr(tasks, '_tenant_serving', lambda _tenant: True)
@@ -115,7 +120,8 @@ def test_collection_fanout_releases_dispatch_reservation_when_enqueue_fails(monk
 
 
 def test_collection_and_dispatch_fan_out_only_configured_tenants(monkeypatch):
-    monkeypatch.setattr(tasks, '_runtime_fanout_has_capacity', lambda: True)
+    monkeypatch.setattr(tasks, '_reserve_runtime_fanout', lambda **_kwargs: True)
+    monkeypatch.setattr(tasks, '_release_runtime_fanout', MagicMock())
     monkeypatch.setattr(tasks.settings, 'OPERATIONS_ALERTS_ENABLED', True)
     monkeypatch.setattr(tasks, 'configured_tenants', lambda: ['tenant-one', 'tenant-two'])
     monkeypatch.setattr(tasks, 'fair_tenant_batch', lambda values, **_kwargs: values)
@@ -132,7 +138,8 @@ def test_collection_and_dispatch_fan_out_only_configured_tenants(monkeypatch):
 
 def test_production_fanout_and_site_work_fail_closed_for_nonactive_tenants(monkeypatch):
     monkeypatch.setattr(tasks.settings, 'ENV', 'production')
-    monkeypatch.setattr(tasks, '_runtime_fanout_has_capacity', lambda: True)
+    monkeypatch.setattr(tasks, '_reserve_runtime_fanout', lambda **_kwargs: True)
+    monkeypatch.setattr(tasks, '_release_runtime_fanout', MagicMock())
     monkeypatch.setattr(tasks, 'configured_tenants', lambda: ['tenant-one'])
     monkeypatch.setattr(tasks, 'fair_tenant_batch', lambda values, **_kwargs: values)
     monkeypatch.setattr(tasks, '_tenant_serving', lambda _tenant: False)
@@ -149,7 +156,8 @@ def test_production_fanout_and_site_work_fail_closed_for_nonactive_tenants(monke
 
 
 def test_operations_fanout_skips_already_reserved_tenant(monkeypatch):
-    monkeypatch.setattr(tasks, '_runtime_fanout_has_capacity', lambda: True)
+    monkeypatch.setattr(tasks, '_reserve_runtime_fanout', lambda **_kwargs: True)
+    monkeypatch.setattr(tasks, '_release_runtime_fanout', MagicMock())
     monkeypatch.setattr(tasks, 'configured_tenants', lambda: ['tenant-one', 'tenant-two'])
     monkeypatch.setattr(tasks, 'fair_tenant_batch', lambda values, **_kwargs: values)
     monkeypatch.setattr(
@@ -182,13 +190,51 @@ def test_alert_dispatch_has_no_runtime_or_secret_reads_while_disabled(monkeypatc
 
 
 def test_operations_fanout_fails_closed_before_queue_saturation(monkeypatch):
-    client = MagicMock()
-    client.llen.return_value = 85
-    monkeypatch.setattr(tasks, 'redis_client', lambda: client)
-    configured = MagicMock()
-    monkeypatch.setattr(tasks, 'configured_tenants', configured)
+    monkeypatch.setattr(tasks, '_reserve_runtime_fanout', lambda **_kwargs: False)
+    monkeypatch.setattr(tasks, 'configured_tenants', lambda: ['tenant-one'])
+    fair = MagicMock()
+    monkeypatch.setattr(tasks, 'fair_tenant_batch', fair)
     assert tasks.collect_operations_health.run() == 0
-    configured.assert_not_called()
+    fair.assert_not_called()
+
+
+def test_runtime_fanout_reservation_is_atomic_across_concurrent_ticks(monkeypatch):
+    class AtomicRedis:
+        depth = 70
+        held = 0
+
+        def eval(self, script, _keys, *_args):
+            if 'llen' in script:
+                reserve, ceiling, _ttl = map(int, _args[2:])
+                if self.depth + self.held + reserve > ceiling:
+                    return 0
+                self.held += reserve
+                return 1
+            released = int(_args[1])
+            prior = self.held
+            self.held = max(0, self.held - released)
+            return min(prior, released)
+
+    client = AtomicRedis()
+    monkeypatch.setattr(tasks, 'redis_client', lambda: client)
+    assert tasks._reserve_runtime_fanout(reserve=16) is True
+    assert tasks._reserve_runtime_fanout(reserve=16) is False
+    tasks._release_runtime_fanout(count=16)
+    assert client.held == 0
+    assert tasks._reserve_runtime_fanout(reserve=16) is True
+
+
+def test_fanout_releases_every_capacity_slot_after_enqueue(monkeypatch):
+    monkeypatch.setattr(tasks, 'configured_tenants', lambda: ['tenant-one', 'tenant-two'])
+    monkeypatch.setattr(tasks, 'fair_tenant_batch', lambda values, **_kwargs: values)
+    monkeypatch.setattr(tasks, '_reserve_runtime_fanout', lambda **_kwargs: True)
+    release_capacity = MagicMock()
+    monkeypatch.setattr(tasks, '_release_runtime_fanout', release_capacity)
+    monkeypatch.setattr(tasks, '_tenant_serving', lambda tenant: tenant == 'tenant-one')
+    monkeypatch.setattr(tasks, '_reserve_tenant_dispatch', lambda *_args: 'token')
+    monkeypatch.setattr(tasks.collect_operations_site, 'delay', MagicMock())
+    assert tasks.collect_operations_health.run() == 1
+    assert release_capacity.call_count == 2
 
 
 def test_schedule_materialization_is_allowlisted_idempotent_and_always_settled(monkeypatch):

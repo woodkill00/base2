@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 """Run the unified exact-identity expiry/approved-teardown operation."""
+
 from __future__ import annotations
 
 import argparse
-from datetime import UTC, datetime
 import json
-from pathlib import Path
 import stat
+from datetime import UTC, datetime
+from pathlib import Path
 
 from digital_ocean.scripts.python.live_preview_provider import DigitalOceanHttpClient
-from digital_ocean.scripts.python.preview_lease_v2 import FullPreviewLeaseStore, teardown_full_preview
+from digital_ocean.scripts.python.preview_lease_v2 import (
+    RUN_ID,
+    FullPreviewLeaseStore,
+    teardown_full_preview,
+)
 
 
 class ExpiryError(RuntimeError):
@@ -20,7 +25,9 @@ def _token(path: Path) -> str:
     if not path.is_file() or path.is_symlink() or stat.S_IMODE(path.stat().st_mode) & 0o077:
         raise ExpiryError("credential file must be an owner-only real file")
     value = json.loads(path.read_text(encoding="utf-8"))
-    token = (value.get("secrets") or {}).get("DO_API_TOKEN") or (value.get("secrets") or {}).get("DIGITAL_OCEAN_API_TOKEN")
+    token = (value.get("secrets") or {}).get("DO_API_TOKEN") or (value.get("secrets") or {}).get(
+        "DIGITAL_OCEAN_API_TOKEN"
+    )
     if not isinstance(token, str) or not token:
         raise ExpiryError("DigitalOcean SecretRef resolution is unavailable")
     return token
@@ -33,7 +40,8 @@ class LeaseDigitalOceanProvider:
     @staticmethod
     def _droplet(row: dict) -> dict:
         return {
-            "id": str(row.get("id") or ""), "name": str(row.get("name") or ""),
+            "id": str(row.get("id") or ""),
+            "name": str(row.get("name") or ""),
             "tags": sorted(str(item) for item in (row.get("tags") or [])),
             "size": str((row.get("size") or {}).get("slug") or row.get("size_slug") or ""),
             "createdAt": str(row.get("created_at") or ""),
@@ -59,26 +67,88 @@ class LeaseDigitalOceanProvider:
         rows = (self.client.domains.list_records(domain) or {}).get("domain_records") or []
         for row in rows:
             if str(row.get("id")) == str(record_id):
-                return {"id": str(row["id"]), "domain": domain, "type": str(row["type"]), "name": str(row["name"]), "value": str(row["data"]), "state": "bound"}
+                return {
+                    "id": str(row["id"]),
+                    "domain": domain,
+                    "type": str(row["type"]),
+                    "name": str(row["name"]),
+                    "value": str(row["data"]),
+                    "state": "bound",
+                }
         return None
 
     def delete_dns_record(self, domain: str, record_id: str) -> None:
         self.client.domains.delete_record(domain, int(record_id))
 
 
+def scan_expired_previews(
+    state_root: Path, provider, *, now: datetime, maximum_leases: int = 128
+) -> dict:
+    """Reconcile every durable expired lease through its exact-owned teardown."""
+    if now.tzinfo is None or not 1 <= maximum_leases <= 512:
+        raise ExpiryError("expiry scan configuration is invalid")
+    if state_root.is_symlink() or not state_root.is_dir():
+        raise ExpiryError("lease root must be an existing private directory")
+    paths = sorted(state_root.glob("*.json"))
+    if len(paths) > maximum_leases:
+        raise ExpiryError("lease inventory exceeds the bounded scan capacity")
+    store = FullPreviewLeaseStore(state_root)
+    destroyed: list[str] = []
+    pending: list[str] = []
+    for path in paths:
+        if path.is_symlink() or not RUN_ID.fullmatch(path.stem):
+            raise ExpiryError("lease inventory contains an unsafe member")
+        lease = store.load(path.stem)
+        if lease["state"] == "destroyed":
+            continue
+        expiry = datetime.fromisoformat(lease["expiresAt"].replace("Z", "+00:00"))
+        if now.astimezone(UTC) < expiry.astimezone(UTC):
+            pending.append(path.stem)
+            continue
+        result = teardown_full_preview(store, provider, path.stem, now=now)
+        if result["state"] != "destroyed":
+            raise ExpiryError("expired lease did not reach a terminal state")
+        destroyed.append(path.stem)
+    return {
+        "ok": True,
+        "scanned": len(paths),
+        "destroyed": destroyed,
+        "pending": pending,
+        "secretValuesEmitted": 0,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state-root", type=Path, required=True)
-    parser.add_argument("--run-id", required=True)
+    target = parser.add_mutually_exclusive_group(required=True)
+    target.add_argument("--run-id")
+    target.add_argument("--scan", action="store_true")
     parser.add_argument("--credential-file", type=Path, required=True)
     parser.add_argument("--early-approved", action="store_true")
     args = parser.parse_args(argv)
     client = DigitalOceanHttpClient(_token(args.credential_file))
-    lease = teardown_full_preview(
-        FullPreviewLeaseStore(args.state_root), LeaseDigitalOceanProvider(client), args.run_id,
-        now=datetime.now(UTC), early_approved=args.early_approved,
-    )
-    print(json.dumps({"ok": lease["state"] == "destroyed", "runId": lease["runId"], "state": lease["state"], "mutationCounts": lease["mutationCounts"], "secretValuesEmitted": 0}, sort_keys=True))
+    provider = LeaseDigitalOceanProvider(client)
+    if args.scan:
+        if args.early_approved:
+            raise ExpiryError("early approval is invalid for an automatic scan")
+        result = scan_expired_previews(args.state_root, provider, now=datetime.now(UTC))
+    else:
+        lease = teardown_full_preview(
+            FullPreviewLeaseStore(args.state_root),
+            provider,
+            args.run_id,
+            now=datetime.now(UTC),
+            early_approved=args.early_approved,
+        )
+        result = {
+            "ok": lease["state"] == "destroyed",
+            "runId": lease["runId"],
+            "state": lease["state"],
+            "mutationCounts": lease["mutationCounts"],
+            "secretValuesEmitted": 0,
+        }
+    print(json.dumps(result, sort_keys=True))
     return 0
 
 

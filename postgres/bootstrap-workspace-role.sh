@@ -10,6 +10,8 @@ set -eu
 : "${WORKSPACE_WORKER_DB_PASSWORD:?WORKSPACE_WORKER_DB_PASSWORD is required}"
 : "${RUNTIME_WORKER_DB_USER:?RUNTIME_WORKER_DB_USER is required}"
 : "${RUNTIME_WORKER_DB_PASSWORD:?RUNTIME_WORKER_DB_PASSWORD is required}"
+: "${DATA_RIGHTS_WORKER_DB_USER:?DATA_RIGHTS_WORKER_DB_USER is required}"
+: "${DATA_RIGHTS_WORKER_DB_PASSWORD:?DATA_RIGHTS_WORKER_DB_PASSWORD is required}"
 : "${EMAIL_WORKER_DB_USER:?EMAIL_WORKER_DB_USER is required}"
 : "${EMAIL_WORKER_DB_PASSWORD:?EMAIL_WORKER_DB_PASSWORD is required}"
 
@@ -46,6 +48,17 @@ if [ "$EMAIL_WORKER_DB_USER" = "$WORKSPACE_DB_USER" ] || \
   echo "email_worker_credentials_invalid" >&2
   exit 1
 fi
+case "$DATA_RIGHTS_WORKER_DB_USER" in
+  *[!A-Za-z0-9_]*|'') echo "data_rights_worker_role_invalid" >&2; exit 1 ;;
+esac
+if [ "$DATA_RIGHTS_WORKER_DB_USER" = "$WORKSPACE_DB_USER" ] || \
+   [ "$DATA_RIGHTS_WORKER_DB_USER" = "$WORKSPACE_WORKER_DB_USER" ] || \
+   [ "$DATA_RIGHTS_WORKER_DB_USER" = "$RUNTIME_WORKER_DB_USER" ] || \
+   [ "$DATA_RIGHTS_WORKER_DB_USER" = "$EMAIL_WORKER_DB_USER" ] || \
+   [ "${#DATA_RIGHTS_WORKER_DB_PASSWORD}" -lt 24 ]; then
+  echo "data_rights_worker_credentials_invalid" >&2
+  exit 1
+fi
 
 export PGPASSWORD="$POSTGRES_PASSWORD"
 psql --host="${DB_HOST:-postgres}" --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" \
@@ -55,6 +68,8 @@ psql --host="${DB_HOST:-postgres}" --username="$POSTGRES_USER" --dbname="$POSTGR
   --set=worker_password="$WORKSPACE_WORKER_DB_PASSWORD" \
   --set=runtime_worker_user="$RUNTIME_WORKER_DB_USER" \
   --set=runtime_worker_password="$RUNTIME_WORKER_DB_PASSWORD" \
+  --set=data_rights_worker_user="$DATA_RIGHTS_WORKER_DB_USER" \
+  --set=data_rights_worker_password="$DATA_RIGHTS_WORKER_DB_PASSWORD" \
   --set=email_worker_user="$EMAIL_WORKER_DB_USER" \
   --set=email_worker_password="$EMAIL_WORKER_DB_PASSWORD" <<'SQL'
 SELECT format(
@@ -87,6 +102,16 @@ SELECT format(
   :'runtime_worker_user', :'runtime_worker_password'
 )\gexec
 SELECT format('GRANT CONNECT ON DATABASE %I TO %I', current_database(), :'runtime_worker_user')\gexec
+SELECT format(
+  'CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS',
+  :'data_rights_worker_user', :'data_rights_worker_password'
+)
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'data_rights_worker_user')\gexec
+SELECT format(
+  'ALTER ROLE %I WITH LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS',
+  :'data_rights_worker_user', :'data_rights_worker_password'
+)\gexec
+SELECT format('GRANT CONNECT ON DATABASE %I TO %I', current_database(), :'data_rights_worker_user')\gexec
 SELECT format(
   'CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS',
   :'email_worker_user', :'email_worker_password'

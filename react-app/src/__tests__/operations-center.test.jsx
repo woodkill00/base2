@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import OperationsCenter from '../pages/OperationsCenter';
+import OperationsCenter, { operationsReadable } from '../pages/OperationsCenter';
 import { operationsAPI } from '../services/operations';
 
 const authState = vi.hoisted(() => ({
@@ -40,6 +40,61 @@ const renderPage = () =>
       <OperationsCenter />
     </MemoryRouter>
   );
+
+test.each([
+  ['de', 'running', 'Läuft'],
+  ['ar', 'running', 'قيد التشغيل'],
+  ['de', 'critical', 'Kritisch'],
+  ['ar', 'critical', 'حرج'],
+  ['de', 'acknowledged', 'Bestätigt'],
+  ['ar', 'acknowledged', 'تم الإقرار'],
+  ['de', 'read-only', 'Read Only'],
+  ['ar', 'every:60', 'كل 60 ثانية'],
+])(
+  'renders bounded operation term %s/%s without leaking an enum token',
+  (locale, value, expected) => {
+    expect(operationsReadable(locale, value)).toBe(expected);
+  }
+);
+
+test.each(['de', 'ar'])('localizes every bounded Operations enum in %s', (locale) => {
+  const enums = [
+    'healthy',
+    'unknown',
+    'passed',
+    'critical',
+    'warning',
+    'firing',
+    'acknowledged',
+    'once',
+    'forbid',
+    'retry',
+    'staging',
+    'preview',
+    'production',
+    'degraded',
+    'unavailable',
+    'stale',
+    'muted',
+    'disabled',
+    'info',
+    'high',
+    'resolved',
+    'recurring',
+    'queued',
+    'sending',
+    'sent',
+    'failed',
+    'expired',
+    'running',
+  ];
+  for (const value of enums) {
+    const fallback = value
+      .replace(/[._-]+/g, ' ')
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    expect(operationsReadable(locale, value), `${locale}/${value}`).not.toBe(fallback);
+  }
+});
 
 beforeEach(() => {
   vi.clearAllMocks();

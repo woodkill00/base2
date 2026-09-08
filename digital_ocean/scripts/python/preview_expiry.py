@@ -16,6 +16,7 @@ from pathlib import Path
 from digital_ocean.scripts.python.preview_lease_v2 import RUN_ID, FullPreviewLeaseStore
 
 UNIT = re.compile(r"^[a-zA-Z0-9_.@-]+$")
+SCANNER_UNIT = "base2-full-preview-expiry-scan"
 
 
 class ExpiryPlanError(RuntimeError):
@@ -79,9 +80,16 @@ def _unit_paths(plan: dict, unit_root: str | os.PathLike[str] | None = None) -> 
     return root / f"{plan['unit']}.service", root / f"{plan['unit']}.timer"
 
 
-def _install_unit_files(plan: dict, unit_root: str | os.PathLike[str] | None = None) -> tuple[Path, Path]:
+def _install_unit_files(
+    plan: dict, unit_root: str | os.PathLike[str] | None = None
+) -> tuple[Path, Path]:
     service, timer = _unit_paths(plan, unit_root)
-    command = " ".join(_systemd_quote(part) for part in plan["command"])
+    state_index = plan["command"].index("--state-root")
+    lock_path = str(Path(plan["command"][state_index + 1]).parent / ".expiry-operation.lock")
+    command = " ".join(
+        _systemd_quote(part)
+        for part in ("/usr/bin/flock", "--exclusive", lock_path, *plan["command"])
+    )
     service_text = (
         "[Unit]\n"
         f"Description=Expire exact Base2 preview {plan['runId']}\n\n"
@@ -103,6 +111,53 @@ def _install_unit_files(plan: dict, unit_root: str | os.PathLike[str] | None = N
     )
     _atomic_unit(service, service_text)
     _atomic_unit(timer, timer_text)
+    return service, timer
+
+
+def _scanner_command(plan: dict) -> list[str]:
+    command = list(plan["command"])
+    run_index = command.index("--run-id")
+    command[run_index : run_index + 2] = ["--scan"]
+    lock_path = str(
+        Path(command[command.index("--state-root") + 1]).parent / ".expiry-operation.lock"
+    )
+    return ["/usr/bin/flock", "--exclusive", lock_path, *command]
+
+
+def _install_scanner_unit_files(
+    plan: dict, unit_root: str | os.PathLike[str] | None = None
+) -> tuple[Path, Path]:
+    root = _unit_directory(unit_root)
+    service = root / f"{SCANNER_UNIT}.service"
+    timer = root / f"{SCANNER_UNIT}.timer"
+    command = " ".join(_systemd_quote(part) for part in _scanner_command(plan))
+    _atomic_unit(
+        service,
+        (
+            "[Unit]\n"
+            "Description=Reconcile expired exact-owned Base2 previews\n\n"
+            "[Service]\n"
+            "Type=oneshot\n"
+            "UMask=0077\n"
+            f"WorkingDirectory={_systemd_path(plan['repository'])}\n"
+            f"ExecStart={command}\n"
+        ),
+    )
+    _atomic_unit(
+        timer,
+        (
+            "[Unit]\n"
+            "Description=Persistent scan for expired exact-owned Base2 previews\n\n"
+            "[Timer]\n"
+            "OnBootSec=2min\n"
+            "OnUnitActiveSec=1min\n"
+            "AccuracySec=10s\n"
+            "Persistent=true\n"
+            f"Unit={SCANNER_UNIT}.service\n\n"
+            "[Install]\n"
+            "WantedBy=timers.target\n"
+        ),
+    )
     return service, timer
 
 
@@ -197,9 +252,11 @@ def arm_expiry(
 ) -> dict:
     systemd_run_arguments(plan)
     _install_unit_files(plan, unit_root)
+    _install_scanner_unit_files(plan, unit_root)
     try:
         for args in (
             ["systemctl", "--user", "daemon-reload"],
+            ["systemctl", "--user", "enable", "--now", SCANNER_UNIT + ".timer"],
             ["systemctl", "--user", "enable", "--now", plan["unit"] + ".timer"],
         ):
             completed = runner(args, check=False, capture_output=True, text=True, timeout=20)
@@ -222,7 +279,7 @@ def arm_expiry(
         "armed": True,
         "persistent": True,
         "durableUnitFiles": True,
-        "controllerCoverage": {"primary": "armed", "backup": "not-configured"},
+        "controllerCoverage": {"primary": "armed", "backup": "scanner-armed"},
         "verification": verified,
         "secretValuesEmitted": 0,
     }
@@ -230,36 +287,43 @@ def arm_expiry(
 
 def verify_expiry(plan: dict, *, runner: Callable = subprocess.run) -> dict:
     systemd_run_arguments(plan)
-    completed = runner(
-        [
-            "systemctl",
-            "--user",
-            "show",
-            plan["unit"] + ".timer",
-            "--property=ActiveState",
-            "--property=LoadState",
-            "--property=UnitFileState",
-            "--no-pager",
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=20,
-    )
-    fields = {}
-    for line in completed.stdout.splitlines():
-        key, separator, value = line.partition("=")
-        if separator:
-            fields[key] = value
-    if (
-        completed.returncode != 0
-        or fields.get("LoadState") != "loaded"
-        or fields.get("ActiveState") != "active"
-        or fields.get("UnitFileState") != "enabled"
-    ):
-        raise ExpiryPlanError("EXPIRY_NOT_ARMED", "persistent expiry timer did not verify active")
+    verified_units = []
+    for unit in (plan["unit"] + ".timer", SCANNER_UNIT + ".timer"):
+        completed = runner(
+            [
+                "systemctl",
+                "--user",
+                "show",
+                unit,
+                "--property=ActiveState",
+                "--property=LoadState",
+                "--property=UnitFileState",
+                "--no-pager",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        fields = {}
+        for line in completed.stdout.splitlines():
+            key, separator, value = line.partition("=")
+            if separator:
+                fields[key] = value
+        if (
+            completed.returncode != 0
+            or fields.get("LoadState") != "loaded"
+            or fields.get("ActiveState") != "active"
+            or fields.get("UnitFileState") != "enabled"
+        ):
+            raise ExpiryPlanError(
+                "EXPIRY_NOT_ARMED", f"persistent expiry timer did not verify active: {unit}"
+            )
+        verified_units.append(unit)
     return {
         "unit": plan["unit"] + ".timer",
+        "scannerUnit": SCANNER_UNIT + ".timer",
+        "verifiedUnits": verified_units,
         "loadState": "loaded",
         "activeState": "active",
         "unitFileState": "enabled",

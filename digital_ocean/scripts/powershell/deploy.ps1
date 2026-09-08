@@ -285,7 +285,7 @@ echo "Rolling back to $PREV"
 git reset --hard "$PREV" || true
 
 # Recreate core services to match the rolled-back code.
-docker compose -f development.docker.yml --profile celery up -d --build --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-content-worker celery-email-worker celery-beat >/root/logs/build/rollback-compose-up.txt 2>&1 || true
+docker compose -f development.docker.yml --profile celery up -d --build --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-content-worker celery-data-rights-worker celery-email-worker celery-beat >/root/logs/build/rollback-compose-up.txt 2>&1 || true
 
 echo "Rollback completed. Current HEAD: $(git rev-parse HEAD 2>/dev/null || true)"
 '@
@@ -317,7 +317,7 @@ function Get-ServiceFolderForServiceLog([string]$logFileName) {
     '^postgres$' { return 'database' }
     '^redis$' { return 'database' }
     '^pgadmin$' { return 'database' }
-    '^(celery-worker|celery-content-worker|celery-email-worker|celery-beat|flower)$' { return 'celery' }
+    '^(celery-worker|celery-content-worker|celery-data-rights-worker|celery-email-worker|celery-beat|flower)$' { return 'celery' }
     '^react-app$' { return 'react-app' }
     default { return '' }
   }
@@ -1122,46 +1122,46 @@ PY
   # Bring up core services without forcing builds (fast path).
   status "up" "docker compose up core services (no build)"
   set +e
-  docker compose -f development.docker.yml --profile celery up -d --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-content-worker celery-email-worker celery-beat > /root/logs/build/compose-up-core.txt 2>&1
+  docker compose -f development.docker.yml --profile celery up -d --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-content-worker celery-data-rights-worker celery-email-worker celery-beat > /root/logs/build/compose-up-core.txt 2>&1
   CORE_UP_CODE=$?
   echo $CORE_UP_CODE > /root/logs/build/compose-up-core.status 2>/dev/null || true
   set -e
   if [ "$CORE_UP_CODE" != "0" ]; then
     # Fallback for first-time builds or missing images.
     status "up" "compose up failed; retrying with --build"
-    docker compose -f development.docker.yml --profile celery up -d --build --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-content-worker celery-email-worker celery-beat > /root/logs/build/compose-up-core-build.txt 2>&1 || true
+    docker compose -f development.docker.yml --profile celery up -d --build --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-content-worker celery-data-rights-worker celery-email-worker celery-beat > /root/logs/build/compose-up-core-build.txt 2>&1
   fi
 
   # Selective rebuilds/recreates based on diff.
   # API: default to no-cache rebuild when api/ changed (historically stale cache issues).
   if [ "$NEED_API" = "1" ]; then
     status "build" "docker compose build --no-cache api (api changed)"
-    docker compose -f development.docker.yml build --no-cache api > /root/logs/build/api-build-nocache.txt 2>&1 || true
+    docker compose -f development.docker.yml build --no-cache api > /root/logs/build/api-build-nocache.txt 2>&1
   fi
   status "recreate" "force-recreate api"
-  docker compose -f development.docker.yml up -d --force-recreate --no-deps api > /root/logs/build/api-up.txt 2>&1 || true
+  docker compose -f development.docker.yml up -d --force-recreate --no-deps api > /root/logs/build/api-up.txt 2>&1
 
   if [ "$NEED_DJANGO" = "1" ]; then
     status "build" "docker compose build django (django changed)"
-    docker compose -f development.docker.yml build django > /root/logs/build/django-build.txt 2>&1 || true
+    docker compose -f development.docker.yml build django > /root/logs/build/django-build.txt 2>&1
   fi
   status "recreate" "force-recreate django"
-  docker compose -f development.docker.yml up -d --force-recreate --no-deps django > /root/logs/build/django-up.txt 2>&1 || true
+  docker compose -f development.docker.yml up -d --force-recreate --no-deps django > /root/logs/build/django-up.txt 2>&1
 
   # Traefik: rebuild only when traefik/ changed; always recreate to pick up env and templates.
   if [ "$NEED_TRAEFIK" = "1" ]; then
     status "build" "docker compose build traefik (traefik changed)"
-    docker compose -f development.docker.yml build traefik > /root/logs/build/traefik-build.txt 2>&1 || true
+    docker compose -f development.docker.yml build traefik > /root/logs/build/traefik-build.txt 2>&1
   fi
   status "recreate" "force-recreate traefik"
-  docker compose -f development.docker.yml up -d --force-recreate --no-deps traefik > /root/logs/build/traefik-up.txt 2>&1 || true
+  docker compose -f development.docker.yml up -d --force-recreate --no-deps traefik > /root/logs/build/traefik-up.txt 2>&1
 
   # React: rebuild only when react-app/ changed.
   if [ "$NEED_REACT" = "1" ]; then
     status "build" "docker compose build react-app (react-app changed)"
-    docker compose -f development.docker.yml build react-app > /root/logs/build/react-app-build.txt 2>&1 || true
+    docker compose -f development.docker.yml build react-app > /root/logs/build/react-app-build.txt 2>&1
     status "recreate" "force-recreate react-app"
-    docker compose -f development.docker.yml up -d --force-recreate --no-deps react-app > /root/logs/build/react-app-up.txt 2>&1 || true
+    docker compose -f development.docker.yml up -d --force-recreate --no-deps react-app > /root/logs/build/react-app-up.txt 2>&1
   else
     status "build" "skipping react-app rebuild (no react-app changes)"
     : > /root/logs/build/react-app-build.txt || true
@@ -1178,18 +1178,15 @@ PY
     docker system df > /root/logs/build/docker-system-df-after.txt 2>&1 || true
 
     # Retry targeted rebuild and recreate for react-app
-    docker compose -f development.docker.yml build --no-cache react-app > /root/logs/build/react-app-build-retry.txt 2>&1 || true
-    docker compose -f development.docker.yml up -d --force-recreate --no-deps react-app > /root/logs/build/react-app-up-retry.txt 2>&1 || true
+    docker compose -f development.docker.yml build --no-cache react-app > /root/logs/build/react-app-build-retry.txt 2>&1
+    docker compose -f development.docker.yml up -d --force-recreate --no-deps react-app > /root/logs/build/react-app-up-retry.txt 2>&1
   fi
 
-  # Ensure Flower is started (kept as a separate log artifact)
-  status "up" "ensure flower"
-  docker compose -f development.docker.yml up -d --build flower > /root/logs/build/flower-up.txt 2>&1 || true
   # Capture Django migration output into a dedicated artifact
   status "django" "migrate/check-deploy/health"
-  docker compose -f development.docker.yml exec -T django python manage.py migrate --noinput > /root/logs/django-migrate.txt 2>&1 || true
+  docker compose -f development.docker.yml exec -T django python manage.py migrate --noinput > /root/logs/django-migrate.txt 2>&1
   # Django deploy checks (security + config sanity)
-  docker compose -f development.docker.yml exec -T django python manage.py check --deploy > /root/logs/django-check-deploy.txt 2>&1 || true
+  docker compose -f development.docker.yml exec -T django python manage.py check --deploy > /root/logs/django-check-deploy.txt 2>&1
   # Django internal HTTP health (avoid probing admin HTML); capture JSON body + HTTP status
   docker compose -f development.docker.yml exec -T django python - <<'PY' > /root/logs/django-internal-health.json 2> /root/logs/django-internal-health.status || true
 import json
@@ -1233,41 +1230,43 @@ PY
   # Schema compatibility check (fails if migrations unapplied or schema drift)
   set +e
   docker compose -f development.docker.yml exec -T django python manage.py schema_compat_check --json > /root/logs/schema-compat-check.json 2> /root/logs/schema-compat-check.err
-  echo $? > /root/logs/schema-compat-check.status
+  SCHEMA_STATUS=$?
+  echo "$SCHEMA_STATUS" > /root/logs/schema-compat-check.status
   set -e
-  # If requested, enable celery/flower profiles and build required images
-  if [ "${RUN_CELERY_CHECK:-}" = "1" ]; then
-    # Tune host sysctl for Redis memory overcommit (best-effort, ignore errors)
-    (sysctl -w vm.overcommit_memory=1 && echo 'vm.overcommit_memory=1' > /etc/sysctl.d/99-redis.conf && sysctl --system) || true
-    # Build Celery services (Django-based) if present; ignore if missing
-    docker compose -f development.docker.yml build celery-worker celery-content-worker celery-email-worker > /root/logs/build/celery-worker-build.txt 2>&1 || true
-    docker compose -f development.docker.yml build celery-beat > /root/logs/build/celery-beat-build.txt 2>&1 || true
-    # Start Redis, Celery worker and beat under the celery profile; ignore if services not defined
-    docker compose -f development.docker.yml --profile celery up -d --build redis celery-worker celery-content-worker celery-email-worker celery-beat > /root/logs/build/celery-up.txt 2>&1 || true
-    # Start Flower if defined
-    docker compose -f development.docker.yml up -d --build flower > /root/logs/build/flower-up.txt 2>&1 || true
+  if [ "$SCHEMA_STATUS" != "0" ]; then
+    echo "FAILED: schema compatibility check failed" >&2
+    exit "$SCHEMA_STATUS"
   fi
-  # Best-effort: wait for key services to report healthy before snapshotting.
-  # This reduces false negatives where compose-ps.txt is captured during startup.
+  # The production worker fleet is required, not an optional diagnostic.
+  # Tune host sysctl for Redis memory overcommit (best-effort host optimization).
+  (sysctl -w vm.overcommit_memory=1 && echo 'vm.overcommit_memory=1' > /etc/sysctl.d/99-redis.conf && sysctl --system) || true
+  docker compose -f development.docker.yml build celery-worker celery-content-worker celery-data-rights-worker celery-email-worker celery-beat > /root/logs/build/celery-worker-build.txt 2>&1
+  docker compose -f development.docker.yml --profile celery up -d --build redis celery-worker celery-content-worker celery-data-rights-worker celery-email-worker celery-beat > /root/logs/build/celery-up.txt 2>&1
+  docker compose -f development.docker.yml up -d --build flower > /root/logs/build/flower-up.txt 2>&1
+  # Wait for every required service and worker to report actual health.
   status "wait" "waiting for services to become healthy"
-  set +e
   : > /root/logs/build/health-wait.txt || true
+  READY=0
   for i in $(seq 1 60); do
     PS_OUT=$(docker compose -f development.docker.yml ps 2>/dev/null)
     echo "--- attempt $i ---" >> /root/logs/build/health-wait.txt
     echo "$PS_OUT" >> /root/logs/build/health-wait.txt
     OK=1
-    for s in traefik nginx nginx-static django api postgres redis react-app celery-worker celery-content-worker celery-email-worker celery-beat flower; do
+    for s in traefik nginx nginx-static django api postgres redis react-app celery-worker celery-content-worker celery-data-rights-worker celery-email-worker celery-beat flower; do
       echo "$PS_OUT" | grep -E "\s${s}\s" >/dev/null 2>&1 || { OK=0; break; }
       echo "$PS_OUT" | grep -E "\s${s}\s.*\(healthy\)" >/dev/null 2>&1 || { OK=0; break; }
     done
     if [ "$OK" = "1" ]; then
       echo "READY" >> /root/logs/build/health-wait.txt
+      READY=1
       break
     fi
     sleep 2
   done
-  set -e
+  if [ "$READY" != "1" ]; then
+    echo "FAILED: required services did not become healthy" >> /root/logs/build/health-wait.txt
+    exit 1
+  fi
 
   status "snapshot" "capturing compose ps/config and ports"
   docker compose -f development.docker.yml ps > /root/logs/compose-ps.txt || true

@@ -2,7 +2,7 @@
   "algorithm": "sha256",
   "groups": {
     "config": {
-      ".env.example": "e73863d810708c754f5aa7b791d22aa78c4e07a2cb997321e380364fd1af4c36",
+      ".env.example": "51343a73a0add7f44e88855fbc7a1312c0689e39de65215794678ce85a9489ef",
       "api/site_profiles/base2-obsidian.json": "c7d8f67ddd1ab6cd155000a741377d92a07e09ab8fe5bca73c1e961d092cbbd6",
       "api/site_profiles/content-workspace-contracts.json": "b8202643502ab5257a92a7370dd2ef4afbc11d75b2fd1772d2b99cb8f7f6beee",
       "api/site_profiles/content-workspace-presets.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
@@ -23,7 +23,7 @@
       "shared/config/design-system-v1.json": "40a9bd6d00ef561488d3437d04699d6b2d1781ec4feab58d33c20fbe4a436d82",
       "shared/config/edge-readiness-v1.json": "c6adf440599413b21a70552c7b95e9474869003eb825872cea3ee18c4ae0b848",
       "shared/config/identity-realms.json": "c11cd97a6808983182e96774499ae5d9b63e38d8dbe1464846cbca9b6127719f",
-      "shared/config/migration-compatibility-v1.json": "c881da766de052fe9953f7bb05a985fdb111067e13daa534f973dcbeb2f58a79",
+      "shared/config/migration-compatibility-v1.json": "65d5f1bea43bbaaa9f5ce66cef000a02d95ea09a3a5b43fa76c9bef801f1d001",
       "shared/config/module-catalog.json": "ae322048e2b26ca38b430e275df172d650e0d5c0f7366d4571138842237b4cc7",
       "shared/config/operations-probes-v1.json": "85b92aacfff06818581b7460aa1471843e969a5fd32da369a5f0e05b2bc5ff36",
       "shared/config/optional-search-v1.json": "06adbb1bfe9cf53e06ee915ea6be40161a12bc9241cf91e95b4f325f0bc0edd8",

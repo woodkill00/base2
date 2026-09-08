@@ -25,6 +25,7 @@ def main() -> None:
     worker_password = secrets.token_urlsafe(32)
     runtime_worker_password = secrets.token_urlsafe(32)
     email_worker_password = secrets.token_urlsafe(32)
+    data_rights_worker_password = secrets.token_urlsafe(32)
     # The compose-built images track the current toolchain. The source under
     # test is still mounted read-only from the exact checkout below.
     django_image = os.getenv("WORKSPACE_ACCEPTANCE_DJANGO_IMAGE", "base2-local-django:latest")
@@ -112,6 +113,10 @@ def main() -> None:
                 "EMAIL_WORKER_DB_USER=base2_email_worker",
                 "-e",
                 f"EMAIL_WORKER_DB_PASSWORD={email_worker_password}",
+                "-e",
+                "DATA_RIGHTS_WORKER_DB_USER=base2_data_rights_worker",
+                "-e",
+                f"DATA_RIGHTS_WORKER_DB_PASSWORD={data_rights_worker_password}",
                 POSTGRES_IMAGE,
                 "/bin/sh",
                 "/bootstrap.sh",
@@ -148,6 +153,8 @@ def main() -> None:
             "RUNTIME_WORKER_DB_USER=base2_runtime_worker",
             "-e",
             "EMAIL_WORKER_DB_USER=base2_email_worker",
+            "-e",
+            "DATA_RIGHTS_WORKER_DB_USER=base2_data_rights_worker",
             "--entrypoint",
             "python",
             django_image,
@@ -216,6 +223,8 @@ def main() -> None:
                 "RUNTIME_WORKER_DB_USER=base2_runtime_worker",
                 "-e",
                 "EMAIL_WORKER_DB_USER=base2_email_worker",
+                "-e",
+                "DATA_RIGHTS_WORKER_DB_USER=base2_data_rights_worker",
                 "--entrypoint",
                 "python",
                 django_image,
@@ -263,6 +272,10 @@ def main() -> None:
                 "EMAIL_WORKER_DB_USER=base2_email_worker",
                 "-e",
                 f"EMAIL_WORKER_DB_PASSWORD={email_worker_password}",
+                "-e",
+                "DATA_RIGHTS_WORKER_DB_USER=base2_data_rights_worker",
+                "-e",
+                f"DATA_RIGHTS_WORKER_DB_PASSWORD={data_rights_worker_password}",
                 "--entrypoint",
                 "python",
                 api_image,
@@ -299,6 +312,8 @@ def main() -> None:
             "RUNTIME_WORKER_DB_USER=base2_runtime_worker",
             "-e",
             "EMAIL_WORKER_DB_USER=base2_email_worker",
+            "-e",
+            "DATA_RIGHTS_WORKER_DB_USER=base2_data_rights_worker",
             "--entrypoint",
             "python",
             django_image,
@@ -334,6 +349,8 @@ def main() -> None:
             "RUNTIME_WORKER_DB_USER=base2_runtime_worker",
             "-e",
             "EMAIL_WORKER_DB_USER=base2_email_worker",
+            "-e",
+            "DATA_RIGHTS_WORKER_DB_USER=base2_data_rights_worker",
             "--entrypoint",
             "python",
             api_image,
@@ -379,6 +396,10 @@ def main() -> None:
             "EMAIL_WORKER_DB_USER=base2_email_worker",
             "-e",
             f"EMAIL_WORKER_DB_PASSWORD={email_worker_password}",
+            "-e",
+            "DATA_RIGHTS_WORKER_DB_USER=base2_data_rights_worker",
+            "-e",
+            f"DATA_RIGHTS_WORKER_DB_PASSWORD={data_rights_worker_password}",
             "--entrypoint",
             "python",
             api_image,

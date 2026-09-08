@@ -24,6 +24,16 @@ TENANT_TABLES = (
     "sitecontent_mediaretentionhold",
     "sitecontent_mediauploadsession",
 )
+MEDIA_POLICY_TABLES = {
+    "sitecontent_mediaasset",
+    "sitecontent_mediacollection",
+    "sitecontent_mediacollectionmembership",
+    "sitecontent_mediajob",
+    "sitecontent_mediametadatarevision",
+    "sitecontent_mediaobjectversion",
+    "sitecontent_mediaretentionhold",
+    "sitecontent_mediauploadsession",
+}
 DATA_RIGHTS_GRANTS = {
     "sitecontent_tenantlifecyclestate": "SELECT",
     "api_data_rights_operations": "SELECT, UPDATE",
@@ -162,11 +172,53 @@ def remove_data_rights_grants(apps, schema_editor):
     del apps
     if schema_editor.connection.vendor != "postgresql":
         return
-    _role, quoted_role = _content_role(schema_editor)
+    role, quoted_role = _content_role(schema_editor)
+    request_role = _request_role(schema_editor)
+    role_literal = "'" + role.replace("'", "''") + "'"
+    tenant = "site_id = current_setting('app.tenant_id', true)"
     with schema_editor.connection.cursor() as cursor:
         for table in DATA_RIGHTS_GRANTS:
             quoted_table = schema_editor.connection.ops.quote_name(table)
             cursor.execute(f"REVOKE ALL PRIVILEGES ON TABLE {quoted_table} FROM {quoted_role}")
+        cursor.execute(f"REVOKE SELECT ON api_identity_organizations FROM {request_role}")
+        cursor.execute(f"REVOKE SELECT, UPDATE ON api_identity_memberships FROM {request_role}")
+        cursor.execute(f"REVOKE UPDATE ON api_auth_refresh_tokens FROM {request_role}")
+        for table in TENANT_TABLES:
+            quoted_table = schema_editor.connection.ops.quote_name(table)
+            for suffix in ("select", "insert", "update", "delete"):
+                cursor.execute(
+                    f'DROP POLICY IF EXISTS "{table}_content_{suffix}" ON {quoted_table}'
+                )
+            cursor.execute(f'DROP POLICY IF EXISTS "{table}_tenant_scope" ON {quoted_table}')
+            if table in MEDIA_POLICY_TABLES:
+                for suffix in ("select", "insert", "update", "delete"):
+                    cursor.execute(f'DROP POLICY IF EXISTS "{table}_{suffix}" ON {quoted_table}')
+                cursor.execute(
+                    f'CREATE POLICY "{table}_select" ON {quoted_table} FOR SELECT '
+                    f"USING ({tenant} OR current_user={role_literal})"
+                )
+                cursor.execute(
+                    f'CREATE POLICY "{table}_insert" ON {quoted_table} FOR INSERT '
+                    f"WITH CHECK ({tenant})"
+                )
+                cursor.execute(
+                    f'CREATE POLICY "{table}_update" ON {quoted_table} FOR UPDATE '
+                    f"USING ({tenant}) WITH CHECK ({tenant})"
+                )
+                cursor.execute(
+                    f'CREATE POLICY "{table}_delete" ON {quoted_table} FOR DELETE '
+                    f"USING ({tenant})"
+                )
+            else:
+                cursor.execute(
+                    f'CREATE POLICY "{table}_tenant_scope" ON {quoted_table} '
+                    f"USING ({tenant} OR current_user={role_literal}) "
+                    f"WITH CHECK ({tenant} OR current_user={role_literal})"
+                )
+        cursor.execute(
+            "DROP POLICY IF EXISTS tenant_lifecycle_content_discovery "
+            "ON sitecontent_tenantlifecyclestate"
+        )
 
 
 class Migration(migrations.Migration):

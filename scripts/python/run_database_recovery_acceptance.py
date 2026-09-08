@@ -284,7 +284,7 @@ def main() -> int:
                     restored_objects["count"], restored_objects["digest"].encode()
                 ),
                 "search": component(0, b"disabled"),
-                "configuration": component(1, b"schema-30/api-011"),
+                "configuration": component(1, b"schema-31/api-012"),
                 "tenants": component(2, b"tenant-one\ntenant-two"),
                 "audit": component(0, b"empty-audit"),
             }

@@ -52,11 +52,20 @@ def create_outbox_email(
         with conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO api_email_outbox(id, to_email, subject, body_text, body_html)
-                VALUES (%s, %s, %s, %s, %s)
+                INSERT INTO api_email_outbox(
+                    id, to_email, subject, body_text, body_html, delivery_key
+                )
+                VALUES (%s, %s, %s, %s, %s, %s)
                 RETURNING id, to_email, subject, body_text, body_html, status, provider, provider_message_id, error, created_at, sent_at, claim_token, delivery_key
                 """,
-                (str(outbox_id), to_email, subject, body_text, body_html or ''),
+                (
+                    str(outbox_id),
+                    to_email,
+                    subject,
+                    body_text,
+                    body_html or '',
+                    str(outbox_id),
+                ),
             )
             row = cur.fetchone()
 

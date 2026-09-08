@@ -41,5 +41,5 @@ def test_migrate_cli_applies_and_verifies_exact_ledger(monkeypatch, capsys):
     assert migrate.main() == 0
     assert applied == [True]
     assert capsys.readouterr().out == (
-        '{"migrationCount": 11, "ok": true, "secretValuesEmitted": 0}\n'
+        f'{{"migrationCount": {len(migrate.MIGRATIONS)}, "ok": true, ' '"secretValuesEmitted": 0}\n'
     )

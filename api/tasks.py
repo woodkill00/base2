@@ -17,7 +17,11 @@ from celery.signals import (
 )
 
 from api.services.email_service import process_outbox_email, replayable_outbox_ids
-from api.redis_client import get_client as redis_client, tenant_key as redis_tenant_key
+from api.redis_client import (
+    get_client as redis_client,
+    key as redis_client_key,
+    tenant_key as redis_tenant_key,
+)
 from api.repositories.operations import prune as prune_operations
 from api.repositories.data_rights import expire_results, queued_operation_ids
 from api.services.data_rights_worker import process_operation
@@ -121,9 +125,9 @@ app.conf.update(
         'app.claim_runtime_jobs': {'queue': 'runtime'},
         'app.send_email_outbox': {'queue': 'email'},
         'app.replay_email_outbox': {'queue': 'email'},
-        'app.process_data_rights_operation': {'queue': 'content'},
-        'app.replay_data_rights_operations': {'queue': 'content'},
-        'app.expire_data_rights_results': {'queue': 'content'},
+        'app.process_data_rights_operation': {'queue': 'data-rights'},
+        'app.replay_data_rights_operations': {'queue': 'data-rights'},
+        'app.expire_data_rights_results': {'queue': 'data-rights'},
         'app.publish_workspace_record': {'queue': 'content'},
         'app.replay_workspace_publications': {'queue': 'content'},
         'app.scan_workspace_asset': {'queue': 'content'},
@@ -244,7 +248,7 @@ def _stamp_published_at(headers=None, **_kwargs):
 def _observe_worker(**_kwargs):
     with suppress(Exception):
         role = str(settings.BASE2_PROCESS_ROLE or '').strip()
-        if role in {'runtime-worker', 'content-worker', 'email-worker'}:
+        if role in {'runtime-worker', 'content-worker', 'data-rights-worker', 'email-worker'}:
             mark_runtime_heartbeat(f'workers:{role}')
 
 
@@ -285,14 +289,42 @@ def _release_tenant_dispatch(kind: str, site_id: str, token: str) -> None:
     )
 
 
-def _runtime_fanout_has_capacity(*, reserve: int = 16) -> bool:
-    """Keep one full bounded fan-out batch below the runtime queue ceiling."""
+def _reserve_runtime_fanout(*, reserve: int) -> bool:
+    """Atomically reserve runtime queue slots across concurrent beat fan-outs."""
     if not 1 <= reserve <= 16:
         return False
     try:
-        return int(redis_client().llen('runtime')) <= 100 - reserve
+        admitted = redis_client().eval(
+            "local depth=redis.call('llen',KEYS[1]); "
+            "local held=tonumber(redis.call('get',KEYS[2]) or '0'); "
+            'local requested=tonumber(ARGV[1]); local ceiling=tonumber(ARGV[2]); '
+            'if depth+held+requested>ceiling then return 0 end; '
+            "redis.call('incrby',KEYS[2],requested); "
+            "redis.call('expire',KEYS[2],tonumber(ARGV[3])); return 1",
+            2,
+            'runtime',
+            redis_client_key('operations', 'runtime-fanout-reserved'),
+            reserve,
+            100,
+            900,
+        )
+        return int(admitted) == 1
     except Exception:
         return False
+
+
+def _release_runtime_fanout(*, count: int = 1) -> None:
+    if not 1 <= count <= 16:
+        raise ValueError('operations:fanout_release_invalid')
+    redis_client().eval(
+        "local held=tonumber(redis.call('get',KEYS[1]) or '0'); "
+        'local released=tonumber(ARGV[1]); '
+        "if held<=released then redis.call('del',KEYS[1]); return held end; "
+        "return redis.call('decrby',KEYS[1],released)",
+        1,
+        redis_client_key('operations', 'runtime-fanout-reserved'),
+        count,
+    )
 
 
 @app.task(name='app.collect_operations_site')
@@ -310,21 +342,32 @@ def collect_operations_site(site_id: str, dispatch_token: str | None = None) -> 
 
 @app.task(name='app.collect_operations_health')
 def collect_operations_health() -> int:
-    if not _runtime_fanout_has_capacity():
+    configured = configured_tenants()
+    reserved = min(16, len(configured))
+    if not _reserve_runtime_fanout(reserve=reserved):
         return 0
-    tenants = fair_tenant_batch(configured_tenants(), cursor_name='collect')
     admitted = 0
-    for tenant_id in tenants:
-        if not _tenant_serving(tenant_id):
-            continue
-        token = _reserve_tenant_dispatch('collect', tenant_id)
-        if token:
-            try:
-                collect_operations_site.delay(tenant_id, token)
-            except Exception:
-                _release_tenant_dispatch('collect', tenant_id, token)
-                raise
-            admitted += 1
+    remaining = reserved
+    try:
+        tenants = fair_tenant_batch(configured, cursor_name='collect')
+        for tenant_id in tenants:
+            if not _tenant_serving(tenant_id):
+                _release_runtime_fanout()
+                remaining -= 1
+                continue
+            token = _reserve_tenant_dispatch('collect', tenant_id)
+            if token:
+                try:
+                    collect_operations_site.delay(tenant_id, token)
+                except Exception:
+                    _release_tenant_dispatch('collect', tenant_id, token)
+                    raise
+                admitted += 1
+            _release_runtime_fanout()
+            remaining -= 1
+    finally:
+        if remaining:
+            _release_runtime_fanout(count=remaining)
     return admitted
 
 
@@ -344,21 +387,32 @@ def dispatch_operations_site_alerts(
 def dispatch_operations_alerts_task() -> int:
     if not settings.OPERATIONS_ALERTS_ENABLED:
         return 0
-    if not _runtime_fanout_has_capacity():
+    configured = configured_tenants()
+    reserved = min(16, len(configured))
+    if not _reserve_runtime_fanout(reserve=reserved):
         return 0
-    tenants = fair_tenant_batch(configured_tenants(), cursor_name='alerts')
     admitted = 0
-    for tenant_id in tenants:
-        if not _tenant_serving(tenant_id):
-            continue
-        token = _reserve_tenant_dispatch('alerts', tenant_id)
-        if token:
-            try:
-                dispatch_operations_site_alerts.delay(tenant_id, token)
-            except Exception:
-                _release_tenant_dispatch('alerts', tenant_id, token)
-                raise
-            admitted += 1
+    remaining = reserved
+    try:
+        tenants = fair_tenant_batch(configured, cursor_name='alerts')
+        for tenant_id in tenants:
+            if not _tenant_serving(tenant_id):
+                _release_runtime_fanout()
+                remaining -= 1
+                continue
+            token = _reserve_tenant_dispatch('alerts', tenant_id)
+            if token:
+                try:
+                    dispatch_operations_site_alerts.delay(tenant_id, token)
+                except Exception:
+                    _release_tenant_dispatch('alerts', tenant_id, token)
+                    raise
+                admitted += 1
+            _release_runtime_fanout()
+            remaining -= 1
+    finally:
+        if remaining:
+            _release_runtime_fanout(count=remaining)
     return admitted
 
 

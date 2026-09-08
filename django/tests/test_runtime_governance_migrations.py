@@ -14,7 +14,7 @@ pytestmark = pytest.mark.django_db(transaction=True)
 
 BEFORE = ("sitecontent", "0025_runtime_governance_rls")
 AFTER = ("sitecontent", "0028_worker_runtime_least_privilege")
-LATEST = ("sitecontent", "0030_worker_scope_and_lifecycle_repair")
+LATEST = ("sitecontent", "0031_data_rights_worker_scope")
 
 
 def _executor() -> MigrationExecutor:

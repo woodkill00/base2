@@ -41,7 +41,7 @@ describe('GlassSidebar drawer behavior', () => {
     const overlay = await screen.findByTestId('drawer-overlay');
     expect(overlay).toBeInTheDocument();
 
-    const panel = screen.getByRole('navigation', { name: /side menu/i });
+    const panel = screen.getByRole('navigation', { name: /sidebar/i });
     expect(panel).toHaveFocus();
 
     // Clicking inside the panel shouldn't close the drawer.

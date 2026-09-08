@@ -22,7 +22,6 @@ import Navigation from '../components/Navigation';
 import AccountCenter from './AccountCenter';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../lib/apiClient';
-import { normalizeApiError } from '../lib/apiErrors';
 import { settingsAPI } from '../services/settings';
 
 const FALLBACK_CATEGORIES = [
@@ -626,8 +625,8 @@ const SettingsCenter = () => {
       const response = await apiClient.patch('/users/me', profile);
       updateUser(response.data);
       setStatus(detail.profileSaved);
-    } catch (reason) {
-      setError(normalizeApiError(reason, { fallbackMessage: detail.actionFailed }).message);
+    } catch (_reason) {
+      setError(detail.actionFailed);
     } finally {
       setSaving(false);
     }
@@ -649,14 +648,16 @@ const SettingsCenter = () => {
         timezone: preferences.timezone,
         week_start: preferences.week_start,
       });
+      const nextLocale = String(next.locale || preferences.locale || 'en').split('-')[0];
+      const nextDetail = DETAIL_COPY[nextLocale] || DETAIL_COPY.en;
       setPreferences({ ...preferenceDefaults, ...next });
-      setActiveLocale(String(next.locale || preferences.locale || 'en').split('-')[0]);
+      setActiveLocale(nextLocale);
       updateUser({ ...user, locale: next.locale || preferences.locale || 'en' });
-      setStatus(detail.preferencesSaved);
+      setStatus(nextDetail.preferencesSaved);
     } catch (reason) {
       if (reason?.status === 409 || reason?.code === 'settings_version_conflict') {
         setError(detail.settingsConflict);
-      } else setError(reason.message || detail.actionFailed);
+      } else setError(detail.actionFailed);
     } finally {
       setSaving(false);
     }
@@ -669,8 +670,8 @@ const SettingsCenter = () => {
     try {
       await settingsAPI.requestExport();
       setStatus(detail.exportQueued);
-    } catch (reason) {
-      setError(reason.message || detail.actionFailed);
+    } catch (_reason) {
+      setError(detail.actionFailed);
     } finally {
       setSaving(false);
     }
@@ -687,8 +688,8 @@ const SettingsCenter = () => {
       );
       setNotifications(result.preferences);
       setStatus(detail.notificationSaved);
-    } catch (reason) {
-      setError(reason.message || detail.actionFailed);
+    } catch (_reason) {
+      setError(detail.actionFailed);
     } finally {
       setSaving(false);
     }
@@ -706,8 +707,8 @@ const SettingsCenter = () => {
       await settingsAPI.requestCorrection(fields);
       setCorrection({ display_name: '', bio: '' });
       setStatus(detail.correctionQueued);
-    } catch (reason) {
-      setError(reason.message || detail.actionFailed);
+    } catch (_reason) {
+      setError(detail.actionFailed);
     } finally {
       setSaving(false);
     }
@@ -722,8 +723,8 @@ const SettingsCenter = () => {
       await settingsAPI.requestDeletion(deleteConfirmation);
       setDeleteConfirmation('');
       setStatus(detail.deletionQueued);
-    } catch (reason) {
-      setError(reason.message || detail.actionFailed);
+    } catch (_reason) {
+      setError(detail.actionFailed);
     } finally {
       setSaving(false);
     }
@@ -738,8 +739,8 @@ const SettingsCenter = () => {
       await settingsAPI.requestDeactivation(deactivateConfirmation);
       setDeactivateConfirmation('');
       setStatus(detail.deactivationQueued);
-    } catch (reason) {
-      setError(reason.message || detail.actionFailed);
+    } catch (_reason) {
+      setError(detail.actionFailed);
     } finally {
       setSaving(false);
     }
@@ -1152,7 +1153,10 @@ const SettingsCenter = () => {
       menuLabel={copy.menu}
       themeLabel={copy.themeToggle}
       sidebarLabel={copy.sidebar}
-      sidebarItems={copy.sidebarItems}
+      sidebarItems={copy.sidebarItems.map((label, index) => ({
+        label,
+        to: ['/', '/dashboard', '/settings', '/admin', '/contact'][index],
+      }))}
     >
       <div
         className="mx-auto max-w-7xl space-y-6 px-4 py-8"

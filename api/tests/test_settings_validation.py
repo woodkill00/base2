@@ -160,6 +160,7 @@ def test_only_production_email_worker_requires_or_receives_smtp_configuration(mo
     monkeypatch.setenv('BASE2_PROCESS_ROLE', 'runtime-worker')
     monkeypatch.setenv('DB_SSLMODE', 'verify-full')
     monkeypatch.setenv('DB_SSLROOTCERT', '/run/secrets/database-ca.pem')
+    monkeypatch.setenv('DB_HOST', 'private-db.example.test')
     monkeypatch.setenv('BASE2_EMAIL_ADAPTER', 'disabled')
     for name in (
         'BASE2_EMAIL_SMTP_HOST',
@@ -173,3 +174,47 @@ def test_only_production_email_worker_requires_or_receives_smtp_configuration(mo
     monkeypatch.setenv('BASE2_PROCESS_ROLE', 'email-worker')
     with pytest.raises(RuntimeError, match='email worker requires'):
         Settings()
+
+
+def test_data_rights_worker_requires_only_its_cryptographic_runtime_secrets(monkeypatch):
+    from api.settings import Settings
+
+    monkeypatch.setenv('ENV', 'staging')
+    monkeypatch.setenv('BASE2_PROCESS_ROLE', 'data-rights-worker')
+    monkeypatch.setenv('DB_SSLMODE', 'verify-full')
+    monkeypatch.setenv('DB_SSLROOTCERT', '/run/secrets/database-ca.pem')
+    monkeypatch.delenv('IDENTITY_ENCRYPTION_KEY', raising=False)
+    monkeypatch.delenv('TOKEN_PEPPER', raising=False)
+    with pytest.raises(RuntimeError, match='IDENTITY_ENCRYPTION_KEY.*TOKEN_PEPPER'):
+        Settings()
+    monkeypatch.setenv('IDENTITY_ENCRYPTION_KEY', 'fixture-identity')
+    monkeypatch.setenv('TOKEN_PEPPER', 'fixture-pepper')
+    configured = Settings()
+    assert configured.BASE2_PROCESS_ROLE == 'data-rights-worker'
+
+
+@pytest.mark.parametrize('host', ('postgres', 'localhost', '127.0.0.1'))
+def test_production_rejects_bundled_or_loopback_database(monkeypatch, host):
+    from api.settings import Settings
+
+    monkeypatch.setenv('ENV', 'production')
+    monkeypatch.setenv('BASE2_PROCESS_ROLE', 'runtime-worker')
+    monkeypatch.setenv('DB_SSLMODE', 'verify-full')
+    monkeypatch.setenv('DB_SSLROOTCERT', '/run/secrets/database-ca.pem')
+    monkeypatch.setenv('DB_HOST', host)
+    with pytest.raises(RuntimeError, match='external verified-TLS endpoint'):
+        Settings()
+
+
+def test_production_docs_default_closed_but_allow_explicit_activation(monkeypatch):
+    from api.settings import Settings
+
+    monkeypatch.setenv('ENV', 'production')
+    monkeypatch.setenv('BASE2_PROCESS_ROLE', 'runtime-worker')
+    monkeypatch.setenv('DB_SSLMODE', 'verify-full')
+    monkeypatch.setenv('DB_SSLROOTCERT', '/run/secrets/database-ca.pem')
+    monkeypatch.setenv('DB_HOST', 'private-db.example.test')
+    monkeypatch.delenv('API_DOCS_ENABLED', raising=False)
+    assert Settings().API_DOCS_ENABLED is False
+    monkeypatch.setenv('API_DOCS_ENABLED', 'true')
+    assert Settings().API_DOCS_ENABLED is True

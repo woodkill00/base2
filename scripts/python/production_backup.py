@@ -26,6 +26,9 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from cryptography.exceptions import InvalidTag
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
 from scripts.python.data_readiness import provision_restore_root
 from scripts.python.recovery_assurance import (
     RecoveryDenied,
@@ -43,6 +46,7 @@ CONFIG_KEYS = {
     "pgServiceFile",
     "pgService",
     "objectRoot",
+    "objectStorageKeyFile",
     "backupRoot",
     "receiptRoot",
     "encryptionKeyFile",
@@ -85,6 +89,7 @@ def load_config(path: Path) -> dict[str, Any]:
     absolute = (
         "pgServiceFile",
         "objectRoot",
+        "objectStorageKeyFile",
         "backupRoot",
         "receiptRoot",
         "encryptionKeyFile",
@@ -116,6 +121,20 @@ def load_config(path: Path) -> dict[str, Any]:
     if len(key) != 32:
         raise ProductionBackupError("backup:key_invalid")
     value["_key"] = key
+    encoded_object_key = _private_file(
+        Path(value["objectStorageKeyFile"]), maximum_bytes=256
+    ).strip()
+    try:
+        object_key = base64.b64decode(
+            encoded_object_key + b"=" * (-len(encoded_object_key) % 4),
+            altchars=b"-_",
+            validate=True,
+        )
+    except (ValueError, binascii.Error) as exc:
+        raise ProductionBackupError("backup:object_key_invalid") from exc
+    if len(object_key) != 32:
+        raise ProductionBackupError("backup:object_key_invalid")
+    value["_object_key"] = object_key
     encoded_operations_key = _private_file(
         Path(value["operationsReceiptKeyFile"]), maximum_bytes=256
     ).strip()
@@ -143,6 +162,77 @@ def _sha256_file(path: Path) -> str:
         while chunk := stream.read(1024 * 1024):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+OBJECT_REFERENCE_SQL = """SELECT kind || ':' || site_id || ':' || object_key || ':' || digest
+ FROM (
+   SELECT 'asset' kind,site_id,storage_key object_key,sha256 digest
+     FROM sitecontent_mediaasset
+   UNION ALL
+   SELECT 'variant',asset.site_id,variant.storage_key,variant.sha256
+     FROM sitecontent_mediavariant variant
+     JOIN sitecontent_mediaasset asset ON asset.id=variant.asset_id
+   UNION ALL
+   SELECT 'object-version',site_id,storage_key,sha256
+     FROM sitecontent_mediaobjectversion
+   UNION ALL
+   SELECT 'upload-part',site_id,storage_key,sha256
+     FROM sitecontent_mediauploadpart
+   UNION ALL
+   SELECT 'import',site_id,source_object_key,source_sha256
+     FROM sitecontent_importjob WHERE source_object_key<>''
+   UNION ALL
+   SELECT 'export',site_id,encrypted_object_key,output_sha256
+     FROM sitecontent_exportjob WHERE encrypted_object_key<>''
+ ) object_refs ORDER BY kind,site_id,object_key,digest"""
+
+
+def _verify_object_references(raw: str, *, object_root: Path, key: bytes) -> None:
+    root = object_root.resolve(strict=True)
+    expected_objects: dict[str, str] = {}
+    for line in raw.splitlines():
+        value = line.strip()
+        if not value:
+            continue
+        try:
+            _kind, tenant_id, object_key, expected = value.split(":", 3)
+        except ValueError as exc:
+            raise ProductionBackupError("backup:object_reference_ledger_invalid") from exc
+        candidate = (root / object_key).resolve(strict=False)
+        try:
+            candidate.relative_to(root)
+        except ValueError as exc:
+            raise ProductionBackupError("backup:object_reference_invalid") from exc
+        if (
+            not object_key
+            or not object_key.split("/")[1:2] == [tenant_id]
+            or candidate.is_symlink()
+            or not SHA256.fullmatch(expected)
+        ):
+            raise ProductionBackupError("backup:object_reference_invalid")
+        previous = expected_objects.setdefault(object_key, expected)
+        if previous != expected:
+            raise ProductionBackupError("backup:object_reference_conflict")
+        try:
+            envelope = candidate.read_bytes()
+        except OSError as exc:
+            raise ProductionBackupError("backup:referenced_object_missing") from exc
+        if len(envelope) < 31 or not envelope.startswith(b"CW1"):
+            raise ProductionBackupError("backup:referenced_object_invalid")
+        try:
+            content = AESGCM(key).decrypt(envelope[3:15], envelope[15:], object_key.encode())
+        except (InvalidTag, ValueError) as exc:
+            raise ProductionBackupError("backup:referenced_object_invalid") from exc
+        if hashlib.sha256(content).hexdigest() != expected:
+            raise ProductionBackupError("backup:referenced_object_digest_mismatch")
+    actual_objects: set[str] = set()
+    for candidate in root.rglob("*"):
+        if candidate.is_symlink():
+            raise ProductionBackupError("backup:object_symlink_denied")
+        if candidate.is_file():
+            actual_objects.add(candidate.relative_to(root).as_posix())
+    if actual_objects != set(expected_objects):
+        raise ProductionBackupError("backup:object_inventory_mismatch")
 
 
 def _write_private_json(path: Path, value: dict[str, Any]) -> None:
@@ -272,28 +362,7 @@ def create_production_backup(
                 "--tuples-only",
                 "--no-align",
                 "--command",
-                """SELECT kind || ':' || site_id || ':' || object_key || ':' || digest
-                     FROM (
-                       SELECT 'asset' kind,site_id,storage_key object_key,sha256 digest
-                         FROM sitecontent_mediaasset
-                       UNION ALL
-                       SELECT 'variant',asset.site_id,variant.storage_key,variant.sha256
-                         FROM sitecontent_mediavariant variant
-                         JOIN sitecontent_mediaasset asset ON asset.id=variant.asset_id
-                       UNION ALL
-                       SELECT 'object-version',site_id,storage_key,sha256
-                         FROM sitecontent_mediaobjectversion
-                       UNION ALL
-                       SELECT 'upload-part',site_id,storage_key,sha256
-                         FROM sitecontent_mediauploadpart
-                       UNION ALL
-                       SELECT 'import',site_id,source_object_key,source_sha256
-                         FROM sitecontent_importjob WHERE source_object_key<>''
-                       UNION ALL
-                       SELECT 'export',site_id,encrypted_object_key,output_sha256
-                         FROM sitecontent_exportjob WHERE encrypted_object_key<>''
-                     ) object_refs
-                    ORDER BY kind,site_id,object_key,digest""",
+                OBJECT_REFERENCE_SQL,
             ]
             before_references = runner(
                 reference_command,
@@ -351,9 +420,17 @@ def create_production_backup(
             # The reference-ledger comparison below proves no database-visible
             # object identity changed around this stable copy.
             try:
-                shutil.copytree(object_root, staged_objects, symlinks=False)
+                # Preserve links in the private staging tree so the bundle
+                # inventory rejects them. Following a live-tree symlink here
+                # could otherwise archive data outside the owned object root.
+                shutil.copytree(object_root, staged_objects, symlinks=True)
             except (OSError, shutil.Error) as exc:
                 raise ProductionBackupError("backup:object_snapshot_failed") from exc
+            _verify_object_references(
+                before_references.stdout,
+                object_root=staged_objects,
+                key=config["_object_key"],
+            )
             output = backup_root / f"{config['targetId']}-{stamp}.tar.enc"
             try:
                 bundle = create_database_object_bundle(
@@ -623,6 +700,38 @@ def restore_database_isolated(
     )
     if not after.isdigit() or int(after) < 1:
         raise ProductionBackupError("restore:database_reconciliation_failed")
+    restored_schema = run_checked(
+        [
+            "psql",
+            "--no-psqlrc",
+            "--tuples-only",
+            "--no-align",
+            f"service={pg_service}",
+            "--command",
+            "SELECT COALESCE(MAX((regexp_match(name, '^[0-9]+'))[1]::int),0) "
+            "FROM django_migrations WHERE app='sitecontent'",
+        ],
+        "restore:schema_probe_failed",
+    )
+    if not restored_schema.isdigit() or int(restored_schema) != config["dataSchema"]:
+        raise ProductionBackupError("restore:schema_mismatch")
+    restored_references = run_checked(
+        [
+            "psql",
+            "--no-psqlrc",
+            "--tuples-only",
+            "--no-align",
+            f"service={pg_service}",
+            "--command",
+            OBJECT_REFERENCE_SQL,
+        ],
+        "restore:object_reference_ledger_invalid",
+    )
+    _verify_object_references(
+        restored_references,
+        object_root=Path(restored["objectRoot"]),
+        key=config["_object_key"],
+    )
     restore_digest = hashlib.sha256(
         _canonical(
             {

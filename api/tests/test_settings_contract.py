@@ -92,9 +92,9 @@ def test_api_migration_runner_executes_every_checked_in_sql_migration_in_order()
     checked_in = tuple(path.stem for path in sorted((root / 'api/migrations/sql').glob('*.sql')))
     assert checked_in == MIGRATIONS
     assert MIGRATIONS[-3:] == (
-        '009_add_deactivation_operation',
         '010_add_email_delivery_fencing',
         '011_contract_email_delivery_fencing',
+        '012_add_data_rights_claim_fencing',
     )
 
 

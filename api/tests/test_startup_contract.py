@@ -125,8 +125,9 @@ def test_schema_readiness_is_read_only(monkeypatch, tables, expected):
     cursor.execute.assert_called_once()
     query = ' '.join(cursor.execute.call_args.args[0].split())
     assert query.startswith('SELECT to_regclass')
-    assert "name='0030_worker_scope_and_lifecycle_repair'" in query
-    assert "version='011_contract_email_delivery_fencing'" in query
+    assert "name='0031_data_rights_worker_scope'" in query
+    assert "name='0005_data_rights_claim_fencing'" in query
+    assert "version='012_add_data_rights_claim_fencing'" in query
 
 
 def test_schema_readiness_fails_closed(monkeypatch):

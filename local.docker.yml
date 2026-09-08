@@ -49,8 +49,8 @@ services:
       - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
       - BASE2_PROCESS_ROLE=api
       - PORT=${FASTAPI_PORT}
-      - DB_HOST=postgres
-      - DB_PORT=${POSTGRES_PORT}
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
       - DB_NAME=${POSTGRES_DB}
       - DB_USER=${POSTGRES_USER}
       - DB_PASSWORD=${POSTGRES_PASSWORD}
@@ -118,14 +118,15 @@ services:
       - DJANGO_SUPERUSER_NAME=${DJANGO_SUPERUSER_NAME}
       - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL}
       - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD}
-      - DB_HOST=postgres
-      - DB_PORT=${POSTGRES_PORT}
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
       - DB_NAME=${POSTGRES_DB}
       - DB_USER=${POSTGRES_USER}
       - DB_PASSWORD=${POSTGRES_PASSWORD}
       - WORKSPACE_DB_USER=${WORKSPACE_DB_USER}
       - WORKSPACE_WORKER_DB_USER=${WORKSPACE_WORKER_DB_USER}
       - RUNTIME_WORKER_DB_USER=${RUNTIME_WORKER_DB_USER}
+      - DATA_RIGHTS_WORKER_DB_USER=${DATA_RIGHTS_WORKER_DB_USER}
       - EMAIL_WORKER_DB_USER=${EMAIL_WORKER_DB_USER}
       - PORT=${DJANGO_PORT}
       - PYTHONDONTWRITEBYTECODE=1
@@ -245,6 +246,10 @@ services:
   workspace-db-role:
     image: postgres:${POSTGRES_VERSION}
     environment:
+      - DB_HOST=${DB_HOST:-postgres}
+      - PGPORT=${DB_PORT:-5432}
+      - PGSSLMODE=${DB_SSLMODE:-disable}
+      - PGSSLROOTCERT=${DB_SSLROOTCERT:-/run/secrets/db-ca.pem}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
@@ -254,10 +259,13 @@ services:
       - WORKSPACE_WORKER_DB_PASSWORD=${WORKSPACE_WORKER_DB_PASSWORD}
       - RUNTIME_WORKER_DB_USER=${RUNTIME_WORKER_DB_USER}
       - RUNTIME_WORKER_DB_PASSWORD=${RUNTIME_WORKER_DB_PASSWORD}
+      - DATA_RIGHTS_WORKER_DB_USER=${DATA_RIGHTS_WORKER_DB_USER}
+      - DATA_RIGHTS_WORKER_DB_PASSWORD=${DATA_RIGHTS_WORKER_DB_PASSWORD}
       - EMAIL_WORKER_DB_USER=${EMAIL_WORKER_DB_USER}
       - EMAIL_WORKER_DB_PASSWORD=${EMAIL_WORKER_DB_PASSWORD}
     volumes:
       - ./postgres/bootstrap-workspace-role.sh:/bootstrap-workspace-role.sh:ro
+      - ${DB_SSLROOTCERT_HOST:-/dev/null}:/run/secrets/db-ca.pem:ro
     networks: [app_network]
     depends_on:
       postgres:
@@ -337,8 +345,8 @@ services:
       - ENV=${ENV:-development}
       - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
       - BASE2_PROCESS_ROLE=runtime-worker
-      - DB_HOST=postgres
-      - DB_PORT=${POSTGRES_PORT}
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
       - DB_NAME=${POSTGRES_DB}
       - DB_USER=${RUNTIME_WORKER_DB_USER}
       - DB_PASSWORD=${RUNTIME_WORKER_DB_PASSWORD}
@@ -389,7 +397,7 @@ services:
       test:
         [
           'CMD-SHELL',
-          'python -c "import os;from celery import Celery;app=Celery(broker=os.getenv(''CELERY_BROKER_URL''));c=app.connection();c.connect();c.release();print(''ok'')" || exit 1',
+          'python -c "from api.services.operations_runtime import _runtime_heartbeat; raise SystemExit(0 if _runtime_heartbeat(''workers:runtime-worker'', 1)[0] == ''healthy'' else 1)"',
         ]
       interval: 20s
       timeout: 10s
@@ -511,8 +519,8 @@ services:
       - ENV=${ENV:-development}
       - BASE2_PROCESS_ROLE=content-worker
       - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
-      - DB_HOST=postgres
-      - DB_PORT=${POSTGRES_PORT}
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
       - DB_NAME=${POSTGRES_DB}
       - DB_USER=${WORKSPACE_WORKER_DB_USER}
       - DB_PASSWORD=${WORKSPACE_WORKER_DB_PASSWORD}
@@ -555,8 +563,70 @@ services:
     security_opt: [no-new-privileges:true]
     read_only: true
     tmpfs: [/tmp, /var/tmp]
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'python -c "from api.services.operations_runtime import _runtime_heartbeat; raise SystemExit(0 if _runtime_heartbeat(''workers:content-worker'', 1)[0] == ''healthy'' else 1)"',
+        ]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
     mem_limit: 512m
     cpus: '0.75'
+
+  celery-data-rights-worker:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+      args:
+        - PYTHON_VERSION=${FASTAPI_PYTHON_VERSION}
+    profiles: [celery]
+    container_name: ${COMPOSE_PROJECT_NAME}_celery_data_rights_worker
+    environment:
+      - ENV=${ENV:-development}
+      - BASE2_PROCESS_ROLE=data-rights-worker
+      - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${POSTGRES_DB}
+      - DB_USER=${DATA_RIGHTS_WORKER_DB_USER}
+      - DB_PASSWORD=${DATA_RIGHTS_WORKER_DB_PASSWORD}
+      - WORKSPACE_DB_USER=${DATA_RIGHTS_WORKER_DB_USER}
+      - WORKSPACE_DB_PASSWORD=${DATA_RIGHTS_WORKER_DB_PASSWORD}
+      - IDENTITY_ENCRYPTION_KEY=${IDENTITY_ENCRYPTION_KEY}
+      - TOKEN_PEPPER=${TOKEN_PEPPER}
+      - DB_SSLMODE=${DB_SSLMODE:-disable}
+      - DB_SSLROOTCERT=${DB_SSLROOTCERT:-/run/secrets/db-ca.pem}
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
+    networks: [app_network]
+    volumes:
+      - ${DB_SSLROOTCERT_HOST:-/dev/null}:/run/secrets/db-ca.pem:ro
+    depends_on:
+      django: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+    entrypoint: [sh, -c]
+    command: ['celery -A api.tasks worker -Q data-rights -l INFO --concurrency=1']
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: [/tmp, /var/tmp]
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'python -c "from api.services.operations_runtime import _runtime_heartbeat; raise SystemExit(0 if _runtime_heartbeat(''workers:data-rights-worker'', 1)[0] == ''healthy'' else 1)"',
+        ]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    mem_limit: 256m
+    cpus: '0.5'
 
   celery-email-worker:
     build:
@@ -570,8 +640,8 @@ services:
       - ENV=${ENV:-development}
       - BASE2_PROCESS_ROLE=email-worker
       - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
-      - DB_HOST=postgres
-      - DB_PORT=${POSTGRES_PORT}
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
       - DB_NAME=${POSTGRES_DB}
       - DB_USER=${EMAIL_WORKER_DB_USER}
       - DB_PASSWORD=${EMAIL_WORKER_DB_PASSWORD}
@@ -602,6 +672,16 @@ services:
     security_opt: [no-new-privileges:true]
     read_only: true
     tmpfs: [/tmp, /var/tmp]
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'python -c "from api.services.operations_runtime import _runtime_heartbeat; raise SystemExit(0 if _runtime_heartbeat(''workers:email-worker'', 1)[0] == ''healthy'' else 1)"',
+        ]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
     mem_limit: 256m
     cpus: '0.5'
 
@@ -616,8 +696,8 @@ services:
       - ENV=${ENV:-development}
       - BASE2_PROCESS_ROLE=runtime-worker
       - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
-      - DB_HOST=postgres
-      - DB_PORT=${POSTGRES_PORT}
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
       - DB_NAME=${POSTGRES_DB}
       - DB_USER=${RUNTIME_WORKER_DB_USER}
       - DB_PASSWORD=${RUNTIME_WORKER_DB_PASSWORD}

@@ -231,9 +231,7 @@ def test_dns_unexpected_ipv6_and_duplicate_answer_fail_closed():
 
 
 def test_expiry_plan_is_fixed_integrity_bound_and_persistent(tmp_path):
-    _, lease_root = state_with_lease(
-        tmp_path, expiresAt="2026-08-26T13:00:43.578547Z"
-    )
+    _, lease_root = state_with_lease(tmp_path, expiresAt="2026-08-26T13:00:43.578547Z")
     credential = tmp_path / "credential.json"
     credential.write_text("{}")
     credential.chmod(0o600)
@@ -297,11 +295,18 @@ def test_arm_expiry_uses_argument_vector_and_reports_failure(tmp_path):
     assert result["armed"] is True and result["durableUnitFiles"] is True
     service = unit_root / f"{plan['unit']}.service"
     timer = unit_root / f"{plan['unit']}.timer"
+    scanner_service = unit_root / "base2-full-preview-expiry-scan.service"
+    scanner_timer = unit_root / "base2-full-preview-expiry-scan.timer"
     assert service.is_file() and timer.is_file()
+    assert scanner_service.is_file() and scanner_timer.is_file()
     assert "Persistent=true" in timer.read_text()
     assert "OnCalendar=2026-08-26 13:00:00 UTC" in timer.read_text()
     assert f"WorkingDirectory={ROOT}" in service.read_text()
     assert str(credential) in service.read_text()
+    assert "/usr/bin/flock" in service.read_text()
+    assert "--scan" in scanner_service.read_text()
+    assert "OnUnitActiveSec=1min" in scanner_timer.read_text()
+    assert result["controllerCoverage"] == {"primary": "armed", "backup": "scanner-armed"}
     removed = remove_expiry_units(RUN, runner=runner, unit_root=unit_root)
     assert len(removed["removed"]) == 2 and not service.exists() and not timer.exists()
     assert isinstance(calls[0][0], list) and calls[0][1]["timeout"] == 20

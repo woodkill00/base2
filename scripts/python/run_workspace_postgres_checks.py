@@ -9,9 +9,11 @@ from uuid import UUID
 import psycopg2
 from psycopg2 import errors
 
+from api.migrations.runner import apply_migrations
 from api.repositories.operations import due_alert_deliveries, record_probe_batch
 from api.repositories.runtime_governance import claim_jobs, enqueue_job, settle_job
 from api.repositories.tenant_quota import QuotaRepositoryError, reserve
+from api.services.email_service import create_outbox_email
 
 
 def connect(user: str, password: str):
@@ -51,6 +53,18 @@ def quota_count(conn, tenant: str | None) -> int:
 def outbox_count(conn) -> int:
     with conn.cursor() as cursor:
         cursor.execute("SELECT COUNT(*) FROM api_email_outbox")
+        return int(cursor.fetchone()[0])
+
+
+def data_rights_count(conn) -> int:
+    with conn.cursor() as cursor:
+        cursor.execute("SELECT COUNT(*) FROM api_data_rights_operations")
+        return int(cursor.fetchone()[0])
+
+
+def auth_user_count(conn) -> int:
+    with conn.cursor() as cursor:
+        cursor.execute("SELECT COUNT(*) FROM api_auth_users")
         return int(cursor.fetchone()[0])
 
 
@@ -145,6 +159,26 @@ def optimistic_race(
     assert sorted(results) == [0, 1], results
 
 
+def migration_lock_race() -> None:
+    barrier = threading.Barrier(2)
+    failures: list[BaseException] = []
+
+    def contender() -> None:
+        try:
+            barrier.wait(timeout=5)
+            apply_migrations()
+        except BaseException as exc:  # pragma: no cover - surfaced below
+            failures.append(exc)
+
+    contenders = [threading.Thread(target=contender, daemon=True) for _ in range(2)]
+    for contender in contenders:
+        contender.start()
+    for contender in contenders:
+        contender.join(timeout=20)
+        assert not contender.is_alive(), "api_migration_lock_contender_timed_out"
+    assert not failures, failures
+
+
 def main() -> None:
     owner_user = os.environ["DB_USER"]
     owner_password = os.environ["DB_PASSWORD"]
@@ -156,12 +190,19 @@ def main() -> None:
     worker_password = os.environ["RUNTIME_WORKER_DB_PASSWORD"]
     email_worker_user = os.environ["EMAIL_WORKER_DB_USER"]
     email_worker_password = os.environ["EMAIL_WORKER_DB_PASSWORD"]
+    data_rights_user = os.environ["DATA_RIGHTS_WORKER_DB_USER"]
+    data_rights_password = os.environ["DATA_RIGHTS_WORKER_DB_PASSWORD"]
     owner = connect(owner_user, owner_password)
     runtime = connect(runtime_user, runtime_password)
     content_worker = connect(content_worker_user, content_worker_password)
     worker = connect(worker_user, worker_password)
     email_worker = connect(email_worker_user, email_worker_password)
+    data_rights_worker = connect(data_rights_user, data_rights_password)
     try:
+        # Exercise the real API ledger concurrently before relying on any
+        # API-side columns below. Both contenders must converge under the
+        # transaction-scoped PostgreSQL advisory lock.
+        migration_lock_race()
         with owner, owner.cursor() as cursor:
             cursor.execute("DELETE FROM api_data_rights_operations")
             cursor.execute("DELETE FROM api_identity_memberships")
@@ -207,10 +248,10 @@ def main() -> None:
             cursor.execute(
                 """INSERT INTO api_email_outbox
                    (id,to_email,subject,body_text,body_html,status,provider,
-                    provider_message_id,error,created_at,sent_at)
+                    provider_message_id,error,created_at,sent_at,delivery_key)
                    VALUES (%s,'owner@example.invalid','Synthetic','Body','','queued',
-                           'local_outbox','','',NOW(),NULL)""",
-                (str(UUID(int=40)),),
+                           'local_outbox','','',NOW(),NULL,%s)""",
+                (str(UUID(int=40)), str(UUID(int=40))),
             )
             cursor.execute(
                 """INSERT INTO api_auth_users
@@ -224,10 +265,26 @@ def main() -> None:
                 (str(UUID(int=51)),),
             )
             cursor.execute(
+                "INSERT INTO api_auth_users "
+                "(id,email,password_hash,is_active,is_email_verified,display_name,avatar_url,bio,created_at,updated_at,failed_login_attempts) "
+                "VALUES (%s,'other@example.invalid','hash',true,true,'Other','','',NOW(),NOW(),0)",
+                (str(UUID(int=53)),),
+            )
+            cursor.execute(
+                "INSERT INTO api_identity_organizations (id,tenant_id,name) VALUES (%s,'site-b','B')",
+                (str(UUID(int=54)),),
+            )
+            cursor.execute(
                 """INSERT INTO api_identity_memberships
                    (organization_id,user_id,role,status,created_at,updated_at)
                    VALUES (%s,%s,'owner','active',NOW(),NOW())""",
                 (str(UUID(int=51)), str(UUID(int=50))),
+            )
+            cursor.execute(
+                "INSERT INTO api_identity_memberships "
+                "(organization_id,user_id,role,status,created_at,updated_at) "
+                "VALUES (%s,%s,'owner','active',NOW(),NOW())",
+                (str(UUID(int=54)), str(UUID(int=53))),
             )
             cursor.execute(
                 """INSERT INTO api_data_rights_operations
@@ -254,6 +311,21 @@ def main() -> None:
                 "SELECT rolbypassrls, rolsuper FROM pg_roles WHERE rolname=%s", (runtime_user,)
             )
             assert cursor.fetchone() == (False, False)
+            cursor.execute(
+                "SELECT rolbypassrls, rolsuper FROM pg_roles WHERE rolname=%s",
+                (data_rights_user,),
+            )
+            assert cursor.fetchone() == (False, False)
+            cursor.execute(
+                "SELECT has_table_privilege(%s,'api_auth_users','SELECT'),"
+                "has_table_privilege(%s,'api_auth_users','UPDATE'),"
+                "has_table_privilege(%s,'api_auth_users','INSERT'),"
+                "has_table_privilege(%s,'api_auth_users','DELETE'),"
+                "NOT EXISTS (SELECT 1 FROM information_schema.table_privileges "
+                "WHERE grantee='PUBLIC' AND table_name='api_auth_users')",
+                (data_rights_user,) * 4,
+            )
+            assert cursor.fetchone() == (True, True, False, False, True)
             cursor.execute(
                 "SELECT rolbypassrls, rolsuper FROM pg_roles WHERE rolname=%s", (worker_user,)
             )
@@ -367,20 +439,77 @@ def main() -> None:
         )
         assert count(content_worker, None) == 2
         content_worker.rollback()
-        with content_worker.cursor() as cursor:
+        assert_permission_denied(
+            lambda: data_rights_count(content_worker),
+            content_worker,
+            "content_worker_data_rights_read_was_not_blocked",
+        )
+        assert_permission_denied(
+            lambda: auth_user_count(content_worker),
+            content_worker,
+            "content_worker_identity_read_was_not_blocked",
+        )
+        with data_rights_worker.cursor() as cursor:
+            cursor.execute("SELECT set_config('app.tenant_id', 'site-a', true)")
+            cursor.execute("SELECT current_user,current_setting('app.tenant_id', true)")
+            assert cursor.fetchone() == (data_rights_user, "site-a")
+            cursor.execute("SELECT tenant_id FROM api_identity_organizations")
+            assert cursor.fetchall() == [("site-a",)]
+            cursor.execute("SELECT user_id FROM api_identity_memberships")
+            assert cursor.fetchall() == [(str(UUID(int=50)),)]
+            cursor.execute("SELECT email FROM api_auth_users WHERE id=%s", (str(UUID(int=50)),))
+            assert cursor.fetchone() == ("rights@example.invalid",)
+            cursor.execute("SELECT email FROM api_auth_users WHERE id=%s", (str(UUID(int=53)),))
+            assert cursor.fetchone() is None, "data_rights_cross_tenant_user_read_was_not_blocked"
             cursor.execute(
-                "SELECT status FROM api_data_rights_operations WHERE id=%s",
-                (str(UUID(int=52)),),
+                "UPDATE api_auth_users SET display_name='blocked' WHERE id=%s",
+                (str(UUID(int=53)),),
             )
-            assert cursor.fetchone() == ("queued",)
+            assert cursor.rowcount == 0, "data_rights_cross_tenant_user_update_was_not_blocked"
             cursor.execute(
-                "UPDATE api_data_rights_operations SET status='running' WHERE id=%s",
-                (str(UUID(int=52)),),
+                "DELETE FROM api_identity_memberships WHERE organization_id=%s AND user_id=%s",
+                (str(UUID(int=54)), str(UUID(int=53))),
+            )
+            assert (
+                cursor.rowcount == 0
+            ), "data_rights_cross_tenant_membership_delete_was_not_blocked"
+            stale_claim = str(UUID(int=55))
+            current_claim = str(UUID(int=56))
+            cursor.execute(
+                "UPDATE api_data_rights_operations SET status='running',claim_token=%s,"
+                "claim_expires_at=NOW()-INTERVAL '1 second' WHERE id=%s AND status='queued'",
+                (stale_claim, str(UUID(int=52))),
+            )
+            assert cursor.rowcount == 1
+            cursor.execute(
+                "DELETE FROM api_identity_memberships WHERE organization_id=%s AND user_id=%s",
+                (str(UUID(int=51)), str(UUID(int=50))),
             )
             assert cursor.rowcount == 1
             cursor.execute("SELECT email FROM api_auth_users WHERE id=%s", (str(UUID(int=50)),))
-            assert cursor.fetchone() == ("rights@example.invalid",)
-        content_worker.commit()
+            assert cursor.fetchone() == (
+                "rights@example.invalid",
+            ), "claimed_subject_access_was_not_preserved"
+            cursor.execute(
+                "UPDATE api_data_rights_operations SET claim_token=%s,"
+                "claim_expires_at=NOW()+INTERVAL '5 minutes' "
+                "WHERE id=%s AND status='running' AND claim_token=%s AND claim_expires_at<NOW()",
+                (current_claim, str(UUID(int=52)), stale_claim),
+            )
+            assert cursor.rowcount == 1
+            cursor.execute(
+                "UPDATE api_data_rights_operations SET status='completed',claim_token=NULL,"
+                "claim_expires_at=NULL WHERE id=%s AND status='running' AND claim_token=%s",
+                (str(UUID(int=52)), stale_claim),
+            )
+            assert cursor.rowcount == 0, "stale_data_rights_claim_was_not_fenced"
+            cursor.execute(
+                "UPDATE api_data_rights_operations SET status='failed',claim_token=NULL,"
+                "claim_expires_at=NULL WHERE id=%s AND status='running' AND claim_token=%s",
+                (str(UUID(int=52)), current_claim),
+            )
+            assert cursor.rowcount == 1
+        data_rights_worker.rollback()
         with content_worker.cursor() as cursor:
             cursor.execute("SELECT set_config('app.tenant_id', 'site-a', true)")
             cursor.execute(
@@ -442,6 +571,12 @@ def main() -> None:
             )
             assert cursor.rowcount == 1
         email_worker.commit()
+        migrated_email = create_outbox_email(
+            to_email="migration-proof@example.invalid",
+            subject="Migration proof",
+            body_text="Body",
+        )
+        assert migrated_email.delivery_key == str(migrated_email.id)
         assert_permission_denied(
             lambda: count(email_worker, None),
             email_worker,
@@ -698,6 +833,7 @@ def main() -> None:
         content_worker.close()
         worker.close()
         email_worker.close()
+        data_rights_worker.close()
         owner.close()
     print("Workspace PostgreSQL RLS acceptance: PASS")
 

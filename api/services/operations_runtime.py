@@ -200,7 +200,12 @@ def configured_probe_adapters(
             ('healthy', 'workers.ready', 0)
             if all(
                 _runtime_heartbeat(f'workers:{role}', timeout)[0] == 'healthy'
-                for role in ('runtime-worker', 'content-worker', 'email-worker')
+                for role in (
+                    'runtime-worker',
+                    'content-worker',
+                    'data-rights-worker',
+                    'email-worker',
+                )
             )
             else ('degraded', 'workers.stale', 0)
         ),
@@ -302,7 +307,7 @@ def _queue_health(timeout: int) -> tuple[str, str, int]:
     del timeout
     try:
         client = redis_client.get_client()
-        queues = ('runtime', 'content', 'email')
+        queues = ('runtime', 'content', 'data-rights', 'email')
         depth = sum(int(client.llen(queue)) for queue in queues)
         worker_ok = all(
             _runtime_heartbeat(f'workers:{role}-worker', 1)[0] == 'healthy' for role in queues

@@ -67,7 +67,10 @@ class ServiceHealthContractTests(unittest.TestCase):
             "postgres": ("pg_isready", "${POSTGRES_DB}"),
             "pgadmin": ("wget", "/misc/ping"),
             "redis": ("redis-cli", "PONG"),
-            "celery-worker": ("python", "CELERY_BROKER_URL"),
+            "celery-worker": ("python", "workers:runtime-worker"),
+            "celery-content-worker": ("python", "workers:content-worker"),
+            "celery-data-rights-worker": ("python", "workers:data-rights-worker"),
+            "celery-email-worker": ("python", "workers:email-worker"),
             "celery-beat": ("python", "CELERY_BROKER_URL"),
             "flower": ("python", "HTTPConnection", "5555"),
         }
@@ -145,15 +148,23 @@ class ServiceHealthContractTests(unittest.TestCase):
         runtime = SERVICES["celery-worker"].get("environment") or []
         content = SERVICES["celery-content-worker"].get("environment") or []
         email = SERVICES["celery-email-worker"].get("environment") or []
+        data_rights = SERVICES["celery-data-rights-worker"].get("environment") or []
         self.assertIn("DB_USER=${WORKSPACE_WORKER_DB_USER}", content)
         self.assertIn("DB_PASSWORD=${WORKSPACE_WORKER_DB_PASSWORD}", content)
         self.assertIn("WORKSPACE_WORKER_DB_USER=${WORKSPACE_WORKER_DB_USER}", content)
         self.assertNotIn("RUNTIME_WORKER_DB_PASSWORD=${RUNTIME_WORKER_DB_PASSWORD}", content)
+        self.assertIn("DB_USER=${DATA_RIGHTS_WORKER_DB_USER}", data_rights)
+        self.assertIn("DB_PASSWORD=${DATA_RIGHTS_WORKER_DB_PASSWORD}", data_rights)
+        self.assertIn("TOKEN_PEPPER=${TOKEN_PEPPER}", data_rights)
+        self.assertIn("IDENTITY_ENCRYPTION_KEY=${IDENTITY_ENCRYPTION_KEY}", data_rights)
+        self.assertNotIn(
+            "DATA_RIGHTS_WORKER_DB_PASSWORD=${DATA_RIGHTS_WORKER_DB_PASSWORD}", content
+        )
         self.assertIn("DB_USER=${EMAIL_WORKER_DB_USER}", email)
         self.assertIn("DB_PASSWORD=${EMAIL_WORKER_DB_PASSWORD}", email)
         self.assertNotIn("WORKSPACE_DB_PASSWORD=${WORKSPACE_DB_PASSWORD}", email)
         self.assertNotIn("WORKSPACE_WORKER_DB_PASSWORD=${WORKSPACE_WORKER_DB_PASSWORD}", email)
-        for environment in (api, runtime, content):
+        for environment in (api, runtime, content, data_rights):
             self.assertFalse(any(value.startswith("BASE2_EMAIL_") for value in environment))
         self.assertIn("BASE2_EMAIL_ADAPTER=${BASE2_EMAIL_ADAPTER:-disabled}", email)
         self.assertIn("BASE2_EMAIL_SMTP_PASSWORD_FILE=/run/secrets/email-smtp-password", email)
@@ -163,6 +174,7 @@ class ServiceHealthContractTests(unittest.TestCase):
             "api": "api",
             "celery-worker": "runtime-worker",
             "celery-content-worker": "content-worker",
+            "celery-data-rights-worker": "data-rights-worker",
             "celery-email-worker": "email-worker",
             "celery-beat": "runtime-worker",
         }
@@ -172,6 +184,7 @@ class ServiceHealthContractTests(unittest.TestCase):
             self.assertIn(f"BASE2_PROCESS_ROLE={role}", environment)
             self.assertIn("DB_SSLMODE=${DB_SSLMODE:-disable}", environment)
             self.assertIn("DB_SSLROOTCERT=${DB_SSLROOTCERT:-/run/secrets/db-ca.pem}", environment)
+            self.assertIn("DB_HOST=${DB_HOST:-postgres}", environment)
             volumes = SERVICES[name].get("volumes") or []
             self.assertIn("${DB_SSLROOTCERT_HOST:-/dev/null}:/run/secrets/db-ca.pem:ro", volumes)
 
@@ -180,6 +193,76 @@ class ServiceHealthContractTests(unittest.TestCase):
         self.assertIn("HEALTHCHECK", dockerfile)
         self.assertIn("/ping", dockerfile)
         self.assertIn("apk add --no-cache su-exec gettext wget", dockerfile)
+
+    def test_remote_verification_fails_hard_on_required_worker_or_health_failure(self):
+        deploy = (ROOT / "digital_ocean/scripts/powershell/deploy.ps1").read_text(encoding="utf-8")
+        required = (
+            "celery-worker",
+            "celery-content-worker",
+            "celery-data-rights-worker",
+            "celery-email-worker",
+            "celery-beat",
+        )
+        build_line = next(line for line in deploy.splitlines() if "build celery-worker" in line)
+        up_line = next(
+            line for line in deploy.splitlines() if "up -d --build redis celery-worker" in line
+        )
+        for service in required:
+            self.assertIn(service, build_line)
+            self.assertIn(service, up_line)
+        self.assertNotIn("|| true", build_line)
+        self.assertNotIn("|| true", up_line)
+        deployment = deploy[
+            deploy.index("# Bring up core services") : deploy.index(
+                "# Capture Django migration output"
+            )
+        ]
+        for line in deployment.splitlines():
+            if "docker compose" in line and (" build " in line or " up " in line):
+                self.assertNotIn("|| true", line)
+        core_up = next(line for line in deployment.splitlines() if "compose-up-core.txt" in line)
+        self.assertIn("celery-data-rights-worker", core_up)
+        build_offset = deploy.index(build_line)
+        self.assertNotIn("RUN_CELERY_CHECK", deploy[build_offset - 500 : build_offset])
+        self.assertNotIn(
+            "manage.py migrate --noinput > /root/logs/django-migrate.txt 2>&1 || true", deploy
+        )
+        self.assertIn('if [ "$SCHEMA_STATUS" != "0" ]; then', deploy)
+        self.assertIn('if [ "$READY" != "1" ]; then', deploy)
+        self.assertIn("FAILED: required services did not become healthy", deploy)
+
+    def test_e2e_compose_keeps_data_rights_queue_and_identity_separate(self):
+        e2e = yaml.safe_load((ROOT / "e2e/docker-compose.e2e.yml").read_text(encoding="utf-8"))[
+            "services"
+        ]
+        runtime = e2e["celery-worker"]
+        data_rights = e2e["celery-data-rights-worker"]
+        self.assertEqual("runtime-worker", runtime["environment"]["BASE2_PROCESS_ROLE"])
+        self.assertIn("-Q runtime", " ".join(runtime["command"]))
+        self.assertNotIn("DATA_RIGHTS_WORKER_DB_PASSWORD", runtime["environment"])
+        self.assertEqual("data-rights-worker", data_rights["environment"]["BASE2_PROCESS_ROLE"])
+        self.assertIn("-Q data-rights", " ".join(data_rights["command"]))
+        self.assertEqual("base2_data_rights_worker_e2e", data_rights["environment"]["DB_USER"])
+
+    def test_compose_database_endpoint_and_bootstrap_tls_are_configurable(self):
+        for name in (
+            "api",
+            "django",
+            "celery-worker",
+            "celery-content-worker",
+            "celery-data-rights-worker",
+            "celery-email-worker",
+            "celery-beat",
+        ):
+            environment = SERVICES[name].get("environment") or []
+            self.assertIn("DB_HOST=${DB_HOST:-postgres}", environment)
+            self.assertIn("DB_PORT=${DB_PORT:-5432}", environment)
+        bootstrap = SERVICES["workspace-db-role"]
+        self.assertIn("PGSSLMODE=${DB_SSLMODE:-disable}", bootstrap["environment"])
+        self.assertIn(
+            "${DB_SSLROOTCERT_HOST:-/dev/null}:/run/secrets/db-ca.pem:ro",
+            bootstrap["volumes"],
+        )
 
     def test_compose_observer_is_isolated_staging_only_and_self_cleaning(self):
         observer = (ROOT / "scripts/bash/observe-compose-health.sh").read_text(encoding="utf-8")

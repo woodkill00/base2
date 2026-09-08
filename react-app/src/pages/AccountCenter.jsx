@@ -313,11 +313,7 @@ const AccountCenter = ({ user, embedded = false, locale: requestedLocale = 'en' 
           <GlassCard>
             <div className="p-5 space-y-3">
               <h3 className="font-semibold">{copy.passkeys}</h3>
-              {mfa?.webauthn?.enabled ? (
-                <GlassButton>{copy.addPasskey}</GlassButton>
-              ) : (
-                <p className="text-sm opacity-80">{copy.passkeysUnavailable}</p>
-              )}
+              <p className="text-sm opacity-80">{copy.passkeysUnavailable}</p>
             </div>
           </GlassCard>
         </div>
@@ -411,7 +407,10 @@ const AccountCenter = ({ user, embedded = false, locale: requestedLocale = 'en' 
       menuLabel={copy.menu}
       themeLabel={copy.theme}
       sidebarLabel={copy.sidebar}
-      sidebarItems={copy.sidebarItems}
+      sidebarItems={copy.sidebarItems.map((label, index) => ({
+        label,
+        to: ['/', '/dashboard', '/settings', '/admin', '/contact'][index],
+      }))}
     >
       {content}
     </AppShell>

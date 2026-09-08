@@ -4,6 +4,7 @@ import hashlib
 import json
 import subprocess
 from dataclasses import replace
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -19,6 +20,7 @@ from digital_ocean.scripts.python.full_preview_remote import (
     safe_diagnostic,
 )
 from digital_ocean.scripts.python.live_preview_provider import LivePreviewConfig
+from digital_ocean.scripts.python.preview_lease_v2 import FullPreviewLeaseStore
 
 
 def private_file(path: Path, value: str) -> Path:
@@ -59,9 +61,12 @@ def remote_config(tmp_path: Path) -> LivePreviewConfig:
 
 
 def test_cli_policy_and_probe_entrypoints(tmp_path, monkeypatch, capsys):
-    assert full_preview_cli.main(
-        ["policy", "--domain", "woodkilldev.com", "--owner-cidr", "8.8.8.8/32"]
-    ) == 0
+    assert (
+        full_preview_cli.main(
+            ["policy", "--domain", "woodkilldev.com", "--owner-cidr", "8.8.8.8/32"]
+        )
+        == 0
+    )
     policy = json.loads(capsys.readouterr().out)
     assert policy["status"] == "ready_for_live_approval"
     assert len(policy["policyDigest"]) == 64
@@ -73,21 +78,24 @@ def test_cli_policy_and_probe_entrypoints(tmp_path, monkeypatch, capsys):
         "verify_full_preview",
         lambda *args, **kwargs: {"ok": True, "routeCount": 8},
     )
-    assert full_preview_cli.main(
-        [
-            "probe",
-            "--domain",
-            "woodkilldev.com",
-            "--ip-address",
-            "8.8.8.8",
-            "--owner-cidr",
-            "8.8.4.4/32",
-            "--username-file",
-            str(username),
-            "--password-file",
-            str(password),
-        ]
-    ) == 0
+    assert (
+        full_preview_cli.main(
+            [
+                "probe",
+                "--domain",
+                "woodkilldev.com",
+                "--ip-address",
+                "8.8.8.8",
+                "--owner-cidr",
+                "8.8.4.4/32",
+                "--username-file",
+                str(username),
+                "--password-file",
+                str(password),
+            ]
+        )
+        == 0
+    )
     assert json.loads(capsys.readouterr().out)["routeCount"] == 8
 
     password.chmod(0o644)
@@ -167,18 +175,87 @@ def test_expiry_token_provider_and_main(tmp_path, monkeypatch, capsys):
             "mutationCounts": {"dropletsDeleted": 1, "dnsRecordsDeleted": 6},
         },
     )
-    assert full_preview_expire.main(
-        [
-            "--state-root",
-            str(tmp_path / "state"),
-            "--run-id",
-            "base2-full-20260826-001",
-            "--credential-file",
-            str(credential),
-            "--early-approved",
-        ]
-    ) == 0
+    assert (
+        full_preview_expire.main(
+            [
+                "--state-root",
+                str(tmp_path / "state"),
+                "--run-id",
+                "base2-full-20260826-001",
+                "--credential-file",
+                str(credential),
+                "--early-approved",
+            ]
+        )
+        == 0
+    )
     assert json.loads(capsys.readouterr().out)["ok"] is True
+
+
+def _scanner_lease(run_id: str, *, expires_at: datetime) -> dict:
+    armed_at = expires_at - timedelta(hours=1)
+    return {
+        "schemaVersion": 2,
+        "runId": run_id,
+        "state": "live-verified",
+        "armedAt": armed_at.isoformat().replace("+00:00", "Z"),
+        "expiresAt": expires_at.isoformat().replace("+00:00", "Z"),
+        "sourceCommit": "a" * 40,
+        "sourceArchiveSha256": "b" * 64,
+        "profileId": "base2-obsidian",
+        "profileDigest": "c" * 64,
+        "droplet": None,
+        "dnsRecords": [],
+        "ownerAdmissionDigest": "d" * 64,
+        "certificateMode": "letsencrypt-staging-only",
+        "budgetCeilingUsd": "0.25",
+        "lastError": None,
+        "mutationCounts": {"dropletsDeleted": 0, "dnsRecordsDeleted": 0},
+    }
+
+
+def test_expiry_scanner_destroys_only_expired_integrity_bound_leases(tmp_path):
+    now = datetime(2026, 9, 8, 12, tzinfo=UTC)
+    store = FullPreviewLeaseStore(tmp_path / "leases")
+    expired = "base2-full-20260908-expired"
+    pending = "base2-full-20260908-pending"
+    store.create(_scanner_lease(expired, expires_at=now - timedelta(minutes=1)))
+    store.create(_scanner_lease(pending, expires_at=now + timedelta(minutes=1)))
+
+    class NoResources:
+        def __getattr__(self, name):
+            raise AssertionError(f"provider should not be called: {name}")
+
+    result = full_preview_expire.scan_expired_previews(tmp_path / "leases", NoResources(), now=now)
+    assert result == {
+        "ok": True,
+        "scanned": 2,
+        "destroyed": [expired],
+        "pending": [pending],
+        "secretValuesEmitted": 0,
+    }
+    assert store.load(expired)["state"] == "destroyed"
+    assert store.load(pending)["state"] == "live-verified"
+
+
+def test_expiry_scanner_rejects_unsafe_or_unbounded_inventory(tmp_path):
+    root = tmp_path / "leases"
+    root.mkdir(mode=0o700)
+    (root / "unsafe.json").symlink_to(tmp_path / "outside")
+    with pytest.raises(ExpiryError, match="unsafe member"):
+        full_preview_expire.scan_expired_previews(
+            root, object(), now=datetime(2026, 9, 8, tzinfo=UTC)
+        )
+    (root / "unsafe.json").unlink()
+    for index in range(3):
+        (root / f"base2-full-20260908-{index:03d}.json").write_text("{}")
+    with pytest.raises(ExpiryError, match="bounded scan capacity"):
+        full_preview_expire.scan_expired_previews(
+            root,
+            object(),
+            now=datetime(2026, 9, 8, tzinfo=UTC),
+            maximum_leases=2,
+        )
 
 
 def test_remote_bootstrap_deploy_health_and_failures(tmp_path):
@@ -188,7 +265,11 @@ def test_remote_bootstrap_deploy_health_and_failures(tmp_path):
 
     def runner(argv, **kwargs):
         calls.append(argv)
-        if argv[0] == "ssh" and argv[-1] == "true" and sum(1 for row in calls if row[-1] == "true") == 1:
+        if (
+            argv[0] == "ssh"
+            and argv[-1] == "true"
+            and sum(1 for row in calls if row[-1] == "true") == 1
+        ):
             return SimpleNamespace(returncode=1, stdout="", stderr="waiting")
         if argv[0] == "ssh" and "bash" in argv:
             return SimpleNamespace(
@@ -308,8 +389,7 @@ def test_remote_bootstrap_uses_bounded_size_appropriate_transfer_timeouts(tmp_pa
     transfers = [(argv, kwargs) for argv, kwargs in calls if argv[0] == "scp"]
     assert transfers[0][1]["timeout"] == SOURCE_TRANSFER_TIMEOUT_SECONDS
     assert all(
-        kwargs["timeout"] == PRIVATE_TRANSFER_TIMEOUT_SECONDS
-        for _argv, kwargs in transfers[1:]
+        kwargs["timeout"] == PRIVATE_TRANSFER_TIMEOUT_SECONDS for _argv, kwargs in transfers[1:]
     )
 
     def timeout_runner(argv, **kwargs):
@@ -344,29 +424,51 @@ def test_live_main_constructs_exact_dependencies(tmp_path, monkeypatch, capsys):
         return {"ok": True, "status": "live-verified"}
 
     monkeypatch.setattr(full_preview_live, "launch", fake_launch)
-    assert full_preview_live.main(
-        [
-            "--credential-file", str(credential),
-            "--source-archive", str(archive),
-            "--ssh-private-key", str(key),
-            "--ssh-key-id", "77",
-            "--operator-auth-file", str(operator),
-            "--flower-auth-file", str(flower),
-            "--probe-username-file", str(username),
-            "--probe-password-file", str(password),
-            "--django-username-file", str(app_inputs["django_username"]),
-            "--django-email-file", str(app_inputs["django_email"]),
-            "--django-password-file", str(app_inputs["django_password"]),
-            "--pgadmin-email-file", str(app_inputs["pgadmin_email"]),
-            "--pgadmin-password-file", str(app_inputs["pgadmin_password"]),
-            "--source-commit", "a" * 40,
-            "--profile-digest", "b" * 64,
-            "--domain", "woodkilldev.com",
-            "--owner-cidr", "8.8.4.4/32",
-            "--run-id", "base2-full-20260826-001",
-            "--state-root", str(tmp_path / "state"),
-        ]
-    ) == 0
+    assert (
+        full_preview_live.main(
+            [
+                "--credential-file",
+                str(credential),
+                "--source-archive",
+                str(archive),
+                "--ssh-private-key",
+                str(key),
+                "--ssh-key-id",
+                "77",
+                "--operator-auth-file",
+                str(operator),
+                "--flower-auth-file",
+                str(flower),
+                "--probe-username-file",
+                str(username),
+                "--probe-password-file",
+                str(password),
+                "--django-username-file",
+                str(app_inputs["django_username"]),
+                "--django-email-file",
+                str(app_inputs["django_email"]),
+                "--django-password-file",
+                str(app_inputs["django_password"]),
+                "--pgadmin-email-file",
+                str(app_inputs["pgadmin_email"]),
+                "--pgadmin-password-file",
+                str(app_inputs["pgadmin_password"]),
+                "--source-commit",
+                "a" * 40,
+                "--profile-digest",
+                "b" * 64,
+                "--domain",
+                "woodkilldev.com",
+                "--owner-cidr",
+                "8.8.4.4/32",
+                "--run-id",
+                "base2-full-20260826-001",
+                "--state-root",
+                str(tmp_path / "state"),
+            ]
+        )
+        == 0
+    )
     assert json.loads(capsys.readouterr().out)["status"] == "live-verified"
 
 
@@ -401,7 +503,4 @@ def test_live_owner_identity_accepts_owner_accounts(tmp_path):
     username = private_file(tmp_path / "username", "woodkill")
     email = private_file(tmp_path / "email", "owner@woodkilldev.com")
     assert full_preview_live._owner_identity(username, "username") == "woodkill"
-    assert (
-        full_preview_live._owner_identity(email, "email", email=True)
-        == "owner@woodkilldev.com"
-    )
+    assert full_preview_live._owner_identity(email, "email", email=True) == "owner@woodkilldev.com"

@@ -6,7 +6,7 @@ import { siteManifest } from '../../config/siteRuntime';
 type Props = {
   children?: React.ReactNode;
   headerTitle?: string;
-  sidebarItems?: string[];
+  sidebarItems?: Array<string | { label: string; to: string }>;
   sidebarLabel?: string;
   variant?: 'public' | 'app';
   footerLabel?: string;

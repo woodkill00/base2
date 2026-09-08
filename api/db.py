@@ -302,16 +302,16 @@ def db_schema_ready() -> bool:
                      EXISTS (
                        SELECT 1 FROM django_migrations
                         WHERE app='sitecontent'
-                          AND name='0030_worker_scope_and_lifecycle_repair'
+                          AND name='0031_data_rights_worker_scope'
                      ),
                      EXISTS (
                        SELECT 1 FROM django_migrations
                         WHERE app='api_schema'
-                          AND name='0004_protect_api_audit_events'
+                          AND name='0005_data_rights_claim_fencing'
                      ),
                      EXISTS (
                        SELECT 1 FROM api_schema_migrations
-                        WHERE version='011_contract_email_delivery_fencing'
+                        WHERE version='012_add_data_rights_claim_fencing'
                      )"""
             )
             row = cur.fetchone()

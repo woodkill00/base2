@@ -7,8 +7,10 @@ from unittest.mock import patch
 
 import pytest
 
+from api.services.content_workspace_storage import PrivateArtifactStore
 from scripts.python.production_backup import (
     ProductionBackupError,
+    _verify_object_references,
     create_production_backup,
     isolated_restore,
     load_config,
@@ -20,19 +22,23 @@ from scripts.python.production_backup import (
 
 def _config(tmp_path: Path):
     objects = tmp_path / "objects"
-    objects.mkdir()
-    (objects / "tenant-one").mkdir()
-    (objects / "tenant-one" / "photo.bin").write_bytes(b"actual-object-payload")
+    artifact = PrivateArtifactStore(objects, key=b"c" * 32).put(
+        namespace="media",
+        site_id="tenant-one",
+        object_id="photo",
+        content=b"actual-object-payload",
+    )
     service = tmp_path / "pg_service.conf"
     service.write_text("[base2_backup]\nhost=db\n", encoding="utf-8")
     service.chmod(0o600)
     return {
         "schemaVersion": 1,
         "targetId": "base2-backup",
-        "dataSchema": 30,
+        "dataSchema": 31,
         "pgServiceFile": str(service),
         "pgService": "base2_backup",
         "objectRoot": str(objects),
+        "objectStorageKeyFile": str(tmp_path / "object.key"),
         "backupRoot": str(tmp_path / "backups"),
         "receiptRoot": str(tmp_path / "receipts"),
         "encryptionKeyFile": str(tmp_path / "backup.key"),
@@ -44,13 +50,23 @@ def _config(tmp_path: Path):
         "sourceCommit": "a" * 40,
         "_key": b"k" * 32,
         "_operations_key": b"o" * 32,
+        "_object_key": b"c" * 32,
+        "_test_object_key": artifact.object_key,
+        "_test_object_digest": artifact.sha256,
     }
 
 
 def _runner(command, **kwargs):
     del kwargs
     if command[0] == "psql":
-        return subprocess.CompletedProcess(command, 0, "30\n", "")
+        query = command[-1]
+        output = (
+            "31\n"
+            if "django_migrations" in query
+            else "asset:tenant-one:media/tenant-one/photo.bin:"
+            + "8caedbe1351cc6ace7e341d8e75f6c1c47cd831f6d6e78a045e6ecfef27b1c3a\n"
+        )
+        return subprocess.CompletedProcess(command, 0, output, "")
     output = Path(command[command.index("--file") + 1])
     output.write_bytes(b"PGDUMP\x00production-schema-and-data")
     return subprocess.CompletedProcess(command, 0, "", "")
@@ -64,6 +80,9 @@ def test_config_requires_owner_only_external_secret_files(tmp_path):
     operations_key_file = Path(config["operationsReceiptKeyFile"])
     operations_key_file.write_text(base64.urlsafe_b64encode(b"o" * 32).decode(), encoding="ascii")
     operations_key_file.chmod(0o600)
+    object_key_file = Path(config["objectStorageKeyFile"])
+    object_key_file.write_text(base64.urlsafe_b64encode(b"c" * 32).decode(), encoding="ascii")
+    object_key_file.chmod(0o600)
     public = {name: value for name, value in config.items() if not name.startswith("_")}
     config_file = tmp_path / "backup.json"
     config_file.write_text(json.dumps(public), encoding="utf-8")
@@ -71,6 +90,7 @@ def test_config_requires_owner_only_external_secret_files(tmp_path):
     loaded = load_config(config_file)
     assert loaded["_key"] == b"k" * 32
     assert loaded["_operations_key"] == b"o" * 32
+    assert loaded["_object_key"] == b"c" * 32
     key_file.chmod(0o644)
     with pytest.raises(ProductionBackupError, match="private_file_invalid"):
         load_config(config_file)
@@ -88,9 +108,36 @@ def test_real_dump_and_object_payload_are_encrypted_verified_and_restorable(tmp_
     assert backup.is_file() and restored["objectCount"] == 1
     assert (Path(config["operationsReceiptRoot"]) / "backup.json").is_file()
     assert Path(restored["databaseDump"]).read_bytes().startswith(b"PGDUMP")
+    restored_store = PrivateArtifactStore(Path(restored["objectRoot"]), key=b"c" * 32)
     assert (
-        Path(restored["objectRoot"]) / "tenant-one" / "photo.bin"
-    ).read_bytes() == b"actual-object-payload"
+        restored_store.get(
+            config["_test_object_key"], expected_sha256=config["_test_object_digest"]
+        )
+        == b"actual-object-payload"
+    )
+
+
+def test_database_object_references_require_exact_decryptable_payload(tmp_path):
+    root = tmp_path / "objects"
+    store = PrivateArtifactStore(root, key=b"c" * 32)
+    artifact = store.put(
+        namespace="media", site_id="tenant-one", object_id="photo", content=b"payload"
+    )
+    ledger = f"asset:tenant-one:{artifact.object_key}:{artifact.sha256}\n"
+    _verify_object_references(ledger, object_root=root, key=b"c" * 32)
+    with pytest.raises(ProductionBackupError, match="digest_mismatch"):
+        _verify_object_references(ledger[:-65] + ("0" * 64) + "\n", object_root=root, key=b"c" * 32)
+    (root / artifact.object_key).unlink()
+    with pytest.raises(ProductionBackupError, match="referenced_object_missing"):
+        _verify_object_references(ledger, object_root=root, key=b"c" * 32)
+
+
+def test_database_object_reconciliation_rejects_unreferenced_files(tmp_path):
+    root = tmp_path / "objects"
+    root.mkdir()
+    (root / "orphan.bin").write_bytes(b"unreferenced")
+    with pytest.raises(ProductionBackupError, match="object_inventory_mismatch"):
+        _verify_object_references("", object_root=root, key=b"c" * 32)
 
 
 def test_retention_deletes_only_verified_owned_expired_artifacts(tmp_path):
@@ -169,6 +216,16 @@ def test_backup_archives_only_a_private_single_read_object_snapshot(tmp_path):
     assert not captured["root"].exists()
 
 
+def test_backup_never_follows_live_object_symlinks(tmp_path):
+    config = _config(tmp_path)
+    outside = tmp_path / "outside-secret"
+    outside.write_bytes(b"must-not-be-archived")
+    (Path(config["objectRoot"]) / "unsafe-link").symlink_to(outside)
+    with pytest.raises(ProductionBackupError, match="object_symlink_denied"):
+        create_production_backup(config, now=datetime(2026, 9, 8, tzinfo=UTC), runner=_runner)
+    assert not list(Path(config["backupRoot"]).glob("*.tar.enc"))
+
+
 def test_backup_removes_output_when_cross_surface_reference_ledger_changes(tmp_path):
     config = _config(tmp_path)
     calls = {"references": 0}
@@ -176,7 +233,8 @@ def test_backup_removes_output_when_cross_surface_reference_ledger_changes(tmp_p
     def changing_ledger(command, **kwargs):
         if command[0] == "psql" and "SELECT kind" in command[-1]:
             calls["references"] += 1
-            return subprocess.CompletedProcess(command, 0, f"reference-{calls['references']}\n", "")
+            value = _runner(command).stdout if calls["references"] == 1 else "changed"
+            return subprocess.CompletedProcess(command, 0, value, "")
         return _runner(command, **kwargs)
 
     with pytest.raises(ProductionBackupError, match="cross_surface_snapshot_changed"):
@@ -193,7 +251,8 @@ def test_database_restore_requires_exact_empty_isolated_database(tmp_path):
     restore_service = tmp_path / "restore-pg-service.conf"
     restore_service.write_text("[base2_restore]\nhost=restore-db\n", encoding="utf-8")
     restore_service.chmod(0o600)
-    responses = iter(["base2_restore_trial\n", "0\n", "", "3\n"])
+    reference_ledger = _runner(["psql", "SELECT kind"]).stdout
+    responses = iter(["base2_restore_trial\n", "0\n", "", "3\n", "31\n", reference_ledger])
 
     def restore_runner(command, **kwargs):
         del kwargs

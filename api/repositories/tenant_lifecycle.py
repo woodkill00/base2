@@ -206,17 +206,9 @@ def apply_transition(
                         WHERE site_id=%s AND enabled=TRUE""",
                     (tenant_id,),
                 )
-                cursor.execute(
-                    """UPDATE api_auth_refresh_tokens refresh
-                          SET revoked_at=NOW()
-                         FROM api_identity_memberships membership
-                         JOIN api_identity_organizations organization
-                           ON organization.id=membership.organization_id
-                        WHERE organization.tenant_id=%s
-                          AND refresh.user_id=membership.user_id
-                          AND refresh.revoked_at IS NULL""",
-                    (tenant_id,),
-                )
+                # Refresh tokens are user-global, not tenant-scoped. Revoking them
+                # here would terminate access to unrelated active tenants. Request
+                # and job admission already fail closed on this tenant's lifecycle.
             cursor.execute(
                 """UPDATE sitecontent_tenantlifecyclestate
                       SET state=%s,revision=%s,last_operation_id=%s,last_receipt_digest=%s,

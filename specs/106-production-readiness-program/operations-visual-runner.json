@@ -5,213 +5,328 @@
     {
       "project": "chromium-400-zoom",
       "title": "operations center exposes stale, reauthentication, and read-only recovery states",
-      "status": "passed"
+      "status": "skipped",
+      "assertionId": "operations-recovery",
+      "captures": []
     },
     {
       "project": "chromium-400-zoom",
       "title": "operations center is accessible responsive and visually stable",
-      "status": "passed"
+      "status": "passed",
+      "assertionId": "operations-primary",
+      "captures": ["operations-center-chromium-400-zoom-chromium-400-zoom-linux.png"]
     },
     {
       "project": "chromium-400-zoom",
       "title": "operations center shows truthful empty and failure states",
-      "status": "passed"
+      "status": "skipped",
+      "assertionId": "operations-empty-error",
+      "captures": []
     },
     {
       "project": "chromium-compact",
       "title": "operations center exposes stale, reauthentication, and read-only recovery states",
-      "status": "passed"
+      "status": "passed",
+      "assertionId": "operations-recovery",
+      "captures": [
+        "operations-center-partial-chromium-compact-linux.png",
+        "operations-center-reauth-chromium-compact-linux.png",
+        "operations-center-read-only-chromium-compact-linux.png"
+      ]
     },
     {
       "project": "chromium-compact",
       "title": "operations center is accessible responsive and visually stable",
-      "status": "passed"
+      "status": "passed",
+      "assertionId": "operations-primary",
+      "captures": ["operations-center-chromium-compact-chromium-compact-linux.png"]
     },
     {
       "project": "chromium-compact",
       "title": "operations center shows truthful empty and failure states",
-      "status": "passed"
+      "status": "passed",
+      "assertionId": "operations-empty-error",
+      "captures": [
+        "operations-center-empty-chromium-compact-linux.png",
+        "operations-center-error-chromium-compact-linux.png"
+      ]
     },
     {
       "project": "chromium-desktop",
       "title": "operations center exposes stale, reauthentication, and read-only recovery states",
-      "status": "passed"
+      "status": "passed",
+      "assertionId": "operations-recovery",
+      "captures": [
+        "operations-center-partial-chromium-desktop-linux.png",
+        "operations-center-reauth-chromium-desktop-linux.png",
+        "operations-center-read-only-chromium-desktop-linux.png"
+      ]
     },
     {
       "project": "chromium-desktop",
       "title": "operations center is accessible responsive and visually stable",
-      "status": "passed"
+      "status": "passed",
+      "assertionId": "operations-primary",
+      "captures": [
+        "operations-center-chromium-desktop-chromium-desktop-linux.png",
+        "operations-center-cancel-confirmation-chromium-desktop-linux.png"
+      ]
     },
     {
       "project": "chromium-desktop",
       "title": "operations center shows truthful empty and failure states",
-      "status": "passed"
+      "status": "passed",
+      "assertionId": "operations-empty-error",
+      "captures": [
+        "operations-center-empty-chromium-desktop-linux.png",
+        "operations-center-error-chromium-desktop-linux.png"
+      ]
     },
     {
       "project": "chromium-german",
       "title": "operations center exposes stale, reauthentication, and read-only recovery states",
-      "status": "passed"
+      "status": "skipped",
+      "assertionId": "operations-recovery",
+      "captures": []
     },
     {
       "project": "chromium-german",
       "title": "operations center is accessible responsive and visually stable",
-      "status": "passed"
+      "status": "passed",
+      "assertionId": "operations-primary",
+      "captures": ["operations-center-chromium-german-chromium-german-linux.png"]
     },
     {
       "project": "chromium-german",
       "title": "operations center shows truthful empty and failure states",
-      "status": "passed"
+      "status": "skipped",
+      "assertionId": "operations-empty-error",
+      "captures": []
     },
     {
       "project": "chromium-high-contrast",
       "title": "operations center exposes stale, reauthentication, and read-only recovery states",
-      "status": "passed"
+      "status": "skipped",
+      "assertionId": "operations-recovery",
+      "captures": []
     },
     {
       "project": "chromium-high-contrast",
       "title": "operations center is accessible responsive and visually stable",
-      "status": "passed"
+      "status": "passed",
+      "assertionId": "operations-primary",
+      "captures": ["operations-center-chromium-high-contrast-chromium-high-contrast-linux.png"]
     },
     {
       "project": "chromium-high-contrast",
       "title": "operations center shows truthful empty and failure states",
-      "status": "passed"
+      "status": "skipped",
+      "assertionId": "operations-empty-error",
+      "captures": []
     },
     {
       "project": "chromium-landscape-touch",
       "title": "operations center exposes stale, reauthentication, and read-only recovery states",
-      "status": "passed"
+      "status": "skipped",
+      "assertionId": "operations-recovery",
+      "captures": []
     },
     {
       "project": "chromium-landscape-touch",
       "title": "operations center is accessible responsive and visually stable",
-      "status": "passed"
+      "status": "passed",
+      "assertionId": "operations-primary",
+      "captures": ["operations-center-chromium-landscape-touch-chromium-landscape-touch-linux.png"]
     },
     {
       "project": "chromium-landscape-touch",
       "title": "operations center shows truthful empty and failure states",
-      "status": "passed"
+      "status": "skipped",
+      "assertionId": "operations-empty-error",
+      "captures": []
     },
     {
       "project": "chromium-large-text",
       "title": "operations center exposes stale, reauthentication, and read-only recovery states",
-      "status": "passed"
+      "status": "skipped",
+      "assertionId": "operations-recovery",
+      "captures": []
     },
     {
       "project": "chromium-large-text",
       "title": "operations center is accessible responsive and visually stable",
-      "status": "passed"
+      "status": "passed",
+      "assertionId": "operations-primary",
+      "captures": ["operations-center-chromium-large-text-chromium-large-text-linux.png"]
     },
     {
       "project": "chromium-large-text",
       "title": "operations center shows truthful empty and failure states",
-      "status": "passed"
+      "status": "skipped",
+      "assertionId": "operations-empty-error",
+      "captures": []
     },
     {
       "project": "chromium-light",
       "title": "operations center exposes stale, reauthentication, and read-only recovery states",
-      "status": "passed"
+      "status": "skipped",
+      "assertionId": "operations-recovery",
+      "captures": []
     },
     {
       "project": "chromium-light",
       "title": "operations center is accessible responsive and visually stable",
-      "status": "passed"
+      "status": "passed",
+      "assertionId": "operations-primary",
+      "captures": ["operations-center-chromium-light-chromium-light-linux.png"]
     },
     {
       "project": "chromium-light",
       "title": "operations center shows truthful empty and failure states",
-      "status": "passed"
+      "status": "skipped",
+      "assertionId": "operations-empty-error",
+      "captures": []
     },
     {
       "project": "chromium-reduced-motion",
       "title": "operations center exposes stale, reauthentication, and read-only recovery states",
-      "status": "passed"
+      "status": "skipped",
+      "assertionId": "operations-recovery",
+      "captures": []
     },
     {
       "project": "chromium-reduced-motion",
       "title": "operations center is accessible responsive and visually stable",
-      "status": "passed"
+      "status": "passed",
+      "assertionId": "operations-primary",
+      "captures": ["operations-center-chromium-reduced-motion-chromium-reduced-motion-linux.png"]
     },
     {
       "project": "chromium-reduced-motion",
       "title": "operations center shows truthful empty and failure states",
-      "status": "passed"
+      "status": "skipped",
+      "assertionId": "operations-empty-error",
+      "captures": []
     },
     {
       "project": "chromium-rtl",
       "title": "operations center exposes stale, reauthentication, and read-only recovery states",
-      "status": "passed"
+      "status": "skipped",
+      "assertionId": "operations-recovery",
+      "captures": []
     },
     {
       "project": "chromium-rtl",
       "title": "operations center is accessible responsive and visually stable",
-      "status": "passed"
+      "status": "passed",
+      "assertionId": "operations-primary",
+      "captures": ["operations-center-chromium-rtl-chromium-rtl-linux.png"]
     },
     {
       "project": "chromium-rtl",
       "title": "operations center shows truthful empty and failure states",
-      "status": "passed"
+      "status": "skipped",
+      "assertionId": "operations-empty-error",
+      "captures": []
     },
     {
       "project": "chromium-tablet",
       "title": "operations center exposes stale, reauthentication, and read-only recovery states",
-      "status": "passed"
+      "status": "skipped",
+      "assertionId": "operations-recovery",
+      "captures": []
     },
     {
       "project": "chromium-tablet",
       "title": "operations center is accessible responsive and visually stable",
-      "status": "passed"
+      "status": "passed",
+      "assertionId": "operations-primary",
+      "captures": ["operations-center-chromium-tablet-chromium-tablet-linux.png"]
     },
     {
       "project": "chromium-tablet",
       "title": "operations center shows truthful empty and failure states",
-      "status": "passed"
+      "status": "skipped",
+      "assertionId": "operations-empty-error",
+      "captures": []
     },
     {
       "project": "chromium-ultrawide",
       "title": "operations center exposes stale, reauthentication, and read-only recovery states",
-      "status": "passed"
+      "status": "skipped",
+      "assertionId": "operations-recovery",
+      "captures": []
     },
     {
       "project": "chromium-ultrawide",
       "title": "operations center is accessible responsive and visually stable",
-      "status": "passed"
+      "status": "passed",
+      "assertionId": "operations-primary",
+      "captures": ["operations-center-chromium-ultrawide-chromium-ultrawide-linux.png"]
     },
     {
       "project": "chromium-ultrawide",
       "title": "operations center shows truthful empty and failure states",
-      "status": "passed"
+      "status": "skipped",
+      "assertionId": "operations-empty-error",
+      "captures": []
     },
     {
       "project": "firefox-desktop",
       "title": "operations center exposes stale, reauthentication, and read-only recovery states",
-      "status": "passed"
+      "status": "passed",
+      "assertionId": "operations-recovery",
+      "captures": [
+        "operations-center-partial-firefox-desktop-linux.png",
+        "operations-center-reauth-firefox-desktop-linux.png",
+        "operations-center-read-only-firefox-desktop-linux.png"
+      ]
     },
     {
       "project": "firefox-desktop",
       "title": "operations center is accessible responsive and visually stable",
-      "status": "passed"
+      "status": "passed",
+      "assertionId": "operations-primary",
+      "captures": ["operations-center-firefox-desktop-firefox-desktop-linux.png"]
     },
     {
       "project": "firefox-desktop",
       "title": "operations center shows truthful empty and failure states",
-      "status": "passed"
+      "status": "passed",
+      "assertionId": "operations-empty-error",
+      "captures": [
+        "operations-center-empty-firefox-desktop-linux.png",
+        "operations-center-error-firefox-desktop-linux.png"
+      ]
     },
     {
       "project": "webkit-desktop",
       "title": "operations center exposes stale, reauthentication, and read-only recovery states",
-      "status": "passed"
+      "status": "passed",
+      "assertionId": "operations-recovery",
+      "captures": [
+        "operations-center-partial-webkit-desktop-linux.png",
+        "operations-center-reauth-webkit-desktop-linux.png",
+        "operations-center-read-only-webkit-desktop-linux.png"
+      ]
     },
     {
       "project": "webkit-desktop",
       "title": "operations center is accessible responsive and visually stable",
-      "status": "passed"
+      "status": "passed",
+      "assertionId": "operations-primary",
+      "captures": ["operations-center-webkit-desktop-webkit-desktop-linux.png"]
     },
     {
       "project": "webkit-desktop",
       "title": "operations center shows truthful empty and failure states",
-      "status": "passed"
+      "status": "passed",
+      "assertionId": "operations-empty-error",
+      "captures": [
+        "operations-center-empty-webkit-desktop-linux.png",
+        "operations-center-error-webkit-desktop-linux.png"
+      ]
     }
   ],
-  "digest": "c53f07736f10e93c6adb47436aabab0a163d89788816508709972c9bf7f3f2f2"
+  "digest": "88133f9c3d82588ba562da024a33f59af87bde7a48a42a2bef874fad272953a9"
 }

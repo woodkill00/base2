@@ -99,6 +99,19 @@ describe('Feature 093 account and administration surfaces', () => {
     expect(screen.getByRole('button', { name: /revoke mobile browser/i })).toBeEnabled();
   });
 
+  test('keeps passkey enrollment unavailable even when the capability advertises support', async () => {
+    identityAdminAPI.capabilities.mockResolvedValue({
+      mfa: {
+        totp: { enabled: true, version: 'v1' },
+        recovery_codes: { enabled: true, version: 'v1' },
+        webauthn: { enabled: true, version: 'v1' },
+      },
+    });
+    renderAccount();
+    expect(await screen.findByText(/passkeys are not enabled for this site/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /add passkey/i })).not.toBeInTheDocument();
+  });
+
   test('reports bounded load failures without exposing response bodies', async () => {
     identityAdminAPI.capabilities.mockRejectedValue(
       Object.assign(new Error('request failed'), {

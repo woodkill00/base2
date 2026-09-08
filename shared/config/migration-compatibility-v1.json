@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "currentSchema": 30,
+  "currentSchema": 31,
   "minimumCompatibleSchema": 17,
   "migrations": [
     {
@@ -129,6 +129,16 @@
       "toSchema": 30,
       "phase": "migrate",
       "compatibleFrom": 29,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "data_rights_worker_scope",
+      "fromSchema": 30,
+      "toSchema": 31,
+      "phase": "migrate",
+      "compatibleFrom": 30,
       "expectedLockMs": 1000,
       "expectedRuntimeMs": 30000,
       "destructive": false

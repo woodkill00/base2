@@ -239,6 +239,7 @@ describe('US3 Settings', () => {
       await user.click(screen.getByRole('button', { name: 'Save preferences' }));
     });
     expect(await screen.findByRole('heading', { name: 'اللغة والمنطقة' })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('تم حفظ التفضيلات.');
     expect(document.documentElement).toHaveAttribute('lang', 'ar');
     expect(document.documentElement).toHaveAttribute('dir', 'rtl');
   });
@@ -306,7 +307,10 @@ describe('US3 Settings', () => {
       await user.type(screen.getByLabelText(/correct display name/i), 'Corrected Name');
       await user.click(screen.getByRole('button', { name: /request correction/i }));
     });
-    expect(await screen.findByRole('alert')).toHaveTextContent(/correction service unavailable/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /requested settings action could not be completed/i
+    );
+    expect(screen.getByRole('alert')).not.toHaveTextContent(/correction service unavailable/i);
   });
 
   test('surfaces profile failure and preserves the editable values', async () => {
@@ -322,7 +326,10 @@ describe('US3 Settings', () => {
       await user.type(displayName, 'Unsaved Name');
       await user.click(screen.getByRole('button', { name: /save profile/i }));
     });
-    expect(await screen.findByRole('alert')).toHaveTextContent(/profile service unavailable/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /requested settings action could not be completed/i
+    );
+    expect(screen.getByRole('alert')).not.toHaveTextContent(/profile service unavailable/i);
     expect(displayName).toHaveValue('Unsaved Name');
   });
 });

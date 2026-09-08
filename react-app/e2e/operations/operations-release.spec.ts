@@ -365,12 +365,12 @@ test('operations center is accessible responsive and visually stable', async ({
 });
 
 test('operations center shows truthful empty and failure states', async ({ page }, testInfo) => {
-  if (
+  test.skip(
     !['chromium-compact', 'chromium-desktop', 'firefox-desktop', 'webkit-desktop'].includes(
       testInfo.project.name
-    )
-  )
-    return;
+    ),
+    'This state is asserted by the bounded compact and desktop browser matrix.'
+  );
   const partialHandler = async (route) => {
     const url = new URL(route.request().url());
     const body = url.pathname.endsWith('/summary')
@@ -419,12 +419,12 @@ test('operations center shows truthful empty and failure states', async ({ page 
 test('operations center exposes stale, reauthentication, and read-only recovery states', async ({
   page,
 }, testInfo) => {
-  if (
+  test.skip(
     !['chromium-compact', 'chromium-desktop', 'firefox-desktop', 'webkit-desktop'].includes(
       testInfo.project.name
-    )
-  )
-    return;
+    ),
+    'This recovery journey is asserted by the bounded compact and desktop browser matrix.'
+  );
   await page.goto('/operations', { waitUntil: 'networkidle' });
   await expect(page.getByText('11/12')).toBeVisible();
 

@@ -80,6 +80,7 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = Field(default='')
 
     # DB settings (FastAPI side)
+    DB_HOST: str = Field(default='postgres')
     DB_CONNECT_TIMEOUT_SEC: int = Field(default=3)
     DB_STATEMENT_TIMEOUT_MS: int = Field(default=3000)
     DB_POOL_MIN: int = Field(default=1)
@@ -134,14 +135,13 @@ class Settings(BaseSettings):
         if not 50 <= self.DB_POOL_SATURATION_PERCENT <= 95:
             raise RuntimeError('DB_POOL_SATURATION_PERCENT must be between 50 and 95')
 
-        # Default docs policy: disabled in production unless explicitly enabled
-        if (self.ENV or '').strip().lower() == 'production' and self.API_DOCS_ENABLED:
-            # Keep explicit enable if set; otherwise disable
-            # No change needed when explicitly enabled via env
-            pass
-
         # Fail-fast in non-local environments.
         env = (self.ENV or '').strip().lower()
+        # Documentation is convenient in local environments, but production
+        # exposure must be an explicit deployment choice rather than inheriting
+        # the development default.
+        if env == 'production' and 'API_DOCS_ENABLED' not in self.model_fields_set:
+            object.__setattr__(self, 'API_DOCS_ENABLED', False)
         if env == 'production' and self.E2E_TEST_MODE:
             raise RuntimeError('E2E_TEST_MODE cannot be enabled in production')
         if env in {'staging', 'production'}:
@@ -158,10 +158,12 @@ class Settings(BaseSettings):
                     if not str(getattr(self, name) or '').strip():
                         missing.append(name)
             if (
-                process_role == 'content-worker'
+                process_role in {'content-worker', 'data-rights-worker'}
                 and not (self.IDENTITY_ENCRYPTION_KEY or '').strip()
             ):
                 missing.append('IDENTITY_ENCRYPTION_KEY')
+            if process_role == 'data-rights-worker' and not (self.TOKEN_PEPPER or '').strip():
+                missing.append('TOKEN_PEPPER')
             storage_backend = (self.CONTENT_WORKSPACE_STORAGE_BACKEND or '').strip().lower()
             storage_required = process_role in {'api', 'content-worker'}
             if storage_required and storage_backend not in {'local', 's3'}:
@@ -199,6 +201,7 @@ class Settings(BaseSettings):
                     'api',
                     'runtime-worker',
                     'content-worker',
+                    'data-rights-worker',
                     'email-worker',
                 }:
                     raise RuntimeError('Invalid BASE2_PROCESS_ROLE')
@@ -256,6 +259,12 @@ class Settings(BaseSettings):
                 raise RuntimeError('Missing required env var(s): ' + ', '.join(missing))
             if self.DB_SSLMODE != 'verify-full' or not (self.DB_SSLROOTCERT or '').startswith('/'):
                 raise RuntimeError('Database TLS verify-full configuration is required')
+            if env == 'production' and self.DB_HOST.strip().lower() in {
+                'postgres',
+                'localhost',
+                '127.0.0.1',
+            }:
+                raise RuntimeError('Production database must use an external verified-TLS endpoint')
             if not 60 <= self.OPERATIONS_RECEIPT_MAX_AGE_SECONDS <= 172800:
                 raise RuntimeError(
                     'OPERATIONS_RECEIPT_MAX_AGE_SECONDS must be between 60 and 172800'

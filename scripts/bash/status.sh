@@ -77,7 +77,7 @@ if docker-compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps -q | grep -q .; t
     echo ""
 
     # Check health of each service
-    for service in traefik react-app api django postgres nginx nginx-static pgadmin redis celery-worker celery-content-worker celery-email-worker celery-beat flower; do
+    for service in traefik react-app api django postgres nginx nginx-static pgadmin redis celery-worker celery-content-worker celery-data-rights-worker celery-email-worker celery-beat flower; do
         container_name="${COMPOSE_PROJECT_NAME}_${service}"
         if docker ps --filter "name=${container_name}" --format "{{.Names}}" | grep -q "${container_name}"; then
             health=$(docker inspect --format='{{.State.Health.Status}}' "${container_name}" 2>/dev/null || echo "no healthcheck")

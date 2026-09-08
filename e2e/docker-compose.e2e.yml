@@ -31,6 +31,8 @@ services:
       WORKSPACE_WORKER_DB_PASSWORD: e2e_workspace_worker_password
       RUNTIME_WORKER_DB_USER: base2_runtime_worker_e2e
       RUNTIME_WORKER_DB_PASSWORD: e2e_runtime_worker_password
+      DATA_RIGHTS_WORKER_DB_USER: base2_data_rights_worker_e2e
+      DATA_RIGHTS_WORKER_DB_PASSWORD: e2e_data_rights_worker_password
       EMAIL_WORKER_DB_USER: base2_email_worker_e2e
       EMAIL_WORKER_DB_PASSWORD: e2e_email_worker_password
     volumes:
@@ -66,6 +68,7 @@ services:
       WORKSPACE_DB_USER: base2_workspace_runtime_e2e
       WORKSPACE_WORKER_DB_USER: base2_workspace_worker_e2e
       RUNTIME_WORKER_DB_USER: base2_runtime_worker_e2e
+      DATA_RIGHTS_WORKER_DB_USER: base2_data_rights_worker_e2e
       EMAIL_WORKER_DB_USER: base2_email_worker_e2e
     depends_on:
       postgres:
@@ -134,6 +137,7 @@ services:
         PYTHON_VERSION: 3.12-slim-bookworm
     environment:
       ENV: test
+      BASE2_PROCESS_ROLE: runtime-worker
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
       TOKEN_PEPPER: e2e_token_pepper
@@ -142,18 +146,47 @@ services:
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: e2e
-      DB_USER: e2e
-      DB_PASSWORD: e2e
-      WORKSPACE_DB_USER: base2_workspace_runtime_e2e
-      WORKSPACE_DB_PASSWORD: e2e_workspace_runtime_password
-      WORKSPACE_WORKER_DB_USER: base2_workspace_worker_e2e
-      WORKSPACE_WORKER_DB_PASSWORD: e2e_workspace_worker_password
+      DB_USER: base2_runtime_worker_e2e
+      DB_PASSWORD: e2e_runtime_worker_password
+      WORKSPACE_DB_USER: base2_runtime_worker_e2e
+      WORKSPACE_DB_PASSWORD: e2e_runtime_worker_password
+      WORKSPACE_WORKER_DB_USER: base2_runtime_worker_e2e
+      WORKSPACE_WORKER_DB_PASSWORD: e2e_runtime_worker_password
     depends_on:
       redis:
         condition: service_healthy
       django-migrate:
         condition: service_completed_successfully
-    command: ['bash', '-lc', 'celery -A api.tasks.app worker --loglevel=info']
+    command: ['bash', '-lc', 'celery -A api.tasks.app worker -Q runtime --loglevel=info']
+
+  celery-data-rights-worker:
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+      args:
+        DOCKER_LIBRARY_REGISTRY: mirror.gcr.io/library
+        PYTHON_VERSION: 3.12-slim-bookworm
+    environment:
+      ENV: test
+      BASE2_PROCESS_ROLE: data-rights-worker
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      TOKEN_PEPPER: e2e_token_pepper
+      IDENTITY_ENCRYPTION_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
+      PYTHONPATH: /app
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: e2e
+      DB_USER: base2_data_rights_worker_e2e
+      DB_PASSWORD: e2e_data_rights_worker_password
+      WORKSPACE_DB_USER: base2_data_rights_worker_e2e
+      WORKSPACE_DB_PASSWORD: e2e_data_rights_worker_password
+    depends_on:
+      redis:
+        condition: service_healthy
+      django-migrate:
+        condition: service_completed_successfully
+    command: ['bash', '-lc', 'celery -A api.tasks.app worker -Q data-rights --loglevel=info']
 
   react-app:
     build:

@@ -254,6 +254,7 @@ const COPY = {
       sent: 'Gesendet',
       failed: 'Fehlgeschlagen',
       expired: 'Abgelaufen',
+      running: 'Läuft',
     },
   },
   ar: {
@@ -389,9 +390,22 @@ const COPY = {
       sent: 'تم الإرسال',
       failed: 'فشل',
       expired: 'منتهية الصلاحية',
+      running: 'قيد التشغيل',
     },
   },
 };
+
+export function operationsReadable(locale, value) {
+  const copy = COPY[locale] || COPY.en;
+  const normalized = String(value || 'unknown').toLowerCase();
+  if (copy.terms?.[normalized]) return copy.terms[normalized];
+  if (normalized.startsWith('every:')) {
+    return `${copy.every} ${normalized.slice('every:'.length)} ${copy.seconds}`;
+  }
+  return String(value || 'unknown')
+    .replace(/[._-]+/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
 
 export default function OperationsCenter() {
   const { user } = useAuth();
@@ -598,16 +612,7 @@ export default function OperationsCenter() {
       }).format(new Date(value));
     }
   };
-  const readable = (value) => {
-    const normalized = String(value || 'unknown').toLowerCase();
-    if (copy.terms?.[normalized]) return copy.terms[normalized];
-    if (normalized.startsWith('every:')) {
-      return `${copy.every} ${normalized.slice('every:'.length)} ${copy.seconds}`;
-    }
-    return String(value || 'unknown')
-      .replace(/[._-]+/g, ' ')
-      .replace(/\b\w/g, (letter) => letter.toUpperCase());
-  };
+  const readable = (value) => operationsReadable(locale, value);
 
   const openIncidents = Object.values(summary.incidents || {}).reduce(
     (total, value) => total + Number(value || 0),
@@ -627,7 +632,10 @@ export default function OperationsCenter() {
       menuLabel={copy.menu}
       themeLabel={copy.themeToggle}
       sidebarLabel={copy.sidebar}
-      sidebarItems={copy.sidebarItems}
+      sidebarItems={copy.sidebarItems.map((label, index) => ({
+        label,
+        to: ['/', '/dashboard', '/settings', '/admin', '/contact'][index],
+      }))}
     >
       <Navigation />
       <div
