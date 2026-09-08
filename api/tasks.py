@@ -7,6 +7,7 @@ from uuid import UUID
 from celery import Celery, Task
 
 from api.services.email_service import process_outbox_email
+from api.repositories.operations import prune as prune_operations
 from api.repositories.data_rights import expire_results, queued_operation_ids
 from api.services.data_rights_worker import process_operation
 from api.services.content_workspace_worker import (
@@ -37,6 +38,7 @@ from api.services.media_library_runtime import (
     process_media_export,
 )
 from api.settings import SITE_MANIFEST, settings
+from api.services.operations_runtime import collect_site, configured_tenants, dispatch_alerts
 
 
 logger = logging.getLogger('api.tasks')
@@ -111,6 +113,18 @@ app.conf.update(
             'task': 'app.replay_workspace_import_commits',
             'schedule': 60.0,
         },
+        'operations-collect-health': {
+            'task': 'app.collect_operations_health',
+            'schedule': 60.0,
+        },
+        'operations-dispatch-alerts': {
+            'task': 'app.dispatch_operations_alerts',
+            'schedule': 30.0,
+        },
+        'operations-retention': {
+            'task': 'app.prune_operations_evidence',
+            'schedule': 86400.0,
+        },
     },
 )
 
@@ -128,6 +142,43 @@ def ping(request_id: str | None = None):
 @app.task(name='app.add')
 def add(x: int, y: int) -> int:
     return int(x) + int(y)
+
+
+def _unconfigured_alert_sender(payload: dict) -> str:
+    del payload
+    raise RuntimeError('operations:discord_sender_unconfigured')
+
+
+@app.task(name='app.collect_operations_site')
+def collect_operations_site(site_id: str) -> dict[str, int]:
+    environment = settings.ENV if settings.ENV in {'preview', 'staging', 'production'} else 'preview'
+    return collect_site(tenant_id=site_id, environment=environment)
+
+
+@app.task(name='app.collect_operations_health')
+def collect_operations_health() -> int:
+    tenants = configured_tenants()
+    for tenant_id in tenants:
+        collect_operations_site.delay(tenant_id)
+    return len(tenants)
+
+
+@app.task(name='app.dispatch_operations_site_alerts')
+def dispatch_operations_site_alerts(site_id: str) -> dict[str, int]:
+    return dispatch_alerts(tenant_id=site_id, sender=_unconfigured_alert_sender)
+
+
+@app.task(name='app.dispatch_operations_alerts')
+def dispatch_operations_alerts_task() -> int:
+    tenants = configured_tenants()
+    for tenant_id in tenants:
+        dispatch_operations_site_alerts.delay(tenant_id)
+    return len(tenants)
+
+
+@app.task(name='app.prune_operations_evidence')
+def prune_operations_evidence() -> dict[str, dict[str, int]]:
+    return {tenant_id: prune_operations(tenant_id=tenant_id) for tenant_id in configured_tenants()}
 
 
 @app.task(bind=True, name='app.send_email_outbox')

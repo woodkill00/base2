@@ -5,11 +5,14 @@ from uuid import UUID
 
 from api.repositories.operations import (
     acknowledge,
+    due_alert_deliveries,
     incident_detail,
     list_incidents,
     overview,
     prune,
+    record_probe_batch,
     summary,
+    update_alert_delivery,
 )
 
 
@@ -172,3 +175,68 @@ def test_incident_detail_is_tenant_bound_and_includes_timeline():
         ('tenant-one', str(incident_id)),
         ('tenant-one', str(incident_id)),
     ]
+
+
+def test_failing_probe_is_persisted_and_opens_one_durable_alert():
+    now = datetime(2026, 9, 8, tzinfo=UTC)
+    cursor = MagicMock()
+    cursor.fetchone.side_effect = [(UUID(int=10),), None]
+    cursor.rowcount = 1
+    with patch(
+        'api.repositories.operations.workspace_db_conn',
+        return_value=repository_connection(cursor),
+    ):
+        result = record_probe_batch(
+            tenant_id='tenant-one',
+            environment='staging',
+            now=now,
+            results=[
+                {
+                    'probeId': 'api.health',
+                    'state': 'unavailable',
+                    'code': 'api.unavailable',
+                    'latencyMs': 4,
+                    'observedAt': now.isoformat(),
+                    'expiresAt': (now.replace(minute=1)).isoformat(),
+                }
+            ],
+        )
+    assert result == {'samples': 1, 'opened': 1, 'resolved': 0, 'alerts': 1}
+    cursor.connection.commit.assert_called_once()
+    statements = '\n'.join(call.args[0] for call in cursor.execute.call_args_list)
+    assert 'sitecontent_operationshealthsample' in statements
+    assert 'sitecontent_operationsincident' in statements
+    assert 'sitecontent_operationsalertdelivery' in statements
+
+
+def test_due_alerts_and_optimistic_delivery_update_are_tenant_bounded():
+    now = datetime(2026, 9, 8, tzinfo=UTC)
+    cursor = MagicMock()
+    cursor.fetchall.return_value = [
+        (UUID(int=11), 1, 5, now, 'a' * 64, 'high', 'api.unavailable')
+    ]
+    with patch(
+        'api.repositories.operations.workspace_db_conn',
+        return_value=repository_connection(cursor),
+    ):
+        due = due_alert_deliveries(tenant_id='tenant-one', now=now, limit=999)
+    assert due[0]['incidentFingerprint'] == 'a' * 64
+    assert cursor.execute.call_args.args[1] == ('tenant-one', now, 50)
+
+    cursor = MagicMock()
+    cursor.fetchone.return_value = (UUID(int=11),)
+    with patch(
+        'api.repositories.operations.workspace_db_conn',
+        return_value=repository_connection(cursor),
+    ):
+        changed = update_alert_delivery(
+            tenant_id='tenant-one',
+            delivery_id=UUID(int=11),
+            expected_attempts=1,
+            status='sent',
+            next_attempt_at=None,
+            receipt_digest='b' * 64,
+        )
+    assert changed
+    assert cursor.execute.call_args.args[1][-3:] == ('tenant-one', str(UUID(int=11)), 1)
+    cursor.connection.commit.assert_called_once()

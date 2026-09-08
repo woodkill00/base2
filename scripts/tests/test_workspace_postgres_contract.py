@@ -84,6 +84,8 @@ class WorkspacePostgresContractTests(unittest.TestCase):
             "quota_cross_tenant_insert_was_not_blocked",
             "quota_reservation_race()",
             "sitecontent_tenantquotareservation",
+            "record_probe_batch(",
+            'assert recovered == {"samples": 1, "opened": 0, "resolved": 1, "alerts": 0}',
         ):
             self.assertIn(marker, checks)
 

@@ -18,18 +18,24 @@ SOURCES = (
     "react-app/e2e/operations/operations-release.spec.ts",
     "react-app/playwright.operations-release.config.mjs",
 )
-MODES = {
-    "compact",
-    "landscape-touch",
-    "tablet",
-    "desktop",
-    "ultrawide",
-    "large-text",
-    "400-zoom",
-    "light",
-    "high-contrast",
-    "rtl",
-    "reduced-motion",
+CAPTURE_NAMES = {
+    *(f"operations-center-chromium-{mode}-chromium-{mode}-linux.png" for mode in (
+        "compact",
+        "landscape-touch",
+        "tablet",
+        "desktop",
+        "ultrawide",
+        "large-text",
+        "400-zoom",
+        "light",
+        "high-contrast",
+        "rtl",
+        "reduced-motion",
+    )),
+    "operations-center-empty-chromium-desktop-linux.png",
+    "operations-center-error-chromium-desktop-linux.png",
+    "operations-center-firefox-desktop-firefox-desktop-linux.png",
+    "operations-center-webkit-desktop-webkit-desktop-linux.png",
 }
 
 
@@ -50,13 +56,12 @@ def _png_size(path: Path) -> list[int]:
 
 def build() -> dict:
     screenshots = sorted(SNAPSHOT_ROOT.glob("operations-center-*.png"))
-    modes = {
-        name.removeprefix("operations-center-chromium-").split("-chromium-")[0]
-        for name in (path.name for path in screenshots)
-    }
-    if modes != MODES or len(screenshots) != len(MODES):
+    capture_names = {path.name for path in screenshots}
+    if capture_names != CAPTURE_NAMES:
         raise VisualEvidenceError(
-            f"visual modes differ: missing={sorted(MODES - modes)} extra={sorted(modes - MODES)}"
+            "visual captures differ: "
+            f"missing={sorted(CAPTURE_NAMES - capture_names)} "
+            f"extra={sorted(capture_names - CAPTURE_NAMES)}"
         )
     return {
         "schemaVersion": 1,

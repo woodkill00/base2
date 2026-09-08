@@ -3,11 +3,13 @@ from __future__ import annotations
 
 import os
 import threading
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import psycopg2
 from psycopg2 import errors
 
+from api.repositories.operations import due_alert_deliveries, record_probe_batch
 from api.repositories.tenant_quota import QuotaRepositoryError, reserve
 
 
@@ -338,6 +340,53 @@ def main() -> None:
             cursor.execute(
                 """SELECT COUNT(*) FROM sitecontent_tenantquotareservation
                    WHERE site_id='site-a' AND state='reserved'"""
+            )
+            assert cursor.fetchone()[0] == 1
+
+        observed = datetime.now(UTC)
+        failed = record_probe_batch(
+            tenant_id="site-a",
+            environment="staging",
+            now=observed,
+            results=[
+                {
+                    "probeId": "api.health",
+                    "state": "unavailable",
+                    "code": "api.unavailable",
+                    "latencyMs": 5,
+                    "observedAt": observed.isoformat(),
+                    "expiresAt": (observed + timedelta(minutes=3)).isoformat(),
+                }
+            ],
+        )
+        assert failed == {"samples": 1, "opened": 1, "resolved": 0, "alerts": 1}
+        due = due_alert_deliveries(tenant_id="site-a", now=observed, limit=25)
+        assert len(due) == 1 and due[0]["summaryCode"] == "api.unavailable"
+        recovered_at = observed + timedelta(seconds=10)
+        recovered = record_probe_batch(
+            tenant_id="site-a",
+            environment="staging",
+            now=recovered_at,
+            results=[
+                {
+                    "probeId": "api.health",
+                    "state": "healthy",
+                    "code": "api.ready",
+                    "latencyMs": 3,
+                    "observedAt": recovered_at.isoformat(),
+                    "expiresAt": (recovered_at + timedelta(minutes=3)).isoformat(),
+                }
+            ],
+        )
+        assert recovered == {"samples": 1, "opened": 0, "resolved": 1, "alerts": 0}
+        with owner, owner.cursor() as cursor:
+            cursor.execute(
+                """SELECT state,occurrence_count,resolved_at IS NOT NULL
+                   FROM sitecontent_operationsincident WHERE site_id='site-a'"""
+            )
+            assert cursor.fetchone() == ("resolved", 1, True)
+            cursor.execute(
+                "SELECT COUNT(*) FROM sitecontent_operationsalertdelivery WHERE site_id='site-a'"
             )
             assert cursor.fetchone()[0] == 1
 

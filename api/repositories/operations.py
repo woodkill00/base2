@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import json
+from datetime import datetime, timedelta
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from api.db import workspace_db_conn
+from api.services.operations_center import incident_fingerprint
 
 
 def summary(*, tenant_id: str) -> dict[str, Any]:
@@ -248,3 +251,222 @@ def prune(*, tenant_id: str, batch_size: int = 500) -> dict[str, int]:
                 removed[label] = cursor.rowcount
         conn.commit()
     return removed
+
+
+def record_probe_batch(
+    *, tenant_id: str, environment: str, results: list[dict[str, Any]], now: datetime
+) -> dict[str, int]:
+    """Persist one bounded probe batch and correlate incident transitions atomically."""
+    if environment not in {'preview', 'staging', 'production'} or now.tzinfo is None:
+        raise ValueError('operations:collection_scope_invalid')
+    if not isinstance(results, list) or len(results) > 32:
+        raise ValueError('operations:collection_batch_invalid')
+    counters = {'samples': 0, 'opened': 0, 'resolved': 0, 'alerts': 0}
+    with workspace_db_conn(tenant_id=tenant_id) as conn:
+        with conn.cursor() as cursor:
+            for item in results:
+                probe_id = str(item['probeId'])
+                state = str(item['state'])
+                code = str(item['code'])
+                observed_at = datetime.fromisoformat(str(item['observedAt']))
+                expires_at = datetime.fromisoformat(str(item['expiresAt']))
+                latency = item.get('latencyMs')
+                service_id = uuid4()
+                cursor.execute(
+                    """INSERT INTO sitecontent_operationsservice
+                       (id,site_id,service_key,environment,enabled,release_id,created_at,updated_at)
+                       VALUES (%s,%s,%s,%s,true,'',%s,%s)
+                       ON CONFLICT (site_id,environment,service_key) DO UPDATE
+                       SET enabled=true,updated_at=EXCLUDED.updated_at RETURNING id""",
+                    (str(service_id), tenant_id, probe_id, environment, now, now),
+                )
+                service_id = cursor.fetchone()[0]
+                cursor.execute(
+                    """INSERT INTO sitecontent_operationshealthsample
+                       (id,site_id,service_id,state,code,latency_ms,dimensions,
+                        observed_at,expires_at,created_at,updated_at)
+                       VALUES (%s,%s,%s,%s,%s,%s,'{}',%s,%s,%s,%s)""",
+                    (
+                        str(uuid4()),
+                        tenant_id,
+                        str(service_id),
+                        state,
+                        code,
+                        latency,
+                        observed_at,
+                        expires_at,
+                        now,
+                        now,
+                    ),
+                )
+                counters['samples'] += 1
+                if state == 'healthy':
+                    cursor.execute(
+                        """SELECT incident.id
+                           FROM sitecontent_operationsincident AS incident
+                           WHERE incident.site_id=%s AND incident.state <> 'resolved'
+                             AND EXISTS (
+                                 SELECT 1 FROM sitecontent_operationsincidentevent AS event
+                                 WHERE event.site_id=incident.site_id
+                                   AND event.incident_id=incident.id
+                                   AND event.details->>'service-key'=%s
+                             )
+                           FOR UPDATE OF incident""",
+                        (tenant_id, probe_id),
+                    )
+                    for (incident_id,) in cursor.fetchall():
+                        cursor.execute(
+                            """UPDATE sitecontent_operationsincident
+                               SET state='resolved',resolved_at=%s,last_observed_at=%s,updated_at=%s
+                               WHERE site_id=%s AND id=%s""",
+                            (now, now, now, tenant_id, str(incident_id)),
+                        )
+                        cursor.execute(
+                            """INSERT INTO sitecontent_operationsincidentevent
+                               (id,site_id,incident_id,event_key,actor_ref,details,
+                                occurred_at,created_at,updated_at)
+                               VALUES (%s,%s,%s,'incident.resolved','system',%s,%s,%s,%s)""",
+                            (
+                                str(uuid4()),
+                                tenant_id,
+                                str(incident_id),
+                                json.dumps({'service-key': probe_id}),
+                                now,
+                                now,
+                                now,
+                            ),
+                        )
+                        counters['resolved'] += 1
+                    continue
+                fingerprint = incident_fingerprint(
+                    site_id=tenant_id, service_key=probe_id, code=code
+                )
+                cursor.execute(
+                    """SELECT id,state,occurrence_count
+                       FROM sitecontent_operationsincident
+                       WHERE site_id=%s AND fingerprint=%s FOR UPDATE""",
+                    (tenant_id, fingerprint),
+                )
+                prior = cursor.fetchone()
+                transition = prior is None or prior[1] == 'resolved'
+                severity = 'high' if state == 'unavailable' else 'warning'
+                if prior is None:
+                    incident_id = uuid4()
+                    occurrence = 1
+                    incident_state = 'firing'
+                    cursor.execute(
+                        """INSERT INTO sitecontent_operationsincident
+                           (id,site_id,fingerprint,severity,state,summary_code,owner_ref,
+                            occurrence_count,first_observed_at,last_observed_at,resolved_at,
+                            created_at,updated_at)
+                           VALUES (%s,%s,%s,%s,%s,%s,'',%s,%s,%s,NULL,%s,%s)""",
+                        (
+                            str(incident_id), tenant_id, fingerprint, severity, incident_state,
+                            code, occurrence, now, now, now, now,
+                        ),
+                    )
+                else:
+                    incident_id = prior[0]
+                    occurrence = int(prior[2]) + 1
+                    incident_state = 'recurring' if prior[1] == 'resolved' else prior[1]
+                    cursor.execute(
+                        """UPDATE sitecontent_operationsincident
+                           SET state=%s,severity=%s,occurrence_count=%s,last_observed_at=%s,
+                               resolved_at=NULL,updated_at=%s
+                           WHERE site_id=%s AND id=%s""",
+                        (
+                            incident_state, severity, occurrence, now, now, tenant_id,
+                            str(incident_id),
+                        ),
+                    )
+                cursor.execute(
+                    """INSERT INTO sitecontent_operationsincidentevent
+                       (id,site_id,incident_id,event_key,actor_ref,details,
+                        occurred_at,created_at,updated_at)
+                       VALUES (%s,%s,%s,%s,'system',%s,%s,%s,%s)""",
+                    (
+                        str(uuid4()), tenant_id, str(incident_id),
+                        'incident.opened' if prior is None else 'incident.observed',
+                        json.dumps({'service-key': probe_id}), now, now, now,
+                    ),
+                )
+                if transition and severity in {'high', 'critical'}:
+                    cursor.execute(
+                        """INSERT INTO sitecontent_operationsalertdelivery
+                           (id,site_id,incident_id,channel,generation,status,attempts,
+                            maximum_attempts,next_attempt_at,expires_at,receipt_digest,error_code,
+                            created_at,updated_at)
+                           VALUES (%s,%s,%s,'discord',%s,'queued',0,5,%s,%s,'','',%s,%s)
+                           ON CONFLICT (site_id,incident_id,channel,generation) DO NOTHING""",
+                        (
+                            str(uuid4()), tenant_id, str(incident_id), occurrence, now,
+                            now + timedelta(minutes=15), now, now,
+                        ),
+                    )
+                    counters['alerts'] += cursor.rowcount
+                if transition:
+                    counters['opened'] += 1
+        conn.commit()
+    return counters
+
+
+def due_alert_deliveries(
+    *, tenant_id: str, now: datetime, limit: int = 25
+) -> list[dict[str, Any]]:
+    bounded = max(1, min(int(limit), 50))
+    with workspace_db_conn(tenant_id=tenant_id) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            """SELECT delivery.id,delivery.attempts,delivery.maximum_attempts,
+                      delivery.expires_at,incident.fingerprint,incident.severity,
+                      incident.summary_code
+               FROM sitecontent_operationsalertdelivery AS delivery
+               JOIN sitecontent_operationsincident AS incident
+                 ON incident.site_id=delivery.site_id AND incident.id=delivery.incident_id
+               WHERE delivery.site_id=%s AND delivery.status='queued'
+                 AND delivery.next_attempt_at <= %s
+               ORDER BY delivery.next_attempt_at,delivery.id LIMIT %s""",
+            (tenant_id, now, bounded),
+        )
+        rows = cursor.fetchall()
+    return [
+        {
+            'deliveryId': str(row[0]),
+            'attempts': int(row[1]),
+            'maximumAttempts': int(row[2]),
+            'expiresAt': row[3],
+            'incidentFingerprint': row[4],
+            'severity': row[5],
+            'summaryCode': row[6],
+        }
+        for row in rows
+    ]
+
+
+def update_alert_delivery(
+    *,
+    tenant_id: str,
+    delivery_id: UUID,
+    expected_attempts: int,
+    status: str,
+    next_attempt_at: datetime | None,
+    receipt_digest: str = '',
+    error_code: str = '',
+) -> bool:
+    if status not in {'queued', 'sent', 'failed', 'expired'}:
+        raise ValueError('operations:delivery_state_invalid')
+    with workspace_db_conn(tenant_id=tenant_id) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """UPDATE sitecontent_operationsalertdelivery
+                   SET attempts=attempts+1,status=%s,next_attempt_at=COALESCE(%s,next_attempt_at),
+                       receipt_digest=%s,error_code=%s,updated_at=NOW()
+                   WHERE site_id=%s AND id=%s AND status='queued' AND attempts=%s
+                   RETURNING id""",
+                (
+                    status, next_attempt_at, receipt_digest, error_code, tenant_id,
+                    str(delivery_id), expected_attempts,
+                ),
+            )
+            changed = cursor.fetchone() is not None
+        conn.commit()
+    return changed
