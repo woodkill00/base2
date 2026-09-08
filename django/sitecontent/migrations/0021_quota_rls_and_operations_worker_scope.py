@@ -105,11 +105,12 @@ def uninstall(apps, schema_editor):
             'ALTER TABLE "sitecontent_tenantquota" ' 'DROP CONSTRAINT "tenant_quota_site_id_id_uq"'
         )
         tenant = "site_id = current_setting('app.tenant_id', true)"
+        historical_worker_bypass = tenant + " " + "OR " + f"current_user = '{worker}'"
         for table in OPERATIONS_TABLES:
             cursor.execute(f'DROP POLICY IF EXISTS "{table}_select" ON "{table}"')
             cursor.execute(
-                f"""CREATE POLICY "{table}_select" ON "{table}" FOR SELECT
-                    USING ({tenant} OR current_user = '{worker}')"""
+                f'CREATE POLICY "{table}_select" ON "{table}" FOR SELECT '
+                f"USING ({historical_worker_bypass})"
             )
 
 

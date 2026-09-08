@@ -107,19 +107,19 @@ substitute for the integration proof named by the task.
 
 ## Phase 6 — Tenant lifecycle, quotas, identity, policy, and settings
 
-- [ ] B084 Write tests first for tenant lifecycle, quota races, recovery, MFA/passkeys, sessions, policy parity, settings scope, and destructive confirmation. (FR-041 through FR-046, FR-063, FR-065)
-- [ ] B085 Implement provision, configure, suspend, archive, restore, ownership transfer, export, and separately approved deletion state machines. (FR-007, FR-041)
-- [ ] B086 Make tenant disable and suspension remove serving and allocation authority without silently deleting recoverable data. (FR-041, FR-072)
-- [ ] B087 Implement atomic per-tenant user, storage, media, API, job, email, search, and cost quotas with reservations and reconciliation. (FR-042)
-- [ ] B088 Add quota state, forecasts, denial reasons, alerts, and safe operator/user remediation without cross-tenant comparison. (FR-014, FR-042)
-- [ ] B089 Implement verified identity recovery, optional standards-based MFA, recovery codes, and passkeys with downgrade resistance. (FR-043, FR-065)
-- [ ] B090 Implement active session/device inventory, remote revocation, rotation, anomaly evidence, and bounded security alerts. (FR-044)
-- [ ] B091 Define versioned role and policy vocabulary with deny-by-default resolution and consequence classification. (FR-045)
-- [ ] B092 Enforce policy parity across Django, FastAPI, React affordances, workers, exports, search, media, administration, and operations. (FR-019, FR-045)
-- [ ] B093 Separate account, tenant, site, module, and operator settings scopes with schema ownership and safe defaults. (FR-046)
-- [ ] B094 Add searchable accessible settings, unsaved-change protection, optimistic conflict handling, recent-auth gates, consequence copy, sensitive history, and user-versus-site locale/timezone preferences. (FR-046, FR-064, FR-075)
-- [ ] B095 Prove disabled capabilities and expired feature flags leave no settings, roles, routes, jobs, schedules, allocations, configuration, authority, or navigation residue. (FR-045, FR-046, FR-072, FR-077)
-- [ ] B096 Run cross-role, cross-tenant, race, recovery, session, browser, accessibility, visual, and lifecycle recovery acceptance. (FR-019, FR-041 through FR-046, FR-063 through FR-066)
+- [x] B084 Write tests first for tenant lifecycle, quota races, recovery, MFA/passkeys, sessions, policy parity, settings scope, and destructive confirmation. (FR-041 through FR-046, FR-063, FR-065)
+- [x] B085 Implement provision, configure, suspend, archive, restore, ownership transfer, export, and separately approved deletion state machines. (FR-007, FR-041)
+- [x] B086 Make tenant disable and suspension remove serving and allocation authority without silently deleting recoverable data. (FR-041, FR-072)
+- [x] B087 Implement atomic per-tenant user, storage, media, API, job, email, search, and cost quotas with reservations and reconciliation. (FR-042)
+- [x] B088 Add quota state, forecasts, denial reasons, alerts, and safe operator/user remediation without cross-tenant comparison. (FR-014, FR-042)
+- [x] B089 Implement verified identity recovery, optional standards-based MFA, recovery codes, and passkeys with downgrade resistance. (FR-043, FR-065)
+- [x] B090 Implement active session/device inventory, remote revocation, rotation, anomaly evidence, and bounded security alerts. (FR-044)
+- [x] B091 Define versioned role and policy vocabulary with deny-by-default resolution and consequence classification. (FR-045)
+- [x] B092 Enforce policy parity across Django, FastAPI, React affordances, workers, exports, search, media, administration, and operations. (FR-019, FR-045)
+- [x] B093 Separate account, tenant, site, module, and operator settings scopes with schema ownership and safe defaults. (FR-046)
+- [x] B094 Add searchable accessible settings, unsaved-change protection, optimistic conflict handling, recent-auth gates, consequence copy, sensitive history, and user-versus-site locale/timezone preferences. (FR-046, FR-064, FR-075)
+- [x] B095 Prove disabled capabilities and expired feature flags leave no settings, roles, routes, jobs, schedules, allocations, configuration, authority, or navigation residue. (FR-045, FR-046, FR-072, FR-077)
+- [x] B096 Run cross-role, cross-tenant, race, recovery, session, browser, accessibility, visual, and lifecycle recovery acceptance. (FR-019, FR-041 through FR-046, FR-063 through FR-066)
 
 ## Phase 7 — Search, editorial, media delivery, and website essentials
 
