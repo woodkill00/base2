@@ -10,6 +10,7 @@ import psycopg2
 from psycopg2 import errors
 
 from api.repositories.operations import due_alert_deliveries, record_probe_batch
+from api.repositories.runtime_governance import claim_jobs, enqueue_job, settle_job
 from api.repositories.tenant_quota import QuotaRepositoryError, reserve
 
 
@@ -131,6 +132,11 @@ def main() -> None:
     try:
         with owner, owner.cursor() as cursor:
             cursor.execute("DELETE FROM sitecontent_tenantquotareservation")
+            cursor.execute("DELETE FROM sitecontent_durablejob")
+            cursor.execute("DELETE FROM sitecontent_durableschedule")
+            cursor.execute("DELETE FROM sitecontent_breakglassgrant")
+            cursor.execute("DELETE FROM sitecontent_tenantnotification")
+            cursor.execute("DELETE FROM sitecontent_tenantdomainclaim")
             cursor.execute("DELETE FROM sitecontent_tenantquota")
             cursor.execute("DELETE FROM sitecontent_operationsservice")
             cursor.execute("DELETE FROM sitecontent_contenttypedefinition")
@@ -194,6 +200,13 @@ def main() -> None:
                    WHERE tablename LIKE 'sitecontent_tenantquota%'"""
             )
             assert cursor.fetchone()[0] == 8
+            cursor.execute(
+                """SELECT COUNT(*) FROM pg_class WHERE relname IN (
+                       'sitecontent_tenantdomainclaim','sitecontent_durablejob',
+                       'sitecontent_durableschedule','sitecontent_breakglassgrant',
+                       'sitecontent_tenantnotification') AND relrowsecurity AND relforcerowsecurity"""
+            )
+            assert cursor.fetchone()[0] == 5
             cursor.execute(
                 """SELECT indexname FROM pg_indexes
                    WHERE tablename='sitecontent_contenttypedefinition'"""
@@ -269,6 +282,24 @@ def main() -> None:
         runtime.rollback()
         assert quota_count(runtime, "site-b") == 1
         runtime.rollback()
+        created = enqueue_job(
+            tenant_id="site-a", owner_ref="owner", job_type="search.reindex",
+            payload_digest="d" * 64, payload_schema=1,
+            idempotency_key="search.reindex-001", available_at=datetime.now(UTC),
+        )
+        replayed = enqueue_job(
+            tenant_id="site-a", owner_ref="owner", job_type="search.reindex",
+            payload_digest="d" * 64, payload_schema=1,
+            idempotency_key="search.reindex-001", available_at=datetime.now(UTC),
+        )
+        assert replayed == {**created, "replayed": True}
+        claimed = claim_jobs(tenant_id="site-a", worker="worker-one", now=datetime.now(UTC))
+        assert len(claimed) == 1 and claimed[0]["jobId"] == created["jobId"]
+        assert claim_jobs(tenant_id="site-b", worker="worker-one", now=datetime.now(UTC)) == []
+        assert settle_job(
+            tenant_id="site-a", job_id=UUID(created["jobId"]), worker="worker-one",
+            outcome="succeeded", now=datetime.now(UTC), result_digest="e" * 64,
+        ) == "succeeded"
         with runtime.cursor() as cursor:
             cursor.execute("SET LOCAL enable_seqscan=off")
             cursor.execute(

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "currentSchema": 23,
+  "currentSchema": 25,
   "minimumCompatibleSchema": 17,
   "migrations": [
     {
@@ -59,6 +59,26 @@
       "toSchema": 23,
       "phase": "migrate",
       "compatibleFrom": 22,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "runtime_governance_models",
+      "fromSchema": 23,
+      "toSchema": 24,
+      "phase": "expand",
+      "compatibleFrom": 23,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "runtime_governance_rls",
+      "fromSchema": 24,
+      "toSchema": 25,
+      "phase": "migrate",
+      "compatibleFrom": 24,
       "expectedLockMs": 1000,
       "expectedRuntimeMs": 30000,
       "destructive": false

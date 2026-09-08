@@ -89,21 +89,21 @@ substitute for the integration proof named by the task.
 
 ## Phase 5 — Secrets, audit, jobs, schedules, email, and notifications
 
-- [ ] B069 Write tests first for secret resolution, redaction, rotation, break-glass, audit integrity, job replay, schedule time, and notification delivery. (FR-031 through FR-040, FR-065)
-- [ ] B070 Inventory each credential class, owner, scope, source, consumer, lifetime, rotation, revocation, and recovery contract without recording values. (FR-031, FR-032)
-- [ ] B071 Implement JIT secret references and prove values do not enter source, images, environment snapshots, logs, evidence, client bundles, or browser storage. (FR-031, FR-065)
-- [ ] B072 Implement and drill expiry, rotation, revocation, overlap, consumer restart, and recovery for each credential class. (FR-032, FR-060)
-- [ ] B073 Implement time-bound break-glass request, use, observation, expiry, revocation, and mandatory follow-up review. (FR-033, FR-034)
-- [ ] B074 Implement redacted integrity-bound operator and security audit chains with tenant scope, access control, retention, and verified export. (FR-034, FR-071)
-- [ ] B075 Add the canonical durable job schema with tenant, owner, generation, payload digest/schema, state, attempts, leases, idempotency, and receipts. (FR-035)
-- [ ] B076 Implement bounded fair discovery, admission, leases, backoff, jitter, idempotent side effects, stale recovery, and duplicate-delivery no-op. (FR-036, FR-042)
-- [ ] B077 Implement visible dead-letter review, acknowledgement, safe replay, cancellation, and resolution without arbitrary commands. (FR-037, FR-069)
-- [ ] B078 Implement scheduler state for next/last run, lateness, missed policy, catch-up, timezone, DST, overlap, resource admission, and restart. (FR-038)
-- [ ] B079 Add job, dead-letter, schedule, delay, saturation, and replay evidence to native operations. (FR-010, FR-016, FR-070)
-- [ ] B080 Implement production transactional email sender verification, accessible templates, safe expiring links, delivery, bounce, complaint, and suppression handling. (FR-039)
-- [ ] B081 Implement tenant-aware in-app/email history, preferences, urgency, quiet time, deduplication, unsubscribe, and mandatory-security exceptions. (FR-040)
-- [ ] B082 Prove email and operator alert providers can fail without losing durable state, leaking content, or reporting false success. (FR-015, FR-039, FR-040, FR-070)
-- [ ] B083 Run crash, replay, clock/DST, provider-outage, secret-rotation, audit-tamper, accessibility, and tenant-isolation acceptance. (FR-019, FR-032 through FR-040, FR-063 through FR-066)
+- [x] B069 Write tests first for secret resolution, redaction, rotation, break-glass, audit integrity, job replay, schedule time, and notification delivery. (FR-031 through FR-040, FR-065)
+- [x] B070 Inventory each credential class, owner, scope, source, consumer, lifetime, rotation, revocation, and recovery contract without recording values. (FR-031, FR-032)
+- [x] B071 Implement JIT secret references and prove values do not enter source, images, environment snapshots, logs, evidence, client bundles, or browser storage. (FR-031, FR-065)
+- [x] B072 Implement and drill expiry, rotation, revocation, overlap, consumer restart, and recovery for each credential class. (FR-032, FR-060)
+- [x] B073 Implement time-bound break-glass request, use, observation, expiry, revocation, and mandatory follow-up review. (FR-033, FR-034)
+- [x] B074 Implement redacted integrity-bound operator and security audit chains with tenant scope, access control, retention, and verified export. (FR-034, FR-071)
+- [x] B075 Add the canonical durable job schema with tenant, owner, generation, payload digest/schema, state, attempts, leases, idempotency, and receipts. (FR-035)
+- [x] B076 Implement bounded fair discovery, admission, leases, backoff, jitter, idempotent side effects, stale recovery, and duplicate-delivery no-op. (FR-036, FR-042)
+- [x] B077 Implement visible dead-letter review, acknowledgement, safe replay, cancellation, and resolution without arbitrary commands. (FR-037, FR-069)
+- [x] B078 Implement scheduler state for next/last run, lateness, missed policy, catch-up, timezone, DST, overlap, resource admission, and restart. (FR-038)
+- [x] B079 Add job, dead-letter, schedule, delay, saturation, and replay evidence to native operations. (FR-010, FR-016, FR-070)
+- [x] B080 Implement production transactional email sender verification, accessible templates, safe expiring links, delivery, bounce, complaint, and suppression handling. (FR-039)
+- [x] B081 Implement tenant-aware in-app/email history, preferences, urgency, quiet time, deduplication, unsubscribe, and mandatory-security exceptions. (FR-040)
+- [x] B082 Prove email and operator alert providers can fail without losing durable state, leaking content, or reporting false success. (FR-015, FR-039, FR-040, FR-070)
+- [x] B083 Run crash, replay, clock/DST, provider-outage, secret-rotation, audit-tamper, accessibility, and tenant-isolation acceptance. (FR-019, FR-032 through FR-040, FR-063 through FR-066)
 
 ## Phase 6 — Tenant lifecycle, quotas, identity, policy, and settings
 

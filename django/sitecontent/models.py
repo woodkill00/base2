@@ -2663,3 +2663,133 @@ class TenantDomainClaim(SiteOwnedModel):
             raise ValidationError("tenant_domain_activation_binding_required")
         if self.canonical and self.state != self.State.ACTIVE:
             raise ValidationError("tenant_domain_canonical_state_invalid")
+
+
+class DurableJob(SiteOwnedModel):
+    """Canonical tenant job envelope; payload values live in protected storage."""
+
+    STATES = tuple(
+        (value, value.replace("_", " ").title())
+        for value in ("queued", "leased", "succeeded", "retry", "dead_letter", "cancelled")
+    )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    owner_ref = models.CharField(max_length=200)
+    generation = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
+    job_type = models.CharField(max_length=96, validators=[operations_identifier_validator])
+    payload_digest = models.CharField(max_length=64, validators=[sha256_validator])
+    payload_schema = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
+    idempotency_key = models.CharField(max_length=128, validators=[operations_identifier_validator])
+    state = models.CharField(max_length=16, choices=STATES, default="queued")
+    attempts = models.PositiveSmallIntegerField(default=0)
+    maximum_attempts = models.PositiveSmallIntegerField(default=5)
+    available_at = models.DateTimeField(default=timezone.now)
+    lease_owner = models.CharField(max_length=200, blank=True, default="")
+    lease_expires_at = models.DateTimeField(null=True, blank=True)
+    result_digest = models.CharField(max_length=64, blank=True, default="")
+    error_code = models.CharField(max_length=96, blank=True, default="")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "idempotency_key"], name="durable_job_replay_uq"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(attempts__lte=models.F("maximum_attempts")),
+                name="durable_job_attempts_lte_max",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["site_id", "state", "available_at"], name="durable_job_ready_idx")
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        leased = self.state == "leased"
+        if leased != bool(self.lease_owner and self.lease_expires_at):
+            raise ValidationError("durable_job_lease_invalid")
+        if self.result_digest and not re.fullmatch(SHA256_PATTERN, self.result_digest):
+            raise ValidationError("durable_job_result_invalid")
+
+
+class DurableSchedule(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    schedule_key = models.CharField(max_length=96, validators=[operations_identifier_validator])
+    job_type = models.CharField(max_length=96, validators=[operations_identifier_validator])
+    timezone = models.CharField(max_length=255, default="UTC")
+    rule = models.CharField(max_length=128)
+    missed_policy = models.CharField(
+        max_length=16, choices=(("skip", "Skip"), ("once", "Once")), default="once"
+    )
+    overlap_policy = models.CharField(
+        max_length=16, choices=(("forbid", "Forbid"), ("replace", "Replace")), default="forbid"
+    )
+    next_run_at = models.DateTimeField()
+    last_run_at = models.DateTimeField(null=True, blank=True)
+    enabled = models.BooleanField(default=True)
+    revision = models.PositiveBigIntegerField(default=1)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "schedule_key"], name="durable_schedule_scope_uq"
+            )
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        try:
+            ZoneInfo(self.timezone)
+        except ZoneInfoNotFoundError as exc:
+            raise ValidationError("durable_schedule_timezone_invalid") from exc
+
+
+class BreakGlassGrant(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    requester_ref = models.CharField(max_length=200)
+    approver_ref = models.CharField(max_length=200)
+    scope = models.CharField(max_length=96, validators=[operations_identifier_validator])
+    reason_digest = models.CharField(max_length=64, validators=[sha256_validator])
+    approval_digest = models.CharField(max_length=64, validators=[sha256_validator])
+    expires_at = models.DateTimeField()
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    def clean(self) -> None:
+        super().clean()
+        if self.requester_ref == self.approver_ref:
+            raise ValidationError("break_glass_independent_approval_required")
+        if self.expires_at.tzinfo is None:
+            raise ValidationError("break_glass_expiry_invalid")
+
+
+class TenantNotification(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    owner_ref = models.CharField(max_length=200)
+    event_key = models.CharField(max_length=96, validators=[operations_identifier_validator])
+    family = models.CharField(
+        max_length=16,
+        choices=tuple((value, value.title()) for value in ("security", "transactional", "product")),
+    )
+    channel = models.CharField(
+        max_length=16, choices=tuple((value, value.title()) for value in ("in_app", "email"))
+    )
+    content_digest = models.CharField(max_length=64, validators=[sha256_validator])
+    idempotency_key = models.CharField(max_length=128, validators=[operations_identifier_validator])
+    state = models.CharField(
+        max_length=16,
+        choices=tuple(
+            (value, value.title())
+            for value in ("queued", "sent", "bounced", "complained", "suppressed", "failed")
+        ),
+        default="queued",
+    )
+    available_at = models.DateTimeField(default=timezone.now)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "idempotency_key", "channel"],
+                name="tenant_notification_replay_uq",
+            )
+        ]
