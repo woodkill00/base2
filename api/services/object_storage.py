@@ -1,0 +1,79 @@
+"""Closed S3-compatible object adapter behind Base2 media contracts."""
+
+from __future__ import annotations
+
+import hashlib
+import ipaddress
+import re
+from dataclasses import dataclass
+from typing import Any, Protocol
+from urllib.parse import urlparse
+
+BUCKET = re.compile(r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$")
+OBJECT = re.compile(r"^[a-z0-9][a-z0-9_/-]{0,499}$")
+
+
+class ObjectStorageError(ValueError):
+    pass
+
+
+class S3Client(Protocol):
+    def put_object(self, **kwargs: Any) -> dict[str, Any]: ...
+    def get_object(self, **kwargs: Any) -> dict[str, Any]: ...
+    def delete_object(self, **kwargs: Any) -> dict[str, Any]: ...
+
+
+@dataclass(frozen=True)
+class ObjectReceipt:
+    bucket: str
+    key: str
+    sha256: str
+    byte_size: int
+
+
+class S3ObjectStore:
+    def __init__(self, *, endpoint: str, bucket: str, client: S3Client, allowed_hosts: set[str]):
+        parsed = urlparse(endpoint)
+        if (
+            parsed.scheme != "https" or parsed.path not in {"", "/"} or parsed.query
+            or parsed.fragment or parsed.hostname not in allowed_hosts or not BUCKET.fullmatch(bucket)
+        ):
+            raise ObjectStorageError("object:configuration_invalid")
+        try:
+            if parsed.hostname and ipaddress.ip_address(parsed.hostname).is_private:
+                raise ObjectStorageError("object:configuration_invalid")
+        except ValueError:
+            pass
+        self.endpoint, self.bucket, self.client = endpoint.rstrip("/"), bucket, client
+
+    @staticmethod
+    def _key(*, tenant_id: str, namespace: str, object_id: str) -> str:
+        candidate = f"{tenant_id}/{namespace}/{object_id}"
+        if not OBJECT.fullmatch(candidate) or ".." in candidate.split("/"):
+            raise ObjectStorageError("object:key_invalid")
+        return candidate
+
+    def put(self, *, tenant_id: str, namespace: str, object_id: str, content: bytes) -> ObjectReceipt:
+        if not isinstance(content, bytes) or not 1 <= len(content) <= 100 * 1024 * 1024:
+            raise ObjectStorageError("object:size_invalid")
+        key = self._key(tenant_id=tenant_id, namespace=namespace, object_id=object_id)
+        digest = hashlib.sha256(content).hexdigest()
+        self.client.put_object(
+            Bucket=self.bucket, Key=key, Body=content,
+            ContentType="application/octet-stream", Metadata={"sha256": digest},
+            ServerSideEncryption="AES256", CacheControl="private,no-store",
+        )
+        return ObjectReceipt(self.bucket, key, digest, len(content))
+
+    def get(self, receipt: ObjectReceipt) -> bytes:
+        if receipt.bucket != self.bucket or not OBJECT.fullmatch(receipt.key):
+            raise ObjectStorageError("object:ownership_invalid")
+        response = self.client.get_object(Bucket=self.bucket, Key=receipt.key)
+        content = response["Body"].read()
+        if len(content) != receipt.byte_size or hashlib.sha256(content).hexdigest() != receipt.sha256:
+            raise ObjectStorageError("object:integrity_invalid")
+        return content
+
+    def delete(self, receipt: ObjectReceipt) -> None:
+        self.get(receipt)
+        self.client.delete_object(Bucket=self.bucket, Key=receipt.key)

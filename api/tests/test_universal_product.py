@@ -6,18 +6,26 @@ from api.services.universal_product import (
     ProductContractError,
     disabled_capability,
     editorial_transition,
+    index_action,
     media_deletion,
     preview_token,
     public_contract,
     search_results,
+    validate_search_manifest,
     verify_preview,
 )
+import json
+from pathlib import Path
 
 NOW = datetime(2026, 9, 8, tzinfo=UTC)
 KEY = b'k' * 32
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_search_is_bounded_ranked_permission_and_tenant_aware():
+    assert validate_search_manifest(json.loads(
+        (ROOT / 'shared/config/optional-search-v1.json').read_text()
+    ))['enabledByDefault'] is False
     documents = [
         {
             'id': 'a',
@@ -62,6 +70,23 @@ def test_search_is_bounded_ranked_permission_and_tenant_aware():
         search_results(
             documents, tenant_id='tenant-one', actor_permissions={'read'}, query='blue', limit=51
         )
+
+
+def test_index_lifecycle_removes_deleted_permissions_and_survives_provider_outage():
+    document = {'tenantId': 'tenant-one', 'authorizationEpoch': 1, 'deleted': False}
+    assert index_action(
+        document, tenant_id='tenant-one', authorization_epoch=2, provider_available=True
+    )['operation'] == 'replace-permissions'
+    assert index_action(
+        {**document, 'deleted': True}, tenant_id='tenant-one', authorization_epoch=1,
+        provider_available=True,
+    )['operation'] == 'delete'
+    unavailable = index_action(
+        document, tenant_id='tenant-one', authorization_epoch=1, provider_available=False
+    )
+    assert unavailable['state'] == 'retry' and unavailable['operationsSignal']
+    with pytest.raises(ProductContractError, match='scope'):
+        index_action(document, tenant_id='tenant-two', authorization_epoch=1, provider_available=True)
 
 
 def test_editorial_conflict_review_and_rollback_are_explicit():

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "enabledByDefault": false,
+  "documentFields": [
+    "id",
+    "tenantId",
+    "kind",
+    "title",
+    "body",
+    "urlPath",
+    "permissions",
+    "facets",
+    "sourceUpdatedAt",
+    "authorizationEpoch",
+    "deleted",
+    "indexed"
+  ],
+  "filters": ["kind", "updatedAfter"],
+  "facets": ["kind"],
+  "ranking": ["permission", "exact-title", "term-frequency", "freshness", "stable-id"],
+  "maximumResults": 50,
+  "freshnessSeconds": 300,
+  "deletionSeconds": 60
+}

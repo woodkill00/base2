@@ -12,10 +12,36 @@ from typing import Any
 TENANT = re.compile(r'^[a-z][a-z0-9-]{2,62}$')
 SLUG = re.compile(r'^[a-z0-9]+(?:-[a-z0-9]+)*$')
 EDITORIAL = {'draft', 'review', 'scheduled', 'published', 'archived'}
+SEARCH_DOCUMENT_FIELDS = {
+    'id', 'tenantId', 'kind', 'title', 'body', 'urlPath', 'permissions', 'facets',
+    'sourceUpdatedAt', 'authorizationEpoch', 'deleted', 'indexed',
+}
 
 
 class ProductContractError(ValueError):
     pass
+
+
+def validate_search_manifest(value: Any) -> dict[str, Any]:
+    required = {
+        'schemaVersion', 'enabledByDefault', 'documentFields', 'filters', 'facets',
+        'ranking', 'maximumResults', 'freshnessSeconds', 'deletionSeconds',
+    }
+    if not isinstance(value, dict) or set(value) != required or value['schemaVersion'] != 1:
+        raise ProductContractError('search:manifest_invalid')
+    if set(value['documentFields']) != SEARCH_DOCUMENT_FIELDS:
+        raise ProductContractError('search:manifest_invalid')
+    if value['enabledByDefault'] is not False or value['ranking'] != [
+        'permission', 'exact-title', 'term-frequency', 'freshness', 'stable-id'
+    ]:
+        raise ProductContractError('search:manifest_invalid')
+    if not 1 <= value['maximumResults'] <= 100 or not 1 <= value['freshnessSeconds'] <= 3600:
+        raise ProductContractError('search:manifest_invalid')
+    if not 1 <= value['deletionSeconds'] <= value['freshnessSeconds']:
+        raise ProductContractError('search:manifest_invalid')
+    if any(not re.fullmatch(r'[a-z][a-zA-Z0-9]*', item) for item in value['filters'] + value['facets']):
+        raise ProductContractError('search:manifest_invalid')
+    return json.loads(json.dumps(value, sort_keys=True))
 
 
 def search_results(
@@ -51,6 +77,29 @@ def search_results(
         'nextCursor': next_cursor,
         'tenantId': tenant_id,
         'authorizationFiltered': True,
+    }
+
+
+def index_action(
+    document: dict[str, Any], *, tenant_id: str, authorization_epoch: int,
+    provider_available: bool,
+) -> dict[str, Any]:
+    if document.get('tenantId') != tenant_id or authorization_epoch < 1:
+        raise ProductContractError('search:index_scope_invalid')
+    if not provider_available:
+        return {
+            'state': 'retry', 'operation': 'none', 'errorCode': 'search.provider_unavailable',
+            'operationsSignal': True,
+        }
+    if document.get('deleted'):
+        operation = 'delete'
+    elif document.get('authorizationEpoch') != authorization_epoch:
+        operation = 'replace-permissions'
+    else:
+        operation = 'upsert'
+    return {
+        'state': 'ready', 'operation': operation, 'authorizationEpoch': authorization_epoch,
+        'operationsSignal': False,
     }
 
 

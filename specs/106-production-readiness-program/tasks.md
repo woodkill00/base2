@@ -123,20 +123,20 @@ substitute for the integration proof named by the task.
 
 ## Phase 7 — Search, editorial, media delivery, and website essentials
 
-- [ ] B097 Write tests first for authorization-aware indexing, editorial conflicts, object delivery, privacy, SEO, forms, and optional-surface absence. (FR-047 through FR-050, FR-063, FR-065, FR-072)
-- [ ] B098 Define the optional search manifest, document schema, permission projection, cursor, filters, facets, ranking, limits, and freshness contract. (FR-047, FR-072)
-- [ ] B099 Implement tenant-scoped indexing and query across authorized content, records, media, members, and enabled modules. (FR-019, FR-047)
-- [ ] B100 Implement bounded reindex, deletion, permission-change invalidation, outage recovery, consistency checks, and operations signals. (FR-010, FR-047, FR-070)
-- [ ] B101 Implement editorial draft, revision, schedule, preview, review, publish, archive, conflict, and rollback state machines. (FR-048)
-- [ ] B102 Add expiring permission-aware preview links and prove they cannot bypass tenant, role, publication, or cache boundaries. (FR-019, FR-027, FR-048, FR-065)
-- [ ] B103 Integrate production object storage and safe CDN delivery behind the existing Media contracts without weakening quarantine. (FR-027, FR-049)
-- [ ] B104 Add resumable/multipart upload, lifecycle tiers, reference tracking, and deletion consequences within fixed resource limits. (FR-049, FR-057)
-- [ ] B105 Build reusable accessible navigation, breadcrumb, header, footer, loading, empty, degraded, denial, and error patterns with translation, pluralization, direction, and fallback contracts. (FR-050, FR-064, FR-075)
-- [ ] B106 Implement legal/privacy/consent surfaces and consent-aware analytics boundaries with no dark patterns. (FR-050, FR-061)
-- [ ] B107 Implement locale-aware canonical URLs plus metadata, sitemap, robots, Open Graph, structured data, share, and print contracts. (FR-025, FR-030, FR-050, FR-075)
-- [ ] B108 Implement accessible forms, validation, spam/abuse controls, rate limits, durable submission receipts, and safe notification linkage. (FR-028, FR-035, FR-039, FR-050)
-- [ ] B109 Prove search, preview, object, metadata, consent, form, and cache state remain tenant and permission isolated under change and deletion. (FR-019, FR-023, FR-047 through FR-050, FR-065)
-- [ ] B110 Run content-scale load, browser, accessibility, visual, SEO contract, privacy, security, restore, and disabled-profile acceptance. (FR-022, FR-057, FR-063 through FR-066, FR-072)
+- [x] B097 Write tests first for authorization-aware indexing, editorial conflicts, object delivery, privacy, SEO, forms, and optional-surface absence. (FR-047 through FR-050, FR-063, FR-065, FR-072)
+- [x] B098 Define the optional search manifest, document schema, permission projection, cursor, filters, facets, ranking, limits, and freshness contract. (FR-047, FR-072)
+- [x] B099 Implement tenant-scoped indexing and query across authorized content, records, media, members, and enabled modules. (FR-019, FR-047)
+- [x] B100 Implement bounded reindex, deletion, permission-change invalidation, outage recovery, consistency checks, and operations signals. (FR-010, FR-047, FR-070)
+- [x] B101 Implement editorial draft, revision, schedule, preview, review, publish, archive, conflict, and rollback state machines. (FR-048)
+- [x] B102 Add expiring permission-aware preview links and prove they cannot bypass tenant, role, publication, or cache boundaries. (FR-019, FR-027, FR-048, FR-065)
+- [x] B103 Integrate production object storage and safe CDN delivery behind the existing Media contracts without weakening quarantine. (FR-027, FR-049)
+- [x] B104 Add resumable/multipart upload, lifecycle tiers, reference tracking, and deletion consequences within fixed resource limits. (FR-049, FR-057)
+- [x] B105 Build reusable accessible navigation, breadcrumb, header, footer, loading, empty, degraded, denial, and error patterns with translation, pluralization, direction, and fallback contracts. (FR-050, FR-064, FR-075)
+- [x] B106 Implement legal/privacy/consent surfaces and consent-aware analytics boundaries with no dark patterns. (FR-050, FR-061)
+- [x] B107 Implement locale-aware canonical URLs plus metadata, sitemap, robots, Open Graph, structured data, share, and print contracts. (FR-025, FR-030, FR-050, FR-075)
+- [x] B108 Implement accessible forms, validation, spam/abuse controls, rate limits, durable submission receipts, and safe notification linkage. (FR-028, FR-035, FR-039, FR-050)
+- [x] B109 Prove search, preview, object, metadata, consent, form, and cache state remain tenant and permission isolated under change and deletion. (FR-019, FR-023, FR-047 through FR-050, FR-065)
+- [x] B110 Run content-scale load, browser, accessibility, visual, SEO contract, privacy, security, restore, and disabled-profile acceptance. (FR-022, FR-057, FR-063 through FR-066, FR-072)
 
 ## Phase 8 — Visual builder, themes, archetypes, modules, integrations, and commerce
 
