@@ -1,4 +1,5 @@
 import json
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -6,6 +7,7 @@ import pytest
 from scripts.python.production_assurance import (
     AssuranceError,
     budget_result,
+    create_ephemeral_approval,
     ephemeral_plan,
     fault_evidence,
     shell_parity,
@@ -14,6 +16,9 @@ from scripts.python.production_assurance import (
 )
 
 ROOT = Path(__file__).resolve().parents[2]
+NOW = datetime(2026, 9, 8, tzinfo=UTC)
+APPROVAL_KEY = b"a" * 32
+PLAN_KEY = b"p" * 32
 
 
 def policy():
@@ -41,18 +46,38 @@ def test_measurements_are_complete_and_fail_visibly():
 
 
 def test_ephemeral_plan_requires_approval_and_exact_owned_teardown():
+    approval = create_ephemeral_approval(
+        source_commit="a" * 40,
+        environment="staging",
+        owned_resources=["app-106", "db-106"],
+        expires_at=NOW + timedelta(minutes=30),
+        owner="owner-one",
+        key=APPROVAL_KEY,
+    )
     plan = ephemeral_plan(
         source_commit="a" * 40,
         environment="staging",
         hours=2,
         cost_usd=1.5,
         owned_resources=["app-106", "db-106"],
-        approval_digest="b" * 64,
+        approval=approval,
+        now=NOW,
+        approval_key=APPROVAL_KEY,
+        plan_key=PLAN_KEY,
     )
-    result = teardown(plan, discovered_resources=["app-106", "db-106"])
+    result = teardown(plan, discovered_resources=["app-106", "db-106"], plan_key=PLAN_KEY)
     assert result["status"] == "destroyed" and not result["remainingOwned"]
     with pytest.raises(AssuranceError, match="unowned"):
-        teardown(plan, discovered_resources=["app-106", "foreign-production"])
+        teardown(plan, discovered_resources=["app-106", "foreign-production"], plan_key=PLAN_KEY)
+    pending = teardown(plan, discovered_resources=["app-106"], plan_key=PLAN_KEY)
+    assert pending == {
+        "status": "pending",
+        "destroyed": ["app-106"],
+        "remainingOwned": ["db-106"],
+    }
+    changed = {**plan, "costCeilingUsd": 0.01}
+    with pytest.raises(AssuranceError, match="integrity"):
+        teardown(changed, discovered_resources=["app-106", "db-106"], plan_key=PLAN_KEY)
     with pytest.raises(AssuranceError, match="production"):
         ephemeral_plan(
             source_commit="a" * 40,
@@ -60,7 +85,22 @@ def test_ephemeral_plan_requires_approval_and_exact_owned_teardown():
             hours=1,
             cost_usd=1,
             owned_resources=["app-106"],
-            approval_digest="b" * 64,
+            approval=approval,
+            now=NOW,
+            approval_key=APPROVAL_KEY,
+            plan_key=PLAN_KEY,
+        )
+    with pytest.raises(AssuranceError, match="approval"):
+        ephemeral_plan(
+            source_commit="b" * 40,
+            environment="staging",
+            hours=1,
+            cost_usd=1,
+            owned_resources=["app-106", "db-106"],
+            approval=approval,
+            now=NOW,
+            approval_key=APPROVAL_KEY,
+            plan_key=PLAN_KEY,
         )
 
 

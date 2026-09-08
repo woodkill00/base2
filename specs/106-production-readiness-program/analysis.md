@@ -136,8 +136,9 @@ found by the pre-implementation analysis.
 
 - Functional requirements: 78, sequentially identified FR-001 through FR-078.
 - Ordered tasks: 160, sequentially identified B001 through B160.
-- Current locally completed tasks: 145.
-- Current pending tasks: 15 (B146-B160).
+- Current independently sustained completion frontier after review: B023.
+- Current pending tasks: 137 (B024-B160). Earlier local helper-level evidence did
+  not sustain the integration claims for those tasks and has been withdrawn.
 - Publication, merge, canary, teardown, and production activation remain
   distinct exact-scope decisions and cannot be inherited from this planning work.
 
@@ -285,3 +286,20 @@ isolation, monitoring, rollback, recovery drills, evidence, and bounded failure;
 it does not call them impossible. Actual production use also requires concrete
 service objectives, capacity measurements, legal review where applicable, and
 separately approved environment-specific activation.
+
+## Independent review cycle 6 — completion reset and repair plan
+
+Fresh code, security, UX/accessibility, data, and operations reviews rejected the
+earlier B024-B145 completion claims. The common finding was that deterministic
+helper contracts and focused tests had been mistaken for connected runtime,
+persistence, multi-browser, provider-adapter, and recovery evidence. Task status
+was therefore reset to the last contiguous independently sustained task, B023.
+
+The first repair set now removes unsafe default release health, binds release
+replay to the complete signed candidate and environment, authenticates ephemeral
+plans and deletion approvals, reports partial teardown as pending, rejects active
+builder URLs, commits Operations mutations, requires the principal's explicit
+recent-auth state, authenticates alert and receipt integrity with separate HMAC
+keys, bounds preview lifetime, enforces probe adapter deadlines, and retains
+incidents from resolution time rather than initial creation time. B024 onward
+remains pending until each named runtime and evidence boundary is actually met.

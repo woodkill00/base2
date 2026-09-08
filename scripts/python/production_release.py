@@ -286,7 +286,7 @@ class ProductionReleaseController:
         environment: str,
         owner_approval: dict[str, Any],
         now: datetime,
-        health: Callable[[str], bool] = lambda _: True,
+        health: Callable[[str], bool] | None = None,
     ) -> dict[str, Any]:
         candidate = validate_release(release, key=self.release_key)
         if environment not in ENVIRONMENTS:
@@ -305,7 +305,8 @@ class ProductionReleaseController:
             state = self.store.load()
             if (
                 state["candidate"]
-                and state["candidate"]["releaseId"] == candidate["releaseId"]
+                and state["candidate"] == candidate
+                and state["environment"] == environment
                 and action in state["checkpoints"]
             ):
                 return self._receipt(state, action, "idempotent")
@@ -331,6 +332,8 @@ class ProductionReleaseController:
                 }
                 if state["state"] != allowed[action]:
                     raise ReleaseError("release:transition_invalid")
+                if action in {"stage", "canary", "promote"} and health is None:
+                    raise ReleaseError("release:health_adapter_required")
                 if action in {"stage", "canary", "promote"} and not health(action):
                     state["state"] = "halted"
                     state["checkpoints"].append(f"{action}:failed")

@@ -87,6 +87,7 @@ def test_preview_is_expiring_permission_tenant_and_cache_safe():
         content_id='post-1',
         permission='content.preview',
         expires_at=NOW + timedelta(minutes=5),
+        now=NOW,
         key=KEY,
     )
     result = verify_preview(
@@ -106,6 +107,16 @@ def test_preview_is_expiring_permission_tenant_and_cache_safe():
             content_id='',
             permission='content.preview',
             expires_at=NOW + timedelta(minutes=5),
+            now=NOW,
+            key=KEY,
+        )
+    with pytest.raises(ProductContractError, match='invalid'):
+        preview_token(
+            tenant_id='tenant-one',
+            content_id='post-1',
+            permission='content.preview',
+            expires_at=NOW + timedelta(hours=2),
+            now=NOW,
             key=KEY,
         )
 

@@ -17,7 +17,8 @@
 - `.artifacts/complete-gate/20260908T005714Z/result.json`: 106/106 passed,
   no skips, candidate source matched.
 - Surface inventory: 105 guarded files, zero findings.
-- Feature plan: 78 requirements, 160 tasks, contiguous completion through B145.
+- Feature plan: 78 requirements, 160 tasks. Independent review later reset the
+  honest contiguous completion frontier to B023.
 - Worktree after evidence capture: clean.
 
 The `.artifacts` paths are private local evidence and are intentionally not
@@ -69,10 +70,12 @@ six-surface restore reconciliation, monitoring loss, alert loss, queue pressure,
 restart, clock shift, and fault recovery passed required checks. Production
 capacity and recovery claims still require target-environment measurement.
 
-## Pending independent and external evidence
+## Superseded closeout status
 
-B146 remains pending because a self-review is not an independent review. B148-B153
-require exact publication, hosted, provider-canary, and teardown approvals and
-evidence. B154-B157 have locally prepared implementation but cannot close out of
-order before canary re-analysis. B158-B160 remain the honest completion and
-production-activation boundary. No pending item is inferred from this review.
+This local closeout is retained as historical evidence, not as current acceptance.
+Fresh independent review found disconnected runtime paths, insufficient visual
+coverage, non-persistent operations, synthetic data-readiness assurances, and
+weak approval/integrity boundaries. B024-B160 are pending until those findings
+are implemented and independently re-reviewed. External publication, hosted,
+provider-canary, teardown, and production-activation boundaries remain separately
+approved and were not inferred from the earlier local gate.

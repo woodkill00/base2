@@ -8,6 +8,7 @@ import json
 import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from urllib.parse import urlsplit
 
 COMPONENTS = {'section', 'heading', 'text', 'image', 'link', 'button', 'grid', 'card', 'form'}
 FORBIDDEN_PROP_KEYS = {'dangerouslysetinnerhtml', 'innerhtml', 'srcdoc', 'style'}
@@ -62,6 +63,33 @@ def compose_page(tree: dict[str, Any]) -> dict[str, Any]:
             for key in node['props']
         ):
             raise ExtensionContractError('builder:executable_content_forbidden')
+        for key, prop_value in node['props'].items():
+            if str(key).casefold() not in {'href', 'src'}:
+                continue
+            if not isinstance(prop_value, str):
+                raise ExtensionContractError('builder:resource_url_forbidden')
+            parsed = urlsplit(prop_value)
+            local = (
+                prop_value.startswith('/')
+                and not prop_value.startswith('//')
+                and '\\' not in prop_value
+                and '..' not in parsed.path.split('/')
+            )
+            remote = (
+                parsed.scheme in {'http', 'https'}
+                and bool(parsed.hostname)
+                and parsed.username is None
+                and parsed.password is None
+            )
+            email = (
+                str(key).casefold() == 'href'
+                and parsed.scheme == 'mailto'
+                and bool(parsed.path)
+                and '\n' not in prop_value
+                and '\r' not in prop_value
+            )
+            if not (local or remote or email):
+                raise ExtensionContractError('builder:resource_url_forbidden')
         encoded = json.dumps(node['props']).casefold()
         if any(
             marker in encoded

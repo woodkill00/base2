@@ -10,6 +10,7 @@ from api.repositories.operations import acknowledge, list_incidents, prune, summ
 def repository_connection(cursor):
     connection = MagicMock()
     connection.cursor.return_value.__enter__.return_value = cursor
+    cursor.connection = connection
     yield connection
 
 
@@ -69,6 +70,7 @@ def test_acknowledgement_reports_changed_and_noop():
                 acknowledge(tenant_id='tenant-one', incident_id=incident_id, owner_ref='user-one')
                 is expected
             )
+        cursor.connection.commit.assert_called_once()
         assert cursor.execute.call_args.args[1] == (
             'user-one',
             'tenant-one',
@@ -88,6 +90,7 @@ def test_retention_pruning_is_tenant_scoped_batched_and_policy_specific():
             'synthetics': 4,
             'incidents': 4,
         }
+    cursor.connection.commit.assert_called_once()
     assert [call.args[1] for call in cursor.execute.call_args_list] == [
         ('tenant-one', 30, 1000),
         ('tenant-one', 30, 1000),
@@ -95,3 +98,5 @@ def test_retention_pruning_is_tenant_scoped_batched_and_policy_specific():
     ]
     assert "state='resolved'" not in cursor.execute.call_args_list[0].args[0]
     assert "state='resolved'" in cursor.execute.call_args_list[2].args[0]
+    assert 'resolved_at <' in cursor.execute.call_args_list[2].args[0]
+    assert 'ORDER BY resolved_at' in cursor.execute.call_args_list[2].args[0]

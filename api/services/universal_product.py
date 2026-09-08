@@ -6,7 +6,7 @@ import hashlib
 import hmac
 import json
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 TENANT = re.compile(r'^[a-z][a-z0-9-]{2,62}$')
@@ -80,13 +80,21 @@ def editorial_transition(
 
 
 def preview_token(
-    *, tenant_id: str, content_id: str, permission: str, expires_at: datetime, key: bytes
+    *,
+    tenant_id: str,
+    content_id: str,
+    permission: str,
+    expires_at: datetime,
+    now: datetime,
+    key: bytes,
 ) -> str:
     if (
         not TENANT.fullmatch(tenant_id or '')
         or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._:-]{2,127}', content_id or '')
         or not re.fullmatch(r'[a-z][a-z0-9:.-]{2,63}', permission or '')
         or expires_at.tzinfo is None
+        or now.tzinfo is None
+        or not now < expires_at <= now + timedelta(hours=1)
         or len(key) < 32
     ):
         raise ProductContractError('preview:invalid')

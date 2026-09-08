@@ -1,8 +1,11 @@
 import pytest
 
+from datetime import UTC, datetime, timedelta
+
 from api.services.tenant_lifecycle import (
     TenantLifecycleError,
     authorize,
+    create_deletion_approval,
     identity_recovery,
     quota_state,
     quota_report,
@@ -14,6 +17,9 @@ from api.services.tenant_lifecycle import (
     tenant_operation,
     transition_tenant,
 )
+
+NOW = datetime(2026, 9, 8, tzinfo=UTC)
+APPROVAL_KEY = b'd' * 32
 
 
 def limits(value=10):
@@ -35,16 +41,55 @@ def test_suspend_and_archive_remove_authority_without_deleting_data():
 def test_deletion_is_separately_approved_and_irreversible():
     with pytest.raises(TenantLifecycleError, match='deletion_approval'):
         transition_tenant(tenant_id='tenant-one', current='archived', target='deleting')
+    start = create_deletion_approval(
+        tenant_id='tenant-one',
+        current='archived',
+        target='deleting',
+        owner='owner-one',
+        revision=1,
+        expires_at=NOW + timedelta(minutes=10),
+        nonce='delete-start-0001',
+        key=APPROVAL_KEY,
+    )
     deleting = transition_tenant(
-        tenant_id='tenant-one', current='archived', target='deleting', exact_deletion_approval=True
+        tenant_id='tenant-one',
+        current='archived',
+        target='deleting',
+        deletion_approval=start,
+        now=NOW,
+        approval_key=APPROVAL_KEY,
+    )
+    final = create_deletion_approval(
+        tenant_id='tenant-one',
+        current='deleting',
+        target='deleted',
+        owner='owner-one',
+        revision=2,
+        expires_at=NOW + timedelta(minutes=10),
+        nonce='delete-final-0001',
+        key=APPROVAL_KEY,
     )
     deleted = transition_tenant(
-        tenant_id='tenant-one', current='deleting', target='deleted', exact_deletion_approval=True
+        tenant_id='tenant-one',
+        current='deleting',
+        target='deleted',
+        deletion_approval=final,
+        now=NOW,
+        approval_key=APPROVAL_KEY,
     )
     assert deleting['recoverableDataPreserved'] is True
     assert deleted['recoverableDataPreserved'] is False
     with pytest.raises(TenantLifecycleError):
         transition_tenant(tenant_id='tenant-one', current='deleted', target='active')
+    with pytest.raises(TenantLifecycleError, match='approval_invalid'):
+        transition_tenant(
+            tenant_id='tenant-two',
+            current='archived',
+            target='deleting',
+            deletion_approval=start,
+            now=NOW,
+            approval_key=APPROVAL_KEY,
+        )
 
 
 def test_quota_reservation_is_atomic_replay_safe_and_tenant_bound():

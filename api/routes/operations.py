@@ -48,6 +48,8 @@ def get_incidents(request: Request, limit: int = Query(default=50, ge=1, le=100)
 def acknowledge_incident(request: Request, incident_id: UUID):
     principal, tenant_id, membership = _scope(request, 'operations.manage')
     try:
+        if not principal.recently_authenticated:
+            raise PermissionError('recent_reauthentication_required')
         require_recent_reauthentication(authenticated_at=principal.authenticated_at)
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc

@@ -10,17 +10,20 @@ USER_ID = UUID('00000000-0000-0000-0000-000000000801')
 INCIDENT_ID = UUID('00000000-0000-0000-0000-000000000802')
 
 
-def principal(*, age_seconds=0):
+def principal(*, age_seconds=0, recently_authenticated=True):
     return SimpleNamespace(
         user_id=USER_ID,
         authenticated_at=datetime.now(timezone.utc) - timedelta(seconds=age_seconds),
+        recently_authenticated=recently_authenticated,
     )
 
 
-def permit(monkeypatch, *, age_seconds=0, role='owner'):
+def permit(monkeypatch, *, age_seconds=0, role='owner', recently_authenticated=True):
     monkeypatch.setattr(
         'api.routes.operations.require_authenticated_principal',
-        lambda request: principal(age_seconds=age_seconds),
+        lambda request: principal(
+            age_seconds=age_seconds, recently_authenticated=recently_authenticated
+        ),
     )
     monkeypatch.setattr(
         'api.routes.operations.require_permission',
@@ -79,6 +82,13 @@ def test_acknowledgement_requires_recent_auth_and_exact_state(monkeypatch):
     )
     assert stale.status_code == 403
     assert stale.json() == {'detail': 'recent_reauthentication_required'}
+    permit(monkeypatch, recently_authenticated=False)
+    refreshed = client.post(
+        f'/api/operations/v1/incidents/{INCIDENT_ID}/acknowledge',
+        headers={'X-Tenant-Id': 'tenant-one'},
+    )
+    assert refreshed.status_code == 403
+    assert refreshed.json() == {'detail': 'recent_reauthentication_required'}
     permit(monkeypatch)
     monkeypatch.setattr('api.routes.operations.repository.acknowledge', lambda **kwargs: False)
     conflict = client.post(

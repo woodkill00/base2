@@ -7,6 +7,8 @@ import hmac
 import json
 import re
 from datetime import datetime, timedelta, timezone
+from queue import Empty, Queue
+from threading import Thread
 from typing import Any, Literal
 
 HealthState = Literal['healthy', 'degraded', 'unavailable', 'stale', 'unknown', 'muted', 'disabled']
@@ -111,7 +113,25 @@ def collect_probe_results(
             state, code, latency = 'unknown', 'probe.adapter_missing', None
         else:
             try:
-                response = adapter(probe['timeoutSeconds'])
+                completed: Queue[Any] = Queue(maxsize=1)
+
+                def invoke(
+                    target: Any = adapter,
+                    timeout: int = probe['timeoutSeconds'],
+                    output: Queue[Any] = completed,
+                ) -> None:
+                    try:
+                        output.put(('ok', target(timeout)), block=False)
+                    except Exception as error:
+                        output.put(('error', error), block=False)
+
+                Thread(target=invoke, daemon=True).start()
+                try:
+                    outcome, response = completed.get(timeout=probe['timeoutSeconds'])
+                except Empty as error:
+                    raise TimeoutError('operations:adapter_timeout') from error
+                if outcome == 'error':
+                    raise response
                 if not isinstance(response, tuple) or len(response) != 3:
                     raise OperationsContractError('operations:adapter_result_invalid')
                 state, code, latency = response
@@ -138,13 +158,20 @@ def collect_probe_results(
 
 
 def sanitized_alert(
-    *, incident_id: str, severity: str, summary_code: str, expires_at: datetime
+    *,
+    incident_id: str,
+    severity: str,
+    summary_code: str,
+    expires_at: datetime,
+    integrity_key: bytes,
 ) -> dict[str, Any]:
     if (
         not re.fullmatch(r'[0-9a-f]{64}', incident_id or '')
         or severity not in SEVERITIES
         or not CODE.fullmatch(summary_code or '')
         or expires_at.tzinfo is None
+        or not isinstance(integrity_key, bytes)
+        or len(integrity_key) < 32
     ):
         raise OperationsContractError('operations:alert_invalid')
     payload = {
@@ -155,13 +182,15 @@ def sanitized_alert(
         'expiresAt': expires_at.isoformat(),
         'actions': ['acknowledge', 'open-private-evidence'],
     }
-    payload['digest'] = hashlib.sha256(
-        json.dumps(payload, sort_keys=True, separators=(',', ':')).encode()
+    payload['digest'] = hmac.new(
+        integrity_key,
+        json.dumps(payload, sort_keys=True, separators=(',', ':')).encode(),
+        hashlib.sha256,
     ).hexdigest()
     return payload
 
 
-def verify_sanitized_alert(payload: Any, *, now: datetime) -> dict[str, Any]:
+def verify_sanitized_alert(payload: Any, *, now: datetime, integrity_key: bytes) -> dict[str, Any]:
     if not isinstance(payload, dict) or set(payload) != {
         'schemaVersion',
         'incidentId',
@@ -173,8 +202,12 @@ def verify_sanitized_alert(payload: Any, *, now: datetime) -> dict[str, Any]:
     }:
         raise OperationsContractError('operations:alert_invalid')
     unsigned = {key: payload[key] for key in payload if key != 'digest'}
-    expected = hashlib.sha256(
-        json.dumps(unsigned, sort_keys=True, separators=(',', ':')).encode()
+    if not isinstance(integrity_key, bytes) or len(integrity_key) < 32:
+        raise OperationsContractError('operations:alert_key_invalid')
+    expected = hmac.new(
+        integrity_key,
+        json.dumps(unsigned, sort_keys=True, separators=(',', ':')).encode(),
+        hashlib.sha256,
     ).hexdigest()
     if not hmac.compare_digest(str(payload['digest']), expected):
         raise OperationsContractError('operations:alert_integrity_invalid')
@@ -183,6 +216,7 @@ def verify_sanitized_alert(payload: Any, *, now: datetime) -> dict[str, Any]:
         severity=payload['severity'],
         summary_code=payload['summaryCode'],
         expires_at=datetime.fromisoformat(payload['expiresAt']),
+        integrity_key=integrity_key,
     )
     if rebuilt != payload:
         raise OperationsContractError('operations:alert_invalid')
@@ -194,9 +228,20 @@ def verify_sanitized_alert(payload: Any, *, now: datetime) -> dict[str, Any]:
 
 
 def deliver_sanitized_alert(
-    *, payload: dict[str, Any], now: datetime, sender: Any
+    *,
+    payload: dict[str, Any],
+    now: datetime,
+    sender: Any,
+    integrity_key: bytes,
+    receipt_key: bytes,
 ) -> dict[str, Any]:
-    admitted = verify_sanitized_alert(payload, now=now)
+    if (
+        not isinstance(receipt_key, bytes)
+        or len(receipt_key) < 32
+        or hmac.compare_digest(integrity_key, receipt_key)
+    ):
+        raise OperationsContractError('operations:receipt_key_invalid')
+    admitted = verify_sanitized_alert(payload, now=now, integrity_key=integrity_key)
     delivery = {
         'incidentId': admitted['incidentId'],
         'alertDigest': admitted['digest'],
@@ -209,8 +254,10 @@ def deliver_sanitized_alert(
     except Exception:
         return {**delivery, 'status': 'queued', 'errorCode': 'delivery.provider_failed'}
     receipt = {**delivery, 'status': 'sent', 'providerReceipt': provider_id}
-    receipt['receiptDigest'] = hashlib.sha256(
-        json.dumps(receipt, sort_keys=True, separators=(',', ':')).encode()
+    receipt['receiptDigest'] = hmac.new(
+        receipt_key,
+        json.dumps(receipt, sort_keys=True, separators=(',', ':')).encode(),
+        hashlib.sha256,
     ).hexdigest()
     return receipt
 

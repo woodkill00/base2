@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
+from time import monotonic, sleep
 
 import pytest
 
@@ -21,6 +22,8 @@ from api.services.operations_center import (
 )
 
 NOW = datetime(2026, 9, 8, 12, tzinfo=timezone.utc)
+ALERT_KEY = b'a' * 32
+RECEIPT_KEY = b'r' * 32
 
 
 def test_health_states_are_truthful_and_stale_wins():
@@ -206,12 +209,32 @@ def test_collection_makes_missing_and_failed_adapters_visible():
     assert len(results) == 16
 
 
+def test_collection_enforces_adapter_deadline_without_waiting_for_hung_work():
+    root = Path(__file__).resolve().parents[2]
+    catalog = json.loads((root / 'shared/config/operations-probes-v1.json').read_text())
+    catalog['probes'][0]['timeoutSeconds'] = 1
+    adapters = {
+        probe['id']: (lambda _timeout: ('healthy', 'probe.ready', 1)) for probe in catalog['probes']
+    }
+    adapters[catalog['probes'][0]['id']] = lambda _timeout: (sleep(2), None, None)
+    started = monotonic()
+    results = collect_probe_results(
+        catalog=catalog,
+        adapters=adapters,
+        now=NOW,
+    )
+    assert monotonic() - started < 1.5
+    assert results[0]['state'] == 'unavailable'
+    assert results[0]['code'] == 'probe.adapter_failed'
+
+
 def test_alert_contains_only_bounded_codes_actions_and_integrity():
     payload = sanitized_alert(
         incident_id='a' * 64,
         severity='high',
         summary_code='api.unavailable',
         expires_at=NOW + timedelta(minutes=15),
+        integrity_key=ALERT_KEY,
     )
     assert set(payload) == {
         'schemaVersion',
@@ -232,6 +255,7 @@ def test_alert_delivery_is_sanitized_observed_and_provider_failure_is_durable():
         severity='critical',
         summary_code='database.unavailable',
         expires_at=NOW + timedelta(minutes=15),
+        integrity_key=ALERT_KEY,
     )
     delivered = deliver_sanitized_alert(
         payload=payload,
@@ -239,6 +263,8 @@ def test_alert_delivery_is_sanitized_observed_and_provider_failure_is_durable():
         sender=lambda value: 'discord.message-0001'
         if value['summaryCode'] == 'database.unavailable'
         else None,
+        integrity_key=ALERT_KEY,
+        receipt_key=RECEIPT_KEY,
     )
     assert delivered['status'] == 'sent'
     assert len(delivered['receiptDigest']) == 64
@@ -246,6 +272,8 @@ def test_alert_delivery_is_sanitized_observed_and_provider_failure_is_durable():
         payload=payload,
         now=NOW,
         sender=lambda _value: (_ for _ in ()).throw(ConnectionError('private endpoint')),
+        integrity_key=ALERT_KEY,
+        receipt_key=RECEIPT_KEY,
     )
     assert queued == {
         'incidentId': 'a' * 64,
@@ -262,14 +290,29 @@ def test_alert_tamper_and_expiry_fail_before_delivery():
         severity='high',
         summary_code='queue.stalled',
         expires_at=NOW + timedelta(minutes=1),
+        integrity_key=ALERT_KEY,
     )
     changed = dict(payload)
     changed['summaryCode'] = 'queue.healthy'
     with pytest.raises(OperationsContractError, match='integrity'):
-        verify_sanitized_alert(changed, now=NOW)
+        verify_sanitized_alert(changed, now=NOW, integrity_key=ALERT_KEY)
     with pytest.raises(OperationsContractError, match='expired'):
         deliver_sanitized_alert(
             payload=payload,
             now=NOW + timedelta(minutes=2),
             sender=None,
+            integrity_key=ALERT_KEY,
+            receipt_key=RECEIPT_KEY,
         )
+
+
+def test_alert_authentication_rejects_the_wrong_key():
+    payload = sanitized_alert(
+        incident_id='c' * 64,
+        severity='high',
+        summary_code='queue.stalled',
+        expires_at=NOW + timedelta(minutes=1),
+        integrity_key=ALERT_KEY,
+    )
+    with pytest.raises(OperationsContractError, match='integrity'):
+        verify_sanitized_alert(payload, now=NOW, integrity_key=b'x' * 32)

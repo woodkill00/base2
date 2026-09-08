@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import re
+from datetime import UTC, datetime
 from typing import Any
 
 TENANT = re.compile(r'^[a-z][a-z0-9-]{2,62}$')
@@ -19,7 +21,13 @@ class TenantLifecycleError(ValueError):
 
 
 def transition_tenant(
-    *, tenant_id: str, current: str, target: str, exact_deletion_approval: bool = False
+    *,
+    tenant_id: str,
+    current: str,
+    target: str,
+    deletion_approval: dict[str, Any] | None = None,
+    now: datetime | None = None,
+    approval_key: bytes | None = None,
 ) -> dict[str, Any]:
     allowed = {
         'provisioning': {'active'},
@@ -36,8 +44,15 @@ def transition_tenant(
         or target not in allowed[current]
     ):
         raise TenantLifecycleError('tenant:transition_invalid')
-    if target in {'deleting', 'deleted'} and not exact_deletion_approval:
-        raise TenantLifecycleError('tenant:deletion_approval_required')
+    if target in {'deleting', 'deleted'}:
+        _verify_deletion_approval(
+            deletion_approval,
+            tenant_id=tenant_id,
+            current=current,
+            target=target,
+            now=now,
+            key=approval_key,
+        )
     receipt = {
         'tenantId': tenant_id,
         'from': current,
@@ -50,6 +65,74 @@ def transition_tenant(
         json.dumps(receipt, sort_keys=True, separators=(',', ':')).encode()
     ).hexdigest()
     return receipt
+
+
+def create_deletion_approval(
+    *,
+    tenant_id: str,
+    current: str,
+    target: str,
+    owner: str,
+    revision: int,
+    expires_at: datetime,
+    nonce: str,
+    key: bytes,
+) -> dict[str, Any]:
+    if (
+        not TENANT.fullmatch(tenant_id or '')
+        or (current, target) not in {('archived', 'deleting'), ('deleting', 'deleted')}
+        or not re.fullmatch(r'[A-Za-z0-9._-]{3,127}', owner or '')
+        or revision < 1
+        or expires_at.tzinfo is None
+        or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._:-]{15,127}', nonce or '')
+        or len(key) < 32
+    ):
+        raise TenantLifecycleError('tenant:deletion_approval_invalid')
+    value = {
+        'tenantId': tenant_id,
+        'from': current,
+        'to': target,
+        'owner': owner,
+        'revision': revision,
+        'expiresAt': expires_at.astimezone(UTC).isoformat(),
+        'nonce': nonce,
+    }
+    value['signature'] = hmac.new(
+        key, json.dumps(value, sort_keys=True, separators=(',', ':')).encode(), hashlib.sha256
+    ).hexdigest()
+    return value
+
+
+def _verify_deletion_approval(
+    value: dict[str, Any] | None,
+    *,
+    tenant_id: str,
+    current: str,
+    target: str,
+    now: datetime | None,
+    key: bytes | None,
+) -> None:
+    required = {'tenantId', 'from', 'to', 'owner', 'revision', 'expiresAt', 'nonce', 'signature'}
+    if not isinstance(value, dict) or set(value) != required or now is None or now.tzinfo is None:
+        raise TenantLifecycleError('tenant:deletion_approval_required')
+    if key is None or len(key) < 32:
+        raise TenantLifecycleError('tenant:deletion_approval_invalid')
+    unsigned = {name: value[name] for name in value if name != 'signature'}
+    expected = hmac.new(
+        key, json.dumps(unsigned, sort_keys=True, separators=(',', ':')).encode(), hashlib.sha256
+    ).hexdigest()
+    try:
+        expiry = datetime.fromisoformat(str(value['expiresAt']))
+    except ValueError as exc:
+        raise TenantLifecycleError('tenant:deletion_approval_invalid') from exc
+    if (
+        not hmac.compare_digest(str(value['signature']), expected)
+        or value['tenantId'] != tenant_id
+        or value['from'] != current
+        or value['to'] != target
+        or expiry <= now
+    ):
+        raise TenantLifecycleError('tenant:deletion_approval_invalid')
 
 
 def tenant_operation(

@@ -16,6 +16,8 @@ from api.services.operations_center import (
 from scripts.python.operations_telemetry import AlertLedger
 
 NOW = datetime(2026, 9, 8, 12, tzinfo=UTC)
+ALERT_KEY = b"a" * 32
+RECEIPT_KEY = b"r" * 32
 
 
 def catalog():
@@ -105,12 +107,15 @@ def test_alert_outage_queues_once_and_recovery_does_not_storm():
         severity="critical",
         summary_code="monitor.unavailable",
         expires_at=NOW + timedelta(minutes=15),
+        integrity_key=ALERT_KEY,
     )
     assert (
         deliver_sanitized_alert(
             payload=payload,
             now=NOW,
             sender=lambda _item: (_ for _ in ()).throw(ConnectionError()),
+            integrity_key=ALERT_KEY,
+            receipt_key=RECEIPT_KEY,
         )["status"]
         == "queued"
     )

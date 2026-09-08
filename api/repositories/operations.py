@@ -74,38 +74,42 @@ def list_incidents(*, tenant_id: str, limit: int = 50) -> list[dict[str, Any]]:
 
 
 def acknowledge(*, tenant_id: str, incident_id: UUID, owner_ref: str) -> bool:
-    with workspace_db_conn(tenant_id=tenant_id) as conn, conn.cursor() as cursor:
-        cursor.execute(
-            """
-            UPDATE sitecontent_operationsincident
-            SET state='acknowledged', owner_ref=%s, updated_at=NOW()
-            WHERE site_id=%s AND id=%s AND state IN ('firing', 'recurring')
-            RETURNING id
-            """,
-            (owner_ref, tenant_id, str(incident_id)),
-        )
-        changed = cursor.fetchone() is not None
+    with workspace_db_conn(tenant_id=tenant_id) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE sitecontent_operationsincident
+                SET state='acknowledged', owner_ref=%s, updated_at=NOW()
+                WHERE site_id=%s AND id=%s AND state IN ('firing', 'recurring')
+                RETURNING id
+                """,
+                (owner_ref, tenant_id, str(incident_id)),
+            )
+            changed = cursor.fetchone() is not None
+        conn.commit()
     return changed
 
 
 def prune(*, tenant_id: str, batch_size: int = 500) -> dict[str, int]:
     bounded = max(1, min(int(batch_size), 1000))
     policies = {
-        'health': ('sitecontent_operationshealthsample', 30),
-        'synthetics': ('sitecontent_operationssyntheticrun', 30),
-        'incidents': ('sitecontent_operationsincident', 365),
+        'health': ('sitecontent_operationshealthsample', 'created_at', 30),
+        'synthetics': ('sitecontent_operationssyntheticrun', 'created_at', 30),
+        'incidents': ('sitecontent_operationsincident', 'resolved_at', 365),
     }
     removed: dict[str, int] = {}
-    with workspace_db_conn(tenant_id=tenant_id) as conn, conn.cursor() as cursor:
-        for label, (table, days) in policies.items():
-            state = "AND state='resolved'" if label == 'incidents' else ''
-            cursor.execute(
-                f"""DELETE FROM {table} WHERE id IN (
-                        SELECT id FROM {table}
-                        WHERE site_id=%s AND created_at < NOW() - (%s * INTERVAL '1 day')
-                        {state} ORDER BY created_at LIMIT %s
-                    )""",
-                (tenant_id, days, bounded),
-            )
-            removed[label] = cursor.rowcount
+    with workspace_db_conn(tenant_id=tenant_id) as conn:
+        with conn.cursor() as cursor:
+            for label, (table, retention_column, days) in policies.items():
+                state = "AND state='resolved'" if label == 'incidents' else ''
+                cursor.execute(
+                    f"""DELETE FROM {table} WHERE id IN (
+                            SELECT id FROM {table}
+                            WHERE site_id=%s AND {retention_column} < NOW() - (%s * INTERVAL '1 day')
+                            {state} ORDER BY {retention_column} LIMIT %s
+                        )""",
+                    (tenant_id, days, bounded),
+                )
+                removed[label] = cursor.rowcount
+        conn.commit()
     return removed

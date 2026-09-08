@@ -103,6 +103,7 @@ def test_prepare_stage_canary_promote_is_checkpointed_and_replay_safe():
                 environment="staging",
                 owner_approval=permit(action, item),
                 now=NOW,
+                health=lambda _: True,
             )
             assert len(receipt["digest"]) == 64
             replay = controller.transition(
@@ -111,6 +112,7 @@ def test_prepare_stage_canary_promote_is_checkpointed_and_replay_safe():
                 environment="staging",
                 owner_approval=permit(action, item),
                 now=NOW,
+                health=lambda _: True,
             )
             assert replay["status"] == "idempotent"
         assert controller.status() == {
@@ -135,6 +137,7 @@ def test_failed_canary_halts_before_traffic_and_rollback_selects_previous():
                 environment="staging",
                 owner_approval=permit(action, first),
                 now=NOW,
+                health=lambda _: True,
             )
         controller.transition(
             action="prepare",
@@ -142,6 +145,7 @@ def test_failed_canary_halts_before_traffic_and_rollback_selects_previous():
             environment="staging",
             owner_approval=permit("prepare", second),
             now=NOW,
+            health=lambda _: True,
         )
         controller.transition(
             action="stage",
@@ -149,6 +153,7 @@ def test_failed_canary_halts_before_traffic_and_rollback_selects_previous():
             environment="staging",
             owner_approval=permit("stage", second),
             now=NOW,
+            health=lambda _: True,
         )
         result = controller.transition(
             action="canary",
@@ -189,6 +194,7 @@ def test_interrupted_state_resumes_but_changed_candidate_and_corruption_fail_clo
             environment="preview",
             owner_approval=permit("stage", item, "preview"),
             now=NOW,
+            health=lambda _: True,
         )
         with pytest.raises(ReleaseError, match="candidate_mismatch"):
             resumed.transition(
@@ -197,6 +203,7 @@ def test_interrupted_state_resumes_but_changed_candidate_and_corruption_fail_clo
                 environment="preview",
                 owner_approval=permit("canary", release(2), "preview"),
                 now=NOW,
+                health=lambda _: True,
             )
         path.write_text("{}", encoding="utf-8")
         with pytest.raises(ReleaseError, match="journal_integrity"):
@@ -225,5 +232,59 @@ def test_release_and_approval_keys_are_independent_and_production_is_outside_fea
                 release=item,
                 environment="production",
                 owner_approval=permit("prepare", item, "production"),
+                now=NOW,
+            )
+
+
+def test_replay_rejects_a_resigned_manifest_reusing_the_release_id():
+    item = release()
+    changed = sign_release(
+        {
+            **{key: value for key, value in item.items() if key != "signature"},
+            "sourceCommit": "f" * 40,
+        },
+        key=KEY,
+    )
+    with TemporaryDirectory() as temporary:
+        controller = ProductionReleaseController(
+            Path(temporary) / "journal.json", release_key=KEY, approval_key=OWNER_KEY
+        )
+        controller.transition(
+            action="prepare",
+            release=item,
+            environment="staging",
+            owner_approval=permit("prepare", item),
+            now=NOW,
+        )
+        with pytest.raises(ReleaseError, match="candidate_mismatch"):
+            controller.transition(
+                action="stage",
+                release=changed,
+                environment="staging",
+                owner_approval=permit("stage", changed),
+                now=NOW,
+                health=lambda _: True,
+            )
+
+
+def test_health_adapter_is_mandatory_for_traffic_affecting_steps():
+    item = release()
+    with TemporaryDirectory() as temporary:
+        controller = ProductionReleaseController(
+            Path(temporary) / "journal.json", release_key=KEY, approval_key=OWNER_KEY
+        )
+        controller.transition(
+            action="prepare",
+            release=item,
+            environment="staging",
+            owner_approval=permit("prepare", item),
+            now=NOW,
+        )
+        with pytest.raises(ReleaseError, match="health_adapter_required"):
+            controller.transition(
+                action="stage",
+                release=item,
+                environment="staging",
+                owner_approval=permit("stage", item),
                 now=NOW,
             )

@@ -4,13 +4,57 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
+import re
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 
 class AssuranceError(ValueError):
     pass
+
+
+def _canonical(value: Any) -> bytes:
+    return json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+
+
+def create_ephemeral_approval(
+    *,
+    source_commit: str,
+    environment: str,
+    owned_resources: list[str],
+    expires_at: datetime,
+    owner: str,
+    key: bytes,
+) -> dict[str, Any]:
+    if (
+        not re.fullmatch(r"[0-9a-f]{40}", source_commit or "")
+        or environment not in {"preview", "staging"}
+        or not owned_resources
+        or expires_at.tzinfo is None
+        or not re.fullmatch(r"[A-Za-z0-9._-]{3,127}", owner or "")
+        or len(key) < 32
+    ):
+        raise AssuranceError("ephemeral:approval_invalid")
+    resources = sorted(set(owned_resources))
+    if any(
+        not re.fullmatch(r"[a-z][a-z0-9-]{2,62}", item or "")
+        or re.search(r"(^|-)(prod|production|live)(-|$)", item)
+        for item in resources
+    ):
+        raise AssuranceError("ephemeral:resource_invalid")
+    approval = {
+        "sourceCommit": source_commit,
+        "environment": environment,
+        "ownedResources": resources,
+        "expiresAt": expires_at.astimezone(UTC).isoformat(),
+        "owner": owner,
+        "action": "ephemeral-canary",
+    }
+    approval["signature"] = hmac.new(key, _canonical(approval), hashlib.sha256).hexdigest()
+    return approval
 
 
 def validate_policy(value: Any) -> dict[str, Any]:
@@ -69,37 +113,100 @@ def ephemeral_plan(
     hours: int,
     cost_usd: float,
     owned_resources: list[str],
-    approval_digest: str | None,
+    approval: dict[str, Any],
+    now: datetime,
+    approval_key: bytes,
+    plan_key: bytes,
 ) -> dict[str, Any]:
     if environment == "production":
         raise AssuranceError("ephemeral:production_forbidden")
-    if not approval_digest:
-        raise AssuranceError("ephemeral:approval_required")
+    if len(approval_key) < 32 or len(plan_key) < 32 or approval_key == plan_key:
+        raise AssuranceError("ephemeral:key_invalid")
     if not 1 <= hours <= 4 or not 0 < cost_usd <= 5 or not owned_resources:
         raise AssuranceError("ephemeral:bounds_exceeded")
-    if len(source_commit) != 40 or any(len(item) < 3 for item in owned_resources):
+    resources = sorted(set(owned_resources))
+    if (
+        not re.fullmatch(r"[0-9a-f]{40}", source_commit or "")
+        or environment not in {"preview", "staging"}
+        or any(
+            not re.fullmatch(r"[a-z][a-z0-9-]{2,62}", item or "")
+            or re.search(r"(^|-)(prod|production|live)(-|$)", item)
+            for item in resources
+        )
+    ):
         raise AssuranceError("ephemeral:identity_invalid")
+    if not isinstance(approval, dict) or set(approval) != {
+        "sourceCommit",
+        "environment",
+        "ownedResources",
+        "expiresAt",
+        "owner",
+        "action",
+        "signature",
+    }:
+        raise AssuranceError("ephemeral:approval_required")
+    unsigned_approval = {key: approval[key] for key in approval if key != "signature"}
+    expected_approval = hmac.new(
+        approval_key, _canonical(unsigned_approval), hashlib.sha256
+    ).hexdigest()
+    try:
+        expiry = datetime.fromisoformat(str(approval["expiresAt"]))
+    except ValueError as exc:
+        raise AssuranceError("ephemeral:approval_invalid") from exc
+    if (
+        not hmac.compare_digest(str(approval["signature"]), expected_approval)
+        or approval["sourceCommit"] != source_commit
+        or approval["environment"] != environment
+        or approval["ownedResources"] != resources
+        or approval["action"] != "ephemeral-canary"
+        or now.tzinfo is None
+        or expiry <= now
+    ):
+        raise AssuranceError("ephemeral:approval_invalid")
     plan = {
         "sourceCommit": source_commit,
         "environment": environment,
         "maximumHours": hours,
         "costCeilingUsd": cost_usd,
-        "ownedResources": sorted(set(owned_resources)),
-        "approvalDigest": approval_digest,
+        "ownedResources": resources,
+        "approvalSignature": approval["signature"],
         "stagingCertificatesOnly": True,
     }
-    plan["digest"] = hashlib.sha256(
-        json.dumps(plan, sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
+    plan["signature"] = hmac.new(plan_key, _canonical(plan), hashlib.sha256).hexdigest()
     return plan
 
 
-def teardown(plan: dict[str, Any], *, discovered_resources: list[str]) -> dict[str, Any]:
+def teardown(
+    plan: dict[str, Any], *, discovered_resources: list[str], plan_key: bytes
+) -> dict[str, Any]:
+    if (
+        not isinstance(plan, dict)
+        or set(plan)
+        != {
+            "sourceCommit",
+            "environment",
+            "maximumHours",
+            "costCeilingUsd",
+            "ownedResources",
+            "approvalSignature",
+            "stagingCertificatesOnly",
+            "signature",
+        }
+        or len(plan_key) < 32
+    ):
+        raise AssuranceError("teardown:plan_invalid")
+    unsigned = {key: plan[key] for key in plan if key != "signature"}
+    expected = hmac.new(plan_key, _canonical(unsigned), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(str(plan["signature"]), expected):
+        raise AssuranceError("teardown:plan_integrity")
     owned = set(plan["ownedResources"])
     discovered = set(discovered_resources)
     foreign = sorted(discovered - owned)
     if foreign:
         raise AssuranceError("teardown:unowned_resource")
+    missing = sorted(owned - discovered)
+    if missing:
+        return {"status": "pending", "destroyed": sorted(discovered), "remainingOwned": missing}
     return {
         "status": "destroyed",
         "destroyed": sorted(discovered),

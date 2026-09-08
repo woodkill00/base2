@@ -36,9 +36,19 @@ def test_builder_is_closed_bounded_and_deterministic():
         {'style': {'position': 'fixed'}},
         {'onLoad': 'run()'},
         {'href': 'data:text/html,<h1>unsafe</h1>'},
+        {'href': 'data:image/svg+xml,<svg onload=alert(1)>'},
+        {'href': 'vbscript:msgbox(1)'},
+        {'src': '//attacker.example/image.png'},
+        {'href': 'https://user:password@example.com/'},
     ):
-        with pytest.raises(ExtensionContractError, match='executable'):
+        with pytest.raises(ExtensionContractError, match='executable|resource_url'):
             compose_page({'component': 'text', 'props': props, 'children': []})
+    assert (
+        compose_page({'component': 'link', 'props': {'href': '/safe/path'}, 'children': []})[
+            'executableMarkup'
+        ]
+        is False
+    )
 
 
 def test_theme_upgrade_and_every_archetype_have_closed_contracts():
