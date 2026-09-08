@@ -87,9 +87,10 @@ def test_claim_is_atomic_and_replay_safe(monkeypatch):
     assert operation['tenant_id'] == 'tenant-a'
     assert operation['claim_token'] == claim_token
     assert connection.committed is True
-    assert "status='queued'" in cursor.calls[0][0]
-    assert "status='running' AND claim_expires_at < NOW()" in cursor.calls[0][0]
-    assert 'retention_until > NOW()' in cursor.calls[0][0]
+    claim_query = next(query for query, _params in cursor.calls if "status='queued'" in query)
+    assert "status='running' AND claim_expires_at < NOW()" in claim_query
+    assert 'retention_until > NOW()' in claim_query
+    assert any('app.data_rights_operation_id' in query for query, _params in cursor.calls)
 
     empty_cursor = Cursor()
     empty_connection = install(monkeypatch, empty_cursor)
@@ -99,7 +100,7 @@ def test_claim_is_atomic_and_replay_safe(monkeypatch):
 
 def test_completion_requires_running_state_and_retention_wipes_all_sensitive_material(monkeypatch):
     claim_token = uuid4()
-    complete_cursor = Cursor(rowcount=1)
+    complete_cursor = Cursor(rows=[(True,)], rowcount=1)
     install(monkeypatch, complete_cursor)
     repository.complete_operation(
         operation_id=OPERATION_ID,
@@ -110,20 +111,24 @@ def test_completion_requires_running_state_and_retention_wipes_all_sensitive_mat
         result_ciphertext='encrypted-result',
         digest='a' * 64,
     )
-    assert 'api_auth_audit_events' in complete_cursor.calls[0][0]
-    assert "status='completed'" in complete_cursor.calls[1][0]
-    assert "status='running'" in complete_cursor.calls[1][0]
-    assert 'claim_token=%s' in complete_cursor.calls[1][0]
+    assert any('api_auth_audit_events' in query for query, _params in complete_cursor.calls)
+    completion_query = next(
+        query
+        for query, _params in complete_cursor.calls
+        if 'base2_finalize_data_rights_operation' in query
+    )
+    assert "'completed'" in completion_query
+    assert complete_cursor.calls[-1][1] == (
+        str(OPERATION_ID),
+        str(claim_token),
+        'encrypted-result',
+        'a' * 64,
+    )
 
-    retention_cursor = Cursor(rowcount=3)
+    retention_cursor = Cursor(rows=[(3,)], rowcount=3)
     install(monkeypatch, retention_cursor)
     assert repository.expire_results() == 3
-    query = retention_cursor.calls[0][0]
-    assert "request_ciphertext=''" in query
-    assert "result_ciphertext=''" in query
-    assert "receipt_digest=''" in query
-    assert "status='expired'" in query
-    assert "'running'" in query
+    assert retention_cursor.calls[0][0] == 'SELECT base2_expire_data_rights_results()'
 
 
 def test_owner_and_admin_lists_always_bind_tenant_and_are_bounded(monkeypatch):

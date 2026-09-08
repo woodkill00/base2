@@ -159,6 +159,14 @@ def claim_operation(*, operation_id: UUID) -> dict[str, Any] | None:
     claim_token = uuid4()
     with db_conn() as conn:
         with conn.cursor() as cur:
+            cur.execute(
+                "SELECT set_config('app.data_rights_operation_id', %s, true)",
+                (str(operation_id),),
+            )
+            cur.execute(
+                "SELECT set_config('app.data_rights_claim_token', %s, true)",
+                (str(claim_token),),
+            )
             lifecycle = (
                 'AND EXISTS (SELECT 1 FROM sitecontent_tenantlifecyclestate lifecycle '
                 'WHERE lifecycle.site_id=api_data_rights_operations.tenant_id '
@@ -206,6 +214,11 @@ def complete_operation(
     with db_conn(tenant_id=tenant_id) as conn:
         with conn.cursor() as cur:
             cur.execute(
+                "SELECT set_config('app.data_rights_operation_id', %s, true), "
+                "set_config('app.data_rights_claim_token', %s, true)",
+                (str(operation_id), str(claim_token)),
+            )
+            cur.execute(
                 """INSERT INTO api_auth_audit_events
                      (id,user_id,action,ip,user_agent,metadata_json,created_at)
                    SELECT %s,%s,%s,'','',%s::jsonb,NOW()
@@ -225,16 +238,11 @@ def complete_operation(
             if cur.rowcount != 1:
                 raise RuntimeError('operation_state_changed')
             cur.execute(
-                """
-                UPDATE api_data_rights_operations
-                SET status='completed', result_ciphertext=%s, receipt_digest=%s,
-                    completed_at=NOW(), updated_at=NOW(), error_code='',
-                    claim_token=NULL, claim_expires_at=NULL
-                WHERE id=%s AND status='running' AND claim_token=%s
-                """,
-                (result_ciphertext, digest, str(operation_id), str(claim_token)),
+                "SELECT base2_finalize_data_rights_operation(%s,%s,'completed',%s,%s,'')",
+                (str(operation_id), str(claim_token), result_ciphertext, digest),
             )
-            if cur.rowcount != 1:
+            row = cur.fetchone()
+            if not row or row[0] is not True:
                 raise RuntimeError('operation_state_changed')
         conn.commit()
 
@@ -244,13 +252,13 @@ def fail_operation(*, operation_id: UUID, claim_token: UUID, error_code: str) ->
         conn.autocommit = True
         with conn.cursor() as cur:
             cur.execute(
-                """
-                UPDATE api_data_rights_operations
-                SET status='failed', error_code=%s, result_ciphertext='', updated_at=NOW(),
-                    claim_token=NULL, claim_expires_at=NULL
-                WHERE id=%s AND status='running' AND claim_token=%s
-                """,
-                (error_code[:80], str(operation_id), str(claim_token)),
+                "SELECT set_config('app.data_rights_operation_id', %s, false), "
+                "set_config('app.data_rights_claim_token', %s, false)",
+                (str(operation_id), str(claim_token)),
+            )
+            cur.execute(
+                "SELECT base2_finalize_data_rights_operation(%s,%s,'failed','','',%s)",
+                (str(operation_id), str(claim_token), error_code[:80]),
             )
 
 
@@ -258,14 +266,6 @@ def expire_results() -> int:
     with db_conn() as conn:
         conn.autocommit = True
         with conn.cursor() as cur:
-            cur.execute(
-                """
-                UPDATE api_data_rights_operations
-                SET status='expired', request_ciphertext='', result_ciphertext='', receipt_digest='',
-                    error_code='retention_expired', updated_at=NOW(),
-                    claim_token=NULL, claim_expires_at=NULL
-                WHERE retention_until <= NOW()
-                  AND status IN ('queued','running','completed','failed')
-                """
-            )
-            return int(cur.rowcount)
+            cur.execute('SELECT base2_expire_data_rights_results()')
+            row = cur.fetchone()
+            return int(row[0] if row else 0)

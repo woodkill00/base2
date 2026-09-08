@@ -123,6 +123,8 @@ services:
       - DB_NAME=${POSTGRES_DB}
       - DB_USER=${POSTGRES_USER}
       - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_SSLMODE=${DB_SSLMODE:-disable}
+      - DB_SSLROOTCERT=${DB_SSLROOTCERT:-/run/secrets/db-ca.pem}
       - WORKSPACE_DB_USER=${WORKSPACE_DB_USER}
       - WORKSPACE_WORKER_DB_USER=${WORKSPACE_WORKER_DB_USER}
       - RUNTIME_WORKER_DB_USER=${RUNTIME_WORKER_DB_USER}
@@ -138,6 +140,7 @@ services:
       workspace-db-role:
         condition: service_completed_successfully
     volumes:
+      - ${DB_SSLROOTCERT_HOST:-/dev/null}:/run/secrets/db-ca.pem:ro
       - django_static:/app/static
     restart: unless-stopped
     cap_drop: [ALL]
@@ -744,7 +747,7 @@ services:
       test:
         [
           'CMD-SHELL',
-          'python -c "import os;from celery import Celery;app=Celery(broker=os.getenv(''CELERY_BROKER_URL''));c=app.connection();c.connect();c.release();print(''ok'')" || exit 1',
+          'python -c "from api.services.operations_runtime import _runtime_heartbeat;import sys;sys.exit(0 if _runtime_heartbeat(''schedules'',90)[0] == ''healthy'' else 1)"',
         ]
       interval: 20s
       timeout: 10s

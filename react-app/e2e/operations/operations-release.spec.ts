@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { basename } from 'node:path';
 
 const axeSource = readFileSync('node_modules/axe-core/axe.min.js', 'utf8');
 const user = {
@@ -8,6 +9,19 @@ const user = {
   display_name: 'Operations Fixture',
   permissions: ['operations.read', 'operations.manage'],
 };
+
+async function captureCurrentRun(page, testInfo, name, maxDiffPixelRatio = 0.01) {
+  const options = { fullPage: true, animations: 'disabled' as const, caret: 'hide' as const };
+  await expect(page).toHaveScreenshot(name, { ...options, maxDiffPixelRatio });
+  const acceptedCapture = testInfo.snapshotPath(name);
+  await testInfo.attach(`visual:${basename(testInfo.snapshotPath(name))}`, {
+    // Attach the exact snapshot that Playwright just compared successfully.
+    // The custom reporter hashes this real attachment rather than inferring a
+    // capture name from the test title or trusting an unverified later frame.
+    body: readFileSync(acceptedCapture),
+    contentType: 'image/png',
+  });
+}
 
 test.beforeEach(async ({ page }, testInfo) => {
   if (testInfo.project.name === 'chromium-reduced-motion') {
@@ -200,7 +214,7 @@ test('operations center is accessible responsive and visually stable', async ({
     if (message.type() === 'error') runtimeErrors.push(message.text());
   });
   page.on('requestfailed', (request) => failedRequests.push(request.url()));
-  await page.goto('/operations', { waitUntil: 'networkidle' });
+  await page.goto('/operations', { waitUntil: 'domcontentloaded' });
   if (testInfo.project.name === 'chromium-large-text')
     await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
   const rtl = testInfo.project.name === 'chromium-rtl';
@@ -303,12 +317,7 @@ test('operations center is accessible responsive and visually stable', async ({
   await page.addStyleTag({
     content: '.app-shell > header, .app-shell-content > nav { position: static !important; }',
   });
-  await expect(page).toHaveScreenshot(`operations-center-${testInfo.project.name}.png`, {
-    fullPage: true,
-    animations: 'disabled',
-    caret: 'hide',
-    maxDiffPixelRatio: 0.01,
-  });
+  await captureCurrentRun(page, testInfo, `operations-center-${testInfo.project.name}.png`);
   const timelineButton = page.getByRole('button', { name: label.viewTimeline }).first();
   await timelineButton.focus();
   await timelineButton.press('Enter');
@@ -336,12 +345,7 @@ test('operations center is accessible responsive and visually stable', async ({
   });
   await expect(cancelHeading).toBeFocused();
   if (testInfo.project.name === 'chromium-desktop') {
-    await expect(page).toHaveScreenshot('operations-center-cancel-confirmation.png', {
-      fullPage: true,
-      animations: 'disabled',
-      caret: 'hide',
-      maxDiffPixelRatio: 0.02,
-    });
+    await captureCurrentRun(page, testInfo, 'operations-center-cancel-confirmation.png', 0.02);
   }
   await page.keyboard.press('Escape');
   await expect(cancel).toBeFocused();
@@ -395,10 +399,7 @@ test('operations center shows truthful empty and failure states', async ({ page 
   await page.goto('/operations');
   await expect(page.getByText('No incidents are currently recorded.')).toBeVisible();
   await expect(page.getByText('No objectives are configured.')).toBeVisible();
-  await expect(page).toHaveScreenshot('operations-center-empty.png', {
-    fullPage: true,
-    animations: 'disabled',
-  });
+  await captureCurrentRun(page, testInfo, 'operations-center-empty.png');
 
   await page.unroute('**/api/operations/v1/**', partialHandler);
   await page.route('**/api/operations/v1/**', (route) =>
@@ -410,10 +411,7 @@ test('operations center shows truthful empty and failure states', async ({ page 
   );
   await page.reload();
   await expect(page.getByRole('alert')).toContainText('temporarily unavailable');
-  await expect(page).toHaveScreenshot('operations-center-error.png', {
-    fullPage: true,
-    animations: 'disabled',
-  });
+  await captureCurrentRun(page, testInfo, 'operations-center-error.png');
 });
 
 test('operations center exposes stale, reauthentication, and read-only recovery states', async ({
@@ -425,7 +423,7 @@ test('operations center exposes stale, reauthentication, and read-only recovery 
     ),
     'This recovery journey is asserted by the bounded compact and desktop browser matrix.'
   );
-  await page.goto('/operations', { waitUntil: 'networkidle' });
+  await page.goto('/operations', { waitUntil: 'domcontentloaded' });
   await expect(page.getByText('11/12')).toBeVisible();
 
   const staleHandler = async (route) => {
@@ -444,10 +442,7 @@ test('operations center exposes stale, reauthentication, and read-only recovery 
   await expect(page.getByText('Stale evidence')).toHaveCount(2);
   await expect(page.getByText('11/12')).toBeVisible();
   await expect(page.getByText('Database Unavailable')).toBeVisible();
-  await expect(page).toHaveScreenshot('operations-center-partial.png', {
-    fullPage: true,
-    animations: 'disabled',
-  });
+  await captureCurrentRun(page, testInfo, 'operations-center-partial.png');
 
   await page.unroute('**/api/operations/v1/**', staleHandler);
   await page.route('**/api/operations/v1/incidents/*/acknowledge', (route) =>
@@ -462,24 +457,18 @@ test('operations center exposes stale, reauthentication, and read-only recovery 
     'href',
     '/login?next=%2Foperations'
   );
-  await expect(page).toHaveScreenshot('operations-center-reauth.png', {
-    fullPage: true,
-    animations: 'disabled',
-  });
+  await captureCurrentRun(page, testInfo, 'operations-center-reauth.png');
 
   await page.addInitScript(() => {
     const current = JSON.parse(localStorage.getItem('user') || '{}');
     localStorage.setItem('user', JSON.stringify({ ...current, permissions: ['operations.read'] }));
   });
-  await page.reload({ waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.getByRole('button', { name: 'View timeline' }).first()).toBeVisible();
   await expect(page.getByRole('button', { name: 'Acknowledge' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Replay safely' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Cancel' })).toHaveCount(0);
-  await expect(page).toHaveScreenshot('operations-center-read-only.png', {
-    fullPage: true,
-    animations: 'disabled',
-  });
+  await captureCurrentRun(page, testInfo, 'operations-center-read-only.png');
 });
 
 declare global {

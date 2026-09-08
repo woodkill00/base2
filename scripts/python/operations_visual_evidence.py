@@ -19,6 +19,10 @@ SOURCES = (
     "react-app/src/components/glass/AppShell.tsx",
     "react-app/src/components/glass/GlassButton.tsx",
     "react-app/src/components/glass/GlassHeader.tsx",
+    "react-app/src/components/glass/GlassSidebar.tsx",
+    "react-app/src/components/glass/ThemeToggle.tsx",
+    "react-app/src/components/Navigation.js",
+    "react-app/src/index.css",
     "react-app/e2e/operations/operations-release.spec.ts",
     "react-app/playwright.operations-release.config.mjs",
     "react-app/e2e/operations/visual-receipt-reporter.mjs",
@@ -111,7 +115,12 @@ def build() -> dict:
         rows = runner.get("tests", [])
         expected_pairs = {(project, title) for project in PROJECTS for title in TITLES}
         actual_pairs = {(row.get("project"), row.get("title")) for row in rows}
-        receipt_captures = {capture for row in rows for capture in row.get("captures", [])}
+        receipt_captures = {
+            capture.get("name"): capture.get("sha256")
+            for row in rows
+            for capture in row.get("captures", [])
+            if isinstance(capture, dict)
+        }
         rows_honest = all(
             row.get("assertionId") == TITLES.get(row.get("title"))
             and row.get("status")
@@ -130,7 +139,8 @@ def build() -> dict:
             or actual_pairs != expected_pairs
             or len(rows) != len(expected_pairs)
             or not rows_honest
-            or receipt_captures != CAPTURE_NAMES
+            or set(receipt_captures) != CAPTURE_NAMES
+            or any(receipt_captures[path.name] != _sha256(path) for path in screenshots)
             or runner["digest"] != expected_runner_digest
         ):
             raise ValueError("runner receipt did not prove the exact asserted/skipped matrix")

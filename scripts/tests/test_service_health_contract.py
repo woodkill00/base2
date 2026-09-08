@@ -71,7 +71,7 @@ class ServiceHealthContractTests(unittest.TestCase):
             "celery-content-worker": ("python", "workers:content-worker"),
             "celery-data-rights-worker": ("python", "workers:data-rights-worker"),
             "celery-email-worker": ("python", "workers:email-worker"),
-            "celery-beat": ("python", "CELERY_BROKER_URL"),
+            "celery-beat": ("python", "_runtime_heartbeat", "schedules"),
             "flower": ("python", "HTTPConnection", "5555"),
         }
         for service, markers in expected.items():
@@ -205,7 +205,9 @@ class ServiceHealthContractTests(unittest.TestCase):
         )
         build_line = next(line for line in deploy.splitlines() if "build celery-worker" in line)
         up_line = next(
-            line for line in deploy.splitlines() if "up -d --build redis celery-worker" in line
+            line
+            for line in deploy.splitlines()
+            if "celery-up.txt" in line and "up -d --build" in line
         )
         for service in required:
             self.assertIn(service, build_line)
@@ -222,6 +224,8 @@ class ServiceHealthContractTests(unittest.TestCase):
                 self.assertNotIn("|| true", line)
         core_up = next(line for line in deployment.splitlines() if "compose-up-core.txt" in line)
         self.assertIn("celery-data-rights-worker", core_up)
+        self.assertIn("--no-deps", core_up)
+        self.assertNotIn(" postgres ", f" {core_up} ")
         build_offset = deploy.index(build_line)
         self.assertNotIn("RUN_CELERY_CHECK", deploy[build_offset - 500 : build_offset])
         self.assertNotIn(
@@ -230,6 +234,18 @@ class ServiceHealthContractTests(unittest.TestCase):
         self.assertIn('if [ "$SCHEMA_STATUS" != "0" ]; then', deploy)
         self.assertIn('if [ "$READY" != "1" ]; then', deploy)
         self.assertIn("FAILED: required services did not become healthy", deploy)
+        self.assertIn("DEPLOY_EXPECTED_COMMIT", deploy)
+        self.assertIn('git reset --hard "$EXPECTED_COMMIT"', deploy)
+        self.assertGreaterEqual(
+            deploy.count('test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"'), 2
+        )
+        self.assertIn("$script:ExitCode = 1", deploy[deploy.index("if (-not $resolvedIp)") :])
+        rollback = deploy[
+            deploy.index("trap 'code=$?;") : deploy.index("'@", deploy.index("trap 'code=$?;"))
+        ]
+        self.assertNotIn('git reset --hard "$PREV" || true', rollback)
+        self.assertNotIn("rollback-compose-up.txt 2>&1 || true", rollback)
+        self.assertIn("rollback-failed.txt", rollback)
 
     def test_e2e_compose_keeps_data_rights_queue_and_identity_separate(self):
         e2e = yaml.safe_load((ROOT / "e2e/docker-compose.e2e.yml").read_text(encoding="utf-8"))[

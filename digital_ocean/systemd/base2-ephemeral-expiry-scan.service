@@ -1,0 +1,17 @@
+[Unit]
+Description=Scan signed exact-owned Base2 ephemeral expiry plans
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=base2-preview
+Group=base2-preview
+EnvironmentFile=/etc/base2/ephemeral-expiry.env
+ExecStart=/usr/bin/flock --exclusive /var/lib/base2/ephemeral-expiry/.scan.lock /usr/bin/python3 -m scripts.python.ephemeral_expiry --root /var/lib/base2/ephemeral-expiry --key-file ${BASE2_EPHEMERAL_EXPIRY_KEY_FILE}
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/base2/ephemeral-expiry
+UMask=0077

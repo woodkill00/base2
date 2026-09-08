@@ -1,4 +1,5 @@
 import os
+from contextvars import ContextVar
 from contextlib import contextmanager, suppress
 import threading
 import re
@@ -17,6 +18,9 @@ _workspace_pool: ThreadedConnectionPool | None = None
 _workspace_worker_pool: ThreadedConnectionPool | None = None
 _pool_lock = threading.Lock()
 _checkout_lock = threading.Lock()
+_data_rights_claim: ContextVar[tuple[str, str] | None] = ContextVar(
+    'data_rights_claim', default=None
+)
 
 
 def _admitted_connection(pool: ThreadedConnectionPool) -> PsycopgConnection:
@@ -210,6 +214,15 @@ def _bind_tenant(conn: PsycopgConnection, tenant_id: str) -> None:
         cur.execute("SELECT set_config('app.tenant_id', %s, true)", (tenant,))
 
 
+def _bind_data_rights_claim(conn: PsycopgConnection) -> None:
+    claim = _data_rights_claim.get()
+    if claim is None:
+        return
+    with conn.cursor() as cur:
+        cur.execute("SELECT set_config('app.data_rights_operation_id', %s, true)", (claim[0],))
+        cur.execute("SELECT set_config('app.data_rights_claim_token', %s, true)", (claim[1],))
+
+
 def _reset_connection(conn: PsycopgConnection) -> None:
     """Remove transaction/session state before a pooled connection is reused."""
 
@@ -228,6 +241,7 @@ def db_conn(*, tenant_id: str | None = None):
     try:
         if tenant_id is not None:
             _bind_tenant(conn, tenant_id)
+        _bind_data_rights_claim(conn)
         yield conn
     finally:
         _reset_connection(conn)
@@ -245,6 +259,7 @@ def workspace_db_conn(*, tenant_id: str):
             pool.putconn(conn, close=True)
             conn = _admitted_connection(pool)
         _bind_tenant(conn, tenant_id)
+        _bind_data_rights_claim(conn)
         yield conn
     finally:
         _reset_connection(conn)
@@ -318,3 +333,12 @@ def db_schema_ready() -> bool:
         return bool(row and all(row))
     except Exception:
         return False
+
+
+@contextmanager
+def data_rights_claim_context(operation_id: str, claim_token: str):
+    token = _data_rights_claim.set((operation_id, claim_token))
+    try:
+        yield
+    finally:
+        _data_rights_claim.reset(token)

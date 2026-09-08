@@ -1,6 +1,7 @@
 import base64
 import json
 import subprocess
+from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
@@ -242,6 +243,49 @@ def test_backup_removes_output_when_cross_surface_reference_ledger_changes(tmp_p
             config, now=datetime(2026, 9, 8, tzinfo=UTC), runner=changing_ledger
         )
     assert not list(Path(config["backupRoot"]).glob("*.tar.enc"))
+
+
+def test_backup_rejects_aba_even_when_the_reference_ledger_returns_to_the_same_value(tmp_path):
+    config = _config(tmp_path)
+    fences = iter(["101:102:", "101:104:"])
+
+    def aba_runner(command, **kwargs):
+        if command[0] == "psql" and "txid_current_snapshot" in command[-1]:
+            return subprocess.CompletedProcess(command, 0, next(fences) + "\n", "")
+        return _runner(command, **kwargs)
+
+    with pytest.raises(ProductionBackupError, match="cross_surface_snapshot_changed"):
+        create_production_backup(config, now=datetime(2026, 9, 8, tzinfo=UTC), runner=aba_runner)
+    assert not list(Path(config["backupRoot"]).glob("*.tar.enc"))
+
+
+def test_backup_binds_pg_dump_and_reference_ledger_to_one_exported_snapshot(tmp_path):
+    config = _config(tmp_path)
+    commands = []
+    references = _runner(["psql", "SELECT kind"]).stdout
+
+    def recording_runner(command, **kwargs):
+        commands.append(command)
+        return _runner(command, **kwargs)
+
+    @contextmanager
+    def snapshot_factory(_config):
+        yield {
+            "id": "00000003-1",
+            "references": references,
+            "schema": 31,
+            "afterReferences": lambda: references,
+        }
+
+    create_production_backup(
+        config,
+        now=datetime(2026, 9, 8, tzinfo=UTC),
+        runner=recording_runner,
+        snapshot_factory=snapshot_factory,
+    )
+    dump_command = next(command for command in commands if command[0] == "pg_dump")
+    assert dump_command[dump_command.index("--snapshot") + 1] == "00000003-1"
+    assert not any(command[0] == "psql" for command in commands)
 
 
 def test_database_restore_requires_exact_empty_isolated_database(tmp_path):

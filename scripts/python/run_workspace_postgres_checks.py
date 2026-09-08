@@ -355,7 +355,18 @@ def main() -> None:
                 """SELECT COUNT(*) FROM pg_policies
                    WHERE tablename LIKE 'sitecontent_operations%'"""
             )
-            assert cursor.fetchone()[0] == 28
+            operations_policy_count = cursor.fetchone()[0]
+            assert operations_policy_count == 30, operations_policy_count
+            cursor.execute(
+                """SELECT COUNT(*) FROM pg_policies
+                   WHERE tablename IN (
+                       'sitecontent_operationsincident',
+                       'sitecontent_operationsincidentevent'
+                   )
+                     AND policyname='data_rights_claim_fence'
+                     AND permissive='RESTRICTIVE'"""
+            )
+            assert cursor.fetchone()[0] == 2
             cursor.execute(
                 """SELECT COUNT(*) FROM pg_class
                    WHERE relname LIKE 'sitecontent_tenantquota%'
@@ -367,6 +378,14 @@ def main() -> None:
                    WHERE tablename LIKE 'sitecontent_tenantquota%'"""
             )
             assert cursor.fetchone()[0] == 8
+            cursor.execute(
+                """SELECT policyname,cmd,permissive,qual,with_check
+                   FROM pg_policies
+                   WHERE tablename='api_data_rights_operations'
+                   ORDER BY policyname"""
+            )
+            operation_policies = cursor.fetchall()
+            assert len(operation_policies) == 3, operation_policies
             cursor.execute(
                 """SELECT COUNT(*) FROM pg_class WHERE relname IN (
                        'sitecontent_tenantdomainclaim','sitecontent_durablejob',
@@ -453,6 +472,31 @@ def main() -> None:
             cursor.execute("SELECT set_config('app.tenant_id', 'site-a', true)")
             cursor.execute("SELECT current_user,current_setting('app.tenant_id', true)")
             assert cursor.fetchone() == (data_rights_user, "site-a")
+            # Tenant context alone is never authority. An exact operation and
+            # claim token must be bound before any subject or tenant row appears.
+            cursor.execute("SELECT tenant_id FROM api_identity_organizations")
+            assert cursor.fetchall() == []
+            cursor.execute("SELECT user_id FROM api_identity_memberships")
+            assert cursor.fetchall() == []
+            cursor.execute("SELECT email FROM api_auth_users WHERE id=%s", (str(UUID(int=50)),))
+            assert cursor.fetchone() is None
+            operation_id = str(UUID(int=52))
+            stale_claim = str(UUID(int=55))
+            current_claim = str(UUID(int=56))
+            cursor.execute(
+                "SELECT set_config('app.data_rights_operation_id', %s, true)",
+                (operation_id,),
+            )
+            cursor.execute(
+                "SELECT set_config('app.data_rights_claim_token', %s, true)",
+                (stale_claim,),
+            )
+            cursor.execute(
+                "UPDATE api_data_rights_operations SET status='running',claim_token=%s,"
+                "claim_expires_at=NOW()+INTERVAL '5 minutes' WHERE id=%s AND status='queued'",
+                (stale_claim, operation_id),
+            )
+            assert cursor.rowcount == 1
             cursor.execute("SELECT tenant_id FROM api_identity_organizations")
             assert cursor.fetchall() == [("site-a",)]
             cursor.execute("SELECT user_id FROM api_identity_memberships")
@@ -473,42 +517,49 @@ def main() -> None:
             assert (
                 cursor.rowcount == 0
             ), "data_rights_cross_tenant_membership_delete_was_not_blocked"
-            stale_claim = str(UUID(int=55))
-            current_claim = str(UUID(int=56))
+            cursor.execute("SELECT set_config('app.tenant_id', 'site-b', true)")
+            cursor.execute("SELECT tenant_id FROM api_identity_organizations")
+            assert cursor.fetchall() == [], "claim_tenant_switch_was_not_blocked"
+            cursor.execute("SELECT set_config('app.tenant_id', 'site-a', true)")
             cursor.execute(
-                "UPDATE api_data_rights_operations SET status='running',claim_token=%s,"
-                "claim_expires_at=NOW()-INTERVAL '1 second' WHERE id=%s AND status='queued'",
-                (stale_claim, str(UUID(int=52))),
+                "UPDATE api_data_rights_operations SET claim_expires_at=NOW()-INTERVAL '1 second' "
+                "WHERE id=%s AND status='running' AND claim_token=%s",
+                (operation_id, stale_claim),
             )
             assert cursor.rowcount == 1
             cursor.execute(
                 "DELETE FROM api_identity_memberships WHERE organization_id=%s AND user_id=%s",
                 (str(UUID(int=51)), str(UUID(int=50))),
             )
-            assert cursor.rowcount == 1
+            assert cursor.rowcount == 0, "expired_claim_subject_delete_was_not_blocked"
             cursor.execute("SELECT email FROM api_auth_users WHERE id=%s", (str(UUID(int=50)),))
-            assert cursor.fetchone() == (
-                "rights@example.invalid",
-            ), "claimed_subject_access_was_not_preserved"
+            assert cursor.fetchone() is None, "expired_claim_subject_read_was_not_blocked"
+            cursor.execute(
+                "SELECT set_config('app.data_rights_claim_token', %s, true)",
+                (current_claim,),
+            )
             cursor.execute(
                 "UPDATE api_data_rights_operations SET claim_token=%s,"
                 "claim_expires_at=NOW()+INTERVAL '5 minutes' "
                 "WHERE id=%s AND status='running' AND claim_token=%s AND claim_expires_at<NOW()",
-                (current_claim, str(UUID(int=52)), stale_claim),
+                (current_claim, operation_id, stale_claim),
             )
             assert cursor.rowcount == 1
+            cursor.execute("SELECT email FROM api_auth_users WHERE id=%s", (str(UUID(int=50)),))
+            assert cursor.fetchone() == (
+                "rights@example.invalid",
+            ), "reclaimed_subject_access_was_not_restored"
             cursor.execute(
                 "UPDATE api_data_rights_operations SET status='completed',claim_token=NULL,"
                 "claim_expires_at=NULL WHERE id=%s AND status='running' AND claim_token=%s",
-                (str(UUID(int=52)), stale_claim),
+                (operation_id, stale_claim),
             )
             assert cursor.rowcount == 0, "stale_data_rights_claim_was_not_fenced"
             cursor.execute(
-                "UPDATE api_data_rights_operations SET status='failed',claim_token=NULL,"
-                "claim_expires_at=NULL WHERE id=%s AND status='running' AND claim_token=%s",
-                (str(UUID(int=52)), current_claim),
+                "SELECT base2_finalize_data_rights_operation(%s,%s,'failed','','','synthetic')",
+                (operation_id, current_claim),
             )
-            assert cursor.rowcount == 1
+            assert cursor.fetchone() == (True,)
         data_rights_worker.rollback()
         with content_worker.cursor() as cursor:
             cursor.execute("SELECT set_config('app.tenant_id', 'site-a', true)")

@@ -1,0 +1,12 @@
+[Unit]
+Description=Persistent bounded Base2 ephemeral expiry scan
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=10s
+Persistent=true
+Unit=base2-ephemeral-expiry-scan.service
+
+[Install]
+WantedBy=timers.target

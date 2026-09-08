@@ -35,6 +35,9 @@ export const GlassSidebar: React.FC<Props> = ({
   const panelRef = useRef<HTMLElement | null>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const close = useMemo(() => onClose || (() => {}), [onClose]);
+  // The public variant is also a reusable standalone component, so route
+  // highlighting cannot require a Router provider merely to render it.
+  const activePath = window.location.pathname;
 
   const setPanelRef = useCallback((el: HTMLElement | null) => {
     panelRef.current = el;
@@ -48,9 +51,10 @@ export const GlassSidebar: React.FC<Props> = ({
     () =>
       items.map((item, index) => {
         if (typeof item !== 'string') return item;
-        const workspace = items.length === 4
-          ? `/workspace#${item.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
-          : undefined;
+        const workspace =
+          items.length === 4
+            ? `/workspace#${item.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+            : undefined;
         return { label: item, to: workspace || defaultItems[index]?.to || '/' };
       }),
     [items]
@@ -70,6 +74,15 @@ export const GlassSidebar: React.FC<Props> = ({
     restoreFocusRef.current = document.activeElement as HTMLElement | null;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    const background = Array.from(
+      panelRef.current
+        ?.closest('.app-shell-root')
+        ?.querySelectorAll<HTMLElement>('header, main, footer') || []
+    ).filter((element) => !element.contains(panelRef.current));
+    const previousInert = background.map((element) => element.inert);
+    background.forEach((element) => {
+      element.inert = true;
+    });
 
     // Focus the drawer panel for accessibility.
     panelRef.current!.focus();
@@ -78,6 +91,31 @@ export const GlassSidebar: React.FC<Props> = ({
       if (e.key === 'Escape') {
         e.preventDefault();
         close();
+        return;
+      }
+      if (e.key === 'Tab') {
+        const focusable = Array.from(
+          panelRef.current?.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          ) || []
+        ).filter((element) => !element.hidden);
+        if (!focusable.length) {
+          e.preventDefault();
+          panelRef.current?.focus();
+          return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (
+          e.shiftKey &&
+          (document.activeElement === first || document.activeElement === panelRef.current)
+        ) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
 
@@ -85,6 +123,9 @@ export const GlassSidebar: React.FC<Props> = ({
 
     return () => {
       document.body.style.overflow = prevOverflow;
+      background.forEach((element, index) => {
+        element.inert = previousInert[index];
+      });
       document.removeEventListener('keydown', onKeyDown);
       const el = restoreFocusRef.current;
       if (el && typeof el.focus === 'function') {
@@ -362,7 +403,12 @@ export const GlassSidebar: React.FC<Props> = ({
               <ul className="glass-sidebar-list">
                 {normalizedItems.map((item) => (
                   <li key={item.to} className="glass-sidebar-item">
-                    <Link to={item.to} onClick={close} className="block min-h-11 px-3 py-3">
+                    <Link
+                      to={item.to}
+                      onClick={close}
+                      aria-current={activePath === item.to.split('#')[0] ? 'page' : undefined}
+                      className="block min-h-11 px-3 py-3 aria-[current=page]:font-semibold aria-[current=page]:bg-white/20"
+                    >
                       {item.label}
                     </Link>
                   </li>
@@ -382,7 +428,12 @@ export const GlassSidebar: React.FC<Props> = ({
           <ul className="glass-sidebar-list">
             {normalizedItems.map((item) => (
               <li key={item.to} className="glass-sidebar-item">
-                <Link to={item.to} onClick={close} className="block min-h-11 px-3 py-3">
+                <Link
+                  to={item.to}
+                  onClick={close}
+                  aria-current={activePath === item.to.split('#')[0] ? 'page' : undefined}
+                  className="block min-h-11 px-3 py-3 aria-[current=page]:font-semibold aria-[current=page]:bg-white/20"
+                >
                   {item.label}
                 </Link>
               </li>

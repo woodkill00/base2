@@ -13,26 +13,13 @@ export default class VisualReceiptReporter {
     const project = test.parent.project()?.name || 'unknown';
     const primary = test.title === 'operations center is accessible responsive and visually stable';
     const state = test.title.includes('truthful empty') ? 'empty-error' : 'recovery';
-    const captures = [];
-    if (result.status === 'passed') {
-      if (primary) {
-        captures.push(`operations-center-${project}-${project}-linux.png`);
-        if (project === 'chromium-desktop') {
-          captures.push('operations-center-cancel-confirmation-chromium-desktop-linux.png');
-        }
-      } else if (state === 'empty-error') {
-        captures.push(
-          `operations-center-empty-${project}-linux.png`,
-          `operations-center-error-${project}-linux.png`
-        );
-      } else {
-        captures.push(
-          `operations-center-partial-${project}-linux.png`,
-          `operations-center-reauth-${project}-linux.png`,
-          `operations-center-read-only-${project}-linux.png`
-        );
-      }
-    }
+    const captures = result.attachments
+      .filter((attachment) => attachment.name.startsWith('visual:') && attachment.body)
+      .map((attachment) => ({
+        name: attachment.name.slice('visual:'.length),
+        sha256: createHash('sha256').update(attachment.body).digest('hex'),
+      }))
+      .sort((left, right) => left.name.localeCompare(right.name));
     this.results.push({
       project,
       title: test.title,

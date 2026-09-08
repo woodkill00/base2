@@ -236,4 +236,73 @@ describe('GlassSidebar', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
     window.matchMedia = originalMatchMedia;
   });
+
+  test('mobile drawer traps focus, makes the shell inert, and restores both on cleanup', () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = (query) =>
+      ({
+        matches: query.includes('max-width'),
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+      }) as unknown as MediaQueryList;
+
+    const { unmount } = render(
+      <MemoryRouter>
+        <div className="app-shell-root">
+          <header data-testid="shell-header" />
+          <GlassSidebar
+            isOpen
+            onClose={() => {}}
+            items={[
+              { label: 'Home', to: '/' },
+              { label: 'Settings', to: '/settings' },
+            ]}
+          />
+          <main data-testid="shell-main" />
+          <footer data-testid="shell-footer" />
+        </div>
+      </MemoryRouter>
+    );
+    const header = screen.getByTestId('shell-header');
+    const main = screen.getByTestId('shell-main');
+    const footer = screen.getByTestId('shell-footer');
+    expect(header.inert).toBe(true);
+    expect(main.inert).toBe(true);
+    expect(footer.inert).toBe(true);
+
+    const links = screen.getAllByRole('link');
+    links.at(-1)!.focus();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
+    expect(links[0]).toHaveFocus();
+    links[0].focus();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true }));
+    expect(links.at(-1)).toHaveFocus();
+
+    unmount();
+    expect(header.inert).not.toBe(true);
+    expect(main.inert).not.toBe(true);
+    expect(footer.inert).not.toBe(true);
+    window.matchMedia = originalMatchMedia;
+  });
+
+  test('marks the current route for assistive technology', () => {
+    const originalPath = window.location.pathname;
+    window.history.pushState({}, '', '/settings');
+    renderSidebar(
+      <GlassSidebar
+        items={[
+          { label: 'Home', to: '/' },
+          { label: 'Settings', to: '/settings' },
+        ]}
+      />
+    );
+    expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Home' })).not.toHaveAttribute('aria-current');
+    window.history.pushState({}, '', originalPath);
+  });
 });

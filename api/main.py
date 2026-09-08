@@ -90,6 +90,10 @@ async def site_metadata():
 async def openapi_alias():
     # Keep /api/openapi.json stable for contract/runtime checks even if
     # docs/openapi are served at /openapi.json (e.g., swagger subdomain).
+    # Production exposes the canonical schema only through the separately
+    # authenticated Swagger host; the main-domain /api alias never bypasses it.
+    if not _docs_enabled or settings.ENV == 'production':
+        raise HTTPException(status_code=404, detail='not_found')
     return JSONResponse(app.openapi())
 
 

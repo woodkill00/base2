@@ -142,7 +142,9 @@ def test_export_timestamp_serialization_is_explicit(monkeypatch):
     payload = worker._export_payload(tenant_id='tenant-a', user_id=USER_ID)
     assert payload['account']['created_at'] == '2026-08-25T00:00:00+00:00'
     assert payload['memberships'] == []
-    assert payload['workspace'] == {'schema_version': 1, 'records': []}
+    assert payload['workspace']['schema_version'] == 2
+    assert payload['workspace']['records'] == []
+    assert len(payload['workspace']['subject_surfaces']) == len(worker.SUBJECT_DATA_INVENTORY)
 
 
 def test_workspace_privacy_projection_is_tenant_subject_and_field_permission_bound():
@@ -173,7 +175,7 @@ def test_workspace_privacy_projection_is_tenant_subject_and_field_permission_bou
             self.calls.append((' '.join(query.split()), params))
 
         def fetchall(self):
-            return self.results.pop(0)
+            return self.results.pop(0) if self.results else []
 
     cursor = Cursor()
     projection = worker._workspace_projection(cursor, tenant_id='tenant-a', user_id=USER_ID)
@@ -197,9 +199,15 @@ def test_workspace_subject_unlink_preserves_immutable_audit_and_pseudonymizes_jo
     statements = ' '.join(query for query, _ in cursor.calls)
     assert 'DELETE FROM sitecontent_savedview' in statements
     assert "status='deleted'" in statements
-    assert 'UPDATE sitecontent_workspaceauditevent' not in statements
+    assert 'UPDATE sitecontent_workspaceauditevent' in statements
     assert 'DELETE FROM sitecontent_workspaceauditevent' not in statements
-    pseudonyms = [params[0] for query, params in cursor.calls if 'requester_ref=%s' in query]
+    assert 'UPDATE sitecontent_mediacollection' in statements
+    assert 'UPDATE sitecontent_breakglassgrant' in statements
+    pseudonyms = [
+        params[0]
+        for query, params in cursor.calls
+        if params and query.startswith('UPDATE') and str(params[0]).startswith('deleted:')
+    ]
     assert len(set(pseudonyms)) == 1
     assert pseudonyms[0].startswith('deleted:') and str(USER_ID) not in pseudonyms[0]
 
@@ -259,6 +267,7 @@ def test_deactivation_revokes_sessions_suspends_memberships_and_commits_atomical
 
         def __init__(self):
             self.calls = []
+            self.rows = [None, (False,)]
 
         def __enter__(self):
             return self
@@ -270,7 +279,7 @@ def test_deactivation_revokes_sessions_suspends_memberships_and_commits_atomical
             self.calls.append((' '.join(query.split()), params))
 
         def fetchone(self):
-            return None
+            return self.rows.pop(0)
 
     class Connection:
         def __init__(self):
@@ -298,9 +307,96 @@ def test_deactivation_revokes_sessions_suspends_memberships_and_commits_atomical
 
     monkeypatch.setattr(worker, 'db_conn', lambda **kwargs: Context())
     result = worker._deactivate_account(tenant_id='tenant-a', user_id=USER_ID)
-    assert result == {'schema_version': 1, 'deactivated': True, 'tenant_id': 'tenant-a'}
+    assert result['tenant_membership_deactivated'] is True
+    assert result['global_account_deactivated'] is True
     assert connection.commits == 1 and connection.rollbacks == 0
     statements = ' '.join(query for query, _ in connection.value.calls)
     assert 'api_auth_refresh_tokens' in statements
     assert "status='suspended'" in statements
     assert 'is_active=FALSE' in statements
+
+
+def test_subject_inventory_is_versioned_and_covers_human_identity_surfaces():
+    assert worker.SUBJECT_DATA_INVENTORY_VERSION == 1
+    registered = {(table, column) for table, column, _treatment in worker.SUBJECT_DATA_INVENTORY}
+    assert {
+        ('sitecontent_savedview', 'owner_ref'),
+        ('sitecontent_importjob', 'requester_ref'),
+        ('sitecontent_exportjob', 'requester_ref'),
+        ('sitecontent_workspaceauditevent', 'actor_ref'),
+        ('sitecontent_mediadeliverygrant', 'audience_ref'),
+        ('sitecontent_mediaauditevent', 'actor_ref'),
+        ('sitecontent_mediaauditevent', 'subject_ref'),
+        ('sitecontent_mediaabusecase', 'reporter_ref'),
+        ('sitecontent_mediaabusecase', 'reviewer_ref'),
+        ('sitecontent_mediaabusecase', 'appellant_ref'),
+        ('sitecontent_tenantlifecycleevent', 'actor_ref'),
+        ('sitecontent_tenantlifecycleevent', 'target_owner_ref'),
+        ('sitecontent_breakglassgrant', 'requester_ref'),
+        ('sitecontent_breakglassgrant', 'approver_ref'),
+    }.issubset(registered)
+
+
+@pytest.mark.parametrize('operation', ['deletion', 'deactivation'])
+def test_tenant_only_closure_preserves_global_identity_when_another_membership_is_active(
+    monkeypatch, operation
+):
+    class Cursor:
+        rowcount = 1
+
+        def __init__(self):
+            self.calls = []
+            self.rows = [(True,)] if operation == 'deletion' else [None, (True,)]
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def execute(self, query, params):
+            self.calls.append((' '.join(query.split()), params))
+
+        def fetchone(self):
+            return self.rows.pop(0)
+
+    class Connection:
+        def __init__(self):
+            self.value = Cursor()
+            self.commits = 0
+
+        def cursor(self):
+            return self.value
+
+        def commit(self):
+            self.commits += 1
+
+        def rollback(self):
+            raise AssertionError('tenant-only closure unexpectedly rolled back')
+
+    connection = Connection()
+
+    class Context:
+        def __enter__(self):
+            return connection
+
+        def __exit__(self, *_args):
+            return False
+
+    monkeypatch.setattr(worker, 'db_conn', lambda **kwargs: Context())
+    if operation == 'deletion':
+        monkeypatch.setattr(
+            worker,
+            '_workspace_projection',
+            lambda *_args, **_kwargs: {'records': [], 'subject_surfaces': []},
+        )
+        monkeypatch.setattr(worker, '_unlink_workspace_subject', lambda *_args, **_kwargs: None)
+        result = worker._delete_account(tenant_id='tenant-a', user_id=USER_ID)
+        assert result['global_account_deleted'] is False
+    else:
+        result = worker._deactivate_account(tenant_id='tenant-a', user_id=USER_ID)
+        assert result['global_account_deactivated'] is False
+    statements = ' '.join(query for query, _params in connection.value.calls)
+    assert 'api_auth_refresh_tokens' not in statements
+    assert 'UPDATE api_auth_users' not in statements
+    assert connection.commits == 1

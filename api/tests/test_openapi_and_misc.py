@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 # Import the FastAPI app
 from api.main import app
+from api import main
 from api.site_manifest import load_runtime_manifest
 
 
@@ -78,3 +79,10 @@ def test_api_openapi_alias_exists_and_is_json():
     assert r.status_code == 200
     assert isinstance(r.json(), dict)
     assert 'openapi' in r.json() or 'paths' in r.json()
+
+
+def test_api_openapi_alias_is_never_a_production_auth_bypass(monkeypatch):
+    monkeypatch.setattr(main.settings, 'ENV', 'production')
+    response = _client().get('/api/openapi.json')
+    assert response.status_code == 404
+    assert response.json() == {'detail': 'not_found'}

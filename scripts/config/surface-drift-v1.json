@@ -2,7 +2,7 @@
   "algorithm": "sha256",
   "groups": {
     "config": {
-      ".env.example": "51343a73a0add7f44e88855fbc7a1312c0689e39de65215794678ce85a9489ef",
+      ".env.example": "2dcc8d3bb1b68a4f80d2a79f51bc66ca866de4a2a0554eec534003b8bea2d916",
       "api/site_profiles/base2-obsidian.json": "c7d8f67ddd1ab6cd155000a741377d92a07e09ab8fe5bca73c1e961d092cbbd6",
       "api/site_profiles/content-workspace-contracts.json": "b8202643502ab5257a92a7370dd2ef4afbc11d75b2fd1772d2b99cb8f7f6beee",
       "api/site_profiles/content-workspace-presets.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
@@ -98,7 +98,7 @@
       "specs/001-django-fastapi-react/contracts/openapi.yaml": "f96ae1b450ed0e54406f0b40a301dab36c1b09d9eb9886fd2cb9d18db728deed"
     },
     "routeInventory": {
-      "api/main.py": "f284439a255d5d9e6fab2667ce325eeac6cc4ef4acba5f851902b9d5f903c74c",
+      "api/main.py": "98c72235b5dc661dc3dc31aa9ddb73c6cd985f13e3da79d5735c9ac642aee248",
       "api/routes/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "api/routes/auth.py": "961cc074c8457957aaf5a799f82dd53b51f88599f9eae24dd65878218d4e9ad8",
       "api/routes/content_workspace.py": "71795a85af8dec9e8f392f757a3640cc46b3466bccdf90941ace3f59f131b360",

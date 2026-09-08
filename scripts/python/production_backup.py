@@ -22,6 +22,7 @@ import subprocess
 import tarfile
 import tempfile
 from collections.abc import Callable
+from contextlib import contextmanager, nullcontext
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -185,6 +186,41 @@ OBJECT_REFERENCE_SQL = """SELECT kind || ':' || site_id || ':' || object_key || 
    SELECT 'export',site_id,encrypted_object_key,output_sha256
      FROM sitecontent_exportjob WHERE encrypted_object_key<>''
  ) object_refs ORDER BY kind,site_id,object_key,digest"""
+SNAPSHOT_FENCE_SQL = "SELECT txid_current_snapshot()"
+
+
+@contextmanager
+def _repeatable_read_snapshot(config: dict[str, Any]):
+    """Hold the exported relational snapshot across ledger, dump, and object capture."""
+    import psycopg2
+
+    connection = psycopg2.connect(service=config["pgService"], servicefile=config["pgServiceFile"])
+    try:
+        connection.set_session(isolation_level="REPEATABLE READ", readonly=True)
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT pg_export_snapshot()")
+            snapshot_id = str(cursor.fetchone()[0])
+            cursor.execute(OBJECT_REFERENCE_SQL)
+            references = "".join("\t".join(str(item) for item in row) + "\n" for row in cursor)
+            cursor.execute(
+                "SELECT COALESCE(MAX((regexp_match(name, '^[0-9]+'))[1]::int),0) "
+                "FROM django_migrations WHERE app='sitecontent'"
+            )
+            schema = int(cursor.fetchone()[0])
+
+            def after_references() -> str:
+                cursor.execute(OBJECT_REFERENCE_SQL)
+                return "".join("\t".join(str(item) for item in row) + "\n" for row in cursor)
+
+            yield {
+                "id": snapshot_id,
+                "references": references,
+                "schema": schema,
+                "afterReferences": after_references,
+            }
+    finally:
+        connection.rollback()
+        connection.close()
 
 
 def _verify_object_references(raw: str, *, object_root: Path, key: bytes) -> None:
@@ -329,6 +365,7 @@ def create_production_backup(
     *,
     now: datetime | None = None,
     runner: Callable[..., subprocess.CompletedProcess] = subprocess.run,
+    snapshot_factory: Callable[[dict[str, Any]], Any] | None = None,
 ) -> dict[str, Any]:
     current = (now or datetime.now(UTC)).astimezone(UTC)
     stamp = current.strftime("%Y%m%dT%H%M%SZ")
@@ -349,7 +386,15 @@ def create_production_backup(
             fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
             raise ProductionBackupError("backup:already_running") from exc
-        with tempfile.TemporaryDirectory(prefix="base2-production-backup-") as temporary:
+        snapshot_context = (
+            (snapshot_factory or _repeatable_read_snapshot)(config)
+            if snapshot_factory is not None or runner is subprocess.run
+            else nullcontext(None)
+        )
+        with (
+            snapshot_context as database_snapshot,
+            tempfile.TemporaryDirectory(prefix="base2-production-backup-") as temporary,
+        ):
             dump = Path(temporary) / "database.dump"
             staged_objects = Path(temporary) / "objects"
             environment = {
@@ -364,48 +409,78 @@ def create_production_backup(
                 "--command",
                 OBJECT_REFERENCE_SQL,
             ]
-            before_references = runner(
-                reference_command,
-                env=environment,
-                capture_output=True,
-                text=True,
-                timeout=30,
-                check=False,
-            )
-            if before_references.returncode != 0:
-                raise ProductionBackupError("backup:object_reference_ledger_invalid")
-            ledger = runner(
-                [
-                    "psql",
-                    f"service={config['pgService']}",
-                    "--tuples-only",
-                    "--no-align",
-                    "--command",
-                    "SELECT COALESCE(MAX((regexp_match(name, '^[0-9]+'))[1]::int),0) "
-                    "FROM django_migrations WHERE app='sitecontent'",
-                ],
-                env=environment,
-                capture_output=True,
-                text=True,
-                timeout=30,
-                check=False,
-            )
-            try:
-                live_schema = int((ledger.stdout or "").strip())
-            except ValueError as exc:
-                raise ProductionBackupError("backup:schema_ledger_invalid") from exc
-            if ledger.returncode != 0 or live_schema != config["dataSchema"]:
+            fence_command = [
+                "psql",
+                f"service={config['pgService']}",
+                "--tuples-only",
+                "--no-align",
+                "--command",
+                SNAPSHOT_FENCE_SQL,
+            ]
+            if database_snapshot is not None:
+                before_references_text = str(database_snapshot["references"])
+                live_schema = int(database_snapshot["schema"])
+                before_fence_text = str(database_snapshot["id"])
+                if not before_fence_text:
+                    raise ProductionBackupError("backup:snapshot_fence_invalid")
+            else:
+                before_fence = runner(
+                    fence_command,
+                    env=environment,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=False,
+                )
+                if before_fence.returncode != 0 or not (before_fence.stdout or "").strip():
+                    raise ProductionBackupError("backup:snapshot_fence_invalid")
+                before_fence_text = before_fence.stdout
+                before_references = runner(
+                    reference_command,
+                    env=environment,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=False,
+                )
+                if before_references.returncode != 0:
+                    raise ProductionBackupError("backup:object_reference_ledger_invalid")
+                before_references_text = before_references.stdout
+                ledger = runner(
+                    [
+                        "psql",
+                        f"service={config['pgService']}",
+                        "--tuples-only",
+                        "--no-align",
+                        "--command",
+                        "SELECT COALESCE(MAX((regexp_match(name, '^[0-9]+'))[1]::int),0) "
+                        "FROM django_migrations WHERE app='sitecontent'",
+                    ],
+                    env=environment,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=False,
+                )
+                try:
+                    live_schema = int((ledger.stdout or "").strip())
+                except ValueError as exc:
+                    raise ProductionBackupError("backup:schema_ledger_invalid") from exc
+                if ledger.returncode != 0:
+                    raise ProductionBackupError("backup:schema_ledger_invalid")
+            if live_schema != config["dataSchema"]:
                 raise ProductionBackupError("backup:schema_mismatch")
+            dump_command = [
+                "pg_dump",
+                "--format=custom",
+                "--no-owner",
+                "--no-privileges",
+            ]
+            if database_snapshot is not None:
+                dump_command.extend(["--snapshot", before_fence_text])
+            dump_command.extend(["--file", str(dump), f"service={config['pgService']}"])
             completed = runner(
-                [
-                    "pg_dump",
-                    "--format=custom",
-                    "--no-owner",
-                    "--no-privileges",
-                    "--file",
-                    str(dump),
-                    f"service={config['pgService']}",
-                ],
+                dump_command,
                 env=environment,
                 capture_output=True,
                 text=True,
@@ -427,7 +502,7 @@ def create_production_backup(
             except (OSError, shutil.Error) as exc:
                 raise ProductionBackupError("backup:object_snapshot_failed") from exc
             _verify_object_references(
-                before_references.stdout,
+                before_references_text,
                 object_root=staged_objects,
                 key=config["_object_key"],
             )
@@ -445,18 +520,33 @@ def create_production_backup(
                 )
             except RecoveryDenied as exc:
                 raise ProductionBackupError(str(exc)) from exc
-            after_references = runner(
-                reference_command,
-                env=environment,
-                capture_output=True,
-                text=True,
-                timeout=30,
-                check=False,
-            )
-            if (
-                after_references.returncode != 0
-                or before_references.stdout != after_references.stdout
-            ):
+            if database_snapshot is not None:
+                after_references_text = database_snapshot["afterReferences"]()
+                snapshot_changed = before_references_text != after_references_text
+            else:
+                after_references = runner(
+                    reference_command,
+                    env=environment,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=False,
+                )
+                after_fence = runner(
+                    fence_command,
+                    env=environment,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=False,
+                )
+                snapshot_changed = (
+                    after_references.returncode != 0
+                    or before_references_text != after_references.stdout
+                    or after_fence.returncode != 0
+                    or before_fence_text != after_fence.stdout
+                )
+            if snapshot_changed:
                 output.unlink(missing_ok=True)
                 raise ProductionBackupError("backup:cross_surface_snapshot_changed")
         receipt = {

@@ -270,24 +270,28 @@ function Invoke-RollbackOnFailureIfEnabled([string]$ip, [string]$keyPath) {
   $remote = @'
 set -eu
 cd __REMOTE_APP_DIR__
+trap 'code=$?; printf "rollback_failed exit=%s\n" "$code" > /root/logs/build/rollback-failed.txt; exit "$code"' ERR
 PREV_FILE=/root/logs/build/pre-deploy-head.txt
 if [ ! -f "$PREV_FILE" ]; then
   echo "No pre-deploy head recorded at $PREV_FILE" >&2
   exit 2
 fi
-PREV=$(cat "$PREV_FILE" | tr -d '\r\n' || true)
+PREV=$(tr -d '\r\n' < "$PREV_FILE")
 if [ -z "$PREV" ]; then
   echo "Pre-deploy head file was empty" >&2
   exit 2
 fi
 
 echo "Rolling back to $PREV"
-git reset --hard "$PREV" || true
+git reset --hard "$PREV"
 
 # Recreate core services to match the rolled-back code.
-docker compose -f development.docker.yml --profile celery up -d --build --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-content-worker celery-data-rights-worker celery-email-worker celery-beat >/root/logs/build/rollback-compose-up.txt 2>&1 || true
+docker compose -f development.docker.yml --profile celery up -d --build --no-deps --remove-orphans django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-content-worker celery-data-rights-worker celery-email-worker celery-beat >/root/logs/build/rollback-compose-up.txt 2>&1
 
-echo "Rollback completed. Current HEAD: $(git rev-parse HEAD 2>/dev/null || true)"
+CURRENT_HEAD=$(git rev-parse HEAD)
+test "$CURRENT_HEAD" = "$PREV"
+rm -f /root/logs/build/rollback-failed.txt
+echo "Rollback completed. Current HEAD: $CURRENT_HEAD"
 '@
 
   $remote = $remote.Replace('__REMOTE_APP_DIR__', $script:RemoteAppDir)
@@ -1024,32 +1028,38 @@ if [ -d __REMOTE_APP_DIR__ ]; then
     # Determine branch from .env (DO_APP_BRANCH), default to main
     BRANCH=$(grep -E '^DO_APP_BRANCH=' .env 2>/dev/null | cut -d'=' -f2 | sed 's/[[:space:]]*#.*$//' | tr -d '\r')
     if [ -z "$BRANCH" ]; then BRANCH=main; fi
-    git fetch --all --prune || true
+    EXPECTED_COMMIT=$(grep -E '^DEPLOY_EXPECTED_COMMIT=' .env 2>/dev/null | cut -d'=' -f2 | tr -d '\r')
+    printf '%s\n' "$EXPECTED_COMMIT" | grep -Eq '^[0-9a-f]{40}$' || {
+      echo "DEPLOY_EXPECTED_COMMIT must be an exact 40-character lowercase Git commit" >&2
+      exit 42
+    }
+    git fetch --all --prune
     # Preserve ACME storage across git operations.
     # If letsencrypt/ is wiped, Traefik will fall back to its default cert and browsers will error.
     if [ -d letsencrypt ]; then
-      tar -czf /root/logs/build/letsencrypt-backup.tgz letsencrypt || true
-      rm -rf /root/letsencrypt.keep || true
-      mv letsencrypt /root/letsencrypt.keep || true
+      tar -czf /root/logs/build/letsencrypt-backup.tgz letsencrypt
+      rm -rf /root/letsencrypt.keep
+      mv letsencrypt /root/letsencrypt.keep
     fi
     # Reset any local changes and clean untracked files to avoid checkout failures
-    git reset --hard HEAD || true
-    git clean -fd || true
+    git reset --hard HEAD
+    git clean -fd
 
     # Restore ACME storage after git clean/checkout.
     if [ -d /root/letsencrypt.keep ]; then
-      rm -rf letsencrypt || true
-      mv /root/letsencrypt.keep letsencrypt || true
+      rm -rf letsencrypt
+      mv /root/letsencrypt.keep letsencrypt
     fi
     # Force checkout to track remote branch and hard reset to remote to avoid rebase or merge prompts
     if git show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
-      git checkout -B "$BRANCH" "origin/$BRANCH" || git checkout -f "$BRANCH" || true
-      git reset --hard "origin/$BRANCH" || true
+      git checkout -B "$BRANCH" "origin/$BRANCH"
+      git reset --hard "$EXPECTED_COMMIT"
     else
-      git checkout -f "$BRANCH" || true
-      git pull --rebase || true
+      echo "Required remote branch origin/$BRANCH is absent" >&2
+      exit 43
     fi
-    (git rev-parse HEAD 2>/dev/null || true) > /root/logs/build/post-deploy-head.txt || true
+    test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+    git rev-parse HEAD > /root/logs/build/post-deploy-head.txt
   fi
   # Restore .env after repo sync so Compose uses the deployed values
   if [ -f /root/logs/build/env-backup.env ]; then
@@ -1122,14 +1132,14 @@ PY
   # Bring up core services without forcing builds (fast path).
   status "up" "docker compose up core services (no build)"
   set +e
-  docker compose -f development.docker.yml --profile celery up -d --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-content-worker celery-data-rights-worker celery-email-worker celery-beat > /root/logs/build/compose-up-core.txt 2>&1
+  docker compose -f development.docker.yml --profile celery up -d --no-deps --remove-orphans django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-content-worker celery-data-rights-worker celery-email-worker celery-beat > /root/logs/build/compose-up-core.txt 2>&1
   CORE_UP_CODE=$?
   echo $CORE_UP_CODE > /root/logs/build/compose-up-core.status 2>/dev/null || true
   set -e
   if [ "$CORE_UP_CODE" != "0" ]; then
     # Fallback for first-time builds or missing images.
     status "up" "compose up failed; retrying with --build"
-    docker compose -f development.docker.yml --profile celery up -d --build --remove-orphans postgres django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-content-worker celery-data-rights-worker celery-email-worker celery-beat > /root/logs/build/compose-up-core-build.txt 2>&1
+    docker compose -f development.docker.yml --profile celery up -d --build --no-deps --remove-orphans django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-content-worker celery-data-rights-worker celery-email-worker celery-beat > /root/logs/build/compose-up-core-build.txt 2>&1
   fi
 
   # Selective rebuilds/recreates based on diff.
@@ -1781,7 +1791,8 @@ PY
     echo "SKIPPED: set RUN_REMOTE_TESTS=1 (use -RunTests or -AllTests)" > /root/logs/django-pytest.txt || true
   fi
 
-  status "done" "remote verification complete"
+  test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+  status "done" "remote verification complete at $EXPECTED_COMMIT"
   date -u +"%Y-%m-%dT%H:%M:%SZ" > /root/logs/remote_verify.done || true
 fi
 '@
@@ -2158,7 +2169,7 @@ try {
 
   $resolvedIp = Get-DropletIp
   if (-not $resolvedIp) {
-    Write-Warning "Could not determine droplet IP. Skipping remote verification."
+    Write-Error "Could not determine droplet IP; mandatory remote verification cannot run."
     Write-Section "Remote verify unavailable - saving local artifacts"
     $dest = Ensure-ArtifactDir
     try { $env:DEPLOY_ARTIFACT_DIR = $dest } catch {}
@@ -2172,7 +2183,7 @@ try {
     $support += "Ensure DNS points to droplet and DO token is valid."
     $support += "Run: ./digital_ocean/scripts/powershell/deploy.ps1 -Preflight -RunTests -TestsJson"
     Set-Content -Path (Join-Path $dest 'support.txt') -Value ($support -join [Environment]::NewLine) -Encoding UTF8
-    $script:ExitCode = 0
+    $script:ExitCode = 1
     throw $script:EarlyExitSentinel
   }
 

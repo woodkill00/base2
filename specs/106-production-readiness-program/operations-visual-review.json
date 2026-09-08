@@ -7,9 +7,13 @@
     "react-app/src/components/glass/AppShell.tsx": "6f85d98b032a4b21baa644bffa510d276aba568703345242d9302a33c354c446",
     "react-app/src/components/glass/GlassButton.tsx": "e32c90da113739bb526b2329519e964bd611a1be66d86852e2f4fb075d32e5a1",
     "react-app/src/components/glass/GlassHeader.tsx": "5b995fabdad790b6887eabf5bfc0ecc66aeda70581908b435cfade1d4ab1e460",
-    "react-app/e2e/operations/operations-release.spec.ts": "768a5f635451fd7986f306f576e2b631c00eeee98978b51b560b6d534464eb1d",
+    "react-app/src/components/glass/GlassSidebar.tsx": "b42c55b911d63a9947c9a448eca8997c534ad1563b9e4c81743db62e43683110",
+    "react-app/src/components/glass/ThemeToggle.tsx": "18344be1e4af139d12931c3ed0d1917915eac3f6fe8f66c7965b8c1b52290b08",
+    "react-app/src/components/Navigation.js": "fd9c2fb05adac455b46db7ebdea63541f47decd6f8559bb0b9ce0b6257437d88",
+    "react-app/src/index.css": "a42ec15997f5f0513eb59d9bffb6b2fca5356854d6b0ea9b94b1e9a3cdf5c786",
+    "react-app/e2e/operations/operations-release.spec.ts": "9c45e1b6cc61b02cea4df4dcb5f84d9b3f0c6e6107c4db26601af92f12af4319",
     "react-app/playwright.operations-release.config.mjs": "74b18f1655cb55b9bcfcb290da0db6042700fdc01d964c3c748591f42ce3d1b9",
-    "react-app/e2e/operations/visual-receipt-reporter.mjs": "d6da62d4238b9d59f60d4f6da709b34d7180676fee7ec3d3e45a76792c3a49a2"
+    "react-app/e2e/operations/visual-receipt-reporter.mjs": "2a231b5946a65f18196cfc0a7aeab412c5f00990efa9acc797fbf04e7eff166e"
   },
   "screenshots": {
     "operations-center-cancel-confirmation-chromium-desktop-linux.png": {
@@ -133,7 +137,7 @@
       "pixels": [1430, 2261]
     },
     "operations-center-reauth-chromium-compact-linux.png": {
-      "sha256": "4cfd1e3039b28920445a07f815b2e9064369808af9da5e53c43e1d40d19a57d6",
+      "sha256": "10d48eaed68d66e2abd8ab6305a2dfc1b42373be9ec551b030e24a96fa011e04",
       "pixels": [320, 3596]
     },
     "operations-center-reauth-chromium-desktop-linux.png": {
@@ -154,8 +158,8 @@
     }
   },
   "runnerReceipt": {
-    "sha256": "b3db9674f3d0e43c67f7789ebf308b3e307faece4ae0ee269670f3cd1542fad3",
-    "digest": "88133f9c3d82588ba562da024a33f59af87bde7a48a42a2bef874fad272953a9"
+    "sha256": "8c0fb31554b2546cfc4e3badef6cf04556ad0a2f8cb18c05762a9c568109056f",
+    "digest": "508bffd6ffa3d50ed4ce41f1e5ffd76c3deca0ae5b5dc81540ff5eeb049b2e19"
   },
   "assertions": {
     "accessibility": "pass",

@@ -116,6 +116,7 @@ http:
       middlewares:
         - security-headers
         - security-csp-swagger
+        - traefik-basic-auth
         - rate-limit
         - retry
       tls:
@@ -129,6 +130,8 @@ http:
       entryPoints:
         - websecure
       middlewares:
+        - security-headers
+        - traefik-basic-auth
         - swagger-root-to-docs
       tls:
         certResolver: ${TRAEFIK_CERT_RESOLVER}

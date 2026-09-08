@@ -636,3 +636,47 @@ the browser run itself passed. B244 requires capture and evidence generation aft
 normalization and before the replacement candidate is committed. The failed gate
 is historical evidence only; both complete gates restart from zero on the next
 exact head.
+
+## Analysis cycle 20 — independent review rejects the twice-green head
+
+Candidate `3d173dc0ba0271c0dd448da79be37642df012bea` passed all 107
+complete-gate checks twice and 67 critical isolation/state-machine tests ten
+times, but fresh exact-head review still rejected publication. UX returned
+C0/H0/M2/L1, data returned C0/H2/M2/L0, and operations returned C0/H5/M3/L1.
+The automated evidence remains valuable historical proof of implemented
+contracts, but cannot establish readiness for contracts it did not contain.
+
+The release-blocking gaps are direct self-selectable data-rights database access,
+tenant-local privacy requests causing global identity destruction, an ABA window
+between relational and object backup snapshots, incomplete subject-data coverage,
+an escapable modal drawer, receipts synthesized from test names rather than actual
+attachments, missing shell/style invalidation sources, absent current-route
+orientation, omitted canary secret generation, Django database TLS bypass,
+deployment success without a resolved target or exact checked-out commit,
+helper-only generic expiry, suppressed rollback failures, a schema/docs exposure
+bypass, and a broker-only Celery Beat health claim. The external-database topology
+also retains an unnecessary bundled PostgreSQL dependency. Tasks B245-B262 bind
+each finding to implementation, hostile proof, new exact-head gates, and another
+independent review. No provider, DNS, certificate, credential, publication,
+merge, deployment, or destructive action was performed by this review cycle.
+
+## Analysis cycle 21 — integrated security and evidence corrections
+
+Cycle-20 implementation exposed additional defects only when its security and
+runtime contracts were exercised together. The disposable real-PostgreSQL run
+found that claim renewal, terminal settlement, claim propagation, and
+cross-role RLS reads needed fixed non-disclosing database guards. Backup review
+showed that pre/post fences alone do not bind pg_dump to the object-reference
+ledger, so production now requires one exported repeatable-read snapshot for
+both. Subject coverage was expanded and versioned rather than inferred from a
+partial table list.
+
+The generic-expiry helper was promoted to a durable bounded registry and
+hardened scheduled scanner with one fixed exact-owned adapter. Production
+Compose and rollback assertions were tightened around the external database
+topology and exact commit. Finally, the cross-browser run rejected a Firefox
+network-idle wait even though the user-visible page was ready; B268 replaces
+that transport heuristic with explicit UI readiness before regenerating
+current-run evidence. Tasks B263-B269 retain these integrated discoveries as
+ordered proof obligations. No provider, DNS, certificate, credential,
+publication, merge, deployment, or destructive action was performed.

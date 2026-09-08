@@ -4,11 +4,40 @@ import json
 import hashlib
 from uuid import UUID
 
-from api.db import db_conn, workspace_db_conn
+from api.db import data_rights_claim_context, db_conn, workspace_db_conn
 from api.repositories import data_rights as repository
 from api.security.secret_box import SecretBox
 from api.services.data_rights import receipt_digest, validate_correction
 from api.settings import settings
+
+SUBJECT_DATA_INVENTORY_VERSION = 1
+SUBJECT_DATA_INVENTORY = (
+    ('sitecontent_contentrevision', 'actor_ref', 'pseudonymize'),
+    ('sitecontent_savedview', 'owner_ref', 'delete'),
+    ('sitecontent_importjob', 'requester_ref', 'pseudonymize'),
+    ('sitecontent_exportjob', 'requester_ref', 'pseudonymize'),
+    ('sitecontent_workspaceauditevent', 'actor_ref', 'pseudonymize'),
+    ('sitecontent_mediaasset', 'owner_ref', 'media_delete'),
+    ('sitecontent_mediauploadsession', 'actor_ref', 'pseudonymize'),
+    ('sitecontent_mediametadatarevision', 'actor_ref', 'pseudonymize'),
+    ('sitecontent_mediacollection', 'owner_ref', 'pseudonymize'),
+    ('sitecontent_mediaretentionhold', 'owner_ref', 'pseudonymize'),
+    ('sitecontent_mediadeliverygrant', 'audience_ref', 'pseudonymize'),
+    ('sitecontent_mediaauditevent', 'actor_ref', 'pseudonymize'),
+    ('sitecontent_mediaauditevent', 'subject_ref', 'pseudonymize'),
+    ('sitecontent_mediaabusecase', 'reporter_ref', 'pseudonymize'),
+    ('sitecontent_mediaabusecase', 'reviewer_ref', 'pseudonymize'),
+    ('sitecontent_mediaabusecase', 'appellant_ref', 'pseudonymize'),
+    ('sitecontent_operationsincident', 'owner_ref', 'pseudonymize'),
+    ('sitecontent_operationsincidentevent', 'actor_ref', 'pseudonymize'),
+    ('sitecontent_tenantlifecyclestate', 'owner_ref', 'pseudonymize'),
+    ('sitecontent_tenantlifecycleevent', 'actor_ref', 'pseudonymize'),
+    ('sitecontent_tenantlifecycleevent', 'target_owner_ref', 'pseudonymize'),
+    ('sitecontent_durablejob', 'owner_ref', 'pseudonymize'),
+    ('sitecontent_breakglassgrant', 'requester_ref', 'pseudonymize'),
+    ('sitecontent_breakglassgrant', 'approver_ref', 'pseudonymize'),
+    ('sitecontent_tenantnotification', 'owner_ref', 'pseudonymize'),
+)
 
 
 def _box() -> SecretBox:
@@ -99,8 +128,30 @@ def _workspace_projection(cur, *, tenant_id: str, user_id: UUID) -> dict:
         )
         for definition_id, field_key in cur.fetchall() or []:
             readable.setdefault(str(definition_id), set()).add(field_key)
+    subject_surfaces = []
+    for table, column, treatment in SUBJECT_DATA_INVENTORY:
+        if table == 'sitecontent_contentrevision':
+            cur.execute(
+                f"""SELECT revision.id::text FROM {table} revision
+                    JOIN sitecontent_contentrecord content ON content.id=revision.content_id
+                    WHERE content.site_id=%s AND revision.{column}=%s
+                    ORDER BY revision.id LIMIT 1001""",
+                (tenant_id, actor_ref),
+            )
+        else:
+            cur.execute(
+                f'SELECT id::text FROM {table} WHERE site_id=%s AND {column}=%s ORDER BY id LIMIT 1001',
+                (tenant_id, actor_ref),
+            )
+        identifiers = [str(item[0]) for item in (cur.fetchall() or [])]
+        if len(identifiers) > 1000:
+            raise RuntimeError('workspace_subject_inventory_too_large')
+        subject_surfaces.append(
+            {'table': table, 'column': column, 'treatment': treatment, 'ids': identifiers}
+        )
     return {
-        'schema_version': 1,
+        'schema_version': 2,
+        'subject_inventory_version': SUBJECT_DATA_INVENTORY_VERSION,
         'records': [
             {
                 'id': str(row[0]),
@@ -118,6 +169,7 @@ def _workspace_projection(cur, *, tenant_id: str, user_id: UUID) -> dict:
             }
             for row in rows
         ],
+        'subject_surfaces': subject_surfaces,
     }
 
 
@@ -153,26 +205,31 @@ def _unlink_workspace_subject(cur, *, tenant_id: str, user_id: UUID) -> None:
     """Erase mutable subject references while retaining business and audit evidence."""
     subject = str(user_id)
     anonymous = 'deleted:' + hashlib.sha256(f'{tenant_id}:{subject}'.encode()).hexdigest()[:24]
-    cur.execute(
-        'DELETE FROM sitecontent_savedview WHERE site_id=%s AND owner_ref=%s',
-        (tenant_id, subject),
-    )
-    cur.execute(
-        """UPDATE sitecontent_mediaasset
-           SET owner_ref='', status='deleted', retention_until=NOW(), updated_at=NOW()
-           WHERE site_id=%s AND owner_ref=%s""",
-        (tenant_id, subject),
-    )
-    cur.execute(
-        """UPDATE sitecontent_importjob SET requester_ref=%s, updated_at=NOW()
-           WHERE site_id=%s AND requester_ref=%s""",
-        (anonymous, tenant_id, subject),
-    )
-    cur.execute(
-        """UPDATE sitecontent_exportjob SET requester_ref=%s, updated_at=NOW()
-           WHERE site_id=%s AND requester_ref=%s""",
-        (anonymous, tenant_id, subject),
-    )
+    for table, column, treatment in SUBJECT_DATA_INVENTORY:
+        if table == 'sitecontent_contentrevision':
+            cur.execute(
+                f"""UPDATE {table} revision SET {column}=%s
+                    FROM sitecontent_contentrecord content
+                    WHERE content.id=revision.content_id AND content.site_id=%s
+                      AND revision.{column}=%s""",
+                (anonymous, tenant_id, subject),
+            )
+            continue
+        if treatment == 'delete':
+            cur.execute(
+                f'DELETE FROM {table} WHERE site_id=%s AND {column}=%s', (tenant_id, subject)
+            )
+        elif treatment == 'media_delete':
+            cur.execute(
+                f"UPDATE {table} SET {column}='', status='deleted', retention_until=NOW(), updated_at=NOW() "
+                f'WHERE site_id=%s AND {column}=%s',
+                (tenant_id, subject),
+            )
+        else:
+            cur.execute(
+                f'UPDATE {table} SET {column}=%s WHERE site_id=%s AND {column}=%s',
+                (anonymous, tenant_id, subject),
+            )
 
 
 def _delete_account(*, tenant_id: str, user_id: UUID) -> dict:
@@ -184,6 +241,23 @@ def _delete_account(*, tenant_id: str, user_id: UUID) -> dict:
                 'DELETE FROM api_identity_memberships USING api_identity_organizations o WHERE api_identity_memberships.organization_id=o.id AND o.tenant_id=%s AND api_identity_memberships.user_id=%s',
                 (tenant_id, str(user_id)),
             )
+            cur.execute(
+                """SELECT EXISTS (
+                       SELECT 1 FROM api_identity_memberships membership
+                       WHERE membership.user_id=%s AND membership.status='active'
+                   )""",
+                (str(user_id),),
+            )
+            has_other_membership = bool(cur.fetchone()[0])
+            if has_other_membership:
+                conn.commit()
+                return {
+                    'schema_version': 2,
+                    'tenant_membership_deleted': True,
+                    'global_account_deleted': False,
+                    'tenant_id': tenant_id,
+                    'workspace_records_unlinked': len(workspace['records']),
+                }
             cur.execute(
                 'UPDATE api_auth_refresh_tokens SET revoked_at=NOW() WHERE user_id=%s AND revoked_at IS NULL',
                 (str(user_id),),
@@ -217,8 +291,9 @@ def _delete_account(*, tenant_id: str, user_id: UUID) -> dict:
                     raise RuntimeError('account_state_changed')
         conn.commit()
     return {
-        'schema_version': 1,
-        'deleted': True,
+        'schema_version': 2,
+        'tenant_membership_deleted': True,
+        'global_account_deleted': True,
         'tenant_id': tenant_id,
         'workspace_records_unlinked': len(workspace['records']),
     }
@@ -231,7 +306,10 @@ def _deactivate_account(*, tenant_id: str, user_id: UUID) -> dict:
                 """
                 SELECT mine.organization_id
                 FROM api_identity_memberships mine
+                JOIN api_identity_organizations organization
+                  ON organization.id=mine.organization_id
                 WHERE mine.user_id=%s AND mine.role='owner' AND mine.status='active'
+                  AND organization.tenant_id=%s
                   AND NOT EXISTS (
                     SELECT 1 FROM api_identity_memberships other
                     WHERE other.organization_id=mine.organization_id
@@ -240,17 +318,38 @@ def _deactivate_account(*, tenant_id: str, user_id: UUID) -> dict:
                   )
                 LIMIT 1
                 """,
-                (str(user_id),),
+                (str(user_id), tenant_id),
             )
             if cur.fetchone():
                 conn.rollback()
                 raise ValueError('last_owner_required')
             cur.execute(
-                'UPDATE api_auth_refresh_tokens SET revoked_at=NOW() WHERE user_id=%s AND revoked_at IS NULL',
-                (str(user_id),),
+                """UPDATE api_identity_memberships membership
+                      SET status='suspended', updated_at=NOW()
+                     FROM api_identity_organizations organization
+                    WHERE membership.organization_id=organization.id
+                      AND organization.tenant_id=%s AND membership.user_id=%s
+                      AND membership.status='active'""",
+                (tenant_id, str(user_id)),
             )
             cur.execute(
-                "UPDATE api_identity_memberships SET status='suspended', updated_at=NOW() WHERE user_id=%s AND status='active'",
+                """SELECT EXISTS (
+                       SELECT 1 FROM api_identity_memberships membership
+                       WHERE membership.user_id=%s AND membership.status='active'
+                   )""",
+                (str(user_id),),
+            )
+            has_other_membership = bool(cur.fetchone()[0])
+            if has_other_membership:
+                conn.commit()
+                return {
+                    'schema_version': 2,
+                    'tenant_membership_deactivated': True,
+                    'global_account_deactivated': False,
+                    'tenant_id': tenant_id,
+                }
+            cur.execute(
+                'UPDATE api_auth_refresh_tokens SET revoked_at=NOW() WHERE user_id=%s AND revoked_at IS NULL',
                 (str(user_id),),
             )
             cur.execute(
@@ -264,7 +363,12 @@ def _deactivate_account(*, tenant_id: str, user_id: UUID) -> dict:
                     conn.rollback()
                     raise RuntimeError('account_state_changed')
         conn.commit()
-    return {'schema_version': 1, 'deactivated': True, 'tenant_id': tenant_id}
+    return {
+        'schema_version': 2,
+        'tenant_membership_deactivated': True,
+        'global_account_deactivated': True,
+        'tenant_id': tenant_id,
+    }
 
 
 def process_operation(operation_id: UUID) -> str:
@@ -274,36 +378,41 @@ def process_operation(operation_id: UUID) -> str:
     try:
         box = _box()
         request_payload = json.loads(box.decrypt(operation['request_ciphertext']))
-        if operation['kind'] == 'export':
-            result = _export_payload(tenant_id=operation['tenant_id'], user_id=operation['user_id'])
-        elif operation['kind'] == 'correction':
-            correction = validate_correction(request_payload.get('fields'))
-            updated_id = _correct_account(
-                tenant_id=operation['tenant_id'],
-                user_id=operation['user_id'],
-                fields=correction,
-            )
-            result = {
-                'schema_version': 1,
-                'corrected': sorted(correction),
-                'updated_at': 'committed',
-                'account_id': str(updated_id),
-                'workspace': _workspace_payload(
+        with data_rights_claim_context(str(operation['id']), str(operation['claim_token'])):
+            if operation['kind'] == 'export':
+                result = _export_payload(
                     tenant_id=operation['tenant_id'], user_id=operation['user_id']
-                ),
-            }
-        elif operation['kind'] == 'deletion':
-            if request_payload.get('confirmation') != 'DELETE':
-                raise ValueError('deletion_confirmation_invalid')
-            result = _delete_account(tenant_id=operation['tenant_id'], user_id=operation['user_id'])
-        elif operation['kind'] == 'deactivation':
-            if request_payload.get('confirmation') != 'DEACTIVATE':
-                raise ValueError('deactivation_confirmation_invalid')
-            result = _deactivate_account(
-                tenant_id=operation['tenant_id'], user_id=operation['user_id']
-            )
-        else:
-            raise ValueError('operation_kind_invalid')
+                )
+            elif operation['kind'] == 'correction':
+                correction = validate_correction(request_payload.get('fields'))
+                updated_id = _correct_account(
+                    tenant_id=operation['tenant_id'],
+                    user_id=operation['user_id'],
+                    fields=correction,
+                )
+                result = {
+                    'schema_version': 1,
+                    'corrected': sorted(correction),
+                    'updated_at': 'committed',
+                    'account_id': str(updated_id),
+                    'workspace': _workspace_payload(
+                        tenant_id=operation['tenant_id'], user_id=operation['user_id']
+                    ),
+                }
+            elif operation['kind'] == 'deletion':
+                if request_payload.get('confirmation') != 'DELETE':
+                    raise ValueError('deletion_confirmation_invalid')
+                result = _delete_account(
+                    tenant_id=operation['tenant_id'], user_id=operation['user_id']
+                )
+            elif operation['kind'] == 'deactivation':
+                if request_payload.get('confirmation') != 'DEACTIVATE':
+                    raise ValueError('deactivation_confirmation_invalid')
+                result = _deactivate_account(
+                    tenant_id=operation['tenant_id'], user_id=operation['user_id']
+                )
+            else:
+                raise ValueError('operation_kind_invalid')
         digest = receipt_digest(
             operation_id=str(operation['id']),
             tenant_id=operation['tenant_id'],

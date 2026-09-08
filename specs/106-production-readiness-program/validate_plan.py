@@ -51,19 +51,14 @@ def main() -> int:
     if requirement_ids != list(range(1, 79)):
         raise SystemExit(f"production_readiness_requirements_invalid:{requirement_ids}")
 
-    task_ids = [
-        int(value)
-        for value in re.findall(r"^- \[[ x]\] B(\d{3})\b", tasks, re.MULTILINE)
-    ]
-    if task_ids != list(range(1, 245)):
+    task_ids = [int(value) for value in re.findall(r"^- \[[ x]\] B(\d{3})\b", tasks, re.MULTILINE)]
+    if task_ids != list(range(1, 270)):
         raise SystemExit(f"production_readiness_tasks_invalid:{task_ids}")
 
     checked = len(re.findall(r"^- \[x\] B\d{3}\b", tasks, re.MULTILINE))
     pending = len(re.findall(r"^- \[ \] B\d{3}\b", tasks, re.MULTILINE))
-    if checked + pending != 244:
-        raise SystemExit(
-            f"production_readiness_status_invalid:checked={checked}:pending={pending}"
-        )
+    if checked + pending != 269:
+        raise SystemExit(f"production_readiness_status_invalid:checked={checked}:pending={pending}")
     statuses = re.findall(r"^- \[([ x])\] B\d{3}\b", tasks, re.MULTILINE)
     if statuses != ["x"] * checked + [" "] * pending:
         raise SystemExit("production_readiness_status_not_contiguous")
@@ -82,9 +77,7 @@ def main() -> int:
     combined = "\n".join((spec, plan, tasks, analysis, traceability))
     absent_terms = [term for term in REQUIRED_AUTHORITY_TERMS if term not in combined]
     if absent_terms:
-        raise SystemExit(
-            f"production_readiness_authority_missing:{','.join(absent_terms)}"
-        )
+        raise SystemExit(f"production_readiness_authority_missing:{','.join(absent_terms)}")
 
     required_analysis_markers = (
         "Cycle 1",
@@ -98,9 +91,7 @@ def main() -> int:
     )
     absent_markers = [marker for marker in required_analysis_markers if marker not in analysis]
     if absent_markers:
-        raise SystemExit(
-            f"production_readiness_analysis_missing:{','.join(absent_markers)}"
-        )
+        raise SystemExit(f"production_readiness_analysis_missing:{','.join(absent_markers)}")
 
     required_task_phrases = (
         "native operations",
@@ -118,9 +109,7 @@ def main() -> int:
         phrase for phrase in required_task_phrases if phrase.lower() not in tasks_lower
     ]
     if absent_phrases:
-        raise SystemExit(
-            f"production_readiness_task_boundary_missing:{','.join(absent_phrases)}"
-        )
+        raise SystemExit(f"production_readiness_task_boundary_missing:{','.join(absent_phrases)}")
 
     for label, text, markers in (
         (
@@ -152,9 +141,7 @@ def main() -> int:
     ):
         missing_markers = [marker for marker in markers if marker not in text]
         if missing_markers:
-            raise SystemExit(
-                f"production_readiness_{label}_missing:{','.join(missing_markers)}"
-            )
+            raise SystemExit(f"production_readiness_{label}_missing:{','.join(missing_markers)}")
 
     print(
         "production_readiness_plan_valid "
