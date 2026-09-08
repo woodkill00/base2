@@ -31,6 +31,14 @@ def test_builder_is_closed_bounded_and_deterministic():
     hostile = {'component': 'text', 'props': {'value': '<script>alert(1)</script>'}, 'children': []}
     with pytest.raises(ExtensionContractError, match='executable'):
         compose_page(hostile)
+    for props in (
+        {'dangerouslySetInnerHTML': {'__html': '<b>unsafe</b>'}},
+        {'style': {'position': 'fixed'}},
+        {'onLoad': 'run()'},
+        {'href': 'data:text/html,<h1>unsafe</h1>'},
+    ):
+        with pytest.raises(ExtensionContractError, match='executable'):
+            compose_page({'component': 'text', 'props': props, 'children': []})
 
 
 def test_theme_upgrade_and_every_archetype_have_closed_contracts():
@@ -96,6 +104,16 @@ def test_webhooks_are_signed_fresh_and_replay_safe():
         )['status']
         == 'duplicate-noop'
     )
+    with pytest.raises(ExtensionContractError, match='signature'):
+        verify_webhook(
+            body=body,
+            signature='0' * 64,
+            timestamp=NOW,
+            now=NOW,
+            key=KEY,
+            delivery_id='delivery-0001',
+            seen=seen,
+        )
     with pytest.raises(ExtensionContractError, match='expired'):
         verify_webhook(
             body=body,

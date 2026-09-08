@@ -100,6 +100,14 @@ def test_preview_is_expiring_permission_tenant_and_cache_safe():
     ):
         with pytest.raises(ProductContractError):
             verify_preview(token, tenant_id=tenant, permission=permission, now=now, key=KEY)
+    with pytest.raises(ProductContractError, match='invalid'):
+        preview_token(
+            tenant_id='tenant-one',
+            content_id='',
+            permission='content.preview',
+            expires_at=NOW + timedelta(minutes=5),
+            key=KEY,
+        )
 
 
 def test_reference_aware_media_and_public_privacy_contracts():

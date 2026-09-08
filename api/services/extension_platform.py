@@ -10,6 +10,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 COMPONENTS = {'section', 'heading', 'text', 'image', 'link', 'button', 'grid', 'card', 'form'}
+FORBIDDEN_PROP_KEYS = {'dangerouslysetinnerhtml', 'innerhtml', 'srcdoc', 'style'}
 ARCHETYPES = {
     'business',
     'portfolio',
@@ -56,10 +57,22 @@ def compose_page(tree: dict[str, Any]) -> dict[str, Any]:
             raise ExtensionContractError('builder:component_forbidden')
         if not isinstance(node['props'], dict) or not isinstance(node['children'], list):
             raise ExtensionContractError('builder:shape_invalid')
+        if any(
+            str(key).casefold() in FORBIDDEN_PROP_KEYS or str(key).casefold().startswith('on')
+            for key in node['props']
+        ):
+            raise ExtensionContractError('builder:executable_content_forbidden')
         encoded = json.dumps(node['props']).casefold()
         if any(
             marker in encoded
-            for marker in ('<script', 'javascript:', 'onerror', 'onclick', 'style=')
+            for marker in (
+                '<script',
+                'javascript:',
+                'data:text/html',
+                'onerror',
+                'onclick',
+                'style=',
+            )
         ):
             raise ExtensionContractError('builder:executable_content_forbidden')
         count += 1
@@ -153,12 +166,14 @@ def verify_webhook(
         or abs((now - timestamp).total_seconds()) > 300
     ):
         raise ExtensionContractError('webhook:expired')
-    if delivery_id in seen:
-        return {'status': 'duplicate-noop', 'sideEffects': 0}
+    if len(key) < 32 or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._:-]{7,127}', delivery_id or ''):
+        raise ExtensionContractError('webhook:identity_invalid')
     signed = timestamp.astimezone(UTC).isoformat().encode() + b'.' + body
     expected = hmac.new(key, signed, hashlib.sha256).hexdigest()
     if not hmac.compare_digest(expected, signature):
         raise ExtensionContractError('webhook:signature_invalid')
+    if delivery_id in seen:
+        return {'status': 'duplicate-noop', 'sideEffects': 0}
     seen.add(delivery_id)
     return {'status': 'accepted', 'sideEffects': 1, 'deliveryId': delivery_id}
 

@@ -82,7 +82,13 @@ def editorial_transition(
 def preview_token(
     *, tenant_id: str, content_id: str, permission: str, expires_at: datetime, key: bytes
 ) -> str:
-    if not TENANT.fullmatch(tenant_id or '') or expires_at.tzinfo is None or len(key) < 32:
+    if (
+        not TENANT.fullmatch(tenant_id or '')
+        or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._:-]{2,127}', content_id or '')
+        or not re.fullmatch(r'[a-z][a-z0-9:.-]{2,63}', permission or '')
+        or expires_at.tzinfo is None
+        or len(key) < 32
+    ):
         raise ProductContractError('preview:invalid')
     body = json.dumps(
         {
@@ -100,6 +106,8 @@ def preview_token(
 def verify_preview(
     token: str, *, tenant_id: str, permission: str, now: datetime, key: bytes
 ) -> dict[str, Any]:
+    if len(key) < 32:
+        raise ProductContractError('preview:invalid')
     try:
         body, signature = token.rsplit('.', 1)
         value = json.loads(body)

@@ -231,6 +231,15 @@ One focused test exposed a real ordering bug: unauthorized forced deletion of
 referenced media returned a blocked status before evaluating the missing
 approval. The approval check now runs first and the regression is covered.
 
+Manual final-diff review found two additional hostile-input gaps. Builder nodes
+could use dangerous property names such as `dangerouslySetInnerHTML`, `style`,
+event handlers, or HTML data URLs without matching the original value-only
+scanner. Webhook duplicate detection also ran before signature verification,
+allowing a forged replay identifier to receive a duplicate classification.
+Builder keys and URL schemes are now closed, and every webhook—including an
+exact replay—must pass freshness, key, identity, and signature verification
+before deduplication. Focused negative tests cover both findings.
+
 ## Implementation cycle 5 — Integrated assurance and repeatability
 
 Performance assurance defines twelve finite budgets, small/medium/large data
