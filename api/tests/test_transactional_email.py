@@ -1,13 +1,16 @@
 from datetime import datetime, timezone
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
 
+from api.services import email_service
 from api.services.email_service import EmailOutboxRow, _configured_adapter, safe_outbox_diagnostic
 from api.services.transactional_email import (
     AdapterResult,
     DisabledEmailAdapter,
     LocalFakeEmailAdapter,
+    SmtpEmailAdapter,
     deliver_email,
     recipient_digest,
     render_email,
@@ -79,7 +82,7 @@ def test_hostile_addresses_urls_and_unknown_templates_fail_closed():
 def test_runtime_adapter_allowlist_and_operator_diagnostic_are_safe(monkeypatch):
     monkeypatch.delenv('BASE2_EMAIL_ADAPTER', raising=False)
     assert _configured_adapter().name == 'disabled'
-    monkeypatch.setenv('BASE2_EMAIL_ADAPTER', 'smtp')
+    monkeypatch.setenv('BASE2_EMAIL_ADAPTER', 'unknown')
     with pytest.raises(RuntimeError, match='email_adapter_not_allowed'):
         _configured_adapter()
     now = datetime.now(timezone.utc)
@@ -101,3 +104,65 @@ def test_runtime_adapter_allowlist_and_operator_diagnostic_are_safe(monkeypatch)
     assert diagnostic['hasError'] is True
     assert 'private@example.test' not in str(diagnostic)
     assert 'secret body' not in str(diagnostic)
+
+
+def test_smtp_adapter_requires_tls_port_and_sends_without_exposing_credentials(monkeypatch):
+    calls = []
+
+    class FakeSmtp:
+        def __init__(self, host, port, timeout):
+            calls.append(('connect', host, port, timeout))
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def ehlo(self):
+            calls.append(('ehlo',))
+
+        def starttls(self, *, context):
+            assert context is not None
+            calls.append(('starttls',))
+
+        def login(self, username, password):
+            assert username == 'smtp-user' and password == 'smtp-password'
+            calls.append(('login',))
+
+        def send_message(self, message):
+            assert message['To'] == 'person@example.test'
+            calls.append(('send',))
+
+    monkeypatch.setattr('api.services.transactional_email.smtplib.SMTP', FakeSmtp)
+    adapter = SmtpEmailAdapter(
+        host='smtp.example.test', port=587, username='smtp-user',
+        password='smtp-password', from_address='no-reply@example.test', timeout=5,
+    )
+    message = render_email(
+        'verification', 'person@example.test', {'url': 'https://example.test/verify'}
+    )
+    assert deliver_email(message, adapter).status == 'sent'
+    assert ('starttls',) in calls and ('send',) in calls
+    with pytest.raises(ValueError, match='smtp_port_invalid'):
+        SmtpEmailAdapter(
+            host='smtp.example.test', port=25, username='user', password='password',
+            from_address='no-reply@example.test',
+        )
+
+
+def test_outbox_retry_is_durable_and_becomes_dead_letter_after_bound(monkeypatch):
+    row = EmailOutboxRow(
+        uuid4(), 'private@example.test', 'subject', 'body', '', 'sending',
+        'worker_claim', '', 'delivery_retry:2', datetime.now(timezone.utc), None,
+    )
+    monkeypatch.setattr(email_service, 'claim_outbox_email', lambda _outbox_id: row)
+    monkeypatch.setattr(
+        email_service, '_configured_adapter',
+        lambda: LocalFakeEmailAdapter(AdapterResult('failed', retryable=True)),
+    )
+    mark = MagicMock()
+    monkeypatch.setattr(email_service, 'mark_outbox_status', mark)
+    email_service.process_outbox_email(outbox_id=row.id)
+    assert mark.call_args.kwargs['status'] == 'dead_letter'
+    assert mark.call_args.kwargs['error'] == 'delivery_dead_letter'

@@ -196,3 +196,22 @@ substitute for the integration proof named by the task.
 - [ ] B158 Mark no task complete from elapsed time alone and report all pending external, provider, approval, and real-time evidence honestly. (FR-068, FR-069, FR-070)
 - [ ] B159 Remove Feature 106 from active lifecycle authority only after all required tasks and exact evidence are complete. (FR-007, FR-008, FR-068)
 - [ ] B160 Treat actual production activation as a new exact-source, exact-environment, separately approved operation outside implicit feature authority. (FR-007, FR-067, FR-069)
+
+## Phase 11 — Exact-head independent-review corrections
+
+- [ ] B161 Prove release health evidence is causally ordered around each traffic mutation with distinct pre-change and post-change observations plus a post-switch synthetic journey. (FR-005, FR-063, FR-068)
+- [ ] B162 Enforce one least-privilege Celery database identity, remove broader request-runtime credentials from workers, and prove every asynchronous task retains only its declared table operations. (FR-019, FR-031, FR-065, FR-073)
+- [ ] B163 Implement a production-capable email adapter, durable outbox replay schedule, failure visibility, and bounded retry/dead-letter behavior without silently stranded verification or reset mail. (FR-014, FR-036, FR-038, FR-071)
+- [ ] B164 Bound monitoring fan-out by queue capacity and evidence freshness, deduplicate outstanding collections, and prove the maximum supported tenant batch cannot create unbounded stale work. (FR-013, FR-014, FR-036, FR-057)
+- [ ] B165 Repair durable scheduling with ISO-safe idempotency, exact atomic capacity admission, timezone and DST-aware rules, missed-run and overlap policy, and bounded deterministic-testable retry jitter. (FR-036, FR-038, FR-057, FR-063)
+- [ ] B166 Renew long-running job leases against database time, reject stale settlement, and prove reclaim, overlap, crash, and retry behavior under work exceeding one lease interval. (FR-036, FR-060, FR-065)
+- [ ] B167 Normalize every legacy row accepted by the previous scheduler before new constraints and prove the declared mixed-version migration window with old-writer/new-schema and new-reader/old-schema coverage. (FR-018, FR-066)
+- [ ] B168 Connect tenant provision, configure, suspend, archive, restore, transfer, export, and delete to one durable transactional state machine with atomic one-time destructive approval consumption and recovery receipts. (FR-008, FR-019, FR-023, FR-031, FR-045)
+- [ ] B169 Connect encrypted production backup, retention rotation, inventory, point-in-time recovery, isolated restore, object/search/audit reconciliation, monitoring, and scheduling to real operator entrypoints while retaining hermetic adapters for tests. (FR-020 through FR-023, FR-038, FR-060, FR-066)
+- [ ] B170 Pin validated object-storage addresses through the actual TLS connection, preserve hostname certificate verification, reject DNS rebinding, and integrate the adapter into tenant media delivery. (FR-025, FR-026, FR-065)
+- [ ] B171 Implement automatic exact-owned ephemeral expiry with durable creation and deadline evidence, a bounded production entrypoint, replay safety, and verified terminal inventory. (FR-008, FR-058, FR-069)
+- [ ] B172 Localize the complete supported Arabic and RTL journey including shell, settings, operations labels, dynamic states, severities, and fallbacks; regenerate exact-source baselines and review manifests. (FR-012, FR-046, FR-064, FR-075)
+- [ ] B173 Make summary and incident freshness independent and visible, and require explicit accessible confirmation and consequence copy for dead-letter cancellation. (FR-012, FR-014, FR-064)
+- [ ] B174 Extend keyboard order/action/return-focus, touch target/tap, computed reduced-motion, degraded, recent-auth, read-only, cross-browser, zoom, and assistive-technology evidence without overstating finite automation. (FR-012, FR-064, FR-068)
+- [ ] B175 Re-run complete gates twice at the new exact clean head, repeat critical state-machine/isolation suites, and bind every local and hosted evidence claim to that exact commit rather than an ancestor. (FR-063, FR-065, FR-068, FR-078)
+- [ ] B176 Repeat fresh independent code, security, UX/accessibility, data, and operations review at the repaired exact head and iterate until no critical, high, or medium finding remains. (FR-063 through FR-068)

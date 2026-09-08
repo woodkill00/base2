@@ -7,6 +7,9 @@ from django.db import migrations, models
 from django.utils import timezone
 
 ROLE = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,62}$")
+JOB_IDENTITY = re.compile(r"^[a-z][a-z0-9_.:-]{2,127}$")
+JOB_TYPE = re.compile(r"^[a-z][a-z0-9_.:-]{2,95}$")
+DIGEST = re.compile(r"^[0-9a-f]{64}$")
 
 
 def narrow_worker_grants(apps, schema_editor):
@@ -56,6 +59,44 @@ def recover_legacy_job_leases(apps, schema_editor):
         error_code="job.lease_upgrade_recovery",
         updated_at=timezone.now(),
     )
+
+
+def normalize_legacy_invalid_jobs(apps, schema_editor):
+    """Quarantine rows accepted by the older permissive repository contract."""
+    durable_job = apps.get_model("sitecontent", "DurableJob")
+    database = schema_editor.connection.alias
+    for job in durable_job.objects.using(database).all().iterator(chunk_size=500):
+        invalid = (
+            not JOB_IDENTITY.fullmatch(job.owner_ref or "")
+            or not JOB_TYPE.fullmatch(job.job_type or "")
+            or not JOB_IDENTITY.fullmatch(job.idempotency_key or "")
+            or not DIGEST.fullmatch(job.payload_digest or "")
+            or bool(job.result_digest)
+            and not DIGEST.fullmatch(job.result_digest)
+        )
+        if not invalid:
+            continue
+        durable_job.objects.using(database).filter(pk=job.pk).update(
+            owner_ref=(
+                job.owner_ref if JOB_IDENTITY.fullmatch(job.owner_ref or "") else f"legacy:{job.pk}"
+            ),
+            job_type=(job.job_type if JOB_TYPE.fullmatch(job.job_type or "") else "legacy.invalid"),
+            idempotency_key=(
+                job.idempotency_key
+                if JOB_IDENTITY.fullmatch(job.idempotency_key or "")
+                else f"legacy:{job.pk}"
+            ),
+            payload_digest=(
+                job.payload_digest if DIGEST.fullmatch(job.payload_digest or "") else "0" * 64
+            ),
+            result_digest=(job.result_digest if DIGEST.fullmatch(job.result_digest or "") else ""),
+            state="dead_letter",
+            lease_owner="",
+            lease_token=None,
+            lease_expires_at=None,
+            error_code="job.legacy_identity_invalid",
+            updated_at=timezone.now(),
+        )
 
 
 class Migration(migrations.Migration):
@@ -127,6 +168,10 @@ class Migration(migrations.Migration):
         # safely grandfathered, so make it retryable and clear its stale lease
         # before enforcing the new all-or-nothing lease invariant.
         migrations.RunPython(recover_legacy_job_leases, migrations.RunPython.noop),
+        # The pre-0026 repository validated only non-emptiness and digest
+        # length. Quarantine those legacy rows before PostgreSQL validates the
+        # stricter durable identity constraints below.
+        migrations.RunPython(normalize_legacy_invalid_jobs, migrations.RunPython.noop),
         migrations.AddConstraint(
             model_name="breakglassgrant",
             constraint=models.CheckConstraint(

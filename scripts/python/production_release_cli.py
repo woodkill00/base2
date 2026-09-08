@@ -84,13 +84,15 @@ def main(argv: list[str] | None = None) -> int:
                 if args.operation_receipt is None or args.operation_key_file is None:
                     raise ReleaseError("release:operation_receipt_required")
                 receipt = _json(args.operation_receipt)
+                admitted_operation = None
                 operation_key = _private_key(args.operation_key_file)
                 if operation_key in {release_key, approval_key}:
                     raise ReleaseError("release:key_scope_invalid")
 
                 def execute(action, release, environment, operation_id, reconcile_only):
+                    nonlocal admitted_operation
                     del reconcile_only
-                    return validate_operation_receipt(
+                    admitted_operation = validate_operation_receipt(
                         receipt,
                         action=action,
                         release_id=release["releaseId"],
@@ -101,6 +103,7 @@ def main(argv: list[str] | None = None) -> int:
                         now=datetime.now(UTC),
                         key=operation_key,
                     )
+                    return admitted_operation
 
                 if args.action in {"stage", "canary", "promote"}:
                     if args.health_receipt is None or args.health_key_file is None:
@@ -108,19 +111,25 @@ def main(argv: list[str] | None = None) -> int:
                     health_key = _private_key(args.health_key_file)
                     if health_key in {release_key, approval_key, operation_key}:
                         raise ReleaseError("release:key_scope_invalid")
-                    admitted_health = validate_health_receipt(
-                        _json(args.health_receipt),
-                        action=args.action,
-                        release_id=candidate["releaseId"],
-                        environment=args.environment,
-                        source_commit=candidate["sourceCommit"],
-                        artifact_digest=candidate["artifactDigest"],
-                        now=datetime.now(UTC),
-                        key=health_key,
-                    )
+                    raw_health = _json(args.health_receipt)
 
                     def health(action):
-                        del action
+                        if admitted_operation is None:
+                            raise ReleaseError("release:operation_receipt_required")
+                        admitted_health = validate_health_receipt(
+                            raw_health,
+                            action=action,
+                            release_id=candidate["releaseId"],
+                            environment=args.environment,
+                            source_commit=candidate["sourceCommit"],
+                            artifact_digest=candidate["artifactDigest"],
+                            operation_id=admitted_operation["operationId"],
+                            operation_observed_at=datetime.fromisoformat(
+                                admitted_operation["observedAt"]
+                            ),
+                            now=datetime.now(UTC),
+                            key=health_key,
+                        )
                         return admitted_health["healthy"]
 
             result = controller.transition(
@@ -132,6 +141,8 @@ def main(argv: list[str] | None = None) -> int:
                 health=health,
                 execute=execute,
             )
+            if result.get("status") in {"pending", "halted"}:
+                raise ReleaseError(f'release:{result["status"]}')
         print(json.dumps(result, sort_keys=True, separators=(",", ":")))
         return 0
     except ReleaseError as exc:

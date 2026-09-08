@@ -63,6 +63,31 @@ Missing, stale, ambiguous, partial, divergent, or tampered input blocks activati
 9. Confirm feature flags are typed, scoped, observable, reversible, and unexpired.
 10. Re-run the exact candidate's required hosted checks. Any non-pass blocks.
 
+## Backup and isolated restore
+
+Production backup configuration is an owner-only JSON file outside the repository.
+It names an owner-only libpq service file, an owner-only Vaultwarden-resolved
+base64url encryption-key file, the local object root, private backup/receipt roots,
+retention, and a bounded retained count. Database URLs and credential values are
+never command arguments. Install `base2-production-backup@.service` and its timer
+only after the data recovery owner approves the exact target and paths. The timer
+runs daily with jitter and persistent catch-up; overlapping executions fail closed.
+
+Use `scripts/bash/production-backup.sh verify` against the resulting HMAC-bound
+receipt. Retention deletes only an exact encrypted backup whose digest matches a
+valid owned receipt; unknown or tampered files are retained for review. The backup
+contains the real `pg_dump` plus every inventory-bound object payload, not only a
+synthetic inventory.
+
+Restore first with `restore-isolated` into a newly provisioned marked restore root.
+Database restoration additionally requires `restore-database-isolated`, a separate
+owner-only libpq service file, and an exact empty database named with the
+`base2_restore_`, `base2_preview_`, or `base2_test_` boundary. The tool verifies the
+actual database identity and emptiness before `pg_restore`, then reconciles table
+and object evidence. It cannot target a normal production database name. Promotion
+or replacement of production data remains a separately approved operation outside
+this entrypoint.
+
 ## Traffic sequence
 
 1. Acquire the environment-scoped deployment lease and create the integrity-bound

@@ -10,6 +10,10 @@ import { normalizeOperationsError, operationsAPI } from '../services/operations'
 const emptySummary = { services: { enabled: 0, total: 0 }, incidents: {}, synthetics24h: {} };
 const COPY = {
   en: {
+    appShell: 'Application shell',
+    privateWorkspace: 'Private workspace',
+    menu: 'Menu',
+    operationsSummary: 'Operations summary',
     eyebrow: 'Private control plane',
     title: 'Operations center',
     refresh: 'Refresh evidence',
@@ -27,6 +31,8 @@ const COPY = {
     stale: 'Stale evidence',
     partial:
       'Some operations evidence is unavailable. Available panels remain visible and are marked stale when retained.',
+    unavailableMessage: 'Operations information is temporarily unavailable.',
+    recentAuthRequired: 'Recent authentication is required.',
     reauthenticate: 'Sign in again',
     runtime: 'Runtime delivery',
     jobs: 'Durable jobs',
@@ -80,6 +86,13 @@ const COPY = {
     errorCode: 'Error',
     replay: 'Replay safely',
     cancel: 'Cancel',
+    cancelJob: 'Cancel job',
+    cancelTitle: 'Cancel this dead-letter job?',
+    cancelConsequence:
+      'Cancelling removes this job from the replay queue. This action is audited and cannot be undone here.',
+    keepJob: 'Keep job',
+    every: 'Every',
+    seconds: 'seconds',
     noDeadLetters: 'No dead-letter jobs require review.',
     noSchedules: 'No schedules are configured.',
     noAlerts: 'No alert deliveries are recorded.',
@@ -87,6 +100,10 @@ const COPY = {
     terms: {},
   },
   de: {
+    appShell: 'Anwendungsbereich',
+    privateWorkspace: 'Privater Arbeitsbereich',
+    menu: 'Menü',
+    operationsSummary: 'Betriebsübersicht',
     eyebrow: 'Private Steuerung',
     title: 'Betriebszentrale',
     refresh: 'Nachweise aktualisieren',
@@ -102,6 +119,8 @@ const COPY = {
     description: 'Aktueller Flotten-, Release-, Dienst-, Ziel-, Ablauf- und Vorfallstatus.',
     stale: 'Veraltete Nachweise',
     partial: 'Einige Betriebsnachweise sind nicht verfügbar.',
+    unavailableMessage: 'Betriebsinformationen sind vorübergehend nicht verfügbar.',
+    recentAuthRequired: 'Eine erneute Anmeldung ist erforderlich.',
     reauthenticate: 'Erneut anmelden',
     runtime: 'Laufzeitzustellung',
     jobs: 'Dauerhafte Aufträge',
@@ -154,6 +173,13 @@ const COPY = {
     errorCode: 'Fehler',
     replay: 'Sicher wiederholen',
     cancel: 'Abbrechen',
+    cancelJob: 'Auftrag abbrechen',
+    cancelTitle: 'Diesen Fehlerauftrag abbrechen?',
+    cancelConsequence:
+      'Der Abbruch entfernt diesen Auftrag aus der Wiederholungswarteschlange. Die Aktion wird protokolliert und kann hier nicht rückgängig gemacht werden.',
+    keepJob: 'Auftrag behalten',
+    every: 'Alle',
+    seconds: 'Sekunden',
     noDeadLetters: 'Keine Fehleraufträge zu prüfen.',
     noSchedules: 'Keine Zeitpläne konfiguriert.',
     noAlerts: 'Keine Alarmzustellungen erfasst.',
@@ -164,6 +190,7 @@ const COPY = {
       'job.attempts_exhausted': 'Maximale Versuche erreicht',
       'provider.transient': 'Vorübergehender Anbieterfehler',
       'api.health': 'API-Status',
+      'api.unavailable': 'API nicht verfügbar',
       'worker.queue': 'Arbeitswarteschlange',
       healthy: 'Gesund',
       unknown: 'Unbekannt',
@@ -182,9 +209,15 @@ const COPY = {
       once: 'Einmal',
       forbid: 'Verhindern',
       retry: 'Wiederholung',
+      staging: 'Testumgebung',
+      system: 'System',
     },
   },
   ar: {
+    appShell: 'مساحة التطبيق',
+    privateWorkspace: 'مساحة عمل خاصة',
+    menu: 'القائمة',
+    operationsSummary: 'ملخص العمليات',
     eyebrow: 'لوحة تحكم خاصة',
     title: 'مركز العمليات',
     refresh: 'تحديث الأدلة',
@@ -200,6 +233,8 @@ const COPY = {
     description: 'الحالة الحالية للأسطول والإصدارات والخدمات والأهداف والرحلات والحوادث والأدلة.',
     stale: 'أدلة قديمة',
     partial: 'بعض أدلة العمليات غير متاحة.',
+    unavailableMessage: 'معلومات العمليات غير متاحة مؤقتاً.',
+    recentAuthRequired: 'يلزم تسجيل الدخول مجدداً.',
     reauthenticate: 'تسجيل الدخول مجدداً',
     runtime: 'تسليم وقت التشغيل',
     jobs: 'المهام الدائمة',
@@ -252,6 +287,13 @@ const COPY = {
     errorCode: 'الخطأ',
     replay: 'إعادة آمنة',
     cancel: 'إلغاء',
+    cancelJob: 'إلغاء المهمة',
+    cancelTitle: 'هل تريد إلغاء هذه المهمة الفاشلة؟',
+    cancelConsequence:
+      'يؤدي الإلغاء إلى إزالة المهمة من قائمة إعادة المحاولة. يُسجل هذا الإجراء ولا يمكن التراجع عنه من هنا.',
+    keepJob: 'إبقاء المهمة',
+    every: 'كل',
+    seconds: 'ثانية',
     noDeadLetters: 'لا توجد مهام فاشلة للمراجعة.',
     noSchedules: 'لا توجد جداول مهيأة.',
     noAlerts: 'لا توجد عمليات تسليم تنبيه.',
@@ -262,6 +304,7 @@ const COPY = {
       'job.attempts_exhausted': 'استُنفدت المحاولات',
       'provider.transient': 'خطأ مؤقت لدى المزود',
       'api.health': 'صحة الواجهة البرمجية',
+      'api.unavailable': 'الواجهة البرمجية غير متاحة',
       'worker.queue': 'قائمة انتظار العامل',
       healthy: 'سليمة',
       unknown: 'غير معروفة',
@@ -280,6 +323,8 @@ const COPY = {
       once: 'مرة واحدة',
       forbid: 'منع',
       retry: 'إعادة المحاولة',
+      staging: 'بيئة الاختبار',
+      system: 'النظام',
     },
   },
 };
@@ -313,40 +358,59 @@ export default function OperationsCenter() {
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [pending, setPending] = useState('');
+  const [recentAuthRequired, setRecentAuthRequired] = useState(false);
+  const [cancelCandidate, setCancelCandidate] = useState(null);
   const timelineHeading = useRef(null);
   const timelineTrigger = useRef(null);
+  const cancelHeading = useRef(null);
+  const cancelTrigger = useRef(null);
+  const cancelDialog = useRef(null);
 
-  const load = useCallback(async (signal) => {
-    setLoading(true);
-    setError('');
-    const results = await Promise.allSettled([
-      operationsAPI.summary({ signal }),
-      operationsAPI.incidents({ signal }),
-      operationsAPI.overview({ signal }),
-    ]);
-    if (signal?.aborted) return;
-    const names = ['summary', 'incidents', 'overview'];
-    setEvidence((previous) => {
-      const next = { ...previous };
-      results.forEach((result, index) => {
-        next[names[index]] =
-          result.status === 'fulfilled'
-            ? 'fresh'
-            : previous[names[index]] === 'fresh'
-              ? 'stale'
-              : previous[names[index]];
+  const presentError = useCallback(
+    (reason) => {
+      const normalized = normalizeOperationsError(reason);
+      const reauthentication = normalized.message.startsWith('Recent authentication');
+      setRecentAuthRequired(reauthentication);
+      setError(reauthentication ? copy.recentAuthRequired : copy.unavailableMessage);
+    },
+    [copy.recentAuthRequired, copy.unavailableMessage]
+  );
+
+  const load = useCallback(
+    async (signal) => {
+      setLoading(true);
+      setError('');
+      setRecentAuthRequired(false);
+      const results = await Promise.allSettled([
+        operationsAPI.summary({ signal }),
+        operationsAPI.incidents({ signal }),
+        operationsAPI.overview({ signal }),
+      ]);
+      if (signal?.aborted) return;
+      const names = ['summary', 'incidents', 'overview'];
+      setEvidence((previous) => {
+        const next = { ...previous };
+        results.forEach((result, index) => {
+          next[names[index]] =
+            result.status === 'fulfilled'
+              ? 'fresh'
+              : previous[names[index]] === 'fresh'
+                ? 'stale'
+                : previous[names[index]];
+        });
+        return next;
       });
-      return next;
-    });
-    if (results[0].status === 'fulfilled') setSummary(results[0].value || emptySummary);
-    if (results[1].status === 'fulfilled') {
-      setIncidents(Array.isArray(results[1].value?.incidents) ? results[1].value.incidents : []);
-    }
-    if (results[2].status === 'fulfilled') setOverview(results[2].value || {});
-    const rejection = results.find((result) => result.status === 'rejected');
-    if (rejection) setError(normalizeOperationsError(rejection.reason).message);
-    setLoading(false);
-  }, []);
+      if (results[0].status === 'fulfilled') setSummary(results[0].value || emptySummary);
+      if (results[1].status === 'fulfilled') {
+        setIncidents(Array.isArray(results[1].value?.incidents) ? results[1].value.incidents : []);
+      }
+      if (results[2].status === 'fulfilled') setOverview(results[2].value || {});
+      const rejection = results.find((result) => result.status === 'rejected');
+      if (rejection) presentError(rejection.reason);
+      setLoading(false);
+    },
+    [presentError]
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -367,12 +431,13 @@ export default function OperationsCenter() {
   const acknowledge = async (incidentId) => {
     setPending(incidentId);
     setError('');
+    setRecentAuthRequired(false);
     try {
       await operationsAPI.acknowledge(incidentId);
       setStatus(copy.actionComplete);
       await load();
     } catch (caught) {
-      setError(normalizeOperationsError(caught).message);
+      presentError(caught);
     } finally {
       setPending('');
     }
@@ -381,28 +446,72 @@ export default function OperationsCenter() {
   const actOnDeadLetter = async (jobId, action) => {
     setPending(`job:${jobId}`);
     setError('');
+    setRecentAuthRequired(false);
     setStatus('');
     try {
       await operationsAPI.actOnDeadLetter(jobId, action);
       setStatus(copy.actionComplete);
       await load();
     } catch (caught) {
-      setError(normalizeOperationsError(caught).message);
+      presentError(caught);
     } finally {
       setPending('');
     }
+  };
+
+  useEffect(() => {
+    if (!cancelCandidate) return undefined;
+    window.requestAnimationFrame(() => cancelHeading.current?.focus());
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setCancelCandidate(null);
+        window.setTimeout(() => cancelTrigger.current?.focus(), 0);
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const controls = Array.from(cancelDialog.current?.querySelectorAll('button') || []).filter(
+        (control) => !control.disabled
+      );
+      if (!controls.length) return;
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [cancelCandidate]);
+
+  const closeCancelConfirmation = () => {
+    setCancelCandidate(null);
+    window.setTimeout(() => cancelTrigger.current?.focus(), 0);
+  };
+
+  const confirmCancel = async () => {
+    const jobId = cancelCandidate?.jobId;
+    if (!jobId) return;
+    setCancelCandidate(null);
+    await actOnDeadLetter(jobId, 'cancel');
+    window.setTimeout(() => cancelTrigger.current?.focus(), 0);
   };
 
   const inspectIncident = async (incidentId, trigger) => {
     timelineTrigger.current = trigger;
     setPending(`inspect:${incidentId}`);
     setError('');
+    setRecentAuthRequired(false);
     try {
       const result = await operationsAPI.incident(incidentId);
       setSelectedIncident(result?.incident || null);
       window.requestAnimationFrame(() => timelineHeading.current?.focus());
     } catch (caught) {
-      setError(normalizeOperationsError(caught).message);
+      presentError(caught);
     } finally {
       setPending('');
     }
@@ -425,11 +534,16 @@ export default function OperationsCenter() {
       }).format(new Date(value));
     }
   };
-  const readable = (value) =>
-    copy.terms?.[String(value || 'unknown')] ||
-    String(value || 'unknown')
+  const readable = (value) => {
+    const normalized = String(value || 'unknown').toLowerCase();
+    if (copy.terms?.[normalized]) return copy.terms[normalized];
+    if (normalized.startsWith('every:')) {
+      return `${copy.every} ${normalized.slice('every:'.length)} ${copy.seconds}`;
+    }
+    return String(value || 'unknown')
       .replace(/[._-]+/g, ' ')
       .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  };
 
   const openIncidents = Object.values(summary.incidents || {}).reduce(
     (total, value) => total + Number(value || 0),
@@ -442,14 +556,25 @@ export default function OperationsCenter() {
   const evidenceLabel = (name) => (evidence[name] === 'stale' ? copy.stale : null);
 
   return (
-    <AppShell>
+    <AppShell headerTitle={copy.appShell} footerLabel={copy.privateWorkspace} menuLabel={copy.menu}>
       <Navigation />
       <div
-        className="mx-auto w-full max-w-6xl px-4 py-8"
+        className="operations-center mx-auto w-full max-w-6xl px-4 py-8"
         aria-busy={loading}
         lang={locale}
         dir={direction}
       >
+        <style>{`
+          @media (prefers-reduced-motion: reduce) {
+            .operations-center *,
+            .operations-center *::before,
+            .operations-center *::after {
+              animation-duration: 0s !important;
+              scroll-behavior: auto !important;
+              transition-duration: 0s !important;
+            }
+          }
+        `}</style>
         <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-sm uppercase tracking-[0.18em] opacity-70">{copy.eyebrow}</p>
@@ -464,7 +589,7 @@ export default function OperationsCenter() {
         {error ? (
           <div role="alert" className="mb-5 rounded-xl border border-red-400/50 p-4">
             {error}
-            {error.startsWith('Recent authentication') ? (
+            {recentAuthRequired ? (
               <Link className="ms-2 underline" to="/login?next=%2Foperations">
                 {copy.reauthenticate}
               </Link>
@@ -477,28 +602,31 @@ export default function OperationsCenter() {
           </div>
         ) : null}
 
-        <section aria-label="Operations summary" className="grid gap-4 sm:grid-cols-3">
-          <GlassCard className="p-5">
-            <p className="text-sm opacity-70">{copy.services}</p>
-            <p className="mt-2 text-3xl font-semibold">
-              {summaryValue(`${summary.services?.enabled || 0}/${summary.services?.total || 0}`)}
-            </p>
-          </GlassCard>
-          <GlassCard className="p-5">
-            <p className="text-sm opacity-70">{copy.incidents}</p>
-            <p className="mt-2 text-3xl font-semibold">{summaryValue(openIncidents)}</p>
-          </GlassCard>
-          <GlassCard className="p-5">
-            <p className="text-sm opacity-70">{copy.synthetics}</p>
-            <p className="mt-2 text-3xl font-semibold">
-              {summaryValue(`${syntheticPassed} ${copy.passed}`)}
-            </p>
-            {available('summary') ? (
-              <p className="text-sm opacity-70">
-                {syntheticFailed} {copy.failed}
+        <section aria-label={copy.operationsSummary} className="mt-4">
+          {evidenceLabel('summary') ? <p role="status">{evidenceLabel('summary')}</p> : null}
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            <GlassCard className="p-5">
+              <p className="text-sm opacity-70">{copy.services}</p>
+              <p className="mt-2 text-3xl font-semibold">
+                {summaryValue(`${summary.services?.enabled || 0}/${summary.services?.total || 0}`)}
               </p>
-            ) : null}
-          </GlassCard>
+            </GlassCard>
+            <GlassCard className="p-5">
+              <p className="text-sm opacity-70">{copy.incidents}</p>
+              <p className="mt-2 text-3xl font-semibold">{summaryValue(openIncidents)}</p>
+            </GlassCard>
+            <GlassCard className="p-5">
+              <p className="text-sm opacity-70">{copy.synthetics}</p>
+              <p className="mt-2 text-3xl font-semibold">
+                {summaryValue(`${syntheticPassed} ${copy.passed}`)}
+              </p>
+              {available('summary') ? (
+                <p className="text-sm opacity-70">
+                  {syntheticFailed} {copy.failed}
+                </p>
+              ) : null}
+            </GlassCard>
+          </div>
         </section>
 
         <section className="mt-8" aria-labelledby="runtime-heading">
@@ -565,7 +693,10 @@ export default function OperationsCenter() {
                                 type="button"
                                 variant="ghost"
                                 disabled={Boolean(pending)}
-                                onClick={() => actOnDeadLetter(job.jobId, 'cancel')}
+                                onClick={(event) => {
+                                  cancelTrigger.current = event.currentTarget;
+                                  setCancelCandidate(job);
+                                }}
                               >
                                 {copy.cancel}
                               </GlassButton>
@@ -766,6 +897,11 @@ export default function OperationsCenter() {
           <h2 id="incident-heading" className="text-xl font-semibold">
             {copy.recent}
           </h2>
+          {evidenceLabel('incidents') ? (
+            <p className="mt-4" role="status">
+              {evidenceLabel('incidents')}
+            </p>
+          ) : null}
           {loading ? (
             <p role="status" className="mt-4">
               {copy.loading}
@@ -787,7 +923,7 @@ export default function OperationsCenter() {
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <p className="text-xs uppercase tracking-wider opacity-70">
-                      {incident.severity} · {incident.state}
+                      {readable(incident.severity)} · {readable(incident.state)}
                     </p>
                     <h3 className="mt-1 font-semibold">{readable(incident.summaryCode)}</h3>
                     <p className="mt-1 text-sm opacity-70">
@@ -833,7 +969,7 @@ export default function OperationsCenter() {
         </section>
 
         {selectedIncident ? (
-          <section className="mt-8" aria-labelledby="timeline-heading" aria-live="polite">
+          <section className="mt-8" aria-labelledby="timeline-heading">
             <GlassCard className="p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -852,7 +988,7 @@ export default function OperationsCenter() {
                   variant="ghost"
                   onClick={() => {
                     setSelectedIncident(null);
-                    window.requestAnimationFrame(() => timelineTrigger.current?.focus());
+                    window.setTimeout(() => timelineTrigger.current?.focus(), 0);
                   }}
                 >
                   {copy.closeTimeline}
@@ -864,7 +1000,7 @@ export default function OperationsCenter() {
                     <li key={event.id}>
                       <p className="font-medium">{readable(event.eventKey)}</p>
                       <p className="text-sm opacity-70">
-                        {formatDate(event.occurredAt)} · {event.actorRef || copy.system}
+                        {formatDate(event.occurredAt)} · {readable(event.actorRef || 'system')}
                       </p>
                     </li>
                   ))}
@@ -874,6 +1010,40 @@ export default function OperationsCenter() {
               )}
             </GlassCard>
           </section>
+        ) : null}
+
+        {cancelCandidate ? (
+          <div
+            ref={cancelDialog}
+            className="fixed inset-0 z-[70] grid place-items-center bg-black/60 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cancel-job-heading"
+            aria-describedby="cancel-job-consequence"
+          >
+            <GlassCard className="w-full max-w-lg p-6">
+              <h2
+                id="cancel-job-heading"
+                ref={cancelHeading}
+                tabIndex={-1}
+                className="text-xl font-semibold"
+              >
+                {copy.cancelTitle}
+              </h2>
+              <p id="cancel-job-consequence" className="mt-3 opacity-80">
+                {copy.cancelConsequence}
+              </p>
+              <p className="mt-3 text-sm opacity-70">{readable(cancelCandidate.jobType)}</p>
+              <div className="mt-6 flex flex-wrap justify-end gap-3">
+                <GlassButton type="button" variant="ghost" onClick={closeCancelConfirmation}>
+                  {copy.keepJob}
+                </GlassButton>
+                <GlassButton type="button" variant="danger" onClick={confirmCancel}>
+                  {copy.cancelJob}
+                </GlassButton>
+              </div>
+            </GlassCard>
+          </div>
         ) : null}
       </div>
     </AppShell>

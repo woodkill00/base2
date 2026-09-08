@@ -8,7 +8,7 @@ import hmac
 import json
 import re
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -172,6 +172,8 @@ def ephemeral_plan(
         "ownedResources": resources,
         "approvalSignature": approval["signature"],
         "stagingCertificatesOnly": True,
+        "createdAt": now.astimezone(UTC).isoformat(),
+        "teardownDeadline": (now.astimezone(UTC) + timedelta(hours=hours)).isoformat(),
     }
     plan["signature"] = hmac.new(plan_key, _canonical(plan), hashlib.sha256).hexdigest()
     return plan
@@ -195,6 +197,8 @@ def teardown(
             "ownedResources",
             "approvalSignature",
             "stagingCertificatesOnly",
+            "createdAt",
+            "teardownDeadline",
             "signature",
         }
         or len(plan_key) < 32
@@ -232,6 +236,38 @@ def teardown(
         "remainingOwned": [],
         "verifiedInventory": [],
     }
+
+
+def expire_ephemeral(
+    plan: dict[str, Any], *, now: datetime, inventory: Callable[[], list[str]],
+    delete: Callable[[str], str], plan_key: bytes,
+) -> dict[str, Any]:
+    """Scheduler entrypoint: do nothing before the signed deadline, tear down after it."""
+    required = {
+        "sourceCommit", "environment", "maximumHours", "costCeilingUsd",
+        "ownedResources", "approvalSignature", "stagingCertificatesOnly",
+        "createdAt", "teardownDeadline", "signature",
+    }
+    if not isinstance(plan, dict) or set(plan) != required:
+        raise AssuranceError("teardown:plan_invalid")
+    if now.tzinfo is None:
+        raise AssuranceError("ephemeral:clock_invalid")
+    try:
+        deadline = datetime.fromisoformat(str(plan.get("teardownDeadline", "")))
+    except (AttributeError, ValueError) as exc:
+        raise AssuranceError("teardown:plan_invalid") from exc
+    if deadline.tzinfo is None:
+        raise AssuranceError("teardown:plan_invalid")
+    if now.astimezone(UTC) < deadline.astimezone(UTC):
+        # Validate integrity without making inventory/provider calls.
+        unsigned = {key: plan[key] for key in plan if key != "signature"}
+        if len(plan_key) < 32 or not hmac.compare_digest(
+            str(plan.get("signature", "")),
+            hmac.new(plan_key, _canonical(unsigned), hashlib.sha256).hexdigest(),
+        ):
+            raise AssuranceError("teardown:plan_integrity")
+        return {"status": "not-due", "teardownDeadline": deadline.astimezone(UTC).isoformat()}
+    return teardown(plan, inventory=inventory, delete=delete, plan_key=plan_key)
 
 
 def fault_evidence(

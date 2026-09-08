@@ -57,6 +57,13 @@ class Settings(BaseSettings):
     IDENTITY_ENCRYPTION_KEY: Optional[str] = None
     CONTENT_WORKSPACE_STORAGE_ROOT: str = Field(default='/var/lib/base2/content-workspace')
     CONTENT_WORKSPACE_STORAGE_KEY: Optional[str] = None
+    CONTENT_WORKSPACE_STORAGE_BACKEND: str = Field(default='local')
+    CONTENT_WORKSPACE_S3_ENDPOINT: str = Field(default='')
+    CONTENT_WORKSPACE_S3_BUCKET: str = Field(default='')
+    CONTENT_WORKSPACE_S3_REGION: str = Field(default='')
+    CONTENT_WORKSPACE_S3_ALLOWED_HOSTS: str = Field(default='')
+    CONTENT_WORKSPACE_S3_ACCESS_KEY_FILE: str = Field(default='')
+    CONTENT_WORKSPACE_S3_SECRET_KEY_FILE: str = Field(default='')
     IDENTITY_ALLOW_FIRST_OWNER_BOOTSTRAP: bool = Field(default=False)
     WEBAUTHN_ENABLED: bool = Field(default=False)
 
@@ -139,8 +146,29 @@ class Settings(BaseSettings):
                 missing.append('OAUTH_STATE_SECRET')
             if not (self.IDENTITY_ENCRYPTION_KEY or '').strip():
                 missing.append('IDENTITY_ENCRYPTION_KEY')
-            if not (self.CONTENT_WORKSPACE_STORAGE_KEY or '').strip():
+            storage_backend = (self.CONTENT_WORKSPACE_STORAGE_BACKEND or '').strip().lower()
+            if storage_backend not in {'local', 's3'}:
+                raise RuntimeError('Invalid CONTENT_WORKSPACE_STORAGE_BACKEND')
+            if storage_backend == 'local' and not (self.CONTENT_WORKSPACE_STORAGE_KEY or '').strip():
                 missing.append('CONTENT_WORKSPACE_STORAGE_KEY')
+            if storage_backend == 's3':
+                for name in (
+                    'CONTENT_WORKSPACE_S3_ENDPOINT',
+                    'CONTENT_WORKSPACE_S3_BUCKET',
+                    'CONTENT_WORKSPACE_S3_REGION',
+                    'CONTENT_WORKSPACE_S3_ALLOWED_HOSTS',
+                    'CONTENT_WORKSPACE_S3_ACCESS_KEY_FILE',
+                    'CONTENT_WORKSPACE_S3_SECRET_KEY_FILE',
+                ):
+                    if not str(getattr(self, name) or '').strip():
+                        missing.append(name)
+                for name in (
+                    'CONTENT_WORKSPACE_S3_ACCESS_KEY_FILE',
+                    'CONTENT_WORKSPACE_S3_SECRET_KEY_FILE',
+                ):
+                    value = str(getattr(self, name) or '').strip()
+                    if value and not value.startswith('/'):
+                        raise RuntimeError(f'{name} must be an absolute secret-file path')
             operation_file_names = (
                 (
                     'OPERATIONS_ALERT_INTEGRITY_KEY_FILE',
@@ -168,18 +196,37 @@ class Settings(BaseSettings):
             if operations_files and len(operations_files) != len(operation_file_names):
                 raise RuntimeError('Operations secret files must be independently scoped')
 
-            storage_root = (self.CONTENT_WORKSPACE_STORAGE_ROOT or '').strip()
-            try:
-                encoded_key = (self.CONTENT_WORKSPACE_STORAGE_KEY or '').strip()
-                storage_key = base64.b64decode(
-                    encoded_key + '=' * (-len(encoded_key) % 4),
-                    altchars=b'-_',
-                    validate=True,
-                )
-            except (ValueError, binascii.Error) as exc:
-                raise RuntimeError('Invalid CONTENT_WORKSPACE_STORAGE_KEY') from exc
-            if not storage_root.startswith('/') or len(storage_key) != 32:
-                raise RuntimeError('Invalid content workspace storage configuration')
+            if storage_backend == 'local':
+                storage_root = (self.CONTENT_WORKSPACE_STORAGE_ROOT or '').strip()
+                try:
+                    encoded_key = (self.CONTENT_WORKSPACE_STORAGE_KEY or '').strip()
+                    storage_key = base64.b64decode(
+                        encoded_key + '=' * (-len(encoded_key) % 4),
+                        altchars=b'-_',
+                        validate=True,
+                    )
+                except (ValueError, binascii.Error) as exc:
+                    raise RuntimeError('Invalid CONTENT_WORKSPACE_STORAGE_KEY') from exc
+                if not storage_root.startswith('/') or len(storage_key) != 32:
+                    raise RuntimeError('Invalid content workspace storage configuration')
+            else:
+                from urllib.parse import urlparse
+
+                endpoint = urlparse(self.CONTENT_WORKSPACE_S3_ENDPOINT)
+                allowed_hosts = {
+                    item.strip().lower()
+                    for item in self.CONTENT_WORKSPACE_S3_ALLOWED_HOSTS.split(',')
+                    if item.strip()
+                }
+                if (
+                    endpoint.scheme != 'https'
+                    or not endpoint.hostname
+                    or endpoint.hostname.lower() not in allowed_hosts
+                    or endpoint.path not in {'', '/'}
+                    or endpoint.query
+                    or endpoint.fragment
+                ):
+                    raise RuntimeError('Invalid content workspace S3 endpoint configuration')
 
             if env == 'production' and self.GOOGLE_OAUTH_ENABLED:
                 oauth_missing = []

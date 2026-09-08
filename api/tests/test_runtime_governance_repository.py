@@ -6,6 +6,9 @@ from uuid import UUID
 import pytest
 
 from api.repositories.runtime_governance import (
+    _next_schedule_run,
+    _retry_delay_seconds,
+    _stored_idempotency_key,
     RuntimeRepositoryError,
     claim_jobs,
     dead_letter_action,
@@ -31,7 +34,7 @@ JOB_ID = UUID(int=1)
 
 def test_enqueue_job_creates_and_exactly_replays():
     cursor = MagicMock()
-    cursor.fetchone.side_effect = [None, (JOB_ID,)]
+    cursor.fetchone.side_effect = [None, (0, False), (JOB_ID,)]
     with patch(
         'api.repositories.runtime_governance.workspace_db_conn',
         return_value=connection(cursor),
@@ -64,6 +67,55 @@ def test_enqueue_job_creates_and_exactly_replays():
             available_at=NOW,
         )
     assert result['replayed'] is True
+
+
+def test_iso_schedule_idempotency_key_is_canonical_safe_and_exactly_stable():
+    raw = f'schedule:{UUID(int=9)}:2026-09-08T00:00:00+00:00'
+    stored = _stored_idempotency_key(raw)
+    assert stored.startswith('schedule-iso:')
+    assert stored == _stored_idempotency_key(raw)
+    assert '+' not in stored
+    assert len(stored) < 128
+
+    cursor = MagicMock()
+    cursor.fetchone.side_effect = [None, (100, True), (JOB_ID,)]
+    with patch(
+        'api.repositories.runtime_governance.workspace_db_conn',
+        return_value=connection(cursor),
+    ):
+        enqueue_job(
+            tenant_id='tenant-one',
+            owner_ref=f'schedule:{UUID(int=9)}',
+            job_type='operations.collect',
+            payload_digest='a' * 64,
+            payload_schema=1,
+            idempotency_key=raw,
+            available_at=NOW,
+        )
+    assert cursor.execute.call_args_list[1].args[1] == ('tenant-one', stored)
+    assert cursor.execute.call_args_list[4].args[1][5] == stored
+
+
+def test_enqueue_capacity_is_serialized_and_only_matching_schedule_reservation_converts():
+    full = MagicMock()
+    full.fetchone.side_effect = [None, (100, False)]
+    with (
+        patch(
+            'api.repositories.runtime_governance.workspace_db_conn',
+            return_value=connection(full),
+        ),
+        pytest.raises(RuntimeRepositoryError, match='capacity_exhausted'),
+    ):
+        enqueue_job(
+            tenant_id='tenant-one',
+            owner_ref='owner:1',
+            job_type='operations.collect',
+            payload_digest='a' * 64,
+            payload_schema=1,
+            idempotency_key='job-full',
+            available_at=NOW,
+        )
+    assert 'schedule-capacity' in full.execute.call_args_list[2].args[1][0]
 
 
 def test_enqueue_changed_replay_fails_closed():
@@ -137,6 +189,8 @@ def test_claim_jobs_validates_limit_and_maps_rows():
     ]
     assert 'attempts_exhausted' in cursor.execute.call_args_list[0].args[0]
     assert 'SKIP LOCKED' in cursor.execute.call_args.args[0]
+    assert 'lease_expires_at<=NOW()' in cursor.execute.call_args_list[0].args[0]
+    assert "NOW()+INTERVAL '15 minutes'" in cursor.execute.call_args.args[0]
 
 
 def test_settle_job_validates_outcome_and_lease_ownership():
@@ -151,7 +205,7 @@ def test_settle_job_validates_outcome_and_lease_ownership():
             now=NOW,
         )
     cursor = MagicMock()
-    cursor.fetchone.return_value = ('retry',)
+    cursor.fetchone.side_effect = [(2,), ('retry',)]
     with patch(
         'api.repositories.runtime_governance.workspace_db_conn',
         return_value=connection(cursor),
@@ -169,6 +223,11 @@ def test_settle_job_validates_outcome_and_lease_ownership():
             )
             == 'retry'
         )
+    retry_delay = cursor.execute.call_args_list[1].args[1][5]
+    assert 20 <= retry_delay <= 24
+    assert 'lease_expires_at>NOW()' in cursor.execute.call_args_list[0].args[0]
+    assert 'lease_expires_at>NOW()' in cursor.execute.call_args_list[1].args[0]
+
     lost = MagicMock()
     lost.fetchone.return_value = None
     with (
@@ -203,7 +262,8 @@ def test_job_lease_is_revalidated_and_renewed_immediately_before_work():
             generation=2,
             now=NOW,
         )
-    assert 'lease_expires_at>%s' in cursor.execute.call_args.args[0]
+    assert 'lease_expires_at>NOW()' in cursor.execute.call_args.args[0]
+    assert "NOW()+INTERVAL '15 minutes'" in cursor.execute.call_args.args[0]
 
     cursor.rowcount = 0
     with (
@@ -282,6 +342,7 @@ def test_dead_letter_inventory_actions_and_due_schedules():
 
     schedules = MagicMock()
     schedules.rowcount = 1
+    schedules.fetchone.return_value = (1,)
     schedules.fetchall.return_value = [
         (UUID(int=2), 'daily', 'email', 'UTC', 'every:60', 'once', 'forbid', NOW, None, 3),
     ]
@@ -293,11 +354,10 @@ def test_dead_letter_inventory_actions_and_due_schedules():
     assert due[0]['scheduledFor'] == NOW.isoformat()
     assert due[0]['lastRunAt'] == NOW.isoformat()
     assert due[0]['revision'] == 4
-    assert schedules.execute.call_args_list[0].args[1] == (
+    assert schedules.execute.call_args_list[2].args[1] == (
         'tenant-one',
         NOW,
         NOW,
-        'tenant-one',
         'tenant-one',
         'tenant-one',
         1,
@@ -330,6 +390,7 @@ def test_dead_letter_inventory_actions_and_due_schedules():
 def test_schedule_policy_validation_and_replace_are_enforced_atomically():
     invalid = MagicMock()
     invalid.rowcount = 1
+    invalid.fetchone.return_value = (25,)
     invalid.fetchall.return_value = [
         (UUID(int=2), 'daily', 'email', 'Not/AZone', 'every:60', 'once', 'forbid', NOW, None, 1),
     ]
@@ -344,6 +405,7 @@ def test_schedule_policy_validation_and_replace_are_enforced_atomically():
 
     replacement = MagicMock()
     replacement.rowcount = 1
+    replacement.fetchone.return_value = (25,)
     replacement.fetchall.return_value = [
         (UUID(int=2), 'daily', 'email', 'UTC', 'every:60', 'skip', 'replace', NOW, None, 1),
     ]
@@ -354,5 +416,63 @@ def test_schedule_policy_validation_and_replace_are_enforced_atomically():
         claimed = due_schedules(tenant_id='tenant-one', now=NOW)
     assert claimed[0]['missedPolicy'] == 'skip'
     assert claimed[0]['overlapPolicy'] == 'replace'
-    assert "state='cancelled'" in replacement.execute.call_args_list[1].args[0]
-    assert 'claim_token=%s' in replacement.execute.call_args_list[2].args[0]
+    assert "state='cancelled'" in replacement.execute.call_args_list[3].args[0]
+    assert 'claim_token=%s' in replacement.execute.call_args_list[4].args[0]
+
+
+def test_schedule_capacity_is_reserved_exactly_and_zero_capacity_is_a_noop():
+    full = MagicMock()
+    full.fetchone.return_value = (0,)
+    with patch(
+        'api.repositories.runtime_governance.workspace_db_conn',
+        return_value=connection(full),
+    ):
+        assert due_schedules(tenant_id='tenant-one', now=NOW) == []
+    assert len(full.execute.call_args_list) == 2
+    assert full.execute.call_args_list[1].args[1] == ('tenant-one', 'tenant-one')
+
+    one_slot = MagicMock()
+    one_slot.fetchone.return_value = (1,)
+    one_slot.fetchall.return_value = []
+    with patch(
+        'api.repositories.runtime_governance.workspace_db_conn',
+        return_value=connection(one_slot),
+    ):
+        assert due_schedules(tenant_id='tenant-one', now=NOW, limit=25) == []
+    assert one_slot.execute.call_args_list[2].args[1][-1] == 1
+    assert 'claim_expires_at>NOW()' in one_slot.execute.call_args_list[1].args[0]
+
+
+def test_daily_schedule_uses_timezone_and_has_explicit_dst_gap_and_fold_behavior():
+    from zoneinfo import ZoneInfo
+
+    berlin = ZoneInfo('Europe/Berlin')
+    # 02:30 does not exist on the spring-forward day, so the next valid wall
+    # time is the following day rather than an invented instant.
+    spring = _next_schedule_run(
+        rule='daily:02:30',
+        zone=berlin,
+        due=datetime(2026, 3, 28, 1, 30, tzinfo=UTC),
+        now=datetime(2026, 3, 29, 0, 0, tzinfo=UTC),
+        missed='once',
+    )
+    assert spring.isoformat() == '2026-03-30T02:30:00+02:00'
+
+    # On the fall-back day the first occurrence is selected once; after that
+    # occurrence the rule advances to the following day, not fold=1.
+    autumn = _next_schedule_run(
+        rule='daily:02:30',
+        zone=berlin,
+        due=datetime(2026, 10, 24, 0, 30, tzinfo=UTC),
+        now=datetime(2026, 10, 25, 1, 0, tzinfo=UTC),
+        missed='once',
+    )
+    assert autumn.isoformat() == '2026-10-26T02:30:00+01:00'
+
+
+def test_retry_jitter_is_deterministic_bounded_and_varies_by_identity():
+    first = _retry_delay_seconds(job_id=UUID(int=1), generation=1, attempts=3)
+    assert first == _retry_delay_seconds(job_id=UUID(int=1), generation=1, attempts=3)
+    assert 40 <= first <= 48
+    assert _retry_delay_seconds(job_id=UUID(int=2), generation=1, attempts=3) != first
+    assert _retry_delay_seconds(job_id=UUID(int=1), generation=1, attempts=20) == 3600

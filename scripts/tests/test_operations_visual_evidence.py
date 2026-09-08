@@ -12,7 +12,7 @@ from scripts.python.operations_visual_evidence import (
 
 def test_committed_visual_evidence_matches_exact_sources_and_captures():
     validate(json.loads(MANIFEST.read_text(encoding="utf-8")))
-    assert len(build()["screenshots"]) == 15
+    assert len(build()["screenshots"]) == 19
 
 
 def test_source_or_capture_drift_is_rejected():

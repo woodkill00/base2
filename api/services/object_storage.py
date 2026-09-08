@@ -70,8 +70,13 @@ class S3ObjectStore:
         client_endpoint = str(getattr(getattr(client, 'meta', None), 'endpoint_url', ''))
         if client_endpoint.rstrip('/') != endpoint.rstrip('/'):
             raise ObjectStorageError('object:client_endpoint_mismatch')
+        pinned = frozenset(getattr(client, 'pinned_addresses', ()))
+        tls_server_name = str(getattr(client, 'tls_server_name', ''))
+        if pinned != frozenset(addresses) or tls_server_name != parsed.hostname:
+            raise ObjectStorageError('object:client_not_pinned')
         self.endpoint, self.bucket, self.client = endpoint.rstrip('/'), bucket, client
         self._resolver, self._hostname, self._port = resolver, parsed.hostname, port
+        self._pinned_addresses = pinned
 
     def _validate_live_endpoint(self) -> None:
         """Re-resolve immediately before every request to reject DNS rebinding."""
@@ -80,8 +85,10 @@ class S3ObjectStore:
             raise ObjectStorageError('object:client_endpoint_mismatch')
         try:
             addresses = {item[4][0] for item in self._resolver(self._hostname, self._port)}
-            if not addresses or any(
-                not ipaddress.ip_address(value).is_global for value in addresses
+            if (
+                not addresses
+                or frozenset(addresses) != self._pinned_addresses
+                or any(not ipaddress.ip_address(value).is_global for value in addresses)
             ):
                 raise ObjectStorageError('object:configuration_invalid')
         except (OSError, TypeError, ValueError) as exc:
@@ -124,10 +131,9 @@ class S3ObjectStore:
         self._validate_live_endpoint()
         response = self.client.get_object(Bucket=self.bucket, Key=receipt.key)
         content = response['Body'].read()
-        if (
-            len(content) != receipt.byte_size
-            or hashlib.sha256(content).hexdigest() != receipt.sha256
-        ):
+        if (receipt.byte_size >= 0 and len(content) != receipt.byte_size) or hashlib.sha256(
+            content
+        ).hexdigest() != receipt.sha256:
             raise ObjectStorageError('object:integrity_invalid')
         return content
 

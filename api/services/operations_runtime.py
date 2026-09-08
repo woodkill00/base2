@@ -45,12 +45,16 @@ def configured_tenants(raw: str | None = None) -> list[str]:
     return list(dict.fromkeys(values))
 
 
-def fair_tenant_batch(values: list[str], *, limit: int = 16) -> list[str]:
+def fair_tenant_batch(
+    values: list[str], *, limit: int = 16, cursor_name: str = 'collect'
+) -> list[str]:
     """Select a bounded round-robin batch from the explicit tenant registry."""
-    if not values or not 1 <= limit <= 16:
+    if not values or not 1 <= limit <= 16 or cursor_name not in {'collect', 'alerts'}:
         raise ValueError('operations:tenant_batch_invalid')
     client = redis_client.get_client()
-    cursor = int(client.incrby(redis_client.key('operations', 'tenant-cursor'), limit)) - limit
+    cursor = int(
+        client.incrby(redis_client.key('operations', f'{cursor_name}-tenant-cursor'), limit)
+    ) - limit
     start = cursor % len(values)
     count = min(limit, len(values))
     return [values[(start + offset) % len(values)] for offset in range(count)]

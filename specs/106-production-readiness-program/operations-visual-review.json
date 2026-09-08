@@ -2,70 +2,89 @@
   "schemaVersion": 1,
   "status": "accepted",
   "sources": {
-    "react-app/src/pages/OperationsCenter.jsx": "f60e744e91e08f9b7a52e5df80a3fe2fa2a7b292e3b1b76864ac9bd644a6b8f5",
-    "react-app/src/services/operations.js": "a1cfef8a26b47317022bad8745c620885989e89f06b65567a44393051a35bfb5",
-    "react-app/e2e/operations/operations-release.spec.ts": "0f4f8887ffd9bc61995c3ff810843583f212fe73a15d57da4dbcfe768a85d01a",
+    "react-app/src/pages/OperationsCenter.jsx": "16cd4932f58b9eed3b57bddc368fcdfa0fef73674b9de79788af32f04bb23a78",
+    "react-app/src/services/operations.js": "7bb0edb231daf7255973c885dabf0b93d7664c02ac0eb51a8b00d599c7209418",
+    "react-app/src/components/glass/AppShell.tsx": "8253de9fe4e0201ccf48cc2d880516fb0d10d9809a7576f979a71609268561e4",
+    "react-app/src/components/glass/GlassButton.tsx": "e32c90da113739bb526b2329519e964bd611a1be66d86852e2f4fb075d32e5a1",
+    "react-app/src/components/glass/GlassHeader.tsx": "0c458435107d55c8bd70fe7708aaf8d17a4af3c9e5fc70b39ff89954912e7fd8",
+    "react-app/e2e/operations/operations-release.spec.ts": "1eaae46b6d4e5aed2fcd5e4dcebb0f5ef6119a7b133c3de969bc3a5d87f5934f",
     "react-app/playwright.operations-release.config.mjs": "6e630bfb94fdf68cdbf5e6eb1b0c3aa19bfa28aeca3088dd17e448d6cc049ab3"
   },
   "screenshots": {
+    "operations-center-cancel-confirmation-chromium-desktop-linux.png": {
+      "sha256": "6b5723847acf09b503693ffca0dd09772cefeb160ef8cca9519c4faab2f6efec",
+      "pixels": [1440, 2431]
+    },
     "operations-center-chromium-400-zoom-chromium-400-zoom-linux.png": {
-      "sha256": "8cdb7c9bb0c0e2b8d00ebdabd2a9e7c8c6933aa2aa38d64ec74f57c3ea4fd5e4",
+      "sha256": "a4c50c0c3f60b326a99ed270ee2e905bc403374667ac70946f3aeb3bcd75a17a",
       "pixels": [320, 3439]
     },
     "operations-center-chromium-compact-chromium-compact-linux.png": {
-      "sha256": "e4be7d7ae5ba459c2000b4a55039f942e6f67bf8477fd3fa7cb04ad18354aa06",
+      "sha256": "701a7caf74591eceea78bae016b8b7971cc135e12c7bd7f7cf9da788234549f8",
       "pixels": [320, 3437]
     },
     "operations-center-chromium-desktop-chromium-desktop-linux.png": {
-      "sha256": "ffa4cf32a10a1fc030d432a6dcd09327f420c63fdaddd7d1742771f550586ec5",
+      "sha256": "949cf62d308619f16d69e39f210e9c148cd5d028f168e818421417a32bafd040",
       "pixels": [1440, 2340]
     },
     "operations-center-chromium-high-contrast-chromium-high-contrast-linux.png": {
-      "sha256": "cfd9d0ec4d817962dcf5eba8df30c3ead27f0de85590796116ab00dab9ecf9d0",
+      "sha256": "6af7b906e819cc0cc0ac7e67fbc56555a28f48c2238fad59642edd96c9a5b0ee",
       "pixels": [1280, 2324]
     },
     "operations-center-chromium-landscape-touch-chromium-landscape-touch-linux.png": {
-      "sha256": "071b9a4664d8b612265769566dfc622627ee67a46eed73033ce7110550b7b3c3",
+      "sha256": "406d2399ec6eb20cdf761310816d0f9bd9597268be20473098cd9964af954497",
       "pixels": [844, 3069]
     },
     "operations-center-chromium-large-text-chromium-large-text-linux.png": {
-      "sha256": "d842980e866decd9b85f7ffe640fd5bb9a9f955d61a29810d0d39346c4e9364b",
+      "sha256": "d0710ad63c8f35619a52f3879ed1339334ae8b3e4debe289554cfe9bfce601c1",
       "pixels": [1280, 4776]
     },
     "operations-center-chromium-light-chromium-light-linux.png": {
-      "sha256": "d14cfd9e3b424e503342aaca14a8a7a609395dd03c9dd43d3333f27e918df8cc",
+      "sha256": "ae458439070eee0505baf7e1044aa4abfe2f86a403c66989a73f90acc0216acc",
       "pixels": [1280, 2324]
     },
     "operations-center-chromium-reduced-motion-chromium-reduced-motion-linux.png": {
-      "sha256": "b5a25f04149fe5e9f955eca18a36f366ef654c8479e35c3ee74bdc24da121105",
+      "sha256": "f3715e1de661ce67ac87e1c5c24a7ce410e7893faa53bc66cf91fd91c9c10451",
       "pixels": [1280, 2324]
     },
     "operations-center-chromium-rtl-chromium-rtl-linux.png": {
-      "sha256": "14854c8477cc5bb1f3492fedc4f1009503c2ce190879f49898f66de8b2e8a52e",
+      "sha256": "3479a235b7e43c939211ee3da0210eff0fa611cccccf764d1e0f5745b8b0c499",
       "pixels": [1280, 2293]
     },
     "operations-center-chromium-tablet-chromium-tablet-linux.png": {
-      "sha256": "5821cd88e5b3b10cf3134852797d008d52084c4675c71105dddb88d65f87021b",
+      "sha256": "12078f51511bafe68457358e4dc0471587626c9defe76268ab162ec2043faa7f",
       "pixels": [1024, 2402]
     },
     "operations-center-chromium-ultrawide-chromium-ultrawide-linux.png": {
-      "sha256": "7abcbcd639dd952130fba64359f76a808a6130508593e63de6ff459a8d5e9efc",
+      "sha256": "70d9a7b13c26b82c5ca6e149e7661b2815c28a87692fc0c3c9dd71a5cba7df62",
       "pixels": [2560, 2410]
     },
     "operations-center-empty-chromium-desktop-linux.png": {
-      "sha256": "ca21aee5bce1c65c3115865451c9e331e140658484798548a3c3f5ea80144edb",
+      "sha256": "2848543dd080c7b33e80a27a5b66bcfd97e11d5fbd966174e907b8584e3a780e",
       "pixels": [1440, 1672]
     },
     "operations-center-error-chromium-desktop-linux.png": {
-      "sha256": "d9e8b3fce8f97ac3f04396a056ef357684e7767ad01d75ccb5e0a2c8bc50561b",
+      "sha256": "e2053e6da4a669e1b4aa04149996aa39a1fcd1d01634f37f571bf32222559941",
       "pixels": [1440, 1533]
     },
     "operations-center-firefox-desktop-firefox-desktop-linux.png": {
-      "sha256": "47eb999732dfa7fed2944234e1cbe0bf8eff1a144b9eceffbc08a58e83b4ef89",
+      "sha256": "398b02cb369f5ed1f19546bddc278d7b2a2e124807c0d8ffc3f167a59c82344e",
       "pixels": [1440, 2340]
     },
+    "operations-center-partial-chromium-desktop-linux.png": {
+      "sha256": "97100af05b3edec57989df6e248dc9852eee6bda066dab5f3cfc27015ebb4dba",
+      "pixels": [1440, 2527]
+    },
+    "operations-center-read-only-chromium-desktop-linux.png": {
+      "sha256": "8cb510807e00ab0caa1cc21ef9347b457875b139cad47c9a45f83389d7546c50",
+      "pixels": [1440, 2280]
+    },
+    "operations-center-reauth-chromium-desktop-linux.png": {
+      "sha256": "c042afdad115062daeec851940ebc4b7c2d1d99e8e8830c38212986cbd7632e0",
+      "pixels": [1440, 2527]
+    },
     "operations-center-webkit-desktop-webkit-desktop-linux.png": {
-      "sha256": "902e66544fc5c44862df423007cd225b29667c49425248baf00165127763effa",
+      "sha256": "f069c0e65c8c725dcfbd980ec8c5090d822993e1ea72bb3646868a108c1ca182",
       "pixels": [1430, 2320]
     }
   },
@@ -74,6 +93,13 @@
     "console": "pass",
     "focus": "pass",
     "overflow": "pass",
-    "requests": "pass"
+    "requests": "pass",
+    "keyboard": "pass",
+    "touchTargets": "pass",
+    "reducedMotion": "pass",
+    "rtlLocalization": "pass",
+    "degradedEvidence": "pass",
+    "recentAuthenticationRecovery": "pass",
+    "readOnlyBoundary": "pass"
   }
 }

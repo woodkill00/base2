@@ -461,6 +461,19 @@ def create_database_object_bundle(
         with tarfile.open(archive, "w") as bundle:
             bundle.add(database_dump, arcname="database.dump", recursive=False)
             bundle.add(manifest, arcname="objects.json", recursive=False)
+            # Inventory and payload are one encrypted recovery unit. Every name
+            # is derived from the already verified, symlink-free inventory.
+            for member in inventory["members"]:
+                source = object_root.resolve() / member["path"]
+                if source.is_symlink() or not source.is_file():
+                    raise RecoveryDenied("backup:object_changed")
+                current_digest = hashlib.sha256()
+                with source.open("rb") as stream:
+                    while chunk := stream.read(1024 * 1024):
+                        current_digest.update(chunk)
+                if current_digest.hexdigest() != member["sha256"]:
+                    raise RecoveryDenied("backup:object_changed")
+                bundle.add(source, arcname=f"objects/{member['path']}", recursive=False)
         receipt = create_stream_backup(
             source=archive,
             target_id=target_id,

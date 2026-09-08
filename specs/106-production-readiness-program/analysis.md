@@ -395,3 +395,35 @@ security, UX/accessibility, data, and operations reviewers evaluate the repaired
 exact source and every critical, high, and medium finding is closed. Publication,
 hosted checks, merge, provider canary, provider teardown, and actual production
 activation likewise retain their explicit approval and evidence boundaries.
+
+## Independent review cycle 10 — exact-head rejection and corrective expansion
+
+Fresh independent data, UX/accessibility, and combined code/security/operations
+reviews examined published draft PR #55 at exact clean head
+`fba2fd3ee386a8d5104c3e9b76bea4e237e301c4`. Hosted checks were green, but the
+reviews correctly rejected production readiness. They found one critical, ten
+distinct high, and several medium findings after overlapping reports were
+deduplicated. The draft remains unmerged and no provider, DNS, certificate,
+credential, deployment, or destructive action has been performed.
+
+The release-blocking gaps include a Celery database role regression and broader
+credential bypass, absent production email delivery and durable replay, monitoring
+fan-out that can outgrow its freshness window, unsafe scheduler idempotency and
+capacity behavior, incomplete timezone/DST and long-lease semantics, an upgrade
+constraint that does not normalize every historically accepted row, helper-only
+tenant lifecycle and production backup paths, non-causal release health evidence,
+and disconnected automatic ephemeral expiry. The object-storage validation also
+has a DNS-resolution race between preflight and connection.
+
+The UX review found that the accepted RTL capture contradicted the current Arabic
+source assertion and still contained substantial untranslated shell, settings,
+state, and severity text. It also found missing panel-local freshness, an
+unconfirmed dead-letter cancellation action, and evidence that did not yet prove
+the stated keyboard, touch, motion, degraded, recent-auth, read-only, browser, and
+assistive-technology behaviors.
+
+Tasks B161-B176 convert every finding into explicit implementation, regression,
+evidence, exact-head gate, and repeated independent-review work. The ancestor-bound
+B145 evidence is retained as historical evidence only; after any repair changes the
+head, B175 requires two new complete gates at the new exact clean commit. No prior
+publication approval or hosted result may be reused for a changed head.

@@ -8,6 +8,8 @@ type Props = {
   headerTitle?: string;
   sidebarItems?: string[];
   variant?: 'public' | 'app';
+  footerLabel?: string;
+  menuLabel?: string;
 };
 
 export const AppShell: React.FC<Props> = ({
@@ -15,6 +17,8 @@ export const AppShell: React.FC<Props> = ({
   headerTitle,
   sidebarItems,
   variant = 'app',
+  footerLabel = 'Private workspace',
+  menuLabel = 'Menu',
 }) => {
   const uid = useId();
   const sidebarId = useMemo(() => `app-shell-sidebar-${uid}`, [uid]);
@@ -36,6 +40,7 @@ export const AppShell: React.FC<Props> = ({
           variant={variant}
           menuControlsId={sidebarId}
           isMenuOpen={isMenuOpen}
+          menuLabel={menuLabel}
           onToggleMenu={isPublic ? undefined : () => setIsMenuOpen((v) => !v)}
         />
 
@@ -72,7 +77,7 @@ export const AppShell: React.FC<Props> = ({
             style={{ minHeight: 'var(--footer-h)' }}
           >
             <span>{siteManifest.name}</span>
-            <span>Private workspace</span>
+            <span>{footerLabel}</span>
           </footer>
         )}
       </div>

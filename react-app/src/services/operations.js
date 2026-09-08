@@ -7,12 +7,16 @@ export const normalizeOperationsError = (error) => {
   const normalized = normalizeApiError(error, {
     fallbackMessage: 'Operations information is temporarily unavailable.',
   });
+  const responseDetail = error?.response?.data?.detail;
+  const recentAuthenticationRequired =
+    normalized.status === 403 &&
+    (normalized.message === 'recent_reauthentication_required' ||
+      responseDetail === 'recent_reauthentication_required');
   return {
     ...normalized,
-    message:
-      normalized.status === 403 && normalized.message === 'recent_reauthentication_required'
-        ? 'Recent authentication is required. Reauthenticate, then retry this operation.'
-        : 'Operations information is temporarily unavailable. Try refreshing the evidence.',
+    message: recentAuthenticationRequired
+      ? 'Recent authentication is required. Reauthenticate, then retry this operation.'
+      : 'Operations information is temporarily unavailable. Try refreshing the evidence.',
   };
 };
 

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import logging
 import os
+import re
+import stat as stat_module
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
@@ -11,6 +13,7 @@ from api.services.transactional_email import (
     DisabledEmailAdapter,
     LocalFakeEmailAdapter,
     RenderedEmail,
+    SmtpEmailAdapter,
     deliver_email,
     recipient_digest,
 )
@@ -100,6 +103,40 @@ def get_outbox_email(outbox_id: UUID) -> EmailOutboxRow | None:
     )
 
 
+def claim_outbox_email(outbox_id: UUID) -> EmailOutboxRow | None:
+    """Atomically lease a due row; abandoned leases become eligible after five minutes."""
+    with db_conn() as conn:
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE api_email_outbox
+                SET status='sending', provider='worker_claim',
+                    provider_message_id=NOW()::text
+                WHERE id=%s AND (
+                    status IN ('queued', 'retry') OR (
+                        status='sending' AND provider='worker_claim' AND
+                        CASE WHEN provider_message_id ~
+                            '^[0-9]{4}-[0-9]{2}-[0-9]{2} '
+                            THEN provider_message_id::timestamptz < NOW() - INTERVAL '5 minutes'
+                            ELSE FALSE END
+                    )
+                )
+                RETURNING id, to_email, subject, body_text, body_html, status, provider,
+                          provider_message_id, error, created_at, sent_at
+                """,
+                (str(outbox_id),),
+            )
+            row = cur.fetchone()
+    if not row:
+        return None
+    return EmailOutboxRow(
+        id=UUID(str(row[0])), to_email=row[1], subject=row[2], body_text=row[3],
+        body_html=row[4] or '', status=row[5], provider=row[6],
+        provider_message_id=row[7] or '', error=row[8] or '', created_at=row[9], sent_at=row[10],
+    )
+
+
 def mark_outbox_sent(
     *,
     outbox_id: UUID,
@@ -168,6 +205,33 @@ def _configured_adapter():
     mode = os.getenv('BASE2_EMAIL_ADAPTER', 'disabled').strip().lower()
     if mode == 'local_fake':
         return LocalFakeEmailAdapter()
+    if mode == 'smtp':
+        def private_value(variable: str) -> str:
+            path = os.getenv(variable, '').strip()
+            if not path or not os.path.isabs(path) or os.path.islink(path):
+                raise RuntimeError('email_secret_file_invalid')
+            stat = os.stat(path, follow_symlinks=False)
+            if not stat_module.S_ISREG(stat.st_mode):
+                raise RuntimeError('email_secret_file_invalid')
+            if stat.st_uid != os.geteuid() or stat.st_mode & 0o077:
+                raise RuntimeError('email_secret_file_permissions')
+            with open(path, encoding='utf-8') as handle:
+                value = handle.read().strip()
+            if not value:
+                raise RuntimeError('email_secret_empty')
+            return value
+
+        try:
+            port = int(os.getenv('BASE2_EMAIL_SMTP_PORT', '587'))
+            timeout = float(os.getenv('BASE2_EMAIL_SMTP_TIMEOUT_SECONDS', '10'))
+        except ValueError as exc:
+            raise RuntimeError('email_smtp_configuration_invalid') from exc
+        return SmtpEmailAdapter(
+            host=os.getenv('BASE2_EMAIL_SMTP_HOST', '').strip(), port=port,
+            username=private_value('BASE2_EMAIL_SMTP_USERNAME_FILE'),
+            password=private_value('BASE2_EMAIL_SMTP_PASSWORD_FILE'),
+            from_address=os.getenv('BASE2_EMAIL_FROM_ADDRESS', '').strip(), timeout=timeout,
+        )
     if mode != 'disabled':
         raise RuntimeError('email_adapter_not_allowed')
     return DisabledEmailAdapter()
@@ -180,14 +244,17 @@ def process_outbox_email(*, outbox_id: UUID) -> None:
     without requiring SMTP configuration.
     """
 
-    existing = get_outbox_email(outbox_id)
+    existing = claim_outbox_email(outbox_id)
     if existing is None:
-        raise RuntimeError('outbox_not_found')
-
-    if existing.sent_at is not None or existing.status == 'sent':
+        current = get_outbox_email(outbox_id)
+        if current is None:
+            raise RuntimeError('outbox_not_found')
+        # Another worker owns the lease or this row is already terminal.
         return
 
     adapter = _configured_adapter()
+    match = re.fullmatch(r'delivery_retry:(\d+)', existing.error or '')
+    attempt = int(match.group(1)) + 1 if match else 1
     result = deliver_email(
         RenderedEmail(
             kind='outbox',
@@ -196,15 +263,41 @@ def process_outbox_email(*, outbox_id: UUID) -> None:
             text=existing.body_text,
             html=existing.body_html,
         ),
-        adapter,
+        adapter, attempt=attempt, max_attempts=3,
     )
     mark_outbox_status(
         outbox_id=outbox_id,
         status=result.status,
         provider=result.provider,
         provider_message_id=result.message_id,
-        error='' if result.status == 'sent' else f'delivery_{result.status}',
+        error=(
+            '' if result.status == 'sent'
+            else f'delivery_retry:{attempt}' if result.status == 'retry'
+            else f'delivery_{result.status}'
+        ),
     )
+
+
+def replayable_outbox_ids(*, limit: int = 100) -> list[UUID]:
+    if limit < 1 or limit > 500:
+        raise ValueError('outbox_replay_limit_invalid')
+    with db_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id FROM api_email_outbox
+            WHERE (
+                status IN ('queued', 'retry') OR (
+                    status='sending' AND provider='worker_claim' AND
+                    CASE WHEN provider_message_id ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2} '
+                    THEN provider_message_id::timestamptz < NOW() - INTERVAL '5 minutes'
+                    ELSE FALSE END
+                )
+            ) AND sent_at IS NULL
+            ORDER BY created_at ASC, id ASC LIMIT %s
+            """,
+            (limit,),
+        )
+        return [UUID(str(row[0])) for row in cur.fetchall()]
 
 
 def queue_email(

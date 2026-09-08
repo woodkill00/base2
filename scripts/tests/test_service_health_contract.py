@@ -130,6 +130,16 @@ class ServiceHealthContractTests(unittest.TestCase):
         self.assertNotIn("TOKEN_PEPPER", worker_command)
         self.assertNotIn("IDENTITY_ENCRYPTION_KEY", worker_command)
 
+    def test_worker_and_scheduler_use_only_the_narrow_worker_database_identity(self):
+        for name in ("celery-worker", "celery-beat"):
+            environment = SERVICES[name].get("environment") or []
+            self.assertIn("DB_USER=${WORKSPACE_WORKER_DB_USER}", environment)
+            self.assertIn("DB_PASSWORD=${WORKSPACE_WORKER_DB_PASSWORD}", environment)
+            self.assertIn("WORKSPACE_DB_USER=${WORKSPACE_WORKER_DB_USER}", environment)
+            self.assertIn("WORKSPACE_DB_PASSWORD=${WORKSPACE_WORKER_DB_PASSWORD}", environment)
+            self.assertNotIn("DB_USER=${POSTGRES_USER}", environment)
+            self.assertNotIn("WORKSPACE_DB_USER=${WORKSPACE_DB_USER}", environment)
+
     def test_traefik_image_has_ping_health_contract(self):
         dockerfile = (ROOT / "traefik/Dockerfile").read_text(encoding="utf-8")
         self.assertIn("HEALTHCHECK", dockerfile)

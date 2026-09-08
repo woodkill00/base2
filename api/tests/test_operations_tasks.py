@@ -15,20 +15,45 @@ def test_operations_beat_schedule_is_bounded_and_persistent():
     assert schedule['operations-retention']['schedule'] == 86400.0
     assert schedule['runtime-materialize-schedules']['schedule'] == 30.0
     assert schedule['runtime-claim-jobs']['schedule'] == 15.0
+    assert schedule['email-replay-outbox']['schedule'] == 60.0
 
 
 def test_collection_and_dispatch_fan_out_only_configured_tenants(monkeypatch):
     monkeypatch.setattr(tasks.settings, 'OPERATIONS_ALERTS_ENABLED', True)
     monkeypatch.setattr(tasks, 'configured_tenants', lambda: ['tenant-one', 'tenant-two'])
-    monkeypatch.setattr(tasks, 'fair_tenant_batch', lambda values: values)
+    monkeypatch.setattr(tasks, 'fair_tenant_batch', lambda values, **_kwargs: values)
+    monkeypatch.setattr(tasks, '_reserve_tenant_dispatch', lambda kind, site: f'{kind}-{site}')
     collect = MagicMock()
     dispatch = MagicMock()
     monkeypatch.setattr(tasks.collect_operations_site, 'delay', collect)
     monkeypatch.setattr(tasks.dispatch_operations_site_alerts, 'delay', dispatch)
     assert tasks.collect_operations_health.run() == 2
     assert tasks.dispatch_operations_alerts_task.run() == 2
-    assert collect.call_args_list[0].args == ('tenant-one',)
-    assert dispatch.call_args_list[1].args == ('tenant-two',)
+    assert collect.call_args_list[0].args == ('tenant-one', 'collect-tenant-one')
+    assert dispatch.call_args_list[1].args == ('tenant-two', 'alerts-tenant-two')
+
+
+def test_operations_fanout_skips_already_reserved_tenant(monkeypatch):
+    monkeypatch.setattr(tasks, 'configured_tenants', lambda: ['tenant-one', 'tenant-two'])
+    monkeypatch.setattr(tasks, 'fair_tenant_batch', lambda values, **_kwargs: values)
+    monkeypatch.setattr(
+        tasks, '_reserve_tenant_dispatch',
+        lambda kind, site: None if site == 'tenant-one' else 'dispatch-token',
+    )
+    delayed = MagicMock()
+    monkeypatch.setattr(tasks.collect_operations_site, 'delay', delayed)
+    assert tasks.collect_operations_health.run() == 1
+    delayed.assert_called_once_with('tenant-two', 'dispatch-token')
+
+
+def test_email_replay_fans_out_only_durable_due_rows(monkeypatch):
+    first, second = UUID(int=10), UUID(int=11)
+    monkeypatch.setattr(tasks, 'replayable_outbox_ids', lambda limit: [first, second])
+    delayed = MagicMock()
+    monkeypatch.setattr(tasks.send_email_outbox, 'delay', delayed)
+    assert tasks.replay_email_outbox.run(limit=2) == 2
+    assert delayed.call_args_list[0].args == (str(first),)
+    assert delayed.call_args_list[1].args == (str(second),)
 
 
 def test_alert_dispatch_has_no_runtime_or_secret_reads_while_disabled(monkeypatch):

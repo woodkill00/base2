@@ -1,4 +1,7 @@
 import pytest
+import base64
+from unittest.mock import patch
+from uuid import UUID
 
 from datetime import UTC, datetime, timedelta
 
@@ -16,6 +19,10 @@ from api.services.tenant_lifecycle import (
     settle_quota,
     tenant_operation,
     transition_tenant,
+    persist_operation,
+    persist_provision,
+    persist_transition,
+    read_approval_key_file,
 )
 
 NOW = datetime(2026, 9, 8, tzinfo=UTC)
@@ -217,6 +224,78 @@ def test_tenant_transfer_export_and_configuration_are_recent_auth_bound():
         tenant_operation(
             tenant_id='tenant-one', operation='configure', owner='owner-one', recent_auth=False
         )
+
+
+def test_durable_transition_defers_approval_consumption_to_atomic_repository():
+    approval = create_deletion_approval(
+        tenant_id='tenant-one',
+        current='archived',
+        target='deleting',
+        owner='owner-one',
+        revision=7,
+        expires_at=NOW + timedelta(minutes=10),
+        nonce='delete-atomic-0001',
+        key=APPROVAL_KEY,
+    )
+    operation_id = UUID('00000000-0000-4000-8000-000000000106')
+    with (
+        patch('api.repositories.tenant_lifecycle.get_state') as get_state,
+        patch('api.repositories.tenant_lifecycle.apply_transition') as apply_transition,
+    ):
+        get_state.return_value = {'state': 'archived'}
+        apply_transition.return_value = {'state': 'deleting', 'revision': 8}
+        result = persist_transition(
+            tenant_id='tenant-one',
+            target='deleting',
+            owner='owner-one',
+            expected_revision=7,
+            operation_id=operation_id,
+            deletion_approval=approval,
+            now=NOW,
+            approval_key=APPROVAL_KEY,
+        )
+    assert result['state'] == 'deleting'
+    atomic_approval = apply_transition.call_args.kwargs['approval']
+    assert atomic_approval['nonce'] == 'delete-atomic-0001'
+    assert atomic_approval['digest'] == approval['signature']
+
+
+def test_durable_provision_and_operations_delegate_validated_revisioned_state():
+    operation_id = UUID('00000000-0000-4000-8000-000000000107')
+    with patch('api.repositories.tenant_lifecycle.provision') as provision:
+        provision.return_value = {'state': 'provisioning', 'revision': 1}
+        result = persist_provision(
+            tenant_id='tenant-one',
+            owner='owner-one',
+            operation_id=operation_id,
+            configuration={'locale': 'en'},
+        )
+    assert result['revision'] == 1
+    assert provision.call_args.kwargs['configuration'] == {'locale': 'en'}
+
+    with patch('api.repositories.tenant_lifecycle.apply_operation') as apply_operation:
+        apply_operation.return_value = {'state': 'active', 'revision': 4}
+        result = persist_operation(
+            tenant_id='tenant-one',
+            operation='transfer',
+            owner='owner-one',
+            target_owner='owner-two',
+            recent_auth=True,
+            expected_revision=3,
+            operation_id=operation_id,
+        )
+    assert result['revision'] == 4
+    assert apply_operation.call_args.kwargs['target_owner_ref'] == 'owner-two'
+
+
+def test_deletion_approval_key_file_is_absolute_owner_only_and_exact_length(tmp_path):
+    key_file = tmp_path / 'tenant-delete-key'
+    key_file.write_text(base64.urlsafe_b64encode(APPROVAL_KEY).decode(), encoding='ascii')
+    key_file.chmod(0o600)
+    assert read_approval_key_file(str(key_file)) == APPROVAL_KEY
+    key_file.chmod(0o640)
+    with pytest.raises(TenantLifecycleError, match='approval_key_invalid'):
+        read_approval_key_file(str(key_file))
 
 
 def test_quota_report_is_tenant_private_and_actionable():

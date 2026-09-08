@@ -190,10 +190,11 @@ test('operations center is accessible responsive and visually stable', async ({
   page,
 }, testInfo) => {
   const runtimeErrors: string[] = [];
+  const failedRequests: string[] = [];
   page.on('console', (message) => {
     if (message.type() === 'error') runtimeErrors.push(message.text());
   });
-  page.on('requestfailed', (request) => runtimeErrors.push(request.url()));
+  page.on('requestfailed', (request) => failedRequests.push(request.url()));
   await page.goto('/operations', { waitUntil: 'networkidle' });
   if (testInfo.project.name === 'chromium-large-text')
     await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
@@ -208,6 +209,12 @@ test('operations center is accessible responsive and visually stable', async ({
   await expect(
     page.getByRole('heading', { name: rtl ? 'حالة الخدمات' : 'Service health' })
   ).toBeVisible();
+  if (rtl) {
+    await expect(page.getByText('Database Unavailable')).toHaveCount(0);
+    await expect(page.getByText('Operations Collect')).toHaveCount(0);
+    await expect(page.getByText('Private workspace')).toHaveCount(0);
+    await expect(page.getByText('App Shell')).toHaveCount(0);
+  }
   const overflow = await page.evaluate(() => {
     const width = document.documentElement.clientWidth;
     return [...document.querySelectorAll('body *')]
@@ -228,12 +235,48 @@ test('operations center is accessible responsive and visually stable', async ({
   expect(violations.map((item) => item.id)).toEqual([]);
   await page.keyboard.press('Tab');
   await expect(page.locator(':focus')).toBeVisible();
+  if (testInfo.project.name === 'chromium-landscape-touch') {
+    const undersizedControls = await page
+      .locator('a,button,input,select,textarea')
+      .evaluateAll((controls) =>
+        controls
+          .map((button) => {
+            const box = button.getBoundingClientRect();
+            return { name: button.textContent?.trim(), width: box.width, height: box.height };
+          })
+          .filter(({ width, height }) => width > 0 && height > 0 && (width < 24 || height < 24))
+      );
+    expect(undersizedControls).toEqual([]);
+    const undersizedButtons = await page.getByRole('button').evaluateAll((buttons) =>
+      buttons
+        .map((button) => {
+          const box = button.getBoundingClientRect();
+          return { name: button.textContent?.trim(), width: box.width, height: box.height };
+        })
+        .filter(({ width, height }) => width < 44 || height < 44)
+    );
+    expect(undersizedButtons).toEqual([]);
+  }
   if (testInfo.project.name === 'chromium-reduced-motion') {
     expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(
       true
     );
+    const transitionDuration = await page
+      .getByRole('button', { name: rtl ? 'تحديث الأدلة' : 'Refresh evidence' })
+      .evaluate((button) => getComputedStyle(button).transitionDuration);
+    expect(transitionDuration).toBe('0s');
   }
   expect(runtimeErrors).toEqual([]);
+  const unexplainedFailures = failedRequests.filter((url) => !url.endsWith('/base2-mark.svg'));
+  expect(unexplainedFailures).toEqual([]);
+  if (failedRequests.some((url) => url.endsWith('/base2-mark.svg'))) {
+    expect(
+      await page.locator('img[src="/base2-mark.svg"]').evaluate((image) => {
+        const loaded = image as HTMLImageElement;
+        return loaded.complete && loaded.naturalWidth > 0;
+      })
+    ).toBe(true);
+  }
   await page.addStyleTag({
     content: '.app-shell > header, .app-shell-content > nav { position: static !important; }',
   });
@@ -247,18 +290,57 @@ test('operations center is accessible responsive and visually stable', async ({
     .getByRole('button', { name: rtl ? 'عرض التسلسل الزمني' : 'View timeline' })
     .first();
   await timelineButton.focus();
-  await page.keyboard.press('Enter');
+  await timelineButton.press('Enter');
   await expect(
     page.getByRole('heading', { name: rtl ? 'التسلسل الزمني للحادث' : 'Incident timeline' })
   ).toBeVisible();
   await expect(page.getByText(rtl ? 'فُتح الحادث' : 'Incident Opened')).toBeVisible();
-  await page.getByRole('button', { name: rtl ? 'إغلاق التسلسل' : 'Close timeline' }).click();
+  const closeTimeline = page.getByRole('button', {
+    name: rtl ? 'إغلاق التسلسل' : 'Close timeline',
+  });
+  await closeTimeline.focus();
+  await closeTimeline.press('Enter');
+  await expect(timelineButton).toBeFocused();
   const replayRequest = page.waitForRequest(
     (request) => request.method() === 'POST' && request.url().endsWith('/replay')
   );
-  await page.getByRole('button', { name: rtl ? 'إعادة آمنة' : 'Replay safely' }).click();
+  const replay = page.getByRole('button', { name: rtl ? 'إعادة آمنة' : 'Replay safely' });
+  await replay.focus();
+  await replay.press('Enter');
   await replayRequest;
-  await page.getByRole('button', { name: rtl ? 'إقرار' : 'Acknowledge' }).click();
+  const cancel = page.getByRole('button', { name: rtl ? 'إلغاء' : 'Cancel' });
+  await expect(cancel).toBeEnabled();
+  await cancel.focus();
+  await cancel.press('Enter');
+  const cancelHeading = page.getByRole('heading', {
+    name: rtl ? 'هل تريد إلغاء هذه المهمة الفاشلة؟' : 'Cancel this dead-letter job?',
+  });
+  await expect(cancelHeading).toBeFocused();
+  if (testInfo.project.name === 'chromium-desktop') {
+    await expect(page).toHaveScreenshot('operations-center-cancel-confirmation.png', {
+      fullPage: true,
+      animations: 'disabled',
+      caret: 'hide',
+      maxDiffPixelRatio: 0.02,
+    });
+  }
+  await page.keyboard.press('Escape');
+  await expect(cancel).toBeFocused();
+  await cancel.press('Enter');
+  const confirmCancel = page.getByRole('button', {
+    name: rtl ? 'إلغاء المهمة' : 'Cancel job',
+  });
+  await confirmCancel.focus();
+  await Promise.all([
+    page.waitForRequest(
+      (request) => request.method() === 'POST' && request.url().endsWith('/cancel')
+    ),
+    confirmCancel.press('Enter'),
+  ]);
+  const acknowledge = page.getByRole('button', { name: rtl ? 'إقرار' : 'Acknowledge' });
+  await expect(acknowledge).toBeEnabled();
+  await acknowledge.focus();
+  await acknowledge.press('Enter');
   await expect(
     page.getByRole('heading', { name: rtl ? 'مركز العمليات' : 'Operations center' })
   ).toBeVisible();
@@ -266,7 +348,7 @@ test('operations center is accessible responsive and visually stable', async ({
 
 test('operations center shows truthful empty and failure states', async ({ page }, testInfo) => {
   if (testInfo.project.name !== 'chromium-desktop') return;
-  await page.route('**/api/operations/v1/**', async (route) => {
+  const partialHandler = async (route) => {
     const url = new URL(route.request().url());
     const body = url.pathname.endsWith('/summary')
       ? { schemaVersion: 1, services: { enabled: 0, total: 0 }, incidents: {}, synthetics24h: {} }
@@ -285,7 +367,8 @@ test('operations center shows truthful empty and failure states', async ({ page 
       contentType: 'application/json',
       body: JSON.stringify(body),
     });
-  });
+  };
+  await page.route('**/api/operations/v1/**', partialHandler);
   await page.goto('/operations');
   await expect(page.getByText('No incidents are currently recorded.')).toBeVisible();
   await expect(page.getByText('No objectives are configured.')).toBeVisible();
@@ -294,7 +377,7 @@ test('operations center shows truthful empty and failure states', async ({ page 
     animations: 'disabled',
   });
 
-  await page.unroute('**/api/operations/v1/**');
+  await page.unroute('**/api/operations/v1/**', partialHandler);
   await page.route('**/api/operations/v1/**', (route) =>
     route.fulfill({
       status: 503,
@@ -305,6 +388,67 @@ test('operations center shows truthful empty and failure states', async ({ page 
   await page.reload();
   await expect(page.getByRole('alert')).toContainText('temporarily unavailable');
   await expect(page).toHaveScreenshot('operations-center-error.png', {
+    fullPage: true,
+    animations: 'disabled',
+  });
+});
+
+test('operations center exposes stale, reauthentication, and read-only recovery states', async ({
+  page,
+}, testInfo) => {
+  if (testInfo.project.name !== 'chromium-desktop') return;
+  await page.goto('/operations', { waitUntil: 'networkidle' });
+  await expect(page.getByText('11/12')).toBeVisible();
+
+  const staleHandler = async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith('/summary') || path.endsWith('/incidents')) {
+      return route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: '{"detail":"unavailable"}',
+      });
+    }
+    return route.fallback();
+  };
+  await page.route('**/api/operations/v1/**', staleHandler);
+  await page.getByRole('button', { name: 'Refresh evidence' }).click();
+  await expect(page.getByText('Stale evidence')).toHaveCount(2);
+  await expect(page.getByText('11/12')).toBeVisible();
+  await expect(page.getByText('Database Unavailable')).toBeVisible();
+  await expect(page).toHaveScreenshot('operations-center-partial.png', {
+    fullPage: true,
+    animations: 'disabled',
+  });
+
+  await page.unroute('**/api/operations/v1/**', staleHandler);
+  await page.route('**/api/operations/v1/incidents/*/acknowledge', (route) =>
+    route.fulfill({
+      status: 403,
+      contentType: 'application/json',
+      body: '{"detail":"recent_reauthentication_required"}',
+    })
+  );
+  await page.getByRole('button', { name: 'Acknowledge' }).click();
+  await expect(page.getByRole('link', { name: 'Sign in again' })).toHaveAttribute(
+    'href',
+    '/login?next=%2Foperations'
+  );
+  await expect(page).toHaveScreenshot('operations-center-reauth.png', {
+    fullPage: true,
+    animations: 'disabled',
+  });
+
+  await page.addInitScript(() => {
+    const current = JSON.parse(localStorage.getItem('user') || '{}');
+    localStorage.setItem('user', JSON.stringify({ ...current, permissions: ['operations.read'] }));
+  });
+  await page.reload({ waitUntil: 'networkidle' });
+  await expect(page.getByRole('button', { name: 'View timeline' }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Acknowledge' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Replay safely' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Cancel' })).toHaveCount(0);
+  await expect(page).toHaveScreenshot('operations-center-read-only.png', {
     fullPage: true,
     animations: 'disabled',
   });

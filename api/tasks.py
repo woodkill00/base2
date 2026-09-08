@@ -4,12 +4,13 @@ import logging
 import os
 from contextlib import suppress
 from datetime import UTC, datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from celery import Celery, Task
 from celery.signals import before_task_publish, heartbeat_sent, task_prerun, worker_ready
 
-from api.services.email_service import process_outbox_email
+from api.services.email_service import process_outbox_email, replayable_outbox_ids
+from api.redis_client import get_client as redis_client, tenant_key as redis_tenant_key
 from api.repositories.operations import prune as prune_operations
 from api.repositories.data_rights import expire_results, queued_operation_ids
 from api.services.data_rights_worker import process_operation
@@ -136,6 +137,10 @@ app.conf.update(
             'task': 'app.collect_operations_health',
             'schedule': 60.0,
         },
+        'email-replay-outbox': {
+            'task': 'app.replay_email_outbox',
+            'schedule': 60.0,
+        },
         'operations-dispatch-alerts': {
             'task': 'app.dispatch_operations_alerts',
             'schedule': 30.0,
@@ -191,35 +196,77 @@ def add(x: int, y: int) -> int:
     return int(x) + int(y)
 
 
+def _reserve_tenant_dispatch(kind: str, site_id: str) -> str | None:
+    token = str(uuid4())
+    admitted = redis_client().set(
+        redis_tenant_key('operations-dispatch', site_id, kind), token, nx=True, ex=900
+    )
+    return token if admitted else None
+
+
+def _release_tenant_dispatch(kind: str, site_id: str, token: str) -> None:
+    redis_client().eval(
+        "if redis.call('get', KEYS[1]) == ARGV[1] then "
+        "return redis.call('del', KEYS[1]) else return 0 end",
+        1, redis_tenant_key('operations-dispatch', site_id, kind), token,
+    )
+
+
 @app.task(name='app.collect_operations_site')
-def collect_operations_site(site_id: str) -> dict[str, int]:
+def collect_operations_site(site_id: str, dispatch_token: str | None = None) -> dict[str, int]:
     environment = (
         settings.ENV if settings.ENV in {'preview', 'staging', 'production'} else 'preview'
     )
-    return collect_site(tenant_id=site_id, environment=environment)
+    try:
+        return collect_site(tenant_id=site_id, environment=environment)
+    finally:
+        if dispatch_token:
+            _release_tenant_dispatch('collect', site_id, dispatch_token)
 
 
 @app.task(name='app.collect_operations_health')
 def collect_operations_health() -> int:
-    tenants = fair_tenant_batch(configured_tenants())
+    tenants = fair_tenant_batch(configured_tenants(), cursor_name='collect')
+    admitted = 0
     for tenant_id in tenants:
-        collect_operations_site.delay(tenant_id)
-    return len(tenants)
+        token = _reserve_tenant_dispatch('collect', tenant_id)
+        if token:
+            try:
+                collect_operations_site.delay(tenant_id, token)
+            except Exception:
+                _release_tenant_dispatch('collect', tenant_id, token)
+                raise
+            admitted += 1
+    return admitted
 
 
 @app.task(name='app.dispatch_operations_site_alerts')
-def dispatch_operations_site_alerts(site_id: str) -> dict[str, int]:
-    return dispatch_alerts(tenant_id=site_id, sender=discord_webhook_sender)
+def dispatch_operations_site_alerts(
+    site_id: str, dispatch_token: str | None = None
+) -> dict[str, int]:
+    try:
+        return dispatch_alerts(tenant_id=site_id, sender=discord_webhook_sender)
+    finally:
+        if dispatch_token:
+            _release_tenant_dispatch('alerts', site_id, dispatch_token)
 
 
 @app.task(name='app.dispatch_operations_alerts')
 def dispatch_operations_alerts_task() -> int:
     if not settings.OPERATIONS_ALERTS_ENABLED:
         return 0
-    tenants = configured_tenants()
+    tenants = fair_tenant_batch(configured_tenants(), cursor_name='alerts')
+    admitted = 0
     for tenant_id in tenants:
-        dispatch_operations_site_alerts.delay(tenant_id)
-    return len(tenants)
+        token = _reserve_tenant_dispatch('alerts', tenant_id)
+        if token:
+            try:
+                dispatch_operations_site_alerts.delay(tenant_id, token)
+            except Exception:
+                _release_tenant_dispatch('alerts', tenant_id, token)
+                raise
+            admitted += 1
+    return admitted
 
 
 @app.task(name='app.prune_operations_evidence')
@@ -348,6 +395,14 @@ def send_email_outbox(self, outbox_id: str, request_id: str | None = None) -> st
 
     process_outbox_email(outbox_id=UUID(outbox_id))
     return outbox_id
+
+
+@app.task(name='app.replay_email_outbox')
+def replay_email_outbox(limit: int = 100) -> int:
+    outbox_ids = replayable_outbox_ids(limit=limit)
+    for outbox_id in outbox_ids:
+        send_email_outbox.delay(str(outbox_id))
+    return len(outbox_ids)
 
 
 @app.task(name='app.process_data_rights_operation')

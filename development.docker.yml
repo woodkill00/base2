@@ -433,8 +433,8 @@ services:
       - DB_NAME=${POSTGRES_DB}
       - DB_USER=${WORKSPACE_WORKER_DB_USER}
       - DB_PASSWORD=${WORKSPACE_WORKER_DB_PASSWORD}
-      - WORKSPACE_DB_USER=${WORKSPACE_DB_USER}
-      - WORKSPACE_DB_PASSWORD=${WORKSPACE_DB_PASSWORD}
+      - WORKSPACE_DB_USER=${WORKSPACE_WORKER_DB_USER}
+      - WORKSPACE_DB_PASSWORD=${WORKSPACE_WORKER_DB_PASSWORD}
       - WORKSPACE_WORKER_DB_USER=${WORKSPACE_WORKER_DB_USER}
       - WORKSPACE_WORKER_DB_PASSWORD=${WORKSPACE_WORKER_DB_PASSWORD}
       - TOKEN_PEPPER=${TOKEN_PEPPER}
@@ -446,6 +446,13 @@ services:
       - OPERATIONS_ALERT_RECEIPT_KEY_FILE=/run/secrets/operations-alert-receipt-key
       - OPERATIONS_ALERT_WEBHOOK_URL_FILE=/run/secrets/operations-alert-webhook-url
       - OPERATIONS_RECEIPT_INTEGRITY_KEY_FILE=/run/secrets/operations-receipt-integrity-key
+      - BASE2_EMAIL_ADAPTER=${BASE2_EMAIL_ADAPTER:-disabled}
+      - BASE2_EMAIL_SMTP_HOST=${BASE2_EMAIL_SMTP_HOST:-}
+      - BASE2_EMAIL_SMTP_PORT=${BASE2_EMAIL_SMTP_PORT:-587}
+      - BASE2_EMAIL_SMTP_TIMEOUT_SECONDS=${BASE2_EMAIL_SMTP_TIMEOUT_SECONDS:-10}
+      - BASE2_EMAIL_FROM_ADDRESS=${BASE2_EMAIL_FROM_ADDRESS:-}
+      - BASE2_EMAIL_SMTP_USERNAME_FILE=/run/secrets/email-smtp-username
+      - BASE2_EMAIL_SMTP_PASSWORD_FILE=/run/secrets/email-smtp-password
       - MEDIA_INSPECTOR_SPOOL_ROOT=/var/lib/base2/media-inspector
       - MEDIA_INSPECTOR_VERIFY_KEY=${MEDIA_INSPECTOR_VERIFY_KEY}
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
@@ -461,6 +468,8 @@ services:
       - ${OPERATIONS_ALERT_RECEIPT_KEY_FILE_HOST:-/dev/null}:/run/secrets/operations-alert-receipt-key:ro
       - ${OPERATIONS_ALERT_WEBHOOK_URL_FILE_HOST:-/dev/null}:/run/secrets/operations-alert-webhook-url:ro
       - ${OPERATIONS_RECEIPT_INTEGRITY_KEY_FILE_HOST:-/dev/null}:/run/secrets/operations-receipt-integrity-key:ro
+      - ${BASE2_EMAIL_SMTP_USERNAME_FILE_HOST:-/dev/null}:/run/secrets/email-smtp-username:ro
+      - ${BASE2_EMAIL_SMTP_PASSWORD_FILE_HOST:-/dev/null}:/run/secrets/email-smtp-password:ro
     depends_on:
       media-inspector-spool-init:
         condition: service_completed_successfully
@@ -505,10 +514,10 @@ services:
       - DB_HOST=postgres
       - DB_PORT=${POSTGRES_PORT}
       - DB_NAME=${POSTGRES_DB}
-      - DB_USER=${POSTGRES_USER}
-      - DB_PASSWORD=${POSTGRES_PASSWORD}
-      - WORKSPACE_DB_USER=${WORKSPACE_DB_USER}
-      - WORKSPACE_DB_PASSWORD=${WORKSPACE_DB_PASSWORD}
+      - DB_USER=${WORKSPACE_WORKER_DB_USER}
+      - DB_PASSWORD=${WORKSPACE_WORKER_DB_PASSWORD}
+      - WORKSPACE_DB_USER=${WORKSPACE_WORKER_DB_USER}
+      - WORKSPACE_DB_PASSWORD=${WORKSPACE_WORKER_DB_PASSWORD}
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
       - CELERY_LOG_LEVEL=${CELERY_LOG_LEVEL}

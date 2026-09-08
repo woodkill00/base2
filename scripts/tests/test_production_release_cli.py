@@ -93,22 +93,23 @@ def test_cli_prepares_then_consumes_exact_executor_receipt(tmp_path, capsys):
             source_commit=item['sourceCommit'],
             artifact_digest=item['artifactDigest'],
             status='succeeded',
-            observed_at=now,
-            expires_at=now + timedelta(minutes=5),
+            observed_at=now - timedelta(seconds=2),
+            expires_at=now + timedelta(minutes=4),
             key=OPERATION_KEY,
         ),
     )
     health = write(
         tmp_path / 'health.json',
         health_receipt(
+            operation_id=operation_id,
             action='stage',
             release_id=item['releaseId'],
             environment='staging',
             source_commit=item['sourceCommit'],
             artifact_digest=item['artifactDigest'],
             healthy=True,
-            observed_at=now,
-            expires_at=now + timedelta(minutes=5),
+            observed_at=now - timedelta(seconds=1),
+            expires_at=now + timedelta(minutes=4),
             key=HEALTH_KEY,
         ),
     )
@@ -120,6 +121,65 @@ def test_cli_prepares_then_consumes_exact_executor_receipt(tmp_path, capsys):
         ]
     ) == 0
     assert '"status":"staged"' in capsys.readouterr().out
+
+
+def test_cli_rejects_health_evidence_that_predates_operation(tmp_path, capsys):
+    now = datetime.now(UTC)
+    item = candidate(now)
+    journal = tmp_path / 'journal.json'
+    release_path = write(tmp_path / 'release.json', item)
+    release_key = write(tmp_path / 'release.key', RELEASE_KEY.decode())
+    approval_key = write(tmp_path / 'approval.key', APPROVAL_KEY.decode())
+    operation_key = write(tmp_path / 'operation.key', OPERATION_KEY.decode())
+    health_key = write(tmp_path / 'health.key', HEALTH_KEY.decode())
+    permit = write(
+        tmp_path / 'permit.json',
+        approval(
+            approval_id='approval-prepare-causal', action='prepare',
+            release_id=item['releaseId'], environment='staging',
+            source_commit=item['sourceCommit'], artifact_digest=item['artifactDigest'],
+            expires_at=(now + timedelta(minutes=10)).isoformat(), key=APPROVAL_KEY,
+        ),
+    )
+    common = [
+        '--journal', str(journal), '--release-key-file', str(release_key),
+        '--approval-key-file', str(approval_key), '--release', str(release_path),
+        '--environment', 'staging',
+    ]
+    assert main(['prepare', *common, '--approval', str(permit)]) == 0
+    operation_scope = {
+        'action': 'stage', 'releaseId': item['releaseId'], 'environment': 'staging',
+        'sourceCommit': item['sourceCommit'], 'artifactDigest': item['artifactDigest'],
+    }
+    operation_id = 'operation-' + hashlib.sha256(
+        json.dumps(operation_scope, sort_keys=True, separators=(',', ':')).encode()
+    ).hexdigest()[:24]
+    operation_time = now - timedelta(seconds=1)
+    receipt = write(tmp_path / 'operation.json', operation_receipt(
+        operation_id=operation_id, action='stage', release_id=item['releaseId'],
+        environment='staging', source_commit=item['sourceCommit'],
+        artifact_digest=item['artifactDigest'], status='succeeded',
+        observed_at=operation_time, expires_at=now + timedelta(minutes=5), key=OPERATION_KEY,
+    ))
+    health = write(tmp_path / 'health.json', health_receipt(
+        operation_id=operation_id, action='stage', release_id=item['releaseId'],
+        environment='staging', source_commit=item['sourceCommit'],
+        artifact_digest=item['artifactDigest'], healthy=True,
+        observed_at=now - timedelta(seconds=2),
+            expires_at=now + timedelta(minutes=4), key=HEALTH_KEY,
+    ))
+    stage_permit = write(tmp_path / 'stage.json', approval(
+        approval_id='approval-stage-causal', action='stage', release_id=item['releaseId'],
+        environment='staging', source_commit=item['sourceCommit'],
+        artifact_digest=item['artifactDigest'],
+        expires_at=(now + timedelta(minutes=10)).isoformat(), key=APPROVAL_KEY,
+    ))
+    assert main([
+        'stage', *common, '--approval', str(stage_permit),
+        '--operation-receipt', str(receipt), '--operation-key-file', str(operation_key),
+        '--health-receipt', str(health), '--health-key-file', str(health_key),
+    ]) == 2
+    assert 'release:health_receipt_precedes_operation' in capsys.readouterr().out
 
 
 def test_cli_rejects_world_readable_secret_file(tmp_path, capsys):

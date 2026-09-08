@@ -65,6 +65,7 @@ OPERATION_FIELDS = {
 }
 HEALTH_FIELDS = {
     "schemaVersion",
+    "operationId",
     "action",
     "releaseId",
     "environment",
@@ -399,6 +400,7 @@ def validate_operation_receipt(
 
 def health_receipt(
     *,
+    operation_id: str,
     action: str,
     release_id: str,
     environment: str,
@@ -411,6 +413,7 @@ def health_receipt(
 ) -> dict[str, Any]:
     if (
         len(key) < 32
+        or not re.fullmatch(r"operation-[A-Za-z0-9._-]{4,120}", operation_id or "")
         or action not in {"stage", "canary", "promote"}
         or not RELEASE_ID.fullmatch(release_id or "")
         or environment not in ENVIRONMENTS - {"production"}
@@ -425,6 +428,7 @@ def health_receipt(
         raise ReleaseError("release:health_receipt_invalid")
     value = {
         "schemaVersion": 1,
+        "operationId": operation_id,
         "action": action,
         "releaseId": release_id,
         "environment": environment,
@@ -446,12 +450,15 @@ def validate_health_receipt(
     environment: str,
     source_commit: str,
     artifact_digest: str,
+    operation_id: str,
+    operation_observed_at: datetime,
     now: datetime,
     key: bytes,
 ) -> dict[str, Any]:
     if not isinstance(value, dict) or set(value) != HEALTH_FIELDS:
         raise ReleaseError("release:health_receipt_invalid")
     rebuilt = health_receipt(
+        operation_id=value["operationId"],
         action=value["action"],
         release_id=value["releaseId"],
         environment=value["environment"],
@@ -466,12 +473,15 @@ def validate_health_receipt(
         raise ReleaseError("release:health_receipt_integrity")
     if (
         value["action"] != action
+        or value["operationId"] != operation_id
         or value["releaseId"] != release_id
         or value["environment"] != environment
         or value["sourceCommit"] != source_commit
         or value["artifactDigest"] != artifact_digest
     ):
         raise ReleaseError("release:health_receipt_scope_mismatch")
+    if operation_observed_at.tzinfo is None or _time(value["observedAt"]) <= operation_observed_at.astimezone(UTC):
+        raise ReleaseError("release:health_receipt_precedes_operation")
     if now.tzinfo is None or not _time(value["observedAt"]) <= now.astimezone(UTC) < _time(
         value["expiresAt"]
     ):

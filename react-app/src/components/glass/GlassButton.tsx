@@ -1,7 +1,7 @@
 import React from 'react';
 
 type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'secondary' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
 };
 
 export const GlassButton: React.FC<Props> = ({
@@ -14,7 +14,7 @@ export const GlassButton: React.FC<Props> = ({
   ...buttonProps
 }) => {
   const baseStyles =
-    'backdrop-blur-2xl rounded-[var(--radius-lg)] transition-all duration-300 ease-out border px-6 py-3 ' +
+    'backdrop-blur-2xl rounded-[var(--radius-lg)] transition-all duration-300 ease-out motion-reduce:transition-none motion-reduce:transform-none border px-6 py-3 ' +
     'disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 ' +
     'focus-visible:ring-white/40 dark:focus-visible:ring-white/30 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent';
 
@@ -28,6 +28,8 @@ export const GlassButton: React.FC<Props> = ({
       'bg-white/20 dark:bg-black/30 hover:bg-white/30 dark:hover:bg-black/40 border-white/30 dark:border-white/20 hover:-translate-y-0.5',
     ghost:
       'bg-transparent hover:bg-white/20 dark:hover:bg-black/30 border-white/30 dark:border-white/20 hover:-translate-y-0.5',
+    danger:
+      'bg-red-500/20 hover:bg-red-500/30 border-red-300/50 text-red-50 hover:-translate-y-0.5',
   };
 
   const classes = [baseStyles, variants[variant], className].filter(Boolean).join(' ');

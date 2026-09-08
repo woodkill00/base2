@@ -6,7 +6,7 @@ vi.mock('../lib/apiClient', () => ({
 }));
 
 vi.mock('../lib/apiErrors', () => ({
-  normalizeApiError: vi.fn((_error, options) => options),
+  normalizeApiError: vi.fn((error, options) => error?.normalized || options),
 }));
 
 beforeEach(() => vi.clearAllMocks());
@@ -23,6 +23,18 @@ test('loads summary and bounded incidents while unwrapping the API envelope', as
     params: { limit: 17 },
     signal,
   });
+});
+
+test('preserves recent-authentication recovery when Axios masks the response detail', () => {
+  const error = {
+    normalized: {
+      status: 403,
+      code: 'ERR_BAD_REQUEST',
+      message: 'Request failed with status code 403',
+    },
+    response: { status: 403, data: { detail: 'recent_reauthentication_required' } },
+  };
+  expect(normalizeOperationsError(error).message).toMatch(/^Recent authentication is required/);
 });
 
 test('encodes incident identity for acknowledgement and normalizes failures', async () => {

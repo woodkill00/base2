@@ -113,6 +113,103 @@ const preferenceDefaults = {
   week_start: 'system',
 };
 
+const SETTINGS_COPY = {
+  en: {
+    appShell: 'Settings',
+    privateWorkspace: 'Private workspace',
+    menu: 'Menu',
+    breadcrumb: 'Breadcrumb',
+    settings: 'Settings',
+    controlCenter: 'Account control center',
+    search: 'Search settings',
+    categories: 'Settings categories',
+    noResults: 'No settings found.',
+    details: 'details',
+    loading: 'Loading settings…',
+    language: 'Language',
+    timezone: 'Time zone',
+    weekStart: 'Week starts on',
+    systemDefault: 'System default',
+    monday: 'Monday',
+    sunday: 'Sunday',
+    saturday: 'Saturday',
+    saving: 'Saving…',
+    savePreferences: 'Save preferences',
+  },
+  de: {
+    appShell: 'Einstellungen',
+    privateWorkspace: 'Privater Arbeitsbereich',
+    menu: 'Menü',
+    breadcrumb: 'Brotkrümelnavigation',
+    settings: 'Einstellungen',
+    controlCenter: 'Kontozentrale',
+    search: 'Einstellungen durchsuchen',
+    categories: 'Einstellungskategorien',
+    noResults: 'Keine Einstellungen gefunden.',
+    details: 'Details',
+    loading: 'Einstellungen werden geladen…',
+    language: 'Sprache',
+    timezone: 'Zeitzone',
+    weekStart: 'Wochenbeginn',
+    systemDefault: 'Systemstandard',
+    monday: 'Montag',
+    sunday: 'Sonntag',
+    saturday: 'Samstag',
+    saving: 'Speichern…',
+    savePreferences: 'Einstellungen speichern',
+  },
+  ar: {
+    appShell: 'الإعدادات',
+    privateWorkspace: 'مساحة عمل خاصة',
+    menu: 'القائمة',
+    breadcrumb: 'مسار التنقل',
+    settings: 'الإعدادات',
+    controlCenter: 'مركز التحكم بالحساب',
+    search: 'البحث في الإعدادات',
+    categories: 'فئات الإعدادات',
+    noResults: 'لم يتم العثور على إعدادات.',
+    details: 'التفاصيل',
+    loading: 'جارٍ تحميل الإعدادات…',
+    language: 'اللغة',
+    timezone: 'المنطقة الزمنية',
+    weekStart: 'بداية الأسبوع',
+    systemDefault: 'إعداد النظام',
+    monday: 'الاثنين',
+    sunday: 'الأحد',
+    saturday: 'السبت',
+    saving: 'جارٍ الحفظ…',
+    savePreferences: 'حفظ التفضيلات',
+  },
+};
+
+const CATEGORY_COPY = {
+  de: {
+    overview: ['Übersicht', 'Kontostatus und empfohlene Aktionen'],
+    profile: ['Profil', 'Identität und öffentliche Informationen'],
+    security: [
+      'Anmeldung und Sicherheit',
+      'Authentifizierung, Wiederherstellung, Geräte und Sitzungen',
+    ],
+    privacy: ['Datenschutz und Daten', 'Einwilligungen, Exporte, Korrekturen und Löschung'],
+    notifications: ['Benachrichtigungen', 'Sicherheits-, Produkt- und Marketingzustellung'],
+    appearance: ['Darstellung und Barrierefreiheit', 'Design, Kontrast, Bewegung und Dichte'],
+    'language-region': ['Sprache und Region', 'Sprache, Zeitzone und Wochenformat'],
+    organization: ['Organisation', 'Mitglieder, Rollen, Einladungen und Prüfung'],
+    developer: ['Entwicklung', 'API-Dokumentation und Integrationszugänge'],
+  },
+  ar: {
+    overview: ['نظرة عامة', 'سلامة الحساب والإجراءات المقترحة'],
+    profile: ['الملف الشخصي', 'الهوية والمعلومات العامة'],
+    security: ['تسجيل الدخول والأمان', 'المصادقة والاسترداد والأجهزة والجلسات'],
+    privacy: ['الخصوصية والبيانات', 'الموافقات والتصدير والتصحيح والحذف'],
+    notifications: ['الإشعارات', 'رسائل الأمان والمنتج والتسويق'],
+    appearance: ['المظهر وإمكانية الوصول', 'السمة والتباين والحركة والكثافة'],
+    'language-region': ['اللغة والمنطقة', 'اللغة والمنطقة الزمنية وتنسيق الأسبوع'],
+    organization: ['المؤسسة', 'الأعضاء والأدوار والدعوات وسجل التدقيق'],
+    developer: ['المطور', 'توثيق الواجهة البرمجية وبيانات التكامل'],
+  },
+};
+
 const Field = ({ label, htmlFor, hint, children }) => (
   <div className="space-y-2">
     <label className="block text-sm font-semibold" htmlFor={htmlFor}>
@@ -159,6 +256,29 @@ const SettingsCenter = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const requestedLocale = String(user?.locale || preferences.locale || 'en').split('-')[0];
+  const locale = Object.prototype.hasOwnProperty.call(SETTINGS_COPY, requestedLocale)
+    ? requestedLocale
+    : 'en';
+  const copy = SETTINGS_COPY[locale];
+  const localizedCategories = useMemo(
+    () =>
+      categories.map((item) => {
+        const localized = CATEGORY_COPY[locale]?.[item.id];
+        return localized ? { ...item, label: localized[0], description: localized[1] } : item;
+      }),
+    [categories, locale]
+  );
+
+  useEffect(() => {
+    const prior = { lang: document.documentElement.lang, dir: document.documentElement.dir };
+    document.documentElement.lang = locale;
+    document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr';
+    return () => {
+      document.documentElement.lang = prior.lang;
+      document.documentElement.dir = prior.dir;
+    };
+  }, [locale]);
 
   useEffect(() => {
     let current = true;
@@ -204,17 +324,17 @@ const SettingsCenter = () => {
   }, []);
 
   useEffect(() => {
-    if (!loading && !categories.some((item) => item.id === active))
+    if (!loading && !localizedCategories.some((item) => item.id === active))
       navigate('/settings', { replace: true });
-  }, [active, categories, loading, navigate]);
+  }, [active, localizedCategories, loading, navigate]);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return categories;
-    return categories.filter((item) =>
+    if (!needle) return localizedCategories;
+    return localizedCategories.filter((item) =>
       `${item.label} ${item.description} ${item.id} ${item.synonyms}`.toLowerCase().includes(needle)
     );
-  }, [categories, query]);
+  }, [localizedCategories, query]);
 
   const saveProfile = async (event) => {
     event.preventDefault();
@@ -428,7 +548,7 @@ const SettingsCenter = () => {
       <form onSubmit={savePreferences} className="grid gap-5 p-6 sm:grid-cols-2">
         {language ? (
           <>
-            <Field label="Language" htmlFor="locale">
+            <Field label={copy.language} htmlFor="locale">
               <Select
                 id="locale"
                 value={preferences.locale}
@@ -439,7 +559,7 @@ const SettingsCenter = () => {
                 <option value="ar">العربية</option>
               </Select>
             </Field>
-            <Field label="Time zone" htmlFor="timezone">
+            <Field label={copy.timezone} htmlFor="timezone">
               <GlassInput
                 id="timezone"
                 value={preferences.timezone}
@@ -448,7 +568,7 @@ const SettingsCenter = () => {
                 }
               />
             </Field>
-            <Field label="Week starts on" htmlFor="week-start">
+            <Field label={copy.weekStart} htmlFor="week-start">
               <Select
                 id="week-start"
                 value={preferences.week_start}
@@ -456,10 +576,10 @@ const SettingsCenter = () => {
                   setPreferences({ ...preferences, week_start: event.target.value })
                 }
               >
-                <option value="system">System default</option>
-                <option value="monday">Monday</option>
-                <option value="sunday">Sunday</option>
-                <option value="saturday">Saturday</option>
+                <option value="system">{copy.systemDefault}</option>
+                <option value="monday">{copy.monday}</option>
+                <option value="sunday">{copy.sunday}</option>
+                <option value="saturday">{copy.saturday}</option>
               </Select>
             </Field>
           </>
@@ -516,7 +636,7 @@ const SettingsCenter = () => {
         )}
         <div className="sm:col-span-2">
           <GlassButton type="submit" disabled={saving}>
-            {saving ? 'Saving…' : 'Save preferences'}
+            {saving ? copy.saving : copy.savePreferences}
           </GlassButton>
         </div>
       </form>
@@ -763,14 +883,18 @@ const SettingsCenter = () => {
     return renderOverview();
   };
 
-  const current = categories.find((item) => item.id === active) || categories[0];
+  const current = localizedCategories.find((item) => item.id === active) || localizedCategories[0];
   return (
-    <AppShell headerTitle="Settings">
-      <div className="mx-auto max-w-7xl space-y-6 px-4 py-8">
+    <AppShell headerTitle={copy.appShell} footerLabel={copy.privateWorkspace} menuLabel={copy.menu}>
+      <div
+        className="mx-auto max-w-7xl space-y-6 px-4 py-8"
+        lang={locale}
+        dir={locale === 'ar' ? 'rtl' : 'ltr'}
+      >
         <Navigation />
-        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm opacity-75">
+        <nav aria-label={copy.breadcrumb} className="flex items-center gap-2 text-sm opacity-75">
           <Link className="min-h-11 py-3 hover:underline" to="/settings">
-            Settings
+            {copy.settings}
           </Link>
           {active !== 'overview' ? (
             <>
@@ -781,9 +905,9 @@ const SettingsCenter = () => {
         </nav>
         <header>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300">
-            Account control center
+            {copy.controlCenter}
           </p>
-          <h1 className="mt-2 text-3xl font-semibold">{current?.label || 'Settings'}</h1>
+          <h1 className="mt-2 text-3xl font-semibold">{current?.label || copy.settings}</h1>
           <p className="mt-2 max-w-2xl text-sm opacity-75">{current?.description}</p>
         </header>
         {status ? (
@@ -804,22 +928,22 @@ const SettingsCenter = () => {
         ) : null}
         <div className="grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
           <aside className="space-y-4 lg:sticky lg:top-28 lg:self-start">
-            <Field label="Search settings" htmlFor="settings-search">
+            <Field label={copy.search} htmlFor="settings-search">
               <div className="relative">
                 <Search
-                  className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 opacity-60"
+                  className="pointer-events-none absolute start-3 top-3.5 h-4 w-4 opacity-60"
                   aria-hidden="true"
                 />
                 <input
                   id="settings-search"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  className="min-h-11 w-full rounded-xl border border-white/20 bg-black/30 pl-10 pr-3 focus:outline-none focus:ring-2 focus:ring-violet-300"
+                  className="min-h-11 w-full rounded-xl border border-white/20 bg-black/30 ps-10 pe-3 focus:outline-none focus:ring-2 focus:ring-violet-300"
                 />
               </div>
             </Field>
             <nav
-              aria-label="Settings categories"
+              aria-label={copy.categories}
               className="max-h-[calc(100vh-15rem)] space-y-1 overflow-y-auto rounded-2xl border border-white/15 bg-black/20 p-2"
             >
               {filtered.map((item) => {
@@ -836,19 +960,17 @@ const SettingsCenter = () => {
                   </Link>
                 );
               })}
-              {!filtered.length ? (
-                <p className="p-3 text-sm opacity-70">No settings found.</p>
-              ) : null}
+              {!filtered.length ? <p className="p-3 text-sm opacity-70">{copy.noResults}</p> : null}
             </nav>
           </aside>
           <section
             id="settings-detail"
-            aria-label={`${current?.label || 'Settings'} details`}
+            aria-label={`${current?.label || copy.settings} ${copy.details}`}
             aria-busy={loading}
           >
             {loading ? (
               <GlassCard>
-                <div className="p-8 text-sm">Loading settings…</div>
+                <div className="p-8 text-sm">{copy.loading}</div>
               </GlassCard>
             ) : active === 'overview' ? (
               renderOverview()

@@ -85,6 +85,35 @@ def test_staging_requires_verified_database_tls(monkeypatch):
     assert Settings().DB_SSLMODE == 'verify-full'
 
 
+def test_staging_s3_storage_requires_allowlisted_https_and_secret_files(monkeypatch):
+    from api.settings import Settings
+
+    required = {
+        'ENV': 'staging',
+        'JWT_SECRET': 'fixture-jwt',
+        'TOKEN_PEPPER': 'fixture-pepper-long-enough',
+        'IDENTITY_ENCRYPTION_KEY': 'fixture-identity',
+        'FRONTEND_URL': 'https://example.test',
+        'OAUTH_STATE_SECRET': 'fixture-state',
+        'DB_SSLMODE': 'verify-full',
+        'DB_SSLROOTCERT': '/run/secrets/database-ca.pem',
+        'CONTENT_WORKSPACE_STORAGE_BACKEND': 's3',
+        'CONTENT_WORKSPACE_S3_ENDPOINT': 'https://objects.example.net',
+        'CONTENT_WORKSPACE_S3_BUCKET': 'base2-media',
+        'CONTENT_WORKSPACE_S3_REGION': 'fra1',
+        'CONTENT_WORKSPACE_S3_ALLOWED_HOSTS': 'objects.example.net',
+        'CONTENT_WORKSPACE_S3_ACCESS_KEY_FILE': '/run/secrets/s3-access',
+        'CONTENT_WORKSPACE_S3_SECRET_KEY_FILE': '/run/secrets/s3-secret',
+    }
+    monkeypatch.delenv('CONTENT_WORKSPACE_STORAGE_KEY', raising=False)
+    for key, value in required.items():
+        monkeypatch.setenv(key, value)
+    assert Settings().CONTENT_WORKSPACE_STORAGE_BACKEND == 's3'
+    monkeypatch.setenv('CONTENT_WORKSPACE_S3_ENDPOINT', 'http://objects.example.net')
+    with pytest.raises(RuntimeError, match='S3 endpoint'):
+        Settings()
+
+
 def test_operations_alert_activation_requires_distinct_absolute_secret_files(monkeypatch):
     from api.settings import Settings
 

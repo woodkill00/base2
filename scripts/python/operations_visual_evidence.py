@@ -15,6 +15,9 @@ MANIFEST = ROOT / "specs/106-production-readiness-program/operations-visual-revi
 SOURCES = (
     "react-app/src/pages/OperationsCenter.jsx",
     "react-app/src/services/operations.js",
+    "react-app/src/components/glass/AppShell.tsx",
+    "react-app/src/components/glass/GlassButton.tsx",
+    "react-app/src/components/glass/GlassHeader.tsx",
     "react-app/e2e/operations/operations-release.spec.ts",
     "react-app/playwright.operations-release.config.mjs",
 )
@@ -34,6 +37,10 @@ CAPTURE_NAMES = {
     )),
     "operations-center-empty-chromium-desktop-linux.png",
     "operations-center-error-chromium-desktop-linux.png",
+    "operations-center-partial-chromium-desktop-linux.png",
+    "operations-center-cancel-confirmation-chromium-desktop-linux.png",
+    "operations-center-reauth-chromium-desktop-linux.png",
+    "operations-center-read-only-chromium-desktop-linux.png",
     "operations-center-firefox-desktop-firefox-desktop-linux.png",
     "operations-center-webkit-desktop-webkit-desktop-linux.png",
 }
@@ -76,6 +83,13 @@ def build() -> dict:
             "focus": "pass",
             "overflow": "pass",
             "requests": "pass",
+            "keyboard": "pass",
+            "touchTargets": "pass",
+            "reducedMotion": "pass",
+            "rtlLocalization": "pass",
+            "degradedEvidence": "pass",
+            "recentAuthenticationRecovery": "pass",
+            "readOnlyBoundary": "pass",
         },
     }
 

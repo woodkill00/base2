@@ -6,9 +6,14 @@ import hashlib
 import hmac
 import json
 import re
+import base64
+import binascii
+import stat
+from pathlib import Path
 from datetime import UTC, datetime, timedelta
 from collections.abc import Callable
 from typing import Any
+from uuid import UUID
 
 TENANT = re.compile(r'^[a-z][a-z0-9-]{2,62}$')
 STATES = {'provisioning', 'active', 'suspended', 'archived', 'restoring', 'deleting', 'deleted'}
@@ -19,6 +24,26 @@ ROLES = {'anonymous', 'member', 'editor', 'administrator', 'operator'}
 
 class TenantLifecycleError(ValueError):
     pass
+
+
+def read_approval_key_file(path: str) -> bytes:
+    """Read one owner-only base64url key without accepting symlinks or ambient values."""
+    candidate = Path(path)
+    if not candidate.is_absolute() or candidate.is_symlink():
+        raise TenantLifecycleError('tenant:approval_key_invalid')
+    try:
+        metadata = candidate.stat()
+        if not stat.S_ISREG(metadata.st_mode) or metadata.st_mode & 0o077:
+            raise TenantLifecycleError('tenant:approval_key_invalid')
+        encoded = candidate.read_text(encoding='ascii').strip()
+        if not encoded or len(encoded) > 256:
+            raise TenantLifecycleError('tenant:approval_key_invalid')
+        key = base64.b64decode(encoded + '=' * (-len(encoded) % 4), altchars=b'-_', validate=True)
+    except (OSError, UnicodeError, ValueError, binascii.Error) as exc:
+        raise TenantLifecycleError('tenant:approval_key_invalid') from exc
+    if len(key) != 32:
+        raise TenantLifecycleError('tenant:approval_key_invalid')
+    return key
 
 
 def transition_tenant(
@@ -154,6 +179,169 @@ def _verify_deletion_approval(
     if not consume_nonce(tenant_id, nonce, expected, expiry):
         raise TenantLifecycleError('tenant:deletion_approval_invalid')
     return nonce
+
+
+def validate_deletion_approval(
+    value: dict[str, Any] | None,
+    *,
+    tenant_id: str,
+    current: str,
+    target: str,
+    now: datetime,
+    key: bytes,
+    expected_revision: int,
+) -> dict[str, Any]:
+    """Validate without consuming; persistence must consume in the state transaction."""
+    nonce = _verify_deletion_approval(
+        value,
+        tenant_id=tenant_id,
+        current=current,
+        target=target,
+        now=now,
+        key=key,
+        expected_revision=expected_revision,
+        consume_nonce=lambda *_args: True,
+    )
+    assert value is not None
+    unsigned = {name: value[name] for name in value if name != 'signature'}
+    return {
+        'nonce': nonce,
+        'digest': hmac.new(
+            key,
+            json.dumps(unsigned, sort_keys=True, separators=(',', ':')).encode(),
+            hashlib.sha256,
+        ).hexdigest(),
+        'expiresAt': datetime.fromisoformat(str(value['expiresAt'])),
+    }
+
+
+def persist_transition(
+    *,
+    tenant_id: str,
+    target: str,
+    owner: str,
+    expected_revision: int,
+    operation_id: UUID,
+    deletion_approval: dict[str, Any] | None = None,
+    now: datetime | None = None,
+    approval_key: bytes | None = None,
+) -> dict[str, Any]:
+    """Validate and atomically persist a lifecycle transition and any approval use."""
+    from api.repositories import tenant_lifecycle as repository
+
+    if not re.fullmatch(r'[A-Za-z0-9._-]{3,127}', owner or ''):
+        raise TenantLifecycleError('tenant:owner_invalid')
+    state = repository.get_state(tenant_id=tenant_id)
+    current = str(state['state'])
+    # Exercise the same closed transition graph without consuming the approval.
+    transition_tenant(
+        tenant_id=tenant_id,
+        current=current,
+        target=target,
+        deletion_approval=deletion_approval,
+        now=now,
+        approval_key=approval_key,
+        expected_revision=expected_revision,
+        consume_nonce=(lambda *_args: True) if target in {'deleting', 'deleted'} else None,
+    )
+    approval = None
+    if target in {'deleting', 'deleted'}:
+        if now is None or approval_key is None:
+            raise TenantLifecycleError('tenant:deletion_approval_required')
+        approval = validate_deletion_approval(
+            deletion_approval,
+            tenant_id=tenant_id,
+            current=current,
+            target=target,
+            now=now,
+            key=approval_key,
+            expected_revision=expected_revision,
+        )
+    try:
+        return repository.apply_transition(
+            tenant_id=tenant_id,
+            current=current,
+            target=target,
+            owner_ref=owner,
+            expected_revision=expected_revision,
+            operation_id=operation_id,
+            approval=approval,
+        )
+    except repository.TenantLifecycleRepositoryError as exc:
+        raise TenantLifecycleError(str(exc)) from exc
+
+
+def persist_provision(
+    *,
+    tenant_id: str,
+    owner: str,
+    operation_id: UUID,
+    configuration: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Create the initial durable provisioning state exactly once."""
+    from api.repositories import tenant_lifecycle as repository
+
+    if (
+        not TENANT.fullmatch(tenant_id or '')
+        or not re.fullmatch(r'[A-Za-z0-9._-]{3,127}', owner or '')
+        or not isinstance(configuration or {}, dict)
+    ):
+        raise TenantLifecycleError('tenant:provision_invalid')
+    encoded = json.dumps(configuration or {}, sort_keys=True, separators=(',', ':'))
+    if len(encoded.encode()) > 16_384 or len(configuration or {}) > 64:
+        raise TenantLifecycleError('tenant:configuration_invalid')
+    try:
+        return repository.provision(
+            tenant_id=tenant_id,
+            owner_ref=owner,
+            operation_id=operation_id,
+            configuration=configuration or {},
+        )
+    except repository.TenantLifecycleRepositoryError as exc:
+        raise TenantLifecycleError(str(exc)) from exc
+
+
+def persist_operation(
+    *,
+    tenant_id: str,
+    operation: str,
+    owner: str,
+    recent_auth: bool,
+    expected_revision: int,
+    operation_id: UUID,
+    target_owner: str | None = None,
+    configuration: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Validate and persist configure, transfer, or export as a revisioned event."""
+    from api.repositories import tenant_lifecycle as repository
+
+    tenant_operation(
+        tenant_id=tenant_id,
+        operation=operation,
+        owner=owner,
+        recent_auth=recent_auth,
+        target_owner=target_owner,
+    )
+    if operation == 'configure':
+        if not isinstance(configuration, dict) or len(configuration) > 64:
+            raise TenantLifecycleError('tenant:configuration_invalid')
+        encoded = json.dumps(configuration, sort_keys=True, separators=(',', ':'))
+        if len(encoded.encode()) > 16_384:
+            raise TenantLifecycleError('tenant:configuration_invalid')
+    elif configuration is not None:
+        raise TenantLifecycleError('tenant:configuration_forbidden')
+    try:
+        return repository.apply_operation(
+            tenant_id=tenant_id,
+            operation=operation,
+            owner_ref=owner,
+            target_owner_ref=target_owner or '',
+            configuration=configuration,
+            expected_revision=expected_revision,
+            operation_id=operation_id,
+        )
+    except repository.TenantLifecycleRepositoryError as exc:
+        raise TenantLifecycleError(str(exc)) from exc
 
 
 def tenant_operation(

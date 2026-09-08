@@ -30,7 +30,11 @@ from api.security.upload_capacity import (
     read_bounded_upload,
     upload_completion_slot,
 )
-from api.services.content_workspace_storage import ArtifactIntegrityError, configured_artifact_store
+from api.services.content_workspace_storage import (
+    ArtifactIntegrityError,
+    configured_artifact_store,
+    configured_s3_artifact_store,
+)
 from api.services.media_library_policy import (
     DEFAULT_POLICY,
     FORMAT_RULES,
@@ -200,6 +204,20 @@ def get_repository() -> PostgresMediaLibraryRepository:
 
 
 def get_artifact_store():
+    if settings.CONTENT_WORKSPACE_STORAGE_BACKEND == 's3':
+        return configured_s3_artifact_store(
+            endpoint=settings.CONTENT_WORKSPACE_S3_ENDPOINT,
+            bucket=settings.CONTENT_WORKSPACE_S3_BUCKET,
+            region=settings.CONTENT_WORKSPACE_S3_REGION,
+            allowed_hosts={
+                item.strip().lower()
+                for item in settings.CONTENT_WORKSPACE_S3_ALLOWED_HOSTS.split(',')
+                if item.strip()
+            },
+            access_key_file=settings.CONTENT_WORKSPACE_S3_ACCESS_KEY_FILE,
+            secret_key_file=settings.CONTENT_WORKSPACE_S3_SECRET_KEY_FILE,
+            max_bytes=runtime_policy()['maximumObjectBytes'],
+        )
     return configured_artifact_store(
         root=settings.CONTENT_WORKSPACE_STORAGE_ROOT,
         encoded_key=settings.CONTENT_WORKSPACE_STORAGE_KEY or '',

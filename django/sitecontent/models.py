@@ -2753,6 +2753,60 @@ class DestructiveApprovalUse(SiteOwnedModel):
             raise ValidationError("destructive_approval_time_invalid")
 
 
+class TenantLifecycleState(SiteOwnedModel):
+    """One durable, revisioned lifecycle record for each tenant."""
+
+    STATES = tuple(
+        (value, value.replace("_", " ").title())
+        for value in (
+            "provisioning",
+            "active",
+            "suspended",
+            "archived",
+            "restoring",
+            "deleting",
+            "deleted",
+        )
+    )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    state = models.CharField(max_length=16, choices=STATES, default="provisioning")
+    owner_ref = models.CharField(max_length=200)
+    configuration = models.JSONField(default=dict, validators=[validate_operations_dimensions])
+    revision = models.PositiveBigIntegerField(default=1, validators=[MinValueValidator(1)])
+    last_operation_id = models.UUIDField(default=uuid.uuid4)
+    last_receipt_digest = models.CharField(max_length=64, validators=[sha256_validator])
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["site_id"], name="tenant_lifecycle_site_uq")
+        ]
+        indexes = [models.Index(fields=["state", "updated_at"], name="tenant_lifecycle_state_idx")]
+
+
+class TenantLifecycleEvent(SiteOwnedModel):
+    """Immutable tenant-private lifecycle and ownership history."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    operation_id = models.UUIDField()
+    operation = models.CharField(max_length=32, validators=[operations_identifier_validator])
+    from_state = models.CharField(max_length=16)
+    to_state = models.CharField(max_length=16)
+    actor_ref = models.CharField(max_length=200)
+    target_owner_ref = models.CharField(max_length=200, blank=True, default="")
+    revision = models.PositiveBigIntegerField(validators=[MinValueValidator(1)])
+    receipt_digest = models.CharField(max_length=64, validators=[sha256_validator])
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "operation_id"], name="tenant_lifecycle_operation_uq"
+            )
+        ]
+        indexes = [
+            models.Index(fields=["site_id", "created_at"], name="tenant_lifecycle_event_idx")
+        ]
+
+
 class DurableJob(SiteOwnedModel):
     """Canonical tenant job envelope; payload values live in protected storage."""
 

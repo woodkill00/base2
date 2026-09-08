@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, time, timedelta
 from typing import Any
 from uuid import UUID
 from uuid import uuid4
@@ -18,6 +19,78 @@ class RuntimeRepositoryError(ValueError):
 
 IDENTIFIER = re.compile(r'^[a-z][a-z0-9_.:-]{2,127}$')
 DIGEST = re.compile(r'^[0-9a-f]{64}$')
+SCHEDULE_ISO_KEY = re.compile(
+    r'^schedule:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:'
+    r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$'
+)
+DAILY_RULE = re.compile(r'^daily:(\d{2}):(\d{2})$')
+
+
+def _stored_idempotency_key(value: str) -> str:
+    """Map the one supported ISO-derived schedule key into the DB-safe alphabet."""
+    if IDENTIFIER.fullmatch(value or ''):
+        return value
+    if not SCHEDULE_ISO_KEY.fullmatch(value or ''):
+        raise RuntimeRepositoryError('job:input_invalid')
+    timestamp_text = value.split(':', 2)[2]
+    try:
+        timestamp = datetime.fromisoformat(timestamp_text.replace('Z', '+00:00'))
+    except ValueError as exc:
+        raise RuntimeRepositoryError('job:input_invalid') from exc
+    if timestamp.tzinfo is None:
+        raise RuntimeRepositoryError('job:input_invalid')
+    return f'schedule-iso:{hashlib.sha256(value.encode()).hexdigest()}'
+
+
+def _retry_delay_seconds(*, job_id: UUID, generation: int, attempts: int) -> int:
+    """Return deterministic, bounded exponential backoff with up to 20% jitter."""
+    if generation < 1 or attempts < 1:
+        raise RuntimeRepositoryError('job:retry_state_invalid')
+    base = min(3600, 5 * (2**attempts))
+    if base >= 3600:
+        return 3600
+    ceiling = max(1, base // 5)
+    seed = hashlib.sha256(f'{job_id}:{generation}:{attempts}'.encode()).digest()
+    return min(3600, base + int.from_bytes(seed[:4], 'big') % (ceiling + 1))
+
+
+def _next_daily_run(*, reference: datetime, zone: ZoneInfo, hour: int, minute: int) -> datetime:
+    """Choose the first valid wall time after reference; gaps skip and folds run once."""
+    local_reference = reference.astimezone(zone)
+    for offset in range(0, 370):
+        day = local_reference.date() + timedelta(days=offset)
+        wall = datetime.combine(day, time(hour=hour, minute=minute))
+        # fold=0 deliberately selects the first occurrence on a fall-back day.
+        candidate = wall.replace(tzinfo=zone, fold=0)
+        round_trip = candidate.astimezone(UTC).astimezone(zone)
+        if round_trip.replace(tzinfo=None) != wall or round_trip.fold != 0:
+            # A spring-forward gap is not a real instant, so safely skip it.
+            continue
+        if candidate > reference:
+            return candidate
+    raise RuntimeRepositoryError('schedule:next_run_unavailable')
+
+
+def _next_schedule_run(
+    *, rule: str, zone: ZoneInfo, due: datetime, now: datetime, missed: str
+) -> datetime:
+    if rule.startswith('every:') and rule[6:].isdigit():
+        seconds = int(rule[6:])
+        if not 30 <= seconds <= 604800:
+            raise RuntimeRepositoryError('schedule:rule_invalid')
+        if missed == 'once':
+            return now + timedelta(seconds=seconds)
+        candidate = due + timedelta(seconds=seconds)
+        while candidate <= now:
+            candidate += timedelta(seconds=seconds)
+        return candidate
+    match = DAILY_RULE.fullmatch(rule)
+    if match:
+        hour, minute = (int(value) for value in match.groups())
+        if hour > 23 or minute > 59:
+            raise RuntimeRepositoryError('schedule:rule_invalid')
+        return _next_daily_run(reference=now, zone=zone, hour=hour, minute=minute)
+    raise RuntimeRepositoryError('schedule:rule_invalid')
 
 
 def enqueue_job(
@@ -30,13 +103,13 @@ def enqueue_job(
     idempotency_key: str,
     available_at: datetime,
 ) -> dict[str, Any]:
+    stored_idempotency_key = _stored_idempotency_key(idempotency_key)
     if (
         not tenant_id
         or not IDENTIFIER.fullmatch(owner_ref)
         or not IDENTIFIER.fullmatch(job_type)
         or not DIGEST.fullmatch(payload_digest)
         or payload_schema < 1
-        or not IDENTIFIER.fullmatch(idempotency_key)
         or available_at.tzinfo is None
     ):
         raise RuntimeRepositoryError('job:input_invalid')
@@ -44,18 +117,45 @@ def enqueue_job(
         with conn.cursor() as cursor:
             cursor.execute(
                 'SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))',
-                (f'{tenant_id}:{idempotency_key}',),
+                (f'{tenant_id}:{stored_idempotency_key}',),
             )
             cursor.execute(
                 """SELECT id,owner_ref,job_type,payload_digest,payload_schema,state
                    FROM sitecontent_durablejob WHERE site_id=%s AND idempotency_key=%s FOR UPDATE""",
-                (tenant_id, idempotency_key),
+                (tenant_id, stored_idempotency_key),
             )
             prior = cursor.fetchone()
             if prior:
                 if tuple(prior[1:5]) != (owner_ref, job_type, payload_digest, payload_schema):
                     raise RuntimeRepositoryError('job:idempotency_conflict')
                 return {'jobId': str(prior[0]), 'state': prior[5], 'replayed': True}
+            cursor.execute(
+                'SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))',
+                (f'{tenant_id}:schedule-capacity',),
+            )
+            schedule_id = (
+                owner_ref.removeprefix('schedule:') if owner_ref.startswith('schedule:') else ''
+            )
+            cursor.execute(
+                """SELECT
+                     (SELECT COUNT(*) FROM sitecontent_durablejob
+                      WHERE site_id=%s AND state IN ('queued','retry','leased'))
+                     +(SELECT COUNT(*) FROM sitecontent_durableschedule AS reserved
+                       WHERE reserved.site_id=%s AND reserved.claim_token IS NOT NULL
+                         AND reserved.claim_expires_at>NOW()
+                         AND NOT EXISTS (
+                           SELECT 1 FROM sitecontent_durablejob AS materialized
+                           WHERE materialized.site_id=reserved.site_id
+                             AND materialized.owner_ref='schedule:' || reserved.id::text
+                             AND materialized.state IN ('queued','retry','leased'))),
+                     EXISTS(SELECT 1 FROM sitecontent_durableschedule
+                            WHERE site_id=%s AND id::text=%s AND claim_token IS NOT NULL
+                              AND claim_expires_at>NOW())""",
+                (tenant_id, tenant_id, tenant_id, schedule_id),
+            )
+            used_capacity, has_reservation = cursor.fetchone()
+            if int(used_capacity) >= 100 and not (has_reservation and int(used_capacity) == 100):
+                raise RuntimeRepositoryError('job:capacity_exhausted')
             cursor.execute(
                 """INSERT INTO sitecontent_durablejob
                    (id,site_id,owner_ref,generation,job_type,payload_digest,payload_schema,
@@ -69,7 +169,7 @@ def enqueue_job(
                     job_type,
                     payload_digest,
                     payload_schema,
-                    idempotency_key,
+                    stored_idempotency_key,
                     available_at,
                 ),
             )
@@ -92,24 +192,26 @@ def claim_jobs(
                        lease_expires_at=NULL,error_code='job.attempts_exhausted',updated_at=NOW()
                    WHERE site_id=%s AND attempts>=maximum_attempts
                      AND (state IN ('queued','retry') OR
-                          (state='leased' AND lease_expires_at<=%s))""",
-                (tenant_id, now),
+                          (state='leased' AND lease_expires_at<=NOW()))""",
+                (tenant_id,),
             )
             cursor.execute(
                 """WITH candidates AS (
                        SELECT id FROM sitecontent_durablejob
                        WHERE site_id=%s AND available_at<=%s
-                         AND (state IN ('queued','retry') OR (state='leased' AND lease_expires_at<=%s))
+                         AND (state IN ('queued','retry') OR
+                              (state='leased' AND lease_expires_at<=NOW()))
                          AND attempts<maximum_attempts
                        ORDER BY available_at,created_at,id FOR UPDATE SKIP LOCKED LIMIT %s
                    )
                    UPDATE sitecontent_durablejob AS job
-                   SET state='leased',lease_owner=%s,lease_token=%s,lease_expires_at=%s,
+                   SET state='leased',lease_owner=%s,lease_token=%s,
+                       lease_expires_at=NOW()+INTERVAL '15 minutes',
                        attempts=attempts+1,updated_at=NOW()
                    FROM candidates WHERE job.id=candidates.id
                    RETURNING job.id,job.job_type,job.payload_digest,job.payload_schema,
                      job.attempts,job.generation,job.lease_token""",
-                (tenant_id, now, now, limit, worker, str(lease_token), now + timedelta(minutes=15)),
+                (tenant_id, now, limit, worker, str(lease_token)),
             )
             rows = cursor.fetchall()
         conn.commit()
@@ -137,21 +239,21 @@ def renew_job_lease(
     now: datetime,
 ) -> None:
     """Validate a delivered claim immediately before work and renew its bound lease."""
+    if now.tzinfo is None:
+        raise RuntimeRepositoryError('job:time_invalid')
     with workspace_db_conn(tenant_id=tenant_id) as conn:
         with conn.cursor() as cursor:
             cursor.execute(
                 """UPDATE sitecontent_durablejob
-                   SET lease_expires_at=%s,updated_at=NOW()
+                   SET lease_expires_at=NOW()+INTERVAL '15 minutes',updated_at=NOW()
                    WHERE site_id=%s AND id=%s AND state='leased' AND lease_owner=%s
-                     AND lease_token=%s AND generation=%s AND lease_expires_at>%s""",
+                     AND lease_token=%s AND generation=%s AND lease_expires_at>NOW()""",
                 (
-                    now + timedelta(minutes=15),
                     tenant_id,
                     str(job_id),
                     worker,
                     str(lease_token),
                     generation,
-                    now,
                 ),
             )
             if cursor.rowcount != 1:
@@ -171,21 +273,34 @@ def settle_job(
     result_digest: str = '',
     error_code: str = '',
 ) -> str:
-    if outcome not in {'succeeded', 'retry', 'dead_letter'}:
+    if outcome not in {'succeeded', 'retry', 'dead_letter'} or now.tzinfo is None:
         raise RuntimeRepositoryError('job:outcome_invalid')
     with workspace_db_conn(tenant_id=tenant_id) as conn:
         with conn.cursor() as cursor:
+            cursor.execute(
+                """SELECT attempts FROM sitecontent_durablejob
+                   WHERE site_id=%s AND id=%s AND state='leased' AND lease_owner=%s
+                     AND lease_token=%s AND generation=%s AND lease_expires_at>NOW()
+                   FOR UPDATE""",
+                (tenant_id, str(job_id), worker, str(lease_token), generation),
+            )
+            attempt_row = cursor.fetchone()
+            if attempt_row is None:
+                raise RuntimeRepositoryError('job:lease_lost')
+            retry_delay = _retry_delay_seconds(
+                job_id=job_id, generation=generation, attempts=int(attempt_row[0])
+            )
             cursor.execute(
                 """UPDATE sitecontent_durablejob SET
                           state=CASE WHEN %s='retry' AND attempts>=maximum_attempts
                                      THEN 'dead_letter' ELSE %s END,
                           lease_owner='',lease_token=NULL,lease_expires_at=NULL,
                           result_digest=%s,error_code=%s,
-                          available_at=CASE WHEN %s='retry' THEN %s + LEAST(INTERVAL '1 hour',
-                            make_interval(secs => (5 * power(2,attempts))::int)) ELSE available_at END,
+                          available_at=CASE WHEN %s='retry'
+                            THEN NOW()+make_interval(secs => %s) ELSE available_at END,
                           updated_at=NOW()
                    WHERE site_id=%s AND id=%s AND state='leased' AND lease_owner=%s
-                     AND lease_token=%s AND generation=%s AND lease_expires_at>%s
+                     AND lease_token=%s AND generation=%s AND lease_expires_at>NOW()
                    RETURNING state""",
                 (
                     outcome,
@@ -193,13 +308,12 @@ def settle_job(
                     result_digest,
                     error_code,
                     outcome,
-                    now,
+                    retry_delay,
                     tenant_id,
                     str(job_id),
                     worker,
                     str(lease_token),
                     generation,
-                    now,
                 ),
             )
             row = cursor.fetchone()
@@ -254,14 +368,37 @@ def claim_due_schedules(*, tenant_id: str, now: datetime, limit: int = 25) -> li
     claim_token = uuid4()
     with workspace_db_conn(tenant_id=tenant_id) as conn:
         with conn.cursor() as cursor:
+            # Claims are capacity reservations. Count live jobs plus unexpired
+            # schedule claims under one tenant-scoped transaction lock so
+            # concurrent materializers cannot oversubscribe the fixed ceiling.
+            cursor.execute(
+                'SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))',
+                (f'{tenant_id}:schedule-capacity',),
+            )
+            cursor.execute(
+                """SELECT GREATEST(0,100
+                     -(SELECT COUNT(*) FROM sitecontent_durablejob
+                       WHERE site_id=%s AND state IN ('queued','retry','leased'))
+                     -(SELECT COUNT(*) FROM sitecontent_durableschedule AS reserved
+                       WHERE reserved.site_id=%s AND reserved.claim_token IS NOT NULL
+                         AND reserved.claim_expires_at>NOW()
+                         AND NOT EXISTS (
+                           SELECT 1 FROM sitecontent_durablejob AS materialized
+                           WHERE materialized.site_id=reserved.site_id
+                             AND materialized.owner_ref='schedule:' || reserved.id::text
+                             AND materialized.state IN ('queued','retry','leased'))))""",
+                (tenant_id, tenant_id),
+            )
+            capacity = min(int(cursor.fetchone()[0]), min(max(limit, 1), 25))
+            if capacity == 0:
+                conn.commit()
+                return []
             cursor.execute(
                 """SELECT id,schedule_key,job_type,timezone,rule,missed_policy,overlap_policy,
                           next_run_at,last_run_at,revision
                    FROM sitecontent_durableschedule
                    WHERE site_id=%s AND enabled AND next_run_at<=%s
                      AND (claim_token IS NULL OR claim_expires_at<=%s)
-                     AND (SELECT COUNT(*) FROM sitecontent_durablejob
-                          WHERE site_id=%s AND state IN ('queued','retry','leased')) < 100
                      AND NOT EXISTS (
                          SELECT 1 FROM sitecontent_durablejob AS active
                          WHERE active.site_id=%s
@@ -277,33 +414,22 @@ def claim_due_schedules(*, tenant_id: str, now: datetime, limit: int = 25) -> li
                          )
                      )
                    ORDER BY next_run_at,id FOR UPDATE SKIP LOCKED LIMIT %s""",
-                (tenant_id, now, now, tenant_id, tenant_id, tenant_id, min(max(limit, 1), 25)),
+                (tenant_id, now, now, tenant_id, tenant_id, capacity),
             )
             rows = cursor.fetchall()
             claimed = []
             for row in rows:
                 rule = str(row[4])
                 try:
-                    ZoneInfo(str(row[3]))
+                    zone = ZoneInfo(str(row[3]))
                 except ZoneInfoNotFoundError as exc:
                     raise RuntimeRepositoryError('schedule:timezone_invalid') from exc
-                if (
-                    not rule.startswith('every:')
-                    or not rule[6:].isdigit()
-                    or row[5] not in {'skip', 'once'}
-                    or row[6] not in {'forbid', 'replace'}
-                ):
-                    raise RuntimeRepositoryError('schedule:rule_invalid')
-                seconds = int(rule[6:])
-                if not 30 <= seconds <= 604800:
+                if row[5] not in {'skip', 'once'} or row[6] not in {'forbid', 'replace'}:
                     raise RuntimeRepositoryError('schedule:rule_invalid')
                 original_due = row[7]
-                if row[5] == 'once':
-                    next_due = now + timedelta(seconds=seconds)
-                else:
-                    next_due = original_due + timedelta(seconds=seconds)
-                    while next_due <= now:
-                        next_due += timedelta(seconds=seconds)
+                next_due = _next_schedule_run(
+                    rule=rule, zone=zone, due=original_due, now=now, missed=str(row[5])
+                )
                 if row[6] == 'replace':
                     cursor.execute(
                         """UPDATE sitecontent_durablejob

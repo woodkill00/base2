@@ -200,6 +200,34 @@ test('keeps successful panels and marks retained evidence stale on partial refre
   expect(screen.getByText('tenant-one')).toBeInTheDocument();
 });
 
+test.each([
+  ['summary', () => operationsAPI.summary.mockRejectedValueOnce(new Error('offline'))],
+  ['incidents', () => operationsAPI.incidents.mockRejectedValueOnce(new Error('offline'))],
+])('marks retained %s evidence stale after an independent refresh failure', async (_name, fail) => {
+  renderPage();
+  expect(await screen.findByText('tenant-one')).toBeInTheDocument();
+  fail();
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh evidence' }));
+  expect(await screen.findByText('Stale evidence')).toBeInTheDocument();
+});
+
+test('requires keyboard-operable confirmation before cancelling a dead-letter job', async () => {
+  renderPage();
+  const trigger = await screen.findByRole('button', { name: 'Cancel' });
+  fireEvent.click(trigger);
+  const heading = screen.getByRole('heading', { name: 'Cancel this dead-letter job?' });
+  await waitFor(() => expect(heading).toHaveFocus());
+  expect(operationsAPI.actOnDeadLetter).not.toHaveBeenCalled();
+  fireEvent.keyDown(document, { key: 'Escape' });
+  await waitFor(() => expect(trigger).toHaveFocus());
+
+  fireEvent.click(trigger);
+  fireEvent.click(await screen.findByRole('button', { name: 'Cancel job' }));
+  await waitFor(() =>
+    expect(operationsAPI.actOnDeadLetter).toHaveBeenCalledWith('job-one', 'cancel')
+  );
+});
+
 test('never renders unavailable overview panels as empty facts', async () => {
   operationsAPI.overview.mockRejectedValueOnce(new Error('offline'));
   renderPage();
@@ -242,6 +270,9 @@ test('renders a real localized RTL operations shell with English fallback', asyn
   const { container, unmount } = renderPage();
   expect(await screen.findByRole('heading', { name: 'مركز العمليات' })).toBeInTheDocument();
   expect(container.querySelector('[dir="rtl"]')).toBeInTheDocument();
+  expect(screen.getByText('الواجهة البرمجية غير متاحة')).toBeInTheDocument();
+  expect(screen.getByText('جمع بيانات العمليات')).toBeInTheDocument();
+  expect(screen.queryByText('Private workspace')).not.toBeInTheDocument();
   unmount();
   authState.user.locale = 'unsupported';
   renderPage();

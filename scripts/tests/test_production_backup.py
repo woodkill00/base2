@@ -1,0 +1,136 @@
+import base64
+import json
+import subprocess
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+
+import pytest
+
+from scripts.python.production_backup import (
+    ProductionBackupError,
+    create_production_backup,
+    isolated_restore,
+    load_config,
+    prune_owned_backups,
+    restore_database_isolated,
+    verify_receipt,
+)
+
+
+def _config(tmp_path: Path):
+    objects = tmp_path / "objects"
+    objects.mkdir()
+    (objects / "tenant-one").mkdir()
+    (objects / "tenant-one" / "photo.bin").write_bytes(b"actual-object-payload")
+    service = tmp_path / "pg_service.conf"
+    service.write_text("[base2_backup]\nhost=db\n", encoding="utf-8")
+    service.chmod(0o600)
+    return {
+        "schemaVersion": 1,
+        "targetId": "base2-backup",
+        "dataSchema": 27,
+        "pgServiceFile": str(service),
+        "pgService": "base2_backup",
+        "objectRoot": str(objects),
+        "backupRoot": str(tmp_path / "backups"),
+        "receiptRoot": str(tmp_path / "receipts"),
+        "encryptionKeyFile": str(tmp_path / "backup.key"),
+        "keyRef": "vaultwarden://base2/production-backup-v1",
+        "retentionDays": 30,
+        "maximumBackups": 3,
+        "operationsReceiptRoot": str(tmp_path / "operations"),
+        "operationsReceiptKeyFile": str(tmp_path / "operations.key"),
+        "sourceCommit": "a" * 40,
+        "_key": b"k" * 32,
+        "_operations_key": b"o" * 32,
+    }
+
+
+def _runner(command, **kwargs):
+    del kwargs
+    output = Path(command[command.index("--file") + 1])
+    output.write_bytes(b"PGDUMP\x00production-schema-and-data")
+    return subprocess.CompletedProcess(command, 0, "", "")
+
+
+def test_config_requires_owner_only_external_secret_files(tmp_path):
+    config = _config(tmp_path)
+    key_file = Path(config["encryptionKeyFile"])
+    key_file.write_text(base64.urlsafe_b64encode(b"k" * 32).decode(), encoding="ascii")
+    key_file.chmod(0o600)
+    operations_key_file = Path(config["operationsReceiptKeyFile"])
+    operations_key_file.write_text(base64.urlsafe_b64encode(b"o" * 32).decode(), encoding="ascii")
+    operations_key_file.chmod(0o600)
+    public = {name: value for name, value in config.items() if not name.startswith("_")}
+    config_file = tmp_path / "backup.json"
+    config_file.write_text(json.dumps(public), encoding="utf-8")
+    config_file.chmod(0o600)
+    loaded = load_config(config_file)
+    assert loaded["_key"] == b"k" * 32
+    assert loaded["_operations_key"] == b"o" * 32
+    key_file.chmod(0o644)
+    with pytest.raises(ProductionBackupError, match="private_file_invalid"):
+        load_config(config_file)
+
+
+def test_real_dump_and_object_payload_are_encrypted_verified_and_restorable(tmp_path):
+    config = _config(tmp_path)
+    now = datetime(2026, 9, 8, tzinfo=UTC)
+    receipt = create_production_backup(config, now=now, runner=_runner)
+    backup = verify_receipt(receipt, key=config["_key"], backup_root=Path(config["backupRoot"]))
+    receipt_path = next(Path(config["receiptRoot"]).glob("*.json"))
+    restored = isolated_restore(
+        config, receipt_path=receipt_path, restore_root=tmp_path / "isolated-restore"
+    )
+    assert backup.is_file() and restored["objectCount"] == 1
+    assert (Path(config["operationsReceiptRoot"]) / "backup.freshness.json").is_file()
+    assert Path(restored["databaseDump"]).read_bytes().startswith(b"PGDUMP")
+    assert (
+        Path(restored["objectRoot"]) / "tenant-one" / "photo.bin"
+    ).read_bytes() == b"actual-object-payload"
+
+
+def test_retention_deletes_only_verified_owned_expired_artifacts(tmp_path):
+    config = _config(tmp_path)
+    now = datetime(2026, 1, 1, tzinfo=UTC)
+    create_production_backup(config, now=now, runner=_runner)
+    unrelated = Path(config["backupRoot"]) / "do-not-touch.bin"
+    unrelated.write_bytes(b"unowned")
+    result = prune_owned_backups(config, now=now + timedelta(days=31))
+    assert result == {"verified": 1, "removed": 1}
+    assert unrelated.read_bytes() == b"unowned"
+
+
+def test_tampered_receipt_cannot_delete_or_restore(tmp_path):
+    config = _config(tmp_path)
+    receipt = create_production_backup(config, now=datetime(2026, 9, 8, tzinfo=UTC), runner=_runner)
+    receipt["backupFile"] = "../outside"
+    with pytest.raises(ProductionBackupError, match="receipt_invalid"):
+        verify_receipt(receipt, key=config["_key"], backup_root=Path(config["backupRoot"]))
+
+
+def test_database_restore_requires_exact_empty_isolated_database(tmp_path):
+    config = _config(tmp_path)
+    create_production_backup(config, now=datetime(2026, 9, 8, tzinfo=UTC), runner=_runner)
+    receipt_path = next(Path(config["receiptRoot"]).glob("*.json"))
+    restore_service = tmp_path / "restore-pg-service.conf"
+    restore_service.write_text("[base2_restore]\nhost=restore-db\n", encoding="utf-8")
+    restore_service.chmod(0o600)
+    responses = iter(["base2_restore_trial\n", "0\n", "", "3\n"])
+
+    def restore_runner(command, **kwargs):
+        del kwargs
+        return subprocess.CompletedProcess(command, 0, next(responses), "")
+
+    result = restore_database_isolated(
+        config,
+        receipt_path=receipt_path,
+        restore_root=tmp_path / "database-restore",
+        pg_service_file=restore_service,
+        pg_service="base2_restore",
+        expected_database="base2_restore_trial",
+        runner=restore_runner,
+    )
+    assert result["databaseRestoreExecuted"] is True
+    assert result["databaseTableCount"] == 3
+    assert (Path(config["operationsReceiptRoot"]) / "restore.last-drill.json").is_file()

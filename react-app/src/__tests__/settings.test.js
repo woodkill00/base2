@@ -155,6 +155,27 @@ describe('US3 Settings', () => {
     expect(screen.getByText(/no settings found/i)).toBeInTheDocument();
   });
 
+  test('keeps the Arabic language-selection journey localized and RTL', async () => {
+    localStorage.setItem(
+      'user',
+      JSON.stringify({
+        id: '1',
+        email: 'test@example.com',
+        display_name: 'مستخدم الاختبار',
+        locale: 'ar',
+      })
+    );
+    const { container } = renderSettings('/settings/language-region');
+    await waitFor(() =>
+      expect(screen.getByRole('region', { name: /التفاصيل/ })).toHaveAttribute('aria-busy', 'false')
+    );
+    expect(screen.getByRole('heading', { name: 'اللغة والمنطقة' })).toBeInTheDocument();
+    expect(screen.getByLabelText('اللغة')).toBeInTheDocument();
+    expect(screen.getByLabelText('المنطقة الزمنية')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'حفظ التفضيلات' })).toBeInTheDocument();
+    expect(container.querySelector('[dir="rtl"]')).toBeInTheDocument();
+  });
+
   test('keeps required notification delivery enabled and saves optional choices', async () => {
     const user = userEvent.setup();
     apiClient.put.mockResolvedValue({ data: { preferences: [] } });

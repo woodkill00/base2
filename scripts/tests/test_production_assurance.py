@@ -9,6 +9,7 @@ from scripts.python.production_assurance import (
     budget_result,
     create_ephemeral_approval,
     ephemeral_plan,
+    expire_ephemeral,
     fault_evidence,
     shell_parity,
     teardown,
@@ -81,6 +82,32 @@ def test_ephemeral_plan_requires_approval_and_exact_owned_teardown():
             delete=lambda resource: f"deleted.{resource}",
             plan_key=PLAN_KEY,
         )
+
+
+def test_ephemeral_expiry_entrypoint_waits_then_destroys_exact_owned_inventory():
+    approval = create_ephemeral_approval(
+        source_commit="a" * 40, environment="preview", owned_resources=["app-106"],
+        expires_at=NOW + timedelta(minutes=30), owner="owner-one", key=APPROVAL_KEY,
+    )
+    plan = ephemeral_plan(
+        source_commit="a" * 40, environment="preview", hours=1, cost_usd=1,
+        owned_resources=["app-106"], approval=approval, now=NOW,
+        approval_key=APPROVAL_KEY, plan_key=PLAN_KEY,
+    )
+    inventory_calls = []
+    assert expire_ephemeral(
+        plan, now=NOW + timedelta(minutes=59),
+        inventory=lambda: inventory_calls.append(True) or ["app-106"],
+        delete=lambda resource: f"deleted.{resource}", plan_key=PLAN_KEY,
+    )["status"] == "not-due"
+    assert inventory_calls == []
+    resources = {"app-106"}
+    result = expire_ephemeral(
+        plan, now=NOW + timedelta(hours=1), inventory=lambda: sorted(resources),
+        delete=lambda resource: (resources.remove(resource) or f"deleted.{resource}"),
+        plan_key=PLAN_KEY,
+    )
+    assert result["status"] == "destroyed"
     remaining = {"app-106"}
     pending = teardown(
         plan,

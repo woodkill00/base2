@@ -5,9 +5,12 @@ import os
 import re
 import tempfile
 import base64
+import socket
+import stat
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlparse
 
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -138,9 +141,7 @@ class PrivateArtifactStore:
         missing_ok: bool = False,
     ) -> bool:
         """Delete only the exact server-derived object after integrity verification."""
-        expected_key = self.object_key(
-            namespace=namespace, site_id=site_id, object_id=object_id
-        )
+        expected_key = self.object_key(namespace=namespace, site_id=site_id, object_id=object_id)
         if object_key != expected_key:
             raise ArtifactIntegrityError('content_artifact_owner_mismatch')
         path = self._path(object_key)
@@ -168,9 +169,7 @@ class PrivateArtifactStore:
             envelope = path.read_bytes()
         except (FileNotFoundError, OSError) as exc:
             raise ArtifactIntegrityError('content_artifact_unavailable') from exc
-        if len(envelope) < len(FORMAT_VERSION) + 12 + 16 or not envelope.startswith(
-            FORMAT_VERSION
-        ):
+        if len(envelope) < len(FORMAT_VERSION) + 12 + 16 or not envelope.startswith(FORMAT_VERSION):
             raise ArtifactIntegrityError('content_integrity_failed')
         nonce = envelope[len(FORMAT_VERSION) : len(FORMAT_VERSION) + 12]
         ciphertext = envelope[len(FORMAT_VERSION) + 12 :]
@@ -197,3 +196,122 @@ def configured_artifact_store(
     if len(key) != 32:
         raise ArtifactIntegrityError('content_artifact_configuration_invalid')
     return PrivateArtifactStore(root, key=key, max_bytes=max_bytes)
+
+
+class S3ArtifactStore:
+    """Media-store compatibility wrapper over the tenant-bound pinned S3 adapter."""
+
+    def __init__(self, store, *, max_bytes: int):
+        self._store = store
+        self._max_bytes = max_bytes
+
+    def put(
+        self, *, namespace: str, site_id: str, object_id: str, content: bytes
+    ) -> StoredArtifact:
+        if len(content) > self._max_bytes:
+            raise ArtifactIntegrityError('content_limit_exceeded')
+        try:
+            receipt = self._store.put(
+                tenant_id=site_id, namespace=namespace, object_id=object_id, content=content
+            )
+        except ValueError as exc:
+            raise ArtifactIntegrityError(str(exc)) from exc
+        return StoredArtifact(
+            object_key=receipt.key, sha256=receipt.sha256, byte_size=receipt.byte_size
+        )
+
+    def get(self, object_key: str, *, expected_sha256: str) -> bytes:
+        from api.services.object_storage import ObjectReceipt
+
+        parts = object_key.split('/', 2)
+        if len(parts) != 3:
+            raise ArtifactIntegrityError('content_artifact_key_invalid')
+        try:
+            return self._store.get(
+                tenant_id=parts[0],
+                receipt=ObjectReceipt(
+                    parts[0], self._store.bucket, object_key, expected_sha256, -1
+                ),
+            )
+        except ValueError as exc:
+            raise ArtifactIntegrityError(str(exc)) from exc
+
+    def delete(
+        self,
+        *,
+        namespace: str,
+        site_id: str,
+        object_id: str,
+        object_key: str,
+        expected_sha256: str,
+        missing_ok: bool = False,
+    ) -> bool:
+        from api.services.object_storage import ObjectReceipt
+
+        expected = f'{site_id}/{namespace}/{object_id}'
+        if object_key != expected:
+            raise ArtifactIntegrityError('content_artifact_owner_mismatch')
+        try:
+            self._store.delete(
+                tenant_id=site_id,
+                receipt=ObjectReceipt(site_id, self._store.bucket, object_key, expected_sha256, -1),
+            )
+            return True
+        except ValueError as exc:
+            if missing_ok and str(exc) == 'object:unavailable':
+                return False
+            raise ArtifactIntegrityError(str(exc)) from exc
+
+
+def _private_text(path: str, *, maximum_bytes: int = 4096) -> str:
+    candidate = Path(path)
+    if not candidate.is_absolute() or candidate.is_symlink():
+        raise ArtifactIntegrityError('content_artifact_configuration_invalid')
+    try:
+        metadata = candidate.stat()
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or metadata.st_mode & 0o077
+            or metadata.st_size > maximum_bytes
+        ):
+            raise ArtifactIntegrityError('content_artifact_configuration_invalid')
+        return candidate.read_text(encoding='utf-8').strip()
+    except (OSError, UnicodeError) as exc:
+        raise ArtifactIntegrityError('content_artifact_configuration_invalid') from exc
+
+
+def configured_s3_artifact_store(
+    *,
+    endpoint: str,
+    bucket: str,
+    region: str,
+    allowed_hosts: set[str],
+    access_key_file: str,
+    secret_key_file: str,
+    max_bytes: int,
+    resolver=socket.getaddrinfo,
+):
+    """Build the real media adapter with credentials in distinct private files."""
+    from api.services.object_storage import S3ObjectStore
+    from api.services.pinned_s3_client import PinnedS3Client
+
+    parsed = urlparse(endpoint)
+    try:
+        addresses = {item[4][0] for item in resolver(parsed.hostname, parsed.port or 443)}
+    except (OSError, TypeError) as exc:
+        raise ArtifactIntegrityError('content_artifact_configuration_invalid') from exc
+    client = PinnedS3Client(
+        endpoint=endpoint,
+        region=region,
+        access_key=_private_text(access_key_file),
+        secret_key=_private_text(secret_key_file),
+        addresses=addresses,
+    )
+    store = S3ObjectStore(
+        endpoint=endpoint,
+        bucket=bucket,
+        client=client,
+        allowed_hosts=allowed_hosts,
+        resolver=resolver,
+    )
+    return S3ArtifactStore(store, max_bytes=max_bytes)
