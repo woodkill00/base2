@@ -266,3 +266,4 @@ substitute for the integration proof named by the task.
 - [ ] B216 Regenerate and validate the exact surface-drift inventory after reviewed configuration and route changes. (FR-002, FR-055, FR-061, FR-063, FR-068)
 - [ ] B217 Re-run the complete Operations visual matrix after localization changes and bind its generated captures, runner receipt, and evidence manifest to the repaired exact sources. (FR-012, FR-063, FR-064, FR-068, FR-075)
 - [ ] B218 Update the account browser contract to the localized human-readable notification accessible name and rerun the complete account/admin journey. (FR-012, FR-046, FR-063, FR-064, FR-075)
+- [ ] B219 Restore the fixed 90% changed-line floor with direct failure-path coverage for bounded internal probes, worker and queue evidence, closed task routing, lifecycle admission, dispatch reservations, and enqueue cleanup. (FR-013, FR-014, FR-031, FR-057, FR-063, FR-065, FR-068)

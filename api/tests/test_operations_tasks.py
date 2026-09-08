@@ -2,6 +2,8 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock
 from uuid import UUID
 
+import pytest
+
 from api import tasks
 
 
@@ -40,6 +42,76 @@ def test_worker_heartbeat_is_role_specific_and_unknown_roles_emit_nothing(monkey
     monkeypatch.setattr(tasks.settings, 'BASE2_PROCESS_ROLE', 'api')
     tasks._observe_worker()
     heartbeat.assert_not_called()
+
+
+def test_task_signals_validate_routes_stamp_time_and_observe_queue_delay(monkeypatch):
+    routes = dict(tasks.app.conf.task_routes)
+    routes.pop('app.ping')
+    monkeypatch.setattr(tasks.app.conf, 'task_routes', routes)
+    with pytest.raises(RuntimeError, match='task_routes_unclassified:app.ping'):
+        tasks._validate_closed_task_routing()
+
+    headers = {}
+    tasks._stamp_published_at(headers=headers)
+    assert datetime.fromisoformat(headers['base2PublishedAt']).tzinfo is not None
+    tasks._stamp_published_at(headers='not-a-dictionary')
+
+    observation = MagicMock()
+    monkeypatch.setattr(tasks, 'mark_queue_observation', observation)
+    task = MagicMock()
+    task.request.headers = {'base2PublishedAt': datetime.now(UTC).isoformat()}
+    tasks._observe_queue_delay(task=task)
+    assert observation.call_args.kwargs['published_at'].tzinfo is not None
+    observation.reset_mock()
+    task.request.headers = {'base2PublishedAt': 'invalid'}
+    tasks._observe_queue_delay(task=task)
+    observation.assert_not_called()
+
+
+def test_production_lifecycle_and_dispatch_admission_fail_closed(monkeypatch):
+    from api.repositories import tenant_lifecycle
+
+    monkeypatch.setattr(tasks.settings, 'ENV', 'production')
+    monkeypatch.setattr(tenant_lifecycle, 'get_state', lambda **_kwargs: {'state': 'active'})
+    assert tasks._tenant_serving('tenant-one') is True
+    monkeypatch.setattr(
+        tenant_lifecycle,
+        'get_state',
+        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError('database unavailable')),
+    )
+    assert tasks._tenant_serving('tenant-one') is False
+
+    client = MagicMock()
+    client.set.side_effect = [True, False]
+    client.llen.return_value = 84
+    monkeypatch.setattr(tasks, 'redis_client', lambda: client)
+    token = tasks._reserve_tenant_dispatch('collect', 'tenant-one')
+    assert token is not None
+    assert tasks._reserve_tenant_dispatch('collect', 'tenant-one') is None
+    tasks._release_tenant_dispatch('collect', 'tenant-one', token)
+    client.eval.assert_called_once()
+    assert tasks._runtime_fanout_has_capacity(reserve=16) is True
+    assert tasks._runtime_fanout_has_capacity(reserve=17) is False
+    client.llen.side_effect = RuntimeError('redis unavailable')
+    assert tasks._runtime_fanout_has_capacity() is False
+
+
+def test_collection_fanout_releases_dispatch_reservation_when_enqueue_fails(monkeypatch):
+    monkeypatch.setattr(tasks, '_runtime_fanout_has_capacity', lambda: True)
+    monkeypatch.setattr(tasks, 'configured_tenants', lambda: ['tenant-one'])
+    monkeypatch.setattr(tasks, 'fair_tenant_batch', lambda values, **_kwargs: values)
+    monkeypatch.setattr(tasks, '_tenant_serving', lambda _tenant: True)
+    monkeypatch.setattr(tasks, '_reserve_tenant_dispatch', lambda *_args: 'token-one')
+    release = MagicMock()
+    monkeypatch.setattr(tasks, '_release_tenant_dispatch', release)
+    monkeypatch.setattr(
+        tasks.collect_operations_site,
+        'delay',
+        MagicMock(side_effect=RuntimeError('broker unavailable')),
+    )
+    with pytest.raises(RuntimeError, match='broker unavailable'):
+        tasks.collect_operations_health.run()
+    release.assert_called_once_with('collect', 'tenant-one', 'token-one')
 
 
 def test_collection_and_dispatch_fan_out_only_configured_tenants(monkeypatch):

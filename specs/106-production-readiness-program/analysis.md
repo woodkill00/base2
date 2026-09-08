@@ -568,3 +568,12 @@ repair to focused proof. The rejected run is historical evidence only. Visual
 evidence must come from a newly executed browser matrix, not a source-hash-only
 manifest rewrite, and the repaired clean head must restart both complete gates
 from zero.
+
+The replacement candidate `3b0e5a5dacf76e3143801624a9ea0e15489b6775`
+cleared every complete-gate check except the immutable changed-line coverage
+policy: 4,149 of 4,644 executable changed lines were covered (89.34%) against a
+fixed 90% floor. B219 adds direct behavioral coverage for bounded internal HTTP
+probes, timing caps, worker and queue evidence, closed Celery route validation,
+production lifecycle admission, Redis dispatch reservation, capacity failure,
+and broker-enqueue cleanup. The floor is not reduced, rounded, or bypassed; both
+complete gates restart again on the next clean exact head.

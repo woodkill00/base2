@@ -37,6 +37,66 @@ def test_fair_tenant_batch_rotates_without_exceeding_worker_capacity(monkeypatch
         runtime.fair_tenant_batch(tenants, limit=17)
 
 
+def test_internal_http_is_allowlisted_bounded_and_reports_transport_failure(monkeypatch):
+    monkeypatch.setenv('OPERATIONS_INTERNAL_BASE_URL', 'https://external.example')
+    assert runtime._internal_http('/api/health', 2) == (
+        'degraded',
+        'http.not-configured',
+        0,
+    )
+
+    response = MagicMock(status=204)
+    response.__enter__.return_value = response
+    monkeypatch.setenv('OPERATIONS_INTERNAL_BASE_URL', 'http://nginx')
+    monkeypatch.setattr(runtime, 'urlopen', MagicMock(return_value=response))
+    assert runtime._internal_http('/api/health', 2)[:2] == ('healthy', 'http.ready')
+    runtime.urlopen.side_effect = OSError('offline')
+    assert runtime._internal_http('/api/health', 2)[:2] == (
+        'unavailable',
+        'http.unavailable',
+    )
+
+
+def test_timing_heartbeats_and_queue_observations_are_bounded(monkeypatch):
+    moments = iter((1.0, 1.125, 2.0, 5.0))
+    monkeypatch.setattr(runtime.time, 'monotonic', lambda: next(moments))
+    assert runtime._timed(lambda: True, 'ready', 'failed', 1) == ('healthy', 'ready', 125)
+    assert runtime._timed(lambda: False, 'ready', 'failed', 1) == (
+        'unavailable',
+        'failed',
+        1000,
+    )
+
+    client = MagicMock()
+    monkeypatch.setattr(runtime.redis_client, 'get_client', lambda: client)
+    runtime.mark_runtime_heartbeat('workers:runtime-worker', now=NOW)
+    client.set.assert_called_with(
+        runtime.redis_client.key('operations', 'workers:runtime-worker'),
+        NOW.isoformat(),
+        ex=180,
+    )
+    runtime.mark_queue_observation(published_at=NOW - timedelta(seconds=3), now=NOW)
+    queue_payload = json.loads(client.set.call_args.args[1])
+    assert queue_payload == {'observedAt': NOW.isoformat(), 'delayMs': 3000}
+
+
+def test_runtime_heartbeat_and_queue_probe_fail_closed_on_invalid_evidence(monkeypatch):
+    client = MagicMock()
+    monkeypatch.setattr(runtime.redis_client, 'get_client', lambda: client)
+    client.get.return_value = datetime.now(UTC).isoformat().encode()
+    assert runtime._runtime_heartbeat('workers:email-worker', 1)[:2] == (
+        'healthy',
+        'workers:email-worker.ready',
+    )
+    client.get.return_value = b'not-a-timestamp'
+    assert runtime._runtime_heartbeat('workers:email-worker', 1)[:2] == (
+        'degraded',
+        'workers:email-worker.stale',
+    )
+    client.llen.side_effect = RuntimeError('redis unavailable')
+    assert runtime._queue_health(1) == ('degraded', 'queues.unknown', 0)
+
+
 def test_collect_site_connects_catalog_adapters_and_persistence(monkeypatch):
     captured = {}
     monkeypatch.setattr(
