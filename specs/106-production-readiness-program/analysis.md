@@ -768,3 +768,16 @@ chain discovery. A lockfile-only resolution selects the non-vulnerable compatibl
 dependency graph, a clean install resolves `js-yaml` 4.3.2, and the full npm audit
 reports zero vulnerabilities. The failed gate remains historical and both exact-
 head passes restart from zero after the dependency commit.
+
+## Analysis cycle 28 — bounded mobile raster stability
+
+The second exact-head gate rejected one mobile command-menu capture after the
+first gate had passed the same source and baseline. Expected and actual images
+differed by one pixel out of the complete rendered menu; all 49 other executed
+visual assertions passed, including the menu's structure, reachability, motion,
+scroll, SVG, responsive, and accessibility behavior. B287 records this observed
+cross-run GPU raster edge rather than accepting a changed baseline. The exact
+menu capture now permits at most two changed pixels, materially tighter than the
+existing 20-pixel utility-menu bound, while every functional and geometric check
+remains exact. A materially shifted or restyled menu still fails. Both clean
+exact-head gates restart after this test-contract correction.
