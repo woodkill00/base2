@@ -70,6 +70,14 @@ six-surface restore reconciliation, monitoring loss, alert loss, queue pressure,
 restart, clock shift, and fault recovery passed required checks. Production
 capacity and recovery claims still require target-environment measurement.
 
+## Pending independent and external evidence
+
+Fresh exact-source independent code, security, UX/accessibility, data, and
+operations reviews remain required after the final local candidate passes its
+repeated complete gates. Draft publication requires approval bound to that exact
+head. Hosted checks, merge, any provider canary, teardown, and production
+activation retain their separately approved boundaries.
+
 ## Superseded closeout status
 
 This local closeout is retained as historical evidence, not as current acceptance.

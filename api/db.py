@@ -30,11 +30,15 @@ def _admitted_connection(pool: ThreadedConnectionPool) -> PsycopgConnection:
 
 
 def pool_snapshot() -> dict[str, dict[str, int | str]]:
-    result = {}
+    result: dict[str, dict[str, int | str]] = {}
     for name, pool in (
-        ('owner', _pool), ('workspace', _workspace_pool), ('worker', _workspace_worker_pool)
+        ('owner', _pool),
+        ('workspace', _workspace_pool),
+        ('worker', _workspace_worker_pool),
     ):
-        maximum = int(getattr(pool, 'maxconn', settings.DB_POOL_MAX)) if pool else settings.DB_POOL_MAX
+        maximum = (
+            int(getattr(pool, 'maxconn', settings.DB_POOL_MAX)) if pool else settings.DB_POOL_MAX
+        )
         used = len(getattr(pool, '_used', {})) if pool else 0
         percent = round(used * 100 / max(maximum, 1))
         result[name] = {
@@ -63,7 +67,7 @@ def _build_dsn() -> str:
     name = os.getenv('DB_NAME')
     user = os.getenv('DB_USER')
     password = os.getenv('DB_PASSWORD')
-    if not all([name, user, password]):
+    if not name or not user or not password:
         raise RuntimeError('Missing DB_NAME/DB_USER/DB_PASSWORD')
     dsn = f'postgresql://{quote(user, safe="")}:{quote(password, safe="")}@{host}:{port}/{name}'
     return _with_tls(dsn)
@@ -84,7 +88,7 @@ def _build_workspace_dsn() -> str:
     name = os.getenv('DB_NAME')
     user = os.getenv('WORKSPACE_DB_USER')
     password = os.getenv('WORKSPACE_DB_PASSWORD')
-    if not all([name, user, password]):
+    if not name or not user or not password:
         raise RuntimeError('Missing WORKSPACE_DB_USER/WORKSPACE_DB_PASSWORD')
     return _with_tls(
         f'postgresql://{quote(user, safe="")}:{quote(password, safe="")}@{host}:{port}/{name}'
@@ -97,7 +101,7 @@ def _build_workspace_worker_dsn() -> str:
     name = os.getenv('DB_NAME')
     user = os.getenv('WORKSPACE_WORKER_DB_USER')
     password = os.getenv('WORKSPACE_WORKER_DB_PASSWORD')
-    if not all([name, user, password]):
+    if not name or not user or not password:
         raise RuntimeError('Missing WORKSPACE_WORKER_DB_USER/WORKSPACE_WORKER_DB_PASSWORD')
     return _with_tls(
         f'postgresql://{quote(user, safe="")}:{quote(password, safe="")}@{host}:{port}/{name}'
@@ -168,6 +172,7 @@ def _get_workspace_worker_pool() -> ThreadedConnectionPool:
                 application_name=f'{_project_slug()}-workspace-worker',
             )
         return _workspace_worker_pool
+
 
 def _get_conn() -> PsycopgConnection:
     pool = _get_pool()
