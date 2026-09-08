@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 
@@ -8,7 +9,6 @@ from scripts.python.ephemeral_expiry import (
     ExpiryPlanStore,
     scan_due,
 )
-from pathlib import Path
 
 NOW = datetime(2026, 9, 8, tzinfo=UTC)
 KEY = b"k" * 32
@@ -62,13 +62,14 @@ def test_tampered_plan_unknown_adapter_and_nonterminal_receipt_fail_closed(tmp_p
 
     clean = ExpiryPlanStore(tmp_path / "clean", key=KEY)
     clean.register(_plan())
-    with pytest.raises(EphemeralExpiryError, match="adapter_not_terminal"):
-        scan_due(
-            clean,
-            now=NOW,
-            adapters={ADAPTER: lambda _plan: {"state": "pending"}},
-        )
+    result = scan_due(
+        clean,
+        now=NOW,
+        adapters={ADAPTER: lambda _plan: {"state": "pending"}},
+    )
+    assert len(result["failed"]) == 1
     assert not list(clean.receipt_root.glob("*.json"))
+    assert len(list(clean.failure_root.glob("*.json"))) == 1
 
 
 def test_plan_inventory_is_bounded_and_unsafe_members_are_rejected(tmp_path):
@@ -80,11 +81,52 @@ def test_plan_inventory_is_bounded_and_unsafe_members_are_rejected(tmp_path):
         store.plans()
 
 
+def test_registration_rejects_the_sixty_fifth_plan_without_poisoning_inventory(tmp_path):
+    store = ExpiryPlanStore(tmp_path / "expiry", key=KEY)
+    for index in range(64):
+        plan = _plan()
+        plan["planId"] = f"preview-capacity-{index:02d}"
+        plan["runId"] = f"capacity-{index:02d}"
+        plan["ownedResources"] = [plan["runId"]]
+        store.register(plan)
+    rejected = _plan()
+    rejected["planId"] = "preview-capacity-overflow"
+    rejected["runId"] = "capacity-overflow"
+    rejected["ownedResources"] = [rejected["runId"]]
+    with pytest.raises(EphemeralExpiryError, match="capacity_exceeded"):
+        store.register(rejected)
+    assert len(store.plans()) == 64
+
+
+def test_bad_member_and_adapter_crash_are_isolated_from_later_due_plan(tmp_path):
+    store = ExpiryPlanStore(tmp_path / "expiry", key=KEY)
+    bad = _plan()
+    bad["planId"] = "preview-106-bad"
+    bad["runId"] = "f106-bad"
+    bad["ownedResources"] = [bad["runId"]]
+    store.register(bad)
+    good = _plan()
+    good["planId"] = "preview-106-good"
+    good["runId"] = "f106-good"
+    good["ownedResources"] = [good["runId"]]
+    store.register(good)
+
+    def adapter(plan):
+        if plan["runId"] == "f106-bad":
+            raise RuntimeError("untrusted adapter detail")
+        return {"state": "destroyed", "runId": plan["runId"], "secretValuesEmitted": 0}
+
+    result = scan_due(store, now=NOW, adapters={ADAPTER: adapter})
+    assert result["destroyed"] == ["preview-106-good"]
+    assert len(result["failed"]) == 1
+
+
 def test_persistent_scanner_unit_is_hardened_and_has_no_arbitrary_command_surface():
     root = Path(__file__).resolve().parents[2]
     service = (root / "digital_ocean/systemd/base2-ephemeral-expiry-scan.service").read_text()
     timer = (root / "digital_ocean/systemd/base2-ephemeral-expiry-scan.timer").read_text()
-    assert "scripts.python.ephemeral_expiry" in service
+    assert "WorkingDirectory=/opt/base2/current" in service
+    assert "/usr/bin/python3 /opt/base2/current/scripts/python/ephemeral_expiry.py" in service
     assert "NoNewPrivileges=yes" in service
     assert "ProtectSystem=strict" in service
     assert "Persistent=true" in timer

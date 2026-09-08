@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import threading
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from uuid import UUID
 
 import psycopg2
@@ -13,7 +14,9 @@ from api.migrations.runner import apply_migrations
 from api.repositories.operations import due_alert_deliveries, record_probe_batch
 from api.repositories.runtime_governance import claim_jobs, enqueue_job, settle_job
 from api.repositories.tenant_quota import QuotaRepositoryError, reserve
+from api.services.data_rights_worker import SUBJECT_DATA_INVENTORY
 from api.services.email_service import create_outbox_email
+from scripts.python.production_backup import _repeatable_read_snapshot
 
 
 def connect(user: str, password: str):
@@ -271,6 +274,12 @@ def main() -> None:
                 (str(UUID(int=53)),),
             )
             cursor.execute(
+                "INSERT INTO api_auth_users "
+                "(id,email,password_hash,is_active,is_email_verified,display_name,avatar_url,bio,created_at,updated_at,failed_login_attempts) "
+                "VALUES (%s,'same-tenant-other@example.invalid','hash',true,true,'Other A','','',NOW(),NOW(),0)",
+                (str(UUID(int=57)),),
+            )
+            cursor.execute(
                 "INSERT INTO api_identity_organizations (id,tenant_id,name) VALUES (%s,'site-b','B')",
                 (str(UUID(int=54)),),
             )
@@ -287,10 +296,23 @@ def main() -> None:
                 (str(UUID(int=54)), str(UUID(int=53))),
             )
             cursor.execute(
+                "INSERT INTO api_identity_memberships "
+                "(organization_id,user_id,role,status,created_at,updated_at) "
+                "VALUES (%s,%s,'viewer','active',NOW(),NOW())",
+                (str(UUID(int=54)), str(UUID(int=50))),
+            )
+            cursor.execute(
+                "INSERT INTO api_identity_memberships "
+                "(organization_id,user_id,role,status,created_at,updated_at) "
+                "VALUES (%s,%s,'viewer','active',NOW(),NOW())",
+                (str(UUID(int=51)), str(UUID(int=57))),
+            )
+            cursor.execute(
                 """INSERT INTO api_data_rights_operations
                    (id,tenant_id,user_id,kind,status,request_ciphertext,retention_until)
-                   VALUES (%s,'site-a',%s,'export','queued','ciphertext',NOW()+INTERVAL '1 day')""",
-                (str(UUID(int=52)), str(UUID(int=50))),
+                   VALUES (%s,'site-a',%s,'export','queued','ciphertext',NOW()+INTERVAL '1 day'),
+                          (%s,'site-a',%s,'deletion','queued','ciphertext',NOW()+INTERVAL '1 day')""",
+                (str(UUID(int=52)), str(UUID(int=50)), str(UUID(int=58)), str(UUID(int=50))),
             )
             cursor.execute(
                 """INSERT INTO sitecontent_tenantlifecyclestate
@@ -325,7 +347,7 @@ def main() -> None:
                 "WHERE grantee='PUBLIC' AND table_name='api_auth_users')",
                 (data_rights_user,) * 4,
             )
-            assert cursor.fetchone() == (True, True, False, False, True)
+            assert cursor.fetchone() == (True, False, False, False, True)
             cursor.execute(
                 "SELECT rolbypassrls, rolsuper FROM pg_roles WHERE rolname=%s", (worker_user,)
             )
@@ -404,6 +426,8 @@ def main() -> None:
             record_transition_id = str(UUID(int=11))
             scheduled_record_id = str(UUID(int=12))
             saved_view_id = str(UUID(int=13))
+            privacy_saved_view_id = str(UUID(int=15))
+            other_saved_view_id = str(UUID(int=16))
             import_job_id = str(UUID(int=14))
             cursor.execute(
                 """INSERT INTO sitecontent_contentrecord
@@ -430,8 +454,14 @@ def main() -> None:
                 """INSERT INTO sitecontent_savedview
                    (id,site_id,definition_id,owner_ref,title,query,visibility,shared_roles,
                     schema_version,lock_version,created_at,updated_at)
-                   VALUES (%s,'site-a',%s,'owner','View','{}','private','[]',1,1,NOW(),NOW())""",
-                (saved_view_id, str(UUID(int=1))),
+                   VALUES (%s,'site-a',%s,'owner','View','{}','private','[]',1,1,NOW(),NOW()),
+                          (%s,'site-a',%s,%s,'Privacy view','{}','private','[]',1,1,NOW(),NOW()),
+                          (%s,'site-a',%s,%s,'Other view','{}','private','[]',1,1,NOW(),NOW())""",
+                (
+                    saved_view_id, str(UUID(int=1)),
+                    privacy_saved_view_id, str(UUID(int=1)), str(UUID(int=50)),
+                    other_saved_view_id, str(UUID(int=1)), str(UUID(int=57)),
+                ),
             )
             cursor.execute(
                 """INSERT INTO sitecontent_importjob
@@ -484,83 +514,131 @@ def main() -> None:
             stale_claim = str(UUID(int=55))
             current_claim = str(UUID(int=56))
             cursor.execute(
-                "SELECT set_config('app.data_rights_operation_id', %s, true)",
-                (operation_id,),
+                "SELECT id FROM base2_list_due_data_rights_operations(25)"
             )
+            assert operation_id in {str(row[0]) for row in cursor.fetchall()}
             cursor.execute(
-                "SELECT set_config('app.data_rights_claim_token', %s, true)",
-                (stale_claim,),
+                "SELECT * FROM base2_claim_data_rights_operation(%s,%s)",
+                (operation_id, stale_claim),
             )
+            assert cursor.fetchone()[-1] == stale_claim
             cursor.execute(
-                "UPDATE api_data_rights_operations SET status='running',claim_token=%s,"
-                "claim_expires_at=NOW()+INTERVAL '5 minutes' WHERE id=%s AND status='queued'",
-                (stale_claim, operation_id),
+                "SELECT set_config('app.data_rights_operation_id', %s, true),"
+                "set_config('app.data_rights_claim_token', %s, true)",
+                (operation_id, stale_claim),
             )
-            assert cursor.rowcount == 1
             cursor.execute("SELECT tenant_id FROM api_identity_organizations")
             assert cursor.fetchall() == [("site-a",)]
             cursor.execute("SELECT user_id FROM api_identity_memberships")
             assert cursor.fetchall() == [(str(UUID(int=50)),)]
             cursor.execute("SELECT email FROM api_auth_users WHERE id=%s", (str(UUID(int=50)),))
             assert cursor.fetchone() == ("rights@example.invalid",)
+            cursor.execute("SELECT id,title,query FROM sitecontent_savedview ORDER BY id")
+            assert cursor.fetchall() == [(privacy_saved_view_id, "Privacy view", {})]
             cursor.execute("SELECT email FROM api_auth_users WHERE id=%s", (str(UUID(int=53)),))
             assert cursor.fetchone() is None, "data_rights_cross_tenant_user_read_was_not_blocked"
-            cursor.execute(
-                "UPDATE api_auth_users SET display_name='blocked' WHERE id=%s",
-                (str(UUID(int=53)),),
+            cursor.execute("SELECT email FROM api_auth_users WHERE id=%s", (str(UUID(int=57)),))
+            assert cursor.fetchone() is None, "data_rights_same_tenant_other_subject_read_was_not_blocked"
+            assert_permission_denied(
+                lambda: cursor.execute(
+                    "UPDATE api_auth_users SET display_name='blocked' WHERE id=%s",
+                    (str(UUID(int=50)),),
+                ),
+                data_rights_worker,
+                "data_rights_direct_subject_update_was_not_blocked",
             )
-            assert cursor.rowcount == 0, "data_rights_cross_tenant_user_update_was_not_blocked"
             cursor.execute(
-                "DELETE FROM api_identity_memberships WHERE organization_id=%s AND user_id=%s",
-                (str(UUID(int=54)), str(UUID(int=53))),
+                "SELECT set_config('app.tenant_id', 'site-a', true),"
+                "set_config('app.data_rights_operation_id', %s, true),"
+                "set_config('app.data_rights_claim_token', %s, true)",
+                (operation_id, stale_claim),
             )
-            assert (
-                cursor.rowcount == 0
-            ), "data_rights_cross_tenant_membership_delete_was_not_blocked"
+            assert_permission_denied(
+                lambda: cursor.execute(
+                    "DELETE FROM api_identity_memberships WHERE organization_id=%s AND user_id=%s",
+                    (str(UUID(int=51)), str(UUID(int=50))),
+                ),
+                data_rights_worker,
+                "data_rights_direct_subject_delete_was_not_blocked",
+            )
+            cursor.execute(
+                "SELECT set_config('app.tenant_id', 'site-a', true),"
+                "set_config('app.data_rights_operation_id', %s, true),"
+                "set_config('app.data_rights_claim_token', %s, true)",
+                (operation_id, stale_claim),
+            )
             cursor.execute("SELECT set_config('app.tenant_id', 'site-b', true)")
             cursor.execute("SELECT tenant_id FROM api_identity_organizations")
             assert cursor.fetchall() == [], "claim_tenant_switch_was_not_blocked"
             cursor.execute("SELECT set_config('app.tenant_id', 'site-a', true)")
-            cursor.execute(
-                "UPDATE api_data_rights_operations SET claim_expires_at=NOW()-INTERVAL '1 second' "
-                "WHERE id=%s AND status='running' AND claim_token=%s",
-                (operation_id, stale_claim),
-            )
-            assert cursor.rowcount == 1
-            cursor.execute(
-                "DELETE FROM api_identity_memberships WHERE organization_id=%s AND user_id=%s",
-                (str(UUID(int=51)), str(UUID(int=50))),
-            )
-            assert cursor.rowcount == 0, "expired_claim_subject_delete_was_not_blocked"
+            with owner.cursor() as owner_cursor:
+                owner_cursor.execute(
+                    "UPDATE api_data_rights_operations SET claim_expires_at=NOW()-INTERVAL '1 second' "
+                    "WHERE id=%s AND status='running' AND claim_token=%s",
+                    (operation_id, stale_claim),
+                )
+            owner.commit()
             cursor.execute("SELECT email FROM api_auth_users WHERE id=%s", (str(UUID(int=50)),))
             assert cursor.fetchone() is None, "expired_claim_subject_read_was_not_blocked"
             cursor.execute(
-                "SELECT set_config('app.data_rights_claim_token', %s, true)",
-                (current_claim,),
+                "SELECT base2_finalize_data_rights_operation(%s,%s,'failed','','','synthetic',"
+                "'','00000000-0000-0000-0000-000000000000','')",
+                (operation_id, stale_claim),
             )
+            assert cursor.fetchone() == (False,), "expired_claim_finalize_was_not_blocked"
             cursor.execute(
-                "UPDATE api_data_rights_operations SET claim_token=%s,"
-                "claim_expires_at=NOW()+INTERVAL '5 minutes' "
-                "WHERE id=%s AND status='running' AND claim_token=%s AND claim_expires_at<NOW()",
-                (current_claim, operation_id, stale_claim),
+                "SELECT * FROM base2_claim_data_rights_operation(%s,%s)",
+                (operation_id, current_claim),
             )
-            assert cursor.rowcount == 1
+            assert cursor.fetchone()[-1] == current_claim
+            cursor.execute(
+                "SELECT set_config('app.data_rights_claim_token', %s, true)", (current_claim,)
+            )
             cursor.execute("SELECT email FROM api_auth_users WHERE id=%s", (str(UUID(int=50)),))
             assert cursor.fetchone() == (
                 "rights@example.invalid",
             ), "reclaimed_subject_access_was_not_restored"
             cursor.execute(
-                "UPDATE api_data_rights_operations SET status='completed',claim_token=NULL,"
-                "claim_expires_at=NULL WHERE id=%s AND status='running' AND claim_token=%s",
-                (operation_id, stale_claim),
-            )
-            assert cursor.rowcount == 0, "stale_data_rights_claim_was_not_fenced"
-            cursor.execute(
-                "SELECT base2_finalize_data_rights_operation(%s,%s,'failed','','','synthetic')",
+                "SELECT base2_finalize_data_rights_operation(%s,%s,'failed','','','synthetic',"
+                "'','00000000-0000-0000-0000-000000000000','')",
                 (operation_id, current_claim),
             )
             assert cursor.fetchone() == (True,)
         data_rights_worker.rollback()
+        deletion_id = str(UUID(int=58))
+        deletion_claim = str(UUID(int=59))
+        with data_rights_worker.cursor() as cursor:
+            cursor.execute(
+                "SELECT * FROM base2_claim_data_rights_operation(%s,%s)",
+                (deletion_id, deletion_claim),
+            )
+            assert cursor.fetchone()[-1] == deletion_claim
+            cursor.execute(
+                "SELECT base2_apply_data_rights_subject_action(%s,%s,'deletion','{}'::jsonb)",
+                (deletion_id, deletion_claim),
+            )
+            closure = cursor.fetchone()[0]
+            assert closure["tenant_membership_deleted"] is True
+            assert closure["global_account_deleted"] is False
+        data_rights_worker.commit()
+        with owner.cursor() as cursor:
+            cursor.execute("SELECT is_active FROM api_auth_users WHERE id=%s", (str(UUID(int=50)),))
+            assert cursor.fetchone() == (True,)
+            cursor.execute(
+                "SELECT organization_id FROM api_identity_memberships WHERE user_id=%s ORDER BY organization_id",
+                (str(UUID(int=50)),),
+            )
+            assert cursor.fetchall() == [(str(UUID(int=54)),)]
+        owner.rollback()
+        with owner.cursor() as cursor:
+            for table, column, _treatment in SUBJECT_DATA_INVENTORY:
+                cursor.execute(
+                    "SELECT EXISTS (SELECT 1 FROM information_schema.columns "
+                    "WHERE table_schema='public' AND table_name=%s AND column_name=%s)",
+                    (table, column),
+                )
+                assert cursor.fetchone() == (True,), f"subject_inventory_drift:{table}.{column}"
+        owner.rollback()
         with content_worker.cursor() as cursor:
             cursor.execute("SELECT set_config('app.tenant_id', 'site-a', true)")
             cursor.execute(
@@ -864,6 +942,36 @@ def main() -> None:
                            AND publish_at <= NOW() AND version=1""",
             parameters=(scheduled_record_id,),
         )
+
+        service_file = Path('/tmp/base2-backup-concurrency-pg-service.conf')
+        service_file.write_text(
+            '[base2_acceptance]\n'
+            f'host={os.environ["DB_HOST"]}\nport={os.environ.get("DB_PORT", "5432")}\n'
+            f'dbname={os.environ["DB_NAME"]}\nuser={owner_user}\npassword={owner_password}\n',
+            encoding='utf-8',
+        )
+        service_file.chmod(0o600)
+        try:
+            with _repeatable_read_snapshot(
+                {'pgService': 'base2_acceptance', 'pgServiceFile': str(service_file)}
+            ) as snapshot:
+                snapshot_before = snapshot['references']
+                updater = connect(owner_user, owner_password)
+                try:
+                    with updater.cursor() as cursor:
+                        cursor.execute(
+                            "UPDATE sitecontent_importjob SET source_object_key=%s,source_sha256=%s "
+                            "WHERE id=%s",
+                            ('media/site-a/concurrent-object', 'c' * 64, import_job_id),
+                        )
+                    updater.commit()
+                finally:
+                    updater.close()
+                assert snapshot['afterReferences']() != snapshot_before, (
+                    'backup_independent_live_ledger_fence_missed_concurrent_commit'
+                )
+        finally:
+            service_file.unlink(missing_ok=True)
 
         with owner, owner.cursor() as cursor:
             cursor.execute(

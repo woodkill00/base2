@@ -7,6 +7,18 @@ from django.db import migrations
 
 ROLE = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,62}$")
 IDENTITY_GRANTS = {
+    "api_data_rights_operations": "SELECT",
+    "api_auth_users": "SELECT",
+    "api_identity_memberships": "SELECT",
+    "api_identity_organizations": "SELECT",
+    "api_auth_refresh_tokens": "SELECT",
+    "api_identity_recovery_codes": "SELECT",
+    "api_identity_login_challenges": "SELECT",
+    "api_identity_authenticators": "SELECT",
+    "api_identity_credentials": "SELECT",
+    "api_auth_audit_events": "SELECT",
+}
+LEGACY_CONTENT_IDENTITY_GRANTS = {
     "api_data_rights_operations": "SELECT, UPDATE",
     "api_auth_users": "SELECT, UPDATE",
     "api_identity_memberships": "SELECT, UPDATE, DELETE",
@@ -23,26 +35,26 @@ WORKSPACE_GRANTS = {
     "sitecontent_contentrecord": "SELECT",
     "sitecontent_workspaceauditevent": "SELECT",
     "sitecontent_contentfielddefinition": "SELECT",
-    "sitecontent_savedview": "SELECT, DELETE",
-    "sitecontent_mediaasset": "SELECT, UPDATE",
-    "sitecontent_importjob": "SELECT, UPDATE",
-    "sitecontent_exportjob": "SELECT, UPDATE",
-    "sitecontent_workspaceauditevent": "SELECT, UPDATE",
-    "sitecontent_mediauploadsession": "SELECT, UPDATE",
-    "sitecontent_mediametadatarevision": "SELECT, UPDATE",
-    "sitecontent_mediacollection": "SELECT, UPDATE",
-    "sitecontent_mediaretentionhold": "SELECT, UPDATE",
-    "sitecontent_mediadeliverygrant": "SELECT, UPDATE",
-    "sitecontent_mediaauditevent": "SELECT, UPDATE",
-    "sitecontent_mediaabusecase": "SELECT, UPDATE",
-    "sitecontent_operationsincident": "SELECT, UPDATE",
-    "sitecontent_operationsincidentevent": "SELECT, UPDATE",
-    "sitecontent_tenantlifecycleevent": "SELECT, UPDATE",
-    "sitecontent_durablejob": "SELECT, UPDATE",
-    "sitecontent_breakglassgrant": "SELECT, UPDATE",
-    "sitecontent_tenantnotification": "SELECT, UPDATE",
+    "sitecontent_savedview": "SELECT",
+    "sitecontent_mediaasset": "SELECT",
+    "sitecontent_importjob": "SELECT",
+    "sitecontent_exportjob": "SELECT",
+    "sitecontent_workspaceauditevent": "SELECT",
+    "sitecontent_mediauploadsession": "SELECT",
+    "sitecontent_mediametadatarevision": "SELECT",
+    "sitecontent_mediacollection": "SELECT",
+    "sitecontent_mediaretentionhold": "SELECT",
+    "sitecontent_mediadeliverygrant": "SELECT",
+    "sitecontent_mediaauditevent": "SELECT",
+    "sitecontent_mediaabusecase": "SELECT",
+    "sitecontent_operationsincident": "SELECT",
+    "sitecontent_operationsincidentevent": "SELECT",
+    "sitecontent_tenantlifecycleevent": "SELECT",
+    "sitecontent_durablejob": "SELECT",
+    "sitecontent_breakglassgrant": "SELECT",
+    "sitecontent_tenantnotification": "SELECT",
 }
-SPECIAL_WORKSPACE_GRANTS = {"sitecontent_contentrevision": "SELECT, UPDATE"}
+SPECIAL_WORKSPACE_GRANTS = {"sitecontent_contentrevision": "SELECT"}
 USER_TABLES = (
     "api_auth_users",
     "api_auth_refresh_tokens",
@@ -50,6 +62,27 @@ USER_TABLES = (
     "api_identity_login_challenges",
     "api_identity_authenticators",
 )
+WORKSPACE_SUBJECT_COLUMNS = {
+    "sitecontent_tenantlifecyclestate": ("owner_ref",),
+    "sitecontent_savedview": ("owner_ref",),
+    "sitecontent_importjob": ("requester_ref",),
+    "sitecontent_exportjob": ("requester_ref",),
+    "sitecontent_workspaceauditevent": ("actor_ref",),
+    "sitecontent_mediaasset": ("owner_ref",),
+    "sitecontent_mediauploadsession": ("actor_ref",),
+    "sitecontent_mediametadatarevision": ("actor_ref",),
+    "sitecontent_mediacollection": ("owner_ref",),
+    "sitecontent_mediaretentionhold": ("owner_ref",),
+    "sitecontent_mediadeliverygrant": ("audience_ref",),
+    "sitecontent_mediaauditevent": ("actor_ref", "subject_ref"),
+    "sitecontent_mediaabusecase": ("reporter_ref", "reviewer_ref", "appellant_ref"),
+    "sitecontent_operationsincident": ("owner_ref",),
+    "sitecontent_operationsincidentevent": ("actor_ref",),
+    "sitecontent_tenantlifecycleevent": ("actor_ref", "target_owner_ref"),
+    "sitecontent_durablejob": ("owner_ref",),
+    "sitecontent_breakglassgrant": ("requester_ref", "approver_ref"),
+    "sitecontent_tenantnotification": ("owner_ref",),
+}
 
 
 def _role(schema_editor, variable: str) -> tuple[str, str]:
@@ -119,6 +152,23 @@ def configure_data_rights_role(apps, schema_editor):
         cursor.execute(
             "GRANT EXECUTE ON FUNCTION base2_data_rights_claim_valid(text,uuid) TO PUBLIC"
         )
+        cursor.execute(
+            """CREATE OR REPLACE FUNCTION base2_data_rights_subject_id(expected_tenant text)
+               RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER
+               SET search_path=pg_catalog,public AS $$
+                 SELECT rights.user_id FROM public.api_data_rights_operations rights
+                  WHERE session_user=%s
+                    AND rights.id=NULLIF(current_setting(
+                      'app.data_rights_operation_id',true),'')::uuid
+                    AND rights.claim_token=NULLIF(current_setting(
+                      'app.data_rights_claim_token',true),'')::uuid
+                    AND rights.tenant_id=expected_tenant AND rights.status='running'
+                    AND rights.claim_expires_at>=NOW() AND rights.retention_until>NOW()
+               $$""",
+            (data_role,),
+        )
+        cursor.execute("REVOKE ALL ON FUNCTION base2_data_rights_subject_id(text) FROM PUBLIC")
+        cursor.execute("GRANT EXECUTE ON FUNCTION base2_data_rights_subject_id(text) TO PUBLIC")
         cursor.execute(f"GRANT USAGE ON SCHEMA public TO {quoted_data}")
         for table, privileges in {
             **IDENTITY_GRANTS,
@@ -136,12 +186,27 @@ def configure_data_rights_role(apps, schema_editor):
             cursor.execute(f"ALTER TABLE {quoted_table} ENABLE ROW LEVEL SECURITY")
             cursor.execute(f"ALTER TABLE {quoted_table} FORCE ROW LEVEL SECURITY")
             cursor.execute(f"DROP POLICY IF EXISTS data_rights_claim_fence ON {quoted_table}")
+            if table == "sitecontent_contentrecord":
+                subject_predicate = (
+                    "EXISTS (SELECT 1 FROM sitecontent_workspaceauditevent subject_audit "
+                    f"WHERE subject_audit.site_id={quoted_table}.site_id "
+                    "AND subject_audit.object_type='content_record' "
+                    f"AND subject_audit.object_ref={quoted_table}.id::text "
+                    "AND subject_audit.action='content.create' "
+                    f"AND subject_audit.actor_ref=base2_data_rights_subject_id({quoted_table}.site_id)::text)"
+                )
+            else:
+                columns = WORKSPACE_SUBJECT_COLUMNS.get(table, ())
+                subject_predicate = " OR ".join(
+                    f"{quoted_table}.{column}=base2_data_rights_subject_id({quoted_table}.site_id)::text"
+                    for column in columns
+                ) or "FALSE"
             cursor.execute(
                 f"CREATE POLICY data_rights_claim_fence ON {quoted_table} AS RESTRICTIVE "
                 f"USING (current_user<>{data_literal} OR "
-                f"base2_data_rights_claim_valid({quoted_table}.site_id,NULL::uuid)) "
+                f"({subject_predicate})) "
                 f"WITH CHECK (current_user<>{data_literal} OR "
-                f"base2_data_rights_claim_valid({quoted_table}.site_id,NULL::uuid))"
+                f"({subject_predicate}))"
             )
         cursor.execute("ALTER TABLE sitecontent_contentrevision ENABLE ROW LEVEL SECURITY")
         cursor.execute("ALTER TABLE sitecontent_contentrevision FORCE ROW LEVEL SECURITY")
@@ -153,11 +218,13 @@ def configure_data_rights_role(apps, schema_editor):
             f"USING (current_user<>{data_literal} OR EXISTS ("
             "SELECT 1 FROM sitecontent_contentrecord content "
             "WHERE content.id=sitecontent_contentrevision.content_id "
-            "AND base2_data_rights_claim_valid(content.site_id,NULL::uuid))) WITH CHECK ("
+            "AND sitecontent_contentrevision.actor_ref="
+            "base2_data_rights_subject_id(content.site_id)::text)) WITH CHECK ("
             f"current_user<>{data_literal} OR EXISTS ("
             "SELECT 1 FROM sitecontent_contentrecord content "
             "WHERE content.id=sitecontent_contentrevision.content_id "
-            "AND base2_data_rights_claim_valid(content.site_id,NULL::uuid)))"
+            "AND sitecontent_contentrevision.actor_ref="
+            "base2_data_rights_subject_id(content.site_id)::text))"
         )
         for table in IDENTITY_GRANTS:
             quoted_table = schema_editor.connection.ops.quote_name(table)
@@ -254,8 +321,8 @@ def configure_data_rights_role(apps, schema_editor):
         )
         cursor.execute("DROP POLICY IF EXISTS data_rights_tenant_scope ON api_auth_audit_events")
         cursor.execute(
-            "CREATE POLICY data_rights_tenant_scope ON api_auth_audit_events FOR INSERT "
-            f"WITH CHECK ({audit_scope})"
+            "CREATE POLICY data_rights_tenant_scope ON api_auth_audit_events FOR SELECT "
+            f"USING ({audit_scope})"
         )
         # The request identity needs membership access only for the already-
         # tenant-bound ownership-transfer transaction.
@@ -281,6 +348,211 @@ def configure_data_rights_role(apps, schema_editor):
             "ON sitecontent_tenantlifecyclestate FOR SELECT "
             f"USING (site_id=current_setting('app.tenant_id', true) "
             f"OR current_user={content_literal} OR current_user={data_literal})"
+        )
+        cursor.execute(
+            """CREATE OR REPLACE FUNCTION base2_list_due_data_rights_operations(requested_limit integer)
+               RETURNS TABLE(id uuid) LANGUAGE plpgsql SECURITY DEFINER
+               SET search_path=pg_catalog,public AS $$
+               BEGIN
+                 IF session_user <> %s THEN
+                   RAISE EXCEPTION 'data_rights_role_required';
+                 END IF;
+                 RETURN QUERY
+                   SELECT rights.id FROM public.api_data_rights_operations rights
+                    WHERE (rights.status='queued' OR (
+                           rights.status='running' AND rights.claim_expires_at < NOW()))
+                      AND rights.retention_until > NOW()
+                      AND EXISTS (
+                        SELECT 1 FROM public.sitecontent_tenantlifecyclestate lifecycle
+                         WHERE lifecycle.site_id=rights.tenant_id AND lifecycle.state='active')
+                    ORDER BY rights.created_at ASC
+                    LIMIT greatest(1,least(COALESCE(requested_limit,25),100));
+               END $$""",
+            (data_role,),
+        )
+        cursor.execute(
+            "REVOKE ALL ON FUNCTION base2_list_due_data_rights_operations(integer) FROM PUBLIC"
+        )
+        cursor.execute(
+            "GRANT EXECUTE ON FUNCTION base2_list_due_data_rights_operations(integer) "
+            f"TO {quoted_data}"
+        )
+        cursor.execute(
+            """CREATE OR REPLACE FUNCTION base2_claim_data_rights_operation(
+                   requested_id uuid, requested_claim_token uuid)
+               RETURNS TABLE(id uuid,tenant_id text,user_id uuid,kind text,
+                             request_ciphertext text,claim_token uuid)
+               LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
+               BEGIN
+                 IF session_user <> %s OR requested_claim_token IS NULL THEN
+                   RAISE EXCEPTION 'data_rights_role_required';
+                 END IF;
+                 RETURN QUERY
+                   UPDATE public.api_data_rights_operations rights
+                      SET status='running', started_at=COALESCE(rights.started_at,NOW()),
+                          updated_at=NOW(), claim_token=requested_claim_token,
+                          claim_expires_at=NOW() + INTERVAL '5 minutes'
+                    WHERE rights.id=requested_id
+                      AND (rights.status='queued' OR (
+                           rights.status='running' AND rights.claim_expires_at < NOW()))
+                      AND rights.retention_until > NOW()
+                      AND EXISTS (
+                        SELECT 1 FROM public.sitecontent_tenantlifecyclestate lifecycle
+                         WHERE lifecycle.site_id=rights.tenant_id AND lifecycle.state='active')
+                   RETURNING rights.id,rights.tenant_id,rights.user_id,rights.kind,
+                             rights.request_ciphertext,rights.claim_token;
+               END $$""",
+            (data_role,),
+        )
+        cursor.execute(
+            "REVOKE ALL ON FUNCTION base2_claim_data_rights_operation(uuid,uuid) FROM PUBLIC"
+        )
+        cursor.execute(
+            "GRANT EXECUTE ON FUNCTION base2_claim_data_rights_operation(uuid,uuid) "
+            f"TO {quoted_data}"
+        )
+        cursor.execute(
+            """CREATE OR REPLACE FUNCTION base2_apply_data_rights_subject_action(
+                   requested_id uuid, requested_claim_token uuid,
+                   requested_action text, requested_fields jsonb)
+               RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+               SET search_path=pg_catalog,public AS $$
+               DECLARE rights record; item record; anonymous text;
+                       has_other boolean; affected integer := 0;
+               BEGIN
+                 IF session_user <> %s THEN RAISE EXCEPTION 'data_rights_role_required'; END IF;
+                 SELECT * INTO rights FROM public.api_data_rights_operations operation
+                  WHERE operation.id=requested_id AND operation.claim_token=requested_claim_token
+                    AND operation.status='running' AND operation.claim_expires_at >= NOW()
+                    AND operation.retention_until > NOW() FOR UPDATE;
+                 IF NOT FOUND OR rights.kind<>requested_action THEN
+                   RAISE EXCEPTION 'data_rights_claim_invalid';
+                 END IF;
+                 IF requested_action='correction' THEN
+                   UPDATE public.api_auth_users subject SET
+                     display_name=CASE WHEN requested_fields ? 'display_name'
+                       THEN requested_fields->>'display_name' ELSE subject.display_name END,
+                     avatar_url=CASE WHEN requested_fields ? 'avatar_url'
+                       THEN requested_fields->>'avatar_url' ELSE subject.avatar_url END,
+                     bio=CASE WHEN requested_fields ? 'bio'
+                       THEN requested_fields->>'bio' ELSE subject.bio END,
+                     updated_at=NOW()
+                    WHERE subject.id=rights.user_id AND subject.is_active=TRUE;
+                   IF NOT FOUND THEN RAISE EXCEPTION 'account_state_changed'; END IF;
+                   RETURN jsonb_build_object('account_id',rights.user_id);
+                 END IF;
+                 IF requested_action NOT IN ('deletion','deactivation') THEN
+                   RAISE EXCEPTION 'data_rights_action_invalid';
+                 END IF;
+                 IF requested_action='deactivation' AND EXISTS (
+                    SELECT 1 FROM public.api_identity_memberships mine
+                    JOIN public.api_identity_organizations organization
+                      ON organization.id=mine.organization_id
+                    WHERE mine.user_id=rights.user_id AND mine.role='owner'
+                      AND mine.status='active' AND organization.tenant_id=rights.tenant_id
+                      AND NOT EXISTS (
+                        SELECT 1 FROM public.api_identity_memberships other
+                         WHERE other.organization_id=mine.organization_id
+                           AND other.user_id<>mine.user_id AND other.role='owner'
+                           AND other.status='active')) THEN
+                   RAISE EXCEPTION 'last_owner_required';
+                 END IF;
+                 anonymous := 'deleted:' || left(md5(
+                   rights.tenant_id || ':' || rights.user_id::text || ':' || requested_id::text),24);
+                 IF requested_action='deletion' THEN
+                   FOR item IN SELECT * FROM (VALUES
+                     ('sitecontent_savedview','owner_ref','delete'),
+                     ('sitecontent_importjob','requester_ref','pseudonymize'),
+                     ('sitecontent_exportjob','requester_ref','pseudonymize'),
+                     ('sitecontent_workspaceauditevent','actor_ref','pseudonymize'),
+                     ('sitecontent_mediaasset','owner_ref','media_delete'),
+                     ('sitecontent_mediauploadsession','actor_ref','pseudonymize'),
+                     ('sitecontent_mediametadatarevision','actor_ref','pseudonymize'),
+                     ('sitecontent_mediacollection','owner_ref','pseudonymize'),
+                     ('sitecontent_mediaretentionhold','owner_ref','pseudonymize'),
+                     ('sitecontent_mediadeliverygrant','audience_ref','pseudonymize'),
+                     ('sitecontent_mediaauditevent','actor_ref','pseudonymize'),
+                     ('sitecontent_mediaauditevent','subject_ref','pseudonymize'),
+                     ('sitecontent_mediaabusecase','reporter_ref','pseudonymize'),
+                     ('sitecontent_mediaabusecase','reviewer_ref','pseudonymize'),
+                     ('sitecontent_mediaabusecase','appellant_ref','pseudonymize'),
+                     ('sitecontent_operationsincident','owner_ref','pseudonymize'),
+                     ('sitecontent_operationsincidentevent','actor_ref','pseudonymize'),
+                     ('sitecontent_tenantlifecyclestate','owner_ref','pseudonymize'),
+                     ('sitecontent_tenantlifecycleevent','actor_ref','pseudonymize'),
+                     ('sitecontent_tenantlifecycleevent','target_owner_ref','pseudonymize'),
+                     ('sitecontent_durablejob','owner_ref','pseudonymize'),
+                     ('sitecontent_breakglassgrant','requester_ref','pseudonymize'),
+                     ('sitecontent_breakglassgrant','approver_ref','pseudonymize'),
+                     ('sitecontent_tenantnotification','owner_ref','pseudonymize')
+                   ) AS fixed(table_name,column_name,treatment) LOOP
+                     IF item.treatment='delete' THEN
+                       EXECUTE format('DELETE FROM public.%%I WHERE site_id=$1 AND %%I=$2',
+                         item.table_name,item.column_name) USING rights.tenant_id,rights.user_id::text;
+                     ELSIF item.treatment='media_delete' THEN
+                       EXECUTE format('UPDATE public.%%I SET %%I='''', status=''deleted'', retention_until=NOW(), updated_at=NOW() WHERE site_id=$1 AND %%I=$2',
+                         item.table_name,item.column_name,item.column_name)
+                         USING rights.tenant_id,rights.user_id::text;
+                     ELSE
+                       EXECUTE format('UPDATE public.%%I SET %%I=$1 WHERE site_id=$2 AND %%I=$3',
+                         item.table_name,item.column_name,item.column_name)
+                         USING anonymous,rights.tenant_id,rights.user_id::text;
+                     END IF;
+                   END LOOP;
+                   UPDATE public.sitecontent_contentrevision revision SET actor_ref=anonymous
+                     FROM public.sitecontent_contentrecord content
+                    WHERE content.id=revision.content_id AND content.site_id=rights.tenant_id
+                      AND revision.actor_ref=rights.user_id::text;
+                   DELETE FROM public.api_identity_memberships membership
+                    USING public.api_identity_organizations organization
+                    WHERE membership.organization_id=organization.id
+                      AND organization.tenant_id=rights.tenant_id
+                      AND membership.user_id=rights.user_id;
+                 ELSE
+                   UPDATE public.api_identity_memberships membership SET
+                     status='suspended',updated_at=NOW()
+                    FROM public.api_identity_organizations organization
+                    WHERE membership.organization_id=organization.id
+                      AND organization.tenant_id=rights.tenant_id
+                      AND membership.user_id=rights.user_id AND membership.status='active';
+                 END IF;
+                 SELECT EXISTS(SELECT 1 FROM public.api_identity_memberships membership
+                   WHERE membership.user_id=rights.user_id AND membership.status='active')
+                   INTO has_other;
+                 IF NOT has_other THEN
+                   UPDATE public.api_auth_refresh_tokens SET revoked_at=NOW()
+                    WHERE user_id=rights.user_id AND revoked_at IS NULL;
+                   IF requested_action='deletion' THEN
+                     DELETE FROM public.api_identity_recovery_codes WHERE user_id=rights.user_id;
+                     DELETE FROM public.api_identity_login_challenges WHERE user_id=rights.user_id;
+                     DELETE FROM public.api_identity_authenticators WHERE user_id=rights.user_id;
+                     UPDATE public.api_identity_credentials SET revoked_at=NOW()
+                      WHERE user_id=rights.user_id AND revoked_at IS NULL;
+                     UPDATE public.api_auth_users SET
+                       email='deleted-' || rights.user_id::text || '@deleted.invalid',
+                       password_hash='',is_active=FALSE,is_email_verified=FALSE,
+                       display_name='',avatar_url='',bio='',updated_at=NOW()
+                      WHERE id=rights.user_id AND is_active=TRUE;
+                   ELSE
+                     UPDATE public.api_auth_users SET is_active=FALSE,updated_at=NOW()
+                      WHERE id=rights.user_id AND is_active=TRUE;
+                   END IF;
+                 END IF;
+                 RETURN jsonb_build_object(
+                   'tenant_id',rights.tenant_id,
+                   CASE WHEN requested_action='deletion' THEN 'tenant_membership_deleted'
+                        ELSE 'tenant_membership_deactivated' END,TRUE,
+                   CASE WHEN requested_action='deletion' THEN 'global_account_deleted'
+                        ELSE 'global_account_deactivated' END,NOT has_other);
+               END $$""",
+            (data_role,),
+        )
+        cursor.execute(
+            "REVOKE ALL ON FUNCTION base2_apply_data_rights_subject_action(uuid,uuid,text,jsonb) FROM PUBLIC"
+        )
+        cursor.execute(
+            "GRANT EXECUTE ON FUNCTION base2_apply_data_rights_subject_action(uuid,uuid,text,jsonb) "
+            f"TO {quoted_data}"
         )
         cursor.execute(
             """CREATE OR REPLACE FUNCTION base2_expire_data_rights_results()
@@ -309,7 +581,8 @@ def configure_data_rights_role(apps, schema_editor):
         cursor.execute(
             """CREATE OR REPLACE FUNCTION base2_finalize_data_rights_operation(
                    operation_id uuid, operation_claim_token uuid, terminal_status text,
-                   operation_result text, operation_digest text, operation_error text)
+                   operation_result text, operation_digest text, operation_error text,
+                   operation_tenant text, operation_user uuid, operation_kind text)
                RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER
                SET search_path=pg_catalog,public AS $$
                DECLARE changed integer;
@@ -332,18 +605,28 @@ def configure_data_rights_role(apps, schema_editor):
                           THEN NOW() ELSE completed_at END,
                         updated_at=NOW(), claim_token=NULL, claim_expires_at=NULL
                   WHERE id=operation_id AND status='running'
-                    AND claim_token=operation_claim_token;
+                    AND claim_token=operation_claim_token AND claim_expires_at >= NOW()
+                    AND retention_until > NOW()
+                    AND (terminal_status='failed' OR (tenant_id=operation_tenant
+                         AND user_id=operation_user AND kind=operation_kind));
                  GET DIAGNOSTICS changed = ROW_COUNT;
+                 IF changed=1 AND terminal_status='completed' THEN
+                   INSERT INTO public.api_auth_audit_events
+                     (id,user_id,action,ip,user_agent,metadata_json,created_at)
+                   VALUES (gen_random_uuid(),operation_user,
+                     'privacy.' || operation_kind || '_completed','','',
+                     jsonb_build_object('operation_id',operation_id,'tenant_id',operation_tenant),NOW());
+                 END IF;
                  RETURN changed = 1;
                END $$""",
             (data_role,),
         )
         cursor.execute(
-            "REVOKE ALL ON FUNCTION base2_finalize_data_rights_operation(uuid,uuid,text,text,text,text) FROM PUBLIC"
+            "REVOKE ALL ON FUNCTION base2_finalize_data_rights_operation(uuid,uuid,text,text,text,text,text,uuid,text) FROM PUBLIC"
         )
         cursor.execute(
             "GRANT EXECUTE ON FUNCTION "
-            "base2_finalize_data_rights_operation(uuid,uuid,text,text,text,text) "
+            "base2_finalize_data_rights_operation(uuid,uuid,text,text,text,text,text,uuid,text) "
             f"TO {quoted_data}"
         )
 
@@ -359,8 +642,13 @@ def remove_data_rights_role(apps, schema_editor):
     with schema_editor.connection.cursor() as cursor:
         cursor.execute(
             "DROP FUNCTION IF EXISTS "
-            "base2_finalize_data_rights_operation(uuid,uuid,text,text,text,text)"
+            "base2_finalize_data_rights_operation(uuid,uuid,text,text,text,text,text,uuid,text)"
         )
+        cursor.execute(
+            "DROP FUNCTION IF EXISTS base2_apply_data_rights_subject_action(uuid,uuid,text,jsonb)"
+        )
+        cursor.execute("DROP FUNCTION IF EXISTS base2_claim_data_rights_operation(uuid,uuid)")
+        cursor.execute("DROP FUNCTION IF EXISTS base2_list_due_data_rights_operations(integer)")
         cursor.execute("DROP FUNCTION IF EXISTS base2_expire_data_rights_results()")
         for table in {**IDENTITY_GRANTS, **WORKSPACE_GRANTS, **SPECIAL_WORKSPACE_GRANTS}:
             quoted_table = schema_editor.connection.ops.quote_name(table)
@@ -379,6 +667,7 @@ def remove_data_rights_role(apps, schema_editor):
             cursor.execute(f"DROP POLICY IF EXISTS data_rights_dispatcher ON {table}")
             cursor.execute(f"DROP POLICY IF EXISTS identity_api_access ON {table}")
         cursor.execute("DROP FUNCTION IF EXISTS base2_data_rights_claim_valid(text,uuid)")
+        cursor.execute("DROP FUNCTION IF EXISTS base2_data_rights_subject_id(text)")
         cursor.execute(
             "DROP POLICY IF EXISTS workspace_transfer_scope ON api_identity_organizations"
         )
@@ -393,7 +682,7 @@ def remove_data_rights_role(apps, schema_editor):
         }:
             cursor.execute(f"ALTER TABLE {table} NO FORCE ROW LEVEL SECURITY")
             cursor.execute(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY")
-        for table, privileges in IDENTITY_GRANTS.items():
+        for table, privileges in LEGACY_CONTENT_IDENTITY_GRANTS.items():
             quoted_table = schema_editor.connection.ops.quote_name(table)
             cursor.execute(f"GRANT {privileges} ON TABLE {quoted_table} TO {quoted_content}")
         cursor.execute(f"GRANT UPDATE ON api_auth_refresh_tokens TO {quoted_request}")

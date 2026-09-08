@@ -6,7 +6,6 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from api.db import db_conn
-from api.settings import settings
 
 
 def create_operation(
@@ -137,19 +136,8 @@ def list_tenant_operations(*, tenant_id: str, limit: int = 100) -> list[dict[str
 
 def queued_operation_ids(*, limit: int = 25) -> list[UUID]:
     with db_conn() as conn, conn.cursor() as cur:
-        lifecycle = (
-            'AND EXISTS (SELECT 1 FROM sitecontent_tenantlifecyclestate lifecycle '
-            'WHERE lifecycle.site_id=api_data_rights_operations.tenant_id '
-            "AND lifecycle.state='active')"
-            if settings.ENV == 'production'
-            else ''
-        )
         cur.execute(
-            f"""SELECT id FROM api_data_rights_operations
-                WHERE (status='queued' OR (
-                         status='running' AND claim_expires_at < NOW()
-                       )) AND retention_until > NOW() {lifecycle}
-                ORDER BY created_at ASC LIMIT %s""",
+            'SELECT id FROM base2_list_due_data_rights_operations(%s)',
             (max(1, min(limit, 100)),),
         )
         return [UUID(str(row[0])) for row in (cur.fetchall() or [])]
@@ -160,31 +148,8 @@ def claim_operation(*, operation_id: UUID) -> dict[str, Any] | None:
     with db_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT set_config('app.data_rights_operation_id', %s, true)",
-                (str(operation_id),),
-            )
-            cur.execute(
-                "SELECT set_config('app.data_rights_claim_token', %s, true)",
-                (str(claim_token),),
-            )
-            lifecycle = (
-                'AND EXISTS (SELECT 1 FROM sitecontent_tenantlifecyclestate lifecycle '
-                'WHERE lifecycle.site_id=api_data_rights_operations.tenant_id '
-                "AND lifecycle.state='active')"
-                if settings.ENV == 'production'
-                else ''
-            )
-            cur.execute(
-                f"""
-                UPDATE api_data_rights_operations
-                   SET status='running', started_at=COALESCE(started_at,NOW()), updated_at=NOW(),
-                       claim_token=%s, claim_expires_at=NOW() + INTERVAL '5 minutes'
-                 WHERE id=%s AND (
-                         status='queued' OR (status='running' AND claim_expires_at < NOW())
-                       ) AND retention_until > NOW() {lifecycle}
-                RETURNING id, tenant_id, user_id, kind, request_ciphertext, claim_token
-                """,
-                (str(claim_token), str(operation_id)),
+                'SELECT * FROM base2_claim_data_rights_operation(%s,%s)',
+                (str(operation_id), str(claim_token)),
             )
             row = cur.fetchone()
             if not row:
@@ -214,32 +179,11 @@ def complete_operation(
     with db_conn(tenant_id=tenant_id) as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT set_config('app.data_rights_operation_id', %s, true), "
-                "set_config('app.data_rights_claim_token', %s, true)",
-                (str(operation_id), str(claim_token)),
-            )
-            cur.execute(
-                """INSERT INTO api_auth_audit_events
-                     (id,user_id,action,ip,user_agent,metadata_json,created_at)
-                   SELECT %s,%s,%s,'','',%s::jsonb,NOW()
-                    WHERE EXISTS (
-                      SELECT 1 FROM api_data_rights_operations
-                       WHERE id=%s AND status='running' AND claim_token=%s
-                    )""",
+                "SELECT base2_finalize_data_rights_operation(%s,%s,'completed',%s,%s,'',%s,%s,%s)",
                 (
-                    str(uuid4()),
-                    str(user_id),
-                    f'privacy.{kind}_completed',
-                    json.dumps({'operation_id': str(operation_id), 'tenant_id': tenant_id}),
-                    str(operation_id),
-                    str(claim_token),
+                    str(operation_id), str(claim_token), result_ciphertext, digest,
+                    tenant_id, str(user_id), kind,
                 ),
-            )
-            if cur.rowcount != 1:
-                raise RuntimeError('operation_state_changed')
-            cur.execute(
-                "SELECT base2_finalize_data_rights_operation(%s,%s,'completed',%s,%s,'')",
-                (str(operation_id), str(claim_token), result_ciphertext, digest),
             )
             row = cur.fetchone()
             if not row or row[0] is not True:
@@ -252,14 +196,25 @@ def fail_operation(*, operation_id: UUID, claim_token: UUID, error_code: str) ->
         conn.autocommit = True
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT set_config('app.data_rights_operation_id', %s, false), "
-                "set_config('app.data_rights_claim_token', %s, false)",
-                (str(operation_id), str(claim_token)),
-            )
-            cur.execute(
-                "SELECT base2_finalize_data_rights_operation(%s,%s,'failed','','',%s)",
+                "SELECT base2_finalize_data_rights_operation(%s,%s,'failed','','',%s,'','00000000-0000-0000-0000-000000000000','')",
                 (str(operation_id), str(claim_token), error_code[:80]),
             )
+
+
+def apply_subject_action(
+    *, operation_id: UUID, claim_token: UUID, action: str, fields: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    with db_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                'SELECT base2_apply_data_rights_subject_action(%s,%s,%s,%s::jsonb)',
+                (str(operation_id), str(claim_token), action, json.dumps(fields or {})),
+            )
+            row = cur.fetchone()
+            if not row or not isinstance(row[0], dict):
+                raise RuntimeError('operation_state_changed')
+        conn.commit()
+    return row[0]
 
 
 def expire_results() -> int:

@@ -105,3 +105,16 @@ def test_missing_file_has_typed_sanitized_error(tmp_path):
     with pytest.raises(DeployConfigError, match="environment file is unavailable") as error:
         load_deploy_config(tmp_path / "contains-secret-in-name.env")
     assert "secret" not in str(error.value)
+
+
+def test_powershell_deploy_fails_closed_for_partial_rollback_and_inline_commit_comments():
+    root = Path(__file__).resolve().parents[2]
+    script = (root / 'digital_ocean/scripts/powershell/deploy.ps1').read_text(encoding='utf-8')
+    assert "rollback-partial-failure.txt" in script
+    assert "$rollbackExit = $LASTEXITCODE" in script
+    assert "if ($rollbackExit -ne 0)" in script
+    assert "sed 's/[[:space:]]*#.*$//'" in script
+    assert '--build --no-deps redis celery-worker' in script
+    assert 'up -d --build --no-deps flower' in script
+    assert 'for s in traefik nginx nginx-static django api redis react-app' in script
+    assert 'for s in traefik nginx nginx-static django api postgres redis react-app' not in script

@@ -87,10 +87,9 @@ def test_claim_is_atomic_and_replay_safe(monkeypatch):
     assert operation['tenant_id'] == 'tenant-a'
     assert operation['claim_token'] == claim_token
     assert connection.committed is True
-    claim_query = next(query for query, _params in cursor.calls if "status='queued'" in query)
-    assert "status='running' AND claim_expires_at < NOW()" in claim_query
-    assert 'retention_until > NOW()' in claim_query
-    assert any('app.data_rights_operation_id' in query for query, _params in cursor.calls)
+    claim_query = cursor.calls[0][0]
+    assert 'base2_claim_data_rights_operation' in claim_query
+    assert not any(query.startswith('UPDATE ') for query, _params in cursor.calls)
 
     empty_cursor = Cursor()
     empty_connection = install(monkeypatch, empty_cursor)
@@ -111,7 +110,7 @@ def test_completion_requires_running_state_and_retention_wipes_all_sensitive_mat
         result_ciphertext='encrypted-result',
         digest='a' * 64,
     )
-    assert any('api_auth_audit_events' in query for query, _params in complete_cursor.calls)
+    assert not any('INSERT INTO api_auth_audit_events' in query for query, _params in complete_cursor.calls)
     completion_query = next(
         query
         for query, _params in complete_cursor.calls
@@ -123,12 +122,31 @@ def test_completion_requires_running_state_and_retention_wipes_all_sensitive_mat
         str(claim_token),
         'encrypted-result',
         'a' * 64,
+        'tenant-a',
+        str(USER_ID),
+        'export',
     )
 
     retention_cursor = Cursor(rows=[(3,)], rowcount=3)
     install(monkeypatch, retention_cursor)
     assert repository.expire_results() == 3
     assert retention_cursor.calls[0][0] == 'SELECT base2_expire_data_rights_results()'
+
+
+def test_subject_mutation_is_only_a_fixed_action_function(monkeypatch):
+    claim = uuid4()
+    cursor = Cursor(rows=[({'account_id': str(USER_ID)},)])
+    connection = install(monkeypatch, cursor)
+    result = repository.apply_subject_action(
+        operation_id=OPERATION_ID,
+        claim_token=claim,
+        action='correction',
+        fields={'display_name': 'Safe'},
+    )
+    assert result['account_id'] == str(USER_ID)
+    assert cursor.calls[0][0].startswith('SELECT base2_apply_data_rights_subject_action')
+    assert cursor.calls[0][1][:3] == (str(OPERATION_ID), str(claim), 'correction')
+    assert connection.committed is True
 
 
 def test_owner_and_admin_lists_always_bind_tenant_and_are_bounded(monkeypatch):

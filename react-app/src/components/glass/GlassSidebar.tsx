@@ -37,7 +37,18 @@ export const GlassSidebar: React.FC<Props> = ({
   const close = useMemo(() => onClose || (() => {}), [onClose]);
   // The public variant is also a reusable standalone component, so route
   // highlighting cannot require a Router provider merely to render it.
-  const activePath = window.location.pathname;
+  const browserPath = () => `${window.location.pathname}${window.location.hash}`;
+  const [activePath, setActivePath] = useState(browserPath);
+
+  useEffect(() => {
+    const syncActivePath = () => setActivePath(browserPath());
+    window.addEventListener('hashchange', syncActivePath);
+    window.addEventListener('popstate', syncActivePath);
+    return () => {
+      window.removeEventListener('hashchange', syncActivePath);
+      window.removeEventListener('popstate', syncActivePath);
+    };
+  }, []);
 
   const setPanelRef = useCallback((el: HTMLElement | null) => {
     panelRef.current = el;
@@ -405,8 +416,11 @@ export const GlassSidebar: React.FC<Props> = ({
                   <li key={item.to} className="glass-sidebar-item">
                     <Link
                       to={item.to}
-                      onClick={close}
-                      aria-current={activePath === item.to.split('#')[0] ? 'page' : undefined}
+                      onClick={() => {
+                        setActivePath(item.to);
+                        close();
+                      }}
+                      aria-current={activePath === item.to ? 'page' : undefined}
                       className="block min-h-11 px-3 py-3 aria-[current=page]:font-semibold aria-[current=page]:bg-white/20"
                     >
                       {item.label}
@@ -430,8 +444,11 @@ export const GlassSidebar: React.FC<Props> = ({
               <li key={item.to} className="glass-sidebar-item">
                 <Link
                   to={item.to}
-                  onClick={close}
-                  aria-current={activePath === item.to.split('#')[0] ? 'page' : undefined}
+                  onClick={() => {
+                    setActivePath(item.to);
+                    close();
+                  }}
+                  aria-current={activePath === item.to ? 'page' : undefined}
                   className="block min-h-11 px-3 py-3 aria-[current=page]:font-semibold aria-[current=page]:bg-white/20"
                 >
                   {item.label}

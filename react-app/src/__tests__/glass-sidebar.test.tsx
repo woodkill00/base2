@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import GlassSidebar from '../components/glass/GlassSidebar';
@@ -232,7 +232,9 @@ describe('GlassSidebar', () => {
     expect(navigation).toHaveAttribute('id', 'primary-mobile-navigation');
     const link = screen.getByRole('link', { name: 'Einstellungen' });
     link.focus();
-    await user.keyboard('{Enter}');
+    await act(async () => {
+      await user.keyboard('{Enter}');
+    });
     expect(onClose).toHaveBeenCalledTimes(1);
     window.matchMedia = originalMatchMedia;
   });
@@ -360,6 +362,27 @@ describe('GlassSidebar', () => {
     );
     expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Home' })).not.toHaveAttribute('aria-current');
+    window.history.pushState({}, '', originalPath);
+  });
+
+  test('marks only the exact workspace hash route as current and follows activation and history', async () => {
+    const originalPath = `${window.location.pathname}${window.location.hash}`;
+    window.history.pushState({}, '', '/workspace#schemas');
+    const onClose = jest.fn();
+    const user = userEvent.setup();
+    renderSidebar(
+      <GlassSidebar items={['Records', 'Schemas', 'Imports', 'Exports']} onClose={onClose} />
+    );
+    expect(screen.getByRole('link', { name: 'Schemas' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Records' })).not.toHaveAttribute('aria-current');
+    expect(screen.getByRole('link', { name: 'Imports' })).not.toHaveAttribute('aria-current');
+    expect(screen.getByRole('link', { name: 'Exports' })).not.toHaveAttribute('aria-current');
+    await act(async () => user.click(screen.getByRole('link', { name: 'Records' })));
+    expect(screen.getByRole('link', { name: 'Records' })).toHaveAttribute('aria-current', 'page');
+    expect(onClose).toHaveBeenCalledTimes(1);
+    window.history.pushState({}, '', '/workspace#imports');
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')));
+    expect(screen.getByRole('link', { name: 'Imports' })).toHaveAttribute('aria-current', 'page');
     window.history.pushState({}, '', originalPath);
   });
 });

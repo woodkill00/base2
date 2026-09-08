@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import hashlib
 from uuid import UUID
 
 from api.db import data_rights_claim_context, db_conn, workspace_db_conn
@@ -38,6 +37,35 @@ SUBJECT_DATA_INVENTORY = (
     ('sitecontent_breakglassgrant', 'approver_ref', 'pseudonymize'),
     ('sitecontent_tenantnotification', 'owner_ref', 'pseudonymize'),
 )
+PRIVATE_EXPORT_KEYS = {
+    'password_hash', 'secret_hash', 'secret_ciphertext', 'token_hash', 'code_hash',
+    'request_ciphertext', 'result_ciphertext', 'claim_token', 'storage_key',
+    'encrypted_object_key', 'source_object_key',
+}
+PRIVATE_EXPORT_FRAGMENTS = ('password', 'secret', 'token', 'ciphertext', 'storage_key', 'object_key')
+
+
+def _privacy_safe_value(value: object) -> object:
+    if isinstance(value, dict):
+        return {
+            str(key): _privacy_safe_value(item)
+            for key, item in value.items()
+            if str(key).lower() not in PRIVATE_EXPORT_KEYS
+            and not any(fragment in str(key).lower() for fragment in PRIVATE_EXPORT_FRAGMENTS)
+        }
+    if isinstance(value, list):
+        return [_privacy_safe_value(item) for item in value]
+    return value.isoformat() if hasattr(value, 'isoformat') else value
+
+
+def _privacy_safe_row(value: object) -> dict:
+    if not isinstance(value, dict):
+        return {'id': str(value)}
+    return {
+        str(key): _privacy_safe_value(item)
+        for key, item in value.items()
+        if str(key).lower() not in PRIVATE_EXPORT_KEYS
+    }
 
 
 def _box() -> SecretBox:
@@ -71,6 +99,32 @@ def _export_payload(*, tenant_id: str, user_id: UUID) -> dict:
                 (str(user_id), tenant_id),
             )
             memberships = cur.fetchall() or []
+            cur.execute(
+                """SELECT id,kind,is_active,created_at,last_used_at
+                     FROM api_identity_authenticators WHERE user_id=%s ORDER BY created_at,id""",
+                (str(user_id),),
+            )
+            authenticators = cur.fetchall() or []
+            cur.execute(
+                """SELECT credential.id,credential.label,credential.prefix,credential.scopes,
+                          credential.expires_at,credential.revoked_at,credential.created_at,
+                          credential.last_used_at
+                     FROM api_identity_credentials credential
+                     JOIN api_identity_organizations organization
+                       ON organization.id=credential.organization_id
+                    WHERE credential.user_id=%s AND organization.tenant_id=%s
+                    ORDER BY credential.created_at,credential.id""",
+                (str(user_id), tenant_id),
+            )
+            credentials = cur.fetchall() or []
+            cur.execute(
+                """SELECT id,action,ip,user_agent,metadata_json,created_at
+                     FROM api_auth_audit_events WHERE user_id=%s ORDER BY created_at,id LIMIT 10001""",
+                (str(user_id),),
+            )
+            audit_events = cur.fetchall() or []
+            if len(audit_events) > 10000:
+                raise RuntimeError('identity_privacy_projection_too_large')
             workspace = _workspace_projection(cur, tenant_id=tenant_id, user_id=user_id)
     return {
         'schema_version': 1,
@@ -94,6 +148,25 @@ def _export_payload(*, tenant_id: str, user_id: UUID) -> dict:
                 'updated_at': row[5].isoformat(),
             }
             for row in memberships
+        ],
+        'authenticators': [
+            {'id': str(row[0]), 'kind': row[1], 'is_active': bool(row[2]),
+             'created_at': row[3].isoformat(),
+             'last_used_at': row[4].isoformat() if row[4] else None}
+            for row in authenticators
+        ],
+        'credentials': [
+            {'id': str(row[0]), 'label': row[1], 'prefix': row[2], 'scopes': row[3],
+             'expires_at': row[4].isoformat() if row[4] else None,
+             'revoked_at': row[5].isoformat() if row[5] else None,
+             'created_at': row[6].isoformat(),
+             'last_used_at': row[7].isoformat() if row[7] else None}
+            for row in credentials
+        ],
+        'audit_events': [
+            {'id': str(row[0]), 'action': row[1], 'ip': row[2], 'user_agent': row[3],
+             'metadata': row[4], 'created_at': row[5].isoformat()}
+            for row in audit_events
         ],
         'workspace': workspace,
     }
@@ -132,7 +205,7 @@ def _workspace_projection(cur, *, tenant_id: str, user_id: UUID) -> dict:
     for table, column, treatment in SUBJECT_DATA_INVENTORY:
         if table == 'sitecontent_contentrevision':
             cur.execute(
-                f"""SELECT revision.id::text FROM {table} revision
+                f"""SELECT to_jsonb(revision) FROM {table} revision
                     JOIN sitecontent_contentrecord content ON content.id=revision.content_id
                     WHERE content.site_id=%s AND revision.{column}=%s
                     ORDER BY revision.id LIMIT 1001""",
@@ -140,17 +213,19 @@ def _workspace_projection(cur, *, tenant_id: str, user_id: UUID) -> dict:
             )
         else:
             cur.execute(
-                f'SELECT id::text FROM {table} WHERE site_id=%s AND {column}=%s ORDER BY id LIMIT 1001',
+                f'SELECT to_jsonb(subject_row) FROM {table} subject_row WHERE site_id=%s AND {column}=%s ORDER BY id LIMIT 1001',
                 (tenant_id, actor_ref),
             )
-        identifiers = [str(item[0]) for item in (cur.fetchall() or [])]
-        if len(identifiers) > 1000:
+        raw_rows = [item[0] for item in (cur.fetchall() or [])]
+        if len(raw_rows) > 1000:
             raise RuntimeError('workspace_subject_inventory_too_large')
+        safe_rows = [_privacy_safe_row(item) for item in raw_rows]
         subject_surfaces.append(
-            {'table': table, 'column': column, 'treatment': treatment, 'ids': identifiers}
+            {'table': table, 'column': column, 'treatment': treatment,
+             'ids': [str(item.get('id', '')) for item in safe_rows], 'rows': safe_rows}
         )
     return {
-        'schema_version': 2,
+        'schema_version': 3,
         'subject_inventory_version': SUBJECT_DATA_INVENTORY_VERSION,
         'records': [
             {
@@ -178,197 +253,36 @@ def _workspace_payload(*, tenant_id: str, user_id: UUID) -> dict:
         return _workspace_projection(cur, tenant_id=tenant_id, user_id=user_id)
 
 
-def _correct_account(*, tenant_id: str, user_id: UUID, fields: dict) -> UUID:
-    assignments: list[str] = []
-    values: list[object] = []
-    for column in ('display_name', 'avatar_url', 'bio'):
-        if column in fields:
-            assignments.append(f'{column}=%s')
-            values.append(fields[column])
-    if not assignments:
+def _correct_account(
+    *, operation_id: UUID, claim_token: UUID, user_id: UUID, fields: dict
+) -> UUID:
+    if not fields:
         return user_id
-    with db_conn(tenant_id=tenant_id) as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                f"UPDATE api_auth_users SET {','.join(assignments)}, updated_at=NOW() "
-                "WHERE id=%s AND is_active=TRUE RETURNING id",
-                (*values, str(user_id)),
-            )
-            row = cur.fetchone()
-            if not row:
-                raise RuntimeError('account_state_changed')
-        conn.commit()
-    return UUID(str(row[0]))
+    result = repository.apply_subject_action(
+        operation_id=operation_id, claim_token=claim_token, action='correction', fields=fields
+    )
+    return UUID(str(result['account_id']))
 
 
-def _unlink_workspace_subject(cur, *, tenant_id: str, user_id: UUID) -> None:
-    """Erase mutable subject references while retaining business and audit evidence."""
-    subject = str(user_id)
-    anonymous = 'deleted:' + hashlib.sha256(f'{tenant_id}:{subject}'.encode()).hexdigest()[:24]
-    for table, column, treatment in SUBJECT_DATA_INVENTORY:
-        if table == 'sitecontent_contentrevision':
-            cur.execute(
-                f"""UPDATE {table} revision SET {column}=%s
-                    FROM sitecontent_contentrecord content
-                    WHERE content.id=revision.content_id AND content.site_id=%s
-                      AND revision.{column}=%s""",
-                (anonymous, tenant_id, subject),
-            )
-            continue
-        if treatment == 'delete':
-            cur.execute(
-                f'DELETE FROM {table} WHERE site_id=%s AND {column}=%s', (tenant_id, subject)
-            )
-        elif treatment == 'media_delete':
-            cur.execute(
-                f"UPDATE {table} SET {column}='', status='deleted', retention_until=NOW(), updated_at=NOW() "
-                f'WHERE site_id=%s AND {column}=%s',
-                (tenant_id, subject),
-            )
-        else:
-            cur.execute(
-                f'UPDATE {table} SET {column}=%s WHERE site_id=%s AND {column}=%s',
-                (anonymous, tenant_id, subject),
-            )
-
-
-def _delete_account(*, tenant_id: str, user_id: UUID) -> dict:
-    with db_conn(tenant_id=tenant_id) as conn:
-        with conn.cursor() as cur:
-            workspace = _workspace_projection(cur, tenant_id=tenant_id, user_id=user_id)
-            _unlink_workspace_subject(cur, tenant_id=tenant_id, user_id=user_id)
-            cur.execute(
-                'DELETE FROM api_identity_memberships USING api_identity_organizations o WHERE api_identity_memberships.organization_id=o.id AND o.tenant_id=%s AND api_identity_memberships.user_id=%s',
-                (tenant_id, str(user_id)),
-            )
-            cur.execute(
-                """SELECT EXISTS (
-                       SELECT 1 FROM api_identity_memberships membership
-                       WHERE membership.user_id=%s AND membership.status='active'
-                   )""",
-                (str(user_id),),
-            )
-            has_other_membership = bool(cur.fetchone()[0])
-            if has_other_membership:
-                conn.commit()
-                return {
-                    'schema_version': 2,
-                    'tenant_membership_deleted': True,
-                    'global_account_deleted': False,
-                    'tenant_id': tenant_id,
-                    'workspace_records_unlinked': len(workspace['records']),
-                }
-            cur.execute(
-                'UPDATE api_auth_refresh_tokens SET revoked_at=NOW() WHERE user_id=%s AND revoked_at IS NULL',
-                (str(user_id),),
-            )
-            cur.execute('DELETE FROM api_identity_recovery_codes WHERE user_id=%s', (str(user_id),))
-            cur.execute(
-                'DELETE FROM api_identity_login_challenges WHERE user_id=%s', (str(user_id),)
-            )
-            cur.execute('DELETE FROM api_identity_authenticators WHERE user_id=%s', (str(user_id),))
-            cur.execute(
-                'UPDATE api_identity_credentials SET revoked_at=NOW() WHERE user_id=%s AND revoked_at IS NULL',
-                (str(user_id),),
-            )
-            cur.execute(
-                """
-                UPDATE api_auth_users
-                SET email=%s, password_hash='', is_active=FALSE, is_email_verified=FALSE,
-                    display_name='', avatar_url='', bio='', updated_at=NOW()
-                WHERE id=%s AND is_active=TRUE
-                """,
-                (f'deleted-{user_id}@deleted.invalid', str(user_id)),
-            )
-            if cur.rowcount != 1:
-                cur.execute(
-                    'SELECT email,is_active FROM api_auth_users WHERE id=%s',
-                    (str(user_id),),
-                )
-                existing = cur.fetchone()
-                if existing != (f'deleted-{user_id}@deleted.invalid', False):
-                    conn.rollback()
-                    raise RuntimeError('account_state_changed')
-        conn.commit()
+def _delete_account(
+    *, operation_id: UUID, claim_token: UUID, tenant_id: str, user_id: UUID
+) -> dict:
+    workspace = _workspace_payload(tenant_id=tenant_id, user_id=user_id)
+    result = repository.apply_subject_action(
+        operation_id=operation_id, claim_token=claim_token, action='deletion'
+    )
     return {
-        'schema_version': 2,
-        'tenant_membership_deleted': True,
-        'global_account_deleted': True,
-        'tenant_id': tenant_id,
+        'schema_version': 3,
+        **result,
         'workspace_records_unlinked': len(workspace['records']),
     }
 
 
-def _deactivate_account(*, tenant_id: str, user_id: UUID) -> dict:
-    with db_conn(tenant_id=tenant_id) as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT mine.organization_id
-                FROM api_identity_memberships mine
-                JOIN api_identity_organizations organization
-                  ON organization.id=mine.organization_id
-                WHERE mine.user_id=%s AND mine.role='owner' AND mine.status='active'
-                  AND organization.tenant_id=%s
-                  AND NOT EXISTS (
-                    SELECT 1 FROM api_identity_memberships other
-                    WHERE other.organization_id=mine.organization_id
-                      AND other.user_id<>mine.user_id
-                      AND other.role='owner' AND other.status='active'
-                  )
-                LIMIT 1
-                """,
-                (str(user_id), tenant_id),
-            )
-            if cur.fetchone():
-                conn.rollback()
-                raise ValueError('last_owner_required')
-            cur.execute(
-                """UPDATE api_identity_memberships membership
-                      SET status='suspended', updated_at=NOW()
-                     FROM api_identity_organizations organization
-                    WHERE membership.organization_id=organization.id
-                      AND organization.tenant_id=%s AND membership.user_id=%s
-                      AND membership.status='active'""",
-                (tenant_id, str(user_id)),
-            )
-            cur.execute(
-                """SELECT EXISTS (
-                       SELECT 1 FROM api_identity_memberships membership
-                       WHERE membership.user_id=%s AND membership.status='active'
-                   )""",
-                (str(user_id),),
-            )
-            has_other_membership = bool(cur.fetchone()[0])
-            if has_other_membership:
-                conn.commit()
-                return {
-                    'schema_version': 2,
-                    'tenant_membership_deactivated': True,
-                    'global_account_deactivated': False,
-                    'tenant_id': tenant_id,
-                }
-            cur.execute(
-                'UPDATE api_auth_refresh_tokens SET revoked_at=NOW() WHERE user_id=%s AND revoked_at IS NULL',
-                (str(user_id),),
-            )
-            cur.execute(
-                'UPDATE api_auth_users SET is_active=FALSE, updated_at=NOW() WHERE id=%s AND is_active=TRUE',
-                (str(user_id),),
-            )
-            if cur.rowcount != 1:
-                cur.execute('SELECT is_active FROM api_auth_users WHERE id=%s', (str(user_id),))
-                existing = cur.fetchone()
-                if existing != (False,):
-                    conn.rollback()
-                    raise RuntimeError('account_state_changed')
-        conn.commit()
-    return {
-        'schema_version': 2,
-        'tenant_membership_deactivated': True,
-        'global_account_deactivated': True,
-        'tenant_id': tenant_id,
-    }
+def _deactivate_account(*, operation_id: UUID, claim_token: UUID) -> dict:
+    result = repository.apply_subject_action(
+        operation_id=operation_id, claim_token=claim_token, action='deactivation'
+    )
+    return {'schema_version': 3, **result}
 
 
 def process_operation(operation_id: UUID) -> str:
@@ -386,7 +300,8 @@ def process_operation(operation_id: UUID) -> str:
             elif operation['kind'] == 'correction':
                 correction = validate_correction(request_payload.get('fields'))
                 updated_id = _correct_account(
-                    tenant_id=operation['tenant_id'],
+                    operation_id=operation['id'],
+                    claim_token=operation['claim_token'],
                     user_id=operation['user_id'],
                     fields=correction,
                 )
@@ -403,13 +318,14 @@ def process_operation(operation_id: UUID) -> str:
                 if request_payload.get('confirmation') != 'DELETE':
                     raise ValueError('deletion_confirmation_invalid')
                 result = _delete_account(
+                    operation_id=operation['id'], claim_token=operation['claim_token'],
                     tenant_id=operation['tenant_id'], user_id=operation['user_id']
                 )
             elif operation['kind'] == 'deactivation':
                 if request_payload.get('confirmation') != 'DEACTIVATE':
                     raise ValueError('deactivation_confirmation_invalid')
                 result = _deactivate_account(
-                    tenant_id=operation['tenant_id'], user_id=operation['user_id']
+                    operation_id=operation['id'], claim_token=operation['claim_token']
                 )
             else:
                 raise ValueError('operation_kind_invalid')

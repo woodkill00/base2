@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import base64
 import binascii
+import configparser
 import fcntl
 import hashlib
 import hmac
@@ -187,14 +188,47 @@ OBJECT_REFERENCE_SQL = """SELECT kind || ':' || site_id || ':' || object_key || 
      FROM sitecontent_exportjob WHERE encrypted_object_key<>''
  ) object_refs ORDER BY kind,site_id,object_key,digest"""
 SNAPSHOT_FENCE_SQL = "SELECT txid_current_snapshot()"
+PG_SERVICE_KEYS = {
+    'host', 'hostaddr', 'port', 'dbname', 'user', 'password', 'sslmode', 'sslrootcert',
+    'sslcert', 'sslkey', 'connect_timeout', 'application_name', 'options',
+}
+
+
+def _connect_pg_service(config: dict[str, Any]):
+    import psycopg2
+
+    parser = configparser.RawConfigParser(interpolation=None)
+    service_file = _private_file(Path(config['pgServiceFile']), maximum_bytes=16_384)
+    try:
+        parser.read_string(service_file.decode('utf-8'))
+        service = str(config['pgService'])
+        if not parser.has_section(service):
+            raise ProductionBackupError('backup:pg_service_invalid')
+        values = dict(parser.items(service))
+        if not values or not set(values) <= PG_SERVICE_KEYS:
+            raise ProductionBackupError('backup:pg_service_invalid')
+        return psycopg2.connect(**values)
+    except (configparser.Error, OSError, UnicodeError) as exc:
+        raise ProductionBackupError('backup:pg_service_invalid') from exc
+
+
+def _live_reference_ledger(config: dict[str, Any]) -> str:
+    """Read the post-capture ledger on a new transaction-visible connection."""
+    connection = _connect_pg_service(config)
+    try:
+        connection.set_session(readonly=True)
+        with connection.cursor() as cursor:
+            cursor.execute(OBJECT_REFERENCE_SQL)
+            return "".join("\t".join(str(item) for item in row) + "\n" for row in cursor)
+    finally:
+        connection.rollback()
+        connection.close()
 
 
 @contextmanager
 def _repeatable_read_snapshot(config: dict[str, Any]):
     """Hold the exported relational snapshot across ledger, dump, and object capture."""
-    import psycopg2
-
-    connection = psycopg2.connect(service=config["pgService"], servicefile=config["pgServiceFile"])
+    connection = _connect_pg_service(config)
     try:
         connection.set_session(isolation_level="REPEATABLE READ", readonly=True)
         with connection.cursor() as cursor:
@@ -209,8 +243,9 @@ def _repeatable_read_snapshot(config: dict[str, Any]):
             schema = int(cursor.fetchone()[0])
 
             def after_references() -> str:
-                cursor.execute(OBJECT_REFERENCE_SQL)
-                return "".join("\t".join(str(item) for item in row) + "\n" for row in cursor)
+                # Do not reread through the exported snapshot: that would hide
+                # object-reference commits made while files were being copied.
+                return _live_reference_ledger(config)
 
             yield {
                 "id": snapshot_id,

@@ -71,6 +71,7 @@ class ExpiryPlanStore:
         self.root = _private_directory(root)
         self.plan_root = _private_directory(self.root / "plans")
         self.receipt_root = _private_directory(self.root / "receipts")
+        self.failure_root = _private_directory(self.root / "failures")
         self.key = key
 
     def register(self, plan: dict[str, Any]) -> dict[str, Any]:
@@ -81,6 +82,8 @@ class ExpiryPlanStore:
             if self.load(validated["planId"]) != signed:
                 raise EphemeralExpiryError("expiry:plan_conflict")
             return signed
+        if len(list(self.plan_root.glob("*.json"))) >= MAXIMUM_PLANS:
+            raise EphemeralExpiryError("expiry:plan_capacity_exceeded")
         _atomic_json(path, signed)
         return signed
 
@@ -102,6 +105,24 @@ class ExpiryPlanStore:
         if any(path.is_symlink() or not PLAN_ID.fullmatch(path.stem) for path in paths):
             raise EphemeralExpiryError("expiry:unsafe_plan_member")
         return [self.load(path.stem) for path in paths]
+
+    def plan_members(self) -> list[Path]:
+        paths = sorted(self.plan_root.glob("*.json"))
+        if len(paths) > MAXIMUM_PLANS:
+            raise EphemeralExpiryError("expiry:plan_capacity_exceeded")
+        return paths
+
+    def record_failure(self, member: str, error_code: str) -> dict[str, Any]:
+        safe_id = hashlib.sha256(member.encode()).hexdigest()[:24]
+        body = {
+            "schemaVersion": 1,
+            "memberDigest": safe_id,
+            "status": "failed",
+            "errorCode": error_code,
+        }
+        receipt = {**body, "signature": _signature(body, self.key)}
+        _atomic_json(self.failure_root / f"{safe_id}.json", receipt)
+        return receipt
 
     def receipt(self, plan: dict[str, Any]) -> dict[str, Any] | None:
         path = self.receipt_root / f"{plan['planId']}.json"
@@ -183,30 +204,46 @@ def scan_due(
     destroyed: list[str] = []
     pending: list[str] = []
     replayed: list[str] = []
-    for plan in store.plans():
-        if store.receipt(plan):
-            replayed.append(plan["planId"])
-            continue
-        deadline = datetime.fromisoformat(plan["expiresAt"].replace("Z", "+00:00"))
-        if now.astimezone(UTC) < deadline.astimezone(UTC):
-            pending.append(plan["planId"])
-            continue
-        result = adapters[plan["adapter"]](plan)
-        if (
-            not isinstance(result, dict)
-            or result.get("state") != "destroyed"
-            or result.get("runId") != plan["runId"]
-            or result.get("secretValuesEmitted") != 0
-        ):
-            raise EphemeralExpiryError("expiry:adapter_not_terminal")
-        store.settle(plan, result)
-        destroyed.append(plan["planId"])
+    failed: list[str] = []
+    for path in store.plan_members():
+        member = path.name
+        try:
+            if path.is_symlink() or not PLAN_ID.fullmatch(path.stem):
+                raise EphemeralExpiryError("expiry:unsafe_plan_member")
+            plan = store.load(path.stem)
+            if store.receipt(plan):
+                replayed.append(plan["planId"])
+                continue
+            deadline = datetime.fromisoformat(plan["expiresAt"].replace("Z", "+00:00"))
+            if now.astimezone(UTC) < deadline.astimezone(UTC):
+                pending.append(plan["planId"])
+                continue
+            result = adapters[plan["adapter"]](plan)
+            if (
+                not isinstance(result, dict)
+                or result.get("state") != "destroyed"
+                or result.get("runId") != plan["runId"]
+                or result.get("secretValuesEmitted") != 0
+            ):
+                raise EphemeralExpiryError("expiry:adapter_not_terminal")
+            store.settle(plan, result)
+            destroyed.append(plan["planId"])
+        except (EphemeralExpiryError, OSError, ValueError, json.JSONDecodeError) as exc:
+            error_code = str(exc) if isinstance(exc, EphemeralExpiryError) else "expiry:plan_rejected"
+            store.record_failure(member, error_code)
+            failed.append(hashlib.sha256(member.encode()).hexdigest()[:24])
+        except Exception:
+            # Adapters are an isolation boundary. Their implementation errors
+            # must not suppress later exact-owned expiry plans or leak details.
+            store.record_failure(member, "expiry:adapter_failed")
+            failed.append(hashlib.sha256(member.encode()).hexdigest()[:24])
     return {
         "status": "complete",
-        "scanned": len(destroyed) + len(pending) + len(replayed),
+        "scanned": len(destroyed) + len(pending) + len(replayed) + len(failed),
         "destroyed": destroyed,
         "pending": pending,
         "replayed": replayed,
+        "failed": failed,
         "secretValuesEmitted": 0,
     }
 

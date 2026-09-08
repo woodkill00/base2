@@ -31,9 +31,12 @@ vi.mock('../components/Navigation', () => ({
   default: () => <nav aria-label="Test navigation" />,
 }));
 
-const renderWorkspace = () =>
+const renderWorkspace = (initialEntry = '/workspace') =>
   render(
-    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <MemoryRouter
+      initialEntries={[initialEntry]}
+      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+    >
       <ContentWorkspace />
     </MemoryRouter>
   );
@@ -102,6 +105,20 @@ describe('content workspace', () => {
     expect(await screen.findByRole('heading', { name: /records · articles/i })).toBeVisible();
     await waitFor(() => expect(screen.getByText('Hello')).toBeVisible());
     expect(screen.getByRole('tab', { name: 'Records' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  test.each([
+    ['schemas', 'Schemas', /schema · articles/i],
+    ['imports', 'Imports', /imports · articles/i],
+    ['exports', 'Exports', /exports · articles/i],
+  ])('restores the %s section from stable URL state', async (hash, label, heading) => {
+    renderWorkspace(`/workspace#${hash}`);
+    expect(await screen.findByRole('tab', { name: label })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(await screen.findByRole('heading', { name: heading })).toBeVisible();
+    expect(contentWorkspaceAPI.records).not.toHaveBeenCalled();
   });
 
   test('shows honest empty, job, and dependency states', async () => {

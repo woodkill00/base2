@@ -142,8 +142,11 @@ def test_export_timestamp_serialization_is_explicit(monkeypatch):
     payload = worker._export_payload(tenant_id='tenant-a', user_id=USER_ID)
     assert payload['account']['created_at'] == '2026-08-25T00:00:00+00:00'
     assert payload['memberships'] == []
-    assert payload['workspace']['schema_version'] == 2
+    assert payload['workspace']['schema_version'] == 3
     assert payload['workspace']['records'] == []
+    assert payload['authenticators'] == []
+    assert payload['credentials'] == []
+    assert payload['audit_events'] == []
     assert len(payload['workspace']['subject_surfaces']) == len(worker.SUBJECT_DATA_INVENTORY)
 
 
@@ -186,134 +189,39 @@ def test_workspace_privacy_projection_is_tenant_subject_and_field_permission_bou
     assert "read_permission='content.read'" in cursor.calls[1][0]
 
 
-def test_workspace_subject_unlink_preserves_immutable_audit_and_pseudonymizes_jobs():
-    class Cursor:
-        def __init__(self):
-            self.calls = []
-
-        def execute(self, query, params):
-            self.calls.append((' '.join(query.split()), params))
-
-    cursor = Cursor()
-    worker._unlink_workspace_subject(cursor, tenant_id='tenant-a', user_id=USER_ID)
-    statements = ' '.join(query for query, _ in cursor.calls)
-    assert 'DELETE FROM sitecontent_savedview' in statements
-    assert "status='deleted'" in statements
-    assert 'UPDATE sitecontent_workspaceauditevent' in statements
-    assert 'DELETE FROM sitecontent_workspaceauditevent' not in statements
-    assert 'UPDATE sitecontent_mediacollection' in statements
-    assert 'UPDATE sitecontent_breakglassgrant' in statements
-    pseudonyms = [
-        params[0]
-        for query, params in cursor.calls
-        if params and query.startswith('UPDATE') and str(params[0]).startswith('deleted:')
-    ]
-    assert len(set(pseudonyms)) == 1
-    assert pseudonyms[0].startswith('deleted:') and str(USER_ID) not in pseudonyms[0]
+def test_workspace_subject_rows_include_values_but_strip_private_storage_fields():
+    safe = worker._privacy_safe_row(
+        {
+            'id': USER_ID,
+            'title': 'Owned item',
+            'storage_key': 'private/object',
+            'secret_ciphertext': 'never-export',
+        }
+    )
+    assert safe['id'] == USER_ID
+    assert safe['title'] == 'Owned item'
+    assert 'storage_key' not in safe and 'secret_ciphertext' not in safe
 
 
-def test_deactivation_fails_closed_for_final_owner_before_account_mutation(monkeypatch):
-    class Cursor:
-        rowcount = 1
-        calls = []
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_args):
-            return False
-
-        def execute(self, query, params):
-            self.calls.append((' '.join(query.split()), params))
-
-        def fetchone(self):
-            return ('organization-a',)
-
-    class Connection:
-        def __init__(self):
-            self.value = Cursor()
-            self.rollbacks = 0
-            self.commits = 0
-
-        def cursor(self):
-            return self.value
-
-        def rollback(self):
-            self.rollbacks += 1
-
-        def commit(self):
-            self.commits += 1
-
-    connection = Connection()
-
-    class Context:
-        def __enter__(self):
-            return connection
-
-        def __exit__(self, *_args):
-            return False
-
-    monkeypatch.setattr(worker, 'db_conn', lambda **kwargs: Context())
-    with pytest.raises(ValueError, match='last_owner_required'):
-        worker._deactivate_account(tenant_id='tenant-a', user_id=USER_ID)
-    assert connection.rollbacks == 1 and connection.commits == 0
-    assert len(connection.value.calls) == 1
-    assert 'UPDATE api_auth_users' not in connection.value.calls[0][0]
-
-
-def test_deactivation_revokes_sessions_suspends_memberships_and_commits_atomically(monkeypatch):
-    class Cursor:
-        rowcount = 1
-
-        def __init__(self):
-            self.calls = []
-            self.rows = [None, (False,)]
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_args):
-            return False
-
-        def execute(self, query, params):
-            self.calls.append((' '.join(query.split()), params))
-
-        def fetchone(self):
-            return self.rows.pop(0)
-
-    class Connection:
-        def __init__(self):
-            self.value = Cursor()
-            self.rollbacks = 0
-            self.commits = 0
-
-        def cursor(self):
-            return self.value
-
-        def rollback(self):
-            self.rollbacks += 1
-
-        def commit(self):
-            self.commits += 1
-
-    connection = Connection()
-
-    class Context:
-        def __enter__(self):
-            return connection
-
-        def __exit__(self, *_args):
-            return False
-
-    monkeypatch.setattr(worker, 'db_conn', lambda **kwargs: Context())
-    result = worker._deactivate_account(tenant_id='tenant-a', user_id=USER_ID)
+def test_deactivation_uses_only_the_fixed_claim_bound_repository_action(monkeypatch):
+    claim = UUID(int=803)
+    calls = []
+    monkeypatch.setattr(
+        worker.repository,
+        'apply_subject_action',
+        lambda **kwargs: calls.append(kwargs)
+        or {
+            'tenant_membership_deactivated': True,
+            'global_account_deactivated': False,
+            'tenant_id': 'tenant-a',
+        },
+    )
+    result = worker._deactivate_account(operation_id=OPERATION_ID, claim_token=claim)
     assert result['tenant_membership_deactivated'] is True
-    assert result['global_account_deactivated'] is True
-    assert connection.commits == 1 and connection.rollbacks == 0
-    statements = ' '.join(query for query, _ in connection.value.calls)
-    assert 'api_auth_refresh_tokens' in statements
-    assert "status='suspended'" in statements
-    assert 'is_active=FALSE' in statements
+    assert result['global_account_deactivated'] is False
+    assert calls == [
+        {'operation_id': OPERATION_ID, 'claim_token': claim, 'action': 'deactivation'}
+    ]
 
 
 def test_subject_inventory_is_versioned_and_covers_human_identity_surfaces():
@@ -341,62 +249,24 @@ def test_subject_inventory_is_versioned_and_covers_human_identity_surfaces():
 def test_tenant_only_closure_preserves_global_identity_when_another_membership_is_active(
     monkeypatch, operation
 ):
-    class Cursor:
-        rowcount = 1
-
-        def __init__(self):
-            self.calls = []
-            self.rows = [(True,)] if operation == 'deletion' else [None, (True,)]
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_args):
-            return False
-
-        def execute(self, query, params):
-            self.calls.append((' '.join(query.split()), params))
-
-        def fetchone(self):
-            return self.rows.pop(0)
-
-    class Connection:
-        def __init__(self):
-            self.value = Cursor()
-            self.commits = 0
-
-        def cursor(self):
-            return self.value
-
-        def commit(self):
-            self.commits += 1
-
-        def rollback(self):
-            raise AssertionError('tenant-only closure unexpectedly rolled back')
-
-    connection = Connection()
-
-    class Context:
-        def __enter__(self):
-            return connection
-
-        def __exit__(self, *_args):
-            return False
-
-    monkeypatch.setattr(worker, 'db_conn', lambda **kwargs: Context())
+    claim = UUID(int=804)
+    key = f'global_account_{"deleted" if operation == "deletion" else "deactivated"}'
+    monkeypatch.setattr(
+        worker.repository,
+        'apply_subject_action',
+        lambda **_kwargs: {
+            f'tenant_membership_{"deleted" if operation == "deletion" else "deactivated"}': True,
+            key: False,
+            'tenant_id': 'tenant-a',
+        },
+    )
     if operation == 'deletion':
-        monkeypatch.setattr(
-            worker,
-            '_workspace_projection',
-            lambda *_args, **_kwargs: {'records': [], 'subject_surfaces': []},
+        monkeypatch.setattr(worker, '_workspace_payload', lambda **_kwargs: {'records': []})
+        result = worker._delete_account(
+            operation_id=OPERATION_ID, claim_token=claim,
+            tenant_id='tenant-a', user_id=USER_ID
         )
-        monkeypatch.setattr(worker, '_unlink_workspace_subject', lambda *_args, **_kwargs: None)
-        result = worker._delete_account(tenant_id='tenant-a', user_id=USER_ID)
         assert result['global_account_deleted'] is False
     else:
-        result = worker._deactivate_account(tenant_id='tenant-a', user_id=USER_ID)
+        result = worker._deactivate_account(operation_id=OPERATION_ID, claim_token=claim)
         assert result['global_account_deactivated'] is False
-    statements = ' '.join(query for query, _params in connection.value.calls)
-    assert 'api_auth_refresh_tokens' not in statements
-    assert 'UPDATE api_auth_users' not in statements
-    assert connection.commits == 1

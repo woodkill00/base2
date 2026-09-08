@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import AppShell from '../components/glass/AppShell';
 import GlassButton from '../components/glass/GlassButton';
 import GlassCard from '../components/glass/GlassCard';
@@ -10,6 +10,7 @@ import SchemaBuilder from '../components/content/SchemaBuilder';
 import { contentWorkspaceAPI, normalizeWorkspaceError } from '../services/contentWorkspace';
 
 const TABS = ['Records', 'Schemas', 'Imports', 'Exports'];
+const TAB_HASHES = Object.fromEntries(TABS.map((item) => [item.toLowerCase(), item]));
 
 const messageFor = (error) => {
   const normalized = normalizeWorkspaceError(error);
@@ -22,9 +23,11 @@ const messageFor = (error) => {
 };
 
 export default function ContentWorkspace() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeSearch = searchParams.get('workspace_q') || '';
-  const [tab, setTab] = useState('Records');
+  const tab = TAB_HASHES[location.hash.slice(1).toLowerCase()] || 'Records';
   const [definitions, setDefinitions] = useState([]);
   const [selectedType, setSelectedType] = useState('');
   const [records, setRecords] = useState([]);
@@ -263,6 +266,11 @@ export default function ContentWorkspace() {
     [definitions, selectedType]
   );
   const reportJobError = (value) => setError(typeof value === 'string' ? value : messageFor(value));
+  const selectTab = (item) =>
+    navigate(
+      { pathname: location.pathname, search: location.search, hash: item.toLowerCase() },
+      { replace: true }
+    );
 
   return (
     <AppShell headerTitle="Content workspace" sidebarItems={TABS}>
@@ -289,7 +297,7 @@ export default function ContentWorkspace() {
               role="tab"
               aria-selected={tab === item}
               variant={tab === item ? 'primary' : 'ghost'}
-              onClick={() => setTab(item)}
+              onClick={() => selectTab(item)}
             >
               {item}
             </GlassButton>

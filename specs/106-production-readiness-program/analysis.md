@@ -704,3 +704,56 @@ helper to normalize scroll position before every comparison, regenerate only
 from that deterministic contract, and pass an immediate no-update rerun. This
 keeps the screenshot evidence sensitive to real layout drift without allowing
 the test runner's prior interaction position to create false failures.
+
+## Analysis cycle 24 — exact hash navigation correction
+
+Fresh UX review of the twice-green candidate found one medium functional gap:
+legacy four-item Content Workspace links changed the URL hash but not the tab,
+while route orientation compared only the pathname and could mark all four
+links current. B273 makes the tab a pure function of the router location and
+binds each sidebar current state to the full pathname plus hash. B274 closes the
+review's low test-quality finding by wrapping the keyboard-triggered router
+transition in React's async test boundary. The green gates remain historical;
+both exact-head gates and all independent reviews must restart after this repair.
+
+## Analysis cycle 25 — data and operations review rejection
+
+The fresh data and operations reviews rejected exact head `89098c90` despite
+two complete-gate passes. Data review returned C0/H3/M2/L0: broad direct DML
+remained outside the fixed-procedure contract, RLS hid other-tenant memberships
+from tenant-only closure, durable replay could not discover queued work, subject
+exports exposed an index rather than complete registered values, and the backup
+ending comparison remained inside the original snapshot. Operations review
+returned C0/H1/M3/L1: the expiry timer lacked a stable checkout context,
+registration could poison scanner capacity, rollback status/evidence was not
+propagated through PowerShell, the documented expected-commit example could
+include an unparsed comment, and production workers still inherited a bundled
+database dependency.
+
+Tasks B275-B284 bind every finding to a least-authority implementation and a
+real failure-path proof. The prior green gates remain historical only. No
+publication, merge, provider, DNS, certificate, deployment, credential, or
+destructive action is authorized or performed by this repair cycle.
+
+## Analysis cycle 26 — fixed privacy authority and observable backup fence
+
+Implementation of B275-B284 removed direct privacy-worker DML, routed queue
+discovery, claims, subject actions, and settlement through fixed unexpired-lease
+procedures, and restricted workspace reads to the claimed subject. Disposable
+PostgreSQL now proves same-tenant unrelated rows are invisible, direct mutation
+is denied, expired settlement fails, replay discovery succeeds, and tenant-only
+deletion preserves an active identity in a second tenant. Value-level subject
+rows and safe identity authenticator, credential, and audit metadata are included
+without credential material; schema introspection rejects a stale inventory.
+
+The first real live-ledger concurrency drill also found that psycopg does not
+accept a `servicefile` connection keyword. B285 records the additional gap. The
+backup connector now parses one private bounded service section through a closed
+libpq-key allowlist, opens a genuinely separate connection, and observes a
+concurrent committed ledger change that the exported snapshot cannot see. The
+generic-expiry scanner isolates malformed and crashing plans, capacity fails at
+registration, its systemd unit has a stable checkout, rollback failures propagate
+with evidence, inline expected-commit comments parse safely, and production worker
+startup no longer brings up bundled PostgreSQL. Browser hash navigation and the
+Operations visual evidence were regenerated from the repaired sources. No external
+or destructive operation was performed.

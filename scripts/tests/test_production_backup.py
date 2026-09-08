@@ -11,6 +11,7 @@ import pytest
 from api.services.content_workspace_storage import PrivateArtifactStore
 from scripts.python.production_backup import (
     ProductionBackupError,
+    _repeatable_read_snapshot,
     _verify_object_references,
     create_production_backup,
     isolated_restore,
@@ -19,6 +20,65 @@ from scripts.python.production_backup import (
     restore_database_isolated,
     verify_receipt,
 )
+
+
+def test_exported_snapshot_uses_a_second_connection_for_the_post_capture_fence():
+    connections = []
+
+    class Cursor:
+        def __init__(self, index):
+            self.index = index
+            self.query = ''
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def execute(self, query):
+            self.query = query
+
+        def fetchone(self):
+            if 'pg_export_snapshot' in self.query:
+                return ('snapshot-1',)
+            return (31,)
+
+        def __iter__(self):
+            digest = 'a' * 64 if self.index == 0 else 'b' * 64
+            return iter([('asset', 'tenant-one', 'media/tenant-one/photo', digest)])
+
+    class Connection:
+        def __init__(self, index):
+            self.index = index
+            self.closed = False
+
+        def set_session(self, **_kwargs):
+            pass
+
+        def cursor(self):
+            return Cursor(self.index)
+
+        def rollback(self):
+            pass
+
+        def close(self):
+            self.closed = True
+
+    def connect(_config):
+        connection = Connection(len(connections))
+        connections.append(connection)
+        return connection
+
+    config = {'pgService': 'base2_backup', 'pgServiceFile': '/private/pg.conf'}
+    with (
+        patch('scripts.python.production_backup._connect_pg_service', side_effect=connect),
+        _repeatable_read_snapshot(config) as snapshot,
+    ):
+        assert '\t' + 'a' * 64 in snapshot['references']
+        assert '\t' + 'b' * 64 in snapshot['afterReferences']()
+    assert len(connections) == 2
+    assert all(connection.closed for connection in connections)
 
 
 def _config(tmp_path: Path):

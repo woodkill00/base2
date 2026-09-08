@@ -300,10 +300,17 @@ echo "Rollback completed. Current HEAD: $CURRENT_HEAD"
   try {
     $ErrorActionPreference = 'Continue'
     $txt = (& $sshExe @sshArgs $remote 2>&1 | Out-String)
+    $rollbackExit = $LASTEXITCODE
     Set-Content -Path $outPath -Value $txt.TrimEnd() -Encoding UTF8
+    if ($rollbackExit -ne 0) {
+      $marker = (& $sshExe @sshArgs 'cat /root/logs/build/rollback-failed.txt 2>/dev/null || printf "rollback_failed marker_unavailable\n"' 2>&1 | Out-String).TrimEnd()
+      $failurePath = Join-Path (Split-Path -Parent $outPath) 'rollback-partial-failure.txt'
+      Set-Content -Path $failurePath -Value ("ssh_exit={0}`n{1}" -f $rollbackExit, $marker) -Encoding UTF8
+      throw "Rollback failed with SSH exit $rollbackExit; evidence: $failurePath"
+    }
   } catch {
-    try { Set-Content -Path $outPath -Value ("Rollback failed: " + $($_.Exception.Message)) -Encoding UTF8 } catch {}
-    Write-Warning "Rollback hook failed: $($_.Exception.Message)"
+    try { Add-Content -Path $outPath -Value ("Rollback failed: " + $($_.Exception.Message)) -Encoding UTF8 } catch {}
+    throw
   } finally {
     $ErrorActionPreference = $prevEap
   }
@@ -1028,7 +1035,7 @@ if [ -d __REMOTE_APP_DIR__ ]; then
     # Determine branch from .env (DO_APP_BRANCH), default to main
     BRANCH=$(grep -E '^DO_APP_BRANCH=' .env 2>/dev/null | cut -d'=' -f2 | sed 's/[[:space:]]*#.*$//' | tr -d '\r')
     if [ -z "$BRANCH" ]; then BRANCH=main; fi
-    EXPECTED_COMMIT=$(grep -E '^DEPLOY_EXPECTED_COMMIT=' .env 2>/dev/null | cut -d'=' -f2 | tr -d '\r')
+    EXPECTED_COMMIT=$(grep -E '^DEPLOY_EXPECTED_COMMIT=' .env 2>/dev/null | cut -d'=' -f2 | sed 's/[[:space:]]*#.*$//' | tr -d '\r')
     printf '%s\n' "$EXPECTED_COMMIT" | grep -Eq '^[0-9a-f]{40}$' || {
       echo "DEPLOY_EXPECTED_COMMIT must be an exact 40-character lowercase Git commit" >&2
       exit 42
@@ -1251,8 +1258,8 @@ PY
   # Tune host sysctl for Redis memory overcommit (best-effort host optimization).
   (sysctl -w vm.overcommit_memory=1 && echo 'vm.overcommit_memory=1' > /etc/sysctl.d/99-redis.conf && sysctl --system) || true
   docker compose -f development.docker.yml build celery-worker celery-content-worker celery-data-rights-worker celery-email-worker celery-beat > /root/logs/build/celery-worker-build.txt 2>&1
-  docker compose -f development.docker.yml --profile celery up -d --build redis celery-worker celery-content-worker celery-data-rights-worker celery-email-worker celery-beat > /root/logs/build/celery-up.txt 2>&1
-  docker compose -f development.docker.yml up -d --build flower > /root/logs/build/flower-up.txt 2>&1
+  docker compose -f development.docker.yml --profile celery up -d --build --no-deps redis celery-worker celery-content-worker celery-data-rights-worker celery-email-worker celery-beat > /root/logs/build/celery-up.txt 2>&1
+  docker compose -f development.docker.yml up -d --build --no-deps flower > /root/logs/build/flower-up.txt 2>&1
   # Wait for every required service and worker to report actual health.
   status "wait" "waiting for services to become healthy"
   : > /root/logs/build/health-wait.txt || true
@@ -1262,7 +1269,7 @@ PY
     echo "--- attempt $i ---" >> /root/logs/build/health-wait.txt
     echo "$PS_OUT" >> /root/logs/build/health-wait.txt
     OK=1
-    for s in traefik nginx nginx-static django api postgres redis react-app celery-worker celery-content-worker celery-data-rights-worker celery-email-worker celery-beat flower; do
+    for s in traefik nginx nginx-static django api redis react-app celery-worker celery-content-worker celery-data-rights-worker celery-email-worker celery-beat flower; do
       echo "$PS_OUT" | grep -E "\s${s}\s" >/dev/null 2>&1 || { OK=0; break; }
       echo "$PS_OUT" | grep -E "\s${s}\s.*\(healthy\)" >/dev/null 2>&1 || { OK=0; break; }
     done
@@ -2233,7 +2240,7 @@ try {
 
       if ($exitCode -ne 0) {
         Write-Warning "Post-deploy tests failed"
-        try { Invoke-RollbackOnFailureIfEnabled -ip $script:ResolvedIp -keyPath $script:SshKeyPath } catch {}
+        Invoke-RollbackOnFailureIfEnabled -ip $script:ResolvedIp -keyPath $script:SshKeyPath
         $script:ExitCode = 1
         throw $script:EarlyExitSentinel
       }
@@ -2245,7 +2252,7 @@ try {
       & .\digital_ocean\scripts\powershell\test.ps1 @testArgs2
       if ($LASTEXITCODE -ne 0) {
         Write-Warning "Post-deploy tests failed"
-        try { Invoke-RollbackOnFailureIfEnabled -ip $script:ResolvedIp -keyPath $script:SshKeyPath } catch {}
+        Invoke-RollbackOnFailureIfEnabled -ip $script:ResolvedIp -keyPath $script:SshKeyPath
         $script:ExitCode = 1
         throw $script:EarlyExitSentinel
       }
