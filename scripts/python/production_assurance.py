@@ -233,6 +233,6 @@ def fault_evidence(
 def shell_parity(root: Path) -> dict[str, Any]:
     bash = {path.stem for path in (root / "scripts/bash").glob("*.sh")}
     powershell = {path.stem for path in (root / "scripts/powershell").glob("*.ps1")}
-    required = {"setup", "migrate", "test", "start", "content-workspace-recovery"}
+    required = {"setup", "migrate", "test", "start", "content-workspace-recovery", "production-ready"}
     missing = sorted(name for name in required if name not in bash or name not in powershell)
     return {"status": "passed" if not missing else "failed", "missing": missing}

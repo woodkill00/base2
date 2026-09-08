@@ -160,19 +160,19 @@ substitute for the integration proof named by the task.
 
 ## Phase 9 — Performance, supply chain, resilience, governance, and golden paths
 
-- [ ] B128 Write tests first for performance budgets, scaling transitions, cost ceilings, artifact policy, faults, privacy controls, and shell parity. (FR-057 through FR-062, FR-063)
-- [ ] B129 Establish representative small, medium, and large tenant datasets and public, member, editor, operator, and background load models. (FR-057)
-- [ ] B130 Enforce budgets for web vitals, frontend bundles, API latency, queries, pool use, worker throughput, CPU, memory, storage, and telemetry overhead. (FR-057)
-- [ ] B131 Add cache policy and invalidation proof, N+1/slow-query detection, compression, code splitting, responsive media, and graceful degradation. (FR-027, FR-057)
-- [ ] B132 Define vertical/horizontal scaling triggers, queue and database pressure responses, safe degradation, and scale-down behavior. (FR-013, FR-058)
-- [ ] B133 Calculate provider resources, maximum runtime, region, cost ceiling, teardown deadline, and cleanup ownership before any provider-backed run. (FR-007, FR-058, FR-069)
-- [ ] B134 Implement automatic ephemeral expiry and exact verified teardown with no authority to delete unowned or production resources. (FR-058, FR-069)
-- [ ] B135 Pin build and runtime dependencies and images and enforce protected-branch, required-check, code-owner, least-workflow-permission, dependency-update, immutable-action, license, vulnerability, secret, SBOM, signature, and provenance policies. (FR-059, FR-078)
-- [ ] B136 Add bounded fault drills for application, worker, queue, database, object storage, search, DNS, certificates, email, alerting, and provider responses. (FR-060)
-- [ ] B137 Measure recovery objectives, detect incomplete recovery, and link every drill to incident and residual-risk evidence. (FR-013, FR-014, FR-060, FR-068)
-- [ ] B138 Build the documented inventory for data classes, purposes, consent, retention, vendors, regions, accessibility, incidents, and user rights without unsupported certification claims. (FR-023, FR-061, FR-068)
-- [ ] B139 Implement one Bash and one PowerShell golden path for setup, generate, migrate, test, preview, release, recover, and rollback without cross-shell calls. (FR-062)
-- [ ] B140 Prove fresh-machine and recovered-WSL operation with documented prerequisites, deterministic seed data, clear errors, and no hidden state. (FR-062, FR-070)
+- [x] B128 Write tests first for performance budgets, scaling transitions, cost ceilings, artifact policy, faults, privacy controls, and shell parity. (FR-057 through FR-062, FR-063)
+- [x] B129 Establish representative small, medium, and large tenant datasets and public, member, editor, operator, and background load models. (FR-057)
+- [x] B130 Enforce budgets for web vitals, frontend bundles, API latency, queries, pool use, worker throughput, CPU, memory, storage, and telemetry overhead. (FR-057)
+- [x] B131 Add cache policy and invalidation proof, N+1/slow-query detection, compression, code splitting, responsive media, and graceful degradation. (FR-027, FR-057)
+- [x] B132 Define vertical/horizontal scaling triggers, queue and database pressure responses, safe degradation, and scale-down behavior. (FR-013, FR-058)
+- [x] B133 Calculate provider resources, maximum runtime, region, cost ceiling, teardown deadline, and cleanup ownership before any provider-backed run. (FR-007, FR-058, FR-069)
+- [x] B134 Implement automatic ephemeral expiry and exact verified teardown with no authority to delete unowned or production resources. (FR-058, FR-069)
+- [x] B135 Pin build and runtime dependencies and images and enforce protected-branch, required-check, code-owner, least-workflow-permission, dependency-update, immutable-action, license, vulnerability, secret, SBOM, signature, and provenance policies. (FR-059, FR-078)
+- [x] B136 Add bounded fault drills for application, worker, queue, database, object storage, search, DNS, certificates, email, alerting, and provider responses. (FR-060)
+- [x] B137 Measure recovery objectives, detect incomplete recovery, and link every drill to incident and residual-risk evidence. (FR-013, FR-014, FR-060, FR-068)
+- [x] B138 Build the documented inventory for data classes, purposes, consent, retention, vendors, regions, accessibility, incidents, and user rights without unsupported certification claims. (FR-023, FR-061, FR-068)
+- [x] B139 Implement one Bash and one PowerShell golden path for setup, generate, migrate, test, preview, release, recover, and rollback without cross-shell calls. (FR-062)
+- [x] B140 Prove fresh-machine and recovered-WSL operation with documented prerequisites, deterministic seed data, clear errors, and no hidden state. (FR-062, FR-070)
 
 ## Phase 10 — Integrated assurance, staged acceptance, and closeout
 
