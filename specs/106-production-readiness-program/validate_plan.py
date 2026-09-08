@@ -11,6 +11,7 @@ REQUIRED_FILES = {
     "plan.md",
     "tasks.md",
     "analysis.md",
+    "local-closeout-review.md",
     "traceability.md",
     "validate_plan.py",
 }
@@ -40,6 +41,11 @@ def main() -> int:
     tasks = (ROOT / "tasks.md").read_text(encoding="utf-8")
     analysis = (ROOT / "analysis.md").read_text(encoding="utf-8")
     traceability = (ROOT / "traceability.md").read_text(encoding="utf-8")
+    local_review = (ROOT / "local-closeout-review.md").read_text(encoding="utf-8")
+    activation_path = ROOT.parents[1] / "docs" / "PRODUCTION_ACTIVATION_RUNBOOK.md"
+    if not activation_path.is_file():
+        raise SystemExit("production_readiness_activation_runbook_missing")
+    activation = activation_path.read_text(encoding="utf-8")
 
     requirement_ids = ids(r"\*\*FR-(\d{3})\*\*", spec)
     if requirement_ids != list(range(1, 79)):
@@ -115,6 +121,40 @@ def main() -> int:
         raise SystemExit(
             f"production_readiness_task_boundary_missing:{','.join(absent_phrases)}"
         )
+
+    for label, text, markers in (
+        (
+            "local_review",
+            local_review,
+            (
+                "## Candidate",
+                "## Exact-source local evidence",
+                "## Security and privacy review",
+                "## UX and accessibility review",
+                "## Data and operations review",
+                "## Pending independent and external evidence",
+            ),
+        ),
+        (
+            "activation_runbook",
+            activation,
+            (
+                "## Status and authority",
+                "## Recovery roles",
+                "## Required inputs",
+                "## Preflight",
+                "## Traffic sequence",
+                "## Halt and rollback",
+                "## Completion and teardown",
+                "## Residual risk",
+            ),
+        ),
+    ):
+        missing_markers = [marker for marker in markers if marker not in text]
+        if missing_markers:
+            raise SystemExit(
+                f"production_readiness_{label}_missing:{','.join(missing_markers)}"
+            )
 
     print(
         "production_readiness_plan_valid "
