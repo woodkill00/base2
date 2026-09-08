@@ -9,6 +9,7 @@ import hmac
 import json
 import os
 import re
+import subprocess
 import tempfile
 from collections.abc import Callable
 from contextlib import contextmanager
@@ -21,7 +22,7 @@ HEX64 = re.compile(r"^[0-9a-f]{64}$")
 RELEASE_ID = re.compile(r"^release-[A-Za-z0-9._-]{4,120}$")
 IMAGE = re.compile(r"^[a-z0-9][a-z0-9./_-]{2,190}@sha256:[0-9a-f]{64}$")
 ENVIRONMENTS = {"development", "test", "preview", "staging", "production"}
-ACTIONS = {"prepare", "stage", "canary", "promote", "rollback"}
+ACTIONS = {"prepare", "preview", "stage", "canary", "promote", "rollback"}
 STATES = {"empty", "prepared", "staged", "canary", "promoted", "halted", "rolled-back"}
 RELEASE_FIELDS = {
     "schemaVersion",
@@ -47,6 +48,25 @@ APPROVAL_FIELDS = {
     "expiresAt",
     "digest",
 }
+OPERATION_FIELDS = {
+    "schemaVersion",
+    "operationId",
+    "action",
+    "releaseId",
+    "environment",
+    "status",
+    "observedAt",
+    "digest",
+}
+HEALTH_FIELDS = {
+    "schemaVersion",
+    "action",
+    "releaseId",
+    "environment",
+    "healthy",
+    "observedAt",
+    "digest",
+}
 
 
 class ReleaseError(ValueError):
@@ -59,6 +79,75 @@ def _canonical(value: Any) -> bytes:
 
 def _digest(value: Any) -> str:
     return hashlib.sha256(_canonical(value)).hexdigest()
+
+
+def _tree_digest(root: Path, paths: list[Path]) -> str:
+    digest = hashlib.sha256()
+    for path in sorted(paths):
+        if path.is_symlink() or not path.is_file():
+            raise ReleaseError("release:source_file_unsafe")
+        digest.update(path.relative_to(root).as_posix().encode())
+        digest.update(b"\0")
+        digest.update(hashlib.sha256(path.read_bytes()).digest())
+    return digest.hexdigest()
+
+
+def build_release_manifest(
+    *,
+    root: Path,
+    release_id: str,
+    images: dict[str, str],
+    sbom_path: Path,
+    provenance_path: Path,
+    now: datetime,
+    key: bytes,
+) -> dict[str, Any]:
+    """Build one manifest from an exact clean checkout and immutable inputs."""
+    if now.tzinfo is None:
+        raise ReleaseError("release:time_invalid")
+    repository = root.resolve()
+    try:
+        commit = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=repository, check=True,
+            text=True, capture_output=True, timeout=10,
+        ).stdout.strip()
+        status = subprocess.run(
+            ["git", "status", "--porcelain"], cwd=repository, check=True,
+            text=True, capture_output=True, timeout=10,
+        ).stdout
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ReleaseError("release:source_unavailable") from exc
+    if status:
+        raise ReleaseError("release:source_dirty")
+    migration_paths = list((repository / "django").glob("*/migrations/*.py"))
+    configuration_paths = [
+        *list((repository / "shared/config").glob("*.json")),
+        *list((repository / "shared/schemas").glob("*.json")),
+        *list(repository.glob("*.docker.yml")),
+    ]
+    if not migration_paths or not configuration_paths:
+        raise ReleaseError("release:source_inventory_incomplete")
+    for external in (sbom_path, provenance_path):
+        resolved = external.resolve()
+        if external.is_symlink() or not resolved.is_file() or repository not in resolved.parents:
+            raise ReleaseError("release:source_file_unsafe")
+    readiness = json.loads(
+        (repository / "shared/config/production-readiness-v1.json").read_text(encoding="utf-8")
+    )
+    candidate = {
+        "schemaVersion": 2,
+        "releaseId": release_id,
+        "sourceCommit": commit,
+        "sourceClean": True,
+        "images": images,
+        "migrationsDigest": _tree_digest(repository, migration_paths),
+        "configurationSchemaVersion": int(readiness["schemaVersion"]),
+        "configurationDigest": _tree_digest(repository, configuration_paths),
+        "sbomDigest": hashlib.sha256(sbom_path.read_bytes()).hexdigest(),
+        "provenanceDigest": hashlib.sha256(provenance_path.read_bytes()).hexdigest(),
+        "createdAt": now.astimezone(UTC).isoformat(),
+    }
+    return sign_release(candidate, key=key)
 
 
 def _time(value: str) -> datetime:
@@ -191,6 +280,128 @@ def validate_approval(
         raise ReleaseError("approval:expired")
 
 
+def operation_receipt(
+    *,
+    operation_id: str,
+    action: str,
+    release_id: str,
+    environment: str,
+    status: str,
+    observed_at: datetime,
+    key: bytes,
+) -> dict[str, Any]:
+    if (
+        len(key) < 32
+        or not re.fullmatch(r"operation-[A-Za-z0-9._-]{4,120}", operation_id or "")
+        or action not in ACTIONS - {"prepare", "preview"}
+        or not RELEASE_ID.fullmatch(release_id or "")
+        or environment not in ENVIRONMENTS - {"production"}
+        or status not in {"succeeded", "failed"}
+        or observed_at.tzinfo is None
+    ):
+        raise ReleaseError("release:operation_receipt_invalid")
+    value = {
+        "schemaVersion": 1,
+        "operationId": operation_id,
+        "action": action,
+        "releaseId": release_id,
+        "environment": environment,
+        "status": status,
+        "observedAt": observed_at.astimezone(UTC).isoformat(),
+    }
+    value["digest"] = hmac.new(key, _canonical(value), hashlib.sha256).hexdigest()
+    return value
+
+
+def validate_operation_receipt(
+    value: Any,
+    *,
+    action: str,
+    release_id: str,
+    environment: str,
+    key: bytes,
+) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != OPERATION_FIELDS:
+        raise ReleaseError("release:operation_receipt_invalid")
+    rebuilt = operation_receipt(
+        operation_id=value["operationId"],
+        action=value["action"],
+        release_id=value["releaseId"],
+        environment=value["environment"],
+        status=value["status"],
+        observed_at=_time(value["observedAt"]),
+        key=key,
+    )
+    if rebuilt != value:
+        raise ReleaseError("release:operation_receipt_integrity")
+    if (
+        value["action"] != action
+        or value["releaseId"] != release_id
+        or value["environment"] != environment
+    ):
+        raise ReleaseError("release:operation_receipt_scope_mismatch")
+    return json.loads(json.dumps(value))
+
+
+def health_receipt(
+    *,
+    action: str,
+    release_id: str,
+    environment: str,
+    healthy: bool,
+    observed_at: datetime,
+    key: bytes,
+) -> dict[str, Any]:
+    if (
+        len(key) < 32
+        or action not in {"stage", "canary", "promote"}
+        or not RELEASE_ID.fullmatch(release_id or "")
+        or environment not in ENVIRONMENTS - {"production"}
+        or type(healthy) is not bool
+        or observed_at.tzinfo is None
+    ):
+        raise ReleaseError("release:health_receipt_invalid")
+    value = {
+        "schemaVersion": 1,
+        "action": action,
+        "releaseId": release_id,
+        "environment": environment,
+        "healthy": healthy,
+        "observedAt": observed_at.astimezone(UTC).isoformat(),
+    }
+    value["digest"] = hmac.new(key, _canonical(value), hashlib.sha256).hexdigest()
+    return value
+
+
+def validate_health_receipt(
+    value: Any,
+    *,
+    action: str,
+    release_id: str,
+    environment: str,
+    key: bytes,
+) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != HEALTH_FIELDS:
+        raise ReleaseError("release:health_receipt_invalid")
+    rebuilt = health_receipt(
+        action=value["action"],
+        release_id=value["releaseId"],
+        environment=value["environment"],
+        healthy=value["healthy"],
+        observed_at=_time(value["observedAt"]),
+        key=key,
+    )
+    if rebuilt != value:
+        raise ReleaseError("release:health_receipt_integrity")
+    if (
+        value["action"] != action
+        or value["releaseId"] != release_id
+        or value["environment"] != environment
+    ):
+        raise ReleaseError("release:health_receipt_scope_mismatch")
+    return json.loads(json.dumps(value))
+
+
 class ReleaseJournal:
     def __init__(self, path: Path, *, key: bytes):
         self.path = path
@@ -287,6 +498,7 @@ class ProductionReleaseController:
         owner_approval: dict[str, Any],
         now: datetime,
         health: Callable[[str], bool] | None = None,
+        execute: Callable[[str, dict[str, Any], str], dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         candidate = validate_release(release, key=self.release_key)
         if environment not in ENVIRONMENTS:
@@ -310,7 +522,7 @@ class ProductionReleaseController:
                 and action in state["checkpoints"]
             ):
                 return self._receipt(state, action, "idempotent")
-            if action == "prepare":
+            if action in {"prepare", "preview"}:
                 if state["state"] not in {"empty", "promoted", "rolled-back", "halted"}:
                     raise ReleaseError("release:transition_invalid")
                 state.update(
@@ -334,6 +546,34 @@ class ProductionReleaseController:
                     raise ReleaseError("release:transition_invalid")
                 if action in {"stage", "canary", "promote"} and health is None:
                     raise ReleaseError("release:health_adapter_required")
+                if execute is None:
+                    raise ReleaseError("release:execution_adapter_required")
+                started = f"{action}:started"
+                if started not in state["checkpoints"]:
+                    state["checkpoints"].append(started)
+                    state["receipts"].append(self._receipt(state, action, "started"))
+                    self.store.write(state)
+                try:
+                    operation = execute(action, candidate, environment)
+                except Exception:
+                    interrupted = f"{action}:interrupted"
+                    if interrupted not in state["checkpoints"]:
+                        state["checkpoints"].append(interrupted)
+                    state["receipts"].append(self._receipt(state, action, "pending"))
+                    self.store.write(state)
+                    return state["receipts"][-1]
+                if (
+                    not isinstance(operation, dict)
+                    or operation.get("status") != "succeeded"
+                    or operation.get("action") != action
+                    or operation.get("releaseId") != candidate["releaseId"]
+                    or operation.get("environment") != environment
+                ):
+                    state["state"] = "halted"
+                    state["checkpoints"].append(f"{action}:execution-failed")
+                    state["receipts"].append(self._receipt(state, action, "halted"))
+                    self.store.write(state)
+                    return state["receipts"][-1]
                 if action in {"stage", "canary", "promote"} and not health(action):
                     state["state"] = "halted"
                     state["checkpoints"].append(f"{action}:failed")

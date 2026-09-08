@@ -39,20 +39,20 @@ substitute for the integration proof named by the task.
 
 ## Phase 2 — Immutable environments, deployment, and rollback
 
-- [ ] B028 Write tests first for profile separation, artifact identity, stale approval, replay, concurrency, interruption, promotion, and rollback. (FR-001, FR-002, FR-003, FR-004, FR-006)
-- [ ] B029 Implement validated development, test, preview, staging, and production configuration profiles with no secret values in generated artifacts. (FR-001, FR-031)
-- [ ] B030 Render and verify immutable image digests, migration set, schema version, configuration digest, SBOM, provenance, and source identity. (FR-002, FR-059)
-- [ ] B031 Implement build-once promotion and reject rebuilt, mutable-tagged, dirty, divergent, or incomplete candidates. (FR-003, FR-059)
-- [ ] B032 Implement an integrity-bound deployment lease, journal, checkpoint, resume, replay no-op, and stale/concurrent rejection. (FR-004, FR-008)
-- [ ] B033 Implement fixed canary or blue/green traffic states and typed expiring feature flags with pre-switch and post-switch health and synthetic gates. (FR-005, FR-011, FR-077)
-- [ ] B034 Implement automatic traffic halt and exact previous-release selection when blocking checks fail. (FR-005, FR-006, FR-070)
-- [ ] B035 Implement compatibility-aware code rollback that never deletes durable data or performs implicit reverse migration. (FR-006, FR-018)
-- [ ] B036 Extend the single deployment entrypoint with typed preview, stage, canary, promote, rollback, status, and evidence operations. (FR-004, FR-062)
-- [ ] B037 Add independent approval verification for each protected release and provider transition. (FR-007, FR-069)
-- [ ] B038 Produce integrity-bound, redacted, exact-source operation receipts with honest pending and terminal states. (FR-008, FR-034, FR-068)
-- [ ] B039 Test crash at every deployment checkpoint, lost responses, exact replay, altered replay, expired approval, concurrent runner, and partial provider outcome. (FR-004, FR-060, FR-065)
-- [ ] B040 Test staged certificate use and prove preview/test cannot issue or request production certificates. (FR-001, FR-026)
-- [ ] B041 Run production-like local deployment, canary, failure, resume, rollback, and evidence-integrity acceptance with synthetic data. (FR-005, FR-006, FR-063, FR-066)
+- [x] B028 Write tests first for profile separation, artifact identity, stale approval, replay, concurrency, interruption, promotion, and rollback. (FR-001, FR-002, FR-003, FR-004, FR-006)
+- [x] B029 Implement validated development, test, preview, staging, and production configuration profiles with no secret values in generated artifacts. (FR-001, FR-031)
+- [x] B030 Render and verify immutable image digests, migration set, schema version, configuration digest, SBOM, provenance, and source identity. (FR-002, FR-059)
+- [x] B031 Implement build-once promotion and reject rebuilt, mutable-tagged, dirty, divergent, or incomplete candidates. (FR-003, FR-059)
+- [x] B032 Implement an integrity-bound deployment lease, journal, checkpoint, resume, replay no-op, and stale/concurrent rejection. (FR-004, FR-008)
+- [x] B033 Implement fixed canary or blue/green traffic states and typed expiring feature flags with pre-switch and post-switch health and synthetic gates. (FR-005, FR-011, FR-077)
+- [x] B034 Implement automatic traffic halt and exact previous-release selection when blocking checks fail. (FR-005, FR-006, FR-070)
+- [x] B035 Implement compatibility-aware code rollback that never deletes durable data or performs implicit reverse migration. (FR-006, FR-018)
+- [x] B036 Extend the single deployment entrypoint with typed preview, stage, canary, promote, rollback, status, and evidence operations. (FR-004, FR-062)
+- [x] B037 Add independent approval verification for each protected release and provider transition. (FR-007, FR-069)
+- [x] B038 Produce integrity-bound, redacted, exact-source operation receipts with honest pending and terminal states. (FR-008, FR-034, FR-068)
+- [x] B039 Test crash at every deployment checkpoint, lost responses, exact replay, altered replay, expired approval, concurrent runner, and partial provider outcome. (FR-004, FR-060, FR-065)
+- [x] B040 Test staged certificate use and prove preview/test cannot issue or request production certificates. (FR-001, FR-026)
+- [x] B041 Run production-like local deployment, canary, failure, resume, rollback, and evidence-integrity acceptance with synthetic data. (FR-005, FR-006, FR-063, FR-066)
 
 ## Phase 3 — PostgreSQL, durability, retention, and restore
 
