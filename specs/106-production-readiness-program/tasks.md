@@ -296,3 +296,8 @@ substitute for the integration proof named by the task.
 - [ ] B240 Carry the dedicated data-rights database role and generated acceptance credential through every disposable PostgreSQL bootstrap and migration command, then prove the complete forward, reverse, concurrency, and role-isolation acceptance succeeds. (FR-018, FR-019, FR-031, FR-060, FR-065, FR-066, FR-073)
 - [ ] B241 Preserve functional navigation for legacy string sidebar inputs while retaining typed route controls, one consistent accessible name, mobile close/focus return, and complete frontend compatibility coverage. (FR-012, FR-050, FR-063, FR-064, FR-075)
 - [ ] B242 Regenerate Operations screenshots, exact runner evidence, and surface-drift inventory from the final integrated sources, and execute framework-specific suites in their correct isolated environments. (FR-012, FR-018, FR-063, FR-064, FR-068, FR-075, FR-078)
+
+## Phase 17 — Complete-gate cycle 19 corrections
+
+- [ ] B243 Freeze the authentication rate-limit regression inside one deterministic fixed window so an actual wall-clock minute rollover cannot reset its bucket and create a false gate failure. (FR-031, FR-057, FR-060, FR-063, FR-065)
+- [ ] B244 Run pre-commit source normalization before final browser capture and evidence generation, then bind the committed visual manifest to those exact normalized sources. (FR-012, FR-063, FR-064, FR-068, FR-075, FR-078)

@@ -622,3 +622,17 @@ runner receipt, visual manifest, and the 109-file surface-drift inventory were
 regenerated and validated. B239 remains open until one clean exact head passes two
 complete gates, ten critical-suite repetitions, and fresh independent review with
 zero critical, high, or medium findings.
+
+## Analysis cycle 19 — exact-candidate gate rejection
+
+Complete gate 1 rejected candidate `9f9701e59a7227a33b0eab6eb2e145e0ada9a045`
+with two deterministic obligations. The authentication rate-limit test began only
+milliseconds before a real minute boundary, so its fifth request entered a new
+production fixed window and the sixth request correctly remained below the new
+bucket limit. B243 freezes test time inside one window without changing production
+limiting behavior. The Operations manifest was generated before pre-commit
+normalized its source files, leaving the committed source hashes stale even though
+the browser run itself passed. B244 requires capture and evidence generation after
+normalization and before the replacement candidate is committed. The failed gate
+is historical evidence only; both complete gates restart from zero on the next
+exact head.
