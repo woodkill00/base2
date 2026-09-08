@@ -112,19 +112,19 @@
     },
     {
       "id": "data-readiness-contract",
-      "command": ["python3", "-m", "pytest", "-q", "scripts/tests/test_data_readiness.py"],
+      "command": ["{python-api}", "-m", "pytest", "-q", "scripts/tests/test_data_readiness.py"],
       "required": true,
       "timeoutSeconds": 30,
       "dependsOn": ["typed-feature-flag-contract"],
-      "requiredTools": ["python3"]
+      "requiredTools": ["{python-api}"]
     },
     {
       "id": "edge-readiness-contract",
-      "command": ["python3", "-m", "pytest", "-q", "scripts/tests/test_edge_readiness.py"],
+      "command": ["{python-api}", "-m", "pytest", "-q", "scripts/tests/test_edge_readiness.py"],
       "required": true,
       "timeoutSeconds": 30,
       "dependsOn": ["data-readiness-contract"],
-      "requiredTools": ["python3"]
+      "requiredTools": ["{python-api}"]
     },
     {
       "id": "production-workflow-contract",
