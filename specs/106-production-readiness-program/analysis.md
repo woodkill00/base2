@@ -8,10 +8,10 @@ dependency ordering, architecture, security, privacy, accessibility, operations,
 cost, rollback, evidence honesty, and authority boundaries. Findings were added
 to the artifacts rather than silently accepted.
 
-This is a pre-implementation analysis. All 160 implementation and evidence tasks
-remain unchecked. The analysis can establish zero unresolved planning gaps in
-the declared scope; it cannot prove that implementation will reveal no new gaps
-or that finite testing eliminates unknown defects.
+The original cycles were pre-implementation analysis. Implementation evidence
+is now recorded below. The analysis can establish zero unresolved local planning
+gaps in the declared scope; it cannot prove that finite testing eliminates
+unknown defects or substitute for pending independent, hosted, or provider proof.
 
 ## Cycle 1 — Scope completeness
 
@@ -136,8 +136,8 @@ found by the pre-implementation analysis.
 
 - Functional requirements: 78, sequentially identified FR-001 through FR-078.
 - Ordered tasks: 160, sequentially identified B001 through B160.
-- Current completed tasks after the native-operations train: 27.
-- Current pending tasks: 133.
+- Current locally completed tasks: 145.
+- Current pending tasks: 15 (B146-B160).
 - Publication, merge, canary, teardown, and production activation remain
   distinct exact-scope decisions and cannot be inherited from this planning work.
 
@@ -188,6 +188,84 @@ the complete-gate configuration after the surface lock was generated; the lock
 was regenerated after formatting and now validates at the exact current head.
 No external provider, credential, publication, merge, DNS, certificate, or live
 deployment action occurred.
+
+## Implementation cycle 3 — Release, data, edge, and workflow closure
+
+The release train added immutable exact-source manifests, build-once artifact
+promotion, checkpoint journals, replay-safe leases, health-gated canary states,
+exact compatible rollback, independent HMAC approval keys, and typed expiring
+feature flags. Production remains explicitly rejected by the local executor.
+
+Data readiness now validates TLS verify-full transport, encrypted storage key
+references, fixed pool and timeout budgets, least-privilege roles, expand /
+migrate / contract compatibility metadata, destructive approval boundaries,
+honest PITR fallback, isolated restore targets, six-surface reconciliation,
+retention, and legal holds. Edge readiness adds replay-safe domain claims,
+canonical redirects, staging-only certificates, cache isolation, private
+administration, trusted-proxy limits, default-deny service networks and egress,
+and SSRF/metadata/DNS-rebinding defenses. Credential, job, schedule, email, and
+notification contracts cover metadata-only inventory, rotation, bounded
+break-glass, leases, dead letters, DST, quiet time, and mandatory security
+delivery.
+
+## Implementation cycle 4 — Tenant and universal platform closure
+
+Tenant lifecycle and quota contracts cover provisioning through separately
+approved deletion, data-preserving suspension/archive, transfer/export,
+replay-safe reservations, reconciliation, forecasts, denial reasons, and
+tenant-private remediation. Identity recovery cannot remove existing factors,
+session revocation requires token rotation, policy resolution defaults to deny
+across all nine enforcement surfaces, and settings changes are scope-, revision-,
+and recent-auth-aware.
+
+The universal layer adds authorization-filtered tenant search, bounded cursors,
+editorial review/conflict/rollback, HMAC-bound expiring previews with private
+no-store caching, reference-aware media deletion, locale/SEO/privacy/navigation
+contracts, and exact disabled-capability absence. The extension layer adds a
+closed non-executable page schema, bounded nesting, versioned theme migration,
+all thirteen archetypes, scoped expiring integration grants, fresh signed
+replay-safe webhooks, versioned API compatibility, and fake-provider-only
+commerce transitions.
+
+One focused test exposed a real ordering bug: unauthorized forced deletion of
+referenced media returned a blocked status before evaluating the missing
+approval. The approval check now runs first and the regression is covered.
+
+## Implementation cycle 5 — Integrated assurance and repeatability
+
+Performance assurance defines twelve finite budgets, small/medium/large data
+models, five actor profiles, hysteresis-based scaling, safe degradation,
+four-hour/USD 5 ephemeral ceilings, exact ownership, staging certificates,
+eleven fault classes, nine governance inventories, measured recovery evidence,
+and Bash/PowerShell golden-path parity. Existing supply-chain, dependency,
+workflow, environment, generated-child, provider-admission, and owned-teardown
+gates remain required.
+
+The first expanded complete gate failed closed because data and edge contract
+nodes invoked system Python, where project pytest is intentionally absent. Both
+nodes now use the managed API runtime. The entire repaired dependency chain
+passed 38 focused tests. Two subsequent complete gates passed all 106 required
+checks with no skips at the identical clean implementation commit
+`0073399c9c637ab91d79fe704b42643b677bda4b`:
+
+- `.artifacts/complete-gate/20260908T001951Z/result.json`
+- `.artifacts/complete-gate/20260908T003120Z/result.json`
+
+The complete matrix includes API/Django/PostgreSQL, frontend, Playwright visual,
+accessibility, identity, tenant, data-rights, content, search/SEO, privacy/i18n,
+transactional email, media, module, deployment, recovery, performance,
+provider-admission, secret, supply-chain, and generated-child checks. A broad
+advisory Ruff scan found 182 pre-existing style findings in older script and
+test files outside the required API lint surface. They do not invalidate the
+required gates, but are retained as non-blocking cleanup debt rather than being
+silently reformatted in this feature.
+
+No new planning task was required after the local integration cycle. B146-B160
+remain honestly pending: fresh independent review, final exact-diff review,
+separately authorized publication and hosted checks, separately authorized
+provider canary and teardown, canary-driven re-analysis, activation runbook and
+closeout. No provider, credential, publication, DNS, certificate, deployment,
+or destructive action was performed.
 
 ## Honest residual boundary
 
