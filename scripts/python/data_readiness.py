@@ -95,6 +95,47 @@ def migration_plan(
     }
 
 
+def validate_migration_catalog(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != {
+        'schemaVersion', 'currentSchema', 'minimumCompatibleSchema', 'migrations'
+    }:
+        raise DataReadinessError('migration:catalog_invalid')
+    if (
+        value['schemaVersion'] != 1
+        or type(value['currentSchema']) is not int
+        or type(value['minimumCompatibleSchema']) is not int
+        or not 1 <= value['minimumCompatibleSchema'] <= value['currentSchema']
+        or not isinstance(value['migrations'], list)
+        or not value['migrations']
+    ):
+        raise DataReadinessError('migration:catalog_invalid')
+    expected = value['minimumCompatibleSchema'] + 1
+    normalized = []
+    for item in value['migrations']:
+        if not isinstance(item, dict) or set(item) != {
+            'migrationId', 'fromSchema', 'toSchema', 'phase', 'compatibleFrom',
+            'expectedLockMs', 'expectedRuntimeMs', 'destructive',
+        }:
+            raise DataReadinessError('migration:catalog_invalid')
+        plan = migration_plan(
+            migration_id=item['migrationId'],
+            from_schema=item['fromSchema'],
+            to_schema=item['toSchema'],
+            phase=item['phase'],
+            compatible_from=item['compatibleFrom'],
+            expected_lock_ms=item['expectedLockMs'],
+            expected_runtime_ms=item['expectedRuntimeMs'],
+            destructive_approval=item['destructive'],
+        )
+        if item['toSchema'] != expected or item['destructive'] != plan['destructive']:
+            raise DataReadinessError('migration:catalog_sequence_invalid')
+        normalized.append(item)
+        expected += 1
+    if normalized[-1]['toSchema'] != value['currentSchema']:
+        raise DataReadinessError('migration:catalog_sequence_invalid')
+    return json.loads(json.dumps(value, sort_keys=True))
+
+
 def recovery_strategy(capabilities: Any) -> dict[str, Any]:
     if not isinstance(capabilities, list) or any(
         not isinstance(item, str) for item in capabilities

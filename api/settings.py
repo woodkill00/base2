@@ -75,6 +75,10 @@ class Settings(BaseSettings):
     DB_STATEMENT_TIMEOUT_MS: int = Field(default=3000)
     DB_POOL_MIN: int = Field(default=1)
     DB_POOL_MAX: int = Field(default=5)
+    DB_POOL_SATURATION_PERCENT: int = Field(default=85)
+    DB_TRANSACTION_TIMEOUT_MS: int = Field(default=60000)
+    DB_SSLMODE: str = Field(default='disable')
+    DB_SSLROOTCERT: Optional[str] = None
 
     # E2E test mode gate
     E2E_TEST_MODE: bool = Field(default=False)
@@ -100,6 +104,8 @@ class Settings(BaseSettings):
             object.__setattr__(self, 'DB_POOL_MAX', 1)
         if self.DB_POOL_MAX < self.DB_POOL_MIN:
             object.__setattr__(self, 'DB_POOL_MAX', self.DB_POOL_MIN)
+        if not 50 <= self.DB_POOL_SATURATION_PERCENT <= 95:
+            raise RuntimeError('DB_POOL_SATURATION_PERCENT must be between 50 and 95')
 
         # Default docs policy: disabled in production unless explicitly enabled
         if (self.ENV or '').strip().lower() == 'production' and self.API_DOCS_ENABLED:
@@ -127,6 +133,8 @@ class Settings(BaseSettings):
                 missing.append('CONTENT_WORKSPACE_STORAGE_KEY')
             if missing:
                 raise RuntimeError('Missing required env var(s): ' + ', '.join(missing))
+            if self.DB_SSLMODE != 'verify-full' or not (self.DB_SSLROOTCERT or '').startswith('/'):
+                raise RuntimeError('Database TLS verify-full configuration is required')
 
             storage_root = (self.CONTENT_WORKSPACE_STORAGE_ROOT or '').strip()
             try:

@@ -180,6 +180,22 @@ def test_workspace_pool_uses_only_the_dedicated_runtime_credentials(monkeypatch)
         db._build_workspace_dsn()
 
 
+def test_database_dsn_encodes_credentials_and_adds_verified_tls(monkeypatch):
+    from api import db
+
+    monkeypatch.setenv('DB_HOST', 'db.internal')
+    monkeypatch.setenv('DB_PORT', '5432')
+    monkeypatch.setenv('DB_NAME', 'base2')
+    monkeypatch.setenv('WORKSPACE_DB_USER', 'runtime@site')
+    monkeypatch.setenv('WORKSPACE_DB_PASSWORD', 'p@ss:/word')
+    monkeypatch.setattr(db.settings, 'DB_SSLMODE', 'verify-full')
+    monkeypatch.setattr(db.settings, 'DB_SSLROOTCERT', '/run/secrets/database-ca.pem')
+    dsn = db._build_workspace_dsn()
+    assert 'runtime%40site:p%40ss%3A%2Fword' in dsn
+    assert 'sslmode=verify-full' in dsn
+    assert 'sslrootcert=/run/secrets/database-ca.pem' in dsn
+
+
 def test_worker_pool_uses_distinct_credentials_and_resets(monkeypatch):
     from api import db
 
@@ -248,6 +264,30 @@ def test_workspace_pool_initializers_are_reachable_and_role_specific(
     assert captured["dsn"] == f"postgresql://{pool_name}@db/base2"
     assert captured["application_name"].endswith(expected_suffix)
     monkeypatch.setattr(db, pool_name, None)
+
+
+def test_pool_saturation_fails_before_driver_exhaustion_and_is_observable(monkeypatch):
+    from api import db
+
+    class Saturated:
+        maxconn = 10
+        _used = {index: object() for index in range(8)}
+
+        def getconn(self):
+            raise AssertionError('driver must not be called past admission threshold')
+
+    monkeypatch.setattr(db.settings, 'DB_POOL_SATURATION_PERCENT', 80)
+    with pytest.raises(RuntimeError, match='database_pool_saturated'):
+        db._admitted_connection(Saturated())
+    monkeypatch.setattr(db, '_workspace_pool', Saturated())
+    snapshot = db.pool_snapshot()['workspace']
+    assert snapshot == {
+        'used': 8,
+        'maximum': 10,
+        'utilizationPercent': 80,
+        'state': 'saturated',
+    }
+    monkeypatch.setattr(db, '_workspace_pool', None)
 
 
 def test_close_pool_closes_owner_and_workspace_pools(monkeypatch):

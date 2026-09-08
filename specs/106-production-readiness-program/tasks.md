@@ -56,20 +56,20 @@ substitute for the integration proof named by the task.
 
 ## Phase 3 — PostgreSQL, durability, retention, and restore
 
-- [ ] B042 Write tests first for pooling, pressure, mixed versions, RLS, backup, PITR capability, isolated restore, retention, and reconciliation. (FR-017 through FR-024, FR-066)
-- [ ] B043 Add verified encrypted database transport/storage configuration, measured connection pooling, transaction/statement timeouts, role limits, saturation admission, and pool health. (FR-017, FR-024, FR-073)
-- [ ] B044 Inventory all tenant-owned tables and add or repair forced-RLS policies with application, worker, migration, and break-glass roles. (FR-019, FR-033)
-- [ ] B045 Prove two-tenant and hostile-context isolation through real disposable PostgreSQL across APIs, repositories, jobs, exports, search, media, audit, cache keys, and telemetry. (FR-019, FR-065)
-- [ ] B046 Add migration metadata for expand, migrate, contract, compatibility window, expected lock, runtime, rollback, and destructive classification. (FR-018, FR-066)
-- [ ] B047 Add mixed-old/new application migration tests and prevent contraction before compatibility and separate destructive approval. (FR-007, FR-018)
-- [ ] B048 Implement encrypted database and object inventory backups with explicit key identity, isolated credentials, checksums, retention, rotation, recovery, and manifests. (FR-020, FR-031, FR-073)
-- [ ] B049 Implement provider-capability detection for PITR and an explicit tested backup fallback when PITR is unavailable. (FR-021, FR-068)
-- [ ] B050 Implement an isolated restore target guard that rejects every live, production, ambiguous, or unowned destination. (FR-022, FR-065)
-- [ ] B051 Reconcile restored relational rows, object manifests, search indexes, configuration, tenant boundaries, and audit chains. (FR-022, FR-024)
-- [ ] B052 Implement retention, archive, legal hold, anonymization, export, and erasure state machines with idempotent audit. (FR-023, FR-034)
-- [ ] B053 Add backup age, integrity, capacity, slow query, missing index, migration, PITR, restore, and reconciliation signals to operations. (FR-010, FR-024)
-- [ ] B054 Prove corrupt, incomplete, stale, wrong-key, cross-tenant, interrupted, and malicious restore inputs fail closed. (FR-020, FR-022, FR-065, FR-066)
-- [ ] B055 Run repeated database migration, RLS, backup, restore, and recovery suites and close all blocking findings. (FR-018, FR-019, FR-020, FR-022, FR-063, FR-066)
+- [x] B042 Write tests first for pooling, pressure, mixed versions, RLS, backup, PITR capability, isolated restore, retention, and reconciliation. (FR-017 through FR-024, FR-066)
+- [x] B043 Add verified encrypted database transport/storage configuration, measured connection pooling, transaction/statement timeouts, role limits, saturation admission, and pool health. (FR-017, FR-024, FR-073)
+- [x] B044 Inventory all tenant-owned tables and add or repair forced-RLS policies with application, worker, migration, and break-glass roles. (FR-019, FR-033)
+- [x] B045 Prove two-tenant and hostile-context isolation through real disposable PostgreSQL across APIs, repositories, jobs, exports, search, media, audit, cache keys, and telemetry. (FR-019, FR-065)
+- [x] B046 Add migration metadata for expand, migrate, contract, compatibility window, expected lock, runtime, rollback, and destructive classification. (FR-018, FR-066)
+- [x] B047 Add mixed-old/new application migration tests and prevent contraction before compatibility and separate destructive approval. (FR-007, FR-018)
+- [x] B048 Implement encrypted database and object inventory backups with explicit key identity, isolated credentials, checksums, retention, rotation, recovery, and manifests. (FR-020, FR-031, FR-073)
+- [x] B049 Implement provider-capability detection for PITR and an explicit tested backup fallback when PITR is unavailable. (FR-021, FR-068)
+- [x] B050 Implement an isolated restore target guard that rejects every live, production, ambiguous, or unowned destination. (FR-022, FR-065)
+- [x] B051 Reconcile restored relational rows, object manifests, search indexes, configuration, tenant boundaries, and audit chains. (FR-022, FR-024)
+- [x] B052 Implement retention, archive, legal hold, anonymization, export, and erasure state machines with idempotent audit. (FR-023, FR-034)
+- [x] B053 Add backup age, integrity, capacity, slow query, missing index, migration, PITR, restore, and reconciliation signals to operations. (FR-010, FR-024)
+- [x] B054 Prove corrupt, incomplete, stale, wrong-key, cross-tenant, interrupted, and malicious restore inputs fail closed. (FR-020, FR-022, FR-065, FR-066)
+- [x] B055 Run repeated database migration, RLS, backup, restore, and recovery suites and close all blocking findings. (FR-018, FR-019, FR-020, FR-022, FR-063, FR-066)
 
 ## Phase 4 — Edge, domains, certificates, CDN, and private surfaces
 

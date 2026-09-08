@@ -70,7 +70,7 @@ def install(apps, schema_editor):
             )
             cursor.execute(
                 f'CREATE POLICY "{table}_update" ON "{table}" FOR UPDATE '
-                f'USING ({tenant}) WITH CHECK ({tenant})'
+                f"USING ({tenant}) WITH CHECK ({tenant})"
             )
             cursor.execute(
                 f'CREATE POLICY "{table}_delete" ON "{table}" FOR DELETE USING ({tenant})'
@@ -102,9 +102,15 @@ def uninstall(apps, schema_editor):
             'DROP CONSTRAINT "tenant_quota_reservation_scope_fk"'
         )
         cursor.execute(
-            'ALTER TABLE "sitecontent_tenantquota" '
-            'DROP CONSTRAINT "tenant_quota_site_id_id_uq"'
+            'ALTER TABLE "sitecontent_tenantquota" ' 'DROP CONSTRAINT "tenant_quota_site_id_id_uq"'
         )
+        tenant = "site_id = current_setting('app.tenant_id', true)"
+        for table in OPERATIONS_TABLES:
+            cursor.execute(f'DROP POLICY IF EXISTS "{table}_select" ON "{table}"')
+            cursor.execute(
+                f"""CREATE POLICY "{table}_select" ON "{table}" FOR SELECT
+                    USING ({tenant} OR current_user = '{worker}')"""
+            )
 
 
 class Migration(migrations.Migration):

@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "currentSchema": 21,
+  "minimumCompatibleSchema": 17,
+  "migrations": [
+    {
+      "migrationId": "production_operations_center",
+      "fromSchema": 17,
+      "toSchema": 18,
+      "phase": "expand",
+      "compatibleFrom": 17,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "operations_center_rls",
+      "fromSchema": 18,
+      "toSchema": 19,
+      "phase": "migrate",
+      "compatibleFrom": 18,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "tenant_quota_persistence",
+      "fromSchema": 19,
+      "toSchema": 20,
+      "phase": "expand",
+      "compatibleFrom": 19,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "quota_rls_and_operations_worker_scope",
+      "fromSchema": 20,
+      "toSchema": 21,
+      "phase": "migrate",
+      "compatibleFrom": 20,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    }
+  ]
+}

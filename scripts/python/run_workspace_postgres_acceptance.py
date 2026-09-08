@@ -108,6 +108,68 @@ def main() -> None:
             ],
             stdout=subprocess.DEVNULL,
         )
+        django_migration = common + [
+            "--read-only",
+            "--tmpfs",
+            "/tmp:rw,noexec,nosuid,size=64m",
+            "-v",
+            f"{root}:/workspace:ro",
+            "-w",
+            "/workspace/django",
+            "-e",
+            "PYTHONPATH=/workspace/django",
+            "-e",
+            "DJANGO_SETTINGS_MODULE=project.settings.base",
+            "-e",
+            "DB_HOST=127.0.0.1",
+            "-e",
+            "DB_PORT=5432",
+            "-e",
+            "DB_NAME=base2",
+            "-e",
+            "DB_USER=base2",
+            "-e",
+            f"DB_PASSWORD={owner_password}",
+            "-e",
+            "WORKSPACE_DB_USER=base2_workspace_runtime",
+            "-e",
+            "WORKSPACE_WORKER_DB_USER=base2_workspace_worker",
+            "--entrypoint",
+            "python",
+            django_image,
+            "manage.py",
+            "migrate",
+            "sitecontent",
+        ]
+        mixed_check = common + [
+            "--read-only",
+            "--tmpfs",
+            "/tmp:rw,noexec,nosuid,size=64m",
+            "-v",
+            f"{root}:/workspace:ro",
+            "-w",
+            "/workspace",
+            "-e",
+            "PYTHONPATH=/workspace",
+            "-e",
+            "DB_HOST=127.0.0.1",
+            "-e",
+            "DB_PORT=5432",
+            "-e",
+            "DB_NAME=base2",
+            "-e",
+            "DB_USER=base2",
+            "-e",
+            f"DB_PASSWORD={owner_password}",
+            "--entrypoint",
+            "python",
+            api_image,
+            "scripts/python/run_mixed_version_postgres_checks.py",
+        ]
+        run(django_migration + ["0019", "--noinput"], stdout=subprocess.DEVNULL)
+        run(mixed_check + ["old"])
+        run(django_migration + ["0021", "--noinput"], stdout=subprocess.DEVNULL)
+        run(mixed_check + ["new"])
         run(
             common
             + [

@@ -2,6 +2,8 @@ import os
 from contextlib import contextmanager, suppress
 import threading
 import re
+import math
+from urllib.parse import quote
 
 from psycopg2.pool import ThreadedConnectionPool
 from psycopg2.extensions import connection as PsycopgConnection
@@ -14,6 +16,34 @@ _pool: ThreadedConnectionPool | None = None
 _workspace_pool: ThreadedConnectionPool | None = None
 _workspace_worker_pool: ThreadedConnectionPool | None = None
 _pool_lock = threading.Lock()
+_checkout_lock = threading.Lock()
+
+
+def _admitted_connection(pool: ThreadedConnectionPool) -> PsycopgConnection:
+    maximum = int(getattr(pool, 'maxconn', settings.DB_POOL_MAX))
+    admitted = max(1, math.floor(maximum * settings.DB_POOL_SATURATION_PERCENT / 100))
+    with _checkout_lock:
+        used = len(getattr(pool, '_used', {}))
+        if used >= admitted:
+            raise RuntimeError('database_pool_saturated')
+        return pool.getconn()
+
+
+def pool_snapshot() -> dict[str, dict[str, int | str]]:
+    result = {}
+    for name, pool in (
+        ('owner', _pool), ('workspace', _workspace_pool), ('worker', _workspace_worker_pool)
+    ):
+        maximum = int(getattr(pool, 'maxconn', settings.DB_POOL_MAX)) if pool else settings.DB_POOL_MAX
+        used = len(getattr(pool, '_used', {})) if pool else 0
+        percent = round(used * 100 / max(maximum, 1))
+        result[name] = {
+            'used': used,
+            'maximum': maximum,
+            'utilizationPercent': percent,
+            'state': 'saturated' if percent >= settings.DB_POOL_SATURATION_PERCENT else 'ready',
+        }
+    return result
 
 
 def _project_slug() -> str:
@@ -35,7 +65,17 @@ def _build_dsn() -> str:
     password = os.getenv('DB_PASSWORD')
     if not all([name, user, password]):
         raise RuntimeError('Missing DB_NAME/DB_USER/DB_PASSWORD')
-    return f'postgresql://{user}:{password}@{host}:{port}/{name}'
+    dsn = f'postgresql://{quote(user, safe="")}:{quote(password, safe="")}@{host}:{port}/{name}'
+    return _with_tls(dsn)
+
+
+def _with_tls(dsn: str) -> str:
+    if settings.DB_SSLMODE == 'disable':
+        return dsn
+    query = f'sslmode={quote(settings.DB_SSLMODE, safe="-")}'
+    if settings.DB_SSLROOTCERT:
+        query += f'&sslrootcert={quote(settings.DB_SSLROOTCERT, safe="/")}'
+    return f'{dsn}{"&" if "?" in dsn else "?"}{query}'
 
 
 def _build_workspace_dsn() -> str:
@@ -46,7 +86,9 @@ def _build_workspace_dsn() -> str:
     password = os.getenv('WORKSPACE_DB_PASSWORD')
     if not all([name, user, password]):
         raise RuntimeError('Missing WORKSPACE_DB_USER/WORKSPACE_DB_PASSWORD')
-    return f'postgresql://{user}:{password}@{host}:{port}/{name}'
+    return _with_tls(
+        f'postgresql://{quote(user, safe="")}:{quote(password, safe="")}@{host}:{port}/{name}'
+    )
 
 
 def _build_workspace_worker_dsn() -> str:
@@ -57,7 +99,9 @@ def _build_workspace_worker_dsn() -> str:
     password = os.getenv('WORKSPACE_WORKER_DB_PASSWORD')
     if not all([name, user, password]):
         raise RuntimeError('Missing WORKSPACE_WORKER_DB_USER/WORKSPACE_WORKER_DB_PASSWORD')
-    return f'postgresql://{user}:{password}@{host}:{port}/{name}'
+    return _with_tls(
+        f'postgresql://{quote(user, safe="")}:{quote(password, safe="")}@{host}:{port}/{name}'
+    )
 
 
 def _get_pool() -> ThreadedConnectionPool:
@@ -69,7 +113,10 @@ def _get_pool() -> ThreadedConnectionPool:
             return _pool
 
         dsn = _build_dsn()
-        options = f'-c statement_timeout={settings.DB_STATEMENT_TIMEOUT_MS}'
+        options = (
+            f'-c statement_timeout={settings.DB_STATEMENT_TIMEOUT_MS} '
+            f'-c idle_in_transaction_session_timeout={settings.DB_TRANSACTION_TIMEOUT_MS}'
+        )
         _pool = ThreadedConnectionPool(
             minconn=settings.DB_POOL_MIN,
             maxconn=settings.DB_POOL_MAX,
@@ -87,7 +134,10 @@ def _get_workspace_pool() -> ThreadedConnectionPool:
         return _workspace_pool
     with _pool_lock:
         if _workspace_pool is None:
-            options = f'-c statement_timeout={settings.DB_STATEMENT_TIMEOUT_MS}'
+            options = (
+                f'-c statement_timeout={settings.DB_STATEMENT_TIMEOUT_MS} '
+                f'-c idle_in_transaction_session_timeout={settings.DB_TRANSACTION_TIMEOUT_MS}'
+            )
             _workspace_pool = ThreadedConnectionPool(
                 minconn=settings.DB_POOL_MIN,
                 maxconn=settings.DB_POOL_MAX,
@@ -105,7 +155,10 @@ def _get_workspace_worker_pool() -> ThreadedConnectionPool:
         return _workspace_worker_pool
     with _pool_lock:
         if _workspace_worker_pool is None:
-            options = f'-c statement_timeout={settings.DB_STATEMENT_TIMEOUT_MS}'
+            options = (
+                f'-c statement_timeout={settings.DB_STATEMENT_TIMEOUT_MS} '
+                f'-c idle_in_transaction_session_timeout={settings.DB_TRANSACTION_TIMEOUT_MS}'
+            )
             _workspace_worker_pool = ThreadedConnectionPool(
                 minconn=settings.DB_POOL_MIN,
                 maxconn=settings.DB_POOL_MAX,
@@ -120,7 +173,7 @@ def _get_conn() -> PsycopgConnection:
     pool = _get_pool()
     # Try a few times in case the pool contains closed connections from a prior bug.
     for _ in range(3):
-        conn = pool.getconn()
+        conn = _admitted_connection(pool)
         try:
             if getattr(conn, 'closed', 0):
                 with suppress(Exception):
@@ -135,7 +188,7 @@ def _get_conn() -> PsycopgConnection:
     # As a fallback, reset the pool and get a fresh connection.
     close_pool()
     pool = _get_pool()
-    return pool.getconn()
+    return _admitted_connection(pool)
 
 
 def _bind_tenant(conn: PsycopgConnection, tenant_id: str) -> None:
@@ -173,11 +226,11 @@ def db_conn(*, tenant_id: str | None = None):
 def workspace_db_conn(*, tenant_id: str):
     """Use the non-owner, RLS-enforced role for workspace repository access."""
     pool = _get_workspace_pool()
-    conn = pool.getconn()
+    conn = _admitted_connection(pool)
     try:
         if getattr(conn, 'closed', 0):
             pool.putconn(conn, close=True)
-            conn = pool.getconn()
+            conn = _admitted_connection(pool)
         _bind_tenant(conn, tenant_id)
         yield conn
     finally:
@@ -190,11 +243,11 @@ def workspace_db_conn(*, tenant_id: str):
 def workspace_worker_db_conn(*, tenant_id: str | None = None):
     """Use the worker-only role; global discovery never shares API credentials."""
     pool = _get_workspace_worker_pool()
-    conn = pool.getconn()
+    conn = _admitted_connection(pool)
     try:
         if getattr(conn, 'closed', 0):
             pool.putconn(conn, close=True)
-            conn = pool.getconn()
+            conn = _admitted_connection(pool)
         if tenant_id is not None:
             _bind_tenant(conn, tenant_id)
         yield conn
