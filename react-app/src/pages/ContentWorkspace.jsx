@@ -273,7 +273,11 @@ export default function ContentWorkspace() {
     );
 
   return (
-    <AppShell headerTitle="Content workspace" sidebarItems={TABS}>
+    <AppShell
+      headerTitle="Content workspace"
+      sidebarItems={TABS}
+      sidebarActivePath={`${location.pathname}${location.hash}`}
+    >
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-8">
         <Navigation />
         <header className="space-y-2">

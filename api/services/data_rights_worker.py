@@ -9,34 +9,6 @@ from api.security.secret_box import SecretBox
 from api.services.data_rights import receipt_digest, validate_correction
 from api.settings import settings
 
-SUBJECT_DATA_INVENTORY_VERSION = 1
-SUBJECT_DATA_INVENTORY = (
-    ('sitecontent_contentrevision', 'actor_ref', 'pseudonymize'),
-    ('sitecontent_savedview', 'owner_ref', 'delete'),
-    ('sitecontent_importjob', 'requester_ref', 'pseudonymize'),
-    ('sitecontent_exportjob', 'requester_ref', 'pseudonymize'),
-    ('sitecontent_workspaceauditevent', 'actor_ref', 'pseudonymize'),
-    ('sitecontent_mediaasset', 'owner_ref', 'media_delete'),
-    ('sitecontent_mediauploadsession', 'actor_ref', 'pseudonymize'),
-    ('sitecontent_mediametadatarevision', 'actor_ref', 'pseudonymize'),
-    ('sitecontent_mediacollection', 'owner_ref', 'pseudonymize'),
-    ('sitecontent_mediaretentionhold', 'owner_ref', 'pseudonymize'),
-    ('sitecontent_mediadeliverygrant', 'audience_ref', 'pseudonymize'),
-    ('sitecontent_mediaauditevent', 'actor_ref', 'pseudonymize'),
-    ('sitecontent_mediaauditevent', 'subject_ref', 'pseudonymize'),
-    ('sitecontent_mediaabusecase', 'reporter_ref', 'pseudonymize'),
-    ('sitecontent_mediaabusecase', 'reviewer_ref', 'pseudonymize'),
-    ('sitecontent_mediaabusecase', 'appellant_ref', 'pseudonymize'),
-    ('sitecontent_operationsincident', 'owner_ref', 'pseudonymize'),
-    ('sitecontent_operationsincidentevent', 'actor_ref', 'pseudonymize'),
-    ('sitecontent_tenantlifecyclestate', 'owner_ref', 'pseudonymize'),
-    ('sitecontent_tenantlifecycleevent', 'actor_ref', 'pseudonymize'),
-    ('sitecontent_tenantlifecycleevent', 'target_owner_ref', 'pseudonymize'),
-    ('sitecontent_durablejob', 'owner_ref', 'pseudonymize'),
-    ('sitecontent_breakglassgrant', 'requester_ref', 'pseudonymize'),
-    ('sitecontent_breakglassgrant', 'approver_ref', 'pseudonymize'),
-    ('sitecontent_tenantnotification', 'owner_ref', 'pseudonymize'),
-)
 PRIVATE_EXPORT_KEYS = {
     'password_hash', 'secret_hash', 'secret_ciphertext', 'token_hash', 'code_hash',
     'request_ciphertext', 'result_ciphertext', 'claim_token', 'storage_key',
@@ -201,32 +173,24 @@ def _workspace_projection(cur, *, tenant_id: str, user_id: UUID) -> dict:
         )
         for definition_id, field_key in cur.fetchall() or []:
             readable.setdefault(str(definition_id), set()).add(field_key)
-    subject_surfaces = []
-    for table, column, treatment in SUBJECT_DATA_INVENTORY:
-        if table == 'sitecontent_contentrevision':
-            cur.execute(
-                f"""SELECT to_jsonb(revision) FROM {table} revision
-                    JOIN sitecontent_contentrecord content ON content.id=revision.content_id
-                    WHERE content.site_id=%s AND revision.{column}=%s
-                    ORDER BY revision.id LIMIT 1001""",
-                (tenant_id, actor_ref),
-            )
-        else:
-            cur.execute(
-                f'SELECT to_jsonb(subject_row) FROM {table} subject_row WHERE site_id=%s AND {column}=%s ORDER BY id LIMIT 1001',
-                (tenant_id, actor_ref),
-            )
-        raw_rows = [item[0] for item in (cur.fetchall() or [])]
-        if len(raw_rows) > 1000:
+    cur.execute('SELECT * FROM base2_export_data_rights_subject_surfaces()', ())
+    grouped: dict[tuple[str, str, str], list[dict]] = {}
+    for table, column, treatment, raw_row in cur.fetchall() or []:
+        key = (table, column, treatment)
+        rows_for_surface = grouped.setdefault(key, [])
+        if raw_row is None:
+            continue
+        if len(rows_for_surface) >= 1000:
             raise RuntimeError('workspace_subject_inventory_too_large')
-        safe_rows = [_privacy_safe_row(item) for item in raw_rows]
-        subject_surfaces.append(
-            {'table': table, 'column': column, 'treatment': treatment,
-             'ids': [str(item.get('id', '')) for item in safe_rows], 'rows': safe_rows}
-        )
+        rows_for_surface.append(_privacy_safe_row(raw_row))
+    subject_surfaces = [
+        {'table': table, 'column': column, 'treatment': treatment,
+         'ids': [str(item.get('id', '')) for item in rows], 'rows': rows}
+        for (table, column, treatment), rows in sorted(grouped.items())
+    ]
     return {
         'schema_version': 3,
-        'subject_inventory_version': SUBJECT_DATA_INVENTORY_VERSION,
+        'subject_inventory_version': 1,
         'records': [
             {
                 'id': str(row[0]),
@@ -285,8 +249,10 @@ def _deactivate_account(*, operation_id: UUID, claim_token: UUID) -> dict:
     return {'schema_version': 3, **result}
 
 
-def process_operation(operation_id: UUID) -> str:
-    operation = repository.claim_operation(operation_id=operation_id)
+def process_operation(operation_id: UUID, dispatch_token: UUID) -> str:
+    operation = repository.claim_operation(
+        operation_id=operation_id, dispatch_token=dispatch_token
+    )
     if operation is None:
         return 'noop'
     try:
@@ -326,6 +292,20 @@ def process_operation(operation_id: UUID) -> str:
                     raise ValueError('deactivation_confirmation_invalid')
                 result = _deactivate_account(
                     operation_id=operation['id'], claim_token=operation['claim_token']
+                )
+            elif operation['kind'] == 'global_deletion':
+                if request_payload.get('confirmation') != 'DELETE GLOBAL ACCOUNT':
+                    raise ValueError('global_deletion_confirmation_invalid')
+                result = repository.apply_subject_action(
+                    operation_id=operation['id'], claim_token=operation['claim_token'],
+                    action='global_deletion'
+                )
+            elif operation['kind'] == 'global_deactivation':
+                if request_payload.get('confirmation') != 'DEACTIVATE GLOBAL ACCOUNT':
+                    raise ValueError('global_deactivation_confirmation_invalid')
+                result = repository.apply_subject_action(
+                    operation_id=operation['id'], claim_token=operation['claim_token'],
+                    action='global_deactivation'
                 )
             else:
                 raise ValueError('operation_kind_invalid')

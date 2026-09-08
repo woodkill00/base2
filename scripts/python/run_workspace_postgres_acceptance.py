@@ -21,6 +21,7 @@ def main() -> None:
     root = Path(__file__).resolve().parents[2]
     name = f"base2-workspace-postgres-{os.getpid()}"
     owner_password = secrets.token_urlsafe(32)
+    api_runtime_password = secrets.token_urlsafe(32)
     runtime_password = secrets.token_urlsafe(32)
     worker_password = secrets.token_urlsafe(32)
     runtime_worker_password = secrets.token_urlsafe(32)
@@ -98,6 +99,10 @@ def main() -> None:
                 "-e",
                 "POSTGRES_DB=base2",
                 "-e",
+                "API_RUNTIME_DB_USER=base2_api_runtime",
+                "-e",
+                f"API_RUNTIME_DB_PASSWORD={api_runtime_password}",
+                "-e",
                 "WORKSPACE_DB_USER=base2_workspace_runtime",
                 "-e",
                 f"WORKSPACE_DB_PASSWORD={runtime_password}",
@@ -147,6 +152,8 @@ def main() -> None:
             f"DB_PASSWORD={owner_password}",
             "-e",
             "WORKSPACE_DB_USER=base2_workspace_runtime",
+            "-e",
+            "API_RUNTIME_DB_USER=base2_api_runtime",
             "-e",
             "WORKSPACE_WORKER_DB_USER=base2_workspace_worker",
             "-e",
@@ -218,6 +225,8 @@ def main() -> None:
                 "-e",
                 "WORKSPACE_DB_USER=base2_workspace_runtime",
                 "-e",
+                "API_RUNTIME_DB_USER=base2_api_runtime",
+                "-e",
                 "WORKSPACE_WORKER_DB_USER=base2_workspace_worker",
                 "-e",
                 "RUNTIME_WORKER_DB_USER=base2_runtime_worker",
@@ -260,6 +269,10 @@ def main() -> None:
                 "WORKSPACE_DB_USER=base2_workspace_runtime",
                 "-e",
                 f"WORKSPACE_DB_PASSWORD={runtime_password}",
+                "-e",
+                "API_RUNTIME_DB_USER=base2_api_runtime",
+                "-e",
+                f"API_RUNTIME_DB_PASSWORD={api_runtime_password}",
                 "-e",
                 "WORKSPACE_WORKER_DB_USER=base2_workspace_worker",
                 "-e",
@@ -307,6 +320,8 @@ def main() -> None:
             "-e",
             "WORKSPACE_DB_USER=base2_workspace_runtime",
             "-e",
+            "API_RUNTIME_DB_USER=base2_api_runtime",
+            "-e",
             "WORKSPACE_WORKER_DB_USER=base2_workspace_worker",
             "-e",
             "RUNTIME_WORKER_DB_USER=base2_runtime_worker",
@@ -343,6 +358,8 @@ def main() -> None:
             f"DB_PASSWORD={owner_password}",
             "-e",
             "WORKSPACE_DB_USER=base2_workspace_runtime",
+            "-e",
+            "API_RUNTIME_DB_USER=base2_api_runtime",
             "-e",
             "WORKSPACE_WORKER_DB_USER=base2_workspace_worker",
             "-e",
@@ -384,6 +401,10 @@ def main() -> None:
             "WORKSPACE_DB_USER=base2_workspace_runtime",
             "-e",
             f"WORKSPACE_DB_PASSWORD={runtime_password}",
+            "-e",
+            "API_RUNTIME_DB_USER=base2_api_runtime",
+            "-e",
+            f"API_RUNTIME_DB_PASSWORD={api_runtime_password}",
             "-e",
             "WORKSPACE_WORKER_DB_USER=base2_workspace_worker",
             "-e",

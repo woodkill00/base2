@@ -781,3 +781,48 @@ menu capture now permits at most two changed pixels, materially tighter than the
 existing 20-pixel utility-menu bound, while every functional and geometric check
 remains exact. A materially shifted or restyled menu still fails. Both clean
 exact-head gates restart after this test-contract correction.
+
+## Analysis cycle 29 — independent review rejects the twice-green head
+
+Exact commit `2e889434ca416418f4c86baef7e6275d090e2a25` passed all 107
+complete-gate checks twice, 66 privacy/tenant/runtime isolation tests ten times,
+and 61 backup/expiry/capacity/deployment tests ten times. Fresh independent
+review nevertheless rejected release readiness with one critical, five
+deduplicated high, and five medium findings. Automated success is therefore
+historical evidence only and cannot authorize publication or deployment.
+
+The critical deployment path copied the complete production environment and a
+fully interpolated Compose model into a recursively collected evidence tree.
+Additional blockers cover disabled SSH host verification, database-owner
+credentials in the public API, successful expiry service exits after provider
+failure, stale Beat evidence, race-prone expiry capacity, global privacy queue
+enumeration, implicit global-account destruction from a tenant-only request, an
+endpoint-only backup fence that cannot detect a true A-to-B-to-A cycle, manually
+duplicated subject inventories, and router/sidebar state divergence. Tasks
+B288-B298 turn every finding into an implementation and negative proof. No
+publication, merge, deployment, provider, DNS, certificate, credential, or
+destructive operation was performed.
+
+## Analysis cycle 30 — integrated least-authority acceptance corrections
+
+The B288-B298 implementation passed its focused deployment, expiry, backup,
+privacy, runtime-heartbeat, and navigation suites. Disposable PostgreSQL then
+found three integration gaps before release: the legacy content role retained a
+historical operation-table grant, expected policy counts still described the old
+dispatcher design, and the API compatibility migration ledger could overwrite
+the expanded global-action constraint on a fresh database. The repair explicitly
+revokes legacy operation-table privileges, updates the fixed policy contract, and
+adds ordered API migration 013 so Django and API schema ownership converge.
+
+The same acceptance now proves that the data-rights worker cannot enumerate the
+queue or read request ciphertext before an exact dispatcher handoff, expired
+claims receive a new bounded dispatch token, tenant deletion preserves the global
+identity and other membership, and separately confirmed global deletion closes
+all memberships and anonymizes/deactivates the account. It also proves the public
+API role is non-owner/non-elevated, cannot create schema objects or read workspace
+tables, and that the registry exactly matches every recognized subject-reference
+column. The production and preview migration commands temporarily inject owner
+credentials only into the bounded migration process; the network-facing API keeps
+its separate least-privilege login. Real forward, reverse, concurrency, media-RLS,
+and A-to-B-to-A generation-fence acceptance is green. Complete gates and fresh
+independent review still must restart on the resulting exact commit.

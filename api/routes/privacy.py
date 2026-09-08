@@ -32,6 +32,10 @@ class DeactivationRequest(BaseModel):
     confirmation: str = Field(min_length=1, max_length=20)
 
 
+class GlobalAccountActionRequest(BaseModel):
+    confirmation: str = Field(min_length=1, max_length=40)
+
+
 def _recent_principal(request: Request):
     principal = require_authenticated_principal(request)
     if not principal.recently_authenticated:
@@ -63,10 +67,11 @@ def _public_operation(operation: dict[str, Any]) -> dict[str, Any]:
 
 
 def _dispatch(operation_id: UUID) -> str:
+    del operation_id
     try:
-        from api.tasks import process_data_rights_operation
+        from api.tasks import replay_data_rights_operations
 
-        process_data_rights_operation.delay(str(operation_id))
+        replay_data_rights_operations.delay(1)
         return 'queued'
     except Exception:
         # The durable queued row is replayed by the bounded periodic scanner.
@@ -144,6 +149,40 @@ async def deactivate_account(request: Request):
         raise HTTPException(status_code=422, detail='deactivation_confirmation_invalid')
     return _enqueue(
         request=request, kind='deactivation', payload={'confirmation': 'DEACTIVATE'}
+    )
+
+
+@router.post('/global-delete', status_code=status.HTTP_202_ACCEPTED)
+async def delete_global_account(request: Request):
+    _recent_principal(request)
+    require_tenant(request)
+    try:
+        payload = GlobalAccountActionRequest.model_validate(await request.json())
+    except (ValidationError, ValueError, json.JSONDecodeError) as exc:
+        raise HTTPException(status_code=422, detail='request_invalid') from exc
+    if payload.confirmation != 'DELETE GLOBAL ACCOUNT':
+        raise HTTPException(status_code=422, detail='global_deletion_confirmation_invalid')
+    return _enqueue(
+        request=request,
+        kind='global_deletion',
+        payload={'confirmation': 'DELETE GLOBAL ACCOUNT', 'scope': 'all_tenants'},
+    )
+
+
+@router.post('/global-deactivate', status_code=status.HTTP_202_ACCEPTED)
+async def deactivate_global_account(request: Request):
+    _recent_principal(request)
+    require_tenant(request)
+    try:
+        payload = GlobalAccountActionRequest.model_validate(await request.json())
+    except (ValidationError, ValueError, json.JSONDecodeError) as exc:
+        raise HTTPException(status_code=422, detail='request_invalid') from exc
+    if payload.confirmation != 'DEACTIVATE GLOBAL ACCOUNT':
+        raise HTTPException(status_code=422, detail='global_deactivation_confirmation_invalid')
+    return _enqueue(
+        request=request,
+        kind='global_deactivation',
+        payload={'confirmation': 'DEACTIVATE GLOBAL ACCOUNT', 'scope': 'all_tenants'},
     )
 
 

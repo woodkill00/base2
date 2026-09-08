@@ -14,7 +14,6 @@ from api.migrations.runner import apply_migrations
 from api.repositories.operations import due_alert_deliveries, record_probe_batch
 from api.repositories.runtime_governance import claim_jobs, enqueue_job, settle_job
 from api.repositories.tenant_quota import QuotaRepositoryError, reserve
-from api.services.data_rights_worker import SUBJECT_DATA_INVENTORY
 from api.services.email_service import create_outbox_email
 from scripts.python.production_backup import _repeatable_read_snapshot
 
@@ -187,6 +186,8 @@ def main() -> None:
     owner_password = os.environ["DB_PASSWORD"]
     runtime_user = os.environ["WORKSPACE_DB_USER"]
     runtime_password = os.environ["WORKSPACE_DB_PASSWORD"]
+    api_runtime_user = os.environ["API_RUNTIME_DB_USER"]
+    api_runtime_password = os.environ["API_RUNTIME_DB_PASSWORD"]
     content_worker_user = os.environ["WORKSPACE_WORKER_DB_USER"]
     content_worker_password = os.environ["WORKSPACE_WORKER_DB_PASSWORD"]
     worker_user = os.environ["RUNTIME_WORKER_DB_USER"]
@@ -196,6 +197,7 @@ def main() -> None:
     data_rights_user = os.environ["DATA_RIGHTS_WORKER_DB_USER"]
     data_rights_password = os.environ["DATA_RIGHTS_WORKER_DB_PASSWORD"]
     owner = connect(owner_user, owner_password)
+    api_runtime = connect(api_runtime_user, api_runtime_password)
     runtime = connect(runtime_user, runtime_password)
     content_worker = connect(content_worker_user, content_worker_password)
     worker = connect(worker_user, worker_password)
@@ -334,6 +336,11 @@ def main() -> None:
             )
             assert cursor.fetchone() == (False, False)
             cursor.execute(
+                "SELECT rolbypassrls,rolsuper,rolcreatedb,rolcreaterole "
+                "FROM pg_roles WHERE rolname=%s", (api_runtime_user,)
+            )
+            assert cursor.fetchone() == (False, False, False, False)
+            cursor.execute(
                 "SELECT rolbypassrls, rolsuper FROM pg_roles WHERE rolname=%s",
                 (data_rights_user,),
             )
@@ -407,7 +414,7 @@ def main() -> None:
                    ORDER BY policyname"""
             )
             operation_policies = cursor.fetchall()
-            assert len(operation_policies) == 3, operation_policies
+            assert len(operation_policies) == 2, operation_policies
             cursor.execute(
                 """SELECT COUNT(*) FROM pg_class WHERE relname IN (
                        'sitecontent_tenantdomainclaim','sitecontent_durablejob',
@@ -476,6 +483,20 @@ def main() -> None:
 
         assert count(runtime, None) == 0
         runtime.rollback()
+        assert auth_user_count(api_runtime) == 3
+        api_runtime.rollback()
+        assert_permission_denied(
+            lambda: count(api_runtime, "site-a"),
+            api_runtime,
+            "api_runtime_workspace_table_access_was_not_blocked",
+        )
+        with api_runtime.cursor() as cursor:
+            try:
+                cursor.execute("CREATE TABLE api_runtime_forbidden(id integer)")
+            except errors.InsufficientPrivilege:
+                api_runtime.rollback()
+            else:
+                raise AssertionError("api_runtime_schema_create_was_not_blocked")
         assert operations_count(runtime, None) == 0
         runtime.rollback()
         # Runtime workers have only operations/job authority. Content workers
@@ -498,6 +519,15 @@ def main() -> None:
             content_worker,
             "content_worker_identity_read_was_not_blocked",
         )
+        assert_permission_denied(
+            lambda: data_rights_count(data_rights_worker),
+            data_rights_worker,
+            "data_rights_operation_enumeration_was_not_blocked",
+        )
+        with worker.cursor() as cursor:
+            cursor.execute("SELECT * FROM base2_list_due_data_rights_operations(25)")
+            dispatches = {str(row[0]): str(row[1]) for row in cursor.fetchall()}
+        worker.commit()
         with data_rights_worker.cursor() as cursor:
             cursor.execute("SELECT set_config('app.tenant_id', 'site-a', true)")
             cursor.execute("SELECT current_user,current_setting('app.tenant_id', true)")
@@ -513,13 +543,10 @@ def main() -> None:
             operation_id = str(UUID(int=52))
             stale_claim = str(UUID(int=55))
             current_claim = str(UUID(int=56))
+            assert operation_id in dispatches
             cursor.execute(
-                "SELECT id FROM base2_list_due_data_rights_operations(25)"
-            )
-            assert operation_id in {str(row[0]) for row in cursor.fetchall()}
-            cursor.execute(
-                "SELECT * FROM base2_claim_data_rights_operation(%s,%s)",
-                (operation_id, stale_claim),
+                "SELECT * FROM base2_claim_data_rights_operation(%s,%s,%s)",
+                (operation_id, dispatches[operation_id], stale_claim),
             )
             assert cursor.fetchone()[-1] == stale_claim
             cursor.execute(
@@ -539,38 +566,33 @@ def main() -> None:
             assert cursor.fetchone() is None, "data_rights_cross_tenant_user_read_was_not_blocked"
             cursor.execute("SELECT email FROM api_auth_users WHERE id=%s", (str(UUID(int=57)),))
             assert cursor.fetchone() is None, "data_rights_same_tenant_other_subject_read_was_not_blocked"
-            assert_permission_denied(
-                lambda: cursor.execute(
+            cursor.execute("SAVEPOINT direct_write_denial")
+            try:
+                cursor.execute(
                     "UPDATE api_auth_users SET display_name='blocked' WHERE id=%s",
                     (str(UUID(int=50)),),
-                ),
-                data_rights_worker,
-                "data_rights_direct_subject_update_was_not_blocked",
-            )
-            cursor.execute(
-                "SELECT set_config('app.tenant_id', 'site-a', true),"
-                "set_config('app.data_rights_operation_id', %s, true),"
-                "set_config('app.data_rights_claim_token', %s, true)",
-                (operation_id, stale_claim),
-            )
-            assert_permission_denied(
-                lambda: cursor.execute(
+                )
+            except errors.InsufficientPrivilege:
+                cursor.execute("ROLLBACK TO SAVEPOINT direct_write_denial")
+            else:
+                raise AssertionError("data_rights_direct_subject_update_was_not_blocked")
+            cursor.execute("RELEASE SAVEPOINT direct_write_denial")
+            cursor.execute("SAVEPOINT direct_delete_denial")
+            try:
+                cursor.execute(
                     "DELETE FROM api_identity_memberships WHERE organization_id=%s AND user_id=%s",
                     (str(UUID(int=51)), str(UUID(int=50))),
-                ),
-                data_rights_worker,
-                "data_rights_direct_subject_delete_was_not_blocked",
-            )
-            cursor.execute(
-                "SELECT set_config('app.tenant_id', 'site-a', true),"
-                "set_config('app.data_rights_operation_id', %s, true),"
-                "set_config('app.data_rights_claim_token', %s, true)",
-                (operation_id, stale_claim),
-            )
+                )
+            except errors.InsufficientPrivilege:
+                cursor.execute("ROLLBACK TO SAVEPOINT direct_delete_denial")
+            else:
+                raise AssertionError("data_rights_direct_subject_delete_was_not_blocked")
+            cursor.execute("RELEASE SAVEPOINT direct_delete_denial")
             cursor.execute("SELECT set_config('app.tenant_id', 'site-b', true)")
             cursor.execute("SELECT tenant_id FROM api_identity_organizations")
             assert cursor.fetchall() == [], "claim_tenant_switch_was_not_blocked"
             cursor.execute("SELECT set_config('app.tenant_id', 'site-a', true)")
+            data_rights_worker.commit()
             with owner.cursor() as owner_cursor:
                 owner_cursor.execute(
                     "UPDATE api_data_rights_operations SET claim_expires_at=NOW()-INTERVAL '1 second' "
@@ -578,6 +600,12 @@ def main() -> None:
                     (operation_id, stale_claim),
                 )
             owner.commit()
+            cursor.execute(
+                "SELECT set_config('app.tenant_id', 'site-a', true),"
+                "set_config('app.data_rights_operation_id', %s, true),"
+                "set_config('app.data_rights_claim_token', %s, true)",
+                (operation_id, stale_claim),
+            )
             cursor.execute("SELECT email FROM api_auth_users WHERE id=%s", (str(UUID(int=50)),))
             assert cursor.fetchone() is None, "expired_claim_subject_read_was_not_blocked"
             cursor.execute(
@@ -586,9 +614,15 @@ def main() -> None:
                 (operation_id, stale_claim),
             )
             assert cursor.fetchone() == (False,), "expired_claim_finalize_was_not_blocked"
+            with worker.cursor() as dispatch_cursor:
+                dispatch_cursor.execute("SELECT * FROM base2_list_due_data_rights_operations(25)")
+                refreshed_dispatches = {
+                    str(row[0]): str(row[1]) for row in dispatch_cursor.fetchall()
+                }
+            worker.commit()
             cursor.execute(
-                "SELECT * FROM base2_claim_data_rights_operation(%s,%s)",
-                (operation_id, current_claim),
+                "SELECT * FROM base2_claim_data_rights_operation(%s,%s,%s)",
+                (operation_id, refreshed_dispatches[operation_id], current_claim),
             )
             assert cursor.fetchone()[-1] == current_claim
             cursor.execute(
@@ -609,8 +643,8 @@ def main() -> None:
         deletion_claim = str(UUID(int=59))
         with data_rights_worker.cursor() as cursor:
             cursor.execute(
-                "SELECT * FROM base2_claim_data_rights_operation(%s,%s)",
-                (deletion_id, deletion_claim),
+                "SELECT * FROM base2_claim_data_rights_operation(%s,%s,%s)",
+                (deletion_id, dispatches[deletion_id], deletion_claim),
             )
             assert cursor.fetchone()[-1] == deletion_claim
             cursor.execute(
@@ -630,14 +664,71 @@ def main() -> None:
             )
             assert cursor.fetchall() == [(str(UUID(int=54)),)]
         owner.rollback()
+        global_deletion_id = str(UUID(int=60))
+        global_deletion_claim = str(UUID(int=61))
+        with owner, owner.cursor() as cursor:
+            cursor.execute(
+                "INSERT INTO api_data_rights_operations "
+                "(id,tenant_id,user_id,kind,status,request_ciphertext,retention_until) "
+                "VALUES (%s,'site-a',%s,'global_deletion','queued','ciphertext',"
+                "NOW()+INTERVAL '1 day')",
+                (global_deletion_id, str(UUID(int=50))),
+            )
+        with worker.cursor() as cursor:
+            cursor.execute("SELECT * FROM base2_list_due_data_rights_operations(25)")
+            global_dispatches = {str(row[0]): str(row[1]) for row in cursor.fetchall()}
+        worker.commit()
+        with data_rights_worker.cursor() as cursor:
+            cursor.execute(
+                "SELECT * FROM base2_claim_data_rights_operation(%s,%s,%s)",
+                (
+                    global_deletion_id,
+                    global_dispatches[global_deletion_id],
+                    global_deletion_claim,
+                ),
+            )
+            assert cursor.fetchone()[-1] == global_deletion_claim
+            cursor.execute(
+                "SELECT base2_apply_data_rights_subject_action(%s,%s,'global_deletion','{}'::jsonb)",
+                (global_deletion_id, global_deletion_claim),
+            )
+            closure = cursor.fetchone()[0]
+            assert closure["global_account_deleted"] is True
+        data_rights_worker.commit()
         with owner.cursor() as cursor:
-            for table, column, _treatment in SUBJECT_DATA_INVENTORY:
-                cursor.execute(
-                    "SELECT EXISTS (SELECT 1 FROM information_schema.columns "
-                    "WHERE table_schema='public' AND table_name=%s AND column_name=%s)",
-                    (table, column),
-                )
-                assert cursor.fetchone() == (True,), f"subject_inventory_drift:{table}.{column}"
+            cursor.execute(
+                "SELECT email,is_active,password_hash FROM api_auth_users WHERE id=%s",
+                (str(UUID(int=50)),),
+            )
+            deleted_user = cursor.fetchone()
+            assert deleted_user[0].endswith('@deleted.invalid')
+            assert deleted_user[1:] == (False, '')
+            cursor.execute(
+                "SELECT 1 FROM api_identity_memberships WHERE user_id=%s", (str(UUID(int=50)),)
+            )
+            assert cursor.fetchone() is None
+            cursor.execute(
+                "DELETE FROM api_data_rights_operations WHERE id=%s", (global_deletion_id,)
+            )
+        owner.commit()
+        with owner.cursor() as cursor:
+            cursor.execute(
+                "SELECT table_name,column_name FROM sitecontent_subjectdataregistry "
+                "ORDER BY table_name,column_name"
+            )
+            registered = set(cursor.fetchall())
+            cursor.execute(
+                "SELECT table_name,column_name FROM information_schema.columns "
+                "WHERE table_schema='public' AND table_name LIKE 'sitecontent\\_%' ESCAPE '\\' "
+                "AND column_name IN ('owner_ref','requester_ref','actor_ref','audience_ref',"
+                "'subject_ref','reporter_ref','reviewer_ref','appellant_ref','approver_ref',"
+                "'target_owner_ref')"
+            )
+            discovered = set(cursor.fetchall())
+            assert registered == discovered, (
+                f"subject_inventory_drift:missing={sorted(discovered-registered)}:"
+                f"stale={sorted(registered-discovered)}"
+            )
         owner.rollback()
         with content_worker.cursor() as cursor:
             cursor.execute("SELECT set_config('app.tenant_id', 'site-a', true)")
@@ -956,19 +1047,34 @@ def main() -> None:
                 {'pgService': 'base2_acceptance', 'pgServiceFile': str(service_file)}
             ) as snapshot:
                 snapshot_before = snapshot['references']
+                generation_before = snapshot['referenceGeneration']
                 updater = connect(owner_user, owner_password)
                 try:
                     with updater.cursor() as cursor:
+                        cursor.execute(
+                            "SELECT source_object_key,source_sha256 FROM sitecontent_importjob WHERE id=%s",
+                            (import_job_id,),
+                        )
+                        original_key, original_digest = cursor.fetchone()
                         cursor.execute(
                             "UPDATE sitecontent_importjob SET source_object_key=%s,source_sha256=%s "
                             "WHERE id=%s",
                             ('media/site-a/concurrent-object', 'c' * 64, import_job_id),
                         )
                     updater.commit()
+                    with updater.cursor() as cursor:
+                        cursor.execute(
+                            "UPDATE sitecontent_importjob SET source_object_key=%s,source_sha256=%s "
+                            "WHERE id=%s",
+                            (original_key, original_digest, import_job_id),
+                        )
+                    updater.commit()
                 finally:
                     updater.close()
-                assert snapshot['afterReferences']() != snapshot_before, (
-                    'backup_independent_live_ledger_fence_missed_concurrent_commit'
+                after_state = snapshot['afterState']()
+                assert after_state['references'] == snapshot_before, 'backup_aba_fixture_not_restored'
+                assert after_state['generation'] > generation_before, (
+                    'backup_generation_fence_missed_real_aba_cycle'
                 )
         finally:
             service_file.unlink(missing_ok=True)
@@ -988,6 +1094,7 @@ def main() -> None:
     else:
         raise AssertionError("same_tenant_composite_uniqueness_not_enforced")
     finally:
+        api_runtime.close()
         runtime.close()
         content_worker.close()
         worker.close()

@@ -385,4 +385,28 @@ describe('GlassSidebar', () => {
     expect(screen.getByRole('link', { name: 'Imports' })).toHaveAttribute('aria-current', 'page');
     window.history.pushState({}, '', originalPath);
   });
+
+  test('controlled router path keeps exactly one workspace destination current', () => {
+    const view = render(
+      <MemoryRouter>
+        <GlassSidebar
+          items={['Records', 'Schemas', 'Imports', 'Exports']}
+          currentPath="/workspace#records"
+        />
+      </MemoryRouter>
+    );
+    expect(screen.getByRole('link', { name: 'Records' })).toHaveAttribute('aria-current', 'page');
+    view.rerender(
+      <MemoryRouter>
+        <GlassSidebar
+          items={['Records', 'Schemas', 'Imports', 'Exports']}
+          currentPath="/workspace#schemas"
+        />
+      </MemoryRouter>
+    );
+    expect(screen.getByRole('link', { name: 'Schemas' })).toHaveAttribute('aria-current', 'page');
+    expect(
+      screen.getAllByRole('link').filter((link) => link.hasAttribute('aria-current'))
+    ).toHaveLength(1);
+  });
 });

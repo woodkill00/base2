@@ -188,6 +188,9 @@ OBJECT_REFERENCE_SQL = """SELECT kind || ':' || site_id || ':' || object_key || 
      FROM sitecontent_exportjob WHERE encrypted_object_key<>''
  ) object_refs ORDER BY kind,site_id,object_key,digest"""
 SNAPSHOT_FENCE_SQL = "SELECT txid_current_snapshot()"
+REFERENCE_GENERATION_SQL = (
+    "SELECT generation FROM sitecontent_objectreferencegeneration WHERE singleton=TRUE"
+)
 PG_SERVICE_KEYS = {
     'host', 'hostaddr', 'port', 'dbname', 'user', 'password', 'sslmode', 'sslrootcert',
     'sslcert', 'sslkey', 'connect_timeout', 'application_name', 'options',
@@ -212,14 +215,19 @@ def _connect_pg_service(config: dict[str, Any]):
         raise ProductionBackupError('backup:pg_service_invalid') from exc
 
 
-def _live_reference_ledger(config: dict[str, Any]) -> str:
-    """Read the post-capture ledger on a new transaction-visible connection."""
+def _live_reference_state(config: dict[str, Any]) -> dict[str, Any]:
+    """Read post-capture references and mutation generation on one live connection."""
     connection = _connect_pg_service(config)
     try:
         connection.set_session(readonly=True)
         with connection.cursor() as cursor:
             cursor.execute(OBJECT_REFERENCE_SQL)
-            return "".join("\t".join(str(item) for item in row) + "\n" for row in cursor)
+            references = "".join("\t".join(str(item) for item in row) + "\n" for row in cursor)
+            cursor.execute(REFERENCE_GENERATION_SQL)
+            row = cursor.fetchone()
+            if not row:
+                raise ProductionBackupError("backup:reference_generation_unavailable")
+            return {"references": references, "generation": int(row[0])}
     finally:
         connection.rollback()
         connection.close()
@@ -236,22 +244,28 @@ def _repeatable_read_snapshot(config: dict[str, Any]):
             snapshot_id = str(cursor.fetchone()[0])
             cursor.execute(OBJECT_REFERENCE_SQL)
             references = "".join("\t".join(str(item) for item in row) + "\n" for row in cursor)
+            cursor.execute(REFERENCE_GENERATION_SQL)
+            generation_row = cursor.fetchone()
+            if not generation_row:
+                raise ProductionBackupError("backup:reference_generation_unavailable")
+            generation = int(generation_row[0])
             cursor.execute(
                 "SELECT COALESCE(MAX((regexp_match(name, '^[0-9]+'))[1]::int),0) "
                 "FROM django_migrations WHERE app='sitecontent'"
             )
             schema = int(cursor.fetchone()[0])
 
-            def after_references() -> str:
+            def after_state() -> dict[str, Any]:
                 # Do not reread through the exported snapshot: that would hide
                 # object-reference commits made while files were being copied.
-                return _live_reference_ledger(config)
+                return _live_reference_state(config)
 
             yield {
                 "id": snapshot_id,
                 "references": references,
                 "schema": schema,
-                "afterReferences": after_references,
+                "referenceGeneration": generation,
+                "afterState": after_state,
             }
     finally:
         connection.rollback()
@@ -556,8 +570,11 @@ def create_production_backup(
             except RecoveryDenied as exc:
                 raise ProductionBackupError(str(exc)) from exc
             if database_snapshot is not None:
-                after_references_text = database_snapshot["afterReferences"]()
-                snapshot_changed = before_references_text != after_references_text
+                after_state = database_snapshot["afterState"]()
+                snapshot_changed = (
+                    before_references_text != after_state["references"]
+                    or int(database_snapshot["referenceGeneration"]) != int(after_state["generation"])
+                )
             else:
                 after_references = runner(
                     reference_command,

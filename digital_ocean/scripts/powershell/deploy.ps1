@@ -6,6 +6,7 @@ param(
   [switch]$CreateIfMissing,
   [string]$EnvPath = ".\.env",
   [string]$SshKey = $null,
+  [string]$SshKnownHostsPath = $env:BASE2_SSH_KNOWN_HOSTS_PATH,
   [string]$SshUser = $env:SSH_USER,
   [string]$DropletIp = "",
   [switch]$SkipAllowlist,
@@ -43,6 +44,7 @@ if ($Help) {
   Write-Host '  -CreateIfMissing Create droplet if update-only target is missing'
   Write-Host '  -EnvPath <path>  Path to .env (default: .\.env)'
   Write-Host '  -SshKey <path>   Override SSH key path'
+  Write-Host '  -SshKnownHostsPath <path>  Trusted provisioned known_hosts file (required)'
   Write-Host '  -SshUser <user>  SSH user (default: SSH_USER env or root)'
   Write-Host '  -DropletIp <ip>  Override droplet IP detection'
   Write-Host '  -Preflight       Run local validation before deploy'
@@ -257,12 +259,21 @@ function Invoke-RollbackOnFailureIfEnabled([string]$ip, [string]$keyPath) {
   $outPath = Join-Path $metaDir 'rollback.txt'
 
   $sshExe = 'ssh'
+  if ([string]::IsNullOrWhiteSpace($SshKnownHostsPath) -or -not (Test-Path -LiteralPath $SshKnownHostsPath -PathType Leaf)) {
+    throw 'Trusted SSH known_hosts file is required before rollback'
+  }
+  $knownHostsPath = (Resolve-Path -LiteralPath $SshKnownHostsPath).Path
+  $hostKeyRecord = & ssh-keygen -F $ip -f $knownHostsPath 2>$null
+  if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace(($hostKeyRecord | Out-String))) {
+    throw 'Rollback target SSH host key is absent from the trusted known_hosts file'
+  }
   $sshCommon = @(
     '-o','ConnectTimeout=60',
     '-o','ConnectionAttempts=2',
     '-o','ServerAliveInterval=15',
     '-o','ServerAliveCountMax=3',
-    '-o','StrictHostKeyChecking=no',
+    '-o','StrictHostKeyChecking=yes',
+    '-o',("UserKnownHostsFile={0}" -f $knownHostsPath),
     '-o','BatchMode=yes'
   )
   $sshArgs = @('-i', $keyPath) + $sshCommon + @("$($script:SshUser)@$ip")
@@ -570,7 +581,7 @@ function Append-RemoteArtifactsToConsoleLog {
     $safeFiles = @(
       'compose-ps.txt','published-ports.txt',
       'traefik-static.yml','traefik-dynamic.yml','traefik-ls.txt','traefik-logs.txt','traefik-env.txt',
-      'api-logs.txt','django-migrate.txt','django-check-deploy.txt',
+      'api-logs.txt','api-migrate.txt','django-migrate.txt','django-check-deploy.txt',
       'curl-root.txt','curl-api.txt','curl-api-health.txt','curl-api-health-slash.txt','curl-admin-head.txt',
       'api-health.json','api-health.status','api-health-slash.json','api-health-slash.status',
       'schema-compat-check.json','schema-compat-check.err','schema-compat-check.status',
@@ -619,7 +630,7 @@ function Write-RemoteArtifactsBundle {
     $safeFiles = @(
       'compose-ps.txt','published-ports.txt',
       'traefik-static.yml','traefik-dynamic.yml','traefik-ls.txt','traefik-logs.txt','traefik-env.txt',
-      'api-logs.txt','django-migrate.txt','django-check-deploy.txt',
+      'api-logs.txt','api-migrate.txt','django-migrate.txt','django-check-deploy.txt',
       'curl-root.txt','curl-api.txt','curl-api-health.txt','curl-api-health-slash.txt','curl-admin-head.txt',
       'api-health.json','api-health.status','api-health-slash.json','api-health-slash.status',
       'schema-compat-check.json','schema-compat-check.err','schema-compat-check.status',
@@ -960,12 +971,21 @@ function Remote-Verify($ip, $keyPath) {
   $scpExe = "scp"
   # Be resilient to transient SSH/SCP handshake slowness; OpenSSH on Windows sometimes hits
   # "Connection timed out during banner exchange" on busy or briefly unreachable hosts.
+  if ([string]::IsNullOrWhiteSpace($SshKnownHostsPath) -or -not (Test-Path -LiteralPath $SshKnownHostsPath -PathType Leaf)) {
+    throw 'Trusted SSH known_hosts file is required before remote verification'
+  }
+  $knownHostsPath = (Resolve-Path -LiteralPath $SshKnownHostsPath).Path
+  $hostKeyRecord = & ssh-keygen -F $ip -f $knownHostsPath 2>$null
+  if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace(($hostKeyRecord | Out-String))) {
+    throw 'Target SSH host key is absent from the trusted known_hosts file'
+  }
   $sshCommon = @(
     '-o','ConnectTimeout=60',
     '-o','ConnectionAttempts=3',
     '-o','ServerAliveInterval=15',
     '-o','ServerAliveCountMax=4',
-    '-o','StrictHostKeyChecking=no',
+    '-o','StrictHostKeyChecking=yes',
+    '-o',("UserKnownHostsFile={0}" -f $knownHostsPath),
     '-o','BatchMode=yes'
   )
   $sshArgs = @('-i', $keyPath) + $sshCommon + @("$($script:SshUser)@$ip")
@@ -997,6 +1017,10 @@ function Remote-Verify($ip, $keyPath) {
   $scriptContent = @'
 set -eu
 mkdir -p /root/logs
+PRIVATE_DEPLOY_DIR=$(mktemp -d /root/base2-deploy-private.XXXXXX)
+chmod 700 "$PRIVATE_DEPLOY_DIR"
+cleanup_private_deploy() { rm -rf "$PRIVATE_DEPLOY_DIR"; }
+trap cleanup_private_deploy EXIT HUP INT TERM
 if [ -d __REMOTE_APP_DIR__ ]; then
   cd __REMOTE_APP_DIR__
   # Prepare log directories; clear stale artifacts from previous runs.
@@ -1027,7 +1051,8 @@ if [ -d __REMOTE_APP_DIR__ ]; then
   echo "STEP: start $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> /root/logs/build/steps.txt
   # Preserve the active .env across git reset/clean (the repo may track a template .env)
   if [ -f .env ]; then
-    cp -f .env /root/logs/build/env-backup.env || true
+    cp -f .env "$PRIVATE_DEPLOY_DIR/env-backup.env"
+    chmod 600 "$PRIVATE_DEPLOY_DIR/env-backup.env"
   fi
   # Ensure latest repo and rebuild traefik to render new templates
   if command -v git >/dev/null 2>&1; then
@@ -1069,9 +1094,15 @@ if [ -d __REMOTE_APP_DIR__ ]; then
     git rev-parse HEAD > /root/logs/build/post-deploy-head.txt
   fi
   # Restore .env after repo sync so Compose uses the deployed values
-  if [ -f /root/logs/build/env-backup.env ]; then
-    cp -f /root/logs/build/env-backup.env .env || true
+  if [ -f "$PRIVATE_DEPLOY_DIR/env-backup.env" ]; then
+    cp -f "$PRIVATE_DEPLOY_DIR/env-backup.env" .env
+    rm -f "$PRIVATE_DEPLOY_DIR/env-backup.env"
   fi
+
+  # Bind runtime readiness evidence to this exact deployment execution.
+  DEPLOYMENT_EPOCH="$EXPECTED_COMMIT:$(date -u +%Y%m%dT%H%M%SZ)"
+  sed -i '/^BASE2_DEPLOYMENT_EPOCH=/d' .env
+  printf 'BASE2_DEPLOYMENT_EPOCH=%s\n' "$DEPLOYMENT_EPOCH" >> .env
 
   # Ensure Traefik bind-mounted ACME storage exists and is writable by the Traefik runtime user.
   # Traefik runs as uid 1000 inside the container; with cap_drop=ALL it cannot fix host perms.
@@ -1202,6 +1233,11 @@ PY
   # Capture Django migration output into a dedicated artifact
   status "django" "migrate/check-deploy/health"
   docker compose -f development.docker.yml exec -T django python manage.py migrate --noinput > /root/logs/django-migrate.txt 2>&1
+  status "api" "owner-scoped migrations"
+  docker compose -f development.docker.yml run --rm --no-deps \
+    -e DB_USER="$POSTGRES_USER" -e DB_PASSWORD="$POSTGRES_PASSWORD" \
+    api python -m api.scripts.migrate > /root/logs/api-migrate.txt 2>&1
+  docker compose -f development.docker.yml up -d --force-recreate --no-deps api >> /root/logs/build/api-up.txt 2>&1
   # Django deploy checks (security + config sanity)
   docker compose -f development.docker.yml exec -T django python manage.py check --deploy > /root/logs/django-check-deploy.txt 2>&1
   # Django internal HTTP health (avoid probing admin HTML); capture JSON body + HTTP status
@@ -1285,9 +1321,9 @@ PY
     exit 1
   fi
 
-  status "snapshot" "capturing compose ps/config and ports"
+  status "snapshot" "capturing compose ps/non-interpolated model and ports"
   docker compose -f development.docker.yml ps > /root/logs/compose-ps.txt || true
-  docker compose -f development.docker.yml config > /root/logs/compose-config.yml || true
+  docker compose -f development.docker.yml config --no-interpolate > /root/logs/compose-config.template.yml
   # Published host ports report (Traefik should be the only one)
   docker ps --format '{{.Names}}\t{{.Ports}}' | awk 'NF && $2!="" {print}' > /root/logs/published-ports.txt || true
   # Capture logs from all services
@@ -2000,7 +2036,7 @@ fi
     $files = @(
       'compose-ps.txt','traefik-env.txt','traefik-static.yml','traefik-dynamic.yml','traefik-ls.txt','traefik-logs.txt','api-logs.txt',
       'traefik-acme-perms.txt',
-      'django-migrate.txt',
+      'api-migrate.txt','django-migrate.txt',
       'django-check-deploy.txt',
       'django-internal-health.json',
       'django-internal-health.status',
@@ -2054,6 +2090,15 @@ fi
       Set-Content -Path $traefikEnvPath -Value $raw -Encoding UTF8
     }
   } catch { Write-Warning "Failed to scrub sensitive values: $($_.Exception.Message)" }
+
+  # Final recursive defense: reject and remove the current generated evidence
+  # tree if any source-environment secret or private-key marker survived.
+  $secretScan = Join-Path $dest 'artifact-secret-scan.json'
+  & .\.venv\Scripts\python.exe .\digital_ocean\scripts\python\scan_artifact_secrets.py --root $dest --env-file $localEnvPath | Set-Content -Path $secretScan -Encoding UTF8
+  if ($LASTEXITCODE -ne 0) {
+    Remove-Item -LiteralPath $dest -Recurse -Force -ErrorAction SilentlyContinue
+    throw 'Deployment evidence failed the recursive secret-retention gate and was removed'
+  }
 
   # Avoid leaking a non-zero $LASTEXITCODE to callers (native tools may set it).
   try { $LASTEXITCODE = 0 } catch {}

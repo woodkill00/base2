@@ -160,7 +160,9 @@ unset clamav_id clamav_state clamav_health clamav_oom
 stage="migration-dependencies"
 "${compose[@]}" up -d --no-build postgres redis
 stage="api-migrations"
-"${compose[@]}" run --rm --no-deps api python -m api.scripts.migrate >/dev/null
+"${compose[@]}" run --rm --no-deps \
+  -e DB_USER="$POSTGRES_USER" -e DB_PASSWORD="$POSTGRES_PASSWORD" \
+  api python -m api.scripts.migrate >/dev/null
 stage="compose-up"
 "${compose[@]}" up -d --no-build
 stage="media-inspector-identity"

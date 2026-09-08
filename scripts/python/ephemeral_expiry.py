@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
 import hashlib
 import hmac
 import json
@@ -13,6 +14,7 @@ import stat
 import subprocess
 import sys
 from collections.abc import Callable
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -72,19 +74,32 @@ class ExpiryPlanStore:
         self.plan_root = _private_directory(self.root / "plans")
         self.receipt_root = _private_directory(self.root / "receipts")
         self.failure_root = _private_directory(self.root / "failures")
+        self.lock_path = self.root / ".registry.lock"
         self.key = key
+
+    @contextmanager
+    def _registry_lock(self):
+        descriptor = os.open(self.lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+        try:
+            os.fchmod(descriptor, 0o600)
+            fcntl.flock(descriptor, fcntl.LOCK_EX)
+            yield
+        finally:
+            fcntl.flock(descriptor, fcntl.LOCK_UN)
+            os.close(descriptor)
 
     def register(self, plan: dict[str, Any]) -> dict[str, Any]:
         validated = self._validate(plan)
         path = self.plan_root / f"{validated['planId']}.json"
         signed = {**validated, "signature": _signature(validated, self.key)}
-        if path.exists():
-            if self.load(validated["planId"]) != signed:
-                raise EphemeralExpiryError("expiry:plan_conflict")
-            return signed
-        if len(list(self.plan_root.glob("*.json"))) >= MAXIMUM_PLANS:
-            raise EphemeralExpiryError("expiry:plan_capacity_exceeded")
-        _atomic_json(path, signed)
+        with self._registry_lock():
+            if path.exists():
+                if self.load(validated["planId"]) != signed:
+                    raise EphemeralExpiryError("expiry:plan_conflict")
+                return signed
+            if len(list(self.plan_root.glob("*.json"))) >= MAXIMUM_PLANS:
+                raise EphemeralExpiryError("expiry:plan_capacity_exceeded")
+            _atomic_json(path, signed)
         return signed
 
     def load(self, plan_id: str) -> dict[str, Any]:
@@ -238,7 +253,7 @@ def scan_due(
             store.record_failure(member, "expiry:adapter_failed")
             failed.append(hashlib.sha256(member.encode()).hexdigest()[:24])
     return {
-        "status": "complete",
+        "status": "degraded" if failed else "complete",
         "scanned": len(destroyed) + len(pending) + len(replayed) + len(failed),
         "destroyed": destroyed,
         "pending": pending,
@@ -297,7 +312,7 @@ def main(argv: list[str] | None = None) -> int:
         adapters={ADAPTER: _digitalocean_adapter},
     )
     print(json.dumps(result, sort_keys=True))
-    return 0
+    return 1 if result["failed"] else 0
 
 
 if __name__ == "__main__":

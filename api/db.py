@@ -36,7 +36,7 @@ def _admitted_connection(pool: ThreadedConnectionPool) -> PsycopgConnection:
 def pool_snapshot() -> dict[str, dict[str, int | str]]:
     result: dict[str, dict[str, int | str]] = {}
     for name, pool in (
-        ('owner', _pool),
+        ('runtime', _pool),
         ('workspace', _workspace_pool),
         ('worker', _workspace_worker_pool),
     ):

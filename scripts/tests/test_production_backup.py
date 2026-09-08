@@ -76,7 +76,9 @@ def test_exported_snapshot_uses_a_second_connection_for_the_post_capture_fence()
         _repeatable_read_snapshot(config) as snapshot,
     ):
         assert '\t' + 'a' * 64 in snapshot['references']
-        assert '\t' + 'b' * 64 in snapshot['afterReferences']()
+        state = snapshot['afterState']()
+        assert '\t' + 'b' * 64 in state['references']
+        assert state['generation'] == 31
     assert len(connections) == 2
     assert all(connection.closed for connection in connections)
 
@@ -334,7 +336,8 @@ def test_backup_binds_pg_dump_and_reference_ledger_to_one_exported_snapshot(tmp_
             "id": "00000003-1",
             "references": references,
             "schema": 31,
-            "afterReferences": lambda: references,
+            "referenceGeneration": 7,
+            "afterState": lambda: {"references": references, "generation": 7},
         }
 
     create_production_backup(

@@ -13,6 +13,7 @@ type Props = {
   menuLabel?: string;
   headerIsPageHeading?: boolean;
   themeLabel?: string;
+  sidebarActivePath?: string;
 };
 
 export const AppShell: React.FC<Props> = ({
@@ -25,6 +26,7 @@ export const AppShell: React.FC<Props> = ({
   menuLabel = 'Menu',
   headerIsPageHeading = true,
   themeLabel = 'Toggle color theme',
+  sidebarActivePath,
 }) => {
   const uid = useId();
   const sidebarId = useMemo(() => `app-shell-sidebar-${uid}`, [uid]);
@@ -66,6 +68,7 @@ export const AppShell: React.FC<Props> = ({
               label={sidebarLabel}
               isOpen={isMenuOpen}
               onClose={() => setIsMenuOpen(false)}
+              currentPath={sidebarActivePath}
             />
           )}
 

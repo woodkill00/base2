@@ -275,7 +275,11 @@ def collect_site(
 
 def mark_runtime_heartbeat(name: str, *, now: datetime | None = None) -> None:
     current = now or datetime.now(timezone.utc)
-    redis_client.get_client().set(redis_client.key('operations', name), current.isoformat(), ex=180)
+    payload = json.dumps({
+        'observedAt': current.isoformat(),
+        'deploymentEpoch': os.environ.get('BASE2_DEPLOYMENT_EPOCH', 'development'),
+    })
+    redis_client.get_client().set(redis_client.key('operations', name), payload, ex=180)
 
 
 def mark_queue_observation(*, published_at: datetime, now: datetime | None = None) -> None:
@@ -286,14 +290,16 @@ def mark_queue_observation(*, published_at: datetime, now: datetime | None = Non
 
 
 def _runtime_heartbeat(name: str, timeout: int) -> tuple[str, str, int]:
-    del timeout
     try:
         raw = redis_client.get_client().get(redis_client.key('operations', name))
         if isinstance(raw, bytes):
             raw = raw.decode('utf-8')
-        observed = datetime.fromisoformat(str(raw))
+        value = json.loads(str(raw))
+        observed = datetime.fromisoformat(str(value['observedAt']))
         age = (datetime.now(timezone.utc) - observed).total_seconds()
-        ok = 0 <= age <= 120
+        max_age = max(30, min(int(timeout), 120))
+        expected_epoch = os.environ.get('BASE2_DEPLOYMENT_EPOCH', 'development')
+        ok = 0 <= age <= max_age and value.get('deploymentEpoch') == expected_epoch
     except Exception:
         ok = False
     return (

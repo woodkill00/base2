@@ -13,6 +13,7 @@ type Props = {
   onClose?: () => void;
   variant?: 'app' | 'public';
   onMenuItemClick?: (_item: string) => void;
+  currentPath?: string;
 };
 
 const defaultItems = [
@@ -31,6 +32,7 @@ export const GlassSidebar: React.FC<Props> = ({
   onClose,
   variant = 'app',
   onMenuItemClick,
+  currentPath,
 }) => {
   const panelRef = useRef<HTMLElement | null>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
@@ -39,6 +41,10 @@ export const GlassSidebar: React.FC<Props> = ({
   // highlighting cannot require a Router provider merely to render it.
   const browserPath = () => `${window.location.pathname}${window.location.hash}`;
   const [activePath, setActivePath] = useState(browserPath);
+
+  useEffect(() => {
+    if (currentPath !== undefined) setActivePath(currentPath);
+  }, [currentPath]);
 
   useEffect(() => {
     const syncActivePath = () => setActivePath(browserPath());

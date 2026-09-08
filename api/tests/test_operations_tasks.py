@@ -25,7 +25,7 @@ def test_workers_are_partitioned_by_fixed_task_routes():
     assert routes['app.send_email_outbox'] == {'queue': 'email'}
     assert routes['app.replay_email_outbox'] == {'queue': 'email'}
     assert routes['app.process_data_rights_operation'] == {'queue': 'data-rights'}
-    assert routes['app.replay_data_rights_operations'] == {'queue': 'data-rights'}
+    assert routes['app.replay_data_rights_operations'] == {'queue': 'runtime'}
     assert routes['app.expire_data_rights_results'] == {'queue': 'data-rights'}
     assert routes['app.process_workspace_export'] == {'queue': 'content'}
     assert tasks.app.conf.task_default_queue == 'runtime'

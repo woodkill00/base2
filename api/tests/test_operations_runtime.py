@@ -69,12 +69,18 @@ def test_timing_heartbeats_and_queue_observations_are_bounded(monkeypatch):
 
     client = MagicMock()
     monkeypatch.setattr(runtime.redis_client, 'get_client', lambda: client)
+    monkeypatch.setenv('BASE2_DEPLOYMENT_EPOCH', 'release-106')
     runtime.mark_runtime_heartbeat('workers:runtime-worker', now=NOW)
+    heartbeat_payload = json.loads(client.set.call_args.args[1])
     client.set.assert_called_with(
         runtime.redis_client.key('operations', 'workers:runtime-worker'),
-        NOW.isoformat(),
+        client.set.call_args.args[1],
         ex=180,
     )
+    assert heartbeat_payload == {
+        'observedAt': NOW.isoformat(),
+        'deploymentEpoch': 'release-106',
+    }
     runtime.mark_queue_observation(published_at=NOW - timedelta(seconds=3), now=NOW)
     queue_payload = json.loads(client.set.call_args.args[1])
     assert queue_payload == {'observedAt': NOW.isoformat(), 'delayMs': 3000}
@@ -83,11 +89,20 @@ def test_timing_heartbeats_and_queue_observations_are_bounded(monkeypatch):
 def test_runtime_heartbeat_and_queue_probe_fail_closed_on_invalid_evidence(monkeypatch):
     client = MagicMock()
     monkeypatch.setattr(runtime.redis_client, 'get_client', lambda: client)
-    client.get.return_value = datetime.now(UTC).isoformat().encode()
-    assert runtime._runtime_heartbeat('workers:email-worker', 1)[:2] == (
+    monkeypatch.setenv('BASE2_DEPLOYMENT_EPOCH', 'current-release')
+    client.get.return_value = json.dumps({
+        'observedAt': datetime.now(UTC).isoformat(),
+        'deploymentEpoch': 'current-release',
+    }).encode()
+    assert runtime._runtime_heartbeat('workers:email-worker', 30)[:2] == (
         'healthy',
         'workers:email-worker.ready',
     )
+    client.get.return_value = json.dumps({
+        'observedAt': datetime.now(UTC).isoformat(),
+        'deploymentEpoch': 'previous-release',
+    }).encode()
+    assert runtime._runtime_heartbeat('workers:email-worker', 30)[0] == 'degraded'
     client.get.return_value = b'not-a-timestamp'
     assert runtime._runtime_heartbeat('workers:email-worker', 1)[:2] == (
         'degraded',

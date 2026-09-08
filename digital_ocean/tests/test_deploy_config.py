@@ -118,3 +118,11 @@ def test_powershell_deploy_fails_closed_for_partial_rollback_and_inline_commit_c
     assert 'up -d --build --no-deps flower' in script
     assert 'for s in traefik nginx nginx-static django api redis react-app' in script
     assert 'for s in traefik nginx nginx-static django api postgres redis react-app' not in script
+    assert "StrictHostKeyChecking=yes" in script
+    assert "StrictHostKeyChecking=no" not in script
+    assert "UserKnownHostsFile=" in script
+    assert "ssh-keygen -F $ip" in script
+    assert "/root/logs/build/env-backup.env" not in script
+    assert 'mktemp -d /root/base2-deploy-private.' in script
+    assert 'config --no-interpolate > /root/logs/compose-config.template.yml' in script
+    assert 'scan_artifact_secrets.py' in script

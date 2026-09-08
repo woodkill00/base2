@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -68,6 +69,7 @@ def test_tampered_plan_unknown_adapter_and_nonterminal_receipt_fail_closed(tmp_p
         adapters={ADAPTER: lambda _plan: {"state": "pending"}},
     )
     assert len(result["failed"]) == 1
+    assert result["status"] == "degraded"
     assert not list(clean.receipt_root.glob("*.json"))
     assert len(list(clean.failure_root.glob("*.json"))) == 1
 
@@ -119,6 +121,35 @@ def test_bad_member_and_adapter_crash_are_isolated_from_later_due_plan(tmp_path)
     result = scan_due(store, now=NOW, adapters={ADAPTER: adapter})
     assert result["destroyed"] == ["preview-106-good"]
     assert len(result["failed"]) == 1
+    assert result["status"] == "degraded"
+
+
+def test_concurrent_registration_serializes_capacity_admission(tmp_path):
+    store = ExpiryPlanStore(tmp_path / "expiry", key=KEY)
+    for index in range(60):
+        plan = _plan()
+        plan["planId"] = f"preview-existing-{index:02d}"
+        plan["runId"] = f"existing-{index:02d}"
+        plan["ownedResources"] = [plan["runId"]]
+        store.register(plan)
+
+    def register(index):
+        plan = _plan()
+        plan["planId"] = f"preview-contended-{index:02d}"
+        plan["runId"] = f"contended-{index:02d}"
+        plan["ownedResources"] = [plan["runId"]]
+        try:
+            store.register(plan)
+            return "registered"
+        except EphemeralExpiryError as exc:
+            assert str(exc) == "expiry:plan_capacity_exceeded"
+            return "rejected"
+
+    with ThreadPoolExecutor(max_workers=12) as executor:
+        results = list(executor.map(register, range(12)))
+    assert results.count("registered") == 4
+    assert results.count("rejected") == 8
+    assert len(store.plans()) == 64
 
 
 def test_persistent_scanner_unit_is_hardened_and_has_no_arbitrary_command_surface():

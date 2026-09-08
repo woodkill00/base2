@@ -31,6 +31,8 @@ services:
       WORKSPACE_WORKER_DB_PASSWORD: e2e_workspace_worker_password
       RUNTIME_WORKER_DB_USER: base2_runtime_worker_e2e
       RUNTIME_WORKER_DB_PASSWORD: e2e_runtime_worker_password
+      API_RUNTIME_DB_USER: base2_api_runtime_e2e
+      API_RUNTIME_DB_PASSWORD: e2e_api_runtime_database_password
       DATA_RIGHTS_WORKER_DB_USER: base2_data_rights_worker_e2e
       DATA_RIGHTS_WORKER_DB_PASSWORD: e2e_data_rights_worker_password
       EMAIL_WORKER_DB_USER: base2_email_worker_e2e
@@ -68,6 +70,7 @@ services:
       WORKSPACE_DB_USER: base2_workspace_runtime_e2e
       WORKSPACE_WORKER_DB_USER: base2_workspace_worker_e2e
       RUNTIME_WORKER_DB_USER: base2_runtime_worker_e2e
+      API_RUNTIME_DB_USER: base2_api_runtime_e2e
       DATA_RIGHTS_WORKER_DB_USER: base2_data_rights_worker_e2e
       EMAIL_WORKER_DB_USER: base2_email_worker_e2e
     depends_on:
@@ -92,8 +95,8 @@ services:
       DB_PORT: 5432
       DB_NAME: e2e
       POSTGRES_DB: e2e
-      DB_USER: e2e
-      DB_PASSWORD: e2e
+      DB_USER: base2_api_runtime_e2e
+      DB_PASSWORD: e2e_api_runtime_database_password
       WORKSPACE_DB_USER: base2_workspace_runtime_e2e
       WORKSPACE_DB_PASSWORD: e2e_workspace_runtime_password
       WORKSPACE_WORKER_DB_USER: base2_workspace_worker_e2e

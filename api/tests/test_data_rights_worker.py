@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timezone
+from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
@@ -11,6 +12,7 @@ from api.services import data_rights_worker as worker
 
 USER_ID = UUID('00000000-0000-0000-0000-000000000801')
 OPERATION_ID = UUID('00000000-0000-0000-0000-000000000802')
+DISPATCH_TOKEN = UUID('00000000-0000-0000-0000-000000000803')
 
 
 def _operation(kind, key, payload):
@@ -70,7 +72,7 @@ def test_worker_completes_exact_supported_operation(
         worker.repository, 'complete_operation', lambda **kwargs: captured.update(kwargs)
     )
     monkeypatch.setattr(worker.repository, 'fail_operation', lambda **kwargs: pytest.fail('failed'))
-    assert worker.process_operation(OPERATION_ID) == 'completed'
+    assert worker.process_operation(OPERATION_ID, DISPATCH_TOKEN) == 'completed'
     result = json.loads(SecretBox(key).decrypt(captured['result_ciphertext']))
     assert expected_key in result
     assert captured['digest'] and len(captured['digest']) == 64
@@ -78,7 +80,7 @@ def test_worker_completes_exact_supported_operation(
 
 def test_worker_noops_claimed_replay_and_records_generic_failure(monkeypatch):
     monkeypatch.setattr(worker.repository, 'claim_operation', lambda **kwargs: None)
-    assert worker.process_operation(OPERATION_ID) == 'noop'
+    assert worker.process_operation(OPERATION_ID, DISPATCH_TOKEN) == 'noop'
 
     key = Fernet.generate_key().decode('ascii')
     failures = []
@@ -92,7 +94,7 @@ def test_worker_noops_claimed_replay_and_records_generic_failure(monkeypatch):
         worker.repository, 'fail_operation', lambda **kwargs: failures.append(kwargs)
     )
     with pytest.raises(ValueError, match='operation_kind_invalid'):
-        worker.process_operation(OPERATION_ID)
+        worker.process_operation(OPERATION_ID, DISPATCH_TOKEN)
     assert failures[0]['operation_id'] == OPERATION_ID
     assert failures[0]['error_code'] == 'processing_failed'
     assert failures[0]['claim_token']
@@ -147,7 +149,7 @@ def test_export_timestamp_serialization_is_explicit(monkeypatch):
     assert payload['authenticators'] == []
     assert payload['credentials'] == []
     assert payload['audit_events'] == []
-    assert len(payload['workspace']['subject_surfaces']) == len(worker.SUBJECT_DATA_INVENTORY)
+    assert payload['workspace']['subject_surfaces'] == []
 
 
 def test_workspace_privacy_projection_is_tenant_subject_and_field_permission_bound():
@@ -224,25 +226,10 @@ def test_deactivation_uses_only_the_fixed_claim_bound_repository_action(monkeypa
     ]
 
 
-def test_subject_inventory_is_versioned_and_covers_human_identity_surfaces():
-    assert worker.SUBJECT_DATA_INVENTORY_VERSION == 1
-    registered = {(table, column) for table, column, _treatment in worker.SUBJECT_DATA_INVENTORY}
-    assert {
-        ('sitecontent_savedview', 'owner_ref'),
-        ('sitecontent_importjob', 'requester_ref'),
-        ('sitecontent_exportjob', 'requester_ref'),
-        ('sitecontent_workspaceauditevent', 'actor_ref'),
-        ('sitecontent_mediadeliverygrant', 'audience_ref'),
-        ('sitecontent_mediaauditevent', 'actor_ref'),
-        ('sitecontent_mediaauditevent', 'subject_ref'),
-        ('sitecontent_mediaabusecase', 'reporter_ref'),
-        ('sitecontent_mediaabusecase', 'reviewer_ref'),
-        ('sitecontent_mediaabusecase', 'appellant_ref'),
-        ('sitecontent_tenantlifecycleevent', 'actor_ref'),
-        ('sitecontent_tenantlifecycleevent', 'target_owner_ref'),
-        ('sitecontent_breakglassgrant', 'requester_ref'),
-        ('sitecontent_breakglassgrant', 'approver_ref'),
-    }.issubset(registered)
+def test_subject_inventory_is_database_registered_and_claim_fenced():
+    source = Path(worker.__file__).read_text(encoding='utf-8')
+    assert 'base2_export_data_rights_subject_surfaces()' in source
+    assert 'SUBJECT_DATA_INVENTORY = (' not in source
 
 
 @pytest.mark.parametrize('operation', ['deletion', 'deactivation'])

@@ -126,7 +126,7 @@ app.conf.update(
         'app.send_email_outbox': {'queue': 'email'},
         'app.replay_email_outbox': {'queue': 'email'},
         'app.process_data_rights_operation': {'queue': 'data-rights'},
-        'app.replay_data_rights_operations': {'queue': 'data-rights'},
+        'app.replay_data_rights_operations': {'queue': 'runtime'},
         'app.expire_data_rights_results': {'queue': 'data-rights'},
         'app.publish_workspace_record': {'queue': 'content'},
         'app.replay_workspace_publications': {'queue': 'content'},
@@ -591,8 +591,8 @@ def replay_email_outbox(limit: int = 100) -> int:
 
 
 @app.task(name='app.process_data_rights_operation')
-def process_data_rights_operation(operation_id: str) -> str:
-    return process_operation(UUID(operation_id))
+def process_data_rights_operation(operation_id: str, dispatch_token: str) -> str:
+    return process_operation(UUID(operation_id), UUID(dispatch_token))
 
 
 @app.task(name='app.expire_data_rights_results')
@@ -602,10 +602,10 @@ def expire_data_rights_results() -> int:
 
 @app.task(name='app.replay_data_rights_operations')
 def replay_data_rights_operations(limit: int = 25) -> int:
-    operation_ids = queued_operation_ids(limit=limit)
-    for operation_id in operation_ids:
-        process_data_rights_operation.delay(str(operation_id))
-    return len(operation_ids)
+    operations = queued_operation_ids(limit=limit)
+    for operation_id, dispatch_token in operations:
+        process_data_rights_operation.delay(str(operation_id), str(dispatch_token))
+    return len(operations)
 
 
 class WorkspaceExportTask(Task):

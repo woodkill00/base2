@@ -134,22 +134,22 @@ def list_tenant_operations(*, tenant_id: str, limit: int = 100) -> list[dict[str
     ]
 
 
-def queued_operation_ids(*, limit: int = 25) -> list[UUID]:
+def queued_operation_ids(*, limit: int = 25) -> list[tuple[UUID, UUID]]:
     with db_conn() as conn, conn.cursor() as cur:
         cur.execute(
             'SELECT id FROM base2_list_due_data_rights_operations(%s)',
             (max(1, min(limit, 100)),),
         )
-        return [UUID(str(row[0])) for row in (cur.fetchall() or [])]
+        return [(UUID(str(row[0])), UUID(str(row[1]))) for row in (cur.fetchall() or [])]
 
 
-def claim_operation(*, operation_id: UUID) -> dict[str, Any] | None:
+def claim_operation(*, operation_id: UUID, dispatch_token: UUID) -> dict[str, Any] | None:
     claim_token = uuid4()
     with db_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                'SELECT * FROM base2_claim_data_rights_operation(%s,%s)',
-                (str(operation_id), str(claim_token)),
+                'SELECT * FROM base2_claim_data_rights_operation(%s,%s,%s)',
+                (str(operation_id), str(dispatch_token), str(claim_token)),
             )
             row = cur.fetchone()
             if not row:

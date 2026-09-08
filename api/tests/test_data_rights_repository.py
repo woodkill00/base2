@@ -7,6 +7,7 @@ from api.repositories import data_rights as repository
 
 USER_ID = UUID('00000000-0000-0000-0000-000000001001')
 OPERATION_ID = UUID('00000000-0000-0000-0000-000000001002')
+DISPATCH_TOKEN = UUID('00000000-0000-0000-0000-000000001003')
 
 
 class Cursor:
@@ -82,7 +83,9 @@ def test_claim_is_atomic_and_replay_safe(monkeypatch):
     row = (OPERATION_ID, 'tenant-a', USER_ID, 'export', 'encrypted', claim_token)
     cursor = Cursor(rows=[row])
     connection = install(monkeypatch, cursor)
-    operation = repository.claim_operation(operation_id=OPERATION_ID)
+    operation = repository.claim_operation(
+        operation_id=OPERATION_ID, dispatch_token=DISPATCH_TOKEN
+    )
     assert operation['id'] == OPERATION_ID
     assert operation['tenant_id'] == 'tenant-a'
     assert operation['claim_token'] == claim_token
@@ -93,7 +96,9 @@ def test_claim_is_atomic_and_replay_safe(monkeypatch):
 
     empty_cursor = Cursor()
     empty_connection = install(monkeypatch, empty_cursor)
-    assert repository.claim_operation(operation_id=OPERATION_ID) is None
+    assert repository.claim_operation(
+        operation_id=OPERATION_ID, dispatch_token=DISPATCH_TOKEN
+    ) is None
     assert empty_connection.rolled_back is True
 
 
