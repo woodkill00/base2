@@ -143,11 +143,19 @@
       "requiredTools": ["{python-api}"]
     },
     {
+      "id": "universal-product-contract",
+      "command": ["{python-api}", "-m", "pytest", "-q", "api/tests/test_universal_product.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["tenant-lifecycle-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
       "id": "gate-runtime-recovery-contract",
       "command": ["python3", "-m", "unittest", "scripts.tests.test_gate_runtime_recovery"],
       "required": true,
       "timeoutSeconds": 30,
-      "dependsOn": ["tenant-lifecycle-contract"],
+      "dependsOn": ["universal-product-contract"],
       "requiredTools": ["python3"]
     },
     {
