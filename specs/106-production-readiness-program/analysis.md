@@ -757,3 +757,14 @@ with evidence, inline expected-commit comments parse safely, and production work
 startup no longer brings up bundled PostgreSQL. Browser hash navigation and the
 Operations visual evidence were regenerated from the repaired sources. No external
 or destructive operation was performed.
+
+## Analysis cycle 27 — newly published transitive dependency advisory
+
+The first exact-head complete gate passed 106 of 107 checks and rejected only
+the production dependency audit. During the run, npm began reporting the new
+high-severity GHSA-2883-xcg3-v3hh CPU-exhaustion advisory in transitive
+`js-yaml` 4.3.1 through `@redocly/openapi-core`. B286 records the live supply-
+chain discovery. A lockfile-only resolution selects the non-vulnerable compatible
+dependency graph, a clean install resolves `js-yaml` 4.3.2, and the full npm audit
+reports zero vulnerabilities. The failed gate remains historical and both exact-
+head passes restart from zero after the dependency commit.
