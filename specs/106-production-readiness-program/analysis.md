@@ -1676,3 +1676,21 @@ the fixed WSL runner, and boundary tests consume that exact name; tests also
 prove the synthetic process exposes neither bare `/health` nor product
 `/api/health`. All otherwise-green evidence for `f3765c6` remains rejected and
 must restart from the replacement commit, including both hosted guard jobs.
+
+## Analysis cycle 81 — pure-Python coverage tracer corruption
+
+The first complete gate for candidate `ef3b1a8d914075ea4ce9c98bd2c5d260d18c971f`
+passed 240 DigitalOcean tests before Coverage.py's pure-Python `PyTracer`
+corrupted its internal `should_trace_cache` state during partition 5 and raised
+`TypeError: FileDisposition object is not iterable` from an ordinary `pathlib`
+comparison. The prior C tracer had already produced rare interpreter-state
+corruption, so retrying either implementation would make nondeterminism part of
+the release contract. The gate retained the failure and did not run coverage
+admission.
+
+B473-B475 use Coverage.py's supported Python 3.12 `sys.monitoring` core for only
+the isolated DigitalOcean coverage partitions. The formerly failing four-file
+partition passed 33 tests under that core without warnings. The partitioning,
+source boundary, parallel data files, combine/report steps, failure propagation,
+and coverage floor remain unchanged. Exact-source release evidence restarts only
+after the complete coverage runner and its contract tests pass on a new commit.

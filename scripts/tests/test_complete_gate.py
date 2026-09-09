@@ -95,9 +95,9 @@ class CompleteGateTests(unittest.TestCase):
         with (
             patch.object(self.gate.platform, "release", return_value="microsoft-standard-WSL2"),
             patch.object(self.gate.os, "cpu_count", return_value=1),
+            self.assertRaisesRegex(RuntimeError, r"processors=2.*wsl --shutdown"),
         ):
-            with self.assertRaisesRegex(RuntimeError, r"processors=2.*wsl --shutdown"):
-                self.gate.validate_runtime_capacity()
+            self.gate.validate_runtime_capacity()
         with (
             patch.object(self.gate.platform, "release", return_value="microsoft-standard-WSL2"),
             patch.object(self.gate.os, "cpu_count", return_value=2),
@@ -401,12 +401,12 @@ class CompleteGateTests(unittest.TestCase):
         for name in (".venv-api", ".venv-django", ".venv"):
             self.assertIn(name, powershell)
 
-    def test_digitalocean_coverage_uses_deterministic_pure_python_tracer(self):
+    def test_digitalocean_coverage_uses_deterministic_sysmon_tracer(self):
         repo_root = MODULE_PATH.parents[2]
         wrapper = (repo_root / "scripts/python/run_digitalocean_coverage.py").read_text(
             encoding="utf-8"
         )
-        self.assertIn("'COVERAGE_CORE': 'pytrace'", wrapper)
+        self.assertIn("'COVERAGE_CORE': 'sysmon'", wrapper)
         self.assertIn("'digital_ocean' / 'tests'", wrapper)
         self.assertIn("'--source=digital_ocean/scripts/python'", wrapper)
         self.assertIn("'--parallel-mode'", wrapper)
@@ -454,7 +454,7 @@ class CompleteGateTests(unittest.TestCase):
         digitalocean_wrapper = (
             repo_root / "scripts/python/run_digitalocean_coverage.py"
         ).read_text(encoding="utf-8")
-        self.assertIn("'COVERAGE_CORE': 'pytrace'", digitalocean_wrapper)
+        self.assertIn("'COVERAGE_CORE': 'sysmon'", digitalocean_wrapper)
         self.assertIn("'digital_ocean' / 'tests'", digitalocean_wrapper)
         self.assertIn("coverage_dir / 'digitalocean.json'", digitalocean_wrapper)
         self.assertIn("PARTITION_SIZE = 4", digitalocean_wrapper)

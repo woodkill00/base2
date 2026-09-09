@@ -649,3 +649,9 @@ substitute for the integration proof named by the task.
 - [ ] B470 Preserve the repository-wide ban on bare product `/health` routes and rename the synthetic-only readiness route so it cannot be mistaken for an admitted product surface. (FR-002, FR-005, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
 - [ ] B471 Update Compose, hosted polling, the WSL runner, and boundary tests to require the exact synthetic readiness route while proving bare `/health`, `/api/health`, docs, and OpenAPI remain absent from the synthetic process. (FR-002, FR-004, FR-005, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
 - [ ] B472 Commit a replacement candidate, require both hosted guard jobs to pass, and restart all exact-source gates, repetitions, isolated-stack proofs, and reviews from the new SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 58 — Coverage tracer cycle 81 corrections
+
+- [ ] B473 Replace the DigitalOcean partition's unstable pure-Python tracer with Python 3.12 `sys.monitoring` coverage while retaining isolated partitions, exact source selection, coverage combination, and nonzero failure propagation. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B474 Bind the exact tracer core into the complete-gate contract and repeatedly exercise the formerly crashing generated-child partition plus the complete DigitalOcean coverage runner. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B475 Commit a replacement candidate and restart both full gates, repetitions, isolated-stack proof, hosted checks, and independent reviews only after coverage succeeds without tracer warnings or retries. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
