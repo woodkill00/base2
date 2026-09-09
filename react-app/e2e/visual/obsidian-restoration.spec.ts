@@ -286,7 +286,12 @@ test('navigation and footer use scalable SVG interface artwork', async ({ page }
 });
 
 test('movement controls advance through the restored full-screen sections', async ({ page }) => {
-  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(page.getByTestId('base2-bottom-movement-controls')).toBeAttached();
+  await page.evaluate(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    window.dispatchEvent(new Event('scroll'));
+  });
+  await expect.poll(() => page.evaluate(() => window.scrollY <= 4)).toBe(true);
   await expect(page.getByTestId('base2-scroll-descend')).toBeVisible();
   await page.getByTestId('base2-scroll-descend').click();
   await expect

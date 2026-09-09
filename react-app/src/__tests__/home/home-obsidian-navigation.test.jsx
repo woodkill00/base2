@@ -71,6 +71,44 @@ describe('Base2 restored Obsidian navigation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close Base2 utility menu' }));
   });
 
+  test('refreshes movement availability when responsive document layout settles', () => {
+    let documentHeight = 600;
+    let resizeCallback;
+    const disconnect = vi.fn();
+    const observe = vi.fn();
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback) {
+          resizeCallback = callback;
+        }
+
+        observe = observe;
+
+        disconnect = disconnect;
+      }
+    );
+    Object.defineProperty(document.documentElement, 'scrollHeight', {
+      configurable: true,
+      get: () => documentHeight,
+    });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 600 });
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 });
+
+    const { unmount } = renderNavigation();
+    expect(observe).toHaveBeenCalledWith(document.body);
+    expect(screen.queryByTestId('base2-scroll-descend')).not.toBeInTheDocument();
+
+    documentHeight = 1600;
+    act(() => resizeCallback());
+    expect(screen.getByTestId('base2-scroll-descend')).toBeInTheDocument();
+
+    fireEvent(window, new Event('pageshow'));
+    unmount();
+    expect(disconnect).toHaveBeenCalledOnce();
+    vi.unstubAllGlobals();
+  });
+
   test('dismisses overlays and supports keyboard palette controls', () => {
     renderNavigation();
 

@@ -545,9 +545,30 @@ const HomeObsidianNavigation = ({ onNavigate, onUtilityAction = () => {}, locale
     updateScrollState();
     window.addEventListener('scroll', updateScrollState, { passive: true });
     window.addEventListener('resize', updateScrollState);
+    window.addEventListener('load', updateScrollState);
+    window.addEventListener('pageshow', updateScrollState);
+
+    // A responsive section can grow after the first layout pass without
+    // emitting either scroll or resize (for example, when a font or deferred
+    // child settles). Keep the movement controls synchronized with that final
+    // document geometry instead of leaving a stale edge decision on screen.
+    const resizeObserver =
+      typeof ResizeObserver === 'function' ? new ResizeObserver(updateScrollState) : null;
+    if (resizeObserver && document.body) resizeObserver.observe(document.body);
+
+    const layoutFrames = [];
+    layoutFrames.push(
+      window.requestAnimationFrame(() => {
+        layoutFrames.push(window.requestAnimationFrame(updateScrollState));
+      })
+    );
     return () => {
       window.removeEventListener('scroll', updateScrollState);
       window.removeEventListener('resize', updateScrollState);
+      window.removeEventListener('load', updateScrollState);
+      window.removeEventListener('pageshow', updateScrollState);
+      resizeObserver?.disconnect();
+      layoutFrames.forEach((frame) => window.cancelAnimationFrame(frame));
     };
   }, [updateScrollState]);
 

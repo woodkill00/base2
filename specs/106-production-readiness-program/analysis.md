@@ -1560,3 +1560,20 @@ for every staged API Python file. The hook remains WSL/repository-local and gain
 no network or external authority. Commit `6f1c04a`, its interrupted exact gate,
 and hosted failures are rejected; the next candidate must pass local Ruff before
 publication and restart all evidence.
+
+## Analysis cycle 74 — delayed responsive-layout scroll state
+
+The first exact gate for the cycle-73 candidate passed every lane through the
+visual harness until the tablet movement-control scenario. At that viewport,
+late document growth occurred after the navigation's initial geometry read and
+without a window scroll or resize event. The retained state therefore reported
+the page at its lower edge and omitted the descend control even after the test
+returned the viewport to the top. Desktop and mobile passed, but a width-specific
+stale control is a user-visible failure and the candidate is rejected.
+
+B444-B447 observe bounded document-size changes and page lifecycle restoration,
+settle geometry again after mount, make the browser scenario establish and prove
+its top-edge precondition, and stress the exact tablet interaction repeatedly.
+The correction grants no network or privileged authority. Commit `2b819a8`, its
+failed complete gate, and every prior candidate remain ineligible; all final
+evidence must restart from the replacement SHA.

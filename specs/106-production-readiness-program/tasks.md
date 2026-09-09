@@ -599,3 +599,10 @@ substitute for the integration proof named by the task.
 - [ ] B441 Replace the nested missing-credential assertion with a Ruff-clean multi-context proof without weakening its fail-closed behavior. (FR-002, FR-005, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
 - [ ] B442 Run pinned API Ruff over every staged API Python file in the pre-commit hook and add a repository contract for the exact lint-staged command. (FR-002, FR-005, FR-014, FR-031, FR-059, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
 - [ ] B443 Commit only after staged Ruff and surface validation pass, then restart every local, fresh-volume, repetition, review, and hosted check from the replacement SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 51 — Responsive layout cycle 74 corrections
+
+- [ ] B444 Recompute navigation edge state after document-size changes, load, page restoration, and the settled post-mount layout while cleaning every observer and listener on unmount. (FR-002, FR-005, FR-007, FR-021, FR-060, FR-063, FR-065, FR-068, FR-075, FR-078)
+- [ ] B445 Make the movement-control browser proof establish and verify its top-edge precondition before asserting that descent is available. (FR-002, FR-005, FR-007, FR-021, FR-060, FR-063, FR-065, FR-068, FR-075, FR-078)
+- [ ] B446 Repeat the exact tablet movement interaction at least twenty times and retain zero-failure evidence before restarting the complete gates. (FR-002, FR-005, FR-007, FR-021, FR-060, FR-063, FR-065, FR-068, FR-075, FR-078)
+- [ ] B447 Commit a replacement candidate and restart every complete gate, fresh-volume proof, exact repetition, independent review, and hosted check from that exact SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
