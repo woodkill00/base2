@@ -662,3 +662,10 @@ substitute for the integration proof named by the task.
 - [ ] B477 Permit at most three attempts only for native crash return codes while retaining every failed attempt as bounded private hash-bound evidence; keep ordinary assertion, timeout, source-drift, and integrity failures immediately terminal. (FR-002, FR-005, FR-007, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
 - [ ] B478 Bind recovered native-crash evidence paths into the successful exact-source manifest and prove one recovery, exhaustion, ordinary failure, replay, tamper, environment allowlisting, and exact cleanup behavior. (FR-002, FR-005, FR-007, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
 - [ ] B479 Commit a replacement candidate and restart the fresh stack, exact repetitions, both full gates, hosted checks, and independent reviews from that SHA with no unreported failure. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 60 — Disposable migration native-crash cycle 83 corrections
+
+- [ ] B480 Add deterministic Python allocator/hash settings only to disposable Django migration containers in PostgreSQL acceptance. (FR-002, FR-005, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-073, FR-078)
+- [ ] B481 Retry only idempotent transactional disposable migrations at most three times for native exits `-11`, `134`, or `139`, while keeping role assertions, SQL checks, ordinary failures, and cleanup single-shot and fail-closed. (FR-002, FR-005, FR-007, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-073, FR-078)
+- [ ] B482 Prove native recovery, native exhaustion, immediate ordinary failure, fixed command scope, unchanged role checks, and final disposable-container cleanup. (FR-002, FR-005, FR-007, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-073, FR-078)
+- [ ] B483 Commit a replacement candidate and restart the fresh stack, exact repetitions, both full gates, hosted checks, and independent reviews from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)

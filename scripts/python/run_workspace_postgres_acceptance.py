@@ -11,10 +11,29 @@ POSTGRES_IMAGE = (
     "mirror.gcr.io/library/postgres@sha256:"
     "075f7ba66bc9b3ce7d6b8b635208ff61cd7cf1a67d71ec530eec5d7ae0cbe571"
 )
+MAX_NATIVE_ATTEMPTS = 3
+NATIVE_FAILURES = {-11, 134, 139}
 
 
 def run(command, **kwargs):
     return subprocess.run(command, check=True, **kwargs)
+
+
+def run_idempotent_native_safe(command, **kwargs):
+    """Retry only a disposable idempotent command after a native process crash."""
+
+    for attempt in range(1, MAX_NATIVE_ATTEMPTS + 1):
+        result = subprocess.run(command, check=False, **kwargs)
+        if result.returncode == 0:
+            return result
+        if result.returncode not in NATIVE_FAILURES or attempt == MAX_NATIVE_ATTEMPTS:
+            raise subprocess.CalledProcessError(result.returncode, command)
+        print(
+            f"Disposable migration recovered from native exit {result.returncode}; "
+            f"retry {attempt + 1}/{MAX_NATIVE_ATTEMPTS}",
+            flush=True,
+        )
+    raise RuntimeError("unreachable_native_retry_state")  # pragma: no cover
 
 
 def main() -> None:
@@ -167,6 +186,10 @@ def main() -> None:
             "PYTHONPATH=/workspace/django",
             "-e",
             "DJANGO_SETTINGS_MODULE=project.settings.base",
+            "-e",
+            "PYTHONHASHSEED=0",
+            "-e",
+            "PYTHONMALLOC=malloc",
             "-e",
             "DB_HOST=127.0.0.1",
             "-e",
@@ -400,14 +423,24 @@ def main() -> None:
             api_image,
             "scripts/python/run_workspace_role_migration_checks.py",
         ]
-        run(django_migration + ["0031", "--noinput"], stdout=subprocess.DEVNULL)
+        run_idempotent_native_safe(
+            django_migration + ["0031", "--noinput"], stdout=subprocess.DEVNULL
+        )
         run(role_check + ["api-reversed"])
-        run(django_migration + ["0032", "--noinput"], stdout=subprocess.DEVNULL)
-        run(django_migration + ["0033", "--noinput"], stdout=subprocess.DEVNULL)
+        run_idempotent_native_safe(
+            django_migration + ["0032", "--noinput"], stdout=subprocess.DEVNULL
+        )
+        run_idempotent_native_safe(
+            django_migration + ["0033", "--noinput"], stdout=subprocess.DEVNULL
+        )
         run(role_check + ["api-forward"])
-        run(django_migration + ["0009", "--noinput"], stdout=subprocess.DEVNULL)
+        run_idempotent_native_safe(
+            django_migration + ["0009", "--noinput"], stdout=subprocess.DEVNULL
+        )
         run(role_check + ["reversed"])
-        run(django_migration + ["0010", "--noinput"], stdout=subprocess.DEVNULL)
+        run_idempotent_native_safe(
+            django_migration + ["0010", "--noinput"], stdout=subprocess.DEVNULL
+        )
         run(role_check + ["forward"])
         media_check = common + [
             "--read-only",
@@ -458,11 +491,17 @@ def main() -> None:
             api_image,
             "scripts/python/run_media_postgres_checks.py",
         ]
-        run(django_migration + ["0017", "--noinput"], stdout=subprocess.DEVNULL)
+        run_idempotent_native_safe(
+            django_migration + ["0017", "--noinput"], stdout=subprocess.DEVNULL
+        )
         run(media_check + ["forward"])
-        run(django_migration + ["0010", "--noinput"], stdout=subprocess.DEVNULL)
+        run_idempotent_native_safe(
+            django_migration + ["0010", "--noinput"], stdout=subprocess.DEVNULL
+        )
         run(media_check + ["reversed"])
-        run(django_migration + ["0017", "--noinput"], stdout=subprocess.DEVNULL)
+        run_idempotent_native_safe(
+            django_migration + ["0017", "--noinput"], stdout=subprocess.DEVNULL
+        )
         run(media_check + ["forward"])
     finally:
         if started:

@@ -1712,3 +1712,21 @@ receive up to three attempts; each failed attempt is persisted before retry and
 referenced by the successful integrity-bound manifest. All assertion failures,
 timeouts, source drift, permission or hash changes, and third native failures
 remain terminal. Exact-source evidence restarts from a new commit.
+
+## Analysis cycle 83 — disposable migration container native crash
+
+Candidate `5fbf27d5ae2a07398ed3d880af5e710d8c9c88b9` passed the fresh-stack
+proof, all 20 exact repetitions without recovery, and its first complete gate.
+The second gate then passed every workspace, API-role, worker-role, and media RLS
+assertion before a disposable Django migration process exited `139`. The runner
+removed its synthetic PostgreSQL container and the gate retained the failure,
+but seven downstream checks correctly remained unrun. A transaction-safe target
+migration is idempotent; the surrounding role and SQL assertions are not retry
+eligible.
+
+B480-B483 add fixed allocator/hash settings to only the disposable migration
+process and a three-attempt native-only wrapper around only its target migration
+commands. Exit `1`, assertion checks, role probes, PostgreSQL checks, startup,
+and teardown remain single-shot. Unit tests cover recovery, exhaustion, ordinary
+failure, and fixed call-site scope; the full disposable acceptance and all exact
+evidence must restart on a new commit.
