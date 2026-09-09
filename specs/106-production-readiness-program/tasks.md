@@ -587,3 +587,9 @@ substitute for the integration proof named by the task.
 - [ ] B435 Override the API pytest default with an explicit integration marker for the isolated role-correct email-outbox invocation so it cannot silently select zero tests. (FR-002, FR-005, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-073, FR-078)
 - [ ] B436 Bind the exact isolated integration command into CI policy tests and prove it collects and executes both API-enqueue/email-worker-settlement cases. (FR-002, FR-005, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-073, FR-078)
 - [ ] B437 Commit a new candidate and restart all local, fresh-volume, repetition, independent-review, and hosted evidence from the exact replacement SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 49 — Changed-line coverage cycle 72 corrections
+
+- [ ] B438 Directly exercise missing email-worker credentials and require a sanitized fail-closed result before any role or pool transition. (FR-002, FR-005, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-073, FR-078)
+- [ ] B439 Prove the email integration context closes pools around the role switch and restores both present and absent owner environment values on exit. (FR-002, FR-005, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-073, FR-078)
+- [ ] B440 Clear the unchanged exact 90% changed-line floor, commit a new candidate, and restart all required exact-source and hosted evidence from its SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)

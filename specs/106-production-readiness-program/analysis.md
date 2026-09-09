@@ -1532,3 +1532,17 @@ B435-B437 explicitly select the integration marker for the isolated role-correct
 email invocation, bind that exact command into the CI policy contract, and prove
 the command collects and executes both tests. Commit `f228ab7` and its interrupted
 exact gate remain rejected; all exact-source evidence restarts from the next SHA.
+
+## Analysis cycle 72 — role-switch helper changed-line coverage
+
+The first exact gate for cycle 71 passed every functional lane but rejected the
+candidate at 89.83% changed-line coverage against the unchanged 90% floor. The
+new integration-only email role context correctly ran on the fresh PostgreSQL
+stack, while its missing-credential and owner-environment restoration branches
+were not exercised by the normal coverage suite. Lowering, rounding, or excluding
+the integration helper would hide a security-sensitive boundary and is rejected.
+
+B438-B440 directly test missing credentials, worker switching, pool closure, and
+both present and absent owner-value restoration in the unit suite. The failed
+coverage report and commit `78dd4c2` remain rejected. A replacement commit must
+clear the exact 90% floor before any repetition or review evidence can begin.
