@@ -215,17 +215,25 @@ class ServiceHealthContractTests(unittest.TestCase):
         self.assertNotIn("|| true", build_line)
         self.assertNotIn("|| true", up_line)
         deployment = deploy[
-            deploy.index("# Bring up core services") : deploy.index(
-                "# Capture Django migration output"
+            deploy.index("# Only the broker may start") : deploy.index(
+                "# Django deploy checks"
             )
         ]
         for line in deployment.splitlines():
             if "docker compose" in line and (" build " in line or " up " in line):
                 self.assertNotIn("|| true", line)
         core_up = next(line for line in deployment.splitlines() if "compose-up-core.txt" in line)
-        self.assertIn("celery-data-rights-worker", core_up)
+        self.assertIn(" redis ", f" {core_up} ")
         self.assertIn("--no-deps", core_up)
         self.assertNotIn(" postgres ", f" {core_up} ")
+        self.assertNotIn("celery-worker", core_up)
+        role_offset = deployment.index("workspace-role-bootstrap.txt")
+        api_migration_offset = deployment.index("api-migrate.txt")
+        django_migration_offset = deployment.index("django-migrate.txt")
+        request_start_offset = deployment.index("compose-up-after-migrations.txt")
+        self.assertLess(role_offset, api_migration_offset)
+        self.assertLess(api_migration_offset, django_migration_offset)
+        self.assertLess(django_migration_offset, request_start_offset)
         build_offset = deploy.index(build_line)
         self.assertNotIn("RUN_CELERY_CHECK", deploy[build_offset - 500 : build_offset])
         self.assertNotIn(

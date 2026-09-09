@@ -884,3 +884,22 @@ processes. The repaired disposable run passed mixed-version, workspace RLS,
 reverse/forward role migration, and media forward/reverse acceptance, including
 the new cross-tenant DML, migration-ledger, queue, orphaned-subject, and media ABA
 proofs.
+
+## Analysis cycle 34 — first exact-head gate rejection
+
+Complete gate 1 on `f81dcdc88bc46950fac832b2cca22b45e226433c`
+rejected two checks and made the remaining dependent checks not runnable. The
+service-health contract searched for a removed legacy comment and still expected
+workers in the pre-migration startup command, while the corrected graph
+intentionally starts only Redis before migrations. Changed-line coverage reached
+89.67% against the mandatory 90% floor because exact SSH trust logic remained
+inside an import-side-effectful orchestration program that cannot be safely unit
+executed. B315-B316 record both gaps.
+
+The service contract now asserts the real role-bootstrap, API migration, Django
+migration, request-service startup, and mandatory worker ordering. Exact SSH
+trust admission is isolated in a side-effect-free module with direct negative
+tests for missing, directory, and symlinked inventories plus positive proof that
+Paramiko loads only the supplied host inventory, retains RejectPolicy, and emits
+strict OpenSSH options. Gate 1 remains rejected historical evidence; both exact-
+head passes restart after a new commit.

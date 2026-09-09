@@ -20,13 +20,18 @@ import time
 from contextlib import suppress
 from pathlib import Path
 
-import paramiko
 from pydo import Client
 
 try:
     from digital_ocean.scripts.python.deploy_config import load_deploy_config
+    from digital_ocean.scripts.python.trusted_ssh import (
+        strict_openssh_options as _strict_openssh_options,
+        trusted_ssh_client as _trusted_ssh_client,
+    )
 except ModuleNotFoundError:
     from deploy_config import load_deploy_config
+    from trusted_ssh import strict_openssh_options as _strict_openssh_options
+    from trusted_ssh import trusted_ssh_client as _trusted_ssh_client
 
 _ENV_VAR_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
@@ -497,35 +502,6 @@ with open(env_path, "w") as f:
     f.writelines(lines)
 log(".env updated with public key.")
 _DEPLOY_CONFIG["DO_API_SSH_KEYS"] = pubkey
-
-
-def _trusted_known_hosts_path() -> Path:
-    raw = os.getenv("BASE2_SSH_KNOWN_HOSTS_PATH", "").strip()
-    if not raw:
-        raise RuntimeError("trusted_ssh_known_hosts_required")
-    candidate = Path(raw).expanduser()
-    if candidate.is_symlink():
-        raise RuntimeError("trusted_ssh_known_hosts_symlink_rejected")
-    path = candidate.resolve(strict=True)
-    if not path.is_file():
-        raise RuntimeError("trusted_ssh_known_hosts_not_file")
-    return path
-
-
-def _trusted_ssh_client() -> paramiko.SSHClient:
-    client = paramiko.SSHClient()
-    client.load_host_keys(str(_trusted_known_hosts_path()))
-    client.set_missing_host_key_policy(paramiko.RejectPolicy())
-    return client
-
-
-def _strict_openssh_options() -> list[str]:
-    return [
-        "-o",
-        "StrictHostKeyChecking=yes",
-        "-o",
-        f"UserKnownHostsFile={_trusted_known_hosts_path()}",
-    ]
 
 
 # --- Recovery routine, now only called explicitly ---

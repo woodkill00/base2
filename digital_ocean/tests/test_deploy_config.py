@@ -139,9 +139,12 @@ def test_python_orchestrator_rejects_unknown_ssh_hosts_everywhere():
     script = (root / 'digital_ocean/scripts/python/orchestrate_deploy.py').read_text(
         encoding='utf-8'
     )
+    policy = (root / 'digital_ocean/scripts/python/trusted_ssh.py').read_text(encoding='utf-8')
     assert 'AutoAddPolicy' not in script
     assert 'StrictHostKeyChecking=no' not in script
-    assert 'paramiko.RejectPolicy()' in script
-    assert 'client.load_host_keys' in script
-    assert 'StrictHostKeyChecking=yes' in script
-    assert 'UserKnownHostsFile=' in script
+    assert 'paramiko.RejectPolicy()' in policy
+    assert 'client.load_host_keys' in policy
+    assert 'StrictHostKeyChecking=yes' in policy
+    assert 'UserKnownHostsFile=' in policy
+    assert '_trusted_ssh_client()' in script
+    assert '*_strict_openssh_options()' in script
