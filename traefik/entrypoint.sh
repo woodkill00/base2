@@ -16,10 +16,15 @@ unescape_dollars() {
   fi
 }
 
-# Variables used in traefik dynamic config (basicAuth users)
+# Authentication material is mounted as service-scoped Compose secrets and is
+# present only while the private runtime configuration is rendered.
+[ ! -s /run/secrets/traefik_dash_basic_users ] ||
+  TRAEFIK_DASH_BASIC_USERS=$(cat /run/secrets/traefik_dash_basic_users)
+[ ! -s /run/secrets/flower_basic_users ] ||
+  FLOWER_BASIC_USERS=$(cat /run/secrets/flower_basic_users)
+export TRAEFIK_DASH_BASIC_USERS FLOWER_BASIC_USERS
 unescape_dollars TRAEFIK_DASH_BASIC_USERS
 unescape_dollars FLOWER_BASIC_USERS
-# add any other *BASIC_USERS vars you have here
 # ---------------------------------------------------------------
 
 # Feature 093 is staging-only. A production-looking environment must not turn
@@ -57,6 +62,7 @@ DYNAMIC_OUTPUT_PATH="/tmp/dynamic.yml"
 if [ -f "$DYNAMIC_TEMPLATE_PATH" ]; then
   envsubst < "$DYNAMIC_TEMPLATE_PATH" > "$DYNAMIC_OUTPUT_PATH"
 fi
+unset TRAEFIK_DASH_BASIC_USERS FLOWER_BASIC_USERS
 
 # The shared bootstrap prepares storage before startup. This entrypoint only
 # verifies the staging file and never creates or selects live ACME storage.

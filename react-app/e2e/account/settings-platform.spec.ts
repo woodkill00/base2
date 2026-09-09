@@ -11,8 +11,15 @@ const owner = {
 };
 
 const categories = [
-  'overview', 'profile', 'security', 'privacy', 'notifications', 'appearance',
-  'language-region', 'organization', 'developer',
+  'overview',
+  'profile',
+  'security',
+  'privacy',
+  'notifications',
+  'appearance',
+  'language-region',
+  'organization',
+  'developer',
 ].map((id) => ({ id, path: id === 'overview' ? '/settings' : `/settings/${id}`, version: 'v1' }));
 
 test.beforeEach(async ({ page }) => {
@@ -30,30 +37,74 @@ test.beforeEach(async ({ page }) => {
       await route.continue();
       return;
     }
-    const json = (body: unknown, status = 200) => route.fulfill({
-      status, contentType: 'application/json', body: JSON.stringify(body),
-    });
-    if (url.pathname === '/api/settings/capabilities') await json({ schema_version: 1, categories });
+    const json = (body: unknown, status = 200) =>
+      route.fulfill({
+        status,
+        contentType: 'application/json',
+        body: JSON.stringify(body),
+      });
+    if (url.pathname === '/api/settings/capabilities')
+      await json({ schema_version: 1, categories });
     else if (url.pathname === '/api/settings/preferences') {
-      if (route.request().method() === 'PUT') await json({ version: 4, theme: 'dark', contrast: 'high', motion: 'reduced', density: 'comfortable', locale: 'en', timezone: 'UTC', week_start: 'monday' });
-      else await json({ version: 3, theme: 'system', contrast: 'system', motion: 'system', density: 'comfortable', locale: 'en', timezone: 'UTC', week_start: 'system' });
+      if (route.request().method() === 'PUT')
+        await json({
+          version: 4,
+          theme: 'dark',
+          contrast: 'high',
+          motion: 'reduced',
+          density: 'comfortable',
+          locale: 'en',
+          timezone: 'UTC',
+          week_start: 'monday',
+        });
+      else
+        await json({
+          version: 3,
+          theme: 'system',
+          contrast: 'system',
+          motion: 'system',
+          density: 'comfortable',
+          locale: 'en',
+          timezone: 'UTC',
+          week_start: 'system',
+        });
     } else if (url.pathname === '/api/settings/notifications') {
-      await json({ preferences: [
-        { event_family: 'security', channel: 'email', delivery: 'immediate', mandatory: true },
-        { event_family: 'transactional', channel: 'email', delivery: 'immediate', mandatory: true },
-        { event_family: 'product', channel: 'email', delivery: 'digest', mandatory: false },
-        { event_family: 'marketing', channel: 'email', delivery: 'disabled', mandatory: false },
-      ] });
-    } else if (url.pathname === '/api/settings/security-events') await json({ events: [{ id: 'event-1', action: 'identity.login_succeeded' }] });
+      await json({
+        preferences: [
+          { event_family: 'security', channel: 'email', delivery: 'immediate', mandatory: true },
+          {
+            event_family: 'transactional',
+            channel: 'email',
+            delivery: 'immediate',
+            mandatory: true,
+          },
+          { event_family: 'product', channel: 'email', delivery: 'digest', mandatory: false },
+          { event_family: 'marketing', channel: 'email', delivery: 'disabled', mandatory: false },
+        ],
+      });
+    } else if (url.pathname === '/api/settings/security-events')
+      await json({ events: [{ id: 'event-1', action: 'identity.login_succeeded' }] });
     else if (url.pathname === '/api/privacy/operations') await json({ operations: [] });
     else if (url.pathname.startsWith('/api/privacy/')) await json({ accepted: true }, 202);
-    else if (url.pathname === '/api/identity/capabilities') await json({ mfa: { totp: { enabled: true }, recovery_codes: { enabled: true }, webauthn: { enabled: false } } });
-    else if (url.pathname === '/api/auth/sessions') await json({ sessions: [{ id: 'current', user_agent: 'Fixture browser', is_current: true }] });
+    else if (url.pathname === '/api/identity/capabilities')
+      await json({
+        mfa: {
+          totp: { enabled: true },
+          recovery_codes: { enabled: true },
+          webauthn: { enabled: false },
+        },
+      });
+    else if (url.pathname === '/api/auth/sessions')
+      await json({
+        sessions: [{ id: 'current', user_agent: 'Fixture browser', is_current: true }],
+      });
     else await json({});
   });
 });
 
-test('unified settings routes, searches, saves, and preserves mandatory delivery', async ({ page }) => {
+test('unified settings routes, searches, saves, and preserves mandatory delivery', async ({
+  page,
+}) => {
   await page.goto('/settings');
   await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
   await page.getByLabel('Search settings').fill('privacy');
@@ -67,7 +118,9 @@ test('unified settings routes, searches, saves, and preserves mandatory delivery
   await expect(page.getByRole('status')).toContainText('Preferences saved');
 
   await page.goto('/settings/notifications');
-  await expect(page.getByLabel('security-email delivery').locator('option[value="disabled"]')).toHaveCount(0);
+  await expect(
+    page.getByLabel('security-email delivery').locator('option[value="disabled"]')
+  ).toHaveCount(0);
   await page.getByLabel('marketing email delivery').selectOption('digest');
   await page.getByRole('button', { name: 'Save notifications' }).click();
   await expect(page.getByRole('status')).toContainText('Notification preferences saved');
@@ -79,44 +132,104 @@ test('unified settings routes, searches, saves, and preserves mandatory delivery
   await expect(deletion).toBeEnabled();
 });
 
-test('legacy account deep link converges on unified security without duplicated app navigation', async ({ page }) => {
+test('legacy account deep link converges on unified security without duplicated app navigation', async ({
+  page,
+}) => {
   await page.goto('/account');
   await expect(page).toHaveURL(/\/settings\/security$/);
   await expect(page.getByRole('heading', { name: 'Multi-factor authentication' })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'App navigation' })).toHaveCount(1);
 });
 
-test('loading, partial-error, and empty-search states retain explicit visual evidence', async ({ page }) => {
+test('loading, partial-error, and empty-search states retain explicit visual evidence', async ({
+  page,
+}) => {
   await page.route('**/api/settings/capabilities', async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 750));
     await route.fulfill({
-      status: 200, contentType: 'application/json', body: JSON.stringify({ schema_version: 1, categories }),
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ schema_version: 1, categories }),
     });
   });
   await page.goto('/settings');
   await expect(page.getByText('Loading settings…')).toBeVisible();
   await expect(page).toHaveScreenshot('settings-loading-desktop.png', {
-    fullPage: true, animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.01,
+    fullPage: true,
+    animations: 'disabled',
+    caret: 'hide',
+    maxDiffPixelRatio: 0.01,
   });
   await expect(page.getByText('Loading settings…')).toHaveCount(0);
 
   await page.getByLabel('Search settings').fill('no-such-setting');
   await expect(page.getByText('No settings found.')).toBeVisible();
   await expect(page).toHaveScreenshot('settings-empty-search-desktop.png', {
-    fullPage: true, animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.01,
+    fullPage: true,
+    animations: 'disabled',
+    caret: 'hide',
+    maxDiffPixelRatio: 0.01,
   });
 
-  await page.route('**/api/settings/preferences', (route) => route.fulfill({
-    status: 503, contentType: 'application/json', body: JSON.stringify({ detail: 'fixture unavailable' }),
-  }));
+  await page.route('**/api/settings/preferences', (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ detail: 'fixture unavailable' }),
+    })
+  );
   await page.reload();
   await expect(page.getByRole('alert')).toContainText('temporarily unavailable');
   await expect(page).toHaveScreenshot('settings-partial-error-desktop.png', {
-    fullPage: true, animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.01,
+    fullPage: true,
+    animations: 'disabled',
+    caret: 'hide',
+    maxDiffPixelRatio: 0.01,
   });
 });
 
-test('destructive confirmation states are visually explicit before submission', async ({ page }) => {
+for (const failure of [
+  {
+    name: 'privacy-history',
+    endpoint: '/api/privacy/operations',
+    route: '/settings/privacy',
+    message: 'Recent privacy requests are temporarily unavailable.',
+  },
+  {
+    name: 'notification-preferences',
+    endpoint: '/api/settings/notifications',
+    route: '/settings/notifications',
+    message: 'Notification preferences are temporarily unavailable.',
+  },
+  {
+    name: 'security-activity',
+    endpoint: '/api/settings/security-events',
+    route: '/settings/organization',
+    message: 'Security activity is temporarily unavailable.',
+  },
+]) {
+  test(`${failure.name} failure remains visibly distinct from empty data`, async ({ page }) => {
+    await page.route(`**${failure.endpoint}`, (route) =>
+      route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: 'fixture unavailable' }),
+      })
+    );
+    await page.goto(failure.route);
+    await expect(page.getByRole('alert')).toHaveText(failure.message);
+    await expect(page).toHaveScreenshot(`settings-${failure.name}-unavailable-desktop.png`, {
+      fullPage: true,
+      animations: 'disabled',
+      caret: 'hide',
+      maxDiffPixelRatio: 0.01,
+    });
+  });
+}
+
+test('destructive confirmation states are visually explicit before submission', async ({
+  page,
+}) => {
   await page.goto('/settings/privacy');
   await page.getByLabel('Deactivation confirmation').fill('DEACTIVATE');
   await page.getByLabel('Confirmation', { exact: true }).fill('DELETE');
@@ -124,7 +237,9 @@ test('destructive confirmation states are visually explicit before submission', 
   await expect(page.getByRole('button', { name: 'Request account deletion' })).toBeEnabled();
   await page.getByRole('button', { name: 'Request account deletion' }).scrollIntoViewIfNeeded();
   await expect(page).toHaveScreenshot('settings-destructive-confirmation-desktop.png', {
-    animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.01,
+    animations: 'disabled',
+    caret: 'hide',
+    maxDiffPixelRatio: 0.01,
   });
 });
 
@@ -137,21 +252,39 @@ for (const viewport of [
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await page.goto('/settings');
     await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
-    const targetSizes = await page.locator('a, button, input, select, textarea').evaluateAll((nodes) =>
-      nodes.filter((node) => {
-        const box = node.getBoundingClientRect();
-        return box.width > 0 && box.height > 0 && (box.width < 24 || box.height < 24);
-      }).map((node) => ({ tag: node.tagName, text: (node.textContent || '').trim() }))
-    );
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)
+    ).toBeLessThanOrEqual(1);
+    const targetSizes = await page
+      .locator('a, button, input, select, textarea')
+      .evaluateAll((nodes) =>
+        nodes
+          .filter((node) => {
+            const box = node.getBoundingClientRect();
+            return box.width > 0 && box.height > 0 && (box.width < 24 || box.height < 24);
+          })
+          .map((node) => ({ tag: node.tagName, text: (node.textContent || '').trim() }))
+      );
     expect(targetSizes).toEqual([]);
     await expect(page).toHaveScreenshot(`settings-overview-${viewport.name}.png`, {
-      fullPage: true, animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.01,
+      fullPage: true,
+      animations: 'disabled',
+      caret: 'hide',
+      maxDiffPixelRatio: 0.01,
     });
   });
 }
 
-for (const route of ['profile', 'security', 'privacy', 'notifications', 'appearance', 'language-region', 'organization', 'developer']) {
+for (const route of [
+  'profile',
+  'security',
+  'privacy',
+  'notifications',
+  'appearance',
+  'language-region',
+  'organization',
+  'developer',
+]) {
   test(`${route} state is accessible and visually stable`, async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto(`/settings/${route}`);
@@ -159,18 +292,31 @@ for (const route of ['profile', 'security', 'privacy', 'notifications', 'appeara
     await page.addScriptTag({ content: axeSource });
     const violations = await page.evaluate(async () => {
       const results = await window.axe.run(document, { resultTypes: ['violations'] });
-      return results.violations.map((item) => ({ id: item.id, targets: item.nodes.map((node) => node.target) }));
+      return results.violations.map((item) => ({
+        id: item.id,
+        targets: item.nodes.map((node) => node.target),
+      }));
     });
     expect(violations).toEqual([]);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)
+    ).toBeLessThanOrEqual(1);
     await expect(page).toHaveScreenshot(`settings-${route}-desktop.png`, {
-      fullPage: true, animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.01,
+      fullPage: true,
+      animations: 'disabled',
+      caret: 'hide',
+      maxDiffPixelRatio: 0.01,
     });
   });
 }
 
 declare global {
   interface Window {
-    axe: { run: (root: Document, options?: unknown) => Promise<{ violations: Array<{ id: string; nodes: Array<{ target: unknown }> }> }> };
+    axe: {
+      run: (
+        root: Document,
+        options?: unknown
+      ) => Promise<{ violations: Array<{ id: string; nodes: Array<{ target: unknown }> }> }>;
+    };
   }
 }

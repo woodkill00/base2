@@ -288,6 +288,26 @@ const DETAIL_COPY = {
     confirmation: 'Confirmation',
     requestDeletion: 'Request account deletion',
     recentRequests: 'Recent requests',
+    privacyHistoryUnavailable: 'Recent privacy requests are temporarily unavailable.',
+    notificationsUnavailable: 'Notification preferences are temporarily unavailable.',
+    securityEventsUnavailable: 'Security activity is temporarily unavailable.',
+    privacyKinds: {
+      export: 'Data export',
+      correction: 'Data correction',
+      deactivation: 'Account deactivation',
+      deletion: 'Account deletion',
+      global_deactivation: 'Global account deactivation',
+      global_deletion: 'Global account deletion',
+    },
+    privacyStatuses: {
+      queued: 'Queued',
+      running: 'In progress',
+      completed: 'Completed',
+      failed: 'Failed',
+      expired: 'Expired',
+    },
+    unknownPrivacyKind: 'Unknown request type',
+    unknownPrivacyStatus: 'Unknown request status',
     membersRoles: 'Members and roles',
     membersHelp: 'Invite members, assign least-privilege roles, and review organization access.',
     openAdministration: 'Open organization administration',
@@ -376,6 +396,26 @@ const DETAIL_COPY = {
     confirmation: 'Bestätigung',
     requestDeletion: 'Kontolöschung anfordern',
     recentRequests: 'Letzte Anfragen',
+    privacyHistoryUnavailable: 'Letzte Datenschutzanfragen sind vorübergehend nicht verfügbar.',
+    notificationsUnavailable: 'Benachrichtigungseinstellungen sind vorübergehend nicht verfügbar.',
+    securityEventsUnavailable: 'Sicherheitsaktivitäten sind vorübergehend nicht verfügbar.',
+    privacyKinds: {
+      export: 'Datenexport',
+      correction: 'Datenkorrektur',
+      deactivation: 'Kontodeaktivierung',
+      deletion: 'Kontolöschung',
+      global_deactivation: 'Globale Kontodeaktivierung',
+      global_deletion: 'Globale Kontolöschung',
+    },
+    privacyStatuses: {
+      queued: 'In Warteschlange',
+      running: 'In Bearbeitung',
+      completed: 'Abgeschlossen',
+      failed: 'Fehlgeschlagen',
+      expired: 'Abgelaufen',
+    },
+    unknownPrivacyKind: 'Unbekannter Anfragetyp',
+    unknownPrivacyStatus: 'Unbekannter Anfragestatus',
     membersRoles: 'Mitglieder und Rollen',
     membersHelp:
       'Laden Sie Mitglieder ein, vergeben Sie Rollen mit minimalen Rechten und prüfen Sie den Organisationszugriff.',
@@ -459,6 +499,26 @@ const DETAIL_COPY = {
     confirmation: 'التأكيد',
     requestDeletion: 'طلب حذف الحساب',
     recentRequests: 'الطلبات الحديثة',
+    privacyHistoryUnavailable: 'طلبات الخصوصية الحديثة غير متاحة مؤقتًا.',
+    notificationsUnavailable: 'تفضيلات الإشعارات غير متاحة مؤقتًا.',
+    securityEventsUnavailable: 'نشاط الأمان غير متاح مؤقتًا.',
+    privacyKinds: {
+      export: 'تصدير البيانات',
+      correction: 'تصحيح البيانات',
+      deactivation: 'تعطيل الحساب',
+      deletion: 'حذف الحساب',
+      global_deactivation: 'تعطيل الحساب العام',
+      global_deletion: 'حذف الحساب العام',
+    },
+    privacyStatuses: {
+      queued: 'في قائمة الانتظار',
+      running: 'قيد التنفيذ',
+      completed: 'مكتمل',
+      failed: 'فشل',
+      expired: 'منتهي الصلاحية',
+    },
+    unknownPrivacyKind: 'نوع طلب غير معروف',
+    unknownPrivacyStatus: 'حالة طلب غير معروفة',
     membersRoles: 'الأعضاء والأدوار',
     membersHelp: 'ادعُ الأعضاء وحدد أدوارًا بأقل الصلاحيات وراجع الوصول إلى المؤسسة.',
     openAdministration: 'فتح إدارة المؤسسة',
@@ -516,6 +576,11 @@ const SettingsCenter = () => {
   const [operations, setOperations] = useState([]);
   const [notifications, setNotifications] = useState(DEFAULT_NOTIFICATIONS);
   const [securityEvents, setSecurityEvents] = useState([]);
+  const [resourceAvailability, setResourceAvailability] = useState({
+    privacy: null,
+    notifications: null,
+    security: null,
+  });
   const [correction, setCorrection] = useState({ display_name: '', bio: '' });
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [deactivateConfirmation, setDeactivateConfirmation] = useState('');
@@ -589,6 +654,11 @@ const SettingsCenter = () => {
         }
         if (securityResult.status === 'fulfilled')
           setSecurityEvents(securityResult.value?.events || []);
+        setResourceAvailability({
+          privacy: privacyResult.status === 'fulfilled',
+          notifications: notificationResult.status === 'fulfilled',
+          security: securityResult.status === 'fulfilled',
+        });
         if ([capabilityResult, preferenceResult].some((result) => result.status === 'rejected')) {
           const responseLocale = String(
             preferenceResult.value?.locale || user?.locale || 'en'
@@ -921,56 +991,63 @@ const SettingsCenter = () => {
     </GlassCard>
   );
 
-  const renderNotifications = () => (
-    <GlassCard>
-      <form onSubmit={saveNotifications} className="space-y-5 p-6">
-        <div>
-          <h2 className="font-semibold">{detail.deliveryControls}</h2>
-          <p className="mt-2 text-sm opacity-75">{detail.deliveryHelp}</p>
-        </div>
-        <div className="divide-y divide-white/10 rounded-xl border border-white/15">
-          {notifications.map((item, index) => (
-            <div
-              className="grid gap-3 p-4 sm:grid-cols-[1fr_12rem] sm:items-center"
-              key={`${item.event_family}-${item.channel}`}
-            >
-              <div>
-                <p className="font-medium capitalize">
-                  {detail.notificationTerms[item.event_family] || item.event_family} ·{' '}
-                  {detail.notificationTerms[item.channel] || item.channel.replace('_', ' ')}
-                </p>
-                <p className="text-xs opacity-70">
-                  {item.mandatory ? detail.requiredMessage : detail.optionalMessage}
-                </p>
-              </div>
-              <Select
-                id={`notification-${item.event_family}-${item.channel}`}
-                aria-label={detail.notificationDeliveryLabel(
-                  detail.notificationTerms[item.event_family] || item.event_family,
-                  detail.notificationTerms[item.channel] || item.channel.replace('_', ' ')
-                )}
-                value={item.delivery}
-                onChange={(event) =>
-                  setNotifications(
-                    notifications.map((choice, choiceIndex) =>
-                      choiceIndex === index ? { ...choice, delivery: event.target.value } : choice
-                    )
-                  )
-                }
+  const renderNotifications = () =>
+    resourceAvailability.notifications === false ? (
+      <GlassCard>
+        <p className="p-6 text-sm text-amber-100" role="alert">
+          {detail.notificationsUnavailable}
+        </p>
+      </GlassCard>
+    ) : (
+      <GlassCard>
+        <form onSubmit={saveNotifications} className="space-y-5 p-6">
+          <div>
+            <h2 className="font-semibold">{detail.deliveryControls}</h2>
+            <p className="mt-2 text-sm opacity-75">{detail.deliveryHelp}</p>
+          </div>
+          <div className="divide-y divide-white/10 rounded-xl border border-white/15">
+            {notifications.map((item, index) => (
+              <div
+                className="grid gap-3 p-4 sm:grid-cols-[1fr_12rem] sm:items-center"
+                key={`${item.event_family}-${item.channel}`}
               >
-                <option value="immediate">{detail.immediately}</option>
-                <option value="digest">{detail.digest}</option>
-                {!item.mandatory ? <option value="disabled">{detail.off}</option> : null}
-              </Select>
-            </div>
-          ))}
-        </div>
-        <GlassButton type="submit" disabled={saving}>
-          {saving ? detail.saving : detail.saveNotifications}
-        </GlassButton>
-      </form>
-    </GlassCard>
-  );
+                <div>
+                  <p className="font-medium capitalize">
+                    {detail.notificationTerms[item.event_family] || item.event_family} ·{' '}
+                    {detail.notificationTerms[item.channel] || item.channel.replace('_', ' ')}
+                  </p>
+                  <p className="text-xs opacity-70">
+                    {item.mandatory ? detail.requiredMessage : detail.optionalMessage}
+                  </p>
+                </div>
+                <Select
+                  id={`notification-${item.event_family}-${item.channel}`}
+                  aria-label={detail.notificationDeliveryLabel(
+                    detail.notificationTerms[item.event_family] || item.event_family,
+                    detail.notificationTerms[item.channel] || item.channel.replace('_', ' ')
+                  )}
+                  value={item.delivery}
+                  onChange={(event) =>
+                    setNotifications(
+                      notifications.map((choice, choiceIndex) =>
+                        choiceIndex === index ? { ...choice, delivery: event.target.value } : choice
+                      )
+                    )
+                  }
+                >
+                  <option value="immediate">{detail.immediately}</option>
+                  <option value="digest">{detail.digest}</option>
+                  {!item.mandatory ? <option value="disabled">{detail.off}</option> : null}
+                </Select>
+              </div>
+            ))}
+          </div>
+          <GlassButton type="submit" disabled={saving}>
+            {saving ? detail.saving : detail.saveNotifications}
+          </GlassButton>
+        </form>
+      </GlassCard>
+    );
 
   const renderPrivacy = () => (
     <div className="space-y-4">
@@ -1057,15 +1134,21 @@ const SettingsCenter = () => {
           </GlassButton>
         </form>
       </GlassCard>
-      {operations.length ? (
+      {resourceAvailability.privacy === false ? (
+        <GlassCard>
+          <p className="p-6 text-sm text-amber-100" role="alert">
+            {detail.privacyHistoryUnavailable}
+          </p>
+        </GlassCard>
+      ) : operations.length ? (
         <GlassCard>
           <div className="p-6">
             <h2 className="font-semibold">{detail.recentRequests}</h2>
             <ul className="mt-3 space-y-2 text-sm">
               {operations.map((item) => (
                 <li key={item.id} className="flex justify-between gap-3">
-                  <span className="capitalize">{item.kind}</span>
-                  <span>{item.status}</span>
+                  <span>{detail.privacyKinds[item.kind] || detail.unknownPrivacyKind}</span>
+                  <span>{detail.privacyStatuses[item.status] || detail.unknownPrivacyStatus}</span>
                 </li>
               ))}
             </ul>
@@ -1092,7 +1175,11 @@ const SettingsCenter = () => {
       <GlassCard>
         <div className="p-6">
           <h2 className="font-semibold">{detail.securityActivity}</h2>
-          {securityEvents.length ? (
+          {resourceAvailability.security === false ? (
+            <p className="mt-2 text-sm text-amber-100" role="alert">
+              {detail.securityEventsUnavailable}
+            </p>
+          ) : securityEvents.length ? (
             <ul className="mt-3 space-y-2 text-sm">
               {securityEvents.slice(0, 5).map((event, index) => (
                 <li key={event.id || index}>{event.action || detail.accountEvent}</li>

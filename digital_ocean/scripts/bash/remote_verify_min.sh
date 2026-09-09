@@ -22,7 +22,7 @@ fi
 # Traefik artifacts
 TID=$(docker compose -f development.docker.yml ps -q traefik 2>/dev/null | head -n 1 || true)
 if [ -n "$TID" ]; then
-  (docker exec "$TID" sh -lc 'env | sort' > /root/logs/traefik-env.txt) || true
+  (docker exec "$TID" sh -lc 'for key in WEBSITE_DOMAIN TRAEFIK_CERT_EMAIL TRAEFIK_CERT_RESOLVER TRAEFIK_PREVIEW_MODE OWNER_ALLOWLIST_CSV; do if printenv "$key" >/dev/null 2>&1; then printf "%s=present\n" "$key"; else printf "%s=missing\n" "$key"; fi; done' > /root/logs/traefik-env.txt) || true
   (docker exec "$TID" cat /tmp/traefik.yml > /root/logs/traefik-static.yml) || (docker exec "$TID" cat /etc/traefik/traefik.yml > /root/logs/traefik-static.yml) || echo "EMPTY" > /root/logs/traefik-static.yml
   (docker exec "$TID" cat /tmp/dynamic.yml > /root/logs/traefik-dynamic.yml) || (docker exec "$TID" cat /etc/traefik/dynamic/dynamic.yml > /root/logs/traefik-dynamic.yml) || echo "EMPTY" > /root/logs/traefik-dynamic.yml
   (docker exec "$TID" sh -lc 'ls -l /etc/traefik /etc/traefik/dynamic' > /root/logs/traefik-ls.txt) || true

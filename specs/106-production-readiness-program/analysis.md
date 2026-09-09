@@ -964,3 +964,40 @@ the nearby API migration disable and bounded advisory-lock failure behavior was
 not directly exercised. B327 adds those meaningful release-safety proofs rather
 than excluding code or lowering the floor. The rejected gate remains historical
 and both complete gates restart on a new exact commit.
+
+## Analysis cycle 39 — independent review rejects the twice-green head
+
+Exact commit `50302d08c6b8ed3fc6414692e21596476b7f765a` passed all 107
+complete-gate checks twice, ten privacy/runtime repetitions, and ten
+backup/release/deployment repetitions. Fresh independent review nevertheless
+returned UX C0/H0/M2/L0, data C0/H0/M1/L0, and operations C1/H4/M2/L1. The
+candidate is rejected; all exact-head automated evidence is historical and no
+publication, merge, deployment, provider, DNS, certificate, credential, or
+destructive action is authorized from it.
+
+The critical issue exposed the complete operator environment to Traefik and
+persisted its raw environment in remote evidence. High findings cover an
+inconsistent provisioning-mode state machine, staging-only certificates tested
+against the ordinary production trust store, rollout failures outside the
+rollback boundary, and asynchronous mutation being able to reach terminal
+success before completion. Medium findings cover migration wrappers that omit
+role bootstrap and owner migration identity, fail-open tracked-environment
+detection, independently failed Settings resources shown as empty/default fact,
+and untranslated privacy operation tokens. Tasks B328-B337 capture the complete
+deduplicated repair and proof set. Both complete gates, critical repetitions,
+and all independent reviews restart from zero only after a new clean commit.
+
+## Analysis cycle 40 — pre-gate fresh-host and evidence hardening
+
+Pre-gate inspection of the cycle-39 deployment repairs found two additional
+release blockers before a new candidate was committed. Prior-state capture
+required an existing `.env`, making the approved newly provisioned-host path
+unable to deploy or prove a safe rollback. Rendered Traefik diagnostics also
+retained scoped basic-auth verifier values even though the broad container
+environment capture had been removed.
+
+B338-B340 record explicit fresh-versus-existing rollback state, structural
+basic-auth evidence redaction, and their focused acceptance. These findings were
+caught before publication or provider mutation. All earlier exact-head evidence
+remains historical; complete gates and independent review may restart only from
+the new committed candidate after this bounded repair passes.

@@ -57,6 +57,16 @@ if ($Help) {
   return
 }
 
+if ($Full -and $UpdateOnly) {
+  throw 'Deployment mode is ambiguous: choose exactly one of -Full or -UpdateOnly'
+}
+if ($CreateIfMissing -and -not $UpdateOnly) {
+  throw '-CreateIfMissing is valid only with -UpdateOnly; use -Full for a full create-or-update run'
+}
+if ($AsyncVerify) {
+  throw '-AsyncVerify is non-authoritative and disabled; a deployment may succeed only after synchronous terminal verification'
+}
+
 # Ensure relative paths work regardless of where the script is invoked from.
 $script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 Push-Location $script:RepoRoot
@@ -94,6 +104,8 @@ $script:TranscriptStarted = $false
 $script:ExitCode = 0
 $script:EarlyExitSentinel = '__DEPLOY_EARLY_EXIT__'
 $script:PendingArtifactRenameTo = ''
+$script:RemoteMutationStarted = $false
+$script:RollbackAttempted = $false
 
 function Write-Section($msg) {
   Write-Host "`n=== $msg ===" -ForegroundColor Cyan
@@ -249,8 +261,8 @@ function Get-ArtifactServiceSubdir([string]$fileName) {
 }
 
 function Invoke-RollbackOnFailureIfEnabled([string]$ip, [string]$keyPath) {
-  $enabled = ((($env:DEPLOY_ROLLBACK_ON_FAILURE) + '')).Trim().ToLower() -in @('1','true','yes','on')
-  if (-not $enabled) { return }
+  if ($script:RollbackAttempted) { return }
+  $script:RollbackAttempted = $true
 
   Write-Section "Rollback hook (enabled)"
   $artifactDir = Ensure-ArtifactDir
@@ -282,7 +294,7 @@ function Invoke-RollbackOnFailureIfEnabled([string]$ip, [string]$keyPath) {
 set -eu
 cd __REMOTE_APP_DIR__
 trap 'code=$?; printf "rollback_failed exit=%s\n" "$code" > /root/logs/build/rollback-failed.txt; exit "$code"' ERR
-PREV_FILE=/root/logs/build/pre-deploy-head.txt
+PREV_FILE=/root/base2-rollback-private/pre-deploy-head.txt
 if [ ! -f "$PREV_FILE" ]; then
   echo "No pre-deploy head recorded at $PREV_FILE" >&2
   exit 2
@@ -296,17 +308,44 @@ fi
 echo "Rolling back to $PREV"
 git reset --hard "$PREV"
 
+DEPLOYMENT_KIND=$(tr -d '\r\n' < /root/base2-rollback-private/deployment-kind.txt)
+case "$DEPLOYMENT_KIND" in
+  existing|fresh) ;;
+  *) echo "Invalid pre-deploy state kind" >&2; exit 2 ;;
+esac
+
+if [ "$DEPLOYMENT_KIND" = fresh ]; then
+  # A fresh target had no prior runtime to restore. Stop only this fixed stack,
+  # remove the newly transferred environment, retain the original checkout,
+  # and prove no Base2 container remains active.
+  if [ -f .env ]; then
+    docker compose -f development.docker.yml --profile celery down --remove-orphans >/root/logs/build/rollback-fresh-down.txt 2>&1 || true
+  fi
+  rm -f .env
+  if docker ps --format '{{.Names}}' | grep -Eq '(^|[-_])base2([-_]|$)'; then
+    echo "Fresh-target rollback left a Base2 container active" >&2
+    exit 2
+  fi
+  test "$(git rev-parse HEAD)" = "$PREV"
+  rm -f /root/logs/build/rollback-failed.txt
+  rm -rf /root/base2-rollback-private
+  echo "Fresh-target rollback completed. Current HEAD: $PREV"
+  exit 0
+fi
+
 # Rebuild the rolled-back migration images, restore the prior epoch, bootstrap
 # roles, and migrate before any request or worker process can start.
-PREV_EPOCH=$(tr -d '\r\n' < /root/logs/build/pre-deploy-epoch.txt)
+test -s /root/base2-rollback-private/env-backup.env
+cp -f /root/base2-rollback-private/env-backup.env .env
+chmod 600 .env
+PREV_EPOCH=$(tr -d '\r\n' < /root/base2-rollback-private/pre-deploy-epoch.txt)
 test -n "$PREV_EPOCH"
 sed -i '/^BASE2_DEPLOYMENT_EPOCH=/d' .env
 printf 'BASE2_DEPLOYMENT_EPOCH=%s\n' "$PREV_EPOCH" >> .env
 docker compose -f development.docker.yml build django api >/root/logs/build/rollback-build.txt 2>&1
 docker compose -f development.docker.yml run --rm --no-deps workspace-db-role >/root/logs/build/rollback-role-bootstrap.txt 2>&1
 docker compose -f development.docker.yml run --rm --no-deps \
-  -e DB_USER="$POSTGRES_USER" -e DB_PASSWORD="$POSTGRES_PASSWORD" \
-  api python -m api.scripts.migrate >/root/logs/build/rollback-api-migrate.txt 2>&1
+  api-migrate python -m api.scripts.migrate >/root/logs/build/rollback-api-migrate.txt 2>&1
 docker compose -f development.docker.yml run --rm --no-deps django python manage.py migrate --noinput >/root/logs/build/rollback-django-migrate.txt 2>&1
 
 docker compose -f development.docker.yml --profile celery up -d --build --no-deps --remove-orphans django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-content-worker celery-data-rights-worker celery-email-worker celery-beat >/root/logs/build/rollback-compose-up.txt 2>&1
@@ -331,6 +370,7 @@ CURRENT_HEAD=$(git rev-parse HEAD)
 test "$CURRENT_HEAD" = "$PREV"
 test "$(grep '^BASE2_DEPLOYMENT_EPOCH=' .env | cut -d= -f2-)" = "$PREV_EPOCH"
 rm -f /root/logs/build/rollback-failed.txt
+rm -rf /root/base2-rollback-private
 echo "Rollback completed. Current HEAD: $CURRENT_HEAD"
 '@
 
@@ -835,21 +875,20 @@ function Load-DotEnv([string]$path) {
 function Assert-EnvNotTracked {
   # If .env is tracked, any git reset/clean/pull on the droplet can overwrite secrets.
   # This should never happen in this repo; .env must remain local-only.
-  try {
-    $null = Get-Command git -ErrorAction Stop
+  $null = Get-Command git -ErrorAction Stop
     # In Windows PowerShell 5.1, piping native output (even to Out-Null) can raise
     # "The pipeline has been stopped". Avoid pipelines; rely on exit codes instead.
     # Avoid `git ls-files --error-unmatch` because it can emit a terminating error record
     # under strict error settings. Use output presence to detect tracking, without pipelines.
-    $tracked = & git ls-files .env 2>$null
-    if ($tracked) {
-      throw ".env is tracked by git. Fix by running: git rm --cached .env (and commit), ensure .gitignore includes .env, then re-run deploy."
-    }
-    $LASTEXITCODE = 0
-  } catch {
-    # If git isn't available or check fails in a non-fatal way, don't block deploy.
-    try { $LASTEXITCODE = 0 } catch {}
+  $tracked = & git ls-files --error-unmatch .env 2>$null
+  $inspectionExit = $LASTEXITCODE
+  if ($inspectionExit -eq 0 -and $tracked) {
+    throw ".env is tracked by git. Fix by running: git rm --cached .env (and commit), ensure .gitignore includes .env, then re-run deploy."
   }
+  if ($inspectionExit -ne 0 -and $inspectionExit -ne 1) {
+    throw "Unable to verify whether .env is tracked (git exit $inspectionExit)"
+  }
+  $LASTEXITCODE = 0
 }
 
 function Update-Allowlist {
@@ -1066,6 +1105,14 @@ function Remote-Verify($ip, $keyPath) {
   $sshMkdirErr = Join-Path $dest 'ssh-mkdir.stderr.txt'
   $code = Invoke-NativeWithTimeout -FilePath $sshExe -ArgumentList ($sshArgs + @("mkdir -p $remoteAppDir")) -Label "SSH mkdir $remoteAppDir" -TimeoutSec 120 -StdoutPath $sshMkdirOut -StderrPath $sshMkdirErr -HeartbeatSec 9999
   if ($code -ne 0) { throw "Failed to create $remoteAppDir on droplet (ssh exit $code)" }
+  # Capture the true pre-mutation source, epoch, and private environment before
+  # the new environment is transferred or any repository/service state changes.
+  $priorOut = Join-Path $dest 'ssh-prior-state.stdout.txt'
+  $priorErr = Join-Path $dest 'ssh-prior-state.stderr.txt'
+  $priorCommand = "set -eu; umask 077; rm -rf /root/base2-rollback-private; mkdir -m 700 /root/base2-rollback-private; cd $remoteAppDir; git rev-parse HEAD > /root/base2-rollback-private/pre-deploy-head.txt; if test -s .env; then printf 'existing\n' > /root/base2-rollback-private/deployment-kind.txt; cp .env /root/base2-rollback-private/env-backup.env; grep '^BASE2_DEPLOYMENT_EPOCH=' .env | cut -d= -f2- > /root/base2-rollback-private/pre-deploy-epoch.txt; test -s /root/base2-rollback-private/pre-deploy-epoch.txt; else printf 'fresh\n' > /root/base2-rollback-private/deployment-kind.txt; : > /root/base2-rollback-private/pre-deploy-epoch.txt; fi"
+  $code = Invoke-NativeWithTimeout -FilePath $sshExe -ArgumentList ($sshArgs + @($priorCommand)) -Label 'SSH capture prior deployment state' -TimeoutSec 120 -StdoutPath $priorOut -StderrPath $priorErr -HeartbeatSec 9999
+  if ($code -ne 0) { throw "Failed to capture the prior deployment state (ssh exit $code)" }
+  $script:RemoteMutationStarted = $true
   # Upload .env (secrets) to droplet repo root
   $scpEnvOut = Join-Path $dest 'scp-env.stdout.txt'
   $scpEnvErr = Join-Path $dest 'scp-env.stderr.txt'
@@ -1100,10 +1147,9 @@ if [ -d __REMOTE_APP_DIR__ ]; then
   }
   status "init" "starting remote verification"
 
-  # Record pre-deploy git SHA for optional rollback.
-  if command -v git >/dev/null 2>&1; then
-    (git rev-parse HEAD 2>/dev/null || true) > /root/logs/build/pre-deploy-head.txt || true
-  fi
+  cp /root/base2-rollback-private/pre-deploy-head.txt /root/logs/build/pre-deploy-head.txt
+  cp /root/base2-rollback-private/pre-deploy-epoch.txt /root/logs/build/pre-deploy-epoch.txt
+  cp /root/base2-rollback-private/deployment-kind.txt /root/logs/build/deployment-kind.txt
   # Prevent noisy stdout/stderr (git, docker build progress) from flowing back over SSH.
   # Windows PowerShell 5.1 can treat remote stderr as terminating errors under strict settings.
   exec > /root/logs/build/remote-verify-console.txt 2>&1
@@ -1160,8 +1206,6 @@ if [ -d __REMOTE_APP_DIR__ ]; then
   fi
 
   # Bind runtime readiness evidence to this exact deployment execution.
-  grep '^BASE2_DEPLOYMENT_EPOCH=' .env | cut -d= -f2- > /root/logs/build/pre-deploy-epoch.txt
-  test -s /root/logs/build/pre-deploy-epoch.txt
   DEPLOYMENT_EPOCH="$EXPECTED_COMMIT:$(date -u +%Y%m%dT%H%M%SZ)"
   sed -i '/^BASE2_DEPLOYMENT_EPOCH=/d' .env
   printf 'BASE2_DEPLOYMENT_EPOCH=%s\n' "$DEPLOYMENT_EPOCH" >> .env
@@ -1297,8 +1341,7 @@ PY
   docker compose -f development.docker.yml run --rm --no-deps workspace-db-role > /root/logs/workspace-role-bootstrap.txt 2>&1
   status "api" "owner-scoped migrations"
   docker compose -f development.docker.yml run --rm --no-deps \
-    -e DB_USER="$POSTGRES_USER" -e DB_PASSWORD="$POSTGRES_PASSWORD" \
-    api python -m api.scripts.migrate > /root/logs/api-migrate.txt 2>&1
+    api-migrate python -m api.scripts.migrate > /root/logs/api-migrate.txt 2>&1
   status "django" "owner-scoped migrations"
   docker compose -f development.docker.yml run --rm --no-deps django python manage.py migrate --noinput > /root/logs/django-migrate.txt 2>&1
   status "up" "start request services after migrations"
@@ -1453,7 +1496,7 @@ PY
   fi
   CID=$(docker compose -f development.docker.yml ps -q traefik || true)
   if [ -n "$CID" ]; then
-    docker exec "$CID" sh -lc 'env | sort' > /root/logs/traefik-env.txt || true
+    docker exec "$CID" sh -lc 'for key in WEBSITE_DOMAIN TRAEFIK_CERT_EMAIL TRAEFIK_CERT_RESOLVER TRAEFIK_PREVIEW_MODE OWNER_ALLOWLIST_CSV; do if printenv "$key" >/dev/null 2>&1; then printf "%s=present\n" "$key"; else printf "%s=missing\n" "$key"; fi; done' > /root/logs/traefik-env.txt || true
     # Capture the *rendered* configs Traefik actually runs with (entrypoint renders into /tmp).
     if docker exec "$CID" test -s /tmp/traefik.yml; then
       docker exec "$CID" cat /tmp/traefik.yml > /root/logs/traefik-static.yml || true
@@ -1463,9 +1506,9 @@ PY
       echo "EMPTY" > /root/logs/traefik-static.yml
     fi
     if docker exec "$CID" test -s /tmp/dynamic.yml; then
-      docker exec "$CID" cat /tmp/dynamic.yml > /root/logs/traefik-dynamic.yml || true
+      docker exec "$CID" cat /tmp/dynamic.yml | python3 digital_ocean/scripts/python/sanitize_traefik_config.py > /root/logs/traefik-dynamic.yml || true
     elif docker exec "$CID" test -s /etc/traefik/dynamic/dynamic.yml; then
-      docker exec "$CID" cat /etc/traefik/dynamic/dynamic.yml > /root/logs/traefik-dynamic.yml || true
+      docker exec "$CID" cat /etc/traefik/dynamic/dynamic.yml | python3 digital_ocean/scripts/python/sanitize_traefik_config.py > /root/logs/traefik-dynamic.yml || true
     else
       echo "EMPTY" > /root/logs/traefik-dynamic.yml
     fi
@@ -1487,6 +1530,8 @@ PY
   fi
   DOMAIN=$(grep -E '^WEBSITE_DOMAIN=' .env | cut -d'=' -f2 | tr -d '\r')
   if [ -n "$DOMAIN" ]; then
+    STAGING_CA="$PWD/digital_ocean/config/letsencrypt-staging-roots.pem"
+    test -s "$STAGING_CA"
     status "curl" "probing https://$DOMAIN (local resolve)"
     # Ensure expected curl artifacts exist even if curl/DNS/TLS fails
     : > /root/logs/curl-root.txt || true
@@ -1500,7 +1545,7 @@ PY
     : > /root/logs/api-health-slash.status || true
 
     # Curl against the local Traefik listener, but use the real hostname for SNI/Host.
-    RESOLVE_DOMAIN=(--resolve "$DOMAIN:443:127.0.0.1")
+    RESOLVE_DOMAIN=(--cacert "$STAGING_CA" --resolve "$DOMAIN:443:127.0.0.1")
 
     # Warm up / wait: Traefik can briefly return 404 before file-provider routers are loaded.
     # Keep this best-effort and bounded so deploy doesn't hang.
@@ -1529,81 +1574,10 @@ PY
     TLS_WAIT_SECONDS=__TLS_WAIT_SECONDS__
     TLS_HOSTS="$DOMAIN www.$DOMAIN swagger.$DOMAIN admin.$DOMAIN ${PG_LABEL}.$DOMAIN ${FLOWER_LABEL}.$DOMAIN ${TRAEFIK_LABEL}.$DOMAIN"
     status "tls" "waiting for valid TLS certs (hosts: $TLS_HOSTS)"
-    DOMAIN="$DOMAIN" TLS_HOSTS="$TLS_HOSTS" TLS_WAIT_SECONDS="$TLS_WAIT_SECONDS" python3 - <<'PY' > /root/logs/build/tls-cert-wait.txt 2>&1
-import os
-import socket
-import ssl
-import tempfile
-import time
-
-domain = os.environ.get('DOMAIN') or os.environ.get('WEBSITE_DOMAIN') or ''
-if not domain:
-  raise SystemExit('missing domain')
-
-hosts_raw = (os.environ.get('TLS_HOSTS') or '').strip()
-wait_seconds = int(os.environ.get('TLS_WAIT_SECONDS') or '600')
-hosts = [h.strip() for h in hosts_raw.split() if h.strip()]
-if not hosts:
-  hosts = [domain]
-
-def get_sans_from_pem(pem: str):
-  try:
-    from ssl import _ssl
-    with tempfile.NamedTemporaryFile('w', delete=False) as f:
-      f.write(pem)
-      tmp = f.name
-    decoded = _ssl._test_decode_cert(tmp)
-    sans = decoded.get('subjectAltName') or []
-    return [v for (k, v) in sans if k == 'DNS']
-  except Exception:
-    return []
-
-def fetch_cert_pem(hostname: str):
-  ctx = ssl.create_default_context()
-  with ctx.wrap_socket(socket.socket(socket.AF_INET), server_hostname=hostname) as s:
-    s.settimeout(5)
-    s.connect(('127.0.0.1', 443))
-    der = s.getpeercert(binary_form=True)
-  return ssl.DER_cert_to_PEM_cert(der)
-
-deadline = time.time() + wait_seconds
-ok = {h: False for h in hosts}
-last = {h: {'err': '', 'sans': []} for h in hosts}
-
-print('Waiting for valid TLS SANs for hosts:')
-for h in hosts:
-  print(' -', h)
-
-while time.time() < deadline:
-  pending = [h for h, v in ok.items() if not v]
-  if not pending:
-    print('OK: all hosts have valid TLS SANs')
-    raise SystemExit(0)
-
-  for h in pending:
-    try:
-      pem = fetch_cert_pem(h)
-      sans = get_sans_from_pem(pem)
-      last[h]['sans'] = sans
-      if h in sans:
-        ok[h] = True
-        print(f'OK: {h} SAN includes host')
-      else:
-        last[h]['err'] = 'SAN missing host'
-    except Exception as e:
-      last[h]['err'] = str(e)
-
-  time.sleep(5)
-
-print(f'ERROR: TLS certs never became valid for all hosts within {wait_seconds}s')
-for h, v in ok.items():
-  if v:
-    continue
-  sans = last[h].get('sans') or []
-  err = last[h].get('err') or ''
-  print(f'- host={h} err={err} sans={", ".join(sans) if sans else "(none)"}')
-raise SystemExit(2)
-PY
+    python3 digital_ocean/scripts/python/staging_tls_probe.py \
+      --ca-file "$STAGING_CA" --connect-ip 127.0.0.1 \
+      --wait-seconds "$TLS_WAIT_SECONDS" --hosts $TLS_HOSTS \
+      > /root/logs/build/tls-cert-wait.txt 2>&1
     TLS_WAIT_STATUS=$?
     echo $TLS_WAIT_STATUS > /root/logs/build/tls-cert-wait.status || true
     if [ "$TLS_WAIT_STATUS" != "0" ]; then
@@ -2220,21 +2194,16 @@ try {
 
   # Default AllTests to UpdateOnly when an environment exists and -Full was not requested.
   $autoSelectedUpdateOnly = $false
-  $detectedExistingIp = ''
+  $detectedExistingIp = Get-DropletIp
   if ($AllTests -and -not $Full -and -not $UpdateOnly) {
-    try {
-      $ipCheck = Get-DropletIp
-      if ($ipCheck) {
-        $detectedExistingIp = [string]$ipCheck
+      if ($detectedExistingIp) {
+        $ipCheck = $detectedExistingIp
         $autoSelectedUpdateOnly = $true
         Write-Section "AllTests: existing environment detected ($ipCheck); defaulting to -UpdateOnly"
         $UpdateOnly = $true
       } else {
         Write-Section "AllTests: no existing environment detected; proceeding without -UpdateOnly"
       }
-    } catch {
-      Write-Verbose ("AllTests UpdateOnly default check failed: {0}" -f $_.Exception.Message)
-    }
   }
 
   # Record requested vs effective mode into artifacts (T078).
@@ -2271,7 +2240,17 @@ try {
       Write-Host "Reminder: UpdateOnly hard-resets the droplet repo to origin/$branch. Commit and push any runtime-impacting changes (api/, django/, react-app/, Dockerfiles, compose, traefik) before running UpdateOnly." -ForegroundColor Yellow
     } catch {}
   }
-  if ($CreateIfMissing -and [string]::IsNullOrWhiteSpace($detectedExistingIp)) {
+  $modeArgs = @()
+  if ($Full) { $modeArgs += '--full' }
+  if ($UpdateOnly) { $modeArgs += '--update-only' }
+  if ($CreateIfMissing) { $modeArgs += '--create-if-missing' }
+  if (-not [string]::IsNullOrWhiteSpace($detectedExistingIp)) { $modeArgs += '--target-exists' }
+  $deploymentAction = (& .\.venv\Scripts\python.exe .\digital_ocean\scripts\python\deployment_mode.py @modeArgs | Out-String).Trim()
+  if ($LASTEXITCODE -ne 0) { throw "Deployment mode resolution failed with exit $LASTEXITCODE" }
+  if ($deploymentAction -eq 'reject-missing-target') {
+    throw 'Update-only deployment target is missing; use -Full or -UpdateOnly -CreateIfMissing'
+  }
+  if ($deploymentAction -eq 'provision') {
     Run-Orchestrator -ProvisionOnly
     $newIp = Get-DropletIp
     $dest = Ensure-ArtifactDir
@@ -2284,6 +2263,7 @@ try {
     )
     throw 'New host provisioned; separate owner-approved host-key verification and enrollment is required before deployment'
   }
+  if ($deploymentAction -ne 'deploy') { throw "Unknown deployment action: $deploymentAction" }
 
   $resolvedIp = Get-DropletIp
   if (-not $resolvedIp) {
@@ -2470,6 +2450,17 @@ try {
     } finally { try { Pop-Location } catch {} }
   }
 
+  # Terminal success includes removal of private rollback material and remote
+  # evidence staging. The verified copy remains only in the local bounded tree.
+  $terminalDir = Ensure-ArtifactDir -ip $script:ResolvedIp
+  $terminalOut = Join-Path $terminalDir 'ssh-terminal-cleanup.stdout.txt'
+  $terminalErr = Join-Path $terminalDir 'ssh-terminal-cleanup.stderr.txt'
+  $terminalKnownHosts = (Resolve-Path -LiteralPath $SshKnownHostsPath).Path
+  $terminalSsh = @('-i', $script:SshKeyPath, '-o', 'StrictHostKeyChecking=yes', '-o', ("UserKnownHostsFile={0}" -f $terminalKnownHosts), '-o', 'BatchMode=yes', "$($script:SshUser)@$($script:ResolvedIp)")
+  $terminalCode = Invoke-NativeWithTimeout -FilePath 'ssh' -ArgumentList ($terminalSsh + @('rm -rf /root/base2-rollback-private /root/logs /root/logs.tgz /root/remote_verify.sh /root/remote_verify.out /root/remote_verify.pid')) -Label 'SSH terminal evidence cleanup' -TimeoutSec 120 -StdoutPath $terminalOut -StderrPath $terminalErr -HeartbeatSec 9999
+  if ($terminalCode -ne 0) { throw "Remote terminal cleanup failed (ssh exit $terminalCode)" }
+  $script:RemoteMutationStarted = $false
+
   Write-Section "Done"
   $artDir = Ensure-ArtifactDir
   Write-Output ("Artifacts saved to: " + $artDir)
@@ -2478,6 +2469,15 @@ try {
   $msg = $_.Exception.Message
   if ($msg -ne $script:EarlyExitSentinel) {
     Write-Warning "Deploy failed: $msg"
+    if ($script:RemoteMutationStarted -and $script:ResolvedIp) {
+      try {
+        Invoke-RollbackOnFailureIfEnabled -ip $script:ResolvedIp -keyPath $script:SshKeyPath
+        $script:RemoteMutationStarted = $false
+      } catch {
+        $msg = "$msg; rollback failed: $($_.Exception.Message)"
+        Write-Warning $msg
+      }
+    }
     Write-FailureArtifacts -context 'exception' -message $msg
     $script:ExitCode = 1
   }

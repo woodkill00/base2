@@ -172,8 +172,101 @@ def test_deploy_has_one_exact_lifecycle_and_separate_first_host_enrollment():
 def test_deploy_tls_probes_validate_trust_and_hostname():
     root = Path(__file__).resolve().parents[2]
     deploy = (root / 'digital_ocean/scripts/powershell/deploy.ps1').read_text(encoding='utf-8')
-    assert 'ssl.create_default_context()' in deploy
+    trust_store = root / 'digital_ocean/config/letsencrypt-staging-roots.pem'
+    assert trust_store.read_text(encoding='utf-8').count('BEGIN CERTIFICATE') == 4
+    probe = (root / 'digital_ocean/scripts/python/staging_tls_probe.py').read_text(
+        encoding='utf-8'
+    )
+    assert 'staging_tls_probe.py' in deploy
+    assert "ssl.create_default_context(cafile=str(ca_file))" in probe
+    assert 'context.verify_mode != ssl.CERT_REQUIRED' in probe
+    assert 'not context.check_hostname' in probe
+    assert '--cacert "$STAGING_CA"' in deploy
     assert 'ssl.CERT_NONE' not in deploy
     assert 'check_hostname = False' not in deploy
     assert 'curl -sk' not in deploy
     assert 'curl -sS "${RESOLVE_DOMAIN[@]}"' in deploy
+
+
+def test_traefik_receives_only_allowlisted_configuration_and_scoped_secrets():
+    root = Path(__file__).resolve().parents[2]
+    allowed = {
+        'WEBSITE_DOMAIN',
+        'TRAEFIK_CERT_EMAIL',
+        'TRAEFIK_CERT_RESOLVER',
+        'TRAEFIK_PREVIEW_MODE',
+        'OWNER_ALLOWLIST_CSV',
+    }
+    for name in ('local.docker.yml', 'development.docker.yml'):
+        source = (root / name).read_text(encoding='utf-8')
+        service = source.split('  traefik:\n', 1)[1].split('\n  postgres:', 1)[0]
+        assert 'env_file:' not in service
+        environment = service.split('    environment:\n', 1)[1].split(
+            '    secrets:\n', 1
+        )[0]
+        keys = {
+            line.strip()[2:].split('=', 1)[0]
+            for line in environment.splitlines()
+            if line.strip().startswith('- ')
+        }
+        assert keys == allowed
+        secret_block = service.split('    secrets:\n', 1)[1]
+        assert '      - traefik_dash_basic_users' in secret_block
+        assert '      - flower_basic_users' in secret_block
+        serialized = environment
+        for forbidden in ('DO_', 'DB_', 'POSTGRES_', 'SMTP_', 'PASSWORD', 'TOKEN', 'SECRET'):
+            assert forbidden not in serialized
+
+
+def test_deploy_never_captures_raw_container_environment():
+    root = Path(__file__).resolve().parents[2]
+    for path in (
+        'digital_ocean/scripts/powershell/deploy.ps1',
+        'digital_ocean/scripts/bash/remote_verify_min.sh',
+    ):
+        source = (root / path).read_text(encoding='utf-8')
+        assert "env | sort" not in source
+        assert 'TRAEFIK_DASH_BASIC_USERS=present' not in source
+        assert 'for key in WEBSITE_DOMAIN TRAEFIK_CERT_EMAIL' in source
+
+    deploy = (root / 'digital_ocean/scripts/powershell/deploy.ps1').read_text(
+        encoding='utf-8'
+    )
+    assert deploy.count('sanitize_traefik_config.py') == 2
+    assert 'cat /tmp/dynamic.yml > /root/logs/traefik-dynamic.yml' not in deploy
+
+
+def test_deploy_captures_prior_state_before_mutation_and_rolls_back_core_failures():
+    root = Path(__file__).resolve().parents[2]
+    source = (root / 'digital_ocean/scripts/powershell/deploy.ps1').read_text(encoding='utf-8')
+    capture = source.index('SSH capture prior deployment state')
+    upload = source.index('SCP upload .env', capture)
+    mutation = source.index('$script:RemoteMutationStarted = $true', capture)
+    assert capture < mutation < upload
+    assert '/root/base2-rollback-private/env-backup.env' in source
+    assert 'cp -f /root/base2-rollback-private/env-backup.env .env' in source
+    assert "printf 'fresh\\n' > /root/base2-rollback-private/deployment-kind.txt" in source
+    assert 'DEPLOYMENT_KIND=$(tr -d' in source
+    assert 'Fresh-target rollback left a Base2 container active' in source
+    assert 'rm -f .env' in source
+    outer_catch = source.index('} catch {', source.index('Write-Section "Deploy"'))
+    rollback = source.index('Invoke-RollbackOnFailureIfEnabled', outer_catch)
+    failure_artifact = source.index('Write-FailureArtifacts', rollback)
+    assert outer_catch < rollback < failure_artifact
+    cleanup = 'rm -rf /root/base2-rollback-private /root/logs /root/logs.tgz'
+    assert cleanup in source
+    assert source.index(cleanup) < source.index('Write-Section "Done"')
+
+
+def test_deploy_disables_nonterminal_async_success_and_fails_closed_on_git_inspection():
+    root = Path(__file__).resolve().parents[2]
+    source = (root / 'digital_ocean/scripts/powershell/deploy.ps1').read_text(encoding='utf-8')
+    assert "if ($AsyncVerify)" in source
+    assert "-AsyncVerify is non-authoritative and disabled" in source
+    env_guard = source.split('function Assert-EnvNotTracked', 1)[1].split(
+        'function Update-Allowlist', 1
+    )[0]
+    assert 'Get-Command git -ErrorAction Stop' in env_guard
+    assert 'git ls-files --error-unmatch .env' in env_guard
+    assert 'Unable to verify whether .env is tracked' in env_guard
+    assert 'catch' not in env_guard

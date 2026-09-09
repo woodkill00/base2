@@ -19,14 +19,14 @@ Alias/Flag note: Recent runs used `-RunAllTests` which is equivalent to `-AllTes
 
 ## Flags Reference
 
-- `-Full`: end-to-end resource provisioning path via orchestrator (droplet create, DNS, stack).
+- `-Full`: deploy an existing target or provision one missing target. A new target stops at the authenticated host-key enrollment boundary; rerun after owner verification to perform DNS, source, secret, migration, and stack mutation.
 - `-UpdateOnly`: skip provisioning, hard-reset remote repo to `origin/$env:DO_APP_BRANCH`, rebuild core services.
 - `-Preflight`: run preflight validators locally; deploy fails fast if validation fails.
 - `-AllTests`: run all post-deploy tests (React Jest, Playwright E2E, API/Django pytest, smoke checks).
 - `-RunTests`: run a subset of tests (omit E2E by default); use with `-TestsJson` for machine-readable output.
 - `-TestsJson`: JSON output for test results; artifacts saved under `local_run_logs/.../meta`.
 - `-Timestamped`: write artifacts to `local_run_logs/<ip>-<timestamp>/` instead of a generic folder.
-- `-AsyncVerify`: return sooner after kicking off remote verification; artifacts may continue to populate.
+- `-AsyncVerify`: disabled for authoritative deployment because unfinished remote mutation cannot produce terminal success.
 - `-DropletIp <ip>`: override droplet IP detection.
 - `-SshKey <path>`: specify SSH private key path.
 - `-SkipAllowlist`: do not update IP allowlists in `.env` before deploy.
@@ -36,7 +36,8 @@ Alias/Flag note: Recent runs used `-RunAllTests` which is equivalent to `-AllTes
 ### When to use which
 
 - Use `-UpdateOnly` for routine code changes already on the droplet; faster and safer.
-- Use `-Full` when creating a new droplet or re-provisioning infrastructure.
+- Use `-Full` to create one missing droplet or deploy the detected existing target. New creation always stops before SSH until its host key is separately verified and enrolled.
+- Use `-UpdateOnly -CreateIfMissing` only when an update should provision a missing target and stop at that same enrollment boundary. `-CreateIfMissing` alone and `-Full -UpdateOnly` are rejected.
 - Always include `-AllTests` for CI-like gating unless experimenting locally.
 - Use `-Timestamped` to keep runs isolated and auditable.
 

@@ -52,12 +52,12 @@ def main() -> int:
         raise SystemExit(f"production_readiness_requirements_invalid:{requirement_ids}")
 
     task_ids = [int(value) for value in re.findall(r"^- \[[ x]\] B(\d{3})\b", tasks, re.MULTILINE)]
-    if task_ids != list(range(1, 328)):
+    if task_ids != list(range(1, 341)):
         raise SystemExit(f"production_readiness_tasks_invalid:{task_ids}")
 
     checked = len(re.findall(r"^- \[x\] B\d{3}\b", tasks, re.MULTILINE))
     pending = len(re.findall(r"^- \[ \] B\d{3}\b", tasks, re.MULTILINE))
-    if checked + pending != 327:
+    if checked + pending != 340:
         raise SystemExit(f"production_readiness_status_invalid:checked={checked}:pending={pending}")
     statuses = re.findall(r"^- \[([ x])\] B\d{3}\b", tasks, re.MULTILINE)
     if statuses != ["x"] * checked + [" "] * pending:

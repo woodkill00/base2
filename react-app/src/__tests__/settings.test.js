@@ -63,6 +63,7 @@ describe('US3 Settings', () => {
               { id: 'notifications' },
               { id: 'appearance' },
               { id: 'language-region' },
+              { id: 'organization' },
             ],
           },
         });
@@ -332,4 +333,82 @@ describe('US3 Settings', () => {
     expect(screen.getByRole('alert')).not.toHaveTextContent(/profile service unavailable/i);
     expect(displayName).toHaveValue('Unsaved Name');
   });
+
+  test.each([
+    {
+      path: '/settings/privacy',
+      failedEndpoint: '/privacy/operations',
+      unavailable: /recent privacy requests are temporarily unavailable/i,
+      absent: /data export.*queued/i,
+    },
+    {
+      path: '/settings/notifications',
+      failedEndpoint: '/settings/notifications',
+      unavailable: /notification preferences are temporarily unavailable/i,
+      absent: /security email delivery/i,
+    },
+    {
+      path: '/settings/organization',
+      failedEndpoint: '/settings/security-events',
+      unavailable: /security activity is temporarily unavailable/i,
+      absent: /no recent security events are available/i,
+    },
+  ])(
+    'does not present fallback data as fetched fact when $failedEndpoint fails',
+    async ({ path, failedEndpoint, unavailable, absent }) => {
+      const implementation = apiClient.get.getMockImplementation();
+      apiClient.get.mockImplementation((endpoint) =>
+        endpoint === failedEndpoint
+          ? Promise.reject(new Error('bounded test failure'))
+          : implementation(endpoint)
+      );
+      renderSettings(path);
+      await waitSettingsReady();
+      expect(await screen.findByRole('alert')).toHaveTextContent(unavailable);
+      expect(screen.queryByText(absent)).not.toBeInTheDocument();
+    }
+  );
+
+  test.each([
+    {
+      locale: 'de',
+      kind: 'deletion',
+      status: 'running',
+      expectedKind: 'Kontolöschung',
+      expectedStatus: 'In Bearbeitung',
+    },
+    {
+      locale: 'ar',
+      kind: 'export',
+      status: 'completed',
+      expectedKind: 'تصدير البيانات',
+      expectedStatus: 'مكتمل',
+    },
+    {
+      locale: 'de',
+      kind: 'future_kind',
+      status: 'future_status',
+      expectedKind: 'Unbekannter Anfragetyp',
+      expectedStatus: 'Unbekannter Anfragestatus',
+    },
+  ])(
+    'localizes privacy operation semantics for $locale without exposing backend tokens',
+    async ({ locale, kind, status, expectedKind, expectedStatus }) => {
+      localStorage.setItem(
+        'user',
+        JSON.stringify({ id: '1', email: 'test@example.com', display_name: 'Test', locale })
+      );
+      const implementation = apiClient.get.getMockImplementation();
+      apiClient.get.mockImplementation((endpoint) =>
+        endpoint === '/privacy/operations'
+          ? Promise.resolve({ data: { operations: [{ id: 'operation-1', kind, status }] } })
+          : implementation(endpoint)
+      );
+      renderSettings('/settings/privacy');
+      await waitFor(() => expect(screen.getByText(expectedKind)).toBeInTheDocument());
+      expect(screen.getByText(expectedStatus)).toBeInTheDocument();
+      expect(screen.queryByText(kind)).not.toBeInTheDocument();
+      expect(screen.queryByText(status)).not.toBeInTheDocument();
+    }
+  );
 });

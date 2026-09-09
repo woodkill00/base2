@@ -101,6 +101,42 @@ services:
     mem_limit: 512m
     cpus: '0.75'
 
+  # Explicit owner-scoped API schema migration process. This profile is never
+  # part of request serving and is started only by the operator migration gate.
+  api-migrate:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+      args:
+        - PYTHON_VERSION=${FASTAPI_PYTHON_VERSION}
+    profiles: [tools]
+    container_name: ${COMPOSE_PROJECT_NAME}_api-migrate
+    environment:
+      - BASE2_PROCESS_ROLE=migration
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${POSTGRES_DB}
+      - DB_USER=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_SSLMODE=${DB_SSLMODE:-disable}
+      - DB_SSLROOTCERT=${DB_SSLROOTCERT:-/run/secrets/db-ca.pem}
+      - API_MIGRATIONS_ENABLED=true
+    volumes:
+      - ${DB_SSLROOTCERT_HOST:-/dev/null}:/run/secrets/db-ca.pem:ro
+    networks: [app_network]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      workspace-db-role:
+        condition: service_completed_successfully
+    restart: 'no'
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: [/tmp, /var/tmp]
+    healthcheck:
+      disable: true
+
   # Django (schema owner + admin)
   django:
     build:
@@ -317,13 +353,15 @@ services:
       - ./letsencrypt:/etc/traefik/acme
       - traefik_logs:/var/log/traefik
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    env_file:
-      - ${COMPOSE_ENV_FILE:-.env}
     environment:
       - WEBSITE_DOMAIN=${WEBSITE_DOMAIN:-localhost}
       - TRAEFIK_CERT_EMAIL=${TRAEFIK_CERT_EMAIL}
+      - TRAEFIK_CERT_RESOLVER=${TRAEFIK_CERT_RESOLVER:-le-staging}
       - TRAEFIK_PREVIEW_MODE=${TRAEFIK_PREVIEW_MODE:-local}
       - OWNER_ALLOWLIST_CSV=${OWNER_ALLOWLIST_CSV:-127.0.0.1/32}
+    secrets:
+      - traefik_dash_basic_users
+      - flower_basic_users
     restart: unless-stopped
     user: '1000:1000'
     cap_drop: [ALL]
@@ -811,3 +849,9 @@ volumes:
   django_static:
   pgadmin_data:
   traefik_logs:
+
+secrets:
+  traefik_dash_basic_users:
+    environment: TRAEFIK_DASH_BASIC_USERS
+  flower_basic_users:
+    environment: FLOWER_BASIC_USERS

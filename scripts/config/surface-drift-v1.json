@@ -9,6 +9,7 @@
       "api/site_profiles/ember-studio.json": "b6b57abe7c80247917a1cc0ccdf08f3cddb2efd503091b73fb9d0e58d4c7fcae",
       "api/site_profiles/index.json": "76a7b227838ba6f778a2ab8b5a9741c4454efe1c473b912b924a29b3da57acd8",
       "api/site_profiles/northstar-library.json": "286850ced5758a336b8c7a82e345f57baa9d4686b39d209311178b6eaa5351f5",
+      "digital_ocean/config/letsencrypt-staging-roots.pem": "79bd594c0ca984602e1d3d5bdddc727cc003682bab137fa062f973501a34f833",
       "django/site_profiles/base2-obsidian.json": "c7d8f67ddd1ab6cd155000a741377d92a07e09ab8fe5bca73c1e961d092cbbd6",
       "django/site_profiles/content-workspace-contracts.json": "b8202643502ab5257a92a7370dd2ef4afbc11d75b2fd1772d2b99cb8f7f6beee",
       "django/site_profiles/content-workspace-presets.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
@@ -35,7 +36,7 @@
     "docs": {
       "docs/ARCHITECTURE.md": "98c9ed467d4b3b69204f493a3260fcd4e366a3e400d6a31e4d4acaf5a19f0286",
       "docs/CONFIG.md": "220e044bfd19f6613998177952fcbb1ad35a118ec107b720ed2c03d3d78a6c40",
-      "docs/DEPLOY.md": "f14c440859aa9dd37327308baef30ae2ee89fd73d89f3b32a90e8955bb3e21ca",
+      "docs/DEPLOY.md": "d31fdc88e37f65291964a338339ad883f1083c7cd106e092846025f3c0e1dc32",
       "docs/SECURITY.md": "f6dfb9f5726fd3600ef62b992527c83b576163bd7fa7e30b91675e666dbc41f6",
       "docs/TESTING.md": "0f36a8fcf6540e8a5c1c93974fa9530d67be969d290e71a7a73c326d8fa205b2",
       "docs/feature-093-production-readiness.md": "a072302df8fd844102ae84f994161f697a4b8f5c73d7a6ee7b2ad6e37d3eeff1",
