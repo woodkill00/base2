@@ -970,6 +970,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
               {visibleUtilityItems.map((item, index) => {
                 const Icon = item.icon;
                 const isSelected = index === activeUtilitySlot;
+                const isCanonicalCopy = index >= utilityLoopOffset && index < utilityLoopOffset * 2;
                 return (
                   <button
                     type="button"
@@ -978,6 +979,8 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
                     aria-label={`Base2 utility: ${item.label}${item.safe ? '' : ' unavailable on public site'}`}
                     aria-selected={isSelected}
                     aria-disabled={!item.safe}
+                    aria-hidden={!isCanonicalCopy}
+                    tabIndex={isCanonicalCopy ? 0 : -1}
                     ref={(node) => {
                       utilityItemRefs.current[index] = node;
                     }}

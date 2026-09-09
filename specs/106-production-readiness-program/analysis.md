@@ -1094,3 +1094,17 @@ and lease-release behavior. The focused suite passed 15 checks; the full
 supported DigitalOcean coverage run then passed and raised changed-line
 coverage to 90.05%. The rejected candidate and its gate are historical. Both
 exact-head complete gates restart from zero after the correction is committed.
+
+## Analysis cycle 47 — second exact-head gate visual nondeterminism
+
+Exact candidate a94cd4ac9a1033516a58982e39adea610e6cfc79 passed gate 1
+with all 107 checks, then gate 2 rejected the visual harness. The desktop run
+selected a hidden duplicate Search option by ordinal, while the mobile run
+measured 2.375 CSS pixels of subpixel center variance against a two-pixel
+threshold. The same product behavior passed the other viewports and the first
+exact gate, proving the selector and threshold were nondeterministic.
+
+B362 selects the actually visible accessible option and retains a strict
+three-CSS-pixel centering tolerance. The failed second gate and the green first
+gate are both historical; the visual matrix and both exact-head gates restart
+from zero after the correction is committed.

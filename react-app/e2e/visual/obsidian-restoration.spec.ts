@@ -74,9 +74,9 @@ test('restored command and utility controls remain bounded and functional', asyn
     .getByRole('option', { name: /Automation unavailable on public site/ })
     .first();
   await expect(lockedAutomation).toHaveAttribute('aria-disabled', 'true');
-  // The restored rail uses three visual copies to provide seamless looping;
-  // the middle copy is the canonical selected accessibility option.
-  const safeSearch = page.getByRole('option', { name: 'Base2 utility: Search' }).nth(1);
+  // Decorative loop copies are hidden from the accessibility tree, leaving
+  // one canonical keyboard-focusable option for each utility.
+  const safeSearch = page.getByRole('option', { name: 'Base2 utility: Search' });
   await safeSearch.click();
   await expect(safeSearch).toHaveAttribute('aria-selected', 'true');
 
@@ -144,7 +144,7 @@ test('navigation rails scroll progressively, settle centrally, and loop without 
     Math.abs(
       alignment[0]!.x + alignment[0]!.width / 2 - (alignment[1]!.x + alignment[1]!.width / 2)
     )
-  ).toBeLessThanOrEqual(2);
+  ).toBeLessThanOrEqual(3);
 
   await utilityRail.hover();
   const utilityStart = await utilityRail.evaluate((element) => element.scrollTop);

@@ -448,3 +448,7 @@ substitute for the integration proof named by the task.
 ## Phase 27 — Exact-head gate cycle 46 correction
 
 - [ ] B361 Directly exercise the provider lookup CLI's typed success, provider-error, invalid-identity, empty-name, and lease-release paths so the unchanged 90% changed-line floor covers the new fail-closed provider boundary. (FR-005, FR-007, FR-060, FR-063, FR-065, FR-067, FR-068, FR-078)
+
+## Phase 28 — Exact-head gate cycle 47 correction
+
+- [ ] B362 Expose only the canonical looping utility copy to assistive technology and keyboard focus, remove viewport-dependent ordinal selection, and admit bounded subpixel centering variance; repeat the complete visual matrix before restarting both exact-head gates. (FR-002, FR-012, FR-046, FR-055, FR-060, FR-063, FR-064, FR-068, FR-075, FR-078)
