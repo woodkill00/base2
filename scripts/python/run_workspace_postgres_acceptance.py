@@ -400,6 +400,10 @@ def main() -> None:
             api_image,
             "scripts/python/run_workspace_role_migration_checks.py",
         ]
+        run(django_migration + ["0031", "--noinput"], stdout=subprocess.DEVNULL)
+        run(role_check + ["api-reversed"])
+        run(django_migration + ["0032", "--noinput"], stdout=subprocess.DEVNULL)
+        run(role_check + ["api-forward"])
         run(django_migration + ["0009", "--noinput"], stdout=subprocess.DEVNULL)
         run(role_check + ["reversed"])
         run(django_migration + ["0010", "--noinput"], stdout=subprocess.DEVNULL)

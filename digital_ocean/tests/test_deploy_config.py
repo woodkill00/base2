@@ -148,3 +148,32 @@ def test_python_orchestrator_rejects_unknown_ssh_hosts_everywhere():
     assert 'UserKnownHostsFile=' in policy
     assert '_trusted_ssh_client()' in script
     assert '*_strict_openssh_options()' in script
+
+
+def test_deploy_has_one_exact_lifecycle_and_separate_first_host_enrollment():
+    root = Path(__file__).resolve().parents[2]
+    deploy = (root / 'digital_ocean/scripts/powershell/deploy.ps1').read_text(encoding='utf-8')
+    orchestrator = (
+        root / 'digital_ocean/scripts/python/orchestrate_deploy.py'
+    ).read_text(encoding='utf-8')
+    assert 'Run-Orchestrator -ProvisionOnly' in deploy
+    assert deploy.count('Run-Orchestrator') == 2  # definition plus provision-only call
+    assert 'host-key-enrollment-required.txt' in deploy
+    assert 'rerun without CreateIfMissing' in deploy
+    assert '--provision-only' in orchestrator
+    assert 'if PROVISION_ONLY:' in orchestrator
+    assert 'if not PROVISION_ONLY:' in orchestrator
+    assert 'direct_deployment_disabled' in orchestrator
+    assert orchestrator.index('if PROVISION_ONLY:') < orchestrator.index(
+        'ensure_dns_records_for_droplet', orchestrator.index('if PROVISION_ONLY:')
+    )
+
+
+def test_deploy_tls_probes_validate_trust_and_hostname():
+    root = Path(__file__).resolve().parents[2]
+    deploy = (root / 'digital_ocean/scripts/powershell/deploy.ps1').read_text(encoding='utf-8')
+    assert 'ssl.create_default_context()' in deploy
+    assert 'ssl.CERT_NONE' not in deploy
+    assert 'check_hostname = False' not in deploy
+    assert 'curl -sk' not in deploy
+    assert 'curl -sS "${RESOLVE_DOMAIN[@]}"' in deploy

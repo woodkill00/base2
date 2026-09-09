@@ -507,6 +507,27 @@ def main() -> None:
                            'accepted','scanner-v1',NOW(),NULL,NULL,NOW(),NOW())""",
                 (str(UUID(int=72)), str(UUID(int=70)), "d" * 64),
             )
+            cursor.execute(
+                """INSERT INTO sitecontent_mediaasset
+                   (id,site_id,storage_key,original_name,media_type,byte_size,sha256,status,
+                    owner_ref,attribution,retention_until,metadata,visibility,lock_version,
+                    current_object_version,authorization_epoch,archived_at,deleted_at,created_at,updated_at)
+                   VALUES (%s,'site-b','media/site-b/alternate','alternate.png','image/png',10,%s,
+                           'ready','owner','',NULL,'{}','private',1,1,1,NULL,NULL,NOW(),NOW())""",
+                (str(UUID(int=73)), "9" * 64),
+            )
+            cursor.execute(
+                "SELECT pg_get_triggerdef(oid) FROM pg_trigger "
+                "WHERE tgname LIKE 'base2_%_reference_generation'"
+            )
+            trigger_sql = "\n".join(row[0] for row in cursor.fetchall())
+            for required_column in (
+                "UPDATE OF site_id, storage_key, sha256",
+                "UPDATE OF asset_id, storage_key, sha256",
+                "UPDATE OF site_id, source_object_key, source_sha256",
+                "UPDATE OF site_id, encrypted_object_key, output_sha256",
+            ):
+                assert required_column in trigger_sql, f"generation_trigger_missing:{required_column}"
 
         assert count(runtime, None) == 0
         runtime.rollback()
@@ -875,12 +896,36 @@ def main() -> None:
             )
             assert cursor.rowcount == 1
         email_worker.commit()
-        migrated_email = create_outbox_email(
-            to_email="migration-proof@example.invalid",
-            subject="Migration proof",
-            body_text="Body",
-        )
+        from api.db import close_pool
+
+        owner_db_user = os.environ["DB_USER"]
+        owner_db_password = os.environ["DB_PASSWORD"]
+        close_pool()
+        os.environ["DB_USER"] = api_runtime_user
+        os.environ["DB_PASSWORD"] = api_runtime_password
+        try:
+            migrated_email = create_outbox_email(
+                to_email="migration-proof@example.invalid",
+                subject="Migration proof",
+                body_text="Body",
+            )
+        finally:
+            close_pool()
+            os.environ["DB_USER"] = owner_db_user
+            os.environ["DB_PASSWORD"] = owner_db_password
         assert migrated_email.delivery_key == str(migrated_email.id)
+        assert_permission_denied(
+            lambda: outbox_count(api_runtime),
+            api_runtime,
+            "api_runtime_outbox_read_was_not_blocked",
+        )
+        with api_runtime.cursor() as cursor:
+            try:
+                cursor.execute("UPDATE api_email_outbox SET status='sent'")
+            except errors.InsufficientPrivilege:
+                api_runtime.rollback()
+            else:
+                raise AssertionError("api_runtime_outbox_update_was_not_blocked")
         assert_permission_denied(
             lambda: count(email_worker, None),
             email_worker,
@@ -1134,6 +1179,38 @@ def main() -> None:
                 generation_before = snapshot['referenceGeneration']
                 updater = connect(owner_user, owner_password)
                 try:
+                    generation = generation_before
+
+                    def mutate_and_fence(statement, parameters):
+                        nonlocal generation
+                        with updater.cursor() as cursor:
+                            cursor.execute(statement, parameters)
+                        updater.commit()
+                        with updater.cursor() as cursor:
+                            cursor.execute(
+                                "SELECT generation FROM sitecontent_objectreferencegeneration "
+                                "WHERE singleton=TRUE"
+                            )
+                            current = cursor.fetchone()[0]
+                        assert current > generation, "backup_generation_column_not_fenced"
+                        generation = current
+
+                    mutate_and_fence(
+                        "UPDATE sitecontent_mediaasset SET site_id='site-a' WHERE id=%s",
+                        (str(UUID(int=73)),),
+                    )
+                    mutate_and_fence(
+                        "UPDATE sitecontent_mediaasset SET site_id='site-b' WHERE id=%s",
+                        (str(UUID(int=73)),),
+                    )
+                    mutate_and_fence(
+                        "UPDATE sitecontent_mediavariant SET asset_id=%s WHERE id=%s",
+                        (str(UUID(int=73)), str(UUID(int=71))),
+                    )
+                    mutate_and_fence(
+                        "UPDATE sitecontent_mediavariant SET asset_id=%s WHERE id=%s",
+                        (str(UUID(int=70)), str(UUID(int=71))),
+                    )
                     with updater.cursor() as cursor:
                         cursor.execute(
                             "SELECT source_object_key,source_sha256 FROM sitecontent_importjob WHERE id=%s",

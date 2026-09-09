@@ -26,6 +26,8 @@ try:
     from digital_ocean.scripts.python.deploy_config import load_deploy_config
     from digital_ocean.scripts.python.trusted_ssh import (
         strict_openssh_options as _strict_openssh_options,
+    )
+    from digital_ocean.scripts.python.trusted_ssh import (
         trusted_ssh_client as _trusted_ssh_client,
     )
 except ModuleNotFoundError:
@@ -891,6 +893,11 @@ parser.add_argument(
 parser.add_argument(
     "--all-tests", action="store_true", help="Enable extended remote verification (celery check)"
 )
+parser.add_argument(
+    "--provision-only",
+    action="store_true",
+    help="Record infrastructure address without SSH, DNS, source, secret, or service mutation",
+)
 parser.add_argument("--local-tests", action="store_true", help="Run local test suite after deploy")
 args = parser.parse_args()
 DRY_RUN = args.dry_run
@@ -898,6 +905,12 @@ UPDATE_ONLY = args.update_only
 CREATE_IF_MISSING = args.create_if_missing
 RUN_ALL_TESTS = args.all_tests
 RUN_LOCAL_TESTS = args.local_tests
+PROVISION_ONLY = args.provision_only
+if not PROVISION_ONLY:
+    raise SystemExit(
+        "direct_deployment_disabled: use deploy.ps1 for exact-commit deployment; "
+        "this entrypoint is restricted to --provision-only"
+    )
 if DRY_RUN:
     print(
         "\033[1;32m[INFO]\033[0m [DRY RUN] No changes will be made. Printing planned actions only."
@@ -1602,6 +1615,10 @@ if UPDATE_ONLY:
             _apply_artifact_rename()
             _write_deploy_metadata(droplet_id=droplet_id, ip_address=ip_address, update_only=True)
 
+            if PROVISION_ONLY:
+                log("Provision-only boundary reached; verify and enroll host identity separately.")
+                raise SystemExit(0)
+
             # Always ensure required DNS records exist/update to current droplet IP.
             # This is important in --update-only, where the droplet already exists but
             # DNS may be missing/stale (e.g., swagger subdomain).
@@ -1664,6 +1681,9 @@ if not UPDATE_ONLY:
         _plan_artifact_rename(ip_address)
         _apply_artifact_rename()
         _write_deploy_metadata(droplet_id=droplet_id, ip_address=ip_address, update_only=False)
+        if PROVISION_ONLY:
+            log("Provision-only boundary reached; verify and enroll host identity separately.")
+            raise SystemExit(0)
     except Exception as e:
         err(f"Droplet creation failed: {e}")
         exit(1)

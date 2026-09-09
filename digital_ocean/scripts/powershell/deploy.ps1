@@ -1006,16 +1006,20 @@ except Exception:
   return ""
 }
 
-function Run-Orchestrator {
+function Run-Orchestrator([switch]$ProvisionOnly) {
   Write-Section "Running orchestrator"
-  if ([string]::IsNullOrWhiteSpace($SshKnownHostsPath) -or -not (Test-Path -LiteralPath $SshKnownHostsPath -PathType Leaf)) {
+  if (-not $ProvisionOnly -and ([string]::IsNullOrWhiteSpace($SshKnownHostsPath) -or -not (Test-Path -LiteralPath $SshKnownHostsPath -PathType Leaf))) {
     throw 'Trusted SSH known_hosts file is required before orchestration'
   }
-  $env:BASE2_SSH_KNOWN_HOSTS_PATH = (Resolve-Path -LiteralPath $SshKnownHostsPath).Path
-    $cliArgs = @()
+  if (-not $ProvisionOnly) {
+    $env:BASE2_SSH_KNOWN_HOSTS_PATH = (Resolve-Path -LiteralPath $SshKnownHostsPath).Path
+  }
+  $cliArgs = @()
   if (-not $Full -and $UpdateOnly) { $cliArgs += '--update-only' }
   if ($CreateIfMissing) { $cliArgs += '--create-if-missing' }
+  if ($ProvisionOnly) { $cliArgs += '--provision-only' }
   & .\.venv\Scripts\python.exe .\digital_ocean\scripts\python\orchestrate_deploy.py @cliArgs
+  if ($LASTEXITCODE -ne 0) { throw "Orchestrator failed with exit code $LASTEXITCODE" }
 }
 
 function Remote-Verify($ip, $keyPath) {
@@ -1502,8 +1506,8 @@ PY
     # Keep this best-effort and bounded so deploy doesn't hang.
     : > /root/logs/build/domain-warmup.txt || true
     for i in $(seq 1 30); do
-      ROOT_CODE=$(curl -sk "${RESOLVE_DOMAIN[@]}" -o /dev/null -w "%{http_code}" "https://$DOMAIN/" 2>/dev/null || echo 000)
-      API_CODE=$(curl -sk "${RESOLVE_DOMAIN[@]}" -o /dev/null -w "%{http_code}" "https://$DOMAIN/api/health" 2>/dev/null || echo 000)
+      ROOT_CODE=$(curl -sS "${RESOLVE_DOMAIN[@]}" -o /dev/null -w "%{http_code}" "https://$DOMAIN/" 2>/dev/null || echo 000)
+      API_CODE=$(curl -sS "${RESOLVE_DOMAIN[@]}" -o /dev/null -w "%{http_code}" "https://$DOMAIN/api/health" 2>/dev/null || echo 000)
       echo "attempt=$i root=$ROOT_CODE api=$API_CODE" >> /root/logs/build/domain-warmup.txt
       if [ "$ROOT_CODE" = "200" ] && [ "$API_CODE" = "200" ]; then
         echo "READY" >> /root/logs/build/domain-warmup.txt
@@ -1555,9 +1559,7 @@ def get_sans_from_pem(pem: str):
     return []
 
 def fetch_cert_pem(hostname: str):
-  ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-  ctx.check_hostname = False
-  ctx.verify_mode = ssl.CERT_NONE
+  ctx = ssl.create_default_context()
   with ctx.wrap_socket(socket.socket(socket.AF_INET), server_hostname=hostname) as s:
     s.settimeout(5)
     s.connect(('127.0.0.1', 443))
@@ -1615,7 +1617,7 @@ PY
       OUT="$2"
       : > "$OUT" || true
       for i in $(seq 1 15); do
-        curl -skI "${RESOLVE_DOMAIN[@]}" "$URL" -o "$OUT" 2>/dev/null || true
+        curl -sSI "${RESOLVE_DOMAIN[@]}" "$URL" -o "$OUT" 2>/dev/null || true
         if [ -s "$OUT" ]; then
           return 0
         fi
@@ -1631,7 +1633,7 @@ PY
       : > "$OUT_BODY" || true
       : > "$OUT_STATUS" || true
       for i in $(seq 1 15); do
-        CODE=$(curl -sk "${RESOLVE_DOMAIN[@]}" -o "$OUT_BODY" -w "%{http_code}" "$URL" 2>/dev/null || echo 000)
+        CODE=$(curl -sS "${RESOLVE_DOMAIN[@]}" -o "$OUT_BODY" -w "%{http_code}" "$URL" 2>/dev/null || echo 000)
         echo "$CODE" > "$OUT_STATUS" || true
         if [ "$CODE" = "200" ] && [ -s "$OUT_BODY" ]; then
           return 0
@@ -1667,7 +1669,7 @@ PY
     mkdir -p /root/logs/meta /root/logs/services || true
     : > /root/logs/request-id-health.headers || true
     : > /root/logs/request-id-health.body || true
-    curl -sk "${RESOLVE_DOMAIN[@]}" -X POST \
+    curl -sS "${RESOLVE_DOMAIN[@]}" -X POST \
       -H "X-Request-Id: $RID" \
       -H 'Content-Type: application/json' \
       -d '{"email":"request-id-probe@example.com","password":"not-a-real-password"}' \
@@ -1814,14 +1816,14 @@ print(json.dumps(payload))" > /root/logs/request-id-log-propagation.json 2> /roo
     FL_LABEL=$(grep -E '^FLOWER_DNS_LABEL=' .env | cut -d'=' -f2 | tr -d '\r')
     if [ -n "$FL_LABEL" ]; then
       FHOST="$FL_LABEL.$DOMAIN"
-      curl -skI --resolve "$FHOST:443:127.0.0.1" "https://$FHOST/" -o /root/logs/curl-flower.txt || true
+      curl -sSI --resolve "$FHOST:443:127.0.0.1" "https://$FHOST/" -o /root/logs/curl-flower.txt || true
     fi
 
     # Django admin HEAD (no credentials) -> expect 401/403 when guarded
     ADM_LABEL=$(grep -E '^DJANGO_ADMIN_DNS_LABEL=' .env | cut -d'=' -f2 | tr -d '\r')
     if [ -n "$ADM_LABEL" ]; then
       AHOST="$ADM_LABEL.$DOMAIN"
-      curl -skI --resolve "$AHOST:443:127.0.0.1" "https://$AHOST/" -o /root/logs/curl-admin-head.txt || true
+      curl -sSI --resolve "$AHOST:443:127.0.0.1" "https://$AHOST/" -o /root/logs/curl-admin-head.txt || true
     fi
 
     # Celery roundtrip: enqueue ping and poll for result
@@ -1835,7 +1837,7 @@ import json
 print(json.dumps({"skipped": True, "reason": "celery check not executed"}))
 PY
     if [ "${RUN_CELERY_CHECK:-}" = "1" ]; then
-      curl -sk "${RESOLVE_DOMAIN[@]}" -X POST "https://$DOMAIN/api/celery/ping" -H 'Content-Type: application/json' -d '{}' -o /root/logs/celery-ping.json || true
+      curl -sS "${RESOLVE_DOMAIN[@]}" -X POST "https://$DOMAIN/api/celery/ping" -H 'Content-Type: application/json' -d '{}' -o /root/logs/celery-ping.json || true
       TASK_ID=$(python3 -c "import json;\
 import sys;\
 try:\
@@ -1844,7 +1846,7 @@ except Exception:\
   print('')" 2>/dev/null || true)
       if [ -n "$TASK_ID" ]; then
         for i in $(seq 1 30); do
-          curl -sk "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/celery/result/$TASK_ID" -o /root/logs/celery-result.json || true
+          curl -sS "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/celery/result/$TASK_ID" -o /root/logs/celery-result.json || true
           if grep -q '"successful": *true' /root/logs/celery-result.json 2>/dev/null; then
             break
           fi
@@ -2269,7 +2271,19 @@ try {
       Write-Host "Reminder: UpdateOnly hard-resets the droplet repo to origin/$branch. Commit and push any runtime-impacting changes (api/, django/, react-app/, Dockerfiles, compose, traefik) before running UpdateOnly." -ForegroundColor Yellow
     } catch {}
   }
-  Run-Orchestrator
+  if ($CreateIfMissing -and [string]::IsNullOrWhiteSpace($detectedExistingIp)) {
+    Run-Orchestrator -ProvisionOnly
+    $newIp = Get-DropletIp
+    $dest = Ensure-ArtifactDir
+    Set-Content -Path (Join-Path $dest 'host-key-enrollment-required.txt') -Encoding UTF8 -Value @(
+      'Deployment stopped at the authenticated first-host enrollment boundary.',
+      "Target: $newIp",
+      'Verify the host-key fingerprint through the DigitalOcean console or another authenticated channel.',
+      'Add only that verified key to the owner-controlled known_hosts file, then rerun without CreateIfMissing.',
+      'No SSH, DNS, source sync, secret transfer, migration, or service start was performed by this run.'
+    )
+    throw 'New host provisioned; separate owner-approved host-key verification and enrollment is required before deployment'
+  }
 
   $resolvedIp = Get-DropletIp
   if (-not $resolvedIp) {

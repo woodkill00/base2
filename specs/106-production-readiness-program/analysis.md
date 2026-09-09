@@ -921,3 +921,25 @@ branches were the recursive deployment-artifact scanner's comment/filter,
 symlink rejection, and CLI pass/reject paths. B317-B318 record both failures and
 their deterministic proofs. This rejected run remains historical only; both
 complete gates restart from zero on a new exact commit.
+
+## Analysis cycle 36 — independent review rejects the twice-green head
+
+Exact commit `7905e36cb02f785d7cf2e683027137be301d9f76` passed all 107
+complete-gate checks twice plus ten consecutive privacy/runtime and ten
+consecutive backup/deployment repetitions. Independent UX review returned
+C0/H0/M0/L0, but operations returned C1/H2/M1/L0 and data returned
+C0/H1/M2/L0. The candidate is rejected and none of that automated evidence
+authorizes publication.
+
+Operations found that the PowerShell wrapper invoked a generic Python lifecycle
+before its repaired exact-commit block. That legacy path reset to a mutable
+branch, suppressed source errors, and started the complete stack before the
+migration fence; it also caused the later rollback baseline to describe already
+mutated state. Fresh hosts lacked an authenticated host-key enrollment boundary,
+TLS probes disabled trust verification, and standalone migration/verification
+entrypoints did not enforce the API-before-Django-before-start sequence. Data
+review found broad API read/update access to outbox rows containing reset tokens,
+missing site/asset generation triggers for ledger-changing reassignments, and a
+0032 reverse migration that did not restore predecessor RLS state. B319-B325
+capture every deduplicated blocker and required negative proof. Both complete
+gates and all repetitions must restart from zero after repair.

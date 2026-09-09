@@ -52,11 +52,9 @@ def create_outbox_email(
         with conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO api_email_outbox(
-                    id, to_email, subject, body_text, body_html, delivery_key
-                )
-                VALUES (%s, %s, %s, %s, %s, %s)
-                RETURNING id, to_email, subject, body_text, body_html, status, provider, provider_message_id, error, created_at, sent_at, claim_token, delivery_key
+                SELECT outbox_id, outbox_status, outbox_provider,
+                       outbox_created_at, outbox_delivery_key
+                  FROM base2_enqueue_email(%s, %s, %s, %s, %s)
                 """,
                 (
                     str(outbox_id),
@@ -64,25 +62,24 @@ def create_outbox_email(
                     subject,
                     body_text,
                     body_html or '',
-                    str(outbox_id),
                 ),
             )
             row = cur.fetchone()
 
     return EmailOutboxRow(
         id=UUID(str(row[0])),
-        to_email=row[1],
-        subject=row[2],
-        body_text=row[3],
-        body_html=row[4] or '',
-        status=row[5],
-        provider=row[6],
-        provider_message_id=row[7] or '',
-        error=row[8] or '',
-        created_at=row[9],
-        sent_at=row[10],
-        claim_token=UUID(str(row[11])) if row[11] else None,
-        delivery_key=row[12] or str(row[0]),
+        to_email=to_email,
+        subject=subject,
+        body_text=body_text,
+        body_html=body_html or '',
+        status=row[1],
+        provider=row[2],
+        provider_message_id='',
+        error='',
+        created_at=row[3],
+        sent_at=None,
+        claim_token=None,
+        delivery_key=row[4] or str(row[0]),
     )
 
 

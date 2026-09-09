@@ -384,3 +384,13 @@ substitute for the integration proof named by the task.
 
 - [ ] B317 Reconcile the locked API environment after an interrupted PyYAML installation produced internally inconsistent package files, then prove real Compose YAML parsing succeeds from the exact locked dependency. (FR-060, FR-063, FR-065, FR-066, FR-078)
 - [ ] B318 Cover recursive artifact-scanner filtering, symlink rejection, and both CLI terminal results so the security implementation remains directly exercised and the unchanged 90% changed-line floor passes honestly. (FR-005, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+
+## Phase 21 — Independent review cycle 36 corrections
+
+- [ ] B319 Remove the mutable generic pre-deployment lifecycle, capture the true prior production head and epoch before mutation, and make one exact expected commit pass the API-first migration fence before any request or worker service starts. (FR-005, FR-013, FR-018, FR-031, FR-060, FR-062, FR-063, FR-065, FR-068)
+- [ ] B320 Add an explicitly owner-approved authenticated first-host key enrollment boundary for newly created hosts, while every ordinary and changed-key connection remains pinned and fail closed before credentials or mutation. (FR-005, FR-007, FR-031, FR-060, FR-063, FR-065, FR-069)
+- [ ] B321 Replace SAN-only and insecure HTTP deployment probes with CA-validating, hostname-verifying, expiry-valid TLS checks and prove self-signed, expired, wrong-host, and untrusted certificates fail. (FR-002, FR-005, FR-025, FR-031, FR-055, FR-060, FR-063, FR-065, FR-068)
+- [ ] B322 Make every supported migration and remote-verification entrypoint run owner-scoped API migrations before Django migrations, before startup, without suppressed failure. (FR-005, FR-018, FR-031, FR-060, FR-062, FR-063, FR-065, FR-068, FR-073)
+- [ ] B323 Revoke network API read/update access to the email outbox, expose only a fixed safe enqueue procedure, retain the separate worker authority, and prove reset/verification bearer material cannot be read or mutated through the API role. (FR-018, FR-019, FR-023, FR-031, FR-060, FR-065, FR-073)
+- [ ] B324 Increment the object-reference generation fence for every site and asset reassignment that changes the immutable ledger, and prove A-to-B-to-A rejection for each protected column and branch. (FR-020 through FR-023, FR-060, FR-065, FR-066)
+- [ ] B325 Make migration 0032 exactly restore its predecessor RLS/policy state on reverse, then prove latest-to-0031-to-latest convergence in disposable PostgreSQL. (FR-018, FR-019, FR-031, FR-060, FR-063, FR-065, FR-066, FR-073)

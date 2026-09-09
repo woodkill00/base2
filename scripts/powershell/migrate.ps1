@@ -42,7 +42,10 @@ $envFile = Resolve-EnvFilePath -Path $EnvFile -Root $projectRoot
 
 Push-Location $projectRoot
 try {
-    docker compose --env-file $envFile -f $composeFile exec -T django python manage.py migrate
+    docker compose --env-file $envFile -f $composeFile run --rm --no-deps api python -m api.scripts.migrate
+    if ($LASTEXITCODE -ne 0) { throw "API migration failed with exit code $LASTEXITCODE" }
+    docker compose --env-file $envFile -f $composeFile run --rm --no-deps django python manage.py migrate --noinput
+    if ($LASTEXITCODE -ne 0) { throw "Django migration failed with exit code $LASTEXITCODE" }
 } finally {
     Pop-Location
 }
