@@ -19,3 +19,10 @@ app = FastAPI(
     openapi_url=None,
 )
 app.include_router(router, prefix="/api")
+
+
+@app.get("/health", include_in_schema=False)
+def health() -> dict[str, bool]:
+    """Expose only process readiness for the loopback-only synthetic service."""
+
+    return {"ok": True}

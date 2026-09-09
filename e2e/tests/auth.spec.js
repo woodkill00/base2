@@ -53,6 +53,10 @@ function apiBase() {
   return process.env.E2E_API_URL || 'http://localhost:5001';
 }
 
+function browserBase() {
+  return process.env.E2E_BASE_URL || 'http://localhost:8080';
+}
+
 function apiUrl(path) {
   // Option 1-only invariant: public API is always served under /api/*.
   return `${apiBase()}/api${path}`;
@@ -77,6 +81,28 @@ async function fetchLatestOutboxEmail(request, toEmail, subjectContains) {
 }
 
 const PASSWORD = 'Password123';
+
+test('browser renders the public app and registers through the configured API', async ({
+  page,
+}) => {
+  const email = uniqueEmail('browser');
+  const home = await page.goto('/');
+  expect(home?.ok()).toBeTruthy();
+  await expect(page.getByTestId('home-page')).toBeVisible();
+
+  await page.goto('/signup');
+  await expect(page.getByRole('heading', { name: 'Create account' })).toBeVisible();
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill(PASSWORD);
+  const registered = page.waitForResponse(
+    (response) =>
+      response.url() === `${browserBase()}/api/auth/register` &&
+      response.request().method() === 'POST'
+  );
+  await page.getByRole('button', { name: 'Create account' }).click();
+  expect((await registered).status()).toBe(201);
+  await expect(page).toHaveURL(/\/dashboard$/);
+});
 
 test('register → verify (mocked via outbox) → login → me → logout', async ({ request }) => {
   const email = uniqueEmail('register');

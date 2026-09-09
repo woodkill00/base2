@@ -1592,3 +1592,69 @@ boundary, test invocation, and exact-project teardown; bind that documentation
 to the Compose contract; then restart all final exact-source evidence from a new
 candidate. Similar names remain rejected by normal Compose behavior, and no
 command gains authority over unrelated projects, providers, or live services.
+
+## Analysis cycle 76 — concurrent visual-review isolation
+
+The first exact gate for cycle 75 collided with a simultaneous independent UX
+review because both Playwright processes correctly refused to share fixed
+loopback port 4174. The review completed successfully and released its process,
+but a multi-agent readiness workflow must not serialize or invalidate evidence
+merely because two hermetic visual suites start together.
+
+B451-B454 add an optional strictly numeric unprivileged visual port while
+retaining 4174 as the release default, loopback binding, strict-port behavior,
+and server non-reuse. Contract tests and operator guidance cover the boundary,
+and concurrent focused visual runs on distinct ports must pass before all exact
+evidence restarts. No remote host, URL, command, or reusable server becomes
+configurable.
+
+## Analysis cycle 77 — isolated browser and readiness review
+
+Independent operations and UX review rejected cycle 75's isolated E2E claim.
+The API and web mappings were not loopback-bound, browser build and CORS origins
+still targeted hosted defaults, all three tests used Playwright request context
+instead of a page, test-support lacked health admission, and the manual guide
+did not guarantee preclean, bounded readiness, or teardown after interruption.
+The passing request tests therefore proved API flows but not isolated browser
+integration, and the known test credentials were needlessly reachable on LAN
+interfaces.
+
+B455-B462 bind all published test ports to loopback, parameterize only coherent
+browser/API origins with unchanged hosted defaults, add synthetic readiness and
+a real page-driven registration journey, and replace manual lifecycle steps with
+one fixed-project WSL runner. The runner validates distinct unprivileged ports,
+precleans only its exact project, waits for all three services, and traps exact
+teardown. Parsed-Compose and policy tests prevent false documentation. All prior
+evidence and reviews are rejected until the corrected exact SHA passes the full
+sequence with zero findings.
+
+## Analysis cycle 78 — real browser exposes missing API routing
+
+The first real page-driven isolated run rendered the signup UI, but its POST to
+the relative `/api` path reached the static Nginx container and returned 405.
+The test then timed out because its response predicate incorrectly expected the
+direct API-port origin. All three request-context flows still passed and the
+runner removed the exact project, confirming that the new journey found a real
+frontend-to-backend integration gap rather than a lifecycle failure.
+
+B463-B466 add a fixed same-origin `/api` proxy to the private Compose service,
+keep CSP `connect-src 'self'`, bind the browser assertion to the web origin, and
+remove the now-unnecessary configurable browser API build origin. The proxy has
+no client-controlled upstream and fixed timeouts. A new fresh-volume browser run
+must prove the response and authenticated transition before evidence restarts.
+
+## Analysis cycle 79 — fixed-project concurrent ownership
+
+The corrected fresh-volume run passed all four browser and API journeys and
+cleaned every exact-project container, volume, and network. A final adversarial
+review found that the deliberately fixed Compose project still permitted two
+runner processes to overlap: the second process could execute its preclean while
+the first owned the stack. Port isolation does not prevent that destructive
+same-project race, so the passing single-owner run alone is insufficient.
+
+B467-B469 acquire a nonblocking repository-local `flock` before constructing or
+executing any Docker command, assert that ordering in policy tests, and document
+the single-owner contract. Kernel process ownership releases the lock after all
+terminal paths without a stale lock cleanup procedure. A controlled concurrent
+attempt must fail before Docker access while the owner completes and tears down
+normally; exact-source evidence restarts only after that proof is committed.

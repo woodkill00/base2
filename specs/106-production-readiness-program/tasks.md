@@ -612,3 +612,34 @@ substitute for the integration proof named by the task.
 - [ ] B448 Document the exact isolated E2E port-variable names, unchanged hosted defaults, fixed disposable project name, browser URLs, and exact-project volume teardown. (FR-002, FR-004, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
 - [ ] B449 Add a policy regression binding every documented isolated port variable and teardown boundary to the Compose interface. (FR-002, FR-004, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
 - [ ] B450 Commit a replacement candidate and restart both complete gates, fresh-volume E2E, exact repetitions, independent reviews, and hosted checks from that exact SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 53 — Concurrent visual cycle 76 corrections
+
+- [ ] B451 Parameterize only the visual harness's numeric unprivileged loopback port, preserving default 4174, strict binding, and server non-reuse. (FR-002, FR-004, FR-005, FR-007, FR-021, FR-060, FR-063, FR-065, FR-068, FR-075, FR-078)
+- [ ] B452 Reject nonnumeric, privileged, and out-of-range visual port inputs before starting a build or server, and bind the exact boundary into the visual harness contract. (FR-002, FR-004, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B453 Run simultaneous focused visual suites on distinct loopback ports and prove both pass without reusing or terminating either server. (FR-002, FR-004, FR-005, FR-007, FR-021, FR-060, FR-063, FR-065, FR-068, FR-075, FR-078)
+- [ ] B454 Commit a replacement candidate and restart both complete gates, fresh-volume E2E, exact repetitions, independent reviews, and hosted checks from that exact SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 54 — Isolated browser cycle 77 corrections
+
+- [ ] B455 Bind E2E API, synthetic support, and web publications to loopback while retaining unchanged hosted port defaults. (FR-002, FR-004, FR-005, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B456 Derive a coherent browser API URL, frontend origin, and CORS allowlist for isolated runs without making arbitrary hosts or production origins part of the test runner. (FR-002, FR-004, FR-005, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B457 Add a no-schema synthetic health endpoint and require it in both Compose health admission and hosted readiness polling. (FR-002, FR-004, FR-005, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B458 Add a real Playwright page journey that renders the public application, submits registration through the configured browser API, observes the exact response, and reaches the authenticated dashboard. (FR-002, FR-004, FR-005, FR-021, FR-060, FR-063, FR-065, FR-068, FR-075, FR-078)
+- [ ] B459 Provide one fixed-project WSL runner that validates distinct unprivileged ports, precleans its exact disposable volumes, waits boundedly for all services, and traps exact teardown on every exit. (FR-002, FR-004, FR-005, FR-007, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B460 Parse and assert loopback mappings and origin/build coherence, plus runner preclean, readiness, validation, and cleanup, instead of relying on documentation substrings. (FR-002, FR-004, FR-005, FR-007, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B461 Prove stale-project removal, fresh migrations, three-service readiness, real browser/API flows, and empty exact-project inventory after runner success and an injected failure. (FR-002, FR-004, FR-005, FR-007, FR-014, FR-019, FR-031, FR-060, FR-063 through FR-065, FR-068, FR-071, FR-075, FR-078)
+- [ ] B462 Commit a replacement candidate and restart both complete gates, fresh-volume E2E, exact repetitions, independent reviews, and hosted checks from that exact SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 55 — Same-origin browser cycle 78 corrections
+
+- [ ] B463 Route frontend `/api` requests to the fixed private Compose API service with bounded timeouts and no client-controlled upstream. (FR-002, FR-004, FR-005, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B464 Preserve same-origin browser policy and `connect-src 'self'`, removing the unnecessary configurable browser API build origin. (FR-002, FR-004, FR-005, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B465 Bind the page-driven registration response to the configured web origin and prove the exact POST returns 201 before the dashboard transition. (FR-002, FR-004, FR-005, FR-021, FR-060, FR-063, FR-065, FR-068, FR-075, FR-078)
+- [ ] B466 Re-run the fixed-project fresh-volume lifecycle, verify automatic teardown, then commit a replacement and restart every exact-source gate, repetition, review, and hosted check. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 56 — Fixed-project concurrency cycle 79 corrections
+
+- [ ] B467 Acquire a nonblocking repository-local process lock before any fixed-project Docker operation so concurrent isolated-runner invocations cannot preclean or tear down one another. (FR-002, FR-004, FR-005, FR-007, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B468 Bind lock ordering and concurrent rejection into local policy tests and operator guidance, retaining automatic kernel release after success, failure, or interruption. (FR-002, FR-004, FR-005, FR-007, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B469 Prove one owner can complete while a concurrent contender fails before Docker access, then commit a replacement and restart all exact-source evidence from the new SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)

@@ -310,13 +310,49 @@ class CiPolicyTests(unittest.TestCase):
 
     def test_isolated_e2e_port_names_are_exactly_documented(self):
         repo_root = MODULE_PATH.parents[2]
-        compose = (repo_root / "e2e/docker-compose.e2e.yml").read_text(encoding="utf-8")
+        compose_text = (repo_root / "e2e/docker-compose.e2e.yml").read_text(encoding="utf-8")
+        compose = __import__("yaml").safe_load(compose_text)
         guide = (repo_root / "docs/TESTING.md").read_text(encoding="utf-8")
+        runner = (repo_root / "scripts/bash/e2e-isolated.sh").read_text(encoding="utf-8")
+        concurrency_proof = (
+            repo_root / "scripts/bash/e2e-isolated-concurrency-proof.sh"
+        ).read_text(encoding="utf-8")
         for variable in ("E2E_API_PORT", "E2E_TEST_SUPPORT_PORT", "E2E_WEB_PORT"):
-            self.assertIn(f"${{{variable}:-", compose)
-            self.assertIn(f"{variable}=", guide)
-        self.assertIn("docker compose -p base2-e2e-isolated", guide)
-        self.assertIn("down -v --remove-orphans", guide)
+            self.assertIn(f"${{{variable}:-", compose_text)
+            self.assertIn(variable, guide)
+            self.assertIn(f'validate_port {variable} "${variable}"', runner)
+        for service in ("api", "test-support", "react-app"):
+            published = compose["services"][service]["ports"][0]
+            self.assertTrue(published.startswith("127.0.0.1:"), published)
+        self.assertEqual(
+            "${E2E_WEB_ORIGIN:-http://localhost:8080}",
+            compose["services"]["api"]["environment"]["CORS_ALLOW_ORIGINS"],
+        )
+        nginx = (repo_root / "react-app/nginx/default.conf").read_text(encoding="utf-8")
+        self.assertIn("location /api/", nginx)
+        self.assertIn("proxy_pass http://api:5001;", nginx)
+        self.assertNotIn("E2E_BROWSER_API_URL", compose_text + guide + runner)
+        self.assertIn('project="base2-e2e-isolated"', runner)
+        self.assertIn('lock_file="$repo_root/.artifacts/e2e-isolated.lock"', runner)
+        self.assertIn("if ! flock -n 9; then", runner)
+        self.assertLess(
+            runner.index("if ! flock -n 9; then"),
+            runner.index("compose=(docker compose"),
+        )
+        self.assertIn('trap cleanup EXIT INT TERM', runner)
+        self.assertGreaterEqual(runner.count('down -v --remove-orphans'), 1)
+        self.assertIn('http://127.0.0.1:$E2E_TEST_SUPPORT_PORT/health', runner)
+        self.assertIn('scripts/bash/e2e-isolated.sh', guide)
+        self.assertIn('contender_rc" -ne 3', concurrency_proof)
+        self.assertIn("inventory=empty", concurrency_proof)
+
+    def test_e2e_workflow_waits_for_synthetic_support_readiness(self):
+        repo_root = MODULE_PATH.parents[2]
+        workflow = (repo_root / ".github/workflows/ci-e2e.yml").read_text(encoding="utf-8")
+        compose = (repo_root / "e2e/docker-compose.e2e.yml").read_text(encoding="utf-8")
+        self.assertIn("http://localhost:5002/health", workflow)
+        self.assertIn("conn.request(''GET'', ''/health'')", compose)
+        self.assertIn("test-support:\n", compose)
 
     def test_backend_and_postgres_acceptance_avoid_anonymous_public_ecr(self):
         repo_root = MODULE_PATH.parents[2]

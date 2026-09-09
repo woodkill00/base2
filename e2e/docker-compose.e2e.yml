@@ -139,8 +139,8 @@ services:
       AUTH_REFRESH_COOKIE: 'true'
       COOKIE_SECURE: 'false'
       COOKIE_SAMESITE: Lax
-      FRONTEND_URL: http://localhost:8080
-      CORS_ALLOW_ORIGINS: http://localhost:8080
+      FRONTEND_URL: ${E2E_WEB_ORIGIN:-http://localhost:8080}
+      CORS_ALLOW_ORIGINS: ${E2E_WEB_ORIGIN:-http://localhost:8080}
     depends_on:
       django-migrate:
         condition: service_completed_successfully
@@ -149,7 +149,7 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - '${E2E_API_PORT:-5001}:5001'
+      - '127.0.0.1:${E2E_API_PORT:-5001}:5001'
     healthcheck:
       test:
         [
@@ -197,6 +197,15 @@ services:
     security_opt: [no-new-privileges:true]
     read_only: true
     tmpfs: [/tmp]
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'python -c "import http.client, sys; conn = http.client.HTTPConnection(''localhost'', 5002, timeout=3); conn.request(''GET'', ''/health''); r = conn.getresponse(); sys.exit(0 if r.status == 200 else 1)"',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   celery-worker:
     build:
@@ -266,9 +275,8 @@ services:
         DOCKER_LIBRARY_REGISTRY: mirror.gcr.io/library
         NODE_VERSION: 24.20.0-alpine
         NGINX_VERSION: 1.27.3-alpine
-        REACT_APP_API_URL: http://localhost:5001/api
     ports:
-      - '${E2E_WEB_PORT:-8080}:8080'
+      - '127.0.0.1:${E2E_WEB_PORT:-8080}:8080'
     depends_on:
       api:
         condition: service_healthy
