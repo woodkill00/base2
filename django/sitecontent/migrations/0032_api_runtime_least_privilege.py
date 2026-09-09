@@ -8,6 +8,59 @@ from django.db import migrations
 ROLE = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,62}$")
 
 
+def create_reference_generation(apps, schema_editor):
+    del apps
+    if schema_editor.connection.vendor != "postgresql":
+        return
+    schema_editor.execute(
+        """
+        CREATE TABLE sitecontent_objectreferencegeneration (
+          singleton boolean PRIMARY KEY DEFAULT TRUE CHECK (singleton),
+          generation bigint NOT NULL DEFAULT 0
+        );
+        INSERT INTO sitecontent_objectreferencegeneration(singleton,generation)
+          VALUES(TRUE,0) ON CONFLICT(singleton) DO NOTHING;
+        CREATE OR REPLACE FUNCTION base2_bump_object_reference_generation()
+          RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
+          SET search_path=pg_catalog,public AS $$
+          BEGIN
+            UPDATE public.sitecontent_objectreferencegeneration
+               SET generation=generation+1 WHERE singleton=TRUE;
+            RETURN COALESCE(NEW,OLD);
+          END $$;
+        CREATE TRIGGER base2_mediaasset_reference_generation
+          AFTER INSERT OR UPDATE OF storage_key,sha256 OR DELETE ON sitecontent_mediaasset
+          FOR EACH STATEMENT EXECUTE FUNCTION base2_bump_object_reference_generation();
+        CREATE TRIGGER base2_mediauploadpart_reference_generation
+          AFTER INSERT OR UPDATE OF storage_key,sha256 OR DELETE ON sitecontent_mediauploadpart
+          FOR EACH STATEMENT EXECUTE FUNCTION base2_bump_object_reference_generation();
+        CREATE TRIGGER base2_importjob_reference_generation
+          AFTER INSERT OR UPDATE OF source_object_key,source_sha256 OR DELETE ON sitecontent_importjob
+          FOR EACH STATEMENT EXECUTE FUNCTION base2_bump_object_reference_generation();
+        CREATE TRIGGER base2_exportjob_reference_generation
+          AFTER INSERT OR UPDATE OF encrypted_object_key,output_sha256 OR DELETE ON sitecontent_exportjob
+          FOR EACH STATEMENT EXECUTE FUNCTION base2_bump_object_reference_generation();
+        REVOKE ALL ON sitecontent_objectreferencegeneration FROM PUBLIC;
+        """
+    )
+
+
+def drop_reference_generation(apps, schema_editor):
+    del apps
+    if schema_editor.connection.vendor != "postgresql":
+        return
+    schema_editor.execute(
+        """
+        DROP TRIGGER IF EXISTS base2_exportjob_reference_generation ON sitecontent_exportjob;
+        DROP TRIGGER IF EXISTS base2_importjob_reference_generation ON sitecontent_importjob;
+        DROP TRIGGER IF EXISTS base2_mediauploadpart_reference_generation ON sitecontent_mediauploadpart;
+        DROP TRIGGER IF EXISTS base2_mediaasset_reference_generation ON sitecontent_mediaasset;
+        DROP FUNCTION IF EXISTS base2_bump_object_reference_generation();
+        DROP TABLE IF EXISTS sitecontent_objectreferencegeneration;
+        """
+    )
+
+
 def configure_api_runtime(apps, schema_editor):
     del apps
     if schema_editor.connection.vendor != "postgresql":
@@ -63,44 +116,6 @@ def revoke_api_runtime(apps, schema_editor):
 class Migration(migrations.Migration):
     dependencies = [("sitecontent", "0031_data_rights_worker_scope")]
     operations = [
-        migrations.RunSQL(
-            sql="""
-            CREATE TABLE sitecontent_objectreferencegeneration (
-              singleton boolean PRIMARY KEY DEFAULT TRUE CHECK (singleton),
-              generation bigint NOT NULL DEFAULT 0
-            );
-            INSERT INTO sitecontent_objectreferencegeneration(singleton,generation)
-              VALUES(TRUE,0) ON CONFLICT(singleton) DO NOTHING;
-            CREATE OR REPLACE FUNCTION base2_bump_object_reference_generation()
-              RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
-              SET search_path=pg_catalog,public AS $$
-              BEGIN
-                UPDATE public.sitecontent_objectreferencegeneration
-                   SET generation=generation+1 WHERE singleton=TRUE;
-                RETURN COALESCE(NEW,OLD);
-              END $$;
-            CREATE TRIGGER base2_mediaasset_reference_generation
-              AFTER INSERT OR UPDATE OF storage_key,sha256 OR DELETE ON sitecontent_mediaasset
-              FOR EACH STATEMENT EXECUTE FUNCTION base2_bump_object_reference_generation();
-            CREATE TRIGGER base2_mediauploadpart_reference_generation
-              AFTER INSERT OR UPDATE OF storage_key,sha256 OR DELETE ON sitecontent_mediauploadpart
-              FOR EACH STATEMENT EXECUTE FUNCTION base2_bump_object_reference_generation();
-            CREATE TRIGGER base2_importjob_reference_generation
-              AFTER INSERT OR UPDATE OF source_object_key,source_sha256 OR DELETE ON sitecontent_importjob
-              FOR EACH STATEMENT EXECUTE FUNCTION base2_bump_object_reference_generation();
-            CREATE TRIGGER base2_exportjob_reference_generation
-              AFTER INSERT OR UPDATE OF encrypted_object_key,output_sha256 OR DELETE ON sitecontent_exportjob
-              FOR EACH STATEMENT EXECUTE FUNCTION base2_bump_object_reference_generation();
-            REVOKE ALL ON sitecontent_objectreferencegeneration FROM PUBLIC;
-            """,
-            reverse_sql="""
-            DROP TRIGGER IF EXISTS base2_exportjob_reference_generation ON sitecontent_exportjob;
-            DROP TRIGGER IF EXISTS base2_importjob_reference_generation ON sitecontent_importjob;
-            DROP TRIGGER IF EXISTS base2_mediauploadpart_reference_generation ON sitecontent_mediauploadpart;
-            DROP TRIGGER IF EXISTS base2_mediaasset_reference_generation ON sitecontent_mediaasset;
-            DROP FUNCTION IF EXISTS base2_bump_object_reference_generation();
-            DROP TABLE IF EXISTS sitecontent_objectreferencegeneration;
-            """,
-        ),
+        migrations.RunPython(create_reference_generation, drop_reference_generation),
         migrations.RunPython(configure_api_runtime, revoke_api_runtime),
     ]

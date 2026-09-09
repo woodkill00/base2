@@ -2,7 +2,7 @@
   "algorithm": "sha256",
   "groups": {
     "config": {
-      ".env.example": "2dcc8d3bb1b68a4f80d2a79f51bc66ca866de4a2a0554eec534003b8bea2d916",
+      ".env.example": "3696be0983a1c287d0cbb2ca2e9fb6f5efe02b64eda46854db4452d8399c7f9f",
       "api/site_profiles/base2-obsidian.json": "c7d8f67ddd1ab6cd155000a741377d92a07e09ab8fe5bca73c1e961d092cbbd6",
       "api/site_profiles/content-workspace-contracts.json": "b8202643502ab5257a92a7370dd2ef4afbc11d75b2fd1772d2b99cb8f7f6beee",
       "api/site_profiles/content-workspace-presets.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
@@ -108,7 +108,7 @@
       "api/routes/metrics.py": "e9e270a535b8bc6a480913fac9e475b8aadfa805fbb3b0494c8983e6dce45183",
       "api/routes/oauth.py": "2fbe1617292b76caecdd5b0b6def27cbbd11fe0c847af70ebfc7a71952739d00",
       "api/routes/operations.py": "f5ddd88fe3996dcc8d53449f04613d3113052f23f3416a578c42cc867db5257e",
-      "api/routes/privacy.py": "edf8eb20a167399a9c3fec3c1b9039892a13a41b3962ac4657f54cd7930fcc39",
+      "api/routes/privacy.py": "a071f4a04d158c0872793f0cd2f6b804e333e0a35ed880cc13ed529492e96c66",
       "api/routes/scheduling.py": "2bc71ee22ff666d22e7275e00394f6a885f94e04d20e97c44a4e93778ce859fa",
       "api/routes/settings.py": "42894f829845f6c8faf1ca3dd5899dde7ac9570474ff0d31f49850fc695a36c8",
       "api/routes/site_content.py": "719c357b1419d09b1c0b2913d7ed40603e1fe9aabe90e676ea222a4b0e1ae256",

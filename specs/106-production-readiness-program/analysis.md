@@ -826,3 +826,23 @@ credentials only into the bounded migration process; the network-facing API keep
 its separate least-privilege login. Real forward, reverse, concurrency, media-RLS,
 and A-to-B-to-A generation-fence acceptance is green. Complete gates and fresh
 independent review still must restart on the resulting exact commit.
+
+## Analysis cycle 31 — first repaired-head complete-gate rejection
+
+The first complete gate on `218b289` rejected before it could become release
+evidence. PostgreSQL-only trigger DDL in migration 0032 was represented as an
+unconditional `RunSQL`, so SQLite test databases attempted to parse PL/pgSQL.
+Intentional environment and privacy-route changes also invalidated the exact
+surface lock, while the sidebar source change invalidated the committed
+Operations visual manifest. Tasks B299-B301 record these integration findings.
+
+Migration 0032 now uses vendor-guarded reversible `RunPython` operations: SQLite
+performs a deterministic no-op and PostgreSQL retains the already-proven trigger
+creation and reversal. The route/config lock was regenerated only after source
+normalization and passes its hostile mutation tests. The complete 42-case
+Operations browser matrix ran against a production build across responsive,
+localization, contrast, reduced-motion, Firefox, and WebKit profiles; 22
+applicable cases passed and 20 profile-inapplicable state repetitions skipped by
+contract. Its current-run receipt and 35 exact captures now bind the regenerated
+manifest. The rejected gate remains historical and the required two passes
+restart from zero on the next clean commit.
