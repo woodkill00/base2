@@ -5,6 +5,7 @@ import pytest
 
 from digital_ocean.scripts.python.deployment_mode import (
     DeploymentModeError,
+    main,
     resolve_deployment_mode,
 )
 
@@ -58,9 +59,7 @@ def test_rejects_standalone_create_if_missing(full, target_exists):
 
 def test_authoritative_wrapper_uses_the_resolver_before_provider_provisioning():
     root = Path(__file__).resolve().parents[2]
-    source = (root / "digital_ocean/scripts/powershell/deploy.ps1").read_text(
-        encoding="utf-8"
-    )
+    source = (root / "digital_ocean/scripts/powershell/deploy.ps1").read_text(encoding="utf-8")
     resolver = source.index("deployment_mode.py @modeArgs")
     rejected = source.index("$deploymentAction -eq 'reject-missing-target'", resolver)
     provision = source.index("$deploymentAction -eq 'provision'", rejected)
@@ -70,3 +69,15 @@ def test_authoritative_wrapper_uses_the_resolver_before_provider_provisioning():
     assert resolver < rejected < provision < orchestrator < deploy < remote
     assert "if ($Full -and $UpdateOnly)" in source
     assert "if ($CreateIfMissing -and -not $UpdateOnly)" in source
+
+
+def test_cli_prints_the_resolved_action(capsys):
+    assert main(["--full", "--target-exists"]) == 0
+    assert capsys.readouterr().out == "deploy\n"
+
+
+def test_cli_rejects_an_ambiguous_mode(capsys):
+    with pytest.raises(SystemExit) as error:
+        main(["--full", "--update-only"])
+    assert error.value.code == 2
+    assert "mutually_exclusive" in capsys.readouterr().err

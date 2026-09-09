@@ -1001,3 +1001,13 @@ basic-auth evidence redaction, and their focused acceptance. These findings were
 caught before publication or provider mutation. All earlier exact-head evidence
 remains historical; complete gates and independent review may restart only from
 the new committed candidate after this bounded repair passes.
+
+## Analysis cycle 41 — exact-head changed-line coverage rejection
+
+Complete gate 1 on `84a12df45924e28a33882463e0e9a1aa7b29778b`
+passed every functional check but rejected changed-line coverage at 89.48%
+against the unchanged 90% floor. The missing lines were concentrated in the new
+deployment-mode and staging-TLS command, retry, timeout, disabled-verification,
+and missing-SAN paths. B341 records direct behavioral coverage of those release
+boundaries. The rejected gate is historical; both complete gates restart from
+zero on the next exact commit.
