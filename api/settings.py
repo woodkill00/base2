@@ -281,7 +281,24 @@ class Settings(BaseSettings):
                         'Production database must use an external verified-TLS endpoint'
                     )
                 effective_host = effective_host.rstrip('.')
-                local_database = effective_host in {'', 'postgres', 'localhost'}
+                # RFC 6761 reserves every name below ``localhost`` for the
+                # local host. Common libc hosts-file aliases are not covered
+                # by ipaddress parsing and must be rejected without a mutable
+                # or DNS-dependent resolver lookup.
+                local_host_aliases = {
+                    '',
+                    'postgres',
+                    'localhost',
+                    'localhost.localdomain',
+                    'localhost6',
+                    'localhost6.localdomain6',
+                    'ip6-localhost',
+                    'ip6-loopback',
+                }
+                local_database = (
+                    effective_host in local_host_aliases
+                    or effective_host.endswith('.localhost')
+                )
                 # libc/libpq still accept historical IPv4 spellings that the
                 # strict ipaddress parser intentionally rejects (for example
                 # 2130706433, 127.1, 017700000001, and 0x7f000001). Never let

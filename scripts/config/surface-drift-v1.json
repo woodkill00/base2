@@ -2,7 +2,7 @@
   "algorithm": "sha256",
   "groups": {
     "config": {
-      ".env.example": "7a5105c21ecab9cade8fc7b00c3e75b0ecbed0bf5fbf1c602d58e7f7d84d2d33",
+      ".env.example": "6d11f58ebe687bc53b3695459a0815929cc154d5e87e8774d2e045b63dc0fece",
       "api/site_profiles/base2-obsidian.json": "c7d8f67ddd1ab6cd155000a741377d92a07e09ab8fe5bca73c1e961d092cbbd6",
       "api/site_profiles/content-workspace-contracts.json": "b8202643502ab5257a92a7370dd2ef4afbc11d75b2fd1772d2b99cb8f7f6beee",
       "api/site_profiles/content-workspace-presets.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
@@ -36,7 +36,7 @@
     "docs": {
       "docs/ARCHITECTURE.md": "98c9ed467d4b3b69204f493a3260fcd4e366a3e400d6a31e4d4acaf5a19f0286",
       "docs/CONFIG.md": "220e044bfd19f6613998177952fcbb1ad35a118ec107b720ed2c03d3d78a6c40",
-      "docs/DEPLOY.md": "99612901ac3c4e6fc1d73f4604647436ab784984cd14562d5d2536c85e528216",
+      "docs/DEPLOY.md": "a7f51cf5a2a64044e29762e86fbadc6f49e1a62ac74ab3b248e343dbddbfc62f",
       "docs/SECURITY.md": "f6dfb9f5726fd3600ef62b992527c83b576163bd7fa7e30b91675e666dbc41f6",
       "docs/TESTING.md": "0f36a8fcf6540e8a5c1c93974fa9530d67be969d290e71a7a73c326d8fa205b2",
       "docs/feature-093-production-readiness.md": "a072302df8fd844102ae84f994161f697a4b8f5c73d7a6ee7b2ad6e37d3eeff1",

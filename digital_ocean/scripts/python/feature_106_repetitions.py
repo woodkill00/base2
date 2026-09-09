@@ -7,9 +7,12 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import tempfile
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Iterator
 
 REPETITIONS = 10
 SUITES = {
@@ -81,14 +84,74 @@ def _require_clean(root: Path) -> None:
         raise RepetitionError("repetition_source_not_clean")
 
 
-def _test_environment() -> dict[str, str]:
-    blocked = re.compile(r"(?:TOKEN|SECRET|PASSWORD|CREDENTIAL|PRIVATE_KEY)", re.I)
-    return {key: value for key, value in os.environ.items() if blocked.search(key) is None}
+def _test_environment(home: Path) -> dict[str, str]:
+    """Return a hermetic child environment, never an ambient denylist."""
+
+    environment = {
+        "CI": "1",
+        "ENV": "test",
+        "HOME": str(home),
+        "LANG": "C.UTF-8",
+        "LC_ALL": "C.UTF-8",
+        "NO_PROXY": "*",
+        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "XDG_CACHE_HOME": str(home / ".cache"),
+        "XDG_CONFIG_HOME": str(home / ".config"),
+    }
+    if os.name == "nt":
+        for name in ("COMSPEC", "SYSTEMDRIVE", "SYSTEMROOT", "TEMP", "TMP", "WINDIR"):
+            value = os.environ.get(name)
+            if value:
+                environment[name] = value
+    return environment
+
+
+def _require_exact_source(root: Path, commit: str) -> None:
+    if _source_commit(root) != commit:
+        raise RepetitionError("repetition_source_changed")
+    _require_clean(root)
+
+
+@contextmanager
+def _isolated_source(root: Path, commit: str, parent: Path) -> Iterator[Path]:
+    """Check out one detached exact commit for the entire repetition set."""
+
+    worktree = parent / "source"
+    added = subprocess.run(
+        ["git", "worktree", "add", "--detach", str(worktree), commit],
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    if added.returncode:
+        raise RepetitionError("repetition_isolation_failed")
+    try:
+        _require_exact_source(worktree, commit)
+        yield worktree
+        _require_exact_source(worktree, commit)
+    finally:
+        removed = subprocess.run(
+            ["git", "worktree", "remove", "--force", str(worktree)],
+            cwd=root,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if removed.returncode:
+            raise RepetitionError("repetition_isolation_cleanup_failed")
 
 
 def _validate_existing(path: Path, commit: str) -> Path:
+    if path.is_symlink() or not path.is_dir():
+        raise RepetitionError("repetition_evidence_invalid")
+    manifest = path / "result.json"
+    if manifest.is_symlink() or not manifest.is_file():
+        raise RepetitionError("repetition_evidence_invalid")
     try:
-        payload = json.loads((path / "result.json").read_text(encoding="utf-8"))
+        payload = json.loads(manifest.read_text(encoding="utf-8"))
         files = payload["files"]
     except (OSError, KeyError, json.JSONDecodeError, TypeError) as exc:
         raise RepetitionError("repetition_evidence_invalid") from exc
@@ -111,18 +174,25 @@ def _validate_existing(path: Path, commit: str) -> Path:
         for suite in SUITES
         for repetition in range(1, REPETITIONS + 1)
     }
-    if supplied_digest != expected_digest or {entry.get("name") for entry in files} != expected_names:
+    actual_names = {entry.name for entry in path.iterdir()}
+    if (
+        supplied_digest != expected_digest
+        or {entry.get("name") for entry in files} != expected_names
+        or actual_names != expected_names | {"result.json"}
+    ):
         raise RepetitionError("repetition_evidence_invalid")
     for entry in files:
         member = path / str(entry.get("name", ""))
         if (
             not member.is_file()
+            or member.is_symlink()
             or member.name != entry.get("name")
+            or member.resolve().parent != path.resolve()
             or member.stat().st_size != entry.get("bytes")
             or _digest(member) != entry.get("sha256")
         ):
             raise RepetitionError("repetition_evidence_changed")
-    return path / "result.json"
+    return manifest
 
 
 def run(root: Path | None = None) -> Path:
@@ -136,31 +206,38 @@ def run(root: Path | None = None) -> Path:
     evidence_root.mkdir(parents=True, exist_ok=True, mode=0o700)
     with tempfile.TemporaryDirectory(prefix=f".{commit}.", dir=evidence_root) as raw_stage:
         stage = Path(raw_stage)
-        environment = _test_environment()
+        home = stage / "home"
+        home.mkdir(mode=0o700)
+        environment = _test_environment(home)
         files: list[dict[str, object]] = []
-        for suite, command in SUITES.items():
-            for repetition in range(1, REPETITIONS + 1):
-                result = subprocess.run(
-                    command,
-                    cwd=project_root,
-                    env=environment,
-                    check=False,
-                    capture_output=True,
-                    text=True,
-                    timeout=300,
-                )
-                member = stage / f"{suite}-{repetition}.log"
-                member.write_text(result.stdout + result.stderr, encoding="utf-8")
-                member.chmod(0o600)
-                if result.returncode:
-                    raise RepetitionError(f"repetition_failed:{suite}:{repetition}")
-                files.append(
-                    {
-                        "bytes": member.stat().st_size,
-                        "name": member.name,
-                        "sha256": _digest(member),
-                    }
-                )
+        with _isolated_source(project_root, commit, stage) as source:
+            for suite, command in SUITES.items():
+                isolated_command = (str(project_root / command[0]), *command[1:])
+                for repetition in range(1, REPETITIONS + 1):
+                    result = subprocess.run(
+                        isolated_command,
+                        cwd=source,
+                        env=environment,
+                        check=False,
+                        capture_output=True,
+                        text=True,
+                        timeout=300,
+                    )
+                    _require_exact_source(source, commit)
+                    _require_exact_source(project_root, commit)
+                    member = stage / f"{suite}-{repetition}.log"
+                    member.write_text(result.stdout + result.stderr, encoding="utf-8")
+                    member.chmod(0o600)
+                    if result.returncode:
+                        raise RepetitionError(f"repetition_failed:{suite}:{repetition}")
+                    files.append(
+                        {
+                            "bytes": member.stat().st_size,
+                            "name": member.name,
+                            "sha256": _digest(member),
+                        }
+                    )
+        shutil.rmtree(home)
         payload = {
             "files": sorted(files, key=lambda entry: str(entry["name"])),
             "repetitionsPerSuite": REPETITIONS,
@@ -174,6 +251,7 @@ def run(root: Path | None = None) -> Path:
         result_path = stage / "result.json"
         result_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         result_path.chmod(0o600)
+        _require_exact_source(project_root, commit)
         stage.rename(destination)
     return destination / "result.json"
 

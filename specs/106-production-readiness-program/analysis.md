@@ -1254,3 +1254,38 @@ failed execution, atomic replay, member tampering, manifest tampering, missing
 evidence, and CLI success/failure. The failed dirty-tree gate remains historical
 and is not release evidence. B385 requires committing the complete source and
 tests together before both exact-head gates and persisted repetitions restart.
+
+## Analysis cycle 55 — independent review rejects the twice-green candidate
+
+Exact commit `9f4d58acf068ec6d51f701bed01f49238ddd7798` passed both
+108-check complete gates and produced one exact-source manifest binding twenty
+broader repetition logs. Fresh UX review accepted with C0/H0/M0/L0, but data
+review returned C0/H0/M2/L0 and operations review returned C0/H0/M3/L0. The
+candidate is rejected and no publication is permitted from its green evidence.
+
+Review proved that named libc localhost aliases bypassed the production database
+guard, while the repetition runner inherited credential-bearing URLs and could
+label mixed source if its checkout changed during the long run. Operations also
+found the native-Windows broker skipped ACL validation and the otherwise absolute
+Git process retained loader-injection state. B386-B390 contain the deduplicated
+repair and proof set: fixed local-name rejection, a minimal test environment, an
+exact detached worktree with continual source validation, strict evidence member
+admission, and SID-based Windows broker ancestry validation plus a minimal Git
+environment. Both exact gates, persisted repetitions, and every independent
+review restart only after a new clean candidate. No publication, merge,
+deployment, provider, DNS, certificate, credential, or destructive action is
+authorized by this analysis.
+
+## Analysis cycle 56 — pre-commit coverage admission
+
+The repaired dirty tree passed 107 of 108 complete-gate checks. The sole
+rejection was changed-line coverage at 89.95% against the unchanged 90% floor,
+three covered executable lines short of admission. Every product, security,
+integration, visual, dependency, and plan check otherwise passed.
+
+Inspection found the fixed trusted-Git selector's symlink and filesystem-error
+failure paths were not directly exercised. B391-B392 add behavioral rejection
+tests for both paths and require a new full pre-commit pass without lowering,
+rounding, or bypassing the coverage floor. The failed gate is historical and no
+exact-head evidence or publication can begin until the complete repaired tree
+passes.

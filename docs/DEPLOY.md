@@ -43,9 +43,14 @@ transport overrides; private HTTPS authentication must come from the bounded
 process credential broker named by `DO_PROVISION_LEASE_GIT_ASKPASS`, without
 placing credentials in the URL. That path must be an absolute, owner-only,
 non-symlinked executable (maximum 64 KiB) which returns the repository-scoped
-username or token requested by Git. The lease process uses an absolute Git
-executable, disables system/global config and terminal prompts, and removes
-ambient Git, credential-manager, askpass, SSH-agent, proxy, and token variables
+username or token requested by Git. On native Windows, the broker owner and
+every writable path ancestor are checked by SID; only that owner, SYSTEM, and
+Administrators may retain write authority. Use an owner-only executable such as
+`C:\ProgramData\Base2\provider-lease-askpass.exe`, not the Linux `/run` example.
+The lease process uses a fixed absolute system Git executable, disables
+system/global config and terminal prompts, and constructs a minimal environment
+which excludes ambient Git, loader, profile, connection, credential-manager,
+askpass, SSH-agent, proxy, token, and secret variables
 before installing only this exact broker. The fixed,
 digest-named remote ref is created only when a new paid resource is needed and
 is deleted only with the exact owner revision. Conflict, crash, expiry, or ref

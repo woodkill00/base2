@@ -14,7 +14,6 @@ import hashlib
 import json
 import os
 import re
-import shutil
 import subprocess
 import tempfile
 import time
@@ -28,10 +27,11 @@ class ProviderLeaseError(RuntimeError):
 
 
 def _trusted_git_executable() -> str:
-    candidates = [Path("/usr/bin/git")]
-    discovered = shutil.which("git")
-    if discovered:
-        candidates.append(Path(discovered))
+    candidates = (
+        [Path(r"C:\Program Files\Git\cmd\git.exe")]
+        if os.name == "nt"
+        else [Path("/usr/bin/git")]
+    )
     for candidate in candidates:
         try:
             if candidate.is_symlink():
@@ -47,6 +47,57 @@ def _trusted_git_executable() -> str:
 GIT_EXECUTABLE = _trusted_git_executable()
 
 
+def _windows_broker_acl_restrictive(path: Path) -> bool:
+    """Verify owner and writable ancestry using SID-based Windows ACL checks."""
+
+    powershell = Path(os.environ.get("SYSTEMROOT", r"C:\Windows")) / (
+        r"System32\WindowsPowerShell\v1.0\powershell.exe"
+    )
+    script = r"""
+$ErrorActionPreference = 'Stop'
+$me = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+$safe = @($me, 'S-1-5-18', 'S-1-5-32-544')
+$item = Get-Item -LiteralPath $env:BASE2_BROKER_PATH -Force
+$first = $true
+while ($null -ne $item) {
+  $acl = Get-Acl -LiteralPath $item.FullName
+  if ($first) {
+    $owner = $acl.Owner
+    try { $owner = ([Security.Principal.NTAccount]$owner).Translate([Security.Principal.SecurityIdentifier]).Value } catch {}
+    if ($owner -ne $me) { exit 4 }
+    $first = $false
+  }
+  foreach ($ace in $acl.Access) {
+    if ($ace.AccessControlType -ne 'Allow') { continue }
+    if ($ace.PropagationFlags.ToString().Contains('InheritOnly')) { continue }
+    $sid = $ace.IdentityReference.Value
+    try { $sid = $ace.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value } catch { exit 5 }
+    $writeMask = 852310
+    if ((([int64]$ace.FileSystemRights -band $writeMask) -ne 0) -and ($safe -notcontains $sid)) { exit 6 }
+  }
+  $item = $item.Parent
+}
+exit 0
+"""
+    environment = {
+        "BASE2_BROKER_PATH": str(path),
+        "SYSTEMROOT": os.environ.get("SYSTEMROOT", r"C:\Windows"),
+        "WINDIR": os.environ.get("WINDIR", r"C:\Windows"),
+    }
+    try:
+        result = subprocess.run(
+            [str(powershell), "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", script],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=15,
+            env=environment,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return result.returncode == 0
+
+
 def _credential_broker(raw_path: str) -> Path:
     candidate = Path(raw_path)
     if not candidate.is_absolute() or candidate.is_symlink():
@@ -58,7 +109,10 @@ def _credential_broker(raw_path: str) -> Path:
         raise ProviderLeaseError("provider_lease_credential_broker_invalid") from exc
     if not resolved.is_file() or metadata.st_size < 1 or metadata.st_size > 65536:
         raise ProviderLeaseError("provider_lease_credential_broker_invalid")
-    if os.name != "nt" and (metadata.st_uid != os.getuid() or metadata.st_mode & 0o077):
+    if os.name == "nt":
+        if not _windows_broker_acl_restrictive(resolved):
+            raise ProviderLeaseError("provider_lease_credential_broker_invalid")
+    elif metadata.st_uid != os.getuid() or metadata.st_mode & 0o077:
         raise ProviderLeaseError("provider_lease_credential_broker_invalid")
     if not os.access(resolved, os.X_OK):
         raise ProviderLeaseError("provider_lease_credential_broker_invalid")
@@ -116,38 +170,21 @@ def _git(
     identity: bool = False,
     credential_broker: Path | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    environment = dict(os.environ)
-    for name in tuple(environment):
-        if (
-            name.startswith(("GIT_", "GCM_"))
-            or re.search(
-                r"(?:TOKEN|SECRET|PASSWORD|CREDENTIAL|PRIVATE_KEY|ACCESS_KEY|API_KEY)",
-                name,
-                re.I,
-            )
-            or name.upper()
-            in {
-                "ALL_PROXY",
-                "GH_TOKEN",
-                "GITHUB_TOKEN",
-                "HTTP_PROXY",
-                "HTTPS_PROXY",
-                "NO_PROXY",
-                "SSH_ASKPASS",
-                "SSH_AUTH_SOCK",
-            }
-        ):
-            environment.pop(name, None)
-    environment.update(
-        {
+    environment = {
             "GIT_CONFIG_NOSYSTEM": "1",
             "GIT_CONFIG_SYSTEM": os.devnull,
             "GIT_CONFIG_GLOBAL": os.devnull,
             "GIT_TERMINAL_PROMPT": "0",
             "GIT_SSL_NO_VERIFY": "false",
+            "LANG": "C",
+            "LC_ALL": "C",
             "PATH": str(Path(GIT_EXECUTABLE).parent),
-        }
-    )
+    }
+    if os.name == "nt":
+        for name in ("COMSPEC", "SYSTEMROOT", "TEMP", "TMP", "WINDIR"):
+            value = os.environ.get(name)
+            if value:
+                environment[name] = value
     if credential_broker is not None:
         environment["GIT_ASKPASS"] = str(credential_broker)
     if identity:

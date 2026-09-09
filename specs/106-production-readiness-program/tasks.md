@@ -484,3 +484,16 @@ substitute for the integration proof named by the task.
 - [ ] B383 Require terminal deployment evidence to correlate exact authoritative discovered provider ID and IP with the provider response and a resolved deploy action, while keeping provision-only evidence nonterminal and separately modeled. (FR-002, FR-005, FR-008, FR-014, FR-060, FR-063, FR-065, FR-068, FR-069, FR-071)
 - [ ] B384 Make manual-copy feedback temporally accurate after the blocking fallback closes and verify localized visible feedback without claiming an open dialog. (FR-012, FR-046, FR-050, FR-060, FR-063, FR-064, FR-068, FR-075)
 - [ ] B385 Add an exact-clean-head repetition runner that atomically writes source-bound, hash-bound 10+10 evidence; commit a new candidate, rerun both complete gates and the persisted repetitions, then repeat fresh reviews until critical, high, and medium totals are zero. (FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 32 — Independent review cycle 55 corrections
+
+- [ ] B386 Reject RFC localhost namespaces and standard libc IPv6/localdomain aliases through DB_HOST and DATABASE_URL for every production role without resolver-dependent admission. (FR-005, FR-018, FR-031, FR-060, FR-062, FR-063, FR-065, FR-073)
+- [ ] B387 Replace the repetition-runner environment denylist with a fixed hermetic allowlist, isolated HOME/config roots, and explicit test mode so connection URLs, profiles, provider configuration, and unknown credentials never reach test children. (FR-005, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-073, FR-078)
+- [ ] B388 Run repetitions from one detached exact-commit worktree, revalidate both isolated and controller sources after every child and before promotion, and reject symlinked or unexpected evidence members. (FR-005, FR-007, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B389 Enforce native-Windows broker owner and non-writable-ancestry ACLs, use only fixed system Git locations, and build a minimal Git child environment which excludes loader injection and every ambient authority source. (FR-005, FR-007, FR-008, FR-031, FR-059, FR-060, FR-063, FR-065, FR-067 through FR-069, FR-071, FR-074)
+- [ ] B390 Commit a clean repaired candidate, rerun both exact complete gates and persisted 10+10 repetitions, then repeat fresh UX, data, and operations review until all critical, high, and medium totals are zero. (FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 33 — Pre-commit complete-gate cycle 56 correction
+
+- [ ] B391 Directly exercise trusted-Git symlink and resolution-failure rejection so the unchanged changed-line coverage floor admits the repaired provider boundary. (FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-074, FR-078)
+- [ ] B392 Commit only after the complete repaired tree passes the full gate without reducing or rounding its 90% changed-line floor, then restart exact-head evidence. (FR-005, FR-007, FR-060, FR-063 through FR-069, FR-078)

@@ -6,11 +6,13 @@ from pathlib import Path
 
 import pytest
 
+from digital_ocean.scripts.python import provider_lease as lease_module
 from digital_ocean.scripts.python.provider_lease import (
     GitRemoteLeaseStore,
     LeaseRecord,
     ProviderLeaseError,
     _network_remote_identity,
+    _windows_broker_acl_restrictive,
     acquire_provider_lease,
     release_provider_lease,
 )
@@ -208,6 +210,11 @@ def test_git_transport_environment_is_scrubbed(monkeypatch, tmp_path):
     monkeypatch.setenv("GITHUB_TOKEN", "hostile-token")
     monkeypatch.setenv("DO_API_TOKEN", "hostile-provider-token")
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "hostile-access-key")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://owner:secret@production.invalid/app")
+    monkeypatch.setenv("LD_PRELOAD", "/tmp/hostile.so")
+    monkeypatch.setenv("LD_LIBRARY_PATH", "/tmp/hostile-libraries")
+    monkeypatch.setenv("DYLD_INSERT_LIBRARIES", "/tmp/hostile.dylib")
+    monkeypatch.setenv("PYTHONPATH", "/tmp/hostile-python")
     monkeypatch.setattr(subprocess, "run", run)
     _lease_git(["status"], cwd=tmp_path)
     assert "GIT_SSH_COMMAND" not in captured
@@ -218,8 +225,63 @@ def test_git_transport_environment_is_scrubbed(monkeypatch, tmp_path):
     assert "GITHUB_TOKEN" not in captured
     assert "DO_API_TOKEN" not in captured
     assert "AWS_ACCESS_KEY_ID" not in captured
+    assert "DATABASE_URL" not in captured
+    assert "LD_PRELOAD" not in captured
+    assert "LD_LIBRARY_PATH" not in captured
+    assert "DYLD_INSERT_LIBRARIES" not in captured
+    assert "PYTHONPATH" not in captured
     assert captured["GIT_CONFIG_GLOBAL"] == "/dev/null"
     assert captured["GIT_SSL_NO_VERIFY"] == "false"
+    assert set(captured) == {
+        "GIT_CONFIG_NOSYSTEM", "GIT_CONFIG_SYSTEM", "GIT_CONFIG_GLOBAL",
+        "GIT_TERMINAL_PROMPT", "GIT_SSL_NO_VERIFY", "LANG", "LC_ALL", "PATH",
+    }
+
+
+@pytest.mark.parametrize("returncode,expected", ((0, True), (4, False), (6, False)))
+def test_windows_broker_acl_check_is_fail_closed(monkeypatch, tmp_path, returncode, expected):
+    captured = {}
+
+    def run(*args, **kwargs):
+        captured["command"] = args[0]
+        captured["environment"] = kwargs["env"]
+        return subprocess.CompletedProcess(args[0], returncode, "", "")
+
+    broker = tmp_path / "broker.exe"
+    broker.write_bytes(b"fixture")
+    monkeypatch.setattr(subprocess, "run", run)
+    assert _windows_broker_acl_restrictive(broker) is expected
+    assert captured["environment"]["BASE2_BROKER_PATH"] == str(broker)
+    assert "-NoProfile" in captured["command"]
+    assert "-NonInteractive" in captured["command"]
+
+
+def test_windows_broker_acl_check_rejects_probe_failure(monkeypatch, tmp_path):
+    def fail(*_args, **_kwargs):
+        raise subprocess.TimeoutExpired("powershell", 15)
+
+    monkeypatch.setattr(subprocess, "run", fail)
+    assert not _windows_broker_acl_restrictive(tmp_path / "broker.exe")
+
+
+def test_trusted_git_executable_rejects_symlink_and_resolution_failure(monkeypatch):
+    class Candidate:
+        def __init__(self, symlink: bool):
+            self.symlink = symlink
+
+        def is_symlink(self):
+            return self.symlink
+
+        def resolve(self, strict=False):
+            raise OSError("unavailable")
+
+    monkeypatch.setattr(lease_module, "Path", lambda _value: Candidate(True))
+    with pytest.raises(ProviderLeaseError, match="git_unavailable"):
+        lease_module._trusted_git_executable()
+
+    monkeypatch.setattr(lease_module, "Path", lambda _value: Candidate(False))
+    with pytest.raises(ProviderLeaseError, match="git_unavailable"):
+        lease_module._trusted_git_executable()
 
 
 def test_explicit_askpass_broker_is_restrictive_and_works_with_real_git(tmp_path):
