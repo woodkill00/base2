@@ -139,6 +139,10 @@ opentelemetry-util-http==0.65b0
     # via
     #   opentelemetry-instrumentation-asgi
     #   opentelemetry-instrumentation-fastapi
+mypy==1.11.2
+    # via -r api/requirements.in
+mypy-extensions==1.1.0
+    # via mypy
 packaging==26.3
     # via
     #   kombu
@@ -202,6 +206,8 @@ redis==8.1.0
     # via -r api/requirements.in
 requests==2.34.2
     # via opentelemetry-exporter-otlp-proto-http
+ruff==0.6.9
+    # via -r api/requirements.in
 six==1.17.0
     # via python-dateutil
 starlette==1.6.0

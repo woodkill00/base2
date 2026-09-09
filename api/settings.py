@@ -203,6 +203,7 @@ class Settings(BaseSettings):
                     'content-worker',
                     'data-rights-worker',
                     'email-worker',
+                    'migration',
                 }:
                     raise RuntimeError('Invalid BASE2_PROCESS_ROLE')
                 if self.BASE2_PROCESS_ROLE == 'email-worker':

@@ -319,13 +319,10 @@ if [ "$DEPLOYMENT_KIND" = fresh ]; then
   # remove the newly transferred environment, retain the original checkout,
   # and prove no Base2 container remains active.
   if [ -f .env ]; then
-    docker compose -f development.docker.yml --profile celery down --remove-orphans >/root/logs/build/rollback-fresh-down.txt 2>&1 || true
+    docker compose -f development.docker.yml --profile celery down --remove-orphans >/root/logs/build/rollback-fresh-down.txt 2>&1
+    test -z "$(docker compose -f development.docker.yml --profile celery ps -aq)"
   fi
   rm -f .env
-  if docker ps --format '{{.Names}}' | grep -Eq '(^|[-_])base2([-_]|$)'; then
-    echo "Fresh-target rollback left a Base2 container active" >&2
-    exit 2
-  fi
   test "$(git rev-parse HEAD)" = "$PREV"
   rm -f /root/logs/build/rollback-failed.txt
   rm -rf /root/base2-rollback-private
@@ -342,7 +339,7 @@ PREV_EPOCH=$(tr -d '\r\n' < /root/base2-rollback-private/pre-deploy-epoch.txt)
 test -n "$PREV_EPOCH"
 sed -i '/^BASE2_DEPLOYMENT_EPOCH=/d' .env
 printf 'BASE2_DEPLOYMENT_EPOCH=%s\n' "$PREV_EPOCH" >> .env
-docker compose -f development.docker.yml build django api >/root/logs/build/rollback-build.txt 2>&1
+docker compose -f development.docker.yml build django api api-migrate >/root/logs/build/rollback-build.txt 2>&1
 docker compose -f development.docker.yml run --rm --no-deps workspace-db-role >/root/logs/build/rollback-role-bootstrap.txt 2>&1
 docker compose -f development.docker.yml run --rm --no-deps \
   api-migrate python -m api.scripts.migrate >/root/logs/build/rollback-api-migrate.txt 2>&1
@@ -836,6 +833,22 @@ function Invoke-FinalArtifactSecretGate([string]$dest) {
   }
 }
 
+function Assert-CompleteLocalEvidence([string]$dest, [bool]$testsRequired) {
+  if ([string]::IsNullOrWhiteSpace($dest) -or -not (Test-Path -LiteralPath $dest -PathType Container)) {
+    throw 'A local deployment evidence directory is required before terminal cleanup'
+  }
+  $head = (& git rev-parse HEAD | Out-String).Trim()
+  if ($LASTEXITCODE -ne 0 -or $head -notmatch '^[0-9a-f]{40}$') {
+    throw 'Unable to bind local deployment evidence to an exact source commit'
+  }
+  $runner = (Resolve-Path -LiteralPath (Join-Path $script:RepoRoot '.venv\Scripts\python.exe')).Path
+  $validator = (Resolve-Path -LiteralPath (Join-Path $script:RepoRoot 'digital_ocean\scripts\python\validate_deployment_evidence.py')).Path
+  $arguments = @($validator, '--root', $dest, '--source-commit', $head)
+  if ($testsRequired) { $arguments += '--tests-required' }
+  & $runner @arguments | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw 'Local deployment evidence manifest failed validation' }
+}
+
 function Ensure-Venv {
   if (-not (Test-Path ".\.venv\Scripts\python.exe")) {
     Write-Section "Creating Python venv (.venv)"
@@ -977,7 +990,7 @@ except Exception as e:
   }
 }
 
-function Get-DropletIp {
+function Get-DropletIp([switch]$Authoritative) {
   if ($DropletIp) { return $DropletIp }
 
   # Prefer per-run artifacts over workspace-root files.
@@ -988,7 +1001,7 @@ function Get-DropletIp {
     else { $artifactDir = Ensure-ArtifactDir }
   } catch {}
 
-  if ($artifactDir) {
+  if (-not $Authoritative -and $artifactDir) {
     $udFile = Resolve-ArtifactFilePath -artifactDir $artifactDir -fileName 'DO_userdata.json'
       if ($udFile -and (Test-Path $udFile)) {
       try {
@@ -998,51 +1011,18 @@ function Get-DropletIp {
     }
   }
 
-  # Fallback: query DigitalOcean API via pydo using DO_DROPLET_NAME
-  $tmpPy = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), 'get_do_ip.py')
-   $pyCode = @'
-import os, sys
-from pydo import Client
-
-token = os.environ.get('DO_API_TOKEN')
-project = (os.environ.get('PROJECT_NAME') or 'app').strip() or 'app'
-raw_name = os.environ.get('DO_DROPLET_NAME')
-
-def resolve_name(value: str) -> str:
-  # Support common .env templates like "${PROJECT_NAME}-droplet" used across shells.
-  resolved = value.replace('${PROJECT_NAME}', project).replace('$PROJECT_NAME', project)
-  # If unresolved templating syntax remains, treat as invalid and fall back.
-  if '${' in resolved or '$(' in resolved:
-    return ''
-  return resolved.strip()
-
-name = resolve_name(raw_name) if raw_name else ''
-if not name:
-  name = f'{project}-droplet' if project else 'app-droplet'
-if not token:
-    print('')
-    sys.exit(0)
-try:
-    c = Client(token=token)
-    # List droplets and find by name
-    resp = c.droplets.list(per_page=200)
-    droplets = resp.get('droplets', [])
-    ip = None
-    for d in droplets:
-        if d.get('name') == name:
-            for n in d.get('networks', {}).get('v4', []):
-                if n.get('type') == 'public':
-                    ip = n.get('ip_address')
-                    break
-            break
-    print(ip or '')
-except Exception:
-    print('')
-'@
-  Set-Content -Path $tmpPy -Value $pyCode -NoNewline
-   $ipGuess = & .\.venv\Scripts\python.exe $tmpPy 2>$null
-  if ($LASTEXITCODE -eq 0 -and $ipGuess) { return [string]$ipGuess.Trim() }
-  return ""
+  # Provider lookup is typed and authoritative: only an explicit missing state
+  # may authorize provisioning. Error, ambiguity, and pending-address states
+  # fail closed and can never be converted into absence.
+  $lookupRaw = (& .\.venv\Scripts\python.exe .\digital_ocean\scripts\python\droplet_lookup.py 2>$null | Out-String).Trim()
+  $lookupExit = $LASTEXITCODE
+  try { $lookup = $lookupRaw | ConvertFrom-Json } catch { throw 'DigitalOcean lookup returned an invalid response' }
+  if ($lookupExit -ne 0) { throw "DigitalOcean lookup failed closed: $($lookup.state)" }
+  if ($lookup.state -eq 'missing') { return "" }
+  if ($lookup.state -eq 'found' -and -not [string]::IsNullOrWhiteSpace([string]$lookup.ip)) {
+    return [string]$lookup.ip
+  }
+  throw "DigitalOcean lookup returned a nonterminal state: $($lookup.state)"
 }
 
 function Run-Orchestrator([switch]$ProvisionOnly) {
@@ -1289,11 +1269,11 @@ PY
   # Selective rebuilds/recreates based on diff.
   # API: default to no-cache rebuild when api/ changed (historically stale cache issues).
   if [ "$NEED_API" = "1" ]; then
-    status "build" "docker compose build --no-cache api (api changed)"
-    docker compose -f development.docker.yml build --no-cache api > /root/logs/build/api-build-nocache.txt 2>&1
+    status "build" "docker compose build --no-cache api and api-migrate (api changed)"
+    docker compose -f development.docker.yml build --no-cache api api-migrate > /root/logs/build/api-build-nocache.txt 2>&1
   fi
   status "build" "prepare api migration and runtime image"
-  docker compose -f development.docker.yml build api > /root/logs/build/api-up.txt 2>&1
+  docker compose -f development.docker.yml build api api-migrate > /root/logs/build/api-up.txt 2>&1
 
   if [ "$NEED_DJANGO" = "1" ]; then
     status "build" "docker compose build django (django changed)"
@@ -1790,14 +1770,16 @@ print(json.dumps(payload))" > /root/logs/request-id-log-propagation.json 2> /roo
     FL_LABEL=$(grep -E '^FLOWER_DNS_LABEL=' .env | cut -d'=' -f2 | tr -d '\r')
     if [ -n "$FL_LABEL" ]; then
       FHOST="$FL_LABEL.$DOMAIN"
-      curl -sSI --resolve "$FHOST:443:127.0.0.1" "https://$FHOST/" -o /root/logs/curl-flower.txt || true
+      FLOWER_CODE=$(curl -sSI --cacert "$STAGING_CA" --resolve "$FHOST:443:127.0.0.1" "https://$FHOST/" -o /root/logs/curl-flower.txt -w "%{http_code}")
+      test "$FLOWER_CODE" = 401
     fi
 
     # Django admin HEAD (no credentials) -> expect 401/403 when guarded
     ADM_LABEL=$(grep -E '^DJANGO_ADMIN_DNS_LABEL=' .env | cut -d'=' -f2 | tr -d '\r')
     if [ -n "$ADM_LABEL" ]; then
       AHOST="$ADM_LABEL.$DOMAIN"
-      curl -sSI --resolve "$AHOST:443:127.0.0.1" "https://$AHOST/" -o /root/logs/curl-admin-head.txt || true
+      ADMIN_CODE=$(curl -sSI --cacert "$STAGING_CA" --resolve "$AHOST:443:127.0.0.1" "https://$AHOST/" -o /root/logs/curl-admin-head.txt -w "%{http_code}")
+      case "$ADMIN_CODE" in 401|403) ;; *) echo "Unexpected admin guard status: $ADMIN_CODE" >&2; exit 1 ;; esac
     fi
 
     # Celery roundtrip: enqueue ping and poll for result
@@ -1854,14 +1836,14 @@ PY
     # FastAPI (api) pytest
     # Ensure we run from /app so `import main` / local imports resolve as expected.
     # Set COVERAGE_FILE to a writable path inside the container to avoid read-only filesystem issues.
-    docker compose -f development.docker.yml exec -T api sh -lc 'export COVERAGE_FILE=/tmp/.coverage_api && cd /app && pytest -q --cov=api --cov-report=term --cov-fail-under=60' > /root/logs/api-pytest.txt 2>&1 || true
+    docker compose -f development.docker.yml exec -T api sh -lc 'export COVERAGE_FILE=/tmp/.coverage_api && cd /app && pytest -q --cov=api --cov-report=term --cov-fail-under=60' > /root/logs/api-pytest.txt 2>&1
     # API integration tests (marked with @pytest.mark.integration)
-    docker compose -f development.docker.yml exec -T api sh -lc 'export COVERAGE_FILE=/tmp/.coverage_api_int && cd /app && pytest -q -m integration --cov=api --cov-report=term --cov-fail-under=60' > /root/logs/api-pytest-integration.txt 2>&1 || true
+    docker compose -f development.docker.yml exec -T api sh -lc 'export COVERAGE_FILE=/tmp/.coverage_api_int && cd /app && pytest -q -m integration --cov=api --cov-report=term --cov-fail-under=60' > /root/logs/api-pytest-integration.txt 2>&1
     # API lint/type checks (Ruff + Mypy)
-    docker compose -f development.docker.yml exec -T api sh -lc 'cd /app && (ruff --version >/dev/null 2>&1 && ruff check . || echo "ruff_not_available")' > /root/logs/api-ruff.txt 2>&1 || true
-    docker compose -f development.docker.yml exec -T api sh -lc 'cd /app && (mypy --version >/dev/null 2>&1 && mypy --show-error-codes --pretty api || echo "mypy_not_available")' > /root/logs/api-mypy.txt 2>&1 || true
+    docker compose -f development.docker.yml exec -T api sh -lc 'cd /app && command -v ruff >/dev/null && ruff check .' > /root/logs/api-ruff.txt 2>&1
+    docker compose -f development.docker.yml exec -T api sh -lc 'cd /app && command -v mypy >/dev/null && mypy --show-error-codes --pretty api' > /root/logs/api-mypy.txt 2>&1
     # Django pytest
-    docker compose -f development.docker.yml exec -T django sh -lc 'export COVERAGE_FILE=/tmp/.coverage_django && pytest -q --cov=project --cov-report=term --cov-fail-under=60' > /root/logs/django-pytest.txt 2>&1 || true
+    docker compose -f development.docker.yml exec -T django sh -lc 'export COVERAGE_FILE=/tmp/.coverage_django && pytest -q --cov=project --cov-report=term --cov-fail-under=60' > /root/logs/django-pytest.txt 2>&1
   else
     status "tests" "skipped (RUN_REMOTE_TESTS!=1)"
     echo "SKIPPED: set RUN_REMOTE_TESTS=1 (use -RunTests or -AllTests)" > /root/logs/api-pytest.txt || true
@@ -1873,7 +1855,7 @@ PY
 
   test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
   status "done" "remote verification complete at $EXPECTED_COMMIT"
-  date -u +"%Y-%m-%dT%H:%M:%SZ" > /root/logs/remote_verify.done || true
+  date -u +"%Y-%m-%dT%H:%M:%SZ" > /root/logs/remote_verify.done
 fi
 '@
 
@@ -1984,7 +1966,7 @@ fi
     try {
       $flag = & $sshExe @sshArgs "test -f /root/logs/remote_verify.done && echo DONE || echo NOT_DONE" 2>&1
       if (-not ($flag -match 'DONE')) {
-        throw "Remote verification did not complete (missing /root/logs/remote_verify.done). Try a larger -VerifyTimeoutSec (current=$VerifyTimeoutSec) or use -AsyncVerify."
+        throw "Remote verification did not complete (missing /root/logs/remote_verify.done). Retry with a larger -VerifyTimeoutSec (current=$VerifyTimeoutSec); asynchronous success is disabled."
       }
     } catch {
       throw $_
@@ -2049,7 +2031,7 @@ fi
   if (-not $copied) {
     $msg = "Remote logs could not be copied after $attempts attempts"
     if ($lastCopyErr) { $msg += ": $($lastCopyErr.Exception.Message)" }
-    Write-Warning "$msg; continuing. Attempting minimal log capture (progress + console)."
+    Write-Warning "$msg. Attempting minimal diagnostics before failing closed."
 
     # Best-effort: copy the most useful small files even when the full logs directory copy fails.
     $quick = @(
@@ -2068,6 +2050,7 @@ fi
         if ($code -ne 0) { continue }
       } catch { }
     }
+    throw $msg
   } else {
     # Best-effort copy of individual files to the root of $dest for convenience
     $files = @(
@@ -2194,7 +2177,7 @@ try {
 
   # Default AllTests to UpdateOnly when an environment exists and -Full was not requested.
   $autoSelectedUpdateOnly = $false
-  $detectedExistingIp = Get-DropletIp
+  $detectedExistingIp = Get-DropletIp -Authoritative
   if ($AllTests -and -not $Full -and -not $UpdateOnly) {
       if ($detectedExistingIp) {
         $ipCheck = $detectedExistingIp
@@ -2252,7 +2235,7 @@ try {
   }
   if ($deploymentAction -eq 'provision') {
     Run-Orchestrator -ProvisionOnly
-    $newIp = Get-DropletIp
+    $newIp = Get-DropletIp -Authoritative
     $dest = Ensure-ArtifactDir
     Set-Content -Path (Join-Path $dest 'host-key-enrollment-required.txt') -Encoding UTF8 -Value @(
       'Deployment stopped at the authenticated first-host enrollment boundary.',
@@ -2265,7 +2248,7 @@ try {
   }
   if ($deploymentAction -ne 'deploy') { throw "Unknown deployment action: $deploymentAction" }
 
-  $resolvedIp = Get-DropletIp
+  $resolvedIp = Get-DropletIp -Authoritative
   if (-not $resolvedIp) {
     Write-Error "Could not determine droplet IP; mandatory remote verification cannot run."
     Write-Section "Remote verify unavailable - saving local artifacts"
@@ -2292,6 +2275,7 @@ try {
   # Expand -AllTests before remote verification so droplet verification produces required artifacts.
   if ($AllTests) {
     $RunTests = $true
+    $LocalTests = $true
     $TestsJson = $true
     $RunRateLimitTest = $true
     $RunCeleryCheck = $true
@@ -2323,7 +2307,7 @@ try {
         Set-Content -Path $reportPath -Value $jsonOut -Encoding UTF8
         Write-Host "Saved JSON report: $reportPath" -ForegroundColor Yellow
       } catch {
-        Write-Warning "Failed to write JSON report: $($_.Exception.Message)"
+        throw "Failed to write JSON report: $($_.Exception.Message)"
       }
 
       # Re-organize after writing report so it lands in meta/ on older runs too.
@@ -2374,6 +2358,7 @@ try {
       if ([int]$ci.ExitCode -ne 0) {
         $log += 'Skipping Jest because npm ci failed.'
         $log | Set-Content -Path $jestOutPath -Encoding UTF8
+        throw "React dependency installation failed with exit $($ci.ExitCode)"
       } else {
         $log += '== Jest (CRA) =='
         $prevCI = $env:CI
@@ -2385,13 +2370,17 @@ try {
           if ($null -eq $testText) { $testText = '' }
           $log += ($testText.TrimEnd())
           $log += ("npm test exitCode={0}" -f ([int]$test.ExitCode))
+          if ([int]$test.ExitCode -ne 0) {
+            $log | Set-Content -Path $jestOutPath -Encoding UTF8
+            throw "React Jest failed with exit $($test.ExitCode)"
+          }
         } finally {
           $env:CI = $prevCI
         }
         $log | Set-Content -Path $jestOutPath -Encoding UTF8
       }
     } catch {
-      Write-Warning ("React Jest execution error: {0}" -f $_.Exception.Message)
+      throw ("React Jest execution error: {0}" -f $_.Exception.Message)
     } finally { try { Pop-Location } catch {} }
 
     # T207: Run Playwright E2E tests locally and capture output/artifacts
@@ -2421,6 +2410,7 @@ try {
       if ([int]$install.ExitCode -ne 0) {
         $log += 'Skipping Playwright run because install failed.'
         $log | Set-Content -Path $pwOutPath -Encoding UTF8
+        throw "Playwright installation failed with exit $($install.ExitCode)"
       } else {
         $log += '== Playwright test =='
         $prevCI = $env:CI
@@ -2432,6 +2422,10 @@ try {
           if ($null -eq $runText) { $runText = '' }
           $log += ($runText.TrimEnd())
           $log += ("playwright test exitCode={0}" -f ([int]$run.ExitCode))
+          if ([int]$run.ExitCode -ne 0) {
+            $log | Set-Content -Path $pwOutPath -Encoding UTF8
+            throw "Playwright tests failed with exit $($run.ExitCode)"
+          }
 
           # Copy playwright-report (if generated) into artifacts
           try {
@@ -2446,13 +2440,20 @@ try {
         $log | Set-Content -Path $pwOutPath -Encoding UTF8
       }
     } catch {
-      Write-Warning ("Playwright E2E execution error: {0}" -f $_.Exception.Message)
+      throw ("Playwright E2E execution error: {0}" -f $_.Exception.Message)
     } finally { try { Pop-Location } catch {} }
+  }
+
+  # Remote evidence may be removed only after a complete exact-source local
+  # manifest and recursive secret scan both pass. A copy failure is terminal.
+  $terminalDir = Ensure-ArtifactDir -ip $script:ResolvedIp
+  Assert-CompleteLocalEvidence -dest $terminalDir -testsRequired ([bool]$RunTests)
+  if (-not (Invoke-FinalArtifactSecretGate -dest $terminalDir)) {
+    throw 'Local deployment evidence failed the mandatory pre-cleanup secret gate'
   }
 
   # Terminal success includes removal of private rollback material and remote
   # evidence staging. The verified copy remains only in the local bounded tree.
-  $terminalDir = Ensure-ArtifactDir -ip $script:ResolvedIp
   $terminalOut = Join-Path $terminalDir 'ssh-terminal-cleanup.stdout.txt'
   $terminalErr = Join-Path $terminalDir 'ssh-terminal-cleanup.stderr.txt'
   $terminalKnownHosts = (Resolve-Path -LiteralPath $SshKnownHostsPath).Path

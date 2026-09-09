@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run DigitalOcean coverage in isolated, native-crash-bounded partitions."""
+"""Run DigitalOcean coverage in isolated, deterministic pure-Python partitions."""
 
 from __future__ import annotations
 
@@ -38,7 +38,9 @@ def main() -> None:
     groups = [tests[index : index + PARTITION_SIZE] for index in range(0, len(tests), PARTITION_SIZE)]
     environment = {
         **os.environ,
-        'COVERAGE_CORE': 'ctrace',
+        # The pure-Python tracer avoids rare C-tracer interpreter corruption
+        # observed as invalid pathlib internals rather than a signal exit.
+        'COVERAGE_CORE': 'pytrace',
         'COVERAGE_FILE': str(raw_dir / '.coverage.digitalocean'),
     }
     base = [

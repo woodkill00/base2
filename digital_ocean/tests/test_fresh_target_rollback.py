@@ -5,6 +5,8 @@ import re
 import subprocess
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -20,7 +22,10 @@ def run(command: list[str], *, cwd: Path, env: dict[str, str] | None = None) -> 
     return completed.stdout.strip()
 
 
-def test_embedded_fresh_target_rollback_restores_source_and_removes_runtime(tmp_path: Path):
+@pytest.mark.parametrize("down_exit", [0, 7])
+def test_embedded_fresh_target_rollback_restores_source_and_removes_runtime(
+    tmp_path: Path, down_exit: int
+):
     source = (ROOT / "digital_ocean/scripts/powershell/deploy.ps1").read_text(encoding="utf-8")
     function = source.split("function Invoke-RollbackOnFailureIfEnabled", 1)[1].split(
         "function ", 1
@@ -56,7 +61,7 @@ def test_embedded_fresh_target_rollback_restores_source_and_removes_runtime(tmp_
     docker.write_text(
         "#!/bin/sh\n"
         f"printf '%s\\n' \"$*\" >> '{docker_log}'\n"
-        'if [ "$1" = ps ]; then exit 0; fi\n'
+        f'case "$*" in *" down "*) exit {down_exit};; esac\n'
         "exit 0\n",
         encoding="utf-8",
     )
@@ -70,6 +75,20 @@ def test_embedded_fresh_target_rollback_restores_source_and_removes_runtime(tmp_
     )
     env = dict(os.environ)
     env["PATH"] = f'{bin_dir}:{env["PATH"]}'
+    env["COMPOSE_PROJECT_NAME"] = "generated-custom-project"
+    if down_exit:
+        with pytest.raises(subprocess.CalledProcessError):
+            subprocess.run(
+                ["bash", "-eu", "-c", script],
+                cwd=repo,
+                env=env,
+                check=True,
+                text=True,
+                capture_output=True,
+            )
+        assert (repo / ".env").exists()
+        assert state.exists()
+        return
     completed = subprocess.run(
         ["bash", "-eu", "-c", script],
         cwd=repo,

@@ -10,6 +10,8 @@ redis
 pytest
 pytest-asyncio
 pytest-cov
+ruff==0.6.9
+mypy==1.11.2
 httpx
 google-auth
 opentelemetry-api

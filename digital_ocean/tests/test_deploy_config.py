@@ -247,7 +247,8 @@ def test_deploy_captures_prior_state_before_mutation_and_rolls_back_core_failure
     assert 'cp -f /root/base2-rollback-private/env-backup.env .env' in source
     assert "printf 'fresh\\n' > /root/base2-rollback-private/deployment-kind.txt" in source
     assert 'DEPLOYMENT_KIND=$(tr -d' in source
-    assert 'Fresh-target rollback left a Base2 container active' in source
+    assert '--profile celery ps -aq' in source
+    assert 'rollback-fresh-down.txt 2>&1 || true' not in source
     assert 'rm -f .env' in source
     outer_catch = source.index('} catch {', source.index('Write-Section "Deploy"'))
     rollback = source.index('Invoke-RollbackOnFailureIfEnabled', outer_catch)
@@ -256,6 +257,40 @@ def test_deploy_captures_prior_state_before_mutation_and_rolls_back_core_failure
     cleanup = 'rm -rf /root/base2-rollback-private /root/logs /root/logs.tgz'
     assert cleanup in source
     assert source.index(cleanup) < source.index('Write-Section "Done"')
+
+
+def test_deploy_fails_closed_on_provider_uncertainty_tests_and_evidence_loss():
+    root = Path(__file__).resolve().parents[2]
+    source = (root / 'digital_ocean/scripts/powershell/deploy.ps1').read_text(encoding='utf-8')
+    assert 'droplet_lookup.py' in source
+    assert 'Get-DropletIp -Authoritative' in source
+    assert 'DigitalOcean lookup failed closed' in source
+    assert 'DigitalOcean lookup returned a nonterminal state' in source
+    assert 'continuing. Attempting minimal log capture' not in source
+    assert 'throw $msg' in source
+    assert '$LocalTests = $true' in source
+    remote_tests = source.split('if [ "${RUN_REMOTE_TESTS:-}" = "1" ]; then', 1)[1].split(
+        'else\n    status "tests" "skipped', 1
+    )[0]
+    assert 'pytest -q' in remote_tests
+    assert 'ruff check .' in remote_tests
+    assert 'mypy --show-error-codes' in remote_tests
+    assert '|| true' not in remote_tests
+    manifest = source.index('Assert-CompleteLocalEvidence -dest $terminalDir')
+    secret_gate = source.index('Invoke-FinalArtifactSecretGate -dest $terminalDir', manifest)
+    cleanup = source.index('SSH terminal evidence cleanup', secret_gate)
+    assert manifest < secret_gate < cleanup
+    assert '--cacert "$STAGING_CA" --resolve "$FHOST:443:127.0.0.1"' in source
+    assert '--cacert "$STAGING_CA" --resolve "$AHOST:443:127.0.0.1"' in source
+    assert 'use -AsyncVerify' not in source
+
+
+def test_deploy_builds_one_exact_api_image_for_runtime_migration_and_rollback():
+    root = Path(__file__).resolve().parents[2]
+    source = (root / 'digital_ocean/scripts/powershell/deploy.ps1').read_text(encoding='utf-8')
+    assert 'build --no-cache api api-migrate' in source
+    assert 'build api api-migrate > /root/logs/build/api-up.txt' in source
+    assert 'build django api api-migrate >/root/logs/build/rollback-build.txt' in source
 
 
 def test_deploy_disables_nonterminal_async_success_and_fails_closed_on_git_inspection():

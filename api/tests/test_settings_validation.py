@@ -85,6 +85,47 @@ def test_staging_requires_verified_database_tls(monkeypatch):
     assert Settings().DB_SSLMODE == 'verify-full'
 
 
+@pytest.mark.parametrize(
+    ('name', 'value', 'message'),
+    [
+        ('DB_SSLMODE', 'disable', 'TLS verify-full'),
+        ('DB_SSLROOTCERT', 'relative.pem', 'TLS verify-full'),
+        ('DB_HOST', 'postgres', 'external verified-TLS endpoint'),
+        ('DB_HOST', '127.0.0.1', 'external verified-TLS endpoint'),
+    ],
+)
+def test_production_migration_role_rejects_unverified_or_bundled_database(
+    monkeypatch, name, value, message
+):
+    from api.settings import Settings
+
+    required = {
+        'ENV': 'production',
+        'BASE2_PROCESS_ROLE': 'migration',
+        'DB_HOST': 'private-db.example.test',
+        'DB_SSLMODE': 'verify-full',
+        'DB_SSLROOTCERT': '/run/secrets/database-ca.pem',
+    }
+    for key, configured in required.items():
+        monkeypatch.setenv(key, configured)
+    monkeypatch.setenv(name, value)
+    with pytest.raises(RuntimeError, match=message):
+        Settings()
+
+
+def test_production_migration_role_accepts_only_verified_external_database(monkeypatch):
+    from api.settings import Settings
+
+    monkeypatch.setenv('ENV', 'production')
+    monkeypatch.setenv('BASE2_PROCESS_ROLE', 'migration')
+    monkeypatch.setenv('DB_HOST', 'private-db.example.test')
+    monkeypatch.setenv('DB_SSLMODE', 'verify-full')
+    monkeypatch.setenv('DB_SSLROOTCERT', '/run/secrets/database-ca.pem')
+    settings = Settings()
+    assert settings.BASE2_PROCESS_ROLE == 'migration'
+    assert settings.DB_HOST == 'private-db.example.test'
+
+
 def test_staging_s3_storage_requires_allowlisted_https_and_secret_files(monkeypatch):
     from api.settings import Settings
 

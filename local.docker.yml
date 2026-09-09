@@ -29,6 +29,7 @@ services:
 
   # FastAPI API (Option 1: native /api/* surface)
   api:
+    image: ${COMPOSE_PROJECT_NAME}_api:${DEPLOY_EXPECTED_COMMIT:-local}
     build:
       context: ./api
       dockerfile: Dockerfile
@@ -103,6 +104,7 @@ services:
   # Explicit owner-scoped API schema migration process. This profile is never
   # part of request serving and is started only by the operator migration gate.
   api-migrate:
+    image: ${COMPOSE_PROJECT_NAME}_api:${DEPLOY_EXPECTED_COMMIT:-local}
     build:
       context: ./api
       dockerfile: Dockerfile
@@ -111,6 +113,7 @@ services:
     profiles: [tools]
     container_name: ${COMPOSE_PROJECT_NAME}_api-migrate
     environment:
+      - ENV=${ENV:-development}
       - BASE2_PROCESS_ROLE=migration
       - DB_HOST=${DB_HOST:-postgres}
       - DB_PORT=${DB_PORT:-5432}

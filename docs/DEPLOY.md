@@ -22,7 +22,7 @@ Alias/Flag note: Recent runs used `-RunAllTests` which is equivalent to `-AllTes
 - `-Full`: deploy an existing target or provision one missing target. A new target stops at the authenticated host-key enrollment boundary; rerun after owner verification to perform DNS, source, secret, migration, and stack mutation.
 - `-UpdateOnly`: skip provisioning, hard-reset remote repo to `origin/$env:DO_APP_BRANCH`, rebuild core services.
 - `-Preflight`: run preflight validators locally; deploy fails fast if validation fails.
-- `-AllTests`: run all post-deploy tests (React Jest, Playwright E2E, API/Django pytest, smoke checks).
+- `-AllTests`: run all remote and local post-deploy tests (React Jest, Playwright E2E, API/Django pytest, lint, type, and smoke checks). Missing tools, skipped required results, and nonzero commands fail the deployment and enter rollback.
 - `-RunTests`: run a subset of tests (omit E2E by default); use with `-TestsJson` for machine-readable output.
 - `-TestsJson`: JSON output for test results; artifacts saved under `local_run_logs/.../meta`.
 - `-Timestamped`: write artifacts to `local_run_logs/<ip>-<timestamp>/` instead of a generic folder.
@@ -40,6 +40,16 @@ Alias/Flag note: Recent runs used `-RunAllTests` which is equivalent to `-AllTes
 - Use `-UpdateOnly -CreateIfMissing` only when an update should provision a missing target and stop at that same enrollment boundary. `-CreateIfMissing` alone and `-Full -UpdateOnly` are rejected.
 - Always include `-AllTests` for CI-like gating unless experimenting locally.
 - Use `-Timestamped` to keep runs isolated and auditable.
+
+Provider discovery is paginated and typed. Only an authoritative `missing`
+result can enter provisioning; API errors, duplicate names, and an existing
+droplet still awaiting a public address fail closed. Runtime and owner-scoped
+API migrations use one exact-commit image. Production migration connections
+must use an external database with `verify-full` TLS and an absolute CA path.
+
+Terminal success requires a complete hash-verified local evidence manifest and
+a recursive secret scan before remote staging evidence is removed. Failure to
+copy, validate, or scan that evidence is a deployment failure, not a warning.
 
 ## Pre-Deploy Discipline (UpdateOnly)
 

@@ -25,7 +25,13 @@ def test_migration_service_is_owner_scoped_and_not_part_of_default_runtime():
         assert "DB_USER=${POSTGRES_USER}" in block
         assert "DB_PASSWORD=${POSTGRES_PASSWORD}" in block
         assert "BASE2_PROCESS_ROLE=migration" in block
+        assert "ENV=${ENV:-development}" in block
+        assert "DB_SSLMODE=${DB_SSLMODE:-disable}" in block
         assert "workspace-db-role" in block
+        api_block = source.split("  api:\n", 1)[1].split("\n  api-migrate:", 1)[0]
+        expected_image = "image: ${COMPOSE_PROJECT_NAME}_api:${DEPLOY_EXPECTED_COMMIT:-local}"
+        assert expected_image in api_block
+        assert expected_image in block
 
 
 def test_remote_verification_checks_migrations_without_mutating_or_suppressing_failure():

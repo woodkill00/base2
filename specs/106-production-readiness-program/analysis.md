@@ -1011,3 +1011,32 @@ deployment-mode and staging-TLS command, retry, timeout, disabled-verification,
 and missing-SAN paths. B341 records direct behavioral coverage of those release
 boundaries. The rejected gate is historical; both complete gates restart from
 zero on the next exact commit.
+
+## Analysis cycle 42 — independent review rejects the twice-green head
+
+Exact commit `52e741259be7f61d33812b18a5d229ceae222f2d` passed all 107
+complete-gate checks twice, ten privacy/runtime repetitions, and ten
+backup/release/deployment repetitions. Fresh review nevertheless returned UX
+C0/H0/M1/L0, data C0/H1/M0/L0, and operations C0/H5/M1/L1. The candidate is
+rejected and all exact-head evidence is historical.
+
+Review found an owner-scoped migration process that did not receive production
+environment validation, untranslated security-action identifiers, fail-open
+provider lookup, an unbuilt distinct migration image, incomplete fresh-target
+teardown proof, fail-open evidence retention, suppressed AllTests failures,
+and staging subsite probes without pinned trust or terminal assertions. B342-
+B350 record the complete deduplicated repair and proof set. Publication, merge,
+deployment, provider, DNS, certificate, credential, and destructive authority
+remain unavailable; every exact gate and review restarts after a new commit.
+
+## Analysis cycle 43 — pre-commit coverage tracer isolation
+
+The repaired working tree passed its focused deployment suites, but the first
+complete pre-commit gate exposed rare C-tracer interpreter-state corruption in
+the DigitalOcean partition: `pathlib` internals became invalid even though the
+same deterministic partition passed immediately in isolation with the same
+test order. The failure remained visible and blocked the gate. B351 records the
+bounded correction to use coverage's pure-Python tracer for this partition,
+preserving subprocess isolation, coverage enforcement, and nonzero failure
+propagation while removing the native corruption surface. All exact-head gates
+and reviews remain pending until a clean repaired commit exists.

@@ -411,4 +411,39 @@ describe('US3 Settings', () => {
       expect(screen.queryByText(status)).not.toBeInTheDocument();
     }
   );
+
+  test.each([
+    {
+      locale: 'de',
+      action: 'identity.login_succeeded',
+      expected: 'Erfolgreiche Anmeldung',
+    },
+    {
+      locale: 'ar',
+      action: 'identity.password_changed',
+      expected: 'تم تغيير كلمة المرور',
+    },
+    {
+      locale: 'de',
+      action: 'identity.future_action',
+      expected: 'Unbekanntes Sicherheitsereignis',
+    },
+  ])(
+    'localizes security action semantics for $locale without exposing backend tokens',
+    async ({ locale, action, expected }) => {
+      localStorage.setItem(
+        'user',
+        JSON.stringify({ id: '1', email: 'test@example.com', display_name: 'Test', locale })
+      );
+      const implementation = apiClient.get.getMockImplementation();
+      apiClient.get.mockImplementation((endpoint) =>
+        endpoint === '/settings/security-events'
+          ? Promise.resolve({ data: { events: [{ id: 'event-1', action }] } })
+          : implementation(endpoint)
+      );
+      renderSettings('/settings/organization');
+      await waitFor(() => expect(screen.getByText(expected)).toBeInTheDocument());
+      expect(screen.queryByText(action)).not.toBeInTheDocument();
+    }
+  );
 });

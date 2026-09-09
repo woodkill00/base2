@@ -416,3 +416,19 @@ substitute for the integration proof named by the task.
 - [ ] B339 Structurally redact every basic-auth verifier from rendered Traefik evidence while preserving noncredential routing diagnostics, and prove inline, list, and unrelated user fields are handled safely. (FR-005, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-073)
 - [ ] B340 Regenerate locked surfaces, rerun the full deployment suite and focused security checks, then create a new exact candidate only after the fresh-host and retained-evidence boundaries pass. (FR-060, FR-063 through FR-069, FR-078)
 - [ ] B341 Directly exercise deployment-mode and staging-TLS command, retry, timeout, disabled-verification, and missing-SAN branches so changed-line coverage clears the unchanged 90% release floor. (FR-005, FR-025, FR-055, FR-060, FR-063, FR-065, FR-068, FR-078)
+
+## Phase 24 — Independent review cycle 42 corrections
+
+- [ ] B342 Propagate the deployment environment into the owner-scoped migration service, admit only the explicit migration role, and reject production owner connections without verify-full TLS, an absolute CA path, and an external database host. (FR-005, FR-018, FR-031, FR-060, FR-062, FR-063, FR-065, FR-073)
+- [ ] B343 Localize every bounded security-event action in English, German, and Arabic with a safe localized unknown fallback, and prove backend tokens never appear in known or unknown user journeys. (FR-012, FR-014, FR-046, FR-060, FR-063, FR-064, FR-068, FR-075)
+- [ ] B344 Replace fail-open provider discovery with paginated typed found, missing, pending, ambiguous, and error states; authorize creation only from authoritative missing and reject all uncertainty without provider mutation. (FR-005, FR-007, FR-014, FR-031, FR-057, FR-060, FR-063, FR-067, FR-069, FR-071)
+- [ ] B345 Build and pin the API migration image to the same exact source image as the API runtime in forward and rollback paths, and prove a stale migration image cannot execute. (FR-005, FR-018, FR-031, FR-060, FR-062, FR-063, FR-065, FR-068)
+- [ ] B346 Make fresh-target Compose teardown fail hard and prove exact Compose-project absence for generated project names, including a teardown-failure negative execution test. (FR-005, FR-014, FR-031, FR-060, FR-063, FR-068, FR-071)
+- [ ] B347 Require a complete exact-source hash manifest and recursive secret scan of all required local deployment evidence before remote evidence deletion or terminal success; fail closed on copy, manifest, hash, or scan loss. (FR-005, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071)
+- [ ] B348 Make AllTests enable both remote and local suites and propagate every pytest, lint, type, browser, smoke, and required-result failure without skipped-tool success. (FR-005, FR-012, FR-014, FR-060, FR-063, FR-064, FR-068, FR-071, FR-075, FR-078)
+- [ ] B349 Verify Flower and Django-admin staging access boundaries with the pinned CA, hostname, and explicit expected status, and remove obsolete asynchronous retry guidance. (FR-002, FR-005, FR-014, FR-025, FR-031, FR-055, FR-060, FR-063, FR-065, FR-068)
+- [ ] B350 Commit a clean repaired candidate, restart both complete gates and both ten-run critical suites, then repeat fresh UX, data, and operations review until all critical, high, and medium totals are zero. (FR-007, FR-060, FR-063 through FR-069, FR-078)
+
+## Phase 25 — Pre-commit complete-gate cycle 43 correction
+
+- [ ] B351 Replace the DigitalOcean coverage C tracer with deterministic pure-Python tracing after a full-suite run exposed interpreter-state corruption that passed when isolated; prove the exact partition and complete gate run repeatably without weakening coverage or failure propagation. (FR-005, FR-060, FR-063, FR-065, FR-068, FR-078)
