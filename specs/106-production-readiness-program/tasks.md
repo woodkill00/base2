@@ -581,3 +581,9 @@ substitute for the integration proof named by the task.
 - [ ] B432 Run the surface-drift validator after lint-staged formatting so a formatter cannot leave governed bytes inconsistent with their reviewed generated lock. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
 - [ ] B433 Prove the pre-commit ordering is formatter then validator and retain fail-closed behavior rather than silently regenerating or approving drift in the hook. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
 - [ ] B434 Regenerate the lock from final formatted bytes, commit a new candidate, and restart all exact-source local and hosted evidence only after the post-format validator passes. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 48 — Integration selection cycle 71 corrections
+
+- [ ] B435 Override the API pytest default with an explicit integration marker for the isolated role-correct email-outbox invocation so it cannot silently select zero tests. (FR-002, FR-005, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-073, FR-078)
+- [ ] B436 Bind the exact isolated integration command into CI policy tests and prove it collects and executes both API-enqueue/email-worker-settlement cases. (FR-002, FR-005, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-073, FR-078)
+- [ ] B437 Commit a new candidate and restart all local, fresh-volume, repetition, independent-review, and hosted evidence from the exact replacement SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)

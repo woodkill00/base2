@@ -174,4 +174,4 @@ jobs:
           cd api
           pytest -q -m integration --ignore=tests/test_email_outbox.py --cov=api --cov-append --cov-report=term -c pytest.ini
           DB_USER="$API_RUNTIME_DB_USER" DB_PASSWORD="$API_RUNTIME_DB_PASSWORD" \
-            pytest -q tests/test_email_outbox.py -c pytest.ini
+            pytest -q -m integration tests/test_email_outbox.py -c pytest.ini

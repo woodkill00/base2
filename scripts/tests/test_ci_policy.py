@@ -94,6 +94,10 @@ class CiPolicyTests(unittest.TestCase):
         self.assertNotIn("manage.py migrate api_schema", workflow)
         self.assertIn('DB_USER="$API_RUNTIME_DB_USER"', workflow)
         self.assertIn("EMAIL_WORKER_DB_USER: ci_email_worker", workflow)
+        self.assertIn(
+            "pytest -q -m integration tests/test_email_outbox.py -c pytest.ini",
+            workflow,
+        )
 
     def test_media_inspector_build_inputs_are_immutable_and_scanned(self):
         repo_root = MODULE_PATH.parents[2]

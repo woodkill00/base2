@@ -1517,3 +1517,18 @@ B432-B434 run surface validation after all lint-staged formatters, prove the
 ordering contract, regenerate the lock from final formatted bytes, and require a
 new clean candidate. The hook does not auto-approve or auto-rewrite the lock: it
 fails closed until an intentional drift refresh is reviewed and staged.
+
+## Analysis cycle 71 — explicit integration-marker override
+
+The cycle-70 commit cleared normal hosted API collection and 30 other hosted
+checks. Backend integration ran its nine general integration tests, then exited
+with pytest code 5 before exercising the two role-correct email tests. The API
+pytest configuration defaults to `not integration`; the isolated second pytest
+invocation did not explicitly override that default even though the file is
+correctly marked integration. No database assertion failed, but an empty test
+selection is not acceptable evidence.
+
+B435-B437 explicitly select the integration marker for the isolated role-correct
+email invocation, bind that exact command into the CI policy contract, and prove
+the command collects and executes both tests. Commit `f228ab7` and its interrupted
+exact gate remain rejected; all exact-source evidence restarts from the next SHA.
