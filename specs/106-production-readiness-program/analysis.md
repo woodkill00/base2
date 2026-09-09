@@ -1658,3 +1658,21 @@ the single-owner contract. Kernel process ownership releases the lock after all
 terminal paths without a stale lock cleanup procedure. A controlled concurrent
 attempt must fail before Docker access while the owner completes and tears down
 normally; exact-source evidence restarts only after that proof is committed.
+
+## Analysis cycle 80 — hosted bare-health route guard
+
+Candidate `f3765c6fd9a3dad7fd088a27595d7bd56bbf1333` passed both complete
+gates, the fresh-volume browser/concurrency proof, exact 10+10 repetitions, and
+every hosted functional, integration, browser, audit, SBOM, and security job.
+Both duplicated repository guard jobs correctly rejected the synthetic support
+application's bare `/health` decorator because the guard scans all `api` source
+and reserves that spelling against accidental public product exposure. The
+synthetic process was loopback-only and test-only, but bypassing or weakening
+the global guard would create an ambiguous future exception.
+
+B470-B472 preserve the global guard and rename the no-schema readiness route to
+the explicit `/synthetic-health` path. Compose health admission, hosted polling,
+the fixed WSL runner, and boundary tests consume that exact name; tests also
+prove the synthetic process exposes neither bare `/health` nor product
+`/api/health`. All otherwise-green evidence for `f3765c6` remains rejected and
+must restart from the replacement commit, including both hosted guard jobs.

@@ -50,7 +50,7 @@ trap cleanup EXIT INT TERM
 ready=false
 for _ in $(seq 1 90); do
   if curl -fsS "http://127.0.0.1:$E2E_API_PORT/api/health" >/dev/null \
-    && curl -fsS "http://127.0.0.1:$E2E_TEST_SUPPORT_PORT/health" >/dev/null \
+    && curl -fsS "http://127.0.0.1:$E2E_TEST_SUPPORT_PORT/synthetic-health" >/dev/null \
     && curl -fsS "http://127.0.0.1:$E2E_WEB_PORT/" >/dev/null; then
     ready=true
     break

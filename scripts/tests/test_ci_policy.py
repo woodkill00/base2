@@ -341,7 +341,9 @@ class CiPolicyTests(unittest.TestCase):
         )
         self.assertIn('trap cleanup EXIT INT TERM', runner)
         self.assertGreaterEqual(runner.count('down -v --remove-orphans'), 1)
-        self.assertIn('http://127.0.0.1:$E2E_TEST_SUPPORT_PORT/health', runner)
+        self.assertIn(
+            'http://127.0.0.1:$E2E_TEST_SUPPORT_PORT/synthetic-health', runner
+        )
         self.assertIn('scripts/bash/e2e-isolated.sh', guide)
         self.assertIn('contender_rc" -ne 3', concurrency_proof)
         self.assertIn("inventory=empty", concurrency_proof)
@@ -350,8 +352,8 @@ class CiPolicyTests(unittest.TestCase):
         repo_root = MODULE_PATH.parents[2]
         workflow = (repo_root / ".github/workflows/ci-e2e.yml").read_text(encoding="utf-8")
         compose = (repo_root / "e2e/docker-compose.e2e.yml").read_text(encoding="utf-8")
-        self.assertIn("http://localhost:5002/health", workflow)
-        self.assertIn("conn.request(''GET'', ''/health'')", compose)
+        self.assertIn("http://localhost:5002/synthetic-health", workflow)
+        self.assertIn("conn.request(''GET'', ''/synthetic-health'')", compose)
         self.assertIn("test-support:\n", compose)
 
     def test_backend_and_postgres_acceptance_avoid_anonymous_public_ecr(self):

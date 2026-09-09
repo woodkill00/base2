@@ -643,3 +643,9 @@ substitute for the integration proof named by the task.
 - [ ] B467 Acquire a nonblocking repository-local process lock before any fixed-project Docker operation so concurrent isolated-runner invocations cannot preclean or tear down one another. (FR-002, FR-004, FR-005, FR-007, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
 - [ ] B468 Bind lock ordering and concurrent rejection into local policy tests and operator guidance, retaining automatic kernel release after success, failure, or interruption. (FR-002, FR-004, FR-005, FR-007, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
 - [ ] B469 Prove one owner can complete while a concurrent contender fails before Docker access, then commit a replacement and restart all exact-source evidence from the new SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 57 — Hosted bare-health guard cycle 80 corrections
+
+- [ ] B470 Preserve the repository-wide ban on bare product `/health` routes and rename the synthetic-only readiness route so it cannot be mistaken for an admitted product surface. (FR-002, FR-005, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B471 Update Compose, hosted polling, the WSL runner, and boundary tests to require the exact synthetic readiness route while proving bare `/health`, `/api/health`, docs, and OpenAPI remain absent from the synthetic process. (FR-002, FR-004, FR-005, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B472 Commit a replacement candidate, require both hosted guard jobs to pass, and restart all exact-source gates, repetitions, isolated-stack proofs, and reviews from the new SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)

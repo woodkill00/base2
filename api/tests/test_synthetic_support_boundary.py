@@ -50,7 +50,8 @@ def test_synthetic_app_exposes_only_the_keyed_support_route(monkeypatch):
         client.get("/api/test-support/outbox/latest?to_email=x%40example.invalid").status_code
         == 401
     )
-    assert client.get("/health").json() == {"ok": True}
+    assert client.get("/synthetic-health").json() == {"ok": True}
+    assert client.get("/health").status_code == 404
     assert client.get("/api/health").status_code == 404
     assert client.get("/docs").status_code == 404
     assert client.get("/openapi.json").status_code == 404

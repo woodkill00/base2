@@ -201,7 +201,7 @@ services:
       test:
         [
           'CMD-SHELL',
-          'python -c "import http.client, sys; conn = http.client.HTTPConnection(''localhost'', 5002, timeout=3); conn.request(''GET'', ''/health''); r = conn.getresponse(); sys.exit(0 if r.status == 200 else 1)"',
+          'python -c "import http.client, sys; conn = http.client.HTTPConnection(''localhost'', 5002, timeout=3); conn.request(''GET'', ''/synthetic-health''); r = conn.getresponse(); sys.exit(0 if r.status == 200 else 1)"',
         ]
       interval: 5s
       timeout: 5s
