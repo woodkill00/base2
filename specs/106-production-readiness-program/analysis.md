@@ -953,3 +953,14 @@ existing unit contract failed before exercising the ledger. B326 separates the
 programmatic empty-argument default from the executable's real argument parsing
 and adds a direct non-mutating `--check` proof. The rejected run is historical;
 both complete gates restart from zero on the next exact commit.
+
+## Analysis cycle 38 — changed-line coverage rejection
+
+Complete gate 1 on `eb945adee459ee8243b82a304d3fc3aaf6fbd5e0`
+passed every functional check but rejected changed-line coverage at 89.98%
+against the unchanged 90% floor. The added disabled legacy-orchestrator guards
+are intentionally unreachable through the supported deployment entrypoint, but
+the nearby API migration disable and bounded advisory-lock failure behavior was
+not directly exercised. B327 adds those meaningful release-safety proofs rather
+than excluding code or lowering the floor. The rejected gate remains historical
+and both complete gates restart on a new exact commit.
