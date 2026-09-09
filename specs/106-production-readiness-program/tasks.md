@@ -655,3 +655,10 @@ substitute for the integration proof named by the task.
 - [ ] B473 Replace the DigitalOcean partition's unstable pure-Python tracer with Python 3.12 `sys.monitoring` coverage while retaining isolated partitions, exact source selection, coverage combination, and nonzero failure propagation. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
 - [ ] B474 Bind the exact tracer core into the complete-gate contract and repeatedly exercise the formerly crashing generated-child partition plus the complete DigitalOcean coverage runner. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
 - [ ] B475 Commit a replacement candidate and restart both full gates, repetitions, isolated-stack proof, hosted checks, and independent reviews only after coverage succeeds without tracer warnings or retries. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 59 — Exact repetition native-crash cycle 82 corrections
+
+- [ ] B476 Add deterministic Python hash and system-malloc settings to the exact-head hermetic child environment without admitting ambient credentials, network endpoints, profiles, or provider authority. (FR-005, FR-007, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B477 Permit at most three attempts only for native crash return codes while retaining every failed attempt as bounded private hash-bound evidence; keep ordinary assertion, timeout, source-drift, and integrity failures immediately terminal. (FR-002, FR-005, FR-007, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B478 Bind recovered native-crash evidence paths into the successful exact-source manifest and prove one recovery, exhaustion, ordinary failure, replay, tamper, environment allowlisting, and exact cleanup behavior. (FR-002, FR-005, FR-007, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B479 Commit a replacement candidate and restart the fresh stack, exact repetitions, both full gates, hosted checks, and independent reviews from that SHA with no unreported failure. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)

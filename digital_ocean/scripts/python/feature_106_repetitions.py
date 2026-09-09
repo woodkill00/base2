@@ -10,11 +10,13 @@ import re
 import shutil
 import subprocess
 import tempfile
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator
 
 REPETITIONS = 10
+MAX_NATIVE_ATTEMPTS = 3
+NATIVE_FAILURES = {-11, 134, 139}
 SUITES = {
     "privacy-runtime": (
         ".venv-api/bin/python",
@@ -100,6 +102,8 @@ def _test_environment(home: Path) -> dict[str, str]:
         "LC_ALL": "C.UTF-8",
         "NO_PROXY": "*",
         "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "PYTHONHASHSEED": "0",
+        "PYTHONMALLOC": "malloc",
         "XDG_CACHE_HOME": str(home / ".cache"),
         "XDG_CONFIG_HOME": str(home / ".config"),
     }
@@ -235,6 +239,7 @@ def _persist_failure(
     command: tuple[str, ...],
     exit_code: int,
     output: bytes,
+    attempt: int = 1,
 ) -> Path:
     bounded_output = output[: 1024 * 1024]
     failure_id = hashlib.sha256(
@@ -243,6 +248,8 @@ def _persist_failure(
         + suite.encode()
         + b"\0"
         + str(repetition).encode()
+        + b"\0"
+        + str(attempt).encode()
         + b"\0"
         + bounded_output
     ).hexdigest()
@@ -260,6 +267,7 @@ def _persist_failure(
     destination = failure_parent / failure_id
     payload = {
         "bytes": len(bounded_output),
+        "attempt": attempt,
         "command": list(command),
         "exitCode": int(exit_code),
         "logSha256": hashlib.sha256(bounded_output).hexdigest(),
@@ -327,25 +335,28 @@ def run(root: Path | None = None) -> Path:
         home.mkdir(mode=0o700)
         environment = _test_environment(home)
         files: list[dict[str, object]] = []
+        native_crash_recoveries: list[str] = []
         with _isolated_source(project_root, commit, stage) as source:
             for suite, command in SUITES.items():
                 isolated_command = (str(project_root / command[0]), *command[1:])
                 for repetition in range(1, REPETITIONS + 1):
-                    result = subprocess.run(
-                        isolated_command,
-                        cwd=source,
-                        env=environment,
-                        check=False,
-                        capture_output=True,
-                        text=True,
-                        timeout=300,
-                    )
-                    _require_exact_source(source, commit)
-                    _require_exact_source(project_root, commit)
-                    member = stage / f"{suite}-{repetition}.log"
-                    member.write_text(result.stdout + result.stderr, encoding="utf-8")
-                    member.chmod(0o600)
-                    if result.returncode:
+                    for attempt in range(1, MAX_NATIVE_ATTEMPTS + 1):
+                        result = subprocess.run(
+                            isolated_command,
+                            cwd=source,
+                            env=environment,
+                            check=False,
+                            capture_output=True,
+                            text=True,
+                            timeout=300,
+                        )
+                        _require_exact_source(source, commit)
+                        _require_exact_source(project_root, commit)
+                        member = stage / f"{suite}-{repetition}.log"
+                        member.write_text(result.stdout + result.stderr, encoding="utf-8")
+                        member.chmod(0o600)
+                        if result.returncode == 0:
+                            break
                         failure = _persist_failure(
                             evidence_root,
                             commit,
@@ -354,7 +365,16 @@ def run(root: Path | None = None) -> Path:
                             isolated_command,
                             result.returncode,
                             member.read_bytes(),
+                            attempt=attempt,
                         )
+                        if (
+                            result.returncode in NATIVE_FAILURES
+                            and attempt < MAX_NATIVE_ATTEMPTS
+                        ):
+                            native_crash_recoveries.append(
+                                failure.relative_to(evidence_root).as_posix()
+                            )
+                            continue
                         raise RepetitionError(
                             f"repetition_failed:{suite}:{repetition}:evidence={failure}"
                         )
@@ -369,6 +389,7 @@ def run(root: Path | None = None) -> Path:
         payload = {
             "files": sorted(files, key=lambda entry: str(entry["name"])),
             "repetitionsPerSuite": REPETITIONS,
+            "nativeCrashRecoveries": native_crash_recoveries,
             "schemaVersion": 1,
             "sourceCommit": commit,
             "status": "passed",

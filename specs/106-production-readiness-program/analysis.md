@@ -1694,3 +1694,21 @@ partition passed 33 tests under that core without warnings. The partitioning,
 source boundary, parallel data files, combine/report steps, failure propagation,
 and coverage floor remain unchanged. Exact-source release evidence restarts only
 after the complete coverage runner and its contract tests pass on a new commit.
+
+## Analysis cycle 82 — exact repetition native interpreter crash
+
+The fresh-stack proof for candidate `84acb69d88013ca0c4763194afd9f47e6eaf39e0`
+passed, but privacy/runtime repetition 10 terminated with native `SIGSEGV` while
+Pydantic Settings executed ordinary Python environment parsing. The runner
+correctly retained a bounded source-bound failure manifest and stopped before
+either complete gate. This is the same WSL/Python native-instability class for
+which narrower repository runners already use a three-attempt native-only
+policy, but the exact-head runner lacked both deterministic allocator settings
+and bounded recovery.
+
+B476-B479 add fixed `PYTHONHASHSEED=0` and `PYTHONMALLOC=malloc` values to the
+credential-free allowlisted child environment. Only `-11`, `134`, and `139`
+receive up to three attempts; each failed attempt is persisted before retry and
+referenced by the successful integrity-bound manifest. All assertion failures,
+timeouts, source drift, permission or hash changes, and third native failures
+remain terminal. Exact-source evidence restarts from a new commit.

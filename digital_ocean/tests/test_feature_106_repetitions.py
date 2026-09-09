@@ -239,11 +239,14 @@ def test_test_environment_is_allowlisted_and_credential_free(tmp_path, monkeypat
     assert environment["ENV"] == "test"
     assert environment["HOME"] == str(tmp_path)
     assert environment["NO_PROXY"] == "*"
+    assert environment["PYTHONHASHSEED"] == "0"
+    assert environment["PYTHONMALLOC"] == "malloc"
     assert not {
         "DATABASE_URL", "REDIS_URL", "AWS_PROFILE", "DO_API_TOKEN", "HTTPS_PROXY"
     } & environment.keys()
     assert set(environment) <= {
         "CI", "ENV", "HOME", "LANG", "LC_ALL", "NO_PROXY", "PATH",
+        "PYTHONHASHSEED", "PYTHONMALLOC",
         "XDG_CACHE_HOME", "XDG_CONFIG_HOME", "COMSPEC", "SYSTEMDRIVE",
         "SYSTEMROOT", "TEMP", "TMP", "WINDIR",
     }
@@ -254,6 +257,54 @@ def test_exact_source_change_is_terminal(tmp_path, monkeypatch):
     monkeypatch.setattr(repetitions, "_require_clean", lambda _root: None)
     with pytest.raises(repetitions.RepetitionError, match="source_changed"):
         repetitions._require_exact_source(tmp_path, "a" * 40)
+
+
+def test_native_crash_is_retained_then_boundedly_recovered(tmp_path, monkeypatch):
+    commit = "8" * 40
+    monkeypatch.setattr(repetitions, "REPETITIONS", 1)
+    monkeypatch.setattr(repetitions, "SUITES", {"suite": ("fixture",)})
+    _prepare_run(monkeypatch, commit)
+    results = iter(
+        (
+            SimpleNamespace(returncode=-11, stdout="", stderr="native crash\n"),
+            SimpleNamespace(returncode=0, stdout="passed\n", stderr=""),
+        )
+    )
+    monkeypatch.setattr(repetitions.subprocess, "run", lambda *_args, **_kwargs: next(results))
+
+    manifest = repetitions.run(tmp_path)
+    payload = json.loads(manifest.read_text(encoding="utf-8"))
+    assert len(payload["nativeCrashRecoveries"]) == 1
+    failure = tmp_path / ".artifacts/feature-106-repetitions" / payload["nativeCrashRecoveries"][0]
+    assert json.loads(failure.read_text(encoding="utf-8"))["exitCode"] == -11
+    assert (manifest.parent / "suite-1.log").read_text(encoding="utf-8") == "passed\n"
+
+
+def test_native_crash_exhaustion_retains_every_attempt(tmp_path, monkeypatch):
+    commit = "7" * 40
+    monkeypatch.setattr(repetitions, "REPETITIONS", 1)
+    monkeypatch.setattr(repetitions, "SUITES", {"suite": ("fixture",)})
+    _prepare_run(monkeypatch, commit)
+    calls = 0
+
+    def crash(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        return SimpleNamespace(returncode=-11, stdout="", stderr="native crash\n")
+
+    monkeypatch.setattr(repetitions.subprocess, "run", crash)
+    with pytest.raises(repetitions.RepetitionError, match="repetition_failed"):
+        repetitions.run(tmp_path)
+    manifests = list(
+        (tmp_path / ".artifacts/feature-106-repetitions/failures").rglob("result.json")
+    )
+    assert calls == repetitions.MAX_NATIVE_ATTEMPTS
+    assert len(manifests) == repetitions.MAX_NATIVE_ATTEMPTS
+    assert {json.loads(path.read_text(encoding="utf-8"))["attempt"] for path in manifests} == {
+        1,
+        2,
+        3,
+    }
 
 
 def test_existing_evidence_rejects_symlinked_member(tmp_path, monkeypatch):
@@ -333,16 +384,20 @@ def test_isolated_source_add_and_cleanup_fail_closed(tmp_path, monkeypatch):
         "run",
         lambda *_args, **_kwargs: Result(1),
     )
-    with pytest.raises(repetitions.RepetitionError, match="isolation_failed"):
-        with repetitions._isolated_source(tmp_path, "a" * 40, tmp_path / "stage"):
-            pass
+    with (
+        pytest.raises(repetitions.RepetitionError, match="isolation_failed"),
+        repetitions._isolated_source(tmp_path, "a" * 40, tmp_path / "stage"),
+    ):
+        pass
 
     outcomes = iter((Result(0), Result(1)))
     monkeypatch.setattr(repetitions.subprocess, "run", lambda *_args, **_kwargs: next(outcomes))
     monkeypatch.setattr(repetitions, "_require_exact_source", lambda *_args: None)
-    with pytest.raises(repetitions.RepetitionError, match="cleanup_failed"):
-        with repetitions._isolated_source(tmp_path, "a" * 40, tmp_path / "stage"):
-            pass
+    with (
+        pytest.raises(repetitions.RepetitionError, match="cleanup_failed"),
+        repetitions._isolated_source(tmp_path, "a" * 40, tmp_path / "stage"),
+    ):
+        pass
 
 
 def test_existing_evidence_rejects_symlinked_root_and_malformed_json(tmp_path):
