@@ -569,3 +569,15 @@ substitute for the integration proof named by the task.
 - [ ] B426 Keep the reversed API-role proof on explicit function absence without resolving privileges for an undefined signature, while the forward proof still requires exact API-role execute authority. (FR-005, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-073, FR-078)
 - [ ] B427 Add a contract for the forward-only privilege lookup and regenerate the surface-drift lock from the final manifest without weakening drift detection. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
 - [ ] B428 Re-run PostgreSQL acceptance, surface drift, the full complete gate, and all exact-candidate evidence only after both cycle-68 defects pass locally. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 46 — Hosted collection cycle 69 corrections
+
+- [ ] B429 Rename the synthetic support entrypoint outside pytest's recursive test-module grammar without changing its loopback-only, keyed, non-production boundary. (FR-005, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-073, FR-078)
+- [ ] B430 Add a regression proving normal API and integration collection cannot import the synthetic startup guard while explicit synthetic startup still fails closed without E2E mode and key. (FR-002, FR-005, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B431 Commit a new candidate and restart the complete gate, fresh-volume browser and role proof, exact repetitions, independent reviews, and all hosted checks from the new SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 47 — Post-format lock cycle 70 corrections
+
+- [ ] B432 Run the surface-drift validator after lint-staged formatting so a formatter cannot leave governed bytes inconsistent with their reviewed generated lock. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B433 Prove the pre-commit ordering is formatter then validator and retain fail-closed behavior rather than silently regenerating or approving drift in the hook. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B434 Regenerate the lock from final formatted bytes, commit a new candidate, and restart all exact-source local and hosted evidence only after the post-format validator passes. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)

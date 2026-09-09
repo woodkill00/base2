@@ -1487,3 +1487,33 @@ contract for that branch, refresh the generated surface lock only after the
 manifest is final, and require the affected acceptance checks plus a new full
 gate. Release evidence remains invalid until a clean candidate passes the whole
 exact-source sequence and hosted CI.
+
+## Analysis cycle 69 — hosted pytest collection boundary
+
+The first cycle-68 commit passed the 109-check local gate, the pre-push API,
+Django, and frontend suites, and 33 hosted checks. Both duplicate hosted API
+jobs nevertheless failed closed because pytest's recursive filename discovery
+treated `test_support_main.py` as a test module and imported its intentional
+production-mode startup guard during collection. The integration job inherited
+the same collection failure before reaching database assertions. This is a
+packaging/name contract gap; the synthetic service itself remained loopback-only
+and no authority was widened.
+
+B429-B431 rename the synthetic entrypoint outside pytest's test-file grammar,
+update every exact reference, and locally prove both normal recursive collection
+and explicit fail-closed startup behavior. All evidence for commit `02d08ef` is
+rejected, including its interrupted exact gate. A new commit must restart local,
+fresh-stack, repetition, review, and hosted evidence from zero.
+
+## Analysis cycle 70 — post-format generated-lock ordering
+
+The cycle-69 collection proof passed, then the surface validator rejected the
+working tree because the prior commit hook had formatted the governed complete-
+gate JSON after its hash lock was generated. The validator behaved correctly,
+but the hook lacked a post-format validation phase. The pushed commit therefore
+remains rejected even though the semantic JSON was unchanged.
+
+B432-B434 run surface validation after all lint-staged formatters, prove the
+ordering contract, regenerate the lock from final formatted bytes, and require a
+new clean candidate. The hook does not auto-approve or auto-rewrite the lock: it
+fails closed until an intentional drift refresh is reviewed and staged.

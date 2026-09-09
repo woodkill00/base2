@@ -185,7 +185,7 @@ services:
       - python
       - -m
       - uvicorn
-      - api.test_support_main:app
+      - api.synthetic_support_app:app
       - --host
       - 0.0.0.0
       - --port

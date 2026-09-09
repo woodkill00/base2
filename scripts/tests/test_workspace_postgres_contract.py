@@ -182,7 +182,7 @@ class WorkspacePostgresContractTests(unittest.TestCase):
             compose.index("  test-support:") : compose.index("  celery-worker:")
         ]
         self.assertIn("DB_USER: base2_email_worker_e2e", support_block)
-        self.assertIn("api.test_support_main:app", support_block)
+        self.assertIn("api.synthetic_support_app:app", support_block)
         self.assertIn("127.0.0.1:${E2E_TEST_SUPPORT_PORT:-5002}:5002", support_block)
         self.assertNotIn("base2_api_runtime_e2e", support_block)
         self.assertIn("read_only: true", support_block)

@@ -48,6 +48,14 @@ class SurfaceDriftTests(unittest.TestCase):
             with self.assertRaisesRegex(DriftError, "docs:(?:missing|empty_inventory)"):
                 validate(root, lock)
 
+    def test_precommit_validates_drift_after_formatting(self):
+        root = Path(__file__).resolve().parents[2]
+        hook = (root / ".husky/pre-commit").read_text(encoding="utf-8")
+        self.assertLess(
+            hook.index("npx lint-staged"),
+            hook.index("python3 scripts/python/validate_surface_drift.py"),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

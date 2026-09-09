@@ -6,4 +6,8 @@ echo "🔍 Running pre-commit checks..."
 # Run lint-staged to check and fix code
 npx lint-staged
 
+# Formatting can change a hashed governed surface. Reject the commit until its
+# generated lock has been refreshed from the final formatted bytes.
+python3 scripts/python/validate_surface_drift.py
+
 echo "✅ Pre-commit checks passed!"

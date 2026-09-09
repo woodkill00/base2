@@ -16,7 +16,7 @@ def test_synthetic_app_fails_closed_without_mode_or_key():
     environment.pop("E2E_TEST_MODE", None)
     environment.pop("E2E_TEST_KEY", None)
     result = subprocess.run(
-        [sys.executable, "-c", "import api.test_support_main"],
+        [sys.executable, "-c", "import api.synthetic_support_app"],
         cwd=ROOT,
         env=environment,
         capture_output=True,
@@ -28,7 +28,7 @@ def test_synthetic_app_fails_closed_without_mode_or_key():
 
     environment["E2E_TEST_MODE"] = "true"
     result = subprocess.run(
-        [sys.executable, "-c", "import api.test_support_main"],
+        [sys.executable, "-c", "import api.synthetic_support_app"],
         cwd=ROOT,
         env=environment,
         capture_output=True,
@@ -42,8 +42,8 @@ def test_synthetic_app_fails_closed_without_mode_or_key():
 def test_synthetic_app_exposes_only_the_keyed_support_route(monkeypatch):
     monkeypatch.setenv("E2E_TEST_MODE", "true")
     monkeypatch.setenv("E2E_TEST_KEY", "synthetic-key")
-    sys.modules.pop("api.test_support_main", None)
-    from api.test_support_main import app
+    sys.modules.pop("api.synthetic_support_app", None)
+    from api.synthetic_support_app import app
 
     client = TestClient(app)
     assert (
@@ -63,4 +63,8 @@ def test_synthetic_app_is_absent_from_production_profiles():
         (ROOT / name).read_text(encoding="utf-8")
         for name in ("local.docker.yml", "development.docker.yml")
     )
-    assert "api.test_support_main" not in production_sources
+    assert "api.synthetic_support_app" not in production_sources
+
+
+def test_synthetic_app_is_not_a_pytest_collection_candidate() -> None:
+    assert not (ROOT / "api/synthetic_support_app.py").name.startswith("test")
