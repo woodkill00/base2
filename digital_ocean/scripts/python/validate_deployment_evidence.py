@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 
 BASE_REQUIRED = (
@@ -22,6 +23,9 @@ BASE_REQUIRED = (
     "curl-api-health.txt",
     "traefik-env.txt",
     "traefik-dynamic.yml",
+    "bootstrap-packages.txt",
+    "DO_userdata.json",
+    "deploy-mode.json",
 )
 TEST_REQUIRED = (
     "api-pytest.txt",
@@ -75,6 +79,7 @@ def create_manifest(root: Path, source_commit: str, *, tests_required: bool) -> 
     deployed_head = next(entry for entry in entries if entry["name"] == "post-deploy-head.txt")
     if (root / deployed_head["path"]).read_text(encoding="utf-8").strip() != source_commit:
         raise EvidenceError("deployed_source_mismatch")
+    _validate_provider_evidence(root, entries)
     payload = {
         "schemaVersion": 1,
         "sourceCommit": source_commit,
@@ -138,6 +143,43 @@ def verify_manifest(root: Path, manifest_path: Path) -> None:
     deployed_head = next(entry for entry in files if entry["name"] == "post-deploy-head.txt")
     if (root / deployed_head["path"]).read_text(encoding="utf-8").strip() != source_commit:
         raise EvidenceError("deployed_source_mismatch")
+    _validate_provider_evidence(root, files)
+
+
+def _validate_provider_evidence(root: Path, entries: list[dict]) -> None:
+    by_name = {entry["name"]: root / entry["path"] for entry in entries}
+    try:
+        provider = json.loads(by_name["DO_userdata.json"].read_text(encoding="utf-8"))
+        mode = json.loads(by_name["deploy-mode.json"].read_text(encoding="utf-8"))
+    except (KeyError, json.JSONDecodeError, OSError) as exc:
+        raise EvidenceError("provider_evidence_invalid") from exc
+    digest_value = provider.get("user_data_sha256") if isinstance(provider, dict) else None
+    provider_id = provider.get("droplet_id") if isinstance(provider, dict) else None
+    provider_ip = provider.get("ip_address") if isinstance(provider, dict) else None
+    if (
+        not isinstance(provider, dict)
+        or "user_data" in provider
+        or not isinstance(digest_value, str)
+        or len(digest_value) != 64
+        or any(char not in "0123456789abcdef" for char in digest_value)
+        or not str(provider_id or "").isdigit()
+        or not isinstance(provider_ip, str)
+        or not provider_ip.strip()
+        or not isinstance(mode, dict)
+    ):
+        raise EvidenceError("provider_evidence_invalid")
+    detected = mode.get("detectedExistingProviderId")
+    if detected not in (None, "") and str(detected) != str(provider_id):
+        raise EvidenceError("provider_identity_mismatch")
+    packages = by_name["bootstrap-packages.txt"].read_text(encoding="utf-8").splitlines()
+    if not packages or any(
+        "=" not in line
+        or re.fullmatch(r"[a-z0-9][a-z0-9+.-]*", line.split("=", 1)[0]) is None
+        or not line.split("=", 1)[1]
+        or any(char.isspace() for char in line)
+        for line in packages
+    ):
+        raise EvidenceError("bootstrap_package_evidence_invalid")
 
 
 def main(argv: list[str] | None = None) -> int:

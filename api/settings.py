@@ -273,6 +273,13 @@ class Settings(BaseSettings):
                         effective_host = (parsed_database_url.hostname or '').strip().lower()
                     except ValueError as exc:
                         raise RuntimeError('DATABASE_URL must be a valid PostgreSQL URL') from exc
+                # libpq percent-decodes URI host authorities before connecting.
+                # Reject encoded host spellings instead of validating a different
+                # representation from the one the database driver will consume.
+                if '%' in effective_host:
+                    raise RuntimeError(
+                        'Production database must use an external verified-TLS endpoint'
+                    )
                 effective_host = effective_host.rstrip('.')
                 local_database = effective_host in {'', 'postgres', 'localhost'}
                 try:

@@ -1120,7 +1120,7 @@ const HomeObsidianNavigation = ({ onNavigate, onUtilityAction = () => {}, locale
             </div>
             <div
               className="home-right-utility-scroll"
-              role="listbox"
+              role="navigation"
               aria-label={copy.utilityShortcuts}
               ref={utilityScrollRef}
               data-testid="base2-right-utility-scroll"
@@ -1133,10 +1133,7 @@ const HomeObsidianNavigation = ({ onNavigate, onUtilityAction = () => {}, locale
                   <button
                     type="button"
                     className={`home-right-utility-icon ${isSelected ? 'is-active' : ''} ${item.safe ? '' : 'is-locked'}`}
-                    role="option"
                     aria-label={`${copy.utilityPrefix} ${copy[item.labelKey]}${item.safe ? '' : ` ${copy.unavailable}`}`}
-                    aria-selected={isSelected}
-                    aria-disabled={!item.safe}
                     disabled={!item.safe}
                     aria-hidden={!isCanonicalCopy}
                     tabIndex={isCanonicalCopy ? 0 : -1}

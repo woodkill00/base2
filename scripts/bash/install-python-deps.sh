@@ -85,12 +85,12 @@ targets=()
 if $INSTALL_API || $INSTALL_DJANGO || $INSTALL_DO; then
   $INSTALL_API && targets+=(".venv-api:requirements-dev-api.txt")
   $INSTALL_DJANGO && targets+=(".venv-django:requirements-dev-django.txt")
-  $INSTALL_DO && targets+=(".venv:digital_ocean/requirements.txt")
+  $INSTALL_DO && targets+=(".venv:digital_ocean/requirements.lock")
 else
   targets+=(
     ".venv-api:requirements-dev-api.txt"
     ".venv-django:requirements-dev-django.txt"
-    ".venv:digital_ocean/requirements.txt"
+    ".venv:digital_ocean/requirements.lock"
   )
 fi
 
@@ -127,14 +127,18 @@ for target in "${targets[@]}"; do
     echo "$venv_name uses Python $actual_version but $expected_version is required." >&2
     exit 1
   fi
-  if ! $SKIP_PIP_UPGRADE; then
+  if ! $SKIP_PIP_UPGRADE && [[ "$req" != "digital_ocean/requirements.lock" ]]; then
     echo "Upgrading pip in $venv_name..."
     "$venv_python" -m pip install --upgrade pip
   fi
   echo "Installing $req into $venv_name..."
-  if ! "$venv_python" -m pip install -r "$req_path"; then
+  pip_args=(-r "$req_path")
+  if [[ "$req" == "digital_ocean/requirements.lock" ]]; then
+    pip_args=(--require-hashes -r "$req_path")
+  fi
+  if ! "$venv_python" -m pip install "${pip_args[@]}"; then
     echo "Initial pip install failed for $venv_name; retrying once without cache..." >&2
-    "$venv_python" -m pip install --no-cache-dir -r "$req_path"
+    "$venv_python" -m pip install --no-cache-dir "${pip_args[@]}"
   fi
   "$venv_python" -m pip check
 done

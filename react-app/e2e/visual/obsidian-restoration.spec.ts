@@ -71,16 +71,16 @@ test('restored command and utility controls remain bounded and functional', asyn
   await page.getByTestId('base2-right-utility-toggle').click();
   await expect(page.getByTestId('base2-right-utility-menu')).toHaveClass(/is-open/);
   const lockedAutomation = page
-    .getByRole('option', { name: /Automation unavailable on public site/ })
+    .getByRole('button', { name: /Automation unavailable on public site/ })
     .first();
-  await expect(lockedAutomation).toHaveAttribute('aria-disabled', 'true');
+  await expect(lockedAutomation).toBeDisabled();
   await page.keyboard.press('Control+K');
   await expect(page.getByTestId('base2-command-palette')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('base2-command-palette')).toHaveCount(0);
   // Decorative loop copies are hidden from the accessibility tree, leaving
   // one canonical keyboard-focusable option for each utility.
-  const safeSearch = page.getByRole('option', { name: 'Base2 utility: Search' });
+  const safeSearch = page.getByRole('button', { name: 'Base2 utility: Search' });
   await safeSearch.click();
   await expect(page).toHaveURL(/\/search$/);
 });
@@ -159,7 +159,9 @@ test('navigation rails scroll progressively, settle centrally, and loop without 
   await expect
     .poll(() =>
       utilityRail.evaluate((element) => {
-        const active = element.querySelector('[aria-selected="true"]');
+        const active = element.querySelector(
+          '.home-right-utility-icon.is-active:not([aria-hidden="true"])'
+        );
         if (!active) return Number.POSITIVE_INFINITY;
         const rail = element.getBoundingClientRect();
         const item = active.getBoundingClientRect();

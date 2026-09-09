@@ -64,10 +64,10 @@ describe('Base2 restored Obsidian navigation', () => {
     expect(onNavigate).toHaveBeenLastCalledWith('features');
 
     fireEvent.click(screen.getByRole('button', { name: 'Open Base2 utility menu' }));
-    expect(screen.getByRole('listbox', { name: 'Base2 utility shortcuts' })).toBeVisible();
+    expect(screen.getByRole('navigation', { name: 'Base2 utility shortcuts' })).toBeVisible();
     expect(
-      screen.getAllByRole('option', { name: /Automation unavailable on public site/ })[0]
-    ).toHaveAttribute('aria-disabled', 'true');
+      screen.getAllByRole('button', { name: /Automation unavailable on public site/ })[0]
+    ).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Close Base2 utility menu' }));
   });
 
@@ -188,7 +188,7 @@ describe('Base2 restored Obsidian navigation', () => {
         }),
       },
     });
-    const options = Array.from(scroll.querySelectorAll('[role="option"]'));
+    const options = Array.from(scroll.querySelectorAll('button'));
     options.forEach((option, index) => {
       Object.defineProperties(option, {
         offsetTop: { configurable: true, value: index * 58 },
@@ -198,18 +198,18 @@ describe('Base2 restored Obsidian navigation', () => {
       });
     });
 
-    const safeSearch = screen.getByRole('option', { name: 'Base2 utility: Search' });
+    const safeSearch = screen.getByRole('button', { name: 'Base2 utility: Search' });
     fireEvent.click(safeSearch);
-    expect(safeSearch).toHaveAttribute('aria-selected', 'true');
+    expect(safeSearch).toHaveClass('is-active');
     expect(onUtilityAction).toHaveBeenLastCalledWith('search');
-    const lockedSettings = screen.getByRole('option', {
+    const lockedSettings = screen.getByRole('button', {
       name: 'Base2 utility: Settings unavailable on public site',
     });
     expect(lockedSettings).toBeDisabled();
     fireEvent.click(lockedSettings);
     fireEvent.keyDown(lockedSettings, { key: 'Enter' });
-    expect(lockedSettings).toHaveAttribute('aria-selected', 'false');
-    expect(safeSearch).toHaveAttribute('aria-selected', 'true');
+    expect(lockedSettings).not.toHaveClass('is-active');
+    expect(safeSearch).toHaveClass('is-active');
     expect(onUtilityAction).toHaveBeenCalledTimes(1);
     fireEvent.wheel(scroll, { deltaY: 100 });
     fireEvent.wheel(scroll, { deltaY: -100 });
@@ -240,7 +240,7 @@ describe('Base2 restored Obsidian navigation', () => {
       fireEvent.click(screen.getByRole('button', { name: menuLabel }));
       expect(screen.getByRole('navigation')).toBeVisible();
       fireEvent.click(screen.getByRole('button', { name: utilityOpenLabel }));
-      expect(screen.getByRole('listbox', { name: utilityLabel })).toBeVisible();
+      expect(screen.getByRole('navigation', { name: utilityLabel })).toBeVisible();
     }
   );
 

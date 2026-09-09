@@ -25,7 +25,7 @@ from pathlib import Path
 from pydo import Client
 
 try:
-    from digital_ocean.scripts.python.deploy_config import load_deploy_config
+    from digital_ocean.scripts.python.deploy_config import load_deploy_config, normalize_deploy_config
     from digital_ocean.scripts.python.droplet_lookup import (
         GitRemoteLeaseStore,
         acquire_provider_lease,
@@ -38,8 +38,9 @@ try:
     from digital_ocean.scripts.python.trusted_ssh import (
         trusted_ssh_client as _trusted_ssh_client,
     )
+    from digital_ocean.scripts.python.provider_ready import wait_for_active_public_ipv4
 except ModuleNotFoundError:
-    from deploy_config import load_deploy_config
+    from deploy_config import load_deploy_config, normalize_deploy_config
     from droplet_lookup import (
         GitRemoteLeaseStore,
         acquire_provider_lease,
@@ -48,6 +49,7 @@ except ModuleNotFoundError:
     )
     from trusted_ssh import strict_openssh_options as _strict_openssh_options
     from trusted_ssh import trusted_ssh_client as _trusted_ssh_client
+    from provider_ready import wait_for_active_public_ipv4
 
 _ENV_VAR_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
@@ -173,7 +175,14 @@ IP_POLL_INTERVAL = int(os.getenv("DO_IP_POLL_INTERVAL_SECONDS", "5"))
 REBOOT_MARKERS = ["Cloud-init v. 25.2-0ubuntu1~22.04.1 finished at"]
 COMPLETION_MARKER = "User data script completed at"
 SUMMARY = []
-PROJECT_NAME = os.getenv("PROJECT_NAME", "app")
+_DEPLOY_CONFIG = normalize_deploy_config(
+    {
+        **_DEPLOY_CONFIG,
+        "PROJECT_NAME": os.getenv("PROJECT_NAME", _DEPLOY_CONFIG.get("PROJECT_NAME", "app")),
+        "DEPLOY_PATH": os.getenv("DEPLOY_PATH", _DEPLOY_CONFIG.get("DEPLOY_PATH", "/opt/apps/")),
+    }
+)
+PROJECT_NAME = _DEPLOY_CONFIG["PROJECT_NAME"]
 _EXPANSION_ENV = {**os.environ, "PROJECT_NAME": PROJECT_NAME}
 ssh_dir = os.path.expanduser("~/.ssh")
 ssh_key_path = os.path.join(ssh_dir, PROJECT_NAME)
@@ -324,8 +333,10 @@ def _finalize_artifacts() -> None:
     _apply_artifact_rename()
 
 
-def _write_artifact_text(name: str, content: str) -> None:
+def _write_artifact_text(name: str, content: str, *, required: bool = False) -> None:
     if not artifact_dir_path:
+        if required:
+            raise RuntimeError("required deployment artifact directory is unavailable")
         return
     try:
         path = artifact_dir_path / name
@@ -333,7 +344,8 @@ def _write_artifact_text(name: str, content: str) -> None:
         with open(path, "w", encoding="utf-8", errors="replace") as f:
             f.write(content)
     except Exception:
-        pass
+        if required:
+            raise
 
 
 def _write_deploy_metadata(
@@ -1634,6 +1646,7 @@ if UPDATE_ONLY:
                 )
             except Exception as e:
                 err(f"Failed to update {do_userdata_json_path}: {e}")
+                raise
 
             _plan_artifact_rename(ip_address)
             _apply_artifact_rename()
@@ -1680,31 +1693,14 @@ if not UPDATE_ONLY:
         droplet_id = droplet["droplet"]["id"]
         log_json("API Response metadata - droplets.create", {"droplet_id": droplet_id})
         log(f"Droplet created with ID: {droplet_id}")
-        try:
-            droplet_info = client.droplets.get(droplet_id)["droplet"]
-            ip_address = _get_public_ipv4(droplet_info)
-            if ip_address:
-                _record_ip_early(droplet_id=droplet_id, ip_address=ip_address, update_only=False)
-            ip_address, droplet_info = wait_for_public_ipv4(
-                client,
-                droplet_id,
-                timeout_sec=IP_POLL_TIMEOUT,
-                interval_sec=IP_POLL_INTERVAL,
-            )
-            _record_ip_early(droplet_id=droplet_id, ip_address=ip_address, update_only=False)
-        except Exception as e:
-            log(f"Early IPv4 poll did not return yet: {e}")
-        # Wait active and set ip
-        while True:
-            droplet_info = client.droplets.get(droplet_id)["droplet"]
-            log_json("API Response - droplets.get", droplet_info)
-            if droplet_info["status"] == "active":
-                break
-            time.sleep(5)
-            print("...", flush=True)
-        ip_address = _get_public_ipv4(droplet_info)
-        if not ip_address:
-            raise RuntimeError(f"Could not determine public IPv4 for droplet {droplet_id}")
+        ip_address, droplet_info = wait_for_active_public_ipv4(
+            client,
+            droplet_id,
+            timeout_sec=IP_POLL_TIMEOUT,
+            interval_sec=IP_POLL_INTERVAL,
+            address_reader=_get_public_ipv4,
+        )
+        _record_ip_early(droplet_id=droplet_id, ip_address=ip_address, update_only=False)
         log(f"Droplet is active. IP address: {ip_address}")
         matches_after_create = list_named_droplets(client, DO_DROPLET_NAME)
         if len(matches_after_create) != 1 or str(matches_after_create[0].get("id")) != str(
@@ -1726,6 +1722,7 @@ if not UPDATE_ONLY:
             )
         except Exception as e:
             err(f"Failed to update {do_userdata_json_path}: {e}")
+            raise
 
         _plan_artifact_rename(ip_address)
         _apply_artifact_rename()
@@ -1734,6 +1731,27 @@ if not UPDATE_ONLY:
             log("Provision-only boundary reached; verify and enroll host identity separately.")
             raise SystemExit(0)
     except Exception as e:
+        if provider_create_attempted:
+            _write_artifact_text(
+                "provider-create-outcome.json",
+                json.dumps(
+                    {
+                        "schemaVersion": 1,
+                        "status": "uncertain",
+                        "leaseRetained": lease_record is not None,
+                        "leaseName": lease_record.name if lease_record is not None else None,
+                        "leaseRevision": (
+                            lease_record.revision if lease_record is not None else None
+                        ),
+                        "dropletId": locals().get("droplet_id"),
+                        "errorCode": type(e).__name__,
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n",
+                required=True,
+            )
         err(f"Droplet creation failed: {e}")
         exit(1)
     finally:

@@ -36,8 +36,11 @@ New-target provisioning additionally requires an exact-owner conditional lease.
 `DO_PROVISION_LEASE_GIT_REMOTE` names an already configured dedicated private
 lease-repository remote used for an atomic Git compare-and-swap provisioning
 lease. It must not resolve to the source `origin`, and its credential must be
-limited to that otherwise empty coordination repository. Credential-bearing or
-plain-HTTP remote URLs are rejected; use the platform credential helper. The fixed,
+limited to that otherwise empty coordination repository. Credential-bearing,
+plain-HTTP, SSH, SCP, command-helper, and local-only production remotes are
+rejected. The controller ignores inherited global/system Git configuration and
+transport overrides; private HTTPS authentication must come from the bounded
+process credential broker without placing credentials in the URL. The fixed,
 digest-named remote ref is created only when a new paid resource is needed and
 is deleted only with the exact owner revision. Conflict, crash, expiry, or ref
 drift fails closed; recovery requires exact-owner cleanup. Update-only operation
@@ -55,14 +58,18 @@ another paid resource.
 
 Provider discovery is paginated and typed. Only an authoritative `missing`
 result can enter provisioning; API errors, duplicate names, and an existing
-droplet still awaiting a public address fail closed. A deterministic
-provider-side tag lease serializes the final lookup and create operation; a
-conflict or stale lease blocks creation for owner review. Existing deployments
+droplet still awaiting a public address fail closed. A dedicated private Git
+coordination repository serializes the final lookup and create operation with
+an atomic ref create and exact-revision compare-and-swap deletion. Conflict,
+stale ownership, transport uncertainty, or an uncertain provider result keeps
+the lease in place for explicit exact-owner recovery. Existing deployments
 remain bound to the exact provider droplet ID returned by discovery.
 
 Fresh cloud-init contains no repository or credential. It installs only
-distribution-signed bootstrap packages and stores only a SHA-256 digest of its
-user-data locally. After the owner authenticates and pins the new SSH host key,
+distribution-signed bootstrap packages. Terminal local evidence retains the
+user-data SHA-256, authoritative provider identity, and sanitized resolved
+package/version inventory, all bound by the exact-source manifest. After the
+owner authenticates and pins the new SSH host key,
 the deploy runner may clone a credential-free public HTTPS repository URL.
 URLs with userinfo, query tokens, fragments, SSH transports, or plaintext HTTP
 are rejected; private repository bootstrap requires a separate scoped JIT

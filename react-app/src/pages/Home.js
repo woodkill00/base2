@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import GlassHeader from '../components/glass/GlassHeader';
@@ -15,8 +16,34 @@ import ProjectsGrid from '../components/portfolio/ProjectsGrid';
 import { siteManifest } from '../config/siteRuntime';
 import { localizedPath } from '../services/privacyRuntime';
 
+const homeCopy = {
+  en: {
+    title: 'Home',
+    shared: 'Link shared.',
+    copied: 'Link copied to clipboard.',
+    copyPrompt: 'Copy this link',
+    copyManually: 'Copy the link from the open dialog.',
+  },
+  de: {
+    title: 'Startseite',
+    shared: 'Link geteilt.',
+    copied: 'Link in die Zwischenablage kopiert.',
+    copyPrompt: 'Diesen Link kopieren',
+    copyManually: 'Kopieren Sie den Link aus dem geöffneten Dialog.',
+  },
+  ar: {
+    title: 'الرئيسية',
+    shared: 'تمت مشاركة الرابط.',
+    copied: 'تم نسخ الرابط إلى الحافظة.',
+    copyPrompt: 'انسخ هذا الرابط',
+    copyManually: 'انسخ الرابط من مربع الحوار المفتوح.',
+  },
+};
+
 const Home = ({ locale = siteManifest.defaultLocale }) => {
   const navigate = useNavigate();
+  const copy = homeCopy[locale] || homeCopy.en;
+  const [shareStatus, setShareStatus] = useState('');
 
   const handleMenuItemClick = (sectionId) => {
     if (sectionId === 'home') {
@@ -45,10 +72,12 @@ const Home = ({ locale = siteManifest.defaultLocale }) => {
     }
     if (action !== 'share') return;
 
+    setShareStatus('');
     const shareDetails = { title: document.title, url: window.location.href };
     if (typeof window.navigator.share === 'function') {
       try {
         await window.navigator.share(shareDetails);
+        setShareStatus(copy.shared);
         return;
       } catch (error) {
         if (error?.name === 'AbortError') return;
@@ -57,12 +86,14 @@ const Home = ({ locale = siteManifest.defaultLocale }) => {
     if (typeof window.navigator.clipboard?.writeText === 'function') {
       try {
         await window.navigator.clipboard.writeText(shareDetails.url);
+        setShareStatus(copy.copied);
         return;
       } catch {
         // A visible copy fallback below prevents a silent clipboard failure.
       }
     }
-    window.prompt('Copy this link', shareDetails.url);
+    setShareStatus(copy.copyManually);
+    window.prompt(copy.copyPrompt, shareDetails.url);
   };
 
   return (
@@ -70,7 +101,17 @@ const Home = ({ locale = siteManifest.defaultLocale }) => {
       <div className="gradient-background" />
 
       <div className="relative z-10">
-        <GlassHeader variant="public" title="Home" />
+        <GlassHeader variant="public" title={copy.title} />
+        {shareStatus ? (
+          <p
+            className="home-share-status"
+            role="status"
+            aria-live="polite"
+            data-testid="home-share-status"
+          >
+            {shareStatus}
+          </p>
+        ) : null}
         <HomeObsidianNavigation
           onNavigate={handleMenuItemClick}
           onUtilityAction={handleUtilityAction}

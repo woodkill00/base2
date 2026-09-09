@@ -850,6 +850,7 @@
         "digital_ocean/tests/test_env_check.py",
         "digital_ocean/tests/test_droplet_lookup.py",
         "digital_ocean/tests/test_provider_lease.py",
+        "digital_ocean/tests/test_provider_ready.py",
         "digital_ocean/tests/test_staging_tls_probe.py",
         "-q"
       ],
@@ -907,6 +908,7 @@
         "-m",
         "pytest",
         "digital_ocean/tests/test_deployment_evidence.py",
+        "digital_ocean/tests/test_validate_deployment_evidence.py",
         "digital_ocean/tests/test_dns_transaction.py",
         "digital_ocean/tests/test_owned_teardown.py",
         "-q"

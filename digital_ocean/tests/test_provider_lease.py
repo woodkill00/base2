@@ -126,7 +126,7 @@ def test_environment_rejects_source_remote_alias(tmp_path: Path, monkeypatch):
         "remote",
         "add",
         "provider-lease",
-        "ssh://git@example.invalid/owner/base2.git",
+        "https://example.invalid/owner/base2.git",
         cwd=controller,
     )
     monkeypatch.chdir(controller)
@@ -143,6 +143,8 @@ def test_environment_rejects_source_remote_alias(tmp_path: Path, monkeypatch):
         "https://example.invalid/lease.git?unsafe=1",
         "ext::sh -c unsafe",
         "file:///tmp/lease.git",
+        "git@example.invalid:owner/base2-lease.git",
+        "ssh://git@example.invalid/owner/base2-lease.git",
     ),
 )
 def test_network_remote_rejects_insecure_or_embedded_credentials(tmp_path: Path, url: str):
@@ -154,11 +156,49 @@ def test_network_remote_rejects_insecure_or_embedded_credentials(tmp_path: Path,
         GitRemoteLeaseStore(remote="provider-lease", repository=controller)
 
 
-def test_scp_remote_identity_is_canonicalized_without_credentials():
-    assert (
-        _network_remote_identity("git@example.invalid:owner/base2-lease.git")
-        == "example.invalid:owner/base2-lease"
+@pytest.mark.parametrize(
+    "url",
+    ("git@example.invalid:owner/base2-lease.git", "ssh://git@example.invalid/owner/base2.git"),
+)
+def test_ssh_remote_identity_is_not_accepted(url):
+    assert _network_remote_identity(url) is None
+
+
+def test_global_url_rewrite_cannot_change_local_https_remote(repositories, monkeypatch, tmp_path):
+    controller, _target = repositories
+    _git(
+        "remote",
+        "set-url",
+        "origin",
+        "https://example.invalid/owner/provider-lease.git",
+        cwd=controller,
     )
+    hostile = tmp_path / "hostile.gitconfig"
+    hostile.write_text(
+        '[url "ssh://attacker.invalid/"]\n\tinsteadOf = https://example.invalid/\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(hostile))
+    store = GitRemoteLeaseStore(repository=controller)
+    assert store.remote_url == "https://example.invalid/owner/provider-lease.git"
+
+
+def test_git_transport_environment_is_scrubbed(monkeypatch, tmp_path):
+    captured = {}
+
+    def run(*args, **kwargs):
+        captured.update(kwargs["env"])
+        return subprocess.CompletedProcess(args[0], 0, "", "")
+
+    monkeypatch.setenv("GIT_SSH_COMMAND", "sh -c hostile")
+    monkeypatch.setenv("GIT_PROXY_COMMAND", "sh -c hostile")
+    monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
+    monkeypatch.setattr(subprocess, "run", run)
+    _lease_git(["status"], cwd=tmp_path)
+    assert "GIT_SSH_COMMAND" not in captured
+    assert "GIT_PROXY_COMMAND" not in captured
+    assert captured["GIT_CONFIG_GLOBAL"] == "/dev/null"
+    assert captured["GIT_SSL_NO_VERIFY"] == "false"
 
 
 def test_missing_remote_and_git_transport_failure_are_terminal(tmp_path: Path, monkeypatch):

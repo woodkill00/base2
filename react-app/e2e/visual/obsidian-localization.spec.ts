@@ -12,6 +12,14 @@ test.beforeEach(async ({ page }) => {
       }
     };
     window.Date = FrozenDate as DateConstructor;
+    Object.defineProperty(window.navigator, 'share', {
+      configurable: true,
+      value: undefined,
+    });
+    Object.defineProperty(window.navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: async () => undefined },
+    });
   });
   await page.route('**/*', async (route) => {
     const target = new URL(route.request().url());
@@ -30,6 +38,8 @@ const cases = {
     openMenu: 'Base2-Befehlsmenü öffnen',
     openUtility: 'Base2-Schnellzugriffe öffnen',
     utilityList: 'Base2-Schnellzugriffe',
+    share: 'Base2-Schnellzugriff: Teilen',
+    copied: 'Link in die Zwischenablage kopiert.',
     search: 'Base2-Schnellzugriff: Suche',
   },
   'arabic-rtl-touch': {
@@ -38,6 +48,8 @@ const cases = {
     openMenu: 'فتح قائمة أوامر Base2',
     openUtility: 'فتح قائمة اختصارات Base2',
     utilityList: 'اختصارات Base2',
+    share: 'اختصار Base2: مشاركة',
+    copied: 'تم نسخ الرابط إلى الحافظة.',
     search: 'اختصار Base2: بحث',
   },
 } as const;
@@ -63,14 +75,21 @@ test('localized Obsidian navigation is actionable and reflows deterministically'
   await page.keyboard.press('Escape');
 
   await page.getByRole('button', { name: scenario.openUtility }).click();
-  const utilities = page.getByRole('listbox', { name: scenario.utilityList });
+  const utilities = page.getByRole('navigation', { name: scenario.utilityList });
   await expect(utilities).toBeVisible();
-  const disabled = utilities.getByRole('option', { name: /غير متاح|nicht verfügbar/ }).first();
+  const disabled = utilities.getByRole('button', { name: /غير متاح|nicht verfügbar/ }).first();
   await expect(disabled).toBeDisabled();
   await expect(utilities).toHaveScreenshot(`obsidian-utilities-${scenario.locale}.png`, {
     animations: 'disabled',
   });
 
-  await utilities.getByRole('option', { name: scenario.search, exact: true }).click();
+  await utilities.getByRole('button', { name: scenario.share, exact: true }).click();
+  const status = page.getByTestId('home-share-status');
+  await expect(status).toHaveText(scenario.copied);
+  await expect(status).toHaveScreenshot(`obsidian-share-status-${scenario.locale}.png`, {
+    animations: 'disabled',
+  });
+
+  await utilities.getByRole('button', { name: scenario.search, exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/${scenario.locale}/search$`));
 });

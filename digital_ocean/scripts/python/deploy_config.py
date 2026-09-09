@@ -14,6 +14,7 @@ TEMPLATE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 REGION = re.compile(r"^[a-z]{2,4}[0-9]{1,2}$")
 NAME = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 IMAGE = re.compile(r"^(?:[0-9]+|[a-z0-9][a-z0-9._-]{1,127})$")
+PROJECT = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 SENSITIVE = re.compile(r"(?:TOKEN|PASSWORD|SECRET|PRIVATE|SPACES_KEY|SSH_KEY_ID)$")
 
 KNOWN_DO_KEYS = {
@@ -148,11 +149,17 @@ def normalize_deploy_config(
         "DO_DROPLET_NAME": NAME,
         "DO_API_IMAGE": IMAGE,
         "DO_DROPLET_IMAGE": IMAGE,
+        "PROJECT_NAME": PROJECT,
     }
     for key, pattern in validators.items():
         value = normalized.get(key)
         if value is not None and not pattern.fullmatch(value):
             raise DeployConfigError(f"{key} is malformed")
+    if "DEPLOY_PATH" in normalized:
+        deploy_path = normalized["DEPLOY_PATH"]
+        if deploy_path not in {"/opt/apps", "/opt/apps/"}:
+            raise DeployConfigError("DEPLOY_PATH must be the canonical /opt/apps/ root")
+        normalized["DEPLOY_PATH"] = "/opt/apps/"
     unresolved = sorted(key for key, value in normalized.items() if "${" in value)
     if unresolved:
         raise DeployConfigError("unresolved template in: " + ", ".join(unresolved))

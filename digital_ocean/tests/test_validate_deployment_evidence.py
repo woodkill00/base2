@@ -19,7 +19,22 @@ def populate(root: Path, *, tests: bool = False) -> None:
     for index, name in enumerate(BASE_REQUIRED + (TEST_REQUIRED if tests else ())):
         target = root / ("nested" if index % 2 else "") / name
         target.parent.mkdir(parents=True, exist_ok=True)
-        content = f"{COMMIT}\n" if name == "post-deploy-head.txt" else f"evidence:{name}\n"
+        if name == "post-deploy-head.txt":
+            content = f"{COMMIT}\n"
+        elif name == "DO_userdata.json":
+            content = json.dumps(
+                {
+                    "droplet_id": 12345,
+                    "ip_address": "192.0.2.10",
+                    "user_data_sha256": "b" * 64,
+                }
+            )
+        elif name == "deploy-mode.json":
+            content = json.dumps({"effectiveMode": "full", "detectedExistingProviderId": None})
+        elif name == "bootstrap-packages.txt":
+            content = "ca-certificates=2026.1\ndocker.io=27.0.1\n"
+        else:
+            content = f"evidence:{name}\n"
         target.write_text(content, encoding="utf-8")
 
 
@@ -119,3 +134,32 @@ def test_cli_returns_bounded_failure_and_success(tmp_path, capsys):
     populate(tmp_path)
     assert main(["--root", str(tmp_path), "--source-commit", COMMIT]) == 0
     assert "remote-evidence-manifest.json" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("failure", ("raw-user-data", "bad-digest", "missing-id", "id-mismatch"))
+def test_provider_identity_and_user_data_digest_are_mandatory(tmp_path, failure):
+    populate(tmp_path)
+    userdata_path = next(tmp_path.rglob("DO_userdata.json"))
+    userdata = json.loads(userdata_path.read_text(encoding="utf-8"))
+    if failure == "raw-user-data":
+        userdata["user_data"] = "must-not-be-retained"
+    elif failure == "bad-digest":
+        userdata["user_data_sha256"] = "bad"
+    elif failure == "missing-id":
+        userdata.pop("droplet_id")
+    else:
+        mode_path = next(tmp_path.rglob("deploy-mode.json"))
+        mode_path.write_text(
+            json.dumps({"effectiveMode": "update-only", "detectedExistingProviderId": "999"}),
+            encoding="utf-8",
+        )
+    userdata_path.write_text(json.dumps(userdata), encoding="utf-8")
+    with pytest.raises(EvidenceError, match="provider"):
+        create_manifest(tmp_path, COMMIT, tests_required=False)
+
+
+def test_rejects_malformed_provider_identity_json(tmp_path):
+    populate(tmp_path)
+    next(tmp_path.rglob("DO_userdata.json")).write_text("{", encoding="utf-8")
+    with pytest.raises(EvidenceError, match="provider_evidence_invalid"):
+        create_manifest(tmp_path, COMMIT, tests_required=False)

@@ -1196,3 +1196,24 @@ fallback, visible prompt fallback, remote-lease configuration isolation,
 insecure transport rejection, bounded owner/TTL inputs, exact revision release,
 and Git transport failure. Focused UI and provider suites pass. The failed gate
 is historical; both exact-head gates restart only after a new commit.
+
+## Analysis cycle 52 — independent review rejects the twice-green candidate
+
+Exact commit `82df375cbbdb42ce83613883b949573de228dbcf` passed both
+107-check complete gates plus ten privacy/runtime and ten
+backup/release/deployment repetitions. Fresh independent review still returned
+UX C0/H0/M2/L0, data C0/H0/M1/L0, and combined
+code/security/operations C0/H0/M4/L2. The candidate is rejected and all of its
+automated evidence is historical.
+
+Review found that percent-encoded database authorities could validate
+differently from libpq, the public utility action rail claimed incomplete
+listbox semantics, localized share outcomes and titles were missing, paid
+provider activation could poll forever, the Git lease inherited ambient
+transport trust, unvalidated deployment names and paths entered root shell
+source, and required provider/bootstrap identities were not bound into terminal
+evidence. Documentation and dependency helpers also lagged the implementation.
+B371-B379 contain the deduplicated repair and proof set. No publication, merge,
+deployment, provider, DNS, certificate, credential, or destructive action is
+authorized; both exact gates, both repetition families, and all independent
+reviews restart only from a new clean repaired commit.

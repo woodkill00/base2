@@ -1878,6 +1878,7 @@ PY
 
   test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
   status "done" "remote verification complete at $EXPECTED_COMMIT"
+  install -m 600 /var/log/base2-bootstrap-packages.txt /root/logs/bootstrap-packages.txt
   date -u +"%Y-%m-%dT%H:%M:%SZ" > /root/logs/remote_verify.done
 fi
 '@
@@ -2236,7 +2237,7 @@ try {
     }
     $modeJson = ($modePayload | ConvertTo-Json -Depth 6)
     Set-Content -Path (Join-Path $dest 'deploy-mode.json') -Value $modeJson -Encoding UTF8
-  } catch {}
+  } catch { throw "Failed to write required deployment mode evidence: $($_.Exception.Message)" }
 
   # Reminder banner for UpdateOnly runs: ensure commit/push to origin/<DO_APP_BRANCH>
   if ($UpdateOnly -and -not $Full) {

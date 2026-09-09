@@ -28,10 +28,10 @@ class ProviderLeaseError(RuntimeError):
 
 def _network_remote_identity(value: str) -> str | None:
     parsed = urlsplit(value)
-    if parsed.scheme in {"https", "ssh"}:
+    if parsed.scheme == "https":
         if (
-            (parsed.scheme == "https" and (parsed.username or parsed.password))
-            or (parsed.scheme == "ssh" and parsed.password)
+            parsed.username
+            or parsed.password
             or not parsed.hostname
             or parsed.query
             or parsed.fragment
@@ -43,12 +43,6 @@ def _network_remote_identity(value: str) -> str | None:
         return f"{parsed.hostname.lower()}:{path.lstrip('/')}"
     if parsed.scheme:
         return None
-    scp = re.fullmatch(r"(?:[A-Za-z0-9._-]+@)?([A-Za-z0-9.-]+):([^\s]+)", value)
-    if scp:
-        path = scp.group(2).rstrip("/")
-        if path.endswith(".git"):
-            path = path[:-4]
-        return f"{scp.group(1).lower()}:{path.lstrip('/')}"
     return None
 
 
@@ -82,7 +76,25 @@ def _git(
     stdin: str | None = None,
     identity: bool = False,
 ) -> subprocess.CompletedProcess[str]:
-    environment = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_TERMINAL_PROMPT": "0"}
+    environment = dict(os.environ)
+    for name in tuple(environment):
+        if name.startswith("GIT_CONFIG_") or name in {
+            "GIT_SSH",
+            "GIT_SSH_COMMAND",
+            "GIT_PROXY_COMMAND",
+            "GIT_SSL_NO_VERIFY",
+            "GIT_SSL_CAINFO",
+        }:
+            environment.pop(name, None)
+    environment.update(
+        {
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_CONFIG_SYSTEM": os.devnull,
+            "GIT_CONFIG_GLOBAL": os.devnull,
+            "GIT_TERMINAL_PROMPT": "0",
+            "GIT_SSL_NO_VERIFY": "false",
+        }
+    )
     if identity:
         environment.update(
             {
@@ -115,12 +127,24 @@ class GitRemoteLeaseStore:
             raise ProviderLeaseError("provider_lease_remote_invalid")
         self.remote = remote
         self.repository = (repository or Path.cwd()).resolve()
-        resolved = _git(["remote", "get-url", "--push", remote], cwd=self.repository)
-        self.remote_url = resolved.stdout.strip()
-        if resolved.returncode or not self.remote_url or "\n" in self.remote_url:
+        push_url = _git(
+            ["config", "--local", "--get", f"remote.{remote}.pushurl"],
+            cwd=self.repository,
+        )
+        configured = push_url
+        if push_url.returncode:
+            configured = _git(
+                ["config", "--local", "--get", f"remote.{remote}.url"],
+                cwd=self.repository,
+            )
+        self.remote_url = configured.stdout.strip()
+        if configured.returncode or not self.remote_url or "\n" in self.remote_url:
             raise ProviderLeaseError("provider_lease_remote_unavailable")
         self.remote_identity = _network_remote_identity(self.remote_url)
-        if urlsplit(self.remote_url).scheme and self.remote_identity is None:
+        scp_transport = re.fullmatch(
+            r"(?:[A-Za-z0-9._-]+@)?[A-Za-z0-9.-]+:[^\s]+", self.remote_url
+        )
+        if (urlsplit(self.remote_url).scheme or scp_transport) and self.remote_identity is None:
             raise ProviderLeaseError("provider_lease_remote_unsafe")
 
     @classmethod
@@ -131,7 +155,15 @@ class GitRemoteLeaseStore:
         store = cls(remote=remote)
         if store.remote_identity is None:
             raise ProviderLeaseError("provider_lease_remote_not_shared")
-        source = _git(["remote", "get-url", "--push", "origin"], cwd=store.repository)
+        source = _git(
+            ["config", "--local", "--get", "remote.origin.pushurl"],
+            cwd=store.repository,
+        )
+        if source.returncode:
+            source = _git(
+                ["config", "--local", "--get", "remote.origin.url"],
+                cwd=store.repository,
+            )
         source_identity = (
             _network_remote_identity(source.stdout.strip()) if not source.returncode else None
         )

@@ -82,11 +82,11 @@ describe('Home page (public)', () => {
     );
 
     openUtilities();
-    fireEvent.click(screen.getByRole('option', { name: 'Base2-Schnellzugriff: Sicherheit' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Base2-Schnellzugriff: Sicherheit' }));
     expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
 
     openUtilities();
-    fireEvent.click(screen.getByRole('option', { name: 'Base2-Schnellzugriff: Suche' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Base2-Schnellzugriff: Suche' }));
     expect(screen.getByTestId('location-probe')).toHaveTextContent('/de/search');
     delete Element.prototype.scrollIntoView;
   });
@@ -104,10 +104,11 @@ describe('Home page (public)', () => {
     );
 
     openUtilities();
-    fireEvent.click(screen.getByRole('option', { name: 'Base2 utility: Share' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Base2 utility: Share' }));
     await waitFor(() => expect(share).toHaveBeenCalledTimes(1));
+    expect(screen.getByTestId('home-share-status')).toHaveTextContent('Link shared.');
     openUtilities();
-    fireEvent.click(screen.getByRole('option', { name: 'Base2 utility: Share' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Base2 utility: Share' }));
     await waitFor(() => expect(share).toHaveBeenCalledTimes(2));
   });
 
@@ -125,18 +126,26 @@ describe('Home page (public)', () => {
     });
     render(
       <TestMemoryRouter>
-        <Home />
+        <Home locale="de" />
       </TestMemoryRouter>
     );
 
     openUtilities();
-    fireEvent.click(screen.getByRole('option', { name: 'Base2 utility: Share' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Base2-Schnellzugriff: Teilen' }));
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(prompt).not.toHaveBeenCalled();
+    expect(screen.getByTestId('home-share-status')).toHaveTextContent(
+      'Link in die Zwischenablage kopiert.'
+    );
 
     openUtilities();
-    fireEvent.click(screen.getByRole('option', { name: 'Base2 utility: Share' }));
-    await waitFor(() => expect(prompt).toHaveBeenCalledWith('Copy this link', expect.any(String)));
+    fireEvent.click(screen.getByRole('button', { name: 'Base2-Schnellzugriff: Teilen' }));
+    await waitFor(() =>
+      expect(prompt).toHaveBeenCalledWith('Diesen Link kopieren', expect.any(String))
+    );
+    expect(screen.getByTestId('home-share-status')).toHaveTextContent(
+      'Kopieren Sie den Link aus dem geöffneten Dialog.'
+    );
     prompt.mockRestore();
   });
 });

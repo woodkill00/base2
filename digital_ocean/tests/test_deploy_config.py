@@ -95,6 +95,47 @@ def test_repository_url_accepts_public_credential_free_https():
     assert result["REPO_URL"] == "https://github.com/example/base2.git"
 
 
+@pytest.mark.parametrize(
+    "project_name",
+    (
+        "Bad_Name",
+        "bad name",
+        "bad'name",
+        'bad"name',
+        "bad\nname",
+        "$(id)",
+        "bad;id",
+        "../bad",
+    ),
+)
+def test_project_name_rejects_shell_and_path_syntax(project_name):
+    with pytest.raises(DeployConfigError, match="PROJECT_NAME"):
+        normalize_deploy_config({"PROJECT_NAME": project_name})
+
+
+@pytest.mark.parametrize(
+    "deploy_path",
+    (
+        "/opt/apps/../root/",
+        "/opt/apps/$(id)/",
+        "/opt/apps/;id",
+        "/tmp/apps/",
+        "opt/apps/",
+        "/opt//apps/",
+        "/opt/apps/'",
+        "/opt/apps/\nroot/",
+    ),
+)
+def test_deploy_path_rejects_noncanonical_or_shell_syntax(deploy_path):
+    with pytest.raises(DeployConfigError, match="DEPLOY_PATH"):
+        normalize_deploy_config({"DEPLOY_PATH": deploy_path})
+
+
+@pytest.mark.parametrize("deploy_path", ("/opt/apps", "/opt/apps/"))
+def test_deploy_path_normalizes_to_fixed_root(deploy_path):
+    assert normalize_deploy_config({"DEPLOY_PATH": deploy_path})["DEPLOY_PATH"] == "/opt/apps/"
+
+
 def test_secret_redaction_never_returns_values():
     redacted = redact_config(
         {
@@ -203,6 +244,28 @@ def test_provider_dependencies_are_hash_locked_and_bootstrap_versions_are_attest
     assert "git clone" not in bootstrap
     assert "nodesource.com" not in bootstrap
     assert "curl -fsSL" not in bootstrap
+    bash_helper = (root / "scripts/bash/install-python-deps.sh").read_text(encoding="utf-8")
+    powershell_helper = (root / "scripts/powershell/install-python-deps.ps1").read_text(
+        encoding="utf-8"
+    )
+    for helper in (bash_helper, powershell_helper):
+        assert "digital_ocean/requirements.lock" in helper
+        assert "digital_ocean/requirements.txt" not in helper
+        assert "--require-hashes" in helper
+
+
+def test_provider_activation_and_terminal_evidence_are_bounded_and_required():
+    root = Path(__file__).resolve().parents[2]
+    orchestrator = (root / "digital_ocean/scripts/python/orchestrate_deploy.py").read_text(
+        encoding="utf-8"
+    )
+    deploy = (root / "digital_ocean/scripts/powershell/deploy.ps1").read_text(encoding="utf-8")
+    assert "wait_for_active_public_ipv4(" in orchestrator
+    assert "while True:" not in orchestrator[orchestrator.index('stage("create droplet")') :]
+    assert '"provider-create-outcome.json"' in orchestrator
+    assert "required=True" in orchestrator
+    assert "bootstrap-packages.txt" in deploy
+    assert "Failed to write required deployment mode evidence" in deploy
 
 
 def test_htpasswd_validation_failure_is_terminal():

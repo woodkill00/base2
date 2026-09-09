@@ -132,6 +132,11 @@ def test_production_migration_role_accepts_only_verified_external_database(monke
         'postgresql://owner:secret@postgres:5432/app',
         'postgresql://owner:secret@localhost:5432/app',
         'postgresql://owner:secret@localhost.:5432/app',
+        'postgresql://owner:secret@%6cocalhost:5432/app',
+        'postgresql://owner:secret@localhost%2e:5432/app',
+        'postgresql://owner:secret@127%2e0%2e0%2e1:5432/app',
+        'postgresql://owner:secret@%31%32%37.0.0.1:5432/app',
+        'postgresql://owner:secret@%3a%3affff%3a127.0.0.1:5432/app',
         'postgresql://owner:secret@127.0.0.1:5432/app',
         'postgresql://owner:secret@[::1]:5432/app',
         'postgresql://owner:secret@[::ffff:127.0.0.1]:5432/app',
@@ -173,7 +178,19 @@ def test_production_accepts_verified_external_database_url(monkeypatch):
 
 @pytest.mark.parametrize(
     'database_host',
-    ('localhost.', '::1', '::ffff:127.0.0.1', '0.0.0.0', '169.254.1.1', '10.0.0.1'),
+    (
+        'localhost.',
+        '%6cocalhost',
+        'localhost%2e',
+        '127%2e0%2e0%2e1',
+        '%31%32%37.0.0.1',
+        '%3a%3affff%3a127.0.0.1',
+        '::1',
+        '::ffff:127.0.0.1',
+        '0.0.0.0',
+        '169.254.1.1',
+        '10.0.0.1',
+    ),
 )
 @pytest.mark.parametrize('role', ('api', 'runtime-worker', 'migration'))
 def test_production_rejects_canonical_local_database_host(monkeypatch, database_host, role):
