@@ -1400,3 +1400,90 @@ access instead of duplicating a privileged ACL verifier in the evidence runner.
 B410 restarts all exact evidence and reviews from a new clean commit and raises
 final acceptance to zero findings at every severity. No publication or external
 action is authorized by the rejected candidate.
+
+## Analysis cycle 64 — hosted CI parity rejects the published draft
+
+Draft PR #55 at exact commit `03cbfc9cbf3a0fd218f2c159c01da09d0567e9cd`
+was correctly rejected by hosted CI despite two green 108-check local gates,
+twenty persisted exact-source repetitions, and zero-finding independent reviews.
+The hosted environment exposed four deterministic parity gaps: API typing relied
+on an untracked PyYAML stub, the workflow replaced pinned tooling with mutable
+latest installs, Django typing was absent locally and found an invalid inferred
+database-settings shape, and both integration and disposable stacks violated the
+required role-bootstrap -> API-migration -> Django-migration order. The E2E and
+smoke jobs therefore stopped before any browser or HTTP assertion, while the
+backend integration job omitted the migration that creates the fenced email
+enqueue function.
+
+B411-B417 make development and CI tool dependencies exact, add Django typing to
+the complete gate, enforce one schema bootstrap DAG in backend CI and the fresh
+Compose stack, exercise email enqueue and delivery through their distinct
+least-privilege roles, retain migration-specific failure logs, and add repository
+contracts for every ordering decision. The published candidate and all earlier
+green evidence are rejected. A new clean commit must pass fresh local gates,
+fresh-volume E2E/smoke, persisted repetitions, zero-finding reviews, and every
+required GitHub check before readiness can be reconsidered. Merge, deployment,
+provider, DNS, certificate, credential, and destructive authority remain absent.
+
+## Analysis cycle 65 — fresh-volume readiness exposes stale ledger authority
+
+The corrected disposable migration graph completed both API and Django ledgers
+from a new empty volume, proving the original crash fixed. Runtime startup then
+failed closed at API schema readiness: the dedicated API role could read the API
+ledger but had no permission to read Django's ledger. Inspection also found that
+readiness accepted API migration 012 and Django migration 0031 even though newer
+required migrations existed. The failed fresh-volume run is retained as
+historical evidence and does not authorize release.
+
+B418-B420 add a reversible forward migration granting only `SELECT` on the
+non-secret Django migration ledger to the API runtime role, bind readiness to the
+actual latest required API and Django migrations, and require a second empty-
+volume stack plus role-negative checks before exact evidence restarts. No owner,
+DDL, table-data, bypass-RLS, publication, merge, deployment, or provider
+authority is added.
+
+## Analysis cycle 66 — disposable-stack host-port collision
+
+The second fresh-volume stack reached a healthy least-privilege API after the
+ledger-readiness correction, but the frontend could not bind host port 8080
+because a separate existing local Base2 test stack already owned it. This is an
+environment isolation defect, not a product or migration failure; the existing
+stack was preserved rather than stopped or destroyed.
+
+B421-B422 retain CI's documented default ports while allowing an explicit local
+E2E host-port namespace, and prove the disposable stack can coexist without
+mutating unrelated containers. Container ports, service URLs inside the graph,
+and hosted CI behavior remain unchanged.
+
+## Analysis cycle 67 — browser test-support role isolation
+
+The isolated-port fresh stack became healthy and smoke-ready. Playwright then
+rejected both email-token scenarios because the legacy test-support route tried
+to read the outbox through the now-correct least-privilege API process. Granting
+the API direct outbox reads would undo the production boundary, so that path is
+rejected.
+
+B423-B425 place the single keyed outbox inspection route in a synthetic-only
+application process using the existing email-worker read role, expose it only on
+host loopback in the disposable Compose file, and direct Playwright alone to its
+separate endpoint. The synthetic application fails startup unless explicit E2E
+mode and key are present, publishes no docs or OpenAPI surface, and is absent
+from production Compose and deployment paths. Fresh browser and negative-route
+tests must pass before exact evidence restarts.
+
+## Analysis cycle 68 — full-gate reversed-function inspection
+
+The first repaired full gate rejected two deterministic proof defects. The
+surface-drift lock correctly detected the intentional complete-gate manifest
+change. PostgreSQL acceptance also proved that the reversed API-role checker
+tried to resolve privileges for the intentionally absent enqueue function after
+it had already verified absence; PostgreSQL rejects that undefined signature
+before returning a boolean. Neither defect changes runtime authority, and the
+failed gate is retained as evidence.
+
+B426-B428 make the privilege assertion conditional on the forward state while
+retaining the explicit absence assertion in the reversed state, add a local
+contract for that branch, refresh the generated surface lock only after the
+manifest is final, and require the affected acceptance checks plus a new full
+gate. Release evidence remains invalid until a clean candidate passes the whole
+exact-source sequence and hosted CI.

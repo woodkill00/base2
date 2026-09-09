@@ -2,3 +2,4 @@
 # Uses the compiled Django requirements.
 
 -r django/requirements.txt
+mypy==1.11.2

@@ -317,7 +317,7 @@ def db_schema_ready() -> bool:
                      EXISTS (
                        SELECT 1 FROM django_migrations
                         WHERE app='sitecontent'
-                          AND name='0031_data_rights_worker_scope'
+                          AND name='0033_api_schema_readiness'
                      ),
                      EXISTS (
                        SELECT 1 FROM django_migrations
@@ -326,7 +326,7 @@ def db_schema_ready() -> bool:
                      ),
                      EXISTS (
                        SELECT 1 FROM api_schema_migrations
-                        WHERE version='012_add_data_rights_claim_fencing'
+                        WHERE version='013_add_global_data_rights_operations'
                      )"""
             )
             row = cur.fetchone()

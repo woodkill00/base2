@@ -536,3 +536,36 @@ substitute for the integration proof named by the task.
 - [ ] B408 Fail the WSL/Linux-owned exact-repetition runner closed on native Windows before creating any evidence path, rather than treating chmod as a Windows privacy boundary. (FR-005, FR-007, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-074, FR-078)
 - [ ] B409 Prove unsupported native-Windows execution creates no artifact root, reads no source, and returns only a sanitized terminal platform error. (FR-005, FR-007, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-074, FR-078)
 - [ ] B410 Restart all exact gates, repetitions, and independent reviews from a new candidate; accept closeout only when every reviewer reports zero critical, high, medium, and low findings. (FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 41 — Hosted CI parity cycle 64 corrections
+
+- [ ] B411 Replace mutable CI type-tool installation and conflicting development pins with exact service-specific dependency sets, including the required PyYAML stubs, and prove fresh installs pass dependency checks. (FR-005, FR-014, FR-031, FR-059, FR-060, FR-063, FR-065, FR-068, FR-078)
+- [ ] B412 Give Django database settings an explicit truthful nested value type, add pinned Django MyPy to its development environment and complete gate, and require both API and Django typing in local and hosted acceptance. (FR-005, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-078)
+- [ ] B413 Add an owner-scoped, non-serving API migration service to the disposable E2E graph and require successful roles -> API migrations -> Django migrations before any runtime service, browser test, or smoke probe. (FR-005, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-073, FR-078)
+- [ ] B414 Make backend integration use the same complete bounded-role bootstrap and migration order, forbidding the incomplete targeted Django migration that omitted runtime functions. (FR-005, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-073, FR-078)
+- [ ] B415 Exercise email enqueue as the API runtime and inspection, claim, and settlement as the email worker without granting either role owner authority or direct privileges outside its duty. (FR-005, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-073, FR-078)
+- [ ] B416 Add workflow and Compose contracts for exact tool pins, complete migration ordering, owner-only migration services, and migration-targeted failure evidence so these hosted-only failures become local release blockers. (FR-002, FR-005, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B417 Commit a new clean candidate, rerun both complete gates, fresh-volume E2E and smoke, exact-source repetitions, independent reviews, and all hosted checks; accept readiness only with zero findings and no skipped user-visible lane. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 42 — Fresh-volume readiness cycle 65 corrections
+
+- [ ] B418 Add a reversible owner-applied migration granting the API runtime only read access to Django's non-secret migration ledger, retaining all existing least-privilege and RLS boundaries. (FR-005, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-073, FR-078)
+- [ ] B419 Bind API schema readiness to the exact latest required API and Django migration identifiers so an incomplete predecessor cannot report healthy. (FR-002, FR-005, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B420 Recreate the disposable database from empty storage and prove migration completion, healthy runtime startup, ledger-only API visibility, and continued denial of owner, DDL, unrelated table, and bypass-RLS authority. (FR-002, FR-005, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-073, FR-078)
+
+## Phase 43 — Disposable-stack isolation cycle 66 corrections
+
+- [ ] B421 Parameterize only the disposable stack's host API and web ports with documented unchanged CI defaults so parallel local validation cannot require stopping an unrelated stack. (FR-004, FR-005, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B422 Re-run the empty-volume stack in an isolated host-port namespace, preserving the pre-existing local stack, and complete health, smoke, browser, migration, and role-boundary proof. (FR-002, FR-004, FR-005, FR-014, FR-031, FR-060, FR-063 through FR-065, FR-068, FR-071, FR-075, FR-078)
+
+## Phase 44 — Synthetic test-support isolation cycle 67 corrections
+
+- [ ] B423 Remove test-only outbox inspection from the normal API authority path and expose only that keyed route through a synthetic application which fails closed outside explicit E2E mode. (FR-005, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-073, FR-078)
+- [ ] B424 Run the synthetic route under the bounded email-worker read role on a loopback-only disposable port, with no docs, OpenAPI, production Compose, deployment, or unrelated API surface. (FR-005, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-073, FR-078)
+- [ ] B425 Point browser acceptance explicitly at the isolated synthetic endpoint and prove key rejection, production absence, successful token workflows, and continued denial of direct outbox reads to the API runtime. (FR-002, FR-005, FR-014, FR-019, FR-031, FR-060, FR-063 through FR-065, FR-068, FR-071, FR-075, FR-078)
+
+## Phase 45 — Full-gate cycle 68 corrections
+
+- [ ] B426 Keep the reversed API-role proof on explicit function absence without resolving privileges for an undefined signature, while the forward proof still requires exact API-role execute authority. (FR-005, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-073, FR-078)
+- [ ] B427 Add a contract for the forward-only privilege lookup and regenerate the surface-drift lock from the final manifest without weakening drift detection. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B428 Re-run PostgreSQL acceptance, surface drift, the full complete gate, and all exact-candidate evidence only after both cycle-68 defects pass locally. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)

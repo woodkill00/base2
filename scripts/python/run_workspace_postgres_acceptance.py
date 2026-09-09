@@ -403,6 +403,7 @@ def main() -> None:
         run(django_migration + ["0031", "--noinput"], stdout=subprocess.DEVNULL)
         run(role_check + ["api-reversed"])
         run(django_migration + ["0032", "--noinput"], stdout=subprocess.DEVNULL)
+        run(django_migration + ["0033", "--noinput"], stdout=subprocess.DEVNULL)
         run(role_check + ["api-forward"])
         run(django_migration + ["0009", "--noinput"], stdout=subprocess.DEVNULL)
         run(role_check + ["reversed"])

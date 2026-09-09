@@ -2,4 +2,4 @@
 # Uses the compiled API requirements.
 
 -r api/requirements.txt
-mypy==2.3.1
+types-PyYAML==6.0.12.20241230

@@ -142,11 +142,20 @@ class WorkspacePostgresContractTests(unittest.TestCase):
     def test_e2e_stack_bootstraps_roles_before_migration_and_separates_runtime_users(self):
         compose = (ROOT / "e2e/docker-compose.e2e.yml").read_text()
         self.assertIn("  workspace-db-role:", compose)
+        self.assertIn("  api-migrate:", compose)
+        self.assertIn("entrypoint: ['python', '-m', 'api.scripts.migrate']", compose)
         self.assertIn(
             "../postgres/bootstrap-workspace-role.sh:/bootstrap-workspace-role.sh:ro", compose
         )
         self.assertIn(
             "workspace-db-role:\n        condition: service_completed_successfully", compose
+        )
+        django_migrate = compose[
+            compose.index("  django-migrate:") : compose.index("  api:")
+        ]
+        self.assertIn(
+            "api-migrate:\n        condition: service_completed_successfully",
+            django_migrate,
         )
         self.assertIn("WORKSPACE_DB_USER: base2_workspace_runtime_e2e", compose)
         self.assertIn("WORKSPACE_WORKER_DB_USER: base2_workspace_worker_e2e", compose)
@@ -157,11 +166,26 @@ class WorkspacePostgresContractTests(unittest.TestCase):
         self.assertIn("RUNTIME_WORKER_DB_PASSWORD: e2e_runtime_worker_password", compose)
         self.assertIn("EMAIL_WORKER_DB_PASSWORD: e2e_email_worker_password", compose)
         role_block = compose[
-            compose.index("  workspace-db-role:") : compose.index("  django-migrate:")
+            compose.index("  workspace-db-role:") : compose.index("  api-migrate:")
         ]
         self.assertNotIn("ports:", role_block)
         self.assertIn("read_only: true", role_block)
         self.assertIn("cap_drop: [ALL]", role_block)
+        api_migrate_block = compose[
+            compose.index("  api-migrate:") : compose.index("  django-migrate:")
+        ]
+        self.assertNotIn("ports:", api_migrate_block)
+        self.assertIn("DB_USER: e2e", api_migrate_block)
+        self.assertIn("read_only: true", api_migrate_block)
+        self.assertIn("cap_drop: [ALL]", api_migrate_block)
+        support_block = compose[
+            compose.index("  test-support:") : compose.index("  celery-worker:")
+        ]
+        self.assertIn("DB_USER: base2_email_worker_e2e", support_block)
+        self.assertIn("api.test_support_main:app", support_block)
+        self.assertIn("127.0.0.1:${E2E_TEST_SUPPORT_PORT:-5002}:5002", support_block)
+        self.assertNotIn("base2_api_runtime_e2e", support_block)
+        self.assertIn("read_only: true", support_block)
 
     def test_acceptance_is_disposable_synthetic_and_checks_hostile_paths(self):
         runner = (ROOT / "scripts/python/run_workspace_postgres_acceptance.py").read_text()
@@ -201,8 +225,24 @@ class WorkspacePostgresContractTests(unittest.TestCase):
         ):
             self.assertIn(marker, checks)
 
+        role_checks = (
+            ROOT / "scripts/python/run_workspace_role_migration_checks.py"
+        ).read_text()
+        for marker in (
+            "has_schema_privilege",
+            "0033_api_schema_readiness",
+            "013_add_global_data_rights_operations",
+            "if forward:\n                    cursor.execute(\n                        \"SELECT has_function_privilege",
+        ):
+            self.assertIn(marker, role_checks)
+
         self.assertIn("run(api_migration", runner)
         self.assertLess(runner.index("run(api_migration"), runner.index("django_migration ="))
+        api_reverse = runner.index('django_migration + ["0031", "--noinput"]')
+        api_forward = runner.index('django_migration + ["0033", "--noinput"]')
+        self.assertLess(api_reverse, runner.index('role_check + ["api-reversed"]'))
+        self.assertLess(runner.index('django_migration + ["0032", "--noinput"]'), api_forward)
+        self.assertLess(api_forward, runner.index('role_check + ["api-forward"]'))
 
         self.assertIn('django_migration + ["0009", "--noinput"]', runner)
         self.assertIn('role_check + ["reversed"]', runner)

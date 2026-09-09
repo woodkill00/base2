@@ -325,6 +325,17 @@ class CompleteGateTests(unittest.TestCase):
             commands["api-typecheck"],
         )
         self.assertEqual(
+            [
+                "{python-django}",
+                "-m",
+                "mypy",
+                "--exclude",
+                ".*/migrations/.*",
+                "django",
+            ],
+            commands["django-typecheck"],
+        )
+        self.assertEqual(
             ["npm", "--prefix", "react-app", "audit", "--audit-level=moderate"],
             commands["frontend-production-audit"],
         )

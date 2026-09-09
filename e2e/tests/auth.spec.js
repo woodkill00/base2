@@ -58,12 +58,17 @@ function apiUrl(path) {
   return `${apiBase()}/api${path}`;
 }
 
+function testSupportUrl(path) {
+  const base = process.env.E2E_TEST_SUPPORT_URL || 'http://localhost:5002';
+  return `${base}/api${path}`;
+}
+
 function e2eKey() {
   return process.env.E2E_TEST_KEY || 'local-e2e-key';
 }
 
 async function fetchLatestOutboxEmail(request, toEmail, subjectContains) {
-  const url = `${apiUrl('/test-support/outbox/latest')}?to_email=${encodeURIComponent(
+  const url = `${testSupportUrl('/test-support/outbox/latest')}?to_email=${encodeURIComponent(
     toEmail
   )}&subject_contains=${encodeURIComponent(subjectContains)}`;
   const r = await request.get(url, { headers: { 'x-e2e-key': e2eKey() } });

@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 from project.site_manifest import load_runtime_manifest
 
@@ -97,7 +98,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "project.wsgi:application"
 
-DATABASES = {
+DATABASES: dict[str, dict[str, Any]] = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": os.environ.get("DB_NAME"),

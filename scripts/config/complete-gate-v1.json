@@ -203,6 +203,14 @@
       "requiredTools": ["{python-api}"]
     },
     {
+      "id": "django-typecheck",
+      "command": ["{python-django}", "-m", "mypy", "--exclude", ".*/migrations/.*", "django"],
+      "required": true,
+      "timeoutSeconds": 120,
+      "dependsOn": ["feature-093-plan"],
+      "requiredTools": ["{python-django}"]
+    },
+    {
       "id": "api-lint",
       "command": ["{python-api}", "-m", "ruff", "check", "api"],
       "required": true,

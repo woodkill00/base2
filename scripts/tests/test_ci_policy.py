@@ -73,6 +73,28 @@ class CiPolicyTests(unittest.TestCase):
         findings = self.policy.validate(repo_root, policy)
         self.assertEqual([], findings)
 
+    def test_backend_ci_uses_pinned_dev_tools_and_complete_schema_order(self):
+        repo_root = MODULE_PATH.parents[2]
+        workflow = (repo_root / ".github/workflows/ci-backend.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("python -m pip install -r requirements-dev-api.txt", workflow)
+        self.assertIn("python -m pip install -r requirements-dev-django.txt", workflow)
+        self.assertIn("python -m pip check", workflow)
+        self.assertNotIn("python -m pip install ruff mypy", workflow)
+        self.assertIn("python -m mypy api", workflow)
+        self.assertIn("python -m mypy --exclude '.*/migrations/.*' django", workflow)
+        bootstrap = workflow.index("/bin/sh postgres/bootstrap-workspace-role.sh")
+        api_migrate = workflow.index("python -m api.scripts.migrate", bootstrap)
+        django_migrate = workflow.index("python manage.py migrate --noinput", api_migrate)
+        integration = workflow.index("pytest -q -m integration", django_migrate)
+        self.assertLess(bootstrap, api_migrate)
+        self.assertLess(api_migrate, django_migrate)
+        self.assertLess(django_migrate, integration)
+        self.assertNotIn("manage.py migrate api_schema", workflow)
+        self.assertIn('DB_USER="$API_RUNTIME_DB_USER"', workflow)
+        self.assertIn("EMAIL_WORKER_DB_USER: ci_email_worker", workflow)
+
     def test_media_inspector_build_inputs_are_immutable_and_scanned(self):
         repo_root = MODULE_PATH.parents[2]
         dockerfile = (repo_root / "api/Dockerfile.media-inspector").read_text(encoding="utf-8")
@@ -268,7 +290,7 @@ class CiPolicyTests(unittest.TestCase):
         self.assertNotIn("public.ecr.aws/docker/library", compose)
         self.assertNotIn("image: postgres:", compose)
         self.assertNotIn("image: redis:", compose)
-        self.assertEqual(7, compose.count("mirror.gcr.io/library"))
+        self.assertEqual(10, compose.count("mirror.gcr.io/library"))
         self.assertEqual(2, compose.count("mirror.gcr.io/library/postgres@sha256:"))
         self.assertEqual(1, compose.count("mirror.gcr.io/library/redis@sha256:"))
 
