@@ -56,6 +56,11 @@ def _digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _require_supported_platform() -> None:
+    if os.name != "posix":
+        raise RepetitionError("repetition_platform_unsupported")
+
+
 def _source_commit(root: Path) -> str:
     result = subprocess.run(
         ["git", "rev-parse", "HEAD"],
@@ -308,6 +313,7 @@ def _persist_failure(
 
 
 def run(root: Path | None = None) -> Path:
+    _require_supported_platform()
     project_root = (root or Path(__file__).resolve().parents[3]).resolve()
     _require_clean(project_root)
     commit = _source_commit(project_root)

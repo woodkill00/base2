@@ -93,6 +93,13 @@ def test_source_commit_is_exact_and_fail_closed(tmp_path, monkeypatch):
         repetitions._source_commit(tmp_path)
 
 
+def test_native_windows_fails_before_evidence_creation(tmp_path, monkeypatch):
+    monkeypatch.setattr(repetitions, "os", SimpleNamespace(name="nt"))
+    with pytest.raises(repetitions.RepetitionError, match="platform_unsupported"):
+        repetitions.run(tmp_path)
+    assert not (tmp_path / ".artifacts").exists()
+
+
 def test_structurally_invalid_existing_manifest_is_rejected(tmp_path, monkeypatch):
     commit = "f" * 40
     monkeypatch.setattr(repetitions, "REPETITIONS", 1)

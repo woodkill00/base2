@@ -1385,3 +1385,18 @@ PostgreSQL acceptance passed. The sole rejection was changed-line coverage at
 non-directory evidence-ancestor rejection. The threshold is neither lowered nor
 rounded, and exact-commit evidence remains blocked until the next full gate is
 green.
+
+## Analysis cycle 63 — native-Windows evidence privacy review
+
+Fresh UX and data reviews accepted exact commit `6dd7f3d3` with no findings.
+Operations/security accepted publication with C0/H0/M0/L1: native Windows would
+skip POSIX ownership/mode enforcement for repetition evidence, while chmod is
+not a SID/DACL privacy guarantee. Current WSL evidence is private and valid, but
+the reusable candidate is rejected to close the residual.
+
+The repository's operational boundary mandates WSL Bash for this workflow.
+B408-B409 therefore fail native-Windows execution before source or artifact
+access instead of duplicating a privileged ACL verifier in the evidence runner.
+B410 restarts all exact evidence and reviews from a new clean commit and raises
+final acceptance to zero findings at every severity. No publication or external
+action is authorized by the rejected candidate.

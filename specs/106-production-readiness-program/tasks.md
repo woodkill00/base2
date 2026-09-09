@@ -530,3 +530,9 @@ substitute for the integration proof named by the task.
 ## Phase 39 — Exact coverage cycle 62 correction
 
 - [ ] B407 Directly prove a non-directory repetition-evidence ancestor is rejected so the complete tree clears the exact unchanged 90% changed-line floor without rounding or exclusion. (FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+
+## Phase 40 — Native-Windows evidence boundary cycle 63 correction
+
+- [ ] B408 Fail the WSL/Linux-owned exact-repetition runner closed on native Windows before creating any evidence path, rather than treating chmod as a Windows privacy boundary. (FR-005, FR-007, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-074, FR-078)
+- [ ] B409 Prove unsupported native-Windows execution creates no artifact root, reads no source, and returns only a sanitized terminal platform error. (FR-005, FR-007, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-074, FR-078)
+- [ ] B410 Restart all exact gates, repetitions, and independent reviews from a new candidate; accept closeout only when every reviewer reports zero critical, high, medium, and low findings. (FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
