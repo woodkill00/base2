@@ -287,3 +287,21 @@ def test_private_evidence_root_rejects_symlinked_ancestor(tmp_path):
     (project / ".artifacts").symlink_to(outside, target_is_directory=True)
     with pytest.raises(repetitions.RepetitionError, match="root_invalid"):
         repetitions._private_evidence_root(project)
+
+
+def test_existing_evidence_rejects_permission_drift(tmp_path, monkeypatch):
+    commit = "8" * 40
+    monkeypatch.setattr(repetitions, "REPETITIONS", 1)
+    monkeypatch.setattr(repetitions, "SUITES", {"suite": ("fixture",)})
+    _prepare_run(monkeypatch, commit)
+
+    class Result:
+        returncode = 0
+        stdout = "passed\n"
+        stderr = ""
+
+    monkeypatch.setattr(repetitions.subprocess, "run", lambda *_args, **_kwargs: Result())
+    result = repetitions.run(tmp_path)
+    result.chmod(0o644)
+    with pytest.raises(repetitions.RepetitionError, match="permissions_invalid"):
+        repetitions.run(tmp_path)

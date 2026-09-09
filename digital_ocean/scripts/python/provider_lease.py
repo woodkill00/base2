@@ -15,9 +15,11 @@ import hashlib
 import json
 import os
 import re
+import stat
 import subprocess
 import tempfile
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -152,6 +154,59 @@ def _credential_broker(raw_path: str) -> Path:
     return resolved
 
 
+def _validate_private_path(path: Path) -> None:
+    if os.name == "nt":
+        if not _windows_broker_acl_restrictive(path):
+            raise ProviderLeaseError("provider_lease_private_temp_invalid")
+        return
+    try:
+        metadata = path.stat()
+        if metadata.st_uid != os.getuid() or metadata.st_mode & 0o077:
+            raise ProviderLeaseError("provider_lease_private_temp_invalid")
+        current = path.parent
+        while True:
+            parent_metadata = current.stat()
+            unsafe_write = parent_metadata.st_mode & 0o022
+            if unsafe_write and not parent_metadata.st_mode & stat.S_ISVTX:
+                raise ProviderLeaseError("provider_lease_private_temp_invalid")
+            if parent_metadata.st_uid not in {0, os.getuid()}:
+                raise ProviderLeaseError("provider_lease_private_temp_invalid")
+            if current.parent == current:
+                break
+            current = current.parent
+    except OSError as exc:
+        raise ProviderLeaseError("provider_lease_private_temp_invalid") from exc
+
+
+@contextmanager
+def _private_temp_directory(anchor: Path, prefix: str):
+    """Create validated private storage without consulting ambient temp paths."""
+
+    try:
+        resolved_anchor = anchor.resolve(strict=True)
+        git_metadata = resolved_anchor / ".git"
+        private_parent = (
+            git_metadata / "base2-provider-lease-private"
+            if git_metadata.is_dir() and not git_metadata.is_symlink()
+            else resolved_anchor / ".base2-provider-lease-private"
+        )
+        private_parent.mkdir(mode=0o700, exist_ok=True)
+        private_parent.chmod(0o700)
+        _validate_private_path(private_parent)
+        with tempfile.TemporaryDirectory(prefix=prefix, dir=private_parent) as raw_root:
+            root = Path(raw_root).resolve(strict=True)
+            root.chmod(0o700)
+            _validate_private_path(root)
+            yield root
+    except OSError as exc:
+        raise ProviderLeaseError("provider_lease_private_temp_invalid") from exc
+    finally:
+        try:
+            private_parent.rmdir()
+        except (OSError, UnboundLocalError):
+            pass
+
+
 def _network_remote_identity(value: str) -> str | None:
     parsed = urlsplit(value)
     if parsed.scheme == "https":
@@ -225,12 +280,9 @@ def _git(
             }
         )
     try:
-        with tempfile.TemporaryDirectory(prefix="base2-provider-lease-") as raw_temp:
-            private_temp = Path(raw_temp).resolve()
+        with _private_temp_directory(cwd, "git-scratch-") as private_temp:
             if os.name == "nt":
                 windows_directory = _trusted_windows_directory()
-                if not _windows_broker_acl_restrictive(private_temp):
-                    raise ProviderLeaseError("provider_lease_private_temp_invalid")
                 environment.update(
                     {
                         "SYSTEMROOT": str(windows_directory),
@@ -323,8 +375,9 @@ class GitRemoteLeaseStore:
         return f"refs/heads/base2-provider-leases/{digest}"
 
     def put_if_absent(self, record: LeaseRecord) -> LeaseRecord:
-        with tempfile.TemporaryDirectory(prefix="base2-provider-lease-") as raw_root:
-            root = Path(raw_root)
+        with _private_temp_directory(
+            self.repository, "lease-construction-"
+        ) as root:
             if _git(
                 ["init", "--quiet"], cwd=root, credential_broker=self.credential_broker
             ).returncode:
@@ -366,8 +419,9 @@ class GitRemoteLeaseStore:
     def delete_if_owner(self, record: LeaseRecord) -> None:
         if not re.fullmatch(r"[0-9a-f]{40,64}", record.revision):
             raise ProviderLeaseError("provider_provision_lease_owner_mismatch")
-        with tempfile.TemporaryDirectory(prefix="base2-provider-lease-release-") as raw_root:
-            root = Path(raw_root)
+        with _private_temp_directory(
+            self.repository, "lease-release-"
+        ) as root:
             if _git(
                 ["init", "--quiet"], cwd=root, credential_broker=self.credential_broker
             ).returncode:

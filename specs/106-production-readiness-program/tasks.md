@@ -503,3 +503,15 @@ substitute for the integration proof named by the task.
 - [ ] B393 Derive the native Windows directory and PowerShell ACL verifier through a trusted kernel API, ignore hostile SYSTEMROOT, WINDIR, and COMSPEC values, and give token-bearing Git only a newly created ACL-validated private temporary directory. (FR-005, FR-007, FR-008, FR-014, FR-031, FR-059, FR-060, FR-063, FR-065, FR-067 through FR-069, FR-071, FR-074)
 - [ ] B394 Reject symlinked or non-directory repetition-evidence ancestors before creation or replay, proving ignored private evidence cannot be redirected outside the resolved repository. (FR-005, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
 - [ ] B395 Commit a new clean candidate, rerun both exact complete gates and persisted 10+10 repetitions, then repeat fresh UX, data, and operations review until all critical, high, and medium totals are zero. (FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 35 — Independent review cycle 58 corrections
+
+- [ ] B396 Route authoritative lease-repository construction, deletion, and Git scratch through one fixed-anchor private-temp factory which never consumes ambient temp roots and validates Windows ACLs or Unix owner, mode, and writable ancestry. (FR-005, FR-007, FR-008, FR-014, FR-031, FR-060, FR-063, FR-065, FR-067 through FR-069, FR-071, FR-074)
+- [ ] B397 Prove hostile ambient TEMP/TMP values cannot select either the outer lease repository or inner Git scratch and unsafe Unix ancestry fails closed before lease-object construction. (FR-005, FR-007, FR-008, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-074)
+- [ ] B398 Enforce owner-private permissions on repetition evidence roots, exact-commit directories, manifests, and members during creation and replay, rejecting permission drift. (FR-005, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B399 Commit a new clean candidate, rerun both exact complete gates and persisted 10+10 repetitions, then repeat fresh UX, data, and operations review until all critical, high, and medium totals are zero. (FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 36 — Pre-commit complete-gate cycle 59 correction
+
+- [ ] B400 Directly test Windows ACL pass/failure and filesystem-error admission for the unified private-path factory so the unchanged 90% changed-line floor covers its fail-closed branches. (FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-074, FR-078)
+- [ ] B401 Re-run the isolated light-theme media visual owner after its one-time baseline mismatch, retain the failed evidence, and require a complete green gate before committing without changing an unrelated accepted baseline. (FR-002, FR-012, FR-055, FR-060, FR-063, FR-064, FR-068, FR-075, FR-078)

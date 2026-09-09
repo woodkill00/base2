@@ -50,7 +50,8 @@ Administrators may retain write authority. Use an owner-only executable such as
 The Windows directory and PowerShell verifier are resolved through the kernel
 API rather than `SYSTEMROOT`, `WINDIR`, or `COMSPEC`. The lease process uses a
 fixed absolute system Git executable, a newly created ACL-validated private
-temporary directory, disables system/global config and terminal prompts, and
+temporary directory for both authoritative lease-repository construction and
+each Git scratch operation, disables system/global config and terminal prompts, and
 constructs a minimal environment which excludes ambient Git, loader, profile,
 connection, credential-manager, askpass, command-shell, system-root, proxy,
 token, and secret variables

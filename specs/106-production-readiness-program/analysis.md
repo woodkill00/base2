@@ -1307,3 +1307,36 @@ validate one newly created private temp root, omit command-shell authority, and
 reject every symlinked/non-directory evidence ancestor. Every exact gate,
 repetition, and review restarts from the next clean commit; no publication or
 external action is authorized by the rejected evidence.
+
+## Analysis cycle 58 — operations review finds outer temp authority
+
+Exact commit `eddc45c6f14fcdb31ff283165edee5dabdc55215` passed two
+108-check exact gates and exact-source 10+10 repetitions. UX and data reviews
+again found no critical, high, or medium issue, but operations/security review
+returned C0/H0/M1/L1. The candidate is rejected and remains unpublished.
+
+Although each Git child's TEMP/TMP was ACL-validated, authoritative lease object
+construction and deletion still created an outer repository through Python's
+ambient temporary-root selection. A hostile outer root could therefore alter
+the objects/refspec before the remote CAS. Reviewers also noted replay accepted
+group/world-widened evidence permissions. B396-B399 introduce one fixed-anchor
+private-temp factory for both outer repositories and inner scratch, validate
+owner/mode and safe ancestry on Unix plus SID ACLs on Windows, ignore ambient
+temp selection, and reject evidence permission drift. Both exact gates,
+repetitions, and all reviews restart from the next clean candidate; the rejected
+evidence grants no publication or external authority.
+
+## Analysis cycle 59 — pre-commit coverage and visual admission
+
+The cycle-58 dirty tree passed 106 of 108 complete-gate checks. Changed-line
+coverage remained release-blocking at 89.94% against the unchanged 90% floor.
+The light-theme media-detail screenshot also differed once by five percent even
+though no frontend or baseline source changed; an immediate isolated rerun of
+all three light-theme media owners passed against the existing baselines.
+
+B400 directly exercises the unified private-path factory's Windows ACL success,
+ACL rejection, and filesystem-error paths rather than weakening coverage. B401
+retains the one-time visual failure as historical evidence, forbids an unrelated
+baseline update, and requires the full visual owner to pass again inside a new
+complete gate. No candidate commit or exact-head evidence is admitted until the
+entire repaired tree is green.

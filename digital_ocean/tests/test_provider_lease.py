@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -316,6 +317,14 @@ def test_windows_git_environment_ignores_ambient_executables(monkeypatch, tmp_pa
     monkeypatch.setattr(lease_module, "os", fake_os)
     monkeypatch.setattr(lease_module, "_trusted_windows_directory", lambda: trusted)
     monkeypatch.setattr(lease_module, "_windows_broker_acl_restrictive", lambda _path: True)
+
+    @contextmanager
+    def controlled_temp(_anchor, _prefix):
+        root = tmp_path / "controlled-private-temp"
+        root.mkdir(exist_ok=True)
+        yield root
+
+    monkeypatch.setattr(lease_module, "_private_temp_directory", controlled_temp)
     monkeypatch.setattr(subprocess, "run", run)
     _lease_git(["status"], cwd=tmp_path)
     assert captured["SYSTEMROOT"] == str(trusted)
@@ -324,6 +333,51 @@ def test_windows_git_environment_ignores_ambient_executables(monkeypatch, tmp_pa
     assert captured["TEMP"] != str(tmp_path / "hostile-temp")
     assert "COMSPEC" not in captured
     assert "LD_PRELOAD" not in captured
+
+
+def test_private_temp_ignores_ambient_roots_and_is_owner_only(monkeypatch, tmp_path):
+    hostile = tmp_path / "hostile"
+    hostile.mkdir()
+    monkeypatch.setenv("TMPDIR", str(hostile))
+    monkeypatch.setenv("TEMP", str(hostile))
+    anchor = tmp_path / "controller"
+    anchor.mkdir()
+    with lease_module._private_temp_directory(anchor, "outer-") as root:
+        assert root.parent == anchor / ".base2-provider-lease-private"
+        assert not root.is_relative_to(hostile)
+        assert root.stat().st_mode & 0o077 == 0
+    assert not (anchor / ".base2-provider-lease-private").exists()
+
+
+def test_private_temp_rejects_unsafe_unix_ancestry(monkeypatch, tmp_path):
+    anchor = tmp_path / "unsafe" / "controller"
+    anchor.mkdir(parents=True)
+    (tmp_path / "unsafe").chmod(0o777)
+    with pytest.raises(ProviderLeaseError, match="private_temp_invalid"):
+        with lease_module._private_temp_directory(anchor, "outer-"):
+            pass
+
+
+def test_windows_private_path_validation_accepts_only_acl_pass(monkeypatch, tmp_path):
+    fake_os = type("FakeOs", (), {"name": "nt"})
+    monkeypatch.setattr(lease_module, "os", fake_os)
+    monkeypatch.setattr(lease_module, "_windows_broker_acl_restrictive", lambda _path: True)
+    lease_module._validate_private_path(tmp_path)
+    monkeypatch.setattr(lease_module, "_windows_broker_acl_restrictive", lambda _path: False)
+    with pytest.raises(ProviderLeaseError, match="private_temp_invalid"):
+        lease_module._validate_private_path(tmp_path)
+
+
+def test_private_path_and_anchor_filesystem_errors_fail_closed(tmp_path):
+    class MissingPath:
+        def stat(self):
+            raise OSError("missing")
+
+    with pytest.raises(ProviderLeaseError, match="private_temp_invalid"):
+        lease_module._validate_private_path(MissingPath())
+    with pytest.raises(ProviderLeaseError, match="private_temp_invalid"):
+        with lease_module._private_temp_directory(tmp_path / "missing", "outer-"):
+            pass
 
 
 def test_trusted_git_executable_rejects_symlink_and_resolution_failure(monkeypatch):

@@ -150,6 +150,11 @@ def _validate_existing(path: Path, commit: str) -> Path:
     manifest = path / "result.json"
     if manifest.is_symlink() or not manifest.is_file():
         raise RepetitionError("repetition_evidence_invalid")
+    if os.name != "nt":
+        if path.stat().st_uid != os.getuid() or path.stat().st_mode & 0o077:
+            raise RepetitionError("repetition_evidence_permissions_invalid")
+        if manifest.stat().st_uid != os.getuid() or manifest.stat().st_mode & 0o077:
+            raise RepetitionError("repetition_evidence_permissions_invalid")
     try:
         payload = json.loads(manifest.read_text(encoding="utf-8"))
         files = payload["files"]
@@ -192,6 +197,10 @@ def _validate_existing(path: Path, commit: str) -> Path:
             or _digest(member) != entry.get("sha256")
         ):
             raise RepetitionError("repetition_evidence_changed")
+        if os.name != "nt" and (
+            member.stat().st_uid != os.getuid() or member.stat().st_mode & 0o077
+        ):
+            raise RepetitionError("repetition_evidence_permissions_invalid")
     return manifest
 
 
@@ -204,6 +213,10 @@ def _private_evidence_root(project_root: Path) -> Path:
         if candidate.exists() and not candidate.is_dir():
             raise RepetitionError("repetition_evidence_root_invalid")
         candidate.mkdir(exist_ok=True, mode=0o700)
+        if os.name != "nt":
+            if candidate.stat().st_uid != os.getuid():
+                raise RepetitionError("repetition_evidence_permissions_invalid")
+            candidate.chmod(0o700)
         if not candidate.resolve().is_relative_to(project_root):
             raise RepetitionError("repetition_evidence_root_invalid")
     return evidence_root
