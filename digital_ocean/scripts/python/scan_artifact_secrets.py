@@ -10,7 +10,7 @@ from pathlib import Path
 
 SECRET_NAME = re.compile(r"(?:password|secret|token|private.?key|credential|api.?key|pepper)", re.I)
 PRIVATE_MARKERS = (b"-----BEGIN PRIVATE KEY-----", b"-----BEGIN OPENSSH PRIVATE KEY-----")
-MAX_FILE_BYTES = 16 * 1024 * 1024
+CHUNK_BYTES = 1024 * 1024
 
 
 def secret_canaries(env_path: Path) -> tuple[bytes, ...]:
@@ -34,10 +34,23 @@ def scan_tree(root: Path, env_path: Path) -> list[str]:
         if path.is_symlink():
             findings.append(str(path.relative_to(root)))
             continue
-        if not path.is_file() or path.stat().st_size > MAX_FILE_BYTES:
+        if not path.is_file():
             continue
-        data = path.read_bytes()
-        if any(marker in data for marker in PRIVATE_MARKERS) or any(item in data for item in canaries):
+        needles = (*PRIVATE_MARKERS, *canaries)
+        overlap = max((len(needle) for needle in needles), default=1) - 1
+        matched = False
+        previous = b""
+        with path.open("rb") as handle:
+            while True:
+                chunk = handle.read(CHUNK_BYTES)
+                if not chunk:
+                    break
+                window = previous + chunk
+                if any(needle in window for needle in needles):
+                    matched = True
+                    break
+                previous = window[-overlap:] if overlap else b""
+        if matched:
             findings.append(str(path.relative_to(root)))
     return findings
 

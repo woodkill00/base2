@@ -846,3 +846,41 @@ applicable cases passed and 20 profile-inapplicable state repetitions skipped by
 contract. Its current-run receipt and 35 exact captures now bind the regenerated
 manifest. The rejected gate remains historical and the required two passes
 restart from zero on the next clean commit.
+
+## Analysis cycle 32 — fresh review rejects the twice-green repaired head
+
+Exact commit `2c73b1432c779f4b2b6bf14280baf21d1a21cb38` passed all 107
+complete-gate checks twice and passed both critical privacy/runtime and
+backup/deployment suites ten consecutive times. Fresh independent UX, data, and
+operations review nevertheless rejected release readiness with two critical,
+four high, four medium, and two low findings. Those automated passes are now
+historical evidence only; no publication or deployment is authorized from this
+head.
+
+The review found that deployment exception paths could still retain interpolated
+Compose output without a final secret gate, and that Python orchestration still
+accepted unknown SSH hosts before uploading the production environment. It also
+found process startup preceding role bootstrap and migrations, rollback claiming
+completion without schema or endpoint proof, and expiry failures lacking a
+durable notification consumer. Data review found blanket API schema DML grants,
+missing generation triggers for two media-reference branches, oversized artifact
+scanning being skipped, and global privacy scope derived only from current
+memberships. UX review found an uncanonicalized workspace hash that removed
+current-route orientation and incomplete keyboard tab semantics; one email
+service description remained stale. Tasks B302-B313 capture every deduplicated
+finding and its required negative proof. The current head remains local and
+rejected while these corrections proceed.
+
+## Analysis cycle 33 — migration dependency order exposed by fresh PostgreSQL
+
+The first disposable PostgreSQL run after B307 correctly failed closed because
+Django migration 0032 now verifies every explicitly granted API table, while the
+acceptance and production sequences still created the API schema after Django.
+Older cross-schema migrations had relied on those tables without expressing the
+ordering contract. B314 records the integration gap. Every affected sequence now
+bootstraps roles, runs the API owner migration, and only then runs Django's
+cross-schema least-authority migrations before starting request or worker
+processes. The repaired disposable run passed mixed-version, workspace RLS,
+reverse/forward role migration, and media forward/reverse acceptance, including
+the new cross-tenant DML, migration-ledger, queue, orphaned-subject, and media ABA
+proofs.

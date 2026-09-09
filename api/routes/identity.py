@@ -265,6 +265,7 @@ async def invite_member(payload: InvitationRequest, request: Request):
         raise HTTPException(status_code=404, detail='not_found') from exc
     token = secrets.token_urlsafe(32)
     invitation_id = create_invitation(
+        tenant_id=tenant_id,
         organization_id=member['organization_id'],
         actor_id=principal.user_id,
         email=payload.email,
@@ -305,7 +306,7 @@ async def revoke_member_invitation(invitation_id: UUID, request: Request):
     except PermissionError as exc:
         raise HTTPException(status_code=404, detail='not_found') from exc
     if not revoke_invitation(
-        organization_id=member['organization_id'], invitation_id=invitation_id
+        tenant_id=tenant_id, organization_id=member['organization_id'], invitation_id=invitation_id
     ):
         raise HTTPException(status_code=404, detail='not_found')
     insert_audit_event(
@@ -332,6 +333,7 @@ async def change_member_role(member_id: UUID, payload: MemberRoleRequest, reques
             user_id=principal.user_id, tenant_id=tenant_id, permission='member.manage'
         )
         changed = update_member_role(
+            tenant_id=tenant_id,
             organization_id=actor['organization_id'],
             actor_id=principal.user_id,
             member_id=member_id,
@@ -376,6 +378,7 @@ async def create_credential(payload: CredentialRequest, request: Request):
     raw_secret = secrets.token_urlsafe(32)
     prefix = f'b2_{secrets.token_hex(4)}'
     credential_id = create_api_credential(
+        tenant_id=tenant_id,
         organization_id=member['organization_id'],
         actor_id=principal.user_id,
         label=payload.label,
@@ -413,7 +416,7 @@ async def revoke_credential(credential_id: UUID, request: Request):
     except PermissionError as exc:
         raise HTTPException(status_code=404, detail='not_found') from exc
     if not revoke_api_credential(
-        organization_id=member['organization_id'], credential_id=credential_id
+        tenant_id=tenant_id, organization_id=member['organization_id'], credential_id=credential_id
     ):
         raise HTTPException(status_code=404, detail='not_found')
     insert_audit_event(

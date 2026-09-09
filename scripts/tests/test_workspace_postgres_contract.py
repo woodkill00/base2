@@ -98,8 +98,17 @@ class WorkspacePostgresContractTests(unittest.TestCase):
             "email_worker_content_read_was_not_blocked",
             "email_worker_operations_read_was_not_blocked",
             "email_worker_outbox_insert_was_not_blocked",
+            "api_runtime_cross_tenant_org_insert_was_not_blocked",
+            "api_runtime_migration_ledger_dml_was_not_blocked",
+            "api_runtime_queue_update_was_not_blocked",
+            "global_closure_missed_orphaned_subject_tenant",
+            "sitecontent_mediavariant",
+            "sitecontent_mediaobjectversion",
         ):
             self.assertIn(marker, checks)
+
+        self.assertIn("run(api_migration", runner)
+        self.assertLess(runner.index("run(api_migration"), runner.index("django_migration ="))
 
         self.assertIn('django_migration + ["0009", "--noinput"]', runner)
         self.assertIn('role_check + ["reversed"]', runner)

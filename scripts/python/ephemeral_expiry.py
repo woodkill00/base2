@@ -74,6 +74,7 @@ class ExpiryPlanStore:
         self.plan_root = _private_directory(self.root / "plans")
         self.receipt_root = _private_directory(self.root / "receipts")
         self.failure_root = _private_directory(self.root / "failures")
+        self.alert_root = _private_directory(self.root / "alerts")
         self.lock_path = self.root / ".registry.lock"
         self.key = key
 
@@ -138,6 +139,53 @@ class ExpiryPlanStore:
         receipt = {**body, "signature": _signature(body, self.key)}
         _atomic_json(self.failure_root / f"{safe_id}.json", receipt)
         return receipt
+
+    def observe_failures(self) -> dict[str, Any]:
+        paths = sorted(self.failure_root.glob("*.json"))
+        if len(paths) > MAXIMUM_PLANS:
+            raise EphemeralExpiryError("expiry:failure_capacity_exceeded")
+        created: list[str] = []
+        replayed: list[str] = []
+        for path in paths:
+            if path.is_symlink() or not re.fullmatch(r"[0-9a-f]{24}\.json", path.name):
+                raise EphemeralExpiryError("expiry:unsafe_failure_member")
+            receipt = json.loads(_private_file(path).read_text(encoding="utf-8"))
+            signature = receipt.pop("signature", "") if isinstance(receipt, dict) else ""
+            if (
+                set(receipt) != {"schemaVersion", "memberDigest", "status", "errorCode"}
+                or receipt.get("schemaVersion") != 1
+                or receipt.get("memberDigest") != path.stem
+                or receipt.get("status") != "failed"
+                or not isinstance(receipt.get("errorCode"), str)
+                or not receipt["errorCode"].startswith("expiry:")
+                or not hmac.compare_digest(str(signature), _signature(receipt, self.key))
+            ):
+                raise EphemeralExpiryError("expiry:failure_receipt_integrity")
+            failure_digest = hashlib.sha256(_canonical(receipt)).hexdigest()
+            alert_path = self.alert_root / f"{path.stem}.json"
+            body = {
+                "schemaVersion": 1,
+                "memberDigest": path.stem,
+                "failureDigest": failure_digest,
+                "status": "attention_required",
+                "errorCode": receipt["errorCode"],
+            }
+            alert = {**body, "signature": _signature(body, self.key)}
+            if alert_path.exists():
+                existing = json.loads(_private_file(alert_path).read_text(encoding="utf-8"))
+                if existing != alert:
+                    raise EphemeralExpiryError("expiry:alert_integrity")
+                replayed.append(path.stem)
+                continue
+            _atomic_json(alert_path, alert)
+            created.append(path.stem)
+        return {
+            "status": "attention_required" if paths else "clear",
+            "observed": len(paths),
+            "created": created,
+            "replayed": replayed,
+            "secretValuesEmitted": 0,
+        }
 
     def receipt(self, plan: dict[str, Any]) -> dict[str, Any] | None:
         path = self.receipt_root / f"{plan['planId']}.json"
@@ -299,8 +347,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--key-file", type=Path, required=True)
     parser.add_argument("--register-plan", type=Path)
+    parser.add_argument("--observe-failures", action="store_true")
     args = parser.parse_args(argv)
     store = ExpiryPlanStore(args.root, key=_key(args.key_file))
+    if args.observe_failures:
+        print(json.dumps(store.observe_failures(), sort_keys=True))
+        return 0
     if args.register_plan:
         source = json.loads(_private_file(args.register_plan).read_text(encoding="utf-8"))
         result = store.register(source)

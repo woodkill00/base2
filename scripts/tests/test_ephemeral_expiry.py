@@ -122,6 +122,22 @@ def test_bad_member_and_adapter_crash_are_isolated_from_later_due_plan(tmp_path)
     assert result["destroyed"] == ["preview-106-good"]
     assert len(result["failed"]) == 1
     assert result["status"] == "degraded"
+    observed = store.observe_failures()
+    assert observed["status"] == "attention_required"
+    assert observed["created"] == result["failed"]
+    replay = store.observe_failures()
+    assert replay["created"] == [] and replay["replayed"] == result["failed"]
+    alert = next(store.alert_root.glob("*.json")).read_text(encoding="utf-8")
+    assert "untrusted adapter detail" not in alert
+
+
+def test_failure_observer_rejects_tampered_receipt(tmp_path):
+    store = ExpiryPlanStore(tmp_path / "expiry", key=KEY)
+    receipt = store.record_failure("preview-106-trial.json", "expiry:adapter_failed")
+    path = store.failure_root / f"{receipt['memberDigest']}.json"
+    path.write_text(path.read_text().replace("adapter_failed", "plan_rejected"), encoding="utf-8")
+    with pytest.raises(EphemeralExpiryError, match="failure_receipt_integrity"):
+        store.observe_failures()
 
 
 def test_concurrent_registration_serializes_capacity_admission(tmp_path):
@@ -156,9 +172,13 @@ def test_persistent_scanner_unit_is_hardened_and_has_no_arbitrary_command_surfac
     root = Path(__file__).resolve().parents[2]
     service = (root / "digital_ocean/systemd/base2-ephemeral-expiry-scan.service").read_text()
     timer = (root / "digital_ocean/systemd/base2-ephemeral-expiry-scan.timer").read_text()
+    alert = (root / "digital_ocean/systemd/base2-ephemeral-expiry-alert.service").read_text()
     assert "WorkingDirectory=/opt/base2/current" in service
     assert "/usr/bin/python3 /opt/base2/current/scripts/python/ephemeral_expiry.py" in service
     assert "NoNewPrivileges=yes" in service
     assert "ProtectSystem=strict" in service
     assert "Persistent=true" in timer
     assert "OnUnitActiveSec=1min" in timer
+    assert "OnFailure=base2-ephemeral-expiry-alert.service" in service
+    assert "--observe-failures" in alert
+    assert "NoNewPrivileges=yes" in alert

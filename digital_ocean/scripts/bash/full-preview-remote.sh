@@ -159,10 +159,14 @@ done
 unset clamav_id clamav_state clamav_health clamav_oom
 stage="migration-dependencies"
 "${compose[@]}" up -d --no-build postgres redis
+stage="database-role-bootstrap"
+"${compose[@]}" run --rm --no-deps workspace-db-role >/dev/null
 stage="api-migrations"
 "${compose[@]}" run --rm --no-deps \
   -e DB_USER="$POSTGRES_USER" -e DB_PASSWORD="$POSTGRES_PASSWORD" \
   api python -m api.scripts.migrate >/dev/null
+stage="django-migrations"
+"${compose[@]}" run --rm --no-deps django python manage.py migrate --noinput >/dev/null
 stage="compose-up"
 "${compose[@]}" up -d --no-build
 stage="media-inspector-identity"

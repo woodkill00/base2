@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from digital_ocean.scripts.python.scan_artifact_secrets import scan_tree
+from digital_ocean.scripts.python.scan_artifact_secrets import CHUNK_BYTES, scan_tree
 
 
 def test_recursive_artifact_scan_accepts_sanitized_tree(tmp_path: Path):
@@ -21,3 +21,26 @@ def test_recursive_artifact_scan_rejects_nested_secret_and_private_key(tmp_path:
     (nested / "compose.yml").write_text("value: unique-secret-canary\n", encoding="utf-8")
     (nested / "key.txt").write_text("-----BEGIN PRIVATE KEY-----\n", encoding="utf-8")
     assert scan_tree(artifacts, env) == ["logs/build/compose.yml", "logs/build/key.txt"]
+
+
+def test_recursive_artifact_scan_does_not_skip_oversized_files(tmp_path: Path):
+    env = tmp_path / "source.env"
+    env.write_text("JWT_SECRET=oversized-secret-canary\n", encoding="utf-8")
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    payload = artifacts / "oversized.log"
+    with payload.open("wb") as handle:
+        handle.write(b"x" * (17 * 1024 * 1024))
+        handle.write(b"oversized-secret-canary")
+    assert scan_tree(artifacts, env) == ["oversized.log"]
+
+
+def test_recursive_artifact_scan_matches_across_chunk_boundary(tmp_path: Path):
+    env = tmp_path / "source.env"
+    env.write_text("API_TOKEN=boundary-secret-canary\n", encoding="utf-8")
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    payload = artifacts / "boundary.log"
+    prefix = b"x" * (CHUNK_BYTES - len(b"boundary-secret-") + 3)
+    payload.write_bytes(prefix + b"boundary-secret-canary")
+    assert scan_tree(artifacts, env) == ["boundary.log"]

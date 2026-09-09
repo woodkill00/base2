@@ -116,3 +116,8 @@ def test_remote_bootstrap_accepts_only_the_successful_workspace_role_one_shot():
     assert script.index(
         "one_shot_services=(workspace-db-role media-inspector-spool-init)"
     ) < script.index('stage="service-health"')
+    assert script.index('stage="database-role-bootstrap"') < script.index(
+        'stage="api-migrations"'
+    )
+    assert script.index('stage="api-migrations"') < script.index('stage="django-migrations"')
+    assert script.index('stage="django-migrations"') < script.index('stage="compose-up"')

@@ -296,11 +296,40 @@ fi
 echo "Rolling back to $PREV"
 git reset --hard "$PREV"
 
-# Recreate core services to match the rolled-back code.
+# Rebuild the rolled-back migration images, restore the prior epoch, bootstrap
+# roles, and migrate before any request or worker process can start.
+PREV_EPOCH=$(tr -d '\r\n' < /root/logs/build/pre-deploy-epoch.txt)
+test -n "$PREV_EPOCH"
+sed -i '/^BASE2_DEPLOYMENT_EPOCH=/d' .env
+printf 'BASE2_DEPLOYMENT_EPOCH=%s\n' "$PREV_EPOCH" >> .env
+docker compose -f development.docker.yml build django api >/root/logs/build/rollback-build.txt 2>&1
+docker compose -f development.docker.yml run --rm --no-deps workspace-db-role >/root/logs/build/rollback-role-bootstrap.txt 2>&1
+docker compose -f development.docker.yml run --rm --no-deps \
+  -e DB_USER="$POSTGRES_USER" -e DB_PASSWORD="$POSTGRES_PASSWORD" \
+  api python -m api.scripts.migrate >/root/logs/build/rollback-api-migrate.txt 2>&1
+docker compose -f development.docker.yml run --rm --no-deps django python manage.py migrate --noinput >/root/logs/build/rollback-django-migrate.txt 2>&1
+
 docker compose -f development.docker.yml --profile celery up -d --build --no-deps --remove-orphans django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-content-worker celery-data-rights-worker celery-email-worker celery-beat >/root/logs/build/rollback-compose-up.txt 2>&1
+
+READY=0
+for i in $(seq 1 60); do
+  OK=1
+  for service in traefik nginx nginx-static django api redis react-app celery-worker celery-content-worker celery-data-rights-worker celery-email-worker celery-beat flower; do
+    container=$(docker compose -f development.docker.yml ps -q "$service")
+    test -n "$container" || { OK=0; break; }
+    test "$(docker inspect -f '{{.State.Health.Status}}' "$container")" = healthy || { OK=0; break; }
+  done
+  test "$OK" = 1 && { READY=1; break; }
+  sleep 2
+done
+test "$READY" = 1
+docker compose -f development.docker.yml exec -T django python manage.py schema_compat_check --json >/root/logs/build/rollback-schema-compat.json 2>&1
+docker compose -f development.docker.yml exec -T django python -c "import urllib.request; assert urllib.request.urlopen('http://127.0.0.1:8000/internal/health',timeout=5).status == 200"
+docker compose -f development.docker.yml exec -T api python -c "import urllib.request; assert urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=5).status == 200"
 
 CURRENT_HEAD=$(git rev-parse HEAD)
 test "$CURRENT_HEAD" = "$PREV"
+test "$(grep '^BASE2_DEPLOYMENT_EPOCH=' .env | cut -d= -f2-)" = "$PREV_EPOCH"
 rm -f /root/logs/build/rollback-failed.txt
 echo "Rollback completed. Current HEAD: $CURRENT_HEAD"
 '@
@@ -740,8 +769,31 @@ function Write-FailureArtifacts([string]$context, [string]$message) {
   # Ensure the orchestrator knows where to write per-run artifacts.
   try { $env:DEPLOY_ARTIFACT_DIR = $dest } catch {}
   try {
-    & docker compose -f ./development.docker.yml config > (Join-Path $dest 'compose-config-local.yml') 2>$null
+    & docker compose -f ./development.docker.yml config --no-interpolate > (Join-Path $dest 'compose-config-local.yml') 2>$null
   } catch {}
+}
+
+function Invoke-FinalArtifactSecretGate([string]$dest) {
+  if ([string]::IsNullOrWhiteSpace($dest) -or -not (Test-Path -LiteralPath $dest -PathType Container)) {
+    return $true
+  }
+  try {
+    $runner = (Resolve-Path -LiteralPath (Join-Path $script:RepoRoot '.venv\Scripts\python.exe')).Path
+    $scanner = (Resolve-Path -LiteralPath (Join-Path $script:RepoRoot 'digital_ocean\scripts\python\scan_artifact_secrets.py')).Path
+    $envCandidate = if ([IO.Path]::IsPathRooted($EnvPath)) { $EnvPath } else { Join-Path $script:RepoRoot $EnvPath }
+    $sourceEnv = (Resolve-Path -LiteralPath $envCandidate).Path
+    $scanOutput = (& $runner $scanner --root $dest --env-file $sourceEnv 2>&1 | Out-String).TrimEnd()
+    $scanExit = $LASTEXITCODE
+    if ($scanExit -ne 0) {
+      Remove-Item -LiteralPath $dest -Recurse -Force -ErrorAction SilentlyContinue
+      return $false
+    }
+    Set-Content -LiteralPath (Join-Path $dest 'artifact-secret-scan.json') -Value $scanOutput -Encoding UTF8
+    return $true
+  } catch {
+    Remove-Item -LiteralPath $dest -Recurse -Force -ErrorAction SilentlyContinue
+    return $false
+  }
 }
 
 function Ensure-Venv {
@@ -956,6 +1008,10 @@ except Exception:
 
 function Run-Orchestrator {
   Write-Section "Running orchestrator"
+  if ([string]::IsNullOrWhiteSpace($SshKnownHostsPath) -or -not (Test-Path -LiteralPath $SshKnownHostsPath -PathType Leaf)) {
+    throw 'Trusted SSH known_hosts file is required before orchestration'
+  }
+  $env:BASE2_SSH_KNOWN_HOSTS_PATH = (Resolve-Path -LiteralPath $SshKnownHostsPath).Path
     $cliArgs = @()
   if (-not $Full -and $UpdateOnly) { $cliArgs += '--update-only' }
   if ($CreateIfMissing) { $cliArgs += '--create-if-missing' }
@@ -1100,6 +1156,8 @@ if [ -d __REMOTE_APP_DIR__ ]; then
   fi
 
   # Bind runtime readiness evidence to this exact deployment execution.
+  grep '^BASE2_DEPLOYMENT_EPOCH=' .env | cut -d= -f2- > /root/logs/build/pre-deploy-epoch.txt
+  test -s /root/logs/build/pre-deploy-epoch.txt
   DEPLOYMENT_EPOCH="$EXPECTED_COMMIT:$(date -u +%Y%m%dT%H%M%SZ)"
   sed -i '/^BASE2_DEPLOYMENT_EPOCH=/d' .env
   printf 'BASE2_DEPLOYMENT_EPOCH=%s\n' "$DEPLOYMENT_EPOCH" >> .env
@@ -1167,17 +1225,17 @@ PY
   if grep -q '^traefik/' /root/logs/build/changed-files.txt 2>/dev/null; then NEED_TRAEFIK=1; fi
   printf "NEED_REACT=%s\nNEED_API=%s\nNEED_DJANGO=%s\nNEED_TRAEFIK=%s\n" "$NEED_REACT" "$NEED_API" "$NEED_DJANGO" "$NEED_TRAEFIK" > /root/logs/build/changed-services.txt 2>/dev/null || true
 
-  # Bring up core services without forcing builds (fast path).
-  status "up" "docker compose up core services (no build)"
+  # Only the broker may start before database role bootstrap and migrations.
+  status "up" "docker compose up redis before database bootstrap"
   set +e
-  docker compose -f development.docker.yml --profile celery up -d --no-deps --remove-orphans django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-content-worker celery-data-rights-worker celery-email-worker celery-beat > /root/logs/build/compose-up-core.txt 2>&1
+  docker compose -f development.docker.yml up -d --no-deps redis > /root/logs/build/compose-up-core.txt 2>&1
   CORE_UP_CODE=$?
   echo $CORE_UP_CODE > /root/logs/build/compose-up-core.status 2>/dev/null || true
   set -e
   if [ "$CORE_UP_CODE" != "0" ]; then
     # Fallback for first-time builds or missing images.
     status "up" "compose up failed; retrying with --build"
-    docker compose -f development.docker.yml --profile celery up -d --build --no-deps --remove-orphans django api react-app nginx nginx-static traefik redis pgadmin flower celery-worker celery-content-worker celery-data-rights-worker celery-email-worker celery-beat > /root/logs/build/compose-up-core-build.txt 2>&1
+    docker compose -f development.docker.yml up -d --build --no-deps redis > /root/logs/build/compose-up-core-build.txt 2>&1
   fi
 
   # Selective rebuilds/recreates based on diff.
@@ -1186,30 +1244,29 @@ PY
     status "build" "docker compose build --no-cache api (api changed)"
     docker compose -f development.docker.yml build --no-cache api > /root/logs/build/api-build-nocache.txt 2>&1
   fi
-  status "recreate" "force-recreate api"
-  docker compose -f development.docker.yml up -d --force-recreate --no-deps api > /root/logs/build/api-up.txt 2>&1
+  status "build" "prepare api migration and runtime image"
+  docker compose -f development.docker.yml build api > /root/logs/build/api-up.txt 2>&1
 
   if [ "$NEED_DJANGO" = "1" ]; then
     status "build" "docker compose build django (django changed)"
     docker compose -f development.docker.yml build django > /root/logs/build/django-build.txt 2>&1
   fi
-  status "recreate" "force-recreate django"
-  docker compose -f development.docker.yml up -d --force-recreate --no-deps django > /root/logs/build/django-up.txt 2>&1
+  status "build" "prepare django migration and runtime image"
+  docker compose -f development.docker.yml build django > /root/logs/build/django-up.txt 2>&1
 
   # Traefik: rebuild only when traefik/ changed; always recreate to pick up env and templates.
   if [ "$NEED_TRAEFIK" = "1" ]; then
     status "build" "docker compose build traefik (traefik changed)"
     docker compose -f development.docker.yml build traefik > /root/logs/build/traefik-build.txt 2>&1
   fi
-  status "recreate" "force-recreate traefik"
-  docker compose -f development.docker.yml up -d --force-recreate --no-deps traefik > /root/logs/build/traefik-up.txt 2>&1
+  status "build" "prepare traefik image"
+  docker compose -f development.docker.yml build traefik > /root/logs/build/traefik-up.txt 2>&1
 
   # React: rebuild only when react-app/ changed.
   if [ "$NEED_REACT" = "1" ]; then
     status "build" "docker compose build react-app (react-app changed)"
     docker compose -f development.docker.yml build react-app > /root/logs/build/react-app-build.txt 2>&1
-    status "recreate" "force-recreate react-app"
-    docker compose -f development.docker.yml up -d --force-recreate --no-deps react-app > /root/logs/build/react-app-up.txt 2>&1
+    : > /root/logs/build/react-app-up.txt
   else
     status "build" "skipping react-app rebuild (no react-app changes)"
     : > /root/logs/build/react-app-build.txt || true
@@ -1225,19 +1282,23 @@ PY
     docker system prune -a -f --volumes > /root/logs/build/docker-prune.txt 2>&1 || true
     docker system df > /root/logs/build/docker-system-df-after.txt 2>&1 || true
 
-    # Retry targeted rebuild and recreate for react-app
+    # Retry the targeted build; startup remains fenced behind migrations.
     docker compose -f development.docker.yml build --no-cache react-app > /root/logs/build/react-app-build-retry.txt 2>&1
-    docker compose -f development.docker.yml up -d --force-recreate --no-deps react-app > /root/logs/build/react-app-up-retry.txt 2>&1
+    : > /root/logs/build/react-app-up-retry.txt
   fi
 
-  # Capture Django migration output into a dedicated artifact
-  status "django" "migrate/check-deploy/health"
-  docker compose -f development.docker.yml exec -T django python manage.py migrate --noinput > /root/logs/django-migrate.txt 2>&1
+  # Bootstrap roles and complete both owner-scoped migration systems before
+  # any request-serving or worker process is allowed to start.
+  status "database" "bootstrap least-privilege roles"
+  docker compose -f development.docker.yml run --rm --no-deps workspace-db-role > /root/logs/workspace-role-bootstrap.txt 2>&1
   status "api" "owner-scoped migrations"
   docker compose -f development.docker.yml run --rm --no-deps \
     -e DB_USER="$POSTGRES_USER" -e DB_PASSWORD="$POSTGRES_PASSWORD" \
     api python -m api.scripts.migrate > /root/logs/api-migrate.txt 2>&1
-  docker compose -f development.docker.yml up -d --force-recreate --no-deps api >> /root/logs/build/api-up.txt 2>&1
+  status "django" "owner-scoped migrations"
+  docker compose -f development.docker.yml run --rm --no-deps django python manage.py migrate --noinput > /root/logs/django-migrate.txt 2>&1
+  status "up" "start request services after migrations"
+  docker compose -f development.docker.yml up -d --force-recreate --no-deps --remove-orphans django api react-app nginx nginx-static traefik redis pgadmin > /root/logs/build/compose-up-after-migrations.txt 2>&1
   # Django deploy checks (security + config sanity)
   docker compose -f development.docker.yml exec -T django python manage.py check --deploy > /root/logs/django-check-deploy.txt 2>&1
   # Django internal HTTP health (avoid probing admin HTML); capture JSON body + HTTP status
@@ -2091,15 +2152,6 @@ fi
     }
   } catch { Write-Warning "Failed to scrub sensitive values: $($_.Exception.Message)" }
 
-  # Final recursive defense: reject and remove the current generated evidence
-  # tree if any source-environment secret or private-key marker survived.
-  $secretScan = Join-Path $dest 'artifact-secret-scan.json'
-  & .\.venv\Scripts\python.exe .\digital_ocean\scripts\python\scan_artifact_secrets.py --root $dest --env-file $localEnvPath | Set-Content -Path $secretScan -Encoding UTF8
-  if ($LASTEXITCODE -ne 0) {
-    Remove-Item -LiteralPath $dest -Recurse -Force -ErrorAction SilentlyContinue
-    throw 'Deployment evidence failed the recursive secret-retention gate and was removed'
-  }
-
   # Avoid leaking a non-zero $LASTEXITCODE to callers (native tools may set it).
   try { $LASTEXITCODE = 0 } catch {}
 
@@ -2228,7 +2280,7 @@ try {
 
     # Capture minimal local Compose artifacts for troubleshooting
     try { & docker compose -f ./development.docker.yml ps > (Join-Path $dest 'compose-ps-local.txt') 2>$null } catch {}
-    try { & docker compose -f ./development.docker.yml config > (Join-Path $dest 'compose-config-local.yml') 2>$null } catch {}
+    try { & docker compose -f ./development.docker.yml config --no-interpolate > (Join-Path $dest 'compose-config-local.yml') 2>$null } catch {}
 
     $support = @()
     $support += "Remote verification skipped due to missing droplet IP."
@@ -2435,6 +2487,11 @@ try {
   } catch {}
 
   try { Pop-Location } catch {}
+  $finalArtifactDir = [string]$script:ArtifactDir
+  if (-not (Invoke-FinalArtifactSecretGate -dest $finalArtifactDir)) {
+    Write-Warning 'Deployment evidence failed the final recursive secret-retention gate and was removed'
+    $script:ExitCode = 1
+  }
 }
 
 exit $script:ExitCode

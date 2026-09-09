@@ -488,7 +488,7 @@ def configure_data_rights_role(apps, schema_editor):
                    requested_action text, requested_fields jsonb)
                RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
                SET search_path=pg_catalog,public AS $$
-               DECLARE rights record; item record; anonymous text;
+               DECLARE rights record; item record; anonymous text; discovered_tenants text[];
                        has_other boolean; affected integer := 0; scope_tenants text[];
                BEGIN
                  IF session_user <> %s THEN RAISE EXCEPTION 'data_rights_role_required'; END IF;
@@ -521,7 +521,25 @@ def configure_data_rights_role(apps, schema_editor):
                      FROM public.api_identity_memberships membership
                      JOIN public.api_identity_organizations organization
                        ON organization.id=membership.organization_id
-                    WHERE membership.user_id=rights.user_id;
+                   WHERE membership.user_id=rights.user_id;
+                   FOR item IN SELECT table_name,column_name
+                     FROM public.sitecontent_subjectdataregistry
+                     ORDER BY table_name,column_name LOOP
+                     IF item.table_name='sitecontent_contentrevision' THEN
+                       EXECUTE format(
+                         'SELECT COALESCE(array_agg(DISTINCT content.site_id),ARRAY[]::text[]) FROM public.%%I subject_row JOIN public.sitecontent_contentrecord content ON content.id=subject_row.content_id WHERE subject_row.%%I=$1',
+                         item.table_name,item.column_name)
+                         INTO discovered_tenants USING rights.user_id::text;
+                     ELSE
+                       EXECUTE format(
+                         'SELECT COALESCE(array_agg(DISTINCT site_id),ARRAY[]::text[]) FROM public.%%I WHERE %%I=$1',
+                         item.table_name,item.column_name)
+                         INTO discovered_tenants USING rights.user_id::text;
+                     END IF;
+                     SELECT COALESCE(array_agg(DISTINCT tenant_id),ARRAY[]::text[])
+                       INTO scope_tenants
+                       FROM unnest(scope_tenants || discovered_tenants) tenant_id;
+                   END LOOP;
                  ELSE
                    scope_tenants := ARRAY[rights.tenant_id];
                  END IF;

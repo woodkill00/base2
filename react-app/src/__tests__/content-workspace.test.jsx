@@ -121,6 +121,42 @@ describe('content workspace', () => {
     expect(contentWorkspaceAPI.records).not.toHaveBeenCalled();
   });
 
+  test.each(['/workspace', '/workspace#unknown'])(
+    'canonicalizes %s to one Records destination',
+    async (entry) => {
+      renderWorkspace(entry);
+      expect(await screen.findByRole('tab', { name: 'Records' })).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+      expect(screen.getByRole('tab', { name: 'Records' })).toHaveAttribute('tabindex', '0');
+      expect(screen.getAllByRole('link', { current: 'page', hidden: true })).toHaveLength(1);
+      expect(screen.getByRole('link', { current: 'page', hidden: true })).toHaveAccessibleName(
+        'Records'
+      );
+    }
+  );
+
+  test('supports roving keyboard focus and controlled tab panels', async () => {
+    const user = userEvent.setup();
+    renderWorkspace('/workspace#records');
+    const records = await screen.findByRole('tab', { name: 'Records' });
+    records.focus();
+    await act(async () => user.keyboard('{ArrowRight}'));
+    expect(screen.getByRole('tab', { name: 'Schemas' })).toHaveFocus();
+    expect(screen.getByRole('tab', { name: 'Schemas' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tabpanel')).toHaveAttribute(
+      'aria-labelledby',
+      'workspace-tab-schemas'
+    );
+    await act(async () => user.keyboard('{End}'));
+    expect(screen.getByRole('tab', { name: 'Exports' })).toHaveFocus();
+    await act(async () => user.keyboard('{Home}'));
+    expect(screen.getByRole('tab', { name: 'Records' })).toHaveFocus();
+    await act(async () => user.keyboard('{ArrowLeft}'));
+    expect(screen.getByRole('tab', { name: 'Exports' })).toHaveFocus();
+  });
+
   test('shows honest empty, job, and dependency states', async () => {
     const user = userEvent.setup();
     contentWorkspaceAPI.records.mockResolvedValue({ items: [] });

@@ -248,8 +248,8 @@ def _configured_adapter():
 def process_outbox_email(*, outbox_id: UUID) -> None:
     """Process an outbox row.
 
-    For now, this is a staging-safe "local outbox" sender: it marks the email as sent
-    without requiring SMTP configuration.
+    The configured bounded adapter may use the local test backend or authenticated
+    SMTP delivery. Disabled mode fails closed without marking the message sent.
     """
 
     existing = claim_outbox_email(outbox_id)

@@ -499,12 +499,40 @@ log(".env updated with public key.")
 _DEPLOY_CONFIG["DO_API_SSH_KEYS"] = pubkey
 
 
+def _trusted_known_hosts_path() -> Path:
+    raw = os.getenv("BASE2_SSH_KNOWN_HOSTS_PATH", "").strip()
+    if not raw:
+        raise RuntimeError("trusted_ssh_known_hosts_required")
+    candidate = Path(raw).expanduser()
+    if candidate.is_symlink():
+        raise RuntimeError("trusted_ssh_known_hosts_symlink_rejected")
+    path = candidate.resolve(strict=True)
+    if not path.is_file():
+        raise RuntimeError("trusted_ssh_known_hosts_not_file")
+    return path
+
+
+def _trusted_ssh_client() -> paramiko.SSHClient:
+    client = paramiko.SSHClient()
+    client.load_host_keys(str(_trusted_known_hosts_path()))
+    client.set_missing_host_key_policy(paramiko.RejectPolicy())
+    return client
+
+
+def _strict_openssh_options() -> list[str]:
+    return [
+        "-o",
+        "StrictHostKeyChecking=yes",
+        "-o",
+        f"UserKnownHostsFile={_trusted_known_hosts_path()}",
+    ]
+
+
 # --- Recovery routine, now only called explicitly ---
 def recovery_ssh_logs(ip_address, SSH_USER, ssh_key_path):
     try:
         print("[RECOVERY] Attempting SSH recovery and diagnostics...")
-        ssh_client = paramiko.SSHClient()
-        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh_client = _trusted_ssh_client()
         ssh_client.connect(ip_address, username=SSH_USER, key_filename=ssh_key_path)
         # Only check logs, do not rerun any scripts
         for log_path in ["/var/log/cloud-init-output.log"]:
@@ -1006,8 +1034,7 @@ def run_post_reboot() -> None:
         project_name = str(env_dict.get("PROJECT_NAME", PROJECT_NAME)).strip("/")
         repo_path = f"{deploy_root}/{project_name}"
         log(f"Connecting via SSH to {ip_address} for post-reboot configuration...")
-        ssh_client = paramiko.SSHClient()
-        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh_client = _trusted_ssh_client()
 
         def ssh_connect_with_retry(max_attempts: int = 5, delay: int = 15):
             for attempt in range(1, max_attempts + 1):
@@ -1679,8 +1706,7 @@ if not UPDATE_ONLY:
     log(f"Using SSH user: {SSH_USER}")
     ssh_cmd = [
         "ssh",
-        "-o",
-        "StrictHostKeyChecking=no",
+        *_strict_openssh_options(),
         "-i",
         ssh_key_path.replace("\\", "/"),
         f"{SSH_USER}@{ip_address}",
@@ -1724,8 +1750,7 @@ if not UPDATE_ONLY:
     # Poll cloud-init log for reboot marker BEFORE checking for SSH reboot
     ssh_log_cmd = [
         "ssh",
-        "-o",
-        "StrictHostKeyChecking=no",
+        *_strict_openssh_options(),
         "-i",
         ssh_key_path.replace("\\", "/"),
         f"{SSH_USER}@{ip_address}",

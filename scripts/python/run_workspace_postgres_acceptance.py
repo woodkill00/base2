@@ -128,6 +128,33 @@ def main() -> None:
             ],
             stdout=subprocess.DEVNULL,
         )
+        api_migration = common + [
+            "--read-only",
+            "--tmpfs",
+            "/tmp:rw,noexec,nosuid,size=64m",
+            "-v",
+            f"{root}:/workspace:ro",
+            "-w",
+            "/workspace",
+            "-e",
+            "PYTHONPATH=/workspace",
+            "-e",
+            "DB_HOST=127.0.0.1",
+            "-e",
+            "DB_PORT=5432",
+            "-e",
+            "DB_NAME=base2",
+            "-e",
+            "DB_USER=base2",
+            "-e",
+            f"DB_PASSWORD={owner_password}",
+            "--entrypoint",
+            "python",
+            api_image,
+            "-m",
+            "api.scripts.migrate",
+        ]
+        run(api_migration, stdout=subprocess.DEVNULL)
         django_migration = common + [
             "--read-only",
             "--tmpfs",

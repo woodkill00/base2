@@ -2,6 +2,7 @@
 Description=Scan signed exact-owned Base2 ephemeral expiry plans
 After=network-online.target
 Wants=network-online.target
+OnFailure=base2-ephemeral-expiry-alert.service
 ConditionPathIsDirectory=/opt/base2/current
 ConditionPathIsExecutable=/usr/bin/python3
 

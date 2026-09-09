@@ -480,6 +480,33 @@ def main() -> None:
                            'private/source','validated','{}','review','all_or_nothing',NOW(),NOW())""",
                 (import_job_id, str(UUID(int=1)), "a" * 64, "b" * 64),
             )
+            cursor.execute(
+                """INSERT INTO sitecontent_mediaasset
+                   (id,site_id,storage_key,original_name,media_type,byte_size,sha256,status,
+                    owner_ref,attribution,retention_until,metadata,visibility,lock_version,
+                    current_object_version,authorization_epoch,archived_at,deleted_at,created_at,updated_at)
+                   VALUES (%s,'site-a','media/site-a/original','safe.png','image/png',10,%s,
+                           'ready','owner','',NULL,'{}','private',1,1,1,NULL,NULL,NOW(),NOW())""",
+                (str(UUID(int=70)), "d" * 64),
+            )
+            cursor.execute(
+                """INSERT INTO sitecontent_mediavariant
+                   (id,asset_id,name,storage_key,media_type,byte_size,sha256,width,height,
+                    recipe_id,recipe_version,source_sha256,processor_ref,inline_safe,
+                    duration_seconds,page_number,created_at)
+                   VALUES (%s,%s,'thumbnail','media/site-a/thumbnail','image/png',8,%s,32,32,
+                           'safe-v1',1,%s,'processor-v1',true,NULL,NULL,NOW())""",
+                (str(UUID(int=71)), str(UUID(int=70)), "e" * 64, "d" * 64),
+            )
+            cursor.execute(
+                """INSERT INTO sitecontent_mediaobjectversion
+                   (id,site_id,asset_id,version,storage_key,sha256,byte_size,detected_type,
+                    inspection_state,scanner_ref,scanner_definitions_at,source_upload_ref,
+                    replaces_id,created_at,updated_at)
+                   VALUES (%s,'site-a',%s,1,'media/site-a/object-v1',%s,10,'image/png',
+                           'accepted','scanner-v1',NOW(),NULL,NULL,NOW(),NOW())""",
+                (str(UUID(int=72)), str(UUID(int=70)), "d" * 64),
+            )
 
         assert count(runtime, None) == 0
         runtime.rollback()
@@ -497,6 +524,51 @@ def main() -> None:
                 api_runtime.rollback()
             else:
                 raise AssertionError("api_runtime_schema_create_was_not_blocked")
+        with api_runtime.cursor() as cursor:
+            cursor.execute("SET app.tenant_id = 'site-a'")
+            cursor.execute(
+                "SELECT id FROM api_identity_organizations WHERE tenant_id='site-b'"
+            )
+            assert cursor.fetchone() is None, "api_runtime_cross_tenant_org_read_was_not_blocked"
+        api_runtime.rollback()
+        with api_runtime.cursor() as cursor:
+            cursor.execute("SET app.tenant_id = 'site-a'")
+            try:
+                cursor.execute(
+                    "INSERT INTO api_identity_organizations(id,tenant_id,name) "
+                    "VALUES (%s,'site-b','forbidden')",
+                    (str(UUID(int=80)),),
+                )
+            except errors.InsufficientPrivilege:
+                api_runtime.rollback()
+            else:
+                raise AssertionError("api_runtime_cross_tenant_org_insert_was_not_blocked")
+        with api_runtime.cursor() as cursor:
+            cursor.execute("SET app.tenant_id = 'site-a'")
+            cursor.execute(
+                "SELECT id FROM api_data_rights_operations WHERE tenant_id='site-b'"
+            )
+            assert cursor.fetchone() is None, "api_runtime_cross_tenant_queue_read_was_not_blocked"
+        api_runtime.rollback()
+        with api_runtime.cursor() as cursor:
+            try:
+                cursor.execute(
+                    "INSERT INTO api_schema_migrations(version,applied_at) VALUES (999,NOW())"
+                )
+            except errors.InsufficientPrivilege:
+                api_runtime.rollback()
+            else:
+                raise AssertionError("api_runtime_migration_ledger_dml_was_not_blocked")
+        with api_runtime.cursor() as cursor:
+            try:
+                cursor.execute(
+                    "UPDATE api_data_rights_operations SET status='failed' WHERE id=%s",
+                    (str(UUID(int=52)),),
+                )
+            except errors.InsufficientPrivilege:
+                api_runtime.rollback()
+            else:
+                raise AssertionError("api_runtime_queue_update_was_not_blocked")
         assert operations_count(runtime, None) == 0
         runtime.rollback()
         # Runtime workers have only operations/job authority. Content workers
@@ -668,6 +740,14 @@ def main() -> None:
         global_deletion_claim = str(UUID(int=61))
         with owner, owner.cursor() as cursor:
             cursor.execute(
+                """INSERT INTO sitecontent_savedview
+                   (id,site_id,definition_id,owner_ref,title,query,visibility,shared_roles,
+                    schema_version,lock_version,created_at,updated_at)
+                   VALUES (%s,'site-a',%s,%s,'Orphaned historical view','{}','private','[]',
+                           1,1,NOW(),NOW())""",
+                (str(UUID(int=62)), str(UUID(int=1)), str(UUID(int=50))),
+            )
+            cursor.execute(
                 "INSERT INTO api_data_rights_operations "
                 "(id,tenant_id,user_id,kind,status,request_ciphertext,retention_until) "
                 "VALUES (%s,'site-a',%s,'global_deletion','queued','ciphertext',"
@@ -707,6 +787,10 @@ def main() -> None:
                 "SELECT 1 FROM api_identity_memberships WHERE user_id=%s", (str(UUID(int=50)),)
             )
             assert cursor.fetchone() is None
+            cursor.execute(
+                "SELECT 1 FROM sitecontent_savedview WHERE id=%s", (str(UUID(int=62)),)
+            )
+            assert cursor.fetchone() is None, "global_closure_missed_orphaned_subject_tenant"
             cursor.execute(
                 "DELETE FROM api_data_rights_operations WHERE id=%s", (global_deletion_id,)
             )
@@ -1057,9 +1141,27 @@ def main() -> None:
                         )
                         original_key, original_digest = cursor.fetchone()
                         cursor.execute(
+                            "SELECT storage_key,sha256 FROM sitecontent_mediavariant WHERE id=%s",
+                            (str(UUID(int=71)),),
+                        )
+                        variant_key, variant_digest = cursor.fetchone()
+                        cursor.execute(
+                            "SELECT storage_key,sha256 FROM sitecontent_mediaobjectversion WHERE id=%s",
+                            (str(UUID(int=72)),),
+                        )
+                        version_key, version_digest = cursor.fetchone()
+                        cursor.execute(
                             "UPDATE sitecontent_importjob SET source_object_key=%s,source_sha256=%s "
                             "WHERE id=%s",
                             ('media/site-a/concurrent-object', 'c' * 64, import_job_id),
+                        )
+                        cursor.execute(
+                            "UPDATE sitecontent_mediavariant SET storage_key=%s,sha256=%s WHERE id=%s",
+                            ('media/site-a/concurrent-variant', 'f' * 64, str(UUID(int=71))),
+                        )
+                        cursor.execute(
+                            "UPDATE sitecontent_mediaobjectversion SET storage_key=%s,sha256=%s WHERE id=%s",
+                            ('media/site-a/concurrent-version', 'f' * 64, str(UUID(int=72))),
                         )
                     updater.commit()
                     with updater.cursor() as cursor:
@@ -1067,6 +1169,14 @@ def main() -> None:
                             "UPDATE sitecontent_importjob SET source_object_key=%s,source_sha256=%s "
                             "WHERE id=%s",
                             (original_key, original_digest, import_job_id),
+                        )
+                        cursor.execute(
+                            "UPDATE sitecontent_mediavariant SET storage_key=%s,sha256=%s WHERE id=%s",
+                            (variant_key, variant_digest, str(UUID(int=71))),
+                        )
+                        cursor.execute(
+                            "UPDATE sitecontent_mediaobjectversion SET storage_key=%s,sha256=%s WHERE id=%s",
+                            (version_key, version_digest, str(UUID(int=72))),
                         )
                     updater.commit()
                 finally:

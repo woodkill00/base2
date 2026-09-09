@@ -126,3 +126,22 @@ def test_powershell_deploy_fails_closed_for_partial_rollback_and_inline_commit_c
     assert 'mktemp -d /root/base2-deploy-private.' in script
     assert 'config --no-interpolate > /root/logs/compose-config.template.yml' in script
     assert 'scan_artifact_secrets.py' in script
+    assert script.count('config --no-interpolate') >= 3
+    assert 'Invoke-FinalArtifactSecretGate' in script
+    assert 'workspace-db-role > /root/logs/workspace-role-bootstrap.txt' in script
+    assert script.index('workspace-role-bootstrap.txt') < script.index('compose-up-after-migrations.txt')
+    assert 'rollback-schema-compat.json' in script
+    assert 'rollback_api_migrate' not in script
+
+
+def test_python_orchestrator_rejects_unknown_ssh_hosts_everywhere():
+    root = Path(__file__).resolve().parents[2]
+    script = (root / 'digital_ocean/scripts/python/orchestrate_deploy.py').read_text(
+        encoding='utf-8'
+    )
+    assert 'AutoAddPolicy' not in script
+    assert 'StrictHostKeyChecking=no' not in script
+    assert 'paramiko.RejectPolicy()' in script
+    assert 'client.load_host_keys' in script
+    assert 'StrictHostKeyChecking=yes' in script
+    assert 'UserKnownHostsFile=' in script
