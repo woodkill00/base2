@@ -308,6 +308,16 @@ class CiPolicyTests(unittest.TestCase):
         self.assertEqual(2, compose.count("mirror.gcr.io/library/postgres@sha256:"))
         self.assertEqual(1, compose.count("mirror.gcr.io/library/redis@sha256:"))
 
+    def test_isolated_e2e_port_names_are_exactly_documented(self):
+        repo_root = MODULE_PATH.parents[2]
+        compose = (repo_root / "e2e/docker-compose.e2e.yml").read_text(encoding="utf-8")
+        guide = (repo_root / "docs/TESTING.md").read_text(encoding="utf-8")
+        for variable in ("E2E_API_PORT", "E2E_TEST_SUPPORT_PORT", "E2E_WEB_PORT"):
+            self.assertIn(f"${{{variable}:-", compose)
+            self.assertIn(f"{variable}=", guide)
+        self.assertIn("docker compose -p base2-e2e-isolated", guide)
+        self.assertIn("down -v --remove-orphans", guide)
+
     def test_backend_and_postgres_acceptance_avoid_anonymous_public_ecr(self):
         repo_root = MODULE_PATH.parents[2]
         workflow = (repo_root / ".github" / "workflows" / "ci-backend.yml").read_text()

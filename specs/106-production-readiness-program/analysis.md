@@ -1577,3 +1577,18 @@ its top-edge precondition, and stress the exact tablet interaction repeatedly.
 The correction grants no network or privileged authority. Commit `2b819a8`, its
 failed complete gate, and every prior candidate remain ineligible; all final
 evidence must restart from the replacement SHA.
+
+## Analysis cycle 75 — isolated E2E operator contract
+
+The first final fresh-volume attempt used intuitive but nonexistent `HOST_PORT`
+variable names because the isolated-port interface was present only in Compose
+and absent from the testing guide. Compose correctly ignored those names, then
+failed on the occupied default web port without changing the preserved local
+stack. The exact disposable project and its new volumes were removed. This was
+an operator-contract defect even though hosted CI and both complete gates passed.
+
+B448-B450 document the three exact variable names, fixed isolated project
+boundary, test invocation, and exact-project teardown; bind that documentation
+to the Compose contract; then restart all final exact-source evidence from a new
+candidate. Similar names remain rejected by normal Compose behavior, and no
+command gains authority over unrelated projects, providers, or live services.

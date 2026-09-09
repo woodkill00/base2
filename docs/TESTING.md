@@ -43,6 +43,36 @@ Coverage thresholds enforced in CI and deploy gate.
 - Tests: `cd react-app && npm run test:ci`
 - E2E: `cd react-app && npm run e2e`
 
+### Isolated fresh-volume E2E proof (WSL/Linux)
+
+Use a unique Compose project and the exact port-variable names below when an
+existing Base2 stack must remain running. The defaults in
+`e2e/docker-compose.e2e.yml` remain `5001`, `5002`, and `8080` for hosted CI.
+
+```bash
+E2E_API_PORT=15001 E2E_TEST_SUPPORT_PORT=15002 E2E_WEB_PORT=18080 \
+  docker compose -p base2-e2e-isolated -f e2e/docker-compose.e2e.yml up -d --build
+```
+
+Run the browser suite against that isolated stack:
+
+```bash
+cd e2e
+E2E_API_URL=http://127.0.0.1:15001 \
+E2E_TEST_SUPPORT_URL=http://127.0.0.1:15002 \
+E2E_BASE_URL=http://127.0.0.1:18080 \
+E2E_TEST_KEY=local-e2e-key npm run test:ci
+```
+
+Remove only the named disposable project and its fresh volumes when finished:
+
+```bash
+docker compose -p base2-e2e-isolated -f e2e/docker-compose.e2e.yml down -v --remove-orphans
+```
+
+Do not substitute similarly named variables: Compose intentionally recognizes
+only `E2E_API_PORT`, `E2E_TEST_SUPPORT_PORT`, and `E2E_WEB_PORT`.
+
 ### React Router v7 future flags (tests-only)
 
 - Production: Router flags are configured in app code (see `react-app/src/App.js`).

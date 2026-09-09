@@ -606,3 +606,9 @@ substitute for the integration proof named by the task.
 - [ ] B445 Make the movement-control browser proof establish and verify its top-edge precondition before asserting that descent is available. (FR-002, FR-005, FR-007, FR-021, FR-060, FR-063, FR-065, FR-068, FR-075, FR-078)
 - [ ] B446 Repeat the exact tablet movement interaction at least twenty times and retain zero-failure evidence before restarting the complete gates. (FR-002, FR-005, FR-007, FR-021, FR-060, FR-063, FR-065, FR-068, FR-075, FR-078)
 - [ ] B447 Commit a replacement candidate and restart every complete gate, fresh-volume proof, exact repetition, independent review, and hosted check from that exact SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 52 — Isolated E2E operator cycle 75 corrections
+
+- [ ] B448 Document the exact isolated E2E port-variable names, unchanged hosted defaults, fixed disposable project name, browser URLs, and exact-project volume teardown. (FR-002, FR-004, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B449 Add a policy regression binding every documented isolated port variable and teardown boundary to the Compose interface. (FR-002, FR-004, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B450 Commit a replacement candidate and restart both complete gates, fresh-volume E2E, exact repetitions, independent reviews, and hosted checks from that exact SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
