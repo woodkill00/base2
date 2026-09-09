@@ -716,10 +716,10 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     setActiveUtilitySlot(normalizedIndex);
 
     if (selectedEl && scrollEl) {
-      centerUtilitySlot(normalizedIndex, 'smooth');
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => updateUtilitySelectionFromScroll(false));
-      });
+      // A direct selection must be atomic. Smooth scrolling can emit
+      // intermediate scroll events that temporarily select another loop copy,
+      // so center the canonical option before allowing scroll reconciliation.
+      centerUtilitySlot(normalizedIndex, 'auto');
     }
 
     if (!item.safe) return;

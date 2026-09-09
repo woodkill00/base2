@@ -1117,3 +1117,11 @@ updated to the same single-option contract. The affected unit suite passed 5
 checks, the affected three-viewport browser suite passed 6 checks, the full
 visual matrix passed 50 checks with 4 intentional skips, and the complete
 frontend suite passed all 280 checks with its coverage thresholds intact.
+
+The next exact gate reproduced one final product race: the click handler began
+smooth centering and then reread the old scroll position two animation frames
+later, allowing an intermediate loop item to overwrite the user's direct
+selection. Direct selection now atomically centers the canonical option before
+normal scroll reconciliation. The affected six-check browser matrix passed five
+consecutive repetitions across desktop, tablet, and mobile with no recurrence.
+All exact-head evidence restarts again from the new commit.
