@@ -10,6 +10,7 @@ closed before another paid resource can be created.
 
 from __future__ import annotations
 
+import ctypes
 import hashlib
 import json
 import os
@@ -47,12 +48,44 @@ def _trusted_git_executable() -> str:
 GIT_EXECUTABLE = _trusted_git_executable()
 
 
+def _trusted_windows_directory() -> Path:
+    """Read the real Windows directory from the kernel, never the environment."""
+
+    buffer = ctypes.create_unicode_buffer(32768)
+    try:
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        length = kernel32.GetWindowsDirectoryW(buffer, len(buffer))
+    except (AttributeError, OSError) as exc:
+        raise ProviderLeaseError("provider_lease_windows_directory_invalid") from exc
+    if length < 1 or length >= len(buffer):
+        raise ProviderLeaseError("provider_lease_windows_directory_invalid")
+    candidate = Path(buffer.value)
+    try:
+        if not candidate.is_absolute() or candidate.is_symlink():
+            raise ProviderLeaseError("provider_lease_windows_directory_invalid")
+        resolved = candidate.resolve(strict=True)
+    except OSError as exc:
+        raise ProviderLeaseError("provider_lease_windows_directory_invalid") from exc
+    if not resolved.is_dir():
+        raise ProviderLeaseError("provider_lease_windows_directory_invalid")
+    return resolved
+
+
 def _windows_broker_acl_restrictive(path: Path) -> bool:
     """Verify owner and writable ancestry using SID-based Windows ACL checks."""
 
-    powershell = Path(os.environ.get("SYSTEMROOT", r"C:\Windows")) / (
-        r"System32\WindowsPowerShell\v1.0\powershell.exe"
-    )
+    try:
+        windows_directory = _trusted_windows_directory()
+        powershell = (
+            windows_directory / r"System32\WindowsPowerShell\v1.0\powershell.exe"
+        )
+        if powershell.is_symlink():
+            return False
+        powershell = powershell.resolve(strict=True)
+        if not powershell.is_file() or not powershell.is_relative_to(windows_directory):
+            return False
+    except (OSError, ProviderLeaseError):
+        return False
     script = r"""
 $ErrorActionPreference = 'Stop'
 $me = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
@@ -81,8 +114,8 @@ exit 0
 """
     environment = {
         "BASE2_BROKER_PATH": str(path),
-        "SYSTEMROOT": os.environ.get("SYSTEMROOT", r"C:\Windows"),
-        "WINDIR": os.environ.get("WINDIR", r"C:\Windows"),
+        "SYSTEMROOT": str(windows_directory),
+        "WINDIR": str(windows_directory),
     }
     try:
         result = subprocess.run(
@@ -171,20 +204,15 @@ def _git(
     credential_broker: Path | None = None,
 ) -> subprocess.CompletedProcess[str]:
     environment = {
-            "GIT_CONFIG_NOSYSTEM": "1",
-            "GIT_CONFIG_SYSTEM": os.devnull,
-            "GIT_CONFIG_GLOBAL": os.devnull,
-            "GIT_TERMINAL_PROMPT": "0",
-            "GIT_SSL_NO_VERIFY": "false",
-            "LANG": "C",
-            "LC_ALL": "C",
-            "PATH": str(Path(GIT_EXECUTABLE).parent),
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_CONFIG_SYSTEM": os.devnull,
+        "GIT_CONFIG_GLOBAL": os.devnull,
+        "GIT_TERMINAL_PROMPT": "0",
+        "GIT_SSL_NO_VERIFY": "false",
+        "LANG": "C",
+        "LC_ALL": "C",
+        "PATH": str(Path(GIT_EXECUTABLE).parent),
     }
-    if os.name == "nt":
-        for name in ("COMSPEC", "SYSTEMROOT", "TEMP", "TMP", "WINDIR"):
-            value = os.environ.get(name)
-            if value:
-                environment[name] = value
     if credential_broker is not None:
         environment["GIT_ASKPASS"] = str(credential_broker)
     if identity:
@@ -197,16 +225,32 @@ def _git(
             }
         )
     try:
-        return subprocess.run(
-            [GIT_EXECUTABLE, *command],
-            cwd=cwd,
-            env=environment,
-            input=stdin,
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
+        with tempfile.TemporaryDirectory(prefix="base2-provider-lease-") as raw_temp:
+            private_temp = Path(raw_temp).resolve()
+            if os.name == "nt":
+                windows_directory = _trusted_windows_directory()
+                if not _windows_broker_acl_restrictive(private_temp):
+                    raise ProviderLeaseError("provider_lease_private_temp_invalid")
+                environment.update(
+                    {
+                        "SYSTEMROOT": str(windows_directory),
+                        "TEMP": str(private_temp),
+                        "TMP": str(private_temp),
+                        "WINDIR": str(windows_directory),
+                    }
+                )
+            else:
+                environment["TMPDIR"] = str(private_temp)
+            return subprocess.run(
+                [GIT_EXECUTABLE, *command],
+                cwd=cwd,
+                env=environment,
+                input=stdin,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise ProviderLeaseError("provider_lease_transport_failed") from exc
 

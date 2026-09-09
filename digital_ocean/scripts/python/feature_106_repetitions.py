@@ -195,15 +195,28 @@ def _validate_existing(path: Path, commit: str) -> Path:
     return manifest
 
 
+def _private_evidence_root(project_root: Path) -> Path:
+    artifacts = project_root / ".artifacts"
+    evidence_root = artifacts / "feature-106-repetitions"
+    for candidate in (artifacts, evidence_root):
+        if candidate.is_symlink():
+            raise RepetitionError("repetition_evidence_root_invalid")
+        if candidate.exists() and not candidate.is_dir():
+            raise RepetitionError("repetition_evidence_root_invalid")
+        candidate.mkdir(exist_ok=True, mode=0o700)
+        if not candidate.resolve().is_relative_to(project_root):
+            raise RepetitionError("repetition_evidence_root_invalid")
+    return evidence_root
+
+
 def run(root: Path | None = None) -> Path:
     project_root = (root or Path(__file__).resolve().parents[3]).resolve()
     _require_clean(project_root)
     commit = _source_commit(project_root)
-    evidence_root = project_root / ".artifacts" / "feature-106-repetitions"
+    evidence_root = _private_evidence_root(project_root)
     destination = evidence_root / commit
     if destination.exists():
         return _validate_existing(destination, commit)
-    evidence_root.mkdir(parents=True, exist_ok=True, mode=0o700)
     with tempfile.TemporaryDirectory(prefix=f".{commit}.", dir=evidence_root) as raw_stage:
         stage = Path(raw_stage)
         home = stage / "home"

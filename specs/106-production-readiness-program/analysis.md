@@ -1289,3 +1289,21 @@ tests for both paths and require a new full pre-commit pass without lowering,
 rounding, or bypassing the coverage floor. The failed gate is historical and no
 exact-head evidence or publication can begin until the complete repaired tree
 passes.
+
+## Analysis cycle 57 — final operations review rejects the candidate
+
+Exact commit `8b3dc9fd5f3498e3635d5e0a29615869f6185d97` passed two
+108-check complete gates and its isolated source-bound 10+10 repetitions. Fresh
+UX and data reviews accepted with C0/H0/M0/L0, but combined operations/security
+review returned C0/H0/M1/L1. The candidate is rejected and remains unpublished.
+
+The Windows ACL verifier derived PowerShell from ambient SYSTEMROOT, and the
+token-bearing Git child retained ambient SYSTEMROOT, WINDIR, COMSPEC, and temp
+paths. A hostile caller could therefore substitute executables before the SID
+decision. Review also found that ignored repetition-evidence parent directories
+could be symlinked even though the destination and members were protected.
+B393-B395 replace ambient Windows roots with the kernel-reported directory,
+validate one newly created private temp root, omit command-shell authority, and
+reject every symlinked/non-directory evidence ancestor. Every exact gate,
+repetition, and review restarts from the next clean commit; no publication or
+external action is authorized by the rejected evidence.

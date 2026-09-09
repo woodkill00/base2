@@ -277,3 +277,13 @@ def test_existing_evidence_rejects_symlinked_root_and_malformed_json(tmp_path):
     manifest.write_text("{not-json", encoding="utf-8")
     with pytest.raises(repetitions.RepetitionError, match="invalid"):
         repetitions._validate_existing(target, "a" * 40)
+
+
+def test_private_evidence_root_rejects_symlinked_ancestor(tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (project / ".artifacts").symlink_to(outside, target_is_directory=True)
+    with pytest.raises(repetitions.RepetitionError, match="root_invalid"):
+        repetitions._private_evidence_root(project)

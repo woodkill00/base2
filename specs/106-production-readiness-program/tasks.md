@@ -497,3 +497,9 @@ substitute for the integration proof named by the task.
 
 - [ ] B391 Directly exercise trusted-Git symlink and resolution-failure rejection so the unchanged changed-line coverage floor admits the repaired provider boundary. (FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-074, FR-078)
 - [ ] B392 Commit only after the complete repaired tree passes the full gate without reducing or rounding its 90% changed-line floor, then restart exact-head evidence. (FR-005, FR-007, FR-060, FR-063 through FR-069, FR-078)
+
+## Phase 34 — Independent review cycle 57 corrections
+
+- [ ] B393 Derive the native Windows directory and PowerShell ACL verifier through a trusted kernel API, ignore hostile SYSTEMROOT, WINDIR, and COMSPEC values, and give token-bearing Git only a newly created ACL-validated private temporary directory. (FR-005, FR-007, FR-008, FR-014, FR-031, FR-059, FR-060, FR-063, FR-065, FR-067 through FR-069, FR-071, FR-074)
+- [ ] B394 Reject symlinked or non-directory repetition-evidence ancestors before creation or replay, proving ignored private evidence cannot be redirected outside the resolved repository. (FR-005, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B395 Commit a new clean candidate, rerun both exact complete gates and persisted 10+10 repetitions, then repeat fresh UX, data, and operations review until all critical, high, and medium totals are zero. (FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)

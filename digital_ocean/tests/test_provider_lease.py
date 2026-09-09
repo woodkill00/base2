@@ -235,6 +235,7 @@ def test_git_transport_environment_is_scrubbed(monkeypatch, tmp_path):
     assert set(captured) == {
         "GIT_CONFIG_NOSYSTEM", "GIT_CONFIG_SYSTEM", "GIT_CONFIG_GLOBAL",
         "GIT_TERMINAL_PROMPT", "GIT_SSL_NO_VERIFY", "LANG", "LC_ALL", "PATH",
+        "TMPDIR",
     }
 
 
@@ -249,6 +250,11 @@ def test_windows_broker_acl_check_is_fail_closed(monkeypatch, tmp_path, returnco
 
     broker = tmp_path / "broker.exe"
     broker.write_bytes(b"fixture")
+    windows = tmp_path / "Windows"
+    windows.mkdir()
+    powershell = windows / r"System32\WindowsPowerShell\v1.0\powershell.exe"
+    powershell.write_bytes(b"fixture")
+    monkeypatch.setattr(lease_module, "_trusted_windows_directory", lambda: windows)
     monkeypatch.setattr(subprocess, "run", run)
     assert _windows_broker_acl_restrictive(broker) is expected
     assert captured["environment"]["BASE2_BROKER_PATH"] == str(broker)
@@ -260,8 +266,64 @@ def test_windows_broker_acl_check_rejects_probe_failure(monkeypatch, tmp_path):
     def fail(*_args, **_kwargs):
         raise subprocess.TimeoutExpired("powershell", 15)
 
+    windows = tmp_path / "Windows"
+    windows.mkdir()
+    (windows / r"System32\WindowsPowerShell\v1.0\powershell.exe").write_bytes(b"fixture")
+    monkeypatch.setattr(lease_module, "_trusted_windows_directory", lambda: windows)
     monkeypatch.setattr(subprocess, "run", fail)
     assert not _windows_broker_acl_restrictive(tmp_path / "broker.exe")
+
+
+def test_windows_directory_comes_from_kernel_not_hostile_environment(monkeypatch, tmp_path):
+    windows = tmp_path / "real-windows"
+    windows.mkdir()
+
+    class Kernel:
+        @staticmethod
+        def GetWindowsDirectoryW(buffer, _size):
+            buffer.value = str(windows)
+            return len(str(windows))
+
+    monkeypatch.setenv("SYSTEMROOT", str(tmp_path / "hostile"))
+    monkeypatch.setenv("WINDIR", str(tmp_path / "hostile"))
+    monkeypatch.setattr(lease_module.ctypes, "WinDLL", lambda *_args, **_kwargs: Kernel(), raising=False)
+    assert lease_module._trusted_windows_directory() == windows
+
+
+def test_windows_git_environment_ignores_ambient_executables(monkeypatch, tmp_path):
+    captured = {}
+    trusted = tmp_path / "trusted-windows"
+
+    def run(*args, **kwargs):
+        captured.update(kwargs["env"])
+        return subprocess.CompletedProcess(args[0], 0, "", "")
+
+    fake_os = type(
+        "FakeOs",
+        (),
+        {
+            "name": "nt",
+            "devnull": "NUL",
+            "environ": {
+                "SYSTEMROOT": str(tmp_path / "hostile"),
+                "WINDIR": str(tmp_path / "hostile"),
+                "COMSPEC": str(tmp_path / "hostile-cmd.exe"),
+                "TEMP": str(tmp_path / "hostile-temp"),
+                "LD_PRELOAD": str(tmp_path / "hostile.dll"),
+            },
+        },
+    )
+    monkeypatch.setattr(lease_module, "os", fake_os)
+    monkeypatch.setattr(lease_module, "_trusted_windows_directory", lambda: trusted)
+    monkeypatch.setattr(lease_module, "_windows_broker_acl_restrictive", lambda _path: True)
+    monkeypatch.setattr(subprocess, "run", run)
+    _lease_git(["status"], cwd=tmp_path)
+    assert captured["SYSTEMROOT"] == str(trusted)
+    assert captured["WINDIR"] == str(trusted)
+    assert captured["TEMP"] == captured["TMP"]
+    assert captured["TEMP"] != str(tmp_path / "hostile-temp")
+    assert "COMSPEC" not in captured
+    assert "LD_PRELOAD" not in captured
 
 
 def test_trusted_git_executable_rejects_symlink_and_resolution_failure(monkeypatch):
