@@ -91,6 +91,7 @@ def create_manifest(root: Path, source_commit: str, *, tests_required: bool) -> 
 
 
 def verify_manifest(root: Path, manifest_path: Path) -> None:
+    resolved_root = root.resolve(strict=True)
     payload = json.loads(manifest_path.read_text(encoding="utf-8"))
     source_commit = payload.get("sourceCommit")
     tests_required = payload.get("testsRequired")
@@ -114,9 +115,22 @@ def verify_manifest(root: Path, manifest_path: Path) -> None:
         if not isinstance(entry.get("path"), str):
             raise EvidenceError("invalid_evidence_member")
         relative = Path(entry["path"])
-        if relative.is_absolute() or ".." in relative.parts:
+        if (
+            relative.is_absolute()
+            or ".." in relative.parts
+            or relative.name != entry["name"]
+        ):
             raise EvidenceError("invalid_evidence_path")
         path = root / relative
+        component = root
+        for part in relative.parts:
+            component /= part
+            if component.is_symlink():
+                raise EvidenceError(f"evidence_member_symlink:{entry['name']}")
+        try:
+            path.resolve(strict=True).relative_to(resolved_root)
+        except (OSError, ValueError) as exc:
+            raise EvidenceError(f"evidence_member_outside:{entry['name']}") from exc
         if path.is_symlink() or not path.is_file():
             raise EvidenceError(f"evidence_member_missing:{entry['name']}")
         if path.stat().st_size != entry["bytes"] or digest(path) != entry["sha256"]:

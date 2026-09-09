@@ -415,13 +415,18 @@ describe('US3 Settings', () => {
   test.each([
     {
       locale: 'de',
-      action: 'identity.login_succeeded',
+      action: 'auth.login',
       expected: 'Erfolgreiche Anmeldung',
     },
     {
       locale: 'ar',
-      action: 'identity.password_changed',
-      expected: 'تم تغيير كلمة المرور',
+      action: 'identity.totp_enabled',
+      expected: 'تم تفعيل تطبيق المصادقة',
+    },
+    {
+      locale: 'en',
+      action: 'user.preferences_updated',
+      expected: 'Profile preferences updated',
     },
     {
       locale: 'de',

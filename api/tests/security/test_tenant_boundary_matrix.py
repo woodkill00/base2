@@ -228,7 +228,8 @@ def test_database_dsn_encodes_credentials_and_adds_verified_tls(monkeypatch):
     assert 'sslmode=verify-full' in dsn
     assert 'sslrootcert=/run/secrets/database-ca.pem' in dsn
 
-    monkeypatch.setenv(
+    monkeypatch.setattr(
+        db.settings,
         'DATABASE_URL',
         'postgresql://runtime:secret@db.internal/base2?application_name=base2&sslmode=disable',
     )

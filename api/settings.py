@@ -3,8 +3,10 @@ import re
 import base64
 import binascii
 import stat
+import ipaddress
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlsplit
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
@@ -81,6 +83,7 @@ class Settings(BaseSettings):
 
     # DB settings (FastAPI side)
     DB_HOST: str = Field(default='postgres')
+    DATABASE_URL: Optional[str] = None
     DB_CONNECT_TIMEOUT_SEC: int = Field(default=3)
     DB_STATEMENT_TIMEOUT_MS: int = Field(default=3000)
     DB_POOL_MIN: int = Field(default=1)
@@ -260,12 +263,26 @@ class Settings(BaseSettings):
                 raise RuntimeError('Missing required env var(s): ' + ', '.join(missing))
             if self.DB_SSLMODE != 'verify-full' or not (self.DB_SSLROOTCERT or '').startswith('/'):
                 raise RuntimeError('Database TLS verify-full configuration is required')
-            if env == 'production' and self.DB_HOST.strip().lower() in {
-                'postgres',
-                'localhost',
-                '127.0.0.1',
-            }:
-                raise RuntimeError('Production database must use an external verified-TLS endpoint')
+            if env == 'production':
+                effective_host = self.DB_HOST.strip().lower()
+                if self.DATABASE_URL:
+                    try:
+                        parsed_database_url = urlsplit(self.DATABASE_URL)
+                        if parsed_database_url.scheme not in {'postgres', 'postgresql'}:
+                            raise RuntimeError('DATABASE_URL must use PostgreSQL')
+                        effective_host = (parsed_database_url.hostname or '').strip().lower()
+                    except ValueError as exc:
+                        raise RuntimeError('DATABASE_URL must be a valid PostgreSQL URL') from exc
+                local_database = effective_host in {'', 'postgres', 'localhost'}
+                try:
+                    local_database = local_database or ipaddress.ip_address(effective_host).is_loopback
+                    local_database = local_database or ipaddress.ip_address(effective_host).is_unspecified
+                except ValueError:
+                    pass
+                if local_database:
+                    raise RuntimeError(
+                        'Production database must use an external verified-TLS endpoint'
+                    )
             if not 60 <= self.OPERATIONS_RECEIPT_MAX_AGE_SECONDS <= 172800:
                 raise RuntimeError(
                     'OPERATIONS_RECEIPT_MAX_AGE_SECONDS must be between 60 and 172800'

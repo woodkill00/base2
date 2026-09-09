@@ -1018,8 +1018,15 @@ function Get-DropletIp([switch]$Authoritative) {
   $lookupExit = $LASTEXITCODE
   try { $lookup = $lookupRaw | ConvertFrom-Json } catch { throw 'DigitalOcean lookup returned an invalid response' }
   if ($lookupExit -ne 0) { throw "DigitalOcean lookup failed closed: $($lookup.state)" }
-  if ($lookup.state -eq 'missing') { return "" }
+  if ($lookup.state -eq 'missing') {
+    Remove-Item Env:DO_EXPECTED_DROPLET_ID -ErrorAction SilentlyContinue
+    return ""
+  }
   if ($lookup.state -eq 'found' -and -not [string]::IsNullOrWhiteSpace([string]$lookup.ip)) {
+    if ([string]::IsNullOrWhiteSpace([string]$lookup.id)) {
+      throw 'DigitalOcean lookup omitted the exact provider identity'
+    }
+    $env:DO_EXPECTED_DROPLET_ID = [string]$lookup.id
     return [string]$lookup.ip
   }
   throw "DigitalOcean lookup returned a nonterminal state: $($lookup.state)"
@@ -1085,6 +1092,24 @@ function Remote-Verify($ip, $keyPath) {
   $sshMkdirErr = Join-Path $dest 'ssh-mkdir.stderr.txt'
   $code = Invoke-NativeWithTimeout -FilePath $sshExe -ArgumentList ($sshArgs + @("mkdir -p $remoteAppDir")) -Label "SSH mkdir $remoteAppDir" -TimeoutSec 120 -StdoutPath $sshMkdirOut -StderrPath $sshMkdirErr -HeartbeatSec 9999
   if ($code -ne 0) { throw "Failed to create $remoteAppDir on droplet (ssh exit $code)" }
+  # A fresh host receives source only after its SSH identity has been pinned.
+  # Repository URLs must be public, credential-free HTTPS values; private
+  # repository bootstrap requires a separate scoped JIT credential workflow.
+  $repoUrl = [System.Environment]::GetEnvironmentVariable('REPO_URL', 'Process')
+  if ([string]::IsNullOrWhiteSpace($repoUrl)) {
+    $repoUrl = [System.Environment]::GetEnvironmentVariable('DO_GIT_REPO', 'Process')
+  }
+  if ([string]::IsNullOrWhiteSpace($repoUrl)) {
+    $repoUrl = [System.Environment]::GetEnvironmentVariable('GIT_REPO', 'Process')
+  }
+  if ($repoUrl -notmatch '^https://[A-Za-z0-9.-]+/[A-Za-z0-9._/-]+(?:\.git)?$') {
+    throw 'Fresh-host source bootstrap requires a credential-free HTTPS repository URL'
+  }
+  $cloneOut = Join-Path $dest 'ssh-source-bootstrap.stdout.txt'
+  $cloneErr = Join-Path $dest 'ssh-source-bootstrap.stderr.txt'
+  $cloneCommand = "set -eu; if ! git -C '$remoteAppDir' rev-parse --git-dir >/dev/null 2>&1; then test -z `"`$(find '$remoteAppDir' -mindepth 1 -maxdepth 1 -print -quit)`"; git clone -- '$repoUrl' '$remoteAppDir'; fi"
+  $code = Invoke-NativeWithTimeout -FilePath $sshExe -ArgumentList ($sshArgs + @($cloneCommand)) -Label 'SSH source bootstrap after host enrollment' -TimeoutSec 300 -StdoutPath $cloneOut -StderrPath $cloneErr -HeartbeatSec 60
+  if ($code -ne 0) { throw "Failed credential-free source bootstrap (ssh exit $code)" }
   # Capture the true pre-mutation source, epoch, and private environment before
   # the new environment is transferred or any repository/service state changes.
   $priorOut = Join-Path $dest 'ssh-prior-state.stdout.txt'
@@ -1232,6 +1257,7 @@ PY
   STATUS=$?
   set -e
   echo $STATUS > /root/logs/build/env-dollar-check.status || true
+  if [ "$STATUS" != 0 ]; then exit "$STATUS"; fi
   # IMPORTANT: We have observed Docker caching causing stale FastAPI code to persist across
   # UpdateOnly deploys can be severely slowed down by rebuilding the React image (npm run build)
   # on a small droplet. To keep verification fast, rebuild services only when their source changed
@@ -2208,6 +2234,7 @@ try {
       effectiveMode = $effectiveMode
       autoSelectedUpdateOnly = [bool]$autoSelectedUpdateOnly
       detectedExistingIp = $detectedExistingIp
+      detectedExistingProviderId = $env:DO_EXPECTED_DROPLET_ID
       doAppBranch = $branch
     }
     $modeJson = ($modePayload | ConvertTo-Json -Depth 6)
@@ -2242,7 +2269,8 @@ try {
       "Target: $newIp",
       'Verify the host-key fingerprint through the DigitalOcean console or another authenticated channel.',
       'Add only that verified key to the owner-controlled known_hosts file, then rerun without CreateIfMissing.',
-      'No SSH, DNS, source sync, secret transfer, migration, or service start was performed by this run.'
+      'The provider created the host and ran credential-free OS bootstrap user-data.'
+      'No post-enrollment SSH, DNS mutation, source sync, secret transfer, migration, or service start was performed by this run.'
     )
     throw 'New host provisioned; separate owner-approved host-key verification and enrollment is required before deployment'
   }

@@ -81,6 +81,27 @@ def test_rejects_remote_source_that_does_not_match_local_candidate(tmp_path):
         create_manifest(tmp_path, COMMIT, tests_required=False)
 
 
+def test_rejects_symlinked_parent_and_manifest_name_mismatch(tmp_path):
+    populate(tmp_path)
+    manifest = create_manifest(tmp_path, COMMIT, tests_required=False)
+    payload = json.loads(manifest.read_text(encoding="utf-8"))
+    nested_entry = next(entry for entry in payload["files"] if "/" in entry["path"])
+    nested = tmp_path / Path(nested_entry["path"]).parent
+    outside = tmp_path.parent / f"{tmp_path.name}-outside"
+    nested.rename(outside)
+    nested.symlink_to(outside, target_is_directory=True)
+    with pytest.raises(EvidenceError, match="symlink"):
+        verify_manifest(tmp_path, manifest)
+
+    nested.unlink()
+    outside.rename(nested)
+    payload = json.loads(manifest.read_text(encoding="utf-8"))
+    payload["files"][0]["name"] = "wrong-name.txt"
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(EvidenceError, match="members|path"):
+        verify_manifest(tmp_path, manifest)
+
+
 def test_accepts_identical_promoted_copy_but_rejects_divergent_copy(tmp_path):
     populate(tmp_path)
     original = next(tmp_path.rglob("compose-ps.txt"))

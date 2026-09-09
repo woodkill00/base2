@@ -23,6 +23,7 @@ import AccountCenter from './AccountCenter';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../lib/apiClient';
 import { settingsAPI } from '../services/settings';
+import securityActions from '../contracts/security-actions.json';
 
 const FALLBACK_CATEGORIES = [
   ['overview', 'Overview', 'Account health and recommended actions', LayoutGrid, '/settings'],
@@ -314,12 +315,7 @@ const DETAIL_COPY = {
     securityActivity: 'Recent security activity',
     noSecurityEvents: 'No recent security events are available.',
     accountEvent: 'Account event',
-    securityActions: {
-      'identity.login_succeeded': 'Successful sign-in',
-      'identity.login_failed': 'Failed sign-in',
-      'identity.password_changed': 'Password changed',
-      'identity.mfa_changed': 'Multi-factor authentication changed',
-    },
+    securityActions: securityActions.en,
     unknownSecurityAction: 'Unknown security event',
     apiDocs: 'API documentation',
     apiDocsHelp: 'Explore the generated API contract and integration schemas.',
@@ -430,12 +426,7 @@ const DETAIL_COPY = {
     securityActivity: 'Letzte Sicherheitsaktivität',
     noSecurityEvents: 'Keine aktuellen Sicherheitsereignisse verfügbar.',
     accountEvent: 'Kontoereignis',
-    securityActions: {
-      'identity.login_succeeded': 'Erfolgreiche Anmeldung',
-      'identity.login_failed': 'Fehlgeschlagene Anmeldung',
-      'identity.password_changed': 'Passwort geändert',
-      'identity.mfa_changed': 'Mehrfaktor-Authentifizierung geändert',
-    },
+    securityActions: securityActions.de,
     unknownSecurityAction: 'Unbekanntes Sicherheitsereignis',
     apiDocs: 'API-Dokumentation',
     apiDocsHelp: 'Erkunden Sie den generierten API-Vertrag und die Integrationsschemata.',
@@ -539,12 +530,7 @@ const DETAIL_COPY = {
     securityActivity: 'نشاط الأمان الحديث',
     noSecurityEvents: 'لا تتوفر أحداث أمان حديثة.',
     accountEvent: 'حدث الحساب',
-    securityActions: {
-      'identity.login_succeeded': 'تسجيل دخول ناجح',
-      'identity.login_failed': 'فشل تسجيل الدخول',
-      'identity.password_changed': 'تم تغيير كلمة المرور',
-      'identity.mfa_changed': 'تم تغيير المصادقة متعددة العوامل',
-    },
+    securityActions: securityActions.ar,
     unknownSecurityAction: 'حدث أمان غير معروف',
     apiDocs: 'توثيق الواجهة البرمجية',
     apiDocsHelp: 'استكشف عقد الواجهة البرمجية ومخططات التكامل المُنشأة.',

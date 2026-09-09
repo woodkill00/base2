@@ -64,7 +64,7 @@ def _project_slug() -> str:
 
 def _build_dsn() -> str:
     # Prefer an explicit DATABASE_URL if provided
-    database_url = os.getenv('DATABASE_URL')
+    database_url = settings.DATABASE_URL
     if database_url:
         return _with_tls(database_url)
 

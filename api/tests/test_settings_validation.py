@@ -126,6 +126,47 @@ def test_production_migration_role_accepts_only_verified_external_database(monke
     assert settings.DB_HOST == 'private-db.example.test'
 
 
+@pytest.mark.parametrize(
+    'database_url',
+    (
+        'postgresql://owner:secret@postgres:5432/app',
+        'postgresql://owner:secret@localhost:5432/app',
+        'postgresql://owner:secret@127.0.0.1:5432/app',
+        'postgresql:///app',
+        'postgresql://owner:secret@[invalid/app',
+        'sqlite:///tmp/app.db',
+    ),
+)
+@pytest.mark.parametrize('role', ('api', 'runtime-worker', 'migration'))
+def test_production_rejects_database_url_that_bypasses_effective_host(
+    monkeypatch, database_url, role
+):
+    from api.settings import Settings
+
+    monkeypatch.setenv('ENV', 'production')
+    monkeypatch.setenv('BASE2_PROCESS_ROLE', role)
+    monkeypatch.setenv('DB_HOST', 'private-db.example.test')
+    monkeypatch.setenv('DB_SSLMODE', 'verify-full')
+    monkeypatch.setenv('DB_SSLROOTCERT', '/run/secrets/database-ca.pem')
+    monkeypatch.setenv('DATABASE_URL', database_url)
+    with pytest.raises(RuntimeError):
+        Settings()
+
+
+def test_production_accepts_verified_external_database_url(monkeypatch):
+    from api.settings import Settings
+
+    monkeypatch.setenv('ENV', 'production')
+    monkeypatch.setenv('BASE2_PROCESS_ROLE', 'migration')
+    monkeypatch.setenv('DB_HOST', 'ignored-local-validation.example.test')
+    monkeypatch.setenv('DB_SSLMODE', 'verify-full')
+    monkeypatch.setenv('DB_SSLROOTCERT', '/run/secrets/database-ca.pem')
+    monkeypatch.setenv(
+        'DATABASE_URL', 'postgresql://owner:secret@private-db.example.test:5432/app'
+    )
+    assert Settings().DATABASE_URL.endswith('/app')
+
+
 def test_staging_s3_storage_requires_allowlisted_https_and_secret_files(monkeypatch):
     from api.settings import Settings
 

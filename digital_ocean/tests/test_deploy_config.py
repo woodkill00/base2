@@ -75,6 +75,28 @@ def test_templates_expand_before_identity_validation():
     assert result["DO_DROPLET_NAME"] == "base2-preview"
 
 
+@pytest.mark.parametrize(
+    "repo_url",
+    (
+        "https://token@github.com/example/base2.git",
+        "https://github.com/example/base2.git?token=secret",
+        "https://github.com/example/base2.git#secret",
+        "git@github.com:example/base2.git",
+        "http://github.com/example/base2.git",
+    ),
+)
+def test_repository_url_rejects_credentials_and_non_https_transports(repo_url):
+    with pytest.raises(DeployConfigError, match="credential-free HTTPS"):
+        normalize_deploy_config({"REPO_URL": repo_url})
+
+
+def test_repository_url_accepts_public_credential_free_https():
+    result = normalize_deploy_config(
+        {"REPO_URL": "https://github.com/example/base2.git"}
+    )
+    assert result["REPO_URL"] == "https://github.com/example/base2.git"
+
+
 def test_secret_redaction_never_returns_values():
     redacted = redact_config(
         {
@@ -123,15 +145,67 @@ def test_powershell_deploy_fails_closed_for_partial_rollback_and_inline_commit_c
     assert "UserKnownHostsFile=" in script
     assert "ssh-keygen -F $ip" in script
     assert "/root/logs/build/env-backup.env" not in script
-    assert 'mktemp -d /root/base2-deploy-private.' in script
-    assert 'config --no-interpolate > /root/logs/compose-config.template.yml' in script
-    assert 'scan_artifact_secrets.py' in script
-    assert script.count('config --no-interpolate') >= 3
-    assert 'Invoke-FinalArtifactSecretGate' in script
-    assert 'workspace-db-role > /root/logs/workspace-role-bootstrap.txt' in script
-    assert script.index('workspace-role-bootstrap.txt') < script.index('compose-up-after-migrations.txt')
-    assert 'rollback-schema-compat.json' in script
-    assert 'rollback_api_migrate' not in script
+
+
+def test_all_tests_use_pinned_tls_and_propagate_transport_failure():
+    root = Path(__file__).resolve().parents[2]
+    source = (root / "digital_ocean/scripts/powershell/test.ps1").read_text(
+        encoding="utf-8"
+    )
+    assert "letsencrypt-staging-roots.pem" in source
+    assert "--cacert', $script:TrustedCaPath" in source
+    assert "curl failed TLS/transport validation" in source
+    assert "RemoteCertificateNameMismatch" in source
+    assert "AllowUnknownCertificateAuthority" in source
+    assert "return $true\n    }" not in source
+    assert "'-k'" not in source
+
+
+def test_provisioning_is_lease_bound_and_user_data_is_not_persisted_or_logged():
+    root = Path(__file__).resolve().parents[2]
+    orchestrator = (
+        root / "digital_ocean/scripts/python/orchestrate_deploy.py"
+    ).read_text(encoding="utf-8")
+    deploy = (root / "digital_ocean/scripts/powershell/deploy.ps1").read_text(
+        encoding="utf-8"
+    )
+    bootstrap = (
+        root / "digital_ocean/scripts/bash/digital_ocean_base.sh"
+    ).read_text(encoding="utf-8")
+    assert "acquire_provider_lease(client, provision_lease)" in orchestrator
+    assert "release_provider_lease(client, provision_lease)" in orchestrator
+    assert "list_named_droplets(client, DO_DROPLET_NAME)" in orchestrator
+    assert "sorted(matches" not in orchestrator
+    assert 'existing_userdata.pop("user_data", None)' in orchestrator
+    assert 'print("--- user_data script ---' not in orchestrator
+    assert 'log_json("API Request - droplets.create", droplet_spec)' not in orchestrator
+    assert 'log_json("API Response - droplets.create", droplet)' not in orchestrator
+    assert 'API Response metadata - droplets.create' in orchestrator
+    assert "$env:DO_EXPECTED_DROPLET_ID" in deploy
+    assert "SSH source bootstrap after host enrollment" in deploy
+    assert "git clone" not in bootstrap
+    assert "nodesource.com" not in bootstrap
+    assert "curl -fsSL" not in bootstrap
+
+
+def test_htpasswd_validation_failure_is_terminal():
+    root = Path(__file__).resolve().parents[2]
+    source = (root / "digital_ocean/scripts/powershell/deploy.ps1").read_text(
+        encoding="utf-8"
+    )
+    status = source.index("STATUS=$?")
+    terminal = source.index('if [ "$STATUS" != 0 ]; then exit "$STATUS"; fi')
+    diff = source.index('status "diff" "detecting changed files"')
+    assert status < terminal < diff
+    assert 'mktemp -d /root/base2-deploy-private.' in source
+    assert 'config --no-interpolate > /root/logs/compose-config.template.yml' in source
+    assert 'scan_artifact_secrets.py' in source
+    assert source.count('config --no-interpolate') >= 3
+    assert 'Invoke-FinalArtifactSecretGate' in source
+    assert 'workspace-db-role > /root/logs/workspace-role-bootstrap.txt' in source
+    assert source.index('workspace-role-bootstrap.txt') < source.index('compose-up-after-migrations.txt')
+    assert 'rollback-schema-compat.json' in source
+    assert 'rollback_api_migrate' not in source
 
 
 def test_python_orchestrator_rejects_unknown_ssh_hosts_everywhere():

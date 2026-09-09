@@ -6,6 +6,7 @@ param(
   [string]$ResolveIp = "",
   [string]$ExpectedIpv4 = "",
   [string]$ExpectedIpv6 = "",
+  [string]$TrustedCaPath = "",
   [int]$TimeoutSec = 8,
   [switch]$Verbose,
   [switch]$Json,
@@ -33,6 +34,30 @@ $ErrorActionPreference = 'Stop'
 # Ensure relative paths work regardless of where the script is invoked from.
 $script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 Push-Location $script:RepoRoot
+
+if ([string]::IsNullOrWhiteSpace($TrustedCaPath)) {
+  $TrustedCaPath = Join-Path $script:RepoRoot 'digital_ocean\config\letsencrypt-staging-roots.pem'
+}
+if (-not (Test-Path -LiteralPath $TrustedCaPath -PathType Leaf)) {
+  throw 'A repository-pinned TLS trust bundle is required'
+}
+$script:TrustedCaPath = (Resolve-Path -LiteralPath $TrustedCaPath).Path
+$script:CurlTransportFailures = @()
+
+function Get-TrustedCaCertificates {
+  $raw = Get-Content -LiteralPath $script:TrustedCaPath -Raw
+  $matches = [regex]::Matches(
+    $raw,
+    '-----BEGIN CERTIFICATE-----\s*(?<body>[A-Za-z0-9+/=\s]+?)\s*-----END CERTIFICATE-----'
+  )
+  if ($matches.Count -lt 1) { throw 'The pinned TLS trust bundle contains no certificates' }
+  return @($matches | ForEach-Object {
+    $bytes = [Convert]::FromBase64String(($_.Groups['body'].Value -replace '\s', ''))
+    New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 -ArgumentList @(,$bytes)
+  })
+}
+
+$script:TrustedCaCertificates = @(Get-TrustedCaCertificates)
 
 function Write-Section($msg) {
   if (-not $Json) { Write-Host "`n=== $msg ===" -ForegroundColor Cyan }
@@ -121,10 +146,29 @@ function Check-TlsCert([string]$artifactDir, [string]$domain) {
     $client.Connect($ipToConnect, 443)
     $stream = $client.GetStream()
 
+    $trustedRoots = $script:TrustedCaCertificates
     $sslCallback = {
       param($sender, $certificate, $chain, $sslPolicyErrors)
-      return $true
-    }
+      if (-not $certificate) { return $false }
+      if (($sslPolicyErrors -band [System.Net.Security.SslPolicyErrors]::RemoteCertificateNameMismatch) -ne 0) {
+        return $false
+      }
+      $leaf = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($certificate)
+      foreach ($root in $trustedRoots) {
+        $customChain = New-Object System.Security.Cryptography.X509Certificates.X509Chain
+        try {
+          $customChain.ChainPolicy.RevocationMode = [System.Security.Cryptography.X509Certificates.X509RevocationMode]::NoCheck
+          $customChain.ChainPolicy.VerificationFlags = [System.Security.Cryptography.X509Certificates.X509VerificationFlags]::AllowUnknownCertificateAuthority
+          [void]$customChain.ChainPolicy.ExtraStore.Add($root)
+          if (-not $customChain.Build($leaf)) { continue }
+          $terminal = $customChain.ChainElements[$customChain.ChainElements.Count - 1].Certificate
+          if ($terminal.Thumbprint -eq $root.Thumbprint) { return $true }
+        } finally {
+          $customChain.Dispose()
+        }
+      }
+      return $false
+    }.GetNewClosure()
     $ssl = New-Object System.Net.Security.SslStream($stream, $false, $sslCallback)
     $ssl.AuthenticateAsClient($domain)
 
@@ -928,17 +972,19 @@ function Invoke-CurlSafe([string[]]$curlArgs) {
   try {
     $ErrorActionPreference = 'Continue'
     $raw = & curl.exe @curlArgs 2>&1
+    $code = $LASTEXITCODE
+    if ($code -ne 0) {
+      $script:CurlTransportFailures += "curl failed TLS/transport validation with exit $code"
+      throw "curl failed TLS/transport validation with exit $code"
+    }
     return $raw
-  } catch {
-    return @([string]$_.Exception.Message)
   } finally {
-    try { $global:LASTEXITCODE = 0 } catch {}
     $ErrorActionPreference = $oldEap
   }
 }
 
 function Curl-Head([string]$url) {
-  $args = @('-4', '-sS', '-k', '-I', '--max-time', $TimeoutSec)
+  $args = @('-4', '-sS', '--cacert', $script:TrustedCaPath, '-I', '--max-time', $TimeoutSec)
   $args += (Get-CurlResolveArgs $url)
   $args += @($url)
   $raw = Invoke-CurlSafe $args
@@ -948,7 +994,7 @@ function Curl-Head([string]$url) {
 }
 
 function Curl-HeadAuth([string]$url, [string]$user, [string]$pass) {
-  $args = @('-4', '-sS', '-k', '-I', '--max-time', $TimeoutSec, '-u', ("{0}:{1}" -f $user, $pass))
+  $args = @('-4', '-sS', '--cacert', $script:TrustedCaPath, '-I', '--max-time', $TimeoutSec, '-u', ("{0}:{1}" -f $user, $pass))
   $args += (Get-CurlResolveArgs $url)
   $args += @($url)
   $raw = Invoke-CurlSafe $args
@@ -960,7 +1006,7 @@ function Curl-HeadAuth([string]$url, [string]$user, [string]$pass) {
 # Simple GET utility to capture body and status
 function Curl-Get([string]$url) {
   $tmp = [System.IO.Path]::GetTempFileName()
-  $args = @('-4', '-sS', '-k', '--max-time', $TimeoutSec)
+  $args = @('-4', '-sS', '--cacert', $script:TrustedCaPath, '--max-time', $TimeoutSec)
   $args += (Get-CurlResolveArgs $url)
   $args += @('-o', $tmp, '-w', '%{http_code}', $url)
   $statusText = ((Invoke-CurlSafe $args) | Out-String).Trim()
@@ -973,7 +1019,7 @@ function Curl-Get([string]$url) {
 }
 
 function Curl-GetStatusOnly([string]$url) {
-  $args = @('-4', '-sS', '-k', '--max-time', $TimeoutSec, '-o', 'NUL', '-D', '-')
+  $args = @('-4', '-sS', '--cacert', $script:TrustedCaPath, '--max-time', $TimeoutSec, '-o', 'NUL', '-D', '-')
   $args += (Get-CurlResolveArgs $url)
   $args += @($url)
   $raw = Invoke-CurlSafe $args
@@ -984,7 +1030,7 @@ function Curl-GetStatusOnly([string]$url) {
 }
 
 function Curl-GetStatusOnlyExternal([string]$url, [string]$user = '', [string]$pass = '') {
-  $args = @('-4', '-sS', '-k', '--max-time', $TimeoutSec, '-o', 'NUL', '-w', '%{http_code}')
+  $args = @('-4', '-sS', '--cacert', $script:TrustedCaPath, '--max-time', $TimeoutSec, '-o', 'NUL', '-w', '%{http_code}')
   if ($user -and $pass) { $args += @('-u', ("{0}:{1}" -f $user, $pass)) }
   $args += @($url)
   $statusText = ((Invoke-CurlSafe $args) | Out-String).Trim()
@@ -1004,7 +1050,7 @@ function Curl-PostJson([string]$url, [string]$jsonBody = '{}') {
   } catch {
     try { Set-Content -LiteralPath $payloadPath -Value $jsonBody -Encoding utf8 } catch {}
   }
-  $args = @('-4', '-sS', '-k', '--max-time', $TimeoutSec, '-X', 'POST', '-H', 'Content-Type: application/json', '--data-binary', ("@" + $payloadPath))
+  $args = @('-4', '-sS', '--cacert', $script:TrustedCaPath, '--max-time', $TimeoutSec, '-X', 'POST', '-H', 'Content-Type: application/json', '--data-binary', ("@" + $payloadPath))
   $args += (Get-CurlResolveArgs $url)
   $args += @('-o', $tmp, '-w', '%{http_code}', $url)
   $statusText = ((Invoke-CurlSafe $args) | Out-String).Trim()
@@ -1026,7 +1072,7 @@ function Curl-PostJsonStatusOnly([string]$url, [string]$jsonBody = '{}') {
     try { Set-Content -LiteralPath $payloadPath -Value $jsonBody -Encoding utf8 } catch {}
   }
 
-  $args = @('-4', '-sS', '-k', '--max-time', $TimeoutSec, '-X', 'POST', '-H', 'Content-Type: application/json', '--data-binary', ("@" + $payloadPath), '-o', 'NUL', '-w', '%{http_code}')
+  $args = @('-4', '-sS', '--cacert', $script:TrustedCaPath, '--max-time', $TimeoutSec, '-X', 'POST', '-H', 'Content-Type: application/json', '--data-binary', ("@" + $payloadPath), '-o', 'NUL', '-w', '%{http_code}')
   $args += (Get-CurlResolveArgs $url)
   $args += @($url)
   $statusText = ((Invoke-CurlSafe $args) | Out-String).Trim()
@@ -1038,7 +1084,7 @@ function Curl-PostJsonStatusOnly([string]$url, [string]$jsonBody = '{}') {
 
 # POST JSON using a pre-written payload file (avoids per-call writes; useful for timing probes).
 function Curl-PostJsonStatusOnlyFromFile([string]$url, [string]$payloadPath) {
-  $args = @('-4', '-sS', '-k', '--max-time', $TimeoutSec, '-X', 'POST', '-H', 'Content-Type: application/json', '--data-binary', ("@" + $payloadPath), '-o', 'NUL', '-w', '%{http_code}')
+  $args = @('-4', '-sS', '--cacert', $script:TrustedCaPath, '--max-time', $TimeoutSec, '-X', 'POST', '-H', 'Content-Type: application/json', '--data-binary', ("@" + $payloadPath), '-o', 'NUL', '-w', '%{http_code}')
   $args += (Get-CurlResolveArgs $url)
   $args += @($url)
   $statusText = ((Invoke-CurlSafe $args) | Out-String).Trim()
@@ -1683,7 +1729,7 @@ try {
 # Signup-to-dashboard timing probe (US1 enhancement): register then confirm auth via /api/auth/me.
 try {
   function Curl-GetStatusWithHeader([string]$url, [string]$header) {
-    $args = @('-4','-sS','-k','--max-time',$TimeoutSec,'-H', $header, '-o', 'NUL', '-w', '%{http_code}')
+    $args = @('-4','-sS','--cacert',$script:TrustedCaPath,'--max-time',$TimeoutSec,'-H', $header, '-o', 'NUL', '-w', '%{http_code}')
     $args += (Get-CurlResolveArgs $url)
     $args += @($url)
     $statusText = ((Invoke-CurlSafe $args) | Out-String).Trim()
@@ -2275,6 +2321,8 @@ if ($CheckOpenApi) {
     $failures += "Artifact completeness check failed: $($_.Exception.Message)"
   }
 }
+
+$failures += @($script:CurlTransportFailures | Select-Object -Unique)
 
 if ($Json) {
   $result.timestamp = (Get-Date).ToString('s')

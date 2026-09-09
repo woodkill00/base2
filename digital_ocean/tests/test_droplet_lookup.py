@@ -21,10 +21,29 @@ class _Droplets:
 class _Client:
     def __init__(self, pages):
         self.droplets = _Droplets(pages)
+        self.tags = _Tags()
+
+
+class _Tags:
+    def __init__(self):
+        self.created = []
+        self.deleted = []
+        self.failure = None
+
+    def create(self, **kwargs):
+        if self.failure:
+            raise self.failure
+        self.created.append(kwargs)
+
+    def delete(self, **kwargs):
+        if self.failure:
+            raise self.failure
+        self.deleted.append(kwargs)
 
 
 def droplet(name="site-droplet", ips=("203.0.113.10",)):
     return {
+        "id": 42,
         "name": name,
         "networks": {"v4": [{"type": "public", "ip_address": value} for value in ips]},
     }
@@ -33,7 +52,7 @@ def droplet(name="site-droplet", ips=("203.0.113.10",)):
 def test_paginates_and_returns_one_authoritative_match():
     client = _Client([[droplet("other")], [droplet()], []])
     result = droplet_lookup.lookup(client, "site-droplet", page_size=1)
-    assert result == {"state": "found", "ip": "203.0.113.10"}
+    assert result == {"state": "found", "id": "42", "ip": "203.0.113.10"}
     assert client.droplets.calls == [
         {"page": 1, "per_page": 1},
         {"page": 2, "per_page": 1},
@@ -72,4 +91,15 @@ def test_name_resolution_is_bounded():
 def test_main_reports_safe_error_without_token(monkeypatch, capsys):
     monkeypatch.delenv("DO_API_TOKEN", raising=False)
     assert droplet_lookup.main() == 2
-    assert json.loads(capsys.readouterr().out) == {"state": "error", "ip": ""}
+    assert json.loads(capsys.readouterr().out) == {"state": "error", "id": "", "ip": ""}
+
+
+def test_provider_lease_is_atomic_and_fail_closed():
+    client = _Client([[]])
+    droplet_lookup.acquire_provider_lease(client, "base2-provision-lease")
+    droplet_lookup.release_provider_lease(client, "base2-provision-lease")
+    assert client.tags.created == [{"body": {"name": "base2-provision-lease"}}]
+    assert client.tags.deleted == [{"tag_id": "base2-provision-lease"}]
+    client.tags.failure = OSError("provider details must remain hidden")
+    with pytest.raises(RuntimeError, match="lease_unavailable"):
+        droplet_lookup.acquire_provider_lease(client, "base2-provision-lease")

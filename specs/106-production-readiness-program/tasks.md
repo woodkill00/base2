@@ -432,3 +432,15 @@ substitute for the integration proof named by the task.
 ## Phase 25 — Pre-commit complete-gate cycle 43 correction
 
 - [ ] B351 Replace the DigitalOcean coverage C tracer with deterministic pure-Python tracing after a full-suite run exposed interpreter-state corruption that passed when isolated; prove the exact partition and complete gate run repeatably without weakening coverage or failure propagation. (FR-005, FR-060, FR-063, FR-065, FR-068, FR-078)
+
+## Phase 26 — Independent review cycle 44 corrections
+
+- [ ] B352 Replace invented frontend security-action labels with one bounded English, German, and Arabic contract covering every real auth, identity, and user audit producer; retain an unknown fallback and enforce producer/translation parity. (FR-012, FR-014, FR-046, FR-060, FR-063, FR-064, FR-068, FR-075)
+- [ ] B353 Validate the canonical effective production database target, including DATABASE_URL precedence, for every API, worker, and migration role; reject local, loopback, socket, malformed, and non-PostgreSQL overrides. (FR-005, FR-018, FR-031, FR-060, FR-062, FR-063, FR-065, FR-073)
+- [ ] B354 Bind every evidence-manifest member to a matching canonical basename beneath the resolved evidence root and reject symlinked ancestors, lexical traversal, and external targets. (FR-005, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071)
+- [ ] B355 Make every AllTests HTTPS and authenticated probe use the repository-pinned trust bundle with hostname and chain validation, propagate all curl failures, and prove hostile certificates cannot produce green evidence or receive credentials. (FR-002, FR-005, FR-014, FR-025, FR-031, FR-055, FR-060, FR-063, FR-065, FR-068, FR-071)
+- [ ] B356 Carry exact provider identity end to end, paginate every lookup, reject duplicates, and serialize lookup plus create with a provider-backed atomic lease that fails closed on conflict or stale ownership. (FR-005, FR-007, FR-014, FR-031, FR-057, FR-060, FR-063, FR-067, FR-069, FR-071)
+- [ ] B357 Reject credential-bearing repository transports, keep cloud-init credential-free, retain only its digest in local evidence, and move public source bootstrap behind authenticated SSH host enrollment with honest receipts. (FR-005, FR-007, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-069, FR-071, FR-073)
+- [ ] B358 Propagate the remote htpasswd escape validator's exact failure before diff, build, migration, service, or endpoint work and cover the ordering behavior. (FR-005, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071)
+- [ ] B359 Remove floating root-piped bootstrap installers and mutable in-place upgrades, using only distribution-signed bounded bootstrap packages while preserving the separately pinned source/runtime release. (FR-005, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071)
+- [ ] B360 Commit a new clean candidate, restart both 107-check gates and both ten-run critical suites, then repeat independent UX, data, and operations review until all critical, high, and medium totals are zero. (FR-007, FR-060, FR-063 through FR-069, FR-078)

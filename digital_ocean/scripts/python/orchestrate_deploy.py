@@ -8,6 +8,7 @@ Orchestrate Digital Ocean Droplet deployment, DNS update, .env generation, and s
 import argparse
 import atexit
 import concurrent.futures
+import hashlib
 import json
 import os
 import re
@@ -24,6 +25,11 @@ from pydo import Client
 
 try:
     from digital_ocean.scripts.python.deploy_config import load_deploy_config
+    from digital_ocean.scripts.python.droplet_lookup import (
+        acquire_provider_lease,
+        list_named_droplets,
+        release_provider_lease,
+    )
     from digital_ocean.scripts.python.trusted_ssh import (
         strict_openssh_options as _strict_openssh_options,
     )
@@ -32,6 +38,7 @@ try:
     )
 except ModuleNotFoundError:
     from deploy_config import load_deploy_config
+    from droplet_lookup import acquire_provider_lease, list_named_droplets, release_provider_lease
     from trusted_ssh import strict_openssh_options as _strict_openssh_options
     from trusted_ssh import trusted_ssh_client as _trusted_ssh_client
 
@@ -973,9 +980,15 @@ def substitute_env_vars(script, env):
     return pattern.sub(replacer, script)
 
 
-user_data_script_sub = substitute_env_vars(user_data_script, env_dict)
-log("Loaded digital_ocean_base.sh for user_data (with env substitution):")
-print("--- user_data script ---\n" + user_data_script_sub + "\n--- end user_data script ---")
+user_data_script_sub = substitute_env_vars(
+    user_data_script,
+    {
+        "DEPLOY_PATH": env_dict.get("DEPLOY_PATH", "/opt/apps/"),
+        "PROJECT_NAME": env_dict.get("PROJECT_NAME", PROJECT_NAME),
+    },
+)
+user_data_sha256 = hashlib.sha256(user_data_script_sub.encode("utf-8")).hexdigest()
+log(f"Loaded credential-free user_data template sha256={user_data_sha256}")
 
 """DO_userdata.json location
 
@@ -1010,9 +1023,10 @@ try:
 except Exception:
     existing_userdata = {}
 
-existing_userdata["user_data"] = user_data_script_sub
+existing_userdata.pop("user_data", None)
+existing_userdata["user_data_sha256"] = user_data_sha256
 write_do_userdata(existing_userdata)
-log("Wrote user_data to DO_userdata.json (preserving existing fields)")
+log("Wrote only the user_data digest to DO_userdata.json")
 
 
 def run_post_reboot() -> None:
@@ -1546,7 +1560,11 @@ droplet_spec = {
     "user_data": user_data_script_sub,
     "ipv6": True,
 }
-log_json("Droplet spec being sent", droplet_spec)
+log_json(
+    "Droplet spec metadata being sent",
+    {key: value for key, value in droplet_spec.items() if key != "user_data"}
+    | {"user_data_sha256": user_data_sha256},
+)
 
 # Determine droplet to use (create or reuse) and set ip_address/droplet_id/droplet_info
 ip_address = None
@@ -1558,8 +1576,7 @@ if UPDATE_ONLY:
     stage("locate existing droplet")
     log("[UPDATE-ONLY] Skipping creation; locating existing droplet by name...")
     try:
-        lst = client.droplets.list(per_page=200)
-        matches = [d for d in lst.get("droplets", []) if d.get("name") == DO_DROPLET_NAME]
+        matches = list_named_droplets(client, DO_DROPLET_NAME)
         if not matches:
             if CREATE_IF_MISSING:
                 log(
@@ -1572,12 +1589,12 @@ if UPDATE_ONLY:
         if fallback_to_create:
             UPDATE_ONLY = False
         else:
-            # If multiple droplets share the same name, prefer the most recently created.
-            # If created_at is missing, fall back to highest id.
-            def sort_key(d):
-                return (d.get("created_at") or "", int(d.get("id") or 0))
-
-            matched = sorted(matches, key=sort_key)[-1]
+            if len(matches) != 1:
+                raise RuntimeError(f"Ambiguous droplet identity for {DO_DROPLET_NAME}")
+            matched = matches[0]
+            expected_id = os.getenv("DO_EXPECTED_DROPLET_ID", "").strip()
+            if expected_id and str(matched.get("id")) != expected_id:
+                raise RuntimeError("Authoritative droplet identity changed before orchestration")
 
             droplet_id = matched["id"]
             droplet_info = client.droplets.get(droplet_id)["droplet"]
@@ -1632,11 +1649,21 @@ if UPDATE_ONLY:
 if not UPDATE_ONLY:
     stage("create droplet")
     log("Creating droplet via DigitalOcean API...")
+    provision_lease = f"base2-provision-lease-{DO_DROPLET_NAME}"
+    lease_held = False
     try:
-        log_json("API Request - droplets.create", droplet_spec)
+        acquire_provider_lease(client, provision_lease)
+        lease_held = True
+        if list_named_droplets(client, DO_DROPLET_NAME):
+            raise RuntimeError("Droplet appeared after the authoritative missing decision")
+        log_json(
+            "API Request metadata - droplets.create",
+            {key: value for key, value in droplet_spec.items() if key != "user_data"}
+            | {"user_data_sha256": user_data_sha256},
+        )
         droplet = client.droplets.create(droplet_spec)
-        log_json("API Response - droplets.create", droplet)
         droplet_id = droplet["droplet"]["id"]
+        log_json("API Response metadata - droplets.create", {"droplet_id": droplet_id})
         log(f"Droplet created with ID: {droplet_id}")
         try:
             droplet_info = client.droplets.get(droplet_id)["droplet"]
@@ -1664,6 +1691,13 @@ if not UPDATE_ONLY:
         if not ip_address:
             raise RuntimeError(f"Could not determine public IPv4 for droplet {droplet_id}")
         log(f"Droplet is active. IP address: {ip_address}")
+        matches_after_create = list_named_droplets(client, DO_DROPLET_NAME)
+        if len(matches_after_create) != 1 or str(matches_after_create[0].get("id")) != str(
+            droplet_id
+        ):
+            raise RuntimeError("Created droplet identity is not authoritative")
+        release_provider_lease(client, provision_lease)
+        lease_held = False
         print(f"Droplet created! IP address: {ip_address}")
         # Update DO_userdata.json
         try:
@@ -1687,6 +1721,9 @@ if not UPDATE_ONLY:
     except Exception as e:
         err(f"Droplet creation failed: {e}")
         exit(1)
+    finally:
+        if lease_held:
+            release_provider_lease(client, provision_lease)
 
     stage("ensure dns records")
     # Always ensure required DNS records exist/update to current droplet IP.

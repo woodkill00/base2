@@ -7,6 +7,7 @@ import ast
 import os
 import re
 from collections.abc import Mapping
+from urllib.parse import urlsplit
 
 KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 TEMPLATE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
@@ -154,6 +155,21 @@ def normalize_deploy_config(
     unresolved = sorted(key for key, value in normalized.items() if "${" in value)
     if unresolved:
         raise DeployConfigError("unresolved template in: " + ", ".join(unresolved))
+    for key in ("REPO_URL", "GIT_REPO", "DO_GIT_REPO"):
+        value = normalized.get(key)
+        if not value:
+            continue
+        parsed = urlsplit(value)
+        if (
+            parsed.scheme != "https"
+            or not parsed.hostname
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.query
+            or parsed.fragment
+            or not re.fullmatch(r"/[A-Za-z0-9._/-]+(?:\.git)?", parsed.path)
+        ):
+            raise DeployConfigError(f"{key} must be a credential-free HTTPS repository URL")
     return normalized
 
 

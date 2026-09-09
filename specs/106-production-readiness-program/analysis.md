@@ -1040,3 +1040,43 @@ bounded correction to use coverage's pure-Python tracer for this partition,
 preserving subprocess isolation, coverage enforcement, and nonzero failure
 propagation while removing the native corruption surface. All exact-head gates
 and reviews remain pending until a clean repaired commit exists.
+
+## Analysis cycle 44 — independent review rejects the twice-green candidate
+
+Exact commit `635437ea21587250f9ecc847b13fc6d7b004221e` passed both
+107-check complete gates plus ten privacy/runtime and ten
+backup/release/deployment repetitions. Fresh independent review nevertheless
+returned UX C0/H0/M1/L0, data C0/H0/M1/L1, and operations C0/H3/M1/L1. The
+candidate is rejected and every automated result is historical.
+
+The reviewers found that real security events collapsed to an unknown label,
+DATABASE_URL could override the validated database host, the standalone
+evidence verifier did not reject symlinked ancestors, AllTests retained a
+separate insecure TLS stack, provider creation remained vulnerable to a
+lookup/create race and duplicate selection, credential-bearing source URLs
+could enter provider-retained user-data, and the htpasswd validator did not
+propagate failure. The bootstrap also retained floating root-piped installers.
+B352-B360 record the complete deduplicated repair and proof set. No publication,
+merge, deployment, provider, DNS, certificate, credential, or destructive
+action is authorized; all gates, repetitions, and reviews restart from zero on
+the next clean commit.
+
+## Analysis cycle 45 — combined repair gate catches stale DSN test contract
+
+The cycle-44 repair passed its focused deployment, API, localization, lint, and
+production-build suites. Its first combined complete gate then correctly failed
+one API security check: the runtime now consumes the validated
+Settings.DATABASE_URL, while the older test mutated the process environment
+after the singleton settings object had loaded and expected the former bypass
+behavior. The test was corrected to exercise the validated value, and malformed
+URL coverage was added without restoring the bypass.
+
+The exact affected security partition passed 64 checks, the deployment
+regression subset passed 57 checks, the full DigitalOcean suite passed 399
+checks, and the repaired dirty tree passed all 107 complete-gate checks at
+.artifacts/complete-gate/20260909T082503Z/result.json. B352-B359 have complete
+implementation evidence but remain unchecked under the contiguous ledger until
+the earlier acceptance and closeout tasks can also close. B360 remains open
+until a clean commit passes both exact-head gates, both ten-run critical suites,
+and fresh independent UX, data, and operations review with zero critical, high,
+or medium findings.

@@ -43,9 +43,24 @@ Alias/Flag note: Recent runs used `-RunAllTests` which is equivalent to `-AllTes
 
 Provider discovery is paginated and typed. Only an authoritative `missing`
 result can enter provisioning; API errors, duplicate names, and an existing
-droplet still awaiting a public address fail closed. Runtime and owner-scoped
+droplet still awaiting a public address fail closed. A deterministic
+provider-side tag lease serializes the final lookup and create operation; a
+conflict or stale lease blocks creation for owner review. Existing deployments
+remain bound to the exact provider droplet ID returned by discovery.
+
+Fresh cloud-init contains no repository or credential. It installs only
+distribution-signed bootstrap packages and stores only a SHA-256 digest of its
+user-data locally. After the owner authenticates and pins the new SSH host key,
+the deploy runner may clone a credential-free public HTTPS repository URL.
+URLs with userinfo, query tokens, fragments, SSH transports, or plaintext HTTP
+are rejected; private repository bootstrap requires a separate scoped JIT
+credential workflow.
+
+Runtime and owner-scoped
 API migrations use one exact-commit image. Production migration connections
-must use an external database with `verify-full` TLS and an absolute CA path.
+must use an effective external database target with `verify-full` TLS and an
+absolute CA path; `DATABASE_URL` cannot override that boundary with a local,
+socket, loopback, malformed, or non-PostgreSQL target.
 
 Terminal success requires a complete hash-verified local evidence manifest and
 a recursive secret scan before remote staging evidence is removed. Failure to
@@ -62,7 +77,8 @@ Recommended: set `DO_APP_BRANCH=main` in `.env` for stable deployments.
 ## TLS Policy (Staging-Only)
 
 - Traefik must use the Let’s Encrypt staging ACME directory (`le-staging`).
-- Verification (`test.ps1`) fails if production issuance is detected.
+- Verification (`test.ps1`) uses the repository-pinned staging trust bundle,
+  validates hostname and chain, and fails on every TLS or curl transport error.
 
 ### TLS Mode Guard (Hardening)
 
