@@ -1108,3 +1108,12 @@ B362 selects the actually visible accessible option and retains a strict
 three-CSS-pixel centering tolerance. The failed second gate and the green first
 gate are both historical; the visual matrix and both exact-head gates restart
 from zero after the correction is committed.
+
+The first replacement candidate then exposed the deeper accessibility contract:
+three loop copies were simultaneously accessible while selection normalized to
+the middle copy. Decorative copies are now aria-hidden and removed from keyboard
+focus, leaving exactly one canonical option per utility. The stale unit test was
+updated to the same single-option contract. The affected unit suite passed 5
+checks, the affected three-viewport browser suite passed 6 checks, the full
+visual matrix passed 50 checks with 4 intentional skips, and the complete
+frontend suite passed all 280 checks with its coverage thresholds intact.

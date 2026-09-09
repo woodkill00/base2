@@ -194,13 +194,13 @@ describe('Base2 restored Obsidian navigation', () => {
       });
     });
 
-    const safeSearch = screen.getAllByRole('option', { name: 'Base2 utility: Search' })[1];
+    const safeSearch = screen.getByRole('option', { name: 'Base2 utility: Search' });
     fireEvent.click(safeSearch);
     expect(safeSearch).toHaveAttribute('aria-selected', 'true');
     fireEvent.click(
-      screen.getAllByRole('option', {
+      screen.getByRole('option', {
         name: 'Base2 utility: Settings unavailable on public site',
-      })[1]
+      })
     );
     fireEvent.wheel(scroll, { deltaY: 100 });
     fireEvent.wheel(scroll, { deltaY: -100 });
