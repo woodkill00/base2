@@ -99,6 +99,16 @@ class CiPolicyTests(unittest.TestCase):
             workflow,
         )
 
+    def test_staged_api_python_is_linted_with_the_pinned_environment(self):
+        repo_root = MODULE_PATH.parents[2]
+        lint_staged = __import__("json").loads(
+            (repo_root / ".lintstagedrc.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            [".venv-api/bin/python -m ruff check"],
+            lint_staged["api/**/*.py"],
+        )
+
     def test_media_inspector_build_inputs_are_immutable_and_scanned(self):
         repo_root = MODULE_PATH.parents[2]
         dockerfile = (repo_root / "api/Dockerfile.media-inspector").read_text(encoding="utf-8")

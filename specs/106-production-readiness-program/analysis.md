@@ -1546,3 +1546,17 @@ B438-B440 directly test missing credentials, worker switching, pool closure, and
 both present and absent owner-value restoration in the unit suite. The failed
 coverage report and commit `78dd4c2` remain rejected. A replacement commit must
 clear the exact 90% floor before any repetition or review evidence can begin.
+
+## Analysis cycle 73 — staged Python lint parity
+
+The cycle-72 unit coverage passed locally, while hosted Ruff rejected one nested
+context in the new test under rule SIM117. The full gate would also have rejected
+it, but the candidate was published before that long gate completed because the
+existing pre-commit hook linted only frontend files. The code finding is simple;
+the missing fast local parity guard is the systemic gap.
+
+B441-B443 use one multi-context statement and add pinned API Ruff to lint-staged
+for every staged API Python file. The hook remains WSL/repository-local and gains
+no network or external authority. Commit `6f1c04a`, its interrupted exact gate,
+and hosted failures are rejected; the next candidate must pass local Ruff before
+publication and restart all evidence.

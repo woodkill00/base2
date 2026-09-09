@@ -9,9 +9,11 @@ def test_email_worker_database_rejects_missing_credentials(monkeypatch):
     monkeypatch.delenv("EMAIL_WORKER_DB_USER", raising=False)
     monkeypatch.delenv("EMAIL_WORKER_DB_PASSWORD", raising=False)
 
-    with pytest.raises(pytest.fail.Exception, match="credentials_missing"):
-        with test_email_outbox.email_worker_database():
-            raise AssertionError("unreachable")
+    with (
+        pytest.raises(pytest.fail.Exception, match="credentials_missing"),
+        test_email_outbox.email_worker_database(),
+    ):
+        raise AssertionError("unreachable")
 
 
 def test_email_worker_database_switches_and_restores_owner(monkeypatch):

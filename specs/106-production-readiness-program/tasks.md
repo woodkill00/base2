@@ -593,3 +593,9 @@ substitute for the integration proof named by the task.
 - [ ] B438 Directly exercise missing email-worker credentials and require a sanitized fail-closed result before any role or pool transition. (FR-002, FR-005, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-073, FR-078)
 - [ ] B439 Prove the email integration context closes pools around the role switch and restores both present and absent owner environment values on exit. (FR-002, FR-005, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-073, FR-078)
 - [ ] B440 Clear the unchanged exact 90% changed-line floor, commit a new candidate, and restart all required exact-source and hosted evidence from its SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 50 — Staged Python lint cycle 73 corrections
+
+- [ ] B441 Replace the nested missing-credential assertion with a Ruff-clean multi-context proof without weakening its fail-closed behavior. (FR-002, FR-005, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B442 Run pinned API Ruff over every staged API Python file in the pre-commit hook and add a repository contract for the exact lint-staged command. (FR-002, FR-005, FR-014, FR-031, FR-059, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B443 Commit only after staged Ruff and surface validation pass, then restart every local, fresh-volume, repetition, review, and hosted check from the replacement SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
