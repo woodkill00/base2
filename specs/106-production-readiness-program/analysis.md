@@ -1080,3 +1080,17 @@ the earlier acceptance and closeout tasks can also close. B360 remains open
 until a clean commit passes both exact-head gates, both ten-run critical suites,
 and fresh independent UX, data, and operations review with zero critical, high,
 or medium findings.
+
+## Analysis cycle 46 — exact-head changed-line coverage rejection
+
+Exact candidate bddc9549aa182e108a0c0f319bc99ceca29b27c2 passed every
+functional and runtime family in exact-head gate 1 but was rejected by the
+unchanged changed-line coverage floor: 89.83% against the required 90%. The
+missing proof was concentrated in the new provider lookup CLI and lease error
+paths. No functional failure was waived and the floor was not changed.
+
+B361 adds direct typed success, provider-error, invalid-identity, empty-name,
+and lease-release behavior. The focused suite passed 15 checks; the full
+supported DigitalOcean coverage run then passed and raised changed-line
+coverage to 90.05%. The rejected candidate and its gate are historical. Both
+exact-head complete gates restart from zero after the correction is committed.

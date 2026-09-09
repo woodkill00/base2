@@ -444,3 +444,7 @@ substitute for the integration proof named by the task.
 - [ ] B358 Propagate the remote htpasswd escape validator's exact failure before diff, build, migration, service, or endpoint work and cover the ordering behavior. (FR-005, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071)
 - [ ] B359 Remove floating root-piped bootstrap installers and mutable in-place upgrades, using only distribution-signed bounded bootstrap packages while preserving the separately pinned source/runtime release. (FR-005, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071)
 - [ ] B360 Commit a new clean candidate, restart both 107-check gates and both ten-run critical suites, then repeat independent UX, data, and operations review until all critical, high, and medium totals are zero. (FR-007, FR-060, FR-063 through FR-069, FR-078)
+
+## Phase 27 — Exact-head gate cycle 46 correction
+
+- [ ] B361 Directly exercise the provider lookup CLI's typed success, provider-error, invalid-identity, empty-name, and lease-release paths so the unchanged 90% changed-line floor covers the new fail-closed provider boundary. (FR-005, FR-007, FR-060, FR-063, FR-065, FR-067, FR-068, FR-078)
