@@ -1,32 +1,66 @@
 #!/usr/bin/env python3
-"""Run the fixed Django coverage command with Coverage.py's stable C tracer."""
+"""Run Django coverage with stable tracing and bounded native-crash recovery."""
 
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
+from pathlib import Path
+
+MAX_NATIVE_ATTEMPTS = 3
+NATIVE_FAILURES = {-11, 134, 139}
+
+
+def run_bounded(command: list[str], environment: dict[str, str], report: Path) -> int:
+    for attempt in range(1, MAX_NATIVE_ATTEMPTS + 1):
+        report.unlink(missing_ok=True)
+        result = subprocess.run(command, env=environment, check=False)
+        if result.returncode == 0:
+            return attempt
+        if result.returncode not in NATIVE_FAILURES or attempt == MAX_NATIVE_ATTEMPTS:
+            raise RuntimeError(f"django_coverage_failed:exit_{result.returncode}")
+        print(
+            f"Django coverage recovered from native exit {result.returncode}; "
+            f"retry {attempt + 1}/{MAX_NATIVE_ATTEMPTS}",
+            flush=True,
+        )
+    raise RuntimeError("unreachable_native_retry_state")  # pragma: no cover
 
 
 def main() -> None:
-    os.environ["COVERAGE_CORE"] = "ctrace"
-    os.execv(
+    root = Path(__file__).resolve().parents[2]
+    report = root / ".artifacts/coverage/django.json"
+    data = root / ".artifacts/coverage/.coverage.django"
+    environment = os.environ.copy()
+    environment["COVERAGE_CORE"] = "sysmon"
+    environment["COVERAGE_FILE"] = str(data)
+    environment["PYTHONHASHSEED"] = "0"
+    environment["PYTHONMALLOC"] = "malloc"
+    command = [
         sys.executable,
-        [
-            sys.executable,
-            "-m",
-            "pytest",
-            "django/tests",
-            "-c",
-            "django/pytest.ini",
-            "-m",
-            "not integration and not perf",
-            "--cov=project",
-            "--cov=users",
-            "--cov=common",
-            "--cov=catalog",
-            "--cov=api_schema",
-            "--cov-report=json:.artifacts/coverage/django.json",
-        ],
+        "-m",
+        "coverage",
+        "run",
+        "--source=project,users,common,catalog,api_schema",
+        "-m",
+        "pytest",
+        "django/tests",
+        "-c",
+        "django/pytest.ini",
+        "-o",
+        "addopts=",
+        "-m",
+        "not integration and not perf",
+        "-p",
+        "no:cov",
+    ]
+    data.unlink(missing_ok=True)
+    run_bounded(command, environment, report)
+    run_bounded(
+        [sys.executable, "-m", "coverage", "json", "-o", str(report)],
+        environment,
+        report,
     )
 
 

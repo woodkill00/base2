@@ -669,3 +669,10 @@ substitute for the integration proof named by the task.
 - [ ] B481 Retry only idempotent transactional disposable migrations at most three times for native exits `-11`, `134`, or `139`, while keeping role assertions, SQL checks, ordinary failures, and cleanup single-shot and fail-closed. (FR-002, FR-005, FR-007, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-073, FR-078)
 - [ ] B482 Prove native recovery, native exhaustion, immediate ordinary failure, fixed command scope, unchanged role checks, and final disposable-container cleanup. (FR-002, FR-005, FR-007, FR-014, FR-019, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-073, FR-078)
 - [ ] B483 Commit a replacement candidate and restart the fresh stack, exact repetitions, both full gates, hosted checks, and independent reviews from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 61 — Django coverage native-crash cycle 84 corrections
+
+- [ ] B484 Replace Django's C coverage tracer with Python 3.12 `sys.monitoring` plus deterministic allocator/hash settings while preserving the exact test inventory and coverage report. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B485 Retry the isolated Django coverage process at most three times only for native exits, deleting partial reports before retry while keeping test assertion and configuration failures immediately terminal. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B486 Prove recovery, exhaustion, ordinary fail-fast behavior, partial-report removal, fixed suite/config, stable tracing, and a complete 96-test Django coverage run without late-start measurement warnings. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B487 Commit a replacement candidate and restart every exact-source and hosted proof plus all independent reviews from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)

@@ -1730,3 +1730,21 @@ commands. Exit `1`, assertion checks, role probes, PostgreSQL checks, startup,
 and teardown remain single-shot. Unit tests cover recovery, exhaustion, ordinary
 failure, and fixed call-site scope; the full disposable acceptance and all exact
 evidence must restart on a new commit.
+
+## Analysis cycle 84 — Django coverage native crashes
+
+Candidate `ec7b2ba654782fba82eac4efdc24e947626bdee7` passed fresh-stack and
+repetition evidence plus its first complete gate. The second gate's Django lane
+then crashed twice: first during migration-state rendering and again inside the
+Coverage.py C tracer's report parser. The gate's one retry retained both traces
+and failed closed, preventing seven downstream results from being inferred.
+This is runtime instrumentation instability, not a Django assertion failure.
+
+B484-B487 move the fixed Django coverage command to the already proven Python
+3.12 `sys.monitoring` core, add deterministic allocator/hash settings, and bound
+only native exits to three attempts inside the isolated wrapper. Partial JSON is
+removed before retry; exit `1` and every ordinary test/configuration failure are
+immediately terminal. Coverage starts the interpreter before pytest-django can
+import application settings, avoiding a late-start measurement gap. Unit tests
+and a real 96-test coverage run precede another
+complete exact-source restart.

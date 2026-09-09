@@ -392,6 +392,7 @@ class CompleteGateTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn('"django/pytest.ini"', django_wrapper)
+        self.assertIn('environment["COVERAGE_CORE"] = "sysmon"', django_wrapper)
         self.assertEqual(
             ["python3", "scripts/python/validate_compose_config.py"], commands["compose-config"]
         )
@@ -441,14 +442,14 @@ class CompleteGateTests(unittest.TestCase):
         self.assertIn("PARTITION_SIZE = 4", api_wrapper)
         expected = {
             "run_django_coverage.py": (
-                "ctrace",
+                "sysmon",
                 "django/tests",
                 ".artifacts/coverage/django.json",
             ),
         }
         for name, (core, *markers) in expected.items():
             wrapper = (repo_root / "scripts/python" / name).read_text(encoding="utf-8")
-            self.assertIn(f'os.environ["COVERAGE_CORE"] = "{core}"', wrapper)
+            self.assertIn(f'environment["COVERAGE_CORE"] = "{core}"', wrapper)
             for marker in markers:
                 self.assertIn(marker, wrapper)
         digitalocean_wrapper = (
