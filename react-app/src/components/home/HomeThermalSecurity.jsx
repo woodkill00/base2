@@ -20,6 +20,7 @@ const securityLogs = [
 const HomeThermalSecurity = () => {
   return (
     <section
+      id="base2-thermal-security"
       tabIndex={0}
       className="home-obsidian-section home-thermal-security"
       data-testid="base2-thermal-security"

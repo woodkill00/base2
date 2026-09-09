@@ -1180,3 +1180,19 @@ that evidence. This is not accepted as release evidence and the threshold is
 not reduced. B370 requires the complete repaired tree to become one clean exact
 candidate before both gates restart; that exact commit will make the source and
 tests jointly visible to changed-line coverage.
+
+## Analysis cycle 51 — first exact-head gate rejects uncovered utility wiring
+
+Exact candidate `40dd228fed75e86029571bcdb5843c25263efdd9` passed 106 of
+107 complete-gate checks. Changed-line coverage remained release-blocking at
+89.71% against the unchanged 90% floor. Review of the uncovered lines found the
+new Home utility dispatcher needed direct behavior tests and also exposed that
+the security and command sections had test identifiers but no matching DOM IDs,
+so their real scroll actions were inert.
+
+The repair adds the missing stable section IDs and exercises German localized
+security and search actions, Web Share success and user cancellation, clipboard
+fallback, visible prompt fallback, remote-lease configuration isolation,
+insecure transport rejection, bounded owner/TTL inputs, exact revision release,
+and Git transport failure. Focused UI and provider suites pass. The failed gate
+is historical; both exact-head gates restart only after a new commit.

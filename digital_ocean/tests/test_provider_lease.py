@@ -10,8 +10,12 @@ from digital_ocean.scripts.python.provider_lease import (
     GitRemoteLeaseStore,
     LeaseRecord,
     ProviderLeaseError,
+    _network_remote_identity,
     acquire_provider_lease,
     release_provider_lease,
+)
+from digital_ocean.scripts.python.provider_lease import (
+    _git as _lease_git,
 )
 
 
@@ -148,3 +152,44 @@ def test_network_remote_rejects_insecure_or_embedded_credentials(tmp_path: Path,
     _git("remote", "add", "provider-lease", url, cwd=controller)
     with pytest.raises(ProviderLeaseError, match="remote_unsafe"):
         GitRemoteLeaseStore(remote="provider-lease", repository=controller)
+
+
+def test_scp_remote_identity_is_canonicalized_without_credentials():
+    assert (
+        _network_remote_identity("git@example.invalid:owner/base2-lease.git")
+        == "example.invalid:owner/base2-lease"
+    )
+
+
+def test_missing_remote_and_git_transport_failure_are_terminal(tmp_path: Path, monkeypatch):
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    _git("init", cwd=repository)
+    with pytest.raises(ProviderLeaseError, match="remote_unavailable"):
+        GitRemoteLeaseStore(remote="provider-lease", repository=repository)
+
+    def timeout(*_args, **_kwargs):
+        raise subprocess.TimeoutExpired("git", 30)
+
+    monkeypatch.setattr(subprocess, "run", timeout)
+    with pytest.raises(ProviderLeaseError, match="transport_failed"):
+        _lease_git(["status"], cwd=repository)
+
+
+@pytest.mark.parametrize(
+    "owner,ttl,error",
+    (
+        ("short", 900, "owner_invalid"),
+        ("runner:valid-owner-token", 59, "ttl_invalid"),
+        ("runner:valid-owner-token", 3601, "ttl_invalid"),
+    ),
+)
+def test_owner_and_ttl_are_bounded(repositories, owner: str, ttl: int, error: str):
+    with pytest.raises(ProviderLeaseError, match=error):
+        acquire_provider_lease(_store(repositories), "base2-provision-site", owner, ttl_seconds=ttl)
+
+
+def test_release_requires_an_exact_revision(repositories):
+    record = LeaseRecord("base2-provision-site", "runner:valid-owner-token", 1000)
+    with pytest.raises(ProviderLeaseError, match="owner_mismatch"):
+        release_provider_lease(_store(repositories), record)
