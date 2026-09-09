@@ -200,11 +200,6 @@ def _private_temp_directory(anchor: Path, prefix: str):
             yield root
     except OSError as exc:
         raise ProviderLeaseError("provider_lease_private_temp_invalid") from exc
-    finally:
-        try:
-            private_parent.rmdir()
-        except (OSError, UnboundLocalError):
-            pass
 
 
 def _network_remote_identity(value: str) -> str | None:

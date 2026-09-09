@@ -1340,3 +1340,48 @@ retains the one-time visual failure as historical evidence, forbids an unrelated
 baseline update, and requires the full visual owner to pass again inside a new
 complete gate. No candidate commit or exact-head evidence is admitted until the
 entire repaired tree is green.
+
+## Analysis cycle 60 — exact-head repetition failure visibility
+
+Exact commit `233b9ad5a7e4926dceb3b7def6f0140d00e49527` passed two
+independent 108-check complete gates. Its isolated repetition runner then stopped
+at backup/release/deployment repetition six. The same 211-test family passed
+immediately under a freshly constructed equivalent hermetic environment, so no
+deterministic product assertion was reproduced. The failed runner staging area,
+however, was removed before its log could be reviewed; this is an observability
+gap even though it fails the release safely.
+
+B402-B403 require bounded private failure evidence containing exact source,
+suite, repetition, command, exit code, output truncation state, and member plus
+aggregate digests before the sanitized terminal error is returned. The existing
+candidate is rejected despite both green complete gates. All exact gates and
+repetitions restart only after the evidence runner proves both terminal failure
+retention and success; no publication is authorized by the partial evidence.
+
+## Analysis cycle 61 — concurrent lease availability and coverage admission
+
+The cycle-60 precommit gate completed 106 of 108 checks. The provider lease's
+real simultaneous-claim test intermittently rejected both contenders, and
+changed-line coverage reported 89.93% against the unchanged 90% floor. Stress
+reproduction confirmed the lease result was intermittent while remaining safe:
+no run admitted two owners.
+
+The shared fixed-anchor private parent was removed after each child context.
+Two callers could each validate that parent, then one could remove it before the
+other created its child; a later cleanup could similarly remove a newly created
+empty parent. B404-B405 retain the validated owner-only parent while continuing
+to delete every scratch child, then exercise concurrent construction and remote
+claim behavior. B406 directly covers the new failure evidence's truncation and
+replay-rejection branches rather than weakening or rounding coverage. The failed
+gate is historical; exact evidence and publication remain blocked until a new
+complete gate passes.
+
+## Analysis cycle 62 — exact coverage admission
+
+The cycle-61 complete gate passed 107 of 108 checks. Concurrent lease admission,
+all product and security suites, browser visuals, account E2E, and isolated
+PostgreSQL acceptance passed. The sole rejection was changed-line coverage at
+89.99% against the unchanged 90% floor. B407 directly exercises the remaining
+non-directory evidence-ancestor rejection. The threshold is neither lowered nor
+rounded, and exact-commit evidence remains blocked until the next full gate is
+green.

@@ -515,3 +515,18 @@ substitute for the integration proof named by the task.
 
 - [ ] B400 Directly test Windows ACL pass/failure and filesystem-error admission for the unified private-path factory so the unchanged 90% changed-line floor covers its fail-closed branches. (FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-074, FR-078)
 - [ ] B401 Re-run the isolated light-theme media visual owner after its one-time baseline mismatch, retain the failed evidence, and require a complete green gate before committing without changing an unrelated accepted baseline. (FR-002, FR-012, FR-055, FR-060, FR-063, FR-064, FR-068, FR-075, FR-078)
+
+## Phase 37 — Exact-head repetition cycle 60 correction
+
+- [ ] B402 Persist every failed exact-head repetition as bounded, private, source/suite/repetition-bound, member-hashed evidence before returning a sanitized terminal error, so transient and deterministic failures remain diagnosable. (FR-002, FR-005, FR-007, FR-014, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+- [ ] B403 Reproduce the failed backup/release/deployment family under the same hermetic environment, retain its result, and restart the complete exact-head evidence set only after the runner itself proves failure and success paths. (FR-005, FR-007, FR-060, FR-063 through FR-069, FR-078)
+
+## Phase 38 — Concurrent lease and coverage cycle 61 correction
+
+- [ ] B404 Keep the fixed owner-only lease scratch parent stable while concurrent callers use independently removed child directories, preventing cleanup races from rejecting every otherwise valid contender. (FR-005, FR-007, FR-008, FR-014, FR-031, FR-057, FR-060, FR-063, FR-065, FR-067 through FR-069, FR-071, FR-074, FR-078)
+- [ ] B405 Prove repeated concurrent private-temp construction and exact remote claims admit one owner without duplicate authority, while retaining fail-closed conflicting, crashed, stale-owner, and transport behavior. (FR-005, FR-007, FR-008, FR-014, FR-031, FR-057, FR-060, FR-063, FR-065, FR-067 through FR-069, FR-071, FR-078)
+- [ ] B406 Cover bounded failure-log truncation, malformed replay, permission drift, and symlinked failure roots so the unchanged 90% changed-line threshold directly exercises the diagnostic trust boundary. (FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
+
+## Phase 39 — Exact coverage cycle 62 correction
+
+- [ ] B407 Directly prove a non-directory repetition-evidence ancestor is rejected so the complete tree clears the exact unchanged 90% changed-line floor without rounding or exclusion. (FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)

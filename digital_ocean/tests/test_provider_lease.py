@@ -80,12 +80,12 @@ def test_simultaneous_remote_claim_admits_exactly_one(repositories):
     def claim(owner: str) -> str:
         try:
             return acquire_provider_lease(_store(repositories), name, owner, now=100).owner
-        except ProviderLeaseError:
-            return "rejected"
+        except ProviderLeaseError as exc:
+            return f"rejected:{exc}"
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         outcomes = list(executor.map(claim, ("runner:simultaneous-a", "runner:simultaneous-b")))
-    assert outcomes.count("rejected") == 1
+    assert len([value for value in outcomes if value.startswith("rejected:")]) == 1, outcomes
     assert len([value for value in outcomes if value.startswith("runner:")]) == 1
 
 
@@ -346,7 +346,25 @@ def test_private_temp_ignores_ambient_roots_and_is_owner_only(monkeypatch, tmp_p
         assert root.parent == anchor / ".base2-provider-lease-private"
         assert not root.is_relative_to(hostile)
         assert root.stat().st_mode & 0o077 == 0
-    assert not (anchor / ".base2-provider-lease-private").exists()
+    private_parent = anchor / ".base2-provider-lease-private"
+    assert private_parent.is_dir()
+    assert private_parent.stat().st_mode & 0o077 == 0
+    assert list(private_parent.iterdir()) == []
+
+
+def test_private_temp_parent_remains_available_to_concurrent_callers(tmp_path):
+    anchor = tmp_path / "controller"
+    anchor.mkdir()
+
+    def construct(index: int) -> bool:
+        with lease_module._private_temp_directory(anchor, f"concurrent-{index}-") as root:
+            return root.is_dir()
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        assert all(executor.map(construct, range(100)))
+    private_parent = anchor / ".base2-provider-lease-private"
+    assert private_parent.is_dir()
+    assert list(private_parent.iterdir()) == []
 
 
 def test_private_temp_rejects_unsafe_unix_ancestry(monkeypatch, tmp_path):

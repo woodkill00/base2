@@ -222,6 +222,91 @@ def _private_evidence_root(project_root: Path) -> Path:
     return evidence_root
 
 
+def _persist_failure(
+    evidence_root: Path,
+    commit: str,
+    suite: str,
+    repetition: int,
+    command: tuple[str, ...],
+    exit_code: int,
+    output: bytes,
+) -> Path:
+    bounded_output = output[: 1024 * 1024]
+    failure_id = hashlib.sha256(
+        commit.encode()
+        + b"\0"
+        + suite.encode()
+        + b"\0"
+        + str(repetition).encode()
+        + b"\0"
+        + bounded_output
+    ).hexdigest()
+    failure_parent = evidence_root / "failures" / commit
+    for candidate in (evidence_root / "failures", failure_parent):
+        if candidate.is_symlink() or (candidate.exists() and not candidate.is_dir()):
+            raise RepetitionError("repetition_failure_evidence_invalid")
+        candidate.mkdir(exist_ok=True, mode=0o700)
+        if os.name != "nt":
+            if candidate.stat().st_uid != os.getuid():
+                raise RepetitionError("repetition_evidence_permissions_invalid")
+            candidate.chmod(0o700)
+        if not candidate.resolve().is_relative_to(evidence_root.resolve()):
+            raise RepetitionError("repetition_failure_evidence_invalid")
+    destination = failure_parent / failure_id
+    payload = {
+        "bytes": len(bounded_output),
+        "command": list(command),
+        "exitCode": int(exit_code),
+        "logSha256": hashlib.sha256(bounded_output).hexdigest(),
+        "outputTruncated": len(output) > len(bounded_output),
+        "repetition": repetition,
+        "schemaVersion": 1,
+        "sourceCommit": commit,
+        "status": "failed",
+        "suite": suite,
+    }
+    payload["evidenceDigest"] = hashlib.sha256(
+        json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
+    ).hexdigest()
+    if destination.exists():
+        manifest = destination / "result.json"
+        member = destination / "failure.log"
+        try:
+            existing = json.loads(manifest.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise RepetitionError("repetition_failure_evidence_changed") from exc
+        if (
+            destination.is_symlink()
+            or manifest.is_symlink()
+            or member.is_symlink()
+            or existing != payload
+            or member.read_bytes() != bounded_output
+            or _digest(member) != payload["logSha256"]
+        ):
+            raise RepetitionError("repetition_failure_evidence_changed")
+        if os.name != "nt" and (
+            destination.stat().st_uid != os.getuid()
+            or manifest.stat().st_uid != os.getuid()
+            or member.stat().st_uid != os.getuid()
+            or destination.stat().st_mode & 0o077
+            or manifest.stat().st_mode & 0o077
+            or member.stat().st_mode & 0o077
+        ):
+            raise RepetitionError("repetition_evidence_permissions_invalid")
+        return manifest
+    with tempfile.TemporaryDirectory(prefix=f".{failure_id}.", dir=failure_parent) as raw_stage:
+        stage = Path(raw_stage)
+        member = stage / "failure.log"
+        member.write_bytes(bounded_output)
+        member.chmod(0o600)
+        manifest = stage / "result.json"
+        manifest.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        manifest.chmod(0o600)
+        stage.rename(destination)
+        destination.chmod(0o700)
+    return destination / "result.json"
+
+
 def run(root: Path | None = None) -> Path:
     project_root = (root or Path(__file__).resolve().parents[3]).resolve()
     _require_clean(project_root)
@@ -255,7 +340,18 @@ def run(root: Path | None = None) -> Path:
                     member.write_text(result.stdout + result.stderr, encoding="utf-8")
                     member.chmod(0o600)
                     if result.returncode:
-                        raise RepetitionError(f"repetition_failed:{suite}:{repetition}")
+                        failure = _persist_failure(
+                            evidence_root,
+                            commit,
+                            suite,
+                            repetition,
+                            isolated_command,
+                            result.returncode,
+                            member.read_bytes(),
+                        )
+                        raise RepetitionError(
+                            f"repetition_failed:{suite}:{repetition}:evidence={failure}"
+                        )
                     files.append(
                         {
                             "bytes": member.stat().st_size,

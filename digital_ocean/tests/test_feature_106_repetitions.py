@@ -145,8 +145,81 @@ def test_dirty_source_and_failed_repetition_are_terminal(tmp_path, monkeypatch):
     monkeypatch.setattr(repetitions.subprocess, "run", lambda *_args, **_kwargs: type(
         "Result", (), {"returncode": 1, "stdout": "", "stderr": "failed\n"}
     )())
-    with pytest.raises(repetitions.RepetitionError, match="repetition_failed"):
+    with pytest.raises(repetitions.RepetitionError, match="repetition_failed.*evidence="):
         repetitions.run(tmp_path)
+    manifests = list((tmp_path / ".artifacts" / "feature-106-repetitions" / "failures").rglob("result.json"))
+    assert len(manifests) == 1
+    payload = json.loads(manifests[0].read_text(encoding="utf-8"))
+    member = manifests[0].parent / "failure.log"
+    assert payload["status"] == "failed"
+    assert payload["sourceCommit"] == "c" * 40
+    assert payload["suite"] == "suite"
+    assert payload["exitCode"] == 1
+    assert member.read_text(encoding="utf-8") == "failed\n"
+    assert payload["logSha256"] == repetitions._digest(member)
+
+
+def test_failure_evidence_replay_is_idempotent_and_tamper_evident(tmp_path):
+    evidence_root = tmp_path / "evidence"
+    evidence_root.mkdir(mode=0o700)
+    arguments = (
+        evidence_root,
+        "d" * 40,
+        "suite",
+        3,
+        ("pytest", "fixture.py"),
+        1,
+        b"bounded failure\n",
+    )
+    first = repetitions._persist_failure(*arguments)
+    assert repetitions._persist_failure(*arguments) == first
+    (first.parent / "failure.log").write_bytes(b"tampered\n")
+    with pytest.raises(repetitions.RepetitionError, match="failure_evidence_changed"):
+        repetitions._persist_failure(*arguments)
+
+
+def test_failure_evidence_is_bounded_and_rejects_manifest_or_mode_drift(tmp_path):
+    evidence_root = tmp_path / "evidence"
+    evidence_root.mkdir(mode=0o700)
+    arguments = (
+        evidence_root,
+        "e" * 40,
+        "suite",
+        4,
+        ("pytest", "fixture.py"),
+        2,
+        b"x" * (1024 * 1024 + 1),
+    )
+    manifest = repetitions._persist_failure(*arguments)
+    payload = json.loads(manifest.read_text(encoding="utf-8"))
+    assert payload["bytes"] == 1024 * 1024
+    assert payload["outputTruncated"] is True
+    manifest.write_text("{bad-json", encoding="utf-8")
+    with pytest.raises(repetitions.RepetitionError, match="failure_evidence_changed"):
+        repetitions._persist_failure(*arguments)
+
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+    manifest.chmod(0o644)
+    with pytest.raises(repetitions.RepetitionError, match="permissions_invalid"):
+        repetitions._persist_failure(*arguments)
+
+
+def test_failure_evidence_rejects_symlinked_parent(tmp_path):
+    evidence_root = tmp_path / "evidence"
+    evidence_root.mkdir(mode=0o700)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (evidence_root / "failures").symlink_to(outside, target_is_directory=True)
+    with pytest.raises(repetitions.RepetitionError, match="failure_evidence_invalid"):
+        repetitions._persist_failure(
+            evidence_root,
+            "f" * 40,
+            "suite",
+            1,
+            ("pytest",),
+            1,
+            b"failure\n",
+        )
 
 
 def test_test_environment_is_allowlisted_and_credential_free(tmp_path, monkeypatch):
@@ -285,6 +358,14 @@ def test_private_evidence_root_rejects_symlinked_ancestor(tmp_path):
     outside = tmp_path / "outside"
     outside.mkdir()
     (project / ".artifacts").symlink_to(outside, target_is_directory=True)
+    with pytest.raises(repetitions.RepetitionError, match="root_invalid"):
+        repetitions._private_evidence_root(project)
+
+
+def test_private_evidence_root_rejects_nondirectory_ancestor(tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / ".artifacts").write_text("not a directory\n", encoding="utf-8")
     with pytest.raises(repetitions.RepetitionError, match="root_invalid"):
         repetitions._private_evidence_root(project)
 
