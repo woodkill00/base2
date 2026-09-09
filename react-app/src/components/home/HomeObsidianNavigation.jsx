@@ -557,11 +557,13 @@ const HomeObsidianNavigation = ({ onNavigate, onUtilityAction = () => {}, locale
     if (resizeObserver && document.body) resizeObserver.observe(document.body);
 
     const layoutFrames = [];
-    layoutFrames.push(
-      window.requestAnimationFrame(() => {
-        layoutFrames.push(window.requestAnimationFrame(updateScrollState));
-      })
-    );
+    if (resizeObserver) {
+      layoutFrames.push(
+        window.requestAnimationFrame(() => {
+          layoutFrames.push(window.requestAnimationFrame(updateScrollState));
+        })
+      );
+    }
     return () => {
       window.removeEventListener('scroll', updateScrollState);
       window.removeEventListener('resize', updateScrollState);
