@@ -170,8 +170,6 @@ SSH_TIMEOUT = 15  # seconds
 LOG_POLL_ATTEMPTS = 60
 LOG_POLL_TIMEOUT = 30  # seconds
 LOG_POLL_INTERVAL = 15  # seconds
-IP_POLL_TIMEOUT = int(os.getenv("DO_IP_POLL_TIMEOUT_SECONDS", "120"))
-IP_POLL_INTERVAL = int(os.getenv("DO_IP_POLL_INTERVAL_SECONDS", "5"))
 REBOOT_MARKERS = ["Cloud-init v. 25.2-0ubuntu1~22.04.1 finished at"]
 COMPLETION_MARKER = "User data script completed at"
 SUMMARY = []
@@ -180,9 +178,13 @@ _DEPLOY_CONFIG = normalize_deploy_config(
         **_DEPLOY_CONFIG,
         "PROJECT_NAME": os.getenv("PROJECT_NAME", _DEPLOY_CONFIG.get("PROJECT_NAME", "app")),
         "DEPLOY_PATH": os.getenv("DEPLOY_PATH", _DEPLOY_CONFIG.get("DEPLOY_PATH", "/opt/apps/")),
+        "DO_IP_POLL_TIMEOUT_SECONDS": os.getenv("DO_IP_POLL_TIMEOUT_SECONDS", "120"),
+        "DO_IP_POLL_INTERVAL_SECONDS": os.getenv("DO_IP_POLL_INTERVAL_SECONDS", "5"),
     }
 )
 PROJECT_NAME = _DEPLOY_CONFIG["PROJECT_NAME"]
+IP_POLL_TIMEOUT = int(_DEPLOY_CONFIG["DO_IP_POLL_TIMEOUT_SECONDS"])
+IP_POLL_INTERVAL = int(_DEPLOY_CONFIG["DO_IP_POLL_INTERVAL_SECONDS"])
 _EXPANSION_ENV = {**os.environ, "PROJECT_NAME": PROJECT_NAME}
 ssh_dir = os.path.expanduser("~/.ssh")
 ssh_key_path = os.path.join(ssh_dir, PROJECT_NAME)

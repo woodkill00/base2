@@ -144,7 +144,7 @@ describe('Home page (public)', () => {
       expect(prompt).toHaveBeenCalledWith('Diesen Link kopieren', expect.any(String))
     );
     expect(screen.getByTestId('home-share-status')).toHaveTextContent(
-      'Kopieren Sie den Link aus dem geöffneten Dialog.'
+      'Der Dialog zum manuellen Kopieren wurde geschlossen.'
     );
     prompt.mockRestore();
   });

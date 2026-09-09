@@ -136,6 +136,31 @@ def test_deploy_path_normalizes_to_fixed_root(deploy_path):
     assert normalize_deploy_config({"DEPLOY_PATH": deploy_path})["DEPLOY_PATH"] == "/opt/apps/"
 
 
+@pytest.mark.parametrize(
+    "values",
+    (
+        {"DO_IP_POLL_TIMEOUT_SECONDS": "29"},
+        {"DO_IP_POLL_TIMEOUT_SECONDS": "601"},
+        {"DO_IP_POLL_TIMEOUT_SECONDS": "forever"},
+        {"DO_IP_POLL_INTERVAL_SECONDS": "0"},
+        {"DO_IP_POLL_INTERVAL_SECONDS": "31"},
+        {"DO_IP_POLL_TIMEOUT_SECONDS": "30", "DO_IP_POLL_INTERVAL_SECONDS": "31"},
+    ),
+)
+def test_provider_polling_configuration_is_hard_bounded(values):
+    with pytest.raises(DeployConfigError, match="poll|bounded"):
+        normalize_deploy_config(values)
+
+
+def test_provider_polling_defaults_and_maximum_are_normalized():
+    assert normalize_deploy_config({})["DO_IP_POLL_TIMEOUT_SECONDS"] == "120"
+    result = normalize_deploy_config(
+        {"DO_IP_POLL_TIMEOUT_SECONDS": "600", "DO_IP_POLL_INTERVAL_SECONDS": "30"}
+    )
+    assert result["DO_IP_POLL_TIMEOUT_SECONDS"] == "600"
+    assert result["DO_IP_POLL_INTERVAL_SECONDS"] == "30"
+
+
 def test_secret_redaction_never_returns_values():
     redacted = redact_config(
         {
@@ -266,6 +291,8 @@ def test_provider_activation_and_terminal_evidence_are_bounded_and_required():
     assert "required=True" in orchestrator
     assert "bootstrap-packages.txt" in deploy
     assert "Failed to write required deployment mode evidence" in deploy
+    assert "$modePayload.resolvedAction = $deploymentAction" in deploy
+    assert "Failed to bind resolved deployment action evidence" in deploy
 
 
 def test_htpasswd_validation_failure_is_terminal():

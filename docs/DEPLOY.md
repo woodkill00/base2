@@ -40,7 +40,13 @@ limited to that otherwise empty coordination repository. Credential-bearing,
 plain-HTTP, SSH, SCP, command-helper, and local-only production remotes are
 rejected. The controller ignores inherited global/system Git configuration and
 transport overrides; private HTTPS authentication must come from the bounded
-process credential broker without placing credentials in the URL. The fixed,
+process credential broker named by `DO_PROVISION_LEASE_GIT_ASKPASS`, without
+placing credentials in the URL. That path must be an absolute, owner-only,
+non-symlinked executable (maximum 64 KiB) which returns the repository-scoped
+username or token requested by Git. The lease process uses an absolute Git
+executable, disables system/global config and terminal prompts, and removes
+ambient Git, credential-manager, askpass, SSH-agent, proxy, and token variables
+before installing only this exact broker. The fixed,
 digest-named remote ref is created only when a new paid resource is needed and
 is deleted only with the exact owner revision. Conflict, crash, expiry, or ref
 drift fails closed; recovery requires exact-owner cleanup. Update-only operation
@@ -63,7 +69,12 @@ coordination repository serializes the final lookup and create operation with
 an atomic ref create and exact-revision compare-and-swap deletion. Conflict,
 stale ownership, transport uncertainty, or an uncertain provider result keeps
 the lease in place for explicit exact-owner recovery. Existing deployments
-remain bound to the exact provider droplet ID returned by discovery.
+remain bound to the exact provider droplet ID returned by discovery. Provider
+activation and public-address discovery share one monotonic deadline:
+`DO_IP_POLL_TIMEOUT_SECONDS` must be 30-600 seconds and
+`DO_IP_POLL_INTERVAL_SECONDS` must be 1-30 seconds and no greater than the
+deadline. Pending status, transport errors, and missing addresses cannot extend
+that paid-resource wait.
 
 Fresh cloud-init contains no repository or credential. It installs only
 distribution-signed bootstrap packages. Terminal local evidence retains the

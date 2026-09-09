@@ -30,7 +30,14 @@ def populate(root: Path, *, tests: bool = False) -> None:
                 }
             )
         elif name == "deploy-mode.json":
-            content = json.dumps({"effectiveMode": "full", "detectedExistingProviderId": None})
+            content = json.dumps(
+                {
+                    "effectiveMode": "full",
+                    "resolvedAction": "deploy",
+                    "detectedExistingProviderId": "12345",
+                    "detectedExistingIp": "192.0.2.10",
+                }
+            )
         elif name == "bootstrap-packages.txt":
             content = "ca-certificates=2026.1\ndocker.io=27.0.1\n"
         else:
@@ -136,7 +143,19 @@ def test_cli_returns_bounded_failure_and_success(tmp_path, capsys):
     assert "remote-evidence-manifest.json" in capsys.readouterr().out
 
 
-@pytest.mark.parametrize("failure", ("raw-user-data", "bad-digest", "missing-id", "id-mismatch"))
+@pytest.mark.parametrize(
+    "failure",
+    (
+        "raw-user-data",
+        "bad-digest",
+        "missing-id",
+        "id-mismatch",
+        "ip-mismatch",
+        "missing-detected-id",
+        "provision-action",
+        "invalid-mode",
+    ),
+)
 def test_provider_identity_and_user_data_digest_are_mandatory(tmp_path, failure):
     populate(tmp_path)
     userdata_path = next(tmp_path.rglob("DO_userdata.json"))
@@ -147,12 +166,23 @@ def test_provider_identity_and_user_data_digest_are_mandatory(tmp_path, failure)
         userdata["user_data_sha256"] = "bad"
     elif failure == "missing-id":
         userdata.pop("droplet_id")
-    else:
+    elif failure == "id-mismatch":
         mode_path = next(tmp_path.rglob("deploy-mode.json"))
-        mode_path.write_text(
-            json.dumps({"effectiveMode": "update-only", "detectedExistingProviderId": "999"}),
-            encoding="utf-8",
-        )
+        mode = json.loads(mode_path.read_text(encoding="utf-8"))
+        mode["detectedExistingProviderId"] = "999"
+        mode_path.write_text(json.dumps(mode), encoding="utf-8")
+    elif failure in {"ip-mismatch", "missing-detected-id", "provision-action", "invalid-mode"}:
+        mode_path = next(tmp_path.rglob("deploy-mode.json"))
+        mode = json.loads(mode_path.read_text(encoding="utf-8"))
+        if failure == "ip-mismatch":
+            mode["detectedExistingIp"] = "192.0.2.99"
+        elif failure == "missing-detected-id":
+            mode.pop("detectedExistingProviderId")
+        elif failure == "provision-action":
+            mode["resolvedAction"] = "provision"
+        else:
+            mode["effectiveMode"] = "unknown"
+        mode_path.write_text(json.dumps(mode), encoding="utf-8")
     userdata_path.write_text(json.dumps(userdata), encoding="utf-8")
     with pytest.raises(EvidenceError, match="provider"):
         create_manifest(tmp_path, COMMIT, tests_required=False)

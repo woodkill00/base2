@@ -14,6 +14,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import time
@@ -24,6 +25,44 @@ from urllib.parse import urlsplit
 
 class ProviderLeaseError(RuntimeError):
     pass
+
+
+def _trusted_git_executable() -> str:
+    candidates = [Path("/usr/bin/git")]
+    discovered = shutil.which("git")
+    if discovered:
+        candidates.append(Path(discovered))
+    for candidate in candidates:
+        try:
+            if candidate.is_symlink():
+                continue
+            resolved = candidate.resolve(strict=True)
+            if resolved.is_file() and os.access(resolved, os.X_OK):
+                return str(resolved)
+        except OSError:
+            continue
+    raise ProviderLeaseError("provider_lease_git_unavailable")
+
+
+GIT_EXECUTABLE = _trusted_git_executable()
+
+
+def _credential_broker(raw_path: str) -> Path:
+    candidate = Path(raw_path)
+    if not candidate.is_absolute() or candidate.is_symlink():
+        raise ProviderLeaseError("provider_lease_credential_broker_invalid")
+    try:
+        resolved = candidate.resolve(strict=True)
+        metadata = resolved.stat()
+    except OSError as exc:
+        raise ProviderLeaseError("provider_lease_credential_broker_invalid") from exc
+    if not resolved.is_file() or metadata.st_size < 1 or metadata.st_size > 65536:
+        raise ProviderLeaseError("provider_lease_credential_broker_invalid")
+    if os.name != "nt" and (metadata.st_uid != os.getuid() or metadata.st_mode & 0o077):
+        raise ProviderLeaseError("provider_lease_credential_broker_invalid")
+    if not os.access(resolved, os.X_OK):
+        raise ProviderLeaseError("provider_lease_credential_broker_invalid")
+    return resolved
 
 
 def _network_remote_identity(value: str) -> str | None:
@@ -75,16 +114,29 @@ def _git(
     cwd: Path,
     stdin: str | None = None,
     identity: bool = False,
+    credential_broker: Path | None = None,
 ) -> subprocess.CompletedProcess[str]:
     environment = dict(os.environ)
     for name in tuple(environment):
-        if name.startswith("GIT_CONFIG_") or name in {
-            "GIT_SSH",
-            "GIT_SSH_COMMAND",
-            "GIT_PROXY_COMMAND",
-            "GIT_SSL_NO_VERIFY",
-            "GIT_SSL_CAINFO",
-        }:
+        if (
+            name.startswith(("GIT_", "GCM_"))
+            or re.search(
+                r"(?:TOKEN|SECRET|PASSWORD|CREDENTIAL|PRIVATE_KEY|ACCESS_KEY|API_KEY)",
+                name,
+                re.I,
+            )
+            or name.upper()
+            in {
+                "ALL_PROXY",
+                "GH_TOKEN",
+                "GITHUB_TOKEN",
+                "HTTP_PROXY",
+                "HTTPS_PROXY",
+                "NO_PROXY",
+                "SSH_ASKPASS",
+                "SSH_AUTH_SOCK",
+            }
+        ):
             environment.pop(name, None)
     environment.update(
         {
@@ -93,8 +145,11 @@ def _git(
             "GIT_CONFIG_GLOBAL": os.devnull,
             "GIT_TERMINAL_PROMPT": "0",
             "GIT_SSL_NO_VERIFY": "false",
+            "PATH": str(Path(GIT_EXECUTABLE).parent),
         }
     )
+    if credential_broker is not None:
+        environment["GIT_ASKPASS"] = str(credential_broker)
     if identity:
         environment.update(
             {
@@ -106,7 +161,7 @@ def _git(
         )
     try:
         return subprocess.run(
-            ["git", *command],
+            [GIT_EXECUTABLE, *command],
             cwd=cwd,
             env=environment,
             input=stdin,
@@ -122,11 +177,18 @@ def _git(
 class GitRemoteLeaseStore:
     """Atomic exact-owner lease held by one fixed ref on a trusted Git remote."""
 
-    def __init__(self, *, remote: str = "origin", repository: Path | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        remote: str = "origin",
+        repository: Path | None = None,
+        credential_broker: Path | None = None,
+    ) -> None:
         if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", remote):
             raise ProviderLeaseError("provider_lease_remote_invalid")
         self.remote = remote
         self.repository = (repository or Path.cwd()).resolve()
+        self.credential_broker = credential_broker
         push_url = _git(
             ["config", "--local", "--get", f"remote.{remote}.pushurl"],
             cwd=self.repository,
@@ -152,7 +214,10 @@ class GitRemoteLeaseStore:
         remote = os.environ.get("DO_PROVISION_LEASE_GIT_REMOTE", "").strip()
         if not remote:
             raise ProviderLeaseError("provider_lease_remote_required")
-        store = cls(remote=remote)
+        broker_raw = os.environ.get("DO_PROVISION_LEASE_GIT_ASKPASS", "").strip()
+        if not broker_raw:
+            raise ProviderLeaseError("provider_lease_credential_broker_required")
+        store = cls(remote=remote, credential_broker=_credential_broker(broker_raw))
         if store.remote_identity is None:
             raise ProviderLeaseError("provider_lease_remote_not_shared")
         source = _git(
@@ -179,15 +244,23 @@ class GitRemoteLeaseStore:
     def put_if_absent(self, record: LeaseRecord) -> LeaseRecord:
         with tempfile.TemporaryDirectory(prefix="base2-provider-lease-") as raw_root:
             root = Path(raw_root)
-            if _git(["init", "--quiet"], cwd=root).returncode:
+            if _git(
+                ["init", "--quiet"], cwd=root, credential_broker=self.credential_broker
+            ).returncode:
                 raise ProviderLeaseError("provider_lease_local_init_failed")
-            blob = _git(["hash-object", "-w", "--stdin"], cwd=root, stdin=record.payload().decode())
+            blob = _git(
+                ["hash-object", "-w", "--stdin"],
+                cwd=root,
+                stdin=record.payload().decode(),
+                credential_broker=self.credential_broker,
+            )
             if blob.returncode or not re.fullmatch(r"[0-9a-f]{40,64}\n?", blob.stdout):
                 raise ProviderLeaseError("provider_lease_local_object_failed")
             tree = _git(
                 ["mktree"],
                 cwd=root,
                 stdin=f"100644 blob {blob.stdout.strip()}\tlease.json\n",
+                credential_broker=self.credential_broker,
             )
             if tree.returncode or not re.fullmatch(r"[0-9a-f]{40,64}\n?", tree.stdout):
                 raise ProviderLeaseError("provider_lease_local_object_failed")
@@ -195,6 +268,7 @@ class GitRemoteLeaseStore:
                 ["commit-tree", tree.stdout.strip(), "-m", "base2 provider lease"],
                 cwd=root,
                 identity=True,
+                credential_broker=self.credential_broker,
             )
             revision = commit.stdout.strip()
             if commit.returncode or not re.fullmatch(r"[0-9a-f]{40,64}", revision):
@@ -202,6 +276,7 @@ class GitRemoteLeaseStore:
             pushed = _git(
                 ["push", "--porcelain", self.remote_url, f"{revision}:{self._ref(record.name)}"],
                 cwd=root,
+                credential_broker=self.credential_broker,
             )
             if pushed.returncode:
                 raise ProviderLeaseError("provider_provision_lease_unavailable")
@@ -212,7 +287,9 @@ class GitRemoteLeaseStore:
             raise ProviderLeaseError("provider_provision_lease_owner_mismatch")
         with tempfile.TemporaryDirectory(prefix="base2-provider-lease-release-") as raw_root:
             root = Path(raw_root)
-            if _git(["init", "--quiet"], cwd=root).returncode:
+            if _git(
+                ["init", "--quiet"], cwd=root, credential_broker=self.credential_broker
+            ).returncode:
                 raise ProviderLeaseError("provider_lease_local_init_failed")
             ref = self._ref(record.name)
             result = _git(
@@ -224,6 +301,7 @@ class GitRemoteLeaseStore:
                     f":{ref}",
                 ],
                 cwd=root,
+                credential_broker=self.credential_broker,
             )
             if result.returncode:
                 raise ProviderLeaseError("provider_provision_lease_owner_mismatch")

@@ -169,7 +169,15 @@ def _validate_provider_evidence(root: Path, entries: list[dict]) -> None:
     ):
         raise EvidenceError("provider_evidence_invalid")
     detected = mode.get("detectedExistingProviderId")
-    if detected not in (None, "") and str(detected) != str(provider_id):
+    detected_ip = mode.get("detectedExistingIp")
+    if (
+        mode.get("effectiveMode") not in {"auto", "full", "update-only"}
+        or mode.get("resolvedAction") != "deploy"
+        or not str(detected or "").isdigit()
+        or str(detected) != str(provider_id)
+        or not isinstance(detected_ip, str)
+        or detected_ip.strip() != provider_ip.strip()
+    ):
         raise EvidenceError("provider_identity_mismatch")
     packages = by_name["bootstrap-packages.txt"].read_text(encoding="utf-8").splitlines()
     if not packages or any(

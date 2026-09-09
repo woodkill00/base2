@@ -1217,3 +1217,40 @@ B371-B379 contain the deduplicated repair and proof set. No publication, merge,
 deployment, provider, DNS, certificate, credential, or destructive action is
 authorized; both exact gates, both repetition families, and all independent
 reviews restart only from a new clean repaired commit.
+
+## Analysis cycle 53 — independent review rejects the repaired candidate
+
+Exact commit `9eb4f32f35fe28f7d88223d234ab40cd347fa62b` passed both
+107-check complete gates and broader ten-run privacy/runtime/settings and
+backup/release/deployment suites. Fresh review nevertheless returned data
+C0/H0/M1/L0, UX C0/H0/M0/L1, and combined code/security/operations
+C0/H0/M4/L0. The candidate is rejected and none of its green automation permits
+publication.
+
+Data review proved that libc/libpq legacy numeric IPv4 forms such as
+`2130706433`, `127.1`, `017700000001`, and `0x7f000001` still resolved to
+loopback after strict Python address parsing declined them. Operations review
+found no hard maximum on the configured provider-ready deadline, ambient Git
+askpass/exec-path/token state outside the partial scrub, terminal evidence that
+did not require exact discovered provider ID/IP correlation, and repetitions
+that were observed in the terminal but not persisted under the reviewed source
+hash. UX review found the blocking manual-copy prompt left a status which
+incorrectly described the already-closed dialog. B380-B385 contain the complete
+deduplicated repair and proof set, including a source-bound atomic repetition
+manifest. Both complete gates, persisted repetitions, and every independent
+review restart only after the next clean commit.
+
+## Analysis cycle 54 — pre-commit coverage admission
+
+The cycle-53 repaired working tree passed 107 of 108 complete-gate checks. Its
+only rejection was changed-line coverage at 89.94% against the unchanged 90%
+floor. The new exact-head repetition runner and its tests were untracked, so the
+Git-diff coverage collector correctly excluded their paired source and proof,
+the same admission boundary previously observed for new deployment modules.
+
+The runner was moved under the supported DigitalOcean coverage partition and
+its focused suite now covers clean/exact source admission, successful execution,
+failed execution, atomic replay, member tampering, manifest tampering, missing
+evidence, and CLI success/failure. The failed dirty-tree gate remains historical
+and is not release evidence. B385 requires committing the complete source and
+tests together before both exact-head gates and persisted repetitions restart.

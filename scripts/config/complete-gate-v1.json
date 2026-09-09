@@ -26,6 +26,20 @@
       "requiredTools": ["python3", "git"]
     },
     {
+      "id": "feature-106-repetition-evidence-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "digital_ocean/tests/test_feature_106_repetitions.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["production-readiness-contract"],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
       "id": "operations-domain-contract",
       "command": [
         "{python-django}",
@@ -36,7 +50,7 @@
       ],
       "required": true,
       "timeoutSeconds": 45,
-      "dependsOn": ["production-readiness-contract"],
+      "dependsOn": ["feature-106-repetition-evidence-contract"],
       "requiredTools": ["{python-django}"]
     },
     {

@@ -42,6 +42,13 @@ def _store(repositories: tuple[Path, Path]) -> GitRemoteLeaseStore:
     return GitRemoteLeaseStore(repository=controller)
 
 
+def _make_broker(root: Path) -> Path:
+    broker = root / "provider-lease-askpass"
+    broker.write_text("#!/bin/sh\nprintf '%s\\n' lease-fixture\n", encoding="utf-8")
+    broker.chmod(0o700)
+    return broker
+
+
 def test_remote_ref_creation_is_atomic_and_exact_owner_release(repositories):
     store = _store(repositories)
     first = acquire_provider_lease(store, "base2-provision-site", "runner:first-owner-token", now=0)
@@ -94,6 +101,7 @@ def test_lease_name_is_bounded(name: str, repositories):
 def test_environment_requires_a_dedicated_non_origin_remote(repositories, monkeypatch):
     controller, target = repositories
     monkeypatch.chdir(controller)
+    monkeypatch.setenv("DO_PROVISION_LEASE_GIT_ASKPASS", str(_make_broker(target.parent)))
     monkeypatch.delenv("DO_PROVISION_LEASE_GIT_REMOTE", raising=False)
     with pytest.raises(ProviderLeaseError, match="remote_required"):
         GitRemoteLeaseStore.from_environment()
@@ -130,6 +138,7 @@ def test_environment_rejects_source_remote_alias(tmp_path: Path, monkeypatch):
         cwd=controller,
     )
     monkeypatch.chdir(controller)
+    monkeypatch.setenv("DO_PROVISION_LEASE_GIT_ASKPASS", str(_make_broker(tmp_path)))
     monkeypatch.setenv("DO_PROVISION_LEASE_GIT_REMOTE", "provider-lease")
     with pytest.raises(ProviderLeaseError, match="not_isolated"):
         GitRemoteLeaseStore.from_environment()
@@ -193,12 +202,66 @@ def test_git_transport_environment_is_scrubbed(monkeypatch, tmp_path):
     monkeypatch.setenv("GIT_SSH_COMMAND", "sh -c hostile")
     monkeypatch.setenv("GIT_PROXY_COMMAND", "sh -c hostile")
     monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
+    monkeypatch.setenv("GIT_ASKPASS", "hostile-askpass")
+    monkeypatch.setenv("GIT_EXEC_PATH", "hostile-exec-path")
+    monkeypatch.setenv("SSH_ASKPASS", "hostile-ssh-askpass")
+    monkeypatch.setenv("GITHUB_TOKEN", "hostile-token")
+    monkeypatch.setenv("DO_API_TOKEN", "hostile-provider-token")
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "hostile-access-key")
     monkeypatch.setattr(subprocess, "run", run)
     _lease_git(["status"], cwd=tmp_path)
     assert "GIT_SSH_COMMAND" not in captured
     assert "GIT_PROXY_COMMAND" not in captured
+    assert "GIT_ASKPASS" not in captured
+    assert "GIT_EXEC_PATH" not in captured
+    assert "SSH_ASKPASS" not in captured
+    assert "GITHUB_TOKEN" not in captured
+    assert "DO_API_TOKEN" not in captured
+    assert "AWS_ACCESS_KEY_ID" not in captured
     assert captured["GIT_CONFIG_GLOBAL"] == "/dev/null"
     assert captured["GIT_SSL_NO_VERIFY"] == "false"
+
+
+def test_explicit_askpass_broker_is_restrictive_and_works_with_real_git(tmp_path):
+    broker = _make_broker(tmp_path)
+    result = _lease_git(
+        ["credential", "fill"],
+        cwd=tmp_path,
+        stdin="protocol=https\nhost=example.invalid\n\n",
+        credential_broker=broker,
+    )
+    assert result.returncode == 0
+    assert "username=lease-fixture" in result.stdout
+    assert "password=lease-fixture" in result.stdout
+
+
+@pytest.mark.parametrize("kind", ("missing", "relative", "permissive", "symlink"))
+def test_environment_rejects_invalid_credential_broker(
+    tmp_path: Path, monkeypatch, kind: str
+):
+    controller = tmp_path / "controller"
+    controller.mkdir()
+    _git("init", cwd=controller)
+    _git(
+        "remote", "add", "provider-lease", "https://example.invalid/lease.git", cwd=controller
+    )
+    monkeypatch.chdir(controller)
+    monkeypatch.setenv("DO_PROVISION_LEASE_GIT_REMOTE", "provider-lease")
+    broker = tmp_path / "broker"
+    if kind == "missing":
+        monkeypatch.delenv("DO_PROVISION_LEASE_GIT_ASKPASS", raising=False)
+    elif kind == "relative":
+        monkeypatch.setenv("DO_PROVISION_LEASE_GIT_ASKPASS", "broker")
+    else:
+        target = _make_broker(tmp_path)
+        if kind == "permissive":
+            target.chmod(0o755)
+            broker = target
+        else:
+            broker.symlink_to(target)
+        monkeypatch.setenv("DO_PROVISION_LEASE_GIT_ASKPASS", str(broker))
+    with pytest.raises(ProviderLeaseError, match="credential_broker"):
+        GitRemoteLeaseStore.from_environment()
 
 
 def test_missing_remote_and_git_transport_failure_are_terminal(tmp_path: Path, monkeypatch):

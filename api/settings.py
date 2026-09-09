@@ -282,6 +282,11 @@ class Settings(BaseSettings):
                     )
                 effective_host = effective_host.rstrip('.')
                 local_database = effective_host in {'', 'postgres', 'localhost'}
+                # libc/libpq still accept historical IPv4 spellings that the
+                # strict ipaddress parser intentionally rejects (for example
+                # 2130706433, 127.1, 017700000001, and 0x7f000001). Never let
+                # those ambiguous numeric tokens enter the production resolver.
+                legacy_ipv4_component = r'(?:0[xX][0-9a-fA-F]+|0[0-7]+|[0-9]+)'
                 try:
                     database_address = ipaddress.ip_address(effective_host)
                     if isinstance(database_address, ipaddress.IPv6Address):
@@ -295,7 +300,11 @@ class Settings(BaseSettings):
                         )
                     )
                 except ValueError:
-                    pass
+                    if re.fullmatch(
+                        rf'{legacy_ipv4_component}(?:\.{legacy_ipv4_component}){{0,3}}',
+                        effective_host,
+                    ):
+                        local_database = True
                 if local_database:
                     raise RuntimeError(
                         'Production database must use an external verified-TLS endpoint'

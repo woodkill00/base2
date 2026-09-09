@@ -22,21 +22,21 @@ const homeCopy = {
     shared: 'Link shared.',
     copied: 'Link copied to clipboard.',
     copyPrompt: 'Copy this link',
-    copyManually: 'Copy the link from the open dialog.',
+    copyManually: 'The manual copy dialog was closed.',
   },
   de: {
     title: 'Startseite',
     shared: 'Link geteilt.',
     copied: 'Link in die Zwischenablage kopiert.',
     copyPrompt: 'Diesen Link kopieren',
-    copyManually: 'Kopieren Sie den Link aus dem geöffneten Dialog.',
+    copyManually: 'Der Dialog zum manuellen Kopieren wurde geschlossen.',
   },
   ar: {
     title: 'الرئيسية',
     shared: 'تمت مشاركة الرابط.',
     copied: 'تم نسخ الرابط إلى الحافظة.',
     copyPrompt: 'انسخ هذا الرابط',
-    copyManually: 'انسخ الرابط من مربع الحوار المفتوح.',
+    copyManually: 'تم إغلاق مربع حوار النسخ اليدوي.',
   },
 };
 
@@ -92,8 +92,8 @@ const Home = ({ locale = siteManifest.defaultLocale }) => {
         // A visible copy fallback below prevents a silent clipboard failure.
       }
     }
-    setShareStatus(copy.copyManually);
     window.prompt(copy.copyPrompt, shareDetails.url);
+    setShareStatus(copy.copyManually);
   };
 
   return (

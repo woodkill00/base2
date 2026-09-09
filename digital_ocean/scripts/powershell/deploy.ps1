@@ -2255,6 +2255,11 @@ try {
   if (-not [string]::IsNullOrWhiteSpace($detectedExistingIp)) { $modeArgs += '--target-exists' }
   $deploymentAction = (& .\.venv\Scripts\python.exe .\digital_ocean\scripts\python\deployment_mode.py @modeArgs | Out-String).Trim()
   if ($LASTEXITCODE -ne 0) { throw "Deployment mode resolution failed with exit $LASTEXITCODE" }
+  try {
+    $modePayload.resolvedAction = $deploymentAction
+    $modeJson = ($modePayload | ConvertTo-Json -Depth 6)
+    Set-Content -Path (Join-Path $dest 'deploy-mode.json') -Value $modeJson -Encoding UTF8
+  } catch { throw "Failed to bind resolved deployment action evidence: $($_.Exception.Message)" }
   if ($deploymentAction -eq 'reject-missing-target') {
     throw 'Update-only deployment target is missing; use -Full or -UpdateOnly -CreateIfMissing'
   }

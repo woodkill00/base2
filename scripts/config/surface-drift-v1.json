@@ -2,7 +2,7 @@
   "algorithm": "sha256",
   "groups": {
     "config": {
-      ".env.example": "7500413f911151cf10e5bedc4df9d875ec5eaab5611d515bf6362b16da34e6bd",
+      ".env.example": "7a5105c21ecab9cade8fc7b00c3e75b0ecbed0bf5fbf1c602d58e7f7d84d2d33",
       "api/site_profiles/base2-obsidian.json": "c7d8f67ddd1ab6cd155000a741377d92a07e09ab8fe5bca73c1e961d092cbbd6",
       "api/site_profiles/content-workspace-contracts.json": "b8202643502ab5257a92a7370dd2ef4afbc11d75b2fd1772d2b99cb8f7f6beee",
       "api/site_profiles/content-workspace-presets.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
@@ -16,7 +16,7 @@
       "django/site_profiles/ember-studio.json": "b6b57abe7c80247917a1cc0ccdf08f3cddb2efd503091b73fb9d0e58d4c7fcae",
       "django/site_profiles/index.json": "76a7b227838ba6f778a2ab8b5a9741c4454efe1c473b912b924a29b3da57acd8",
       "django/site_profiles/northstar-library.json": "286850ced5758a336b8c7a82e345f57baa9d4686b39d209311178b6eaa5351f5",
-      "scripts/config/complete-gate-v1.json": "2752faab36580833d25b79afaba3de37aa908e8ec85503d9fcf1d554c8dfdc13",
+      "scripts/config/complete-gate-v1.json": "de95096ffba590136862ba74c0d4628a1bf96e28b59f463bf5daed6401df54e3",
       "shared/config/archetypes-v1.json": "1c203b4f3e076adf87fed98698cec6473b7ac765dcbfb7b6ca4b67c090801ce3",
       "shared/config/content-workspace-presets.generated.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
       "shared/config/credential-inventory-v1.json": "e84852d85d25f994400fb21dc9aef098853856e4b84210cc07582b4f999b831c",
@@ -36,7 +36,7 @@
     "docs": {
       "docs/ARCHITECTURE.md": "98c9ed467d4b3b69204f493a3260fcd4e366a3e400d6a31e4d4acaf5a19f0286",
       "docs/CONFIG.md": "220e044bfd19f6613998177952fcbb1ad35a118ec107b720ed2c03d3d78a6c40",
-      "docs/DEPLOY.md": "f666df2c5d1b27de6a726d542ae1916701a3c08e0023cea4d5a92f071dded37f",
+      "docs/DEPLOY.md": "99612901ac3c4e6fc1d73f4604647436ab784984cd14562d5d2536c85e528216",
       "docs/SECURITY.md": "f6dfb9f5726fd3600ef62b992527c83b576163bd7fa7e30b91675e666dbc41f6",
       "docs/TESTING.md": "0f36a8fcf6540e8a5c1c93974fa9530d67be969d290e71a7a73c326d8fa205b2",
       "docs/feature-093-production-readiness.md": "a072302df8fd844102ae84f994161f697a4b8f5c73d7a6ee7b2ad6e37d3eeff1",
