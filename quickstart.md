@@ -218,7 +218,6 @@ Options:
 ```powershell
 ./digital_ocean/scripts/powershell/deploy.ps1 -Full                 # deploy existing or provision once, then stop for host-key enrollment
 ./digital_ocean/scripts/powershell/deploy.ps1 -SkipAllowlist        # skip allowlist IP update
-./digital_ocean/scripts/powershell/deploy.ps1 -DropletIp 1.2.3.4    # override droplet IP detection
 ./digital_ocean/scripts/powershell/deploy.ps1 -SshKey "C:\path\to\key"  # custom SSH key path
 ```
 

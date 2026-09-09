@@ -12,6 +12,7 @@ import hashlib
 import json
 import os
 import re
+import secrets
 import shutil
 import socket
 import stat
@@ -26,6 +27,7 @@ from pydo import Client
 try:
     from digital_ocean.scripts.python.deploy_config import load_deploy_config
     from digital_ocean.scripts.python.droplet_lookup import (
+        GitRemoteLeaseStore,
         acquire_provider_lease,
         list_named_droplets,
         release_provider_lease,
@@ -38,7 +40,12 @@ try:
     )
 except ModuleNotFoundError:
     from deploy_config import load_deploy_config
-    from droplet_lookup import acquire_provider_lease, list_named_droplets, release_provider_lease
+    from droplet_lookup import (
+        GitRemoteLeaseStore,
+        acquire_provider_lease,
+        list_named_droplets,
+        release_provider_lease,
+    )
     from trusted_ssh import strict_openssh_options as _strict_openssh_options
     from trusted_ssh import trusted_ssh_client as _trusted_ssh_client
 
@@ -1650,10 +1657,15 @@ if not UPDATE_ONLY:
     stage("create droplet")
     log("Creating droplet via DigitalOcean API...")
     provision_lease = f"base2-provision-lease-{DO_DROPLET_NAME}"
-    lease_held = False
+    lease_store = GitRemoteLeaseStore.from_environment()
+    lease_record = None
+    provider_create_attempted = False
     try:
-        acquire_provider_lease(client, provision_lease)
-        lease_held = True
+        lease_record = acquire_provider_lease(
+            lease_store,
+            provision_lease,
+            f"base2:{secrets.token_hex(24)}",
+        )
         if list_named_droplets(client, DO_DROPLET_NAME):
             raise RuntimeError("Droplet appeared after the authoritative missing decision")
         log_json(
@@ -1661,6 +1673,9 @@ if not UPDATE_ONLY:
             {key: value for key, value in droplet_spec.items() if key != "user_data"}
             | {"user_data_sha256": user_data_sha256},
         )
+        # A timeout after this boundary has an uncertain provider outcome. Keep
+        # the lease so another runner cannot race a late provider completion.
+        provider_create_attempted = True
         droplet = client.droplets.create(droplet_spec)
         droplet_id = droplet["droplet"]["id"]
         log_json("API Response metadata - droplets.create", {"droplet_id": droplet_id})
@@ -1696,8 +1711,8 @@ if not UPDATE_ONLY:
             droplet_id
         ):
             raise RuntimeError("Created droplet identity is not authoritative")
-        release_provider_lease(client, provision_lease)
-        lease_held = False
+        release_provider_lease(lease_store, lease_record)
+        lease_record = None
         print(f"Droplet created! IP address: {ip_address}")
         # Update DO_userdata.json
         try:
@@ -1722,8 +1737,8 @@ if not UPDATE_ONLY:
         err(f"Droplet creation failed: {e}")
         exit(1)
     finally:
-        if lease_held:
-            release_provider_lease(client, provision_lease)
+        if lease_record is not None and not provider_create_attempted:
+            release_provider_lease(lease_store, lease_record)
 
     stage("ensure dns records")
     # Always ensure required DNS records exist/update to current droplet IP.

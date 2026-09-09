@@ -273,10 +273,20 @@ class Settings(BaseSettings):
                         effective_host = (parsed_database_url.hostname or '').strip().lower()
                     except ValueError as exc:
                         raise RuntimeError('DATABASE_URL must be a valid PostgreSQL URL') from exc
+                effective_host = effective_host.rstrip('.')
                 local_database = effective_host in {'', 'postgres', 'localhost'}
                 try:
-                    local_database = local_database or ipaddress.ip_address(effective_host).is_loopback
-                    local_database = local_database or ipaddress.ip_address(effective_host).is_unspecified
+                    database_address = ipaddress.ip_address(effective_host)
+                    if isinstance(database_address, ipaddress.IPv6Address):
+                        database_address = database_address.ipv4_mapped or database_address
+                    local_database = local_database or any(
+                        (
+                            database_address.is_loopback,
+                            database_address.is_unspecified,
+                            database_address.is_link_local,
+                            database_address.is_private,
+                        )
+                    )
                 except ValueError:
                     pass
                 if local_database:

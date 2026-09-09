@@ -1,10 +1,12 @@
 import json
 import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
 
 import pytest
 
-from digital_ocean.scripts.python import droplet_lookup
+from digital_ocean.scripts.python import droplet_lookup, provider_lease
 
 
 class _Droplets:
@@ -131,14 +133,63 @@ def test_main_fails_closed_on_provider_error(monkeypatch, capsys):
     assert json.loads(capsys.readouterr().out) == {"state": "error", "id": "", "ip": ""}
 
 
-def test_provider_lease_is_atomic_and_fail_closed():
-    client = _Client([[]])
-    droplet_lookup.acquire_provider_lease(client, "base2-provision-lease")
-    droplet_lookup.release_provider_lease(client, "base2-provision-lease")
-    assert client.tags.created == [{"body": {"name": "base2-provision-lease"}}]
-    assert client.tags.deleted == [{"tag_id": "base2-provision-lease"}]
-    client.tags.failure = OSError("provider details must remain hidden")
-    with pytest.raises(RuntimeError, match="lease_unavailable"):
-        droplet_lookup.acquire_provider_lease(client, "base2-provision-lease")
-    with pytest.raises(RuntimeError, match="lease_release_failed"):
-        droplet_lookup.release_provider_lease(client, "base2-provision-lease")
+class _ConditionalStore:
+    def __init__(self):
+        self.record = None
+        self.lock = threading.Lock()
+
+    def put_if_absent(self, record):
+        with self.lock:
+            if self.record is not None:
+                raise provider_lease.ProviderLeaseError("provider_provision_lease_unavailable")
+            self.record = record
+
+    def delete_if_owner(self, record):
+        if self.record != record:
+            raise provider_lease.ProviderLeaseError("provider_provision_lease_owner_mismatch")
+        self.record = None
+
+
+def test_provider_lease_is_exact_owner_atomic_and_crash_safe():
+    store = _ConditionalStore()
+    first = droplet_lookup.acquire_provider_lease(
+        store, "base2-provision-lease", "runner:first-owner", now=100
+    )
+    assert first.expires_at == 1000
+    with pytest.raises(provider_lease.ProviderLeaseError, match="lease_unavailable"):
+        droplet_lookup.acquire_provider_lease(
+            store, "base2-provision-lease", "runner:simultaneous", now=100
+        )
+    # Expiry does not silently transfer authority after a crashed owner. It
+    # stays fail closed until the exact owner or an explicit recovery removes it.
+    with pytest.raises(provider_lease.ProviderLeaseError, match="lease_unavailable"):
+        droplet_lookup.acquire_provider_lease(
+            store, "base2-provision-lease", "runner:after-expiry", now=5000
+        )
+    wrong = provider_lease.LeaseRecord(first.name, "runner:wrong-owner", first.expires_at)
+    with pytest.raises(provider_lease.ProviderLeaseError, match="owner_mismatch"):
+        droplet_lookup.release_provider_lease(store, wrong)
+    droplet_lookup.release_provider_lease(store, first)
+    recovered = droplet_lookup.acquire_provider_lease(
+        store, "base2-provision-lease", "runner:recovered-owner", now=5000
+    )
+    assert store.record == recovered
+
+
+def test_simultaneous_lease_claims_admit_exactly_one_owner():
+    store = _ConditionalStore()
+    barrier = threading.Barrier(2)
+
+    def claim(owner):
+        barrier.wait()
+        try:
+            return droplet_lookup.acquire_provider_lease(
+                store, "base2-provision-lease", owner, now=100
+            ).owner
+        except provider_lease.ProviderLeaseError:
+            return "rejected"
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        outcomes = list(executor.map(claim, ("runner:simultaneous-a", "runner:simultaneous-b")))
+    assert outcomes.count("rejected") == 1
+    assert store.record.owner in outcomes

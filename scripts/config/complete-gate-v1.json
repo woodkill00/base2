@@ -848,6 +848,9 @@
         "pytest",
         "digital_ocean/tests/test_deploy_config.py",
         "digital_ocean/tests/test_env_check.py",
+        "digital_ocean/tests/test_droplet_lookup.py",
+        "digital_ocean/tests/test_provider_lease.py",
+        "digital_ocean/tests/test_staging_tls_probe.py",
         "-q"
       ],
       "required": true,

@@ -19,9 +19,9 @@ const GOOGLE_CLIENT_ID = import.meta.env.REACT_APP_GOOGLE_CLIENT_ID || 'YOUR_GOO
 function App() {
   useEffect(() => {
     const routeLocale = resolveLocale(window.location.pathname.split('/')[1], siteManifest);
-    document.documentElement.lang = routeLocale.supported
-      ? routeLocale.locale
-      : siteManifest.defaultLocale;
+    const activeLocale = routeLocale.supported ? routeLocale.locale : siteManifest.defaultLocale;
+    document.documentElement.lang = activeLocale;
+    document.documentElement.dir = activeLocale === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.dataset.siteId = siteManifest.siteId;
     document.documentElement.dataset.theme = siteManifest.brand.theme;
     document.title = siteManifest.seo.titleTemplate.replace('%s', 'Home');

@@ -1125,3 +1125,58 @@ selection. Direct selection now atomically centers the canonical option before
 normal scroll reconciliation. The affected six-check browser matrix passed five
 consecutive repetitions across desktop, tablet, and mobile with no recurrence.
 All exact-head evidence restarts again from the new commit.
+
+## Analysis cycle 48 — independent review rejects the twice-green candidate
+
+Exact commit `3499adffe823d4e586ed494fbff910bcf3729253` passed both
+107-check complete gates plus ten privacy/runtime and ten
+backup/release/deployment repetitions. Fresh independent review nevertheless
+returned UX C0/H0/M2/L0, data C0/H1/M1/L0, and combined
+code/security/operations C0/H2/M2/L0. The candidate is rejected and all of its
+automated evidence is historical.
+
+Review found runtime database roles could collide with the PostgreSQL owner,
+canonical local database aliases could bypass the external-target guard,
+enabled public utility controls had no action while disabled controls could
+become selected, and the public Obsidian shell lacked German, Arabic, and RTL
+parity. The provider tag pseudo-lock was neither conditional nor owner-bound,
+the explicit address override bypassed authoritative provider identity,
+provider dependencies remained mutable, bootstrap package resolution was not
+attested, and the staging TLS repair lacked behavioral certificate validation.
+B363-B370 record the deduplicated repair and proof set. No publication, merge,
+deployment, provider, DNS, certificate, credential, or destructive action is
+authorized; every exact gate, repetition, and independent review restarts only
+after a new clean repaired commit.
+
+## Analysis cycle 49 — conditional lease implementation correction
+
+Implementation review rejected the first B366 repair before commit. The
+DigitalOcean Spaces API documents conditional headers for object reads but not
+for `PutObject` creation or `DeleteObject`; treating those undocumented headers
+as an atomic mutex would permit duplicate paid-resource creation. The draft
+Spaces implementation and its credentials were removed without contacting a
+provider.
+
+The replacement uses Git server-side atomic ref creation and exact
+`force-with-lease` deletion in a dedicated private coordination repository.
+Production configuration rejects a missing remote, local-only remote, insecure
+or credential-bearing URL, command-style helper, and any canonical alias of the
+source origin. The lease commit binds name, random owner nonce, and expiry;
+conflict, crash, expiry, changed ownership, and uncertain provider-create
+outcomes remain fail-closed until exact-owner recovery. Real simultaneous
+pushes to a disposable bare remote admitted exactly one owner, and the focused
+deployment, provider, TLS, visual-contract, database-role, API-host, and UI
+tests passed. The complete gate now includes the provider lease, paginated
+lookup, and real TLS behavior suites. Exact-head evidence remains pending until
+the repaired source is committed.
+
+## Analysis cycle 50 — pre-commit coverage admission
+
+The repaired dirty-tree complete gate passed 106 of 107 checks. Its sole
+rejection was changed-line coverage at 89.94% against the unchanged 90% floor.
+The newly added provider lease and its real Git concurrency tests were untracked,
+so the exact Git-diff coverage collector correctly did not admit either side of
+that evidence. This is not accepted as release evidence and the threshold is
+not reduced. B370 requires the complete repaired tree to become one clean exact
+candidate before both gates restart; that exact commit will make the source and
+tests jointly visible to changed-line coverage.

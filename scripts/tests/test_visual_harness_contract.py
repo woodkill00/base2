@@ -37,6 +37,23 @@ class VisualHarnessContractTests(unittest.TestCase):
         self.assertIn("route.abort('blockedbyclient')", spec)
         self.assertNotIn("ignoreHTTPSErrors: true", config)
 
+    def test_localized_visual_evidence_is_hermetic_and_covers_reflow_and_rtl(self):
+        config = (ROOT / "react-app/playwright.visual.config.mjs").read_text(encoding="utf-8")
+        spec = (ROOT / "react-app/e2e/visual/obsidian-localization.spec.ts").read_text(
+            encoding="utf-8"
+        )
+        for marker in ("german-reflow", "arabic-rtl-touch", "locale: 'de-DE'", "locale: 'ar-SA'"):
+            self.assertIn(marker, config)
+        for marker in (
+            "FrozenDate",
+            "document.fonts.ready",
+            "route.abort('blockedbyclient')",
+            "toHaveAttribute('dir', scenario.direction)",
+            "toHaveScreenshot",
+            "toBeDisabled",
+        ):
+            self.assertIn(marker, spec)
+
 
 if __name__ == "__main__":
     unittest.main()

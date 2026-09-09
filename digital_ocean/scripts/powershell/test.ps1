@@ -140,6 +140,14 @@ function Check-TlsCert([string]$artifactDir, [string]$domain) {
     $ipToConnect = $domain
     if ($ResolveIp) { $ipToConnect = $ResolveIp }
 
+    $probe = Join-Path $script:RepoRoot 'digital_ocean\scripts\python\staging_tls_probe.py'
+    $python = Join-Path $script:RepoRoot '.venv\Scripts\python.exe'
+    if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
+      $python = (Get-Command python -ErrorAction Stop).Source
+    }
+    & $python $probe --ca-file $script:TrustedCaPath --connect-ip $ipToConnect --port 443 --wait-seconds $TimeoutSec --hosts $domain | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Pinned staging TLS behavioral probe failed' }
+
     $client = New-Object System.Net.Sockets.TcpClient
     $client.ReceiveTimeout = $TimeoutSec * 1000
     $client.SendTimeout = $TimeoutSec * 1000

@@ -74,16 +74,15 @@ test('restored command and utility controls remain bounded and functional', asyn
     .getByRole('option', { name: /Automation unavailable on public site/ })
     .first();
   await expect(lockedAutomation).toHaveAttribute('aria-disabled', 'true');
-  // Decorative loop copies are hidden from the accessibility tree, leaving
-  // one canonical keyboard-focusable option for each utility.
-  const safeSearch = page.getByRole('option', { name: 'Base2 utility: Search' });
-  await safeSearch.click();
-  await expect(safeSearch).toHaveAttribute('aria-selected', 'true');
-
   await page.keyboard.press('Control+K');
   await expect(page.getByTestId('base2-command-palette')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('base2-command-palette')).toHaveCount(0);
+  // Decorative loop copies are hidden from the accessibility tree, leaving
+  // one canonical keyboard-focusable option for each utility.
+  const safeSearch = page.getByRole('option', { name: 'Base2 utility: Search' });
+  await safeSearch.click();
+  await expect(page).toHaveURL(/\/search$/);
 });
 
 test('navigation rails scroll progressively, settle centrally, and loop without a visual jump', async ({

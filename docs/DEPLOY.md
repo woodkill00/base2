@@ -27,11 +27,23 @@ Alias/Flag note: Recent runs used `-RunAllTests` which is equivalent to `-AllTes
 - `-TestsJson`: JSON output for test results; artifacts saved under `local_run_logs/.../meta`.
 - `-Timestamped`: write artifacts to `local_run_logs/<ip>-<timestamp>/` instead of a generic folder.
 - `-AsyncVerify`: disabled for authoritative deployment because unfinished remote mutation cannot produce terminal success.
-- `-DropletIp <ip>`: override droplet IP detection.
 - `-SshKey <path>`: specify SSH private key path.
 - `-SkipAllowlist`: do not update IP allowlists in `.env` before deploy.
 - `-VerifyTimeoutSec <sec>`: override remote verification timeout (default 1800).
 - `-ReactTestTimeoutSec <sec>`: override local React test timeout (default 1800).
+
+New-target provisioning additionally requires an exact-owner conditional lease.
+`DO_PROVISION_LEASE_GIT_REMOTE` names an already configured dedicated private
+lease-repository remote used for an atomic Git compare-and-swap provisioning
+lease. It must not resolve to the source `origin`, and its credential must be
+limited to that otherwise empty coordination repository. Credential-bearing or
+plain-HTTP remote URLs are rejected; use the platform credential helper. The fixed,
+digest-named remote ref is created only when a new paid resource is needed and
+is deleted only with the exact owner revision. Conflict, crash, expiry, or ref
+drift fails closed; recovery requires exact-owner cleanup. Update-only operation
+does not contact the lease remote. A conflicting, crashed, or uncertain provider
+request leaves the lease in place and is never treated as permission to create
+another paid resource.
 
 ### When to use which
 

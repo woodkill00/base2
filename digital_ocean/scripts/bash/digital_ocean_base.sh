@@ -30,6 +30,12 @@ log "Installing distribution-signed bootstrap packages..."
 dpkg_lock_wait
 apt-get update -y
 apt-get install -y ca-certificates curl docker-compose-v2 docker.io git gnupg python3-venv ufw
+bootstrap_packages='ca-certificates curl docker-compose-v2 docker.io git gnupg python3-venv ufw'
+dpkg-query -W -f='${Package}=${Version}\n' $bootstrap_packages \
+  | LC_ALL=C sort \
+  | tee /var/log/base2-bootstrap-packages.txt \
+  | sed 's/^/[BOOTSTRAP-PACKAGE] /' \
+  | tee -a /var/log/cloud-init-output.log
 
 # --- Application Setup ---
 dpkg_lock_wait

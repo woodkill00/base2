@@ -17,6 +17,41 @@ set -eu
 : "${EMAIL_WORKER_DB_USER:?EMAIL_WORKER_DB_USER is required}"
 : "${EMAIL_WORKER_DB_PASSWORD:?EMAIL_WORKER_DB_PASSWORD is required}"
 
+require_pairwise_distinct() {
+  label="$1"
+  shift
+  while [ "$#" -gt 0 ]; do
+    candidate="$1"
+    shift
+    for peer in "$@"; do
+      if [ "$candidate" = "$peer" ]; then
+        echo "${label}_collision" >&2
+        exit 1
+      fi
+    done
+  done
+}
+
+# Validate the complete privilege boundary before psql can alter any role. A
+# collision with the owner would otherwise let a bounded runtime credential
+# inherit ownership authority; peer collisions would collapse duty separation.
+require_pairwise_distinct database_role \
+  "$POSTGRES_USER" \
+  "$WORKSPACE_DB_USER" \
+  "$WORKSPACE_WORKER_DB_USER" \
+  "$RUNTIME_WORKER_DB_USER" \
+  "$API_RUNTIME_DB_USER" \
+  "$DATA_RIGHTS_WORKER_DB_USER" \
+  "$EMAIL_WORKER_DB_USER"
+require_pairwise_distinct database_password \
+  "$POSTGRES_PASSWORD" \
+  "$WORKSPACE_DB_PASSWORD" \
+  "$WORKSPACE_WORKER_DB_PASSWORD" \
+  "$RUNTIME_WORKER_DB_PASSWORD" \
+  "$API_RUNTIME_DB_PASSWORD" \
+  "$DATA_RIGHTS_WORKER_DB_PASSWORD" \
+  "$EMAIL_WORKER_DB_PASSWORD"
+
 case "$WORKSPACE_DB_USER" in
   *[!A-Za-z0-9_]*|'') echo "workspace_role_invalid" >&2; exit 1 ;;
 esac

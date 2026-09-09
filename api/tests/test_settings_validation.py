@@ -131,7 +131,13 @@ def test_production_migration_role_accepts_only_verified_external_database(monke
     (
         'postgresql://owner:secret@postgres:5432/app',
         'postgresql://owner:secret@localhost:5432/app',
+        'postgresql://owner:secret@localhost.:5432/app',
         'postgresql://owner:secret@127.0.0.1:5432/app',
+        'postgresql://owner:secret@[::1]:5432/app',
+        'postgresql://owner:secret@[::ffff:127.0.0.1]:5432/app',
+        'postgresql://owner:secret@0.0.0.0:5432/app',
+        'postgresql://owner:secret@169.254.1.1:5432/app',
+        'postgresql://owner:secret@10.0.0.1:5432/app',
         'postgresql:///app',
         'postgresql://owner:secret@[invalid/app',
         'sqlite:///tmp/app.db',
@@ -161,10 +167,33 @@ def test_production_accepts_verified_external_database_url(monkeypatch):
     monkeypatch.setenv('DB_HOST', 'ignored-local-validation.example.test')
     monkeypatch.setenv('DB_SSLMODE', 'verify-full')
     monkeypatch.setenv('DB_SSLROOTCERT', '/run/secrets/database-ca.pem')
-    monkeypatch.setenv(
-        'DATABASE_URL', 'postgresql://owner:secret@private-db.example.test:5432/app'
-    )
+    monkeypatch.setenv('DATABASE_URL', 'postgresql://owner:secret@private-db.example.test:5432/app')
     assert Settings().DATABASE_URL.endswith('/app')
+
+
+@pytest.mark.parametrize(
+    'database_host',
+    ('localhost.', '::1', '::ffff:127.0.0.1', '0.0.0.0', '169.254.1.1', '10.0.0.1'),
+)
+@pytest.mark.parametrize('role', ('api', 'runtime-worker', 'migration'))
+def test_production_rejects_canonical_local_database_host(monkeypatch, database_host, role):
+    from api.settings import Settings
+
+    monkeypatch.setenv('ENV', 'production')
+    monkeypatch.setenv('BASE2_PROCESS_ROLE', role)
+    monkeypatch.setenv('DB_HOST', database_host)
+    monkeypatch.setenv('DB_SSLMODE', 'verify-full')
+    monkeypatch.setenv('DB_SSLROOTCERT', '/run/secrets/database-ca.pem')
+    monkeypatch.setenv('JWT_SECRET', 'fixture-jwt')
+    monkeypatch.setenv('TOKEN_PEPPER', 'fixture-pepper-long-enough')
+    monkeypatch.setenv('FRONTEND_URL', 'https://example.test')
+    monkeypatch.setenv('OAUTH_STATE_SECRET', 'fixture-oauth-state')
+    monkeypatch.setenv('IDENTITY_ENCRYPTION_KEY', 'fixture-identity-key')
+    monkeypatch.setenv(
+        'CONTENT_WORKSPACE_STORAGE_KEY', base64.urlsafe_b64encode(b'k' * 32).decode()
+    )
+    with pytest.raises(RuntimeError, match='external verified-TLS endpoint'):
+        Settings()
 
 
 def test_staging_s3_storage_requires_allowlisted_https_and_secret_files(monkeypatch):

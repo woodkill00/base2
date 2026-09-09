@@ -11,13 +11,17 @@ const sectionIds = [
   'contact',
 ];
 
-function renderNavigation(onNavigate = vi.fn()) {
+function renderNavigation(onNavigate = vi.fn(), onUtilityAction = vi.fn(), locale = 'en') {
   const result = render(
     <>
       {sectionIds.map((id, index) => (
         <section key={id} id={id} data-top={index * 300} />
       ))}
-      <HomeObsidianNavigation onNavigate={onNavigate} />
+      <HomeObsidianNavigation
+        onNavigate={onNavigate}
+        onUtilityAction={onUtilityAction}
+        locale={locale}
+      />
     </>
   );
   sectionIds.forEach((id, index) => {
@@ -27,7 +31,7 @@ function renderNavigation(onNavigate = vi.fn()) {
       height: 300,
     });
   });
-  return { ...result, onNavigate };
+  return { ...result, onNavigate, onUtilityAction };
 }
 
 describe('Base2 restored Obsidian navigation', () => {
@@ -145,7 +149,7 @@ describe('Base2 restored Obsidian navigation', () => {
         callback(performance.now());
         return 1;
       });
-    const { onNavigate } = renderNavigation();
+    const { onNavigate, onUtilityAction } = renderNavigation();
     fireEvent.keyDown(window, { key: 'k', metaKey: true });
 
     for (const scheme of ['Volcanic', 'Ember', 'Basalt']) {
@@ -197,11 +201,16 @@ describe('Base2 restored Obsidian navigation', () => {
     const safeSearch = screen.getByRole('option', { name: 'Base2 utility: Search' });
     fireEvent.click(safeSearch);
     expect(safeSearch).toHaveAttribute('aria-selected', 'true');
-    fireEvent.click(
-      screen.getByRole('option', {
-        name: 'Base2 utility: Settings unavailable on public site',
-      })
-    );
+    expect(onUtilityAction).toHaveBeenLastCalledWith('search');
+    const lockedSettings = screen.getByRole('option', {
+      name: 'Base2 utility: Settings unavailable on public site',
+    });
+    expect(lockedSettings).toBeDisabled();
+    fireEvent.click(lockedSettings);
+    fireEvent.keyDown(lockedSettings, { key: 'Enter' });
+    expect(lockedSettings).toHaveAttribute('aria-selected', 'false');
+    expect(safeSearch).toHaveAttribute('aria-selected', 'true');
+    expect(onUtilityAction).toHaveBeenCalledTimes(1);
     fireEvent.wheel(scroll, { deltaY: 100 });
     fireEvent.wheel(scroll, { deltaY: -100 });
     fireEvent.scroll(scroll);
@@ -211,6 +220,29 @@ describe('Base2 restored Obsidian navigation', () => {
     expect(screen.queryByTestId('base2-bottom-movement-controls')).not.toBeInTheDocument();
     requestFrame.mockRestore();
   });
+
+  test.each([
+    [
+      'de',
+      'Base2-Befehlsmenü öffnen',
+      'Base2-Schnellzugriffe öffnen',
+      'Base2-Schnellzugriffe',
+      'ltr',
+    ],
+    ['ar', 'فتح قائمة أوامر Base2', 'فتح قائمة اختصارات Base2', 'اختصارات Base2', 'rtl'],
+  ])(
+    'localizes navigation and direction for %s',
+    (locale, menuLabel, utilityOpenLabel, utilityLabel, direction) => {
+      renderNavigation(vi.fn(), vi.fn(), locale);
+      const layer = screen.getByTestId('base2-obsidian-navigation');
+      expect(layer).toHaveAttribute('lang', locale);
+      expect(layer).toHaveAttribute('dir', direction);
+      fireEvent.click(screen.getByRole('button', { name: menuLabel }));
+      expect(screen.getByRole('navigation')).toBeVisible();
+      fireEvent.click(screen.getByRole('button', { name: utilityOpenLabel }));
+      expect(screen.getByRole('listbox', { name: utilityLabel })).toBeVisible();
+    }
+  );
 
   test('covers bounded section movement, edge jumps, timer settlement, and cleanup', () => {
     vi.useFakeTimers();

@@ -8,7 +8,6 @@ param(
   [string]$SshKey = $null,
   [string]$SshKnownHostsPath = $env:BASE2_SSH_KNOWN_HOSTS_PATH,
   [string]$SshUser = $env:SSH_USER,
-  [string]$DropletIp = "",
   [switch]$SkipAllowlist,
   [string]$LogsDir = ".\local_run_logs",
   [switch]$Timestamped,
@@ -46,7 +45,6 @@ if ($Help) {
   Write-Host '  -SshKey <path>   Override SSH key path'
   Write-Host '  -SshKnownHostsPath <path>  Trusted provisioned known_hosts file (required)'
   Write-Host '  -SshUser <user>  SSH user (default: SSH_USER env or root)'
-  Write-Host '  -DropletIp <ip>  Override droplet IP detection'
   Write-Host '  -Preflight       Run local validation before deploy'
   Write-Host '  -RunTests        Run remote verification tests on the droplet'
   Write-Host '  -AllTests        Enable extended remote verification (celery/rate-limit)'
@@ -855,8 +853,8 @@ function Ensure-Venv {
     python -m venv .venv
   }
   Write-Section "Installing Python requirements"
-  & .\.venv\Scripts\python.exe -m pip install --upgrade pip | Out-Null
-  & .\.venv\Scripts\python.exe -m pip install -r .\digital_ocean\requirements.txt | Out-Null
+  & .\.venv\Scripts\python.exe -m pip install --require-hashes -r .\digital_ocean\requirements.lock | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw 'Hash-locked provider dependencies failed to install' }
 }
 
 function Activate-Venv {
@@ -991,7 +989,6 @@ except Exception as e:
 }
 
 function Get-DropletIp([switch]$Authoritative) {
-  if ($DropletIp) { return $DropletIp }
 
   # Prefer per-run artifacts over workspace-root files.
   $artifactDir = ''

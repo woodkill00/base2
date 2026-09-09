@@ -7,6 +7,24 @@ import json
 import os
 from typing import Any
 
+try:
+    from digital_ocean.scripts.python.provider_lease import (
+        GitRemoteLeaseStore,
+        acquire_provider_lease,
+        release_provider_lease,
+    )
+except ModuleNotFoundError:
+    from provider_lease import GitRemoteLeaseStore, acquire_provider_lease, release_provider_lease
+
+__all__ = [
+    "GitRemoteLeaseStore",
+    "acquire_provider_lease",
+    "list_named_droplets",
+    "lookup",
+    "release_provider_lease",
+    "resolve_name",
+]
+
 
 def resolve_name(raw_name: str | None, project: str) -> str:
     value = raw_name or f"{project}-droplet"
@@ -55,20 +73,6 @@ def lookup(client: Any, name: str, *, page_size: int = 200) -> dict[str, str]:
     if not isinstance(droplet_id, int) or droplet_id <= 0:
         raise RuntimeError("invalid_provider_identity")
     return {"state": "found", "id": str(droplet_id), "ip": str(public_ips[0])}
-
-
-def acquire_provider_lease(client: Any, name: str) -> None:
-    try:
-        client.tags.create(body={"name": name})
-    except Exception as exc:
-        raise RuntimeError("provider_provision_lease_unavailable") from exc
-
-
-def release_provider_lease(client: Any, name: str) -> None:
-    try:
-        client.tags.delete(tag_id=name)
-    except Exception as exc:
-        raise RuntimeError("provider_provision_lease_release_failed") from exc
 
 
 def main() -> int:

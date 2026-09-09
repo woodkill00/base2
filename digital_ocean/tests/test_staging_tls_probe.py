@@ -1,8 +1,153 @@
+import socket
 import ssl
+import threading
+from contextlib import suppress
+from datetime import UTC, datetime, timedelta
 
 import pytest
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.x509.oid import NameOID
 
 from digital_ocean.scripts.python import staging_tls_probe
+
+
+def _write_test_chain(tmp_path, *, san="preview.example.test", validity="valid", stem="tls"):
+    now = datetime.now(UTC)
+    root_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    root_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, f"{stem} root")])
+    root = (
+        x509.CertificateBuilder()
+        .subject_name(root_name)
+        .issuer_name(root_name)
+        .public_key(root_key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now - timedelta(days=2))
+        .not_valid_after(now + timedelta(days=2))
+        .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
+        .sign(root_key, hashes.SHA256())
+    )
+    leaf_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    if validity == "expired":
+        not_before, not_after = now - timedelta(days=3), now - timedelta(days=1)
+    elif validity == "future":
+        not_before, not_after = now + timedelta(days=1), now + timedelta(days=3)
+    else:
+        not_before, not_after = now - timedelta(hours=1), now + timedelta(days=1)
+    leaf = (
+        x509.CertificateBuilder()
+        .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, san)]))
+        .issuer_name(root_name)
+        .public_key(leaf_key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(not_before)
+        .not_valid_after(not_after)
+        .add_extension(x509.SubjectAlternativeName([x509.DNSName(san)]), critical=False)
+        .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
+        .sign(root_key, hashes.SHA256())
+    )
+    ca_path = tmp_path / f"{stem}-ca.pem"
+    cert_path = tmp_path / f"{stem}-cert.pem"
+    key_path = tmp_path / f"{stem}-key.pem"
+    ca_path.write_bytes(root.public_bytes(serialization.Encoding.PEM))
+    cert_path.write_bytes(leaf.public_bytes(serialization.Encoding.PEM))
+    key_path.write_bytes(
+        leaf_key.private_bytes(
+            serialization.Encoding.PEM,
+            serialization.PrivateFormat.PKCS8,
+            serialization.NoEncryption(),
+        )
+    )
+    return ca_path, cert_path, key_path
+
+
+def _serve_once(cert_path, key_path):
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(1)
+    port = listener.getsockname()[1]
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.load_cert_chain(certfile=cert_path, keyfile=key_path)
+
+    def serve():
+        with listener:
+            connection, _ = listener.accept()
+            with (
+                connection,
+                suppress(OSError, ssl.SSLError),
+                context.wrap_socket(connection, server_side=True),
+            ):
+                pass
+
+    thread = threading.Thread(target=serve, daemon=True)
+    thread.start()
+    return port, thread
+
+
+def test_real_pinned_chain_and_hostname_succeeds(tmp_path):
+    ca_path, cert_path, key_path = _write_test_chain(tmp_path)
+    port, thread = _serve_once(cert_path, key_path)
+    assert staging_tls_probe.verify_host(
+        hostname="preview.example.test",
+        connect_ip="127.0.0.1",
+        port=port,
+        ca_file=ca_path,
+        timeout=2,
+    ) == ("preview.example.test",)
+    thread.join(timeout=2)
+
+
+@pytest.mark.parametrize(
+    "san,validity,hostname",
+    (
+        ("other.example.test", "valid", "preview.example.test"),
+        ("preview.example.test", "expired", "preview.example.test"),
+        ("preview.example.test", "future", "preview.example.test"),
+    ),
+)
+def test_real_wrong_hostname_and_time_invalid_certificates_fail(tmp_path, san, validity, hostname):
+    ca_path, cert_path, key_path = _write_test_chain(
+        tmp_path, san=san, validity=validity, stem=validity + san.split(".")[0]
+    )
+    port, thread = _serve_once(cert_path, key_path)
+    with pytest.raises(ssl.SSLCertVerificationError):
+        staging_tls_probe.verify_host(
+            hostname=hostname,
+            connect_ip="127.0.0.1",
+            port=port,
+            ca_file=ca_path,
+            timeout=2,
+        )
+    thread.join(timeout=2)
+
+
+def test_real_wrong_root_and_transport_failure_are_terminal(tmp_path):
+    _, cert_path, key_path = _write_test_chain(tmp_path, stem="server")
+    wrong_ca, _, _ = _write_test_chain(tmp_path, stem="wrong")
+    port, thread = _serve_once(cert_path, key_path)
+    with pytest.raises(ssl.SSLCertVerificationError):
+        staging_tls_probe.verify_host(
+            hostname="preview.example.test",
+            connect_ip="127.0.0.1",
+            port=port,
+            ca_file=wrong_ca,
+            timeout=2,
+        )
+    thread.join(timeout=2)
+
+    closed = socket.socket()
+    closed.bind(("127.0.0.1", 0))
+    closed_port = closed.getsockname()[1]
+    closed.close()
+    with pytest.raises(OSError):
+        staging_tls_probe.verify_host(
+            hostname="preview.example.test",
+            connect_ip="127.0.0.1",
+            port=closed_port,
+            ca_file=wrong_ca,
+            timeout=0.2,
+        )
 
 
 class _Socket:

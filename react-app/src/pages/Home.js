@@ -13,8 +13,9 @@ import About from '../components/portfolio/About';
 import ContactForm from '../components/portfolio/ContactForm';
 import ProjectsGrid from '../components/portfolio/ProjectsGrid';
 import { siteManifest } from '../config/siteRuntime';
+import { localizedPath } from '../services/privacyRuntime';
 
-const Home = () => {
+const Home = ({ locale = siteManifest.defaultLocale }) => {
   const navigate = useNavigate();
 
   const handleMenuItemClick = (sectionId) => {
@@ -33,13 +34,48 @@ const Home = () => {
     target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  const handleUtilityAction = async (action) => {
+    if (action === 'security') {
+      handleMenuItemClick('security');
+      return;
+    }
+    if (action === 'search') {
+      navigate(localizedPath('/search', locale, siteManifest));
+      return;
+    }
+    if (action !== 'share') return;
+
+    const shareDetails = { title: document.title, url: window.location.href };
+    if (typeof window.navigator.share === 'function') {
+      try {
+        await window.navigator.share(shareDetails);
+        return;
+      } catch (error) {
+        if (error?.name === 'AbortError') return;
+      }
+    }
+    if (typeof window.navigator.clipboard?.writeText === 'function') {
+      try {
+        await window.navigator.clipboard.writeText(shareDetails.url);
+        return;
+      } catch {
+        // A visible copy fallback below prevents a silent clipboard failure.
+      }
+    }
+    window.prompt('Copy this link', shareDetails.url);
+  };
+
   return (
     <div className="home-page-root relative min-h-screen" data-testid="home-page">
       <div className="gradient-background" />
 
       <div className="relative z-10">
         <GlassHeader variant="public" title="Home" />
-        <HomeObsidianNavigation onNavigate={handleMenuItemClick} />
+        <HomeObsidianNavigation
+          onNavigate={handleMenuItemClick}
+          onUtilityAction={handleUtilityAction}
+          locale={locale}
+        />
 
         <main>
           <HomeHero
