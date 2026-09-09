@@ -943,3 +943,13 @@ missing site/asset generation triggers for ledger-changing reassignments, and a
 0032 reverse migration that did not restore predecessor RLS state. B319-B325
 capture every deduplicated blocker and required negative proof. Both complete
 gates and all repetitions must restart from zero after repair.
+
+## Analysis cycle 37 — repaired-head complete-gate rejection
+
+The first complete gate on `66a9988f36a10af7ec9215d35b6526cbb01567bf`
+rejected only the API test aggregate. The new migration CLI parsed the parent
+pytest process arguments when its `main()` function was called directly, so its
+existing unit contract failed before exercising the ledger. B326 separates the
+programmatic empty-argument default from the executable's real argument parsing
+and adds a direct non-mutating `--check` proof. The rejected run is historical;
+both complete gates restart from zero on the next exact commit.

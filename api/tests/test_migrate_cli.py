@@ -40,6 +40,20 @@ def test_migrate_cli_applies_and_verifies_exact_ledger(monkeypatch, capsys):
 
     assert migrate.main() == 0
     assert applied == [True]
+
+
+def test_migrate_cli_check_mode_never_applies(monkeypatch, capsys):
+    applied = []
+
+    @contextmanager
+    def connection():
+        yield Connection([(version,) for version in migrate.MIGRATIONS])
+
+    monkeypatch.setattr(migrate, 'apply_migrations', lambda: applied.append(True))
+    monkeypatch.setattr(migrate, 'db_conn', connection)
+
+    assert migrate.main(['--check']) == 0
+    assert applied == []
     assert capsys.readouterr().out == (
         f'{{"migrationCount": {len(migrate.MIGRATIONS)}, "ok": true, ' '"secretValuesEmitted": 0}\n'
     )
