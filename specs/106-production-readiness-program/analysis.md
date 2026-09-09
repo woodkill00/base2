@@ -903,3 +903,21 @@ tests for missing, directory, and symlinked inventories plus positive proof that
 Paramiko loads only the supplied host inventory, retains RejectPolicy, and emits
 strict OpenSSH options. Gate 1 remains rejected historical evidence; both exact-
 head passes restart after a new commit.
+
+## Analysis cycle 35 — second exact-head gate rejection
+
+Complete gate 1 on `0068626a6113a1de908cd0572e3f890bb625b5c4`
+rejected the media-library contract and changed-line coverage. The API virtual
+environment reported locked PyYAML 6.0.3 but contained an internally mixed
+installation: its scanner called the legacy six-field constructor while its
+installed `SimpleKey` required the current seventh field. A forced no-cache
+reconciliation from the exact lock restored a coherent wheel, and real Compose
+YAML parsing plus the previously failing media isolation test passed. The lock
+itself did not change.
+
+Changed-line coverage improved from the prior rejected head but remained 0.04
+percentage points below its mandatory floor. The missing directly relevant
+branches were the recursive deployment-artifact scanner's comment/filter,
+symlink rejection, and CLI pass/reject paths. B317-B318 record both failures and
+their deterministic proofs. This rejected run remains historical only; both
+complete gates restart from zero on a new exact commit.

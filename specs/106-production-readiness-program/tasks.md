@@ -379,3 +379,8 @@ substitute for the integration proof named by the task.
 - [ ] B314 Run API schema creation before Django's cross-schema least-authority migrations in every fresh, upgrade, rollback, preview, and disposable PostgreSQL path, then prove ordered forward and reverse convergence. (FR-005, FR-018, FR-019, FR-031, FR-060, FR-062, FR-063, FR-065, FR-073)
 - [ ] B315 Update the service-health contract to assert the intentional migration-before-startup graph rather than a removed legacy comment and prove workers remain mandatory after the fence. (FR-005, FR-013, FR-014, FR-060, FR-063, FR-065, FR-068)
 - [ ] B316 Extract exact SSH trust admission into a side-effect-free tested module and cover missing, symlinked, malformed, pinned, and reject-on-unknown behavior above the changed-line floor. (FR-005, FR-031, FR-060, FR-063, FR-065, FR-069, FR-078)
+
+## Phase 20 — Exact-head gate cycle 35 corrections
+
+- [ ] B317 Reconcile the locked API environment after an interrupted PyYAML installation produced internally inconsistent package files, then prove real Compose YAML parsing succeeds from the exact locked dependency. (FR-060, FR-063, FR-065, FR-066, FR-078)
+- [ ] B318 Cover recursive artifact-scanner filtering, symlink rejection, and both CLI terminal results so the security implementation remains directly exercised and the unchanged 90% changed-line floor passes honestly. (FR-005, FR-031, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
