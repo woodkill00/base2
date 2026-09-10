@@ -387,6 +387,40 @@ class CompleteGateTests(unittest.TestCase):
         self.assertEqual("failed", exhausted["overallStatus"])
         self.assertEqual(2, exhausted["checks"][0]["attempts"])
 
+    def test_retries_two_exact_native_heap_corruptions_then_passes(self):
+        corruption = (
+            "Emalloc(): smallbin double linked list corrupted\n"
+            "Fatal Python error: Aborted"
+        )
+        command = [
+            "/bin/sh",
+            "-c",
+            "count=0; test ! -f attempts || count=$(cat attempts); count=$((count + 1)); "
+            "printf '%s' \"$count\" > attempts; "
+            f"if test \"$count\" -lt 3; then printf '%s\\n' \"{corruption}\"; exit 134; "
+            "else echo '6 passed'; fi",
+        ]
+        result, _ = self.run_gate(
+            [check("native-abort", command, tools=["/bin/sh"], max_attempts=3)]
+        )
+        self.assertEqual("passed", result["overallStatus"])
+        self.assertEqual(3, result["checks"][0]["attempts"])
+        self.assertIn("2 bounded infrastructure retries", result["checks"][0]["diagnostic"])
+
+    def test_native_abort_requires_exact_heap_corruption_conjunction(self):
+        self.assertFalse(self.gate.retryable_native_crash(134, "Fatal Python error: Aborted"))
+        self.assertFalse(
+            self.gate.retryable_native_crash(
+                1, "Fatal Python error: Aborted smallbin double linked list corrupted"
+            )
+        )
+        self.assertFalse(self.gate.retryable_native_crash(134, "AssertionError: expected"))
+        self.assertTrue(
+            self.gate.retryable_native_crash(
+                -6, "smallbin double linked list corrupted\nFatal Python error: Aborted"
+            )
+        )
+
     def test_gate_children_receive_deterministic_python_runtime(self):
         result, output = self.run_gate(
             [

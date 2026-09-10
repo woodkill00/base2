@@ -763,3 +763,10 @@ substitute for the integration proof named by the task.
 - [ ] B539 Prove forged markers, numeric wrong-inode descriptors, separate same-inode descriptors under a real owner, missing/public/hardlinked evidence, injected setup failures, stable descriptor counts, lock reacquisition, target preservation, and denial before Docker access. (FR-002, FR-005, FR-008, FR-031, FR-060, FR-063, FR-065, FR-068, FR-070)
 - [ ] B540 Run the real isolated-E2E owner/contender proof and verify owner success, contender exit 3, inherited anonymous readiness, verified lock capability, cleanup, and empty exact-project inventory. (FR-002, FR-005, FR-008, FR-060, FR-063, FR-065, FR-068, FR-070)
 - [ ] B541 Commit a replacement candidate and restart exact repetitions, both complete gates, hosted checks, and fresh independent code, security, UX/accessibility, data, and operations reviews from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 73 — Consecutive native-process corruption cycle 96 corrections
+
+- [ ] B542 Permit one third fresh-process attempt only after an exact native segmentation failure or an exact native-abort plus fatal-Python plus allocator-corruption conjunction. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B543 Retain every attempt in one private integrity-bound artifact and report the exact recovery or exhaustion count without converting a failed attempt into an application pass. (FR-002, FR-005, FR-008, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B544 Prove two native failures can recover on the third attempt while partial signatures, ordinary errors, assertions, application exceptions, and three native failures remain terminal; rerun the formerly failing Django contract hermetically. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B545 Commit a replacement candidate and restart exact repetitions, real concurrency proof, both complete gates, hosted checks, and every fresh independent review from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)

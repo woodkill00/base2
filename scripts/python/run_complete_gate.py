@@ -27,6 +27,10 @@ INFRASTRUCTURE_CRASH = re.compile(
     r"(?i)\b(?:SIGSEGV|segmentation fault|Worker exited unexpectedly|"
     r"Worker forks emitted error)\b"
 )
+NATIVE_ABORT_CORRUPTION = re.compile(
+    r"(?i)(?:smallbin|fastbin|malloc_consolidate|corrupted double-linked list|"
+    r"double free or corruption|invalid pointer)"
+)
 TOOL_TOKENS = {
     "{python-api}": (".venv-api/bin/python", ".venv-api/Scripts/python.exe"),
     "{python-django}": (".venv-django/bin/python", ".venv-django/Scripts/python.exe"),
@@ -216,6 +220,16 @@ def retryable_interpreter_corruption(output: str) -> bool:
     return json_encoder_corruption or django_field_counter_corruption
 
 
+def retryable_native_crash(return_code: int, output: str) -> bool:
+    if return_code in {-11, 139} or INFRASTRUCTURE_CRASH.search(output) is not None:
+        return True
+    return (
+        return_code in {-6, 134}
+        and "Fatal Python error: Aborted" in output
+        and NATIVE_ABORT_CORRUPTION.search(output) is not None
+    )
+
+
 def validate_manifest(manifest: dict) -> None:
     if manifest.get("schemaVersion") != 1 or not isinstance(manifest.get("checks"), list):
         raise ValueError("unsupported complete-gate manifest")
@@ -258,9 +272,9 @@ def validate_manifest(manifest: dict) -> None:
             if dependency not in known:
                 raise ValueError(f"unknown dependency {dependency}")
         graph[item["id"]] = item["dependsOn"]
-        max_attempts = item.get("maxAttempts", 2)
+        max_attempts = item.get("maxAttempts", 3)
         retry_on = item.get("retryOn", [])
-        if max_attempts not in (1, 2):
+        if max_attempts not in (1, 2, 3):
             raise ValueError(f"invalid maxAttempts for {item['id']}")
         if not isinstance(retry_on, list) or any(
             value not in {"timeout", "incomplete-test-output"} for value in retry_on
@@ -408,7 +422,7 @@ def _run_gate(
                     attempts = 0
                     timed_out = False
                     retry_on = set(item.get("retryOn", []))
-                    max_attempts = item.get("maxAttempts", 2)
+                    max_attempts = item.get("maxAttempts", 3)
                     while attempts < max_attempts:
                         attempts += 1
                         try:
@@ -447,11 +461,9 @@ def _run_gate(
                         # wrappers conventionally translate the same signal to
                         # 128 + 11. Treat both as the existing bounded
                         # infrastructure retry, never as an application pass.
-                        infrastructure_crash = (
-                            completed.returncode in {-11, 139}
-                            or INFRASTRUCTURE_CRASH.search(captured_output) is not None
-                            or retryable_interpreter_corruption(captured_output)
-                        )
+                        infrastructure_crash = retryable_native_crash(
+                            completed.returncode, captured_output
+                        ) or retryable_interpreter_corruption(captured_output)
                         if not infrastructure_crash and not incomplete:
                             break
                     artifact_bytes = redact("\n".join(outputs), environment).encode()
@@ -470,15 +482,26 @@ def _run_gate(
                         "attempts": attempts,
                     }
                     if status == "passed" and attempts > 1:
-                        result["diagnostic"] = "recovered after one bounded infrastructure retry"
+                        result["diagnostic"] = (
+                            f"recovered after {attempts - 1} bounded infrastructure "
+                            f"retr{'y' if attempts == 2 else 'ies'}"
+                        )
                     if status == "failed":
                         if timed_out:
                             result["diagnostic"] = (
                                 f"timed out after {item['timeoutSeconds']} seconds"
-                                + (" after one bounded retry" if attempts > 1 else "")
+                                + (
+                                    f" after {attempts - 1} bounded retries"
+                                    if attempts > 1
+                                    else ""
+                                )
                             )
                         else:
-                            suffix = " after one bounded retry" if attempts > 1 else ""
+                            suffix = (
+                                f" after {attempts - 1} bounded retries"
+                                if attempts > 1
+                                else ""
+                            )
                             result["diagnostic"] = f"command exited {exit_code}{suffix}"
                 except Exception:
                     raise

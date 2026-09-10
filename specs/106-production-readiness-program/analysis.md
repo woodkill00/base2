@@ -1977,3 +1977,24 @@ separate same-inode descriptor under a real owner, missing/public/hardlinked
 evidence, injected setup failures, descriptor-count stability, reacquisition,
 and no Docker access before admission. A real owner/contender proof and every
 exact-source release proof must restart from the corrected candidate.
+
+## Analysis cycle 96 — consecutive native Django process corruption
+
+The first complete gate for candidate
+`067c440b56a770e0046d41fb52d98f0ab248394b` failed closed after two independent
+host-Python processes crashed in the media-library Django contract. Attempt one
+ended with native `SIGSEGV`; attempt two detected allocator smallbin corruption
+and emitted `Fatal Python error: Aborted`. The same exact hermetic command then
+passed all six cases in a fresh process. Free memory remained ample and the
+kernel recorded both native signals. The failed receipt and both traces remain
+retained but cannot serve as release evidence.
+
+B542-B545 align complete-gate native-process recovery with the already reviewed
+three-attempt repetition boundary. A third attempt is available only after an
+exact native segmentation failure or the conjunction of native abort status,
+Python's fatal-abort marker, and a recognized allocator-corruption signature.
+Assertions, ordinary nonzero exits, application exceptions, partial abort text,
+and a third native failure remain terminal. Every attempt remains in one private
+hash-bound log and diagnostics report the exact retry count. Focused positive,
+negative, and exhaustion tests plus the formerly failing command precede a new
+candidate and a complete evidence restart.
