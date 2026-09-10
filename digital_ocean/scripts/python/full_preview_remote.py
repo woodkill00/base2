@@ -46,7 +46,7 @@ def safe_diagnostic(stdout: str, stderr: str) -> str:
         line = raw.strip()
         if not line:
             continue
-        if line.startswith("full-preview-stage-failed:"):
+        if line.startswith("full-preview-stage:") or line.startswith("full-preview-stage-failed:"):
             stage_markers.append(line)
             continue
         if SENSITIVE_LINE.search(line):

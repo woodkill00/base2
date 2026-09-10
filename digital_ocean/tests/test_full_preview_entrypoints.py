@@ -353,6 +353,9 @@ def test_remote_bootstrap_failure_retains_only_bounded_redacted_diagnostics(tmp_
     assert "full-preview-stage-failed:docker-start exit=1" in noisy
     assert len(noisy) <= 2000
 
+    current_stage = safe_diagnostic("full-preview-stage:traefik-policy", "")
+    assert "full-preview-stage:traefik-policy" in current_stage
+
     terminal = safe_diagnostic(
         "\n".join(f"build output {index}" for index in range(100)),
         "compose startup failed safely",
