@@ -1790,3 +1790,21 @@ is written. The partitioned run completed all 96 tests, reproduced the exact
 56.18826263800116 percent line coverage total, emitted no tracer warning or
 retry, and left no parallel data file. Exact-source evidence restarts again
 from the replacement commit.
+
+## Analysis cycle 87 — focused Django checks retained unstable coverage
+
+The first complete gate for candidate
+`b8d7b87bddb53b3f4b1c9fab7e6f3ba2d018eaf1` reached a focused Django
+site-content check that still inherited pytest-cov from `django/pytest.ini`.
+Before any test body ran, its C tracer corrupted a cloned `CharField` and the
+process exited `1`; the gate correctly failed immediately. The new partitioned
+Django coverage lane was not involved, revealing duplicate legacy
+instrumentation in four focused contract checks.
+
+B497-B500 give every focused Django check explicit empty pytest addopts and
+disable the coverage plugin. Coverage remains mandatory once, in the dedicated
+21-process all-module lane, so this removes unstable duplicate instrumentation
+without reducing measured scope or thresholds. The gate-manifest contract
+binds all four commands, and the formerly failing eight-test site-content
+module passed twenty fresh-process repetitions without a retry. Exact-source
+evidence restarts from another replacement commit.

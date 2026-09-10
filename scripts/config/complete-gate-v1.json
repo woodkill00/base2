@@ -46,6 +46,10 @@
         "-m",
         "pytest",
         "django/tests/test_operations_domain_models.py",
+        "-o",
+        "addopts=",
+        "-p",
+        "no:cov",
         "-q"
       ],
       "required": true,
@@ -345,6 +349,10 @@
         "-m",
         "pytest",
         "django/tests/test_site_content_models.py",
+        "-o",
+        "addopts=",
+        "-p",
+        "no:cov",
         "-q"
       ],
       "required": true,
@@ -361,6 +369,10 @@
         "--assert=plain",
         "django/tests/test_identity_domain_models.py",
         "django/tests/test_no_auth_routes.py",
+        "-o",
+        "addopts=",
+        "-p",
+        "no:cov",
         "-q"
       ],
       "required": true,
@@ -467,6 +479,10 @@
         "-m",
         "pytest",
         "django/tests/test_media_library_models.py",
+        "-o",
+        "addopts=",
+        "-p",
+        "no:cov",
         "-q"
       ],
       "required": true,

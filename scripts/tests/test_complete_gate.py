@@ -359,6 +359,15 @@ class CompleteGateTests(unittest.TestCase):
             ["{python-django}", "scripts/python/run_django_coverage.py"],
             commands["django-tests"],
         )
+        for check_id in (
+            "operations-domain-contract",
+            "site-content-models",
+            "identity-domain-models",
+            "media-library-django-contract",
+        ):
+            command = commands[check_id]
+            self.assertIn("addopts=", command)
+            self.assertIn("no:cov", command)
         self.assertEqual(
             ["{python-orchestrator}", "scripts/python/run_digitalocean_coverage.py"],
             commands["digitalocean-tests"],

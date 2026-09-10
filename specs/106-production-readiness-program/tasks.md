@@ -691,3 +691,10 @@ substitute for the integration proof named by the task.
 - [ ] B494 Retain native-only bounded recovery per fixed partition, combine parallel coverage data replay-safely, remove partition residue, and preserve immediate ordinary-failure propagation. (FR-002, FR-008, FR-060, FR-063, FR-065, FR-068, FR-070)
 - [ ] B495 Repeat the formerly failing migration module twenty times in isolation and prove the partitioned runner executes all 96 tests with the unchanged combined coverage result and no warning, retry, or residue. (FR-060, FR-063, FR-065, FR-068, FR-070)
 - [ ] B496 Commit a replacement candidate and restart the clean-stack proof, exact repetitions, both complete gates, hosted checks, and every independent review from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 64 — Focused Django tracer cycle 87 corrections
+
+- [ ] B497 Remove duplicate pytest-cov instrumentation from every focused Django complete-gate check while retaining the dedicated all-module partitioned coverage authority. (FR-002, FR-060, FR-063, FR-068, FR-070)
+- [ ] B498 Bind all focused Django commands to explicit empty addopts and a disabled coverage plugin so repository defaults cannot silently restore the unstable C tracer. (FR-002, FR-060, FR-063, FR-068, FR-070)
+- [ ] B499 Prove the gate manifest enforces those boundaries and repeat the formerly failing site-content migration check twenty times in fresh uninstrumented processes. (FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B500 Commit a replacement candidate and restart the clean-stack proof, exact repetitions, both complete gates, hosted checks, and every independent review from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
