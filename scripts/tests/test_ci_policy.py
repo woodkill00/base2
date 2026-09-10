@@ -334,6 +334,10 @@ class CiPolicyTests(unittest.TestCase):
         self.assertNotIn("E2E_BROWSER_API_URL", compose_text + guide + runner)
         self.assertIn('project="base2-e2e-isolated"', runner)
         self.assertIn('lock_file="$repo_root/.artifacts/e2e-isolated.lock"', runner)
+        self.assertIn(
+            'lock_ready_file="$repo_root/.artifacts/e2e-isolated.lock-ready"',
+            runner,
+        )
         self.assertIn("if ! flock -n 9; then", runner)
         self.assertLess(
             runner.index("if ! flock -n 9; then"),
@@ -346,6 +350,9 @@ class CiPolicyTests(unittest.TestCase):
         )
         self.assertIn('scripts/bash/e2e-isolated.sh', guide)
         self.assertIn('contender_rc" -ne 3', concurrency_proof)
+        self.assertIn('if ! flock -n "$lock_file" -c true', concurrency_proof)
+        self.assertIn('[[ -f "$lock_ready_file" ]]', concurrency_proof)
+        self.assertNotIn('if ! flock -n "$lock_file" -c true >/dev/null 2>&1; then\n    held=true', concurrency_proof)
         self.assertIn("inventory=empty", concurrency_proof)
 
     def test_e2e_workflow_waits_for_synthetic_support_readiness(self):

@@ -5,6 +5,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 compose_file="$repo_root/e2e/docker-compose.e2e.yml"
 project="base2-e2e-isolated"
 lock_file="$repo_root/.artifacts/e2e-isolated.lock"
+lock_ready_file="$repo_root/.artifacts/e2e-isolated.lock-ready"
 
 mkdir -p "$(dirname "$lock_file")"
 exec 9>"$lock_file"
@@ -38,9 +39,11 @@ export E2E_WEB_ORIGIN="http://127.0.0.1:$E2E_WEB_PORT"
 
 compose=(docker compose -p "$project" -f "$compose_file")
 cleanup() {
+  rm -f "$lock_ready_file"
   "${compose[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
 }
 trap cleanup EXIT INT TERM
+printf '%s\n' "$$" >"$lock_ready_file"
 
 # The fixed project boundary makes this preclean incapable of touching an
 # unrelated Base2 stack while guaranteeing a genuinely empty database volume.

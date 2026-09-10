@@ -716,3 +716,10 @@ substitute for the integration proof named by the task.
 - [ ] B510 Prove successful symlink and directory rejection, external target preservation, exact inventory rejection, private mode enforcement, failed cleanup, and valid successful retention. (FR-002, FR-005, FR-007, FR-008, FR-031, FR-060, FR-063, FR-065, FR-068, FR-070)
 - [ ] B511 Run a real owner/contender gate admission proof plus the complete 96-test Django coverage inventory with no residual shard, warning, or retry. (FR-002, FR-005, FR-007, FR-008, FR-060, FR-063, FR-065, FR-068, FR-070)
 - [ ] B512 Commit a replacement candidate and restart the clean-stack proof, exact repetitions, both serialized complete gates, hosted checks, and every independent review from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 67 — E2E lock-observation cycle 90 corrections
+
+- [ ] B513 Replace the concurrency proof's destructive lock polling with a fixed owner-ready marker published only after the isolated runner owns the lock. (FR-002, FR-005, FR-007, FR-008, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B514 Fail closed before launching the proof when a real owner already holds the isolated E2E lock, and remove only the fixed readiness marker during owned cleanup. (FR-002, FR-005, FR-007, FR-008, FR-031, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B515 Bind non-destructive readiness observation into policy tests and run the real owner/contender proof through successful owner completion, contender rejection, and empty final inventory. (FR-002, FR-005, FR-007, FR-008, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B516 Commit a replacement candidate and restart the fresh-stack proof, exact repetitions, both serialized complete gates, hosted checks, and every independent review from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)

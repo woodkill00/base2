@@ -1851,3 +1851,20 @@ which is normalized to mode 0600. The entire exact shard set and cardinality is
 revalidated immediately before combination. Owner/contender and adversarial
 shard tests plus a real 96-test coverage run precede another new exact-source
 candidate and complete evidence restart.
+
+## Analysis cycle 90 — concurrency proof self-contention
+
+The first fresh-stack concurrency proof after candidate
+`39d1dd540784fd4ba9530512657d6206a3c63bcd` failed before Docker access. Its
+owner reported the fixed project lock already in use, while the lock was free
+immediately after proof cleanup. The proof's readiness loop used repeated
+nonblocking acquisitions of the same lock; one probe could win the startup race
+and cause the owner it was observing to fail.
+
+B513-B516 replace that self-contentious observation with a fixed readiness
+marker written by the runner only after it owns the lock and removed by its
+cleanup trap. The proof first performs one pre-launch availability check so it
+cannot remove a real owner's marker, then watches the marker without touching
+the lock. Policy tests forbid the former polling pattern. The real proof must
+show owner success, contender exit 3, and empty exact-project inventory before
+another exact-source evidence restart.

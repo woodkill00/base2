@@ -4,6 +4,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 runner="$repo_root/scripts/bash/e2e-isolated.sh"
 lock_file="$repo_root/.artifacts/e2e-isolated.lock"
+lock_ready_file="$repo_root/.artifacts/e2e-isolated.lock-ready"
 evidence_dir="$repo_root/.artifacts/feature-106-concurrency"
 owner_log="$evidence_dir/owner.log"
 contender_log="$evidence_dir/contender.log"
@@ -20,19 +21,25 @@ trap cleanup EXIT INT TERM
 mkdir -p "$evidence_dir"
 : >"$owner_log"
 : >"$contender_log"
+if ! flock -n "$lock_file" -c true >/dev/null 2>&1; then
+  printf 'ERROR: isolated E2E owner already active before proof\n' >&2
+  exit 3
+fi
+rm -f "$lock_ready_file"
 "$runner" >"$owner_log" 2>&1 &
 owner_pid="$!"
 
 held=false
-for _ in $(seq 1 100); do
-  if ! flock -n "$lock_file" -c true >/dev/null 2>&1; then
+for _ in $(seq 1 200); do
+  if [[ -f "$lock_ready_file" ]]; then
     held=true
     break
   fi
   sleep 0.1
 done
 if [[ "$held" != true ]]; then
-  printf 'ERROR: owner did not acquire the isolated E2E lock\n' >&2
+  printf 'ERROR: owner did not publish isolated E2E lock readiness\n' >&2
+  tail -40 "$owner_log" >&2
   exit 1
 fi
 
