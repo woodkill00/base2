@@ -427,6 +427,7 @@ def test_remote_bootstrap_uses_bounded_size_appropriate_transfer_timeouts(tmp_pa
 
 def test_remote_django_migration_bypasses_serving_entrypoint():
     script = (Path(__file__).resolve().parents[2] / "digital_ocean/scripts/bash/full-preview-remote.sh").read_text()
+    assert "run --rm --no-deps --entrypoint python api-migrate -m api.scripts.migrate" in script
     assert "run --rm --no-deps --entrypoint python django manage.py migrate --noinput" in script
 
 
