@@ -14,5 +14,28 @@
   "healthChecks": ["commerce.provider-ready"],
   "providerCapabilities": ["payment"],
   "dependencies": ["catalog"],
-  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+  "dataLifecycle": {
+    "disable": "preserve",
+    "export": true,
+    "remove": "backup-required"
+  },
+  "conflicts": [],
+  "schedules": ["commerce.schedule"],
+  "storage": {
+    "classes": ["private"],
+    "maximumBytes": 1073741824
+  },
+  "observability": ["commerce.provider-ready"],
+  "backup": {
+    "included": true,
+    "restoreRequired": true
+  },
+  "resources": {
+    "cpuMillicores": 100,
+    "memoryMiB": 128,
+    "storageMiB": 1024
+  },
+  "testPacks": ["commerce.contract", "commerce.security"],
+  "publisher": "base2",
+  "signature": "builtin-sha256:3015a09304987a7c42345c00ea6fbefd0d167420d94a755455c648e591d70e2a"
 }

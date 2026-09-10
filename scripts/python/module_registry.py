@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from dataclasses import dataclass
@@ -19,7 +20,8 @@ REQUIRED = frozenset({
     'schemaVersion', 'id', 'version', 'compatibility', 'models', 'migrations',
     'apiRoutes', 'uiRoutes', 'navigation', 'permissions', 'jobs',
     'settingsSchema', 'healthChecks', 'providerCapabilities', 'dependencies',
-    'dataLifecycle',
+    'dataLifecycle', 'conflicts', 'schedules', 'storage', 'observability', 'backup',
+    'resources', 'testPacks', 'publisher', 'signature',
 })
 LIFECYCLE_KEYS = frozenset({'disable', 'export', 'remove'})
 
@@ -128,6 +130,41 @@ def validate_manifest(payload: Any, *, base_version: str = '2.0.0') -> ModuleMan
     dependencies = _unique_strings(payload, 'dependencies')
     if module_id in dependencies or any(not MODULE_ID.fullmatch(value) for value in dependencies):
         raise ModuleContractError('dependencies:invalid')
+    conflicts = _unique_strings(payload, 'conflicts')
+    if module_id in conflicts or any(not MODULE_ID.fullmatch(value) for value in conflicts):
+        raise ModuleContractError('conflicts:invalid')
+    for field in ('schedules', 'observability', 'testPacks'):
+        values = _unique_strings(payload, field)
+        if any(not SYMBOL.fullmatch(value) for value in values):
+            raise ModuleContractError(f'{field}:invalid_symbol')
+    storage = payload['storage']
+    if (
+        not isinstance(storage, dict) or set(storage) != {'classes', 'maximumBytes'}
+        or not isinstance(storage['classes'], list)
+        or any(item not in {'private', 'public-media', 'public-static'} for item in storage['classes'])
+        or type(storage['maximumBytes']) is not int or not 0 <= storage['maximumBytes'] <= 1_099_511_627_776
+    ):
+        raise ModuleContractError('storage:invalid')
+    backup = payload['backup']
+    if not isinstance(backup, dict) or set(backup) != {'included', 'restoreRequired'} or any(
+        type(backup[key]) is not bool for key in backup
+    ):
+        raise ModuleContractError('backup:invalid')
+    resources = payload['resources']
+    if (
+        not isinstance(resources, dict)
+        or set(resources) != {'cpuMillicores', 'memoryMiB', 'storageMiB'}
+        or any(type(value) is not int or value < 0 for value in resources.values())
+    ):
+        raise ModuleContractError('resources:invalid')
+    if payload['publisher'] != 'base2':
+        raise ModuleContractError('publisher:untrusted')
+    unsigned = {key: payload[key] for key in payload if key != 'signature'}
+    digest = hashlib.sha256(
+        json.dumps(unsigned, sort_keys=True, separators=(',', ':')).encode()
+    ).hexdigest()
+    if payload['signature'] != f'builtin-sha256:{digest}':
+        raise ModuleContractError('signature:invalid')
     lifecycle = payload['dataLifecycle']
     if not isinstance(lifecycle, dict) or frozenset(lifecycle) != LIFECYCLE_KEYS:
         raise ModuleContractError('dataLifecycle:invalid_keys')
@@ -176,6 +213,10 @@ class ModuleRegistry:
         owners: dict[tuple[str, str], str] = {}
         for module_id in sorted(self._modules):
             payload = self._modules[module_id].payload
+            active = set(self._modules)
+            conflict = active.intersection(payload['conflicts'])
+            if conflict:
+                raise ModuleContractError(f'conflict:declared:{module_id}:{sorted(conflict)}')
             for field in ('models', 'apiRoutes', 'uiRoutes', 'jobs', 'permissions'):
                 for value in payload[field]:
                     key = (field, value)
@@ -207,6 +248,8 @@ class ModuleRegistry:
                 'migrations': list(self._modules[module_id].payload['migrations']),
                 'capabilities': list(self._modules[module_id].payload['providerCapabilities']),
                 'healthChecks': list(self._modules[module_id].payload['healthChecks']),
+                'resources': dict(self._modules[module_id].payload['resources']),
+                'testPacks': list(self._modules[module_id].payload['testPacks']),
             }
             for module_id in self._order
         ]

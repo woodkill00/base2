@@ -73,6 +73,42 @@ class CiPolicyTests(unittest.TestCase):
         findings = self.policy.validate(repo_root, policy)
         self.assertEqual([], findings)
 
+    def test_backend_ci_uses_pinned_dev_tools_and_complete_schema_order(self):
+        repo_root = MODULE_PATH.parents[2]
+        workflow = (repo_root / ".github/workflows/ci-backend.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("python -m pip install -r requirements-dev-api.txt", workflow)
+        self.assertIn("python -m pip install -r requirements-dev-django.txt", workflow)
+        self.assertIn("python -m pip check", workflow)
+        self.assertNotIn("python -m pip install ruff mypy", workflow)
+        self.assertIn("python -m mypy api", workflow)
+        self.assertIn("python -m mypy --exclude '.*/migrations/.*' django", workflow)
+        bootstrap = workflow.index("/bin/sh postgres/bootstrap-workspace-role.sh")
+        api_migrate = workflow.index("python -m api.scripts.migrate", bootstrap)
+        django_migrate = workflow.index("python manage.py migrate --noinput", api_migrate)
+        integration = workflow.index("pytest -q -m integration", django_migrate)
+        self.assertLess(bootstrap, api_migrate)
+        self.assertLess(api_migrate, django_migrate)
+        self.assertLess(django_migrate, integration)
+        self.assertNotIn("manage.py migrate api_schema", workflow)
+        self.assertIn('DB_USER="$API_RUNTIME_DB_USER"', workflow)
+        self.assertIn("EMAIL_WORKER_DB_USER: ci_email_worker", workflow)
+        self.assertIn(
+            "pytest -q -m integration tests/test_email_outbox.py -c pytest.ini",
+            workflow,
+        )
+
+    def test_staged_api_python_is_linted_with_the_pinned_environment(self):
+        repo_root = MODULE_PATH.parents[2]
+        lint_staged = __import__("json").loads(
+            (repo_root / ".lintstagedrc.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            [".venv-api/bin/python -m ruff check"],
+            lint_staged["api/**/*.py"],
+        )
+
     def test_media_inspector_build_inputs_are_immutable_and_scanned(self):
         repo_root = MODULE_PATH.parents[2]
         dockerfile = (repo_root / "api/Dockerfile.media-inspector").read_text(encoding="utf-8")
@@ -268,9 +304,65 @@ class CiPolicyTests(unittest.TestCase):
         self.assertNotIn("public.ecr.aws/docker/library", compose)
         self.assertNotIn("image: postgres:", compose)
         self.assertNotIn("image: redis:", compose)
-        self.assertEqual(7, compose.count("mirror.gcr.io/library"))
+        self.assertEqual(10, compose.count("mirror.gcr.io/library"))
         self.assertEqual(2, compose.count("mirror.gcr.io/library/postgres@sha256:"))
         self.assertEqual(1, compose.count("mirror.gcr.io/library/redis@sha256:"))
+
+    def test_isolated_e2e_port_names_are_exactly_documented(self):
+        repo_root = MODULE_PATH.parents[2]
+        compose_text = (repo_root / "e2e/docker-compose.e2e.yml").read_text(encoding="utf-8")
+        compose = __import__("yaml").safe_load(compose_text)
+        guide = (repo_root / "docs/TESTING.md").read_text(encoding="utf-8")
+        runner = (repo_root / "scripts/bash/e2e-isolated.sh").read_text(encoding="utf-8")
+        body = (repo_root / "scripts/bash/e2e-isolated-body.sh").read_text(encoding="utf-8")
+        concurrency_proof = (
+            repo_root / "scripts/bash/e2e-isolated-concurrency-proof.sh"
+        ).read_text(encoding="utf-8")
+        for variable in ("E2E_API_PORT", "E2E_TEST_SUPPORT_PORT", "E2E_WEB_PORT"):
+            self.assertIn(f"${{{variable}:-", compose_text)
+            self.assertIn(variable, guide)
+            self.assertIn(f'validate_port {variable} "${variable}"', body)
+        for service in ("api", "test-support", "react-app"):
+            published = compose["services"][service]["ports"][0]
+            self.assertTrue(published.startswith("127.0.0.1:"), published)
+        self.assertEqual(
+            "${E2E_WEB_ORIGIN:-http://localhost:8080}",
+            compose["services"]["api"]["environment"]["CORS_ALLOW_ORIGINS"],
+        )
+        nginx = (repo_root / "react-app/nginx/default.conf").read_text(encoding="utf-8")
+        self.assertIn("location /api/", nginx)
+        self.assertIn("proxy_pass http://api:5001;", nginx)
+        self.assertNotIn("E2E_BROWSER_API_URL", compose_text + guide + runner + body)
+        self.assertIn('project="base2-e2e-isolated"', body)
+        self.assertIn('lock_file="$repo_root/.artifacts/e2e-isolated.lock"', runner)
+        self.assertIn('scripts/python/secure_file_lock.py', runner)
+        self.assertIn('e2e-isolated-body.sh', runner)
+        self.assertNotIn("BASE2_E2E_LOCK_HELD", runner)
+        self.assertNotIn("e2e-isolated.lock-ready", runner + concurrency_proof)
+        self.assertNotIn("compose=(docker compose", runner)
+        self.assertLess(body.index("--verify-fd"), body.index("compose=(docker compose"))
+        self.assertIn('trap cleanup EXIT INT TERM', body)
+        self.assertGreaterEqual(body.count('down -v --remove-orphans'), 1)
+        self.assertIn(
+            'http://127.0.0.1:$E2E_TEST_SUPPORT_PORT/synthetic-health', body
+        )
+        self.assertIn('scripts/bash/e2e-isolated.sh', guide)
+        recorder = (repo_root / "scripts/python/record_e2e_concurrency_evidence.py").read_text()
+        self.assertIn('environment["E2E_READY_FD"]', recorder)
+        self.assertIn("pass_fds=(write_fd,)", recorder)
+        self.assertIn("select.select([read_fd]", recorder)
+        self.assertIn("contender.returncode != 3", recorder)
+        self.assertNotIn("owner_log", concurrency_proof)
+        self.assertNotIn("flock -n", concurrency_proof)
+        self.assertIn("inventory=empty", concurrency_proof)
+
+    def test_e2e_workflow_waits_for_synthetic_support_readiness(self):
+        repo_root = MODULE_PATH.parents[2]
+        workflow = (repo_root / ".github/workflows/ci-e2e.yml").read_text(encoding="utf-8")
+        compose = (repo_root / "e2e/docker-compose.e2e.yml").read_text(encoding="utf-8")
+        self.assertIn("http://localhost:5002/synthetic-health", workflow)
+        self.assertIn("conn.request(''GET'', ''/synthetic-health'')", compose)
+        self.assertIn("test-support:\n", compose)
 
     def test_backend_and_postgres_acceptance_avoid_anonymous_public_ecr(self):
         repo_root = MODULE_PATH.parents[2]

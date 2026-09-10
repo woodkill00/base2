@@ -20,6 +20,12 @@
   --radius-md: 12px;
   --radius-lg: 20px;
   --radius-pill: 999px;
+  --layout-content-max: 1280px;
+  --layout-sidebar-min: 280px;
+  --layout-sidebar-max: 400px;
+  --elevation-flat: 0;
+  --elevation-raised: 1;
+  --elevation-overlay: 2;
   --motion-instant: 0ms;
   --motion-standard: 250ms;
   --motion-deliberate: 400ms;

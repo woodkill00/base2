@@ -33,7 +33,9 @@
   },
   "legalName": "Base2 Reference Foundation",
   "locales": [
-    "en"
+    "en",
+    "de",
+    "ar"
   ],
   "media": {
     "allowedTypes": [

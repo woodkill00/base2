@@ -1,0 +1,168 @@
+import hashlib
+import hmac
+from datetime import UTC, datetime, timedelta
+
+import pytest
+
+from api.services.extension_platform import (
+    ARCHETYPES,
+    ExtensionContractError,
+    api_contract,
+    archetype_contract,
+    commerce_transition,
+    commerce_record,
+    compose_page,
+    integration_grant,
+    theme_upgrade,
+    verify_webhook,
+)
+
+NOW = datetime(2026, 9, 8, 12, tzinfo=UTC)
+KEY = b's' * 32
+
+
+def test_builder_is_closed_bounded_and_deterministic():
+    tree = {
+        'component': 'section',
+        'props': {'label': 'Intro'},
+        'children': [{'component': 'heading', 'props': {'text': 'Hello'}, 'children': []}],
+    }
+    assert compose_page(tree) == compose_page(tree)
+    assert compose_page(tree)['nodeCount'] == 2
+    hostile = {'component': 'text', 'props': {'value': '<script>alert(1)</script>'}, 'children': []}
+    with pytest.raises(ExtensionContractError, match='executable'):
+        compose_page(hostile)
+    for props in (
+        {'dangerouslySetInnerHTML': {'__html': '<b>unsafe</b>'}},
+        {'style': {'position': 'fixed'}},
+        {'onLoad': 'run()'},
+        {'href': 'data:text/html,<h1>unsafe</h1>'},
+        {'href': 'data:image/svg+xml,<svg onload=alert(1)>'},
+        {'href': 'vbscript:msgbox(1)'},
+        {'src': '//attacker.example/image.png'},
+        {'href': 'https://user:password@example.com/'},
+    ):
+        with pytest.raises(ExtensionContractError, match='executable|resource_url'):
+            compose_page({'component': 'text', 'props': props, 'children': []})
+    assert (
+        compose_page({'component': 'link', 'props': {'href': '/safe/path'}, 'children': []})[
+            'executableMarkup'
+        ]
+        is False
+    )
+
+
+def test_theme_upgrade_and_every_archetype_have_closed_contracts():
+    upgrade = theme_upgrade(
+        current_version=1,
+        target_version=2,
+        tokens={'color': '#000', 'space': 8, 'motion': 0},
+        required={'color', 'space', 'motion'},
+    )
+    assert upgrade['previewRequired'] and upgrade['rollbackVersion'] == 1
+    contracts = [
+        archetype_contract(name, modules=['content'], provider_cost_ceiling=25)
+        for name in ARCHETYPES
+    ]
+    assert len(contracts) == 13 and all(item['seedDataSynthetic'] for item in contracts)
+
+
+def test_integration_grants_are_scoped_expiring_and_value_free():
+    grant = integration_grant(
+        tenant_id='tenant-one',
+        scopes={'content:read'},
+        expires_at=NOW + timedelta(days=30),
+        now=NOW,
+        key_material=KEY,
+    )
+    assert grant['secretValueStored'] is False and grant['scopes'] == ['content:read']
+    with pytest.raises(ExtensionContractError):
+        integration_grant(
+            tenant_id='tenant-one',
+            scopes={'*'},
+            expires_at=NOW + timedelta(days=30),
+            now=NOW,
+            key_material=KEY,
+        )
+
+
+def test_webhooks_are_signed_fresh_and_replay_safe():
+    body = b'{"event":"content.updated"}'
+    signed = NOW.isoformat().encode() + b'.' + body
+    signature = hmac.new(KEY, signed, hashlib.sha256).hexdigest()
+    seen = set()
+    assert (
+        verify_webhook(
+            body=body,
+            signature=signature,
+            timestamp=NOW,
+            now=NOW,
+            key=KEY,
+            delivery_id='delivery-0001',
+            seen=seen,
+        )['sideEffects']
+        == 1
+    )
+    assert (
+        verify_webhook(
+            body=body,
+            signature=signature,
+            timestamp=NOW,
+            now=NOW,
+            key=KEY,
+            delivery_id='delivery-0001',
+            seen=seen,
+        )['status']
+        == 'duplicate-noop'
+    )
+    with pytest.raises(ExtensionContractError, match='signature'):
+        verify_webhook(
+            body=body,
+            signature='0' * 64,
+            timestamp=NOW,
+            now=NOW,
+            key=KEY,
+            delivery_id='delivery-0001',
+            seen=seen,
+        )
+    with pytest.raises(ExtensionContractError, match='expired'):
+        verify_webhook(
+            body=body,
+            signature=signature,
+            timestamp=NOW,
+            now=NOW + timedelta(minutes=6),
+            key=KEY,
+            delivery_id='delivery-0002',
+            seen=seen,
+        )
+
+
+def test_public_api_and_fake_commerce_are_versioned_and_safe():
+    contract = api_contract(version=2, sunset_at=NOW + timedelta(days=90), consumers_observed=3)
+    assert contract['consumerContractsRequired'] and not contract['productionSecretsAllowed']
+    order = commerce_transition(
+        kind='order',
+        state='pending',
+        target='confirmed',
+        provider='fake',
+        idempotency_key='order-request-0001',
+    )
+    assert order['reconciliationRequired'] and not order['prohibitedPaymentDataStored']
+    with pytest.raises(ExtensionContractError, match='provider_disabled'):
+        commerce_transition(
+            kind='order',
+            state='pending',
+            target='confirmed',
+            provider='live',
+            idempotency_key='order-request-0001',
+        )
+    records = [
+        commerce_record(
+            kind=kind, tenant_id='tenant-one', provider='fake', external_ref=f'{kind}-001',
+            amount_minor=0 if kind == 'product' else 1000, currency='EUR',
+            idempotency_key=f'{kind}-request-0001',
+        )
+        for kind in ('product', 'price', 'order', 'subscription', 'invoice', 'tax', 'refund')
+    ]
+    assert len({item['id'] for item in records}) == 7
+    assert all(not item['prohibitedPaymentDataStored'] for item in records)

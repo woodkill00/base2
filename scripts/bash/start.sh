@@ -45,7 +45,7 @@ fi
 echo "ðŸš€ Starting Docker Environment..."
 echo "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”"
 
-REQUIRED_VARS=(WEBSITE_DOMAIN NETWORK_NAME TRAEFIK_PORT FASTAPI_PORT DJANGO_PORT POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB WORKSPACE_DB_USER WORKSPACE_DB_PASSWORD WORKSPACE_WORKER_DB_USER WORKSPACE_WORKER_DB_PASSWORD)
+REQUIRED_VARS=(WEBSITE_DOMAIN NETWORK_NAME TRAEFIK_PORT FASTAPI_PORT DJANGO_PORT POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB API_RUNTIME_DB_USER API_RUNTIME_DB_PASSWORD WORKSPACE_DB_USER WORKSPACE_DB_PASSWORD WORKSPACE_WORKER_DB_USER WORKSPACE_WORKER_DB_PASSWORD RUNTIME_WORKER_DB_USER RUNTIME_WORKER_DB_PASSWORD EMAIL_WORKER_DB_USER EMAIL_WORKER_DB_PASSWORD)
 
 # Parse command line arguments
 stage "parse CLI args"
@@ -195,7 +195,7 @@ fi
 if [ "$DETACHED" = true ]; then
     stage "docker compose up (detached)"
     echo "ðŸ³ Starting services in detached mode..."
-    "${compose_cmd[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d
+    "${compose_cmd[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" --profile celery up -d
 
     echo ""
     echo "âœ… Services started successfully!"
@@ -238,5 +238,5 @@ if [ "$DETACHED" = true ]; then
 else
     stage "docker compose up (foreground)"
     echo "ðŸ³ Starting services in foreground mode..."
-    "${compose_cmd[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up
+    "${compose_cmd[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" --profile celery up
 fi

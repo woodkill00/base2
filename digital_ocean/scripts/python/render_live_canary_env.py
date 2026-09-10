@@ -11,9 +11,7 @@ import secrets
 from pathlib import Path
 
 SAFE_PROJECT = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
-SAFE_DOMAIN = re.compile(
-    r"^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$"
-)
+SAFE_DOMAIN = re.compile(r"^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
 PLACEHOLDER = re.compile(r"\b(?:YOUR_[A-Z0-9_]+|your_[a-z0-9_]+)\b")
 RESERVED = (".invalid", ".test", ".example", ".localhost")
 SECRET_KEYS = {
@@ -29,6 +27,9 @@ SECRET_KEYS = {
     "TP_POSTGRES_PASSWORD",
     "TP_WORKSPACE_DB_PASSWORD",
     "TP_WORKSPACE_WORKER_DB_PASSWORD",
+    "TP_RUNTIME_WORKER_DB_PASSWORD",
+    "TP_EMAIL_WORKER_DB_PASSWORD",
+    "TP_DATA_RIGHTS_WORKER_DB_PASSWORD",
     "TP_PGADMIN_PASSWORD",
     "TP_FLOWER_PASSWORD",
     "TP_TRAEFIK_PASSWORD",
@@ -58,7 +59,10 @@ def render(source: Path, target: Path, domain: str, project: str) -> None:
     overrides = {
         "PROJECT_NAME": project,
         "WEBSITE_DOMAIN": domain,
-        "ENV": "production",
+        # The bounded canary uses staging certificates, an internal test
+        # database, and synthetic delivery. It must not impersonate an
+        # activated staging/production environment with verified external TLS.
+        "ENV": "preview",
         "DEPLOY_MODE": "canary",
         "USER_MAIN_EMAIL": f"canary@{domain}",
         "USER_MAIN_NAME": "canary",
@@ -81,6 +85,7 @@ def render(source: Path, target: Path, domain: str, project: str) -> None:
         "DIGITAL_OCEAN_API_SSH_KEYS": "disabled",
         "TRAEFIK_CERT_RESOLVER": "le-staging",
         "TRAEFIK_CANARY_MODE": "true",
+        "BASE2_EMAIL_ADAPTER": "local_fake",
     }
     overrides.update({key: _secret() for key in SECRET_KEYS})
     overrides["TP_IDENTITY_ENCRYPTION_KEY"] = _fernet_key()

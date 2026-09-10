@@ -16,6 +16,9 @@ type Props = {
   isMenuOpen?: boolean;
   onToggleMenu?: () => void;
   manifest?: SiteManifest;
+  menuLabel?: string;
+  titleAsHeading?: boolean;
+  themeLabel?: string;
 };
 
 export const GlassHeader: React.FC<Props> = ({
@@ -25,13 +28,14 @@ export const GlassHeader: React.FC<Props> = ({
   isMenuOpen,
   onToggleMenu,
   manifest = siteManifest,
+  menuLabel = 'Menu',
+  titleAsHeading = true,
+  themeLabel = 'Toggle theme',
 }) => {
   const navigate = useNavigate();
   const inferredPublic = useMemo(() => title?.toLowerCase() === 'home', [title]);
   const isPublic = variant ? variant === 'public' : inferredPublic;
-  const accountsEnabled = manifest.modules.some(
-    (item) => item.id === 'accounts' && item.enabled
-  );
+  const accountsEnabled = manifest.modules.some((item) => item.id === 'accounts' && item.enabled);
 
   const [isDark, setIsDark] = useState(false);
 
@@ -109,22 +113,24 @@ export const GlassHeader: React.FC<Props> = ({
                 </motion.div>
               </button>
 
-              {accountsEnabled && <div className="hidden sm:flex items-center gap-2">
-                <GlassButton
-                  variant="ghost"
-                  className="text-sm px-4 py-2"
-                  onClick={() => navigate('/login')}
-                >
-                  Login
-                </GlassButton>
-                <GlassButton
-                  variant="primary"
-                  className="text-sm px-4 py-2"
-                  onClick={() => navigate('/signup')}
-                >
-                  Sign Up
-                </GlassButton>
-              </div>}
+              {accountsEnabled && (
+                <div className="hidden sm:flex items-center gap-2">
+                  <GlassButton
+                    variant="ghost"
+                    className="text-sm px-4 py-2"
+                    onClick={() => navigate('/login')}
+                  >
+                    Login
+                  </GlassButton>
+                  <GlassButton
+                    variant="primary"
+                    className="text-sm px-4 py-2"
+                    onClick={() => navigate('/signup')}
+                  >
+                    Sign Up
+                  </GlassButton>
+                </div>
+              )}
             </div>
           </div>
         </nav>
@@ -149,15 +155,21 @@ export const GlassHeader: React.FC<Props> = ({
       <button
         type="button"
         className="glass glass-interactive glass-btn glass-btn-ghost"
-        aria-label="Menu"
+        aria-label={menuLabel}
         aria-controls={menuControlsId}
         aria-expanded={Boolean(isMenuOpen)}
         onClick={onToggleMenu}
-        style={{ width: 44, height: 44, flex: '0 0 44px', display: 'grid', placeItems: 'center', padding: 0 }}
+        style={{
+          width: 44,
+          height: 44,
+          flex: '0 0 44px',
+          display: 'grid',
+          placeItems: 'center',
+          padding: 0,
+        }}
       >
         <svg
-          role="img"
-          aria-label="Menu"
+          aria-hidden="true"
           viewBox="0 0 24 24"
           width="18"
           height="18"
@@ -173,9 +185,15 @@ export const GlassHeader: React.FC<Props> = ({
         </svg>
       </button>
 
-      <h1 className="text-lg" style={{ margin: 0 }}>{title}</h1>
+      {titleAsHeading ? (
+        <h1 className="text-lg font-semibold" style={{ margin: 0 }}>
+          {title}
+        </h1>
+      ) : (
+        <span className="text-lg font-semibold">{title}</span>
+      )}
       <div style={{ flex: 1 }} />
-      <ThemeToggle />
+      <ThemeToggle label={themeLabel} />
     </header>
   );
 };

@@ -90,12 +90,12 @@ Run the teardown script to remove deployed resources:
      ```powershell
      python -m venv .venv
      .\.venv\Scripts\Activate.ps1
-     .\.venv\Scripts\python.exe -m pip install -r digital_ocean\requirements.txt
+     .\.venv\Scripts\python.exe -m pip install --require-hashes -r digital_ocean\requirements.lock
      ```
      ```bash
      python -m venv .venv
      source .venv/bin/activate
-     pip install -r digital_ocean/requirements.txt
+     pip install --require-hashes -r digital_ocean/requirements.lock
      ```
    - Keep `.venv` active for every pip install or Python command in this directory.
 4. **(Optional) Node.js scripts**:

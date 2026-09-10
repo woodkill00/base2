@@ -21,6 +21,41 @@ const Navigation = () => {
   const mediaEnabled = siteManifest.modules.some(
     (module) => module.id === 'media' && module.enabled
   );
+  const locale = String(user?.locale || 'en').split('-')[0];
+  const labels = {
+    de: {
+      dashboard: 'Übersicht',
+      settings: 'Einstellungen',
+      content: 'Inhalte',
+      media: 'Medien',
+      operations: 'Betrieb',
+      admin: 'Verwaltung',
+      logout: 'Abmelden',
+      profile: 'Profil',
+      appNavigation: 'Anwendungsnavigation',
+    },
+    ar: {
+      dashboard: 'لوحة المعلومات',
+      settings: 'الإعدادات',
+      content: 'المحتوى',
+      media: 'الوسائط',
+      operations: 'العمليات',
+      admin: 'الإدارة',
+      logout: 'تسجيل الخروج',
+      profile: 'الملف الشخصي',
+      appNavigation: 'التنقل في التطبيق',
+    },
+  }[locale] || {
+    dashboard: 'Dashboard',
+    settings: 'Settings',
+    content: 'Content',
+    media: 'Media',
+    operations: 'Operations',
+    admin: 'Admin',
+    logout: 'Logout',
+    profile: 'Profile',
+    appNavigation: 'App navigation',
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -35,9 +70,10 @@ const Navigation = () => {
       'hover:bg-white/20 dark:hover:bg-black/30',
       isActive(path) ? 'bg-white/20 dark:bg-black/30' : 'opacity-80 hover:opacity-100',
     ].join(' ');
+  const activeProps = (path) => (isActive(path) ? { 'aria-current': 'page' } : {});
 
   return (
-    <nav aria-label="App navigation" className="sticky top-[calc(var(--nav-h)+0px)] z-40">
+    <nav aria-label={labels.appNavigation} className="sticky top-[calc(var(--nav-h)+0px)] z-40">
       <div className="mx-auto max-w-6xl px-4 pt-4">
         <div
           className={[
@@ -59,27 +95,44 @@ const Navigation = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <Link to="/dashboard" className={linkClass('/dashboard')}>
-                Dashboard
+              <Link
+                to="/dashboard"
+                className={linkClass('/dashboard')}
+                {...activeProps('/dashboard')}
+              >
+                {labels.dashboard}
               </Link>
-              <Link to="/settings" className={linkClass('/settings')}>
-                Settings
+              <Link to="/settings" className={linkClass('/settings')} {...activeProps('/settings')}>
+                {labels.settings}
               </Link>
               {workspaceEnabled && user?.permissions?.includes('content-workspace.read') ? (
-                <Link to="/workspace" className={linkClass('/workspace')}>
-                  Content
+                <Link
+                  to="/workspace"
+                  className={linkClass('/workspace')}
+                  {...activeProps('/workspace')}
+                >
+                  {labels.content}
                 </Link>
               ) : null}
               {mediaEnabled && user?.permissions?.includes('media.read') ? (
-                <Link to="/media" className={linkClass('/media')}>
-                  Media
+                <Link to="/media" className={linkClass('/media')} {...activeProps('/media')}>
+                  {labels.media}
+                </Link>
+              ) : null}
+              {user?.permissions?.includes('operations.read') ? (
+                <Link
+                  to="/operations"
+                  className={linkClass('/operations')}
+                  {...activeProps('/operations')}
+                >
+                  {labels.operations}
                 </Link>
               ) : null}
               {accountsEnabled &&
               Array.isArray(user?.permissions) &&
               user.permissions.includes('audit.read') ? (
-                <Link to="/admin" className={linkClass('/admin')}>
-                  Admin
+                <Link to="/admin" className={linkClass('/admin')} {...activeProps('/admin')}>
+                  {labels.admin}
                 </Link>
               ) : null}
             </div>
@@ -89,12 +142,12 @@ const Navigation = () => {
                 {avatarUrl ? (
                   <img
                     src={avatarUrl}
-                    alt="Profile"
+                    alt={labels.profile}
                     className="w-9 h-9 rounded-full object-cover border border-white/30 dark:border-white/20"
                   />
                 ) : (
                   <span
-                    aria-label="Profile"
+                    aria-label={labels.profile}
                     role="img"
                     className="w-9 h-9 rounded-full border border-white/30 dark:border-white/20 grid place-items-center"
                   >
@@ -111,7 +164,7 @@ const Navigation = () => {
                 className="text-sm px-4 py-2"
                 onClick={handleLogout}
               >
-                Logout
+                {labels.logout}
               </GlassButton>
             </div>
           </div>

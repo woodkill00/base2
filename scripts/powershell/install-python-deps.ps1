@@ -41,11 +41,11 @@ $targets = @()
 if ($Api -or $Django -or $DigitalOcean) {
     if ($Api) { $targets += @{ Venv = '.venv-api'; Requirements = 'requirements-dev-api.txt' } }
     if ($Django) { $targets += @{ Venv = '.venv-django'; Requirements = 'requirements-dev-django.txt' } }
-    if ($DigitalOcean) { $targets += @{ Venv = '.venv'; Requirements = 'digital_ocean/requirements.txt' } }
+    if ($DigitalOcean) { $targets += @{ Venv = '.venv'; Requirements = 'digital_ocean/requirements.lock'; RequireHashes = $true } }
 } else {
     $targets += @{ Venv = '.venv-api'; Requirements = 'requirements-dev-api.txt' }
     $targets += @{ Venv = '.venv-django'; Requirements = 'requirements-dev-django.txt' }
-    $targets += @{ Venv = '.venv'; Requirements = 'digital_ocean/requirements.txt' }
+    $targets += @{ Venv = '.venv'; Requirements = 'digital_ocean/requirements.lock'; RequireHashes = $true }
 }
 
 foreach ($target in $targets) {
@@ -64,15 +64,21 @@ foreach ($target in $targets) {
     if ($actualVersion -ne $expectedVersion) {
         throw "$($target.Venv) uses Python $actualVersion but $expectedVersion is required."
     }
-    if (-not $SkipPipUpgrade) {
+    if (-not $SkipPipUpgrade -and -not $target.RequireHashes) {
         & $venvPython -m pip install --upgrade pip
         if ($LASTEXITCODE -ne 0) { throw "pip upgrade failed in $($target.Venv)" }
     }
     Write-Host "Installing $($target.Requirements) into $($target.Venv)..." -ForegroundColor Cyan
-    & $venvPython -m pip install -r $reqPath
+    $installArgs = @('-m', 'pip', 'install')
+    if ($target.RequireHashes) { $installArgs += '--require-hashes' }
+    $installArgs += @('-r', $reqPath)
+    & $venvPython @installArgs
     if ($LASTEXITCODE -ne 0) {
         Write-Warning "Initial pip install failed for $($target.Venv); retrying once without cache."
-        & $venvPython -m pip install --no-cache-dir -r $reqPath
+        $retryArgs = @('-m', 'pip', 'install', '--no-cache-dir')
+        if ($target.RequireHashes) { $retryArgs += '--require-hashes' }
+        $retryArgs += @('-r', $reqPath)
+        & $venvPython @retryArgs
         if ($LASTEXITCODE -ne 0) { throw "pip install failed twice for $($target.Requirements)" }
     }
     & $venvPython -m pip check

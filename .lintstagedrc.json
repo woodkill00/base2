@@ -3,5 +3,6 @@
     "node react-app/node_modules/eslint/bin/eslint.js --fix",
     "node react-app/node_modules/prettier/bin/prettier.cjs --write"
   ],
+  "api/**/*.py": [".venv-api/bin/python -m ruff check"],
   "*.{json,md,yml,yaml}": ["npx prettier --write"]
 }

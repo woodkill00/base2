@@ -6,10 +6,11 @@ from scripts.python.validate_edge_security import ROOT, findings_for
 
 def current():
     return {
-        'dynamic': (ROOT / 'traefik/dynamic.yml').read_text(),
-        'canary': (ROOT / 'traefik/dynamic-canary.yml').read_text(),
-        'nginx': (ROOT / 'react-app/nginx/default.conf').read_text(),
-        'api_main': (ROOT / 'api/main.py').read_text(),
+        "dynamic": (ROOT / "traefik/dynamic.yml").read_text(),
+        "canary": (ROOT / "traefik/dynamic-canary.yml").read_text(),
+        "static": (ROOT / "traefik/traefik.yml").read_text(),
+        "nginx": (ROOT / "react-app/nginx/default.conf").read_text(),
+        "api_main": (ROOT / "api/main.py").read_text(),
     }
 
 
@@ -19,10 +20,17 @@ class EdgeSecurityPolicyTests(TestCase):
 
     def test_mutations_fail_closed(self):
         values = current()
-        values['canary'] = values['canary'].replace('noindex, nofollow, noarchive', 'index')
-        values['dynamic'] = values['dynamic'].replace('stsSeconds: 31536000', 'stsSeconds: 0')
-        values['nginx'] = values['nginx'].replace('X-Frame-Options DENY always', '')
+        values["canary"] = values["canary"].replace("noindex, nofollow, noarchive", "index")
+        values["dynamic"] = values["dynamic"].replace("stsSeconds: 31536000", "stsSeconds: 0")
+        values["dynamic"] = values["dynamic"].replace(
+            "        - security-csp-swagger\n        - traefik-basic-auth",
+            "        - security-csp-swagger",
+        )
+        values["nginx"] = values["nginx"].replace("X-Frame-Options DENY always", "")
+        values["static"] = values["static"].replace("insecure: false", "insecure: true")
         findings = findings_for(**values)
-        self.assertTrue(any(item.startswith('canary_missing:') for item in findings))
-        self.assertTrue(any(item.startswith('dynamic_missing:') for item in findings))
-        self.assertTrue(any(item.startswith('nginx_missing:') for item in findings))
+        self.assertTrue(any(item.startswith("canary_missing:") for item in findings))
+        self.assertTrue(any(item.startswith("dynamic_missing:") for item in findings))
+        self.assertIn("swagger_auth_policy_incomplete", findings)
+        self.assertTrue(any(item.startswith("nginx_missing:") for item in findings))
+        self.assertTrue(any(item.startswith("static_missing:") for item in findings))

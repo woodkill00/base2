@@ -8,9 +8,11 @@ Orchestrate Digital Ocean Droplet deployment, DNS update, .env generation, and s
 import argparse
 import atexit
 import concurrent.futures
+import hashlib
 import json
 import os
 import re
+import secrets
 import shutil
 import socket
 import stat
@@ -20,13 +22,34 @@ import time
 from contextlib import suppress
 from pathlib import Path
 
-import paramiko
 from pydo import Client
 
 try:
-    from digital_ocean.scripts.python.deploy_config import load_deploy_config
+    from digital_ocean.scripts.python.deploy_config import load_deploy_config, normalize_deploy_config
+    from digital_ocean.scripts.python.droplet_lookup import (
+        GitRemoteLeaseStore,
+        acquire_provider_lease,
+        list_named_droplets,
+        release_provider_lease,
+    )
+    from digital_ocean.scripts.python.trusted_ssh import (
+        strict_openssh_options as _strict_openssh_options,
+    )
+    from digital_ocean.scripts.python.trusted_ssh import (
+        trusted_ssh_client as _trusted_ssh_client,
+    )
+    from digital_ocean.scripts.python.provider_ready import wait_for_active_public_ipv4
 except ModuleNotFoundError:
-    from deploy_config import load_deploy_config
+    from deploy_config import load_deploy_config, normalize_deploy_config
+    from droplet_lookup import (
+        GitRemoteLeaseStore,
+        acquire_provider_lease,
+        list_named_droplets,
+        release_provider_lease,
+    )
+    from trusted_ssh import strict_openssh_options as _strict_openssh_options
+    from trusted_ssh import trusted_ssh_client as _trusted_ssh_client
+    from provider_ready import wait_for_active_public_ipv4
 
 _ENV_VAR_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
@@ -147,12 +170,21 @@ SSH_TIMEOUT = 15  # seconds
 LOG_POLL_ATTEMPTS = 60
 LOG_POLL_TIMEOUT = 30  # seconds
 LOG_POLL_INTERVAL = 15  # seconds
-IP_POLL_TIMEOUT = int(os.getenv("DO_IP_POLL_TIMEOUT_SECONDS", "120"))
-IP_POLL_INTERVAL = int(os.getenv("DO_IP_POLL_INTERVAL_SECONDS", "5"))
 REBOOT_MARKERS = ["Cloud-init v. 25.2-0ubuntu1~22.04.1 finished at"]
 COMPLETION_MARKER = "User data script completed at"
 SUMMARY = []
-PROJECT_NAME = os.getenv("PROJECT_NAME", "app")
+_DEPLOY_CONFIG = normalize_deploy_config(
+    {
+        **_DEPLOY_CONFIG,
+        "PROJECT_NAME": os.getenv("PROJECT_NAME", _DEPLOY_CONFIG.get("PROJECT_NAME", "app")),
+        "DEPLOY_PATH": os.getenv("DEPLOY_PATH", _DEPLOY_CONFIG.get("DEPLOY_PATH", "/opt/apps/")),
+        "DO_IP_POLL_TIMEOUT_SECONDS": os.getenv("DO_IP_POLL_TIMEOUT_SECONDS", "120"),
+        "DO_IP_POLL_INTERVAL_SECONDS": os.getenv("DO_IP_POLL_INTERVAL_SECONDS", "5"),
+    }
+)
+PROJECT_NAME = _DEPLOY_CONFIG["PROJECT_NAME"]
+IP_POLL_TIMEOUT = int(_DEPLOY_CONFIG["DO_IP_POLL_TIMEOUT_SECONDS"])
+IP_POLL_INTERVAL = int(_DEPLOY_CONFIG["DO_IP_POLL_INTERVAL_SECONDS"])
 _EXPANSION_ENV = {**os.environ, "PROJECT_NAME": PROJECT_NAME}
 ssh_dir = os.path.expanduser("~/.ssh")
 ssh_key_path = os.path.join(ssh_dir, PROJECT_NAME)
@@ -303,8 +335,10 @@ def _finalize_artifacts() -> None:
     _apply_artifact_rename()
 
 
-def _write_artifact_text(name: str, content: str) -> None:
+def _write_artifact_text(name: str, content: str, *, required: bool = False) -> None:
     if not artifact_dir_path:
+        if required:
+            raise RuntimeError("required deployment artifact directory is unavailable")
         return
     try:
         path = artifact_dir_path / name
@@ -312,7 +346,8 @@ def _write_artifact_text(name: str, content: str) -> None:
         with open(path, "w", encoding="utf-8", errors="replace") as f:
             f.write(content)
     except Exception:
-        pass
+        if required:
+            raise
 
 
 def _write_deploy_metadata(
@@ -503,8 +538,7 @@ _DEPLOY_CONFIG["DO_API_SSH_KEYS"] = pubkey
 def recovery_ssh_logs(ip_address, SSH_USER, ssh_key_path):
     try:
         print("[RECOVERY] Attempting SSH recovery and diagnostics...")
-        ssh_client = paramiko.SSHClient()
-        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh_client = _trusted_ssh_client()
         ssh_client.connect(ip_address, username=SSH_USER, key_filename=ssh_key_path)
         # Only check logs, do not rerun any scripts
         for log_path in ["/var/log/cloud-init-output.log"]:
@@ -887,6 +921,11 @@ parser.add_argument(
 parser.add_argument(
     "--all-tests", action="store_true", help="Enable extended remote verification (celery check)"
 )
+parser.add_argument(
+    "--provision-only",
+    action="store_true",
+    help="Record infrastructure address without SSH, DNS, source, secret, or service mutation",
+)
 parser.add_argument("--local-tests", action="store_true", help="Run local test suite after deploy")
 args = parser.parse_args()
 DRY_RUN = args.dry_run
@@ -894,6 +933,12 @@ UPDATE_ONLY = args.update_only
 CREATE_IF_MISSING = args.create_if_missing
 RUN_ALL_TESTS = args.all_tests
 RUN_LOCAL_TESTS = args.local_tests
+PROVISION_ONLY = args.provision_only
+if not PROVISION_ONLY:
+    raise SystemExit(
+        "direct_deployment_disabled: use deploy.ps1 for exact-commit deployment; "
+        "this entrypoint is restricted to --provision-only"
+    )
 if DRY_RUN:
     print(
         "\033[1;32m[INFO]\033[0m [DRY RUN] No changes will be made. Printing planned actions only."
@@ -956,9 +1001,15 @@ def substitute_env_vars(script, env):
     return pattern.sub(replacer, script)
 
 
-user_data_script_sub = substitute_env_vars(user_data_script, env_dict)
-log("Loaded digital_ocean_base.sh for user_data (with env substitution):")
-print("--- user_data script ---\n" + user_data_script_sub + "\n--- end user_data script ---")
+user_data_script_sub = substitute_env_vars(
+    user_data_script,
+    {
+        "DEPLOY_PATH": env_dict.get("DEPLOY_PATH", "/opt/apps/"),
+        "PROJECT_NAME": env_dict.get("PROJECT_NAME", PROJECT_NAME),
+    },
+)
+user_data_sha256 = hashlib.sha256(user_data_script_sub.encode("utf-8")).hexdigest()
+log(f"Loaded credential-free user_data template sha256={user_data_sha256}")
 
 """DO_userdata.json location
 
@@ -993,9 +1044,10 @@ try:
 except Exception:
     existing_userdata = {}
 
-existing_userdata["user_data"] = user_data_script_sub
+existing_userdata.pop("user_data", None)
+existing_userdata["user_data_sha256"] = user_data_sha256
 write_do_userdata(existing_userdata)
-log("Wrote user_data to DO_userdata.json (preserving existing fields)")
+log("Wrote only the user_data digest to DO_userdata.json")
 
 
 def run_post_reboot() -> None:
@@ -1006,8 +1058,7 @@ def run_post_reboot() -> None:
         project_name = str(env_dict.get("PROJECT_NAME", PROJECT_NAME)).strip("/")
         repo_path = f"{deploy_root}/{project_name}"
         log(f"Connecting via SSH to {ip_address} for post-reboot configuration...")
-        ssh_client = paramiko.SSHClient()
-        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh_client = _trusted_ssh_client()
 
         def ssh_connect_with_retry(max_attempts: int = 5, delay: int = 15):
             for attempt in range(1, max_attempts + 1):
@@ -1530,7 +1581,11 @@ droplet_spec = {
     "user_data": user_data_script_sub,
     "ipv6": True,
 }
-log_json("Droplet spec being sent", droplet_spec)
+log_json(
+    "Droplet spec metadata being sent",
+    {key: value for key, value in droplet_spec.items() if key != "user_data"}
+    | {"user_data_sha256": user_data_sha256},
+)
 
 # Determine droplet to use (create or reuse) and set ip_address/droplet_id/droplet_info
 ip_address = None
@@ -1542,8 +1597,7 @@ if UPDATE_ONLY:
     stage("locate existing droplet")
     log("[UPDATE-ONLY] Skipping creation; locating existing droplet by name...")
     try:
-        lst = client.droplets.list(per_page=200)
-        matches = [d for d in lst.get("droplets", []) if d.get("name") == DO_DROPLET_NAME]
+        matches = list_named_droplets(client, DO_DROPLET_NAME)
         if not matches:
             if CREATE_IF_MISSING:
                 log(
@@ -1556,12 +1610,12 @@ if UPDATE_ONLY:
         if fallback_to_create:
             UPDATE_ONLY = False
         else:
-            # If multiple droplets share the same name, prefer the most recently created.
-            # If created_at is missing, fall back to highest id.
-            def sort_key(d):
-                return (d.get("created_at") or "", int(d.get("id") or 0))
-
-            matched = sorted(matches, key=sort_key)[-1]
+            if len(matches) != 1:
+                raise RuntimeError(f"Ambiguous droplet identity for {DO_DROPLET_NAME}")
+            matched = matches[0]
+            expected_id = os.getenv("DO_EXPECTED_DROPLET_ID", "").strip()
+            if expected_id and str(matched.get("id")) != expected_id:
+                raise RuntimeError("Authoritative droplet identity changed before orchestration")
 
             droplet_id = matched["id"]
             droplet_info = client.droplets.get(droplet_id)["droplet"]
@@ -1594,10 +1648,15 @@ if UPDATE_ONLY:
                 )
             except Exception as e:
                 err(f"Failed to update {do_userdata_json_path}: {e}")
+                raise
 
             _plan_artifact_rename(ip_address)
             _apply_artifact_rename()
             _write_deploy_metadata(droplet_id=droplet_id, ip_address=ip_address, update_only=True)
+
+            if PROVISION_ONLY:
+                log("Provision-only boundary reached; verify and enroll host identity separately.")
+                raise SystemExit(0)
 
             # Always ensure required DNS records exist/update to current droplet IP.
             # This is important in --update-only, where the droplet already exists but
@@ -1612,38 +1671,46 @@ if UPDATE_ONLY:
 if not UPDATE_ONLY:
     stage("create droplet")
     log("Creating droplet via DigitalOcean API...")
+    provision_lease = f"base2-provision-lease-{DO_DROPLET_NAME}"
+    lease_store = GitRemoteLeaseStore.from_environment()
+    lease_record = None
+    provider_create_attempted = False
     try:
-        log_json("API Request - droplets.create", droplet_spec)
+        lease_record = acquire_provider_lease(
+            lease_store,
+            provision_lease,
+            f"base2:{secrets.token_hex(24)}",
+        )
+        if list_named_droplets(client, DO_DROPLET_NAME):
+            raise RuntimeError("Droplet appeared after the authoritative missing decision")
+        log_json(
+            "API Request metadata - droplets.create",
+            {key: value for key, value in droplet_spec.items() if key != "user_data"}
+            | {"user_data_sha256": user_data_sha256},
+        )
+        # A timeout after this boundary has an uncertain provider outcome. Keep
+        # the lease so another runner cannot race a late provider completion.
+        provider_create_attempted = True
         droplet = client.droplets.create(droplet_spec)
-        log_json("API Response - droplets.create", droplet)
         droplet_id = droplet["droplet"]["id"]
+        log_json("API Response metadata - droplets.create", {"droplet_id": droplet_id})
         log(f"Droplet created with ID: {droplet_id}")
-        try:
-            droplet_info = client.droplets.get(droplet_id)["droplet"]
-            ip_address = _get_public_ipv4(droplet_info)
-            if ip_address:
-                _record_ip_early(droplet_id=droplet_id, ip_address=ip_address, update_only=False)
-            ip_address, droplet_info = wait_for_public_ipv4(
-                client,
-                droplet_id,
-                timeout_sec=IP_POLL_TIMEOUT,
-                interval_sec=IP_POLL_INTERVAL,
-            )
-            _record_ip_early(droplet_id=droplet_id, ip_address=ip_address, update_only=False)
-        except Exception as e:
-            log(f"Early IPv4 poll did not return yet: {e}")
-        # Wait active and set ip
-        while True:
-            droplet_info = client.droplets.get(droplet_id)["droplet"]
-            log_json("API Response - droplets.get", droplet_info)
-            if droplet_info["status"] == "active":
-                break
-            time.sleep(5)
-            print("...", flush=True)
-        ip_address = _get_public_ipv4(droplet_info)
-        if not ip_address:
-            raise RuntimeError(f"Could not determine public IPv4 for droplet {droplet_id}")
+        ip_address, droplet_info = wait_for_active_public_ipv4(
+            client,
+            droplet_id,
+            timeout_sec=IP_POLL_TIMEOUT,
+            interval_sec=IP_POLL_INTERVAL,
+            address_reader=_get_public_ipv4,
+        )
+        _record_ip_early(droplet_id=droplet_id, ip_address=ip_address, update_only=False)
         log(f"Droplet is active. IP address: {ip_address}")
+        matches_after_create = list_named_droplets(client, DO_DROPLET_NAME)
+        if len(matches_after_create) != 1 or str(matches_after_create[0].get("id")) != str(
+            droplet_id
+        ):
+            raise RuntimeError("Created droplet identity is not authoritative")
+        release_provider_lease(lease_store, lease_record)
+        lease_record = None
         print(f"Droplet created! IP address: {ip_address}")
         # Update DO_userdata.json
         try:
@@ -1657,13 +1724,41 @@ if not UPDATE_ONLY:
             )
         except Exception as e:
             err(f"Failed to update {do_userdata_json_path}: {e}")
+            raise
 
         _plan_artifact_rename(ip_address)
         _apply_artifact_rename()
         _write_deploy_metadata(droplet_id=droplet_id, ip_address=ip_address, update_only=False)
+        if PROVISION_ONLY:
+            log("Provision-only boundary reached; verify and enroll host identity separately.")
+            raise SystemExit(0)
     except Exception as e:
+        if provider_create_attempted:
+            _write_artifact_text(
+                "provider-create-outcome.json",
+                json.dumps(
+                    {
+                        "schemaVersion": 1,
+                        "status": "uncertain",
+                        "leaseRetained": lease_record is not None,
+                        "leaseName": lease_record.name if lease_record is not None else None,
+                        "leaseRevision": (
+                            lease_record.revision if lease_record is not None else None
+                        ),
+                        "dropletId": locals().get("droplet_id"),
+                        "errorCode": type(e).__name__,
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n",
+                required=True,
+            )
         err(f"Droplet creation failed: {e}")
         exit(1)
+    finally:
+        if lease_record is not None and not provider_create_attempted:
+            release_provider_lease(lease_store, lease_record)
 
     stage("ensure dns records")
     # Always ensure required DNS records exist/update to current droplet IP.
@@ -1679,8 +1774,7 @@ if not UPDATE_ONLY:
     log(f"Using SSH user: {SSH_USER}")
     ssh_cmd = [
         "ssh",
-        "-o",
-        "StrictHostKeyChecking=no",
+        *_strict_openssh_options(),
         "-i",
         ssh_key_path.replace("\\", "/"),
         f"{SSH_USER}@{ip_address}",
@@ -1724,8 +1818,7 @@ if not UPDATE_ONLY:
     # Poll cloud-init log for reboot marker BEFORE checking for SSH reboot
     ssh_log_cmd = [
         "ssh",
-        "-o",
-        "StrictHostKeyChecking=no",
+        *_strict_openssh_options(),
         "-i",
         ssh_key_path.replace("\\", "/"),
         f"{SSH_USER}@{ip_address}",

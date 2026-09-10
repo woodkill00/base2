@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 
 from api.db import db_conn
@@ -18,6 +19,10 @@ MIGRATIONS = (
     '007_protect_audit_events',
     '008_create_settings_tables',
     '009_add_deactivation_operation',
+    '010_add_email_delivery_fencing',
+    '011_contract_email_delivery_fencing',
+    '012_add_data_rights_claim_fencing',
+    '013_add_global_data_rights_operations',
 )
 
 
@@ -38,27 +43,61 @@ def apply_migrations() -> None:
         return
 
     with db_conn() as conn:
+        # Never block inside pg_advisory_lock: a waiting migration transaction
+        # can retain a virtual-xid that CREATE INDEX CONCURRENTLY must await,
+        # deadlocking it with the lock holder. Bounded non-blocking acquisition
+        # leaves no waiter transaction behind while preserving the session lock
+        # required by the concurrent-index migrations.
         conn.autocommit = True
         with conn.cursor() as cur:
+            acquired = False
+            for _ in range(300):
+                cur.execute("SELECT pg_try_advisory_lock(hashtext('base2-api-migrations-v1'))")
+                acquired = bool(cur.fetchone()[0])
+                if acquired:
+                    break
+                time.sleep(0.1)
+            if not acquired:
+                raise RuntimeError('api_migration_lock_timeout')
             # Ensure the migration table exists even if migration SQL changes.
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS api_schema_migrations (
-                  version TEXT PRIMARY KEY,
-                  applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-                );
-                """
-            )
-
-            for version in MIGRATIONS:
-                cur.execute('SELECT 1 FROM api_schema_migrations WHERE version=%s', (version,))
-                already = cur.fetchone() is not None
-                if already:
-                    continue
-
-                sql = _read_sql(version)
-                cur.execute(sql)
+            try:
                 cur.execute(
-                    'INSERT INTO api_schema_migrations(version) VALUES (%s)',
-                    (version,),
+                    """
+                    CREATE TABLE IF NOT EXISTS api_schema_migrations (
+                      version TEXT PRIMARY KEY,
+                      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    );
+                    """
                 )
+
+                for version in MIGRATIONS:
+                    cur.execute('SELECT 1 FROM api_schema_migrations WHERE version=%s', (version,))
+                    already = cur.fetchone() is not None
+                    if already:
+                        continue
+
+                    if version == '011_contract_email_delivery_fencing':
+                        while True:
+                            cur.execute(
+                                """WITH batch AS (
+                                       SELECT ctid FROM api_email_outbox
+                                        WHERE delivery_key IS NULL LIMIT 500
+                                   )
+                                   UPDATE api_email_outbox outbox
+                                      SET delivery_key=outbox.id::text
+                                     FROM batch WHERE outbox.ctid=batch.ctid"""
+                            )
+                            if cur.rowcount == 0:
+                                break
+                        for statement in _read_sql(version).split(';'):
+                            if statement.strip():
+                                cur.execute(statement)
+                    else:
+                        sql = _read_sql(version)
+                        cur.execute(sql)
+                    cur.execute(
+                        'INSERT INTO api_schema_migrations(version) VALUES (%s)',
+                        (version,),
+                    )
+            finally:
+                cur.execute("SELECT pg_advisory_unlock(hashtext('base2-api-migrations-v1'))")

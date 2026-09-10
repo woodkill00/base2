@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import html
+import smtplib
+import ssl
 from dataclasses import dataclass
+from email.message import EmailMessage
 from typing import Mapping, Protocol
 from urllib.parse import urlparse
 
@@ -16,6 +19,7 @@ class RenderedEmail:
     subject: str
     text: str
     html: str
+    delivery_key: str = ''
 
 
 @dataclass(frozen=True)
@@ -64,12 +68,18 @@ def render_email(kind: str, recipient: str, context: Mapping[str, object]) -> Re
     if kind == 'verification':
         subject, action, url = 'Verify your email', 'Verify email', _safe_url(context.get('url'))
     elif kind == 'password_reset':
-        subject, action, url = 'Reset your password', 'Reset password', _safe_url(context.get('url'))
+        subject, action, url = (
+            'Reset your password',
+            'Reset password',
+            _safe_url(context.get('url')),
+        )
     elif kind == 'invitation':
         subject, action, url = 'You are invited', 'Review invitation', _safe_url(context.get('url'))
     else:
-        subject, action, url = 'We received your message', 'View privacy information', _safe_url(
-            context.get('privacy_url')
+        subject, action, url = (
+            'We received your message',
+            'View privacy information',
+            _safe_url(context.get('privacy_url')),
         )
     text = f'Hello {name},\n\n{action}: {url}\n\nIf you did not expect this message, ignore it.'
     body = (
@@ -98,6 +108,69 @@ class LocalFakeEmailAdapter:
         return self.outcome or AdapterResult(
             'sent', f'fake-{recipient_digest(message.recipient)}-{message.kind}'
         )
+
+
+class SmtpEmailAdapter:
+    """TLS-only production adapter with bounded network timeouts."""
+
+    name = 'smtp'
+
+    def __init__(
+        self,
+        *,
+        host: str,
+        port: int,
+        username: str,
+        password: str,
+        from_address: str,
+        timeout: float = 10.0,
+    ):
+        if not host or any(value in host for value in ('\r', '\n', '/', ':')):
+            raise ValueError('smtp_host_invalid')
+        if port not in {465, 587}:
+            raise ValueError('smtp_port_invalid')
+        if '@' not in from_address or any(value in from_address for value in ('\r', '\n')):
+            raise ValueError('smtp_from_invalid')
+        if not username or not password or timeout <= 0 or timeout > 30:
+            raise ValueError('smtp_configuration_invalid')
+        self.host, self.port = host, port
+        self.username, self.password = username, password
+        self.from_address, self.timeout = from_address, timeout
+
+    def send(self, message: RenderedEmail) -> AdapterResult:
+        envelope = EmailMessage()
+        envelope['From'], envelope['To'], envelope['Subject'] = (
+            self.from_address,
+            message.recipient,
+            message.subject,
+        )
+        if message.delivery_key:
+            identity = hashlib.sha256(message.delivery_key.encode()).hexdigest()[:32]
+            domain = self.from_address.rsplit('@', 1)[-1].lower()
+            envelope['Message-ID'] = f'<base2-{identity}@{domain}>'
+        envelope.set_content(message.text)
+        if message.html:
+            envelope.add_alternative(message.html, subtype='html')
+        context = ssl.create_default_context()
+        try:
+            if self.port == 465:
+                with smtplib.SMTP_SSL(
+                    self.host, self.port, timeout=self.timeout, context=context
+                ) as client:
+                    client.login(self.username, self.password)
+                    client.send_message(envelope)
+            else:
+                with smtplib.SMTP(self.host, self.port, timeout=self.timeout) as client:
+                    client.ehlo()
+                    client.starttls(context=context)
+                    client.ehlo()
+                    client.login(self.username, self.password)
+                    client.send_message(envelope)
+        except smtplib.SMTPResponseException as exc:
+            return AdapterResult('failed', retryable=400 <= exc.smtp_code < 500)
+        except (OSError, smtplib.SMTPException):
+            return AdapterResult('failed', retryable=True)
+        return AdapterResult('sent')
 
 
 def deliver_email(

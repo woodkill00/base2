@@ -248,10 +248,10 @@ def replace_recovery_codes(*, user_id: UUID, code_hashes: tuple[str, ...]) -> No
 
 
 def create_invitation(
-    *, organization_id: UUID, actor_id: UUID, email: str, role: str, token_hash: str
+    *, tenant_id: str, organization_id: UUID, actor_id: UUID, email: str, role: str, token_hash: str
 ) -> UUID:
     invitation_id = uuid4()
-    with db_conn() as conn:
+    with db_conn(tenant_id=tenant_id) as conn:
         conn.autocommit = True
         with conn.cursor() as cur:
             cur.execute(
@@ -273,8 +273,8 @@ def create_invitation(
     return invitation_id
 
 
-def revoke_invitation(*, organization_id: UUID, invitation_id: UUID) -> bool:
-    with db_conn() as conn:
+def revoke_invitation(*, tenant_id: str, organization_id: UUID, invitation_id: UUID) -> bool:
+    with db_conn(tenant_id=tenant_id) as conn:
         conn.autocommit = True
         with conn.cursor() as cur:
             cur.execute(
@@ -354,10 +354,10 @@ def bootstrap_owner_organization(
 
 
 def create_api_credential(
-    *, organization_id: UUID, actor_id: UUID, label: str, prefix: str, secret_hash: str, scopes: list[str]
+    *, tenant_id: str, organization_id: UUID, actor_id: UUID, label: str, prefix: str, secret_hash: str, scopes: list[str]
 ) -> UUID:
     credential_id = uuid4()
-    with db_conn() as conn:
+    with db_conn(tenant_id=tenant_id) as conn:
         conn.autocommit = True
         with conn.cursor() as cur:
             cur.execute(
@@ -379,8 +379,8 @@ def create_api_credential(
     return credential_id
 
 
-def revoke_api_credential(*, organization_id: UUID, credential_id: UUID) -> bool:
-    with db_conn() as conn:
+def revoke_api_credential(*, tenant_id: str, organization_id: UUID, credential_id: UUID) -> bool:
+    with db_conn(tenant_id=tenant_id) as conn:
         conn.autocommit = True
         with conn.cursor() as cur:
             cur.execute(
@@ -395,13 +395,14 @@ def revoke_api_credential(*, organization_id: UUID, credential_id: UUID) -> bool
 
 def update_member_role(
     *,
+    tenant_id: str,
     organization_id: UUID,
     actor_id: UUID,
     member_id: UUID,
     new_role: str,
     expected_updated_at: datetime,
 ) -> bool:
-    with db_conn() as conn:
+    with db_conn(tenant_id=tenant_id) as conn:
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT role FROM api_identity_memberships WHERE organization_id=%s AND user_id=%s AND status='active' FOR UPDATE",

@@ -11,20 +11,45 @@ POSTGRES_IMAGE = (
     "mirror.gcr.io/library/postgres@sha256:"
     "075f7ba66bc9b3ce7d6b8b635208ff61cd7cf1a67d71ec530eec5d7ae0cbe571"
 )
+MAX_NATIVE_ATTEMPTS = 3
+NATIVE_FAILURES = {134, 139}
 
 
 def run(command, **kwargs):
     return subprocess.run(command, check=True, **kwargs)
 
 
+def run_idempotent_native_safe(command, **kwargs):
+    """Retry only a disposable idempotent command after a native process crash."""
+
+    for attempt in range(1, MAX_NATIVE_ATTEMPTS + 1):
+        result = subprocess.run(command, check=False, **kwargs)
+        if result.returncode == 0:
+            return result
+        if result.returncode not in NATIVE_FAILURES or attempt == MAX_NATIVE_ATTEMPTS:
+            raise subprocess.CalledProcessError(result.returncode, command)
+        print(
+            f"Disposable migration recovered from native exit {result.returncode}; "
+            f"retry {attempt + 1}/{MAX_NATIVE_ATTEMPTS}",
+            flush=True,
+        )
+    raise RuntimeError("unreachable_native_retry_state")  # pragma: no cover
+
+
 def main() -> None:
     root = Path(__file__).resolve().parents[2]
     name = f"base2-workspace-postgres-{os.getpid()}"
     owner_password = secrets.token_urlsafe(32)
+    api_runtime_password = secrets.token_urlsafe(32)
     runtime_password = secrets.token_urlsafe(32)
     worker_password = secrets.token_urlsafe(32)
-    django_image = os.getenv("WORKSPACE_ACCEPTANCE_DJANGO_IMAGE", "base2-f093-1115-django:latest")
-    api_image = os.getenv("WORKSPACE_ACCEPTANCE_API_IMAGE", "base2-f093-1115-api:latest")
+    runtime_worker_password = secrets.token_urlsafe(32)
+    email_worker_password = secrets.token_urlsafe(32)
+    data_rights_worker_password = secrets.token_urlsafe(32)
+    # The compose-built images track the current toolchain. The source under
+    # test is still mounted read-only from the exact checkout below.
+    django_image = os.getenv("WORKSPACE_ACCEPTANCE_DJANGO_IMAGE", "base2-local-django:latest")
+    api_image = os.getenv("WORKSPACE_ACCEPTANCE_API_IMAGE", "base2-local-api:latest")
     started = False
     try:
         for image in (django_image, api_image):
@@ -93,6 +118,10 @@ def main() -> None:
                 "-e",
                 "POSTGRES_DB=base2",
                 "-e",
+                "API_RUNTIME_DB_USER=base2_api_runtime",
+                "-e",
+                f"API_RUNTIME_DB_PASSWORD={api_runtime_password}",
+                "-e",
                 "WORKSPACE_DB_USER=base2_workspace_runtime",
                 "-e",
                 f"WORKSPACE_DB_PASSWORD={runtime_password}",
@@ -100,13 +129,126 @@ def main() -> None:
                 "WORKSPACE_WORKER_DB_USER=base2_workspace_worker",
                 "-e",
                 f"WORKSPACE_WORKER_DB_PASSWORD={worker_password}",
+                "-e",
+                "RUNTIME_WORKER_DB_USER=base2_runtime_worker",
+                "-e",
+                f"RUNTIME_WORKER_DB_PASSWORD={runtime_worker_password}",
+                "-e",
+                "EMAIL_WORKER_DB_USER=base2_email_worker",
+                "-e",
+                f"EMAIL_WORKER_DB_PASSWORD={email_worker_password}",
+                "-e",
+                "DATA_RIGHTS_WORKER_DB_USER=base2_data_rights_worker",
+                "-e",
+                f"DATA_RIGHTS_WORKER_DB_PASSWORD={data_rights_worker_password}",
                 POSTGRES_IMAGE,
                 "/bin/sh",
                 "/bootstrap.sh",
             ],
             stdout=subprocess.DEVNULL,
         )
-        run(
+        api_migration = common + [
+            "--read-only",
+            "--tmpfs",
+            "/tmp:rw,noexec,nosuid,size=64m",
+            "-v",
+            f"{root}:/workspace:ro",
+            "-w",
+            "/workspace",
+            "-e",
+            "PYTHONPATH=/workspace",
+            "-e",
+            "DB_HOST=127.0.0.1",
+            "-e",
+            "DB_PORT=5432",
+            "-e",
+            "DB_NAME=base2",
+            "-e",
+            "DB_USER=base2",
+            "-e",
+            f"DB_PASSWORD={owner_password}",
+            "--entrypoint",
+            "python",
+            api_image,
+            "-m",
+            "api.scripts.migrate",
+        ]
+        run(api_migration, stdout=subprocess.DEVNULL)
+        django_migration = common + [
+            "--read-only",
+            "--tmpfs",
+            "/tmp:rw,noexec,nosuid,size=64m",
+            "-v",
+            f"{root}:/workspace:ro",
+            "-w",
+            "/workspace/django",
+            "-e",
+            "PYTHONPATH=/workspace/django",
+            "-e",
+            "DJANGO_SETTINGS_MODULE=project.settings.base",
+            "-e",
+            "PYTHONHASHSEED=0",
+            "-e",
+            "PYTHONMALLOC=malloc",
+            "-e",
+            "DB_HOST=127.0.0.1",
+            "-e",
+            "DB_PORT=5432",
+            "-e",
+            "DB_NAME=base2",
+            "-e",
+            "DB_USER=base2",
+            "-e",
+            f"DB_PASSWORD={owner_password}",
+            "-e",
+            "WORKSPACE_DB_USER=base2_workspace_runtime",
+            "-e",
+            "API_RUNTIME_DB_USER=base2_api_runtime",
+            "-e",
+            "WORKSPACE_WORKER_DB_USER=base2_workspace_worker",
+            "-e",
+            "RUNTIME_WORKER_DB_USER=base2_runtime_worker",
+            "-e",
+            "EMAIL_WORKER_DB_USER=base2_email_worker",
+            "-e",
+            "DATA_RIGHTS_WORKER_DB_USER=base2_data_rights_worker",
+            "--entrypoint",
+            "python",
+            django_image,
+            "manage.py",
+            "migrate",
+            "sitecontent",
+        ]
+        mixed_check = common + [
+            "--read-only",
+            "--tmpfs",
+            "/tmp:rw,noexec,nosuid,size=64m",
+            "-v",
+            f"{root}:/workspace:ro",
+            "-w",
+            "/workspace",
+            "-e",
+            "PYTHONPATH=/workspace",
+            "-e",
+            "DB_HOST=127.0.0.1",
+            "-e",
+            "DB_PORT=5432",
+            "-e",
+            "DB_NAME=base2",
+            "-e",
+            "DB_USER=base2",
+            "-e",
+            f"DB_PASSWORD={owner_password}",
+            "--entrypoint",
+            "python",
+            api_image,
+            "scripts/python/run_mixed_version_postgres_checks.py",
+        ]
+        run(django_migration + ["0025", "--noinput"], stdout=subprocess.DEVNULL)
+        run(mixed_check + ["old"])
+        run(django_migration + ["0026", "--noinput"], stdout=subprocess.DEVNULL)
+        run(mixed_check + ["new"])
+        run_idempotent_native_safe(
             common
             + [
                 "--read-only",
@@ -118,6 +260,10 @@ def main() -> None:
                 "/workspace/django",
                 "-e",
                 "PYTHONPATH=/workspace/django",
+                "-e",
+                "PYTHONHASHSEED=0",
+                "-e",
+                "PYTHONMALLOC=malloc",
                 "-e",
                 "DJANGO_SETTINGS_MODULE=project.settings.base",
                 "-e",
@@ -132,10 +278,18 @@ def main() -> None:
                 f"DB_PASSWORD={owner_password}",
                 "-e",
                 "WORKSPACE_DB_USER=base2_workspace_runtime",
-                "--entrypoint",
-                "python",
+                "-e",
+                "API_RUNTIME_DB_USER=base2_api_runtime",
                 "-e",
                 "WORKSPACE_WORKER_DB_USER=base2_workspace_worker",
+                "-e",
+                "RUNTIME_WORKER_DB_USER=base2_runtime_worker",
+                "-e",
+                "EMAIL_WORKER_DB_USER=base2_email_worker",
+                "-e",
+                "DATA_RIGHTS_WORKER_DB_USER=base2_data_rights_worker",
+                "--entrypoint",
+                "python",
                 django_image,
                 "manage.py",
                 "migrate",
@@ -169,12 +323,28 @@ def main() -> None:
                 "WORKSPACE_DB_USER=base2_workspace_runtime",
                 "-e",
                 f"WORKSPACE_DB_PASSWORD={runtime_password}",
-                "--entrypoint",
-                "python",
+                "-e",
+                "API_RUNTIME_DB_USER=base2_api_runtime",
+                "-e",
+                f"API_RUNTIME_DB_PASSWORD={api_runtime_password}",
                 "-e",
                 "WORKSPACE_WORKER_DB_USER=base2_workspace_worker",
                 "-e",
                 f"WORKSPACE_WORKER_DB_PASSWORD={worker_password}",
+                "-e",
+                "RUNTIME_WORKER_DB_USER=base2_runtime_worker",
+                "-e",
+                f"RUNTIME_WORKER_DB_PASSWORD={runtime_worker_password}",
+                "-e",
+                "EMAIL_WORKER_DB_USER=base2_email_worker",
+                "-e",
+                f"EMAIL_WORKER_DB_PASSWORD={email_worker_password}",
+                "-e",
+                "DATA_RIGHTS_WORKER_DB_USER=base2_data_rights_worker",
+                "-e",
+                f"DATA_RIGHTS_WORKER_DB_PASSWORD={data_rights_worker_password}",
+                "--entrypoint",
+                "python",
                 api_image,
                 "scripts/python/run_workspace_postgres_checks.py",
             ]
@@ -204,7 +374,15 @@ def main() -> None:
             "-e",
             "WORKSPACE_DB_USER=base2_workspace_runtime",
             "-e",
+            "API_RUNTIME_DB_USER=base2_api_runtime",
+            "-e",
             "WORKSPACE_WORKER_DB_USER=base2_workspace_worker",
+            "-e",
+            "RUNTIME_WORKER_DB_USER=base2_runtime_worker",
+            "-e",
+            "EMAIL_WORKER_DB_USER=base2_email_worker",
+            "-e",
+            "DATA_RIGHTS_WORKER_DB_USER=base2_data_rights_worker",
             "--entrypoint",
             "python",
             django_image,
@@ -235,15 +413,38 @@ def main() -> None:
             "-e",
             "WORKSPACE_DB_USER=base2_workspace_runtime",
             "-e",
+            "API_RUNTIME_DB_USER=base2_api_runtime",
+            "-e",
             "WORKSPACE_WORKER_DB_USER=base2_workspace_worker",
+            "-e",
+            "RUNTIME_WORKER_DB_USER=base2_runtime_worker",
+            "-e",
+            "EMAIL_WORKER_DB_USER=base2_email_worker",
+            "-e",
+            "DATA_RIGHTS_WORKER_DB_USER=base2_data_rights_worker",
             "--entrypoint",
             "python",
             api_image,
             "scripts/python/run_workspace_role_migration_checks.py",
         ]
-        run(django_migration + ["0009", "--noinput"], stdout=subprocess.DEVNULL)
+        run_idempotent_native_safe(
+            django_migration + ["0031", "--noinput"], stdout=subprocess.DEVNULL
+        )
+        run(role_check + ["api-reversed"])
+        run_idempotent_native_safe(
+            django_migration + ["0032", "--noinput"], stdout=subprocess.DEVNULL
+        )
+        run_idempotent_native_safe(
+            django_migration + ["0033", "--noinput"], stdout=subprocess.DEVNULL
+        )
+        run(role_check + ["api-forward"])
+        run_idempotent_native_safe(
+            django_migration + ["0009", "--noinput"], stdout=subprocess.DEVNULL
+        )
         run(role_check + ["reversed"])
-        run(django_migration + ["0010", "--noinput"], stdout=subprocess.DEVNULL)
+        run_idempotent_native_safe(
+            django_migration + ["0010", "--noinput"], stdout=subprocess.DEVNULL
+        )
         run(role_check + ["forward"])
         media_check = common + [
             "--read-only",
@@ -270,19 +471,41 @@ def main() -> None:
             "-e",
             f"WORKSPACE_DB_PASSWORD={runtime_password}",
             "-e",
+            "API_RUNTIME_DB_USER=base2_api_runtime",
+            "-e",
+            f"API_RUNTIME_DB_PASSWORD={api_runtime_password}",
+            "-e",
             "WORKSPACE_WORKER_DB_USER=base2_workspace_worker",
             "-e",
             f"WORKSPACE_WORKER_DB_PASSWORD={worker_password}",
+            "-e",
+            "RUNTIME_WORKER_DB_USER=base2_runtime_worker",
+            "-e",
+            f"RUNTIME_WORKER_DB_PASSWORD={runtime_worker_password}",
+            "-e",
+            "EMAIL_WORKER_DB_USER=base2_email_worker",
+            "-e",
+            f"EMAIL_WORKER_DB_PASSWORD={email_worker_password}",
+            "-e",
+            "DATA_RIGHTS_WORKER_DB_USER=base2_data_rights_worker",
+            "-e",
+            f"DATA_RIGHTS_WORKER_DB_PASSWORD={data_rights_worker_password}",
             "--entrypoint",
             "python",
             api_image,
             "scripts/python/run_media_postgres_checks.py",
         ]
-        run(django_migration + ["0017", "--noinput"], stdout=subprocess.DEVNULL)
+        run_idempotent_native_safe(
+            django_migration + ["0017", "--noinput"], stdout=subprocess.DEVNULL
+        )
         run(media_check + ["forward"])
-        run(django_migration + ["0010", "--noinput"], stdout=subprocess.DEVNULL)
+        run_idempotent_native_safe(
+            django_migration + ["0010", "--noinput"], stdout=subprocess.DEVNULL
+        )
         run(media_check + ["reversed"])
-        run(django_migration + ["0017", "--noinput"], stdout=subprocess.DEVNULL)
+        run_idempotent_native_safe(
+            django_migration + ["0017", "--noinput"], stdout=subprocess.DEVNULL
+        )
         run(media_check + ["forward"])
     finally:
         if started:

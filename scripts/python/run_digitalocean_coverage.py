@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run DigitalOcean coverage in isolated, native-crash-bounded partitions."""
+"""Run DigitalOcean coverage in isolated deterministic sysmon partitions."""
 
 from __future__ import annotations
 
@@ -8,7 +8,6 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-
 
 PARTITION_SIZE = 4
 MAX_ATTEMPTS = 3
@@ -38,7 +37,9 @@ def main() -> None:
     groups = [tests[index : index + PARTITION_SIZE] for index in range(0, len(tests), PARTITION_SIZE)]
     environment = {
         **os.environ,
-        'COVERAGE_CORE': 'ctrace',
+        # Python 3.12 sys.monitoring avoids both native C-tracer corruption and
+        # PyTracer state corruption observed as invalid pathlib internals.
+        'COVERAGE_CORE': 'sysmon',
         'COVERAGE_FILE': str(raw_dir / '.coverage.digitalocean'),
     }
     base = [

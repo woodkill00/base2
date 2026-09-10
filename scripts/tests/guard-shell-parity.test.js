@@ -38,3 +38,15 @@ test('guard allows allowlisted payloads only in allowed contexts', () => {
   assert.notEqual(blockedResult.status, 0);
   assert.match(blockedResult.stdout + blockedResult.stderr, /ps_calls_sh/);
 });
+
+test('production readiness golden paths are native and expose the same actions', () => {
+  const fs = require('node:fs');
+  const bash = fs.readFileSync(path.join(repoRoot, 'scripts', 'bash', 'production-ready.sh'), 'utf8');
+  const powershell = fs.readFileSync(path.join(repoRoot, 'scripts', 'powershell', 'production-ready.ps1'), 'utf8');
+  for (const action of ['setup', 'generate', 'migrate', 'test', 'preview', 'release', 'recover', 'rollback']) {
+    assert.match(bash, new RegExp(`\\b${action}\\b`));
+    assert.match(powershell, new RegExp(`['\"]${action}['\"]`));
+  }
+  assert.doesNotMatch(bash, /powershell|pwsh/i);
+  assert.doesNotMatch(powershell, /bash|wsl/i);
+});

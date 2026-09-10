@@ -19,6 +19,8 @@ http:
       middlewares:
         - security-headers
         - security-csp
+        - request-limits
+        - tenant-concurrency
         - rate-limit
         - retry
       tls:
@@ -89,6 +91,8 @@ http:
       middlewares:
         - security-headers
         - security-csp
+        - request-limits
+        - tenant-concurrency
         - rate-limit
       tls:
         certResolver: ${TRAEFIK_CERT_RESOLVER}
@@ -112,6 +116,7 @@ http:
       middlewares:
         - security-headers
         - security-csp-swagger
+        - traefik-basic-auth
         - rate-limit
         - retry
       tls:
@@ -125,6 +130,8 @@ http:
       entryPoints:
         - websecure
       middlewares:
+        - security-headers
+        - traefik-basic-auth
         - swagger-root-to-docs
       tls:
         certResolver: ${TRAEFIK_CERT_RESOLVER}
@@ -175,16 +182,19 @@ http:
   services:
     frontend-react:
       loadBalancer:
+        serversTransport: base2-bounded
         servers:
           - url: http://react-app:8080
 
     api:
       loadBalancer:
+        serversTransport: base2-bounded
         servers:
           - url: http://api:${FASTAPI_PORT}
 
     django-admin:
       loadBalancer:
+        serversTransport: base2-bounded
         servers:
           - url: http://django:${DJANGO_PORT}
 
@@ -202,6 +212,13 @@ http:
       loadBalancer:
         servers:
           - url: http://flower:5555
+
+  serversTransports:
+    base2-bounded:
+      forwardingTimeouts:
+        dialTimeout: 10s
+        responseHeaderTimeout: 30s
+        idleConnTimeout: 30s
 
   middlewares:
     redirect-to-https:
@@ -274,6 +291,16 @@ http:
       rateLimit:
         average: 100
         burst: 50
+
+    request-limits:
+      buffering:
+        maxRequestBodyBytes: 10485760
+        memRequestBodyBytes: 1048576
+        retryExpression: 'IsNetworkError() && Attempts() < 2'
+
+    tenant-concurrency:
+      inFlightReq:
+        amount: 16
 
     retry:
       retry:

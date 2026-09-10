@@ -39,6 +39,10 @@ def test_auth_login_rate_limited_includes_retry_after(monkeypatch):
 
     fake = _FakeRedis()
     monkeypatch.setattr(rl, 'get_client', lambda: fake)
+    # Keep all requests inside one fixed window. The production limiter is
+    # intentionally wall-clock aligned; allowing this test to cross a minute
+    # boundary makes the sixth request correctly enter a new bucket.
+    monkeypatch.setattr(rl, 'now_ms', lambda: 1_700_000_030_000)
 
     # Avoid hitting the DB; simulate invalid credentials for first N attempts.
     def fake_login_user(

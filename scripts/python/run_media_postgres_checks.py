@@ -110,9 +110,7 @@ def main() -> None:
                 assert set(commands) == {"SELECT", "INSERT", "UPDATE", "DELETE"}, commands
                 assert "current_user" in commands["SELECT"][1].lower()
                 assert "current_user" not in commands["INSERT"][2].lower()
-                assert "current_user" not in (
-                    commands["UPDATE"][1] + commands["UPDATE"][2]
-                ).lower()
+                assert "current_user" not in (commands["UPDATE"][1] + commands["UPDATE"][2]).lower()
                 assert "current_user" not in commands["DELETE"][1].lower()
             cursor.execute(
                 """SELECT conname, convalidated FROM pg_constraint
@@ -162,8 +160,14 @@ def main() -> None:
                           (%s,%s,'safe','b-safe.bin','application/octet-stream',1,%s,NULL,NULL,
                            FALSE,'test','test-v1',1,%s,NOW())""",
                 (
-                    str(UUID(int=620)), str(UUID(int=610)), "c" * 64, "a" * 64,
-                    str(UUID(int=621)), str(UUID(int=611)), "d" * 64, "b" * 64,
+                    str(UUID(int=620)),
+                    str(UUID(int=610)),
+                    "c" * 64,
+                    "a" * 64,
+                    str(UUID(int=621)),
+                    str(UUID(int=611)),
+                    "d" * 64,
+                    "b" * 64,
                 ),
             )
 
@@ -204,13 +208,9 @@ def main() -> None:
                 else:
                     raise AssertionError("media_worker_unscoped_mutation_was_not_blocked")
             with worker, worker.cursor() as cursor:
-                cursor.execute(
-                    "UPDATE sitecontent_mediaasset SET original_name='unbound'"
-                )
+                cursor.execute("UPDATE sitecontent_mediaasset SET original_name='unbound'")
                 assert cursor.rowcount == 0, "media_asset_unbound_update_was_not_blocked"
-                cursor.execute(
-                    "UPDATE sitecontent_mediavariant SET storage_key='unbound'"
-                )
+                cursor.execute("UPDATE sitecontent_mediavariant SET storage_key='unbound'")
                 assert cursor.rowcount == 0, "media_variant_unbound_update_was_not_blocked"
             with worker, worker.cursor() as cursor:
                 cursor.execute("SELECT set_config('app.tenant_id', 'site-a', true)")
@@ -273,9 +273,7 @@ def main() -> None:
                 cursor.execute(
                     "SELECT site_id,original_name FROM sitecontent_mediaasset ORDER BY site_id"
                 )
-                assert cursor.fetchall() == [
-                    ('site-a', 'a-updated'), ('site-b', 'b-updated')
-                ]
+                assert cursor.fetchall() == [("site-a", "a-updated"), ("site-b", "b-updated")]
                 cursor.execute(
                     """SELECT asset.site_id,variant.storage_key
                        FROM sitecontent_mediavariant variant
@@ -283,7 +281,8 @@ def main() -> None:
                        ORDER BY asset.site_id"""
                 )
                 assert cursor.fetchall() == [
-                    ('site-a', 'a-updated.bin'), ('site-b', 'b-updated.bin')
+                    ("site-a", "a-updated.bin"),
+                    ("site-b", "b-updated.bin"),
                 ]
 
             # Exercise the production lease helpers against real RLS. Two
@@ -319,7 +318,7 @@ def main() -> None:
                            VALUES (%s,'site-a','user:test','csv','{}'::jsonb,'queued',
                                    '','',%s,NOW()+INTERVAL '1 hour','',
                                    NOW()+(%s*INTERVAL '1 second'),NOW())""",
-                        (str(UUID(int=700 + index)), f'{index:064x}', index),
+                        (str(UUID(int=700 + index)), f"{index:064x}", index),
                     )
                 for index in range(2):
                     cursor.execute(
@@ -330,29 +329,40 @@ def main() -> None:
                            VALUES (%s,'site-b','user:test','csv','{}'::jsonb,'queued',
                                    '','',%s,NOW()+INTERVAL '1 hour','',
                                    NOW()+((20+%s)*INTERVAL '1 second'),NOW())""",
-                        (str(UUID(int=800 + index)), f'{index + 100:064x}', index),
+                        (str(UUID(int=800 + index)), f"{index + 100:064x}", index),
                     )
             export_repository = PostgresMediaLibraryRepository()
             replay = export_repository.create_export(
-                site_id='site-a', actor_ref='user:test', output_format='csv',
-                projection={}, request_digest=f'{0:064x}',
-                expires_at=datetime.now().astimezone(), maximum_outstanding=10,
+                site_id="site-a",
+                actor_ref="user:test",
+                output_format="csv",
+                projection={},
+                request_digest=f"{0:064x}",
+                expires_at=datetime.now().astimezone(),
+                maximum_outstanding=10,
             )
-            assert replay['replayed'] is True
+            assert replay["replayed"] is True
             try:
                 export_repository.create_export(
-                    site_id='site-a', actor_ref='user:test', output_format='csv',
-                    projection={}, request_digest='f' * 64,
-                    expires_at=datetime.now().astimezone(), maximum_outstanding=10,
+                    site_id="site-a",
+                    actor_ref="user:test",
+                    output_format="csv",
+                    projection={},
+                    request_digest="f" * 64,
+                    expires_at=datetime.now().astimezone(),
+                    maximum_outstanding=10,
                 )
             except ValueError as exc:
-                assert str(exc) == 'media_export_capacity_exceeded'
+                assert str(exc) == "media_export_capacity_exceeded"
             else:
-                raise AssertionError('media_export_capacity_was_not_enforced')
+                raise AssertionError("media_export_capacity_was_not_enforced")
             fair = due_media_exports(limit=4)
             assert [site for site, _identifier in fair] == [
-                'site-a', 'site-b', 'site-a', 'site-b'
-            ], f'media_export_discovery_unfair:{fair}'
+                "site-a",
+                "site-b",
+                "site-a",
+                "site-b",
+            ], f"media_export_discovery_unfair:{fair}"
 
             with ThreadPoolExecutor(max_workers=2) as executor:
                 deliveries = list(executor.map(lambda _index: due_media_scans(limit=10), range(2)))
@@ -390,7 +400,7 @@ def main() -> None:
                 job_id=UUID(job_id),
                 attempt=attempt,
                 lease_token=lease_token,
-                result='quarantined',
+                result="quarantined",
             )
             assert due_media_scans(limit=10) == [], "media_retry_backoff_was_not_enforced"
 
@@ -429,7 +439,7 @@ def main() -> None:
                 job_id=UUID(job_id),
                 attempt=2,
                 lease_token=recovered_token,
-                result='scanned_infected',
+                result="scanned_infected",
             )
             with owner, owner.cursor() as cursor:
                 cursor.execute(
@@ -437,7 +447,7 @@ def main() -> None:
                        FROM sitecontent_mediajob WHERE id=%s""",
                     (job_id,),
                 )
-                assert cursor.fetchone() == ('failed', 2, 'media_inspection_rejected', None)
+                assert cursor.fetchone() == ("failed", 2, "media_inspection_rejected", None)
 
                 cursor.execute(
                     """INSERT INTO sitecontent_mediaasset
@@ -450,7 +460,7 @@ def main() -> None:
                                '2099-01-01',%s::jsonb,'private',1,1,1,NULL,NOW(),NOW())""",
                     (
                         str(UUID(int=612)),
-                        'f' * 64,
+                        "f" * 64,
                         '{"admission":"content_verified"}',
                     ),
                 )
@@ -477,15 +487,15 @@ def main() -> None:
             from api.services.media_library_runtime import apply_due_media_governance
 
             assert apply_due_media_governance(limit=10) == {
-                'holdsExpired': 0,
-                'abuseCasesEnforced': 1,
+                "holdsExpired": 0,
+                "abuseCasesEnforced": 1,
             }
             finish_media_scan_attempt(
                 site_id=sup_site,
                 job_id=UUID(sup_job),
                 attempt=sup_attempt,
                 lease_token=sup_token,
-                result='not_ready',
+                result="not_ready",
             )
             with owner, owner.cursor() as cursor:
                 cursor.execute(
@@ -497,30 +507,34 @@ def main() -> None:
                     (sup_job,),
                 )
                 assert cursor.fetchone() == (
-                    'cancelled', 1, 'media_scan_superseded', None, 'archived'
+                    "cancelled",
+                    1,
+                    "media_scan_superseded",
+                    None,
+                    "archived",
                 )
                 cursor.execute(
                     """SELECT event_type,actor_ref,detail
                        FROM sitecontent_mediaauditevent
                        WHERE site_id='site-a' AND subject_ref=%s
                        ORDER BY sequence DESC LIMIT 1""",
-                    (f'asset:{sup_asset}',),
+                    (f"asset:{sup_asset}",),
                 )
                 event_type, actor_ref, detail = cursor.fetchone()
-                assert event_type == 'media.inspection.superseded'
-                assert actor_ref == 'system:media-worker'
+                assert event_type == "media.inspection.superseded"
+                assert actor_ref == "system:media-worker"
                 assert detail == {
-                    'code': 'media_scan_superseded',
-                    'status': 'cancelled',
-                    'reason': 'asset_ineligible',
-                    'count': 1,
+                    "code": "media_scan_superseded",
+                    "status": "cancelled",
+                    "reason": "asset_ineligible",
+                    "count": 1,
                 }
-            assert due_media_scans(limit=10) == [], 'superseded_scan_was_rediscovered'
+            assert due_media_scans(limit=10) == [], "superseded_scan_was_rediscovered"
 
             delayed_asset = UUID(int=613)
             delayed_version = 3
             delayed_digest = hashlib.sha256(
-                f'site-a\0{delayed_asset}\0owner\0soft_deleted\0{delayed_version}'.encode()
+                f"site-a\0{delayed_asset}\0owner\0soft_deleted\0{delayed_version}".encode()
             ).hexdigest()
             with owner, owner.cursor() as cursor:
                 cursor.execute(
@@ -532,7 +546,7 @@ def main() -> None:
                        VALUES (%s,'site-a','purged.bin','purged.bin','application/octet-stream',
                                1,%s,'purged','owner','','2099-01-01','{}','private',1,1,8,
                                NOW(),NOW(),NOW())""",
-                    (str(delayed_asset), '9' * 64),
+                    (str(delayed_asset), "9" * 64),
                 )
                 cursor.execute(
                     """INSERT INTO sitecontent_mediaoutboxevent
@@ -542,7 +556,7 @@ def main() -> None:
                                'completed',1,5,NOW(),'',NOW(),NOW())""",
                     (
                         str(UUID(int=640)),
-                        f'asset:{delayed_asset}',
+                        f"asset:{delayed_asset}",
                         delayed_digest,
                     ),
                 )
@@ -550,44 +564,44 @@ def main() -> None:
 
             media_repository = PostgresMediaLibraryRepository()
             assert media_repository.transition_asset(
-                site_id='site-a',
+                site_id="site-a",
                 asset_id=delayed_asset,
-                actor_ref='owner',
-                target='soft_deleted',
+                actor_ref="owner",
+                target="soft_deleted",
                 expected_version=delayed_version,
-                idempotency_key='delayed-delete',
+                idempotency_key="delayed-delete",
             ) == {
-                'id': str(delayed_asset),
-                'status': 'soft_deleted',
-                'version': 4,
-                'replayed': True,
+                "id": str(delayed_asset),
+                "status": "soft_deleted",
+                "version": 4,
+                "replayed": True,
             }
             try:
                 media_repository.transition_asset(
-                    site_id='site-a',
+                    site_id="site-a",
                     asset_id=delayed_asset,
-                    actor_ref='owner',
-                    target='archived',
+                    actor_ref="owner",
+                    target="archived",
                     expected_version=delayed_version,
-                    idempotency_key='delayed-delete',
+                    idempotency_key="delayed-delete",
                 )
             except ValueError as exc:
-                assert str(exc) == 'media_idempotency_conflict'
+                assert str(exc) == "media_idempotency_conflict"
             else:
-                raise AssertionError('media_changed_delayed_replay_was_not_rejected')
+                raise AssertionError("media_changed_delayed_replay_was_not_rejected")
             try:
                 media_repository.transition_asset(
-                    site_id='site-a',
+                    site_id="site-a",
                     asset_id=delayed_asset,
-                    actor_ref='owner',
-                    target='archived',
+                    actor_ref="owner",
+                    target="archived",
                     expected_version=8,
-                    idempotency_key='new-after-purge',
+                    idempotency_key="new-after-purge",
                 )
             except ValueError as exc:
-                assert str(exc) == 'media_not_found'
+                assert str(exc) == "media_not_found"
             else:
-                raise AssertionError('media_new_purge_state_mutation_was_not_rejected')
+                raise AssertionError("media_new_purge_state_mutation_was_not_rejected")
 
             with owner, owner.cursor() as cursor:
                 cursor.execute(
@@ -597,7 +611,7 @@ def main() -> None:
                     ('{"admission":"content_verified"}', str(UUID(int=611))),
                 )
             clean_claims = due_media_scans(limit=10)
-            assert len(clean_claims) == 1 and clean_claims[0][0] == 'site-b', clean_claims
+            assert len(clean_claims) == 1 and clean_claims[0][0] == "site-b", clean_claims
             clean_site, clean_asset, clean_job, clean_attempt, clean_lease = clean_claims[0]
             clean_token = datetime.fromisoformat(clean_lease)
             assert begin_media_scan_attempt(
@@ -612,7 +626,7 @@ def main() -> None:
                 job_id=UUID(clean_job),
                 attempt=clean_attempt,
                 lease_token=clean_token,
-                result='validated_safe_derivative',
+                result="validated_safe_derivative",
             )
             with owner, owner.cursor() as cursor:
                 cursor.execute(
@@ -621,12 +635,12 @@ def main() -> None:
                     (clean_job,),
                 )
                 clean_row = cursor.fetchone()
-                assert clean_row == ('completed', 1, '', 'b' * 64, None), clean_row
+                assert clean_row == ("completed", 1, "", "b" * 64, None), clean_row
                 cursor.execute(
                     """UPDATE sitecontent_mediaasset
                        SET current_object_version=2,sha256=%s,status='quarantined',updated_at=NOW()
                        WHERE site_id='site-b' AND id=%s""",
-                    ('e' * 64, str(UUID(int=611))),
+                    ("e" * 64, str(UUID(int=611))),
                 )
             exception_claims = due_media_scans(limit=10)
             assert len(exception_claims) == 1, exception_claims
@@ -652,7 +666,11 @@ def main() -> None:
                     (error_job,),
                 )
                 assert cursor.fetchone() == (
-                    'retryable', 1, 'media_dependency_unavailable', None, True
+                    "retryable",
+                    1,
+                    "media_dependency_unavailable",
+                    None,
+                    True,
                 )
             assert due_media_scans(limit=10) == [], "media_exception_backoff_was_not_enforced"
             close_pool()

@@ -33,7 +33,7 @@ In `ENV=staging` and `ENV=production`, services fail fast on startup if required
 
 ## Email
 
-Django and FastAPI both support SMTP-style env vars (see `.env.example`). If SMTP is not configured, the system may fall back to local/outbox behavior depending on the service.
+Django and FastAPI support SMTP-style configuration (see `.env.example`). Production startup requires the `smtp` adapter and valid non-secret connection metadata. Only the dedicated `email-worker` receives owner-only SMTP credential files; production never silently marks disabled delivery as successful. The database outbox, claim token, and stable delivery key provide durable at-least-once delivery. SMTP itself cannot prove exactly-once delivery after a connection loss, so duplicate-tolerant templates and deterministic `Message-ID` values are required; a provider API with an idempotency key is required if a deployment needs provider-guaranteed deduplication.
 
 ## Feature flags
 

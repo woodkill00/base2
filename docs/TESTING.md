@@ -43,6 +43,41 @@ Coverage thresholds enforced in CI and deploy gate.
 - Tests: `cd react-app && npm run test:ci`
 - E2E: `cd react-app && npm run e2e`
 
+### Isolated fresh-volume E2E proof (WSL/Linux)
+
+Use the bounded runner below when an existing Base2 stack must remain running.
+It owns only the fixed `base2-e2e-isolated` Compose project, removes that exact
+project and its volumes before starting, waits for API, test-support, and web
+health, runs both real browser and API/auth journeys, and tears its project down
+on success, failure, or interruption. It acquires a nonblocking local lock
+before touching Docker, so concurrent invocations fail safely instead of
+precleaning one another's disposable project.
+
+```bash
+scripts/bash/e2e-isolated.sh
+```
+
+The owner/contender and final empty-inventory contract is exercised with:
+
+```bash
+scripts/bash/e2e-isolated-concurrency-proof.sh
+```
+
+The runner defaults to loopback ports `15001`, `15002`, and `18080`. Optional
+overrides use only `E2E_API_PORT`, `E2E_TEST_SUPPORT_PORT`, and `E2E_WEB_PORT`;
+values must be distinct numeric unprivileged ports. Hosted CI retains defaults
+`5001`, `5002`, and `8080`. API and web publication is loopback-only in both
+cases. `E2E_WEB_ORIGIN` is derived by the runner, while browser API calls remain
+same-origin and traverse the frontend container's fixed private-network `/api`
+proxy. The browser, CORS policy, and tested services therefore stay in the same
+isolated namespace without relaxing Content Security Policy.
+
+Parallel visual reviewers must also select distinct loopback-only ports. The
+release gate keeps the default `4174`; an independent review can use, for
+example, `BASE2_VISUAL_PORT=4175 npm run test:visual`. The value is accepted
+only when it is a numeric unprivileged TCP port from 1024 through 65535, the
+preview remains bound to `127.0.0.1`, and existing servers are never reused.
+
 ### React Router v7 future flags (tests-only)
 
 - Production: Router flags are configured in app code (see `react-app/src/App.js`).

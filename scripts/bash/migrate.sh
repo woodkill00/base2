@@ -54,4 +54,7 @@ fi
 
 cd "$PROJECT_ROOT"
 
-docker compose --env-file "$ENV_PATH" -f "$COMPOSE_PATH" exec -T django python manage.py migrate
+compose=(docker compose --env-file "$ENV_PATH" -f "$COMPOSE_PATH")
+"${compose[@]}" run --rm workspace-db-role
+"${compose[@]}" run --rm --no-deps api-migrate python -m api.scripts.migrate
+"${compose[@]}" run --rm --no-deps django python manage.py migrate --noinput

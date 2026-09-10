@@ -17,6 +17,7 @@ if str(ROOT) not in sys.path:
 
 from scripts.python.module_lifecycle import ModuleLifecycle
 from scripts.python.module_registry import ModuleRegistry
+from scripts.python.sign_builtin_modules import enrich
 
 
 SEMANTIC_VERSION = re.compile(r'^(\d+)\.(\d+)\.(\d+)$')
@@ -65,6 +66,7 @@ def run() -> dict:
             lifecycle_counts['enable'] += 1
             upgraded = json.loads(json.dumps(module))
             upgraded['version'] = _next_patch(module['version'])
+            upgraded = enrich(upgraded)
             lifecycle.upgrade_preview(upgraded)
             lifecycle.apply(operation_id=f'upgrade-{item["id"]}', action='upgrade', manifest_payload=upgraded)
             lifecycle_counts['upgrade'] += 1

@@ -7,13 +7,19 @@ import ast
 import os
 import re
 from collections.abc import Mapping
+from urllib.parse import urlsplit
 
 KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 TEMPLATE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 REGION = re.compile(r"^[a-z]{2,4}[0-9]{1,2}$")
 NAME = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 IMAGE = re.compile(r"^(?:[0-9]+|[a-z0-9][a-z0-9._-]{1,127})$")
+PROJECT = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 SENSITIVE = re.compile(r"(?:TOKEN|PASSWORD|SECRET|PRIVATE|SPACES_KEY|SSH_KEY_ID)$")
+IP_POLL_TIMEOUT_MIN = 30
+IP_POLL_TIMEOUT_MAX = 600
+IP_POLL_INTERVAL_MIN = 1
+IP_POLL_INTERVAL_MAX = 30
 
 KNOWN_DO_KEYS = {
     "DO_ALERT_EMAIL",
@@ -65,6 +71,8 @@ KNOWN_DO_KEYS = {
     "DO_OAUTH_CLIENT_ID",
     "DO_OAUTH_CLIENT_SECRET",
     "DO_PROJECT_ID",
+    "DO_PROVISION_LEASE_GIT_REMOTE",
+    "DO_PROVISION_LEASE_GIT_ASKPASS",
     "DO_REGISTRY_NAME",
     "DO_REPOSITORY_NAME",
     "DO_SKIP_DNS",
@@ -146,14 +154,48 @@ def normalize_deploy_config(
         "DO_DROPLET_NAME": NAME,
         "DO_API_IMAGE": IMAGE,
         "DO_DROPLET_IMAGE": IMAGE,
+        "PROJECT_NAME": PROJECT,
     }
     for key, pattern in validators.items():
         value = normalized.get(key)
         if value is not None and not pattern.fullmatch(value):
             raise DeployConfigError(f"{key} is malformed")
+    if "DEPLOY_PATH" in normalized:
+        deploy_path = normalized["DEPLOY_PATH"]
+        if deploy_path not in {"/opt/apps", "/opt/apps/"}:
+            raise DeployConfigError("DEPLOY_PATH must be the canonical /opt/apps/ root")
+        normalized["DEPLOY_PATH"] = "/opt/apps/"
+    timeout_raw = normalized.get("DO_IP_POLL_TIMEOUT_SECONDS", "120")
+    interval_raw = normalized.get("DO_IP_POLL_INTERVAL_SECONDS", "5")
+    try:
+        timeout = int(timeout_raw)
+        interval = int(interval_raw)
+    except ValueError as exc:
+        raise DeployConfigError("provider polling bounds must be integers") from exc
+    if not IP_POLL_TIMEOUT_MIN <= timeout <= IP_POLL_TIMEOUT_MAX:
+        raise DeployConfigError("DO_IP_POLL_TIMEOUT_SECONDS is outside the bounded range")
+    if not IP_POLL_INTERVAL_MIN <= interval <= min(IP_POLL_INTERVAL_MAX, timeout):
+        raise DeployConfigError("DO_IP_POLL_INTERVAL_SECONDS is outside the bounded range")
+    normalized["DO_IP_POLL_TIMEOUT_SECONDS"] = str(timeout)
+    normalized["DO_IP_POLL_INTERVAL_SECONDS"] = str(interval)
     unresolved = sorted(key for key, value in normalized.items() if "${" in value)
     if unresolved:
         raise DeployConfigError("unresolved template in: " + ", ".join(unresolved))
+    for key in ("REPO_URL", "GIT_REPO", "DO_GIT_REPO"):
+        value = normalized.get(key)
+        if not value:
+            continue
+        parsed = urlsplit(value)
+        if (
+            parsed.scheme != "https"
+            or not parsed.hostname
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.query
+            or parsed.fragment
+            or not re.fullmatch(r"/[A-Za-z0-9._/-]+(?:\.git)?", parsed.path)
+        ):
+            raise DeployConfigError(f"{key} must be a credential-free HTTPS repository URL")
     return normalized
 
 

@@ -38,8 +38,8 @@ def test_export_is_encrypted_durable_and_dispatch_failure_is_visible(monkeypatch
 
     monkeypatch.setattr('api.routes.privacy.repository.create_operation', create)
     monkeypatch.setattr(
-        'api.tasks.process_data_rights_operation.delay',
-        lambda operation_id: (_ for _ in ()).throw(RuntimeError('broker unavailable')),
+        'api.tasks.replay_data_rights_operations.delay',
+        lambda limit: (_ for _ in ()).throw(RuntimeError('broker unavailable')),
     )
     response = TestClient(app).post(
         '/api/privacy/export', headers={'X-Tenant-Id': 'tenant-a'}
@@ -121,6 +121,38 @@ def test_correction_deactivation_and_deletion_validate_before_storage(monkeypatc
     assert deletion.json()['detail'] == 'deletion_confirmation_invalid'
     assert deactivation.status_code == 422
     assert deactivation.json()['detail'] == 'deactivation_confirmation_invalid'
+
+
+def test_tenant_and_global_account_actions_are_explicitly_distinct(monkeypatch):
+    key = Fernet.generate_key().decode('ascii')
+    captured = []
+    monkeypatch.setattr('api.routes.privacy.settings.IDENTITY_ENCRYPTION_KEY', key)
+    monkeypatch.setattr(
+        'api.routes.privacy.require_authenticated_principal', lambda request: _principal()
+    )
+    monkeypatch.setattr('api.routes.privacy.insert_audit_event', lambda **kwargs: None)
+    monkeypatch.setattr(
+        'api.routes.privacy.repository.create_operation',
+        lambda **kwargs: (captured.append(kwargs) or OPERATION_ID, True),
+    )
+    monkeypatch.setattr('api.routes.privacy._dispatch', lambda operation_id: 'queued')
+    client = TestClient(app)
+    headers = {'X-Tenant-Id': 'tenant-a'}
+    requests = (
+        ('/api/privacy/delete', 'DELETE', 'deletion'),
+        ('/api/privacy/deactivate', 'DEACTIVATE', 'deactivation'),
+        ('/api/privacy/global-delete', 'DELETE GLOBAL ACCOUNT', 'global_deletion'),
+        (
+            '/api/privacy/global-deactivate',
+            'DEACTIVATE GLOBAL ACCOUNT',
+            'global_deactivation',
+        ),
+    )
+    for path, confirmation, expected_kind in requests:
+        response = client.post(path, headers=headers, json={'confirmation': confirmation})
+        assert response.status_code == 202, response.text
+        assert response.json()['kind'] == expected_kind
+    assert [item['kind'] for item in captured] == [item[2] for item in requests]
 
 
 def test_export_download_is_integrity_checked_and_never_cached(monkeypatch):

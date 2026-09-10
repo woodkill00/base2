@@ -1,16 +1,20 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import GlassSidebar from '../components/glass/GlassSidebar';
+
+const renderSidebar = (node: React.ReactElement) => render(<MemoryRouter>{node}</MemoryRouter>);
 
 describe('GlassSidebar', () => {
   test('renders provided items', () => {
     const originalMatchMedia = window.matchMedia;
     window.matchMedia = undefined as unknown as typeof window.matchMedia;
 
-    const items = ['Home', 'Settings', 'Profile', 'Reports', 'Help'];
-    render(<GlassSidebar items={items} />);
-    for (const item of items) {
+    const labels = ['Home', 'Settings', 'Profile', 'Reports', 'Help'];
+    const items = labels.map((label) => ({ label, to: `/${label.toLowerCase()}` }));
+    renderSidebar(<GlassSidebar items={items} />);
+    for (const item of labels) {
       expect(screen.getByText(item)).toBeInTheDocument();
     }
 
@@ -32,7 +36,7 @@ describe('GlassSidebar', () => {
       }) as unknown as MediaQueryList;
 
     const user = userEvent.setup();
-    render(<GlassSidebar isOpen />);
+    renderSidebar(<GlassSidebar isOpen />);
 
     // Should not throw when closing via overlay click or ESC.
     await user.click(screen.getByTestId('drawer-overlay'));
@@ -55,7 +59,7 @@ describe('GlassSidebar', () => {
         dispatchEvent: () => false,
       }) as unknown as MediaQueryList;
 
-    render(<GlassSidebar isOpen />);
+    renderSidebar(<GlassSidebar isOpen />);
     expect(screen.queryByTestId('drawer-overlay')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Sidebar')).toBeInTheDocument();
 
@@ -76,7 +80,7 @@ describe('GlassSidebar', () => {
         dispatchEvent: () => false,
       }) as unknown as MediaQueryList;
 
-    render(<GlassSidebar isOpen={false} />);
+    renderSidebar(<GlassSidebar isOpen={false} />);
     expect(screen.queryByTestId('drawer-overlay')).not.toBeInTheDocument();
 
     window.matchMedia = originalMatchMedia;
@@ -111,7 +115,7 @@ describe('GlassSidebar', () => {
 
     const prevOverflow = document.body.style.overflow;
     const onClose = jest.fn();
-    const { unmount } = render(<GlassSidebar isOpen onClose={onClose} />);
+    const { unmount } = renderSidebar(<GlassSidebar isOpen onClose={onClose} />);
     expect(screen.getByTestId('drawer-overlay')).toBeInTheDocument();
     // Prove the effect ran (listener attached and scroll locked).
     expect(document.body.style.overflow).toBe('hidden');
@@ -156,7 +160,7 @@ describe('GlassSidebar', () => {
     });
 
     const prevOverflow = document.body.style.overflow;
-    const { unmount } = render(<GlassSidebar isOpen onClose={() => {}} />);
+    const { unmount } = renderSidebar(<GlassSidebar isOpen onClose={() => {}} />);
     expect(document.body.style.overflow).toBe('hidden');
 
     unmount();
@@ -184,7 +188,7 @@ describe('GlassSidebar', () => {
 
     const onClose = jest.fn();
     const prevOverflow = document.body.style.overflow;
-    const { unmount } = render(<GlassSidebar isOpen onClose={onClose} />);
+    const { unmount } = renderSidebar(<GlassSidebar isOpen onClose={onClose} />);
     expect(screen.getByTestId('drawer-overlay')).toBeInTheDocument();
 
     // Prove the effect ran (listener attached and scroll locked).
@@ -196,5 +200,213 @@ describe('GlassSidebar', () => {
     unmount();
     expect(document.body.style.overflow).toBe(prevOverflow);
     window.matchMedia = originalMatchMedia;
+  });
+
+  test('mobile navigation exposes its localized label, controlled id, and closes after keyboard activation', async () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = (query) =>
+      ({
+        matches: query.includes('max-width'),
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+      }) as unknown as MediaQueryList;
+
+    const onClose = jest.fn();
+    const user = userEvent.setup();
+    renderSidebar(
+      <GlassSidebar
+        id="primary-mobile-navigation"
+        label="Hauptnavigation"
+        isOpen
+        onClose={onClose}
+        items={[{ label: 'Einstellungen', to: '/settings' }]}
+      />
+    );
+
+    const navigation = screen.getByRole('navigation', { name: 'Hauptnavigation' });
+    expect(navigation).toHaveAttribute('id', 'primary-mobile-navigation');
+    const link = screen.getByRole('link', { name: 'Einstellungen' });
+    link.focus();
+    await act(async () => {
+      await user.keyboard('{Enter}');
+    });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    window.matchMedia = originalMatchMedia;
+  });
+
+  test('mobile drawer traps focus, makes the shell inert, and restores both on cleanup', () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = (query) =>
+      ({
+        matches: query.includes('max-width'),
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+      }) as unknown as MediaQueryList;
+
+    const { unmount } = render(
+      <MemoryRouter>
+        <div className="app-shell-root">
+          <header data-testid="shell-header" />
+          <GlassSidebar
+            isOpen
+            onClose={() => {}}
+            items={[
+              { label: 'Home', to: '/' },
+              { label: 'Settings', to: '/settings' },
+            ]}
+          />
+          <main data-testid="shell-main" />
+          <footer data-testid="shell-footer" />
+        </div>
+      </MemoryRouter>
+    );
+    const header = screen.getByTestId('shell-header');
+    const main = screen.getByTestId('shell-main');
+    const footer = screen.getByTestId('shell-footer');
+    expect(header.inert).toBe(true);
+    expect(main.inert).toBe(true);
+    expect(footer.inert).toBe(true);
+
+    const links = screen.getAllByRole('link');
+    const navigation = screen.getByRole('navigation', { name: 'Sidebar' });
+    expect(navigation).toHaveFocus();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true }));
+    expect(links.at(-1)).toHaveFocus();
+    links.at(-1)!.focus();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
+    expect(links[0]).toHaveFocus();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
+    expect(links[0]).toHaveFocus();
+    links[0].focus();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true }));
+    expect(links.at(-1)).toHaveFocus();
+
+    unmount();
+    expect(header.inert).not.toBe(true);
+    expect(main.inert).not.toBe(true);
+    expect(footer.inert).not.toBe(true);
+    window.matchMedia = originalMatchMedia;
+  });
+
+  test('mobile drawer retains focus when it contains no interactive items', () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = (query) =>
+      ({
+        matches: query.includes('max-width'),
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+      }) as unknown as MediaQueryList;
+
+    renderSidebar(<GlassSidebar isOpen items={[]} onClose={() => {}} />);
+    const navigation = screen.getByRole('navigation', { name: 'Sidebar' });
+    document.body.focus();
+    const propagated = document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', cancelable: true })
+    );
+    expect(propagated).toBe(false);
+    expect(navigation).toHaveFocus();
+    window.matchMedia = originalMatchMedia;
+  });
+
+  test('normalizes legacy string navigation for workspace and fallback routes', () => {
+    const { unmount } = renderSidebar(
+      <GlassSidebar items={['Drafts', 'Review', 'Published', 'Archive']} />
+    );
+    expect(screen.getByRole('link', { name: 'Drafts' })).toHaveAttribute(
+      'href',
+      '/workspace#drafts'
+    );
+    unmount();
+
+    renderSidebar(
+      <GlassSidebar
+        items={[
+          { label: 'One', to: '/one' },
+          { label: 'Two', to: '/two' },
+          { label: 'Three', to: '/three' },
+          { label: 'Four', to: '/four' },
+          { label: 'Five', to: '/five' },
+          'Six',
+        ]}
+      />
+    );
+    expect(screen.getByRole('link', { name: 'One' })).toHaveAttribute('href', '/one');
+    expect(screen.getByRole('link', { name: 'Six' })).toHaveAttribute('href', '/');
+  });
+
+  test('marks the current route for assistive technology', () => {
+    const originalPath = window.location.pathname;
+    window.history.pushState({}, '', '/settings');
+    renderSidebar(
+      <GlassSidebar
+        items={[
+          { label: 'Home', to: '/' },
+          { label: 'Settings', to: '/settings' },
+        ]}
+      />
+    );
+    expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Home' })).not.toHaveAttribute('aria-current');
+    window.history.pushState({}, '', originalPath);
+  });
+
+  test('marks only the exact workspace hash route as current and follows activation and history', async () => {
+    const originalPath = `${window.location.pathname}${window.location.hash}`;
+    window.history.pushState({}, '', '/workspace#schemas');
+    const onClose = jest.fn();
+    const user = userEvent.setup();
+    renderSidebar(
+      <GlassSidebar items={['Records', 'Schemas', 'Imports', 'Exports']} onClose={onClose} />
+    );
+    expect(screen.getByRole('link', { name: 'Schemas' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Records' })).not.toHaveAttribute('aria-current');
+    expect(screen.getByRole('link', { name: 'Imports' })).not.toHaveAttribute('aria-current');
+    expect(screen.getByRole('link', { name: 'Exports' })).not.toHaveAttribute('aria-current');
+    await act(async () => user.click(screen.getByRole('link', { name: 'Records' })));
+    expect(screen.getByRole('link', { name: 'Records' })).toHaveAttribute('aria-current', 'page');
+    expect(onClose).toHaveBeenCalledTimes(1);
+    window.history.pushState({}, '', '/workspace#imports');
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')));
+    expect(screen.getByRole('link', { name: 'Imports' })).toHaveAttribute('aria-current', 'page');
+    window.history.pushState({}, '', originalPath);
+  });
+
+  test('controlled router path keeps exactly one workspace destination current', () => {
+    const view = render(
+      <MemoryRouter>
+        <GlassSidebar
+          items={['Records', 'Schemas', 'Imports', 'Exports']}
+          currentPath="/workspace#records"
+        />
+      </MemoryRouter>
+    );
+    expect(screen.getByRole('link', { name: 'Records' })).toHaveAttribute('aria-current', 'page');
+    view.rerender(
+      <MemoryRouter>
+        <GlassSidebar
+          items={['Records', 'Schemas', 'Imports', 'Exports']}
+          currentPath="/workspace#schemas"
+        />
+      </MemoryRouter>
+    );
+    expect(screen.getByRole('link', { name: 'Schemas' })).toHaveAttribute('aria-current', 'page');
+    expect(
+      screen.getAllByRole('link').filter((link) => link.hasAttribute('aria-current'))
+    ).toHaveLength(1);
   });
 });

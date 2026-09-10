@@ -63,6 +63,7 @@ describe('US3 Settings', () => {
               { id: 'notifications' },
               { id: 'appearance' },
               { id: 'language-region' },
+              { id: 'organization' },
             ],
           },
         });
@@ -155,14 +156,35 @@ describe('US3 Settings', () => {
     expect(screen.getByText(/no settings found/i)).toBeInTheDocument();
   });
 
+  test('keeps the Arabic language-selection journey localized and RTL', async () => {
+    localStorage.setItem(
+      'user',
+      JSON.stringify({
+        id: '1',
+        email: 'test@example.com',
+        display_name: 'مستخدم الاختبار',
+        locale: 'ar',
+      })
+    );
+    const { container } = renderSettings('/settings/language-region');
+    await waitFor(() =>
+      expect(screen.getByRole('region', { name: /التفاصيل/ })).toHaveAttribute('aria-busy', 'false')
+    );
+    expect(screen.getByRole('heading', { name: 'اللغة والمنطقة' })).toBeInTheDocument();
+    expect(screen.getByLabelText('اللغة')).toBeInTheDocument();
+    expect(screen.getByLabelText('المنطقة الزمنية')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'حفظ التفضيلات' })).toBeInTheDocument();
+    expect(container.querySelector('[dir="rtl"]')).toBeInTheDocument();
+  });
+
   test('keeps required notification delivery enabled and saves optional choices', async () => {
     const user = userEvent.setup();
     apiClient.put.mockResolvedValue({ data: { preferences: [] } });
     renderSettings('/settings/notifications');
     await waitSettingsReady();
-    const security = await screen.findByLabelText(/security-email/i);
+    const security = await screen.findByLabelText(/security email delivery/i);
     expect(Array.from(security.options).map((option) => option.value)).not.toContain('disabled');
-    const marketing = screen.getByLabelText(/marketing-email/i);
+    const marketing = screen.getByLabelText(/marketing email delivery/i);
     await act(async () => {
       await user.selectOptions(marketing, 'disabled');
       await user.click(screen.getByRole('button', { name: /save notifications/i }));
@@ -175,6 +197,52 @@ describe('US3 Settings', () => {
         ],
       })
     );
+  });
+
+  test('keeps German notification controls and success feedback localized', async () => {
+    localStorage.setItem(
+      'user',
+      JSON.stringify({ id: '1', email: 'test@example.com', display_name: 'Test', locale: 'de' })
+    );
+    const user = userEvent.setup();
+    apiClient.put.mockResolvedValue({ data: { preferences: [] } });
+    renderSettings('/settings/notifications');
+    await waitFor(() =>
+      expect(screen.getByRole('region', { name: /details/i })).toHaveAttribute('aria-busy', 'false')
+    );
+    expect(screen.getByText('Zustellung')).toBeInTheDocument();
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: 'Benachrichtigungen speichern' }));
+    });
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Benachrichtigungseinstellungen gespeichert.'
+    );
+  });
+
+  test('applies a newly saved locale and direction immediately', async () => {
+    const user = userEvent.setup();
+    apiClient.put.mockResolvedValue({
+      data: {
+        version: 1,
+        theme: 'system',
+        contrast: 'system',
+        motion: 'system',
+        density: 'comfortable',
+        locale: 'ar',
+        timezone: 'UTC',
+        week_start: 'system',
+      },
+    });
+    renderSettings('/settings/language-region');
+    await waitSettingsReady();
+    await act(async () => {
+      await user.selectOptions(screen.getByLabelText('Language'), 'ar');
+      await user.click(screen.getByRole('button', { name: 'Save preferences' }));
+    });
+    expect(await screen.findByRole('heading', { name: 'اللغة والمنطقة' })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('تم حفظ التفضيلات.');
+    expect(document.documentElement).toHaveAttribute('lang', 'ar');
+    expect(document.documentElement).toHaveAttribute('dir', 'rtl');
   });
 
   test('separates reversible deactivation from deletion with exact confirmations', async () => {
@@ -240,7 +308,10 @@ describe('US3 Settings', () => {
       await user.type(screen.getByLabelText(/correct display name/i), 'Corrected Name');
       await user.click(screen.getByRole('button', { name: /request correction/i }));
     });
-    expect(await screen.findByRole('alert')).toHaveTextContent(/correction service unavailable/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /requested settings action could not be completed/i
+    );
+    expect(screen.getByRole('alert')).not.toHaveTextContent(/correction service unavailable/i);
   });
 
   test('surfaces profile failure and preserves the editable values', async () => {
@@ -256,7 +327,128 @@ describe('US3 Settings', () => {
       await user.type(displayName, 'Unsaved Name');
       await user.click(screen.getByRole('button', { name: /save profile/i }));
     });
-    expect(await screen.findByRole('alert')).toHaveTextContent(/profile service unavailable/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /requested settings action could not be completed/i
+    );
+    expect(screen.getByRole('alert')).not.toHaveTextContent(/profile service unavailable/i);
     expect(displayName).toHaveValue('Unsaved Name');
   });
+
+  test.each([
+    {
+      path: '/settings/privacy',
+      failedEndpoint: '/privacy/operations',
+      unavailable: /recent privacy requests are temporarily unavailable/i,
+      absent: /data export.*queued/i,
+    },
+    {
+      path: '/settings/notifications',
+      failedEndpoint: '/settings/notifications',
+      unavailable: /notification preferences are temporarily unavailable/i,
+      absent: /security email delivery/i,
+    },
+    {
+      path: '/settings/organization',
+      failedEndpoint: '/settings/security-events',
+      unavailable: /security activity is temporarily unavailable/i,
+      absent: /no recent security events are available/i,
+    },
+  ])(
+    'does not present fallback data as fetched fact when $failedEndpoint fails',
+    async ({ path, failedEndpoint, unavailable, absent }) => {
+      const implementation = apiClient.get.getMockImplementation();
+      apiClient.get.mockImplementation((endpoint) =>
+        endpoint === failedEndpoint
+          ? Promise.reject(new Error('bounded test failure'))
+          : implementation(endpoint)
+      );
+      renderSettings(path);
+      await waitSettingsReady();
+      expect(await screen.findByRole('alert')).toHaveTextContent(unavailable);
+      expect(screen.queryByText(absent)).not.toBeInTheDocument();
+    }
+  );
+
+  test.each([
+    {
+      locale: 'de',
+      kind: 'deletion',
+      status: 'running',
+      expectedKind: 'Kontolöschung',
+      expectedStatus: 'In Bearbeitung',
+    },
+    {
+      locale: 'ar',
+      kind: 'export',
+      status: 'completed',
+      expectedKind: 'تصدير البيانات',
+      expectedStatus: 'مكتمل',
+    },
+    {
+      locale: 'de',
+      kind: 'future_kind',
+      status: 'future_status',
+      expectedKind: 'Unbekannter Anfragetyp',
+      expectedStatus: 'Unbekannter Anfragestatus',
+    },
+  ])(
+    'localizes privacy operation semantics for $locale without exposing backend tokens',
+    async ({ locale, kind, status, expectedKind, expectedStatus }) => {
+      localStorage.setItem(
+        'user',
+        JSON.stringify({ id: '1', email: 'test@example.com', display_name: 'Test', locale })
+      );
+      const implementation = apiClient.get.getMockImplementation();
+      apiClient.get.mockImplementation((endpoint) =>
+        endpoint === '/privacy/operations'
+          ? Promise.resolve({ data: { operations: [{ id: 'operation-1', kind, status }] } })
+          : implementation(endpoint)
+      );
+      renderSettings('/settings/privacy');
+      await waitFor(() => expect(screen.getByText(expectedKind)).toBeInTheDocument());
+      expect(screen.getByText(expectedStatus)).toBeInTheDocument();
+      expect(screen.queryByText(kind)).not.toBeInTheDocument();
+      expect(screen.queryByText(status)).not.toBeInTheDocument();
+    }
+  );
+
+  test.each([
+    {
+      locale: 'de',
+      action: 'auth.login',
+      expected: 'Erfolgreiche Anmeldung',
+    },
+    {
+      locale: 'ar',
+      action: 'identity.totp_enabled',
+      expected: 'تم تفعيل تطبيق المصادقة',
+    },
+    {
+      locale: 'en',
+      action: 'user.preferences_updated',
+      expected: 'Profile preferences updated',
+    },
+    {
+      locale: 'de',
+      action: 'identity.future_action',
+      expected: 'Unbekanntes Sicherheitsereignis',
+    },
+  ])(
+    'localizes security action semantics for $locale without exposing backend tokens',
+    async ({ locale, action, expected }) => {
+      localStorage.setItem(
+        'user',
+        JSON.stringify({ id: '1', email: 'test@example.com', display_name: 'Test', locale })
+      );
+      const implementation = apiClient.get.getMockImplementation();
+      apiClient.get.mockImplementation((endpoint) =>
+        endpoint === '/settings/security-events'
+          ? Promise.resolve({ data: { events: [{ id: 'event-1', action }] } })
+          : implementation(endpoint)
+      );
+      renderSettings('/settings/organization');
+      await waitFor(() => expect(screen.getByText(expected)).toBeInTheDocument());
+      expect(screen.queryByText(action)).not.toBeInTheDocument();
+    }
+  );
 });

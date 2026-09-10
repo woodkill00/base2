@@ -27,22 +27,22 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           if [ "${{ matrix.service }}" = "api" ]; then
-            python -m pip install -r api/requirements.txt
+            python -m pip install -r requirements-dev-api.txt
           else
-            python -m pip install -r django/requirements.txt
+            python -m pip install -r requirements-dev-django.txt
           fi
-          python -m pip install ruff mypy
+          python -m pip check
 
       - name: Ruff (lint)
         if: matrix.service == 'api'
-        run: ruff check api
+        run: python -m ruff check api
 
       - name: Mypy (typecheck)
         run: |
           if [ "${{ matrix.service }}" = "api" ]; then
-            mypy api
+            python -m mypy api
           else
-            mypy --exclude '.*/migrations/.*' django
+            python -m mypy --exclude '.*/migrations/.*' django
           fi
 
       - name: Pytest (unit only, with coverage)
@@ -100,7 +100,39 @@ jobs:
           pip install -r api/requirements.txt
           pip install -r django/requirements.txt
 
-      - name: Run Django migrations (schema owner)
+      - name: Bootstrap bounded database roles
+        env:
+          DB_HOST: localhost
+          POSTGRES_USER: myuser
+          POSTGRES_PASSWORD: mypassword
+          POSTGRES_DB: mydatabase
+          WORKSPACE_DB_USER: ci_workspace_runtime
+          WORKSPACE_DB_PASSWORD: ci_workspace_runtime_password_001
+          WORKSPACE_WORKER_DB_USER: ci_workspace_worker
+          WORKSPACE_WORKER_DB_PASSWORD: ci_workspace_worker_password_002
+          RUNTIME_WORKER_DB_USER: ci_runtime_worker
+          RUNTIME_WORKER_DB_PASSWORD: ci_runtime_worker_password_003
+          API_RUNTIME_DB_USER: ci_api_runtime
+          API_RUNTIME_DB_PASSWORD: ci_api_runtime_password_004
+          DATA_RIGHTS_WORKER_DB_USER: ci_data_rights_worker
+          DATA_RIGHTS_WORKER_DB_PASSWORD: ci_data_rights_worker_password_005
+          EMAIL_WORKER_DB_USER: ci_email_worker
+          EMAIL_WORKER_DB_PASSWORD: ci_email_worker_password_006
+        run: |
+          command -v psql
+          /bin/sh postgres/bootstrap-workspace-role.sh
+
+      - name: Run API migrations (schema owner)
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: mydatabase
+          DB_USER: myuser
+          DB_PASSWORD: mypassword
+          API_MIGRATIONS_ENABLED: 'true'
+        run: python -m api.scripts.migrate
+
+      - name: Run all Django migrations (schema owner)
         env:
           DJANGO_SETTINGS_MODULE: project.settings.production
           DB_HOST: localhost
@@ -108,9 +140,15 @@ jobs:
           DB_NAME: mydatabase
           DB_USER: myuser
           DB_PASSWORD: mypassword
+          WORKSPACE_DB_USER: ci_workspace_runtime
+          WORKSPACE_WORKER_DB_USER: ci_workspace_worker
+          RUNTIME_WORKER_DB_USER: ci_runtime_worker
+          API_RUNTIME_DB_USER: ci_api_runtime
+          DATA_RIGHTS_WORKER_DB_USER: ci_data_rights_worker
+          EMAIL_WORKER_DB_USER: ci_email_worker
         working-directory: django
         run: |
-          python manage.py migrate api_schema --noinput
+          python manage.py migrate --noinput
 
       - name: Start Celery worker
         env:
@@ -128,6 +166,12 @@ jobs:
           DB_PASSWORD: mypassword
           CELERY_BROKER_URL: redis://localhost:6379/0
           CELERY_RESULT_BACKEND: redis://localhost:6379/1
+          API_RUNTIME_DB_USER: ci_api_runtime
+          API_RUNTIME_DB_PASSWORD: ci_api_runtime_password_004
+          EMAIL_WORKER_DB_USER: ci_email_worker
+          EMAIL_WORKER_DB_PASSWORD: ci_email_worker_password_006
         run: |
           cd api
-          pytest -q -m integration --cov=api --cov-append --cov-report=term -c pytest.ini
+          pytest -q -m integration --ignore=tests/test_email_outbox.py --cov=api --cov-append --cov-report=term -c pytest.ini
+          DB_USER="$API_RUNTIME_DB_USER" DB_PASSWORD="$API_RUNTIME_DB_PASSWORD" \
+            pytest -q -m integration tests/test_email_outbox.py -c pytest.ini

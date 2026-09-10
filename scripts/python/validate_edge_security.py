@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def findings_for(*, dynamic: str, canary: str, nginx: str, api_main: str) -> list[str]:
+def findings_for(*, dynamic: str, canary: str, static: str, nginx: str, api_main: str) -> list[str]:
     findings: list[str] = []
     required_dynamic = [
         "stsSeconds: 31536000",
@@ -19,54 +19,79 @@ def findings_for(*, dynamic: str, canary: str, nginx: str, api_main: str) -> lis
         "default-src 'self'",
         "frame-ancestors 'none'",
         "rateLimit:",
+        "maxRequestBodyBytes: 10485760",
+        "inFlightReq:",
+        "responseHeaderTimeout: 30s",
     ]
     for value in required_dynamic:
         if value not in dynamic:
             findings.append(f"dynamic_missing:{value}")
-    frontend = dynamic.split('frontend-react:', 1)[1].split('swagger-docs:', 1)[0]
-    for middleware in ('security-headers', 'security-csp', 'rate-limit'):
-        if f'- {middleware}' not in frontend:
-            findings.append(f'frontend_missing:{middleware}')
+    frontend = dynamic.split("frontend-react:", 1)[1].split("swagger-docs:", 1)[0]
+    for middleware in ("security-headers", "security-csp", "rate-limit"):
+        if f"- {middleware}" not in frontend:
+            findings.append(f"frontend_missing:{middleware}")
+    swagger = dynamic.split("swagger-docs:", 1)[1].split("traefik-dashboard:", 1)[0]
+    if swagger.count("- traefik-basic-auth") != 2:
+        findings.append("swagger_auth_policy_incomplete")
     required_canary = [
-        'stsSeconds: 0',
+        "stsSeconds: 0",
         "X-Robots-Tag: 'noindex, nofollow, noarchive'",
         "default-src 'self'",
         "connect-src 'self'",
+        "maxRequestBodyBytes: 10485760",
+        "inFlightReq:",
+        "rateLimit:",
     ]
     for value in required_canary:
         if value not in canary:
-            findings.append(f'canary_missing:{value}')
+            findings.append(f"canary_missing:{value}")
     required_nginx = [
         'default "no-store"',
         '"public, max-age=31536000, immutable"',
-        'Cache-Control $base2_cache_control always',
-        'Content-Security-Policy',
-        'X-Frame-Options DENY always',
-        'X-Content-Type-Options nosniff always',
-        'Permissions-Policy',
+        "Cache-Control $base2_cache_control always",
+        "Content-Security-Policy",
+        "X-Frame-Options DENY always",
+        "X-Content-Type-Options nosniff always",
+        "Permissions-Policy",
     ]
     for value in required_nginx:
         if value not in nginx:
-            findings.append(f'nginx_missing:{value}')
-    if "if '*' in origins" not in api_main or 'allow_credentials = False' not in api_main:
-        findings.append('cors_wildcard_credentials_not_blocked')
+            findings.append(f"nginx_missing:{value}")
+    if "if '*' in origins" not in api_main or "allow_credentials = False" not in api_main:
+        findings.append("cors_wildcard_credentials_not_blocked")
+    required_static = [
+        "insecure: false",
+        "127.0.0.1/32",
+        "::1/128",
+        "acme-staging-v02.api.letsencrypt.org/directory",
+        "acme-staging.json",
+    ]
+    for value in required_static:
+        if value not in static:
+            findings.append(f"static_missing:{value}")
+    production_acme = "acme-v02.api.letsencrypt.org/directory"
+    if production_acme in static or "/acme.json" in static:
+        findings.append("production_acme_reachable")
     return findings
 
 
 def main() -> int:
     paths = {
-        'dynamic': ROOT / 'traefik/dynamic.yml',
-        'canary': ROOT / 'traefik/dynamic-canary.yml',
-        'nginx': ROOT / 'react-app/nginx/default.conf',
-        'api_main': ROOT / 'api/main.py',
+        "dynamic": ROOT / "traefik/dynamic.yml",
+        "canary": ROOT / "traefik/dynamic-canary.yml",
+        "static": ROOT / "traefik/traefik.yml",
+        "nginx": ROOT / "react-app/nginx/default.conf",
+        "api_main": ROOT / "api/main.py",
     }
-    findings = findings_for(**{key: path.read_text(encoding='utf-8') for key, path in paths.items()})
+    findings = findings_for(
+        **{key: path.read_text(encoding="utf-8") for key, path in paths.items()}
+    )
     if findings:
-        print('\n'.join(findings))
+        print("\n".join(findings))
         return 1
-    print('Edge security policy: PASS')
+    print("Edge security policy: PASS")
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     raise SystemExit(main())

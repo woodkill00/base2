@@ -67,7 +67,7 @@ jobs:
       - name: Wait for health
         run: |
           for i in {1..90}; do
-            curl -fsS http://localhost:5001/api/health >/dev/null && curl -fsS http://localhost:8080/ >/dev/null && exit 0
+            curl -fsS http://localhost:5001/api/health >/dev/null && curl -fsS http://localhost:5002/synthetic-health >/dev/null && curl -fsS http://localhost:8080/ >/dev/null && exit 0
             sleep 2
           done
           echo "Services did not become healthy in time" >&2
@@ -80,6 +80,7 @@ jobs:
         env:
           E2E_BASE_URL: http://localhost:8080
           E2E_API_URL: http://localhost:5001
+          E2E_TEST_SUPPORT_URL: http://localhost:5002
           E2E_TEST_KEY: local-e2e-key
         run: npm run test:ci
 
@@ -110,6 +111,7 @@ jobs:
         if: failure()
         run: |
           docker compose -f e2e/docker-compose.e2e.yml logs --no-color api | tail -n 200 > api.log || true # ci-policy: diagnostic-cleanup
+          docker compose -f e2e/docker-compose.e2e.yml logs --no-color api-migrate django-migrate | tail -n 300 > migrations.log || true # ci-policy: diagnostic-cleanup
           docker compose -f e2e/docker-compose.e2e.yml logs --no-color react-app | tail -n 200 > react-app.log || true # ci-policy: diagnostic-cleanup
           docker compose -f e2e/docker-compose.e2e.yml logs --no-color postgres | tail -n 200 > postgres.log || true # ci-policy: diagnostic-cleanup
 

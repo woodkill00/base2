@@ -28,7 +28,7 @@ from api.services.content_workspace_media import MAX_UPLOAD_BYTES
 from api.services.content_workspace_transfer import MAX_BYTES as MAX_IMPORT_BYTES
 from api.services.content_workspace_storage import (
     ArtifactIntegrityError,
-    configured_artifact_store,
+    configured_runtime_artifact_store,
 )
 from api.settings import SITE_MANIFEST, settings
 
@@ -59,9 +59,9 @@ IDENTIFIER = re.compile(r'^[a-z][a-z0-9_]{1,62}$')
 
 
 def get_artifact_store():
-    return configured_artifact_store(
-        root=settings.CONTENT_WORKSPACE_STORAGE_ROOT,
-        encoded_key=settings.CONTENT_WORKSPACE_STORAGE_KEY or '',
+    return configured_runtime_artifact_store(
+        settings,
+        max_bytes=int(SITE_MANIFEST.get('media', {}).get('maxBytes', 10 * 1024 * 1024)),
     )
 
 

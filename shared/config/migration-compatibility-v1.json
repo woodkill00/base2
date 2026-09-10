@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 1,
+  "currentSchema": 31,
+  "minimumCompatibleSchema": 17,
+  "migrations": [
+    {
+      "migrationId": "production_operations_center",
+      "fromSchema": 17,
+      "toSchema": 18,
+      "phase": "expand",
+      "compatibleFrom": 17,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "operations_center_rls",
+      "fromSchema": 18,
+      "toSchema": 19,
+      "phase": "migrate",
+      "compatibleFrom": 18,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "tenant_quota_persistence",
+      "fromSchema": 19,
+      "toSchema": 20,
+      "phase": "expand",
+      "compatibleFrom": 19,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "quota_rls_and_operations_worker_scope",
+      "fromSchema": 20,
+      "toSchema": 21,
+      "phase": "migrate",
+      "compatibleFrom": 20,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "tenant_domain_claim",
+      "fromSchema": 21,
+      "toSchema": 22,
+      "phase": "expand",
+      "compatibleFrom": 21,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "tenant_domain_rls",
+      "fromSchema": 22,
+      "toSchema": 23,
+      "phase": "migrate",
+      "compatibleFrom": 22,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "runtime_governance_models",
+      "fromSchema": 23,
+      "toSchema": 24,
+      "phase": "expand",
+      "compatibleFrom": 23,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "runtime_governance_rls",
+      "fromSchema": 24,
+      "toSchema": 25,
+      "phase": "migrate",
+      "compatibleFrom": 24,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "runtime_delivery_integrity",
+      "fromSchema": 25,
+      "toSchema": 26,
+      "phase": "migrate",
+      "compatibleFrom": 25,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "durable_destructive_approval_ledger",
+      "fromSchema": 26,
+      "toSchema": 27,
+      "phase": "expand",
+      "compatibleFrom": 26,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "worker_runtime_least_privilege",
+      "fromSchema": 27,
+      "toSchema": 28,
+      "phase": "migrate",
+      "compatibleFrom": 27,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "tenant_lifecycle_state",
+      "fromSchema": 28,
+      "toSchema": 29,
+      "phase": "expand",
+      "compatibleFrom": 28,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "worker_scope_and_lifecycle_repair",
+      "fromSchema": 29,
+      "toSchema": 30,
+      "phase": "migrate",
+      "compatibleFrom": 29,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    },
+    {
+      "migrationId": "data_rights_worker_scope",
+      "fromSchema": 30,
+      "toSchema": 31,
+      "phase": "migrate",
+      "compatibleFrom": 30,
+      "expectedLockMs": 1000,
+      "expectedRuntimeMs": 30000,
+      "destructive": false
+    }
+  ]
+}

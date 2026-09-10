@@ -19,26 +19,91 @@ Alias/Flag note: Recent runs used `-RunAllTests` which is equivalent to `-AllTes
 
 ## Flags Reference
 
-- `-Full`: end-to-end resource provisioning path via orchestrator (droplet create, DNS, stack).
+- `-Full`: deploy an existing target or provision one missing target. A new target stops at the authenticated host-key enrollment boundary; rerun after owner verification to perform DNS, source, secret, migration, and stack mutation.
 - `-UpdateOnly`: skip provisioning, hard-reset remote repo to `origin/$env:DO_APP_BRANCH`, rebuild core services.
 - `-Preflight`: run preflight validators locally; deploy fails fast if validation fails.
-- `-AllTests`: run all post-deploy tests (React Jest, Playwright E2E, API/Django pytest, smoke checks).
+- `-AllTests`: run all remote and local post-deploy tests (React Jest, Playwright E2E, API/Django pytest, lint, type, and smoke checks). Missing tools, skipped required results, and nonzero commands fail the deployment and enter rollback.
 - `-RunTests`: run a subset of tests (omit E2E by default); use with `-TestsJson` for machine-readable output.
 - `-TestsJson`: JSON output for test results; artifacts saved under `local_run_logs/.../meta`.
 - `-Timestamped`: write artifacts to `local_run_logs/<ip>-<timestamp>/` instead of a generic folder.
-- `-AsyncVerify`: return sooner after kicking off remote verification; artifacts may continue to populate.
-- `-DropletIp <ip>`: override droplet IP detection.
+- `-AsyncVerify`: disabled for authoritative deployment because unfinished remote mutation cannot produce terminal success.
 - `-SshKey <path>`: specify SSH private key path.
 - `-SkipAllowlist`: do not update IP allowlists in `.env` before deploy.
 - `-VerifyTimeoutSec <sec>`: override remote verification timeout (default 1800).
 - `-ReactTestTimeoutSec <sec>`: override local React test timeout (default 1800).
 
+New-target provisioning additionally requires an exact-owner conditional lease.
+`DO_PROVISION_LEASE_GIT_REMOTE` names an already configured dedicated private
+lease-repository remote used for an atomic Git compare-and-swap provisioning
+lease. It must not resolve to the source `origin`, and its credential must be
+limited to that otherwise empty coordination repository. Credential-bearing,
+plain-HTTP, SSH, SCP, command-helper, and local-only production remotes are
+rejected. The controller ignores inherited global/system Git configuration and
+transport overrides; private HTTPS authentication must come from the bounded
+process credential broker named by `DO_PROVISION_LEASE_GIT_ASKPASS`, without
+placing credentials in the URL. That path must be an absolute, owner-only,
+non-symlinked executable (maximum 64 KiB) which returns the repository-scoped
+username or token requested by Git. On native Windows, the broker owner and
+every writable path ancestor are checked by SID; only that owner, SYSTEM, and
+Administrators may retain write authority. Use an owner-only executable such as
+`C:\ProgramData\Base2\provider-lease-askpass.exe`, not the Linux `/run` example.
+The Windows directory and PowerShell verifier are resolved through the kernel
+API rather than `SYSTEMROOT`, `WINDIR`, or `COMSPEC`. The lease process uses a
+fixed absolute system Git executable, a newly created ACL-validated private
+temporary directory for both authoritative lease-repository construction and
+each Git scratch operation, disables system/global config and terminal prompts, and
+constructs a minimal environment which excludes ambient Git, loader, profile,
+connection, credential-manager, askpass, command-shell, system-root, proxy,
+token, and secret variables
+before installing only this exact broker. The fixed,
+digest-named remote ref is created only when a new paid resource is needed and
+is deleted only with the exact owner revision. Conflict, crash, expiry, or ref
+drift fails closed; recovery requires exact-owner cleanup. Update-only operation
+does not contact the lease remote. A conflicting, crashed, or uncertain provider
+request leaves the lease in place and is never treated as permission to create
+another paid resource.
+
 ### When to use which
 
 - Use `-UpdateOnly` for routine code changes already on the droplet; faster and safer.
-- Use `-Full` when creating a new droplet or re-provisioning infrastructure.
+- Use `-Full` to create one missing droplet or deploy the detected existing target. New creation always stops before SSH until its host key is separately verified and enrolled.
+- Use `-UpdateOnly -CreateIfMissing` only when an update should provision a missing target and stop at that same enrollment boundary. `-CreateIfMissing` alone and `-Full -UpdateOnly` are rejected.
 - Always include `-AllTests` for CI-like gating unless experimenting locally.
 - Use `-Timestamped` to keep runs isolated and auditable.
+
+Provider discovery is paginated and typed. Only an authoritative `missing`
+result can enter provisioning; API errors, duplicate names, and an existing
+droplet still awaiting a public address fail closed. A dedicated private Git
+coordination repository serializes the final lookup and create operation with
+an atomic ref create and exact-revision compare-and-swap deletion. Conflict,
+stale ownership, transport uncertainty, or an uncertain provider result keeps
+the lease in place for explicit exact-owner recovery. Existing deployments
+remain bound to the exact provider droplet ID returned by discovery. Provider
+activation and public-address discovery share one monotonic deadline:
+`DO_IP_POLL_TIMEOUT_SECONDS` must be 30-600 seconds and
+`DO_IP_POLL_INTERVAL_SECONDS` must be 1-30 seconds and no greater than the
+deadline. Pending status, transport errors, and missing addresses cannot extend
+that paid-resource wait.
+
+Fresh cloud-init contains no repository or credential. It installs only
+distribution-signed bootstrap packages. Terminal local evidence retains the
+user-data SHA-256, authoritative provider identity, and sanitized resolved
+package/version inventory, all bound by the exact-source manifest. After the
+owner authenticates and pins the new SSH host key,
+the deploy runner may clone a credential-free public HTTPS repository URL.
+URLs with userinfo, query tokens, fragments, SSH transports, or plaintext HTTP
+are rejected; private repository bootstrap requires a separate scoped JIT
+credential workflow.
+
+Runtime and owner-scoped
+API migrations use one exact-commit image. Production migration connections
+must use an effective external database target with `verify-full` TLS and an
+absolute CA path; `DATABASE_URL` cannot override that boundary with a local,
+socket, loopback, malformed, or non-PostgreSQL target.
+
+Terminal success requires a complete hash-verified local evidence manifest and
+a recursive secret scan before remote staging evidence is removed. Failure to
+copy, validate, or scan that evidence is a deployment failure, not a warning.
 
 ## Pre-Deploy Discipline (UpdateOnly)
 
@@ -51,7 +116,8 @@ Recommended: set `DO_APP_BRANCH=main` in `.env` for stable deployments.
 ## TLS Policy (Staging-Only)
 
 - Traefik must use the Let’s Encrypt staging ACME directory (`le-staging`).
-- Verification (`test.ps1`) fails if production issuance is detected.
+- Verification (`test.ps1`) uses the repository-pinned staging trust bundle,
+  validates hostname and chain, and fails on every TLS or curl transport error.
 
 ### TLS Mode Guard (Hardening)
 

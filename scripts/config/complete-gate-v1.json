@@ -10,11 +10,212 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "feature-106-plan",
+      "command": ["python3", "specs/106-production-readiness-program/validate_plan.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["feature-093-plan"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "production-readiness-contract",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_production_readiness_contract"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["feature-106-plan"],
+      "requiredTools": ["python3", "git"]
+    },
+    {
+      "id": "feature-106-repetition-evidence-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "digital_ocean/tests/test_feature_106_repetitions.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["production-readiness-contract"],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
+      "id": "feature-106-repetition-evidence-current",
+      "command": [
+        "{python-orchestrator}",
+        "digital_ocean/scripts/python/feature_106_repetitions.py",
+        "--validate-existing"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["feature-106-repetition-evidence-contract"],
+      "requiredTools": ["{python-orchestrator}", "git"]
+    },
+    {
+      "id": "operations-domain-contract",
+      "command": [
+        "{python-django}",
+        "-m",
+        "pytest",
+        "django/tests/test_operations_domain_models.py",
+        "-o",
+        "addopts=",
+        "-p",
+        "no:cov",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 45,
+      "dependsOn": ["feature-106-repetition-evidence-current"],
+      "requiredTools": ["{python-django}"]
+    },
+    {
+      "id": "operations-api-contract",
+      "command": [
+        "{python-api}",
+        "-m",
+        "pytest",
+        "api/tests/test_operations_center_contract.py",
+        "api/tests/contract/test_operations_api_contract.py",
+        "-q"
+      ],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": ["operations-domain-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "operations-ui-contract",
+      "command": [
+        "bash",
+        "-lc",
+        "cd react-app && node node_modules/vitest/vitest.mjs run src/__tests__/operations-center.test.jsx --coverage=false --pool=threads --maxWorkers=1"
+      ],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": ["operations-api-contract"],
+      "requiredTools": ["bash", "node"]
+    },
+    {
+      "id": "operations-visual-contract",
+      "command": [
+        "{python-api}",
+        "-m",
+        "pytest",
+        "-q",
+        "scripts/tests/test_operations_visual_evidence.py"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["operations-ui-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "operations-fault-contract",
+      "command": [
+        "{python-api}",
+        "-m",
+        "pytest",
+        "-q",
+        "scripts/tests/test_operations_fault_matrix.py"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["operations-visual-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "production-release-contract",
+      "command": ["{python-api}", "-m", "pytest", "-q", "scripts/tests/test_production_release.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["operations-fault-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "local-release-acceptance",
+      "command": ["python3", "-m", "scripts.python.run_local_release_acceptance"],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": ["production-release-contract"],
+      "requiredTools": ["python3", "docker"]
+    },
+    {
+      "id": "typed-feature-flag-contract",
+      "command": ["{python-api}", "-m", "pytest", "-q", "api/tests/test_typed_feature_flags.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["local-release-acceptance"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "data-readiness-contract",
+      "command": ["{python-api}", "-m", "pytest", "-q", "scripts/tests/test_data_readiness.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["typed-feature-flag-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "edge-readiness-contract",
+      "command": ["{python-api}", "-m", "pytest", "-q", "scripts/tests/test_edge_readiness.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["data-readiness-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "production-workflow-contract",
+      "command": ["{python-api}", "-m", "pytest", "-q", "api/tests/test_production_workflows.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["edge-readiness-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "tenant-lifecycle-contract",
+      "command": ["{python-api}", "-m", "pytest", "-q", "api/tests/test_tenant_lifecycle.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["production-workflow-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "universal-product-contract",
+      "command": ["{python-api}", "-m", "pytest", "-q", "api/tests/test_universal_product.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["tenant-lifecycle-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "extension-platform-contract",
+      "command": ["{python-api}", "-m", "pytest", "-q", "api/tests/test_extension_platform.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["universal-product-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "production-assurance-contract",
+      "command": [
+        "{python-api}",
+        "-m",
+        "pytest",
+        "-q",
+        "scripts/tests/test_production_assurance.py"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["extension-platform-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
       "id": "gate-runtime-recovery-contract",
       "command": ["python3", "-m", "unittest", "scripts.tests.test_gate_runtime_recovery"],
       "required": true,
       "timeoutSeconds": 30,
-      "dependsOn": ["feature-093-plan"],
+      "dependsOn": ["production-assurance-contract"],
       "requiredTools": ["python3"]
     },
     {
@@ -24,6 +225,14 @@
       "timeoutSeconds": 120,
       "dependsOn": ["feature-093-plan"],
       "requiredTools": ["{python-api}"]
+    },
+    {
+      "id": "django-typecheck",
+      "command": ["{python-django}", "-m", "mypy", "--exclude", ".*/migrations/.*", "django"],
+      "required": true,
+      "timeoutSeconds": 120,
+      "dependsOn": ["feature-093-plan"],
+      "requiredTools": ["{python-django}"]
     },
     {
       "id": "api-lint",
@@ -160,6 +369,10 @@
         "-m",
         "pytest",
         "django/tests/test_site_content_models.py",
+        "-o",
+        "addopts=",
+        "-p",
+        "no:cov",
         "-q"
       ],
       "required": true,
@@ -176,6 +389,10 @@
         "--assert=plain",
         "django/tests/test_identity_domain_models.py",
         "django/tests/test_no_auth_routes.py",
+        "-o",
+        "addopts=",
+        "-p",
+        "no:cov",
         "-q"
       ],
       "required": true,
@@ -282,6 +499,10 @@
         "-m",
         "pytest",
         "django/tests/test_media_library_models.py",
+        "-o",
+        "addopts=",
+        "-p",
+        "no:cov",
         "-q"
       ],
       "required": true,
@@ -317,7 +538,11 @@
       ],
       "required": true,
       "timeoutSeconds": 45,
-      "dependsOn": ["workspace-postgres-contract", "visual-baseline-contract", "media-library-plan"],
+      "dependsOn": [
+        "workspace-postgres-contract",
+        "visual-baseline-contract",
+        "media-library-plan"
+      ],
       "requiredTools": ["{python-api}", "git"]
     },
     {
@@ -431,6 +656,22 @@
       "requiredTools": ["{python-orchestrator}"]
     },
     {
+      "id": "production-backup-contract",
+      "command": [
+        "{python-api}",
+        "-m",
+        "pytest",
+        "-q",
+        "-o",
+        "addopts=",
+        "scripts/tests/test_production_backup.py"
+      ],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": ["recovery-assurance-contract"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
       "id": "immutable-release-contract",
       "command": [
         "{python-orchestrator}",
@@ -441,7 +682,7 @@
       "required": true,
       "timeoutSeconds": 30,
       "dependsOn": [
-        "recovery-assurance-contract",
+        "production-backup-contract",
         "supply-chain-policy",
         "deployment-evidence-contract"
       ],
@@ -665,6 +906,10 @@
         "pytest",
         "digital_ocean/tests/test_deploy_config.py",
         "digital_ocean/tests/test_env_check.py",
+        "digital_ocean/tests/test_droplet_lookup.py",
+        "digital_ocean/tests/test_provider_lease.py",
+        "digital_ocean/tests/test_provider_ready.py",
+        "digital_ocean/tests/test_staging_tls_probe.py",
         "-q"
       ],
       "required": true,
@@ -721,6 +966,7 @@
         "-m",
         "pytest",
         "digital_ocean/tests/test_deployment_evidence.py",
+        "digital_ocean/tests/test_validate_deployment_evidence.py",
         "digital_ocean/tests/test_dns_transaction.py",
         "digital_ocean/tests/test_owned_teardown.py",
         "-q"

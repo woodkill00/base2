@@ -1,31 +1,60 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ChevronLeft, ChevronRight, FileText, Home } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 import { siteManifest } from '../../config/siteRuntime';
 
 type Props = {
-  items?: string[];
+  items?: Array<string | { label: string; to: string }>;
+  label?: string;
   id?: string;
   isOpen?: boolean;
   onClose?: () => void;
   variant?: 'app' | 'public';
   onMenuItemClick?: (_item: string) => void;
+  currentPath?: string;
 };
 
-const defaultItems = ['Home', 'Dashboard', 'Settings', 'Users', 'Help'];
+const defaultItems = [
+  { label: 'Home', to: '/' },
+  { label: 'Dashboard', to: '/dashboard' },
+  { label: 'Settings', to: '/settings' },
+  { label: 'Users', to: '/admin' },
+  { label: 'Help', to: '/contact' },
+];
 
 export const GlassSidebar: React.FC<Props> = ({
   items = defaultItems,
+  label = 'Sidebar',
   id,
   isOpen = true,
   onClose,
   variant = 'app',
   onMenuItemClick,
+  currentPath,
 }) => {
   const panelRef = useRef<HTMLElement | null>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const close = useMemo(() => onClose || (() => {}), [onClose]);
+  // The public variant is also a reusable standalone component, so route
+  // highlighting cannot require a Router provider merely to render it.
+  const browserPath = () => `${window.location.pathname}${window.location.hash}`;
+  const [activePath, setActivePath] = useState(browserPath);
+
+  useEffect(() => {
+    if (currentPath !== undefined) setActivePath(currentPath);
+  }, [currentPath]);
+
+  useEffect(() => {
+    const syncActivePath = () => setActivePath(browserPath());
+    window.addEventListener('hashchange', syncActivePath);
+    window.addEventListener('popstate', syncActivePath);
+    return () => {
+      window.removeEventListener('hashchange', syncActivePath);
+      window.removeEventListener('popstate', syncActivePath);
+    };
+  }, []);
 
   const setPanelRef = useCallback((el: HTMLElement | null) => {
     panelRef.current = el;
@@ -35,6 +64,18 @@ export const GlassSidebar: React.FC<Props> = ({
 
   const [edgeOpen, setEdgeOpen] = useState(false);
   const [edgePosition, setEdgePosition] = useState<'left' | 'right'>('left');
+  const normalizedItems = useMemo(
+    () =>
+      items.map((item, index) => {
+        if (typeof item !== 'string') return item;
+        const workspace =
+          items.length === 4
+            ? `/workspace#${item.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+            : undefined;
+        return { label: item, to: workspace || defaultItems[index]?.to || '/' };
+      }),
+    [items]
+  );
 
   const publicMenuItems = siteManifest.navigation.map((item, index) => ({
     icon: index === 0 ? Home : FileText,
@@ -50,6 +91,15 @@ export const GlassSidebar: React.FC<Props> = ({
     restoreFocusRef.current = document.activeElement as HTMLElement | null;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    const background = Array.from(
+      panelRef.current
+        ?.closest('.app-shell-root')
+        ?.querySelectorAll<HTMLElement>('header, main, footer') || []
+    ).filter((element) => !element.contains(panelRef.current));
+    const previousInert = background.map((element) => element.inert);
+    background.forEach((element) => {
+      element.inert = true;
+    });
 
     // Focus the drawer panel for accessibility.
     panelRef.current!.focus();
@@ -58,6 +108,31 @@ export const GlassSidebar: React.FC<Props> = ({
       if (e.key === 'Escape') {
         e.preventDefault();
         close();
+        return;
+      }
+      if (e.key === 'Tab') {
+        const focusable = Array.from(
+          panelRef.current!.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          )
+        ).filter((element) => !element.hidden);
+        if (!focusable.length) {
+          e.preventDefault();
+          panelRef.current?.focus();
+          return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (
+          e.shiftKey &&
+          (document.activeElement === first || document.activeElement === panelRef.current)
+        ) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
 
@@ -65,6 +140,9 @@ export const GlassSidebar: React.FC<Props> = ({
 
     return () => {
       document.body.style.overflow = prevOverflow;
+      background.forEach((element, index) => {
+        element.inert = previousInert[index];
+      });
       document.removeEventListener('keydown', onKeyDown);
       const el = restoreFocusRef.current;
       if (el && typeof el.focus === 'function') {
@@ -330,18 +408,29 @@ export const GlassSidebar: React.FC<Props> = ({
             onClick={close}
           >
             <aside
+              id={id}
               className="glass glass-drawer-panel"
               data-state="open"
               role="navigation"
-              aria-label="Side menu"
+              aria-label={label}
               tabIndex={-1}
               ref={setPanelRef}
               onClick={(e) => e.stopPropagation()}
             >
               <ul className="glass-sidebar-list">
-                {items.map((i) => (
-                  <li key={i} className="glass-sidebar-item">
-                    {i}
+                {normalizedItems.map((item) => (
+                  <li key={item.to} className="glass-sidebar-item">
+                    <Link
+                      to={item.to}
+                      onClick={() => {
+                        setActivePath(item.to);
+                        close();
+                      }}
+                      aria-current={activePath === item.to ? 'page' : undefined}
+                      className="block min-h-11 px-3 py-3 aria-[current=page]:font-semibold aria-[current=page]:bg-white/20"
+                    >
+                      {item.label}
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -353,13 +442,23 @@ export const GlassSidebar: React.FC<Props> = ({
           id={id}
           className="glass glass-sidebar"
           style={{ width: 'var(--sidebar-w)', maxWidth: '400px' }}
-          aria-label="Sidebar"
+          aria-label={label}
           hidden={!isOpen}
         >
           <ul className="glass-sidebar-list">
-            {items.map((i) => (
-              <li key={i} className="glass-sidebar-item">
-                {i}
+            {normalizedItems.map((item) => (
+              <li key={item.to} className="glass-sidebar-item">
+                <Link
+                  to={item.to}
+                  onClick={() => {
+                    setActivePath(item.to);
+                    close();
+                  }}
+                  aria-current={activePath === item.to ? 'page' : undefined}
+                  className="block min-h-11 px-3 py-3 aria-[current=page]:font-semibold aria-[current=page]:bg-white/20"
+                >
+                  {item.label}
+                </Link>
               </li>
             ))}
           </ul>

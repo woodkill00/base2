@@ -22,7 +22,7 @@ fi
 # Traefik artifacts
 TID=$(docker compose -f development.docker.yml ps -q traefik 2>/dev/null | head -n 1 || true)
 if [ -n "$TID" ]; then
-  (docker exec "$TID" sh -lc 'env | sort' > /root/logs/traefik-env.txt) || true
+  (docker exec "$TID" sh -lc 'for key in WEBSITE_DOMAIN TRAEFIK_CERT_EMAIL TRAEFIK_CERT_RESOLVER TRAEFIK_PREVIEW_MODE OWNER_ALLOWLIST_CSV; do if printenv "$key" >/dev/null 2>&1; then printf "%s=present\n" "$key"; else printf "%s=missing\n" "$key"; fi; done' > /root/logs/traefik-env.txt) || true
   (docker exec "$TID" cat /tmp/traefik.yml > /root/logs/traefik-static.yml) || (docker exec "$TID" cat /etc/traefik/traefik.yml > /root/logs/traefik-static.yml) || echo "EMPTY" > /root/logs/traefik-static.yml
   (docker exec "$TID" cat /tmp/dynamic.yml > /root/logs/traefik-dynamic.yml) || (docker exec "$TID" cat /etc/traefik/dynamic/dynamic.yml > /root/logs/traefik-dynamic.yml) || echo "EMPTY" > /root/logs/traefik-dynamic.yml
   (docker exec "$TID" sh -lc 'ls -l /etc/traefik /etc/traefik/dynamic' > /root/logs/traefik-ls.txt) || true
@@ -42,8 +42,9 @@ else
   echo "MISSING_API_CID" > /root/logs/api-logs.txt
 fi
 
-# Django health and schema checks
-(docker compose -f development.docker.yml exec -T django python manage.py migrate --noinput > /root/logs/django-migrate.txt 2>&1) || true
+# Migration state, health, and schema checks. Verification never mutates schema.
+docker compose -f development.docker.yml exec -T api python -m api.scripts.migrate --check > /root/logs/api-migrate-check.txt 2>&1
+docker compose -f development.docker.yml exec -T django python manage.py migrate --check --noinput > /root/logs/django-migrate.txt 2>&1
 (docker compose -f development.docker.yml exec -T django python manage.py check --deploy > /root/logs/django-check-deploy.txt 2>&1) || true
 (docker compose -f development.docker.yml exec -T django python - <<'PY' > /root/logs/django-internal-health.json 2> /root/logs/django-internal-health.status) || true
 import json
@@ -92,11 +93,11 @@ set -e
 
 # Curl artifacts (use Traefik via localhost, avoid DNS propagation)
 if [ -n "$DOMAIN" ]; then
-  (curl -skI "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/" -o /root/logs/curl-root.txt) || true
-  (curl -skI "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/health" -o /root/logs/curl-api-health.txt) || true
-  (curl -skI "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/health/" -o /root/logs/curl-api-health-slash.txt) || true
-  (curl -sk "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/health" -o /root/logs/api-health.json -w "%{http_code}\n" > /root/logs/api-health.status) || true
-  (curl -sk "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/health/" -o /root/logs/api-health-slash.json -w "%{http_code}\n" > /root/logs/api-health-slash.status) || true
+  curl -sSI "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/" -o /root/logs/curl-root.txt
+  curl -sSI "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/health" -o /root/logs/curl-api-health.txt
+  curl -sSI "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/health/" -o /root/logs/curl-api-health-slash.txt
+  curl -sS "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/health" -o /root/logs/api-health.json -w "%{http_code}\n" > /root/logs/api-health.status
+  curl -sS "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/health/" -o /root/logs/api-health-slash.json -w "%{http_code}\n" > /root/logs/api-health-slash.status
   cp /root/logs/curl-api-health.txt /root/logs/curl-api.txt || true
   if ! grep -q '^HTTP/.* 200' /root/logs/curl-api.txt 2>/dev/null; then
     cp /root/logs/curl-api-health-slash.txt /root/logs/curl-api.txt || true
@@ -113,7 +114,7 @@ export RID
 : > /root/logs/request-id-health.headers || true
 : > /root/logs/request-id-health.body || true
 if [ -n "$DOMAIN" ]; then
-  curl -sk "${RESOLVE_DOMAIN[@]}" -X POST \
+  curl -sS "${RESOLVE_DOMAIN[@]}" -X POST \
     -H "X-Request-Id: $RID" \
     -H 'Content-Type: application/json' \
     -d '{"email":"request-id-probe@example.com","password":"not-a-real-password"}' \
@@ -211,7 +212,7 @@ print(json.dumps({"skipped": True, "reason": "celery check not executed"}))
 PY
 
 if [ "${RUN_CELERY_CHECK:-}" = "1" ] && [ -n "$DOMAIN" ]; then
-  curl -sk "${RESOLVE_DOMAIN[@]}" -X POST "https://$DOMAIN/api/celery/ping" -H 'Content-Type: application/json' -d '{}' -o /root/logs/celery-ping.json || true
+  curl -sS "${RESOLVE_DOMAIN[@]}" -X POST "https://$DOMAIN/api/celery/ping" -H 'Content-Type: application/json' -d '{}' -o /root/logs/celery-ping.json || true
   TASK_ID=$(python3 - <<'PY'
 import json
 try:
@@ -223,7 +224,7 @@ PY
   )
   if [ -n "$TASK_ID" ]; then
     for i in $(seq 1 12); do
-      curl -sk "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/celery/result/$TASK_ID" -o /root/logs/celery-result.json || true
+      curl -sS "${RESOLVE_DOMAIN[@]}" "https://$DOMAIN/api/celery/result/$TASK_ID" -o /root/logs/celery-result.json || true
       if grep -q '"successful": *true' /root/logs/celery-result.json 2>/dev/null; then
         break
       fi

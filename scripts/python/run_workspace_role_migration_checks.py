@@ -6,7 +6,6 @@ import sys
 
 import psycopg2
 
-
 TABLES = (
     "sitecontent_contenttypedefinition",
     "sitecontent_contentrecord",
@@ -19,8 +18,11 @@ TABLES = (
 
 def main() -> None:
     expected = sys.argv[1] if len(sys.argv) == 2 else ""
-    if expected not in {"reversed", "forward"}:
-        raise SystemExit("usage: run_workspace_role_migration_checks.py reversed|forward")
+    if expected not in {"reversed", "forward", "api-reversed", "api-forward"}:
+        raise SystemExit(
+            "usage: run_workspace_role_migration_checks.py "
+            "reversed|forward|api-reversed|api-forward"
+        )
     connection = psycopg2.connect(
         host=os.environ["DB_HOST"],
         port=os.environ.get("DB_PORT", "5432"),
@@ -30,6 +32,62 @@ def main() -> None:
     )
     try:
         with connection.cursor() as cursor:
+            if expected.startswith("api-"):
+                api_role = os.environ["API_RUNTIME_DB_USER"]
+                forward = expected == "api-forward"
+                cursor.execute(
+                    "SELECT has_table_privilege(%s,'api_email_outbox','SELECT'),"
+                    "has_table_privilege(%s,'api_email_outbox','UPDATE')",
+                    (api_role, api_role),
+                )
+                assert cursor.fetchone() == (False, False)
+                cursor.execute(
+                    "SELECT has_table_privilege(%s,'django_migrations','SELECT'),"
+                    "has_table_privilege(%s,'sitecontent_contentrecord','SELECT'),"
+                    "has_schema_privilege(%s,'public','CREATE')",
+                    (api_role, api_role, api_role),
+                )
+                assert cursor.fetchone() == ((forward), False, False)
+                cursor.execute(
+                    "SELECT rolsuper,rolcreatedb,rolcreaterole,rolbypassrls "
+                    "FROM pg_roles WHERE rolname=%s",
+                    (api_role,),
+                )
+                assert cursor.fetchone() == (False, False, False, False)
+                cursor.execute(
+                    "SELECT COUNT(*) FROM pg_proc WHERE proname='base2_enqueue_email'"
+                )
+                assert (cursor.fetchone()[0] == 1) is forward
+                if forward:
+                    cursor.execute(
+                        "SELECT has_function_privilege(%s,"
+                        "'base2_enqueue_email(uuid,text,text,text,text)','EXECUTE')",
+                        (api_role,),
+                    )
+                    assert cursor.fetchone()[0] is True
+                cursor.execute(
+                    "SELECT COUNT(*) FROM pg_policies "
+                    "WHERE policyname='api_runtime_tenant_scope'"
+                )
+                assert (cursor.fetchone()[0] == 7) is forward
+                cursor.execute(
+                    "SELECT relrowsecurity,relforcerowsecurity FROM pg_class "
+                    "WHERE oid='api_user_preferences'::regclass"
+                )
+                assert cursor.fetchone() == ((True, True) if forward else (False, False))
+                if forward:
+                    cursor.execute(
+                        "SELECT EXISTS (SELECT 1 FROM django_migrations "
+                        "WHERE app='sitecontent' AND name='0033_api_schema_readiness')"
+                    )
+                    assert cursor.fetchone()[0] is True
+                    cursor.execute(
+                        "SELECT EXISTS (SELECT 1 FROM api_schema_migrations "
+                        "WHERE version='013_add_global_data_rights_operations')"
+                    )
+                    assert cursor.fetchone()[0] is True
+                print(f"API runtime migration {expected}: PASS")
+                return
             cursor.execute("SELECT COUNT(*) FROM sitecontent_contenttypedefinition")
             assert cursor.fetchone()[0] == 2
             cursor.execute("SELECT COUNT(*) FROM sitecontent_contentrecord")

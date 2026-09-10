@@ -129,6 +129,7 @@ def test_totp_repository_lifecycle_is_transactional(monkeypatch):
 def test_invitation_credential_and_overview_never_return_secret_hashes(monkeypatch):
     _connection, cursor = install_db(monkeypatch)
     invitation_id = repository.create_invitation(
+        tenant_id='tenant-a',
         organization_id=ORG_ID,
         actor_id=USER_ID,
         email='Invite@Example.Test',
@@ -136,6 +137,7 @@ def test_invitation_credential_and_overview_never_return_secret_hashes(monkeypat
         token_hash='token-hash',
     )
     credential_id = repository.create_api_credential(
+        tenant_id='tenant-a',
         organization_id=ORG_ID,
         actor_id=USER_ID,
         label='automation',
@@ -185,6 +187,7 @@ def test_role_update_preserves_last_owner_and_detects_stale_writes(monkeypatch):
     monkeypatch.setattr(repository, 'db_conn', last_owner_db)
     with pytest.raises(ValueError, match='last_owner'):
         repository.update_member_role(
+            tenant_id='tenant-a',
             organization_id=ORG_ID,
             actor_id=USER_ID,
             member_id=USER_ID,
@@ -202,6 +205,7 @@ def test_role_update_preserves_last_owner_and_detects_stale_writes(monkeypatch):
 
     monkeypatch.setattr(repository, 'db_conn', two_owner_db)
     assert repository.update_member_role(
+        tenant_id='tenant-a',
         organization_id=ORG_ID,
         actor_id=USER_ID,
         member_id=USER_ID,
@@ -226,10 +230,10 @@ def test_invitation_acceptance_fails_closed_before_membership_on_mismatch(monkey
 def test_exact_revocation_and_atomic_recovery_login(monkeypatch):
     connection, cursor = install_db(monkeypatch)
     assert repository.revoke_invitation(
-        organization_id=ORG_ID, invitation_id=RECORD_ID
+        tenant_id='tenant-a', organization_id=ORG_ID, invitation_id=RECORD_ID
     )
     assert repository.revoke_api_credential(
-        organization_id=ORG_ID, credential_id=RECORD_ID
+        tenant_id='tenant-a', organization_id=ORG_ID, credential_id=RECORD_ID
     )
 
     class RecoveryCursor(FakeCursor):
@@ -381,7 +385,7 @@ def test_role_update_denies_unauthorized_actor_and_stale_target(monkeypatch):
     monkeypatch.setattr(repository, 'db_conn', denied_db)
     with pytest.raises(PermissionError, match='not_found'):
         repository.update_member_role(
-            organization_id=ORG_ID, actor_id=USER_ID, member_id=RECORD_ID,
+            tenant_id='tenant-a', organization_id=ORG_ID, actor_id=USER_ID, member_id=RECORD_ID,
             new_role='editor', expected_updated_at=datetime.now(timezone.utc),
         )
     assert denied_connection.rolled_back is True
@@ -395,7 +399,7 @@ def test_role_update_denies_unauthorized_actor_and_stale_target(monkeypatch):
 
     monkeypatch.setattr(repository, 'db_conn', stale_db)
     assert repository.update_member_role(
-        organization_id=ORG_ID, actor_id=USER_ID, member_id=RECORD_ID,
+        tenant_id='tenant-a', organization_id=ORG_ID, actor_id=USER_ID, member_id=RECORD_ID,
         new_role='editor', expected_updated_at=datetime.now(timezone.utc),
     ) is False
     assert stale_connection.rolled_back is True

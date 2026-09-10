@@ -6,15 +6,27 @@ import { siteManifest } from '../../config/siteRuntime';
 type Props = {
   children?: React.ReactNode;
   headerTitle?: string;
-  sidebarItems?: string[];
+  sidebarItems?: Array<string | { label: string; to: string }>;
+  sidebarLabel?: string;
   variant?: 'public' | 'app';
+  footerLabel?: string;
+  menuLabel?: string;
+  headerIsPageHeading?: boolean;
+  themeLabel?: string;
+  sidebarActivePath?: string;
 };
 
 export const AppShell: React.FC<Props> = ({
   children,
   headerTitle,
   sidebarItems,
+  sidebarLabel = 'Sidebar',
   variant = 'app',
+  footerLabel = 'Private workspace',
+  menuLabel = 'Menu',
+  headerIsPageHeading = true,
+  themeLabel = 'Toggle color theme',
+  sidebarActivePath,
 }) => {
   const uid = useId();
   const sidebarId = useMemo(() => `app-shell-sidebar-${uid}`, [uid]);
@@ -36,6 +48,9 @@ export const AppShell: React.FC<Props> = ({
           variant={variant}
           menuControlsId={sidebarId}
           isMenuOpen={isMenuOpen}
+          menuLabel={menuLabel}
+          titleAsHeading={headerIsPageHeading}
+          themeLabel={themeLabel}
           onToggleMenu={isPublic ? undefined : () => setIsMenuOpen((v) => !v)}
         />
 
@@ -50,8 +65,10 @@ export const AppShell: React.FC<Props> = ({
             <GlassSidebar
               id={sidebarId}
               items={sidebarItems}
+              label={sidebarLabel}
               isOpen={isMenuOpen}
               onClose={() => setIsMenuOpen(false)}
+              currentPath={sidebarActivePath}
             />
           )}
 
@@ -72,7 +89,7 @@ export const AppShell: React.FC<Props> = ({
             style={{ minHeight: 'var(--footer-h)' }}
           >
             <span>{siteManifest.name}</span>
-            <span>Private workspace</span>
+            <span>{footerLabel}</span>
           </footer>
         )}
       </div>

@@ -1,6 +1,7 @@
 from typing import Optional
 
 from fastapi import HTTPException, Request
+from fastapi.responses import JSONResponse
 
 from api.security.tenant_context import TenantBoundaryError, canonical_tenant_id
 
@@ -22,6 +23,26 @@ async def tenant_context_middleware(request: Request, call_next):
             # exception translation. Preserve the failure on request state so
             # the route dependency returns the normal bounded JSON error.
             request.state.tenant_invalid = True
+        else:
+            # Production tenant traffic is authorized by durable lifecycle
+            # state. Lifecycle endpoints remain reachable for recovery and
+            # owner-controlled transitions; all ordinary serving fails closed.
+            from api.settings import settings
+
+            if settings.ENV == 'production' and '/lifecycle' not in request.url.path:
+                from api.repositories.tenant_lifecycle import (
+                    TenantLifecycleRepositoryError,
+                    get_state,
+                )
+
+                try:
+                    state = get_state(tenant_id=request.state.tenant_id)['state']
+                except TenantLifecycleRepositoryError:
+                    return JSONResponse(
+                        status_code=503, content={'detail': 'tenant_lifecycle_unknown'}
+                    )
+                if state != 'active':
+                    return JSONResponse(status_code=423, content={'detail': 'tenant_not_serving'})
     return await call_next(request)
 
 

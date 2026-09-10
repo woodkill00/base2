@@ -19,7 +19,12 @@ from django.core.validators import (
 from django.db import models, transaction
 from django.utils import timezone
 
-from common.models import content_identifier_validator, validate_closed_mapping
+from common.models import (
+    content_identifier_validator,
+    operations_identifier_validator,
+    validate_closed_mapping,
+    validate_operations_dimensions,
+)
 
 SITE_ID_PATTERN = r"^[a-z][a-z0-9-]{2,62}$"
 SHA256_PATTERN = r"^[a-f0-9]{64}$"
@@ -1417,9 +1422,7 @@ class MediaAsset(SiteOwnedModel):
     current_object_version = models.PositiveIntegerField(
         default=1, validators=[MinValueValidator(1)]
     )
-    authorization_epoch = models.PositiveIntegerField(
-        default=1, validators=[MinValueValidator(1)]
-    )
+    authorization_epoch = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
     archived_at = models.DateTimeField(null=True, blank=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
 
@@ -1485,9 +1488,7 @@ class MediaVariant(models.Model):
     source_sha256 = models.CharField(max_length=64, blank=True, default="")
     processor_ref = models.CharField(max_length=128, blank=True, default="")
     inline_safe = models.BooleanField(default=False)
-    duration_seconds = models.DecimalField(
-        max_digits=10, decimal_places=3, null=True, blank=True
-    )
+    duration_seconds = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
     page_number = models.PositiveIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -1727,9 +1728,7 @@ class MediaMetadataRevision(SiteOwnedModel):
     license_code = models.CharField(max_length=64, blank=True, default="")
     focal_x = models.DecimalField(max_digits=5, decimal_places=4, null=True, blank=True)
     focal_y = models.DecimalField(max_digits=5, decimal_places=4, null=True, blank=True)
-    duration_seconds = models.DecimalField(
-        max_digits=10, decimal_places=3, null=True, blank=True
-    )
+    duration_seconds = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
     page_count = models.PositiveIntegerField(null=True, blank=True)
     width = models.PositiveIntegerField(null=True, blank=True)
     height = models.PositiveIntegerField(null=True, blank=True)
@@ -2191,9 +2190,7 @@ class MediaAbuseCase(SiteOwnedModel):
     lock_version = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
 
     class Meta:
-        indexes = [
-            models.Index(fields=["site_id", "status", "created_at"], name="media_abuse_idx")
-        ]
+        indexes = [models.Index(fields=["site_id", "status", "created_at"], name="media_abuse_idx")]
 
     def clean(self) -> None:
         super().clean()
@@ -2202,9 +2199,7 @@ class MediaAbuseCase(SiteOwnedModel):
         if not re.fullmatch(r"media_[a-z0-9_]{3,63}", self.reason_code or ""):
             raise ValidationError("media_abuse_reason_invalid")
         actors = [
-            value
-            for value in (self.reporter_ref, self.reviewer_ref, self.appellant_ref)
-            if value
+            value for value in (self.reporter_ref, self.reviewer_ref, self.appellant_ref) if value
         ]
         if len(actors) != len(set(actors)):
             raise ValidationError("media_abuse_separation_required")
@@ -2339,3 +2334,654 @@ class SearchDocument(SiteOwnedModel):
     def save(self, *args, **kwargs):
         self.full_clean()
         return super().save(*args, **kwargs)
+
+
+class OperationsService(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    service_key = models.CharField(max_length=96, validators=[operations_identifier_validator])
+    environment = models.CharField(
+        max_length=16,
+        choices=tuple((value, value.title()) for value in ("preview", "staging", "production")),
+    )
+    enabled = models.BooleanField(default=True)
+    release_id = models.CharField(max_length=128, blank=True, default="")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "environment", "service_key"],
+                name="operations_service_scope_uq",
+            )
+        ]
+
+
+class OperationsHealthSample(SiteOwnedModel):
+    class State(models.TextChoices):
+        HEALTHY = "healthy", "Healthy"
+        DEGRADED = "degraded", "Degraded"
+        UNAVAILABLE = "unavailable", "Unavailable"
+        STALE = "stale", "Stale"
+        UNKNOWN = "unknown", "Unknown"
+        MUTED = "muted", "Muted"
+        DISABLED = "disabled", "Disabled"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    service = models.ForeignKey(
+        OperationsService, on_delete=models.CASCADE, related_name="health_samples"
+    )
+    state = models.CharField(max_length=16, choices=State.choices)
+    code = models.CharField(max_length=96, validators=[operations_identifier_validator])
+    latency_ms = models.PositiveIntegerField(null=True, blank=True)
+    dimensions = models.JSONField(default=dict, validators=[validate_operations_dimensions])
+    observed_at = models.DateTimeField()
+    expires_at = models.DateTimeField()
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=["site_id", "service", "-observed_at"],
+                name="operations_health_recent_idx",
+            )
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(expires_at__gt=models.F("observed_at")),
+                name="operations_health_expiry_ck",
+            )
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.service_id and self.site_id != self.service.site_id:
+            raise ValidationError("operations_health_scope_invalid")
+        if self.expires_at <= self.observed_at:
+            raise ValidationError("operations_health_expiry_invalid")
+
+
+class OperationsSyntheticRun(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    journey_key = models.CharField(max_length=96, validators=[operations_identifier_validator])
+    role = models.CharField(
+        max_length=16,
+        choices=tuple(
+            (value, value.title()) for value in ("anonymous", "member", "editor", "administrator")
+        ),
+    )
+    source_commit = models.CharField(max_length=40)
+    status = models.CharField(
+        max_length=16,
+        choices=tuple((value, value.title()) for value in ("running", "passed", "failed")),
+    )
+    result_digest = models.CharField(max_length=64, blank=True, default="")
+    started_at = models.DateTimeField()
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    def clean(self) -> None:
+        super().clean()
+        if not re.fullmatch(r"[0-9a-f]{40}", self.source_commit or ""):
+            raise ValidationError("operations_synthetic_commit_invalid")
+        if self.result_digest and not re.fullmatch(SHA256_PATTERN, self.result_digest):
+            raise ValidationError("operations_synthetic_digest_invalid")
+        if self.status == "running" and self.completed_at is not None:
+            raise ValidationError("operations_synthetic_state_invalid")
+        if self.status != "running" and self.completed_at is None:
+            raise ValidationError("operations_synthetic_state_invalid")
+
+
+class OperationsObjective(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    objective_key = models.CharField(max_length=96, validators=[operations_identifier_validator])
+    indicator = models.CharField(max_length=96, validators=[operations_identifier_validator])
+    target = models.DecimalField(max_digits=8, decimal_places=5)
+    window_minutes = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    warning_threshold = models.DecimalField(max_digits=8, decimal_places=5)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "objective_key"], name="operations_objective_scope_uq"
+            )
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if not Decimal("0") <= self.target <= Decimal("1"):
+            raise ValidationError("operations_objective_target_invalid")
+        if not Decimal("0") <= self.warning_threshold <= self.target:
+            raise ValidationError("operations_objective_warning_invalid")
+
+
+class OperationsIncident(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    fingerprint = models.CharField(max_length=64, validators=[sha256_validator])
+    environment = models.CharField(
+        max_length=16,
+        choices=tuple(
+            (value, value.title()) for value in ("unknown", "preview", "staging", "production")
+        ),
+        default="unknown",
+    )
+    severity = models.CharField(
+        max_length=16,
+        choices=tuple((value, value.title()) for value in ("info", "warning", "high", "critical")),
+    )
+    state = models.CharField(
+        max_length=16,
+        choices=tuple(
+            (value, value.replace("_", " ").title())
+            for value in ("firing", "acknowledged", "resolved", "recurring")
+        ),
+        default="firing",
+    )
+    summary_code = models.CharField(max_length=96, validators=[operations_identifier_validator])
+    owner_ref = models.CharField(max_length=200, blank=True, default="")
+    occurrence_count = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
+    first_observed_at = models.DateTimeField()
+    last_observed_at = models.DateTimeField()
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "environment", "fingerprint"],
+                name="operations_incident_environment_scope_uq",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(last_observed_at__gte=models.F("first_observed_at")),
+                name="operations_incident_time_ck",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(state="resolved", resolved_at__isnull=False)
+                    | (~models.Q(state="resolved") & models.Q(resolved_at__isnull=True))
+                ),
+                name="operations_incident_resolution_ck",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["site_id", "state", "-last_observed_at"],
+                name="operations_incident_idx",
+            )
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.last_observed_at < self.first_observed_at:
+            raise ValidationError("operations_incident_time_invalid")
+        if self.state == "resolved" and self.resolved_at is None:
+            raise ValidationError("operations_incident_resolution_invalid")
+        if self.state != "resolved" and self.resolved_at is not None:
+            raise ValidationError("operations_incident_resolution_invalid")
+
+
+class OperationsIncidentEvent(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    incident = models.ForeignKey(
+        OperationsIncident, on_delete=models.CASCADE, related_name="timeline"
+    )
+    event_key = models.CharField(max_length=96, validators=[operations_identifier_validator])
+    actor_ref = models.CharField(max_length=200, blank=True, default="system")
+    details = models.JSONField(default=dict, validators=[validate_operations_dimensions])
+    occurred_at = models.DateTimeField()
+
+    def clean(self) -> None:
+        super().clean()
+        if self.incident_id and self.site_id != self.incident.site_id:
+            raise ValidationError("operations_event_scope_invalid")
+
+
+class OperationsAlertDelivery(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    incident = models.ForeignKey(
+        OperationsIncident, on_delete=models.CASCADE, related_name="deliveries"
+    )
+    channel = models.CharField(max_length=32, default="discord")
+    generation = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
+    status = models.CharField(
+        max_length=16,
+        choices=tuple(
+            (value, value.replace("_", " ").title())
+            for value in ("queued", "sending", "sent", "acknowledged", "failed", "expired")
+        ),
+        default="queued",
+    )
+    attempts = models.PositiveSmallIntegerField(default=0)
+    maximum_attempts = models.PositiveSmallIntegerField(default=5)
+    next_attempt_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField()
+    receipt_digest = models.CharField(max_length=64, blank=True, default="")
+    error_code = models.CharField(max_length=96, blank=True, default="")
+    claim_token = models.UUIDField(null=True, blank=True)
+    claim_expires_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "incident", "channel", "generation"],
+                name="operations_delivery_replay_uq",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        status="sending", claim_token__isnull=False, claim_expires_at__isnull=False
+                    )
+                    | (
+                        ~models.Q(status="sending")
+                        & models.Q(claim_token__isnull=True, claim_expires_at__isnull=True)
+                    )
+                ),
+                name="operations_delivery_claim_ck",
+            ),
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.incident_id and self.site_id != self.incident.site_id:
+            raise ValidationError("operations_delivery_scope_invalid")
+        if self.attempts > self.maximum_attempts:
+            raise ValidationError("operations_delivery_attempt_invalid")
+        if self.receipt_digest and not re.fullmatch(SHA256_PATTERN, self.receipt_digest):
+            raise ValidationError("operations_delivery_digest_invalid")
+        claimed = self.status == "sending"
+        if claimed != bool(self.claim_token and self.claim_expires_at):
+            raise ValidationError("operations_delivery_claim_invalid")
+
+
+class TenantQuota(SiteOwnedModel):
+    QUOTA_KEYS = tuple(
+        (value, value.title())
+        for value in ("users", "storage", "media", "api", "jobs", "email", "search", "cost")
+    )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    quota_key = models.CharField(max_length=16, choices=QUOTA_KEYS)
+    limit = models.PositiveBigIntegerField()
+    used = models.PositiveBigIntegerField(default=0)
+    reserved = models.PositiveBigIntegerField(default=0)
+    revision = models.PositiveBigIntegerField(default=1)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["site_id", "quota_key"], name="tenant_quota_scope_uq"),
+            models.CheckConstraint(
+                condition=models.Q(used__lte=models.F("limit")), name="tenant_quota_used_lte_limit"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(reserved__lte=models.F("limit")),
+                name="tenant_quota_reserved_lte_limit",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(used__lte=models.F("limit") - models.F("reserved")),
+                name="tenant_quota_total_lte_limit",
+            ),
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.used + self.reserved > self.limit:
+            raise ValidationError("tenant_quota_capacity_invalid")
+
+
+class TenantQuotaReservation(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    quota = models.ForeignKey(TenantQuota, on_delete=models.CASCADE, related_name="reservations")
+    reservation_id = models.CharField(max_length=128, validators=[operations_identifier_validator])
+    amount = models.PositiveBigIntegerField(validators=[MinValueValidator(1)])
+    state = models.CharField(
+        max_length=16,
+        choices=tuple((value, value.title()) for value in ("reserved", "committed", "released")),
+        default="reserved",
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "reservation_id"], name="tenant_quota_reservation_scope_uq"
+            )
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.quota_id and self.site_id != self.quota.site_id:
+            raise ValidationError("tenant_quota_reservation_scope_invalid")
+
+
+class TenantDomainClaim(SiteOwnedModel):
+    """Globally unique, tenant-owned custom-domain lifecycle state."""
+
+    class State(models.TextChoices):
+        PENDING = "pending", "Pending"
+        VERIFIED = "verified", "Verified"
+        ACTIVE = "active", "Active"
+        REVOKED = "revoked", "Revoked"
+        EXPIRED = "expired", "Expired"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    domain = models.CharField(max_length=253, unique=True)
+    challenge_digest = models.CharField(max_length=64, validators=[sha256_validator])
+    evidence_digest = models.CharField(max_length=64, blank=True, default="")
+    approval_digest = models.CharField(max_length=64, blank=True, default="")
+    release_id = models.CharField(max_length=128, blank=True, default="")
+    state = models.CharField(max_length=16, choices=State.choices, default=State.PENDING)
+    canonical = models.BooleanField(default=False)
+    expires_at = models.DateTimeField()
+    verified_at = models.DateTimeField(null=True, blank=True)
+    revision = models.PositiveBigIntegerField(default=1)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["site_id", "state", "domain"], name="tenant_domain_state_idx")
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id"],
+                condition=models.Q(canonical=True, state="active"),
+                name="tenant_one_active_canonical_uq",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(canonical=False) | models.Q(state="active"),
+                name="tenant_domain_canonical_state_ck",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    ~models.Q(state__in=("verified", "active"))
+                    | (models.Q(verified_at__isnull=False) & ~models.Q(evidence_digest=""))
+                ),
+                name="tenant_domain_verification_ck",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    ~models.Q(state="active")
+                    | (~models.Q(approval_digest="") & ~models.Q(release_id=""))
+                ),
+                name="tenant_domain_activation_ck",
+            ),
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        normalized = self.domain.strip().lower().rstrip(".")
+        domain_pattern = re.compile(
+            r"^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$"
+        )
+        if "*" in normalized or not domain_pattern.fullmatch(normalized):
+            raise ValidationError("tenant_domain_invalid")
+        if normalized.startswith("xn--") or ".xn--" in normalized:
+            raise ValidationError("tenant_domain_homograph_forbidden")
+        self.domain = normalized
+        for field in ("evidence_digest", "approval_digest"):
+            value = getattr(self, field)
+            if value and not re.fullmatch(SHA256_PATTERN, value):
+                raise ValidationError(f"tenant_domain_{field}_invalid")
+        if self.expires_at.tzinfo is None:
+            raise ValidationError("tenant_domain_expiry_invalid")
+        if self.state in {self.State.VERIFIED, self.State.ACTIVE} and not (
+            self.verified_at and self.evidence_digest
+        ):
+            raise ValidationError("tenant_domain_verification_required")
+        if self.state == self.State.ACTIVE and not (self.approval_digest and self.release_id):
+            raise ValidationError("tenant_domain_activation_binding_required")
+        if self.canonical and self.state != self.State.ACTIVE:
+            raise ValidationError("tenant_domain_canonical_state_invalid")
+
+
+class DestructiveApprovalUse(SiteOwnedModel):
+    """Durable one-time ledger for destructive approval nonces."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    nonce = models.CharField(max_length=128)
+    approval_digest = models.CharField(max_length=64, validators=[sha256_validator])
+    expires_at = models.DateTimeField()
+    consumed_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "nonce"], name="destructive_approval_nonce_uq"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(expires_at__gt=models.F("consumed_at")),
+                name="destructive_approval_lifetime_ck",
+            ),
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{15,127}", self.nonce or ""):
+            raise ValidationError("destructive_approval_nonce_invalid")
+        if self.expires_at.tzinfo is None or self.consumed_at.tzinfo is None:
+            raise ValidationError("destructive_approval_time_invalid")
+
+
+class TenantLifecycleState(SiteOwnedModel):
+    """One durable, revisioned lifecycle record for each tenant."""
+
+    STATES = tuple(
+        (value, value.replace("_", " ").title())
+        for value in (
+            "provisioning",
+            "active",
+            "suspended",
+            "archived",
+            "restoring",
+            "deleting",
+            "deleted",
+        )
+    )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    state = models.CharField(max_length=16, choices=STATES, default="provisioning")
+    owner_ref = models.CharField(max_length=200)
+    configuration = models.JSONField(default=dict, validators=[validate_operations_dimensions])
+    revision = models.PositiveBigIntegerField(default=1, validators=[MinValueValidator(1)])
+    last_operation_id = models.UUIDField(default=uuid.uuid4)
+    last_receipt_digest = models.CharField(max_length=64, validators=[sha256_validator])
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["site_id"], name="tenant_lifecycle_site_uq")
+        ]
+        indexes = [models.Index(fields=["state", "updated_at"], name="tenant_lifecycle_state_idx")]
+
+
+class TenantLifecycleEvent(SiteOwnedModel):
+    """Immutable tenant-private lifecycle and ownership history."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    operation_id = models.UUIDField()
+    operation = models.CharField(max_length=32, validators=[operations_identifier_validator])
+    from_state = models.CharField(max_length=16)
+    to_state = models.CharField(max_length=16)
+    actor_ref = models.CharField(max_length=200)
+    target_owner_ref = models.CharField(max_length=200, blank=True, default="")
+    revision = models.PositiveBigIntegerField(validators=[MinValueValidator(1)])
+    receipt_digest = models.CharField(max_length=64, validators=[sha256_validator])
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "operation_id"], name="tenant_lifecycle_operation_uq"
+            )
+        ]
+        indexes = [
+            models.Index(fields=["site_id", "created_at"], name="tenant_lifecycle_event_idx")
+        ]
+
+
+class DurableJob(SiteOwnedModel):
+    """Canonical tenant job envelope; payload values live in protected storage."""
+
+    STATES = tuple(
+        (value, value.replace("_", " ").title())
+        for value in ("queued", "leased", "succeeded", "retry", "dead_letter", "cancelled")
+    )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    owner_ref = models.CharField(max_length=200)
+    generation = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
+    job_type = models.CharField(max_length=96, validators=[operations_identifier_validator])
+    payload_digest = models.CharField(max_length=64, validators=[sha256_validator])
+    payload_schema = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
+    idempotency_key = models.CharField(max_length=128, validators=[operations_identifier_validator])
+    state = models.CharField(max_length=16, choices=STATES, default="queued")
+    attempts = models.PositiveSmallIntegerField(default=0)
+    maximum_attempts = models.PositiveSmallIntegerField(default=5)
+    available_at = models.DateTimeField(default=timezone.now)
+    lease_owner = models.CharField(max_length=200, blank=True, default="")
+    lease_token = models.UUIDField(null=True, blank=True)
+    lease_expires_at = models.DateTimeField(null=True, blank=True)
+    result_digest = models.CharField(max_length=64, blank=True, default="")
+    error_code = models.CharField(max_length=96, blank=True, default="")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "idempotency_key"], name="durable_job_replay_uq"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(attempts__lte=models.F("maximum_attempts")),
+                name="durable_job_attempts_lte_max",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        state="leased",
+                        lease_token__isnull=False,
+                        lease_expires_at__isnull=False,
+                    )
+                    & ~models.Q(lease_owner="")
+                    | (
+                        ~models.Q(state="leased")
+                        & models.Q(lease_owner="")
+                        & models.Q(lease_token__isnull=True)
+                        & models.Q(lease_expires_at__isnull=True)
+                    )
+                ),
+                name="durable_job_lease_ck",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(payload_digest__regex=r"^[0-9a-f]{64}$"),
+                name="durable_job_payload_digest_ck",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(result_digest="")
+                | models.Q(result_digest__regex=r"^[0-9a-f]{64}$"),
+                name="durable_job_result_digest_ck",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(job_type__regex=r"^[a-z][a-z0-9_.:-]{2,95}$")
+                & models.Q(idempotency_key__regex=r"^[a-z][a-z0-9_.:-]{2,127}$")
+                & models.Q(owner_ref__regex=r"^[a-z][a-z0-9_.:-]{2,127}$"),
+                name="durable_job_identity_ck",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["site_id", "state", "available_at"], name="durable_job_ready_idx")
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        leased = self.state == "leased"
+        if leased != bool(self.lease_owner and self.lease_token and self.lease_expires_at):
+            raise ValidationError("durable_job_lease_invalid")
+        if self.result_digest and not re.fullmatch(SHA256_PATTERN, self.result_digest):
+            raise ValidationError("durable_job_result_invalid")
+
+
+class DurableSchedule(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    schedule_key = models.CharField(max_length=96, validators=[operations_identifier_validator])
+    job_type = models.CharField(max_length=96, validators=[operations_identifier_validator])
+    timezone = models.CharField(max_length=255, default="UTC")
+    rule = models.CharField(max_length=128)
+    missed_policy = models.CharField(
+        max_length=16, choices=(("skip", "Skip"), ("once", "Once")), default="once"
+    )
+    overlap_policy = models.CharField(
+        max_length=16, choices=(("forbid", "Forbid"), ("replace", "Replace")), default="forbid"
+    )
+    next_run_at = models.DateTimeField()
+    last_run_at = models.DateTimeField(null=True, blank=True)
+    enabled = models.BooleanField(default=True)
+    revision = models.PositiveBigIntegerField(default=1)
+    claim_token = models.UUIDField(null=True, blank=True)
+    claim_expires_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "schedule_key"], name="durable_schedule_scope_uq"
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(claim_token__isnull=True, claim_expires_at__isnull=True)
+                    | models.Q(claim_token__isnull=False, claim_expires_at__isnull=False)
+                ),
+                name="durable_schedule_claim_ck",
+            ),
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        try:
+            ZoneInfo(self.timezone)
+        except ZoneInfoNotFoundError as exc:
+            raise ValidationError("durable_schedule_timezone_invalid") from exc
+
+
+class BreakGlassGrant(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    requester_ref = models.CharField(max_length=200)
+    approver_ref = models.CharField(max_length=200)
+    scope = models.CharField(max_length=96, validators=[operations_identifier_validator])
+    reason_digest = models.CharField(max_length=64, validators=[sha256_validator])
+    approval_digest = models.CharField(max_length=64, validators=[sha256_validator])
+    expires_at = models.DateTimeField()
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(requester_ref=models.F("approver_ref")),
+                name="break_glass_independent_approver_ck",
+            )
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if self.requester_ref == self.approver_ref:
+            raise ValidationError("break_glass_independent_approval_required")
+        if self.expires_at.tzinfo is None:
+            raise ValidationError("break_glass_expiry_invalid")
+
+
+class TenantNotification(SiteOwnedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    owner_ref = models.CharField(max_length=200)
+    event_key = models.CharField(max_length=96, validators=[operations_identifier_validator])
+    family = models.CharField(
+        max_length=16,
+        choices=tuple((value, value.title()) for value in ("security", "transactional", "product")),
+    )
+    channel = models.CharField(
+        max_length=16, choices=tuple((value, value.title()) for value in ("in_app", "email"))
+    )
+    content_digest = models.CharField(max_length=64, validators=[sha256_validator])
+    idempotency_key = models.CharField(max_length=128, validators=[operations_identifier_validator])
+    state = models.CharField(
+        max_length=16,
+        choices=tuple(
+            (value, value.title())
+            for value in ("queued", "sent", "bounced", "complained", "suppressed", "failed")
+        ),
+        default="queued",
+    )
+    available_at = models.DateTimeField(default=timezone.now)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "idempotency_key", "channel"],
+                name="tenant_notification_replay_uq",
+            )
+        ]

@@ -22,8 +22,8 @@ import Navigation from '../components/Navigation';
 import AccountCenter from './AccountCenter';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../lib/apiClient';
-import { normalizeApiError } from '../lib/apiErrors';
 import { settingsAPI } from '../services/settings';
+import securityActions from '../contracts/security-actions.json';
 
 const FALLBACK_CATEGORIES = [
   ['overview', 'Overview', 'Account health and recommended actions', LayoutGrid, '/settings'],
@@ -113,6 +113,437 @@ const preferenceDefaults = {
   week_start: 'system',
 };
 
+const SETTINGS_COPY = {
+  en: {
+    appShell: 'Settings',
+    themeToggle: 'Toggle color theme',
+    privateWorkspace: 'Private workspace',
+    menu: 'Menu',
+    sidebar: 'Sidebar',
+    sidebarItems: ['Home', 'Dashboard', 'Settings', 'Users', 'Help'],
+    breadcrumb: 'Breadcrumb',
+    settings: 'Settings',
+    controlCenter: 'Account control center',
+    search: 'Search settings',
+    categories: 'Settings categories',
+    noResults: 'No settings found.',
+    details: 'details',
+    loading: 'Loading settings…',
+    language: 'Language',
+    timezone: 'Time zone',
+    weekStart: 'Week starts on',
+    systemDefault: 'System default',
+    monday: 'Monday',
+    sunday: 'Sunday',
+    saturday: 'Saturday',
+    saving: 'Saving…',
+    savePreferences: 'Save preferences',
+  },
+  de: {
+    appShell: 'Einstellungen',
+    themeToggle: 'Farbschema wechseln',
+    privateWorkspace: 'Privater Arbeitsbereich',
+    menu: 'Menü',
+    sidebar: 'Seitenleiste',
+    sidebarItems: ['Start', 'Übersicht', 'Einstellungen', 'Benutzer', 'Hilfe'],
+    breadcrumb: 'Brotkrümelnavigation',
+    settings: 'Einstellungen',
+    controlCenter: 'Kontozentrale',
+    search: 'Einstellungen durchsuchen',
+    categories: 'Einstellungskategorien',
+    noResults: 'Keine Einstellungen gefunden.',
+    details: 'Details',
+    loading: 'Einstellungen werden geladen…',
+    language: 'Sprache',
+    timezone: 'Zeitzone',
+    weekStart: 'Wochenbeginn',
+    systemDefault: 'Systemstandard',
+    monday: 'Montag',
+    sunday: 'Sonntag',
+    saturday: 'Samstag',
+    saving: 'Speichern…',
+    savePreferences: 'Einstellungen speichern',
+  },
+  ar: {
+    appShell: 'الإعدادات',
+    themeToggle: 'تبديل سمة الألوان',
+    privateWorkspace: 'مساحة عمل خاصة',
+    menu: 'القائمة',
+    sidebar: 'الشريط الجانبي',
+    sidebarItems: ['الرئيسية', 'لوحة المعلومات', 'الإعدادات', 'المستخدمون', 'المساعدة'],
+    breadcrumb: 'مسار التنقل',
+    settings: 'الإعدادات',
+    controlCenter: 'مركز التحكم بالحساب',
+    search: 'البحث في الإعدادات',
+    categories: 'فئات الإعدادات',
+    noResults: 'لم يتم العثور على إعدادات.',
+    details: 'التفاصيل',
+    loading: 'جارٍ تحميل الإعدادات…',
+    language: 'اللغة',
+    timezone: 'المنطقة الزمنية',
+    weekStart: 'بداية الأسبوع',
+    systemDefault: 'إعداد النظام',
+    monday: 'الاثنين',
+    sunday: 'الأحد',
+    saturday: 'السبت',
+    saving: 'جارٍ الحفظ…',
+    savePreferences: 'حفظ التفضيلات',
+  },
+};
+
+const CATEGORY_COPY = {
+  de: {
+    overview: ['Übersicht', 'Kontostatus und empfohlene Aktionen'],
+    profile: ['Profil', 'Identität und öffentliche Informationen'],
+    security: [
+      'Anmeldung und Sicherheit',
+      'Authentifizierung, Wiederherstellung, Geräte und Sitzungen',
+    ],
+    privacy: ['Datenschutz und Daten', 'Einwilligungen, Exporte, Korrekturen und Löschung'],
+    notifications: ['Benachrichtigungen', 'Sicherheits-, Produkt- und Marketingzustellung'],
+    appearance: ['Darstellung und Barrierefreiheit', 'Design, Kontrast, Bewegung und Dichte'],
+    'language-region': ['Sprache und Region', 'Sprache, Zeitzone und Wochenformat'],
+    organization: ['Organisation', 'Mitglieder, Rollen, Einladungen und Prüfung'],
+    developer: ['Entwicklung', 'API-Dokumentation und Integrationszugänge'],
+  },
+  ar: {
+    overview: ['نظرة عامة', 'سلامة الحساب والإجراءات المقترحة'],
+    profile: ['الملف الشخصي', 'الهوية والمعلومات العامة'],
+    security: ['تسجيل الدخول والأمان', 'المصادقة والاسترداد والأجهزة والجلسات'],
+    privacy: ['الخصوصية والبيانات', 'الموافقات والتصدير والتصحيح والحذف'],
+    notifications: ['الإشعارات', 'رسائل الأمان والمنتج والتسويق'],
+    appearance: ['المظهر وإمكانية الوصول', 'السمة والتباين والحركة والكثافة'],
+    'language-region': ['اللغة والمنطقة', 'اللغة والمنطقة الزمنية وتنسيق الأسبوع'],
+    organization: ['المؤسسة', 'الأعضاء والأدوار والدعوات وسجل التدقيق'],
+    developer: ['المطور', 'توثيق الواجهة البرمجية وبيانات التكامل'],
+  },
+};
+
+const DETAIL_COPY = {
+  en: {
+    partialError: 'Some settings are temporarily unavailable. Existing values were not changed.',
+    profileSaved: 'Profile saved.',
+    preferencesSaved: 'Preferences saved.',
+    settingsConflict: 'These settings changed elsewhere. Refresh before saving again.',
+    exportQueued: 'Your data export was queued securely.',
+    correctionQueued: 'Your correction request was queued securely.',
+    deletionQueued: 'Your account deletion request was queued securely.',
+    deactivationQueued: 'Your account deactivation request was queued securely.',
+    email: 'Email',
+    emailHint: 'Changing your email requires verification.',
+    displayName: 'Display name',
+    avatarUrl: 'Avatar URL',
+    avatarHint: 'Use a public HTTPS image. Local and credential-bearing URLs are rejected.',
+    bio: 'Bio',
+    saveProfile: 'Save profile',
+    theme: 'Theme',
+    contrast: 'Contrast',
+    motion: 'Motion',
+    density: 'Density',
+    useSystem: 'Use system',
+    light: 'Light',
+    dark: 'Dark',
+    standard: 'Standard',
+    highContrast: 'High contrast',
+    fullMotion: 'Full motion',
+    reducedMotion: 'Reduced motion',
+    comfortable: 'Comfortable',
+    compact: 'Compact',
+    deliveryControls: 'Delivery controls',
+    deliveryHelp:
+      'Required security and transactional email cannot be disabled. Optional messages remain under your control.',
+    requiredMessage: 'Required account message',
+    optionalMessage: 'Optional message',
+    immediately: 'Immediately',
+    digest: 'Digest',
+    off: 'Off',
+    saveNotifications: 'Save notifications',
+    notificationSaved: 'Notification preferences saved.',
+    notificationDeliveryLabel: (eventFamily, channel) => `${eventFamily} ${channel} delivery`,
+    notificationTerms: {
+      security: 'Security',
+      transactional: 'Transactional',
+      product: 'Product',
+      marketing: 'Marketing',
+      email: 'Email',
+      in_app: 'In-app',
+    },
+    exportData: 'Export your data',
+    exportHelp:
+      'Exports are encrypted, integrity checked, and require recent authentication to download.',
+    requestExport: 'Request data export',
+    correctData: 'Correct your data',
+    correctHelp:
+      'Submit only the fields that need correction. Requests are auditable and processed asynchronously.',
+    correctName: 'Correct display name',
+    correctBio: 'Correct bio',
+    requestCorrection: 'Request correction',
+    deactivate: 'Deactivate account',
+    deactivateHelp:
+      'Deactivation signs you out and suspends access without erasing your profile. A final organization owner must transfer ownership first. Type DEACTIVATE exactly.',
+    deactivateConfirmation: 'Deactivation confirmation',
+    requestDeactivation: 'Request deactivation',
+    deleteData: 'Delete account data',
+    deleteHelp:
+      'This starts a destructive, auditable workflow after recent authentication. Type DELETE exactly to continue.',
+    confirmation: 'Confirmation',
+    requestDeletion: 'Request account deletion',
+    recentRequests: 'Recent requests',
+    privacyHistoryUnavailable: 'Recent privacy requests are temporarily unavailable.',
+    notificationsUnavailable: 'Notification preferences are temporarily unavailable.',
+    securityEventsUnavailable: 'Security activity is temporarily unavailable.',
+    privacyKinds: {
+      export: 'Data export',
+      correction: 'Data correction',
+      deactivation: 'Account deactivation',
+      deletion: 'Account deletion',
+      global_deactivation: 'Global account deactivation',
+      global_deletion: 'Global account deletion',
+    },
+    privacyStatuses: {
+      queued: 'Queued',
+      running: 'In progress',
+      completed: 'Completed',
+      failed: 'Failed',
+      expired: 'Expired',
+    },
+    unknownPrivacyKind: 'Unknown request type',
+    unknownPrivacyStatus: 'Unknown request status',
+    membersRoles: 'Members and roles',
+    membersHelp: 'Invite members, assign least-privilege roles, and review organization access.',
+    openAdministration: 'Open organization administration',
+    securityActivity: 'Recent security activity',
+    noSecurityEvents: 'No recent security events are available.',
+    accountEvent: 'Account event',
+    securityActions: securityActions.en,
+    unknownSecurityAction: 'Unknown security event',
+    apiDocs: 'API documentation',
+    apiDocsHelp: 'Explore the generated API contract and integration schemas.',
+    openApiDocs: 'Open API documentation',
+    credentials: 'Integration credentials',
+    credentialsHelp: 'Credentials are created once, shown once, scoped, and revocable.',
+    manageCredentials: 'Manage credentials',
+    saving: 'Saving…',
+    actionFailed: 'The requested settings action could not be completed.',
+  },
+  de: {
+    partialError:
+      'Einige Einstellungen sind vorübergehend nicht verfügbar. Vorhandene Werte wurden nicht geändert.',
+    profileSaved: 'Profil gespeichert.',
+    preferencesSaved: 'Einstellungen gespeichert.',
+    settingsConflict:
+      'Diese Einstellungen wurden an anderer Stelle geändert. Aktualisieren Sie die Seite vor dem erneuten Speichern.',
+    exportQueued: 'Ihr Datenexport wurde sicher in die Warteschlange gestellt.',
+    correctionQueued: 'Ihre Korrekturanfrage wurde sicher in die Warteschlange gestellt.',
+    deletionQueued: 'Ihre Anfrage zur Kontolöschung wurde sicher in die Warteschlange gestellt.',
+    deactivationQueued: 'Ihre Anfrage zur Kontodeaktivierung wurde sicher vorgemerkt.',
+    email: 'E-Mail',
+    emailHint: 'Eine Änderung Ihrer E-Mail-Adresse muss bestätigt werden.',
+    displayName: 'Anzeigename',
+    avatarUrl: 'Avatar-URL',
+    avatarHint:
+      'Verwenden Sie ein öffentliches HTTPS-Bild. Lokale URLs und URLs mit Zugangsdaten werden abgelehnt.',
+    bio: 'Biografie',
+    saveProfile: 'Profil speichern',
+    theme: 'Design',
+    contrast: 'Kontrast',
+    motion: 'Bewegung',
+    density: 'Dichte',
+    useSystem: 'Systemeinstellung verwenden',
+    light: 'Hell',
+    dark: 'Dunkel',
+    standard: 'Standard',
+    highContrast: 'Hoher Kontrast',
+    fullMotion: 'Volle Bewegung',
+    reducedMotion: 'Reduzierte Bewegung',
+    comfortable: 'Komfortabel',
+    compact: 'Kompakt',
+    deliveryControls: 'Zustellung',
+    deliveryHelp:
+      'Erforderliche Sicherheits- und Transaktions-E-Mails können nicht deaktiviert werden. Optionale Nachrichten bleiben unter Ihrer Kontrolle.',
+    requiredMessage: 'Erforderliche Kontonachricht',
+    optionalMessage: 'Optionale Nachricht',
+    immediately: 'Sofort',
+    digest: 'Zusammenfassung',
+    off: 'Aus',
+    saveNotifications: 'Benachrichtigungen speichern',
+    notificationSaved: 'Benachrichtigungseinstellungen gespeichert.',
+    notificationDeliveryLabel: (eventFamily, channel) =>
+      `Zustellung für ${eventFamily} über ${channel}`,
+    notificationTerms: {
+      security: 'Sicherheit',
+      transactional: 'Transaktionen',
+      product: 'Produkt',
+      marketing: 'Marketing',
+      email: 'E-Mail',
+      in_app: 'In-App',
+    },
+    exportData: 'Daten exportieren',
+    exportHelp:
+      'Exporte werden verschlüsselt, auf Integrität geprüft und erfordern für den Download eine kürzliche Anmeldung.',
+    requestExport: 'Datenexport anfordern',
+    correctData: 'Daten korrigieren',
+    correctHelp:
+      'Übermitteln Sie nur zu korrigierende Felder. Anfragen werden protokolliert und asynchron verarbeitet.',
+    correctName: 'Anzeigenamen korrigieren',
+    correctBio: 'Biografie korrigieren',
+    requestCorrection: 'Korrektur anfordern',
+    deactivate: 'Konto deaktivieren',
+    deactivateHelp:
+      'Die Deaktivierung meldet Sie ab und sperrt den Zugriff, ohne Ihr Profil zu löschen. Der letzte Organisationsinhaber muss die Inhaberschaft zuerst übertragen. Geben Sie DEACTIVATE exakt ein.',
+    deactivateConfirmation: 'Deaktivierung bestätigen',
+    requestDeactivation: 'Deaktivierung anfordern',
+    deleteData: 'Kontodaten löschen',
+    deleteHelp:
+      'Dies startet nach einer kürzlichen Anmeldung einen destruktiven, protokollierten Ablauf. Geben Sie DELETE exakt ein.',
+    confirmation: 'Bestätigung',
+    requestDeletion: 'Kontolöschung anfordern',
+    recentRequests: 'Letzte Anfragen',
+    privacyHistoryUnavailable: 'Letzte Datenschutzanfragen sind vorübergehend nicht verfügbar.',
+    notificationsUnavailable: 'Benachrichtigungseinstellungen sind vorübergehend nicht verfügbar.',
+    securityEventsUnavailable: 'Sicherheitsaktivitäten sind vorübergehend nicht verfügbar.',
+    privacyKinds: {
+      export: 'Datenexport',
+      correction: 'Datenkorrektur',
+      deactivation: 'Kontodeaktivierung',
+      deletion: 'Kontolöschung',
+      global_deactivation: 'Globale Kontodeaktivierung',
+      global_deletion: 'Globale Kontolöschung',
+    },
+    privacyStatuses: {
+      queued: 'In Warteschlange',
+      running: 'In Bearbeitung',
+      completed: 'Abgeschlossen',
+      failed: 'Fehlgeschlagen',
+      expired: 'Abgelaufen',
+    },
+    unknownPrivacyKind: 'Unbekannter Anfragetyp',
+    unknownPrivacyStatus: 'Unbekannter Anfragestatus',
+    membersRoles: 'Mitglieder und Rollen',
+    membersHelp:
+      'Laden Sie Mitglieder ein, vergeben Sie Rollen mit minimalen Rechten und prüfen Sie den Organisationszugriff.',
+    openAdministration: 'Organisationsverwaltung öffnen',
+    securityActivity: 'Letzte Sicherheitsaktivität',
+    noSecurityEvents: 'Keine aktuellen Sicherheitsereignisse verfügbar.',
+    accountEvent: 'Kontoereignis',
+    securityActions: securityActions.de,
+    unknownSecurityAction: 'Unbekanntes Sicherheitsereignis',
+    apiDocs: 'API-Dokumentation',
+    apiDocsHelp: 'Erkunden Sie den generierten API-Vertrag und die Integrationsschemata.',
+    openApiDocs: 'API-Dokumentation öffnen',
+    credentials: 'Integrationszugangsdaten',
+    credentialsHelp:
+      'Zugangsdaten werden einmal erstellt, einmal angezeigt, eingeschränkt und können widerrufen werden.',
+    manageCredentials: 'Zugangsdaten verwalten',
+    saving: 'Wird gespeichert…',
+    actionFailed: 'Die angeforderte Einstellungsaktion konnte nicht abgeschlossen werden.',
+  },
+  ar: {
+    partialError: 'بعض الإعدادات غير متاحة مؤقتًا. لم تتغير القيم الحالية.',
+    profileSaved: 'تم حفظ الملف الشخصي.',
+    preferencesSaved: 'تم حفظ التفضيلات.',
+    settingsConflict: 'تغيرت هذه الإعدادات في مكان آخر. حدّث الصفحة قبل الحفظ مرة أخرى.',
+    exportQueued: 'تمت إضافة تصدير بياناتك إلى قائمة الانتظار بأمان.',
+    correctionQueued: 'تمت إضافة طلب التصحيح إلى قائمة الانتظار بأمان.',
+    deletionQueued: 'تمت إضافة طلب حذف الحساب إلى قائمة الانتظار بأمان.',
+    deactivationQueued: 'تمت إضافة طلب تعطيل الحساب إلى قائمة الانتظار بأمان.',
+    email: 'البريد الإلكتروني',
+    emailHint: 'يتطلب تغيير البريد الإلكتروني التحقق منه.',
+    displayName: 'اسم العرض',
+    avatarUrl: 'رابط الصورة الشخصية',
+    avatarHint: 'استخدم صورة HTTPS عامة. تُرفض الروابط المحلية والروابط التي تتضمن بيانات اعتماد.',
+    bio: 'نبذة',
+    saveProfile: 'حفظ الملف الشخصي',
+    theme: 'السمة',
+    contrast: 'التباين',
+    motion: 'الحركة',
+    density: 'الكثافة',
+    useSystem: 'استخدام إعداد النظام',
+    light: 'فاتح',
+    dark: 'داكن',
+    standard: 'قياسي',
+    highContrast: 'تباين عالٍ',
+    fullMotion: 'حركة كاملة',
+    reducedMotion: 'حركة مخفّضة',
+    comfortable: 'مريح',
+    compact: 'مضغوط',
+    deliveryControls: 'خيارات التسليم',
+    deliveryHelp:
+      'لا يمكن تعطيل رسائل الأمان والمعاملات المطلوبة. تظل الرسائل الاختيارية تحت تحكمك.',
+    requiredMessage: 'رسالة حساب مطلوبة',
+    optionalMessage: 'رسالة اختيارية',
+    immediately: 'فورًا',
+    digest: 'ملخص',
+    off: 'إيقاف',
+    saveNotifications: 'حفظ الإشعارات',
+    notificationSaved: 'تم حفظ تفضيلات الإشعارات.',
+    notificationDeliveryLabel: (eventFamily, channel) => `تسليم ${eventFamily} عبر ${channel}`,
+    notificationTerms: {
+      security: 'الأمان',
+      transactional: 'المعاملات',
+      product: 'المنتج',
+      marketing: 'التسويق',
+      email: 'البريد الإلكتروني',
+      in_app: 'داخل التطبيق',
+    },
+    exportData: 'تصدير بياناتك',
+    exportHelp: 'تُشفّر عمليات التصدير ويُتحقق من سلامتها، ويتطلب تنزيلها مصادقة حديثة.',
+    requestExport: 'طلب تصدير البيانات',
+    correctData: 'تصحيح بياناتك',
+    correctHelp: 'أرسل الحقول التي تحتاج إلى تصحيح فقط. تُسجّل الطلبات وتُعالج بشكل غير متزامن.',
+    correctName: 'تصحيح اسم العرض',
+    correctBio: 'تصحيح النبذة',
+    requestCorrection: 'طلب التصحيح',
+    deactivate: 'تعطيل الحساب',
+    deactivateHelp:
+      'يسجّلك التعطيل خروجًا ويوقف الوصول دون مسح ملفك. يجب على آخر مالك للمؤسسة نقل الملكية أولًا. اكتب DEACTIVATE تمامًا.',
+    deactivateConfirmation: 'تأكيد التعطيل',
+    requestDeactivation: 'طلب التعطيل',
+    deleteData: 'حذف بيانات الحساب',
+    deleteHelp: 'يبدأ هذا إجراءً تدميريًا مسجلًا بعد مصادقة حديثة. اكتب DELETE تمامًا للمتابعة.',
+    confirmation: 'التأكيد',
+    requestDeletion: 'طلب حذف الحساب',
+    recentRequests: 'الطلبات الحديثة',
+    privacyHistoryUnavailable: 'طلبات الخصوصية الحديثة غير متاحة مؤقتًا.',
+    notificationsUnavailable: 'تفضيلات الإشعارات غير متاحة مؤقتًا.',
+    securityEventsUnavailable: 'نشاط الأمان غير متاح مؤقتًا.',
+    privacyKinds: {
+      export: 'تصدير البيانات',
+      correction: 'تصحيح البيانات',
+      deactivation: 'تعطيل الحساب',
+      deletion: 'حذف الحساب',
+      global_deactivation: 'تعطيل الحساب العام',
+      global_deletion: 'حذف الحساب العام',
+    },
+    privacyStatuses: {
+      queued: 'في قائمة الانتظار',
+      running: 'قيد التنفيذ',
+      completed: 'مكتمل',
+      failed: 'فشل',
+      expired: 'منتهي الصلاحية',
+    },
+    unknownPrivacyKind: 'نوع طلب غير معروف',
+    unknownPrivacyStatus: 'حالة طلب غير معروفة',
+    membersRoles: 'الأعضاء والأدوار',
+    membersHelp: 'ادعُ الأعضاء وحدد أدوارًا بأقل الصلاحيات وراجع الوصول إلى المؤسسة.',
+    openAdministration: 'فتح إدارة المؤسسة',
+    securityActivity: 'نشاط الأمان الحديث',
+    noSecurityEvents: 'لا تتوفر أحداث أمان حديثة.',
+    accountEvent: 'حدث الحساب',
+    securityActions: securityActions.ar,
+    unknownSecurityAction: 'حدث أمان غير معروف',
+    apiDocs: 'توثيق الواجهة البرمجية',
+    apiDocsHelp: 'استكشف عقد الواجهة البرمجية ومخططات التكامل المُنشأة.',
+    openApiDocs: 'فتح توثيق الواجهة البرمجية',
+    credentials: 'بيانات اعتماد التكامل',
+    credentialsHelp:
+      'تُنشأ بيانات الاعتماد مرة واحدة وتُعرض مرة واحدة وتكون محدودة وقابلة للإلغاء.',
+    manageCredentials: 'إدارة بيانات الاعتماد',
+    saving: 'جارٍ الحفظ…',
+    actionFailed: 'تعذر إكمال إجراء الإعدادات المطلوب.',
+  },
+};
+
 const Field = ({ label, htmlFor, hint, children }) => (
   <div className="space-y-2">
     <label className="block text-sm font-semibold" htmlFor={htmlFor}>
@@ -152,6 +583,11 @@ const SettingsCenter = () => {
   const [operations, setOperations] = useState([]);
   const [notifications, setNotifications] = useState(DEFAULT_NOTIFICATIONS);
   const [securityEvents, setSecurityEvents] = useState([]);
+  const [resourceAvailability, setResourceAvailability] = useState({
+    privacy: null,
+    notifications: null,
+    security: null,
+  });
   const [correction, setCorrection] = useState({ display_name: '', bio: '' });
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [deactivateConfirmation, setDeactivateConfirmation] = useState('');
@@ -159,6 +595,33 @@ const SettingsCenter = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [activeLocale, setActiveLocale] = useState(
+    () => String(user?.locale || 'en').split('-')[0]
+  );
+  const requestedLocale = String(activeLocale || 'en').split('-')[0];
+  const locale = Object.prototype.hasOwnProperty.call(SETTINGS_COPY, requestedLocale)
+    ? requestedLocale
+    : 'en';
+  const copy = SETTINGS_COPY[locale];
+  const detail = DETAIL_COPY[locale];
+  const localizedCategories = useMemo(
+    () =>
+      categories.map((item) => {
+        const localized = CATEGORY_COPY[locale]?.[item.id];
+        return localized ? { ...item, label: localized[0], description: localized[1] } : item;
+      }),
+    [categories, locale]
+  );
+
+  useEffect(() => {
+    const prior = { lang: document.documentElement.lang, dir: document.documentElement.dir };
+    document.documentElement.lang = locale;
+    document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr';
+    return () => {
+      document.documentElement.lang = prior.lang;
+      document.documentElement.dir = prior.dir;
+    };
+  }, [locale]);
 
   useEffect(() => {
     let current = true;
@@ -179,7 +642,13 @@ const SettingsCenter = () => {
           setCategories(FALLBACK_CATEGORIES.filter((item) => enabled.has(item.id)));
         }
         if (preferenceResult.status === 'fulfilled') {
-          setPreferences({ ...preferenceDefaults, ...preferenceResult.value });
+          const nextPreferences = {
+            ...preferenceDefaults,
+            ...preferenceResult.value,
+            locale: preferenceResult.value?.locale || user?.locale || preferenceDefaults.locale,
+          };
+          setPreferences(nextPreferences);
+          setActiveLocale(String(nextPreferences.locale || 'en').split('-')[0]);
         }
         if (privacyResult.status === 'fulfilled') {
           setOperations(privacyResult.value?.operations || []);
@@ -192,8 +661,16 @@ const SettingsCenter = () => {
         }
         if (securityResult.status === 'fulfilled')
           setSecurityEvents(securityResult.value?.events || []);
+        setResourceAvailability({
+          privacy: privacyResult.status === 'fulfilled',
+          notifications: notificationResult.status === 'fulfilled',
+          security: securityResult.status === 'fulfilled',
+        });
         if ([capabilityResult, preferenceResult].some((result) => result.status === 'rejected')) {
-          setError('Some settings are temporarily unavailable. Existing values were not changed.');
+          const responseLocale = String(
+            preferenceResult.value?.locale || user?.locale || 'en'
+          ).split('-')[0];
+          setError((DETAIL_COPY[responseLocale] || DETAIL_COPY.en).partialError);
         }
         setLoading(false);
       }
@@ -201,20 +678,20 @@ const SettingsCenter = () => {
     return () => {
       current = false;
     };
-  }, []);
+  }, [user?.locale]);
 
   useEffect(() => {
-    if (!loading && !categories.some((item) => item.id === active))
+    if (!loading && !localizedCategories.some((item) => item.id === active))
       navigate('/settings', { replace: true });
-  }, [active, categories, loading, navigate]);
+  }, [active, localizedCategories, loading, navigate]);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return categories;
-    return categories.filter((item) =>
+    if (!needle) return localizedCategories;
+    return localizedCategories.filter((item) =>
       `${item.label} ${item.description} ${item.id} ${item.synonyms}`.toLowerCase().includes(needle)
     );
-  }, [categories, query]);
+  }, [localizedCategories, query]);
 
   const saveProfile = async (event) => {
     event.preventDefault();
@@ -224,11 +701,9 @@ const SettingsCenter = () => {
     try {
       const response = await apiClient.patch('/users/me', profile);
       updateUser(response.data);
-      setStatus('Profile saved.');
-    } catch (reason) {
-      setError(
-        normalizeApiError(reason, { fallbackMessage: 'Profile could not be saved' }).message
-      );
+      setStatus(detail.profileSaved);
+    } catch (_reason) {
+      setError(detail.actionFailed);
     } finally {
       setSaving(false);
     }
@@ -250,12 +725,16 @@ const SettingsCenter = () => {
         timezone: preferences.timezone,
         week_start: preferences.week_start,
       });
+      const nextLocale = String(next.locale || preferences.locale || 'en').split('-')[0];
+      const nextDetail = DETAIL_COPY[nextLocale] || DETAIL_COPY.en;
       setPreferences({ ...preferenceDefaults, ...next });
-      setStatus('Preferences saved.');
+      setActiveLocale(nextLocale);
+      updateUser({ ...user, locale: next.locale || preferences.locale || 'en' });
+      setStatus(nextDetail.preferencesSaved);
     } catch (reason) {
       if (reason?.status === 409 || reason?.code === 'settings_version_conflict') {
-        setError('These settings changed elsewhere. Refresh before saving again.');
-      } else setError(reason.message || 'Preferences could not be saved.');
+        setError(detail.settingsConflict);
+      } else setError(detail.actionFailed);
     } finally {
       setSaving(false);
     }
@@ -267,9 +746,9 @@ const SettingsCenter = () => {
     setStatus('');
     try {
       await settingsAPI.requestExport();
-      setStatus('Your data export was queued securely.');
-    } catch (reason) {
-      setError(reason.message || 'Data export could not be queued.');
+      setStatus(detail.exportQueued);
+    } catch (_reason) {
+      setError(detail.actionFailed);
     } finally {
       setSaving(false);
     }
@@ -285,9 +764,9 @@ const SettingsCenter = () => {
         notifications.map(({ mandatory: _mandatory, ...item }) => item)
       );
       setNotifications(result.preferences);
-      setStatus('Notification preferences saved.');
-    } catch (reason) {
-      setError(reason.message || 'Notification preferences could not be saved.');
+      setStatus(detail.notificationSaved);
+    } catch (_reason) {
+      setError(detail.actionFailed);
     } finally {
       setSaving(false);
     }
@@ -304,9 +783,9 @@ const SettingsCenter = () => {
     try {
       await settingsAPI.requestCorrection(fields);
       setCorrection({ display_name: '', bio: '' });
-      setStatus('Your correction request was queued securely.');
-    } catch (reason) {
-      setError(reason.message || 'Correction request could not be queued.');
+      setStatus(detail.correctionQueued);
+    } catch (_reason) {
+      setError(detail.actionFailed);
     } finally {
       setSaving(false);
     }
@@ -320,9 +799,9 @@ const SettingsCenter = () => {
     try {
       await settingsAPI.requestDeletion(deleteConfirmation);
       setDeleteConfirmation('');
-      setStatus('Your account deletion request was queued securely.');
-    } catch (reason) {
-      setError(reason.message || 'Deletion request could not be queued.');
+      setStatus(detail.deletionQueued);
+    } catch (_reason) {
+      setError(detail.actionFailed);
     } finally {
       setSaving(false);
     }
@@ -336,9 +815,9 @@ const SettingsCenter = () => {
     try {
       await settingsAPI.requestDeactivation(deactivateConfirmation);
       setDeactivateConfirmation('');
-      setStatus('Your account deactivation request was queued securely.');
-    } catch (reason) {
-      setError(reason.message || 'Deactivation request could not be queued.');
+      setStatus(detail.deactivationQueued);
+    } catch (_reason) {
+      setError(detail.actionFailed);
     } finally {
       setSaving(false);
     }
@@ -380,7 +859,7 @@ const SettingsCenter = () => {
   const renderProfile = () => (
     <GlassCard>
       <form onSubmit={saveProfile} className="space-y-5 p-6">
-        <Field label="Email" htmlFor="email" hint="Changing your email requires verification.">
+        <Field label={detail.email} htmlFor="email" hint={detail.emailHint}>
           <GlassInput
             id="email"
             type="email"
@@ -388,18 +867,14 @@ const SettingsCenter = () => {
             onChange={(event) => setProfile({ ...profile, email: event.target.value })}
           />
         </Field>
-        <Field label="Display name" htmlFor="display-name">
+        <Field label={detail.displayName} htmlFor="display-name">
           <GlassInput
             id="display-name"
             value={profile.display_name}
             onChange={(event) => setProfile({ ...profile, display_name: event.target.value })}
           />
         </Field>
-        <Field
-          label="Avatar URL"
-          htmlFor="avatar-url"
-          hint="Use a public HTTPS image. Local and credential-bearing URLs are rejected."
-        >
+        <Field label={detail.avatarUrl} htmlFor="avatar-url" hint={detail.avatarHint}>
           <GlassInput
             id="avatar-url"
             type="url"
@@ -407,7 +882,7 @@ const SettingsCenter = () => {
             onChange={(event) => setProfile({ ...profile, avatar_url: event.target.value })}
           />
         </Field>
-        <Field label="Bio" htmlFor="bio">
+        <Field label={detail.bio} htmlFor="bio">
           <textarea
             id="bio"
             rows="5"
@@ -417,7 +892,7 @@ const SettingsCenter = () => {
           />
         </Field>
         <GlassButton type="submit" disabled={saving}>
-          {saving ? 'Saving…' : 'Save profile'}
+          {saving ? detail.saving : detail.saveProfile}
         </GlassButton>
       </form>
     </GlassCard>
@@ -428,16 +903,18 @@ const SettingsCenter = () => {
       <form onSubmit={savePreferences} className="grid gap-5 p-6 sm:grid-cols-2">
         {language ? (
           <>
-            <Field label="Language" htmlFor="locale">
+            <Field label={copy.language} htmlFor="locale">
               <Select
                 id="locale"
                 value={preferences.locale}
                 onChange={(event) => setPreferences({ ...preferences, locale: event.target.value })}
               >
                 <option value="en">English</option>
+                <option value="de">Deutsch</option>
+                <option value="ar">العربية</option>
               </Select>
             </Field>
-            <Field label="Time zone" htmlFor="timezone">
+            <Field label={copy.timezone} htmlFor="timezone">
               <GlassInput
                 id="timezone"
                 value={preferences.timezone}
@@ -446,7 +923,7 @@ const SettingsCenter = () => {
                 }
               />
             </Field>
-            <Field label="Week starts on" htmlFor="week-start">
+            <Field label={copy.weekStart} htmlFor="week-start">
               <Select
                 id="week-start"
                 value={preferences.week_start}
@@ -454,27 +931,27 @@ const SettingsCenter = () => {
                   setPreferences({ ...preferences, week_start: event.target.value })
                 }
               >
-                <option value="system">System default</option>
-                <option value="monday">Monday</option>
-                <option value="sunday">Sunday</option>
-                <option value="saturday">Saturday</option>
+                <option value="system">{copy.systemDefault}</option>
+                <option value="monday">{copy.monday}</option>
+                <option value="sunday">{copy.sunday}</option>
+                <option value="saturday">{copy.saturday}</option>
               </Select>
             </Field>
           </>
         ) : (
           <>
-            <Field label="Theme" htmlFor="theme">
+            <Field label={detail.theme} htmlFor="theme">
               <Select
                 id="theme"
                 value={preferences.theme}
                 onChange={(event) => setPreferences({ ...preferences, theme: event.target.value })}
               >
-                <option value="system">Use system</option>
-                <option value="light">Light</option>
-                <option value="dark">Dark</option>
+                <option value="system">{detail.useSystem}</option>
+                <option value="light">{detail.light}</option>
+                <option value="dark">{detail.dark}</option>
               </Select>
             </Field>
-            <Field label="Contrast" htmlFor="contrast">
+            <Field label={detail.contrast} htmlFor="contrast">
               <Select
                 id="contrast"
                 value={preferences.contrast}
@@ -482,23 +959,23 @@ const SettingsCenter = () => {
                   setPreferences({ ...preferences, contrast: event.target.value })
                 }
               >
-                <option value="system">Use system</option>
-                <option value="standard">Standard</option>
-                <option value="high">High contrast</option>
+                <option value="system">{detail.useSystem}</option>
+                <option value="standard">{detail.standard}</option>
+                <option value="high">{detail.highContrast}</option>
               </Select>
             </Field>
-            <Field label="Motion" htmlFor="motion">
+            <Field label={detail.motion} htmlFor="motion">
               <Select
                 id="motion"
                 value={preferences.motion}
                 onChange={(event) => setPreferences({ ...preferences, motion: event.target.value })}
               >
-                <option value="system">Use system</option>
-                <option value="full">Full motion</option>
-                <option value="reduced">Reduced motion</option>
+                <option value="system">{detail.useSystem}</option>
+                <option value="full">{detail.fullMotion}</option>
+                <option value="reduced">{detail.reducedMotion}</option>
               </Select>
             </Field>
-            <Field label="Density" htmlFor="density">
+            <Field label={detail.density} htmlFor="density">
               <Select
                 id="density"
                 value={preferences.density}
@@ -506,94 +983,97 @@ const SettingsCenter = () => {
                   setPreferences({ ...preferences, density: event.target.value })
                 }
               >
-                <option value="comfortable">Comfortable</option>
-                <option value="compact">Compact</option>
+                <option value="comfortable">{detail.comfortable}</option>
+                <option value="compact">{detail.compact}</option>
               </Select>
             </Field>
           </>
         )}
         <div className="sm:col-span-2">
           <GlassButton type="submit" disabled={saving}>
-            {saving ? 'Saving…' : 'Save preferences'}
+            {saving ? copy.saving : copy.savePreferences}
           </GlassButton>
         </div>
       </form>
     </GlassCard>
   );
 
-  const renderNotifications = () => (
-    <GlassCard>
-      <form onSubmit={saveNotifications} className="space-y-5 p-6">
-        <div>
-          <h2 className="font-semibold">Delivery controls</h2>
-          <p className="mt-2 text-sm opacity-75">
-            Required security and transactional email cannot be disabled. Optional messages remain
-            under your control.
-          </p>
-        </div>
-        <div className="divide-y divide-white/10 rounded-xl border border-white/15">
-          {notifications.map((item, index) => (
-            <div
-              className="grid gap-3 p-4 sm:grid-cols-[1fr_12rem] sm:items-center"
-              key={`${item.event_family}-${item.channel}`}
-            >
-              <div>
-                <p className="font-medium capitalize">
-                  {item.event_family} · {item.channel.replace('_', ' ')}
-                </p>
-                <p className="text-xs opacity-70">
-                  {item.mandatory ? 'Required account message' : 'Optional message'}
-                </p>
-              </div>
-              <Select
-                id={`notification-${item.event_family}-${item.channel}`}
-                aria-label={`${item.event_family}-${item.channel} delivery`}
-                value={item.delivery}
-                onChange={(event) =>
-                  setNotifications(
-                    notifications.map((choice, choiceIndex) =>
-                      choiceIndex === index ? { ...choice, delivery: event.target.value } : choice
-                    )
-                  )
-                }
+  const renderNotifications = () =>
+    resourceAvailability.notifications === false ? (
+      <GlassCard>
+        <p className="p-6 text-sm text-amber-100" role="alert">
+          {detail.notificationsUnavailable}
+        </p>
+      </GlassCard>
+    ) : (
+      <GlassCard>
+        <form onSubmit={saveNotifications} className="space-y-5 p-6">
+          <div>
+            <h2 className="font-semibold">{detail.deliveryControls}</h2>
+            <p className="mt-2 text-sm opacity-75">{detail.deliveryHelp}</p>
+          </div>
+          <div className="divide-y divide-white/10 rounded-xl border border-white/15">
+            {notifications.map((item, index) => (
+              <div
+                className="grid gap-3 p-4 sm:grid-cols-[1fr_12rem] sm:items-center"
+                key={`${item.event_family}-${item.channel}`}
               >
-                <option value="immediate">Immediately</option>
-                <option value="digest">Digest</option>
-                {!item.mandatory ? <option value="disabled">Off</option> : null}
-              </Select>
-            </div>
-          ))}
-        </div>
-        <GlassButton type="submit" disabled={saving}>
-          {saving ? 'Saving…' : 'Save notifications'}
-        </GlassButton>
-      </form>
-    </GlassCard>
-  );
+                <div>
+                  <p className="font-medium capitalize">
+                    {detail.notificationTerms[item.event_family] || item.event_family} ·{' '}
+                    {detail.notificationTerms[item.channel] || item.channel.replace('_', ' ')}
+                  </p>
+                  <p className="text-xs opacity-70">
+                    {item.mandatory ? detail.requiredMessage : detail.optionalMessage}
+                  </p>
+                </div>
+                <Select
+                  id={`notification-${item.event_family}-${item.channel}`}
+                  aria-label={detail.notificationDeliveryLabel(
+                    detail.notificationTerms[item.event_family] || item.event_family,
+                    detail.notificationTerms[item.channel] || item.channel.replace('_', ' ')
+                  )}
+                  value={item.delivery}
+                  onChange={(event) =>
+                    setNotifications(
+                      notifications.map((choice, choiceIndex) =>
+                        choiceIndex === index ? { ...choice, delivery: event.target.value } : choice
+                      )
+                    )
+                  }
+                >
+                  <option value="immediate">{detail.immediately}</option>
+                  <option value="digest">{detail.digest}</option>
+                  {!item.mandatory ? <option value="disabled">{detail.off}</option> : null}
+                </Select>
+              </div>
+            ))}
+          </div>
+          <GlassButton type="submit" disabled={saving}>
+            {saving ? detail.saving : detail.saveNotifications}
+          </GlassButton>
+        </form>
+      </GlassCard>
+    );
 
   const renderPrivacy = () => (
     <div className="space-y-4">
       <GlassCard>
         <div className="p-6">
-          <h2 className="font-semibold">Export your data</h2>
-          <p className="mt-2 text-sm opacity-75">
-            Exports are encrypted, integrity checked, and require recent authentication to download.
-          </p>
+          <h2 className="font-semibold">{detail.exportData}</h2>
+          <p className="mt-2 text-sm opacity-75">{detail.exportHelp}</p>
           <GlassButton className="mt-4" onClick={requestExport} disabled={saving}>
-            Request data export
+            {detail.requestExport}
           </GlassButton>
         </div>
       </GlassCard>
       <GlassCard>
         <form onSubmit={requestCorrection} className="space-y-4 p-6">
           <div>
-            <h2 className="font-semibold">Correct your data</h2>
-            <p className="mt-2 text-sm opacity-75">
-              Submit only the fields that need correction. Requests are auditable and processed
-              asynchronously.
-            </p>
+            <h2 className="font-semibold">{detail.correctData}</h2>
+            <p className="mt-2 text-sm opacity-75">{detail.correctHelp}</p>
           </div>
-          <Field label="Correct display name" htmlFor="correct-display-name">
+          <Field label={detail.correctName} htmlFor="correct-display-name">
             <GlassInput
               id="correct-display-name"
               value={correction.display_name}
@@ -602,7 +1082,7 @@ const SettingsCenter = () => {
               }
             />
           </Field>
-          <Field label="Correct bio" htmlFor="correct-bio">
+          <Field label={detail.correctBio} htmlFor="correct-bio">
             <textarea
               id="correct-bio"
               rows="3"
@@ -615,21 +1095,17 @@ const SettingsCenter = () => {
             type="submit"
             disabled={saving || !Object.values(correction).some((value) => value.trim())}
           >
-            Request correction
+            {detail.requestCorrection}
           </GlassButton>
         </form>
       </GlassCard>
       <GlassCard>
         <form onSubmit={requestDeactivation} className="space-y-4 border border-amber-400/20 p-6">
           <div>
-            <h2 className="font-semibold text-amber-100">Deactivate account</h2>
-            <p className="mt-2 text-sm opacity-75">
-              Deactivation signs you out and suspends access without erasing your profile. A final
-              organization owner cannot deactivate until ownership is transferred. Type DEACTIVATE
-              exactly.
-            </p>
+            <h2 className="font-semibold text-amber-100">{detail.deactivate}</h2>
+            <p className="mt-2 text-sm opacity-75">{detail.deactivateHelp}</p>
           </div>
-          <Field label="Deactivation confirmation" htmlFor="deactivate-confirmation">
+          <Field label={detail.deactivateConfirmation} htmlFor="deactivate-confirmation">
             <GlassInput
               id="deactivate-confirmation"
               value={deactivateConfirmation}
@@ -638,20 +1114,17 @@ const SettingsCenter = () => {
             />
           </Field>
           <GlassButton type="submit" disabled={saving || deactivateConfirmation !== 'DEACTIVATE'}>
-            Request deactivation
+            {detail.requestDeactivation}
           </GlassButton>
         </form>
       </GlassCard>
       <GlassCard>
         <form onSubmit={requestDeletion} className="space-y-4 border border-red-400/20 p-6">
           <div>
-            <h2 className="font-semibold text-red-200">Delete account data</h2>
-            <p className="mt-2 text-sm opacity-75">
-              This starts a destructive, auditable workflow after recent authentication. Type DELETE
-              exactly to continue.
-            </p>
+            <h2 className="font-semibold text-red-200">{detail.deleteData}</h2>
+            <p className="mt-2 text-sm opacity-75">{detail.deleteHelp}</p>
           </div>
-          <Field label="Confirmation" htmlFor="delete-confirmation">
+          <Field label={detail.confirmation} htmlFor="delete-confirmation">
             <GlassInput
               id="delete-confirmation"
               value={deleteConfirmation}
@@ -664,19 +1137,25 @@ const SettingsCenter = () => {
             variant="danger"
             disabled={saving || deleteConfirmation !== 'DELETE'}
           >
-            Request account deletion
+            {detail.requestDeletion}
           </GlassButton>
         </form>
       </GlassCard>
-      {operations.length ? (
+      {resourceAvailability.privacy === false ? (
+        <GlassCard>
+          <p className="p-6 text-sm text-amber-100" role="alert">
+            {detail.privacyHistoryUnavailable}
+          </p>
+        </GlassCard>
+      ) : operations.length ? (
         <GlassCard>
           <div className="p-6">
-            <h2 className="font-semibold">Recent requests</h2>
+            <h2 className="font-semibold">{detail.recentRequests}</h2>
             <ul className="mt-3 space-y-2 text-sm">
               {operations.map((item) => (
                 <li key={item.id} className="flex justify-between gap-3">
-                  <span className="capitalize">{item.kind}</span>
-                  <span>{item.status}</span>
+                  <span>{detail.privacyKinds[item.kind] || detail.unknownPrivacyKind}</span>
+                  <span>{detail.privacyStatuses[item.status] || detail.unknownPrivacyStatus}</span>
                 </li>
               ))}
             </ul>
@@ -690,29 +1169,35 @@ const SettingsCenter = () => {
     <div className="grid gap-4 sm:grid-cols-2">
       <GlassCard>
         <div className="p-6">
-          <h2 className="font-semibold">Members and roles</h2>
-          <p className="mt-2 text-sm opacity-75">
-            Invite members, assign least-privilege roles, and review organization access.
-          </p>
+          <h2 className="font-semibold">{detail.membersRoles}</h2>
+          <p className="mt-2 text-sm opacity-75">{detail.membersHelp}</p>
           <Link
             className="mt-4 inline-flex min-h-11 items-center font-semibold text-violet-200"
             to="/admin"
           >
-            Open organization administration
+            {detail.openAdministration}
           </Link>
         </div>
       </GlassCard>
       <GlassCard>
         <div className="p-6">
-          <h2 className="font-semibold">Recent security activity</h2>
-          {securityEvents.length ? (
+          <h2 className="font-semibold">{detail.securityActivity}</h2>
+          {resourceAvailability.security === false ? (
+            <p className="mt-2 text-sm text-amber-100" role="alert">
+              {detail.securityEventsUnavailable}
+            </p>
+          ) : securityEvents.length ? (
             <ul className="mt-3 space-y-2 text-sm">
               {securityEvents.slice(0, 5).map((event, index) => (
-                <li key={event.id || index}>{event.action || 'Account event'}</li>
+                <li key={event.id || index}>
+                  {event.action
+                    ? detail.securityActions[event.action] || detail.unknownSecurityAction
+                    : detail.accountEvent}
+                </li>
               ))}
             </ul>
           ) : (
-            <p className="mt-2 text-sm opacity-75">No recent security events are available.</p>
+            <p className="mt-2 text-sm opacity-75">{detail.noSecurityEvents}</p>
           )}
         </div>
       </GlassCard>
@@ -723,29 +1208,25 @@ const SettingsCenter = () => {
     <div className="grid gap-4 sm:grid-cols-2">
       <GlassCard>
         <div className="p-6">
-          <h2 className="font-semibold">API documentation</h2>
-          <p className="mt-2 text-sm opacity-75">
-            Explore the generated API contract and integration schemas.
-          </p>
+          <h2 className="font-semibold">{detail.apiDocs}</h2>
+          <p className="mt-2 text-sm opacity-75">{detail.apiDocsHelp}</p>
           <a
             className="mt-4 inline-flex min-h-11 items-center font-semibold text-violet-200"
             href="/docs"
           >
-            Open API documentation
+            {detail.openApiDocs}
           </a>
         </div>
       </GlassCard>
       <GlassCard>
         <div className="p-6">
-          <h2 className="font-semibold">Integration credentials</h2>
-          <p className="mt-2 text-sm opacity-75">
-            Credentials are created once, shown once, scoped, and revocable.
-          </p>
+          <h2 className="font-semibold">{detail.credentials}</h2>
+          <p className="mt-2 text-sm opacity-75">{detail.credentialsHelp}</p>
           <Link
             className="mt-4 inline-flex min-h-11 items-center font-semibold text-violet-200"
             to="/admin"
           >
-            Manage credentials
+            {detail.manageCredentials}
           </Link>
         </div>
       </GlassCard>
@@ -753,7 +1234,7 @@ const SettingsCenter = () => {
   );
 
   const renderSimple = () => {
-    if (active === 'security') return <AccountCenter user={user} embedded />;
+    if (active === 'security') return <AccountCenter user={user} embedded locale={locale} />;
     if (active === 'privacy') return renderPrivacy();
     if (active === 'notifications') return renderNotifications();
     if (active === 'organization') return renderOrganization();
@@ -761,14 +1242,29 @@ const SettingsCenter = () => {
     return renderOverview();
   };
 
-  const current = categories.find((item) => item.id === active) || categories[0];
+  const current = localizedCategories.find((item) => item.id === active) || localizedCategories[0];
   return (
-    <AppShell headerTitle="Settings">
-      <div className="mx-auto max-w-7xl space-y-6 px-4 py-8">
+    <AppShell
+      headerTitle={copy.appShell}
+      headerIsPageHeading={false}
+      footerLabel={copy.privateWorkspace}
+      menuLabel={copy.menu}
+      themeLabel={copy.themeToggle}
+      sidebarLabel={copy.sidebar}
+      sidebarItems={copy.sidebarItems.map((label, index) => ({
+        label,
+        to: ['/', '/dashboard', '/settings', '/admin', '/contact'][index],
+      }))}
+    >
+      <div
+        className="mx-auto max-w-7xl space-y-6 px-4 py-8"
+        lang={locale}
+        dir={locale === 'ar' ? 'rtl' : 'ltr'}
+      >
         <Navigation />
-        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm opacity-75">
+        <nav aria-label={copy.breadcrumb} className="flex items-center gap-2 text-sm opacity-75">
           <Link className="min-h-11 py-3 hover:underline" to="/settings">
-            Settings
+            {copy.settings}
           </Link>
           {active !== 'overview' ? (
             <>
@@ -779,9 +1275,9 @@ const SettingsCenter = () => {
         </nav>
         <header>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300">
-            Account control center
+            {copy.controlCenter}
           </p>
-          <h1 className="mt-2 text-3xl font-semibold">{current?.label || 'Settings'}</h1>
+          <h1 className="mt-2 text-3xl font-semibold">{current?.label || copy.settings}</h1>
           <p className="mt-2 max-w-2xl text-sm opacity-75">{current?.description}</p>
         </header>
         {status ? (
@@ -802,22 +1298,22 @@ const SettingsCenter = () => {
         ) : null}
         <div className="grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
           <aside className="space-y-4 lg:sticky lg:top-28 lg:self-start">
-            <Field label="Search settings" htmlFor="settings-search">
+            <Field label={copy.search} htmlFor="settings-search">
               <div className="relative">
                 <Search
-                  className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 opacity-60"
+                  className="pointer-events-none absolute start-3 top-3.5 h-4 w-4 opacity-60"
                   aria-hidden="true"
                 />
                 <input
                   id="settings-search"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  className="min-h-11 w-full rounded-xl border border-white/20 bg-black/30 pl-10 pr-3 focus:outline-none focus:ring-2 focus:ring-violet-300"
+                  className="min-h-11 w-full rounded-xl border border-white/20 bg-black/30 ps-10 pe-3 focus:outline-none focus:ring-2 focus:ring-violet-300"
                 />
               </div>
             </Field>
             <nav
-              aria-label="Settings categories"
+              aria-label={copy.categories}
               className="max-h-[calc(100vh-15rem)] space-y-1 overflow-y-auto rounded-2xl border border-white/15 bg-black/20 p-2"
             >
               {filtered.map((item) => {
@@ -834,19 +1330,17 @@ const SettingsCenter = () => {
                   </Link>
                 );
               })}
-              {!filtered.length ? (
-                <p className="p-3 text-sm opacity-70">No settings found.</p>
-              ) : null}
+              {!filtered.length ? <p className="p-3 text-sm opacity-70">{copy.noResults}</p> : null}
             </nav>
           </aside>
           <section
             id="settings-detail"
-            aria-label={`${current?.label || 'Settings'} details`}
+            aria-label={`${current?.label || copy.settings} ${copy.details}`}
             aria-busy={loading}
           >
             {loading ? (
               <GlassCard>
-                <div className="p-8 text-sm">Loading settings…</div>
+                <div className="p-8 text-sm">{copy.loading}</div>
               </GlassCard>
             ) : active === 'overview' ? (
               renderOverview()

@@ -25,5 +25,28 @@
   "healthChecks": ["workspace.ready", "workspace.jobs-ready"],
   "providerCapabilities": [],
   "dependencies": ["content"],
-  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+  "dataLifecycle": {
+    "disable": "preserve",
+    "export": true,
+    "remove": "backup-required"
+  },
+  "conflicts": [],
+  "schedules": ["content-workspace.schedule"],
+  "storage": {
+    "classes": ["private"],
+    "maximumBytes": 1073741824
+  },
+  "observability": ["workspace.ready", "workspace.jobs-ready"],
+  "backup": {
+    "included": true,
+    "restoreRequired": true
+  },
+  "resources": {
+    "cpuMillicores": 100,
+    "memoryMiB": 128,
+    "storageMiB": 1024
+  },
+  "testPacks": ["content-workspace.contract", "content-workspace.security"],
+  "publisher": "base2",
+  "signature": "builtin-sha256:c785f273f92f735c85fdf80a2715bf0ad49cab39679a134684bf635cfea5dfb5"
 }

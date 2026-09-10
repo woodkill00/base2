@@ -30,7 +30,10 @@ from api.security.upload_capacity import (
     read_bounded_upload,
     upload_completion_slot,
 )
-from api.services.content_workspace_storage import ArtifactIntegrityError, configured_artifact_store
+from api.services.content_workspace_storage import (
+    ArtifactIntegrityError,
+    configured_runtime_artifact_store,
+)
 from api.services.media_library_policy import (
     DEFAULT_POLICY,
     FORMAT_RULES,
@@ -200,10 +203,8 @@ def get_repository() -> PostgresMediaLibraryRepository:
 
 
 def get_artifact_store():
-    return configured_artifact_store(
-        root=settings.CONTENT_WORKSPACE_STORAGE_ROOT,
-        encoded_key=settings.CONTENT_WORKSPACE_STORAGE_KEY or '',
-        max_bytes=runtime_policy()['maximumObjectBytes'],
+    return configured_runtime_artifact_store(
+        settings, max_bytes=runtime_policy()['maximumObjectBytes']
     )
 
 

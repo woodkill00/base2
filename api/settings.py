@@ -2,7 +2,11 @@ import os
 import re
 import base64
 import binascii
+import stat
+import ipaddress
+from pathlib import Path
 from typing import Optional
+from urllib.parse import urlsplit
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
@@ -57,6 +61,13 @@ class Settings(BaseSettings):
     IDENTITY_ENCRYPTION_KEY: Optional[str] = None
     CONTENT_WORKSPACE_STORAGE_ROOT: str = Field(default='/var/lib/base2/content-workspace')
     CONTENT_WORKSPACE_STORAGE_KEY: Optional[str] = None
+    CONTENT_WORKSPACE_STORAGE_BACKEND: str = Field(default='local')
+    CONTENT_WORKSPACE_S3_ENDPOINT: str = Field(default='')
+    CONTENT_WORKSPACE_S3_BUCKET: str = Field(default='')
+    CONTENT_WORKSPACE_S3_REGION: str = Field(default='')
+    CONTENT_WORKSPACE_S3_ALLOWED_HOSTS: str = Field(default='')
+    CONTENT_WORKSPACE_S3_ACCESS_KEY_FILE: str = Field(default='')
+    CONTENT_WORKSPACE_S3_SECRET_KEY_FILE: str = Field(default='')
     IDENTITY_ALLOW_FIRST_OWNER_BOOTSTRAP: bool = Field(default=False)
     WEBAUTHN_ENABLED: bool = Field(default=False)
 
@@ -71,10 +82,34 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = Field(default='')
 
     # DB settings (FastAPI side)
+    DB_HOST: str = Field(default='postgres')
+    DATABASE_URL: Optional[str] = None
     DB_CONNECT_TIMEOUT_SEC: int = Field(default=3)
     DB_STATEMENT_TIMEOUT_MS: int = Field(default=3000)
     DB_POOL_MIN: int = Field(default=1)
     DB_POOL_MAX: int = Field(default=5)
+    DB_POOL_SATURATION_PERCENT: int = Field(default=85)
+    # PostgreSQL 16 cannot enforce a total multi-statement transaction wall
+    # clock. This is deliberately named for the timeout it actually sets.
+    DB_IDLE_TRANSACTION_TIMEOUT_MS: int = Field(default=60000)
+    DB_SSLMODE: str = Field(default='disable')
+    DB_SSLROOTCERT: Optional[str] = None
+
+    # Vaultwarden resolves these credentials into distinct runtime-only files.
+    OPERATIONS_ALERTS_ENABLED: bool = Field(default=False)
+    OPERATIONS_ALERT_INTEGRITY_KEY_FILE: str = Field(default='')
+    OPERATIONS_ALERT_RECEIPT_KEY_FILE: str = Field(default='')
+    OPERATIONS_ALERT_WEBHOOK_URL_FILE: str = Field(default='')
+    OPERATIONS_RECEIPT_INTEGRITY_KEY_FILE: str = Field(default='')
+    OPERATIONS_RECEIPT_MAX_AGE_SECONDS: int = Field(default=90000)
+    BASE2_EMAIL_ADAPTER: str = Field(default='disabled')
+    BASE2_EMAIL_SMTP_HOST: str = Field(default='')
+    BASE2_EMAIL_SMTP_PORT: int = Field(default=587)
+    BASE2_EMAIL_SMTP_TIMEOUT_SECONDS: float = Field(default=10)
+    BASE2_EMAIL_FROM_ADDRESS: str = Field(default='')
+    BASE2_EMAIL_SMTP_USERNAME_FILE: str = Field(default='')
+    BASE2_EMAIL_SMTP_PASSWORD_FILE: str = Field(default='')
+    BASE2_PROCESS_ROLE: str = Field(default='api')
 
     # E2E test mode gate
     E2E_TEST_MODE: bool = Field(default=False)
@@ -100,46 +135,236 @@ class Settings(BaseSettings):
             object.__setattr__(self, 'DB_POOL_MAX', 1)
         if self.DB_POOL_MAX < self.DB_POOL_MIN:
             object.__setattr__(self, 'DB_POOL_MAX', self.DB_POOL_MIN)
-
-        # Default docs policy: disabled in production unless explicitly enabled
-        if (self.ENV or '').strip().lower() == 'production' and self.API_DOCS_ENABLED:
-            # Keep explicit enable if set; otherwise disable
-            # No change needed when explicitly enabled via env
-            pass
+        if not 50 <= self.DB_POOL_SATURATION_PERCENT <= 95:
+            raise RuntimeError('DB_POOL_SATURATION_PERCENT must be between 50 and 95')
 
         # Fail-fast in non-local environments.
         env = (self.ENV or '').strip().lower()
+        # Documentation is convenient in local environments, but production
+        # exposure must be an explicit deployment choice rather than inheriting
+        # the development default.
+        if env == 'production' and 'API_DOCS_ENABLED' not in self.model_fields_set:
+            object.__setattr__(self, 'API_DOCS_ENABLED', False)
         if env == 'production' and self.E2E_TEST_MODE:
             raise RuntimeError('E2E_TEST_MODE cannot be enabled in production')
         if env in {'staging', 'production'}:
             missing = []
-            if not (self.JWT_SECRET or '').strip():
-                missing.append('JWT_SECRET')
-            if not (self.TOKEN_PEPPER or '').strip():
-                missing.append('TOKEN_PEPPER')
-            if not (self.FRONTEND_URL or '').strip():
-                missing.append('FRONTEND_URL')
-            if not (self.OAUTH_STATE_SECRET or '').strip():
-                missing.append('OAUTH_STATE_SECRET')
-            if not (self.IDENTITY_ENCRYPTION_KEY or '').strip():
+            process_role = self.BASE2_PROCESS_ROLE
+            if process_role == 'api':
+                for name in (
+                    'JWT_SECRET',
+                    'TOKEN_PEPPER',
+                    'FRONTEND_URL',
+                    'OAUTH_STATE_SECRET',
+                    'IDENTITY_ENCRYPTION_KEY',
+                ):
+                    if not str(getattr(self, name) or '').strip():
+                        missing.append(name)
+            if (
+                process_role in {'content-worker', 'data-rights-worker'}
+                and not (self.IDENTITY_ENCRYPTION_KEY or '').strip()
+            ):
                 missing.append('IDENTITY_ENCRYPTION_KEY')
-            if not (self.CONTENT_WORKSPACE_STORAGE_KEY or '').strip():
+            if process_role == 'data-rights-worker' and not (self.TOKEN_PEPPER or '').strip():
+                missing.append('TOKEN_PEPPER')
+            storage_backend = (self.CONTENT_WORKSPACE_STORAGE_BACKEND or '').strip().lower()
+            storage_required = process_role in {'api', 'content-worker'}
+            if storage_required and storage_backend not in {'local', 's3'}:
+                raise RuntimeError('Invalid CONTENT_WORKSPACE_STORAGE_BACKEND')
+            if (
+                storage_required
+                and storage_backend == 'local'
+                and not (self.CONTENT_WORKSPACE_STORAGE_KEY or '').strip()
+            ):
                 missing.append('CONTENT_WORKSPACE_STORAGE_KEY')
+            if storage_required and storage_backend == 's3':
+                if env == 'production':
+                    raise RuntimeError(
+                        'Production S3 is disabled until versioned backup/restore is configured'
+                    )
+                for name in (
+                    'CONTENT_WORKSPACE_S3_ENDPOINT',
+                    'CONTENT_WORKSPACE_S3_BUCKET',
+                    'CONTENT_WORKSPACE_S3_REGION',
+                    'CONTENT_WORKSPACE_S3_ALLOWED_HOSTS',
+                    'CONTENT_WORKSPACE_S3_ACCESS_KEY_FILE',
+                    'CONTENT_WORKSPACE_S3_SECRET_KEY_FILE',
+                ):
+                    if not str(getattr(self, name) or '').strip():
+                        missing.append(name)
+                for name in (
+                    'CONTENT_WORKSPACE_S3_ACCESS_KEY_FILE',
+                    'CONTENT_WORKSPACE_S3_SECRET_KEY_FILE',
+                ):
+                    value = str(getattr(self, name) or '').strip()
+                    if value and not value.startswith('/'):
+                        raise RuntimeError(f'{name} must be an absolute secret-file path')
+            if env == 'production':
+                if self.BASE2_PROCESS_ROLE not in {
+                    'api',
+                    'runtime-worker',
+                    'content-worker',
+                    'data-rights-worker',
+                    'email-worker',
+                    'migration',
+                }:
+                    raise RuntimeError('Invalid BASE2_PROCESS_ROLE')
+                if self.BASE2_PROCESS_ROLE == 'email-worker':
+                    if self.BASE2_EMAIL_ADAPTER.strip().lower() != 'smtp':
+                        raise RuntimeError(
+                            'Production email worker requires BASE2_EMAIL_ADAPTER=smtp'
+                        )
+                    if (
+                        not self.BASE2_EMAIL_SMTP_HOST.strip()
+                        or self.BASE2_EMAIL_SMTP_PORT not in {465, 587}
+                        or not 0 < self.BASE2_EMAIL_SMTP_TIMEOUT_SECONDS <= 30
+                        or '@' not in self.BASE2_EMAIL_FROM_ADDRESS
+                    ):
+                        raise RuntimeError('Invalid production SMTP configuration')
+                    for name in (
+                        'BASE2_EMAIL_SMTP_USERNAME_FILE',
+                        'BASE2_EMAIL_SMTP_PASSWORD_FILE',
+                    ):
+                        value = str(getattr(self, name) or '').strip()
+                        if not value:
+                            missing.append(name)
+                        elif not value.startswith('/'):
+                            raise RuntimeError(f'{name} must be an absolute secret-file path')
+                        else:
+                            path = Path(value)
+                            try:
+                                metadata = path.stat(follow_symlinks=False)
+                            except OSError as exc:
+                                raise RuntimeError(f'{name} secret file is unavailable') from exc
+                            if (
+                                path.is_symlink()
+                                or not stat.S_ISREG(metadata.st_mode)
+                                or metadata.st_mode & 0o077
+                                or metadata.st_size < 1
+                                or metadata.st_size > 4096
+                            ):
+                                raise RuntimeError(f'{name} secret file is invalid')
+            operation_file_names = (
+                (
+                    'OPERATIONS_ALERT_INTEGRITY_KEY_FILE',
+                    'OPERATIONS_ALERT_RECEIPT_KEY_FILE',
+                    'OPERATIONS_ALERT_WEBHOOK_URL_FILE',
+                )
+                if self.OPERATIONS_ALERTS_ENABLED and process_role == 'runtime-worker'
+                else ()
+            )
+            for name in operation_file_names:
+                value = str(getattr(self, name) or '').strip()
+                if not value:
+                    missing.append(name)
+                elif not value.startswith('/'):
+                    raise RuntimeError(f'{name} must be an absolute secret-file path')
             if missing:
                 raise RuntimeError('Missing required env var(s): ' + ', '.join(missing))
-
-            storage_root = (self.CONTENT_WORKSPACE_STORAGE_ROOT or '').strip()
-            try:
-                encoded_key = (self.CONTENT_WORKSPACE_STORAGE_KEY or '').strip()
-                storage_key = base64.b64decode(
-                    encoded_key + '=' * (-len(encoded_key) % 4),
-                    altchars=b'-_',
-                    validate=True,
+            if self.DB_SSLMODE != 'verify-full' or not (self.DB_SSLROOTCERT or '').startswith('/'):
+                raise RuntimeError('Database TLS verify-full configuration is required')
+            if env == 'production':
+                effective_host = self.DB_HOST.strip().lower()
+                if self.DATABASE_URL:
+                    try:
+                        parsed_database_url = urlsplit(self.DATABASE_URL)
+                        if parsed_database_url.scheme not in {'postgres', 'postgresql'}:
+                            raise RuntimeError('DATABASE_URL must use PostgreSQL')
+                        effective_host = (parsed_database_url.hostname or '').strip().lower()
+                    except ValueError as exc:
+                        raise RuntimeError('DATABASE_URL must be a valid PostgreSQL URL') from exc
+                # libpq percent-decodes URI host authorities before connecting.
+                # Reject encoded host spellings instead of validating a different
+                # representation from the one the database driver will consume.
+                if '%' in effective_host:
+                    raise RuntimeError(
+                        'Production database must use an external verified-TLS endpoint'
+                    )
+                effective_host = effective_host.rstrip('.')
+                # RFC 6761 reserves every name below ``localhost`` for the
+                # local host. Common libc hosts-file aliases are not covered
+                # by ipaddress parsing and must be rejected without a mutable
+                # or DNS-dependent resolver lookup.
+                local_host_aliases = {
+                    '',
+                    'postgres',
+                    'localhost',
+                    'localhost.localdomain',
+                    'localhost6',
+                    'localhost6.localdomain6',
+                    'ip6-localhost',
+                    'ip6-loopback',
+                }
+                local_database = (
+                    effective_host in local_host_aliases
+                    or effective_host.endswith('.localhost')
                 )
-            except (ValueError, binascii.Error) as exc:
-                raise RuntimeError('Invalid CONTENT_WORKSPACE_STORAGE_KEY') from exc
-            if not storage_root.startswith('/') or len(storage_key) != 32:
-                raise RuntimeError('Invalid content workspace storage configuration')
+                # libc/libpq still accept historical IPv4 spellings that the
+                # strict ipaddress parser intentionally rejects (for example
+                # 2130706433, 127.1, 017700000001, and 0x7f000001). Never let
+                # those ambiguous numeric tokens enter the production resolver.
+                legacy_ipv4_component = r'(?:0[xX][0-9a-fA-F]+|0[0-7]+|[0-9]+)'
+                try:
+                    database_address = ipaddress.ip_address(effective_host)
+                    if isinstance(database_address, ipaddress.IPv6Address):
+                        database_address = database_address.ipv4_mapped or database_address
+                    local_database = local_database or any(
+                        (
+                            database_address.is_loopback,
+                            database_address.is_unspecified,
+                            database_address.is_link_local,
+                            database_address.is_private,
+                        )
+                    )
+                except ValueError:
+                    if re.fullmatch(
+                        rf'{legacy_ipv4_component}(?:\.{legacy_ipv4_component}){{0,3}}',
+                        effective_host,
+                    ):
+                        local_database = True
+                if local_database:
+                    raise RuntimeError(
+                        'Production database must use an external verified-TLS endpoint'
+                    )
+            if not 60 <= self.OPERATIONS_RECEIPT_MAX_AGE_SECONDS <= 172800:
+                raise RuntimeError(
+                    'OPERATIONS_RECEIPT_MAX_AGE_SECONDS must be between 60 and 172800'
+                )
+            operations_files = {str(getattr(self, name)) for name in operation_file_names}
+            if operations_files and len(operations_files) != len(operation_file_names):
+                raise RuntimeError('Operations secret files must be independently scoped')
+
+            if storage_required and storage_backend == 'local':
+                storage_root = (self.CONTENT_WORKSPACE_STORAGE_ROOT or '').strip()
+                try:
+                    encoded_key = (self.CONTENT_WORKSPACE_STORAGE_KEY or '').strip()
+                    storage_key = base64.b64decode(
+                        encoded_key + '=' * (-len(encoded_key) % 4),
+                        altchars=b'-_',
+                        validate=True,
+                    )
+                except (ValueError, binascii.Error) as exc:
+                    raise RuntimeError('Invalid CONTENT_WORKSPACE_STORAGE_KEY') from exc
+                if not storage_root.startswith('/') or len(storage_key) != 32:
+                    raise RuntimeError('Invalid content workspace storage configuration')
+            elif storage_required:
+                from urllib.parse import urlparse
+
+                endpoint = urlparse(self.CONTENT_WORKSPACE_S3_ENDPOINT)
+                allowed_hosts = {
+                    item.strip().lower()
+                    for item in self.CONTENT_WORKSPACE_S3_ALLOWED_HOSTS.split(',')
+                    if item.strip()
+                }
+                if (
+                    endpoint.scheme != 'https'
+                    or not endpoint.hostname
+                    or endpoint.hostname.lower() not in allowed_hosts
+                    or endpoint.path not in {'', '/'}
+                    or endpoint.query
+                    or endpoint.fragment
+                ):
+                    raise RuntimeError('Invalid content workspace S3 endpoint configuration')
 
             if env == 'production' and self.GOOGLE_OAUTH_ENABLED:
                 oauth_missing = []

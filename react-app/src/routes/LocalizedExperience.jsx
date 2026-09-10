@@ -14,11 +14,17 @@ const LocalizedExperience = () => {
   const { locale: candidate, '*': rest = '' } = useParams();
   const resolved = resolveLocale(candidate, siteManifest);
   useEffect(() => {
-    if (resolved.supported) document.documentElement.lang = resolved.locale;
+    if (!resolved.supported) return undefined;
+    document.documentElement.lang = resolved.locale;
+    document.documentElement.dir = resolved.locale === 'ar' ? 'rtl' : 'ltr';
+    return () => {
+      document.documentElement.lang = siteManifest.defaultLocale;
+      document.documentElement.dir = 'ltr';
+    };
   }, [resolved.locale, resolved.supported]);
   if (!resolved.supported) return <NotFoundPage />;
   const path = `/${rest}`.replace(/\/$/, '') || '/';
-  if (path === '/') return <Home />;
+  if (path === '/') return <Home locale={resolved.locale} />;
   const pages = {
     '/about': ['about', 'About'],
     '/privacy': ['privacy', 'Privacy'],

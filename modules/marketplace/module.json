@@ -14,5 +14,28 @@
   "healthChecks": ["marketplace.provider-ready"],
   "providerCapabilities": ["payment"],
   "dependencies": ["listing"],
-  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+  "dataLifecycle": {
+    "disable": "preserve",
+    "export": true,
+    "remove": "backup-required"
+  },
+  "conflicts": [],
+  "schedules": ["marketplace.schedule"],
+  "storage": {
+    "classes": ["private"],
+    "maximumBytes": 1073741824
+  },
+  "observability": ["marketplace.provider-ready"],
+  "backup": {
+    "included": true,
+    "restoreRequired": true
+  },
+  "resources": {
+    "cpuMillicores": 100,
+    "memoryMiB": 128,
+    "storageMiB": 1024
+  },
+  "testPacks": ["marketplace.contract", "marketplace.security"],
+  "publisher": "base2",
+  "signature": "builtin-sha256:5afc10ada402abe03d01e187963b8c2f520121ccf3e00dc1f61ac786ff91f678"
 }

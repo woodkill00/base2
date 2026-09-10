@@ -26,7 +26,7 @@ class VisualContractTests(unittest.TestCase):
 
     def test_required_semantic_token_families_and_themes_are_complete(self):
         self.assertEqual(
-            {"color", "space", "radius", "motion", "typography", "breakpoint"},
+            {"color", "space", "radius", "layout", "elevation", "motion", "typography", "breakpoint"},
             set(self.contract["tokens"]),
         )
         self.assertEqual({"volcanic", "obsidian", "polar"}, set(self.contract["themes"]))

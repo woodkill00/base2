@@ -24,7 +24,13 @@ export const Default: Story = {
     sidebarItems: ['Home', 'Dashboard', 'Settings', 'Users', 'Help'],
   },
   render: ({ headerTitle, sidebarItems }) => (
-    <AppShell headerTitle={headerTitle} sidebarItems={sidebarItems as string[]}>
+    <AppShell
+      headerTitle={headerTitle}
+      sidebarItems={(sidebarItems as string[]).map((label, index) => ({
+        label,
+        to: ['/', '/dashboard', '/settings', '/admin', '/contact'][index] || '/',
+      }))}
+    >
       <div style={{ padding: 16, display: 'grid', gap: 16 }}>
         {[0, 1].map((_, i) => (
           <GlassCard key={i}>

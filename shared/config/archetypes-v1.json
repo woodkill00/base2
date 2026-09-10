@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "archetypes": [
+    {
+      "id": "business",
+      "modules": ["content", "forms", "media"],
+      "routes": ["/", "/about", "/contact"],
+      "roles": ["owner", "editor", "viewer"],
+      "journeys": ["discover", "contact"],
+      "visualProfile": "professional",
+      "capacity": "small",
+      "maximumMonthlyProviderCostUsd": 25
+    },
+    {
+      "id": "portfolio",
+      "modules": ["content", "portfolio", "gallery", "forms"],
+      "routes": ["/", "/work", "/contact"],
+      "roles": ["owner", "editor", "viewer"],
+      "journeys": ["browse-work", "contact"],
+      "visualProfile": "editorial",
+      "capacity": "small",
+      "maximumMonthlyProviderCostUsd": 25
+    },
+    {
+      "id": "documentation",
+      "modules": ["content", "documentation"],
+      "routes": ["/", "/docs"],
+      "roles": ["owner", "editor", "viewer"],
+      "journeys": ["find-documentation"],
+      "visualProfile": "technical",
+      "capacity": "medium",
+      "maximumMonthlyProviderCostUsd": 50
+    },
+    {
+      "id": "publication",
+      "modules": ["content", "blog", "media"],
+      "routes": ["/", "/blog"],
+      "roles": ["owner", "editor", "viewer"],
+      "journeys": ["read", "subscribe"],
+      "visualProfile": "publication",
+      "capacity": "medium",
+      "maximumMonthlyProviderCostUsd": 50
+    },
+    {
+      "id": "community",
+      "modules": ["content", "community", "membership"],
+      "routes": ["/", "/community"],
+      "roles": ["owner", "editor", "member"],
+      "journeys": ["join", "contribute"],
+      "visualProfile": "social",
+      "capacity": "medium",
+      "maximumMonthlyProviderCostUsd": 75
+    },
+    {
+      "id": "directory",
+      "modules": ["content", "listing"],
+      "routes": ["/", "/directory"],
+      "roles": ["owner", "editor", "viewer"],
+      "journeys": ["search", "view-listing"],
+      "visualProfile": "directory",
+      "capacity": "medium",
+      "maximumMonthlyProviderCostUsd": 75
+    },
+    {
+      "id": "event",
+      "modules": ["content", "events", "forms"],
+      "routes": ["/", "/events"],
+      "roles": ["owner", "editor", "attendee"],
+      "journeys": ["discover-event", "register"],
+      "visualProfile": "event",
+      "capacity": "medium",
+      "maximumMonthlyProviderCostUsd": 75
+    },
+    {
+      "id": "booking",
+      "modules": ["content", "booking", "forms"],
+      "routes": ["/", "/book"],
+      "roles": ["owner", "staff", "customer"],
+      "journeys": ["find-slot", "book"],
+      "visualProfile": "service",
+      "capacity": "medium",
+      "maximumMonthlyProviderCostUsd": 75
+    },
+    {
+      "id": "catalog",
+      "modules": ["content", "catalog", "media"],
+      "routes": ["/", "/catalog"],
+      "roles": ["owner", "editor", "viewer"],
+      "journeys": ["browse-catalog"],
+      "visualProfile": "catalog",
+      "capacity": "medium",
+      "maximumMonthlyProviderCostUsd": 75
+    },
+    {
+      "id": "marketplace",
+      "modules": ["content", "marketplace", "membership"],
+      "routes": ["/", "/marketplace"],
+      "roles": ["owner", "seller", "buyer"],
+      "journeys": ["list", "discover"],
+      "visualProfile": "marketplace",
+      "capacity": "large",
+      "maximumMonthlyProviderCostUsd": 150
+    },
+    {
+      "id": "subscription",
+      "modules": ["content", "membership", "subscription"],
+      "routes": ["/", "/membership"],
+      "roles": ["owner", "editor", "member"],
+      "journeys": ["join", "manage-membership"],
+      "visualProfile": "membership",
+      "capacity": "medium",
+      "maximumMonthlyProviderCostUsd": 100
+    },
+    {
+      "id": "support",
+      "modules": ["content", "support", "forms"],
+      "routes": ["/", "/support"],
+      "roles": ["owner", "agent", "member"],
+      "journeys": ["request-help", "track-request"],
+      "visualProfile": "support",
+      "capacity": "medium",
+      "maximumMonthlyProviderCostUsd": 75
+    },
+    {
+      "id": "nonprofit",
+      "modules": ["content", "events", "forms", "community"],
+      "routes": ["/", "/mission", "/get-involved"],
+      "roles": ["owner", "editor", "volunteer"],
+      "journeys": ["learn", "volunteer"],
+      "visualProfile": "mission",
+      "capacity": "medium",
+      "maximumMonthlyProviderCostUsd": 50
+    }
+  ]
+}

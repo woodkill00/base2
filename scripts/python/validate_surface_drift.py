@@ -24,6 +24,7 @@ GROUPS = {
         ".env.example",
         "scripts/config/complete-gate-v1.json",
         "shared/config/*.json",
+        "digital_ocean/config/*.pem",
         "api/site_profiles/*.json",
         "django/site_profiles/*.json",
     ),

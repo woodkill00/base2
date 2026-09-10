@@ -25,34 +25,187 @@ import {
 } from 'lucide-react';
 
 const sectionItems = [
-  { id: 'home', label: 'Home', target: 'home-page', icon: LayoutGrid },
-  { id: 'features', label: 'Features', target: 'features', icon: Zap },
-  { id: 'command', label: 'Command', target: 'base2-obsidian-ops', icon: Search },
-  { id: 'security', label: 'Security', target: 'base2-thermal-security', icon: ShieldCheck },
-  { id: 'contact', label: 'Contact', target: 'contact', icon: Server },
+  { id: 'home', labelKey: 'home', target: 'home-page', icon: LayoutGrid },
+  { id: 'features', labelKey: 'features', target: 'features', icon: Zap },
+  { id: 'command', labelKey: 'command', target: 'base2-obsidian-ops', icon: Search },
+  { id: 'security', labelKey: 'security', target: 'base2-thermal-security', icon: ShieldCheck },
+  { id: 'contact', labelKey: 'contact', target: 'contact', icon: Server },
 ];
 
 const utilityItems = [
-  { label: 'Settings', icon: Settings, safe: false },
-  { label: 'Notifications', icon: Bell, safe: true },
-  { label: 'Share', icon: Share2, safe: true },
-  { label: 'History', icon: History, safe: true },
-  { label: 'Security', icon: Shield, safe: true },
-  { label: 'Automation', icon: Zap, safe: false },
-  { label: 'Search', icon: Search, safe: true },
-  { label: 'Profile', icon: User, safe: true },
-  { label: 'Favorites', icon: Heart, safe: true },
-  { label: 'Sign out', icon: LogOut, safe: false },
+  { labelKey: 'settings', icon: Settings, safe: false },
+  { labelKey: 'notifications', icon: Bell, safe: false },
+  { labelKey: 'share', icon: Share2, safe: true, action: 'share' },
+  { labelKey: 'history', icon: History, safe: false },
+  { labelKey: 'security', icon: Shield, safe: true, action: 'security' },
+  { labelKey: 'automation', icon: Zap, safe: false },
+  { labelKey: 'search', icon: Search, safe: true, action: 'search' },
+  { labelKey: 'profile', icon: User, safe: false },
+  { labelKey: 'favorites', icon: Heart, safe: false },
+  { labelKey: 'signOut', icon: LogOut, safe: false },
 ];
 
 const commandActions = [
-  { id: 'go-home', label: 'Go to home', sectionId: 'home', safe: true },
-  { id: 'go-features', label: 'Review Base2 features', sectionId: 'features', safe: true },
-  { id: 'go-command', label: 'Open command operations', sectionId: 'command', safe: true },
-  { id: 'go-security', label: 'Inspect security surface', sectionId: 'security', safe: true },
-  { id: 'go-contact', label: 'Contact Base2', sectionId: 'contact', safe: true },
-  { id: 'admin-debug', label: 'Admin diagnostics', safe: false },
+  { id: 'go-home', labelKey: 'goHome', sectionId: 'home', safe: true },
+  { id: 'go-features', labelKey: 'reviewFeatures', sectionId: 'features', safe: true },
+  { id: 'go-command', labelKey: 'openCommand', sectionId: 'command', safe: true },
+  { id: 'go-security', labelKey: 'inspectSecurity', sectionId: 'security', safe: true },
+  { id: 'go-contact', labelKey: 'contactBase2', sectionId: 'contact', safe: true },
+  { id: 'admin-debug', labelKey: 'adminDiagnostics', safe: false },
 ];
+
+const navigationCopy = {
+  en: {
+    home: 'Home',
+    features: 'Features',
+    command: 'Command',
+    security: 'Security',
+    contact: 'Contact',
+    settings: 'Settings',
+    notifications: 'Notifications',
+    share: 'Share',
+    history: 'History',
+    automation: 'Automation',
+    search: 'Search',
+    profile: 'Profile',
+    favorites: 'Favorites',
+    signOut: 'Sign out',
+    goHome: 'Go to home',
+    reviewFeatures: 'Review Base2 features',
+    openCommand: 'Open command operations',
+    inspectSecurity: 'Inspect security surface',
+    contactBase2: 'Contact Base2',
+    adminDiagnostics: 'Admin diagnostics',
+    dismissOverlay: 'Dismiss Base2 command overlay',
+    closeCommand: 'Close Base2 command menu',
+    openCommandMenu: 'Open Base2 command menu',
+    collapsePanel: 'Collapse Base2 command panel',
+    pageSections: 'Base2 page sections',
+    pulseGuide: 'Pulse Guide',
+    pulseEnabled: 'Pulse guide enabled',
+    navButtons: 'Nav Buttons',
+    toggleMovement: 'Toggle Base2 movement buttons',
+    commandPalette: 'Command palette',
+    paletteLabel: 'Base2 command palette',
+    closePalette: 'Close Base2 command palette',
+    searchActions: 'Search Base2 actions',
+    colorSchemes: 'Base2 color schemes',
+    useScheme: 'Use',
+    schemeSuffix: 'color scheme',
+    active: 'Active',
+    apply: 'Apply',
+    unavailable: 'unavailable on public site',
+    publicSafe: 'Public safe',
+    locked: 'Locked',
+    navigation: 'Navigation',
+    utilityShortcuts: 'Base2 utility shortcuts',
+    utilityPrefix: 'Base2 utility:',
+    closeUtility: 'Close Base2 utility menu',
+    openUtility: 'Open Base2 utility menu',
+    scrollUp: 'Scroll up to previous Base2 section',
+    scrollDown: 'Scroll down to next Base2 section',
+  },
+  de: {
+    home: 'Start',
+    features: 'Funktionen',
+    command: 'Befehle',
+    security: 'Sicherheit',
+    contact: 'Kontakt',
+    settings: 'Einstellungen',
+    notifications: 'Benachrichtigungen',
+    share: 'Teilen',
+    history: 'Verlauf',
+    automation: 'Automatisierung',
+    search: 'Suche',
+    profile: 'Profil',
+    favorites: 'Favoriten',
+    signOut: 'Abmelden',
+    goHome: 'Zur Startseite',
+    reviewFeatures: 'Base2-Funktionen ansehen',
+    openCommand: 'Befehlsbetrieb öffnen',
+    inspectSecurity: 'Sicherheitsbereich prüfen',
+    contactBase2: 'Base2 kontaktieren',
+    adminDiagnostics: 'Admin-Diagnose',
+    dismissOverlay: 'Base2-Befehlsfenster schließen',
+    closeCommand: 'Base2-Befehlsmenü schließen',
+    openCommandMenu: 'Base2-Befehlsmenü öffnen',
+    collapsePanel: 'Base2-Befehlsbereich einklappen',
+    pageSections: 'Base2-Seitenbereiche',
+    pulseGuide: 'Impulsführung',
+    pulseEnabled: 'Impulsführung aktiviert',
+    navButtons: 'Navigationstasten',
+    toggleMovement: 'Base2-Navigationstasten umschalten',
+    commandPalette: 'Befehlspalette',
+    paletteLabel: 'Base2-Befehlspalette',
+    closePalette: 'Base2-Befehlspalette schließen',
+    searchActions: 'Base2-Aktionen durchsuchen',
+    colorSchemes: 'Base2-Farbschemata',
+    useScheme: 'Verwende',
+    schemeSuffix: 'als Farbschema',
+    active: 'Aktiv',
+    apply: 'Anwenden',
+    unavailable: 'auf der öffentlichen Seite nicht verfügbar',
+    publicSafe: 'Öffentlich verfügbar',
+    locked: 'Gesperrt',
+    navigation: 'Navigation',
+    utilityShortcuts: 'Base2-Schnellzugriffe',
+    utilityPrefix: 'Base2-Schnellzugriff:',
+    closeUtility: 'Base2-Schnellzugriffe schließen',
+    openUtility: 'Base2-Schnellzugriffe öffnen',
+    scrollUp: 'Zum vorherigen Base2-Bereich scrollen',
+    scrollDown: 'Zum nächsten Base2-Bereich scrollen',
+  },
+  ar: {
+    home: 'الرئيسية',
+    features: 'الميزات',
+    command: 'الأوامر',
+    security: 'الأمان',
+    contact: 'اتصل بنا',
+    settings: 'الإعدادات',
+    notifications: 'الإشعارات',
+    share: 'مشاركة',
+    history: 'السجل',
+    automation: 'الأتمتة',
+    search: 'بحث',
+    profile: 'الملف الشخصي',
+    favorites: 'المفضلة',
+    signOut: 'تسجيل الخروج',
+    goHome: 'الانتقال إلى الرئيسية',
+    reviewFeatures: 'استعراض ميزات Base2',
+    openCommand: 'فتح عمليات الأوامر',
+    inspectSecurity: 'فحص واجهة الأمان',
+    contactBase2: 'التواصل مع Base2',
+    adminDiagnostics: 'تشخيص المسؤول',
+    dismissOverlay: 'إغلاق طبقة أوامر Base2',
+    closeCommand: 'إغلاق قائمة أوامر Base2',
+    openCommandMenu: 'فتح قائمة أوامر Base2',
+    collapsePanel: 'طي لوحة أوامر Base2',
+    pageSections: 'أقسام صفحة Base2',
+    pulseGuide: 'دليل النبض',
+    pulseEnabled: 'دليل النبض مفعّل',
+    navButtons: 'أزرار التنقل',
+    toggleMovement: 'تبديل أزرار تنقل Base2',
+    commandPalette: 'لوحة الأوامر',
+    paletteLabel: 'لوحة أوامر Base2',
+    closePalette: 'إغلاق لوحة أوامر Base2',
+    searchActions: 'البحث في إجراءات Base2',
+    colorSchemes: 'أنظمة ألوان Base2',
+    useScheme: 'استخدام',
+    schemeSuffix: 'كنظام ألوان',
+    active: 'نشط',
+    apply: 'تطبيق',
+    unavailable: 'غير متاح على الموقع العام',
+    publicSafe: 'متاح للعامة',
+    locked: 'مقفل',
+    navigation: 'التنقل',
+    utilityShortcuts: 'اختصارات Base2',
+    utilityPrefix: 'اختصار Base2:',
+    closeUtility: 'إغلاق قائمة اختصارات Base2',
+    openUtility: 'فتح قائمة اختصارات Base2',
+    scrollUp: 'التمرير إلى قسم Base2 السابق',
+    scrollDown: 'التمرير إلى قسم Base2 التالي',
+  },
+};
 
 const colorSchemes = [
   {
@@ -122,7 +275,9 @@ const readActiveSection = () => {
   return active;
 };
 
-const HomeObsidianNavigation = ({ onNavigate }) => {
+const HomeObsidianNavigation = ({ onNavigate, onUtilityAction = () => {}, locale = 'en' }) => {
+  const resolvedLocale = Object.hasOwn(navigationCopy, locale) ? locale : 'en';
+  const copy = navigationCopy[resolvedLocale];
   const [isLeftOpen, setIsLeftOpen] = useState(false);
   const [isRightOpen, setIsRightOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -390,9 +545,32 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     updateScrollState();
     window.addEventListener('scroll', updateScrollState, { passive: true });
     window.addEventListener('resize', updateScrollState);
+    window.addEventListener('load', updateScrollState);
+    window.addEventListener('pageshow', updateScrollState);
+
+    // A responsive section can grow after the first layout pass without
+    // emitting either scroll or resize (for example, when a font or deferred
+    // child settles). Keep the movement controls synchronized with that final
+    // document geometry instead of leaving a stale edge decision on screen.
+    const resizeObserver =
+      typeof ResizeObserver === 'function' ? new ResizeObserver(updateScrollState) : null;
+    if (resizeObserver && document.body) resizeObserver.observe(document.body);
+
+    const layoutFrames = [];
+    if (resizeObserver) {
+      layoutFrames.push(
+        window.requestAnimationFrame(() => {
+          layoutFrames.push(window.requestAnimationFrame(updateScrollState));
+        })
+      );
+    }
     return () => {
       window.removeEventListener('scroll', updateScrollState);
       window.removeEventListener('resize', updateScrollState);
+      window.removeEventListener('load', updateScrollState);
+      window.removeEventListener('pageshow', updateScrollState);
+      resizeObserver?.disconnect();
+      layoutFrames.forEach((frame) => window.cancelAnimationFrame(frame));
     };
   }, [updateScrollState]);
 
@@ -709,6 +887,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
   };
 
   const handleUtilitySelect = (index, item) => {
+    if (!item.safe) return;
     const normalizedIndex = normalizeUtilitySlot(index);
     const selectedEl = utilityItemRefs.current[normalizedIndex];
     const scrollEl = utilityScrollRef.current;
@@ -716,13 +895,13 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
     setActiveUtilitySlot(normalizedIndex);
 
     if (selectedEl && scrollEl) {
-      centerUtilitySlot(normalizedIndex, 'smooth');
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => updateUtilitySelectionFromScroll(false));
-      });
+      // A direct selection must be atomic. Smooth scrolling can emit
+      // intermediate scroll events that temporarily select another loop copy,
+      // so center the canonical option before allowing scroll reconciliation.
+      centerUtilitySlot(normalizedIndex, 'auto');
     }
 
-    if (!item.safe) return;
+    onUtilityAction(item.action);
   };
 
   const canMoveUp = scrollState.canAscend;
@@ -738,12 +917,14 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
       }}
       data-testid="base2-obsidian-navigation"
       data-active-palette={activeColorScheme.id}
+      lang={resolvedLocale}
+      dir={resolvedLocale === 'ar' ? 'rtl' : 'ltr'}
     >
       {isLeftOpen ? (
         <button
           type="button"
           className="home-left-command-backdrop"
-          aria-label="Dismiss Base2 command overlay"
+          aria-label={copy.dismissOverlay}
           onClick={() => setIsLeftOpen(false)}
           data-testid="base2-left-menu-backdrop"
         />
@@ -754,7 +935,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
         className={`home-left-menu-toggle ${isLeftOpen ? 'is-open' : ''}`}
         ref={leftToggleRef}
         onClick={() => setIsLeftOpen((open) => !open)}
-        aria-label={isLeftOpen ? 'Close Base2 command menu' : 'Open Base2 command menu'}
+        aria-label={isLeftOpen ? copy.closeCommand : copy.openCommandMenu}
         aria-expanded={isLeftOpen}
         aria-controls="base2-left-command-menu"
         data-testid="base2-left-menu-toggle"
@@ -789,13 +970,13 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
         <div className="home-left-command-title" id="base2-left-command-title">
           <div>
             <span>Base2</span>
-            <strong>Command</strong>
+            <strong>{copy.command}</strong>
           </div>
           <button
             type="button"
             className="home-left-command-close"
             onClick={() => setIsLeftOpen(false)}
-            aria-label="Collapse Base2 command panel"
+            aria-label={copy.collapsePanel}
             tabIndex={isLeftOpen ? 0 : -1}
             data-testid="base2-left-menu-close"
           >
@@ -803,7 +984,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
           </button>
         </div>
         <nav
-          aria-label="Base2 page sections"
+          aria-label={copy.pageSections}
           className="home-left-command-list"
           ref={leftSectionListRef}
           data-testid="base2-left-section-list"
@@ -836,7 +1017,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
                 data-testid={`base2-section-nav-${item.id}`}
               >
                 <Icon aria-hidden="true" />
-                <span>{item.label}</span>
+                <span>{copy[item.labelKey]}</span>
               </button>
             );
           })}
@@ -844,25 +1025,25 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
         <div className="home-left-command-switches">
           <label>
             <span>
-              <Activity aria-hidden="true" /> Pulse Guide
+              <Activity aria-hidden="true" /> {copy.pulseGuide}
             </span>
             <input
               type="checkbox"
               checked
               readOnly
-              aria-label="Pulse guide enabled"
+              aria-label={copy.pulseEnabled}
               tabIndex={isLeftOpen ? 0 : -1}
             />
           </label>
           <label>
             <span>
-              <LockKeyhole aria-hidden="true" /> Nav Buttons
+              <LockKeyhole aria-hidden="true" /> {copy.navButtons}
             </span>
             <input
               type="checkbox"
               checked={navButtonsEnabled}
               onChange={() => setNavButtonsEnabled((enabled) => !enabled)}
-              aria-label="Toggle Base2 movement buttons"
+              aria-label={copy.toggleMovement}
               tabIndex={isLeftOpen ? 0 : -1}
             />
           </label>
@@ -875,7 +1056,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
           data-testid="base2-command-palette-open"
         >
           <Command aria-hidden="true" />
-          <span>Command palette</span>
+          <span>{copy.commandPalette}</span>
           <kbd>Ctrl K</kbd>
         </button>
       </div>
@@ -885,26 +1066,26 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
           className="home-command-palette-modal"
           role="dialog"
           aria-modal="true"
-          aria-label="Base2 command palette"
+          aria-label={copy.paletteLabel}
           data-testid="base2-command-palette"
         >
           <button
             type="button"
             className="home-command-palette-backdrop"
-            aria-label="Close Base2 command palette"
+            aria-label={copy.closePalette}
             onClick={() => setIsCommandPaletteOpen(false)}
           />
           <div className="home-command-palette-surface">
             <div className="home-command-search-row">
               <Search aria-hidden="true" />
-              <span>Search Base2 actions</span>
+              <span>{copy.searchActions}</span>
               <kbd>Esc</kbd>
             </div>
             <div className="home-command-palette-actions" role="menu">
               <div
                 className="home-command-palette-schemes"
                 role="group"
-                aria-label="Base2 color schemes"
+                aria-label={copy.colorSchemes}
               >
                 {colorSchemes.map((scheme) => (
                   <button
@@ -913,7 +1094,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
                     className={scheme.id === colorSchemeId ? 'is-active' : ''}
                     onClick={() => setColorSchemeId(scheme.id)}
                     aria-pressed={scheme.id === colorSchemeId}
-                    aria-label={`Use ${scheme.label} color scheme`}
+                    aria-label={`${copy.useScheme} ${scheme.label} ${copy.schemeSuffix}`}
                     data-testid={`base2-color-scheme-${scheme.id}`}
                     style={{
                       '--scheme-primary': scheme.primary,
@@ -921,7 +1102,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
                     }}
                   >
                     <span>{scheme.label}</span>
-                    <em>{scheme.id === colorSchemeId ? 'Active' : 'Apply'}</em>
+                    <em>{scheme.id === colorSchemeId ? copy.active : copy.apply}</em>
                   </button>
                 ))}
               </div>
@@ -932,10 +1113,10 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
                   role="menuitem"
                   disabled={!action.safe}
                   onClick={() => action.safe && goToSection(action.sectionId)}
-                  aria-label={`${action.label}${action.safe ? '' : ' unavailable on public site'}`}
+                  aria-label={`${copy[action.labelKey]}${action.safe ? '' : ` ${copy.unavailable}`}`}
                 >
-                  <span>{action.label}</span>
-                  <em>{action.safe ? 'Public safe' : 'Locked'}</em>
+                  <span>{copy[action.labelKey]}</span>
+                  <em>{action.safe ? copy.publicSafe : copy.locked}</em>
                 </button>
               ))}
             </div>
@@ -950,11 +1131,11 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
         {isRightOpen ? (
           <div className="home-right-utility-panel" data-testid="base2-right-utility-icons">
             <div className="home-right-utility-nav-toggle">
-              <span>Navigation</span>
+              <span>{copy.navigation}</span>
               <button
                 type="button"
                 onClick={() => setNavButtonsEnabled((enabled) => !enabled)}
-                aria-label="Toggle Base2 movement buttons"
+                aria-label={copy.toggleMovement}
                 aria-pressed={navButtonsEnabled}
               >
                 <span className={navButtonsEnabled ? 'is-on' : ''} />
@@ -962,31 +1143,32 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
             </div>
             <div
               className="home-right-utility-scroll"
-              role="listbox"
-              aria-label="Base2 utility shortcuts"
+              role="navigation"
+              aria-label={copy.utilityShortcuts}
               ref={utilityScrollRef}
               data-testid="base2-right-utility-scroll"
             >
               {visibleUtilityItems.map((item, index) => {
                 const Icon = item.icon;
                 const isSelected = index === activeUtilitySlot;
+                const isCanonicalCopy = index >= utilityLoopOffset && index < utilityLoopOffset * 2;
                 return (
                   <button
                     type="button"
                     className={`home-right-utility-icon ${isSelected ? 'is-active' : ''} ${item.safe ? '' : 'is-locked'}`}
-                    role="option"
-                    aria-label={`Base2 utility: ${item.label}${item.safe ? '' : ' unavailable on public site'}`}
-                    aria-selected={isSelected}
-                    aria-disabled={!item.safe}
+                    aria-label={`${copy.utilityPrefix} ${copy[item.labelKey]}${item.safe ? '' : ` ${copy.unavailable}`}`}
+                    disabled={!item.safe}
+                    aria-hidden={!isCanonicalCopy}
+                    tabIndex={isCanonicalCopy ? 0 : -1}
                     ref={(node) => {
                       utilityItemRefs.current[index] = node;
                     }}
-                    key={`${item.label}-${index}`}
+                    key={`${item.labelKey}-${index}`}
                     onClick={() => handleUtilitySelect(index, item)}
-                    title={`${item.label}${item.safe ? '' : ' locked'}`}
+                    title={`${copy[item.labelKey]}${item.safe ? '' : ` ${copy.locked}`}`}
                   >
                     <Icon aria-hidden="true" />
-                    <span>{item.label}</span>
+                    <span>{copy[item.labelKey]}</span>
                   </button>
                 );
               })}
@@ -998,7 +1180,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
           type="button"
           className="home-right-utility-toggle"
           onClick={() => setIsRightOpen((open) => !open)}
-          aria-label={isRightOpen ? 'Close Base2 utility menu' : 'Open Base2 utility menu'}
+          aria-label={isRightOpen ? copy.closeUtility : copy.openUtility}
           aria-expanded={isRightOpen}
           data-testid="base2-right-utility-toggle"
         >
@@ -1021,7 +1203,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
               className="home-movement-button home-movement-button-up"
               onClick={() => handleMovementClick(-1)}
               onDoubleClick={(event) => handleMovementDoubleClick(-1, event)}
-              aria-label="Scroll up to previous Base2 section"
+              aria-label={copy.scrollUp}
               data-testid="base2-scroll-ascend"
             >
               <span
@@ -1039,7 +1221,7 @@ const HomeObsidianNavigation = ({ onNavigate }) => {
               className="home-movement-button home-movement-button-down"
               onClick={() => handleMovementClick(1)}
               onDoubleClick={(event) => handleMovementDoubleClick(1, event)}
-              aria-label="Scroll down to next Base2 section"
+              aria-label={copy.scrollDown}
               data-testid="base2-scroll-descend"
             >
               <span

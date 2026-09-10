@@ -363,6 +363,7 @@ next-env.d.ts
 *.lock
 !package-lock.json
 !yarn.lock
+!digital_ocean/requirements.lock
 
 # Debug files
 npm-debug.log*

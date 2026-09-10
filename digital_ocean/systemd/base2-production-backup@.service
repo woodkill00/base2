@@ -1,0 +1,21 @@
+[Unit]
+Description=Base2 encrypted production backup for %i
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=base2
+Group=base2
+WorkingDirectory=/opt/base2/current
+ExecStart=/opt/base2/current/scripts/bash/production-backup.sh backup --config /etc/base2/backup/%i.json
+ExecStartPost=/opt/base2/current/scripts/bash/production-backup.sh prune --config /etc/base2/backup/%i.json
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/base2/backups /var/lib/base2/backup-receipts /var/lib/base2/operations
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

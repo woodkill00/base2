@@ -24,6 +24,7 @@ const ResetPassword = lazy(() => import('../pages/ResetPassword'));
 const EventsPage = lazy(() => import('../pages/public/EventsPage'));
 const ContentWorkspace = lazy(() => import('../pages/ContentWorkspace'));
 const MediaLibrary = lazy(() => import('../pages/MediaLibrary'));
+const OperationsCenter = lazy(() => import('../pages/OperationsCenter'));
 
 const accountsEnabled = siteManifest.modules.some(
   (module) => module.id === 'accounts' && module.enabled
@@ -75,6 +76,15 @@ const MediaRoute = () => {
   return (
     <PermissionRoute user={user} permission="media.read">
       <MediaLibrary />
+    </PermissionRoute>
+  );
+};
+
+const OperationsRoute = () => {
+  const { user } = useAuth();
+  return (
+    <PermissionRoute user={user} permission="operations.read">
+      <OperationsCenter />
     </PermissionRoute>
   );
 };
@@ -173,6 +183,14 @@ const PublicRoutes = () => (
       element={
         <ProtectedRoute>
           <MediaRoute />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/operations"
+      element={
+        <ProtectedRoute>
+          <OperationsRoute />
         </ProtectedRoute>
       }
     />

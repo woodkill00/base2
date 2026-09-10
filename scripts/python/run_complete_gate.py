@@ -3,14 +3,17 @@
 
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import json
 import os
 import platform
 import re
 import shutil
+import stat
 import subprocess
 import uuid
+from contextlib import contextmanager, suppress
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -24,11 +27,173 @@ INFRASTRUCTURE_CRASH = re.compile(
     r"(?i)\b(?:SIGSEGV|segmentation fault|Worker exited unexpectedly|"
     r"Worker forks emitted error)\b"
 )
+NATIVE_ABORT_CORRUPTION = re.compile(
+    r"(?i)(?:smallbin|fastbin|malloc_consolidate|corrupted double-linked list|"
+    r"double free or corruption|invalid pointer)"
+)
+NATIVE_SEGMENTATION = re.compile(
+    r"(?i)(?:Fatal Python error:\s*Segmentation fault|\bSIGSEGV\b|"
+    r"segmentation fault|signal=SIGSEGV)"
+)
 TOOL_TOKENS = {
     "{python-api}": (".venv-api/bin/python", ".venv-api/Scripts/python.exe"),
     "{python-django}": (".venv-django/bin/python", ".venv-django/Scripts/python.exe"),
     "{python-orchestrator}": (".venv/bin/python", ".venv/Scripts/python.exe"),
 }
+GATE_BUSY_EXIT = 3
+
+
+class CompleteGateBusy(RuntimeError):
+    """Another process owns the repository-wide complete-gate lease."""
+
+
+def _contained_parts(path: Path, trusted_root: Path) -> tuple[str, ...]:
+    root = Path(os.path.abspath(trusted_root))
+    candidate = Path(os.path.abspath(path))
+    try:
+        relative = candidate.relative_to(root)
+    except ValueError as exc:
+        raise ValueError("private_path_outside_trusted_root") from exc
+    if not relative.parts or any(part in {"", ".", ".."} for part in relative.parts):
+        raise ValueError("invalid_private_path")
+    return relative.parts
+
+
+def open_private_directory(path: Path, trusted_root: Path, *, create: bool = True) -> int:
+    """Open a contained private directory chain without following links."""
+    parts = _contained_parts(path, trusted_root)
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC | os.O_NOFOLLOW
+    descriptor = os.open(Path(os.path.abspath(trusted_root)), flags)
+    try:
+        for part in parts:
+            if create:
+                with suppress(FileExistsError):
+                    os.mkdir(part, 0o700, dir_fd=descriptor)
+            child = os.open(part, flags, dir_fd=descriptor)
+            try:
+                details = os.fstat(child)
+                if (
+                    not stat.S_ISDIR(details.st_mode)
+                    or details.st_uid != os.geteuid()
+                    or (not create and stat.S_IMODE(details.st_mode) != 0o700)
+                ):
+                    raise ValueError("unsafe_private_directory")
+                if create:
+                    os.fchmod(child, 0o700)
+            except Exception:
+                os.close(child)
+                raise
+            os.close(descriptor)
+            descriptor = child
+        return descriptor
+    except Exception:
+        os.close(descriptor)
+        raise
+
+
+def open_private_file(directory_fd: int, name: str, *, truncate: bool = True) -> int:
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", name):
+        raise ValueError("invalid_private_member_name")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC | os.O_NOFOLLOW
+    if truncate:
+        flags |= os.O_TRUNC
+    descriptor = os.open(name, flags, 0o600, dir_fd=directory_fd)
+    try:
+        details = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(details.st_mode)
+            or details.st_uid != os.geteuid()
+            or details.st_nlink != 1
+        ):
+            raise ValueError("unsafe_private_member")
+        os.fchmod(descriptor, 0o600)
+    except Exception:
+        os.close(descriptor)
+        raise
+    return descriptor
+
+
+def private_write(directory_fd: int, name: str, data: bytes) -> tuple[str, int]:
+    descriptor = open_private_file(directory_fd, name)
+    try:
+        with os.fdopen(descriptor, "wb", closefd=False) as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+    finally:
+        os.close(descriptor)
+    return hashlib.sha256(data).hexdigest(), len(data)
+
+
+def private_atomic_json(directory_fd: int, name: str, payload: dict) -> None:
+    data = (json.dumps(payload, indent=2, sort_keys=True) + "\n").encode()
+    temporary = f".{name}.{uuid.uuid4().hex}.tmp"
+    descriptor = os.open(
+        temporary,
+        os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC | os.O_NOFOLLOW,
+        0o600,
+        dir_fd=directory_fd,
+    )
+    try:
+        with os.fdopen(descriptor, "wb", closefd=False) as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        try:
+            existing = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            existing = None
+        if existing is not None and (
+            not stat.S_ISREG(existing.st_mode) or existing.st_uid != os.geteuid()
+        ):
+            raise ValueError("unsafe_private_result_member")
+        os.replace(temporary, name, src_dir_fd=directory_fd, dst_dir_fd=directory_fd)
+        os.fsync(directory_fd)
+    finally:
+        os.close(descriptor)
+        with suppress(FileNotFoundError):
+            os.unlink(temporary, dir_fd=directory_fd)
+
+
+@contextmanager
+def complete_gate_lock(repo_root: Path):
+    artifacts_fd = open_private_directory(repo_root / ".artifacts", repo_root)
+    lock_path = repo_root / ".artifacts" / "complete-gate.lock"
+    descriptor = None
+    try:
+        descriptor = os.open(
+            "complete-gate.lock",
+            os.O_CREAT | os.O_RDWR | os.O_CLOEXEC | os.O_NOFOLLOW,
+            0o600,
+            dir_fd=artifacts_fd,
+        )
+        details = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(details.st_mode)
+            or details.st_uid != os.geteuid()
+            or details.st_nlink != 1
+        ):
+            raise ValueError("unsafe_complete_gate_lock")
+        os.fchmod(descriptor, 0o600)
+        handle = os.fdopen(descriptor, "r+")
+        descriptor = None
+    except Exception:
+        if descriptor is not None:
+            os.close(descriptor)
+        os.close(artifacts_fd)
+        raise
+    try:
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise CompleteGateBusy("complete_gate_already_running") from exc
+        yield lock_path
+    finally:
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        finally:
+            handle.close()
+            os.close(artifacts_fd)
 
 
 def now() -> str:
@@ -45,11 +210,37 @@ def validate_runtime_capacity() -> None:
 
 
 def retryable_interpreter_corruption(output: str) -> bool:
-    """Recognize the observed impossible JSON encoder state without masking app failures."""
-    return (
+    """Recognize exact impossible interpreter states without masking app failures."""
+    json_encoder_corruption = (
         "/json/encoder.py" in output
         and "yield '\\n' + _indent * _current_indent_level" in output
         and "TypeError: unsupported operand type(s) for *: 'NoneType' and 'int'" in output
+    )
+    django_field_counter_corruption = (
+        "/django/db/models/fields/__init__.py" in output
+        and "Field.creation_counter += 1" in output
+        and "TypeError: unsupported operand type(s) for +=: 'type' and 'int'" in output
+    )
+    pydantic_code_object_corruption = (
+        "/pydantic/_internal/_generate_schema.py" in output
+        and "TypeError: 'code' object cannot be interpreted as an integer" in output
+        and "SystemError: <sys.legacy_event_handler object" in output
+        and "returned a result with an exception set" in output
+    )
+    return (
+        json_encoder_corruption
+        or django_field_counter_corruption
+        or pydantic_code_object_corruption
+    )
+
+
+def retryable_native_crash(return_code: int, output: str) -> bool:
+    if return_code in {-11, 139} or NATIVE_SEGMENTATION.search(output) is not None:
+        return True
+    return (
+        return_code in {-6, 134}
+        and "Fatal Python error: Aborted" in output
+        and NATIVE_ABORT_CORRUPTION.search(output) is not None
     )
 
 
@@ -95,9 +286,9 @@ def validate_manifest(manifest: dict) -> None:
             if dependency not in known:
                 raise ValueError(f"unknown dependency {dependency}")
         graph[item["id"]] = item["dependsOn"]
-        max_attempts = item.get("maxAttempts", 2)
+        max_attempts = item.get("maxAttempts", 3)
         retry_on = item.get("retryOn", [])
-        if max_attempts not in (1, 2):
+        if max_attempts not in (1, 2, 3):
             raise ValueError(f"invalid maxAttempts for {item['id']}")
         if not isinstance(retry_on, list) or any(
             value not in {"timeout", "incomplete-test-output"} for value in retry_on
@@ -168,13 +359,6 @@ def redact(text: str, environment: dict[str, str]) -> str:
     return output
 
 
-def atomic_json(path: Path, payload: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    os.replace(temporary, path)
-
-
 def run_gate(
     manifest: dict,
     repo_root: Path,
@@ -182,16 +366,45 @@ def run_gate(
     *,
     source_commit: str,
     environment: dict[str, str] | None = None,
+    source_guard=None,
 ) -> dict:
     validate_manifest(manifest)
     repo_root = repo_root.resolve()
-    evidence_dir.mkdir(parents=True, exist_ok=True)
+    evidence_fd = open_private_directory(evidence_dir, repo_root)
+    try:
+        return _run_gate(
+            manifest,
+            repo_root,
+            evidence_dir,
+            evidence_fd,
+            source_commit=source_commit,
+            environment=environment,
+            source_guard=source_guard,
+        )
+    finally:
+        os.close(evidence_fd)
+
+
+def _run_gate(
+    manifest: dict,
+    repo_root: Path,
+    evidence_dir: Path,
+    evidence_fd: int,
+    *,
+    source_commit: str,
+    environment: dict[str, str] | None = None,
+    source_guard=None,
+) -> dict:
     environment = dict(environment or os.environ)
+    environment["PYTHONHASHSEED"] = "0"
+    environment["PYTHONMALLOC"] = "malloc"
     started = now()
     results = []
     states = {}
 
     for item in dependency_ordered_checks(manifest):
+        if source_guard is not None:
+            source_guard()
         check_id = item["id"]
         base = {
             "id": check_id,
@@ -228,7 +441,7 @@ def run_gate(
                     attempts = 0
                     timed_out = False
                     retry_on = set(item.get("retryOn", []))
-                    max_attempts = item.get("maxAttempts", 2)
+                    max_attempts = item.get("maxAttempts", 3)
                     while attempts < max_attempts:
                         attempts += 1
                         try:
@@ -250,13 +463,15 @@ def run_gate(
                             outputs.append(
                                 f"=== attempt {attempts} timeout after {item['timeoutSeconds']} seconds ===\n{captured}"
                             )
-                            if "timeout" in retry_on and attempts < max_attempts:
+                            if "timeout" in retry_on and attempts < min(max_attempts, 2):
                                 continue
                             break
                         timed_out = False
                         outputs.append(
                             f"=== attempt {attempts} exit {completed.returncode} ===\n{completed.stdout or ''}"
                         )
+                        if source_guard is not None:
+                            source_guard()
                         captured_output = completed.stdout or ""
                         incomplete = (
                             completed.returncode != 0
@@ -267,14 +482,25 @@ def run_gate(
                         # wrappers conventionally translate the same signal to
                         # 128 + 11. Treat both as the existing bounded
                         # infrastructure retry, never as an application pass.
-                        infrastructure_crash = (
-                            completed.returncode in {-11, 139}
-                            or INFRASTRUCTURE_CRASH.search(captured_output) is not None
+                        strict_native_crash = retryable_native_crash(
+                            completed.returncode, captured_output
+                        )
+                        bounded_infrastructure_crash = (
+                            INFRASTRUCTURE_CRASH.search(captured_output) is not None
                             or retryable_interpreter_corruption(captured_output)
                         )
-                        if not infrastructure_crash and not incomplete:
+                        if strict_native_crash:
+                            continue
+                        if (
+                            bounded_infrastructure_crash or incomplete
+                        ) and attempts < min(max_attempts, 2):
+                            continue
+                        if not strict_native_crash:
                             break
-                    artifact.write_text(redact("\n".join(outputs), environment), encoding="utf-8")
+                    artifact_bytes = redact("\n".join(outputs), environment).encode()
+                    artifact_sha256, artifact_size = private_write(
+                        evidence_fd, artifact.name, artifact_bytes
+                    )
                     exit_code = None if timed_out else completed.returncode
                     status = "passed" if not timed_out and exit_code == 0 else "failed"
                     result = {
@@ -282,18 +508,31 @@ def run_gate(
                         "status": status,
                         "exitCode": exit_code,
                         "artifact": artifact.name,
+                        "artifactSha256": artifact_sha256,
+                        "artifactSize": artifact_size,
                         "attempts": attempts,
                     }
                     if status == "passed" and attempts > 1:
-                        result["diagnostic"] = "recovered after one bounded infrastructure retry"
+                        result["diagnostic"] = (
+                            f"recovered after {attempts - 1} bounded infrastructure "
+                            f"retr{'y' if attempts == 2 else 'ies'}"
+                        )
                     if status == "failed":
                         if timed_out:
                             result["diagnostic"] = (
                                 f"timed out after {item['timeoutSeconds']} seconds"
-                                + (" after one bounded retry" if attempts > 1 else "")
+                                + (
+                                    f" after {attempts - 1} bounded retries"
+                                    if attempts > 1
+                                    else ""
+                                )
                             )
                         else:
-                            suffix = " after one bounded retry" if attempts > 1 else ""
+                            suffix = (
+                                f" after {attempts - 1} bounded retries"
+                                if attempts > 1
+                                else ""
+                            )
                             result["diagnostic"] = f"command exited {exit_code}{suffix}"
                 except Exception:
                     raise
@@ -308,6 +547,8 @@ def run_gate(
     else:
         overall = "passed"
 
+    if source_guard is not None:
+        source_guard()
     payload = {
         "schemaVersion": 1,
         "runId": f"complete-gate-{uuid.uuid4().hex}",
@@ -319,8 +560,74 @@ def run_gate(
     }
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
     payload["evidenceDigest"] = hashlib.sha256(canonical).hexdigest()
-    atomic_json(evidence_dir / "result.json", payload)
+    private_atomic_json(evidence_fd, "result.json", payload)
+    validate_gate_evidence(evidence_dir / "result.json", repo_root)
     return payload
+
+
+def validate_gate_evidence(result_path: Path, repo_root: Path) -> dict:
+    evidence_fd = open_private_directory(result_path.parent, repo_root, create=False)
+    try:
+        descriptor = os.open(
+            result_path.name, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW, dir_fd=evidence_fd
+        )
+        try:
+            handle = os.fdopen(descriptor, "rb")
+        except Exception:
+            os.close(descriptor)
+            raise
+        with handle:
+            details = os.fstat(handle.fileno())
+            if (
+                not stat.S_ISREG(details.st_mode)
+                or details.st_uid != os.geteuid()
+                or details.st_nlink != 1
+                or stat.S_IMODE(details.st_mode) != 0o600
+            ):
+                raise ValueError("complete_gate_result_unsafe")
+            payload = json.loads(handle.read())
+        expected_digest = payload.pop("evidenceDigest", None)
+        canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        if expected_digest != hashlib.sha256(canonical).hexdigest():
+            raise ValueError("complete_gate_result_digest_invalid")
+        seen = set()
+        for item in payload.get("checks", []):
+            artifact = item.get("artifact")
+            if artifact is None:
+                continue
+            if artifact in seen or not re.fullmatch(r"[a-z][a-z0-9-]+\.log", artifact):
+                raise ValueError("complete_gate_artifact_name_invalid")
+            seen.add(artifact)
+            member = os.open(
+                artifact, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW, dir_fd=evidence_fd
+            )
+            try:
+                details = os.fstat(member)
+                if (
+                    not stat.S_ISREG(details.st_mode)
+                    or details.st_uid != os.geteuid()
+                    or details.st_nlink != 1
+                    or stat.S_IMODE(details.st_mode) != 0o600
+                ):
+                    raise ValueError("complete_gate_artifact_unsafe")
+                artifact_digest = hashlib.sha256()
+                artifact_size = 0
+                while True:
+                    block = os.read(member, 1024 * 1024)
+                    if not block:
+                        break
+                    artifact_digest.update(block)
+                    artifact_size += len(block)
+            finally:
+                os.close(member)
+            if (
+                item.get("artifactSize") != artifact_size
+                or item.get("artifactSha256") != artifact_digest.hexdigest()
+            ):
+                raise ValueError("complete_gate_artifact_integrity_invalid")
+        return {**payload, "evidenceDigest": expected_digest}
+    finally:
+        os.close(evidence_fd)
 
 
 def git_commit(repo_root: Path) -> str:
@@ -330,14 +637,79 @@ def git_commit(repo_root: Path) -> str:
     return completed.stdout.strip()
 
 
+def require_clean_source(repo_root: Path) -> str:
+    """Bind gate admission to one exact clean repository commit."""
+    completed = subprocess.run(
+        ["git", "status", "--porcelain=v1", "--untracked-files=all"],
+        cwd=repo_root,
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=30,
+    )
+    if completed.returncode or completed.stdout:
+        raise ValueError("complete_gate_source_not_clean")
+    commit = git_commit(repo_root)
+    if not re.fullmatch(r"[0-9a-f]{40}", commit):
+        raise ValueError("complete_gate_source_commit_invalid")
+    return commit
+
+
+def write_busy_receipt(repo_root: Path) -> Path:
+    started = now()
+    run_id = f"{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}-{os.getpid()}"
+    path = repo_root / ".artifacts" / "complete-gate-busy" / run_id / "result.json"
+    payload = {
+        "schemaVersion": 1,
+        "runId": f"complete-gate-busy-{uuid.uuid4().hex}",
+        "sourceCommit": None,
+        "startedAt": started,
+        "finishedAt": now(),
+        "overallStatus": "busy",
+        "diagnostic": "complete_gate_already_running",
+        "checks": [],
+    }
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    payload["evidenceDigest"] = hashlib.sha256(canonical).hexdigest()
+    directory_fd = open_private_directory(path.parent, repo_root)
+    try:
+        private_atomic_json(directory_fd, path.name, payload)
+    finally:
+        os.close(directory_fd)
+    return path
+
+
 def main() -> int:
-    validate_runtime_capacity()
     repo_root = Path(__file__).resolve().parents[2]
-    manifest_path = repo_root / "scripts" / "config" / "complete-gate-v1.json"
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    evidence_dir = repo_root / ".artifacts" / "complete-gate" / run_id
-    result = run_gate(manifest, repo_root, evidence_dir, source_commit=git_commit(repo_root))
+    try:
+        with complete_gate_lock(repo_root):
+            validate_runtime_capacity()
+            source_commit = require_clean_source(repo_root)
+            manifest_path = repo_root / "scripts" / "config" / "complete-gate-v1.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            run_id = f"{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}-{os.getpid()}"
+            evidence_dir = repo_root / ".artifacts" / "complete-gate" / run_id
+
+            def source_guard() -> None:
+                if require_clean_source(repo_root) != source_commit:
+                    raise ValueError("complete_gate_source_changed")
+
+            result = run_gate(
+                manifest,
+                repo_root,
+                evidence_dir,
+                source_commit=source_commit,
+                source_guard=source_guard,
+            )
+    except CompleteGateBusy:
+        busy_receipt = write_busy_receipt(repo_root)
+        print("Complete gate: BUSY")
+        print(f"Evidence: {busy_receipt}")
+        return GATE_BUSY_EXIT
+    except (OSError, ValueError) as exc:
+        print("Complete gate: INCOMPLETE")
+        print(f"Diagnostic: gate admission or evidence validation failed: {exc}")
+        return 2
     print(f"Complete gate: {result['overallStatus'].upper()}")
     print(f"Evidence: {evidence_dir / 'result.json'}")
     return {"passed": 0, "failed": 1, "incomplete": 2}[result["overallStatus"]]

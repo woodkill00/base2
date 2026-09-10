@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Base2 encrypted production backup for %i
+
+[Timer]
+OnCalendar=*-*-* 02:17:00
+RandomizedDelaySec=900
+Persistent=true
+Unit=base2-production-backup@%i.service
+
+[Install]
+WantedBy=timers.target

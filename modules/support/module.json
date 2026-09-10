@@ -14,5 +14,28 @@
   "healthChecks": ["support.queue-ready"],
   "providerCapabilities": ["email"],
   "dependencies": ["forms"],
-  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+  "dataLifecycle": {
+    "disable": "preserve",
+    "export": true,
+    "remove": "backup-required"
+  },
+  "conflicts": [],
+  "schedules": ["support.schedule"],
+  "storage": {
+    "classes": ["private"],
+    "maximumBytes": 1073741824
+  },
+  "observability": ["support.queue-ready"],
+  "backup": {
+    "included": true,
+    "restoreRequired": true
+  },
+  "resources": {
+    "cpuMillicores": 100,
+    "memoryMiB": 128,
+    "storageMiB": 1024
+  },
+  "testPacks": ["support.contract", "support.security"],
+  "publisher": "base2",
+  "signature": "builtin-sha256:6858e21d805af195a9f67461fd4e61dc3892a54320a1190c2bfe895c69cc9ea4"
 }

@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://base2.local/schemas/production-readiness-v1.schema.json",
+  "title": "Base2 production readiness policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "planningBaseline",
+    "environments",
+    "services",
+    "modules",
+    "siteProfiles",
+    "workflows",
+    "routeSurfaces",
+    "dataStores",
+    "trustBoundaries",
+    "protectedActions",
+    "resourceDefaults",
+    "releaseRequiredFields",
+    "capabilityAbsence"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "planningBaseline": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "environments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["development", "test", "preview", "staging", "production"]
+    },
+    "services": { "type": "array", "minItems": 10, "uniqueItems": true },
+    "modules": { "type": "array", "minItems": 15, "uniqueItems": true },
+    "siteProfiles": { "type": "array", "minItems": 3, "uniqueItems": true },
+    "workflows": { "type": "array", "minItems": 10, "uniqueItems": true },
+    "routeSurfaces": { "type": "array", "minItems": 9, "uniqueItems": true },
+    "dataStores": { "type": "array", "minItems": 5, "uniqueItems": true },
+    "trustBoundaries": { "type": "array", "minItems": 8, "uniqueItems": true },
+    "protectedActions": { "type": "array", "minItems": 9, "uniqueItems": true },
+    "resourceDefaults": { "type": "object", "additionalProperties": false },
+    "releaseRequiredFields": { "type": "array", "minItems": 12, "uniqueItems": true },
+    "capabilityAbsence": { "type": "array", "minItems": 7, "uniqueItems": true }
+  }
+}

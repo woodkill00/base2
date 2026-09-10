@@ -11,13 +11,17 @@ const sectionIds = [
   'contact',
 ];
 
-function renderNavigation(onNavigate = vi.fn()) {
+function renderNavigation(onNavigate = vi.fn(), onUtilityAction = vi.fn(), locale = 'en') {
   const result = render(
     <>
       {sectionIds.map((id, index) => (
         <section key={id} id={id} data-top={index * 300} />
       ))}
-      <HomeObsidianNavigation onNavigate={onNavigate} />
+      <HomeObsidianNavigation
+        onNavigate={onNavigate}
+        onUtilityAction={onUtilityAction}
+        locale={locale}
+      />
     </>
   );
   sectionIds.forEach((id, index) => {
@@ -27,7 +31,7 @@ function renderNavigation(onNavigate = vi.fn()) {
       height: 300,
     });
   });
-  return { ...result, onNavigate };
+  return { ...result, onNavigate, onUtilityAction };
 }
 
 describe('Base2 restored Obsidian navigation', () => {
@@ -60,11 +64,49 @@ describe('Base2 restored Obsidian navigation', () => {
     expect(onNavigate).toHaveBeenLastCalledWith('features');
 
     fireEvent.click(screen.getByRole('button', { name: 'Open Base2 utility menu' }));
-    expect(screen.getByRole('listbox', { name: 'Base2 utility shortcuts' })).toBeVisible();
+    expect(screen.getByRole('navigation', { name: 'Base2 utility shortcuts' })).toBeVisible();
     expect(
-      screen.getAllByRole('option', { name: /Automation unavailable on public site/ })[0]
-    ).toHaveAttribute('aria-disabled', 'true');
+      screen.getAllByRole('button', { name: /Automation unavailable on public site/ })[0]
+    ).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Close Base2 utility menu' }));
+  });
+
+  test('refreshes movement availability when responsive document layout settles', () => {
+    let documentHeight = 600;
+    let resizeCallback;
+    const disconnect = vi.fn();
+    const observe = vi.fn();
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback) {
+          resizeCallback = callback;
+        }
+
+        observe = observe;
+
+        disconnect = disconnect;
+      }
+    );
+    Object.defineProperty(document.documentElement, 'scrollHeight', {
+      configurable: true,
+      get: () => documentHeight,
+    });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 600 });
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 });
+
+    const { unmount } = renderNavigation();
+    expect(observe).toHaveBeenCalledWith(document.body);
+    expect(screen.queryByTestId('base2-scroll-descend')).not.toBeInTheDocument();
+
+    documentHeight = 1600;
+    act(() => resizeCallback());
+    expect(screen.getByTestId('base2-scroll-descend')).toBeInTheDocument();
+
+    fireEvent(window, new Event('pageshow'));
+    unmount();
+    expect(disconnect).toHaveBeenCalledOnce();
+    vi.unstubAllGlobals();
   });
 
   test('dismisses overlays and supports keyboard palette controls', () => {
@@ -145,7 +187,7 @@ describe('Base2 restored Obsidian navigation', () => {
         callback(performance.now());
         return 1;
       });
-    const { onNavigate } = renderNavigation();
+    const { onNavigate, onUtilityAction } = renderNavigation();
     fireEvent.keyDown(window, { key: 'k', metaKey: true });
 
     for (const scheme of ['Volcanic', 'Ember', 'Basalt']) {
@@ -184,7 +226,7 @@ describe('Base2 restored Obsidian navigation', () => {
         }),
       },
     });
-    const options = Array.from(scroll.querySelectorAll('[role="option"]'));
+    const options = Array.from(scroll.querySelectorAll('button'));
     options.forEach((option, index) => {
       Object.defineProperties(option, {
         offsetTop: { configurable: true, value: index * 58 },
@@ -194,14 +236,19 @@ describe('Base2 restored Obsidian navigation', () => {
       });
     });
 
-    const safeSearch = screen.getAllByRole('option', { name: 'Base2 utility: Search' })[1];
+    const safeSearch = screen.getByRole('button', { name: 'Base2 utility: Search' });
     fireEvent.click(safeSearch);
-    expect(safeSearch).toHaveAttribute('aria-selected', 'true');
-    fireEvent.click(
-      screen.getAllByRole('option', {
-        name: 'Base2 utility: Settings unavailable on public site',
-      })[1]
-    );
+    expect(safeSearch).toHaveClass('is-active');
+    expect(onUtilityAction).toHaveBeenLastCalledWith('search');
+    const lockedSettings = screen.getByRole('button', {
+      name: 'Base2 utility: Settings unavailable on public site',
+    });
+    expect(lockedSettings).toBeDisabled();
+    fireEvent.click(lockedSettings);
+    fireEvent.keyDown(lockedSettings, { key: 'Enter' });
+    expect(lockedSettings).not.toHaveClass('is-active');
+    expect(safeSearch).toHaveClass('is-active');
+    expect(onUtilityAction).toHaveBeenCalledTimes(1);
     fireEvent.wheel(scroll, { deltaY: 100 });
     fireEvent.wheel(scroll, { deltaY: -100 });
     fireEvent.scroll(scroll);
@@ -211,6 +258,29 @@ describe('Base2 restored Obsidian navigation', () => {
     expect(screen.queryByTestId('base2-bottom-movement-controls')).not.toBeInTheDocument();
     requestFrame.mockRestore();
   });
+
+  test.each([
+    [
+      'de',
+      'Base2-Befehlsmenü öffnen',
+      'Base2-Schnellzugriffe öffnen',
+      'Base2-Schnellzugriffe',
+      'ltr',
+    ],
+    ['ar', 'فتح قائمة أوامر Base2', 'فتح قائمة اختصارات Base2', 'اختصارات Base2', 'rtl'],
+  ])(
+    'localizes navigation and direction for %s',
+    (locale, menuLabel, utilityOpenLabel, utilityLabel, direction) => {
+      renderNavigation(vi.fn(), vi.fn(), locale);
+      const layer = screen.getByTestId('base2-obsidian-navigation');
+      expect(layer).toHaveAttribute('lang', locale);
+      expect(layer).toHaveAttribute('dir', direction);
+      fireEvent.click(screen.getByRole('button', { name: menuLabel }));
+      expect(screen.getByRole('navigation')).toBeVisible();
+      fireEvent.click(screen.getByRole('button', { name: utilityOpenLabel }));
+      expect(screen.getByRole('navigation', { name: utilityLabel })).toBeVisible();
+    }
+  );
 
   test('covers bounded section movement, edge jumps, timer settlement, and cleanup', () => {
     vi.useFakeTimers();

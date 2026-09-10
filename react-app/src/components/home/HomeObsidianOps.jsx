@@ -33,6 +33,7 @@ const utilityItems = [LayoutGrid, Search, Shield, Database, GitBranch, Settings,
 const HomeObsidianOps = () => {
   return (
     <section
+      id="base2-obsidian-ops"
       tabIndex={0}
       className="home-obsidian-section home-obsidian-ops"
       data-testid="base2-obsidian-ops"

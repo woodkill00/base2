@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { setThemeCookie, getThemeCookie, applyThemeClass } from '../../services/theme/persistence';
 
-export const ThemeToggle: React.FC = () => {
+export const ThemeToggle: React.FC<{ label?: string }> = ({ label = 'Toggle theme' }) => {
   const initialTheme = useMemo(() => {
     const cookieTheme = getThemeCookie();
     if (cookieTheme) return cookieTheme;
@@ -21,7 +21,7 @@ export const ThemeToggle: React.FC = () => {
 
   return (
     <button
-      aria-label="Toggle theme"
+      aria-label={label}
       className="glass glass-interactive glass-pill min-h-11 min-w-11"
       onClick={toggle}
     >

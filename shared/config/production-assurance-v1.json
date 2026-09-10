@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "performanceBudgets": {
+    "lcpMilliseconds": 2500,
+    "inpMilliseconds": 200,
+    "cls": 0.1,
+    "frontendKilobytes": 750,
+    "apiP95Milliseconds": 500,
+    "queriesPerRequest": 30,
+    "poolUtilizationPercent": 80,
+    "workerLagSeconds": 60,
+    "cpuPercent": 80,
+    "memoryPercent": 80,
+    "storagePercent": 80,
+    "telemetryCpuPercent": 5
+  },
+  "loadModels": ["small", "medium", "large"],
+  "actors": ["public", "member", "editor", "operator", "background"],
+  "scaling": {
+    "scaleUpAtPercent": 80,
+    "scaleDownAtPercent": 40,
+    "minimumStableMinutes": 15,
+    "safeDegradation": ["defer-background", "serve-stale-public", "reject-over-quota"]
+  },
+  "ephemeral": {
+    "maximumHours": 4,
+    "maximumCostUsd": 5,
+    "stagingCertificatesOnly": true,
+    "exactOwnershipRequired": true,
+    "productionForbidden": true
+  },
+  "faults": [
+    "application",
+    "worker",
+    "queue",
+    "database",
+    "object-storage",
+    "search",
+    "dns",
+    "certificate",
+    "email",
+    "alerting",
+    "provider"
+  ],
+  "governance": [
+    "data-classes",
+    "purposes",
+    "consent",
+    "retention",
+    "vendors",
+    "regions",
+    "accessibility",
+    "incidents",
+    "user-rights"
+  ]
+}

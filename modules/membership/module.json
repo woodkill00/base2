@@ -14,5 +14,28 @@
   "healthChecks": ["membership.ready"],
   "providerCapabilities": [],
   "dependencies": [],
-  "dataLifecycle": { "disable": "preserve", "export": true, "remove": "backup-required" }
+  "dataLifecycle": {
+    "disable": "preserve",
+    "export": true,
+    "remove": "backup-required"
+  },
+  "conflicts": [],
+  "schedules": [],
+  "storage": {
+    "classes": ["private"],
+    "maximumBytes": 1073741824
+  },
+  "observability": ["membership.ready"],
+  "backup": {
+    "included": true,
+    "restoreRequired": true
+  },
+  "resources": {
+    "cpuMillicores": 100,
+    "memoryMiB": 128,
+    "storageMiB": 1024
+  },
+  "testPacks": ["membership.contract", "membership.security"],
+  "publisher": "base2",
+  "signature": "builtin-sha256:01293322fd8037de4fd25a84ea9ce8e4d1ebeb4f266ab7d2bfab5a22819a9a9e"
 }

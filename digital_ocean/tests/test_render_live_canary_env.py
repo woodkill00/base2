@@ -30,7 +30,8 @@ def test_canary_env_is_private_secret_randomized_and_staging_only(tmp_path):
     assert values["PROJECT_NAME"] == "base2-f093-t1"
     assert values["TRAEFIK_CANARY_MODE"] == "true"
     assert values["TRAEFIK_CERT_RESOLVER"] == "le-staging"
-    assert values["ENV"] == "production"
+    assert values["ENV"] == "preview"
+    assert values["BASE2_EMAIL_ADAPTER"] == "local_fake"
     assert values["DEBUG"] == "false"
     assert values["API_DOCS_ENABLED"] == "false"
     for key in (
@@ -39,6 +40,7 @@ def test_canary_env_is_private_secret_randomized_and_staging_only(tmp_path):
         "TP_TOKEN_PEPPER",
         "TP_IDENTITY_ENCRYPTION_KEY",
         "TP_CONTENT_WORKSPACE_STORAGE_KEY",
+        "TP_DATA_RIGHTS_WORKER_DB_PASSWORD",
         "TP_POSTGRES_PASSWORD",
         "TP_REDIS_PASSWORD",
         "TP_PGADMIN_PASSWORD",

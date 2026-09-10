@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 from project.site_manifest import load_runtime_manifest
 
@@ -97,7 +98,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "project.wsgi:application"
 
-DATABASES = {
+DATABASES: dict[str, dict[str, Any]] = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": os.environ.get("DB_NAME"),
@@ -107,6 +108,18 @@ DATABASES = {
         "PORT": os.environ.get("DB_PORT", "5432"),
     }
 }
+_db_sslmode = os.environ.get("DB_SSLMODE", "disable").strip().lower()
+_db_sslrootcert = os.environ.get("DB_SSLROOTCERT", "").strip()
+if _db_sslmode != "disable":
+    DATABASES["default"]["OPTIONS"] = {
+        "sslmode": _db_sslmode,
+        **({"sslrootcert": _db_sslrootcert} if _db_sslrootcert else {}),
+    }
+if _env == "production":
+    if _db_sslmode != "verify-full" or not _db_sslrootcert:
+        raise RuntimeError("production_database_verified_tls_required")
+    if DATABASES["default"]["HOST"] in {"", "postgres", "localhost", "127.0.0.1"}:
+        raise RuntimeError("production_external_database_required")
 
 LANGUAGE_CODE = SITE_DEFAULT_LOCALE
 TIME_ZONE = "UTC"
