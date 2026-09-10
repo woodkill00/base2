@@ -71,7 +71,7 @@ def lease_payload(**overrides):
             "id": "123",
             "name": "base2-full-preview",
             "tags": [RUN, "base2-full-preview"],
-            "size": "s-2vcpu-2gb",
+            "size": "s-2vcpu-4gb",
             "createdAt": NOW.isoformat().replace("+00:00", "Z"),
         },
         "dnsRecords": [
@@ -787,7 +787,7 @@ def test_retention_is_bounded_to_old_unapproved_visual_evidence(tmp_path):
                 "id": "123",
                 "name": "base2-full-preview",
                 "tags": [run_id, "base2-full-preview"],
-                "size": "s-2vcpu-2gb",
+                "size": "s-2vcpu-4gb",
                 "createdAt": NOW.isoformat().replace("+00:00", "Z"),
             },
             mutationCounts={"dropletsDeleted": 1, "dnsRecordsDeleted": 1},

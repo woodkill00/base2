@@ -96,7 +96,7 @@ def launch(
     config = LivePreviewConfig(
         source_commit=source_commit, plan_digest=canonical_digest(policy), archive_sha256=archive_digest,
         source_archive=source_archive, ssh_private_key=ssh_key, ssh_key_id=ssh_key_id,
-        droplet_name="base2-full-preview", region="fra1", size="s-2vcpu-2gb", image="ubuntu-24-04-x64",
+        droplet_name="base2-full-preview", region="fra1", size="s-2vcpu-4gb", image="ubuntu-24-04-x64",
         zone=domain, record_name="admin", fqdn=f"admin.{domain}", admission_tag=run_id,
     ).validate()
     if (client.droplets.list(tag_name=run_id) or {}).get("droplets"):
@@ -106,7 +106,7 @@ def launch(
     dns_receipt = None
     try:
         droplet = (client.droplets.create({
-            "name": "base2-full-preview", "region": "fra1", "size": "s-2vcpu-2gb",
+            "name": "base2-full-preview", "region": "fra1", "size": "s-2vcpu-4gb",
             "image": "ubuntu-24-04-x64", "ssh_keys": [ssh_key_id], "backups": False, "ipv6": False,
             "monitoring": False, "tags": [run_id, "base2-full-preview"],
         }) or {}).get("droplet") or {}
@@ -135,7 +135,7 @@ def launch(
             "expiresAt": (started + timedelta(minutes=ttl_minutes)).isoformat().replace("+00:00", "Z"),
             "sourceCommit": source_commit, "sourceArchiveSha256": archive_digest,
             "profileId": "base2-obsidian", "profileDigest": profile_digest,
-            "droplet": {"id": provider_id, "name": "base2-full-preview", "tags": sorted(droplet.get("tags") or []), "size": "s-2vcpu-2gb", "createdAt": created_at},
+            "droplet": {"id": provider_id, "name": "base2-full-preview", "tags": sorted(droplet.get("tags") or []), "size": "s-2vcpu-4gb", "createdAt": created_at},
             "dnsRecords": dns_receipt["records"], "ownerAdmissionDigest": policy["ownerAdmissionDigest"],
             "certificateMode": "letsencrypt-staging-only", "budgetCeilingUsd": "0.25", "lastError": None,
             "mutationCounts": {"dropletsDeleted": 0, "dnsRecordsDeleted": 0},

@@ -52,7 +52,7 @@ def remote_config(tmp_path: Path) -> LivePreviewConfig:
         ssh_key_id=77,
         droplet_name="base2-full-preview",
         region="fra1",
-        size="s-2vcpu-2gb",
+        size="s-2vcpu-4gb",
         image="ubuntu-24-04-x64",
         zone="woodkilldev.com",
         record_name="admin",
@@ -131,7 +131,7 @@ def test_expiry_token_provider_and_main(tmp_path, monkeypatch, capsys):
                     "id": resource_id,
                     "name": "preview",
                     "tags": ["z", "a"],
-                    "size": {"slug": "s-2vcpu-2gb"},
+                    "size": {"slug": "s-2vcpu-4gb"},
                     "created_at": "now",
                 }
             }

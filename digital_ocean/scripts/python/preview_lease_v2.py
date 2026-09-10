@@ -97,7 +97,7 @@ def validate_lease(value: Any) -> dict:
             raise LeaseV2ValidationError("droplet identity is invalid")
         if not isinstance(droplet["tags"], list) or value["runId"] not in droplet["tags"]:
             raise LeaseV2ValidationError("droplet ownership tags are invalid")
-        if droplet["size"] != "s-2vcpu-2gb":
+        if droplet["size"] != "s-2vcpu-4gb":
             raise LeaseV2ValidationError("droplet size is invalid")
         _time(droplet["createdAt"])
     records = value["dnsRecords"]

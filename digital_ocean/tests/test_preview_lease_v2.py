@@ -32,7 +32,7 @@ def payload(**overrides):
             "id": "123",
             "name": "base2-full-preview",
             "tags": ["base2", "base2-full-20260826-001"],
-            "size": "s-2vcpu-2gb",
+            "size": "s-2vcpu-4gb",
             "createdAt": NOW.isoformat().replace("+00:00", "Z"),
         },
         "dnsRecords": [
