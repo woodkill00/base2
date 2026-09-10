@@ -81,6 +81,26 @@ def test_existing_evidence_rejects_manifest_tamper(tmp_path, monkeypatch):
         repetitions.run(tmp_path)
 
 
+def test_existing_evidence_rejects_self_hashed_stale_suite_commands(tmp_path, monkeypatch):
+    commit = "9" * 40
+    monkeypatch.setattr(repetitions, "REPETITIONS", 1)
+    monkeypatch.setattr(repetitions, "SUITES", {"suite": ("fixture",)})
+    _prepare_run(monkeypatch, commit)
+
+    result_type = type("Result", (), {"returncode": 0, "stdout": "passed\n", "stderr": ""})
+    monkeypatch.setattr(repetitions.subprocess, "run", lambda *_args, **_kwargs: result_type())
+    result = repetitions.run(tmp_path)
+    payload = json.loads(result.read_text(encoding="utf-8"))
+    payload["suiteCommands"] = {"suite": ["stale-fixture"]}
+    unsigned = {key: value for key, value in payload.items() if key != "evidenceDigest"}
+    payload["evidenceDigest"] = __import__("hashlib").sha256(
+        json.dumps(unsigned, separators=(",", ":"), sort_keys=True).encode()
+    ).hexdigest()
+    result.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(repetitions.RepetitionError, match="invalid"):
+        repetitions.run(tmp_path)
+
+
 def test_source_commit_is_exact_and_fail_closed(tmp_path, monkeypatch):
     class Result:
         returncode = 0

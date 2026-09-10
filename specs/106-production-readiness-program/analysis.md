@@ -2079,3 +2079,21 @@ interpreter budget. Partial signatures and ordinary Pydantic, typing, import,
 validation, and application failures remain terminal. Exact evidence and all
 reviews restart from the replacement commit; the failed gate remains non-release
 evidence.
+
+## Analysis cycle 101 — Self-observed evidence integrity
+
+Independent re-review of candidate `789115c1a530741b123c125583ad92293786fd97`
+closed the earlier gate, migration, localization, and visual findings but rejected
+three remaining assurance gaps. Repetition replay did not compare the recorded
+suite commands with the current generator. The concurrency recorder trusted
+caller-provided logs, read source identity only after execution, and followed a
+linked private-evidence ancestor. Release-journal lock rejection also leaked the
+descriptor opened before private-member validation.
+
+B569-B575 replace claimed results with self-observation: the recorder owns the
+fixed owner/contender launches, readiness pipe, actual process statuses, source
+checks, and Docker inventory. Evidence creation and validation use contained
+no-follow directory descriptors; the public CLI accepts no logs or outcomes.
+Repetition replay binds the current command map, unsafe lock rejection closes
+every descriptor, and adversarial tests cover each boundary before all candidate
+evidence and reviews restart.

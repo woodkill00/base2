@@ -176,6 +176,8 @@ def _validate_existing(path: Path, commit: str) -> Path:
         or payload.get("status") != "passed"
         or payload.get("sourceCommit") != commit
         or payload.get("repetitionsPerSuite") != REPETITIONS
+        or payload.get("suiteCommands")
+        != {name: list(command) for name, command in sorted(SUITES.items())}
         or not isinstance(files, list)
         or not isinstance(recoveries, list)
         or len(files) != len(SUITES) * REPETITIONS

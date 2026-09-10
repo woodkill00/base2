@@ -805,3 +805,13 @@ substitute for the integration proof named by the task.
 - [ ] B566 Reject partial signatures and ordinary Pydantic, typing, validation, import, or application errors without retry. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-070)
 - [ ] B567 Prove the exact positive signature and every partial negative while retaining the two-attempt ceiling and failed gate evidence. (FR-002, FR-005, FR-008, FR-060, FR-063, FR-065, FR-068, FR-070)
 - [ ] B568 Commit a replacement candidate and restart exact repetitions, retained concurrency proof, both complete gates, hosted checks, and every independent review. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 78 — Self-observed evidence cycle 101 corrections
+
+- [ ] B569 Make the retained concurrency-evidence entrypoint launch the fixed owner and contender itself, observe anonymous-pipe readiness and actual exit codes, and reject caller-supplied logs or outcomes. (FR-002, FR-005, FR-007, FR-008, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B570 Capture source identity before execution, revalidate clean unchanged source afterward, and inspect the real container, volume, and network inventories before recording a pass. (FR-002, FR-005, FR-008, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B571 Traverse, create, validate, and atomically publish concurrency evidence only through contained no-follow private directory descriptors, rejecting linked ancestors without external mutation. (FR-002, FR-005, FR-008, FR-031, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B572 Validate current repetition evidence against the exact current suite-command mapping so a self-hashed stale generator cannot satisfy exact-head admission. (FR-002, FR-005, FR-008, FR-060, FR-063, FR-068, FR-070)
+- [ ] B573 Close a release-journal lock descriptor when private-member validation rejects it, and prove repeated hardlink rejection leaves descriptor counts stable. (FR-002, FR-005, FR-008, FR-031, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B574 Prove forged concurrency inputs, linked evidence roots, source change, observed failure, inventory residue, stale suite commands, and repeated unsafe-lock rejection fail closed. (FR-002, FR-005, FR-008, FR-031, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B575 Commit a replacement candidate and restart exact repetitions, self-observed concurrency proof, both complete gates, hosted checks, and every independent review. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)

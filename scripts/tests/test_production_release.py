@@ -579,8 +579,11 @@ def test_journal_rejects_hardlinked_lock_and_member():
             root / 'journal.json', release_key=KEY, approval_key=OWNER_KEY
         )
         (root / 'journal.json.lock').hardlink_to(target)
-        with pytest.raises(ReleaseError, match='journal_lock_unsafe'):
-            controller.status()
+        descriptor_count = len(list(Path('/proc/self/fd').iterdir()))
+        for _ in range(20):
+            with pytest.raises(ReleaseError, match='journal_lock_unsafe'):
+                controller.status()
+        assert len(list(Path('/proc/self/fd').iterdir())) == descriptor_count
         (root / 'journal.json.lock').unlink()
         (root / 'journal.json').hardlink_to(target)
         with pytest.raises(ReleaseError, match='journal_unsafe'):

@@ -347,11 +347,12 @@ class CiPolicyTests(unittest.TestCase):
             'http://127.0.0.1:$E2E_TEST_SUPPORT_PORT/synthetic-health', body
         )
         self.assertIn('scripts/bash/e2e-isolated.sh', guide)
-        self.assertIn('contender_rc" -ne 3', concurrency_proof)
-        self.assertIn("coproc OWNER", concurrency_proof)
-        self.assertIn("E2E_READY_FD=3", concurrency_proof)
-        self.assertIn("read -r -t 20 owner_ready", concurrency_proof)
-        self.assertIn("mktemp -d --tmpdir", concurrency_proof)
+        recorder = (repo_root / "scripts/python/record_e2e_concurrency_evidence.py").read_text()
+        self.assertIn('environment["E2E_READY_FD"]', recorder)
+        self.assertIn("pass_fds=(write_fd,)", recorder)
+        self.assertIn("select.select([read_fd]", recorder)
+        self.assertIn("contender.returncode != 3", recorder)
+        self.assertNotIn("owner_log", concurrency_proof)
         self.assertNotIn("flock -n", concurrency_proof)
         self.assertIn("inventory=empty", concurrency_proof)
 

@@ -543,6 +543,7 @@ class ReleaseJournal:
             raise ReleaseError("release:journal_parent_unsafe") from exc
         lock_name = f"{name}.lock"
         flags = os.O_RDWR | os.O_CLOEXEC | os.O_NOFOLLOW
+        descriptor = None
         try:
             try:
                 descriptor = os.open(lock_name, flags | os.O_CREAT | os.O_EXCL, 0o600, dir_fd=directory_fd)
@@ -550,9 +551,13 @@ class ReleaseJournal:
                 descriptor = os.open(lock_name, flags, dir_fd=directory_fd)
             self._require_private_member(descriptor, "release:journal_lock_unsafe")
         except OSError as exc:
+            if descriptor is not None:
+                os.close(descriptor)
             os.close(directory_fd)
             raise ReleaseError("release:journal_lock_unsafe") from exc
         except Exception:
+            if descriptor is not None:
+                os.close(descriptor)
             os.close(directory_fd)
             raise
         try:
