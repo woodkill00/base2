@@ -1998,3 +1998,21 @@ and a third native failure remain terminal. Every attempt remains in one private
 hash-bound log and diagnostics report the exact retry count. Focused positive,
 negative, and exhaustion tests plus the formerly failing command precede a new
 candidate and a complete evidence restart.
+
+## Analysis cycle 97 — retry-class budget separation
+
+Operations review rejected candidate
+`662a57600526236c94078436fa7cb8735983302b` with one medium finding. Although
+both gates passed 109/109 without retry, the default three-attempt ceiling also
+applied to worker-crash and impossible-interpreter signatures. That exceeded
+the cycle-96 contract, which permits attempt three only after strict native
+segmentation or the complete allocator-abort conjunction.
+
+B546-B549 separate recovery classes in the actual production-default path.
+Ordinary and application failures receive one attempt; explicit timeouts,
+incomplete output, worker failures, and the two exact interpreter-state
+signatures receive at most two; strict native segmentation or constrained
+allocator abort alone can receive three. Default-manifest tests must exhaust
+worker, JSON, and Django-counter signatures at attempt two and prove strict
+native recovery can reach attempt three. All exact-source evidence and every
+independent review restart after the corrected commit.

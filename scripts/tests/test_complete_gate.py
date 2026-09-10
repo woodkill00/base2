@@ -315,6 +315,18 @@ class CompleteGateTests(unittest.TestCase):
         self.assertEqual("passed", result["overallStatus"])
         self.assertEqual(2, result["checks"][0]["attempts"])
 
+        exhausted, _ = self.run_gate(
+            [
+                check(
+                    "worker",
+                    ["/bin/sh", "-c", "echo 'Worker exited unexpectedly'; exit 1"],
+                    tools=["/bin/sh"],
+                )
+            ]
+        )
+        self.assertEqual("failed", exhausted["overallStatus"])
+        self.assertEqual(2, exhausted["checks"][0]["attempts"])
+
     def test_retries_exact_json_encoder_corruption_but_not_application_type_error(self):
         corruption = (
             "/usr/lib/python3.12/json/encoder.py\n"
@@ -332,6 +344,18 @@ class CompleteGateTests(unittest.TestCase):
         )
         self.assertEqual("passed", result["overallStatus"])
         self.assertEqual(2, result["checks"][0]["attempts"])
+
+        exhausted, _ = self.run_gate(
+            [
+                check(
+                    "json-corruption",
+                    ["/bin/sh", "-c", f"printf '%s\\n' \"{corruption}\"; exit 1"],
+                    tools=["/bin/sh"],
+                )
+            ]
+        )
+        self.assertEqual("failed", exhausted["overallStatus"])
+        self.assertEqual(2, exhausted["checks"][0]["attempts"])
 
         self.assertFalse(
             self.gate.retryable_interpreter_corruption(
@@ -380,7 +404,6 @@ class CompleteGateTests(unittest.TestCase):
                     "django-counter",
                     ["/bin/sh", "-c", f"printf '%s\\n' \"{corruption}\"; exit 1"],
                     tools=["/bin/sh"],
-                    max_attempts=2,
                 )
             ]
         )
@@ -401,7 +424,7 @@ class CompleteGateTests(unittest.TestCase):
             "else echo '6 passed'; fi",
         ]
         result, _ = self.run_gate(
-            [check("native-abort", command, tools=["/bin/sh"], max_attempts=3)]
+            [check("native-abort", command, tools=["/bin/sh"])]
         )
         self.assertEqual("passed", result["overallStatus"])
         self.assertEqual(3, result["checks"][0]["attempts"])

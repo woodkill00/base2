@@ -31,6 +31,10 @@ NATIVE_ABORT_CORRUPTION = re.compile(
     r"(?i)(?:smallbin|fastbin|malloc_consolidate|corrupted double-linked list|"
     r"double free or corruption|invalid pointer)"
 )
+NATIVE_SEGMENTATION = re.compile(
+    r"(?i)(?:Fatal Python error:\s*Segmentation fault|\bSIGSEGV\b|"
+    r"segmentation fault|signal=SIGSEGV)"
+)
 TOOL_TOKENS = {
     "{python-api}": (".venv-api/bin/python", ".venv-api/Scripts/python.exe"),
     "{python-django}": (".venv-django/bin/python", ".venv-django/Scripts/python.exe"),
@@ -221,7 +225,7 @@ def retryable_interpreter_corruption(output: str) -> bool:
 
 
 def retryable_native_crash(return_code: int, output: str) -> bool:
-    if return_code in {-11, 139} or INFRASTRUCTURE_CRASH.search(output) is not None:
+    if return_code in {-11, 139} or NATIVE_SEGMENTATION.search(output) is not None:
         return True
     return (
         return_code in {-6, 134}
@@ -444,7 +448,7 @@ def _run_gate(
                             outputs.append(
                                 f"=== attempt {attempts} timeout after {item['timeoutSeconds']} seconds ===\n{captured}"
                             )
-                            if "timeout" in retry_on and attempts < max_attempts:
+                            if "timeout" in retry_on and attempts < min(max_attempts, 2):
                                 continue
                             break
                         timed_out = False
@@ -461,10 +465,20 @@ def _run_gate(
                         # wrappers conventionally translate the same signal to
                         # 128 + 11. Treat both as the existing bounded
                         # infrastructure retry, never as an application pass.
-                        infrastructure_crash = retryable_native_crash(
+                        strict_native_crash = retryable_native_crash(
                             completed.returncode, captured_output
-                        ) or retryable_interpreter_corruption(captured_output)
-                        if not infrastructure_crash and not incomplete:
+                        )
+                        bounded_infrastructure_crash = (
+                            INFRASTRUCTURE_CRASH.search(captured_output) is not None
+                            or retryable_interpreter_corruption(captured_output)
+                        )
+                        if strict_native_crash:
+                            continue
+                        if (
+                            bounded_infrastructure_crash or incomplete
+                        ) and attempts < min(max_attempts, 2):
+                            continue
+                        if not strict_native_crash:
                             break
                     artifact_bytes = redact("\n".join(outputs), environment).encode()
                     artifact_sha256, artifact_size = private_write(

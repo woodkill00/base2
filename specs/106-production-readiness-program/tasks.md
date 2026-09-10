@@ -770,3 +770,10 @@ substitute for the integration proof named by the task.
 - [ ] B543 Retain every attempt in one private integrity-bound artifact and report the exact recovery or exhaustion count without converting a failed attempt into an application pass. (FR-002, FR-005, FR-008, FR-060, FR-063, FR-065, FR-068, FR-070)
 - [ ] B544 Prove two native failures can recover on the third attempt while partial signatures, ordinary errors, assertions, application exceptions, and three native failures remain terminal; rerun the formerly failing Django contract hermetically. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-070)
 - [ ] B545 Commit a replacement candidate and restart exact repetitions, real concurrency proof, both complete gates, hosted checks, and every fresh independent review from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 74 — Retry-class budget separation cycle 97 corrections
+
+- [ ] B546 Separate ordinary, explicit timeout/incomplete, worker/interpreter-corruption, and strict native-crash recovery classes in the complete-gate runner. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B547 Enforce one attempt for ordinary failures, at most two for timeout, incomplete, worker, JSON, and Django-counter classes, and at most three only for strict native segmentation or constrained allocator abort. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B548 Exercise production-default manifests proving worker, JSON, and Django-counter exhaustion at attempt two, strict native access to attempt three, ordinary fail-fast behavior, and exact diagnostic/evidence retention. (FR-002, FR-005, FR-008, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B549 Commit a replacement candidate and restart exact repetitions, real concurrency proof, both complete gates, hosted checks, and fresh independent code, security, UX/accessibility, data, and operations reviews from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
