@@ -162,9 +162,7 @@ stage="migration-dependencies"
 stage="database-role-bootstrap"
 "${compose[@]}" run --rm workspace-db-role >/dev/null
 stage="api-migrations"
-"${compose[@]}" run --rm --no-deps \
-  -e DB_USER="$POSTGRES_USER" -e DB_PASSWORD="$POSTGRES_PASSWORD" \
-  api python -m api.scripts.migrate >/dev/null
+"${compose[@]}" run --rm --no-deps api-migrate python -m api.scripts.migrate >/dev/null
 stage="django-migrations"
 "${compose[@]}" run --rm --no-deps django python manage.py migrate --noinput >/dev/null
 stage="compose-up"
