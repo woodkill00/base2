@@ -362,6 +362,8 @@ services:
       - TRAEFIK_CERT_RESOLVER=${TRAEFIK_CERT_RESOLVER:-le-staging}
       - TRAEFIK_PREVIEW_MODE=${TRAEFIK_PREVIEW_MODE:-local}
       - OWNER_ALLOWLIST_CSV=${OWNER_ALLOWLIST_CSV:-127.0.0.1/32}
+      - FASTAPI_PORT=${FASTAPI_PORT}
+      - DJANGO_PORT=${DJANGO_PORT}
     secrets:
       - traefik_dash_basic_users
       - flower_basic_users
