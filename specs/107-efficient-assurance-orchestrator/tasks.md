@@ -179,3 +179,10 @@
 - [x] T124 Derive optimized duration exactly from the median of retained routine samples and avoided time from both measurements.
 - [x] T125 Reject fully shaped and rehashed benchmark receipts whose performance claims differ from retained evidence.
 - [x] T126 Complete the eleventh analysis cycle with no unresolved static correctness, security, operations, UX, or data gap.
+
+## Phase 19 — Analysis cycle 12 live gate ordering
+
+- [x] T127 Compare complete-gate inventories in the gate runner’s deterministic dependency order rather than declaration order.
+- [x] T128 Share that exact ordering rule between automatic evidence reuse and benchmark admission.
+- [x] T129 Prove reversed manifest declaration with valid dependencies accepts only the actual topological receipt order.
+- [x] T130 Record the stopped duplicate attempt and complete the twelfth analysis cycle before replacement exact acceptance.

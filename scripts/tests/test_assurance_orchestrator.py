@@ -233,8 +233,8 @@ def test_exact_complete_gate_requires_exact_manifest_inventory(tmp_path, monkeyp
     config = tmp_path / "scripts" / "config"
     config.mkdir(parents=True)
     manifest = {"schemaVersion": 1, "checks": [
-        {"id": "first", "command": ["true"], "required": True, "timeoutSeconds": 1, "dependsOn": [], "requiredTools": []},
         {"id": "second", "command": ["true"], "required": False, "timeoutSeconds": 1, "dependsOn": ["first"], "requiredTools": []},
+        {"id": "first", "command": ["true"], "required": True, "timeoutSeconds": 1, "dependsOn": [], "requiredTools": []},
     ]}
     (config / "complete-gate-v1.json").write_text(json.dumps(manifest), encoding="utf-8")
     payload = {"schemaVersion": 1, "sourceCommit": commit, "overallStatus": "passed", "checks": [

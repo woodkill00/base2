@@ -35,6 +35,7 @@ from scripts.python.run_complete_gate import (
     open_private_directory,
     private_atomic_json,
     private_write,
+    dependency_ordered_checks,
     validate_gate_evidence,
     validate_manifest,
 )
@@ -88,7 +89,7 @@ def _validate_complete_gate_path(root: Path, path: Path, commit: str) -> tuple[i
     except (OSError, ValueError, UnicodeError, json.JSONDecodeError) as exc:
         raise AssuranceError("benchmark_legacy_evidence_invalid") from exc
     checks = payload.get("checks")
-    expected = [(item["id"], item["required"]) for item in manifest["checks"]]
+    expected = [(item["id"], item["required"]) for item in dependency_ordered_checks(manifest)]
     actual = [(item.get("id"), item.get("required")) for item in checks] if isinstance(checks, list) else []
     required_shape = {
         "artifact", "artifactSha256", "artifactSize", "attempts", "diagnostic",

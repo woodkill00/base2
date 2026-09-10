@@ -65,3 +65,7 @@ The final correction requires complete typed evidence for every required gate ch
 ## Cycle 11 — Measurement derivation closure
 
 The final code/security replay review found one remaining evidence-honesty gap: a benchmark receipt could recompute its percentages from self-supplied durations without proving those durations matched the retained gate and routine samples. The correction makes the referenced complete-gate elapsed duration the exact legacy measurement, makes the optimized measurement the exact median of the three retained samples, and derives avoided time from those two values. Replay rejects any internally inconsistent rehashed receipt. T123-T126 close and test this final derivation boundary before acceptance.
+
+## Cycle 12 — Live gate ordering correction
+
+The first final benchmark correctly refused to reuse the newly passed gate, revealing that evidence comparison used manifest declaration order while the gate records its stable dependency order. The benchmark fail-closed behavior prevented a false claim but began an unnecessary duplicate gate, which was stopped immediately. The correction derives the expected inventory through the complete gate’s own fixed topological-order function in both automatic reuse and benchmarking, and adds a reversed-declaration regression. T127-T130 close this live-only integration mismatch before the replacement exact gate.

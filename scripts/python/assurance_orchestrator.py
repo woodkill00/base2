@@ -29,6 +29,7 @@ try:
         open_private_file,
         private_atomic_json,
         private_write,
+        dependency_ordered_checks,
         retryable_interpreter_corruption,
         retryable_native_crash,
         validate_manifest,
@@ -40,6 +41,7 @@ except ModuleNotFoundError:
         open_private_file,
         private_atomic_json,
         private_write,
+        dependency_ordered_checks,
         retryable_interpreter_corruption,
         retryable_native_crash,
         validate_manifest,
@@ -767,7 +769,7 @@ def exact_complete_gate_evidence(root: Path, source_commit: str) -> str | None:
             except (OSError, ValueError, UnicodeError, json.JSONDecodeError, AssuranceError):
                 continue
             checks = payload.get("checks")
-            expected = [(item["id"], item["required"]) for item in manifest["checks"]]
+            expected = [(item["id"], item["required"]) for item in dependency_ordered_checks(manifest)]
             actual = [(item.get("id"), item.get("required")) for item in checks] if isinstance(checks, list) else []
             required_shape = {
                 "artifact", "artifactSha256", "artifactSize", "attempts", "diagnostic",
