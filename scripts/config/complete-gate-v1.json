@@ -18,11 +18,37 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "feature-107-plan",
+      "command": ["python3", "specs/107-efficient-assurance-orchestrator/validate_plan.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["feature-106-plan"],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "feature-107-assurance-contract",
+      "command": [
+        "{python-orchestrator}",
+        "-m",
+        "pytest",
+        "-q",
+        "-o",
+        "addopts=",
+        "scripts/tests/test_assurance_orchestrator.py",
+        "scripts/tests/test_assurance_orchestrator_policy.py",
+        "scripts/tests/test_assurance_benchmark.py"
+      ],
+      "required": true,
+      "timeoutSeconds": 90,
+      "dependsOn": ["feature-107-plan"],
+      "requiredTools": ["{python-orchestrator}"]
+    },
+    {
       "id": "production-readiness-contract",
       "command": ["python3", "-m", "unittest", "scripts.tests.test_production_readiness_contract"],
       "required": true,
       "timeoutSeconds": 30,
-      "dependsOn": ["feature-106-plan"],
+      "dependsOn": ["feature-107-assurance-contract"],
       "requiredTools": ["python3", "git"]
     },
     {

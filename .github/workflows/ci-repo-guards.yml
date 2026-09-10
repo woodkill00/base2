@@ -3,6 +3,11 @@ name: CI (repo guards)
 on:
   pull_request:
   push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   repo-guards:
@@ -11,6 +16,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Validate compact assurance plan
+        if: github.event_name == 'pull_request'
+        run: python3 scripts/python/assurance_orchestrator.py plan --tier standard --base '${{ github.event.pull_request.base.sha }}' --json
 
       - name: Repo guard checks
         run: |

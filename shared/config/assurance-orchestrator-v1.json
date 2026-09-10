@@ -1,0 +1,223 @@
+{
+  "schemaVersion": 1,
+  "graphVersion": "2026-09-10.1",
+  "tierOrder": ["focused", "standard", "full", "release"],
+  "mandatoryChecks": {
+    "focused": ["diff-check"],
+    "standard": ["diff-check", "feature-plan", "contract-policy", "assurance-tests", "ci-policy"],
+    "full": [
+      "diff-check",
+      "feature-plan",
+      "contract-policy",
+      "assurance-tests",
+      "ci-policy",
+      "api-unit",
+      "django-unit",
+      "frontend-unit",
+      "visual-contract",
+      "visual-full",
+      "migration-contract",
+      "deployment-contract",
+      "security-policy"
+    ],
+    "release": ["complete-gate"]
+  },
+  "outputPolicy": { "successMaxBytes": 4096, "successMaxLines": 40, "logMaxBytes": 4194304 },
+  "evidencePolicy": {
+    "passedTtlSeconds": 86400,
+    "maxRunDirectories": 20,
+    "maxCacheEntries": 64,
+    "maxBenchmarkDirectories": 10,
+    "directoryMode": "0700",
+    "fileMode": "0600"
+  },
+  "resourcePolicy": { "maxProcesses": 1, "maxDocker": 1, "maxBrowsers": 1 },
+  "pathRules": [
+    { "glob": "docs/**", "surface": "docs", "minimumTier": "focused" },
+    { "glob": "specs/**", "surface": "docs", "minimumTier": "focused" },
+    { "glob": "api/migrations/**", "surface": "migration", "minimumTier": "full" },
+    { "glob": "django/**/migrations/**", "surface": "migration", "minimumTier": "full" },
+    { "glob": "api/security/**", "surface": "security", "minimumTier": "full" },
+    { "glob": "api/**/*auth*", "surface": "security", "minimumTier": "full" },
+    { "glob": "api/**/*identity*", "surface": "security", "minimumTier": "full" },
+    { "glob": "api/**/*tenant*", "surface": "security", "minimumTier": "full" },
+    { "glob": "api/**/*privacy*", "surface": "security", "minimumTier": "full" },
+    { "glob": "api/**/*session*", "surface": "security", "minimumTier": "full" },
+    { "glob": "api/**/*csrf*", "surface": "security", "minimumTier": "full" },
+    { "glob": "django/**/*auth*", "surface": "security", "minimumTier": "full" },
+    { "glob": "django/**/*identity*", "surface": "security", "minimumTier": "full" },
+    { "glob": "django/**/*tenant*", "surface": "security", "minimumTier": "full" },
+    { "glob": "django/**/*privacy*", "surface": "security", "minimumTier": "full" },
+    { "glob": "react-app/src/**/*auth*", "surface": "security", "minimumTier": "full" },
+    { "glob": "react-app/src/**/*session*", "surface": "security", "minimumTier": "full" },
+    { "glob": "api/**", "surface": "api", "minimumTier": "focused" },
+    { "glob": "django/**", "surface": "django", "minimumTier": "focused" },
+    { "glob": "react-app/e2e/**", "surface": "visual", "minimumTier": "standard" },
+    {
+      "glob": "react-app/src/pages/OperationsCenter.jsx",
+      "surface": "visual",
+      "minimumTier": "standard"
+    },
+    {
+      "glob": "react-app/src/components/glass/**",
+      "surface": "global-visual",
+      "minimumTier": "full"
+    },
+    { "glob": "react-app/src/*.css", "surface": "global-visual", "minimumTier": "full" },
+    { "glob": "react-app/src/**/*.css", "surface": "global-visual", "minimumTier": "full" },
+    { "glob": "react-app/src/App.js", "surface": "global-visual", "minimumTier": "full" },
+    { "glob": "react-app/src/**", "surface": "frontend", "minimumTier": "focused" },
+    { "glob": ".github/**", "surface": "workflow", "minimumTier": "full" },
+    { "glob": "*requirements*", "surface": "dependency", "minimumTier": "full" },
+    { "glob": "**/package-lock.json", "surface": "dependency", "minimumTier": "full" },
+    { "glob": "**/package.json", "surface": "dependency", "minimumTier": "standard" },
+    { "glob": "digital_ocean/**", "surface": "deployment", "minimumTier": "full" },
+    { "glob": "scripts/config/**", "surface": "assurance", "minimumTier": "full" },
+    {
+      "glob": "scripts/python/assurance_orchestrator.py",
+      "surface": "assurance",
+      "minimumTier": "full"
+    },
+    { "glob": "scripts/bash/assure.sh", "surface": "assurance", "minimumTier": "full" },
+    { "glob": "scripts/powershell/assure.ps1", "surface": "assurance", "minimumTier": "full" },
+    {
+      "glob": "specs/107-efficient-assurance-orchestrator/validate_plan.py",
+      "surface": "assurance",
+      "minimumTier": "full"
+    },
+    {
+      "glob": "shared/config/assurance-orchestrator-v1.json",
+      "surface": "assurance",
+      "minimumTier": "full"
+    },
+    {
+      "glob": "shared/schemas/assurance-orchestrator-v1.schema.json",
+      "surface": "assurance",
+      "minimumTier": "full"
+    },
+    { "glob": "scripts/tests/**", "surface": "test-policy", "minimumTier": "standard" },
+    { "glob": "**/tests/**", "surface": "test-policy", "minimumTier": "standard" },
+    { "glob": "*docker*.yml", "surface": "deployment", "minimumTier": "full" },
+    { "glob": "traefik/**", "surface": "deployment", "minimumTier": "full" },
+    { "glob": ".env.example", "surface": "security", "minimumTier": "full" }
+  ],
+  "surfaces": {
+    "docs": { "checks": ["diff-check", "feature-plan"], "dependsOn": [] },
+    "api": { "checks": ["api-unit"], "dependsOn": ["contracts"] },
+    "django": { "checks": ["django-unit"], "dependsOn": ["contracts"] },
+    "frontend": { "checks": ["frontend-unit"], "dependsOn": ["contracts"] },
+    "visual": { "checks": ["visual-contract"], "dependsOn": ["frontend"] },
+    "global-visual": { "checks": ["visual-full"], "dependsOn": ["frontend"] },
+    "contracts": { "checks": ["contract-policy"], "dependsOn": [] },
+    "migration": { "checks": ["migration-contract"], "dependsOn": ["api", "django"] },
+    "dependency": { "checks": ["security-policy"], "dependsOn": ["api", "django", "frontend"] },
+    "workflow": { "checks": ["ci-policy"], "dependsOn": ["security"] },
+    "deployment": { "checks": ["deployment-contract"], "dependsOn": ["security", "contracts"] },
+    "security": { "checks": ["security-policy"], "dependsOn": ["contracts"] },
+    "test-policy": { "checks": ["assurance-tests"], "dependsOn": ["assurance"] },
+    "assurance": {
+      "checks": ["assurance-tests", "ci-policy"],
+      "dependsOn": ["security", "contracts"]
+    }
+  },
+  "checks": {
+    "diff-check": {
+      "commandId": "diff-check",
+      "dependsOn": [],
+      "resource": "light",
+      "cache": true,
+      "tiers": ["focused", "standard", "full"]
+    },
+    "feature-plan": {
+      "commandId": "feature-plan",
+      "dependsOn": ["diff-check"],
+      "resource": "light",
+      "cache": true,
+      "tiers": ["focused", "standard", "full"]
+    },
+    "contract-policy": {
+      "commandId": "contract-policy",
+      "dependsOn": ["diff-check"],
+      "resource": "light",
+      "cache": true,
+      "tiers": ["focused", "standard", "full"]
+    },
+    "assurance-tests": {
+      "commandId": "assurance-tests",
+      "dependsOn": ["feature-plan"],
+      "resource": "light",
+      "cache": false,
+      "tiers": ["standard", "full"]
+    },
+    "ci-policy": {
+      "commandId": "ci-policy",
+      "dependsOn": ["contract-policy"],
+      "resource": "light",
+      "cache": false,
+      "tiers": ["standard", "full"]
+    },
+    "api-unit": {
+      "commandId": "api-unit",
+      "dependsOn": ["contract-policy"],
+      "resource": "cpu",
+      "cache": true,
+      "tiers": ["focused", "standard", "full"]
+    },
+    "django-unit": {
+      "commandId": "django-unit",
+      "dependsOn": ["contract-policy"],
+      "resource": "cpu",
+      "cache": true,
+      "tiers": ["focused", "standard", "full"]
+    },
+    "frontend-unit": {
+      "commandId": "frontend-unit",
+      "dependsOn": ["contract-policy"],
+      "resource": "cpu",
+      "cache": true,
+      "tiers": ["focused", "standard", "full"]
+    },
+    "visual-contract": {
+      "commandId": "visual-contract",
+      "dependsOn": ["frontend-unit"],
+      "resource": "browser",
+      "cache": true,
+      "tiers": ["standard", "full"]
+    },
+    "visual-full": {
+      "commandId": "visual-full",
+      "dependsOn": ["frontend-unit"],
+      "resource": "browser",
+      "cache": false,
+      "tiers": ["full"]
+    },
+    "migration-contract": {
+      "commandId": "migration-contract",
+      "dependsOn": ["api-unit", "django-unit"],
+      "resource": "docker",
+      "cache": false,
+      "tiers": ["full"]
+    },
+    "deployment-contract": {
+      "commandId": "deployment-contract",
+      "dependsOn": ["ci-policy"],
+      "resource": "docker",
+      "cache": false,
+      "tiers": ["full"]
+    },
+    "security-policy": {
+      "commandId": "security-policy",
+      "dependsOn": ["ci-policy"],
+      "resource": "light",
+      "cache": false,
+      "tiers": ["full"]
+    },
+    "complete-gate": {
+      "commandId": "complete-gate",
+      "dependsOn": [],
+      "resource": "exclusive",
+      "cache": false,
+      "tiers": ["release"]
+    }
+  }
+}
