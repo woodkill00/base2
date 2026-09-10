@@ -723,3 +723,10 @@ substitute for the integration proof named by the task.
 - [ ] B514 Fail closed before launching the proof when a real owner already holds the isolated E2E lock, and remove only the fixed readiness marker during owned cleanup. (FR-002, FR-005, FR-007, FR-008, FR-031, FR-060, FR-063, FR-065, FR-068, FR-070)
 - [ ] B515 Bind non-destructive readiness observation into policy tests and run the real owner/contender proof through successful owner completion, contender rejection, and empty final inventory. (FR-002, FR-005, FR-007, FR-008, FR-060, FR-063, FR-065, FR-068, FR-070)
 - [ ] B516 Commit a replacement candidate and restart the fresh-stack proof, exact repetitions, both serialized complete gates, hosted checks, and every independent review from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 68 — Media-dialog visual stability cycle 91 corrections
+
+- [ ] B517 Re-align the focused pending-action control for the drifting desktop media-detail baseline after focus, escape, and accessibility operations and immediately before screenshot capture, without changing compact or zoom framing. (FR-002, FR-005, FR-007, FR-021, FR-060, FR-063, FR-065, FR-068, FR-075, FR-078)
+- [ ] B518 Assert the desktop focused control's settled bottom edge is within two CSS pixels of the dialog viewport edge before admitting its visual baseline comparison. (FR-002, FR-005, FR-007, FR-021, FR-060, FR-063, FR-065, FR-068, FR-075, FR-078)
+- [ ] B519 Repeat the formerly drifting desktop media-detail journey twenty times and run the complete 36-case media visual matrix with zero screenshot mismatch. (FR-002, FR-005, FR-007, FR-021, FR-060, FR-063, FR-065, FR-068, FR-075, FR-078)
+- [ ] B520 Commit a replacement candidate and restart the fresh-stack proof, exact repetitions, both serialized complete gates, hosted checks, and every independent review from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)

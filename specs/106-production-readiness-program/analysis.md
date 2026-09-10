@@ -1868,3 +1868,25 @@ cannot remove a real owner's marker, then watches the marker without touching
 the lock. Policy tests forbid the former polling pattern. The real proof must
 show owner success, contender exit 3, and empty exact-project inventory before
 another exact-source evidence restart.
+
+## Analysis cycle 91 — media dialog screenshot scroll drift
+
+The first complete gate for candidate
+`5fc873b27a5d358f7934ea103384a469b4b54732` passed 109/109. Its second gate
+failed only the desktop media-detail baseline with a six-percent pixel
+difference; the identical focused test passed immediately afterward. The test
+scrolled the dialog before confirming the action, then performed focus, escape,
+and accessibility operations before capture. Those operations could adjust the
+inner scroll position without a final settled-edge assertion.
+
+B517-B520 explicitly align the focused pending-action control to the dialog's
+visible end edge for the drifting desktop baseline after every operation that
+can affect focus or scrolling and require those edges to settle within two CSS
+pixels before screenshot capture. An initial absolute-bottom experiment
+consistently exposed later metadata and failed 20/20, confirming that it did not
+represent the approved baseline. Applying desktop alignment to every viewport
+then changed the independently approved compact and 400%-zoom framing, so the
+explicit stabilization is limited to the observed desktop boundary.
+Twenty repeated desktop journeys and the complete 36-case media visual matrix
+must pass before another exact-source candidate restarts all release evidence.
+The failed second-gate receipt remains retained and is not release evidence.
