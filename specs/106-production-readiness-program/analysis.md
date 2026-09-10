@@ -1769,3 +1769,24 @@ collection-time imports, while the stale profile assertion includes the
 supported media module and lease fencing asserts database-time plus the opaque
 lease token. The documented repository command passes 391 tests and 81
 subtests. All exact-source evidence restarts from a new commit.
+
+## Analysis cycle 86 — long-lived Django interpreter corruption
+
+The first complete gate for candidate
+`32239023586e86053508d83433abaa917e799053` failed closed after 95 Django
+tests when migration model construction received an impossible `ModelBase`
+object in place of a dictionary item tuple. Because the process returned exit
+`1`, the native-only retry boundary correctly treated it as terminal. The
+formerly failing migration module then passed twenty independent fresh-process
+runs, identifying accumulated interpreter state as the unsafe boundary rather
+than an assertion eligible for retry.
+
+B493-B496 execute each of the 21 exact Django test modules in a separate
+deterministic `sys.monitoring` coverage process. Every partition remains a
+fixed ordinary-failure boundary; only native exits receive bounded recovery.
+Parallel coverage data is combined with retained inputs so a native combine
+failure is retry-safe, then partition residue is removed after the JSON report
+is written. The partitioned run completed all 96 tests, reproduced the exact
+56.18826263800116 percent line coverage total, emitted no tracer warning or
+retry, and left no parallel data file. Exact-source evidence restarts again
+from the replacement commit.

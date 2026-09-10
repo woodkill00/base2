@@ -32,36 +32,50 @@ def main() -> None:
     root = Path(__file__).resolve().parents[2]
     report = root / ".artifacts/coverage/django.json"
     data = root / ".artifacts/coverage/.coverage.django"
+    tests = sorted((root / "django/tests").rglob("test_*.py"))
+    if not tests:
+        raise RuntimeError("django_coverage_inventory_empty")
     environment = os.environ.copy()
     environment["COVERAGE_CORE"] = "sysmon"
     environment["COVERAGE_FILE"] = str(data)
     environment["PYTHONHASHSEED"] = "0"
     environment["PYTHONMALLOC"] = "malloc"
-    command = [
-        sys.executable,
-        "-m",
-        "coverage",
-        "run",
-        "--source=project,users,common,catalog,api_schema",
-        "-m",
-        "pytest",
-        "django/tests",
-        "-c",
-        "django/pytest.ini",
-        "-o",
-        "addopts=",
-        "-m",
-        "not integration and not perf",
-        "-p",
-        "no:cov",
-    ]
     data.unlink(missing_ok=True)
-    run_bounded(command, environment, report)
+    for partition in data.parent.glob(f"{data.name}.*"):
+        partition.unlink()
+    for test_file in tests:
+        command = [
+            sys.executable,
+            "-m",
+            "coverage",
+            "run",
+            "--parallel-mode",
+            "--source=project,users,common,catalog,api_schema",
+            "-m",
+            "pytest",
+            str(test_file.relative_to(root)),
+            "-c",
+            "django/pytest.ini",
+            "-o",
+            "addopts=",
+            "-m",
+            "not integration and not perf",
+            "-p",
+            "no:cov",
+        ]
+        run_bounded(command, environment, report)
+    run_bounded(
+        [sys.executable, "-m", "coverage", "combine", "--keep", str(data.parent)],
+        environment,
+        report,
+    )
     run_bounded(
         [sys.executable, "-m", "coverage", "json", "-o", str(report)],
         environment,
         report,
     )
+    for partition in data.parent.glob(f"{data.name}.*"):
+        partition.unlink()
 
 
 if __name__ == "__main__":

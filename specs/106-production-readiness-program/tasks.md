@@ -684,3 +684,10 @@ substitute for the integration proof named by the task.
 - [ ] B490 Prove valid recovery replay and fail closed on deletion, content tamper, symlink, traversal, wrong source, invalid exit, duplicate reference, ordinary failure, and native exhaustion. (FR-008, FR-060, FR-063, FR-065, FR-068, FR-070)
 - [ ] B491 Declare every repository-test runtime import in the exact hash-locked orchestrator environment, validate the lock contract, repair stale profile and database-time lease assertions, and run the documented command successfully. (FR-002, FR-059, FR-062, FR-063, FR-068, FR-070)
 - [ ] B492 Commit a replacement candidate and restart the clean-stack proof, exact repetitions, both complete gates, hosted checks, and every independent review from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 63 — Django interpreter-isolation cycle 86 corrections
+
+- [ ] B493 Execute every exact Django unit-test module in a fresh deterministic `sys.monitoring` coverage process so corrupted interpreter state cannot propagate across unrelated modules. (FR-002, FR-060, FR-063, FR-068, FR-070)
+- [ ] B494 Retain native-only bounded recovery per fixed partition, combine parallel coverage data replay-safely, remove partition residue, and preserve immediate ordinary-failure propagation. (FR-002, FR-008, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B495 Repeat the formerly failing migration module twenty times in isolation and prove the partitioned runner executes all 96 tests with the unchanged combined coverage result and no warning, retry, or residue. (FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B496 Commit a replacement candidate and restart the clean-stack proof, exact repetitions, both complete gates, hosted checks, and every independent review from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)

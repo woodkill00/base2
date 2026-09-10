@@ -50,6 +50,9 @@ def test_source_uses_sysmon_deterministic_runtime_and_fixed_suite():
     assert '"django/tests"' in source
     assert '"django/pytest.ini"' in source
     assert '"addopts="' in source
+    assert 'rglob("test_*.py")' in source
+    assert '"--parallel-mode"' in source
     assert '"--source=project,users,common,catalog,api_schema"' in source
     assert '"no:cov"' in source
+    assert '"coverage", "combine", "--keep"' in source
     assert '"coverage", "json"' in source
