@@ -96,15 +96,16 @@ def test_existing_benchmark_replay_binds_all_logs_and_gate(tmp_path, monkeypatch
         member.chmod(0o600)
         metadata[name] = {"name": name, "sha256": hashlib.sha256(content).hexdigest(), "bytes": len(content)}
     report = benchmark.benchmark_report(
-        legacy_measured_ms=1000, optimized_measured_ms=400,
+        legacy_measured_ms=1000, optimized_measured_ms=2,
         legacy_output_bytes=1000, optimized_output_bytes=metadata["optimized.log"]["bytes"],
-        estimated_avoided_ms=600, mutations_detected=7, mutations_total=7,
+        estimated_avoided_ms=998, mutations_detected=7, mutations_total=7,
     )
     payload = {
         **report, "sourceCommit": "a" * 40,
         "legacyLog": metadata["legacy.log"], "optimizedLog": metadata["optimized.log"],
         "routineLog": metadata["routine.log"], "legacyCompleteGateEvidence": ".artifacts/gate.json",
         "legacyFullLogBytes": 1000,
+        "legacyReceiptMilliseconds": 1000,
         "outputComparison": "same-exact-gate-full-logs-vs-compact-receipt",
         "mutationPathsDigest": hashlib.sha256("\n".join(sorted(benchmark.MUTATIONS)).encode()).hexdigest(),
         "previousFeatureCommitHostedJobsMultiplier": 2,
@@ -123,6 +124,16 @@ def test_existing_benchmark_replay_binds_all_logs_and_gate(tmp_path, monkeypatch
     descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
     try:
         assert benchmark._validate_existing(descriptor, "a" * 40, tmp_path)["status"] == "passed"
+        payload["optimizedMeasuredMilliseconds"] = 400
+        payload["integrity"] = benchmark._sha({key: value for key, value in payload.items() if key != "integrity"})
+        result.write_text(json.dumps(payload), encoding="utf-8")
+        result.chmod(0o600)
+        with pytest.raises(benchmark.AssuranceError, match="benchmark_evidence_invalid"):
+            benchmark._validate_existing(descriptor, "a" * 40, tmp_path)
+        payload["optimizedMeasuredMilliseconds"] = 2
+        payload["integrity"] = benchmark._sha({key: value for key, value in payload.items() if key != "integrity"})
+        result.write_text(json.dumps(payload), encoding="utf-8")
+        result.chmod(0o600)
         (directory / "routine.log").write_text("tampered", encoding="utf-8")
         (directory / "routine.log").chmod(0o600)
         with pytest.raises(benchmark.AssuranceError, match="benchmark_evidence_invalid"):

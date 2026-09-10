@@ -159,7 +159,8 @@ def _validate_existing(directory_fd: int, commit: str, root: Path) -> dict:
         "schemaVersion", "status", "timeReductionPercent", "outputReductionPercent",
         "legacyMeasuredMilliseconds", "optimizedMeasuredMilliseconds", "estimatedAvoidedMilliseconds",
         "mutationsDetected", "mutationsTotal", "sourceCommit", "legacyLog",
-        "legacyCompleteGateEvidence", "legacyFullLogBytes", "optimizedLog", "routineLog",
+        "legacyCompleteGateEvidence", "legacyFullLogBytes", "legacyReceiptMilliseconds",
+        "optimizedLog", "routineLog",
         "outputComparison", "mutationPathsDigest", "previousFeatureCommitHostedJobsMultiplier",
         "optimizedFeatureCommitHostedJobsMultiplier", "routineFixtures",
         "optimizedRoutineSamplesMilliseconds", "integrity",
@@ -200,8 +201,18 @@ def _validate_existing(directory_fd: int, commit: str, root: Path) -> dict:
     legacy = payload.get("legacyCompleteGateEvidence")
     if not isinstance(legacy, str):
         raise AssuranceError("benchmark_evidence_invalid")
-    measured, relative, _ = _validate_complete_gate_path(root, root / legacy, commit)
-    if relative != legacy or payload.get("legacyFullLogBytes") != measured:
+    measured, relative, gate_elapsed = _validate_complete_gate_path(root, root / legacy, commit)
+    samples = payload.get("optimizedRoutineSamplesMilliseconds")
+    if (
+        relative != legacy or payload.get("legacyFullLogBytes") != measured
+        or payload.get("legacyReceiptMilliseconds") != gate_elapsed
+        or payload.get("legacyMeasuredMilliseconds") != gate_elapsed
+        or not isinstance(samples, list) or len(samples) != len(ROUTINE_FIXTURES)
+        or any(not isinstance(value, int) or value <= 0 for value in samples)
+        or payload.get("optimizedMeasuredMilliseconds") != int(statistics.median(samples))
+        or payload.get("estimatedAvoidedMilliseconds")
+        != max(0, gate_elapsed - int(statistics.median(samples)))
+    ):
         raise AssuranceError("benchmark_evidence_invalid")
     try:
         expected_report = benchmark_report(
@@ -222,9 +233,6 @@ def _validate_existing(directory_fd: int, commit: str, root: Path) -> dict:
         or payload.get("previousFeatureCommitHostedJobsMultiplier") != 2
         or payload.get("optimizedFeatureCommitHostedJobsMultiplier") != 1
         or payload.get("routineFixtures") != list(ROUTINE_FIXTURES)
-        or not isinstance(payload.get("optimizedRoutineSamplesMilliseconds"), list)
-        or len(payload["optimizedRoutineSamplesMilliseconds"]) != len(ROUTINE_FIXTURES)
-        or any(not isinstance(value, int) or value <= 0 for value in payload["optimizedRoutineSamplesMilliseconds"])
     ):
         raise AssuranceError("benchmark_evidence_invalid")
     return payload
@@ -269,7 +277,7 @@ def _run_under_lease(root: Path) -> Path:
             return root / ".artifacts" / "assurance-orchestrator" / "benchmarks" / commit / "result.json"
         existing_gate = _existing_complete_gate(root, commit)
         if existing_gate is None:
-            legacy_rc, legacy_log, measured_legacy_ms = _measure(
+            legacy_rc, legacy_log, _measured_legacy_ms = _measure(
                 ["/usr/bin/python3", str(root / "scripts/python/run_complete_gate.py")], root, 1800,
             )
             if legacy_rc:
@@ -278,7 +286,7 @@ def _run_under_lease(root: Path) -> Path:
             legacy_output_bytes, legacy_evidence_path, receipt_legacy_ms = _complete_gate_measurement(
                 root, legacy_log, commit,
             )
-            legacy_ms = max(measured_legacy_ms, receipt_legacy_ms)
+            legacy_ms = receipt_legacy_ms
         else:
             legacy_output_bytes, legacy_evidence_path, legacy_ms = existing_gate
             legacy_log = f"Complete gate evidence reused: {legacy_evidence_path}\n".encode()
@@ -363,6 +371,7 @@ def _run_under_lease(root: Path) -> Path:
             "legacyLog": {"name": "legacy.log", "sha256": legacy_sha, "bytes": legacy_bytes},
             "legacyCompleteGateEvidence": legacy_evidence_path,
             "legacyFullLogBytes": legacy_output_bytes,
+            "legacyReceiptMilliseconds": legacy_ms,
             "optimizedLog": {"name": "optimized.log", "sha256": optimized_sha, "bytes": optimized_bytes},
             "routineLog": {"name": "routine.log", "sha256": routine_sha, "bytes": routine_bytes},
             "outputComparison": "same-exact-gate-full-logs-vs-compact-receipt",

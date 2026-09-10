@@ -172,3 +172,10 @@
 - [x] T120 Escape terminal controls from every human diagnostic while preserving compact redacted context.
 - [x] T121 Report the current interrupted evidence path for errors that occur after run admission.
 - [x] T122 Add adversarial regressions and complete the tenth task-analysis cycle with no unresolved static gap.
+
+## Phase 18 — Analysis cycle 11 measurement derivation
+
+- [x] T123 Bind the legacy benchmark duration exactly to the referenced complete-gate receipt’s elapsed time.
+- [x] T124 Derive optimized duration exactly from the median of retained routine samples and avoided time from both measurements.
+- [x] T125 Reject fully shaped and rehashed benchmark receipts whose performance claims differ from retained evidence.
+- [x] T126 Complete the eleventh analysis cycle with no unresolved static correctness, security, operations, UX, or data gap.
