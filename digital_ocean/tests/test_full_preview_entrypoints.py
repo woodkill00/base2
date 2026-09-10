@@ -14,6 +14,7 @@ from digital_ocean.scripts.python import full_preview_cli, full_preview_expire, 
 from digital_ocean.scripts.python.full_preview_expire import ExpiryError, LeaseDigitalOceanProvider
 from digital_ocean.scripts.python.full_preview_remote import (
     PRIVATE_TRANSFER_TIMEOUT_SECONDS,
+    REMOTE_BOOTSTRAP_TIMEOUT_SECONDS,
     SOURCE_TRANSFER_TIMEOUT_SECONDS,
     FullPreviewRemoteError,
     FullPreviewSshBootstrap,
@@ -391,6 +392,8 @@ def test_remote_bootstrap_uses_bounded_size_appropriate_transfer_timeouts(tmp_pa
     assert all(
         kwargs["timeout"] == PRIVATE_TRANSFER_TIMEOUT_SECONDS for _argv, kwargs in transfers[1:]
     )
+    bootstrap = [(argv, kwargs) for argv, kwargs in calls if argv[0] == "ssh" and "bash" in argv]
+    assert bootstrap[0][1]["timeout"] == REMOTE_BOOTSTRAP_TIMEOUT_SECONDS == 2700
 
     def timeout_runner(argv, **kwargs):
         if argv[0] == "scp":
@@ -399,6 +402,20 @@ def test_remote_bootstrap_uses_bounded_size_appropriate_transfer_timeouts(tmp_pa
 
     remote.runner = timeout_runner
     with pytest.raises(FullPreviewRemoteError, match="bounded private preview transfer timed out"):
+        remote.deploy("8.8.8.8", config)
+
+    def bootstrap_timeout_runner(argv, **kwargs):
+        if argv[0] == "ssh" and "bash" in argv:
+            raise subprocess.TimeoutExpired(
+                argv,
+                kwargs["timeout"],
+                output="safe progress\n",
+                stderr="full-preview-stage-failed:service-health exit=124\n",
+            )
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    remote.runner = bootstrap_timeout_runner
+    with pytest.raises(FullPreviewRemoteError, match="bounded full preview bootstrap timed out"):
         remote.deploy("8.8.8.8", config)
 
 
