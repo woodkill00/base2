@@ -2033,3 +2033,33 @@ Only native signal or abort statuses may retry up to three total attempts;
 ordinary migration failures remain immediate and terminal. Focused regression,
 the real PostgreSQL acceptance, and every exact-source release proof restart
 from the corrected commit.
+
+## Analysis cycle 99 — exact evidence, journal, and localization integrity
+
+Independent review rejected candidate
+`be3c8836e328b76fce694a93d75e21afb3beb3f2`. Complete-gate admission labeled
+working-tree execution with `HEAD` without first rejecting tracked or untracked
+drift. Release-journal path operations followed ancestors and reused path names
+across validation and mutation. The newly generated repetition bundle came from
+a stale private bytecode helper, omitted `nativeCrashRecoveries`, and was not
+validated by either otherwise-green gate. The real concurrency proof retained
+no exact-source manifest. Docker-client `-11` was ambiguously treated as a
+completed container crash, while the final migration omitted deterministic
+Python settings. Operations visual evidence omitted `GlassCard` and global token
+sources, and real German and Arabic probe labels could fall through to English
+identifier formatting.
+
+B554-B563 close each boundary without broadening provider or production
+authority. Gates admit only a clean exact identity and validate the actual
+current repetition bundle. Release state uses descriptor-relative no-follow
+private storage. Container retries exclude ambiguous client death and use one
+deterministic runtime. Concurrency produces private digest-bound evidence.
+Visual evidence covers direct dependencies, and every configured probe plus the
+read-only state has explicit German and Arabic copy. All release evidence and
+reviews restart after a corrected commit.
+
+The cycle-99 real local release acceptance also exposed a stale harness call:
+its owner approval omitted the now-required source-commit and artifact-digest
+scope, and its executor omitted operation and reconciliation arguments plus
+receipt bindings. B564 repairs both fixtures and requires the actual staged
+lifecycle to pass; it does not weaken validation or grant deployment authority.

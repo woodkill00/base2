@@ -12,7 +12,7 @@ POSTGRES_IMAGE = (
     "075f7ba66bc9b3ce7d6b8b635208ff61cd7cf1a67d71ec530eec5d7ae0cbe571"
 )
 MAX_NATIVE_ATTEMPTS = 3
-NATIVE_FAILURES = {-11, 134, 139}
+NATIVE_FAILURES = {134, 139}
 
 
 def run(command, **kwargs):
@@ -260,6 +260,10 @@ def main() -> None:
                 "/workspace/django",
                 "-e",
                 "PYTHONPATH=/workspace/django",
+                "-e",
+                "PYTHONHASHSEED=0",
+                "-e",
+                "PYTHONMALLOC=malloc",
                 "-e",
                 "DJANGO_SETTINGS_MODULE=project.settings.base",
                 "-e",

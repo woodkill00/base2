@@ -38,7 +38,14 @@ class DockerAdapter:
     def candidate_name(self, release_id: str) -> str:
         return f'base2-{release_id}-{self.suffix}'.lower()
 
-    def execute(self, action: str, release: dict, environment: str) -> dict:
+    def execute(
+        self,
+        action: str,
+        release: dict,
+        environment: str,
+        operation_id: str,
+        _reconcile_only: bool,
+    ) -> dict:
         name = self.candidate_name(release['releaseId'])
         if action == 'stage':
             if run('docker', 'inspect', name, check=False).returncode != 0:
@@ -49,7 +56,7 @@ class DockerAdapter:
             self.candidates[release['releaseId']] = name
         elif action == 'canary':
             if run('docker', 'inspect', name, check=False).returncode != 0:
-                return self.receipt(action, release, environment, 'failed')
+                return self.receipt(action, release, environment, operation_id, 'failed')
         elif action == 'promote':
             run('docker', 'rm', '-f', self.proxy, check=False)
             config = self.root / 'nginx.conf'
@@ -65,14 +72,23 @@ class DockerAdapter:
             )
         elif action == 'rollback':
             run('docker', 'rm', '-f', name, check=False)
-        return self.receipt(action, release, environment, 'succeeded')
+        return self.receipt(action, release, environment, operation_id, 'succeeded')
 
     @staticmethod
-    def receipt(action: str, release: dict, environment: str, status: str) -> dict:
+    def receipt(
+        action: str,
+        release: dict,
+        environment: str,
+        operation_id: str,
+        status: str,
+    ) -> dict:
         return {
             'action': action,
             'releaseId': release['releaseId'],
             'environment': environment,
+            'operationId': operation_id,
+            'sourceCommit': release['sourceCommit'],
+            'artifactDigest': release['artifactDigest'],
             'status': status,
         }
 
@@ -117,6 +133,8 @@ def permit(action: str, release: dict, now: datetime) -> dict:
         action=action,
         release_id=release['releaseId'],
         environment='staging',
+        source_commit=release['sourceCommit'],
+        artifact_digest=release['artifactDigest'],
         expires_at=(now + timedelta(minutes=10)).isoformat(),
         key=APPROVAL_KEY,
     )

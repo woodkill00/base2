@@ -9,10 +9,11 @@ import hmac
 import json
 import os
 import re
+import stat
 import subprocess
-import tempfile
+import uuid
 from collections.abc import Callable
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -494,24 +495,97 @@ class ReleaseJournal:
         self.path = path
         self.key = key
         self.lock = path.with_suffix(path.suffix + ".lock")
+        self._directory_fd: int | None = None
+
+    def _open_parent(self) -> tuple[int, str]:
+        candidate = Path(os.path.abspath(self.path))
+        if candidate.name in {"", ".", ".."} or "/" in candidate.name:
+            raise ReleaseError("release:journal_path_invalid")
+        flags = os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC | os.O_NOFOLLOW
+        descriptor = os.open("/", flags)
+        try:
+            for part in candidate.parent.parts[1:]:
+                child = os.open(part, flags, dir_fd=descriptor)
+                try:
+                    details = os.fstat(child)
+                    unsafe_writable = details.st_mode & 0o022 and not details.st_mode & stat.S_ISVTX
+                    if not stat.S_ISDIR(details.st_mode) or unsafe_writable:
+                        raise ReleaseError("release:journal_parent_unsafe")
+                except Exception:
+                    os.close(child)
+                    raise
+                os.close(descriptor)
+                descriptor = child
+            details = os.fstat(descriptor)
+            if details.st_uid != os.geteuid() or stat.S_IMODE(details.st_mode) != 0o700:
+                raise ReleaseError("release:journal_parent_not_private")
+            return descriptor, candidate.name
+        except Exception:
+            os.close(descriptor)
+            raise
+
+    @staticmethod
+    def _require_private_member(descriptor: int, diagnostic: str) -> None:
+        details = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(details.st_mode)
+            or details.st_uid != os.geteuid()
+            or details.st_nlink != 1
+            or stat.S_IMODE(details.st_mode) != 0o600
+        ):
+            raise ReleaseError(diagnostic)
 
     @contextmanager
     def locked(self):
-        self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        descriptor = os.open(self.lock, os.O_RDWR | os.O_CREAT, 0o600)
+        try:
+            directory_fd, name = self._open_parent()
+        except OSError as exc:
+            raise ReleaseError("release:journal_parent_unsafe") from exc
+        lock_name = f"{name}.lock"
+        flags = os.O_RDWR | os.O_CLOEXEC | os.O_NOFOLLOW
+        try:
+            try:
+                descriptor = os.open(lock_name, flags | os.O_CREAT | os.O_EXCL, 0o600, dir_fd=directory_fd)
+            except FileExistsError:
+                descriptor = os.open(lock_name, flags, dir_fd=directory_fd)
+            self._require_private_member(descriptor, "release:journal_lock_unsafe")
+        except OSError as exc:
+            os.close(directory_fd)
+            raise ReleaseError("release:journal_lock_unsafe") from exc
+        except Exception:
+            os.close(directory_fd)
+            raise
         try:
             fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
             os.close(descriptor)
+            os.close(directory_fd)
             raise ReleaseError("release:concurrent_runner") from exc
+        except Exception:
+            os.close(descriptor)
+            os.close(directory_fd)
+            raise
+        self._directory_fd = directory_fd
         try:
             yield
         finally:
-            fcntl.flock(descriptor, fcntl.LOCK_UN)
-            os.close(descriptor)
+            self._directory_fd = None
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_UN)
+            finally:
+                os.close(descriptor)
+                os.close(directory_fd)
 
     def load(self) -> dict[str, Any]:
-        if not self.path.exists():
+        if self._directory_fd is None:
+            raise ReleaseError("release:journal_lock_required")
+        try:
+            descriptor = os.open(
+                self.path.name,
+                os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW,
+                dir_fd=self._directory_fd,
+            )
+        except FileNotFoundError:
             return {
                 "schemaVersion": 1,
                 "state": "empty",
@@ -522,12 +596,19 @@ class ReleaseJournal:
                 "checkpoints": [],
                 "receipts": [],
             }
-        if self.path.is_symlink() or not self.path.is_file():
-            raise ReleaseError("release:journal_unsafe")
+        except OSError as exc:
+            raise ReleaseError("release:journal_unsafe") from exc
         try:
-            envelope = json.loads(self.path.read_text(encoding="utf-8"))
+            self._require_private_member(descriptor, "release:journal_unsafe")
+            with os.fdopen(descriptor, "rb", closefd=False) as stream:
+                raw = stream.read(1024 * 1024 + 1)
+            if len(raw) > 1024 * 1024:
+                raise ReleaseError("release:journal_invalid")
+            envelope = json.loads(raw.decode("utf-8"))
         except (OSError, json.JSONDecodeError, UnicodeError) as exc:
             raise ReleaseError("release:journal_invalid") from exc
+        finally:
+            os.close(descriptor)
         if (
             set(envelope) != {"journal", "integrity"}
             or envelope["integrity"]
@@ -540,21 +621,51 @@ class ReleaseJournal:
         return state
 
     def write(self, state: dict[str, Any]) -> None:
+        if self._directory_fd is None:
+            raise ReleaseError("release:journal_lock_required")
         envelope = {
             "journal": state,
             "integrity": hmac.new(self.key, _canonical(state), hashlib.sha256).hexdigest(),
         }
-        descriptor, temporary = tempfile.mkstemp(prefix=".release-", dir=self.path.parent)
+        temporary = f".release-{uuid.uuid4().hex}.tmp"
+        descriptor = os.open(
+            temporary,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC | os.O_NOFOLLOW,
+            0o600,
+            dir_fd=self._directory_fd,
+        )
         try:
-            os.fchmod(descriptor, 0o600)
-            with os.fdopen(descriptor, "wb") as stream:
+            self._require_private_member(descriptor, "release:journal_temporary_unsafe")
+            with os.fdopen(descriptor, "wb", closefd=False) as stream:
                 stream.write(_canonical(envelope) + b"\n")
                 stream.flush()
                 os.fsync(stream.fileno())
-            os.replace(temporary, self.path)
-            os.chmod(self.path, 0o600)
+            try:
+                existing = os.open(
+                    self.path.name,
+                    os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW,
+                    dir_fd=self._directory_fd,
+                )
+            except FileNotFoundError:
+                existing = None
+            except OSError as exc:
+                raise ReleaseError("release:journal_unsafe") from exc
+            if existing is not None:
+                try:
+                    self._require_private_member(existing, "release:journal_unsafe")
+                finally:
+                    os.close(existing)
+            os.replace(
+                temporary,
+                self.path.name,
+                src_dir_fd=self._directory_fd,
+                dst_dir_fd=self._directory_fd,
+            )
+            os.fsync(self._directory_fd)
         finally:
-            Path(temporary).unlink(missing_ok=True)
+            os.close(descriptor)
+            with suppress(FileNotFoundError):
+                os.unlink(temporary, dir_fd=self._directory_fd)
 
 
 class ProductionReleaseController:

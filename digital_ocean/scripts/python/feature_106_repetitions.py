@@ -9,6 +9,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -519,9 +520,26 @@ def run(root: Path | None = None) -> Path:
     return destination / "result.json"
 
 
-def main() -> int:
+def validate_current(root: Path | None = None) -> Path:
+    project_root = (root or Path(__file__).resolve().parents[3]).resolve()
+    _require_supported_platform()
+    _require_clean(project_root)
+    commit = _source_commit(project_root)
+    _require_exact_source(project_root, commit)
+    result = _validate_existing(_private_evidence_root(project_root) / commit, commit)
+    _require_exact_source(project_root, commit)
+    return result
+
+
+def main(argv: list[str] | None = None) -> int:
     try:
-        print(run())
+        arguments = [] if argv is None else argv
+        if arguments == ["--validate-existing"]:
+            print(validate_current())
+        elif arguments:
+            raise RepetitionError("repetition_argument_invalid")
+        else:
+            print(run())
     except (OSError, RepetitionError, subprocess.SubprocessError) as exc:
         print(f"ERROR:{type(exc).__name__}:{exc}")
         return 2
@@ -529,4 +547,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":  # pragma: no cover - exercised through the installed entrypoint
-    raise SystemExit(main())
+    raise SystemExit(main(sys.argv[1:]))

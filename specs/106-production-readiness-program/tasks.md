@@ -784,3 +784,17 @@ substitute for the integration proof named by the task.
 - [ ] B551 Preserve immediate terminal behavior for ordinary migration failures while allowing at most three attempts only for native signal or abort statuses in the disposable database. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-070)
 - [ ] B552 Prove the full-migration invocation uses the bounded helper, exercise its native recovery and ordinary failure boundaries, and run the real disposable PostgreSQL acceptance. (FR-002, FR-005, FR-008, FR-060, FR-063, FR-065, FR-068, FR-070)
 - [ ] B553 Commit a replacement candidate and restart exact repetitions, real concurrency proof, both complete gates, hosted checks, and every fresh independent review from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 76 — Exact evidence, journal, and localization cycle 99 corrections
+
+- [ ] B554 Reject dirty, untracked, failed-status, or invalid-identity repositories before complete-gate source admission and evidence creation. (FR-002, FR-005, FR-008, FR-060, FR-063, FR-068, FR-070)
+- [ ] B555 Traverse release-journal parents and open lock, journal, and replacement members without following links, enforcing owned private final storage and stable descriptor-relative operations. (FR-002, FR-005, FR-008, FR-031, FR-060, FR-065, FR-068, FR-070)
+- [ ] B556 Prove release-journal ancestor, lock, journal, and replacement link attacks fail closed without target mutation, descriptor leaks, or race-prone path reuse. (FR-002, FR-005, FR-008, FR-031, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B557 Remove ambiguous Docker-client signal recovery, retain only container-native exit statuses, and give the final disposable migration the same deterministic Python runtime as every other migration command. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B558 Add validation-only admission for the current exact-head repetition bundle and make the complete gate reject absent, stale-generator, incomplete, or tampered repetition evidence. (FR-002, FR-005, FR-008, FR-060, FR-063, FR-068, FR-070)
+- [ ] B559 Retain exact-commit, integrity-bound private owner/contender concurrency evidence with bounded logs and verified empty final inventory. (FR-002, FR-005, FR-008, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B560 Bind every direct Operations visual component and global token dependency into visual evidence invalidation and regenerate exact-source review metadata without changing baselines unnecessarily. (FR-002, FR-005, FR-008, FR-021, FR-060, FR-063, FR-064, FR-068, FR-075)
+- [ ] B561 Localize every configured Operations probe and read-only state in German and Arabic, with contract coverage rejecting identifier fallback. (FR-012, FR-046, FR-063, FR-064, FR-075)
+- [ ] B562 Run focused adversarial, migration, localization, visual, repetition, and real concurrency acceptance before creating a replacement commit. (FR-002, FR-005, FR-008, FR-060, FR-063 through FR-068, FR-075, FR-078)
+- [ ] B563 Restart exact repetitions, both complete gates, hosted checks, and every independent review from the replacement commit. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+- [ ] B564 Restore the real local release-acceptance approval and executor fixtures to bind the required exact source, artifact, operation, and reconciliation fields, then prove the complete staged lifecycle and teardown. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-066, FR-068, FR-070)

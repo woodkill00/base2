@@ -40,6 +40,18 @@
       "requiredTools": ["{python-orchestrator}"]
     },
     {
+      "id": "feature-106-repetition-evidence-current",
+      "command": [
+        "{python-orchestrator}",
+        "digital_ocean/scripts/python/feature_106_repetitions.py",
+        "--validate-existing"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["feature-106-repetition-evidence-contract"],
+      "requiredTools": ["{python-orchestrator}", "git"]
+    },
+    {
       "id": "operations-domain-contract",
       "command": [
         "{python-django}",
@@ -54,7 +66,7 @@
       ],
       "required": true,
       "timeoutSeconds": 45,
-      "dependsOn": ["feature-106-repetition-evidence-contract"],
+      "dependsOn": ["feature-106-repetition-evidence-current"],
       "requiredTools": ["{python-django}"]
     },
     {
@@ -121,11 +133,19 @@
       "requiredTools": ["{python-api}"]
     },
     {
+      "id": "local-release-acceptance",
+      "command": ["python3", "-m", "scripts.python.run_local_release_acceptance"],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": ["production-release-contract"],
+      "requiredTools": ["python3", "docker"]
+    },
+    {
       "id": "typed-feature-flag-contract",
       "command": ["{python-api}", "-m", "pytest", "-q", "api/tests/test_typed_feature_flags.py"],
       "required": true,
       "timeoutSeconds": 30,
-      "dependsOn": ["production-release-contract"],
+      "dependsOn": ["local-release-acceptance"],
       "requiredTools": ["{python-api}"]
     },
     {

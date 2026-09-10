@@ -65,6 +65,48 @@ class CompleteGateTests(unittest.TestCase):
         )
         return result, output
 
+    def test_exact_source_admission_rejects_dirty_or_invalid_identity(self):
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(root))
+        clean = unittest.mock.Mock(returncode=0, stdout="")
+        with patch.object(self.gate.subprocess, "run", return_value=clean), patch.object(
+            self.gate, "git_commit", return_value="a" * 40
+        ):
+            self.assertEqual("a" * 40, self.gate.require_clean_source(root))
+        for result in (
+            unittest.mock.Mock(returncode=0, stdout=" M tracked.py\n"),
+            unittest.mock.Mock(returncode=0, stdout="?? injected.py\n"),
+            unittest.mock.Mock(returncode=1, stdout=""),
+        ):
+            with patch.object(self.gate.subprocess, "run", return_value=result), self.assertRaisesRegex(
+                ValueError, "complete_gate_source_not_clean"
+            ):
+                self.gate.require_clean_source(root)
+
+    def test_gate_revalidates_source_before_and_after_each_command(self):
+        calls = []
+        result, _ = self.run_gate_with_source_guard(
+            [check("source-guard", ["python3", "-c", "print('ok')"])],
+            lambda: calls.append("checked"),
+        )
+        self.assertEqual("passed", result["overallStatus"])
+        self.assertGreaterEqual(len(calls), 3)
+
+    def run_gate_with_source_guard(self, checks, source_guard):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        (root / ".git").mkdir()
+        output = root / "evidence"
+        result = self.gate.run_gate(
+            {"schemaVersion": 1, "checks": checks},
+            root,
+            output,
+            source_commit="0" * 40,
+            source_guard=source_guard,
+        )
+        return result, output
+
     def test_complete_gate_lock_rejects_contender_and_releases(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)

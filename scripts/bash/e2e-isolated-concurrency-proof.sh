@@ -65,4 +65,5 @@ fi
 
 grep -q '4 passed' "$owner_log"
 grep -q 'fixed isolated E2E project is already in use' "$contender_log"
-printf 'isolated_e2e_concurrency_proof=passed owner_rc=0 contender_rc=3 inventory=empty\n'
+receipt="$(python3 "$repo_root/scripts/python/record_e2e_concurrency_evidence.py" "$owner_log" "$contender_log")"
+printf 'isolated_e2e_concurrency_proof=passed owner_rc=0 contender_rc=3 inventory=empty evidence=%s\n' "$receipt"

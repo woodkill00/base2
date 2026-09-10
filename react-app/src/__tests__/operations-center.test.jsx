@@ -48,7 +48,7 @@ test.each([
   ['ar', 'critical', 'حرج'],
   ['de', 'acknowledged', 'Bestätigt'],
   ['ar', 'acknowledged', 'تم الإقرار'],
-  ['de', 'read-only', 'Read Only'],
+  ['de', 'read-only', 'Schreibgeschützt'],
   ['ar', 'every:60', 'كل 60 ثانية'],
 ])(
   'renders bounded operation term %s/%s without leaking an enum token',
@@ -89,6 +89,34 @@ test.each(['de', 'ar'])('localizes every bounded Operations enum in %s', (locale
     'running',
   ];
   for (const value of enums) {
+    const fallback = value
+      .replace(/[._-]+/g, ' ')
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    expect(operationsReadable(locale, value), `${locale}/${value}`).not.toBe(fallback);
+  }
+});
+
+test.each(['de', 'ar'])('localizes every configured Operations probe in %s', (locale) => {
+  const probes = [
+    'public.root',
+    'api.health',
+    'database.ready',
+    'workers.ready',
+    'queues.delay',
+    'objects.ready',
+    'dns.canonical',
+    'certificate.expiry',
+    'email.delivery',
+    'schedules.freshness',
+    'capacity.headroom',
+    'monitoring.self',
+    'database.performance',
+    'backup.freshness',
+    'restore.last-drill',
+    'migrations.state',
+    'read-only',
+  ];
+  for (const value of probes) {
     const fallback = value
       .replace(/[._-]+/g, ' ')
       .replace(/\b\w/g, (letter) => letter.toUpperCase());

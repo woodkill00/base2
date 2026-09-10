@@ -9,7 +9,7 @@ from scripts.python import run_workspace_postgres_acceptance as runner
 
 
 def test_idempotent_migration_recovers_only_native_failures(monkeypatch, capsys):
-    results = iter((-11, 139, 0))
+    results = iter((134, 139, 0))
     calls = []
 
     def execute(command, **kwargs):
@@ -24,7 +24,7 @@ def test_idempotent_migration_recovers_only_native_failures(monkeypatch, capsys)
     assert "retry 2/3" in capsys.readouterr().out
 
 
-@pytest.mark.parametrize("returncode,expected_calls", [(1, 1), (-11, 3), (134, 3), (139, 3)])
+@pytest.mark.parametrize("returncode,expected_calls", [(1, 1), (-11, 1), (134, 3), (139, 3)])
 def test_idempotent_migration_fails_on_assertion_or_native_exhaustion(
     monkeypatch, returncode, expected_calls
 ):
@@ -45,7 +45,7 @@ def test_idempotent_migration_fails_on_assertion_or_native_exhaustion(
 def test_only_disposable_migrations_use_native_retry():
     source = runner.Path(runner.__file__).read_text(encoding="utf-8")
     assert "MAX_NATIVE_ATTEMPTS = 3" in source
-    assert "NATIVE_FAILURES = {-11, 134, 139}" in source
+    assert "NATIVE_FAILURES = {134, 139}" in source
     assert '"PYTHONHASHSEED=0"' in source
     assert '"PYTHONMALLOC=malloc"' in source
     assert source.count("run_idempotent_native_safe(") == 10
@@ -53,5 +53,7 @@ def test_only_disposable_migrations_use_native_retry():
     full_migration = source.index('"WORKSPACE_DB_USER=base2_workspace_runtime"', mixed_version_end)
     full_migration_prefix = source[mixed_version_end:full_migration]
     assert "run_idempotent_native_safe(" in full_migration_prefix
+    assert '"PYTHONHASHSEED=0"' in full_migration_prefix
+    assert '"PYTHONMALLOC=malloc"' in full_migration_prefix
     assert 'run(role_check + ["api-reversed"])' in source
     assert 'run(media_check + ["forward"])' in source

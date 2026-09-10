@@ -529,6 +529,65 @@ def test_journal_lock_rejects_a_concurrent_runner():
             controller.status()
 
 
+def test_journal_rejects_linked_parent_lock_and_member_without_target_mutation():
+    with TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        outside = root / 'outside'
+        outside.mkdir(mode=0o700)
+        linked = root / 'linked'
+        linked.symlink_to(outside, target_is_directory=True)
+        controller = ProductionReleaseController(
+            linked / 'journal.json', release_key=KEY, approval_key=OWNER_KEY
+        )
+        with pytest.raises(ReleaseError, match='journal_parent_unsafe'):
+            controller.status()
+        assert list(outside.iterdir()) == []
+
+        target = root / 'target'
+        target.write_text('preserve', encoding='utf-8')
+        lock = root / 'journal.json.lock'
+        lock.symlink_to(target)
+        controller = ProductionReleaseController(
+            root / 'journal.json', release_key=KEY, approval_key=OWNER_KEY
+        )
+        with pytest.raises(ReleaseError, match='journal_lock_unsafe'):
+            controller.status()
+        assert target.read_text(encoding='utf-8') == 'preserve'
+
+        lock.unlink()
+        with controller.store.locked():
+            controller.store.write({
+                'schemaVersion': 1, 'state': 'empty', 'environment': None,
+                'candidate': None, 'current': None, 'previous': None,
+                'checkpoints': [], 'receipts': [],
+            })
+        journal = root / 'journal.json'
+        journal.unlink()
+        journal.symlink_to(target)
+        with pytest.raises(ReleaseError, match='journal_unsafe'):
+            controller.status()
+        assert target.read_text(encoding='utf-8') == 'preserve'
+
+
+def test_journal_rejects_hardlinked_lock_and_member():
+    with TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        target = root / 'target'
+        target.write_text('preserve', encoding='utf-8')
+        target.chmod(0o600)
+        controller = ProductionReleaseController(
+            root / 'journal.json', release_key=KEY, approval_key=OWNER_KEY
+        )
+        (root / 'journal.json.lock').hardlink_to(target)
+        with pytest.raises(ReleaseError, match='journal_lock_unsafe'):
+            controller.status()
+        (root / 'journal.json.lock').unlink()
+        (root / 'journal.json').hardlink_to(target)
+        with pytest.raises(ReleaseError, match='journal_unsafe'):
+            controller.status()
+        assert target.read_text(encoding='utf-8') == 'preserve'
+
+
 def test_rollback_checkpoint_resumes_after_lost_executor_response():
     first, second = release(1), release(2)
     with TemporaryDirectory() as temporary:

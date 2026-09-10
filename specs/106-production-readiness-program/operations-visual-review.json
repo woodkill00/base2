@@ -2,15 +2,17 @@
   "schemaVersion": 1,
   "status": "accepted",
   "sources": {
-    "react-app/src/pages/OperationsCenter.jsx": "8b1d36a0c6c7d4d227c11b1f5d4c29ab28d9c0f6278449b45c3b2289e1c864b5",
+    "react-app/src/pages/OperationsCenter.jsx": "d3918f1ad18b8e6183eb32973cf16390a196adb8dbe9b2428582f62cc3720504",
     "react-app/src/services/operations.js": "7bb0edb231daf7255973c885dabf0b93d7664c02ac0eb51a8b00d599c7209418",
     "react-app/src/components/glass/AppShell.tsx": "327058fd8c9a815d35f94b130aba084d6a6ea52c9640d4dfb2a156033894c5b3",
     "react-app/src/components/glass/GlassButton.tsx": "e32c90da113739bb526b2329519e964bd611a1be66d86852e2f4fb075d32e5a1",
+    "react-app/src/components/glass/GlassCard.tsx": "793af1c720e05a073251a22550554b8f1510e68d04a46a2a526a109783c95bf7",
     "react-app/src/components/glass/GlassHeader.tsx": "5b995fabdad790b6887eabf5bfc0ecc66aeda70581908b435cfade1d4ab1e460",
     "react-app/src/components/glass/GlassSidebar.tsx": "313c0dda606c8843fe95064d6e5d3e3c8606aa9d2f3d0ca51808b37f7f3cc9ca",
     "react-app/src/components/glass/ThemeToggle.tsx": "18344be1e4af139d12931c3ed0d1917915eac3f6fe8f66c7965b8c1b52290b08",
     "react-app/src/components/Navigation.js": "fd9c2fb05adac455b46db7ebdea63541f47decd6f8559bb0b9ce0b6257437d88",
     "react-app/src/index.css": "a42ec15997f5f0513eb59d9bffb6b2fca5356854d6b0ea9b94b1e9a3cdf5c786",
+    "react-app/src/styles/tokens.css": "e24be02e8566105d48554df4fb878781cd176ea9830758dc1289f0eac100b69a",
     "react-app/e2e/operations/operations-release.spec.ts": "f124dfca6be51002524caf6a749f7945c88f4e205265451ac7ad5c2826e5d323",
     "react-app/playwright.operations-release.config.mjs": "74b18f1655cb55b9bcfcb290da0db6042700fdc01d964c3c748591f42ce3d1b9",
     "react-app/e2e/operations/visual-receipt-reporter.mjs": "2a231b5946a65f18196cfc0a7aeab412c5f00990efa9acc797fbf04e7eff166e"

@@ -356,6 +356,7 @@ def run_gate(
     *,
     source_commit: str,
     environment: dict[str, str] | None = None,
+    source_guard=None,
 ) -> dict:
     validate_manifest(manifest)
     repo_root = repo_root.resolve()
@@ -368,6 +369,7 @@ def run_gate(
             evidence_fd,
             source_commit=source_commit,
             environment=environment,
+            source_guard=source_guard,
         )
     finally:
         os.close(evidence_fd)
@@ -381,6 +383,7 @@ def _run_gate(
     *,
     source_commit: str,
     environment: dict[str, str] | None = None,
+    source_guard=None,
 ) -> dict:
     environment = dict(environment or os.environ)
     environment["PYTHONHASHSEED"] = "0"
@@ -390,6 +393,8 @@ def _run_gate(
     states = {}
 
     for item in dependency_ordered_checks(manifest):
+        if source_guard is not None:
+            source_guard()
         check_id = item["id"]
         base = {
             "id": check_id,
@@ -455,6 +460,8 @@ def _run_gate(
                         outputs.append(
                             f"=== attempt {attempts} exit {completed.returncode} ===\n{completed.stdout or ''}"
                         )
+                        if source_guard is not None:
+                            source_guard()
                         captured_output = completed.stdout or ""
                         incomplete = (
                             completed.returncode != 0
@@ -530,6 +537,8 @@ def _run_gate(
     else:
         overall = "passed"
 
+    if source_guard is not None:
+        source_guard()
     payload = {
         "schemaVersion": 1,
         "runId": f"complete-gate-{uuid.uuid4().hex}",
@@ -618,6 +627,24 @@ def git_commit(repo_root: Path) -> str:
     return completed.stdout.strip()
 
 
+def require_clean_source(repo_root: Path) -> str:
+    """Bind gate admission to one exact clean repository commit."""
+    completed = subprocess.run(
+        ["git", "status", "--porcelain=v1", "--untracked-files=all"],
+        cwd=repo_root,
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=30,
+    )
+    if completed.returncode or completed.stdout:
+        raise ValueError("complete_gate_source_not_clean")
+    commit = git_commit(repo_root)
+    if not re.fullmatch(r"[0-9a-f]{40}", commit):
+        raise ValueError("complete_gate_source_commit_invalid")
+    return commit
+
+
 def write_busy_receipt(repo_root: Path) -> Path:
     started = now()
     run_id = f"{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}-{os.getpid()}"
@@ -647,12 +674,22 @@ def main() -> int:
     try:
         with complete_gate_lock(repo_root):
             validate_runtime_capacity()
+            source_commit = require_clean_source(repo_root)
             manifest_path = repo_root / "scripts" / "config" / "complete-gate-v1.json"
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             run_id = f"{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}-{os.getpid()}"
             evidence_dir = repo_root / ".artifacts" / "complete-gate" / run_id
+
+            def source_guard() -> None:
+                if require_clean_source(repo_root) != source_commit:
+                    raise ValueError("complete_gate_source_changed")
+
             result = run_gate(
-                manifest, repo_root, evidence_dir, source_commit=git_commit(repo_root)
+                manifest,
+                repo_root,
+                evidence_dir,
+                source_commit=source_commit,
+                source_guard=source_guard,
             )
     except CompleteGateBusy:
         busy_receipt = write_busy_receipt(repo_root)

@@ -139,6 +139,13 @@ def test_main_reports_success_and_sanitized_failure(monkeypatch, capsys, tmp_pat
     assert "ERROR:RepetitionError:bounded_failure" in capsys.readouterr().out
 
 
+def test_validate_only_admits_exact_current_bundle(monkeypatch, tmp_path):
+    result = tmp_path / "result.json"
+    monkeypatch.setattr(repetitions, "validate_current", lambda: result)
+    assert repetitions.main(["--validate-existing"]) == 0
+    assert repetitions.main(["--unknown"]) == 2
+
+
 def test_dirty_source_and_failed_repetition_are_terminal(tmp_path, monkeypatch):
     with pytest.raises(repetitions.RepetitionError, match="not_clean"):
         monkeypatch.setattr(repetitions.subprocess, "run", lambda *_args, **_kwargs: type(
