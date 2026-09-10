@@ -409,13 +409,16 @@ def test_remote_bootstrap_uses_bounded_size_appropriate_transfer_timeouts(tmp_pa
             raise subprocess.TimeoutExpired(
                 argv,
                 kwargs["timeout"],
-                output="safe progress\n",
-                stderr="full-preview-stage-failed:service-health exit=124\n",
+                output=b"safe progress\n",
+                stderr=b"full-preview-stage-failed:service-health exit=124\n",
             )
         return SimpleNamespace(returncode=0, stdout="", stderr="")
 
     remote.runner = bootstrap_timeout_runner
-    with pytest.raises(FullPreviewRemoteError, match="bounded full preview bootstrap timed out"):
+    with pytest.raises(
+        FullPreviewRemoteError,
+        match="bounded full preview bootstrap timed out.*full-preview-stage-failed:service-health exit=124",
+    ):
         remote.deploy("8.8.8.8", config)
 
 

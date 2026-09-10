@@ -29,6 +29,13 @@ PRIVATE_TRANSFER_TIMEOUT_SECONDS = 180
 REMOTE_BOOTSTRAP_TIMEOUT_SECONDS = 2700
 
 
+def _timeout_text(value: object) -> str:
+    """Normalize TimeoutExpired streams for safe diagnostic processing."""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value if isinstance(value, str) else ""
+
+
 def safe_diagnostic(stdout: str, stderr: str) -> str:
     """Return a bounded, line-filtered build diagnostic safe for operator evidence."""
     retained = []
@@ -140,8 +147,8 @@ class FullPreviewSshBootstrap:
             )
         except subprocess.TimeoutExpired as exc:
             diagnostic = safe_diagnostic(
-                (exc.stdout or "") if isinstance(exc.stdout, str) else "",
-                (exc.stderr or "") if isinstance(exc.stderr, str) else "",
+                _timeout_text(exc.stdout),
+                _timeout_text(exc.stderr),
             )
             raise FullPreviewRemoteError(
                 f"bounded full preview bootstrap timed out: {diagnostic}"
