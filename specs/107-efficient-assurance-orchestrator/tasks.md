@@ -158,7 +158,7 @@
 - [x] T109 Compare full and compact output for the same exact complete gate while retaining the separate measured routine-fixture median.
 - [x] T110 Add adversarial regression tests for every cycle-9 correction and rerun the focused policy matrix.
 - [x] T111 Obtain renewed independent code/security, operations, and UX/data acceptance with no critical, high, or medium finding.
-- [x] T112 Run one fresh final exact-commit complete gate, benchmark, hosted matrix, publication, and merge verification.
+- [ ] T112 Run one fresh final exact-commit complete gate, benchmark, hosted matrix, publication, and merge verification.
 
 ## Phase 17 — Analysis cycle 10 adversarial-review closure
 
