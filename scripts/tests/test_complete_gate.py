@@ -84,6 +84,47 @@ class CompleteGateTests(unittest.TestCase):
         with self.gate.complete_gate_lock(root):
             pass
 
+    def test_complete_gate_lock_rejects_symlink_and_preserves_target(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        artifacts = root / ".artifacts"
+        artifacts.mkdir()
+        target = root / "target.txt"
+        target.write_text("preserve", encoding="utf-8")
+        (artifacts / "complete-gate.lock").symlink_to(target)
+        with self.assertRaises(OSError), self.gate.complete_gate_lock(root):
+            self.fail("symlink lock was followed")
+        self.assertEqual("preserve", target.read_text(encoding="utf-8"))
+        self.assertEqual(0o644, S_IMODE(target.stat().st_mode))
+
+    def test_complete_gate_lock_rejects_symlinked_artifacts_directory(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        outside = root / "outside"
+        outside.mkdir()
+        (root / ".artifacts").symlink_to(outside, target_is_directory=True)
+        with self.assertRaises(OSError), self.gate.complete_gate_lock(root):
+            self.fail("symlinked lock parent was followed")
+        self.assertEqual([], list(outside.iterdir()))
+
+    def test_complete_gate_lock_rejects_hardlink_and_preserves_target(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        artifacts = root / ".artifacts"
+        artifacts.mkdir()
+        target = root / "target.txt"
+        target.write_text("preserve", encoding="utf-8")
+        os.link(target, artifacts / "complete-gate.lock")
+        with self.assertRaisesRegex(
+            ValueError, "unsafe_complete_gate_lock"
+        ), self.gate.complete_gate_lock(root):
+            self.fail("hardlink lock was accepted")
+        self.assertEqual("preserve", target.read_text(encoding="utf-8"))
+        self.assertEqual(0o644, S_IMODE(target.stat().st_mode))
+
     def test_busy_receipt_is_distinct_and_integrity_bound(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
@@ -293,6 +334,91 @@ class CompleteGateTests(unittest.TestCase):
         digest = stored.pop("evidenceDigest")
         canonical = json.dumps(stored, sort_keys=True, separators=(",", ":")).encode()
         self.assertEqual(hashlib.sha256(canonical).hexdigest(), digest)
+        check_result = stored["checks"][0]
+        self.assertEqual(hashlib.sha256(log.encode()).hexdigest(), check_result["artifactSha256"])
+        self.assertEqual(len(log.encode()), check_result["artifactSize"])
+        self.assertEqual(0o700, S_IMODE(output.stat().st_mode))
+        self.assertEqual(0o600, S_IMODE((output / "echo.log").stat().st_mode))
+        self.assertEqual(0o600, S_IMODE((output / "result.json").stat().st_mode))
+        validated = self.gate.validate_gate_evidence(output / "result.json", output.parent)
+        validated.pop("evidenceDigest")
+        self.assertEqual(stored, validated)
+
+    def test_gate_evidence_replay_rejects_log_tamper(self):
+        result, output = self.run_gate(
+            [check("echo", ["/bin/sh", "-c", "printf stable"], tools=["/bin/sh"])]
+        )
+        self.assertEqual("passed", result["overallStatus"])
+        (output / "echo.log").write_text("tampered", encoding="utf-8")
+        os.chmod(output / "echo.log", 0o600)
+        with self.assertRaisesRegex(ValueError, "artifact_integrity_invalid"):
+            self.gate.validate_gate_evidence(output / "result.json", output.parent)
+
+    def test_gate_evidence_replay_rejects_public_result_mode(self):
+        result, output = self.run_gate(
+            [check("echo", ["/bin/sh", "-c", "printf stable"], tools=["/bin/sh"])]
+        )
+        self.assertEqual("passed", result["overallStatus"])
+        os.chmod(output / "result.json", 0o644)
+        with self.assertRaisesRegex(ValueError, "result_unsafe"):
+            self.gate.validate_gate_evidence(output / "result.json", output.parent)
+
+    def test_gate_evidence_rejects_symlinked_output_parent_and_preserves_target(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        (root / ".git").mkdir()
+        outside = root / "outside"
+        outside.mkdir()
+        marker = outside / "marker"
+        marker.write_text("preserve", encoding="utf-8")
+        (root / "evidence").symlink_to(outside, target_is_directory=True)
+        with self.assertRaises(OSError):
+            self.gate.run_gate(
+                {"schemaVersion": 1, "checks": [check("ok", ["/bin/true"], tools=["/bin/true"])]},
+                root,
+                root / "evidence",
+                source_commit="0" * 40,
+            )
+        self.assertEqual("preserve", marker.read_text(encoding="utf-8"))
+
+    def test_gate_evidence_rejects_symlinked_log_and_preserves_target(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        (root / ".git").mkdir()
+        output = root / "evidence"
+        output.mkdir()
+        target = root / "target"
+        target.write_text("preserve", encoding="utf-8")
+        (output / "ok.log").symlink_to(target)
+        with self.assertRaises(OSError):
+            self.gate.run_gate(
+                {"schemaVersion": 1, "checks": [check("ok", ["/bin/true"], tools=["/bin/true"])]},
+                root,
+                output,
+                source_commit="0" * 40,
+            )
+        self.assertEqual("preserve", target.read_text(encoding="utf-8"))
+
+    def test_gate_evidence_rejects_symlinked_result_and_preserves_target(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        (root / ".git").mkdir()
+        output = root / "evidence"
+        output.mkdir()
+        target = root / "target"
+        target.write_text("preserve", encoding="utf-8")
+        (output / "result.json").symlink_to(target)
+        with self.assertRaisesRegex(ValueError, "unsafe_private_result_member"):
+            self.gate.run_gate(
+                {"schemaVersion": 1, "checks": [check("ok", ["/bin/true"], tools=["/bin/true"])]},
+                root,
+                output,
+                source_commit="0" * 40,
+            )
+        self.assertEqual("preserve", target.read_text(encoding="utf-8"))
 
     def test_rejects_unknown_dependency_and_cycle(self):
         with self.assertRaisesRegex(ValueError, "unknown dependency"):

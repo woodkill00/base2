@@ -334,13 +334,11 @@ class CiPolicyTests(unittest.TestCase):
         self.assertNotIn("E2E_BROWSER_API_URL", compose_text + guide + runner)
         self.assertIn('project="base2-e2e-isolated"', runner)
         self.assertIn('lock_file="$repo_root/.artifacts/e2e-isolated.lock"', runner)
-        self.assertIn(
-            'lock_ready_file="$repo_root/.artifacts/e2e-isolated.lock-ready"',
-            runner,
-        )
-        self.assertIn("if ! flock -n 9; then", runner)
+        self.assertIn('scripts/python/secure_file_lock.py', runner)
+        self.assertIn("--held-environment BASE2_E2E_LOCK_HELD", runner)
+        self.assertNotIn("e2e-isolated.lock-ready", runner + concurrency_proof)
         self.assertLess(
-            runner.index("if ! flock -n 9; then"),
+            runner.index('if [[ "${BASE2_E2E_LOCK_HELD:-}" != 1 ]]'),
             runner.index("compose=(docker compose"),
         )
         self.assertIn('trap cleanup EXIT INT TERM', runner)
@@ -350,9 +348,11 @@ class CiPolicyTests(unittest.TestCase):
         )
         self.assertIn('scripts/bash/e2e-isolated.sh', guide)
         self.assertIn('contender_rc" -ne 3', concurrency_proof)
-        self.assertIn('if ! flock -n "$lock_file" -c true', concurrency_proof)
-        self.assertIn('[[ -f "$lock_ready_file" ]]', concurrency_proof)
-        self.assertNotIn('if ! flock -n "$lock_file" -c true >/dev/null 2>&1; then\n    held=true', concurrency_proof)
+        self.assertIn("coproc OWNER", concurrency_proof)
+        self.assertIn("E2E_READY_FD=3", concurrency_proof)
+        self.assertIn("read -r -t 20 owner_ready", concurrency_proof)
+        self.assertIn("mktemp -d --tmpdir", concurrency_proof)
+        self.assertNotIn("flock -n", concurrency_proof)
         self.assertIn("inventory=empty", concurrency_proof)
 
     def test_e2e_workflow_waits_for_synthetic_support_readiness(self):

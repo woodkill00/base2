@@ -5,13 +5,26 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 compose_file="$repo_root/e2e/docker-compose.e2e.yml"
 project="base2-e2e-isolated"
 lock_file="$repo_root/.artifacts/e2e-isolated.lock"
-lock_ready_file="$repo_root/.artifacts/e2e-isolated.lock-ready"
-
-mkdir -p "$(dirname "$lock_file")"
-exec 9>"$lock_file"
-if ! flock -n 9; then
-  printf 'ERROR: the fixed isolated E2E project is already in use\n' >&2
-  exit 3
+if [[ "${BASE2_E2E_LOCK_HELD:-}" != 1 ]]; then
+  lock_args=(
+    python3 "$repo_root/scripts/python/secure_file_lock.py"
+    --lock "$lock_file"
+    --root "$repo_root"
+    --held-environment BASE2_E2E_LOCK_HELD
+    --busy-exit 3
+  )
+  if [[ -n "${E2E_READY_FD:-}" ]]; then
+    [[ "$E2E_READY_FD" =~ ^[0-9]+$ ]] || { printf 'ERROR: invalid E2E_READY_FD\n' >&2; exit 2; }
+    lock_args+=(--ready-fd "$E2E_READY_FD")
+  fi
+  set +e
+  "${lock_args[@]}" -- "$0" "$@"
+  lock_rc="$?"
+  set -e
+  if [[ "$lock_rc" -eq 3 ]]; then
+    printf 'ERROR: the fixed isolated E2E project is already in use\n' >&2
+  fi
+  exit "$lock_rc"
 fi
 
 E2E_API_PORT="${E2E_API_PORT:-15001}"
@@ -39,11 +52,9 @@ export E2E_WEB_ORIGIN="http://127.0.0.1:$E2E_WEB_PORT"
 
 compose=(docker compose -p "$project" -f "$compose_file")
 cleanup() {
-  rm -f "$lock_ready_file"
   "${compose[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
 }
 trap cleanup EXIT INT TERM
-printf '%s\n' "$$" >"$lock_ready_file"
 
 # The fixed project boundary makes this preclean incapable of touching an
 # unrelated Base2 stack while guaranteeing a genuinely empty database volume.

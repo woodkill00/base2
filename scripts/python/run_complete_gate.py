@@ -10,9 +10,10 @@ import os
 import platform
 import re
 import shutil
+import stat
 import subprocess
 import uuid
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -38,11 +39,121 @@ class CompleteGateBusy(RuntimeError):
     """Another process owns the repository-wide complete-gate lease."""
 
 
+def _contained_parts(path: Path, trusted_root: Path) -> tuple[str, ...]:
+    root = Path(os.path.abspath(trusted_root))
+    candidate = Path(os.path.abspath(path))
+    try:
+        relative = candidate.relative_to(root)
+    except ValueError as exc:
+        raise ValueError("private_path_outside_trusted_root") from exc
+    if not relative.parts or any(part in {"", ".", ".."} for part in relative.parts):
+        raise ValueError("invalid_private_path")
+    return relative.parts
+
+
+def open_private_directory(path: Path, trusted_root: Path) -> int:
+    """Open/create a contained 0700 directory chain without following links."""
+    parts = _contained_parts(path, trusted_root)
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC | os.O_NOFOLLOW
+    descriptor = os.open(Path(os.path.abspath(trusted_root)), flags)
+    try:
+        for part in parts:
+            with suppress(FileExistsError):
+                os.mkdir(part, 0o700, dir_fd=descriptor)
+            child = os.open(part, flags, dir_fd=descriptor)
+            details = os.fstat(child)
+            if not stat.S_ISDIR(details.st_mode) or details.st_uid != os.geteuid():
+                os.close(child)
+                raise ValueError("unsafe_private_directory")
+            os.fchmod(child, 0o700)
+            os.close(descriptor)
+            descriptor = child
+        return descriptor
+    except Exception:
+        os.close(descriptor)
+        raise
+
+
+def open_private_file(directory_fd: int, name: str, *, truncate: bool = True) -> int:
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", name):
+        raise ValueError("invalid_private_member_name")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC | os.O_NOFOLLOW
+    if truncate:
+        flags |= os.O_TRUNC
+    descriptor = os.open(name, flags, 0o600, dir_fd=directory_fd)
+    details = os.fstat(descriptor)
+    if (
+        not stat.S_ISREG(details.st_mode)
+        or details.st_uid != os.geteuid()
+        or details.st_nlink != 1
+    ):
+        os.close(descriptor)
+        raise ValueError("unsafe_private_member")
+    os.fchmod(descriptor, 0o600)
+    return descriptor
+
+
+def private_write(directory_fd: int, name: str, data: bytes) -> tuple[str, int]:
+    descriptor = open_private_file(directory_fd, name)
+    try:
+        with os.fdopen(descriptor, "wb", closefd=False) as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+    finally:
+        os.close(descriptor)
+    return hashlib.sha256(data).hexdigest(), len(data)
+
+
+def private_atomic_json(directory_fd: int, name: str, payload: dict) -> None:
+    data = (json.dumps(payload, indent=2, sort_keys=True) + "\n").encode()
+    temporary = f".{name}.{uuid.uuid4().hex}.tmp"
+    descriptor = os.open(
+        temporary,
+        os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC | os.O_NOFOLLOW,
+        0o600,
+        dir_fd=directory_fd,
+    )
+    try:
+        with os.fdopen(descriptor, "wb", closefd=False) as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        try:
+            existing = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            existing = None
+        if existing is not None and (
+            not stat.S_ISREG(existing.st_mode) or existing.st_uid != os.geteuid()
+        ):
+            raise ValueError("unsafe_private_result_member")
+        os.replace(temporary, name, src_dir_fd=directory_fd, dst_dir_fd=directory_fd)
+        os.fsync(directory_fd)
+    finally:
+        os.close(descriptor)
+        with suppress(FileNotFoundError):
+            os.unlink(temporary, dir_fd=directory_fd)
+
+
 @contextmanager
 def complete_gate_lock(repo_root: Path):
+    artifacts_fd = open_private_directory(repo_root / ".artifacts", repo_root)
     lock_path = repo_root / ".artifacts" / "complete-gate.lock"
-    lock_path.parent.mkdir(parents=True, exist_ok=True)
-    descriptor = os.open(lock_path, os.O_CREAT | os.O_RDWR | os.O_CLOEXEC, 0o600)
+    descriptor = os.open(
+        "complete-gate.lock",
+        os.O_CREAT | os.O_RDWR | os.O_CLOEXEC | os.O_NOFOLLOW,
+        0o600,
+        dir_fd=artifacts_fd,
+    )
+    details = os.fstat(descriptor)
+    if (
+        not stat.S_ISREG(details.st_mode)
+        or details.st_uid != os.geteuid()
+        or details.st_nlink != 1
+    ):
+        os.close(descriptor)
+        os.close(artifacts_fd)
+        raise ValueError("unsafe_complete_gate_lock")
     os.fchmod(descriptor, 0o600)
     handle = os.fdopen(descriptor, "r+")
     try:
@@ -56,6 +167,7 @@ def complete_gate_lock(repo_root: Path):
             fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
         finally:
             handle.close()
+            os.close(artifacts_fd)
 
 
 def now() -> str:
@@ -195,13 +307,6 @@ def redact(text: str, environment: dict[str, str]) -> str:
     return output
 
 
-def atomic_json(path: Path, payload: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    os.replace(temporary, path)
-
-
 def run_gate(
     manifest: dict,
     repo_root: Path,
@@ -212,7 +317,7 @@ def run_gate(
 ) -> dict:
     validate_manifest(manifest)
     repo_root = repo_root.resolve()
-    evidence_dir.mkdir(parents=True, exist_ok=True)
+    evidence_fd = open_private_directory(evidence_dir, repo_root)
     environment = dict(environment or os.environ)
     started = now()
     results = []
@@ -301,7 +406,10 @@ def run_gate(
                         )
                         if not infrastructure_crash and not incomplete:
                             break
-                    artifact.write_text(redact("\n".join(outputs), environment), encoding="utf-8")
+                    artifact_bytes = redact("\n".join(outputs), environment).encode()
+                    artifact_sha256, artifact_size = private_write(
+                        evidence_fd, artifact.name, artifact_bytes
+                    )
                     exit_code = None if timed_out else completed.returncode
                     status = "passed" if not timed_out and exit_code == 0 else "failed"
                     result = {
@@ -309,6 +417,8 @@ def run_gate(
                         "status": status,
                         "exitCode": exit_code,
                         "artifact": artifact.name,
+                        "artifactSha256": artifact_sha256,
+                        "artifactSize": artifact_size,
                         "attempts": attempts,
                     }
                     if status == "passed" and attempts > 1:
@@ -346,8 +456,69 @@ def run_gate(
     }
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
     payload["evidenceDigest"] = hashlib.sha256(canonical).hexdigest()
-    atomic_json(evidence_dir / "result.json", payload)
+    private_atomic_json(evidence_fd, "result.json", payload)
+    os.close(evidence_fd)
+    validate_gate_evidence(evidence_dir / "result.json", repo_root)
     return payload
+
+
+def validate_gate_evidence(result_path: Path, repo_root: Path) -> dict:
+    evidence_fd = open_private_directory(result_path.parent, repo_root)
+    try:
+        descriptor = os.open(
+            result_path.name, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW, dir_fd=evidence_fd
+        )
+        with os.fdopen(descriptor, "rb") as handle:
+            details = os.fstat(handle.fileno())
+            if (
+                not stat.S_ISREG(details.st_mode)
+                or details.st_uid != os.geteuid()
+                or details.st_nlink != 1
+                or stat.S_IMODE(details.st_mode) != 0o600
+            ):
+                raise ValueError("complete_gate_result_unsafe")
+            payload = json.loads(handle.read())
+        expected_digest = payload.pop("evidenceDigest", None)
+        canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        if expected_digest != hashlib.sha256(canonical).hexdigest():
+            raise ValueError("complete_gate_result_digest_invalid")
+        seen = set()
+        for item in payload.get("checks", []):
+            artifact = item.get("artifact")
+            if artifact is None:
+                continue
+            if artifact in seen or not re.fullmatch(r"[a-z][a-z0-9-]+\.log", artifact):
+                raise ValueError("complete_gate_artifact_name_invalid")
+            seen.add(artifact)
+            member = os.open(
+                artifact, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW, dir_fd=evidence_fd
+            )
+            try:
+                details = os.fstat(member)
+                if (
+                    not stat.S_ISREG(details.st_mode)
+                    or details.st_uid != os.geteuid()
+                    or stat.S_IMODE(details.st_mode) != 0o600
+                ):
+                    raise ValueError("complete_gate_artifact_unsafe")
+                artifact_digest = hashlib.sha256()
+                artifact_size = 0
+                while True:
+                    block = os.read(member, 1024 * 1024)
+                    if not block:
+                        break
+                    artifact_digest.update(block)
+                    artifact_size += len(block)
+            finally:
+                os.close(member)
+            if (
+                item.get("artifactSize") != artifact_size
+                or item.get("artifactSha256") != artifact_digest.hexdigest()
+            ):
+                raise ValueError("complete_gate_artifact_integrity_invalid")
+        return {**payload, "evidenceDigest": expected_digest}
+    finally:
+        os.close(evidence_fd)
 
 
 def git_commit(repo_root: Path) -> str:
@@ -373,7 +544,11 @@ def write_busy_receipt(repo_root: Path) -> Path:
     }
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
     payload["evidenceDigest"] = hashlib.sha256(canonical).hexdigest()
-    atomic_json(path, payload)
+    directory_fd = open_private_directory(path.parent, repo_root)
+    try:
+        private_atomic_json(directory_fd, path.name, payload)
+    finally:
+        os.close(directory_fd)
     return path
 
 
@@ -384,7 +559,7 @@ def main() -> int:
             validate_runtime_capacity()
             manifest_path = repo_root / "scripts" / "config" / "complete-gate-v1.json"
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+            run_id = f"{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}-{os.getpid()}"
             evidence_dir = repo_root / ".artifacts" / "complete-gate" / run_id
             result = run_gate(
                 manifest, repo_root, evidence_dir, source_commit=git_commit(repo_root)
@@ -394,6 +569,10 @@ def main() -> int:
         print("Complete gate: BUSY")
         print(f"Evidence: {busy_receipt}")
         return GATE_BUSY_EXIT
+    except (OSError, ValueError) as exc:
+        print("Complete gate: INCOMPLETE")
+        print(f"Diagnostic: gate admission or evidence validation failed: {exc}")
+        return 2
     print(f"Complete gate: {result['overallStatus'].upper()}")
     print(f"Evidence: {evidence_dir / 'result.json'}")
     return {"passed": 0, "failed": 1, "incomplete": 2}[result["overallStatus"]]

@@ -1908,3 +1908,27 @@ behavioral delta is the desktop-only deterministic capture established in cycle 
 snapshot inventory, and unchanged reviewed surfaces, then restart every final
 exact-source proof from the resulting metadata-only commit. The failed
 `20260910T022512Z` gate remains retained and cannot serve as release evidence.
+
+## Analysis cycle 93 — private no-follow gate evidence and lock ownership
+
+Final data/security review rejected candidate
+`419b92d9461431f47de2ad61a37e94fcf2816561` with three medium findings. The
+complete-gate output directory and members followed symlinked ancestors, used
+ambient-readable modes, and bound only log names rather than content hashes and
+sizes. Its fixed lock also followed a symlink before changing target mode. The
+isolated E2E runner and proof used truncating fixed lock/readiness/log paths,
+allowing same-user link redirection despite their otherwise correct ownership
+semantics. Both 109/109 receipts remain valid descriptions of those runs but
+are rejected as final release evidence.
+
+B524-B531 traverse every private directory beneath a trusted repository root
+with directory descriptors and `O_NOFOLLOW`, require owned regular members,
+enforce directory mode 0700 and file mode 0600, create JSON through private
+exclusive temporary members, and bind every gate log's name, SHA-256, and byte
+size into the canonical result digest. Replay revalidates the manifest and all
+members. The gate and E2E locks use no-follow file descriptors; the E2E proof
+uses an inherited anonymous pipe for readiness and a fresh private temporary
+log directory, eliminating fixed readiness and log targets. Adversarial tests
+must preserve external targets across linked parent, lock, log, result, and
+readiness attempts. A real owner/contender proof and full exact-source evidence
+sequence must pass again before another final independent review.
