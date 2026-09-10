@@ -159,3 +159,16 @@
 - [x] T110 Add adversarial regression tests for every cycle-9 correction and rerun the focused policy matrix.
 - [ ] T111 Obtain renewed independent code/security, operations, and UX/data acceptance with no critical, high, or medium finding.
 - [ ] T112 Run one fresh final exact-commit complete gate, benchmark, hosted matrix, publication, and merge verification.
+
+## Phase 17 — Analysis cycle 10 adversarial-review closure
+
+- [x] T113 Require typed artifact, digest, size, attempts, and zero-exit evidence for every required complete-gate check.
+- [x] T114 Escalate token, login, permission, credential, password, user, and account security paths conservatively.
+- [x] T115 Re-enforce the cache ceiling immediately before every cache publication in a multi-check run.
+- [x] T116 Recheck exact source after cache reads and immediately before cache and terminal result publication.
+- [x] T117 Validate every replayed benchmark log and its referenced exact complete-gate receipt.
+- [x] T118 Add private benchmark-directory retention with the same owned no-follow deletion boundary.
+- [x] T119 Make human plan/explain output include selected, avoided, reason, and residual-scope information.
+- [x] T120 Escape terminal controls from every human diagnostic while preserving compact redacted context.
+- [x] T121 Report the current interrupted evidence path for errors that occur after run admission.
+- [x] T122 Add adversarial regressions and complete the tenth task-analysis cycle with no unresolved static gap.

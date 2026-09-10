@@ -9,6 +9,7 @@ import json
 import os
 import re
 import statistics
+import stat
 import subprocess
 import sys
 import tempfile
@@ -23,6 +24,7 @@ if str(ROOT) not in sys.path:
 from scripts.python.assurance_orchestrator import (
     AssuranceError,
     Change,
+    _prune_private_directories,
     _redact_output,
     _sha,
     benchmark_report,
@@ -88,10 +90,23 @@ def _validate_complete_gate_path(root: Path, path: Path, commit: str) -> tuple[i
     checks = payload.get("checks")
     expected = [(item["id"], item["required"]) for item in manifest["checks"]]
     actual = [(item.get("id"), item.get("required")) for item in checks] if isinstance(checks, list) else []
+    required_shape = {
+        "artifact", "artifactSha256", "artifactSize", "attempts", "diagnostic",
+        "exitCode", "id", "required", "status",
+    }
     if (
         payload.get("schemaVersion") != 1 or payload.get("sourceCommit") != commit
         or payload.get("overallStatus") != "passed" or actual != expected
-        or any(item.get("status") != "passed" for item in checks if item.get("required"))
+        or any(
+            set(item) != required_shape or item.get("status") != "passed"
+            or item.get("exitCode") != 0
+            or not isinstance(item.get("attempts"), int) or not 1 <= item["attempts"] <= 3
+            or not isinstance(item.get("artifact"), str)
+            or not isinstance(item.get("artifactSize"), int) or item["artifactSize"] < 0
+            or not isinstance(item.get("artifactSha256"), str)
+            or re.fullmatch(r"[0-9a-f]{64}", item["artifactSha256"]) is None
+            for item in checks if item.get("required")
+        )
     ):
         raise AssuranceError("benchmark_legacy_evidence_invalid")
     measured_bytes = sum(item.get("artifactSize", 0) for item in checks)
@@ -128,7 +143,7 @@ def _existing_complete_gate(root: Path, commit: str) -> tuple[int, str, int] | N
     return None
 
 
-def _validate_existing(directory_fd: int, commit: str) -> dict:
+def _validate_existing(directory_fd: int, commit: str, root: Path) -> dict:
     descriptor = os.open("result.json", os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW, dir_fd=directory_fd)
     try:
         details = os.fstat(descriptor)
@@ -140,9 +155,76 @@ def _validate_existing(directory_fd: int, commit: str) -> dict:
         os.close(descriptor)
     supplied = payload.get("integrity")
     unsigned = {key: value for key, value in payload.items() if key != "integrity"}
+    expected_keys = {
+        "schemaVersion", "status", "timeReductionPercent", "outputReductionPercent",
+        "legacyMeasuredMilliseconds", "optimizedMeasuredMilliseconds", "estimatedAvoidedMilliseconds",
+        "mutationsDetected", "mutationsTotal", "sourceCommit", "legacyLog",
+        "legacyCompleteGateEvidence", "legacyFullLogBytes", "optimizedLog", "routineLog",
+        "outputComparison", "mutationPathsDigest", "previousFeatureCommitHostedJobsMultiplier",
+        "optimizedFeatureCommitHostedJobsMultiplier", "routineFixtures",
+        "optimizedRoutineSamplesMilliseconds", "integrity",
+    }
     if (
-        payload.get("sourceCommit") != commit or payload.get("status") != "passed"
+        set(payload) != expected_keys or payload.get("schemaVersion") != 1
+        or payload.get("sourceCommit") != commit or payload.get("status") != "passed"
         or supplied != _sha(unsigned)
+    ):
+        raise AssuranceError("benchmark_evidence_invalid")
+    for key, expected_name in (
+        ("legacyLog", "legacy.log"), ("optimizedLog", "optimized.log"), ("routineLog", "routine.log"),
+    ):
+        metadata = payload.get(key)
+        if not isinstance(metadata, dict) or set(metadata) != {"name", "sha256", "bytes"} or metadata["name"] != expected_name:
+            raise AssuranceError("benchmark_evidence_invalid")
+        member = os.open(expected_name, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW, dir_fd=directory_fd)
+        try:
+            details = os.fstat(member)
+            chunks: list[bytes] = []
+            remaining = MAX_LOG_BYTES + 1
+            while remaining:
+                block = os.read(member, min(1024 * 1024, remaining))
+                if not block:
+                    break
+                chunks.append(block)
+                remaining -= len(block)
+            content = b"".join(chunks)
+        finally:
+            os.close(member)
+        if (
+            not stat.S_ISREG(details.st_mode) or details.st_uid != os.geteuid()
+            or details.st_nlink != 1 or details.st_mode & 0o077
+            or len(content) > MAX_LOG_BYTES or len(content) != metadata["bytes"]
+            or hashlib.sha256(content).hexdigest() != metadata["sha256"]
+        ):
+            raise AssuranceError("benchmark_evidence_invalid")
+    legacy = payload.get("legacyCompleteGateEvidence")
+    if not isinstance(legacy, str):
+        raise AssuranceError("benchmark_evidence_invalid")
+    measured, relative, _ = _validate_complete_gate_path(root, root / legacy, commit)
+    if relative != legacy or payload.get("legacyFullLogBytes") != measured:
+        raise AssuranceError("benchmark_evidence_invalid")
+    try:
+        expected_report = benchmark_report(
+            legacy_measured_ms=payload["legacyMeasuredMilliseconds"],
+            optimized_measured_ms=payload["optimizedMeasuredMilliseconds"],
+            legacy_output_bytes=payload["legacyFullLogBytes"],
+            optimized_output_bytes=payload["optimizedLog"]["bytes"],
+            estimated_avoided_ms=payload["estimatedAvoidedMilliseconds"],
+            mutations_detected=payload["mutationsDetected"],
+            mutations_total=payload["mutationsTotal"],
+        )
+    except (KeyError, TypeError, AssuranceError) as exc:
+        raise AssuranceError("benchmark_evidence_invalid") from exc
+    if (
+        any(payload.get(key) != value for key, value in expected_report.items())
+        or payload.get("outputComparison") != "same-exact-gate-full-logs-vs-compact-receipt"
+        or payload.get("mutationPathsDigest") != hashlib.sha256("\n".join(sorted(MUTATIONS)).encode()).hexdigest()
+        or payload.get("previousFeatureCommitHostedJobsMultiplier") != 2
+        or payload.get("optimizedFeatureCommitHostedJobsMultiplier") != 1
+        or payload.get("routineFixtures") != list(ROUTINE_FIXTURES)
+        or not isinstance(payload.get("optimizedRoutineSamplesMilliseconds"), list)
+        or len(payload["optimizedRoutineSamplesMilliseconds"]) != len(ROUTINE_FIXTURES)
+        or any(not isinstance(value, int) or value <= 0 for value in payload["optimizedRoutineSamplesMilliseconds"])
     ):
         raise AssuranceError("benchmark_evidence_invalid")
     return payload
@@ -164,16 +246,26 @@ def _run_under_lease(root: Path) -> Path:
     commit = _git(root, "rev-parse", "HEAD")
     if not re.fullmatch(r"[0-9a-f]{40}", commit) or _git(root, "status", "--porcelain", "--untracked-files=all"):
         raise AssuranceError("benchmark_source_not_clean")
-    evidence_fd = open_private_directory(
-        root / ".artifacts" / "assurance-orchestrator" / "benchmarks" / commit, root
+    benchmark_root_fd = open_private_directory(
+        root / ".artifacts" / "assurance-orchestrator" / "benchmarks", root
     )
+    evidence_fd: int | None = None
     try:
         try:
-            fcntl.flock(evidence_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            fcntl.flock(benchmark_root_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
             raise AssuranceError("benchmark_busy") from exc
+        maximum = load_graph(root)["evidencePolicy"]["maxBenchmarkDirectories"]
+        present = commit in os.listdir(benchmark_root_fd)
+        _prune_private_directories(
+            benchmark_root_fd, re.compile(r"[0-9a-f]{40}"),
+            maximum if present else maximum - 1, {commit} if present else None,
+        )
+        evidence_fd = open_private_directory(
+            root / ".artifacts" / "assurance-orchestrator" / "benchmarks" / commit, root
+        )
         if "result.json" in os.listdir(evidence_fd):
-            _validate_existing(evidence_fd, commit)
+            _validate_existing(evidence_fd, commit, root)
             return root / ".artifacts" / "assurance-orchestrator" / "benchmarks" / commit / "result.json"
         existing_gate = _existing_complete_gate(root, commit)
         if existing_gate is None:
@@ -284,7 +376,9 @@ def _run_under_lease(root: Path) -> Path:
         private_atomic_json(evidence_fd, "result.json", payload)
         return root / ".artifacts" / "assurance-orchestrator" / "benchmarks" / commit / "result.json"
     finally:
-        os.close(evidence_fd)
+        if evidence_fd is not None:
+            os.close(evidence_fd)
+        os.close(benchmark_root_fd)
 
 
 def run(root: Path = ROOT) -> Path:

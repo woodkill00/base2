@@ -196,10 +196,11 @@ def validate_graph(graph: dict[str, Any]) -> dict[str, Any]:
         raise AssuranceError("graph_resource_budget_invalid")
     evidence = graph.get("evidencePolicy", {})
     if (
-        set(evidence) != {"passedTtlSeconds", "maxRunDirectories", "maxCacheEntries", "directoryMode", "fileMode"}
+        set(evidence) != {"passedTtlSeconds", "maxRunDirectories", "maxCacheEntries", "maxBenchmarkDirectories", "directoryMode", "fileMode"}
         or evidence["passedTtlSeconds"] != 86400
         or not 1 <= evidence["maxRunDirectories"] <= 100
         or not 1 <= evidence["maxCacheEntries"] <= 256
+        or not 1 <= evidence["maxBenchmarkDirectories"] <= 100
         or evidence["directoryMode"] != "0700" or evidence["fileMode"] != "0600"
     ):
         raise AssuranceError("graph_evidence_budget_invalid")
@@ -384,7 +385,10 @@ def build_plan(
             lowered = path.lower()
             if lowered.startswith(("api/", "django/", "react-app/src/")) and any(
                 marker in lowered
-                for marker in ("/auth", "authentication", "authorization", "/identity", "/tenant", "/privacy", "/session", "/csrf")
+                for marker in (
+                    "auth", "identity", "tenant", "privacy", "session", "csrf", "token",
+                    "login", "permission", "credential", "password", "/users/", "/accounts/",
+                )
             ):
                 surfaces.add("security")
                 minimum = "full"
@@ -765,12 +769,26 @@ def exact_complete_gate_evidence(root: Path, source_commit: str) -> str | None:
             checks = payload.get("checks")
             expected = [(item["id"], item["required"]) for item in manifest["checks"]]
             actual = [(item.get("id"), item.get("required")) for item in checks] if isinstance(checks, list) else []
+            required_shape = {
+                "artifact", "artifactSha256", "artifactSize", "attempts", "diagnostic",
+                "exitCode", "id", "required", "status",
+            }
             if (
                 payload.get("schemaVersion") == 1
                 and payload.get("sourceCommit") == source_commit
                 and payload.get("overallStatus") == "passed"
                 and actual == expected
-                and all(item.get("status") == "passed" for item in checks if item.get("required"))
+                and all(
+                    set(item) == required_shape
+                    and item.get("status") == "passed"
+                    and item.get("exitCode") == 0
+                    and isinstance(item.get("attempts"), int) and 1 <= item["attempts"] <= 3
+                    and isinstance(item.get("artifact"), str)
+                    and isinstance(item.get("artifactSize"), int) and item["artifactSize"] >= 0
+                    and isinstance(item.get("artifactSha256"), str)
+                    and re.fullmatch(r"[0-9a-f]{64}", item["artifactSha256"])
+                    for item in checks if item.get("required")
+                )
             ):
                 return f".artifacts/complete-gate/{name}/result.json"
         return None
@@ -864,11 +882,13 @@ def _cleanup_cache_stages(cache_fd: int) -> None:
         os.rmdir(name, dir_fd=cache_fd)
 
 
-def _prune_private_directories(parent_fd: int, pattern: re.Pattern[str], maximum: int) -> None:
+def _prune_private_directories(
+    parent_fd: int, pattern: re.Pattern[str], maximum: int, preserve: set[str] | None = None,
+) -> None:
     entries: list[tuple[int, str]] = []
     for name in os.listdir(parent_fd):
         if not pattern.fullmatch(name):
-            continue
+            raise AssuranceError("evidence_directory_unknown")
         details = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
         if (
             not stat.S_ISDIR(details.st_mode) or details.st_uid != os.geteuid()
@@ -876,7 +896,8 @@ def _prune_private_directories(parent_fd: int, pattern: re.Pattern[str], maximum
         ):
             raise AssuranceError("evidence_directory_unsafe")
         entries.append((details.st_mtime_ns, name))
-    for _, name in sorted(entries)[:max(0, len(entries) - maximum)]:
+    removable = [item for item in sorted(entries) if item[1] not in (preserve or set())]
+    for _, name in removable[:max(0, len(entries) - maximum)]:
         child_fd = _open_child(parent_fd, name, create=False)
         try:
             for member in os.listdir(child_fd):
@@ -1060,6 +1081,8 @@ def execute_plan(root: Path, graph: dict[str, Any], plan: dict[str, Any]) -> dic
                     if graph["checks"][check_id]["cache"] and not plan["dirty"] and plan["resolvedTier"] != "release":
                         cached = _cached_receipt(cache_fd, input_digest, now)
                     if cached is not None:
+                        if not _source_matches_plan(project_root, plan):
+                            raise AssuranceError("repository_source_changed")
                         reused.append(check_id)
                         dependency_status[check_id] = "passed"
                         receipts.append(cached)
@@ -1138,11 +1161,19 @@ def execute_plan(root: Path, graph: dict[str, Any], plan: dict[str, Any]) -> dic
                     executed.append(check_id)
                     dependency_status[check_id] = status_value
                     if status_value == "passed" and graph["checks"][check_id]["cache"] and not plan["dirty"]:
+                        if not _source_matches_plan(project_root, plan):
+                            raise AssuranceError("repository_source_changed")
+                        _prune_private_directories(
+                            cache_fd, re.compile(r"[0-9a-f]{64}"),
+                            graph["evidencePolicy"]["maxCacheEntries"] - 1,
+                        )
                         _write_cache(cache_fd, receipt, bounded)
                     if status_value != "passed":
                         failed.append(check_id)
                         blocked.extend(plan["selected"][position + 1 :])
                         break
+            if not _source_matches_plan(project_root, plan):
+                raise AssuranceError("repository_source_changed")
             wall = (time.monotonic_ns() - started) // 1_000_000
             aggregate = {
                 "schemaVersion": 1,
@@ -1208,21 +1239,27 @@ def compact_json(payload: dict[str, Any], *, max_bytes: int = 4096, max_lines: i
 
 
 def compact_text(payload: dict[str, Any], *, max_bytes: int = 4096, max_lines: int = 40) -> str:
+    def safe(value: Any) -> str:
+        return json.dumps(str(value), ensure_ascii=True)[1:-1]
+
     status = str(payload.get("status", "unknown")).upper()
     lines = [f"Assurance: {status}"]
     for label, key in (
-        ("Tier", "resolvedTier"), ("Executed", "executed"), ("Reused", "reused"),
+        ("Tier", "resolvedTier"), ("Selected", "selected"), ("Avoided", "avoided"),
+        ("Executed", "executed"), ("Reused", "reused"),
         ("Failed", "failed"), ("Blocked", "blocked"), ("Evidence", "evidencePath"),
+        ("Residual", "residualScope"), ("Reason count", "reasonCount"), ("Reasons", "reasons"),
         ("Error", "error"),
     ):
         value = payload.get(key)
         if value not in (None, [], ""):
-            lines.append(f"{label}: {','.join(value) if isinstance(value, list) else value}")
+            shown = ",".join(safe(item) for item in value) if isinstance(value, list) else safe(value)
+            lines.append(f"{label}: {shown}")
     if payload.get("failureDetails"):
         for item in payload["failureDetails"]:
             lines.append(
                 f"Failure {item['checkId']} (exit {item['exitCode']}, attempts {item['attempts']}): "
-                f"{item['summary']}"
+                f"{safe(item['summary'])}"
             )
     rendered = "\n".join(lines) + "\n"
     if len(rendered.encode()) > max_bytes or len(rendered.splitlines()) > max_lines:
@@ -1377,7 +1414,12 @@ def main(argv: list[str] | None = None) -> int:
         print(render(payload), end="")
         return 0 if payload.get("status") in {"planned", "passed"} else 1
     except AssuranceError as exc:
-        print(render({"schemaVersion": 1, "status": "error", "error": str(exc)}), end="")
+        error_payload: dict[str, Any] = {"schemaVersion": 1, "status": "error", "error": str(exc)}
+        with suppress(AssuranceError, OSError, ValueError, UnicodeError, json.JSONDecodeError):
+            interrupted = latest_status(ROOT)
+            if interrupted.get("status") == "interrupted":
+                error_payload["evidencePath"] = interrupted["evidencePath"]
+        print(render(error_payload), end="")
         return 3 if str(exc) == "run_busy" else 2
     except (OSError, ValueError, UnicodeError, json.JSONDecodeError):
         print(render({"schemaVersion": 1, "status": "error", "error": "assurance_storage_invalid"}), end="")

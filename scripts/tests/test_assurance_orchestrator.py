@@ -75,7 +75,13 @@ def test_docs_are_focused_while_risky_and_unknown_changes_escalate():
 
 
 def test_sensitive_paths_are_case_insensitive_and_always_full_security():
-    for path in ("api/auth/tokens.py", "react-app/src/contexts/AuthContext.js"):
+    for path in (
+        "api/auth/tokens.py",
+        "react-app/src/contexts/AuthContext.js",
+        "django/users/tokens.py",
+        "react-app/src/pages/Login.jsx",
+        "react-app/src/components/PermissionRoute.jsx",
+    ):
         plan = assurance.build_plan(graph(), [change(path)], "auto", "a" * 40, "b" * 40, False)
         assert plan["resolvedTier"] == "full"
         assert "security-policy" in plan["selected"]
@@ -147,6 +153,21 @@ def test_compact_output_is_bounded_and_contains_honest_residual_scope():
     assert payload["resolvedTier"] == "focused" and payload["avoided"]
     text = assurance.compact_text({"status": "passed", "resolvedTier": "focused", "executed": ["diff-check"]})
     assert text.startswith("Assurance: PASSED\n") and "Executed: diff-check" in text
+    explained = assurance.compact_text({**plan, "status": "planned", "evidencePath": None})
+    assert "Selected:" in explained and "Avoided:" in explained
+    assert "Reasons:" in explained and "Residual: release gate not run" in explained
+
+
+def test_compact_human_failure_output_escapes_terminal_controls():
+    rendered = assurance.compact_text({
+        "status": "failed",
+        "failureDetails": [{
+            "checkId": "diff-check", "exitCode": 1, "attempts": 1,
+            "summary": "\x1b[2J\rFORGED\nAssurance: PASSED",
+        }],
+    })
+    assert "\x1b" not in rendered and "\r" not in rendered
+    assert "\\u001b[2J\\rFORGED\\nAssurance: PASSED" in rendered
 
 
 def test_token_estimate_and_benchmark_do_not_count_estimates_as_measurements():
@@ -225,6 +246,12 @@ def test_exact_complete_gate_requires_exact_manifest_inventory(tmp_path, monkeyp
     monkeypatch.setattr(assurance, "validate_gate_evidence", lambda *_args: json.loads(result.read_text()))
     assert assurance.exact_complete_gate_evidence(tmp_path, commit) is None
     payload["checks"].append({"id": "second", "required": False, "status": "passed"})
+    result.write_text(json.dumps(payload), encoding="utf-8")
+    assert assurance.exact_complete_gate_evidence(tmp_path, commit) is None
+    payload["checks"][0].update({
+        "artifact": "first.log", "artifactSha256": "a" * 64, "artifactSize": 1,
+        "attempts": 1, "diagnostic": None, "exitCode": 0,
+    })
     result.write_text(json.dumps(payload), encoding="utf-8")
     plan = assurance.build_plan(graph(), [change("docs/a.md")], "auto", commit, commit, False)
     executed = assurance.execute_plan(tmp_path, graph(), plan)
@@ -489,7 +516,7 @@ def test_executable_identity_drift_fails_the_check(tmp_path, monkeypatch):
 
 def test_repository_source_drift_fails_before_cache_publication(tmp_path, monkeypatch):
     monkeypatch.setitem(assurance.COMMANDS, "diff-check", assurance.Command(("python3", "-c", "pass")))
-    states = iter((True, False))
+    states = iter((True, False, True))
     monkeypatch.setattr(assurance, "_source_matches_plan", lambda *_args: next(states))
     result = assurance.execute_plan(tmp_path, graph(), _focused_plan())
     assert result["failed"] == ["diff-check"]
@@ -497,6 +524,33 @@ def test_repository_source_drift_fails_before_cache_publication(tmp_path, monkey
     assert receipt["exitCode"] == 125
     cache = tmp_path / ".artifacts" / "assurance-orchestrator" / "cache"
     assert list(cache.iterdir()) == []
+
+
+def test_source_drift_after_cache_lookup_never_returns_pass(tmp_path, monkeypatch):
+    monkeypatch.setitem(assurance.COMMANDS, "diff-check", assurance.Command(("python3", "-c", "pass")))
+    monkeypatch.setitem(assurance.COMMANDS, "feature-plan", assurance.Command(("python3", "-c", "pass")))
+    plan = _focused_plan()
+    assurance.execute_plan(tmp_path, graph(), plan)
+    states = iter((True, False))
+    monkeypatch.setattr(assurance, "_source_matches_plan", lambda *_args: next(states))
+    with pytest.raises(assurance.AssuranceError, match="repository_source_changed"):
+        assurance.execute_plan(tmp_path, graph(), plan)
+    assert assurance.latest_status(tmp_path)["status"] == "interrupted"
+
+
+def test_admitted_cli_error_reports_interrupted_evidence_path(tmp_path, monkeypatch, capsys):
+    commit = "a" * 40
+    configured_graph = graph()
+    change_set = assurance.ChangeSet(commit, commit, assurance._sha([]), False, ())
+    monkeypatch.setattr(assurance, "ROOT", tmp_path)
+    monkeypatch.setattr(assurance, "load_graph", lambda *_args: configured_graph)
+    monkeypatch.setattr(assurance, "load_history", lambda *_args: {})
+    monkeypatch.setattr(assurance, "collect_changes", lambda *_args: change_set)
+    monkeypatch.setattr(assurance, "_source_matches_plan", lambda *_args: False)
+    assert assurance.main(["run", "--json"]) == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error"] == "repository_source_changed"
+    assert payload["evidencePath"].endswith("/started.json")
 
 
 def test_private_evidence_retention_is_bounded_and_rejects_links(tmp_path):
@@ -522,6 +576,17 @@ def test_private_evidence_retention_is_bounded_and_rejects_links(tmp_path):
             assurance._prune_private_directories(descriptor, assurance.re.compile(r"[a-z0-9]{64}"), 2)
     finally:
         os.close(descriptor)
+
+
+def test_cache_ceiling_holds_across_multiple_publications_in_one_run(tmp_path, monkeypatch):
+    monkeypatch.setitem(assurance.COMMANDS, "diff-check", assurance.Command(("python3", "-c", "pass")))
+    monkeypatch.setitem(assurance.COMMANDS, "feature-plan", assurance.Command(("python3", "-c", "pass")))
+    value = graph()
+    value["evidencePolicy"]["maxCacheEntries"] = 1
+    result = assurance.execute_plan(tmp_path, value, _focused_plan())
+    assert result["status"] == "passed"
+    cache = tmp_path / ".artifacts" / "assurance-orchestrator" / "cache"
+    assert len(list(cache.iterdir())) == 1
 
 
 def test_published_graph_schema_rejects_nested_unknown_fields():

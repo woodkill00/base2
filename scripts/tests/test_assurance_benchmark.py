@@ -1,5 +1,6 @@
 import json
 import hashlib
+import os
 from pathlib import Path
 
 import pytest
@@ -43,6 +44,7 @@ def test_complete_gate_measurement_requires_exact_integrity_bound_pass(tmp_path)
         "checks": [{
             "id": "sample", "required": True, "status": "passed", "artifact": "sample.log",
             "artifactSize": 100, "artifactSha256": hashlib.sha256(b"x" * 100).hexdigest(),
+            "attempts": 1, "diagnostic": None, "exitCode": 0,
         }],
     }
     payload["evidenceDigest"] = benchmark._sha(payload)
@@ -81,3 +83,49 @@ def test_benchmark_uses_three_real_routine_samples_and_their_median():
 def test_benchmark_cli_rejects_all_arguments(capsys):
     assert benchmark.main(["--legacy-command", "anything"]) == 2
     assert "benchmark_arguments_invalid" in capsys.readouterr().out
+
+
+def test_existing_benchmark_replay_binds_all_logs_and_gate(tmp_path, monkeypatch):
+    directory = tmp_path / "benchmark"
+    directory.mkdir(mode=0o700)
+    metadata = {}
+    for name in ("legacy.log", "optimized.log", "routine.log"):
+        content = name.encode()
+        member = directory / name
+        member.write_bytes(content)
+        member.chmod(0o600)
+        metadata[name] = {"name": name, "sha256": hashlib.sha256(content).hexdigest(), "bytes": len(content)}
+    report = benchmark.benchmark_report(
+        legacy_measured_ms=1000, optimized_measured_ms=400,
+        legacy_output_bytes=1000, optimized_output_bytes=metadata["optimized.log"]["bytes"],
+        estimated_avoided_ms=600, mutations_detected=7, mutations_total=7,
+    )
+    payload = {
+        **report, "sourceCommit": "a" * 40,
+        "legacyLog": metadata["legacy.log"], "optimizedLog": metadata["optimized.log"],
+        "routineLog": metadata["routine.log"], "legacyCompleteGateEvidence": ".artifacts/gate.json",
+        "legacyFullLogBytes": 1000,
+        "outputComparison": "same-exact-gate-full-logs-vs-compact-receipt",
+        "mutationPathsDigest": hashlib.sha256("\n".join(sorted(benchmark.MUTATIONS)).encode()).hexdigest(),
+        "previousFeatureCommitHostedJobsMultiplier": 2,
+        "optimizedFeatureCommitHostedJobsMultiplier": 1,
+        "routineFixtures": list(benchmark.ROUTINE_FIXTURES),
+        "optimizedRoutineSamplesMilliseconds": [1, 2, 3],
+    }
+    payload["integrity"] = benchmark._sha(payload)
+    result = directory / "result.json"
+    result.write_text(json.dumps(payload), encoding="utf-8")
+    result.chmod(0o600)
+    monkeypatch.setattr(
+        benchmark, "_validate_complete_gate_path",
+        lambda *_args: (1000, ".artifacts/gate.json", 1000),
+    )
+    descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        assert benchmark._validate_existing(descriptor, "a" * 40, tmp_path)["status"] == "passed"
+        (directory / "routine.log").write_text("tampered", encoding="utf-8")
+        (directory / "routine.log").chmod(0o600)
+        with pytest.raises(benchmark.AssuranceError, match="benchmark_evidence_invalid"):
+            benchmark._validate_existing(descriptor, "a" * 40, tmp_path)
+    finally:
+        os.close(descriptor)

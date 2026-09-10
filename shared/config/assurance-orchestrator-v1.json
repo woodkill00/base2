@@ -27,6 +27,7 @@
     "passedTtlSeconds": 86400,
     "maxRunDirectories": 20,
     "maxCacheEntries": 64,
+    "maxBenchmarkDirectories": 10,
     "directoryMode": "0700",
     "fileMode": "0600"
   },

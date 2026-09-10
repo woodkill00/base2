@@ -74,6 +74,7 @@
         "passedTtlSeconds",
         "maxRunDirectories",
         "maxCacheEntries",
+        "maxBenchmarkDirectories",
         "directoryMode",
         "fileMode"
       ],
@@ -81,6 +82,7 @@
         "passedTtlSeconds": { "const": 86400 },
         "maxRunDirectories": { "type": "integer", "minimum": 1, "maximum": 100 },
         "maxCacheEntries": { "type": "integer", "minimum": 1, "maximum": 256 },
+        "maxBenchmarkDirectories": { "type": "integer", "minimum": 1, "maximum": 100 },
         "directoryMode": { "const": "0700" },
         "fileMode": { "const": "0600" }
       }
