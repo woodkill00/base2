@@ -26,6 +26,7 @@ SENSITIVE_LINE = re.compile(
 TOKEN_SHAPE = re.compile(r"(?<![A-Za-z0-9])[A-Za-z0-9_./+=-]{32,}(?![A-Za-z0-9])")
 SOURCE_TRANSFER_TIMEOUT_SECONDS = 900
 PRIVATE_TRANSFER_TIMEOUT_SECONDS = 180
+REMOTE_BOOTSTRAP_TIMEOUT_SECONDS = 2700
 
 
 def safe_diagnostic(stdout: str, stderr: str) -> str:
@@ -132,7 +133,19 @@ class FullPreviewSshBootstrap:
             "exec bash /opt/base2-full-preview/digital_ocean/scripts/bash/full-preview-remote.sh "
             f"'{config.zone}' '{config.droplet_name}' '{config.source_commit}' '{config.archive_sha256}' '{self.owner_cidr}'"
         )
-        deployed = self._run(["ssh", *options, target, "bash", "-lc", command], timeout=1800)
+        try:
+            deployed = self._run(
+                ["ssh", *options, target, "bash", "-lc", command],
+                timeout=REMOTE_BOOTSTRAP_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired as exc:
+            diagnostic = safe_diagnostic(
+                (exc.stdout or "") if isinstance(exc.stdout, str) else "",
+                (exc.stderr or "") if isinstance(exc.stderr, str) else "",
+            )
+            raise FullPreviewRemoteError(
+                f"bounded full preview bootstrap timed out: {diagnostic}"
+            ) from exc
         if deployed.returncode != 0:
             diagnostic = safe_diagnostic(deployed.stdout, deployed.stderr)
             raise FullPreviewRemoteError(
