@@ -48,6 +48,10 @@ def test_only_disposable_migrations_use_native_retry():
     assert "NATIVE_FAILURES = {-11, 134, 139}" in source
     assert '"PYTHONHASHSEED=0"' in source
     assert '"PYTHONMALLOC=malloc"' in source
-    assert source.count("run_idempotent_native_safe(") == 9
+    assert source.count("run_idempotent_native_safe(") == 10
+    mixed_version_end = source.index('run(mixed_check + ["new"])')
+    full_migration = source.index('"WORKSPACE_DB_USER=base2_workspace_runtime"', mixed_version_end)
+    full_migration_prefix = source[mixed_version_end:full_migration]
+    assert "run_idempotent_native_safe(" in full_migration_prefix
     assert 'run(role_check + ["api-reversed"])' in source
     assert 'run(media_check + ["forward"])' in source

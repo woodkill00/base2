@@ -248,7 +248,7 @@ def main() -> None:
         run(mixed_check + ["old"])
         run(django_migration + ["0026", "--noinput"], stdout=subprocess.DEVNULL)
         run(mixed_check + ["new"])
-        run(
+        run_idempotent_native_safe(
             common
             + [
                 "--read-only",

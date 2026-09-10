@@ -777,3 +777,10 @@ substitute for the integration proof named by the task.
 - [ ] B547 Enforce one attempt for ordinary failures, at most two for timeout, incomplete, worker, JSON, and Django-counter classes, and at most three only for strict native segmentation or constrained allocator abort. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-070)
 - [ ] B548 Exercise production-default manifests proving worker, JSON, and Django-counter exhaustion at attempt two, strict native access to attempt three, ordinary fail-fast behavior, and exact diagnostic/evidence retention. (FR-002, FR-005, FR-008, FR-060, FR-063, FR-065, FR-068, FR-070)
 - [ ] B549 Commit a replacement candidate and restart exact repetitions, real concurrency proof, both complete gates, hosted checks, and fresh independent code, security, UX/accessibility, data, and operations reviews from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 75 — Disposable full-migration native recovery cycle 98 corrections
+
+- [ ] B550 Route the final disposable PostgreSQL full-migration command through the existing bounded idempotent native-failure recovery helper. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B551 Preserve immediate terminal behavior for ordinary migration failures while allowing at most three attempts only for native signal or abort statuses in the disposable database. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B552 Prove the full-migration invocation uses the bounded helper, exercise its native recovery and ordinary failure boundaries, and run the real disposable PostgreSQL acceptance. (FR-002, FR-005, FR-008, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B553 Commit a replacement candidate and restart exact repetitions, real concurrency proof, both complete gates, hosted checks, and every fresh independent review from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)

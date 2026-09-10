@@ -2016,3 +2016,20 @@ allocator abort alone can receive three. Default-manifest tests must exhaust
 worker, JSON, and Django-counter signatures at attempt two and prove strict
 native recovery can reach attempt three. All exact-source evidence and every
 independent review restart after the corrected commit.
+
+## Analysis cycle 98 — disposable full-migration native recovery
+
+The first complete gate for candidate
+`69e707488dda0514326a2f83beaaf57517b77634` failed closed in
+`workspace-postgres-acceptance`. Both mixed-version checks passed, but the final
+disposable `manage.py migrate --noinput` container exited with native status 139. The parent acceptance runner correctly propagated failure, so the outer
+gate saw an ordinary exit and did not retry it. The failed receipt remains
+retained and is not release evidence.
+
+B550-B553 apply the acceptance runner's existing narrowly bounded recovery to
+that one omitted idempotent migration invocation. The database is disposable,
+and Django migration replay observes already-applied state transactionally.
+Only native signal or abort statuses may retry up to three total attempts;
+ordinary migration failures remain immediate and terminal. Focused regression,
+the real PostgreSQL acceptance, and every exact-source release proof restart
+from the corrected commit.
