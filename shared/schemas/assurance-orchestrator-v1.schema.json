@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://base2.invalid/schemas/assurance-orchestrator-v1.schema.json",
+  "title": "Base2 assurance orchestrator graph",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "graphVersion",
+    "tierOrder",
+    "mandatoryChecks",
+    "outputPolicy",
+    "evidencePolicy",
+    "resourcePolicy",
+    "pathRules",
+    "surfaces",
+    "checks"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "graphVersion": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}\\.[1-9][0-9]*$" },
+    "tierOrder": { "const": ["focused", "standard", "full", "release"] },
+    "mandatoryChecks": { "type": "object" },
+    "outputPolicy": { "type": "object" },
+    "evidencePolicy": { "type": "object" },
+    "resourcePolicy": { "type": "object" },
+    "pathRules": { "type": "array", "minItems": 1 },
+    "surfaces": { "type": "object", "minProperties": 1 },
+    "checks": { "type": "object", "minProperties": 1 }
+  }
+}

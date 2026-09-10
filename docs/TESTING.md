@@ -21,6 +21,33 @@ Artifacts land under `local_run_logs/<ip>-<timestamp>/` with per-service folders
 
 ## Official local test path (Docker-first)
 
+### Fast, risk-based feedback
+
+Use the assurance orchestrator during development. It maps the exact local
+change set through a versioned dependency graph, escalates unknown or risky
+paths, runs cheap prerequisite checks first, retains redacted full logs
+privately, and emits a compact result suitable for agents and Discord.
+
+```bash
+scripts/bash/assure.sh plan --tier auto
+scripts/bash/assure.sh run --tier auto
+scripts/bash/assure.sh status
+```
+
+PowerShell uses the native equivalent:
+
+```powershell
+scripts/powershell/assure.ps1 -Action run -Tier auto
+```
+
+`auto` and `focused` are iteration feedback, not release proof. `standard` is
+the pre-PR policy tier. Authentication, tenancy, migrations, dependencies,
+workflows, deployment, security policy, assurance code, and unknown paths
+escalate automatically. Dirty full or release execution is rejected. Release
+mode always invokes the unchanged complete gate; it cannot be satisfied by a
+focused result, cache entry, or elapsed time. Full logs stay in ignored private
+`.artifacts/assurance-orchestrator/` storage and are inspected only on demand.
+
 Start the stack, then run tests through the wrappers:
 
 - PowerShell: `./scripts/powershell/test.ps1`

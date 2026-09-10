@@ -1,20 +1,12 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-echo "🧪 Running tests before push..."
+echo "🧪 Running compact risk-based assurance before push..."
 
-# Run all tests (local-only compose + env)
-UNAME=$(uname -s 2>/dev/null || echo '')
-if echo "$UNAME" | grep -qiE 'mingw|msys|cygwin'; then
-  powershell -File scripts/powershell/test.ps1 -ComposeFile local.docker.yml -EnvFile .env.local
+if scripts/bash/assure.sh run --tier auto --json; then
+  echo "✅ Assurance passed! Proceeding with push..."
 else
-  bash scripts/bash/test.sh --compose-file local.docker.yml --env-file .env.local
-fi
-
-if [ $? -eq 0 ]; then
-  echo "✅ All tests passed! Proceeding with push..."
-else
-  echo "❌ Tests failed! Push aborted."
-  echo "Fix the failing tests before pushing."
+  echo "❌ Assurance failed! Push aborted."
+  echo "Inspect the private evidence path reported above."
   exit 1
 fi
