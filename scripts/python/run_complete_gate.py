@@ -51,21 +51,30 @@ def _contained_parts(path: Path, trusted_root: Path) -> tuple[str, ...]:
     return relative.parts
 
 
-def open_private_directory(path: Path, trusted_root: Path) -> int:
-    """Open/create a contained 0700 directory chain without following links."""
+def open_private_directory(path: Path, trusted_root: Path, *, create: bool = True) -> int:
+    """Open a contained private directory chain without following links."""
     parts = _contained_parts(path, trusted_root)
     flags = os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC | os.O_NOFOLLOW
     descriptor = os.open(Path(os.path.abspath(trusted_root)), flags)
     try:
         for part in parts:
-            with suppress(FileExistsError):
-                os.mkdir(part, 0o700, dir_fd=descriptor)
+            if create:
+                with suppress(FileExistsError):
+                    os.mkdir(part, 0o700, dir_fd=descriptor)
             child = os.open(part, flags, dir_fd=descriptor)
-            details = os.fstat(child)
-            if not stat.S_ISDIR(details.st_mode) or details.st_uid != os.geteuid():
+            try:
+                details = os.fstat(child)
+                if (
+                    not stat.S_ISDIR(details.st_mode)
+                    or details.st_uid != os.geteuid()
+                    or (not create and stat.S_IMODE(details.st_mode) != 0o700)
+                ):
+                    raise ValueError("unsafe_private_directory")
+                if create:
+                    os.fchmod(child, 0o700)
+            except Exception:
                 os.close(child)
-                raise ValueError("unsafe_private_directory")
-            os.fchmod(child, 0o700)
+                raise
             os.close(descriptor)
             descriptor = child
         return descriptor
@@ -81,15 +90,18 @@ def open_private_file(directory_fd: int, name: str, *, truncate: bool = True) ->
     if truncate:
         flags |= os.O_TRUNC
     descriptor = os.open(name, flags, 0o600, dir_fd=directory_fd)
-    details = os.fstat(descriptor)
-    if (
-        not stat.S_ISREG(details.st_mode)
-        or details.st_uid != os.geteuid()
-        or details.st_nlink != 1
-    ):
+    try:
+        details = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(details.st_mode)
+            or details.st_uid != os.geteuid()
+            or details.st_nlink != 1
+        ):
+            raise ValueError("unsafe_private_member")
+        os.fchmod(descriptor, 0o600)
+    except Exception:
         os.close(descriptor)
-        raise ValueError("unsafe_private_member")
-    os.fchmod(descriptor, 0o600)
+        raise
     return descriptor
 
 
@@ -139,23 +151,29 @@ def private_atomic_json(directory_fd: int, name: str, payload: dict) -> None:
 def complete_gate_lock(repo_root: Path):
     artifacts_fd = open_private_directory(repo_root / ".artifacts", repo_root)
     lock_path = repo_root / ".artifacts" / "complete-gate.lock"
-    descriptor = os.open(
-        "complete-gate.lock",
-        os.O_CREAT | os.O_RDWR | os.O_CLOEXEC | os.O_NOFOLLOW,
-        0o600,
-        dir_fd=artifacts_fd,
-    )
-    details = os.fstat(descriptor)
-    if (
-        not stat.S_ISREG(details.st_mode)
-        or details.st_uid != os.geteuid()
-        or details.st_nlink != 1
-    ):
-        os.close(descriptor)
+    descriptor = None
+    try:
+        descriptor = os.open(
+            "complete-gate.lock",
+            os.O_CREAT | os.O_RDWR | os.O_CLOEXEC | os.O_NOFOLLOW,
+            0o600,
+            dir_fd=artifacts_fd,
+        )
+        details = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(details.st_mode)
+            or details.st_uid != os.geteuid()
+            or details.st_nlink != 1
+        ):
+            raise ValueError("unsafe_complete_gate_lock")
+        os.fchmod(descriptor, 0o600)
+        handle = os.fdopen(descriptor, "r+")
+        descriptor = None
+    except Exception:
+        if descriptor is not None:
+            os.close(descriptor)
         os.close(artifacts_fd)
-        raise ValueError("unsafe_complete_gate_lock")
-    os.fchmod(descriptor, 0o600)
-    handle = os.fdopen(descriptor, "r+")
+        raise
     try:
         try:
             fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -324,6 +342,28 @@ def run_gate(
     validate_manifest(manifest)
     repo_root = repo_root.resolve()
     evidence_fd = open_private_directory(evidence_dir, repo_root)
+    try:
+        return _run_gate(
+            manifest,
+            repo_root,
+            evidence_dir,
+            evidence_fd,
+            source_commit=source_commit,
+            environment=environment,
+        )
+    finally:
+        os.close(evidence_fd)
+
+
+def _run_gate(
+    manifest: dict,
+    repo_root: Path,
+    evidence_dir: Path,
+    evidence_fd: int,
+    *,
+    source_commit: str,
+    environment: dict[str, str] | None = None,
+) -> dict:
     environment = dict(environment or os.environ)
     environment["PYTHONHASHSEED"] = "0"
     environment["PYTHONMALLOC"] = "malloc"
@@ -465,18 +505,22 @@ def run_gate(
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
     payload["evidenceDigest"] = hashlib.sha256(canonical).hexdigest()
     private_atomic_json(evidence_fd, "result.json", payload)
-    os.close(evidence_fd)
     validate_gate_evidence(evidence_dir / "result.json", repo_root)
     return payload
 
 
 def validate_gate_evidence(result_path: Path, repo_root: Path) -> dict:
-    evidence_fd = open_private_directory(result_path.parent, repo_root)
+    evidence_fd = open_private_directory(result_path.parent, repo_root, create=False)
     try:
         descriptor = os.open(
             result_path.name, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW, dir_fd=evidence_fd
         )
-        with os.fdopen(descriptor, "rb") as handle:
+        try:
+            handle = os.fdopen(descriptor, "rb")
+        except Exception:
+            os.close(descriptor)
+            raise
+        with handle:
             details = os.fstat(handle.fileno())
             if (
                 not stat.S_ISREG(details.st_mode)
@@ -506,6 +550,7 @@ def validate_gate_evidence(result_path: Path, repo_root: Path) -> dict:
                 if (
                     not stat.S_ISREG(details.st_mode)
                     or details.st_uid != os.geteuid()
+                    or details.st_nlink != 1
                     or stat.S_IMODE(details.st_mode) != 0o600
                 ):
                     raise ValueError("complete_gate_artifact_unsafe")

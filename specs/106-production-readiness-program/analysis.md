@@ -1954,3 +1954,26 @@ explicit policy, and a second identical corruption remain terminal. Positive
 recovery and negative classification tests precede a new candidate and another
 complete exact-source evidence restart. The failed second receipt remains
 retained and cannot serve as release evidence.
+
+## Analysis cycle 95 — inherited lock capability and exception cleanup
+
+Final data/security and operations review rejected candidate
+`b02de29dbcad4a8a4bb2245da4d89b3dd595f637` despite its two passing gates.
+The isolated E2E runner trusted a forgeable ambient marker to skip its lock,
+replay validation could create or chmod missing or public evidence directories,
+and a hardlinked log was not explicitly rejected. Several setup exceptions
+could also leak a directory or member descriptor and retain unexpected process
+resources until exit. The passing receipts remain valid records of those runs
+but are rejected as final release evidence.
+
+B535-B541 split the E2E entrypoint into an unconditional lock-owning wrapper and
+a fixed body that verifies an inherited file-descriptor capability against the
+exact private lock inode before Docker access. Gate replay becomes strictly
+read-only and requires existing 0700 directories plus single-link 0600 regular
+members. Every directory, lock, log, result, readiness, child-launch, and
+verification exception closes all descriptors and releases the kernel lock.
+Adversarial tests cover a forged legacy marker, numeric wrong-inode descriptor,
+separate same-inode descriptor under a real owner, missing/public/hardlinked
+evidence, injected setup failures, descriptor-count stability, reacquisition,
+and no Docker access before admission. A real owner/contender proof and every
+exact-source release proof must restart from the corrected candidate.

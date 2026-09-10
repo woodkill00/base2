@@ -314,13 +314,14 @@ class CiPolicyTests(unittest.TestCase):
         compose = __import__("yaml").safe_load(compose_text)
         guide = (repo_root / "docs/TESTING.md").read_text(encoding="utf-8")
         runner = (repo_root / "scripts/bash/e2e-isolated.sh").read_text(encoding="utf-8")
+        body = (repo_root / "scripts/bash/e2e-isolated-body.sh").read_text(encoding="utf-8")
         concurrency_proof = (
             repo_root / "scripts/bash/e2e-isolated-concurrency-proof.sh"
         ).read_text(encoding="utf-8")
         for variable in ("E2E_API_PORT", "E2E_TEST_SUPPORT_PORT", "E2E_WEB_PORT"):
             self.assertIn(f"${{{variable}:-", compose_text)
             self.assertIn(variable, guide)
-            self.assertIn(f'validate_port {variable} "${variable}"', runner)
+            self.assertIn(f'validate_port {variable} "${variable}"', body)
         for service in ("api", "test-support", "react-app"):
             published = compose["services"][service]["ports"][0]
             self.assertTrue(published.startswith("127.0.0.1:"), published)
@@ -331,20 +332,19 @@ class CiPolicyTests(unittest.TestCase):
         nginx = (repo_root / "react-app/nginx/default.conf").read_text(encoding="utf-8")
         self.assertIn("location /api/", nginx)
         self.assertIn("proxy_pass http://api:5001;", nginx)
-        self.assertNotIn("E2E_BROWSER_API_URL", compose_text + guide + runner)
-        self.assertIn('project="base2-e2e-isolated"', runner)
+        self.assertNotIn("E2E_BROWSER_API_URL", compose_text + guide + runner + body)
+        self.assertIn('project="base2-e2e-isolated"', body)
         self.assertIn('lock_file="$repo_root/.artifacts/e2e-isolated.lock"', runner)
         self.assertIn('scripts/python/secure_file_lock.py', runner)
-        self.assertIn("--held-environment BASE2_E2E_LOCK_HELD", runner)
+        self.assertIn('e2e-isolated-body.sh', runner)
+        self.assertNotIn("BASE2_E2E_LOCK_HELD", runner)
         self.assertNotIn("e2e-isolated.lock-ready", runner + concurrency_proof)
-        self.assertLess(
-            runner.index('if [[ "${BASE2_E2E_LOCK_HELD:-}" != 1 ]]'),
-            runner.index("compose=(docker compose"),
-        )
-        self.assertIn('trap cleanup EXIT INT TERM', runner)
-        self.assertGreaterEqual(runner.count('down -v --remove-orphans'), 1)
+        self.assertNotIn("compose=(docker compose", runner)
+        self.assertLess(body.index("--verify-fd"), body.index("compose=(docker compose"))
+        self.assertIn('trap cleanup EXIT INT TERM', body)
+        self.assertGreaterEqual(body.count('down -v --remove-orphans'), 1)
         self.assertIn(
-            'http://127.0.0.1:$E2E_TEST_SUPPORT_PORT/synthetic-health', runner
+            'http://127.0.0.1:$E2E_TEST_SUPPORT_PORT/synthetic-health', body
         )
         self.assertIn('scripts/bash/e2e-isolated.sh', guide)
         self.assertIn('contender_rc" -ne 3', concurrency_proof)

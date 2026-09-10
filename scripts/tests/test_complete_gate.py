@@ -125,6 +125,31 @@ class CompleteGateTests(unittest.TestCase):
         self.assertEqual("preserve", target.read_text(encoding="utf-8"))
         self.assertEqual(0o644, S_IMODE(target.stat().st_mode))
 
+    def test_complete_gate_lock_closes_descriptors_when_lock_chmod_fails(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        original = self.gate.os.fchmod
+        calls = 0
+
+        def fail_second(descriptor, mode):
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                raise OSError("fixture chmod failure")
+            return original(descriptor, mode)
+
+        before = len(os.listdir("/proc/self/fd"))
+        with (
+            patch.object(self.gate.os, "fchmod", side_effect=fail_second),
+            self.assertRaisesRegex(OSError, "fixture chmod failure"),
+            self.gate.complete_gate_lock(root),
+        ):
+            self.fail("lock admission unexpectedly succeeded")
+        self.assertEqual(before, len(os.listdir("/proc/self/fd")))
+        with self.gate.complete_gate_lock(root):
+            pass
+
     def test_busy_receipt_is_distinct_and_integrity_bound(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
@@ -419,6 +444,34 @@ class CompleteGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "result_unsafe"):
             self.gate.validate_gate_evidence(output / "result.json", output.parent)
 
+    def test_gate_evidence_replay_rejects_public_directory_without_repair(self):
+        result, output = self.run_gate(
+            [check("echo", ["/bin/sh", "-c", "printf stable"], tools=["/bin/sh"])]
+        )
+        self.assertEqual("passed", result["overallStatus"])
+        os.chmod(output, 0o755)
+        with self.assertRaisesRegex(ValueError, "unsafe_private_directory"):
+            self.gate.validate_gate_evidence(output / "result.json", output.parent)
+        self.assertEqual(0o755, S_IMODE(output.stat().st_mode))
+
+    def test_gate_evidence_replay_does_not_create_missing_directory(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            missing = root / "missing" / "result.json"
+            with self.assertRaises(FileNotFoundError):
+                self.gate.validate_gate_evidence(missing, root)
+            self.assertFalse(missing.parent.exists())
+
+    def test_gate_evidence_replay_rejects_hardlinked_log(self):
+        result, output = self.run_gate(
+            [check("echo", ["/bin/sh", "-c", "printf stable"], tools=["/bin/sh"])]
+        )
+        self.assertEqual("passed", result["overallStatus"])
+        external = output.parent / "external-log-link"
+        os.link(output / "echo.log", external)
+        with self.assertRaisesRegex(ValueError, "artifact_unsafe"):
+            self.gate.validate_gate_evidence(output / "result.json", output.parent)
+
     def test_gate_evidence_rejects_symlinked_output_parent_and_preserves_target(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
@@ -437,6 +490,23 @@ class CompleteGateTests(unittest.TestCase):
                 source_commit="0" * 40,
             )
         self.assertEqual("preserve", marker.read_text(encoding="utf-8"))
+
+    def test_gate_closes_evidence_descriptor_when_member_write_fails(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        (root / ".git").mkdir()
+        before = len(os.listdir("/proc/self/fd"))
+        with patch.object(
+            self.gate, "private_write", side_effect=OSError("fixture write failure")
+        ), self.assertRaisesRegex(OSError, "fixture write failure"):
+            self.gate.run_gate(
+                {"schemaVersion": 1, "checks": [check("ok", ["/bin/true"], tools=["/bin/true"])]},
+                root,
+                root / "evidence",
+                source_commit="0" * 40,
+            )
+        self.assertEqual(before, len(os.listdir("/proc/self/fd")))
 
     def test_gate_evidence_rejects_symlinked_log_and_preserves_target(self):
         temporary = tempfile.TemporaryDirectory()
