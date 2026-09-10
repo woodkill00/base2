@@ -47,14 +47,14 @@ for private_input in "$operator_auth" "$flower_auth" "$django_username" "$django
 done
 
 export DEBIAN_FRONTEND=noninteractive
-stage="cloud-init-wait"
+stage="cloud-init-wait"; printf 'full-preview-stage:%s\n' "$stage" >&2
 if command -v cloud-init >/dev/null 2>&1; then cloud-init status --wait >/dev/null; fi
-stage="docker-install"
+stage="docker-install"; printf 'full-preview-stage:%s\n' "$stage" >&2
 if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
   apt-get update -qq
   apt-get install -y -qq ca-certificates curl docker.io docker-compose-v2
 fi
-stage="docker-start"
+stage="docker-start"; printf 'full-preview-stage:%s\n' "$stage" >&2
 systemctl enable --now docker >/dev/null
 
 # The fixed 2 GiB preview profile intentionally keeps provider cost low, while
@@ -63,7 +63,7 @@ systemctl enable --now docker >/dev/null
 # backing storage so the kernel does not kill a scanner process under that
 # transient peak.  The file disappears with the lease-owned droplet and is not
 # made persistent across boots.
-stage="swap-admission"
+stage="swap-admission"; printf 'full-preview-stage:%s\n' "$stage" >&2
 swap_file="/swapfile"
 if [[ -e "$swap_file" ]]; then
   [[ -f "$swap_file" && ! -L "$swap_file" ]] || fail_stage 4
@@ -81,7 +81,7 @@ fi
 swapon --noheadings --show=NAME | grep -Fxq "$swap_file" || fail_stage 4
 unset swap_file swap_size
 
-stage="env-render"
+stage="env-render"; printf 'full-preview-stage:%s\n' "$stage" >&2
 (
   cd "$repo_root"
   python3 -m digital_ocean.scripts.python.render_full_preview_env \
@@ -95,7 +95,7 @@ stage="env-render"
 chmod 600 "$env_file"
 rm -f -- "$operator_auth" "$flower_auth" "$django_username" "$django_email" "$django_password" "$pgadmin_email" "$pgadmin_password"
 
-stage="media-inspector-attestation"
+stage="media-inspector-attestation"; printf 'full-preview-stage:%s\n' "$stage" >&2
 umask 077
 openssl genpkey -algorithm ED25519 -out "$inspector_private_pem" >/dev/null 2>&1
 inspector_signing_key="$(openssl pkey -in "$inspector_private_pem" -outform DER | tail -c 32 | base64 -w0)"
@@ -116,11 +116,11 @@ sed -i \
 unset inspector_signing_key inspector_verify_key
 rm -f -- "$inspector_private_pem"
 
-stage="acme-bootstrap"
+stage="acme-bootstrap"; printf 'full-preview-stage:%s\n' "$stage" >&2
 "$repo_root/scripts/bash/bootstrap-acme.sh" --directory "$repo_root/letsencrypt" --uid 1000 --gid 1000
 compose=(docker compose --profile celery --profile media-scan --project-name "$project" --env-file "$env_file" -f "$compose_file")
-export COMPOSE_ENV_FILE="$env_file" COMPOSE_PARALLEL_LIMIT=1
-stage="compose-build"
+export COMPOSE_ENV_FILE="$env_file" COMPOSE_PARALLEL_LIMIT=2
+stage="compose-build"; printf 'full-preview-stage:%s\n' "$stage" >&2
 "${compose[@]}" build
 inspector_image_ref="${project}-media-inspector"
 inspector_image_id="$(docker image inspect --format '{{.Id}}' "$inspector_image_ref")"
@@ -134,7 +134,7 @@ awk -v identity="$inspector_build_identity" \
    { print }
    END { if (!replaced) exit 3 }' "$env_file" >"$env_replacement" || fail_stage 3
 mv -f -- "$env_replacement" "$env_file"
-stage="clamav-warmup"
+stage="clamav-warmup"; printf 'full-preview-stage:%s\n' "$stage" >&2
 "${compose[@]}" up -d --no-build clamav
 for attempt in $(seq 1 180); do
   clamav_id="$("${compose[@]}" ps -q clamav)"
@@ -157,28 +157,28 @@ for attempt in $(seq 1 180); do
   sleep 2
 done
 unset clamav_id clamav_state clamav_health clamav_oom
-stage="migration-dependencies"
+stage="migration-dependencies"; printf 'full-preview-stage:%s\n' "$stage" >&2
 "${compose[@]}" up -d --no-build postgres redis
-stage="database-role-bootstrap"
+stage="database-role-bootstrap"; printf 'full-preview-stage:%s\n' "$stage" >&2
 "${compose[@]}" run --rm workspace-db-role >/dev/null
-stage="api-migrations"
+stage="api-migrations"; printf 'full-preview-stage:%s\n' "$stage" >&2
 "${compose[@]}" run --rm --no-deps api-migrate python -m api.scripts.migrate >/dev/null
-stage="django-migrations"
+stage="django-migrations"; printf 'full-preview-stage:%s\n' "$stage" >&2
 "${compose[@]}" run --rm --no-deps django python manage.py migrate --noinput >/dev/null
-stage="compose-up"
+stage="compose-up"; printf 'full-preview-stage:%s\n' "$stage" >&2
 "${compose[@]}" up -d --no-build
-stage="media-inspector-identity"
+stage="media-inspector-identity"; printf 'full-preview-stage:%s\n' "$stage" >&2
 inspector_container_id="$("${compose[@]}" ps -q media-inspector)"
 [[ -n "$inspector_container_id" ]] || fail_stage 3
 running_inspector_image="$(docker inspect --format '{{.Image}}' "$inspector_container_id")"
 [[ "$running_inspector_image" == "$inspector_image_id" ]] || fail_stage 3
 unset inspector_image_ref inspector_image_id inspector_build_identity inspector_container_id running_inspector_image
-stage="service-inventory"
+stage="service-inventory"; printf 'full-preview-stage:%s\n' "$stage" >&2
 mapfile -t services < <("${compose[@]}" config --services)
 [[ "${#services[@]}" -gt 0 ]] || exit 3
 one_shot_services=(workspace-db-role media-inspector-spool-init)
 
-stage="service-health"
+stage="service-health"; printf 'full-preview-stage:%s\n' "$stage" >&2
 for attempt in $(seq 1 180); do
   ready=0
   pending=()
@@ -212,7 +212,7 @@ for attempt in $(seq 1 180); do
   sleep 2
 done
 
-stage="traefik-policy"
+stage="traefik-policy"; printf 'full-preview-stage:%s\n' "$stage" >&2
 traefik_id="$("${compose[@]}" ps -q traefik)"
 docker exec "$traefik_id" sh -ec '
   grep -F "https://acme-staging-v02.api.letsencrypt.org/directory" /tmp/traefik.yml >/dev/null
@@ -222,7 +222,7 @@ docker exec "$traefik_id" sh -ec '
   grep -F "owner-allow-ip" /tmp/dynamic.yml >/dev/null
 '
 
-stage="receipt"
+stage="receipt"; printf 'full-preview-stage:%s\n' "$stage" >&2
 python3 - "$source_commit" "$archive_sha256" "${#services[@]}" <<'PY'
 import json, sys
 print(json.dumps({

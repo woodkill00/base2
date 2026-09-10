@@ -108,6 +108,8 @@ def test_media_enabled_preview_builds_and_starts_isolated_inspector_with_image_i
 def test_remote_bootstrap_accepts_only_the_successful_workspace_role_one_shot():
     script = (ROOT / "digital_ocean/scripts/bash/full-preview-remote.sh").read_text()
     assert '"${compose[@]}" run --rm workspace-db-role' in script
+    assert 'COMPOSE_PARALLEL_LIMIT=2' in script
+    assert "full-preview-stage:%s\\n" in script
     assert 'run --rm --no-deps workspace-db-role' not in script
     assert (
         '"${compose[@]}" run --rm --no-deps api-migrate python -m api.scripts.migrate'
