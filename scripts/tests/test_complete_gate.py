@@ -452,6 +452,55 @@ class CompleteGateTests(unittest.TestCase):
         self.assertEqual("failed", exhausted["overallStatus"])
         self.assertEqual(2, exhausted["checks"][0]["attempts"])
 
+    def test_recognizes_only_complete_pydantic_code_object_corruption(self):
+        exact = (
+            "/pydantic/_internal/_generate_schema.py\n"
+            "TypeError: 'code' object cannot be interpreted as an integer\n"
+            "SystemError: <sys.legacy_event_handler object at 0x1> returned a result "
+            "with an exception set"
+        )
+        self.assertTrue(self.gate.retryable_interpreter_corruption(exact))
+        recovered, _ = self.run_gate(
+            [
+                check(
+                    "pydantic-corruption",
+                    [
+                        "/bin/sh",
+                        "-c",
+                        f"if test -f marker; then echo '6 passed'; exit 0; "
+                        f"else touch marker; printf '%s\\n' \"{exact}\"; exit 1; fi",
+                    ],
+                    tools=["/bin/sh"],
+                    max_attempts=2,
+                )
+            ]
+        )
+        self.assertEqual("passed", recovered["overallStatus"])
+        self.assertEqual(2, recovered["checks"][0]["attempts"])
+        exhausted, _ = self.run_gate(
+            [
+                check(
+                    "pydantic-corruption",
+                    ["/bin/sh", "-c", f"printf '%s\\n' \"{exact}\"; exit 1"],
+                    tools=["/bin/sh"],
+                )
+            ]
+        )
+        self.assertEqual("failed", exhausted["overallStatus"])
+        self.assertEqual(2, exhausted["checks"][0]["attempts"])
+        for missing in (
+            "/pydantic/_internal/_generate_schema.py",
+            "TypeError: 'code' object cannot be interpreted as an integer",
+            "SystemError: <sys.legacy_event_handler object",
+            "returned a result with an exception set",
+        ):
+            self.assertFalse(self.gate.retryable_interpreter_corruption(exact.replace(missing, "")))
+        self.assertFalse(
+            self.gate.retryable_interpreter_corruption(
+                "TypeError: 'code' object cannot be interpreted as an integer"
+            )
+        )
+
     def test_retries_two_exact_native_heap_corruptions_then_passes(self):
         corruption = (
             "Emalloc(): smallbin double linked list corrupted\n"

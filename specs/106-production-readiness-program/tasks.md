@@ -798,3 +798,10 @@ substitute for the integration proof named by the task.
 - [ ] B562 Run focused adversarial, migration, localization, visual, repetition, and real concurrency acceptance before creating a replacement commit. (FR-002, FR-005, FR-008, FR-060, FR-063 through FR-068, FR-075, FR-078)
 - [ ] B563 Restart exact repetitions, both complete gates, hosted checks, and every independent review from the replacement commit. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
 - [ ] B564 Restore the real local release-acceptance approval and executor fixtures to bind the required exact source, artifact, operation, and reconciliation fields, then prove the complete staged lifecycle and teardown. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-066, FR-068, FR-070)
+
+## Phase 77 — Pydantic interpreter-corruption cycle 100 corrections
+
+- [ ] B565 Classify the observed Pydantic code-object plus legacy-event-handler conjunction as an impossible interpreter state eligible for one fresh-process recovery. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B566 Reject partial signatures and ordinary Pydantic, typing, validation, import, or application errors without retry. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B567 Prove the exact positive signature and every partial negative while retaining the two-attempt ceiling and failed gate evidence. (FR-002, FR-005, FR-008, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B568 Commit a replacement candidate and restart exact repetitions, retained concurrency proof, both complete gates, hosted checks, and every independent review. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)

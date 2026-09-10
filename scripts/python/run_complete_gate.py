@@ -210,7 +210,7 @@ def validate_runtime_capacity() -> None:
 
 
 def retryable_interpreter_corruption(output: str) -> bool:
-    """Recognize the observed impossible JSON encoder state without masking app failures."""
+    """Recognize exact impossible interpreter states without masking app failures."""
     json_encoder_corruption = (
         "/json/encoder.py" in output
         and "yield '\\n' + _indent * _current_indent_level" in output
@@ -221,7 +221,17 @@ def retryable_interpreter_corruption(output: str) -> bool:
         and "Field.creation_counter += 1" in output
         and "TypeError: unsupported operand type(s) for +=: 'type' and 'int'" in output
     )
-    return json_encoder_corruption or django_field_counter_corruption
+    pydantic_code_object_corruption = (
+        "/pydantic/_internal/_generate_schema.py" in output
+        and "TypeError: 'code' object cannot be interpreted as an integer" in output
+        and "SystemError: <sys.legacy_event_handler object" in output
+        and "returned a result with an exception set" in output
+    )
+    return (
+        json_encoder_corruption
+        or django_field_counter_corruption
+        or pydantic_code_object_corruption
+    )
 
 
 def retryable_native_crash(return_code: int, output: str) -> bool:

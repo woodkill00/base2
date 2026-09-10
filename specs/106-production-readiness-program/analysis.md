@@ -2063,3 +2063,19 @@ its owner approval omitted the now-required source-commit and artifact-digest
 scope, and its executor omitted operation and reconciliation arguments plus
 receipt bindings. B564 repairs both fixtures and requires the actual staged
 lifecycle to pass; it does not weaken validation or grant deployment authority.
+
+## Analysis cycle 100 — Pydantic interpreter corruption
+
+The second exact gate for candidate
+`89ebb2f6e4e36edeb7fbdbffcd3ef8e0110a3865` failed closed during API coverage.
+Four preceding partitions passed, then a fresh process produced the impossible
+combination of a Pydantic schema-generation `code`-object integer `TypeError`
+and a `sys.legacy_event_handler` `SystemError` with an exception already set.
+The gate correctly retained the failure, but the exact new interpreter-corruption
+class was not yet eligible for its one bounded fresh-process recovery.
+
+B565-B568 add only the complete observed conjunction to the existing two-attempt
+interpreter budget. Partial signatures and ordinary Pydantic, typing, import,
+validation, and application failures remain terminal. Exact evidence and all
+reviews restart from the replacement commit; the failed gate remains non-release
+evidence.
