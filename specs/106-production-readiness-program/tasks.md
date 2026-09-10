@@ -698,3 +698,10 @@ substitute for the integration proof named by the task.
 - [ ] B498 Bind all focused Django commands to explicit empty addopts and a disabled coverage plugin so repository defaults cannot silently restore the unstable C tracer. (FR-002, FR-060, FR-063, FR-068, FR-070)
 - [ ] B499 Prove the gate manifest enforces those boundaries and repeat the formerly failing site-content migration check twenty times in fresh uninstrumented processes. (FR-060, FR-063, FR-065, FR-068, FR-070)
 - [ ] B500 Commit a replacement candidate and restart the clean-stack proof, exact repetitions, both complete gates, hosted checks, and every independent review from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 65 — Failed Django shard cycle 88 corrections
+
+- [ ] B501 Snapshot the exact parallel-coverage shard inventory before every fixed Django module attempt. (FR-002, FR-008, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B502 Delete every new regular shard after any nonzero module exit before retry or terminal propagation, and fail closed after safely unlinking a symlink shard or encountering another invalid shard type. (FR-002, FR-005, FR-007, FR-008, FR-031, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B503 Prove native and ordinary failed-attempt cleanup, symlink target preservation, successful-shard retention, and a complete 96-test partitioned run with no residual parallel data. (FR-002, FR-005, FR-008, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B504 Commit a replacement candidate and restart the clean-stack proof, exact repetitions, both complete gates, hosted checks, and every independent review from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)

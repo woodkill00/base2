@@ -12,12 +12,34 @@ MAX_NATIVE_ATTEMPTS = 3
 NATIVE_FAILURES = {-11, 134, 139}
 
 
-def run_bounded(command: list[str], environment: dict[str, str], report: Path) -> int:
+def _parallel_shards(prefix: Path) -> set[Path]:
+    return set(prefix.parent.glob(f"{prefix.name}.*"))
+
+
+def _remove_failed_shards(prefix: Path, before: set[Path]) -> None:
+    for shard in _parallel_shards(prefix) - before:
+        if shard.is_symlink() or shard.resolve().parent != prefix.parent.resolve():
+            shard.unlink(missing_ok=True)
+            raise RuntimeError("django_coverage_shard_invalid")
+        if not shard.is_file():
+            raise RuntimeError("django_coverage_shard_invalid")
+        shard.unlink()
+
+
+def run_bounded(
+    command: list[str],
+    environment: dict[str, str],
+    report: Path,
+    parallel_prefix: Path | None = None,
+) -> int:
     for attempt in range(1, MAX_NATIVE_ATTEMPTS + 1):
         report.unlink(missing_ok=True)
+        before = _parallel_shards(parallel_prefix) if parallel_prefix else set()
         result = subprocess.run(command, env=environment, check=False)
         if result.returncode == 0:
             return attempt
+        if parallel_prefix:
+            _remove_failed_shards(parallel_prefix, before)
         if result.returncode not in NATIVE_FAILURES or attempt == MAX_NATIVE_ATTEMPTS:
             raise RuntimeError(f"django_coverage_failed:exit_{result.returncode}")
         print(
@@ -63,7 +85,7 @@ def main() -> None:
             "-p",
             "no:cov",
         ]
-        run_bounded(command, environment, report)
+        run_bounded(command, environment, report, parallel_prefix=data)
     run_bounded(
         [sys.executable, "-m", "coverage", "combine", "--keep", str(data.parent)],
         environment,

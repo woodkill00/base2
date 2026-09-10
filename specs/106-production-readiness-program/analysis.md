@@ -1808,3 +1808,21 @@ without reducing measured scope or thresholds. The gate-manifest contract
 binds all four commands, and the formerly failing eight-test site-content
 module passed twenty fresh-process repetitions without a retry. Exact-source
 evidence restarts from another replacement commit.
+
+## Analysis cycle 88 — failed parallel coverage shard contamination
+
+Independent operations review of candidate
+`b25d78fed06e1b63013b7da087dff50d3a1f1ee8` found that a failed per-module
+Django coverage attempt could leave its partial parallel data shard beside
+successful shards. Removing only the JSON report was insufficient: a later
+successful retry could cause `coverage combine` to admit measurements from the
+failed attempt and overstate or corrupt the final evidence.
+
+B501-B504 snapshot the fixed shard namespace immediately before each module
+attempt and remove every shard newly created by a nonzero attempt before either
+native retry or ordinary terminal propagation. Unexpected symlink shards are
+unlinked without following their target and then fail closed; other invalid
+types also fail closed. Tests cover native recovery, ordinary failure, symlink
+target preservation, and successful-shard retention. A real partitioned run
+must again pass all 96 tests at the unchanged coverage result with no residual
+parallel shard before exact-source evidence restarts from a new commit.
