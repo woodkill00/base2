@@ -160,7 +160,7 @@ unset clamav_id clamav_state clamav_health clamav_oom
 stage="migration-dependencies"
 "${compose[@]}" up -d --no-build postgres redis
 stage="database-role-bootstrap"
-"${compose[@]}" run --rm --no-deps workspace-db-role >/dev/null
+"${compose[@]}" run --rm workspace-db-role >/dev/null
 stage="api-migrations"
 "${compose[@]}" run --rm --no-deps \
   -e DB_USER="$POSTGRES_USER" -e DB_PASSWORD="$POSTGRES_PASSWORD" \
