@@ -1890,3 +1890,21 @@ explicit stabilization is limited to the observed desktop boundary.
 Twenty repeated desktop journeys and the complete 36-case media visual matrix
 must pass before another exact-source candidate restarts all release evidence.
 The failed second-gate receipt remains retained and is not release evidence.
+
+## Analysis cycle 92 — exact visual-review receipt renewal
+
+The first complete gate for candidate
+`df37eb98d7c44e3801e5e69212db44431f9d75ba` passed 104 checks before the media
+visual-review contract rejected its deliberately stale source binding. The
+remaining four visual checks were correctly blocked. This is expected after a
+receipt-bound proof file changes: passing screenshots cannot self-authorize a
+new accepted review.
+
+Independent UX review inspected all 24 committed media baselines and the full
+whitespace-insensitive proof delta. It reported zero critical, high, medium, or
+low findings and explicitly accepted rebinding the receipt to `df37eb98`. No
+product UI, CSS, visual configuration, or baseline image changed; the sole
+behavioral delta is the desktop-only deterministic capture established in cycle 91. B521-B523 renew only the exact source binding, prove the schema, ancestry,
+snapshot inventory, and unchanged reviewed surfaces, then restart every final
+exact-source proof from the resulting metadata-only commit. The failed
+`20260910T022512Z` gate remains retained and cannot serve as release evidence.

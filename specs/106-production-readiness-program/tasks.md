@@ -730,3 +730,9 @@ substitute for the integration proof named by the task.
 - [ ] B518 Assert the desktop focused control's settled bottom edge is within two CSS pixels of the dialog viewport edge before admitting its visual baseline comparison. (FR-002, FR-005, FR-007, FR-021, FR-060, FR-063, FR-065, FR-068, FR-075, FR-078)
 - [ ] B519 Repeat the formerly drifting desktop media-detail journey twenty times and run the complete 36-case media visual matrix with zero screenshot mismatch. (FR-002, FR-005, FR-007, FR-021, FR-060, FR-063, FR-065, FR-068, FR-075, FR-078)
 - [ ] B520 Commit a replacement candidate and restart the fresh-stack proof, exact repetitions, both serialized complete gates, hosted checks, and every independent review from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 69 — Visual-review receipt renewal cycle 92 corrections
+
+- [ ] B521 Record the independent zero-finding review and bind the accepted media visual-review receipt to exact reviewed commit `df37eb98d7c44e3801e5e69212db44431f9d75ba` without changing product UI, CSS, visual configuration, or baseline images. (FR-002, FR-008, FR-021, FR-060, FR-063, FR-068, FR-075, FR-078)
+- [ ] B522 Prove the renewed receipt retains its exact schema, ancestor source, sorted 24-member committed screenshot inventory, accepted assertions, and unchanged receipt-bound surfaces. (FR-002, FR-005, FR-008, FR-021, FR-060, FR-063, FR-068, FR-075, FR-078)
+- [ ] B523 Commit the metadata-only renewal and restart fresh-stack proof, exact repetitions, both serialized complete gates, hosted checks, and every independent review from the new SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
