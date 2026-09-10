@@ -425,6 +425,11 @@ def test_remote_bootstrap_uses_bounded_size_appropriate_transfer_timeouts(tmp_pa
         remote.deploy("8.8.8.8", config)
 
 
+def test_remote_django_migration_bypasses_serving_entrypoint():
+    script = (Path(__file__).resolve().parents[2] / "digital_ocean/scripts/bash/full-preview-remote.sh").read_text()
+    assert "run --rm --no-deps --entrypoint python django manage.py migrate --noinput" in script
+
+
 def test_live_main_constructs_exact_dependencies(tmp_path, monkeypatch, capsys):
     credential = private_file(
         tmp_path / "credential.json", json.dumps({"secrets": {"DO_API_TOKEN": "token"}})

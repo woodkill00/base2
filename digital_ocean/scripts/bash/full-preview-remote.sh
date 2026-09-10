@@ -164,7 +164,9 @@ stage="database-role-bootstrap"; printf 'full-preview-stage:%s\n' "$stage" >&2
 stage="api-migrations"; printf 'full-preview-stage:%s\n' "$stage" >&2
 "${compose[@]}" run --rm --no-deps api-migrate python -m api.scripts.migrate >/dev/null
 stage="django-migrations"; printf 'full-preview-stage:%s\n' "$stage" >&2
-"${compose[@]}" run --rm --no-deps django python manage.py migrate --noinput >/dev/null
+# Bypass the serving entrypoint: it performs its own long-running gunicorn
+# startup after migrations, which can make this bounded one-shot gate hang.
+"${compose[@]}" run --rm --no-deps --entrypoint python django manage.py migrate --noinput >/dev/null
 stage="compose-up"; printf 'full-preview-stage:%s\n' "$stage" >&2
 "${compose[@]}" up -d --no-build
 stage="media-inspector-identity"; printf 'full-preview-stage:%s\n' "$stage" >&2
