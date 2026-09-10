@@ -320,6 +320,62 @@ class CompleteGateTests(unittest.TestCase):
             )
         )
 
+    def test_retries_exact_django_field_counter_corruption_only(self):
+        corruption = (
+            "/site-packages/django/db/models/fields/__init__.py\n"
+            "Field.creation_counter += 1\n"
+            "TypeError: unsupported operand type(s) for +=: 'type' and 'int'"
+        )
+        command = [
+            "/bin/sh",
+            "-c",
+            f"if test -f marker; then echo '6 passed'; exit 0; "
+            f"else touch marker; printf '%s\\n' \"{corruption}\"; exit 1; fi",
+        ]
+        result, _ = self.run_gate(
+            [check("django-counter", command, tools=["/bin/sh"], max_attempts=2)]
+        )
+        self.assertEqual("passed", result["overallStatus"])
+        self.assertEqual(2, result["checks"][0]["attempts"])
+        self.assertFalse(
+            self.gate.retryable_interpreter_corruption(
+                "app/models.py Field.creation_counter += 1 "
+                "TypeError: unsupported operand type(s) for +=: 'type' and 'int'"
+            )
+        )
+        self.assertFalse(
+            self.gate.retryable_interpreter_corruption(
+                "/django/db/models/fields/__init__.py Field.creation_counter += 1 "
+                "AssertionError: migration mismatch"
+            )
+        )
+        exhausted, _ = self.run_gate(
+            [
+                check(
+                    "django-counter",
+                    ["/bin/sh", "-c", f"printf '%s\\n' \"{corruption}\"; exit 1"],
+                    tools=["/bin/sh"],
+                    max_attempts=2,
+                )
+            ]
+        )
+        self.assertEqual("failed", exhausted["overallStatus"])
+        self.assertEqual(2, exhausted["checks"][0]["attempts"])
+
+    def test_gate_children_receive_deterministic_python_runtime(self):
+        result, output = self.run_gate(
+            [
+                check(
+                    "runtime",
+                    ["/bin/sh", "-c", "printf '%s %s' \"$PYTHONHASHSEED\" \"$PYTHONMALLOC\""],
+                    tools=["/bin/sh"],
+                )
+            ],
+            env={**os.environ, "PYTHONHASHSEED": "random", "PYTHONMALLOC": "pymalloc"},
+        )
+        self.assertEqual("passed", result["overallStatus"])
+        self.assertIn("0 malloc", (output / "runtime.log").read_text(encoding="utf-8"))
+
     def test_redacts_secret_environment_values_and_binds_digest(self):
         secret = "fixture-super-secret-value"
         result, output = self.run_gate(

@@ -1932,3 +1932,25 @@ log directory, eliminating fixed readiness and log targets. Adversarial tests
 must preserve external targets across linked parent, lock, log, result, and
 readiness attempts. A real owner/contender proof and full exact-source evidence
 sequence must pass again before another final independent review.
+
+## Analysis cycle 94 — impossible Django field-counter state
+
+The first hardened complete gate for candidate
+`5b09b4a80202f2fa1ee2410a8b524b25a1fc5167` passed 109/109 with every log
+private and integrity-bound. Its second run reached the isolated media Django
+contract with `Field.creation_counter`, an integer process-global in Django,
+corrupted to the `type` class before test setup. All six cases errored during
+migration construction with the impossible operation `type += int`. The
+receipt and failed log passed the new replay integrity validation, but the
+existing bounded infrastructure classifier recognized only native exits,
+worker crashes, and the earlier impossible JSON encoder state.
+
+B532-B534 give every gate child a deterministic Python hash seed and system
+allocator, then recognize only the conjunction of Django's installed
+field-module path, exact `Field.creation_counter += 1` operation, and exact
+`type`-plus-int error. The existing maximum of two attempts remains unchanged; ordinary
+assertions, application TypeErrors, partial signatures, timeouts without
+explicit policy, and a second identical corruption remain terminal. Positive
+recovery and negative classification tests precede a new candidate and another
+complete exact-source evidence restart. The failed second receipt remains
+retained and cannot serve as release evidence.

@@ -747,3 +747,9 @@ substitute for the integration proof named by the task.
 - [ ] B529 Prove linked parent, lock, log, result, and readiness paths fail closed without target mutation; prove private modes, result/log tamper rejection, owner/contender behavior, normal and exceptional release, and exact cleanup. (FR-002, FR-005, FR-008, FR-031, FR-060, FR-063, FR-065, FR-068, FR-070)
 - [ ] B530 Run the real isolated-E2E owner/contender proof and verify owner success, contender exit 3, anonymous readiness, private temporary cleanup, and empty exact-project inventory. (FR-002, FR-005, FR-008, FR-060, FR-063, FR-065, FR-068, FR-070)
 - [ ] B531 Commit a replacement candidate and restart exact repetitions, both complete gates, hosted checks, and fresh independent code, security, UX/accessibility, data, and operations reviews from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 71 — Django field-counter corruption cycle 94 corrections
+
+- [ ] B532 Give every gate child deterministic Python hash and allocator settings, then classify the impossible Django field-counter mutation as retryable only when installed module path, exact counter increment, and exact `type`-plus-int error all match. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B533 Prove one bounded recovery and immediate terminal behavior for application TypeErrors, partial signatures, ordinary assertions, and repeated corruption without changing the two-attempt ceiling. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B534 Commit a replacement candidate and restart exact repetitions, real concurrency proof, both complete gates, hosted checks, and fresh independent reviews from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)

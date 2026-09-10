@@ -185,11 +185,17 @@ def validate_runtime_capacity() -> None:
 
 def retryable_interpreter_corruption(output: str) -> bool:
     """Recognize the observed impossible JSON encoder state without masking app failures."""
-    return (
+    json_encoder_corruption = (
         "/json/encoder.py" in output
         and "yield '\\n' + _indent * _current_indent_level" in output
         and "TypeError: unsupported operand type(s) for *: 'NoneType' and 'int'" in output
     )
+    django_field_counter_corruption = (
+        "/django/db/models/fields/__init__.py" in output
+        and "Field.creation_counter += 1" in output
+        and "TypeError: unsupported operand type(s) for +=: 'type' and 'int'" in output
+    )
+    return json_encoder_corruption or django_field_counter_corruption
 
 
 def validate_manifest(manifest: dict) -> None:
@@ -319,6 +325,8 @@ def run_gate(
     repo_root = repo_root.resolve()
     evidence_fd = open_private_directory(evidence_dir, repo_root)
     environment = dict(environment or os.environ)
+    environment["PYTHONHASHSEED"] = "0"
+    environment["PYTHONMALLOC"] = "malloc"
     started = now()
     results = []
     states = {}
