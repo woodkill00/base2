@@ -381,6 +381,8 @@ def test_traefik_receives_only_allowlisted_configuration_and_scoped_secrets():
         "TRAEFIK_CERT_RESOLVER",
         "TRAEFIK_PREVIEW_MODE",
         "OWNER_ALLOWLIST_CSV",
+        "FASTAPI_PORT",
+        "DJANGO_PORT",
     }
     for name in ("local.docker.yml", "development.docker.yml"):
         source = (root / name).read_text(encoding="utf-8")
