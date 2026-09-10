@@ -7,9 +7,11 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from stat import S_IMODE
 
 MAX_NATIVE_ATTEMPTS = 3
 NATIVE_FAILURES = {-11, 134, 139}
+MAX_SHARD_BYTES = 50 * 1024 * 1024
 
 
 def _parallel_shards(prefix: Path) -> set[Path]:
@@ -26,17 +28,59 @@ def _remove_failed_shards(prefix: Path, before: set[Path]) -> None:
         shard.unlink()
 
 
+def _validate_success_shards(prefix: Path, before: set[Path]) -> set[Path]:
+    created = _parallel_shards(prefix) - before
+    if len(created) != 1:
+        for shard in created:
+            if shard.is_symlink() or shard.is_file():
+                shard.unlink(missing_ok=True)
+        raise RuntimeError("django_coverage_shard_count_invalid")
+    shard = next(iter(created))
+    if shard.is_symlink() or shard.resolve().parent != prefix.parent.resolve():
+        shard.unlink(missing_ok=True)
+        raise RuntimeError("django_coverage_shard_invalid")
+    if not shard.is_file():
+        raise RuntimeError("django_coverage_shard_invalid")
+    shard.chmod(0o600)
+    stat = shard.stat()
+    if S_IMODE(stat.st_mode) != 0o600 or not 0 < stat.st_size <= MAX_SHARD_BYTES:
+        shard.unlink(missing_ok=True)
+        raise RuntimeError("django_coverage_shard_invalid")
+    return created
+
+
+def _validate_complete_shards(prefix: Path, expected: set[Path]) -> None:
+    actual = _parallel_shards(prefix)
+    if actual != expected:
+        raise RuntimeError("django_coverage_inventory_invalid")
+    for shard in actual:
+        if (
+            shard.is_symlink()
+            or shard.resolve().parent != prefix.parent.resolve()
+            or not shard.is_file()
+        ):
+            raise RuntimeError("django_coverage_shard_invalid")
+        stat = shard.stat()
+        if S_IMODE(stat.st_mode) != 0o600 or not 0 < stat.st_size <= MAX_SHARD_BYTES:
+            raise RuntimeError("django_coverage_shard_invalid")
+
+
 def run_bounded(
     command: list[str],
     environment: dict[str, str],
     report: Path,
     parallel_prefix: Path | None = None,
+    accepted_shards: set[Path] | None = None,
 ) -> int:
     for attempt in range(1, MAX_NATIVE_ATTEMPTS + 1):
         report.unlink(missing_ok=True)
         before = _parallel_shards(parallel_prefix) if parallel_prefix else set()
         result = subprocess.run(command, env=environment, check=False)
         if result.returncode == 0:
+            if parallel_prefix:
+                created = _validate_success_shards(parallel_prefix, before)
+                if accepted_shards is not None:
+                    accepted_shards.update(created)
             return attempt
         if parallel_prefix:
             _remove_failed_shards(parallel_prefix, before)
@@ -65,6 +109,7 @@ def main() -> None:
     data.unlink(missing_ok=True)
     for partition in data.parent.glob(f"{data.name}.*"):
         partition.unlink()
+    retained: set[Path] = set()
     for test_file in tests:
         command = [
             sys.executable,
@@ -85,7 +130,16 @@ def main() -> None:
             "-p",
             "no:cov",
         ]
-        run_bounded(command, environment, report, parallel_prefix=data)
+        run_bounded(
+            command,
+            environment,
+            report,
+            parallel_prefix=data,
+            accepted_shards=retained,
+        )
+    _validate_complete_shards(data, retained)
+    if len(retained) != len(tests):
+        raise RuntimeError("django_coverage_inventory_invalid")
     run_bounded(
         [sys.executable, "-m", "coverage", "combine", "--keep", str(data.parent)],
         environment,

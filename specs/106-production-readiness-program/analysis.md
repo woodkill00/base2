@@ -1826,3 +1826,28 @@ types also fail closed. Tests cover native recovery, ordinary failure, symlink
 target preservation, and successful-shard retention. A real partitioned run
 must again pass all 96 tests at the unchanged coverage result with no residual
 parallel shard before exact-source evidence restarts from a new commit.
+
+## Analysis cycle 89 — complete-gate ownership and successful shard admission
+
+The first complete-gate attempt for candidate
+`78cb81f0e7ade8df8964fb462e64f2fe214a264d` overlapped an unintended second
+invocation. Both processes shared fixed API and DigitalOcean coverage
+directories and visual port 4174. The retained failed receipt
+`20260910T011611Z` records vanished coverage directories and a visual port
+collision. Two later serialized gates passed 109/109, proving serial behavior
+but also demonstrating that the complete gate lacked single-owner admission.
+
+Operations review also found that cycle 88 validated shards only following a
+nonzero subprocess exit. A subprocess returning zero could therefore leave a
+symlink, directory, unsafe-mode file, empty or oversized file, or unexpected
+shard count for later combination.
+
+B505-B512 add a restrictive nonblocking repository lock before source or child
+work. A contender starts zero checks, returns a distinct busy exit, and writes
+only a run-unique digest-bound busy receipt outside active release evidence;
+normal and exceptional owner exits release the kernel lock. Successful Django
+partitions must create exactly one contained regular nonempty bounded shard,
+which is normalized to mode 0600. The entire exact shard set and cardinality is
+revalidated immediately before combination. Owner/contender and adversarial
+shard tests plus a real 96-test coverage run precede another new exact-source
+candidate and complete evidence restart.

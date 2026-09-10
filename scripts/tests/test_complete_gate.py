@@ -5,6 +5,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from stat import S_IMODE
 from unittest.mock import patch
 
 MODULE_PATH = Path(__file__).parents[1] / "python" / "run_complete_gate.py"
@@ -63,6 +64,40 @@ class CompleteGateTests(unittest.TestCase):
             environment=env,
         )
         return result, output
+
+    def test_complete_gate_lock_rejects_contender_and_releases(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        with self.gate.complete_gate_lock(root) as lock_path:
+            self.assertEqual(0o600, S_IMODE(lock_path.stat().st_mode))
+            with self.assertRaisesRegex(
+                self.gate.CompleteGateBusy, "complete_gate_already_running"
+            ), self.gate.complete_gate_lock(root):
+                self.fail("contender acquired the gate lock")
+        with self.gate.complete_gate_lock(root):
+            pass
+        with self.assertRaisesRegex(
+            RuntimeError, "owner failure"
+        ), self.gate.complete_gate_lock(root):
+            raise RuntimeError("owner failure")
+        with self.gate.complete_gate_lock(root):
+            pass
+
+    def test_busy_receipt_is_distinct_and_integrity_bound(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        path = self.gate.write_busy_receipt(root)
+        self.assertIn("complete-gate-busy", path.parts)
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        digest = payload.pop("evidenceDigest")
+        canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        self.assertEqual(hashlib.sha256(canonical).hexdigest(), digest)
+        self.assertEqual("busy", payload["overallStatus"])
+        self.assertEqual("complete_gate_already_running", payload["diagnostic"])
+        self.assertIsNone(payload["sourceCommit"])
+        self.assertEqual([], payload["checks"])
 
     def test_records_failure_and_blocks_dependent_check(self):
         result, _ = self.run_gate(

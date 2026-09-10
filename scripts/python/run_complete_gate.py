@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import json
 import os
@@ -11,6 +12,7 @@ import re
 import shutil
 import subprocess
 import uuid
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -29,6 +31,31 @@ TOOL_TOKENS = {
     "{python-django}": (".venv-django/bin/python", ".venv-django/Scripts/python.exe"),
     "{python-orchestrator}": (".venv/bin/python", ".venv/Scripts/python.exe"),
 }
+GATE_BUSY_EXIT = 3
+
+
+class CompleteGateBusy(RuntimeError):
+    """Another process owns the repository-wide complete-gate lease."""
+
+
+@contextmanager
+def complete_gate_lock(repo_root: Path):
+    lock_path = repo_root / ".artifacts" / "complete-gate.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor = os.open(lock_path, os.O_CREAT | os.O_RDWR | os.O_CLOEXEC, 0o600)
+    os.fchmod(descriptor, 0o600)
+    handle = os.fdopen(descriptor, "r+")
+    try:
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise CompleteGateBusy("complete_gate_already_running") from exc
+        yield lock_path
+    finally:
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        finally:
+            handle.close()
 
 
 def now() -> str:
@@ -330,14 +357,43 @@ def git_commit(repo_root: Path) -> str:
     return completed.stdout.strip()
 
 
+def write_busy_receipt(repo_root: Path) -> Path:
+    started = now()
+    run_id = f"{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}-{os.getpid()}"
+    path = repo_root / ".artifacts" / "complete-gate-busy" / run_id / "result.json"
+    payload = {
+        "schemaVersion": 1,
+        "runId": f"complete-gate-busy-{uuid.uuid4().hex}",
+        "sourceCommit": None,
+        "startedAt": started,
+        "finishedAt": now(),
+        "overallStatus": "busy",
+        "diagnostic": "complete_gate_already_running",
+        "checks": [],
+    }
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    payload["evidenceDigest"] = hashlib.sha256(canonical).hexdigest()
+    atomic_json(path, payload)
+    return path
+
+
 def main() -> int:
-    validate_runtime_capacity()
     repo_root = Path(__file__).resolve().parents[2]
-    manifest_path = repo_root / "scripts" / "config" / "complete-gate-v1.json"
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    evidence_dir = repo_root / ".artifacts" / "complete-gate" / run_id
-    result = run_gate(manifest, repo_root, evidence_dir, source_commit=git_commit(repo_root))
+    try:
+        with complete_gate_lock(repo_root):
+            validate_runtime_capacity()
+            manifest_path = repo_root / "scripts" / "config" / "complete-gate-v1.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+            evidence_dir = repo_root / ".artifacts" / "complete-gate" / run_id
+            result = run_gate(
+                manifest, repo_root, evidence_dir, source_commit=git_commit(repo_root)
+            )
+    except CompleteGateBusy:
+        busy_receipt = write_busy_receipt(repo_root)
+        print("Complete gate: BUSY")
+        print(f"Evidence: {busy_receipt}")
+        return GATE_BUSY_EXIT
     print(f"Complete gate: {result['overallStatus'].upper()}")
     print(f"Evidence: {evidence_dir / 'result.json'}")
     return {"passed": 0, "failed": 1, "incomplete": 2}[result["overallStatus"]]
