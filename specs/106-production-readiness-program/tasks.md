@@ -676,3 +676,11 @@ substitute for the integration proof named by the task.
 - [ ] B485 Retry the isolated Django coverage process at most three times only for native exits, deleting partial reports before retry while keeping test assertion and configuration failures immediately terminal. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
 - [ ] B486 Prove recovery, exhaustion, ordinary fail-fast behavior, partial-report removal, fixed suite/config, stable tracing, and a complete 96-test Django coverage run without late-start measurement warnings. (FR-002, FR-005, FR-007, FR-060, FR-063, FR-065, FR-068, FR-071, FR-078)
 - [ ] B487 Commit a replacement candidate and restart every exact-source and hosted proof plus all independent reviews from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)
+
+## Phase 62 — Independent review cycle 85 corrections
+
+- [ ] B488 Bind every recovered native-crash failure receipt into the passed repetition manifest with its exact relative path and manifest SHA-256. (FR-002, FR-008, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B489 Revalidate each recovery receipt, failure log, digest, hash, size, private mode, exact source, fixed command, suite, repetition, attempt, native exit, containment, and nonsymlink path before replaying passed evidence. (FR-002, FR-008, FR-031, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B490 Prove valid recovery replay and fail closed on deletion, content tamper, symlink, traversal, wrong source, invalid exit, duplicate reference, ordinary failure, and native exhaustion. (FR-008, FR-060, FR-063, FR-065, FR-068, FR-070)
+- [ ] B491 Declare every repository-test runtime import in the exact hash-locked orchestrator environment, validate the lock contract, repair stale profile and database-time lease assertions, and run the documented command successfully. (FR-002, FR-059, FR-062, FR-063, FR-068, FR-070)
+- [ ] B492 Commit a replacement candidate and restart the clean-stack proof, exact repetitions, both complete gates, hosted checks, and every independent review from that SHA. (FR-002, FR-005, FR-007, FR-060, FR-063 through FR-069, FR-075, FR-078)

@@ -12,7 +12,7 @@ import subprocess
 import tempfile
 from collections.abc import Iterator
 from contextlib import contextmanager
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 REPETITIONS = 10
 MAX_NATIVE_ATTEMPTS = 3
@@ -167,6 +167,7 @@ def _validate_existing(path: Path, commit: str) -> Path:
     try:
         payload = json.loads(manifest.read_text(encoding="utf-8"))
         files = payload["files"]
+        recoveries = payload["nativeCrashRecoveries"]
     except (OSError, KeyError, json.JSONDecodeError, TypeError) as exc:
         raise RepetitionError("repetition_evidence_invalid") from exc
     if (
@@ -175,6 +176,7 @@ def _validate_existing(path: Path, commit: str) -> Path:
         or payload.get("sourceCommit") != commit
         or payload.get("repetitionsPerSuite") != REPETITIONS
         or not isinstance(files, list)
+        or not isinstance(recoveries, list)
         or len(files) != len(SUITES) * REPETITIONS
     ):
         raise RepetitionError("repetition_evidence_invalid")
@@ -210,7 +212,116 @@ def _validate_existing(path: Path, commit: str) -> Path:
             member.stat().st_uid != os.getuid() or member.stat().st_mode & 0o077
         ):
             raise RepetitionError("repetition_evidence_permissions_invalid")
+    seen_recoveries: set[tuple[str, int, int]] = set()
+    for recovery in recoveries:
+        identity = _validate_recovery_reference(path.parent, recovery, commit)
+        if identity in seen_recoveries:
+            raise RepetitionError("repetition_recovery_evidence_invalid")
+        seen_recoveries.add(identity)
     return manifest
+
+
+def _validate_recovery_reference(
+    evidence_root: Path, recovery: object, commit: str
+) -> tuple[str, int, int]:
+    if not isinstance(recovery, dict) or set(recovery) != {"manifestSha256", "path"}:
+        raise RepetitionError("repetition_recovery_evidence_invalid")
+    relative = recovery.get("path")
+    manifest_sha256 = recovery.get("manifestSha256")
+    if not isinstance(relative, str) or not isinstance(manifest_sha256, str):
+        raise RepetitionError("repetition_recovery_evidence_invalid")
+    relative_path = PurePosixPath(relative)
+    if (
+        relative_path.is_absolute()
+        or relative_path.as_posix() != relative
+        or len(relative_path.parts) != 4
+        or relative_path.parts[:2] != ("failures", commit)
+        or re.fullmatch(r"[0-9a-f]{64}", relative_path.parts[2]) is None
+        or relative_path.parts[3] != "result.json"
+        or re.fullmatch(r"[0-9a-f]{64}", manifest_sha256) is None
+    ):
+        raise RepetitionError("repetition_recovery_evidence_invalid")
+    failure_root = evidence_root / "failures"
+    commit_root = failure_root / commit
+    destination = commit_root / relative_path.parts[2]
+    manifest = destination / "result.json"
+    member = destination / "failure.log"
+    for directory in (evidence_root, failure_root, commit_root, destination):
+        if directory.is_symlink() or not directory.is_dir():
+            raise RepetitionError("repetition_recovery_evidence_invalid")
+        if os.name != "nt" and (
+            directory.stat().st_uid != os.getuid() or directory.stat().st_mode & 0o077
+        ):
+            raise RepetitionError("repetition_evidence_permissions_invalid")
+    if (
+        manifest.is_symlink()
+        or member.is_symlink()
+        or not manifest.is_file()
+        or not member.is_file()
+        or manifest.resolve().parent != destination.resolve()
+        or member.resolve().parent != destination.resolve()
+        or {entry.name for entry in destination.iterdir()} != {"failure.log", "result.json"}
+        or _digest(manifest) != manifest_sha256
+    ):
+        raise RepetitionError("repetition_recovery_evidence_changed")
+    if os.name != "nt" and (
+        manifest.stat().st_uid != os.getuid()
+        or member.stat().st_uid != os.getuid()
+        or manifest.stat().st_mode & 0o077
+        or member.stat().st_mode & 0o077
+    ):
+        raise RepetitionError("repetition_evidence_permissions_invalid")
+    try:
+        failure = json.loads(manifest.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, TypeError) as exc:
+        raise RepetitionError("repetition_recovery_evidence_invalid") from exc
+    supplied_digest = failure.get("evidenceDigest")
+    digest_payload = {key: value for key, value in failure.items() if key != "evidenceDigest"}
+    expected_digest = hashlib.sha256(
+        json.dumps(digest_payload, separators=(",", ":"), sort_keys=True).encode()
+    ).hexdigest()
+    suite = failure.get("suite")
+    repetition = failure.get("repetition")
+    attempt = failure.get("attempt")
+    exit_code = failure.get("exitCode")
+    output = member.read_bytes()
+    project_root = evidence_root.parents[1]
+    expected_command = None
+    if isinstance(suite, str) and suite in SUITES:
+        command = SUITES[suite]
+        expected_command = [str(project_root / command[0]), *command[1:]]
+    expected_failure_id = None
+    if isinstance(suite, str) and isinstance(repetition, int) and isinstance(attempt, int):
+        expected_failure_id = hashlib.sha256(
+            commit.encode()
+            + b"\0"
+            + suite.encode()
+            + b"\0"
+            + str(repetition).encode()
+            + b"\0"
+            + str(attempt).encode()
+            + b"\0"
+            + output
+        ).hexdigest()
+    if (
+        failure.get("schemaVersion") != 1
+        or failure.get("status") != "failed"
+        or failure.get("sourceCommit") != commit
+        or supplied_digest != expected_digest
+        or expected_command is None
+        or failure.get("command") != expected_command
+        or not isinstance(repetition, int)
+        or not 1 <= repetition <= REPETITIONS
+        or not isinstance(attempt, int)
+        or not 1 <= attempt < MAX_NATIVE_ATTEMPTS
+        or exit_code not in NATIVE_FAILURES
+        or failure.get("bytes") != len(output)
+        or failure.get("logSha256") != hashlib.sha256(output).hexdigest()
+        or not isinstance(failure.get("outputTruncated"), bool)
+        or expected_failure_id != destination.name
+    ):
+        raise RepetitionError("repetition_recovery_evidence_invalid")
+    return suite, repetition, attempt
 
 
 def _private_evidence_root(project_root: Path) -> Path:
@@ -335,7 +446,7 @@ def run(root: Path | None = None) -> Path:
         home.mkdir(mode=0o700)
         environment = _test_environment(home)
         files: list[dict[str, object]] = []
-        native_crash_recoveries: list[str] = []
+        native_crash_recoveries: list[dict[str, str]] = []
         with _isolated_source(project_root, commit, stage) as source:
             for suite, command in SUITES.items():
                 isolated_command = (str(project_root / command[0]), *command[1:])
@@ -372,7 +483,10 @@ def run(root: Path | None = None) -> Path:
                             and attempt < MAX_NATIVE_ATTEMPTS
                         ):
                             native_crash_recoveries.append(
-                                failure.relative_to(evidence_root).as_posix()
+                                {
+                                    "manifestSha256": _digest(failure),
+                                    "path": failure.relative_to(evidence_root).as_posix(),
+                                }
                             )
                             continue
                         raise RepetitionError(

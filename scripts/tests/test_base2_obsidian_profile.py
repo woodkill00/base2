@@ -6,7 +6,6 @@ from pathlib import Path
 from scripts.python.generate_site_profiles import TARGETS, generate
 from scripts.python.site_manifest import load_manifest, manifest_digest
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -23,6 +22,7 @@ def test_canonical_base2_obsidian_profile_is_complete_and_generated():
         "content",
         "content-workspace",
         "forms",
+        "media",
         "search",
     }
     digests = generate(check=True)

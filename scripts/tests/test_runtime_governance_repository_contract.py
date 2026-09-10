@@ -10,7 +10,8 @@ def test_repository_uses_tenant_context_locks_bounded_discovery_and_exact_replay
         "pg_advisory_xact_lock",
         "FOR UPDATE SKIP LOCKED",
         "idempotency_conflict",
-        "lease_expires_at<=%s",
+        "lease_expires_at>NOW()",
+        "lease_token=%s",
         "dead_letter",
         "LIMIT %s",
     ):

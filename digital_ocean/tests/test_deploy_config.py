@@ -258,8 +258,14 @@ def test_provider_dependencies_are_hash_locked_and_bootstrap_versions_are_attest
         encoding="utf-8"
     )
     assert "pydo==0.40.0" in requirements
+    assert "Pillow==12.3.0" in requirements
+    assert "PyYAML==6.0.3" in requirements
+    assert "jsonschema==4.25.1" in requirements
     assert "pydo>=0.5.0" not in requirements
     assert "pydo==0.40.0 \\" in lock
+    assert "pillow==12.3.0 \\" in lock
+    assert "pyyaml==6.0.3 \\" in lock
+    assert "jsonschema==4.25.1 \\" in lock
     assert "--hash=sha256:" in lock
     assert "--require-hashes -r .\\digital_ocean\\requirements.lock" in deploy
     assert "pip install --upgrade pip" not in deploy

@@ -275,9 +275,102 @@ def test_native_crash_is_retained_then_boundedly_recovered(tmp_path, monkeypatch
     manifest = repetitions.run(tmp_path)
     payload = json.loads(manifest.read_text(encoding="utf-8"))
     assert len(payload["nativeCrashRecoveries"]) == 1
-    failure = tmp_path / ".artifacts/feature-106-repetitions" / payload["nativeCrashRecoveries"][0]
+    recovery = payload["nativeCrashRecoveries"][0]
+    failure = tmp_path / ".artifacts/feature-106-repetitions" / recovery["path"]
+    assert recovery["manifestSha256"] == repetitions._digest(failure)
     assert json.loads(failure.read_text(encoding="utf-8"))["exitCode"] == -11
     assert (manifest.parent / "suite-1.log").read_text(encoding="utf-8") == "passed\n"
+    assert repetitions.run(tmp_path) == manifest
+
+
+def _recovered_run(tmp_path, monkeypatch):
+    commit = "6" * 40
+    monkeypatch.setattr(repetitions, "REPETITIONS", 1)
+    monkeypatch.setattr(repetitions, "SUITES", {"suite": ("fixture",)})
+    _prepare_run(monkeypatch, commit)
+    results = iter(
+        (
+            SimpleNamespace(returncode=139, stdout="", stderr="native crash\n"),
+            SimpleNamespace(returncode=0, stdout="passed\n", stderr=""),
+        )
+    )
+    monkeypatch.setattr(repetitions.subprocess, "run", lambda *_args, **_kwargs: next(results))
+    manifest = repetitions.run(tmp_path)
+    payload = json.loads(manifest.read_text(encoding="utf-8"))
+    recovery = payload["nativeCrashRecoveries"][0]
+    failure = tmp_path / ".artifacts/feature-106-repetitions" / recovery["path"]
+    return commit, manifest, payload, recovery, failure
+
+
+@pytest.mark.parametrize("target", ["manifest", "log"])
+def test_recovered_replay_rejects_missing_or_changed_collateral(
+    tmp_path, monkeypatch, target
+):
+    _commit, _manifest, _payload, _recovery, failure = _recovered_run(
+        tmp_path, monkeypatch
+    )
+    member = failure if target == "manifest" else failure.parent / "failure.log"
+    if target == "manifest":
+        member.unlink()
+    else:
+        member.write_bytes(b"tampered\n")
+    with pytest.raises(repetitions.RepetitionError, match="recovery_evidence"):
+        repetitions.run(tmp_path)
+
+
+def test_recovered_replay_rejects_symlinked_collateral(tmp_path, monkeypatch):
+    _commit, _manifest, _payload, _recovery, failure = _recovered_run(
+        tmp_path, monkeypatch
+    )
+    member = failure.parent / "failure.log"
+    outside = tmp_path / "outside.log"
+    outside.write_bytes(member.read_bytes())
+    member.unlink()
+    member.symlink_to(outside)
+    with pytest.raises(repetitions.RepetitionError, match="recovery_evidence"):
+        repetitions.run(tmp_path)
+
+
+def test_recovered_replay_rejects_public_collateral_mode(tmp_path, monkeypatch):
+    _commit, _manifest, _payload, _recovery, failure = _recovered_run(
+        tmp_path, monkeypatch
+    )
+    failure.chmod(0o644)
+    with pytest.raises(repetitions.RepetitionError, match="permissions_invalid"):
+        repetitions.run(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "mutation", ["traversal", "wrong_commit", "invalid_exit", "duplicate"]
+)
+def test_recovered_replay_rejects_identity_substitution(
+    tmp_path, monkeypatch, mutation
+):
+    commit, manifest, payload, recovery, failure = _recovered_run(tmp_path, monkeypatch)
+    if mutation == "duplicate":
+        payload["nativeCrashRecoveries"].append(recovery.copy())
+    elif mutation == "invalid_exit":
+        failure_payload = json.loads(failure.read_text(encoding="utf-8"))
+        failure_payload["exitCode"] = 1
+        digest_payload = {
+            key: value for key, value in failure_payload.items() if key != "evidenceDigest"
+        }
+        failure_payload["evidenceDigest"] = repetitions.hashlib.sha256(
+            json.dumps(digest_payload, separators=(",", ":"), sort_keys=True).encode()
+        ).hexdigest()
+        failure.write_text(json.dumps(failure_payload), encoding="utf-8")
+        recovery["manifestSha256"] = repetitions._digest(failure)
+    elif mutation == "wrong_commit":
+        recovery["path"] = recovery["path"].replace(commit, "5" * 40)
+    else:
+        recovery["path"] = f"failures/{commit}/../{failure.parent.name}/result.json"
+    digest_payload = {key: value for key, value in payload.items() if key != "evidenceDigest"}
+    payload["evidenceDigest"] = repetitions.hashlib.sha256(
+        json.dumps(digest_payload, separators=(",", ":"), sort_keys=True).encode()
+    ).hexdigest()
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(repetitions.RepetitionError, match="recovery_evidence"):
+        repetitions.run(tmp_path)
 
 
 def test_native_crash_exhaustion_retains_every_attempt(tmp_path, monkeypatch):

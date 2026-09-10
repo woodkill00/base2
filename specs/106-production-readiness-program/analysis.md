@@ -1748,3 +1748,24 @@ immediately terminal. Coverage starts the interpreter before pytest-django can
 import application settings, avoiding a late-start measurement gap. Unit tests
 and a real 96-test coverage run precede another
 complete exact-source restart.
+
+## Analysis cycle 85 — recovery-collateral replay and repository environment
+
+Independent review of candidate `c2ef83145a584796388bd329089eb5e12295bd20`
+found two medium assurance gaps. A passed repetition manifest bound recovered
+native failures only by pathname and did not revalidate those sibling failure
+receipts during replay. Separately, the documented `.venv` repository-test
+command relied on PyYAML, jsonschema, and Pillow without declaring them in its
+hash-locked requirements; after those imports were installed, the complete
+repository suite also exposed two stale contract assertions.
+
+B488-B492 replace recovery strings with exact path-and-manifest-digest records
+and require every referenced receipt and log to remain private, contained,
+nonsymlinked, structurally valid, digest/hash/size bound, exact-source bound,
+and limited to a fixed suite attempt with a recognized native exit. Replay
+regressions cover deletion, tamper, symlink, traversal, wrong commit, invalid
+exit, and valid reuse. The repository environment now directly pins all three
+collection-time imports, while the stale profile assertion includes the
+supported media module and lease fencing asserts database-time plus the opaque
+lease token. The documented repository command passes 391 tests and 81
+subtests. All exact-source evidence restarts from a new commit.
