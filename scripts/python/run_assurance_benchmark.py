@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import fcntl
 import json
 import os
 import re
@@ -22,14 +23,19 @@ if str(ROOT) not in sys.path:
 from scripts.python.assurance_orchestrator import (
     AssuranceError,
     Change,
-    _run_lease,
     _redact_output,
     _sha,
     benchmark_report,
     build_plan,
     load_graph,
 )
-from scripts.python.run_complete_gate import open_private_directory, private_atomic_json, private_write
+from scripts.python.run_complete_gate import (
+    open_private_directory,
+    private_atomic_json,
+    private_write,
+    validate_gate_evidence,
+    validate_manifest,
+)
 
 MAX_LOG_BYTES = 4 * 1024 * 1024
 MUTATIONS = {
@@ -74,16 +80,17 @@ def _validate_complete_gate_path(root: Path, path: Path, commit: str) -> tuple[i
         resolved.relative_to((root / ".artifacts" / "complete-gate").resolve(strict=True))
         if path.is_symlink() or not path.is_file():
             raise ValueError
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload = validate_gate_evidence(path, root)
+        manifest = json.loads((root / "scripts/config/complete-gate-v1.json").read_text(encoding="utf-8"))
+        validate_manifest(manifest)
     except (OSError, ValueError, UnicodeError, json.JSONDecodeError) as exc:
         raise AssuranceError("benchmark_legacy_evidence_invalid") from exc
-    supplied = payload.get("evidenceDigest")
-    unsigned = {key: value for key, value in payload.items() if key != "evidenceDigest"}
     checks = payload.get("checks")
+    expected = [(item["id"], item["required"]) for item in manifest["checks"]]
+    actual = [(item.get("id"), item.get("required")) for item in checks] if isinstance(checks, list) else []
     if (
         payload.get("schemaVersion") != 1 or payload.get("sourceCommit") != commit
-        or payload.get("overallStatus") != "passed" or supplied != _sha(unsigned)
-        or not isinstance(checks, list) or not checks
+        or payload.get("overallStatus") != "passed" or actual != expected
         or any(item.get("status") != "passed" for item in checks if item.get("required"))
     ):
         raise AssuranceError("benchmark_legacy_evidence_invalid")
@@ -161,6 +168,10 @@ def _run_under_lease(root: Path) -> Path:
         root / ".artifacts" / "assurance-orchestrator" / "benchmarks" / commit, root
     )
     try:
+        try:
+            fcntl.flock(evidence_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise AssuranceError("benchmark_busy") from exc
         if "result.json" in os.listdir(evidence_fd):
             _validate_existing(evidence_fd, commit)
             return root / ".artifacts" / "assurance-orchestrator" / "benchmarks" / commit / "result.json"
@@ -189,7 +200,7 @@ def _run_under_lease(root: Path) -> Path:
                 raise AssuranceError("benchmark_worktree_failed")
             try:
                 optimized_samples: list[int] = []
-                optimized_logs: list[bytes] = []
+                routine_logs: list[bytes] = []
                 for relative in ROUTINE_FIXTURES:
                     document = worktree / relative
                     original = document.read_bytes()
@@ -211,9 +222,9 @@ def _run_under_lease(root: Path) -> Path:
                     if optimized_payload.get("status") != "passed" or optimized_payload.get("resolvedTier") != "focused":
                         raise AssuranceError("benchmark_optimized_output_invalid")
                     optimized_samples.append(optimized_ms)
-                    optimized_logs.append(optimized_log)
+                    routine_logs.append(optimized_log)
                 optimized_ms = int(statistics.median(optimized_samples))
-                optimized_log = b"\n".join(optimized_logs)[:MAX_LOG_BYTES]
+                routine_log = b"\n".join(routine_logs)[:MAX_LOG_BYTES]
             finally:
                 removed = subprocess.run(
                     ["git", "worktree", "remove", "--force", str(worktree)], cwd=root,
@@ -221,12 +232,30 @@ def _run_under_lease(root: Path) -> Path:
                 )
                 if removed.returncode:
                     raise AssuranceError("benchmark_worktree_cleanup_failed")
+        compact_rc, compact_log, _ = _measure(
+            [str(root / "scripts/bash/assure.sh"), "run", "--tier", "auto", "--json"],
+            root, 120,
+        )
+        if compact_rc:
+            private_write(evidence_fd, "compact-release-failure.log", compact_log)
+            raise AssuranceError(f"benchmark_compact_release_failed:{compact_rc}")
+        try:
+            compact_payload = json.loads(compact_log.decode("utf-8"))
+        except (UnicodeError, json.JSONDecodeError) as exc:
+            raise AssuranceError("benchmark_compact_release_output_invalid") from exc
+        if (
+            compact_payload.get("status") != "passed"
+            or compact_payload.get("satisfiedBy") != "exact-complete-gate"
+            or compact_payload.get("executed") != []
+        ):
+            raise AssuranceError("benchmark_compact_release_output_invalid")
+        optimized_output_bytes = len(compact_log)
         mutations_detected = _mutation_detection(root, commit)
         report = benchmark_report(
             legacy_measured_ms=legacy_ms,
             optimized_measured_ms=optimized_ms,
             legacy_output_bytes=legacy_output_bytes,
-            optimized_output_bytes=len(optimized_log),
+            optimized_output_bytes=optimized_output_bytes,
             estimated_avoided_ms=max(0, legacy_ms - optimized_ms),
             mutations_detected=mutations_detected,
             mutations_total=len(MUTATIONS),
@@ -234,14 +263,17 @@ def _run_under_lease(root: Path) -> Path:
         if report["status"] != "passed":
             raise AssuranceError("benchmark_targets_not_met")
         legacy_sha, legacy_bytes = private_write(evidence_fd, "legacy.log", legacy_log)
-        optimized_sha, optimized_bytes = private_write(evidence_fd, "optimized.log", optimized_log)
+        optimized_sha, optimized_bytes = private_write(evidence_fd, "optimized.log", compact_log)
+        routine_sha, routine_bytes = private_write(evidence_fd, "routine.log", routine_log)
         payload = {
             **report,
             "sourceCommit": commit,
             "legacyLog": {"name": "legacy.log", "sha256": legacy_sha, "bytes": legacy_bytes},
             "legacyCompleteGateEvidence": legacy_evidence_path,
-            "legacyMeasuredArtifactBytes": legacy_output_bytes,
+            "legacyFullLogBytes": legacy_output_bytes,
             "optimizedLog": {"name": "optimized.log", "sha256": optimized_sha, "bytes": optimized_bytes},
+            "routineLog": {"name": "routine.log", "sha256": routine_sha, "bytes": routine_bytes},
+            "outputComparison": "same-exact-gate-full-logs-vs-compact-receipt",
             "mutationPathsDigest": hashlib.sha256("\n".join(sorted(MUTATIONS)).encode()).hexdigest(),
             "previousFeatureCommitHostedJobsMultiplier": 2,
             "optimizedFeatureCommitHostedJobsMultiplier": 1,
@@ -256,8 +288,7 @@ def _run_under_lease(root: Path) -> Path:
 
 
 def run(root: Path = ROOT) -> Path:
-    with _run_lease(root):
-        return _run_under_lease(root)
+    return _run_under_lease(root)
 
 
 def main(argv: list[str]) -> int:

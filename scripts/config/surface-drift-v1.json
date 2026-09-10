@@ -18,7 +18,7 @@
       "django/site_profiles/northstar-library.json": "286850ced5758a336b8c7a82e345f57baa9d4686b39d209311178b6eaa5351f5",
       "scripts/config/complete-gate-v1.json": "53272342ac32ed3428f9ddf7205118341d7a1622426d59c8f393413c6309e150",
       "shared/config/archetypes-v1.json": "1c203b4f3e076adf87fed98698cec6473b7ac765dcbfb7b6ca4b67c090801ce3",
-      "shared/config/assurance-orchestrator-v1.json": "873c24690568e4d201b98c1567511c6fc52521865ec9c64a97c4b907602c6475",
+      "shared/config/assurance-orchestrator-v1.json": "dcd00bc5c95d8f8992fb0d8fdba5f65673fe8bccd5dde786ff9267a8da818604",
       "shared/config/content-workspace-presets.generated.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
       "shared/config/credential-inventory-v1.json": "e84852d85d25f994400fb21dc9aef098853856e4b84210cc07582b4f999b831c",
       "shared/config/data-readiness-v1.json": "b5ff6208f40dff554992707539bf623f4767a7f58678f4047ac8fe0dfa20b917",

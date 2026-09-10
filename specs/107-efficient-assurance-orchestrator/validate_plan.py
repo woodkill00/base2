@@ -21,13 +21,13 @@ def main() -> int:
     task_ids = [int(value) for value in re.findall(r"^- \[[ x]\] T(\d{3})", tasks, re.M)]
     if requirement_ids != list(range(1, 36)):
         raise SystemExit("requirements_not_contiguous")
-    if task_ids != list(range(1, 101)):
+    if task_ids != list(range(1, 113)):
         raise SystemExit("tasks_not_contiguous")
     if "NEEDS CLARIFICATION" in spec:
         raise SystemExit("unresolved_clarification")
     if "run_complete_gate.py" not in (ROOT / "plan.md").read_text(encoding="utf-8"):
         raise SystemExit("release_authority_missing")
-    print("efficient_assurance_plan_valid requirements=35 tasks=100")
+    print("efficient_assurance_plan_valid requirements=35 tasks=112")
     return 0
 
 

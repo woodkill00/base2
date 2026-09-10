@@ -16,16 +16,110 @@
     "surfaces",
     "checks"
   ],
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,63}$" },
+    "tier": { "enum": ["focused", "standard", "full", "release"] },
+    "idArray": { "type": "array", "items": { "$ref": "#/$defs/id" }, "uniqueItems": true },
+    "surface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["checks", "dependsOn"],
+      "properties": {
+        "checks": { "$ref": "#/$defs/idArray" },
+        "dependsOn": { "$ref": "#/$defs/idArray" }
+      }
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commandId", "dependsOn", "resource", "cache", "tiers"],
+      "properties": {
+        "commandId": { "$ref": "#/$defs/id" },
+        "dependsOn": { "$ref": "#/$defs/idArray" },
+        "resource": { "enum": ["light", "cpu", "docker", "browser", "exclusive"] },
+        "cache": { "type": "boolean" },
+        "tiers": { "type": "array", "items": { "$ref": "#/$defs/tier" }, "uniqueItems": true }
+      }
+    }
+  },
   "properties": {
     "schemaVersion": { "const": 1 },
     "graphVersion": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}\\.[1-9][0-9]*$" },
     "tierOrder": { "const": ["focused", "standard", "full", "release"] },
-    "mandatoryChecks": { "type": "object" },
-    "outputPolicy": { "type": "object" },
-    "evidencePolicy": { "type": "object" },
-    "resourcePolicy": { "type": "object" },
-    "pathRules": { "type": "array", "minItems": 1 },
-    "surfaces": { "type": "object", "minProperties": 1 },
-    "checks": { "type": "object", "minProperties": 1 }
+    "mandatoryChecks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["focused", "standard", "full", "release"],
+      "properties": {
+        "focused": { "$ref": "#/$defs/idArray" },
+        "standard": { "$ref": "#/$defs/idArray" },
+        "full": { "$ref": "#/$defs/idArray" },
+        "release": { "$ref": "#/$defs/idArray" }
+      }
+    },
+    "outputPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["successMaxBytes", "successMaxLines", "logMaxBytes"],
+      "properties": {
+        "successMaxBytes": { "const": 4096 },
+        "successMaxLines": { "const": 40 },
+        "logMaxBytes": { "type": "integer", "minimum": 1, "maximum": 4194304 }
+      }
+    },
+    "evidencePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "passedTtlSeconds",
+        "maxRunDirectories",
+        "maxCacheEntries",
+        "directoryMode",
+        "fileMode"
+      ],
+      "properties": {
+        "passedTtlSeconds": { "const": 86400 },
+        "maxRunDirectories": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "maxCacheEntries": { "type": "integer", "minimum": 1, "maximum": 256 },
+        "directoryMode": { "const": "0700" },
+        "fileMode": { "const": "0600" }
+      }
+    },
+    "resourcePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxProcesses", "maxDocker", "maxBrowsers"],
+      "properties": {
+        "maxProcesses": { "const": 1 },
+        "maxDocker": { "const": 1 },
+        "maxBrowsers": { "const": 1 }
+      }
+    },
+    "pathRules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["glob", "surface", "minimumTier"],
+        "properties": {
+          "glob": { "type": "string", "minLength": 1 },
+          "surface": { "$ref": "#/$defs/id" },
+          "minimumTier": { "$ref": "#/$defs/tier" }
+        }
+      }
+    },
+    "surfaces": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "$ref": "#/$defs/id" },
+      "additionalProperties": { "$ref": "#/$defs/surface" }
+    },
+    "checks": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "$ref": "#/$defs/id" },
+      "additionalProperties": { "$ref": "#/$defs/check" }
+    }
   }
 }

@@ -144,3 +144,18 @@
 - [x] T098 Admit an integrity-valid clean exact-commit complete-gate receipt as stronger evidence with zero duplicate execution.
 - [x] T099 Reject dirty, mismatched, partial, failed, public, linked, malformed, or tampered release evidence and test the hook contract.
 - [x] T100 Complete the publication-path analysis cycle with no unresolved local integration gap.
+
+## Phase 16 — Analysis cycle 9 independent-review corrections
+
+- [x] T101 Require exact current manifest inventory and artifact-integrity validation before complete-gate evidence can satisfy an automatic run.
+- [x] T102 Ensure explicit release always invokes the complete gate and never consumes the automatic stronger-evidence shortcut.
+- [x] T103 Revalidate the exact repository source before and after every process and forbid cache publication after drift.
+- [x] T104 Make security-sensitive API, Django, and frontend path detection case-insensitive and cover token/auth context paths.
+- [x] T105 Bound private run and cache retention and fail closed on linked, foreign, special, or unsafe members.
+- [x] T106 Add bounded redacted failure attempts and honest nonzero reuse-output metrics without changing the resolved tier.
+- [x] T107 Close the published nested JSON Schema and validate the production graph plus hostile unknown fields.
+- [x] T108 Implement distinct compact human-text and explicit `--json` machine-output modes.
+- [x] T109 Compare full and compact output for the same exact complete gate while retaining the separate measured routine-fixture median.
+- [x] T110 Add adversarial regression tests for every cycle-9 correction and rerun the focused policy matrix.
+- [ ] T111 Obtain renewed independent code/security, operations, and UX/data acceptance with no critical, high, or medium finding.
+- [ ] T112 Run one fresh final exact-commit complete gate, benchmark, hosted matrix, publication, and merge verification.

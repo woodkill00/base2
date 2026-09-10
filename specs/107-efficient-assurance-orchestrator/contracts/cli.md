@@ -18,7 +18,12 @@
 - `status` reads only the current exact-source receipt.
 - `explain` prints selection reason chains and residual scope, still within configured output bounds.
 - `release` always invokes the existing complete gate and requires fresh exact-head repetition evidence under its existing policy.
+- A clean `auto`, `focused`, `standard`, or `full` request may be satisfied without execution by a current integrity-valid exact-commit complete-gate receipt whose ordered check inventory exactly matches the current manifest. An explicit `release` request never uses this shortcut.
+- Default output is compact readable text. `--json`/`-Json` returns the bounded machine-readable JSON contract.
+- A check fails with exit 125 if its exact repository source changes during execution; no cache receipt is published for that check.
 
-## Compact JSON
+## Compact JSON (`--json` / `-Json`)
 
 Required top-level fields: `schemaVersion`, `status`, `sourceCommit`, `requestedTier`, `resolvedTier`, `planDigest`, `selected`, `reused`, `executed`, `failed`, `avoided`, `wallMilliseconds`, `outputBytes`, `estimatedTokens`, `evidencePath`.
+
+Failed summaries additionally include bounded `failureDetails` with check ID, exit code, attempts, and a redacted diagnostic tail.

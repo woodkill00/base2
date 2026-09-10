@@ -23,7 +23,13 @@
     "release": ["complete-gate"]
   },
   "outputPolicy": { "successMaxBytes": 4096, "successMaxLines": 40, "logMaxBytes": 4194304 },
-  "evidencePolicy": { "passedTtlSeconds": 86400, "directoryMode": "0700", "fileMode": "0600" },
+  "evidencePolicy": {
+    "passedTtlSeconds": 86400,
+    "maxRunDirectories": 20,
+    "maxCacheEntries": 64,
+    "directoryMode": "0700",
+    "fileMode": "0600"
+  },
   "resourcePolicy": { "maxProcesses": 1, "maxDocker": 1, "maxBrowsers": 1 },
   "pathRules": [
     { "glob": "docs/**", "surface": "docs", "minimumTier": "focused" },

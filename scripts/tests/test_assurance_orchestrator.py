@@ -7,11 +7,17 @@ import subprocess
 from pathlib import Path
 
 import pytest
+import jsonschema
 
 from scripts.python import assurance_orchestrator as assurance
 
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+@pytest.fixture(autouse=True)
+def stable_source(monkeypatch):
+    monkeypatch.setattr(assurance, "_source_matches_plan", lambda *_args: True)
 
 
 def graph():
@@ -66,6 +72,13 @@ def test_docs_are_focused_while_risky_and_unknown_changes_escalate():
     unknown = assurance.build_plan(value, [change("mystery.bin")], "auto", "a" * 40, "b" * 40, False)
     assert unknown["resolvedTier"] == "full"
     assert any(reason.startswith("unmapped_path:") for reason in unknown["reasons"])
+
+
+def test_sensitive_paths_are_case_insensitive_and_always_full_security():
+    for path in ("api/auth/tokens.py", "react-app/src/contexts/AuthContext.js"):
+        plan = assurance.build_plan(graph(), [change(path)], "auto", "a" * 40, "b" * 40, False)
+        assert plan["resolvedTier"] == "full"
+        assert "security-policy" in plan["selected"]
 
 
 def test_transitive_mapping_and_requested_tier_never_downgrade():
@@ -132,6 +145,8 @@ def test_compact_output_is_bounded_and_contains_honest_residual_scope():
     assert len(rendered.splitlines()) <= 40
     payload = json.loads(rendered)
     assert payload["resolvedTier"] == "focused" and payload["avoided"]
+    text = assurance.compact_text({"status": "passed", "resolvedTier": "focused", "executed": ["diff-check"]})
+    assert text.startswith("Assurance: PASSED\n") and "Executed: diff-check" in text
 
 
 def test_token_estimate_and_benchmark_do_not_count_estimates_as_measurements():
@@ -188,28 +203,46 @@ def test_execution_is_compact_private_and_exact_replay_safe(tmp_path, monkeypatc
     assert assurance.latest_status(tmp_path)["planDigest"] == plan["planDigest"]
 
 
-def test_exact_complete_gate_satisfies_clean_run_without_execution(tmp_path):
+def test_exact_complete_gate_requires_exact_manifest_inventory(tmp_path, monkeypatch):
     commit = "a" * 40
     run = tmp_path / ".artifacts" / "complete-gate" / "20260910T120000Z-1"
     run.mkdir(parents=True, mode=0o700)
     (tmp_path / ".artifacts").chmod(0o700)
     (tmp_path / ".artifacts" / "complete-gate").chmod(0o700)
-    payload = {
-        "schemaVersion": 1, "sourceCommit": commit, "overallStatus": "passed",
-        "checks": [{"required": True, "status": "passed"}],
-    }
-    payload["evidenceDigest"] = assurance._sha(payload)
+    config = tmp_path / "scripts" / "config"
+    config.mkdir(parents=True)
+    manifest = {"schemaVersion": 1, "checks": [
+        {"id": "first", "command": ["true"], "required": True, "timeoutSeconds": 1, "dependsOn": [], "requiredTools": []},
+        {"id": "second", "command": ["true"], "required": False, "timeoutSeconds": 1, "dependsOn": ["first"], "requiredTools": []},
+    ]}
+    (config / "complete-gate-v1.json").write_text(json.dumps(manifest), encoding="utf-8")
+    payload = {"schemaVersion": 1, "sourceCommit": commit, "overallStatus": "passed", "checks": [
+        {"id": "first", "required": True, "status": "passed"},
+    ]}
     result = run / "result.json"
     result.write_text(json.dumps(payload), encoding="utf-8")
     result.chmod(0o600)
+    monkeypatch.setattr(assurance, "validate_gate_evidence", lambda *_args: json.loads(result.read_text()))
+    assert assurance.exact_complete_gate_evidence(tmp_path, commit) is None
+    payload["checks"].append({"id": "second", "required": False, "status": "passed"})
+    result.write_text(json.dumps(payload), encoding="utf-8")
     plan = assurance.build_plan(graph(), [change("docs/a.md")], "auto", commit, commit, False)
     executed = assurance.execute_plan(tmp_path, graph(), plan)
     assert executed["status"] == "passed" and executed["executed"] == []
-    assert executed["reused"] == ["complete-gate"] and executed["resolvedTier"] == "release"
+    assert executed["reused"] == ["complete-gate"] and executed["resolvedTier"] == "focused"
+    assert executed["satisfiedBy"] == "exact-complete-gate"
+    assert executed["outputBytes"] > 0 and executed["estimatedTokens"] > 0
     payload["checks"][0]["status"] = "failed"
     result.write_text(json.dumps(payload), encoding="utf-8")
-    result.chmod(0o600)
     assert assurance.exact_complete_gate_evidence(tmp_path, commit) is None
+
+
+def test_explicit_release_always_executes_even_with_strong_evidence(tmp_path, monkeypatch):
+    monkeypatch.setattr(assurance, "exact_complete_gate_evidence", lambda *_args: "strong.json")
+    monkeypatch.setitem(assurance.COMMANDS, "complete-gate", assurance.Command(("python3", "-c", "print('ok')")))
+    plan = assurance.build_plan(graph(), [change("docs/a.md")], "release", "a" * 40, "b" * 40, False)
+    result = assurance.execute_plan(tmp_path, graph(), plan)
+    assert result["executed"] == ["complete-gate"] and result["reused"] == []
 
 
 def test_execution_fails_fast_redacts_and_blocks_remaining_checks(tmp_path, monkeypatch):
@@ -225,6 +258,9 @@ def test_execution_fails_fast_redacts_and_blocks_remaining_checks(tmp_path, monk
     log = next((tmp_path / result["evidencePath"]).parent.glob("*.log")).read_text()
     assert "very-secret-value" not in log
     assert "[REDACTED]" in log and "very-secret-value" not in json.dumps(run)
+    assert result["failureDetails"][0]["attempts"] == 1
+    assert result["failureDetails"][0]["exitCode"] == 1
+    assert "very-secret-value" not in result["failureDetails"][0]["summary"]
 
 
 def test_linked_evidence_parent_is_rejected_without_external_write(tmp_path):
@@ -449,3 +485,49 @@ def test_executable_identity_drift_fails_the_check(tmp_path, monkeypatch):
     assert result["failed"] == ["diff-check"]
     receipt = json.loads((tmp_path / result["evidencePath"]).read_text())["receipts"][0]
     assert receipt["exitCode"] == 125
+
+
+def test_repository_source_drift_fails_before_cache_publication(tmp_path, monkeypatch):
+    monkeypatch.setitem(assurance.COMMANDS, "diff-check", assurance.Command(("python3", "-c", "pass")))
+    states = iter((True, False))
+    monkeypatch.setattr(assurance, "_source_matches_plan", lambda *_args: next(states))
+    result = assurance.execute_plan(tmp_path, graph(), _focused_plan())
+    assert result["failed"] == ["diff-check"]
+    receipt = json.loads((tmp_path / result["evidencePath"]).read_text())["receipts"][0]
+    assert receipt["exitCode"] == 125
+    cache = tmp_path / ".artifacts" / "assurance-orchestrator" / "cache"
+    assert list(cache.iterdir()) == []
+
+
+def test_private_evidence_retention_is_bounded_and_rejects_links(tmp_path):
+    parent = tmp_path / "private"
+    parent.mkdir(mode=0o700)
+    for index in range(4):
+        child = parent / ("a" * 63 + str(index))
+        child.mkdir(mode=0o700)
+        member = child / "result.json"
+        member.write_text("{}")
+        member.chmod(0o600)
+    descriptor = os.open(parent, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        assurance._prune_private_directories(descriptor, assurance.re.compile(r"[a-z0-9]{64}"), 2)
+    finally:
+        os.close(descriptor)
+    assert len(list(parent.iterdir())) == 2
+    linked = parent / ("b" * 64)
+    linked.symlink_to(tmp_path, target_is_directory=True)
+    descriptor = os.open(parent, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        with pytest.raises(assurance.AssuranceError, match="evidence_directory_unsafe"):
+            assurance._prune_private_directories(descriptor, assurance.re.compile(r"[a-z0-9]{64}"), 2)
+    finally:
+        os.close(descriptor)
+
+
+def test_published_graph_schema_rejects_nested_unknown_fields():
+    schema = json.loads((ROOT / "shared/schemas/assurance-orchestrator-v1.schema.json").read_text())
+    jsonschema.validate(graph(), schema)
+    changed = json.loads(json.dumps(graph()))
+    changed["checks"]["diff-check"]["command"] = ["rm", "-rf", "/"]
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(changed, schema)

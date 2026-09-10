@@ -31,6 +31,8 @@ try:
         private_write,
         retryable_interpreter_corruption,
         retryable_native_crash,
+        validate_manifest,
+        validate_gate_evidence,
     )
 except ModuleNotFoundError:
     from run_complete_gate import (
@@ -40,6 +42,8 @@ except ModuleNotFoundError:
         private_write,
         retryable_interpreter_corruption,
         retryable_native_crash,
+        validate_manifest,
+        validate_gate_evidence,
     )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -180,11 +184,25 @@ def validate_graph(graph: dict[str, Any]) -> dict[str, Any]:
         ):
             raise AssuranceError("graph_rule_invalid")
     output = graph.get("outputPolicy", {})
-    if output.get("successMaxBytes") != 4096 or output.get("successMaxLines") != 40:
+    if (
+        set(output) != {"successMaxBytes", "successMaxLines", "logMaxBytes"}
+        or output.get("successMaxBytes") != 4096
+        or output.get("successMaxLines") != 40
+        or output.get("logMaxBytes") != 4 * 1024 * 1024
+    ):
         raise AssuranceError("graph_output_budget_invalid")
     resources = graph.get("resourcePolicy", {})
     if any(resources.get(name) != 1 for name in ("maxProcesses", "maxDocker", "maxBrowsers")):
         raise AssuranceError("graph_resource_budget_invalid")
+    evidence = graph.get("evidencePolicy", {})
+    if (
+        set(evidence) != {"passedTtlSeconds", "maxRunDirectories", "maxCacheEntries", "directoryMode", "fileMode"}
+        or evidence["passedTtlSeconds"] != 86400
+        or not 1 <= evidence["maxRunDirectories"] <= 100
+        or not 1 <= evidence["maxCacheEntries"] <= 256
+        or evidence["directoryMode"] != "0700" or evidence["fileMode"] != "0600"
+    ):
+        raise AssuranceError("graph_evidence_budget_invalid")
     return graph
 
 
@@ -363,6 +381,14 @@ def build_plan(
         paths = [item.path, *([item.old_path] if item.old_path else [])]
         for path in paths:
             matches = [rule for rule in graph["pathRules"] if fnmatch.fnmatchcase(path, rule["glob"])]
+            lowered = path.lower()
+            if lowered.startswith(("api/", "django/", "react-app/src/")) and any(
+                marker in lowered
+                for marker in ("/auth", "authentication", "authorization", "/identity", "/tenant", "/privacy", "/session", "/csrf")
+            ):
+                surfaces.add("security")
+                minimum = "full"
+                reasons.append(f"{path}->security:full")
             if not matches:
                 minimum = "full"
                 reasons.append(f"unmapped_path:{path}")
@@ -721,28 +747,29 @@ def exact_complete_gate_evidence(root: Path, source_commit: str) -> str | None:
     except (OSError, ValueError):
         return None
     try:
+        try:
+            manifest = json.loads((root / "scripts/config/complete-gate-v1.json").read_text())
+            validate_manifest(manifest)
+        except (OSError, ValueError, UnicodeError, json.JSONDecodeError) as exc:
+            raise AssuranceError("release_manifest_invalid") from exc
         names = sorted(
             name for name in os.listdir(parent_fd)
             if re.fullmatch(r"[0-9]{8}T[0-9]{6}Z-[0-9]+", name)
         )
         for name in reversed(names):
             try:
-                run_fd = _open_child(parent_fd, name, create=False)
-                try:
-                    payload = json.loads(_read_private(run_fd, "result.json", 2 * 1024 * 1024))
-                finally:
-                    os.close(run_fd)
-            except (OSError, UnicodeError, json.JSONDecodeError, AssuranceError):
+                result_path = root / ".artifacts" / "complete-gate" / name / "result.json"
+                payload = validate_gate_evidence(result_path, root)
+            except (OSError, ValueError, UnicodeError, json.JSONDecodeError, AssuranceError):
                 continue
-            supplied = payload.get("evidenceDigest")
-            unsigned = {key: value for key, value in payload.items() if key != "evidenceDigest"}
             checks = payload.get("checks")
+            expected = [(item["id"], item["required"]) for item in manifest["checks"]]
+            actual = [(item.get("id"), item.get("required")) for item in checks] if isinstance(checks, list) else []
             if (
                 payload.get("schemaVersion") == 1
                 and payload.get("sourceCommit") == source_commit
                 and payload.get("overallStatus") == "passed"
-                and supplied == _sha(unsigned)
-                and isinstance(checks, list) and checks
+                and actual == expected
                 and all(item.get("status") == "passed" for item in checks if item.get("required"))
             ):
                 return f".artifacts/complete-gate/{name}/result.json"
@@ -837,6 +864,34 @@ def _cleanup_cache_stages(cache_fd: int) -> None:
         os.rmdir(name, dir_fd=cache_fd)
 
 
+def _prune_private_directories(parent_fd: int, pattern: re.Pattern[str], maximum: int) -> None:
+    entries: list[tuple[int, str]] = []
+    for name in os.listdir(parent_fd):
+        if not pattern.fullmatch(name):
+            continue
+        details = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        if (
+            not stat.S_ISDIR(details.st_mode) or details.st_uid != os.geteuid()
+            or stat.S_IMODE(details.st_mode) != 0o700
+        ):
+            raise AssuranceError("evidence_directory_unsafe")
+        entries.append((details.st_mtime_ns, name))
+    for _, name in sorted(entries)[:max(0, len(entries) - maximum)]:
+        child_fd = _open_child(parent_fd, name, create=False)
+        try:
+            for member in os.listdir(child_fd):
+                details = os.stat(member, dir_fd=child_fd, follow_symlinks=False)
+                if (
+                    not stat.S_ISREG(details.st_mode) or details.st_uid != os.geteuid()
+                    or details.st_nlink != 1 or stat.S_IMODE(details.st_mode) != 0o600
+                ):
+                    raise AssuranceError("evidence_member_unsafe")
+                os.unlink(member, dir_fd=child_fd)
+        finally:
+            os.close(child_fd)
+        os.rmdir(name, dir_fd=parent_fd)
+
+
 def _history_from_fd(root_fd: int) -> dict[str, list[int]]:
     try:
         payload = json.loads(_read_private(root_fd, "history.json", 65536).decode("utf-8"))
@@ -916,22 +971,43 @@ def _sanitized_tail(output: bytes) -> str:
     return "\n".join(text.splitlines()[-12:])[-2048:]
 
 
+def _source_matches_plan(root: Path, plan: dict[str, Any]) -> bool:
+    try:
+        current = collect_changes(root, plan["baseCommit"])
+    except AssuranceError:
+        return False
+    return (
+        current.head_commit == plan["sourceCommit"]
+        and current.diff_digest == plan["diffDigest"]
+        and current.dirty == plan["dirty"]
+    )
+
+
+def _finalize_public_summary(summary: dict[str, Any]) -> dict[str, Any]:
+    summary = {**summary, "outputBytes": 0, "estimatedTokens": 0}
+    for _ in range(4):
+        rendered = compact_json(summary)
+        summary["outputBytes"] = len(rendered.encode())
+        summary["estimatedTokens"] = estimate_tokens(summary["outputBytes"])
+    return summary
+
+
 def execute_plan(root: Path, graph: dict[str, Any], plan: dict[str, Any]) -> dict[str, Any]:
     require_executable_plan(plan)
     project_root = root.resolve(strict=True)
-    release_evidence = None if plan["dirty"] else exact_complete_gate_evidence(
+    release_evidence = None if plan["dirty"] or plan["requestedTier"] == "release" else exact_complete_gate_evidence(
         project_root, plan["sourceCommit"],
     )
     if release_evidence is not None:
-        return {
+        return _finalize_public_summary({
             "schemaVersion": 1, "status": "passed", "sourceCommit": plan["sourceCommit"],
-            "requestedTier": plan["requestedTier"], "resolvedTier": "release",
+            "requestedTier": plan["requestedTier"], "resolvedTier": plan["resolvedTier"],
             "planDigest": plan["planDigest"], "selected": plan["selected"],
             "reused": ["complete-gate"], "executed": [], "failed": [], "blocked": [],
-            "avoided": plan["avoided"], "wallMilliseconds": 0, "outputBytes": 0,
-            "estimatedTokens": 0, "evidencePath": release_evidence,
+            "avoided": plan["avoided"], "wallMilliseconds": 0,
+            "evidencePath": release_evidence, "satisfiedBy": "exact-complete-gate",
             "residualScope": "none within exact complete gate",
-        }
+        })
     started = time.monotonic_ns()
     now = int(time.time())
     executed: list[str] = []
@@ -943,6 +1019,14 @@ def execute_plan(root: Path, graph: dict[str, Any], plan: dict[str, Any]) -> dic
         runs_fd = _open_child(root_fd, "runs", create=True)
         cache_fd = _open_child(root_fd, "cache", create=True)
         _cleanup_cache_stages(cache_fd)
+        _prune_private_directories(
+            runs_fd, re.compile(r"[0-9]{20}-[0-9a-f]{32}"),
+            graph["evidencePolicy"]["maxRunDirectories"] - 1,
+        )
+        _prune_private_directories(
+            cache_fd, re.compile(r"[0-9a-f]{64}"),
+            graph["evidencePolicy"]["maxCacheEntries"] - 1,
+        )
         run_id = f"{_next_run_sequence(root_fd):020d}-{uuid.uuid4().hex}"
         os.mkdir(run_id, 0o700, dir_fd=runs_fd)
         run_fd = _open_child(runs_fd, run_id, create=False)
@@ -963,6 +1047,8 @@ def execute_plan(root: Path, graph: dict[str, Any], plan: dict[str, Any]) -> dic
                 home = Path(raw_home)
                 home.chmod(0o700)
                 for position, check_id in enumerate(plan["selected"]):
+                    if not _source_matches_plan(project_root, plan):
+                        raise AssuranceError("repository_source_changed")
                     dependencies = graph["checks"][check_id]["dependsOn"]
                     if any(dependency_status.get(item) != "passed" for item in dependencies):
                         dependency_status[check_id] = "blocked"
@@ -1006,6 +1092,10 @@ def execute_plan(root: Path, graph: dict[str, Any], plan: dict[str, Any]) -> dic
                         current_toolchain = _toolchain_identity(check_id, COMMANDS[check_id], project_root)
                         if current_toolchain != binding["toolchainDigest"]:
                             output += b"\nassurance: executable identity changed during check\n"
+                            return_code = 125
+                            status_value = "failed"
+                        if not _source_matches_plan(project_root, plan):
+                            output += b"\nassurance: repository source changed during check\n"
                             return_code = 125
                             status_value = "failed"
                         attempt_outputs.append(
@@ -1083,13 +1173,15 @@ def execute_plan(root: Path, graph: dict[str, Any], plan: dict[str, Any]) -> dic
                 "planDigest", "selected", "reused", "executed", "failed", "blocked", "avoided",
                 "wallMilliseconds", "outputBytes", "estimatedTokens", "evidencePath", "residualScope",
             )}
-            provisional = compact_json(summary)
-            summary["outputBytes"] = len(provisional.encode())
-            summary["estimatedTokens"] = estimate_tokens(summary["outputBytes"])
-            for _ in range(3):
-                rendered = compact_json(summary)
-                summary["outputBytes"] = len(rendered.encode())
-                summary["estimatedTokens"] = estimate_tokens(summary["outputBytes"])
+            if failed:
+                summary["failureDetails"] = [
+                    {
+                        "checkId": item["checkId"], "exitCode": item["exitCode"],
+                        "attempts": item["attempts"], "summary": item["summary"][-512:],
+                    }
+                    for item in receipts if item.get("status") == "failed"
+                ]
+            summary = _finalize_public_summary(summary)
             aggregate["outputBytes"] = summary["outputBytes"]
             aggregate["estimatedTokens"] = summary["estimatedTokens"]
             aggregate["integrity"] = _sha(aggregate)
@@ -1110,6 +1202,29 @@ def estimate_tokens(output_bytes: int) -> int:
 
 def compact_json(payload: dict[str, Any], *, max_bytes: int = 4096, max_lines: int = 40) -> str:
     rendered = json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n"
+    if len(rendered.encode()) > max_bytes or len(rendered.splitlines()) > max_lines:
+        raise AssuranceError("compact_output_budget_exceeded")
+    return rendered
+
+
+def compact_text(payload: dict[str, Any], *, max_bytes: int = 4096, max_lines: int = 40) -> str:
+    status = str(payload.get("status", "unknown")).upper()
+    lines = [f"Assurance: {status}"]
+    for label, key in (
+        ("Tier", "resolvedTier"), ("Executed", "executed"), ("Reused", "reused"),
+        ("Failed", "failed"), ("Blocked", "blocked"), ("Evidence", "evidencePath"),
+        ("Error", "error"),
+    ):
+        value = payload.get(key)
+        if value not in (None, [], ""):
+            lines.append(f"{label}: {','.join(value) if isinstance(value, list) else value}")
+    if payload.get("failureDetails"):
+        for item in payload["failureDetails"]:
+            lines.append(
+                f"Failure {item['checkId']} (exit {item['exitCode']}, attempts {item['attempts']}): "
+                f"{item['summary']}"
+            )
+    rendered = "\n".join(lines) + "\n"
     if len(rendered.encode()) > max_bytes or len(rendered.splitlines()) > max_lines:
         raise AssuranceError("compact_output_budget_exceeded")
     return rendered
@@ -1244,6 +1359,7 @@ def latest_status(root: Path = ROOT) -> dict[str, Any]:
 
 def main(argv: list[str] | None = None) -> int:
     arguments = parser().parse_args(argv)
+    render = compact_json if arguments.json else compact_text
     try:
         if arguments.action == "status":
             payload = latest_status(ROOT)
@@ -1258,16 +1374,16 @@ def main(argv: list[str] | None = None) -> int:
                 payload = execute_plan(ROOT, graph, plan)
             else:
                 payload = {**plan, "status": "planned", "evidencePath": None}
-        print(compact_json(payload), end="")
+        print(render(payload), end="")
         return 0 if payload.get("status") in {"planned", "passed"} else 1
     except AssuranceError as exc:
-        print(compact_json({"schemaVersion": 1, "status": "error", "error": str(exc)}), end="")
+        print(render({"schemaVersion": 1, "status": "error", "error": str(exc)}), end="")
         return 3 if str(exc) == "run_busy" else 2
     except (OSError, ValueError, UnicodeError, json.JSONDecodeError):
-        print(compact_json({"schemaVersion": 1, "status": "error", "error": "assurance_storage_invalid"}), end="")
+        print(render({"schemaVersion": 1, "status": "error", "error": "assurance_storage_invalid"}), end="")
         return 2
     except KeyboardInterrupt:
-        print(compact_json({"schemaVersion": 1, "status": "interrupted"}), end="")
+        print(render({"schemaVersion": 1, "status": "interrupted"}), end="")
         return 130
 
 
