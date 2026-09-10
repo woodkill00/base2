@@ -40,6 +40,7 @@ def test_canary_env_is_private_secret_randomized_and_staging_only(tmp_path):
         "TP_TOKEN_PEPPER",
         "TP_IDENTITY_ENCRYPTION_KEY",
         "TP_CONTENT_WORKSPACE_STORAGE_KEY",
+        "TP_API_RUNTIME_DB_PASSWORD",
         "TP_DATA_RIGHTS_WORKER_DB_PASSWORD",
         "TP_POSTGRES_PASSWORD",
         "TP_REDIS_PASSWORD",
@@ -47,6 +48,19 @@ def test_canary_env_is_private_secret_randomized_and_staging_only(tmp_path):
     ):
         assert len(values[key]) >= 32
         assert values[key] != "fixture"
+    database_passwords = [
+        values[key]
+        for key in (
+            "TP_POSTGRES_PASSWORD",
+            "TP_WORKSPACE_DB_PASSWORD",
+            "TP_WORKSPACE_WORKER_DB_PASSWORD",
+            "TP_RUNTIME_WORKER_DB_PASSWORD",
+            "TP_API_RUNTIME_DB_PASSWORD",
+            "TP_DATA_RIGHTS_WORKER_DB_PASSWORD",
+            "TP_EMAIL_WORKER_DB_PASSWORD",
+        )
+    ]
+    assert len(database_passwords) == len(set(database_passwords))
     assert len(values["TP_IDENTITY_ENCRYPTION_KEY"]) == 44
     assert len(values["TP_CONTENT_WORKSPACE_STORAGE_KEY"]) == 44
 
