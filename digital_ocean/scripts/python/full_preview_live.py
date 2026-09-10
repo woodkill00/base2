@@ -25,6 +25,10 @@ class FullPreviewLaunchError(RuntimeError):
     pass
 
 
+DIRECT_HEALTH_ATTEMPTS = 12
+DIRECT_HEALTH_INTERVAL_SECONDS = 5
+
+
 def _private(path: Path, label: str) -> str:
     if not path.is_file() or path.is_symlink() or stat.S_IMODE(path.stat().st_mode) & 0o077:
         raise FullPreviewLaunchError(f"{label} must be an owner-only real file")
@@ -124,7 +128,14 @@ def launch(
         if not address:
             raise FullPreviewLaunchError("bounded Droplet readiness wait exhausted")
         remote.deploy(address, config)
-        if remote.health(address, domain) is not True:
+        direct_healthy = False
+        for attempt in range(DIRECT_HEALTH_ATTEMPTS):
+            if remote.health(address, domain) is True:
+                direct_healthy = True
+                break
+            if attempt + 1 < DIRECT_HEALTH_ATTEMPTS:
+                sleep(DIRECT_HEALTH_INTERVAL_SECONDS)
+        if not direct_healthy:
             raise FullPreviewLaunchError("direct-address health verification failed")
         dns_receipt = migrate_required_records(client.domains, domain, address)
         probe_receipt = probe(domain, address, username=probe_username, password=probe_password, owner_cidrs=[owner_cidr])
