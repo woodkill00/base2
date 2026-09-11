@@ -1,5 +1,24 @@
 # Feature 108 repair checkpoint
 
+## Release blocked: R17 stability failure
+
+The bounded final revalidation stopped before its full gate: stability run for
+`366a2e7e95bcd2f87d266468eb719463fbbb1775` failed repetition 8 of
+`privacy-runtime` (192 passed, one failed). In Pydantic's settings source,
+iterating `model_fields.items()` raised `TypeError: cannot unpack non-iterable
+DotEnvSettingsSource object`. The first seven repetitions passed. This second
+library-level intermittent failure is not proof of a hardware cause, nor a
+resolved product regression. Do not mask it with more retries.
+
+The loop is stopped. R14-R15 implementation remains committed locally but is
+not published or deployed. Last published/deployed source is `99c6c15`; its live
+export acceptance remains failed. Validation on a reliable independent host,
+or a diagnosed repair of the local execution fault, is required before deployment.
+Any exception allowing draft-only CI publication must be separately authorized;
+no merge, deployment, gate bypass or extra resource is inferred from this blocker.
+
+Evidence: `.artifacts/feature-106-repetitions/failures/366a2e7e95bcd2f87d266468eb719463fbbb1775/2745b6d24b61bbc85b26ea304064c0aa4bd78e642ec5213c970e692d26a23bf9/result.json`.
+
 ## Intermittent validation finding R16
 
 The `af44182` release run `20260911T025805Z-1709166` failed its PostgreSQL
