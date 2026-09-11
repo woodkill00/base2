@@ -123,7 +123,7 @@ def test_export_timestamp_serialization_is_explicit(monkeypatch):
 
     class Connection:
         def set_session(self, **kwargs):
-            assert kwargs == {'isolation_level': 'REPEATABLE READ', 'readonly': True}
+            raise AssertionError('transaction options must precede tenant/claim binding')
 
         def cursor(self):
             return Cursor()
@@ -135,7 +135,15 @@ def test_export_timestamp_serialization_is_explicit(monkeypatch):
         def __exit__(self, *_args):
             return False
 
-    monkeypatch.setattr(worker, 'db_conn', lambda **kwargs: Context())
+    def snapshot_connection(**kwargs):
+        assert kwargs == {
+            'tenant_id': 'tenant-a',
+            'isolation_level': 'REPEATABLE READ',
+            'readonly': True,
+        }
+        return Context()
+
+    monkeypatch.setattr(worker, 'db_conn', snapshot_connection)
     monkeypatch.setattr(
         worker,
         '_workspace_payload',
@@ -221,9 +229,7 @@ def test_deactivation_uses_only_the_fixed_claim_bound_repository_action(monkeypa
     result = worker._deactivate_account(operation_id=OPERATION_ID, claim_token=claim)
     assert result['tenant_membership_deactivated'] is True
     assert result['global_account_deactivated'] is False
-    assert calls == [
-        {'operation_id': OPERATION_ID, 'claim_token': claim, 'action': 'deactivation'}
-    ]
+    assert calls == [{'operation_id': OPERATION_ID, 'claim_token': claim, 'action': 'deactivation'}]
 
 
 def test_subject_inventory_is_database_registered_and_claim_fenced():
@@ -250,8 +256,7 @@ def test_tenant_only_closure_preserves_global_identity_when_another_membership_i
     if operation == 'deletion':
         monkeypatch.setattr(worker, '_workspace_payload', lambda **_kwargs: {'records': []})
         result = worker._delete_account(
-            operation_id=OPERATION_ID, claim_token=claim,
-            tenant_id='tenant-a', user_id=USER_ID
+            operation_id=OPERATION_ID, claim_token=claim, tenant_id='tenant-a', user_id=USER_ID
         )
         assert result['global_account_deleted'] is False
     else:

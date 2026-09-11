@@ -10,11 +10,26 @@ from api.services.data_rights import receipt_digest, validate_correction
 from api.settings import settings
 
 PRIVATE_EXPORT_KEYS = {
-    'password_hash', 'secret_hash', 'secret_ciphertext', 'token_hash', 'code_hash',
-    'request_ciphertext', 'result_ciphertext', 'claim_token', 'storage_key',
-    'encrypted_object_key', 'source_object_key',
+    'password_hash',
+    'secret_hash',
+    'secret_ciphertext',
+    'token_hash',
+    'code_hash',
+    'request_ciphertext',
+    'result_ciphertext',
+    'claim_token',
+    'storage_key',
+    'encrypted_object_key',
+    'source_object_key',
 }
-PRIVATE_EXPORT_FRAGMENTS = ('password', 'secret', 'token', 'ciphertext', 'storage_key', 'object_key')
+PRIVATE_EXPORT_FRAGMENTS = (
+    'password',
+    'secret',
+    'token',
+    'ciphertext',
+    'storage_key',
+    'object_key',
+)
 
 
 def _privacy_safe_value(value: object) -> object:
@@ -48,56 +63,57 @@ def _box() -> SecretBox:
 
 
 def _export_payload(*, tenant_id: str, user_id: UUID) -> dict:
-    with db_conn(tenant_id=tenant_id) as conn:
-        conn.set_session(isolation_level='REPEATABLE READ', readonly=True)
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-            SELECT email, is_active, is_email_verified, display_name, avatar_url, bio, created_at, updated_at
-            FROM api_auth_users WHERE id=%s
-            """,
-                (str(user_id),),
-            )
-            user = cur.fetchone()
-            if not user:
-                raise RuntimeError('account_not_found')
-            cur.execute(
-                """
-            SELECT o.tenant_id, o.name, m.role, m.status, m.created_at, m.updated_at
-            FROM api_identity_memberships m
-            JOIN api_identity_organizations o ON o.id=m.organization_id
-            WHERE m.user_id=%s AND o.tenant_id=%s
-            """,
-                (str(user_id), tenant_id),
-            )
-            memberships = cur.fetchall() or []
-            cur.execute(
-                """SELECT id,kind,is_active,created_at,last_used_at
-                     FROM api_identity_authenticators WHERE user_id=%s ORDER BY created_at,id""",
-                (str(user_id),),
-            )
-            authenticators = cur.fetchall() or []
-            cur.execute(
-                """SELECT credential.id,credential.label,credential.prefix,credential.scopes,
-                          credential.expires_at,credential.revoked_at,credential.created_at,
-                          credential.last_used_at
-                     FROM api_identity_credentials credential
-                     JOIN api_identity_organizations organization
-                       ON organization.id=credential.organization_id
-                    WHERE credential.user_id=%s AND organization.tenant_id=%s
-                    ORDER BY credential.created_at,credential.id""",
-                (str(user_id), tenant_id),
-            )
-            credentials = cur.fetchall() or []
-            cur.execute(
-                """SELECT id,action,ip,user_agent,metadata_json,created_at
-                     FROM api_auth_audit_events WHERE user_id=%s ORDER BY created_at,id LIMIT 10001""",
-                (str(user_id),),
-            )
-            audit_events = cur.fetchall() or []
-            if len(audit_events) > 10000:
-                raise RuntimeError('identity_privacy_projection_too_large')
-            workspace = _workspace_projection(cur, tenant_id=tenant_id, user_id=user_id)
+    with (
+        db_conn(tenant_id=tenant_id, isolation_level='REPEATABLE READ', readonly=True) as conn,
+        conn.cursor() as cur,
+    ):
+        cur.execute(
+            """
+        SELECT email, is_active, is_email_verified, display_name, avatar_url, bio, created_at, updated_at
+        FROM api_auth_users WHERE id=%s
+        """,
+            (str(user_id),),
+        )
+        user = cur.fetchone()
+        if not user:
+            raise RuntimeError('account_not_found')
+        cur.execute(
+            """
+        SELECT o.tenant_id, o.name, m.role, m.status, m.created_at, m.updated_at
+        FROM api_identity_memberships m
+        JOIN api_identity_organizations o ON o.id=m.organization_id
+        WHERE m.user_id=%s AND o.tenant_id=%s
+        """,
+            (str(user_id), tenant_id),
+        )
+        memberships = cur.fetchall() or []
+        cur.execute(
+            """SELECT id,kind,is_active,created_at,last_used_at
+                 FROM api_identity_authenticators WHERE user_id=%s ORDER BY created_at,id""",
+            (str(user_id),),
+        )
+        authenticators = cur.fetchall() or []
+        cur.execute(
+            """SELECT credential.id,credential.label,credential.prefix,credential.scopes,
+                      credential.expires_at,credential.revoked_at,credential.created_at,
+                      credential.last_used_at
+                 FROM api_identity_credentials credential
+                 JOIN api_identity_organizations organization
+                   ON organization.id=credential.organization_id
+                WHERE credential.user_id=%s AND organization.tenant_id=%s
+                ORDER BY credential.created_at,credential.id""",
+            (str(user_id), tenant_id),
+        )
+        credentials = cur.fetchall() or []
+        cur.execute(
+            """SELECT id,action,ip,user_agent,metadata_json,created_at
+                 FROM api_auth_audit_events WHERE user_id=%s ORDER BY created_at,id LIMIT 10001""",
+            (str(user_id),),
+        )
+        audit_events = cur.fetchall() or []
+        if len(audit_events) > 10000:
+            raise RuntimeError('identity_privacy_projection_too_large')
+        workspace = _workspace_projection(cur, tenant_id=tenant_id, user_id=user_id)
     return {
         'schema_version': 1,
         'account': {
@@ -122,22 +138,37 @@ def _export_payload(*, tenant_id: str, user_id: UUID) -> dict:
             for row in memberships
         ],
         'authenticators': [
-            {'id': str(row[0]), 'kind': row[1], 'is_active': bool(row[2]),
-             'created_at': row[3].isoformat(),
-             'last_used_at': row[4].isoformat() if row[4] else None}
+            {
+                'id': str(row[0]),
+                'kind': row[1],
+                'is_active': bool(row[2]),
+                'created_at': row[3].isoformat(),
+                'last_used_at': row[4].isoformat() if row[4] else None,
+            }
             for row in authenticators
         ],
         'credentials': [
-            {'id': str(row[0]), 'label': row[1], 'prefix': row[2], 'scopes': row[3],
-             'expires_at': row[4].isoformat() if row[4] else None,
-             'revoked_at': row[5].isoformat() if row[5] else None,
-             'created_at': row[6].isoformat(),
-             'last_used_at': row[7].isoformat() if row[7] else None}
+            {
+                'id': str(row[0]),
+                'label': row[1],
+                'prefix': row[2],
+                'scopes': row[3],
+                'expires_at': row[4].isoformat() if row[4] else None,
+                'revoked_at': row[5].isoformat() if row[5] else None,
+                'created_at': row[6].isoformat(),
+                'last_used_at': row[7].isoformat() if row[7] else None,
+            }
             for row in credentials
         ],
         'audit_events': [
-            {'id': str(row[0]), 'action': row[1], 'ip': row[2], 'user_agent': row[3],
-             'metadata': row[4], 'created_at': row[5].isoformat()}
+            {
+                'id': str(row[0]),
+                'action': row[1],
+                'ip': row[2],
+                'user_agent': row[3],
+                'metadata': row[4],
+                'created_at': row[5].isoformat(),
+            }
             for row in audit_events
         ],
         'workspace': workspace,
@@ -184,8 +215,13 @@ def _workspace_projection(cur, *, tenant_id: str, user_id: UUID) -> dict:
             raise RuntimeError('workspace_subject_inventory_too_large')
         rows_for_surface.append(_privacy_safe_row(raw_row))
     subject_surfaces = [
-        {'table': table, 'column': column, 'treatment': treatment,
-         'ids': [str(item.get('id', '')) for item in rows], 'rows': rows}
+        {
+            'table': table,
+            'column': column,
+            'treatment': treatment,
+            'ids': [str(item.get('id', '')) for item in rows],
+            'rows': rows,
+        }
         for (table, column, treatment), rows in sorted(grouped.items())
     ]
     return {
@@ -217,9 +253,7 @@ def _workspace_payload(*, tenant_id: str, user_id: UUID) -> dict:
         return _workspace_projection(cur, tenant_id=tenant_id, user_id=user_id)
 
 
-def _correct_account(
-    *, operation_id: UUID, claim_token: UUID, user_id: UUID, fields: dict
-) -> UUID:
+def _correct_account(*, operation_id: UUID, claim_token: UUID, user_id: UUID, fields: dict) -> UUID:
     if not fields:
         return user_id
     result = repository.apply_subject_action(
@@ -250,9 +284,7 @@ def _deactivate_account(*, operation_id: UUID, claim_token: UUID) -> dict:
 
 
 def process_operation(operation_id: UUID, dispatch_token: UUID) -> str:
-    operation = repository.claim_operation(
-        operation_id=operation_id, dispatch_token=dispatch_token
-    )
+    operation = repository.claim_operation(operation_id=operation_id, dispatch_token=dispatch_token)
     if operation is None:
         return 'noop'
     try:
@@ -284,8 +316,10 @@ def process_operation(operation_id: UUID, dispatch_token: UUID) -> str:
                 if request_payload.get('confirmation') != 'DELETE':
                     raise ValueError('deletion_confirmation_invalid')
                 result = _delete_account(
-                    operation_id=operation['id'], claim_token=operation['claim_token'],
-                    tenant_id=operation['tenant_id'], user_id=operation['user_id']
+                    operation_id=operation['id'],
+                    claim_token=operation['claim_token'],
+                    tenant_id=operation['tenant_id'],
+                    user_id=operation['user_id'],
                 )
             elif operation['kind'] == 'deactivation':
                 if request_payload.get('confirmation') != 'DEACTIVATE':
@@ -297,15 +331,17 @@ def process_operation(operation_id: UUID, dispatch_token: UUID) -> str:
                 if request_payload.get('confirmation') != 'DELETE GLOBAL ACCOUNT':
                     raise ValueError('global_deletion_confirmation_invalid')
                 result = repository.apply_subject_action(
-                    operation_id=operation['id'], claim_token=operation['claim_token'],
-                    action='global_deletion'
+                    operation_id=operation['id'],
+                    claim_token=operation['claim_token'],
+                    action='global_deletion',
                 )
             elif operation['kind'] == 'global_deactivation':
                 if request_payload.get('confirmation') != 'DEACTIVATE GLOBAL ACCOUNT':
                     raise ValueError('global_deactivation_confirmation_invalid')
                 result = repository.apply_subject_action(
-                    operation_id=operation['id'], claim_token=operation['claim_token'],
-                    action='global_deactivation'
+                    operation_id=operation['id'],
+                    claim_token=operation['claim_token'],
+                    action='global_deactivation',
                 )
             else:
                 raise ValueError('operation_kind_invalid')

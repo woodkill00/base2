@@ -2,8 +2,11 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import GlassHeader from '../components/glass/GlassHeader';
+import AppShell from '../components/glass/AppShell';
+import { layoutPreviewEnabled } from '../config/layoutPolicy';
 import HomeHero from '../components/home/HomeHero';
 import HomeObsidianNavigation from '../components/home/HomeObsidianNavigation';
+import HomeSharedControls from '../components/home/HomeSharedControls';
 import HomeObsidianOps from '../components/home/HomeObsidianOps';
 import HomeThermalSecurity from '../components/home/HomeThermalSecurity';
 import HomeFeatures from '../components/home/HomeFeatures';
@@ -96,6 +99,53 @@ const Home = ({ locale = siteManifest.defaultLocale }) => {
     setShareStatus(copy.copyManually);
   };
 
+  const content = (
+    <>
+      <HomeHero
+        onPrimary={() =>
+          navigate(
+            siteManifest.contact.enabled ? '/contact' : siteManifest.navigation[0]?.path || '/'
+          )
+        }
+        onSecondary={() => navigate(siteManifest.legal.accessibilityPath)}
+        onSearch={(query) => navigate(`/search?q=${encodeURIComponent(query)}`)}
+      />
+      <HomeFeatures />
+      <HomeObsidianOps />
+      <About />
+      <ProjectsGrid />
+      <ContactForm />
+      <HomeVisual />
+      <HomeThermalSecurity />
+      <HomeTrust />
+    </>
+  );
+  if (layoutPreviewEnabled)
+    return (
+      <div className="home-page-root" data-testid="home-page">
+        <AppShell
+          layoutRoute="/"
+          headerTitle={copy.title}
+          footerSlot={<HomeFooter />}
+          contextSlot={
+            <>
+              <HomeSharedControls
+                onNavigate={handleMenuItemClick}
+                onUtilityAction={handleUtilityAction}
+                locale={locale}
+              />
+              {shareStatus ? (
+                <p role="status" data-testid="home-share-status">
+                  {shareStatus}
+                </p>
+              ) : null}
+            </>
+          }
+        >
+          {content}
+        </AppShell>
+      </div>
+    );
   return (
     <div className="home-page-root relative min-h-screen" data-testid="home-page">
       <div className="gradient-background" />
@@ -118,25 +168,7 @@ const Home = ({ locale = siteManifest.defaultLocale }) => {
           locale={locale}
         />
 
-        <main>
-          <HomeHero
-            onPrimary={() =>
-              navigate(
-                siteManifest.contact.enabled ? '/contact' : siteManifest.navigation[0]?.path || '/'
-              )
-            }
-            onSecondary={() => navigate(siteManifest.legal.accessibilityPath)}
-            onSearch={(query) => navigate(`/search?q=${encodeURIComponent(query)}`)}
-          />
-          <HomeFeatures />
-          <HomeObsidianOps />
-          <About />
-          <ProjectsGrid />
-          <ContactForm />
-          <HomeVisual />
-          <HomeThermalSecurity />
-          <HomeTrust />
-        </main>
+        <main>{content}</main>
 
         <HomeFooter />
       </div>

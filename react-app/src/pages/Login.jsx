@@ -8,6 +8,7 @@ import AppShell from '../components/glass/AppShell';
 import GlassCard from '../components/glass/GlassCard';
 import GlassButton from '../components/glass/GlassButton';
 import GlassInput from '../components/glass/GlassInput';
+import { getGoogleClientId } from '../services/googleAuthConfig';
 
 const Login = ({ variant = 'public' }) => {
   const { loginWithEmail, completeMfaLogin, loginWithGoogle } = useAuth();
@@ -200,10 +201,14 @@ const Login = ({ variant = 'public' }) => {
               <GlassButton type="submit" disabled={loading} variant="primary">
                 {loading ? 'Signing in…' : 'Sign in'}
               </GlassButton>
-
-              <div style={styles.googleContainer}>
-                <GoogleLogin onSuccess={onGoogleSuccess} onError={onGoogleError} />
-              </div>
+              <Link to="/forgot-password" style={styles.link}>
+                Forgot password?
+              </Link>
+              {getGoogleClientId() ? (
+                <div style={styles.googleContainer}>
+                  <GoogleLogin locale="en" onSuccess={onGoogleSuccess} onError={onGoogleError} />
+                </div>
+              ) : null}
             </form>
           )}
 
@@ -231,8 +236,8 @@ const styles = {
   error: {
     marginBottom: '12px',
     padding: '10px 12px',
-    background: '#fee2e2',
-    color: '#991b1b',
+    background: 'var(--color-danger-surface, #351a1a)',
+    color: 'var(--color-danger)',
     borderRadius: '8px',
     fontSize: '14px',
   },
@@ -255,14 +260,14 @@ const styles = {
     marginTop: '-6px',
     marginBottom: '4px',
     fontSize: '12px',
-    color: '#991b1b',
+    color: 'var(--color-danger)',
   },
   primaryButton: {
     marginTop: '8px',
     padding: '10px 12px',
     borderRadius: '8px',
     border: 'none',
-    background: '#111827',
+    background: 'var(--color-accent)',
     color: 'white',
     cursor: 'pointer',
     fontWeight: 600,
@@ -271,8 +276,8 @@ const styles = {
     padding: '10px 12px',
     borderRadius: '8px',
     border: '1px solid #d1d5db',
-    background: 'white',
-    color: '#111827',
+    background: 'var(--color-surface)',
+    color: 'var(--color-text)',
     cursor: 'pointer',
     fontWeight: 600,
   },
@@ -284,10 +289,10 @@ const styles = {
   footer: {
     marginTop: '14px',
     fontSize: '14px',
-    color: '#374151',
+    color: 'var(--color-text-muted)',
   },
   link: {
-    color: '#111827',
+    color: 'var(--color-accent)',
     fontWeight: 600,
     textDecoration: 'none',
   },

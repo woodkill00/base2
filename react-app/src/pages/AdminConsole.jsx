@@ -4,6 +4,7 @@ import AppShell from '../components/glass/AppShell';
 import GlassButton from '../components/glass/GlassButton';
 import GlassCard from '../components/glass/GlassCard';
 import Navigation from '../components/Navigation';
+import { layoutPreviewEnabled } from '../config/layoutPolicy';
 import { identityAdminAPI } from '../services/identityAdmin';
 
 const Section = ({ title, children }) => (
@@ -106,6 +107,7 @@ const AdminConsole = ({ user }) => {
       <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
         <Navigation />
         <header className="space-y-1">
+          {layoutPreviewEnabled && <h1>Administration</h1>}
           <p className="text-sm opacity-80">
             Least-privilege controls for the current organization.
           </p>

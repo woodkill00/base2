@@ -693,6 +693,8 @@ def _workspace_artifact_store():
 def scan_workspace_asset_task(
     site_id: str, asset_id: str, job_id: str, attempt: int, lease_token: str
 ) -> str:
+    from api.security.restricted_preview import require_media_enabled
+    require_media_enabled()
     _require_tenant_serving(site_id)
     token = datetime.fromisoformat(lease_token)
     if not begin_media_scan_attempt(
@@ -732,6 +734,9 @@ def scan_workspace_asset_task(
 
 @app.task(name='app.replay_workspace_media_scans')
 def replay_workspace_media_scans(limit: int = 10) -> int:
+    from api.security.restricted_preview import restricted_preview
+    if restricted_preview():
+        return 0
     assets = due_media_scans(limit=limit)
     for site_id, asset_id, job_id, attempt, lease_token in assets:
         if not _tenant_serving(site_id):
@@ -749,6 +754,8 @@ def replay_workspace_media_scans(limit: int = 10) -> int:
     max_retries=3,
 )
 def process_media_export_task(site_id: str, export_id: str) -> str:
+    from api.security.restricted_preview import require_media_enabled
+    require_media_enabled()
     _require_tenant_serving(site_id)
     return process_media_export(
         site_id=site_id,
@@ -759,6 +766,9 @@ def process_media_export_task(site_id: str, export_id: str) -> str:
 
 @app.task(name='app.replay_media_exports')
 def replay_media_exports(limit: int = 10) -> int:
+    from api.security.restricted_preview import restricted_preview
+    if restricted_preview():
+        return 0
     packages = due_media_exports(limit=limit)
     for site_id, export_id in packages:
         if not _tenant_serving(site_id):
@@ -769,6 +779,8 @@ def replay_media_exports(limit: int = 10) -> int:
 
 @app.task(name='app.apply_media_governance')
 def apply_media_governance(limit: int = 100) -> dict[str, int]:
+    from api.security.restricted_preview import require_media_enabled
+    require_media_enabled()
     return apply_due_media_governance(limit=limit)
 
 

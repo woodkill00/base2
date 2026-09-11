@@ -31,7 +31,7 @@ export const GlassCard: React.FC<Props> = ({
     'hover:bg-white/35 dark:hover:bg-black/50 hover:shadow-[0_12px_48px_0_rgba(31,38,135,0.2)] ' +
     'dark:hover:shadow-[0_12px_48px_0_rgba(0,0,0,0.5)] dark:hover:shadow-[0_0_50px_0_rgba(139,92,246,0.15)] hover:-translate-y-1';
 
-  const classes = [base, variantStyles[variant], interactive || hover ? hoverStyles : '', className]
+  const classes = ['base2-card', base, variantStyles[variant], interactive || hover ? hoverStyles : '', className]
     .filter(Boolean)
     .join(' ');
   return (

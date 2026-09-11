@@ -16,7 +16,7 @@
       "django/site_profiles/ember-studio.json": "b6b57abe7c80247917a1cc0ccdf08f3cddb2efd503091b73fb9d0e58d4c7fcae",
       "django/site_profiles/index.json": "76a7b227838ba6f778a2ab8b5a9741c4454efe1c473b912b924a29b3da57acd8",
       "django/site_profiles/northstar-library.json": "286850ced5758a336b8c7a82e345f57baa9d4686b39d209311178b6eaa5351f5",
-      "scripts/config/complete-gate-v1.json": "53272342ac32ed3428f9ddf7205118341d7a1622426d59c8f393413c6309e150",
+      "scripts/config/complete-gate-v1.json": "31090a8cf7dd3fe544e837cdea76b342100d7952d83dd6edc7723967ddc661eb",
       "shared/config/archetypes-v1.json": "1c203b4f3e076adf87fed98698cec6473b7ac765dcbfb7b6ca4b67c090801ce3",
       "shared/config/assurance-orchestrator-v1.json": "ca8ad4a9e4283ace1b6826cbd9a5c81735a8fa4aa6a6338ca4fd4091a7c34aeb",
       "shared/config/content-workspace-presets.generated.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
@@ -52,7 +52,7 @@
       "react-app/src/config/generated/index.json": "76a7b227838ba6f778a2ab8b5a9741c4454efe1c473b912b924a29b3da57acd8",
       "react-app/src/config/generated/northstar-library.json": "286850ced5758a336b8c7a82e345f57baa9d4686b39d209311178b6eaa5351f5",
       "react-app/src/lib/apiClient.js": "552e46e8bba953ec1cb0d0347dac0282dec5aee9b6ad699000ac6d33f976410c",
-      "react-app/src/lib/apiErrors.js": "b0a44297eaf887077e7656d1cdb3f1f5741bcdfa60e4e70ffdabe60d59b0741d"
+      "react-app/src/lib/apiErrors.js": "c612a087d95a4c3e573b46183396b22af55d63fcf0d80fb144960cc32c7045e9"
     },
     "moduleInventory": {
       "modules/blog/module.json": "a2c36e3554bd25ab44079ee81137f4489fa60b09ab80f97bed0a0200a5802878",
@@ -100,7 +100,7 @@
       "specs/001-django-fastapi-react/contracts/openapi.yaml": "f96ae1b450ed0e54406f0b40a301dab36c1b09d9eb9886fd2cb9d18db728deed"
     },
     "routeInventory": {
-      "api/main.py": "98c72235b5dc661dc3dc31aa9ddb73c6cd985f13e3da79d5735c9ac642aee248",
+      "api/main.py": "cda0bc4e11029cbb6e88edcd89bc1020efdfdc350ee2152c76f3f026df2d847c",
       "api/routes/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "api/routes/auth.py": "961cc074c8457957aaf5a799f82dd53b51f88599f9eae24dd65878218d4e9ad8",
       "api/routes/content_workspace.py": "71795a85af8dec9e8f392f757a3640cc46b3466bccdf90941ace3f59f131b360",
@@ -120,7 +120,7 @@
       "django/catalog/urls.py": "ee319a920fbb34f3d78e8f85dc0b6893b829cfb0a3b2a096ce7be92fd6982491",
       "django/project/urls.py": "d42f4027cc1be8c8d4bd7470d39d1fac3af6904cec38ae523de6cc5cea7042f7",
       "django/users/urls.py": "e1c30bf7c17d01975286d91dac4f45f686118503200be85a54c86e143bae8c40",
-      "react-app/src/App.js": "8e75dbbdf228a2d65ad461b8f8d08640b0d6305c6907551018adf3ee980606d0",
+      "react-app/src/App.js": "e34096d7a84f3feb0c52da302600bf0cce7267f49cf80ecc3fb1b80feca005f4",
       "react-app/src/routes/LocalizedExperience.jsx": "1f05c0f33763578f68670454b9290bd4a5562964bb8ea48a890aa5f76d9873f1",
       "react-app/src/routes/PublicRoutes.jsx": "efa5600bf57913474584e5af5f2670bea2cf33b92a41131cabaa9052dbf45022"
     }

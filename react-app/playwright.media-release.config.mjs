@@ -1,7 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const chromium = (name, viewport, extra = {}) => ({
-  name, use: { ...devices['Desktop Chrome'], viewport, reducedMotion: 'reduce', ...extra },
+  name,
+  use: { ...devices['Desktop Chrome'], viewport, reducedMotion: 'reduce', ...extra },
 });
 
 export default defineConfig({
@@ -15,8 +16,16 @@ export default defineConfig({
   reporter: [['line']],
   projects: [
     chromium('chromium-compact', { width: 320, height: 568 }),
-    chromium('chromium-phone-dpr3', { width: 390, height: 844 }, { deviceScaleFactor: 3, hasTouch: true }),
-    chromium('chromium-landscape-touch', { width: 844, height: 390 }, { deviceScaleFactor: 2, hasTouch: true }),
+    chromium(
+      'chromium-phone-dpr3',
+      { width: 390, height: 844 },
+      { deviceScaleFactor: 3, hasTouch: true }
+    ),
+    chromium(
+      'chromium-landscape-touch',
+      { width: 844, height: 390 },
+      { deviceScaleFactor: 2, hasTouch: true }
+    ),
     chromium('chromium-tablet', { width: 1024, height: 768 }),
     chromium('chromium-desktop', { width: 1440, height: 1000 }),
     chromium('chromium-ultrawide', { width: 2560, height: 1440 }),
@@ -28,13 +37,24 @@ export default defineConfig({
     chromium('chromium-reduced-motion', { width: 1280, height: 900 }),
   ],
   use: {
-    baseURL: 'http://127.0.0.1:4188', locale: 'en-US', timezoneId: 'UTC',
-    colorScheme: 'dark', reducedMotion: 'reduce', serviceWorkers: 'block',
-    screenshot: 'only-on-failure', trace: 'retain-on-failure', video: 'off',
+    baseURL: 'http://127.0.0.1:4188',
+    locale: 'en-US',
+    timezoneId: 'UTC',
+    colorScheme: 'dark',
+    reducedMotion: 'reduce',
+    serviceWorkers: 'block',
+    screenshot: 'only-on-failure',
+    trace: 'retain-on-failure',
+    video: 'off',
   },
   webServer: {
-    command: 'VITE_SITE_PROFILE=base2-obsidian npm run build && npm exec vite preview -- --host 127.0.0.1 --port 4188 --strictPort',
-    url: 'http://127.0.0.1:4188', reuseExistingServer: false, timeout: 120_000,
-    stdout: 'pipe', stderr: 'pipe',
+    env: { VITE_LAYOUT109_PREVIEW: 'true' },
+    command:
+      'VITE_SITE_PROFILE=base2-obsidian npm run build && npm exec vite preview -- --host 127.0.0.1 --port 4188 --strictPort',
+    url: 'http://127.0.0.1:4188',
+    reuseExistingServer: false,
+    timeout: 120_000,
+    stdout: 'pipe',
+    stderr: 'pipe',
   },
 });

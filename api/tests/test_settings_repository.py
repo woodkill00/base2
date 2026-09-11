@@ -34,7 +34,8 @@ class Connection:
 
 def bind(monkeypatch, conn):
     @contextmanager
-    def fake_db_conn():
+    def fake_db_conn(*, tenant_id=None):
+        conn.bound_tenant = tenant_id
         yield conn
     monkeypatch.setattr(repository, 'db_conn', fake_db_conn)
 
@@ -92,6 +93,7 @@ def test_notification_replace_deletes_and_inserts_only_exact_owner_scope(monkeyp
     assert cursor.calls[0][1] == (str(USER), 'tenant-a')
     assert cursor.calls[1][1][1:3] == (str(USER), 'tenant-a')
     assert result[0]['tenant_id'] == 'tenant-a'
+    assert conn.bound_tenant == 'tenant-a'
 
 
 def test_security_projection_clamps_limit_and_never_selects_metadata_or_ip(monkeypatch):

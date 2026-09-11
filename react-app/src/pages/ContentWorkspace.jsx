@@ -289,7 +289,7 @@ export default function ContentWorkspace() {
       sidebarItems={TABS}
       sidebarActivePath={`${location.pathname}${canonicalTabHash}`}
     >
-      <div className="mx-auto max-w-7xl space-y-6 px-4 py-8">
+      <div className="base2-workspace mx-auto max-w-7xl space-y-6 px-4 py-8">
         <Navigation />
         <header className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300">

@@ -5,6 +5,7 @@ import AppShell from '../components/glass/AppShell';
 import GlassButton from '../components/glass/GlassButton';
 import GlassCard from '../components/glass/GlassCard';
 import { identityAdminAPI } from '../services/identityAdmin';
+import { layoutPreviewEnabled } from '../config/layoutPolicy';
 
 const AcceptInvitation = () => {
   const [params] = useSearchParams();
@@ -31,6 +32,7 @@ const AcceptInvitation = () => {
       <div className="mx-auto max-w-xl px-4 py-10">
         <GlassCard>
           <div className="p-6 space-y-4">
+            {layoutPreviewEnabled && <h1>Accept invitation</h1>}
             <p>The invitation will be applied only to the signed-in account and current site.</p>
             {error ? <div role="alert">{error}</div> : null}
             <GlassButton disabled={busy || token.length < 32} onClick={accept}>

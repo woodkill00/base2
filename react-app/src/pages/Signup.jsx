@@ -73,6 +73,7 @@ const Signup = ({ variant = 'public' }) => {
               id="email"
               name="email"
               type="email"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
@@ -92,12 +93,19 @@ const Signup = ({ variant = 'public' }) => {
               id="password"
               name="password"
               type="password"
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Your password"
               ariaInvalid={fieldErrors.password ? 'true' : 'false'}
-              ariaDescribedBy={fieldErrors.password ? 'password-error' : undefined}
+              ariaDescribedBy={
+                fieldErrors.password ? 'password-help password-error' : 'password-help'
+              }
             />
+            <p id="password-help" style={styles.footer}>
+              Use at least 8 characters, including an uppercase letter, a lowercase letter and a
+              number.
+            </p>
             {fieldErrors.password ? (
               <div id="password-error" style={styles.fieldError} role="alert">
                 {fieldErrors.password}
@@ -133,8 +141,8 @@ const styles = {
   error: {
     marginBottom: '12px',
     padding: '10px 12px',
-    background: '#fee2e2',
-    color: '#991b1b',
+    background: 'var(--color-danger-surface, #351a1a)',
+    color: 'var(--color-danger)',
     borderRadius: '8px',
     fontSize: '14px',
   },
@@ -157,14 +165,14 @@ const styles = {
     marginTop: '-6px',
     marginBottom: '4px',
     fontSize: '12px',
-    color: '#991b1b',
+    color: 'var(--color-danger)',
   },
   primaryButton: {
     marginTop: '8px',
     padding: '10px 12px',
     borderRadius: '8px',
     border: 'none',
-    background: '#111827',
+    background: 'var(--color-accent)',
     color: 'white',
     cursor: 'pointer',
     fontWeight: 600,
@@ -172,10 +180,10 @@ const styles = {
   footer: {
     marginTop: '14px',
     fontSize: '14px',
-    color: '#374151',
+    color: 'var(--color-text-muted)',
   },
   link: {
-    color: '#111827',
+    color: 'var(--color-accent)',
     fontWeight: 600,
     textDecoration: 'none',
   },

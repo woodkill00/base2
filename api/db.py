@@ -233,12 +233,20 @@ def _reset_connection(conn: PsycopgConnection) -> None:
 
 
 @contextmanager
-def db_conn(*, tenant_id: str | None = None):
+def db_conn(
+    *,
+    tenant_id: str | None = None,
+    isolation_level: str | None = None,
+    readonly: bool | None = None,
+):
     conn = _get_conn()
     # _get_conn may have replaced a poisoned pool. Always return the
     # connection to the pool that is current after checkout.
     pool = _get_pool()
     try:
+        # Tenant and claim binding start a transaction. Configure its snapshot first.
+        if isolation_level is not None or readonly is not None:
+            conn.set_session(isolation_level=isolation_level, readonly=readonly)
         if tenant_id is not None:
             _bind_tenant(conn, tenant_id)
         _bind_data_rights_claim(conn)

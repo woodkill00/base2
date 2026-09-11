@@ -30,6 +30,30 @@ def private_file(path: Path, value: str) -> Path:
     return path
 
 
+def test_preview_lifecycle_precedes_serving_and_probe_catalog_is_read_only():
+    import yaml
+
+    root = Path(__file__).resolve().parents[2]
+    script = (root / "digital_ocean/scripts/bash/full-preview-remote.sh").read_text()
+    assert script.index('stage="django-migrations"') < script.index(
+        'stage="preview-lifecycle-bootstrap"'
+    )
+    assert script.index('stage="preview-lifecycle-bootstrap"') < script.index('stage="compose-up"')
+    assert (
+        "-e BASE2_PREVIEW_LIFECYCLE_ENABLED=true --entrypoint python api -m api.scripts.ensure_preview_lifecycle"
+        in script
+    )
+    compose = yaml.safe_load((root / "development.docker.yml").read_text())
+    volumes = compose["services"]["celery-worker"]["volumes"]
+    assert (
+        "./shared/config/operations-probes-v1.json:/app/shared/config/operations-probes-v1.json:ro"
+        in volumes
+    )
+    assert isinstance(
+        json.loads((root / "shared/config/operations-probes-v1.json").read_text()), dict
+    )
+
+
 def application_inputs(tmp_path: Path) -> dict[str, Path]:
     return {
         "django_username": private_file(tmp_path / "django.username", "owner"),
@@ -38,6 +62,39 @@ def application_inputs(tmp_path: Path) -> dict[str, Path]:
         "pgadmin_email": private_file(tmp_path / "pgadmin.email", "db@woodkilldev.com"),
         "pgadmin_password": private_file(tmp_path / "pgadmin.password", "pgadmin-safe-password"),
     }
+
+
+def test_restricted_profile_excludes_scanners_and_propagates_mode():
+    import yaml
+    root = Path(__file__).resolve().parents[2]
+    compose = yaml.safe_load((root / 'development.docker.yml').read_text())
+    for name in ('api', 'celery-worker', 'celery-content-worker', 'celery-data-rights-worker', 'celery-email-worker', 'celery-beat'):
+        assert 'BASE2_PREVIEW_MODE=${BASE2_PREVIEW_MODE:-full}' in compose['services'][name]['environment']
+    for name in ('clamav', 'media-inspector'):
+        assert compose['services'][name]['profiles'] == ['media-scan']
+    script = (root / 'digital_ocean/scripts/bash/full-preview-remote.sh').read_text()
+    assert 'preview_mode="${6:-full}"' in script
+    assert 'if [[ "$preview_mode" == restricted ]]; then' in script
+    assert 'compose=(docker compose --profile celery --project-name' in script
+    assert 'if [[ "$preview_mode" == full ]]; then\ninspector_image_ref=' in script
+
+
+def test_restricted_remote_requires_matching_receipt(tmp_path):
+    calls = []
+    def runner(argv, **kwargs):
+        calls.append(argv)
+        return SimpleNamespace(returncode=0, stderr='', stdout=json.dumps({
+            'ok': True, 'mode': 'full-preview', 'secretValuesEmitted': 0,
+        }))
+    remote = FullPreviewSshBootstrap(
+        known_hosts=tmp_path / 'known_hosts', owner_cidr='8.8.8.8/32',
+        operator_auth=private_file(tmp_path / 'operator', 'fixture'),
+        flower_auth=private_file(tmp_path / 'flower', 'fixture'),
+        **application_inputs(tmp_path), preview_mode='restricted', runner=runner,
+    )
+    with pytest.raises(FullPreviewRemoteError, match='restricted bootstrap receipt'):
+        remote.deploy('8.8.8.8', remote_config(tmp_path))
+    assert calls[-1][-1].endswith(" 'restricted'")
 
 
 def remote_config(tmp_path: Path) -> LivePreviewConfig:
@@ -59,6 +116,33 @@ def remote_config(tmp_path: Path) -> LivePreviewConfig:
         fqdn="admin.woodkilldev.com",
         admission_tag="base2-full-20260826-001",
     )
+
+
+@pytest.mark.parametrize("kind", ["private", "public", "symlink", "missing"])
+def test_optional_application_owner_requires_private_real_file(tmp_path, kind):
+    owner = private_file(tmp_path / "application-owner.json", "{}")
+    if kind == "public":
+        owner.chmod(0o644)
+    elif kind == "symlink":
+        link = tmp_path / "owner-link"
+        link.symlink_to(owner)
+        owner = link
+    elif kind == "missing":
+        owner = tmp_path / "missing"
+    kwargs = dict(
+        known_hosts=tmp_path / "known_hosts",
+        owner_cidr="8.8.8.8/32",
+        operator_auth=private_file(tmp_path / "operator", "synthetic"),
+        flower_auth=private_file(tmp_path / "flower", "synthetic"),
+        application_owner=owner,
+        **application_inputs(tmp_path),
+    )
+    if kind == "private":
+        remote = FullPreviewSshBootstrap(**kwargs)
+        assert (owner, "/run/base2-owner.json") in remote.application_inputs
+    else:
+        with pytest.raises(FullPreviewRemoteError, match="owner-only real file"):
+            FullPreviewSshBootstrap(**kwargs)
 
 
 def test_cli_policy_and_probe_entrypoints(tmp_path, monkeypatch, capsys):
@@ -426,7 +510,9 @@ def test_remote_bootstrap_uses_bounded_size_appropriate_transfer_timeouts(tmp_pa
 
 
 def test_remote_django_migration_bypasses_serving_entrypoint():
-    script = (Path(__file__).resolve().parents[2] / "digital_ocean/scripts/bash/full-preview-remote.sh").read_text()
+    script = (
+        Path(__file__).resolve().parents[2] / "digital_ocean/scripts/bash/full-preview-remote.sh"
+    ).read_text()
     assert "run --rm --no-deps --entrypoint python api-migrate -m api.scripts.migrate" in script
     assert "run --rm --no-deps --entrypoint python django manage.py migrate --noinput" in script
 

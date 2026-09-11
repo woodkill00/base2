@@ -54,7 +54,7 @@ export const GlassInput: React.FC<Props> = ({
           onChange={onChange}
           placeholder={placeholder}
           className={
-            'w-full backdrop-blur-2xl bg-white/25 dark:bg-black/40 ' +
+            'base2-input w-full backdrop-blur-2xl bg-white/25 dark:bg-black/40 ' +
             'border border-white/30 dark:border-white/20 rounded-[var(--radius-lg)] ' +
             `px-4 py-3 ${icon ? 'pl-12' : ''} ` +
             'text-foreground placeholder:text-foreground/50 dark:placeholder:text-foreground/40 ' +

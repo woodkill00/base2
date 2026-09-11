@@ -83,8 +83,12 @@ def launch(
     probe_username: str, probe_password: str, state_root: Path, ssh_key_id: int,
     clock: Callable[[], datetime] = lambda: datetime.now(UTC), sleep: Callable[[float], None] = time.sleep,
     ttl_minutes: int = 60, maximum_wait_attempts: int = 60,
-    probe: Callable = verify_full_preview,
+    probe: Callable = verify_full_preview, preview_mode: str = 'full',
 ) -> dict:
+    if preview_mode not in {'full', 'restricted'}:
+        raise FullPreviewLaunchError('invalid preview mode')
+    if preview_mode == 'restricted' and getattr(remote, 'preview_mode', None) != 'restricted':
+        raise FullPreviewLaunchError('restricted remote mode mismatch')
     policy = full_preview_policy(domain, [owner_cidr], ttl_minutes=ttl_minutes)
     archive_digest = hashlib.sha256(source_archive.read_bytes()).hexdigest()
     if len(source_commit) != 40 or any(ch not in "0123456789abcdef" for ch in source_commit):
@@ -153,6 +157,8 @@ def launch(
         }
         FullPreviewLeaseStore(state_root / "leases").create(lease)
         result = {
+            'previewMode': preview_mode,
+            'mediaAcceptance': 'blocked' if preview_mode == 'restricted' else 'pending',
             "schemaVersion": 1, "ok": True, "status": "live-verified", "runId": run_id,
             "sourceCommit": source_commit, "profileId": "base2-obsidian", "publicIp": address,
             "domain": domain, "expiresAt": lease["expiresAt"], "routeCount": probe_receipt["routeCount"],
@@ -181,6 +187,7 @@ def launch(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--credential-file", type=Path, required=True)
+    parser.add_argument("--application-owner-file", type=Path)
     parser.add_argument("--source-archive", type=Path, required=True)
     parser.add_argument("--ssh-private-key", type=Path, required=True)
     parser.add_argument("--ssh-key-id", type=int, required=True)
@@ -200,6 +207,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--state-root", type=Path, required=True)
     parser.add_argument("--ttl-minutes", type=int, default=60)
+    parser.add_argument('--preview-mode', choices=['full', 'restricted'], default='full')
     args = parser.parse_args(argv)
     probe_username = _owner_identity(args.probe_username_file, "probe username")
     _owner_identity(args.django_username_file, "Django username")
@@ -212,6 +220,8 @@ def main(argv: list[str] | None = None) -> int:
         django_username=args.django_username_file, django_email=args.django_email_file,
         django_password=args.django_password_file, pgadmin_email=args.pgadmin_email_file,
         pgadmin_password=args.pgadmin_password_file,
+        application_owner=args.application_owner_file,
+        preview_mode=args.preview_mode,
     )
     result = launch(
         client=client, remote=remote, source_archive=args.source_archive, ssh_key=args.ssh_private_key,
@@ -220,6 +230,7 @@ def main(argv: list[str] | None = None) -> int:
         probe_username=probe_username,
         probe_password=_private(args.probe_password_file, "probe password"),
         state_root=args.state_root, ssh_key_id=args.ssh_key_id, ttl_minutes=args.ttl_minutes,
+        preview_mode=args.preview_mode,
     )
     print(json.dumps(result, sort_keys=True))
     return 0

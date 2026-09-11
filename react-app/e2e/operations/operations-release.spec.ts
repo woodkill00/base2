@@ -29,6 +29,12 @@ async function captureCurrentRun(page, testInfo, name, maxDiffPixelRatio = 0.01)
 }
 
 test.beforeEach(async ({ page }, testInfo) => {
+  // Exercise an explicit owner preference, not merely the OS hint: Obsidian defaults dark.
+  if (testInfo.project.name === 'chromium-light') {
+    await page
+      .context()
+      .addCookies([{ name: 'theme', value: 'light', domain: '127.0.0.1', path: '/' }]);
+  }
   if (testInfo.project.name === 'chromium-reduced-motion') {
     await page.emulateMedia({ reducedMotion: 'reduce' });
   }
@@ -220,8 +226,10 @@ test('operations center is accessible responsive and visually stable', async ({
   });
   page.on('requestfailed', (request) => failedRequests.push(request.url()));
   await page.goto('/operations', { waitUntil: 'domcontentloaded' });
-  if (testInfo.project.name === 'chromium-large-text')
+  if (testInfo.project.name === 'chromium-large-text') {
     await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
+    await expect(page.getByRole('button', { name: 'Open navigation', exact: true })).toBeVisible();
+  }
   const rtl = testInfo.project.name === 'chromium-rtl';
   const german = testInfo.project.name === 'chromium-german';
   const label = {
@@ -320,7 +328,7 @@ test('operations center is accessible responsive and visually stable', async ({
     ).toBe(true);
   }
   await page.addStyleTag({
-    content: '.app-shell > header, .app-shell-content > nav { position: static !important; }',
+    content: '.unified-layout-header-frame, .unified-layout-rail { position: static !important; }',
   });
   await captureCurrentRun(page, testInfo, `operations-center-${testInfo.project.name}.png`);
   const timelineButton = page.getByRole('button', { name: label.viewTimeline }).first();

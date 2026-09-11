@@ -61,6 +61,24 @@ def install(monkeypatch, cursor):
     return connection
 
 
+def test_dispatch_discovery_selects_both_fields_and_commits_lease(monkeypatch):
+    cursor = Cursor(rows=[(OPERATION_ID, DISPATCH_TOKEN)])
+    connection = install(monkeypatch, cursor)
+    assert repository.queued_operation_ids(limit=3) == [(OPERATION_ID, DISPATCH_TOKEN)]
+    assert cursor.calls == [
+        ('SELECT id,dispatch_token FROM base2_list_due_data_rights_operations(%s)', (3,))
+    ]
+    assert connection.committed is True
+
+
+def test_empty_dispatch_discovery_is_bounded_and_committed(monkeypatch):
+    cursor = Cursor()
+    connection = install(monkeypatch, cursor)
+    assert repository.queued_operation_ids(limit=1000) == []
+    assert cursor.calls[0][1] == (100,)
+    assert connection.committed is True
+
+
 def test_create_reuses_exact_active_kind_after_unique_conflict(monkeypatch):
     cursor = Cursor(rows=[(OPERATION_ID,)], rowcount=0)
     connection = install(monkeypatch, cursor)
@@ -83,9 +101,7 @@ def test_claim_is_atomic_and_replay_safe(monkeypatch):
     row = (OPERATION_ID, 'tenant-a', USER_ID, 'export', 'encrypted', claim_token)
     cursor = Cursor(rows=[row])
     connection = install(monkeypatch, cursor)
-    operation = repository.claim_operation(
-        operation_id=OPERATION_ID, dispatch_token=DISPATCH_TOKEN
-    )
+    operation = repository.claim_operation(operation_id=OPERATION_ID, dispatch_token=DISPATCH_TOKEN)
     assert operation['id'] == OPERATION_ID
     assert operation['tenant_id'] == 'tenant-a'
     assert operation['claim_token'] == claim_token
@@ -96,9 +112,9 @@ def test_claim_is_atomic_and_replay_safe(monkeypatch):
 
     empty_cursor = Cursor()
     empty_connection = install(monkeypatch, empty_cursor)
-    assert repository.claim_operation(
-        operation_id=OPERATION_ID, dispatch_token=DISPATCH_TOKEN
-    ) is None
+    assert (
+        repository.claim_operation(operation_id=OPERATION_ID, dispatch_token=DISPATCH_TOKEN) is None
+    )
     assert empty_connection.rolled_back is True
 
 
@@ -115,7 +131,9 @@ def test_completion_requires_running_state_and_retention_wipes_all_sensitive_mat
         result_ciphertext='encrypted-result',
         digest='a' * 64,
     )
-    assert not any('INSERT INTO api_auth_audit_events' in query for query, _params in complete_cursor.calls)
+    assert not any(
+        'INSERT INTO api_auth_audit_events' in query for query, _params in complete_cursor.calls
+    )
     completion_query = next(
         query
         for query, _params in complete_cursor.calls

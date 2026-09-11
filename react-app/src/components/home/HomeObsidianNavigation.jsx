@@ -275,7 +275,12 @@ const readActiveSection = () => {
   return active;
 };
 
-const HomeObsidianNavigation = ({ onNavigate, onUtilityAction = () => {}, locale = 'en' }) => {
+const HomeObsidianNavigation = ({
+  onNavigate,
+  onUtilityAction = () => {},
+  locale = 'en',
+  renderControls,
+}) => {
   const resolvedLocale = Object.hasOwn(navigationCopy, locale) ? locale : 'en';
   const copy = navigationCopy[resolvedLocale];
   const [isLeftOpen, setIsLeftOpen] = useState(false);
@@ -671,6 +676,7 @@ const HomeObsidianNavigation = ({ onNavigate, onUtilityAction = () => {}, locale
     const handleKeyDown = (event) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
+        if (renderControls) window.dispatchEvent(new Event('base2:open-page-context'));
         setIsCommandPaletteOpen((open) => !open);
       }
       if (event.key === 'Escape') {
@@ -681,7 +687,7 @@ const HomeObsidianNavigation = ({ onNavigate, onUtilityAction = () => {}, locale
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [renderControls]);
 
   const handleLeftSectionKeyDown = (event, index) => {
     const buttons = leftSectionButtonRefs.current.filter(Boolean);
@@ -776,6 +782,13 @@ const HomeObsidianNavigation = ({ onNavigate, onUtilityAction = () => {}, locale
   const goToSection = useCallback(
     (id) => {
       const item = sectionItems.find((candidate) => candidate.id === id) || sectionItems[0];
+      if (renderControls) {
+        activeSectionRef.current = item.id;
+        setActiveSection(item.id);
+        setIsCommandPaletteOpen(false);
+        onNavigate(item.id);
+        return;
+      }
       movementScrollLockUntilRef.current = Date.now() + 7600;
       activeSectionRef.current = item.id;
       setActiveSection(item.id);
@@ -790,7 +803,7 @@ const HomeObsidianNavigation = ({ onNavigate, onUtilityAction = () => {}, locale
       window.setTimeout(updateScrollState, 420);
       window.setTimeout(updateScrollState, 840);
     },
-    [forceSectionIntoView, onNavigate, updateScrollState]
+    [forceSectionIntoView, onNavigate, updateScrollState, renderControls]
   );
 
   const moveSection = (direction) => {
@@ -906,6 +919,28 @@ const HomeObsidianNavigation = ({ onNavigate, onUtilityAction = () => {}, locale
 
   const canMoveUp = scrollState.canAscend;
   const canMoveDown = scrollState.canDescend;
+
+  if (renderControls)
+    return renderControls({
+      copy,
+      sectionItems,
+      utilityItems,
+      commandActions,
+      colorSchemes,
+      colorSchemeId,
+      setColorSchemeId,
+      activeColorScheme,
+      activeSection,
+      goToSection,
+      navButtonsEnabled,
+      setNavButtonsEnabled,
+      isCommandPaletteOpen,
+      setIsCommandPaletteOpen,
+      canMoveUp,
+      canMoveDown,
+      moveSection,
+      onUtilityAction,
+    });
 
   return (
     <div

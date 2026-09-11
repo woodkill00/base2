@@ -32,7 +32,7 @@ export const GlassButton: React.FC<Props> = ({
       'bg-red-500/20 hover:bg-red-500/30 border-red-300/50 text-red-50 hover:-translate-y-0.5',
   };
 
-  const classes = [baseStyles, variants[variant], className].filter(Boolean).join(' ');
+  const classes = ['base2-button', `base2-button--${variant}`, baseStyles, variants[variant], className].filter(Boolean).join(' ');
   return (
     <button type={type} className={classes} disabled={disabled} onClick={onClick} {...buttonProps}>
       {children}

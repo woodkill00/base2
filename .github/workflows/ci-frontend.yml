@@ -36,6 +36,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Typecheck
+        run: npm exec tsc -- --noEmit
+
       - name: Test
         run: npm run test:ci
 
@@ -49,6 +52,21 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Install layout browsers
+        run: npm exec playwright -- install --with-deps chromium firefox webkit
+
+      - name: Shared layout contracts and visual evidence
+        run: npm exec playwright -- test --config=playwright.layout.config.mjs
+
+      - name: Upload layout evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: layout-109
+          path: .artifacts/layout-109
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Build Storybook
         run: npm run build-storybook

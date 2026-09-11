@@ -28,9 +28,11 @@ vi.mock('@react-oauth/google', () => ({
 
 describe('Phase 14 Option A Google Sign-In', () => {
   beforeEach(() => {
+    vi.stubEnv('REACT_APP_GOOGLE_CLIENT_ID', 'synthetic.apps.googleusercontent.com');
     jest.clearAllMocks();
     localStorage.clear();
   });
+  afterEach(() => vi.unstubAllEnvs());
 
   test('Google login exchanges credential and routes to dashboard', async () => {
     const user = userEvent.setup();
