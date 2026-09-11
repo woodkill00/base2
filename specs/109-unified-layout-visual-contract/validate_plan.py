@@ -42,8 +42,9 @@ def validate(root=ROOT):
     require('owner approval' in docs['tasks.md'], 'owner checkpoint missing')
     for text in docs.values():
         require('NEEDS CLARIFICATION' not in text and '$ARGUMENTS' not in text, 'template placeholder')
-    return {'requirements': len(requirements), 'tasks': len(tasks), 'analysisCycles': 3,
-            'implementation': 'pending'}
+    return {'requirements': len(requirements), 'tasks': len(tasks),
+            'analysisCycles': len(re.findall(r'^## Cycle \d+', docs['analysis.md'], re.M)),
+            'implementation': 'in_progress' if (root / 'progress.md').exists() else 'pending'}
 
 
 if __name__ == '__main__':

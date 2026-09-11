@@ -124,6 +124,10 @@ for (const width of [320, 390, 767, 768, 1024, 1279, 1280, 1440, 1920]) {
         fullPage: true,
         animations: 'disabled',
       });
+      await info.attach('Rendered page', {
+        path: info.outputPath('page.png'),
+        contentType: 'image/png',
+      });
     });
   }
 }

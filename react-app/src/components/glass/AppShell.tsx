@@ -1,6 +1,13 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { layoutPolicyFor, primaryNavigation } from '../../config/layoutPolicy';
+import {
+  layoutPolicyFor,
+  primaryNavigation,
+  layoutPatternForPath,
+  layoutPreviewEnabled,
+} from '../../config/layoutPolicy';
+import { useAuth } from '../../contexts/AuthContext';
+import Navigation from '../Navigation';
 import './unified-layout.css';
 import GlassHeader from './GlassHeader';
 import GlassSidebar from './GlassSidebar';
@@ -172,7 +179,12 @@ function SharedLayout({
               <Link
                 key={item.to}
                 to={item.to}
-                aria-current={location.pathname === item.to ? 'page' : undefined}
+                aria-current={
+                  location.pathname === item.to ||
+                  (item.to !== '/' && location.pathname.startsWith(`${item.to}/`))
+                    ? 'page'
+                    : undefined
+                }
               >
                 {item.label}
               </Link>
@@ -206,6 +218,17 @@ function SharedLayout({
   );
 }
 
+function RoutedSharedLayout(props: Props) {
+  const { user } = useAuth();
+  return (
+    <SharedLayout
+      {...props}
+      sidebarItems={primaryNavigation(user)}
+      headerSlot={props.headerSlot || (user ? <Navigation compact /> : undefined)}
+    />
+  );
+}
+
 export const AppShell: React.FC<Props> = ({
   layoutRoute,
   headerSlot,
@@ -222,9 +245,23 @@ export const AppShell: React.FC<Props> = ({
   sidebarActivePath,
 }) => {
   const uid = useId();
+  const location = useLocation();
   const sidebarId = useMemo(() => `app-shell-sidebar-${uid}`, [uid]);
   const isPublic = variant === 'public';
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  if (layoutPreviewEnabled)
+    return (
+      <RoutedSharedLayout
+        layoutRoute={layoutRoute || layoutPatternForPath(location.pathname)}
+        headerSlot={headerSlot}
+        contextSlot={contextSlot}
+        headerTitle={headerTitle}
+        footerLabel={footerLabel}
+      >
+        {children}
+      </RoutedSharedLayout>
+    );
 
   if (layoutRoute)
     return (

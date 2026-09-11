@@ -1,5 +1,43 @@
 # Implementation checkpoint — 2026-09-11
 
+## All-page integration update
+
+Following the owner's direction to complete all pages, the opt-in layout now
+resolves the current route automatically in AppShell. PublicShell delegates to
+the same structure. This covers public/content/search, login/signup/recovery,
+invitation, Dashboard/Settings and first-party admin/workspace/media/operations
+pages, including not-found and disabled-module views. Existing guards and
+redirects remain unchanged. Global navigation appears once, with module- and
+permission-filtered destinations. Nested paths retain the selected parent link.
+
+An all-page screenshot review found oversized titles inherited from Home; scoped
+container-relative heading tokens now prevent this, with an explicit regression.
+Typed declarations cover the existing JS authentication/navigation boundary;
+they do not change credentials or authorization behavior.
+
+Evidence: 88 Chromium cases in `all-pages-final-3`, covering the representative
+nine-width matrix, guest/auth pages, German/Arabic content, authenticated tool
+error states, `/account` redirect and five protected-route denial cases. The
+browser report includes screenshot attachments. 56 focused compatibility/unit
+tests pass. These service-unavailable fixtures prove layout resilience, not live
+data flows; disabled optional modules are tested as disabled, not as active apps.
+Existing legacy global typecheck failures remain outside the changed files.
+Final visual review also restored the Administration and Accept Invitation titles
+previously supplied by the removed header; the route-family suite now requires
+exactly one main-region heading. The report is at
+`.artifacts/layout-109/all-pages-final-3-report/index.html`.
+
+Attempt-directory protection refuses reuse before running browsers. Its first
+version also rejected worker imports; `all-pages-final` retains that failure
+(2 failed / 86 not run), and the corrected runner checks reuse only at controller
+startup while sharing one attempt ID with workers. No failure is relabeled green.
+An explicit reuse attempt was rejected before browser startup; the existing HTML
+report's SHA-256 was unchanged before and after rejection.
+
+This extends implementation scope, not final visual approval. The build remains
+opt-in until full Home-control parity and the remaining release gates are satisfied.
+The earlier representative checkpoint below is retained as history.
+
 Branch: `109-unified-layout-visual-contract`. This is a local opt-in prototype,
 not a completed release. Build flag: `VITE_LAYOUT109_PREVIEW=true`; absent that
 flag the existing layouts and Home controls remain in use.

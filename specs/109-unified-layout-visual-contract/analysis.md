@@ -1,5 +1,22 @@
 # Tasks → analysis → refinement
 
+## Cycle 5 — All-page direction and route-family integration
+
+The owner explicitly directed completion across all pages after the prototype
+handoff. Proceed with the remaining page integrations under the existing opt-in
+flag; this direction does not assert screenshot acceptance or authorize deployment.
+AppShell route-policy resolution and PublicShell delegation cover page families
+without duplicating layout code. Preserve all route/permission checks and verify
+actual authenticated destinations as well as guest redirects, not merely the
+presence of a shell on a redirected page. T014–T016 integration is implemented;
+their complete functional/release acceptance remains open.
+
+Review caught inherited giant heading sizes: add a maximum page-title size check
+alongside body-overflow checks. Enabled-module and permission checks both govern
+shortcuts, tested independently; default-profile tests must explicitly select
+accounts enablement rather than assume it. Test/report fixtures retain disabled
+and service-error semantics honestly. No synthetic response proves live API success.
+
 ## Cycle 1 — Scope and structural coverage
 
 Findings from inspected shells: three competing structures, no right slot in AppShell,

@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import GlassButton from './glass/GlassButton';
 import ThemeToggle from './glass/ThemeToggle';
 import { siteManifest } from '../config/siteRuntime';
+import { layoutPreviewEnabled } from '../config/layoutPolicy';
 
 const Navigation = ({ compact = false }) => {
   const { user, logout } = useAuth();
@@ -73,6 +74,8 @@ const Navigation = ({ compact = false }) => {
     ].join(' ');
   const activeProps = (path) => (isActive(path) ? { 'aria-current': 'page' } : {});
 
+  // In the unified variant the global navigation lives in the shell header/rail.
+  if (layoutPreviewEnabled && !compact) return null;
   return (
     <nav
       aria-label={labels.appNavigation}
