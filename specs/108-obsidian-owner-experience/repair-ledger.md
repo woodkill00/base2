@@ -7,6 +7,37 @@ Historical checkpoint above is superseded by the live batch below. Owner credent
 
 ## Live acceptance repair batch (2026-09-11)
 
+### Subsequent deployment setup batch
+
+`99c6c15ab386a57d00da2c153e7bbe1569900bc8` passed its exact release gate
+and replaced the old preview after verified zero-resource cleanup. Five live
+journeys passed again; export remained queued. Do not erase this second failure.
+Read-only diagnostics found the lifecycle table has no `base2-obsidian` row,
+so the dispatcher correctly admits no work. Runtime tracebacks were separately
+`FileNotFoundError` loading the operations probe catalog, not dispatch exceptions.
+
+- R14: initialize only the explicitly enabled disposable preview through canonical
+  lifecycle provision/transition functions before workers start. Preserve existing
+  ownership, revisions and suspension/deletion state; never reactivate arbitrary tenants.
+  Cover fresh PostgreSQL bootstrap, exact replay, missing/invalid authority and conflicts.
+- R15: mount the single public operations probe catalog read-only in the runtime
+  worker; no repository-wide or secret-directory mount. Test composition and file validity.
+- Operator timer setup also caught an argument placed after the command boundary.
+  It was stopped and replaced before execution; verified ExecStart and working
+  directory now point to the exact lease cleanup. No provider action was caused.
+
+Analysis: retain R10-R12 code regressions, but distinguish them from the live
+activation blocker. Add bootstrap ordering/real-role coverage instead of changing
+the dispatch security filter or increasing browser timeouts. This batch is not
+live-verified; current live source remains `99c6c15` until gated deployment.
+
+Setup-batch preflight: 16 initializer tests, 20 deployment-entrypoint tests and
+real restricted-role PostgreSQL acceptance passed, including fresh lifecycle
+bootstrap and exact replay. Complete API (28 partitions) and deployment coverage
+collection passed. The broader sanitized live diagnostic found no tracebacks in
+API, Django, privacy, email or content workers; runtime failures are the missing
+catalog already covered by R15. Final exact-source gate and live export remain due.
+
 Candidate `655d9574d69f6aea75e46d76494c331ff9a21dfe` passed all 114 required
 release groups and was pushed and deployed as `base2-full-20260911-015705`.
 The preview expires at 02:57 UTC, with a WSL teardown timer; no extension planned.

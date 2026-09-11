@@ -1,5 +1,16 @@
 # Task analysis and refinement
 
+## Live repair refinement (2026-09-11)
+
+R10-R15 in `repair-ledger.md` now bind the observed export failure to both real
+repository transaction regressions and missing deployment prerequisites. Tasks
+T019/T024/T026/T027 have explicit repair substeps. Restricted PostgreSQL exercises
+the actual dispatcher, export snapshot, tenant bootstrap and replay; composition
+tests require bootstrap before serving and the exact read-only probe catalog.
+Existing ownership/revision/lifecycle conflicts fail closed; no suspended tenant
+is automatically resumed. No known blocking planning gap remains for this batch.
+Final release and live verification remain execution gates, not assumed passes.
+
 ## Cycle 1 — Initial 21-task plan
 
 Reviewed requirements against observed signup/RLS failures, route source, security

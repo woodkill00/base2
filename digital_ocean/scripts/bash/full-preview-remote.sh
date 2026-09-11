@@ -167,6 +167,8 @@ stage="django-migrations"; printf 'full-preview-stage:%s\n' "$stage" >&2
 # Bypass the serving entrypoint: it performs its own long-running gunicorn
 # startup after migrations, which can make this bounded one-shot gate hang.
 "${compose[@]}" run --rm --no-deps --entrypoint python django manage.py migrate --noinput >/dev/null
+stage="preview-lifecycle-bootstrap"; printf 'full-preview-stage:%s\n' "$stage" >&2
+"${compose[@]}" run --rm --no-deps -e BASE2_PREVIEW_LIFECYCLE_ENABLED=true --entrypoint python api -m api.scripts.ensure_preview_lifecycle
 stage="compose-up"; printf 'full-preview-stage:%s\n' "$stage" >&2
 "${compose[@]}" up -d --no-build
 stage="media-inspector-identity"; printf 'full-preview-stage:%s\n' "$stage" >&2

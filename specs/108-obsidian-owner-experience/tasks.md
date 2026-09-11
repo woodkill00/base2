@@ -41,3 +41,13 @@ All implementation tasks remain pending. Each task records test command, exact s
 
 Analysis and evidence: `repair-ledger.md`, R10-R13. These substeps do not mark the
 parent tasks complete or replace owner visual approval.
+
+### T024/T027 deployment setup repair
+
+- [x] Diagnose the second queued export using read-only tenant state and sanitized worker frames.
+- [x] Add explicit preview-only canonical lifecycle bootstrap with no unrelated tenant adoption or reactivation.
+- [x] Test fresh bootstrap and replay on restricted PostgreSQL; test conflict/admission paths and startup ordering.
+- [x] Mount and validate only the nonsecret operations catalog read-only in its consuming worker.
+- [ ] Revalidate coverage/release evidence and the final deployed synthetic journey; no security-filter bypass or hidden timeout increase.
+
+See R14-R15 in `repair-ledger.md`; observed live failure remains open.

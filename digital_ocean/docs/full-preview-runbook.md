@@ -52,6 +52,15 @@ run_id="base2-full-$(date -u +%Y%m%d-%H%M%S)"
 
 The launch order is compute, fixed bootstrap, direct-address health, transactional creation of `@`, `admin`, `swagger`, `traefik`, `pgadmin`, and `flower`, outside-in checks, then an integrity-bound lease. A failure restores the prior exact DNS set and deletes the Droplet; incomplete cleanup reports reconciliation instead of success.
 
+After migrations and before serving, the bootstrap explicitly enables the fixed
+`base2-obsidian` preview lifecycle initializer. It uses canonical provision and
+activation transitions with deterministic operation IDs and the non-login
+`base2-preview-operator` lifecycle reference. It creates no account or permissions.
+Exact active replay is a no-op; another owner/configuration, changed revision,
+suspended/deleted state or another profile is rejected, never silently adopted.
+This initializer is disabled by default outside the fixed preview command. The
+runtime worker receives only its nonsecret probe catalog as a read-only mount.
+
 ## Live browser gate
 
 Load credentials through private environment injection, never as CLI arguments:

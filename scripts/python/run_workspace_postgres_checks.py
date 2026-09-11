@@ -19,6 +19,7 @@ from api.repositories.data_rights import queued_operation_ids
 from api.repositories.operations import due_alert_deliveries, record_probe_batch
 from api.repositories.runtime_governance import claim_jobs, enqueue_job, settle_job
 from api.repositories.tenant_quota import QuotaRepositoryError, reserve
+from api.scripts.ensure_preview_lifecycle import ensure as ensure_preview_lifecycle
 from api.services.data_rights_worker import _export_payload
 from api.services.email_service import create_outbox_email
 from scripts.python.production_backup import _repeatable_read_snapshot
@@ -35,7 +36,7 @@ def connect(user: str, password: str):
 
 
 @contextmanager
-def repository_pool(user: str, password: str):
+def repository_pool(user: str, password: str, *, attribute: str = "_pool"):
     """Exercise production checkout/reset code with a real least-privileged pool."""
     pool = ThreadedConnectionPool(
         1,
@@ -47,7 +48,7 @@ def repository_pool(user: str, password: str):
         password=password,
     )
     try:
-        with patch.object(db, "_pool", pool):
+        with patch.object(db, attribute, pool):
             yield
     finally:
         pool.closeall()
@@ -623,6 +624,14 @@ def main() -> None:
         runtime.rollback()
         # Runtime workers have only operations/job authority. Content workers
         # use a separately credentialed content/media identity, never this role.
+        with repository_pool(runtime_user, runtime_password, attribute="_workspace_pool"):
+            assert (
+                ensure_preview_lifecycle(enabled=True, profile="base2-obsidian")["status"]
+                == "active"
+            )
+            assert (
+                ensure_preview_lifecycle(enabled=True, profile="base2-obsidian")["created"] is False
+            )
         assert_permission_denied(
             lambda: count(worker, None), worker, "runtime_worker_content_read_was_not_blocked"
         )

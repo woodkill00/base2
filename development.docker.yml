@@ -532,6 +532,7 @@ services:
       - CELERY_CONCURRENCY=${CELERY_CONCURRENCY}
     networks: [app_network]
     volumes:
+      - ./shared/config/operations-probes-v1.json:/app/shared/config/operations-probes-v1.json:ro
       - operations_receipts:/var/lib/base2/operations
       - ${DB_SSLROOTCERT_HOST:-/dev/null}:/run/secrets/db-ca.pem:ro
       - ${OPERATIONS_ALERT_INTEGRITY_KEY_FILE_HOST:-/dev/null}:/run/secrets/operations-alert-integrity-key:ro

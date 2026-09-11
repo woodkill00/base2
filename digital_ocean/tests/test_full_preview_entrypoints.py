@@ -30,6 +30,30 @@ def private_file(path: Path, value: str) -> Path:
     return path
 
 
+def test_preview_lifecycle_precedes_serving_and_probe_catalog_is_read_only():
+    import yaml
+
+    root = Path(__file__).resolve().parents[2]
+    script = (root / "digital_ocean/scripts/bash/full-preview-remote.sh").read_text()
+    assert script.index('stage="django-migrations"') < script.index(
+        'stage="preview-lifecycle-bootstrap"'
+    )
+    assert script.index('stage="preview-lifecycle-bootstrap"') < script.index('stage="compose-up"')
+    assert (
+        "-e BASE2_PREVIEW_LIFECYCLE_ENABLED=true --entrypoint python api -m api.scripts.ensure_preview_lifecycle"
+        in script
+    )
+    compose = yaml.safe_load((root / "development.docker.yml").read_text())
+    volumes = compose["services"]["celery-worker"]["volumes"]
+    assert (
+        "./shared/config/operations-probes-v1.json:/app/shared/config/operations-probes-v1.json:ro"
+        in volumes
+    )
+    assert isinstance(
+        json.loads((root / "shared/config/operations-probes-v1.json").read_text()), dict
+    )
+
+
 def application_inputs(tmp_path: Path) -> dict[str, Path]:
     return {
         "django_username": private_file(tmp_path / "django.username", "owner"),
