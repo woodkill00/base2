@@ -1,5 +1,6 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from 'react';
 import { setThemeCookie, getThemeCookie, applyThemeClass } from '../services/theme/persistence';
+import { siteManifest } from '../config/siteRuntime';
 
 export const ThemeContext = createContext({
   theme: 'light',
@@ -11,6 +12,7 @@ export const ThemeProvider = ({ children }) => {
   const initialTheme = useMemo(() => {
     const cookieTheme = typeof document !== 'undefined' ? getThemeCookie() : null;
     if (cookieTheme) return cookieTheme;
+    if (siteManifest.brand.theme === 'obsidian') return 'dark';
     const prefersDark =
       typeof window !== 'undefined' &&
       window.matchMedia &&

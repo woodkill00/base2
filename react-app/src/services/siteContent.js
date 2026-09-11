@@ -11,6 +11,7 @@ const call = async (request, fallbackMessage) => {
       const invalid = new Error(fallbackMessage);
       invalid.code = 'invalid_response';
       invalid.fields = {};
+      invalid.status = null;
       throw invalid;
     }
     return data;

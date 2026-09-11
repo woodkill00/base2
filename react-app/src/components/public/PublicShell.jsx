@@ -3,7 +3,7 @@ import HomeFooter from '../home/HomeFooter';
 import PageMetadata from './PageMetadata';
 
 const PublicShell = ({ title, children }) => (
-  <div className="home-page-root relative min-h-screen">
+  <div className="home-page-root relative min-h-screen" data-experience="base2">
     <PageMetadata title={title} />
     <div className="gradient-background" />
     <div className="relative z-10">

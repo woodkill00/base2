@@ -60,7 +60,8 @@ class FullPreviewSshBootstrap:
     def __init__(self, *, known_hosts: Path, owner_cidr: str, operator_auth: Path, flower_auth: Path,
                  django_username: Path, django_email: Path, django_password: Path,
                  pgadmin_email: Path, pgadmin_password: Path,
-                 runner: Callable = subprocess.run, sleep=time.sleep, attempts: int = 60):
+                 runner: Callable = subprocess.run, sleep=time.sleep, attempts: int = 60,
+                 application_owner: Path | None = None):
         self.known_hosts = known_hosts
         self.owner_cidr = validate_owner_cidrs([owner_cidr])[0]
         self.operator_auth = operator_auth
@@ -73,6 +74,11 @@ class FullPreviewSshBootstrap:
             (pgadmin_password, "/run/base2-pgadmin.password"),
         )
         self.runner = runner
+        if application_owner is not None:
+            if (not application_owner.is_file() or application_owner.is_symlink()
+                    or stat.S_IMODE(application_owner.stat().st_mode) & 0o077):
+                raise FullPreviewRemoteError("application owner must be an owner-only real file")
+            self.application_inputs += ((application_owner, "/run/base2-owner.json"),)
         self.sleep = sleep
         self.attempts = attempts
         if not 1 <= attempts <= 60:

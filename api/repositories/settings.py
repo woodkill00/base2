@@ -30,7 +30,7 @@ def _preference_row(row) -> dict[str, Any]:
 
 
 def get_preferences(*, user_id: UUID, tenant_id: str) -> dict[str, Any]:
-    with db_conn() as conn, conn.cursor() as cur:
+    with db_conn(tenant_id=tenant_id) as conn, conn.cursor() as cur:
         cur.execute(
             """SELECT schema_version, version, theme, contrast, motion, density,
                       locale, timezone, week_start, updated_at
@@ -43,8 +43,7 @@ def get_preferences(*, user_id: UUID, tenant_id: str) -> dict[str, Any]:
 def update_preferences(
     *, user_id: UUID, tenant_id: str, expected_version: int, values: dict[str, str]
 ) -> dict[str, Any] | None:
-    with db_conn() as conn:
-        conn.autocommit = False
+    with db_conn(tenant_id=tenant_id) as conn:  # noqa: SIM117 - close cursor before commit
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT version FROM api_user_preferences WHERE user_id=%s AND tenant_id=%s FOR UPDATE",
@@ -88,7 +87,7 @@ def update_preferences(
 
 
 def list_notifications(*, user_id: UUID, tenant_id: str) -> list[dict[str, Any]]:
-    with db_conn() as conn, conn.cursor() as cur:
+    with db_conn(tenant_id=tenant_id) as conn, conn.cursor() as cur:
         cur.execute(
             """SELECT event_family,channel,delivery,mandatory,updated_at
                FROM api_notification_preferences WHERE user_id=%s AND tenant_id=%s
@@ -105,22 +104,20 @@ def list_notifications(*, user_id: UUID, tenant_id: str) -> list[dict[str, Any]]
 def replace_notifications(
     *, user_id: UUID, tenant_id: str, preferences: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
-    with db_conn() as conn:
-        conn.autocommit = False
-        with conn.cursor() as cur:
+    with db_conn(tenant_id=tenant_id) as conn, conn.cursor() as cur:
+        cur.execute(
+            "DELETE FROM api_notification_preferences WHERE user_id=%s AND tenant_id=%s",
+            (str(user_id), tenant_id),
+        )
+        for item in preferences:
             cur.execute(
-                "DELETE FROM api_notification_preferences WHERE user_id=%s AND tenant_id=%s",
-                (str(user_id), tenant_id),
-            )
-            for item in preferences:
-                cur.execute(
-                    """INSERT INTO api_notification_preferences(
+                """INSERT INTO api_notification_preferences(
                            id,user_id,tenant_id,event_family,channel,delivery,mandatory
                        ) VALUES (%s,%s,%s,%s,%s,%s,%s)""",
-                    (str(uuid4()), str(user_id), tenant_id, item['event_family'], item['channel'],
-                     item['delivery'], bool(item['mandatory'])),
-                )
-            conn.commit()
+                (str(uuid4()), str(user_id), tenant_id, item['event_family'], item['channel'],
+                 item['delivery'], bool(item['mandatory'])),
+            )
+        conn.commit()
     return list_notifications(user_id=user_id, tenant_id=tenant_id)
 
 

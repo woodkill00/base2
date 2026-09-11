@@ -1,0 +1,107 @@
+/* Shared first-party identity. Explicit light mode remains available. */
+[data-theme='obsidian'] {
+  --obsidian-bg: #080808;
+  --obsidian-surface: #131313;
+  --obsidian-primary: #ff3131;
+  --obsidian-accent: #ff6321;
+  --color-canvas: var(--obsidian-bg);
+  --color-surface: var(--obsidian-surface);
+  --color-surface-elevated: #1a1a1a;
+  --color-text: #f4efed;
+  --color-text-muted: #bcb0ab;
+  --color-border: #78544a;
+  --color-accent: #ff8b66;
+  --color-focus: #ffb49b;
+  --color-danger: #ff9a9a;
+  --color-danger-surface: #351a1a;
+  --color-on-accent: #1a0803;
+  --glass-bg: var(--color-surface);
+  --glass-border: var(--color-border);
+  --foreground: var(--color-text);
+}
+
+[data-theme='obsidian'][data-color-mode='light'] {
+  color-scheme: light;
+  --color-canvas: #fff8f5;
+  --color-surface: #fffdfb;
+  --color-surface-elevated: #f5e8e2;
+  --color-text: #271713;
+  --color-text-muted: #67524a;
+  --color-border: #9a7566;
+  --color-accent: #a62c10;
+  --color-focus: #8f230c;
+  --color-danger: #9b2020;
+  --color-danger-surface: #ffe4e4;
+  --color-on-accent: #ffffff;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-text);
+}
+
+[data-theme] .app-shell-root {
+  background: var(--color-canvas);
+  color: var(--color-text);
+}
+
+[data-theme] .app-shell-root .gradient-background {
+  background: radial-gradient(ellipse at top right, color-mix(in srgb, var(--color-accent) 10%, transparent), transparent 60%);
+}
+
+[data-theme] .app-shell-root .gradient-background::before { content: none; }
+
+.app-shell-content {
+  min-width: 0;
+  width: 100%;
+  padding: clamp(1rem, 3vw, 2.5rem);
+}
+
+.app-shell-content h1 {
+  font-size: clamp(1.75rem, calc(1.2rem + 2vw), 3rem);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.app-shell-content :where(a) { color: var(--color-accent); }
+.app-shell-content :where(p, label, li) { overflow-wrap: anywhere; }
+
+.app-shell-root .base2-card {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+  padding: clamp(1rem, 3vw, 2rem);
+  box-shadow: 0 12px 36px #00000026;
+  backdrop-filter: none;
+  transition: border-color var(--motion-fast) var(--ease-standard);
+}
+
+.app-shell-root .base2-input,
+.app-shell-root :where(select, textarea) {
+  background: var(--color-surface-elevated);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.app-shell-root .base2-input::placeholder { color: var(--color-text-muted); opacity: 1; }
+.app-shell-root .base2-button { color: var(--color-text); background: var(--color-surface-elevated); border-color: var(--color-border); }
+.app-shell-root .base2-button--primary { color: var(--color-on-accent, #fff); background: var(--color-accent); }
+.app-shell-root .base2-button--danger { color: var(--color-danger); background: var(--color-danger-surface, var(--color-surface)); }
+.app-shell-root .base2-button--ghost { background: transparent; }
+.app-shell-root .base2-button:hover:not(:disabled) { filter: brightness(1.1); }
+.app-shell-root :where(input, button, select, textarea, a):focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+.app-shell-root header nav { background: var(--color-surface); color: var(--color-text); border-color: var(--color-border); }
+.app-shell-root .app-shell-footer { color: var(--color-text-muted); background: var(--color-surface); opacity: 1; }
+
+@media (max-width: 768px) {
+  .app-shell-root .app-shell-body { grid-template-columns: minmax(0, 1fr) !important; }
+}
+
+@media (prefers-contrast: more) {
+  .app-shell-root { --color-border: var(--color-text); }
+}

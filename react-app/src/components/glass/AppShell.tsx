@@ -34,7 +34,7 @@ export const AppShell: React.FC<Props> = ({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <div className="app-shell-root relative min-h-screen text-slate-900 dark:text-slate-100">
+    <div className="app-shell-root relative min-h-screen" data-experience="base2">
       <div className="gradient-background" />
 
       <div

@@ -181,6 +181,7 @@ def launch(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--credential-file", type=Path, required=True)
+    parser.add_argument("--application-owner-file", type=Path)
     parser.add_argument("--source-archive", type=Path, required=True)
     parser.add_argument("--ssh-private-key", type=Path, required=True)
     parser.add_argument("--ssh-key-id", type=int, required=True)
@@ -212,6 +213,7 @@ def main(argv: list[str] | None = None) -> int:
         django_username=args.django_username_file, django_email=args.django_email_file,
         django_password=args.django_password_file, pgadmin_email=args.pgadmin_email_file,
         pgadmin_password=args.pgadmin_password_file,
+        application_owner=args.application_owner_file,
     )
     result = launch(
         client=client, remote=remote, source_archive=args.source_archive, ssh_key=args.ssh_private_key,

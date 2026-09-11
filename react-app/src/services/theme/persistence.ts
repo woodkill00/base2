@@ -19,6 +19,7 @@ export function getThemeCookie(): 'light' | 'dark' | null {
 
 export function applyThemeClass(theme: 'light' | 'dark') {
   const root = document.documentElement;
+  root.dataset.colorMode = theme;
   if (theme === 'dark') root.classList.add('dark');
   else root.classList.remove('dark');
 }

@@ -54,7 +54,16 @@ export const normalizeApiError = (error, opts = {}) => {
     _stringOrNull(opts.fallbackMessage) || 'Something went wrong. Please try again.';
 
   // Already normalized?
-  if (_isObject(error) && _stringOrNull(error.message) && _isObject(error.fields || {})) {
+  if (
+    _isObject(error) &&
+    !error.isAxiosError &&
+    !error.response &&
+    !error.request &&
+    Object.prototype.hasOwnProperty.call(error, 'fields') &&
+    Object.prototype.hasOwnProperty.call(error, 'status') &&
+    _stringOrNull(error.message) &&
+    _isObject(error.fields || {})
+  ) {
     return {
       code: error.code || 'error',
       message: error.message,
@@ -87,12 +96,13 @@ export const normalizeApiError = (error, opts = {}) => {
   }
 
   const message =
-    messageFromBody ||
-    (status === 503
-      ? 'Service unavailable. Please try again shortly.'
-      : status === 500
-        ? 'Server error. Please try again.'
-        : fallbackMessage);
+    status >= 500
+      ? status === 503
+        ? 'Service unavailable. Please try again shortly.'
+        : 'Server error. Please try again.'
+      : messageFromBody || (fields ? 'Please fix the highlighted fields.' : fallbackMessage);
+
+  if (status >= 500) fields = null;
 
   if (!fields) {
     fields = _guessFieldsFromAuthMessage(message, url, status);

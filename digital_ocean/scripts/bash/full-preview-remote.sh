@@ -33,7 +33,7 @@ inspector_private_pem="/run/base2-media-inspector.pem"
 compose_file="$repo_root/development.docker.yml"
 
 cleanup_private_inputs() {
-  rm -f -- "$inspector_private_pem"
+  rm -f -- "$inspector_private_pem" /run/base2-owner.json
 }
 trap cleanup_private_inputs EXIT
 
@@ -213,6 +213,14 @@ for attempt in $(seq 1 180); do
   fi
   sleep 2
 done
+
+stage="application-owner"; printf 'full-preview-stage:%s\n' "$stage" >&2
+if [[ -e /run/base2-owner.json ]]; then
+  [[ -f /run/base2-owner.json && ! -L /run/base2-owner.json ]] || fail_stage 2
+  [[ "$(stat -c %a /run/base2-owner.json)" == "600" ]] || fail_stage 2
+  "${compose[@]}" exec -T -e BASE2_OWNER_ENABLED=true api python -m api.scripts.ensure_owner --stdin < /run/base2-owner.json
+  rm -f -- /run/base2-owner.json
+fi
 
 stage="traefik-policy"; printf 'full-preview-stage:%s\n' "$stage" >&2
 traefik_id="$("${compose[@]}" ps -q traefik)"
