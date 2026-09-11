@@ -173,19 +173,19 @@ test('media detail preserves safe preview usage and consequence context', async 
       nodes: item.nodes.map((node) => ({ target: node.target, summary: node.failureSummary })),
     }))
   ).toEqual([]);
-  if (testInfo.project.name === 'chromium-desktop') {
-    await applying.evaluate((node) => {
-      node.scrollIntoView({ behavior: 'instant', block: 'end', inline: 'nearest' });
-    });
-    await expect
-      .poll(async () => {
-        const dialogBox = await dialog.boundingBox();
-        const applyingBox = await applying.boundingBox();
-        if (!dialogBox || !applyingBox) return Number.POSITIVE_INFINITY;
-        return Math.abs(dialogBox.y + dialogBox.height - (applyingBox.y + applyingBox.height));
-      })
-      .toBeLessThanOrEqual(2);
-  }
+  // Normalize the pending-action viewport in every modal project, not just desktop.
+  // Focus restoration can otherwise leave different scroll offsets in light/mobile runs.
+  await applying.evaluate((node) => {
+    node.scrollIntoView({ behavior: 'instant', block: 'end', inline: 'nearest' });
+  });
+  await expect
+    .poll(async () => {
+      const dialogBox = await dialog.boundingBox();
+      const applyingBox = await applying.boundingBox();
+      if (!dialogBox || !applyingBox) return Number.POSITIVE_INFINITY;
+      return Math.abs(dialogBox.y + dialogBox.height - (applyingBox.y + applyingBox.height));
+    })
+    .toBeLessThanOrEqual(2);
   await expect(dialog).toHaveScreenshot(`media-detail-${testInfo.project.name}.png`, {
     animations: 'disabled',
     caret: 'hide',

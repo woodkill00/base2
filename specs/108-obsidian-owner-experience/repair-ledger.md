@@ -19,6 +19,17 @@ No new DigitalOcean preview is running. Owner credentials remain private.
 
 ## Evidence and next batch
 
+### Pending-action capture stability
+
+A no-update media regression run found a light detail-dialog scroll mismatch
+(23 passed, one failed). The next release was stopped during its prerequisite
+stability runner; its full gate never started. Comparison showed identical content
+at different scroll offsets. The test normalized the pending-action anchor only for
+desktop; normalization and the existing two-pixel geometry assertion now apply to
+every representative modal project. Capture regeneration passed 24 tests with 12
+predefined exclusions. Two no-update repetitions are required before the next gate.
+No screenshot tolerance or accessibility assertion was relaxed.
+
 ### Release record reconciliation
 
 The gate on `fa8e688b1f3f0898d7e6a902d5eccbbcb392f117` completed with 109
