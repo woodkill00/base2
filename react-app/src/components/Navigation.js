@@ -1,9 +1,10 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import GlassButton from './glass/GlassButton';
+import ThemeToggle from './glass/ThemeToggle';
 import { siteManifest } from '../config/siteRuntime';
 
-const Navigation = () => {
+const Navigation = ({ compact = false }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -73,8 +74,11 @@ const Navigation = () => {
   const activeProps = (path) => (isActive(path) ? { 'aria-current': 'page' } : {});
 
   return (
-    <nav aria-label={labels.appNavigation} className="sticky top-[calc(var(--nav-h)+0px)] z-40">
-      <div className="mx-auto max-w-6xl px-4 pt-4">
+    <nav
+      aria-label={labels.appNavigation}
+      className={compact ? 'unified-account-controls' : 'sticky top-[calc(var(--nav-h)+0px)] z-40'}
+    >
+      <div className={compact ? 'unified-account-inner' : 'mx-auto max-w-6xl px-4 pt-4'}>
         <div
           className={[
             'backdrop-blur-2xl border rounded-[var(--radius-lg)] transition-all duration-300 ease-out',
@@ -94,50 +98,57 @@ const Navigation = () => {
               </Link>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <Link
-                to="/dashboard"
-                className={linkClass('/dashboard')}
-                {...activeProps('/dashboard')}
-              >
-                {labels.dashboard}
-              </Link>
-              <Link to="/settings" className={linkClass('/settings')} {...activeProps('/settings')}>
-                {labels.settings}
-              </Link>
-              {workspaceEnabled && user?.permissions?.includes('content-workspace.read') ? (
+            {!compact && (
+              <div className="flex flex-wrap items-center gap-2">
                 <Link
-                  to="/workspace"
-                  className={linkClass('/workspace')}
-                  {...activeProps('/workspace')}
+                  to="/dashboard"
+                  className={linkClass('/dashboard')}
+                  {...activeProps('/dashboard')}
                 >
-                  {labels.content}
+                  {labels.dashboard}
                 </Link>
-              ) : null}
-              {mediaEnabled && user?.permissions?.includes('media.read') ? (
-                <Link to="/media" className={linkClass('/media')} {...activeProps('/media')}>
-                  {labels.media}
-                </Link>
-              ) : null}
-              {user?.permissions?.includes('operations.read') ? (
                 <Link
-                  to="/operations"
-                  className={linkClass('/operations')}
-                  {...activeProps('/operations')}
+                  to="/settings"
+                  className={linkClass('/settings')}
+                  {...activeProps('/settings')}
                 >
-                  {labels.operations}
+                  {labels.settings}
                 </Link>
-              ) : null}
-              {accountsEnabled &&
-              Array.isArray(user?.permissions) &&
-              user.permissions.includes('audit.read') ? (
-                <Link to="/admin" className={linkClass('/admin')} {...activeProps('/admin')}>
-                  {labels.admin}
-                </Link>
-              ) : null}
-            </div>
+                {workspaceEnabled && user?.permissions?.includes('content-workspace.read') ? (
+                  <Link
+                    to="/workspace"
+                    className={linkClass('/workspace')}
+                    {...activeProps('/workspace')}
+                  >
+                    {labels.content}
+                  </Link>
+                ) : null}
+                {mediaEnabled && user?.permissions?.includes('media.read') ? (
+                  <Link to="/media" className={linkClass('/media')} {...activeProps('/media')}>
+                    {labels.media}
+                  </Link>
+                ) : null}
+                {user?.permissions?.includes('operations.read') ? (
+                  <Link
+                    to="/operations"
+                    className={linkClass('/operations')}
+                    {...activeProps('/operations')}
+                  >
+                    {labels.operations}
+                  </Link>
+                ) : null}
+                {accountsEnabled &&
+                Array.isArray(user?.permissions) &&
+                user.permissions.includes('audit.read') ? (
+                  <Link to="/admin" className={linkClass('/admin')} {...activeProps('/admin')}>
+                    {labels.admin}
+                  </Link>
+                ) : null}
+              </div>
+            )}
 
             <div className="flex min-w-0 flex-wrap items-center gap-3">
+              {compact && <ThemeToggle />}
               <div className="flex min-w-0 items-center gap-2">
                 {avatarUrl ? (
                   <img

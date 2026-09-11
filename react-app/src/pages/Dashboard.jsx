@@ -3,14 +3,24 @@ import AppShell from '../components/glass/AppShell';
 import GlassCard from '../components/glass/GlassCard';
 import Navigation from '../components/Navigation';
 import { siteManifest } from '../config/siteRuntime';
+import { layoutPreviewEnabled, primaryNavigation } from '../config/layoutPolicy';
 
 const Dashboard = () => {
   const { user } = useAuth();
 
   return (
-    <AppShell headerTitle="Dashboard">
-      <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
-        <Navigation />
+    <AppShell
+      headerTitle="Dashboard"
+      layoutRoute={layoutPreviewEnabled ? '/dashboard' : undefined}
+      sidebarItems={primaryNavigation(user)}
+      headerSlot={<Navigation compact />}
+    >
+      <div className="page-content mx-auto max-w-6xl px-4 py-8 space-y-6">
+        {layoutPreviewEnabled ? (
+          <h1 className="text-3xl font-semibold">Dashboard</h1>
+        ) : (
+          <Navigation />
+        )}
 
         <GlassCard>
           <div className="p-6">

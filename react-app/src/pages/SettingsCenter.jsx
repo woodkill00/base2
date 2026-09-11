@@ -19,6 +19,7 @@ import GlassButton from '../components/glass/GlassButton';
 import GlassCard from '../components/glass/GlassCard';
 import GlassInput from '../components/glass/GlassInput';
 import Navigation from '../components/Navigation';
+import { layoutPreviewEnabled, primaryNavigation } from '../config/layoutPolicy';
 import AccountCenter from './AccountCenter';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../lib/apiClient';
@@ -1245,23 +1246,29 @@ const SettingsCenter = () => {
   const current = localizedCategories.find((item) => item.id === active) || localizedCategories[0];
   return (
     <AppShell
+      layoutRoute={layoutPreviewEnabled ? '/settings/*' : undefined}
+      headerSlot={<Navigation compact />}
       headerTitle={copy.appShell}
       headerIsPageHeading={false}
       footerLabel={copy.privateWorkspace}
       menuLabel={copy.menu}
       themeLabel={copy.themeToggle}
       sidebarLabel={copy.sidebar}
-      sidebarItems={copy.sidebarItems.map((label, index) => ({
-        label,
-        to: ['/', '/dashboard', '/settings', '/admin', '/contact'][index],
-      }))}
+      sidebarItems={
+        layoutPreviewEnabled
+          ? primaryNavigation(user)
+          : copy.sidebarItems.map((label, index) => ({
+              label,
+              to: ['/', '/dashboard', '/settings', '/admin', '/contact'][index],
+            }))
+      }
     >
       <div
-        className="mx-auto max-w-7xl space-y-6 px-4 py-8"
+        className="page-content mx-auto max-w-7xl space-y-6 px-4 py-8"
         lang={locale}
         dir={locale === 'ar' ? 'rtl' : 'ltr'}
       >
-        <Navigation />
+        {!layoutPreviewEnabled && <Navigation />}
         <nav aria-label={copy.breadcrumb} className="flex items-center gap-2 text-sm opacity-75">
           <Link className="min-h-11 py-3 hover:underline" to="/settings">
             {copy.settings}
@@ -1296,7 +1303,7 @@ const SettingsCenter = () => {
             {error}
           </div>
         ) : null}
-        <div className="grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
+        <div className="settings-layout-grid grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
           <aside className="space-y-4 lg:sticky lg:top-28 lg:self-start">
             <Field label={copy.search} htmlFor="settings-search">
               <div className="relative">

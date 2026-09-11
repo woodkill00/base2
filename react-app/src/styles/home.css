@@ -2159,7 +2159,7 @@
   scroll-snap-stop: always;
 }
 
-:where(main, #home-page)
+:where(main, #home-page):not(.unified-layout-main)
   > :where(section, footer, [data-testid]):not(.home-obsidian-nav-layer):not(
     .home-bottom-movement-controls
   ):not(.home-command-palette-modal) {

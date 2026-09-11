@@ -1,9 +1,15 @@
-import React, { useId, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { layoutPolicyFor, primaryNavigation } from '../../config/layoutPolicy';
+import './unified-layout.css';
 import GlassHeader from './GlassHeader';
 import GlassSidebar from './GlassSidebar';
 import { siteManifest } from '../../config/siteRuntime';
 
 type Props = {
+  layoutRoute?: string;
+  headerSlot?: React.ReactNode;
+  contextSlot?: React.ReactNode;
   children?: React.ReactNode;
   headerTitle?: string;
   sidebarItems?: Array<string | { label: string; to: string }>;
@@ -16,7 +22,194 @@ type Props = {
   sidebarActivePath?: string;
 };
 
+function SharedLayout({
+  children,
+  headerTitle,
+  headerSlot,
+  contextSlot,
+  sidebarItems,
+  footerLabel,
+  layoutRoute,
+}: Props) {
+  layoutPolicyFor(layoutRoute!);
+  const location = useLocation();
+  const [open, setOpen] = useState<'left' | 'right' | null>(null);
+  const left = useRef<HTMLElement>(null),
+    right = useRef<HTMLElement>(null);
+  const background = useRef<HTMLDivElement>(null),
+    header = useRef<HTMLDivElement>(null);
+  const root = useRef<HTMLDivElement>(null),
+    trigger = useRef<HTMLElement | null>(null);
+  const main = useRef<HTMLElement>(null),
+    footer = useRef<HTMLElement>(null);
+  const id = useId();
+  const items = (sidebarItems || primaryNavigation()).map((item) =>
+    typeof item === 'string' ? { label: item, to: '/' } : item
+  );
+  useEffect(() => {
+    if (!header.current) return;
+    const observer = new ResizeObserver(() =>
+      root.current?.style.setProperty(
+        '--layout-header-height',
+        `${header.current?.getBoundingClientRect().height || 80}px`
+      )
+    );
+    observer.observe(header.current);
+    return () => observer.disconnect();
+  }, []);
+  useEffect(() => {
+    setOpen(null);
+  }, [location.pathname]);
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 1280px)');
+    const change = () => {
+      if (media.matches) setOpen(null);
+    };
+    media.addEventListener('change', change);
+    return () => media.removeEventListener('change', change);
+  }, []);
+  useEffect(() => {
+    if (!open) return;
+    const panel = (open === 'left' ? left : right).current;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    // React 18 does not serialize a boolean inert attribute; set it through DOM refs.
+    const backgroundNodes = [background.current, main.current, footer.current];
+    backgroundNodes.forEach((node) => node?.setAttribute('inert', ''));
+    panel?.querySelector<HTMLElement>('button,a')?.focus();
+    const keydown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setOpen(null);
+      }
+      if (event.key !== 'Tab' || !panel) return;
+      const nodes = Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'a[href],button:not([disabled]),input,select,textarea,[tabindex="0"]'
+        )
+      );
+      const first = nodes[0],
+        last = nodes[nodes.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      }
+      if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    document.addEventListener('keydown', keydown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      backgroundNodes.forEach((node) => node?.removeAttribute('inert'));
+      document.removeEventListener('keydown', keydown);
+      trigger.current?.focus({ preventScroll: true });
+    };
+  }, [open]);
+  const toggle = (side: 'left' | 'right', event: React.MouseEvent<HTMLButtonElement>) => {
+    trigger.current = event.currentTarget;
+    setOpen(side);
+  };
+  const rail = (side: 'left' | 'right', content: React.ReactNode) => (
+    <aside
+      ref={side === 'left' ? left : right}
+      id={`${id}-${side}`}
+      className={`unified-layout-rail unified-layout-rail-${side}`}
+      data-open={open === side}
+      onClick={(event) => {
+        if (open === side && (event.target as HTMLElement).closest('a,button')) setOpen(null);
+      }}
+      role={open === side ? 'dialog' : undefined}
+      aria-modal={open === side ? true : undefined}
+      aria-label={side === 'left' ? 'Navigation panel' : 'Page context'}
+    >
+      <button type="button" className="unified-rail-close" onClick={() => setOpen(null)}>
+        Close {side === 'left' ? 'navigation' : 'page context'}
+      </button>
+      {content}
+    </aside>
+  );
+  return (
+    <div className="unified-layout app-shell-root" data-experience="base2" ref={root}>
+      <div ref={background} className="unified-layout-header-frame">
+        <a className="unified-skip-link" href="#main-content">
+          Skip to main content
+        </a>
+        <div className="unified-layout-header" ref={header}>
+          {headerSlot ? (
+            <header>{headerSlot}</header>
+          ) : (
+            <GlassHeader variant="public" title={headerTitle} />
+          )}
+          <div className="unified-rail-controls">
+            <button
+              onClick={(event) => toggle('left', event)}
+              aria-controls={`${id}-left`}
+              aria-expanded={open === 'left'}
+            >
+              Open navigation
+            </button>
+            <button
+              onClick={(event) => toggle('right', event)}
+              aria-controls={`${id}-right`}
+              aria-expanded={open === 'right'}
+            >
+              Open page context
+            </button>
+          </div>
+        </div>
+      </div>
+      {open ? (
+        <div className="unified-rail-backdrop" onClick={() => setOpen(null)} aria-hidden="true" />
+      ) : null}
+      <div className="unified-layout-grid">
+        {rail(
+          'left',
+          <nav aria-label="Main navigation">
+            <h2>Explore</h2>
+            {items.map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                aria-current={location.pathname === item.to ? 'page' : undefined}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        )}
+        <main className="unified-layout-main" id="main-content" tabIndex={-1} ref={main}>
+          {children}
+        </main>
+        {rail(
+          'right',
+          <>
+            <h2>{headerTitle || 'On this page'}</h2>
+            {contextSlot || (
+              <>
+                <p>Find help and useful links without leaving your place.</p>
+                <Link to="/search">Search Base2</Link>
+                <Link to="/accessibility">Accessibility</Link>
+                <Link to="/contact">Contact and support</Link>
+              </>
+            )}
+          </>
+        )}
+      </div>
+      <footer className="unified-layout-footer" ref={footer}>
+        <span>{siteManifest.name}</span>
+        <span>{footerLabel || 'Your private workspace'}</span>
+        <Link to="/privacy">Privacy</Link>
+      </footer>
+    </div>
+  );
+}
+
 export const AppShell: React.FC<Props> = ({
+  layoutRoute,
+  headerSlot,
+  contextSlot,
   children,
   headerTitle,
   sidebarItems,
@@ -33,8 +226,25 @@ export const AppShell: React.FC<Props> = ({
   const isPublic = variant === 'public';
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  if (layoutRoute)
+    return (
+      <SharedLayout
+        layoutRoute={layoutRoute}
+        headerSlot={headerSlot}
+        contextSlot={contextSlot}
+        headerTitle={headerTitle}
+        sidebarItems={sidebarItems}
+        footerLabel={footerLabel}
+      >
+        {children}
+      </SharedLayout>
+    );
+
   return (
-    <div className="app-shell-root relative min-h-screen text-slate-900 dark:text-slate-100" data-experience="base2">
+    <div
+      className="app-shell-root relative min-h-screen text-slate-900 dark:text-slate-100"
+      data-experience="base2"
+    >
       <div className="gradient-background" />
 
       <div

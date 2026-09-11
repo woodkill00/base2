@@ -31,4 +31,19 @@ No known blocking omission remains in the planning scope. This is not proof that
 implementation will have no defects. Unresolved design preferences are represented
 as explicit approval tasks, not silently resolved or claimed completed.
 
-Ready to begin T001. Implementation, baseline approval and live acceptance are pending.
+## Cycle 4 — Prototype evidence and remaining acceptance
+
+Implementation is underway; see `progress.md`. New browser checks exposed hidden
+Home section clipping caused by legacy viewport selectors, then a decorative tab
+extending beyond its card. Corrected the shared-container rules and tab position;
+retained failures and added section-level geometry checks. Type validation also
+found new React 18 inert/React type-version mismatches and test query typing errors;
+corrected them without weakening the check. Legacy type-support failures remain.
+
+Refine T008/T011 to preserve complete Home palette, movement, utility and footer
+behavior before replacing the default layout. Refine T009/T012 for resize focus,
+route transitions and actual functional/error states. T019 must reject reused
+attempt directories and bind screenshot readiness and exact source; distinct
+manual attempt names alone do not enforce immutability. T024 must resolve or
+formally classify the existing global typecheck failures. These remain explicit
+open items; no full acceptance or zero-gap implementation claim is made.
