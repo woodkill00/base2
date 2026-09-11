@@ -10,7 +10,11 @@ export default defineConfig({
   webServer: {
     command:
       'npm run build -- --outDir ../.artifacts/restricted-build && npm exec vite preview -- --outDir ../.artifacts/restricted-build --host 127.0.0.1 --port 4191 --strictPort',
-    env: { VITE_SITE_PROFILE: 'base2-obsidian', VITE_BASE2_PREVIEW_MODE: 'restricted' },
+    env: {
+      VITE_SITE_PROFILE: 'base2-obsidian',
+      VITE_BASE2_PREVIEW_MODE: 'restricted',
+      VITE_LAYOUT109_PREVIEW: 'true',
+    },
     url: 'http://127.0.0.1:4191',
     reuseExistingServer: false,
   },

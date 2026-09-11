@@ -245,12 +245,20 @@ test('public Obsidian visual evidence covers responsive and interactive states',
     await page.keyboard.press('Control+k');
     const palette = page.getByRole('region', { name: 'Base2 command palette' });
     await expect(palette).toBeVisible();
-    const box = await palette.boundingBox();
+    const rail = page.getByLabel('Page context', { exact: true });
+    const box = await rail.boundingBox();
     expect(box).not.toBeNull();
     expect(box!.x).toBeGreaterThanOrEqual(0);
     expect(box!.y).toBeGreaterThanOrEqual(0);
     expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width + 1);
     expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height + 1);
+    // The inline palette may be taller than the rail. Its last control must be
+    // reachable by scrolling within that bounded rail, without moving the page.
+    const pageY = await page.evaluate(() => window.scrollY);
+    const lastControl = palette.getByRole('button').last();
+    await lastControl.scrollIntoViewIfNeeded();
+    await expect(lastControl).toBeInViewport();
+    expect(Math.abs((await page.evaluate(() => window.scrollY)) - pageY)).toBeLessThanOrEqual(1);
     await page.screenshot({
       path: `${evidence}/public-${viewport.name}-command-palette.png`,
       fullPage: false,
