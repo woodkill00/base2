@@ -93,6 +93,12 @@ test('synthetic workspace fixture vocabulary is complete and explicit', () => {
 });
 
 test.beforeEach(async ({ page }, testInfo) => {
+  // Exercise an explicit owner preference, not merely the OS hint: Obsidian defaults dark.
+  if (testInfo.project.name === 'chromium-light') {
+    await page
+      .context()
+      .addCookies([{ name: 'theme', value: 'light', domain: '127.0.0.1', path: '/' }]);
+  }
   await page.addInitScript((user) => {
     localStorage.setItem('user', JSON.stringify(user));
     localStorage.setItem('token', 'non-secret-workspace-fixture');
@@ -195,12 +201,24 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
   await page.goto('/workspace');
   await expect(page.getByRole('heading', { name: /records · universal articles/i })).toBeVisible();
   await assertUsable(page);
+  // Axe does not check non-text SVG contrast: the menu must follow header text.
+  expect(
+    await page
+      .locator('header button[aria-controls]')
+      .first()
+      .evaluate(
+        (button) =>
+          getComputedStyle(button.querySelector('svg')).color ===
+          getComputedStyle(button.closest('header')).color
+      )
+  ).toBe(true);
   await page.addScriptTag({ content: axeSource });
   expect(
     await page.evaluate(async () =>
-      (await window.axe.run(document, { resultTypes: ['violations'] })).violations.map(
-        (item) => item.id
-      )
+      (await window.axe.run(document, { resultTypes: ['violations'] })).violations.map((item) => ({
+        id: item.id,
+        nodes: item.nodes.map((node) => ({ target: node.target, summary: node.failureSummary })),
+      }))
     )
   ).toEqual([]);
   await page.keyboard.press('Tab');

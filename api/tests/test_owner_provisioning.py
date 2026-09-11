@@ -1,4 +1,6 @@
 from contextlib import contextmanager
+import io
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -105,3 +107,82 @@ def test_failure_never_emits_exception_or_credentials(monkeypatch, capsys):
     assert owner.main() == 1
     output = capsys.readouterr().out
     assert 'blocked' in output and '/missing' not in output
+
+
+@pytest.mark.parametrize('delivery', ['stdin', 'file'])
+def test_private_configuration_delivers_owner_without_secret_output(
+    delivery, fixture, monkeypatch, tmp_path, capsys
+):
+    config = dict(
+        email='owner@example.test',
+        password='ExampleTest123!',
+        display_name='synthetic-owner',
+        profile='base2-obsidian',
+    )
+    monkeypatch.setenv('BASE2_OWNER_ENABLED', 'true')
+    if delivery == 'stdin':
+        monkeypatch.setattr(owner.sys, 'argv', ['ensure_owner', '--stdin'])
+        monkeypatch.setattr(owner.sys, 'stdin', io.StringIO(json.dumps(config)))
+    else:
+        path = tmp_path / 'owner.json'
+        path.write_text(json.dumps(config))
+        path.chmod(0o600)
+        monkeypatch.setenv('BASE2_OWNER_FILE', str(path))
+        monkeypatch.setattr(owner.sys, 'argv', ['ensure_owner'])
+    assert owner.main() == 0
+    output = capsys.readouterr().out
+    assert json.loads(output)['status'] == 'created'
+    assert config['password'] not in output and config['email'] not in output
+
+
+@pytest.mark.parametrize(
+    'raw,args',
+    [
+        ('x' * 16385, ['--stdin']),
+        ('not-json', ['--stdin']),
+        ('{}', ['--stdin']),
+        ('[]', ['--stdin']),
+        ('{}', ['--unsafe']),
+    ],
+)
+def test_bad_input_fails_closed_before_database(raw, args, fixture, monkeypatch, capsys):
+    monkeypatch.setenv('BASE2_OWNER_ENABLED', 'true')
+    monkeypatch.setattr(owner.sys, 'argv', ['ensure_owner', *args])
+    monkeypatch.setattr(owner.sys, 'stdin', io.StringIO(raw))
+    assert owner.main() == 1
+    assert json.loads(capsys.readouterr().out)['status'] == 'blocked'
+    assert fixture.calls == []
+
+
+@pytest.mark.parametrize('kind', ['public', 'symlink', 'oversize'])
+def test_unsafe_owner_file_is_rejected(kind, fixture, monkeypatch, tmp_path, capsys):
+    path = tmp_path / 'owner.json'
+    path.write_text('{}' if kind != 'oversize' else 'x' * 16385)
+    path.chmod(0o644 if kind == 'public' else 0o600)
+    if kind == 'symlink':
+        link = tmp_path / 'link.json'
+        link.symlink_to(path)
+        path = link
+    monkeypatch.setenv('BASE2_OWNER_ENABLED', 'true')
+    monkeypatch.setenv('BASE2_OWNER_FILE', str(path))
+    monkeypatch.setattr(owner.sys, 'argv', ['ensure_owner'])
+    assert owner.main() == 1
+    assert json.loads(capsys.readouterr().out)['status'] == 'blocked'
+    assert fixture.calls == []
+
+
+@pytest.mark.parametrize(
+    'email,name',
+    [
+        ('invalid', 'valid'),
+        ('a b@example.test', 'valid'),
+        ('a@example.test', ''),
+        ('a@example.test', 'x' * 81),
+    ],
+)
+def test_invalid_identity_never_opens_database(email, name, fixture):
+    with pytest.raises(ValueError, match='invalid'):
+        owner.ensure_owner(
+            email=email, password='ExampleTest123!', display_name=name, profile='base2-obsidian'
+        )
+    assert fixture.calls == []

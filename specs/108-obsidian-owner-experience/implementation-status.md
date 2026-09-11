@@ -34,3 +34,17 @@ without updating visual baselines. All 40 assurance tests pass after isolating a
 synthetic release unit test from the host browser cache. An isolated PostgreSQL
 acceptance rerun passed after an earlier native process exit 139; this is not proof
 that the native crash cause is resolved, and final release validation remains due.
+
+Further release analysis found changed-line coverage below the unchanged 90% gate
+and stale Operations/media/workspace visual baselines. Added private-file/stdin,
+oversize, malformed, symlink, public-permission and invalid-identity owner tests,
+plus deployment transfer-admission tests. Focused results: 23 owner tests and 19
+preview entrypoint tests pass. No coverage threshold was lowered.
+
+Visual review found a transient primary-button contrast failure, residual purple
+media surfaces, and light-mode fixtures that changed only the OS preference while
+the new Obsidian default stayed dark. Corrected button state contrast, bound media
+surfaces/placeholders to shared tokens, and set explicit light user preferences in
+the three release matrices. Regenerated design baselines are implementation-review
+candidates, not a claim of final owner visual approval. Operations evidence now
+also binds the shared experience CSS, CSS entrypoint and theme persistence sources.

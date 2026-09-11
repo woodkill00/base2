@@ -32,6 +32,12 @@ const assets = [
 }));
 
 test.beforeEach(async ({ page }, testInfo) => {
+  // Exercise an explicit owner preference, not merely the OS hint: Obsidian defaults dark.
+  if (testInfo.project.name === 'chromium-light') {
+    await page
+      .context()
+      .addCookies([{ name: 'theme', value: 'light', domain: '127.0.0.1', path: '/' }]);
+  }
   await page.addInitScript((user) => {
     localStorage.setItem('user', JSON.stringify(user));
     localStorage.setItem('token', 'non-secret-media-fixture');

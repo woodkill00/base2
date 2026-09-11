@@ -29,6 +29,12 @@ async function captureCurrentRun(page, testInfo, name, maxDiffPixelRatio = 0.01)
 }
 
 test.beforeEach(async ({ page }, testInfo) => {
+  // Exercise an explicit owner preference, not merely the OS hint: Obsidian defaults dark.
+  if (testInfo.project.name === 'chromium-light') {
+    await page
+      .context()
+      .addCookies([{ name: 'theme', value: 'light', domain: '127.0.0.1', path: '/' }]);
+  }
   if (testInfo.project.name === 'chromium-reduced-motion') {
     await page.emulateMedia({ reducedMotion: 'reduce' });
   }

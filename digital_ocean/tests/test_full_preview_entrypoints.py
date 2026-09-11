@@ -61,6 +61,33 @@ def remote_config(tmp_path: Path) -> LivePreviewConfig:
     )
 
 
+@pytest.mark.parametrize("kind", ["private", "public", "symlink", "missing"])
+def test_optional_application_owner_requires_private_real_file(tmp_path, kind):
+    owner = private_file(tmp_path / "application-owner.json", "{}")
+    if kind == "public":
+        owner.chmod(0o644)
+    elif kind == "symlink":
+        link = tmp_path / "owner-link"
+        link.symlink_to(owner)
+        owner = link
+    elif kind == "missing":
+        owner = tmp_path / "missing"
+    kwargs = dict(
+        known_hosts=tmp_path / "known_hosts",
+        owner_cidr="8.8.8.8/32",
+        operator_auth=private_file(tmp_path / "operator", "synthetic"),
+        flower_auth=private_file(tmp_path / "flower", "synthetic"),
+        application_owner=owner,
+        **application_inputs(tmp_path),
+    )
+    if kind == "private":
+        remote = FullPreviewSshBootstrap(**kwargs)
+        assert (owner, "/run/base2-owner.json") in remote.application_inputs
+    else:
+        with pytest.raises(FullPreviewRemoteError, match="owner-only real file"):
+            FullPreviewSshBootstrap(**kwargs)
+
+
 def test_cli_policy_and_probe_entrypoints(tmp_path, monkeypatch, capsys):
     assert (
         full_preview_cli.main(
@@ -426,7 +453,9 @@ def test_remote_bootstrap_uses_bounded_size_appropriate_transfer_timeouts(tmp_pa
 
 
 def test_remote_django_migration_bypasses_serving_entrypoint():
-    script = (Path(__file__).resolve().parents[2] / "digital_ocean/scripts/bash/full-preview-remote.sh").read_text()
+    script = (
+        Path(__file__).resolve().parents[2] / "digital_ocean/scripts/bash/full-preview-remote.sh"
+    ).read_text()
     assert "run --rm --no-deps --entrypoint python api-migrate -m api.scripts.migrate" in script
     assert "run --rm --no-deps --entrypoint python django manage.py migrate --noinput" in script
 

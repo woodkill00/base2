@@ -4,164 +4,168 @@
   "sources": {
     "react-app/src/pages/OperationsCenter.jsx": "d3918f1ad18b8e6183eb32973cf16390a196adb8dbe9b2428582f62cc3720504",
     "react-app/src/services/operations.js": "7bb0edb231daf7255973c885dabf0b93d7664c02ac0eb51a8b00d599c7209418",
-    "react-app/src/components/glass/AppShell.tsx": "327058fd8c9a815d35f94b130aba084d6a6ea52c9640d4dfb2a156033894c5b3",
-    "react-app/src/components/glass/GlassButton.tsx": "e32c90da113739bb526b2329519e964bd611a1be66d86852e2f4fb075d32e5a1",
-    "react-app/src/components/glass/GlassCard.tsx": "793af1c720e05a073251a22550554b8f1510e68d04a46a2a526a109783c95bf7",
+    "react-app/src/components/glass/AppShell.tsx": "5e94e12c81599663bea7d328b682eccf8dc57981dca91c953630204afa0aa561",
+    "react-app/src/components/glass/GlassButton.tsx": "069ec10f03986d04f88f8b16ce8e18fd058ef9a1298361c7ad02f6fec995222b",
+    "react-app/src/components/glass/GlassCard.tsx": "9c1afc1902a4ad288a9a0b38f51a99da3677b727b0ef2fdf9f21cf3018d07b50",
     "react-app/src/components/glass/GlassHeader.tsx": "5b995fabdad790b6887eabf5bfc0ecc66aeda70581908b435cfade1d4ab1e460",
     "react-app/src/components/glass/GlassSidebar.tsx": "313c0dda606c8843fe95064d6e5d3e3c8606aa9d2f3d0ca51808b37f7f3cc9ca",
     "react-app/src/components/glass/ThemeToggle.tsx": "18344be1e4af139d12931c3ed0d1917915eac3f6fe8f66c7965b8c1b52290b08",
     "react-app/src/components/Navigation.js": "fd9c2fb05adac455b46db7ebdea63541f47decd6f8559bb0b9ce0b6257437d88",
     "react-app/src/index.css": "a42ec15997f5f0513eb59d9bffb6b2fca5356854d6b0ea9b94b1e9a3cdf5c786",
     "react-app/src/styles/tokens.css": "e24be02e8566105d48554df4fb878781cd176ea9830758dc1289f0eac100b69a",
-    "react-app/e2e/operations/operations-release.spec.ts": "f124dfca6be51002524caf6a749f7945c88f4e205265451ac7ad5c2826e5d323",
+    "react-app/src/styles/experience.css": "dfd1969b91d3b8b730c8a3cb0401380c46268ddd9c0dd584d6ab10abb0d3357f",
+    "react-app/src/App.css": "9767fbe8163fb687a0a15713a5a7f6f0b85a5f0fcdd508dec74e2fabbb7bc416",
+    "react-app/src/contexts/ThemeContext.js": "0aef0fdd80ec887f35803469ee82503b4f4b1879c76f1faad556d099c5b4227b",
+    "react-app/src/services/theme/persistence.ts": "322e41c67b85ae90738674c2da3ecef3fd56258fe3ae03712621f0b6711b732e",
+    "react-app/e2e/operations/operations-release.spec.ts": "fb47354a1e7700ac8776218792fd7be530aa509d370b99523b502a464d6bac2d",
     "react-app/playwright.operations-release.config.mjs": "74b18f1655cb55b9bcfcb290da0db6042700fdc01d964c3c748591f42ce3d1b9",
     "react-app/e2e/operations/visual-receipt-reporter.mjs": "2a231b5946a65f18196cfc0a7aeab412c5f00990efa9acc797fbf04e7eff166e"
   },
   "screenshots": {
     "operations-center-cancel-confirmation-chromium-desktop-linux.png": {
-      "sha256": "1f36b274744a74ac81c8e9b8c4309e3bd0e9004fcb1c5522a64458668fb0bab0",
-      "pixels": [1440, 2431]
+      "sha256": "50a84b21222f028d9499bff02a962208780fb5dc40500c3e3a8a1ab71340325e",
+      "pixels": [1440, 2750]
     },
     "operations-center-chromium-400-zoom-chromium-400-zoom-linux.png": {
-      "sha256": "a4c50c0c3f60b326a99ed270ee2e905bc403374667ac70946f3aeb3bcd75a17a",
-      "pixels": [320, 3439]
+      "sha256": "392a545fa0b52fd189b1b291c295794f9e25dd1d10fdde20c12fcd090880c319",
+      "pixels": [320, 3442]
     },
     "operations-center-chromium-compact-chromium-compact-linux.png": {
-      "sha256": "701a7caf74591eceea78bae016b8b7971cc135e12c7bd7f7cf9da788234549f8",
-      "pixels": [320, 3437]
+      "sha256": "c436ea8158dc27bd71d7cc9fb09f0707b39a5aa22db509dd9d9d34f34f6fdac6",
+      "pixels": [320, 3441]
     },
     "operations-center-chromium-desktop-chromium-desktop-linux.png": {
-      "sha256": "949cf62d308619f16d69e39f210e9c148cd5d028f168e818421417a32bafd040",
-      "pixels": [1440, 2340]
+      "sha256": "e2aeabcf4f95d4940d928f597b7eb6bb3b09f238fbc5135215dbc81b4389fce3",
+      "pixels": [1440, 2660]
     },
     "operations-center-chromium-german-chromium-german-linux.png": {
-      "sha256": "f895d2e966554cf9d308864943fbad5b67ca504ddea7f3aed16983f1c584b19a",
-      "pixels": [1280, 2362]
+      "sha256": "8c903fd741a1c7be3fdc7c7863918130638fbfbb025d943ebba6ad7465a8e3cf",
+      "pixels": [1280, 2691]
     },
     "operations-center-chromium-high-contrast-chromium-high-contrast-linux.png": {
-      "sha256": "6af7b906e819cc0cc0ac7e67fbc56555a28f48c2238fad59642edd96c9a5b0ee",
-      "pixels": [1280, 2324]
+      "sha256": "93dd5b1d79b7ca5f77bbffd4f0dd79d2d84df89b07566e8eaa54601951345e6f",
+      "pixels": [1280, 2653]
     },
     "operations-center-chromium-landscape-touch-chromium-landscape-touch-linux.png": {
-      "sha256": "406d2399ec6eb20cdf761310816d0f9bd9597268be20473098cd9964af954497",
-      "pixels": [844, 3069]
+      "sha256": "96d8174eb57083f0fabf54ad9b05316800d041aff49716222682a39bf2c1302b",
+      "pixels": [844, 3254]
     },
     "operations-center-chromium-large-text-chromium-large-text-linux.png": {
-      "sha256": "d0710ad63c8f35619a52f3879ed1339334ae8b3e4debe289554cfe9bfce601c1",
-      "pixels": [1280, 4776]
+      "sha256": "c16274c4bc5d3adf265352c37d2daf07fb697851aace54e9cca289548418c92b",
+      "pixels": [1280, 4869]
     },
     "operations-center-chromium-light-chromium-light-linux.png": {
-      "sha256": "ae458439070eee0505baf7e1044aa4abfe2f86a403c66989a73f90acc0216acc",
-      "pixels": [1280, 2324]
+      "sha256": "fc8ce4d6e51cae2b76047f57c0f6f937a76ed9541d9745b65746977ed26b5cc7",
+      "pixels": [1280, 2653]
     },
     "operations-center-chromium-reduced-motion-chromium-reduced-motion-linux.png": {
-      "sha256": "f3715e1de661ce67ac87e1c5c24a7ce410e7893faa53bc66cf91fd91c9c10451",
-      "pixels": [1280, 2324]
+      "sha256": "95ec014cfdb609b6ed99a2d338e48d112b6131c776995a4b43b700a00a513b1c",
+      "pixels": [1280, 2653]
     },
     "operations-center-chromium-rtl-chromium-rtl-linux.png": {
-      "sha256": "3479a235b7e43c939211ee3da0210eff0fa611cccccf764d1e0f5745b8b0c499",
-      "pixels": [1280, 2293]
+      "sha256": "8a2598825f536eeec69eaf4b46d18afb5c52231680b3efe549a23abd57be83c3",
+      "pixels": [1280, 2600]
     },
     "operations-center-chromium-tablet-chromium-tablet-linux.png": {
-      "sha256": "12078f51511bafe68457358e4dc0471587626c9defe76268ab162ec2043faa7f",
-      "pixels": [1024, 2402]
+      "sha256": "3ba848a2fa14c3685432e3436202883eadb0a300ad656b9fabe6cb29c0440e41",
+      "pixels": [1024, 2680]
     },
     "operations-center-chromium-ultrawide-chromium-ultrawide-linux.png": {
-      "sha256": "70d9a7b13c26b82c5ca6e149e7661b2815c28a87692fc0c3c9dd71a5cba7df62",
-      "pixels": [2560, 2410]
+      "sha256": "50363094c16cce647866999ef7cde6e5af8e1f5282001d5ffa7e4d7f1da59c99",
+      "pixels": [2560, 2738]
     },
     "operations-center-empty-chromium-compact-linux.png": {
-      "sha256": "191ef214ae5e61cbe8c01c0f91f5b6bf8fcf59a050e1fe46601b2d8d88c2e6e4",
-      "pixels": [320, 2344]
+      "sha256": "ff4bcb9bbc3a83c31dc4c37a3a8fe628043b61efa18727d8ec16493abe743f0a",
+      "pixels": [320, 2385]
     },
     "operations-center-empty-chromium-desktop-linux.png": {
-      "sha256": "2848543dd080c7b33e80a27a5b66bcfd97e11d5fbd966174e907b8584e3a780e",
-      "pixels": [1440, 1672]
+      "sha256": "f603746042277c31c6424c042acf8034fb9e72514b1349df8e84abe28f445ded",
+      "pixels": [1440, 1965]
     },
     "operations-center-empty-firefox-desktop-linux.png": {
-      "sha256": "5a3653cfa975eb9b43d1969fa002d0b4961693431fc2b812129feb51e6cc6c7b",
-      "pixels": [1440, 1672]
+      "sha256": "4f3b0ec8bdf7f58065bbe353f5247d9fdb36f931e15c8983d81bfaa8a8a9197f",
+      "pixels": [1440, 1965]
     },
     "operations-center-empty-webkit-desktop-linux.png": {
-      "sha256": "44c801d6ee28583baeeb1553cc04a500c19b349dd9b7fb9ddf1c1bb67a56fe2a",
-      "pixels": [1430, 1662]
+      "sha256": "16638296c267e362fb8d27fdb8e1510e1cc1ac0fea57ee21d8c8bd6696ac4c7e",
+      "pixels": [1430, 1954]
     },
     "operations-center-error-chromium-compact-linux.png": {
-      "sha256": "0f772d82001a1156ddb07c98875ff03f80abd45f04b2b1a1e348415693d9bed1",
-      "pixels": [320, 1828]
+      "sha256": "328c589b34308af4b8531ed1158130c2137b01a643c9c9f1a07dee6a733c9452",
+      "pixels": [320, 1864]
     },
     "operations-center-error-chromium-desktop-linux.png": {
-      "sha256": "e2053e6da4a669e1b4aa04149996aa39a1fcd1d01634f37f571bf32222559941",
-      "pixels": [1440, 1533]
+      "sha256": "fb5cb7136343305f044512200490090057d5a1834a7248932e07b3786c26cdb6",
+      "pixels": [1440, 1798]
     },
     "operations-center-error-firefox-desktop-linux.png": {
-      "sha256": "695ff5a41fd93019252463f945e2eda92a8cf25e9e5671cd3043edaa6b5f1bd8",
-      "pixels": [1440, 1533]
+      "sha256": "64520698884d56eff627eb0fe7c1da4ebf9bb0adab59c42a75e7d80df804fd90",
+      "pixels": [1440, 1798]
     },
     "operations-center-error-webkit-desktop-linux.png": {
-      "sha256": "69a1ccfe9b2857ed76bfcbfa14b678c25144b972dd0be4e9f14aec6e32cff750",
-      "pixels": [1430, 1525]
+      "sha256": "ad22728bd98c7a4a1be0b468c53f16ca3739ce1feed65c081980eca3b68d9d62",
+      "pixels": [1430, 1790]
     },
     "operations-center-firefox-desktop-firefox-desktop-linux.png": {
-      "sha256": "398b02cb369f5ed1f19546bddc278d7b2a2e124807c0d8ffc3f167a59c82344e",
-      "pixels": [1440, 2340]
+      "sha256": "51689e4aaf519e97fff10392f1fb0922235905d7375d909b05b7d6233ad63309",
+      "pixels": [1440, 2660]
     },
     "operations-center-partial-chromium-compact-linux.png": {
-      "sha256": "6a9ae3ae67f40b6c610d71882d51ed8ac3df3fb6a03ed88f795c3ea8583f5974",
-      "pixels": [320, 3596]
+      "sha256": "b1bddd8fd16df255b87ee31d8f7564c27005953712daaa648743aaaffdd0aaa4",
+      "pixels": [320, 3600]
     },
     "operations-center-partial-chromium-desktop-linux.png": {
-      "sha256": "97100af05b3edec57989df6e248dc9852eee6bda066dab5f3cfc27015ebb4dba",
-      "pixels": [1440, 2527]
+      "sha256": "9d9b44b9b56b6a9a0031f80ab43509f0fb0460faea4bd1a737995b3a93f8214d",
+      "pixels": [1440, 2847]
     },
     "operations-center-partial-firefox-desktop-linux.png": {
-      "sha256": "58c48e5f431f2ca7171b3476e10b114f3de52aefb9ecd55331ac42abe1170626",
-      "pixels": [1440, 2527]
+      "sha256": "0539663a430ee2a60476829cacc25e2817c437ea4770f3326e42541e910c6907",
+      "pixels": [1440, 2847]
     },
     "operations-center-partial-webkit-desktop-linux.png": {
-      "sha256": "abd08f80c355bbaa0252cf1bdb0d9545bea0aa5240e59a6042dd281b0098eea6",
-      "pixels": [1430, 2507]
+      "sha256": "0a0c736cd4baca76a269cd62e3a4103bf697d3dfcecbb7408fe461d930473be0",
+      "pixels": [1430, 2826]
     },
     "operations-center-read-only-chromium-compact-linux.png": {
-      "sha256": "ffe4a9ae12f2f32a4d7c5710511a9210774677762790c1f2517c7444ebc2078e",
-      "pixels": [320, 3288]
+      "sha256": "0bef07da03146272cf9e4fbeaddba032113f76fa0d16b78c3e2819c91aa64aa3",
+      "pixels": [320, 3292]
     },
     "operations-center-read-only-chromium-desktop-linux.png": {
-      "sha256": "8cb510807e00ab0caa1cc21ef9347b457875b139cad47c9a45f83389d7546c50",
-      "pixels": [1440, 2280]
+      "sha256": "c5e69e369a9607af88fbde0bd89f1ce03958562a87264e5472a01056a2331bc3",
+      "pixels": [1440, 2600]
     },
     "operations-center-read-only-firefox-desktop-linux.png": {
-      "sha256": "7b88244f3bbdf025a30f4f2f6900a15f8fd18e8cf99bf5ea9a2a75ce8ed4f3e6",
-      "pixels": [1440, 2280]
+      "sha256": "e687626d5a8e15254b66e65ff308d023dcbb255b5e96b77a688bcc3aacd0c764",
+      "pixels": [1440, 2600]
     },
     "operations-center-read-only-webkit-desktop-linux.png": {
-      "sha256": "b2a134d40986af54ff00291dc5048a10fa54e21a20f8de075305c7fb66552661",
-      "pixels": [1430, 2261]
+      "sha256": "759aad30715e7036f91766aeb3014bb74dcbb022a5d18dabfcc1da239d7857b3",
+      "pixels": [1430, 2580]
     },
     "operations-center-reauth-chromium-compact-linux.png": {
-      "sha256": "605f7366dd52bdfca7903d4b8f16853f95f73d9b0e6bed045aa60766fd8964d3",
-      "pixels": [320, 3596]
+      "sha256": "37aa38d9ee43ad2aed0af1b3ca68df46bb4934e4d64a5b37334885d4e5ae8e80",
+      "pixels": [320, 3600]
     },
     "operations-center-reauth-chromium-desktop-linux.png": {
-      "sha256": "4273a796a19fb2fac2f3dbd3905c108537c90261f3eaaf1273b0221571a52ebc",
-      "pixels": [1440, 2527]
+      "sha256": "340c5a512f9bbb9f01d8e3d0790748ebcc7ac2254f375b11dedbd5e5d37f801e",
+      "pixels": [1440, 2847]
     },
     "operations-center-reauth-firefox-desktop-linux.png": {
-      "sha256": "d63cfde598669b4ccdda73ae053428ce895300967e78e0d2e6dce701777cefd7",
-      "pixels": [1440, 2527]
+      "sha256": "4bb9d914553c385be28672ca0b032bd8fbb2567206e7d67d9f18fe1b1bf375ba",
+      "pixels": [1440, 2847]
     },
     "operations-center-reauth-webkit-desktop-linux.png": {
-      "sha256": "2994a241cd9c4aabce61d84ec2019c450c3624968d6b089eae3177d8759ec92e",
-      "pixels": [1430, 2507]
+      "sha256": "deeb7feba20f835efb92027534a1c2fb6786cc762270c7392a22c701c45e0b2e",
+      "pixels": [1430, 2826]
     },
     "operations-center-webkit-desktop-webkit-desktop-linux.png": {
-      "sha256": "f069c0e65c8c725dcfbd980ec8c5090d822993e1ea72bb3646868a108c1ca182",
-      "pixels": [1430, 2320]
+      "sha256": "cc68dee34c612abce4e4ed2ca6a0e23ccb7018a57c8a2882ab391633998e0338",
+      "pixels": [1430, 2639]
     }
   },
   "runnerReceipt": {
-    "sha256": "a0cca8b0d84ac4c927dc72a6cf1543d73d113d7ba8f3da7bbb12ddc4cb317dc6",
-    "digest": "344ff499a77dab1ecd501a8dbd4fd252c259ddb80c1f5c5369f6fe966d1c4142"
+    "sha256": "f24d9950bfeead9cb9da1526f6e1dd20b113a2fc91a7bf50385901759d671f2c",
+    "digest": "9ef92bfa9987552c21605b9e03090f6942644cae2bdd2a5bc23911d3c688b63a"
   },
   "assertions": {
     "accessibility": "pass",
