@@ -30,3 +30,14 @@ All implementation tasks remain pending. Each task records test command, exact s
 - [ ] T026 [FR-016] (depends: T018 T019 T020 T021 T022 T023 T024 T025) Run complete release authority after targeted fixes; record source-bound coverage, security results, unresolved risks and rollback proof.
 - [ ] T027 [FR-006 FR-011 FR-012 FR-013 FR-015 FR-016] (depends: T026) After separate activation approval, run bounded live preview owner login and synthetic journeys, vendor access, screenshots/human review, rollback and verified teardown; do not mark critical skips green.
 - [ ] T028 [FR-001 FR-014 FR-015 FR-016] (depends: T027) Close requirement/evidence ledger, publish operational runbook and future-route checklist; record owner review and any blockers before release.
+
+### T019/T026/T027 live privacy repair batch
+
+- [x] Reproduce dispatch result/commit and snapshot-order defects with focused regressions.
+- [x] Exercise actual repository/pool/export with restricted PostgreSQL roles; verify committed dispatch leases and cross-request reset.
+- [x] Correct the operator diagnostic to bind the exact preview tenant rather than count RLS-invisible rows.
+- [ ] Recalculate changed-line coverage and run one exact-source release gate after batch freeze.
+- [ ] Verify synthetic export completes on the corrected deployment; keep live failure visible until then.
+
+Analysis and evidence: `repair-ledger.md`, R10-R13. These substeps do not mark the
+parent tasks complete or replace owner visual approval.

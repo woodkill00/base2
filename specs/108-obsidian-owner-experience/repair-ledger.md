@@ -3,7 +3,37 @@
 Source: branch `108-obsidian-owner-experience`; last committed candidate
 `a1c8582bac7e181fe95e8434cc68699697faf1fe`, with subsequent uncommitted repair work.
 Focused results below do not constitute exact-final-source release acceptance.
-No new DigitalOcean preview is running. Owner credentials remain private.
+Historical checkpoint above is superseded by the live batch below. Owner credentials remain private.
+
+## Live acceptance repair batch (2026-09-11)
+
+Candidate `655d9574d69f6aea75e46d76494c331ff9a21dfe` passed all 114 required
+release groups and was pushed and deployed as `base2-full-20260911-015705`.
+The preview expires at 02:57 UTC, with a WSL teardown timer; no extension planned.
+Real owner login/read-only settings and restricted-role settings isolation passed.
+Five of six live browser journeys passed, including operator application logins
+and media. Synthetic privacy export remained queued; live acceptance is FAILED,
+not complete. Private evidence resides in the operator preview state directory.
+
+| ID  | Root issue / reproduction                                          | Repair and verification                                                                                                          |
+| --- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| R10 | Dispatch query selects only ID but consumes ID and token           | Select both fields; focused regression passes; real restricted-role dispatch/claim handoff required.                             |
+| R11 | Dispatch lease changes roll back before Celery handoff             | Commit discovery before pool reset; test duplicate discovery cannot redispatch committed leases and a separate worker can claim. |
+| R12 | Snapshot configured after tenant binding starts transaction        | Set options before tenant/claim binding; test ordering, exception cleanup, real export and reused connection isolation.          |
+| R13 | Runtime diagnostic counts protected exports without tenant context | Repair diagnostic to bind exact preview tenant; do not interpret invisible RLS rows as no stored operations.                     |
+
+Focused repair checks: 19 repository/worker tests, three transaction-order tests,
+and existing five-part data-rights matrix pass. Disposable PostgreSQL acceptance
+now passes actual repository/pool/export execution and the existing security denials.
+Complete API coverage collection passed (27 partitions). Next: committed-source changed-line coverage,
+one exact-source release gate, then authorized live verification. No production
+queue replay, owner mutation, permission relaxation or timeout inflation.
+
+Analysis cycle: SQL-only role tests missed application-level row unpacking and
+commit ownership; mocked export connections missed transaction ordering. Add
+real adapter coverage to the existing restricted-role acceptance rather than a
+second broad suite. Existing security denials must remain intact. No known
+planning blocker remains in this batch; passing execution evidence is still due.
 
 | ID  | Root issue / scope                                                                                 | Status and next verification                                                                                                                                                                                                          |
 | --- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

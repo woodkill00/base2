@@ -3,17 +3,23 @@ from __future__ import annotations
 
 import os
 import threading
+from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from unittest.mock import patch
 from uuid import UUID
 
 import psycopg2
 from psycopg2 import errors
+from psycopg2.pool import ThreadedConnectionPool
 
+from api import db
 from api.migrations.runner import apply_migrations
+from api.repositories.data_rights import queued_operation_ids
 from api.repositories.operations import due_alert_deliveries, record_probe_batch
 from api.repositories.runtime_governance import claim_jobs, enqueue_job, settle_job
 from api.repositories.tenant_quota import QuotaRepositoryError, reserve
+from api.services.data_rights_worker import _export_payload
 from api.services.email_service import create_outbox_email
 from scripts.python.production_backup import _repeatable_read_snapshot
 
@@ -26,6 +32,25 @@ def connect(user: str, password: str):
         user=user,
         password=password,
     )
+
+
+@contextmanager
+def repository_pool(user: str, password: str):
+    """Exercise production checkout/reset code with a real least-privileged pool."""
+    pool = ThreadedConnectionPool(
+        1,
+        2,
+        host=os.environ["DB_HOST"],
+        port=os.environ.get("DB_PORT", "5432"),
+        dbname=os.environ["DB_NAME"],
+        user=user,
+        password=password,
+    )
+    try:
+        with patch.object(db, "_pool", pool):
+            yield
+    finally:
+        pool.closeall()
 
 
 def count(conn, tenant: str | None) -> int:
@@ -337,7 +362,8 @@ def main() -> None:
             assert cursor.fetchone() == (False, False)
             cursor.execute(
                 "SELECT rolbypassrls,rolsuper,rolcreatedb,rolcreaterole "
-                "FROM pg_roles WHERE rolname=%s", (api_runtime_user,)
+                "FROM pg_roles WHERE rolname=%s",
+                (api_runtime_user,),
             )
             assert cursor.fetchone() == (False, False, False, False)
             cursor.execute(
@@ -465,9 +491,14 @@ def main() -> None:
                           (%s,'site-a',%s,%s,'Privacy view','{}','private','[]',1,1,NOW(),NOW()),
                           (%s,'site-a',%s,%s,'Other view','{}','private','[]',1,1,NOW(),NOW())""",
                 (
-                    saved_view_id, str(UUID(int=1)),
-                    privacy_saved_view_id, str(UUID(int=1)), str(UUID(int=50)),
-                    other_saved_view_id, str(UUID(int=1)), str(UUID(int=57)),
+                    saved_view_id,
+                    str(UUID(int=1)),
+                    privacy_saved_view_id,
+                    str(UUID(int=1)),
+                    str(UUID(int=50)),
+                    other_saved_view_id,
+                    str(UUID(int=1)),
+                    str(UUID(int=57)),
                 ),
             )
             cursor.execute(
@@ -527,7 +558,9 @@ def main() -> None:
                 "UPDATE OF site_id, source_object_key, source_sha256",
                 "UPDATE OF site_id, encrypted_object_key, output_sha256",
             ):
-                assert required_column in trigger_sql, f"generation_trigger_missing:{required_column}"
+                assert (
+                    required_column in trigger_sql
+                ), f"generation_trigger_missing:{required_column}"
 
         assert count(runtime, None) == 0
         runtime.rollback()
@@ -547,9 +580,7 @@ def main() -> None:
                 raise AssertionError("api_runtime_schema_create_was_not_blocked")
         with api_runtime.cursor() as cursor:
             cursor.execute("SET app.tenant_id = 'site-a'")
-            cursor.execute(
-                "SELECT id FROM api_identity_organizations WHERE tenant_id='site-b'"
-            )
+            cursor.execute("SELECT id FROM api_identity_organizations WHERE tenant_id='site-b'")
             assert cursor.fetchone() is None, "api_runtime_cross_tenant_org_read_was_not_blocked"
         api_runtime.rollback()
         with api_runtime.cursor() as cursor:
@@ -566,9 +597,7 @@ def main() -> None:
                 raise AssertionError("api_runtime_cross_tenant_org_insert_was_not_blocked")
         with api_runtime.cursor() as cursor:
             cursor.execute("SET app.tenant_id = 'site-a'")
-            cursor.execute(
-                "SELECT id FROM api_data_rights_operations WHERE tenant_id='site-b'"
-            )
+            cursor.execute("SELECT id FROM api_data_rights_operations WHERE tenant_id='site-b'")
             assert cursor.fetchone() is None, "api_runtime_cross_tenant_queue_read_was_not_blocked"
         api_runtime.rollback()
         with api_runtime.cursor() as cursor:
@@ -617,10 +646,11 @@ def main() -> None:
             data_rights_worker,
             "data_rights_operation_enumeration_was_not_blocked",
         )
-        with worker.cursor() as cursor:
-            cursor.execute("SELECT * FROM base2_list_due_data_rights_operations(25)")
-            dispatches = {str(row[0]): str(row[1]) for row in cursor.fetchall()}
-        worker.commit()
+        with repository_pool(worker_user, worker_password):
+            dispatches = {
+                str(operation): str(token) for operation, token in queued_operation_ids(limit=25)
+            }
+            assert queued_operation_ids(limit=25) == [], "dispatch_lease_not_committed"
         with data_rights_worker.cursor() as cursor:
             cursor.execute("SELECT set_config('app.tenant_id', 'site-a', true)")
             cursor.execute("SELECT current_user,current_setting('app.tenant_id', true)")
@@ -658,7 +688,9 @@ def main() -> None:
             cursor.execute("SELECT email FROM api_auth_users WHERE id=%s", (str(UUID(int=53)),))
             assert cursor.fetchone() is None, "data_rights_cross_tenant_user_read_was_not_blocked"
             cursor.execute("SELECT email FROM api_auth_users WHERE id=%s", (str(UUID(int=57)),))
-            assert cursor.fetchone() is None, "data_rights_same_tenant_other_subject_read_was_not_blocked"
+            assert (
+                cursor.fetchone() is None
+            ), "data_rights_same_tenant_other_subject_read_was_not_blocked"
             cursor.execute("SAVEPOINT direct_write_denial")
             try:
                 cursor.execute(
@@ -686,6 +718,17 @@ def main() -> None:
             assert cursor.fetchall() == [], "claim_tenant_switch_was_not_blocked"
             cursor.execute("SELECT set_config('app.tenant_id', 'site-a', true)")
             data_rights_worker.commit()
+            with repository_pool(data_rights_user, data_rights_password):
+                with db.data_rights_claim_context(operation_id, stale_claim):
+                    payload = _export_payload(tenant_id="site-a", user_id=UUID(int=50))
+                    assert payload["account"]["email"] == "rights@example.invalid"
+                    assert all(row["tenant_id"] == "site-a" for row in payload["memberships"])
+                # A reused connection must not retain snapshot options or claims.
+                with db.db_conn(tenant_id="site-b") as cleared, cleared.cursor() as cleared_cursor:
+                    cleared_cursor.execute("SHOW transaction_read_only")
+                    assert cleared_cursor.fetchone() == ("off",)
+                    cleared_cursor.execute("SELECT email FROM api_auth_users")
+                    assert cleared_cursor.fetchall() == []
             with owner.cursor() as owner_cursor:
                 owner_cursor.execute(
                     "UPDATE api_data_rights_operations SET claim_expires_at=NOW()-INTERVAL '1 second' "
@@ -802,15 +845,13 @@ def main() -> None:
                 (str(UUID(int=50)),),
             )
             deleted_user = cursor.fetchone()
-            assert deleted_user[0].endswith('@deleted.invalid')
-            assert deleted_user[1:] == (False, '')
+            assert deleted_user[0].endswith("@deleted.invalid")
+            assert deleted_user[1:] == (False, "")
             cursor.execute(
                 "SELECT 1 FROM api_identity_memberships WHERE user_id=%s", (str(UUID(int=50)),)
             )
             assert cursor.fetchone() is None
-            cursor.execute(
-                "SELECT 1 FROM sitecontent_savedview WHERE id=%s", (str(UUID(int=62)),)
-            )
+            cursor.execute("SELECT 1 FROM sitecontent_savedview WHERE id=%s", (str(UUID(int=62)),))
             assert cursor.fetchone() is None, "global_closure_missed_orphaned_subject_tenant"
             cursor.execute(
                 "DELETE FROM api_data_rights_operations WHERE id=%s", (global_deletion_id,)
@@ -1163,20 +1204,20 @@ def main() -> None:
             parameters=(scheduled_record_id,),
         )
 
-        service_file = Path('/tmp/base2-backup-concurrency-pg-service.conf')
+        service_file = Path("/tmp/base2-backup-concurrency-pg-service.conf")
         service_file.write_text(
             '[base2_acceptance]\n'
             f'host={os.environ["DB_HOST"]}\nport={os.environ.get("DB_PORT", "5432")}\n'
             f'dbname={os.environ["DB_NAME"]}\nuser={owner_user}\npassword={owner_password}\n',
-            encoding='utf-8',
+            encoding="utf-8",
         )
         service_file.chmod(0o600)
         try:
             with _repeatable_read_snapshot(
-                {'pgService': 'base2_acceptance', 'pgServiceFile': str(service_file)}
+                {"pgService": "base2_acceptance", "pgServiceFile": str(service_file)}
             ) as snapshot:
-                snapshot_before = snapshot['references']
-                generation_before = snapshot['referenceGeneration']
+                snapshot_before = snapshot["references"]
+                generation_before = snapshot["referenceGeneration"]
                 updater = connect(owner_user, owner_password)
                 try:
                     generation = generation_before
@@ -1230,15 +1271,15 @@ def main() -> None:
                         cursor.execute(
                             "UPDATE sitecontent_importjob SET source_object_key=%s,source_sha256=%s "
                             "WHERE id=%s",
-                            ('media/site-a/concurrent-object', 'c' * 64, import_job_id),
+                            ("media/site-a/concurrent-object", "c" * 64, import_job_id),
                         )
                         cursor.execute(
                             "UPDATE sitecontent_mediavariant SET storage_key=%s,sha256=%s WHERE id=%s",
-                            ('media/site-a/concurrent-variant', 'f' * 64, str(UUID(int=71))),
+                            ("media/site-a/concurrent-variant", "f" * 64, str(UUID(int=71))),
                         )
                         cursor.execute(
                             "UPDATE sitecontent_mediaobjectversion SET storage_key=%s,sha256=%s WHERE id=%s",
-                            ('media/site-a/concurrent-version', 'f' * 64, str(UUID(int=72))),
+                            ("media/site-a/concurrent-version", "f" * 64, str(UUID(int=72))),
                         )
                     updater.commit()
                     with updater.cursor() as cursor:
@@ -1258,11 +1299,13 @@ def main() -> None:
                     updater.commit()
                 finally:
                     updater.close()
-                after_state = snapshot['afterState']()
-                assert after_state['references'] == snapshot_before, 'backup_aba_fixture_not_restored'
-                assert after_state['generation'] > generation_before, (
-                    'backup_generation_fence_missed_real_aba_cycle'
-                )
+                after_state = snapshot["afterState"]()
+                assert (
+                    after_state["references"] == snapshot_before
+                ), "backup_aba_fixture_not_restored"
+                assert (
+                    after_state["generation"] > generation_before
+                ), "backup_generation_fence_missed_real_aba_cycle"
         finally:
             service_file.unlink(missing_ok=True)
 

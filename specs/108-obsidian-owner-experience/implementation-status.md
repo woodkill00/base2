@@ -1,5 +1,15 @@
 # Implementation checkpoint
 
+Latest checkpoint, 2026-09-11: `655d9574d69f6aea75e46d76494c331ff9a21dfe`
+passed all 114 required release groups and is the live bounded preview source.
+Real owner login and restricted-role settings checks passed; live browser results
+were five passed and one failed (synthetic privacy export stuck queued).
+The R10-R13 repair batch in `repair-ledger.md` corrects dispatch selection/commit,
+snapshot transaction ordering and the tenant-scoped operator diagnostic. Focused
+regressions, complete API coverage collection and real restricted-role PostgreSQL
+export/pool reuse acceptance pass. Corrected-source release and live export
+acceptance remain due. Earlier checkpoints below are historical, not current status.
+
 Implemented: signup Axios validation/network/internal-error regressions, password
 policy help and accessible field descriptions; transaction-scoped tenant binding
 for preference/notification reads and writes; shared Obsidian shell/card/input/
