@@ -51,3 +51,11 @@ parent tasks complete or replace owner visual approval.
 - [ ] Revalidate coverage/release evidence and the final deployed synthetic journey; no security-filter bypass or hidden timeout increase.
 
 See R14-R15 in `repair-ledger.md`; observed live failure remains open.
+
+### T026 validation isolation repair
+
+- [x] Reproduce parent Settings class replacement caused by an expected failed reload.
+- [x] Move import-failure validation into a bounded fresh interpreter with synthetic-only environment and no shared module mutation.
+- [x] Verify parent class/instance/field identities, secret-environment isolation, and the affected tests alone and together.
+- [x] Diagnose Django migration rendering independently in a fresh restricted container using existing pinned dependencies; no reproduction, original cause unresolved.
+- [ ] Record all outcomes; run the complete gate only if focused stability is established, without treating retries as fixes.

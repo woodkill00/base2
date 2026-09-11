@@ -1,27 +1,51 @@
-import importlib
 import base64
+import os
+from pathlib import Path
+import subprocess
+import sys
 import pytest
 
 
-def test_missing_required_env_raises(monkeypatch):
-    # Simulate staging environment with missing required vars
-    monkeypatch.setenv('ENV', 'staging')
-    for var in [
-        'JWT_SECRET',
-        'TOKEN_PEPPER',
-        'IDENTITY_ENCRYPTION_KEY',
-        'FRONTEND_URL',
-        'OAUTH_STATE_SECRET',
-    ]:
-        monkeypatch.delenv(var, raising=False)
+def test_missing_env_check_preserves_parent_settings(monkeypatch, tmp_path):
+    import api.settings as module
 
-    # Reload settings to apply env changes
-    with pytest.raises(RuntimeError) as excinfo:
-        import api.settings as s
+    before = (module.Settings, module.settings, module.Settings.model_fields)
+    monkeypatch.setenv('JWT_SECRET', 'parent-only-synthetic-marker')
+    test_missing_required_env_raises(tmp_path)
+    assert module.Settings is before[0]
+    assert module.settings is before[1]
+    assert module.Settings.model_fields is before[2]
+    assert os.environ['JWT_SECRET'] == 'parent-only-synthetic-marker'
 
-        importlib.reload(s)
 
-    assert 'Missing required env var(s):' in str(excinfo.value)
+def test_missing_required_env_raises(tmp_path):
+    # A failed reload mutates the shared module even when env fixtures unwind.
+    # Only a fresh interpreter may test import-time initialization failure.
+    code = """
+import os, sys
+sys.path.insert(0, sys.argv[1])
+assert 'JWT_SECRET' not in os.environ
+try:
+    import api.settings
+except RuntimeError as exc:
+    if 'Missing required env var(s):' not in str(exc):
+        raise SystemExit(2)
+    print('expected-missing-environment')
+else:
+    raise SystemExit(3)
+"""
+    result = subprocess.run(
+        [sys.executable, '-I', '-B', '-c', code, str(Path(__file__).resolve().parents[2])],
+        cwd=tmp_path,
+        env={'ENV': 'staging', 'LANG': 'C.UTF-8'},
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=False,
+    )
+    # Do not expose child exception text or environment values in test reports.
+    assert result.returncode == 0, f'isolated_settings_check_exit_{result.returncode}'
+    assert result.stdout.strip() == 'expected-missing-environment'
 
 
 def test_staging_requires_valid_private_workspace_storage_configuration(monkeypatch):

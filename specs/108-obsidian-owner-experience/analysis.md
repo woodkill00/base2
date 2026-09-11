@@ -1,5 +1,17 @@
 # Task analysis and refinement
 
+## Isolation repair analysis
+
+A new parent-identity regression fails deterministically after the existing
+expected-failure reload in `test_settings_validation.py`. Replace that operation
+with a timeout-bound fresh interpreter, isolated working directory and minimal
+synthetic environment. Verify no parent Settings class, instance or field-map
+replacement and no inherited credential values. Keep the Django migration error
+separate: fresh-container state rendering is a diagnostic, not proof of a shared
+cause or hardware fault. Limit execution to focused tests first; record recurrence
+and stop rather than broaden retry masks. No application or deployment authority
+is changed by this repair. No known planning gap remains for this bounded batch.
+
 ## Live repair refinement (2026-09-11)
 
 R10-R15 in `repair-ledger.md` now bind the observed export failure to both real

@@ -1,5 +1,40 @@
 # Feature 108 repair checkpoint
 
+## R18: reproducible settings-test isolation defect repaired
+
+An added parent-identity regression failed before the repair: the expected failed
+`importlib.reload(api.settings)` replaced `Settings` while leaving old references
+in the parent interpreter. The test now uses a 20-second-bounded isolated Python
+process, a temporary working directory and a synthetic-only environment. Its
+regression checks parent class/instance/field-map identities and that a synthetic
+parent credential is neither inherited by the child nor changed in the parent.
+
+Focused validation: all 162 settings tests passed, then ten standalone settings
+runs and ten ordered operations/runtime/settings runs passed (194 tests per ordered
+run). No automatic retry was added. This resolves the demonstrated isolation bug;
+it does not prove that bug caused the historical Pydantic failure.
+
+Independent Django diagnosis: historical migration rendering and global registry
+identity checks passed in a fresh, read-only, network-disabled container using
+existing image `sha256:0257536259df3588bb3cd28cd4f8128606dead6f446d31883133001a108f5692`.
+The same permanent regression passed under pytest, and the disposable PostgreSQL
+migration/role/forward/reverse acceptance passed. R16's original Django failure
+remains unexplained, not relabeled fixed or attributed to hardware. Both local
+Python dependency-consistency checks passed; no dependency upgrades were made.
+
+Evidence: `/tmp/f108-isolation-red.log`, `/tmp/f108-isolation-green.log`,
+`/tmp/f108-isolation-matrix.log`, `/tmp/f108-django-registry-clean.log`,
+`/tmp/f108-django-registry-pytest.log`, `/tmp/f108-isolation-postgres.log`.
+Next: refresh coverage and perform one exact-source release validation after the
+demonstrated test repair. Any recurrence reopens diagnosis rather than a retry loop.
+The expired preview teardown succeeded; read-only inventory confirmed zero managed
+Droplets and DNS records before further validation.
+
+Post-repair complete coverage collection passed for API (28 partitions) and
+Django (12 combined coverage files). No runtime dependency versions, production
+validation rules or release thresholds were changed. The next exact-source gate
+is validation after this specific test-isolation repair, not an unchanged retry.
+
 ## Release blocked: R17 stability failure
 
 The bounded final revalidation stopped before its full gate: stability run for
