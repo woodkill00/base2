@@ -19,10 +19,18 @@ and vendor acceptance must still run on the final exact-source deployment.
 
 Not complete: full route/state inventory, complete authenticated visual matrix,
 baseline owner approval, local restricted-role migration alignment, final release
-gate, real owner credential identification, live owner/restart/recreation checks,
+gate, live owner/restart/recreation checks,
 deployment and teardown evidence. Tasks remain open until their full acceptance
 is met; this checkpoint is not feature closeout.
 
-Vault lookup found a gateway entry and a Facebook login, not a confirmed Base2
-application password. Never substitute either credential. Owner activation waits
-for the dedicated Base2 Vaultwarden login.
+The dedicated `base2/woodkill` Vaultwarden login is now resolved into private
+operator storage and passed the unchanged password policy. No gateway or Facebook
+credential was substituted. No secret is included in repository evidence.
+
+Release analysis found cross-theme style leakage: shared experience overrides are
+now restricted to Obsidian, preserving the original other-theme shell classes.
+All 21 existing account browser checks and four Obsidian experience checks pass
+without updating visual baselines. All 40 assurance tests pass after isolating a
+synthetic release unit test from the host browser cache. An isolated PostgreSQL
+acceptance rerun passed after an earlier native process exit 139; this is not proof
+that the native crash cause is resolved, and final release validation remains due.

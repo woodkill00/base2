@@ -265,6 +265,7 @@ def test_exact_complete_gate_requires_exact_manifest_inventory(tmp_path, monkeyp
 
 
 def test_explicit_release_always_executes_even_with_strong_evidence(tmp_path, monkeypatch):
+    monkeypatch.setattr(assurance, "_safe_playwright_path", lambda: str(tmp_path))
     monkeypatch.setattr(assurance, "exact_complete_gate_evidence", lambda *_args: "strong.json")
     monkeypatch.setitem(assurance.COMMANDS, "complete-gate", assurance.Command(("python3", "-c", "print('ok')")))
     plan = assurance.build_plan(graph(), [change("docs/a.md")], "release", "a" * 40, "b" * 40, False)

@@ -35,38 +35,38 @@
   --color-on-accent: #ffffff;
 }
 
-body {
+[data-theme='obsidian'] body {
   background: var(--color-canvas);
   color: var(--color-text);
 }
 
-[data-theme] .app-shell-root {
+[data-theme='obsidian'] .app-shell-root {
   background: var(--color-canvas);
   color: var(--color-text);
 }
 
-[data-theme] .app-shell-root .gradient-background {
+[data-theme='obsidian'] .app-shell-root .gradient-background {
   background: radial-gradient(ellipse at top right, color-mix(in srgb, var(--color-accent) 10%, transparent), transparent 60%);
 }
 
-[data-theme] .app-shell-root .gradient-background::before { content: none; }
+[data-theme='obsidian'] .app-shell-root .gradient-background::before { content: none; }
 
-.app-shell-content {
+[data-theme='obsidian'] .app-shell-content {
   min-width: 0;
   width: 100%;
   padding: clamp(1rem, 3vw, 2.5rem);
 }
 
-.app-shell-content h1 {
+[data-theme='obsidian'] .app-shell-content h1 {
   font-size: clamp(1.75rem, calc(1.2rem + 2vw), 3rem);
   line-height: 1.15;
   overflow-wrap: anywhere;
 }
 
-.app-shell-content :where(a) { color: var(--color-accent); }
-.app-shell-content :where(p, label, li) { overflow-wrap: anywhere; }
+[data-theme='obsidian'] .app-shell-content :where(a) { color: var(--color-accent); }
+[data-theme='obsidian'] .app-shell-content :where(p, label, li) { overflow-wrap: anywhere; }
 
-.app-shell-root .base2-card {
+[data-theme='obsidian'] .app-shell-root .base2-card {
   background: var(--color-surface);
   color: var(--color-text);
   border-color: var(--color-border);
@@ -76,8 +76,8 @@ body {
   transition: border-color var(--motion-fast) var(--ease-standard);
 }
 
-.app-shell-root .base2-input,
-.app-shell-root :where(select, textarea) {
+[data-theme='obsidian'] .app-shell-root .base2-input,
+[data-theme='obsidian'] .app-shell-root :where(select, textarea) {
   background: var(--color-surface-elevated);
   color: var(--color-text);
   border: 1px solid var(--color-border);
@@ -85,23 +85,23 @@ body {
   max-width: 100%;
 }
 
-.app-shell-root .base2-input::placeholder { color: var(--color-text-muted); opacity: 1; }
-.app-shell-root .base2-button { color: var(--color-text); background: var(--color-surface-elevated); border-color: var(--color-border); }
-.app-shell-root .base2-button--primary { color: var(--color-on-accent, #fff); background: var(--color-accent); }
-.app-shell-root .base2-button--danger { color: var(--color-danger); background: var(--color-danger-surface, var(--color-surface)); }
-.app-shell-root .base2-button--ghost { background: transparent; }
-.app-shell-root .base2-button:hover:not(:disabled) { filter: brightness(1.1); }
-.app-shell-root :where(input, button, select, textarea, a):focus-visible {
+[data-theme='obsidian'] .app-shell-root .base2-input::placeholder { color: var(--color-text-muted); opacity: 1; }
+[data-theme='obsidian'] .app-shell-root .base2-button { color: var(--color-text); background: var(--color-surface-elevated); border-color: var(--color-border); }
+[data-theme='obsidian'] .app-shell-root .base2-button--primary { color: var(--color-on-accent, #fff); background: var(--color-accent); }
+[data-theme='obsidian'] .app-shell-root .base2-button--danger { color: var(--color-danger); background: var(--color-danger-surface, var(--color-surface)); }
+[data-theme='obsidian'] .app-shell-root .base2-button--ghost { background: transparent; }
+[data-theme='obsidian'] .app-shell-root .base2-button:hover:not(:disabled) { filter: brightness(1.1); }
+[data-theme='obsidian'] .app-shell-root :where(input, button, select, textarea, a):focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 3px;
 }
-.app-shell-root header nav { background: var(--color-surface); color: var(--color-text); border-color: var(--color-border); }
-.app-shell-root .app-shell-footer { color: var(--color-text-muted); background: var(--color-surface); opacity: 1; }
+[data-theme='obsidian'] .app-shell-root header nav { background: var(--color-surface); color: var(--color-text); border-color: var(--color-border); }
+[data-theme='obsidian'] .app-shell-root .app-shell-footer { color: var(--color-text-muted); background: var(--color-surface); opacity: 1; }
 
 @media (max-width: 768px) {
-  .app-shell-root .app-shell-body { grid-template-columns: minmax(0, 1fr) !important; }
+  [data-theme='obsidian'] .app-shell-root .app-shell-body { grid-template-columns: minmax(0, 1fr) !important; }
 }
 
 @media (prefers-contrast: more) {
-  .app-shell-root { --color-border: var(--color-text); }
+  [data-theme='obsidian'] .app-shell-root { --color-border: var(--color-text); }
 }
