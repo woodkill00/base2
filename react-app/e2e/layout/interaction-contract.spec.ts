@@ -10,6 +10,24 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
+test('opening a drawer after scrolling keeps the page in place and the drawer in view', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 700 });
+  await page.goto('/');
+  await expect(page.locator('main')).toBeVisible();
+  await page.evaluate(() => window.scrollTo({ top: 1200, behavior: 'instant' }));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(500);
+  const before = await page.evaluate(() => window.scrollY);
+  await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Navigation panel' });
+  await expect(dialog).toBeVisible();
+  expect(Math.abs((await page.evaluate(() => window.scrollY)) - before)).toBeLessThanOrEqual(1);
+  const box = await dialog.boundingBox();
+  expect(box!.y).toBeGreaterThanOrEqual(0);
+  expect(box!.y + box!.height).toBeLessThanOrEqual(701);
+});
+
 test('drawer resize restores visible focus and body scrolling', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto('/signup');

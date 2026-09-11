@@ -60,7 +60,13 @@ for (const width of [320, 390, 767, 768, 1024, 1279, 1280, 1440, 1920]) {
         await expect(page.locator('.unified-layout')).toBeVisible();
         const left = page.getByRole('navigation', { name: 'Main navigation', exact: true });
         const right = page.getByLabel('Page context', { exact: true });
-        if (width >= 1280) {
+        const desktop = await page
+          .locator('.unified-layout')
+          .evaluate(
+            (el) =>
+              el.clientWidth >= 80 * parseFloat(getComputedStyle(document.documentElement).fontSize)
+          );
+        if (desktop) {
           await expect(left).toBeVisible();
           await expect(right).toBeVisible();
           const main = await page.locator('.unified-layout-main').boundingBox();

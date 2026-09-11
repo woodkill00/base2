@@ -2,9 +2,12 @@
 
 ## Proposed geometry, to be ratified in the representative review
 
-- Desktop at 1280 CSS px and above: both rails visible. Left holds global navigation;
+- Desktop at 80rem available shell width and above (1280px at a 16px root font):
+  both rails visible. Scrollbar space and larger user text reduce the available
+  main area, so the named container query, not the outer viewport alone, controls
+  this boundary. Left holds global navigation;
   right holds useful page context/help, not invented live data or private guest content.
-- 768–1279: labelled controls expose both rails; 320–767: off-canvas drawers, at most
+- Below that text-aware boundary: labelled controls expose both off-canvas rails, at most
   one modal rail open. Controls never disappear when a rail is collapsed.
 - Test fixed widths 320, 390, 768, 1024, 1280, 1440 and 1920; include boundary neighbors
   767/768 and 1279/1280 for shared-shell transitions. These are CSS pixels, not claims

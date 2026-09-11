@@ -1,4 +1,5 @@
 .unified-layout {
+  container: layout / inline-size;
   --layout-gap: clamp(1rem, 1.5vw, 1.5rem);
   --layout-rail: clamp(11rem, 15vw, 15rem);
   --layout-border: color-mix(in srgb, currentColor 18%, transparent);
@@ -274,7 +275,7 @@
     display: block;
   }
 }
-@media (max-width: 1279px) {
+@container layout (width < 80rem) {
   .unified-layout-grid {
     grid-template-columns: minmax(0, 1fr);
   }

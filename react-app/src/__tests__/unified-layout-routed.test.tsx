@@ -11,11 +11,10 @@ vi.mock('../config/layoutPolicy', async (original) => ({
 vi.mock('../contexts/AuthContext', () => ({ useAuth: () => ({ user: state.user }) }));
 vi.mock('../components/Navigation', () => ({ default: () => <div>Account navigation</div> }));
 let observer: () => void;
-let changed: () => void;
-let desktop = false;
+const changed = () => window.dispatchEvent(new Event('resize'));
 beforeEach(() => {
   state.user = null;
-  desktop = false;
+  vi.stubGlobal('innerWidth', 390);
   vi.stubGlobal(
     'ResizeObserver',
     class {
@@ -26,15 +25,6 @@ beforeEach(() => {
       disconnect() {}
     }
   );
-  vi.stubGlobal('matchMedia', () => ({
-    get matches() {
-      return desktop;
-    },
-    addEventListener(_event: string, callback: () => void) {
-      changed = callback;
-    },
-    removeEventListener() {},
-  }));
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -62,10 +52,10 @@ test('routed guest measures its header, uses the current route, and opens contex
   expect(screen.getByRole('dialog', { name: 'Page context' })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Close page context' }));
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-  desktop = true;
+  vi.stubGlobal('innerWidth', 1440);
   act(() => window.dispatchEvent(new Event('base2:open-page-context')));
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-  desktop = false;
+  vi.stubGlobal('innerWidth', 390);
   screen.getByRole('button', { name: 'Open page context' }).remove();
   act(() => window.dispatchEvent(new Event('base2:open-page-context')));
   expect(screen.getByRole('dialog')).toBeInTheDocument();
@@ -80,10 +70,28 @@ test('signed-in routed mode uses account header and resize restores a visible li
   fireEvent.click(screen.getByRole('button', { name: 'Open navigation' }));
   act(() => changed());
   expect(screen.getByRole('dialog')).toBeInTheDocument();
-  desktop = true;
+  vi.stubGlobal('innerWidth', 1440);
   act(() => changed());
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Home' })).toHaveFocus();
+});
+
+test('text scaling and actual container width govern drawer availability', () => {
+  const previous = document.documentElement.style.fontSize;
+  const { container } = mount();
+  const root = container.querySelector('.unified-layout')!;
+  Object.defineProperty(root, 'clientWidth', { configurable: true, value: 1440 });
+  try {
+    document.documentElement.style.fontSize = '32px';
+    act(() => observer());
+    act(() => window.dispatchEvent(new Event('base2:open-page-context')));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    document.documentElement.style.fontSize = '16px';
+    act(() => observer());
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  } finally {
+    document.documentElement.style.fontSize = previous;
+  }
 });
 
 test('explicit header, backdrop, content selection and collapsed details preserve modal lifecycle', () => {

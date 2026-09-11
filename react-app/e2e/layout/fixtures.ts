@@ -15,6 +15,8 @@ export const test = base.extend<{ layoutEvidence: void }>({
                 status: font.status,
               })),
               bodyFont: getComputedStyle(document.body).fontFamily,
+              rootFontSize: getComputedStyle(document.documentElement).fontSize,
+              shellWidth: document.querySelector('.unified-layout')?.clientWidth,
               viewport: { width: innerWidth, height: innerHeight, scale: devicePixelRatio },
               direction: getComputedStyle(document.body).direction,
             };

@@ -4,8 +4,8 @@
   "sources": {
     "react-app/src/pages/OperationsCenter.jsx": "d3918f1ad18b8e6183eb32973cf16390a196adb8dbe9b2428582f62cc3720504",
     "react-app/src/services/operations.js": "7bb0edb231daf7255973c885dabf0b93d7664c02ac0eb51a8b00d599c7209418",
-    "react-app/src/components/glass/AppShell.tsx": "9d8ec0f97f6884ffd62a1e324e13d1ffcffa4312fc7a6b0ef9cd2c9a4efc6157",
-    "react-app/src/components/glass/unified-layout.css": "a4601368c459350b7c0b7605f1d52d0d69482c409f8c92d89b873a60dbf92e72",
+    "react-app/src/components/glass/AppShell.tsx": "5c26a23eecfdda72cc95781eb73bdc8bba2c0fcf5c8729db6487d05981e1a742",
+    "react-app/src/components/glass/unified-layout.css": "6b944345136cfa16fec7c5e1d9c364442eb0bb814f2dc1336baa50bf2999f392",
     "react-app/src/config/layoutPolicy.ts": "e01ab543150f1398dce6ff83879951dbe779f543e2abc9ce3adf2ba62d7030cd",
     "react-app/src/config/siteRuntime.ts": "9cf3807ab4834ebda0d66f4e23b87dafd0617eb37a2ed98b50e14233d8edbb3b",
     "react-app/src/config/generated/base2-obsidian.json": "c7d8f67ddd1ab6cd155000a741377d92a07e09ab8fe5bca73c1e961d092cbbd6",
@@ -21,7 +21,7 @@
     "react-app/src/App.css": "9767fbe8163fb687a0a15713a5a7f6f0b85a5f0fcdd508dec74e2fabbb7bc416",
     "react-app/src/contexts/ThemeContext.js": "0aef0fdd80ec887f35803469ee82503b4f4b1879c76f1faad556d099c5b4227b",
     "react-app/src/services/theme/persistence.ts": "322e41c67b85ae90738674c2da3ecef3fd56258fe3ae03712621f0b6711b732e",
-    "react-app/e2e/operations/operations-release.spec.ts": "6dc8b8b4f89d5b5d50393beca3f36427e66261ffa8de80a9df8c0361736a48df",
+    "react-app/e2e/operations/operations-release.spec.ts": "dcb57f82f95107c574def2bdac4cfce2b098f18b8dc8f9eb2c85929e87fd1fd9",
     "react-app/playwright.operations-release.config.mjs": "b85e98cbf71c8a4d84494bcf845f83c5f6ca41d097f98598b659ba2515cd7fa0",
     "react-app/e2e/operations/visual-receipt-reporter.mjs": "2a231b5946a65f18196cfc0a7aeab412c5f00990efa9acc797fbf04e7eff166e"
   },
@@ -43,32 +43,32 @@
       "pixels": [1440, 2760]
     },
     "operations-center-chromium-german-chromium-german-linux.png": {
-      "sha256": "80a8745970c06a891d4a4f436e1f8aeef04ef43c9c3c4a1ff57051814172f939",
-      "pixels": [1280, 2934]
+      "sha256": "e153e4b218c3ee50e7571814c39142e9afd842c5746433542bcba806e16815a3",
+      "pixels": [1280, 2729]
     },
     "operations-center-chromium-high-contrast-chromium-high-contrast-linux.png": {
-      "sha256": "d67cd17c39d2ccdf9e052ba99fccf17d53daf8287e25530dcbe9ba641f609d62",
-      "pixels": [1280, 2776]
+      "sha256": "3689b95a1be9b819a7c338b7017d1faf4c539ce3026a993cf06d22bac6259fc5",
+      "pixels": [1280, 2691]
     },
     "operations-center-chromium-landscape-touch-chromium-landscape-touch-linux.png": {
       "sha256": "0e88143036cb2fb9bb4e7c53c5810c632db7eb1ee17953c7b1c94f0b414f8c9b",
       "pixels": [844, 3250]
     },
     "operations-center-chromium-large-text-chromium-large-text-linux.png": {
-      "sha256": "53c293816114886f05cd10ac090e196014eed153120bcf35cb03e61e8b22e33f",
-      "pixels": [1280, 11106]
+      "sha256": "ff3116c76bc70e975d68e6a7c05cd659bb09b63f0e32ca0f359ba0e1e64dc021",
+      "pixels": [1280, 4877]
     },
     "operations-center-chromium-light-chromium-light-linux.png": {
-      "sha256": "b3d826e9e2bb23e7388920e15316ba9d20e34fe222bf29f74799f49020d2c8a5",
-      "pixels": [1280, 2776]
+      "sha256": "f9ec46bef576fc4ccce76a95dd66ca30a5bed1aa351553feceea5886d470280c",
+      "pixels": [1280, 2691]
     },
     "operations-center-chromium-reduced-motion-chromium-reduced-motion-linux.png": {
-      "sha256": "eca6b2316e14a1887ed9b05d8074d93498aab779303e3f2c430b876ec6164d1d",
-      "pixels": [1280, 2776]
+      "sha256": "e8c343e68e9886828c61d6aa9dc40c2b75980050f018e797e1495f9da4456b41",
+      "pixels": [1280, 2691]
     },
     "operations-center-chromium-rtl-chromium-rtl-linux.png": {
-      "sha256": "cdc1b82ad6536293441cfe499fd0326f45d3e87308afb6d734c5921b8882b494",
-      "pixels": [1280, 2738]
+      "sha256": "74229220e68ce68d716e1888bfe593df44bd449a62eed4bcff2b4ad3026c0274",
+      "pixels": [1280, 2639]
     },
     "operations-center-chromium-tablet-chromium-tablet-linux.png": {
       "sha256": "1f6796f397f39a6ec7001411fa0eadc4857a6e4ba6526d76814bf6d17a745f19",
@@ -91,8 +91,8 @@
       "pixels": [1440, 2003]
     },
     "operations-center-empty-webkit-desktop-linux.png": {
-      "sha256": "c96b9cca30c573f3df314a9b371b71bb63d53512d5feb6730a5445b7d51b9dda",
-      "pixels": [1430, 1992]
+      "sha256": "9cd7cc0f694a0a1727f20724f74b300185bf68bf43112995456e23839729c02f",
+      "pixels": [1430, 1999]
     },
     "operations-center-error-chromium-compact-linux.png": {
       "sha256": "ce4db571f9e69b4c013ed75ca3f2c31ce3b88a19a350d900bb7eb82268c7854e",
@@ -107,8 +107,8 @@
       "pixels": [1440, 1790]
     },
     "operations-center-error-webkit-desktop-linux.png": {
-      "sha256": "f87bd097fbd5c1b6e6b3d9b1c11e19300582cdd2be2ffa241f8a22b25f380fc3",
-      "pixels": [1430, 1782]
+      "sha256": "0fa509b0c94ea6b27d97da8c71533752bece882a03f400d01caa6543205c9ad3",
+      "pixels": [1430, 1805]
     },
     "operations-center-firefox-desktop-firefox-desktop-linux.png": {
       "sha256": "3d758d91580eafc923d25ea62055ccded738e9dc814e665fa43c5accabc10fc8",
@@ -127,8 +127,8 @@
       "pixels": [1440, 2948]
     },
     "operations-center-partial-webkit-desktop-linux.png": {
-      "sha256": "a38195fdc9a2f588bdb7e0cf7a83146f1acb994386a9892e8dceb1e04c218ccb",
-      "pixels": [1430, 2926]
+      "sha256": "4288d94bf9714d2ce44e8fbd87e06c4b0dfb3fd874b81f0f94d95c76647a7543",
+      "pixels": [1430, 2863]
     },
     "operations-center-read-only-chromium-compact-linux.png": {
       "sha256": "62c745d438bc7de71cdb1cdac226407aa0403326e335be68f40d542bc9f06381",
@@ -143,8 +143,8 @@
       "pixels": [1440, 2655]
     },
     "operations-center-read-only-webkit-desktop-linux.png": {
-      "sha256": "f0e195153ea0dd63ed99d10e3e4017eef9e0b3fe354d85509cc963d54972f009",
-      "pixels": [1430, 2634]
+      "sha256": "b7247aa1a02f08fc3f470dfa8e44dce735d8f5e447c7bcb0e37c9923c8645ece",
+      "pixels": [1430, 2595]
     },
     "operations-center-reauth-chromium-compact-linux.png": {
       "sha256": "930d49b6e8efd1ee41a81fbcb5ae448f527a0b3534c5c3c2f952d2377d61137f",
@@ -159,17 +159,17 @@
       "pixels": [1440, 2948]
     },
     "operations-center-reauth-webkit-desktop-linux.png": {
-      "sha256": "386ef64f8b3a2417accc58e6949644a4e87b63f25026f51abc461d5d55e37e6f",
-      "pixels": [1430, 2926]
+      "sha256": "bee905a0b311de0ab5e6964ead2e54112cc1b9c255e1de779d5691a4287551af",
+      "pixels": [1430, 2863]
     },
     "operations-center-webkit-desktop-webkit-desktop-linux.png": {
-      "sha256": "7c11bb2a3fc7ba6cf9d3ce1072a83fa8fd1a4e18399ed2a07117755896030f67",
-      "pixels": [1430, 2740]
+      "sha256": "8424de68e1d206496c7e48af8798ec33e7fddf05ef3271fc875a7508f949457a",
+      "pixels": [1430, 2676]
     }
   },
   "runnerReceipt": {
-    "sha256": "927db2b36c5bfb104b2045cd24c77bd9a5f622d81ac74f0ef0077c267aef5176",
-    "digest": "63632111fc0aee4a15e85a3ee1b5994243e188941836ccb99c799bd61a9d08bf"
+    "sha256": "1bd33b4f8d2851aad8909217e01f47d9e597dc96adcae799c6ad6c5d94525b3f",
+    "digest": "b0cd84040ac84f3d3207b274dbe8c172146fb65243d370cabe085ecca0e50a09"
   },
   "assertions": {
     "accessibility": "pass",

@@ -19,6 +19,13 @@ duplicate bars. Increase shared heading-selector specificity to prevent lazy-loa
 Media CSS from restoring oversized page titles; cover authorized routes too.
 Visual evidence bindings now include shared CSS, route policy, profile and runtime.
 
+The refreshed capture dimension contract caught genuine 200%-text reflow failure:
+viewport-only rail breakpoints squeezed Operations cards into single-letter
+columns. Keep the 5000px capture ceiling. Use an 80rem named container query and
+the same measured-width/root-font threshold for drawer behavior, including resize
+and font changes. Add real-browser large-text drawer visibility plus a unit case
+for font/container changes; rerun affected matrices before accepting those captures.
+
 ## Cycle 6 — Release integration and keyboard review
 
 Batch scope: T009/T011/T017/T019/T020/T023/T024. Restore Home controls and

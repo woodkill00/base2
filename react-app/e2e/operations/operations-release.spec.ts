@@ -226,8 +226,10 @@ test('operations center is accessible responsive and visually stable', async ({
   });
   page.on('requestfailed', (request) => failedRequests.push(request.url()));
   await page.goto('/operations', { waitUntil: 'domcontentloaded' });
-  if (testInfo.project.name === 'chromium-large-text')
+  if (testInfo.project.name === 'chromium-large-text') {
     await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
+    await expect(page.getByRole('button', { name: 'Open navigation', exact: true })).toBeVisible();
+  }
   const rtl = testInfo.project.name === 'chromium-rtl';
   const german = testInfo.project.name === 'chromium-german';
   const label = {

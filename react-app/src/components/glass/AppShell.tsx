@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   layoutPolicyFor,
@@ -52,6 +52,10 @@ function SharedLayout({
   const main = useRef<HTMLElement>(null),
     footer = useRef<HTMLDivElement>(null);
   const id = useId();
+  const isDesktop = useCallback(() => {
+    const fontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    return (root.current?.clientWidth || window.innerWidth) >= 80 * fontSize;
+  }, []);
   const items = (sidebarItems || primaryNavigation()).map((item) =>
     typeof item === 'string' ? { label: item, to: '/' } : item
   );
@@ -60,36 +64,37 @@ function SharedLayout({
     // an already queued observation is also safe during unmount cleanup.
     const headerNode = header.current!;
     const rootNode = root.current!;
-    const observer = new ResizeObserver(() =>
+    const observer = new ResizeObserver(() => {
       rootNode.style.setProperty(
         '--layout-header-height',
         `${headerNode.getBoundingClientRect().height || 80}px`
-      )
-    );
+      );
+      if (isDesktop()) setOpen(null);
+    });
     observer.observe(headerNode);
+    observer.observe(rootNode);
     return () => observer.disconnect();
-  }, []);
+  }, [isDesktop]);
   useEffect(() => {
     setOpen(null);
   }, [location.pathname]);
   useEffect(() => {
     const reveal = () => {
-      if (window.matchMedia('(min-width: 1280px)').matches) return;
+      if (isDesktop()) return;
       trigger.current =
         root.current?.querySelector<HTMLElement>(`button[aria-controls="${id}-right"]`) || null;
       setOpen('right');
     };
     window.addEventListener('base2:open-page-context', reveal);
     return () => window.removeEventListener('base2:open-page-context', reveal);
-  }, [id]);
+  }, [id, isDesktop]);
   useEffect(() => {
-    const media = window.matchMedia('(min-width: 1280px)');
     const change = () => {
-      if (media.matches) setOpen(null);
+      if (isDesktop()) setOpen(null);
     };
-    media.addEventListener('change', change);
-    return () => media.removeEventListener('change', change);
-  }, []);
+    window.addEventListener('resize', change);
+    return () => window.removeEventListener('resize', change);
+  }, [isDesktop]);
   useEffect(() => {
     if (!open) return;
     const panel = (open === 'left' ? left : right).current;
@@ -134,7 +139,7 @@ function SharedLayout({
       document.body.style.overflow = previousOverflow;
       backgroundNodes.forEach((node) => node?.removeAttribute('inert'));
       document.removeEventListener('keydown', keydown);
-      const desktop = window.matchMedia('(min-width: 1280px)').matches;
+      const desktop = isDesktop();
       const destination = desktop
         ? panel?.querySelector<HTMLElement>(
             'a[href],button:not(.unified-rail-close):not([disabled])'
@@ -142,7 +147,7 @@ function SharedLayout({
         : trigger.current;
       destination?.focus({ preventScroll: true });
     };
-  }, [open]);
+  }, [open, isDesktop]);
   const toggle = (side: 'left' | 'right', event: React.MouseEvent<HTMLButtonElement>) => {
     trigger.current = event.currentTarget;
     setOpen(side);
