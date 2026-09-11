@@ -367,7 +367,7 @@ test('authenticated settings platform works accessibly and responsively live', a
     .toMatch(/export\s*completed/i);
 
   await page.goto(`https://${domain}/settings/organization`, { waitUntil: 'networkidle' });
-  await expect(page.getByText('user.preferences_updated')).toBeVisible();
+  await expect(page.getByText('Profile preferences updated', { exact: true })).toBeVisible();
 
   await page.goto(`https://${domain}/settings/privacy`, { waitUntil: 'networkidle' });
   const deletion = page.getByRole('button', { name: 'Request account deletion' });
