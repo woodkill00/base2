@@ -27,8 +27,8 @@ def validate():
         seen.add(tid)
     for ref, tids in coverage.items():
         assert tids, f"{ref}: uncovered"
-        row = re.search(r"^\| " + ref + r" \| (.+) \|$", docs["traceability.md"], re.M)
-        assert row and set(row[1].split(", ")) == tids, f"{ref}: traceability mismatch"
+        row = re.search(r"^\|\s*" + ref + r"\s*\|\s*(.+?)\s*\|$", docs["traceability.md"], re.M)
+        assert row and {value.strip() for value in row[1].split(",")} == tids, f"{ref}: traceability mismatch"
     assert "run_complete_gate.py" in docs["plan.md"], "release authority missing"
     assert "Cycle 1" in docs["analysis.md"] and "Cycle 2" in docs["analysis.md"]
     assert all("NEEDS CLARIFICATION" not in d and "$ARGUMENTS" not in d for d in docs.values())
