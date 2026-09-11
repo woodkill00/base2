@@ -114,7 +114,10 @@ test('media detail preserves safe preview usage and consequence context', async 
   const dialog = page.getByRole('dialog', { name: 'Aurora landscape.png' });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Close' })).toBeFocused();
-  await expect(page.locator('.app-shell > header')).toHaveJSProperty('inert', true);
+  await expect(page.locator('.unified-layout-header-frame')).toHaveJSProperty('inert', true);
+  await expect(page.locator('.unified-layout-footer-frame')).toHaveJSProperty('inert', true);
+  for (const rail of await page.locator('.unified-layout-rail').all())
+    await expect(rail).toHaveJSProperty('inert', true);
   await expect(dialog.getByRole('heading', { name: 'Usage and references' })).toBeVisible();
   await expect(dialog.getByText('article · hero · draft')).toBeVisible();
   await dialog.getByRole('button', { name: 'Preview consequences' }).click();
@@ -292,15 +295,20 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)
   ).toBeLessThanOrEqual(1);
-  const clipped = await page.locator('button,input,select,a').evaluateAll(
-    (nodes) =>
-      nodes.filter((node) => {
+  const clipped = await page.locator('button,input,select,a').evaluateAll((nodes) =>
+    nodes
+      .filter((node) => {
         if (node.getAttribute('tabindex') === '-1') return false;
         const box = node.getBoundingClientRect();
         return box.width > 0 && box.height > 0 && (box.width < 24 || box.height < 24);
-      }).length
+      })
+      .map((node) => ({
+        name: node.getAttribute('aria-label') || node.textContent,
+        width: node.getBoundingClientRect().width,
+        height: node.getBoundingClientRect().height,
+      }))
   );
-  expect(clipped).toBe(0);
+  expect(clipped).toEqual([]);
   await page.addScriptTag({ content: axeSource });
   const axeViolations = await page.evaluate(
     async () => (await window.axe.run(document)).violations
@@ -364,14 +372,14 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
     });
   expect(contrastFailures).toEqual([]);
   expect(runtimeErrors).toEqual([]);
-  const shellHeader = page.locator('.app-shell > header');
+  const shellHeader = page.locator('.unified-layout-header-frame');
   await expect(shellHeader).toHaveCSS('position', 'sticky');
   const appNavigation = page.getByRole('navigation', { name: 'App navigation' });
-  await expect(appNavigation).toHaveCSS('position', 'sticky');
+  await expect(appNavigation).toHaveCount(1);
   // Full-page screenshots are stitched from multiple viewports. Chromium otherwise
   // paints sticky content at an arbitrary stitch boundary, obscuring document order.
   await page.addStyleTag({
-    content: '.app-shell > header, .app-shell-content > nav { position: static !important; }',
+    content: '.unified-layout-header-frame, .unified-layout-rail { position: static !important; }',
   });
   await expect(page).toHaveScreenshot(`media-library-${testInfo.project.name}.png`, {
     fullPage: true,

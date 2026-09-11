@@ -114,6 +114,9 @@ for (const width of [390, 1440])
       await expect(page).toHaveURL(
         new RegExp(`${path === '/account' ? '/settings/security' : path}$`)
       );
+      expect(
+        await page.locator('main h1').evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
+      ).toBeLessThanOrEqual(48);
       await expect(
         page.getByRole('navigation', { name: 'App navigation', exact: true })
       ).toHaveCount(1);

@@ -326,7 +326,7 @@ test('operations center is accessible responsive and visually stable', async ({
     ).toBe(true);
   }
   await page.addStyleTag({
-    content: '.app-shell > header, .app-shell-content > nav { position: static !important; }',
+    content: '.unified-layout-header-frame, .unified-layout-rail { position: static !important; }',
   });
   await captureCurrentRun(page, testInfo, `operations-center-${testInfo.project.name}.png`);
   const timelineButton = page.getByRole('button', { name: label.viewTimeline }).first();

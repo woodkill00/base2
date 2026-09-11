@@ -100,11 +100,11 @@
   margin-inline: auto;
   container-type: inline-size;
 }
-.unified-layout-main h1 {
+.unified-layout .unified-layout-main h1 {
   font-size: clamp(1.75rem, calc(1rem + 2cqi), 3rem);
   line-height: 1.15;
 }
-.unified-layout-main h2 {
+.unified-layout .unified-layout-main h2 {
   font-size: clamp(1.2rem, calc(1rem + 1cqi), 2rem);
   line-height: 1.3;
 }
@@ -233,11 +233,18 @@
 }
 .unified-layout-footer {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 1rem;
   padding: 1.5rem max(1rem, var(--layout-gap));
   border-block-start: 1px solid var(--layout-border);
+}
+.unified-layout-footer a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 2.75rem;
+  padding-inline: 0.25rem;
 }
 .unified-rail-controls,
 .unified-rail-close {

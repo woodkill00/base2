@@ -81,3 +81,13 @@ test('ordinary rerender preserves rail identity and scroll position', () => {
   expect(screen.getByLabelText('Navigation panel')).toBe(rail);
   expect(rail.scrollTop).toBe(125);
 });
+
+test('explicit shell supports simple sidebar labels and empty footer fallback', () => {
+  render(
+    <TestMemoryRouter>
+      <AppShell layoutRoute="/" sidebarItems={['Home label']} footerLabel="" />
+    </TestMemoryRouter>
+  );
+  expect(screen.getByRole('link', { name: 'Home label' })).toHaveAttribute('href', '/');
+  expect(screen.getByText('Your private workspace')).toBeInTheDocument();
+});

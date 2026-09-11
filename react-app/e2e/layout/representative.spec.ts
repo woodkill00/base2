@@ -68,6 +68,15 @@ for (const width of [320, 390, 767, 768, 1024, 1279, 1280, 1440, 1920]) {
           expect(
             Math.abs(main!.x + main!.width / 2 - (grid!.x + grid!.width / 2))
           ).toBeLessThanOrEqual(2);
+          const footer = page.locator('.unified-layout-footer');
+          if (await footer.count()) {
+            const brand = await footer.locator('span').first().boundingBox();
+            const link = await footer.getByRole('link').boundingBox();
+            expect(
+              Math.abs(brand!.y + brand!.height / 2 - (link!.y + link!.height / 2)),
+              'footer labels and links share a vertical center'
+            ).toBeLessThanOrEqual(1);
+          }
         } else {
           await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
           await expect(left).toBeVisible();

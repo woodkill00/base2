@@ -10,8 +10,12 @@ import '../styles/media-library.css';
 const STATE_OPTIONS = ['', 'ready', 'processing', 'quarantined', 'failed', 'archived'];
 const statusLabel = (value) => String(value || 'unknown').replaceAll('_', ' ');
 const dialogFocusable = [
-  'button:not([disabled])', 'input:not([disabled])', 'select:not([disabled])',
-  'textarea:not([disabled])', 'a[href]', '[tabindex]:not([tabindex="-1"])',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  'a[href]',
+  '[tabindex]:not([tabindex="-1"])',
 ].join(',');
 
 const trapDialogFocus = (event, root, onEscape) => {
@@ -40,12 +44,18 @@ function AssetCard({ asset, selected, onSelect, onOpen }) {
     <article className={`media-asset-card${selected ? ' is-selected' : ''}`}>
       <div className="media-asset-hitbox">
         <span className="media-asset-preview" aria-hidden="true">
-          <span>{kind === 'image' ? 'IMG' : kind === 'video' ? 'VID' : kind === 'audio' ? 'AUD' : 'DOC'}</span>
+          <span>
+            {kind === 'image' ? 'IMG' : kind === 'video' ? 'VID' : kind === 'audio' ? 'AUD' : 'DOC'}
+          </span>
         </span>
         <span className="media-asset-copy">
           <strong title={asset.filename}>{asset.filename}</strong>
-          <span>{asset.mediaType} · {Math.max(1, Math.round(asset.byteSize / 1024))} KB</span>
-          <span className={`media-status media-status-${asset.status}`}>{statusLabel(asset.status)}</span>
+          <span>
+            {asset.mediaType} · {Math.max(1, Math.round(asset.byteSize / 1024))} KB
+          </span>
+          <span className={`media-status media-status-${asset.status}`}>
+            {statusLabel(asset.status)}
+          </span>
         </span>
         <span className="media-card-actions">
           <button
@@ -56,7 +66,9 @@ function AssetCard({ asset, selected, onSelect, onOpen }) {
           >
             {selected ? 'Selected' : 'Select'}
           </button>
-          <button type="button" onClick={() => onOpen(asset)}>View details</button>
+          <button type="button" onClick={() => onOpen(asset)}>
+            View details
+          </button>
         </span>
       </div>
     </article>
@@ -113,35 +125,42 @@ export default function MediaLibrary() {
   const [pickerStatus, setPickerStatus] = useState('');
   const [networkOnline, setNetworkOnline] = useState(() => navigator.onLine !== false);
 
-  const load = useCallback((signal) => {
-    setLoading(true);
-    setError('');
-    return Promise.all([
-      mediaLibraryAPI.capabilities({ signal }),
-      mediaLibraryAPI.assets({ state, search: submittedQuery, signal }),
-    ])
-      .then(([caps, result]) => {
-        setCapabilities(caps);
-        setAssets(Array.isArray(result?.items) ? result.items : []);
-        setNextCursor(result?.nextCursor || null);
-      })
-      .catch((caught) => {
-        if (caught?.name !== 'CanceledError') {
-          const normalized = normalizeMediaError(caught);
-          setError(normalized.status === 403 || normalized.status === 404
-            ? 'The media library is not available for this account.'
-            : 'The media library is temporarily unavailable. No files were changed.');
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [state, submittedQuery]);
+  const load = useCallback(
+    (signal) => {
+      setLoading(true);
+      setError('');
+      return Promise.all([
+        mediaLibraryAPI.capabilities({ signal }),
+        mediaLibraryAPI.assets({ state, search: submittedQuery, signal }),
+      ])
+        .then(([caps, result]) => {
+          setCapabilities(caps);
+          setAssets(Array.isArray(result?.items) ? result.items : []);
+          setNextCursor(result?.nextCursor || null);
+        })
+        .catch((caught) => {
+          if (caught?.name !== 'CanceledError') {
+            const normalized = normalizeMediaError(caught);
+            setError(
+              normalized.status === 403 || normalized.status === 404
+                ? 'The media library is not available for this account.'
+                : 'The media library is temporarily unavailable. No files were changed.'
+            );
+          }
+        })
+        .finally(() => setLoading(false));
+    },
+    [state, submittedQuery]
+  );
 
   const loadMore = async () => {
     if (!nextCursor) return;
     setActionStatus('Loading the next stable page…');
     try {
       const result = await mediaLibraryAPI.assets({
-        state, search: submittedQuery, cursor: nextCursor,
+        state,
+        search: submittedQuery,
+        cursor: nextCursor,
       });
       setAssets((current) => [...current, ...(Array.isArray(result?.items) ? result.items : [])]);
       setNextCursor(result?.nextCursor || null);
@@ -159,7 +178,8 @@ export default function MediaLibrary() {
 
   useEffect(() => {
     const controller = new AbortController();
-    mediaLibraryAPI.collections({ signal: controller.signal })
+    mediaLibraryAPI
+      .collections({ signal: controller.signal })
       .then((result) => setCollections(Array.isArray(result?.items) ? result.items : []))
       .catch(() => setCollections([]));
     return () => controller.abort();
@@ -170,19 +190,21 @@ export default function MediaLibrary() {
     [capabilities]
   );
 
-  const toggle = (assetId) => setSelected((current) => {
-    const next = new Set(current);
-    if (next.has(assetId)) next.delete(assetId);
-    else next.add(assetId);
-    return next;
-  });
+  const toggle = (assetId) =>
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(assetId)) next.delete(assetId);
+      else next.add(assetId);
+      return next;
+    });
 
   const uploadOne = async (file, queueId, idempotencyKey, generation) => {
     const ownsAttempt = () => uploadAttempts.current.get(queueId) === generation;
     const update = (values) => {
       if (!ownsAttempt()) return;
-      setUploadQueue((current) => current.map((item) =>
-        item.id === queueId ? { ...item, ...values } : item));
+      setUploadQueue((current) =>
+        current.map((item) => (item.id === queueId ? { ...item, ...values } : item))
+      );
     };
     if (!ownsAttempt()) return;
     if (cancelledUploads.current.has(queueId) || navigator.onLine === false) {
@@ -198,16 +220,26 @@ export default function MediaLibrary() {
       const sha256 = await sha256File(file);
       if (!ownsAttempt() || cancelledUploads.current.has(queueId)) return;
       update({ status: 'uploading', progress: 1 });
-      const admitted = await mediaLibraryAPI.createUpload({
-        filename: file.name, mediaType: file.type, byteSize: file.size, sha256,
-      }, idempotencyKey, { signal: controller.signal });
+      const admitted = await mediaLibraryAPI.createUpload(
+        {
+          filename: file.name,
+          mediaType: file.type,
+          byteSize: file.size,
+          sha256,
+        },
+        idempotencyKey,
+        { signal: controller.signal }
+      );
       if (!ownsAttempt() || cancelledUploads.current.has(queueId)) return;
       update({ expiresAt: admitted.expiresAt || '' });
       await mediaLibraryAPI.uploadContent(admitted.id, file, admitted.uploadGrant, {
         signal: controller.signal,
-        onUploadProgress: (event) => update({
-          progress: event.total ? Math.min(99, Math.round((event.loaded / event.total) * 100)) : 50,
-        }),
+        onUploadProgress: (event) =>
+          update({
+            progress: event.total
+              ? Math.min(99, Math.round((event.loaded / event.total) * 100))
+              : 50,
+          }),
       });
       update({ status: 'quarantined', progress: 100 });
     } catch (caught) {
@@ -217,7 +249,10 @@ export default function MediaLibrary() {
         update({ status: 'cancelled', progress: 0 });
       } else {
         const normalized = normalizeMediaError(caught);
-        update({ status: normalized.code === 'media_upload_expired' ? 'expired' : 'failed', progress: 0 });
+        update({
+          status: normalized.code === 'media_upload_expired' ? 'expired' : 'failed',
+          progress: 0,
+        });
       }
     } finally {
       if (uploadControllers.current.get(queueId) === owner) {
@@ -234,8 +269,11 @@ export default function MediaLibrary() {
         const item = pendingUploads.current.shift();
         if (uploadAttempts.current.get(item.id) !== item.generation) continue;
         if (cancelledUploads.current.has(item.id)) {
-          setUploadQueue((current) => current.map((entry) => entry.id === item.id
-            ? { ...entry, status: 'cancelled', progress: 0 } : entry));
+          setUploadQueue((current) =>
+            current.map((entry) =>
+              entry.id === item.id ? { ...entry, status: 'cancelled', progress: 0 } : entry
+            )
+          );
           continue;
         }
         await uploadOne(item.file, item.id, item.idempotencyKey, item.generation);
@@ -256,7 +294,10 @@ export default function MediaLibrary() {
       id: `${file.name}-${file.size}-${file.lastModified}-${batchKey}-${batchSequence}-${index}`,
       idempotencyKey: `media-upload-${batchKey}-${batchSequence}-${index}`,
       generation: 1,
-      file, name: file.name, progress: 0, status: networkOnline ? 'queued' : 'paused_offline',
+      file,
+      name: file.name,
+      progress: 0,
+      status: networkOnline ? 'queued' : 'paused_offline',
     }));
     queue.forEach((item) => uploadAttempts.current.set(item.id, item.generation));
     pendingUploads.current.push(...queue);
@@ -267,8 +308,11 @@ export default function MediaLibrary() {
   const cancelUpload = (queueId) => {
     cancelledUploads.current.add(queueId);
     uploadControllers.current.get(queueId)?.controller.abort();
-    setUploadQueue((current) => current.map((item) => item.id === queueId
-      ? { ...item, status: 'cancelled', progress: 0 } : item));
+    setUploadQueue((current) =>
+      current.map((item) =>
+        item.id === queueId ? { ...item, status: 'cancelled', progress: 0 } : item
+      )
+    );
   };
 
   const restartUpload = (item) => {
@@ -276,8 +320,18 @@ export default function MediaLibrary() {
     uploadAttempts.current.set(item.id, generation);
     cancelledUploads.current.delete(item.id);
     offlinePausedUploads.current.delete(item.id);
-    setUploadQueue((current) => current.map((entry) => entry.id === item.id
-      ? { ...entry, generation, status: networkOnline ? 'queued' : 'paused_offline', progress: 0 } : entry));
+    setUploadQueue((current) =>
+      current.map((entry) =>
+        entry.id === item.id
+          ? {
+              ...entry,
+              generation,
+              status: networkOnline ? 'queued' : 'paused_offline',
+              progress: 0,
+            }
+          : entry
+      )
+    );
     pendingUploads.current.push({ ...item, generation });
     void drainUploadQueue();
   };
@@ -287,10 +341,14 @@ export default function MediaLibrary() {
     const onOffline = () => {
       setNetworkOnline(false);
       setUploadQueue((current) => {
-        current.filter((item) => ['queued', 'checking', 'uploading'].includes(item.status))
+        current
+          .filter((item) => ['queued', 'checking', 'uploading'].includes(item.status))
           .forEach((item) => offlinePausedUploads.current.add(item.id));
-        return current.map((item) => ['queued', 'checking', 'uploading'].includes(item.status)
-          ? { ...item, status: 'paused_offline', progress: 0 } : item);
+        return current.map((item) =>
+          ['queued', 'checking', 'uploading'].includes(item.status)
+            ? { ...item, status: 'paused_offline', progress: 0 }
+            : item
+        );
       });
       uploadControllers.current.forEach(({ controller }) => controller.abort());
     };
@@ -330,7 +388,8 @@ export default function MediaLibrary() {
       setReferences(Array.isArray(usage?.items) ? usage.items : []);
       setJobs(Array.isArray(work?.items) ? work.items : []);
       setMetadata({
-        altText: detail.altText || '', decorative: Boolean(detail.decorative),
+        altText: detail.altText || '',
+        decorative: Boolean(detail.decorative),
         caption: detail.caption || '',
       });
       setDetailReady(true);
@@ -353,10 +412,13 @@ export default function MediaLibrary() {
     requestAnimationFrame(() => detailOpener.current?.focus());
   }, []);
 
-  useEffect(() => () => {
-    detailRequest.current.generation += 1;
-    detailRequest.current.controller?.abort();
-  }, []);
+  useEffect(
+    () => () => {
+      detailRequest.current.generation += 1;
+      detailRequest.current.controller?.abort();
+    },
+    []
+  );
 
   const saveMetadata = async (event) => {
     event.preventDefault();
@@ -364,29 +426,42 @@ export default function MediaLibrary() {
     setMetadataStatus('Saving metadata…');
     try {
       const result = await mediaLibraryAPI.updateMetadata(activeAsset.id, activeAsset.version, {
-        locale: 'en', altText: metadata.altText, decorative: metadata.decorative,
-        caption: metadata.caption, credit: '', licenseCode: '', visibility: 'private',
+        locale: 'en',
+        altText: metadata.altText,
+        decorative: metadata.decorative,
+        caption: metadata.caption,
+        credit: '',
+        licenseCode: '',
+        visibility: 'private',
       });
       setActiveAsset((current) => ({ ...current, version: result.version }));
       setMetadataStatus('Metadata saved as a new revision.');
     } catch (caught) {
       const normalized = normalizeMediaError(caught);
-      setMetadataStatus(normalized.code === 'media_version_conflict'
-        ? 'This asset changed elsewhere. Close and reopen it before saving.'
-        : 'Metadata was not saved. No existing revision was changed.');
+      setMetadataStatus(
+        normalized.code === 'media_version_conflict'
+          ? 'This asset changed elsewhere. Close and reopen it before saving.'
+          : 'Metadata was not saved. No existing revision was changed.'
+      );
     }
   };
 
   const activeAssetId = activeAsset?.id;
   useEffect(() => {
     if (!activeAssetId) return undefined;
-    const backgroundNodes = [...document.querySelectorAll(
-      '.app-shell > header, .app-shell-content > nav, .app-shell-footer, .media-library > :not(.media-dialog-backdrop)'
-    )];
-    backgroundNodes.forEach((node) => { node.inert = true; });
+    const backgroundNodes = [
+      ...document.querySelectorAll(
+        '.app-shell > header, .app-shell-content > nav, .app-shell-footer, .unified-layout-header-frame, .unified-layout-rail, .unified-layout-footer-frame, .media-library > :not(.media-dialog-backdrop)'
+      ),
+    ];
+    backgroundNodes.forEach((node) => {
+      node.inert = true;
+    });
     closeButton.current?.focus();
     return () => {
-      backgroundNodes.forEach((node) => { node.inert = false; });
+      backgroundNodes.forEach((node) => {
+        node.inert = false;
+      });
     };
   }, [activeAssetId, closeAsset]);
 
@@ -399,9 +474,14 @@ export default function MediaLibrary() {
       ...[...(detail?.children || [])].filter((node) => !node.contains(confirmation)),
       ...[...(consequenceSection?.children || [])].filter((node) => node !== confirmation),
     ];
-    backgroundNodes.forEach((node) => { node.inert = true; });
+    backgroundNodes.forEach((node) => {
+      node.inert = true;
+    });
     confirmationButton.current?.focus();
-    return () => backgroundNodes.forEach((node) => { node.inert = false; });
+    return () =>
+      backgroundNodes.forEach((node) => {
+        node.inert = false;
+      });
   }, [confirmationTarget]);
 
   const loadPreview = async () => {
@@ -441,7 +521,9 @@ export default function MediaLibrary() {
 
   const prepareBulkTransition = async (target) => {
     const chosen = assets.filter((item) => selected.has(item.id));
-    setActionStatus(`Loading ${target} consequences for ${chosen.length} item${chosen.length === 1 ? '' : 's'}…`);
+    setActionStatus(
+      `Loading ${target} consequences for ${chosen.length} item${chosen.length === 1 ? '' : 's'}…`
+    );
     const reviewed = [];
     for (const item of chosen) {
       try {
@@ -464,14 +546,19 @@ export default function MediaLibrary() {
       try {
         if (!review.available || !review.consequence?.allowed) throw new Error('blocked');
         await mediaLibraryAPI.transition(
-          item.id, item.version, target, `media-${target}-${item.id}-${item.version}`
+          item.id,
+          item.version,
+          target,
+          `media-${target}-${item.id}-${item.version}`
         );
         outcomes.push(true);
       } catch (caught) {
         outcomes.push(false);
       }
     }
-    setActionStatus(`${outcomes.filter(Boolean).length} succeeded; ${outcomes.filter((item) => !item).length} blocked or failed.`);
+    setActionStatus(
+      `${outcomes.filter(Boolean).length} succeeded; ${outcomes.filter((item) => !item).length} blocked or failed.`
+    );
     setBulkReview(null);
     setSelected(new Set());
     await load();
@@ -481,7 +568,8 @@ export default function MediaLibrary() {
     setActionStatus('Creating an authorized CSV export…');
     try {
       await mediaLibraryAPI.createExport(
-        'csv', ['id', 'filename', 'mediaType', 'status', 'visibility'],
+        'csv',
+        ['id', 'filename', 'mediaType', 'status', 'visibility'],
         Array.from(selected).sort(),
         `media-export-${Array.from(selected).sort().join('-')}`
       );
@@ -511,7 +599,9 @@ export default function MediaLibrary() {
     setDetailTransitionError('');
     try {
       const result = await mediaLibraryAPI.transition(
-        activeAsset.id, activeAsset.version, target,
+        activeAsset.id,
+        activeAsset.version,
+        target,
         `media-${target}-${activeAsset.id}-${activeAsset.version}`
       );
       setActiveAsset((current) => ({ ...current, status: target, version: result.version }));
@@ -535,7 +625,9 @@ export default function MediaLibrary() {
           <div>
             <p className="media-eyebrow">Content operations</p>
             <h1>Media library</h1>
-            <p className="media-ltr-copy" lang="en" dir="ltr">Upload, inspect, organize, and safely reuse site assets.</p>
+            <p className="media-ltr-copy" lang="en" dir="ltr">
+              Upload, inspect, organize, and safely reuse site assets.
+            </p>
           </div>
           <div className="media-header-actions">
             <GlassButton type="button" onClick={() => fileInput.current?.click()}>
@@ -579,87 +671,183 @@ export default function MediaLibrary() {
           <strong>Drop files here, or focus this area and paste files.</strong>
           <span>The Add media button provides the equivalent keyboard file chooser.</span>
         </section>
-        {!networkOnline ? <p className="media-notice media-ltr-copy" lang="en" dir="ltr" role="status">Offline. Active uploads are paused and can restart safely when the connection returns.</p> : null}
-        {pickerStatus ? <p className="media-action-status media-ltr-copy" lang="en" dir="ltr" role="status">{pickerStatus}</p> : null}
+        {!networkOnline ? (
+          <p className="media-notice media-ltr-copy" lang="en" dir="ltr" role="status">
+            Offline. Active uploads are paused and can restart safely when the connection returns.
+          </p>
+        ) : null}
+        {pickerStatus ? (
+          <p className="media-action-status media-ltr-copy" lang="en" dir="ltr" role="status">
+            {pickerStatus}
+          </p>
+        ) : null}
 
         <GlassCard className="media-toolbar">
-          <form onSubmit={(event) => { event.preventDefault(); setSubmittedQuery(query.trim()); }} role="search">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              setSubmittedQuery(query.trim());
+            }}
+            role="search"
+          >
             <label htmlFor="media-search">Search assets</label>
             <div className="media-search-row">
-              <input id="media-search" value={query} maxLength={100} onChange={(event) => setQuery(event.target.value)} />
-              <GlassButton type="submit" variant="secondary">Search</GlassButton>
+              <input
+                id="media-search"
+                value={query}
+                maxLength={100}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+              <GlassButton type="submit" variant="secondary">
+                Search
+              </GlassButton>
             </div>
           </form>
           <label>
             Status
             <select value={state} onChange={(event) => setState(event.target.value)}>
-              {STATE_OPTIONS.map((value) => <option key={value || 'all'} value={value}>{value ? statusLabel(value) : 'All active'}</option>)}
+              {STATE_OPTIONS.map((value) => (
+                <option key={value || 'all'} value={value}>
+                  {value ? statusLabel(value) : 'All active'}
+                </option>
+              ))}
             </select>
           </label>
-          <p className="media-selection media-ltr-copy" lang="en" dir="ltr" aria-live="polite">{selected.size} selected</p>
+          <p className="media-selection media-ltr-copy" lang="en" dir="ltr" aria-live="polite">
+            {selected.size} selected
+          </p>
         </GlassCard>
 
         {selected.size ? (
           <section className="media-bulk-actions" aria-label="Selected media actions">
-            <GlassButton type="button" variant="secondary" onClick={() => prepareBulkTransition('archived')}>Review archive</GlassButton>
-            <GlassButton type="button" variant="secondary" onClick={exportSelected}>Export CSV</GlassButton>
-            {collections.length ? <>
-              <label className="media-collection-choice">
-                Collection
-                <select value={collectionId} onChange={(event) => setCollectionId(event.target.value)}>
-                  <option value="">Choose…</option>
-                  {collections.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
-                </select>
-              </label>
-              <button type="button" disabled={!collectionId} onClick={addSelectedToCollection}>Add to collection</button>
-            </> : null}
-            <button type="button" onClick={() => setSelected(new Set())}>Clear selection</button>
+            <GlassButton
+              type="button"
+              variant="secondary"
+              onClick={() => prepareBulkTransition('archived')}
+            >
+              Review archive
+            </GlassButton>
+            <GlassButton type="button" variant="secondary" onClick={exportSelected}>
+              Export CSV
+            </GlassButton>
+            {collections.length ? (
+              <>
+                <label className="media-collection-choice">
+                  Collection
+                  <select
+                    value={collectionId}
+                    onChange={(event) => setCollectionId(event.target.value)}
+                  >
+                    <option value="">Choose…</option>
+                    {collections.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button type="button" disabled={!collectionId} onClick={addSelectedToCollection}>
+                  Add to collection
+                </button>
+              </>
+            ) : null}
+            <button type="button" onClick={() => setSelected(new Set())}>
+              Clear selection
+            </button>
           </section>
         ) : null}
         {bulkReview ? (
-          <section className="media-bulk-review" role="region" aria-live="polite" aria-labelledby="bulk-review-heading">
+          <section
+            className="media-bulk-review"
+            role="region"
+            aria-live="polite"
+            aria-labelledby="bulk-review-heading"
+          >
             <h2 id="bulk-review-heading">Confirm bulk {statusLabel(bulkReview.target)}</h2>
-            <p>Review the exact server-reported consequences. Blocked or unavailable items will not change.</p>
-            <ul>{bulkReview.items.map(({ asset, consequence, available }) => (
-              <li key={asset.id}>
-                <strong>{asset.filename}</strong>: {!available ? 'preview unavailable'
-                  : consequence.allowed ? 'allowed' : 'blocked'}; {consequence?.blockingReferences?.length || 0} blocking references; {consequence?.activeHolds?.length || 0} active holds; {consequence?.objectCount ?? 0} objects affected.
-              </li>
-            ))}</ul>
-            <button type="button" onClick={confirmBulkTransition}>Confirm permitted items</button>
-            <button type="button" onClick={() => setBulkReview(null)}>Cancel bulk action</button>
+            <p>
+              Review the exact server-reported consequences. Blocked or unavailable items will not
+              change.
+            </p>
+            <ul>
+              {bulkReview.items.map(({ asset, consequence, available }) => (
+                <li key={asset.id}>
+                  <strong>{asset.filename}</strong>:{' '}
+                  {!available ? 'preview unavailable' : consequence.allowed ? 'allowed' : 'blocked'}
+                  ; {consequence?.blockingReferences?.length || 0} blocking references;{' '}
+                  {consequence?.activeHolds?.length || 0} active holds;{' '}
+                  {consequence?.objectCount ?? 0} objects affected.
+                </li>
+              ))}
+            </ul>
+            <button type="button" onClick={confirmBulkTransition}>
+              Confirm permitted items
+            </button>
+            <button type="button" onClick={() => setBulkReview(null)}>
+              Cancel bulk action
+            </button>
           </section>
         ) : null}
-        {actionStatus && !activeAsset ? <p className="media-action-status media-ltr-copy" lang="en" dir="ltr" role="status">{actionStatus}</p> : null}
+        {actionStatus && !activeAsset ? (
+          <p className="media-action-status media-ltr-copy" lang="en" dir="ltr" role="status">
+            {actionStatus}
+          </p>
+        ) : null}
 
         {uploadQueue.length ? (
           <section className="media-upload-queue" aria-labelledby="upload-heading">
             <h2 id="upload-heading">Upload queue</h2>
             {uploadQueue.map((item) => (
               <div key={item.id} className="media-upload-item">
-                <span>{item.name}</span><progress value={item.progress} max="100" aria-label={`${item.name} upload progress`} />
-                <span className="media-ltr-copy" lang="en" dir="ltr" aria-live="polite">{statusLabel(item.status)}</span>
+                <span>{item.name}</span>
+                <progress
+                  value={item.progress}
+                  max="100"
+                  aria-label={`${item.name} upload progress`}
+                />
+                <span className="media-ltr-copy" lang="en" dir="ltr" aria-live="polite">
+                  {statusLabel(item.status)}
+                </span>
                 {['failed', 'cancelled', 'paused_offline', 'expired'].includes(item.status) ? (
-                  <button type="button" disabled={!networkOnline} aria-label={`Restart upload of ${item.name}`} onClick={() => restartUpload(item)}>Restart</button>
+                  <button
+                    type="button"
+                    disabled={!networkOnline}
+                    aria-label={`Restart upload of ${item.name}`}
+                    onClick={() => restartUpload(item)}
+                  >
+                    Restart
+                  </button>
                 ) : null}
                 {['queued', 'checking', 'uploading'].includes(item.status) ? (
                   <button
                     type="button"
                     aria-label={`Cancel upload of ${item.name}`}
                     onClick={() => cancelUpload(item.id)}
-                  >Cancel</button>
+                  >
+                    Cancel
+                  </button>
                 ) : null}
               </div>
             ))}
           </section>
         ) : null}
 
-        {error ? <div className="media-notice media-error" role="alert">{error}</div> : null}
-        {loading ? <div className="media-notice" role="status">Loading media…</div> : null}
+        {error ? (
+          <div className="media-notice media-error" role="alert">
+            {error}
+          </div>
+        ) : null}
+        {loading ? (
+          <div className="media-notice" role="status">
+            Loading media…
+          </div>
+        ) : null}
         {!loading && !error && assets.length === 0 ? (
           <div className="media-empty media-ltr-copy" lang="en" dir="ltr">
             <strong>No matching media</strong>
-            <p>Try another filter or add an allowed file. Drag and drop is optional; the file chooser is always available.</p>
+            <p>
+              Try another filter or add an allowed file. Drag and drop is optional; the file chooser
+              is always available.
+            </p>
           </div>
         ) : null}
         {!loading && assets.length ? (
@@ -675,7 +863,11 @@ export default function MediaLibrary() {
                 />
               ))}
             </section>
-            {nextCursor ? <button type="button" onClick={loadMore}>Load more media</button> : null}
+            {nextCursor ? (
+              <button type="button" onClick={loadMore}>
+                Load more media
+              </button>
+            ) : null}
           </>
         ) : null}
         {activeAsset ? (
@@ -696,25 +888,43 @@ export default function MediaLibrary() {
                   <p className="media-eyebrow">Asset detail</p>
                   <h2 id="media-detail-title">{activeAsset.filename}</h2>
                 </div>
-                <button ref={closeButton} type="button" onClick={closeAsset}>Close</button>
+                <button ref={closeButton} type="button" onClick={closeAsset}>
+                  Close
+                </button>
               </header>
               {detailLoading ? <p role="status">Loading current asset details…</p> : null}
               <div className="media-detail-layout">
-                <div className="media-safe-preview" role="img" aria-label={`Safe preview placeholder for ${activeAsset.filename}`}>
+                <div
+                  className="media-safe-preview"
+                  role="img"
+                  aria-label={`Safe preview placeholder for ${activeAsset.filename}`}
+                >
                   {activeAsset.mediaType?.split('/')[0]?.toUpperCase() || 'FILE'}
                 </div>
                 <dl>
-                  <dt>Status</dt><dd>{statusLabel(activeAsset.status)}</dd>
-                  <dt>Type</dt><dd>{activeAsset.mediaType}</dd>
-                  <dt>Size</dt><dd>{activeAsset.byteSize} bytes</dd>
-                  <dt>Version</dt><dd>{activeAsset.version}</dd>
+                  <dt>Status</dt>
+                  <dd>{statusLabel(activeAsset.status)}</dd>
+                  <dt>Type</dt>
+                  <dd>{activeAsset.mediaType}</dd>
+                  <dt>Size</dt>
+                  <dd>{activeAsset.byteSize} bytes</dd>
+                  <dt>Version</dt>
+                  <dd>{activeAsset.version}</dd>
                 </dl>
               </div>
               <section aria-labelledby="usage-heading">
                 <h3 id="usage-heading">Usage and references</h3>
                 {references.length ? (
-                  <ul>{references.map((item) => <li key={item.id}>{item.ownerType} · {item.fieldKey} · {item.ownerState}</li>)}</ul>
-                ) : <p>No visible references.</p>}
+                  <ul>
+                    {references.map((item) => (
+                      <li key={item.id}>
+                        {item.ownerType} · {item.fieldKey} · {item.ownerState}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>No visible references.</p>
+                )}
               </section>
               <form className="media-metadata-editor" onSubmit={saveMetadata}>
                 <h3>Accessible metadata</h3>
@@ -724,9 +934,12 @@ export default function MediaLibrary() {
                     value={metadata.altText}
                     maxLength={500}
                     disabled={!detailReady || detailLoading || metadata.decorative}
-                    onChange={(event) => setMetadata((current) => ({
-                      ...current, altText: event.target.value,
-                    }))}
+                    onChange={(event) =>
+                      setMetadata((current) => ({
+                        ...current,
+                        altText: event.target.value,
+                      }))
+                    }
                   />
                 </label>
                 <label className="media-check-label">
@@ -734,10 +947,13 @@ export default function MediaLibrary() {
                     type="checkbox"
                     checked={metadata.decorative}
                     disabled={!detailReady || detailLoading}
-                    onChange={(event) => setMetadata((current) => ({
-                      ...current, decorative: event.target.checked,
-                      altText: event.target.checked ? '' : current.altText,
-                    }))}
+                    onChange={(event) =>
+                      setMetadata((current) => ({
+                        ...current,
+                        decorative: event.target.checked,
+                        altText: event.target.checked ? '' : current.altText,
+                      }))
+                    }
                   />
                   This image is decorative
                 </label>
@@ -747,69 +963,157 @@ export default function MediaLibrary() {
                     value={metadata.caption}
                     maxLength={2000}
                     disabled={!detailReady || detailLoading}
-                    onChange={(event) => setMetadata((current) => ({
-                      ...current, caption: event.target.value,
-                    }))}
+                    onChange={(event) =>
+                      setMetadata((current) => ({
+                        ...current,
+                        caption: event.target.value,
+                      }))
+                    }
                   />
                 </label>
-                <button type="submit" disabled={!detailReady || detailLoading}>Save new revision</button>
+                <button type="submit" disabled={!detailReady || detailLoading}>
+                  Save new revision
+                </button>
                 {metadataStatus ? <p role="status">{metadataStatus}</p> : null}
               </form>
               <section aria-labelledby="jobs-heading">
                 <h3 id="jobs-heading">Inspection and processing</h3>
-                {jobs.length ? <ul>{jobs.map((job) => (
-                  <li key={job.id}>
-                    {statusLabel(job.kind)} · {statusLabel(job.status)} · attempt {job.attempt} of {job.maximumAttempts}
-                    {['failed', 'retryable'].includes(job.status) && job.attempt < job.maximumAttempts ? (
-                      <button type="button" aria-label={`Retry ${statusLabel(job.kind)} job`} onClick={async () => {
-                        await mediaLibraryAPI.retryJob(job.id);
-                        setJobs((current) => current.map((item) => item.id === job.id
-                          ? { ...item, status: 'queued' } : item));
-                      }}>Retry</button>
-                    ) : null}
-                  </li>
-                ))}</ul> : <p>No active processing jobs.</p>}
+                {jobs.length ? (
+                  <ul>
+                    {jobs.map((job) => (
+                      <li key={job.id}>
+                        {statusLabel(job.kind)} · {statusLabel(job.status)} · attempt {job.attempt}{' '}
+                        of {job.maximumAttempts}
+                        {['failed', 'retryable'].includes(job.status) &&
+                        job.attempt < job.maximumAttempts ? (
+                          <button
+                            type="button"
+                            aria-label={`Retry ${statusLabel(job.kind)} job`}
+                            onClick={async () => {
+                              await mediaLibraryAPI.retryJob(job.id);
+                              setJobs((current) =>
+                                current.map((item) =>
+                                  item.id === job.id ? { ...item, status: 'queued' } : item
+                                )
+                              );
+                            }}
+                          >
+                            Retry
+                          </button>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>No active processing jobs.</p>
+                )}
               </section>
               <section aria-labelledby="consequence-heading">
-                <h3 ref={consequenceHeading} id="consequence-heading" tabIndex="-1">Archive and deletion safety</h3>
-                <button type="button" disabled={!detailReady || detailLoading} onClick={loadPreview}>Preview consequences</button>
-                {preview ? <div role="status">
-                  <p>{preview.allowed ? 'No blocking references or holds.' : 'Blocked by references or retention holds.'}</p>
-                  <p>{preview.blockingReferences?.length || 0} blocking references; {preview.activeHolds?.length || 0} active holds; {preview.objectCount ?? 0} objects affected.</p>
-                </div> : null}
+                <h3 ref={consequenceHeading} id="consequence-heading" tabIndex="-1">
+                  Archive and deletion safety
+                </h3>
+                <button
+                  type="button"
+                  disabled={!detailReady || detailLoading}
+                  onClick={loadPreview}
+                >
+                  Preview consequences
+                </button>
+                {preview ? (
+                  <div role="status">
+                    <p>
+                      {preview.allowed
+                        ? 'No blocking references or holds.'
+                        : 'Blocked by references or retention holds.'}
+                    </p>
+                    <p>
+                      {preview.blockingReferences?.length || 0} blocking references;{' '}
+                      {preview.activeHolds?.length || 0} active holds; {preview.objectCount ?? 0}{' '}
+                      objects affected.
+                    </p>
+                  </div>
+                ) : null}
                 <div className="media-detail-actions">
                   {activeAsset.status === 'archived' || activeAsset.status === 'soft_deleted' ? (
-                    <button type="button" disabled={!detailReady || detailLoading} onClick={() => prepareDetailTransition('ready')}>Prepare restore</button>
-                  ) : <button type="button" disabled={!detailReady || detailLoading} onClick={() => prepareDetailTransition('archived')}>Prepare archive</button>}
-                  <button type="button" disabled={!detailReady || detailLoading} onClick={() => prepareDetailTransition('soft_deleted')}>Prepare deletion</button>
-                </div>
-                {confirmationTarget ? <div
-                  ref={confirmationDialog}
-                  className="media-confirmation"
-                  role="alertdialog"
-                  aria-modal="true"
-                  aria-busy={detailTransitionPending}
-                  aria-label="Confirm media action"
-                  onKeyDown={(event) => {
-                    event.stopPropagation();
-                    trapDialogFocus(event, confirmationDialog.current, cancelDetailTransition);
-                  }}
-                >
-                  <p>Confirm {statusLabel(confirmationTarget)} for this exact asset and version. References and holds remain enforced by the server.</p>
-                  {detailTransitionError ? <p role="alert">{detailTransitionError}</p> : null}
-                  <button ref={confirmationButton} type="button" aria-disabled={detailTransitionPending} onClick={confirmDetailTransition}>
-                    {detailTransitionPending ? 'Applying action…' : 'Confirm action'}
+                    <button
+                      type="button"
+                      disabled={!detailReady || detailLoading}
+                      onClick={() => prepareDetailTransition('ready')}
+                    >
+                      Prepare restore
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={!detailReady || detailLoading}
+                      onClick={() => prepareDetailTransition('archived')}
+                    >
+                      Prepare archive
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    disabled={!detailReady || detailLoading}
+                    onClick={() => prepareDetailTransition('soft_deleted')}
+                  >
+                    Prepare deletion
                   </button>
-                  <button type="button" aria-disabled={detailTransitionPending} onClick={cancelDetailTransition}>Cancel</button>
-                </div> : null}
+                </div>
+                {confirmationTarget ? (
+                  <div
+                    ref={confirmationDialog}
+                    className="media-confirmation"
+                    role="alertdialog"
+                    aria-modal="true"
+                    aria-busy={detailTransitionPending}
+                    aria-label="Confirm media action"
+                    onKeyDown={(event) => {
+                      event.stopPropagation();
+                      trapDialogFocus(event, confirmationDialog.current, cancelDetailTransition);
+                    }}
+                  >
+                    <p>
+                      Confirm {statusLabel(confirmationTarget)} for this exact asset and version.
+                      References and holds remain enforced by the server.
+                    </p>
+                    {detailTransitionError ? <p role="alert">{detailTransitionError}</p> : null}
+                    <button
+                      ref={confirmationButton}
+                      type="button"
+                      aria-disabled={detailTransitionPending}
+                      onClick={confirmDetailTransition}
+                    >
+                      {detailTransitionPending ? 'Applying action…' : 'Confirm action'}
+                    </button>
+                    <button
+                      type="button"
+                      aria-disabled={detailTransitionPending}
+                      onClick={cancelDetailTransition}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : null}
               </section>
               <section aria-labelledby="history-heading">
                 <h3 id="history-heading">Metadata version history</h3>
-                {activeAsset.metadataHistory?.length ? <ol>{activeAsset.metadataHistory.map((item) => (
-                  <li key={`${item.revision}-${item.locale}`}>Revision {item.revision} · {item.locale} · {item.actorRef}</li>
-                ))}</ol> : <p>No prior metadata revisions.</p>}
+                {activeAsset.metadataHistory?.length ? (
+                  <ol>
+                    {activeAsset.metadataHistory.map((item) => (
+                      <li key={`${item.revision}-${item.locale}`}>
+                        Revision {item.revision} · {item.locale} · {item.actorRef}
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p>No prior metadata revisions.</p>
+                )}
               </section>
-              {actionStatus ? <p className="media-action-status media-ltr-copy" lang="en" dir="ltr" role="status">{actionStatus}</p> : null}
+              {actionStatus ? (
+                <p className="media-action-status media-ltr-copy" lang="en" dir="ltr" role="status">
+                  {actionStatus}
+                </p>
+              ) : null}
               {detailError ? <p role="alert">{detailError}</p> : null}
             </section>
           </div>
@@ -819,7 +1123,11 @@ export default function MediaLibrary() {
           limit={5}
           returnFocusRef={pickerOpener}
           onClose={() => setPickerOpen(false)}
-          onConfirm={(assetIds) => setPickerStatus(`${assetIds.length} existing media item${assetIds.length === 1 ? '' : 's'} chosen for reuse.`)}
+          onConfirm={(assetIds) =>
+            setPickerStatus(
+              `${assetIds.length} existing media item${assetIds.length === 1 ? '' : 's'} chosen for reuse.`
+            )
+          }
         />
       </div>
     </AppShell>

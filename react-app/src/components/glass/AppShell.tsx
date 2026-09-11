@@ -56,14 +56,17 @@ function SharedLayout({
     typeof item === 'string' ? { label: item, to: '/' } : item
   );
   useEffect(() => {
-    if (!header.current) return;
+    // Both nodes are mounted unconditionally before this effect. Capture them so
+    // an already queued observation is also safe during unmount cleanup.
+    const headerNode = header.current!;
+    const rootNode = root.current!;
     const observer = new ResizeObserver(() =>
-      root.current?.style.setProperty(
+      rootNode.style.setProperty(
         '--layout-header-height',
-        `${header.current?.getBoundingClientRect().height || 80}px`
+        `${headerNode.getBoundingClientRect().height || 80}px`
       )
     );
-    observer.observe(header.current);
+    observer.observe(headerNode);
     return () => observer.disconnect();
   }, []);
   useEffect(() => {
@@ -236,7 +239,7 @@ function SharedLayout({
           </>
         )}
       </div>
-      <div ref={footer}>
+      <div ref={footer} className="unified-layout-footer-frame">
         {footerSlot || (
           <footer className="unified-layout-footer">
             <span>{siteManifest.name}</span>

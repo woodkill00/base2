@@ -78,6 +78,35 @@ Attempts 3/5 exposed nested clipping; attempt 6 isolated the decorative overflow
 Diagnostic attempt 4 matched no tests and is not passing evidence. A retry never
 replaces an earlier failure. Final exact-source release evidence is still required.
 
+# Release-gate repair checkpoint — 2026-09-11
+
+The first complete gate on `0a6510e` failed, correctly preventing release:
+Operations and Media source-bound reviews were stale, and critical-glass coverage
+was below its strict floor. Its complete evidence is retained at
+`.artifacts/complete-gate/20260911T151208Z-2331907/`.
+
+Cycle 7 repairs add routed-mode, ResizeObserver, focus/resize, context event and
+fallback unit cases. All 314 frontend tests now pass; critical-glass lines,
+statements, functions and branches are each 100%. The existing coverage-policy
+check passes without floor changes. No claim of exhaustive unknown-defect coverage
+is implied.
+
+Operations and Media release matrices now explicitly enable the deployed layout.
+The Media matrix exposed and reproduced a real modal isolation bug: old selectors
+omitted the shared header/rails/footer. The new regression and browser assertions
+verify these are inert while the detail dialog is open and restored afterward.
+Privacy footer touch targets are now 44px, footer items vertically centered, and
+shared heading rules outrank page-local heading CSS. Legacy shell isolation stays
+supported. Source-bound reviews now also watch shared CSS, route policy, runtime
+and profile data.
+
+Actual desktop/mobile Operations, degraded-state, Media and RTL dialog captures
+were inspected. Intentional shared-shell baseline changes retain prior failure
+artifacts under `operations-red-109`, `media-red-109`, and `media-review-109`.
+`final-repair-layout` passed all 103 cases; `operations-verified-109` passed all
+22 applicable cases (20 explicitly out-of-matrix states skipped). Automated
+visual acceptance remains separate from the owner's final design review.
+
 # Release preparation checkpoint — 2026-09-11
 
 Implemented Home advanced controls and rich footer integration, visible focus on

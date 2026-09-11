@@ -1,5 +1,24 @@
 # Tasks → analysis → refinement
 
+## Cycle 7 — Complete-gate findings
+
+The exact-source gate at 0a6510e found stale Operations and Media visual review
+bindings after AppShell changed, plus the critical-glass coverage floor (100%
+lines/statements/functions and 99% branches). Changed-line coverage passed at
+94.95%; do not lower either floor. Refine T022/T024/T025: exercise routed shared
+mode, resize observer measurements, drawer events and all filtering branches;
+rerun and visually inspect the existing Operations/Media capture matrices before
+regenerating their source bindings. Keep original failed gate evidence. No live
+launch while these required checks fail; rerun focused checks before a new gate.
+
+Enabled-layout Media browser checks additionally found stale modal-isolation
+selectors and a 20px footer touch target. A failing unit regression covers shared
+header/rail/footer isolation; repair the selector and give footer links 44px targets.
+Update sticky-header assertions to the single shared header frame, not the removed
+duplicate bars. Increase shared heading-selector specificity to prevent lazy-loaded
+Media CSS from restoring oversized page titles; cover authorized routes too.
+Visual evidence bindings now include shared CSS, route policy, profile and runtime.
+
 ## Cycle 6 — Release integration and keyboard review
 
 Batch scope: T009/T011/T017/T019/T020/T023/T024. Restore Home controls and
