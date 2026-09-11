@@ -8,6 +8,13 @@ for (const width of [390, 1440]) {
     await page.goto('/signup');
     const notice = page.getByLabel('Preview restrictions');
     await expect(notice).toBeVisible();
+    await expect(page.locator('.unified-layout')).toBeVisible();
+    const skip = page.getByRole('link', { name: 'Skip to main content', exact: true });
+    await expect(skip).not.toBeInViewport();
+    await skip.focus();
+    await expect(skip).toBeInViewport();
+    await page.getByLabel('Email', { exact: true }).focus();
+    await expect(skip).not.toBeInViewport();
     await expect(notice).toContainText(
       'uploads, media processing, and content tools are unavailable'
     );
