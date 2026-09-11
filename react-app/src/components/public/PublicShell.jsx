@@ -6,7 +6,7 @@ import { layoutPreviewEnabled } from '../../config/layoutPolicy';
 
 const PublicShell = ({ title, children }) =>
   layoutPreviewEnabled ? (
-    <AppShell variant="public" headerTitle={title}>
+    <AppShell variant="public" headerTitle={title} footerSlot={<HomeFooter />}>
       <PageMetadata title={title} />
       <div className="public-page-content">{children}</div>
     </AppShell>

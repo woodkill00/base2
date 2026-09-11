@@ -1,5 +1,17 @@
 # Tasks → analysis → refinement
 
+## Cycle 6 — Release integration and keyboard review
+
+Batch scope: T009/T011/T017/T019/T020/T023/T024. Restore Home controls and
+rich footer through shared slots without the legacy delayed scroll snapping.
+Resolve legacy TypeScript declarations against actual runtime shims. Test drawer
+resize focus and closed-details keyboard exclusion in real browsers. Enable the
+shared layout explicitly in both Compose build paths, retaining a build-time
+rollback switch. Add source-bound evidence and required release checks; do not
+infer final owner visual acceptance from automation. Budget: one all-page sweep,
+one focused cross-browser diagnostic batch, fixes before affected reruns, then
+the complete gate only when prerequisites are met. No paid launch during repairs.
+
 ## Cycle 5 — All-page direction and route-family integration
 
 The owner explicitly directed completion across all pages after the prototype

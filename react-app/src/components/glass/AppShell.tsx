@@ -23,6 +23,7 @@ type Props = {
   sidebarLabel?: string;
   variant?: 'public' | 'app';
   footerLabel?: string;
+  footerSlot?: React.ReactNode;
   menuLabel?: string;
   headerIsPageHeading?: boolean;
   themeLabel?: string;
@@ -36,6 +37,7 @@ function SharedLayout({
   contextSlot,
   sidebarItems,
   footerLabel,
+  footerSlot,
   layoutRoute,
 }: Props) {
   layoutPolicyFor(layoutRoute!);
@@ -48,7 +50,7 @@ function SharedLayout({
   const root = useRef<HTMLDivElement>(null),
     trigger = useRef<HTMLElement | null>(null);
   const main = useRef<HTMLElement>(null),
-    footer = useRef<HTMLElement>(null);
+    footer = useRef<HTMLDivElement>(null);
   const id = useId();
   const items = (sidebarItems || primaryNavigation()).map((item) =>
     typeof item === 'string' ? { label: item, to: '/' } : item
@@ -67,6 +69,16 @@ function SharedLayout({
   useEffect(() => {
     setOpen(null);
   }, [location.pathname]);
+  useEffect(() => {
+    const reveal = () => {
+      if (window.matchMedia('(min-width: 1280px)').matches) return;
+      trigger.current =
+        root.current?.querySelector<HTMLElement>(`button[aria-controls="${id}-right"]`) || null;
+      setOpen('right');
+    };
+    window.addEventListener('base2:open-page-context', reveal);
+    return () => window.removeEventListener('base2:open-page-context', reveal);
+  }, [id]);
   useEffect(() => {
     const media = window.matchMedia('(min-width: 1280px)');
     const change = () => {
@@ -92,9 +104,17 @@ function SharedLayout({
       if (event.key !== 'Tab' || !panel) return;
       const nodes = Array.from(
         panel.querySelectorAll<HTMLElement>(
-          'a[href],button:not([disabled]),input,select,textarea,[tabindex="0"]'
+          'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex="0"]'
         )
-      );
+      ).filter((node) => {
+        const details = node.closest('details:not([open])');
+        const style = getComputedStyle(node);
+        return (
+          style.display !== 'none' &&
+          style.visibility !== 'hidden' &&
+          (!details || node === details.querySelector('summary'))
+        );
+      });
       const first = nodes[0],
         last = nodes[nodes.length - 1];
       if (event.shiftKey && document.activeElement === first) {
@@ -111,7 +131,13 @@ function SharedLayout({
       document.body.style.overflow = previousOverflow;
       backgroundNodes.forEach((node) => node?.removeAttribute('inert'));
       document.removeEventListener('keydown', keydown);
-      trigger.current?.focus({ preventScroll: true });
+      const desktop = window.matchMedia('(min-width: 1280px)').matches;
+      const destination = desktop
+        ? panel?.querySelector<HTMLElement>(
+            'a[href],button:not(.unified-rail-close):not([disabled])'
+          )
+        : trigger.current;
+      destination?.focus({ preventScroll: true });
     };
   }, [open]);
   const toggle = (side: 'left' | 'right', event: React.MouseEvent<HTMLButtonElement>) => {
@@ -125,7 +151,8 @@ function SharedLayout({
       className={`unified-layout-rail unified-layout-rail-${side}`}
       data-open={open === side}
       onClick={(event) => {
-        if (open === side && (event.target as HTMLElement).closest('a,button')) setOpen(null);
+        if (open === side && (event.target as HTMLElement).closest('a,[data-close-rail]'))
+          setOpen(null);
       }}
       role={open === side ? 'dialog' : undefined}
       aria-modal={open === side ? true : undefined}
@@ -209,11 +236,15 @@ function SharedLayout({
           </>
         )}
       </div>
-      <footer className="unified-layout-footer" ref={footer}>
-        <span>{siteManifest.name}</span>
-        <span>{footerLabel || 'Your private workspace'}</span>
-        <Link to="/privacy">Privacy</Link>
-      </footer>
+      <div ref={footer}>
+        {footerSlot || (
+          <footer className="unified-layout-footer">
+            <span>{siteManifest.name}</span>
+            <span>{footerLabel || 'Your private workspace'}</span>
+            <Link to="/privacy">Privacy</Link>
+          </footer>
+        )}
+      </div>
     </div>
   );
 }
@@ -230,6 +261,7 @@ function RoutedSharedLayout(props: Props) {
 }
 
 export const AppShell: React.FC<Props> = ({
+  footerSlot,
   layoutRoute,
   headerSlot,
   contextSlot,
@@ -253,6 +285,7 @@ export const AppShell: React.FC<Props> = ({
   if (layoutPreviewEnabled)
     return (
       <RoutedSharedLayout
+        footerSlot={footerSlot}
         layoutRoute={layoutRoute || layoutPatternForPath(location.pathname)}
         headerSlot={headerSlot}
         contextSlot={contextSlot}
@@ -266,6 +299,7 @@ export const AppShell: React.FC<Props> = ({
   if (layoutRoute)
     return (
       <SharedLayout
+        footerSlot={footerSlot}
         layoutRoute={layoutRoute}
         headerSlot={headerSlot}
         contextSlot={contextSlot}

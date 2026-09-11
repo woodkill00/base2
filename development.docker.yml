@@ -10,6 +10,7 @@ services:
         - REACT_APP_GOOGLE_CLIENT_ID=${REACT_APP_GOOGLE_CLIENT_ID}
         - SITE_PROFILE=${SITE_PROFILE:-base2-obsidian}
         - BASE2_PREVIEW_MODE=${BASE2_PREVIEW_MODE:-full}
+        - BASE2_SHARED_LAYOUT=${BASE2_SHARED_LAYOUT:-true}
     container_name: ${COMPOSE_PROJECT_NAME}_react-app
     environment:
       - NODE_ENV=production

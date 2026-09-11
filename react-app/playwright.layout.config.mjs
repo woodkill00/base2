@@ -20,10 +20,20 @@ export default defineConfig({
   testDir: './e2e/layout',
   workers: 1,
   retries: 0,
+  projects: [
+    { name: 'chromium', use: { browserName: 'chromium' } },
+    {
+      name: 'firefox',
+      testMatch: /interaction-contract\.spec\.ts/,
+      use: { browserName: 'firefox' },
+    },
+    { name: 'webkit', testMatch: /interaction-contract\.spec\.ts/, use: { browserName: 'webkit' } },
+  ],
   timeout: 30000,
   outputDir: `../.artifacts/layout-109/${attempt}`,
   reporter: [
     ['line'],
+    ['./e2e/layout/evidence-reporter.mjs'],
     [
       'html',
       {

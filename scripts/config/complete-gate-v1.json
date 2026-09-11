@@ -2,6 +2,48 @@
   "schemaVersion": 1,
   "checks": [
     {
+      "id": "feature-109-layout",
+      "command": [
+        "npm",
+        "--prefix",
+        "react-app",
+        "exec",
+        "--",
+        "playwright",
+        "test",
+        "--config=react-app/playwright.layout.config.mjs"
+      ],
+      "required": true,
+      "timeoutSeconds": 300,
+      "dependsOn": ["feature-108-experience"],
+      "requiredTools": ["node", "npm"]
+    },
+    {
+      "id": "feature-109-plan",
+      "command": ["python3", "specs/109-unified-layout-visual-contract/validate_plan.py"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": [],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "feature-109-deployment-contract",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "specs/109-unified-layout-visual-contract",
+        "-p",
+        "test_*.py"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": ["feature-109-plan"],
+      "requiredTools": ["python3"]
+    },
+    {
       "id": "feature-108-restricted-preview-visual",
       "command": [
         "npm",

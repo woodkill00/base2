@@ -77,3 +77,37 @@ Failure evidence remains in `.artifacts/layout-109/` and `/tmp/f109-*.log`.
 Attempts 3/5 exposed nested clipping; attempt 6 isolated the decorative overflow.
 Diagnostic attempt 4 matched no tests and is not passing evidence. A retry never
 replaces an earlier failure. Final exact-source release evidence is still required.
+
+# Release preparation checkpoint — 2026-09-11
+
+Implemented Home advanced controls and rich footer integration, visible focus on
+drawer-to-desktop resize, collapsed-details keyboard filtering, and responsive
+footer sizing (including Arabic at 200% CSS zoom). Existing delayed Home snapping
+does not run in shared-layout mode. Both supported Compose builds now propagate
+the layout switch, with a deployment regression test and documented rollback.
+
+Validation this batch:
+
+- `release-full-1`: 90/90 Chromium page and control cases passed.
+- `keyboard-red-1`: nine failures across three browsers reproduced focus/zoom bugs;
+  retained. `keyboard-fix-2`: 12/12 cross-browser cases passed after repairs.
+- `release-evidence-1`: 93/103 passed; early structural assertions exposed a fixture
+  readiness race. `release-evidence-2`: 102/103 passed after waiting for the shell;
+  remaining negative overflow fixture had zero height and did not create real
+  scroll overflow. `negative-fix-2`: corrected nonzero geometry mutation passes.
+- Full frontend suite: 308/308 tests, 72 files, coverage thresholds passed.
+  Overall line coverage 78.23%; AppShell 87.5%. Browser-only integration evidence
+  supplements, but does not numerically increase, unit coverage. New Home controls
+  unit test passed separately. Typecheck and frontend lint passed.
+- Plan/deployment validation: six tests passed; six analysis cycles recorded.
+
+Evidence directories: `.artifacts/layout-109/<attempt>/` and corresponding
+`<attempt>-report/`. New evidence reporter binds source, toolchain, rendering and
+attachments, and rejects source drift. Frontend CI and complete-gate manifest now
+include layout checks. No cloud resource was provisioned during this batch.
+
+Still open: final combined run after the fault-fixture correction, detailed
+changed-line coverage review, supported assurance selection verification, current
+exact-head repetition evidence, complete release gate, owner visual acceptance,
+merge, and bounded live verification. Task checkboxes retain full-acceptance scope;
+implemented code must not be mistaken for completed lifecycle acceptance.

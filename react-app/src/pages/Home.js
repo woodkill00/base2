@@ -6,6 +6,7 @@ import AppShell from '../components/glass/AppShell';
 import { layoutPreviewEnabled } from '../config/layoutPolicy';
 import HomeHero from '../components/home/HomeHero';
 import HomeObsidianNavigation from '../components/home/HomeObsidianNavigation';
+import HomeSharedControls from '../components/home/HomeSharedControls';
 import HomeObsidianOps from '../components/home/HomeObsidianOps';
 import HomeThermalSecurity from '../components/home/HomeThermalSecurity';
 import HomeFeatures from '../components/home/HomeFeatures';
@@ -125,15 +126,14 @@ const Home = ({ locale = siteManifest.defaultLocale }) => {
         <AppShell
           layoutRoute="/"
           headerTitle={copy.title}
+          footerSlot={<HomeFooter />}
           contextSlot={
             <>
-              <p>Explore this page</p>
-              {['home', 'features', 'command', 'security', 'contact'].map((section) => (
-                <button key={section} onClick={() => handleMenuItemClick(section)}>
-                  {section[0].toUpperCase() + section.slice(1)}
-                </button>
-              ))}
-              <button onClick={() => handleUtilityAction('share')}>Share this page</button>
+              <HomeSharedControls
+                onNavigate={handleMenuItemClick}
+                onUtilityAction={handleUtilityAction}
+                locale={locale}
+              />
               {shareStatus ? (
                 <p role="status" data-testid="home-share-status">
                   {shareStatus}

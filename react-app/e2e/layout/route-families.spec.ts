@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
+import { layoutViolations } from './layout-invariants';
 
 const routes = [
   '/about',
@@ -37,7 +38,9 @@ for (const width of [390, 1440])
         return route.continue();
       });
       await page.goto(path);
+      await expect(page.locator('.unified-layout')).toBeVisible();
       await page.evaluate(() => document.fonts.ready);
+      expect(await layoutViolations(page)).toEqual([]);
       await expect(page.locator('.unified-layout')).toHaveCount(1);
       await expect(page.getByRole('main')).toHaveCount(1);
       await expect(page.locator('main h1')).toHaveCount(1);

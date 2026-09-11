@@ -7,6 +7,55 @@
   display: flex;
   flex-direction: column;
 }
+.shared-home-controls button {
+  gap: 0.6rem;
+}
+.shared-home-controls button svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+}
+.shared-home-controls button[aria-pressed='true'] {
+  border: 1px solid var(--home-control-accent);
+}
+.shared-home-controls button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.shared-home-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-block: 1rem;
+}
+.shared-home-controls summary {
+  cursor: pointer;
+  padding-block: 1rem;
+}
+.shared-home-controls section {
+  padding-block: 0.75rem;
+}
+.unified-layout .base2-integrated-footer {
+  padding: clamp(1rem, 3vw, 3rem);
+  container-type: inline-size;
+  display: block;
+}
+.unified-layout .base2-footer-shell {
+  width: 100%;
+  max-width: 74rem;
+  min-width: 0;
+  margin-inline: auto;
+  max-height: none;
+  overflow: visible;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+}
+.unified-layout .base2-footer-shell > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.unified-layout .base2-footer-identity {
+  grid-column: auto;
+}
 .unified-layout-header-frame {
   position: sticky;
   inset-block-start: 0;
