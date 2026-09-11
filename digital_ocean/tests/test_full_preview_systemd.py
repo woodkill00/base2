@@ -61,7 +61,7 @@ def test_remote_renderer_runs_as_repository_module_on_a_fresh_host():
 
 def test_remote_bootstrap_applies_api_migrations_before_acceptance():
     script = (ROOT / "digital_ocean/scripts/bash/full-preview-remote.sh").read_text()
-    assert "python -m api.scripts.migrate" in script
+    assert "--entrypoint python api-migrate -m api.scripts.migrate" in script
     assert script.index('stage="api-migrations"') < script.index('stage="service-inventory"')
     assert script.index('stage="api-migrations"') < script.index('stage="receipt"')
 
@@ -112,7 +112,7 @@ def test_remote_bootstrap_accepts_only_the_successful_workspace_role_one_shot():
     assert "full-preview-stage:%s\\n" in script
     assert 'run --rm --no-deps workspace-db-role' not in script
     assert (
-        '"${compose[@]}" run --rm --no-deps api-migrate python -m api.scripts.migrate'
+        '"${compose[@]}" run --rm --no-deps --entrypoint python api-migrate -m api.scripts.migrate'
         in script
     )
     assert '-e DB_USER="$POSTGRES_USER"' not in script

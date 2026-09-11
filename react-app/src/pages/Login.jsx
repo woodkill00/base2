@@ -8,6 +8,7 @@ import AppShell from '../components/glass/AppShell';
 import GlassCard from '../components/glass/GlassCard';
 import GlassButton from '../components/glass/GlassButton';
 import GlassInput from '../components/glass/GlassInput';
+import { getGoogleClientId } from '../services/googleAuthConfig';
 
 const Login = ({ variant = 'public' }) => {
   const { loginWithEmail, completeMfaLogin, loginWithGoogle } = useAuth();
@@ -200,10 +201,14 @@ const Login = ({ variant = 'public' }) => {
               <GlassButton type="submit" disabled={loading} variant="primary">
                 {loading ? 'Signing in…' : 'Sign in'}
               </GlassButton>
-
-              <div style={styles.googleContainer}>
-                <GoogleLogin onSuccess={onGoogleSuccess} onError={onGoogleError} />
-              </div>
+              <Link to="/forgot-password" style={styles.link}>
+                Forgot password?
+              </Link>
+              {getGoogleClientId() ? (
+                <div style={styles.googleContainer}>
+                  <GoogleLogin locale="en" onSuccess={onGoogleSuccess} onError={onGoogleError} />
+                </div>
+              ) : null}
             </form>
           )}
 

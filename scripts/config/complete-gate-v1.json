@@ -2,6 +2,23 @@
   "schemaVersion": 1,
   "checks": [
     {
+      "id": "feature-108-experience",
+      "command": [
+        "npm",
+        "--prefix",
+        "react-app",
+        "exec",
+        "--",
+        "playwright",
+        "test",
+        "--config=react-app/playwright.experience.config.mjs"
+      ],
+      "required": true,
+      "timeoutSeconds": 180,
+      "dependsOn": ["visual-contract"],
+      "requiredTools": ["node", "npm"]
+    },
+    {
       "id": "feature-093-plan",
       "command": ["python3", "scripts/python/validate_feature_093.py"],
       "required": true,

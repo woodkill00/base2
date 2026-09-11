@@ -516,7 +516,7 @@ def _environment(home: Path, check_id: str | None = None) -> dict[str, str]:
         "XDG_CACHE_HOME": str(home / ".cache"),
         "XDG_CONFIG_HOME": str(home / ".config"),
     }
-    if check_id in {"visual-contract", "visual-full"}:
+    if check_id in {"visual-contract", "visual-full", "complete-gate"}:
         browser_path = _safe_playwright_path()
         if browser_path is None:
             raise AssuranceError("playwright_browser_path_unsafe")

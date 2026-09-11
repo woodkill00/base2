@@ -434,9 +434,12 @@ def test_playwright_path_is_explicit_only_when_safely_admitted(tmp_path, monkeyp
     environment = assurance._environment(isolated, "visual-contract")
     assert environment["HOME"] == str(isolated)
     assert environment["PLAYWRIGHT_BROWSERS_PATH"] == str(browsers)
+    assert assurance._environment(isolated, "complete-gate")["PLAYWRIGHT_BROWSERS_PATH"] == str(browsers)
     browsers.chmod(0o777)
     with pytest.raises(assurance.AssuranceError, match="playwright_browser_path_unsafe"):
         assurance._environment(isolated, "visual-contract")
+    with pytest.raises(assurance.AssuranceError, match="playwright_browser_path_unsafe"):
+        assurance._environment(isolated, "complete-gate")
 
 
 def test_repository_paths_reject_escape_controls_and_windows_separators():

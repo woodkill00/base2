@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from 'react';
+import { Fragment, Suspense, useEffect } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { MotionConfig } from 'motion/react';
@@ -11,12 +11,14 @@ import PublicRoutes from './routes/PublicRoutes.jsx';
 import './App.css';
 import { siteManifest } from './config/siteRuntime';
 import { resolveLocale } from './services/privacyRuntime';
+import { getGoogleClientId } from './services/googleAuthConfig';
 
 // Replace this with your actual Google Client ID
 // Get it from: https://console.cloud.google.com/apis/credentials
-const GOOGLE_CLIENT_ID = import.meta.env.REACT_APP_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID_HERE';
 
 function App() {
+  const clientId = getGoogleClientId();
+  const OAuthBoundary = clientId ? GoogleOAuthProvider : Fragment;
   useEffect(() => {
     const routeLocale = resolveLocale(window.location.pathname.split('/')[1], siteManifest);
     const activeLocale = routeLocale.supported ? routeLocale.locale : siteManifest.defaultLocale;
@@ -28,7 +30,7 @@ function App() {
   }, []);
 
   return (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+    <OAuthBoundary {...(clientId ? { clientId } : {})}>
       <AuthProvider>
         <ThemeProvider>
           <MotionConfig reducedMotion="user">
@@ -50,7 +52,7 @@ function App() {
           </MotionConfig>
         </ThemeProvider>
       </AuthProvider>
-    </GoogleOAuthProvider>
+    </OAuthBoundary>
   );
 }
 

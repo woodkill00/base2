@@ -16,7 +16,7 @@
       "django/site_profiles/ember-studio.json": "b6b57abe7c80247917a1cc0ccdf08f3cddb2efd503091b73fb9d0e58d4c7fcae",
       "django/site_profiles/index.json": "76a7b227838ba6f778a2ab8b5a9741c4454efe1c473b912b924a29b3da57acd8",
       "django/site_profiles/northstar-library.json": "286850ced5758a336b8c7a82e345f57baa9d4686b39d209311178b6eaa5351f5",
-      "scripts/config/complete-gate-v1.json": "53272342ac32ed3428f9ddf7205118341d7a1622426d59c8f393413c6309e150",
+      "scripts/config/complete-gate-v1.json": "e345fd38d71f72256da1214669a594ab9e60750055ca94349eaab986278376c5",
       "shared/config/archetypes-v1.json": "1c203b4f3e076adf87fed98698cec6473b7ac765dcbfb7b6ca4b67c090801ce3",
       "shared/config/assurance-orchestrator-v1.json": "ca8ad4a9e4283ace1b6826cbd9a5c81735a8fa4aa6a6338ca4fd4091a7c34aeb",
       "shared/config/content-workspace-presets.generated.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
@@ -120,7 +120,7 @@
       "django/catalog/urls.py": "ee319a920fbb34f3d78e8f85dc0b6893b829cfb0a3b2a096ce7be92fd6982491",
       "django/project/urls.py": "d42f4027cc1be8c8d4bd7470d39d1fac3af6904cec38ae523de6cc5cea7042f7",
       "django/users/urls.py": "e1c30bf7c17d01975286d91dac4f45f686118503200be85a54c86e143bae8c40",
-      "react-app/src/App.js": "8e75dbbdf228a2d65ad461b8f8d08640b0d6305c6907551018adf3ee980606d0",
+      "react-app/src/App.js": "5a579a7eaeae8f9c7a7b98b4bce7e2e7373704ffd1aa523c8efaf55bf996a661",
       "react-app/src/routes/LocalizedExperience.jsx": "1f05c0f33763578f68670454b9290bd4a5562964bb8ea48a890aa5f76d9873f1",
       "react-app/src/routes/PublicRoutes.jsx": "efa5600bf57913474584e5af5f2670bea2cf33b92a41131cabaa9052dbf45022"
     }

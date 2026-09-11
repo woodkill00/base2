@@ -32,8 +32,9 @@ describe('Pages migrated to glass/AppShell', () => {
     // Form should be inside a GlassCard
     const card = screen.getByTestId('glass-card');
     expect(card).toBeInTheDocument();
-    // GoogleLogin mock renders
-    expect(screen.getByTestId('google-login')).toBeInTheDocument();
+    // Do not advertise an unconfigured provider or load its third-party widget.
+    expect(screen.queryByTestId('google-login')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Forgot password?' })).toBeInTheDocument();
   });
 
   test('Signup renders within AppShell and uses Glass components', () => {
