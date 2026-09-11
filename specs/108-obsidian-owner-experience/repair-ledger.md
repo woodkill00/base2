@@ -1,5 +1,23 @@
 # Feature 108 repair checkpoint
 
+## Intermittent validation finding R16
+
+The `af44182` release run `20260911T025805Z-1709166` failed its PostgreSQL
+acceptance during Django migration rendering with `TypeError: 'ModelBase' object
+is not iterable` in Django's app registry. This is not yet attributed to hardware
+or proven fixed. The earlier focused run passed. One isolated diagnostic rerun
+also passed; preserve both outcomes rather than treating the retry as a fix.
+
+No deployment occurred from that failed gate. A premature push attempt started
+pre-push assurance; it was stopped before publication, including its remaining
+orchestrator process. Publication must be conditional on the authoritative
+overall pass and successful exit, not merely the presence of a result artifact.
+
+Allow one final exact-source release validation after recording this finding;
+if the migration failure recurs, stop rather than add retries or weaken the gate.
+Even a subsequent complete pass leaves this intermittent finding open for
+independent investigation. Live acceptance and owner review remain separate.
+
 Source: branch `108-obsidian-owner-experience`; last committed candidate
 `a1c8582bac7e181fe95e8434cc68699697faf1fe`, with subsequent uncommitted repair work.
 Focused results below do not constitute exact-final-source release acceptance.
