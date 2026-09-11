@@ -1,5 +1,21 @@
 # Implementation checkpoint — 2026-09-11
 
+## Current release status
+
+PR #68 merged into `main` at `d58dc910d026fc42dc148111c1d2ccd487204d99`.
+Its tree exactly matches tested candidate `2680b73532dc828b1643dd21558cc4eb6b5b3a06`.
+The complete gate passed at
+`.artifacts/complete-gate/20260911T155049Z-2404620/result.json`, including all 106
+layout cases. All hosted PR checks passed and the source was clean before merge.
+Current-source stability repetitions passed ten runs per registered suite.
+
+A 60-minute restricted preview of the merged commit is being launched through the
+supported entrypoint; owner live visual review and live acceptance are still
+pending. Media remains disabled, not passed. The follow-up live-test alignment
+is recorded in analysis cycle 8. Earlier progress sections below are historical;
+their remaining-work statements are superseded by this status where evidence is
+explicitly recorded. Lifecycle closeout and owner approval are not yet claimed.
+
 ## All-page integration update
 
 Following the owner's direction to complete all pages, the opt-in layout now
