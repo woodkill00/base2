@@ -19,6 +19,22 @@ No new DigitalOcean preview is running. Owner credentials remain private.
 
 ## Evidence and next batch
 
+### Release record reconciliation
+
+The gate on `fa8e688b1f3f0898d7e6a902d5eccbbcb392f117` completed with 109
+passing groups, one failed media review-source contract and four blocked dependent
+groups. Evidence: `.artifacts/complete-gate/20260911T013219Z-1584486/result.json`.
+The application's reviewed media captures had changed, but Feature 105's manual
+technical-review descriptor still referenced `df37eb9`. Its source binding is now
+updated to the actually reviewed `fa8e688` capture commit; no generated test result
+or pass receipt was edited. Owner product/design approval remains separate.
+
+The media review validator now includes shared shell, theme and CSS dependencies.
+Preflight passed Operations/media review validation, workspace/baseline contracts,
+visual-assurance contracts and media planning. No application code changed in this
+reconciliation. Future preflight must check all review descriptors as well as
+screenshots before the complete gate; checking only Operations metadata was a gap.
+
 ### Current repair round
 
 - R04: refreshed API and DigitalOcean coverage; preflight reports 98.66% for the
