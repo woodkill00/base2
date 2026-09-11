@@ -10,7 +10,7 @@ fail_stage() {
   exit "$code"
 }
 
-if [[ "$#" -ne 5 ]]; then
+if [[ "$#" -ne 5 && "$#" -ne 6 ]]; then
   echo "usage: full-preview-remote.sh <domain> <project> <commit> <archive-sha256> <owner-cidr>" >&2
   exit 2
 fi
@@ -20,6 +20,8 @@ project="$2"
 source_commit="$3"
 archive_sha256="$4"
 owner_cidr="$5"
+preview_mode="${6:-full}"
+[[ "$preview_mode" == full || "$preview_mode" == restricted ]] || fail_stage 2
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)"
 env_file="/run/base2-full-preview.env"
 operator_auth="/run/base2-operator.htpasswd"
@@ -93,6 +95,7 @@ stage="env-render"; printf 'full-preview-stage:%s\n' "$stage" >&2
     --pgadmin-password-file "$pgadmin_password" >/dev/null
 )
 chmod 600 "$env_file"
+printf 'BASE2_PREVIEW_MODE=%s\n' "$preview_mode" >>"$env_file"
 rm -f -- "$operator_auth" "$flower_auth" "$django_username" "$django_email" "$django_password" "$pgadmin_email" "$pgadmin_password"
 
 stage="media-inspector-attestation"; printf 'full-preview-stage:%s\n' "$stage" >&2
@@ -119,9 +122,13 @@ rm -f -- "$inspector_private_pem"
 stage="acme-bootstrap"; printf 'full-preview-stage:%s\n' "$stage" >&2
 "$repo_root/scripts/bash/bootstrap-acme.sh" --directory "$repo_root/letsencrypt" --uid 1000 --gid 1000
 compose=(docker compose --profile celery --profile media-scan --project-name "$project" --env-file "$env_file" -f "$compose_file")
+if [[ "$preview_mode" == restricted ]]; then
+  compose=(docker compose --profile celery --project-name "$project" --env-file "$env_file" -f "$compose_file")
+fi
 export COMPOSE_ENV_FILE="$env_file" COMPOSE_PARALLEL_LIMIT=2
 stage="compose-build"; printf 'full-preview-stage:%s\n' "$stage" >&2
 "${compose[@]}" build
+if [[ "$preview_mode" == full ]]; then
 inspector_image_ref="${project}-media-inspector"
 inspector_image_id="$(docker image inspect --format '{{.Id}}' "$inspector_image_ref")"
 [[ "$inspector_image_id" =~ ^sha256:[a-f0-9]{64}$ ]] || fail_stage 3
@@ -157,6 +164,7 @@ for attempt in $(seq 1 180); do
   sleep 2
 done
 unset clamav_id clamav_state clamav_health clamav_oom
+fi
 stage="migration-dependencies"; printf 'full-preview-stage:%s\n' "$stage" >&2
 "${compose[@]}" up -d --no-build postgres redis
 stage="database-role-bootstrap"; printf 'full-preview-stage:%s\n' "$stage" >&2
@@ -172,11 +180,13 @@ stage="preview-lifecycle-bootstrap"; printf 'full-preview-stage:%s\n' "$stage" >
 stage="compose-up"; printf 'full-preview-stage:%s\n' "$stage" >&2
 "${compose[@]}" up -d --no-build
 stage="media-inspector-identity"; printf 'full-preview-stage:%s\n' "$stage" >&2
+if [[ "$preview_mode" == full ]]; then
 inspector_container_id="$("${compose[@]}" ps -q media-inspector)"
 [[ -n "$inspector_container_id" ]] || fail_stage 3
 running_inspector_image="$(docker inspect --format '{{.Image}}' "$inspector_container_id")"
 [[ "$running_inspector_image" == "$inspector_image_id" ]] || fail_stage 3
 unset inspector_image_ref inspector_image_id inspector_build_identity inspector_container_id running_inspector_image
+fi
 stage="service-inventory"; printf 'full-preview-stage:%s\n' "$stage" >&2
 mapfile -t services < <("${compose[@]}" config --services)
 [[ "${#services[@]}" -gt 0 ]] || exit 3
@@ -235,11 +245,12 @@ docker exec "$traefik_id" sh -ec '
 '
 
 stage="receipt"; printf 'full-preview-stage:%s\n' "$stage" >&2
-python3 - "$source_commit" "$archive_sha256" "${#services[@]}" <<'PY'
+python3 - "$source_commit" "$archive_sha256" "${#services[@]}" "$preview_mode" <<'PY'
 import json, sys
 print(json.dumps({
     "ok": True, "sourceCommit": sys.argv[1], "sourceArchiveSha256": sys.argv[2],
     "servicesHealthy": int(sys.argv[3]), "certificateMode": "letsencrypt-staging-only",
     "mode": "full-preview", "secretValuesEmitted": 0,
+    "previewMode": sys.argv[4],
 }, sort_keys=True))
 PY

@@ -9,6 +9,7 @@ services:
         - REACT_APP_API_URL=https://${WEBSITE_DOMAIN:-localhost}/api
         - REACT_APP_GOOGLE_CLIENT_ID=${REACT_APP_GOOGLE_CLIENT_ID}
         - SITE_PROFILE=${SITE_PROFILE:-base2-obsidian}
+        - BASE2_PREVIEW_MODE=${BASE2_PREVIEW_MODE:-full}
     container_name: ${COMPOSE_PROJECT_NAME}_react-app
     environment:
       - NODE_ENV=production
@@ -48,6 +49,7 @@ services:
       - ENV=${ENV:-development}
       - SITE_PROFILE=${SITE_PROFILE:-base2-obsidian}
       - BASE2_PROCESS_ROLE=api
+      - BASE2_PREVIEW_MODE=${BASE2_PREVIEW_MODE:-full}
       - PORT=${FASTAPI_PORT}
       - DB_HOST=${DB_HOST:-postgres}
       - DB_PORT=${DB_PORT:-5432}
@@ -509,6 +511,7 @@ services:
       - ENV=${ENV:-development}
       - SITE_PROFILE=${SITE_PROFILE:-base2-obsidian}
       - BASE2_PROCESS_ROLE=runtime-worker
+      - BASE2_PREVIEW_MODE=${BASE2_PREVIEW_MODE:-full}
       - DB_HOST=${DB_HOST:-postgres}
       - DB_PORT=${DB_PORT:-5432}
       - DB_NAME=${POSTGRES_DB}
@@ -583,6 +586,7 @@ services:
       - BASE2_DEPLOYMENT_EPOCH=${BASE2_DEPLOYMENT_EPOCH:-development}
       - ENV=${ENV:-development}
       - BASE2_PROCESS_ROLE=content-worker
+      - BASE2_PREVIEW_MODE=${BASE2_PREVIEW_MODE:-full}
       - SITE_PROFILE=${SITE_PROFILE:-base2-obsidian}
       - DB_HOST=${DB_HOST:-postgres}
       - DB_PORT=${DB_PORT:-5432}
@@ -653,6 +657,7 @@ services:
       - BASE2_DEPLOYMENT_EPOCH=${BASE2_DEPLOYMENT_EPOCH:-development}
       - ENV=${ENV:-development}
       - BASE2_PROCESS_ROLE=data-rights-worker
+      - BASE2_PREVIEW_MODE=${BASE2_PREVIEW_MODE:-full}
       - SITE_PROFILE=${SITE_PROFILE:-base2-obsidian}
       - DB_HOST=${DB_HOST:-postgres}
       - DB_PORT=${DB_PORT:-5432}
@@ -706,6 +711,7 @@ services:
       - BASE2_DEPLOYMENT_EPOCH=${BASE2_DEPLOYMENT_EPOCH:-development}
       - ENV=${ENV:-development}
       - BASE2_PROCESS_ROLE=email-worker
+      - BASE2_PREVIEW_MODE=${BASE2_PREVIEW_MODE:-full}
       - SITE_PROFILE=${SITE_PROFILE:-base2-obsidian}
       - DB_HOST=${DB_HOST:-postgres}
       - DB_PORT=${DB_PORT:-5432}
@@ -763,6 +769,7 @@ services:
       - BASE2_DEPLOYMENT_EPOCH=${BASE2_DEPLOYMENT_EPOCH:-development}
       - ENV=${ENV:-development}
       - BASE2_PROCESS_ROLE=runtime-worker
+      - BASE2_PREVIEW_MODE=${BASE2_PREVIEW_MODE:-full}
       - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
       - DB_HOST=${DB_HOST:-postgres}
       - DB_PORT=${DB_PORT:-5432}

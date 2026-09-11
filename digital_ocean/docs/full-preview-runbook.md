@@ -63,6 +63,20 @@ runtime worker receives only its nonsecret probe catalog as a read-only mount.
 
 ## Live browser gate
 
+### Owner-approved restricted preview
+
+Pass `--preview-mode restricted` to the same `full_preview_live` module only
+after explicit owner approval. The default remains `full`. Restricted mode
+blocks the application media and content API families before body consumption,
+prevents media Celery work, and does not start ClamAV or the media inspector.
+It retains login, settings, privacy export, staging TLS, operator access controls,
+and the same bounded teardown. The frontend displays a restriction notice.
+This is not full media acceptance: record media functionality as **blocked**,
+verify direct upload rejection, and do not run the successful-upload acceptance
+as though the restricted preview could pass it. No antivirus freshness threshold
+or scanner decision is changed. Operator database/admin tools remain separately
+privileged and are not a way to import user media during this trial.
+
 Load credentials through private environment injection, never as CLI arguments:
 
 ```bash

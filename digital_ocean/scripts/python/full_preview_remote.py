@@ -61,7 +61,10 @@ class FullPreviewSshBootstrap:
                  django_username: Path, django_email: Path, django_password: Path,
                  pgadmin_email: Path, pgadmin_password: Path,
                  runner: Callable = subprocess.run, sleep=time.sleep, attempts: int = 60,
-                 application_owner: Path | None = None):
+                 application_owner: Path | None = None, preview_mode: str = 'full'):
+        if preview_mode not in {'full', 'restricted'}:
+            raise FullPreviewRemoteError('invalid preview mode')
+        self.preview_mode = preview_mode
         self.known_hosts = known_hosts
         self.owner_cidr = validate_owner_cidrs([owner_cidr])[0]
         self.operator_auth = operator_auth
@@ -146,6 +149,8 @@ class FullPreviewSshBootstrap:
             "exec bash /opt/base2-full-preview/digital_ocean/scripts/bash/full-preview-remote.sh "
             f"'{config.zone}' '{config.droplet_name}' '{config.source_commit}' '{config.archive_sha256}' '{self.owner_cidr}'"
         )
+        if self.preview_mode == 'restricted':
+            command += " 'restricted'"
         try:
             deployed = self._run(
                 ["ssh", *options, target, "bash", "-lc", command],
@@ -170,6 +175,8 @@ class FullPreviewSshBootstrap:
             raise FullPreviewRemoteError("bootstrap receipt is malformed") from exc
         if receipt.get("ok") is not True or receipt.get("mode") != "full-preview" or receipt.get("secretValuesEmitted") != 0:
             raise FullPreviewRemoteError("bootstrap receipt failed validation")
+        if self.preview_mode == 'restricted' and receipt.get('previewMode') != 'restricted':
+            raise FullPreviewRemoteError('restricted bootstrap receipt missing')
 
     def health(self, ip_address: str, fqdn: str) -> bool:
         address = str(ipaddress.IPv4Address(ip_address))

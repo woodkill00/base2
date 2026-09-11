@@ -7,6 +7,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import ToastProvider from './components/ToastProvider.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import PrivacyRuntime from './components/public/PrivacyRuntime.jsx';
+import RestrictedPreviewNotice from './components/RestrictedPreviewNotice.jsx';
 import PublicRoutes from './routes/PublicRoutes.jsx';
 import './App.css';
 import { siteManifest } from './config/siteRuntime';
@@ -36,6 +37,7 @@ function App() {
           <MotionConfig reducedMotion="user">
             <ToastProvider>
               <PrivacyRuntime />
+              <RestrictedPreviewNotice />
               <Router
                 future={{
                   v7_startTransition: true,

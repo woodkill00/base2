@@ -64,6 +64,39 @@ def application_inputs(tmp_path: Path) -> dict[str, Path]:
     }
 
 
+def test_restricted_profile_excludes_scanners_and_propagates_mode():
+    import yaml
+    root = Path(__file__).resolve().parents[2]
+    compose = yaml.safe_load((root / 'development.docker.yml').read_text())
+    for name in ('api', 'celery-worker', 'celery-content-worker', 'celery-data-rights-worker', 'celery-email-worker', 'celery-beat'):
+        assert 'BASE2_PREVIEW_MODE=${BASE2_PREVIEW_MODE:-full}' in compose['services'][name]['environment']
+    for name in ('clamav', 'media-inspector'):
+        assert compose['services'][name]['profiles'] == ['media-scan']
+    script = (root / 'digital_ocean/scripts/bash/full-preview-remote.sh').read_text()
+    assert 'preview_mode="${6:-full}"' in script
+    assert 'if [[ "$preview_mode" == restricted ]]; then' in script
+    assert 'compose=(docker compose --profile celery --project-name' in script
+    assert 'if [[ "$preview_mode" == full ]]; then\ninspector_image_ref=' in script
+
+
+def test_restricted_remote_requires_matching_receipt(tmp_path):
+    calls = []
+    def runner(argv, **kwargs):
+        calls.append(argv)
+        return SimpleNamespace(returncode=0, stderr='', stdout=json.dumps({
+            'ok': True, 'mode': 'full-preview', 'secretValuesEmitted': 0,
+        }))
+    remote = FullPreviewSshBootstrap(
+        known_hosts=tmp_path / 'known_hosts', owner_cidr='8.8.8.8/32',
+        operator_auth=private_file(tmp_path / 'operator', 'fixture'),
+        flower_auth=private_file(tmp_path / 'flower', 'fixture'),
+        **application_inputs(tmp_path), preview_mode='restricted', runner=runner,
+    )
+    with pytest.raises(FullPreviewRemoteError, match='restricted bootstrap receipt'):
+        remote.deploy('8.8.8.8', remote_config(tmp_path))
+    assert calls[-1][-1].endswith(" 'restricted'")
+
+
 def remote_config(tmp_path: Path) -> LivePreviewConfig:
     archive = private_file(tmp_path / "source.tar", "archive")
     key = private_file(tmp_path / "id_ed25519", "key")

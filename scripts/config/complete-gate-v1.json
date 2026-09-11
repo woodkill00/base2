@@ -2,6 +2,23 @@
   "schemaVersion": 1,
   "checks": [
     {
+      "id": "feature-108-restricted-preview-visual",
+      "command": [
+        "npm",
+        "--prefix",
+        "react-app",
+        "exec",
+        "--",
+        "playwright",
+        "test",
+        "--config=react-app/playwright.restricted.config.mjs"
+      ],
+      "required": true,
+      "timeoutSeconds": 180,
+      "dependsOn": ["feature-108-experience"],
+      "requiredTools": ["node", "npm"]
+    },
+    {
       "id": "feature-108-experience",
       "command": [
         "npm",

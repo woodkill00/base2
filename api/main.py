@@ -17,6 +17,7 @@ from api.metrics import metrics
 from api.redis_client import ping as redis_ping
 from api.settings import SITE_MANIFEST, Settings
 from api.startup import StartupRegistry, evaluate_readiness
+from api.security.restricted_preview import RestrictedPreviewMiddleware
 
 configure_logging(service='api')
 boot_logger = logging.getLogger('api.boot')
@@ -59,6 +60,7 @@ app = FastAPI(
     redoc_url=(_redoc_url if _docs_enabled else None),
     openapi_url=(_openapi_url if _docs_enabled else None),
 )
+app.add_middleware(RestrictedPreviewMiddleware)
 
 
 @app.get('/api', tags=['service'])
