@@ -104,7 +104,18 @@ Actual desktop/mobile Operations, degraded-state, Media and RTL dialog captures
 were inspected. Intentional shared-shell baseline changes retain prior failure
 artifacts under `operations-red-109`, `media-red-109`, and `media-review-109`.
 `final-repair-layout` passed all 103 cases; `operations-verified-109` passed all
-22 applicable cases (20 explicitly out-of-matrix states skipped). Automated
+22 applicable cases (20 explicitly out-of-matrix states skipped).
+`media-verified-109` passed all 24 applicable cases (12 explicitly out-of-matrix
+modal cases skipped), without snapshot updates. Media review is bound to tested
+source commit `4ca69d0452cc9d18407845f1efc55723f0470312` after final reflow checks.
+The 200%-text capture ceiling caught an actual narrow-card defect. The repaired
+text-aware 80rem container threshold reduced that Operations capture from 11106px
+to 4877px, retaining the existing 5000px ceiling. CSS and drawer logic now agree
+on actual available width and root text size. The final Operations/Media matrices
+passed 22/24 applicable cases, `container-final` passed 103 layout cases, and an
+additional Chromium scrolled-drawer check passed. Full frontend validation now
+passes 315 tests with 100% critical-glass coverage; coverage policy passes.
+Automated
 visual acceptance remains separate from the owner's final design review.
 
 # Release preparation checkpoint — 2026-09-11
