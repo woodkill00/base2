@@ -1,5 +1,22 @@
 # Reference recovery checkpoint — 2026-10-13
 
+## Latest validated composition checkpoint
+
+Candidate `72f3a1f` is committed locally, not published, merged or deployed.
+Final current-source results: 323 frontend tests passed; TypeScript and focused
+lint passed; 69 Chromium browser checks passed in 40.9 seconds, with stable source
+binding at `.artifacts/layout-109/volcano-final-composition-110/evidence.json`.
+All eight original Home images match without reference replacement. Changed
+executable lines are 78/78 covered (100%); critical glass/theme coverage is 100%
+for lines, statements, functions and branches. Other backend reports used by the
+coverage preflight are historical and do not constitute a fresh full release gate.
+
+Release is NOT complete. Operations/media success-state matrices and their shared
+source-bound review manifests, broader profile/browser acceptance, production
+activation, the full release gate and publication remain pending. The native Node
+crash recorded in VOL-07 remains an intermittent environment risk despite later
+passes. No cloud resources were created. Details below retain earlier rounds.
+
 Status: original-design route composition implemented in local preview; NOT release complete.
 Branch: `110-volcano-design-preservation`. V006 owner confirmation received 2026-10-13.
 

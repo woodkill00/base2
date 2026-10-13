@@ -60,6 +60,14 @@ trap/restoration and route-only scroll action. Added focused regressions exercis
 Tab/Shift+Tab, existing inert preservation, cleanup and scroll-without-navigation;
 all four route-adapter tests pass. Complete coverage recollection remains required.
 
+Final composition validation at 72f3a1f: 323 frontend tests and all 69 browser
+cases passed. Recollected changed-line coverage is 78/78 (100%); critical glass
+coverage is 100% in all metrics. VOL-05 and VOL-06 are fixed in this candidate.
+The original Home reference hashes are unchanged. VOL-01/02/04 are corrected in
+the preview composition, but remain unreleased. VOL-03 has an owner-approved
+reference guard and explicit repository preservation policy. VOL-07 remains open.
+Do not mark V008–V012 complete based on these synthetic/Chromium-only results.
+
 The expanded round passed 67 cases and failed the two zoom cases. Guest route
 guards and every unchanged Home capture passed. Full frontend suite passed all
 320 tests after correcting the helper's implicit status role. Coverage preflight
