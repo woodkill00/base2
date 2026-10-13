@@ -5,6 +5,67 @@ import HomeObsidianNavigation from '../../components/home/HomeObsidianNavigation
 import { primaryNavigation } from '../../config/layoutPolicy';
 
 describe('original Volcano route adapter', () => {
+  test('contains keyboard focus, preserves prior inert state and restores page scrolling', () => {
+    const result = render(
+      <>
+        <div className="volcano-header-frame">
+          <button>Before menu</button>
+        </div>
+        <main className="volcano-page-main">Page</main>
+        <footer className="volcano-footer-frame">Footer</footer>
+        <HomeObsidianNavigation
+          routes={[
+            { label: 'Home', to: '/' },
+            { label: 'Search', to: '/search' },
+          ]}
+          currentPath="/search"
+          onNavigate={vi.fn()}
+        />
+      </>
+    );
+    const header = result.container.querySelector('.volcano-header-frame');
+    const main = result.container.querySelector('main');
+    header.setAttribute('inert', '');
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+    const dialog = screen.getByRole('dialog');
+    const first = dialog.querySelector('button');
+    const last = screen.getByRole('menuitem', { name: 'Search' });
+    expect(main).toHaveAttribute('inert');
+    expect(document.body.style.overflow).toBe('hidden');
+    expect(first).toHaveFocus();
+    fireEvent.keyDown(document, { key: 'Shift' });
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+    expect(last).toHaveFocus();
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(first).toHaveFocus();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(main).not.toHaveAttribute('inert');
+    expect(header).toHaveAttribute('inert');
+    expect(document.body.style.overflow).not.toBe('hidden');
+  });
+
+  test('page movement scrolls without navigating to another route', () => {
+    Object.defineProperty(document.documentElement, 'scrollHeight', {
+      configurable: true,
+      value: 3000,
+    });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 900 });
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 500 });
+    const scroll = vi.spyOn(window, 'scrollBy').mockImplementation(() => {});
+    const navigate = vi.fn();
+    render(
+      <HomeObsidianNavigation
+        routes={[{ label: 'Home', to: '/' }]}
+        currentPath="/"
+        onNavigate={navigate}
+      />
+    );
+    fireEvent.click(screen.getByTestId('base2-scroll-descend'));
+    expect(scroll).toHaveBeenCalledWith({ top: 720, behavior: 'smooth' });
+    expect(navigate).not.toHaveBeenCalled();
+    scroll.mockRestore();
+  });
+
   test('guest command palette navigates without Home section scroll timers', () => {
     const navigate = vi.fn();
     const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});

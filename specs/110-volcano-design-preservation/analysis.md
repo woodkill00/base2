@@ -54,6 +54,12 @@ VOL-07 remains an unresolved intermittent environment issue; no second retry or
 claim of native stability. Committed changed-line coverage and complete release
 validation are separate pending checks.
 
+After committing the composition as b5aeb36, real changed-line coverage reported
+83.33% (65/78), below the unchanged 90% floor. Missing lines were the keyboard
+trap/restoration and route-only scroll action. Added focused regressions exercising
+Tab/Shift+Tab, existing inert preservation, cleanup and scroll-without-navigation;
+all four route-adapter tests pass. Complete coverage recollection remains required.
+
 The expanded round passed 67 cases and failed the two zoom cases. Guest route
 guards and every unchanged Home capture passed. Full frontend suite passed all
 320 tests after correcting the helper's implicit status role. Coverage preflight
