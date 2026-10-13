@@ -2,6 +2,30 @@
 
 ## Latest validated composition checkpoint
 
+### Release blocker — final round 2
+
+Exact candidate `a603bfd6cb0164e19f863378cb915eea1d6fec31` completed the full
+gate with **119 passed, 1 failed, 0 blocked** in 822 seconds. The only failed
+check is `frontend-production-audit`: 11 dependency findings (9 high, 2 moderate).
+Evidence: `.artifacts/complete-gate/20261013T175414Z-636889/result.json` and
+`frontend-production-audit.log`. This is NOT a release pass. The frontend attempt
+first exited without a terminal summary; its single policy-bounded retry passed
+all 323 tests. Both attempts remain retained in `frontend-test.log`; the underlying
+environment cause is not fixed.
+
+All local browser matrices and coverage gates passed. Original Home reference
+images remain unchanged. Changes are committed locally, but Feature 110 has not
+been pushed, merged or deployed. Read-only DigitalOcean inventory returned zero
+Base2 preview droplets and zero managed preview A/AAAA records. Discord is healthy.
+
+Registry/advisory verification found braces latest 3.0.3 with no published fix for
+GHSA-vfj7-8cjw-p6xm. Tailwind 3.4.19 depends on this build-tool chain; npm proposes
+a breaking Tailwind 4 migration. Axios has a same-major update available. Do not
+run audit fix --force, exclude development dependencies, waive the gate or change
+original screenshots to hide a migration regression. A broader dependency-hardening
+batch needs owner direction before proceeding. Preserve the current candidate as
+the design reference and rollback point.
+
 Release completion batch: Docker/Compose now select the approved Volcano layout.
 Operations 22, Media 24 and Workspace 24 applicable browser checks pass after
 closed-panel geometry, compact account wrapping and touch-target corrections.

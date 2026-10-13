@@ -70,6 +70,27 @@ Do not mark V008–V012 complete based on these synthetic/Chromium-only results.
 
 ## Release cycle 4 — shipping and proof alignment
 
+### Cycle 5 — dependency release blocker
+
+Round 2 completed all 120 checks on a603bfd: 119 passed, one audit failure.
+VOL-08/09 now pass in the full gate. VOL-10 is dependency/advisory drift since the
+older lockfile: 11 affected dependency entries, grouped into axios, brace expansion,
+braces/Tailwind build chain, PostCSS selector parser, source-map-js and undici.
+Evidence: `20261013T175414Z-636889/frontend-production-audit.log`.
+Registry verification: braces 3.0.3 is still latest; Tailwind 3 latest is 3.4.19;
+Axios latest is 1.20.0. Upstream reviewed advisory
+https://github.com/advisories/GHSA-vfj7-8cjw-p6xm lists no patched braces release.
+The audit proposes a breaking Tailwind 4 update, not an ordinary safe patch.
+
+Adjacent consumers include PostCSS compilation, generated site profiles, Storybook,
+coverage/source-map processing and test DOM networking. Proposed R07–R10 cover
+their compatibility, security and screenshot acceptance. No known planning gap
+remains for that proposed batch, but the broader migration requires owner direction.
+Do not weaken the all-dependency audit, replace approved screenshots, or label the
+candidate release-ready. Preserve exact candidate, private evidence and rollback.
+VOL-07 also recurred as incomplete frontend output; the permitted single retry
+passed, but the first exit remains a disclosed unresolved environment issue.
+
 VOL-08 focused checks pass on desktop/tablet/mobile (3/3); VOL-09 contract plus
 negative bounds pass (6/6). The first focused browser invocation used repo root
 instead of react-app and failed loading axe before any test; corrected working
