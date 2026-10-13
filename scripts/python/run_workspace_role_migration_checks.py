@@ -49,6 +49,12 @@ def main() -> None:
                 )
                 assert cursor.fetchone() == ((forward), False, False)
                 cursor.execute(
+                    "SELECT has_column_privilege(%s,'sitecontent_contentrecord','body','SELECT'),"
+                    "has_column_privilege(%s,'sitecontent_formsubmission','payload','INSERT')",
+                    (api_role, api_role),
+                )
+                assert cursor.fetchone() == (False, False), 'public_content_reverse_grants_leaked'
+                cursor.execute(
                     "SELECT rolsuper,rolcreatedb,rolcreaterole,rolbypassrls "
                     "FROM pg_roles WHERE rolname=%s",
                     (api_role,),

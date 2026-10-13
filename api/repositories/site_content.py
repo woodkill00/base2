@@ -31,8 +31,9 @@ class PostgresSiteContentRepository:
                 cur.execute(
                     """INSERT INTO sitecontent_contentrecord
                        (id,site_id,content_type,slug,title,excerpt,body,metadata,state,
-                        sitemap_include,search_visible,version,created_at,updated_at)
-                       VALUES (%s,%s,'community-post',%s,%s,'',%s,%s,'draft',FALSE,FALSE,1,%s,%s)""",
+                        sitemap_include,search_visible,version,schedule_timezone,schema_version,
+                        values,created_at,updated_at)
+                       VALUES (%s,%s,'community-post',%s,%s,'',%s,%s,'draft',FALSE,FALSE,1,'',1,'{}',%s,%s)""",
                     (str(record_id),site_id,slug,payload['title'],payload['body'],
                      json.dumps({'authorRef':author_ref,'moderationStatus':'pending',
                                  'abuseScore':payload['abuseScore']}),now,now),
@@ -83,7 +84,8 @@ class PostgresSiteContentRepository:
             cur.execute(
                 """SELECT id, original_name, media_type, byte_size, sha256, attribution, metadata, updated_at
                    FROM sitecontent_mediaasset
-                   WHERE site_id=%s AND id=%s AND status='validated'""",
+                   WHERE site_id=%s AND id=%s AND status IN ('validated','ready')
+                     AND visibility='public'""",
                 (site_id, str(asset_id)),
             )
             row = cur.fetchone()

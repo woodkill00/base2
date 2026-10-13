@@ -1,5 +1,38 @@
 # Reference recovery checkpoint — 2026-10-13
 
+## Current live checkpoint — supersedes historical pending statuses below
+
+PRs #70 and #71 merged; deployed main is
+`07f85cec30aa3f65d55bde5afc9bbe14b109f315`. PR #71 preserved reviewed ancestry.
+Final full gate `20261013T210403Z-908786` passed 120/120 checks; all 20 hosted
+PR checks and ten post-merge workflows passed. Original design images unchanged.
+
+Preview `base2-full-20261013-212358` is live at https://woodkilldev.com/ with
+staging TLS, lease expiry 2026-10-13T22:24:01Z and workstation teardown scheduled
+around 22:25Z. WSL must remain running for its teardown timer. Prior failed
+preview was deleted before this launch; no duplicate was retained.
+
+Saved owner login and runtime verification passed. Live browser round passed
+7/8 scenarios, including Django/pgAdmin secondary logins and media admission.
+The remaining scenario hit an ambiguous status locator, not a failed save.
+Two content-specific locators corrected it; the complete affected signup/settings/
+privacy journey passed in 24.7 seconds with a fresh bounded test fixture.
+Evidence: `/tmp/f110-live-{owner-login,browser,settings-r1,runtime}.log` and
+private preview `browser-f110-final` / `browser-f110-settings-r1` captures.
+Discord notification delivery was confirmed.
+
+NOT fully complete: actual screenshot review exposed public CMS pages returning
+503 despite passing shell-layout checks. Sanitized read-only diagnosis confirmed
+`InsufficientPrivilege` in the public-content repository using the restricted API
+role. See `/tmp/f110-live-content-diagnostic.log`. Secure backend repair scope
+has been requested from the owner; no broad database grants were added. Owner
+review and public-content functional acceptance remain open. Existing intermittent
+local native-test crashes remain disclosed, not proven permanently resolved.
+
+This round used three full release gates (pass, ancestry failure, corrected pass)
+and two preview attempts (first removed, second live). Test-only closeout changes
+are separate from the deployed product commit. No claim of unknown-defect absence.
+
 ## Latest validated composition checkpoint
 
 ### Hosted-security correction

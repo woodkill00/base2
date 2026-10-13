@@ -325,7 +325,7 @@ def db_schema_ready() -> bool:
                      EXISTS (
                        SELECT 1 FROM django_migrations
                         WHERE app='sitecontent'
-                          AND name='0033_api_schema_readiness'
+                          AND name='0034_public_content_runtime_scope'
                      ),
                      EXISTS (
                        SELECT 1 FROM django_migrations

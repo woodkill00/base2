@@ -17,6 +17,65 @@ error states, profiles, locales and coverage. No baseline updates merely for gre
 
 ## Issue ledger
 
+### Cycle 13 — PostgreSQL and live-negative evidence
+
+Reproduced missing table privileges with actual restricted credentials. The next
+round exposed an adjacent worker-only policy referencing private audit rows for API
+reads; scope that unchanged claim predicate explicitly to the data-rights worker,
+not by granting API audit access. First passing role round also corrected a test
+UUID/string comparison (the API normalizes receipt IDs through its UUID schema).
+After workstation restart, reran the final expanded PostgreSQL suite: public reads,
+private/draft/cross-tenant denial, direct SQL write denial, moderated community
+inserts, form replay/conflict, forbidden outbound adapter, pool tenant reset,
+workspace/data-rights acceptance and migration reverse checks all passed.
+
+Durable evidence: `.artifacts/feature110/public-content-postgres-restart.log`.
+Focused API tests: 42 pass; migration tests: eight pass. Repository and new migration
+each have 100% statement coverage; this is not universal defect assurance. Coverage
+JSON and logs are under `.artifacts/feature110/public-content-*`.
+Both stronger live route tests fail on the old deployment's 503s as expected,
+after collecting all route failures: `public-content-live-negative.log`.
+Disposable-runner errors now redact command arguments, which contained ephemeral
+test credentials; failed containers were removed and no live credential was used.
+No style or baseline changed. Full gate, hosted CI, merge and corrected live
+acceptance remain required. Existing preview expiry was restored after restart.
+
+### Cycle 12 — approved public-content repair refinement
+
+Owner approved secure backend repair. C01–C06 cover reads and adjacent writes.
+Use column-scoped grants, never the privileged workspace pool. Restrictive API-only
+SELECT policies must intersect existing permissive tenant policies, keeping drafts
+and private media invisible even to direct SQL. INSERT is limited to moderated
+community drafts, queued tenant-bound forms and disabled delivery outbox records;
+no UPDATE/DELETE or form payload reads. Preserve other roles' existing policies.
+New RLS tables need reversible baseline policy preservation and real forward/reverse
+checks. Tests must exercise the production repository under actual restricted
+credentials, not mocks or database-owner queries. Inspect required insert columns,
+idempotent receipt behavior, tenant reset and migration readiness. Unexpected 5xx
+must fail live acceptance even if page screenshots show the correct shell.
+
+### Cycle 11 — live proof and bounded follow-up
+
+VOL-19 (test defect, fixed): settings save succeeded but `getByRole('status')`
+matched both the retained navigation output and the success message. Filter the
+two assertions by their expected message; do not alter the approved navigation.
+Full affected live journey passed after correction (24.7 seconds). Original failed
+attempt remains in `/tmp/f110-live-browser.log`; corrected evidence is in
+`/tmp/f110-live-settings-r1.log`. Supported auto assurance selects the standard
+test-only scope, not another full product release gate.
+
+VOL-20 (functional blocker, awaiting scope decision): public CMS endpoints return
+503 from `InsufficientPrivilege`. The public repository uses the API role that
+migration 0032 intentionally restricted. A blanket grant or switching every method
+to the workspace pool is not an acceptable unreviewed repair: public reads, drafts,
+search, media and form writes have distinct permissions and tenant boundaries.
+Evidence: `/tmp/f110-live-content-diagnostic.log` and mobile About screenshot in
+the current preview's `browser-f110-final` directory. Before implementation, add
+least-privilege role/tenant/unpublished-content/write-denial regressions and real
+Postgres acceptance, plus live route readiness assertions that reject unexpected
+5xx while collecting independent failures. Shell-layout success is not content
+readiness. No database permission change made pending owner's scope decision.
+
 ### Cycle 10 — preserve reviewed ancestry after squash merge
 
 VOL-18: the f5537a8 complete gate passed 115 checks, failed the Media review

@@ -55,6 +55,13 @@ for (const width of [390, 1440]) {
       viewport: { width, height: 900 },
     });
     const page = await context.newPage();
+    const contentFailures: string[] = [];
+    page.on('response', (response) => {
+      const url = new URL(response.url());
+      if (/^\/api\/(content|search|media)(\/|$)/.test(url.pathname) && response.status() >= 500) {
+        contentFailures.push(`${response.status()} ${url.pathname}`);
+      }
+    });
     for (const path of [
       '/about',
       '/privacy',
@@ -87,6 +94,7 @@ for (const width of [390, 1440]) {
       });
     }
     await context.close();
+    expect([...new Set(contentFailures)], 'public content must work, not just its shell').toEqual([]);
   });
 }
 
@@ -419,7 +427,7 @@ test('authenticated settings platform works accessibly and responsively live', a
   await page.getByRole('combobox', { name: 'Theme' }).selectOption('dark');
   await page.getByRole('combobox', { name: 'Contrast' }).selectOption('high');
   await page.getByRole('button', { name: 'Save preferences' }).click();
-  await expect(page.getByRole('status')).toContainText('Preferences saved');
+  await expect(page.getByRole('status').filter({ hasText: 'Preferences saved' })).toBeVisible();
 
   await page.goto(`https://${domain}/settings/notifications`, { waitUntil: 'networkidle' });
   await expect(
@@ -428,7 +436,9 @@ test('authenticated settings platform works accessibly and responsively live', a
 
   await page.goto(`https://${domain}/settings/privacy`, { waitUntil: 'networkidle' });
   await page.getByRole('button', { name: 'Request data export' }).click();
-  await expect(page.getByRole('status')).toContainText('data export was queued securely');
+  await expect(
+    page.getByRole('status').filter({ hasText: 'data export was queued securely' })
+  ).toBeVisible();
   await expect
     .poll(
       async () => {

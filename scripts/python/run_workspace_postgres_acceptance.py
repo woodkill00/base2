@@ -16,7 +16,11 @@ NATIVE_FAILURES = {134, 139}
 
 
 def run(command, **kwargs):
-    return subprocess.run(command, check=True, **kwargs)
+    try:
+        return subprocess.run(command, check=True, **kwargs)
+    except subprocess.CalledProcessError as exc:
+        # Docker argv contains disposable credentials. Never echo them on failure.
+        raise subprocess.CalledProcessError(exc.returncode, ['postgres-acceptance-stage']) from None
 
 
 def run_idempotent_native_safe(command, **kwargs):
@@ -27,7 +31,7 @@ def run_idempotent_native_safe(command, **kwargs):
         if result.returncode == 0:
             return result
         if result.returncode not in NATIVE_FAILURES or attempt == MAX_NATIVE_ATTEMPTS:
-            raise subprocess.CalledProcessError(result.returncode, command)
+            raise subprocess.CalledProcessError(result.returncode, ['postgres-migration-stage'])
         print(
             f"Disposable migration recovered from native exit {result.returncode}; "
             f"retry {attempt + 1}/{MAX_NATIVE_ATTEMPTS}",

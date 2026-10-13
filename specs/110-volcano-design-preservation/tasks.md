@@ -77,6 +77,20 @@ native crash indefinitely. No provider launch before local acceptance. Owner's
 2026-10-13 request authorizes continuing to a live review; preserve the existing
 bounded lease/cost/teardown and staging-only certificate constraints.
 
+### Owner-approved public-content repair (2026-10-13)
+
+- [x] C01 Reproduce live 503 and map public read/form/community consumers and database boundaries.
+- [x] C02 Add real PostgreSQL regressions for public reads, unpublished/private/cross-tenant exclusion, denied writes, form replay and draft submission.
+- [x] C03 Add reversible column-scoped API grants with role-specific restrictive policies; preserve workspace/worker privileges and unrelated roles.
+- [x] C04 Repair required community insert fields and public-media visibility; reject unexpected live content API 5xx independently of shell rendering.
+- [ ] C05 Run targeted PostgreSQL forward/reverse and adjacent suites, coverage review, then required complete gate and hosted checks.
+- [ ] C06 Merge with history preserved, deploy exact validated source under a bounded lease, capture content success/empty states and notify owner.
+
+Scope approved by owner in chat. No schema redesign, broad API table grants,
+security bypass, style changes or preview lease extension. Budget: one disposable
+PostgreSQL diagnostic round, one corrected round per discovered root cause; full
+release gate only after focused acceptance. Existing preview expires unchanged.
+
 ### V007–V010 refinement: bounded all-page repair
 
 - [x] Reuse the original navigation with an optional permission-filtered route adapter; retain unchanged Home reference behavior.
