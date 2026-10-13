@@ -128,6 +128,7 @@ def test_community_post_uses_tenant_transaction_without_autocommit_switch():
             payload={'title': 'Hello', 'body': 'World', 'abuseScore': 0},
         )
     assert result['moderationStatus'] == 'pending'
+    assert 'schedule_timezone,schema_version' in connection.cursor_instance.executions[0][0]
     assert connection.commits == 1
     assert connection.autocommit is None
     assert connection.tenant_ids == ['site-a']
@@ -173,6 +174,8 @@ def test_repository_reads_are_tenant_bound_and_map_public_rows():
     with patch('api.repositories.site_content.db_conn', connection_context(media)):
         asset = repository.get_media(site_id='site-a', asset_id=content_id)
     assert asset['mediaType'] == 'image/png'
+    assert "visibility='public'" in media.cursor_instance.executions[0][0]
+    assert "status IN ('validated','ready')" in media.cursor_instance.executions[0][0]
     assert media.cursor_instance.executions[0][1] == ('site-a', str(content_id))
 
     no_media = FakeConnection([])

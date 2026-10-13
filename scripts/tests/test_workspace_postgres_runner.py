@@ -57,3 +57,13 @@ def test_only_disposable_migrations_use_native_retry():
     assert '"PYTHONMALLOC=malloc"' in full_migration_prefix
     assert 'run(role_check + ["api-reversed"])' in source
     assert 'run(media_check + ["forward"])' in source
+
+
+def test_stage_failure_redacts_disposable_credentials(monkeypatch):
+    def fail(command, **kwargs):
+        raise subprocess.CalledProcessError(1, command)
+    monkeypatch.setattr(runner.subprocess, 'run', fail)
+    with pytest.raises(subprocess.CalledProcessError) as captured:
+        runner.run(['docker', '-e', 'DB_PASSWORD=synthetic-secret'])
+    assert 'synthetic-secret' not in str(captured.value)
+    assert captured.value.returncode == 1

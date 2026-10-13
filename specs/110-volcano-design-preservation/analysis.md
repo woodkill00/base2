@@ -17,6 +17,43 @@ error states, profiles, locales and coverage. No baseline updates merely for gre
 
 ## Issue ledger
 
+### Cycle 13 — PostgreSQL and live-negative evidence
+
+Reproduced missing table privileges with actual restricted credentials. The next
+round exposed an adjacent worker-only policy referencing private audit rows for API
+reads; scope that unchanged claim predicate explicitly to the data-rights worker,
+not by granting API audit access. First passing role round also corrected a test
+UUID/string comparison (the API normalizes receipt IDs through its UUID schema).
+After workstation restart, reran the final expanded PostgreSQL suite: public reads,
+private/draft/cross-tenant denial, direct SQL write denial, moderated community
+inserts, form replay/conflict, forbidden outbound adapter, pool tenant reset,
+workspace/data-rights acceptance and migration reverse checks all passed.
+
+Durable evidence: `.artifacts/feature110/public-content-postgres-restart.log`.
+Focused API tests: 42 pass; migration tests: eight pass. Repository and new migration
+each have 100% statement coverage; this is not universal defect assurance. Coverage
+JSON and logs are under `.artifacts/feature110/public-content-*`.
+Both stronger live route tests fail on the old deployment's 503s as expected,
+after collecting all route failures: `public-content-live-negative.log`.
+Disposable-runner errors now redact command arguments, which contained ephemeral
+test credentials; failed containers were removed and no live credential was used.
+No style or baseline changed. Full gate, hosted CI, merge and corrected live
+acceptance remain required. Existing preview expiry was restored after restart.
+
+### Cycle 12 — approved public-content repair refinement
+
+Owner approved secure backend repair. C01–C06 cover reads and adjacent writes.
+Use column-scoped grants, never the privileged workspace pool. Restrictive API-only
+SELECT policies must intersect existing permissive tenant policies, keeping drafts
+and private media invisible even to direct SQL. INSERT is limited to moderated
+community drafts, queued tenant-bound forms and disabled delivery outbox records;
+no UPDATE/DELETE or form payload reads. Preserve other roles' existing policies.
+New RLS tables need reversible baseline policy preservation and real forward/reverse
+checks. Tests must exercise the production repository under actual restricted
+credentials, not mocks or database-owner queries. Inspect required insert columns,
+idempotent receipt behavior, tenant reset and migration readiness. Unexpected 5xx
+must fail live acceptance even if page screenshots show the correct shell.
+
 ### Cycle 11 — live proof and bounded follow-up
 
 VOL-19 (test defect, fixed): settings save succeeded but `getByRole('status')`
