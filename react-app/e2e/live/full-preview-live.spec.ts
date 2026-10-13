@@ -378,6 +378,9 @@ test('authenticated settings platform works accessibly and responsively live', a
   await page.getByLabel('Password').fill(applicationPassword);
   await page.getByRole('button', { name: 'Create account' }).click();
   await expect(page).toHaveURL(/\/dashboard$/, { timeout: 30_000 });
+  // History changes before React necessarily commits the destination. Its
+  // pathname-keyed navigation remounts, so don't click the departing signup menu.
+  await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
 
   await assertSharedLayout(page);
   await page.screenshot({ path: `${evidence}/layout-auth-dashboard.png`, fullPage: true });

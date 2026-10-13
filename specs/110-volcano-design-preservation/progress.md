@@ -1,5 +1,45 @@
 # Reference recovery checkpoint — 2026-10-13
 
+## Live review ready — 2026-10-14 Budapest
+
+Backend repair PR #72 merged with history preserved to
+`fda54744a2e1b8825cca00dab88e635984b3f998`; deployed tree matches validated candidate
+`d9d919c`. Complete gate `20261013T223417Z-46790` passed, as did all 20 PR checks
+and ten post-merge workflows. The preceding gate retained its failed exact-source
+repetition-receipt check; the supported runner regenerated it before revalidation.
+
+Old preview `base2-full-20261013-212358` was destroyed and provider inventory was
+verified empty before replacement `base2-full-20261013-225415` launched. The new
+preview is https://woodkilldev.com/, staging TLS only, expiry 2026-10-13T23:54:19Z
+(01:54 Budapest October 14), workstation teardown around 01:55. Keep WSL running;
+its transient teardown timer does not survive a workstation shutdown.
+
+Public content list/search return 200; unpublished About returns the intended 404
+and visible unpublished-content state, not the former 503. Mobile/desktop public
+route matrices, original-design interactions, operator admission, Django/pgAdmin
+logins, signup/settings/accessibility/privacy export, safe/hostile media admission,
+saved Woodkill login and runtime verification all have passing live evidence.
+
+Retain two live fixture failures: URL readiness was earlier than React's dashboard
+commit, so the harness could click the departing menu; require the actual dashboard
+heading before interaction. Revised media fixture setup previously provisioned the
+original account; corrected the workstation helper to honor the validated revision,
+with a pure hostile-input regression test, then the affected media test passed.
+Neither fix changes deployed product code or styling. This closeout branch only
+changes the live test readiness assertion and documentation.
+
+Evidence: `.artifacts/feature110/public-content-*`; private run directories
+`browser-f110-content-fixed`, `browser-f110-settings-ready-r1`, and
+`browser-f110-media-revision-fixed`. Inspected actual mobile About and desktop
+Appearance screenshots. Runtime confirms migrations, healthy checked services,
+preferences audit and completed privacy export. Earlier failed attempts remain
+retained; passing evidence is not proof against unknown defects.
+
+Implementation/live verification is ready for owner review. Final owner visual
+acceptance and expiry teardown remain separate; neither is claimed complete now.
+The original native-test instability remains a disclosed historical environment
+risk. The cause of the workstation restart has not been established.
+
 ## Current live checkpoint — supersedes historical pending statuses below
 
 PRs #70 and #71 merged; deployed main is

@@ -17,6 +17,31 @@ error states, profiles, locales and coverage. No baseline updates merely for gre
 
 ## Issue ledger
 
+### Cycle 14 — live readiness and fixture alignment
+
+VOL-21 (evidence prerequisite): first gate on d9d919c rejected the old exact-source
+repetition receipt. Generate through `feature_106_repetitions.py` before complete
+validation of a new commit; never patch/relabel the receipt. Corrected gate passed.
+
+VOL-22 (test readiness): signup updated browser history before React necessarily
+committed the pathname-keyed navigation. The shared-menu test could click the old
+signup menu and then observe the fresh closed dashboard menu. Require the Dashboard
+heading before interaction, not a fixed sleep/retry or product timing change.
+Corrected full live run passed that complete settings journey in 27.8 seconds.
+
+VOL-23 (operator fixture): running media with revised credentials exposed that the
+workstation principal helper ignored `BASE2_LIVE_FIXTURE_REVISION`. Access denial
+was correct. Helper now uses one validated identity for credentials and principal;
+its pure regression covers default/-r1/-r99 and hostile/out-of-range identities.
+Affected live media replay passed in 1.2 minutes after actual principal correction.
+No API permission expansion, auth bypass or product/image change was made.
+
+Acceptance: all live surfaces have passing evidence; owner login and runtime checks
+pass. Preserve original failures and separately identify test-only source from the
+deployed application commit. Supported standard assurance and hosted checks cover
+this test/docs closeout, without rebuilding an identical application or extending
+its lease. Owner review and expiry cleanup remain outstanding external checkpoints.
+
 ### Cycle 13 — PostgreSQL and live-negative evidence
 
 Reproduced missing table privileges with actual restricted credentials. The next
