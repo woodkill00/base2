@@ -30,6 +30,8 @@
 
 ### Live startup repair batch
 
+- [x] R22 Preserve the original reviewed-source ancestry after squash integration; verify unchanged source tree and passing review contract, and require history-preserving release merges.
+
 - [x] R18 Reproduce the scheduler probe timeout under the existing 0.25 CPU/128 MiB budget; preserve failing live evidence and exact-owned cleanup.
 - [x] R19 Extract the shared heartbeat reader into a lightweight dependency boundary; migrate every Compose consumer without changing freshness, epoch, resource or timeout policy.
 - [ ] R20 Test fresh/stale/future/wrong-epoch/malformed/unavailable evidence, import isolation and the constrained container; run focused adjacent tests before required release validation.

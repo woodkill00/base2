@@ -17,6 +17,19 @@ error states, profiles, locales and coverage. No baseline updates merely for gre
 
 ## Issue ledger
 
+### Cycle 10 — preserve reviewed ancestry after squash merge
+
+VOL-18: the f5537a8 complete gate passed 115 checks, failed the Media review
+ancestry contract and correctly blocked four dependent checks. PR #70's squash
+retained the exact source tree but not reviewed ancestor 662e34b. Evidence:
+`20261013T205050Z-881166/media-library-contract.log`. Integrated the original
+reviewed branch history through merge c4f3fbb, preserving the complete f5537a8
+tree (verified empty diff); retained current repair docs when resolving three
+add/add documentation markers. No review receipt or image changed. The review
+contract now passes. All remaining feature merges must preserve ancestry, now
+documented in AGENTS.md. Current complete validation is still required; no failed
+or blocked result is relabeled. The sole new code repair remains VOL-17.
+
 ### Cycle 9 — live cold-start health probe
 
 VOL-17 (live blocker): main 278b063 exactly matches the 120-check/20-hosted-check

@@ -81,3 +81,12 @@ Use this instruction for implementation, diagnosis and repair, within the user's
 This is an agent operating policy, not an installed scheduler or automatic enforcement.
 Changes to test orchestration, caching, failure aggregation or notifications still
 require their own scoped implementation and tests.
+
+### Preserve source-bound review history
+
+Before merging, inspect committed review manifests for ancestry requirements.
+When accepted evidence references commits on the feature branch, use a history-
+preserving merge commit, not squash or rebase. Verify those review commits remain
+ancestors of the merged source and that reviewed source/screenshot members are
+unchanged. Do not edit a pass receipt to compensate for lost history. If squash
+is required, perform a fresh supported review on retained history before release.
