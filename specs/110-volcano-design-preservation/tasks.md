@@ -26,6 +26,17 @@
 
 ### Hosted security repair batch
 
+### Approved inspector runtime repair (2026-10-13)
+
+- [x] R14 Inventory final-image findings, verify same-vendor runtime/builder digests and select patched compatible packages without exclusions.
+- [x] R15 Validate interpreter and wheel ABI compatibility, copied ClamAV/ffmpeg/privilege binaries, UID boundaries and recovery; preserve rollback to 667fb93.
+- [x] R16 Scan the actual final production image locally before another complete gate; retain raw severity and fix any reporting mismatch with regression coverage.
+- [ ] R17 Run focused security/container checks, then exact-source release and hosted gates; resume R05/R06 only when required checks pass.
+
+Budget: one registry/image discovery sweep, one built-image security and runtime
+round, batch related corrections before a repeat. No full release run while the
+image prerequisite fails. No visual, severity-floor or privilege changes.
+
 - [x] R11 Deduplicate hosted pip/SBOM failures across API, Django, media-inspector
       and DigitalOcean locks; apply reviewed same-major security releases.
 - [x] R12 Add regressions for JWT options reuse and lock consistency; validate

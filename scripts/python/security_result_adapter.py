@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -37,17 +38,40 @@ def sarif_counts(payload: dict, default_severity: str, forced_severity: str | No
     for run in payload["runs"]:
         if not isinstance(run, dict) or not isinstance(run.get("results", []), list):
             raise ValueError("invalid SARIF run")
+        rules = ((run.get("tool") or {}).get("driver") or {}).get("rules", [])
+        if not isinstance(rules, list) or any(not isinstance(rule, dict) for rule in rules):
+            raise ValueError("invalid SARIF rules")
+        rules_by_id = {rule["id"]: rule for rule in rules if "id" in rule}
         for result in run.get("results", []):
+            if not isinstance(result, dict):
+                raise ValueError("invalid SARIF result")
             if forced_severity:
                 add(counts, forced_severity)
                 continue
-            properties = result.get("properties") or {}
-            score = properties.get("security-severity")
-            if score is not None:
-                try:
-                    value = float(score)
-                except (TypeError, ValueError) as exc:
-                    raise ValueError("invalid SARIF security severity") from exc
+            rule = rules_by_id.get(result.get("ruleId"), {})
+            index = result.get("ruleIndex")
+            if index is not None:
+                if type(index) is not int or not 0 <= index < len(rules):
+                    raise ValueError("invalid SARIF rule index")
+                if rule and rule != rules[index]:
+                    raise ValueError("inconsistent SARIF rule reference")
+                rule = rules[index]
+            scores = []
+            for entry in (rule, result):
+                properties = entry.get("properties") or {}
+                if not isinstance(properties, dict):
+                    raise ValueError("invalid SARIF properties")
+                score = properties.get("security-severity")
+                if score is not None:
+                    try:
+                        value = float(score)
+                    except (TypeError, ValueError) as exc:
+                        raise ValueError("invalid SARIF security severity") from exc
+                    if isinstance(score, bool) or not math.isfinite(value) or not 0 <= value <= 10:
+                        raise ValueError("invalid SARIF security severity")
+                    scores.append(value)
+            if scores:
+                value = max(scores)
                 severity = "critical" if value >= 9 else "high" if value >= 7 else "moderate" if value >= 4 else "low"
             else:
                 severity = {"error": "high", "warning": "moderate", "note": "low", "none": "low"}.get(result.get("level"), default_severity)

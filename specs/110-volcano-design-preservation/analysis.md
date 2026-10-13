@@ -17,6 +17,47 @@ error states, profiles, locales and coverage. No baseline updates merely for gre
 
 ## Issue ledger
 
+### Cycle 8 — authorized final-image repair
+
+VOL-15 (release blocker): source 667fb93 passes all 120 local gate checks and
+19 hosted checks, but the final inspector image fails Grype. Preserved evidence:
+`.artifacts/feature110/hosted-sbom-r2`. Deduplicated roots include Python 3.14,
+OpenSSL, zlib, pip-wheel and glibc packages in the old pinned base. Repository
+dependency scanning passes. Refresh immutable same-vendor builder/runtime pins,
+checking the new Python ABI and all binary dependencies before release testing.
+
+VOL-16: the normalized SARIF summary reports no critical findings despite a raw
+critical Python finding. Raw scanner exit remains the release authority; inspect
+severity normalization and cover numeric critical scores without weakening gates.
+
+R14–R17 cover migration, networkless parser/supervisor boundaries, fresh spool,
+resource limits, recovery, exact production-image scan, hosted gates and rollback.
+No database/schema or UI change is involved. Owner's continuation explicitly
+approves this runtime repair. Deployment remains gated and bounded. The local
+image scan precedes expensive release reruns to avoid repeating CI-only discovery.
+
+Cycle 8 validation: registry-resolved amd64 builder ea666e12 and production
+3e56a297 both provide Python 3.15.0. The previous cffi 2.0.0 has no compatible
+binary wheel; cffi 2.1.1 and Pillow's cp315 wheel were downloaded in the target
+builder, hashed and installed with unchanged closed-set/binary-only constraints.
+Cryptography's abi3 and the pure-Python wheel hashes remain unchanged.
+
+Actual container acceptance passes PNG/PDF/OGG/MP4, malware rejection, UID 65534,
+no-new-privileges, inaccessible signing secrets/supervisor memory, signed spool
+and memory bounds (1,084,661,760 bytes peak under 1,610,612,736). Fresh-volume,
+terminal permissions, crowded-residue rejection and restart recovery pass.
+The production target excludes acceptance code. Grype 0.120.1 (official binary,
+verified release SHA-256) with a valid 2026-10-13 database finds zero production
+image vulnerabilities. Evidence: `.artifacts/feature110/runtime-repair/`.
+
+VOL-16 reproduced with 8 failing assertions, then repaired ruleId/ruleIndex score
+lookup, highest-severity retention and malformed numeric rejection. All 17 adapter
+tests pass; reprocessing the original 80 findings now reports 1 critical, 14 high,
+30 moderate and 35 low. The 41 isolation tests and 4 unchanged-reference contracts
+pass. No ignore, severity floor, resource limit, privilege or screenshot changed.
+Remaining: exact-source full and hosted gates, merge, bounded live verification,
+and owner acceptance. VOL-07's historical native fault remains disclosed.
+
 ### Cycle 7 — hosted dependency findings
 
 The expanded provider audit additionally found oauthlib 3.3.1 (PYSEC-2026-4114),

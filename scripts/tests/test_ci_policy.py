@@ -123,8 +123,8 @@ class CiPolicyTests(unittest.TestCase):
             "FROM --platform=linux/amd64 clamav/clamav@sha256:1fdfd24c6f0a0fb60788481487459a6d4eda8a9b448641594e04db8410d34422 AS clamav-definitions",
             dockerfile,
         )
-        self.assertIn("cgr.dev/chainguard/python@sha256:c23539f", dockerfile)
-        self.assertIn("cgr.dev/chainguard/python@sha256:1f37785", dockerfile)
+        self.assertIn("cgr.dev/chainguard/python@sha256:ea666e12d8d5c985262f44b280ae7398d43e70156061b5657c040db835acd984", dockerfile)
+        self.assertIn("cgr.dev/chainguard/python@sha256:3e56a2973d429d5bf28d8dd99f929ea6344b0bf054c432f09cf579f747ee3114", dockerfile)
         self.assertIn("mwader/static-ffmpeg@sha256:54e55b0c", dockerfile)
         self.assertIn("clamav-1.5.4.linux.x86_64.deb", dockerfile)
         self.assertIn(

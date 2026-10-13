@@ -1,5 +1,14 @@
 # Repair plan and budget
 
+Inspector security repair: update verified immutable Chainguard builder/runtime
+digests together. Check wheel availability for the selected interpreter before
+changing the lock; retain only-binary, no-deps and require-hashes installation.
+Validate copied native libraries and existing privilege separation in the actual
+production/acceptance image. Scan final production image at the existing high
+threshold before running the complete gate. Preserve raw findings as authority
+and regression-test severity normalization. Rollback is 667fb93 (not deployable
+until its known image vulnerabilities are resolved); no UI baselines change.
+
 Start: clean `622101dd67909769913b5e92adfdbaaed8314d92`; branch
 `110-volcano-design-preservation`, native WSL Base2 checkout.
 Retain PR #69 fixes. `origin/main` is `d58dc91`, rejected visual rollout PR #68.
