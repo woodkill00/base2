@@ -28,6 +28,13 @@
 
 ### Approved inspector runtime repair (2026-10-13)
 
+### Live startup repair batch
+
+- [x] R18 Reproduce the scheduler probe timeout under the existing 0.25 CPU/128 MiB budget; preserve failing live evidence and exact-owned cleanup.
+- [x] R19 Extract the shared heartbeat reader into a lightweight dependency boundary; migrate every Compose consumer without changing freshness, epoch, resource or timeout policy.
+- [ ] R20 Test fresh/stale/future/wrong-epoch/malformed/unavailable evidence, import isolation and the constrained container; run focused adjacent tests before required release validation.
+- [ ] R21 Merge only green repairs, then repeat one bounded preview after verifying the failed preview inventory is empty; verify login, all routes and vendor surfaces before notification.
+
 - [x] R14 Inventory final-image findings, verify same-vendor runtime/builder digests and select patched compatible packages without exclusions.
 - [x] R15 Validate interpreter and wheel ABI compatibility, copied ClamAV/ffmpeg/privilege binaries, UID boundaries and recovery; preserve rollback to 667fb93.
 - [x] R16 Scan the actual final production image locally before another complete gate; retain raw severity and fix any reporting mismatch with regression coverage.

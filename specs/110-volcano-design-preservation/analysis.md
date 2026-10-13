@@ -17,6 +17,37 @@ error states, profiles, locales and coverage. No baseline updates merely for gre
 
 ## Issue ledger
 
+### Cycle 9 — live cold-start health probe
+
+VOL-17 (live blocker): main 278b063 exactly matches the 120-check/20-hosted-check
+candidate; all 10 post-merge workflows pass. Live preview 20261013-202131 built
+and started successfully, but scheduler health repeatedly timed out at 10 seconds.
+A bounded read-only diagnostic took 23.46 seconds and returned healthy. Scheduled
+tasks execute successfully, memory is available and the scheduler is not OOM-killed.
+The probe imports operations_runtime, which pulls in database, repository, storage
+and application settings merely to read one Redis heartbeat under 0.25 CPU/128 MiB.
+pgAdmin also initially exceeded startup checks, then recovered without a restart.
+
+Evidence: `/tmp/f110-live-heartbeat-diagnostic.log`, `/tmp/f110-live-launch.log`.
+Stopped only the exact source-bound bootstrap; the launcher's error cleanup removed
+its droplet. Inventory confirms zero droplets/DNS records. No partial site was
+published. R18–R21 cover all 9 Compose consumers, shared function behavior,
+negative evidence, import dependency isolation and actual constrained execution.
+Keep the 10-second deadline, CPU/memory budgets and epoch/freshness rules unchanged.
+No UI or authentication changes. One corrected local/release round before another
+bounded preview; do not repeatedly launch while this prerequisite is unresolved.
+
+Repair checkpoint: all 32 focused heartbeat/operations cases pass; the new reader
+has 19/19 covered lines. Existing fresh/stale/future/wrong-epoch/malformed/Redis-
+unavailable behavior and 30–120 second bounds are preserved. Fresh-interpreter
+checks reject application/database imports. Constrained acceptance passed at
+2.308 seconds, then 3.807 seconds after final fixture cleanup, below the unchanged
+10-second deadline. This is not a direct same-host speedup comparison to the live
+23.46-second diagnostic. CI smoke reuses its existing API image for this acceptance
+under the same 0.25 CPU/128 MiB, read-only/networkless/no-new-privileges limits.
+No timeout/resource/security/design exception was introduced. Current-source full
+release/hosted evidence and corrected live verification remain required.
+
 ### Cycle 8 — authorized final-image repair
 
 VOL-15 (release blocker): source 667fb93 passes all 120 local gate checks and

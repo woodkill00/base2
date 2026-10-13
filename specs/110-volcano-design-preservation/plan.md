@@ -1,5 +1,12 @@
 # Repair plan and budget
 
+Live health repair: extract the existing Redis heartbeat reader, unchanged, into
+an application-independent module and re-export it for current operations callers.
+Point all development/local Compose heartbeat probes at that module. Keep the
+existing resource budgets, deadlines and freshness/epoch rules. Test heavy imports
+are absent in a fresh interpreter; reuse the CI smoke image for a networkless,
+read-only 0.25 CPU/128 MiB cold-import acceptance instead of another build.
+
 Inspector security repair: update verified immutable Chainguard builder/runtime
 digests together. Check wheel availability for the selected interpreter before
 changing the lock; retain only-binary, no-deps and require-hashes installation.

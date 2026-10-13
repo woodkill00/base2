@@ -19,6 +19,7 @@ from urllib.request import Request, urlopen
 from uuid import UUID, uuid4
 
 from api import redis_client
+from api.services.runtime_heartbeat import _runtime_heartbeat
 from api.db import db_ping, db_schema_ready, pool_snapshot
 from api.repositories import operations
 from api.services.operations_center import (
@@ -287,26 +288,6 @@ def mark_queue_observation(*, published_at: datetime, now: datetime | None = Non
     delay_ms = max(0, int((current - published_at).total_seconds() * 1000))
     payload = json.dumps({'observedAt': current.isoformat(), 'delayMs': delay_ms})
     redis_client.get_client().set(redis_client.key('operations', 'queue-delay'), payload, ex=180)
-
-
-def _runtime_heartbeat(name: str, timeout: int) -> tuple[str, str, int]:
-    try:
-        raw = redis_client.get_client().get(redis_client.key('operations', name))
-        if isinstance(raw, bytes):
-            raw = raw.decode('utf-8')
-        value = json.loads(str(raw))
-        observed = datetime.fromisoformat(str(value['observedAt']))
-        age = (datetime.now(timezone.utc) - observed).total_seconds()
-        max_age = max(30, min(int(timeout), 120))
-        expected_epoch = os.environ.get('BASE2_DEPLOYMENT_EPOCH', 'development')
-        ok = 0 <= age <= max_age and value.get('deploymentEpoch') == expected_epoch
-    except Exception:
-        ok = False
-    return (
-        'healthy' if ok else 'degraded',
-        f'{name}.ready' if ok else f'{name}.stale',
-        0,
-    )
 
 
 def _queue_health(timeout: int) -> tuple[str, str, int]:
