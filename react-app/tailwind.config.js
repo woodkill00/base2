@@ -46,6 +46,37 @@ module.exports = {
         },
       };
       addUtilities(newUtilities, ['responsive', 'hover', 'focus']);
+
+      // Preserve the approved v3 sibling-margin semantics. v4's default
+      // last-child/bottom-margin implementation collapses differently around
+      // existing cards. Static utilities take precedence over the built-in
+      // functional utility; no component or screenshot changes are needed.
+      const legacySpacing = {};
+      for (let step = 0; step <= 96; step += 1) {
+        const name = String(step);
+        const value = `${step / 4}rem`;
+        legacySpacing[`.space-y-${name}`] = {
+          '& > :not([hidden]) ~ :not([hidden])': {
+            '--tw-space-y-reverse': '0',
+            marginTop: `calc(${value} * calc(1 - var(--tw-space-y-reverse)))`,
+            marginBottom: `calc(${value} * var(--tw-space-y-reverse))`,
+          },
+        };
+        legacySpacing[`.space-x-${name}`] = {
+          '& > :not([hidden]) ~ :not([hidden])': {
+            '--tw-space-x-reverse': '0',
+            marginRight: `calc(${value} * var(--tw-space-x-reverse))`,
+            marginLeft: `calc(${value} * calc(1 - var(--tw-space-x-reverse)))`,
+          },
+        };
+      }
+      legacySpacing['.space-y-reverse'] = {
+        '& > :not([hidden]) ~ :not([hidden])': { '--tw-space-y-reverse': '1' },
+      };
+      legacySpacing['.space-x-reverse'] = {
+        '& > :not([hidden]) ~ :not([hidden])': { '--tw-space-x-reverse': '1' },
+      };
+      addUtilities(legacySpacing);
     },
   ],
 };

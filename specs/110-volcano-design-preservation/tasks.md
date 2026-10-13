@@ -22,16 +22,20 @@
 - [ ] R05 Publish the validated candidate, reconcile PR #69, and merge only green reviewed changes.
 - [ ] R06 Launch one bounded staging-TLS preview through the supported operator entrypoint, verify owner login and application/vendor surfaces, notify the owner with the verified URL and expiry.
 
-### Proposed dependency-hardening expansion — awaiting owner direction
+### Approved dependency-hardening expansion
 
-- [ ] R07 Inventory and deduplicate the audit findings, distinguish browser-runtime and build/test exposure, verify upstream fixes and pin reviewed updates.
-- [ ] R08 Replace or migrate the vulnerable CSS build dependency chain without altering the approved Volcano design; no forced update or audit exclusion.
-- [ ] R09 Recheck every affected profile, browser matrix, original-reference screenshot, build, accessibility state and dependency audit; retain rollback and first-failure evidence.
+Owner approved R07–R10 on 2026-10-13, including a design-preserving Tailwind
+migration if necessary. Start from clean ba858c7; one dependency diagnostic sweep,
+one unchanged-reference comparison before wider matrices, then focused repairs.
+
+- [x] R07 Inventory and deduplicate the audit findings, distinguish browser-runtime and build/test exposure, verify upstream fixes and pin reviewed updates.
+- [x] R08 Replace or migrate the vulnerable CSS build dependency chain without altering the approved Volcano design; no forced update or audit exclusion.
+- [x] R09 Recheck every affected profile, browser matrix, original-reference screenshot, build, accessibility state and dependency audit; retain rollback and first-failure evidence.
 - [ ] R10 Review dependency/task gaps, collect current coverage and exact-source stability evidence, then resume R04–R06 only after the full gate passes.
 
-R04 is blocked by the production-audit check (119/120 passed on a603bfd).
-R07–R10 are a proposed wider build-tool repair, not permission to perform a
-breaking Tailwind migration. No paid resource should be provisioned while blocked.
+R04's earlier audit blocker (119/120 passed on a603bfd) is repaired in the
+approved migration: zero current audit findings and unchanged visual baselines.
+Current clean-source release validation remains required before provisioning.
 
 Budget: one diagnostic sweep per release matrix, batch related repairs before a
 corrected run; one full gate only after prerequisites are ready. Never retry a

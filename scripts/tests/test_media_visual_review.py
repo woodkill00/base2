@@ -37,6 +37,10 @@ def test_media_visual_review_is_schema_valid_exact_and_source_bound():
         check=True,
     )
     reviewed_surfaces = [
+        "react-app/package-lock.json",
+        "react-app/postcss.config.js",
+        "react-app/tailwind.config.js",
+        "react-app/src/index.css",
         "react-app/src/pages/MediaLibrary.jsx",
         "react-app/src/components/media/MediaPicker.jsx",
         "react-app/src/styles/media-library.css",

@@ -17,6 +17,27 @@ error states, profiles, locales and coverage. No baseline updates merely for gre
 
 ## Issue ledger
 
+### Migration verification checkpoint
+
+VOL-13: Tailwind v4 resets `::file-selector-button`, changing the existing
+Workspace imports control height by 1px in Chromium and 3px in mobile WebKit.
+Retained first failure in `/tmp/f110-migration-workspace.log` (21 passed, 3 failed).
+Restore the native v3 control with `all: revert`, inherited font and button
+appearance; no snapshot replacement. Focused compact/zoom/WebKit reproduction
+passed 6 cases in `/tmp/f110-file-button-repair.log`.
+
+Final shared-source sweep: Operations 22 applicable passed/20 intentional skips,
+Media 24 passed/12 intentional skips, Workspace 24 passed, Volcano 69 passed,
+Ember compatibility 15 passed and Northstar settings 10 passed. Logs are
+`/tmp/f110-final-{operations,media-release,workspace-release,volcano,compatibility,settings-release}.log`.
+All existing PNGs are unchanged. Current route captures are retained in
+`.artifacts/layout-109/run-1791916009357`; desktop Journal error-state composition
+and compact Workspace import geometry were inspected. TypeScript passes, lint
+has zero errors and 24 existing warnings, and the all-dependency audit reports
+zero vulnerabilities. These checks do not replace coverage or the full release
+gate. A shell-loop invocation lost its variables at the launcher boundary before
+tests loaded; corrected explicit WSL commands above ran all named suites.
+
 ## Cycle 3 — Owner-approved extension (2026-10-13)
 
 Owner confirmed the exact recovered design and instructed future work to build on
@@ -69,6 +90,32 @@ reference guard and explicit repository preservation policy. VOL-07 remains open
 Do not mark V008–V012 complete based on these synthetic/Chromium-only results.
 
 ## Release cycle 4 — shipping and proof alignment
+
+### Cycle 6 — approved dependency migration
+
+VOL-11: v4 sibling spacing moved margins to previous children, shifting Operations
+sections. Restore existing integer spacing utilities through the config plugin;
+unit checks cover spacing direction, reversal and unchanged glass styles. The
+initial fractional static-selector prototype was rejected by v4 before build;
+no fractional legacy class is present, so compatibility covers existing integer
+utilities only. VOL-12: unitless text leading accumulated one-pixel mobile drift
+under fluid root sizes; preserve v3 rem leading. Corrected compact/desktop matrix
+passes 6/6 without changing snapshots (`/tmp/f110-leading-repair.log`). Other
+independent matrices still require validation; no release claim is made.
+
+Owner approved the broader repair. One registry/audit sweep confirmed braces is
+present only through Tailwind 3; same-major updates cover the other findings.
+Pinned Axios 1.20.0 and Tailwind/PostCSS 4.3.3, updated affected transitive packages
+with lifecycle scripts disabled. All-dependency npm audit now reports zero.
+The expected red build proved the old PostCSS plugin is incompatible with v4.
+The dedicated plugin plus retained JavaScript config, unlayered utilities and
+explicit v3 border/placeholder/cursor compatibility pass the original two-viewport
+comparison (all eight frozen PNGs, no replacements). Compiler/lockfile sources now
+join Operations/Media evidence bindings. Broader profile and state checks remain.
+Budget: one no-update shared-matrix sweep, batch any compatibility regressions,
+then current coverage and full gate. No snapshot updates are authorized by this
+dependency migration. Evidence: `/tmp/f110-audit-after.log`,
+`/tmp/f110-tailwind-red.log`, `/tmp/f110-tailwind-reference.log`.
 
 ### Cycle 5 — dependency release blocker
 

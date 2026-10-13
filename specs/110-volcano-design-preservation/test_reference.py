@@ -9,6 +9,19 @@ ROOT = HERE.parents[1]
 
 
 class ReferenceContract(unittest.TestCase):
+    def test_hardened_css_compiler_and_compatibility_are_selected(self):
+        package = json.loads((ROOT / 'react-app/package.json').read_text())
+        lock = json.loads((ROOT / 'react-app/package-lock.json').read_text())
+        self.assertEqual(package['devDependencies']['tailwindcss'], '4.3.3')
+        self.assertEqual(package['devDependencies']['@tailwindcss/postcss'], '4.3.3')
+        self.assertEqual(package['dependencies']['axios'], '1.20.0')
+        self.assertFalse(any(name.endswith('/braces') for name in lock['packages']))
+        self.assertIn("'@tailwindcss/postcss'", (ROOT / 'react-app/postcss.config.js').read_text())
+        css = (ROOT / 'react-app/src/index.css').read_text()
+        self.assertIn("@config '../tailwind.config.js'", css)
+        self.assertIn("@import 'tailwindcss/utilities.css'", css)
+        self.assertNotIn('@tailwind base', css)
+
     def test_complete_original_reference_is_unchanged(self):
         reference = json.loads((HERE / 'reference.json').read_text())
         expected = {f'volcano-{width}-{state}-chromium-linux.png'

@@ -1,6 +1,45 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Keep utilities unlayered, as in the approved v3 cascade. Existing component
+   CSS must not gain different precedence merely because the compiler changed. */
+@import 'tailwindcss/theme.css';
+@import 'tailwindcss/preflight.css';
+@import 'tailwindcss/utilities.css';
+@config '../tailwind.config.js';
+
+/* v3 used absolute rem leading here. Unitless v4 ratios round differently
+   with Base2's fluid root font size, accumulating drift on long mobile pages. */
+@theme {
+  --text-xs--line-height: 1rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl--line-height: 2.25rem;
+  --text-4xl--line-height: 2.5rem;
+}
+
+/* Tailwind v3 defaults retained as a visual compatibility contract. */
+*,
+::before,
+::after {
+  border-color: #e5e7eb;
+}
+button:not(:disabled),
+[role='button']:not(:disabled) {
+  cursor: pointer;
+}
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af;
+  opacity: 1;
+}
+/* v3 retained the native file-picker button. v4 resets that pseudo-element;
+   restore its original control metrics rather than shifting import forms. */
+::file-selector-button {
+  all: revert;
+  font: inherit;
+  -webkit-appearance: button;
+}
 
 * {
   margin: 0;

@@ -19,3 +19,22 @@ families, protected navigation and modal isolation, responsive/locale/zoom check
 retained visual references, affected coverage, clean-source full release gate.
 Publication/deployment follows evidence and applicable authority, not test success
 alone. Use bounded preview and automatic teardown only after review.
+
+## Approved dependency repair
+
+Upgrade the Tailwind compiler/PostCSS integration to the patched current major,
+retaining JavaScript theme/plugin configuration and explicit v3 appearance
+compatibility where needed. Do not rewrite components or regenerate frozen images.
+Update vulnerable same-major HTTP, source-map and test-network dependencies via
+the lockfile, then verify the entire resolved graph. Cover Vite/Storybook, generated
+profiles, browser targets, CSS ordering/preflight, dark preference and custom glass
+utilities. Original Home comparisons are the early rejection gate; deployment
+and the complete gate wait until targeted compatibility and coverage are ready.
+Rollback is ba858c7 plus its lockfile; no database migration is involved.
+
+Migration requirements: Tailwind 4's supported browser floor is Safari 16.4,
+Chrome 111 and Firefox 128 (upstream upgrade guide). Keep CI's real browser matrix
+and document this floor for generated children. Existing integer space-x/space-y
+utilities retain v3 sibling margins and reversals; new arbitrary spacing follows
+v4 semantics. Explicit rem text leading preserves Base2's fluid-root rounding.
+New source should prefer gap-based layouts; don't reinterpret existing layouts.

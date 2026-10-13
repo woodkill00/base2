@@ -2,6 +2,21 @@
 
 ## Latest validated composition checkpoint
 
+### Approved dependency repair — awaiting exact-source release gate
+
+Tailwind/PostCSS 4.3.3 and Axios 1.20.0 plus patched transitive dependencies remove
+all current audit findings. Three CSS compatibility regressions were reproduced
+and repaired without changing any PNG: sibling spacing, rem line height and native
+file-selector metrics. Final matrices passed 69 Volcano, 22 Operations, 24 Media,
+24 Workspace, 15 Ember compatibility and 10 Northstar settings cases; deliberate
+project/state skips remain explicit. All 326 frontend tests passed with coverage,
+Storybook built, TypeScript passed and lint has zero errors (24 existing warnings).
+The reference integrity contract passes all three checks. Operations evidence
+correctly rejected the prior source binding (five negative-contract tests passed);
+refresh it only after the completed visual review. Full gate, publication, live
+verification and owner review remain pending. No cloud resource was launched.
+VOL-07 remains a disclosed intermittent runtime risk, not a resolved root cause.
+
 ### Release blocker — final round 2
 
 Exact candidate `a603bfd6cb0164e19f863378cb915eea1d6fec31` completed the full
