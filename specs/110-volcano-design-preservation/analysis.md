@@ -17,6 +17,34 @@ error states, profiles, locales and coverage. No baseline updates merely for gre
 
 ## Issue ledger
 
+### Cycle 7 — hosted dependency findings
+
+The expanded provider audit additionally found oauthlib 3.3.1 (PYSEC-2026-4114),
+fixed in 4.0.0. Reviewed upstream changelog: breaking changes affect OAuth server
+revocation/validation APIs, not Base2's provider client composition. Cover client
+request construction and constant-time PKCE comparisons in credential-free tests.
+No OAuth server redesign or live credential flow is introduced. API and Django
+fresh audits now report zero findings. The inspector's static closed-set audit
+reports zero; installing its platform-specific cffi wheel on WSL Python 3.12
+correctly fails the hash guard. Do not replace that unrelated pinned wheel hash:
+the actual inspector image is the required installation/runtime proof.
+
+VOL-14 (release blocker): PR #70 hosted pip-audit and SBOM scan failed after the
+local 120-check gate passed. Preserved raw/normalized evidence under
+`.artifacts/feature110/hosted-pip-audit` and `hosted-sbom`. Deduplicated dependency
+families are urllib3 2.7.0, PyJWT 2.13.0, pypdf 6.16.2 and Django 6.1. They affect
+HTTP/provider calls, auth/claims, hostile PDF handling and Django request handling.
+Include API and provider locks plus the separately hashed inspector dependency.
+
+Upstream PyJWT 2.15.1 wheel was read without installation; `_merge_options` copies
+caller options before setting defaults. This independently resolves ambiguity in
+GHSA-gvp8-978c-rx2q's empty fix-version field (affected range ends at 2.13.0).
+Add a red/green options-reuse regression rather than assuming a version bump is
+sufficient. Other findings have same-major fixes listed by both audits. R11–R13
+cover lock consistency, auth/negative claims, PDF/provider consumers and source-
+bound release validation. No known planning gap for this bounded repair. Keep
+visual source unchanged; no audit exclusion or live resource until acceptance.
+
 ### Migration verification checkpoint
 
 VOL-13: Tailwind v4 resets `::file-selector-button`, changing the existing

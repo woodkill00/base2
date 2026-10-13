@@ -2,6 +2,24 @@
 
 ## Latest validated composition checkpoint
 
+### Hosted-security correction
+
+Local full gate on 2695c5d passed all 120 checks in 717 seconds; PR #70 is published.
+Hosted application/visual checks passed, but pip-audit/SBOM blocked merge on Python
+dependency advisories. Patched API/Django/provider/inspector pins and added JWT,
+OAuth client/PKCE and lock-consistency regressions. JWT tests failed on the old
+version and passed after upgrade. Fresh API, Django and provider audits report
+zero findings; the inspector closed-set audit is also clean. Its actual pinned
+container build and isolation/signed-spool/two-UID acceptance passed, preserving
+the platform-specific hashes. See `/tmp/f110-*-audit-repaired*.log`,
+`/tmp/f110-inspector-{build,container,spool}.log` and private Feature 110 artifacts.
+OAuthLib 4.0's provider-side breaking changes were reviewed; Base2 uses the client
+dependency and its composition test passes. No auth redesign or gate waiver.
+
+Fresh ClamAV updater health passed the existing 24-hour/signature checks, allowing
+a full preview attempt after release acceptance. No cloud resource created.
+Current-source final gate and hosted revalidation remain pending after this batch.
+
 ### Approved dependency repair — awaiting exact-source release gate
 
 Tailwind/PostCSS 4.3.3 and Axios 1.20.0 plus patched transitive dependencies remove

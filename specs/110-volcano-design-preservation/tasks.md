@@ -24,6 +24,20 @@
 
 ### Approved dependency-hardening expansion
 
+### Hosted security repair batch
+
+- [x] R11 Deduplicate hosted pip/SBOM failures across API, Django, media-inspector
+      and DigitalOcean locks; apply reviewed same-major security releases.
+- [x] R12 Add regressions for JWT options reuse and lock consistency; validate
+      auth/claims, PDF inspection, provider consumers and fresh vulnerability audits.
+- [ ] R13 Re-run current-source required release validation and hosted checks;
+      do not merge or launch with failed security checks.
+
+VOL-14: local gate passed 120 checks on 2695c5d, but hosted security found outdated
+Python dependencies. One bounded repair batch covers urllib3, PyJWT, pypdf and
+Django, including duplicate pins in the networkless inspector and provider lock.
+No auth redesign, audit exception, ignore list or severity change is authorized.
+
 Owner approved R07–R10 on 2026-10-13, including a design-preserving Tailwind
 migration if necessary. Start from clean ba858c7; one dependency diagnostic sweep,
 one unchanged-reference comparison before wider matrices, then focused repairs.

@@ -9,6 +9,18 @@ ROOT = HERE.parents[1]
 
 
 class ReferenceContract(unittest.TestCase):
+    def test_python_security_repairs_cover_all_deployment_consumers(self):
+        expected = {
+            'api/requirements.txt': ['pyjwt[crypto]==2.15.1', 'pypdf==6.19.0', 'urllib3==2.8.0'],
+            'api/requirements-media-inspector.txt': ['pypdf==6.19.0'],
+            'django/requirements.txt': ['django==6.1.1'],
+            'digital_ocean/requirements.lock': ['pyjwt[crypto]==2.15.1', 'urllib3==2.8.0', 'oauthlib==4.0.0'],
+        }
+        for path, pins in expected.items():
+            source = (ROOT / path).read_text()
+            for pin in pins:
+                self.assertIn(pin, source, path)
+
     def test_hardened_css_compiler_and_compatibility_are_selected(self):
         package = json.loads((ROOT / 'react-app/package.json').read_text())
         lock = json.loads((ROOT / 'react-app/package-lock.json').read_text())
