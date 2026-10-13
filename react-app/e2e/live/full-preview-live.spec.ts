@@ -29,7 +29,7 @@ const visualSections = [
 ];
 
 const assertSharedLayout = async (page: Page) => {
-  await expect(page.locator('.unified-layout')).toHaveCount(1);
+  await expect(page.locator('.volcano-layout')).toHaveCount(1);
   await expect(page.getByRole('main')).toHaveCount(1);
   await page.evaluate(() => document.fonts.ready);
   expect(
@@ -37,22 +37,14 @@ const assertSharedLayout = async (page: Page) => {
       () => Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) - innerWidth
     )
   ).toBeLessThanOrEqual(1);
-  const opener = page.getByRole('button', { name: 'Open navigation', exact: true });
-  if (await opener.isVisible()) {
-    for (const [label, panel] of [
-      ['Open navigation', 'Navigation panel'],
-      ['Open page context', 'Page context'],
-    ]) {
-      await page.getByRole('button', { name: label, exact: true }).click();
-      await expect(page.getByRole('dialog', { name: panel, exact: true })).toBeVisible();
-      await page.keyboard.press('Escape');
-      await expect(page.getByRole('dialog')).toHaveCount(0);
-    }
-  } else {
-    await expect(
-      page.getByRole('navigation', { name: 'Main navigation', exact: true })
-    ).toBeVisible();
-    await expect(page.getByLabel('Page context', { exact: true })).toBeVisible();
+  for (const [toggle, panel] of [
+    ['.home-left-menu-toggle', '.home-left-command-menu'],
+    ['.home-right-utility-toggle', '.home-right-utility-panel'],
+  ]) {
+    await page.locator(toggle).click();
+    await expect(page.locator(panel)).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator(toggle)).toHaveAttribute('aria-expanded', 'false');
   }
 };
 
@@ -130,9 +122,9 @@ test('public Obsidian site identity and owner interaction are live', async ({ br
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'obsidian');
   await page.keyboard.press('Control+k');
-  const palette = page.getByRole('region', { name: 'Base2 command palette' });
+  const palette = page.getByRole('dialog', { name: 'Base2 command palette' });
   await expect(palette).toBeVisible();
-  await expect(palette.getByRole('button', { name: /Admin diagnostics/ })).toBeDisabled();
+  await expect(palette.getByRole('menuitem', { name: /Admin diagnostics/ })).toBeDisabled();
   await page.keyboard.press('Escape');
   await expect(palette).toBeHidden();
   await page.screenshot({ path: `${evidence}/base2-live-home.png`, fullPage: true });
@@ -243,19 +235,18 @@ test('public Obsidian visual evidence covers responsive and interactive states',
     }
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.keyboard.press('Control+k');
-    const palette = page.getByRole('region', { name: 'Base2 command palette' });
+    const palette = page.getByRole('dialog', { name: 'Base2 command palette' });
     await expect(palette).toBeVisible();
-    const rail = page.getByLabel('Page context', { exact: true });
-    const box = await rail.boundingBox();
+    const box = await palette.boundingBox();
     expect(box).not.toBeNull();
     expect(box!.x).toBeGreaterThanOrEqual(0);
     expect(box!.y).toBeGreaterThanOrEqual(0);
     expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width + 1);
     expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height + 1);
-    // The inline palette may be taller than the rail. Its last control must be
-    // reachable by scrolling within that bounded rail, without moving the page.
+    // The original modal palette must keep its last action reachable without
+    // moving the underlying page.
     const pageY = await page.evaluate(() => window.scrollY);
-    const lastControl = palette.getByRole('button').last();
+    const lastControl = palette.getByRole('menuitem').last();
     await lastControl.scrollIntoViewIfNeeded();
     await expect(lastControl).toBeInViewport();
     expect(Math.abs((await page.evaluate(() => window.scrollY)) - pageY)).toBeLessThanOrEqual(1);

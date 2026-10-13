@@ -14,6 +14,7 @@ export default defineConfig({
       VITE_SITE_PROFILE: 'base2-obsidian',
       VITE_BASE2_PREVIEW_MODE: 'restricted',
       VITE_LAYOUT109_PREVIEW: 'true',
+      VITE_VOLCANO110_PREVIEW: 'true',
     },
     url: 'http://127.0.0.1:4191',
     reuseExistingServer: false,

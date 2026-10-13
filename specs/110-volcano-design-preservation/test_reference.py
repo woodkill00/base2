@@ -20,9 +20,19 @@ class ReferenceContract(unittest.TestCase):
             self.assertEqual(hashlib.sha256((directory / name).read_bytes()).hexdigest(), digest,
                              f'Original visual reference changed: {name}; owner review required')
 
-    def test_no_implicit_production_activation(self):
-        for path in ('react-app/Dockerfile', 'development.docker.yml', 'local.docker.yml'):
-            self.assertNotIn('VITE_VOLCANO110_PREVIEW', (ROOT / path).read_text())
+    def test_approved_design_is_selected_by_deployment_and_release_matrices(self):
+        reference = json.loads((HERE / 'reference.json').read_text())
+        self.assertEqual(reference['ownerApproval'], 'approved')
+        docker = (ROOT / 'react-app/Dockerfile').read_text()
+        self.assertIn('ARG BASE2_VOLCANO_LAYOUT=true', docker)
+        self.assertIn('ENV VITE_VOLCANO110_PREVIEW=${BASE2_VOLCANO_LAYOUT}', docker)
+        for path in ('development.docker.yml', 'local.docker.yml'):
+            self.assertIn('BASE2_VOLCANO_LAYOUT=${BASE2_VOLCANO_LAYOUT:-true}', (ROOT / path).read_text())
+        for name in ('media-release', 'operations-release', 'workspace-release', 'restricted'):
+            self.assertIn("VITE_VOLCANO110_PREVIEW: 'true'", (ROOT / f'react-app/playwright.{name}.config.mjs').read_text())
+        gate = json.loads((ROOT / 'scripts/config/complete-gate-v1.json').read_text())
+        check = next(c for c in gate['checks'] if c['id'] == 'feature-110-volcano')
+        self.assertTrue(check['required'])
 
 
 if __name__ == '__main__':

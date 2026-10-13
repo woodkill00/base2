@@ -2,6 +2,15 @@
 
 ## Latest validated composition checkpoint
 
+Release completion batch: Docker/Compose now select the approved Volcano layout.
+Operations 22, Media 24 and Workspace 24 applicable browser checks pass after
+closed-panel geometry, compact account wrapping and touch-target corrections.
+Original Home reference integrity, TypeScript and focused lint pass. Intentional
+route-shell captures were inspected before acceptance; all eight original Home
+references remain unchanged. Full gate, final exact-source coverage, publication
+and live verification remain pending. No new cloud resource exists.
+Earlier checkpoint descriptions below refer to their named historical source.
+
 Candidate `72f3a1f` is committed locally, not published, merged or deployed.
 Final current-source results: 323 frontend tests passed; TypeScript and focused
 lint passed; 69 Chromium browser checks passed in 40.9 seconds, with stable source

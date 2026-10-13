@@ -1,3 +1,8 @@
+.volcano-header-frame {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 40;
+}
 .volcano-page-main {
   container-type: inline-size;
   position: relative;
@@ -59,6 +64,23 @@
   display: flex;
   gap: 0.5rem;
   align-items: center;
+}
+.volcano-layout .home-left-command-menu[aria-hidden='true'] {
+  display: none;
+}
+.volcano-account-actions .base2-button {
+  white-space: nowrap;
+  font-size: 0.875rem;
+  padding-inline: 0.65rem;
+  min-height: 2.75rem;
+}
+@media (pointer: coarse) {
+  .volcano-layout .home-left-menu-toggle,
+  .volcano-layout .home-right-utility-toggle,
+  .volcano-header-frame button {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 @media (max-width: 40rem) {
   .volcano-page-main {

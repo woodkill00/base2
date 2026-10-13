@@ -8,7 +8,7 @@ for (const width of [390, 1440]) {
     await page.goto('/signup');
     const notice = page.getByLabel('Preview restrictions');
     await expect(notice).toBeVisible();
-    await expect(page.locator('.unified-layout')).toBeVisible();
+    await expect(page.locator('.volcano-layout')).toBeVisible();
     const skip = page.getByRole('link', { name: 'Skip to main content', exact: true });
     await expect(skip).not.toBeInViewport();
     await skip.focus();

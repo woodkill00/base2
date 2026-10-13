@@ -13,6 +13,21 @@
 - [ ] V011 Publish/merge authorized candidate and perform separately reviewed bounded live verification.
 - [ ] V012 Record owner acceptance, remaining limitations and exact resource teardown.
 
+### Release completion batch
+
+- [ ] R01 Align Docker and release matrices to the approved Volcano implementation; add activation and full-gate contracts.
+- [ ] R02 Exercise Operations and Media success/recovery/modal states across the existing viewport/browser matrices; inspect actual captures before accepting intentional route-shell differences.
+- [ ] R03 Bind original navigation, footer, CSS and composition sources into review manifests; preserve original Home snapshots.
+- [ ] R04 Collect final coverage/repetition evidence and run the supported complete release gate on clean committed source.
+- [ ] R05 Publish the validated candidate, reconcile PR #69, and merge only green reviewed changes.
+- [ ] R06 Launch one bounded staging-TLS preview through the supported operator entrypoint, verify owner login and application/vendor surfaces, notify the owner with the verified URL and expiry.
+
+Budget: one diagnostic sweep per release matrix, batch related repairs before a
+corrected run; one full gate only after prerequisites are ready. Never retry a
+native crash indefinitely. No provider launch before local acceptance. Owner's
+2026-10-13 request authorizes continuing to a live review; preserve the existing
+bounded lease/cost/teardown and staging-only certificate constraints.
+
 ### V007–V010 refinement: bounded all-page repair
 
 - [x] Reuse the original navigation with an optional permission-filtered route adapter; retain unchanged Home reference behavior.

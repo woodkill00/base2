@@ -68,6 +68,32 @@ the preview composition, but remain unreleased. VOL-03 has an owner-approved
 reference guard and explicit repository preservation policy. VOL-07 remains open.
 Do not mark V008–V012 complete based on these synthetic/Chromium-only results.
 
+## Release cycle 4 — shipping and proof alignment
+
+Release discovery also found undersized original edge tabs and header theme control
+on touch landscape. Route-only coarse-pointer minimum targets now preserve their
+design while meeting 44px usability. Corrected Operations matrix: 22 passed,
+20 intentional project/state skips; 35 captures. Media: 24 passed, 12 intentional
+project/state skips. Workspace shipping-layout matrix: 24 passed, 48 captures.
+Reviewed actual compact, desktop, enlarged-text, RTL, light and modal captures.
+No original Home reference changed. Live assertions now test original menus and
+modal palette instead of the rejected generic panels. These are local synthetic
+results, not a live-deployment or final-owner acceptance claim.
+
+Docker/Compose and Operations/Media/restricted release matrices now select the
+approved Volcano build. The complete gate has mandatory reference and route checks.
+Existing Feature 109 checks remain as legacy fallback coverage, not production
+proof. New shared component/style sources join review dependency manifests.
+
+Operations discovery (desktop/compact, six cases) found a closed command panel
+still contributing off-screen geometry; render it display:none only in its closed
+route-shell state, preserving the Home reference. Compact screenshots also showed
+account-button wrapping: scoped nowrap/padding fixes retain the original header.
+Media discovery passed three cases; three screenshot mismatches reflect intentional
+shell changes. Actual detail and Operations compact captures inspected before
+baseline refresh; no original Home baseline will be changed. Remaining matrices
+must check accessibility, touch targets, focus and recovery before acceptance.
+
 The expanded round passed 67 cases and failed the two zoom cases. Guest route
 guards and every unchanged Home capture passed. Full frontend suite passed all
 320 tests after correcting the helper's implicit status role. Coverage preflight
