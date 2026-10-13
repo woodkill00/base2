@@ -17,6 +17,28 @@ error states, profiles, locales and coverage. No baseline updates merely for gre
 
 ## Issue ledger
 
+### Cycle 11 — live proof and bounded follow-up
+
+VOL-19 (test defect, fixed): settings save succeeded but `getByRole('status')`
+matched both the retained navigation output and the success message. Filter the
+two assertions by their expected message; do not alter the approved navigation.
+Full affected live journey passed after correction (24.7 seconds). Original failed
+attempt remains in `/tmp/f110-live-browser.log`; corrected evidence is in
+`/tmp/f110-live-settings-r1.log`. Supported auto assurance selects the standard
+test-only scope, not another full product release gate.
+
+VOL-20 (functional blocker, awaiting scope decision): public CMS endpoints return
+503 from `InsufficientPrivilege`. The public repository uses the API role that
+migration 0032 intentionally restricted. A blanket grant or switching every method
+to the workspace pool is not an acceptable unreviewed repair: public reads, drafts,
+search, media and form writes have distinct permissions and tenant boundaries.
+Evidence: `/tmp/f110-live-content-diagnostic.log` and mobile About screenshot in
+the current preview's `browser-f110-final` directory. Before implementation, add
+least-privilege role/tenant/unpublished-content/write-denial regressions and real
+Postgres acceptance, plus live route readiness assertions that reject unexpected
+5xx while collecting independent failures. Shell-layout success is not content
+readiness. No database permission change made pending owner's scope decision.
+
 ### Cycle 10 — preserve reviewed ancestry after squash merge
 
 VOL-18: the f5537a8 complete gate passed 115 checks, failed the Media review
