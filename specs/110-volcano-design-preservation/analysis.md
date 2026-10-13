@@ -70,6 +70,26 @@ Do not mark V008–V012 complete based on these synthetic/Chromium-only results.
 
 ## Release cycle 4 — shipping and proof alignment
 
+VOL-08 focused checks pass on desktop/tablet/mobile (3/3); VOL-09 contract plus
+negative bounds pass (6/6). The first focused browser invocation used repo root
+instead of react-app and failed loading axe before any test; corrected working
+directory ran the actual regression. Evidence: `/tmp/f110-gate-repair-correct-cwd.log`.
+Final composition validation also passed 323 frontend cases, 69 unchanged-reference
+and route cases, and exact-source repetitions. Changed executable coverage is
+78/78; critical UI metrics remain 100%. VOL-07 has not recurred in these completed
+runs but remains a disclosed environment risk, not a claim of a native-runtime fix.
+
+Complete gate round 1 (`20261013T174245Z-616450`) failed with two independent
+fixture/evidence-contract findings; dependent checks are not passed. VOL-08: the
+legacy interaction test clicks Search after Escape correctly closes its menu;
+explicitly assert closed, reopen and assert open before clicking. VOL-09: the
+reviewed enlarged-text page plus restored footer is 5813px, exceeding an old
+5000px screenshot-height assumption. Permit 6000px only for this named capture,
+retain all other bounds and the existing 12.8M decoded-pixel maximum; add negative
+oversize cases. No original Home PNG, comparison threshold, coverage floor or
+product security rule changes. Revalidate both focused contracts before rerunning
+the complete gate. This is the only known repair batch from the completed sweep.
+
 Release discovery also found undersized original edge tabs and header theme control
 on touch landscape. Route-only coarse-pointer minimum targets now preserve their
 design while meeting 44px usability. Corrected Operations matrix: 22 passed,

@@ -78,6 +78,15 @@ test('restored command and utility controls remain bounded and functional', asyn
   await expect(page.getByTestId('base2-command-palette')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('base2-command-palette')).toHaveCount(0);
+  await expect(page.getByTestId('base2-right-utility-toggle')).toHaveAttribute(
+    'aria-expanded',
+    'false'
+  );
+  await page.getByTestId('base2-right-utility-toggle').click();
+  await expect(page.getByTestId('base2-right-utility-toggle')).toHaveAttribute(
+    'aria-expanded',
+    'true'
+  );
   // Decorative loop copies are hidden from the accessibility tree, leaving
   // one canonical keyboard-focusable option for each utility.
   const safeSearch = page.getByRole('button', { name: 'Base2 utility: Search' });
