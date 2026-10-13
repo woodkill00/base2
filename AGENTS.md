@@ -5,6 +5,14 @@ This workflow supplements those requirements; it does not waive release gates or
 publication, deployment, spending, credential, destructive-action or approval authority.
 Keep repo work in the native WSL checkout and preserve unrelated/untracked work.
 
+## Preserve the approved design
+
+The owner-approved Obsidian/Volcano design is the visual baseline. Extend its
+existing components, colors, menus and composition; do not replace them with a
+different design while fixing functionality or adding pages. Intentional redesigns
+require explicit owner approval. Inspect rendered changes against the approved
+references before updating any screenshots; new baselines are not approval.
+
 ## Efficient failure-batching workflow
 
 Use this instruction for implementation, diagnosis and repair, within the user's authorized scope:

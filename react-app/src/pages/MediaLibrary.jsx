@@ -451,7 +451,7 @@ export default function MediaLibrary() {
     if (!activeAssetId) return undefined;
     const backgroundNodes = [
       ...document.querySelectorAll(
-        '.app-shell > header, .app-shell-content > nav, .app-shell-footer, .unified-layout-header-frame, .unified-layout-rail, .unified-layout-footer-frame, .media-library > :not(.media-dialog-backdrop)'
+        '.app-shell > header, .app-shell-content > nav, .app-shell-footer, .unified-layout-header-frame, .unified-layout-rail, .unified-layout-footer-frame, .volcano-header-frame, .volcano-footer-frame, .volcano-layout .home-obsidian-nav-layer, .volcano-page-context, .media-library > :not(.media-dialog-backdrop)'
       ),
     ];
     backgroundNodes.forEach((node) => {

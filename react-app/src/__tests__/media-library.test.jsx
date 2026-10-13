@@ -53,13 +53,19 @@ it('media detail isolates and restores shared-shell header, rails and footer', a
       <div className="unified-layout-header-frame">Shared header</div>
       <div className="unified-layout-rail">Shared rail</div>
       <div className="unified-layout-footer-frame">Shared footer</div>
+      <div className="volcano-header-frame">Volcano header</div>
+      <div className="volcano-footer-frame">Volcano footer</div>
+      <div className="volcano-layout">
+        <div className="home-obsidian-nav-layer">Original menus</div>
+      </div>
+      <div className="volcano-page-context">Page context</div>
       <MediaLibrary />
     </MemoryRouter>
   );
   fireEvent.click(await screen.findByRole('button', { name: 'View details' }));
   const dialog = await screen.findByRole('dialog', { name: 'safe.png' });
   const background = result.container.querySelectorAll(
-    '.unified-layout-header-frame,.unified-layout-rail,.unified-layout-footer-frame'
+    '.unified-layout-header-frame,.unified-layout-rail,.unified-layout-footer-frame,.volcano-header-frame,.volcano-footer-frame,.volcano-layout .home-obsidian-nav-layer,.volcano-page-context'
   );
   background.forEach((node) => expect(node.inert).toBe(true));
   fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));

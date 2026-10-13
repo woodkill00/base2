@@ -1,6 +1,8 @@
 {
   "schemaVersion": 1,
-  "ownerApproval": "pending",
+  "ownerApproval": "approved",
+  "ownerApprovalDate": "2026-10-13",
+  "ownerApprovalStatement": "Yes, preserve this exact design",
   "sourceCommit": "622101dd67909769913b5e92adfdbaaed8314d92",
   "reference": "Retained pre-109 Home presentation with BASE2_LAYOUT_BASELINE=1",
   "verifiedAttempt": "volcano-reference-check-110",

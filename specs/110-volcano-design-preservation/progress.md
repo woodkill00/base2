@@ -1,7 +1,7 @@
 # Reference recovery checkpoint — 2026-10-13
 
-Status: representative local review ready; NOT all-page completion or release.
-Branch: `110-volcano-design-preservation`. V006 owner confirmation is pending.
+Status: original-design route composition implemented in local preview; NOT release complete.
+Branch: `110-volcano-design-preservation`. V006 owner confirmation received 2026-10-13.
 
 Home's retained original composition is selected with `VITE_VOLCANO110_PREVIEW=true`.
 This is not enabled in Docker/Compose. Main and deployment remain unchanged.
@@ -29,7 +29,32 @@ No new provider resource, merge or publication occurred in this repair batch.
 Artifacts: `.artifacts/layout-109/<attempt>/` and `<attempt>-report/`.
 Reference gallery: `review.html`. Screenshots contain synthetic local data only.
 
-Remaining: owner reference confirmation, all-page extension, full affected state/
-coverage and release validation. No full gate run for this incomplete review slice.
+Owner also confirmed changes must extend the approved design rather than replace
+it. This rule is now in AGENTS.md. Original reference PNGs remain unchanged.
+
+Extension batch: optional permission-filtered route adapter reuses original menus;
+new VolcanoLayout composes original header/footer/background around route content,
+retains account controls and page context, and isolates media dialogs. New route
+palette focus containment restores inert/background state on closure.
+
+`volcano-all-routes-110` passed 62 browser cases (38.3 seconds), including 22 guest
+routes and 8 authenticated routes at both sizes plus all 8 original Home images.
+These are synthetic unavailable-service fixtures, not successful live API flows.
+39 focused Home/navigation/media tests passed. Broader frontend round: 318 passed,
+2 failed because the new test location helper used an output element with implicit
+status role, colliding with real status messages. Fixture corrected to a div;
+rerun required. Mobile admin review found edge tabs too near body copy: reserved
+route-only gutters added; Home stays untouched. New captures required for that edit.
+
+Final focused coverage collection retry passed all 321 frontend tests. The critical
+glass/theme subset is 100% for lines/statements/functions/branches; whole frontend
+lines are 79.18%. First native crash remains recorded as unresolved intermittent
+runtime risk; the successful diagnostic retry is not a fix. Committed changed-line
+coverage still needs measurement. Both light/200% zoom repairs passed; signup and
+RTL captures were visually inspected. Home reference files were never updated.
+
+Remaining: all-page interaction/success/error states, responsive/theme/profile
+review, affected coverage, source binding/production activation, release gate and
+publication. No complete release gate or deployment has run for this batch.
 An integrity guard catches image replacement; changing both manifest and images
 still requires code/owner review. It is not a cryptographic approval service.

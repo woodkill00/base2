@@ -122,7 +122,12 @@ const Home = ({ locale = siteManifest.defaultLocale }) => {
   );
   // Keep the original Volcano composition intact for owner review. This preview
   // is deliberately not enabled in deployment until the reference is confirmed.
-  if (layoutPreviewEnabled && import.meta.env.VITE_VOLCANO110_PREVIEW !== 'true')
+  if (
+    layoutPreviewEnabled &&
+    !(
+      import.meta.env.VITE_VOLCANO110_PREVIEW === 'true' && siteManifest.siteId === 'base2-obsidian'
+    )
+  )
     return (
       <div className="home-page-root" data-testid="home-page">
         <AppShell

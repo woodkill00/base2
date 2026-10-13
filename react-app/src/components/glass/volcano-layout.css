@@ -1,0 +1,70 @@
+.volcano-page-main {
+  container-type: inline-size;
+  position: relative;
+  width: min(calc(100% - 5rem), 75rem);
+  min-height: calc(100dvh - 12rem);
+  margin-inline: auto;
+  padding-block: clamp(1.5rem, 4vw, 3rem);
+  overflow-wrap: anywhere;
+}
+.volcano-layout .volcano-page-main h1 {
+  font-size: clamp(1.75rem, calc(1rem + 2cqi), 3rem);
+  line-height: 1.15;
+}
+.volcano-layout .volcano-page-main h2 {
+  font-size: clamp(1.2rem, calc(1rem + 1cqi), 2rem);
+  line-height: 1.3;
+}
+.volcano-page-main > .page-content {
+  padding: 0;
+  margin: 0;
+  max-inline-size: none;
+}
+.volcano-page-main > * {
+  min-width: 0;
+}
+.volcano-page-context {
+  margin-block-start: 2rem;
+}
+.volcano-footer-frame {
+  container-type: inline-size;
+}
+.volcano-footer-frame .base2-footer-shell {
+  max-width: 100%;
+}
+@container (max-width: 60rem) {
+  .volcano-footer-frame .base2-footer-shell {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .volcano-footer-frame .base2-footer-identity {
+    grid-column: 1 / -1;
+  }
+}
+@container (max-width: 40rem) {
+  .volcano-footer-frame .base2-footer-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .volcano-footer-frame .base2-footer-identity,
+  .volcano-footer-frame .base2-footer-bottom {
+    grid-column: auto;
+  }
+  .volcano-footer-frame .base2-footer-bottom {
+    flex-direction: column;
+    align-items: flex-start;
+    padding-inline: 0;
+  }
+}
+.volcano-account-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+@media (max-width: 40rem) {
+  .volcano-page-main {
+    width: calc(100% - 5rem);
+  }
+  .volcano-account-actions {
+    gap: 0.25rem;
+  }
+}

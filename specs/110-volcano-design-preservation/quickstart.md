@@ -13,5 +13,9 @@ The separate Volcano harness enables the isolated restoration switch. The origin
 Feature 109 harness still covers its unchanged consumers; neither is evidence of
 owner approval. Open `review.html` beside this document for the original reference.
 
-The next step requires confirmation of this exact appearance before all-page
-composition work. Do not enable the restoration switch in deployment yet.
+The owner confirmed this exact appearance on 2026-10-13. The same components now
+wrap other route families in the isolated preview. Do not enable the restoration
+switch in deployment until the remaining release checks and source-bound visual
+reviews are complete. Preview requires both VITE_LAYOUT109_PREVIEW=true and
+VITE_VOLCANO110_PREVIEW=true with VITE_SITE_PROFILE=base2-obsidian; the dedicated
+Playwright configuration supplies these explicitly.
