@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "ownerApproval": "approved",
+  "ownerApprovalDate": "2026-10-13",
+  "ownerApprovalStatement": "Yes, preserve this exact design",
+  "sourceCommit": "622101dd67909769913b5e92adfdbaaed8314d92",
+  "reference": "Retained pre-109 Home presentation with BASE2_LAYOUT_BASELINE=1",
+  "verifiedAttempt": "volcano-reference-check-110",
+  "screenshots": {
+    "volcano-1440-home-chromium-linux.png": "f4c597dd44c2955d610abb977ebef50f3e20987179075b42f2808b664a846d7e",
+    "volcano-1440-left-chromium-linux.png": "316f46f71f43b58a6903f152c70c2d5d45ddd976a3a76a55cf94b7bf6df9ec0a",
+    "volcano-1440-palette-chromium-linux.png": "e08f375ec383de96d0c1b52d12df96f608c8d08cce57af51e2f0cf200e73d473",
+    "volcano-1440-right-chromium-linux.png": "15472108526250f4377d69990b3acb8c42f7d35028acf9f4c8981f9d4e49ce31",
+    "volcano-390-home-chromium-linux.png": "0a0e34ebb9b4bd91a02bd4333c1a3c8487a8acd4b8324a1768feed9c4e7f773f",
+    "volcano-390-left-chromium-linux.png": "4c762a3119a57516d14e0afac2893c659a4886db99875c8718ed9559593239ad",
+    "volcano-390-palette-chromium-linux.png": "58332abb203acb5fda1ff349fee5c6eef37af2cfe1cd5fc03f023fff0a6bd930",
+    "volcano-390-right-chromium-linux.png": "c927a6d75dd2facb2c6e648ad960227594654d6d988102de28fe2e04b0561e0a"
+  }
+}

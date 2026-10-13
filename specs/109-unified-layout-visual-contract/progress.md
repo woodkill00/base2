@@ -1,5 +1,37 @@
 # Implementation checkpoint — 2026-09-11
 
+## Current release status
+
+Live run `base2-full-20260911-160300` verified the merged application, operator
+edge challenges, Django/pgAdmin application logins, real signup, nine Settings
+sections, preference persistence and completed data export. The saved owner login
+also passed a separate one-attempt read-only journey. Six initial browser scenarios
+passed; the legacy whole-palette geometry assertion failed and its focused repair
+passed in `browser-palette-scroll-repair`, with the initial evidence retained.
+
+Actual screenshots exposed an unfocused skip-link overlap on the restriction
+banner. The restricted test now enables the deployed layout and reproduced the
+defect at both widths. A first clipped 1px implementation tripped the unchanged
+target-size check; the final paint-only clip preserves the full-sized focus target.
+Both restricted checks, 24 applicable Media cases and 22 applicable Operations
+cases passed without baseline changes. Screenshot review confirmed the notice is
+unobstructed. This CSS repair is not yet deployed; final source-bound release
+validation and exact-source live verification remain open.
+
+PR #68 merged into `main` at `d58dc910d026fc42dc148111c1d2ccd487204d99`.
+Its tree exactly matches tested candidate `2680b73532dc828b1643dd21558cc4eb6b5b3a06`.
+The complete gate passed at
+`.artifacts/complete-gate/20260911T155049Z-2404620/result.json`, including all 106
+layout cases. All hosted PR checks passed and the source was clean before merge.
+Current-source stability repetitions passed ten runs per registered suite.
+
+A 60-minute restricted preview of the merged commit is being launched through the
+supported entrypoint; owner live visual review and live acceptance are still
+pending. Media remains disabled, not passed. The follow-up live-test alignment
+is recorded in analysis cycle 8. Earlier progress sections below are historical;
+their remaining-work statements are superseded by this status where evidence is
+explicitly recorded. Lifecycle closeout and owner approval are not yet claimed.
+
 ## All-page integration update
 
 Following the owner's direction to complete all pages, the opt-in layout now

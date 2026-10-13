@@ -37,6 +37,10 @@ def test_media_visual_review_is_schema_valid_exact_and_source_bound():
         check=True,
     )
     reviewed_surfaces = [
+        "react-app/package-lock.json",
+        "react-app/postcss.config.js",
+        "react-app/tailwind.config.js",
+        "react-app/src/index.css",
         "react-app/src/pages/MediaLibrary.jsx",
         "react-app/src/components/media/MediaPicker.jsx",
         "react-app/src/styles/media-library.css",
@@ -45,6 +49,11 @@ def test_media_visual_review_is_schema_valid_exact_and_source_bound():
         "react-app/src/contexts/ThemeContext.js",
         "react-app/src/services/theme/persistence.ts",
         "react-app/src/components/glass/AppShell.tsx",
+        "react-app/src/components/glass/VolcanoLayout.jsx",
+        "react-app/src/components/glass/volcano-layout.css",
+        "react-app/src/components/home/HomeObsidianNavigation.jsx",
+        "react-app/src/components/home/HomeFooter.jsx",
+        "react-app/src/styles/home.css",
         "react-app/src/components/glass/unified-layout.css",
         "react-app/src/config/layoutPolicy.ts",
         "react-app/src/config/siteRuntime.ts",

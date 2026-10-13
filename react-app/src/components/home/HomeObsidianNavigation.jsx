@@ -54,6 +54,11 @@ const commandActions = [
   { id: 'admin-debug', labelKey: 'adminDiagnostics', safe: false },
 ];
 
+// The original Home data remains the default. Other pages supply only trusted,
+// permission-filtered destinations, while sharing the same visual controls.
+const homeSectionItems = sectionItems;
+const homeCommandActions = commandActions;
+
 const navigationCopy = {
   en: {
     home: 'Home',
@@ -96,6 +101,7 @@ const navigationCopy = {
     apply: 'Apply',
     unavailable: 'unavailable on public site',
     publicSafe: 'Public safe',
+    openPage: 'Open page',
     locked: 'Locked',
     navigation: 'Navigation',
     utilityShortcuts: 'Base2 utility shortcuts',
@@ -146,6 +152,7 @@ const navigationCopy = {
     apply: 'Anwenden',
     unavailable: 'auf der öffentlichen Seite nicht verfügbar',
     publicSafe: 'Öffentlich verfügbar',
+    openPage: 'Seite öffnen',
     locked: 'Gesperrt',
     navigation: 'Navigation',
     utilityShortcuts: 'Base2-Schnellzugriffe',
@@ -196,6 +203,7 @@ const navigationCopy = {
     apply: 'تطبيق',
     unavailable: 'غير متاح على الموقع العام',
     publicSafe: 'متاح للعامة',
+    openPage: 'افتح الصفحة',
     locked: 'مقفل',
     navigation: 'التنقل',
     utilityShortcuts: 'اختصارات Base2',
@@ -280,7 +288,23 @@ const HomeObsidianNavigation = ({
   onUtilityAction = () => {},
   locale = 'en',
   renderControls,
+  routes,
+  currentPath,
 }) => {
+  const sectionItems = useMemo(
+    () =>
+      routes?.length
+        ? routes.map(({ label, to }) => ({ id: to, label, icon: LayoutGrid }))
+        : homeSectionItems,
+    [routes]
+  );
+  const commandActions = useMemo(
+    () =>
+      routes?.length
+        ? sectionItems.map(({ id, label }) => ({ id, label, sectionId: id, safe: true }))
+        : homeCommandActions,
+    [routes, sectionItems]
+  );
   const resolvedLocale = Object.hasOwn(navigationCopy, locale) ? locale : 'en';
   const copy = navigationCopy[resolvedLocale];
   const [isLeftOpen, setIsLeftOpen] = useState(false);
@@ -309,9 +333,63 @@ const HomeObsidianNavigation = ({
   const movementScrollLockUntilRef = useRef(0);
   const movementAlignTimers = useRef([]);
 
+  useEffect(() => {
+    if (!routes?.length || (!isLeftOpen && !isCommandPaletteOpen)) return;
+    const selector = isCommandPaletteOpen
+      ? '.home-command-palette-modal'
+      : '.home-left-command-menu';
+    const panel = document.querySelector(selector);
+    if (!panel) return;
+    const previous = document.activeElement;
+    const background = [
+      ...document.querySelectorAll(
+        '.volcano-header-frame,.volcano-page-main,.volcano-footer-frame'
+      ),
+    ];
+    const inert = background.map((node) => node.hasAttribute('inert'));
+    background.forEach((node) => node.setAttribute('inert', ''));
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const controls = () =>
+      [
+        ...panel.querySelectorAll(
+          'button:not([disabled]):not([tabindex="-1"]),input:not([disabled]):not([tabindex="-1"]),a[href]'
+        ),
+      ].filter((node) => !node.closest('[aria-hidden="true"]'));
+    controls()[0]?.focus();
+    const trap = (event) => {
+      if (event.key !== 'Tab') return;
+      const items = controls();
+      const first = items[0],
+        last = items[items.length - 1];
+      if (
+        event.shiftKey &&
+        (document.activeElement === first || !panel.contains(document.activeElement))
+      ) {
+        event.preventDefault();
+        last?.focus();
+      } else if (
+        !event.shiftKey &&
+        (document.activeElement === last || !panel.contains(document.activeElement))
+      ) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    document.addEventListener('keydown', trap);
+    return () => {
+      document.removeEventListener('keydown', trap);
+      background.forEach((node, index) => {
+        if (!inert[index]) node.removeAttribute('inert');
+      });
+      document.body.style.overflow = overflow;
+      if (previous?.isConnected) previous.focus?.({ preventScroll: true });
+    };
+  }, [routes, isLeftOpen, isCommandPaletteOpen]);
+
   const visibleSectionItems = useMemo(
     () => [...sectionItems, ...sectionItems, ...sectionItems],
-    []
+    [sectionItems]
   );
   const sectionLoopOffset = sectionItems.length;
   const normalizeSectionSlot = useCallback(
@@ -319,7 +397,7 @@ const HomeObsidianNavigation = ({
       const length = sectionItems.length;
       return sectionLoopOffset + (((index % length) + length) % length);
     },
-    [sectionLoopOffset]
+    [sectionLoopOffset, sectionItems.length]
   );
 
   const centerLeftSectionSlot = useCallback((index, smooth = true) => {
@@ -401,7 +479,7 @@ const HomeObsidianNavigation = ({
       const signedDistance = forward > length / 2 ? forward - length : forward;
       return Math.max(-2, Math.min(2, signedDistance));
     },
-    [activeLeftSectionSlot, sectionLoopOffset]
+    [activeLeftSectionSlot, sectionLoopOffset, sectionItems.length]
   );
 
   const handleLeftSectionScroll = useCallback(() => {
@@ -456,12 +534,12 @@ const HomeObsidianNavigation = ({
 
   const updateScrollState = useCallback(() => {
     setScrollState(getScrollMetrics());
-    const nextActiveSection = readActiveSection();
+    const nextActiveSection = routes?.length ? currentPath : readActiveSection();
     if (Date.now() > movementScrollLockUntilRef.current) {
       activeSectionRef.current = nextActiveSection;
       setActiveSection(nextActiveSection);
     }
-  }, []);
+  }, [routes, currentPath]);
 
   useEffect(() => {
     activeUtilitySlotRef.current = activeUtilitySlot;
@@ -658,7 +736,7 @@ const HomeObsidianNavigation = ({
     } else {
       scrollEl.scrollTop = targetTop;
     }
-  }, [activeSection, isLeftOpen, normalizeSectionSlot]);
+  }, [activeSection, isLeftOpen, normalizeSectionSlot, sectionItems]);
 
   useEffect(() => {
     if (isLeftOpen) return;
@@ -674,6 +752,7 @@ const HomeObsidianNavigation = ({
 
   useEffect(() => {
     const handleKeyDown = (event) => {
+      if (document.querySelector('.home-obsidian-nav-layer[inert]')) return;
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         if (renderControls) window.dispatchEvent(new Event('base2:open-page-context'));
@@ -682,6 +761,7 @@ const HomeObsidianNavigation = ({
       if (event.key === 'Escape') {
         setIsCommandPaletteOpen(false);
         setIsLeftOpen(false);
+        setIsRightOpen(false);
       }
     };
 
@@ -782,10 +862,11 @@ const HomeObsidianNavigation = ({
   const goToSection = useCallback(
     (id) => {
       const item = sectionItems.find((candidate) => candidate.id === id) || sectionItems[0];
-      if (renderControls) {
+      if (renderControls || routes?.length) {
         activeSectionRef.current = item.id;
         setActiveSection(item.id);
         setIsCommandPaletteOpen(false);
+        setIsLeftOpen(false);
         onNavigate(item.id);
         return;
       }
@@ -803,11 +884,15 @@ const HomeObsidianNavigation = ({
       window.setTimeout(updateScrollState, 420);
       window.setTimeout(updateScrollState, 840);
     },
-    [forceSectionIntoView, onNavigate, updateScrollState, renderControls]
+    [forceSectionIntoView, onNavigate, updateScrollState, renderControls, routes, sectionItems]
   );
 
   const moveSection = (direction) => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    if (routes?.length) {
+      window.scrollBy({ top: direction * window.innerHeight * 0.8, behavior: 'smooth' });
+      return;
+    }
     const currentIndex = Math.max(
       0,
       sectionItems.findIndex((item) => item.id === activeSectionRef.current)
@@ -878,7 +963,7 @@ const HomeObsidianNavigation = ({
     setActiveSection(target.id);
     setIsLeftOpen(false);
     setIsCommandPaletteOpen(false);
-    if (target.id === 'home' || target.id === 'features') {
+    if (!routes?.length && (target.id === 'home' || target.id === 'features')) {
       onNavigate(target.id);
     }
     forceScrollToDocumentEdge(top);
@@ -1052,7 +1137,7 @@ const HomeObsidianNavigation = ({
                 data-testid={`base2-section-nav-${item.id}`}
               >
                 <Icon aria-hidden="true" />
-                <span>{copy[item.labelKey]}</span>
+                <span>{item.label || copy[item.labelKey]}</span>
               </button>
             );
           })}
@@ -1148,10 +1233,12 @@ const HomeObsidianNavigation = ({
                   role="menuitem"
                   disabled={!action.safe}
                   onClick={() => action.safe && goToSection(action.sectionId)}
-                  aria-label={`${copy[action.labelKey]}${action.safe ? '' : ` ${copy.unavailable}`}`}
+                  aria-label={`${action.label || copy[action.labelKey]}${action.safe ? '' : ` ${copy.unavailable}`}`}
                 >
-                  <span>{copy[action.labelKey]}</span>
-                  <em>{action.safe ? copy.publicSafe : copy.locked}</em>
+                  <span>{action.label || copy[action.labelKey]}</span>
+                  <em>
+                    {action.safe ? (routes?.length ? copy.openPage : copy.publicSafe) : copy.locked}
+                  </em>
                 </button>
               ))}
             </div>

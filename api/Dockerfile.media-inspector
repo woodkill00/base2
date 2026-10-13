@@ -1,6 +1,6 @@
 ARG TARGETPLATFORM=linux/amd64
 
-FROM --platform=linux/amd64 cgr.dev/chainguard/python@sha256:c23539f80289046e2fa734d3f3fc418833fc22d064a50cc43fa9a6edc28c1615 AS inspector-builder
+FROM --platform=linux/amd64 cgr.dev/chainguard/python@sha256:ea666e12d8d5c985262f44b280ae7398d43e70156061b5657c040db835acd984 AS inspector-builder
 ARG TARGETPLATFORM
 RUN test "$TARGETPLATFORM" = 'linux/amd64'
 WORKDIR /build
@@ -23,7 +23,7 @@ FROM --platform=linux/amd64 clamav/clamav@sha256:1fdfd24c6f0a0fb60788481487459a6
 FROM --platform=linux/amd64 mwader/static-ffmpeg@sha256:54e55b0cb8f672870fc38ceb2e6c411855cb3b39c505f5f3b2505ee01ed5f2b7 AS ffmpeg-runtime
 FROM --platform=linux/amd64 python@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6 AS privilege-runtime
 
-FROM --platform=linux/amd64 cgr.dev/chainguard/python@sha256:c23539f80289046e2fa734d3f3fc418833fc22d064a50cc43fa9a6edc28c1615 AS definition-verifier
+FROM --platform=linux/amd64 cgr.dev/chainguard/python@sha256:ea666e12d8d5c985262f44b280ae7398d43e70156061b5657c040db835acd984 AS definition-verifier
 COPY --from=clamav-definitions /var/lib/clamav/main.cvd /var/lib/clamav/main.cvd
 COPY --from=clamav-definitions /var/lib/clamav/daily.cvd /var/lib/clamav/daily.cvd
 COPY --from=clamav-definitions /var/lib/clamav/bytecode.cvd /var/lib/clamav/bytecode.cvd
@@ -37,7 +37,7 @@ RUN printf '%s  %s\n' \
       '6d4aa01f219e988060fc419f495d07f27e0cdf1a2cccc065971da922c76f7ffb' \
       '/var/lib/clamav/bytecode.cvd' | sha256sum -c -
 
-FROM --platform=linux/amd64 cgr.dev/chainguard/python@sha256:1f37785e5cdb70151f36aaa15e1e3cef4571424dbefbf4b0d8a9222535cb13ff AS media-inspector-production
+FROM --platform=linux/amd64 cgr.dev/chainguard/python@sha256:3e56a2973d429d5bf28d8dd99f929ea6344b0bf054c432f09cf579f747ee3114 AS media-inspector-production
 WORKDIR /app
 COPY --from=privilege-runtime /usr/bin/setpriv /usr/bin/setpriv
 COPY --from=privilege-runtime /lib/x86_64-linux-gnu/libcap-ng.so.0.0.0 /usr/lib/libcap-ng.so.0

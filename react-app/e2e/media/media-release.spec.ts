@@ -114,10 +114,9 @@ test('media detail preserves safe preview usage and consequence context', async 
   const dialog = page.getByRole('dialog', { name: 'Aurora landscape.png' });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Close' })).toBeFocused();
-  await expect(page.locator('.unified-layout-header-frame')).toHaveJSProperty('inert', true);
-  await expect(page.locator('.unified-layout-footer-frame')).toHaveJSProperty('inert', true);
-  for (const rail of await page.locator('.unified-layout-rail').all())
-    await expect(rail).toHaveJSProperty('inert', true);
+  await expect(page.locator('.volcano-header-frame')).toHaveJSProperty('inert', true);
+  await expect(page.locator('.volcano-footer-frame')).toHaveJSProperty('inert', true);
+  await expect(page.getByTestId('base2-obsidian-navigation')).toHaveJSProperty('inert', true);
   await expect(dialog.getByRole('heading', { name: 'Usage and references' })).toBeVisible();
   await expect(dialog.getByText('article · hero · draft')).toBeVisible();
   await dialog.getByRole('button', { name: 'Preview consequences' }).click();
@@ -372,14 +371,14 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
     });
   expect(contrastFailures).toEqual([]);
   expect(runtimeErrors).toEqual([]);
-  const shellHeader = page.locator('.unified-layout-header-frame');
+  const shellHeader = page.locator('.volcano-header-frame');
   await expect(shellHeader).toHaveCSS('position', 'sticky');
-  const appNavigation = page.getByRole('navigation', { name: 'App navigation' });
+  const appNavigation = page.getByRole('navigation', { name: 'Public header' });
   await expect(appNavigation).toHaveCount(1);
   // Full-page screenshots are stitched from multiple viewports. Chromium otherwise
   // paints sticky content at an arbitrary stitch boundary, obscuring document order.
   await page.addStyleTag({
-    content: '.unified-layout-header-frame, .unified-layout-rail { position: static !important; }',
+    content: '.volcano-header-frame { position: static !important; }',
   });
   await expect(page).toHaveScreenshot(`media-library-${testInfo.project.name}.png`, {
     fullPage: true,

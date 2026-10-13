@@ -45,11 +45,11 @@
   color: var(--color-text);
 }
 
-[data-theme='obsidian'] .app-shell-root .gradient-background {
+[data-theme='obsidian'] .app-shell-root:not(.volcano-layout) .gradient-background {
   background: radial-gradient(ellipse at top right, color-mix(in srgb, var(--color-accent) 10%, transparent), transparent 60%);
 }
 
-[data-theme='obsidian'] .app-shell-root .gradient-background::before { content: none; }
+[data-theme='obsidian'] .app-shell-root:not(.volcano-layout) .gradient-background::before { content: none; }
 
 [data-theme='obsidian'] .app-shell-content {
   min-width: 0;

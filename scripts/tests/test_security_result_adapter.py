@@ -42,6 +42,44 @@ class SecurityResultAdapterTests(unittest.TestCase):
         payload = {"metadata": {"vulnerabilities": {"critical": 0, "high": 1, "moderate": 0, "low": 0, "unknown": 0}}}
         self.assertEqual("failed", self.normalize("dependency", "npm-audit", payload)["status"])
 
+    def test_rule_security_score_is_not_downgraded_to_result_level(self):
+        for reference in ({"ruleId": "CVE-fixture"}, {"ruleIndex": 0}):
+            with self.subTest(reference=reference):
+                payload = sarif("error")
+                run = payload["runs"][0]
+                run["tool"] = {"driver": {"rules": [{"id": "CVE-fixture", "properties": {"security-severity": "9.2"}}]}}
+                run["results"][0].update(reference)
+                result = self.normalize("image", "sarif", payload)
+                self.assertEqual(1, result["counts"]["critical"])
+                self.assertEqual("failed", result["status"])
+
+    def test_rule_and_result_scores_keep_highest_severity(self):
+        payload = sarif("warning", "4.0")
+        payload["runs"][0]["tool"] = {"driver": {"rules": [{"id": "critical", "properties": {"security-severity": "9.2"}}]}}
+        payload["runs"][0]["results"][0]["ruleId"] = "critical"
+        self.assertEqual(1, self.normalize("dependency", "sarif", payload)["counts"]["critical"])
+
+    def test_invalid_numeric_security_scores_fail_closed(self):
+        for score in ("NaN", "inf", "-1", "11", True, "invalid"):
+            with self.subTest(score=score), self.assertRaises(ValueError):
+                self.normalize("image", "sarif", sarif("error", score))
+
+    def test_invalid_rule_references_and_properties_fail_closed(self):
+        for result in ({"ruleIndex": -1}, {"ruleIndex": 1}, {"ruleIndex": True},
+                       {"ruleIndex": "0"}, {"properties": ["invalid"]}, "invalid"):
+            payload = sarif()
+            payload["runs"][0]["results"] = [result]
+            with self.subTest(result=result), self.assertRaises(ValueError):
+                self.normalize("image", "sarif", payload)
+
+    def test_conflicting_rule_references_fail_closed(self):
+        payload = sarif()
+        run = payload["runs"][0]
+        run["tool"] = {"driver": {"rules": [{"id": "first"}, {"id": "second"}]}}
+        run["results"][0].update(ruleId="first", ruleIndex=1)
+        with self.assertRaisesRegex(ValueError, "inconsistent"):
+            self.normalize("image", "sarif", payload)
+
     def test_sbom_malformed_payload_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "CycloneDX"):
             self.normalize("sbom", "cyclonedx", {"bomFormat": "SPDX"})

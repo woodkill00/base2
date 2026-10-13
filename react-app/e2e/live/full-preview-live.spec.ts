@@ -28,6 +28,68 @@ const visualSections = [
   ['footer', 'base2-footer'],
 ];
 
+const assertSharedLayout = async (page: Page) => {
+  await expect(page.locator('.volcano-layout')).toHaveCount(1);
+  await expect(page.getByRole('main')).toHaveCount(1);
+  await page.evaluate(() => document.fonts.ready);
+  expect(
+    await page.evaluate(
+      () => Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) - innerWidth
+    )
+  ).toBeLessThanOrEqual(1);
+  for (const [toggle, panel] of [
+    ['.home-left-menu-toggle', '.home-left-command-menu'],
+    ['.home-right-utility-toggle', '.home-right-utility-panel'],
+  ]) {
+    await page.locator(toggle).click();
+    await expect(page.locator(panel)).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator(toggle)).toHaveAttribute('aria-expanded', 'false');
+  }
+};
+
+for (const width of [390, 1440]) {
+  test(`live shared layout covers public route families at ${width}px`, async ({ browser }) => {
+    const context = await browser.newContext({
+      ignoreHTTPSErrors: true,
+      viewport: { width, height: 900 },
+    });
+    const page = await context.newPage();
+    for (const path of [
+      '/about',
+      '/privacy',
+      '/terms',
+      '/accessibility',
+      '/contact',
+      '/search',
+      '/journal',
+      '/events',
+      '/portfolio',
+      '/portfolio/example',
+      '/blog',
+      '/blog/example',
+      '/docs',
+      '/docs/example',
+      '/login',
+      '/signup',
+      '/verify-email',
+      '/forgot-password',
+      '/reset-password',
+      '/de/about',
+      '/ar/about',
+      '/not-a-real-page',
+    ]) {
+      await page.goto(`https://${domain}${path}`, { waitUntil: 'networkidle' });
+      await assertSharedLayout(page);
+      await page.screenshot({
+        path: `${evidence}/layout-${width}-${path.slice(1).replaceAll('/', '-')}.png`,
+        fullPage: true,
+      });
+    }
+    await context.close();
+  });
+}
+
 const waitForOperatorReady = async (page: Page, host: string) => {
   const ready = {
     admin: page.locator('#id_username'),
@@ -60,9 +122,11 @@ test('public Obsidian site identity and owner interaction are live', async ({ br
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'obsidian');
   await page.keyboard.press('Control+k');
-  await expect(page.getByRole('dialog')).toBeVisible();
+  const palette = page.getByRole('dialog', { name: 'Base2 command palette' });
+  await expect(palette).toBeVisible();
+  await expect(palette.getByRole('menuitem', { name: /Admin diagnostics/ })).toBeDisabled();
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog')).toBeHidden();
+  await expect(palette).toBeHidden();
   await page.screenshot({ path: `${evidence}/base2-live-home.png`, fullPage: true });
   expect(consoleErrors).toEqual([]);
   expect(failedRequests).toEqual([]);
@@ -171,7 +235,7 @@ test('public Obsidian visual evidence covers responsive and interactive states',
     }
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.keyboard.press('Control+k');
-    const palette = page.getByRole('dialog');
+    const palette = page.getByRole('dialog', { name: 'Base2 command palette' });
     await expect(palette).toBeVisible();
     const box = await palette.boundingBox();
     expect(box).not.toBeNull();
@@ -179,6 +243,13 @@ test('public Obsidian visual evidence covers responsive and interactive states',
     expect(box!.y).toBeGreaterThanOrEqual(0);
     expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width + 1);
     expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height + 1);
+    // The original modal palette must keep its last action reachable without
+    // moving the underlying page.
+    const pageY = await page.evaluate(() => window.scrollY);
+    const lastControl = palette.getByRole('menuitem').last();
+    await lastControl.scrollIntoViewIfNeeded();
+    await expect(lastControl).toBeInViewport();
+    expect(Math.abs((await page.evaluate(() => window.scrollY)) - pageY)).toBeLessThanOrEqual(1);
     await page.screenshot({
       path: `${evidence}/public-${viewport.name}-command-palette.png`,
       fullPage: false,
@@ -300,6 +371,9 @@ test('authenticated settings platform works accessibly and responsively live', a
   await page.getByRole('button', { name: 'Create account' }).click();
   await expect(page).toHaveURL(/\/dashboard$/, { timeout: 30_000 });
 
+  await assertSharedLayout(page);
+  await page.screenshot({ path: `${evidence}/layout-auth-dashboard.png`, fullPage: true });
+
   const routes = [
     'overview',
     'profile',
@@ -315,6 +389,7 @@ test('authenticated settings platform works accessibly and responsively live', a
     const path = route === 'overview' ? '/settings' : `/settings/${route}`;
     await page.goto(`https://${domain}${path}`, { waitUntil: 'networkidle' });
     await expect(page.locator('#settings-detail')).not.toHaveAttribute('aria-busy', 'true');
+    await assertSharedLayout(page);
     await expect(
       page.getByRole('alert'),
       `HTTP failures: ${failedResponses.join(', ') || 'none'}`
@@ -505,9 +580,7 @@ test('authenticated media library accepts safe synthetic media and rejects hosti
       { message: 'synthetic media did not reach a terminal worker state', timeout: 150_000 }
     )
     .toMatch(/ready|failed/);
-  const safeCard = page
-    .locator('.media-asset-card')
-    .filter({ hasText: safeFilename });
+  const safeCard = page.locator('.media-asset-card').filter({ hasText: safeFilename });
   await expect(safeCard).toContainText('ready');
 
   await page.evaluate(axeSource);

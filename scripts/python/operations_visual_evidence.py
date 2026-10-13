@@ -14,9 +14,17 @@ SNAPSHOT_ROOT = ROOT / "react-app/e2e/operations/operations-release.spec.ts-snap
 MANIFEST = ROOT / "specs/106-production-readiness-program/operations-visual-review.json"
 RUNNER_RECEIPT = ROOT / "specs/106-production-readiness-program/operations-visual-runner.json"
 SOURCES = (
+    "react-app/package-lock.json",
+    "react-app/postcss.config.js",
+    "react-app/tailwind.config.js",
     "react-app/src/pages/OperationsCenter.jsx",
     "react-app/src/services/operations.js",
     "react-app/src/components/glass/AppShell.tsx",
+    "react-app/src/components/glass/VolcanoLayout.jsx",
+    "react-app/src/components/glass/volcano-layout.css",
+    "react-app/src/components/home/HomeObsidianNavigation.jsx",
+    "react-app/src/components/home/HomeFooter.jsx",
+    "react-app/src/styles/home.css",
     "react-app/src/components/glass/unified-layout.css",
     "react-app/src/config/layoutPolicy.ts",
     "react-app/src/config/siteRuntime.ts",

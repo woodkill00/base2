@@ -17,7 +17,7 @@
       "captures": [
         {
           "name": "operations-center-chromium-400-zoom-chromium-400-zoom-linux.png",
-          "sha256": "8b247aabebcdf750055ce21775ae7aea6ece18cf29c5e545235e8159d29f24f0"
+          "sha256": "6e1b815ffe2b93971339240c6a6a2cf774841fbe83bdd46a80184898fc3e6942"
         }
       ]
     },
@@ -36,15 +36,15 @@
       "captures": [
         {
           "name": "operations-center-partial-chromium-compact-linux.png",
-          "sha256": "16fc738a474c0b796feaf245b8c7915b9467185cd8ff3f6ec765b8699c8554b1"
+          "sha256": "5be4b1662b63e3e46653609ff711a2636b7021fa5b83ce1ffe98361ee1b38531"
         },
         {
           "name": "operations-center-read-only-chromium-compact-linux.png",
-          "sha256": "62c745d438bc7de71cdb1cdac226407aa0403326e335be68f40d542bc9f06381"
+          "sha256": "1ffe6605af04070faa7224ded72b4290b518623ceae06b87a21435e700a9110b"
         },
         {
           "name": "operations-center-reauth-chromium-compact-linux.png",
-          "sha256": "930d49b6e8efd1ee41a81fbcb5ae448f527a0b3534c5c3c2f952d2377d61137f"
+          "sha256": "ad3bfe59ca79de001291d61d9120e267fe09d51e514048fb86443e1122603261"
         }
       ]
     },
@@ -56,7 +56,7 @@
       "captures": [
         {
           "name": "operations-center-chromium-compact-chromium-compact-linux.png",
-          "sha256": "4609a1a283967312a0684fcac33c4bb1263eab38c36db56199f67705ea9c4ebd"
+          "sha256": "1907582b2709f28198d91e111eab82580202b17803192406b961524bb95b05c7"
         }
       ]
     },
@@ -68,11 +68,11 @@
       "captures": [
         {
           "name": "operations-center-empty-chromium-compact-linux.png",
-          "sha256": "f2f67f2e9d7256f1e8dd20a2a7d00500dc2bae4f26b03b6b910449b4b3187186"
+          "sha256": "05afd268630b390fd49e461a6bf13dc897bb9f44ee46795f2208f0aa6583949c"
         },
         {
           "name": "operations-center-error-chromium-compact-linux.png",
-          "sha256": "ce4db571f9e69b4c013ed75ca3f2c31ce3b88a19a350d900bb7eb82268c7854e"
+          "sha256": "81ff6f71c8f4c243e22120580070ef0b00fe29baf0c0a73610e855ddc407c6ac"
         }
       ]
     },
@@ -84,15 +84,15 @@
       "captures": [
         {
           "name": "operations-center-partial-chromium-desktop-linux.png",
-          "sha256": "74b319f166ce91ff3f3446bfb41a93130f5f6ce30014bd6cd945c16681427058"
+          "sha256": "0228ba9ab17d774af6a3fa4796274190887ab15047aa9e376df9d7d65e04cbc8"
         },
         {
           "name": "operations-center-read-only-chromium-desktop-linux.png",
-          "sha256": "fa52a02d942d206f7de7b6123c7ab03899ce787251accb5d15851169bfe64156"
+          "sha256": "d7e6412f2a9ea106e5b90dc0f9e5432cd859cc3df269f12e45c0476abe465e2e"
         },
         {
           "name": "operations-center-reauth-chromium-desktop-linux.png",
-          "sha256": "509edbbb0c4ed8e3f793bb4b434cd76ca4d13aa1a42be0600855746fb9be7d36"
+          "sha256": "4092d751bd0e40b83b1728aae8c08fce0d2a3bf101004da06b9959db29b88219"
         }
       ]
     },
@@ -104,11 +104,11 @@
       "captures": [
         {
           "name": "operations-center-cancel-confirmation-chromium-desktop-linux.png",
-          "sha256": "279674b37491d26c96c9a081a8caf6c98f4d77919c9e9ca0cefa247226290120"
+          "sha256": "1325d1e08bc97fb996fcb8cba4210b4084b4ee2e5d1764692dfb46c08c3db50b"
         },
         {
           "name": "operations-center-chromium-desktop-chromium-desktop-linux.png",
-          "sha256": "60639f3e8d80085d70db39c9bc15fa9d5368a8a4fe3b3b54c675dca351a01cd0"
+          "sha256": "7171b2cc03efee2906963f072245f4278ad1d8dbd4b1ad68d38621be9e7289d5"
         }
       ]
     },
@@ -120,11 +120,11 @@
       "captures": [
         {
           "name": "operations-center-empty-chromium-desktop-linux.png",
-          "sha256": "e91635def405eeaeca8971024da2c5ad82e0acb19d9ab7f2111d168393ca5837"
+          "sha256": "f317be4c5f1268f70857c8dffce78999d4f64930ba29c870c6713baa98f8749d"
         },
         {
           "name": "operations-center-error-chromium-desktop-linux.png",
-          "sha256": "a4cc675ec24fdcdc15aad583a370d7a1ed743a3ab8c73ab355220bdbfd3eaf7b"
+          "sha256": "45dcf6daa4c006a44b60dc87480d88c298d967d3e8e2b07ff8c05917c25ae960"
         }
       ]
     },
@@ -143,7 +143,7 @@
       "captures": [
         {
           "name": "operations-center-chromium-german-chromium-german-linux.png",
-          "sha256": "e153e4b218c3ee50e7571814c39142e9afd842c5746433542bcba806e16815a3"
+          "sha256": "8baca809c8fc24f5ec50a0009530baedaa5fe7f31104283287dbcb078f8501f0"
         }
       ]
     },
@@ -169,7 +169,7 @@
       "captures": [
         {
           "name": "operations-center-chromium-high-contrast-chromium-high-contrast-linux.png",
-          "sha256": "3689b95a1be9b819a7c338b7017d1faf4c539ce3026a993cf06d22bac6259fc5"
+          "sha256": "e7bf415494ea5411276be0a4b532f27c3567c7d69ac11173112b7d640817eafe"
         }
       ]
     },
@@ -195,7 +195,7 @@
       "captures": [
         {
           "name": "operations-center-chromium-landscape-touch-chromium-landscape-touch-linux.png",
-          "sha256": "0e88143036cb2fb9bb4e7c53c5810c632db7eb1ee17953c7b1c94f0b414f8c9b"
+          "sha256": "50bbd336227643bb90112b527340bbd0a188465bb76abb15f38c32ed10296389"
         }
       ]
     },
@@ -221,7 +221,7 @@
       "captures": [
         {
           "name": "operations-center-chromium-large-text-chromium-large-text-linux.png",
-          "sha256": "ff3116c76bc70e975d68e6a7c05cd659bb09b63f0e32ca0f359ba0e1e64dc021"
+          "sha256": "eeded87bd5855d0714b39ceee2deb7aa5a417b03c0dc7f06f3a0246424335212"
         }
       ]
     },
@@ -247,7 +247,7 @@
       "captures": [
         {
           "name": "operations-center-chromium-light-chromium-light-linux.png",
-          "sha256": "f9ec46bef576fc4ccce76a95dd66ca30a5bed1aa351553feceea5886d470280c"
+          "sha256": "ef61d67b2780a6255dfe40cdb745a457205d180e7eb8d951ef950b6fd741f81d"
         }
       ]
     },
@@ -273,7 +273,7 @@
       "captures": [
         {
           "name": "operations-center-chromium-reduced-motion-chromium-reduced-motion-linux.png",
-          "sha256": "e8c343e68e9886828c61d6aa9dc40c2b75980050f018e797e1495f9da4456b41"
+          "sha256": "953059595ab6f82214a71ba3fff4f61753362d43faf8003d390d234eab50ea1f"
         }
       ]
     },
@@ -299,7 +299,7 @@
       "captures": [
         {
           "name": "operations-center-chromium-rtl-chromium-rtl-linux.png",
-          "sha256": "74229220e68ce68d716e1888bfe593df44bd449a62eed4bcff2b4ad3026c0274"
+          "sha256": "6d956dbc372443c8117b7af2091181e8fc17110c7bcaad0d8109bdccca1f24d1"
         }
       ]
     },
@@ -325,7 +325,7 @@
       "captures": [
         {
           "name": "operations-center-chromium-tablet-chromium-tablet-linux.png",
-          "sha256": "1f6796f397f39a6ec7001411fa0eadc4857a6e4ba6526d76814bf6d17a745f19"
+          "sha256": "5a789f501af5626cf1edf97b3f9a2885a080bca4594220df934ae964c28b383e"
         }
       ]
     },
@@ -351,7 +351,7 @@
       "captures": [
         {
           "name": "operations-center-chromium-ultrawide-chromium-ultrawide-linux.png",
-          "sha256": "0324721007d27f19e8a9ad2312f02a3bd0e9d8c8e811e03cdeeefe9187aa6825"
+          "sha256": "e6d7066303670c73c573330da3185c72b53123036e40f4cd6935208fee7fdc2f"
         }
       ]
     },
@@ -370,15 +370,15 @@
       "captures": [
         {
           "name": "operations-center-partial-firefox-desktop-linux.png",
-          "sha256": "26966c425be59df168a812685711e3d36b17111ff940d667b006f1ac6b1d5463"
+          "sha256": "74c254bfe1ac1e3ef3c5c9e655965db0aa33ce849ddeb54ce9947c6a1b241ca0"
         },
         {
           "name": "operations-center-read-only-firefox-desktop-linux.png",
-          "sha256": "1dd59b039973aaa4124a8305e67874cb98d5e65d71ad5f2adb9a2a3bc5bd0a4d"
+          "sha256": "349733628a5bb172bbc1fb89f212692aeb44a3018d6952ddb915d004912b727b"
         },
         {
           "name": "operations-center-reauth-firefox-desktop-linux.png",
-          "sha256": "d7b28443d02ce2c1ff0839b3d16265aabcb69435a718d34f701ca0c8d7e4cec6"
+          "sha256": "e80e19b0b79281d4a416459f871c98b1de3c0e601cbd485d049a3ecbab9a4ab9"
         }
       ]
     },
@@ -390,7 +390,7 @@
       "captures": [
         {
           "name": "operations-center-firefox-desktop-firefox-desktop-linux.png",
-          "sha256": "3d758d91580eafc923d25ea62055ccded738e9dc814e665fa43c5accabc10fc8"
+          "sha256": "a094ae700e522cda919684a716238dc95496a9bb0cd610dcf8d9cf9e2535a043"
         }
       ]
     },
@@ -402,11 +402,11 @@
       "captures": [
         {
           "name": "operations-center-empty-firefox-desktop-linux.png",
-          "sha256": "6843af8633a709847aced83c1fae5cc3148546b75cf86fb7e2c18984435f664e"
+          "sha256": "4c78c9d3387a5712fb94a8b313259afdeef01cc2d47bb7b1c73d1bfb3186c98e"
         },
         {
           "name": "operations-center-error-firefox-desktop-linux.png",
-          "sha256": "39d5cadb52d24a4ca9d22449c6aef05499696646869d18d3b64d7abb6ae84dc4"
+          "sha256": "bd7bf9433f80f19045fcd17299d83c1215556d0db35877392e79234b12ecb685"
         }
       ]
     },
@@ -418,15 +418,15 @@
       "captures": [
         {
           "name": "operations-center-partial-webkit-desktop-linux.png",
-          "sha256": "4288d94bf9714d2ce44e8fbd87e06c4b0dfb3fd874b81f0f94d95c76647a7543"
+          "sha256": "ddd87bc1b577c6d12932fd13c2fb0c9c9dd62a243f1b1eab66ba83d8295d6385"
         },
         {
           "name": "operations-center-read-only-webkit-desktop-linux.png",
-          "sha256": "b7247aa1a02f08fc3f470dfa8e44dce735d8f5e447c7bcb0e37c9923c8645ece"
+          "sha256": "fbfd55961d274beedf660de9f3e5e40289043f2b5d99e40fe502867e70990d1d"
         },
         {
           "name": "operations-center-reauth-webkit-desktop-linux.png",
-          "sha256": "bee905a0b311de0ab5e6964ead2e54112cc1b9c255e1de779d5691a4287551af"
+          "sha256": "592be231f7c4cebf64a99b696a5399a711ef8f916e98835a59ccda111c20927d"
         }
       ]
     },
@@ -438,7 +438,7 @@
       "captures": [
         {
           "name": "operations-center-webkit-desktop-webkit-desktop-linux.png",
-          "sha256": "8424de68e1d206496c7e48af8798ec33e7fddf05ef3271fc875a7508f949457a"
+          "sha256": "a0464fe78f5b306d5729abf61f501166a3b0919fb45a420e71889619db6f7fb9"
         }
       ]
     },
@@ -450,14 +450,14 @@
       "captures": [
         {
           "name": "operations-center-empty-webkit-desktop-linux.png",
-          "sha256": "9cd7cc0f694a0a1727f20724f74b300185bf68bf43112995456e23839729c02f"
+          "sha256": "745a6b367e5132042b67f60e00a24fa3b200c439a1befb0aa0d1d2f093d71807"
         },
         {
           "name": "operations-center-error-webkit-desktop-linux.png",
-          "sha256": "0fa509b0c94ea6b27d97da8c71533752bece882a03f400d01caa6543205c9ad3"
+          "sha256": "d113391f6f87b41a10723cc53be63273fca915121f90f68a9a4fb55f8db88051"
         }
       ]
     }
   ],
-  "digest": "b0cd84040ac84f3d3207b274dbe8c172146fb65243d370cabe085ecca0e50a09"
+  "digest": "1ca1ba6b0fc99063405de38cf12ace128ba7c6d8e245c3eca3673e706355d516"
 }

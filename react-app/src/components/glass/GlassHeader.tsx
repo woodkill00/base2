@@ -10,6 +10,7 @@ import { siteManifest } from '../../config/siteRuntime';
 import type { SiteManifest } from '../../config/siteManifest';
 
 type Props = {
+  accountSlot?: React.ReactNode;
   title?: string;
   variant?: 'public' | 'app';
   menuControlsId?: string;
@@ -22,6 +23,7 @@ type Props = {
 };
 
 export const GlassHeader: React.FC<Props> = ({
+  accountSlot,
   title = 'App Shell',
   variant,
   menuControlsId,
@@ -113,24 +115,25 @@ export const GlassHeader: React.FC<Props> = ({
                 </motion.div>
               </button>
 
-              {accountsEnabled && (
-                <div className="hidden sm:flex items-center gap-2">
-                  <GlassButton
-                    variant="ghost"
-                    className="text-sm px-4 py-2"
-                    onClick={() => navigate('/login')}
-                  >
-                    Login
-                  </GlassButton>
-                  <GlassButton
-                    variant="primary"
-                    className="text-sm px-4 py-2"
-                    onClick={() => navigate('/signup')}
-                  >
-                    Sign Up
-                  </GlassButton>
-                </div>
-              )}
+              {accountSlot ||
+                (accountsEnabled && (
+                  <div className="hidden sm:flex items-center gap-2">
+                    <GlassButton
+                      variant="ghost"
+                      className="text-sm px-4 py-2"
+                      onClick={() => navigate('/login')}
+                    >
+                      Login
+                    </GlassButton>
+                    <GlassButton
+                      variant="primary"
+                      className="text-sm px-4 py-2"
+                      onClick={() => navigate('/signup')}
+                    >
+                      Sign Up
+                    </GlassButton>
+                  </div>
+                ))}
             </div>
           </div>
         </nav>

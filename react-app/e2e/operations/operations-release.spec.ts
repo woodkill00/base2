@@ -228,7 +228,7 @@ test('operations center is accessible responsive and visually stable', async ({
   await page.goto('/operations', { waitUntil: 'domcontentloaded' });
   if (testInfo.project.name === 'chromium-large-text') {
     await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
-    await expect(page.getByRole('button', { name: 'Open navigation', exact: true })).toBeVisible();
+    await expect(page.getByTestId('base2-left-menu-toggle')).toBeVisible();
   }
   const rtl = testInfo.project.name === 'chromium-rtl';
   const german = testInfo.project.name === 'chromium-german';
@@ -328,7 +328,7 @@ test('operations center is accessible responsive and visually stable', async ({
     ).toBe(true);
   }
   await page.addStyleTag({
-    content: '.unified-layout-header-frame, .unified-layout-rail { position: static !important; }',
+    content: '.volcano-header-frame { position: static !important; }',
   });
   await captureCurrentRun(page, testInfo, `operations-center-${testInfo.project.name}.png`);
   const timelineButton = page.getByRole('button', { name: label.viewTimeline }).first();

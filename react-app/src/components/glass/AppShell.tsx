@@ -8,6 +8,7 @@ import {
 } from '../../config/layoutPolicy';
 import { useAuth } from '../../contexts/AuthContext';
 import Navigation from '../Navigation';
+import VolcanoLayout from './VolcanoLayout';
 import './unified-layout.css';
 import GlassHeader from './GlassHeader';
 import GlassSidebar from './GlassSidebar';
@@ -289,6 +290,16 @@ export const AppShell: React.FC<Props> = ({
   const sidebarId = useMemo(() => `app-shell-sidebar-${uid}`, [uid]);
   const isPublic = variant === 'public';
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  if (
+    import.meta.env.VITE_VOLCANO110_PREVIEW === 'true' &&
+    siteManifest.siteId === 'base2-obsidian'
+  )
+    return (
+      <VolcanoLayout headerTitle={headerTitle} contextSlot={contextSlot} footerSlot={footerSlot}>
+        {children}
+      </VolcanoLayout>
+    );
 
   if (layoutPreviewEnabled)
     return (

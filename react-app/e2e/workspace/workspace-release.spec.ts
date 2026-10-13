@@ -191,7 +191,7 @@ async function prepareStableFullPageCapture(page) {
   await page.evaluate(() => scrollTo(0, 0));
   await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
   await page.addStyleTag({
-    content: 'header[style*="position: sticky"]{position:static!important}',
+    content: '.volcano-header-frame{position:static!important}',
   });
 }
 
@@ -201,15 +201,15 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
   await page.goto('/workspace');
   await expect(page.getByRole('heading', { name: /records · universal articles/i })).toBeVisible();
   await assertUsable(page);
-  // Axe does not check non-text SVG contrast: the menu must follow header text.
+  // Axe does not check non-text SVG contrast: the original edge-tab icon must
+  // inherit its contrasting foreground, rather than the unrelated header color.
   expect(
     await page
-      .locator('header button[aria-controls]')
+      .locator('.home-left-menu-toggle')
       .first()
       .evaluate(
         (button) =>
-          getComputedStyle(button.querySelector('svg')).color ===
-          getComputedStyle(button.closest('header')).color
+          getComputedStyle(button.querySelector('svg')).color === getComputedStyle(button).color
       )
   ).toBe(true);
   await page.addScriptTag({ content: axeSource });
@@ -223,7 +223,7 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
   ).toEqual([]);
   await page.keyboard.press('Tab');
   await expect(page.locator(':focus')).toBeVisible();
-  await expect(page.locator('header').first()).toHaveCSS('position', 'sticky');
+  await expect(page.locator('.volcano-header-frame')).toHaveCSS('position', 'sticky');
   await prepareStableFullPageCapture(page);
   await expect(page).toHaveScreenshot(`workspace-records-${testInfo.project.name}.png`, {
     fullPage: true,

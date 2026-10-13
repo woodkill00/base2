@@ -102,3 +102,35 @@ attempt directories and bind screenshot readiness and exact source; distinct
 manual attempt names alone do not enforce immutability. T024 must resolve or
 formally classify the existing global typecheck failures. These remain explicit
 open items; no full acceptance or zero-gap implementation claim is made.
+
+## Cycle 8 — Live acceptance alignment
+
+T027 preflight found a stale live-only assertion expecting the removed floating
+Home dialog. The intended palette is now a labelled region inside the shared
+context rail. Update the live assertion to that contract, retaining visibility,
+Escape, geometry and disabled privileged-action checks. Extend the same supported
+live suite with 22 guest paths at mobile/desktop widths and shared-shell checks on
+the real signup-to-Dashboard and nine Settings flows. Do not confuse expected
+permission denials or restricted media with successful privileged workflows.
+Typecheck precedes live execution; capture failures without retries or baseline
+rewrites. This is test-only refinement, not a change to the deployed application.
+
+Live attempt 1 passed six scenarios, including 44 guest route/width combinations,
+real signup/Settings and both protected application logins. The remaining visual
+failure enforced the obsolete whole-palette dialog height on the inline region.
+Retain the failure screenshot; assert the enclosing rail stays in the viewport
+and that scrolling reveals the final palette control without moving the page.
+Rerun only that affected scenario into a new private attempt directory. The runtime
+export/audit verifier depends on completed Settings actions and must run afterward.
+
+## Cycle 9 — Actual restricted-banner screenshot defect
+
+Review of live screenshots found the unfocused skip link visible above the shared
+header: negative positioning is relative to the header below the restriction
+banner, not to the viewport. The restricted suite previously built the legacy
+layout, so it did not cover this combination. Enable the deployed shared-layout
+flag there and require the skip link to remain outside the painted viewport until
+focused, then become visible and hide again after focus moves. Both 390px and
+1440px cases fail on the deployed CSS (`restricted-skip-red`). Add clipped hidden
+styling that preserves keyboard access, then run the affected browser matrices and
+source-bound review checks without relaxing snapshots or coverage requirements.

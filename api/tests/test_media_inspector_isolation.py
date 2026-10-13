@@ -1096,8 +1096,8 @@ def test_inspector_image_ships_fixed_scanner_and_ffprobe():
     assert 'CMD ["-m", "api.services.media_inspector_service"]' in dockerfile
     assert 'python@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6 AS privilege-runtime' in dockerfile
     assert 'FROM --platform=linux/amd64 clamav/clamav@sha256:1fdfd24c6f0a0fb60788481487459a6d4eda8a9b448641594e04db8410d34422 AS clamav-definitions' in dockerfile
-    assert 'cgr.dev/chainguard/python@sha256:c23539f' in dockerfile
-    assert 'cgr.dev/chainguard/python@sha256:1f37785' in dockerfile
+    assert 'cgr.dev/chainguard/python@sha256:ea666e12d8d5c985262f44b280ae7398d43e70156061b5657c040db835acd984' in dockerfile
+    assert 'cgr.dev/chainguard/python@sha256:3e56a2973d429d5bf28d8dd99f929ea6344b0bf054c432f09cf579f747ee3114' in dockerfile
     assert 'apk add' not in dockerfile and 'apt-get' not in dockerfile
     assert 'COPY --from=inspector-builder /tmp/clamav/usr/local/bin/clamscan /usr/bin/clamscan' in dockerfile
     assert '/usr/local/etc/certs/clamav.crt' in dockerfile
