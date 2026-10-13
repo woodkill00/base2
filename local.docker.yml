@@ -447,7 +447,7 @@ services:
       test:
         [
           'CMD-SHELL',
-          'python -c "from api.services.operations_runtime import _runtime_heartbeat; raise SystemExit(0 if _runtime_heartbeat(''workers:runtime-worker'', 1)[0] == ''healthy'' else 1)"',
+          'python -c "from api.services.runtime_heartbeat import _runtime_heartbeat; raise SystemExit(0 if _runtime_heartbeat(''workers:runtime-worker'', 1)[0] == ''healthy'' else 1)"',
         ]
       interval: 20s
       timeout: 10s
@@ -617,7 +617,7 @@ services:
       test:
         [
           'CMD-SHELL',
-          'python -c "from api.services.operations_runtime import _runtime_heartbeat; raise SystemExit(0 if _runtime_heartbeat(''workers:content-worker'', 1)[0] == ''healthy'' else 1)"',
+          'python -c "from api.services.runtime_heartbeat import _runtime_heartbeat; raise SystemExit(0 if _runtime_heartbeat(''workers:content-worker'', 1)[0] == ''healthy'' else 1)"',
         ]
       interval: 20s
       timeout: 10s
@@ -669,7 +669,7 @@ services:
       test:
         [
           'CMD-SHELL',
-          'python -c "from api.services.operations_runtime import _runtime_heartbeat; raise SystemExit(0 if _runtime_heartbeat(''workers:data-rights-worker'', 1)[0] == ''healthy'' else 1)"',
+          'python -c "from api.services.runtime_heartbeat import _runtime_heartbeat; raise SystemExit(0 if _runtime_heartbeat(''workers:data-rights-worker'', 1)[0] == ''healthy'' else 1)"',
         ]
       interval: 20s
       timeout: 10s
@@ -726,7 +726,7 @@ services:
       test:
         [
           'CMD-SHELL',
-          'python -c "from api.services.operations_runtime import _runtime_heartbeat; raise SystemExit(0 if _runtime_heartbeat(''workers:email-worker'', 1)[0] == ''healthy'' else 1)"',
+          'python -c "from api.services.runtime_heartbeat import _runtime_heartbeat; raise SystemExit(0 if _runtime_heartbeat(''workers:email-worker'', 1)[0] == ''healthy'' else 1)"',
         ]
       interval: 20s
       timeout: 10s

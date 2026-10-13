@@ -66,6 +66,17 @@ jobs:
           docker compose -f e2e/docker-compose.e2e.yml logs --no-color
           exit 1
 
+      - name: Constrained heartbeat cold-import acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          image_id="$(docker compose -f e2e/docker-compose.e2e.yml images -q api)"
+          [[ "$image_id" =~ ^(sha256:)?[a-f0-9]{12,64}$ ]]
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --cpus .25 --memory 128m \
+            --pids-limit 16 --entrypoint python "$image_id" \
+            /app/api/tests/runtime_heartbeat_container_acceptance.py
+
       - name: Smoke checks
         shell: bash
         run: |
