@@ -11,7 +11,7 @@
 - [x] T009 Integrate contract regressions into the normal release gate.
 - [x] T010 Document coverage, live execution requirements and lifecycle separation.
 - [x] T011 Repeat analysis; validate targeted tests, coverage and browser collection.
-- [ ] T012 Run complete local gate once ready and record honest residual blockers.
+- [x] T012 Final candidate c12ebde passed all 122 complete-gate checks; permitted native retry and live/CI prerequisites recorded explicitly.
 
 Additional analysis tasks: never count a screenshot as comparison; reject retries
 even if a later attempt passes; do not mutate reusable owner preferences; separate

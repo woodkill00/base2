@@ -1,5 +1,30 @@
 # Implementation checkpoint
 
+## Final local acceptance
+
+Implementation candidate: `c12ebde48e9a5665c87e50d37a4a822fc6d8bd2d`.
+Final gate: `.artifacts/complete-gate/20261014T191551Z-982318/result.json`.
+All 122 checks reached passed; none failed or blocked at completion. Started
+19:15:51Z, finished 19:28:00Z on 2026-10-14 (12m10s). One permitted native retry:
+`site-content-api` first exited -11 during coverage report generation, then passed.
+Preserve its first-failure log; intermittent Python/toolchain instability remains
+unresolved, and a retry is not evidence that its cause has been fixed.
+
+All 13 new acceptance regressions and the 69 Volcano browser checks passed. No
+design/baseline changes. Both complete-gate runs retained: the first passed all 122
+without retry but predates the worker-directory correction. Final evidence above
+is the relevant implementation acceptance. Full-gate count: 2; deployments: 0.
+
+T001–T012 complete for local implementation scope. Branch is not published or
+merged. CI changes await GitHub execution; live owner login, exact deployed build
+comparison and provider cleanup await an authorized preview and private inputs.
+Machine-local wrapper still needs the documented added inputs; no sync or helper
+edits were performed. No claims of exhaustive pixel baselines for every content
+page, live acceptance, native PowerShell execution, or absence of unknown defects.
+
+This closeout modifies documentation only; full-gate evidence remains bound to
+c12ebde, not relabeled for the subsequent documentation commit.
+
 ## Post-gate recovery correction
 
 Candidate 87f0310 passed the complete local gate at

@@ -1,5 +1,13 @@
 # Analysis and issue ledger
 
+Final status: A1–A6 are implemented and locally regression-tested. Live execution
+remains gated on authorization/inputs. A7 is a residual infrastructure issue:
+`site-content-api` exited -11 in coverage/bytecode.py during final gate reporting;
+the built-in bounded retry passed. Cause is not established (do not infer hardware
+failure). Evidence: final gate `site-content-api.log`, attempt 1 retained. Follow-up:
+isolate coverage/runtime instability under the existing resource policy; do not
+weaken coverage or silently erase first failures. Gate policy accepted the run.
+
 Cycle 4: actual runner lifecycle review found A6, Playwright output deletion could
 recreate the private evidence root with unsafe permissions. A real isolated worker
 regression reproduced it; transient output is now a child directory. Required
