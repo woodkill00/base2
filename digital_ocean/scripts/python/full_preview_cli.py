@@ -5,6 +5,7 @@ import argparse
 import json
 from pathlib import Path
 import stat
+import sys
 from digital_ocean.scripts.python.full_preview_policy import canonical_digest, full_preview_policy, safe_receipt
 from digital_ocean.scripts.python.full_preview_probe import safe_json, verify_full_preview
 
@@ -17,6 +18,13 @@ def _private_text(path: Path, label: str) -> str:
     return value
 
 def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "launch":
+        from digital_ocean.scripts.python.full_preview_live import main as launch_main
+        return launch_main(argv[1:])
+    if argv and argv[0] == "reconcile":
+        from digital_ocean.scripts.python.full_preview_expire import main as expire_main
+        return expire_main(argv[1:])
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     policy_parser = commands.add_parser("policy")

@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 import tempfile
 from contextlib import contextmanager
 from datetime import UTC, datetime
@@ -29,6 +30,7 @@ FIELDS = {
 }
 DROPLET_FIELDS = {"id", "name", "tags", "size", "createdAt"}
 DNS_FIELDS = {"id", "domain", "type", "name", "value", "state"}
+DNS_RECONCILIATION_REQUIRED = "DNS reconciliation required"
 
 
 class LeaseV2ValidationError(ValueError): pass
@@ -125,6 +127,30 @@ class FullPreviewLeaseStore:
         os.chmod(self.root, 0o700)
         self.lock_path = self.root / ".lock"
 
+    @contextmanager
+    def operation(self):
+        """Exclude competing lifecycle transactions without blocking a worker."""
+        try:
+            descriptor = os.open(
+                self.root / ".operation.lock",
+                os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_CLOEXEC,
+                0o600,
+            )
+        except OSError as exc:
+            raise LeaseV2IntegrityError("operation lock unavailable") from exc
+        try:
+            metadata = os.fstat(descriptor)
+            if (not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1
+                    or metadata.st_uid != os.getuid() or metadata.st_mode & 0o077):
+                raise LeaseV2IntegrityError("operation lock is not a private regular file")
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as exc:
+                raise LeaseV2Conflict("preview operation busy") from exc
+            yield
+        finally:
+            os.close(descriptor)
+
     def _path(self, run_id: str) -> Path:
         if not RUN_ID.fullmatch(str(run_id)):
             raise LeaseV2ValidationError("run ID is invalid")
@@ -173,6 +199,11 @@ class FullPreviewLeaseStore:
                 os.fsync(handle.fileno())
             os.replace(temporary, self._path(lease["runId"]))
             os.chmod(self._path(lease["runId"]), 0o600)
+            directory = os.open(self.root, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
         finally:
             Path(temporary).unlink(missing_ok=True)
 
@@ -208,12 +239,24 @@ def _dns_equal(expected: dict, actual: dict) -> bool:
 
 
 def teardown_full_preview(store: FullPreviewLeaseStore, provider: Provider, run_id: str, *, now: datetime, early_approved: bool = False) -> dict:
+    with store.operation():
+        return _teardown_full_preview(store, provider, run_id, now=now, early_approved=early_approved)
+
+
+def _teardown_full_preview(store: FullPreviewLeaseStore, provider: Provider, run_id: str, *, now: datetime, early_approved: bool = False) -> dict:
     lease = store.load(run_id)
     if lease["state"] == "destroyed":
         return lease
+    if lease["lastError"] == DNS_RECONCILIATION_REQUIRED:
+        raise LeaseV2Conflict(DNS_RECONCILIATION_REQUIRED)
     if now.astimezone(UTC) < _time(lease["expiresAt"]) and not early_approved and lease["state"] != "dns-cleanup-pending":
         raise TeardownNotDue("preview is not expired and exact early teardown is not approved")
     droplet = lease["droplet"]
+    if droplet is None and provider.list_owned_droplets(run_id):
+        lease["state"] = "blocked"
+        lease["lastError"] = "unbound owned droplets require reconciliation"
+        store.replace(lease)
+        raise LeaseV2Conflict("unbound owned droplets require reconciliation")
     if droplet and lease["state"] != "dns-cleanup-pending":
         current = provider.get_droplet(droplet["id"])
         if current is not None and not _droplet_equal(droplet, current):

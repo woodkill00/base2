@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import stat
+import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -19,6 +20,15 @@ from digital_ocean.scripts.python.preview_lease_v2 import (
 
 class ExpiryError(RuntimeError):
     pass
+
+
+def bounded_inventory(payload, field):
+    if (not isinstance(payload, dict) or not isinstance(payload.get(field), list)
+            or len(payload[field]) > 1000
+            or not all(isinstance(row, dict) for row in payload[field])
+            or ((payload.get("links") or {}).get("pages") or {}).get("next")):
+        raise ExpiryError("provider inventory incomplete or unbounded")
+    return payload[field]
 
 
 def _token(path: Path) -> str:
@@ -60,11 +70,11 @@ class LeaseDigitalOceanProvider:
         self.client.droplets.delete(int(resource_id))
 
     def list_owned_droplets(self, run_id: str) -> list[dict]:
-        rows = (self.client.droplets.list(tag_name=run_id) or {}).get("droplets") or []
+        rows = bounded_inventory(self.client.droplets.list(tag_name=run_id), "droplets")
         return [self._droplet(row) for row in rows]
 
     def get_dns_record(self, domain: str, record_id: str) -> dict | None:
-        rows = (self.client.domains.list_records(domain) or {}).get("domain_records") or []
+        rows = bounded_inventory(self.client.domains.list_records(domain), "domain_records")
         for row in rows:
             if str(row.get("id")) == str(record_id):
                 return {
@@ -124,12 +134,42 @@ def main(argv: list[str] | None = None) -> int:
     target = parser.add_mutually_exclusive_group(required=True)
     target.add_argument("--run-id")
     target.add_argument("--scan", action="store_true")
+    target.add_argument("--reconcile", metavar="RUN_ID")
+    parser.add_argument("--domain")
     parser.add_argument("--credential-file", type=Path, required=True)
     parser.add_argument("--early-approved", action="store_true")
+    parser.add_argument("--stop-timer-on-success", action="store_true")
     args = parser.parse_args(argv)
+    if args.stop_timer_on_success and not args.run_id:
+        raise ExpiryError("timer completion requires one exact run")
+    if args.stop_timer_on_success:
+        lease = FullPreviewLeaseStore(args.state_root).load(args.run_id)
+        if lease["state"] == "destroyed":
+            _stop_timer(args.run_id)
+            print(json.dumps({"ok": True, "runId": args.run_id, "state": "destroyed",
+                              "mutationSent": False, "secretValuesEmitted": 0}, sort_keys=True))
+            return 0
     client = DigitalOceanHttpClient(_token(args.credential_file))
     provider = LeaseDigitalOceanProvider(client)
-    if args.scan:
+    if args.reconcile:
+        if args.early_approved or not args.domain:
+            raise ExpiryError("reconciliation requires domain and never accepts early approval")
+        from digital_ocean.scripts.python.preview_dns_journal import DnsJournal, reconcile_dns
+        store = FullPreviewLeaseStore(args.state_root)
+        with store.operation():
+            lease = store.load(args.reconcile)
+            rows = provider.list_owned_droplets(args.reconcile)
+            if len(rows) > 16:
+                raise ExpiryError("reconciliation inventory exceeds bound")
+            journal = DnsJournal(store.root / f"{args.reconcile}.dns-journal", args.reconcile, args.domain)
+            result = {
+                "runId": args.reconcile, "state": lease["state"],
+                "computeCandidateIds": [row["id"] for row in rows],
+                "dns": reconcile_dns(journal, client.domains) if journal.path.exists() else None,
+                "mutationSent": False, "requiresOwnerReconciliation": True,
+                "secretValuesEmitted": 0,
+            }
+    elif args.scan:
         if args.early_approved:
             raise ExpiryError("early approval is invalid for an automatic scan")
         result = scan_expired_previews(args.state_root, provider, now=datetime.now(UTC))
@@ -149,7 +189,19 @@ def main(argv: list[str] | None = None) -> int:
             "secretValuesEmitted": 0,
         }
     print(json.dumps(result, sort_keys=True))
+    if args.stop_timer_on_success and result.get("state") == "destroyed":
+        _stop_timer(args.run_id)
     return 0
+
+
+def _stop_timer(run_id):
+    if not RUN_ID.fullmatch(run_id):
+        raise ExpiryError("invalid timer identity")
+    result = subprocess.run(["systemctl", "--user", "disable", "--now",
+                             f"base2-preview-{run_id}-expiry.timer"],
+                            capture_output=True, text=True, check=False, timeout=20)
+    if result.returncode:
+        raise ExpiryError("terminal cleanup timer could not be disabled")
 
 
 if __name__ == "__main__":

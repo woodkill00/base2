@@ -1334,7 +1334,7 @@ def validate_hosted_export(payload: dict[str, Any], source_commit: str, required
 
 def parser() -> argparse.ArgumentParser:
     value = argparse.ArgumentParser(prog="assurance-orchestrator")
-    value.add_argument("action", nargs="?", choices=("plan", "run", "status", "explain"), default="run")
+    value.add_argument("action", nargs="?", choices=("plan", "run", "status", "explain", "preflight"), default="run")
     value.add_argument("--tier", choices=("auto", *TIERS), default="auto")
     value.add_argument("--base")
     value.add_argument("--json", action="store_true")
@@ -1396,11 +1396,32 @@ def latest_status(root: Path = ROOT) -> dict[str, Any]:
     return summary
 
 
+def release_prerequisites(root: Path) -> dict[str, Any]:
+    """Validate existing exact-source prerequisites, never generate a pass receipt."""
+    if __package__ in {None, ""} and str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    from digital_ocean.scripts.python.feature_106_repetitions import (
+        RepetitionError, validate_current,
+    )
+    try:
+        evidence = validate_current(root)
+    except (OSError, RepetitionError, subprocess.SubprocessError):
+        return {"schemaVersion": 1, "status": "blocked", "scope": "prerequisites-only",
+                "failed": ["exact-source-repetition-evidence"], "executed": [],
+                "nextAction": "Freeze a clean candidate and run the supported feature_106_repetitions runner.",
+                "releaseAccepted": False}
+    return {"schemaVersion": 1, "status": "passed", "scope": "prerequisites-only",
+            "failed": [], "executed": [], "evidencePath": str(evidence.relative_to(root)),
+            "releaseAccepted": False}
+
+
 def main(argv: list[str] | None = None) -> int:
     arguments = parser().parse_args(argv)
     render = compact_json if arguments.json else compact_text
     try:
-        if arguments.action == "status":
+        if arguments.action == "preflight":
+            payload = release_prerequisites(ROOT)
+        elif arguments.action == "status":
             payload = latest_status(ROOT)
         else:
             graph = load_graph(ROOT)
