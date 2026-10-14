@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { installOwnerEdgeAuth } from './owner-edge-auth.mjs';
+import { waitForDashboard } from './dashboard-readiness.mjs';
 
 const domain = process.env.BASE2_LIVE_DOMAIN || '';
 const username = process.env.BASE2_LIVE_USERNAME || '';
@@ -377,10 +378,9 @@ test('authenticated settings platform works accessibly and responsively live', a
   await page.getByLabel('Email').fill(applicationEmail);
   await page.getByLabel('Password').fill(applicationPassword);
   await page.getByRole('button', { name: 'Create account' }).click();
-  await expect(page).toHaveURL(/\/dashboard$/, { timeout: 30_000 });
   // History changes before React necessarily commits the destination. Its
   // pathname-keyed navigation remounts, so don't click the departing signup menu.
-  await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
+  await waitForDashboard(page);
 
   await assertSharedLayout(page);
   await page.screenshot({ path: `${evidence}/layout-auth-dashboard.png`, fullPage: true });
@@ -530,6 +530,7 @@ test('authenticated media library accepts safe synthetic media and rejects hosti
     await page.getByRole('button', { name: 'Sign in' }).click();
     await expect(page).toHaveURL(/\/dashboard$/, { timeout: 30_000 });
   }
+  await waitForDashboard(page);
   await page.evaluate(() => {
     const raw = localStorage.getItem('user');
     if (!raw) throw new Error('authenticated user was not retained');

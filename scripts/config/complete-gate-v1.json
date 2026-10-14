@@ -1291,6 +1291,19 @@
       "requiredTools": ["npm"]
     },
     {
+      "id": "feature-111-preview-readiness",
+      "command": [
+        "node",
+        "react-app/node_modules/playwright/cli.js",
+        "test",
+        "--config=react-app/playwright.preview-contract.config.mjs"
+      ],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": [],
+      "requiredTools": ["node"]
+    },
+    {
       "id": "compose-config",
       "command": ["python3", "scripts/python/validate_compose_config.py"],
       "required": true,

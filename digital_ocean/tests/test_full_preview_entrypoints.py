@@ -308,6 +308,10 @@ def test_expiry_scanner_destroys_only_expired_integrity_bound_leases(tmp_path):
     store.create(_scanner_lease(pending, expires_at=now + timedelta(minutes=1)))
 
     class NoResources:
+        def list_owned_droplets(self, run_id):
+            assert run_id == expired
+            return []
+
         def __getattr__(self, name):
             raise AssertionError(f"provider should not be called: {name}")
 
