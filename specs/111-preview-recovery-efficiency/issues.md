@@ -14,3 +14,17 @@
 
 Detailed evidence: `.artifacts/feature111/`. Keep first failures alongside fixes.
 No live provider run is authorized or needed for initial reproduction.
+
+## Closeout disposition
+
+P111-01/02/07/08: fixed and validated; cross-root same-account admission also passed.
+P111-03: durable journaling, exact identity and read-only reconciliation validated;
+unknown outcomes remain owner-reconciled by design, not silently retried.
+P111-04: guarded launch now arms persistent cleanup; three approved helper migrations
+are complete. Offline workstation and untested live power-cut limitations remain.
+P111-05: both fixture consumers now use the shared validator; rendered readiness has
+two required Chromium regressions. P111-06: standalone preflight passes on exact
+evidence and rejects missing/stale evidence without running the expensive suite.
+P111-09: corrected fixture retains required read-only inventory verification.
+No known unresolved defect in the implemented scope; all 121 release checks passed.
+This is not a guarantee against unknown defects or proof of live cloud behavior.

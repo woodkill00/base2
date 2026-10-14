@@ -1,5 +1,39 @@
 # Checkpoint — 2026-10-14
 
+## Complete — implementation and provider-free local release acceptance
+
+Validated implementation commit: `eb3974f7cac53645d7ab1efca4fc91589bf4663c`.
+Full gate: `.artifacts/complete-gate/20261014T020558Z-220651/result.json`.
+All **121 checks passed**, zero failed/blocked, zero check retries, elapsed
+757.23 seconds (12m37s). Gate evidence digest:
+`bff81a692e28a3a13ef36b9e63aafa00a0694d09cd97811a0df2f6a8ee5199c1`.
+Full-gate changed-line coverage: **358/365 = 98.08%**, unchanged floor 90%.
+The earlier broader focused measurement included assurance Python separately;
+it is not substituted for the final gate's declared coverage scope.
+
+Exact-source repetitions and preflight passed before the one full gate. All 69
+Volcano preservation checks passed with no baseline replacement. The two new real
+Chromium readiness checks are required by the complete gate. Native PowerShell is
+unavailable locally: native wrapper execution is unverified; Linux/WSL Bash is the
+supported operator platform. Generated systemd units passed actual syntax validation;
+restart/retry behavior is provider-free simulated, not a live power-cut/cloud trial.
+
+The owner-approved direct WSL helper changes are installed in exactly three files:
+
+- launch-base2-full-preview.sh: `d91fb098e87bbf5abd88a7767daf370651af8245882c11f1c4a34b739c8cb543`
+- run-base2-full-preview-browser.sh: `4259b2c0042ce7a3c4932133623a6ee72d5f40171a0a48046cf872c24b4e5790`
+- prepare-base2-full-preview-media-principal.py: `00c21bdc8131bcece376b4fd86dfef3cfd153a44e6b665ad90d40cf1a71af51a`
+
+No notebook sync, provider mutation, new unit activation, paid preview, publication
+or merge occurred. These machine-specific helpers are outside Base2 Git. All 22
+tasks are complete within this authorized scope. Closeout changes only documentation;
+the implementation acceptance remains bound to eb3974f, not fabricated for later docs.
+
+Residual limits: offline WSL cannot clean up until it returns; ambiguous provider
+write outcomes require owner reconciliation; domain exclusion is same-account, not
+distributed; no live provider or native PowerShell acceptance is claimed; unknown
+defects remain possible. Original Feature 110 owner visual acceptance stays separate.
+
 ## Final safe checkpoint for this turn
 
 **311 tests passed in 12.25 seconds.** Current measured changed Python executable

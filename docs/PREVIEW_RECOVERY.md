@@ -1,7 +1,8 @@
 # Preview recovery and verification
 
-Feature 111 is not yet release accepted. Use only provider-free tests until the
-remaining task ledger is closed; the following describes the candidate interface.
+Feature 111 candidate `eb3974f` passed all 121 local release-gate checks. The following
+describes the validated interface; it does not grant publication, provider spending,
+live deployment or destructive authority. No live-cloud acceptance was run for it.
 
 The native Bash entrypoint is `digital_ocean/scripts/bash/full-preview.sh` and the
 PowerShell entrypoint is `digital_ocean/scripts/powershell/full-preview.ps1`.

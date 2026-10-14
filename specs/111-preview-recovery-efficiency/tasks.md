@@ -16,8 +16,8 @@
 - [x] T014 Shared rendered-dashboard readiness helper; two real Chromium negative/positive tests added to the complete gate.
 - [x] T015 Supported preflight command validates existing evidence without generating passes; standalone and negative tests pass.
 - [x] T016 Three analysis cycles plus final integration review; known scope gaps addressed, limitations explicit.
-- [ ] T017 Validate changed-line coverage, affected integrations and required complete gate.
-- [ ] T018 Document residual risks and operational handoff; report release status accurately.
+- [x] T017 Candidate eb3974f passed all 121 complete-gate checks with no retries; changed-line coverage 98.08% exceeds unchanged 90% floor.
+- [x] T018 Closeout documented with exact-source evidence, helper integration, authority limits and residual risks.
 - [x] T019 Prevent same-operator concurrent previews in distinct lease roots from mutating the same DNS zone; test admission before create. Independent operator accounts remain unsupported.
 - [x] T020 Bind failure cleanup to persisted compute identity and reject malformed/drifted provider identities before deletion.
 - [x] T021 Add periodic cleanup retry after busy windows, terminal timer retirement without credential reads, and launch-expiry checks; provider-free boundary tests pass.
@@ -25,7 +25,8 @@
 
 Owner approved the narrow direct edit to exactly three WSL helpers. They are now
 migrated; no notebook sync ran. Syntax, AST/consumer checks and hashes were recorded
-without executing a live helper. T017/T018 remain open until final release evidence.
+without executing a live helper. All 22 tasks are complete within the provider-free
+implementation scope. Publication, merge and live-cloud acceptance are not claimed.
 
 Traceability: R1=T003–T007,T009,T010; R2=T011,T012; R3=T008–T010;
 R4=T013,T014; R5=T015,T017; R6=T016,T018.
