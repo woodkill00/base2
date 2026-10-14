@@ -12,6 +12,47 @@ import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
+from .preview_lease_v2 import FullPreviewLeaseStore, LeaseV2IntegrityError
+
+
+def current_lease(receipt_path: Path, receipt: dict, run_id: str) -> None:
+    """Reject an obsolete launch receipt before resolving owner credentials."""
+    if (
+        not re.fullmatch(r"base2-full-[0-9]{8}-[0-9]{6}", run_id)
+        or receipt_path.name != f"{run_id}.json"
+        or receipt_path.parent.name != "evidence"
+        or receipt_path.parent.parent.name != run_id
+    ):
+        raise ValueError("lease_location_invalid")
+    root = receipt_path.parent.parent / "leases"
+    info = root.stat()
+    if (
+        root.resolve() != root
+        or not stat.S_ISDIR(info.st_mode)
+        or info.st_uid != os.getuid()
+        or info.st_mode & 0o077
+    ):
+        raise ValueError("lease_directory_invalid")
+    # Check private-file admission as well as the store's schema/digest validation.
+    private_json(root / f"{run_id}.json")
+    lease = FullPreviewLeaseStore(root).load(run_id)
+    if (
+        lease["state"] != "live-verified"
+        or any(
+            lease[key] != receipt.get(key)
+            for key in ("runId", "sourceCommit", "profileId", "expiresAt")
+        )
+        or not lease["droplet"]
+        or not any(
+            row["domain"] == receipt.get("domain")
+            and row["name"] == "@"
+            and row["value"] == receipt.get("publicIp")
+            and row["state"] == "bound"
+            for row in lease["dnsRecords"]
+        )
+    ):
+        raise ValueError("current_lease_invalid")
+
 
 def private_json(path: Path) -> dict:
     if not path.is_absolute() or path.resolve() != path:
@@ -93,6 +134,7 @@ def main(argv: list[str] | None = None) -> int:
         commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
         # Resolve no owner credentials until the receipt has been loaded locally.
         receipt = private_json(args.receipt)
+        current_lease(args.receipt, receipt, args.run_id)
         owner = private_json(args.owner_file)
         env = dict(os.environ)
         env.update(
@@ -107,7 +149,7 @@ def main(argv: list[str] | None = None) -> int:
             check=False,
             timeout=1800,
         ).returncode
-    except (OSError, ValueError, TypeError, subprocess.SubprocessError):
+    except (OSError, ValueError, TypeError, LeaseV2IntegrityError, subprocess.SubprocessError):
         print("Live acceptance BLOCKED: private inputs, source, lease or runner validation failed.")
         return 1
 

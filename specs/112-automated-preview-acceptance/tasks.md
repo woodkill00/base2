@@ -20,8 +20,9 @@ success; preserve missing prerequisites as blocked, not skipped-success.
 
 ## Authorized publication and live closeout
 
-- [ ] T013 Remove redundant focused coverage reporting; retain mandatory full API coverage and regression-test its selection.
-- [ ] T014 Connect validated private owner/receipt inputs to the existing browser entrypoint, with negative tests.
+- [x] T013 Remove redundant focused coverage reporting; retain mandatory full API coverage and regression-test its selection.
+- [x] T014 Connect validated private owner/receipt inputs to the existing browser entrypoint, with negative tests.
+- [x] T018 Reject stale receipts using the current integrity-checked durable lease before reading owner credentials; test destroyed, missing, tampered, source/address drift and credential-read ordering.
 - [ ] T015 Validate candidate, publish PR, pass CI, preserve history on merge and check post-merge CI.
 - [ ] T016 Launch one existing 60-minute bounded preview, run full automated acceptance without bypasses.
 - [ ] T017 Perform exact-identity teardown, verify retained receipt and inventory, record failures and residual risks.

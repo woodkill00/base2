@@ -108,6 +108,7 @@ def test_private_file_safety(tmp_path):
 
 
 def test_main_handoff_and_sanitized_failure(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(module, "current_lease", lambda *args: None)
     source = tmp_path / "receipt.json"
     source.write_text(json.dumps(receipt()))
     source.chmod(0o600)
@@ -164,3 +165,55 @@ def test_private_json_rejects_nonobject_and_hardlinks(tmp_path):
     linked.hardlink_to(path)
     with pytest.raises(ValueError):
         private_json(path)
+
+
+@pytest.mark.parametrize("failure", [None, "destroyed", "source", "address", "tamper", "missing"])
+def test_current_durable_lease(tmp_path, failure):
+    from digital_ocean.tests.test_preview_lease_v2 import payload
+
+    data = receipt()
+    run = data["runId"]
+    root = tmp_path / run
+    source = root / "evidence" / f"{run}.json"
+    store = module.FullPreviewLeaseStore(root / "leases")
+    lease = payload(runId=run, sourceCommit=data["sourceCommit"], expiresAt=data["expiresAt"])
+    lease["droplet"]["tags"] = [run]
+    lease["dnsRecords"][0]["value"] = data["publicIp"]
+    if failure == "destroyed":
+        lease["state"] = "destroyed"
+    if failure == "source":
+        lease["sourceCommit"] = "b" * 40
+    if failure == "address":
+        lease["dnsRecords"][0]["value"] = "192.0.2.2"
+    store.create(lease)
+    path = store.root / f"{run}.json"
+    if failure == "tamper":
+        path.write_text(path.read_text().replace("live-verified", "destroyed"))
+    if failure == "missing":
+        path.unlink()
+    if failure:
+        with pytest.raises((ValueError, OSError, module.LeaseV2IntegrityError)):
+            module.current_lease(source, data, run)
+    else:
+        module.current_lease(source, data, run)
+
+
+def test_failed_lease_never_reads_owner(monkeypatch, capsys):
+    reads = []
+    monkeypatch.setattr(
+        module.subprocess, "check_output", lambda cmd, **kw: b"" if "status" in cmd else "a" * 40
+    )
+    monkeypatch.setattr(module, "private_json", lambda path: reads.append(path.name) or receipt())
+
+    def reject(*args):
+        raise module.LeaseV2IntegrityError("private diagnostic")
+
+    monkeypatch.setattr(module, "current_lease", reject)
+    assert (
+        module.main(
+            ["--receipt", "/receipt", "--owner-file", "/owner", "--run-id", receipt()["runId"]]
+        )
+        == 1
+    )
+    assert reads == ["receipt"]
+    assert "private diagnostic" not in capsys.readouterr().out

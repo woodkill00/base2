@@ -1,5 +1,12 @@
 # Analysis and issue ledger
 
+Continuation safety review: an unexpired launch receipt can outlive early teardown.
+T018 binds browser admission to the existing private, schema/digest-validated lease,
+requiring live-verified state, matching source/profile/expiry and bound root DNS IP
+before owner credentials are read. Negative regressions retain sanitized failures.
+This is point-in-time admission, not assurance against subsequent network/provider
+changes. The existing expiry/teardown mechanism remains independent.
+
 ## 2026-10-15 authorized continuation
 
 T013 analysis: site-content-api inherited pytest.ini's full coverage reporting,
