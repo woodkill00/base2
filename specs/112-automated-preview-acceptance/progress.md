@@ -1,5 +1,17 @@
 # Implementation checkpoint
 
+## Post-gate recovery correction
+
+Candidate 87f0310 passed the complete local gate at
+`.artifacts/complete-gate/20261014T190200Z-951654/result.json`. Subsequent review
+found Playwright deletes/recreates its output root; a real worker regression
+reproduced failure of the owner-only directory check before test startup.
+Transient output now uses a `test-output` child directory, preserving private root
+permissions. All 13 acceptance regressions pass, including actual worker startup
+without a browser/network and rejection of fixture-only acceptance. TypeScript
+passes. The first fixture configuration had a relative reporter-resolution issue;
+fixed before reproducing the actual bug. Final exact-source gate must be rerun.
+
 Feature 112 branches from main 556b9603. All implementation tasks T001–T011 are
 complete; complete release gate T012 is pending. No paid preview, credentials,
 notebook sync, publication, merge or live owner-login run occurred.

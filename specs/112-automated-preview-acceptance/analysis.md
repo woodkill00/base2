@@ -1,5 +1,12 @@
 # Analysis and issue ledger
 
+Cycle 4: actual runner lifecycle review found A6, Playwright output deletion could
+recreate the private evidence root with unsafe permissions. A real isolated worker
+regression reproduced it; transient output is now a child directory. Required
+inventory still rejects the fixture-only run. No browser/provider actions occur
+in that regression. The first full gate passed but does not cover this later fix;
+repeat exact-source validation is required. No known blocking code gap remains.
+
 Cycle 1: inspected live suite/config, Volcano reference assertions, visual bundle,
 lease/recovery tests and previous release evidence. No UI edits are needed.
 

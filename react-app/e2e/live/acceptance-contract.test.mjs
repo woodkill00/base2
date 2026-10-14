@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import AcceptanceReporter from './acceptance-reporter.mjs';
 import {
   requiredTests,
@@ -180,5 +180,44 @@ test('real config blocks missing prerequisites, protects old evidence and collec
     assert.equal(readFileSync(join(dir, 'previous-evidence'), 'utf8'), 'preserved');
   } finally {
     rmSync(dir, { recursive: true });
+  }
+});
+
+test('real worker keeps private evidence root and cannot certify a fixture-only run', () => {
+  const cwd = fileURLToPath(new URL('../../', import.meta.url));
+  const parent = mkdtempSync(join(tmpdir(), 'base2-worker-'));
+  const dir = join(parent, 'evidence');
+  mkdirSync(dir, { mode: 0o700 });
+  try {
+    const env = {
+      ...process.env,
+      ...Object.fromEntries(missingInputs({}).map((key) => [key, 'synthetic'])),
+    };
+    Object.assign(env, {
+      BASE2_LIVE_DOMAIN: 'example.test',
+      BASE2_LIVE_ADDRESS: '127.0.0.1',
+      BASE2_LIVE_SOURCE_COMMIT: 'a'.repeat(40),
+      BASE2_LIVE_RUN_ID: 'base2-full-20261014-120000',
+      BASE2_LIVE_EVIDENCE_DIR: dir,
+    });
+    delete env.TEST_WORKER_INDEX;
+    const config = join(parent, 'fixture.config.mjs');
+    // Only this private fixture bypasses clean-source admission to test worker
+    // startup while developing. The real reporter must still deny acceptance.
+    writeFileSync(
+      config,
+      `process.argv.push('--list');\nconst {default: base} = await import(${JSON.stringify(pathToFileURL(join(cwd, 'playwright.live-full-preview.config.mjs')).href)});\nprocess.argv.pop();\nexport default {...base, reporter: [['list'], [${JSON.stringify(join(cwd, 'e2e/live/acceptance-reporter.mjs'))}]], testDir: ${JSON.stringify(join(cwd, 'e2e/live'))}, testMatch: 'acceptance-worker.fixture.ts'};\n`
+    );
+    const result = spawnSync(
+      process.execPath,
+      ['node_modules/playwright/cli.js', 'test', '--config', config],
+      { cwd, env, encoding: 'utf8', timeout: 20_000 }
+    );
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.ok(result.stdout.includes('1 passed'), result.stdout + result.stderr);
+    assert.equal(JSON.parse(readFileSync(join(dir, 'acceptance.json'))).status, 'failed');
+    assert.equal(statSync(dir).mode & 0o777, 0o700);
+  } finally {
+    rmSync(parent, { recursive: true });
   }
 });

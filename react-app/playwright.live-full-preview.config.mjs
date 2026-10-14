@@ -67,7 +67,8 @@ export default defineConfig({
   updateSnapshots: 'none',
   snapshotPathTemplate:
     '{testDir}/../layout/volcano-preservation.spec.ts-snapshots/{arg}-chromium-linux{ext}',
-  outputDir,
+  // Playwright clears this directory; never clear/recreate the private evidence root.
+  outputDir: `${outputDir}/test-output`,
   reporter: [
     ['json', { outputFile: `${outputDir}/playwright-result.json` }],
     ['list'],
