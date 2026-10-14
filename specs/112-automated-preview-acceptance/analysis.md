@@ -1,5 +1,25 @@
 # Analysis and issue ledger
 
+## 2026-10-15 authorized continuation
+
+T013 analysis: site-content-api inherited pytest.ini's full coverage reporting,
+although mandatory api-tests separately covers the same files in isolated shards.
+Use the established focused-contract pattern: explicit addopts/no:cov/no:django
+and unchanged integration/performance exclusions. Tests remain identical; coverage
+policy and dedicated API coverage stay required. Three corrected focused runs
+passed. This mitigates the observed redundant-report crash path, not an assertion
+that all native-runtime instability is cured. Original failed log remains retained.
+
+T014 analysis: add fixed browser dispatch to existing Bash/PowerShell entrypoints;
+only load private bounded regular owner/receipt files, reject wrong run/source/
+domain/profile, expired/restricted previews, hardlinks/symlinks/nonprivate files.
+Propagate test exit status and never print credentials. Tests cover dispatch,
+sanitized failure, unsafe inputs and child environment handoff; measured new-module
+coverage 98%. Existing WSL browser helper updated directly (no notebook sync).
+Read-only provider inventory reports zero previews and zero managed records.
+No known blocking implementation gap remains before the final gate; publication,
+live results and teardown evidence are still pending tasks.
+
 Final status: A1–A6 are implemented and locally regression-tested. Live execution
 remains gated on authorization/inputs. A7 is a residual infrastructure issue:
 `site-content-api` exited -11 in coverage/bytecode.py during final gate reporting;

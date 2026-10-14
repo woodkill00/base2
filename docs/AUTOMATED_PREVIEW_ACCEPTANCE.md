@@ -39,10 +39,14 @@ baseline overrides. Supply all existing private operator/application inputs plus
 - Explicit `BASE2_LIVE_DOMAIN` and `BASE2_LIVE_ADDRESS` remain required; there is
   no automatic target selection.
 
-The machine-local notebook wrapper predates these additional inputs. Export them
-through its private credential integration before using it, or use the supported
-repository npm entrypoint. Missing inputs fail BEFORE browser launch. No notebook
-sync or machine-local helper modification is part of this feature.
+The existing machine-local browser wrapper now calls the guarded repository
+`full-preview.sh browser --receipt <private-receipt> --owner-file <private-owner-json>
+--run-id <lease-id>` command (PowerShell entrypoint supports the same action).
+It loads only the owner email/password, verifies exact source, full-preview mode,
+approved domain and unexpired receipt, and hands the values directly to the child
+environment. Credentials never enter command arguments or stdout. Existing private
+operator and synthetic-account inputs remain supplied by the wrapper. Restricted
+mode is blocked, not a passing filtered suite. No destructive notebook sync is used.
 
 `acceptance.json` is a sanitized private browser acceptance summary. Missing,
 skipped, failed, retried or filtered required cases cannot pass. `--list` intentionally

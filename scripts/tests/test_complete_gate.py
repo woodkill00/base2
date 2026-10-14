@@ -796,6 +796,7 @@ class CompleteGateTests(unittest.TestCase):
         )
         for check_id in (
             "operations-domain-contract",
+            "site-content-api",
             "site-content-models",
             "identity-domain-models",
             "media-library-django-contract",

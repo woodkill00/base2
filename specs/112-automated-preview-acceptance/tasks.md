@@ -17,3 +17,17 @@ Additional analysis tasks: never count a screenshot as comparison; reject retrie
 even if a later attempt passes; do not mutate reusable owner preferences; separate
 mocked visual evidence from live backend evidence; do not infer cleanup from browser
 success; preserve missing prerequisites as blocked, not skipped-success.
+
+## Authorized publication and live closeout
+
+- [ ] T013 Remove redundant focused coverage reporting; retain mandatory full API coverage and regression-test its selection.
+- [ ] T014 Connect validated private owner/receipt inputs to the existing browser entrypoint, with negative tests.
+- [ ] T015 Validate candidate, publish PR, pass CI, preserve history on merge and check post-merge CI.
+- [ ] T016 Launch one existing 60-minute bounded preview, run full automated acceptance without bypasses.
+- [ ] T017 Perform exact-identity teardown, verify retained receipt and inventory, record failures and residual risks.
+
+Analysis: user authorized this continuation on 2026-10-15. No new provider, account,
+design, broad token access or extended lease. Limit diagnostic repetitions to three
+focused runs after relevant correction, then reassess. One full gate once code is
+ready. Existing native-crash evidence stays retained; removing redundant reporting
+does not prove the interpreter's root cause fixed.
