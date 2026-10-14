@@ -20,6 +20,8 @@ success; preserve missing prerequisites as blocked, not skipped-success.
 
 ## Authorized publication and live closeout
 
+- [x] T019 Remove duplicate whole-API reports from all seven remaining API-only focused checks; preserve test selection and full coverage requirements, validate together (42 gate contracts and 52 affected API tests passed).
+
 - [x] T013 Remove redundant focused coverage reporting; retain mandatory full API coverage and regression-test its selection.
 - [x] T014 Connect validated private owner/receipt inputs to the existing browser entrypoint, with negative tests.
 - [x] T018 Reject stale receipts using the current integrity-checked durable lease before reading owner credentials; test destroyed, missing, tampered, source/address drift and credential-read ordering.

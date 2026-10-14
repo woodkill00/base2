@@ -1,5 +1,14 @@
 # Analysis and issue ledger
 
+T019: gate 20261014T232103Z-102769 retained an extension-platform coverage parser
+segmentation fault, recovered on its permitted retry. Same duplicate-report class
+as T013, on a different consumer. Audit found seven remaining API-only focused
+checks inheriting whole-API coverage; clear only inherited options, preserve their
+integration/perf exclusions and django-plugin exclusion, and disable duplicate cov.
+The mandatory isolated full API coverage runner and thresholds remain unchanged.
+Validate all affected test files together and regression-test every command.
+Native runtime root cause remains unresolved; a clean retry is not a cure.
+
 Continuation safety review: an unexpired launch receipt can outlive early teardown.
 T018 binds browser admission to the existing private, schema/digest-validated lease,
 requiring live-verified state, matching source/profile/expiry and bound root DNS IP

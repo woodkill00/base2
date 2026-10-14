@@ -797,6 +797,13 @@ class CompleteGateTests(unittest.TestCase):
         for check_id in (
             "operations-domain-contract",
             "site-content-api",
+            "typed-feature-flag-contract",
+            "production-workflow-contract",
+            "tenant-lifecycle-contract",
+            "universal-product-contract",
+            "extension-platform-contract",
+            "transactional-email-contract",
+            "public-content-abuse-contract",
             "site-content-models",
             "identity-domain-models",
             "media-library-django-contract",
