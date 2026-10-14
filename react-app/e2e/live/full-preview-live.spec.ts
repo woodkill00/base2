@@ -2,6 +2,9 @@ import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { installOwnerEdgeAuth } from './owner-edge-auth.mjs';
 import { waitForDashboard } from './dashboard-readiness.mjs';
+import { contentFailure, expectedNotFound } from './acceptance-contract.mjs';
+import { assertApprovedReference } from './approved-reference';
+import profile from '../../src/config/generated/base2-obsidian.json';
 
 const domain = process.env.BASE2_LIVE_DOMAIN || '';
 const username = process.env.BASE2_LIVE_USERNAME || '';
@@ -12,6 +15,8 @@ const pgadminEmail = process.env.BASE2_PGADMIN_EMAIL || '';
 const pgadminPassword = process.env.BASE2_PGADMIN_PASSWORD || '';
 const applicationEmail = process.env.BASE2_APP_EMAIL || '';
 const applicationPassword = process.env.BASE2_APP_PASSWORD || '';
+const ownerEmail = process.env.BASE2_OWNER_EMAIL || '';
+const ownerPassword = process.env.BASE2_OWNER_PASSWORD || '';
 const evidence = process.env.BASE2_LIVE_EVIDENCE_DIR || 'test-results/live-full-preview';
 const axeSource = readFileSync('node_modules/axe-core/axe.min.js', 'utf8');
 const responsiveViewports = [
@@ -59,7 +64,7 @@ for (const width of [390, 1440]) {
     const contentFailures: string[] = [];
     page.on('response', (response) => {
       const url = new URL(response.url());
-      if (/^\/api\/(content|search|media)(\/|$)/.test(url.pathname) && response.status() >= 500) {
+      if (contentFailure(url.pathname, response.status(), true)) {
         contentFailures.push(`${response.status()} ${url.pathname}`);
       }
     });
@@ -89,13 +94,21 @@ for (const width of [390, 1440]) {
     ]) {
       await page.goto(`https://${domain}${path}`, { waitUntil: 'networkidle' });
       await assertSharedLayout(page);
+      await expect(page.getByRole('heading', { name: 'Page not found', exact: true })).toHaveCount(
+        expectedNotFound(path, profile.modules) ? 1 : 0
+      );
+      await expect(page.getByText(/temporarily unavailable|Please try again later/i)).toHaveCount(
+        0
+      );
       await page.screenshot({
         path: `${evidence}/layout-${width}-${path.slice(1).replaceAll('/', '-')}.png`,
         fullPage: true,
       });
     }
     await context.close();
-    expect([...new Set(contentFailures)], 'public content must work, not just its shell').toEqual([]);
+    expect([...new Set(contentFailures)], 'public content must work, not just its shell').toEqual(
+      []
+    );
   });
 }
 
@@ -111,10 +124,6 @@ const waitForOperatorReady = async (page: Page, host: string) => {
   await expect(ready).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(/^Loading(?:\.\.\.)?$/)).toHaveCount(0);
 };
-
-test.beforeEach(() => {
-  test.skip(!domain || !username || !password, 'live approval inputs are required');
-});
 
 test('public Obsidian site identity and owner interaction are live', async ({ browser }) => {
   const context = await browser.newContext({ ignoreHTTPSErrors: true });
@@ -300,10 +309,6 @@ test('all operator hosts challenge anonymously and load for the owner', async ({
 test('Django and pgAdmin application logins complete behind the owner edge', async ({
   browser,
 }) => {
-  test.skip(
-    !djangoUsername || !djangoPassword || !pgadminEmail || !pgadminPassword,
-    'private application-login inputs are required'
-  );
   const context = await browser.newContext({ ignoreHTTPSErrors: true });
   await installOwnerEdgeAuth(context, {
     domain,
@@ -347,10 +352,6 @@ test('Django and pgAdmin application logins complete behind the owner edge', asy
 test('authenticated settings platform works accessibly and responsively live', async ({
   browser,
 }) => {
-  test.skip(
-    !applicationEmail || !applicationPassword,
-    'ephemeral application-account inputs are required'
-  );
   const context = await browser.newContext({
     ignoreHTTPSErrors: true,
     reducedMotion: 'reduce',
@@ -497,10 +498,6 @@ test('authenticated media library accepts safe synthetic media and rejects hosti
   browser,
 }) => {
   test.setTimeout(180_000);
-  test.skip(
-    !applicationEmail || !applicationPassword,
-    'ephemeral application-account inputs are required'
-  );
   const mediaEmail = applicationEmail.replace('@', '+media@');
   const context = await browser.newContext({
     ignoreHTTPSErrors: true,
@@ -629,6 +626,36 @@ test('authenticated media library accepts safe synthetic media and rejects hosti
   expect(failedRequests).toEqual([]);
   await context.close();
 });
+
+test('reusable owner signs in and signs out without account mutation', async ({ browser }) => {
+  const context = await browser.newContext({ ignoreHTTPSErrors: true });
+  const page = await context.newPage();
+  await page.goto(`https://${domain}/login`, { waitUntil: 'networkidle' });
+  await page.getByLabel('Email').fill(ownerEmail);
+  await page.getByLabel('Password').fill(ownerPassword);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await waitForDashboard(page);
+  await assertSharedLayout(page);
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  await page.goto(`https://${domain}/dashboard`, { waitUntil: 'networkidle' });
+  await expect(page).toHaveURL(/\/login(?:\?|$)/);
+  await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible();
+  await context.close();
+});
+
+for (const width of [390, 1440]) {
+  test(`live approved Volcano reference at ${width}px`, async ({ browser }) => {
+    const context = await browser.newContext({
+      ignoreHTTPSErrors: true,
+      reducedMotion: 'reduce',
+      colorScheme: 'dark',
+      viewport: { width, height: 900 },
+    });
+    const page = await context.newPage();
+    await assertApprovedReference(page, `https://${domain}`, width);
+    await context.close();
+  });
+}
 
 declare global {
   interface Window {

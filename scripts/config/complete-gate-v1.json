@@ -2,6 +2,14 @@
   "schemaVersion": 1,
   "checks": [
     {
+      "id": "feature-112-acceptance-contract",
+      "command": ["node", "--test", "react-app/e2e/live/acceptance-contract.test.mjs"],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": [],
+      "requiredTools": ["node"]
+    },
+    {
       "id": "feature-110-volcano",
       "command": [
         "npm",
