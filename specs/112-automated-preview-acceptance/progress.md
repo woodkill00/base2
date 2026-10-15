@@ -72,3 +72,20 @@ state weakness fixed. The owner-login body is collected and typechecked but cann
 be live-verified without private inputs/approved preview; it is not claimed passed.
 Local full gate is still required. CI changes become externally verified only after
 publication. No known unresolved implementation blocker in this bounded batch.
+
+# 2026-10-15 live continuation
+
+PR75 merged as b0bc1d5e4f24a5cf5c45064728f5acb05911b999; all ten
+post-merge workflows passed. Final premerge edb63ee passed122 local gate checks
+with no retries (20261015T001952Z-216959). Hosted font mismatch corrected by
+installing the approved Ubuntu font package, without baseline or design changes.
+
+Live run base2-full-20261015-005003 reached live-verified and passed10/11 browser
+cases. All visual references, operator logins, responsive routes and media checks
+passed. Logout test raced server completion; one diagnostic waiting for HTTP204
+proved logout and protected-route rejection. Failed acceptance remains retained
+in private run/browser/acceptance.json. Follow-up T021 corrects synchronization.
+
+Exact teardown removed one droplet and six DNS records. Provider inventory is
+empty. No live preview remains. Full acceptance remains incomplete pending a
+fresh approved bounded trial of the corrected test; diagnostic is not acceptance.

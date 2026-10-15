@@ -636,7 +636,9 @@ test('reusable owner signs in and signs out without account mutation', async ({ 
   await page.getByRole('button', { name: 'Sign in' }).click();
   await waitForDashboard(page);
   await assertSharedLayout(page);
-  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  const { completeSignOut } = await import('./owner-session.mjs');
+  await completeSignOut(page);
+  await expect(page).toHaveURL(/\/login(?:\?|$)/);
   await page.goto(`https://${domain}/dashboard`, { waitUntil: 'networkidle' });
   await expect(page).toHaveURL(/\/login(?:\?|$)/);
   await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible();
