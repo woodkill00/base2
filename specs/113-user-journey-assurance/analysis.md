@@ -220,3 +220,26 @@ at both widths (`.artifacts/feature113-booking-browser-final.log`).
 
 Remaining release work: reconcile inventory, full gate, hosted checks, bounded
 live trial and verified teardown. These are not implied by implementation tasks.
+
+## Cycle 8 — full-gate findings
+
+First full gate on 1f6add7: 103 passed, two failed, 19 dependency-blocked in
+852 seconds. Evidence: `.artifacts/complete-gate/20261015T054038Z-558679/result.json`.
+The pre-push guard independently rejected the same inventory fault; no push occurred.
+
+- F113-14 (release-blocking configuration drift): the new isolated profile was
+  absent from production-readiness-v1.json. Add its exact ID and a focused profile
+  regression. Run the blocked contract chain before the next complete gate (T030).
+- F113-15 (intermittent runtime fault, root cause unconfirmed): Django historical
+  migration rendering raised TypeError while unpacking attrs.items() inside
+  ModelBase. One documented isolated diagnostic rerun with the same sysmon,
+  hash-seed and allocator configuration passed. This does not erase the first
+  failure or establish a fix. Retain logs and fail closed on recurrence; do not
+  broaden native-crash retry handling to swallow assertion/Python errors (T031).
+- Renewal evidence is now stored under unique attempt directories to preserve
+  earlier attempts instead of overwriting their diagnostic files.
+
+Actual full-gate passes include 69 Volcano, 106 layout, 102 journey and 24
+enabled-module cases, fresh backend acceptance and frontend tests. Blocked
+contracts and coverage policy are not counted as passed. Provider inventory
+confirmed zero preview droplets and zero managed DNS records; no live spending.

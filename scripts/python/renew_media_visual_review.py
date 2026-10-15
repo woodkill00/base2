@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import json
 import subprocess
+import uuid
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -48,7 +49,7 @@ def renew() -> None:
          "--config=playwright.media-release.config.mjs", "--reporter=json"],
         cwd=ROOT / "react-app", text=True, capture_output=True, timeout=300,
     )
-    evidence = ROOT / ".artifacts" / "media-review-renewal"
+    evidence = ROOT / ".artifacts" / "media-review-renewal" / uuid.uuid4().hex
     evidence.mkdir(parents=True, exist_ok=True)
     (evidence / "runner.json").write_text(result.stdout)
     (evidence / "runner.stderr.log").write_text(result.stderr)

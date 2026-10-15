@@ -5,14 +5,14 @@
 - [x] T003 Add route/role/state/evidence ledger and fail-closed schema/drift tests (R01).
 - [x] T004 Add public form/recovery browser state regressions (R02,R04,R06).
 - [x] T005 Repair reproduced public/auth defects with focused regressions (R02,R04).
-- [ ] T006 Verify local Compose and disposable account/mail prerequisites (R02,R05).
+- [x] T006 Verify local Compose and disposable account/mail prerequisites (R02,R05).
 - [x] T007 Complete backend registration/verification/reset/replay/session journeys (R02).
 - [x] T008 Cover dashboard links and persisted settings, roles and session revocation (R03).
 - [x] T009 Cover enabled populated content, detail links, search pagination and locales (R04).
 - [x] T010 Cover workspace create/edit/reload/import/export and permissions (R05).
 - [x] T011 Cover invitation acceptance/expiry, booking lifecycle and role boundaries (R05).
 - [x] T012 Extend media and operations safe lifecycle/recovery journeys (R05).
-- [ ] T013 Capture and inspect missing page/state visuals; obtain any required reference approval (R06).
+- [x] T013 Capture and inspect missing page/state visuals; obtain any required reference approval (R06).
 - [x] T014 Extend critical journeys across browser engines, input modes and user preferences (R07).
 - [x] T015 Integrate ledger and journey checks into supported assurance/CI (R08).
 - [ ] T016 Re-run tasks -> analysis -> additional/fixed tasks review; close known gaps.
@@ -34,9 +34,11 @@ No unchecked task is implied complete by a previous feature's green gate.
 ### Additional tasks from analysis cycle 6
 
 - [x] T026 Refresh source-bound media/operations visual reviews after actual current-source runs, preserving original references and review ancestry.
-- [ ] T027 Reconcile route coverage inventory with current evidence and explicitly retain unsupported or external-delivery limitations.
+- [x] T027 Reconcile route coverage inventory with current evidence and explicitly retain unsupported or external-delivery limitations.
 - [ ] T028 After local gates and CI pass, perform the separately approved bounded live acceptance and verify teardown.
 - [x] T029 Validate and use guarded media review renewal for unchanged references, with clean-source and failed/incomplete-run rejection tests.
+- [ ] T030 Repair new-profile readiness inventory and validate previously blocked adjacent contracts before another complete gate.
+- [ ] T031 Retain and assess intermittent Django migration-runtime failure; do not expand automatic retries to ordinary assertions.
 
 ## Implemented evidence (not whole-feature completion)
 

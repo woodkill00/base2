@@ -8,6 +8,10 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class JourneyProfileTests(unittest.TestCase):
+    def test_profile_is_present_in_production_readiness_inventory(self):
+        policy = json.loads((ROOT / "shared/config/production-readiness-v1.json").read_text())
+        self.assertIn("journey-reference", policy["siteProfiles"])
+
     def test_enabled_profile_uses_registered_module_versions(self):
         profile = load_manifest(ROOT / "site_profiles/journey-reference.json")
         for module in profile["modules"]:

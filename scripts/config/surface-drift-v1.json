@@ -32,7 +32,7 @@
       "shared/config/operations-probes-v1.json": "85b92aacfff06818581b7460aa1471843e969a5fd32da369a5f0e05b2bc5ff36",
       "shared/config/optional-search-v1.json": "06adbb1bfe9cf53e06ee915ea6be40161a12bc9241cf91e95b4f325f0bc0edd8",
       "shared/config/production-assurance-v1.json": "f30d479da1085e6035a56e408c789c9cc3bba9145d314c52c6422463ab12d3e9",
-      "shared/config/production-readiness-v1.json": "1d6c1dc92ecf66eed9f442e255d9ca1a7aa7570e61a51532a4e726b0bc3751f8",
+      "shared/config/production-readiness-v1.json": "b87278a7cc9e59d42bda9c2edcb744b7c80820137a06e6ce6c307b29a64e008f",
       "shared/config/production-workflows-v1.json": "8ca4178b783c73f3be8019844fd4af8646619e5041f98811d39a6818d41a25b2",
       "shared/config/tenant-security.json": "ff35fd89e50fc66a0dd504bf631a297b52c8f9f888d030201ac3cff6896d117e"
     },
