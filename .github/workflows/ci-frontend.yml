@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       NODE_OPTIONS: --max_old_space_size=4096
 
@@ -58,6 +58,13 @@ jobs:
 
       - name: Install layout browsers
         run: npm exec playwright -- install --with-deps chromium firefox webkit
+
+      - name: Install approved-reference fonts
+        run: |
+          sudo apt-get install --no-install-recommends -y fonts-ubuntu=0.869+git20240321-0ubuntu1
+          fc-cache -f
+          test "$(fc-match -f '%{family}' Ubuntu)" = Ubuntu
+          dpkg-query -W fonts-ubuntu
 
       - name: Shared layout contracts and visual evidence
         run: npm exec playwright -- test --config=playwright.layout.config.mjs

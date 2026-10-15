@@ -15,6 +15,18 @@ import {
 } from './acceptance-contract.mjs';
 
 const cases = () => requiredTests.map((title) => ({ title, status: 'passed', retry: 0 }));
+test('hosted reference capture preserves the approved Ubuntu font environment', () => {
+  const workflow = readFileSync(
+    new URL('../../../.github/workflows/ci-frontend.yml', import.meta.url),
+    'utf8'
+  );
+  assert.match(workflow, /runs-on: ubuntu-24\.04/);
+  assert.match(workflow, /fonts-ubuntu=0\.869\+git20240321-0ubuntu1/);
+  assert.ok(
+    workflow.indexOf('Install approved-reference fonts') <
+      workflow.indexOf('Approved Volcano design preservation')
+  );
+});
 const evaluate = (rows, overrides = {}) =>
   evaluateAcceptance({
     cases: rows,

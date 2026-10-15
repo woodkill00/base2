@@ -1,5 +1,15 @@
 # Analysis and issue ledger
 
+T020: PR75 frontend CI run38657973339 passed67/69 Volcano cases; both home
+references failed. Downloaded actual/expected/diff captures show font metrics and
+line-wrap differences, not missing menus or color changes. WSL has fonts-ubuntu
+0.869+git20240321-0ubuntu1; hosted setup omitted it. Pin the frontend runner to
+Ubuntu24.04 and install/verify the approved font package before capture. Do not
+update approved images, relax pixel thresholds or change application typography.
+Regression requires font setup before reference tests. Validate hosted output;
+local passing alone cannot establish runner parity. System-font rendering on
+other user operating systems remains outside exact screenshot parity guarantees.
+
 T019: gate 20261014T232103Z-102769 retained an extension-platform coverage parser
 segmentation fault, recovered on its permitted retry. Same duplicate-report class
 as T013, on a different consumer. Audit found seven remaining API-only focused

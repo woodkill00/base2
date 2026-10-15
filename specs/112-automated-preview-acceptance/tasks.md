@@ -20,6 +20,8 @@ success; preserve missing prerequisites as blocked, not skipped-success.
 
 ## Authorized publication and live closeout
 
+- [ ] T020 Align hosted visual font prerequisites with approved Ubuntu 24.04 captures, preserve baselines, verify both failed home references and full hosted checks.
+
 - [x] T019 Remove duplicate whole-API reports from all seven remaining API-only focused checks; preserve test selection and full coverage requirements, validate together (42 gate contracts and 52 affected API tests passed).
 
 - [x] T013 Remove redundant focused coverage reporting; retain mandatory full API coverage and regression-test its selection.
