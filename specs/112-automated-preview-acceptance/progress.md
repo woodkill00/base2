@@ -73,7 +73,40 @@ be live-verified without private inputs/approved preview; it is not claimed pass
 Local full gate is still required. CI changes become externally verified only after
 publication. No known unresolved implementation blocker in this bounded batch.
 
-# 2026-10-15 live continuation
+# 2026-10-15 final acceptance
+
+PR76 merged the logout-test synchronization correction into main at
+35fa5ec7b723d99a1fd54a3805a32950abcdcfc0. Its candidate6126863 passed all122
+complete-gate checks without retries (20261015T011204Z-277578), all15 acceptance
+regressions, PR CI and all ten post-merge workflows.
+
+The owner separately approved one additional identical bounded trial. Run
+base2-full-20261015-014656 deployed exact35fa5ec, passed eight route readiness
+probes and all11 browser acceptance tests in3.5minutes with zero retries or missing
+cases. The receipt confirms sourceClean/sourceStable. Both390/1440 approved
+Volcano comparisons, real owner login/logout, operator access controls, Django and
+pgAdmin logins, settings, responsive routes and safe/hostile media checks passed.
+Inspected actual mobile command-palette and desktop operations screenshots; no
+design or baseline change was introduced. pgAdmin briefly reported unhealthy
+during first-start migrations, then recovered without intervention before readiness.
+
+Exact early-approved teardown removed one droplet and six DNS records. The
+integrity-checked lease is destroyed, its expiry timer is inactive, and provider
+inventory returned zero droplets and zero managed DNS records. Both authorized
+trials are destroyed. No preview is left running.
+
+Private evidence root: ~/.local/state/base2-full-preview/base2-full-20261015-014656
+(browser/acceptance.json, screenshots and leases/). Browser acceptance deliberately
+does not certify lifecycle; lifecycle is evidenced by the separate teardown/store
+and inventory observations. The first failed trial remains retained separately.
+
+Residual limits: these checks cover the declared inventory, not every unknown
+defect or user-device font environment. Native interpreter instability observed
+earlier has no proven underlying root-cause fix; redundant reporting is removed,
+and final gates passed without retries. Windows-native helper execution was not
+tested; operational execution used WSL. Production certificates were never issued.
+
+## Earlier live continuation (retained history)
 
 PR75 merged as b0bc1d5e4f24a5cf5c45064728f5acb05911b999; all ten
 post-merge workflows passed. Final premerge edb63ee passed122 local gate checks

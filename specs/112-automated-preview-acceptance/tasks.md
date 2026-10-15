@@ -21,7 +21,7 @@ success; preserve missing prerequisites as blocked, not skipped-success.
 ## Authorized publication and live closeout
 
 - [x] T020 Align hosted visual font prerequisites with approved Ubuntu 24.04 captures, preserve baselines, verify both failed home references and full hosted checks.
-- [ ] T021 Fix live logout test navigation race; require successful completed revocation and login transition before testing protected-route rejection. Preserve failed trial, add delayed/error response regressions, publish and validate correction.
+- [x] T021 Fix live logout test navigation race; require successful completed revocation and login transition before testing protected-route rejection. Preserve failed trial, add delayed/error response regressions, publish and validate correction (PR76, 122-check gate, hosted CI and fresh 11/11 live pass).
 
 - [x] T019 Remove duplicate whole-API reports from all seven remaining API-only focused checks; preserve test selection and full coverage requirements, validate together (42 gate contracts and 52 affected API tests passed).
 
@@ -29,7 +29,7 @@ success; preserve missing prerequisites as blocked, not skipped-success.
 - [x] T014 Connect validated private owner/receipt inputs to the existing browser entrypoint, with negative tests.
 - [x] T018 Reject stale receipts using the current integrity-checked durable lease before reading owner credentials; test destroyed, missing, tampered, source/address drift and credential-read ordering.
 - [x] T015 Validate candidate, publish PR75, pass CI, preserve history on merge b0bc1d5 and check all ten post-merge workflows.
-- [ ] T016 Launch one existing 60-minute bounded preview, run full automated acceptance without bypasses.
+- [x] T016 Launch bounded preview and run full automated acceptance without bypasses. First trial failed10/11 and was destroyed; owner explicitly approved a second identical bounded trial, which passed11/11 with zero retries and was destroyed.
 - [x] T017 Perform exact-identity teardown, verify retained receipt and inventory, record failures and residual risks (one droplet and six DNS records removed; zero remaining).
 
 Analysis: user authorized this continuation on 2026-10-15. No new provider, account,
