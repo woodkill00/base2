@@ -1116,6 +1116,14 @@
       "requiredTools": ["python3"]
     },
     {
+      "id": "frontend-ci-scope-contract",
+      "command": ["{python-api}", "-m", "pytest", "-q", "scripts/tests/test_frontend_ci_scope.py"],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": ["ci-policy"],
+      "requiredTools": ["{python-api}"]
+    },
+    {
       "id": "dependency-policy",
       "command": ["python3", "scripts/python/validate_dependency_policy.py"],
       "required": true,

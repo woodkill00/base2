@@ -12,6 +12,8 @@ concurrency:
 jobs:
   frontend:
     runs-on: ubuntu-24.04
+    outputs:
+      scope: ${{ steps.scope.outputs.mode }}
     env:
       NODE_OPTIONS: --max_old_space_size=4096
 
@@ -22,8 +24,33 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Classify exact changes using base policy
+        id: scope
+        working-directory: .
+        shell: bash
+        env:
+          BASE_COMMIT: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$BASE_COMMIT" =~ ^[0-9a-f]{40}$ || ! "$HEAD_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+            echo 'mode=full' >> "$GITHUB_OUTPUT"
+            echo 'Frontend scope: full (comparison unavailable).' >> "$GITHUB_STEP_SUMMARY"
+          elif git cat-file -e "$BASE_COMMIT:scripts/python/frontend_ci_scope.py" 2>/dev/null; then
+            policy="$RUNNER_TEMP/base2-frontend-ci-scope.py"
+            git show "$BASE_COMMIT:scripts/python/frontend_ci_scope.py" > "$policy"
+            python3 "$policy" --base "$BASE_COMMIT" --head "$HEAD_COMMIT" --root "$GITHUB_WORKSPACE" --github-output "$GITHUB_OUTPUT" --summary "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'mode=full' >> "$GITHUB_OUTPUT"
+            echo 'Frontend scope: full (base policy unavailable).' >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Set up Node
+        if: steps.scope.outputs.mode == 'full'
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '20'
@@ -31,21 +58,27 @@ jobs:
           cache-dependency-path: react-app/package-lock.json
 
       - name: Install
+        if: steps.scope.outputs.mode == 'full'
         run: npm ci --legacy-peer-deps
 
       - name: Lint
+        if: steps.scope.outputs.mode == 'full'
         run: npm run lint
 
       - name: Typecheck
+        if: steps.scope.outputs.mode == 'full'
         run: npm exec tsc -- --noEmit
 
       - name: Live acceptance policy regressions (no provider or credentials)
+        if: steps.scope.outputs.mode == 'full'
         run: node --test e2e/live/acceptance-contract.test.mjs
 
       - name: Test
+        if: steps.scope.outputs.mode == 'full'
         run: npm run test:ci
 
       - name: Upload coverage artifact
+        if: steps.scope.outputs.mode == 'full'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: coverage-frontend
@@ -54,12 +87,15 @@ jobs:
           retention-days: 7
 
       - name: Build
+        if: steps.scope.outputs.mode == 'full'
         run: npm run build
 
       - name: Install layout browsers
+        if: steps.scope.outputs.mode == 'full'
         run: npm exec playwright -- install --with-deps chromium firefox webkit
 
       - name: Install approved-reference fonts
+        if: steps.scope.outputs.mode == 'full'
         run: |
           sudo apt-get install --no-install-recommends -y fonts-ubuntu=0.869+git20240321-0ubuntu1
           fc-cache -f
@@ -67,19 +103,23 @@ jobs:
           dpkg-query -W fonts-ubuntu
 
       - name: Shared layout contracts and visual evidence
+        if: steps.scope.outputs.mode == 'full'
         run: npm exec playwright -- test --config=playwright.layout.config.mjs
 
       - name: Approved Volcano design preservation
+        if: steps.scope.outputs.mode == 'full'
         run: npm exec playwright -- test --config=playwright.volcano.config.mjs
 
       - name: Volcano user journey states
+        if: steps.scope.outputs.mode == 'full'
         run: npm exec playwright -- test --config=playwright.journeys.config.mjs
 
       - name: Enabled optional module journeys
+        if: steps.scope.outputs.mode == 'full'
         run: npm exec playwright -- test --config=playwright.modules-journeys.config.mjs
 
       - name: Upload user journey evidence
-        if: always()
+        if: always() && steps.scope.outputs.mode == 'full'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: user-journeys-113
@@ -88,7 +128,7 @@ jobs:
           retention-days: 7
 
       - name: Upload layout evidence
-        if: always()
+        if: always() && steps.scope.outputs.mode == 'full'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: layout-109
@@ -97,10 +137,11 @@ jobs:
           retention-days: 7
 
       - name: Build Storybook
+        if: steps.scope.outputs.mode == 'full'
         run: npm run build-storybook
 
       - name: Upload Storybook artifact
-        if: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+        if: steps.scope.outputs.mode == 'full'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: storybook-static
@@ -112,7 +153,7 @@ jobs:
     name: Publish Storybook to Chromatic
     runs-on: ubuntu-latest
     needs: frontend
-    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+    if: ${{ needs.frontend.outputs.scope == 'full' && (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}
     env:
       CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
 

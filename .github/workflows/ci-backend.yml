@@ -42,6 +42,10 @@ jobs:
         if: matrix.service == 'api'
         run: python -m ruff check api
 
+      - name: Frontend change-selection security regressions
+        if: matrix.service == 'api'
+        run: python -m pytest -q scripts/tests/test_frontend_ci_scope.py
+
       - name: Mypy (typecheck)
         run: |
           if [ "${{ matrix.service }}" = "api" ]; then
