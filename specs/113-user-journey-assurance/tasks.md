@@ -37,8 +37,10 @@ No unchecked task is implied complete by a previous feature's green gate.
 - [x] T027 Reconcile route coverage inventory with current evidence and explicitly retain unsupported or external-delivery limitations.
 - [ ] T028 After local gates and CI pass, perform the separately approved bounded live acceptance and verify teardown.
 - [x] T029 Validate and use guarded media review renewal for unchanged references, with clean-source and failed/incomplete-run rejection tests.
-- [ ] T030 Repair new-profile readiness inventory and validate previously blocked adjacent contracts before another complete gate.
-- [ ] T031 Retain and assess intermittent Django migration-runtime failure; do not expand automatic retries to ordinary assertions.
+- [x] T030 Repair new-profile readiness inventory and validate previously blocked adjacent contracts before another complete gate.
+- [x] T031 Retain and assess intermittent Django migration-runtime failure; do not expand automatic retries to ordinary assertions.
+- [ ] T032 Retain allowlisted source/run-bound remote failure metadata before cleanup; test hostile markers, unsafe storage, cleanup and original error preservation.
+- [ ] T033 Validate diagnostic repair locally and in CI, then perform the one additionally approved bounded trial and verify teardown; retain any unresolved cause honestly.
 
 ## Implemented evidence (not whole-feature completion)
 

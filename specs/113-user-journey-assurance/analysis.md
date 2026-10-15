@@ -243,3 +243,24 @@ Actual full-gate passes include 69 Volcano, 106 layout, 102 journey and 24
 enabled-module cases, fresh backend acceptance and frontend tests. Blocked
 contracts and coverage policy are not counted as passed. Provider inventory
 confirmed zero preview droplets and zero managed DNS records; no live spending.
+
+## Cycle 9 — live failure evidence and bounded retry
+
+At 4503375 the repaired complete gate passed 124/124 and all 19 hosted checks
+passed. The original Django intermittent failure remains recorded, not proven fixed.
+First live trial base2-full-20261015-062759 failed before browser acceptance.
+Compute was deleted, reconciliation confirmed destroyed and provider inventory
+confirmed zero droplets/managed DNS. No live acceptance pass is claimed.
+
+F113-16: launcher retained only the exception class, losing remote stage metadata
+after teardown. Root cause of the bootstrap failure remains unconfirmed. Repair
+must retain typed allowlisted stage/reason/exit code with exact run/source identity,
+never raw output or exception messages. Reject hostile stage markers and unsafe
+storage; reporting failure must not prevent cleanup or replace the original cause.
+Tests cover these boundaries before a new full gate. Do not increase bootstrap
+waits or disable antivirus based on an unconfirmed diagnosis.
+
+Owner approved one additional trial, same Frankfurt/single droplet/staging TLS,
+60-minute maximum/USD 0.25 ceiling and teardown afterward. Local validation and
+CI precede provisioning. T032/T033 cover the remaining repair and live evidence;
+there is no authorization for an unbounded paid retry loop.

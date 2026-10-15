@@ -17,7 +17,24 @@ from digital_ocean.scripts.python.live_preview_provider import LivePreviewConfig
 
 
 class FullPreviewRemoteError(RuntimeError):
-    pass
+    def __init__(self, message, *, stage="unknown", reason="remote-failure", exit_code=None):
+        super().__init__(message)
+        self.stage = stage if stage in BOOTSTRAP_STAGES else "unknown"
+        self.reason = reason if reason in {"remote-failure", "timeout", "nonzero-exit"} else "remote-failure"
+        self.exit_code = exit_code if type(exit_code) is int and -255 <= exit_code <= 255 else None
+
+
+BOOTSTRAP_STAGES = frozenset("argument-validation cloud-init-wait docker-install docker-start swap-admission env-render media-inspector-attestation acme-bootstrap compose-build clamav-warmup migration-dependencies database-role-bootstrap api-migrations django-migrations preview-lifecycle-bootstrap compose-up media-inspector-identity service-inventory service-health application-owner traefik-policy receipt".split())
+STAGE_MARKER = re.compile(r"full-preview-stage(?:-failed)?:([a-z-]+)(?: exit=([0-9]{1,3}))?")
+
+
+def failure_stage(stdout: str, stderr: str) -> str:
+    stages = []
+    for line in (stdout + "\n" + stderr).splitlines():
+        match = STAGE_MARKER.fullmatch(line.strip())
+        if match and match[1] in BOOTSTRAP_STAGES:
+            stages.append(match[1])
+    return stages[-1] if stages else "unknown"
 
 
 SENSITIVE_LINE = re.compile(
@@ -47,7 +64,9 @@ def safe_diagnostic(stdout: str, stderr: str) -> str:
         if not line:
             continue
         if line.startswith("full-preview-stage:") or line.startswith("full-preview-stage-failed:"):
-            stage_markers.append(line)
+            match = STAGE_MARKER.fullmatch(line)
+            if match and match[1] in BOOTSTRAP_STAGES:
+                stage_markers.append(line)
             continue
         if SENSITIVE_LINE.search(line):
             retained.append("[redacted sensitive diagnostic line]")
@@ -162,12 +181,16 @@ class FullPreviewSshBootstrap:
                 _timeout_text(exc.stderr),
             )
             raise FullPreviewRemoteError(
-                f"bounded full preview bootstrap timed out: {diagnostic}"
+                f"bounded full preview bootstrap timed out: {diagnostic}",
+                stage=failure_stage(_timeout_text(exc.stdout), _timeout_text(exc.stderr)),
+                reason="timeout",
             ) from exc
         if deployed.returncode != 0:
             diagnostic = safe_diagnostic(deployed.stdout, deployed.stderr)
             raise FullPreviewRemoteError(
-                f"full preview bootstrap failed (exit={deployed.returncode}): {diagnostic}"
+                f"full preview bootstrap failed (exit={deployed.returncode}): {diagnostic}",
+                stage=failure_stage(deployed.stdout, deployed.stderr),
+                reason="nonzero-exit", exit_code=deployed.returncode,
             )
         try:
             receipt = json.loads([line for line in deployed.stdout.splitlines() if line.strip()][-1])

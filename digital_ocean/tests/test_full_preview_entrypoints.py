@@ -411,7 +411,7 @@ def test_remote_bootstrap_failure_retains_only_bounded_redacted_diagnostics(tmp_
         return SimpleNamespace(
             returncode=17,
             stdout="build stage api failed\nTOKEN=abcdefghijklmnopqrstuvwxyz0123456789\n",
-            stderr="password=never-print\nexecutor returned non-zero\n",
+            stderr="password=never-print\nexecutor returned non-zero\nfull-preview-stage-failed:compose-build exit=17\n",
         )
 
     remote = FullPreviewSshBootstrap(
@@ -426,6 +426,9 @@ def test_remote_bootstrap_failure_retains_only_bounded_redacted_diagnostics(tmp_
     with pytest.raises(FullPreviewRemoteError, match="exit=17") as failure:
         remote.deploy("8.8.8.8", remote_config(tmp_path))
     message = str(failure.value)
+    assert failure.value.stage == "compose-build"
+    assert failure.value.exit_code == 17
+    assert failure.value.reason == "nonzero-exit"
     assert "executor returned non-zero" in message
     assert "never-print" not in message
     assert "abcdefghijklmnopqrstuvwxyz0123456789" not in message

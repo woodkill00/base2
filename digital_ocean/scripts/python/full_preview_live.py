@@ -20,7 +20,7 @@ from digital_ocean.scripts.python.full_preview_expire import LeaseDigitalOceanPr
 from digital_ocean.scripts.python.preview_dns_journal import DnsJournal, JournaledDnsProvider
 from digital_ocean.scripts.python.full_preview_policy import canonical_digest, full_preview_policy
 from digital_ocean.scripts.python.full_preview_probe import verify_full_preview
-from digital_ocean.scripts.python.full_preview_remote import FullPreviewSshBootstrap
+from digital_ocean.scripts.python.full_preview_remote import FullPreviewSshBootstrap, FullPreviewRemoteError
 from digital_ocean.scripts.python.live_preview_provider import DigitalOceanHttpClient, LivePreviewConfig
 from digital_ocean.scripts.python.preview_lease_v2 import (
     DNS_RECONCILIATION_REQUIRED, FullPreviewLeaseStore, LeaseV2Conflict, RUN_ID,
@@ -81,6 +81,35 @@ def _write(path: Path, payload: dict) -> None:
     temporary.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     temporary.chmod(0o600)
     os.replace(temporary, path)
+
+
+def _record_remote_failure(state_root: Path, run_id: str, source_commit: str,
+                           error: FullPreviewRemoteError) -> None:
+    """Retain only typed metadata, never remote output or exception messages."""
+    if not RUN_ID.fullmatch(run_id):
+        raise FullPreviewLaunchError("invalid failure evidence identity")
+    # Revalidate attributes rather than trusting mutable exception properties.
+    safe = FullPreviewRemoteError("", stage=error.stage, reason=error.reason,
+                                  exit_code=error.exit_code)
+    payload = {"runId": run_id, "sourceCommit": source_commit, "ok": False,
+               "stage": safe.stage, "reason": safe.reason, "exitCode": safe.exit_code,
+               "secretValuesEmitted": 0}
+    directory = state_root / "evidence"
+    directory.mkdir(mode=0o700, exist_ok=True)
+    directory_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        info = os.fstat(directory_fd)
+        if info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) & 0o077:
+            raise FullPreviewLaunchError("unsafe failure evidence directory")
+        fd = os.open(f"{run_id}.failure.json", os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                     0o600, dir_fd=directory_fd)
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            json.dump(payload, stream, sort_keys=True)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+    finally:
+        os.close(directory_fd)
 
 
 def _exclusive_launch(function):
@@ -229,6 +258,12 @@ def launch(
         _write(state_root / "evidence" / f"{run_id}.json", result)
         return result
     except Exception as exc:
+        if isinstance(exc, FullPreviewRemoteError):
+            try:
+                _record_remote_failure(state_root, run_id, source_commit, exc)
+            except Exception:
+                # Evidence storage must never prevent cleanup or mask the cause.
+                print("full-preview-failure-evidence:unavailable", file=sys.stderr)
         # Persist only an exception class; messages can contain credentials.
         # Reload the last valid checkpoint, not a partially validated response.
         failed_lease = store.load(run_id)

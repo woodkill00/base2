@@ -1,9 +1,11 @@
 from datetime import UTC, datetime
 from pathlib import Path
+import json
 
 import pytest
 
 from digital_ocean.scripts.python.full_preview_live import launch
+from digital_ocean.scripts.python.full_preview_remote import FullPreviewRemoteError, failure_stage, safe_diagnostic
 from digital_ocean.scripts.python.preview_lease_v2 import FullPreviewLeaseStore
 
 
@@ -43,6 +45,62 @@ def files(tmp_path: Path):
     archive = tmp_path / "source.tar"; archive.write_bytes(b"archive")
     key = tmp_path / "id"; key.write_text("key"); key.chmod(0o600)
     return archive, key
+
+
+@pytest.mark.parametrize("storage_failure", [False, True])
+def test_remote_failure_metadata_survives_cleanup_without_secrets(tmp_path, monkeypatch, capsys, storage_failure):
+    archive, key = files(tmp_path); client = Client()
+    class FailedRemote(Remote):
+        def deploy(self, address, config):
+            raise FullPreviewRemoteError("password=never-persist", stage="clamav-warmup",
+                                         reason="nonzero-exit", exit_code=4)
+    if storage_failure:
+        def fail(*args):
+            raise OSError("secret-storage-error")
+        monkeypatch.setattr("digital_ocean.scripts.python.full_preview_live._record_remote_failure", fail)
+    with pytest.raises(FullPreviewRemoteError, match="never-persist"):
+        launch(client=client, remote=FailedRemote(), source_archive=archive, ssh_key=key,
+               source_commit="a" * 40, profile_digest="b" * 64, domain="woodkilldev.com",
+               owner_cidr="8.8.4.4/32", run_id="base2-full-20260826-099",
+               probe_username="owner", probe_password="safe-password", state_root=tmp_path / "state",
+               ssh_key_id=77)
+    assert client.droplets.deleted == [123]
+    captured = capsys.readouterr()
+    assert "secret-storage-error" not in captured.err
+    if storage_failure:
+        assert "failure-evidence:unavailable" in captured.err
+    else:
+        evidence = tmp_path / "state/evidence/base2-full-20260826-099.failure.json"
+        record = json.loads(evidence.read_text())
+        assert record["stage"] == "clamav-warmup" and record["exitCode"] == 4
+        assert record["sourceCommit"] == "a" * 40
+        assert "never-persist" not in evidence.read_text()
+        assert evidence.stat().st_mode & 0o777 == 0o600
+
+
+def test_failure_evidence_refuses_symlinks_and_overwrite(tmp_path):
+    from digital_ocean.scripts.python.full_preview_live import _record_remote_failure
+    error = FullPreviewRemoteError("secret", stage="secret", reason="secret", exit_code=True)
+    _record_remote_failure(tmp_path, "base2-full-20260826-099", "a" * 40, error)
+    path = tmp_path / "evidence/base2-full-20260826-099.failure.json"
+    original = path.read_bytes()
+    assert json.loads(original)["stage"] == "unknown"
+    assert json.loads(original)["exitCode"] is None
+    with pytest.raises(FileExistsError):
+        _record_remote_failure(tmp_path, "base2-full-20260826-099", "a" * 40, error)
+    assert path.read_bytes() == original
+    root = tmp_path / "other"; root.mkdir()
+    (root / "evidence").symlink_to(tmp_path / "evidence", target_is_directory=True)
+    with pytest.raises(OSError):
+        _record_remote_failure(root, "base2-full-20260826-098", "a" * 40, error)
+
+
+@pytest.mark.parametrize("marker", ["full-preview-stage:password=secret",
+    "full-preview-stage:compose-build secret", "full-preview-stage-failed:unknown exit=4"])
+def test_untrusted_stage_markers_are_not_retained(marker):
+    assert failure_stage("", marker) == "unknown"
+    assert "secret" not in safe_diagnostic("", marker)
+    assert failure_stage("full-preview-stage:compose-build", marker) == "compose-build"
 
 
 def test_providerless_complete_launch_binds_six_records_and_private_lease(tmp_path):
