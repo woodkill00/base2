@@ -84,7 +84,9 @@
       "tests": ["react-app/e2e/live/full-preview-live.spec.ts"],
       "visual": "capture-only",
       "backend": "partial",
-      "remaining": ["live disposable account acceptance pending"],
+      "remaining": [
+        "live disposable account acceptance passed; exhaustive dashboard data combinations not claimed"
+      ],
       "additionalTests": ["react-app/e2e/journeys/public-journeys.spec.ts"]
     },
     {
@@ -138,7 +140,7 @@
       "visual": "reviewed-comparison",
       "backend": "partial",
       "remaining": [
-        "real live upload/scan/download acceptance pending; synthetic failures are not live scanner evidence"
+        "live real safe media and hostile admission acceptance passed; synthetic failure cases remain a separate layer"
       ],
       "additionalTests": ["react-app/e2e/journeys/operations-media-journeys.spec.ts"]
     },

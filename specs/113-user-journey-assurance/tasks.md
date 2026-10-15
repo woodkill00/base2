@@ -15,9 +15,9 @@
 - [x] T013 Capture and inspect missing page/state visuals; obtain any required reference approval (R06).
 - [x] T014 Extend critical journeys across browser engines, input modes and user preferences (R07).
 - [x] T015 Integrate ledger and journey checks into supported assurance/CI (R08).
-- [ ] T016 Re-run tasks -> analysis -> additional/fixed tasks review; close known gaps.
-- [ ] T017 Run affected integration, coverage and visual checks, then complete release gate.
-- [ ] T018 Record exact-source results, residual risks and approval-gated live next steps.
+- [x] T016 Re-run tasks -> analysis -> additional/fixed tasks review; close known gaps.
+- [x] T017 Run affected integration, coverage and visual checks, then complete release gate.
+- [x] T018 Record exact-source results, residual risks and approval-gated live next steps.
 
 No unchecked task is implied complete by a previous feature's green gate.
 
@@ -35,14 +35,14 @@ No unchecked task is implied complete by a previous feature's green gate.
 
 - [x] T026 Refresh source-bound media/operations visual reviews after actual current-source runs, preserving original references and review ancestry.
 - [x] T027 Reconcile route coverage inventory with current evidence and explicitly retain unsupported or external-delivery limitations.
-- [ ] T028 After local gates and CI pass, perform the separately approved bounded live acceptance and verify teardown.
+- [x] T028 After local gates and CI pass, perform the separately approved bounded live acceptance and verify teardown.
 - [x] T029 Validate and use guarded media review renewal for unchanged references, with clean-source and failed/incomplete-run rejection tests.
 - [x] T030 Repair new-profile readiness inventory and validate previously blocked adjacent contracts before another complete gate.
 - [x] T031 Retain and assess intermittent Django migration-runtime failure; do not expand automatic retries to ordinary assertions.
-- [ ] T032 Retain allowlisted source/run-bound remote failure metadata before cleanup; test hostile markers, unsafe storage, cleanup and original error preservation.
-- [ ] T033 Validate diagnostic repair locally and in CI, then perform the one additionally approved bounded trial and verify teardown; retain any unresolved cause honestly.
+- [x] T032 Retain allowlisted source/run-bound remote failure metadata before cleanup; test hostile markers, unsafe storage, cleanup and original error preservation.
+- [x] T033 Validate diagnostic repair locally and in CI, then perform the one additionally approved bounded trial and verify teardown; retain any unresolved cause honestly.
 
-## Implemented evidence (not whole-feature completion)
+## Implementation history
 
 - Public/auth batch: 42 synthetic UI journeys pass across Chromium/Firefox/WebKit
   at 390/1440, with actual-state accessibility, overflow and screenshot checks.
@@ -53,8 +53,18 @@ No unchecked task is implied complete by a previous feature's green gate.
   rejection, verification/replay, reset/replay/expiry, session revocation,
   password rotation, persisted preferences/version conflicts and mandatory
   notifications. External Celery delivery is intercepted, not claimed tested.
-- Initial partial T005/T008/T009 coverage was extended in cycles 5-6; complete
-  release tasks remain open. No publication, merge or live trial for Feature113.
+- Initial partial T005/T008/T009 coverage was extended in cycles 5-6; final release
+  and live acceptance evidence is recorded in analysis cycle 10 below.
 - Integrated public/protected synthetic UI run now passes all 60 cases on three
   engines at both widths. Collection/search focused checks pass 11 tests; collection
   browser pagination was subsequently completed as T021.
+
+## Closeout
+
+All 33 scoped tasks are complete. Exact tested source: 6e5e5a3fd35638c37cd56de1dd110d5d4850a7e9.
+Local complete gate: 124/124; hosted PR checks: 19/19; live browser acceptance:
+11/11 with no skips, retries or missing cases. PR #78 merged with preserved
+ancestry at 316de3a006f75a0df75eb90d8017f4de250b4987. The preview was destroyed
+and independent inventory showed zero droplets and managed DNS records.
+See analysis cycle 10 for exact evidence locations and residual limitations;
+completion does not claim exhaustive unknown-defect coverage.

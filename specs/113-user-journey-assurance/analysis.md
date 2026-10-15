@@ -264,3 +264,40 @@ Owner approved one additional trial, same Frankfurt/single droplet/staging TLS,
 60-minute maximum/USD 0.25 ceiling and teardown afterward. Local validation and
 CI precede provisioning. T032/T033 cover the remaining repair and live evidence;
 there is no authorization for an unbounded paid retry loop.
+
+## Cycle 10 — accepted candidate and verified teardown
+
+Candidate 6e5e5a3fd35638c37cd56de1dd110d5d4850a7e9 passed 61 focused diagnostic,
+cleanup and recovery tests, exact-source repetition checks, complete gate 124/124
+and all 19 hosted PR checks. Complete-gate evidence:
+`.artifacts/complete-gate/20261015T090829Z-769547/result.json`.
+No assurance floors, scanner policies or approved image baselines were weakened.
+
+Run `base2-full-20261015-093732` passed all 11 live checks with zero retries,
+skips, flaky cases or missing checks. Private source-bound acceptance lives at
+`~/.local/state/base2-full-preview/base2-full-20261015-093732/browser-feature113-acceptance/acceptance.json`.
+It covers mobile/desktop public route layout, approved home/menu references,
+operator-host boundaries, Django and pgAdmin application login, settings,
+safe real media admission plus hostile rejection, and reusable owner login/logout.
+Fresh desktop contact and mobile About captures were manually inspected as well.
+No intentional design change or baseline replacement occurred.
+
+The updater initially timed out two health probes while fresh definitions were
+being installed, then became healthy with definition version 28154. No bypass,
+wait extension or source mutation was used. This is retained startup evidence,
+not proof of the cause of the earlier failed trial. The earlier Django runtime
+failure also remains an unresolved intermittent risk despite subsequent passes.
+
+Supported teardown removed one droplet (609311981) and six managed DNS records.
+The lease is terminal `destroyed`, expiry timer stopped, and independent provider
+inventory returned zero droplets and managed DNS records. Evidence:
+`.artifacts/feature113-teardown-2.log`; PR #78 closeout comment contains sanitized
+results. PR #78 merged at 316de3a006f75a0df75eb90d8017f4de250b4987, preserving
+candidate and visual-review ancestry. Subsequent closeout edits are documentation,
+not a claim that a different source was deployed.
+
+Residual boundaries: external SMTP/OAuth delivery and exhaustive translation or
+every-state pixel review are not claimed. Optional modules were tested in an
+isolated enabled profile, not enabled on the live Base2 site. Stateful UI fixtures
+and real database acceptance remain distinct layers. No unknown-defect guarantee
+is made. No further paid trial is authorized or required for this closeout.

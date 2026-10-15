@@ -29,7 +29,9 @@ and USD 0.25, followed by teardown. Provision only after local acceptance and CI
 pass for the candidate source. Use the existing bounded deployment and cleanup
 path; record resource identity, lease, live results and verified teardown. This
 does not authorize a lease extension, production certificates or additional
-resources. No live resource has yet been created for this feature.
+resources. Final outcome: first trial failed and was destroyed; one additionally
+approved trial passed 11/11 live checks and was destroyed with empty independent
+provider inventory. See analysis cycles 9-10 for source-bound evidence and risks.
 
 ## Unchanged media reference renewal
 
