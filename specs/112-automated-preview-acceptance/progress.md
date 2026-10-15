@@ -76,14 +76,14 @@ publication. No known unresolved implementation blocker in this bounded batch.
 # 2026-10-15 final acceptance
 
 PR76 merged the logout-test synchronization correction into main at
-35fa5ec7b723d99a1fd54a3805a32950abcdcfc0. Its candidate6126863 passed all122
+35fa5ec7b723d99a1fd54a3805a32950abcdcfc0. Its candidate 6126863 passed all 122
 complete-gate checks without retries (20261015T011204Z-277578), all15 acceptance
 regressions, PR CI and all ten post-merge workflows.
 
 The owner separately approved one additional identical bounded trial. Run
-base2-full-20261015-014656 deployed exact35fa5ec, passed eight route readiness
-probes and all11 browser acceptance tests in3.5minutes with zero retries or missing
-cases. The receipt confirms sourceClean/sourceStable. Both390/1440 approved
+base2-full-20261015-014656 deployed exact 35fa5ec, passed eight route readiness
+probes and all 11 browser acceptance tests in 3.5 minutes with zero retries or missing
+cases. The receipt confirms sourceClean/sourceStable. Both 390/1440 approved
 Volcano comparisons, real owner login/logout, operator access controls, Django and
 pgAdmin logins, settings, responsive routes and safe/hostile media checks passed.
 Inspected actual mobile command-palette and desktop operations screenshots; no
