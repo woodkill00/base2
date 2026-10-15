@@ -20,7 +20,8 @@
       "tests": ["react-app/e2e/layout/route-families.spec.ts"],
       "visual": "capture-only",
       "backend": "partial",
-      "remaining": ["populated content comparisons", "pagination"]
+      "remaining": ["all-state pixel references beyond the representative matrix"],
+      "additionalTests": ["react-app/e2e/journeys/public-journeys.spec.ts"]
     },
     {
       "id": "public-forms",
@@ -28,9 +29,10 @@
       "roles": ["guest"],
       "states": ["validation", "loading", "success", "unavailable", "retry"],
       "tests": ["react-app/src/__tests__/public-experience-contract.test.jsx"],
-      "visual": "capture-only",
-      "backend": "pending",
-      "remaining": ["stored contact outcome", "search pagination", "reviewed state comparisons"]
+      "visual": "reviewed-comparison",
+      "backend": "partial",
+      "remaining": ["external contact email delivery is not part of fixture acceptance"],
+      "additionalTests": ["react-app/e2e/journeys/public-journeys.spec.ts"]
     },
     {
       "id": "content-packs",
@@ -40,7 +42,8 @@
       "tests": ["react-app/e2e/layout/route-families.spec.ts"],
       "visual": "capture-only",
       "backend": "pending",
-      "remaining": ["enabled profile detail journeys", "long content"]
+      "remaining": ["enabled optional packs remain disabled in the deployed Base2 profile"],
+      "additionalTests": ["react-app/e2e/journeys/enabled-modules.spec.ts"]
     },
     {
       "id": "events",
@@ -50,7 +53,11 @@
       "tests": ["react-app/e2e/layout/route-families.spec.ts"],
       "visual": "capture-only",
       "backend": "pending",
-      "remaining": ["disposable booking lifecycle"]
+      "remaining": ["no cancellation UI exists; backend cancellation is separate"],
+      "additionalTests": [
+        "react-app/e2e/journeys/enabled-modules.spec.ts",
+        "react-app/src/__tests__/events-booking.test.jsx"
+      ]
     },
     {
       "id": "auth",
@@ -63,7 +70,11 @@
       ],
       "visual": "capture-only",
       "backend": "partial",
-      "remaining": ["test mail recovery lifecycle", "session loss", "state comparisons"]
+      "remaining": [
+        "external SMTP/OAuth not exercised by synthetic recovery",
+        "not every auth state has a pixel reference"
+      ],
+      "additionalTests": ["react-app/e2e/journeys/public-journeys.spec.ts"]
     },
     {
       "id": "dashboard",
@@ -73,7 +84,8 @@
       "tests": ["react-app/e2e/live/full-preview-live.spec.ts"],
       "visual": "capture-only",
       "backend": "partial",
-      "remaining": ["all enabled destinations", "back and reload"]
+      "remaining": ["live disposable account acceptance pending"],
+      "additionalTests": ["react-app/e2e/journeys/public-journeys.spec.ts"]
     },
     {
       "id": "settings",
@@ -86,7 +98,11 @@
       ],
       "visual": "reviewed-comparison",
       "backend": "partial",
-      "remaining": ["all setting persistence", "session revocation", "enabled MFA"]
+      "remaining": [
+        "passkeys are disabled and are not claimed tested",
+        "reusable owner preferences are not mutated"
+      ],
+      "additionalTests": ["react-app/e2e/journeys/public-journeys.spec.ts"]
     },
     {
       "id": "admin",
@@ -96,7 +112,8 @@
       "tests": ["react-app/e2e/account/account-admin.spec.ts"],
       "visual": "capture-only",
       "backend": "pending",
-      "remaining": ["invitation lifecycle", "role boundaries"]
+      "remaining": ["external invitation email delivery not exercised"],
+      "additionalTests": ["react-app/e2e/journeys/public-journeys.spec.ts"]
     },
     {
       "id": "workspace",
@@ -106,7 +123,8 @@
       "tests": ["react-app/e2e/workspace/workspace-release.spec.ts"],
       "visual": "reviewed-comparison",
       "backend": "pending",
-      "remaining": ["real browser persistence and transfer"]
+      "remaining": ["stateful browser transfer fixture and real DB tests are separate layers"],
+      "additionalTests": ["react-app/e2e/journeys/workspace-journeys.spec.ts"]
     },
     {
       "id": "media",
@@ -119,7 +137,10 @@
       ],
       "visual": "reviewed-comparison",
       "backend": "partial",
-      "remaining": ["all supported types", "interrupted transfer", "safe lifecycle"]
+      "remaining": [
+        "real live upload/scan/download acceptance pending; synthetic failures are not live scanner evidence"
+      ],
+      "additionalTests": ["react-app/e2e/journeys/operations-media-journeys.spec.ts"]
     },
     {
       "id": "operations",
@@ -129,7 +150,8 @@
       "tests": ["react-app/e2e/operations/operations-release.spec.ts"],
       "visual": "reviewed-comparison",
       "backend": "pending",
-      "remaining": ["safe read-only live workflow"]
+      "remaining": ["live read-only workflow pending"],
+      "additionalTests": ["react-app/e2e/journeys/operations-media-journeys.spec.ts"]
     },
     {
       "id": "localized-and-missing",
@@ -139,7 +161,8 @@
       "tests": ["react-app/e2e/visual/obsidian-localization.spec.ts"],
       "visual": "reviewed-comparison",
       "backend": "partial",
-      "remaining": ["localized populated public workflows"]
+      "remaining": ["representative Arabic RTL workflow, not exhaustive translation review"],
+      "additionalTests": ["react-app/e2e/journeys/public-journeys.spec.ts"]
     }
   ],
   "operatorHosts": ["admin", "pgadmin", "traefik", "swagger", "flower"],

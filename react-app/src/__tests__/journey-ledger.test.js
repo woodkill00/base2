@@ -41,6 +41,12 @@ describe('user journey coverage inventory', () => {
       copy.families[0].tests = ['react-app/../AGENTS.md'];
     },
     (copy) => {
+      copy.families[0].additionalTests = ['react-app/missing.test.ts'];
+    },
+    (copy) => {
+      copy.families[0].additionalTests = 'not-an-array';
+    },
+    (copy) => {
       copy.families[0].backend = 'passed';
     },
     (copy) => {

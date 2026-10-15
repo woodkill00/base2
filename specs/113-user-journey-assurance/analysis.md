@@ -198,3 +198,25 @@ Current release-preparation follow-up:
   `.artifacts/feature113-lint-current.log`; warnings are not reported as absent.
 - `git diff --check` passes. Media review renewal, coverage reconciliation,
   complete gate, hosted CI and bounded live acceptance remain outstanding.
+
+## Cycle 7 — release candidate preparation
+
+Source candidate e8b43e8 is committed. Added guarded media renewal (T029) rather
+than editing an accepted pass record: clean committed source, unchanged references,
+24 passed/12 intentional exclusions, no flaky or failed cases, and a final source
+check are mandatory. Its fresh run passed and generated the review binding; four
+unit tests reject dirty source, changed references, failed/partial runs and source
+drift. Seven media/operations evidence contract tests pass. Existing references
+were not rewritten; compact library and desktop detail captures were inspected.
+
+Final frontend run passes 359 tests in 82 files. Fresh frontend coverage has 100%
+of 105 counted changed executable lines and preserves all critical-glass floors.
+Other language reports in this diagnostic were not regenerated here and remain
+subject to the mandatory full gate, not promoted to current release evidence.
+
+Booking browser coverage now verifies denied -> retry -> confirmed -> disabled,
+with exactly two requests. All 24 enabled-profile cases pass across three engines
+at both widths (`.artifacts/feature113-booking-browser-final.log`).
+
+Remaining release work: reconcile inventory, full gate, hosted checks, bounded
+live trial and verified teardown. These are not implied by implementation tasks.

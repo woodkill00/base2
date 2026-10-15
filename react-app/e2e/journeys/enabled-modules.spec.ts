@@ -93,6 +93,7 @@ for (const width of [390, 1440]) {
       );
       await page.route('**/api/scheduling/events/open/bookings', (route) => {
         attempts++;
+        if (attempts === 2) return route.fulfill({ json: { status: 'confirmed' } });
         return route.fulfill({ status: 403, json: { detail: 'Reservation denied' } });
       });
       await page.goto('/events');
@@ -115,6 +116,10 @@ for (const width of [390, 1440]) {
         fullPage: true,
         animations: 'disabled',
       });
+      await page.getByRole('button', { name: 'Book one seat' }).click();
+      await expect(page.getByRole('status').filter({ hasText: 'Booking confirmed.' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Booked', exact: true })).toBeDisabled();
+      expect(attempts).toBe(2);
     });
   });
 }

@@ -27,8 +27,10 @@ export function validateJourneyLedger(ledger, routes, fileExists) {
       if (seen.has(route)) fail(`duplicate route ${route}`);
       seen.add(route);
     }
-    for (const path of family.tests) {
-      if (!path.startsWith('react-app/') || path.split('/').includes('..') || !fileExists(path))
+    if (family.additionalTests !== undefined && !Array.isArray(family.additionalTests))
+      fail('invalid additional test references');
+    for (const path of [...family.tests, ...(family.additionalTests || [])]) {
+      if (typeof path !== 'string' || !path.startsWith('react-app/') || path.split('/').includes('..') || !fileExists(path))
         fail(`missing/unsafe test reference ${path}`);
     }
   }
