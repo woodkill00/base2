@@ -4,7 +4,7 @@ import { siteManifest } from '../config/siteRuntime';
 
 const tenantHeaders = () => ({ 'X-Tenant-Id': siteManifest.siteId });
 
-const call = async (request, fallbackMessage) => {
+const call = async (request, fallbackMessage, allowNotFound = false) => {
   try {
     const data = (await request).data;
     if (!data || typeof data !== 'object' || Array.isArray(data)) {
@@ -16,7 +16,7 @@ const call = async (request, fallbackMessage) => {
     }
     return data;
   } catch (error) {
-    if (error?.response?.status === 404) return null;
+    if (allowNotFound && error?.response?.status === 404) return null;
     throw normalizeApiError(error, { fallbackMessage });
   }
 };
@@ -38,14 +38,16 @@ export const siteContentAPI = {
       apiClient.get(`/content/page/${encodeURIComponent(slug)}`, {
         headers: tenantHeaders(),
       }),
-      'Page temporarily unavailable'
+      'Page temporarily unavailable',
+      true
     ),
   getContent: (contentType, slug) =>
     call(
       apiClient.get(`/content/${encodeURIComponent(contentType)}/${encodeURIComponent(slug)}`, {
         headers: tenantHeaders(),
       }),
-      'Content temporarily unavailable'
+      'Content temporarily unavailable',
+      true
     ),
   search: (query, cursor) =>
     call(

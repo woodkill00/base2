@@ -72,6 +72,21 @@ jobs:
       - name: Approved Volcano design preservation
         run: npm exec playwright -- test --config=playwright.volcano.config.mjs
 
+      - name: Volcano user journey states
+        run: npm exec playwright -- test --config=playwright.journeys.config.mjs
+
+      - name: Enabled optional module journeys
+        run: npm exec playwright -- test --config=playwright.modules-journeys.config.mjs
+
+      - name: Upload user journey evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: user-journeys-113
+          path: .artifacts/journeys-*
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Upload layout evidence
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f

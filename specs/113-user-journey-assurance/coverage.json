@@ -1,0 +1,147 @@
+{
+  "version": 1,
+  "evidencePolicy": "test references are inventory, not current pass receipts",
+  "families": [
+    {
+      "id": "home",
+      "routes": ["/"],
+      "roles": ["guest"],
+      "states": ["ready", "menus", "keyboard"],
+      "tests": ["react-app/e2e/layout/volcano-preservation.spec.ts"],
+      "visual": "reviewed-comparison",
+      "backend": "partial",
+      "remaining": ["preserve approved references"]
+    },
+    {
+      "id": "public-content",
+      "routes": ["/about", "/privacy", "/terms", "/accessibility", "/journal"],
+      "roles": ["guest"],
+      "states": ["populated", "empty", "loading", "unavailable"],
+      "tests": ["react-app/e2e/layout/route-families.spec.ts"],
+      "visual": "capture-only",
+      "backend": "partial",
+      "remaining": ["populated content comparisons", "pagination"]
+    },
+    {
+      "id": "public-forms",
+      "routes": ["/contact", "/search"],
+      "roles": ["guest"],
+      "states": ["validation", "loading", "success", "unavailable", "retry"],
+      "tests": ["react-app/src/__tests__/public-experience-contract.test.jsx"],
+      "visual": "capture-only",
+      "backend": "pending",
+      "remaining": ["stored contact outcome", "search pagination", "reviewed state comparisons"]
+    },
+    {
+      "id": "content-packs",
+      "routes": ["/portfolio", "/portfolio/:slug", "/blog", "/blog/:slug", "/docs", "/docs/:slug"],
+      "roles": ["guest"],
+      "states": ["enabled-populated", "disabled", "missing", "unavailable"],
+      "tests": ["react-app/e2e/layout/route-families.spec.ts"],
+      "visual": "capture-only",
+      "backend": "pending",
+      "remaining": ["enabled profile detail journeys", "long content"]
+    },
+    {
+      "id": "events",
+      "routes": ["/events"],
+      "roles": ["guest", "member"],
+      "states": ["available", "full", "duplicate", "cancelled"],
+      "tests": ["react-app/e2e/layout/route-families.spec.ts"],
+      "visual": "capture-only",
+      "backend": "pending",
+      "remaining": ["disposable booking lifecycle"]
+    },
+    {
+      "id": "auth",
+      "routes": ["/login", "/signup", "/verify-email", "/forgot-password", "/reset-password"],
+      "roles": ["guest", "member"],
+      "states": ["success", "validation", "expired", "replayed", "unavailable"],
+      "tests": [
+        "react-app/e2e/live/full-preview-live.spec.ts",
+        "react-app/e2e/experience/shared-experience.spec.ts"
+      ],
+      "visual": "capture-only",
+      "backend": "partial",
+      "remaining": ["test mail recovery lifecycle", "session loss", "state comparisons"]
+    },
+    {
+      "id": "dashboard",
+      "routes": ["/dashboard"],
+      "roles": ["member"],
+      "states": ["populated", "empty", "unavailable"],
+      "tests": ["react-app/e2e/live/full-preview-live.spec.ts"],
+      "visual": "capture-only",
+      "backend": "partial",
+      "remaining": ["all enabled destinations", "back and reload"]
+    },
+    {
+      "id": "settings",
+      "routes": ["/account", "/settings/*"],
+      "roles": ["member", "owner"],
+      "states": ["saved", "validation", "denied", "reauthentication"],
+      "tests": [
+        "react-app/e2e/account/settings-platform.spec.ts",
+        "react-app/e2e/account/settings-release.spec.ts"
+      ],
+      "visual": "reviewed-comparison",
+      "backend": "partial",
+      "remaining": ["all setting persistence", "session revocation", "enabled MFA"]
+    },
+    {
+      "id": "admin",
+      "routes": ["/admin", "/accept-invitation"],
+      "roles": ["member", "owner", "denied"],
+      "states": ["accepted", "expired", "denied"],
+      "tests": ["react-app/e2e/account/account-admin.spec.ts"],
+      "visual": "capture-only",
+      "backend": "pending",
+      "remaining": ["invitation lifecycle", "role boundaries"]
+    },
+    {
+      "id": "workspace",
+      "routes": ["/workspace"],
+      "roles": ["editor", "reader", "denied"],
+      "states": ["saved", "invalid", "import", "export", "denied"],
+      "tests": ["react-app/e2e/workspace/workspace-release.spec.ts"],
+      "visual": "reviewed-comparison",
+      "backend": "pending",
+      "remaining": ["real browser persistence and transfer"]
+    },
+    {
+      "id": "media",
+      "routes": ["/media"],
+      "roles": ["editor", "reader", "denied"],
+      "states": ["uploaded", "rejected", "interrupted", "referenced", "deleted"],
+      "tests": [
+        "react-app/e2e/media/media-release.spec.ts",
+        "react-app/e2e/live/full-preview-live.spec.ts"
+      ],
+      "visual": "reviewed-comparison",
+      "backend": "partial",
+      "remaining": ["all supported types", "interrupted transfer", "safe lifecycle"]
+    },
+    {
+      "id": "operations",
+      "routes": ["/operations"],
+      "roles": ["operator", "denied"],
+      "states": ["ready", "stale", "unavailable", "reauthentication"],
+      "tests": ["react-app/e2e/operations/operations-release.spec.ts"],
+      "visual": "reviewed-comparison",
+      "backend": "pending",
+      "remaining": ["safe read-only live workflow"]
+    },
+    {
+      "id": "localized-and-missing",
+      "routes": ["/:locale/*", "*"],
+      "roles": ["guest"],
+      "states": ["localized", "rtl", "unsupported", "missing"],
+      "tests": ["react-app/e2e/visual/obsidian-localization.spec.ts"],
+      "visual": "reviewed-comparison",
+      "backend": "partial",
+      "remaining": ["localized populated public workflows"]
+    }
+  ],
+  "operatorHosts": ["admin", "pgadmin", "traefik", "swagger", "flower"],
+  "operatorRemaining": ["read-only navigation beyond login", "role and session recovery"]
+}

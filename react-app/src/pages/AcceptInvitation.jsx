@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import AppShell from '../components/glass/AppShell';
 import GlassButton from '../components/glass/GlassButton';
@@ -9,9 +9,9 @@ import { layoutPreviewEnabled } from '../config/layoutPolicy';
 
 const AcceptInvitation = () => {
   const [params] = useSearchParams();
-  const navigate = useNavigate();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [accepted, setAccepted] = useState(false);
   const token = params.get('token') || '';
 
   const accept = async () => {
@@ -19,7 +19,7 @@ const AcceptInvitation = () => {
     setError('');
     try {
       await identityAdminAPI.acceptInvitation(token);
-      navigate('/admin', { replace: true });
+      setAccepted(true);
     } catch (_) {
       setError('This invitation is invalid, expired, already used, or belongs to another account.');
     } finally {
@@ -35,9 +35,18 @@ const AcceptInvitation = () => {
             {layoutPreviewEnabled && <h1>Accept invitation</h1>}
             <p>The invitation will be applied only to the signed-in account and current site.</p>
             {error ? <div role="alert">{error}</div> : null}
-            <GlassButton disabled={busy || token.length < 32} onClick={accept}>
-              Accept invitation
-            </GlassButton>
+            {accepted ? (
+              <>
+                <p role="status">Invitation accepted. Sign in again to refresh your access.</p>
+                <Link className="inline-flex min-h-11 items-center underline" to="/login">
+                  Sign in to refresh access
+                </Link>
+              </>
+            ) : (
+              <GlassButton disabled={busy || token.length < 32} onClick={accept}>
+                Accept invitation
+              </GlassButton>
+            )}
           </div>
         </GlassCard>
       </div>

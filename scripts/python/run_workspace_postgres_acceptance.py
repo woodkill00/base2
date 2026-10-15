@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import os
+import re
 import secrets
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -15,12 +17,33 @@ MAX_NATIVE_ATTEMPTS = 3
 NATIVE_FAILURES = {134, 139}
 
 
+def cleanup_containers(names, *, primary_failure=False):
+    """Try every owned cleanup; report failures without masking the original error."""
+    failed = False
+    for name in names:
+        try:
+            result = subprocess.run(
+                ["docker", "rm", "--force", name],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=30,
+                check=False,
+            )
+            failed = failed or result.returncode != 0
+        except (OSError, subprocess.TimeoutExpired):
+            failed = True
+    if failed:
+        print("disposable_container_cleanup_failed", file=sys.stderr, flush=True)
+        if not primary_failure:
+            raise RuntimeError("disposable_container_cleanup_failed")
+
+
 def run(command, **kwargs):
     try:
         return subprocess.run(command, check=True, **kwargs)
     except subprocess.CalledProcessError as exc:
         # Docker argv contains disposable credentials. Never echo them on failure.
-        raise subprocess.CalledProcessError(exc.returncode, ['postgres-acceptance-stage']) from None
+        raise subprocess.CalledProcessError(exc.returncode, ["postgres-acceptance-stage"]) from None
 
 
 def run_idempotent_native_safe(command, **kwargs):
@@ -31,7 +54,7 @@ def run_idempotent_native_safe(command, **kwargs):
         if result.returncode == 0:
             return result
         if result.returncode not in NATIVE_FAILURES or attempt == MAX_NATIVE_ATTEMPTS:
-            raise subprocess.CalledProcessError(result.returncode, ['postgres-migration-stage'])
+            raise subprocess.CalledProcessError(result.returncode, ["postgres-migration-stage"])
         print(
             f"Disposable migration recovered from native exit {result.returncode}; "
             f"retry {attempt + 1}/{MAX_NATIVE_ATTEMPTS}",
@@ -55,6 +78,8 @@ def main() -> None:
     django_image = os.getenv("WORKSPACE_ACCEPTANCE_DJANGO_IMAGE", "base2-local-django:latest")
     api_image = os.getenv("WORKSPACE_ACCEPTANCE_API_IMAGE", "base2-local-api:latest")
     started = False
+    redis_name = f"{name}-redis"
+    redis_started = False
     try:
         for image in (django_image, api_image):
             run(["docker", "image", "inspect", image], stdout=subprocess.DEVNULL)
@@ -511,13 +536,80 @@ def main() -> None:
             django_migration + ["0017", "--noinput"], stdout=subprocess.DEVNULL
         )
         run(media_check + ["forward"])
-    finally:
-        if started:
-            subprocess.run(
-                ["docker", "rm", "--force", name],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+        # Same owned disposable database, current read-only source, no host ports.
+        # Never target the operator's persistent local stack for recovery writes.
+        # The preceding rollback drills intentionally stop at migration 0017;
+        # runtime API journeys require the current enqueue/least-privilege schema.
+        run_idempotent_native_safe(django_migration + ["--noinput"], stdout=subprocess.DEVNULL)
+        journey_check = api_migration[:-2] + [
+            "scripts/python/run_recovery_journey_postgres_checks.py"
+        ]
+        journey_check = [
+            "DB_USER=base2_api_runtime"
+            if value == "DB_USER=base2"
+            else f"DB_PASSWORD={api_runtime_password}"
+            if value == f"DB_PASSWORD={owner_password}"
+            else value
+            for value in journey_check
+        ]
+        # Resolve an already installed image to immutable content; no pull or
+        # shared Redis database, no host port, no bypass of the real limiter.
+        redis_image = run(
+            ["docker", "image", "inspect", "redis:7.2-alpine", "--format", "{{.Id}}"],
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        if not re.fullmatch(r"sha256:[0-9a-f]{64}", redis_image):
+            raise RuntimeError("invalid_local_redis_image")
+        run(
+            common[:2]
+            + [
+                "--detach",
+                "--rm",
+                "--name",
+                redis_name,
+                "--network",
+                f"container:{name}",
+                "--read-only",
+                "--tmpfs",
+                "/data:rw,noexec,nosuid,size=16m",
+                redis_image,
+                "redis-server",
+                "--bind",
+                "127.0.0.1",
+                "--save",
+                "",
+                "--appendonly",
+                "no",
+            ],
+            stdout=subprocess.DEVNULL,
+        )
+        redis_started = True
+        for _ in range(40):
+            ready = subprocess.run(
+                ["docker", "exec", redis_name, "redis-cli", "ping"], capture_output=True
             )
+            if ready.returncode == 0 and ready.stdout.strip() == b"PONG":
+                break
+            time.sleep(0.25)
+        else:
+            raise RuntimeError("journey_redis_not_ready")
+        journey_check[3:3] = [
+            "-e",
+            "BASE2_DISPOSABLE_JOURNEY=1",
+            "-e",
+            "CELERY_BROKER_URL=redis://127.0.0.1:6379/0",
+            "-e",
+            f"JWT_SECRET={secrets.token_urlsafe(48)}",
+            "-e",
+            f"JOURNEY_OUTBOX_READ_PASSWORD={owner_password}",
+        ]
+        run(journey_check)
+    finally:
+        cleanup_containers(
+            ([redis_name] if redis_started else []) + ([name] if started else []),
+            primary_failure=sys.exc_info()[0] is not None,
+        )
 
 
 if __name__ == "__main__":

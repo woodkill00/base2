@@ -15,7 +15,7 @@
   },
   "navigation": [
     { "label": "Home", "path": "/" },
-    { "label": "Explore", "path": "/content", "module": "content" },
+    { "label": "Explore", "path": "/journal", "module": "content" },
     { "label": "Media", "path": "/media", "module": "media" },
     { "label": "Search", "path": "/search", "module": "search" },
     { "label": "Contact", "path": "/contact", "module": "forms" }

@@ -1,0 +1,144 @@
+{
+  "analytics": {
+    "enabled": false,
+    "provider": "none"
+  },
+  "brand": {
+    "logo": "/base2-mark.svg",
+    "theme": "obsidian",
+    "voice": "Synthetic enabled-capability assurance only."
+  },
+  "consent": {
+    "mode": "essential-only"
+  },
+  "contact": {
+    "enabled": true,
+    "retentionDays": 30
+  },
+  "defaultLocale": "en",
+  "domains": [
+    {
+      "host": "journey.example",
+      "kind": "canonical"
+    }
+  ],
+  "legal": {
+    "accessibilityPath": "/accessibility",
+    "privacyPath": "/privacy",
+    "termsPath": "/terms"
+  },
+  "legalName": "Synthetic Journey Reference",
+  "locales": [
+    "en",
+    "de",
+    "ar"
+  ],
+  "media": {
+    "allowedTypes": [
+      "image/jpeg",
+      "image/png",
+      "application/pdf"
+    ],
+    "maxBytes": 26214400
+  },
+  "modules": [
+    {
+      "enabled": true,
+      "id": "accounts",
+      "version": "1.0.0"
+    },
+    {
+      "enabled": true,
+      "id": "content",
+      "version": "1.0.0"
+    },
+    {
+      "enabled": true,
+      "id": "content-workspace",
+      "version": "1.0.0"
+    },
+    {
+      "enabled": true,
+      "id": "media",
+      "version": "2.0.0"
+    },
+    {
+      "enabled": true,
+      "id": "forms",
+      "version": "1.0.0"
+    },
+    {
+      "enabled": true,
+      "id": "search",
+      "version": "1.0.0"
+    },
+    {
+      "enabled": true,
+      "id": "portfolio",
+      "version": "1.0.0"
+    },
+    {
+      "enabled": true,
+      "id": "blog",
+      "version": "1.0.0"
+    },
+    {
+      "enabled": true,
+      "id": "documentation",
+      "version": "1.0.0"
+    },
+    {
+      "enabled": true,
+      "id": "events",
+      "version": "1.0.0"
+    },
+    {
+      "enabled": true,
+      "id": "booking",
+      "version": "1.0.0"
+    }
+  ],
+  "name": "Base2 Journey Reference",
+  "navigation": [
+    {
+      "label": "Home",
+      "path": "/"
+    },
+    {
+      "label": "Blog",
+      "module": "blog",
+      "path": "/blog"
+    },
+    {
+      "label": "Documentation",
+      "module": "documentation",
+      "path": "/docs"
+    },
+    {
+      "label": "Portfolio",
+      "module": "portfolio",
+      "path": "/portfolio"
+    },
+    {
+      "label": "Events",
+      "module": "events",
+      "path": "/events"
+    }
+  ],
+  "operationsProfile": "preview",
+  "previewPolicy": {
+    "idleAction": "destroy",
+    "ttlMinutes": 60
+  },
+  "schemaVersion": 1,
+  "search": {
+    "enabled": true
+  },
+  "seo": {
+    "description": "Isolated synthetic assurance profile.",
+    "indexing": "deny",
+    "titleTemplate": "%s · Journey Reference"
+  },
+  "siteId": "journey-reference",
+  "slug": "journey-reference"
+}

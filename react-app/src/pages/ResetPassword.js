@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ToastProvider.jsx';
@@ -20,6 +20,12 @@ const ResetPassword = ({ variant = 'public' }) => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
+
+  useEffect(() => {
+    if (!message) return undefined;
+    const redirect = window.setTimeout(() => navigate('/login'), 2000);
+    return () => window.clearTimeout(redirect);
+  }, [message, navigate]);
 
   const handleChange = (e) => {
     setFormData({
@@ -84,9 +90,6 @@ const ResetPassword = ({ variant = 'public' }) => {
         setMessage(msg);
         toast.success(msg);
         setFormData({ password: '', confirmPassword: '' });
-        setTimeout(() => {
-          navigate('/login');
-        }, 2000);
       } else {
         if (result.fields) {
           setFieldErrors(result.fields);

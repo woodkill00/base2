@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "siteId": "journey-reference",
+  "slug": "journey-reference",
+  "name": "Base2 Journey Reference",
+  "legalName": "Synthetic Journey Reference",
+  "domains": [{ "host": "journey.example", "kind": "canonical" }],
+  "brand": {
+    "theme": "obsidian",
+    "logo": "/base2-mark.svg",
+    "voice": "Synthetic enabled-capability assurance only."
+  },
+  "navigation": [
+    { "label": "Home", "path": "/" },
+    { "label": "Blog", "path": "/blog", "module": "blog" },
+    { "label": "Documentation", "path": "/docs", "module": "documentation" },
+    { "label": "Portfolio", "path": "/portfolio", "module": "portfolio" },
+    { "label": "Events", "path": "/events", "module": "events" }
+  ],
+  "seo": {
+    "titleTemplate": "%s · Journey Reference",
+    "description": "Isolated synthetic assurance profile.",
+    "indexing": "deny"
+  },
+  "legal": {
+    "privacyPath": "/privacy",
+    "termsPath": "/terms",
+    "accessibilityPath": "/accessibility"
+  },
+  "locales": ["en", "de", "ar"],
+  "defaultLocale": "en",
+  "consent": { "mode": "essential-only" },
+  "analytics": { "enabled": false, "provider": "none" },
+  "contact": { "enabled": true, "retentionDays": 30 },
+  "media": { "maxBytes": 26214400, "allowedTypes": ["image/jpeg", "image/png", "application/pdf"] },
+  "search": { "enabled": true },
+  "modules": [
+    { "id": "accounts", "version": "1.0.0", "enabled": true },
+    { "id": "content", "version": "1.0.0", "enabled": true },
+    { "id": "content-workspace", "version": "1.0.0", "enabled": true },
+    { "id": "media", "version": "2.0.0", "enabled": true },
+    { "id": "forms", "version": "1.0.0", "enabled": true },
+    { "id": "search", "version": "1.0.0", "enabled": true },
+    { "id": "portfolio", "version": "1.0.0", "enabled": true },
+    { "id": "blog", "version": "1.0.0", "enabled": true },
+    { "id": "documentation", "version": "1.0.0", "enabled": true },
+    { "id": "events", "version": "1.0.0", "enabled": true },
+    { "id": "booking", "version": "1.0.0", "enabled": true }
+  ],
+  "operationsProfile": "preview",
+  "previewPolicy": { "ttlMinutes": 60, "idleAction": "destroy" }
+}

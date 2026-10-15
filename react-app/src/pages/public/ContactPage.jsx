@@ -2,6 +2,9 @@ import { useMemo, useState } from 'react';
 import PublicShell from '../../components/public/PublicShell';
 import { siteManifest } from '../../config/siteRuntime';
 import { siteContentAPI } from '../../services/siteContent';
+import GlassButton from '../../components/glass/GlassButton';
+import GlassCard from '../../components/glass/GlassCard';
+import './public-forms.css';
 
 const replayKey = () => globalThis.crypto?.randomUUID?.() || `contact-${Date.now()}-local`;
 
@@ -33,37 +36,58 @@ const ContactPage = ({ manifest = siteManifest }) => {
 
   return (
     <PublicShell title="Contact">
-      <h1>Contact</h1>
-      <form onSubmit={submit} aria-busy={status === 'submitting'}>
-        <p>
-          <label>
-            Name
-            <br />
-            <input name="name" required maxLength="120" />
-          </label>
-        </p>
-        <p>
-          <label>
-            Email
-            <br />
-            <input name="email" type="email" required maxLength="254" />
-          </label>
-        </p>
-        <p>
-          <label>
-            Message
-            <br />
-            <textarea name="message" required minLength="10" maxLength="5000" />
-          </label>
-        </p>
-        <button type="submit" disabled={status === 'submitting' || status === 'received'}>
-          Send message
-        </button>
-      </form>
-      {status === 'submitting' && <p role="status">Sending…</p>}
-      {status === 'received' && <p role="status">Your message was received.</p>}
-      {status === 'offline' && <p role="alert">You are offline. Your message was not sent.</p>}
-      {status === 'error' && <p role="alert">The message could not be sent. Please try again.</p>}
+      <GlassCard className="public-form-panel">
+        <h1>Contact</h1>
+        <form onSubmit={submit} aria-busy={status === 'submitting'}>
+          <p>
+            <label>
+              Name
+              <br />
+              <input
+                className="base2-input"
+                name="name"
+                autoComplete="name"
+                required
+                maxLength="120"
+              />
+            </label>
+          </p>
+          <p>
+            <label>
+              Email
+              <br />
+              <input
+                className="base2-input"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                maxLength="254"
+              />
+            </label>
+          </p>
+          <p>
+            <label>
+              Message
+              <br />
+              <textarea
+                className="base2-input"
+                name="message"
+                required
+                minLength="10"
+                maxLength="5000"
+              />
+            </label>
+          </p>
+          <GlassButton type="submit" disabled={status === 'submitting' || status === 'received'}>
+            Send message
+          </GlassButton>
+        </form>
+        {status === 'submitting' && <p role="status">Sending…</p>}
+        {status === 'received' && <p role="status">Your message was received.</p>}
+        {status === 'offline' && <p role="alert">You are offline. Your message was not sent.</p>}
+        {status === 'error' && <p role="alert">The message could not be sent. Please try again.</p>}
+      </GlassCard>
     </PublicShell>
   );
 };
