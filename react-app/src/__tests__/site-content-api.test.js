@@ -59,6 +59,19 @@ describe('site content API tenant and replay contract', () => {
     await expect(siteContentAPI.getPage('broken')).rejects.toBeTruthy();
   });
 
+  it('does not turn a missing form endpoint into a successful receipt', async () => {
+    apiClient.post.mockRejectedValueOnce({ response: { status: 404 } });
+    await expect(siteContentAPI.submitForm('contact', {}, 'synthetic-key')).rejects.toBeTruthy();
+  });
+
+  it.each(['search', 'listContent'])(
+    'rejects missing %s services rather than empty content',
+    async (method) => {
+      apiClient.get.mockRejectedValueOnce({ response: { status: 404 } });
+      await expect(siteContentAPI[method]('test')).rejects.toBeTruthy();
+    }
+  );
+
   it('fails closed when an intermediary returns a non-JSON application shell', async () => {
     apiClient.get.mockResolvedValueOnce({ data: '<!doctype html><title>SPA</title>' });
     await expect(siteContentAPI.getPage('privacy')).rejects.toMatchObject({

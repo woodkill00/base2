@@ -3,20 +3,22 @@
   "groups": {
     "config": {
       ".env.example": "6d11f58ebe687bc53b3695459a0815929cc154d5e87e8774d2e045b63dc0fece",
-      "api/site_profiles/base2-obsidian.json": "c7d8f67ddd1ab6cd155000a741377d92a07e09ab8fe5bca73c1e961d092cbbd6",
-      "api/site_profiles/content-workspace-contracts.json": "b8202643502ab5257a92a7370dd2ef4afbc11d75b2fd1772d2b99cb8f7f6beee",
+      "api/site_profiles/base2-obsidian.json": "a246a9831ad8feeca1dcde97fb32a03469e30a4e62e4661a0e088fc819264722",
+      "api/site_profiles/content-workspace-contracts.json": "f139a41860e338f88584caf4a34c62ad4e5422d7390267981869d5a7012010f8",
       "api/site_profiles/content-workspace-presets.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
       "api/site_profiles/ember-studio.json": "b6b57abe7c80247917a1cc0ccdf08f3cddb2efd503091b73fb9d0e58d4c7fcae",
-      "api/site_profiles/index.json": "76a7b227838ba6f778a2ab8b5a9741c4454efe1c473b912b924a29b3da57acd8",
+      "api/site_profiles/index.json": "d367c89b0fbf276e2cf77de0c4578d42dd30f2092cf10a685d1957369edcf38c",
+      "api/site_profiles/journey-reference.json": "f7af82648f4e40757a7e57b79598101300d91cb8d38d96ad4e9e1994667f17eb",
       "api/site_profiles/northstar-library.json": "286850ced5758a336b8c7a82e345f57baa9d4686b39d209311178b6eaa5351f5",
       "digital_ocean/config/letsencrypt-staging-roots.pem": "79bd594c0ca984602e1d3d5bdddc727cc003682bab137fa062f973501a34f833",
-      "django/site_profiles/base2-obsidian.json": "c7d8f67ddd1ab6cd155000a741377d92a07e09ab8fe5bca73c1e961d092cbbd6",
-      "django/site_profiles/content-workspace-contracts.json": "b8202643502ab5257a92a7370dd2ef4afbc11d75b2fd1772d2b99cb8f7f6beee",
+      "django/site_profiles/base2-obsidian.json": "a246a9831ad8feeca1dcde97fb32a03469e30a4e62e4661a0e088fc819264722",
+      "django/site_profiles/content-workspace-contracts.json": "f139a41860e338f88584caf4a34c62ad4e5422d7390267981869d5a7012010f8",
       "django/site_profiles/content-workspace-presets.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
       "django/site_profiles/ember-studio.json": "b6b57abe7c80247917a1cc0ccdf08f3cddb2efd503091b73fb9d0e58d4c7fcae",
-      "django/site_profiles/index.json": "76a7b227838ba6f778a2ab8b5a9741c4454efe1c473b912b924a29b3da57acd8",
+      "django/site_profiles/index.json": "d367c89b0fbf276e2cf77de0c4578d42dd30f2092cf10a685d1957369edcf38c",
+      "django/site_profiles/journey-reference.json": "f7af82648f4e40757a7e57b79598101300d91cb8d38d96ad4e9e1994667f17eb",
       "django/site_profiles/northstar-library.json": "286850ced5758a336b8c7a82e345f57baa9d4686b39d209311178b6eaa5351f5",
-      "scripts/config/complete-gate-v1.json": "18204c1538ad04808c746518e6bc175d819e76f918ffe676b8e0ec0423ab1a57",
+      "scripts/config/complete-gate-v1.json": "a568e78a1d107593816cd9de0fb0849ec1cca3855368a9b4e485c064c08834a8",
       "shared/config/archetypes-v1.json": "1c203b4f3e076adf87fed98698cec6473b7ac765dcbfb7b6ca4b67c090801ce3",
       "shared/config/assurance-orchestrator-v1.json": "ca8ad4a9e4283ace1b6826cbd9a5c81735a8fa4aa6a6338ca4fd4091a7c34aeb",
       "shared/config/content-workspace-presets.generated.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
@@ -26,11 +28,11 @@
       "shared/config/edge-readiness-v1.json": "c6adf440599413b21a70552c7b95e9474869003eb825872cea3ee18c4ae0b848",
       "shared/config/identity-realms.json": "c11cd97a6808983182e96774499ae5d9b63e38d8dbe1464846cbca9b6127719f",
       "shared/config/migration-compatibility-v1.json": "65d5f1bea43bbaaa9f5ce66cef000a02d95ea09a3a5b43fa76c9bef801f1d001",
-      "shared/config/module-catalog.json": "ae322048e2b26ca38b430e275df172d650e0d5c0f7366d4571138842237b4cc7",
+      "shared/config/module-catalog.json": "bf0bafd75265a002307ddc550f8112cafaa87f6d7a1cf5e98a95ed8c3c4a5be3",
       "shared/config/operations-probes-v1.json": "85b92aacfff06818581b7460aa1471843e969a5fd32da369a5f0e05b2bc5ff36",
       "shared/config/optional-search-v1.json": "06adbb1bfe9cf53e06ee915ea6be40161a12bc9241cf91e95b4f325f0bc0edd8",
       "shared/config/production-assurance-v1.json": "f30d479da1085e6035a56e408c789c9cc3bba9145d314c52c6422463ab12d3e9",
-      "shared/config/production-readiness-v1.json": "1d6c1dc92ecf66eed9f442e255d9ca1a7aa7570e61a51532a4e726b0bc3751f8",
+      "shared/config/production-readiness-v1.json": "b87278a7cc9e59d42bda9c2edcb744b7c80820137a06e6ce6c307b29a64e008f",
       "shared/config/production-workflows-v1.json": "8ca4178b783c73f3be8019844fd4af8646619e5041f98811d39a6818d41a25b2",
       "shared/config/tenant-security.json": "ff35fd89e50fc66a0dd504bf631a297b52c8f9f888d030201ac3cff6896d117e"
     },
@@ -45,11 +47,12 @@
       "docs/website-factory.md": "6fbe524d06e3d0a06625d27cffca95282532b46f5f59673aa07cb866581373ad"
     },
     "generatedClient": {
-      "react-app/src/config/generated/base2-obsidian.json": "c7d8f67ddd1ab6cd155000a741377d92a07e09ab8fe5bca73c1e961d092cbbd6",
-      "react-app/src/config/generated/content-workspace-contracts.json": "b8202643502ab5257a92a7370dd2ef4afbc11d75b2fd1772d2b99cb8f7f6beee",
+      "react-app/src/config/generated/base2-obsidian.json": "a246a9831ad8feeca1dcde97fb32a03469e30a4e62e4661a0e088fc819264722",
+      "react-app/src/config/generated/content-workspace-contracts.json": "f139a41860e338f88584caf4a34c62ad4e5422d7390267981869d5a7012010f8",
       "react-app/src/config/generated/content-workspace-presets.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
       "react-app/src/config/generated/ember-studio.json": "b6b57abe7c80247917a1cc0ccdf08f3cddb2efd503091b73fb9d0e58d4c7fcae",
-      "react-app/src/config/generated/index.json": "76a7b227838ba6f778a2ab8b5a9741c4454efe1c473b912b924a29b3da57acd8",
+      "react-app/src/config/generated/index.json": "d367c89b0fbf276e2cf77de0c4578d42dd30f2092cf10a685d1957369edcf38c",
+      "react-app/src/config/generated/journey-reference.json": "f7af82648f4e40757a7e57b79598101300d91cb8d38d96ad4e9e1994667f17eb",
       "react-app/src/config/generated/northstar-library.json": "286850ced5758a336b8c7a82e345f57baa9d4686b39d209311178b6eaa5351f5",
       "react-app/src/lib/apiClient.js": "552e46e8bba953ec1cb0d0347dac0282dec5aee9b6ad699000ac6d33f976410c",
       "react-app/src/lib/apiErrors.js": "c612a087d95a4c3e573b46183396b22af55d63fcf0d80fb144960cc32c7045e9"
@@ -93,7 +96,7 @@
       "modules/subscription/settings.schema.json": "908d8573accb2df8fc68e3ec29db9c4cf6803e94f2304dd3b034182e87db4a71",
       "modules/support/module.json": "336bb0e0e434c94d3c9b6b5eb127e30af9cc0b8422ca24d0c843cfdb68339f81",
       "modules/support/settings.schema.json": "23aded1f2399dcff1e48abdf5292756f535e4a3358cd53b0f64f80785701fbda",
-      "shared/config/module-catalog.json": "ae322048e2b26ca38b430e275df172d650e0d5c0f7366d4571138842237b4cc7"
+      "shared/config/module-catalog.json": "bf0bafd75265a002307ddc550f8112cafaa87f6d7a1cf5e98a95ed8c3c4a5be3"
     },
     "openapi": {
       "digital_ocean/contracts/openapi.yaml": "c20303cab89fdeefc019bab2f3d8ac81dd1de4de567c242f3305d43b2f267975",

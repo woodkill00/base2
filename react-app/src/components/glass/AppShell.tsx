@@ -293,7 +293,7 @@ export const AppShell: React.FC<Props> = ({
 
   if (
     import.meta.env.VITE_VOLCANO110_PREVIEW === 'true' &&
-    siteManifest.siteId === 'base2-obsidian'
+    ['base2-obsidian', 'journey-reference'].includes(siteManifest.siteId)
   )
     return (
       <VolcanoLayout headerTitle={headerTitle} contextSlot={contextSlot} footerSlot={footerSlot}>

@@ -270,7 +270,7 @@ describe('Feature 093 account and administration surfaces', () => {
     await waitFor(() => expect(revokeButton).toBeEnabled());
   });
 
-  test('invitation acceptance uses the exact URL token then replaces history', async () => {
+  test('invitation acceptance confirms the exact token without assuming administrator access', async () => {
     const user = userEvent.setup();
     const token = 'x'.repeat(40);
     render(
@@ -288,7 +288,12 @@ describe('Feature 093 account and administration surfaces', () => {
       await user.click(screen.getByRole('button', { name: /accept invitation/i }));
     });
     expect(identityAdminAPI.acceptInvitation).toHaveBeenCalledWith(token);
-    expect(await screen.findByText(/administration landing/i)).toBeInTheDocument();
+    expect(await screen.findByRole('status')).toHaveTextContent('Invitation accepted');
+    expect(screen.queryByText(/administration landing/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Sign in to refresh access' })).toHaveAttribute(
+      'href',
+      '/login'
+    );
   });
 
   test('account surface has no automated accessibility violations', async () => {

@@ -68,7 +68,7 @@
     "subscription",
     "support"
   ],
-  "siteProfiles": ["base2-obsidian", "ember-studio", "northstar-library"],
+  "siteProfiles": ["base2-obsidian", "ember-studio", "journey-reference", "northstar-library"],
   "workflows": [
     "ci-backend.yml",
     "ci-chaos.yml",

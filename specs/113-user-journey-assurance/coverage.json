@@ -1,0 +1,170 @@
+{
+  "version": 1,
+  "evidencePolicy": "test references are inventory, not current pass receipts",
+  "families": [
+    {
+      "id": "home",
+      "routes": ["/"],
+      "roles": ["guest"],
+      "states": ["ready", "menus", "keyboard"],
+      "tests": ["react-app/e2e/layout/volcano-preservation.spec.ts"],
+      "visual": "reviewed-comparison",
+      "backend": "partial",
+      "remaining": ["preserve approved references"]
+    },
+    {
+      "id": "public-content",
+      "routes": ["/about", "/privacy", "/terms", "/accessibility", "/journal"],
+      "roles": ["guest"],
+      "states": ["populated", "empty", "loading", "unavailable"],
+      "tests": ["react-app/e2e/layout/route-families.spec.ts"],
+      "visual": "capture-only",
+      "backend": "partial",
+      "remaining": ["all-state pixel references beyond the representative matrix"],
+      "additionalTests": ["react-app/e2e/journeys/public-journeys.spec.ts"]
+    },
+    {
+      "id": "public-forms",
+      "routes": ["/contact", "/search"],
+      "roles": ["guest"],
+      "states": ["validation", "loading", "success", "unavailable", "retry"],
+      "tests": ["react-app/src/__tests__/public-experience-contract.test.jsx"],
+      "visual": "reviewed-comparison",
+      "backend": "partial",
+      "remaining": ["external contact email delivery is not part of fixture acceptance"],
+      "additionalTests": ["react-app/e2e/journeys/public-journeys.spec.ts"]
+    },
+    {
+      "id": "content-packs",
+      "routes": ["/portfolio", "/portfolio/:slug", "/blog", "/blog/:slug", "/docs", "/docs/:slug"],
+      "roles": ["guest"],
+      "states": ["enabled-populated", "disabled", "missing", "unavailable"],
+      "tests": ["react-app/e2e/layout/route-families.spec.ts"],
+      "visual": "capture-only",
+      "backend": "pending",
+      "remaining": ["enabled optional packs remain disabled in the deployed Base2 profile"],
+      "additionalTests": ["react-app/e2e/journeys/enabled-modules.spec.ts"]
+    },
+    {
+      "id": "events",
+      "routes": ["/events"],
+      "roles": ["guest", "member"],
+      "states": ["available", "full", "duplicate", "cancelled"],
+      "tests": ["react-app/e2e/layout/route-families.spec.ts"],
+      "visual": "capture-only",
+      "backend": "pending",
+      "remaining": ["no cancellation UI exists; backend cancellation is separate"],
+      "additionalTests": [
+        "react-app/e2e/journeys/enabled-modules.spec.ts",
+        "react-app/src/__tests__/events-booking.test.jsx"
+      ]
+    },
+    {
+      "id": "auth",
+      "routes": ["/login", "/signup", "/verify-email", "/forgot-password", "/reset-password"],
+      "roles": ["guest", "member"],
+      "states": ["success", "validation", "expired", "replayed", "unavailable"],
+      "tests": [
+        "react-app/e2e/live/full-preview-live.spec.ts",
+        "react-app/e2e/experience/shared-experience.spec.ts"
+      ],
+      "visual": "capture-only",
+      "backend": "partial",
+      "remaining": [
+        "external SMTP/OAuth not exercised by synthetic recovery",
+        "not every auth state has a pixel reference"
+      ],
+      "additionalTests": ["react-app/e2e/journeys/public-journeys.spec.ts"]
+    },
+    {
+      "id": "dashboard",
+      "routes": ["/dashboard"],
+      "roles": ["member"],
+      "states": ["populated", "empty", "unavailable"],
+      "tests": ["react-app/e2e/live/full-preview-live.spec.ts"],
+      "visual": "capture-only",
+      "backend": "partial",
+      "remaining": ["live disposable account acceptance pending"],
+      "additionalTests": ["react-app/e2e/journeys/public-journeys.spec.ts"]
+    },
+    {
+      "id": "settings",
+      "routes": ["/account", "/settings/*"],
+      "roles": ["member", "owner"],
+      "states": ["saved", "validation", "denied", "reauthentication"],
+      "tests": [
+        "react-app/e2e/account/settings-platform.spec.ts",
+        "react-app/e2e/account/settings-release.spec.ts"
+      ],
+      "visual": "reviewed-comparison",
+      "backend": "partial",
+      "remaining": [
+        "passkeys are disabled and are not claimed tested",
+        "reusable owner preferences are not mutated"
+      ],
+      "additionalTests": ["react-app/e2e/journeys/public-journeys.spec.ts"]
+    },
+    {
+      "id": "admin",
+      "routes": ["/admin", "/accept-invitation"],
+      "roles": ["member", "owner", "denied"],
+      "states": ["accepted", "expired", "denied"],
+      "tests": ["react-app/e2e/account/account-admin.spec.ts"],
+      "visual": "capture-only",
+      "backend": "pending",
+      "remaining": ["external invitation email delivery not exercised"],
+      "additionalTests": ["react-app/e2e/journeys/public-journeys.spec.ts"]
+    },
+    {
+      "id": "workspace",
+      "routes": ["/workspace"],
+      "roles": ["editor", "reader", "denied"],
+      "states": ["saved", "invalid", "import", "export", "denied"],
+      "tests": ["react-app/e2e/workspace/workspace-release.spec.ts"],
+      "visual": "reviewed-comparison",
+      "backend": "pending",
+      "remaining": ["stateful browser transfer fixture and real DB tests are separate layers"],
+      "additionalTests": ["react-app/e2e/journeys/workspace-journeys.spec.ts"]
+    },
+    {
+      "id": "media",
+      "routes": ["/media"],
+      "roles": ["editor", "reader", "denied"],
+      "states": ["uploaded", "rejected", "interrupted", "referenced", "deleted"],
+      "tests": [
+        "react-app/e2e/media/media-release.spec.ts",
+        "react-app/e2e/live/full-preview-live.spec.ts"
+      ],
+      "visual": "reviewed-comparison",
+      "backend": "partial",
+      "remaining": [
+        "real live upload/scan/download acceptance pending; synthetic failures are not live scanner evidence"
+      ],
+      "additionalTests": ["react-app/e2e/journeys/operations-media-journeys.spec.ts"]
+    },
+    {
+      "id": "operations",
+      "routes": ["/operations"],
+      "roles": ["operator", "denied"],
+      "states": ["ready", "stale", "unavailable", "reauthentication"],
+      "tests": ["react-app/e2e/operations/operations-release.spec.ts"],
+      "visual": "reviewed-comparison",
+      "backend": "pending",
+      "remaining": ["live read-only workflow pending"],
+      "additionalTests": ["react-app/e2e/journeys/operations-media-journeys.spec.ts"]
+    },
+    {
+      "id": "localized-and-missing",
+      "routes": ["/:locale/*", "*"],
+      "roles": ["guest"],
+      "states": ["localized", "rtl", "unsupported", "missing"],
+      "tests": ["react-app/e2e/visual/obsidian-localization.spec.ts"],
+      "visual": "reviewed-comparison",
+      "backend": "partial",
+      "remaining": ["representative Arabic RTL workflow, not exhaustive translation review"],
+      "additionalTests": ["react-app/e2e/journeys/public-journeys.spec.ts"]
+    }
+  ],
+  "operatorHosts": ["admin", "pgadmin", "traefik", "swagger", "flower"],
+  "operatorRemaining": ["read-only navigation beyond login", "role and session recovery"]
+}

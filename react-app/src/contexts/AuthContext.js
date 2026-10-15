@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { authAPI } from '../services/api';
 import { normalizeApiError } from '../lib/apiErrors';
 
@@ -218,7 +218,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Verify email
-  const verifyEmail = async (token) => {
+  const verifyEmail = useCallback(async (token) => {
     try {
       setError(null);
       const data = await authAPI.verifyEmail(token);
@@ -234,7 +234,7 @@ export const AuthProvider = ({ children }) => {
         code: apiErr.code,
       };
     }
-  };
+  }, []);
 
   // Request password reset
   const forgotPassword = async (email) => {

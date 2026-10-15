@@ -103,6 +103,40 @@
       "requiredTools": ["node", "npm"]
     },
     {
+      "id": "feature-113-user-journeys",
+      "command": [
+        "npm",
+        "--prefix",
+        "react-app",
+        "exec",
+        "--",
+        "playwright",
+        "test",
+        "--config=react-app/playwright.journeys.config.mjs"
+      ],
+      "required": true,
+      "timeoutSeconds": 180,
+      "dependsOn": ["feature-108-experience"],
+      "requiredTools": ["node", "npm"]
+    },
+    {
+      "id": "feature-113-enabled-modules",
+      "command": [
+        "npm",
+        "--prefix",
+        "react-app",
+        "exec",
+        "--",
+        "playwright",
+        "test",
+        "--config=react-app/playwright.modules-journeys.config.mjs"
+      ],
+      "required": true,
+      "timeoutSeconds": 180,
+      "dependsOn": ["feature-113-user-journeys"],
+      "requiredTools": ["node", "npm"]
+    },
+    {
       "id": "feature-108-experience",
       "command": [
         "npm",
@@ -662,7 +696,15 @@
     },
     {
       "id": "workspace-postgres-contract",
-      "command": ["python3", "-m", "unittest", "scripts.tests.test_workspace_postgres_contract"],
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "scripts.tests.test_workspace_postgres_contract",
+        "scripts.tests.test_recovery_journey_guard",
+        "scripts.tests.test_journey_cleanup",
+        "scripts.tests.test_journey_profile"
+      ],
       "required": true,
       "timeoutSeconds": 30,
       "dependsOn": ["identity-postgres-contract"],
@@ -699,6 +741,7 @@
         "scripts/tests/test_media_library_manifest.py",
         "scripts/tests/test_media_library_migration.py",
         "scripts/tests/test_media_visual_review.py",
+        "scripts/tests/test_media_review_renewal.py",
         "-q"
       ],
       "required": true,

@@ -7,6 +7,11 @@
     "search": { "versions": ["1.0.0"], "requires": ["content"] },
     "accounts": { "versions": ["1.0.0"], "requires": [] },
     "commerce": { "versions": ["1.0.0"], "requires": ["accounts"] },
-    "media": { "versions": ["2.0.0"], "requires": ["content-workspace"] }
+    "media": { "versions": ["2.0.0"], "requires": ["content-workspace"] },
+    "portfolio": { "versions": ["1.0.0"], "requires": ["content"] },
+    "blog": { "versions": ["1.0.0"], "requires": ["content"] },
+    "documentation": { "versions": ["1.0.0"], "requires": ["content"] },
+    "events": { "versions": ["1.0.0"], "requires": [] },
+    "booking": { "versions": ["1.0.0"], "requires": ["events"] }
   }
 }

@@ -66,4 +66,24 @@ describe('T091 Email verification UI', () => {
       await screen.findByRole('heading', { name: /verification failed/i })
     ).toBeInTheDocument();
   });
+
+  test('a rejected token does not repeatedly resubmit after context error updates', async () => {
+    authAPI.verifyEmail.mockRejectedValue({
+      message: 'Verification link expired',
+      fields: {},
+      status: 400,
+    });
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={['/verify-email?token=synthetic-expired']}>
+          <VerifyEmail />
+        </MemoryRouter>
+      </AuthProvider>
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent('Verification link expired');
+    await act(async () => {
+      jest.advanceTimersByTime(2100);
+    });
+    expect(authAPI.verifyEmail).toHaveBeenCalledTimes(1);
+  });
 });

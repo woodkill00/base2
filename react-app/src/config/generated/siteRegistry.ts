@@ -2,11 +2,13 @@
 import index from './index.json';
 import profile0 from './base2-obsidian.json';
 import profile1 from './ember-studio.json';
-import profile2 from './northstar-library.json';
+import profile2 from './journey-reference.json';
+import profile3 from './northstar-library.json';
 
 export { index };
 export const profiles: Record<string, unknown> = {
   'base2-obsidian': profile0,
   'ember-studio': profile1,
-  'northstar-library': profile2,
+  'journey-reference': profile2,
+  'northstar-library': profile3,
 };
