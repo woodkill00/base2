@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import AcceptanceReporter from './acceptance-reporter.mjs';
+import { completeSignOut } from './owner-session.mjs';
 import {
   requiredTests,
   evaluateAcceptance,
@@ -15,6 +16,49 @@ import {
 } from './acceptance-contract.mjs';
 
 const cases = () => requiredTests.map((title) => ({ title, status: 'passed', retry: 0 }));
+test('logout waits for server completion and rejects failed revocation', async () => {
+  for (const failure of [null, 'status', 'network']) {
+    const events = [];
+    let release;
+    const response = {
+      url: () => 'https://example.test/api/auth/logout',
+      request: () => ({ method: () => 'POST' }),
+      ok: () => failure !== 'status',
+      finished: async () => {
+        events.push('finished');
+        return failure === 'network' ? new Error('network') : null;
+      },
+    };
+    const page = {
+      url: () => 'https://example.test/dashboard',
+      waitForResponse: (predicate) => {
+        assert.equal(predicate(response), true);
+        assert.equal(
+          predicate({ ...response, url: () => 'https://other.test/api/auth/logout' }),
+          false
+        );
+        assert.equal(predicate({ ...response, request: () => ({ method: () => 'GET' }) }), false);
+        events.push('listening');
+        return new Promise((resolve) => {
+          release = () => resolve(response);
+        });
+      },
+      getByRole: () => ({
+        click: async () => {
+          events.push('clicked');
+          setTimeout(release, 5);
+        },
+      }),
+    };
+    const pending = completeSignOut(page);
+    assert.deepEqual(events, ['listening', 'clicked']);
+    if (failure) await assert.rejects(pending, /Logout did not complete/);
+    else {
+      await pending;
+      assert.equal(events.at(-1), 'finished');
+    }
+  }
+});
 test('hosted reference capture preserves the approved Ubuntu font environment', () => {
   const workflow = readFileSync(
     new URL('../../../.github/workflows/ci-frontend.yml', import.meta.url),

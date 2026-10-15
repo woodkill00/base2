@@ -1,5 +1,16 @@
 # Analysis and issue ledger
 
+T021 live trial base2-full-20261015-005003 on merged b0bc1d5 passed10/11 cases,
+including both exact reference sizes, safe/hostile media and operator logins.
+Owner logout test navigated immediately after click, canceling asynchronous logout.
+One bounded diagnostic awaited the response: HTTP204, login transition and denied
+dashboard all passed. Correct the test, not the application: await exact-origin POST
+response, require success/completion, then login transition before navigation.
+Regression covers delayed response, wrong-origin/method and unsuccessful/network
+completion. Preserve original failed acceptance; diagnostic does not certify release.
+Exact teardown removed one droplet and six DNS records; inventory returned zero.
+Another paid full trial is not started under the single-preview authorization.
+
 T020: PR75 frontend CI run38657973339 passed67/69 Volcano cases; both home
 references failed. Downloaded actual/expected/diff captures show font metrics and
 line-wrap differences, not missing menus or color changes. WSL has fonts-ubuntu
