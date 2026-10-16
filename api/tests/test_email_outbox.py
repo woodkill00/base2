@@ -72,3 +72,28 @@ def test_process_outbox_marks_sent(monkeypatch):
     assert fetched is not None
     assert fetched.status == 'sent'
     assert fetched.sent_at is not None
+
+
+def test_health_observer_reads_failure_using_worker_role():
+    from api.db import db_conn
+    from api.services.email_health import _outbox_requires_attention
+
+    outbox = queue_email(
+        to_email='health-fixture@example.com',
+        subject='Synthetic health regression',
+        body_text='Not sent',
+        send_async=False,
+    )
+    try:
+        with db_conn() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                "UPDATE api_email_outbox SET status='dead_letter' WHERE id=%s",
+                (str(outbox.id),),
+            )
+            connection.commit()
+        with email_worker_database():
+            assert _outbox_requires_attention() is True
+    finally:
+        with db_conn() as connection, connection.cursor() as cursor:
+            cursor.execute('DELETE FROM api_email_outbox WHERE id=%s', (str(outbox.id),))
+            connection.commit()

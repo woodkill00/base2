@@ -18,7 +18,7 @@
       "django/site_profiles/index.json": "d367c89b0fbf276e2cf77de0c4578d42dd30f2092cf10a685d1957369edcf38c",
       "django/site_profiles/journey-reference.json": "f7af82648f4e40757a7e57b79598101300d91cb8d38d96ad4e9e1994667f17eb",
       "django/site_profiles/northstar-library.json": "286850ced5758a336b8c7a82e345f57baa9d4686b39d209311178b6eaa5351f5",
-      "scripts/config/complete-gate-v1.json": "d0e1048064d8cdb5c5e73f7228b1e54d1726158809538e695f26f77de17c9ec2",
+      "scripts/config/complete-gate-v1.json": "31e72701851301ac945895451aa03857f25ad3bbe27243671b530a6a819eed65",
       "shared/config/archetypes-v1.json": "1c203b4f3e076adf87fed98698cec6473b7ac765dcbfb7b6ca4b67c090801ce3",
       "shared/config/assurance-orchestrator-v1.json": "ca8ad4a9e4283ace1b6826cbd9a5c81735a8fa4aa6a6338ca4fd4091a7c34aeb",
       "shared/config/content-workspace-presets.generated.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
@@ -105,7 +105,7 @@
     "routeInventory": {
       "api/main.py": "cda0bc4e11029cbb6e88edcd89bc1020efdfdc350ee2152c76f3f026df2d847c",
       "api/routes/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "api/routes/auth.py": "961cc074c8457957aaf5a799f82dd53b51f88599f9eae24dd65878218d4e9ad8",
+      "api/routes/auth.py": "1eaf11ac58e748af84db3d32011bb57e4ae77aea49c261157e9bfa088f705432",
       "api/routes/content_workspace.py": "71795a85af8dec9e8f392f757a3640cc46b3466bccdf90941ace3f59f131b360",
       "api/routes/engagement.py": "f26e86d78daab93ef74a8d547b2b4ec1a3035ebf2f13e9a886a2accd772f016e",
       "api/routes/identity.py": "f4c3d677f0a6bf2a342221e300a809b86d8ae755e6ed3f3e44a6b9d9167780a1",

@@ -92,6 +92,16 @@ screenshots/traces must not retain authorization codes or reset links.
 
 ## Integration blockers
 
+Current status (2026-10-16): the sending-only trial completed at 6f7f7392; owner
+confirmed inbox receipt and teardown is verified. The bounded preview approval
+below has been consumed. Another paid/live trial needs renewed bounded approval.
+Resend is configured; the historical SMTP placeholders are not blockers for the
+selected HTTPS transport. Google credentials and callback flow remain unresolved.
+The post-trial local batch adds frontend startup ordering, sanitized email health
+observation and provider-unverified collision rejection, with no provider actions.
+
+Historical prerequisite record:
+
 Owner confirmed thejunkmailvoid@gmail.com as the test identity and authorized
 Base2 account verification/reset emails to that mailbox, not changes to the Google
 account itself. Owner approved one Frankfurt droplet, staging certificates,

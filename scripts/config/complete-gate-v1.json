@@ -1472,6 +1472,9 @@
         "--no-cov",
         "api/tests/test_resend_email.py",
         "api/tests/test_email_send_budget.py",
+        "api/tests/test_email_health.py",
+        "api/tests/test_oauth_link_admission.py",
+        "scripts/tests/test_frontend_startup_dependencies.py",
         "digital_ocean/tests/test_mail_trial_config.py",
         "digital_ocean/tests/test_mail_cli_boundaries.py",
         "digital_ocean/tests/test_persistent_mail_dns.py"

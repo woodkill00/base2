@@ -19,6 +19,9 @@ services:
       - REACT_APP_GOOGLE_CLIENT_ID=${REACT_APP_GOOGLE_CLIENT_ID}
       - SITE_PROFILE=${SITE_PROFILE:-base2-obsidian}
     networks: [app_network]
+    depends_on:
+      api:
+        condition: service_healthy
     restart: unless-stopped
     security_opt: [no-new-privileges:true]
     tmpfs:

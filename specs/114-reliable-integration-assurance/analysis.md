@@ -1,5 +1,60 @@
 # Analysis and issue ledger
 
+## Cycle 9 — post-trial reliability batch
+
+Start candidate 6f7f7392ecb0b814ff64058756869cb969e71be1; clean native WSL
+checkout. Both required local validation and all 20 hosted checks passed. Trial
+base2-full-20261016-041421 passed eight route probes and 11 browser tests. Exactly
+one reset request was accepted by Resend and the owner confirmed inbox receipt.
+The droplet and six ephemeral DNS records were removed; four sending records
+remain, no MX was added, and the temporary credential handoff was removed.
+Evidence: PR #80 live acceptance comments and the private trial evidence directory.
+The one approved live trial is consumed; do not provision another implicitly.
+
+F114-14 (medium, product startup contract): frontend Nginx restarted while API
+DNS did not yet exist, then recovered. Both local and development Compose files
+lack a frontend dependency although its static proxy requires api:5001. Add a
+healthy API dependency in both profiles, test health availability and graph
+acyclicity, and validate resolved Compose configs. Preserve the original failure;
+later live success does not erase it. No visual source or baseline changes needed.
+
+F114-15 (medium, integration gap): an existing operations incident/Discord pipeline
+exists, but email.delivery consumes a separately signed receipt rather than the
+live outbox failure state. T049 must integrate sanitized outcomes with this path,
+preserving worker least privilege, tenant boundaries, deduplication and visible
+notification failures; logging alone does not complete notification acceptance.
+
+Batch budget: focused regression sweep first, serial local integration next,
+one complete gate only after the combined candidate is ready. Zero paid runs or
+new live sends. Google credentials remain a prerequisite pending owner response.
+Analysis adds T050-T052; no known planning gap remains for the startup sub-batch.
+
+Adjacent OAuth review found F114-16 (high, account-link trust boundary): an
+unlinked Google identity with email_verified=false could pass collision admission
+solely because the existing local account was verified. Existing local verification
+is not proof the provider identity owns that mailbox. Add a regression and require
+provider-verified email before automatic linking. Existing already-linked subject
+lookup remains unchanged. Live OAuth stays disabled pending credentials and
+callback/PKCE reconciliation; the fix does not claim that broader review complete.
+
+Focused outcome: missing dependency regressions failed in both profiles before
+the fix; 12 startup/adjacent tests and both resolved Compose configs then passed.
+Initial example-config validation correctly rejected its placeholder project
+name; supplying a synthetic explicit project resolved this fixture prerequisite.
+The email observer regression first failed collection before implementation.
+Combined focused mail/startup suites passed 127 tests plus two subtests, adjacent
+operations contracts passed 32 tests, and the new observer achieved 100% measured
+line coverage with a 95% focused floor. Added real worker-role DB regression to
+the integration suite; it is not claimed passed until that suite runs.
+OAuth collision regression reproduced the verified-local bypass; both local
+verification states now reject. Combined OAuth/observer/operations checks passed
+69 tests. No UI source or visual reference changed; no new preview or email sent.
+
+Notification activation remains separate: this batch wires durable-outbox
+observation to existing incident correlation; it does not silently enable external
+webhooks or claim live Discord delivery. Full candidate validation follows after
+the current edits are committed and the source-bound manifest is regenerated.
+
 ## Cycle 8 — terminal task outcome
 
 Candidate c6dadfa passed the complete local gate, including 95.1% changed-line

@@ -20,6 +20,7 @@ from uuid import UUID, uuid4
 
 from api import redis_client
 from api.services.runtime_heartbeat import _runtime_heartbeat
+from api.services.email_health import email_health_probe
 from api.db import db_ping, db_schema_ready, pool_snapshot
 from api.repositories import operations
 from api.services.operations_center import (
@@ -191,6 +192,12 @@ def configured_probe_adapters(
             latency,
         )
 
+    def email_delivery(timeout: int):
+        observation = email_health_probe()
+        if observation[0] != 'healthy':
+            return observation
+        return _receipt('email', timeout)
+
     return {
         'public.root': lambda timeout: _internal_http('/', timeout),
         'api.health': lambda timeout: _internal_http('/api/health', timeout),
@@ -218,7 +225,7 @@ def configured_probe_adapters(
         # certificate mutation authority.
         'dns.canonical': lambda timeout: _receipt('dns', timeout),
         'certificate.expiry': lambda timeout: _receipt('certificate', timeout),
-        'email.delivery': lambda timeout: _receipt('email', timeout),
+        'email.delivery': email_delivery,
         'schedules.freshness': lambda timeout: _runtime_heartbeat('schedules', timeout),
         'capacity.headroom': capacity,
         'monitoring.self': lambda timeout: _runtime_heartbeat(

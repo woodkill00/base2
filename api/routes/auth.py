@@ -872,7 +872,9 @@ async def complete_google_oauth_identity(*, ident, request: Request, response: R
         if user is None:
             existing = repo.get_user_by_email(ident.email)
             if existing is not None:
-                if not (existing.is_email_verified or ident.email_verified):
+                # A verified local account does not establish that this new
+                # provider subject owns the colliding email address.
+                if not ident.email_verified:
                     repo.insert_audit_event(
                         user_id=existing.id,
                         action='auth.oauth_link_rejected',

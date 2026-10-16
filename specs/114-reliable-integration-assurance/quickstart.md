@@ -53,3 +53,20 @@ Record sanitized message identifiers/statuses only, not tokens, message bodies,
 reset URLs or credentials. Live verification/reset journeys require the complete
 release checks and the existing one-droplet/60-minute/USD0.25 approval. Teardown
 must leave persistent mail DNS untouched. Google OAuth is a separate prerequisite.
+
+## Email failure observation
+
+The existing minute-based email replay task now publishes a deployment-scoped,
+180-second Redis observation. Only the email worker reads the outbox, using a
+two-second statement timeout. Unresolved failed/dead-letter messages or queued,
+retrying or sending messages older than ten minutes require attention. No
+recipient, body, subject, token, count or message identity enters the observation.
+
+The operations email probe rejects stale (over 120 seconds), malformed or
+wrong-deployment observations. A healthy transport still requires the existing
+signed delivery receipt; it does not prove inbox receipt. Existing operations
+incident correlation and explicitly configured notification delivery handle the
+closed status codes. This does not implicitly enable Discord credentials or
+grant the operations worker access to the email outbox. Observation/publication
+failures remain failed tasks, not silent passes. A dead letter must be explicitly
+reconciled; neither a later successful send nor a retry clears it.
