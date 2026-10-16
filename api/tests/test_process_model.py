@@ -4,6 +4,7 @@ import socket
 import subprocess
 import time
 from shutil import which
+from pathlib import Path
 
 import httpx
 import pytest
@@ -34,21 +35,16 @@ def test_gunicorn_serves_health() -> None:
 
     port = _get_free_port()
     env = os.environ.copy()
-
-    cmd = [
-        'gunicorn',
-        'api.main:app',
-        '-k',
-        'uvicorn.workers.UvicornWorker',
-        '--bind',
-        f'127.0.0.1:{port}',
-        '--workers',
-        '1',
-        '--timeout',
-        '30',
-        '--graceful-timeout',
-        '5',
-    ]
+    env.pop('XDG_RUNTIME_DIR', None)
+    env.update(
+        API_HOST='127.0.0.1',
+        PORT=str(port),
+        API_WORKERS='1',
+        API_TIMEOUT='30',
+        API_GRACEFUL_TIMEOUT='5',
+        HOME='/proc/base2-read-only-home',
+    )
+    cmd = ['bash', str(Path(__file__).resolve().parents[1] / 'entrypoint.sh')]
 
     proc = subprocess.Popen(
         cmd,
@@ -95,5 +91,6 @@ def test_gunicorn_serves_health() -> None:
             f'partial_output:\n{out}'
         )
     finally:
-        if proc.poll() is None:
-            _terminate_and_collect(proc)
+        output = _terminate_and_collect(proc)
+        assert 'Control server error' not in output
+        assert 'Control socket' not in output

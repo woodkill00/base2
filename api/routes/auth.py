@@ -823,6 +823,38 @@ async def auth_session_revoke(session_id: str, request: Request, response: Respo
     return None
 
 
+@router.post('/auth/oauth/google/challenge')
+async def google_browser_challenge(request: Request, response: Response):
+    from api.security import google_challenge
+
+    if not settings.GOOGLE_OAUTH_ENABLED:
+        raise HTTPException(status_code=404, detail='oauth_provider_disabled')
+    if not settings.GOOGLE_OAUTH_CLIENT_ID:
+        raise HTTPException(status_code=503, detail='oauth_provider_unavailable')
+    _, over, retry_after = rate_limit.incr_and_check_detailed(
+        _client_ip(request), 'auth_oauth_google_challenge'
+    )
+    if over:
+        raise HTTPException(
+            status_code=429, detail='Rate limited', headers={'Retry-After': str(retry_after)}
+        )
+    try:
+        binding, nonce = google_challenge.issue()
+    except RuntimeError:
+        raise HTTPException(status_code=503, detail='oauth_provider_unavailable') from None
+    response.set_cookie(
+        google_challenge.COOKIE,
+        binding,
+        max_age=google_challenge.TTL,
+        httponly=True,
+        secure=bool(settings.COOKIE_SECURE),
+        samesite='strict',
+        path=google_challenge.PATH,
+    )
+    response.headers['Cache-Control'] = 'no-store'
+    return {'nonce': nonce, 'expires_in': google_challenge.TTL}
+
+
 @router.post('/auth/oauth/google')
 async def auth_oauth_google(request: Request, response: Response):
     ip = _client_ip(request)
@@ -837,7 +869,9 @@ async def auth_oauth_google(request: Request, response: Response):
     except Exception:
         payload = {}
 
-    id_token = (payload or {}).get('credential') or (payload or {}).get('id_token')
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail='Invalid request')
+    id_token = payload.get('credential') or payload.get('id_token')
     if not id_token:
         raise HTTPException(status_code=400, detail='Invalid request')
 
@@ -847,11 +881,18 @@ async def auth_oauth_google(request: Request, response: Response):
         raise HTTPException(status_code=503, detail='oauth_provider_unavailable')
 
     try:
+        from api.security import google_challenge
         from api.services.oauth_google import verify_google_id_token
 
+        nonce = google_challenge.consume(request.cookies.get(google_challenge.COOKIE, ''))
+        response.delete_cookie(google_challenge.COOKIE, path=google_challenge.PATH)
         ident = verify_google_id_token(
-            id_token=str(id_token), audience=str(settings.GOOGLE_OAUTH_CLIENT_ID)
+            id_token=str(id_token),
+            audience=str(settings.GOOGLE_OAUTH_CLIENT_ID),
+            expected_nonce=nonce,
         )
+    except RuntimeError:
+        raise HTTPException(status_code=503, detail='oauth_provider_unavailable') from None
     except ValueError as e:
         raise HTTPException(status_code=401, detail='OAuth rejected') from e
     except Exception as e:

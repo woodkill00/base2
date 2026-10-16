@@ -17,7 +17,8 @@ def test_auth_oauth_google_creates_user_and_returns_tokens(monkeypatch):
     monkeypatch.setattr('api.routes.auth.settings.GOOGLE_OAUTH_CLIENT_ID', 'test-client')
     monkeypatch.setattr('api.routes.auth.settings.GOOGLE_OAUTH_ENABLED', True)
 
-    def fake_verify(*, id_token: str, audience: str):
+    def fake_verify(*, id_token: str, audience: str, expected_nonce: str):
+        assert len(expected_nonce) == 43
         assert audience == 'test-client'
         return oauth_google.GoogleIdentity(
             sub='sub_' + uuid.uuid4().hex,
@@ -30,6 +31,7 @@ def test_auth_oauth_google_creates_user_and_returns_tokens(monkeypatch):
     monkeypatch.setattr('api.services.oauth_google.verify_google_id_token', fake_verify)
 
     client = TestClient(app)
+    assert client.post('/api/auth/oauth/google/challenge').status_code == 200
     r = client.post('/api/auth/oauth/google', json={'credential': 'dummy'})
     assert r.status_code == 200, r.text
     j = r.json()
@@ -51,7 +53,8 @@ def test_auth_oauth_google_merge_rules_reject_unverified_collision(monkeypatch):
     monkeypatch.setattr('api.routes.auth.settings.GOOGLE_OAUTH_CLIENT_ID', 'test-client')
     monkeypatch.setattr('api.routes.auth.settings.GOOGLE_OAUTH_ENABLED', True)
 
-    def fake_verify(*, id_token: str, audience: str):
+    def fake_verify(*, id_token: str, audience: str, expected_nonce: str):
+        assert len(expected_nonce) == 43
         return oauth_google.GoogleIdentity(
             sub='sub_' + uuid.uuid4().hex,
             email=email,
@@ -63,6 +66,7 @@ def test_auth_oauth_google_merge_rules_reject_unverified_collision(monkeypatch):
     monkeypatch.setattr('api.services.oauth_google.verify_google_id_token', fake_verify)
 
     client = TestClient(app)
+    assert client.post('/api/auth/oauth/google/challenge').status_code == 200
     r = client.post('/api/auth/oauth/google', json={'credential': 'dummy'})
     assert r.status_code == 401
 
@@ -81,7 +85,8 @@ def test_auth_oauth_google_merge_rules_allow_when_google_authoritative(monkeypat
     monkeypatch.setattr('api.routes.auth.settings.GOOGLE_OAUTH_CLIENT_ID', 'test-client')
     monkeypatch.setattr('api.routes.auth.settings.GOOGLE_OAUTH_ENABLED', True)
 
-    def fake_verify(*, id_token: str, audience: str):
+    def fake_verify(*, id_token: str, audience: str, expected_nonce: str):
+        assert len(expected_nonce) == 43
         return oauth_google.GoogleIdentity(
             sub='sub_' + uuid.uuid4().hex,
             email=email,
@@ -93,6 +98,7 @@ def test_auth_oauth_google_merge_rules_allow_when_google_authoritative(monkeypat
     monkeypatch.setattr('api.services.oauth_google.verify_google_id_token', fake_verify)
 
     client = TestClient(app)
+    assert client.post('/api/auth/oauth/google/challenge').status_code == 200
     r = client.post('/api/auth/oauth/google', json={'credential': 'dummy'})
     assert r.status_code == 200, r.text
     assert r.json().get('email') == email

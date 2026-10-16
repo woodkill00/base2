@@ -1,5 +1,50 @@
 # Analysis and issue ledger
 
+## 2026-10-17 closeout audit (current)
+
+Accepted source de2e9ec passed stability, complete gate 20261016T192431Z-2482137,
+20 hosted checks and all 14 live browser cases in base2-full-20261016-195724.
+Owner confirmed successful Google sign-in and review completion. Independent
+private closeout-verification.json confirms zero owned droplets/preview DNS and
+four preserved sending records. Timer inactive; all live approvals consumed.
+The changes below are NOT covered by that prior live receipt.
+
+- F114-30: Gunicorn 26.2.0 defaults to a HOME control socket. The actual API
+  entrypoint test reproduced the filesystem warning with non-writable HOME and
+  no inherited XDG_RUNTIME_DIR. Disable the unused control socket; retain HTTP
+  readiness/shutdown, read-only filesystem and all isolation boundaries.
+- F114-31: pgAdmin fresh initialization takes about four minutes. Both Compose
+  profiles receive a 300s startup grace, retaining immediate admission on success
+  and the 15s/5s/10 steady-state probe bounds. No cloud or deployment timeout grows.
+- F114-32: GIS popup lacked a browser-bound one-use nonce. Add 300s Redis state,
+  HttpOnly/Strict browser cookie, Google nonce comparison and atomic GETDEL.
+  Wrong/missing/expired/replayed bindings cannot create sessions. Store failure
+  is a sanitized 503, not fallback. Separate 30/min challenge issuance leaves the
+  existing 5/min exchange limit unchanged. UI requires explicit retry after
+  failure/expiry. Renewed human live validation is required before merge.
+
+Reference: https://developers.google.com/identity/gsi/web/reference/js-reference#nonce
+
+Focused evidence: 43 deployment/classifier tests (0.57s); 121 process/auth/mail/
+operations tests (3.28s); 369 frontend tests (13.95s); disposable PostgreSQL runner
+including five email/media/real-Redis integration cases. New nonce module has
+33/33 statement coverage, not proof against unknown defects. Browser review
+caught wrong preview flags twice; final tests use both Volcano flags and assert
+.volcano-layout before capture. Earlier captures remain, not relabelled.
+
+Reconciled tasks refer to existing evidence: T011 classifier narrative/full/mixed/
+hostile cases; T014-T016/T056 diagnostic/cleanup tests with native-runtime root
+cause explicitly unresolved; T017/T018/T022/T038 and T059-T070 accepted de2e9ec
+trial plus private input/edge/fixture tests; T045/T046 persistent_mail_dns tests
+and live preservation; T049/T052 email_health -> operations_runtime -> tenant
+incident/notification contracts and durable delivery-failure tests. This does not
+claim an external alert destination is enabled. T031-T034 cover de2e9ec only.
+
+Still open: sending-only key scope confirmation, full email outcome evidence,
+visual/optional-module inventory reconciliation, billing measurements, final
+current-source gate/CI, new human OAuth trial and merge/post-merge checks.
+Do not blanket-close tasks or reuse the earlier live pass for changed auth code.
+
 ## 2026-10-16 post-trial repair analysis
 
 F114-29 (CI fixture wiring): local complete gate passed at 387480f, but hosted

@@ -15,6 +15,7 @@ SCOPE_LIMITS: dict[str, tuple[int, int]] = {
     'auth_login': (60_000, 5),
     'auth_register': (60_000, 5),
     'auth_oauth_google': (60_000, 5),
+    'auth_oauth_google_challenge': (60_000, 30),
     # Forgot-password is intentionally a bit higher.
     'forgot_password': (900_000, 10),
     'forgot_password_email': (900_000, 5),

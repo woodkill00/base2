@@ -2,6 +2,23 @@
   "schemaVersion": 1,
   "checks": [
     {
+      "id": "feature-114-google-binding-browser",
+      "command": [
+        "npm",
+        "--prefix",
+        "react-app",
+        "exec",
+        "--",
+        "playwright",
+        "test",
+        "--config=react-app/playwright.google-binding.config.mjs"
+      ],
+      "required": true,
+      "timeoutSeconds": 240,
+      "dependsOn": [],
+      "requiredTools": ["node", "npm"]
+    },
+    {
       "id": "feature-114-google-browser-policy",
       "command": ["node", "--test", "react-app/scripts/google-nginx-policy.test.mjs"],
       "required": true,

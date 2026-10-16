@@ -1,5 +1,23 @@
 # Sending-only preview acceptance
 
+## Selected Google popup flow
+
+The login page obtains a same-origin POST /api/auth/oauth/google/challenge before
+rendering Google. The response is no-store, has a 300-second nonce and sets a
+host-only HttpOnly, SameSite=Strict cookie (Secure in production). The nonce is
+passed to GIS; signed token verification must match it. Atomic Redis GETDEL
+consumes the browser binding before identity/session mutation. Failures never
+restore it or silently fall back. An expired/failed attempt requires clicking
+Retry Google sign-in; there is no automatic repeated login. Redis is required.
+No ID token or nonce is saved in browser persistent storage.
+
+This is the GIS popup credential flow, not the separate authorization-code
+callback. Client-secret/redirect/state settings are not enabled for this preview;
+the unused code flow must not be described as live-tested or PKCE-complete.
+Google readiness is distinct from successful human consent and session creation.
+After changing the binding flow, a new approved live trial and owner confirmation
+are required; the prior de2e9ec Google confirmation is historical evidence only.
+
 Receiving is deferred. Never add an inbound MX record for this trial. Resend
 domain verification was confirmed by the owner on 2026-10-16; this is not delivery
 evidence. Keep the original Volcano design unchanged.

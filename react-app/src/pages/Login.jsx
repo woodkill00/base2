@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { GoogleLogin } from '@react-oauth/google';
+import BoundGoogleLogin from '../components/BoundGoogleLogin';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ToastProvider.jsx';
@@ -206,7 +206,7 @@ const Login = ({ variant = 'public' }) => {
               </Link>
               {getGoogleClientId() ? (
                 <div style={styles.googleContainer}>
-                  <GoogleLogin locale="en" onSuccess={onGoogleSuccess} onError={onGoogleError} />
+                  <BoundGoogleLogin onSuccess={onGoogleSuccess} onError={onGoogleError} />
                 </div>
               ) : null}
             </form>

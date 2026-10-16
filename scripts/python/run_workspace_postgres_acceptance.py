@@ -611,6 +611,7 @@ def main() -> None:
             '-m', 'pytest', '-q', '-o', 'addopts=', '-p', 'no:cacheprovider',
             'api/tests/test_email_outbox.py',
             'api/tests/test_preview_media_fixture_integration.py',
+            'api/tests/test_google_challenge_integration.py',
         ]
         email_check[3:3] = [
             '-e', 'SITE_PROFILE=base2-obsidian',

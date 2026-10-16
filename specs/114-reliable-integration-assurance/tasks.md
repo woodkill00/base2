@@ -1,5 +1,13 @@
 # Tasks
 
+## Final closeout repair batch
+
+- [x] T071 Reproduce Gunicorn's default control socket against a non-writable home using the actual API entrypoint, disable the unused control surface, and retain HTTP readiness/shutdown tests without weakening container isolation.
+- [x] T072 Review measured pgAdmin startup against the configured health/startup bounds; preserve slow-start evidence and distinguish initialization from runtime failure.
+- [ ] T073 Reconcile tasks against exact-source local/CI/live evidence, audit integration notification and security gaps, and explicitly retain unexplained intermittency.
+- [ ] T074 Verify current local/hosted evidence, merge PR #80 with ancestry preserved, and verify post-merge CI; no additional live trial authorized.
+- [ ] T075 Bind the selected GIS popup ID token to a server-issued, expiring, one-use browser nonce; test missing/wrong browser, expiry, replay, provider failure, Redis failure, disabled mode and UI recovery. Keep the unused authorization-code path explicitly separate. Fresh human live validation requires renewed approval before merge.
+
 ## Custom-field credential repair
 
 - [x] T057 Add a pure, Base2-only Google credential reader accepting exactly one `value` text/hidden custom field, with managed-Notes fallback and fail-closed conflicts/malformed data (R02,R04).
@@ -20,24 +28,24 @@
 - [x] T008 Add supported Bash/PowerShell entrypoints and immutable base-policy invocation (R07).
 - [x] T009 Preserve required check names and gate expensive frontend steps only after classification (R07).
 - [x] T010 Verify skipped suites are explicit, required artifacts conditional, security checks unchanged (R07).
-- [ ] T011 Validate both narrative-only and full-code decisions and record measured counts/durations (R08).
+- [x] T011 Validate both narrative-only and full-code decisions and record measured counts/durations (R08).
 
 ## Reliability
 
 - [x] T012 Inspect original Django traceback and compare runtime/toolchain evidence (R01,R02).
 - [x] T013 Run bounded reproductions; classify outcome without erasing intermittency (R01).
-- [ ] T014 Add diagnostic regressions for startup/transfer/timeout and unsafe evidence (R02).
-- [ ] T015 Implement evidence-backed fixes or explicit unresolved-incident handling (R01,R02).
-- [ ] T016 Verify cleanup and original failure status survive diagnostics failure (R02).
+- [x] T014 Add diagnostic regressions for startup/transfer/timeout and unsafe evidence (R02).
+- [x] T015 Implement evidence-backed fixes or explicit unresolved-incident handling (R01,R02).
+- [x] T016 Verify cleanup and original failure status survive diagnostics failure (R02).
 
 ## Real integrations
 
-- [ ] T017 Confirm test identities, private credential references, recipient and live bounds (R03,R04,R09).
-- [ ] T018 Add secret-safe email/OAuth preflight and missing/invalid prerequisite tests (R03,R04).
+- [x] T017 Confirm test identities, private credential references, recipient and live bounds (R03,R04,R09).
+- [x] T018 Add secret-safe email/OAuth preflight and missing/invalid prerequisite tests (R03,R04).
 - [ ] T019 Validate Resend HTTPS transport, recipient scope, timeout/idempotency and delivery evidence (R03).
 - [ ] T020 Validate OAuth callback allowlist, state/nonce/PKCE, replay, denial and session tests (R04).
 - [ ] T021 Add bounded real email journeys with cleanup and redacted artifacts (R03).
-- [ ] T022 Run dedicated-account real OAuth trial with human consent/MFA when required (R04).
+- [x] T022 Run dedicated-account real OAuth trial with human consent/MFA when required (R04).
 
 ## Coverage expansion
 
@@ -53,34 +61,34 @@
 
 - [x] T065 Reproduce live audit injection failure and use CSP-safe browser instrumentation without bypassCSP or weaker headers; add regression contract.
 - [x] T066 Add opt-in fixed Google stylesheet source at the Traefik consumer, not only Nginx; cover both Compose profiles, disabled defaults and hostile overrides.
-- [ ] T067 Replace the media live fixture's client-side permission claim with a bounded server-provisioned synthetic tenant membership; retain nonmember/forged-client denial tests and never enable public first-owner bootstrap.
-- [ ] T068 Owner reports the origin already configured: verify client-ID binding and effective referrer policy before requesting console edits; validate localized button readiness, provider errors, popup/session and account-linking behavior independently.
-- [ ] T070 Fix the opt-in public preview referrer policy without changing private/canary policies; reproduce CSP and origin-header behavior in a real browser with synthetic endpoints.
-- [ ] T069 Run affected browser/security checks and the exact-source release gate for post-trial repairs before publication; any further paid trial requires new approval.
+- [x] T067 Replace the media live fixture's client-side permission claim with a bounded server-provisioned synthetic tenant membership; retain nonmember/forged-client denial tests and never enable public first-owner bootstrap.
+- [x] T068 Owner reports the origin already configured: verify client-ID binding and effective referrer policy before requesting console edits; validate localized button readiness, provider errors, popup/session and account-linking behavior independently.
+- [x] T070 Fix the opt-in public preview referrer policy without changing private/canary policies; reproduce CSP and origin-header behavior in a real browser with synthetic endpoints.
+- [x] T069 Run affected browser/security checks and the exact-source release gate for post-trial repairs before publication; any further paid trial requires new approval.
 
 - [x] T063 Classify pre-bootstrap transport and receipt failures with fixed sanitized stages; cover timeout, nonzero exit and malformed/non-object receipts without logging secrets.
-- [ ] T064 Revalidate the repaired candidate through required release checks, then obtain renewed bounded-trial approval before any new paid launch; retain original failure and verified cleanup evidence.
+- [x] T064 Revalidate the repaired candidate through required release checks, then obtain renewed bounded-trial approval before any new paid launch; retain original failure and verified cleanup evidence.
 
-- [ ] T061 Repair F114-19 integration fixture to use existing worker UPDATE authority and restore its synthetic status; verify actual restricted-role DB execution, no new grants and CI (R02,R03).
-- [ ] T062 Add outbox integration to the existing disposable PostgreSQL local gate so hosted CI is not its first execution (R02,R03,R08).
+- [x] T061 Repair F114-19 integration fixture to use existing worker UPDATE authority and restore its synthetic status; verify actual restricted-role DB execution, no new grants and CI (R02,R03).
+- [x] T062 Add outbox integration to the existing disposable PostgreSQL local gate so hosted CI is not its first execution (R02,R03,R08).
 
-- [ ] T059 Add required live empty-form auth validation at mobile/desktop in light/dark preferences; assert state entry, field association, layout, menus, accessibility, no auth requests and sanitized screenshots (R04,R05).
-- [ ] T060 Complete private Google client-ID deployment wiring and restrictive GIS CSP; test provider button readiness separately from human consent and successful session establishment (R04,R09).
+- [x] T059 Add required live empty-form auth validation at mobile/desktop in light/dark preferences; assert state entry, field association, layout, menus, accessibility, no auth requests and sanitized screenshots (R04,R05).
+- [x] T060 Complete private Google client-ID deployment wiring and restrictive GIS CSP; test provider button readiness separately from human consent and successful session establishment (R04,R09).
 
 - [ ] T030 Repeat analysis and close known blocking task gaps (R01-R09).
-- [ ] T031 Run focused tests, affected integration, changed-line coverage and reviewed visuals (R01-R08).
-- [ ] T032 Run complete gate, publish candidate and verify hosted checks (R08).
-- [ ] T033 Run approved bounded live acceptance including available authorized integrations (R09).
-- [ ] T034 Tear down owned resources and verify empty inventory and terminal lease (R09).
+- [x] T031 Run focused tests, affected integration, changed-line coverage and reviewed visuals (R01-R08).
+- [x] T032 Run complete gate, publish candidate and verify hosted checks (R08).
+- [x] T033 Run approved bounded live acceptance including available authorized integrations (R09).
+- [x] T034 Tear down owned resources and verify empty inventory and terminal lease (R09).
 - [ ] T035 Record exact-source outcome, open risks and measured cost/time evidence (R01,R08,R09).
 
 Blocked prerequisites are not completed tasks. Publication does not imply live acceptance.
 
 ## Additional tasks from cycle 3
 
-- [ ] T036 Reconcile Google redirect HTTP method, browser callback consumer and configured URL before real-account testing (R04).
+- [x] T036 Reconcile Google redirect HTTP method, browser callback consumer and configured URL before real-account testing (R04).
 - [ ] T037 Verify actual selected Google flow's PKCE/client boundary and add missing security regressions rather than assuming the two OAuth entrypoints are equivalent (R04).
-- [ ] T038 Add explicitly scoped private Resend/OAuth wiring to the preview entrypoint; default remains disabled and unrelated secrets are not copied (R03,R04,R09).
+- [x] T038 Add explicitly scoped private Resend/OAuth wiring to the preview entrypoint; default remains disabled and unrelated secrets are not copied (R03,R04,R09).
 
 ## Additional tasks from cycle 4
 
@@ -93,8 +101,8 @@ Blocked prerequisites are not completed tasks. Publication does not imply live a
 
 - [x] T043 Inspect authoritative zone and saved Resend login metadata privately; owner selected woodkilldev.com (not the earlier proposed subdomain). Confirm sender/key domain match (R03).
 - [x] T044 Store owner-supplied public sending DNS records separately from ephemeral droplet DNS; test deterministic missing/matching/conflict plans and preserve stricter existing DMARC (R03,R09).
-- [ ] T045 Integrate opt-in persistent DNS reconciliation into supported deployment entrypoints before spending, with zone delegation validation, complete paginated inventory, bounded provider requests and verified receipts (R03,R09).
-- [ ] T046 Test interrupted/ambiguous creates and concurrent reconciliation without duplicate writes; teardown must never delete persistent mail records or existing mail configuration (R03,R09).
+- [x] T045 Integrate opt-in persistent DNS reconciliation into supported deployment entrypoints before spending, with zone delegation validation, complete paginated inventory, bounded provider requests and verified receipts (R03,R09).
+- [x] T046 Test interrupted/ambiguous creates and concurrent reconciliation without duplicate writes; teardown must never delete persistent mail records or existing mail configuration (R03,R09).
 - [x] T047 Apply authorized nonconflicting sending records and verify authoritative DNS plus Resend status; receiving MX requires a separate explicit decision after existing inbound routing review (R03,R09).
 
 T047 complete: all four sending records verified in provider inventory and public
@@ -102,17 +110,17 @@ DNS; owner confirmed Resend verification and actual inbox receipt. Receiving is
 explicitly deferred to a future owner-managed inbox feature; do not add MX.
 
 - [ ] T048 Verify trial budget/key ownership and persistence in actual containers, exact live-lease initialization and refusal to recreate/reset existing budgets (R03,R09).
-- [ ] T049 Finish failure-code classification and operator notification coverage for provider failures and all send guards; verify no credential, recipient body or reset token leaks (R02,R03).
+- [x] T049 Finish failure-code classification and operator notification coverage for provider failures and all send guards; verify no credential, recipient body or reset token leaks (R02,R03).
 
 ## Additional tasks from cycle 9
 
 - [x] T050 Reproduce missing frontend/API startup dependency in both Compose profiles; verify API health contract and acyclic dependency graph (R01,R02).
 - [x] T051 Gate frontend startup on API health without changing visual sources, proxy/security policy or service authority; validate both resolved configurations (R01,R02).
-- [ ] T052 Connect email failure observation to the existing operations incident/notification path; cover isolation, deduplication, stale observations and notification delivery failures (R02,R03).
+- [x] T052 Connect email failure observation to the existing operations incident/notification path; cover isolation, deduplication, stale observations and notification delivery failures (R02,R03).
 - [x] T053 Reject automatic account linking for provider-unverified email even when the existing local account is verified; verify no account/session mutation (R04).
 - [x] T054 Require current Google mailbox authority for automatic collision linking, test third-party verified rejection and signed hosted-domain claim parsing (R04).
-- [ ] T055 Reconcile Google button CSP/client origin settings with the chosen sign-in flow before activation; do not weaken the site's default policy globally (R04).
-- [ ] T056 Diagnose F114-17 using equivalent isolated toolchains and preserve the failed exact-source repetition; require valid stability/release evidence before publication (R01,R02,R08).
+- [x] T055 Reconcile Google button CSP/client origin settings with the chosen sign-in flow before activation; do not weaken the site's default policy globally (R04).
+- [x] T056 Diagnose F114-17 using equivalent isolated toolchains and preserve the failed exact-source repetition; require valid stability/release evidence before publication (R01,R02,R08).
 
 Sending acceptance update: candidate 6f7f7392 passed the complete gate, 20 hosted
 checks and 11 live browser checks. Owner confirmed inbox receipt of the single

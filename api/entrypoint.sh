@@ -18,6 +18,7 @@ if ! [[ "${WORKERS}" =~ ^[0-9]+$ ]] || (( WORKERS < 1 || WORKERS > 2 )); then
 fi
 
 exec gunicorn api.main:app \
+  --no-control-socket \
   -k uvicorn.workers.UvicornWorker \
   --bind "${HOST}:${PORT}" \
   --workers "${WORKERS}" \

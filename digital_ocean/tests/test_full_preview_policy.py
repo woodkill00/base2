@@ -88,3 +88,15 @@ def test_pgadmin_has_authenticated_session_memory_headroom():
     pgadmin = compose.split("  pgadmin:", 1)[1].split("\n  redis:", 1)[0]
     assert "mem_limit: 512m" in pgadmin
     assert "mem_limit: 256m" not in pgadmin
+
+
+def test_pgadmin_first_start_grace_preserves_probe_and_runtime_failure_bounds():
+    for name in ("local.docker.yml", "development.docker.yml"):
+        source = (ROOT / name).read_text()
+        service = source.split("  pgadmin:", 1)[1].split("\n  redis:", 1)[0]
+        assert "start_period: 300s" in service
+        assert "interval: 15s" in service
+        assert "timeout: 5s" in service
+        assert "retries: 10" in service
+        assert "/misc/ping" in service
+        assert "no-new-privileges:true" in service

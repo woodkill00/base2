@@ -355,6 +355,9 @@ services:
     healthcheck:
       test:
         ['CMD-SHELL', 'wget -qO- http://localhost:${PGADMIN_PORT}/misc/ping > /dev/null || exit 1']
+      # Observed fresh initialization takes about four minutes. Successful
+      # probes still admit immediately; steady-state failure bounds are unchanged.
+      start_period: 300s
       interval: 15s
       timeout: 5s
       retries: 10

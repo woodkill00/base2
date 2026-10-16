@@ -1,5 +1,16 @@
 # Plan
 
+## Owner-authorized final closeout
+
+Audit de2e9ec and the successful 20261016-195724 live trial before further edits.
+One focused batch covers the unused Gunicorn control socket, pgAdmin readiness,
+task/evidence reconciliation and actual integration gaps. Preserve source-bound
+live evidence; changed runtime code must not inherit a claim of live validation.
+Use focused process/security/contract tests before the required final gate.
+Merge with history preserved after CI. No paid resource or new live approval is
+included. Preserve the original intermittent Python failure as an open incident
+even when current repetitions pass; no invented root-cause resolution.
+
 ## Post-trial repair batch (2026-10-16)
 
 Preserve original trial failures. Fix the full-preview public referrer policy only
@@ -130,6 +141,12 @@ URLs and recipients are exact allowlists. Secrets remain in private references;
 screenshots/traces must not retain authorization codes or reset links.
 
 ## Integration blockers
+
+CURRENT CLOSEOUT: all earlier live approvals below are historical and consumed.
+de2e9ec passed live and was destroyed after owner Google sign-in confirmation.
+The new nonce binding requires a fresh bounded approval; no current resource is
+authorized. Preserve the historical prerequisite records below without treating
+their earlier "unused" wording as active authority.
 
 2026-10-16 renewed owner authorization: one additional Frankfurt droplet,
 staging certificates only, maximum 60 minutes and USD 0.25, with teardown after
