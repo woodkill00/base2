@@ -51,6 +51,9 @@
 
 ## Release
 
+- [ ] T061 Repair F114-19 integration fixture to use existing worker UPDATE authority and restore its synthetic status; verify actual restricted-role DB execution, no new grants and CI (R02,R03).
+- [ ] T062 Add outbox integration to the existing disposable PostgreSQL local gate so hosted CI is not its first execution (R02,R03,R08).
+
 - [ ] T059 Add required live empty-form auth validation at mobile/desktop in light/dark preferences; assert state entry, field association, layout, menus, accessibility, no auth requests and sanitized screenshots (R04,R05).
 - [ ] T060 Complete private Google client-ID deployment wiring and restrictive GIS CSP; test provider button readiness separately from human consent and successful session establishment (R04,R09).
 

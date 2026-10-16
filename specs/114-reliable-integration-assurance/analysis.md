@@ -313,6 +313,23 @@ bounded implementation; integration prerequisites remain genuine open blockers.
 
 ## Custom-field review (T057-T058)
 
+F114-19: hosted backend run 38872813517 failed the new email-health integration
+fixture at UPDATE and cleanup DELETE under the restricted API role. Production
+grants are correctly enforcing least privilege; do not expand them. Task analysis
+adds T061: mutate only the synthetic row with existing email-worker UPDATE,
+restore its exact original status in finally and verify restoration. The disposable
+integration DB retains the synthetic row like the two existing queue tests; no
+external send occurs. Reanalysis: no new role privilege or product change needed.
+Local gate 20261016T080304Z-1885686 passed at 01c4fb0, after preserving the earlier
+missing-evidence failure and generating the required exact-source stability set.
+Hosted integration failure supersedes release readiness; no live deploy attempted.
+
+F114-19 correction passed the real disposable PostgreSQL runner, including all
+three outbox tests under restricted roles (0.16s), recovery/settings journeys,
+RLS and migration rollback checks. Added those outbox tests to the runner invoked
+by the complete gate, closing the local-versus-hosted coverage gap. Synthetic
+delivery only; no external messages or privilege changes. Hosted rerun pending.
+
 Pre-release checkpoint: added local empty signup/login browser regressions at
 390/1440px. All four passed in 5.5s, checking actual errors, field associations,
 enabled recovery controls, no auth POST and no horizontal overflow. These local

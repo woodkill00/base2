@@ -48,7 +48,12 @@ def test_only_disposable_migrations_use_native_retry():
     assert "NATIVE_FAILURES = {134, 139}" in source
     assert '"PYTHONHASHSEED=0"' in source
     assert '"PYTHONMALLOC=malloc"' in source
-    assert source.count("run_idempotent_native_safe(") == 10
+    # Definition plus ten migration calls, including the final upgrade after
+    # rollback drills before the current-schema recovery/outbox journeys.
+    assert source.count("run_idempotent_native_safe(") == 11
+    assert 'run_idempotent_native_safe(django_migration + ["--noinput"]' in source
+    assert 'run(email_check)' in source
+    assert 'run_idempotent_native_safe(email_check' not in source
     mixed_version_end = source.index('run(mixed_check + ["new"])')
     full_migration = source.index('"WORKSPACE_DB_USER=base2_workspace_runtime"', mixed_version_end)
     full_migration_prefix = source[mixed_version_end:full_migration]
