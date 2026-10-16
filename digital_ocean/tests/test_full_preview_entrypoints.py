@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shlex
 import subprocess
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -94,7 +95,13 @@ def test_restricted_remote_requires_matching_receipt(tmp_path):
     )
     with pytest.raises(FullPreviewRemoteError, match='restricted bootstrap receipt'):
         remote.deploy('8.8.8.8', remote_config(tmp_path))
-    assert calls[-1][-1].endswith(" 'restricted'")
+    assert shlex.split(calls[-1][-1])[0].endswith(" 'restricted'")
+    # OpenSSH joins remote argv with spaces; the login shell must receive the
+    # entire script as bash -c's single argument, not execute its tail itself.
+    remote_argv = shlex.split(" ".join(calls[-1][-3:]))
+    assert len(remote_argv) == 3
+    assert remote_argv[:2] == ["bash", "-lc"]
+    assert remote_argv[2].startswith("set -euo pipefail; ")
 
 
 def remote_config(tmp_path: Path) -> LivePreviewConfig:
@@ -453,6 +460,53 @@ def test_remote_bootstrap_failure_retains_only_bounded_redacted_diagnostics(tmp_
     )
     assert "compose startup failed safely" in terminal
     assert "build output 88" not in terminal
+
+
+@pytest.mark.parametrize("stage", ["ssh-readiness", "source-transfer", "private-input-transfer"])
+@pytest.mark.parametrize("timeout", [False, True])
+def test_transport_failures_retain_only_typed_metadata(tmp_path, stage, timeout):
+    transfers = 0
+
+    def runner(argv, **kwargs):
+        nonlocal transfers
+        if argv[0] == "scp":
+            transfers += 1
+        current = ("ssh-readiness" if argv[0] == "ssh" else
+                   "source-transfer" if transfers == 1 else "private-input-transfer")
+        if current == stage:
+            if timeout:
+                raise subprocess.TimeoutExpired(argv, 15, output="password=private-value")
+            return SimpleNamespace(returncode=23, stdout="private-value", stderr="password=private-value")
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    remote = FullPreviewSshBootstrap(
+        known_hosts=tmp_path / "known_hosts", owner_cidr="8.8.4.4/32",
+        operator_auth=private_file(tmp_path / "operator", "private"),
+        flower_auth=private_file(tmp_path / "flower", "private"),
+        **application_inputs(tmp_path), runner=runner, attempts=1,
+    )
+    with pytest.raises(FullPreviewRemoteError) as failure:
+        remote.deploy("8.8.8.8", remote_config(tmp_path))
+    assert failure.value.stage == stage
+    assert failure.value.reason == ("timeout" if timeout else "nonzero-exit")
+    assert failure.value.exit_code == (None if timeout else 23)
+    assert "private-value" not in str(failure.value)
+
+
+@pytest.mark.parametrize("receipt", ["", "invalid", "[]", "null", "42", '{}'])
+def test_bad_bootstrap_receipts_have_typed_failure(tmp_path, receipt):
+    def runner(argv, **kwargs):
+        return SimpleNamespace(returncode=0, stdout=receipt, stderr="")
+
+    remote = FullPreviewSshBootstrap(
+        known_hosts=tmp_path / "known_hosts", owner_cidr="8.8.4.4/32",
+        operator_auth=private_file(tmp_path / "operator", "private"),
+        flower_auth=private_file(tmp_path / "flower", "private"),
+        **application_inputs(tmp_path), runner=runner, attempts=1,
+    )
+    with pytest.raises(FullPreviewRemoteError) as failure:
+        remote.deploy("8.8.8.8", remote_config(tmp_path))
+    assert failure.value.stage == "bootstrap-receipt"
 
 
 def test_remote_bootstrap_uses_bounded_size_appropriate_transfer_timeouts(tmp_path):

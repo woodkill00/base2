@@ -51,6 +51,9 @@
 
 ## Release
 
+- [x] T063 Classify pre-bootstrap transport and receipt failures with fixed sanitized stages; cover timeout, nonzero exit and malformed/non-object receipts without logging secrets.
+- [ ] T064 Revalidate the repaired candidate through required release checks, then obtain renewed bounded-trial approval before any new paid launch; retain original failure and verified cleanup evidence.
+
 - [ ] T061 Repair F114-19 integration fixture to use existing worker UPDATE authority and restore its synthetic status; verify actual restricted-role DB execution, no new grants and CI (R02,R03).
 - [ ] T062 Add outbox integration to the existing disposable PostgreSQL local gate so hosted CI is not its first execution (R02,R03,R08).
 

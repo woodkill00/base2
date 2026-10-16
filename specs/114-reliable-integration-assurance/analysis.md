@@ -1,5 +1,35 @@
 # Analysis and issue ledger
 
+## 2026-10-16 failed live trial and bounded diagnostic repair
+
+Renewed owner approval received for one additional trial with unchanged bounds.
+Preflight review found F114-21: OpenSSH joins remote arguments, so an unquoted
+bash -lc script loses its single-argument boundary and fail-fast scope. Regression
+reproduced locally before repair; quote the whole script at that boundary. This
+is a confirmed adjacent defect, not proof of the earlier trial's root cause.
+
+Candidate 29cf0e49bcfe271771963fe28889d55b8fc40305 passed exact-source
+stability, complete gate 20261016T082544Z-1931875 and all 20 hosted checks.
+Live run base2-full-20261016-085621 failed before healthy-site/browser acceptance.
+F114-20 (high, launch blocker): failure evidence retained only stage unknown,
+reason remote-failure and no exit code. Root cause is not established; do not
+label it a confirmed transfer or network fault. Private evidence is under
+~/.local/state/base2-full-preview/base2-full-20261016-085621/evidence/.
+Droplet 609634814 was verified absent; lease reconciled to destroyed and expiry
+timer stopped. No preview DNS records were created. Persistent sending DNS stays.
+This consumed the approved trial; a new paid run requires renewed approval.
+
+Repair scope: transport exception metadata, receipt validation and their persisted
+failure-report consumer only; no UI, credential scope or provider policy changes.
+Budget: focused entrypoint regressions first, no paid retries in this batch.
+Tasks -> analysis -> T063/T064: add distinct SSH/source/private-input/receipt
+stages; preserve timeout and bounded exit code without raw output or paths.
+Also reject non-object JSON receipts with a typed error instead of AttributeError.
+Reanalysis found no further known gap in this diagnostic batch. Underlying live
+failure remains unresolved. All 34 entrypoint tests passed, including 12 new
+failure cases. No new full release gate or live acceptance is claimed for this
+modified source. Full feature and real Google sign-in acceptance remain pending.
+
 ## Validation blocker — 1982f1e stability failure
 
 F114-17 (high release blocker, unexplained intermittent runtime failure): exact
