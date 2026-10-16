@@ -2,6 +2,14 @@
 
 ## 2026-10-16 post-trial repair analysis
 
+F114-28 (contract drift): first stability run at 8193468 passed 213 deployment
+checks but the strict Traefik environment allowlist rejected the intentionally
+added nonsecret GOOGLE_OAUTH_ENABLED flag. Preserve failure evidence under
+.artifacts/feature-106-repetitions/failures/81934682683bd41c6d7f233d8ce31d98ca1382a4/.
+Repair adds only that boolean to the exact allowlist and explicitly excludes
+GOOGLE_CLIENT_ID in addition to existing secret/token/password exclusions.
+No runtime configuration or credential authority is expanded by this test repair.
+
 Owner confirms https://woodkilldev.com was already configured. F114-24 is an
 unresolved client/origin combination, not proof of missing console configuration.
 F114-27: full-preview Traefik sets no-referrer while local Traefik and Nginx use

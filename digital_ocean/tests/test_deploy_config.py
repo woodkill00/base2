@@ -383,6 +383,7 @@ def test_traefik_receives_only_allowlisted_configuration_and_scoped_secrets():
         "OWNER_ALLOWLIST_CSV",
         "FASTAPI_PORT",
         "DJANGO_PORT",
+        "GOOGLE_OAUTH_ENABLED",
     }
     for name in ("local.docker.yml", "development.docker.yml"):
         source = (root / name).read_text(encoding="utf-8")
@@ -399,7 +400,7 @@ def test_traefik_receives_only_allowlisted_configuration_and_scoped_secrets():
         assert "      - traefik_dash_basic_users" in secret_block
         assert "      - flower_basic_users" in secret_block
         serialized = environment
-        for forbidden in ("DO_", "DB_", "POSTGRES_", "SMTP_", "PASSWORD", "TOKEN", "SECRET"):
+        for forbidden in ("DO_", "DB_", "POSTGRES_", "SMTP_", "PASSWORD", "TOKEN", "SECRET", "GOOGLE_CLIENT_ID"):
             assert forbidden not in serialized
 
 
