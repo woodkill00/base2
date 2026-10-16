@@ -67,14 +67,15 @@ def test_auth_oauth_google_merge_rules_reject_unverified_collision(monkeypatch):
     assert r.status_code == 401
 
 
-def test_auth_oauth_google_merge_rules_allow_when_google_verified(monkeypatch):
+def test_auth_oauth_google_merge_rules_allow_when_google_authoritative(monkeypatch):
     if not db_ping():
         pytest.skip('DB not reachable')
 
     from api.auth import repo
     from api.services import oauth_google
 
-    email = f'mergeok_{uuid.uuid4().hex[:8]}@example.com'
+    # Synthetic DB-only identity: no Google request or email is sent.
+    email = f'mergeok_{uuid.uuid4().hex[:8]}@gmail.com'
     repo.create_user(email=email, password_hash='x')
 
     monkeypatch.setattr('api.routes.auth.settings.GOOGLE_OAUTH_CLIENT_ID', 'test-client')

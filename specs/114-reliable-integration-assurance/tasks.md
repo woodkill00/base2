@@ -89,6 +89,8 @@ explicitly deferred to a future owner-managed inbox feature; do not add MX.
 - [x] T051 Gate frontend startup on API health without changing visual sources, proxy/security policy or service authority; validate both resolved configurations (R01,R02).
 - [ ] T052 Connect email failure observation to the existing operations incident/notification path; cover isolation, deduplication, stale observations and notification delivery failures (R02,R03).
 - [x] T053 Reject automatic account linking for provider-unverified email even when the existing local account is verified; verify no account/session mutation (R04).
+- [x] T054 Require current Google mailbox authority for automatic collision linking, test third-party verified rejection and signed hosted-domain claim parsing (R04).
+- [ ] T055 Reconcile Google button CSP/client origin settings with the chosen sign-in flow before activation; do not weaken the site's default policy globally (R04).
 
 Sending acceptance update: candidate 6f7f7392 passed the complete gate, 20 hosted
 checks and 11 live browser checks. Owner confirmed inbox receipt of the single

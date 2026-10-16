@@ -70,3 +70,13 @@ closed status codes. This does not implicitly enable Discord credentials or
 grant the operations worker access to the email outbox. Observation/publication
 failures remain failed tasks, not silent passes. A dead letter must be explicitly
 reconciled; neither a later successful send nor a retry clears it.
+
+## Google account-link compatibility
+
+Automatic linking to an existing email account now requires provider verification
+and current Google authority (Gmail or a verified hosted-domain claim). A verified
+local account alone, or a Google-verified third-party mailbox without a hosted
+domain, is not sufficient. Such users can still use their existing password;
+automatic linking is rejected without changing their account. A separate
+authenticated account-link challenge remains future work, not an implicit bypass.
+Already-linked provider subjects continue using their stable subject association.

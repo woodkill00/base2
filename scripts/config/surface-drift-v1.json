@@ -105,7 +105,7 @@
     "routeInventory": {
       "api/main.py": "cda0bc4e11029cbb6e88edcd89bc1020efdfdc350ee2152c76f3f026df2d847c",
       "api/routes/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "api/routes/auth.py": "1eaf11ac58e748af84db3d32011bb57e4ae77aea49c261157e9bfa088f705432",
+      "api/routes/auth.py": "fb8b4d2ea55cb4ca30e453a287427bab35f83a2b6e870a361bba4ea85763e108",
       "api/routes/content_workspace.py": "71795a85af8dec9e8f392f757a3640cc46b3466bccdf90941ace3f59f131b360",
       "api/routes/engagement.py": "f26e86d78daab93ef74a8d547b2b4ec1a3035ebf2f13e9a886a2accd772f016e",
       "api/routes/identity.py": "f4c3d677f0a6bf2a342221e300a809b86d8ae755e6ed3f3e44a6b9d9167780a1",

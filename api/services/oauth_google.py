@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hmac
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -14,6 +15,16 @@ class GoogleIdentity:
     email_verified: bool
     name: str
     picture: str
+    hosted_domain: str = ''
+
+    @property
+    def email_link_authoritative(self) -> bool:
+        # Google may have verified a third-party mailbox long ago without
+        # remaining authoritative for its current owner. Require a separate
+        # account-link challenge for that case instead of automatic linking.
+        return self.email_verified and (
+            self.email.lower().endswith('@gmail.com') or bool(self.hosted_domain)
+        )
 
 
 def verify_google_id_token(
@@ -44,6 +55,12 @@ def verify_google_id_token(
     email_verified = bool(claims.get('email_verified') is True)
     name = str(claims.get('name') or '')
     picture = str(claims.get('picture') or '')
+    hosted_domain = claims.get('hd', '')
+    if not isinstance(hosted_domain, str) or (
+        hosted_domain
+        and not re.fullmatch(r'[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?', hosted_domain)
+    ):
+        raise ValueError('invalid_token')
 
     if not sub or not email:
         raise ValueError('invalid_token')
@@ -53,7 +70,12 @@ def verify_google_id_token(
         raise ValueError('invalid_nonce')
 
     return GoogleIdentity(
-        sub=sub, email=email, email_verified=email_verified, name=name, picture=picture
+        sub=sub,
+        email=email,
+        email_verified=email_verified,
+        name=name,
+        picture=picture,
+        hosted_domain=hosted_domain,
     )
 
 

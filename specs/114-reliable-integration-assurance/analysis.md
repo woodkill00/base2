@@ -1,5 +1,23 @@
 # Analysis and issue ledger
 
+## Cycle 10 — Google authority refinement before release
+
+Google's server verification guidance explicitly warns that email_verified alone
+is not current mailbox authority for third-party email addresses without an hd
+claim (https://developers.google.com/identity/gsi/web/guides/verify-google-id-token).
+Refined F114-16 to also reject those automatic collisions. Only verified Gmail or
+verified identities carrying a validated hosted-domain claim can auto-link; other
+existing users retain password sign-in and need a separate linking challenge.
+No provider identity token, refresh token or password is stored by this change.
+
+The first 96c0414 repetition run completed, but its full gate was intentionally
+interrupted early with SIGINT after discovery of this additional issue. It is not
+pass evidence. All test processes terminated before editing. Two new collision
+regressions failed before the correction; 30 OAuth/identity/MFA tests passed after
+repair. Existing linked subject lookup is unchanged. New credential inputs,
+browser CSP/Google client configuration and authorization-code callback/PKCE
+remain activation blockers; no live Google sign-in is claimed.
+
 ## Cycle 9 — post-trial reliability batch
 
 Start candidate 6f7f7392ecb0b814ff64058756869cb969e71be1; clean native WSL
