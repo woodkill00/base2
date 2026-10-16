@@ -1,5 +1,16 @@
 # Analysis and issue ledger
 
+## 2026-10-16 prerequisite update
+
+F114-08 (unavailable prerequisite): metadata-only Vaultwarden lookup failed at
+SSH connection, before vault access. Independent bounded TCP/22 probes confirmed
+all four configured Pi addresses unavailable from WSL. Do not classify credentials
+as absent, attempt login retries or provision a paid environment to investigate.
+Owner has approved the exact recipient and one bounded preview; private item
+references remain unverified. T017 and dependent external checks remain blocked.
+No email, Google account mutation, provider operation or credential value output.
+Diagnostic helper: ignored `.artifacts/feature114-pi-reachability.sh`.
+
 ## Cycle 1 — discovery
 
 - F114-01: repeated full frontend CI for narrative-only closeout. Reproduction:

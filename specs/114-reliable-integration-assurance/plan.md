@@ -46,6 +46,14 @@ screenshots/traces must not retain authorization codes or reset links.
 
 ## Integration blockers
 
-Await owner test mailbox/Google identity and Vaultwarden item names; do not assume
-the previously authorized Calendar OAuth grant is a Base2 sign-in credential.
-Await fresh bounded preview approval; earlier trial approvals were consumed.
+Owner confirmed thejunkmailvoid@gmail.com as the test identity and authorized
+Base2 account verification/reset emails to that mailbox, not changes to the Google
+account itself. Owner approved one Frankfurt droplet, staging certificates,
+maximum 60 minutes/USD 0.25 and teardown after testing. This approval is unused.
+Do not assume the previous Calendar OAuth grant is a Base2 sign-in credential.
+Vaultwarden item references and SMTP/OAuth wiring still need verification.
+
+2026-10-16 prerequisite check: Pi SSH unavailable at all four configured addresses
+(192.168.1.169, 192.168.1.168, 192.168.0.169, 192.168.0.168). The metadata-only
+vault lookup could not connect; this is not evidence of missing credentials.
+Restore Pi/network reachability or supply its current address before retrying.
