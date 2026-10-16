@@ -1,5 +1,34 @@
 # Analysis and issue ledger
 
+## 2026-10-16 post-trial repair analysis
+
+Owner confirms https://woodkilldev.com was already configured. F114-24 is an
+unresolved client/origin combination, not proof of missing console configuration.
+F114-27: full-preview Traefik sets no-referrer while local Traefik and Nginx use
+strict-origin-when-cross-origin. Opt-in origin-only policy now has failing-before-
+fix contract evidence and two passing Chromium tests proving private paths/query
+are not sent cross-origin and inline script remains blocked. The first browser
+test collection exposed a TS/import.meta harness incompatibility; replacing that
+path lookup with the supported working-directory convention resolved it.
+
+T067 refinement: new operator-only fixture refuses existing organizations/accounts,
+uses a single transaction and grants only the existing editor role to a synthetic
+example.invalid user. Browser runner validates current lease/source before private
+SSH handoff; no new HTTP endpoint or production permission changes. Positive media
+checks require real server capabilities; normal signup with forged UI permissions
+must return 404. Readiness binds Google's actual client hash and handles localized
+button labels. Tasks -> analysis -> extra fixture file/receipt admission and real
+DB denial tests -> analysis found no known planning gap in this bounded batch.
+
+Focused results: 19 edge-policy, 28 browser-input/handoff, 14 fixture unit,
+18 acceptance-contract and 2 browser policy cases passed. Fixture module coverage
+98%, handoff 96% (remaining entrypoint/path-admission lines noted). PostgreSQL first
+run refused the wrong default site profile; original log f114-media-fixture-db.log
+preserved. Corrected explicit profile run f114-media-fixture-db-profile.log passed
+all four email/fixture integration tests plus the existing DB acceptance stages.
+Ruff and TypeScript passed; ESLint has zero errors and three existing declaration
+warnings. Full release and live acceptance of this repair are still pending.
+
 ## 2026-10-16 live trial c38de94: partial acceptance, cleanup complete
 
 Source c38de94edf115f510430223eccd78b0b5167e6d7 passed stability, full gate

@@ -1,5 +1,25 @@
 # Plan
 
+## Post-trial repair batch (2026-10-16)
+
+Preserve original trial failures. Fix the full-preview public referrer policy only
+when Google is enabled, retaining origin-only cross-site disclosure and unchanged
+private/canary policies. Exercise CSP and referer behavior with routed synthetic
+browser origins, without Google traffic or CSP bypass. Bind real Google readiness
+to a fingerprint of the same private client input and do not assume English text.
+
+Media acceptance needs actual backend membership, not a forged display claim.
+After current clean-source/lease admission, the supported browser runner uses the
+existing owner SSH key and fixed container command to provision a single synthetic
+editor in a fresh organization. No public endpoint, owner/admin grant, existing
+organization join, account overwrite or production activation is allowed. Reject
+expired payloads, wrong profiles, duplicate fixtures, linked/open files and invalid
+receipts. Use a transaction; cleanup is the exact disposable environment teardown.
+Positive upload acceptance must first verify server capabilities; ordinary signup
+and forged client permissions must remain denied. Test restricted-role PostgreSQL
+before spending. Budget: one focused batch, one corrected fixture-environment
+rerun, then exact-source stability and full gate. Another paid trial needs approval.
+
 ## Custom-field repair budget
 
 Add a pure Google-only credential selection module, not a new vault transport or

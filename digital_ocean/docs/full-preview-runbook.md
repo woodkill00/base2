@@ -87,10 +87,18 @@ as though the restricted preview could pass it. No antivirus freshness threshold
 or scanner decision is changed. Operator database/admin tools remain separately
 privileged and are not a way to import user media during this trial.
 
-Load credentials through private environment injection, never as CLI arguments:
+Load credentials through private environment injection, never as CLI values.
+The supported browser command validates the exact unexpired lease before using
+the SSH key. It provisions one synthetic `example.invalid` editor through a fixed
+operator-only container command, never public first-owner bootstrap. An existing
+organization/account blocks the operation; no user, password or grant is replaced.
+Use only a fresh owned disposable preview, run once, and destroy it afterward.
+Supply the synthetic signup email/password privately as `BASE2_APP_EMAIL` and
+`BASE2_APP_PASSWORD`; these are separate from the server-provisioned media account.
+Create a new empty owner-only evidence directory before running.
 
 ```bash
-cd react-app
+cd /home/woodkill/code/base2
 BASE2_LIVE_DOMAIN=woodkilldev.com \
 BASE2_LIVE_USERNAME="$(<"$PRIVATE/operator.username")" \
 BASE2_LIVE_PASSWORD="$(<"$PRIVATE/operator.password")" \
@@ -99,8 +107,18 @@ BASE2_DJANGO_PASSWORD="$(<"$PRIVATE/django.password")" \
 BASE2_PGADMIN_EMAIL="$(<"$PRIVATE/pgadmin.email")" \
 BASE2_PGADMIN_PASSWORD="$(<"$PRIVATE/pgadmin.password")" \
 BASE2_LIVE_EVIDENCE_DIR="$HOME/.local/state/base2-full-preview/$run_id/browser" \
-npm run test:live-full-preview
+.venv/bin/python -m digital_ocean.scripts.python.preview_browser_inputs \
+  --receipt "$HOME/.local/state/base2-full-preview/$run_id/evidence/$run_id.json" \
+  --owner-file "$PRIVATE/application-owner.json" \
+  --ssh-private-key "$PRIVATE/id_ed25519" \
+  --run-id "$run_id"
 ```
+
+If Google was enabled for this preview, also supply `--google-client-id-file`
+with the same private input used for deployment. The runner passes only its SHA-256
+fingerprint to the browser. The required readiness check verifies the actual iframe
+client, provider errors, CSP and a localized button; it does not authorize or claim
+human consent/login. A missing expected client input cannot certify enabled Google.
 
 Review the full-page Obsidian screenshot, the five operator screenshots, and the authenticated Django/pgAdmin screenshots. The gate also verifies the keyboard command palette, browser console, failed requests, anonymous denial, edge authorization, a successful Django CSRF-protected form submission, and both application logins. A preview with random or unavailable second-login credentials is not complete.
 

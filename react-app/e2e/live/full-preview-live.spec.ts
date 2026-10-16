@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { installOwnerEdgeAuth } from './owner-edge-auth.mjs';
 import { waitForDashboard } from './dashboard-readiness.mjs';
 import { contentFailure, expectedNotFound } from './acceptance-contract.mjs';
@@ -15,6 +16,8 @@ const pgadminEmail = process.env.BASE2_PGADMIN_EMAIL || '';
 const pgadminPassword = process.env.BASE2_PGADMIN_PASSWORD || '';
 const applicationEmail = process.env.BASE2_APP_EMAIL || '';
 const applicationPassword = process.env.BASE2_APP_PASSWORD || '';
+const mediaFixtureEmail = process.env.BASE2_MEDIA_EMAIL || '';
+const mediaFixturePassword = process.env.BASE2_MEDIA_PASSWORD || '';
 const ownerEmail = process.env.BASE2_OWNER_EMAIL || '';
 const ownerPassword = process.env.BASE2_OWNER_PASSWORD || '';
 const evidence = process.env.BASE2_LIVE_EVIDENCE_DIR || 'test-results/live-full-preview';
@@ -33,6 +36,44 @@ const visualSections = [
   ['monitoring', 'base2-thermal-security'],
   ['footer', 'base2-footer'],
 ];
+
+test('Google readiness matches configured client without performing sign-in', async ({ browser }) => {
+  const expected = process.env.BASE2_GOOGLE_CLIENT_SHA256 || '';
+  if (expected) expect(expected).toMatch(/^[a-f0-9]{64}$/);
+  const context = await browser.newContext({ ignoreHTTPSErrors: true });
+  try {
+    const page = await context.newPage();
+    const failures: string[] = [];
+    page.on('console', message => {
+      if (/GSI_LOGGER.*(?:not allowed|invalid|error)/i.test(message.text())) failures.push('google-provider-error');
+    });
+    page.on('response', response => {
+      const url = new URL(response.url());
+      if (url.hostname === 'accounts.google.com' && response.status() >= 400) failures.push(`google-http-${response.status()}`);
+    });
+    await page.addInitScript(() => {
+      (window as any).googlePolicyFailures = [];
+      document.addEventListener('securitypolicyviolation', event => {
+        if (event.blockedURI.startsWith('https://accounts.google.com/'))
+          (window as any).googlePolicyFailures.push(event.effectiveDirective);
+      });
+    });
+    await page.goto(`https://${domain}/login`, { waitUntil: 'networkidle' });
+    const iframe = page.locator('iframe[src^="https://accounts.google.com/gsi/button"]');
+    if (!expected) {
+      await expect(iframe).toHaveCount(0);
+    } else {
+      await expect(iframe).toBeVisible();
+      const client = new URL((await iframe.getAttribute('src')) || '').searchParams.get('client_id') || '';
+      expect(createHash('sha256').update(client).digest('hex'), 'deployed client must match private configured input').toBe(expected);
+      // Provider text is localized; do not assume an English accessible name.
+      await expect(iframe.contentFrame().getByRole('button')).toBeVisible();
+      await page.screenshot({ path: `${evidence}/google-ready-login.png`, fullPage: true });
+    }
+    expect(failures).toEqual([]);
+    expect(await page.evaluate(() => (window as any).googlePolicyFailures)).toEqual([]);
+  } finally { await context.close(); }
+});
 
 const assertSharedLayout = async (page: Page) => {
   await expect(page.locator('.volcano-layout')).toHaveCount(1);
@@ -445,6 +486,27 @@ test('authenticated settings platform works accessibly and responsively live', a
   await waitForDashboard(page);
 
   await assertSharedLayout(page);
+  // A normal signup must not acquire media authority from a client-side claim.
+  const deniedMediaStatus = await page.evaluate(async () => {
+    const original = localStorage.getItem('user');
+    try {
+      const forged = JSON.parse(original || '{}');
+      forged.permissions = ['media.read', 'media.upload', 'media.write'];
+      localStorage.setItem('user', JSON.stringify(forged));
+      return (await fetch('/api/media/v1/capabilities', { headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+        'X-Tenant-Id': 'base2-obsidian',
+      } })).status;
+    } finally {
+      if (original === null) localStorage.removeItem('user');
+      else localStorage.setItem('user', original);
+    }
+  });
+  expect(deniedMediaStatus).toBe(404);
+  // This intentional denial is separate from subsequent settings telemetry.
+  consoleErrors.length = 0;
+  failedRequests.length = 0;
+  failedResponses.length = 0;
   await page.screenshot({ path: `${evidence}/layout-auth-dashboard.png`, fullPage: true });
 
   const routes = [
@@ -559,7 +621,7 @@ test('authenticated media library accepts safe synthetic media and rejects hosti
   browser,
 }) => {
   test.setTimeout(180_000);
-  const mediaEmail = applicationEmail.replace('@', '+media@');
+  const mediaEmail = mediaFixtureEmail;
   const context = await browser.newContext({
     ignoreHTTPSErrors: true,
     reducedMotion: 'reduce',
@@ -575,20 +637,21 @@ test('authenticated media library accepts safe synthetic media and rejects hosti
     }
   });
 
-  await page.goto(`https://${domain}/signup`, { waitUntil: 'networkidle' });
+  await page.goto(`https://${domain}/login`, { waitUntil: 'networkidle' });
   await page.getByLabel('Email').fill(mediaEmail);
-  await page.getByLabel('Password').fill(applicationPassword);
-  await page.getByRole('button', { name: 'Create account' }).click();
-  try {
-    await expect(page).toHaveURL(/\/dashboard$/, { timeout: 10_000 });
-  } catch {
-    await page.goto(`https://${domain}/login`, { waitUntil: 'networkidle' });
-    await page.getByLabel('Email').fill(mediaEmail);
-    await page.getByLabel('Password').fill(applicationPassword);
-    await page.getByRole('button', { name: 'Sign in' }).click();
-    await expect(page).toHaveURL(/\/dashboard$/, { timeout: 30_000 });
-  }
+  await page.getByLabel('Password').fill(mediaFixturePassword);
+  await page.getByRole('button', { name: 'Sign in' }).click();
   await waitForDashboard(page);
+  // The operator fixture has real editor membership. Verify that authority
+  // before setting the UI-only navigation hints (never backend authorization).
+  const capabilityStatus = await page.evaluate(async () => {
+    const response = await fetch('/api/media/v1/capabilities', { headers: {
+      Authorization: `Bearer ${localStorage.getItem('token')}`,
+      'X-Tenant-Id': 'base2-obsidian',
+    } });
+    return response.status;
+  });
+  expect(capabilityStatus).toBe(200);
   await page.evaluate(() => {
     const raw = localStorage.getItem('user');
     if (!raw) throw new Error('authenticated user was not retained');

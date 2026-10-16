@@ -54,7 +54,8 @@
 - [x] T065 Reproduce live audit injection failure and use CSP-safe browser instrumentation without bypassCSP or weaker headers; add regression contract.
 - [x] T066 Add opt-in fixed Google stylesheet source at the Traefik consumer, not only Nginx; cover both Compose profiles, disabled defaults and hostile overrides.
 - [ ] T067 Replace the media live fixture's client-side permission claim with a bounded server-provisioned synthetic tenant membership; retain nonmember/forged-client denial tests and never enable public first-owner bootstrap.
-- [ ] T068 Owner configures the saved Google Web client's authorized JavaScript origin; then validate localized button readiness, provider errors, popup/session and account-linking behavior independently.
+- [ ] T068 Owner reports the origin already configured: verify client-ID binding and effective referrer policy before requesting console edits; validate localized button readiness, provider errors, popup/session and account-linking behavior independently.
+- [ ] T070 Fix the opt-in public preview referrer policy without changing private/canary policies; reproduce CSP and origin-header behavior in a real browser with synthetic endpoints.
 - [ ] T069 Run affected browser/security checks and the exact-source release gate for post-trial repairs before publication; any further paid trial requires new approval.
 
 - [x] T063 Classify pre-bootstrap transport and receipt failures with fixed sanitized stages; cover timeout, nonzero exit and malformed/non-object receipts without logging secrets.

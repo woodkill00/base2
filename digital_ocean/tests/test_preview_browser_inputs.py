@@ -108,6 +108,8 @@ def test_private_file_safety(tmp_path):
 
 
 def test_main_handoff_and_sanitized_failure(tmp_path, monkeypatch, capsys):
+    from digital_ocean.scripts.python import preview_media_inputs
+    monkeypatch.setattr(preview_media_inputs, 'provision_media_inputs', lambda **kw: {'BASE2_MEDIA_EMAIL': 'fixture@example.invalid', 'BASE2_MEDIA_PASSWORD': 'PRIVATE_FIXTURE'})
     monkeypatch.setattr(module, "current_lease", lambda *args: None)
     source = tmp_path / "receipt.json"
     source.write_text(json.dumps(receipt()))
@@ -124,7 +126,7 @@ def test_main_handoff_and_sanitized_failure(tmp_path, monkeypatch, capsys):
         )
     )
     owner.chmod(0o600)
-    args = ["--receipt", str(source), "--owner-file", str(owner), "--run-id", receipt()["runId"]]
+    args = ["--receipt", str(source), "--owner-file", str(owner), "--run-id", receipt()["runId"], "--ssh-private-key", "/private/key"]
     monkeypatch.setattr(
         module.subprocess, "check_output", lambda cmd, **kw: b"" if "status" in cmd else "a" * 40
     )
@@ -211,7 +213,7 @@ def test_failed_lease_never_reads_owner(monkeypatch, capsys):
     monkeypatch.setattr(module, "current_lease", reject)
     assert (
         module.main(
-            ["--receipt", "/receipt", "--owner-file", "/owner", "--run-id", receipt()["runId"]]
+            ["--receipt", "/receipt", "--owner-file", "/owner", "--run-id", receipt()["runId"], "--ssh-private-key", "/private/key"]
         )
         == 1
     )

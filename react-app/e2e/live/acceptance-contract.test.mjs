@@ -16,6 +16,13 @@ import {
 } from './acceptance-contract.mjs';
 
 const cases = () => requiredTests.map((title) => ({ title, status: 'passed', retry: 0 }));
+test('Google readiness is required and distinct from human sign-in', () => {
+  assert.ok(requiredTests.includes('Google readiness matches configured client without performing sign-in'));
+  const source = readFileSync(new URL('./full-preview-live.spec.ts', import.meta.url), 'utf8');
+  assert.ok(source.includes("createHash('sha256').update(client)"));
+  assert.ok(source.includes("iframe.contentFrame().getByRole('button')"));
+  assert.ok(source.includes('google-provider-error'));
+});
 test('live accessibility auditing preserves CSP without inline script tags or bypasses', () => {
   const source = readFileSync(new URL('./full-preview-live.spec.ts', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /addScriptTag\s*\(/);

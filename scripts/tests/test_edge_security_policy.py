@@ -22,19 +22,22 @@ class EdgeSecurityPolicyTests(TestCase):
         block = entrypoint.split('# BEGIN GOOGLE STYLE POLICY\n')[1].split('# END GOOGLE STYLE POLICY')[0]
         for flag in ('true', 'false', '', 'true; evil', 'https://evil.test'):
             result = subprocess.run(
-                ['sh', '-c', block + '\nprintf "%s" "$GOOGLE_CSP_STYLE_SOURCE"'],
+                ['sh', '-c', block + '\nprintf "%s|%s" "$GOOGLE_CSP_STYLE_SOURCE" "$GOOGLE_PUBLIC_REFERRER_POLICY"'],
                 env={**os.environ, 'GOOGLE_OAUTH_ENABLED': flag, 'GOOGLE_CSP_STYLE_SOURCE': 'https://evil.test'},
                 text=True, capture_output=True,
             )
             if flag in ('true', 'false', ''):
                 self.assertEqual(result.returncode, 0)
-                self.assertEqual(result.stdout, ' https://accounts.google.com/gsi/style' if flag == 'true' else '')
+                self.assertEqual(result.stdout, ' https://accounts.google.com/gsi/style|strict-origin-when-cross-origin' if flag == 'true' else '|no-referrer')
             else:
                 self.assertEqual(result.returncode, 78)
             self.assertNotIn('evil.test', result.stdout)
         for template in ('dynamic.yml', 'dynamic-full-preview.yml'):
             self.assertEqual((ROOT / 'traefik' / template).read_text().count('${GOOGLE_CSP_STYLE_SOURCE}'), 1)
         self.assertNotIn('GOOGLE_CSP_STYLE_SOURCE', (ROOT / 'traefik/dynamic-canary.yml').read_text())
+        preview = (ROOT / 'traefik/dynamic-full-preview.yml').read_text()
+        self.assertEqual(preview.count('${GOOGLE_PUBLIC_REFERRER_POLICY}'), 1)
+        self.assertIn('referrerPolicy: same-origin', preview)
         for compose in ('local.docker.yml', 'development.docker.yml'):
             source = (ROOT / compose).read_text().split('  traefik:\n')[1].split('\n  postgres:')[0]
             self.assertIn('GOOGLE_OAUTH_ENABLED=${GOOGLE_OAUTH_ENABLED:-false}', source)
