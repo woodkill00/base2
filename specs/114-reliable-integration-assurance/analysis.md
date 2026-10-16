@@ -1,5 +1,22 @@
 # Analysis and issue ledger
 
+## Pi recovery and credential preflight
+
+F114-08 reachability resolved after owner restarted Pi: TCP/22 and Vaultwarden
+lookup succeeded at 192.168.0.169 through configured fallback. Secret values were
+not emitted or transferred to workstation storage. Narrow field-status inspection
+used the existing project-vault secure-note format; note presence alone was not
+counted as a usable credential.
+
+F114-09 (owner/provider prerequisite): EMAIL_HOST, EMAIL_HOST_PASSWORD,
+GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET under base2/ contain missing
+or placeholder values. GOOGLE_OAUTH_REDIRECT_URI differs from the intended Base2
+callback and needs explicit configuration review. Username/from/state entries
+are populated but not authenticated or delivery-verified. T017 remains open for
+valid configuration; dependent external checks remain blocked, not passed.
+Sanitized evidence: `.artifacts/feature114-vault-preflight.json`.
+No Base2 reset emails, Google-account resets, provider logins or paid resources.
+
 ## 2026-10-16 prerequisite update
 
 F114-08 (unavailable prerequisite): metadata-only Vaultwarden lookup failed at

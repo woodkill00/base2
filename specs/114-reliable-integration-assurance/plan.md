@@ -56,4 +56,11 @@ Vaultwarden item references and SMTP/OAuth wiring still need verification.
 2026-10-16 prerequisite check: Pi SSH unavailable at all four configured addresses
 (192.168.1.169, 192.168.1.168, 192.168.0.169, 192.168.0.168). The metadata-only
 vault lookup could not connect; this is not evidence of missing credentials.
-Restore Pi/network reachability or supply its current address before retrying.
+Subsequent owner restart resolved reachability: SSH and Vaultwarden are reachable
+via 192.168.0.169 using the existing fallback helper. Read-only value-status checks
+found missing/placeholders in base2/EMAIL_HOST, base2/EMAIL_HOST_PASSWORD,
+base2/GOOGLE_OAUTH_CLIENT_ID and base2/GOOGLE_OAUTH_CLIENT_SECRET. The saved
+base2/GOOGLE_OAUTH_REDIRECT_URI does not match the expected Base2 callback and
+requires review. Populated username/from/state entries are not provider-verified.
+Real integrations remain blocked until valid provider configuration is supplied;
+no external email/login or cloud operation was attempted.
