@@ -353,6 +353,9 @@ def process_outbox_email(*, outbox_id: UUID) -> None:
     )
     if not settled:
         raise RuntimeError('outbox_claim_lost')
+    if result.status == 'dead_letter':
+        logger.error('Email delivery failed; outbox=%s; provider=%s', outbox_id, adapter.name)
+        raise RuntimeError('email_delivery_failed_requires_reconciliation')
 
 
 def replayable_outbox_ids(*, limit: int = 100) -> list[UUID]:

@@ -1,5 +1,17 @@
 # Analysis and issue ledger
 
+## Cycle 8 — terminal task outcome
+
+Candidate c6dadfa passed the complete local gate, including 95.1% changed-line
+coverage; its hosted checks were still finishing when adjacent operational review
+found F114-13. A provider rejection was persisted as dead_letter but returned from
+the worker function normally, causing a misleading successful Celery task. Added
+a regression and explicit sanitized terminal exception after fenced persistence.
+This correction requires new exact-source validation; the c6dadfa pass is retained
+as historical evidence, not reused as proof of the corrected candidate. No live
+email or paid preview was started. External notification routing is still a
+separate open T049 concern; task failures and outbox evidence are now explicit.
+
 ## Cycle 7 — owner verification and container/deployment boundaries
 
 Owner confirmed Resend domain Verified on 2026-10-16. Added safe provider failure

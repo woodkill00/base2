@@ -42,6 +42,35 @@ def test_bad_configuration_does_not_claim_outbox(monkeypatch):
     claim.assert_not_called()
 
 
+def test_provider_rejection_never_reports_successful_worker_task(monkeypatch, caplog):
+    row = EmailOutboxRow(
+        uuid4(),
+        'private@example.test',
+        'subject',
+        'secret body',
+        '',
+        'sending',
+        'worker_claim',
+        '',
+        '',
+        datetime.now(timezone.utc),
+        None,
+        uuid4(),
+        'stable-key',
+    )
+    fake = LocalFakeEmailAdapter(AdapterResult('failed', failure_code='resend_auth_rejected'))
+    monkeypatch.setattr(email_service, '_configured_adapter', lambda: fake)
+    monkeypatch.setattr(email_service, 'claim_outbox_email', lambda _: row)
+    mark = MagicMock(return_value=True)
+    monkeypatch.setattr(email_service, 'mark_outbox_status', mark)
+    with pytest.raises(RuntimeError, match='email_delivery_failed_requires_reconciliation'):
+        email_service.process_outbox_email(outbox_id=row.id)
+    assert mark.call_args.kwargs['status'] == 'dead_letter'
+    assert mark.call_args.kwargs['error'] == 'resend_auth_rejected'
+    assert 'Email delivery failed' in caplog.text
+    assert 'private' not in caplog.text and 'secret body' not in caplog.text
+
+
 @pytest.mark.parametrize(
     'error,expected',
     [
@@ -301,7 +330,8 @@ def test_outbox_retry_is_durable_and_becomes_dead_letter_after_bound(monkeypatch
     )
     mark = MagicMock(return_value=True)
     monkeypatch.setattr(email_service, 'mark_outbox_status', mark)
-    email_service.process_outbox_email(outbox_id=row.id)
+    with pytest.raises(RuntimeError, match='email_delivery_failed_requires_reconciliation'):
+        email_service.process_outbox_email(outbox_id=row.id)
     assert mark.call_args.kwargs['status'] == 'dead_letter'
     assert mark.call_args.kwargs['error'] == 'delivery_dead_letter'
     assert mark.call_args.kwargs['claim_token'] == claim_token
