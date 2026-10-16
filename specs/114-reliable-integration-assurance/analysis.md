@@ -1,5 +1,28 @@
 # Analysis and issue ledger
 
+## Validation blocker — 1982f1e stability failure
+
+F114-17 (high release blocker, unexplained intermittent runtime failure): exact
+source repetitions failed on privacy-runtime repetition six, after five passes.
+194 tests passed and one settings-validation test raised TypeError inside
+Pydantic EnvSettingsSource while unpacking model_fields.items(): cannot unpack
+non-iterable EnvSettingsSource object. This is not an ordinary settings assertion
+or evidence that the prohibited database hostname was accepted. No cause or
+hardware fault is established. Preserve alongside F114-02, not marked fixed.
+
+Evidence: `.artifacts/feature-106-repetitions/failures/1982f1ef1c96e193c0ec731d0fa06adb56d1242d/4af440e5d60d7c34c71a1407d3273a65f0c48cb235583690afe24b0bc315d3e1/`.
+One bounded isolated diagnostic rerun of the affected parametrized test passed
+63 cases. The full repetition suite was not retried; the required full gate did
+not start for this candidate. Native runtime is Python 3.12.3; the existing
+network-isolated container reports Python 3.12.14 and pytest 9.1.1. Current WSL
+resources were approximately 29 GB available RAM and 867 GB free disk; these
+current readings do not rule out an earlier transient. Next diagnostic should
+compare equivalent isolated toolchains, not retry until green or weaken gates.
+
+No cloud resources or new email sends were used. Local code commits 96c0414 and
+1982f1e are retained. Publication/merge remain blocked on valid release evidence;
+Google credentials and the remaining activation/coverage tasks also remain open.
+
 ## Cycle 10 — Google authority refinement before release
 
 Google's server verification guidance explicitly warns that email_verified alone

@@ -91,6 +91,7 @@ explicitly deferred to a future owner-managed inbox feature; do not add MX.
 - [x] T053 Reject automatic account linking for provider-unverified email even when the existing local account is verified; verify no account/session mutation (R04).
 - [x] T054 Require current Google mailbox authority for automatic collision linking, test third-party verified rejection and signed hosted-domain claim parsing (R04).
 - [ ] T055 Reconcile Google button CSP/client origin settings with the chosen sign-in flow before activation; do not weaken the site's default policy globally (R04).
+- [ ] T056 Diagnose F114-17 using equivalent isolated toolchains and preserve the failed exact-source repetition; require valid stability/release evidence before publication (R01,R02,R08).
 
 Sending acceptance update: candidate 6f7f7392 passed the complete gate, 20 hosted
 checks and 11 live browser checks. Owner confirmed inbox receipt of the single
