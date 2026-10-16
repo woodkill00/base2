@@ -38,6 +38,52 @@ is ready. Live limits and test identities requested before provider actions.
 
 ## Trust boundaries
 
+### Persistent DNS (owner update)
+
+Use root domain woodkilldev.com as selected in the owner's Resend dashboard.
+The public configuration digital_ocean/config/woodkilldev-resend-dns.json stores
+the supplied DKIM and two CNAME records plus initial DMARC. Provider-specific
+"Auto" TTL becomes explicit 3600 seconds. DNS names are zone-relative; CNAME
+targets are absolute. Do not invent extra SPF records alongside those supplied.
+Verify authoritative delegation and complete provider inventory before writes.
+Each deployment should ensure this persistent set, not recreate it blindly.
+Existing exact records are no-ops; conflicts stop and report; existing DMARC
+requires review rather than downgrade. Persistent records never enter droplet
+expiry/teardown ownership. Provider receipt IDs and partial progress require a
+separate durable journal before automatic mutation is enabled.
+The supplied apex MX inbound-smtp.us-east-1.amazonaws.com (priority 10) is NOT
+included: receiving is optional and needs separate inbound-routing approval.
+No droplet is needed to verify email DNS. The Resend key remains in Vaultwarden;
+the DKIM verification key is public DNS data, not a private credential.
+
+### Email provider decision (2026-10-16)
+
+Trial activation uses a private durable operational send-budget ledger, separate
+from domain email data: exact expiry, maximum attempts and hashed delivery-key
+reservations, synchronized across workers before network access. Reservations
+are never refunded after errors; an uncertain or repeated key requires explicit
+reconciliation, so no automatic retry can outlive provider idempotency. The ledger
+must persist across worker restarts, is never automatically reset, and is mounted
+only into the email worker. Missing, corrupt, expired or exhausted budgets fail
+closed with a visible typed error. Live trial initialization remains a supported
+deployment step, not an application-side auto-create operation.
+
+Owner selected Resend over HTTPS. DigitalOcean blocks SMTP ports, so SMTP is
+retained for existing consumers but is not the preview transport. Use the fixed
+https://api.resend.com/emails endpoint, verified TLS, no redirects or inherited
+proxies, a private sending-only domain-scoped key, and a mandatory exact trial
+recipient allowlist. The adapter does not retry internally. Stable outbox keys
+map to provider idempotency keys; Resend retains them for 24 hours, so automatic
+retry scheduling must stay inside that window or require reconciliation.
+Provider acceptance (existing outbox `sent`) does not prove inbox delivery.
+Real acceptance requires separate mailbox evidence. Durable trial send caps,
+secret wiring and retry scheduling are activation prerequisites, not implied by
+unit-test success. No DNS changes or provider account creation are authorized.
+
+References: https://resend.com/docs/api-reference/emails/send-email and
+https://resend.com/docs/dashboard/emails/idempotency-keys and
+https://docs.digitalocean.com/support/why-is-smtp-blocked/.
+
 PR-controlled filenames/content cannot grant skipped validation or credentials.
 No pull_request_target execution of untrusted code. CI permissions stay read-only
 unless an existing explicit publication job requires otherwise. External callback

@@ -19,6 +19,9 @@ def _private_text(path: Path, label: str) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "mail-dns":
+        from digital_ocean.scripts.python.persistent_mail_dns import main as mail_dns_main
+        return mail_dns_main(argv[1:])
     if argv and argv[0] == "browser":
         from digital_ocean.scripts.python.preview_browser_inputs import main as browser_main
         return browser_main(argv[1:])

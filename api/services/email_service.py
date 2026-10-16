@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from api.db import db_conn
+from api.services.resend_email import ResendEmailAdapter
 from api.services.transactional_email import (
     DisabledEmailAdapter,
     LocalFakeEmailAdapter,
@@ -207,6 +208,39 @@ def _configured_adapter():
     mode = os.getenv('BASE2_EMAIL_ADAPTER', 'disabled').strip().lower()
     if mode == 'local_fake':
         return LocalFakeEmailAdapter()
+    if mode == 'resend':
+        path = os.getenv('BASE2_EMAIL_RESEND_API_KEY_FILE', '').strip()
+        if not os.path.isabs(path):
+            raise RuntimeError('email_secret_file_invalid')
+        try:
+            fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+            with os.fdopen(fd, encoding='utf-8') as handle:
+                info = os.fstat(handle.fileno())
+                if (
+                    not stat_module.S_ISREG(info.st_mode)
+                    or info.st_nlink != 1
+                    or info.st_uid != os.geteuid()
+                    or info.st_mode & 0o077
+                    or info.st_size > 4096
+                ):
+                    raise RuntimeError('email_secret_file_permissions')
+                key = handle.read(4097).strip()
+        except OSError:
+            raise RuntimeError('email_secret_file_invalid') from None
+        try:
+            return ResendEmailAdapter(
+                api_key=key,
+                from_address=os.getenv('BASE2_EMAIL_FROM_ADDRESS', '').strip(),
+                allowed_recipients={
+                    value.strip()
+                    for value in os.getenv('BASE2_EMAIL_ALLOWED_RECIPIENTS', '').split(',')
+                    if value.strip()
+                },
+                budget_file=os.getenv('BASE2_EMAIL_BUDGET_FILE', '').strip(),
+                timeout=float(os.getenv('BASE2_EMAIL_RESEND_TIMEOUT_SECONDS', '10')),
+            )
+        except ValueError:
+            raise RuntimeError('email_resend_configuration_invalid') from None
     if mode == 'smtp':
 
         def private_value(variable: str) -> str:
@@ -249,6 +283,8 @@ def process_outbox_email(*, outbox_id: UUID) -> None:
     SMTP delivery. Disabled mode fails closed without marking the message sent.
     """
 
+    # Invalid credentials/configuration must not strand a newly claimed row.
+    adapter = _configured_adapter()
     existing = claim_outbox_email(outbox_id)
     if existing is None:
         current = get_outbox_email(outbox_id)
@@ -259,22 +295,48 @@ def process_outbox_email(*, outbox_id: UUID) -> None:
     if existing.claim_token is None:
         raise RuntimeError('outbox_claim_fence_missing')
 
-    adapter = _configured_adapter()
     match = re.fullmatch(r'delivery_retry:(\d+)', existing.error or '')
     attempt = int(match.group(1)) + 1 if match else 1
-    result = deliver_email(
-        RenderedEmail(
-            kind='outbox',
-            recipient=existing.to_email,
-            subject=existing.subject,
-            text=existing.body_text,
-            html=existing.body_html,
-            delivery_key=existing.delivery_key or str(existing.id),
-        ),
-        adapter,
-        attempt=attempt,
-        max_attempts=3,
-    )
+    try:
+        result = deliver_email(
+            RenderedEmail(
+                kind='outbox',
+                recipient=existing.to_email,
+                subject=existing.subject,
+                text=existing.body_text,
+                html=existing.body_html,
+                delivery_key=existing.delivery_key or str(existing.id),
+            ),
+            adapter,
+            attempt=attempt,
+            max_attempts=3,
+        )
+    except RuntimeError as exc:
+        code = str(exc)
+        safe_code = (
+            code
+            if code
+            in {
+                'email_budget_configuration_invalid',
+                'email_budget_file_unsafe',
+                'email_budget_schema_invalid',
+                'email_budget_expired_or_invalid',
+                'email_budget_duplicate_requires_reconciliation',
+                'email_budget_exhausted',
+                'email_budget_unavailable_or_corrupt',
+            }
+            else 'email_delivery_guard_failed'
+        )
+        if not mark_outbox_status(
+            outbox_id=outbox_id,
+            claim_token=existing.claim_token,
+            status='dead_letter',
+            provider=adapter.name,
+            error=safe_code,
+        ):
+            raise RuntimeError('outbox_claim_lost') from None
+        logger.error('Email delivery stopped: %s; outbox=%s', safe_code, outbox_id)
+        raise RuntimeError(safe_code) from None
     settled = mark_outbox_status(
         outbox_id=outbox_id,
         claim_token=existing.claim_token,
@@ -286,7 +348,7 @@ def process_outbox_email(*, outbox_id: UUID) -> None:
             if result.status == 'sent'
             else f'delivery_retry:{attempt}'
             if result.status in {'retry', 'disabled'}
-            else f'delivery_{result.status}'
+            else str(result.diagnostic.get('failureCode') or f'delivery_{result.status}')
         ),
     )
     if not settled:

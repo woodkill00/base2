@@ -2,7 +2,7 @@
   "algorithm": "sha256",
   "groups": {
     "config": {
-      ".env.example": "6d11f58ebe687bc53b3695459a0815929cc154d5e87e8774d2e045b63dc0fece",
+      ".env.example": "7e9e0ff2af48da21b2ab25d33745c995e5905ea335dea7f4e3a207dc76a0fa0c",
       "api/site_profiles/base2-obsidian.json": "a246a9831ad8feeca1dcde97fb32a03469e30a4e62e4661a0e088fc819264722",
       "api/site_profiles/content-workspace-contracts.json": "f139a41860e338f88584caf4a34c62ad4e5422d7390267981869d5a7012010f8",
       "api/site_profiles/content-workspace-presets.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
@@ -18,7 +18,7 @@
       "django/site_profiles/index.json": "d367c89b0fbf276e2cf77de0c4578d42dd30f2092cf10a685d1957369edcf38c",
       "django/site_profiles/journey-reference.json": "f7af82648f4e40757a7e57b79598101300d91cb8d38d96ad4e9e1994667f17eb",
       "django/site_profiles/northstar-library.json": "286850ced5758a336b8c7a82e345f57baa9d4686b39d209311178b6eaa5351f5",
-      "scripts/config/complete-gate-v1.json": "b95035635378009bdaf5512d1c70ae7b9e37cd8ca7716d22f05f457ec47823e9",
+      "scripts/config/complete-gate-v1.json": "d0e1048064d8cdb5c5e73f7228b1e54d1726158809538e695f26f77de17c9ec2",
       "shared/config/archetypes-v1.json": "1c203b4f3e076adf87fed98698cec6473b7ac765dcbfb7b6ca4b67c090801ce3",
       "shared/config/assurance-orchestrator-v1.json": "ca8ad4a9e4283ace1b6826cbd9a5c81735a8fa4aa6a6338ca4fd4091a7c34aeb",
       "shared/config/content-workspace-presets.generated.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",

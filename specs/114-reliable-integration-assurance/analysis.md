@@ -1,5 +1,117 @@
 # Analysis and issue ledger
 
+## Cycle 7 — owner verification and container/deployment boundaries
+
+Owner confirmed Resend domain Verified on 2026-10-16. Added safe provider failure
+classification and optional exact-recipient private mail-trial handoff through
+the existing full-preview launcher. Input is checked before provisioning and
+again before transfer/activation; runtime cap is at most five requests within
+one hour. Missing option preserves synthetic delivery. Persistent sending DNS
+reconciliation runs before a mail-enabled launch, outside ephemeral DNS leases.
+
+Synthetic isolated container acceptance passed first-send, fresh-container
+duplicate rejection and corrupt-ledger rejection with zero external requests.
+Uses existing image dependencies plus current read-only mail source, not a fresh
+full-stack build. Focused preview/handoff tests passed 45 checks. Initial private
+input symlink test exposed a raw OSError; normalized it to a safe RuntimeError
+and the 11 handoff checks passed. DNS CLI tests cover failure redaction and write
+limits. Coverage review exposed untested entrypoint branches; additional tests
+brought the four new core modules to 96% line coverage (87 focused tests, 0.67s).
+The initial exploratory coverage run was not release evidence; no gate threshold
+or configuration was changed. Required release floors still apply unchanged.
+
+Live application email, complete release gate, notification routing, final
+container topology, exact-lease expiry binding and cleanup evidence are still
+open. Do not equate unit/container passes with finished live acceptance.
+
+## Cycle 6 — sending activation safeguards and live DNS
+
+Implemented a private durable send-budget ledger (at most 20 reservations and
+24-hour expiry), nonblocking cross-worker lock, hashed delivery identities and
+fail-closed handling of duplicates, exhausted/expired/malformed/unsafe state.
+Reservations precede transport and are never refunded automatically. Runtime
+Resend selection now reads only a bounded private regular key file; production
+settings accept Resend with explicit recipient and private-file requirements.
+Both Compose profiles expose the key and persistent writable budget only to the
+email worker. No automatic ledger creation or production activation was added.
+
+F114-12 found during adjacent review: configuration validation after claiming an
+outbox row could strand it. Validation now precedes claim. Budget guard errors
+settle fenced rows to dead_letter, emit only allowlisted diagnostic codes and
+raise a visible worker failure. Regression tests cover secret-like exception
+content and no-claim on invalid configuration.
+
+Added journaled persistent DNS reconciliation through the existing full-preview
+mail-dns subcommand (available via existing Bash/PowerShell wrappers). Uses the
+shared domain lock, full-inventory admission, intent-before-write journal,
+readback verification and no update/delete operations. Incomplete pagination is
+explicitly blocked, not silently processed; pagination support remains open.
+Uncertain creates block replay; committed missing records require reconciliation.
+
+Live authorized sending-DNS operation on 2026-10-16 created the four supplied
+records in DigitalOcean. Provider readback is ready with no conflicts. Recursive
+NS observation matched DigitalOcean; DKIM and rsend were visible immediately,
+send and DMARC had not propagated in that initial observation. No MX added, no
+droplet provisioned, and no email sent. Persistent journal lives under the private
+operator state root ~/.local/state/base2-mail-dns, separate from droplet leases.
+Owner has been asked to verify the domain in Resend; provider acceptance is pending.
+
+Latest focused batch: 250 passed, 2 deselected by suite configuration (1.08s).
+Includes mail transport/budget/configuration/outbox and persistent/preview DNS.
+Full release gate, changed-line coverage, container integration, automated launch
+handoff, webhook/delivery evidence and live user journeys remain outstanding.
+Google credential placeholders remain a separate known prerequisite blocker.
+
+## Cycle 5 — persistent email DNS
+
+Follow-up: owner explicitly deferred receiving to a future separately scoped
+self-managed inbox feature. No MX records or receiving activation in Feature114.
+Live Pi metadata inspection confirmed exactly the expected Resend login item
+format, populated re_ key, root-domain sender and approved test recipient; values
+were not emitted or copied locally. Provider permissions/validity remain unverified.
+Google client ID/secret still contain missing/placeholders; callback needs review.
+
+The pure persistent-DNS planner initially failed collection before implementation;
+after implementation its 11 cases plus adjacent DNS/email suites passed 61 tests
+in 0.20 seconds. It normalizes provider names/CNAME targets, treats matching rows
+as no-ops, rejects duplicates/conflicts and blocks the entire create batch on
+conflict. Existing stronger DMARC is not overwritten. This completes only T044:
+authoritative lookup, durable provider writes, integration, live verification and
+teardown evidence remain open. No full gate or paid resource was started.
+
+Owner reports saving base2/RESEND_API_KEY and supplies root-domain DNS for
+woodkilldev.com. Secret readiness is reported, not yet independently verified.
+Owner authorizes incorporating sending records into provisioning. The receiving
+apex MX is held pending inbound-routing clarification: sending does not require
+rerouting incoming domain mail. Existing stricter DMARC must not be weakened.
+F114-11: preview DNS receipts own ephemeral A/AAAA records and teardown removes
+owned records. Email records require a separate persistent lifecycle, not inclusion
+in that lease. Add T043-T047 for delegation, pagination, conflict detection,
+interrupted create recovery, teardown preservation and external verification.
+Missing local dig/host/nslookup prevents that diagnostic route; this is not a DNS
+failure. No provider write or live readiness claim has been made.
+
+## Cycle 4 — Resend selection
+
+Owner approved Resend HTTPS. F114-09 remains an external prerequisite: verified
+sending domain and sending-only scoped key are not yet available. SMTP placeholder
+repair is superseded for this trial, not mistaken for working configuration.
+F114-10: provider idempotency expires after 24 hours; attempt counts alone do not
+bound elapsed retry age. T041 must cover durable caps and old/uncertain sends
+before activation. T039/T040 cover the isolated transport first. No provider call,
+DNS change or live deployment is part of this local batch. Budget: focused mail
+tests first, no full gate until integration/visual work is ready.
+
+Transport-only batch: new tests first failed because the module was absent.
+After implementation, 39 focused Resend and existing transactional-email tests
+passed. Ruff formatting/lint and diff whitespace checks passed. The adapter is
+intentionally NOT registered in runtime configuration: secret-file wiring,
+durable send caps and retry-age controls remain T039/T041 activation blockers.
+All transport failures currently require reconciliation; no implicit retry or
+redirect is performed. API acceptance retains the existing `sent` meaning and
+does not prove inbox delivery. No full release gate, live send or paid deployment
+was run for this batch. Feature-level completion is not claimed.
+
 ## Pi recovery and credential preflight
 
 F114-08 reachability resolved after owner restarted Pi: TCP/22 and Vaultwarden

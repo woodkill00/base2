@@ -27,6 +27,7 @@ class AdapterResult:
     status: str
     message_id: str = ''
     retryable: bool = False
+    failure_code: str = ''
 
 
 @dataclass(frozen=True)
@@ -186,6 +187,17 @@ def deliver_email(
     if digest in (suppressed_recipient_digests or set()):
         return DeliveryResult('suppressed', adapter.name, '', diagnostic)
     result = adapter.send(message)
+    allowed_failure_codes = {
+        'resend_auth_rejected',
+        'resend_request_rejected',
+        'resend_rate_limited',
+        'resend_provider_unavailable',
+        'resend_unexpected_response',
+        'resend_delivery_uncertain',
+        'resend_delivery_key_missing',
+    }
+    if result.failure_code in allowed_failure_codes:
+        diagnostic['failureCode'] = result.failure_code
     status = result.status
     if result.retryable:
         status = 'retry' if attempt < max_attempts else 'dead_letter'

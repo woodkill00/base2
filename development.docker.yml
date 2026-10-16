@@ -721,6 +721,10 @@ services:
       - DB_USER=${EMAIL_WORKER_DB_USER}
       - DB_PASSWORD=${EMAIL_WORKER_DB_PASSWORD}
       - BASE2_EMAIL_ADAPTER=${BASE2_EMAIL_ADAPTER:-disabled}
+      - BASE2_EMAIL_RESEND_API_KEY_FILE=/run/secrets/email-resend-key
+      - BASE2_EMAIL_RESEND_TIMEOUT_SECONDS=${BASE2_EMAIL_RESEND_TIMEOUT_SECONDS:-10}
+      - BASE2_EMAIL_ALLOWED_RECIPIENTS=${BASE2_EMAIL_ALLOWED_RECIPIENTS:-}
+      - BASE2_EMAIL_BUDGET_FILE=/run/email-trial/budget.json
       - BASE2_EMAIL_SMTP_HOST=${BASE2_EMAIL_SMTP_HOST:-}
       - BASE2_EMAIL_SMTP_PORT=${BASE2_EMAIL_SMTP_PORT:-587}
       - BASE2_EMAIL_SMTP_TIMEOUT_SECONDS=${BASE2_EMAIL_SMTP_TIMEOUT_SECONDS:-10}
@@ -736,6 +740,8 @@ services:
       - ${DB_SSLROOTCERT_HOST:-/dev/null}:/run/secrets/db-ca.pem:ro
       - ${BASE2_EMAIL_SMTP_USERNAME_FILE_HOST:-/dev/null}:/run/secrets/email-smtp-username:ro
       - ${BASE2_EMAIL_SMTP_PASSWORD_FILE_HOST:-/dev/null}:/run/secrets/email-smtp-password:ro
+      - ${BASE2_EMAIL_RESEND_API_KEY_FILE_HOST:-/dev/null}:/run/secrets/email-resend-key:ro
+      - ${BASE2_EMAIL_BUDGET_FILE_HOST:-/dev/null}:/run/email-trial/budget.json:rw
     depends_on:
       django: { condition: service_healthy }
       redis: { condition: service_healthy }

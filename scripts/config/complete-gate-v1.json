@@ -1463,6 +1463,25 @@
       "requiredTools": ["node"]
     },
     {
+      "id": "feature-114-mail-safety",
+      "command": [
+        "{python-api}",
+        "-m",
+        "pytest",
+        "-q",
+        "--no-cov",
+        "api/tests/test_resend_email.py",
+        "api/tests/test_email_send_budget.py",
+        "digital_ocean/tests/test_mail_trial_config.py",
+        "digital_ocean/tests/test_mail_cli_boundaries.py",
+        "digital_ocean/tests/test_persistent_mail_dns.py"
+      ],
+      "required": true,
+      "timeoutSeconds": 60,
+      "dependsOn": [],
+      "requiredTools": ["{python-api}"]
+    },
+    {
       "id": "compose-config",
       "command": ["python3", "scripts/python/validate_compose_config.py"],
       "required": true,

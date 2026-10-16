@@ -348,6 +348,32 @@ def test_only_production_email_worker_requires_or_receives_smtp_configuration(mo
         Settings()
 
 
+def test_production_resend_worker_requires_private_budget_and_key(monkeypatch, tmp_path):
+    from api.settings import Settings
+
+    monkeypatch.setenv('ENV', 'production')
+    monkeypatch.setenv('BASE2_PROCESS_ROLE', 'email-worker')
+    monkeypatch.setenv('DB_SSLMODE', 'verify-full')
+    monkeypatch.setenv('DB_SSLROOTCERT', '/run/secrets/database-ca.pem')
+    monkeypatch.setenv('DB_HOST', 'private-db.example.test')
+    monkeypatch.setenv('BASE2_EMAIL_ADAPTER', 'resend')
+    monkeypatch.setenv('BASE2_EMAIL_FROM_ADDRESS', 'sender@example.com')
+    monkeypatch.setenv('BASE2_EMAIL_ALLOWED_RECIPIENTS', 'owner@example.com')
+    for variable in ('BASE2_EMAIL_RESEND_API_KEY_FILE', 'BASE2_EMAIL_BUDGET_FILE'):
+        path = tmp_path / variable
+        path.write_text('synthetic fixture; contents validated by runtime guard')
+        path.chmod(0o600)
+        monkeypatch.setenv(variable, str(path))
+    assert Settings().BASE2_EMAIL_ADAPTER == 'resend'
+    path.chmod(0o644)
+    with pytest.raises(RuntimeError, match='secret file is invalid'):
+        Settings()
+    path.chmod(0o600)
+    monkeypatch.setenv('BASE2_EMAIL_ALLOWED_RECIPIENTS', '')
+    with pytest.raises(RuntimeError, match='Invalid production Resend'):
+        Settings()
+
+
 def test_data_rights_worker_requires_only_its_cryptographic_runtime_secrets(monkeypatch):
     from api.settings import Settings
 

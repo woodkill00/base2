@@ -29,7 +29,7 @@
 
 - [ ] T017 Confirm test identities, private credential references, recipient and live bounds (R03,R04,R09).
 - [ ] T018 Add secret-safe email/OAuth preflight and missing/invalid prerequisite tests (R03,R04).
-- [ ] T019 Validate SMTP transport, recipient scope, timeout/idempotency and delivery evidence (R03).
+- [ ] T019 Validate Resend HTTPS transport, recipient scope, timeout/idempotency and delivery evidence (R03).
 - [ ] T020 Validate OAuth callback allowlist, state/nonce/PKCE, replay, denial and session tests (R04).
 - [ ] T021 Add bounded real email journeys with cleanup and redacted artifacts (R03).
 - [ ] T022 Run dedicated-account real OAuth trial with human consent/MFA when required (R04).
@@ -59,4 +59,26 @@ Blocked prerequisites are not completed tasks. Publication does not imply live a
 
 - [ ] T036 Reconcile Google redirect HTTP method, browser callback consumer and configured URL before real-account testing (R04).
 - [ ] T037 Verify actual selected Google flow's PKCE/client boundary and add missing security regressions rather than assuming the two OAuth entrypoints are equivalent (R04).
-- [ ] T038 Add explicitly scoped private SMTP/OAuth wiring to the preview entrypoint; default remains disabled and unrelated secrets are not copied (R03,R04,R09).
+- [ ] T038 Add explicitly scoped private Resend/OAuth wiring to the preview entrypoint; default remains disabled and unrelated secrets are not copied (R03,R04,R09).
+
+## Additional tasks from cycle 4
+
+- [ ] T039 Implement fixed-endpoint Resend transport with private key files, required trial recipient allowlist, no redirects/proxy inheritance and sanitized errors; retain existing SMTP compatibility (R02,R03).
+- [x] T040 Test success, malformed responses, auth/quota failures, timeouts, duplicate keys, denied recipients and disabled defaults without network calls (R03).
+- [ ] T041 Bound retries to provider idempotency retention and enforce durable trial send limits before activation; distinguish provider acceptance from inbox delivery (R03,R09).
+- [ ] T042 Confirm verified sending subdomain and sending-only domain-scoped key in Vaultwarden; do not create accounts, change DNS or broaden permissions implicitly (R03,R09).
+
+## Additional tasks from cycle 5 — owner-supplied DNS
+
+- [ ] T043 Inspect authoritative zone and saved Resend login metadata privately; owner selected woodkilldev.com (not the earlier proposed subdomain). Confirm sender/key domain match (R03).
+- [x] T044 Store owner-supplied public sending DNS records separately from ephemeral droplet DNS; test deterministic missing/matching/conflict plans and preserve stricter existing DMARC (R03,R09).
+- [ ] T045 Integrate opt-in persistent DNS reconciliation into supported deployment entrypoints before spending, with zone delegation validation, complete paginated inventory, bounded provider requests and verified receipts (R03,R09).
+- [ ] T046 Test interrupted/ambiguous creates and concurrent reconciliation without duplicate writes; teardown must never delete persistent mail records or existing mail configuration (R03,R09).
+- [ ] T047 Apply authorized nonconflicting sending records and verify authoritative DNS plus Resend status; receiving MX requires a separate explicit decision after existing inbound routing review (R03,R09).
+
+T047 partial: all four sending records created and verified in provider inventory;
+Resend domain verification and final propagation evidence pending. Receiving is
+explicitly deferred to a future owner-managed inbox feature; do not add MX.
+
+- [ ] T048 Verify trial budget/key ownership and persistence in actual containers, exact live-lease initialization and refusal to recreate/reset existing budgets (R03,R09).
+- [ ] T049 Finish failure-code classification and operator notification coverage for provider failures and all send guards; verify no credential, recipient body or reset token leaks (R02,R03).

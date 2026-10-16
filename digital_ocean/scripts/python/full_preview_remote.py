@@ -80,10 +80,12 @@ class FullPreviewSshBootstrap:
                  django_username: Path, django_email: Path, django_password: Path,
                  pgadmin_email: Path, pgadmin_password: Path,
                  runner: Callable = subprocess.run, sleep=time.sleep, attempts: int = 60,
-                 application_owner: Path | None = None, preview_mode: str = 'full'):
+                 application_owner: Path | None = None, preview_mode: str = 'full',
+                 mail_trial: Path | None = None):
         if preview_mode not in {'full', 'restricted'}:
             raise FullPreviewRemoteError('invalid preview mode')
         self.preview_mode = preview_mode
+        self.mail_trial = mail_trial
         self.known_hosts = known_hosts
         self.owner_cidr = validate_owner_cidrs([owner_cidr])[0]
         self.operator_auth = operator_auth
@@ -125,6 +127,9 @@ class FullPreviewSshBootstrap:
     def deploy(self, ip_address: str, config: LivePreviewConfig) -> None:
         address = str(ipaddress.IPv4Address(ip_address))
         config.validate()
+        if self.mail_trial is not None:
+            from digital_ocean.scripts.python.mail_trial_config import load_trial
+            load_trial(self.mail_trial, config.zone)
         if hashlib.sha256(config.source_archive.read_bytes()).hexdigest() != config.archive_sha256:
             raise FullPreviewRemoteError("source archive digest mismatch")
         self.known_hosts.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -145,6 +150,8 @@ class FullPreviewSshBootstrap:
             (self.flower_auth, "/run/base2-flower.htpasswd"),
             *self.application_inputs,
         )
+        if self.mail_trial is not None:
+            copies += ((self.mail_trial, '/run/base2-mail-trial.json'),)
         for source, destination in copies:
             timeout = (
                 SOURCE_TRANSFER_TIMEOUT_SECONDS
