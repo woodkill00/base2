@@ -1,5 +1,55 @@
 # Analysis and issue ledger
 
+## 2026-10-16 live trial c38de94: partial acceptance, cleanup complete
+
+Source c38de94edf115f510430223eccd78b0b5167e6d7 passed stability, full gate
+20261016T172002Z-2331098 and all 20 hosted checks. PR #80 remains draft, unmerged.
+Run base2-full-20261016-174855 reached live-verified with all containers healthy.
+pgAdmin temporarily reported unhealthy during first initialization, then recovered
+within the existing bounded readiness loop without restart or policy changes.
+Do not erase that startup transient or claim it cannot recur.
+
+Browser acceptance: 10 passed, 3 failed. Independent Google readiness failed.
+Evidence root: ~/.local/state/base2-full-preview/base2-full-20261016-174855/;
+browser-acceptance/playwright-result.json, browser-run.log, google-readiness/
+diagnostic.json and screenshots retain the first outcomes. One authorized reset
+request returned HTTP 200; inbox delivery is not confirmed for this trial.
+
+- F114-22 (harness, two failures): live auth audit used addScriptTag, which the
+  legitimate strict CSP blocked. Use browser evaluate as existing audits do,
+  preserving headers; reproduction failed before repair, 17 contract tests pass.
+- F114-23 (high acceptance blocker): media fixture forged frontend permissions
+  after signup but never established backend identity membership. Media GETs
+  returned 404 and safe upload failed. Backend require_permission correctly
+  enforces active tenant membership. Do not grant every signup media access or
+  enable public first-owner bootstrap to satisfy a test. T067 requires a sealed,
+  scoped fixture plus denial checks, before claiming real media acceptance.
+- F114-24 (provider prerequisite): Google returned HTTP 400 and origin-not-allowed
+  for the saved client ID. Owner must configure https://woodkilldev.com on that
+  existing Web client. No secret rotation or additional OAuth scopes required.
+- F114-25 (edge consumer): Traefik overrides Nginx CSP and omitted the GIS style
+  endpoint. Added an opt-in fixed endpoint controlled by the existing enablement
+  flag, rejecting invalid flags and overriding injected fragments. Both templates
+  and Compose consumers covered; 19 policy tests pass, full gate still pending.
+- F114-26 (harness): readiness locator assumed English, while Google rendered an
+  Albanian button. Future checks must handle localization and separately reject
+  real provider errors; visible iframe alone is not OAuth acceptance.
+
+Tasks -> analysis -> T065-T069: fix harness without security bypass, trace CSP
+through both proxies, distinguish actual backend membership from client display,
+retain provider/localization failures separately, and gate any new trial. These
+are actionable tasks, not completed acceptance. Owner/provider prerequisite
+remains and post-trial modifications have not been release-gated or deployed.
+Reviewed live login screenshot preserves Volcano layout and edge tabs; full-page
+home capture includes animation/scroll gaps, so section references—not that one
+full-page image alone—remain necessary for visual acceptance.
+
+Teardown removed droplet 609767145 and six owned preview DNS records; independent
+provider query verified droplet absent and zero run-tagged droplets. Lease is
+destroyed, expiry timer stopped; persistent sending DNS preserved. Temporary
+mail/client-ID handoffs removed. No second paid retry authorized. Provider cost
+was not measured; no fabricated cost or token savings are claimed.
+
 ## 2026-10-16 failed live trial and bounded diagnostic repair
 
 Renewed owner approval received for one additional trial with unchanged bounds.

@@ -16,6 +16,12 @@ import {
 } from './acceptance-contract.mjs';
 
 const cases = () => requiredTests.map((title) => ({ title, status: 'passed', retry: 0 }));
+test('live accessibility auditing preserves CSP without inline script tags or bypasses', () => {
+  const source = readFileSync(new URL('./full-preview-live.spec.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /addScriptTag\s*\(/);
+  assert.doesNotMatch(source, /bypassCSP\s*:\s*true/);
+  assert.match(source, /await page\.evaluate\(axeSource\)/);
+});
 test('auth error visuals are mandatory at mobile and desktop widths', () => {
   for (const width of [390, 1440]) {
     const title = `live auth validation preserves Volcano at ${width}px`;

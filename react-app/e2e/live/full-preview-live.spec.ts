@@ -152,7 +152,9 @@ for (const width of [390, 1440]) {
           }
           await expect(page.getByRole('button', { name: button, exact: true })).toBeEnabled();
           await assertSharedLayout(page);
-          await page.addScriptTag({ content: axeSource });
+          // Execute test instrumentation through the browser automation context;
+          // keep the page's production CSP intact (no inline script tag/bypass).
+          await page.evaluate(axeSource);
           const violations = await page.evaluate(async () => {
             const result = await (window as any).axe.run(document.querySelector('main'));
             return result.violations.map((v: any) => ({ id: v.id, impact: v.impact }));
