@@ -2,6 +2,16 @@
 
 ## 2026-10-16 post-trial repair analysis
 
+F114-29 (CI fixture wiring): local complete gate passed at 387480f, but hosted
+backend integration discovered the preview fixture through generic integration
+selection, without its required disposable guard/profile/restricted runtime role.
+The guard failed closed before writes. Original evidence is retained in
+.artifacts/f114-ci-387480f-backend-failure.log (run 38954206010).
+Tasks -> analysis -> separate explicit fixture invocation in the existing
+job-owned PostgreSQL service -> policy regression: exclude only from generic
+selection, then require the same test under the restricted API role, fixed site
+profile and explicit disposable guard. No skip or weakened database protection.
+
 F114-28 (contract drift): first stability run at 8193468 passed 213 deployment
 checks but the strict Traefik environment allowlist rejected the intentionally
 added nonsecret GOOGLE_OAUTH_ENABLED flag. Preserve failure evidence under

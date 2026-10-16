@@ -387,6 +387,17 @@ class CiPolicyTests(unittest.TestCase):
         self.assertIn("actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09", workflows)
         self.assertIn("actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f", workflows)
 
+    def test_preview_media_ci_uses_explicit_disposable_restricted_role(self):
+        repo_root = MODULE_PATH.parents[2]
+        workflow = (repo_root / ".github/workflows/ci-backend.yml").read_text()
+        self.assertIn("--ignore=tests/test_preview_media_fixture_integration.py", workflow)
+        invocation = workflow.split("# This job owns its disposable PostgreSQL service.", 1)[1]
+        self.assertIn('DB_USER="$API_RUNTIME_DB_USER" DB_PASSWORD="$API_RUNTIME_DB_PASSWORD"', invocation)
+        self.assertIn("SITE_PROFILE=base2-obsidian BASE2_DISPOSABLE_JOURNEY=1", invocation)
+        self.assertIn("pytest -q -m integration tests/test_preview_media_fixture_integration.py -c pytest.ini", invocation)
+        test_source = (repo_root / "api/tests/test_preview_media_fixture_integration.py").read_text()
+        self.assertIn("'disposable_database_required'", test_source)
+
 
 if __name__ == "__main__":
     unittest.main()
