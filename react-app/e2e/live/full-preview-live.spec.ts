@@ -112,6 +112,65 @@ for (const width of [390, 1440]) {
   });
 }
 
+for (const width of [390, 1440]) {
+  test(`live auth validation preserves Volcano at ${width}px`, async ({ browser }) => {
+    for (const colorScheme of ['light', 'dark'] as const) {
+      const context = await browser.newContext({
+        ignoreHTTPSErrors: true,
+        viewport: { width, height: 900 },
+        colorScheme,
+        reducedMotion: 'reduce',
+      });
+      try {
+        const page = await context.newPage();
+        const authPosts: string[] = [];
+        page.on('request', (request) => {
+          const url = new URL(request.url());
+          if (request.method() === 'POST' && url.pathname.startsWith('/api/auth/')) {
+            // Never retain bodies, query strings, tokens or account identifiers.
+            authPosts.push(url.pathname);
+          }
+        });
+        for (const [path, button] of [
+          ['/signup', 'Create account'],
+          ['/login', 'Sign in'],
+        ]) {
+          await page.goto(`https://${domain}${path}`, { waitUntil: 'networkidle' });
+          await expect(page.locator('html')).toHaveAttribute('data-theme', 'obsidian');
+          await assertSharedLayout(page);
+          await page.getByRole('button', { name: button, exact: true }).click();
+          await expect(
+            page.getByText('Please fix the highlighted fields', { exact: true })
+          ).toBeVisible();
+          for (const field of ['email', 'password']) {
+            await expect(page.locator(`#${field}`)).toHaveAttribute('aria-invalid', 'true');
+            await expect(page.locator(`#${field}`)).toHaveAttribute(
+              'aria-describedby',
+              new RegExp(`${field}-error`)
+            );
+            await expect(page.locator(`#${field}-error`)).toBeVisible();
+          }
+          await expect(page.getByRole('button', { name: button, exact: true })).toBeEnabled();
+          await assertSharedLayout(page);
+          await page.addScriptTag({ content: axeSource });
+          const violations = await page.evaluate(async () => {
+            const result = await (window as any).axe.run(document.querySelector('main'));
+            return result.violations.map((v: any) => ({ id: v.id, impact: v.impact }));
+          });
+          expect(violations).toEqual([]);
+          await page.screenshot({
+            path: `${evidence}/auth-errors-${width}-${colorScheme}-${path.slice(1)}.png`,
+            fullPage: true,
+          });
+        }
+        expect(authPosts, 'empty forms must not create accounts or attempt login').toEqual([]);
+      } finally {
+        await context.close();
+      }
+    }
+  });
+}
+
 const waitForOperatorReady = async (page: Page, host: string) => {
   const ready = {
     admin: page.locator('#id_username'),

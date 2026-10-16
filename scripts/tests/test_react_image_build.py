@@ -18,12 +18,22 @@ def builder_findings(text: str, builder: str) -> list[str]:
         findings.append(f"{builder} builder rejects generated heredoc configuration")
     if "COPY nginx/nginx.conf /etc/nginx/nginx.conf" not in text:
         findings.append("checked-in nginx main config is not copied")
-    if "COPY nginx/default.conf /etc/nginx/conf.d/default.conf" not in text:
-        findings.append("checked-in nginx site config is not copied")
+    renderer = "RUN node scripts/google-nginx-policy.mjs nginx/default.conf /app/nginx-google.conf"
+    copy = "COPY --from=build /app/nginx-google.conf /etc/nginx/conf.d/default.conf"
+    if renderer not in text or copy not in text or text.index(renderer) > text.index(copy):
+        findings.append("checked-in nginx site policy is not rendered and copied")
     return findings
 
 
 class ReactImageBuildTests(unittest.TestCase):
+    def test_missing_policy_render_or_copy_is_rejected(self):
+        text = DOCKERFILE.read_text(encoding="utf-8")
+        for removed in (
+            'RUN node scripts/google-nginx-policy.mjs nginx/default.conf /app/nginx-google.conf',
+            'COPY --from=build /app/nginx-google.conf /etc/nginx/conf.d/default.conf',
+        ):
+            self.assertTrue(builder_findings(text.replace(removed, ''), 'classic'))
+
     def test_supported_builders_use_portable_dockerfile(self):
         text = DOCKERFILE.read_text(encoding="utf-8")
         for builder in ("classic", "buildkit"):

@@ -307,6 +307,7 @@ def _main(argv: list[str] | None = None) -> int:
     parser.add_argument("--credential-file", type=Path, required=True)
     parser.add_argument("--application-owner-file", type=Path)
     parser.add_argument("--mail-trial-file", type=Path)
+    parser.add_argument("--google-client-id-file", type=Path)
     parser.add_argument("--source-archive", type=Path, required=True)
     parser.add_argument("--ssh-private-key", type=Path, required=True)
     parser.add_argument("--ssh-key-id", type=int, required=True)
@@ -328,6 +329,9 @@ def _main(argv: list[str] | None = None) -> int:
     parser.add_argument("--ttl-minutes", type=int, default=60)
     parser.add_argument('--preview-mode', choices=['full', 'restricted'], default='full')
     args = parser.parse_args(argv)
+    if args.google_client_id_file is not None:
+        from digital_ocean.scripts.python.google_preview_config import read_client_id
+        read_client_id(args.google_client_id_file)
     if args.mail_trial_file is not None:
         from digital_ocean.scripts.python.mail_trial_config import load_trial
         load_trial(args.mail_trial_file, args.domain, ttl_minutes=args.ttl_minutes)
@@ -352,6 +356,7 @@ def _main(argv: list[str] | None = None) -> int:
         pgadmin_password=args.pgadmin_password_file,
         application_owner=args.application_owner_file,
         mail_trial=args.mail_trial_file,
+        google_client_id=args.google_client_id_file,
         preview_mode=args.preview_mode,
     )
     result = launch(

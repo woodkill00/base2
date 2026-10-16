@@ -54,6 +54,8 @@ services:
       - ENV=${ENV:-development}
       - SITE_PROFILE=${SITE_PROFILE:-base2-obsidian}
       - BASE2_PROCESS_ROLE=api
+      - GOOGLE_OAUTH_ENABLED=${GOOGLE_OAUTH_ENABLED:-false}
+      - GOOGLE_OAUTH_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID:-}
       - BASE2_PREVIEW_MODE=${BASE2_PREVIEW_MODE:-full}
       - PORT=${FASTAPI_PORT}
       - DB_HOST=${DB_HOST:-postgres}

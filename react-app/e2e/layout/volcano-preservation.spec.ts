@@ -3,6 +3,47 @@ import { assertApprovedReference } from '../live/approved-reference';
 import { expectedNotFound } from '../live/acceptance-contract.mjs';
 import profile from '../../src/config/generated/base2-obsidian.json';
 
+for (const width of [390, 1440]) {
+  for (const path of ['/signup', '/login']) {
+    test(`Volcano empty auth errors ${path} at ${width}px`, async ({ page }, info) => {
+      await page.setViewportSize({ width, height: 900 });
+      const submitted: string[] = [];
+      await page.route('**/api/**', (route) => {
+        if (route.request().method() === 'POST')
+          submitted.push(new URL(route.request().url()).pathname);
+        return route.fulfill({
+          status: 503,
+          json: { detail: 'Local fixture; not live acceptance' },
+        });
+      });
+      await page.goto(path);
+      const button = page.getByRole('button', {
+        name: path === '/signup' ? 'Create account' : 'Sign in',
+        exact: true,
+      });
+      await button.click();
+      await expect(
+        page.getByText('Please fix the highlighted fields', { exact: true })
+      ).toBeVisible();
+      for (const field of ['email', 'password']) {
+        await expect(page.locator(`#${field}`)).toHaveAttribute('aria-invalid', 'true');
+        await expect(page.locator(`#${field}-error`)).toBeVisible();
+        await expect(page.locator(`#${field}`)).toHaveAttribute(
+          'aria-describedby',
+          new RegExp(`${field}-error`)
+        );
+      }
+      await expect(button).toBeEnabled();
+      await expect(page.locator('.volcano-layout')).toHaveCount(1);
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)
+      ).toBeLessThanOrEqual(1);
+      expect(submitted).toEqual([]);
+      await page.screenshot({ path: info.outputPath('empty-auth-errors.png'), fullPage: true });
+    });
+  }
+}
+
 for (const path of ['/signup', '/ar/about']) {
   test(`Volcano explicit light preference and 200% zoom ${path}`, async ({ page }, info) => {
     await page

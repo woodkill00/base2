@@ -310,3 +310,75 @@ authorization and privacy protections to T017-T022. Full release/security checks
 must not be removed by narrative-only optimization. No provider operation is
 allowed before T017 and local/hosted readiness. Initial planning is ready for
 bounded implementation; integration prerequisites remain genuine open blockers.
+
+## Custom-field review (T057-T058)
+
+Pre-release checkpoint: added local empty signup/login browser regressions at
+390/1440px. All four passed in 5.5s, checking actual errors, field associations,
+enabled recovery controls, no auth POST and no horizontal overflow. These local
+tests explicitly use unavailable-service fixtures, not live acceptance.
+Private Google input module focused coverage: 14 cases, 100% lines (95% floor).
+Next is a complete-gate diagnostic for this checkpoint; F114-17 remains open and
+passing unrelated tests must not clear it. No provider resource has been created.
+
+Continuation checkpoint: Google client-ID opt-in now flows through launch CLI,
+private file preflight, fixed remote destination, renderer, frontend build and API
+Compose environment. Client secret/redirect are absent from the API environment,
+keeping the unfinished code flow unavailable. Default disabled behavior retained;
+56 focused deployment tests pass. Provider and end-to-end acceptance are pending.
+
+Diagnostic correction: catalog mounted read-only and image user-site dependencies
+made visible to isolated child Python through ephemeral tmpfs site-packages.
+Archive-mode link copying first failed on timestamp preservation; ordinary
+recursive symbolic links corrected that harness error. Python 3.12.14 then passed
+all 195 privacy-runtime cases in 1.08s. One comparison run does not resolve F114-17.
+
+Local Volcano selection passed seven browser cases in 12.5s: login/signup at
+390/1440px, signup light preference/zoom, and both original visual references.
+Evidence: `.artifacts/layout-109/run-1792136353068/`. Inspected mobile signup and
+desktop login captures: preserved dark shell/red tabs, readable controls, no
+visible clipping. Google-enabled and new error-state captures remain pending.
+
+2026-10-16 continuation: original F114-17 evidence preserved. A no-network,
+read-only, 1-CPU/1GB comparison container produced 190 passes and five harness
+failures: three missing shared probe-catalog accesses and two isolated child
+interpreters unable to import user-site Pydantic. This is not equivalent release
+evidence or a fix for F114-17. No test assertion was weakened or ignored.
+Google CSP build adapter now preserves the exact disabled policy and selectively
+adds fixed documented GIS endpoints for valid client IDs. Three focused tests
+pass. Image contract initially rejected the intentional build-stage change;
+updated contract requires both the renderer and its copied output and rejects
+missing steps. No full image build/browser acceptance claimed yet.
+
+Live expansion review: existing live inventory covers route shells and owner
+login/logout but does not enter empty signup/login error states. Add T059 as
+required cases, not optional screenshots. T060 must keep provider readiness
+distinct from a real human-consented sign-in. No mock Google token may qualify
+as live success. New paid bounds requested; no cloud activity before readiness.
+F114-17 still blocks release; tests added here do not erase that failure.
+
+Implementation checkpoint: required live inventory now includes mobile/desktop
+empty signup/login validation, both preference modes, field-error associations,
+menu/layout checks, main-region axe checks and screenshots with no submitted data.
+The acceptance contract rejects omitted cases. ESLint has zero errors and three
+existing declaration warnings; TypeScript passes. Browser execution and visual
+inspection are still pending, so T059 remains open. Captures alone do not prove
+pixel equivalence; approved home/menu references remain separate required checks.
+No preview has been provisioned and no Google sign-in success is claimed.
+
+F114-18: the preflight assumed managed Notes, so a saved custom-field credential
+was reported missing. The first save overwrote `key` metadata; owner was asked to
+restore `key` and move the value to `value`, and reports this is done.
+Analysis -> additional tasks: reject duplicate `value` and `key` fields, boolean/
+linked field types, conflicting Notes, unsupported item names and malformed input;
+keep exception text fixed and metadata-only reports. Reanalysis: bounded parser
+and preflight change has no known planning gap; actual provider acceptance and
+preview wiring remain separate unfinished tasks. Existing F114-17 remains open.
+
+Outcome: the private preflight using the new parser confirmed the saved client ID
+is readable from `value` with restored key metadata, without printing its value.
+Client secret remains missing; it is not needed for the existing GIS ID-token
+popup. Provider validity and deployment wiring are not claimed. Added a required
+release-gate entry for the synthetic parser tests. No full gate or cloud run was
+performed. System Python lacked coverage; existing `.venv-api` supplies coverage
+without installing packages. Focused coverage evidence: `.artifacts/f114-vault.coverage`.

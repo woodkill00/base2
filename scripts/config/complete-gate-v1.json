@@ -2,6 +2,22 @@
   "schemaVersion": 1,
   "checks": [
     {
+      "id": "feature-114-google-browser-policy",
+      "command": ["node", "--test", "react-app/scripts/google-nginx-policy.test.mjs"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": [],
+      "requiredTools": ["node"]
+    },
+    {
+      "id": "feature-114-vault-google-selection",
+      "command": ["python3", "-m", "unittest", "scripts.tests.test_vault_google_credentials"],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": [],
+      "requiredTools": ["python3"]
+    },
+    {
       "id": "feature-112-acceptance-contract",
       "command": ["node", "--test", "react-app/e2e/live/acceptance-contract.test.mjs"],
       "required": true,
@@ -1476,6 +1492,7 @@
         "api/tests/test_oauth_link_admission.py",
         "scripts/tests/test_frontend_startup_dependencies.py",
         "digital_ocean/tests/test_mail_trial_config.py",
+        "digital_ocean/tests/test_google_preview_config.py",
         "digital_ocean/tests/test_mail_cli_boundaries.py",
         "digital_ocean/tests/test_persistent_mail_dns.py"
       ],

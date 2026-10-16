@@ -4,6 +4,16 @@ This runbook creates one short-lived 2 GB DigitalOcean preview from an exact mer
 
 ## Vaultwarden records
 
+For an explicitly authorized Google GIS popup trial, supply
+`--google-client-id-file` to the full-preview launch command. The input must be
+an owner-only regular file containing only the client ID (maximum 512 bytes),
+resolved privately from `base2/GOOGLE_OAUTH_CLIENT_ID`'s `value` custom field or
+legacy managed Notes. Never pass the value on the command line. The browser and
+API receive the same ID; only configured images permit the fixed GIS endpoints
+in CSP. Without this option Google remains disabled. This does not enable the
+separate authorization-code flow or supply a client secret. Real consent/MFA is
+human-driven, and readiness is not a successful sign-in receipt.
+
 Keep these owner-only records; never put their values in Git, command history, reports, or Discord:
 
 - `base2/digitalocean.api-token`: login item, token in **Password**; read/write Droplet, Domain, and SSH-key scope only.

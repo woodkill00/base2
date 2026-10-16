@@ -1,5 +1,16 @@
 # Plan
 
+## Custom-field repair budget
+
+Add a pure Google-only credential selection module, not a new vault transport or
+generic DigitalOcean secret permission. Read exact Base2 item names; select the
+explicit `value` field or legacy managed Notes. Reject duplicate fields, conflicting
+populated sources, malformed metadata and unsupported field types. Placeholder
+Notes may coexist with a valid field. Never log values. Test with synthetic data,
+then run one metadata-only private lookup using that exact parser. No provider
+login, deployment, vault write or full release gate in this bounded batch.
+Rollback removes the parser; it never mutates stored credentials.
+
 ## Candidate and budget
 
 Start: main 433068c4dc57499c46b1b0f5d246c7a5ac45b91b, native WSL checkout.
@@ -9,6 +20,14 @@ Heavy suites serial. Full release gate after focused/integration/visual evidence
 is ready. Live limits and test identities requested before provider actions.
 
 ## Batches
+
+Google browser policy refinement: render the Nginx policy at image build time
+only when the existing frontend client-ID input is valid. Disabled builds retain
+the exact checked-in policy. Enabled builds allow only Google's documented GIS
+script, style, frame and connection paths, retaining all other directives.
+The SPA may enter login without a new document, so the enabled policy must cover
+SPA navigation; no wildcard, unsafe-eval or inline-script exception is allowed.
+Reference: https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid
 
 1. CI: classify exact Git differences using NUL-delimited paths, validated SHAs
    and immutable base-version policy. Only explicitly allowlisted narrative
@@ -91,6 +110,12 @@ URLs and recipients are exact allowlists. Secrets remain in private references;
 screenshots/traces must not retain authorization codes or reset links.
 
 ## Integration blockers
+
+2026-10-16 renewed owner authorization: one additional Frankfurt droplet,
+staging certificates only, maximum 60 minutes and USD 0.25, with teardown after
+testing. This approval is unused. Provision only after current-source local and
+hosted acceptance; do not extend the lease or reuse the consumed prior approval.
+Human Google consent/MFA remains an interactive prerequisite, not delegated.
 
 Current status (2026-10-16): the sending-only trial completed at 6f7f7392; owner
 confirmed inbox receipt and teardown is verified. The bounded preview approval

@@ -1,5 +1,10 @@
 # Tasks
 
+## Custom-field credential repair
+
+- [x] T057 Add a pure, Base2-only Google credential reader accepting exactly one `value` text/hidden custom field, with managed-Notes fallback and fail-closed conflicts/malformed data (R02,R04).
+- [x] T058 Test credential selection, duplicates, placeholders, invalid metadata/types and sanitized errors; use this same reader for private metadata preflight (R02,R04).
+
 ## Discovery and analysis
 
 - [x] T001 Read constitution, current source, previous ledger and final evidence (R01,R08).
@@ -45,6 +50,9 @@
 - [ ] T029 Reconcile route/state ledger with actual evidence and remaining exclusions (R05,R06,R08).
 
 ## Release
+
+- [ ] T059 Add required live empty-form auth validation at mobile/desktop in light/dark preferences; assert state entry, field association, layout, menus, accessibility, no auth requests and sanitized screenshots (R04,R05).
+- [ ] T060 Complete private Google client-ID deployment wiring and restrictive GIS CSP; test provider button readiness separately from human consent and successful session establishment (R04,R09).
 
 - [ ] T030 Repeat analysis and close known blocking task gaps (R01-R09).
 - [ ] T031 Run focused tests, affected integration, changed-line coverage and reviewed visuals (R01-R08).

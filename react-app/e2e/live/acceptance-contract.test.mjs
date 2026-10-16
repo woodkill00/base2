@@ -16,6 +16,21 @@ import {
 } from './acceptance-contract.mjs';
 
 const cases = () => requiredTests.map((title) => ({ title, status: 'passed', retry: 0 }));
+test('auth error visuals are mandatory at mobile and desktop widths', () => {
+  for (const width of [390, 1440]) {
+    const title = `live auth validation preserves Volcano at ${width}px`;
+    assert.ok(requiredTests.includes(title));
+    const result = evaluateAcceptance({
+      cases: cases().filter((row) => row.title !== title),
+      status: 'passed',
+      sourceCommit: 'a'.repeat(40),
+      sourceStable: true,
+      sourceClean: true,
+    });
+    assert.equal(result.status, 'blocked');
+    assert.ok(result.missing.includes(title));
+  }
+});
 test('logout waits for server completion and rejects failed revocation', async () => {
   for (const failure of [null, 'status', 'network']) {
     const events = [];

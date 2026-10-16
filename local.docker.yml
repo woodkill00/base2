@@ -54,6 +54,8 @@ services:
       - ENV=${ENV:-development}
       - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
       - BASE2_PROCESS_ROLE=api
+      - GOOGLE_OAUTH_ENABLED=${GOOGLE_OAUTH_ENABLED:-false}
+      - GOOGLE_OAUTH_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID:-}
       - PORT=${FASTAPI_PORT}
       - DB_HOST=${DB_HOST:-postgres}
       - DB_PORT=${DB_PORT:-5432}

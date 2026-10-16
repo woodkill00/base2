@@ -1,5 +1,6 @@
 // Fixed required inventory: changing it is a reviewed testing-policy change.
 export const requiredTests = [
+  ...[390, 1440].map((width) => `live auth validation preserves Volcano at ${width}px`),
   ...[390, 1440].map((width) => `live shared layout covers public route families at ${width}px`),
   'public Obsidian site identity and owner interaction are live',
   'public Obsidian visual evidence covers responsive and interactive states',

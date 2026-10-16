@@ -44,7 +44,9 @@ def _write_env(path: Path, values: dict[str, str]) -> None:
     os.replace(temporary, path)
 
 
-def render(source: Path, target: Path, domain: str, project: str, owner_cidrs: list[str], *, operator_basic_auth: str, flower_basic_auth: str, django_username: str, django_email: str, django_password: str, pgadmin_email: str, pgadmin_password: str) -> dict:
+def render(source: Path, target: Path, domain: str, project: str, owner_cidrs: list[str], *, operator_basic_auth: str, flower_basic_auth: str, django_username: str, django_email: str, django_password: str, pgadmin_email: str, pgadmin_password: str, google_client_id_file: Path | None = None) -> dict:
+    from digital_ocean.scripts.python.google_preview_config import read_client_id
+    client_id = read_client_id(google_client_id_file) if google_client_id_file is not None else 'disabled'
     domain = str(domain).strip().lower()
     if not DOMAIN.fullmatch(domain):
         raise RenderError("preview domain is invalid")
@@ -93,6 +95,13 @@ def render(source: Path, target: Path, domain: str, project: str, owner_cidrs: l
         "PGADMIN_CONFIG_PROXY_X_PROTO_COUNT": "1",
         "PGADMIN_CONFIG_PROXY_X_HOST_COUNT": "1",
         "PGADMIN_CONFIG_SESSION_COOKIE_SECURE": "True",
+        "GOOGLE_OAUTH_ENABLED": "true" if google_client_id_file is not None else "false",
+        "GOOGLE_OAUTH_CLIENT_ID": client_id,
+        "REACT_APP_GOOGLE_CLIENT_ID": client_id,
+        # Only the existing GIS ID-token popup is admitted. Do not activate the
+        # separate unfinished authorization-code callback via template defaults.
+        "GOOGLE_OAUTH_CLIENT_SECRET": "",
+        "GOOGLE_OAUTH_REDIRECT_URI": "",
     })
     _write_env(target, values)
     return {"ok": True, "mode": "full-preview", "secretValuesEmitted": 0, "ownerCidrCount": len(cidrs)}
@@ -112,6 +121,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--django-password-file", type=Path, required=True)
     parser.add_argument("--pgadmin-email-file", type=Path, required=True)
     parser.add_argument("--pgadmin-password-file", type=Path, required=True)
+    parser.add_argument("--google-client-id-file", type=Path)
     args = parser.parse_args(argv)
     operator = args.operator_basic_auth_file.read_text(encoding="utf-8").strip()
     flower = args.flower_basic_auth_file.read_text(encoding="utf-8").strip()
@@ -123,6 +133,7 @@ def main(argv: list[str] | None = None) -> int:
         django_password=args.django_password_file.read_text(encoding="utf-8").strip(),
         pgadmin_email=args.pgadmin_email_file.read_text(encoding="utf-8").strip(),
         pgadmin_password=args.pgadmin_password_file.read_text(encoding="utf-8").strip(),
+        google_client_id_file=args.google_client_id_file,
     )
     print('{"mode":"full-preview","ok":true,"ownerCidrCount":%d,"secretValuesEmitted":0}' % receipt["ownerCidrCount"])
     return 0
