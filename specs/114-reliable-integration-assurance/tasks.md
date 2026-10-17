@@ -2,6 +2,8 @@
 
 ## Final closeout repair batch
 
+- [x] T077 Preserve the be2618d gate timeout, measure the unchanged 102-case journey matrix once under a bounded diagnostic, and correct only its aggregate gate timeout with a regression preserving the complete command, required status and single attempt. Final exact-source gate remains required.
+
 - [ ] T076 Correct the live empty-form assertion to distinguish exactly one configured Google challenge from credential exchange, assert no new POST on empty submit, and add provider-free browser/contract regressions. Preserve the 2e95988 live failures; do not relabel the changed harness as an exact-source live pass.
 
 - [x] T071 Reproduce Gunicorn's default control socket against a non-writable home using the actual API entrypoint, disable the unused control surface, and retain HTTP readiness/shutdown tests without weakening container isolation.

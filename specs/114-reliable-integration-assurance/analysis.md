@@ -1,5 +1,21 @@
 # Analysis and issue ledger
 
+## F114-34: measured browser-suite budget mismatch
+
+Gate 20261017T023931Z-2858027 on be2618d: 127 passed, journey matrix timed out
+at 180s, enabled-module check blocked by that prerequisite. Preserve that receipt.
+The previous source passed the unchanged 102-case matrix in 2.2m. One isolated
+diagnostic with a 300s ceiling passed all 102 cases in 4.1m; log is
+.artifacts/f114-journeys-diagnostic-be2618d.log. Memory was available; the underlying
+execution-speed variability remains unexplained, not declared repaired.
+
+T077 tasks -> analysis -> bounded budget regression -> analysis: raise only the
+aggregate journey ceiling to 360s, keeping all three browser projects, assertions,
+required status, exact-source admission and one attempt. This accommodates the
+measured 246s run with bounded margin; individual assertion timeouts, cloud TTL,
+spend limits and other suites remain unchanged. Regression failed first at 180.
+Run focused gate tests before the new complete gate; no provider resources yet.
+
 ## 2026-10-17 fresh-trial preparation
 
 The 010758 trial expired at 02:08:15Z before owner review. At 02:36 UTC the

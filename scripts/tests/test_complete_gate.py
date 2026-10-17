@@ -46,6 +46,18 @@ def check(
 
 
 class CompleteGateTests(unittest.TestCase):
+    def test_journey_budget_retains_full_matrix_and_single_attempt(self):
+        manifest = json.loads((MODULE_PATH.parents[1] / "config/complete-gate-v1.json").read_text())
+        item = next(row for row in manifest["checks"] if row["id"] == "feature-113-user-journeys")
+        self.assertEqual(item["timeoutSeconds"], 360)
+        self.assertTrue(item["required"])
+        self.assertEqual(item.get("maxAttempts", 1), 1)
+        self.assertFalse(item.get("retryOn"))
+        self.assertEqual(item["command"], [
+            "npm", "--prefix", "react-app", "exec", "--", "playwright", "test",
+            "--config=react-app/playwright.journeys.config.mjs",
+        ])
+
     @classmethod
     def setUpClass(cls):
         cls.gate = load_module()

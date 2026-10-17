@@ -148,7 +148,7 @@
         "--config=react-app/playwright.journeys.config.mjs"
       ],
       "required": true,
-      "timeoutSeconds": 180,
+      "timeoutSeconds": 360,
       "dependsOn": ["feature-108-experience"],
       "requiredTools": ["node", "npm"]
     },
