@@ -1,5 +1,57 @@
 # Analysis and issue ledger
 
+## 2026-10-17 fresh-trial preparation
+
+The 010758 trial expired at 02:08:15Z before owner review. At 02:36 UTC the
+validated lease was destroyed with one droplet/six DNS deletions and no lastError;
+independent provider reads confirmed zero owned droplets/preview DNS. Google
+sign-in was NOT human-confirmed for this candidate. Owner then approved one new
+trial with the same Frankfurt/staging/60-minute/USD0.25 limits and teardown.
+
+Candidate changes are test-only plus this task ledger: retain the deployed nonce
+implementation, distinguish its exact preparation request from credential
+exchange, and reject any additional POST after empty submission. No product code,
+permissions, credentials, baseline or live-admission rule changes. Coverage impact
+is confined to harness branches; focused browser checks exercise real UI recovery
+and empty submission at both widths, while the full live suite must still cover
+both light/dark preferences. Budget: one required exact-source gate and hosted CI
+after focused acceptance, then one approved new deployment and browser batch.
+
+## 2026-10-17 renewed trial: auth assertion drift
+
+Owner approved one new Frankfurt/staging/60-minute/USD0.25 trial and confirmed
+the Resend key is Sending access restricted to woodkilldev.com. Exact source
+2e95988 passed complete gate 20261016T220144Z-2629469 and 20 hosted checks.
+Run base2-full-20261017-010758 reached live-verified; browser acceptance recorded
+12 passes and two failures in 4.5 minutes. Private browser-run.log and
+browser-acceptance preserve the original results. Human Google review is pending.
+
+F114-33 (test/evidence drift): both auth-validation viewport cases expected zero
+auth POSTs, but Google initialization now correctly POSTs the one-use challenge.
+The actual assertion diff contains only /api/auth/oauth/google/challenge. Empty
+form fields, accessibility and light-state captures passed before that assertion;
+dark-state checks were not reached and must not be reported passed.
+Repair batch T076: require exactly one preparation POST when configured, none
+when disabled, and no additional POST during each empty submission. Add local
+real-UI provider-free regressions and harness contract protection. Do not blanket
+ignore auth requests, weaken exact-source live admission, edit the deployed app,
+or rewrite the failed acceptance receipt. Tasks -> analysis -> added dark-state
+coverage caveat -> analysis: no known planning gap in this bounded test repair.
+
+Other live checks passed including operator logins, settings, real media lifecycle,
+owner login/logout and both approved Volcano reference comparisons. New live
+authority is consumed by this run; a repaired harness needs current release
+evidence and separately authorized future live validation if required.
+
+T076 focused validation: 19 acceptance-contract tests passed, both provider-free
+mobile/desktop browser regressions passed in 9.7s, TypeScript and diff checks
+passed. The live mobile login-error capture was inspected: fields, errors, Google
+button and original Volcano edge tabs are visible without horizontal clipping.
+The original 12-pass/2-fail receipt remains unchanged. The corrected harness is
+not yet committed or release-gated; no live retry or second deployment occurred.
+Expiry timer was verified armed for 2026-10-17T02:08:15Z. Human confirmation and
+early teardown remain pending; do not report cleanup or feature completion yet.
+
 ## 2026-10-17 closeout audit (current)
 
 Accepted source de2e9ec passed stability, complete gate 20261016T192431Z-2482137,

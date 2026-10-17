@@ -16,6 +16,13 @@ import {
 } from './acceptance-contract.mjs';
 
 const cases = () => requiredTests.map((title) => ({ title, status: 'passed', retry: 0 }));
+test('empty-form checks separate bounded Google preparation from auth submission', () => {
+  const source = readFileSync(new URL('./full-preview-live.spec.ts', import.meta.url), 'utf8');
+  assert.ok(source.includes('const postsBeforeEmptySubmit = [...authPosts]'));
+  assert.match(source, /empty submission must not issue any auth POST/);
+  assert.match(source, /process\.env\.BASE2_GOOGLE_CLIENT_SHA256 \? \['\/api\/auth\/oauth\/google\/challenge'\] : \[\]/);
+  assert.doesNotMatch(source, /authPosts\.filter/);
+});
 test('Google readiness is required and distinct from human sign-in', () => {
   assert.ok(requiredTests.includes('Google readiness matches configured client without performing sign-in'));
   const source = readFileSync(new URL('./full-preview-live.spec.ts', import.meta.url), 'utf8');

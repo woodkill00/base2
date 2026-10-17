@@ -179,6 +179,7 @@ for (const width of [390, 1440]) {
           await page.goto(`https://${domain}${path}`, { waitUntil: 'networkidle' });
           await expect(page.locator('html')).toHaveAttribute('data-theme', 'obsidian');
           await assertSharedLayout(page);
+          const postsBeforeEmptySubmit = [...authPosts];
           await page.getByRole('button', { name: button, exact: true }).click();
           await expect(
             page.getByText('Please fix the highlighted fields', { exact: true })
@@ -205,8 +206,16 @@ for (const width of [390, 1440]) {
             path: `${evidence}/auth-errors-${width}-${colorScheme}-${path.slice(1)}.png`,
             fullPage: true,
           });
+          expect(authPosts, 'empty submission must not issue any auth POST').toEqual(
+            postsBeforeEmptySubmit
+          );
         }
-        expect(authPosts, 'empty forms must not create accounts or attempt login').toEqual([]);
+        // Google setup issues one browser-binding challenge on login-page mount;
+        // it is not credential exchange. Require the exact expected request list,
+        // rather than filtering arbitrary auth requests out of the assertion.
+        expect(authPosts, 'only configured Google preparation may issue an auth POST').toEqual(
+          process.env.BASE2_GOOGLE_CLIENT_SHA256 ? ['/api/auth/oauth/google/challenge'] : []
+        );
       } finally {
         await context.close();
       }

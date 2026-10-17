@@ -2,6 +2,8 @@
 
 ## Final closeout repair batch
 
+- [ ] T076 Correct the live empty-form assertion to distinguish exactly one configured Google challenge from credential exchange, assert no new POST on empty submit, and add provider-free browser/contract regressions. Preserve the 2e95988 live failures; do not relabel the changed harness as an exact-source live pass.
+
 - [x] T071 Reproduce Gunicorn's default control socket against a non-writable home using the actual API entrypoint, disable the unused control surface, and retain HTTP readiness/shutdown tests without weakening container isolation.
 - [x] T072 Review measured pgAdmin startup against the configured health/startup bounds; preserve slow-start evidence and distinguish initialization from runtime failure.
 - [ ] T073 Reconcile tasks against exact-source local/CI/live evidence, audit integration notification and security gaps, and explicitly retain unexplained intermittency.
@@ -95,7 +97,11 @@ Blocked prerequisites are not completed tasks. Publication does not imply live a
 - [x] T039 Implement fixed-endpoint Resend transport with private key files, required trial recipient allowlist, no redirects/proxy inheritance and sanitized errors; retain existing SMTP compatibility (R02,R03).
 - [x] T040 Test success, malformed responses, auth/quota failures, timeouts, duplicate keys, denied recipients and disabled defaults without network calls (R03).
 - [x] T041 Bound retries to provider idempotency retention and enforce durable trial send limits before activation; distinguish provider acceptance from inbox delivery (R03,R09).
-- [ ] T042 Confirm verified sending subdomain and sending-only domain-scoped key in Vaultwarden; do not create accounts, change DNS or broaden permissions implicitly (R03,R09).
+- [x] T042 Confirm verified sending subdomain and sending-only domain-scoped key in Vaultwarden; do not create accounts, change DNS or broaden permissions implicitly (R03,R09).
+
+T042 evidence: domain verification and inbox receipt were confirmed previously;
+on 2026-10-17 the owner explicitly confirmed "Sending access, woodkilldev.com only".
+This is owner-confirmed permission evidence, not an independent API scope probe.
 
 ## Additional tasks from cycle 5 — owner-supplied DNS
 

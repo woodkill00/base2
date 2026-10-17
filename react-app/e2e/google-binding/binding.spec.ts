@@ -5,6 +5,11 @@ for (const width of [390, 1440]) {
   test(`Google challenge failure and recovery preserve layout at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     let requests = 0;
+    const authPosts: string[] = [];
+    page.on('request', (request) => {
+      const path = new URL(request.url()).pathname;
+      if (request.method() === 'POST' && path.startsWith('/api/auth/')) authPosts.push(path);
+    });
     await page.route('https://accounts.google.com/**', (route) =>
       route.fulfill({
         contentType: 'application/javascript',
@@ -41,5 +46,15 @@ for (const width of [390, 1440]) {
       path: test.info().outputPath(`google-ready-${width}.png`),
       fullPage: true,
     });
+    const beforeSubmit = [...authPosts];
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await expect(page.getByText('Please fix the highlighted fields', { exact: true })).toBeVisible();
+    await expect(page.locator('#email-error')).toBeVisible();
+    await expect(page.locator('#password-error')).toBeVisible();
+    expect(authPosts).toEqual(beforeSubmit);
+    expect(authPosts).toEqual([
+      '/api/auth/oauth/google/challenge',
+      '/api/auth/oauth/google/challenge',
+    ]);
   });
 }
