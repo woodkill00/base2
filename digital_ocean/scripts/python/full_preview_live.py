@@ -306,6 +306,8 @@ def _main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--credential-file", type=Path, required=True)
     parser.add_argument("--application-owner-file", type=Path)
+    parser.add_argument("--mail-trial-file", type=Path)
+    parser.add_argument("--google-client-id-file", type=Path)
     parser.add_argument("--source-archive", type=Path, required=True)
     parser.add_argument("--ssh-private-key", type=Path, required=True)
     parser.add_argument("--ssh-key-id", type=int, required=True)
@@ -327,6 +329,19 @@ def _main(argv: list[str] | None = None) -> int:
     parser.add_argument("--ttl-minutes", type=int, default=60)
     parser.add_argument('--preview-mode', choices=['full', 'restricted'], default='full')
     args = parser.parse_args(argv)
+    if args.google_client_id_file is not None:
+        from digital_ocean.scripts.python.google_preview_config import read_client_id
+        read_client_id(args.google_client_id_file)
+    if args.mail_trial_file is not None:
+        from digital_ocean.scripts.python.mail_trial_config import load_trial
+        load_trial(args.mail_trial_file, args.domain, ttl_minutes=args.ttl_minutes)
+        from digital_ocean.scripts.python.persistent_mail_dns import main as mail_dns_main
+        if mail_dns_main([
+            '--config', str(Path(__file__).resolve().parents[2] / 'config/woodkilldev-resend-dns.json'),
+            '--credential-file', str(args.credential_file),
+            '--state-root', str(Path.home() / '.local/state/base2-mail-dns'), '--apply',
+        ]) != 0:
+            raise FullPreviewLaunchError('mail DNS prerequisite failed before provisioning')
     from digital_ocean.scripts.python.preview_workstation_schedule import install_schedule
     probe_username = _owner_identity(args.probe_username_file, "probe username")
     _owner_identity(args.django_username_file, "Django username")
@@ -340,6 +355,8 @@ def _main(argv: list[str] | None = None) -> int:
         django_password=args.django_password_file, pgadmin_email=args.pgadmin_email_file,
         pgadmin_password=args.pgadmin_password_file,
         application_owner=args.application_owner_file,
+        mail_trial=args.mail_trial_file,
+        google_client_id=args.google_client_id_file,
         preview_mode=args.preview_mode,
     )
     result = launch(

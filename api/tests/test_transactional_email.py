@@ -33,6 +33,83 @@ def test_all_transactional_templates_render_safe_text_and_html():
         assert '\r' not in message.subject and '\n' not in message.subject
 
 
+def test_bad_configuration_does_not_claim_outbox(monkeypatch):
+    monkeypatch.setenv('BASE2_EMAIL_ADAPTER', 'unknown')
+    claim = MagicMock()
+    monkeypatch.setattr(email_service, 'claim_outbox_email', claim)
+    with pytest.raises(RuntimeError, match='email_adapter_not_allowed'):
+        email_service.process_outbox_email(outbox_id=uuid4())
+    claim.assert_not_called()
+
+
+def test_provider_rejection_never_reports_successful_worker_task(monkeypatch, caplog):
+    row = EmailOutboxRow(
+        uuid4(),
+        'private@example.test',
+        'subject',
+        'secret body',
+        '',
+        'sending',
+        'worker_claim',
+        '',
+        '',
+        datetime.now(timezone.utc),
+        None,
+        uuid4(),
+        'stable-key',
+    )
+    fake = LocalFakeEmailAdapter(AdapterResult('failed', failure_code='resend_auth_rejected'))
+    monkeypatch.setattr(email_service, '_configured_adapter', lambda: fake)
+    monkeypatch.setattr(email_service, 'claim_outbox_email', lambda _: row)
+    mark = MagicMock(return_value=True)
+    monkeypatch.setattr(email_service, 'mark_outbox_status', mark)
+    with pytest.raises(RuntimeError, match='email_delivery_failed_requires_reconciliation'):
+        email_service.process_outbox_email(outbox_id=row.id)
+    assert mark.call_args.kwargs['status'] == 'dead_letter'
+    assert mark.call_args.kwargs['error'] == 'resend_auth_rejected'
+    assert 'Email delivery failed' in caplog.text
+    assert 'private' not in caplog.text and 'secret body' not in caplog.text
+
+
+@pytest.mark.parametrize(
+    'error,expected',
+    [
+        ('email_budget_exhausted', 'email_budget_exhausted'),
+        ('email_budget_private_secret_value', 'email_delivery_guard_failed'),
+    ],
+)
+def test_delivery_guard_failure_is_durable_and_sanitized(monkeypatch, caplog, error, expected):
+    row = EmailOutboxRow(
+        uuid4(),
+        'private@example.test',
+        'subject',
+        'secret body',
+        '',
+        'sending',
+        'worker_claim',
+        '',
+        '',
+        datetime.now(timezone.utc),
+        None,
+        uuid4(),
+        'stable-key',
+    )
+    monkeypatch.setattr(email_service, '_configured_adapter', lambda: LocalFakeEmailAdapter())
+    monkeypatch.setattr(email_service, 'claim_outbox_email', lambda _: row)
+
+    def fail(*args, **kwargs):
+        raise RuntimeError(error)
+
+    monkeypatch.setattr(email_service, 'deliver_email', fail)
+    mark = MagicMock(return_value=True)
+    monkeypatch.setattr(email_service, 'mark_outbox_status', mark)
+    with pytest.raises(RuntimeError, match=expected):
+        email_service.process_outbox_email(outbox_id=row.id)
+    assert mark.call_args.kwargs['status'] == 'dead_letter'
+    assert mark.call_args.kwargs['error'] == expected
+    assert 'private' not in caplog.text and 'secret' not in caplog.text
+
+
 def test_disabled_is_default_safe_behavior_and_local_fake_never_uses_network():
     message = render_email(
         'verification', 'person@example.test', {'url': 'https://example.test/verify'}
@@ -253,7 +330,8 @@ def test_outbox_retry_is_durable_and_becomes_dead_letter_after_bound(monkeypatch
     )
     mark = MagicMock(return_value=True)
     monkeypatch.setattr(email_service, 'mark_outbox_status', mark)
-    email_service.process_outbox_email(outbox_id=row.id)
+    with pytest.raises(RuntimeError, match='email_delivery_failed_requires_reconciliation'):
+        email_service.process_outbox_email(outbox_id=row.id)
     assert mark.call_args.kwargs['status'] == 'dead_letter'
     assert mark.call_args.kwargs['error'] == 'delivery_dead_letter'
     assert mark.call_args.kwargs['claim_token'] == claim_token

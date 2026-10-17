@@ -605,6 +605,20 @@ def main() -> None:
             f"JOURNEY_OUTBOX_READ_PASSWORD={owner_password}",
         ]
         run(journey_check)
+        # Exercise outbox health with the restricted API role for enqueue and
+        # the dedicated worker role for observation, on this disposable DB.
+        email_check = journey_check[:-1] + [
+            '-m', 'pytest', '-q', '-o', 'addopts=', '-p', 'no:cacheprovider',
+            'api/tests/test_email_outbox.py',
+            'api/tests/test_preview_media_fixture_integration.py',
+            'api/tests/test_google_challenge_integration.py',
+        ]
+        email_check[3:3] = [
+            '-e', 'SITE_PROFILE=base2-obsidian',
+            '-e', 'EMAIL_WORKER_DB_USER=base2_email_worker',
+            '-e', f'EMAIL_WORKER_DB_PASSWORD={email_worker_password}',
+        ]
+        run(email_check)
     finally:
         cleanup_containers(
             ([redis_name] if redis_started else []) + ([name] if started else []),

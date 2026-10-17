@@ -172,13 +172,29 @@ def test_operations_fanout_skips_already_reserved_tenant(monkeypatch):
 
 
 def test_email_replay_fans_out_only_durable_due_rows(monkeypatch):
+    observation = MagicMock()
+    monkeypatch.setattr(tasks, 'publish_email_health', observation)
     first, second = UUID(int=10), UUID(int=11)
     monkeypatch.setattr(tasks, 'replayable_outbox_ids', lambda limit: [first, second])
     delayed = MagicMock()
     monkeypatch.setattr(tasks.send_email_outbox, 'delay', delayed)
     assert tasks.replay_email_outbox.run(limit=2) == 2
+    observation.assert_called_once_with()
     assert delayed.call_args_list[0].args == (str(first),)
     assert delayed.call_args_list[1].args == (str(second),)
+
+
+def test_email_observation_failure_remains_a_failed_task(monkeypatch):
+    monkeypatch.setattr(
+        tasks,
+        'publish_email_health',
+        MagicMock(side_effect=RuntimeError('email_health_observation_failed')),
+    )
+    replay = MagicMock()
+    monkeypatch.setattr(tasks, 'replayable_outbox_ids', replay)
+    with pytest.raises(RuntimeError, match='email_health_observation_failed'):
+        tasks.replay_email_outbox.run(limit=2)
+    replay.assert_not_called()
 
 
 def test_alert_dispatch_has_no_runtime_or_secret_reads_while_disabled(monkeypatch):

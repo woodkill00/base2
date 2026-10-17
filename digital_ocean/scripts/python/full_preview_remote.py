@@ -6,6 +6,7 @@ import hashlib
 import ipaddress
 import json
 import re
+import shlex
 import stat
 import subprocess
 import time
@@ -19,12 +20,13 @@ from digital_ocean.scripts.python.live_preview_provider import LivePreviewConfig
 class FullPreviewRemoteError(RuntimeError):
     def __init__(self, message, *, stage="unknown", reason="remote-failure", exit_code=None):
         super().__init__(message)
-        self.stage = stage if stage in BOOTSTRAP_STAGES else "unknown"
+        self.stage = stage if stage in BOOTSTRAP_STAGES | TRANSPORT_STAGES else "unknown"
         self.reason = reason if reason in {"remote-failure", "timeout", "nonzero-exit"} else "remote-failure"
         self.exit_code = exit_code if type(exit_code) is int and -255 <= exit_code <= 255 else None
 
 
 BOOTSTRAP_STAGES = frozenset("argument-validation cloud-init-wait docker-install docker-start swap-admission env-render media-inspector-attestation acme-bootstrap compose-build clamav-warmup migration-dependencies database-role-bootstrap api-migrations django-migrations preview-lifecycle-bootstrap compose-up media-inspector-identity service-inventory service-health application-owner traefik-policy receipt".split())
+TRANSPORT_STAGES = frozenset({"ssh-readiness", "source-transfer", "private-input-transfer", "bootstrap-receipt"})
 STAGE_MARKER = re.compile(r"full-preview-stage(?:-failed)?:([a-z-]+)(?: exit=([0-9]{1,3}))?")
 
 
@@ -80,10 +82,13 @@ class FullPreviewSshBootstrap:
                  django_username: Path, django_email: Path, django_password: Path,
                  pgadmin_email: Path, pgadmin_password: Path,
                  runner: Callable = subprocess.run, sleep=time.sleep, attempts: int = 60,
-                 application_owner: Path | None = None, preview_mode: str = 'full'):
+                 application_owner: Path | None = None, preview_mode: str = 'full',
+                 mail_trial: Path | None = None, google_client_id: Path | None = None):
         if preview_mode not in {'full', 'restricted'}:
             raise FullPreviewRemoteError('invalid preview mode')
         self.preview_mode = preview_mode
+        self.mail_trial = mail_trial
+        self.google_client_id = google_client_id
         self.known_hosts = known_hosts
         self.owner_cidr = validate_owner_cidrs([owner_cidr])[0]
         self.operator_auth = operator_auth
@@ -125,6 +130,12 @@ class FullPreviewSshBootstrap:
     def deploy(self, ip_address: str, config: LivePreviewConfig) -> None:
         address = str(ipaddress.IPv4Address(ip_address))
         config.validate()
+        if self.mail_trial is not None:
+            from digital_ocean.scripts.python.mail_trial_config import load_trial
+            load_trial(self.mail_trial, config.zone)
+        if self.google_client_id is not None:
+            from digital_ocean.scripts.python.google_preview_config import read_client_id
+            read_client_id(self.google_client_id)
         if hashlib.sha256(config.source_archive.read_bytes()).hexdigest() != config.archive_sha256:
             raise FullPreviewRemoteError("source archive digest mismatch")
         self.known_hosts.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -133,11 +144,14 @@ class FullPreviewSshBootstrap:
         options = self._options(config)
         target = f"root@{address}"
         for attempt in range(self.attempts):
-            ready = self._run(["ssh", *options, target, "true"], timeout=15)
+            try:
+                ready = self._run(["ssh", *options, target, "true"], timeout=15)
+            except subprocess.TimeoutExpired as exc:
+                raise FullPreviewRemoteError("bounded SSH readiness timed out", stage="ssh-readiness", reason="timeout") from exc
             if ready.returncode == 0:
                 break
             if attempt + 1 == self.attempts:
-                raise FullPreviewRemoteError("bounded SSH wait exhausted")
+                raise FullPreviewRemoteError("bounded SSH wait exhausted", stage="ssh-readiness", reason="nonzero-exit", exit_code=ready.returncode)
             self.sleep(5)
         copies = (
             (config.source_archive, "/tmp/base2-full-preview-source.tar"),
@@ -145,7 +159,12 @@ class FullPreviewSshBootstrap:
             (self.flower_auth, "/run/base2-flower.htpasswd"),
             *self.application_inputs,
         )
+        if self.mail_trial is not None:
+            copies += ((self.mail_trial, '/run/base2-mail-trial.json'),)
+        if self.google_client_id is not None:
+            copies += ((self.google_client_id, '/run/base2-google-client-id'),)
         for source, destination in copies:
+            stage = "source-transfer" if source == config.source_archive else "private-input-transfer"
             timeout = (
                 SOURCE_TRANSFER_TIMEOUT_SECONDS
                 if source == config.source_archive
@@ -157,9 +176,9 @@ class FullPreviewSshBootstrap:
                     timeout=timeout,
                 )
             except subprocess.TimeoutExpired as exc:
-                raise FullPreviewRemoteError("bounded private preview transfer timed out") from exc
+                raise FullPreviewRemoteError("bounded private preview transfer timed out", stage=stage, reason="timeout") from exc
             if result.returncode != 0:
-                raise FullPreviewRemoteError("private preview transfer failed")
+                raise FullPreviewRemoteError("private preview transfer failed", stage=stage, reason="nonzero-exit", exit_code=result.returncode)
         command = (
             "set -euo pipefail; "
             f"printf '%s  %s\\n' '{config.archive_sha256}' /tmp/base2-full-preview-source.tar | sha256sum -c - >/dev/null; "
@@ -172,7 +191,7 @@ class FullPreviewSshBootstrap:
             command += " 'restricted'"
         try:
             deployed = self._run(
-                ["ssh", *options, target, "bash", "-lc", command],
+                ["ssh", *options, target, "bash", "-lc", shlex.quote(command)],
                 timeout=REMOTE_BOOTSTRAP_TIMEOUT_SECONDS,
             )
         except subprocess.TimeoutExpired as exc:
@@ -195,11 +214,11 @@ class FullPreviewSshBootstrap:
         try:
             receipt = json.loads([line for line in deployed.stdout.splitlines() if line.strip()][-1])
         except (IndexError, json.JSONDecodeError) as exc:
-            raise FullPreviewRemoteError("bootstrap receipt is malformed") from exc
-        if receipt.get("ok") is not True or receipt.get("mode") != "full-preview" or receipt.get("secretValuesEmitted") != 0:
-            raise FullPreviewRemoteError("bootstrap receipt failed validation")
+            raise FullPreviewRemoteError("bootstrap receipt is malformed", stage="bootstrap-receipt") from exc
+        if not isinstance(receipt, dict) or receipt.get("ok") is not True or receipt.get("mode") != "full-preview" or receipt.get("secretValuesEmitted") != 0:
+            raise FullPreviewRemoteError("bootstrap receipt failed validation", stage="bootstrap-receipt")
         if self.preview_mode == 'restricted' and receipt.get('previewMode') != 'restricted':
-            raise FullPreviewRemoteError('restricted bootstrap receipt missing')
+            raise FullPreviewRemoteError('restricted bootstrap receipt missing', stage="bootstrap-receipt")
 
     def health(self, ip_address: str, fqdn: str) -> bool:
         address = str(ipaddress.IPv4Address(ip_address))

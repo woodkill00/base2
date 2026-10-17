@@ -16,6 +16,41 @@ import {
 } from './acceptance-contract.mjs';
 
 const cases = () => requiredTests.map((title) => ({ title, status: 'passed', retry: 0 }));
+test('empty-form checks separate bounded Google preparation from auth submission', () => {
+  const source = readFileSync(new URL('./full-preview-live.spec.ts', import.meta.url), 'utf8');
+  assert.ok(source.includes('const postsBeforeEmptySubmit = [...authPosts]'));
+  assert.match(source, /empty submission must not issue any auth POST/);
+  assert.match(source, /process\.env\.BASE2_GOOGLE_CLIENT_SHA256 \? \['\/api\/auth\/oauth\/google\/challenge'\] : \[\]/);
+  assert.doesNotMatch(source, /authPosts\.filter/);
+});
+test('Google readiness is required and distinct from human sign-in', () => {
+  assert.ok(requiredTests.includes('Google readiness matches configured client without performing sign-in'));
+  const source = readFileSync(new URL('./full-preview-live.spec.ts', import.meta.url), 'utf8');
+  assert.ok(source.includes("createHash('sha256').update(client)"));
+  assert.ok(source.includes("iframe.contentFrame().getByRole('button')"));
+  assert.ok(source.includes('google-provider-error'));
+});
+test('live accessibility auditing preserves CSP without inline script tags or bypasses', () => {
+  const source = readFileSync(new URL('./full-preview-live.spec.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /addScriptTag\s*\(/);
+  assert.doesNotMatch(source, /bypassCSP\s*:\s*true/);
+  assert.match(source, /await page\.evaluate\(axeSource\)/);
+});
+test('auth error visuals are mandatory at mobile and desktop widths', () => {
+  for (const width of [390, 1440]) {
+    const title = `live auth validation preserves Volcano at ${width}px`;
+    assert.ok(requiredTests.includes(title));
+    const result = evaluateAcceptance({
+      cases: cases().filter((row) => row.title !== title),
+      status: 'passed',
+      sourceCommit: 'a'.repeat(40),
+      sourceStable: true,
+      sourceClean: true,
+    });
+    assert.equal(result.status, 'blocked');
+    assert.ok(result.missing.includes(title));
+  }
+});
 test('logout waits for server completion and rejects failed revocation', async () => {
   for (const failure of [null, 'status', 'network']) {
     const events = [];

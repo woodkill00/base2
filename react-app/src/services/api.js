@@ -43,6 +43,11 @@ export const authAPI = {
   },
 
   // Google OAuth login
+  googleChallenge: async (signal) => {
+    return _call(apiClient.post('/auth/oauth/google/challenge', {}, { signal }), {
+      fallbackMessage: 'Google sign-in is unavailable',
+    });
+  },
   googleAuth: async (credential) => {
     return _call(apiClient.post('/auth/oauth/google', { credential }), {
       fallbackMessage: 'Google login failed',

@@ -103,6 +103,10 @@ class Settings(BaseSettings):
     OPERATIONS_RECEIPT_INTEGRITY_KEY_FILE: str = Field(default='')
     OPERATIONS_RECEIPT_MAX_AGE_SECONDS: int = Field(default=90000)
     BASE2_EMAIL_ADAPTER: str = Field(default='disabled')
+    BASE2_EMAIL_RESEND_API_KEY_FILE: str = Field(default='')
+    BASE2_EMAIL_RESEND_TIMEOUT_SECONDS: float = Field(default=10)
+    BASE2_EMAIL_ALLOWED_RECIPIENTS: str = Field(default='')
+    BASE2_EMAIL_BUDGET_FILE: str = Field(default='')
     BASE2_EMAIL_SMTP_HOST: str = Field(default='')
     BASE2_EMAIL_SMTP_PORT: int = Field(default=587)
     BASE2_EMAIL_SMTP_TIMEOUT_SECONDS: float = Field(default=10)
@@ -210,21 +214,36 @@ class Settings(BaseSettings):
                 }:
                     raise RuntimeError('Invalid BASE2_PROCESS_ROLE')
                 if self.BASE2_PROCESS_ROLE == 'email-worker':
-                    if self.BASE2_EMAIL_ADAPTER.strip().lower() != 'smtp':
+                    adapter = self.BASE2_EMAIL_ADAPTER.strip().lower()
+                    if adapter not in {'smtp', 'resend'}:
                         raise RuntimeError(
-                            'Production email worker requires BASE2_EMAIL_ADAPTER=smtp'
+                            'Production email worker requires BASE2_EMAIL_ADAPTER=smtp or resend'
                         )
-                    if (
+                    if adapter == 'smtp' and (
                         not self.BASE2_EMAIL_SMTP_HOST.strip()
                         or self.BASE2_EMAIL_SMTP_PORT not in {465, 587}
                         or not 0 < self.BASE2_EMAIL_SMTP_TIMEOUT_SECONDS <= 30
                         or '@' not in self.BASE2_EMAIL_FROM_ADDRESS
                     ):
                         raise RuntimeError('Invalid production SMTP configuration')
-                    for name in (
-                        'BASE2_EMAIL_SMTP_USERNAME_FILE',
-                        'BASE2_EMAIL_SMTP_PASSWORD_FILE',
+                    if adapter == 'resend' and (
+                        not self.BASE2_EMAIL_ALLOWED_RECIPIENTS.strip()
+                        or not 0 < self.BASE2_EMAIL_RESEND_TIMEOUT_SECONDS <= 30
+                        or '@' not in self.BASE2_EMAIL_FROM_ADDRESS
                     ):
+                        raise RuntimeError('Invalid production Resend configuration')
+                    secret_names = (
+                        (
+                            'BASE2_EMAIL_SMTP_USERNAME_FILE',
+                            'BASE2_EMAIL_SMTP_PASSWORD_FILE',
+                        )
+                        if adapter == 'smtp'
+                        else (
+                            'BASE2_EMAIL_RESEND_API_KEY_FILE',
+                            'BASE2_EMAIL_BUDGET_FILE',
+                        )
+                    )
+                    for name in secret_names:
                         value = str(getattr(self, name) or '').strip()
                         if not value:
                             missing.append(name)
@@ -295,9 +314,8 @@ class Settings(BaseSettings):
                     'ip6-localhost',
                     'ip6-loopback',
                 }
-                local_database = (
-                    effective_host in local_host_aliases
-                    or effective_host.endswith('.localhost')
+                local_database = effective_host in local_host_aliases or effective_host.endswith(
+                    '.localhost'
                 )
                 # libc/libpq still accept historical IPv4 spellings that the
                 # strict ipaddress parser intentionally rejects (for example

@@ -2,7 +2,7 @@
   "algorithm": "sha256",
   "groups": {
     "config": {
-      ".env.example": "6d11f58ebe687bc53b3695459a0815929cc154d5e87e8774d2e045b63dc0fece",
+      ".env.example": "7e9e0ff2af48da21b2ab25d33745c995e5905ea335dea7f4e3a207dc76a0fa0c",
       "api/site_profiles/base2-obsidian.json": "a246a9831ad8feeca1dcde97fb32a03469e30a4e62e4661a0e088fc819264722",
       "api/site_profiles/content-workspace-contracts.json": "f139a41860e338f88584caf4a34c62ad4e5422d7390267981869d5a7012010f8",
       "api/site_profiles/content-workspace-presets.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
@@ -18,7 +18,7 @@
       "django/site_profiles/index.json": "d367c89b0fbf276e2cf77de0c4578d42dd30f2092cf10a685d1957369edcf38c",
       "django/site_profiles/journey-reference.json": "f7af82648f4e40757a7e57b79598101300d91cb8d38d96ad4e9e1994667f17eb",
       "django/site_profiles/northstar-library.json": "286850ced5758a336b8c7a82e345f57baa9d4686b39d209311178b6eaa5351f5",
-      "scripts/config/complete-gate-v1.json": "a568e78a1d107593816cd9de0fb0849ec1cca3855368a9b4e485c064c08834a8",
+      "scripts/config/complete-gate-v1.json": "3b481d3f8d1ad2442dc3159f50067da59330ff2bf9ae996c790dbe9bebfeb86e",
       "shared/config/archetypes-v1.json": "1c203b4f3e076adf87fed98698cec6473b7ac765dcbfb7b6ca4b67c090801ce3",
       "shared/config/assurance-orchestrator-v1.json": "ca8ad4a9e4283ace1b6826cbd9a5c81735a8fa4aa6a6338ca4fd4091a7c34aeb",
       "shared/config/content-workspace-presets.generated.json": "ec253a5d4e69a38b6442a0e2a47c346e7837d4b2c198dad3b2620d773a91db7e",
@@ -105,7 +105,7 @@
     "routeInventory": {
       "api/main.py": "cda0bc4e11029cbb6e88edcd89bc1020efdfdc350ee2152c76f3f026df2d847c",
       "api/routes/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "api/routes/auth.py": "961cc074c8457957aaf5a799f82dd53b51f88599f9eae24dd65878218d4e9ad8",
+      "api/routes/auth.py": "cd96c34b8ef77ae7b3f9397b87ea4446ff872bdd8aa3a5a4746876c950478860",
       "api/routes/content_workspace.py": "71795a85af8dec9e8f392f757a3640cc46b3466bccdf90941ace3f59f131b360",
       "api/routes/engagement.py": "f26e86d78daab93ef74a8d547b2b4ec1a3035ebf2f13e9a886a2accd772f016e",
       "api/routes/identity.py": "f4c3d677f0a6bf2a342221e300a809b86d8ae755e6ed3f3e44a6b9d9167780a1",

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "domain": "woodkilldev.com",
+  "lifecycle": "persistent",
+  "receivingEnabled": false,
+  "records": [
+    {
+      "type": "TXT",
+      "name": "resend._domainkey",
+      "data": "p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC+41vqq8b5f2Ru0cJTnHrBbrqtK5itwIlEqGWtJz36dIfFC6UoleB9TY4I83O+UeSC/HJAyTebpP7EBuyRiG1NC1PMZdYJqz3zmISuIUHKdsyK/SuA5qSjcp/EGSz2IkBnFUAyFJoQzLHEn4xnGUoabTq35Uj73EgkfH71w7briQIDAQAB",
+      "ttl": 3600
+    },
+    { "type": "CNAME", "name": "rsend", "data": "rsend.forge.rmta.net.", "ttl": 3600 },
+    { "type": "CNAME", "name": "send", "data": "send.forge.rmta.net.", "ttl": 3600 },
+    { "type": "TXT", "name": "_dmarc", "data": "v=DMARC1; p=none;", "ttl": 3600 }
+  ]
+}

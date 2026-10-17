@@ -33,6 +33,7 @@ ENV VITE_VOLCANO110_PREVIEW=${BASE2_VOLCANO_LAYOUT}
 
 # Create production build
 RUN npm run build
+RUN node scripts/google-nginx-policy.mjs nginx/default.conf /app/nginx-google.conf
 
 # ---------- Runtime: Nginx to serve static build ----------
 FROM ${DOCKER_LIBRARY_REGISTRY}/nginx:${NGINX_VERSION}
@@ -47,7 +48,7 @@ COPY --from=build /app/build /usr/share/nginx/html
 
 # Checked-in configs are portable across the supported classic and BuildKit frontends.
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
-COPY nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/nginx-google.conf /etc/nginx/conf.d/default.conf
 
 # Permissions for non-root user
 RUN chown -R nginx:nginx /usr/share/nginx /var/log/nginx /var/cache/nginx /etc/nginx

@@ -59,6 +59,20 @@ case "$mode" in
   *) echo "Unknown Traefik preview mode" >&2; exit 78 ;;
 esac
 DYNAMIC_OUTPUT_PATH="/tmp/dynamic.yml"
+# Fixed endpoint only; never interpolate a caller-supplied CSP fragment.
+# BEGIN GOOGLE STYLE POLICY
+GOOGLE_CSP_STYLE_SOURCE=""
+GOOGLE_PUBLIC_REFERRER_POLICY="no-referrer"
+case "${GOOGLE_OAUTH_ENABLED:-false}" in
+  true)
+    GOOGLE_CSP_STYLE_SOURCE=" https://accounts.google.com/gsi/style"
+    GOOGLE_PUBLIC_REFERRER_POLICY="strict-origin-when-cross-origin"
+    ;;
+  false) ;;
+  *) echo "Invalid Google enablement flag" >&2; exit 78 ;;
+esac
+export GOOGLE_CSP_STYLE_SOURCE GOOGLE_PUBLIC_REFERRER_POLICY
+# END GOOGLE STYLE POLICY
 if [ -f "$DYNAMIC_TEMPLATE_PATH" ]; then
   envsubst < "$DYNAMIC_TEMPLATE_PATH" > "$DYNAMIC_OUTPUT_PATH"
 fi

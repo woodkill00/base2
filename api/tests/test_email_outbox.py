@@ -72,3 +72,37 @@ def test_process_outbox_marks_sent(monkeypatch):
     assert fetched is not None
     assert fetched.status == 'sent'
     assert fetched.sent_at is not None
+
+
+def test_health_observer_reads_failure_using_worker_role():
+    from api.db import db_conn
+    from api.services.email_health import _outbox_requires_attention
+
+    outbox = queue_email(
+        to_email='health-fixture@example.com',
+        subject='Synthetic health regression',
+        body_text='Not sent',
+        send_async=False,
+    )
+    # The API role may enqueue but deliberately cannot UPDATE or DELETE here.
+    # Restore the synthetic row using the worker's existing UPDATE grant; tests
+    # must not require a new DELETE privilege merely to clean up a status change.
+    with email_worker_database():
+        original = get_outbox_email(UUID(str(outbox.id)))
+        assert original is not None
+        try:
+            with db_conn() as connection, connection.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE api_email_outbox SET status='dead_letter' WHERE id=%s",
+                    (str(outbox.id),),
+                )
+                connection.commit()
+            assert _outbox_requires_attention() is True
+        finally:
+            with db_conn() as connection, connection.cursor() as cursor:
+                cursor.execute(
+                    'UPDATE api_email_outbox SET status=%s WHERE id=%s',
+                    (original.status, str(outbox.id)),
+                )
+                connection.commit()
+        assert get_outbox_email(UUID(str(outbox.id))).status == original.status

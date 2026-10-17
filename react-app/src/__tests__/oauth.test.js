@@ -30,6 +30,7 @@ describe('Phase 14 Option A Google Sign-In', () => {
   beforeEach(() => {
     vi.stubEnv('REACT_APP_GOOGLE_CLIENT_ID', 'synthetic.apps.googleusercontent.com');
     jest.clearAllMocks();
+    authAPI.googleChallenge.mockResolvedValue({ nonce: 'n'.repeat(43), expires_in: 300 });
     localStorage.clear();
   });
   afterEach(() => vi.unstubAllEnvs());
@@ -60,8 +61,9 @@ describe('Phase 14 Option A Google Sign-In', () => {
       </AuthProvider>
     );
 
+    const googleButton = await screen.findByRole('button', { name: /sign in with google/i });
     await act(async () => {
-      await user.click(screen.getByRole('button', { name: /sign in with google/i }));
+      await user.click(googleButton);
     });
 
     await waitFor(() => {

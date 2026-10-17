@@ -1,5 +1,7 @@
 // Fixed required inventory: changing it is a reviewed testing-policy change.
 export const requiredTests = [
+  'Google readiness matches configured client without performing sign-in',
+  ...[390, 1440].map((width) => `live auth validation preserves Volcano at ${width}px`),
   ...[390, 1440].map((width) => `live shared layout covers public route families at ${width}px`),
   'public Obsidian site identity and owner interaction are live',
   'public Obsidian visual evidence covers responsive and interactive states',
@@ -22,6 +24,8 @@ const inputs = [
   'BASE2_PGADMIN_PASSWORD',
   'BASE2_APP_EMAIL',
   'BASE2_APP_PASSWORD',
+  'BASE2_MEDIA_EMAIL',
+  'BASE2_MEDIA_PASSWORD',
   'BASE2_OWNER_EMAIL',
   'BASE2_OWNER_PASSWORD',
   'BASE2_LIVE_SOURCE_COMMIT',

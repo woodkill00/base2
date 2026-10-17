@@ -17,6 +17,7 @@ from celery.signals import (
 )
 
 from api.services.email_service import process_outbox_email, replayable_outbox_ids
+from api.services.email_health import publish_email_health
 from api.redis_client import (
     get_client as redis_client,
     key as redis_client_key,
@@ -584,6 +585,7 @@ def send_email_outbox(self, outbox_id: str, request_id: str | None = None) -> st
 
 @app.task(name='app.replay_email_outbox')
 def replay_email_outbox(limit: int = 100) -> int:
+    publish_email_health()
     outbox_ids = replayable_outbox_ids(limit=limit)
     for outbox_id in outbox_ids:
         send_email_outbox.delay(str(outbox_id))

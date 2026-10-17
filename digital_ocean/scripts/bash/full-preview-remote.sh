@@ -84,6 +84,10 @@ swapon --noheadings --show=NAME | grep -Fxq "$swap_file" || fail_stage 4
 unset swap_file swap_size
 
 stage="env-render"; printf 'full-preview-stage:%s\n' "$stage" >&2
+google_args=()
+if [[ -e /run/base2-google-client-id || -L /run/base2-google-client-id ]]; then
+  google_args=(--google-client-id-file /run/base2-google-client-id)
+fi
 (
   cd "$repo_root"
   python3 -m digital_ocean.scripts.python.render_full_preview_env \
@@ -92,9 +96,17 @@ stage="env-render"; printf 'full-preview-stage:%s\n' "$stage" >&2
     --operator-basic-auth-file "$operator_auth" --flower-basic-auth-file "$flower_auth" \
     --django-username-file "$django_username" --django-email-file "$django_email" \
     --django-password-file "$django_password" --pgadmin-email-file "$pgadmin_email" \
-    --pgadmin-password-file "$pgadmin_password" >/dev/null
+    --pgadmin-password-file "$pgadmin_password" "${google_args[@]}" >/dev/null
 )
 chmod 600 "$env_file"
+if [[ -e /run/base2-mail-trial.json ]]; then
+  (
+    cd "$repo_root"
+    python3 -m digital_ocean.scripts.python.mail_trial_config \
+      --input /run/base2-mail-trial.json --env-file "$env_file" \
+      --state-root /run/base2-mail-trial --domain "$domain" >/dev/null
+  )
+fi
 printf 'BASE2_PREVIEW_MODE=%s\n' "$preview_mode" >>"$env_file"
 rm -f -- "$operator_auth" "$flower_auth" "$django_username" "$django_email" "$django_password" "$pgadmin_email" "$pgadmin_password"
 

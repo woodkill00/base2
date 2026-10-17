@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import ipaddress
 import json
 import os
@@ -126,6 +127,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--receipt", type=Path, required=True)
     parser.add_argument("--owner-file", type=Path, required=True)
     parser.add_argument("--run-id", required=True)
+    parser.add_argument("--ssh-private-key", type=Path, required=True)
+    parser.add_argument("--google-client-id-file", type=Path)
     args = parser.parse_args(argv)
     root = Path(__file__).resolve().parents[3]
     try:
@@ -142,6 +145,12 @@ def main(argv: list[str] | None = None) -> int:
                 receipt, owner, run_id=args.run_id, source_commit=commit, now=datetime.now(UTC)
             )
         )
+        from .preview_media_inputs import provision_media_inputs
+        env.pop('BASE2_GOOGLE_CLIENT_SHA256', None)
+        if args.google_client_id_file:
+            from .google_preview_config import read_client_id
+            env['BASE2_GOOGLE_CLIENT_SHA256'] = hashlib.sha256(read_client_id(args.google_client_id_file).encode()).hexdigest()
+        env.update(provision_media_inputs(receipt=receipt, receipt_path=args.receipt, ssh_key=args.ssh_private_key))
         return subprocess.run(
             ["npm", "run", "test:live-full-preview"],
             cwd=root / "react-app",

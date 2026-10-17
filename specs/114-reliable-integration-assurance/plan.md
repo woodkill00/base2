@@ -1,0 +1,184 @@
+# Plan
+
+## Owner-authorized final closeout
+
+Audit de2e9ec and the successful 20261016-195724 live trial before further edits.
+One focused batch covers the unused Gunicorn control socket, pgAdmin readiness,
+task/evidence reconciliation and actual integration gaps. Preserve source-bound
+live evidence; changed runtime code must not inherit a claim of live validation.
+Use focused process/security/contract tests before the required final gate.
+Merge with history preserved after CI. No paid resource or new live approval is
+included. Preserve the original intermittent Python failure as an open incident
+even when current repetitions pass; no invented root-cause resolution.
+
+## Post-trial repair batch (2026-10-16)
+
+Preserve original trial failures. Fix the full-preview public referrer policy only
+when Google is enabled, retaining origin-only cross-site disclosure and unchanged
+private/canary policies. Exercise CSP and referer behavior with routed synthetic
+browser origins, without Google traffic or CSP bypass. Bind real Google readiness
+to a fingerprint of the same private client input and do not assume English text.
+
+Media acceptance needs actual backend membership, not a forged display claim.
+After current clean-source/lease admission, the supported browser runner uses the
+existing owner SSH key and fixed container command to provision a single synthetic
+editor in a fresh organization. No public endpoint, owner/admin grant, existing
+organization join, account overwrite or production activation is allowed. Reject
+expired payloads, wrong profiles, duplicate fixtures, linked/open files and invalid
+receipts. Use a transaction; cleanup is the exact disposable environment teardown.
+Positive upload acceptance must first verify server capabilities; ordinary signup
+and forged client permissions must remain denied. Test restricted-role PostgreSQL
+before spending. Budget: one focused batch, one corrected fixture-environment
+rerun, then exact-source stability and full gate. Another paid trial needs approval.
+
+## Custom-field repair budget
+
+Add a pure Google-only credential selection module, not a new vault transport or
+generic DigitalOcean secret permission. Read exact Base2 item names; select the
+explicit `value` field or legacy managed Notes. Reject duplicate fields, conflicting
+populated sources, malformed metadata and unsupported field types. Placeholder
+Notes may coexist with a valid field. Never log values. Test with synthetic data,
+then run one metadata-only private lookup using that exact parser. No provider
+login, deployment, vault write or full release gate in this bounded batch.
+Rollback removes the parser; it never mutates stored credentials.
+
+## Candidate and budget
+
+Start: main 433068c4dc57499c46b1b0f5d246c7a5ac45b91b, native WSL checkout.
+No active cloud resource. Preserve untracked/private files. One focused diagnostic
+sweep per batch; maximum one documented diagnostic retry, never blanket retries.
+Heavy suites serial. Full release gate after focused/integration/visual evidence
+is ready. Live limits and test identities requested before provider actions.
+
+## Batches
+
+Google browser policy refinement: render the Nginx policy at image build time
+only when the existing frontend client-ID input is valid. Disabled builds retain
+the exact checked-in policy. Enabled builds allow only Google's documented GIS
+script, style, frame and connection paths, retaining all other directives.
+The SPA may enter login without a new document, so the enabled policy must cover
+SPA navigation; no wildcard, unsafe-eval or inline-script exception is allowed.
+Reference: https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid
+
+1. CI: classify exact Git differences using NUL-delimited paths, validated SHAs
+   and immutable base-version policy. Only explicitly allowlisted narrative
+   Markdown qualifies. JSON, generated profiles, snapshots, tests, scripts,
+   workflows, config and unknown paths require full checks. Missing history or
+   malformed input requires full checks or a visible failed prerequisite.
+   Preserve existing required check names. Emit decision evidence before skipping
+   expensive steps, not a fabricated browser pass. Test rename/delete/mixed paths,
+   malicious paths and base-policy tampering. Keep security scanning unchanged.
+2. Reliability: inspect preserved Django failure and successful comparison runs;
+   bounded reproduction with existing test entrypoints and runtime settings.
+   Record interpreter/toolchain and resource state without secrets. Extend fixed
+   remote stage evidence where required, including timeout/transfer failures and
+   cleanup reporting. Never raise antivirus waits based only on a hypothesis.
+3. Integrations: inventory existing OAuth and mail boundaries, deployment secret
+   wiring and test identity/redirect prerequisites. Add supported private preflight
+   and bounded test operations with Bash/PowerShell parity. Test negative paths
+   locally before any real email or OAuth authorization. Owner-only test mailbox
+   and dedicated account required; no reusable owner password changes.
+4. Coverage: map remaining ledger states to actual test entrypoints and backend
+   fixtures; expand capture/comparison cases and inspect fresh differences. Add
+   isolated optional-profile backend/lifecycle acceptance without changing the
+   default profile. New screenshot references require actual visual review.
+5. Release: tasks -> analysis -> fixed/additional tasks -> analysis for each batch;
+   coverage impact review, complete gate, hosted CI, approved bounded live run,
+   cleanup and final source-bound report. Preserve merge ancestry.
+
+## Trust boundaries
+
+### Persistent DNS (owner update)
+
+Use root domain woodkilldev.com as selected in the owner's Resend dashboard.
+The public configuration digital_ocean/config/woodkilldev-resend-dns.json stores
+the supplied DKIM and two CNAME records plus initial DMARC. Provider-specific
+"Auto" TTL becomes explicit 3600 seconds. DNS names are zone-relative; CNAME
+targets are absolute. Do not invent extra SPF records alongside those supplied.
+Verify authoritative delegation and complete provider inventory before writes.
+Each deployment should ensure this persistent set, not recreate it blindly.
+Existing exact records are no-ops; conflicts stop and report; existing DMARC
+requires review rather than downgrade. Persistent records never enter droplet
+expiry/teardown ownership. Provider receipt IDs and partial progress require a
+separate durable journal before automatic mutation is enabled.
+The supplied apex MX inbound-smtp.us-east-1.amazonaws.com (priority 10) is NOT
+included: receiving is optional and needs separate inbound-routing approval.
+No droplet is needed to verify email DNS. The Resend key remains in Vaultwarden;
+the DKIM verification key is public DNS data, not a private credential.
+
+### Email provider decision (2026-10-16)
+
+Trial activation uses a private durable operational send-budget ledger, separate
+from domain email data: exact expiry, maximum attempts and hashed delivery-key
+reservations, synchronized across workers before network access. Reservations
+are never refunded after errors; an uncertain or repeated key requires explicit
+reconciliation, so no automatic retry can outlive provider idempotency. The ledger
+must persist across worker restarts, is never automatically reset, and is mounted
+only into the email worker. Missing, corrupt, expired or exhausted budgets fail
+closed with a visible typed error. Live trial initialization remains a supported
+deployment step, not an application-side auto-create operation.
+
+Owner selected Resend over HTTPS. DigitalOcean blocks SMTP ports, so SMTP is
+retained for existing consumers but is not the preview transport. Use the fixed
+https://api.resend.com/emails endpoint, verified TLS, no redirects or inherited
+proxies, a private sending-only domain-scoped key, and a mandatory exact trial
+recipient allowlist. The adapter does not retry internally. Stable outbox keys
+map to provider idempotency keys; Resend retains them for 24 hours, so automatic
+retry scheduling must stay inside that window or require reconciliation.
+Provider acceptance (existing outbox `sent`) does not prove inbox delivery.
+Real acceptance requires separate mailbox evidence. Durable trial send caps,
+secret wiring and retry scheduling are activation prerequisites, not implied by
+unit-test success. No DNS changes or provider account creation are authorized.
+
+References: https://resend.com/docs/api-reference/emails/send-email and
+https://resend.com/docs/dashboard/emails/idempotency-keys and
+https://docs.digitalocean.com/support/why-is-smtp-blocked/.
+
+PR-controlled filenames/content cannot grant skipped validation or credentials.
+No pull_request_target execution of untrusted code. CI permissions stay read-only
+unless an existing explicit publication job requires otherwise. External callback
+URLs and recipients are exact allowlists. Secrets remain in private references;
+screenshots/traces must not retain authorization codes or reset links.
+
+## Integration blockers
+
+CURRENT CLOSEOUT: all earlier live approvals below are historical and consumed.
+de2e9ec passed live and was destroyed after owner Google sign-in confirmation.
+The new nonce binding requires a fresh bounded approval; no current resource is
+authorized. Preserve the historical prerequisite records below without treating
+their earlier "unused" wording as active authority.
+
+2026-10-16 renewed owner authorization: one additional Frankfurt droplet,
+staging certificates only, maximum 60 minutes and USD 0.25, with teardown after
+testing. This approval is unused. Provision only after current-source local and
+hosted acceptance; do not extend the lease or reuse the consumed prior approval.
+Human Google consent/MFA remains an interactive prerequisite, not delegated.
+
+Current status (2026-10-16): the sending-only trial completed at 6f7f7392; owner
+confirmed inbox receipt and teardown is verified. The bounded preview approval
+below has been consumed. Another paid/live trial needs renewed bounded approval.
+Resend is configured; the historical SMTP placeholders are not blockers for the
+selected HTTPS transport. Google credentials and callback flow remain unresolved.
+The post-trial local batch adds frontend startup ordering, sanitized email health
+observation and provider-unverified collision rejection, with no provider actions.
+
+Historical prerequisite record:
+
+Owner confirmed thejunkmailvoid@gmail.com as the test identity and authorized
+Base2 account verification/reset emails to that mailbox, not changes to the Google
+account itself. Owner approved one Frankfurt droplet, staging certificates,
+maximum 60 minutes/USD 0.25 and teardown after testing. This approval is unused.
+Do not assume the previous Calendar OAuth grant is a Base2 sign-in credential.
+Vaultwarden item references and SMTP/OAuth wiring still need verification.
+
+2026-10-16 prerequisite check: Pi SSH unavailable at all four configured addresses
+(192.168.1.169, 192.168.1.168, 192.168.0.169, 192.168.0.168). The metadata-only
+vault lookup could not connect; this is not evidence of missing credentials.
+Subsequent owner restart resolved reachability: SSH and Vaultwarden are reachable
+via 192.168.0.169 using the existing fallback helper. Read-only value-status checks
+found missing/placeholders in base2/EMAIL_HOST, base2/EMAIL_HOST_PASSWORD,
+base2/GOOGLE_OAUTH_CLIENT_ID and base2/GOOGLE_OAUTH_CLIENT_SECRET. The saved
+base2/GOOGLE_OAUTH_REDIRECT_URI does not match the expected Base2 callback and
+requires review. Populated username/from/state entries are not provider-verified.
+Real integrations remain blocked until valid provider configuration is supplied;
+no external email/login or cloud operation was attempted.

@@ -18,6 +18,9 @@ services:
       - REACT_APP_GOOGLE_CLIENT_ID=${REACT_APP_GOOGLE_CLIENT_ID}
       - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
     networks: [app_network]
+    depends_on:
+      api:
+        condition: service_healthy
     restart: unless-stopped
     security_opt: [no-new-privileges:true]
     tmpfs:
@@ -51,6 +54,8 @@ services:
       - ENV=${ENV:-development}
       - SITE_PROFILE=${SITE_PROFILE:-ember-studio}
       - BASE2_PROCESS_ROLE=api
+      - GOOGLE_OAUTH_ENABLED=${GOOGLE_OAUTH_ENABLED:-false}
+      - GOOGLE_OAUTH_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID:-}
       - PORT=${FASTAPI_PORT}
       - DB_HOST=${DB_HOST:-postgres}
       - DB_PORT=${DB_PORT:-5432}
@@ -254,6 +259,7 @@ services:
       - TRAEFIK_CERT_EMAIL=${TRAEFIK_CERT_EMAIL}
       - TRAEFIK_CERT_RESOLVER=${TRAEFIK_CERT_RESOLVER:-le-staging}
       - TRAEFIK_PREVIEW_MODE=${TRAEFIK_PREVIEW_MODE:-local}
+      - GOOGLE_OAUTH_ENABLED=${GOOGLE_OAUTH_ENABLED:-false}
       - OWNER_ALLOWLIST_CSV=${OWNER_ALLOWLIST_CSV:-127.0.0.1/32}
       - FASTAPI_PORT=${FASTAPI_PORT}
       - DJANGO_PORT=${DJANGO_PORT}
@@ -349,6 +355,9 @@ services:
     healthcheck:
       test:
         ['CMD-SHELL', 'wget -qO- http://localhost:${PGADMIN_PORT}/misc/ping > /dev/null || exit 1']
+      # Observed fresh initialization takes about four minutes. Successful
+      # probes still admit immediately; steady-state failure bounds are unchanged.
+      start_period: 300s
       interval: 15s
       timeout: 5s
       retries: 10
@@ -696,6 +705,10 @@ services:
       - DB_USER=${EMAIL_WORKER_DB_USER}
       - DB_PASSWORD=${EMAIL_WORKER_DB_PASSWORD}
       - BASE2_EMAIL_ADAPTER=${BASE2_EMAIL_ADAPTER:-disabled}
+      - BASE2_EMAIL_RESEND_API_KEY_FILE=/run/secrets/email-resend-key
+      - BASE2_EMAIL_RESEND_TIMEOUT_SECONDS=${BASE2_EMAIL_RESEND_TIMEOUT_SECONDS:-10}
+      - BASE2_EMAIL_ALLOWED_RECIPIENTS=${BASE2_EMAIL_ALLOWED_RECIPIENTS:-}
+      - BASE2_EMAIL_BUDGET_FILE=/run/email-trial/budget.json
       - BASE2_EMAIL_SMTP_HOST=${BASE2_EMAIL_SMTP_HOST:-}
       - BASE2_EMAIL_SMTP_PORT=${BASE2_EMAIL_SMTP_PORT:-587}
       - BASE2_EMAIL_SMTP_TIMEOUT_SECONDS=${BASE2_EMAIL_SMTP_TIMEOUT_SECONDS:-10}
@@ -711,6 +724,8 @@ services:
       - ${DB_SSLROOTCERT_HOST:-/dev/null}:/run/secrets/db-ca.pem:ro
       - ${BASE2_EMAIL_SMTP_USERNAME_FILE_HOST:-/dev/null}:/run/secrets/email-smtp-username:ro
       - ${BASE2_EMAIL_SMTP_PASSWORD_FILE_HOST:-/dev/null}:/run/secrets/email-smtp-password:ro
+      - ${BASE2_EMAIL_RESEND_API_KEY_FILE_HOST:-/dev/null}:/run/secrets/email-resend-key:ro
+      - ${BASE2_EMAIL_BUDGET_FILE_HOST:-/dev/null}:/run/email-trial/budget.json:rw
     depends_on:
       django: { condition: service_healthy }
       redis: { condition: service_healthy }
