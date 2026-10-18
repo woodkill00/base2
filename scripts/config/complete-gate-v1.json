@@ -2,6 +2,33 @@
   "schemaVersion": 1,
   "checks": [
     {
+      "id": "feature-115-email-container-contract",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "scripts.tests.test_email_container_checks",
+        "scripts.tests.test_recovery_journey_guard"
+      ],
+      "required": true,
+      "timeoutSeconds": 30,
+      "dependsOn": [],
+      "requiredTools": ["python3"]
+    },
+    {
+      "id": "feature-115-email-container-acceptance",
+      "command": [
+        "python3",
+        "scripts/python/run_email_container_checks.py",
+        "--image",
+        "base2-local-api:latest"
+      ],
+      "required": true,
+      "timeoutSeconds": 480,
+      "dependsOn": ["feature-115-email-container-contract", "workspace-postgres-acceptance"],
+      "requiredTools": ["python3", "docker"]
+    },
+    {
       "id": "feature-114-google-binding-browser",
       "command": [
         "npm",

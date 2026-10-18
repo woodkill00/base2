@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
@@ -41,6 +41,34 @@ function mount(props = {}) {
 beforeEach(() => {
   auth.user = null;
   auth.logout.mockReset();
+});
+afterEach(() => vi.unstubAllGlobals());
+test('measures changed header height in layout pixels and disconnects its observer', () => {
+  let resized;
+  const disconnect = vi.fn();
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      constructor(callback) {
+        resized = callback;
+      }
+      observe() {}
+      disconnect() {
+        disconnect();
+      }
+    }
+  );
+  const view = mount();
+  const header = view.container.querySelector('.volcano-header-frame');
+  Object.defineProperty(header, 'offsetHeight', { value: 112 });
+  act(() => resized());
+  expect(
+    view.container
+      .querySelector('.volcano-layout')
+      .style.getPropertyValue('--volcano-header-height')
+  ).toBe('112px');
+  view.unmount();
+  expect(disconnect).toHaveBeenCalledOnce();
 });
 test('keeps original composition, supplied context and footer, with safe utility routing', () => {
   mount({ contextSlot: <p>Context content</p>, footerSlot: <footer>Custom footer</footer> });

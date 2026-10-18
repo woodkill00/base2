@@ -65,6 +65,14 @@
   gap: 0.5rem;
   align-items: center;
 }
+@media (max-width: 720px) {
+  .volcano-layout .home-right-utility-menu {
+    top: max(
+      clamp(58px, calc(4vh + 40px), 74px),
+      calc(var(--volcano-header-height, 3.5rem) + 0.5rem)
+    );
+  }
+}
 .volcano-layout .home-left-command-menu[aria-hidden='true'] {
   display: none;
 }

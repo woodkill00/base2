@@ -4,13 +4,22 @@
 
 - [x] T077 Preserve the be2618d gate timeout, measure the unchanged 102-case journey matrix once under a bounded diagnostic, and correct only its aggregate gate timeout with a regression preserving the complete command, required status and single attempt. Final exact-source gate remains required.
 
-- [ ] T076 Correct the live empty-form assertion to distinguish exactly one configured Google challenge from credential exchange, assert no new POST on empty submit, and add provider-free browser/contract regressions. Preserve the 2e95988 live failures; do not relabel the changed harness as an exact-source live pass.
+- [x] T076 Correct the live empty-form assertion to distinguish exactly one configured Google challenge from credential exchange, assert no new POST on empty submit, and add provider-free browser/contract regressions. Preserve the 2e95988 live failures; do not relabel the changed harness as an exact-source live pass.
 
 - [x] T071 Reproduce Gunicorn's default control socket against a non-writable home using the actual API entrypoint, disable the unused control surface, and retain HTTP readiness/shutdown tests without weakening container isolation.
 - [x] T072 Review measured pgAdmin startup against the configured health/startup bounds; preserve slow-start evidence and distinguish initialization from runtime failure.
 - [ ] T073 Reconcile tasks against exact-source local/CI/live evidence, audit integration notification and security gaps, and explicitly retain unexplained intermittency.
-- [ ] T074 Verify current local/hosted evidence, merge PR #80 with ancestry preserved, and verify post-merge CI; no additional live trial authorized.
-- [ ] T075 Bind the selected GIS popup ID token to a server-issued, expiring, one-use browser nonce; test missing/wrong browser, expiry, replay, provider failure, Redis failure, disabled mode and UI recovery. Keep the unused authorization-code path explicitly separate. Fresh human live validation requires renewed approval before merge.
+- [x] T074 Verify current local/hosted evidence, merge PR #80 with ancestry preserved, and verify post-merge CI; no additional live trial authorized.
+- [x] T075 Bind the selected GIS popup ID token to a server-issued, expiring, one-use browser nonce; test missing/wrong browser, expiry, replay, provider failure, Redis failure, disabled mode and UI recovery. Keep the unused authorization-code path explicitly separate. Fresh human live validation requires renewed approval before merge.
+
+Reconciliation (2026-10-18): T074-T076 are supported by exact candidate
+`32fd45adb43d3f5b263c0cc00ae4abb6014760d9`, the 129-check gate
+`.artifacts/complete-gate/20261017T031147Z-2910700/result.json`, the 14-pass
+live run `base2-full-20261017-035146`, owner Google sign-in confirmation and
+verified teardown, and history-preserving PR80 merge `b859e54ae957d6e26b56c4d6a3f884b7a53f516f`.
+All ten post-merge workflows passed (20 check-runs); the PR closeout comment
+records that evidence. This does not close the remaining integration, visual,
+optional-module or unresolved-intermittency tasks; these continue in Feature115.
 
 ## Custom-field credential repair
 

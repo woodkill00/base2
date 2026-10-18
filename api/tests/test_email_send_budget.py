@@ -47,6 +47,8 @@ def test_concurrent_reservations_cannot_exceed_cap(tmp_path):
         {'expiresAt': 999999},
         {'maxAttempts': 0},
         {'maxAttempts': True},
+        {'schemaVersion': True},
+        {'schemaVersion': 1.0},
         {'reservations': ['invalid']},
         {'extra': 'field'},
     ],
@@ -73,3 +75,13 @@ def test_missing_corrupt_symlink_or_public_ledger_fails_closed(tmp_path):
     path.write_text('partial write')
     with pytest.raises(RuntimeError):
         reserve_send(str(path), 'one', now=1000)
+
+
+def test_hardlinked_ledger_is_rejected_without_modification(tmp_path):
+    path = ledger(tmp_path)
+    link = tmp_path / 'hardlink'
+    link.hardlink_to(path)
+    before = path.read_bytes()
+    with pytest.raises(RuntimeError, match='file_unsafe'):
+        reserve_send(str(path), 'one', now=1000)
+    assert path.read_bytes() == before

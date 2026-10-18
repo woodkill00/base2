@@ -15,6 +15,10 @@ def test_timezone_capacity_tenant_and_replay_contract():
     replay, created = Event.reserve(event_id=event.id, site_id='tenant-one', attendee_ref='user-one', seats=1)
     assert not created and replay.id == first.id
     Event.reserve(event_id=event.id, site_id='tenant-one', attendee_ref='user-two', seats=1)
+    replay, created = Event.reserve(event_id=event.id, site_id='tenant-one', attendee_ref='user-one', seats=1)
+    assert not created and replay.id == first.id
+    with pytest.raises(ValidationError, match='booking_replay_conflict'):
+        Event.reserve(event_id=event.id, site_id='tenant-one', attendee_ref='user-one', seats=2)
     with pytest.raises(ValidationError, match='capacity_exceeded'):
         Event.reserve(event_id=event.id, site_id='tenant-one', attendee_ref='user-three', seats=1)
     with pytest.raises(Event.DoesNotExist):

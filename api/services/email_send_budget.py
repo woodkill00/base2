@@ -46,7 +46,8 @@ def reserve_send(path: str, delivery_key: str, *, now: float | None = None) -> N
                 state['reservations'],
             )
             if (
-                state['schemaVersion'] != 1
+                type(state['schemaVersion']) is not int
+                or state['schemaVersion'] != 1
                 or type(cap) is not int
                 or not 1 <= cap <= 20
                 or type(expiry) not in {int, float}
