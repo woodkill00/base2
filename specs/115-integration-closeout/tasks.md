@@ -8,7 +8,7 @@
 
 ## Email and OAuth
 
-- [ ] T004 Inventory verification/reset/contact endpoints, transport, outbox, token/session and notification boundaries (R02,R07).
+- [x] T004 Inventory verification/reset/contact endpoints, transport, outbox, token/session and notification boundaries (R02,R07; analysis cycle 8).
 - [x] T005 Add missing real-database email outcome/expiry/replay/session regressions with isolated synthetic accounts (R02).
 - [x] T006 Extend container budget/key acceptance for ownership, lifecycle, restart, exhaustion, corruption, lease expiry and non-reset initialization (R03).
 - [x] T007 Test runner failure/timeout/cleanup/redaction; wire required acceptance into the supported release path (R03,R08).
@@ -23,8 +23,8 @@
 - [x] T024 Repair missing restricted-role booking authorization without blanket grants: bounded reservation capability, tenant-scoped reads, denied direct mutation, atomic capacity/replay, forward/reverse migrations and actual PostgreSQL tests (R06; C115-10).
 - [x] T012 Add these cases to supported disposable acceptance entrypoints and CI without silently enabling modules on default Base2 (R06,R08; hosted execution remains T019).
 - [ ] T013 Reconcile route/state/viewport/role/visual coverage inventory against actual tests, not file presence (R05).
-- [ ] T014 Add missing state-entry/geometry/accessibility tests and capture representative keyboard/zoom/RTL/long/error states (R05).
-- [ ] T015 Inspect captures and differences; preserve approved Volcano reference hashes, documenting any remaining exclusions (R05).
+- [x] T014 Add missing state-entry/geometry/accessibility tests and capture representative keyboard/zoom/RTL/long/error states (R05).
+- [x] T015 Inspect captures and differences; preserve approved Volcano reference hashes, documenting any remaining exclusions (R05; cycles 6-8).
 
 ## Reliability and release
 
@@ -35,6 +35,7 @@
 - [ ] T020 Run only newly approved bounded live acceptance and obtain required human mailbox/OAuth confirmations (R02,R08).
 - [ ] T021 Verify exact teardown, preserved mail DNS and measured duration/cost evidence (R07,R08).
 - [ ] T022 Reconcile both ledgers with evidence, merge with review ancestry preserved and verify post-merge pipelines (R01,R08).
+- [ ] T025 Generate and validate current-head stability repetitions before the next complete gate; retain the first missing-evidence failure (C115-14,R07,R08).
 
 Owner approved both decisions on 2026-10-18: disposable Base2 account
 `thejunkmailvoid+base2-test@gmail.com` for verification/reset mail and password

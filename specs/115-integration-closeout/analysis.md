@@ -192,3 +192,36 @@ approved live trial is unused. All evidence paths above are relative to
   This policy measures instrumented lines, not every changed file or unknown
   failure scenario. Evidence is in `*-coverage.log` and `coverage-policy.log`.
   Full gate, remaining media source review, CI and live acceptance are still open.
+
+## Cycle 8: exact-source gate prerequisite
+
+- C115-14 (evidence prerequisite, not a product failure): full gate
+  `20261018T035021Z-4048538` on `af87aec` failed because current-head Feature106
+  repetitions had not been generated. It reported `repetition_evidence_invalid`;
+  dependent checks stayed not-run. All other executed checks passed. Preserve
+  the original result; no existing receipt is to be edited or relabeled.
+- Repair: after committing this batch, run the supported Feature106 repetition
+  generator on that exact clean commit, validate its evidence, then rerun the
+  complete gate without editing source. This prerequisite must precede future
+  full gates, including documentation-only source changes while exact-head
+  evidence remains mandatory. No weakened assertion or timeout is needed.
+- Current visual review: 102 journey checks passed on the candidate in 2.4m;
+  approved Volcano references remain unchanged. Media renewal passed 24 applicable
+  checks with 12 intentional exclusions and binds commit `7d7fd13`; its reviewed
+  UI sources are unchanged afterward. Operations comparisons passed 22 with 20
+  explicit exclusions. Geometry/state coverage and pixel comparison remain distinct.
+- Historical F114-17 native/runtime intermittency and F114-34 timing variability
+  remain residual environment risks, not defects proven eliminated. Current API,
+  Django and deployment-code coverage runs passed without an observed recurrence;
+  exact-head stability repetitions are still required before release.
+- Contact acceptance is persisted payload/consent/retention with no delivered
+  timestamp; its queued disabled adapter is not email delivery. Verification/reset
+  use the separate mail outbox, private send budget and one-use token/session
+  boundaries tested in disposable PostgreSQL. Discord dispatch-disabled regression
+  confirms no tenant/runtime secret reads while disabled; real delivery is D115-01.
+
+Reanalysis: remaining acceptance is the current-head repetition prerequisite,
+complete gate, hosted CI, bounded live outcomes with human mailbox confirmation,
+independent teardown and merge/post-merge verification. Optional pack browser
+fixtures do not replace actual restricted-role database evidence. No new feature,
+external destination or additional paid trial is introduced by this repair.
