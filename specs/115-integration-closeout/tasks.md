@@ -22,26 +22,32 @@
 - [x] T023 Repair API expired-event admission and Django full-capacity replay, with shared negative/lifecycle regressions and real PostgreSQL verification (R06; C115-08/C115-09).
 - [x] T024 Repair missing restricted-role booking authorization without blanket grants: bounded reservation capability, tenant-scoped reads, denied direct mutation, atomic capacity/replay, forward/reverse migrations and actual PostgreSQL tests (R06; C115-10).
 - [x] T012 Add these cases to supported disposable acceptance entrypoints and CI without silently enabling modules on default Base2 (R06,R08; hosted execution remains T019).
-- [ ] T013 Reconcile route/state/viewport/role/visual coverage inventory against actual tests, not file presence (R05).
+- [x] T013 Reconcile route/state/viewport/role/visual coverage inventory against actual tests, not file presence (R05; cycle 10, explicit partial/pending exclusions retained).
 - [x] T014 Add missing state-entry/geometry/accessibility tests and capture representative keyboard/zoom/RTL/long/error states (R05).
 - [x] T015 Inspect captures and differences; preserve approved Volcano reference hashes, documenting any remaining exclusions (R05; cycles 6-8).
 
 ## Reliability and release
 
-- [ ] T016 Audit alert integration configuration and delivery receipts; test visible failures without new destinations or secret exposure (R07).
-- [ ] T017 Preserve and classify historical runtime faults, with bounded reproductions/diagnostic evidence and no speculative dependency upgrades (R07).
+- [x] T016 Audit alert integration configuration and delivery receipts; test visible failures without new destinations or secret exposure (R07; cycle 10; external delivery explicitly deferred).
+- [x] T017 Preserve and classify historical runtime faults, with bounded reproductions/diagnostic evidence and no speculative dependency upgrades (R07; cycles 8-10, unresolved intermittency retained).
 - [ ] T018 Perform final coverage/analysis cycle; add missing tasks until no known implementation/test gap remains (R01-R08).
-- [ ] T019 Run required clean-source release gate, publish and verify hosted CI (R08).
+- [x] T019 Run required clean-source release gate, publish and verify hosted CI (R08; exact candidate 679a99b, cycle 9).
 - [ ] T020 Run only newly approved bounded live acceptance and obtain required human mailbox/OAuth confirmations (R02,R08).
 - [ ] T021 Verify exact teardown, preserved mail DNS and measured duration/cost evidence (R07,R08).
 - [ ] T022 Reconcile both ledgers with evidence, merge with review ancestry preserved and verify post-merge pipelines (R01,R08).
-- [ ] T025 Generate and validate current-head stability repetitions before the next complete gate; retain the first missing-evidence failure (C115-14,R07,R08).
+- [x] T025 Generate and validate current-head stability repetitions before the next complete gate; retain the first missing-evidence failure (C115-14,R07,R08; 679a99b).
+- [ ] T026 Validate operator launcher compatibility before any newly approved trial: required CLI arguments, sole fixture provisioning, private handoffs and no legacy organization mutation (C115-16/C115-17). Three local helper tests pass; complete browser acceptance remains pending.
 
 Owner approved both decisions on 2026-10-18: disposable Base2 account
 `thejunkmailvoid+base2-test@gmail.com` for verification/reset mail and password
 changes limited to that account; one fresh Frankfurt live trial, staging
 certificates, maximum 60 minutes/USD 0.25, teardown afterward, only after local
-checks and CI pass. This approval is unused and grants no additional trials.
+checks and CI pass. This approval was consumed by run
+`base2-full-20261018-044148`, which was destroyed after launcher incompatibility
+blocked browser acceptance. Independent inventory confirms zero owned previews
+and zero temporary address records. The owner subsequently approved one replacement
+under the same limits, only after remaining non-live work and validation finish.
+That replacement approval remains unused; notify the owner for mailbox actions.
 Google credentials/password and the reusable Woodkill account remain unchanged.
 
 Owner clarification: verify contact submissions are received and stored; do not

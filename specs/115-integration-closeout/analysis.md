@@ -225,3 +225,61 @@ complete gate, hosted CI, bounded live outcomes with human mailbox confirmation,
 independent teardown and merge/post-merge verification. Optional pack browser
 fixtures do not replace actual restricted-role database evidence. No new feature,
 external destination or additional paid trial is introduced by this repair.
+
+## Cycle 9: live operator integration blocked, clean teardown
+
+- Exact candidate `679a99b24d6e39f87619ae27ef704ed89dd25c2e` passed
+  complete gate `20261018T040711Z-4089156`, current-head repetitions and all
+  20 hosted PR checks. No live acceptance is implied by these passes.
+- C115-15: hosted Chromium screenshot capture failed once with a protocol error
+  after page geometry assertions passed. The single documented unchanged-source
+  diagnostic retry passed. Preserve the first failure and classify this as
+  unresolved intermittent capture infrastructure, not a proven product fix.
+  Evidence: `.artifacts/feature-115/hosted-capture-diagnostic.md` and original log.
+- Run `base2-full-20261018-044148` deployed the exact candidate on one Frankfurt
+  droplet with staging TLS. Startup verification and all 17 container health
+  checks passed. Mailbox verification/reset and browser acceptance did not run.
+- C115-16: native notebook browser wrapper omitted required `--ssh-private-key`.
+  Added the fixed private key path and a regression assertion; no key was printed.
+- C115-17: the same wrapper called obsolete media-principal provisioning before
+  the guarded current runner. It created a synthetic tenant organization, which
+  the current one-shot fixture correctly rejects. Removed the obsolete call and
+  added a regression assertion. Do not delete tenant rows or weaken collision
+  protection to force this preview through acceptance. Three helper tests pass.
+  The helper changes reside in the native WSL operator notebook, not this PR.
+  Logs: private state `feature115-browser.log` and `feature115-browser-repaired.log`.
+- Exact supported teardown returned destroyed: one droplet and six temporary DNS
+  records deleted. An initial wrong state-root invocation failed locally before
+  provider actions; corrected invocation used the lease directory. Independent
+  provider inventory returned zero owned droplets and no temporary A/AAAA records.
+  No additional trial or lease extension was started. Preserve persistent mail DNS.
+- Reanalysis: T026 adds operator compatibility validation before spending again.
+  Live email outcomes, complete browser evidence and merge closeout remain blocked
+  pending a fresh bounded trial approval. Passing helper tests does not substitute
+  for those outcomes. The owner remains available for mailbox actions once ready.
+
+## Cycle 10: non-live closeout before replacement trial
+
+- The owner approved one replacement bounded trial, but explicitly requested all
+  remaining non-live work first. It is unused; no resource is currently retained.
+- Coverage inventory accounts for 30 routes in 13 families. Optional content and
+  event backend labels now reflect restricted-role PostgreSQL acceptance rather
+  than stale pending labels. They remain partial, not exhaustive acceptance.
+  Browser route/state mocks, geometry assertions, capture-only pages and reviewed
+  pixel comparisons remain separate. Optional modules stay disabled in the live
+  default profile. Remaining invitation delivery, full pixel-state Cartesian
+  coverage, disabled passkeys and operator recovery exclusions remain explicit.
+- Focused validation: 13 journey inventory contracts, 28 private browser/media
+  admission tests, three native operator handoff tests and 19 operations task
+  tests passed. Evidence: `.artifacts/feature-115/inventory-closeout.log`,
+  `launcher-contract-closeout.log`, `alert-closeout.log`; native handoff test
+  lives at `/home/woodkill/code/pi5/scripts/test-base2-live-handoffs.py`.
+  Alert tests include observation failure propagation, bounded queues and no
+  runtime/secret reads when dispatch is disabled. This is not Discord delivery.
+- F114-17, F114-34 and C115-15 remain classified intermittent risks. Preserve
+  original failures and exact-head repetitions; no speculative upgrade, assertion
+  weakening, retry loop or baseline replacement is justified by a passing retry.
+- Current local changes are evidence/inventory documentation only. Regenerate
+  exact-head repetitions and run the supported final gate after committing;
+  previous 679a99b receipts remain historical. Publish and check current CI before
+  using the replacement trial. Mail human outcomes and final merge are still open.
