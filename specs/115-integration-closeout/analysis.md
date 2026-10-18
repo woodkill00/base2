@@ -154,3 +154,41 @@ Full release gate, changed-line coverage, final source-bound visual review,
 publication/CI, live email outcomes, merge and teardown remain open. The single
 approved live trial is unused. All evidence paths above are relative to
 `.artifacts/feature-115/`; focused passes are not complete-release receipts.
+
+## Cycle 7: owner scope clarification and checkpoint
+
+- Owner confirmed contact acceptance means received and stored submissions;
+  contact-email notifications are explicitly a separate feature. Existing
+  disabled delivery adapters must not be represented as functioning email.
+- Owner believes no Base2 Discord webhook has been created. Real alert delivery
+  is unavailable, not passed. Asked whether to configure an existing private
+  channel destination or explicitly defer delivery; neither is assumed approved.
+- Checkpoint 80d6fb9 preserves the implementation and regressions. The first
+  commit hook rejected a stale surface configuration digest after release-gate
+  changes. Supported `validate_surface_drift.py --write` refreshed only that
+  configuration digest; the subsequent hook passed. No test pass receipt or
+  visual baseline was rewritten to resolve this configuration inventory drift.
+- Next bounded batch: coverage-policy and source-bound visual review inventory,
+  followed by the necessary focused validation before the full release gate.
+  No paid trial, external email or new notification destination has been used.
+- Contact persistence assertion initially expected the model default `received`;
+  the repository and restrictive INSERT policy explicitly use internal `queued`
+  with a disabled adapter. This is a test expectation mismatch, not proof of
+  email delivery. Corrected the assertion to require exact payload/consent,
+  `queued`, no delivered timestamp and a future retention deadline. First failure
+  is preserved in `contact-stored-acceptance.log`; corrected run is separate.
+- Owner explicitly deferred Discord delivery and requested a later task. D115-01
+  records secure destination setup, failure/retry/redaction tests, real delivery
+  receipt, owner visibility and rollback. Delivery stays disabled; it is excluded
+  by owner decision, not marked tested. No webhook or destination was created.
+- Corrected contact acceptance passed (`contact-stored-corrected.log`), including
+  restricted-role persistence, scheduling race, migration reversal and recovery.
+  Frontend coverage passed 370 tests across 83 files; Operations Center comparison
+  passed 22 cases with 20 intentional exclusions and unchanged reference images.
+  Supported visual evidence regeneration binds the two changed shared-style sources.
+- API, Django and deployment-code coverage runners passed, followed by the root
+  runner and coverage policy. Current measured changed-line coverage is 102/111
+  (91.89%, floor 90%); critical glass coverage is 100% across reported metrics.
+  This policy measures instrumented lines, not every changed file or unknown
+  failure scenario. Evidence is in `*-coverage.log` and `coverage-policy.log`.
+  Full gate, remaining media source review, CI and live acceptance are still open.

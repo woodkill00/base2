@@ -42,3 +42,23 @@ changes limited to that account; one fresh Frankfurt live trial, staging
 certificates, maximum 60 minutes/USD 0.25, teardown afterward, only after local
 checks and CI pass. This approval is unused and grants no additional trials.
 Google credentials/password and the reusable Woodkill account remain unchanged.
+
+Owner clarification: verify contact submissions are received and stored; do not
+add contact-email notifications in this feature. The owner believes no Base2
+Discord webhook exists. The owner explicitly deferred Discord delivery to a later
+task on 2026-10-18; keep it disabled. T016 retains local failure visibility and
+configuration checks, but external delivery is outside current release acceptance.
+Disabled alerts are not delivery evidence.
+
+## Deferred follow-up (not part of Feature115 completion)
+
+- [ ] D115-01 Enable and verify Base2 Discord failure-alert delivery in a separate
+      approved feature. Confirm an existing private destination and owner authority;
+      create its webhook and store it in Vaultwarden without committing or logging
+      the URL/token. Wire the supported secret-file handoff with least privilege.
+      Test disabled/missing/invalid credentials, timeout, rate limits, provider
+      rejection, retry bounds, duplicate suppression, mention blocking and redaction.
+      Send one authorized synthetic failure alert, verify its actual Discord receipt
+      and owner-visible message, test recovery reporting, and document disable/rollback
+      procedures. Enable only after these checks pass. No webhook creation or external
+      send is authorized merely by recording this task.

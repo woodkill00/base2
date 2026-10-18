@@ -10,6 +10,8 @@ Volcano design or interpreting passing tests as proof against unknown defects.
 - R02 Prove verification, reset and contact outcomes, expiry/replay and session
   boundaries locally. External delivery requires an authorized disposable test
   identity and human inbox confirmation; never reset the reusable owner account.
+  Contact acceptance is receipt and database persistence only, as confirmed by
+  the owner; contact-email notifications belong to a separate feature.
 - R03 Prove mail key/budget ownership, restart persistence, exact lease bounds,
   duplicate refusal and failure visibility with isolated containers.
 - R04 Keep the working GIS popup flow separate from the unused code flow;
@@ -25,6 +27,9 @@ Volcano design or interpreting passing tests as proof against unknown defects.
 - R07 Preserve diagnosable historical intermittency and verify configured alert
   delivery separately from notification-unit coverage. Record measured timing
   and provider cost only when available.
+  Owner decision 2026-10-18: no Discord destination exists; keep Discord delivery
+  disabled and defer its setup/real-delivery acceptance to D115-01. Local failure
+  visibility remains in scope; this deferral is not successful delivery evidence.
 - R08 Release only with focused checks, required gate and hosted CI. Any new live
   run requires fresh bounded approval; verify teardown independently.
 

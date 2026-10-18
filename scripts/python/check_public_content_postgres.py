@@ -231,6 +231,16 @@ def check(owner, pool_context, user, password):
                 assert cur.fetchall() == []
         with owner, owner.cursor() as cur:
             cur.execute(
+                """SELECT form_key,payload,consent,status,delivered_at,
+                          retained_until > NOW()
+                   FROM sitecontent_formsubmission WHERE id=%s AND site_id=%s""",
+                (str(receipt["id"]), tenant),
+            )
+            assert cur.fetchone() == (
+                "contact", {"message": "test"}, {"processing": True},
+                "queued", None, True,
+            ), "contact_submission_not_stored_without_delivery"
+            cur.execute(
                 "SELECT adapter,status FROM sitecontent_formdeliveryoutbox WHERE submission_id=%s",
                 (str(receipt["id"]),),
             )
