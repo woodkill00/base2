@@ -3,8 +3,8 @@
 ## Evidence and planning
 
 - [x] T001 Verify clean source, policy, existing ledger, prior merge/live evidence and local Docker prerequisites (R01,R08).
-- [ ] T002 Reconcile completed Feature114 items, link current closeout and preserve unresolved incidents (R01,R07).
-- [ ] T003 Complete tasks -> analysis -> fixed/additional tasks cycle for all six outstanding workstreams (R01-R08).
+- [x] T002 Reconcile completed Feature114 items, link current closeout and preserve unresolved incidents (R01,R07).
+- [x] T003 Complete tasks -> analysis -> fixed/additional tasks cycle for all six outstanding workstreams (R01-R08).
 
 ## Email and OAuth
 
@@ -13,15 +13,15 @@
 - [x] T006 Extend container budget/key acceptance for ownership, lifecycle, restart, exhaustion, corruption, lease expiry and non-reset initialization (R03).
 - [x] T007 Test runner failure/timeout/cleanup/redaction; wire required acceptance into the supported release path (R03,R08).
 - [x] T008 Characterize selected GIS versus unused code-flow activation, misconfiguration, denial and no-session failure behavior; fix proven security gaps without activating the unused path (R04).
-- [ ] T009 Prepare bounded real-mail outcome acceptance using an approved disposable account, never the reusable owner (R02,R08).
+- [x] T009 Prepare bounded real-mail outcome acceptance using an approved disposable account, never the reusable owner (R02,R08; live-acceptance.md).
 
 ## Real backend and visuals
 
-- [ ] T010 Map optional module models/repositories/routes to existing PostgreSQL acceptance and identify missing lifecycle cases (R06).
-- [ ] T011 Add restricted-role real-backend content/event/booking tests, duplicates, unauthorized access, recovery and exact cleanup (R06).
+- [x] T010 Map optional module models/repositories/routes to existing PostgreSQL acceptance and identify missing lifecycle cases (R06).
+- [x] T011 Add restricted-role real-backend content/event/booking tests, duplicates, unauthorized access, recovery and exact cleanup (R06).
 - [x] T023 Repair API expired-event admission and Django full-capacity replay, with shared negative/lifecycle regressions and real PostgreSQL verification (R06; C115-08/C115-09).
 - [x] T024 Repair missing restricted-role booking authorization without blanket grants: bounded reservation capability, tenant-scoped reads, denied direct mutation, atomic capacity/replay, forward/reverse migrations and actual PostgreSQL tests (R06; C115-10).
-- [ ] T012 Add these cases to supported disposable acceptance entrypoints and CI without silently enabling modules on default Base2 (R06,R08).
+- [x] T012 Add these cases to supported disposable acceptance entrypoints and CI without silently enabling modules on default Base2 (R06,R08; hosted execution remains T019).
 - [ ] T013 Reconcile route/state/viewport/role/visual coverage inventory against actual tests, not file presence (R05).
 - [ ] T014 Add missing state-entry/geometry/accessibility tests and capture representative keyboard/zoom/RTL/long/error states (R05).
 - [ ] T015 Inspect captures and differences; preserve approved Volcano reference hashes, documenting any remaining exclusions (R05).
