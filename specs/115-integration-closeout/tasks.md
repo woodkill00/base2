@@ -30,13 +30,13 @@
 
 - [x] T016 Audit alert integration configuration and delivery receipts; test visible failures without new destinations or secret exposure (R07; cycle 10; external delivery explicitly deferred).
 - [x] T017 Preserve and classify historical runtime faults, with bounded reproductions/diagnostic evidence and no speculative dependency upgrades (R07; cycles 8-10, unresolved intermittency retained).
-- [ ] T018 Perform final coverage/analysis cycle; add missing tasks until no known implementation/test gap remains (R01-R08).
+- [x] T018 Perform final coverage/analysis cycle; add missing tasks until no known implementation/test gap remains (R01-R08; final closeout and explicit exclusions).
 - [x] T019 Run required clean-source release gate, publish and verify hosted CI (R08; exact candidate 679a99b, cycle 9).
-- [ ] T020 Run only newly approved bounded live acceptance and obtain required human mailbox/OAuth confirmations (R02,R08).
-- [ ] T021 Verify exact teardown, preserved mail DNS and measured duration/cost evidence (R07,R08).
+- [x] T020 Run only newly approved bounded live acceptance and obtain required human mailbox/OAuth confirmations (R02,R08; closeout.md).
+- [x] T021 Verify exact teardown, preserved mail DNS and measured duration/cost evidence (R07,R08; closeout.md; billed cost unavailable, not fabricated).
 - [ ] T022 Reconcile both ledgers with evidence, merge with review ancestry preserved and verify post-merge pipelines (R01,R08).
 - [x] T025 Generate and validate current-head stability repetitions before the next complete gate; retain the first missing-evidence failure (C115-14,R07,R08; 679a99b).
-- [ ] T026 Validate operator launcher compatibility before any newly approved trial: required CLI arguments, sole fixture provisioning, private handoffs and no legacy organization mutation (C115-16/C115-17). Three local helper tests pass; complete browser acceptance remains pending.
+- [x] T026 Validate operator launcher compatibility before any newly approved trial: required CLI arguments, sole fixture provisioning, private handoffs and no legacy organization mutation (C115-16/C115-17). Four local helper tests and all 14 live browser checks passed.
 
 Owner approved both decisions on 2026-10-18: disposable Base2 account
 `thejunkmailvoid+base2-test@gmail.com` for verification/reset mail and password
@@ -47,7 +47,10 @@ checks and CI pass. This approval was consumed by run
 blocked browser acceptance. Independent inventory confirms zero owned previews
 and zero temporary address records. The owner subsequently approved one replacement
 under the same limits, only after remaining non-live work and validation finish.
-That replacement approval remains unused; notify the owner for mailbox actions.
+That replacement was used by `base2-full-20261018-230754` and automatically
+destroyed at expiry before the owner completed mailbox interaction. A separately
+approved final run, `base2-full-20261019-011101`, completed mailbox acceptance
+and was explicitly destroyed early. No unused preview authority remains.
 Google credentials/password and the reusable Woodkill account remain unchanged.
 
 Owner clarification: verify contact submissions are received and stored; do not
