@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
+import './password-control.css';
 
 type Props = {
   id: string;
@@ -15,6 +17,7 @@ type Props = {
   icon?: React.ReactNode;
   inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
   autoComplete?: string;
+  disabled?: boolean;
 };
 
 export const GlassInput: React.FC<Props> = ({
@@ -32,7 +35,11 @@ export const GlassInput: React.FC<Props> = ({
   icon,
   inputMode,
   autoComplete,
+  disabled = false,
 }) => {
+  const [revealed, setRevealed] = useState(false);
+  const password = type === 'password';
+  const visible = password && revealed && !disabled;
   return (
     <div className={['w-full', className].filter(Boolean).join(' ')}>
       {label ? (
@@ -40,7 +47,12 @@ export const GlassInput: React.FC<Props> = ({
           {label}
         </label>
       ) : null}
-      <div className="relative w-full">
+      <div
+        className={`relative w-full ${password ? 'volcano-password-control' : ''}`}
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setRevealed(false);
+        }}
+      >
         {icon ? (
           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/60 dark:text-foreground/50 pointer-events-none">
             {icon}
@@ -49,7 +61,8 @@ export const GlassInput: React.FC<Props> = ({
         <input
           id={id}
           name={name}
-          type={type}
+          type={visible ? 'text' : type}
+          disabled={disabled}
           value={value}
           onChange={onChange}
           placeholder={placeholder}
@@ -68,6 +81,24 @@ export const GlassInput: React.FC<Props> = ({
           inputMode={inputMode}
           autoComplete={autoComplete}
         />
+        {password ? (
+          <button
+            type="button"
+            className="volcano-password-toggle"
+            aria-label={visible ? 'Hide password' : 'Show password'}
+            aria-pressed={visible}
+            aria-controls={id}
+            disabled={disabled}
+            onPointerDown={(event) => event.preventDefault()}
+            onClick={() => setRevealed((current) => !current)}
+          >
+            {visible ? (
+              <EyeOff size={20} aria-hidden="true" />
+            ) : (
+              <Eye size={20} aria-hidden="true" />
+            )}
+          </button>
+        ) : null}
       </div>
       {error ? (
         <div className="text-sm mt-2" role="alert">

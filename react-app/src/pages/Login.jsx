@@ -167,6 +167,7 @@ const Login = ({ variant = 'public' }) => {
                 id="email"
                 name="email"
                 type="email"
+                autoComplete="username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
@@ -186,6 +187,7 @@ const Login = ({ variant = 'public' }) => {
                 id="password"
                 name="password"
                 type="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Your password"

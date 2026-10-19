@@ -10,7 +10,7 @@ test('home page loads', async ({ page }) => {
 test('login page renders and can submit', async ({ page }) => {
   await page.goto('/login');
   const email = page.getByLabel(/email/i);
-  const password = page.getByLabel(/password/i);
+  const password = page.getByLabel(/^password$/i);
   const button = page.getByRole('button', { name: /sign in/i });
 
   await email.fill('playwright@example.com');
