@@ -24,14 +24,14 @@
 - [ ] T019 Audit all root E2E, frontend, live helpers and generated profile consumers.
 - [ ] T020 Validate keyboard, screen-reader announcements, loading/error/disabled states,
       mobile/desktop, zoom, reduced motion, preferences and screenshot review.
-- [ ] T021 Run restricted-role integration and server-boundary/security regressions.
+- [x] T021 Run restricted-role integration and server-boundary/security regressions.
 - [ ] T022 Review changed-line and critical-component coverage; preserve all floors.
 - [ ] T023 Run exact-source stability prerequisites and complete release gate.
 - [ ] T024 Record limitations, source-bound results and rollback; publish/observe CI
       within applicable authority. Paid/live trial requires a fresh bounded approval.
 - [ ] T025 Validate verification StrictMode single-use behavior and hosted cookie
       prerequisites through the final source-bound release gate (targeted tests passed).
-- [ ] T026 Verify server-derived navigation permissions using the restricted runtime
+- [x] T026 Verify server-derived navigation permissions using the restricted runtime
       role; do not reintroduce browser-storage permission or credential shortcuts.
 - [ ] T027 Execute the separately authorized live acceptance trial only after CI;
       collect visual/functional evidence, verify teardown and report residual risks.

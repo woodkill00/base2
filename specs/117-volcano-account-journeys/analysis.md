@@ -153,6 +153,13 @@ acceptance. These successes do not make the failed gate acceptable. Full-gate
 count: 1; deployment count: 0. No baselines changed, no live-resource authority
 assumed, and no failure receipts edited.
 
+Media renewal on clean repair commit `e898f45` completed: 24 passed, 12
+intentional exclusions, zero flaky/unexpected cases, unchanged reference image
+inventory. Current captures were retained and representative desktop, compact,
+zoomed picker and light-detail captures inspected. The supported renewal helper
+updated only the review source binding; no reference images were rewritten.
+Parent merge and a new bounded live preview remain awaiting owner approval.
+
 Disposable PostgreSQL acceptance first failed closed on resend (503): the old
 fixture had no trusted FRONTEND_URL. Added only `https://example.test` to its
 environment; missing-origin rejection remains regression tested. Second trial
