@@ -75,3 +75,15 @@ This final documentation update does not change runtime sources. T008 remains
 pending publication/CI/merge evidence; record terminal results in the PR rather
 than claiming future checks have already passed. No paid deployment authorized
 or performed for this feature.
+
+## Hosted refinement cycle
+
+U116-05: hosted root E2E run 39202952257 failed its browser registration test
+because getByLabel('Password') also matched Show password; its other three
+API journeys passed. Initial discovery was too narrowly scoped to react-app
+and missed the separate root e2e tree and title-cased live selectors.
+Whole-repository, case-insensitive selector sweep found the root selector and
+three live-preview occurrences. Correct all to exact field labels. Extend root
+registration acceptance to actually reveal and hide before submission. This
+test-only repair changes no runtime source, relaxes no assertion, and requires
+fresh hosted E2E evidence. Prior CI failure remains retained.

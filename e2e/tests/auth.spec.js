@@ -93,7 +93,12 @@ test('browser renders the public app and registers through the configured API', 
   await page.goto('/signup');
   await expect(page.getByRole('heading', { name: 'Create account' })).toBeVisible();
   await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Password').fill(PASSWORD);
+  const passwordField = page.getByLabel('Password', { exact: true });
+  await passwordField.fill(PASSWORD);
+  await page.getByRole('button', { name: 'Show password', exact: true }).click();
+  await expect(passwordField).toHaveAttribute('type', 'text');
+  await page.getByRole('button', { name: 'Hide password', exact: true }).click();
+  await expect(passwordField).toHaveAttribute('type', 'password');
   const registered = page.waitForResponse(
     (response) =>
       response.url() === `${browserBase()}/api/auth/register` &&

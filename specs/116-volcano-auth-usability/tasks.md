@@ -9,3 +9,5 @@
 - [x] T006 Run shared page-family visual/journey checks and coverage review (R04-R05).
 - [x] T007 Complete release gate; record failures, exclusions and final evidence (R05).
 - [ ] T008 Publish/merge and observe CI under applicable authority; no paid preview.
+- [ ] T009 Repair root/live exact password selectors and verify hosted browser
+      registration with reveal/hide before submission (R01/R05, U116-05).
