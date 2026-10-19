@@ -13,6 +13,7 @@ import re
 import secrets
 import traceback
 from contextlib import closing
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
@@ -77,8 +78,36 @@ def main() -> None:
         return match.group(1)
 
     with patch("api.tasks.app.send_task") as handoff, TestClient(app) as client:
-        response = client.post("/api/auth/register", json={"email": email, "password": password})
+        response = client.post(
+            "/api/auth/register",
+            json={"email": email, "password": password},
+            headers={"X-Tenant-Id": SITE_MANIFEST["siteId"]},
+        )
         require(response.status_code == 201, "registration_failed")
+        require(
+            isinstance(response.json().get("permissions"), list), "navigation_permissions_missing"
+        )
+        recovery = client.post("/api/auth/resend-verification", json={"email": email})
+        require(recovery.status_code == 202, "verification_recovery_failed")
+        limited = client.post("/api/auth/resend-verification", json={"email": email})
+        require(limited.status_code == 429, "verification_recovery_limit_missing")
+        require(int(limited.headers.get("Retry-After", "0")) > 0, "verification_retry_missing")
+        # Real Redis counters must admit only one concurrent request for a
+        # recipient. Freeze the bucket timestamp, not Redis or the route.
+        from api.security import rate_limit
+
+        unknown_email = f"unknown-{secrets.token_hex(10)}@example.test"
+
+        def concurrent_resend(_):
+            with TestClient(app) as concurrent_client:
+                return concurrent_client.post(
+                    "/api/auth/resend-verification", json={"email": unknown_email}
+                ).status_code
+
+        with patch("api.security.rate_limit.now_ms", return_value=rate_limit.now_ms()):
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                statuses = sorted(executor.map(concurrent_resend, range(2)))
+        require(statuses == [202, 429], "verification_concurrent_limit_missing")
         require(
             client.post(
                 "/api/auth/register", json={"email": email, "password": password}

@@ -38,6 +38,7 @@ export const GlassInput: React.FC<Props> = ({
   disabled = false,
 }) => {
   const [revealed, setRevealed] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
   const password = type === 'password';
   const visible = password && revealed && !disabled;
   return (
@@ -50,7 +51,10 @@ export const GlassInput: React.FC<Props> = ({
       <div
         className={`relative w-full ${password ? 'volcano-password-control' : ''}`}
         onBlur={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setRevealed(false);
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+            setRevealed(false);
+            setCapsLock(false);
+          }
         }}
       >
         {icon ? (
@@ -65,6 +69,8 @@ export const GlassInput: React.FC<Props> = ({
           disabled={disabled}
           value={value}
           onChange={onChange}
+          onKeyDown={(event) => password && setCapsLock(event.getModifierState('CapsLock'))}
+          onKeyUp={(event) => password && setCapsLock(event.getModifierState('CapsLock'))}
           placeholder={placeholder}
           className={
             'base2-input w-full backdrop-blur-2xl bg-white/25 dark:bg-black/40 ' +
@@ -77,7 +83,11 @@ export const GlassInput: React.FC<Props> = ({
             'transition-all duration-300 ease-out'
           }
           aria-invalid={ariaInvalid}
-          aria-describedby={ariaDescribedBy}
+          aria-describedby={
+            [ariaDescribedBy, password && capsLock ? `${id}-caps-lock` : null]
+              .filter(Boolean)
+              .join(' ') || undefined
+          }
           inputMode={inputMode}
           autoComplete={autoComplete}
         />
@@ -100,6 +110,11 @@ export const GlassInput: React.FC<Props> = ({
           </button>
         ) : null}
       </div>
+      {password && capsLock ? (
+        <p id={`${id}-caps-lock`} role="status" className="mt-2 text-sm">
+          Caps Lock is on.
+        </p>
+      ) : null}
       {error ? (
         <div className="text-sm mt-2" role="alert">
           {error}

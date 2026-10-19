@@ -1,3 +1,9 @@
+import { restoreSession } from '../lib/apiClient';
+vi.mock('../lib/apiClient', () => ({
+  default: {},
+  withSessionLock: (operation) => operation(),
+  restoreSession: vi.fn(),
+}));
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { authAPI } from '../services/api';
@@ -16,10 +22,12 @@ describe('AuthContext', () => {
     jest.spyOn(Storage.prototype, 'getItem').mockImplementation(() => null);
     jest.spyOn(Storage.prototype, 'clear').mockImplementation(() => {});
     localStorage.clear();
+    restoreSession.mockRejectedValue(new Error('No cookie'));
   });
 
-  test('should provide initial auth state', () => {
+  test('should provide initial auth state', async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
 
     expect(result.current.user).toBeNull();
     expect(result.current.loading).toBe(false);
@@ -28,11 +36,12 @@ describe('AuthContext', () => {
 
   test('should register user successfully', async () => {
     authAPI.register.mockResolvedValue({
-      success: true,
-      data: { message: 'Registration successful' },
+      email: 'test@example.com',
+      access_token: 'synthetic-access',
     });
 
     const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
 
     let response;
     await act(async () => {
@@ -50,9 +59,10 @@ describe('AuthContext', () => {
       name: 'Test User',
     };
 
-    authAPI.login.mockResolvedValue(mockUser);
+    authAPI.login.mockResolvedValue({ ...mockUser, access_token: 'synthetic-access' });
 
     const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
 
     await act(async () => {
       await result.current.loginWithEmail('test@example.com', 'Test1234');
@@ -63,14 +73,20 @@ describe('AuthContext', () => {
     });
 
     expect(result.current.isAuthenticated).toBe(true);
-    expect(localStorage.setItem).toHaveBeenCalledWith('user', JSON.stringify(mockUser));
+    expect(localStorage.getItem('user')).toBeNull();
+    expect(localStorage.getItem('token')).toBeNull();
   });
 
   test('should logout user successfully', async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
 
     // First login
-    authAPI.login.mockResolvedValue({ id: 1, email: 'test@example.com' });
+    authAPI.login.mockResolvedValue({
+      id: 1,
+      email: 'test@example.com',
+      access_token: 'synthetic-access',
+    });
     authAPI.logout.mockResolvedValue({});
 
     await act(async () => {
@@ -94,6 +110,7 @@ describe('AuthContext', () => {
     });
 
     const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
 
     let response;
     await act(async () => {

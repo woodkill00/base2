@@ -1,3 +1,4 @@
+import { setSessionFixture, fulfillSessionFixture, getSessionFixture } from '../session-fixture';
 import { expect, test } from '@playwright/test';
 
 const user = {
@@ -31,11 +32,9 @@ const overview = {
 };
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript((value) => {
-    localStorage.setItem('user', JSON.stringify(value));
-    localStorage.setItem('token', 'fixture-access-token');
-  }, user);
+  setSessionFixture(page, user);
   await page.route('**/*', async (route) => {
+    if (await fulfillSessionFixture(route)) return;
     const url = new URL(route.request().url());
     if (!['127.0.0.1', 'localhost'].includes(url.hostname)) {
       await route.abort('blockedbyclient');
@@ -45,14 +44,23 @@ test.beforeEach(async ({ page }) => {
       await route.continue();
       return;
     }
-    const json = (body: unknown) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    const json = (body: unknown) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
     if (url.pathname === '/api/identity/capabilities') {
-      await json({ mfa: { totp: { enabled: true }, recovery_codes: { enabled: true }, webauthn: { enabled: false } } });
+      await json({
+        mfa: {
+          totp: { enabled: true },
+          recovery_codes: { enabled: true },
+          webauthn: { enabled: false },
+        },
+      });
     } else if (url.pathname === '/api/auth/sessions') {
-      await json({ sessions: [
-        { id: 'session-current', user_agent: 'Current browser', is_current: true },
-        { id: 'session-other', user_agent: 'Other browser', is_current: false },
-      ] });
+      await json({
+        sessions: [
+          { id: 'session-current', user_agent: 'Current browser', is_current: true },
+          { id: 'session-other', user_agent: 'Other browser', is_current: false },
+        ],
+      });
     } else if (url.pathname === '/api/identity/admin/overview') {
       await json(overview);
     } else {
@@ -61,7 +69,9 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('account security is private, actionable, stable, and has no external dependency', async ({ page }) => {
+test('account security is private, actionable, stable, and has no external dependency', async ({
+  page,
+}) => {
   const externalResponses: string[] = [];
   page.on('response', (response) => {
     const host = new URL(response.url()).hostname;
@@ -72,7 +82,9 @@ test('account security is private, actionable, stable, and has no external depen
   await expect(page.getByRole('heading', { name: 'Multi-factor authentication' })).toBeVisible();
   await expect(page.getByText('Passkeys are not enabled for this site.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Revoke Other browser' })).toBeEnabled();
-  const mfaBox = await page.getByRole('heading', { name: 'Multi-factor authentication' }).boundingBox();
+  const mfaBox = await page
+    .getByRole('heading', { name: 'Multi-factor authentication' })
+    .boundingBox();
   const sessionsBox = await page.getByRole('heading', { name: 'Sessions' }).boundingBox();
   expect(mfaBox).not.toBeNull();
   expect(sessionsBox).not.toBeNull();
@@ -80,7 +92,9 @@ test('account security is private, actionable, stable, and has no external depen
   expect(externalResponses).toEqual([]);
 });
 
-test('admin controls honor permissions and never expose stored credential secrets', async ({ page }) => {
+test('admin controls honor permissions and never expose stored credential secrets', async ({
+  page,
+}) => {
   await page.goto('/admin');
   await expect(page.getByRole('heading', { name: 'Invitations' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Invite member' })).toBeDisabled();
@@ -91,12 +105,10 @@ test('admin controls honor permissions and never expose stored credential secret
   await expect(page.getByRole('button', { name: 'Manage content' })).toBeDisabled();
 });
 
-test('missing admin permission redirects to account without flashing controls', async ({ page }) => {
-  await page.addInitScript(() => {
-    const stored = JSON.parse(localStorage.getItem('user') || '{}');
-    stored.permissions = [];
-    localStorage.setItem('user', JSON.stringify(stored));
-  });
+test('missing admin permission redirects to account without flashing controls', async ({
+  page,
+}) => {
+  setSessionFixture(page, { ...getSessionFixture(page), permissions: [] });
   await page.goto('/admin');
   await expect(page).toHaveURL(/\/settings\/security$/);
   await expect(page.getByRole('heading', { name: 'Invitations' })).toHaveCount(0);

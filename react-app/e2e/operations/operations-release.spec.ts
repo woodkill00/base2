@@ -1,3 +1,4 @@
+import { setSessionFixture, fulfillSessionFixture, getSessionFixture } from '../session-fixture';
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';
@@ -47,11 +48,9 @@ test.beforeEach(async ({ page }, testInfo) => {
           ? 'de'
           : 'en',
   };
-  await page.addInitScript((fixture) => {
-    localStorage.setItem('user', JSON.stringify(fixture));
-    localStorage.setItem('token', 'non-secret-operations-fixture');
-  }, localizedUser);
+  setSessionFixture(page, localizedUser);
   await page.route('**/*', async (route) => {
+    if (await fulfillSessionFixture(route)) return;
     const url = new URL(route.request().url());
     if (url.href === 'https://accounts.google.com/gsi/client') {
       return route.fulfill({
@@ -472,10 +471,7 @@ test('operations center exposes stale, reauthentication, and read-only recovery 
   );
   await captureCurrentRun(page, testInfo, 'operations-center-reauth.png');
 
-  await page.addInitScript(() => {
-    const current = JSON.parse(localStorage.getItem('user') || '{}');
-    localStorage.setItem('user', JSON.stringify({ ...current, permissions: ['operations.read'] }));
-  });
+  setSessionFixture(page, { ...getSessionFixture(page), permissions: ['operations.read'] });
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.getByRole('button', { name: 'View timeline' }).first()).toBeVisible();
   await expect(page.getByRole('button', { name: 'Acknowledge' })).toHaveCount(0);

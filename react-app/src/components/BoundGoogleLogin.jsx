@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import { authAPI } from '../services/api';
 import GlassButton from './glass/GlassButton';
 
-export default function BoundGoogleLogin({ onSuccess, onError }) {
+export default function BoundGoogleLogin({ onSuccess, onError, disabled = false }) {
   const [attempt, setAttempt] = useState(0);
   const [nonce, setNonce] = useState('');
   const [unavailable, setUnavailable] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const pending = useRef(false);
   useEffect(() => {
     const controller = new AbortController();
     let active = true;
@@ -37,10 +39,23 @@ export default function BoundGoogleLogin({ onSuccess, onError }) {
   }, [attempt]);
 
   const finish = async (result) => {
+    if (pending.current || disabled || !nonce) return;
+    pending.current = true;
+    setProcessing(true);
     setNonce('');
-    setUnavailable(true);
-    await onSuccess(result);
+    try {
+      await onSuccess(result);
+    } catch (_) {
+      onError();
+    } finally {
+      pending.current = false;
+      setProcessing(false);
+      setUnavailable(true);
+    }
   };
+  if (processing) return <span role="status">Completing Google sign-in…</span>;
+  if (disabled)
+    return <span role="status">Finish the current sign-in step to continue with Google.</span>;
   if (unavailable && !nonce) {
     return (
       <GlassButton

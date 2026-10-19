@@ -46,6 +46,14 @@ def check(
 
 
 class CompleteGateTests(unittest.TestCase):
+    def test_auth_journeys_remain_required_without_retries(self):
+        manifest = json.loads((MODULE_PATH.parents[1] / "config/complete-gate-v1.json").read_text())
+        item = next(row for row in manifest["checks"] if row["id"] == "feature-117-auth-journeys-browser")
+        self.assertTrue(item["required"])
+        self.assertEqual(item.get("maxAttempts", 1), 1)
+        self.assertFalse(item.get("retryOn"))
+        self.assertEqual(item["command"][-1], "--config=react-app/playwright.auth-journeys.config.mjs")
+
     def test_journey_budget_retains_full_matrix_and_single_attempt(self):
         manifest = json.loads((MODULE_PATH.parents[1] / "config/complete-gate-v1.json").read_text())
         item = next(row for row in manifest["checks"] if row["id"] == "feature-113-user-journeys")

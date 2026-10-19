@@ -144,6 +144,11 @@ def is_allowed(role: str, permission: str) -> bool:
     return permission in _ROLE_PERMISSIONS.get(str(role), frozenset())
 
 
+def permissions_for_role(role: str) -> list[str]:
+    """UI projection only; API actions continue to recheck current membership."""
+    return sorted(_ROLE_PERMISSIONS.get(str(role), frozenset()))
+
+
 def require_recent_reauthentication(
     *, authenticated_at: datetime, now: datetime | None = None, max_age_seconds: int = 300
 ) -> None:

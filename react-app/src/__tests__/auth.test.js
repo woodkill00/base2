@@ -37,6 +37,7 @@ const renderApp = (initialPath = '/login') => {
 describe('US2 login/logout UI', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    localStorage.clear();
   });
 
   test('successful login sets authenticated state', async () => {
@@ -47,9 +48,14 @@ describe('US2 login/logout UI', () => {
       display_name: '',
       avatar_url: '',
       bio: '',
+      access_token: 'synthetic-access',
     });
 
     renderApp('/login');
+
+    await waitFor(() =>
+      expect(screen.queryByText('Checking your session…')).not.toBeInTheDocument()
+    );
 
     await act(async () => {
       await user.type(screen.getByLabelText(/email/i), 'test@example.com');
@@ -73,10 +79,15 @@ describe('US2 login/logout UI', () => {
       display_name: '',
       avatar_url: '',
       bio: '',
+      access_token: 'synthetic-access',
     });
     authAPI.logout.mockResolvedValue({});
 
     renderApp('/login');
+
+    await waitFor(() =>
+      expect(screen.queryByText('Checking your session…')).not.toBeInTheDocument()
+    );
 
     await act(async () => {
       await user.type(screen.getByLabelText(/email/i), 'test@example.com');
@@ -111,6 +122,9 @@ describe('US2 login/logout UI', () => {
       access_token: 'fresh-access-token',
     });
     renderApp('/login');
+    await waitFor(() =>
+      expect(screen.queryByText('Checking your session…')).not.toBeInTheDocument()
+    );
     await act(async () => {
       await user.type(screen.getByLabelText(/email/i), 'test@example.com');
       await user.type(screen.getByLabelText(/^password$/i), 'Test1234');
@@ -123,5 +137,32 @@ describe('US2 login/logout UI', () => {
     });
     expect(authAPI.completeMfaLogin).toHaveBeenCalledWith('challenge-token', '123456');
     expect(await screen.findByRole('heading', { name: /dashboard/i })).toBeInTheDocument();
+  });
+
+  test('pasted recovery code is submitted intact and expired challenge can restart', async () => {
+    const user = userEvent.setup();
+    authAPI.login.mockResolvedValue({ mfa_required: true, challenge_token: 'synthetic-expired' });
+    authAPI.completeMfaLogin.mockRejectedValue({
+      message: 'Challenge expired. Start over.',
+      status: 401,
+      fields: {},
+    });
+    renderApp('/login');
+    await waitFor(() =>
+      expect(screen.queryByText('Checking your session…')).not.toBeInTheDocument()
+    );
+    await user.type(screen.getByLabelText(/email/i), 'test@example.com');
+    await user.type(screen.getByLabelText(/^password$/i), 'Test1234');
+    await user.click(screen.getByRole('button', { name: /^sign in$/i }));
+    const code = await screen.findByLabelText(/authenticator or recovery code/i);
+    await user.click(code);
+    await user.paste('recovery-code-123');
+    await user.click(screen.getByRole('button', { name: /verify and sign in/i }));
+    expect(authAPI.completeMfaLogin).toHaveBeenCalledWith('synthetic-expired', 'recovery-code-123');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Challenge expired');
+    expect(screen.queryByRole('heading', { name: /dashboard/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /start over/i }));
+    expect(screen.getByLabelText(/^password$/i)).toHaveValue('');
+    expect(screen.queryByLabelText(/authenticator or recovery code/i)).not.toBeInTheDocument();
   });
 });

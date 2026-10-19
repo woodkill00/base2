@@ -1,10 +1,20 @@
 import axios from 'axios';
 import { siteManifest } from '../config/siteRuntime';
+import { authSession } from './authSession';
 
 // Always use relative path for API, so Traefik can route correctly
 const API_URL = '/api';
 
 let refreshPromise = null;
+
+export const withSessionLock = (operation) =>
+  navigator.locks?.request
+    ? navigator.locks.request(
+        'base2-auth-session',
+        { signal: AbortSignal.timeout(15000) },
+        operation
+      )
+    : Promise.resolve().then(operation);
 
 const _getCookie = (name) => {
   try {
@@ -46,48 +56,6 @@ const _getCsrfToken = () => {
   return name ? _getCookie(name) : null;
 };
 
-const _getAccessToken = () => {
-  try {
-    return window.localStorage.getItem('token');
-  } catch (_) {
-    return null;
-  }
-};
-
-const _getRefreshToken = () => {
-  try {
-    return window.localStorage.getItem('refresh_token');
-  } catch (_) {
-    return null;
-  }
-};
-
-const _setTokensFromResponse = (data) => {
-  if (!data) {
-    return;
-  }
-  try {
-    if (data.access_token) {
-      window.localStorage.setItem('token', data.access_token);
-    }
-    if (data.refresh_token) {
-      window.localStorage.setItem('refresh_token', data.refresh_token);
-    }
-  } catch (_) {
-    // ignore
-  }
-};
-
-const _clearAuthStorage = () => {
-  try {
-    window.localStorage.removeItem('token');
-    window.localStorage.removeItem('refresh_token');
-    window.localStorage.removeItem('user');
-  } catch (_) {
-    // ignore
-  }
-};
-
 const _isAuthEndpoint = (url) => {
   const path = String(url || '');
   return (
@@ -99,34 +67,41 @@ const _isAuthEndpoint = (url) => {
   );
 };
 
-const _refreshAccessTokenSingleFlight = async () => {
+export const restoreSession = async () => {
   if (refreshPromise) {
     return refreshPromise;
   }
 
-  refreshPromise = (async () => {
-    const refreshToken = _getRefreshToken();
-    const body = refreshToken ? { refresh_token: refreshToken } : {};
-
+  const epoch = authSession.epoch();
+  const refresh = async () => {
+    if (!authSession.canRestore() || epoch !== authSession.epoch()) {
+      throw new Error('Session restoration blocked');
+    }
     const csrf = _getCsrfToken();
-    const headers = { 'Content-Type': 'application/json' };
+    const headers = { 'Content-Type': 'application/json', 'X-Tenant-Id': siteManifest.siteId };
     if (csrf) {
       headers['X-CSRF-Token'] = csrf;
     }
 
-    const resp = await axios.post(`${API_URL}/auth/refresh`, body, {
-      withCredentials: true,
-      headers,
-    });
-
-    _setTokensFromResponse(resp?.data);
-
-    const access = resp?.data?.access_token;
-    if (!access) {
-      throw new Error('refresh_missing_access_token');
+    const resp = await axios.post(
+      `${API_URL}/auth/refresh`,
+      {},
+      {
+        withCredentials: true,
+        headers,
+        timeout: 10000,
+      }
+    );
+    const profile = authSession.accept(resp?.data, epoch);
+    if (!profile) {
+      throw new Error('Session changed during restoration');
     }
-    return access;
-  })();
+    return profile;
+  };
+  // Serialize rotating HttpOnly cookies across tabs without sharing credentials.
+  // Unsupported browsers must explicitly sign in rather than race rotations.
+  if (!navigator.locks?.request) throw new Error('Secure session restoration unavailable');
+  refreshPromise = withSessionLock(refresh);
 
   try {
     return await refreshPromise;
@@ -145,13 +120,16 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   (config) => {
+    if (String(config.url || '').startsWith('/auth/') && config.timeout === 0)
+      config.timeout = 10000;
     config.headers = config.headers || {};
     config.headers['X-Tenant-Id'] = siteManifest.siteId;
     const csrf = _getCsrfToken();
     if (csrf) {
       config.headers['X-CSRF-Token'] = csrf;
     }
-    const token = _getAccessToken();
+    config.__authEpoch = authSession.epoch();
+    const token = authSession.access();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -161,7 +139,15 @@ apiClient.interceptors.request.use(
 );
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (
+      response.config?.__authEpoch !== undefined &&
+      response.config.__authEpoch !== authSession.epoch()
+    ) {
+      return Promise.reject(new Error('Session changed during request'));
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error?.config;
     const status = error?.response?.status;
@@ -170,8 +156,10 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    if (originalRequest.__authEpoch !== authSession.epoch()) return Promise.reject(error);
+
     if (originalRequest.__isRetryRequest) {
-      _clearAuthStorage();
+      authSession.invalidate('expired');
       return Promise.reject(error);
     }
 
@@ -182,12 +170,14 @@ apiClient.interceptors.response.use(
     originalRequest.__isRetryRequest = true;
 
     try {
-      const newAccessToken = await _refreshAccessTokenSingleFlight();
+      await restoreSession();
+      if (originalRequest.__authEpoch !== authSession.epoch()) throw new Error('Session changed');
+      const newAccessToken = authSession.access();
       originalRequest.headers = originalRequest.headers || {};
       originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
       return apiClient(originalRequest);
     } catch (refreshErr) {
-      _clearAuthStorage();
+      if (originalRequest.__authEpoch === authSession.epoch()) authSession.invalidate('expired');
       return Promise.reject(refreshErr);
     }
   }

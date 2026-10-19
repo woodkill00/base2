@@ -1,231 +1,157 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { authAPI } from '../services/api';
 import { normalizeApiError } from '../lib/apiErrors';
+import { authSession } from '../lib/authSession';
+import { restoreSession, withSessionLock } from '../lib/apiClient';
 
 const AuthContext = createContext(null);
 
-const safeStorageGet = (key) => {
-  try {
-    return window.localStorage.getItem(key);
-  } catch (_) {
-    return null;
-  }
-};
-
-const safeStorageSet = (key, value) => {
-  try {
-    window.localStorage.setItem(key, value);
-  } catch (_) {
-    // ignore
-  }
-};
-
-const safeStorageRemove = (key) => {
-  try {
-    window.localStorage.removeItem(key);
-  } catch (_) {
-    // ignore
-  }
-};
-
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    const storedUser = safeStorageGet('user');
-    if (!storedUser) {
-      return null;
-    }
-
-    try {
-      return JSON.parse(storedUser);
-    } catch (error) {
-      safeStorageRemove('user');
-      return null;
-    }
-  });
-  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [sessionNotice, setSessionNotice] = useState(null);
+  const busy = useRef(false);
+  const mounted = useRef(false);
 
   useEffect(() => {
-    // If we ever add async session verification, this is the hook.
-    setLoading(false);
-  }, []);
-
-  // Register with email/password
-  const register = async (email, password, name) => {
-    try {
-      setError(null);
-      const userPayload = await authAPI.register(email, password, name);
-      if (userPayload && userPayload.email) {
-        setUser(userPayload);
-        safeStorageSet('user', JSON.stringify(userPayload));
-        if (userPayload.access_token) {
-          safeStorageSet('token', userPayload.access_token);
-        }
-        if (userPayload.refresh_token) {
-          safeStorageSet('refresh_token', userPayload.refresh_token);
-        }
-      }
-      return { success: true, data: userPayload };
-    } catch (error) {
-      const apiErr = normalizeApiError(error, { fallbackMessage: 'Registration failed' });
-      setError(apiErr.message);
-      return {
-        success: false,
-        error: apiErr.message,
-        fields: apiErr.fields || null,
-        code: apiErr.code,
-      };
-    }
-  };
-
-  // Login with email/password
-  const loginWithEmail = async (email, password) => {
-    try {
-      setError(null);
-      const userPayload = await authAPI.login(email, password);
-
-      if (userPayload?.mfa_required && userPayload?.challenge_token) {
-        return {
-          success: false,
-          mfaRequired: true,
-          challengeToken: userPayload.challenge_token,
-          methods: userPayload.methods || [],
-          expiresIn: userPayload.expires_in,
-        };
-      }
-
-      if (userPayload && userPayload.email) {
-        safeStorageSet('user', JSON.stringify(userPayload));
-        if (userPayload.access_token) {
-          safeStorageSet('token', userPayload.access_token);
-        }
-        if (userPayload.refresh_token) {
-          safeStorageSet('refresh_token', userPayload.refresh_token);
-        }
-        setUser(userPayload);
-        return { success: true };
-      }
-
-      return { success: false, error: 'Invalid response from server' };
-    } catch (error) {
-      const apiErr = normalizeApiError(error, { fallbackMessage: 'Login failed' });
-      setError(apiErr.message);
-      return {
-        success: false,
-        error: apiErr.message,
-        fields: apiErr.fields || null,
-        code: apiErr.code,
-      };
-    }
-  };
-
-  const completeMfaLogin = async (challengeToken, code) => {
-    try {
-      setError(null);
-      const userPayload = await authAPI.completeMfaLogin(challengeToken, code);
-      if (!userPayload?.email || !userPayload?.access_token) {
-        return { success: false, error: 'Invalid response from server' };
-      }
-      safeStorageSet('user', JSON.stringify(userPayload));
-      safeStorageSet('token', userPayload.access_token);
-      if (userPayload.refresh_token) safeStorageSet('refresh_token', userPayload.refresh_token);
-      setUser(userPayload);
-      return { success: true };
-    } catch (error) {
-      const apiErr = normalizeApiError(error, {
-        fallbackMessage: 'Authentication code was not accepted',
-      });
-      setError(apiErr.message);
-      return { success: false, error: apiErr.message, code: apiErr.code };
-    }
-  };
-
-  // Login with Google OAuth
-  const loginWithGoogle = async (credential) => {
-    try {
-      setError(null);
-      const data = await authAPI.googleAuth(credential);
-
-      if (data?.mfa_required && data?.challenge_token) {
-        return {
-          success: false,
-          mfaRequired: true,
-          challengeToken: data.challenge_token,
-          methods: data.methods || [],
-          expiresIn: data.expires_in,
-        };
-      }
-
-      if (data && data.email && data.access_token) {
-        safeStorageSet('token', data.access_token);
-        if (data.refresh_token) {
-          safeStorageSet('refresh_token', data.refresh_token);
-        }
-        safeStorageSet('user', JSON.stringify(data));
-        setUser(data);
-        return { success: true };
-      }
-
-      return { success: false, error: 'Invalid response from server' };
-    } catch (error) {
-      const apiErr = normalizeApiError(error, { fallbackMessage: 'Google login failed' });
-      setError(apiErr.message);
-      return {
-        success: false,
-        error: apiErr.message,
-        fields: apiErr.fields || null,
-        code: apiErr.code,
-      };
-    }
-  };
-
-  // Legacy login function for compatibility
-  const login = (userData, token = null) => {
-    setUser(userData);
-    safeStorageSet('user', JSON.stringify(userData));
-    if (token) {
-      safeStorageSet('token', token);
-    }
-  };
-
-  // Logout
-  const logout = async () => {
-    try {
-      await authAPI.logout();
-    } catch (error) {
-      // Ignore network/server errors; we still clear local session state.
-    } finally {
+    mounted.current = true;
+    let active = true;
+    authSession.initialize();
+    const epoch = authSession.epoch();
+    const unsubscribe = authSession.subscribe((reason) => {
       setUser(null);
-      safeStorageRemove('user');
-      safeStorageRemove('token');
-      safeStorageRemove('refresh_token');
+      setSessionNotice(reason === 'expired' ? 'Your session ended. Please sign in again.' : null);
+    });
+    const onStorage = (event) => authSession.storageChanged(event);
+    const onPageShow = () => {
+      if (authSession.access() && !authSession.canRestore()) authSession.invalidate();
+    };
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('pageshow', onPageShow);
+    // StrictMode shares the client's single-flight request; discarded effects
+    // cannot apply its result or clear another effect's verified session.
+    const bootstrap = async () => {
+      try {
+        if (authSession.canRestore()) {
+          const profile = await restoreSession();
+          if (active && epoch === authSession.epoch()) setUser(profile);
+        }
+      } catch (cause) {
+        // Missing cookies are normal for signed-out visitors. Never trust a
+        // persisted profile or infer authentication from a failed refresh.
+        if (active) {
+          setUser(null);
+          if (cause?.response?.status !== 401)
+            setSessionNotice('Your previous sign-in could not be restored. Please sign in again.');
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    bootstrap();
+    return () => {
+      active = false;
+      mounted.current = false;
+      unsubscribe();
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('pageshow', onPageShow);
+    };
+  }, []);
+
+  const authenticate = async (operation, fallbackMessage) => {
+    if (loading || busy.current)
+      return { success: false, error: 'Please wait for the current sign-in request.' };
+    busy.current = true;
+    const epoch = authSession.epoch();
+    try {
+      setError(null);
+      const payload = await withSessionLock(async () => {
+        if (!mounted.current || epoch !== authSession.epoch())
+          throw new Error('Sign-in was cancelled.');
+        return operation();
+      });
+      if (!mounted.current || epoch !== authSession.epoch())
+        return { success: false, error: 'Sign-in was cancelled.' };
+      if (payload?.mfa_required && payload?.challenge_token) {
+        return {
+          success: false,
+          mfaRequired: true,
+          challengeToken: payload.challenge_token,
+          methods: payload.methods || [],
+          expiresIn: payload.expires_in,
+        };
+      }
+      const profile = authSession.accept(payload, epoch, { explicit: true });
+      if (!profile) return { success: false, error: 'Sign-in was cancelled.' };
+      setUser(profile);
+      setSessionNotice(null);
+      return { success: true, data: profile };
+    } catch (cause) {
+      const apiErr = normalizeApiError(cause, { fallbackMessage });
+      if (mounted.current && epoch === authSession.epoch()) setError(apiErr.message);
+      return {
+        success: false,
+        error: apiErr.message,
+        fields: apiErr.fields || null,
+        code: apiErr.code,
+      };
+    } finally {
+      busy.current = false;
     }
   };
 
-  // Update user profile
-  const updateUser = (userData) => {
-    const updatedUser = { ...(user || {}), ...userData };
-    setUser(updatedUser);
-    safeStorageSet('user', JSON.stringify(updatedUser));
+  const register = (email, password, name) =>
+    authenticate(() => authAPI.register(email, password, name), 'Registration failed');
+  const loginWithEmail = (email, password) =>
+    authenticate(() => authAPI.login(email, password), 'Login failed');
+  const loginWithGoogle = (credential) =>
+    authenticate(() => authAPI.googleAuth(credential), 'Google login failed');
+  const completeMfaLogin = (challengeToken, code) =>
+    authenticate(
+      () => authAPI.completeMfaLogin(challengeToken, code),
+      'Authentication code was not accepted'
+    );
+
+  // Compatibility requires an actual token, never an arbitrary persisted user.
+  const login = (userData, token = null) => {
+    const profile = authSession.accept({ ...userData, access_token: token }, authSession.epoch(), {
+      explicit: true,
+    });
+    setUser(profile);
   };
 
-  // Verify email
-  const verifyEmail = useCallback(async (token) => {
+  const logout = async () => {
+    authSession.invalidate();
+    setUser(null);
+    try {
+      await withSessionLock(() => authAPI.logout());
+      setSessionNotice('You are signed out.');
+      return { success: true, serverConfirmed: true };
+    } catch (_) {
+      const message =
+        'Signed out on this browser, but server logout could not be confirmed. Please retry logout when your connection returns.';
+      setSessionNotice(message);
+      return { success: false, serverConfirmed: false, error: message };
+    }
+  };
+
+  const updateUser = (data) =>
+    setUser((current) => (current ? { ...current, ...authSession.profile(data) } : null));
+
+  const accountAction = useCallback(async (operation, fallbackMessage, successMessage) => {
     try {
       setError(null);
-      const data = await authAPI.verifyEmail(token);
-      const message = data?.detail || 'Email verified successfully!';
-      return { success: true, message };
-    } catch (error) {
-      const apiErr = normalizeApiError(error, { fallbackMessage: 'Email verification failed' });
+      const data = await operation();
+      return { success: true, message: data?.detail || successMessage };
+    } catch (cause) {
+      const apiErr = normalizeApiError(cause, { fallbackMessage });
       setError(apiErr.message);
       return {
         success: false,
@@ -235,61 +161,49 @@ export const AuthProvider = ({ children }) => {
       };
     }
   }, []);
+  const verifyEmail = useCallback(
+    (token) =>
+      accountAction(
+        () => authAPI.verifyEmail(token),
+        'Email verification failed',
+        'Email verified successfully!'
+      ),
+    [accountAction]
+  );
+  const forgotPassword = (email) =>
+    accountAction(
+      () => authAPI.forgotPassword(email),
+      'Failed to send reset email',
+      'If the account exists, a password reset email has been requested'
+    );
+  const resetPassword = (token, password) =>
+    accountAction(
+      () => authAPI.resetPassword(token, password),
+      'Password reset failed',
+      'Password reset successfully'
+    );
 
-  // Request password reset
-  const forgotPassword = async (email) => {
-    try {
-      setError(null);
-      const data = await authAPI.forgotPassword(email);
-      const message = data?.detail || 'If the account exists, a password reset email has been sent';
-      return { success: true, message };
-    } catch (error) {
-      const apiErr = normalizeApiError(error, { fallbackMessage: 'Failed to send reset email' });
-      setError(apiErr.message);
-      return {
-        success: false,
-        error: apiErr.message,
-        fields: apiErr.fields || null,
-        code: apiErr.code,
-      };
-    }
-  };
-
-  // Reset password
-  const resetPassword = async (token, password) => {
-    try {
-      setError(null);
-      const data = await authAPI.resetPassword(token, password);
-      const message = data?.detail || 'Password reset successfully';
-      return { success: true, message };
-    } catch (error) {
-      const apiErr = normalizeApiError(error, { fallbackMessage: 'Password reset failed' });
-      setError(apiErr.message);
-      return {
-        success: false,
-        error: apiErr.message,
-        fields: apiErr.fields || null,
-        code: apiErr.code,
-      };
-    }
-  };
-
-  const value = {
-    user,
-    loading,
-    error,
-    isAuthenticated: !!user,
-    register,
-    loginWithEmail,
-    completeMfaLogin,
-    loginWithGoogle,
-    login, // Keep for compatibility
-    logout,
-    updateUser,
-    verifyEmail,
-    forgotPassword,
-    resetPassword,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        error,
+        sessionNotice,
+        isAuthenticated: !!user,
+        register,
+        loginWithEmail,
+        completeMfaLogin,
+        loginWithGoogle,
+        login,
+        logout,
+        updateUser,
+        verifyEmail,
+        forgotPassword,
+        resetPassword,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };

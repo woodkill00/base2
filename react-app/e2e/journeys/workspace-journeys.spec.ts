@@ -1,3 +1,4 @@
+import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { prepareCapture } from './capture';
@@ -42,17 +43,15 @@ for (const width of [390, 1440]) {
       page,
     }, info) => {
       await page.setViewportSize({ width, height: 900 });
-      await page.addInitScript((user) => {
-        localStorage.setItem('user', JSON.stringify(user));
-        localStorage.setItem('token', 'synthetic-workspace-token');
-      }, owner);
+      setSessionFixture(page, owner);
       let record: any = null;
       let creates = 0;
       let updates = 0;
       let imported = false;
       let commits = 0;
       const importBytes = Buffer.from('[{"title":"Imported synthetic title"}]');
-      await page.route('**/*', (route) => {
+      await page.route('**/*', async (route) => {
+        if (await fulfillSessionFixture(route)) return;
         const url = new URL(route.request().url());
         if (url.origin !== 'http://127.0.0.1:4194') return route.abort('blockedbyclient');
         const path = url.pathname;
@@ -215,12 +214,10 @@ for (const width of [390, 1440]) {
 
     test('unprivileged member never requests workspace data', async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
-      await page.addInitScript((user) => {
-        localStorage.setItem('user', JSON.stringify({ ...user, permissions: [] }));
-        localStorage.setItem('token', 'synthetic-workspace-token');
-      }, owner);
+      setSessionFixture(page, { ...owner, permissions: [] });
       let workspaceRequests = 0;
-      await page.route('**/*', (route) => {
+      await page.route('**/*', async (route) => {
+        if (await fulfillSessionFixture(route)) return;
         const url = new URL(route.request().url());
         if (url.origin !== 'http://127.0.0.1:4194') return route.abort('blockedbyclient');
         if (url.pathname.startsWith('/api/content/v1/')) workspaceRequests++;

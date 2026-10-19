@@ -1,3 +1,4 @@
+import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test } from './fixtures';
 import { assertApprovedReference } from '../live/approved-reference';
 import { expectedNotFound } from '../live/acceptance-contract.mjs';
@@ -8,7 +9,8 @@ for (const width of [390, 1440]) {
     test(`Volcano empty auth errors ${path} at ${width}px`, async ({ page }, info) => {
       await page.setViewportSize({ width, height: 900 });
       const submitted: string[] = [];
-      await page.route('**/api/**', (route) => {
+      await page.route('**/api/**', async (route) => {
+        if (await fulfillSessionFixture(route)) return;
         if (route.request().method() === 'POST')
           submitted.push(new URL(route.request().url()).pathname);
         return route.fulfill({
@@ -50,7 +52,8 @@ for (const path of ['/signup', '/ar/about']) {
       .context()
       .addCookies([{ name: 'theme', value: 'light', domain: '127.0.0.1', path: '/' }]);
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.route('**/*', (route) => {
+    await page.route('**/*', async (route) => {
+      if (await fulfillSessionFixture(route)) return;
       const url = new URL(route.request().url());
       if (!['127.0.0.1', 'localhost'].includes(url.hostname)) return route.abort();
       if (url.pathname.startsWith('/api/'))
@@ -110,18 +113,13 @@ for (const width of [390, 1440]) {
   ]) {
     test(`Volcano authenticated route ${path} at ${width}px`, async ({ page }, info) => {
       await page.setViewportSize({ width, height: 900 });
-      await page.addInitScript(() => {
-        localStorage.setItem(
-          'user',
-          JSON.stringify({
-            id: 'volcano-fixture',
-            email: 'volcano@example.test',
-            permissions: ['content-workspace.read', 'media.read', 'operations.read', 'audit.read'],
-          })
-        );
-        localStorage.setItem('token', 'synthetic-volcano-only');
+      setSessionFixture(page, {
+        id: 'volcano-fixture',
+        email: 'volcano@example.test',
+        permissions: ['content-workspace.read', 'media.read', 'operations.read', 'audit.read'],
       });
-      await page.route('**/*', (route) => {
+      await page.route('**/*', async (route) => {
+        if (await fulfillSessionFixture(route)) return;
         const url = new URL(route.request().url());
         if (!['127.0.0.1', 'localhost'].includes(url.hostname)) return route.abort();
         if (url.pathname.startsWith('/api/'))
@@ -183,7 +181,8 @@ for (const width of [390, 1440]) {
       const errors: string[] = [];
       page.on('pageerror', (error) => errors.push(error.message));
       await page.setViewportSize({ width, height: 900 });
-      await page.route('**/*', (route) => {
+      await page.route('**/*', async (route) => {
+        if (await fulfillSessionFixture(route)) return;
         const url = new URL(route.request().url());
         if (!['127.0.0.1', 'localhost'].includes(url.hostname)) return route.abort();
         if (url.pathname.startsWith('/api/'))

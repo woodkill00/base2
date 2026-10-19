@@ -397,6 +397,11 @@ class Settings(BaseSettings):
                         'Missing required OAuth env var(s): ' + ', '.join(oauth_missing)
                     )
 
+            if not self.AUTH_REFRESH_COOKIE or not self.COOKIE_SECURE:
+                raise RuntimeError(
+                    'Hosted authentication requires AUTH_REFRESH_COOKIE and COOKIE_SECURE'
+                )
+
             samesite = (self.COOKIE_SAMESITE or '').strip()
             if samesite not in {'Lax', 'Strict', 'None'}:
                 raise RuntimeError(f'Invalid COOKIE_SAMESITE: {samesite}')

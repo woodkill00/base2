@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 
 import { useAuth } from '../contexts/AuthContext';
+import { authReturnPath } from '../lib/authReturnPath';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -23,7 +24,7 @@ const ProtectedRoute = ({ children }) => {
 
   if (isAuthenticated) return children;
 
-  const next = `${location.pathname}${location.search || ''}`;
+  const next = authReturnPath(location.pathname);
   return <Navigate to={`/login?next=${encodeURIComponent(next)}`} replace />;
 };
 

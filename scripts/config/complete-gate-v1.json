@@ -2,6 +2,23 @@
   "schemaVersion": 1,
   "checks": [
     {
+      "id": "feature-117-auth-journeys-browser",
+      "command": [
+        "npm",
+        "--prefix",
+        "react-app",
+        "exec",
+        "--",
+        "playwright",
+        "test",
+        "--config=react-app/playwright.auth-journeys.config.mjs"
+      ],
+      "required": true,
+      "timeoutSeconds": 240,
+      "dependsOn": [],
+      "requiredTools": ["node", "npm"]
+    },
+    {
       "id": "feature-115-email-container-contract",
       "command": [
         "python3",

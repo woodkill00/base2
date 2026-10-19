@@ -598,6 +598,8 @@ def main() -> None:
             "-e",
             "BASE2_DISPOSABLE_JOURNEY=1",
             "-e",
+            "FRONTEND_URL=https://example.test",
+            "-e",
             "CELERY_BROKER_URL=redis://127.0.0.1:6379/0",
             "-e",
             f"JWT_SECRET={secrets.token_urlsafe(48)}",
@@ -608,15 +610,24 @@ def main() -> None:
         # Exercise outbox health with the restricted API role for enqueue and
         # the dedicated worker role for observation, on this disposable DB.
         email_check = journey_check[:-1] + [
-            '-m', 'pytest', '-q', '-o', 'addopts=', '-p', 'no:cacheprovider',
-            'api/tests/test_email_outbox.py',
-            'api/tests/test_preview_media_fixture_integration.py',
-            'api/tests/test_google_challenge_integration.py',
+            "-m",
+            "pytest",
+            "-q",
+            "-o",
+            "addopts=",
+            "-p",
+            "no:cacheprovider",
+            "api/tests/test_email_outbox.py",
+            "api/tests/test_preview_media_fixture_integration.py",
+            "api/tests/test_google_challenge_integration.py",
         ]
         email_check[3:3] = [
-            '-e', 'SITE_PROFILE=base2-obsidian',
-            '-e', 'EMAIL_WORKER_DB_USER=base2_email_worker',
-            '-e', f'EMAIL_WORKER_DB_PASSWORD={email_worker_password}',
+            "-e",
+            "SITE_PROFILE=base2-obsidian",
+            "-e",
+            "EMAIL_WORKER_DB_USER=base2_email_worker",
+            "-e",
+            f"EMAIL_WORKER_DB_PASSWORD={email_worker_password}",
         ]
         run(email_check)
     finally:

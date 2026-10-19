@@ -19,6 +19,8 @@ SCOPE_LIMITS: dict[str, tuple[int, int]] = {
     # Forgot-password is intentionally a bit higher.
     'forgot_password': (900_000, 10),
     'forgot_password_email': (900_000, 5),
+    'resend_verification': (900_000, 10),
+    'resend_verification_email': (60_000, 1),
     # Public forms are tenant/IP scoped by their caller.
     'public_form': (60_000, 10),
     # Authenticated community writes remain bounded per tenant and source.
@@ -134,7 +136,7 @@ def incr_and_check_tenant_detailed(
     window_ms, max_requests = _limit_for_scope(scope)
     start = bucket_start_for_window(ts, window_ms)
     identifier_digest = hashlib.sha256(str(identifier).encode()).hexdigest()
-    k = tenant_key("rate-limit", tenant_id, scope, identifier_digest, str(start))
+    k = tenant_key('rate-limit', tenant_id, scope, identifier_digest, str(start))
     pipe = c.pipeline()
     pipe.incr(k, 1)
     pipe.pexpire(k, window_ms)

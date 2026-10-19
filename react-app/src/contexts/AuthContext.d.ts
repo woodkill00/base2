@@ -8,13 +8,14 @@ export interface AuthState {
   user: AuthUser | null;
   loading: boolean;
   error: string | null;
+  sessionNotice: string | null;
   isAuthenticated: boolean;
   register(email: string, password: string, name?: string): Promise<unknown>;
   loginWithEmail(email: string, password: string): Promise<unknown>;
   completeMfaLogin(challengeToken: string, code: string): Promise<unknown>;
   loginWithGoogle(credential: string): Promise<unknown>;
   login(user: AuthUser, token?: string | null): void;
-  logout(): Promise<void>;
+  logout(): Promise<{ success: boolean; serverConfirmed: boolean; error?: string }>;
   updateUser(user: Partial<AuthUser>): void;
   verifyEmail(token: string): Promise<unknown>;
   forgotPassword(email: string): Promise<unknown>;

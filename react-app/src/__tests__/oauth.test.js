@@ -74,7 +74,7 @@ describe('Phase 14 Option A Google Sign-In', () => {
       expect(screen.getByRole('heading', { name: /dashboard/i })).toBeInTheDocument();
     });
 
-    const stored = JSON.parse(localStorage.getItem('user'));
-    expect(stored.email).toBe('oauthuser@example.com');
+    expect(localStorage.getItem('user')).toBeNull();
+    expect(localStorage.getItem('token')).toBeNull();
   });
 });

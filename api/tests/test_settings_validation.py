@@ -71,6 +71,12 @@ def test_staging_requires_valid_private_workspace_storage_configuration(monkeypa
         monkeypatch.setenv(key, value)
     assert Settings().CONTENT_WORKSPACE_STORAGE_ROOT.startswith('/')
 
+    for cookie_setting in ('AUTH_REFRESH_COOKIE', 'COOKIE_SECURE'):
+        monkeypatch.setenv(cookie_setting, 'false')
+        with pytest.raises(RuntimeError, match='Hosted authentication requires'):
+            Settings()
+        monkeypatch.setenv(cookie_setting, 'true')
+
     monkeypatch.setenv('CONTENT_WORKSPACE_STORAGE_KEY', 'too-short')
     with pytest.raises(RuntimeError, match='CONTENT_WORKSPACE_STORAGE_KEY'):
         Settings()

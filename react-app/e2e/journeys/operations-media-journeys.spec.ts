@@ -1,16 +1,11 @@
+import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { prepareCapture } from './capture';
 const axe = readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
 
 async function member(page: Page, permissions: string[]) {
-  await page.addInitScript((permissions) => {
-    localStorage.setItem(
-      'user',
-      JSON.stringify({ id: 'synthetic-user', email: 'reader@example.test', permissions })
-    );
-    localStorage.setItem('token', 'synthetic-reader-token');
-  }, permissions);
+  setSessionFixture(page, { id: 'synthetic-user', email: 'reader@example.test', permissions });
 }
 async function capture(page: Page, info: TestInfo, name: string) {
   await prepareCapture(page);
@@ -42,7 +37,8 @@ for (const width of [390, 1440]) {
       await member(page, ['operations.read']);
       let fail = false;
       let mutations = 0;
-      await page.route('**/*', (route) => {
+      await page.route('**/*', async (route) => {
+        if (await fulfillSessionFixture(route)) return;
         const url = new URL(route.request().url());
         if (url.origin !== 'http://127.0.0.1:4194') return route.abort('blockedbyclient');
         if (!url.pathname.startsWith('/api/')) return route.continue();
@@ -128,7 +124,8 @@ for (const width of [390, 1440]) {
         byteSize: 512,
         version: 1,
       };
-      await page.route('**/*', (route) => {
+      await page.route('**/*', async (route) => {
+        if (await fulfillSessionFixture(route)) return;
         const url = new URL(route.request().url());
         if (url.origin !== 'http://127.0.0.1:4194') return route.abort('blockedbyclient');
         if (!url.pathname.startsWith('/api/')) return route.continue();

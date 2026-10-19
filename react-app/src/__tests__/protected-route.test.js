@@ -1,3 +1,9 @@
+import { restoreSession } from '../lib/apiClient';
+vi.mock('../lib/apiClient', () => ({
+  default: {},
+  withSessionLock: (operation) => operation(),
+  restoreSession: vi.fn(),
+}));
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
@@ -33,6 +39,7 @@ const renderAt = (initialPath) => {
 describe('US3 ProtectedRoute', () => {
   beforeEach(() => {
     localStorage.clear();
+    restoreSession.mockRejectedValue(new Error('No cookie'));
   });
 
   test('redirects unauthenticated users to /login', async () => {
@@ -44,16 +51,13 @@ describe('US3 ProtectedRoute', () => {
   });
 
   test('renders child route when authenticated', async () => {
-    localStorage.setItem(
-      'user',
-      JSON.stringify({
-        id: '1',
-        email: 'test@example.com',
-        display_name: 'Tester',
-        avatar_url: '',
-        bio: '',
-      })
-    );
+    restoreSession.mockResolvedValue({
+      id: '1',
+      email: 'test@example.com',
+      display_name: 'Tester',
+      avatar_url: '',
+      bio: '',
+    });
 
     renderAt('/dashboard');
 

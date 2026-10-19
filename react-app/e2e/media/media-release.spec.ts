@@ -1,3 +1,4 @@
+import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
@@ -38,16 +39,14 @@ test.beforeEach(async ({ page }, testInfo) => {
       .context()
       .addCookies([{ name: 'theme', value: 'light', domain: '127.0.0.1', path: '/' }]);
   }
-  await page.addInitScript((user) => {
-    localStorage.setItem('user', JSON.stringify(user));
-    localStorage.setItem('token', 'non-secret-media-fixture');
-  }, fixtureUser);
+  setSessionFixture(page, fixtureUser);
   const failures: string[] = [];
   page.on('console', (message) => {
     if (message.type() === 'error') failures.push(`console:${message.text()}`);
   });
   page.on('requestfailed', (request) => failures.push(`request:${request.url()}`));
   await page.route('**/*', async (route) => {
+    if (await fulfillSessionFixture(route)) return;
     const url = new URL(route.request().url());
     if (url.href === 'https://accounts.google.com/gsi/client') {
       return route.fulfill({

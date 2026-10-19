@@ -82,7 +82,7 @@ describe('T092 Password reset UI', () => {
     expect(await screen.findByText(/password reset email has been sent/i)).toBeInTheDocument();
   });
 
-  test('reset password uses token and redirects to login', async () => {
+  test('reset success persists until the user chooses to sign in', async () => {
     jest.useFakeTimers();
     authAPI.resetPassword.mockResolvedValue({ detail: 'Password reset. Please log in.' });
 
@@ -116,7 +116,11 @@ describe('T092 Password reset UI', () => {
       jest.advanceTimersByTime(2100);
     });
 
-    expect(await screen.findByRole('heading', { name: /login/i })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /^login$/i })).not.toBeInTheDocument();
+    expect(screen.getByText('Password reset. Please log in.')).toBeVisible();
+    expect(screen.queryByLabelText('New password')).not.toBeInTheDocument();
+    await act(async () => user.click(screen.getByRole('link', { name: 'Continue to sign in' })));
+    expect(await screen.findByRole('heading', { name: /^login$/i })).toBeInTheDocument();
 
     jest.useRealTimers();
   });
