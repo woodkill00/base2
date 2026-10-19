@@ -6,6 +6,9 @@ for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     let requests = 0;
     const authPosts: string[] = [];
+    await page.route('**/api/auth/refresh', (route) =>
+      route.fulfill({ status: 401, json: { detail: 'Not authenticated' } })
+    );
     page.on('request', (request) => {
       const path = new URL(request.url()).pathname;
       if (request.method() === 'POST' && path.startsWith('/api/auth/')) authPosts.push(path);
@@ -27,6 +30,7 @@ for (const width of [390, 1440]) {
       });
     });
     await page.goto('/login');
+    await expect(page.getByText('Checking your session…')).toHaveCount(0);
     await expect(page.locator('.volcano-layout')).toHaveCount(1);
     const retry = page.getByRole('button', { name: 'Retry Google sign-in' });
     await expect(retry).toBeVisible();
@@ -48,13 +52,16 @@ for (const width of [390, 1440]) {
     });
     const beforeSubmit = [...authPosts];
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-    await expect(page.getByText('Please fix the highlighted fields', { exact: true })).toBeVisible();
+    await expect(
+      page.getByText('Please fix the highlighted fields', { exact: true })
+    ).toBeVisible();
     await expect(page.locator('#email-error')).toBeVisible();
     await expect(page.locator('#password-error')).toBeVisible();
     expect(authPosts).toEqual(beforeSubmit);
-    expect(authPosts).toEqual([
+    expect(authPosts.filter((path) => path !== '/api/auth/refresh')).toEqual([
       '/api/auth/oauth/google/challenge',
       '/api/auth/oauth/google/challenge',
     ]);
+    expect(authPosts.filter((path) => path === '/api/auth/refresh')).toHaveLength(1);
   });
 }

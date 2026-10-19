@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures';
-import { readFileSync } from 'node:fs';
+import axe from 'axe-core';
 
-const axeSource = readFileSync('node_modules/axe-core/axe.min.js', 'utf8');
+const axeSource = axe.source;
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/*', (route) => {

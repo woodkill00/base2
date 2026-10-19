@@ -18,7 +18,7 @@ for (const suffix of ['', '-report']) {
 }
 export default defineConfig({
   testDir: './e2e/layout',
-  testIgnore: /volcano-preservation\.spec\.ts/,
+  testIgnore: /(?:volcano-preservation|auth-journeys)\.spec\.ts/,
   workers: 1,
   retries: 0,
   projects: [

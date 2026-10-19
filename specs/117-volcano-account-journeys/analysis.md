@@ -129,6 +129,30 @@ replacement regression invalidates earlier-account epochs on explicit sign-in;
 35 focused session/auth tests passed. This later change still requires the final
 full gate rather than reusing the earlier frontend receipt.
 
+## Cycle 6: complete-gate integration repair
+
+Candidate `80f635a` completed the first gate in approximately 14 minutes.
+Evidence: `.artifacts/complete-gate/20261019T225723Z-1986394/result.json`.
+Five checks failed, grouped into four causes: cwd-relative axe loading affected
+both dedicated auth and generic layout discovery; the new auth suite also needed
+exclusion from the generic layout configuration; Google proof omitted the new
+bootstrap request; exact-head repetition evidence and the media review source
+binding needed renewal (the latter follows a changed synthetic session fixture).
+Dependent blocked checks were not counted as passes.
+
+Repair: import axe through module resolution; dedicate the auth suite to its
+required Volcano-configured gate entry; explicitly mock and assert exactly one
+bootstrap request in Google proof. Root-invoked auth suite now passes 42 checks,
+Google proof passes two, and generic layout discovery succeeds. Save fresh media
+captures alongside unchanged baseline comparisons and use the existing guarded
+review-renewal helper. Generate exact-head repetitions before the next gate.
+
+The first gate also passed 427 frontend unit tests (83.31% line coverage), all
+73 Volcano preservation checks, 120 user journeys and restricted database
+acceptance. These successes do not make the failed gate acceptable. Full-gate
+count: 1; deployment count: 0. No baselines changed, no live-resource authority
+assumed, and no failure receipts edited.
+
 Disposable PostgreSQL acceptance first failed closed on resend (503): the old
 fixture had no trusted FRONTEND_URL. Added only `https://example.test` to its
 environment; missing-origin rejection remains regression tested. Second trial

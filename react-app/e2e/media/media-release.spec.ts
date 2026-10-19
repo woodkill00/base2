@@ -192,6 +192,11 @@ test('media detail preserves safe preview usage and consequence context', async 
     caret: 'hide',
     maxDiffPixelRatio: 0.01,
   });
+  await dialog.screenshot({
+    path: testInfo.outputPath('current-media-detail.png'),
+    animations: 'disabled',
+    caret: 'hide',
+  });
   releaseLifecycle();
   await expect(dialog.getByRole('heading', { name: 'Archive and deletion safety' })).toBeFocused();
   await expect(dialog.getByRole('status')).toContainText('soft deleted completed.');
@@ -232,6 +237,11 @@ test('media picker is visually and keyboard contained in a real workflow', async
     animations: 'disabled',
     caret: 'hide',
     maxDiffPixelRatio: 0.01,
+  });
+  await picker.screenshot({
+    path: testInfo.outputPath('current-media-picker.png'),
+    animations: 'disabled',
+    caret: 'hide',
   });
   await picker.getByRole('button', { name: 'Use selected media' }).click();
   await expect(opener).toBeFocused();
@@ -384,6 +394,12 @@ test('media library is accessible responsive and visually reviewed', async ({ pa
     animations: 'disabled',
     caret: 'hide',
     maxDiffPixelRatio: 0.01,
+  });
+  await page.screenshot({
+    path: testInfo.outputPath('current-media-library.png'),
+    fullPage: true,
+    animations: 'disabled',
+    caret: 'hide',
   });
 });
 
