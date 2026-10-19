@@ -21,11 +21,11 @@
 - [x] T017 Make logout success/failure explicit; clear private UI and prevent late
       auth responses, other tabs or browser Back from restoring stale authenticated UI.
 - [x] T018 Add safe session-expiry explanation and bounded internal return navigation.
-- [ ] T019 Audit all root E2E, frontend, live helpers and generated profile consumers.
-- [ ] T020 Validate keyboard, screen-reader announcements, loading/error/disabled states,
+- [x] T019 Audit all root E2E, frontend, live helpers and generated profile consumers.
+- [x] T020 Validate keyboard, screen-reader announcements, loading/error/disabled states,
       mobile/desktop, zoom, reduced motion, preferences and screenshot review.
 - [x] T021 Run restricted-role integration and server-boundary/security regressions.
-- [ ] T022 Review changed-line and critical-component coverage; preserve all floors.
+- [x] T022 Review changed-line and critical-component coverage; preserve all floors.
 - [ ] T023 Run exact-source stability prerequisites and complete release gate.
 - [ ] T024 Record limitations, source-bound results and rollback; publish/observe CI
       within applicable authority. Paid/live trial requires a fresh bounded approval.

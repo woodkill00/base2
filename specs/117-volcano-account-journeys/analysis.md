@@ -160,6 +160,29 @@ zoomed picker and light-detail captures inspected. The supported renewal helper
 updated only the review source binding; no reference images were rewritten.
 Parent merge and a new bounded live preview remain awaiting owner approval.
 
+## Cycle 7: complete evidence-binding audit
+
+Second gate on `ae83bac` finished with one failed check:
+`operations-visual-contract`. Its source hashes predated Navigation's explicit
+logout result and the operations session fixture migration. Other independent
+checks passed; dependent blocked checks were not promoted to passes. Evidence:
+`.artifacts/complete-gate/20261019T231455Z-2028132/result.json`.
+
+Audited remaining source-bound visual consumers together. Operations needed a
+fixed manifest renewal; media was current, workspace evidence is generated from
+current sources. Added retained current operations screenshots, ran the actual
+matrix (22 passed, 20 deliberate state-matrix exclusions), inspected desktop,
+compact and unavailable-data captures, and used the supported evidence builder.
+The regenerated manifest changes exactly two source hashes; all 35 approved
+image hashes and the runner receipt remain unchanged. Eleven visual-manifest
+contract tests passed. Captures: `.artifacts/feature117-batch2/operations-captures/`.
+
+A draft-push attempt during the gate triggered the normal local pre-push suite;
+that attempt and its owned child processes were stopped to avoid overlapping
+heavy work. No push occurred and no hook was bypassed. Retry publication only
+after the complete gate finishes, so the supported hook can reuse exact evidence.
+Full-gate attempts so far: 2. Cloud deployments/provider mail actions: 0.
+
 Disposable PostgreSQL acceptance first failed closed on resend (503): the old
 fixture had no trusted FRONTEND_URL. Added only `https://example.test` to its
 environment; missing-origin rejection remains regression tested. Second trial

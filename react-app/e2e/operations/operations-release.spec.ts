@@ -19,6 +19,7 @@ async function captureCurrentRun(page, testInfo, name, maxDiffPixelRatio = 0.01)
   });
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await expect(page).toHaveScreenshot(name, { ...options, maxDiffPixelRatio });
+  await page.screenshot({ ...options, path: testInfo.outputPath(`current-${name}`) });
   const acceptedCapture = testInfo.snapshotPath(name);
   await testInfo.attach(`visual:${basename(testInfo.snapshotPath(name))}`, {
     // Attach the exact snapshot that Playwright just compared successfully.
