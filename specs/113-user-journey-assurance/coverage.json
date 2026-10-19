@@ -41,7 +41,8 @@
       "states": ["enabled-populated", "disabled", "missing", "unavailable"],
       "tests": ["react-app/e2e/layout/route-families.spec.ts"],
       "visual": "capture-only",
-      "backend": "pending",
+      "backend": "partial",
+      "backendTests": ["api/tests/test_optional_modules_integration.py"],
       "remaining": ["enabled optional packs remain disabled in the deployed Base2 profile"],
       "additionalTests": ["react-app/e2e/journeys/enabled-modules.spec.ts"]
     },
@@ -52,7 +53,11 @@
       "states": ["available", "full", "duplicate", "cancelled"],
       "tests": ["react-app/e2e/layout/route-families.spec.ts"],
       "visual": "capture-only",
-      "backend": "pending",
+      "backend": "partial",
+      "backendTests": [
+        "scripts/python/run_scheduling_postgres_acceptance.py",
+        "api/tests/test_optional_modules_integration.py"
+      ],
       "remaining": ["no cancellation UI exists; backend cancellation is separate"],
       "additionalTests": [
         "react-app/e2e/journeys/enabled-modules.spec.ts",

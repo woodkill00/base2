@@ -39,7 +39,10 @@ def load_trial(path: Path, domain: str, *, now=None, ttl_minutes=60):
     if (
         domain != "woodkilldev.com"
         or data["domain"] != domain
-        or data["recipient"] != "thejunkmailvoid@gmail.com"
+        or data["recipient"] not in (
+            "thejunkmailvoid@gmail.com",
+            "thejunkmailvoid+base2-test@gmail.com",
+        )
         or not isinstance(data["fromAddress"], str)
         or not re.fullmatch(r"[A-Za-z0-9._+-]+@woodkilldev\.com", data["fromAddress"])
         or not isinstance(data["apiKey"], str)

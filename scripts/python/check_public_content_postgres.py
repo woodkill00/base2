@@ -17,7 +17,10 @@ def check(owner, pool_context, user, password):
     media = [str(uuid4()) for _ in range(3)]
     with owner, owner.cursor() as cur:
         for record_id, site, state in zip(
-            ids, [tenant, tenant, other, tenant], ["published", "draft", "published", "archived"], strict=False
+            ids,
+            [tenant, tenant, other, tenant],
+            ["published", "draft", "published", "archived"],
+            strict=False,
         ):
             cur.execute(
                 """INSERT INTO sitecontent_contentrecord
@@ -36,7 +39,10 @@ def check(owner, pool_context, user, password):
                 (str(uuid4()), site, record_id),
             )
         for asset_id, visibility, status in zip(
-            media, ["public", "private", "public"], ["validated", "validated", "quarantined"], strict=False
+            media,
+            ["public", "private", "public"],
+            ["validated", "validated", "quarantined"],
+            strict=False,
         ):
             cur.execute(
                 """INSERT INTO sitecontent_mediaasset
@@ -68,6 +74,65 @@ def check(owner, pool_context, user, password):
             with db.db_conn() as conn, conn.cursor() as cur:
                 cur.execute("SELECT id FROM sitecontent_contentrecord")
                 assert cur.fetchall() == []  # Pool reset must remove the preceding tenant.
+            # Exercise the exact optional pack types used by the browser, with
+            # publication changes in real storage rather than route mocks.
+            for content_type in ("blog-post", "portfolio-item", "doc-page"):
+                with owner, owner.cursor() as cur:
+                    cur.execute(
+                        "UPDATE sitecontent_contentrecord SET content_type=%s "
+                        "WHERE id=ANY(%s::uuid[])",
+                        (content_type, ids),
+                    )
+                assert repo.get_content(site_id=tenant, content_type=content_type, slug=ids[0])
+                assert (
+                    repo.get_content(site_id=other, content_type=content_type, slug=ids[0]) is None
+                )
+                assert (
+                    repo.get_content(site_id=tenant, content_type=content_type, slug=ids[1]) is None
+                )
+                assert (
+                    len(
+                        repo.list_content(
+                            site_id=tenant, limit=10, cursor=None, content_type=content_type
+                        )["items"]
+                    )
+                    == 1
+                )
+                assert (
+                    repo.list_content(site_id=tenant, limit=10, cursor=None, content_type="page")[
+                        "items"
+                    ]
+                    == []
+                )
+                with owner, owner.cursor() as cur:
+                    cur.execute(
+                        "UPDATE sitecontent_contentrecord SET state='published' WHERE id=%s",
+                        (ids[1],),
+                    )
+                assert (
+                    len(
+                        repo.list_content(
+                            site_id=tenant, limit=10, cursor=None, content_type=content_type
+                        )["items"]
+                    )
+                    == 2
+                )
+                with owner, owner.cursor() as cur:
+                    cur.execute(
+                        "UPDATE sitecontent_contentrecord SET state='archived' WHERE id=%s",
+                        (ids[0],),
+                    )
+                assert (
+                    repo.get_content(site_id=tenant, content_type=content_type, slug=ids[0]) is None
+                )
+                with owner, owner.cursor() as cur:
+                    cur.execute(
+                        "UPDATE sitecontent_contentrecord SET state='published' WHERE id=%s",
+                        (ids[0],),
+                    )
+                    cur.execute(
+                        "UPDATE sitecontent_contentrecord SET state='draft' WHERE id=%s", (ids[1],)
+                    )
             for sql in (
                 "UPDATE sitecontent_contentrecord SET title=title",
                 "DELETE FROM sitecontent_contentrecord",
@@ -165,6 +230,16 @@ def check(owner, pool_context, user, password):
                 cur.execute("SELECT id FROM sitecontent_formsubmission")
                 assert cur.fetchall() == []
         with owner, owner.cursor() as cur:
+            cur.execute(
+                """SELECT form_key,payload,consent,status,delivered_at,
+                          retained_until > NOW()
+                   FROM sitecontent_formsubmission WHERE id=%s AND site_id=%s""",
+                (str(receipt["id"]), tenant),
+            )
+            assert cur.fetchone() == (
+                "contact", {"message": "test"}, {"processing": True},
+                "queued", None, True,
+            ), "contact_submission_not_stored_without_delivery"
             cur.execute(
                 "SELECT adapter,status FROM sitecontent_formdeliveryoutbox WHERE submission_id=%s",
                 (str(receipt["id"]),),

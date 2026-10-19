@@ -35,6 +35,19 @@ def main() -> None:
             if expected.startswith("api-"):
                 api_role = os.environ["API_RUNTIME_DB_USER"]
                 forward = expected == "api-forward"
+                # Both historical targets precede booking capability 0035.
+                cursor.execute(
+                    "SELECT to_regprocedure('public.base2_reserve_booking(uuid,uuid,text,integer)')"
+                )
+                assert cursor.fetchone()[0] is None, "booking_reverse_function_leaked"
+                cursor.execute(
+                    "SELECT has_table_privilege(%s,'scheduling_event','SELECT')", (api_role,)
+                )
+                assert cursor.fetchone()[0] is False, "booking_reverse_read_grant_leaked"
+                cursor.execute(
+                    "SELECT COUNT(*) FROM pg_policies WHERE policyname='booking_event_read'"
+                )
+                assert cursor.fetchone()[0] == 0, "booking_reverse_policy_leaked"
                 cursor.execute(
                     "SELECT has_table_privilege(%s,'api_email_outbox','SELECT'),"
                     "has_table_privilege(%s,'api_email_outbox','UPDATE')",
@@ -53,16 +66,14 @@ def main() -> None:
                     "has_column_privilege(%s,'sitecontent_formsubmission','payload','INSERT')",
                     (api_role, api_role),
                 )
-                assert cursor.fetchone() == (False, False), 'public_content_reverse_grants_leaked'
+                assert cursor.fetchone() == (False, False), "public_content_reverse_grants_leaked"
                 cursor.execute(
                     "SELECT rolsuper,rolcreatedb,rolcreaterole,rolbypassrls "
                     "FROM pg_roles WHERE rolname=%s",
                     (api_role,),
                 )
                 assert cursor.fetchone() == (False, False, False, False)
-                cursor.execute(
-                    "SELECT COUNT(*) FROM pg_proc WHERE proname='base2_enqueue_email'"
-                )
+                cursor.execute("SELECT COUNT(*) FROM pg_proc WHERE proname='base2_enqueue_email'")
                 assert (cursor.fetchone()[0] == 1) is forward
                 if forward:
                     cursor.execute(
@@ -101,13 +112,9 @@ def main() -> None:
             worker = os.environ["WORKSPACE_WORKER_DB_USER"]
             runtime = os.environ["WORKSPACE_DB_USER"]
             for table in TABLES:
-                cursor.execute(
-                    "SELECT has_table_privilege(%s, %s, 'SELECT')", (worker, table)
-                )
+                cursor.execute("SELECT has_table_privilege(%s, %s, 'SELECT')", (worker, table))
                 assert cursor.fetchone()[0] is (expected == "forward")
-                cursor.execute(
-                    "SELECT has_table_privilege(%s, %s, 'SELECT')", (runtime, table)
-                )
+                cursor.execute("SELECT has_table_privilege(%s, %s, 'SELECT')", (runtime, table))
                 assert cursor.fetchone()[0] is True
             cursor.execute(
                 """SELECT qual FROM pg_policies

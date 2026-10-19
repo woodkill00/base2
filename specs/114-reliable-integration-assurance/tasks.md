@@ -4,13 +4,22 @@
 
 - [x] T077 Preserve the be2618d gate timeout, measure the unchanged 102-case journey matrix once under a bounded diagnostic, and correct only its aggregate gate timeout with a regression preserving the complete command, required status and single attempt. Final exact-source gate remains required.
 
-- [ ] T076 Correct the live empty-form assertion to distinguish exactly one configured Google challenge from credential exchange, assert no new POST on empty submit, and add provider-free browser/contract regressions. Preserve the 2e95988 live failures; do not relabel the changed harness as an exact-source live pass.
+- [x] T076 Correct the live empty-form assertion to distinguish exactly one configured Google challenge from credential exchange, assert no new POST on empty submit, and add provider-free browser/contract regressions. Preserve the 2e95988 live failures; do not relabel the changed harness as an exact-source live pass.
 
 - [x] T071 Reproduce Gunicorn's default control socket against a non-writable home using the actual API entrypoint, disable the unused control surface, and retain HTTP readiness/shutdown tests without weakening container isolation.
 - [x] T072 Review measured pgAdmin startup against the configured health/startup bounds; preserve slow-start evidence and distinguish initialization from runtime failure.
-- [ ] T073 Reconcile tasks against exact-source local/CI/live evidence, audit integration notification and security gaps, and explicitly retain unexplained intermittency.
-- [ ] T074 Verify current local/hosted evidence, merge PR #80 with ancestry preserved, and verify post-merge CI; no additional live trial authorized.
-- [ ] T075 Bind the selected GIS popup ID token to a server-issued, expiring, one-use browser nonce; test missing/wrong browser, expiry, replay, provider failure, Redis failure, disabled mode and UI recovery. Keep the unused authorization-code path explicitly separate. Fresh human live validation requires renewed approval before merge.
+- [x] T073 Reconcile tasks against exact-source local/CI/live evidence, audit integration notification and security gaps, and explicitly retain unexplained intermittency. (Closed by Feature115; see ../115-integration-closeout/closeout.md.)
+- [x] T074 Verify current local/hosted evidence, merge PR #80 with ancestry preserved, and verify post-merge CI; no additional live trial authorized.
+- [x] T075 Bind the selected GIS popup ID token to a server-issued, expiring, one-use browser nonce; test missing/wrong browser, expiry, replay, provider failure, Redis failure, disabled mode and UI recovery. Keep the unused authorization-code path explicitly separate. Fresh human live validation requires renewed approval before merge.
+
+Reconciliation (2026-10-18): T074-T076 are supported by exact candidate
+`32fd45adb43d3f5b263c0cc00ae4abb6014760d9`, the 129-check gate
+`.artifacts/complete-gate/20261017T031147Z-2910700/result.json`, the 14-pass
+live run `base2-full-20261017-035146`, owner Google sign-in confirmation and
+verified teardown, and history-preserving PR80 merge `b859e54ae957d6e26b56c4d6a3f884b7a53f516f`.
+All ten post-merge workflows passed (20 check-runs); the PR closeout comment
+records that evidence. This does not close the remaining integration, visual,
+optional-module or unresolved-intermittency tasks; these continue in Feature115.
 
 ## Custom-field credential repair
 
@@ -46,20 +55,20 @@
 
 - [x] T017 Confirm test identities, private credential references, recipient and live bounds (R03,R04,R09).
 - [x] T018 Add secret-safe email/OAuth preflight and missing/invalid prerequisite tests (R03,R04).
-- [ ] T019 Validate Resend HTTPS transport, recipient scope, timeout/idempotency and delivery evidence (R03).
-- [ ] T020 Validate OAuth callback allowlist, state/nonce/PKCE, replay, denial and session tests (R04).
-- [ ] T021 Add bounded real email journeys with cleanup and redacted artifacts (R03).
+- [x] T019 Validate Resend HTTPS transport, recipient scope, timeout/idempotency and delivery evidence (R03). (Closed by Feature115; see ../115-integration-closeout/closeout.md.)
+- [x] T020 Validate OAuth callback allowlist, state/nonce/PKCE, replay, denial and session tests (R04). (Closed by Feature115; see ../115-integration-closeout/closeout.md.)
+- [x] T021 Add bounded real email journeys with cleanup and redacted artifacts (R03). (Closed by Feature115; see ../115-integration-closeout/closeout.md.)
 - [x] T022 Run dedicated-account real OAuth trial with human consent/MFA when required (R04).
 
 ## Coverage expansion
 
-- [ ] T023 Inventory representative public/auth/settings/content visual states (R05).
-- [ ] T024 Add failing state-entry, geometry, accessibility and reference-comparison tests (R05).
-- [ ] T025 Inspect captures across mobile/desktop, keyboard/zoom, RTL and long content (R05).
-- [ ] T026 Review intentional added references; preserve existing Volcano references (R05).
-- [ ] T027 Add isolated enabled-module real-backend data/lifecycle acceptance (R06).
-- [ ] T028 Verify denied roles, duplicates, recovery and exact disposable-data cleanup (R06).
-- [ ] T029 Reconcile route/state ledger with actual evidence and remaining exclusions (R05,R06,R08).
+- [x] T023 Inventory representative public/auth/settings/content visual states (R05). (Closed by Feature115; see ../115-integration-closeout/closeout.md.)
+- [x] T024 Add failing state-entry, geometry, accessibility and reference-comparison tests (R05). (Closed by Feature115; see ../115-integration-closeout/closeout.md.)
+- [x] T025 Inspect captures across mobile/desktop, keyboard/zoom, RTL and long content (R05). (Closed by Feature115; see ../115-integration-closeout/closeout.md.)
+- [x] T026 Review intentional added references; preserve existing Volcano references (R05). (Closed by Feature115; see ../115-integration-closeout/closeout.md.)
+- [x] T027 Add isolated enabled-module real-backend data/lifecycle acceptance (R06). (Closed by Feature115; see ../115-integration-closeout/closeout.md.)
+- [x] T028 Verify denied roles, duplicates, recovery and exact disposable-data cleanup (R06). (Closed by Feature115; see ../115-integration-closeout/closeout.md.)
+- [x] T029 Reconcile route/state ledger with actual evidence and remaining exclusions (R05,R06,R08). (Closed by Feature115; see ../115-integration-closeout/closeout.md.)
 
 ## Release
 
@@ -79,19 +88,19 @@
 - [x] T059 Add required live empty-form auth validation at mobile/desktop in light/dark preferences; assert state entry, field association, layout, menus, accessibility, no auth requests and sanitized screenshots (R04,R05).
 - [x] T060 Complete private Google client-ID deployment wiring and restrictive GIS CSP; test provider button readiness separately from human consent and successful session establishment (R04,R09).
 
-- [ ] T030 Repeat analysis and close known blocking task gaps (R01-R09).
+- [x] T030 Repeat analysis and close known blocking task gaps (R01-R09). (Closed by Feature115; see ../115-integration-closeout/closeout.md.)
 - [x] T031 Run focused tests, affected integration, changed-line coverage and reviewed visuals (R01-R08).
 - [x] T032 Run complete gate, publish candidate and verify hosted checks (R08).
 - [x] T033 Run approved bounded live acceptance including available authorized integrations (R09).
 - [x] T034 Tear down owned resources and verify empty inventory and terminal lease (R09).
-- [ ] T035 Record exact-source outcome, open risks and measured cost/time evidence (R01,R08,R09).
+- [x] T035 Record exact-source outcome, open risks and measured cost/time evidence (R01,R08,R09). (Closed by Feature115; see ../115-integration-closeout/closeout.md.)
 
 Blocked prerequisites are not completed tasks. Publication does not imply live acceptance.
 
 ## Additional tasks from cycle 3
 
 - [x] T036 Reconcile Google redirect HTTP method, browser callback consumer and configured URL before real-account testing (R04).
-- [ ] T037 Verify actual selected Google flow's PKCE/client boundary and add missing security regressions rather than assuming the two OAuth entrypoints are equivalent (R04).
+- [x] T037 Verify actual selected Google flow's PKCE/client boundary and add missing security regressions rather than assuming the two OAuth entrypoints are equivalent (R04). (Closed by Feature115; see ../115-integration-closeout/closeout.md.)
 - [x] T038 Add explicitly scoped private Resend/OAuth wiring to the preview entrypoint; default remains disabled and unrelated secrets are not copied (R03,R04,R09).
 
 ## Additional tasks from cycle 4
@@ -117,7 +126,7 @@ T047 complete: all four sending records verified in provider inventory and publi
 DNS; owner confirmed Resend verification and actual inbox receipt. Receiving is
 explicitly deferred to a future owner-managed inbox feature; do not add MX.
 
-- [ ] T048 Verify trial budget/key ownership and persistence in actual containers, exact live-lease initialization and refusal to recreate/reset existing budgets (R03,R09).
+- [x] T048 Verify trial budget/key ownership and persistence in actual containers, exact live-lease initialization and refusal to recreate/reset existing budgets (R03,R09). (Closed by Feature115; see ../115-integration-closeout/closeout.md.)
 - [x] T049 Finish failure-code classification and operator notification coverage for provider failures and all send guards; verify no credential, recipient body or reset token leaks (R02,R03).
 
 ## Additional tasks from cycle 9

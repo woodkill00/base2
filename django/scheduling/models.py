@@ -44,6 +44,11 @@ class Event(SiteOwnedModel):
             event = cls.objects.select_for_update().for_tenant(site_id).get(id=event_id)
             if not event.booking_open or event.ends_at <= timezone.now():
                 raise ValidationError('booking_closed')
+            existing = Booking.objects.filter(event=event, attendee_ref=attendee_ref).first()
+            if existing is not None:
+                if existing.seats != seats or existing.status != Booking.Status.CONFIRMED:
+                    raise ValidationError('booking_replay_conflict')
+                return existing, False
             used = Booking.objects.filter(event=event, status=Booking.Status.CONFIRMED).aggregate(
                 total=models.Sum('seats')
             )['total'] or 0

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { primaryNavigation } from '../../config/layoutPolicy';
@@ -16,6 +16,25 @@ export default function VolcanoLayout({ children, headerTitle, contextSlot, foot
   const routes = useMemo(() => primaryNavigation(user), [user]);
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
+  const root = useRef(null);
+  const header = useRef(null);
+  useEffect(() => {
+    const frame = header.current;
+    const shell = root.current;
+    const measure = () => {
+      // offsetHeight stays in layout pixels under CSS zoom; boundingClientRect
+      // would scale twice when its value is applied back to a CSS property.
+      shell.style.setProperty('--volcano-header-height', `${frame.offsetHeight}px`);
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', measure);
+      return () => window.removeEventListener('resize', measure);
+    }
+    const observer = new ResizeObserver(measure);
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, []);
   const utility = async (action) => {
     if (action === 'search') navigate('/search');
     if (action === 'security') navigate('/privacy');
@@ -41,12 +60,13 @@ export default function VolcanoLayout({ children, headerTitle, contextSlot, foot
   };
   return (
     <div
+      ref={root}
       className="home-page-root volcano-layout app-shell-root relative min-h-screen"
       data-experience="base2"
     >
       <div className="gradient-background" />
       <div className="relative z-10">
-        <div className="volcano-header-frame">
+        <div className="volcano-header-frame" ref={header}>
           <a className="unified-skip-link" href="#main-content">
             Skip to main content
           </a>

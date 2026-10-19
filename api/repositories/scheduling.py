@@ -1,5 +1,6 @@
 from __future__ import annotations
 from uuid import UUID, uuid4
+from psycopg2.errors import RaiseException
 from api.db import db_conn
 
 
@@ -27,43 +28,33 @@ class SchedulingRepository:
             ]
 
     def reserve(self, *, site_id: str, event_id: UUID, attendee_ref: str, seats: int):
-        booking_id = uuid4()
+        # A fixed database capability owns locks, tenant scope and capacity.
+        # Runtime has no direct event/booking mutation privileges.
         with db_conn(tenant_id=site_id) as conn:
             try:
                 with conn.cursor() as cur:
                     cur.execute(
-                        """SELECT capacity,booking_open,ends_at FROM scheduling_event
-                                   WHERE id=%s AND site_id=%s FOR UPDATE""",
-                        (str(event_id), site_id),
+                        'SELECT booking_id,booking_status,replayed '
+                        'FROM public.base2_reserve_booking(%s,%s,%s,%s)',
+                        (str(uuid4()), str(event_id), attendee_ref, seats),
                     )
-                    event = cur.fetchone()
-                    if not event:
-                        raise ValueError('event_not_found')
-                    if not event[1]:
-                        raise ValueError('booking_closed')
-                    cur.execute(
-                        'SELECT id,seats,status FROM scheduling_booking WHERE event_id=%s AND attendee_ref=%s',
-                        (str(event_id), attendee_ref),
-                    )
-                    existing = cur.fetchone()
-                    if existing:
-                        if existing[1] != seats or existing[2] != 'confirmed':
-                            raise ValueError('booking_replay_conflict')
-                        conn.rollback()
-                        return {'id': existing[0], 'status': 'confirmed', 'replayed': True}
-                    cur.execute(
-                        "SELECT COALESCE(SUM(seats),0) FROM scheduling_booking WHERE event_id=%s AND status='confirmed'",
-                        (str(event_id),),
-                    )
-                    if cur.fetchone()[0] + seats > event[0]:
-                        raise ValueError('capacity_exceeded')
-                    cur.execute(
-                        """INSERT INTO scheduling_booking(id,site_id,event_id,attendee_ref,seats,status,created_at,updated_at)
-                                   VALUES (%s,%s,%s,%s,%s,'confirmed',NOW(),NOW())""",
-                        (str(booking_id), site_id, str(event_id), attendee_ref, seats),
-                    )
+                    row = cur.fetchone()
+                    if row is None:
+                        raise RuntimeError('booking_result_missing')
                 conn.commit()
-                return {'id': booking_id, 'status': 'confirmed', 'replayed': False}
+                return {'id': row[0], 'status': row[1], 'replayed': row[2]}
+            except RaiseException as exc:
+                conn.rollback()
+                code = exc.diag.message_primary
+                if code in {
+                    'booking_invalid',
+                    'event_not_found',
+                    'booking_closed',
+                    'booking_replay_conflict',
+                    'capacity_exceeded',
+                }:
+                    raise ValueError(code) from None
+                raise RuntimeError('booking_database_rejected') from None
             except Exception:
                 conn.rollback()
                 raise

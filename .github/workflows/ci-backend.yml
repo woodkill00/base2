@@ -181,7 +181,8 @@ jobs:
           EMAIL_WORKER_DB_PASSWORD: ci_email_worker_password_006
         run: |
           cd api
-          pytest -q -m integration --ignore=tests/test_email_outbox.py --ignore=tests/test_preview_media_fixture_integration.py --cov=api --cov-append --cov-report=term -c pytest.ini
+          pytest -q -m integration --ignore=tests/test_email_outbox.py --ignore=tests/test_preview_media_fixture_integration.py --ignore=tests/test_optional_modules_integration.py --cov=api --cov-append --cov-report=term -c pytest.ini
+          BASE2_DISPOSABLE_JOURNEY=1 pytest -q -m integration tests/test_optional_modules_integration.py -c pytest.ini
           DB_USER="$API_RUNTIME_DB_USER" DB_PASSWORD="$API_RUNTIME_DB_PASSWORD" \
             pytest -q -m integration tests/test_email_outbox.py -c pytest.ini
           # This job owns its disposable PostgreSQL service. Run the preview

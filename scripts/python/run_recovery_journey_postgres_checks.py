@@ -88,6 +88,23 @@ def main() -> None:
         )
         user = repo.get_user_by_email(email)
         require(user is not None, "registration_not_persisted")
+        with patch("api.auth.repo._utcnow", return_value=datetime.now(UTC) - timedelta(minutes=5)):
+            issue_verify_email(email=email, host="localhost", proto="http", ttl_minutes=1)
+        expired_verification = token_from_outbox("Verify your email")
+        expired_record = repo.find_one_time_token(
+            token_hash=hash_token(expired_verification), token_type="verify_email"
+        )
+        require(
+            expired_record["expires_at"] < datetime.now(UTC), "verification_fixture_not_expired"
+        )
+        require(
+            client.post("/api/auth/verify-email", json={"token": expired_verification}).status_code
+            == 400,
+            "expired_verification_accepted",
+        )
+        require(
+            not repo.get_user_by_id(user.id).is_email_verified, "expired_verification_mutated_user"
+        )
         issue_verify_email(email=email, host="localhost", proto="http")
         verification = token_from_outbox("Verify your email")
         require(
@@ -100,6 +117,15 @@ def main() -> None:
             "verification_replay_accepted",
         )
 
+        # The revocation assertion must begin with a real session, not an empty
+        # table that would let a broken reset implementation pass vacuously.
+        initial_login = client.post("/api/auth/login", json={"email": email, "password": password})
+        require(initial_login.status_code == 200, "initial_login_failed")
+        require(
+            bool(repo.list_active_refresh_sessions(user_id=user.id)),
+            "reset_session_fixture_missing",
+        )
+        client.cookies.clear()
         missing = client.post(
             "/api/auth/forgot-password",
             json={"email": f"missing-{secrets.token_hex(10)}@example.test"},

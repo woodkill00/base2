@@ -236,6 +236,8 @@ def main() -> None:
         migration_lock_race()
         from scripts.python.check_public_content_postgres import check as check_public_content
         check_public_content(owner, repository_pool, api_runtime_user, api_runtime_password)
+        from scripts.python.check_scheduling_postgres import check as check_scheduling
+        check_scheduling(owner, repository_pool, api_runtime_user, api_runtime_password)
         with owner, owner.cursor() as cursor:
             cursor.execute("DELETE FROM api_data_rights_operations")
             cursor.execute("DELETE FROM api_identity_memberships")

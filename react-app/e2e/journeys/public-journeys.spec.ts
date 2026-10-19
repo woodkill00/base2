@@ -63,6 +63,16 @@ test('light preference, enlarged text and keyboard contact submission', async ({
   });
   await page.goto('/contact');
   await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
+  await expect
+    .poll(
+      async () => {
+        const header = await page.locator('.volcano-header-frame').boundingBox();
+        const edge = await page.locator('.home-right-utility-toggle').boundingBox();
+        return Boolean(header && edge && edge.y >= header.y + header.height);
+      },
+      { message: 'Enlarged header actions must not be covered by the right edge tab' }
+    )
+    .toBe(true);
   const name = page.getByLabel('Name', { exact: true });
   for (
     let index = 0;
