@@ -6,6 +6,6 @@
 - [x] T004 Implement shared controls and autocomplete without redesign (R01-R04).
 - [x] T005 Browser-test login/signup/reset, blur, keyboard, narrow/zoom states;
       capture and inspect screenshots; preserve existing references (R01-R04).
-- [ ] T006 Run shared page-family visual/journey checks and coverage review (R04-R05).
-- [ ] T007 Complete release gate; record failures, exclusions and final evidence (R05).
+- [x] T006 Run shared page-family visual/journey checks and coverage review (R04-R05).
+- [x] T007 Complete release gate; record failures, exclusions and final evidence (R05).
 - [ ] T008 Publish/merge and observe CI under applicable authority; no paid preview.

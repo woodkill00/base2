@@ -54,3 +54,24 @@ passed and lint has zero errors, with 24 existing declaration warnings.
 Additional 200% text-zoom browser checks passed all six Chromium page/size cases.
 T006/T007 still require the complete shared-consumer release gate. Current code
 does not restyle provider-owned Google chooser screens or add account linking.
+
+## Final implementation evidence
+
+Candidate 5c47933da5b4ab7018518497c5419760b62a2090 passed all 131 complete-gate
+checks: .artifacts/complete-gate/20261019T044324Z-1094497/result.json.
+Exact-source Feature106 repetitions passed before that gate. Full frontend:
+375 tests / 84 files. Browser evidence includes 73 Volcano preservation checks,
+108 shared-layout checks and 120 user journeys, including all 18 new password
+cases with zoom. Critical-glass coverage is 100% in all four metrics; changed
+instrumented lines are 6/6 covered. No coverage floor or visual baseline changed.
+
+U116-01 through U116-04 are resolved by current code/tests. Historical test
+failures above remain recorded; no claim is made that unknown defects are
+impossible. Dark Google configuration is asserted at the provider adapter
+boundary. These offline captures do not prove the actual external Google button
+pixels/account chooser; no fresh live Google interaction was attempted.
+
+This final documentation update does not change runtime sources. T008 remains
+pending publication/CI/merge evidence; record terminal results in the PR rather
+than claiming future checks have already passed. No paid deployment authorized
+or performed for this feature.
