@@ -198,3 +198,40 @@ Fresh accepted/recovery screenshot reviewed (Chromium, light preference, mobile)
 `.artifacts/layout-109/run-1792450522509/`. No baseline changes or suppressed
 accessibility findings. Required browser check added to the complete gate with
 a no-retry contract test. Full gate and live deployment remain outstanding.
+
+## Cycle 8 — pre-deployment request inventory
+
+PRs #82 and #83 were merged with history preserved after all 20 checks passed.
+Merged source `9e5174b10a67266329bbe81e9878862722bc67ea` has the exact tree of
+the 132-check passing candidate `67b737c`. No paid resource was created.
+
+The live-preflight sweep found test-fixture drift: the empty-form acceptance
+inventory still expected only Google preparation, omitting one verified
+refresh-cookie bootstrap per full document navigation. The product must retain
+that secure bootstrap. Reproduction: `/tmp/base2-f117-bootstrap-repro.log`;
+the new contract assertion fails against the old live fixture.
+
+T028 fixes the exact request multiset (two document bootstraps, one Google
+challenge when enabled), not a broad exclusion. Empty submissions must still
+produce zero extra requests. A real provider-free browser regression exercises
+signup then login navigation and rejects missing/extra requests. No credential,
+provider, design or runtime behavior changes. Required focused contract/browser
+checks precede clean-source stability and full release validation. The merged
+gate was stopped before editing to avoid testing mutable inputs.
+Focused validation: 19 contract tests and three browser tests passed. The first
+browser launch was blocked by an orphaned preview listener from the stopped
+gate; its exact owned process tree was terminated before the successful rerun.
+Evidence: `/tmp/base2-f117-bootstrap-contract.log`,
+`/tmp/base2-f117-bootstrap-browser.log` and
+`/tmp/base2-f117-bootstrap-browser-r2.log`. No known blocking scope gaps remain;
+final-source gate/CI, follow-up merge and live acceptance remain outstanding.
+
+Adjacent-consumer review also found the home live-console assertion treated the
+expected anonymous bootstrap 401 as a product failure. It now requires exactly
+one real same-origin refresh response with status 401 and one matching Chromium
+resource diagnostic. All other errors, origins, paths, statuses and duplicate
+requests still fail. The offline browser reproduces exactly two diagnostics
+across two document loads; pure regressions reject unrelated/error diagnostics.
+The combined rerun passed 20 contract tests and three browser tests:
+`/tmp/base2-f117-bootstrap-contract-r2.log` and
+`/tmp/base2-f117-bootstrap-browser-r3.log`. No runtime change or gate exclusion.

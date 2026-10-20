@@ -35,6 +35,9 @@
       role; do not reintroduce browser-storage permission or credential shortcuts.
 - [ ] T027 Execute the separately authorized live acceptance trial only after CI;
       collect visual/functional evidence, verify teardown and report residual risks.
+- [ ] T028 Repair the live empty-form request inventory for verified session bootstrap;
+      reproduce the mismatch, test actual document navigation offline, preserve exact
+      request counts and rerun the required gates before the approved live trial.
 
 ## Current bounded batch
 

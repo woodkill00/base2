@@ -13,14 +13,32 @@ import {
   missingInputs,
   contentFailure,
   expectedNotFound,
+  anonymousSessionDiagnostic,
 } from './acceptance-contract.mjs';
+
+test('anonymous bootstrap diagnostic admits only exact origin, path and 401', () => {
+  const origin = 'https://example.test';
+  const message = 'Failed to load resource: the server responded with a status of 401 (Unauthorized)';
+  assert.equal(anonymousSessionDiagnostic(`${origin}/api/auth/refresh`, message, origin), true);
+  for (const url of [
+    'https://other.test/api/auth/refresh',
+    `${origin}/api/auth/login`,
+    `${origin}/api/auth/refresh?token=secret`,
+    'http://example.test/api/auth/refresh',
+  ]) assert.equal(anonymousSessionDiagnostic(url, message, origin), false);
+  for (const text of ['application error', message.replace('401', '500')])
+    assert.equal(anonymousSessionDiagnostic(`${origin}/api/auth/refresh`, text, origin), false);
+});
 
 const cases = () => requiredTests.map((title) => ({ title, status: 'passed', retry: 0 }));
 test('empty-form checks separate bounded Google preparation from auth submission', () => {
   const source = readFileSync(new URL('./full-preview-live.spec.ts', import.meta.url), 'utf8');
   assert.ok(source.includes('const postsBeforeEmptySubmit = [...authPosts]'));
   assert.match(source, /empty submission must not issue any auth POST/);
-  assert.match(source, /process\.env\.BASE2_GOOGLE_CLIENT_SHA256 \? \['\/api\/auth\/oauth\/google\/challenge'\] : \[\]/);
+  assert.match(source, /const expectedPosts = \['\/api\/auth\/refresh', '\/api\/auth\/refresh'\]/);
+  assert.match(source, /expectedPosts\.push\('\/api\/auth\/oauth\/google\/challenge'\)/);
+  assert.match(source, /\[\.\.\.authPosts\]\.sort\(\)/);
+  assert.match(source, /expectedPosts\.sort\(\)/);
   assert.doesNotMatch(source, /authPosts\.filter/);
 });
 test('Google readiness is required and distinct from human sign-in', () => {

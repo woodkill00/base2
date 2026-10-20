@@ -33,6 +33,13 @@ const inputs = [
 ];
 export const missingInputs = (env) => inputs.filter((key) => !env[key]?.trim());
 
+// Chromium reports the normal unauthenticated bootstrap as a console resource
+// error. Admit only that exact same-origin diagnostic; never arbitrary 401s.
+export function anonymousSessionDiagnostic(url, text, origin) {
+  return url === `${origin}/api/auth/refresh` &&
+    /^Failed to load resource: the server responded with a status of 401 \((?:Unauthorized)?\)$/.test(text);
+}
+
 export function contentFailure(path, status, detailNotFound = false) {
   return (
     /^\/api\/(content|search|media)(\/|$)/.test(path) &&
