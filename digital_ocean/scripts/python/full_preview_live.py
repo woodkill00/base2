@@ -90,10 +90,10 @@ def _record_remote_failure(state_root: Path, run_id: str, source_commit: str,
         raise FullPreviewLaunchError("invalid failure evidence identity")
     # Revalidate attributes rather than trusting mutable exception properties.
     safe = FullPreviewRemoteError("", stage=error.stage, reason=error.reason,
-                                  exit_code=error.exit_code)
+                                  exit_code=error.exit_code, warmup_cause=error.warmup_cause)
     payload = {"runId": run_id, "sourceCommit": source_commit, "ok": False,
                "stage": safe.stage, "reason": safe.reason, "exitCode": safe.exit_code,
-               "secretValuesEmitted": 0}
+               "warmupCause": safe.warmup_cause, "secretValuesEmitted": 0}
     directory = state_root / "evidence"
     directory.mkdir(mode=0o700, exist_ok=True)
     directory_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)

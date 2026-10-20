@@ -5,7 +5,7 @@ import json
 import pytest
 
 from digital_ocean.scripts.python.full_preview_live import launch
-from digital_ocean.scripts.python.full_preview_remote import FullPreviewRemoteError, failure_stage, safe_diagnostic
+from digital_ocean.scripts.python.full_preview_remote import FullPreviewRemoteError, failure_stage, safe_diagnostic, failure_warmup_cause
 from digital_ocean.scripts.python.preview_lease_v2 import FullPreviewLeaseStore
 
 
@@ -41,6 +41,26 @@ class Remote:
     def health(self, address, fqdn): return True
 
 
+@pytest.mark.parametrize("cause", ["oom", "exited", "unhealthy", "deadline"])
+def test_typed_warmup_cause_is_bounded_and_stage_bound(cause):
+    marker = f"full-preview-warmup-cause:{cause}"
+    assert failure_warmup_cause("", marker) == cause
+    assert failure_warmup_cause(marker, marker) == "unknown"
+    assert failure_warmup_cause(marker, "full-preview-warmup-cause:password=secret") == "unknown"
+    assert FullPreviewRemoteError("", stage="clamav-warmup", warmup_cause=cause).warmup_cause == cause
+    assert FullPreviewRemoteError("", stage="compose-build", warmup_cause=cause).warmup_cause == "unknown"
+
+
+@pytest.mark.parametrize("cause", ["password=secret", "", None, {}, True])
+def test_mutated_warmup_metadata_cannot_persist_arbitrary_values(tmp_path, cause):
+    from digital_ocean.scripts.python.full_preview_live import _record_remote_failure
+    error = FullPreviewRemoteError("", stage="clamav-warmup")
+    error.warmup_cause = cause
+    _record_remote_failure(tmp_path, "base2-full-20260826-099", "a" * 40, error)
+    record = (tmp_path / "evidence/base2-full-20260826-099.failure.json").read_text()
+    assert json.loads(record)["warmupCause"] == "unknown"
+    assert "password" not in record
+
 def files(tmp_path: Path):
     archive = tmp_path / "source.tar"; archive.write_bytes(b"archive")
     key = tmp_path / "id"; key.write_text("key"); key.chmod(0o600)
@@ -53,7 +73,7 @@ def test_remote_failure_metadata_survives_cleanup_without_secrets(tmp_path, monk
     class FailedRemote(Remote):
         def deploy(self, address, config):
             raise FullPreviewRemoteError("password=never-persist", stage="clamav-warmup",
-                                         reason="nonzero-exit", exit_code=4)
+                                         reason="nonzero-exit", exit_code=4, warmup_cause="oom")
     if storage_failure:
         def fail(*args):
             raise OSError("secret-storage-error")
@@ -73,6 +93,7 @@ def test_remote_failure_metadata_survives_cleanup_without_secrets(tmp_path, monk
         evidence = tmp_path / "state/evidence/base2-full-20260826-099.failure.json"
         record = json.loads(evidence.read_text())
         assert record["stage"] == "clamav-warmup" and record["exitCode"] == 4
+        assert record["warmupCause"] == "oom"
         assert record["sourceCommit"] == "a" * 40
         assert "never-persist" not in evidence.read_text()
         assert evidence.stat().st_mode & 0o777 == 0o600

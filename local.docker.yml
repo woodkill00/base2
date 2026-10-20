@@ -522,7 +522,8 @@ services:
       interval: 30s
       timeout: 30s
       retries: 5
-      start_period: 10s
+      # Match the bounded preview warm-up; readiness still requires fresh signatures.
+      start_period: 6m
 
   # Hostile media is decoded only here. Jobs cross a private spool because this
   # container intentionally has no network, database, broker, or app secrets.
