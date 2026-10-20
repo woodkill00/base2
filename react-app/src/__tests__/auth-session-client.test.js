@@ -113,27 +113,24 @@ test('a failed retry invalidates UI without looping refresh', async () => {
   remove();
 });
 
-test.each([401, 403])(
-  'fresh-auth requirement (%s) preserves session without replay',
-  async (status) => {
-    authSession.accept(payload, authSession.epoch(), { explicit: true });
-    const epoch = authSession.epoch();
-    const listener = vi.fn();
-    const remove = authSession.subscribe(listener);
-    const config = request({ url: '/privacy/export', headers: {}, __isRetryRequest: true });
-    const error = {
-      config,
-      response: { status, data: { detail: 'recent_reauthentication_required' } },
-    };
-    await expect(failure(error)).rejects.toBe(error);
-    expect(axios.post).not.toHaveBeenCalled();
-    expect(apiClient).not.toHaveBeenCalled();
-    expect(authSession.access()).toBe(payload.access_token);
-    expect(authSession.epoch()).toBe(epoch);
-    expect(listener).toHaveBeenCalledWith('reauthentication-required');
-    remove();
-  }
-);
+test.each([401])('fresh-auth requirement (%s) preserves session without replay', async (status) => {
+  authSession.accept(payload, authSession.epoch(), { explicit: true });
+  const epoch = authSession.epoch();
+  const listener = vi.fn();
+  const remove = authSession.subscribe(listener);
+  const config = request({ url: '/privacy/export', headers: {}, __isRetryRequest: true });
+  const error = {
+    config,
+    response: { status, data: { detail: 'recent_reauthentication_required' } },
+  };
+  await expect(failure(error)).rejects.toBe(error);
+  expect(axios.post).not.toHaveBeenCalled();
+  expect(apiClient).not.toHaveBeenCalled();
+  expect(authSession.access()).toBe(payload.access_token);
+  expect(authSession.epoch()).toBe(epoch);
+  expect(listener).toHaveBeenCalledWith('reauthentication-required');
+  remove();
+});
 
 test('stale freshness response does not notify the current account', async () => {
   const config = request({ url: '/privacy/export', headers: {} });
@@ -171,4 +168,21 @@ test('lookalike freshness detail cannot suppress normal expiry handling', async 
   };
   await expect(failure(error)).rejects.toBe(error);
   expect(authSession.canRestore()).toBe(false);
+});
+
+test('403 freshness remains with existing consumer recovery without duplicate notice', async () => {
+  authSession.accept(payload, authSession.epoch(), { explicit: true });
+  const listener = vi.fn();
+  const remove = authSession.subscribe(listener);
+  const config = request({ url: '/operations/v1/incidents/fixture/acknowledge', headers: {} });
+  const error = {
+    config,
+    response: { status: 403, data: { detail: 'recent_reauthentication_required' } },
+  };
+  await expect(failure(error)).rejects.toBe(error);
+  expect(authSession.access()).toBe(payload.access_token);
+  expect(listener).not.toHaveBeenCalled();
+  expect(apiClient).not.toHaveBeenCalled();
+  expect(axios.post).not.toHaveBeenCalled();
+  remove();
 });

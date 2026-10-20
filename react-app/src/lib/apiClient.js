@@ -152,7 +152,7 @@ apiClient.interceptors.response.use(
     const originalRequest = error?.config;
     const status = error?.response?.status;
 
-    if (!originalRequest || ![401, 403].includes(status)) {
+    if (!originalRequest || status !== 401) {
       return Promise.reject(error);
     }
 
@@ -164,8 +164,6 @@ apiClient.interceptors.response.use(
       authSession.requireReauthentication();
       return Promise.reject(error);
     }
-    if (status !== 401) return Promise.reject(error);
-
     if (originalRequest.__isRetryRequest) {
       authSession.invalidate('expired');
       return Promise.reject(error);
