@@ -509,6 +509,29 @@ def test_bad_bootstrap_receipts_have_typed_failure(tmp_path, receipt):
     assert failure.value.stage == "bootstrap-receipt"
 
 
+@pytest.mark.parametrize("timeout", [False, True])
+def test_warmup_cause_survives_real_remote_error_adapter(tmp_path, timeout):
+    def runner(argv, **kwargs):
+        if argv[0] == "ssh" and "bash" in argv:
+            stderr = "full-preview-stage:clamav-warmup\nfull-preview-warmup-cause:deadline\n"
+            if timeout:
+                raise subprocess.TimeoutExpired(argv, 2700, stderr=stderr.encode())
+            return SimpleNamespace(returncode=4, stdout="", stderr=stderr)
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    remote = FullPreviewSshBootstrap(
+        known_hosts=tmp_path / "known_hosts", owner_cidr="8.8.4.4/32",
+        operator_auth=private_file(tmp_path / "operator", "private"),
+        flower_auth=private_file(tmp_path / "flower", "private"),
+        **application_inputs(tmp_path), runner=runner, attempts=1,
+    )
+    with pytest.raises(FullPreviewRemoteError) as failure:
+        remote.deploy("8.8.8.8", remote_config(tmp_path))
+    assert failure.value.stage == "clamav-warmup"
+    assert failure.value.warmup_cause == "deadline"
+    assert failure.value.reason == ("timeout" if timeout else "nonzero-exit")
+
+
 def test_remote_bootstrap_uses_bounded_size_appropriate_transfer_timeouts(tmp_path):
     operator = private_file(tmp_path / "operator", "owner:$apr1$abc$hash")
     flower = private_file(tmp_path / "flower", "flower:$apr1$def$hash")

@@ -1,6 +1,59 @@
 from pathlib import Path
+import subprocess
+import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
+
+@pytest.mark.parametrize("state,health,oom,cause", [
+    ("running", "healthy", "false", None),
+    ("running", "starting", "true", "oom"),
+    ("exited", "starting", "false", "exited"),
+    ("running", "unhealthy", "false", "unhealthy"),
+    ("running", "starting", "false", "deadline"),
+])
+def test_actual_warmup_shell_is_bounded_and_fail_closed(state, health, oom, cause):
+    source = (ROOT / "digital_ocean/scripts/bash/full-preview-remote.sh").read_text()
+    block = source.split('stage="clamav-warmup";', 1)[1].split(
+        "unset clamav_id clamav_state clamav_health clamav_oom", 1
+    )[0]
+    # Fixed mock operations only; execute the actual production polling branch.
+    prelude = f"""
+set -euo pipefail
+stage=clamav-warmup
+fail_stage() {{ exit "$1"; }}
+compose_mock() {{ if [[ "$1" == ps ]]; then echo synthetic; fi; }}
+compose=(compose_mock)
+docker() {{
+  case "$3" in
+    *OOMKilled*) echo {oom};;
+    *Health*) echo {health};;
+    *Status*) echo {state};;
+    *) exit 99;;
+  esac
+}}
+count=0
+sleep() {{ [[ "$1" == 2 ]]; count=$((count + 1)); [[ "$count" -le 179 ]]; }}
+"""
+    result = subprocess.run(["bash", "-c", prelude + block],
+                            capture_output=True, text=True, timeout=5)
+    assert result.returncode == (4 if cause else 0), result.stderr
+    if cause:
+        assert result.stderr.count(f"full-preview-warmup-cause:{cause}") == 1
+    else:
+        assert "full-preview-warmup-cause:" not in result.stderr
+
+def test_cold_antivirus_grace_matches_bounded_warmup_without_relaxing_readiness():
+    import yaml
+    for filename in ("local.docker.yml", "development.docker.yml"):
+        service = yaml.safe_load((ROOT / filename).read_text())["services"]["clamav"]
+        assert service["healthcheck"]["start_period"] == "6m"
+        assert service["healthcheck"]["retries"] == 5
+        assert "base2-clamav-health" in " ".join(service["healthcheck"]["test"])
+        assert service["mem_limit"] == "1024m"
+    script = (ROOT / "digital_ocean/scripts/bash/full-preview-remote.sh").read_text()
+    assert "seq 1 180" in script and "sleep 2" in script
+    for reason in ("oom", "exited", "unhealthy", "deadline"):
+        assert f"full-preview-warmup-cause:{reason}" in script
 
 
 def test_expiry_timer_calls_one_unified_lifecycle_operation():

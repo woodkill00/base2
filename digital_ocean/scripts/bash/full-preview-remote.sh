@@ -165,11 +165,19 @@ for attempt in $(seq 1 180); do
       break
     fi
     if [[ "$clamav_oom" == "true" || "$clamav_state" == "exited" || "$clamav_health" == "unhealthy" ]]; then
+      if [[ "$clamav_oom" == "true" ]]; then
+        printf 'full-preview-warmup-cause:oom\n' >&2
+      elif [[ "$clamav_state" == "exited" ]]; then
+        printf 'full-preview-warmup-cause:exited\n' >&2
+      else
+        printf 'full-preview-warmup-cause:unhealthy\n' >&2
+      fi
       "${compose[@]}" logs --tail 40 clamav >&2 || true
       fail_stage 4
     fi
   fi
   if [[ "$attempt" -eq 180 ]]; then
+    printf 'full-preview-warmup-cause:deadline\n' >&2
     "${compose[@]}" logs --tail 40 clamav >&2 || true
     fail_stage 4
   fi

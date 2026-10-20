@@ -18,16 +18,31 @@ from digital_ocean.scripts.python.live_preview_provider import LivePreviewConfig
 
 
 class FullPreviewRemoteError(RuntimeError):
-    def __init__(self, message, *, stage="unknown", reason="remote-failure", exit_code=None):
+    def __init__(self, message, *, stage="unknown", reason="remote-failure", exit_code=None,
+                 warmup_cause="unknown"):
         super().__init__(message)
         self.stage = stage if stage in BOOTSTRAP_STAGES | TRANSPORT_STAGES else "unknown"
         self.reason = reason if reason in {"remote-failure", "timeout", "nonzero-exit"} else "remote-failure"
         self.exit_code = exit_code if type(exit_code) is int and -255 <= exit_code <= 255 else None
+        self.warmup_cause = (
+            warmup_cause if self.stage == "clamav-warmup" and
+            isinstance(warmup_cause, str) and warmup_cause in WARMUP_CAUSES else "unknown"
+        )
 
 
 BOOTSTRAP_STAGES = frozenset("argument-validation cloud-init-wait docker-install docker-start swap-admission env-render media-inspector-attestation acme-bootstrap compose-build clamav-warmup migration-dependencies database-role-bootstrap api-migrations django-migrations preview-lifecycle-bootstrap compose-up media-inspector-identity service-inventory service-health application-owner traefik-policy receipt".split())
 TRANSPORT_STAGES = frozenset({"ssh-readiness", "source-transfer", "private-input-transfer", "bootstrap-receipt"})
 STAGE_MARKER = re.compile(r"full-preview-stage(?:-failed)?:([a-z-]+)(?: exit=([0-9]{1,3}))?")
+WARMUP_CAUSES = frozenset({"oom", "exited", "unhealthy", "deadline"})
+
+
+def failure_warmup_cause(stdout: str, stderr: str) -> str:
+    values = [
+        line.strip().removeprefix("full-preview-warmup-cause:")
+        for line in (stdout + "\n" + stderr).splitlines()
+        if line.strip().startswith("full-preview-warmup-cause:")
+    ]
+    return values[0] if len(values) == 1 and values[0] in WARMUP_CAUSES else "unknown"
 
 
 def failure_stage(stdout: str, stderr: str) -> str:
@@ -203,6 +218,7 @@ class FullPreviewSshBootstrap:
                 f"bounded full preview bootstrap timed out: {diagnostic}",
                 stage=failure_stage(_timeout_text(exc.stdout), _timeout_text(exc.stderr)),
                 reason="timeout",
+                warmup_cause=failure_warmup_cause(_timeout_text(exc.stdout), _timeout_text(exc.stderr)),
             ) from exc
         if deployed.returncode != 0:
             diagnostic = safe_diagnostic(deployed.stdout, deployed.stderr)
@@ -210,6 +226,7 @@ class FullPreviewSshBootstrap:
                 f"full preview bootstrap failed (exit={deployed.returncode}): {diagnostic}",
                 stage=failure_stage(deployed.stdout, deployed.stderr),
                 reason="nonzero-exit", exit_code=deployed.returncode,
+                warmup_cause=failure_warmup_cause(deployed.stdout, deployed.stderr),
             )
         try:
             receipt = json.loads([line for line in deployed.stdout.splitlines() if line.strip()][-1])
