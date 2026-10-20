@@ -607,6 +607,11 @@ test('authenticated settings platform works accessibly and responsively live', a
   await page.getByRole('button', { name: 'Save preferences' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Preferences saved' })).toBeVisible();
 
+  // Recent activity intentionally retains only five events. Verify this action
+  // before reauthentication and export polling add newer session events.
+  await page.goto(`https://${domain}/settings/organization`, { waitUntil: 'networkidle' });
+  await expect(page.getByText('Profile preferences updated', { exact: true })).toBeVisible();
+
   await page.goto(`https://${domain}/settings/notifications`, { waitUntil: 'networkidle' });
   await expect(
     page.getByLabel('security-email delivery').locator('option[value="disabled"]')
@@ -651,9 +656,6 @@ test('authenticated settings platform works accessibly and responsively live', a
       { message: 'privacy export worker did not complete', timeout: 30_000 }
     )
     .toMatch(/export\s*completed/i);
-
-  await page.goto(`https://${domain}/settings/organization`, { waitUntil: 'networkidle' });
-  await expect(page.getByText('Profile preferences updated', { exact: true })).toBeVisible();
 
   await page.goto(`https://${domain}/settings/privacy`, { waitUntil: 'networkidle' });
   const deletion = page.getByRole('button', { name: 'Request account deletion' });

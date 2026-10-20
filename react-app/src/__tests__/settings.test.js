@@ -341,6 +341,28 @@ describe('US3 Settings', () => {
     expect(displayName).toHaveValue('Unsaved Name');
   });
 
+  test('recent organization activity shows only the newest five events', async () => {
+    const implementation = apiClient.get.getMockImplementation();
+    apiClient.get.mockImplementation((endpoint) =>
+      endpoint === '/settings/security-events'
+        ? Promise.resolve({
+            data: {
+              events: [
+                ...Array.from({ length: 5 }, (_, index) => ({
+                  id: `new-${index}`,
+                  action: 'auth.login',
+                })),
+                { id: 'older-preference', action: 'user.preferences_updated' },
+              ],
+            },
+          })
+        : implementation(endpoint)
+    );
+    renderSettings('/settings/organization');
+    await waitFor(() => expect(screen.getAllByText('Successful sign-in')).toHaveLength(5));
+    expect(screen.queryByText('Profile preferences updated')).not.toBeInTheDocument();
+  });
+
   test.each([
     {
       path: '/settings/privacy',

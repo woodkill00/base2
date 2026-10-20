@@ -6,9 +6,11 @@
 - [x] T004 Add shared accessible notice and tests for safe return and lifecycle.
 - [x] T005 Fix Google frame rendering and add unit plus iframe/browser regression.
 - [x] T006 Update live acceptance to exercise explicit reauth and manual action retry.
-- [ ] T007 Run focused tests, coverage review, responsive visuals and adjacent consumers.
-- [ ] T008 Run complete gate and CI after review; request merge/new trial authority.
+- [x] T007 Run focused tests, coverage review, responsive visuals and adjacent consumers.
+- [x] T008 Run complete gate and CI after review; request merge/new trial authority.
 - [ ] T009 Run approved automated-only acceptance, inspect evidence and verify teardown.
+- [x] T010 Reproduce and repair live audit-window assertion ordering, preserving the five-event UI.
+- [ ] T011 Validate and publish the test-only follow-up; obtain fresh authority for a new live trial.
 
 ## Issues
 
@@ -16,15 +18,15 @@
    session. Reproduction: settings privacy export after document navigation.
    Evidence: /tmp/base2-f118-live-browser.log; browser acceptance 13 pass/1 fail.
    Missing completed export also explains runtime verifier failure, not a separate
-   confirmed worker defect. Status: repair pending.
+   confirmed worker defect. Status: repaired; explicit reauthentication and completed export verified live.
 2. Medium, visual: Google's dark button has a white iframe canvas under inherited
    dark color-scheme. Live google-ready-login.png and
    google-frame-light-context-diagnostic.png demonstrate the isolated correction.
-   Status: repair pending.
+   Status: repaired; live Google readiness passed and actual screenshot inspected.
 
 Evidence root: /home/woodkill/.local/state/base2-full-preview/base2-full-20261020-095030.
 That trial is destroyed; inventory confirmed zero droplets and managed DNS records.
-No additional trial is authorized.
+The subsequent approved trial and its terminal result are recorded below.
 
 Analysis 1: distinguish freshness from expiry; never weaken server freshness.
 Analysis 2: add stale response, retry-marked response, explicit authentication
@@ -81,3 +83,41 @@ was 95.83% against 90%; the complete gate must regenerate final coverage.
 The broad optional format check reports 14 pre-existing unchanged files at
 `/tmp/base2-f119-format.log`; changed sources pass formatting and commit hooks.
 Final source release/CI and new paid trial remain uncompleted, not waived.
+
+## Merged repair and automated live trial
+
+PR #86 merged with review ancestry preserved to main
+5aa827aa8b1b8b5a726ae321c891e8e73462c5e7.
+Feature gate: 132 passed on 83fe61fd; all 20 PR checks and all 10 post-merge
+workflows passed. Changed-line coverage was 95.45%, above the 90% floor.
+
+First merged-source gate: 130 passed, one failed, one blocked:
+`.artifacts/complete-gate/20261020T133032Z-2960644/result.json`.
+The factory test raised an internal Python tarfile SystemError, not a product
+assertion. A bounded isolated diagnostic passed (7 factory tests, 2 dependent
+preflight tests); Git connectivity passed and memory/disk were healthy.
+One unchanged-source diagnostic full gate passed all 132:
+`.artifacts/complete-gate/20261020T135015Z-3006821/result.json`.
+The unexplained intermittent interpreter failure remains a residual risk,
+not erased by retry and not addressed by weakening retry/gate policies.
+
+Approved automated-only trial: base2-full-20261020-140734, exact merged source,
+Frankfurt, staging certificates, 60-minute/USD 0.25 ceiling.
+All 17 services became healthy and eight route probes passed.
+Browser acceptance: 13 passed, one failed; original evidence retained under
+`~/.local/state/base2-full-preview/base2-full-20261020-140734/browser`.
+Google rendering and freshness recovery passed; screenshots were inspected.
+Runtime verification passed: completedExportCount=1, preferenceAuditCount=1,
+migrationLedgerVerified=true. No test emails or interactive Google sign-in.
+Teardown completed and provider inventory confirmed zero droplets/preview DNS.
+
+Analysis 6: the remaining live failure is fixture ordering, not lost audit data.
+The organization UI intentionally shows only the latest five security events.
+Explicit sign-in and export polling add newer session events, displacing the
+earlier preference update. Check the preference event immediately after saving,
+before refresh-heavy flows; preserve the bounded UI and all later security checks.
+Add an assertion-order contract (observed failing before repair) and a component
+regression proving older events fall outside the five-event window.
+No runtime, authorization, source-binding, acceptance-reporter, or baseline changes.
+The corrected test has not yet passed live; T009 remains open. The approved trial
+is consumed. A new paid trial requires fresh owner approval after validation.
