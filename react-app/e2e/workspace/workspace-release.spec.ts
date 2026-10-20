@@ -1,3 +1,4 @@
+import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
@@ -99,11 +100,9 @@ test.beforeEach(async ({ page }, testInfo) => {
       .context()
       .addCookies([{ name: 'theme', value: 'light', domain: '127.0.0.1', path: '/' }]);
   }
-  await page.addInitScript((user) => {
-    localStorage.setItem('user', JSON.stringify(user));
-    localStorage.setItem('token', 'non-secret-workspace-fixture');
-  }, fixtureUser);
+  setSessionFixture(page, fixtureUser);
   await page.route('**/*', async (route) => {
+    if (await fulfillSessionFixture(route)) return;
     const url = new URL(route.request().url());
     if (!['127.0.0.1', 'localhost'].includes(url.hostname)) return route.abort('blockedbyclient');
     if (!url.pathname.startsWith('/api/')) return route.continue();

@@ -81,7 +81,11 @@ const ToastProvider = ({ children }) => {
       {children}
       <div style={styles.container} aria-live="polite" aria-atomic="true">
         {toasts.map((t) => (
-          <div key={t.id} style={{ ...styles.toast, ..._toastStyleForType(t.type) }}>
+          <div
+            key={t.id}
+            data-testid="notification-toast"
+            style={{ ...styles.toast, ..._toastStyleForType(t.type) }}
+          >
             <div style={styles.message}>{t.message}</div>
             <button
               type="button"
@@ -101,37 +105,37 @@ const ToastProvider = ({ children }) => {
 const _toastStyleForType = (type) => {
   if (type === 'error') {
     return {
-      background: '#fee2e2',
-      color: '#991b1b',
-      border: '1px solid #fecaca',
+      background: 'var(--color-surface)',
+      color: 'var(--color-text)',
+      border: '1px solid var(--color-danger)',
     };
   }
 
   if (type === 'success') {
     return {
-      background: '#ffffff',
-      color: '#111827',
-      border: '1px solid #d1d5db',
+      background: 'var(--color-surface)',
+      color: 'var(--color-text)',
+      border: '1px solid var(--color-accent)',
     };
   }
 
   return {
-    background: '#ffffff',
-    color: '#111827',
-    border: '1px solid #d1d5db',
+    background: 'var(--color-surface)',
+    color: 'var(--color-text)',
+    border: '1px solid var(--color-border)',
   };
 };
 
 const styles = {
   container: {
     position: 'fixed',
-    top: 12,
+    bottom: 'calc(env(safe-area-inset-bottom) + 12px)',
     right: 12,
     zIndex: 9999,
     display: 'flex',
     flexDirection: 'column',
     gap: 10,
-    maxWidth: 360,
+    maxWidth: 'min(360px, calc(100vw - 24px))',
   },
   toast: {
     display: 'flex',
@@ -152,6 +156,8 @@ const styles = {
     cursor: 'pointer',
     fontSize: 18,
     lineHeight: 1,
+    minWidth: 44,
+    minHeight: 44,
     padding: 0,
     color: 'inherit',
   },

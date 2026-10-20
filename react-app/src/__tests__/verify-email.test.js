@@ -1,4 +1,5 @@
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { StrictMode } from 'react';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
 import { AuthProvider } from '../contexts/AuthContext';
@@ -8,6 +9,20 @@ import VerifyEmail from '../pages/VerifyEmail';
 vi.mock('../services/api');
 
 describe('T091 Email verification UI', () => {
+  test('StrictMode consumes a one-use verification link only once', async () => {
+    authAPI.verifyEmail.mockResolvedValue({ detail: 'Email verified' });
+    render(
+      <StrictMode>
+        <AuthProvider>
+          <MemoryRouter initialEntries={['/verify-email?token=synthetic-once']}>
+            <VerifyEmail />
+          </MemoryRouter>
+        </AuthProvider>
+      </StrictMode>
+    );
+    expect(await screen.findByRole('heading', { name: /email verified/i })).toBeVisible();
+    expect(authAPI.verifyEmail).toHaveBeenCalledTimes(1);
+  });
   beforeEach(() => {
     jest.useFakeTimers();
     jest.clearAllMocks();
@@ -17,7 +32,7 @@ describe('T091 Email verification UI', () => {
     jest.useRealTimers();
   });
 
-  test('verifies token and redirects to login', async () => {
+  test('verification success persists until explicit navigation', async () => {
     authAPI.verifyEmail.mockResolvedValue({ detail: 'Email verified' });
 
     render(
@@ -45,7 +60,10 @@ describe('T091 Email verification UI', () => {
       jest.advanceTimersByTime(2100);
     });
 
-    expect(await screen.findByRole('heading', { name: /login/i })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /^login$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /email verified/i })).toBeVisible();
+    fireEvent.click(screen.getByRole('link', { name: 'Continue to sign in' }));
+    expect(await screen.findByRole('heading', { name: /^login$/i })).toBeInTheDocument();
   });
 
   test('shows error when token is missing', async () => {

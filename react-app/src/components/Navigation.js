@@ -60,8 +60,8 @@ const Navigation = ({ compact = false }) => {
   };
 
   const handleLogout = async () => {
-    await logout();
-    navigate('/');
+    const result = await logout();
+    navigate(result?.serverConfirmed === false ? '/login' : '/', { replace: true });
   };
 
   const isActive = (path) => location.pathname === path;

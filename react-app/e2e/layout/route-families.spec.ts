@@ -1,3 +1,4 @@
+import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test } from './fixtures';
 import { layoutViolations } from './layout-invariants';
 
@@ -30,7 +31,8 @@ for (const width of [390, 1440])
   for (const path of routes) {
     test(`guest ${path} at ${width}px`, async ({ page }, info) => {
       await page.setViewportSize({ width, height: 900 });
-      await page.route('**/*', (route) => {
+      await page.route('**/*', async (route) => {
+        if (await fulfillSessionFixture(route)) return;
         const url = new URL(route.request().url());
         if (!['127.0.0.1', 'localhost'].includes(url.hostname)) return route.abort();
         if (url.pathname.startsWith('/api/'))
@@ -88,19 +90,14 @@ for (const width of [390, 1440])
       await page.setViewportSize({ width, height: 900 });
       const errors: string[] = [];
       page.on('pageerror', (error) => errors.push(error.message));
-      await page.addInitScript(() => {
-        localStorage.setItem(
-          'user',
-          JSON.stringify({
-            id: 'layout-fixture',
-            email: 'layout@example.test',
-            display_name: 'Layout review',
-            permissions: ['content-workspace.read', 'media.read', 'operations.read', 'audit.read'],
-          })
-        );
-        localStorage.setItem('token', 'synthetic-layout-only');
+      setSessionFixture(page, {
+        id: 'layout-fixture',
+        email: 'layout@example.test',
+        display_name: 'Layout review',
+        permissions: ['content-workspace.read', 'media.read', 'operations.read', 'audit.read'],
       });
-      await page.route('**/*', (route) => {
+      await page.route('**/*', async (route) => {
+        if (await fulfillSessionFixture(route)) return;
         const url = new URL(route.request().url());
         if (!['127.0.0.1', 'localhost'].includes(url.hostname)) return route.abort();
         if (url.pathname.startsWith('/api/'))
@@ -138,7 +135,8 @@ for (const width of [390, 1440])
 
 for (const path of ['/workspace', '/media', '/operations', '/admin', '/settings/profile']) {
   test(`guest cannot enter ${path} through the new shell`, async ({ page }) => {
-    await page.route('**/*', (route) => {
+    await page.route('**/*', async (route) => {
+      if (await fulfillSessionFixture(route)) return;
       const url = new URL(route.request().url());
       if (!['127.0.0.1', 'localhost'].includes(url.hostname)) return route.abort();
       if (url.pathname.startsWith('/api/'))

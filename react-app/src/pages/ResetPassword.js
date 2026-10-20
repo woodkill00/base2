@@ -1,15 +1,14 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ToastProvider.jsx';
-import AppShell from '../components/glass/AppShell';
+import AuthPageFrame from '../components/auth/AuthPageFrame';
 import GlassButton from '../components/glass/GlassButton';
-import GlassCard from '../components/glass/GlassCard';
 import GlassInput from '../components/glass/GlassInput';
+import PasswordRequirements from '../components/auth/PasswordRequirements';
 
 const ResetPassword = ({ variant = 'public' }) => {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const { resetPassword } = useAuth();
   const toast = useToast();
   const [formData, setFormData] = useState({
@@ -20,12 +19,6 @@ const ResetPassword = ({ variant = 'public' }) => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
-
-  useEffect(() => {
-    if (!message) return undefined;
-    const redirect = window.setTimeout(() => navigate('/login'), 2000);
-    return () => window.clearTimeout(redirect);
-  }, [message, navigate]);
 
   const handleChange = (e) => {
     setFormData({
@@ -108,89 +101,98 @@ const ResetPassword = ({ variant = 'public' }) => {
   };
 
   return (
-    <AppShell variant={variant} headerTitle="Reset Password">
-      <div className="mx-auto max-w-md px-4 py-10">
-        <GlassCard>
-          <div className="space-y-6">
-            <header className="space-y-2">
-              <h1 className="text-xl font-semibold tracking-tight">Set a new password</h1>
-              <p className="text-sm opacity-80">Enter your new password below.</p>
-            </header>
+    <AuthPageFrame variant={variant} title="Reset Password">
+      <div className="space-y-6">
+        <header className="space-y-2">
+          <h1 className="text-xl font-semibold tracking-tight">Set a new password</h1>
+          <p className="text-sm opacity-80">
+            Choose a new Base2 password. This does not change your Google password.
+          </p>
+        </header>
 
-            {error ? (
-              <div className="text-sm" role="alert">
-                {error}
-              </div>
-            ) : null}
+        {error ? (
+          <div className="text-sm" role="alert">
+            {error}
+          </div>
+        ) : null}
 
-            {message ? (
-              <div className="text-sm" role="status">
-                {message}
-                <div className="text-xs opacity-80 mt-2">Redirecting to login…</div>
-              </div>
-            ) : null}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <GlassInput
-                  id="password"
-                  label="New password"
-                  name="password"
-                  type="password"
-                  autoComplete="new-password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="New Password"
-                  ariaInvalid={fieldErrors.password ? 'true' : 'false'}
-                  ariaDescribedBy={fieldErrors.password ? 'password-error' : undefined}
-                />
-                {fieldErrors.password ? (
-                  <div id="password-error" className="text-sm mt-2" role="alert">
-                    {fieldErrors.password}
-                  </div>
-                ) : null}
-              </div>
-
-              <div>
-                <GlassInput
-                  id="confirmPassword"
-                  label="Confirm password"
-                  name="confirmPassword"
-                  type="password"
-                  autoComplete="new-password"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  placeholder="Confirm New Password"
-                  ariaInvalid={fieldErrors.confirmPassword ? 'true' : 'false'}
-                  ariaDescribedBy={
-                    fieldErrors.confirmPassword ? 'confirm-password-error' : undefined
-                  }
-                />
-                {fieldErrors.confirmPassword ? (
-                  <div id="confirm-password-error" className="text-sm mt-2" role="alert">
-                    {fieldErrors.confirmPassword}
-                  </div>
-                ) : null}
-              </div>
-
-              <p className="text-xs opacity-80">
-                Password must be at least 8 characters with uppercase, lowercase, and number.
-              </p>
-
-              <GlassButton type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Resetting…' : 'Reset password'}
-              </GlassButton>
-            </form>
-
-            <div className="text-sm opacity-80">
+        {message ? (
+          <div className="text-sm" role="status">
+            {message}
+            <div className="mt-2">
               <Link to="/login" className="underline">
-                Back to login
+                Continue to sign in
               </Link>
             </div>
           </div>
-        </GlassCard>
+        ) : null}
+
+        {!message ? (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <GlassInput
+                id="password"
+                label="New password"
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="New Password"
+                ariaInvalid={fieldErrors.password ? 'true' : 'false'}
+                ariaDescribedBy={
+                  fieldErrors.password ? 'password-help password-error' : 'password-help'
+                }
+              />
+              {fieldErrors.password ? (
+                <div id="password-error" className="text-sm mt-2" role="alert">
+                  {fieldErrors.password}
+                </div>
+              ) : null}
+            </div>
+
+            <div>
+              <GlassInput
+                id="confirmPassword"
+                label="Confirm password"
+                name="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                placeholder="Confirm New Password"
+                ariaInvalid={fieldErrors.confirmPassword ? 'true' : 'false'}
+                ariaDescribedBy={fieldErrors.confirmPassword ? 'confirm-password-error' : undefined}
+              />
+              {fieldErrors.confirmPassword ? (
+                <div id="confirm-password-error" className="text-sm mt-2" role="alert">
+                  {fieldErrors.confirmPassword}
+                </div>
+              ) : null}
+            </div>
+
+            <PasswordRequirements value={formData.password} />
+
+            <GlassButton type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Resetting…' : 'Reset password'}
+            </GlassButton>
+          </form>
+        ) : null}
+
+        <div className="text-sm opacity-80">
+          <Link to="/login" className="underline">
+            Back to login
+          </Link>
+          {error ? (
+            <p className="mt-2">
+              <Link to="/forgot-password" className="underline">
+                Request a new reset link
+              </Link>
+            </p>
+          ) : null}
+        </div>
       </div>
-    </AppShell>
+    </AuthPageFrame>
   );
 };
 

@@ -3,11 +3,14 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
 import { AuthProvider } from '../contexts/AuthContext';
-import apiClient from '../lib/apiClient';
+import apiClient, { restoreSession } from '../lib/apiClient';
 import Settings from '../pages/SettingsCenter';
+import ProtectedRoute from '../components/ProtectedRoute';
 
 vi.mock('../lib/apiClient', () => ({
   __esModule: true,
+  withSessionLock: (operation) => operation(),
+  restoreSession: vi.fn(),
   default: {
     patch: jest.fn(),
     get: jest.fn(),
@@ -24,7 +27,14 @@ const renderSettings = (path = '/settings') => {
         future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
       >
         <Routes>
-          <Route path="/settings/*" element={<Settings />} />
+          <Route
+            path="/settings/*"
+            element={
+              <ProtectedRoute>
+                <Settings />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </MemoryRouter>
     </AuthProvider>
@@ -40,16 +50,14 @@ describe('US3 Settings', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     localStorage.clear();
-    localStorage.setItem(
-      'user',
-      JSON.stringify({
-        id: '1',
-        email: 'test@example.com',
-        display_name: 'Old Name',
-        avatar_url: 'https://example.com/old.png',
-        bio: 'Old bio',
-      })
-    );
+    restoreSession.mockRejectedValue(new Error('No cookie'));
+    restoreSession.mockResolvedValue({
+      id: '1',
+      email: 'test@example.com',
+      display_name: 'Old Name',
+      avatar_url: 'https://example.com/old.png',
+      bio: 'Old bio',
+    });
     apiClient.get.mockImplementation((path) => {
       if (path === '/settings/capabilities') {
         return Promise.resolve({
@@ -157,15 +165,12 @@ describe('US3 Settings', () => {
   });
 
   test('keeps the Arabic language-selection journey localized and RTL', async () => {
-    localStorage.setItem(
-      'user',
-      JSON.stringify({
-        id: '1',
-        email: 'test@example.com',
-        display_name: 'مستخدم الاختبار',
-        locale: 'ar',
-      })
-    );
+    restoreSession.mockResolvedValue({
+      id: '1',
+      email: 'test@example.com',
+      display_name: 'مستخدم الاختبار',
+      locale: 'ar',
+    });
     const { container } = renderSettings('/settings/language-region');
     await waitFor(() =>
       expect(screen.getByRole('region', { name: /التفاصيل/ })).toHaveAttribute('aria-busy', 'false')
@@ -200,10 +205,12 @@ describe('US3 Settings', () => {
   });
 
   test('keeps German notification controls and success feedback localized', async () => {
-    localStorage.setItem(
-      'user',
-      JSON.stringify({ id: '1', email: 'test@example.com', display_name: 'Test', locale: 'de' })
-    );
+    restoreSession.mockResolvedValue({
+      id: '1',
+      email: 'test@example.com',
+      display_name: 'Test',
+      locale: 'de',
+    });
     const user = userEvent.setup();
     apiClient.put.mockResolvedValue({ data: { preferences: [] } });
     renderSettings('/settings/notifications');
@@ -394,10 +401,12 @@ describe('US3 Settings', () => {
   ])(
     'localizes privacy operation semantics for $locale without exposing backend tokens',
     async ({ locale, kind, status, expectedKind, expectedStatus }) => {
-      localStorage.setItem(
-        'user',
-        JSON.stringify({ id: '1', email: 'test@example.com', display_name: 'Test', locale })
-      );
+      restoreSession.mockResolvedValue({
+        id: '1',
+        email: 'test@example.com',
+        display_name: 'Test',
+        locale,
+      });
       const implementation = apiClient.get.getMockImplementation();
       apiClient.get.mockImplementation((endpoint) =>
         endpoint === '/privacy/operations'
@@ -436,10 +445,12 @@ describe('US3 Settings', () => {
   ])(
     'localizes security action semantics for $locale without exposing backend tokens',
     async ({ locale, action, expected }) => {
-      localStorage.setItem(
-        'user',
-        JSON.stringify({ id: '1', email: 'test@example.com', display_name: 'Test', locale })
-      );
+      restoreSession.mockResolvedValue({
+        id: '1',
+        email: 'test@example.com',
+        display_name: 'Test',
+        locale,
+      });
       const implementation = apiClient.get.getMockImplementation();
       apiClient.get.mockImplementation((endpoint) =>
         endpoint === '/settings/security-events'

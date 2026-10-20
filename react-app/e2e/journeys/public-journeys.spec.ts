@@ -1,3 +1,4 @@
+import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { prepareCapture } from './capture';
@@ -7,6 +8,7 @@ const axeSource = readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
 // Synthetic UI evidence only. Backend persistence and mail delivery are separate.
 const installFixture = async (page: Page) => {
   await page.route('**/*', async (route) => {
+    if (await fulfillSessionFixture(route)) return;
     const url = new URL(route.request().url());
     if (url.origin !== 'http://127.0.0.1:4194') return route.abort('blockedbyclient');
     if (!url.pathname.startsWith('/api/')) return route.continue();
@@ -375,12 +377,10 @@ for (const width of [390, 1440]) {
 // independently verifies the real preference/conflict/session contracts.
 const installMember = async (page: Page) => {
   await installFixture(page);
-  await page.addInitScript(() => {
-    localStorage.setItem(
-      'user',
-      JSON.stringify({ id: 'synthetic-member', email: 'member@example.test', permissions: [] })
-    );
-    localStorage.setItem('token', 'synthetic-test-token');
+  setSessionFixture(page, {
+    id: 'synthetic-member',
+    email: 'member@example.test',
+    permissions: [],
   });
   let preferences = {
     version: 1,
@@ -406,6 +406,7 @@ const installMember = async (page: Page) => {
     'language-region',
   ].map((id) => ({ id }));
   await page.route('**/api/**', async (route) => {
+    if (await fulfillSessionFixture(route)) return;
     const path = new URL(route.request().url()).pathname;
     if (path === '/api/settings/capabilities')
       return route.fulfill({ json: { schema_version: 1, categories } });

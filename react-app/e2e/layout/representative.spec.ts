@@ -1,3 +1,4 @@
+import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test } from './fixtures';
 
 const user = {
@@ -18,11 +19,9 @@ const categories = [
   'developer',
 ];
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript((value) => {
-    localStorage.setItem('user', JSON.stringify(value));
-    localStorage.setItem('token', 'synthetic-layout-only');
-  }, user);
-  await page.route('**/*', (route) => {
+  setSessionFixture(page, user);
+  await page.route('**/*', async (route) => {
+    if (await fulfillSessionFixture(route)) return;
     const url = new URL(route.request().url());
     if (!['127.0.0.1', 'localhost'].includes(url.hostname)) return route.abort();
     if (!url.pathname.startsWith('/api/')) return route.continue();

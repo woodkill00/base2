@@ -41,6 +41,7 @@ def issue_verify_email(
     proto: str | None,
     request_id: str | None = None,
     ttl_minutes: int = 60 * 24,
+    raise_on_failure: bool = False,
 ) -> None:
     user = repo.get_user_by_email(email)
     if user is None:
@@ -72,8 +73,10 @@ def issue_verify_email(
             send_async=True,
         )
     except Exception:
-        # Never fail the request path.
-        pass
+        # Recovery callers record a sanitized operational failure while keeping
+        # the public response enumeration-safe. Legacy callers remain compatible.
+        if raise_on_failure:
+            raise RuntimeError('verification_enqueue_failed') from None
 
 
 def verify_email(*, token: str) -> UUID:
@@ -343,9 +346,7 @@ def issue_authenticated_session(
     access = create_access_token(
         subject=str(user.id), email=user.email, ttl_minutes=access_ttl_minutes
     )
-    repo.insert_audit_event(
-        user_id=user.id, action='auth.mfa_login', ip=ip, user_agent=user_agent
-    )
+    repo.insert_audit_event(user_id=user.id, action='auth.mfa_login', ip=ip, user_agent=user_agent)
     return AuthTokens(
         access_token=access,
         refresh_token=refresh,

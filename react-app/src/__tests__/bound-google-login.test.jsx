@@ -34,7 +34,7 @@ test('provider receives nonce only after successful challenge; success consumes 
   expect(button).toHaveAttribute('data-theme', 'filled_black');
   fireEvent.click(button);
   expect(success).toHaveBeenCalledWith({ credential: 'synthetic' });
-  expect(screen.getByRole('button', { name: 'Retry Google sign-in' })).toBeInTheDocument();
+  expect(await screen.findByRole('button', { name: 'Retry Google sign-in' })).toBeInTheDocument();
   expect(authAPI.googleChallenge).toHaveBeenCalledTimes(1);
 });
 
@@ -84,4 +84,21 @@ test('unmount aborts pending request', async () => {
   const signal = authAPI.googleChallenge.mock.calls[0][0];
   unmount();
   expect(signal.aborted).toBe(true);
+});
+
+test('keeps retry unavailable while the credential exchange is pending', async () => {
+  let finish;
+  const success = vi.fn(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+  );
+  render(<BoundGoogleLogin onSuccess={success} onError={vi.fn()} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Google' }));
+  expect(screen.getByRole('status')).toHaveTextContent('Completing Google sign-in');
+  expect(screen.queryByRole('button', { name: 'Retry Google sign-in' })).not.toBeInTheDocument();
+  await act(async () => finish());
+  expect(await screen.findByRole('button', { name: 'Retry Google sign-in' })).toBeInTheDocument();
+  expect(success).toHaveBeenCalledTimes(1);
 });

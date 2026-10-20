@@ -3,9 +3,8 @@ import { Link } from 'react-router-dom';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ToastProvider.jsx';
-import AppShell from '../components/glass/AppShell';
+import AuthPageFrame from '../components/auth/AuthPageFrame';
 import GlassButton from '../components/glass/GlassButton';
-import GlassCard from '../components/glass/GlassCard';
 import GlassInput from '../components/glass/GlassInput';
 
 const ForgotPassword = ({ variant = 'public' }) => {
@@ -55,61 +54,63 @@ const ForgotPassword = ({ variant = 'public' }) => {
   };
 
   return (
-    <AppShell variant={variant} headerTitle="Forgot Password">
-      <div className="mx-auto max-w-md px-4 py-10">
-        <GlassCard>
-          <div className="space-y-6">
-            <header className="space-y-2">
-              <h1 className="text-xl font-semibold tracking-tight">Reset password</h1>
-              <p className="text-sm opacity-80">Enter your email to receive a reset link.</p>
-            </header>
+    <AuthPageFrame variant={variant} title="Forgot Password">
+      <div className="space-y-6">
+        <header className="space-y-2">
+          <h1 className="text-xl font-semibold tracking-tight">Reset password</h1>
+          <p className="text-sm opacity-80">
+            Enter the exact Base2 account email, including any +alias. This resets only your Base2
+            password, not your Google password.
+          </p>
+        </header>
 
-            {error ? (
-              <div className="text-sm" role="alert">
-                {error}
-              </div>
-            ) : null}
-
-            {message ? (
-              <div className="text-sm" role="status">
-                {message}
-              </div>
-            ) : null}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <GlassInput
-                  id="email"
-                  label="Email"
-                  name="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Email Address"
-                  ariaInvalid={fieldErrors.email ? 'true' : 'false'}
-                  ariaDescribedBy={fieldErrors.email ? 'email-error' : undefined}
-                />
-                {fieldErrors.email ? (
-                  <div id="email-error" className="text-sm mt-2" role="alert">
-                    {fieldErrors.email}
-                  </div>
-                ) : null}
-              </div>
-
-              <GlassButton type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Sending…' : 'Send reset link'}
-              </GlassButton>
-            </form>
-
-            <div className="text-sm opacity-80">
-              <Link to="/login" className="underline">
-                Back to login
-              </Link>
-            </div>
+        {error ? (
+          <div className="text-sm" role="alert">
+            {error}
           </div>
-        </GlassCard>
+        ) : null}
+
+        {message ? (
+          <div className="text-sm" role="status">
+            {message}
+            <p className="mt-2">
+              Check your inbox and spam folder. Request acceptance does not confirm inbox delivery.
+            </p>
+          </div>
+        ) : null}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <GlassInput
+              id="email"
+              label="Email"
+              name="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email Address"
+              ariaInvalid={fieldErrors.email ? 'true' : 'false'}
+              ariaDescribedBy={fieldErrors.email ? 'email-error' : undefined}
+            />
+            {fieldErrors.email ? (
+              <div id="email-error" className="text-sm mt-2" role="alert">
+                {fieldErrors.email}
+              </div>
+            ) : null}
+          </div>
+
+          <GlassButton type="submit" className="w-full" disabled={loading}>
+            {loading ? 'Sending…' : 'Send reset link'}
+          </GlassButton>
+        </form>
+
+        <div className="text-sm opacity-80">
+          <Link to="/login" className="underline">
+            Back to login
+          </Link>
+        </div>
       </div>
-    </AppShell>
+    </AuthPageFrame>
   );
 };
 

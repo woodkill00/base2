@@ -3,13 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ToastProvider.jsx';
-import AppShell from '../components/glass/AppShell';
-import GlassCard from '../components/glass/GlassCard';
+import AuthPageFrame from '../components/auth/AuthPageFrame';
 import GlassButton from '../components/glass/GlassButton';
 import GlassInput from '../components/glass/GlassInput';
+import PasswordRequirements from '../components/auth/PasswordRequirements';
 
 const Signup = ({ variant = 'public' }) => {
-  const { register } = useAuth();
+  const { register, loading: sessionLoading } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -54,78 +54,69 @@ const Signup = ({ variant = 'public' }) => {
   };
 
   return (
-    <AppShell variant={variant} headerTitle="Signup">
-      <div style={styles.containerInner}>
-        <GlassCard>
-          <h1 style={styles.title}>Create account</h1>
+    <AuthPageFrame variant={variant} title="Signup" compact>
+      <h1 style={styles.title}>Create account</h1>
 
-          {error ? (
-            <div style={styles.error} role="alert">
-              {error}
-            </div>
-          ) : null}
+      {error ? (
+        <div style={styles.error} role="alert">
+          {error}
+        </div>
+      ) : null}
 
-          <form onSubmit={onSubmit} style={styles.form}>
-            <label style={styles.label} htmlFor="email">
-              Email
-            </label>
-            <GlassInput
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              ariaInvalid={fieldErrors.email ? 'true' : 'false'}
-              ariaDescribedBy={fieldErrors.email ? 'email-error' : undefined}
-            />
-            {fieldErrors.email ? (
-              <div id="email-error" style={styles.fieldError} role="alert">
-                {fieldErrors.email}
-              </div>
-            ) : null}
-
-            <label style={styles.label} htmlFor="password">
-              Password
-            </label>
-            <GlassInput
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Your password"
-              ariaInvalid={fieldErrors.password ? 'true' : 'false'}
-              ariaDescribedBy={
-                fieldErrors.password ? 'password-help password-error' : 'password-help'
-              }
-            />
-            <p id="password-help" style={styles.footer}>
-              Use at least 8 characters, including an uppercase letter, a lowercase letter and a
-              number.
-            </p>
-            {fieldErrors.password ? (
-              <div id="password-error" style={styles.fieldError} role="alert">
-                {fieldErrors.password}
-              </div>
-            ) : null}
-
-            <GlassButton type="submit" variant="primary" disabled={loading}>
-              {loading ? 'Creating…' : 'Create account'}
-            </GlassButton>
-          </form>
-
-          <div style={styles.footer}>
-            <span>Already have an account?</span>{' '}
-            <Link to="/login" style={styles.link}>
-              Sign in
-            </Link>
+      <form onSubmit={onSubmit} style={styles.form}>
+        <label style={styles.label} htmlFor="email">
+          Email
+        </label>
+        <GlassInput
+          id="email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          ariaInvalid={fieldErrors.email ? 'true' : 'false'}
+          ariaDescribedBy={fieldErrors.email ? 'email-error' : undefined}
+        />
+        {fieldErrors.email ? (
+          <div id="email-error" style={styles.fieldError} role="alert">
+            {fieldErrors.email}
           </div>
-        </GlassCard>
+        ) : null}
+
+        <label style={styles.label} htmlFor="password">
+          Password
+        </label>
+        <GlassInput
+          id="password"
+          name="password"
+          type="password"
+          autoComplete="new-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Your password"
+          ariaInvalid={fieldErrors.password ? 'true' : 'false'}
+          ariaDescribedBy={fieldErrors.password ? 'password-help password-error' : 'password-help'}
+        />
+        <PasswordRequirements value={password} />
+        {fieldErrors.password ? (
+          <div id="password-error" style={styles.fieldError} role="alert">
+            {fieldErrors.password}
+          </div>
+        ) : null}
+
+        <GlassButton type="submit" variant="primary" disabled={loading || sessionLoading}>
+          {loading ? 'Creating…' : 'Create account'}
+        </GlassButton>
+      </form>
+
+      <div style={styles.footer}>
+        <span>Already have an account?</span>{' '}
+        <Link to="/login" style={styles.link}>
+          Sign in
+        </Link>
       </div>
-    </AppShell>
+    </AuthPageFrame>
   );
 };
 

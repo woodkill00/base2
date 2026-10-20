@@ -4,32 +4,35 @@ import BoundGoogleLogin from '../components/BoundGoogleLogin';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ToastProvider.jsx';
-import AppShell from '../components/glass/AppShell';
-import GlassCard from '../components/glass/GlassCard';
+import AuthPageFrame from '../components/auth/AuthPageFrame';
 import GlassButton from '../components/glass/GlassButton';
 import GlassInput from '../components/glass/GlassInput';
 import { getGoogleClientId } from '../services/googleAuthConfig';
+import { authReturnPath } from '../lib/authReturnPath';
 
 const Login = ({ variant = 'public' }) => {
-  const { loginWithEmail, completeMfaLogin, loginWithGoogle } = useAuth();
+  const {
+    loginWithEmail,
+    completeMfaLogin,
+    loginWithGoogle,
+    loading: sessionLoading,
+    sessionNotice,
+    logout,
+  } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const toast = useToast();
 
   const nextPath = useMemo(() => {
-    const raw = searchParams.get('next') || '';
-    // Only allow internal navigations.
-    if (!raw || typeof raw !== 'string') return '/dashboard';
-    if (!raw.startsWith('/')) return '/dashboard';
-    if (raw.startsWith('//')) return '/dashboard';
-    return raw;
+    return authReturnPath(searchParams.get('next'));
   }, [searchParams]);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
-  const [loading, setLoading] = useState(false);
+  const [submitting, setLoading] = useState(false);
+  const loading = submitting || sessionLoading;
   const [mfaChallenge, setMfaChallenge] = useState('');
   const [mfaCode, setMfaCode] = useState('');
 
@@ -120,109 +123,126 @@ const Login = ({ variant = 'public' }) => {
   };
 
   return (
-    <AppShell variant={variant} headerTitle="Login">
-      <div style={styles.containerInner}>
-        <GlassCard>
-          <h1 style={styles.title}>Sign in</h1>
+    <AuthPageFrame variant={variant} title="Login" compact>
+      <h1 style={styles.title}>Sign in</h1>
 
-          {error ? (
-            <div style={styles.error} role="alert">
-              {error}
+      {sessionLoading ? <p role="status">Checking your session…</p> : null}
+      {sessionNotice ? (
+        <div role="status" className="space-y-2 text-sm">
+          <p>{sessionNotice}</p>
+          {sessionNotice.includes('could not be confirmed') ? (
+            <GlassButton type="button" variant="secondary" onClick={logout}>
+              Retry logout
+            </GlassButton>
+          ) : null}
+        </div>
+      ) : null}
+
+      {error ? (
+        <div style={styles.error} role="alert">
+          {error}
+        </div>
+      ) : null}
+
+      {mfaChallenge ? (
+        <form onSubmit={onMfaSubmit} style={styles.form}>
+          <p>
+            Complete multi-factor authentication to finish signing in. If your challenge expires,
+            start over.
+          </p>
+          <label style={styles.label} htmlFor="mfa-code">
+            Authenticator or recovery code
+          </label>
+          <GlassInput
+            id="mfa-code"
+            name="mfa-code"
+            value={mfaCode}
+            onChange={(e) => setMfaCode(e.target.value.trim().slice(0, 80))}
+            autoComplete="one-time-code"
+          />
+          <GlassButton type="submit" disabled={loading} variant="primary">
+            {loading ? 'Verifying…' : 'Verify and sign in'}
+          </GlassButton>
+          <GlassButton
+            type="button"
+            variant="secondary"
+            disabled={loading}
+            onClick={() => {
+              setMfaChallenge('');
+              setMfaCode('');
+              setError('');
+            }}
+          >
+            Start over
+          </GlassButton>
+        </form>
+      ) : (
+        <form onSubmit={onSubmit} style={styles.form}>
+          <label style={styles.label} htmlFor="email">
+            Email
+          </label>
+          <GlassInput
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            ariaInvalid={fieldErrors.email ? 'true' : 'false'}
+            ariaDescribedBy={fieldErrors.email ? 'email-error' : undefined}
+          />
+          {fieldErrors.email ? (
+            <div id="email-error" style={styles.fieldError} role="alert">
+              {fieldErrors.email}
             </div>
           ) : null}
 
-          {mfaChallenge ? (
-            <form onSubmit={onMfaSubmit} style={styles.form}>
-              <p>Password accepted. Complete multi-factor authentication within five minutes.</p>
-              <label style={styles.label} htmlFor="mfa-code">
-                Authenticator or recovery code
-              </label>
-              <GlassInput
-                id="mfa-code"
-                name="mfa-code"
-                value={mfaCode}
-                onChange={(e) => setMfaCode(e.target.value.trim().slice(0, 80))}
-                autoComplete="one-time-code"
-              />
-              <GlassButton type="submit" disabled={loading} variant="primary">
-                {loading ? 'Verifying…' : 'Verify and sign in'}
-              </GlassButton>
-              <GlassButton
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  setMfaChallenge('');
-                  setMfaCode('');
-                }}
-              >
-                Start over
-              </GlassButton>
-            </form>
-          ) : (
-            <form onSubmit={onSubmit} style={styles.form}>
-              <label style={styles.label} htmlFor="email">
-                Email
-              </label>
-              <GlassInput
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="username"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                ariaInvalid={fieldErrors.email ? 'true' : 'false'}
-                ariaDescribedBy={fieldErrors.email ? 'email-error' : undefined}
-              />
-              {fieldErrors.email ? (
-                <div id="email-error" style={styles.fieldError} role="alert">
-                  {fieldErrors.email}
-                </div>
-              ) : null}
+          <label style={styles.label} htmlFor="password">
+            Password
+          </label>
+          <GlassInput
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Your password"
+            ariaInvalid={fieldErrors.password ? 'true' : 'false'}
+            ariaDescribedBy={fieldErrors.password ? 'password-error' : undefined}
+          />
+          {fieldErrors.password ? (
+            <div id="password-error" style={styles.fieldError} role="alert">
+              {fieldErrors.password}
+            </div>
+          ) : null}
 
-              <label style={styles.label} htmlFor="password">
-                Password
-              </label>
-              <GlassInput
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Your password"
-                ariaInvalid={fieldErrors.password ? 'true' : 'false'}
-                ariaDescribedBy={fieldErrors.password ? 'password-error' : undefined}
+          <GlassButton type="submit" disabled={loading} variant="primary">
+            {loading ? 'Signing in…' : 'Sign in'}
+          </GlassButton>
+          <Link to="/forgot-password" style={styles.link}>
+            Forgot password?
+          </Link>
+          {getGoogleClientId() ? (
+            <div style={styles.googleContainer}>
+              <BoundGoogleLogin
+                disabled={loading || !!mfaChallenge}
+                onSuccess={onGoogleSuccess}
+                onError={onGoogleError}
               />
-              {fieldErrors.password ? (
-                <div id="password-error" style={styles.fieldError} role="alert">
-                  {fieldErrors.password}
-                </div>
-              ) : null}
+            </div>
+          ) : null}
+        </form>
+      )}
 
-              <GlassButton type="submit" disabled={loading} variant="primary">
-                {loading ? 'Signing in…' : 'Sign in'}
-              </GlassButton>
-              <Link to="/forgot-password" style={styles.link}>
-                Forgot password?
-              </Link>
-              {getGoogleClientId() ? (
-                <div style={styles.googleContainer}>
-                  <BoundGoogleLogin onSuccess={onGoogleSuccess} onError={onGoogleError} />
-                </div>
-              ) : null}
-            </form>
-          )}
-
-          <div style={styles.footer}>
-            <span>Don’t have an account?</span>{' '}
-            <Link to="/signup" style={styles.link}>
-              Create one
-            </Link>
-          </div>
-        </GlassCard>
+      <div style={styles.footer}>
+        <span>Don’t have an account?</span>{' '}
+        <Link to="/signup" style={styles.link}>
+          Create one
+        </Link>
       </div>
-    </AppShell>
+    </AuthPageFrame>
   );
 };
 

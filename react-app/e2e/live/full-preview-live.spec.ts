@@ -37,23 +37,27 @@ const visualSections = [
   ['footer', 'base2-footer'],
 ];
 
-test('Google readiness matches configured client without performing sign-in', async ({ browser }) => {
+test('Google readiness matches configured client without performing sign-in', async ({
+  browser,
+}) => {
   const expected = process.env.BASE2_GOOGLE_CLIENT_SHA256 || '';
   if (expected) expect(expected).toMatch(/^[a-f0-9]{64}$/);
   const context = await browser.newContext({ ignoreHTTPSErrors: true });
   try {
     const page = await context.newPage();
     const failures: string[] = [];
-    page.on('console', message => {
-      if (/GSI_LOGGER.*(?:not allowed|invalid|error)/i.test(message.text())) failures.push('google-provider-error');
+    page.on('console', (message) => {
+      if (/GSI_LOGGER.*(?:not allowed|invalid|error)/i.test(message.text()))
+        failures.push('google-provider-error');
     });
-    page.on('response', response => {
+    page.on('response', (response) => {
       const url = new URL(response.url());
-      if (url.hostname === 'accounts.google.com' && response.status() >= 400) failures.push(`google-http-${response.status()}`);
+      if (url.hostname === 'accounts.google.com' && response.status() >= 400)
+        failures.push(`google-http-${response.status()}`);
     });
     await page.addInitScript(() => {
       (window as any).googlePolicyFailures = [];
-      document.addEventListener('securitypolicyviolation', event => {
+      document.addEventListener('securitypolicyviolation', (event) => {
         if (event.blockedURI.startsWith('https://accounts.google.com/'))
           (window as any).googlePolicyFailures.push(event.effectiveDirective);
       });
@@ -64,15 +68,21 @@ test('Google readiness matches configured client without performing sign-in', as
       await expect(iframe).toHaveCount(0);
     } else {
       await expect(iframe).toBeVisible();
-      const client = new URL((await iframe.getAttribute('src')) || '').searchParams.get('client_id') || '';
-      expect(createHash('sha256').update(client).digest('hex'), 'deployed client must match private configured input').toBe(expected);
+      const client =
+        new URL((await iframe.getAttribute('src')) || '').searchParams.get('client_id') || '';
+      expect(
+        createHash('sha256').update(client).digest('hex'),
+        'deployed client must match private configured input'
+      ).toBe(expected);
       // Provider text is localized; do not assume an English accessible name.
       await expect(iframe.contentFrame().getByRole('button')).toBeVisible();
       await page.screenshot({ path: `${evidence}/google-ready-login.png`, fullPage: true });
     }
     expect(failures).toEqual([]);
     expect(await page.evaluate(() => (window as any).googlePolicyFailures)).toEqual([]);
-  } finally { await context.close(); }
+  } finally {
+    await context.close();
+  }
 });
 
 const assertSharedLayout = async (page: Page) => {
@@ -489,28 +499,37 @@ test('authenticated settings platform works accessibly and responsively live', a
   await page.goto(`https://${domain}/signup`, { waitUntil: 'networkidle' });
   await page.getByLabel('Email').fill(applicationEmail);
   await page.getByLabel('Password', { exact: true }).fill(applicationPassword);
+  const registrationResponse = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === '/api/auth/register' && response.status() === 201
+  );
   await page.getByRole('button', { name: 'Create account' }).click();
+  const registrationAccess = (await (await registrationResponse).json()).access_token;
   // History changes before React necessarily commits the destination. Its
   // pathname-keyed navigation remounts, so don't click the departing signup menu.
   await waitForDashboard(page);
 
   await assertSharedLayout(page);
   // A normal signup must not acquire media authority from a client-side claim.
-  const deniedMediaStatus = await page.evaluate(async () => {
+  const deniedMediaStatus = await page.evaluate(async (access) => {
     const original = localStorage.getItem('user');
     try {
       const forged = JSON.parse(original || '{}');
       forged.permissions = ['media.read', 'media.upload', 'media.write'];
       localStorage.setItem('user', JSON.stringify(forged));
-      return (await fetch('/api/media/v1/capabilities', { headers: {
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-        'X-Tenant-Id': 'base2-obsidian',
-      } })).status;
+      return (
+        await fetch('/api/media/v1/capabilities', {
+          headers: {
+            Authorization: `Bearer ${access}`,
+            'X-Tenant-Id': 'base2-obsidian',
+          },
+        })
+      ).status;
     } finally {
       if (original === null) localStorage.removeItem('user');
       else localStorage.setItem('user', original);
     }
-  });
+  }, registrationAccess);
   expect(deniedMediaStatus).toBe(404);
   // This intentional denial is separate from subsequent settings telemetry.
   consoleErrors.length = 0;
@@ -649,25 +668,30 @@ test('authenticated media library accepts safe synthetic media and rejects hosti
   await page.goto(`https://${domain}/login`, { waitUntil: 'networkidle' });
   await page.getByLabel('Email').fill(mediaEmail);
   await page.getByLabel('Password', { exact: true }).fill(mediaFixturePassword);
+  const mediaLoginResponse = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === '/api/auth/login' && response.status() === 200
+  );
   await page.getByRole('button', { name: 'Sign in' }).click();
+  const mediaAccess = (await (await mediaLoginResponse).json()).access_token;
   await waitForDashboard(page);
   // The operator fixture has real editor membership. Verify that authority
-  // before setting the UI-only navigation hints (never backend authorization).
-  const capabilityStatus = await page.evaluate(async () => {
-    const response = await fetch('/api/media/v1/capabilities', { headers: {
-      Authorization: `Bearer ${localStorage.getItem('token')}`,
-      'X-Tenant-Id': 'base2-obsidian',
-    } });
+  // from the server, without injecting client-side navigation permissions.
+  const capabilityStatus = await page.evaluate(async (access) => {
+    const response = await fetch('/api/media/v1/capabilities', {
+      headers: {
+        Authorization: `Bearer ${access}`,
+        'X-Tenant-Id': 'base2-obsidian',
+      },
+    });
     return response.status;
-  });
+  }, mediaAccess);
   expect(capabilityStatus).toBe(200);
-  await page.evaluate(() => {
-    const raw = localStorage.getItem('user');
-    if (!raw) throw new Error('authenticated user was not retained');
-    const user = JSON.parse(raw);
-    user.permissions = ['media.read', 'media.upload', 'media.write'];
-    localStorage.setItem('user', JSON.stringify(user));
-  });
+  expect(
+    await page.evaluate(() =>
+      ['user', 'token', 'refresh_token'].map((key) => localStorage.getItem(key))
+    )
+  ).toEqual([null, null, null]);
   await page.goto(`https://${domain}/media`, { waitUntil: 'networkidle' });
   await expect(page.getByRole('heading', { name: 'Media library' })).toBeVisible();
   // The ephemeral signup/login route may report provider-origin diagnostics
@@ -675,8 +699,7 @@ test('authenticated media library accepts safe synthetic media and rejects hosti
   consoleErrors.length = 0;
   failedRequests.length = 0;
 
-  const hostileStatus = await page.evaluate(async () => {
-    const token = localStorage.getItem('token');
+  const hostileStatus = await page.evaluate(async (token) => {
     const response = await fetch('/api/media/v1/uploads', {
       method: 'POST',
       headers: {
@@ -692,7 +715,7 @@ test('authenticated media library accepts safe synthetic media and rejects hosti
       }),
     });
     return response.status;
-  });
+  }, mediaAccess);
   expect([413, 422]).toContain(hostileStatus);
   // The hostile probe must be rejected and browsers report that expected 4xx
   // as a console resource error. Observe subsequent safe-media behavior cleanly.

@@ -1,3 +1,4 @@
+import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
@@ -23,11 +24,9 @@ const categories = [
 ].map((id) => ({ id, path: id === 'overview' ? '/settings' : `/settings/${id}`, version: 'v1' }));
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript((value) => {
-    localStorage.setItem('user', JSON.stringify(value));
-    localStorage.setItem('token', 'non-secret-settings-fixture');
-  }, owner);
+  setSessionFixture(page, owner);
   await page.route('**/*', async (route) => {
+    if (await fulfillSessionFixture(route)) return;
     const url = new URL(route.request().url());
     if (!['127.0.0.1', 'localhost'].includes(url.hostname)) {
       await route.abort('blockedbyclient');

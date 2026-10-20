@@ -4,11 +4,12 @@ import os
 import hashlib
 import re
 import secrets
+import logging
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from contextlib import suppress
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from api.security import rate_limit
 from api.settings import settings
@@ -40,6 +41,23 @@ def _env_int(name: str, default: int) -> int:
 router = APIRouter()
 
 
+def _navigation_permissions(request: Request, user_id) -> list[str]:
+    # Legacy non-tenant clients receive no navigation hints. Never trust
+    # permissions or roles submitted in JSON, JWT extras or browser storage.
+    if not request.headers.get('x-tenant-id'):
+        return []
+    from api.middleware.tenant import require_tenant
+    from api.repositories.identity_admin import membership
+    from api.security.identity import permissions_for_role
+
+    tenant_id = require_tenant(request)
+    try:
+        member = membership(user_id=user_id, tenant_id=tenant_id)
+    except Exception:
+        raise HTTPException(status_code=503, detail='Account permissions unavailable') from None
+    return permissions_for_role(member['role']) if member else []
+
+
 class _LoginRequest(BaseModel):
     email: str
     password: str
@@ -53,6 +71,57 @@ class _RegisterRequest(BaseModel):
 class _MfaLoginRequest(BaseModel):
     challenge_token: str
     code: str
+
+
+class _VerificationResendRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=254, pattern=r'^[^\s@]+@[^\s@]+\.[^\s@]+$')
+
+
+@router.post('/auth/resend-verification', status_code=202)
+async def auth_resend_verification(request: Request, payload: _VerificationResendRequest):
+    # Build links from trusted deployment configuration, never caller Host or
+    # X-Forwarded-Proto. Check prerequisites before looking up any account.
+    base = urlparse(str(settings.FRONTEND_URL or ''))
+    if (
+        base.scheme not in {'https', 'http'}
+        or not base.netloc
+        or base.username
+        or base.password
+        or base.query
+        or base.fragment
+    ):
+        raise HTTPException(status_code=503, detail='Verification recovery unavailable')
+    if str(settings.ENV).lower() in {'production', 'staging'} and base.scheme != 'https':
+        raise HTTPException(status_code=503, detail='Verification recovery unavailable')
+    normalized = payload.email.strip().lower()
+    try:
+        limits = [
+            rate_limit.incr_and_check_detailed(_client_ip(request), 'resend_verification'),
+            rate_limit.incr_and_check_identifier_detailed(
+                hashlib.sha256(normalized.encode()).hexdigest(), 'resend_verification_email'
+            ),
+        ]
+    except Exception:
+        raise HTTPException(status_code=503, detail='Verification recovery unavailable') from None
+    for _, over, retry_after in limits:
+        if over:
+            raise HTTPException(
+                status_code=429,
+                detail='Please wait before requesting another link',
+                headers={'Retry-After': str(retry_after)},
+            )
+    try:
+        from api.auth.service import issue_verify_email
+
+        issue_verify_email(
+            email=normalized, host=base.netloc, proto=base.scheme, raise_on_failure=True
+        )
+    except Exception:
+        # No recipient, token, URL, exception body or account existence in logs.
+        logging.getLogger('api.auth').warning('verification_recovery_enqueue_failed')
+    return {
+        'detail': 'If this account needs verification, a verification email has been requested. Check your inbox and spam folder.'
+    }
 
 
 def _refresh_cookie_name() -> str:
@@ -240,6 +309,7 @@ async def auth_login(request: Request, response: Response, payload: _LoginReques
         'email': user.email,
         'display_name': user.display_name,
         'avatar_url': user.avatar_url,
+        'permissions': _navigation_permissions(request, user.id),
         'bio': user.bio,
         'access_token': tokens.access_token,
     }
@@ -328,6 +398,7 @@ async def auth_login_mfa(request: Request, response: Response, payload: _MfaLogi
         'email': user.email,
         'display_name': user.display_name,
         'avatar_url': user.avatar_url,
+        'permissions': _navigation_permissions(request, user.id),
         'bio': user.bio,
         'access_token': tokens.access_token,
     }
@@ -388,6 +459,7 @@ async def auth_register(request: Request, response: Response, payload: _Register
         'email': user.email,
         'display_name': user.display_name,
         'avatar_url': user.avatar_url,
+        'permissions': _navigation_permissions(request, user.id),
         'bio': user.bio,
         'access_token': tokens.access_token,
     }
@@ -560,8 +632,10 @@ async def auth_logout(request: Request, response: Response):
                         user_agent=request.headers.get('user-agent', ''),
                     )
         except Exception:
-            # Enumeration-safe: never error on logout bookkeeping.
-            pass
+            # Do not report successful server revocation when the repository is
+            # unavailable. Keep the HttpOnly cookie for a bounded explicit retry;
+            # the browser clears its in-memory access immediately regardless.
+            raise HTTPException(status_code=503, detail='Logout could not be confirmed') from None
 
     _clear_refresh_cookie(response)
     response.status_code = 204
@@ -597,6 +671,7 @@ async def auth_me(request: Request):
             'email': user.email,
             'display_name': user.display_name,
             'avatar_url': user.avatar_url,
+            'permissions': _navigation_permissions(request, user.id),
             'bio': user.bio,
         }
     except HTTPException:
@@ -640,6 +715,7 @@ async def auth_me_patch(request: Request):
             'email': user.email,
             'display_name': user.display_name,
             'avatar_url': user.avatar_url,
+            'permissions': _navigation_permissions(request, user.id),
             'bio': user.bio,
         }
     except Exception as e:
@@ -685,6 +761,7 @@ async def auth_refresh(request: Request, response: Response):
         'email': user.email,
         'display_name': user.display_name,
         'avatar_url': user.avatar_url,
+        'permissions': _navigation_permissions(request, user.id),
         'bio': user.bio,
         'access_token': tokens.access_token,
     }
@@ -1005,6 +1082,7 @@ async def complete_google_oauth_identity(*, ident, request: Request, response: R
             'email': user.email,
             'display_name': user.display_name,
             'avatar_url': user.avatar_url,
+            'permissions': _navigation_permissions(request, user.id),
             'bio': user.bio,
             'access_token': access,
         }
