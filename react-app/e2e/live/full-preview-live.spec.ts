@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { installOwnerEdgeAuth } from './owner-edge-auth.mjs';
 import { waitForDashboard } from './dashboard-readiness.mjs';
-import { contentFailure, expectedNotFound } from './acceptance-contract.mjs';
+import { contentFailure, expectedNotFound, anonymousSessionDiagnostic } from './acceptance-contract.mjs';
 import { assertApprovedReference } from './approved-reference';
 import profile from '../../src/config/generated/base2-obsidian.json';
 
@@ -254,7 +254,18 @@ test('public Obsidian site identity and owner interaction are live', async ({ br
   const page = await context.newPage();
   const consoleErrors: string[] = [];
   const failedRequests: string[] = [];
-  page.on('console', (message) => message.type() === 'error' && consoleErrors.push(message.text()));
+  let anonymousDiagnostics = 0;
+  const bootstrapStatuses: number[] = [];
+  page.on('console', (message) => {
+    if (message.type() !== 'error') return;
+    if (anonymousSessionDiagnostic(message.location().url, message.text(), `https://${domain}`))
+      anonymousDiagnostics++;
+    else consoleErrors.push(message.text());
+  });
+  page.on('response', (response) => {
+    if (response.url() === `https://${domain}/api/auth/refresh`)
+      bootstrapStatuses.push(response.status());
+  });
   page.on('requestfailed', (request) => {
     if (!request.failure()?.errorText.includes('ERR_ABORTED')) {
       failedRequests.push(`${request.method()} ${new URL(request.url()).pathname}`);
@@ -271,6 +282,8 @@ test('public Obsidian site identity and owner interaction are live', async ({ br
   await expect(palette).toBeHidden();
   await page.screenshot({ path: `${evidence}/base2-live-home.png`, fullPage: true });
   expect(consoleErrors).toEqual([]);
+  expect(bootstrapStatuses).toEqual([401]);
+  expect(anonymousDiagnostics).toBe(1);
   expect(failedRequests).toEqual([]);
   await context.close();
 });

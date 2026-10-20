@@ -13,7 +13,22 @@ import {
   missingInputs,
   contentFailure,
   expectedNotFound,
+  anonymousSessionDiagnostic,
 } from './acceptance-contract.mjs';
+
+test('anonymous bootstrap diagnostic admits only exact origin, path and 401', () => {
+  const origin = 'https://example.test';
+  const message = 'Failed to load resource: the server responded with a status of 401 (Unauthorized)';
+  assert.equal(anonymousSessionDiagnostic(`${origin}/api/auth/refresh`, message, origin), true);
+  for (const url of [
+    'https://other.test/api/auth/refresh',
+    `${origin}/api/auth/login`,
+    `${origin}/api/auth/refresh?token=secret`,
+    'http://example.test/api/auth/refresh',
+  ]) assert.equal(anonymousSessionDiagnostic(url, message, origin), false);
+  for (const text of ['application error', message.replace('401', '500')])
+    assert.equal(anonymousSessionDiagnostic(`${origin}/api/auth/refresh`, text, origin), false);
+});
 
 const cases = () => requiredTests.map((title) => ({ title, status: 'passed', retry: 0 }));
 test('empty-form checks separate bounded Google preparation from auth submission', () => {

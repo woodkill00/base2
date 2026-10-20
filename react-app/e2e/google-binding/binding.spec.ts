@@ -1,7 +1,14 @@
 import { test, expect } from '@playwright/test';
+import { anonymousSessionDiagnostic } from '../live/acceptance-contract.mjs';
 
 test('live empty-form request inventory includes exactly one bootstrap per document', async ({ page }) => {
   const posts: string[] = [];
+  let bootstrapDiagnostics = 0;
+  page.on('console', (message) => {
+    if (message.type() === 'error' &&
+        anonymousSessionDiagnostic(message.location().url, message.text(), new URL(page.url()).origin))
+      bootstrapDiagnostics++;
+  });
   await page.route('**/api/auth/refresh', (route) =>
     route.fulfill({ status: 401, json: { detail: 'Not authenticated' } })
   );
@@ -31,6 +38,7 @@ test('live empty-form request inventory includes exactly one bootstrap per docum
     '/api/auth/refresh',
     '/api/auth/refresh',
   ]);
+  expect(bootstrapDiagnostics).toBe(2);
 });
 
 // Provider-free browser evidence: exercise our real UI, not real Google consent.

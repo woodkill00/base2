@@ -225,3 +225,13 @@ Evidence: `/tmp/base2-f117-bootstrap-contract.log`,
 `/tmp/base2-f117-bootstrap-browser.log` and
 `/tmp/base2-f117-bootstrap-browser-r2.log`. No known blocking scope gaps remain;
 final-source gate/CI, follow-up merge and live acceptance remain outstanding.
+
+Adjacent-consumer review also found the home live-console assertion treated the
+expected anonymous bootstrap 401 as a product failure. It now requires exactly
+one real same-origin refresh response with status 401 and one matching Chromium
+resource diagnostic. All other errors, origins, paths, statuses and duplicate
+requests still fail. The offline browser reproduces exactly two diagnostics
+across two document loads; pure regressions reject unrelated/error diagnostics.
+The combined rerun passed 20 contract tests and three browser tests:
+`/tmp/base2-f117-bootstrap-contract-r2.log` and
+`/tmp/base2-f117-bootstrap-browser-r3.log`. No runtime change or gate exclusion.
