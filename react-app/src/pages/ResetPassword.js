@@ -137,6 +137,7 @@ const ResetPassword = ({ variant = 'public' }) => {
                   label="New password"
                   name="password"
                   type="password"
+                  autoComplete="new-password"
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="New Password"
@@ -156,6 +157,7 @@ const ResetPassword = ({ variant = 'public' }) => {
                   label="Confirm password"
                   name="confirmPassword"
                   type="password"
+                  autoComplete="new-password"
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   placeholder="Confirm New Password"

@@ -53,7 +53,7 @@ describe('US2 login/logout UI', () => {
 
     await act(async () => {
       await user.type(screen.getByLabelText(/email/i), 'test@example.com');
-      await user.type(screen.getByLabelText(/password/i), 'Test1234');
+      await user.type(screen.getByLabelText(/^password$/i), 'Test1234');
       await user.click(screen.getByRole('button', { name: /^sign in$/i }));
     });
 
@@ -80,7 +80,7 @@ describe('US2 login/logout UI', () => {
 
     await act(async () => {
       await user.type(screen.getByLabelText(/email/i), 'test@example.com');
-      await user.type(screen.getByLabelText(/password/i), 'Test1234');
+      await user.type(screen.getByLabelText(/^password$/i), 'Test1234');
       await user.click(screen.getByRole('button', { name: /^sign in$/i }));
     });
 
@@ -113,7 +113,7 @@ describe('US2 login/logout UI', () => {
     renderApp('/login');
     await act(async () => {
       await user.type(screen.getByLabelText(/email/i), 'test@example.com');
-      await user.type(screen.getByLabelText(/password/i), 'Test1234');
+      await user.type(screen.getByLabelText(/^password$/i), 'Test1234');
       await user.click(screen.getByRole('button', { name: /^sign in$/i }));
     });
     expect(await screen.findByText(/complete multi-factor authentication/i)).toBeInTheDocument();

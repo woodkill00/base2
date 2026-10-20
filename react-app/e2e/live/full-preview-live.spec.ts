@@ -488,7 +488,7 @@ test('authenticated settings platform works accessibly and responsively live', a
 
   await page.goto(`https://${domain}/signup`, { waitUntil: 'networkidle' });
   await page.getByLabel('Email').fill(applicationEmail);
-  await page.getByLabel('Password').fill(applicationPassword);
+  await page.getByLabel('Password', { exact: true }).fill(applicationPassword);
   await page.getByRole('button', { name: 'Create account' }).click();
   // History changes before React necessarily commits the destination. Its
   // pathname-keyed navigation remounts, so don't click the departing signup menu.
@@ -648,7 +648,7 @@ test('authenticated media library accepts safe synthetic media and rejects hosti
 
   await page.goto(`https://${domain}/login`, { waitUntil: 'networkidle' });
   await page.getByLabel('Email').fill(mediaEmail);
-  await page.getByLabel('Password').fill(mediaFixturePassword);
+  await page.getByLabel('Password', { exact: true }).fill(mediaFixturePassword);
   await page.getByRole('button', { name: 'Sign in' }).click();
   await waitForDashboard(page);
   // The operator fixture has real editor membership. Verify that authority
@@ -765,7 +765,7 @@ test('reusable owner signs in and signs out without account mutation', async ({ 
   const page = await context.newPage();
   await page.goto(`https://${domain}/login`, { waitUntil: 'networkidle' });
   await page.getByLabel('Email').fill(ownerEmail);
-  await page.getByLabel('Password').fill(ownerPassword);
+  await page.getByLabel('Password', { exact: true }).fill(ownerPassword);
   await page.getByRole('button', { name: 'Sign in' }).click();
   await waitForDashboard(page);
   await assertSharedLayout(page);

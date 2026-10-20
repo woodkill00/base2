@@ -58,6 +58,9 @@ export default function BoundGoogleLogin({ onSuccess, onError }) {
       key={nonce}
       nonce={nonce}
       locale="en"
+      theme="filled_black"
+      size="large"
+      shape="rectangular"
       onSuccess={finish}
       onError={() => {
         setNonce('');

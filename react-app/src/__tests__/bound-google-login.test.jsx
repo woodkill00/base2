@@ -4,9 +4,13 @@ import { authAPI } from '../services/api';
 
 vi.mock('../services/api', () => ({ authAPI: { googleChallenge: vi.fn() } }));
 vi.mock('@react-oauth/google', () => ({
-  GoogleLogin: ({ nonce, onSuccess, onError }) => (
+  GoogleLogin: ({ nonce, theme, onSuccess, onError }) => (
     <div>
-      <button data-nonce={nonce} onClick={() => onSuccess({ credential: 'synthetic' })}>
+      <button
+        data-theme={theme}
+        data-nonce={nonce}
+        onClick={() => onSuccess({ credential: 'synthetic' })}
+      >
         Google
       </button>
       <button onClick={onError}>Provider failure</button>
@@ -27,6 +31,7 @@ test('provider receives nonce only after successful challenge; success consumes 
   expect(screen.getByRole('status')).toHaveTextContent('Preparing');
   const button = await screen.findByRole('button', { name: 'Google' });
   expect(button).toHaveAttribute('data-nonce', valid.nonce);
+  expect(button).toHaveAttribute('data-theme', 'filled_black');
   fireEvent.click(button);
   expect(success).toHaveBeenCalledWith({ credential: 'synthetic' });
   expect(screen.getByRole('button', { name: 'Retry Google sign-in' })).toBeInTheDocument();
