@@ -220,12 +220,15 @@ for (const width of [390, 1440]) {
             postsBeforeEmptySubmit
           );
         }
-        // Google setup issues one browser-binding challenge on login-page mount;
-        // it is not credential exchange. Require the exact expected request list,
-        // rather than filtering arbitrary auth requests out of the assertion.
-        expect(authPosts, 'only configured Google preparation may issue an auth POST').toEqual(
-          process.env.BASE2_GOOGLE_CLIENT_SHA256 ? ['/api/auth/oauth/google/challenge'] : []
-        );
+        // Each full navigation verifies the HttpOnly session once. Login also
+        // prepares one Google challenge when configured. Neither is an empty
+        // form submission. Compare the exact multiset without assuming ordering
+        // between independent effects or filtering away unexpected requests.
+        const expectedPosts = ['/api/auth/refresh', '/api/auth/refresh'];
+        if (process.env.BASE2_GOOGLE_CLIENT_SHA256)
+          expectedPosts.push('/api/auth/oauth/google/challenge');
+        expect([...authPosts].sort(), 'only bounded session/provider preparation is allowed')
+          .toEqual(expectedPosts.sort());
       } finally {
         await context.close();
       }

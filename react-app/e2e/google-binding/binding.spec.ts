@@ -1,5 +1,38 @@
 import { test, expect } from '@playwright/test';
 
+test('live empty-form request inventory includes exactly one bootstrap per document', async ({ page }) => {
+  const posts: string[] = [];
+  await page.route('**/api/auth/refresh', (route) =>
+    route.fulfill({ status: 401, json: { detail: 'Not authenticated' } })
+  );
+  await page.route('https://accounts.google.com/**', (route) =>
+    route.fulfill({
+      contentType: 'application/javascript',
+      body: `window.google={accounts:{id:{initialize(){},renderButton(e){const b=document.createElement('button');b.textContent='Synthetic Google button';e.appendChild(b)},cancel(){},disableAutoSelect(){}}}};`,
+    })
+  );
+  await page.route('**/api/auth/oauth/google/challenge', (route) =>
+    route.fulfill({ json: { nonce: 'n'.repeat(43), expires_in: 300 } })
+  );
+  page.on('request', (request) => {
+    const path = new URL(request.url()).pathname;
+    if (request.method() === 'POST' && path.startsWith('/api/auth/')) posts.push(path);
+  });
+  for (const [path, button] of [['/signup', 'Create account'], ['/login', 'Sign in']]) {
+    await page.goto(path, { waitUntil: 'networkidle' });
+    await expect(page.getByText('Checking your session…')).toHaveCount(0);
+    const before = [...posts];
+    await page.getByRole('button', { name: button, exact: true }).click();
+    await expect(page.getByText('Please fix the highlighted fields', { exact: true })).toBeVisible();
+    expect(posts).toEqual(before);
+  }
+  expect([...posts].sort()).toEqual([
+    '/api/auth/oauth/google/challenge',
+    '/api/auth/refresh',
+    '/api/auth/refresh',
+  ]);
+});
+
 // Provider-free browser evidence: exercise our real UI, not real Google consent.
 for (const width of [390, 1440]) {
   test(`Google challenge failure and recovery preserve layout at ${width}px`, async ({ page }) => {
