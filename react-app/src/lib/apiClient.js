@@ -152,11 +152,19 @@ apiClient.interceptors.response.use(
     const originalRequest = error?.config;
     const status = error?.response?.status;
 
-    if (!originalRequest || status !== 401) {
+    if (!originalRequest || ![401, 403].includes(status)) {
       return Promise.reject(error);
     }
 
     if (originalRequest.__authEpoch !== authSession.epoch()) return Promise.reject(error);
+
+    // Freshness is not expiry. Never refresh/replay a sensitive mutation or
+    // discard a valid session when the server requires explicit authentication.
+    if (error?.response?.data?.detail === 'recent_reauthentication_required') {
+      authSession.requireReauthentication();
+      return Promise.reject(error);
+    }
+    if (status !== 401) return Promise.reject(error);
 
     if (originalRequest.__isRetryRequest) {
       authSession.invalidate('expired');

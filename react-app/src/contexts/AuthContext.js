@@ -3,6 +3,7 @@ import { authAPI } from '../services/api';
 import { normalizeApiError } from '../lib/apiErrors';
 import { authSession } from '../lib/authSession';
 import { restoreSession, withSessionLock } from '../lib/apiClient';
+import { ReauthenticationNoticeContext } from './ReauthenticationNoticeContext';
 
 const AuthContext = createContext(null);
 
@@ -17,6 +18,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sessionNotice, setSessionNotice] = useState(null);
+  const [reauthenticationRequired, setReauthenticationRequired] = useState(false);
   const busy = useRef(false);
   const mounted = useRef(false);
 
@@ -26,6 +28,11 @@ export const AuthProvider = ({ children }) => {
     authSession.initialize();
     const epoch = authSession.epoch();
     const unsubscribe = authSession.subscribe((reason) => {
+      if (reason === 'reauthentication-required') {
+        setReauthenticationRequired(true);
+        return;
+      }
+      setReauthenticationRequired(false);
       setUser(null);
       setSessionNotice(reason === 'expired' ? 'Your session ended. Please sign in again.' : null);
     });
@@ -92,6 +99,7 @@ export const AuthProvider = ({ children }) => {
       if (!profile) return { success: false, error: 'Sign-in was cancelled.' };
       setUser(profile);
       setSessionNotice(null);
+      setReauthenticationRequired(false);
       return { success: true, data: profile };
     } catch (cause) {
       const apiErr = normalizeApiError(cause, { fallbackMessage });
@@ -125,6 +133,7 @@ export const AuthProvider = ({ children }) => {
       explicit: true,
     });
     setUser(profile);
+    setReauthenticationRequired(false);
   };
 
   const logout = async () => {
@@ -190,6 +199,7 @@ export const AuthProvider = ({ children }) => {
         loading,
         error,
         sessionNotice,
+        reauthenticationRequired,
         isAuthenticated: !!user,
         register,
         loginWithEmail,
@@ -203,7 +213,9 @@ export const AuthProvider = ({ children }) => {
         resetPassword,
       }}
     >
-      {children}
+      <ReauthenticationNoticeContext.Provider value={!!user && reauthenticationRequired}>
+        {children}
+      </ReauthenticationNoticeContext.Provider>
     </AuthContext.Provider>
   );
 };

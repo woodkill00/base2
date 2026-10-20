@@ -74,6 +74,9 @@ export default function BoundGoogleLogin({ onSuccess, onError, disabled = false 
       nonce={nonce}
       locale="en"
       theme="filled_black"
+      // Keep Google's transparent frame canvas compatible with its document;
+      // the provider's explicit filled_black theme still controls the button.
+      containerProps={{ style: { colorScheme: 'light' } }}
       size="large"
       shape="rectangular"
       onSuccess={finish}

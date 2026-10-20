@@ -23,11 +23,26 @@ markers remain unknown. Evidence-write failure must not prevent cleanup.
 - [x] T003 Emit/parse reason-specific warm-up failure markers and persist safely.
 - [x] T004 Test hostile markers, metadata mutation, timeout and cleanup behavior.
 - [x] T005 Review affected consumers and repeat analysis; run focused checks.
-- [ ] T006 Run final release gate/CI, publish repair and obtain merge approval.
-- [ ] T007 Obtain a fresh bounded live-trial approval, run automated acceptance,
+- [x] T006 Run final release gate/CI, publish repair and obtain merge approval.
+- [x] T007 Obtain a fresh bounded live-trial approval, run automated acceptance,
       inspect screenshots, verify teardown; preserve failures and deferred checks.
 
 No paid resources or new live attempts are authorized by this task ledger.
+
+## Final outcome
+
+PR85 merged to main 5c1ba450149c8221397bb03088254162a138577d.
+Exact-source complete gate: 132 passed, zero failed/blocked, at
+`.artifacts/complete-gate/20261020T093306Z-2667976/result.json`.
+Post-merge hosted checks passed. Approved trial base2-full-20261020-095030
+proved antivirus cold startup healthy with fresh signatures and all 17 services
+healthy. Browser acceptance was **13 passed, 1 failed**, not a complete pass:
+the privacy export exposed a freshness/expiry client bug. Visual inspection
+also found a Google frame canvas mismatch. Both are tracked in Feature119.
+Runtime export verification consequently failed; no successful export was queued.
+Teardown deleted one droplet and six temporary DNS records; subsequent inventory
+confirmed zero. No real test emails or interactive Google sign-in were performed.
+This trial approval is consumed. Earlier failures remain preserved.
 
 ## Analysis cycles and evidence
 

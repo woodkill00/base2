@@ -1,12 +1,16 @@
 import { test, expect } from '@playwright/test';
 import { anonymousSessionDiagnostic } from '../live/acceptance-contract.mjs';
 
-test('live empty-form request inventory includes exactly one bootstrap per document', async ({ page }) => {
+test('live empty-form request inventory includes exactly one bootstrap per document', async ({
+  page,
+}) => {
   const posts: string[] = [];
   let bootstrapDiagnostics = 0;
   page.on('console', (message) => {
-    if (message.type() === 'error' &&
-        anonymousSessionDiagnostic(message.location().url, message.text(), new URL(page.url()).origin))
+    if (
+      message.type() === 'error' &&
+      anonymousSessionDiagnostic(message.location().url, message.text(), new URL(page.url()).origin)
+    )
       bootstrapDiagnostics++;
   });
   await page.route('**/api/auth/refresh', (route) =>
@@ -25,12 +29,17 @@ test('live empty-form request inventory includes exactly one bootstrap per docum
     const path = new URL(request.url()).pathname;
     if (request.method() === 'POST' && path.startsWith('/api/auth/')) posts.push(path);
   });
-  for (const [path, button] of [['/signup', 'Create account'], ['/login', 'Sign in']]) {
+  for (const [path, button] of [
+    ['/signup', 'Create account'],
+    ['/login', 'Sign in'],
+  ]) {
     await page.goto(path, { waitUntil: 'networkidle' });
     await expect(page.getByText('Checking your session…')).toHaveCount(0);
     const before = [...posts];
     await page.getByRole('button', { name: button, exact: true }).click();
-    await expect(page.getByText('Please fix the highlighted fields', { exact: true })).toBeVisible();
+    await expect(
+      page.getByText('Please fix the highlighted fields', { exact: true })
+    ).toBeVisible();
     expect(posts).toEqual(before);
   }
   expect([...posts].sort()).toEqual([
@@ -42,6 +51,50 @@ test('live empty-form request inventory includes exactly one bootstrap per docum
 });
 
 // Provider-free browser evidence: exercise our real UI, not real Google consent.
+for (const colorScheme of ['dark', 'light'] as const) {
+  for (const width of [390, 1440]) {
+    test(`Google frame preserves dark button and transparent canvas ${colorScheme} ${width}`, async ({
+      page,
+    }) => {
+      await page.emulateMedia({ colorScheme });
+      await page.setViewportSize({ width, height: 900 });
+      await page.route('**/api/auth/refresh', (route) =>
+        route.fulfill({ status: 401, json: { detail: 'Not authenticated' } })
+      );
+      await page.route('**/api/auth/oauth/google/challenge', (route) =>
+        route.fulfill({ json: { nonce: 'n'.repeat(43), expires_in: 300 } })
+      );
+      await page.route('https://accounts.google.com/**', (route) => {
+        if (route.request().resourceType() === 'document')
+          return route.fulfill({
+            contentType: 'text/html',
+            body: '<!doctype html><style>body{margin:4px;background:transparent}button{background:#202124;color:white;border:0;padding:10px}</style><button>Sign in with Google</button>',
+          });
+        return route.fulfill({
+          contentType: 'application/javascript',
+          body: `window.google={accounts:{id:{initialize(){},renderButton(e,o){window.syntheticGoogleTheme=o.theme;const f=document.createElement('iframe');f.src='https://accounts.google.com/gsi/button';f.title='Google sign-in';f.style.cssText='border:0;width:240px;height:52px;background:transparent';e.appendChild(f)},cancel(){},disableAutoSelect(){}}}};`,
+        });
+      });
+      await page.goto('/login', { waitUntil: 'networkidle' });
+      const frame = page.locator('iframe[title="Google sign-in"]');
+      await expect(frame).toHaveCSS('color-scheme', 'light');
+      await expect(frame).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+      await expect(frame.contentFrame().getByRole('button')).toHaveCSS(
+        'background-color',
+        'rgb(32, 33, 36)'
+      );
+      expect(await page.evaluate(() => (window as any).syntheticGoogleTheme)).toBe('filled_black');
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true
+      );
+      await page.screenshot({
+        path: test.info().outputPath(`google-frame-${colorScheme}-${width}.png`),
+        fullPage: true,
+      });
+    });
+  }
+}
+
 for (const width of [390, 1440]) {
   test(`Google challenge failure and recovery preserve layout at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });

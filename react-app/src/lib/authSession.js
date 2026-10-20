@@ -98,6 +98,9 @@ export function createAuthSession(storage = () => window.localStorage) {
       }
       notify(reason);
     },
+    requireReauthentication() {
+      if (token && !blocked) notify('reauthentication-required');
+    },
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
