@@ -57,3 +57,27 @@ run remains `/tmp/base2-f119-frontend.log`.
 
 Complete release gate, exact-source coverage policy, final broad visuals/CI and
 new live acceptance remain pending. No baselines changed; no new paid trial run.
+
+## Final evidence-dependency repair
+
+First complete gate on dc31607: 114 passed, 2 failed, 16 dependent checks blocked.
+Evidence: `.artifacts/complete-gate/20261020T103033Z-2755546/result.json`.
+Both failures were legitimate source-bound review invalidation after the AppShell
+change: operations visual manifest and media review ancestry. Original failures
+are retained; blocked checks are not passes.
+
+Analysis 5: preserve Operations' already-localized 403 freshness handling rather
+than emit a duplicate global notice. The new shared path applies only to exact
+401 freshness responses. Focused client regression: 17 passed.
+Bind both visual review surfaces to the new notice/context/auth dependencies.
+Supported media renewal passed 24 tests with 12 intentional exclusions and
+unchanged references. Operations comparison passed 22 tests with 20 intentional
+exclusions; a dedicated capture run retained review images outside the shared
+test-results directory at `.artifacts/f119-operations-review/`. Media desktop
+and Operations fresh-auth recovery captures were inspected. No snapshots changed.
+
+Type checking passes. Changed-line policy before the final 401-only refinement
+was 95.83% against 90%; the complete gate must regenerate final coverage.
+The broad optional format check reports 14 pre-existing unchanged files at
+`/tmp/base2-f119-format.log`; changed sources pass formatting and commit hooks.
+Final source release/CI and new paid trial remain uncompleted, not waived.
