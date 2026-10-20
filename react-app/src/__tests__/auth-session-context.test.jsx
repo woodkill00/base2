@@ -123,3 +123,25 @@ test('unmounted sign-in cannot install a late credential', async () => {
   });
   expect(authSession.access()).toBeNull();
 });
+
+test('fresh-auth notice preserves the user through failed/MFA login and clears on success', async () => {
+  const { result } = await ready();
+  authAPI.login.mockResolvedValue(payload);
+  await act(async () => result.current.loginWithEmail(payload.email, 'synthetic'));
+  act(() => authSession.requireReauthentication());
+  expect(result.current.reauthenticationRequired).toBe(true);
+  expect(result.current.user).toEqual({ email: payload.email });
+  authAPI.login.mockRejectedValueOnce(new Error('Incorrect password'));
+  await act(async () => result.current.loginWithEmail(payload.email, 'wrong'));
+  expect(result.current.reauthenticationRequired).toBe(true);
+  expect(result.current.user).toEqual({ email: payload.email });
+  authAPI.login.mockResolvedValueOnce({ mfa_required: true, challenge_token: 'synthetic' });
+  await act(async () => result.current.loginWithEmail(payload.email, 'synthetic'));
+  expect(result.current.reauthenticationRequired).toBe(true);
+  await act(async () => result.current.loginWithEmail(payload.email, 'synthetic'));
+  expect(result.current.reauthenticationRequired).toBe(false);
+  act(() => authSession.requireReauthentication());
+  act(() => authSession.invalidate());
+  expect(result.current.reauthenticationRequired).toBe(false);
+  expect(result.current.user).toBeNull();
+});

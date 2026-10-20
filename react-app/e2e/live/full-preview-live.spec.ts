@@ -3,7 +3,11 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { installOwnerEdgeAuth } from './owner-edge-auth.mjs';
 import { waitForDashboard } from './dashboard-readiness.mjs';
-import { contentFailure, expectedNotFound, anonymousSessionDiagnostic } from './acceptance-contract.mjs';
+import {
+  contentFailure,
+  expectedNotFound,
+  anonymousSessionDiagnostic,
+} from './acceptance-contract.mjs';
 import { assertApprovedReference } from './approved-reference';
 import profile from '../../src/config/generated/base2-obsidian.json';
 
@@ -68,6 +72,7 @@ test('Google readiness matches configured client without performing sign-in', as
       await expect(iframe).toHaveCount(0);
     } else {
       await expect(iframe).toBeVisible();
+      await expect(iframe).toHaveCSS('color-scheme', 'light');
       const client =
         new URL((await iframe.getAttribute('src')) || '').searchParams.get('client_id') || '';
       expect(
@@ -227,8 +232,10 @@ for (const width of [390, 1440]) {
         const expectedPosts = ['/api/auth/refresh', '/api/auth/refresh'];
         if (process.env.BASE2_GOOGLE_CLIENT_SHA256)
           expectedPosts.push('/api/auth/oauth/google/challenge');
-        expect([...authPosts].sort(), 'only bounded session/provider preparation is allowed')
-          .toEqual(expectedPosts.sort());
+        expect(
+          [...authPosts].sort(),
+          'only bounded session/provider preparation is allowed'
+        ).toEqual(expectedPosts.sort());
       } finally {
         await context.close();
       }
@@ -606,6 +613,29 @@ test('authenticated settings platform works accessibly and responsively live', a
   ).toHaveCount(0);
 
   await page.goto(`https://${domain}/settings/privacy`, { waitUntil: 'networkidle' });
+  const freshnessDenial = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === '/api/privacy/export' && response.status() === 401
+  );
+  await page.getByRole('button', { name: 'Request data export' }).click();
+  expect(await (await freshnessDenial).json()).toMatchObject({
+    detail: 'recent_reauthentication_required',
+  });
+  const freshnessNotice = page.getByRole('alert', { name: 'Fresh sign-in required' });
+  await expect(freshnessNotice).toBeVisible();
+  await expect(page).toHaveURL(new RegExp('/settings/privacy$'));
+  await page.screenshot({ path: `${evidence}/settings-live-fresh-sign-in.png`, fullPage: true });
+  await freshnessNotice.getByRole('link', { name: 'Sign in again' }).click();
+  await page.getByLabel('Email').fill(applicationEmail);
+  await page.getByLabel('Password', { exact: true }).fill(applicationPassword);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  // Client-side return preserves the new recent-auth session. A document reload
+  // intentionally restores a non-recent session and must not bypass this rule.
+  await expect(page).toHaveURL(new RegExp('/settings/privacy$'));
+  await expect(freshnessNotice).toHaveCount(0);
+  await expect(
+    page.getByRole('status').filter({ hasText: 'data export was queued securely' })
+  ).toHaveCount(0);
   await page.getByRole('button', { name: 'Request data export' }).click();
   await expect(
     page.getByRole('status').filter({ hasText: 'data export was queued securely' })
@@ -655,9 +685,12 @@ test('authenticated settings platform works accessibly and responsively live', a
     animations: 'disabled',
   });
 
-  expect(consoleErrors).toEqual([]);
+  expect(consoleErrors).toHaveLength(1);
+  expect(consoleErrors[0]).toMatch(
+    /^Failed to load resource: the server responded with a status of 401/
+  );
   expect(failedRequests).toEqual([]);
-  expect(failedResponses).toEqual([]);
+  expect(failedResponses).toEqual(['POST /api/privacy/export 401']);
   await context.close();
 });
 

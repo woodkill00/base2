@@ -9,6 +9,7 @@ export interface AuthState {
   loading: boolean;
   error: string | null;
   sessionNotice: string | null;
+  reauthenticationRequired: boolean;
   isAuthenticated: boolean;
   register(email: string, password: string, name?: string): Promise<unknown>;
   loginWithEmail(email: string, password: string): Promise<unknown>;

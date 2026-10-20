@@ -8,6 +8,7 @@ import {
 } from '../../config/layoutPolicy';
 import { useAuth } from '../../contexts/AuthContext';
 import Navigation from '../Navigation';
+import ReauthenticationNotice from '../ReauthenticationNotice';
 import VolcanoLayout from './VolcanoLayout';
 import './unified-layout.css';
 import GlassHeader from './GlassHeader';
@@ -297,6 +298,7 @@ export const AppShell: React.FC<Props> = ({
   )
     return (
       <VolcanoLayout headerTitle={headerTitle} contextSlot={contextSlot} footerSlot={footerSlot}>
+        <ReauthenticationNotice />
         {children}
       </VolcanoLayout>
     );
@@ -311,6 +313,7 @@ export const AppShell: React.FC<Props> = ({
         headerTitle={headerTitle}
         footerLabel={footerLabel}
       >
+        <ReauthenticationNotice />
         {children}
       </RoutedSharedLayout>
     );
@@ -326,6 +329,7 @@ export const AppShell: React.FC<Props> = ({
         sidebarItems={sidebarItems}
         footerLabel={footerLabel}
       >
+        <ReauthenticationNotice />
         {children}
       </SharedLayout>
     );
@@ -379,6 +383,7 @@ export const AppShell: React.FC<Props> = ({
                 'calc(100vh - var(--nav-h) - var(--footer-h) - env(safe-area-inset-top) - env(safe-area-inset-bottom))',
             }}
           >
+            <ReauthenticationNotice />
             {children}
           </main>
         </div>

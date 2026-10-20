@@ -3,6 +3,78 @@ import axe from 'axe-core';
 
 const axeSource = axe.source;
 
+for (const width of [390, 1440]) {
+  for (const colorScheme of ['dark', 'light'] as const) {
+    test(`explicit freshness recovery preserves session ${width} ${colorScheme}`, async ({
+      page,
+    }, info) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.emulateMedia({ colorScheme });
+      let refreshes = 0;
+      let exports = 0;
+      let fresh = false;
+      const profile = { email: 'synthetic@example.test', access_token: 'synthetic-access' };
+      await page.route('**/api/**', (route) => {
+        const path = new URL(route.request().url()).pathname;
+        if (path === '/api/auth/refresh') {
+          refreshes++;
+          return route.fulfill({ json: profile });
+        }
+        if (path === '/api/auth/login') {
+          fresh = true;
+          return route.fulfill({ json: profile });
+        }
+        if (path === '/api/privacy/export') {
+          exports++;
+          return route.fulfill(
+            fresh
+              ? { json: {} }
+              : {
+                  status: 401,
+                  json: { detail: 'recent_reauthentication_required' },
+                }
+          );
+        }
+        if (path === '/api/privacy/operations') return route.fulfill({ json: { operations: [] } });
+        if (path === '/api/settings/preferences')
+          return route.fulfill({ json: { version: 1, theme: 'system', locale: 'en' } });
+        return route.fulfill({ json: {} });
+      });
+      await page.goto('/settings/privacy');
+      await page.getByRole('button', { name: 'Request data export' }).click();
+      const notice = page.getByRole('alert', { name: 'Fresh sign-in required' });
+      await expect(notice).toBeVisible();
+      await expect(notice).toBeInViewport();
+      await expect(notice).toBeFocused();
+      await expect(page).toHaveURL(/\/settings\/privacy$/);
+      expect(refreshes).toBe(1);
+      expect(exports).toBe(1);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true
+      );
+      await page.addScriptTag({ content: axeSource });
+      await page.screenshot({
+        path: info.outputPath('fresh-sign-in-required.png'),
+        fullPage: true,
+      });
+      expect((await page.evaluate(() => window.axe.run(document))).violations).toEqual([]);
+      await notice.getByRole('link', { name: 'Sign in again' }).click();
+      await page.getByLabel('Email').fill(profile.email);
+      await page.getByLabel('Password', { exact: true }).fill('SyntheticPass123!');
+      await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+      await expect(page).toHaveURL(/\/settings\/privacy$/);
+      await expect(notice).toHaveCount(0);
+      expect(exports).toBe(1);
+      expect(refreshes).toBe(1);
+      await page.getByRole('button', { name: 'Request data export' }).click();
+      await expect(
+        page.getByRole('status').filter({ hasText: 'data export was queued securely' })
+      ).toBeVisible();
+      expect(exports).toBe(2);
+    });
+  }
+}
+
 test.beforeEach(async ({ page }) => {
   await page.route('**/*', (route) => {
     const url = new URL(route.request().url());
