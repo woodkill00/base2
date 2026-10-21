@@ -11,6 +11,46 @@
 - [ ] T009 Run approved automated-only acceptance, inspect evidence and verify teardown.
 - [x] T010 Reproduce and repair live audit-window assertion ordering, preserving the five-event UI.
 - [ ] T011 Validate and publish the test-only follow-up; obtain fresh authority for a new live trial.
+- [x] T012 Repair newly reported dependency findings across API, isolated decoder and frontend locks.
+- [ ] T013 Verify hash-bound decoder installation, media compatibility, dependency audits and full release gate.
+- [ ] T014 Publish the dependency repair and merge PR 87 only after all CI checks pass; no paid trial.
+
+## October 21 dependency repair batch
+
+Owner approved expanding PR 87 beyond its test-only scope to repair dependency
+audit blockers. CI run 39560323523 reports follow-redirects and Vite high findings,
+plus Certifi and Pillow findings. Other PR checks passed. Raw evidence is retained
+under `.artifacts/pr87-security/`. Do not suppress advisories or weaken gates.
+
+Analysis 7: Pillow exists both in the API lock and hash-bound Python 3.15 isolated
+inspector. Update both; retain immutable images, network isolation and hashes.
+Check derivative generation, hostile-media rejection and inspector attestation.
+Frontend changes need production build, Storybook and existing visual matrices.
+Use targeted lock regeneration, preserve unrelated dependency versions, then
+fresh audits and targeted regressions before one full release gate. Rollback is
+the previous commit, not a security exception. No live resources authorized.
+
+Analysis 8: use vendor release notes and registry metadata for fixed versions;
+Pillow 13 drops Python 3.10 but our API uses 3.12 and inspector 3.15. Verify actual
+decoder installation and existing image-processing behaviors, not only pins.
+Keep synthetic old-version attestation fixtures where they test generic parsing.
+
+Analysis 9: the fresh registry audit also reports critical Storybook advisory
+GHSA-f2ph-cmg5-wxc8, fixed in 8.6.19. Include the aligned 8.6.19 package family
+in this same dependency batch and verify its static build; do not suppress it.
+
+Analysis 10: fresh Python audit reports five pypdf advisories absent from the
+original CI report. Update both consumers to 6.21.2, including its hash-bound
+universal wheel. Vendor changelog includes further parsing resource bounds in
+6.21.2. Re-run PDF derivative/hostile-input coverage and fresh audits before gate.
+
+Targeted results: 26 dependency/CI policy tests and 53 media tests passed.
+Fresh API, Django and frontend dependency audits report no known findings.
+Both Python environments pass pip check; frontend production and Storybook builds
+passed. The inspector builder installed Pillow 13 using the PyPI-published CPython
+3.15 manylinux wheel hash; final paired PDF build/visual/full validation follows.
+Sources: Pillow 13 release notes, pypdf changelog, GitHub GHSA-f2ph-cmg5-wxc8,
+and official PyPI/npm package metadata. No advisory exceptions or runtime bypasses.
 
 ## Issues
 
