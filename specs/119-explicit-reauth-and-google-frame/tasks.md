@@ -15,6 +15,24 @@
 - [ ] T013 Verify hash-bound decoder installation, media compatibility, dependency audits and full release gate.
 - [ ] T014 Publish the dependency repair and merge PR 87 only after all CI checks pass; no paid trial.
 - [x] T015 Patch newly reported Vitest mock-server advisories and verify coverage-tool compatibility before repeating the release gate.
+- [x] T016 Repair the omitted DigitalOcean tooling Pillow/certifi pins and hashed lock; audit every executable Python dependency manifest before publication.
+
+Analysis 13: local gate a7bb5f6 passed all 132, but hosted SBOM Grype failed
+on nine Pillow advisories at digital_ocean/requirements.txt (one critical,
+six high, two moderate). This is a missed consumer in the earlier repair,
+not an infrastructure retry. The full requirements sweep also found stale
+certifi in digital_ocean/requirements.lock. Preserve CI run 39681908163 and
+`.artifacts/pr87-security/sbom-current`. Extend pin regressions to both
+tooling manifests, regenerate only the affected hashed packages, install/audit
+the tooling lock, run its tests, then full validation and CI. Do not bypass
+SBOM findings or invoke any provider operation. Visual source inputs are
+unchanged by this tooling-only correction; existing reviewed history remains.
+The added pin regression failed before repair. Hash-verified installation and
+the tooling pip audit passed (zero known vulnerabilities), followed by all 723
+DigitalOcean tooling tests. Logs: `/tmp/base2-pr87-tooling-{install,audit,tests}`
+with their respective `.log`, `.json`, `.log` extensions. API, Django and frontend
+audits passed in the preceding exact-source local/hosted runs. Full manifest
+search found no remaining executable Pillow 12.3.0 or old certifi pins.
 
 Analysis 12: gate on 31f1d24 passed 131 checks and failed only the fresh npm
 production audit. Preserve `.artifacts/complete-gate/20261021T204946Z-708383`.

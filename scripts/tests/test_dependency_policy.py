@@ -42,6 +42,9 @@ class DependencyPolicyTests(unittest.TestCase):
             self.assertRegex((root / path).read_text(), r'(?im)^pillow==13\.0\.0(?:\s|$)')
             self.assertIn('pypdf==6.21.2', (root / path).read_text())
         self.assertIn('certifi==2026.10.19', (root / 'api/requirements.txt').read_text())
+        for path in ('digital_ocean/requirements.txt', 'digital_ocean/requirements.lock'):
+            self.assertRegex((root / path).read_text(), r'(?im)^pillow==13\.0\.0(?:\s|$)')
+        self.assertIn('certifi==2026.10.19', (root / 'digital_ocean/requirements.lock').read_text())
         lock = json.loads((root / 'react-app/package-lock.json').read_text())
         self.assertEqual('6.4.5', lock['packages']['node_modules/vite']['version'])
         for name in ('storybook', '@storybook/core'):
