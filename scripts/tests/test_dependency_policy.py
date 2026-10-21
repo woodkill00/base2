@@ -1,4 +1,5 @@
 import copy
+import json
 from datetime import date
 import importlib.util
 from pathlib import Path
@@ -34,6 +35,29 @@ def exception():
 
 
 class DependencyPolicyTests(unittest.TestCase):
+    def test_october_security_pins_cover_api_inspector_and_frontend(self):
+        root = MODULE_PATH.parents[2]
+        for path in ('api/requirements.in', 'api/requirements.txt',
+                     'api/requirements-media-inspector.txt'):
+            self.assertRegex((root / path).read_text(), r'(?im)^pillow==13\.0\.0(?:\s|$)')
+            self.assertIn('pypdf==6.21.2', (root / path).read_text())
+        self.assertIn('certifi==2026.10.19', (root / 'api/requirements.txt').read_text())
+        for path in ('digital_ocean/requirements.txt', 'digital_ocean/requirements.lock'):
+            self.assertRegex((root / path).read_text(), r'(?im)^pillow==13\.0\.0(?:\s|$)')
+        self.assertIn('certifi==2026.10.19', (root / 'digital_ocean/requirements.lock').read_text())
+        lock = json.loads((root / 'react-app/package-lock.json').read_text())
+        self.assertEqual('6.4.5', lock['packages']['node_modules/vite']['version'])
+        for name in ('storybook', '@storybook/core'):
+            self.assertEqual('8.6.19', lock['packages'][f'node_modules/{name}']['version'])
+        for name in ('vitest', '@vitest/mocker', '@vitest/coverage-istanbul'):
+            self.assertEqual('4.1.12', lock['packages'][f'node_modules/{name}']['version'])
+        redirects = [entry['version'] for name, entry in lock['packages'].items()
+                     if name.endswith('node_modules/follow-redirects')]
+        self.assertTrue(redirects)
+        self.assertNotIn('1.16.0', redirects)
+        inspector = (root / 'api/requirements-media-inspector.txt').read_text()
+        self.assertRegex(inspector, r'pillow==13\.0\.0\s+\\\s+--hash=sha256:[a-f0-9]{64}')
+
     @classmethod
     def setUpClass(cls):
         cls.validator = load_module()

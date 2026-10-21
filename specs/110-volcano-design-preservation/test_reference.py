@@ -11,8 +11,8 @@ ROOT = HERE.parents[1]
 class ReferenceContract(unittest.TestCase):
     def test_python_security_repairs_cover_all_deployment_consumers(self):
         expected = {
-            'api/requirements.txt': ['pyjwt[crypto]==2.15.1', 'pypdf==6.19.0', 'urllib3==2.8.0'],
-            'api/requirements-media-inspector.txt': ['pypdf==6.19.0'],
+            'api/requirements.txt': ['pyjwt[crypto]==2.15.1', 'pypdf==6.21.2', 'urllib3==2.8.0'],
+            'api/requirements-media-inspector.txt': ['pypdf==6.21.2'],
             'django/requirements.txt': ['django==6.1.1'],
             'digital_ocean/requirements.lock': ['pyjwt[crypto]==2.15.1', 'urllib3==2.8.0', 'oauthlib==4.0.0'],
         }

@@ -3,7 +3,7 @@
 
 pydo==0.40.0
 paramiko==5.0.0
-Pillow==12.3.0
+Pillow==13.0.0
 python-dotenv==1.2.3
 urllib3==2.8.0
 pytest==9.1.1

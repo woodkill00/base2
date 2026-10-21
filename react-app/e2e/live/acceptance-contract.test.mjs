@@ -18,19 +18,29 @@ import {
 
 test('anonymous bootstrap diagnostic admits only exact origin, path and 401', () => {
   const origin = 'https://example.test';
-  const message = 'Failed to load resource: the server responded with a status of 401 (Unauthorized)';
+  const message =
+    'Failed to load resource: the server responded with a status of 401 (Unauthorized)';
   assert.equal(anonymousSessionDiagnostic(`${origin}/api/auth/refresh`, message, origin), true);
   for (const url of [
     'https://other.test/api/auth/refresh',
     `${origin}/api/auth/login`,
     `${origin}/api/auth/refresh?token=secret`,
     'http://example.test/api/auth/refresh',
-  ]) assert.equal(anonymousSessionDiagnostic(url, message, origin), false);
+  ])
+    assert.equal(anonymousSessionDiagnostic(url, message, origin), false);
   for (const text of ['application error', message.replace('401', '500')])
     assert.equal(anonymousSessionDiagnostic(`${origin}/api/auth/refresh`, text, origin), false);
 });
 
 const cases = () => requiredTests.map((title) => ({ title, status: 'passed', retry: 0 }));
+test('live preference audit is checked before refresh-heavy privacy workflows', () => {
+  const source = readFileSync(new URL('./full-preview-live.spec.ts', import.meta.url), 'utf8');
+  const saved = source.indexOf("hasText: 'Preferences saved'");
+  const audit = source.indexOf("getByText('Profile preferences updated', { exact: true })");
+  const privacy = source.indexOf('const freshnessDenial');
+  assert.ok(saved >= 0 && audit > saved && privacy > audit);
+  assert.equal(source.split("getByText('Profile preferences updated', { exact: true })").length, 2);
+});
 test('empty-form checks separate bounded Google preparation from auth submission', () => {
   const source = readFileSync(new URL('./full-preview-live.spec.ts', import.meta.url), 'utf8');
   assert.ok(source.includes('const postsBeforeEmptySubmit = [...authPosts]'));
@@ -42,7 +52,9 @@ test('empty-form checks separate bounded Google preparation from auth submission
   assert.doesNotMatch(source, /authPosts\.filter/);
 });
 test('Google readiness is required and distinct from human sign-in', () => {
-  assert.ok(requiredTests.includes('Google readiness matches configured client without performing sign-in'));
+  assert.ok(
+    requiredTests.includes('Google readiness matches configured client without performing sign-in')
+  );
   const source = readFileSync(new URL('./full-preview-live.spec.ts', import.meta.url), 'utf8');
   assert.ok(source.includes("createHash('sha256').update(client)"));
   assert.ok(source.includes("iframe.contentFrame().getByRole('button')"));

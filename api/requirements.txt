@@ -21,7 +21,7 @@ billiard==4.2.4
     # via celery
 celery==5.6.3
     # via -r api/requirements.in
-certifi==2026.7.22
+certifi==2026.10.19
     # via
     #   httpcore
     #   httpx
@@ -150,7 +150,7 @@ packaging==26.3
     #   pytest
 passlib==1.7.4
     # via -r api/requirements.in
-pillow==12.3.0
+pillow==13.0.0
     # via -r api/requirements.in
 pluggy==1.6.0
     # via
@@ -183,7 +183,7 @@ pygments==2.21.0
     # via pytest
 pyjwt[crypto]==2.15.1
     # via -r api/requirements.in
-pypdf==6.19.0
+pypdf==6.21.2
     # via -r api/requirements.in
 pytest==9.1.1
     # via
