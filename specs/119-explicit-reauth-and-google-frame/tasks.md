@@ -52,6 +52,12 @@ passed. The inspector builder installed Pillow 13 using the PyPI-published CPyth
 Sources: Pillow 13 release notes, pypdf changelog, GitHub GHSA-f2ph-cmg5-wxc8,
 and official PyPI/npm package metadata. No advisory exceptions or runtime bypasses.
 
+Final paired inspector build and pip check passed. Updated media tests: 53 passed.
+Visual renewal: media 24 passed/12 intentional matrix exclusions; operations 22
+passed/20 intentional matrix exclusions. Actual media landscape and operations
+WebKit recovery captures inspected; references unchanged. Source-bound manifests
+renewed through supported runners. Full release/CI remain pending for this source.
+
 ## Issues
 
 1. High, product: a recent-auth 401 is refreshed/retried then invalidates a valid
