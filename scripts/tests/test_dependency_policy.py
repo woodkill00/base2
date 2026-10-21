@@ -46,6 +46,8 @@ class DependencyPolicyTests(unittest.TestCase):
         self.assertEqual('6.4.5', lock['packages']['node_modules/vite']['version'])
         for name in ('storybook', '@storybook/core'):
             self.assertEqual('8.6.19', lock['packages'][f'node_modules/{name}']['version'])
+        for name in ('vitest', '@vitest/mocker', '@vitest/coverage-istanbul'):
+            self.assertEqual('4.1.12', lock['packages'][f'node_modules/{name}']['version'])
         redirects = [entry['version'] for name, entry in lock['packages'].items()
                      if name.endswith('node_modules/follow-redirects')]
         self.assertTrue(redirects)

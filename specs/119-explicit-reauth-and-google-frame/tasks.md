@@ -14,6 +14,20 @@
 - [x] T012 Repair newly reported dependency findings across API, isolated decoder and frontend locks.
 - [ ] T013 Verify hash-bound decoder installation, media compatibility, dependency audits and full release gate.
 - [ ] T014 Publish the dependency repair and merge PR 87 only after all CI checks pass; no paid trial.
+- [x] T015 Patch newly reported Vitest mock-server advisories and verify coverage-tool compatibility before repeating the release gate.
+
+Analysis 12: gate on 31f1d24 passed 131 checks and failed only the fresh npm
+production audit. Preserve `.artifacts/complete-gate/20261021T204946Z-708383`.
+GHSA-qxg6-89mg-rqv8 and GHSA-xp26-3454-mjgp now affect the locked
+Vitest mocker 4.1.11. Vendor advisories identify 4.1.12 as patched. Update
+Vitest and coverage-istanbul together, assert all mocker consumers are patched,
+run frontend coverage, audit, source-bound visual renewal, then the full gate.
+Focused pin regression was observed failing before the patch, then passed;
+all 442 frontend tests and their unchanged coverage gate passed. Fresh npm audit
+reported zero vulnerabilities. Evidence: `/tmp/base2-pr87-vitest-coverage.log`
+and `/tmp/base2-pr87-vitest-audit.json`.
+This is a new registry finding, not permission to retry an unchanged failing
+audit or weaken its threshold. No runtime UI changes or paid preview.
 
 ## October 21 dependency repair batch
 
