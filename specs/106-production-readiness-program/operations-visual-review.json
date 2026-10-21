@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "accepted",
   "sources": {
-    "react-app/package-lock.json": "7a81979342a2a75f2e7d62d43d7a95d211a8f3138c2b0203bb583113af909ab3",
+    "react-app/package-lock.json": "730e3a30d15f59db5258bcc7a8256030dc14b30c17cfd95020799878ff7e9e9e",
     "react-app/postcss.config.js": "b55bcf7b3c18139e4c6d35eaa3501057b55f4ef3d56ce621b7709fb4efb1287e",
     "react-app/tailwind.config.js": "06e98c91c73a4ac9c8fcfac5c085837f6a88e4095dfa2b1861e206dc9e2daab8",
     "react-app/src/pages/OperationsCenter.jsx": "d3918f1ad18b8e6183eb32973cf16390a196adb8dbe9b2428582f62cc3720504",
