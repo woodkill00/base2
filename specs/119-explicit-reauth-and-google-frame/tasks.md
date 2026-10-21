@@ -58,6 +58,13 @@ passed/20 intentional matrix exclusions. Actual media landscape and operations
 WebKit recovery captures inspected; references unchanged. Source-bound manifests
 renewed through supported runners. Full release/CI remain pending for this source.
 
+Analysis 11: full gate on ea75b56 completed with 131 passed and one failed.
+`feature-110-reference` still expected the old vulnerable pypdf 6.19.0 in both
+consumers. Updated its exact-pin expectation to 6.21.2, retaining all assertions.
+Evidence: `.artifacts/complete-gate/20261021T202300Z-654925/result.json`.
+No product/visual failures were found in the independent sweep. Final full gate
+and hosted CI must pass on the corrected source before merge.
+
 ## Issues
 
 1. High, product: a recent-auth 401 is refreshed/retried then invalidates a valid
