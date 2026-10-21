@@ -16,6 +16,24 @@
 - [ ] T014 Publish the dependency repair and merge PR 87 only after all CI checks pass; no paid trial.
 - [x] T015 Patch newly reported Vitest mock-server advisories and verify coverage-tool compatibility before repeating the release gate.
 - [x] T016 Repair the omitted DigitalOcean tooling Pillow/certifi pins and hashed lock; audit every executable Python dependency manifest before publication.
+- [x] T017 Make the accessibility matrix enter its named ready-home state before scanning; prove incomplete shells are rejected, preserve all accessibility rules and negative controls.
+
+Analysis 14: the 6c27ea9 wrapper run reached its 1800-second deadline without
+a terminal receipt. One preserved bounded diagnostic of the same complete gate
+then failed visual-harness: axe ran immediately after navigation and reported
+missing main/heading/regions, while the subsequent failure snapshot contains
+the fully rendered home page. The app uses a lazy Suspense boundary; this test
+lacked the explicit readiness assertions used by adjacent visual tests.
+Evidence: `.artifacts/complete-gate/20261021T222756Z-881418` and
+`.artifacts/pr87-readiness-failure`. Stop unchanged-source retries. Require
+visible home, main and H1 plus loaded fonts before positive and negative axe
+scans; add a loading-shell rejection/ready-shell acceptance regression.
+No runtime page or baseline changes; do not disable axe rules. Validate the
+focused matrix repeatedly before a new full gate. Wrapper timeout remains
+documented separately in `.artifacts/pr87-gate-timeout.md`.
+The focused browser matrix passed 45/45 across three repetitions with no retries,
+including incomplete-shell rejection and injected-defect detection. Log:
+`/tmp/base2-pr87-readiness.log`. Full gate remains required on the new source.
 
 Analysis 13: local gate a7bb5f6 passed all 132, but hosted SBOM Grype failed
 on nine Pillow advisories at digital_ocean/requirements.txt (one critical,

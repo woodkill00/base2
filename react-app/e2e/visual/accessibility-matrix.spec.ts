@@ -1,7 +1,14 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
 const axeSource = readFileSync('node_modules/axe-core/axe.min.js', 'utf8');
+
+async function waitForHome(page: Page, timeout = 10_000) {
+  await expect(page.getByTestId('home-page')).toBeVisible({ timeout });
+  await expect(page.getByRole('main')).toBeVisible({ timeout });
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout });
+  await page.evaluate(async () => document.fonts.ready);
+}
 const cases = [
   { name: 'desktop-dark-reduced', width: 1280, height: 900, color: 'dark', motion: 'reduce' },
   { name: 'tablet-light-reduced', width: 768, height: 1024, color: 'light', motion: 'reduce' },
@@ -21,6 +28,7 @@ for (const entry of cases) {
     await page.setViewportSize({ width: entry.width, height: entry.height });
     await page.emulateMedia({ colorScheme: entry.color, reducedMotion: entry.motion });
     await page.goto('/');
+    await waitForHome(page);
     await page.addScriptTag({ content: axeSource });
     const results = await page.evaluate(async () =>
       window.axe.run(document, { resultTypes: ['violations'] })
@@ -66,6 +74,7 @@ for (const entry of cases) {
 
 test('negative control proves an injected accessibility defect is detected', async ({ page }) => {
   await page.goto('/');
+  await waitForHome(page);
   await page.addScriptTag({ content: axeSource });
   await page.evaluate(() => {
     const image = document.createElement('img');
@@ -77,6 +86,13 @@ test('negative control proves an injected accessibility defect is detected', asy
     return results.violations.map((violation) => violation.id);
   });
   expect(defectIds).toContain('image-alt');
+});
+
+test('accessibility readiness rejects a loading shell and accepts completed home content', async ({ page }) => {
+  await page.setContent('<div data-testid="home-page">Loading...</div>');
+  await expect(waitForHome(page, 200)).rejects.toThrow();
+  await page.setContent('<main data-testid="home-page"><h1>Ready home</h1></main>');
+  await waitForHome(page);
 });
 
 declare global {
