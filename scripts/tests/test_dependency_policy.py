@@ -35,6 +35,20 @@ def exception():
 
 
 class DependencyPolicyTests(unittest.TestCase):
+    def test_october_30_security_consumers_are_patched(self):
+        root = MODULE_PATH.parents[2]
+        lock = json.loads((root / 'react-app/package-lock.json').read_text())
+        versions = [entry['version'] for name, entry in lock['packages'].items()
+                    if name.endswith('node_modules/undici')]
+        self.assertTrue(versions)
+        for version in versions:
+            self.assertGreaterEqual(tuple(map(int, version.split('.'))), (7, 30, 1))
+        self.assertIn('opentelemetry-api==1.45.1', (root / 'api/requirements.txt').read_text())
+        dockerfile = (root / 'api/Dockerfile.media-inspector').read_text()
+        for digest in ('9ebf8de78b1cf497dfa5f82833900555d5632be933e494944f4a3ef3ea90863f',
+                       '54ad02f5ad9e7e62f216b8f856405cd949c5bb4d21ca1223ff0844641c00776e'):
+            self.assertIn('cgr.dev/chainguard/python@sha256:' + digest, dockerfile)
+
     def test_october_security_pins_cover_api_inspector_and_frontend(self):
         root = MODULE_PATH.parents[2]
         for path in ('api/requirements.in', 'api/requirements.txt',
