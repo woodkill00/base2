@@ -140,27 +140,47 @@ test('legacy account deep link converges on unified security without duplicated 
   await expect(page.getByRole('navigation', { name: 'App navigation' })).toHaveCount(1);
 });
 
-test('loading, partial-error, and empty-search states retain explicit visual evidence', async ({
-  page,
-}) => {
+test('loading state retains explicit visual evidence', async ({ page }) => {
+  let releaseCapabilities!: () => void;
+  const capabilitiesPending = new Promise<void>((resolve) => {
+    releaseCapabilities = resolve;
+  });
   await page.route('**/api/settings/capabilities', async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 750));
+    await capabilitiesPending;
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ schema_version: 1, categories }),
     });
   });
-  await page.goto('/settings');
-  await expect(page.getByText('Loading settings…')).toBeVisible();
-  await expect(page).toHaveScreenshot('settings-loading-desktop.png', {
-    fullPage: true,
-    animations: 'disabled',
-    caret: 'hide',
-    maxDiffPixelRatio: 0.01,
-  });
+  try {
+    await page.goto('/settings');
+    await expect(page.locator('#settings-detail')).toHaveAttribute('aria-busy', 'true');
+    await expect(page.getByText('Loading settings…')).toBeVisible();
+    // Never let screenshot stabilization release the request. Stay below the
+    // real 10-second GET timeout, and verify the named state even on mismatch.
+    await expect.soft(page).toHaveScreenshot('settings-loading-desktop.png', {
+      fullPage: true,
+      animations: 'disabled',
+      caret: 'hide',
+      maxDiffPixelRatio: 0.01,
+      timeout: 5_000,
+    });
+    await expect(page.locator('#settings-detail')).toHaveAttribute('aria-busy', 'true');
+    await expect(page.getByText('Loading settings…')).toBeVisible();
+  } finally {
+    releaseCapabilities();
+    // Drain in-flight handlers before teardown even if an assertion fails.
+    await page.unrouteAll({ behavior: 'wait' });
+  }
+  await expect(page.locator('#settings-detail')).toHaveAttribute('aria-busy', 'false');
   await expect(page.getByText('Loading settings…')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+});
 
+test('empty-search state retains explicit visual evidence', async ({ page }) => {
+  await page.goto('/settings');
+  await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
   await page.getByLabel('Search settings').fill('no-such-setting');
   await expect(page.getByText('No settings found.')).toBeVisible();
   await expect(page).toHaveScreenshot('settings-empty-search-desktop.png', {
@@ -169,7 +189,9 @@ test('loading, partial-error, and empty-search states retain explicit visual evi
     caret: 'hide',
     maxDiffPixelRatio: 0.01,
   });
+});
 
+test('partial-error state retains explicit visual evidence', async ({ page }) => {
   await page.route('**/api/settings/preferences', (route) =>
     route.fulfill({
       status: 503,
@@ -177,7 +199,8 @@ test('loading, partial-error, and empty-search states retain explicit visual evi
       body: JSON.stringify({ detail: 'fixture unavailable' }),
     })
   );
-  await page.reload();
+  await page.goto('/settings');
+  await expect(page.locator('#settings-detail')).toHaveAttribute('aria-busy', 'false');
   await expect(page.getByRole('alert')).toContainText('temporarily unavailable');
   await expect(page).toHaveScreenshot('settings-partial-error-desktop.png', {
     fullPage: true,

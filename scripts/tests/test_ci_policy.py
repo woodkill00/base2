@@ -123,8 +123,10 @@ class CiPolicyTests(unittest.TestCase):
             "FROM --platform=linux/amd64 clamav/clamav@sha256:1fdfd24c6f0a0fb60788481487459a6d4eda8a9b448641594e04db8410d34422 AS clamav-definitions",
             dockerfile,
         )
-        self.assertIn("cgr.dev/chainguard/python@sha256:ea666e12d8d5c985262f44b280ae7398d43e70156061b5657c040db835acd984", dockerfile)
-        self.assertIn("cgr.dev/chainguard/python@sha256:3e56a2973d429d5bf28d8dd99f929ea6344b0bf054c432f09cf579f747ee3114", dockerfile)
+        # Match the already-pinned PR88 images; this corrects stale test evidence,
+        # not runtime vulnerabilities, scanner thresholds or image approval.
+        self.assertIn("cgr.dev/chainguard/python@sha256:9ebf8de78b1cf497dfa5f82833900555d5632be933e494944f4a3ef3ea90863f", dockerfile)
+        self.assertIn("cgr.dev/chainguard/python@sha256:54ad02f5ad9e7e62f216b8f856405cd949c5bb4d21ca1223ff0844641c00776e", dockerfile)
         self.assertIn("mwader/static-ffmpeg@sha256:54e55b0c", dockerfile)
         self.assertIn("clamav-1.5.4.linux.x86_64.deb", dockerfile)
         self.assertIn(
@@ -373,7 +375,15 @@ class CiPolicyTests(unittest.TestCase):
         combined = workflow + acceptance
         self.assertNotIn("public.ecr.aws/docker/library", combined)
         self.assertNotIn('"postgres:16-alpine"', acceptance)
-        self.assertEqual(2, workflow.count("mirror.gcr.io/library/"))
+        self.assertEqual(3, workflow.count("mirror.gcr.io/library/"))
+        jobs = __import__("yaml").safe_load(workflow)["jobs"]
+        identity_image = jobs["identity-postgres-acceptance"]["services"]["postgres"]["image"]
+        self.assertEqual(
+            jobs["backend-integration"]["services"]["postgres"]["image"],
+            identity_image,
+        )
+        self.assertRegex(identity_image, r"^mirror\.gcr\.io/library/postgres@sha256:[0-9a-f]{64}$")
+        self.assertIn(identity_image.split("@sha256:", 1)[1], acceptance)
         self.assertEqual(1, acceptance.count("mirror.gcr.io/library/postgres@sha256:"))
 
     def test_workflows_pin_node24_checkout_and_artifact_actions(self):

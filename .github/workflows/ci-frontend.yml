@@ -58,6 +58,7 @@ jobs:
           cache-dependency-path: react-app/package-lock.json
 
       - name: Install
+        id: install
         if: steps.scope.outputs.mode == 'full'
         run: npm ci --legacy-peer-deps
 
@@ -87,14 +88,17 @@ jobs:
           retention-days: 7
 
       - name: Build
+        id: build
         if: steps.scope.outputs.mode == 'full'
         run: npm run build
 
       - name: Install layout browsers
+        id: browsers
         if: steps.scope.outputs.mode == 'full'
         run: npm exec playwright -- install --with-deps chromium firefox webkit
 
       - name: Install approved-reference fonts
+        id: fonts
         if: steps.scope.outputs.mode == 'full'
         run: |
           sudo apt-get install --no-install-recommends -y fonts-ubuntu=0.869+git20240321-0ubuntu1
@@ -102,28 +106,72 @@ jobs:
           test "$(fc-match -f '%{family}' Ubuntu)" = Ubuntu
           dpkg-query -W fonts-ubuntu
 
+      # Run independent browser diagnostics sequentially even after an assertion
+      # fails, but never after setup failure. Original failing exits remain fatal;
+      # the terminal aggregate also rejects skipped/incomplete required suites.
       - name: Account, settings foundation and existing interaction contracts
-        if: steps.scope.outputs.mode == 'full'
-        run: npm run test:account-e2e
+        id: account_acceptance
+        if: >-
+          always() && steps.scope.outputs.mode == 'full' && steps.install.outcome == 'success'
+          && steps.build.outcome == 'success' && steps.browsers.outcome == 'success'
+          && steps.fonts.outcome == 'success'
+        run: npm run test:account-e2e -- --output=../.artifacts/settings-121/account
 
       - name: Settings responsive release matrix
-        if: steps.scope.outputs.mode == 'full'
-        run: npm run test:settings-release
+        id: settings_acceptance
+        if: >-
+          always() && steps.scope.outputs.mode == 'full' && steps.install.outcome == 'success'
+          && steps.build.outcome == 'success' && steps.browsers.outcome == 'success'
+          && steps.fonts.outcome == 'success'
+        run: npm run test:settings-release -- --output=../.artifacts/settings-121/release
+
+      - name: Upload settings acceptance evidence
+        if: always() && steps.scope.outputs.mode == 'full'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: settings-121
+          path: .artifacts/settings-121
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Shared layout contracts and visual evidence
-        if: steps.scope.outputs.mode == 'full'
+        id: layout_acceptance
+        if: >-
+          always() && steps.scope.outputs.mode == 'full' && steps.install.outcome == 'success'
+          && steps.build.outcome == 'success' && steps.browsers.outcome == 'success'
+          && steps.fonts.outcome == 'success'
+        env:
+          LAYOUT_ATTEMPT: ci-${{ github.run_id }}-${{ github.run_attempt }}-layout
         run: npm exec playwright -- test --config=playwright.layout.config.mjs
 
       - name: Approved Volcano design preservation
-        if: steps.scope.outputs.mode == 'full'
+        id: volcano_acceptance
+        if: >-
+          always() && steps.scope.outputs.mode == 'full' && steps.install.outcome == 'success'
+          && steps.build.outcome == 'success' && steps.browsers.outcome == 'success'
+          && steps.fonts.outcome == 'success'
+        env:
+          LAYOUT_ATTEMPT: ci-${{ github.run_id }}-${{ github.run_attempt }}-volcano
         run: npm exec playwright -- test --config=playwright.volcano.config.mjs
 
       - name: Volcano user journey states
-        if: steps.scope.outputs.mode == 'full'
+        id: journeys_acceptance
+        if: >-
+          always() && steps.scope.outputs.mode == 'full' && steps.install.outcome == 'success'
+          && steps.build.outcome == 'success' && steps.browsers.outcome == 'success'
+          && steps.fonts.outcome == 'success'
+        env:
+          JOURNEY_ATTEMPT: ci-${{ github.run_id }}-${{ github.run_attempt }}-journeys
         run: npm exec playwright -- test --config=playwright.journeys.config.mjs
 
       - name: Enabled optional module journeys
-        if: steps.scope.outputs.mode == 'full'
+        id: module_journeys_acceptance
+        if: >-
+          always() && steps.scope.outputs.mode == 'full' && steps.install.outcome == 'success'
+          && steps.build.outcome == 'success' && steps.browsers.outcome == 'success'
+          && steps.fonts.outcome == 'success'
+        env:
+          JOURNEY_ATTEMPT: ci-${{ github.run_id }}-${{ github.run_attempt }}-modules
         run: npm exec playwright -- test --config=playwright.modules-journeys.config.mjs
 
       - name: Upload user journey evidence
@@ -156,6 +204,31 @@ jobs:
           path: react-app/storybook-static
           if-no-files-found: error
           retention-days: 7
+
+      - name: Require every browser acceptance suite
+        id: browser_acceptance
+        if: always() && steps.scope.outputs.mode == 'full'
+        shell: bash
+        env:
+          ACCOUNT: ${{ steps.account_acceptance.outcome }}
+          SETTINGS: ${{ steps.settings_acceptance.outcome }}
+          LAYOUT: ${{ steps.layout_acceptance.outcome }}
+          VOLCANO: ${{ steps.volcano_acceptance.outcome }}
+          JOURNEYS: ${{ steps.journeys_acceptance.outcome }}
+          MODULE_JOURNEYS: ${{ steps.module_journeys_acceptance.outcome }}
+        run: |
+          set -euo pipefail
+          status=0
+          printf '## Browser acceptance\n\n| Suite | Outcome |\n| --- | --- |\n' >> "$GITHUB_STEP_SUMMARY"
+          for suite in ACCOUNT SETTINGS LAYOUT VOLCANO JOURNEYS MODULE_JOURNEYS; do
+            outcome="${!suite:-missing}"
+            printf '| %s | %s |\n' "$suite" "$outcome" >> "$GITHUB_STEP_SUMMARY"
+            if [[ "$outcome" != success ]]; then
+              echo "::error::$suite browser acceptance did not pass ($outcome). Setup-blocked suites have no browser evidence."
+              status=1
+            fi
+          done
+          exit "$status"
 
   chromatic:
     name: Publish Storybook to Chromatic
