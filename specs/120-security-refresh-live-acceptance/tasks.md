@@ -4,7 +4,7 @@
 - [x] T002 Refresh audits and resolve patched registry versions/digests; map consumers.
 - [x] T003 Add failing pin/behavior regressions and update the complete dependency batch.
 - [x] T004 Validate telemetry and frontend compatibility, media decoder/isolation and built-image scans.
-- [ ] T005 Verify antivirus freshness, guarded launch prerequisites and cleanup readiness without provisioning.
+- [x] T005 Verify antivirus freshness, guarded launch prerequisites and cleanup readiness without provisioning.
 - [ ] T006 Renew valid visual evidence without redesign; run full local gate and current audits.
 - [ ] T007 Publish and merge after hosted checks; preserve reviewed ancestry and verify main.
 - [ ] T008 Admit exact merged source and run one authorized automated-only live trial.
@@ -65,3 +65,10 @@ Its exact diagnostic container/volume were removed. Offline updater acceptance
 uses a fixed reference clock and is not represented as real-clock freshness.
 Live readiness must still check current definitions on the actual deployed stack.
 Evidence: `.artifacts/f120/freshclam-real.log`. No paid deployment has occurred.
+
+Visual renewal: media 24 passed / 12 intentional exclusions; Operations 22 passed /
+20 intentional exclusions, 35 verified captures. Compact and desktop actual
+captures inspected: approved Volcano composition retained, no baseline updates.
+Managed DigitalOcean droplet and address-record inventory is empty. Supported
+launch arms persistent teardown before provisioning. T006 remains open until the
+complete gate passes; current renewal does not replace full release validation.
