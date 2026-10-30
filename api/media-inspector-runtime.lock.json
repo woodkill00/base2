@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "pythonVersion": "3.15.2",
+  "platform": "linux/amd64",
+  "resolvedOn": "2026-10-30",
+  "images": {
+    "builder": {
+      "reference": "python@sha256:c6ecb2f3c3dc85a75350f36560e1f49d35d6a9f7ce11fd775bd6834a69a9a0e1",
+      "upstreamTag": "3.15.2-trixie",
+      "configDigest": "sha256:6f62299a884c5c5d9faff5e97f231bb2dcc223d5055abd8694bc92dda36c3428"
+    },
+    "runtime": {
+      "reference": "python@sha256:3053ea19f29305df68292b41291d621e0cbc9c1c826822c631713891ea0b64e9",
+      "upstreamTag": "3.15.2-slim-trixie",
+      "configDigest": "sha256:4590883a99c8623ceab9384525a425aa45d40c8a5b78a088eea148faede11551"
+    }
+  },
+  "source": {
+    "url": "https://www.python.org/ftp/python/3.15.2/Python-3.15.2.tar.xz",
+    "sha256": "8b5536d280142ecf6cdfe15d12a21ba1c65e300bbf7b28a8d0cdb849575797de",
+    "release": "https://www.python.org/downloads/release/python-3152/",
+    "officialImageRecipeCommit": "f4c67ece208dead594e43628d22e3c6027dd97ab"
+  }
+}

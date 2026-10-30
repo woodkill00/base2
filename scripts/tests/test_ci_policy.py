@@ -123,10 +123,10 @@ class CiPolicyTests(unittest.TestCase):
             "FROM --platform=linux/amd64 clamav/clamav@sha256:1fdfd24c6f0a0fb60788481487459a6d4eda8a9b448641594e04db8410d34422 AS clamav-definitions",
             dockerfile,
         )
-        # Match the already-pinned PR88 images; this corrects stale test evidence,
-        # not runtime vulnerabilities, scanner thresholds or image approval.
-        self.assertIn("cgr.dev/chainguard/python@sha256:9ebf8de78b1cf497dfa5f82833900555d5632be933e494944f4a3ef3ea90863f", dockerfile)
-        self.assertIn("cgr.dev/chainguard/python@sha256:54ad02f5ad9e7e62f216b8f856405cd949c5bb4d21ca1223ff0844641c00776e", dockerfile)
+        # Official 3.15.2 Debian builder/runtime, not a relabeled Wolfi APK.
+        self.assertIn("python@sha256:c6ecb2f3c3dc85a75350f36560e1f49d35d6a9f7ce11fd775bd6834a69a9a0e1", dockerfile)
+        self.assertIn("python@sha256:3053ea19f29305df68292b41291d621e0cbc9c1c826822c631713891ea0b64e9", dockerfile)
+        self.assertNotIn("cgr.dev/chainguard/python", dockerfile)
         self.assertIn("mwader/static-ffmpeg@sha256:54e55b0c", dockerfile)
         self.assertIn("clamav-1.5.4.linux.x86_64.deb", dockerfile)
         self.assertIn(
@@ -134,7 +134,7 @@ class CiPolicyTests(unittest.TestCase):
             dockerfile,
         )
         self.assertNotIn("clamav-1.5-scanner=", dockerfile)
-        self.assertIn("/tmp/clamav/control /var/lib/dpkg/status", dockerfile)
+        self.assertIn("/tmp/clamav-control >> /var/lib/dpkg/status", dockerfile)
         self.assertNotIn("apk add", dockerfile)
         self.assertNotIn("apt-get", dockerfile)
         self.assertIn("--only-binary=:all: --no-deps --require-hashes", dockerfile)

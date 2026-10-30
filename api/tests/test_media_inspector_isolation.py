@@ -1094,10 +1094,11 @@ def test_inspector_image_ships_fixed_scanner_and_ffprobe():
     assert 'USER root' in dockerfile
     assert 'ENTRYPOINT ["/usr/bin/python"]' in dockerfile
     assert 'CMD ["-m", "api.services.media_inspector_service"]' in dockerfile
-    assert 'python@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6 AS privilege-runtime' in dockerfile
+    assert 'privilege-runtime' not in dockerfile
+    assert 'ln -s /usr/local/bin/python3.15 /usr/bin/python' in dockerfile
     assert 'FROM --platform=linux/amd64 clamav/clamav@sha256:1fdfd24c6f0a0fb60788481487459a6d4eda8a9b448641594e04db8410d34422 AS clamav-definitions' in dockerfile
-    assert 'cgr.dev/chainguard/python@sha256:9ebf8de78b1cf497dfa5f82833900555d5632be933e494944f4a3ef3ea90863f' in dockerfile
-    assert 'cgr.dev/chainguard/python@sha256:54ad02f5ad9e7e62f216b8f856405cd949c5bb4d21ca1223ff0844641c00776e' in dockerfile
+    assert 'python@sha256:c6ecb2f3c3dc85a75350f36560e1f49d35d6a9f7ce11fd775bd6834a69a9a0e1' in dockerfile
+    assert 'python@sha256:3053ea19f29305df68292b41291d621e0cbc9c1c826822c631713891ea0b64e9' in dockerfile
     assert 'apk add' not in dockerfile and 'apt-get' not in dockerfile
     assert 'COPY --from=inspector-builder /tmp/clamav/usr/local/bin/clamscan /usr/bin/clamscan' in dockerfile
     assert '/usr/local/etc/certs/clamav.crt' in dockerfile

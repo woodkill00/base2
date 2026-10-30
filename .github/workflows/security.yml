@@ -47,6 +47,15 @@ jobs:
           base2-media-inspector:security -c
           "from pathlib import Path; raise SystemExit(Path('/app/api/tests/media_inspector_acceptance_entrypoint.py').exists())"
 
+      - name: Verify final Python runtime and binary wheel imports
+        run: >-
+          docker run --rm --network none --read-only --cap-drop ALL
+          --security-opt no-new-privileges
+          --tmpfs /tmp:rw,nosuid,nodev,noexec,size=64m
+          --mount type=bind,src="$PWD/api/tests/media_inspector_runtime_acceptance.py",dst=/tmp/runtime_acceptance.py,readonly
+          --entrypoint /usr/bin/python base2-media-inspector:security
+          /tmp/runtime_acceptance.py
+
       - name: Exercise hardened media inspector supervisor
         run: |
           docker run --rm \
@@ -76,6 +85,9 @@ jobs:
           image: base2-media-inspector:security
           format: cyclonedx-json
           output-file: media-inspector-sbom.cdx.json
+
+      - name: Verify media inspector SBOM includes the actual fixed interpreter
+        run: python api/tests/media_inspector_sbom_acceptance.py media-inspector-sbom.cdx.json
 
       - name: Scan media inspector image
         id: inspector-grype

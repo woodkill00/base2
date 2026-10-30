@@ -1,9 +1,18 @@
 ARG TARGETPLATFORM=linux/amd64
 
-FROM --platform=linux/amd64 cgr.dev/chainguard/python@sha256:9ebf8de78b1cf497dfa5f82833900555d5632be933e494944f4a3ef3ea90863f AS inspector-builder
+FROM --platform=linux/amd64 python@sha256:c6ecb2f3c3dc85a75350f36560e1f49d35d6a9f7ce11fd775bd6834a69a9a0e1 AS inspector-builder
 ARG TARGETPLATFORM
 RUN test "$TARGETPLATFORM" = 'linux/amd64'
 WORKDIR /build
+# Source fixtures are hash-bound to the official interpreter rebuild and used
+# only through an ephemeral mount; no CPython test package enters production.
+RUN wget --https-only --output-document=/tmp/python.tar.xz \
+      https://www.python.org/ftp/python/3.15.2/Python-3.15.2.tar.xz \
+    && printf '%s  %s\n' \
+      '8b5536d280142ecf6cdfe15d12a21ba1c65e300bbf7b28a8d0cdb849575797de' \
+      '/tmp/python.tar.xz' | sha256sum -c - \
+    && mkdir /tmp/python-source \
+    && tar -xJf /tmp/python.tar.xz --strip-components=1 -C /tmp/python-source
 RUN wget --https-only --output-document=/tmp/clamav.deb \
       https://github.com/Cisco-Talos/clamav/releases/download/clamav-1.5.4/clamav-1.5.4.linux.x86_64.deb \
     && printf '%s  %s\n' \
@@ -21,9 +30,8 @@ RUN pip install --no-cache-dir --only-binary=:all: --no-deps --require-hashes \
 
 FROM --platform=linux/amd64 clamav/clamav@sha256:1fdfd24c6f0a0fb60788481487459a6d4eda8a9b448641594e04db8410d34422 AS clamav-definitions
 FROM --platform=linux/amd64 mwader/static-ffmpeg@sha256:54e55b0cb8f672870fc38ceb2e6c411855cb3b39c505f5f3b2505ee01ed5f2b7 AS ffmpeg-runtime
-FROM --platform=linux/amd64 python@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6 AS privilege-runtime
 
-FROM --platform=linux/amd64 cgr.dev/chainguard/python@sha256:9ebf8de78b1cf497dfa5f82833900555d5632be933e494944f4a3ef3ea90863f AS definition-verifier
+FROM --platform=linux/amd64 python@sha256:c6ecb2f3c3dc85a75350f36560e1f49d35d6a9f7ce11fd775bd6834a69a9a0e1 AS definition-verifier
 COPY --from=clamav-definitions /var/lib/clamav/main.cvd /var/lib/clamav/main.cvd
 COPY --from=clamav-definitions /var/lib/clamav/daily.cvd /var/lib/clamav/daily.cvd
 COPY --from=clamav-definitions /var/lib/clamav/bytecode.cvd /var/lib/clamav/bytecode.cvd
@@ -37,10 +45,15 @@ RUN printf '%s  %s\n' \
       '6d4aa01f219e988060fc419f495d07f27e0cdf1a2cccc065971da922c76f7ffb' \
       '/var/lib/clamav/bytecode.cvd' | sha256sum -c -
 
-FROM --platform=linux/amd64 cgr.dev/chainguard/python@sha256:54ad02f5ad9e7e62f216b8f856405cd949c5bb4d21ca1223ff0844641c00776e AS media-inspector-production
+FROM --platform=linux/amd64 python@sha256:3053ea19f29305df68292b41291d621e0cbc9c1c826822c631713891ea0b64e9 AS media-inspector-production
 WORKDIR /app
-COPY --from=privilege-runtime /usr/bin/setpriv /usr/bin/setpriv
-COPY --from=privilege-runtime /lib/x86_64-linux-gnu/libcap-ng.so.0.0.0 /usr/lib/libcap-ng.so.0
+# The slim image supplies native setpriv/libcap-ng with truthful dpkg metadata.
+RUN ln -s /usr/local/bin/python3.15 /usr/bin/python \
+    && python -m pip uninstall --yes pip \
+    && rm -f /usr/local/bin/pip \
+    && rm -rf /usr/local/lib/python3.15/ensurepip \
+    && find / -xdev -type f -perm /6000 -exec chmod a-s '{}' +
+COPY media-inspector-runtime.lock.json /usr/local/share/base2/media-inspector-runtime.lock.json
 COPY --from=ffmpeg-runtime /ffmpeg /usr/bin/ffmpeg
 COPY --from=ffmpeg-runtime /ffprobe /usr/bin/ffprobe
 COPY --from=inspector-builder /tmp/clamav/usr/local/bin/clamscan /usr/bin/clamscan
@@ -49,7 +62,14 @@ COPY --from=inspector-builder /tmp/clamav/usr/local/lib/libclamav.so.12 /usr/loc
 COPY --from=inspector-builder /tmp/clamav/usr/local/lib/libclammspack.so.0.8.0 /usr/local/lib/libclammspack.so.0.8.0
 COPY --from=inspector-builder /tmp/clamav/usr/local/lib/libclammspack.so.0 /usr/local/lib/libclammspack.so.0
 COPY --from=inspector-builder /tmp/clamav/usr/local/etc/certs/clamav.crt /usr/local/etc/certs/clamav.crt
-COPY --from=inspector-builder /tmp/clamav/control /var/lib/dpkg/status
+# Import only the scanner subset. Preserve the complete Debian inventory and
+# derive installed size/owned paths from the copied payload, not the full .deb.
+RUN --mount=type=bind,from=inspector-builder,source=/tmp/clamav/control,target=/tmp/clamav-control,readonly \
+    sed '/^Installed-Size:/d' /tmp/clamav-control >> /var/lib/dpkg/status \
+    && printf 'Status: install ok installed\nInstalled-Size: ' >> /var/lib/dpkg/status \
+    && du -ck /usr/bin/clamscan /usr/local/lib/libclamav.so.12* /usr/local/lib/libclammspack.so.0* /usr/local/etc/certs/clamav.crt | tail -1 | cut -f1 >> /var/lib/dpkg/status \
+    && printf '\n' >> /var/lib/dpkg/status \
+    && printf '%s\n' /usr/bin/clamscan /usr/local/lib/libclamav.so.12* /usr/local/lib/libclammspack.so.0* /usr/local/etc/certs/clamav.crt > /var/lib/dpkg/info/clamav.list
 COPY --from=definition-verifier /var/lib/clamav/main.cvd /var/lib/clamav/main.cvd
 COPY --from=definition-verifier /var/lib/clamav/daily.cvd /var/lib/clamav/daily.cvd
 COPY --from=definition-verifier /var/lib/clamav/bytecode.cvd /var/lib/clamav/bytecode.cvd
@@ -64,6 +84,11 @@ COPY --chown=65532:65532 services/media_library_processor.py ./api/services/medi
 COPY --chown=65532:65532 services/content_workspace_derivative.py ./api/services/content_workspace_derivative.py
 COPY --chown=65532:65532 scripts/media_inspector_spool_init.py ./api/scripts/media_inspector_spool_init.py
 ENV LD_LIBRARY_PATH=/usr/local/lib PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app/vendor:/app
+# Test native final-stage SSL and wheel ABIs; fixtures/scripts remain mounted,
+# not COPYed into the production image. Fail even if an upstream test is skipped.
+RUN --network=none --mount=type=bind,from=inspector-builder,source=/tmp/python-source/Lib/test,target=/tmp/cpython-tests/test,readonly \
+    --mount=type=bind,source=tests/media_inspector_runtime_acceptance.py,target=/tmp/runtime_acceptance.py,readonly \
+    /usr/bin/python /tmp/runtime_acceptance.py --cpython-tests /tmp/cpython-tests
 USER root
 ENTRYPOINT ["/usr/bin/python"]
 CMD ["-m", "api.services.media_inspector_service"]
