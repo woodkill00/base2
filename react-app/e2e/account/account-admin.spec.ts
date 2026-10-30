@@ -34,7 +34,7 @@ const overview = {
 test.beforeEach(async ({ page }) => {
   setSessionFixture(page, user);
   await page.route('**/*', async (route) => {
-    if (await fulfillSessionFixture(route)) return;
+    if (await fulfillSessionFixture(route, { appearanceDefaults: true })) return;
     const url = new URL(route.request().url());
     if (!['127.0.0.1', 'localhost'].includes(url.hostname)) {
       await route.abort('blockedbyclient');
@@ -46,7 +46,58 @@ test.beforeEach(async ({ page }) => {
     }
     const json = (body: unknown) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
-    if (url.pathname === '/api/identity/capabilities') {
+    if (url.pathname === '/api/settings/capabilities') {
+      const permissions = getSessionFixture(page).permissions;
+      const canAdminister = Array.isArray(permissions) && permissions.includes('audit.read');
+      const ids = [
+        'overview',
+        'profile',
+        'security',
+        'privacy',
+        'notifications',
+        'appearance',
+        'language-region',
+        'site-capabilities',
+        ...(canAdminister ? ['organization'] : []),
+        ...(canAdminister && permissions.includes('credential.create') ? ['developer'] : []),
+      ];
+      await json({
+        schema_version: 1,
+        categories: ids.map((id) => ({
+          id,
+          path: id === 'overview' ? '/settings' : `/settings/${id}`,
+          version: 'v1',
+          scope: ['profile', 'security'].includes(id)
+            ? 'account'
+            : ['organization', 'developer'].includes(id)
+              ? 'organization'
+              : id === 'site-capabilities'
+                ? 'site'
+                : 'personal',
+        })),
+        locales: ['en'],
+        controls: [],
+        modules: [],
+      });
+    } else if (url.pathname === '/api/settings/notifications') {
+      await json({
+        preferences: [
+          { event_family: 'security', channel: 'email', delivery: 'immediate', mandatory: true },
+          {
+            event_family: 'transactional',
+            channel: 'email',
+            delivery: 'immediate',
+            mandatory: true,
+          },
+          { event_family: 'product', channel: 'email', delivery: 'digest', mandatory: false },
+          { event_family: 'marketing', channel: 'email', delivery: 'disabled', mandatory: false },
+        ],
+      });
+    } else if (url.pathname === '/api/settings/security-events') {
+      await json({ events: [] });
+    } else if (url.pathname === '/api/privacy/operations') {
+      await json({ operations: [] });
+    } else if (url.pathname === '/api/identity/capabilities') {
       await json({
         mfa: {
           totp: { enabled: true },

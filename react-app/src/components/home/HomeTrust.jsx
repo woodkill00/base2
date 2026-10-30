@@ -1,3 +1,4 @@
+import { useAppearanceMotion } from '../../contexts/ThemeContext';
 import { motion } from 'motion/react';
 import { BarChart3, Globe2, Lock, Search } from 'lucide-react';
 import { siteManifest } from '../../config/siteRuntime';
@@ -13,6 +14,7 @@ const values = [
 ];
 
 const HomeTrust = () => {
+  const { transition: motionTransition } = useAppearanceMotion();
   return (
     <section
       style={{ padding: 'calc(4rem) calc(max(1rem, calc((100vw - 1200px) / 2))) calc(4rem)' }}
@@ -29,7 +31,7 @@ const HomeTrust = () => {
               initial={{ opacity: 0, scale: 0.9 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
-              transition={{ delay: index * 0.1, duration: 0.5, ease: 'easeOut' }}
+              transition={motionTransition({ delay: index * 0.1, duration: 0.5, ease: 'easeOut' })}
               className="backdrop-blur-2xl bg-white/25 dark:bg-black/40 border border-white/30 dark:border-white/20 rounded-full shadow-[0_4px_16px_0_rgba(31,38,135,0.1)] dark:shadow-[0_4px_16px_0_rgba(0,0,0,0.3)]"
               style={{ padding: 'calc(0.75rem) calc(1.5rem)' }}
             >

@@ -1,3 +1,4 @@
+import { useAppearanceMotion } from '../../contexts/ThemeContext';
 import { motion } from 'motion/react';
 import { Activity, Flame, ShieldCheck } from 'lucide-react';
 
@@ -18,6 +19,7 @@ const securityLogs = [
 ];
 
 const HomeThermalSecurity = () => {
+  const { reducedMotion, transition: motionTransition } = useAppearanceMotion();
   return (
     <section
       id="base2-thermal-security"
@@ -43,7 +45,7 @@ const HomeThermalSecurity = () => {
                       initial={{ width: 0 }}
                       whileInView={{ width: `${zone.load}%` }}
                       viewport={{ once: true }}
-                      transition={{ delay: index * 0.08, duration: 0.6 }}
+                      transition={motionTransition({ delay: index * 0.08, duration: 0.6 })}
                     />
                   </div>
                 </div>
@@ -85,19 +87,23 @@ const HomeThermalSecurity = () => {
             role="img"
             aria-label="Base2 workflow activity monitor"
           >
-            {Array.from({ length: 28 }).map((_, index) => (
-              <motion.span
-                key={index}
-                initial={{ height: '18%' }}
-                animate={{ height: `${26 + ((index * 17) % 58)}%` }}
-                transition={{
-                  duration: 1.2,
-                  repeat: Infinity,
-                  repeatType: 'reverse',
-                  delay: index * 0.035,
-                }}
-              />
-            ))}
+            {Array.from({ length: 28 }).map((_, index) =>
+              reducedMotion ? (
+                <span key={index} style={{ height: `${26 + ((index * 17) % 58)}%` }} />
+              ) : (
+                <motion.span
+                  key={index}
+                  initial={{ height: '18%' }}
+                  animate={{ height: `${26 + ((index * 17) % 58)}%` }}
+                  transition={motionTransition({
+                    duration: 1.2,
+                    repeat: Infinity,
+                    repeatType: 'reverse',
+                    delay: index * 0.035,
+                  })}
+                />
+              )
+            )}
           </div>
         </GlassCard>
       </div>

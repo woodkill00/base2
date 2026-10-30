@@ -484,11 +484,14 @@ def admin_overview(*, user_id: UUID, tenant_id: str) -> dict[str, Any]:
             }
             for row in (cur.fetchall() or [])
         ]
+        # Actor membership cannot establish event scope: a person may belong to
+        # several organizations or leave after an event. Legacy/account events
+        # without both scope fields stay out of organization administration.
         cur.execute(
             """SELECT id, action, created_at, metadata_json FROM api_auth_audit_events
-               WHERE user_id IN (SELECT user_id FROM api_identity_memberships WHERE organization_id=%s)
+               WHERE metadata_json->>'tenant_id'=%s AND metadata_json->>'organization_id'=%s
                ORDER BY created_at DESC LIMIT 100""",
-            (str(org_id),),
+            (tenant_id, str(org_id)),
         )
         audit = [
             {'id': str(row[0]), 'action': row[1], 'created_at': row[2], 'metadata': row[3]}

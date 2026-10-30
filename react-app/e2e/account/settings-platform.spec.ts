@@ -117,10 +117,10 @@ test('unified settings routes, searches, saves, and preserves mandatory delivery
   await expect(page.getByRole('status')).toContainText('Preferences saved');
 
   await page.goto('/settings/notifications');
-  await expect(
-    page.getByLabel('security-email delivery').locator('option[value="disabled"]')
-  ).toHaveCount(0);
-  await page.getByLabel('marketing email delivery').selectOption('digest');
+  const securityDelivery = page.getByLabel('Security Email delivery', { exact: true });
+  await expect(securityDelivery).toBeVisible();
+  await expect(securityDelivery.locator('option[value="disabled"]')).toHaveCount(0);
+  await page.getByLabel('Marketing Email delivery', { exact: true }).selectOption('digest');
   await page.getByRole('button', { name: 'Save notifications' }).click();
   await expect(page.getByRole('status')).toContainText('Notification preferences saved');
 

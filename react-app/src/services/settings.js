@@ -11,21 +11,38 @@ const call = async (promise, fallbackMessage) => {
 };
 
 export const settingsAPI = {
-  capabilities: () => call(apiClient.get('/settings/capabilities'), 'Settings are unavailable'),
-  preferences: () => call(apiClient.get('/settings/preferences'), 'Preferences are unavailable'),
+  capabilities: () =>
+    call(apiClient.get('/settings/capabilities', { timeout: 10000 }), 'Settings are unavailable'),
+  preferences: ({ signal } = {}) =>
+    call(
+      apiClient.get('/settings/preferences', { timeout: 10000, signal }),
+      'Preferences are unavailable'
+    ),
   savePreferences: (payload) =>
-    call(apiClient.put('/settings/preferences', payload), 'Preferences could not be saved'),
+    call(
+      apiClient.put('/settings/preferences', payload, { timeout: 10000 }),
+      'Preferences could not be saved'
+    ),
   notifications: () =>
-    call(apiClient.get('/settings/notifications'), 'Notification preferences are unavailable'),
+    call(
+      apiClient.get('/settings/notifications', { timeout: 10000 }),
+      'Notification preferences are unavailable'
+    ),
   saveNotifications: (preferences) =>
     call(
-      apiClient.put('/settings/notifications', { preferences }),
+      apiClient.put('/settings/notifications', { preferences }, { timeout: 10000 }),
       'Notification preferences could not be saved'
     ),
   securityEvents: () =>
-    call(apiClient.get('/settings/security-events'), 'Security events are unavailable'),
+    call(
+      apiClient.get('/settings/security-events', { timeout: 10000 }),
+      'Security events are unavailable'
+    ),
   privacyOperations: () =>
-    call(apiClient.get('/privacy/operations'), 'Privacy operations are unavailable'),
+    call(
+      apiClient.get('/privacy/operations', { timeout: 10000 }),
+      'Privacy operations are unavailable'
+    ),
   requestExport: () => call(apiClient.post('/privacy/export'), 'Data export could not be queued'),
   requestCorrection: (fields) =>
     call(apiClient.post('/privacy/correct', { fields }), 'Data correction could not be queued'),

@@ -32,7 +32,7 @@ for (const width of [390, 1440])
     test(`guest ${path} at ${width}px`, async ({ page }, info) => {
       await page.setViewportSize({ width, height: 900 });
       await page.route('**/*', async (route) => {
-        if (await fulfillSessionFixture(route)) return;
+        if (await fulfillSessionFixture(route, { appearanceDefaults: true })) return;
         const url = new URL(route.request().url());
         if (!['127.0.0.1', 'localhost'].includes(url.hostname)) return route.abort();
         if (url.pathname.startsWith('/api/'))
@@ -97,7 +97,7 @@ for (const width of [390, 1440])
         permissions: ['content-workspace.read', 'media.read', 'operations.read', 'audit.read'],
       });
       await page.route('**/*', async (route) => {
-        if (await fulfillSessionFixture(route)) return;
+        if (await fulfillSessionFixture(route, { appearanceDefaults: true })) return;
         const url = new URL(route.request().url());
         if (!['127.0.0.1', 'localhost'].includes(url.hostname)) return route.abort();
         if (url.pathname.startsWith('/api/'))
@@ -136,7 +136,7 @@ for (const width of [390, 1440])
 for (const path of ['/workspace', '/media', '/operations', '/admin', '/settings/profile']) {
   test(`guest cannot enter ${path} through the new shell`, async ({ page }) => {
     await page.route('**/*', async (route) => {
-      if (await fulfillSessionFixture(route)) return;
+      if (await fulfillSessionFixture(route, { appearanceDefaults: true })) return;
       const url = new URL(route.request().url());
       if (!['127.0.0.1', 'localhost'].includes(url.hostname)) return route.abort();
       if (url.pathname.startsWith('/api/'))

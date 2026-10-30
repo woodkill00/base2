@@ -1,3 +1,4 @@
+import { useAppearanceMotion } from '../../contexts/ThemeContext';
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Globe2, Layers3, Search, ShieldCheck, Sparkles } from 'lucide-react';
@@ -17,6 +18,7 @@ const systemSignals = [
 ];
 
 const HomeHero = ({ onPrimary, onSecondary, onSearch }) => {
+  const { transition: motionTransition } = useAppearanceMotion();
   const [query, setQuery] = useState('');
 
   return (
@@ -32,7 +34,7 @@ const HomeHero = ({ onPrimary, onSecondary, onSearch }) => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease: 'easeOut' }}
+        transition={motionTransition({ duration: 0.8, ease: 'easeOut' })}
         style={{ width: 'calc(min(100%, 1080px))' }}
       >
         <GlassCard
@@ -46,7 +48,7 @@ const HomeHero = ({ onPrimary, onSecondary, onSearch }) => {
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2, duration: 0.5, ease: 'easeOut' }}
+                transition={motionTransition({ delay: 0.2, duration: 0.5, ease: 'easeOut' })}
                 className="home-obsidian-eyebrow inline-flex items-center gap-2"
               >
                 <Sparkles className="w-4 h-4" aria-hidden="true" />
@@ -56,7 +58,7 @@ const HomeHero = ({ onPrimary, onSecondary, onSearch }) => {
               <motion.h1
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3, duration: 0.6, ease: 'easeOut' }}
+                transition={motionTransition({ delay: 0.3, duration: 0.6, ease: 'easeOut' })}
                 style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', lineHeight: '1.2' }}
               >
                 Build Better with <span className="home-obsidian-title">{siteManifest.name}</span>
@@ -65,7 +67,7 @@ const HomeHero = ({ onPrimary, onSecondary, onSearch }) => {
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.4, duration: 0.6, ease: 'easeOut' }}
+                transition={motionTransition({ delay: 0.4, duration: 0.6, ease: 'easeOut' })}
                 className="text-foreground/70 dark:text-foreground/60 max-w-2xl"
                 style={{ fontSize: 'clamp(1rem, 2vw, 1.25rem)' }}
               >
@@ -75,7 +77,7 @@ const HomeHero = ({ onPrimary, onSecondary, onSearch }) => {
               <motion.form
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5, duration: 0.6, ease: 'easeOut' }}
+                transition={motionTransition({ delay: 0.5, duration: 0.6, ease: 'easeOut' })}
                 style={{ width: 'calc(min(100%, 600px))' }}
                 role="search"
                 onSubmit={(event) => {
@@ -104,7 +106,7 @@ const HomeHero = ({ onPrimary, onSecondary, onSearch }) => {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.6, duration: 0.6, ease: 'easeOut' }}
+                transition={motionTransition({ delay: 0.6, duration: 0.6, ease: 'easeOut' })}
                 className="flex flex-wrap gap-4"
                 style={{ marginTop: 'calc(1rem)' }}
               >
@@ -120,7 +122,7 @@ const HomeHero = ({ onPrimary, onSecondary, onSearch }) => {
             <motion.aside
               initial={{ opacity: 0, x: 18 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.45, duration: 0.7, ease: 'easeOut' }}
+              transition={motionTransition({ delay: 0.45, duration: 0.7, ease: 'easeOut' })}
               className="home-command-stack"
               aria-label="Site profile summary"
               data-testid="base2-visual-command-stack"

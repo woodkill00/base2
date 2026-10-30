@@ -13,7 +13,11 @@ for (const width of [390, 1440]) {
       let refreshes = 0;
       let exports = 0;
       let fresh = false;
-      const profile = { email: 'synthetic@example.test', access_token: 'synthetic-access' };
+      const profile = {
+        id: '00000000-0000-0000-0000-000000001121',
+        email: 'synthetic@example.test',
+        access_token: 'synthetic-access',
+      };
       await page.route('**/api/**', (route) => {
         const path = new URL(route.request().url()).pathname;
         if (path === '/api/auth/refresh') {
@@ -36,8 +40,51 @@ for (const width of [390, 1440]) {
           );
         }
         if (path === '/api/privacy/operations') return route.fulfill({ json: { operations: [] } });
+        if (path === '/api/settings/capabilities')
+          return route.fulfill({
+            json: {
+              schema_version: 1,
+              categories: [
+                'overview',
+                'profile',
+                'security',
+                'privacy',
+                'notifications',
+                'appearance',
+                'language-region',
+                'site-capabilities',
+              ].map((id) => ({
+                id,
+                path: id === 'overview' ? '/settings' : `/settings/${id}`,
+                version: 'v1',
+                scope: ['profile', 'security'].includes(id)
+                  ? 'account'
+                  : id === 'site-capabilities'
+                    ? 'site'
+                    : 'personal',
+              })),
+              locales: ['en'],
+              controls: [],
+              modules: [],
+            },
+          });
+        if (path === '/api/settings/notifications')
+          return route.fulfill({ json: { preferences: [] } });
+        if (path === '/api/settings/security-events')
+          return route.fulfill({ json: { events: [] } });
         if (path === '/api/settings/preferences')
-          return route.fulfill({ json: { version: 1, theme: 'system', locale: 'en' } });
+          return route.fulfill({
+            json: {
+              version: 1,
+              theme: 'system',
+              contrast: 'system',
+              motion: 'system',
+              density: 'comfortable',
+              locale: 'en',
+              timezone: 'UTC',
+              week_start: 'system',
+            },
+          });
         return route.fulfill({ json: {} });
       });
       await page.goto('/settings/privacy');

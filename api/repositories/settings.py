@@ -57,7 +57,10 @@ def update_preferences(
                 cur.execute(
                     """INSERT INTO api_user_preferences(
                            id,user_id,tenant_id,theme,contrast,motion,density,locale,timezone,week_start
-                       ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                       ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                       ON CONFLICT (user_id, tenant_id) DO NOTHING
+                       RETURNING schema_version, version, theme, contrast, motion, density,
+                                 locale, timezone, week_start, updated_at""",
                     (
                         str(uuid4()), str(user_id), tenant_id, values['theme'], values['contrast'],
                         values['motion'], values['density'], values['locale'], values['timezone'],
@@ -72,18 +75,23 @@ def update_preferences(
                     """UPDATE api_user_preferences
                        SET theme=%s,contrast=%s,motion=%s,density=%s,locale=%s,timezone=%s,
                            week_start=%s,version=version+1,updated_at=NOW()
-                       WHERE user_id=%s AND tenant_id=%s AND version=%s""",
+                       WHERE user_id=%s AND tenant_id=%s AND version=%s
+                       RETURNING schema_version, version, theme, contrast, motion, density,
+                                 locale, timezone, week_start, updated_at""",
                     (
                         values['theme'], values['contrast'], values['motion'], values['density'],
                         values['locale'], values['timezone'], values['week_start'], str(user_id),
                         tenant_id, expected_version,
                     ),
                 )
-                if cur.rowcount != 1:
-                    conn.rollback()
-                    return None
+            if cur.rowcount != 1:
+                conn.rollback()
+                return None
+            # Return this transaction's snapshot: a later GET could read another
+            # writer's version and incorrectly let the client overwrite it.
+            result = _preference_row(cur.fetchone())
             conn.commit()
-    return get_preferences(user_id=user_id, tenant_id=tenant_id)
+    return result
 
 
 def list_notifications(*, user_id: UUID, tenant_id: str) -> list[dict[str, Any]]:

@@ -9,6 +9,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from api.auth.repo import insert_audit_event
 from api.middleware.tenant import require_tenant
 from api.repositories import settings as repository
+from api.repositories.identity_admin import membership
+from api.settings_registry import discovery
 from api.security.request_auth import require_authenticated_principal
 from api.settings import SITE_MANIFEST
 
@@ -49,22 +51,13 @@ def _accounts_enabled() -> bool:
 
 @router.get('/capabilities')
 async def capabilities(request: Request):
-    _principal_and_tenant(request)
-    categories = [
-        {'id': 'overview', 'path': '/settings', 'version': 'v1'},
-        {'id': 'profile', 'path': '/settings/profile', 'version': 'v1'},
-        {'id': 'security', 'path': '/settings/security', 'version': 'v1'},
-        {'id': 'privacy', 'path': '/settings/privacy', 'version': 'v1'},
-        {'id': 'notifications', 'path': '/settings/notifications', 'version': 'v1'},
-        {'id': 'appearance', 'path': '/settings/appearance', 'version': 'v1'},
-        {'id': 'language-region', 'path': '/settings/language-region', 'version': 'v1'},
-    ]
-    if _accounts_enabled():
-        categories.extend([
-            {'id': 'organization', 'path': '/settings/organization', 'version': 'v1'},
-            {'id': 'developer', 'path': '/settings/developer', 'version': 'v1'},
-        ])
-    return {'schema_version': 1, 'categories': categories}
+    principal, tenant_id = _principal_and_tenant(request)
+    enabled = _accounts_enabled()
+    member = membership(user_id=principal.user_id, tenant_id=tenant_id) if enabled else None
+    return discovery(
+        manifest=SITE_MANIFEST, role=member['role'] if member else None,
+        accounts_enabled=enabled,
+    )
 
 
 @router.get('/preferences')

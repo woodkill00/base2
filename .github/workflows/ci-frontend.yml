@@ -102,6 +102,14 @@ jobs:
           test "$(fc-match -f '%{family}' Ubuntu)" = Ubuntu
           dpkg-query -W fonts-ubuntu
 
+      - name: Account, settings foundation and existing interaction contracts
+        if: steps.scope.outputs.mode == 'full'
+        run: npm run test:account-e2e
+
+      - name: Settings responsive release matrix
+        if: steps.scope.outputs.mode == 'full'
+        run: npm run test:settings-release
+
       - name: Shared layout contracts and visual evidence
         if: steps.scope.outputs.mode == 'full'
         run: npm exec playwright -- test --config=playwright.layout.config.mjs

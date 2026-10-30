@@ -1,3 +1,4 @@
+import pytest
 from contextlib import contextmanager
 from uuid import UUID
 
@@ -67,10 +68,9 @@ def test_stale_preference_update_rolls_back_without_write(monkeypatch):
 
 
 def test_first_preference_write_is_atomic_and_tenant_bound(monkeypatch):
-    cursor = Cursor(rows=[])
+    cursor = Cursor(rows=[None, (1, 1, 'system', 'system', 'system', 'comfortable', 'en', 'UTC', 'system', 'now')])
     conn = Connection(cursor)
     bind(monkeypatch, conn)
-    monkeypatch.setattr(repository, 'get_preferences', lambda **kwargs: {**repository.DEFAULTS, 'version': 1, **kwargs})
     values = {key: str(value) for key, value in repository.DEFAULTS.items() if key not in {'schema_version', 'version'}}
     result = repository.update_preferences(user_id=USER, tenant_id='tenant-a', expected_version=0, values=values)
     assert result['version'] == 1
@@ -104,3 +104,37 @@ def test_security_projection_clamps_limit_and_never_selects_metadata_or_ip(monke
     assert params == (str(USER), 50)
     assert 'metadata' not in sql.lower() and ',ip' not in sql.lower()
     assert len(events[0]['device']) == 120
+
+
+def test_first_write_losing_unique_race_returns_conflict_not_server_error(monkeypatch):
+    class LosingCursor(Cursor):
+        def execute(self, sql, params=()):
+            super().execute(sql, params)
+            if 'INSERT INTO api_user_preferences' in sql:
+                assert 'ON CONFLICT (user_id, tenant_id) DO NOTHING' in sql
+                self.rowcount = 0
+
+    cursor = LosingCursor()
+    conn = Connection(cursor)
+    bind(monkeypatch, conn)
+    result = repository.update_preferences(
+        user_id=USER, tenant_id='tenant-a', expected_version=0, values=repository.DEFAULTS,
+    )
+    assert result is None
+    assert conn.commits == 0
+    assert conn.rollbacks == 1
+
+
+def test_write_returns_its_snapshot_without_racing_followup_read(monkeypatch):
+    snapshot = (1, 4, 'dark', 'high', 'reduced', 'compact', 'en', 'UTC', 'monday', 'now')
+    cursor = Cursor(rows=[(3,), snapshot])
+    conn = Connection(cursor)
+    bind(monkeypatch, conn)
+    monkeypatch.setattr(repository, 'get_preferences', lambda **kwargs: pytest.fail('racing read'))
+    result = repository.update_preferences(
+        user_id=USER, tenant_id='tenant-a', expected_version=3, values=repository.DEFAULTS,
+    )
+    assert result['version'] == 4
+    assert result['theme'] == 'dark'
+    assert 'RETURNING schema_version' in cursor.calls[-1][0]
+    assert conn.commits == 1

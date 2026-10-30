@@ -46,7 +46,7 @@ test.beforeEach(async ({ page }, testInfo) => {
   });
   page.on('requestfailed', (request) => failures.push(`request:${request.url()}`));
   await page.route('**/*', async (route) => {
-    if (await fulfillSessionFixture(route)) return;
+    if (await fulfillSessionFixture(route, { appearanceDefaults: true })) return;
     const url = new URL(route.request().url());
     if (url.href === 'https://accounts.google.com/gsi/client') {
       return route.fulfill({

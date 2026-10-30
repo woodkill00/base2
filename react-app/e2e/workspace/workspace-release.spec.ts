@@ -102,7 +102,7 @@ test.beforeEach(async ({ page }, testInfo) => {
   }
   setSessionFixture(page, fixtureUser);
   await page.route('**/*', async (route) => {
-    if (await fulfillSessionFixture(route)) return;
+    if (await fulfillSessionFixture(route, { appearanceDefaults: true })) return;
     const url = new URL(route.request().url());
     if (!['127.0.0.1', 'localhost'].includes(url.hostname)) return route.abort('blockedbyclient');
     if (!url.pathname.startsWith('/api/')) return route.continue();

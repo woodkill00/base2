@@ -230,7 +230,7 @@ async def accept_invitation(payload: InvitationAcceptRequest, request: Request):
         action='identity.invitation_accepted',
         ip='',
         user_agent=request.headers.get('user-agent', ''),
-        metadata={'organization_id': str(result['organization_id'])},
+        metadata={'organization_id': str(result['organization_id']), 'tenant_id': tenant_id},
     )
     return {'organization_id': str(result['organization_id']), 'role': result['role']}
 
@@ -287,7 +287,10 @@ async def invite_member(payload: InvitationRequest, request: Request):
         action='identity.invitation_created',
         ip='',
         user_agent=request.headers.get('user-agent', ''),
-        metadata={'invitation_id': str(invitation_id), 'role': payload.role},
+        metadata={
+            'tenant_id': tenant_id, 'organization_id': str(member['organization_id']),
+            'invitation_id': str(invitation_id), 'role': payload.role,
+        },
     )
     return {'id': str(invitation_id), 'status': 'queued_for_delivery'}
 
@@ -314,7 +317,10 @@ async def revoke_member_invitation(invitation_id: UUID, request: Request):
         action='identity.invitation_revoked',
         ip='',
         user_agent=request.headers.get('user-agent', ''),
-        metadata={'invitation_id': str(invitation_id)},
+        metadata={
+            'tenant_id': tenant_id, 'organization_id': str(member['organization_id']),
+            'invitation_id': str(invitation_id),
+        },
     )
     return {'revoked': True}
 
@@ -353,7 +359,10 @@ async def change_member_role(member_id: UUID, payload: MemberRoleRequest, reques
         action='identity.member_role_changed',
         ip='',
         user_agent=request.headers.get('user-agent', ''),
-        metadata={'member_id': str(member_id), 'role': payload.role},
+        metadata={
+            'tenant_id': tenant_id, 'organization_id': str(actor['organization_id']),
+            'member_id': str(member_id), 'role': payload.role,
+        },
     )
     return {'updated': True, 'role': payload.role}
 
@@ -391,7 +400,10 @@ async def create_credential(payload: CredentialRequest, request: Request):
         action='identity.credential_created',
         ip='',
         user_agent=request.headers.get('user-agent', ''),
-        metadata={'credential_id': str(credential_id), 'prefix': prefix, 'scopes': scopes},
+        metadata={
+            'tenant_id': tenant_id, 'organization_id': str(member['organization_id']),
+            'credential_id': str(credential_id), 'prefix': prefix, 'scopes': scopes,
+        },
     )
     return {
         'id': str(credential_id),
@@ -424,6 +436,9 @@ async def revoke_credential(credential_id: UUID, request: Request):
         action='identity.credential_revoked',
         ip='',
         user_agent=request.headers.get('user-agent', ''),
-        metadata={'credential_id': str(credential_id)},
+        metadata={
+            'tenant_id': tenant_id, 'organization_id': str(member['organization_id']),
+            'credential_id': str(credential_id),
+        },
     )
     return {'revoked': True}

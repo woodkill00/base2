@@ -128,5 +128,5 @@
 }
 
 @media (prefers-contrast: more) {
-  [data-theme='obsidian'] .app-shell-root { --color-border: var(--color-text); }
+  [data-theme='obsidian']:not([data-contrast='standard']) .app-shell-root { --color-border: var(--color-text); }
 }

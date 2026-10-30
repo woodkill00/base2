@@ -194,7 +194,9 @@ def test_capability_contract_uses_closed_known_category_ids(monkeypatch):
         'notifications',
         'appearance',
         'language-region',
+        'site-capabilities',
     ]
     monkeypatch.setattr('api.routes.settings._accounts_enabled', lambda: True)
+    monkeypatch.setattr('api.routes.settings.membership', lambda **kwargs: {'role': 'owner'})
     enabled = TestClient(app).get('/api/settings/capabilities').json()
-    assert [item['id'] for item in enabled['categories']][-2:] == ['organization', 'developer']
+    assert [item['id'] for item in enabled['categories']][-3:] == ['organization', 'developer', 'site-capabilities']

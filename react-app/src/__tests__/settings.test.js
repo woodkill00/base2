@@ -195,12 +195,16 @@ describe('US3 Settings', () => {
       await user.click(screen.getByRole('button', { name: /save notifications/i }));
     });
     await waitFor(() =>
-      expect(apiClient.put).toHaveBeenCalledWith('/settings/notifications', {
-        preferences: [
-          { event_family: 'security', channel: 'email', delivery: 'immediate' },
-          { event_family: 'marketing', channel: 'email', delivery: 'disabled' },
-        ],
-      })
+      expect(apiClient.put).toHaveBeenCalledWith(
+        '/settings/notifications',
+        {
+          preferences: [
+            { event_family: 'security', channel: 'email', delivery: 'immediate' },
+            { event_family: 'marketing', channel: 'email', delivery: 'disabled' },
+          ],
+        },
+        { timeout: 10000 }
+      )
     );
   });
 

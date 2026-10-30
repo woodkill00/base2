@@ -10,7 +10,7 @@ for (const width of [390, 1440]) {
       await page.setViewportSize({ width, height: 900 });
       const submitted: string[] = [];
       await page.route('**/api/**', async (route) => {
-        if (await fulfillSessionFixture(route)) return;
+        if (await fulfillSessionFixture(route, { appearanceDefaults: true })) return;
         if (route.request().method() === 'POST')
           submitted.push(new URL(route.request().url()).pathname);
         return route.fulfill({
@@ -53,7 +53,7 @@ for (const path of ['/signup', '/ar/about']) {
       .addCookies([{ name: 'theme', value: 'light', domain: '127.0.0.1', path: '/' }]);
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.route('**/*', async (route) => {
-      if (await fulfillSessionFixture(route)) return;
+      if (await fulfillSessionFixture(route, { appearanceDefaults: true })) return;
       const url = new URL(route.request().url());
       if (!['127.0.0.1', 'localhost'].includes(url.hostname)) return route.abort();
       if (url.pathname.startsWith('/api/'))
@@ -119,7 +119,7 @@ for (const width of [390, 1440]) {
         permissions: ['content-workspace.read', 'media.read', 'operations.read', 'audit.read'],
       });
       await page.route('**/*', async (route) => {
-        if (await fulfillSessionFixture(route)) return;
+        if (await fulfillSessionFixture(route, { appearanceDefaults: true })) return;
         const url = new URL(route.request().url());
         if (!['127.0.0.1', 'localhost'].includes(url.hostname)) return route.abort();
         if (url.pathname.startsWith('/api/'))
@@ -182,7 +182,7 @@ for (const width of [390, 1440]) {
       page.on('pageerror', (error) => errors.push(error.message));
       await page.setViewportSize({ width, height: 900 });
       await page.route('**/*', async (route) => {
-        if (await fulfillSessionFixture(route)) return;
+        if (await fulfillSessionFixture(route, { appearanceDefaults: true })) return;
         const url = new URL(route.request().url());
         if (!['127.0.0.1', 'localhost'].includes(url.hostname)) return route.abort();
         if (url.pathname.startsWith('/api/'))

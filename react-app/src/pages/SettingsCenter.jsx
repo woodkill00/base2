@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Bell,
@@ -22,11 +22,19 @@ import Navigation from '../components/Navigation';
 import { layoutPreviewEnabled, primaryNavigation } from '../config/layoutPolicy';
 import AccountCenter from './AccountCenter';
 import { useAuth } from '../contexts/AuthContext';
+import { ThemeContext } from '../contexts/ThemeContext';
+import { siteManifest } from '../config/siteRuntime';
+import {
+  parseSettingsDiscovery,
+  readPreferences,
+  readNotifications,
+} from '../services/settingsDiscovery';
 import apiClient from '../lib/apiClient';
+import { authSession } from '../lib/authSession';
 import { settingsAPI } from '../services/settings';
 import securityActions from '../contracts/security-actions.json';
 
-const FALLBACK_CATEGORIES = [
+const KNOWN_CATEGORIES = [
   ['overview', 'Overview', 'Account health and recommended actions', LayoutGrid, '/settings'],
   ['profile', 'Profile', 'Identity and public information', UserRound, '/settings/profile'],
   [
@@ -77,6 +85,13 @@ const FALLBACK_CATEGORIES = [
     'API documentation and integration credentials',
     Code2,
     '/settings/developer',
+  ],
+  [
+    'site-capabilities',
+    'Site capabilities',
+    'Enabled modules, access, and deployment-managed settings',
+    LayoutGrid,
+    '/settings/site-capabilities',
   ],
 ].map(([id, label, description, icon, path]) => ({
   id,
@@ -319,7 +334,8 @@ const DETAIL_COPY = {
     securityActions: securityActions.en,
     unknownSecurityAction: 'Unknown security event',
     apiDocs: 'API documentation',
-    apiDocsHelp: 'Explore the generated API contract and integration schemas.',
+    apiDocsHelp:
+      'API documentation access is deployment-managed. Ask your administrator for the approved endpoint. No API documentation link is configured here.',
     openApiDocs: 'Open API documentation',
     credentials: 'Integration credentials',
     credentialsHelp: 'Credentials are created once, shown once, scoped, and revocable.',
@@ -430,7 +446,8 @@ const DETAIL_COPY = {
     securityActions: securityActions.de,
     unknownSecurityAction: 'Unbekanntes Sicherheitsereignis',
     apiDocs: 'API-Dokumentation',
-    apiDocsHelp: 'Erkunden Sie den generierten API-Vertrag und die Integrationsschemata.',
+    apiDocsHelp:
+      'Der Zugriff auf die API-Dokumentation wird bei der Bereitstellung verwaltet. Fragen Sie Ihre Administration nach dem freigegebenen Endpunkt. Hier ist kein Link zur API-Dokumentation konfiguriert.',
     openApiDocs: 'API-Dokumentation öffnen',
     credentials: 'Integrationszugangsdaten',
     credentialsHelp:
@@ -534,7 +551,8 @@ const DETAIL_COPY = {
     securityActions: securityActions.ar,
     unknownSecurityAction: 'حدث أمان غير معروف',
     apiDocs: 'توثيق الواجهة البرمجية',
-    apiDocsHelp: 'استكشف عقد الواجهة البرمجية ومخططات التكامل المُنشأة.',
+    apiDocsHelp:
+      'تتم إدارة الوصول إلى توثيق الواجهة البرمجية عبر إعدادات النشر. اطلب من المسؤول نقطة الوصول المعتمدة. لا يوجد رابط مهيأ لتوثيق الواجهة البرمجية هنا.',
     openApiDocs: 'فتح توثيق الواجهة البرمجية',
     credentials: 'بيانات اعتماد التكامل',
     credentialsHelp:
@@ -567,14 +585,30 @@ const Select = ({ id, value, onChange, children, ...props }) => (
   </select>
 );
 
-const SettingsCenter = () => {
+const SettingsContent = () => {
   const { user, updateUser } = useAuth();
+  const { applyAccountPreferences } = useContext(ThemeContext);
+  const mounted = useRef(true);
+  const initialLocale = useRef(user?.locale);
+  const initialAccount = useRef({ id: user?.id, applyAccountPreferences });
+  const busy = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const location = useLocation();
   const navigate = useNavigate();
   const active = location.pathname.replace(/^\/settings\/?/, '') || 'overview';
   const [query, setQuery] = useState('');
-  const [categories, setCategories] = useState(FALLBACK_CATEGORIES);
+  const [categories, setCategories] = useState([]);
   const [preferences, setPreferences] = useState(preferenceDefaults);
+  const [savedPreferences, setSavedPreferences] = useState(preferenceDefaults);
+  const [preferenceConflict, setPreferenceConflict] = useState(false);
+  const [controls, setControls] = useState([]);
+  const [modules, setModules] = useState([]);
+  const [locales, setLocales] = useState([]);
   const [profile, setProfile] = useState({
     email: user?.email || '',
     display_name: user?.display_name || '',
@@ -583,8 +617,11 @@ const SettingsCenter = () => {
   });
   const [operations, setOperations] = useState([]);
   const [notifications, setNotifications] = useState(DEFAULT_NOTIFICATIONS);
+  const [notificationUncertain, setNotificationUncertain] = useState(false);
   const [securityEvents, setSecurityEvents] = useState([]);
   const [resourceAvailability, setResourceAvailability] = useState({
+    capabilities: null,
+    preferences: null,
     privacy: null,
     notifications: null,
     security: null,
@@ -635,41 +672,59 @@ const SettingsCenter = () => {
     ]).then(
       ([capabilityResult, preferenceResult, privacyResult, notificationResult, securityResult]) => {
         if (!current) return;
-        if (
-          capabilityResult.status === 'fulfilled' &&
-          Array.isArray(capabilityResult.value?.categories)
-        ) {
-          const enabled = new Set(capabilityResult.value.categories.map((item) => item.id));
-          setCategories(FALLBACK_CATEGORIES.filter((item) => enabled.has(item.id)));
+        let capabilitiesAvailable = false;
+        let preferencesAvailable = false;
+        let notificationsAvailable = false;
+        try {
+          const discovery = parseSettingsDiscovery(capabilityResult.value, KNOWN_CATEGORIES);
+          setCategories(discovery.categories);
+          setControls(discovery.controls);
+          setModules(discovery.modules);
+          setLocales(discovery.locales);
+          capabilitiesAvailable = capabilityResult.status === 'fulfilled';
+        } catch {
+          setCategories([]);
+          setControls([]);
+          setModules([]);
         }
-        if (preferenceResult.status === 'fulfilled') {
-          const nextPreferences = {
+        try {
+          const nextPreferences = readPreferences(preferenceResult.value, {
             ...preferenceDefaults,
-            ...preferenceResult.value,
-            locale: preferenceResult.value?.locale || user?.locale || preferenceDefaults.locale,
-          };
+            locale: initialLocale.current || preferenceDefaults.locale,
+          });
           setPreferences(nextPreferences);
+          setSavedPreferences(nextPreferences);
+          initialAccount.current.applyAccountPreferences?.(
+            nextPreferences,
+            initialAccount.current.id,
+            { preserveTemporary: true }
+          );
           setActiveLocale(String(nextPreferences.locale || 'en').split('-')[0]);
+          preferencesAvailable = preferenceResult.status === 'fulfilled';
+        } catch {
+          // Unknown is not a default. Leave the form unavailable until a read succeeds.
         }
         if (privacyResult.status === 'fulfilled') {
           setOperations(privacyResult.value?.operations || []);
         }
-        if (
-          notificationResult.status === 'fulfilled' &&
-          notificationResult.value?.preferences?.length
-        ) {
-          setNotifications(notificationResult.value.preferences);
+        try {
+          setNotifications(readNotifications(notificationResult.value, DEFAULT_NOTIFICATIONS));
+          notificationsAvailable = notificationResult.status === 'fulfilled';
+        } catch {
+          // A malformed or unavailable read must never become editable defaults.
         }
         if (securityResult.status === 'fulfilled')
           setSecurityEvents(securityResult.value?.events || []);
         setResourceAvailability({
+          capabilities: capabilitiesAvailable,
+          preferences: preferencesAvailable,
           privacy: privacyResult.status === 'fulfilled',
-          notifications: notificationResult.status === 'fulfilled',
+          notifications: notificationsAvailable,
           security: securityResult.status === 'fulfilled',
         });
-        if ([capabilityResult, preferenceResult].some((result) => result.status === 'rejected')) {
+        if (!capabilitiesAvailable || !preferencesAvailable) {
           const responseLocale = String(
-            preferenceResult.value?.locale || user?.locale || 'en'
+            preferenceResult.value?.locale || initialLocale.current || 'en'
           ).split('-')[0];
           setError((DETAIL_COPY[responseLocale] || DETAIL_COPY.en).partialError);
         }
@@ -679,12 +734,16 @@ const SettingsCenter = () => {
     return () => {
       current = false;
     };
-  }, [user?.locale]);
+  }, []);
 
   useEffect(() => {
-    if (!loading && !localizedCategories.some((item) => item.id === active))
+    if (
+      !loading &&
+      resourceAvailability.capabilities &&
+      !localizedCategories.some((item) => item.id === active)
+    )
       navigate('/settings', { replace: true });
-  }, [active, localizedCategories, loading, navigate]);
+  }, [active, localizedCategories, loading, navigate, resourceAvailability.capabilities]);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -694,133 +753,275 @@ const SettingsCenter = () => {
     );
   }, [localizedCategories, query]);
 
-  const saveProfile = async (event) => {
-    event.preventDefault();
+  const hasPreferenceDraft = JSON.stringify(preferences) !== JSON.stringify(savedPreferences);
+  useEffect(() => {
+    if (!hasPreferenceDraft) return undefined;
+    const warnBeforeUnload = (event) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warnBeforeUnload);
+    return () => window.removeEventListener('beforeunload', warnBeforeUnload);
+  }, [hasPreferenceDraft]);
+
+  const availableControls = useMemo(
+    () =>
+      controls.filter((item) => {
+        if (item.category === 'notifications')
+          return (
+            resourceAvailability.notifications === true &&
+            notifications.some(
+              (choice) => item.anchor === `notification-${choice.event_family}-${choice.channel}`
+            )
+          );
+        if (['appearance', 'language-region'].includes(item.category))
+          return resourceAvailability.preferences === true;
+        return true;
+      }),
+    [controls, notifications, resourceAvailability.notifications, resourceAvailability.preferences]
+  );
+  const unavailableDeepLink =
+    Boolean(location.hash) &&
+    !availableControls.some(
+      (item) => item.category === active && `#${item.anchor}` === location.hash
+    );
+
+  const matchingControls = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return needle
+      ? availableControls.filter((item) =>
+          `${item.label} ${item.description} ${item.synonyms}`.toLowerCase().includes(needle)
+        )
+      : [];
+  }, [availableControls, query]);
+
+  useEffect(() => {
+    if (loading || !resourceAvailability.capabilities || !location.hash) return;
+    const target = controls.find(
+      (item) => item.category === active && `#${item.anchor}` === location.hash
+    );
+    if (target && !unavailableDeepLink) document.getElementById(target.anchor)?.focus();
+    else document.getElementById('settings-link-unavailable')?.focus();
+  }, [
+    active,
+    controls,
+    loading,
+    location.hash,
+    resourceAvailability.capabilities,
+    resourceAvailability.preferences,
+    unavailableDeepLink,
+  ]);
+
+  const beginAction = () => {
+    if (busy.current || !mounted.current) return false;
+    busy.current = true;
     setSaving(true);
     setError('');
     setStatus('');
+    return true;
+  };
+  const endAction = () => {
+    busy.current = false;
+    if (mounted.current) setSaving(false);
+  };
+
+  const retryDiscovery = async () => {
+    if (!beginAction()) return;
+    try {
+      const discovery = parseSettingsDiscovery(await settingsAPI.capabilities(), KNOWN_CATEGORIES);
+      if (!mounted.current) return;
+      setCategories(discovery.categories);
+      setControls(discovery.controls);
+      setModules(discovery.modules);
+      setLocales(discovery.locales);
+      setResourceAvailability((prior) => ({ ...prior, capabilities: true }));
+    } catch {
+      if (mounted.current) setError(detail.partialError);
+    } finally {
+      endAction();
+    }
+  };
+
+  const reloadPreferences = async () => {
+    if (!beginAction()) return;
+    try {
+      const next = readPreferences(await settingsAPI.preferences(), preferenceDefaults);
+      if (!mounted.current) return;
+      setPreferences(next);
+      setSavedPreferences(next);
+      setPreferenceConflict(false);
+      setActiveLocale(String(next.locale).split('-')[0]);
+      applyAccountPreferences?.(next, user?.id);
+      setResourceAvailability((prior) => ({ ...prior, preferences: true }));
+    } catch {
+      if (mounted.current) setError(detail.partialError);
+    } finally {
+      endAction();
+    }
+  };
+
+  const reloadNotifications = async () => {
+    if (!beginAction()) return;
+    try {
+      const next = readNotifications(await settingsAPI.notifications(), DEFAULT_NOTIFICATIONS);
+      if (!mounted.current) return;
+      setNotifications(next);
+      setNotificationUncertain(false);
+      setResourceAvailability((prior) => ({ ...prior, notifications: true }));
+    } catch {
+      if (mounted.current) setError(detail.notificationsUnavailable);
+    } finally {
+      endAction();
+    }
+  };
+
+  const saveProfile = async (event) => {
+    event.preventDefault();
+    if (!beginAction()) return;
     try {
       const response = await apiClient.patch('/users/me', profile);
+      if (!mounted.current) return;
       updateUser(response.data);
       setStatus(detail.profileSaved);
     } catch (_reason) {
+      if (!mounted.current) return;
       setError(detail.actionFailed);
     } finally {
-      setSaving(false);
+      endAction();
     }
   };
 
   const savePreferences = async (event) => {
     event.preventDefault();
-    setSaving(true);
-    setError('');
-    setStatus('');
+    if (!resourceAvailability.preferences || preferenceConflict || !beginAction()) return;
     try {
-      const next = await settingsAPI.savePreferences({
-        expected_version: preferences.version,
-        theme: preferences.theme,
-        contrast: preferences.contrast,
-        motion: preferences.motion,
-        density: preferences.density,
-        locale: preferences.locale,
-        timezone: preferences.timezone,
-        week_start: preferences.week_start,
-      });
+      const next = readPreferences(
+        await settingsAPI.savePreferences({
+          expected_version: preferences.version,
+          theme: preferences.theme,
+          contrast: preferences.contrast,
+          motion: preferences.motion,
+          density: preferences.density,
+          locale: preferences.locale,
+          timezone: preferences.timezone,
+          week_start: preferences.week_start,
+        }),
+        preferenceDefaults
+      );
+      if (!mounted.current) return;
       const nextLocale = String(next.locale || preferences.locale || 'en').split('-')[0];
       const nextDetail = DETAIL_COPY[nextLocale] || DETAIL_COPY.en;
-      setPreferences({ ...preferenceDefaults, ...next });
+      setPreferences(next);
+      setSavedPreferences(next);
+      applyAccountPreferences?.(next, user?.id);
       setActiveLocale(nextLocale);
       updateUser({ ...user, locale: next.locale || preferences.locale || 'en' });
       setStatus(nextDetail.preferencesSaved);
     } catch (reason) {
+      if (!mounted.current) return;
       if (reason?.status === 409 || reason?.code === 'settings_version_conflict') {
+        setPreferenceConflict(true);
         setError(detail.settingsConflict);
+      } else if (!reason?.status || reason.status >= 500) {
+        setPreferenceConflict(true);
+        setError(
+          'The save could not be confirmed. Your draft is preserved. Reload saved values before trying again; the server may have completed the change.'
+        );
       } else setError(detail.actionFailed);
     } finally {
-      setSaving(false);
+      endAction();
     }
   };
 
   const requestExport = async () => {
-    setSaving(true);
-    setError('');
-    setStatus('');
+    if (!beginAction()) return;
     try {
       await settingsAPI.requestExport();
+      if (!mounted.current) return;
       setStatus(detail.exportQueued);
     } catch (_reason) {
+      if (!mounted.current) return;
       setError(detail.actionFailed);
     } finally {
-      setSaving(false);
+      endAction();
     }
   };
 
   const saveNotifications = async (event) => {
     event.preventDefault();
-    setSaving(true);
-    setError('');
-    setStatus('');
+    if (!resourceAvailability.notifications || notificationUncertain || !beginAction()) return;
     try {
       const result = await settingsAPI.saveNotifications(
-        notifications.map(({ mandatory: _mandatory, ...item }) => item)
+        notifications.map(({ event_family, channel, delivery }) => ({
+          event_family,
+          channel,
+          delivery,
+        }))
       );
-      setNotifications(result.preferences);
+      if (!mounted.current) return;
+      setNotifications(readNotifications(result, DEFAULT_NOTIFICATIONS));
       setStatus(detail.notificationSaved);
-    } catch (_reason) {
-      setError(detail.actionFailed);
+    } catch (reason) {
+      if (!mounted.current) return;
+      if (!reason?.status || reason.status >= 500) {
+        setNotificationUncertain(true);
+        setError(
+          'The save could not be confirmed. Reload notifications before trying again; the server may have completed the change.'
+        );
+      } else setError(detail.actionFailed);
     } finally {
-      setSaving(false);
+      endAction();
     }
   };
 
   const requestCorrection = async (event) => {
     event.preventDefault();
-    setSaving(true);
-    setError('');
-    setStatus('');
+    if (!beginAction()) return;
     const fields = Object.fromEntries(
       Object.entries(correction).filter(([, value]) => value.trim())
     );
     try {
       await settingsAPI.requestCorrection(fields);
+      if (!mounted.current) return;
       setCorrection({ display_name: '', bio: '' });
       setStatus(detail.correctionQueued);
     } catch (_reason) {
+      if (!mounted.current) return;
       setError(detail.actionFailed);
     } finally {
-      setSaving(false);
+      endAction();
     }
   };
 
   const requestDeletion = async (event) => {
     event.preventDefault();
-    setSaving(true);
-    setError('');
-    setStatus('');
+    if (!beginAction()) return;
     try {
       await settingsAPI.requestDeletion(deleteConfirmation);
+      if (!mounted.current) return;
       setDeleteConfirmation('');
       setStatus(detail.deletionQueued);
     } catch (_reason) {
+      if (!mounted.current) return;
       setError(detail.actionFailed);
     } finally {
-      setSaving(false);
+      endAction();
     }
   };
 
   const requestDeactivation = async (event) => {
     event.preventDefault();
-    setSaving(true);
-    setError('');
-    setStatus('');
+    if (!beginAction()) return;
     try {
       await settingsAPI.requestDeactivation(deactivateConfirmation);
+      if (!mounted.current) return;
       setDeactivateConfirmation('');
       setStatus(detail.deactivationQueued);
     } catch (_reason) {
+      if (!mounted.current) return;
       setError(detail.actionFailed);
     } finally {
-      setSaving(false);
+      endAction();
     }
   };
 
@@ -899,112 +1100,148 @@ const SettingsCenter = () => {
     </GlassCard>
   );
 
-  const renderPreferences = (language = false) => (
-    <GlassCard>
-      <form onSubmit={savePreferences} className="grid gap-5 p-6 sm:grid-cols-2">
-        {language ? (
-          <>
-            <Field label={copy.language} htmlFor="locale">
-              <Select
-                id="locale"
-                value={preferences.locale}
-                onChange={(event) => setPreferences({ ...preferences, locale: event.target.value })}
-              >
-                <option value="en">English</option>
-                <option value="de">Deutsch</option>
-                <option value="ar">العربية</option>
-              </Select>
-            </Field>
-            <Field label={copy.timezone} htmlFor="timezone">
-              <GlassInput
-                id="timezone"
-                value={preferences.timezone}
-                onChange={(event) =>
-                  setPreferences({ ...preferences, timezone: event.target.value })
-                }
-              />
-            </Field>
-            <Field label={copy.weekStart} htmlFor="week-start">
-              <Select
-                id="week-start"
-                value={preferences.week_start}
-                onChange={(event) =>
-                  setPreferences({ ...preferences, week_start: event.target.value })
-                }
-              >
-                <option value="system">{copy.systemDefault}</option>
-                <option value="monday">{copy.monday}</option>
-                <option value="sunday">{copy.sunday}</option>
-                <option value="saturday">{copy.saturday}</option>
-              </Select>
-            </Field>
-          </>
-        ) : (
-          <>
-            <Field label={detail.theme} htmlFor="theme">
-              <Select
-                id="theme"
-                value={preferences.theme}
-                onChange={(event) => setPreferences({ ...preferences, theme: event.target.value })}
-              >
-                <option value="system">{detail.useSystem}</option>
-                <option value="light">{detail.light}</option>
-                <option value="dark">{detail.dark}</option>
-              </Select>
-            </Field>
-            <Field label={detail.contrast} htmlFor="contrast">
-              <Select
-                id="contrast"
-                value={preferences.contrast}
-                onChange={(event) =>
-                  setPreferences({ ...preferences, contrast: event.target.value })
-                }
-              >
-                <option value="system">{detail.useSystem}</option>
-                <option value="standard">{detail.standard}</option>
-                <option value="high">{detail.highContrast}</option>
-              </Select>
-            </Field>
-            <Field label={detail.motion} htmlFor="motion">
-              <Select
-                id="motion"
-                value={preferences.motion}
-                onChange={(event) => setPreferences({ ...preferences, motion: event.target.value })}
-              >
-                <option value="system">{detail.useSystem}</option>
-                <option value="full">{detail.fullMotion}</option>
-                <option value="reduced">{detail.reducedMotion}</option>
-              </Select>
-            </Field>
-            <Field label={detail.density} htmlFor="density">
-              <Select
-                id="density"
-                value={preferences.density}
-                onChange={(event) =>
-                  setPreferences({ ...preferences, density: event.target.value })
-                }
-              >
-                <option value="comfortable">{detail.comfortable}</option>
-                <option value="compact">{detail.compact}</option>
-              </Select>
-            </Field>
-          </>
-        )}
-        <div className="sm:col-span-2">
-          <GlassButton type="submit" disabled={saving}>
-            {saving ? copy.saving : copy.savePreferences}
+  const renderPreferences = (language = false) =>
+    resourceAvailability.preferences !== true ? (
+      <GlassCard>
+        <div className="space-y-4 p-6">
+          <p>Preferences are unavailable. No default values can be saved until they are loaded.</p>
+          <GlassButton disabled={saving} onClick={reloadPreferences}>
+            Reload preferences
           </GlassButton>
         </div>
-      </form>
-    </GlassCard>
-  );
+      </GlassCard>
+    ) : (
+      <GlassCard>
+        <form onSubmit={savePreferences} className="p-6">
+          <fieldset disabled={saving} className="grid gap-5 sm:grid-cols-2">
+            {language ? (
+              <>
+                <Field label={copy.language} htmlFor="locale">
+                  <Select
+                    id="locale"
+                    value={preferences.locale}
+                    onChange={(event) =>
+                      setPreferences({ ...preferences, locale: event.target.value })
+                    }
+                  >
+                    {locales.map((value) => (
+                      <option key={value} value={value}>
+                        {{ en: 'English', de: 'Deutsch', ar: 'العربية' }[value]}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field label={copy.timezone} htmlFor="timezone">
+                  <GlassInput
+                    id="timezone"
+                    value={preferences.timezone}
+                    onChange={(event) =>
+                      setPreferences({ ...preferences, timezone: event.target.value })
+                    }
+                  />
+                </Field>
+                <Field label={copy.weekStart} htmlFor="week-start">
+                  <Select
+                    id="week-start"
+                    value={preferences.week_start}
+                    onChange={(event) =>
+                      setPreferences({ ...preferences, week_start: event.target.value })
+                    }
+                  >
+                    <option value="system">{copy.systemDefault}</option>
+                    <option value="monday">{copy.monday}</option>
+                    <option value="sunday">{copy.sunday}</option>
+                    <option value="saturday">{copy.saturday}</option>
+                  </Select>
+                </Field>
+              </>
+            ) : (
+              <>
+                <Field label={detail.theme} htmlFor="theme">
+                  <Select
+                    id="theme"
+                    value={preferences.theme}
+                    onChange={(event) =>
+                      setPreferences({ ...preferences, theme: event.target.value })
+                    }
+                  >
+                    <option value="system">{detail.useSystem}</option>
+                    <option value="light">{detail.light}</option>
+                    <option value="dark">{detail.dark}</option>
+                  </Select>
+                </Field>
+                <Field label={detail.contrast} htmlFor="contrast">
+                  <Select
+                    id="contrast"
+                    value={preferences.contrast}
+                    onChange={(event) =>
+                      setPreferences({ ...preferences, contrast: event.target.value })
+                    }
+                  >
+                    <option value="system">{detail.useSystem}</option>
+                    <option value="standard">{detail.standard}</option>
+                    <option value="high">{detail.highContrast}</option>
+                  </Select>
+                </Field>
+                <Field label={detail.motion} htmlFor="motion">
+                  <Select
+                    id="motion"
+                    value={preferences.motion}
+                    onChange={(event) =>
+                      setPreferences({ ...preferences, motion: event.target.value })
+                    }
+                  >
+                    <option value="system">{detail.useSystem}</option>
+                    <option value="full">{detail.fullMotion}</option>
+                    <option value="reduced">{detail.reducedMotion}</option>
+                  </Select>
+                </Field>
+                <Field label={detail.density} htmlFor="density">
+                  <Select
+                    id="density"
+                    value={preferences.density}
+                    onChange={(event) =>
+                      setPreferences({ ...preferences, density: event.target.value })
+                    }
+                  >
+                    <option value="comfortable">{detail.comfortable}</option>
+                    <option value="compact">{detail.compact}</option>
+                  </Select>
+                </Field>
+              </>
+            )}
+            <div className="sm:col-span-2">
+              <GlassButton type="submit" disabled={saving || preferenceConflict}>
+                {saving ? copy.saving : copy.savePreferences}
+              </GlassButton>
+              {(preferenceConflict || hasPreferenceDraft) && (
+                <div className="mt-4 space-y-2">
+                  <p className="text-sm">
+                    You have an unsaved draft. Reloading discards it and reads the latest saved
+                    values.
+                  </p>
+                  <GlassButton variant="secondary" disabled={saving} onClick={reloadPreferences}>
+                    Discard draft and reload
+                  </GlassButton>
+                </div>
+              )}
+            </div>
+          </fieldset>
+        </form>
+      </GlassCard>
+    );
 
   const renderNotifications = () =>
     resourceAvailability.notifications === false ? (
       <GlassCard>
-        <p className="p-6 text-sm text-amber-100" role="alert">
-          {detail.notificationsUnavailable}
-        </p>
+        <div className="space-y-4 p-6">
+          <p className="text-sm text-amber-100" role="alert">
+            {detail.notificationsUnavailable}
+          </p>
+          <GlassButton disabled={saving} onClick={reloadNotifications}>
+            Reload notifications
+          </GlassButton>
+        </div>
       </GlassCard>
     ) : (
       <GlassCard>
@@ -1012,6 +1249,10 @@ const SettingsCenter = () => {
           <div>
             <h2 className="font-semibold">{detail.deliveryControls}</h2>
             <p className="mt-2 text-sm opacity-75">{detail.deliveryHelp}</p>
+            <p className="mt-2 text-sm opacity-75">
+              These choices are stored; delivery-engine integration is not yet available. Saving
+              does not change live message delivery.
+            </p>
           </div>
           <div className="divide-y divide-white/10 rounded-xl border border-white/15">
             {notifications.map((item, index) => (
@@ -1030,6 +1271,7 @@ const SettingsCenter = () => {
                 </div>
                 <Select
                   id={`notification-${item.event_family}-${item.channel}`}
+                  disabled={saving}
                   aria-label={detail.notificationDeliveryLabel(
                     detail.notificationTerms[item.event_family] || item.event_family,
                     detail.notificationTerms[item.channel] || item.channel.replace('_', ' ')
@@ -1050,9 +1292,14 @@ const SettingsCenter = () => {
               </div>
             ))}
           </div>
-          <GlassButton type="submit" disabled={saving}>
+          <GlassButton type="submit" disabled={saving || notificationUncertain}>
             {saving ? detail.saving : detail.saveNotifications}
           </GlassButton>
+          {notificationUncertain && (
+            <GlassButton variant="secondary" disabled={saving} onClick={reloadNotifications}>
+              Discard draft and reload notifications
+            </GlassButton>
+          )}
         </form>
       </GlassCard>
     );
@@ -1183,6 +1430,10 @@ const SettingsCenter = () => {
       <GlassCard>
         <div className="p-6">
           <h2 className="font-semibold">{detail.securityActivity}</h2>
+          <p className="mt-2 text-xs opacity-75">
+            Your account security activity across sites, not the organization audit log. Open
+            organization administration for scoped audit history.
+          </p>
           {resourceAvailability.security === false ? (
             <p className="mt-2 text-sm text-amber-100" role="alert">
               {detail.securityEventsUnavailable}
@@ -1211,12 +1462,6 @@ const SettingsCenter = () => {
         <div className="p-6">
           <h2 className="font-semibold">{detail.apiDocs}</h2>
           <p className="mt-2 text-sm opacity-75">{detail.apiDocsHelp}</p>
-          <a
-            className="mt-4 inline-flex min-h-11 items-center font-semibold text-violet-200"
-            href="/docs"
-          >
-            {detail.openApiDocs}
-          </a>
         </div>
       </GlassCard>
       <GlassCard>
@@ -1234,8 +1479,43 @@ const SettingsCenter = () => {
     </div>
   );
 
+  const renderModules = () => (
+    <div className="space-y-4">
+      <GlassCard>
+        <p className="p-6 text-sm">
+          Site scope · Deployment-managed. Enabled modules are foundations, not a promise that every
+          domain feature or external provider is operational. Changes to activation require a
+          reviewed site deployment; personal preferences do not override site policy.
+        </p>
+      </GlassCard>
+      {modules.map((item) => (
+        <GlassCard key={item.id}>
+          <div className="space-y-3 p-6">
+            <h2 className="font-semibold">{item.label}</h2>
+            <p className="text-xs font-semibold uppercase tracking-wide">
+              {item.enabled
+                ? item.action
+                  ? 'Workspace available'
+                  : 'Limited foundation'
+                : 'Not enabled on this site'}
+            </p>
+            <p className="text-sm opacity-75">{item.description}</p>
+            {item.action ? (
+              <Link className="inline-flex min-h-11 items-center underline" to={item.action.path}>
+                {item.action.label}
+              </Link>
+            ) : (
+              <p className="text-xs opacity-75">No editable module settings are offered here.</p>
+            )}
+          </div>
+        </GlassCard>
+      ))}
+    </div>
+  );
+
   const renderSimple = () => {
     if (active === 'security') return <AccountCenter user={user} embedded locale={locale} />;
+    if (active === 'site-capabilities') return renderModules();
     if (active === 'privacy') return renderPrivacy();
     if (active === 'notifications') return renderNotifications();
     if (active === 'organization') return renderOrganization();
@@ -1286,6 +1566,17 @@ const SettingsCenter = () => {
           </p>
           <h1 className="mt-2 text-3xl font-semibold">{current?.label || copy.settings}</h1>
           <p className="mt-2 max-w-2xl text-sm opacity-75">{current?.description}</p>
+          {resourceAvailability.capabilities && (
+            <p className="mt-2 text-xs opacity-75">
+              {['profile', 'security'].includes(active)
+                ? 'Account scope · Shared identity and sign-in settings, not site overrides.'
+                : ['organization', 'developer'].includes(active)
+                  ? 'Organization scope · Access is checked for your current role.'
+                  : active === 'site-capabilities'
+                    ? 'Site scope · Managed through deployment.'
+                    : 'Personal scope · Your preferences on this site; no organization inheritance.'}
+            </p>
+          )}
         </header>
         {status ? (
           <div
@@ -1337,7 +1628,21 @@ const SettingsCenter = () => {
                   </Link>
                 );
               })}
-              {!filtered.length ? <p className="p-3 text-sm opacity-70">{copy.noResults}</p> : null}
+              {matchingControls.map((item) => (
+                <Link
+                  key={item.id}
+                  to={item.path}
+                  className="block min-h-12 rounded-xl px-3 py-2 text-sm hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-violet-300"
+                >
+                  <strong className="block">{item.label}</strong>
+                  <span className="block text-xs opacity-75">{item.description}</span>
+                </Link>
+              ))}
+              {!filtered.length && !matchingControls.length ? (
+                <p className="p-3 text-sm opacity-70" role="status">
+                  {copy.noResults}
+                </p>
+              ) : null}
             </nav>
           </aside>
           <section
@@ -1345,9 +1650,34 @@ const SettingsCenter = () => {
             aria-label={`${current?.label || copy.settings} ${copy.details}`}
             aria-busy={loading}
           >
+            {!loading && resourceAvailability.capabilities && unavailableDeepLink && (
+              <p
+                id="settings-link-unavailable"
+                tabIndex={-1}
+                className="mb-4 rounded-xl border border-amber-400/30 p-4 text-sm"
+              >
+                The linked setting is not currently available. Browse the settings you can access
+                below.
+              </p>
+            )}
             {loading ? (
               <GlassCard>
                 <div className="p-8 text-sm">{copy.loading}</div>
+              </GlassCard>
+            ) : resourceAvailability.capabilities !== true ? (
+              <GlassCard>
+                <div className="space-y-4 p-6">
+                  <p>Settings discovery is unavailable. Access-sensitive controls remain hidden.</p>
+                  <GlassButton disabled={saving} onClick={retryDiscovery}>
+                    Retry settings discovery
+                  </GlassButton>
+                </div>
+              </GlassCard>
+            ) : !categories.some((item) => item.id === active) ? (
+              <GlassCard>
+                <p className="p-6 text-sm">
+                  This category is not available for your current access.
+                </p>
               </GlassCard>
             ) : active === 'overview' ? (
               renderOverview()
@@ -1364,6 +1694,17 @@ const SettingsCenter = () => {
         </div>
       </div>
     </AppShell>
+  );
+};
+
+const SettingsCenter = () => {
+  const { user } = useAuth();
+  // Tenant is immutable for a generated application and is also the API header.
+  // Remount every account's drafts/permissions, including late response guards.
+  return (
+    <SettingsContent
+      key={`${siteManifest.siteId}:${user?.id || 'anonymous'}:${authSession.epoch()}`}
+    />
   );
 };
 
