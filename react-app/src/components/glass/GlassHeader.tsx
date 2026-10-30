@@ -177,6 +177,9 @@ export const GlassHeader: React.FC<Props> = ({
           display: 'grid',
           placeItems: 'center',
           padding: 0,
+          // The shell already supplies the active profile's light/dark foreground.
+          // Do not inherit the ghost variant's fixed white on a light header.
+          color: 'inherit',
         }}
       >
         <svg

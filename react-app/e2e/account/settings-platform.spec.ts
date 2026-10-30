@@ -82,7 +82,7 @@ test.beforeEach(async ({ page }) => {
         ],
       });
     } else if (url.pathname === '/api/settings/security-events')
-      await json({ events: [{ id: 'event-1', action: 'identity.login_succeeded' }] });
+      await json({ events: [{ id: 'event-1', action: 'auth.login' }] });
     else if (url.pathname === '/api/privacy/operations') await json({ operations: [] });
     else if (url.pathname.startsWith('/api/privacy/')) await json({ accepted: true }, 202);
     else if (url.pathname === '/api/identity/capabilities')
@@ -156,7 +156,8 @@ test('loading state retains explicit visual evidence', async ({ page }) => {
   try {
     await page.goto('/settings');
     await expect(page.locator('#settings-detail')).toHaveAttribute('aria-busy', 'true');
-    await expect(page.getByText('Loading settings…')).toBeVisible();
+    await expect(page.locator('#settings-detail').getByText('Loading settings…')).toBeVisible();
+    await expect(page.getByText('No settings found.', { exact: true })).toHaveCount(0);
     // Never let screenshot stabilization release the request. Stay below the
     // real 10-second GET timeout, and verify the named state even on mismatch.
     await expect.soft(page).toHaveScreenshot('settings-loading-desktop.png', {
@@ -167,7 +168,8 @@ test('loading state retains explicit visual evidence', async ({ page }) => {
       timeout: 5_000,
     });
     await expect(page.locator('#settings-detail')).toHaveAttribute('aria-busy', 'true');
-    await expect(page.getByText('Loading settings…')).toBeVisible();
+    await expect(page.locator('#settings-detail').getByText('Loading settings…')).toBeVisible();
+    await expect(page.getByText('No settings found.', { exact: true })).toHaveCount(0);
   } finally {
     releaseCapabilities();
     // Drain in-flight handlers before teardown even if an assertion fails.
@@ -311,6 +313,10 @@ for (const route of [
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto(`/settings/${route}`);
     await expect(page.locator('#settings-detail')).not.toHaveAttribute('aria-busy', 'true');
+    if (route === 'organization') {
+      await expect(page.getByText('Successful sign-in', { exact: true })).toBeVisible();
+      await expect(page.getByText('Unknown security event', { exact: true })).toHaveCount(0);
+    }
     await page.addScriptTag({ content: axeSource });
     const violations = await page.evaluate(async () => {
       const results = await window.axe.run(document, { resultTypes: ['violations'] });

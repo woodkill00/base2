@@ -46,3 +46,19 @@ describe('GlassHeader', () => {
     expect(document.documentElement.classList.contains('dark')).toBe(false);
   });
 });
+
+// Inherit the shell's existing light/dark foreground instead of the white
+// ghost variant. Pinned-browser tests additionally verify computed colors.
+test.each(['#132337', '#f4efed'])('app menu inherits the active theme foreground (%s)', (color) => {
+  render(
+    <TestMemoryRouter>
+      <div style={{ color }}>
+        <GlassHeader variant="app" title="Settings" />
+      </div>
+    </TestMemoryRouter>
+  );
+  const menu = screen.getByRole('button', { name: 'Menu' });
+  expect(menu.style.color).toBe('inherit');
+  expect(getComputedStyle(menu).color).toBe(getComputedStyle(menu.closest('header')!).color);
+  expect(menu.querySelector('svg path')).toHaveAttribute('stroke', 'currentColor');
+});

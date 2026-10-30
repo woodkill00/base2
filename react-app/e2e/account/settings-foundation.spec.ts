@@ -258,3 +258,63 @@ for (const width of [390, 1280]) {
     });
   });
 }
+
+for (const theme of ['light', 'dark'] as const) {
+  test(`${theme} settings menu icon uses the actual header foreground`, async ({ page }) => {
+    const state = await fixture(page);
+    state.preferences.theme = theme;
+    await page.goto('/settings');
+    await ready(page);
+    await expect(page.locator('html')).toHaveAttribute('data-color-mode', theme);
+    const menu = page.getByRole('button', { name: 'Menu', exact: true });
+    await expect(menu).toBeVisible();
+    const colors = await menu.evaluate((node) => {
+      const button = getComputedStyle(node).color;
+      // Normalize modern computed colors (including Tailwind's oklch palette)
+      // through the browser rather than treating their components as RGB.
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 1;
+      const context = canvas.getContext('2d')!;
+      context.fillStyle = button;
+      context.fillRect(0, 0, 1, 1);
+      return {
+        button,
+        header: getComputedStyle(node.closest('header')!).color,
+        stroke: getComputedStyle(node.querySelector('svg path')!).stroke,
+        channels: Array.from(context.getImageData(0, 0, 1, 1).data).slice(0, 3),
+      };
+    });
+    expect(colors.button).toBe(colors.header);
+    expect(colors.stroke).toBe(colors.header);
+    // The menu is part of this profile's slate light/dark shell, not a fixed
+    // white ghost button or the polar brand's always-dark semantic token.
+    const channels = colors.channels;
+    if (theme === 'light') expect(Math.max(...channels)).toBeLessThan(128);
+    else expect(Math.min(...channels)).toBeGreaterThan(200);
+  });
+}
+
+test('notification row dividers preserve the approved tenth-opacity white after all CSS loads', async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.route('**/api/settings/notifications', (route) =>
+    route.fulfill({
+      json: {
+        preferences: [
+          { event_family: 'security', channel: 'email', delivery: 'immediate', mandatory: true },
+          { event_family: 'marketing', channel: 'email', delivery: 'disabled', mandatory: false },
+        ],
+      },
+    })
+  );
+  await page.goto('/settings/notifications');
+  await ready(page);
+  for (const label of ['Security Email delivery', 'Marketing Email delivery']) {
+    const input = page.getByLabel(label, { exact: true });
+    await expect(input).toBeVisible();
+    expect(
+      await input.evaluate((node) => getComputedStyle(node.parentElement!).borderBottomColor)
+    ).toBe('rgba(255, 255, 255, 0.1)');
+  }
+});

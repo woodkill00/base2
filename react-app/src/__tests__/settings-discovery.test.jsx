@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import Settings from '../pages/SettingsCenter';
@@ -444,4 +444,155 @@ test('developer settings never mislabel public content docs as protected API doc
     'href',
     '/admin'
   );
+});
+
+test('sidebar pending discovery is loading, never an empty search or unverified category', async () => {
+  const base = apiClient.get.getMockImplementation();
+  let finish;
+  apiClient.get.mockImplementation((path) =>
+    path === '/settings/capabilities'
+      ? new Promise((resolve) => {
+          finish = resolve;
+        })
+      : base(path)
+  );
+  renderSettings();
+  const sidebar = screen.getByRole('navigation', { name: 'Settings categories' });
+  expect(sidebar).toHaveAttribute('aria-busy', 'true');
+  expect(within(sidebar).getByRole('status')).toHaveTextContent('Loading settings…');
+  expect(within(sidebar).queryByText('No settings found.')).not.toBeInTheDocument();
+  expect(within(sidebar).queryByRole('link')).not.toBeInTheDocument();
+  await userEvent.setup().type(screen.getByLabelText('Search settings'), 'not-a-setting');
+  expect(within(sidebar).getByRole('status')).toHaveTextContent('Loading settings…');
+  await act(async () => finish({ data: capabilities }));
+  await ready();
+  expect(sidebar).toHaveAttribute('aria-busy', 'false');
+  expect(within(sidebar).getByRole('status')).toHaveTextContent('No settings found.');
+});
+
+test('failed sidebar discovery is unavailable even with a search query, not zero results', async () => {
+  const base = apiClient.get.getMockImplementation();
+  apiClient.get.mockImplementation((path) =>
+    path === '/settings/capabilities' ? Promise.reject(new Error('unavailable')) : base(path)
+  );
+  renderSettings();
+  await ready();
+  const sidebar = screen.getByRole('navigation', { name: 'Settings categories' });
+  await userEvent.setup().type(screen.getByLabelText('Search settings'), 'not-a-setting');
+  expect(within(sidebar).getByRole('status')).toHaveTextContent(/temporarily unavailable/i);
+  expect(within(sidebar).queryByText('No settings found.')).not.toBeInTheDocument();
+  expect(within(sidebar).queryByRole('link')).not.toBeInTheDocument();
+});
+
+test('empty verified catalog without a real query is not reported as an empty search', async () => {
+  const base = apiClient.get.getMockImplementation();
+  apiClient.get.mockImplementation((path) =>
+    path === '/settings/capabilities'
+      ? Promise.resolve({ data: { ...capabilities, categories: [], controls: [] } })
+      : base(path)
+  );
+  renderSettings();
+  await ready();
+  const sidebar = screen.getByRole('navigation', { name: 'Settings categories' });
+  expect(within(sidebar).queryByText('No settings found.')).not.toBeInTheDocument();
+  await userEvent.setup().type(screen.getByLabelText('Search settings'), '   ');
+  expect(within(sidebar).queryByText('No settings found.')).not.toBeInTheDocument();
+});
+
+test('sidebar retry returns to pending until verified discovery recovers', async () => {
+  const base = apiClient.get.getMockImplementation();
+  let retry = false;
+  let finish;
+  apiClient.get.mockImplementation((path) =>
+    path === '/settings/capabilities'
+      ? retry
+        ? new Promise((resolve) => {
+            finish = resolve;
+          })
+        : Promise.reject(new Error('unavailable'))
+      : base(path)
+  );
+  renderSettings();
+  await ready();
+  const sidebar = screen.getByRole('navigation', { name: 'Settings categories' });
+  retry = true;
+  await userEvent.setup().click(screen.getByRole('button', { name: 'Retry settings discovery' }));
+  expect(sidebar).toHaveAttribute('aria-busy', 'true');
+  expect(within(sidebar).getByRole('status')).toHaveTextContent('Loading settings…');
+  expect(within(sidebar).queryByRole('link')).not.toBeInTheDocument();
+  await act(async () => finish({ data: capabilities }));
+  expect(sidebar).toHaveAttribute('aria-busy', 'false');
+  expect(
+    within(sidebar).getByRole('link', { name: 'Appearance & accessibility' })
+  ).toBeInTheDocument();
+  expect(within(sidebar).queryByRole('status')).not.toBeInTheDocument();
+});
+
+test.each([
+  {
+    locale: 'de',
+    navigation: 'Einstellungskategorien',
+    pending: 'Einstellungen werden geladen…',
+    unavailable: /vorübergehend nicht verfügbar/,
+    empty: 'Keine Einstellungen gefunden.',
+  },
+  {
+    locale: 'ar',
+    navigation: 'فئات الإعدادات',
+    pending: 'جارٍ تحميل الإعدادات…',
+    unavailable: /غير متاحة مؤقتًا/,
+    empty: 'لم يتم العثور على إعدادات.',
+  },
+])(
+  'sidebar discovery states retain existing $locale localization',
+  async ({ locale, navigation, pending, unavailable, empty }) => {
+    const base = apiClient.get.getMockImplementation();
+    let rejectDiscovery;
+    useAuth.mockReturnValue({ user: { id: 'user-a', locale }, updateUser: vi.fn() });
+    apiClient.get.mockImplementation((path) =>
+      path === '/settings/capabilities'
+        ? new Promise((_resolve, reject) => {
+            rejectDiscovery = reject;
+          })
+        : path === '/settings/preferences'
+          ? Promise.resolve({ data: { ...preferences, locale } })
+          : base(path)
+    );
+    renderSettings();
+    const sidebar = screen.getByRole('navigation', { name: navigation });
+    expect(within(sidebar).getByRole('status')).toHaveTextContent(pending);
+    expect(within(sidebar).queryByText(empty)).not.toBeInTheDocument();
+    await act(async () => rejectDiscovery(new Error('unavailable')));
+    expect(sidebar).toHaveAttribute('aria-busy', 'false');
+    expect(within(sidebar).getByRole('status')).toHaveTextContent(unavailable);
+    expect(within(sidebar).queryByText(empty)).not.toBeInTheDocument();
+  }
+);
+
+test('notification dividers retain the approved subtle white tenth-opacity color locally', async () => {
+  const base = apiClient.get.getMockImplementation();
+  apiClient.get.mockImplementation((path) =>
+    path === '/settings/notifications'
+      ? Promise.resolve({
+          data: {
+            preferences: [
+              {
+                event_family: 'security',
+                channel: 'email',
+                delivery: 'immediate',
+                mandatory: true,
+              },
+              ...notifications,
+            ],
+          },
+        })
+      : base(path)
+  );
+  renderSettings('/settings/notifications');
+  await ready();
+  for (const label of ['Security Email delivery', 'Marketing Email delivery']) {
+    const row = screen.getByLabelText(label).parentElement;
+    expect(row).toHaveStyle({ borderColor: 'rgba(255, 255, 255, 0.1)' });
+    expect(row.parentElement).toHaveClass('divide-y');
+  }
 });

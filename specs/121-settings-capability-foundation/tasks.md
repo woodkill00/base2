@@ -126,3 +126,11 @@ history is explicitly labeled across-sites, separate from actual organization au
 - CI wiring and frontend selection regression checks: 27 passed.
 - Local browser execution was blocked before navigation by the execution environment. No local visual, PostgreSQL, restricted-role, or complete-gate pass is claimed.
 - Draft-PR CI includes real isolated PostgreSQL audit/settings persistence tests, the full account/settings browser suite, responsive settings matrix, and existing layout/Volcano checks. Results remain pending until those jobs execute.
+
+## Pinned-browser findings and corrections
+
+At ef124689, the real PostgreSQL checks and four non-settings browser suites passed (shared layout, original Volcano, public journeys and optional modules). Settings comparisons retained their failures and actual captures; no screenshot failure was relabeled as a functional pass.
+
+Visual review identified and corrected misleading pending/empty sidebar text, light header menu contrast, a divider cascade override, an invalid normal-state audit fixture, a forced-colors option that was not taking effect, and light high-contrast accent text. Saved-state captures now reset and assert scroll position. These corrections retain assertions and require fresh pinned-browser proof.
+
+Latest local UI checks: 538 tests in 99 files, lint, TypeScript and build passed; critical glass/theme coverage remains 100% on all policy metrics. Browser collection includes 33 account/settings cases and 10 responsive profiles. Actual new-state screenshots and image security acceptance remain pending.

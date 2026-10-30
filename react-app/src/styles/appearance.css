@@ -54,6 +54,16 @@ html[data-contrast='high']
   backdrop-filter: none;
 }
 
+/* The settings kicker and scoped accent links use fixed violet utilities in
+   standard mode. High contrast must use the active semantic foreground instead,
+   especially on the explicit light canvas. Other pages and standard mode retain
+   the approved accent palette. */
+html[data-contrast='high']
+  .page-content:has(#settings-detail)
+  :is(.text-violet-200, .text-violet-300) {
+  color: var(--color-text);
+}
+
 html[data-contrast='high'] :is(input, select, textarea, .base2-button, .glass-btn) {
   border-color: var(--color-border);
 }

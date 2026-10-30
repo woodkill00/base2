@@ -1259,6 +1259,9 @@ const SettingsContent = () => {
               <div
                 className="grid gap-3 p-4 sm:grid-cols-[1fr_12rem] sm:items-center"
                 key={`${item.event_family}-${item.channel}`}
+                // Keep this decorative divider's approved opacity despite the later
+                // universal border-color compatibility rule; do not alter global CSS.
+                style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}
               >
                 <div>
                   <p className="font-medium capitalize">
@@ -1523,6 +1526,7 @@ const SettingsContent = () => {
     return renderOverview();
   };
 
+  const discoveryPending = loading || (saving && resourceAvailability.capabilities !== true);
   const current = localizedCategories.find((item) => item.id === active) || localizedCategories[0];
   return (
     <AppShell
@@ -1612,6 +1616,7 @@ const SettingsContent = () => {
             </Field>
             <nav
               aria-label={copy.categories}
+              aria-busy={discoveryPending}
               className="max-h-[calc(100vh-15rem)] space-y-1 overflow-y-auto rounded-2xl border border-white/15 bg-black/20 p-2"
             >
               {filtered.map((item) => {
@@ -1638,7 +1643,15 @@ const SettingsContent = () => {
                   <span className="block text-xs opacity-75">{item.description}</span>
                 </Link>
               ))}
-              {!filtered.length && !matchingControls.length ? (
+              {discoveryPending ? (
+                <p className="p-3 text-sm opacity-70" role="status">
+                  {copy.loading}
+                </p>
+              ) : resourceAvailability.capabilities !== true ? (
+                <p className="p-3 text-sm opacity-70" role="status">
+                  {detail.partialError}
+                </p>
+              ) : query.trim() && !filtered.length && !matchingControls.length ? (
                 <p className="p-3 text-sm opacity-70" role="status">
                   {copy.noResults}
                 </p>

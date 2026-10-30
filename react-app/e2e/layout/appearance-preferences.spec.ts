@@ -1,4 +1,5 @@
 import { expect, test } from './fixtures';
+import axe from 'axe-core';
 import { fulfillSessionFixture, setSessionFixture } from '../session-fixture';
 
 // Synthetic persistence tests: prove real document/CSS consumers, not live API
@@ -67,6 +68,19 @@ for (const width of [390, 1440]) {
       return route.fulfill({ json: {} });
     });
 
+    const capture = async (name: string) => {
+      // Save/select interactions scroll focused controls into view. A full-page
+      // capture must start at the top so sticky headers are not composited over
+      // controls in the middle of the resulting image.
+      await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }));
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+      await page.screenshot({
+        path: info.outputPath(name),
+        fullPage: true,
+        animations: 'disabled',
+      });
+    };
+
     await page.goto('/settings/appearance');
     const root = page.locator('html');
     const theme = page.getByRole('combobox', { name: 'Theme', exact: true });
@@ -80,11 +94,7 @@ for (const width of [390, 1440]) {
     const initialPadding = await card.evaluate((element) =>
       parseFloat(getComputedStyle(element).paddingTop)
     );
-    await page.screenshot({
-      path: info.outputPath(`appearance-default-${width}.png`),
-      fullPage: true,
-      animations: 'disabled',
-    });
+    await capture(`appearance-default-${width}.png`);
 
     await theme.selectOption('light');
     await page.getByRole('combobox', { name: 'Contrast', exact: true }).selectOption('high');
@@ -116,11 +126,52 @@ for (const width of [390, 1440]) {
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)
     ).toBeLessThanOrEqual(1);
-    await page.screenshot({
-      path: info.outputPath(`appearance-saved-${width}.png`),
-      fullPage: true,
-      animations: 'disabled',
+    const kickerContrast = await page
+      .getByText('Account control center', { exact: true })
+      .evaluate((element) => {
+        const foreground = getComputedStyle(element);
+        const canvas = getComputedStyle(element.closest('.app-shell-root')!);
+        // These semantic colors are opaque sRGB values. Fail rather than silently
+        // approximating an unsupported color model or transparent foreground.
+        const luminance = (color: string) => {
+          const match = /^rgb\((\d+), (\d+), (\d+)\)$/.exec(color);
+          if (!match) throw new Error(`Expected opaque computed sRGB color, received ${color}`);
+          const linear = match.slice(1).map((channel) => {
+            const value = Number(channel) / 255;
+            return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+          });
+          return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+        };
+        const text = luminance(foreground.color);
+        const background = luminance(canvas.backgroundColor);
+        return {
+          foreground: foreground.color,
+          background: canvas.backgroundColor,
+          opacity: foreground.opacity,
+          ratio: (Math.max(text, background) + 0.05) / (Math.min(text, background) + 0.05),
+        };
+      });
+    await info.attach('saved-appearance-kicker-contrast', {
+      body: JSON.stringify(kickerContrast, null, 2),
+      contentType: 'application/json',
     });
+    expect(kickerContrast.foreground).toBe('rgb(23, 16, 14)');
+    expect(kickerContrast.background).toBe('rgb(255, 248, 245)');
+    expect(kickerContrast.opacity).toBe('1');
+    expect(kickerContrast.ratio).toBeGreaterThanOrEqual(7);
+
+    await page.addScriptTag({ content: axe.source });
+    const accessibility = await page.evaluate(async () =>
+      window.axe.run(document, { resultTypes: ['violations'] })
+    );
+    expect(
+      accessibility.violations.map((violation) => ({
+        id: violation.id,
+        impact: violation.impact,
+        targets: violation.nodes.map((node) => node.target),
+      }))
+    ).toEqual([]);
+    await capture(`appearance-saved-${width}.png`);
 
     await page.reload();
     await expect(theme).toHaveValue('light');

@@ -22,6 +22,10 @@ const categoryIds = [
 ];
 
 test.beforeEach(async ({ page }, testInfo) => {
+  await page.emulateMedia({
+    reducedMotion: 'reduce',
+    forcedColors: testInfo.project.name === 'chromium-high-contrast' ? 'active' : 'none',
+  });
   setSessionFixture(page, user);
   await page.route('**/*', async (route) => {
     if (await fulfillSessionFixture(route)) return;
@@ -56,6 +60,10 @@ test.beforeEach(async ({ page }, testInfo) => {
       '*,*::before,*::after{animation-duration:0s!important;transition-duration:0s!important;scroll-behavior:auto!important}',
   });
   await expect(page.locator('#settings-detail')).not.toHaveAttribute('aria-busy', 'true');
+  expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(true);
+  expect(await page.evaluate(() => matchMedia('(forced-colors: active)').matches)).toBe(
+    testInfo.project.name === 'chromium-high-contrast'
+  );
 });
 
 test('release profile remains readable, reachable, accessible, and visually stable', async ({

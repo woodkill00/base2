@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const chromium = (name, viewport, extra = {}) => ({
-  name, use: { ...devices['Desktop Chrome'], viewport, reducedMotion: 'reduce', ...extra },
+  name, use: { ...devices['Desktop Chrome'], viewport, ...extra },
 });
 
 export default defineConfig({
@@ -21,13 +21,13 @@ export default defineConfig({
     chromium('chromium-large-text', { width: 1280, height: 900 }),
     chromium('chromium-400-percent-reflow', { width: 320, height: 640 }),
     chromium('chromium-light', { width: 1280, height: 900 }, { colorScheme: 'light' }),
-    chromium('chromium-high-contrast', { width: 1280, height: 900 }, { forcedColors: 'active' }),
-    { name: 'firefox-desktop', use: { ...devices['Desktop Firefox'], viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' } },
-    { name: 'webkit-mobile', use: { ...devices['iPhone 13'], viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' } },
+    chromium('chromium-high-contrast', { width: 1280, height: 900 }),
+    { name: 'firefox-desktop', use: { ...devices['Desktop Firefox'], viewport: { width: 1440, height: 1000 } } },
+    { name: 'webkit-mobile', use: { ...devices['iPhone 13'], viewport: { width: 390, height: 844 } } },
   ],
   use: {
     baseURL: 'http://127.0.0.1:4186', locale: 'en-US', timezoneId: 'UTC', colorScheme: 'dark',
-    reducedMotion: 'reduce', serviceWorkers: 'block', screenshot: 'only-on-failure',
+    serviceWorkers: 'block', screenshot: 'only-on-failure',
     trace: 'retain-on-failure', video: 'off',
   },
   webServer: {
