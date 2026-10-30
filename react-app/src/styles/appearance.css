@@ -54,6 +54,15 @@ html[data-contrast='high']
   backdrop-filter: none;
 }
 
+/* In standard light mode, use the actual surrounding page foreground. Brand
+   root tokens may still describe a dark palette on non-Obsidian profiles; do
+   not substitute those tokens for the page's already resolved readable text.
+   Standard dark keeps its approved violet accent; explicit high contrast keeps
+   the semantic override below. */
+html[data-color-mode='light']:not([data-contrast='high']) .settings-kicker {
+  color: inherit;
+}
+
 /* The settings kicker and scoped accent links use fixed violet utilities in
    standard mode. High contrast must use the active semantic foreground instead,
    especially on the explicit light canvas. Other pages and standard mode retain

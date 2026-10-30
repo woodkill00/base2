@@ -34,7 +34,17 @@ class MediaPythonRuntimeTests(unittest.TestCase):
         self.assertIn('source=/tmp/python-source/Lib/test,target=/tmp/cpython-tests/test', dockerfile)
         self.assertIn('source=tests/media_inspector_runtime_acceptance.py', dockerfile)
         production = dockerfile.split('AS media-inspector-production', 1)[1].split('AS media-inspector-acceptance', 1)[0]
-        self.assertIn('/usr/bin/python /tmp/runtime_acceptance.py', production)
+        self.assertIn('/usr/bin/python /tmp/runtime_acceptance.py --audit-elevated-files', production)
+        self.assertLess(production.rfind('\nCOPY '), production.index('--audit-elevated-files'))
+        self.assertIn('/usr/bin/setpriv --reuid=65534 --regid=65534 --clear-groups', production)
+        self.assertIn('--no-new-privs --inh-caps=-all --ambient-caps=-all --bounding-set=-all', production)
+        self.assertIn('--runtime-user 65534 --cpython-tests /tmp/cpython-tests', production)
+        self.assertLess(production.index('--runtime-user'), production.index('--audit-elevated-files'))
+        self.assertNotRegex(production.split('--audit-elevated-files', 1)[1], r'(?im)^\s*(RUN|COPY|ADD|WORKDIR|ONBUILD)\b')
+        acceptance = dockerfile.split('AS media-inspector-acceptance', 1)[1].split('FROM media-inspector-production AS media-inspector-final', 1)[0]
+        copies = [line for line in acceptance.splitlines() if line.startswith('COPY ')]
+        self.assertEqual(3, len(copies))
+        self.assertTrue(all('--chmod=0644' in line for line in copies))
         self.assertNotIn('COPY tests/', production)
         source = (ROOT / 'api/tests/media_inspector_runtime_acceptance.py').read_text()
         self.assertIn('test.test_ssl.SSLObjectTests.test_distrusted_spki', source)
@@ -47,6 +57,10 @@ class MediaPythonRuntimeTests(unittest.TestCase):
     def test_ci_keeps_full_inventory_and_high_critical_gate(self):
         workflow = (ROOT / '.github/workflows/security.yml').read_text()
         self.assertIn('api/tests/media_inspector_sbom_acceptance.py media-inspector-sbom.cdx.json', workflow)
+        runtime_step = workflow.split('name: Verify final Python runtime and binary wheel imports', 1)[1].split('      - name:', 1)[0]
+        self.assertIn('--user 65534:65534', runtime_step)
+        self.assertIn('/tmp/runtime_acceptance.py --runtime-user 65534', runtime_step)
+        self.assertNotIn('--cap-add', runtime_step)
         self.assertEqual(2, workflow.count('severity-cutoff: high'))
         self.assertEqual(2, workflow.count('fail-build: true'))
         self.assertIn('media_inspector_two_uid_container_acceptance.sh', workflow)

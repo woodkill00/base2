@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+import subprocess
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -82,3 +83,82 @@ def test_runtime_fails_immediately_on_host_or_old_interpreter():
             patch.object(runtime.platform, 'python_version', return_value='3.15.1'), \
             pytest.raises(AssertionError):
         runtime.verify_runtime()
+
+
+@pytest.mark.parametrize('output', (b'/usr/bin/su\n', b'/usr/bin/helper\n'))
+def test_complete_filesystem_audit_rejects_elevated_payload(output):
+    with patch.object(runtime.os, 'geteuid', return_value=0), \
+            patch.object(runtime.subprocess, 'check_output', return_value=output), \
+            pytest.raises(AssertionError, match='SUID/SGID payload remains'):
+        runtime.verify_no_elevated_files()
+
+
+def test_complete_filesystem_audit_propagates_permission_error():
+    # First CI failure: no DAC override for _apt-owned0700 partial directories.
+    failure = subprocess.CalledProcessError(1, ['find'], stderr=b'Permission denied')
+    with patch.object(runtime.os, 'geteuid', return_value=0), \
+            patch.object(runtime.subprocess, 'check_output', side_effect=failure), \
+            pytest.raises(subprocess.CalledProcessError) as captured:
+        runtime.verify_no_elevated_files()
+    assert captured.value is failure
+
+
+def test_complete_filesystem_audit_rejects_nonroot_before_scan():
+    with patch.object(runtime.os, 'geteuid', return_value=65534), \
+            patch.object(runtime.subprocess, 'check_output') as scan, \
+            pytest.raises(AssertionError, match='root build context'):
+        runtime.verify_no_elevated_files()
+    scan.assert_not_called()
+
+
+def test_complete_filesystem_audit_checks_whole_image_without_ignored_errors():
+    with patch.object(runtime.os, 'geteuid', return_value=0), \
+            patch.object(runtime.subprocess, 'check_output', return_value=b'') as scan:
+        runtime.verify_no_elevated_files()
+    scan.assert_called_once_with(
+        ['/usr/bin/find', '/', '-xdev', '-type', 'f', '-perm', '/6000', '-print'],
+        timeout=20,
+    )
+
+
+def test_runtime_cli_does_not_repeat_privileged_audit_and_runs_nonroot_ssl():
+    with patch.object(runtime.sys, 'argv', ['acceptance', '--runtime-user', '65534',
+                                         '--cpython-tests', '/fixtures']), \
+            patch.object(runtime.os, 'geteuid', return_value=65534), \
+            patch.object(runtime.os, 'getegid', return_value=65534), \
+            patch.object(runtime, 'verify_no_elevated_files') as audit, \
+            patch.object(runtime, 'verify_runtime', return_value={}) as imports, \
+            patch.object(runtime, 'verify_ssl') as ssl_check:
+        runtime.main()
+    audit.assert_not_called()
+    imports.assert_called_once_with()
+    ssl_check.assert_called_once_with('/fixtures')
+
+
+def test_audit_cli_runs_only_complete_audit():
+    with patch.object(runtime.sys, 'argv', ['acceptance', '--audit-elevated-files']), \
+            patch.object(runtime, 'verify_no_elevated_files') as audit, \
+            patch.object(runtime, 'verify_runtime') as imports:
+        runtime.main()
+    audit.assert_called_once_with()
+    imports.assert_not_called()
+
+
+@pytest.mark.parametrize('uid', (0, 65532))
+def test_runtime_cli_rejects_wrong_identity(uid):
+    with patch.object(runtime.sys, 'argv', ['acceptance', '--runtime-user', '65534']), \
+            patch.object(runtime.os, 'geteuid', return_value=uid), \
+            patch.object(runtime.os, 'getegid', return_value=65534), \
+            patch.object(runtime, 'verify_runtime') as imports, \
+            pytest.raises(AssertionError, match='decoder identity'):
+        runtime.main()
+    imports.assert_not_called()
+
+
+@pytest.mark.parametrize('arguments', ([], ['--audit-elevated-files', '--runtime-user', '65534'],
+                                      ['--audit-elevated-files', '--cpython-tests', '/fixtures']))
+def test_cli_requires_one_explicit_validation_context(arguments):
+    with patch.object(runtime.sys, 'argv', ['acceptance', *arguments]), \
+            pytest.raises(SystemExit) as failure:
+        runtime.main()
+    assert failure.value.code == 2

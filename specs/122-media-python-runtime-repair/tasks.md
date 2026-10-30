@@ -66,3 +66,37 @@ SHA-256 `7590e60c185e6befbb7c106ecc76fd1123ce81511962c46c8adff8f5cd5d9b03`.
 It separately verified immutable image/source/wheel identities, ClamAV ABI,
 unchanged isolation/policy and negative acceptance checks. This is code-review
 completion only, not image acceptance or release approval.
+
+## CI failure / bounded repair (2026-10-30, run 41143078334)
+
+Exact combined head `3f9914595f886423e1da5a9fc531615b1c47e5a7`, security job
+`124361718976`: image build, upstream SSL distrust+valid handshake, fixed-version
+wheel imports, updater lifecycle and production-code exclusion passed. The later
+hardened runtime step failed its duplicate full-filesystem `find` traversal on
+`/var/lib/apt/lists/partial` and `/var/cache/apt/archives/partial`. It was UID 0
+with all capabilities dropped, NOT a nonroot run: `_apt` owns those mode 0700
+directories and CAP_DAC_OVERRIDE was unavailable. Supervisor/two-UID/final-image
+SBOM/Grype did not run. First failure excerpt is preserved at
+`.artifacts/feature-122/ci-audit-repair/first-failure-job124361718976.log`.
+
+Repair separates two mandatory contexts, never ignores traversal failures:
+
+- Build runs interpreter/import/upstream SSL checks via native setpriv as decoder
+  UID/GID 65534, clear groups, no-new-privs and empty capability sets.
+- The complete root immutable-filesystem SUID/SGID audit runs LAST in the final
+  production build RUN, after every payload COPY and all test-created remnants.
+  Every find error, including permission denied, is fatal. No subsequent
+  production filesystem mutation is permitted by the static contract.
+- Hardened CI runtime smoke explicitly uses UID/GID 65534 and asserts that identity;
+  it does not attempt an inherently privileged full-filesystem enumeration.
+- Production USER root/supervisor capability model stays unchanged. Later
+  acceptance-only script COPYs explicitly use 0644, preventing host SUID/SGID
+  metadata from entering the acceptance image.
+
+Test-first repair produced 12 expected failing contracts. After implementation,
+91 focused runtime/inventory/isolation/CI contracts pass; the full affected media
+batch then passes 147 tests (`ci-audit-repair/full-focused-green.txt`). Ruff and
+diff checks pass. Regression tests exercise clean/elevated inventories, root/nonroot audit
+preconditions, propagation of exact Permission-denied failure, exclusive required
+CLI contexts, wrong-identity rejection and nonroot SSL dispatch. Source-published
+CI must now rerun the changed candidate; no image-security clearance is inferred.

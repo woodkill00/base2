@@ -107,6 +107,39 @@ for (const width of [390, 1440]) {
     await expect(root).toHaveAttribute('data-contrast', 'high');
     await expect(root).toHaveAttribute('data-density', 'compact');
     await expect(root).toHaveAttribute('data-motion', 'reduced');
+    // Distinguish a cascade defect from a just-applied CSS border transition.
+    // Data attributes update synchronously; computed transitions may settle on
+    // the next rendering frame even with a reduced-motion 0.01ms duration.
+    await info.attach('saved-appearance-pre-settle-tokens', {
+      body: JSON.stringify(
+        await card.evaluate((element) => ({
+          rootBorderToken: getComputedStyle(document.documentElement)
+            .getPropertyValue('--color-border')
+            .trim(),
+          cardBorderToken: getComputedStyle(element).getPropertyValue('--color-border').trim(),
+          border: getComputedStyle(element).borderTopColor,
+          transitionDuration: getComputedStyle(element).transitionDuration,
+        })),
+        null,
+        2
+      ),
+      contentType: 'application/json',
+    });
+    await expect
+      .poll(() =>
+        root.evaluate((element) =>
+          getComputedStyle(element).getPropertyValue('--color-border').trim()
+        )
+      )
+      .toBe('#17100e');
+    await expect
+      .poll(() =>
+        card.evaluate((element) =>
+          getComputedStyle(element).getPropertyValue('--color-border').trim()
+        )
+      )
+      .toBe('#17100e');
+    await expect(card).toHaveCSS('border-top-color', 'rgb(23, 16, 14)');
     const actual = await card.evaluate((element) => {
       const style = getComputedStyle(element);
       return {
@@ -164,6 +197,10 @@ for (const width of [390, 1440]) {
     const accessibility = await page.evaluate(async () =>
       window.axe.run(document, { resultTypes: ['violations'] })
     );
+    await info.attach('saved-appearance-axe-results', {
+      body: JSON.stringify(accessibility, null, 2),
+      contentType: 'application/json',
+    });
     expect(
       accessibility.violations.map((violation) => ({
         id: violation.id,

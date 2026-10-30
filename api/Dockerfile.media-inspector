@@ -84,18 +84,22 @@ COPY --chown=65532:65532 services/media_library_processor.py ./api/services/medi
 COPY --chown=65532:65532 services/content_workspace_derivative.py ./api/services/content_workspace_derivative.py
 COPY --chown=65532:65532 scripts/media_inspector_spool_init.py ./api/scripts/media_inspector_spool_init.py
 ENV LD_LIBRARY_PATH=/usr/local/lib PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app/vendor:/app
-# Test native final-stage SSL and wheel ABIs; fixtures/scripts remain mounted,
-# not COPYed into the production image. Fail even if an upstream test is skipped.
+# Exercise native SSL/wheels as the unprivileged decoder, with no network/caps.
+# The fatal root filesystem audit runs LAST, including any test-created remnants.
+# Fixtures/scripts are ephemeral mounts, not payload copied into production.
 RUN --network=none --mount=type=bind,from=inspector-builder,source=/tmp/python-source/Lib/test,target=/tmp/cpython-tests/test,readonly \
     --mount=type=bind,source=tests/media_inspector_runtime_acceptance.py,target=/tmp/runtime_acceptance.py,readonly \
-    /usr/bin/python /tmp/runtime_acceptance.py --cpython-tests /tmp/cpython-tests
+    /usr/bin/setpriv --reuid=65534 --regid=65534 --clear-groups \
+      --no-new-privs --inh-caps=-all --ambient-caps=-all --bounding-set=-all \
+      /usr/bin/python /tmp/runtime_acceptance.py --runtime-user 65534 --cpython-tests /tmp/cpython-tests \
+    && /usr/bin/python /tmp/runtime_acceptance.py --audit-elevated-files
 USER root
 ENTRYPOINT ["/usr/bin/python"]
 CMD ["-m", "api.services.media_inspector_service"]
 
 FROM media-inspector-production AS media-inspector-acceptance
-COPY --chown=65532:65532 tests/media_inspector_acceptance_entrypoint.py ./api/tests/media_inspector_acceptance_entrypoint.py
-COPY --chown=65532:65532 tests/media_inspector_container_acceptance.py ./api/tests/media_inspector_container_acceptance.py
-COPY --chown=65532:65532 tests/media_inspector_two_uid_producer.py ./api/tests/media_inspector_two_uid_producer.py
+COPY --chown=65532:65532 --chmod=0644 tests/media_inspector_acceptance_entrypoint.py ./api/tests/media_inspector_acceptance_entrypoint.py
+COPY --chown=65532:65532 --chmod=0644 tests/media_inspector_container_acceptance.py ./api/tests/media_inspector_container_acceptance.py
+COPY --chown=65532:65532 --chmod=0644 tests/media_inspector_two_uid_producer.py ./api/tests/media_inspector_two_uid_producer.py
 
 FROM media-inspector-production AS media-inspector-final

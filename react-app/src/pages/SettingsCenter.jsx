@@ -1565,7 +1565,7 @@ const SettingsContent = () => {
           ) : null}
         </nav>
         <header>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300">
+          <p className="settings-kicker text-xs font-semibold uppercase tracking-[0.2em] text-violet-300">
             {copy.controlCenter}
           </p>
           <h1 className="mt-2 text-3xl font-semibold">{current?.label || copy.settings}</h1>

@@ -7,12 +7,12 @@ let style;
 
 beforeEach(() => {
   style = document.createElement('style');
-  style.textContent = appearanceCss;
+  style.textContent = '.text-violet-300 { color: rgb(196, 180, 255); }\n' + appearanceCss;
   document.head.append(style);
   document.body.innerHTML = `
     <main class="app-shell-root">
       <div class="page-content">
-        <header><p id="settings-kicker" class="text-violet-300">Account control center</p></header>
+        <header><p id="settings-kicker" class="settings-kicker text-violet-300">Account control center</p></header>
         <section id="settings-detail"><a id="settings-accent" class="text-violet-200" href="/admin">Organization controls</a></section>
       </div>
       <div class="page-content"><p id="other-accent" class="text-violet-300">Unrelated page accent</p></div>
@@ -24,6 +24,7 @@ afterEach(() => {
   document.body.innerHTML = '';
   delete document.documentElement.dataset.contrast;
   delete document.documentElement.dataset.colorMode;
+  document.documentElement.style.removeProperty('--color-text');
 });
 
 test.each(['light', 'dark'])(
@@ -47,3 +48,17 @@ test.each(['light', 'dark'])(
     expect(document.getElementById('settings-accent').matches(selector)).toBe(false);
   }
 );
+
+test('standard light kicker inherits the actual page text, not an opposite-theme root token', () => {
+  document.documentElement.dataset.colorMode = 'light';
+  document.documentElement.dataset.contrast = 'standard';
+  document.documentElement.style.setProperty('--color-text', 'rgb(255, 255, 255)');
+  document.querySelector('header').style.color = 'rgb(15, 23, 42)';
+  const kicker = document.getElementById('settings-kicker');
+  expect(getComputedStyle(kicker).color).toBe('rgb(15, 23, 42)');
+  expect(getComputedStyle(document.getElementById('other-accent')).color).toBe(
+    'rgb(196, 180, 255)'
+  );
+  document.documentElement.dataset.colorMode = 'dark';
+  expect(getComputedStyle(kicker).color).toBe('rgb(196, 180, 255)');
+});

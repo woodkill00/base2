@@ -71,10 +71,12 @@ test('release profile remains readable, reachable, accessible, and visually stab
 }, testInfo) => {
   await page.addScriptTag({ content: axeSource });
   const violations = await page.evaluate(async () =>
-    (await window.axe.run(document, { resultTypes: ['violations'] })).violations.map(
-      (item) => item.id
-    )
+    (await window.axe.run(document, { resultTypes: ['violations'] })).violations
   );
+  await testInfo.attach('settings-accessibility-results', {
+    body: Buffer.from(JSON.stringify(violations, null, 2)),
+    contentType: 'application/json',
+  });
   expect(violations).toEqual([]);
   const horizontalEscape = await page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>('body *')]

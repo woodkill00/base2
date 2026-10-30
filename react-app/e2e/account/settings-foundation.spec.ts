@@ -318,3 +318,111 @@ test('notification row dividers preserve the approved tenth-opacity white after 
     ).toBe('rgba(255, 255, 255, 0.1)');
   }
 });
+
+for (const width of [390, 1440]) {
+  test(`standard light settings kicker inherits readable page text at ${width}px`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({
+      colorScheme: 'light',
+      contrast: 'no-preference',
+      reducedMotion: 'reduce',
+    });
+    const state = await fixture(page);
+    await page.goto('/settings/appearance');
+    await ready(page);
+    await expect(page.locator('html')).toHaveAttribute('data-color-mode', 'light');
+    await expect(page.locator('html')).toHaveAttribute('data-contrast', 'standard');
+    const kicker = page.locator('.settings-kicker');
+    const measured = await kicker.evaluate((element) => {
+      const textStyle = getComputedStyle(element);
+      const parentStyle = getComputedStyle(element.parentElement!);
+      const shellStyle = getComputedStyle(element.closest('.app-shell-root')!);
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 1;
+      const context = canvas.getContext('2d')!;
+      // Let the browser resolve its actual computed color space (including
+      // Tailwind's OKLCH foreground) into rendered sRGB before measuring.
+      const rgba = (color: string) => {
+        context.clearRect(0, 0, 1, 1);
+        context.fillStyle = color;
+        context.fillRect(0, 0, 1, 1);
+        return [...context.getImageData(0, 0, 1, 1).data];
+      };
+      const luminance = (color: number[]) => {
+        const channels = color.slice(0, 3).map((channel) => {
+          const value = channel / 255;
+          return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+        });
+        return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+      };
+      const foreground = rgba(textStyle.color);
+      // Northstar's real shell is a light linear gradient, not an opaque root
+      // token. Check every computed opaque stop: the darker stop is a
+      // conservative contrast bound for this monotone light gradient.
+      const backgroundImage = shellStyle.backgroundImage;
+      const baseBackground = rgba(shellStyle.backgroundColor);
+      let backgrounds: number[][];
+      if (backgroundImage === 'none') {
+        if (baseBackground[3] !== 255) throw new Error('Shell background is transparent');
+        backgrounds = [baseBackground];
+      } else {
+        if (!backgroundImage.startsWith('linear-gradient('))
+          throw new Error(`Unsupported shell background image: ${backgroundImage}`);
+        const gradientColors = backgroundImage.match(/(?:rgba?|oklch)\([^)]*\)/g) || [];
+        backgrounds = gradientColors.map(rgba);
+        if (backgrounds.length !== 2 || backgrounds.some((color) => color[3] !== 255))
+          throw new Error('Expected the two opaque computed light-shell gradient stops');
+        const deltas = backgrounds[0]
+          .slice(0, 3)
+          .map((channel, index) => channel - backgrounds[1][index]);
+        if (!deltas.every((value) => value >= 0) && !deltas.every((value) => value <= 0))
+          throw new Error(
+            'Gradient is not monotone; stop contrast is not a valid conservative bound'
+          );
+      }
+      const foregroundLuminance = luminance(foreground);
+      return {
+        foregroundCss: textStyle.color,
+        inheritedCss: parentStyle.color,
+        foreground,
+        opacity: textStyle.opacity,
+        backgroundImage,
+        backgroundColor: shellStyle.backgroundColor,
+        backgrounds,
+        ratios: backgrounds.map((color) => {
+          const backgroundLuminance = luminance(color);
+          return (
+            (Math.max(foregroundLuminance, backgroundLuminance) + 0.05) /
+            (Math.min(foregroundLuminance, backgroundLuminance) + 0.05)
+          );
+        }),
+      };
+    });
+    await info.attach('standard-light-settings-kicker-contrast', {
+      body: JSON.stringify(measured, null, 2),
+      contentType: 'application/json',
+    });
+    expect(measured.foregroundCss).toBe(measured.inheritedCss);
+    expect(measured.foreground[3]).toBe(255);
+    expect(measured.opacity).toBe('1');
+    expect(Math.min(...measured.ratios)).toBeGreaterThanOrEqual(4.5);
+
+    // The narrow light-mode repair must not redesign the approved dark kicker.
+    state.preferences.theme = 'dark';
+    await page.reload();
+    await ready(page);
+    await expect(page.locator('html')).toHaveAttribute('data-color-mode', 'dark');
+    await expect(kicker).toHaveClass(/text-violet-300/);
+    const darkMatchesAccent = await kicker.evaluate((element) => {
+      const reference = document.createElement('span');
+      reference.className = 'text-violet-300';
+      element.parentElement!.append(reference);
+      const matches = getComputedStyle(element).color === getComputedStyle(reference).color;
+      reference.remove();
+      return matches;
+    });
+    expect(darkMatchesAccent).toBe(true);
+  });
+}
