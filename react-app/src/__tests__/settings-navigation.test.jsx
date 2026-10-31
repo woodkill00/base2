@@ -82,11 +82,11 @@ test.each([-1, 1])(
     await user.type(draft, 'keep');
     await act(() => router.navigate(delta));
     expect(router.state.location.pathname).toBe('/settings/appearance');
-    await user.click(screen.getByRole('button', { name: 'Stay' }));
+    await user.click(await screen.findByRole('button', { name: 'Stay' }));
     expect(draft).toHaveFocus();
     expect(draft).toHaveValue('keep');
     await act(() => router.navigate(delta));
-    await user.click(screen.getByRole('button', { name: 'Discard and leave' }));
+    await user.click(await screen.findByRole('button', { name: 'Discard and leave' }));
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(delta === -1 ? '/before' : '/after')
     );
@@ -98,7 +98,7 @@ test('programmatic replacement is blocked while forced authentication recovery i
   const router = setup();
   await user.type(screen.getByLabelText('Draft'), 'keep');
   await act(() => router.navigate('/outside', { replace: true }));
-  await user.click(screen.getByRole('button', { name: 'Stay' }));
+  await user.click(await screen.findByRole('button', { name: 'Stay' }));
   expect(router.state.location.pathname).toBe('/settings/appearance');
   await user.click(screen.getByRole('link', { name: 'Recover session' }));
   expect(router.state.location.pathname).toBe('/login');
@@ -112,7 +112,7 @@ test('repeated history requests while blocked retain the original focus target o
   await user.type(draft, 'keep');
   await act(() => router.navigate(-1));
   await act(() => router.navigate(1));
-  await user.click(screen.getByRole('button', { name: 'Stay' }));
+  await user.click(await screen.findByRole('button', { name: 'Stay' }));
   expect(draft).toHaveFocus();
   expect(router.state.location.pathname).toBe('/settings/appearance');
   expect(draft).toHaveValue('keep');
@@ -129,7 +129,7 @@ test.each([false, true])(
     if (prior) shell.setAttribute('inert', '');
     document.body.style.overflow = 'scroll';
     await act(() => router.navigate('/outside'));
-    const dialog = screen.getByRole('alertdialog');
+    const dialog = await screen.findByRole('alertdialog');
     expect(dialog.parentElement.parentElement).toBe(document.body);
     expect(shell).toHaveAttribute('inert');
     expect(dialog.closest('[inert]')).toBeNull();
@@ -137,7 +137,7 @@ test.each([false, true])(
     // jsdom does not implement native inert; focus containment is independently enforced.
     draft.focus();
     expect(screen.getByRole('button', { name: 'Stay' })).toHaveFocus();
-    await user.click(screen.getByRole('button', { name: 'Stay' }));
+    await user.click(await screen.findByRole('button', { name: 'Stay' }));
     expect(shell.hasAttribute('inert')).toBe(prior);
     expect(document.body.style.overflow).toBe('scroll');
     if (!prior) expect(draft).toHaveFocus();
@@ -152,7 +152,7 @@ test('Stay focuses settings details when the triggering menu item has unmounted'
   await user.type(screen.getByLabelText('Draft'), 'keep');
   await user.click(screen.getByRole('link', { name: 'Closing menu item' }));
   expect(screen.queryByRole('link', { name: 'Closing menu item' })).not.toBeInTheDocument();
-  await user.click(screen.getByRole('button', { name: 'Stay' }));
+  await user.click(await screen.findByRole('button', { name: 'Stay' }));
   expect(screen.getByRole('region', { name: 'Settings details' })).toHaveFocus();
 });
 
@@ -163,6 +163,7 @@ test('forced auth cleanup removes portal and background isolation without restor
   await act(() => router.navigate('/outside'));
   const shell = document.querySelector('.app-shell-root');
   const container = shell.parentElement;
+  expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
   expect(shell).toHaveAttribute('inert');
   await act(() => router.navigate('/login', { replace: true }));
   expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
@@ -180,7 +181,7 @@ test('clicking the modal backdrop keeps focus inside and cannot trigger shell sh
     await user.type(screen.getByLabelText('Draft'), 'keep');
     await act(() => router.navigate('/outside'));
     shortcut.mockClear();
-    await user.click(screen.getByRole('alertdialog').parentElement);
+    await user.click((await screen.findByRole('alertdialog')).parentElement);
     expect(screen.getByRole('button', { name: 'Stay' })).toHaveFocus();
     await user.keyboard('{Control>}k{/Control}');
     expect(shortcut).not.toHaveBeenCalled();
@@ -227,7 +228,7 @@ test('workspace reuse restores focus to its own detail section when the opener u
   await user.click(screen.getByRole('link', { name: 'Closing workspace item' }));
   expect(await screen.findByRole('alertdialog')).toHaveAccessibleName('Leave content workspace?');
   expect(screen.queryByRole('link', { name: 'Closing workspace item' })).not.toBeInTheDocument();
-  await user.click(screen.getByRole('button', { name: 'Stay' }));
+  await user.click(await screen.findByRole('button', { name: 'Stay' }));
   expect(screen.getByRole('region', { name: 'Workspace details' })).toHaveFocus();
   expect(router.state.location.pathname).toBe('/workspace');
 });

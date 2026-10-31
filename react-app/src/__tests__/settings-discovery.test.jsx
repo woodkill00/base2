@@ -647,7 +647,7 @@ test('settings guard retains drafts in two categories and cancels each independe
   await user.selectOptions(screen.getByLabelText(/marketing email delivery/i), 'disabled');
   await user.click(screen.getByRole('button', { name: 'Cancel' }));
   await act(() => router.navigate('/dashboard'));
-  expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+  expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
   await user.click(screen.getByRole('button', { name: 'Stay' }));
   await act(() => router.navigate('/settings/appearance'));
   expect(screen.getByLabelText('Theme')).toHaveValue('dark');
@@ -734,7 +734,7 @@ function renderWithSuspendedDestination(path = '/settings/appearance') {
 
 async function discardAndImmediatelyReturn(router, user) {
   await act(() => router.navigate('/'));
-  await user.dblClick(screen.getByRole('button', { name: 'Discard and leave' }));
+  await user.dblClick(await screen.findByRole('button', { name: 'Discard and leave' }));
   expect(router.state.location.pathname).toBe('/');
   await act(() => router.navigate(-1));
   await ready();

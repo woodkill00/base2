@@ -858,3 +858,20 @@ before this repair. Obtain fresh full-matrix evidence and source-bound review la
 never merely rehash it as accepted. Next publication is for genuine-state diagnostics.
 Do not invoke the expensive complete gate again until those visual prerequisites
 are established. The two prior complete-gate workflows executed zero gate checks.
+
+Native047546a completed8/10 workflows successfully; frontend and inherited media
+security failed. Backend/restore and all three real E2E jobs pass. Frontend752/753
+unit tests pass, but an immediate Stay lookup after a self-unmounting menu click
+runs before the asynchronous blocker dialog renders. The retained DOM preserves
+draft/location and lacks the modal; focus restoration is not reached. Audit related
+async-opening observations, preserving original security/focus/history assertions
+and default timeouts. All439 browser cases, including genuine HC diagnostics, were
+skipped; no HC pixels or reference-validity conclusions exist for this head.
+
+The bounded shared-guard readiness audit is independently accepted. Only settings
+navigation/discovery tests now await actual modal readiness with default findByRole;
+all history, location, draft, focus, inert, discard and forced-auth assertions remain.
+Focused103 and full frontend753 plus27tooling checks pass; lint/types/build pass.
+No product, HC configuration, baseline or timeout changes. Next native run must
+establish genuine HC evidence; the two previous setup attempts still ran zero gate
+checks and no new complete-gate trigger is authorized by this diagnostic publication.
