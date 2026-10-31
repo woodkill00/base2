@@ -875,3 +875,27 @@ Focused103 and full frontend753 plus27tooling checks pass; lint/types/build pass
 No product, HC configuration, baseline or timeout changes. Next native run must
 establish genuine HC evidence; the two previous setup attempts still ran zero gate
 checks and no new complete-gate trigger is authorized by this diagnostic publication.
+
+Native274d05b reaches genuine HC. Workspace axe fails four primary controls and
+operations fails Sign out/incident action: authored#1a0803 over forcedblack reports
+1.07:1, while actual screenshots show white labels. Mode is active before/after axe;
+this is not the prior ignored configuration. Workspace soft comparisons/four-view
+summary are not reached because functional/axe checks remain hard. Media library
+and detail pass; picker passes preceding mode/axe but fails stale normal-mode image
+comparison, and actual empty search field lacks a visible boundary. Selection after
+that hard comparison remains unreached. Hold reference acceptance; implement only
+approved HC system-color/control-boundary semantics and preserve all normal design.
+
+The HC-only control repair and hard native assertions are independently accepted
+at source. Enabled primary system colors, picker field borders and selected-tab
+underline preserve normal styling, disabled behavior and focus. Full frontend757
+plus27tooling checks pass; focused15 and native source/config contracts76 pass;
+fixture types and exact collection are clean. No baseline changes. Actual HC paint,
+computed semantics, axe and reference validity remain pending.
+
+Correct targeted scope: operations empty/recovery fixtures explicitly support only
+compact/desktop and skipped HC in274d05b. The partial HC command now selects only
+its exact supported main case; original full-suite tests/guards remain unchanged.
+Additional executed obligations are3media+1operations, not six claimed states;
+operations empty/recovery HC coverage is not established. Prior native total was
+434passed/3failed/2skipped, and all workflows are terminal before next publication.

@@ -178,7 +178,7 @@ jobs:
           # Partial diagnostics must not rewrite the accepted full-matrix receipt.
           receipt_before="$(sha256sum ../specs/106-production-readiness-program/operations-visual-runner.json)"
           status=0
-          npm run test:operations-release -- --project=chromium-high-contrast --reporter=line --output=../.artifacts/forced-colors-ci-${{ github.run_id }}-${{ github.run_attempt }}-operations || status=$?
+          npm run test:operations-release -- --project=chromium-high-contrast --reporter=line --grep='(^| )operations center is accessible responsive and visually stable$' --output=../.artifacts/forced-colors-ci-${{ github.run_id }}-${{ github.run_attempt }}-operations || status=$?
           receipt_check=0
           receipt_after="$(sha256sum ../specs/106-production-readiness-program/operations-visual-runner.json)" || receipt_check=$?
           if [[ "$receipt_check" != 0 || "$receipt_before" != "$receipt_after" ]]; then

@@ -1,4 +1,4 @@
-import { assertForcedColorState } from '../forced-color-state';
+import { assertForcedColorState, assertForcedSystemControl } from '../forced-color-state';
 import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
@@ -300,6 +300,20 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
   });
   const compareAndRetain = async (view: string, reference: string) => {
     await assertForcedColorState(page, testInfo);
+    if (testInfo.project.name === 'chromium-high-contrast') {
+      const selected = page.getByRole('tab', { selected: true });
+      await expect(selected).toHaveCount(1);
+      const cue = await selected.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          line: style.textDecorationLine,
+          color: style.textDecorationColor,
+          text: style.color,
+        };
+      });
+      expect(cue.line).toContain('underline');
+      expect(cue.color).toBe(cue.text);
+    }
     const errorsBefore = testInfo.errors.length;
     await visualExpect(page).toHaveScreenshot(reference, {
       fullPage: true,
@@ -332,6 +346,9 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
   await assertUsable(page);
   await assertForcedColorState(page, testInfo);
   await assertRecordDivider(page);
+  if (testInfo.project.name === 'chromium-high-contrast') {
+    await assertForcedSystemControl(newRecord);
+  }
   // Axe does not check non-text SVG contrast: the original edge-tab icon must
   // inherit its contrasting foreground, rather than the unrelated header color.
   expect(

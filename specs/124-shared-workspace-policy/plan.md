@@ -516,3 +516,13 @@ and valid media-library coverage. Retain all genuine workspace HC captures throu
 soft comparison failure batching with explicit failed summaries; never weaken exit
 status or media/operations accepted-artifact guards. No product CSS or baseline edit
 until genuine rendering is inspected. Actual native execution is mandatory.
+
+### Genuine HC findings and bounded product repair
+
+At274d05b, actual forced mode is proved active before/after axe; workspace and
+operations fail primary-button computed contrast, not merely references. Pixels
+show white labels, so do not claim visibly black labels. Add HC-only system palette
+semantics with scoped CSSOM/native checks and unchanged normal styles. Repair the
+observed boundaryless portaled picker search/status field with HC-only borders;
+review any selected-tab shadow fallback separately. No baseline update precedes
+functional/axe correctness and actual pixel review.

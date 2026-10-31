@@ -397,7 +397,8 @@ def test_forced_color_state_assertion_rejects_wrong_named_media_state():
     script = r"""
 const fs = require('node:fs'); const vm = require('node:vm'); const assert = require('node:assert/strict');
 let source = fs.readFileSync(process.argv[1], 'utf8');
-source = source.replace("import { expect, type Page, type TestInfo } from '@playwright/test';", '')
+source = source.split('export async function assertForcedSystemControl', 1)[0];
+source = source.replace("import { expect, type Page, type TestInfo, type Locator } from '@playwright/test';", '')
   .replace('export async function', 'async function').replace('page: Page, testInfo: TestInfo', 'page, testInfo');
 const sandbox = {expect(value) {return {toBe(expected) {assert.equal(value, expected);}};}};
 vm.runInNewContext(source, sandbox, {timeout: 1000});
@@ -459,3 +460,31 @@ def test_partial_operations_run_preserves_failure_and_never_repairs_receipt(tmp_
         assert not receipt.exists()
     else:
         assert receipt.read_text() == ('changed' if mutate else 'accepted original')
+
+
+def test_genuine_hc_controls_assert_system_readability_boundaries_and_selected_cue():
+    helper = (ROOT / 'react-app/e2e/forced-color-state.ts').read_text()
+    assert 'export async function assertForcedSystemControl' in helper
+    assert 'color:ButtonText;background-color:ButtonFace;border:1px solid ButtonText' in helper
+    assert 'getImageData(0, 0, 1, 1)' in helper
+    assert 'toBeGreaterThanOrEqual(4.5)' in helper
+    assert "toBe('1px')" in helper and "toBe('solid')" in helper
+    assert 'probe.remove()' in helper
+    workspace = (ROOT / 'react-app/e2e/workspace/workspace-release.spec.ts').read_text()
+    assert 'assertForcedSystemControl(newRecord)' in workspace
+    assert 'textDecorationLine' in workspace and 'textDecorationColor' in workspace
+    assert "toContain('underline')" in workspace
+    media = (ROOT / 'react-app/e2e/media/media-release.spec.ts').read_text()
+    assert "assertForcedSystemControl(picker.getByLabel('Search media', { exact: true }), true)" in media
+    assert "assertForcedSystemControl(picker.getByLabel('Status', { exact: true }), true)" in media
+    operations = (ROOT / 'react-app/e2e/operations/operations-release.spec.ts').read_text()
+    assert 'assertForcedSystemControl(primary)' in operations
+
+
+def test_partial_operations_hc_selects_only_supported_main_case_not_skipped_states():
+    step = next(item for item in frontend_steps() if item.get('id') == 'operations_hc_acceptance')
+    assert "--grep='(^| )operations center is accessible responsive and visually stable$'" in step['run']
+    source = (ROOT / 'react-app/e2e/operations/operations-release.spec.ts').read_text()
+    assert source.count("test('operations center is accessible responsive and visually stable'") == 1
+    assert "test('operations center shows truthful empty and failure states'" in source
+    assert "test('operations center exposes stale, reauthentication, and read-only recovery states'" in source

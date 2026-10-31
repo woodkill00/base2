@@ -1,4 +1,4 @@
-import { assertForcedColorState } from '../forced-color-state';
+import { assertForcedColorState, assertForcedSystemControl } from '../forced-color-state';
 import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
@@ -224,6 +224,11 @@ test('media picker is visually and keyboard contained in a real workflow', async
   await opener.click();
   const picker = page.getByRole('dialog', { name: 'Choose media' });
   await expect(picker.getByRole('button', { name: 'Close' })).toBeFocused();
+  await assertForcedColorState(page, testInfo);
+  if (testInfo.project.name === 'chromium-high-contrast') {
+    await assertForcedSystemControl(picker.getByLabel('Search media', { exact: true }), true);
+    await assertForcedSystemControl(picker.getByLabel('Status', { exact: true }), true);
+  }
   await expect(page.locator('.app-shell-root')).toHaveJSProperty('inert', true);
   await picker.getByLabel(/Aurora landscape\.png/).check();
   await expect(picker.getByText('1 of 5 selected')).toBeVisible();

@@ -233,3 +233,20 @@ truthful per-view/final status. Functional, axe and media-state checks remain ha
 Media/operations retain hard comparisons and accepted-visual receipt semantics;
 failed captures must never be presented as accepted visual artifacts. Review genuine
 state pixels before any correction to invalid reference images.
+
+### Forced-color control semantics
+
+Genuine native HC checks reveal primary-button authored/computed foreground remains
+#1a0803 while backgrounds resolve to black; axe reports1.07:1 even though retained
+pixels show white forced-painted labels. Align enabled primary controls with paired
+ButtonText/ButtonFace system colors only in forced-colors mode, without disabling
+native color adjustment, excluding rules or changing normal Obsidian/Volcano colors.
+Preserve disabled behavior and keyboard focus. If the existing selected-tab shadow
+is suppressed in HC, provide a scoped non-color selection cue without normal-mode
+layout changes.
+
+The portaled media-picker search/status controls lack a visible boundary in genuine
+HC. Add a bounded system-color border for those controls only in forced mode,
+excluding checkbox descendants. Do not accept its stale normal-mode reference until
+this discoverability issue and genuine pixels are reviewed. Retain all axe, media-
+state, functional and screenshot gates.

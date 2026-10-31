@@ -1,4 +1,4 @@
-import { assertForcedColorState } from '../forced-color-state';
+import { assertForcedColorState, assertForcedSystemControl } from '../forced-color-state';
 import { setSessionFixture, fulfillSessionFixture, getSessionFixture } from '../session-fixture';
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
@@ -289,6 +289,12 @@ test('operations center is accessible responsive and visually stable', async ({
       }));
   });
   expect(overflow).toEqual([]);
+  await assertForcedColorState(page, testInfo);
+  if (testInfo.project.name === 'chromium-high-contrast') {
+    const primaries = page.locator('.app-shell-root .base2-button--primary:not(:disabled)');
+    expect(await primaries.count()).toBeGreaterThan(0);
+    for (const primary of await primaries.all()) await assertForcedSystemControl(primary);
+  }
   await page.addScriptTag({ content: axeSource });
   const violations = await page.evaluate(async () => (await window.axe.run(document)).violations);
   expect(violations.map((item) => item.id)).toEqual([]);
