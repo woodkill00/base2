@@ -364,12 +364,21 @@ test.each(['create', 'edit'])(
       expect(root).toHaveClass('px-0', 'sm:px-4');
       expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
       await user.click(screen.getByRole('button', { name: 'Discard changes' }));
-      expect(screen.getByRole('region', { name: 'Record details' })).toHaveClass('p-5');
     }
-    expect(root).toHaveClass('px-4');
-    expect(root).not.toHaveClass('px-0');
-    expect(document.getElementById('workspace-detail')).toHaveClass('p-6');
-    expect(document.getElementById('workspace-detail')).not.toHaveClass('p-0');
+    // Inspector editing exits before its effect reconciles parent presentation.
+    // Await both observable states rather than sampling the transitional render.
+    await waitFor(() => {
+      expect(screen.queryByLabelText('Public body')).not.toBeInTheDocument();
+      if (mode === 'edit') {
+        expect(screen.getByRole('button', { name: 'Edit fields' })).toBeEnabled();
+        expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument();
+        expect(screen.getByRole('region', { name: 'Record details' })).toHaveClass('p-5');
+      }
+      expect(root).toHaveClass('px-4');
+      expect(root).not.toHaveClass('px-0');
+      expect(document.getElementById('workspace-detail')).toHaveClass('p-6');
+      expect(document.getElementById('workspace-detail')).not.toHaveClass('p-0');
+    });
   }
 );
 

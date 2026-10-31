@@ -755,3 +755,40 @@ Current-run journey/module upload directories replace the ambiguous hidden-root
 wildcard, without enabling hidden files or uploading builds/other runs. Combined
 final recovery/gate/settings/journey contracts pass314 checks. Current95471e4 CI is
 fully terminal before next publication; all repaired native paths still require rerun.
+
+### Native success evidence at5ec50d0
+
+Actual encrypted restoration now passes, including strict v2 catalog parity,
+restricted-role behavior and cleanup before the success receipt. Receipt runId
+00e0cb96991c4cc2bb2fb0921c78d81d binds mergef6da96640b3d9c3b1694eb668fec59bdcef77a83;
+artifact13046722661 records securityVerified/sourceUnchanged/mainUnchanged=true and
+policy/CAS/revocation/cross-tenant/history/worker-read-only/delivery-replay checks.
+Root verified that merge and published head have identical tree
+f9bdf08f364208e05e11beae89294d2ab8a9fac8 and head is an ancestor of the merge.
+All eight new public-authoring PostgreSQL cases executed without skips; ordinary
+backend workflow passes. Semgrep's four new findings are resolved.
+
+Representative real E2E passes all five tests and six feature steps: normal UI
+creation/editing, all three independent publications, public detail/body/private
+absence, actual search-link navigation and immediate visibility restriction with
+member access retained. Policy evidence is v3 public→v4 members-only, search3→0.
+Isolated containers, volume and network are removed. Artifact13047730312 retains
+six authoring captures and three public plus three restricted page captures.
+Nine authoring/public screenshots were actually visually inspected:390px cramping
+is resolved, focused controls/counters are unobstructed, desktop design preserved.
+This is acceptance of those states, not a claim of every possible visual state.
+
+Frontend751/752 unit tests pass; one new test observes parent presentation classes
+before the edit-state effect settles after Discard. Preserve the native failure and
+repair observation only if asynchronous transition is confirmed. All433 browser
+checks are skipped because that unit stage failed, not accepted. Full134gate still
+has not been invoked; media71 remains a separate blocked release obligation.
+
+The test-only async observation repair is independently accepted: it waits actual
+form exit and all original parent-spacing assertions with the existing timeout,
+without changing product code or adding sleeps. Final local frontend752 tests plus
+27 tooling checks pass; lint is clean apart from30 existing declaration warnings.
+Coverage lines85.86%, statements83.94%, branches77.63%, functions82.80%; no production
+executable delta. Native5ec50d0 is terminal with8/10 workflows green; only this
+frontend unit observation and inherited media-security fail. Backend/restore and
+all three real E2E jobs pass. First complete-gate invocation remains next, not passed.
