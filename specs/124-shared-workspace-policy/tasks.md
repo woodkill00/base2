@@ -671,3 +671,87 @@ Combined recovery/gate contracts pass238 checks locally. The representative jour
 now captures actual filled public-copy create/edit forms at1440 and390 widths,
 checks overflow/control reachability and restores viewport without reload;49 source
 contracts and five-case collection pass. Screenshots and native writes remain pending.
+
+### Native findings at 95471e4
+
+The native restore now passes actual pg_restore, strict v2 catalog parity, table
+reconciliation and schema-version checks, then fails because a valid empty-object
+archive does not materialize its objects directory. Keep strict path/reference checks;
+create the owned empty object root after archive validation rather than relax checks.
+Restored-role behavior and the final success receipt remain unreached.
+
+Five new public-authoring PG cases fail on fixture setup: editor used as publisher
+instead of owner/admin, incorrect expected exception for a correctly denied viewer,
+and missing synthetic cursor signing configuration. Repair only fixture helpers and
+assert explicit editor publication denial; preserve production authorization.
+
+Semgrep correctly flags four exec(code, {}) calls in the new workflow archive tests.
+Replace with bounded subprocess execution of the actual trusted extracted script;
+retain positive/negative archive regressions without suppression or altered rule policy.
+Current head's remaining native browser/security runs are still pending; do not cancel.
+
+This native repair batch is independently source-reviewed: empty object root
+materialization keeps strict reference/archive checks; PG fixtures retain editor
+publication denial and correct scoped cursor signing; archive tests use bounded
+subprocesses without ambient credentials or eval suppression. Backup/recovery185
+checks and workflow/runner84 checks pass. Full API rerun passes1792 tests with eight
+skips and86.25% coverage; eight PG cases collect but actual rerun is pending.
+No restore receipt or full-gate pass is claimed, and current native runs are retained.
+
+Native representative UI creation/editing and independent publication of all three
+families succeeds. Search's `excerpt` is an existing generated320-codepoint body
+snippet, not the record's curated excerpt; correct only that test expectation while
+retaining exact curated detail and privacy assertions.56 focused checks pass.
+The public detail/link/restriction loop remains unreached on95471e4.
+
+- [ ] T37 Fix actual390px public-authoring cramping with scoped mobile spacing,
+      preserve desktop/design, verify practical field width and focused viewport
+      visibility, independently review actual pixels and re-run affected acceptance.
+
+All four create/edit screenshots at1440/390 were inspected. Desktop composition is
+clear; mobile textareas are about124px wide due cumulative padding. No overflow is
+not sufficient acceptance. Fixed-shell overlap in full-page captures needs viewport
+confirmation before calling it a persistent obstruction. T37 is not complete.
+
+Native workspace screenshot matrix reports six record-page mismatches. The shared
+browser author fixture omitted content-workspace.write, correctly hiding New record
+and shifting toolbar geometry; repair that fixture, never weaken production access.
+Record response mocks also need the new explicit publicContent pair before selection.
+All twelve retained axe reports have zero violations, but this does not establish
+visual acceptance. Divider/focus differences are being compared with the previous
+passing artifact before classifying a new defect or changing styles. No baselines
+have been updated. Mobile padding repair is restricted to active create/edit state;
+other workspace states retain established mobile and desktop class values.
+
+Prior passing a0ef808 artifact comparison establishes that bright Records dividers
+and WebKit's focused Skip link predate this batch and fit prior snapshot tolerance.
+Missing fixture permission is the new record-page geometry cause. Keep this repair
+fixture-only with unchanged baselines/focus; separately track the existing divider
+mismatch (actual RGB229,231,235 vs approved RGB43,43,43) for a scoped compatibility
+correction, not a global stylesheet rewrite. Current shared-layout/approved-Volcano
+stages also report failures; their causes await complete retained logs/artifacts and
+must not be attributed to workspace fixture drift without evidence.
+
+Final scoped mobile repair is independently source-approved and frozen:752 frontend
+unit tests plus27 tooling checks pass, all five added executable callback lines are
+covered, and lint/types/build pass. Compact layout activates only for creation or
+actual inspector editing, including pristine edit entry; default workspace panels
+retain original class values. No CSS/theme/shell/baseline changes. Native240px field
+width, focused viewport visibility and pixel acceptance remain pending.
+
+All95471e4 workflows are terminal: frontend743 unit+27 tooling pass, native415/433
+pass and18 fail. Remaining review failures in shared-layout/Volcano are stale
+record mocks lacking publicContent, causing intentional response validation failure
+before receipts/review controls render. Six journey failures omit author write
+permission before creation. Audit all three browser record-producing fixtures and
+mirror atomic public-copy persistence in mocked writes; retain all original review,
+unprivileged, mutation and screenshot assertions. Journey artifact upload path also
+needs investigation because failure screenshots were reported but not retained.
+
+Final browser fixture/evidence batch is independently accepted. All three record-
+producing browser fixtures now model required permissions and explicit public copy;
+POST/PATCH/If-Match/reload assertions and unprivileged no-request checks remain.
+Current-run journey/module upload directories replace the ambiguous hidden-root
+wildcard, without enabling hidden files or uploading builds/other runs. Combined
+final recovery/gate/settings/journey contracts pass314 checks. Current95471e4 CI is
+fully terminal before next publication; all repaired native paths still require rerun.

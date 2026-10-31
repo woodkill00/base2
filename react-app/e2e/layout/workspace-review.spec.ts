@@ -20,6 +20,7 @@ for (const action of ['approve_review', 'adopt_review_subject', 'review_recovery
       state: action === 'adopt_review_subject' ? 'published' : 'in_review',
       version: 2,
       values: { title: 'Review fixture' },
+      publicContent: { excerpt: 'Public review excerpt', body: 'Public review body' },
       allowedActions: action === 'review_recovery' ? ['return_draft'] : [action],
       review: {
         status: action === 'adopt_review_subject' ? 'authorship_unknown' : 'pending',

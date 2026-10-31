@@ -99,6 +99,39 @@ async function capturePublicAuthoring(page, testInfo, stage, publicContent, scop
         await field.scrollIntoViewIfNeeded();
         await expect(field).toBeInViewport();
         await expect(field).toBeEditable();
+        if (width === 390) {
+          const bounds = await field.boundingBox();
+          expect(bounds).not.toBeNull();
+          expect(bounds.width).toBeGreaterThanOrEqual(240);
+        }
+      }
+      if (width === 390) {
+        const bodyField = scope.getByLabel('Public body', { exact: true });
+        await bodyField.focus();
+        await bodyField.evaluate((element) =>
+          element.parentElement.scrollIntoView({ block: 'center' })
+        );
+        await expect(bodyField).toBeFocused();
+        await expect(bodyField).toBeInViewport({ ratio: 1 });
+        await expect(scope.locator('label[for="public-content-body"]')).toBeInViewport({
+          ratio: 1,
+        });
+        await expect(scope.locator('#public-content-body-count')).toBeInViewport({ ratio: 1 });
+        expect(
+          await bodyField.evaluate((element) => {
+            const bounds = element.getBoundingClientRect();
+            return (
+              document.elementFromPoint(
+                bounds.left + bounds.width / 2,
+                bounds.top + bounds.height / 2
+              ) === element
+            );
+          })
+        ).toBe(true);
+        await testInfo.attach(`representative-public-authoring-${stage}-390-focused`, {
+          body: await page.screenshot({ fullPage: false }),
+          contentType: 'image/png',
+        });
       }
       const save = scope.getByRole('button', { name: saveLabel, exact: true });
       await save.scrollIntoViewIfNeeded();
@@ -237,6 +270,7 @@ test.describe('Representative generated profile: real supported public families'
           const privateSummary = `Private internal ${family.type} note never for publication`;
           const excerpt = `Public ${family.type} excerpt`;
           const body = `Verified integrated ${family.type} public body`;
+          expect(excerpt).not.toBe(body); // Curated detail copy is distinct from the search body snippet.
           let publicContent = { excerpt, body };
           let draft;
           if (family.type === 'blog-post') {
@@ -368,7 +402,7 @@ test.describe('Representative generated profile: real supported public families'
         expect(before.items).toHaveLength(3);
         for (const record of records) {
           expect(before.items.find((item) => item.urlPath === record.urlPath)?.excerpt).toBe(
-            record.publicContent.excerpt
+            Array.from(record.publicContent.body).slice(0, 320).join('')
           );
           const response = await publicGet(`/content/${record.type}/${record.slug}`);
           expect(response.status()).toBe(200);

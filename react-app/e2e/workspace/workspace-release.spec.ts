@@ -89,7 +89,11 @@ const records = states.map((state, index) => ({
   state,
   schemaVersion: 1,
   version: index + 1,
-  values: { title: `${state} record`, field_1: 'Deterministic synthetic content. '.repeat(4) },
+  values: { title: `${state} record`, field_1: 'Private synthetic editorial note. '.repeat(4) },
+  publicContent: {
+    excerpt: `Curated public ${state} excerpt.`,
+    body: `Intentional public ${state} body.`,
+  },
 }));
 const fixtureUser = {
   id: '00000000-0000-0000-0000-000000010499',
@@ -97,6 +101,7 @@ const fixtureUser = {
   display_name: 'Workspace Fixture',
   permissions: [
     'content-workspace.read',
+    'content-workspace.write',
     'content.create',
     'content.write',
     'content.publish',
@@ -108,6 +113,11 @@ const fixtureUser = {
 
 test('synthetic workspace fixture vocabulary is complete and explicit', () => {
   expect(fieldKinds).toHaveLength(18);
+  expect(fixtureUser.permissions).toContain('content-workspace.write');
+  for (const record of records) {
+    expect(record.publicContent.excerpt).not.toBe(record.publicContent.body);
+    expect(JSON.stringify(record.publicContent)).not.toContain(record.values.field_1);
+  }
   expect(states).toEqual(['draft', 'in_review', 'scheduled', 'published', 'archived', 'deleted']);
   expect(jobStates).toContain('review_required');
   expect(jobStates).toContain('failed');
@@ -238,6 +248,9 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
   };
   await page.goto('/workspace');
   await expect(page.getByRole('heading', { name: /records · universal articles/i })).toBeVisible();
+  const newRecord = page.getByRole('button', { name: 'New record', exact: true });
+  await expect(newRecord).toBeVisible();
+  await expect(newRecord).toBeEnabled();
   await assertUsable(page);
   // Axe does not check non-text SVG contrast: the original edge-tab icon must
   // inherit its contrasting foreground, rather than the unrelated header color.

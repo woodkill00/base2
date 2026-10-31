@@ -22,6 +22,7 @@ vi.mock('../services/contentWorkspace', () => ({
     versions: vi.fn(),
     views: vi.fn(),
     createRecord: vi.fn(),
+    updateRecord: vi.fn(),
     executeView: vi.fn(),
   },
 }));
@@ -306,4 +307,113 @@ test('saved-view handler cannot switch away from a dirty public draft even on a 
   fireEvent.change(views, { target: { value: 'saved' } });
   expect(contentWorkspaceAPI.executeView).not.toHaveBeenCalled();
   expect(screen.getByLabelText('Public body')).toHaveValue('Public body');
+});
+
+test.each(['create', 'edit'])(
+  '%s authoring removes cumulative mobile padding while retaining desktop spacing',
+  async (mode) => {
+    if (mode === 'edit') contentWorkspaceAPI.records.mockResolvedValue({ items: [detail] });
+    const view = mount();
+    if (mode === 'create') await draft();
+    else {
+      const user = userEvent.setup();
+      await user.click(await screen.findByRole('button', { name: 'Open New title' }));
+      await user.click(await screen.findByRole('button', { name: 'Edit fields' }));
+    }
+    // These assertions protect scoped responsive tokens, not browser geometry.
+    // Native390px measurement and viewport captures establish actual usable width.
+    expect(view.container.querySelector('.base2-workspace')).toHaveClass('px-0', 'sm:px-4');
+    expect(document.getElementById('workspace-detail')).toHaveClass('min-w-0', 'p-0', 'sm:p-6');
+    const body = screen.getByLabelText('Public body');
+    expect(body.closest('section')).toHaveClass('min-w-0', 'p-2', 'sm:p-4');
+    expect(body).toHaveClass('min-w-0', 'w-full', 'min-h-11', 'px-3', 'py-2');
+    expect(body).toHaveAttribute('rows', '8');
+    const authoring =
+      mode === 'create'
+        ? body.closest('form')
+        : screen.getByRole('region', { name: 'Record details' });
+    expect(authoring).toHaveClass('min-w-0', 'p-2', 'sm:p-5');
+    if (mode === 'edit') expect(authoring.parentElement).toHaveClass('grid-cols-1');
+    for (const card of view.container.querySelectorAll('.base2-card'))
+      expect(card).toHaveClass('min-w-0');
+  }
+);
+
+test.each(['create', 'edit'])(
+  'leaving %s authoring restores the established default mobile workspace spacing',
+  async (mode) => {
+    if (mode === 'edit') contentWorkspaceAPI.records.mockResolvedValue({ items: [detail] });
+    const view = mount();
+    const user = userEvent.setup();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'New record' })).toBeEnabled());
+    const root = view.container.querySelector('.base2-workspace');
+    expect(root).toHaveClass('px-4');
+    expect(root).not.toHaveClass('px-0');
+    expect(document.getElementById('workspace-detail')).toHaveClass('p-6');
+    if (mode === 'create') {
+      await user.click(screen.getByRole('button', { name: 'New record' }));
+      expect(root).toHaveClass('px-0', 'sm:px-4');
+      await user.click(screen.getByRole('button', { name: 'Cancel', exact: true }));
+    } else {
+      await user.click(screen.getByRole('button', { name: 'Open New title' }));
+      const edit = await screen.findByRole('button', { name: 'Edit fields' });
+      expect(root).toHaveClass('px-4');
+      expect(screen.getByRole('region', { name: 'Record details' })).toHaveClass('p-5');
+      await user.click(edit);
+      // Pristine editing needs practical width before the first keystroke.
+      expect(root).toHaveClass('px-0', 'sm:px-4');
+      expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+      await user.click(screen.getByRole('button', { name: 'Discard changes' }));
+      expect(screen.getByRole('region', { name: 'Record details' })).toHaveClass('p-5');
+    }
+    expect(root).toHaveClass('px-4');
+    expect(root).not.toHaveClass('px-0');
+    expect(document.getElementById('workspace-detail')).toHaveClass('p-6');
+    expect(document.getElementById('workspace-detail')).not.toHaveClass('p-0');
+  }
+);
+
+test.each(['schemas', 'imports', 'exports'])(
+  'non-authoring %s keeps its existing mobile panel spacing',
+  async (tab) => {
+    const view = render(
+      <MemoryRouter initialEntries={[`/workspace#${tab}`]}>
+        <ContentWorkspace />
+      </MemoryRouter>
+    );
+    await screen.findByLabelText('Content type');
+    expect(view.container.querySelector('.base2-workspace')).toHaveClass('px-4');
+    expect(view.container.querySelector('.base2-workspace')).not.toHaveClass('px-0');
+    expect(document.getElementById('workspace-detail')).toHaveClass('p-6');
+    expect(document.getElementById('workspace-detail')).not.toHaveClass('p-0');
+    for (const card of view.container.querySelectorAll('.base2-card'))
+      expect(card).not.toHaveClass('min-w-0');
+  }
+);
+
+test('successful public edit restores default read-only spacing after authoritative reconciliation', async () => {
+  contentWorkspaceAPI.records.mockResolvedValue({ items: [detail] });
+  contentWorkspaceAPI.record
+    .mockResolvedValueOnce(detail)
+    .mockResolvedValue({
+      ...detail,
+      version: 2,
+      publicContent: { ...detail.publicContent, body: 'Updated public copy' },
+    });
+  contentWorkspaceAPI.updateRecord.mockResolvedValue({ ...detail, version: 2 });
+  const view = mount();
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole('button', { name: 'Open New title' }));
+  await user.click(await screen.findByRole('button', { name: 'Edit fields' }));
+  fireEvent.change(screen.getByLabelText('Public body'), {
+    target: { value: 'Updated public copy' },
+  });
+  expect(view.container.querySelector('.base2-workspace')).toHaveClass('px-0', 'sm:px-4');
+  await user.click(screen.getByRole('button', { name: 'Save changes' }));
+  await screen.findByRole('button', { name: 'Edit fields' });
+  expect(view.container.querySelector('.base2-workspace')).toHaveClass('px-4');
+  expect(view.container.querySelector('.base2-workspace')).not.toHaveClass('px-0');
+  expect(document.getElementById('workspace-detail')).toHaveClass('p-6');
+  expect(screen.getByRole('region', { name: 'Record details' })).toHaveClass('p-5');
+  expect(screen.getByText('Updated public copy')).toBeInTheDocument();
 });

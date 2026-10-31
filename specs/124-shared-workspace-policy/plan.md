@@ -489,3 +489,11 @@ form, preserve all surrounding policy/constraint clauses and unsupported differe
 and reject v1 for database restoration. Regression-first exact-hash fixtures, hostile
 literal/altered clause/privilege negatives, independent review and real native restore
 must precede acceptance. No custom media runtime repair, grant repair or role creation.
+
+### Native mobile authoring correction
+
+Keep desktop composition and approved design unchanged. Inspect cumulative mobile
+padding in workspace panels, creation form and public-copy fields; reduce only scoped
+mobile spacing constraints. Prove actual rendered widths and focused viewport
+visibility on390px, retain1440 screenshots, review pixels before acceptance. Re-run
+shared component unit/static coverage and existing native workspace/visual suites.

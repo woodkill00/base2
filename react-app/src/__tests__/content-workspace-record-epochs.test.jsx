@@ -67,3 +67,27 @@ test('a current structured-field completion is accepted when no draft or mutatio
   act(() => structured.onChanged(updated));
   expect(onChanged).toHaveBeenCalledExactlyOnceWith(updated);
 });
+
+test('presentation-only editing signal resets on record scope change and unmount', () => {
+  const onEditingChange = vi.fn();
+  const current = { ...record, publicContent: { excerpt: '', body: 'Saved' } };
+  const props = {
+    typeKey: 'article',
+    schema: { fields: [] },
+    canEdit: true,
+    record: current,
+    onChanged: vi.fn(),
+    onError: vi.fn(),
+    onEditingChange,
+  };
+  const view = render(<RecordInspector {...props} />);
+  expect(onEditingChange).toHaveBeenLastCalledWith(false);
+  fireEvent.click(screen.getByRole('button', { name: 'Edit fields' }));
+  expect(onEditingChange).toHaveBeenLastCalledWith(true);
+  view.rerender(<RecordInspector {...props} record={{ ...current, id: 'second' }} />);
+  expect(onEditingChange).toHaveBeenLastCalledWith(false);
+  fireEvent.click(screen.getByRole('button', { name: 'Edit fields' }));
+  expect(onEditingChange).toHaveBeenLastCalledWith(true);
+  view.unmount();
+  expect(onEditingChange).toHaveBeenLastCalledWith(false);
+});

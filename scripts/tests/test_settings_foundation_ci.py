@@ -128,7 +128,10 @@ def test_browser_evidence_attempts_are_distinct_and_uploads_run_after_failure():
     )
     for name, path in {
         "Upload settings acceptance evidence": ".artifacts/settings-121",
-        "Upload user journey evidence": ".artifacts/journeys-*",
+        "Upload user journey evidence": (
+            ".artifacts/journeys-ci-${{ github.run_id }}-${{ github.run_attempt }}-journeys\n"
+            ".artifacts/journeys-ci-${{ github.run_id }}-${{ github.run_attempt }}-modules\n"
+        ),
         "Upload layout evidence": ".artifacts/layout-109",
     }.items():
         upload = next(step for step in steps if step.get("name") == name)
@@ -214,3 +217,65 @@ def test_django_lint_tool_is_declared_in_its_own_dev_environment():
                    if line.startswith('ruff=='))
     django_dev = (ROOT / 'requirements-dev-django.txt').read_text().splitlines()
     assert api_pin in django_dev
+
+
+def test_workspace_authoring_fixture_has_write_permission_and_distinct_public_copy():
+    source = (ROOT / 'react-app/e2e/workspace/workspace-release.spec.ts').read_text()
+    user = source.split('const fixtureUser = {', 1)[1].split('\n};', 1)[0]
+    assert "'content-workspace.write'" in user
+    records = source.split('const records = states.map', 1)[1].split('const fixtureUser', 1)[0]
+    assert 'publicContent:' in records
+    assert 'excerpt: `Curated public ${state} excerpt.`' in records
+    assert 'body: `Intentional public ${state} body.`' in records
+    assert 'Private synthetic editorial note.' in records
+    assert "if (url.pathname.includes('/versions')) return send({ items: [] })" in source
+    viewer_test = (ROOT / 'react-app/src/__tests__/content-workspace-public-create.test.jsx').read_text()
+    assert "test('viewer cannot open public record creation'" in viewer_test
+    assert "auth.user.permissions = ['content-workspace.read']" in viewer_test
+    assert "queryByRole('button', { name: 'New record' })).not.toBeInTheDocument()" in viewer_test
+
+
+def test_workspace_author_capability_is_asserted_before_visual_evidence():
+    source = (ROOT / 'react-app/e2e/workspace/workspace-release.spec.ts').read_text()
+    start = source.index("await page.goto('/workspace')")
+    visible = source.index("await expect(newRecord).toBeVisible()", start)
+    enabled = source.index("await expect(newRecord).toBeEnabled()", start)
+    assert source.index("getByRole('button', { name: 'New record', exact: true })", start) < visible
+    assert visible < enabled < source.index("await page.keyboard.press('Tab')", start)
+    assert enabled < source.index('await prepareStableFullPageCapture(page)', start)
+
+
+def test_related_workspace_browser_fixtures_preserve_public_copy_and_denials():
+    review = (ROOT / 'react-app/e2e/layout/workspace-review.spec.ts').read_text()
+    journey = (ROOT / 'react-app/e2e/journeys/workspace-journeys.spec.ts').read_text()
+    assert "publicContent: { excerpt: 'Public review excerpt', body: 'Public review body' }" in review
+    for assertion in ('durable test receipts, not live email', 'never publishes',
+                      'This request remains pending', 'expect(writes).toBe(0)'):
+        assert assertion in review
+    owner = journey.split('const owner = {', 1)[1].split('\n};', 1)[0]
+    assert "'content-workspace.write'" in owner
+    assert 'publicContent: data.publicContent' in journey
+    assert 'expect(data.publicContent).toEqual(publicCopy)' in journey
+    assert 'expect(data.publicContent).toEqual(editedPublicCopy)' in journey
+    assert 'expect(record.publicContent).toEqual(editedPublicCopy)' in journey
+    assert 'permissions: []' in journey and 'expect(workspaceRequests).toBe(0)' in journey
+    assert "return route.fulfill({ json: { items: [] } })" in review
+    assert "path.endsWith('/versions')" in journey
+
+
+def test_journey_evidence_uses_exact_current_run_directories_not_hidden_root_glob():
+    steps = frontend_steps()
+    upload = next(step for step in steps if step.get('name') == 'Upload user journey evidence')
+    assert upload['with']['path'].splitlines() == [
+        '.artifacts/journeys-ci-${{ github.run_id }}-${{ github.run_attempt }}-journeys',
+        '.artifacts/journeys-ci-${{ github.run_id }}-${{ github.run_attempt }}-modules',
+    ]
+    assert upload['with']['if-no-files-found'] == 'warn'
+    assert upload['with'].get('include-hidden-files', False) is False
+    assert upload['if'] == "always() && steps.scope.outputs.mode == 'full'"
+    for name, suffix in [('Volcano user journey states', 'journeys'),
+                         ('Enabled optional module journeys', 'modules')]:
+        step = next(item for item in steps if item.get('name') == name)
+        assert step['env']['JOURNEY_ATTEMPT'] == 'ci-${{ github.run_id }}-${{ github.run_attempt }}-' + suffix
+    config = (ROOT / 'react-app/playwright.journeys.config.mjs').read_text()
+    assert 'outputDir: `../.artifacts/journeys-${attempt}`' in config

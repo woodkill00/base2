@@ -414,3 +414,31 @@ def test_public_authoring_captures_filled_desktop_and_mobile_without_reloading()
     compact = re.sub(r'\s+', '', source)
     assert compact.index("'create',publicContent") < compact.index('constcreating=')
     assert compact.index("'edit',publicContent") < compact.index('constsaving=')
+
+
+def test_public_search_snippet_is_body_codepoints_not_curated_excerpt():
+    source = SOURCE.with_name('workspace-representative.spec.js').read_text()
+    compact = re.sub(r'\s+', '', source)
+    assert 'expect(excerpt).not.toBe(body)' in compact
+    assert "Array.from(record.publicContent.body).slice(0,320).join('')" in compact
+    assert 'excerpt:record.publicContent.excerpt' in compact
+    assert 'body:record.publicContent.body' in compact
+    assert 'JSON.stringify(detail)).not.toContain(record.privateSummary)' in compact
+    assert 'JSON.stringify(before)).not.toContain(record.privateSummary)' in compact
+
+
+def test_mobile_public_copy_proves_practical_width_and_unoccluded_focused_viewport():
+    source = SOURCE.with_name('workspace-representative.spec.js').read_text()
+    helper = source.split('async function capturePublicAuthoring(', 1)[1].split('\nasync function ', 1)[0]
+    assert 'if (width === 390)' in helper
+    assert 'toBeGreaterThanOrEqual(240)' in helper
+    assert 'await bodyField.focus()' in helper
+    assert "block: 'center'" in helper
+    assert 'document.elementFromPoint(' in helper
+    assert '=== element' in helper
+    assert 'toBeFocused()' in helper
+    assert 'toBeInViewport({ ratio: 1 })' in helper
+    assert "label[for=\"public-content-body\"]" in helper
+    assert '#public-content-body-count' in helper
+    assert '`representative-public-authoring-${stage}-390-focused`' in helper
+    assert 'fullPage: false' in helper

@@ -124,6 +124,7 @@ export default function RecordInspector({
   canEdit = false,
   scopeKey = '',
   onDraftStateChange,
+  onEditingChange,
 }) {
   const copy = workspaceReviewCopy[String(locale).split('-')[0]] || workspaceReviewCopy.en;
   const labels = { ...LABELS, approve_review: copy.approve, adopt_review_subject: copy.adopt };
@@ -209,6 +210,11 @@ export default function RecordInspector({
     onDraftStateChange?.(dirty || busy || blocked);
   }, [dirty, busy, blocked, onDraftStateChange]);
   useEffect(() => () => onDraftStateChange?.(false), [onDraftStateChange]);
+  // Presentation only: compact public-authoring spacing must not change draft guards.
+  useEffect(() => {
+    onEditingChange?.(editing);
+    return () => onEditingChange?.(false);
+  }, [editing, onEditingChange]);
 
   useEffect(() => {
     if (!dirty) return undefined;

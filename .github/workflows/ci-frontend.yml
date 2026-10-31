@@ -203,7 +203,9 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: user-journeys-113
-          path: .artifacts/journeys-*
+          path: |
+            .artifacts/journeys-ci-${{ github.run_id }}-${{ github.run_attempt }}-journeys
+            .artifacts/journeys-ci-${{ github.run_id }}-${{ github.run_attempt }}-modules
           if-no-files-found: warn
           retention-days: 7
 

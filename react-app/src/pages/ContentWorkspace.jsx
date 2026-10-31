@@ -79,6 +79,8 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
   const [schema, setSchema] = useState(null);
   const [activeRecord, setActiveRecord] = useState(null);
   const [creating, setCreating] = useState(false);
+  const [recordEditing, setRecordEditing] = useState(false);
+  const compactAuthoring = tab === 'Records' && (creating || recordEditing);
   const [draft, setDraft] = useState(emptyDraft);
   const [saving, setSaving] = useState(false);
   const createOperation = useRef({ busy: false, createdId: null });
@@ -453,7 +455,9 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
         allowInternalNavigation={noInternalDraftNavigation}
         onDiscard={discardDrafts}
       />
-      <div className="base2-workspace mx-auto max-w-7xl space-y-6 px-4 py-8">
+      <div
+        className={`base2-workspace mx-auto max-w-7xl space-y-6 py-8 ${compactAuthoring ? 'px-0 sm:px-4' : 'px-4'}`}
+      >
         <Navigation />
         <header className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300">
@@ -511,8 +515,10 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
           ) : null}
 
           {!loading && definitions.length > 0 ? (
-            <div className="grid gap-5 lg:grid-cols-[minmax(14rem,0.32fr)_minmax(0,1fr)]">
-              <GlassCard>
+            <div
+              className={`grid gap-5 lg:grid-cols-[minmax(14rem,0.32fr)_minmax(0,1fr)] ${compactAuthoring ? 'grid-cols-1' : ''}`}
+            >
+              <GlassCard className={compactAuthoring ? 'min-w-0' : undefined}>
                 <div className="p-4">
                   <label htmlFor="workspace-type" className="text-sm font-medium">
                     Content type
@@ -536,13 +542,13 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
                   </select>
                 </div>
               </GlassCard>
-              <GlassCard>
+              <GlassCard className={compactAuthoring ? 'min-w-0' : undefined}>
                 <section
                   id="workspace-detail"
                   tabIndex={-1}
                   aria-labelledby="workspace-panel-title"
                   aria-busy={recordsLoading}
-                  className="min-h-64 p-6"
+                  className={`min-h-64 ${compactAuthoring ? 'min-w-0 p-0 sm:p-6' : 'p-6'}`}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
@@ -670,7 +676,7 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
                       {creating ? (
                         <form
                           onSubmit={createRecord}
-                          className="mt-5 space-y-4 rounded-2xl border border-violet-300/30 bg-violet-950/15 p-5"
+                          className="mt-5 min-w-0 space-y-4 rounded-2xl border border-violet-300/30 bg-violet-950/15 p-2 sm:p-5"
                         >
                           <div>
                             <h3 className="text-lg font-semibold">Create {selectedType} record</h3>
@@ -828,7 +834,9 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
                           Loading records…
                         </p>
                       ) : records.length ? (
-                        <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(15rem,0.8fr)_minmax(18rem,1.2fr)]">
+                        <div
+                          className={`mt-5 grid gap-5 xl:grid-cols-[minmax(15rem,0.8fr)_minmax(18rem,1.2fr)] ${compactAuthoring ? 'grid-cols-1' : ''}`}
+                        >
                           <ul className="divide-y divide-white/10" aria-label="Records">
                             {records.map((record) => (
                               <li key={record.id} className="py-4">
@@ -851,7 +859,7 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
                           <div
                             role="region"
                             aria-label="Record details"
-                            className="min-h-48 rounded-2xl border border-white/10 bg-black/10 p-5"
+                            className={`min-h-48 rounded-2xl border border-white/10 bg-black/10 ${compactAuthoring ? 'min-w-0 p-2 sm:p-5' : 'p-5'}`}
                           >
                             {activeRecord ? (
                               <RecordInspector
@@ -860,6 +868,7 @@ function WorkspaceContent({ locale = 'en', scopeKey, canEdit }) {
                                 canEdit={canEdit}
                                 scopeKey={scopeKey}
                                 onDraftStateChange={reportRecordDraftState}
+                                onEditingChange={setRecordEditing}
                                 typeKey={selectedType}
                                 schema={schema}
                                 record={activeRecord}

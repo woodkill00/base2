@@ -3,7 +3,10 @@ import { validPublicContent } from '../../services/workspaceRecord';
 export default function PublicContentFields({ value, onChange, disabled = false }) {
   const valid = validPublicContent(value);
   return (
-    <section className="space-y-3 rounded-xl border border-white/10 p-4" aria-label="Public text">
+    <section
+      className="min-w-0 space-y-3 rounded-xl border border-white/10 p-2 sm:p-4"
+      aria-label="Public text"
+    >
       <p className="text-sm opacity-80">
         Only intentionally public copy belongs here. This text can appear on published,
         public-eligible pages. Private custom field values remain private. When review is not
@@ -23,7 +26,7 @@ export default function PublicContentFields({ value, onChange, disabled = false 
               rows={key === 'excerpt' ? 3 : 8}
               disabled={disabled}
               aria-describedby={`public-content-${key}-count`}
-              className="min-h-11 w-full rounded-xl border border-white/20 bg-slate-950/80 px-3 py-2"
+              className="min-h-11 w-full min-w-0 rounded-xl border border-white/20 bg-slate-950/80 px-3 py-2"
               onChange={(event) => onChange({ ...value, [key]: event.target.value })}
             />
             <p id={`public-content-${key}-count`} className="text-xs opacity-65">

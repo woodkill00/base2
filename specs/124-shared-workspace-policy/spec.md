@@ -194,3 +194,13 @@ ambiguities and nonliteral expressions remain unchanged and fail parity if diffe
 Never ignore object names, clauses, SQL whitespace generally or unknown catalog data.
 Exact catalog parity after this representation remains mandatory before restored
 runtime use. Unit negative cases and real PostgreSQL restoration are both required.
+
+### Mobile public authoring acceptance
+
+Actual 390px screenshots reveal excessive cumulative padding: public textareas are
+approximately124px wide and headings/action labels wrap unnecessarily. Repair only
+workspace-scoped mobile spacing/min-width behavior while preserving desktop
+composition and approved Obsidian/Volcano visual tokens. Add actual viewport captures
+around focused public fields to distinguish fixed-shell screenshot compositing from
+real occlusion, and assert a practical field width at390px alongside no overflow and
+control reachability. No automatic visual-baseline replacement is permitted.

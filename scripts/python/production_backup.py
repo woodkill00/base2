@@ -762,10 +762,14 @@ def isolated_restore(
             for member in members
         ):
             raise ProductionBackupError("restore:archive_invalid")
+        # File-only archives intentionally contain no directory entries. A valid
+        # empty inventory must still have an owned private root for strict ledger
+        # reconciliation; never synthesize this root in the verifier itself.
+        objects = payload / "objects"
+        objects.mkdir(mode=0o700)
         bundle.extractall(payload, filter="data")
     inventory = json.loads((payload / "objects.json").read_text(encoding="utf-8"))
     actual = []
-    objects = payload / "objects"
     for path in sorted(objects.rglob("*")) if objects.exists() else []:
         if path.is_file():
             actual.append(

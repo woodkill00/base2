@@ -62,10 +62,13 @@ def scope(f, r):
 
 
 def transition(f, r, action, when=None):
+    # The fixture creator is an editor: authors submit/schedule; an existing
+    # independent admin publishes. Approval never grants a new role.
+    actor = f['reviewer_id'] if action == 'publish' else f['creator_id']
     return f['repo'].transition_record(
         **scope(f, r),
         expected_version=r['version'],
-        actor_ref=f"user:{f['creator_id']}",
+        actor_ref=f'user:{actor}',
         action=action,
         publish_at=when,
         timezone='UTC' if when else None,
@@ -168,7 +171,7 @@ def test_clear_omission_stale_role_and_tenant_denials(workspace_policy_fixture):
         "UPDATE api_identity_memberships SET role='viewer' WHERE user_id=%s",
         (str(f['creator_id']),),
     )
-    with pytest.raises(ValueError):
+    with pytest.raises(PermissionError, match='workspace_policy_forbidden'):
         f['repo'].update_record(
             **scope(f, r),
             expected_version=r['version'],
@@ -239,13 +242,18 @@ def test_due_publication_snapshot_restores_copy_without_restoring_schedule(
 
 
 def test_import_update_history_restores_public_copy_without_import_authoring(
-    workspace_policy_fixture, tmp_path
+    workspace_policy_fixture, tmp_path, monkeypatch
 ):
     import hashlib
     import json
     from api.services.content_workspace_storage import PrivateArtifactStore
     from api.services.content_workspace_worker import validate_import_job, process_import_commit
 
+    from api.settings import settings
+
+    # Isolated deterministic test configuration, not a production credential or
+    # a bypass: the real CursorCodec still signs and validates scoped grants.
+    monkeypatch.setattr(settings, 'TOKEN_PEPPER', 'synthetic-public-copy-import-cursor-key-124')
     f = workspace_policy_fixture
     r = create_copy(f)
     store = PrivateArtifactStore(tmp_path / 'private', key=b'p' * 32, max_bytes=10000)
@@ -337,3 +345,20 @@ def test_restore_review_effect_depends_on_semantic_copy_change(
     else:
         assert restored['state'] == 'published'  # Historical draft context is never applied.
         assert after == before  # Identical bytes do not invalidate semantic approval.
+
+
+def test_editor_cannot_publish_even_after_independent_approval(workspace_policy_fixture):
+    f = workspace_policy_fixture
+    pending = reviewed(f, create_copy(f))
+    with pytest.raises(PermissionError, match='workspace_policy_forbidden'):
+        f['repo'].transition_record(
+            **scope(f, pending),
+            expected_version=pending['version'],
+            actor_ref=f"user:{f['creator_id']}",
+            action='publish',
+            publish_at=None,
+            timezone=None,
+        )
+    unchanged = f['repo'].get_record(**scope(f, pending))
+    assert unchanged['version'] == pending['version'] and unchanged['state'] == 'in_review'
+    assert transition(f, unchanged, 'publish')['state'] == 'published'

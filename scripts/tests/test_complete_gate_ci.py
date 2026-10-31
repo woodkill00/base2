@@ -1,4 +1,6 @@
 """Source contracts for opt-in exact-head hosted complete-gate execution."""
+import ast
+import subprocess
 import sys
 import tarfile
 from pathlib import Path
@@ -143,44 +145,61 @@ def test_archiving_is_allowlisted_private_and_validated_before_upload():
 
 def archive_code():
     step = next(step for step in workflow()['jobs']['complete-gate']['steps'] if step.get('id') == 'package')
-    return compile(step['run'].split("<<'PYTHON'\n", 1)[1].rsplit('\nPYTHON', 1)[0], '<archive>', 'exec')
+    return step['run'].split("<<'PYTHON'\n", 1)[1].rsplit('\nPYTHON', 1)[0]
 
 
-def test_success_without_receipt_fails_closed(tmp_path, monkeypatch):
-    code = archive_code()
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv('GATE_OUTCOME', 'success')
-    with pytest.raises(SystemExit, match='successful_gate_missing_receipt'):
-        exec(code, {})
+def run_archive(root, *, gate_outcome='skipped', repetitions_outcome='skipped', source_sha='a' * 40):
+    # Execute the actual trusted workflow body in a child, never in the test
+    # interpreter. Only fixed imports and synthetic stage metadata are inherited.
+    return subprocess.run(
+        [sys.executable, '-'],
+        input=archive_code(),
+        cwd=root,
+        env={
+            'HOME': str(root),
+            'PATH': '/usr/bin:/bin',
+            'LANG': 'C.UTF-8',
+            'PYTHONPATH': str(ROOT),
+            'PYTHONDONTWRITEBYTECODE': '1',
+            'GATE_OUTCOME': gate_outcome,
+            'REPETITIONS_OUTCOME': repetitions_outcome,
+            'EXPECTED_SHA': source_sha,
+            'RUNNER_TEMP': str(root / 'runner-temp'),
+        },
+        text=True,
+        capture_output=True,
+        timeout=10,
+        check=False,
+    )
 
 
-def test_setup_failure_needs_no_fabricated_receipts(tmp_path, monkeypatch):
-    code = archive_code()
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv('GATE_OUTCOME', 'skipped')
-    monkeypatch.setenv('REPETITIONS_OUTCOME', 'skipped')
-    monkeypatch.setenv('EXPECTED_SHA', 'a' * 40)
-    exec(code, {})
+def test_success_without_receipt_fails_closed(tmp_path):
+    result = run_archive(tmp_path, gate_outcome='success')
+    assert result.returncode != 0
+    assert result.stderr.strip() == 'successful_gate_missing_receipt'
+
+
+def test_setup_failure_needs_no_fabricated_receipts(tmp_path):
+    result = run_archive(tmp_path)
+    assert result.returncode == 0, result.stderr
     assert not list(tmp_path.rglob('*.tar'))
 
 
-def test_archive_rejects_symlink_without_reading_target(tmp_path, monkeypatch):
-    code = archive_code()
+def test_archive_rejects_symlink_without_reading_target(tmp_path):
     target = tmp_path / 'do-not-read'
     target.write_text('not evidence')
     root = tmp_path / '.artifacts/complete-gate/run'
     root.mkdir(parents=True)
     (root / 'result.json').symlink_to(target)
-    monkeypatch.chdir(tmp_path)
-    with pytest.raises(SystemExit, match='unsafe_evidence_member'):
-        exec(code, {})
+    result = run_archive(tmp_path)
+    assert result.returncode != 0
+    assert result.stderr.strip() == 'unsafe_evidence_member'
     assert target.read_text() == 'not evidence'
 
 
-def test_failed_runner_receipt_archive_preserves_modes_and_exact_members(tmp_path, monkeypatch):
+def test_failed_runner_receipt_archive_preserves_modes_and_exact_members(tmp_path):
     from scripts.python.run_complete_gate import run_gate
 
-    code = archive_code()
     sha = 'a' * 40
     result = run_gate({'schemaVersion': 1, 'checks': [{
         'id': 'intentional-failure', 'command': [sys.executable, '-c', 'raise SystemExit(1)'],
@@ -189,11 +208,8 @@ def test_failed_runner_receipt_archive_preserves_modes_and_exact_members(tmp_pat
     assert result['overallStatus'] == 'failed'
     runner_temp = tmp_path / 'runner-temp'
     (runner_temp / 'complete-gate-evidence').mkdir(parents=True)
-    monkeypatch.chdir(tmp_path)
-    for key, value in {'GATE_OUTCOME': 'failure', 'REPETITIONS_OUTCOME': 'skipped',
-                       'EXPECTED_SHA': sha, 'RUNNER_TEMP': str(runner_temp)}.items():
-        monkeypatch.setenv(key, value)
-    exec(code, {})
+    archived = run_archive(tmp_path, gate_outcome='failure', source_sha=sha)
+    assert archived.returncode == 0, archived.stderr
     with tarfile.open(runner_temp / 'complete-gate-evidence/receipts.tar') as bundle:
         members = bundle.getmembers()
     assert {member.name for member in members if member.isfile()} == {
@@ -202,3 +218,40 @@ def test_failed_runner_receipt_archive_preserves_modes_and_exact_members(tmp_pat
     }
     assert all(member.mode == (0o700 if member.isdir() else 0o600) for member in members)
     assert not (runner_temp / 'complete-gate-evidence/receipts.tar.pending').exists()
+
+
+def test_archive_harness_does_not_evaluate_source_in_process():
+    tree = ast.parse(Path(__file__).read_text())
+    assert not [node for node in ast.walk(tree) if isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name) and node.func.id in {'exec', 'eval'}]
+
+
+def test_archive_child_has_fixed_argv_bounded_timeout_and_no_ambient_credentials(tmp_path, monkeypatch):
+    captured = {}
+
+    def capture(command, **kwargs):
+        captured.update(command=command, **kwargs)
+        return subprocess.CompletedProcess(command, 17, '', 'original failure')
+
+    monkeypatch.setenv('UNRELATED_SECRET', 'must-not-inherit')
+    monkeypatch.setattr(subprocess, 'run', capture)
+    result = run_archive(tmp_path)
+    assert captured['command'] == [sys.executable, '-']
+    assert captured['input'] == archive_code()
+    assert captured['cwd'] == tmp_path
+    assert captured['timeout'] == 10
+    assert captured['check'] is False
+    assert captured['capture_output'] is True
+    assert 'shell' not in captured
+    assert 'UNRELATED_SECRET' not in captured['env']
+    assert captured['env']['PYTHONPATH'] == str(ROOT)
+    assert result.returncode == 17 and result.stderr == 'original failure'
+
+
+def test_archive_child_timeout_is_not_swallowed(tmp_path, monkeypatch):
+    def timeout(command, **kwargs):
+        raise subprocess.TimeoutExpired(command, kwargs['timeout'])
+
+    monkeypatch.setattr(subprocess, 'run', timeout)
+    with pytest.raises(subprocess.TimeoutExpired):
+        run_archive(tmp_path)

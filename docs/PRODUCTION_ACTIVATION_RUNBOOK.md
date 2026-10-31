@@ -200,3 +200,9 @@ all surrounding clauses, values/order, owners and other security state must stil
 match. Escape-prefixed/backslash-ambiguous literals, typmods, collations, nested or
 nonliteral arrays and other casts are not generalized. No database functions are
 evaluated, no grants repaired, and unknown differences still deny acceptance.
+
+Valid zero-object backups restore an empty, private `objects` directory before
+object-reference reconciliation. This does not substitute for missing objects:
+nonempty inventories or database references still require their exact archived,
+decryptable payloads. Directory creation occurs only after archive member validation;
+archives remain file-only and symlink/hardlink/traversal entries are rejected.
