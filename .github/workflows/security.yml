@@ -79,15 +79,36 @@ jobs:
       - name: Exercise fresh-volume two-UID spool lifecycle
         run: MEDIA_INSPECTOR_TEST_IMAGE=base2-media-inspector:acceptance bash api/tests/media_inspector_two_uid_container_acceptance.sh
 
-      - name: Generate media inspector image SBOM
+      - name: Preserve default media inspector image SBOM
         uses: anchore/sbom-action@fc46e51fd3cb168ffb36c6d1915723c47db58abb
         with:
           image: base2-media-inspector:security
           format: cyclonedx-json
+          output-file: media-inspector-sbom.raw.cdx.json
+
+      - name: Generate media inspector image SBOM
+        uses: anchore/sbom-action@fc46e51fd3cb168ffb36c6d1915723c47db58abb
+        with:
+          image: base2-media-inspector:security
+          config: api/media-inspector-syft.yaml
+          format: cyclonedx-json
           output-file: media-inspector-sbom.cdx.json
 
+      - name: Export executed scanner and native build provenance
+        run: |
+          for name in clamav.bom python-provenance repository-evidence; do
+            docker run --rm --user 65534:65534 --network none --read-only --cap-drop ALL \
+              --security-opt no-new-privileges --entrypoint /usr/bin/python \
+              base2-media-inspector:security -c \
+              "import sys; from pathlib import Path; sys.stdout.write(Path('/usr/local/share/base2/$name.json').read_text())" \
+              > "media-inspector-$name.json"
+          done
+
       - name: Verify media inspector SBOM includes the actual fixed interpreter
-        run: python api/tests/media_inspector_sbom_acceptance.py media-inspector-sbom.cdx.json
+        run: >-
+          python api/tests/media_inspector_sbom_acceptance.py media-inspector-sbom.cdx.json
+          media-inspector-sbom.raw.cdx.json media-inspector-clamav.bom.json
+          api/media-inspector-runtime.lock.json
 
       - name: Scan media inspector image
         id: inspector-grype
@@ -121,6 +142,10 @@ jobs:
             sbom.normalized.json
             grype.normalized.json
             media-inspector-sbom.cdx.json
+            media-inspector-sbom.raw.cdx.json
+            media-inspector-clamav.bom.json
+            media-inspector-python-provenance.json
+            media-inspector-repository-evidence.json
             ${{ steps.inspector-grype.outputs.sarif }}
             media-inspector-grype.normalized.json
   npm-audit:

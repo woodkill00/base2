@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import copy
-import subprocess
+import hashlib
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -13,27 +13,54 @@ from api.tests.media_inspector_sbom_acceptance import validate_inventory
 
 
 def complete_inventory():
-    components = [{
-        'name': 'python', 'version': '3.15.2',
-        'properties': [{'name': 'syft:package:type', 'value': 'binary'}],
-    }]
-    for name in ('libc6', 'libssl3t64', 'libcap-ng0', 'util-linux', 'clamav'):
-        components.append({'name': name, 'version': '1.5.4-1' if name == 'clamav' else '1',
-                           'purl': f'pkg:deb/debian/{name}@1'})
-    for name in ('cffi', 'cryptography', 'pillow', 'pycparser', 'pypdf'):
-        components.append({'name': name, 'purl': f'pkg:pypi/{name}@1'})
-    return {'components': components}
+    import json
+    from pathlib import Path
+    from api.tests.media_inspector_sbom_acceptance import WHEELS
+    from api.tests.media_inspector_build_inputs import SCANNER_FILES
+    lock = json.loads((Path(__file__).resolve().parents[1] / 'media-inspector-runtime.lock.json').read_text())
+    components = [{'name': 'python', 'version': '3.15.2',
+                   'properties': [{'name': 'syft:package:type', 'value': 'binary'}]}]
+    for item in lock['apks']:
+        if 'runtime' in item['roles']:
+            components.append({'name': item['name'], 'version': item['version'],
+                               'purl': f'pkg:apk/wolfi/{item["name"]}@{item["version"]}'})
+    for name, version in WHEELS.items():
+        components.append({'name': name, 'version': version, 'purl': f'pkg:pypi/{name}@{version}'})
+    raw = {'components': copy.deepcopy(components)}
+    scanner = lock['clamav']
+    properties = {'base2:source:archiveSha256': scanner['sha256'],
+                  'base2:source:packageVersion': scanner['packageVersion'],
+                  'base2:source:controlSha256': 'b' * 64,
+                  **{f'base2:file:sha256:{name}': 'a' * 64 for name in SCANNER_FILES}}
+    imported = [
+        {'name': 'clamav', 'version': '1.5.4', 'purl': 'pkg:generic/clamav@1.5.4',
+         'cpe': 'cpe:2.3:a:clamav:clamav:1.5.4:*:*:*:*:*:*:*',
+         'properties': [{'name': name, 'value': value} for name, value in properties.items()]},
+        {'name': scanner['url'].rsplit('/', 1)[-1], 'version': scanner['packageVersion'],
+         'hashes': [{'alg': 'SHA-256', 'content': scanner['sha256']}]},
+    ]
+    provenance = {'components': imported}
+    digest = hashlib.sha256((json.dumps(provenance, sort_keys=True) + '\n').encode()).hexdigest()
+    consumed = copy.deepcopy(imported[0])
+    consumed['properties'] = [{'name': 'syft:package:foundBy', 'value': 'sbom-cataloger'},
+                              {'name': 'syft:location:0:path', 'value': '/usr/local/share/base2/clamav.bom.json'}]
+    source_file = {'type': 'file', 'name': '/usr/local/share/base2/clamav.bom.json',
+                   'hashes': [{'alg': 'SHA-256', 'content': digest}]}
+    return {'components': components + [consumed, source_file]}, raw, provenance, lock, digest
 
 
 def test_sbom_accepts_real_fixed_binary_and_complete_inventory():
-    validate_inventory(complete_inventory())
+    validate_inventory(*complete_inventory())
 
 
 @pytest.mark.parametrize('change', ('missing-python', 'old-python', 'fake-pypi-python',
-                                  'missing-binary-identity', 'wolfi', 'missing-libc',
-                                  'missing-clamav', 'wrong-clamav', 'missing-wheel'))
+                                  'missing-binary-identity', 'foreign-debian', 'missing-libc',
+                                  'missing-clamav', 'wrong-clamav', 'missing-wheel', 'extra-apk',
+                                  'old-python-apk', 'wrong-wheel', 'missing-archive', 'changed-archive',
+                                  'missing-file-evidence', 'empty-raw', 'missing-source-bom',
+                                  'changed-source-bom', 'unconsumed-provenance'))
 def test_sbom_rejects_incomplete_or_misleading_inventory(change):
-    candidate = copy.deepcopy(complete_inventory())
+    candidate, raw, provenance, lock, digest = complete_inventory()
     items = candidate['components']
     if change == 'missing-python':
         items.pop(0)
@@ -43,21 +70,40 @@ def test_sbom_rejects_incomplete_or_misleading_inventory(change):
         items[0]['purl'] = 'pkg:pypi/python@3.15.2'
     elif change == 'missing-binary-identity':
         items[0]['properties'] = []
-    elif change == 'wolfi':
-        items.append({'name': 'wolfi-baselayout', 'version': '20261024-r1',
-                      'purl': 'pkg:apk/wolfi/wolfi-baselayout@20261024-r1'})
+    elif change == 'foreign-debian':
+        items.append({'name': 'libc6', 'version': '1', 'purl': 'pkg:deb/debian/libc6@1'})
+    elif change in ('extra-apk', 'old-python-apk'):
+        name = 'python3.15' if change == 'old-python-apk' else 'busybox'
+        items.append({'name': name, 'version': '3.15.1', 'purl': f'pkg:apk/wolfi/{name}@3.15.1'})
     elif change == 'wrong-clamav':
         next(item for item in items if item['name'] == 'clamav')['version'] = '1.4.3'
+    elif change == 'wrong-wheel':
+        next(item for item in items if item['name'] == 'pypdf')['version'] = '6.21.2'
+    elif change == 'missing-archive':
+        provenance['components'].pop()
+    elif change == 'missing-source-bom':
+        items.pop()
+    elif change == 'changed-source-bom':
+        items[-1]['hashes'][0]['content'] = '0' * 64
+    elif change == 'unconsumed-provenance':
+        items[-2]['properties'] = []
+    elif change == 'changed-archive':
+        provenance['components'][0]['properties'][0]['value'] = '0' * 64
+    elif change == 'missing-file-evidence':
+        provenance['components'][0]['properties'].pop()
+    elif change == 'empty-raw':
+        raw['components'] = []
     else:
-        omitted = {'missing-libc': 'libc6', 'missing-clamav': 'clamav',
-                   'missing-wheel': 'cryptography'}[change]
+        omitted = {'missing-libc': 'glibc-2.44', 'missing-clamav': 'clamav',
+                   'missing-wheel': 'cryptography',
+                   'missing-archive': lock['clamav']['url'].rsplit('/', 1)[-1]}[change]
         candidate['components'] = [item for item in items if item['name'] != omitted]
     with pytest.raises(AssertionError):
-        validate_inventory(candidate)
+        validate_inventory(candidate, raw, provenance, lock, digest)
 
 
 @pytest.mark.parametrize(('successful', 'skipped', 'count'),
-                         ((False, [], 2), (True, [('case', 'skip')], 2), (True, [], 1)))
+                         ((False, [], 4), (True, [('case', 'skip')], 4), (True, [], 3)))
 def test_ssl_acceptance_rejects_failure_skip_and_unexecuted_test(successful, skipped, count):
     result = SimpleNamespace(testsRun=count, skipped=skipped, wasSuccessful=lambda: successful)
     with patch.object(runtime.unittest.defaultTestLoader, 'loadTestsFromNames'), \
@@ -68,8 +114,8 @@ def test_ssl_acceptance_rejects_failure_skip_and_unexecuted_test(successful, ski
             runtime.verify_ssl('/fixture')
 
 
-def test_ssl_acceptance_requires_exact_two_upstream_tests():
-    result = SimpleNamespace(testsRun=2, skipped=[], wasSuccessful=lambda: True)
+def test_ssl_acceptance_requires_exact_upstream_tests_and_tls12():
+    result = SimpleNamespace(testsRun=4, skipped=[], wasSuccessful=lambda: True)
     with patch.object(runtime.unittest.defaultTestLoader, 'loadTestsFromNames') as loader, \
             patch.object(runtime.unittest, 'TextTestRunner') as runner, \
             patch.object(runtime.sys, 'path', []):
@@ -85,40 +131,40 @@ def test_runtime_fails_immediately_on_host_or_old_interpreter():
         runtime.verify_runtime()
 
 
-@pytest.mark.parametrize('output', (b'/usr/bin/su\n', b'/usr/bin/helper\n'))
-def test_complete_filesystem_audit_rejects_elevated_payload(output):
+@pytest.mark.parametrize('mode', (0o4600, 0o2600))
+def test_complete_filesystem_audit_rejects_elevated_payload(tmp_path, mode):
+    payload = tmp_path / 'not-executable'
+    payload.write_text('test data only')
+    payload.chmod(mode)
     with patch.object(runtime.os, 'geteuid', return_value=0), \
-            patch.object(runtime.subprocess, 'check_output', return_value=output), \
             pytest.raises(AssertionError, match='SUID/SGID payload remains'):
-        runtime.verify_no_elevated_files()
+        runtime.verify_no_elevated_files(tmp_path)
 
 
-def test_complete_filesystem_audit_propagates_permission_error():
-    # First CI failure: no DAC override for _apt-owned0700 partial directories.
-    failure = subprocess.CalledProcessError(1, ['find'], stderr=b'Permission denied')
+def test_complete_filesystem_audit_propagates_permission_error(tmp_path):
+    failure = PermissionError('Permission denied')
     with patch.object(runtime.os, 'geteuid', return_value=0), \
-            patch.object(runtime.subprocess, 'check_output', side_effect=failure), \
-            pytest.raises(subprocess.CalledProcessError) as captured:
-        runtime.verify_no_elevated_files()
+            patch.object(runtime.os, 'scandir', side_effect=failure), \
+            pytest.raises(PermissionError) as captured:
+        runtime.verify_no_elevated_files(tmp_path)
     assert captured.value is failure
 
 
 def test_complete_filesystem_audit_rejects_nonroot_before_scan():
     with patch.object(runtime.os, 'geteuid', return_value=65534), \
-            patch.object(runtime.subprocess, 'check_output') as scan, \
+            patch.object(runtime.os, 'scandir') as scan, \
             pytest.raises(AssertionError, match='root build context'):
         runtime.verify_no_elevated_files()
     scan.assert_not_called()
 
 
-def test_complete_filesystem_audit_checks_whole_image_without_ignored_errors():
-    with patch.object(runtime.os, 'geteuid', return_value=0), \
-            patch.object(runtime.subprocess, 'check_output', return_value=b'') as scan:
-        runtime.verify_no_elevated_files()
-    scan.assert_called_once_with(
-        ['/usr/bin/find', '/', '-xdev', '-type', 'f', '-perm', '/6000', '-print'],
-        timeout=20,
-    )
+def test_complete_filesystem_audit_checks_nested_files_and_not_symlink_targets(tmp_path):
+    nested = tmp_path / 'var/lib/private'
+    nested.mkdir(parents=True)
+    (nested / 'ordinary').write_text('safe')
+    (tmp_path / 'cycle').symlink_to(tmp_path, target_is_directory=True)
+    with patch.object(runtime.os, 'geteuid', return_value=0):
+        runtime.verify_no_elevated_files(tmp_path)
 
 
 def test_runtime_cli_does_not_repeat_privileged_audit_and_runs_nonroot_ssl():
@@ -162,3 +208,28 @@ def test_cli_requires_one_explicit_validation_context(arguments):
             pytest.raises(SystemExit) as failure:
         runtime.main()
     assert failure.value.code == 2
+
+
+@pytest.mark.parametrize('version', ('TLSv1.2', 'TLSv1.3'))
+def test_tls12_acceptance_requires_actual_negotiated_version(version):
+    from unittest.mock import MagicMock
+    upstream = MagicMock()
+    client_context, server_context = SimpleNamespace(), SimpleNamespace()
+    upstream.testing_context.return_value = (client_context, server_context, 'fixture')
+    upstream.connected_bio_pair.return_value = (SimpleNamespace(version=lambda: version),
+                                                SimpleNamespace(version=lambda: version))
+    with patch.object(runtime.importlib, 'import_module', return_value=upstream), \
+            patch.object(runtime.ssl, 'HAS_TLSv1_2', True):
+        case = runtime.TLS12MemoryBIOAcceptance()
+        if version != 'TLSv1.2':
+            with pytest.raises(AssertionError):
+                case.runTest()
+        else:
+            case.runTest()
+    assert client_context.minimum_version == client_context.maximum_version == runtime.ssl.TLSVersion.TLSv1_2
+    assert server_context.minimum_version == server_context.maximum_version == runtime.ssl.TLSVersion.TLSv1_2
+
+
+def test_tls12_acceptance_rejects_false_openssl4_capability_flag():
+    with patch.object(runtime.ssl, 'HAS_TLSv1_2', False), pytest.raises(AssertionError):
+        runtime.TLS12MemoryBIOAcceptance().runTest()

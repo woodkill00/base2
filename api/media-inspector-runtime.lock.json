@@ -1,24 +1,775 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "pythonVersion": "3.15.2",
   "platform": "linux/amd64",
   "resolvedOn": "2026-10-30",
   "images": {
-    "builder": {
+    "downloads": {
       "reference": "python@sha256:c6ecb2f3c3dc85a75350f36560e1f49d35d6a9f7ce11fd775bd6834a69a9a0e1",
       "upstreamTag": "3.15.2-trixie",
       "configDigest": "sha256:6f62299a884c5c5d9faff5e97f231bb2dcc223d5055abd8694bc92dda36c3428"
     },
-    "runtime": {
-      "reference": "python@sha256:3053ea19f29305df68292b41291d621e0cbc9c1c826822c631713891ea0b64e9",
-      "upstreamTag": "3.15.2-slim-trixie",
-      "configDigest": "sha256:4590883a99c8623ceab9384525a425aa45d40c8a5b78a088eea148faede11551"
+    "builder": {
+      "reference": "cgr.dev/chainguard/wolfi-base@sha256:73f2cab0f11208427595d4bdd784046bc4116ef7cc52f0c1b48b6b7f820288d5",
+      "configDigest": "sha256:75eed28386219af708b18b95400b27e480bf7121b56973ec2f6dc96bacbefcf1"
     }
   },
   "source": {
     "url": "https://www.python.org/ftp/python/3.15.2/Python-3.15.2.tar.xz",
     "sha256": "8b5536d280142ecf6cdfe15d12a21ba1c65e300bbf7b28a8d0cdb849575797de",
-    "release": "https://www.python.org/downloads/release/python-3152/",
-    "officialImageRecipeCommit": "f4c67ece208dead594e43628d22e3c6027dd97ab"
+    "release": "https://www.python.org/downloads/release/python-3152/"
+  },
+  "vendorRecipe": {
+    "url": "https://github.com/wolfi-dev/os/blob/e74438916db12f225f1de4c1962718360e0ce377/python-3.15.yaml",
+    "commit": "e74438916db12f225f1de4c1962718360e0ce377",
+    "scope": "OpenSSL 4 compatibility only; custom upstream-source build, not a Wolfi Python APK or FIPS claim"
+  },
+  "patches": [
+    {
+      "filename": "0006-Allow-HelloRetryRequest-in-test_ssl-servername-callb.patch",
+      "url": "https://raw.githubusercontent.com/wolfi-dev/os/e74438916db12f225f1de4c1962718360e0ce377/python-3.15/0006-Allow-HelloRetryRequest-in-test_ssl-servername-callb.patch",
+      "sha256": "0ed21f68029085d289655a82c92f4dab186e6e3790f8a3589735944c683a1630"
+    },
+    {
+      "filename": "0007-Always-provide-PROTOCOL_TLSv1-and-fix-HAS_TLSv1_2-wi.patch",
+      "url": "https://raw.githubusercontent.com/wolfi-dev/os/e74438916db12f225f1de4c1962718360e0ce377/python-3.15/0007-Always-provide-PROTOCOL_TLSv1-and-fix-HAS_TLSv1_2-wi.patch",
+      "sha256": "7b40966ab6d05fb5c24013841a57d7d3c05c9b4974cafa22199a08e712141a8f"
+    }
+  ],
+  "repository": {
+    "url": "https://packages.wolfi.dev/os",
+    "indexUrl": "https://packages.wolfi.dev/os/x86_64/APKINDEX.tar.gz",
+    "indexSha256": "dc58fb52f344f45b38155762476fa79c3053a98b94bd6fecefcbaeeb0dfbb00f",
+    "indexPolicy": "Resolution snapshot hash; refreshable signed index must retain every exact locked control checksum. Actual build index hash is recorded.",
+    "keySha256": "f0031424cf46f7db780ce63a45f0fd6aa6f85f601e6bb3b7a91fe3d4d5b7d2cc"
+  },
+  "apks": [
+    {
+      "name": "apk-tools",
+      "version": "2.14.12-r0",
+      "filename": "apk-tools-2.14.12-r0.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/apk-tools-2.14.12-r0.apk",
+      "sha256": "2c12644991b2a775f3f1cfcb24392e0ef1f9ea1f8b6181a77230e5e6f29a7e43",
+      "roles": [
+        "build"
+      ],
+      "bytes": 194271,
+      "indexChecksum": "Q1w4dvbYANZCyPgUWkh+tvBlgUShs=",
+      "dataSha256": "3a3072d1b9fb9aaddf65f176a545a6ea26d2079bb5d2e05750ef74c12bac5843"
+    },
+    {
+      "name": "binutils",
+      "version": "2.47-r2",
+      "filename": "binutils-2.47-r2.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/binutils-2.47-r2.apk",
+      "sha256": "62a5fea9b0fb8ad9af0ba789c4d43813a9da38e3809578d2be070f6e02c90cba",
+      "roles": [
+        "build"
+      ],
+      "bytes": 14399129,
+      "indexChecksum": "Q1neup6Rzbm5ZT6lm91+4FLkp5iDM=",
+      "dataSha256": "182db191a343ac18828d28aa986fc7441d69eb9addba98f2078123ebb096b4c1"
+    },
+    {
+      "name": "build-base",
+      "version": "1-r10",
+      "filename": "build-base-1-r10.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/build-base-1-r10.apk",
+      "sha256": "b9b7aaf16f011b75c542582e746f8d33c83f54648595d5ab8884ac70f6ed435d",
+      "roles": [
+        "build"
+      ],
+      "bytes": 2615,
+      "indexChecksum": "Q1mQ0LNdgH3PCeqGyeJEQY75bMNno=",
+      "dataSha256": "68919aa86628770f6ba3215d9802194d54ac6fa962619508eaec8c459fb82044"
+    },
+    {
+      "name": "busybox",
+      "version": "1.38.0-r3",
+      "filename": "busybox-1.38.0-r3.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/busybox-1.38.0-r3.apk",
+      "sha256": "eeb563b77b93f040ed255a56b014a9c8f882a5651744f908577e1a3bc5ea9b3a",
+      "roles": [
+        "build"
+      ],
+      "bytes": 436005,
+      "indexChecksum": "Q1nJ0RNPYKE/6p9+1WgdqC1lA0JnM=",
+      "dataSha256": "7a23eaab4221328f5982a13c28b581ef5b60d6168260d023f995545febc4b7e5"
+    },
+    {
+      "name": "bzip2-dev",
+      "version": "1.0.8-r28",
+      "filename": "bzip2-dev-1.0.8-r28.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/bzip2-dev-1.0.8-r28.apk",
+      "sha256": "fc589634c2517573c145cdd4bda582667073d98396050513400169a9b0fcd3bd",
+      "roles": [
+        "build"
+      ],
+      "bytes": 60659,
+      "indexChecksum": "Q12T1oBcxPC0gSklkTTjTmp+s4Gl8=",
+      "dataSha256": "2a86c53f369c1f53b7fb9579dbaaf0764b13ea879a5422fda69323ee4aa266d9"
+    },
+    {
+      "name": "ca-certificates-bundle",
+      "version": "20261020-r0",
+      "filename": "ca-certificates-bundle-20261020-r0.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/ca-certificates-bundle-20261020-r0.apk",
+      "sha256": "f0bee352ca8f87c2c3ec1bdd459836f2afbb4874703e3a21888846ee08a96f71",
+      "roles": [
+        "runtime",
+        "build"
+      ],
+      "bytes": 118541,
+      "indexChecksum": "Q19P7fzB945PuRaQEnzg9napiRzKE=",
+      "dataSha256": "dcba34a3b1269f5f76bfc9716e97dea183bd70de5f6dd35acbaab41d3f7dc0bd"
+    },
+    {
+      "name": "expat-dev",
+      "version": "2.9.0-r0",
+      "filename": "expat-dev-2.9.0-r0.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/expat-dev-2.9.0-r0.apk",
+      "sha256": "7e54215a6e7768a88eefa71d6ee0f5e0d348190deea906dc28426621c2d88e37",
+      "roles": [
+        "build"
+      ],
+      "bytes": 31936,
+      "indexChecksum": "Q1Li2IFL/y4xpN6v1xIwYeE3S+lTA=",
+      "dataSha256": "48e391d1a540aa4d1ed6d124e9f2fd1f7e67fe67b7f3e119510817dfe19ebdcd"
+    },
+    {
+      "name": "gcc",
+      "version": "16.2.0-r2",
+      "filename": "gcc-16.2.0-r2.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/gcc-16.2.0-r2.apk",
+      "sha256": "609c148b234dc24c4f3c937fe0edc057ade453f20359324496b13aca8edc9f8d",
+      "roles": [
+        "build"
+      ],
+      "bytes": 127928002,
+      "indexChecksum": "Q19WCtEdy+K9H20NUXeCqnvUFmeU0=",
+      "dataSha256": "42e1d53a1c022ed44f0f7484e48793006d1908894e901f408ae2413d3abdf2e9"
+    },
+    {
+      "name": "glibc-2.44",
+      "version": "2.44-r11",
+      "filename": "glibc-2.44-2.44-r11.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/glibc-2.44-2.44-r11.apk",
+      "sha256": "b3cf040553787b293a24fe1ea919050c78f94c859704718967743f88bb036a86",
+      "roles": [
+        "runtime",
+        "build"
+      ],
+      "bytes": 3168728,
+      "indexChecksum": "Q1ANYp0lxlNW/iQ+fuhEsDCJXYREk=",
+      "dataSha256": "20fd3031e82f70a8502fadc6b8e13f97bc0a6a8524bba23b7255d8632f089fa2"
+    },
+    {
+      "name": "glibc-2.44-dev",
+      "version": "2.44-r11",
+      "filename": "glibc-2.44-dev-2.44-r11.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/glibc-2.44-dev-2.44-r11.apk",
+      "sha256": "bcf3034e509dffa874b3c8ecb8860df4f20da0810d16e53188e548bb45f7a13e",
+      "roles": [
+        "build"
+      ],
+      "bytes": 18078993,
+      "indexChecksum": "Q1TSei6b1Lkkxs8F3QCJJadLvI8ls=",
+      "dataSha256": "a71e4470f9cf706c9452e596620d49b76347cf683d49ecec2eaf2f82a743c369"
+    },
+    {
+      "name": "glibc-2.44-locale-posix",
+      "version": "2.44-r11",
+      "filename": "glibc-2.44-locale-posix-2.44-r11.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/glibc-2.44-locale-posix-2.44-r11.apk",
+      "sha256": "0eacc873474d0f46e907b827732c11b5d47b4f80cb8b5ed9d81bdeb5b024a312",
+      "roles": [
+        "runtime",
+        "build"
+      ],
+      "bytes": 99252,
+      "indexChecksum": "Q178/+Rrf+Tn1Uh+R0EpxmuQwWdrs=",
+      "dataSha256": "dce77af42eae927c5d8f21eb53c06ecdb228b1a57ae5feb6aa904f5250965468"
+    },
+    {
+      "name": "gmp",
+      "version": "6.3.0-r12",
+      "filename": "gmp-6.3.0-r12.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/gmp-6.3.0-r12.apk",
+      "sha256": "86d210fa85d0bec8976904cfd654f1f7634ccfd7b5aed6afd2cc1177e3bba49f",
+      "roles": [
+        "build"
+      ],
+      "bytes": 316828,
+      "indexChecksum": "Q1b7Bda3QMP/5Yy5mq6/6nI/eReyc=",
+      "dataSha256": "86ae47f29917a5af9e72e373e8b6ca4368491f25466f31566b6f42cb6985d152"
+    },
+    {
+      "name": "isl",
+      "version": "0.28-r6",
+      "filename": "isl-0.28-r6.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/isl-0.28-r6.apk",
+      "sha256": "2623e58350baff1427f18511b042879b47f1e7a9a2d7182e49a53e120accd9db",
+      "roles": [
+        "build"
+      ],
+      "bytes": 1166008,
+      "indexChecksum": "Q1yi7l7WRXF2pxJo/ojKib03yodx4=",
+      "dataSha256": "06c22ee6cd072fad9f9fb9d7eca6c5ac73c8311a952eab46ad289474282b0960"
+    },
+    {
+      "name": "ld-linux-2.44",
+      "version": "2.44-r11",
+      "filename": "ld-linux-2.44-2.44-r11.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/ld-linux-2.44-2.44-r11.apk",
+      "sha256": "826dd5bf1d6c36fc42e43d62e9c5c5aad6463ba984d2a44a60e94b4069413b57",
+      "roles": [
+        "runtime",
+        "build"
+      ],
+      "bytes": 163156,
+      "indexChecksum": "Q1uF4xI470TysfS518dXmkyYfwuIw=",
+      "dataSha256": "1238f90cb518055a4e8dadfa9e6031bb7f6370defd3074e14c9b42485a40660f"
+    },
+    {
+      "name": "libatomic",
+      "version": "16.2.0-r2",
+      "filename": "libatomic-16.2.0-r2.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/libatomic-16.2.0-r2.apk",
+      "sha256": "2d2a7635a44f2ca33aa4829363d47c6ec7f3d529de6a7b67711e8b7d43304662",
+      "roles": [
+        "build"
+      ],
+      "bytes": 34179,
+      "indexChecksum": "Q1uQuLgFVJsfMGFlxPA+w/XdckjHA=",
+      "dataSha256": "a537a7505cb86fe7eb65f757faed2951db0118e7640db51cbafededa36bc7a84"
+    },
+    {
+      "name": "libbrotlicommon1",
+      "version": "1.2.1-r2",
+      "filename": "libbrotlicommon1-1.2.1-r2.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/libbrotlicommon1-1.2.1-r2.apk",
+      "sha256": "fcc021ab88501ff5fcc1d74783df7f062bb7c260050565a9ca556db2537aedc5",
+      "roles": [
+        "runtime",
+        "build"
+      ],
+      "bytes": 85871,
+      "indexChecksum": "Q1hR13/btAoHKw3piU/POT5y4GwS8=",
+      "dataSha256": "ecb5638837930a007aa81bf9244ecc32c1173f19c4e6d0997f2988bee9f71739"
+    },
+    {
+      "name": "libbrotlidec1",
+      "version": "1.2.1-r2",
+      "filename": "libbrotlidec1-1.2.1-r2.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/libbrotlidec1-1.2.1-r2.apk",
+      "sha256": "bf2619bf5ab853dc8617c5f42fbba87f1cf1bf32e580322e22d49564554c31f6",
+      "roles": [
+        "runtime",
+        "build"
+      ],
+      "bytes": 49150,
+      "indexChecksum": "Q1StgOWSmECA/XsKwXr9lNj6rRTiQ=",
+      "dataSha256": "f99ba1d25c24aa32cd77eda232413657f205a0acfdb54bb2b40ab1560c3da4b2"
+    },
+    {
+      "name": "libbrotlienc1",
+      "version": "1.2.1-r2",
+      "filename": "libbrotlienc1-1.2.1-r2.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/libbrotlienc1-1.2.1-r2.apk",
+      "sha256": "e916a6a52270b1bf7ae14ca61f5b9a9dda068149c352ae8bf1cf10489dfe2959",
+      "roles": [
+        "runtime",
+        "build"
+      ],
+      "bytes": 448468,
+      "indexChecksum": "Q1sd/3jnUNRLQE1b2odCcgTMx/ORs=",
+      "dataSha256": "0529f56af020d732f7cc1b8ec618337478b8011d5cae7eb739347eeb9ae233fa"
+    },
+    {
+      "name": "libbz2-1",
+      "version": "1.0.8-r28",
+      "filename": "libbz2-1-1.0.8-r28.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/libbz2-1-1.0.8-r28.apk",
+      "sha256": "28e50dd52b3ebe37e2f8c3a924810ec9de56c42348785d49642201773645e346",
+      "roles": [
+        "runtime",
+        "build"
+      ],
+      "bytes": 59437,
+      "indexChecksum": "Q14/JWXvu60s4vcLVQRseIOkgDgjc=",
+      "dataSha256": "889417e7a0cfcc8dc3ffabf81acb7b5de15d003c92c88800b6c052acd0680e6e"
+    },
+    {
+      "name": "libcap-ng",
+      "version": "0.9.6-r1",
+      "filename": "libcap-ng-0.9.6-r1.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/libcap-ng-0.9.6-r1.apk",
+      "sha256": "9650710711bfd76f61f48ae01ecff731200c3dd42be4d94ea177a0fe14dbd2b7",
+      "roles": [
+        "runtime"
+      ],
+      "bytes": 27924,
+      "indexChecksum": "Q10dTQlSUosPBDicQrUkKQkNDqO70=",
+      "dataSha256": "6a9f7b67d7f65ea5395a49c6e5af5f3cc279a4b40827e13a3cf489fee8653f8f"
+    },
+    {
+      "name": "libcrypt1-2.44",
+      "version": "2.44-r11",
+      "filename": "libcrypt1-2.44-2.44-r11.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/libcrypt1-2.44-2.44-r11.apk",
+      "sha256": "35c2c109474eda20eb839c6a4d784f04fc7c2a9231c81ef0659f3268cf6c9a67",
+      "roles": [
+        "build"
+      ],
+      "bytes": 24156,
+      "indexChecksum": "Q1qRFJsC7oucODb1IyQMq/XVCBPzQ=",
+      "dataSha256": "13452832200dca302118b8a911a11b13bdad0ef086493b68ac957548d3e1a9fd"
+    },
+    {
+      "name": "libexpat1",
+      "version": "2.9.0-r0",
+      "filename": "libexpat1-2.9.0-r0.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/libexpat1-2.9.0-r0.apk",
+      "sha256": "49291dad97f2292a5796c2cdb766f6476b274332ae2bbd3c35447d7f305f81a8",
+      "roles": [
+        "runtime",
+        "build"
+      ],
+      "bytes": 113449,
+      "indexChecksum": "Q1BC65V0Hv+gnJNyw/bhPXBGDFang=",
+      "dataSha256": "54665dd2de2bab64acfd0c7ee135d3f73d7f1b2fa5cb3aca36785c1bd3eca2ae"
+    },
+    {
+      "name": "libffi",
+      "version": "3.8.0-r2",
+      "filename": "libffi-3.8.0-r2.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/libffi-3.8.0-r2.apk",
+      "sha256": "93fe2f937802653775e8537c7a2840c6de8a1d83c396559be200c0d5d86375f6",
+      "roles": [
+        "runtime",
+        "build"
+      ],
+      "bytes": 47462,
+      "indexChecksum": "Q1Xv/AsO+lsjORCxdKxyfkMMLLkO0=",
+      "dataSha256": "7c2b1f5799c1f808b0d00c26f07accfaef210cbf349b8c14e6687d289521e8fb"
+    },
+    {
+      "name": "libffi-dev",
+      "version": "3.8.0-r2",
+      "filename": "libffi-dev-3.8.0-r2.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/libffi-dev-3.8.0-r2.apk",
+      "sha256": "fe581a97c5e33da0d23eff9ec774380a72f5a2bef74105622e302021e781c789",
+      "roles": [
+        "build"
+      ],
+      "bytes": 57772,
+      "indexChecksum": "Q1vx7X5q48aOm5suvRWEqzE/58Yy0=",
+      "dataSha256": "ed9918a2ea36e7262de7bb034b0d74dbd198a0da2ff972d40ee6f7d168a07b16"
+    },
+    {
+      "name": "libgcc",
+      "version": "16.2.0-r2",
+      "filename": "libgcc-16.2.0-r2.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/libgcc-16.2.0-r2.apk",
+      "sha256": "37e38f29f667c0c8c4c2c98747dfbe2c8c87dda2a9505fa51f0d53ab40c711b8",
+      "roles": [
+        "runtime",
+        "build"
+      ],
+      "bytes": 112648,
+      "indexChecksum": "Q1ZiXgGGwe5h6UXD0/Zbd/7LKBpkw=",
+      "dataSha256": "06f13fbcd29849c598d736077aa10f86a0e9cf451e3970ac910f386164c6f53b"
+    },
+    {
+      "name": "libgomp",
+      "version": "16.2.0-r2",
+      "filename": "libgomp-16.2.0-r2.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/libgomp-16.2.0-r2.apk",
+      "sha256": "6369ecd1cafd492376ad29ec8e1c359c5031527db63c65da3df15335bf74bb7d",
+      "roles": [
+        "build"
+      ],
+      "bytes": 215391,
+      "indexChecksum": "Q17lJyKGBVmV+ssEN1hNLj+HI208s=",
+      "dataSha256": "fcab78828cb120ce3772030405b3e88a9d9a65c6ea2ac63aedb009f8aa29afb6"
+    },
+    {
+      "name": "libquadmath",
+      "version": "16.2.0-r2",
+      "filename": "libquadmath-16.2.0-r2.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/libquadmath-16.2.0-r2.apk",
+      "sha256": "50db5269c851071c5fb8e6872f3d3579896e38abe3607c9a47cf218aa4a0ddb3",
+      "roles": [
+        "build"
+      ],
+      "bytes": 192542,
+      "indexChecksum": "Q1AVmj2Bu/EGvnJHV+lLqk/WX2nKk=",
+      "dataSha256": "143161fb40567535f3f3a2ecda2b3a267afe7e9a149ed965b31e8397a97e33f6"
+    },
+    {
+      "name": "libstdc++",
+      "version": "16.2.0-r2",
+      "filename": "libstdc++-16.2.0-r2.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/libstdc++-16.2.0-r2.apk",
+      "sha256": "91d46dc63af715208b8d1424909f4df7e30cbc2321afaa9dcd412476e0297ebd",
+      "roles": [
+        "runtime",
+        "build"
+      ],
+      "bytes": 1267168,
+      "indexChecksum": "Q1TDYeh0Iq9Fjbp5cPck+zZfmDn14=",
+      "dataSha256": "2aa888b8ecff14138a2a0e178dcbcb03eeffa976c0600ae8d6849cb45cb80c6a"
+    },
+    {
+      "name": "libstdc++-dev",
+      "version": "16.2.0-r2",
+      "filename": "libstdc++-dev-16.2.0-r2.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/libstdc++-dev-16.2.0-r2.apk",
+      "sha256": "90c4baed76c5f006b557939bf90379e064fd7dd6d02912149c7ea99e6eeb948d",
+      "roles": [
+        "build"
+      ],
+      "bytes": 15969982,
+      "indexChecksum": "Q1dr6TwMeGP7kzr5FtuUqx/KEfd0E=",
+      "dataSha256": "427e02ecaa1a59bcce95e58fd72448f831126fde8a2aca1a7863b9f90187e059"
+    },
+    {
+      "name": "libxcrypt",
+      "version": "4.5.2-r6",
+      "filename": "libxcrypt-4.5.2-r6.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/libxcrypt-4.5.2-r6.apk",
+      "sha256": "fab127bcb2474adc952b6c34a6e3f5c633672b47429a24fcc6fd719425aafb93",
+      "roles": [
+        "build"
+      ],
+      "bytes": 108193,
+      "indexChecksum": "Q1AgAMlqTIWIJ/agsYN4WFrdg4lUE=",
+      "dataSha256": "18a678650b6016a4703c3ff0220ada2013816028a908ebbe56a0635d951c3c01"
+    },
+    {
+      "name": "libxcrypt-dev",
+      "version": "4.5.2-r6",
+      "filename": "libxcrypt-dev-4.5.2-r6.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/libxcrypt-dev-4.5.2-r6.apk",
+      "sha256": "0d18765918cf484ebf3309cb62f99fee86c902fcf6992284ddce905350b414a1",
+      "roles": [
+        "build"
+      ],
+      "bytes": 433219,
+      "indexChecksum": "Q1nE+RinUVXiwFk3JkJFcqmev+6pg=",
+      "dataSha256": "82b71240e68fa7289191f3cca1ac8409f676f5c27eefc0ab7827675bb95fafc6"
+    },
+    {
+      "name": "libzstd1",
+      "version": "1.5.7-r12",
+      "filename": "libzstd1-1.5.7-r12.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/libzstd1-1.5.7-r12.apk",
+      "sha256": "2370a667a29531d480ba349e7dc4d711cbebf07a8ba20d2f9007454a6d2d9d29",
+      "roles": [
+        "build"
+      ],
+      "bytes": 647247,
+      "indexChecksum": "Q1BZiPRxu5HdYxq9AQJxdbIuB4DxU=",
+      "dataSha256": "610006fb73a6b554ec77c52cfaaf364832c61f53252b321f37c2f4f8c7a3f54b"
+    },
+    {
+      "name": "linux-headers",
+      "version": "7.3.1-r0",
+      "filename": "linux-headers-7.3.1-r0.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/linux-headers-7.3.1-r0.apk",
+      "sha256": "3e5212c3b4f9805baef11b0fe75629f82be0bf8673c24f783eb7993f2862d89d",
+      "roles": [
+        "build"
+      ],
+      "bytes": 2142496,
+      "indexChecksum": "Q1vWVKRS3fDwDbT3xpmPWJvF1bZhA=",
+      "dataSha256": "a8c7837368b3226efca7e94ac512c0ec951f4e36cf843a001d43c803f84ee174"
+    },
+    {
+      "name": "make",
+      "version": "4.4.1-r15",
+      "filename": "make-4.4.1-r15.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/make-4.4.1-r15.apk",
+      "sha256": "543f3d920be217aefc2e423301699bf59e524ff336c01491634f1aab6591ce4d",
+      "roles": [
+        "build"
+      ],
+      "bytes": 657096,
+      "indexChecksum": "Q1gck1BsLmGkYBlSO/l6T4nFqy2Qg=",
+      "dataSha256": "6f6c9fbaaf78954d615f67c39b78337da3c2a212b64a44183d5b0891bb5b291c"
+    },
+    {
+      "name": "mpc",
+      "version": "1.4.1-r3",
+      "filename": "mpc-1.4.1-r3.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/mpc-1.4.1-r3.apk",
+      "sha256": "eec72657b6f9344abf82089852a12d81b0f73e11d148efbe5da743e5317a0894",
+      "roles": [
+        "build"
+      ],
+      "bytes": 91252,
+      "indexChecksum": "Q10xLlreh3TZuHwwo/WxmMye+cU0E=",
+      "dataSha256": "40cc8d61a709a4fc23c9784457ccb31dc0adc2dd84cca5d08dabeb203a4bea99"
+    },
+    {
+      "name": "mpdecimal",
+      "version": "4.0.1-r6",
+      "filename": "mpdecimal-4.0.1-r6.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/mpdecimal-4.0.1-r6.apk",
+      "sha256": "1d8cbdf4a1a99910af28dfaad19643a3604159f9decb380c0e39166bd0c812e8",
+      "roles": [
+        "runtime",
+        "build"
+      ],
+      "bytes": 135908,
+      "indexChecksum": "Q1kpDYLUMV5sHuT7URRwDjYUwBYp8=",
+      "dataSha256": "5d8f48a8ea4c98bf12fa29d2588e5da75a31bf53c4599209c34564f1df0e744a"
+    },
+    {
+      "name": "mpdecimal-dev",
+      "version": "4.0.1-r6",
+      "filename": "mpdecimal-dev-4.0.1-r6.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/mpdecimal-dev-4.0.1-r6.apk",
+      "sha256": "9c3fc4c17422dd0fa19272e19451a32194ac321cb36802af81b894565ecd4ce5",
+      "roles": [
+        "build"
+      ],
+      "bytes": 147266,
+      "indexChecksum": "Q1TBPGFmjxqPiIkSla6HRRFuxtWCY=",
+      "dataSha256": "f2e52c5c23f3bad643927082bf1adbf0f75e1fb157b4f6285409d2ba16760652"
+    },
+    {
+      "name": "mpfr",
+      "version": "4.2.2-r5",
+      "filename": "mpfr-4.2.2-r5.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/mpfr-4.2.2-r5.apk",
+      "sha256": "202d5695a52ea7ffd42b1fdcca7833314fd0569a9db3706919fae073c1d7a2b4",
+      "roles": [
+        "build"
+      ],
+      "bytes": 736539,
+      "indexChecksum": "Q1GR00xhh/epuBA/HQ9ErBrCnZAIY=",
+      "dataSha256": "b042bc66bba3b476181077bd9d4476ac47fb2b2b53009056c159e91003b73561"
+    },
+    {
+      "name": "openssf-compiler-options",
+      "version": "20250904-r11",
+      "filename": "openssf-compiler-options-20250904-r11.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/openssf-compiler-options-20250904-r11.apk",
+      "sha256": "4b6b3b660ed2305f320b081fae9deeae84e18370fcd9f85ea070b1498318b675",
+      "roles": [
+        "build"
+      ],
+      "bytes": 11220,
+      "indexChecksum": "Q1Qi7E22V6ehUIcP784RXaxjt4KF0=",
+      "dataSha256": "d51d62657125f2a1eb1c88782e875d000cbff39b667fff6b3ae4fa942112c8f7"
+    },
+    {
+      "name": "openssl-4.0-dev",
+      "version": "4.0.3-r8",
+      "filename": "openssl-4.0-dev-4.0.3-r8.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/openssl-4.0-dev-4.0.3-r8.apk",
+      "sha256": "f97c2a3da645386f9a86552f44da3e73ec5768c3ac9849a8b4f23b897e4242c5",
+      "roles": [
+        "build"
+      ],
+      "bytes": 17203171,
+      "indexChecksum": "Q1L99SzWnnzkZp15VzTLdiKyx2eyc=",
+      "dataSha256": "3f98b409ede3a13b6289497a7be5cb863dda211d48e73953ce2cf0fea449532d"
+    },
+    {
+      "name": "openssl-4.0-libcrypto",
+      "version": "4.0.3-r8",
+      "filename": "openssl-4.0-libcrypto-4.0.3-r8.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/openssl-4.0-libcrypto-4.0.3-r8.apk",
+      "sha256": "d10eb0f17414cf586f7681baa3a15b942e09e3cf570f5de2a6799650671e067c",
+      "roles": [
+        "runtime",
+        "build"
+      ],
+      "bytes": 2403081,
+      "indexChecksum": "Q1W9piTcgyubhrducJCMM7+qErDxo=",
+      "dataSha256": "f54f083dc29d76eedb96d6cac5c02e7ec42228133b2f74849540e98f5f8d8b90"
+    },
+    {
+      "name": "openssl-4.0-libssl",
+      "version": "4.0.3-r8",
+      "filename": "openssl-4.0-libssl-4.0.3-r8.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/openssl-4.0-libssl-4.0.3-r8.apk",
+      "sha256": "47d1e6276be28279a15e45882ce4262330ef7a80d8f0294b89ba47330fc01c7b",
+      "roles": [
+        "runtime",
+        "build"
+      ],
+      "bytes": 575950,
+      "indexChecksum": "Q1arwi4n4L3VZ3S8YJ6P4WwY/7JjY=",
+      "dataSha256": "c49fee471d393934a1b48232649fd4f1bfbcea79f822a372b9c28eab32230045"
+    },
+    {
+      "name": "openssl-provider-legacy-allowed",
+      "version": "4.1.0-r0",
+      "filename": "openssl-provider-legacy-allowed-4.1.0-r0.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/openssl-provider-legacy-allowed-4.1.0-r0.apk",
+      "sha256": "ffd0efe415279f8814a6ace7db4841789bf7c91085b90202b7236c6cf70e988e",
+      "roles": [
+        "runtime",
+        "build"
+      ],
+      "bytes": 364302,
+      "indexChecksum": "Q1K5CR6PVd/wWU++lG1SG1MRrQkJA=",
+      "dataSha256": "54653193aaf1b67de62d0a5f4cf65259f220b6040fa192bb72a0a8a5e673320c"
+    },
+    {
+      "name": "patch",
+      "version": "2.8.1-r1",
+      "filename": "patch-2.8.1-r1.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/patch-2.8.1-r1.apk",
+      "sha256": "6eba12b62340a6b2e068a2bdbe36c68177705ebd55db550bcd97913d04d5d435",
+      "roles": [
+        "build"
+      ],
+      "bytes": 118694,
+      "indexChecksum": "Q1sfqz2qWfmqKknm5OkQT/Wr4+aOg=",
+      "dataSha256": "aa98ffabc5370bbb521696063b117e7b54b0b8e14ce8d71effc38f495850144c"
+    },
+    {
+      "name": "pkgconf",
+      "version": "3.0.10-r2",
+      "filename": "pkgconf-3.0.10-r2.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/pkgconf-3.0.10-r2.apk",
+      "sha256": "fada55fbd068229e2fd8032a6f21adf8919072356d94e5223848029ed69fa360",
+      "roles": [
+        "build"
+      ],
+      "bytes": 161723,
+      "indexChecksum": "Q1wj6YSsdqqEDTDHKbDclm0OEWtNE=",
+      "dataSha256": "1a508e636094f5e2c1140aa1a202dfa24f4e3a2092844b9188c3c1f762b1c60c"
+    },
+    {
+      "name": "posix-cc-wrappers",
+      "version": "2-r10",
+      "filename": "posix-cc-wrappers-2-r10.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/posix-cc-wrappers-2-r10.apk",
+      "sha256": "2f9e88c16d570e0acf524f5b3cc3805eda40727f821ba8c8f4cf27422b384445",
+      "roles": [
+        "build"
+      ],
+      "bytes": 3372,
+      "indexChecksum": "Q11OlXaNv+Pb3dZ1SRlopOUou+y4Q=",
+      "dataSha256": "a41b3bc4392750a2c164f0a28ecd330e98a1905d40c21e8f540ef9a0cf7c49c9"
+    },
+    {
+      "name": "setpriv",
+      "version": "2.42.4-r2",
+      "filename": "setpriv-2.42.4-r2.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/setpriv-2.42.4-r2.apk",
+      "sha256": "d3d6eda94932f467139d030b232fbb60706abd2e03f811cf92a4616e2faa70dd",
+      "roles": [
+        "runtime"
+      ],
+      "bytes": 78962,
+      "indexChecksum": "Q1oyaLy9mLW+LT10wG40CQwhPkpWg=",
+      "dataSha256": "ad7e88c9808dc7b333125adf565459abe34cae8ec408d43164b594fd9d47bb24"
+    },
+    {
+      "name": "wolfi-base",
+      "version": "1-r7",
+      "filename": "wolfi-base-1-r7.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/wolfi-base-1-r7.apk",
+      "sha256": "078f4a89bc23e87dbe7677fecc6a86af65914c2ea980dc516248ffaf17d850fb",
+      "roles": [
+        "build"
+      ],
+      "bytes": 1816,
+      "indexChecksum": "Q16Ctc7TvokDUPOi+0TkHCeSmryh0=",
+      "dataSha256": "ec630dc259cb6a2f3b80a949fe2b4efecb09d3ef7da479013433df1b90be43f2"
+    },
+    {
+      "name": "wolfi-baselayout",
+      "version": "20230201-r31",
+      "filename": "wolfi-baselayout-20230201-r31.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/wolfi-baselayout-20230201-r31.apk",
+      "sha256": "fd26a08c81e3aa25b95540ef12e1418e5d60efaa561ceee378e840eb52d980f6",
+      "roles": [
+        "runtime",
+        "build"
+      ],
+      "bytes": 14592,
+      "indexChecksum": "Q1W4ff78hzbtDn6J9JJRRwbjKmKR4=",
+      "dataSha256": "acdd17b56e9c61e17cc448ea64de0e41d4f95d576aa4d1e0334f1579a42b1d11"
+    },
+    {
+      "name": "wolfi-keys",
+      "version": "1-r14",
+      "filename": "wolfi-keys-1-r14.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/wolfi-keys-1-r14.apk",
+      "sha256": "d93fd4f91e93e797844f80d800761939ac4a8c87379f390a193f23c4b81894cc",
+      "roles": [
+        "build"
+      ],
+      "bytes": 3939,
+      "indexChecksum": "Q1pjSE0onslwptVuXi4b8BfLXGXXw=",
+      "dataSha256": "0df167aaccd5d62023aceef39f2ba31359b1c4d1ba9d13d991aea7ed617047dd"
+    },
+    {
+      "name": "xz",
+      "version": "5.8.4-r0",
+      "filename": "xz-5.8.4-r0.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/xz-5.8.4-r0.apk",
+      "sha256": "d015b40af8b300a0a33e710573e1e7d6cdc31ae5124bcac2fd299bea90a8506a",
+      "roles": [
+        "runtime",
+        "build"
+      ],
+      "bytes": 397390,
+      "indexChecksum": "Q1krKZR0I/kPCVPgULCI8yz9N3BZc=",
+      "dataSha256": "ad6322edaeac967d8f4832ed3c75c1d318f73aaa9b9080939d38741cd47b776e"
+    },
+    {
+      "name": "xz-dev",
+      "version": "5.8.4-r0",
+      "filename": "xz-dev-5.8.4-r0.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/xz-dev-5.8.4-r0.apk",
+      "sha256": "6506911bc9ba6acb4aedb4c532d5a1815f71d62d96ae1c74601ce7dac0f206c4",
+      "roles": [
+        "build"
+      ],
+      "bytes": 844840,
+      "indexChecksum": "Q1LKfabPNFb46mz7Kz9iXXXZec50I=",
+      "dataSha256": "165f43e923340abe9ffb6e11a83f8ce9855bb7acc12fb1617f898eb687cda41f"
+    },
+    {
+      "name": "zlib",
+      "version": "1.3.2.1_rc20260921-r1",
+      "filename": "zlib-1.3.2.1_rc20260921-r1.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/zlib-1.3.2.1_rc20260921-r1.apk",
+      "sha256": "592548698b1563e726709408dc9fc183c595bc5dc463ee6913e9202029952803",
+      "roles": [
+        "runtime",
+        "build"
+      ],
+      "bytes": 74708,
+      "indexChecksum": "Q1Ub6dKp3Ta9ickOJCrZu6zbJa70s=",
+      "dataSha256": "98a41befff91e6f587a8edff32928da2f9dbef835d837f84c62aba45745aebef"
+    },
+    {
+      "name": "zlib-dev",
+      "version": "1.3.2.1_rc20260921-r1",
+      "filename": "zlib-dev-1.3.2.1_rc20260921-r1.apk",
+      "url": "https://packages.wolfi.dev/os/x86_64/zlib-dev-1.3.2.1_rc20260921-r1.apk",
+      "sha256": "56c3fbb1ac3e2047e0906bec22400f2470b9e715c53521fa83ade0f1eab16fb4",
+      "roles": [
+        "build"
+      ],
+      "bytes": 46289,
+      "indexChecksum": "Q1iJpOhHAsTlksn8q8iq4zl8AhAAY=",
+      "dataSha256": "ecf89d4df1486319e031ed0a8645eeabd8083039e8f6847292756cad8a2af78b"
+    }
+  ],
+  "clamav": {
+    "version": "1.5.4",
+    "packageVersion": "1.5.4-1",
+    "url": "https://github.com/Cisco-Talos/clamav/releases/download/clamav-1.5.4/clamav-1.5.4.linux.x86_64.deb",
+    "sha256": "28d6efc5b4423e7830c3559339552eb53870a9eac51ac4efb37d60530d329886"
   }
 }

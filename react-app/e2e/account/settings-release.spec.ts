@@ -3,6 +3,7 @@ import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import type { AxeResults } from 'axe-core';
 import { readFileSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
+import { comparePngRenderEquivalence } from '../helpers/render-equivalence';
 
 const axeSource = readFileSync('node_modules/axe-core/axe.min.js', 'utf8');
 const user = {
@@ -130,9 +131,53 @@ async function audit(page: Page, testInfo: TestInfo, name: string) {
   return results;
 }
 
+async function layoutDiagnostics(page: Page) {
+  return page.evaluate(() => {
+    const rect = (box: DOMRect) => ({
+      x: box.x,
+      y: box.y,
+      width: box.width,
+      height: box.height,
+      top: box.top,
+      right: box.right,
+      bottom: box.bottom,
+      left: box.left,
+    });
+    const elements = [...document.querySelectorAll('body, body *')].map((element) => ({
+      tag: element.tagName,
+      id: element.id,
+      box: rect(element.getBoundingClientRect()),
+      fragments: [...element.getClientRects()].map(rect),
+      scroll: {
+        left: element.scrollLeft,
+        top: element.scrollTop,
+        width: element.scrollWidth,
+        height: element.scrollHeight,
+      },
+    }));
+    const text = [];
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const range = document.createRange();
+      range.selectNodeContents(walker.currentNode);
+      const fragments = [...range.getClientRects()].map(rect);
+      // Non-rendered script/style text has no geometry; exact DOM is checked separately.
+      if (fragments.length) text.push({ text: walker.currentNode.textContent, fragments });
+    }
+    return {
+      viewport: { width: innerWidth, height: innerHeight },
+      scroll: { x: scrollX, y: scrollY },
+      elements,
+      text,
+    };
+  });
+}
+
 async function capture(page: Page, testInfo: TestInfo, name: string) {
   await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }));
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await expect
+    .poll(() => page.evaluate(() => ({ x: scrollX, y: scrollY })))
+    .toEqual({ x: 0, y: 0 });
   const path = testInfo.outputPath(`${name}.png`);
   const bytes = await page.screenshot({
     path,
@@ -208,6 +253,8 @@ test('release profile remains readable, reachable, accessible, and visually stab
   await saveJson(testInfo, 'settings-native-colors', beforeColors);
   // Capture before axe or assertions so a contrast failure still has real pixels.
   const beforePixels = await capture(page, testInfo, 'settings-release-before-axe');
+  const beforeMarkup = await page.locator('body').innerHTML();
+  const beforeLayout = await layoutDiagnostics(page);
   const results = await audit(page, testInfo, 'settings-accessibility-results');
   expect(
     beforeColors.missingRequiredRepresentatives,
@@ -237,7 +284,7 @@ test('release profile remains readable, reachable, accessible, and visually stab
       expect(Number(element?.opacity)).toBeGreaterThan(0);
     }
 
-    const beforeMarkup = await page.locator('body').innerHTML();
+    await saveJson(testInfo, 'settings-initial-layout', beforeLayout);
     let negativeResults: AxeResults | undefined;
     let negativeColors: Awaited<ReturnType<typeof colorDiagnostics>> | undefined;
     try {
@@ -271,18 +318,26 @@ test('release profile remains readable, reachable, accessible, and visually stab
       await page
         .locator('#forced-color-negative-controls')
         .evaluateAll((nodes) => nodes.forEach((node) => node.remove()));
+      await page.evaluate(
+        ({ x, y }) => window.scrollTo({ left: x, top: y, behavior: 'instant' }),
+        beforeLayout.scroll
+      );
     }
 
     const afterColors = await colorDiagnostics(page);
     await saveJson(testInfo, 'settings-restored-native-colors', afterColors);
+    // Record restoration before capture() normalizes scroll, so it cannot hide drift.
+    const afterLayout = await layoutDiagnostics(page);
+    await saveJson(testInfo, 'settings-restored-layout', afterLayout);
     const afterPixels = await capture(page, testInfo, 'settings-release-restored-after-controls');
     const restored = await audit(page, testInfo, 'settings-restored-accessibility-results');
-    expect(await page.locator('body').innerHTML()).toBe(beforeMarkup);
-    expect(afterColors).toEqual(beforeColors);
-    expect(
-      Buffer.compare(beforePixels, afterPixels),
-      'temporary controls must not alter the restored page pixels'
-    ).toBe(0);
+    // Persist quantitative image diagnostics even if an earlier semantic gate fails.
+    const renderComparison = comparePngRenderEquivalence(beforePixels, afterPixels);
+    await saveJson(testInfo, 'settings-restoration-render-equivalence', renderComparison);
+    // Complete-document zero gates and BOTH bad-control detections precede the
+    // image assertion; a rendering mismatch must not mask contrast-rule failures.
+    expect(results.violations).toEqual([]);
+    expect(restored.violations).toEqual([]);
     const controls = negativeColors?.elements.find(
       (item) => item.selector === '[data-forced-color-control]'
     )?.nodes;
@@ -309,7 +364,13 @@ test('release profile remains readable, reachable, accessible, and visually stab
         `the unchanged axe contrast rule must reject ${id}`
       ).toBe(true);
     }
-    expect(restored.violations).toEqual([]);
+    expect(await page.locator('body').innerHTML()).toBe(beforeMarkup);
+    expect(afterColors).toEqual(beforeColors);
+    expect(afterLayout).toEqual(beforeLayout);
+    expect(
+      renderComparison.equivalent,
+      `temporary-control restoration must satisfy the bounded approximate RGB check: ${JSON.stringify(renderComparison)}`
+    ).toBe(true);
   }
   expect(results.violations).toEqual([]);
   const horizontalEscape = await page.evaluate(() =>
