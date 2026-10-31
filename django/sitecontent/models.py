@@ -20,6 +20,14 @@ from django.db import models, transaction
 from django.utils import timezone
 
 from common.models import (
+    CONTENT_TYPE_KEY_PATTERN,
+    content_identifier_validator,
+    content_type_key_validator,
+    operations_identifier_validator,
+    validate_closed_mapping,
+    validate_operations_dimensions,
+)
+from common.models import (
     ReviewApproval as CanonicalReviewApproval,
 )
 from common.models import (
@@ -36,12 +44,6 @@ from common.models import (
 )
 from common.models import (
     WorkspacePolicy as CanonicalWorkspacePolicy,
-)
-from common.models import (
-    content_identifier_validator,
-    operations_identifier_validator,
-    validate_closed_mapping,
-    validate_operations_dimensions,
 )
 
 from .policy_locks import begin_workspace_policy_effect
@@ -131,7 +133,7 @@ class ContentTypeDefinition(SiteOwnedModel):
         FAILED = "failed", "Failed"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    type_key = models.CharField(max_length=63, validators=[content_identifier_validator])
+    type_key = models.CharField(max_length=63, validators=[content_type_key_validator])
     version = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
     name = models.CharField(max_length=120)
     description = models.TextField(blank=True, default="")
@@ -400,7 +402,7 @@ class ContentFieldDefinition(models.Model):
             maximum_depth = self.validation.get("maximumDepth", 2)
             if (
                 not isinstance(target_type, str)
-                or not re.fullmatch(r"[a-z][a-z0-9_]{1,62}", target_type)
+                or not re.fullmatch(CONTENT_TYPE_KEY_PATTERN, target_type)
                 or deletion_policy not in {"restrict", "detach", "cascade_soft"}
                 or not isinstance(maximum_depth, int)
                 or isinstance(maximum_depth, bool)
@@ -1013,7 +1015,7 @@ class ContentRelationship(SiteOwnedModel):
         max_length=16, choices=[(item, item) for item in DELETION_POLICIES], default="restrict"
     )
     target_type = models.CharField(
-        max_length=63, blank=True, default="", validators=[content_identifier_validator]
+        max_length=63, blank=True, default="", validators=[content_type_key_validator]
     )
     maximum_items = models.PositiveSmallIntegerField(
         default=50, validators=[MinValueValidator(1), MaxValueValidator(50)]

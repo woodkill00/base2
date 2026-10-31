@@ -56,6 +56,8 @@ FIELD_KINDS = (
     'json_object',
 )
 IDENTIFIER = re.compile(r'^[a-z][a-z0-9_]{1,62}$')
+# Mirror the canonical common.models type contract, never field/preset identifiers.
+TYPE_KEY = re.compile(r'\A(?=.{2,63}\Z)[a-z][a-z0-9_]*(?:-[a-z0-9][a-z0-9_]*)*\Z')
 
 
 def get_artifact_store():
@@ -132,6 +134,9 @@ class FieldDefinition(ContractModel):
         }
         if len(value) > 32 or set(value) - allowed:
             raise ValueError('field_validation_key_invalid')
+        target = value.get('targetType')
+        if 'targetType' in value and (not isinstance(target, str) or not TYPE_KEY.fullmatch(target)):
+            raise ValueError('field_relationship_invalid')
         return value
 
 
@@ -142,7 +147,14 @@ class DefinitionCreate(ContractModel):
     preset_id: str = Field(default='custom', min_length=2, max_length=63)
     fields: list[FieldDefinition] = Field(default_factory=list, max_length=64)
 
-    @field_validator('type_key', 'preset_id')
+    @field_validator('type_key')
+    @classmethod
+    def safe_type_key(cls, value: str) -> str:
+        if not TYPE_KEY.fullmatch(value):
+            raise ValueError('content_identifier_invalid')
+        return value
+
+    @field_validator('preset_id')
     @classmethod
     def safe_identifier(cls, value: str) -> str:
         if not IDENTIFIER.fullmatch(value):
@@ -428,7 +440,7 @@ def _expected_version(if_match: str | None, body_version: int | None = None) -> 
 
 
 def _valid_type_key(type_key: str) -> None:
-    if not IDENTIFIER.fullmatch(type_key):
+    if not TYPE_KEY.fullmatch(type_key):
         raise HTTPException(status_code=422, detail='content_identifier_invalid')
 
 

@@ -38,3 +38,17 @@ credential lifecycle; they are not a generic persisted settings draft. Separatel
 and test interrupted enrollment/recovery warnings, dismissal and authentication recovery
 without retaining one-time secrets across category/account changes or weakening cleanup.
 This follow-up is planned, not implemented or accepted by the ordinary-draft guard tests.
+
+## Public search navigation compatibility
+
+Source audit confirms that automatic search projections currently use
+`/{content_type}/{slug}`, while existing pack detail routes use `/blog/{slug}`,
+`/docs/{slug}` and `/portfolio/{slug}`. Correct those three supported mappings and
+bounded existing-projection reindexing as part of representative acceptance. Existing
+projection timestamps alone will not schedule that correction.
+
+Generic custom workspace types also lack a corresponding generic page renderer in
+this frontend. Their current API/search inclusion and privacy proof must not be
+presented as usable browser navigation. Specify an explicit safe public-rendering
+or configured-route contract before claiming that broader capability; do not add
+wildcard aliases or bypass disabled-module controls as a shortcut.

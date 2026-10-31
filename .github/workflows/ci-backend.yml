@@ -77,8 +77,7 @@ jobs:
           python -m pip check
 
       - name: Ruff (lint)
-        if: matrix.service == 'api'
-        run: python -m ruff check api
+        run: python -m ruff check "${{ matrix.service }}"
 
       - name: Set up Node for acceptance contracts
         if: matrix.service == 'api'

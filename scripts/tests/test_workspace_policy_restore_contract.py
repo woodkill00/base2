@@ -239,3 +239,56 @@ def test_dedicated_restore_prefers_only_complete_existing_server16_toolset():
     assert run.index('export PATH="/usr/lib/postgresql/16/bin:$PATH"') < run.index(
         'python -m scripts.python.workspace_policy_restore_fixture') < run.index('timeout 300')
     assert all(command not in run for command in ('apt-get', 'curl ', 'wget '))
+
+
+def test_service_file_uses_libpq_delimiters_and_preserves_values(monkeypatch, tmp_path):
+    """libpq compares keys verbatim before '=', unlike Python ConfigParser."""
+    import configparser
+    from unittest.mock import MagicMock
+
+    from scripts.python import production_backup
+
+    for key, value in {
+        'WORKSPACE_POLICY_DISPOSABLE': '1', 'WORKSPACE_RESTORE_DISPOSABLE': '1',
+        'DB_NAME': 'main', 'DB_HOST': 'localhost', 'DB_USER': 'fixture_owner',
+        'DB_PASSWORD': 'synthetic=percent%value',
+        **{prefix + '_DB_USER': prefix.lower() for prefix in fixture.ROLE_KEYS},
+    }.items():
+        monkeypatch.setenv(key, value)
+    harness = fixture.DisposableRestore(tmp_path)
+    owner = MagicMock()
+    cursor = owner.return_value.__enter__.return_value.cursor.return_value.__enter__.return_value
+    cursor.fetchall.return_value = [('fixture_owner',)]
+    cursor.fetchone.return_value = (41,)
+    monkeypatch.setattr(harness, 'owner', owner)
+    monkeypatch.setattr(fixture.subprocess, 'check_output', lambda *a, **k: 'a' * 40)
+    monkeypatch.setattr(production_backup, 'load_config', lambda path: path)
+    harness.config()
+    service = tmp_path / 'pg-service.conf'
+    text = service.read_text()
+    for line in text.splitlines():
+        if '=' in line:
+            key, value = line.split('=', 1)
+            assert key == key.strip()
+            assert value == value.lstrip()
+    parsed = configparser.RawConfigParser()
+    parsed.read_string(text)
+    for section, database in [('source', harness.source), ('target', harness.target)]:
+        assert parsed[section]['host'] == 'localhost'
+        assert parsed[section]['dbname'] == database
+        assert parsed[section]['password'] == 'synthetic=percent%value'
+        assert parsed[section]['options'] == '-c statement_timeout=5000 -c lock_timeout=5000'
+    assert service.stat().st_mode & 0o777 == 0o600
+
+
+def test_workspace_runner_collects_public_pack_key_regressions():
+    import inspect
+
+    from scripts.python import run_workspace_postgres_acceptance as runner
+
+    source = inspect.getsource(runner.main)
+    policy_check = source.split('policy_check = media_check[:-1] + [', 1)[1].split('run(policy_check)', 1)[0]
+    assert '"api/tests/test_workspace_type_keys_postgres.py"' in policy_check
+    assert '"api/tests/test_workspace_policy_postgres.py"' in policy_check
+    assert '"WORKSPACE_POLICY_DISPOSABLE=1"' in policy_check
+    assert 'test_workspace_policy_restore_postgres.py' not in policy_check

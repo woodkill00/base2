@@ -407,3 +407,28 @@ to Home. Align the terminal target with the existing Volcano Sign in behavior an
 retain failure/retry state. Test delayed success, failed server response and account
 preference cleanup, then rerun the unchanged native isolation journey with explicit
 request/response evidence. No style or screenshot reference changes are involved.
+
+## Bounded public-pack type-key compatibility
+
+Separate canonical type-key validation from field/preset identifiers. Use an
+ASCII letter-led 2–63 character expression with underscore-compatible segments
+and single hyphens followed by ASCII alphanumerics; anchor the entire input to
+reject newlines, Unicode, traversal, separators and SQL syntax. Preserve all
+previous valid underscore keys. Apply it to definition keys and relationship
+target types, then mirror in API create/route guards and React without normalizing
+public hyphens into underscores. Add a Django validator-state migration only;
+no data rewrite, SQL identifier interpolation or permission change. Trace imports,
+exports, storage, worker and public projections; field mapping/projection keys
+remain strict. Test canonical creation/reference validation and migration state
+first, API create/routes and negatives second, UI exact-key submission last.
+Generated manifest gates remain authoritative; mock checks are not real profile
+journey acceptance. Browser and production-topology acceptance remain separately
+blocked until the existing native prerequisites are available.
+
+The old native field/preset RegexValidator dollar anchor also admits a final
+newline. Tighten only CONTENT_IDENTIFIER_PATTERN to strict \A/\Z anchors;
+retain its ASCII language and serialize all four affected fields in the same
+additive 0042 validator-state migration. Full-clean regressions reproduce preset
+and field acceptance before correction. Existing rows are not rewritten; a later
+validated edit to a malformed stored identifier fails closed. Operations patterns
+and SQL/readiness capabilities remain unchanged.

@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import SchemaBuilder from '../components/content/SchemaBuilder';
@@ -148,5 +148,45 @@ describe('workspace schema builder', () => {
     expect(onError).toHaveBeenCalledWith(failure);
     expect(contentWorkspaceAPI.previewDefinition).not.toHaveBeenCalled();
     expect(await axe(rendered.container)).toHaveNoViolations();
+  });
+  test.each(['blog-post', 'doc-page', 'portfolio-item', 'old_type', 'a_', 'a'.repeat(63)])(
+    'submits the exact safe type key %s without renaming it',
+    async (key) => {
+      const user = userEvent.setup();
+      render(<SchemaBuilder onCreated={vi.fn()} onError={vi.fn()} />);
+      await user.click(screen.getByRole('button', { name: 'Load preset' }));
+      fireEvent.change(screen.getByLabelText('Type key'), { target: { value: key } });
+      expect(screen.getByLabelText('Type key')).toHaveValue(key);
+      await user.click(screen.getByRole('button', { name: 'Create draft and preview' }));
+      expect(contentWorkspaceAPI.createDefinition).toHaveBeenCalledWith(
+        expect.objectContaining({ typeKey: key })
+      );
+    }
+  );
+
+  test.each([
+    'a',
+    'a'.repeat(64),
+    'Blog-post',
+    '-blog',
+    'blog-',
+    'blog--post',
+    'blog-_post',
+    '../blog',
+    'blog/post',
+    'blog post',
+    'blog;drop',
+    'blög',
+    'blog%2fpost',
+    'blog\u200bpost',
+  ])('rejects unsafe type key %s without silently rewriting it', async (key) => {
+    const user = userEvent.setup();
+    const onError = vi.fn();
+    render(<SchemaBuilder onCreated={vi.fn()} onError={onError} />);
+    await user.click(screen.getByRole('button', { name: 'Load preset' }));
+    fireEvent.change(screen.getByLabelText('Type key'), { target: { value: key } });
+    await user.click(screen.getByRole('button', { name: 'Create draft and preview' }));
+    expect(contentWorkspaceAPI.createDefinition).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith(expect.stringContaining('type key'));
   });
 });

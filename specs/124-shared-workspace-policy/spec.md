@@ -108,3 +108,17 @@ Sign in redirect with Home. Preserve server-failure retry guidance, ordinary pub
 navigation, and cleared account-scoped appearance/settings state. This is an explicit
 resolution of conflicting existing navigation contracts, not permission to weaken
 the native sign-out isolation test or change the approved visual design.
+
+## Public-pack type-key compatibility
+
+Workspace users can create and version the exact public family types `blog-post`,
+`doc-page`, and `portfolio-item` through the supported schema workflow, without
+renaming them or bypassing validation. Existing underscore type names remain valid.
+Type names stay lowercase, ASCII, letter-led and 2–63 characters; hyphens separate
+nonempty segments and cannot precede an underscore. Field and preset identifiers
+retain their stricter existing format. Unsafe names fail closed. This compatibility
+does not enable a disabled pack or alter roles, review, visibility or immutable schemas.
+
+Native field and preset validation must reject trailing newlines, matching the
+already-strict API contract. This closes an anchor inconsistency without permitting
+hyphens in those identifiers or rewriting previously stored rows.

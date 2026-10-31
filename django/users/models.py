@@ -189,9 +189,7 @@ class UserPreferenceSet(UUIDMixin, TimestampedModel):
     theme = models.CharField(max_length=16, choices=Theme.choices, default=Theme.SYSTEM)
     contrast = models.CharField(max_length=16, choices=Contrast.choices, default=Contrast.SYSTEM)
     motion = models.CharField(max_length=16, choices=Motion.choices, default=Motion.SYSTEM)
-    density = models.CharField(
-        max_length=16, choices=Density.choices, default=Density.COMFORTABLE
-    )
+    density = models.CharField(max_length=16, choices=Density.choices, default=Density.COMFORTABLE)
     locale = models.CharField(max_length=32, default="en")
     timezone = models.CharField(max_length=255, default="UTC")
     week_start = models.CharField(
@@ -213,9 +211,13 @@ class UserPreferenceSet(UUIDMixin, TimestampedModel):
             models.CheckConstraint(
                 condition=models.Q(schema_version=1), name="users_preferences_schema_v1"
             ),
-            models.CheckConstraint(condition=models.Q(version__gte=1), name="users_preferences_ver_gte1"),
+            models.CheckConstraint(
+                condition=models.Q(version__gte=1), name="users_preferences_ver_gte1"
+            ),
         ]
-        indexes = [models.Index(fields=("user", "organization"), name="users_preferences_owner_idx")]
+        indexes = [
+            models.Index(fields=("user", "organization"), name="users_preferences_owner_idx")
+        ]
 
 
 class NotificationPreferenceSet(CanonicalNotificationPreferenceSet):

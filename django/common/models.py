@@ -13,10 +13,21 @@ from phonenumber_field.modelfields import PhoneNumberField
 
 User = get_user_model()
 
-CONTENT_IDENTIFIER_PATTERN = r"^[a-z][a-z0-9_]{1,62}$"
+CONTENT_IDENTIFIER_PATTERN = r"\A[a-z][a-z0-9_]{1,62}\Z"
 content_identifier_validator = RegexValidator(
     CONTENT_IDENTIFIER_PATTERN,
     _("Use a lowercase identifier beginning with a letter."),
+)
+
+# Type keys are data values, not field/preset or SQL identifiers. Preserve legacy
+# underscores while admitting public-pack hyphens; strict anchors reject newlines.
+CONTENT_TYPE_KEY_PATTERN = r"\A(?=.{2,63}\Z)[a-z][a-z0-9_]*(?:-[a-z0-9][a-z0-9_]*)*\Z"
+content_type_key_validator = RegexValidator(
+    CONTENT_TYPE_KEY_PATTERN,
+    _(
+        "Use 2–63 lowercase ASCII letters, digits or underscores, "
+        "with single hyphens followed by a letter or digit."
+    ),
 )
 
 OPERATIONS_IDENTIFIER_PATTERN = r"^[a-z][a-z0-9_.-]{2,95}$"

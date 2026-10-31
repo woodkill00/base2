@@ -6,7 +6,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-
 migration = importlib.import_module("sitecontent.migrations.0033_api_schema_readiness")
 
 

@@ -220,3 +220,35 @@ def test_stored_role_and_database_settings_are_unsupported(setting):
             source['databaseSettings'] = [{'role': 'runtime', 'settings': [setting]}]
         with pytest.raises(SecurityManifestError):
             build_security_manifest(source, **options())
+
+
+@pytest.mark.parametrize(('stderr', 'category'), [
+    ('psql: error: syntax error in service file "/private/secret.conf", line 2', 'service_file_invalid'),
+    ('psql: error: definition of service "private-name" not found', 'service_file_unavailable'),
+    ('psql: error: password authentication failed for user "private-user"', 'authentication_failed'),
+    ('psql: error: connection to server at "private-host" failed', 'connection_failed'),
+    ('ERROR: invalid snapshot identifier: private-snapshot', 'database_error'),
+    ('unrecognized error containing password=DO_NOT_EXPOSE SELECT secret FROM private', 'client_error'),
+])
+def test_catalog_failure_diagnostics_are_fixed_categories_without_raw_secrets(stderr, category):
+    import subprocess
+
+    from scripts.python.backup_security_manifest import capture_security_catalog
+    def runner(command, **kwargs):
+        return subprocess.CompletedProcess(command, 2, '', stderr)
+    with pytest.raises(SecurityManifestError) as failure:
+        capture_security_catalog(runner, pg_service='private-service', environment={})
+    assert str(failure.value) == f'security:catalog_unavailable:exit=2:reason={category}'
+    assert failure.value.__suppress_context__ is True
+
+
+@pytest.mark.parametrize(('stdout', 'category'), [('', 'empty_output'), ('private-data', 'invalid_output')])
+def test_catalog_success_status_with_invalid_output_is_sanitized_and_denied(stdout, category):
+    import subprocess
+
+    from scripts.python.backup_security_manifest import capture_security_catalog
+    def runner(command, **kwargs):
+        return subprocess.CompletedProcess(command, 0, stdout, 'private-stderr')
+    with pytest.raises(SecurityManifestError) as failure:
+        capture_security_catalog(runner, pg_service='private-service', environment={})
+    assert str(failure.value) == f'security:catalog_unavailable:exit=0:reason={category}'

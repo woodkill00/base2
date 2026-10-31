@@ -147,3 +147,16 @@ currently invoke the entire gate. Representative publishing/docs/portfolio profi
 coverage, migration/restore/race evidence, visual approval and independent release
 blockers remain separate obligations. No deployment or TLS bypass is authorized by
 this acceptance work.
+
+## Type-key compatibility
+
+Workspace definitions can use the existing pack keys `blog-post`, `doc-page` and
+`portfolio-item`. Type keys are 2–63 lowercase ASCII letters, digits or underscores, beginning with
+a letter, with optional single hyphens followed by a letter or digit. Existing underscore
+names remain valid. Field and preset keys still do not allow hyphens.
+
+The validator update does not rename existing definitions or rewrite stored data.
+Malformed stored identifiers, including trailing newlines previously accepted by
+native validation, need explicit review if a later validated edit rejects them.
+Validation compatibility alone is not a claim that every pack/profile journey or
+custom public page renderer is complete; acceptance limitations above still apply.

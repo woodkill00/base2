@@ -468,7 +468,7 @@ Sign in. Its earlier appearance screenshots passed; later sign-out isolation
 assertions did not execute. Final Storybook/Chromatic stages were skipped after
 that frontend failure, unlike earlier token-only publication skips.
 
-- [ ] T32 Resolve the real competing logout destinations with a controlled delayed
+- [x] T32 Resolve the real competing logout destinations with a controlled delayed
       completion reproduction, canonical Sign in target, retained failure guidance
       and explicit native response/navigation/account-isolation evidence. Preserve
       the original failure; do not relax assertions or update image baselines.
@@ -491,3 +491,43 @@ A local ancestry check initially failed because this checkout lacked history.
 Fetching its missing history established the unchanged planning baseline as an
 ancestor, and the exact original check passed. No baseline policy was altered.
 The native full-gate checkout must likewise include sufficient history.
+
+### Native checkpoint at c1cab86
+
+All ten workflows are terminal: frontend passes all seven browser suites including
+both native sign-out widths and the required aggregate; final Storybook build also
+passes. Both real-service shells pass all seven ordered workspace steps. Hosted
+Chromatic publication is again skipped for its absent token.
+
+The new dedicated restoration job reaches source migration, policy/preference/history
+seeding and revocation assertions, then fails before target restore during its first
+libpq catalog capture. Python's service-file writer emitted spaces around `=`,
+which its own connection parser accepts but libpq rejects before SQL. This code-level
+diagnosis awaits corrected native confirmation. The bounded fixture correction writes canonical `key=value`; safe fixed diagnostic categories
+retain client failure status without exposing service contents, SQL or credentials.
+The security envelope is unchanged and repaired native restore remains pending.
+
+### Type compatibility and repository quality checkpoint
+
+Canonical/API/React validation now accepts the exact existing public-pack keys
+`blog-post`, `doc-page`, and `portfolio-item` without renaming. Field/preset keys
+remain underscore-only; a reproduced native final-newline validation inconsistency
+is corrected with strict anchors. Migration 0042 changes validator state only and
+rewrites no data. Three real restricted-role PostgreSQL cases are collected and
+explicitly wired; their native execution and generated-profile journeys remain
+pending. API units pass 1,732 tests, frontend 692 plus 27 tooling tests, and changed
+executable lines are covered (API 12/12, common 3/3, sitecontent 2/2, SchemaBuilder 3/3).
+
+Expanded full-tree Django lint found 34 existing formatting/import findings. A
+bounded cleanup preserves normalized AST and setup/import ordering; the live race
+script keeps its direct CLI behavior behind a tested `main()` guard. Full Django
+Ruff is now clean and enforced in both fixed backend CI matrix entries; no lint
+rules or coverage floors were relaxed. The post-cleanup supported Django run passes
+222 tests, with the separate readiness file also verified. The live race script is
+not executed locally; its actual PostgreSQL proof remains part of native acceptance.
+
+- [ ] T34 Repair the confirmed supported-pack search-link mismatch and existing
+      stale projections, then follow returned links in representative live journeys.
+      Current worker URLs use type names while pack pages use `/blog`, `/docs` and
+      `/portfolio`. Preserve document IDs, tenant/visibility checks and intentional
+      custom paths; do not call generic search inclusion usable page navigation.

@@ -174,7 +174,8 @@ class DisposableRestore:
                              'options': '-c statement_timeout=5000 -c lock_timeout=5000'}
         import io
         content = io.StringIO()
-        parser.write(content)
+        # libpq service keys are not trimmed around the delimiter.
+        parser.write(content, space_around_delimiters=False)
         service = self.root / 'pg-service.conf'
         private_write(service, content.getvalue().encode())
         for key in ('backup', 'objects', 'operations'):

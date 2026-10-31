@@ -106,7 +106,7 @@
       "api/main.py": "cda0bc4e11029cbb6e88edcd89bc1020efdfdc350ee2152c76f3f026df2d847c",
       "api/routes/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "api/routes/auth.py": "2660fdd89848db5b902e50344515e16453392acbebec5e7d6b1c811f892c7efb",
-      "api/routes/content_workspace.py": "f34cd3c23da96cd92a43b16cb2b24a1ea630528f24fbf7594949e8b7752ac0fa",
+      "api/routes/content_workspace.py": "9639a0f53bc73c7105a840bdb899cc0e3319db9ff5bde2da1fe1dbec8f1b86ed",
       "api/routes/engagement.py": "f26e86d78daab93ef74a8d547b2b4ec1a3035ebf2f13e9a886a2accd772f016e",
       "api/routes/identity.py": "55207b0e831cc42bd28795f3ed65b00fd2a764a00bdc707b5d4a6802b6ec8f43",
       "api/routes/media_library.py": "732e73377e3068c8b52b2df3beee352e1eab17ac0b66ad54bbd6cdd51fad6065",

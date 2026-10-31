@@ -198,3 +198,12 @@ def test_layout_failures_retain_trace_without_automatic_retry():
     assert 'retries: 0' in config
     workflow = (ROOT / '.github/workflows/ci-frontend.yml').read_text()
     assert 'path: .artifacts/layout-109' in workflow
+
+
+def test_backend_lint_covers_both_fixed_service_matrix_entries():
+    workflow = yaml.safe_load((ROOT / '.github/workflows/ci-backend.yml').read_text())
+    job = next(job for job in workflow['jobs'].values()
+               if job.get('strategy', {}).get('matrix', {}).get('service') == ['api', 'django'])
+    lint = next(step for step in job['steps'] if step.get('name') == 'Ruff (lint)')
+    assert 'if' not in lint
+    assert lint['run'] == 'python -m ruff check "${{ matrix.service }}"'

@@ -138,6 +138,24 @@ SELECT jsonb_build_object(
 """
 
 
+def _catalog_failure_reason(result):
+    """Return only closed diagnostic labels, never client output or identifiers."""
+    if result.returncode == 0:
+        return 'empty_output' if not result.stdout else 'invalid_output'
+    error = (result.stderr or '')[:4096].lower()
+    if 'syntax error in service file' in error or 'too long in service file' in error:
+        return 'service_file_invalid'
+    if ('service file' in error or 'definition of service' in error) and 'not found' in error:
+        return 'service_file_unavailable'
+    if 'authentication failed' in error or 'no password supplied' in error:
+        return 'authentication_failed'
+    if 'connection to server' in error or 'could not connect' in error:
+        return 'connection_failed'
+    if error.startswith(('error:', 'fatal:')):
+        return 'database_error'
+    return 'client_error'
+
+
 def capture_security_catalog(runner, *, pg_service, environment, snapshot_id=None):
     sql = SECURITY_CATALOG_SQL
     if snapshot_id is not None:
@@ -153,8 +171,13 @@ def capture_security_catalog(runner, *, pg_service, environment, snapshot_id=Non
         if result.returncode != 0 or not isinstance(value, dict):
             raise ValueError
         return value
-    except (ValueError, TypeError) as exc:
-        raise SecurityManifestError('security:catalog_unavailable') from exc
+    except (ValueError, TypeError):
+        # Neither raw stderr nor a chained JSON decoder exception belongs in
+        # recovery logs: both can contain private database/service information.
+        raise SecurityManifestError(
+            f'security:catalog_unavailable:exit={int(result.returncode)}:'
+            f'reason={_catalog_failure_reason(result)}'
+        ) from None
 
 
 def validate_security_configuration(*, role_map, runtime_roles, trusted_owner):
