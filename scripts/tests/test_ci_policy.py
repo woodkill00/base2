@@ -51,6 +51,33 @@ class CiPolicyTests(unittest.TestCase):
                      'media-inspector-syft-version.json', 'media-inspector-syft-checksums.txt'):
             self.assertIn(name, final_upload)
 
+    def test_media_grype_is_hash_locked_and_keeps_failure_and_both_reports(self):
+        root = MODULE_PATH.parents[2]
+        workflow = (root / '.github/workflows/security.yml').read_text()
+        prepare = workflow.split('name: Prepare hash-verified media Grype', 1)[1].split('      - name:', 1)[0]
+        self.assertIn('https://github.com/anchore/grype/releases/download/v0.121.0/grype_0.121.0_linux_amd64.tar.gz', prepare)
+        self.assertIn('64e07133d3486115de647a66581461dccf5c732748a0a3119077395565f15519', prepare)
+        self.assertLess(prepare.index('sha256sum -c -'), prepare.index('tar --no-same-owner'))
+        self.assertIn("value['application'] == 'grype'", prepare)
+        self.assertIn("value['version'] == '0.121.0'", prepare)
+        self.assertIn("value['platform'] == 'linux/amd64'", prepare)
+        scan = workflow.split('name: Scan media inspector image', 1)[1].split('      - name:', 1)[0]
+        self.assertIn('id: inspector-grype', scan)
+        self.assertIn('"$RUNNER_TEMP/base2-media-grype/grype" sbom:media-inspector-sbom.cdx.json', scan)
+        self.assertIn('--fail-on high', scan)
+        self.assertIn('--output sarif=media-inspector-grype.sarif.json', scan)
+        self.assertIn('--output json=media-inspector-grype.json', scan)
+        self.assertLess(scan.index('sarif=media-inspector-grype.sarif.json'), scan.index('/grype" sbom:'))
+        self.assertIn('>> "$GITHUB_OUTPUT"', scan)
+        self.assertIn("GRYPE_CHECK_FOR_APP_UPDATE: 'false'", scan)
+        for forbidden in ('GRYPE_DB_', '--only-fixed', '--only-notfixed', '--exclude', '--ignore',
+                          '--vex', 'continue-on-error', 'set +e', '||', 'exit 0'):
+            self.assertNotIn(forbidden, prepare + scan)
+        final_upload = workflow.split('name: Upload SBOM artifact', 1)[1].split('  npm-audit:', 1)[0]
+        for name in ('media-inspector-grype.json', 'media-inspector-grype-version.json',
+                     'media-inspector-grype-checksums.txt'):
+            self.assertIn(name, final_upload)
+
     def test_accepts_pinned_blocking_required_job(self):
         body = "on:\n  pull_request:\njobs:\n  gate:\n    steps:\n      - uses: actions/checkout@" + "a" * 40 + "\n"
         self.assertEqual([], self.scan(body))

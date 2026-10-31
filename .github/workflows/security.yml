@@ -126,14 +126,33 @@ jobs:
           media-inspector-sbom.raw.cdx.json media-inspector-clamav.bom.json
           api/media-inspector-runtime.lock.json
 
+      - name: Prepare hash-verified media Grype
+        env:
+          GRYPE_CHECK_FOR_APP_UPDATE: 'false'
+        run: |
+          mkdir -p "$RUNNER_TEMP/base2-media-grype"
+          curl --fail --location --proto '=https' --proto-redir '=https' \
+            --output "$RUNNER_TEMP/base2-media-grype/grype.tar.gz" \
+            https://github.com/anchore/grype/releases/download/v0.121.0/grype_0.121.0_linux_amd64.tar.gz
+          printf '%s  %s\n' \
+            '64e07133d3486115de647a66581461dccf5c732748a0a3119077395565f15519' \
+            "$RUNNER_TEMP/base2-media-grype/grype.tar.gz" | sha256sum -c -
+          tar --no-same-owner -xzf "$RUNNER_TEMP/base2-media-grype/grype.tar.gz" \
+            --directory "$RUNNER_TEMP/base2-media-grype" grype
+          "$RUNNER_TEMP/base2-media-grype/grype" version -o json > media-inspector-grype-version.json
+          python -c "import json, sys; value = json.load(sys.stdin); assert value['application'] == 'grype' and value['version'] == '0.121.0' and value['platform'] == 'linux/amd64'" < media-inspector-grype-version.json
+          sha256sum "$RUNNER_TEMP/base2-media-grype/grype.tar.gz" "$RUNNER_TEMP/base2-media-grype/grype" > media-inspector-grype-checksums.txt
+
       - name: Scan media inspector image
         id: inspector-grype
-        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2
-        with:
-          sbom: media-inspector-sbom.cdx.json
-          fail-build: true
-          severity-cutoff: high
-          output-format: sarif
+        env:
+          GRYPE_CHECK_FOR_APP_UPDATE: 'false'
+        run: |
+          echo "sarif=media-inspector-grype.sarif.json" >> "$GITHUB_OUTPUT"
+          "$RUNNER_TEMP/base2-media-grype/grype" sbom:media-inspector-sbom.cdx.json \
+            --fail-on high \
+            --output sarif=media-inspector-grype.sarif.json \
+            --output json=media-inspector-grype.json
 
       - name: Normalize SBOM result
         if: always()
@@ -166,6 +185,9 @@ jobs:
             media-inspector-repository-evidence.json
             ${{ steps.inspector-grype.outputs.sarif }}
             media-inspector-grype.normalized.json
+            media-inspector-grype.json
+            media-inspector-grype-version.json
+            media-inspector-grype-checksums.txt
   npm-audit:
     runs-on: ubuntu-latest
     steps:

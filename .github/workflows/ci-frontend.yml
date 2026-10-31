@@ -92,6 +92,13 @@ jobs:
         if: steps.scope.outputs.mode == 'full'
         run: npm run build
 
+      - name: Build Storybook tooling compatibility
+        if: steps.scope.outputs.mode == 'full'
+        timeout-minutes: 10
+        env:
+          STORYBOOK_DISABLE_TELEMETRY: '1'
+        run: npm run build-storybook
+
       - name: Install layout browsers
         id: browsers
         if: steps.scope.outputs.mode == 'full'

@@ -12,6 +12,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 COPY .npmrc ./
+COPY scripts/apply-tooling-compatibility.cjs scripts/tooling-compatibility.json ./scripts/
+COPY patches ./patches
 RUN npm ci --legacy-peer-deps --no-audit --no-fund && npm cache clean --force
 
 COPY . .
