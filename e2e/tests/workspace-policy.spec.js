@@ -169,6 +169,35 @@ async function role(owner, member, value) {
     expected_updated_at: current.updated_at,
   });
 }
+function readyMigrationObservation(overview, now) {
+  if (
+    overview.schemaVersion !== 1 ||
+    overview.site?.id !== SITE ||
+    !Array.isArray(overview.services)
+  )
+    return null;
+  const matches = overview.services.filter(
+    (service) => service.serviceKey === 'migrations.state' && service.environment === 'preview'
+  );
+  if (matches.length !== 1) return null;
+  const service = matches[0];
+  const health = service.health;
+  if (service.enabled !== true || health?.state !== 'healthy' || health.code !== 'migrations.ready')
+    return null;
+  const observed = Date.parse(health.observedAt);
+  const expires = Date.parse(health.expiresAt);
+  // Canonical migrations freshness is 300s; tolerate at most 5s host clock skew.
+  if (
+    !Number.isFinite(observed) ||
+    !Number.isFinite(expires) ||
+    observed > now + 5000 ||
+    now - observed > 300000 ||
+    expires <= now ||
+    expires <= observed
+  )
+    return null;
+  return service;
+}
 function intentFor(state, item, actor) {
   return state.intents.find((i) => i.recordId === item.id && i.recipientId === actor.id);
 }
@@ -714,6 +743,32 @@ test.describe('Feature124 real browser/API/PostgreSQL workspace acceptance', () 
           .toBe(true);
         expect((await read(owner, scheduled)).state).toBe('scheduled');
         await role(owner, reviewer, 'admin');
+      });
+
+      await test.step('fresh migrations observation through owner operations API', async () => {
+        // Observe actual beat output before stopping beat for controlled-clock proof.
+        // Other probes may correctly remain degraded in this disposable stack.
+        let sample;
+        let checkedAt;
+        await expect
+          .poll(
+            async () => {
+              const overview = await api(owner, 'GET', '/operations/v1/overview');
+              checkedAt = Date.now();
+              sample = readyMigrationObservation(overview, checkedAt);
+              return sample !== null;
+            },
+            { timeout: 120_000, intervals: [1000, 2000, 5000] }
+          )
+          .toBe(true);
+        await testInfo.attach('real-operations-migrations-observation', {
+          body: JSON.stringify({
+            siteId: SITE,
+            checkedAt: new Date(checkedAt).toISOString(),
+            sample,
+          }),
+          contentType: 'application/json',
+        });
       });
 
       await test.step('local sink opt-out, UTC digest, process restart/replay and recipient revocation (controlled-clock service proof)', async () => {

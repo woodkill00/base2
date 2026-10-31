@@ -183,3 +183,40 @@ role(owner, member, 'viewer').then(() => process.stdout.write(JSON.stringify(cal
     payload = MemberRoleRequest.model_validate(calls[2]['data'])
     assert payload.role == 'viewer'
     assert payload.expected_updated_at.isoformat() == '2026-10-31T00:00:00+00:00'
+
+
+def test_migration_observation_requires_exact_fresh_ready_sample_not_other_probes():
+    import json
+    import subprocess
+
+    from api.routes.operations import router
+
+    assert any(route.path == '/operations/v1/overview' and 'GET' in route.methods
+               for route in router.routes)
+    catalog = json.loads((SOURCE.parents[2] / 'shared/config/operations-probes-v1.json').read_text())
+    assert next(probe for probe in catalog['probes'] if probe['id'] == 'migrations.state')['freshnessSeconds'] == 300
+    source = SOURCE.read_text()
+    assert "api(owner, 'GET', '/operations/v1/overview')" in source
+    assert source.index("test.step('fresh migrations observation") < source.index("test.step('local sink opt-out")
+    function = source.split('function readyMigrationObservation(', 1)[1].split('function intentFor(', 1)[0]
+    script = """const assert = require('node:assert/strict');
+const SITE = 'base2-obsidian';
+function readyMigrationObservation(""" + function + """
+const now = Date.parse('2026-10-31T12:00:00Z');
+const service = {serviceKey:'migrations.state',environment:'preview',enabled:true,
+  health:{state:'healthy',code:'migrations.ready',observedAt:new Date(now-1000).toISOString(),expiresAt:new Date(now+299000).toISOString()}};
+const overview = {schemaVersion:1,site:{id:SITE},services:[service,{serviceKey:'dns.canonical',health:{state:'degraded'}}]};
+assert.deepEqual(readyMigrationObservation(overview,now),service);
+for (const change of [{state:'unavailable'},{code:'migrations.unknown'}, {observedAt:'invalid'}, {expiresAt:'invalid'},
+ {observedAt:new Date(now-300001).toISOString()}, {observedAt:new Date(now+5001).toISOString()}, {expiresAt:new Date(now).toISOString()}]) {
+ assert.equal(readyMigrationObservation({...overview,services:[{...service,health:{...service.health,...change}}]},now),null);
+}
+for (const change of [{enabled:false},{environment:'production'},{serviceKey:'database.ready'}]) {
+ assert.equal(readyMigrationObservation({...overview,services:[{...service,...change}]},now),null);
+}
+assert.equal(readyMigrationObservation({...overview,schemaVersion:2},now),null);
+assert.equal(readyMigrationObservation({...overview,site:{id:'other'}},now),null);
+assert.equal(readyMigrationObservation({...overview,services:[service,service]},now),null);
+"""
+    result = subprocess.run(['node', '-e', script], capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr

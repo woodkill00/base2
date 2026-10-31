@@ -398,3 +398,16 @@ Ruff clean, mypy 273 files clean, and all 35 changed executable production lines
 covered. Evidence: `/tmp/124-probe-reviewed-final-*` and original
 `/tmp/base2-ci-bb9026d/`. Unit coverage is not live network/probe acceptance or a
 claim that every operations service is healthy.
+
+The pending acceptance now also polls the real owner-authenticated operations
+overview for the specific latest `migrations.state` sample in `preview`, before
+beat is stopped for the controlled-clock digest proof. It requires schema version
+1 and the fixed site, exactly one enabled matching service, `healthy` /
+`migrations.ready`, valid observation/expiry timestamps, observation age at most
+the canonical 300-second freshness window (at most five seconds of future clock
+skew), and unexpired evidence. The bounded 120-second poll uses the real clock and
+attaches the observed sample; no privileged CLI/schema read or requirement that
+unrelated probes be healthy is added. Pure regression cases reject stale,
+expired, malformed, wrong-site/environment and duplicate observations and retain
+an unrelated degraded probe. Thirty local topology/support tests pass; actual
+fresh ready observation remains pending CI, not inferred from collection counts.
