@@ -325,7 +325,7 @@ def db_schema_ready() -> bool:
                      EXISTS (
                        SELECT 1 FROM django_migrations
                         WHERE app='sitecontent'
-                          AND name='0040_workspace_asset_retention'
+                          AND name='0041_workspace_revision_tenant_scope'
                      ),
                      EXISTS (
                        SELECT 1 FROM django_migrations

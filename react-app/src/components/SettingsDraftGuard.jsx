@@ -24,7 +24,7 @@ const copy = {
   },
 };
 
-function RouterDraftGuard({ dirty, locale }) {
+function RouterDraftGuard({ dirty, locale, onDiscard }) {
   const focus = useRef(null);
   const overlay = useRef(null);
   const restoreFocus = useRef(false);
@@ -172,6 +172,7 @@ function RouterDraftGuard({ dirty, locale }) {
               if (decided.current) return;
               decided.current = true;
               pending.current = false;
+              onDiscard?.();
               blocker.proceed();
             }}
           >

@@ -226,7 +226,7 @@ test('notification reload and repeated saves never send server-managed timestamp
   }
   expect(state.notificationWrites).toHaveLength(2);
   expect(state.notificationWrites.map((item) => item.expected_version)).toEqual([1, 2]);
-  await expect(page.getByText(/delivery-engine integration is not yet available/)).toBeVisible();
+  await expect(page.getByText(/a durable test receipt, not live email delivery/)).toBeVisible();
 });
 
 test('failed discovery hides privileged controls and supports an explicit retry', async ({
@@ -542,10 +542,15 @@ test('browser Forward Stay preserves URL, focus, draft and history', async ({ pa
   await fixture(page);
   await page.goto('/settings/appearance');
   await ready(page);
+  await page.getByRole('button', { name: 'Menu', exact: true }).click();
   await page.getByRole('link', { name: 'Home', exact: true }).first().click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator('#settings-detail')).toHaveCount(0);
   await page.goBack();
+  await expect(page).toHaveURL(/\/settings\/appearance$/);
   await ready(page);
   await page.getByLabel('Theme', { exact: true }).selectOption('dark');
+  await page.getByLabel('Theme', { exact: true }).focus();
   await page.goForward();
   await expect(page.getByRole('alertdialog')).toBeVisible();
   await page.getByRole('button', { name: 'Stay', exact: true }).click();

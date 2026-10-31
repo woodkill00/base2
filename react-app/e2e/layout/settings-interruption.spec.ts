@@ -88,14 +88,18 @@ async function fixture(page: Page, locale = 'en') {
 const ready = async (page: Page) => {
   await expect(page.locator('#settings-detail')).toHaveAttribute('aria-busy', 'false');
 };
-async function shellNavigate(page: Page, destination: 'Home' | 'Settings', mode = 'menu') {
+async function shellNavigate(
+  page: Page,
+  destination: 'Home' | 'Settings' | 'Dashboard',
+  mode = 'menu'
+) {
   if (await page.locator('.volcano-layout').count()) {
     if (mode === 'palette') {
       await page.keyboard.press('Control+k');
       await page.getByRole('menuitem', { name: destination, exact: true }).click();
     } else {
       await page.getByTestId('base2-left-menu-toggle').click();
-      const path = destination === 'Home' ? '/' : '/settings';
+      const path = { Home: '/', Settings: '/settings', Dashboard: '/dashboard' }[destination];
       // Canonical wheel buttons are identified directly, not a hidden loop copy.
       const target = page.locator(
         `[data-testid="base2-section-nav-${path}"][data-section-loop="middle"]`
@@ -192,12 +196,17 @@ test('true browser Back/Forward and rapid repeated blocks preserve the history e
   page,
 }) => {
   await fixture(page);
-  await page.goto('/settings/appearance');
-  await ready(page);
-  await shellNavigate(page, 'Home');
+  await page.goto('/dashboard');
+  await expect(
+    page.locator('#main-content').getByRole('heading', { name: 'Dashboard', exact: true, level: 1 })
+  ).toBeVisible();
   await shellNavigate(page, 'Settings');
+  await expect(page).toHaveURL(/\/settings$/);
   await ready(page);
-  await page.getByRole('link', { name: 'Appearance', exact: true }).first().click();
+  await page
+    .getByRole('navigation', { name: 'Settings categories', exact: true })
+    .getByRole('link', { name: 'Appearance & accessibility', exact: true })
+    .click();
   await page.locator('#theme').selectOption('dark');
   // Back through the settings category retains the mounted draft, then leaving blocks.
   await page.goBack();
@@ -214,7 +223,7 @@ test('true browser Back/Forward and rapid repeated blocks preserve the history e
   await page.goBack();
   await page.evaluate(() => history.back());
   await page.getByRole('button', { name: 'Discard and leave' }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/dashboard$/);
   await page.goForward();
   await ready(page);
 });
@@ -229,10 +238,13 @@ test('multiple category drafts and pending save departure/reentry do not replay 
   await page.getByRole('link', { name: 'Notifications', exact: true }).first().click();
   await page.locator('#notification-marketing-email').selectOption('disabled');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await shellNavigate(page, 'Home');
+  await shellNavigate(page, 'Dashboard');
   await assertIsolated(page);
   await page.getByRole('button', { name: 'Stay', exact: true }).click();
-  await page.getByRole('link', { name: 'Appearance', exact: true }).first().click();
+  await page
+    .getByRole('navigation', { name: 'Settings categories', exact: true })
+    .getByRole('link', { name: 'Appearance & accessibility', exact: true })
+    .click();
   await expect(page.locator('#theme')).toHaveValue('dark');
   let release!: () => void;
   state.pending = new Promise((resolve) => {
@@ -240,13 +252,20 @@ test('multiple category drafts and pending save departure/reentry do not replay 
   });
   await page.getByRole('button', { name: 'Save preferences' }).click();
   await expect.poll(() => state.writes).toBe(1);
-  await shellNavigate(page, 'Home');
+  await shellNavigate(page, 'Dashboard');
   await page.getByRole('button', { name: 'Discard and leave' }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(
+    page.locator('#main-content').getByRole('heading', { name: 'Dashboard', exact: true, level: 1 })
+  ).toBeVisible();
   release();
   await expect.poll(() => state.preferences.version).toBe(2);
   await shellNavigate(page, 'Settings');
   await ready(page);
-  await page.getByRole('link', { name: 'Appearance', exact: true }).first().click();
+  await page
+    .getByRole('navigation', { name: 'Settings categories', exact: true })
+    .getByRole('link', { name: 'Appearance & accessibility', exact: true })
+    .click();
   await expect(page.locator('#theme')).toHaveValue('dark');
   expect(state.writes).toBe(1);
 });

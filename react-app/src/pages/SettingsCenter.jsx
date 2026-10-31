@@ -815,6 +815,23 @@ const SettingsContent = () => {
     (workspacePolicy.require_review !== policyDraft.require_review ||
       workspacePolicy.public_access !== policyDraft.public_access)
   );
+  const discardLocalDrafts = () => {
+    // Explicit discard must not depend on unmount: a lazy destination can be
+    // interrupted by Back while this instance remains mounted. Requests already
+    // sent and reconciliation fences remain active until their normal resolution.
+    setProfile(savedProfile);
+    if (resourceAvailability.preferences) setPreferences(savedPreferences);
+    if (resourceAvailability.notifications) setNotifications(savedNotifications);
+    if (workspacePolicy)
+      setPolicyDraft({
+        require_review: workspacePolicy.require_review,
+        public_access: workspacePolicy.public_access,
+      });
+    setPolicyConfirmation('');
+    setCorrection({ display_name: '', bio: '' });
+    setDeleteConfirmation('');
+    setDeactivateConfirmation('');
+  };
   const hasSettingsDraft =
     saving ||
     hasPreferenceDraft ||
@@ -1058,6 +1075,11 @@ const SettingsContent = () => {
       const response = await apiClient.patch('/users/me', profile);
       if (!mounted.current) return;
       updateUser(response.data);
+      // Discard may restore the old snapshot while this request is in flight.
+      // Adopt its accepted value only if no newer profile draft has been entered.
+      setProfile((current) =>
+        JSON.stringify(current) === JSON.stringify(savedProfile) ? profile : current
+      );
       setSavedProfile(profile);
       setStatus(detail.profileSaved);
     } catch (_reason) {
@@ -1772,7 +1794,11 @@ const SettingsContent = () => {
         lang={locale}
         dir={locale === 'ar' ? 'rtl' : 'ltr'}
       >
-        <SettingsDraftGuard dirty={Boolean(user?.id) && hasSettingsDraft} locale={locale} />
+        <SettingsDraftGuard
+          dirty={Boolean(user?.id) && hasSettingsDraft}
+          locale={locale}
+          onDiscard={discardLocalDrafts}
+        />
         {!layoutPreviewEnabled && <Navigation />}
         <nav aria-label={copy.breadcrumb} className="flex items-center gap-2 text-sm opacity-75">
           <Link className="min-h-11 py-3 hover:underline" to="/settings">

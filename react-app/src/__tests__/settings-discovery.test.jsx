@@ -1,6 +1,7 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, createMemoryRouter, RouterProvider } from 'react-router-dom';
+import { MemoryRouter, createMemoryRouter, RouterProvider, Routes, Route } from 'react-router-dom';
+import { Suspense } from 'react';
 import Settings from '../pages/SettingsCenter';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../lib/apiClient';
@@ -705,3 +706,144 @@ test('missing product email is disabled without making a draft, and explicit cho
   expect(screen.getByLabelText(/product email delivery/i)).toHaveValue('disabled');
   expect(apiClient.put).not.toHaveBeenCalled();
 });
+
+function renderWithSuspendedDestination(path = '/settings/appearance') {
+  const pendingDestination = new Promise(() => {});
+  function SlowHome() {
+    throw pendingDestination;
+  }
+  const router = createMemoryRouter(
+    [
+      {
+        path: '*',
+        element: (
+          <Suspense fallback={<p>Loading destination</p>}>
+            <Routes>
+              <Route path="/settings/*" element={<Settings />} />
+              <Route path="/" element={<SlowHome />} />
+            </Routes>
+          </Suspense>
+        ),
+      },
+    ],
+    { initialEntries: [path] }
+  );
+  render(<RouterProvider router={router} />);
+  return router;
+}
+
+async function discardAndImmediatelyReturn(router, user) {
+  await act(() => router.navigate('/'));
+  await user.dblClick(screen.getByRole('button', { name: 'Discard and leave' }));
+  expect(router.state.location.pathname).toBe('/');
+  await act(() => router.navigate(-1));
+  await ready();
+}
+
+test('explicit discard does not resurrect multiple drafts after Back interrupts a suspended destination', async () => {
+  const user = userEvent.setup();
+  const router = renderWithSuspendedDestination();
+  await ready();
+  await user.selectOptions(screen.getByLabelText('Theme'), 'dark');
+  await act(() => router.navigate('/settings/notifications'));
+  await user.selectOptions(screen.getByLabelText(/marketing email delivery/i), 'disabled');
+  await discardAndImmediatelyReturn(router, user);
+  expect(router.state.location.pathname).toBe('/settings/notifications');
+  expect(screen.getByLabelText(/marketing email delivery/i)).toHaveValue('digest');
+  await act(() => router.navigate('/settings/appearance'));
+  expect(screen.getByLabelText('Theme')).toHaveValue('light');
+  expect(screen.getByRole('button', { name: 'Cancel', exact: true })).toBeDisabled();
+  expect(apiClient.put).not.toHaveBeenCalled();
+});
+
+test.each(['success', 'conflict', 'timeout'])(
+  'discard and rapid Back retain the pending notification request and its %s outcome without replay',
+  async (outcome) => {
+    const user = userEvent.setup();
+    let resolve, reject;
+    apiClient.put.mockReturnValue(
+      new Promise((yes, no) => {
+        resolve = yes;
+        reject = no;
+      })
+    );
+    const router = renderWithSuspendedDestination('/settings/notifications');
+    await ready();
+    await user.selectOptions(screen.getByLabelText(/marketing email delivery/i), 'disabled');
+    await user.click(screen.getByRole('button', { name: 'Save notifications' }));
+    await discardAndImmediatelyReturn(router, user);
+    expect(screen.getByLabelText(/marketing email delivery/i)).toHaveValue('digest');
+    expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled();
+    await act(async () => {
+      if (outcome === 'success')
+        resolve({
+          data: {
+            schema_version: 1,
+            version: 3,
+            preferences: [{ ...notifications[0], delivery: 'disabled' }],
+          },
+        });
+      else
+        reject(
+          outcome === 'conflict'
+            ? { response: { status: 409, data: { detail: 'settings_version_conflict' } } }
+            : new Error('timeout')
+        );
+    });
+    if (outcome === 'success') {
+      expect(screen.getByLabelText(/marketing email delivery/i)).toHaveValue('disabled');
+      expect(screen.getByRole('button', { name: 'Cancel', exact: true })).toBeDisabled();
+    } else {
+      expect(screen.getByRole('button', { name: 'Save notifications' })).toBeDisabled();
+      await discardAndImmediatelyReturn(router, user);
+      const reload = screen.getByRole('button', { name: /Discard draft and reload notifications/ });
+      expect(reload).toBeEnabled();
+      expect(screen.getByRole('button', { name: 'Save notifications' })).toBeDisabled();
+      await user.click(reload);
+      expect(
+        screen.queryByRole('button', { name: /Discard draft and reload notifications/ })
+      ).not.toBeInTheDocument();
+      expect(screen.getByLabelText(/marketing email delivery/i)).toHaveValue('digest');
+    }
+    expect(apiClient.put).toHaveBeenCalledTimes(1);
+  }
+);
+
+test.each([false, true])(
+  'pending profile save after discard preserves newer edit=%s',
+  async (newerEdit) => {
+    const user = userEvent.setup();
+    const base = apiClient.get.getMockImplementation();
+    apiClient.get.mockImplementation((path) =>
+      path === '/settings/capabilities'
+        ? Promise.resolve({
+            data: { ...capabilities, categories: [...capabilities.categories, { id: 'profile' }] },
+          })
+        : base(path)
+    );
+    let finish;
+    apiClient.patch.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+    );
+    const router = renderWithSuspendedDestination('/settings/profile');
+    await ready();
+    await user.type(screen.getByLabelText('Display name'), 'Submitted');
+    await user.click(screen.getByRole('button', { name: 'Save profile' }));
+    await discardAndImmediatelyReturn(router, user);
+    expect(screen.getByLabelText('Display name')).toHaveValue('');
+    if (newerEdit) await user.type(screen.getByLabelText('Display name'), 'Newer draft');
+    await act(async () => finish({ data: { display_name: 'Submitted' } }));
+    expect(screen.getByLabelText('Display name')).toHaveValue(
+      newerEdit ? 'Newer draft' : 'Submitted'
+    );
+    const cancel = screen.getByRole('button', { name: 'Cancel', exact: true });
+    if (newerEdit) {
+      expect(cancel).toBeEnabled();
+      await user.click(cancel);
+      expect(screen.getByLabelText('Display name')).toHaveValue('Submitted');
+    } else expect(cancel).toBeDisabled();
+    expect(apiClient.patch).toHaveBeenCalledTimes(1);
+  }
+);

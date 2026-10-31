@@ -130,7 +130,7 @@ def test_schema_readiness_is_read_only(monkeypatch, tables, expected):
     cursor.execute.assert_called_once()
     query = ' '.join(cursor.execute.call_args.args[0].split())
     assert query.startswith('SELECT to_regclass')
-    assert "name='0040_workspace_asset_retention'" in query
+    assert "name='0041_workspace_revision_tenant_scope'" in query
     assert "name='0006_notification_preference_sets'" in query
     assert "version='014_create_notification_preference_sets'" in query
 

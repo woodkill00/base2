@@ -700,3 +700,110 @@ def test_optional_policy_sole_owner_can_publish_without_reviewer_or_fabricated_a
         )[0][0]
         == 0
     )
+
+
+@pytest.mark.parametrize('factory', [workspace_db_conn, workspace_worker_db_conn])
+def test_revision_parent_scope_allows_only_bound_tenant(workspace_policy_fixture, factory):
+    f = workspace_policy_fixture
+    insert = """INSERT INTO sitecontent_contentrevision
+      (id,content_id,revision,snapshot,actor_ref,created_at,schema_version,
+       snapshot_sha256,action,restored_from_version)
+      VALUES(%s,%s,999,'{}'::jsonb,%s,NOW(),1,%s,'rls-test',NULL)"""
+    params = (str(uuid4()), str(f['record_id']), f"user:{f['creator_id']}", '0' * 64)
+    with factory(tenant_id=f['site_id']) as conn, conn.cursor() as cur:
+        cur.execute(insert, params)
+        cur.execute('SELECT id FROM sitecontent_contentrevision WHERE id=%s', (params[0],))
+        assert str(cur.fetchone()[0]) == params[0]
+        conn.rollback()
+    # A fresh actual-role connection has no inherited tenant session setting.
+    from api.tests.test_workspace_review_history_postgres import connection
+
+    role = 'WORKSPACE' if factory is workspace_db_conn else 'WORKSPACE_WORKER'
+    with connection(role) as (_, cur):
+        cur.execute("SELECT current_setting('app.tenant_id',true)")
+        assert cur.fetchone()[0] in (None, '')
+        cur.execute('SELECT count(*) FROM sitecontent_contentrevision WHERE content_id=%s',
+                    (str(f['record_id']),))
+        assert cur.fetchone()[0] == 0
+        with pytest.raises(psycopg2.errors.InsufficientPrivilege):
+            cur.execute(insert, params)
+    persisted = f['execute'](
+        'SELECT id FROM sitecontent_contentrevision WHERE content_id=%s LIMIT 1',
+        (str(f['record_id']),),
+    )[0][0]
+    for site in ('unrelated-tenant', ''):
+        with factory(tenant_id=site) as conn, conn.cursor() as cur:
+            cur.execute(
+                'SELECT count(*) FROM sitecontent_contentrevision WHERE content_id=%s',
+                (str(f['record_id']),),
+            )
+            assert cur.fetchone()[0] == 0
+            cur.execute('DELETE FROM sitecontent_contentrevision WHERE id=%s', (str(persisted),))
+            assert cur.rowcount == 0
+            cur.execute(
+                "UPDATE sitecontent_contentrevision SET action='forbidden' WHERE id=%s",
+                (str(persisted),),
+            )
+            assert cur.rowcount == 0
+            with pytest.raises(psycopg2.errors.InsufficientPrivilege):
+                cur.execute(insert, params)
+            conn.rollback()
+
+
+@pytest.mark.parametrize('role', ['API_RUNTIME', 'RUNTIME_WORKER', 'DATA_RIGHTS_WORKER'])
+def test_revision_history_not_exposed_to_other_roles(workspace_policy_fixture, role):
+    from api.tests.test_workspace_review_history_postgres import connection
+
+    f = workspace_policy_fixture
+    with connection(role, f['site_id']) as (_, cur):
+        try:
+            cur.execute(
+                'SELECT id FROM sitecontent_contentrevision WHERE content_id=%s',
+                (str(f['record_id']),),
+            )
+        except psycopg2.errors.InsufficientPrivilege:
+            pass  # Public/general worker has no history table grant.
+        else:
+            assert cur.fetchall() == []  # Rights worker without an exact durable claim.
+
+
+@pytest.mark.parametrize('factory', [workspace_db_conn, workspace_worker_db_conn])
+def test_revision_reparent_cannot_escape_bound_tenant(workspace_policy_fixture, factory):
+    f = workspace_policy_fixture
+    foreign_id = uuid4()
+    f['execute'](
+        """INSERT INTO sitecontent_contentrecord
+        (id,site_id,content_type,slug,title,excerpt,body,metadata,state,
+         sitemap_include,search_visible,version,schedule_timezone,schema_version,
+         values,created_at,updated_at)
+        VALUES(%s,%s,'legacy','foreign','Foreign','','','{}','draft',FALSE,FALSE,1,'',1,
+               '{}',NOW(),NOW())""",
+        (str(foreign_id), 'other-' + uuid4().hex[:20]),
+    )
+    with factory(tenant_id=f['site_id']) as conn, conn.cursor() as cur:
+        with pytest.raises(psycopg2.errors.InsufficientPrivilege):
+            cur.execute(
+                'UPDATE sitecontent_contentrevision SET content_id=%s WHERE content_id=%s',
+                (str(foreign_id), str(f['record_id'])),
+            )
+        conn.rollback()
+
+
+def test_revision_upgrade_preserves_forced_rls_and_restrictive_claim_fence(
+    workspace_policy_fixture,
+):
+    f = workspace_policy_fixture
+    assert f['execute'](
+        "SELECT count(*) FROM django_migrations WHERE app='sitecontent' "
+        "AND name='0041_workspace_revision_tenant_scope'"
+    )[0][0] == 1
+    assert f['execute'](
+        "SELECT relrowsecurity,relforcerowsecurity FROM pg_class "
+        "WHERE oid='public.sitecontent_contentrevision'::regclass"
+    )[0] == (True, True)
+    policies = dict(f['execute'](
+        "SELECT policyname,permissive FROM pg_policies "
+        "WHERE schemaname='public' AND tablename='sitecontent_contentrevision'"
+    ))
+    assert policies['data_rights_claim_fence'] == 'RESTRICTIVE'
+    assert policies['workspace_revision_tenant_scope'] == 'PERMISSIVE'

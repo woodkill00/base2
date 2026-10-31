@@ -141,6 +141,23 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+      - name: Workspace responsive release matrix
+        id: workspace_acceptance
+        if: >-
+          always() && steps.scope.outputs.mode == 'full' && steps.install.outcome == 'success'
+          && steps.build.outcome == 'success' && steps.browsers.outcome == 'success'
+          && steps.fonts.outcome == 'success'
+        run: npm run test:workspace-release -- --output=../.artifacts/workspace-124
+
+      - name: Upload workspace acceptance evidence
+        if: always() && steps.scope.outputs.mode == 'full'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: workspace-124
+          path: .artifacts/workspace-124
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Shared layout contracts and visual evidence
         id: layout_acceptance
         if: >-
@@ -219,6 +236,7 @@ jobs:
         env:
           ACCOUNT: ${{ steps.account_acceptance.outcome }}
           SETTINGS: ${{ steps.settings_acceptance.outcome }}
+          WORKSPACE: ${{ steps.workspace_acceptance.outcome }}
           LAYOUT: ${{ steps.layout_acceptance.outcome }}
           VOLCANO: ${{ steps.volcano_acceptance.outcome }}
           JOURNEYS: ${{ steps.journeys_acceptance.outcome }}
@@ -227,7 +245,7 @@ jobs:
           set -euo pipefail
           status=0
           printf '## Browser acceptance\n\n| Suite | Outcome |\n| --- | --- |\n' >> "$GITHUB_STEP_SUMMARY"
-          for suite in ACCOUNT SETTINGS LAYOUT VOLCANO JOURNEYS MODULE_JOURNEYS; do
+          for suite in ACCOUNT SETTINGS WORKSPACE LAYOUT VOLCANO JOURNEYS MODULE_JOURNEYS; do
             outcome="${!suite:-missing}"
             printf '| %s | %s |\n' "$suite" "$outcome" >> "$GITHUB_STEP_SUMMARY"
             if [[ "$outcome" != success ]]; then

@@ -152,3 +152,31 @@ Native browser evidence remains unrun for that setup-blocked head.
 
 The inherited media-image release blocker remains separate from these repairs;
 no stopped runtime repair is resumed by this feature.
+
+## Second draft CI repair batch
+
+At `767f302804838b8a3435dd39448b0ecee6b527e3`, configuration sync, local unit jobs
+and isolated settings PostgreSQL acceptance pass. The main integration fixture now
+reaches review submission, exposing a restrictive-only RLS composition on
+`sitecontent_contentrevision`. Additive migration 0041 admits only the two existing
+workspace roles through an explicit same-tenant parent-record predicate, preserving
+parent RLS, forced RLS, restrictive data-rights fencing and grants. Readiness and
+negative tests cover the upgrade; repaired PostgreSQL runtime remains pending.
+
+Browser execution now supplies actual evidence. The responsive settings release
+matrix and the new policy/review scenarios pass in both layouts. Some navigation
+fixtures used nonexistent/hidden controls or obsolete delivery copy; their setup and
+assertions now name the real controls and truthful local-adapter behavior.
+
+A separate real defect was reproduced: Discard followed by rapid Back during a
+suspended destination can retain the Settings instance and its unsaved draft.
+Discard now resets ordinary loaded snapshots before proceeding, once only, without
+canceling sent requests or clearing conflict/uncertainty fences. Focused suspended-
+destination, pending-success and error-recovery tests pass; the original rapid native
+Back assertion is retained. Native verification of the repair remains required.
+
+The dedicated 24-test workspace release matrix had only been collected previously.
+It is now a required independent CI suite with its own retained artifact and a
+fail-closed aggregate outcome. This does not turn its synthetic API fixtures into
+real-service proof. The remaining browser/API/database evidence gap is being addressed
+through the existing disposable E2E runner, not a deployed preview or TLS bypass.

@@ -50,7 +50,7 @@ test('Stay preserves link destination history, draft and focus; categories retai
   expect(screen.getByLabelText('Draft')).toHaveValue('unsaved');
   const outside = screen.getByRole('link', { name: 'Outside' });
   await user.click(outside);
-  expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+  expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Stay' })).toHaveFocus();
   await user.tab();
   expect(screen.getByRole('button', { name: 'Discard and leave' })).toHaveFocus();
