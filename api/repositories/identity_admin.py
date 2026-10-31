@@ -292,6 +292,8 @@ def accept_invitation(
 ) -> dict[str, Any] | None:
     with db_conn(tenant_id=tenant_id) as conn:
         with conn.cursor() as cur:
+            # Feature124 effect lock precedes authoritative membership/org row locks.
+            cur.execute('SELECT pg_advisory_xact_lock(hashtext(%s))', ('base2-workspace-policy-v1',))
             cur.execute(
                 """
                 SELECT i.id, i.organization_id, i.role
@@ -404,6 +406,8 @@ def update_member_role(
 ) -> bool:
     with db_conn(tenant_id=tenant_id) as conn:
         with conn.cursor() as cur:
+            # Feature124 effect lock precedes authoritative membership/org row locks.
+            cur.execute('SELECT pg_advisory_xact_lock(hashtext(%s))', ('base2-workspace-policy-v1',))
             cur.execute(
                 "SELECT role FROM api_identity_memberships WHERE organization_id=%s AND user_id=%s AND status='active' FOR UPDATE",
                 (str(organization_id), str(actor_id)),

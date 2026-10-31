@@ -1,6 +1,9 @@
+import { assertForcedColorState, assertForcedSystemControl } from '../forced-color-state';
 import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
+import profile from '../../src/config/generated/base2-obsidian.json';
 
 const axeSource = readFileSync('node_modules/axe-core/axe.min.js', 'utf8');
 const typeId = '00000000-0000-0000-0000-000000010400';
@@ -56,7 +59,28 @@ const errorOutcomes = [
   'network-failed',
   'polling-exhausted',
 ];
+const fixtureActions: Record<string, string[]> = {
+  draft: ['submit_review', 'publish', 'delete'],
+  in_review: ['return_draft', 'publish', 'delete'],
+  scheduled: ['return_draft', 'publish', 'archive'],
+  published: ['archive'],
+  archived: ['restore', 'delete'],
+  deleted: [],
+};
 const records = states.map((state, index) => ({
+  siteId: profile.siteId,
+  typeKey: 'article',
+  updatedAt: '2026-10-31T00:00:00Z',
+  allowedActions: fixtureActions[state],
+  review: {
+    status: state === 'in_review' ? 'pending' : 'not_requested',
+    requiresReview: false,
+    policyVersion: 1,
+    semanticRevision: 'fixture-revision',
+    deliveryAdapter: 'local_test',
+    recoveryReason: null,
+  },
+
   id: `00000000-0000-0000-0000-0000000104${String(index).padStart(2, '0')}`,
   title:
     index === 1
@@ -66,7 +90,11 @@ const records = states.map((state, index) => ({
   state,
   schemaVersion: 1,
   version: index + 1,
-  values: { title: `${state} record`, field_1: 'Deterministic synthetic content. '.repeat(4) },
+  values: { title: `${state} record`, field_1: 'Private synthetic editorial note. '.repeat(4) },
+  publicContent: {
+    excerpt: `Curated public ${state} excerpt.`,
+    body: `Intentional public ${state} body.`,
+  },
 }));
 const fixtureUser = {
   id: '00000000-0000-0000-0000-000000010499',
@@ -74,6 +102,7 @@ const fixtureUser = {
   display_name: 'Workspace Fixture',
   permissions: [
     'content-workspace.read',
+    'content-workspace.write',
     'content.create',
     'content.write',
     'content.publish',
@@ -85,6 +114,11 @@ const fixtureUser = {
 
 test('synthetic workspace fixture vocabulary is complete and explicit', () => {
   expect(fieldKinds).toHaveLength(18);
+  expect(fixtureUser.permissions).toContain('content-workspace.write');
+  for (const record of records) {
+    expect(record.publicContent.excerpt).not.toBe(record.publicContent.body);
+    expect(JSON.stringify(record.publicContent)).not.toContain(record.values.field_1);
+  }
   expect(states).toEqual(['draft', 'in_review', 'scheduled', 'published', 'archived', 'deleted']);
   expect(jobStates).toContain('review_required');
   expect(jobStates).toContain('failed');
@@ -161,6 +195,57 @@ test.beforeEach(async ({ page }, testInfo) => {
   });
 });
 
+async function assertRecordDivider(page) {
+  const divider = page
+    .getByRole('list', { name: 'Records', exact: true })
+    .locator('li:not(:last-child)')
+    .first();
+  await expect(divider).toBeVisible();
+  const paint = await divider.evaluate((element) => {
+    const style = getComputedStyle(element);
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 1;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Canvas color inspection unavailable');
+    const rgba = (color: string) => {
+      context.clearRect(0, 0, 1, 1);
+      context.fillStyle = color;
+      context.fillRect(0, 0, 1, 1);
+      return Array.from(context.getImageData(0, 0, 1, 1).data);
+    };
+    const probe = document.createElement('span');
+    probe.setAttribute('aria-hidden', 'true');
+    probe.style.cssText =
+      'position:fixed;visibility:hidden;color:CanvasText;background-color:Canvas';
+    document.body.append(probe);
+    try {
+      const system = getComputedStyle(probe);
+      return {
+        width: style.borderBottomWidth,
+        style: style.borderBottomStyle,
+        color: rgba(style.borderBottomColor),
+        forcedColors: matchMedia('(forced-colors: active)').matches,
+        systemText: rgba(system.color),
+        systemCanvas: rgba(system.backgroundColor),
+      };
+    } finally {
+      probe.remove();
+    }
+  });
+  expect(paint.width).toBe('1px');
+  expect(paint.style).toBe('solid');
+  if (paint.forcedColors) {
+    // Respect the browser's accessibility palette; never disable forced colors.
+    expect(paint.color).toEqual(paint.systemText);
+    expect(paint.color[3]).toBe(255);
+    expect(paint.color.slice(0, 3)).not.toEqual(paint.systemCanvas.slice(0, 3));
+  } else {
+    for (const channel of paint.color.slice(0, 3)) expect(channel).toBeGreaterThanOrEqual(254);
+    expect(paint.color[3]).toBeGreaterThanOrEqual(25);
+    expect(paint.color[3]).toBeLessThanOrEqual(26);
+  }
+}
+
 async function assertUsable(page) {
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)
@@ -197,9 +282,73 @@ async function prepareStableFullPageCapture(page) {
 test('workspace release corpus is accessible, responsive, and visually stable', async ({
   page,
 }, testInfo) => {
+  const evidence = {
+    fixture: 'synthetic-api',
+    project: testInfo.project.name,
+    sourceCommit: process.env.GITHUB_SHA || null,
+  };
+  const captures: Array<{
+    view: string;
+    file: string;
+    reference: string;
+    comparison: string;
+    forcedColors: string;
+  }> = [];
+  // Only stale HC image references are batched; functional/state/axe assertions remain hard.
+  const visualExpect = expect.configure({
+    soft: testInfo.project.name === 'chromium-high-contrast',
+  });
+  const compareAndRetain = async (view: string, reference: string) => {
+    await assertForcedColorState(page, testInfo);
+    if (testInfo.project.name === 'chromium-high-contrast') {
+      const selected = page.getByRole('tab', { selected: true });
+      await expect(selected).toHaveCount(1);
+      const cue = await selected.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          line: style.textDecorationLine,
+          color: style.textDecorationColor,
+          text: style.color,
+        };
+      });
+      expect(cue.line).toContain('underline');
+      expect(cue.color).toBe(cue.text);
+    }
+    const errorsBefore = testInfo.errors.length;
+    await visualExpect(page).toHaveScreenshot(reference, {
+      fullPage: true,
+      animations: 'disabled',
+      caret: 'hide',
+      maxDiffPixelRatio: 0.01,
+    });
+    await assertForcedColorState(page, testInfo);
+    const file = `workspace-${view}-post-assert.png`;
+    await page.screenshot({
+      path: testInfo.outputPath(file),
+      fullPage: true,
+      animations: 'disabled',
+      caret: 'hide',
+    });
+    const forcedColors = await assertForcedColorState(page, testInfo);
+    captures.push({
+      view,
+      file,
+      reference,
+      forcedColors,
+      comparison: testInfo.errors.length === errorsBefore ? 'passed' : 'failed',
+    });
+  };
   await page.goto('/workspace');
   await expect(page.getByRole('heading', { name: /records · universal articles/i })).toBeVisible();
+  const newRecord = page.getByRole('button', { name: 'New record', exact: true });
+  await expect(newRecord).toBeVisible();
+  await expect(newRecord).toBeEnabled();
   await assertUsable(page);
+  await assertForcedColorState(page, testInfo);
+  await assertRecordDivider(page);
+  if (testInfo.project.name === 'chromium-high-contrast') {
+    await assertForcedSystemControl(newRecord);
+  }
   // Axe does not check non-text SVG contrast: the original edge-tab icon must
   // inherit its contrasting foreground, rather than the unrelated header color.
   expect(
@@ -212,35 +361,29 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
       )
   ).toBe(true);
   await page.addScriptTag({ content: axeSource });
-  expect(
-    await page.evaluate(async () =>
-      (await window.axe.run(document, { resultTypes: ['violations'] })).violations.map((item) => ({
-        id: item.id,
-        nodes: item.nodes.map((node) => ({ target: node.target, summary: node.failureSummary })),
-      }))
-    )
-  ).toEqual([]);
+  const violations = await page.evaluate(async () =>
+    (await window.axe.run(document, { resultTypes: ['violations'] })).violations.map((item) => ({
+      id: item.id,
+      nodes: item.nodes.map((node) => ({ target: node.target, summary: node.failureSummary })),
+    }))
+  );
+  await writeFile(
+    testInfo.outputPath('workspace-accessibility.json'),
+    JSON.stringify({ ...evidence, violations }, null, 2)
+  );
+  await assertForcedColorState(page, testInfo);
+  expect(violations).toEqual([]);
   await page.keyboard.press('Tab');
   await expect(page.locator(':focus')).toBeVisible();
   await expect(page.locator('.volcano-header-frame')).toHaveCSS('position', 'sticky');
   await prepareStableFullPageCapture(page);
-  await expect(page).toHaveScreenshot(`workspace-records-${testInfo.project.name}.png`, {
-    fullPage: true,
-    animations: 'disabled',
-    caret: 'hide',
-    maxDiffPixelRatio: 0.01,
-  });
+  await compareAndRetain('records', `workspace-records-${testInfo.project.name}.png`);
 
   await page.getByRole('tab', { name: 'Schemas' }).click();
   await expect(page.getByRole('heading', { name: /schema · universal articles/i })).toBeVisible();
   await page.evaluate(() => scrollTo(0, 0));
   await assertUsable(page);
-  await expect(page).toHaveScreenshot(`workspace-schema-${testInfo.project.name}.png`, {
-    fullPage: true,
-    animations: 'disabled',
-    caret: 'hide',
-    maxDiffPixelRatio: 0.01,
-  });
+  await compareAndRetain('schema', `workspace-schema-${testInfo.project.name}.png`);
 
   for (const tab of ['Imports', 'Exports']) {
     await page.getByRole('tab', { name: tab }).click();
@@ -249,17 +392,40 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
     ).toBeVisible();
     await page.evaluate(() => scrollTo(0, 0));
     await assertUsable(page);
-    await expect(page).toHaveScreenshot(
-      `workspace-${tab.toLowerCase()}-${testInfo.project.name}.png`,
-      { fullPage: true, animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.01 }
+    await compareAndRetain(
+      tab.toLowerCase(),
+      `workspace-${tab.toLowerCase()}-${testInfo.project.name}.png`
     );
   }
+  const failed = testInfo.errors.length > 0;
+  await writeFile(
+    testInfo.outputPath('workspace-release-summary.json'),
+    JSON.stringify(
+      {
+        ...evidence,
+        status: failed ? 'failed' : 'passed',
+        phase: failed ? 'assertions-completed-with-failures' : 'assertions-completed',
+        captures,
+        comparisonThresholdUnchanged: 0.01,
+      },
+      null,
+      2
+    )
+  );
 });
 
 declare global {
   interface Window {
     axe: {
-      run: (root: Document, options?: unknown) => Promise<{ violations: Array<{ id: string }> }>;
+      run: (
+        root: Document,
+        options?: unknown
+      ) => Promise<{
+        violations: Array<{
+          id: string;
+          nodes: Array<{ target: unknown; failureSummary?: string }>;
+        }>;
+      }>;
     };
   }
 }

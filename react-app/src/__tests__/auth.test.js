@@ -104,7 +104,8 @@ describe('US2 login/logout UI', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/home/i)).toBeInTheDocument();
+      // Completed logout now shares ProtectedRoute/Volcano's sign-in destination.
+      expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
     });
   });
 

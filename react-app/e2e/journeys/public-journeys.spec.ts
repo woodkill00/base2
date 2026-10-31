@@ -422,6 +422,8 @@ const installMember = async (page: Page) => {
     if (path === '/api/settings/notifications')
       return route.fulfill({
         json: {
+          schema_version: 1,
+          version: 1,
           preferences: [
             { event_family: 'security', channel: 'email', delivery: 'immediate', mandatory: true },
           ],

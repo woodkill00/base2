@@ -11,6 +11,9 @@ from common.models import (
     Url,
     UUIDMixin,
 )
+from common.models import (
+    NotificationPreferenceSet as CanonicalNotificationPreferenceSet,
+)
 
 AuthUser = get_user_model()
 
@@ -186,9 +189,7 @@ class UserPreferenceSet(UUIDMixin, TimestampedModel):
     theme = models.CharField(max_length=16, choices=Theme.choices, default=Theme.SYSTEM)
     contrast = models.CharField(max_length=16, choices=Contrast.choices, default=Contrast.SYSTEM)
     motion = models.CharField(max_length=16, choices=Motion.choices, default=Motion.SYSTEM)
-    density = models.CharField(
-        max_length=16, choices=Density.choices, default=Density.COMFORTABLE
-    )
+    density = models.CharField(max_length=16, choices=Density.choices, default=Density.COMFORTABLE)
     locale = models.CharField(max_length=32, default="en")
     timezone = models.CharField(max_length=255, default="UTC")
     week_start = models.CharField(
@@ -210,9 +211,44 @@ class UserPreferenceSet(UUIDMixin, TimestampedModel):
             models.CheckConstraint(
                 condition=models.Q(schema_version=1), name="users_preferences_schema_v1"
             ),
-            models.CheckConstraint(condition=models.Q(version__gte=1), name="users_preferences_ver_gte1"),
+            models.CheckConstraint(
+                condition=models.Q(version__gte=1), name="users_preferences_ver_gte1"
+            ),
         ]
-        indexes = [models.Index(fields=("user", "organization"), name="users_preferences_owner_idx")]
+        indexes = [
+            models.Index(fields=("user", "organization"), name="users_preferences_owner_idx")
+        ]
+
+
+class NotificationPreferenceSet(CanonicalNotificationPreferenceSet):
+    """Operator-identity adapter; never joins API public identities by UUID."""
+
+    user = models.ForeignKey(
+        AuthUser, on_delete=models.CASCADE, related_name="notification_preference_sets"
+    )
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="notification_preference_sets",
+        null=True,
+        blank=True,
+    )
+
+    class Meta(CanonicalNotificationPreferenceSet.Meta):
+        abstract = False
+        constraints = [
+            *CanonicalNotificationPreferenceSet.Meta.constraints,
+            models.UniqueConstraint(
+                fields=("user",),
+                condition=models.Q(organization__isnull=True),
+                name="users_notifset_default_uniq",
+            ),
+            models.UniqueConstraint(
+                fields=("user", "organization"),
+                condition=models.Q(organization__isnull=False),
+                name="users_notifset_owner_uniq",
+            ),
+        ]
 
 
 class NotificationPreference(UUIDMixin, TimestampedModel):

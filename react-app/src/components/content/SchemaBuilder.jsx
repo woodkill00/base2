@@ -21,6 +21,8 @@ const FIELD_KINDS = [
   'image',
   'file',
 ];
+// Type keys are exact data values; field labels keep their existing normalization.
+const TYPE_KEY = /^(?=.{2,63}(?![\s\S]))[a-z][a-z0-9_]*(?:-[a-z0-9][a-z0-9_]*)*(?![\s\S])/;
 const normalizedKey = (value) =>
   value
     .toLowerCase()
@@ -102,7 +104,7 @@ export default function SchemaBuilder({ currentSchema, onCreated, onError }) {
   };
 
   const createDraft = async () => {
-    if (!/^[a-z][a-z0-9_]{1,62}$/.test(typeKey) || !name.trim() || !fields.length) {
+    if (!TYPE_KEY.test(typeKey) || !name.trim() || !fields.length) {
       onError('A normalized type key, name, and at least one field are required.');
       return;
     }
@@ -187,7 +189,8 @@ export default function SchemaBuilder({ currentSchema, onCreated, onError }) {
               <input
                 value={typeKey}
                 readOnly={Boolean(currentSchema)}
-                onChange={(event) => setTypeKey(normalizedKey(event.target.value))}
+                aria-describedby="content-type-key-help"
+                onChange={(event) => setTypeKey(event.target.value)}
                 className="min-h-11 w-full rounded-xl border border-white/20 bg-slate-950/80 px-3"
               />
             </label>
@@ -201,6 +204,11 @@ export default function SchemaBuilder({ currentSchema, onCreated, onError }) {
               />
             </label>
           </div>
+          <p id="content-type-key-help" className="text-sm opacity-70">
+            Type keys use 2–63 lowercase ASCII letters, digits or underscores, starting with a
+            letter. Single hyphens must be followed by a letter or digit, as in blog-post, doc-page
+            or portfolio-item. Field and preset keys do not use hyphens.
+          </p>
           <ul aria-label="Draft fields" className="grid gap-2 sm:grid-cols-2">
             {fields.map((field) => (
               <li key={field.fieldKey} className="rounded-xl bg-white/5 p-3 text-sm">

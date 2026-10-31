@@ -28,7 +28,11 @@ export default defineConfig({
     // 1280px desktop viewport at 400% browser zoom.
     chromium('chromium-400-zoom', { width: 320, height: 720 }),
     chromium('chromium-light', { width: 1280, height: 900 }, { colorScheme: 'light' }),
-    chromium('chromium-high-contrast', { width: 1280, height: 900 }, { forcedColors: 'active' }),
+    chromium(
+      'chromium-high-contrast',
+      { width: 1280, height: 900 },
+      { contextOptions: { forcedColors: 'active' } }
+    ),
     chromium('chromium-rtl', { width: 1280, height: 900 }),
     chromium('chromium-german', { width: 1280, height: 900 }),
     chromium('chromium-reduced-motion', { width: 1280, height: 900 }, { reducedMotion: 'reduce' }),

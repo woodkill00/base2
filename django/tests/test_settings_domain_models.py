@@ -1,5 +1,6 @@
-import pytest
 from importlib import import_module
+
+import pytest
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 
@@ -62,7 +63,8 @@ def test_settings_migration_has_reversible_model_state_operations():
         "users.migrations.0008_notificationpreference_userpreferenceset"
     ).Migration
     created_models = {
-        operation.name for operation in migration.operations
+        operation.name
+        for operation in migration.operations
         if operation.__class__.__name__ == "CreateModel"
     }
     assert created_models == {"NotificationPreference", "UserPreferenceSet"}

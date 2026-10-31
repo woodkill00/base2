@@ -15,13 +15,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import urlparse, urlunparse
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener, urlopen
 from uuid import UUID, uuid4
 
 from api import redis_client
 from api.services.runtime_heartbeat import _runtime_heartbeat
 from api.services.email_health import email_health_probe
-from api.db import db_ping, db_schema_ready, pool_snapshot
+from api.db import db_ping, pool_snapshot
 from api.repositories import operations
 from api.services.operations_center import (
     alert_schedule,
@@ -73,19 +73,62 @@ def _timed(check: Callable[[], bool], healthy: str, failed: str, timeout: int):
     return ('healthy' if ok else 'unavailable', healthy if ok else failed, latency)
 
 
-def _internal_http(path: str, timeout: int) -> tuple[str, str, int]:
-    base = os.getenv('OPERATIONS_INTERNAL_BASE_URL', 'http://nginx').rstrip('/')
-    parsed = urlparse(base)
-    if parsed.scheme != 'http' or parsed.hostname not in {'nginx', '127.0.0.1', 'localhost'}:
-        return 'degraded', 'http.not-configured', 0
-    started = time.monotonic()
-    request = Request(f'{base}{path}', method='GET', headers={'User-Agent': 'base2-operations/1'})
+class _NoSchemaRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        # Never contact a redirect target, even if the first host was allowlisted.
+        return None
+
+
+def _internal_http(
+    path: str, timeout: int, *, schema_observation: bool = False,
+) -> tuple[str, str, int]:
+    base = os.getenv('OPERATIONS_INTERNAL_BASE_URL', 'http://nginx')
+    if not schema_observation:
+        base = base.rstrip('/')
+    unavailable = ('unavailable', 'migrations.unknown', 0)
     try:
-        with urlopen(request, timeout=timeout) as response:  # noqa: S310 - strict local allowlist above
+        parsed = urlparse(base)
+        allowed = parsed.scheme == 'http' and parsed.hostname in {'nginx', '127.0.0.1', 'localhost'}
+        if schema_observation:
+            # Same approved local authority as existing HTTP probes; this narrow
+            # observation additionally forbids credentials, URL suffixes and hops.
+            allowed = allowed and not (
+                parsed.username is not None or parsed.password is not None
+                or parsed.path or parsed.query or parsed.fragment
+            ) and (parsed.port is None or 1 <= parsed.port <= 65535)
+            allowed = allowed and path == '/api/health' and type(timeout) is int and 1 <= timeout <= 5
+    except ValueError:
+        allowed = False
+    if not allowed:
+        return unavailable if schema_observation else ('degraded', 'http.not-configured', 0)
+    started = time.monotonic()
+    try:
+        request = Request(f'{base}{path}', method='GET', headers={'User-Agent': 'base2-operations/1'})
+        response_context = (
+            build_opener(ProxyHandler({}), _NoSchemaRedirect()).open(request, timeout=timeout)
+            if schema_observation else urlopen(request, timeout=timeout)  # noqa: S310 - local allowlist
+        )
+        with response_context as response:
             ok = 200 <= response.status < 400
+            if schema_observation:
+                ok = response.status == 200
+                if ok:
+                    raw = response.read(4097)
+                    if len(raw) > 4096:
+                        raise ValueError('operations:readiness_response_too_large')
+                    payload = json.loads(raw)
+                    checks = payload.get('checks') if isinstance(payload, dict) else None
+                    schema = checks.get('schema') if isinstance(checks, dict) else None
+                    ok = (
+                        isinstance(payload, dict) and payload.get('ok') is True
+                        and payload.get('service') == 'api' and isinstance(schema, dict)
+                        and schema.get('ok') is True and schema.get('required') is True
+                    )
     except Exception:
         ok = False
     latency = min(int((time.monotonic() - started) * 1000), timeout * 1000)
+    if schema_observation:
+        return ('healthy' if ok else 'unavailable', 'migrations.ready' if ok else 'migrations.unknown', latency)
     return ('healthy' if ok else 'unavailable', 'http.ready' if ok else 'http.unavailable', latency)
 
 
@@ -234,8 +277,10 @@ def configured_probe_adapters(
         'database.performance': database_performance,
         'backup.freshness': lambda timeout: _receipt('backup', timeout),
         'restore.last-drill': lambda timeout: _receipt('restore', timeout),
-        'migrations.state': lambda timeout: _timed(
-            db_schema_ready, 'migrations.ready', 'migrations.unknown', timeout
+        # Observe the API's existing authorized schema check; this worker has
+        # intentionally no schema-ledger privileges and never falls back to SQL.
+        'migrations.state': lambda timeout: _internal_http(
+            '/api/health', timeout, schema_observation=True
         ),
     }
 

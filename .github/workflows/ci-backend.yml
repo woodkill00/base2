@@ -77,12 +77,24 @@ jobs:
           python -m pip check
 
       - name: Ruff (lint)
-        if: matrix.service == 'api'
-        run: python -m ruff check api
+        run: python -m ruff check "${{ matrix.service }}"
 
-      - name: Frontend change-selection security regressions
+      - name: Set up Node for acceptance contracts
         if: matrix.service == 'api'
-        run: python -m pytest -q scripts/tests/test_frontend_ci_scope.py scripts/tests/test_settings_foundation_ci.py
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '20'
+
+      - name: Frontend/E2E acceptance contracts
+        if: matrix.service == 'api'
+        run: python -m pytest -q scripts/tests/test_frontend_ci_scope.py scripts/tests/test_settings_foundation_ci.py scripts/tests/test_stacked_pr_ci.py scripts/tests/test_e2e_workspace_topology.py e2e/support/test_workspace_fixture.py e2e/support/test_workspace_journey_source.py
+
+      - name: Recovery security and disposable harness contracts
+        if: matrix.service == 'api'
+        run: |
+          python -m ruff check scripts/python/production_backup.py scripts/python/recovery_assurance.py scripts/python/backup_security_manifest.py scripts/python/workspace_policy_restore_fixture.py
+          python -m mypy scripts/python/production_backup.py scripts/python/recovery_assurance.py scripts/python/backup_security_manifest.py scripts/python/workspace_policy_restore_fixture.py
+          python -m pytest -q scripts/tests/test_production_backup.py scripts/tests/test_recovery_assurance.py scripts/tests/test_backup_security_manifest.py scripts/tests/test_workspace_policy_restore_contract.py
 
       - name: Mypy (typecheck)
         run: |
@@ -205,6 +217,7 @@ jobs:
           nohup python -m celery -A api.tasks.app worker --loglevel=info &
           sleep 5
       - name: Run API integration tests
+        id: integration_core
         env:
           DB_HOST: localhost
           DB_PORT: 5432
@@ -213,13 +226,22 @@ jobs:
           DB_PASSWORD: mypassword
           CELERY_BROKER_URL: redis://localhost:6379/0
           CELERY_RESULT_BACKEND: redis://localhost:6379/1
+          WORKSPACE_POLICY_DISPOSABLE: '1'
+          RUNTIME_WORKER_DB_USER: ci_runtime_worker
+          RUNTIME_WORKER_DB_PASSWORD: ci_runtime_worker_password_003
+          WORKSPACE_DB_USER: ci_workspace_runtime
+          WORKSPACE_DB_PASSWORD: ci_workspace_runtime_password_001
+          WORKSPACE_WORKER_DB_USER: ci_workspace_worker
+          WORKSPACE_WORKER_DB_PASSWORD: ci_workspace_worker_password_002
+          DATA_RIGHTS_WORKER_DB_USER: ci_data_rights_worker
+          DATA_RIGHTS_WORKER_DB_PASSWORD: ci_data_rights_worker_password_005
           API_RUNTIME_DB_USER: ci_api_runtime
           API_RUNTIME_DB_PASSWORD: ci_api_runtime_password_004
           EMAIL_WORKER_DB_USER: ci_email_worker
           EMAIL_WORKER_DB_PASSWORD: ci_email_worker_password_006
         run: |
           cd api
-          pytest -q -m integration --ignore=tests/test_email_outbox.py --ignore=tests/test_preview_media_fixture_integration.py --ignore=tests/test_optional_modules_integration.py --cov=api --cov-append --cov-report=term -c pytest.ini
+          pytest -q -m integration --ignore=tests/test_email_outbox.py --ignore=tests/test_preview_media_fixture_integration.py --ignore=tests/test_optional_modules_integration.py --ignore=tests/test_workspace_policy_restore_postgres.py --cov=api --cov-append --cov-report=term -c pytest.ini
           BASE2_DISPOSABLE_JOURNEY=1 pytest -q -m integration tests/test_optional_modules_integration.py -c pytest.ini
           DB_USER="$API_RUNTIME_DB_USER" DB_PASSWORD="$API_RUNTIME_DB_PASSWORD" \
             pytest -q -m integration tests/test_email_outbox.py -c pytest.ini
@@ -228,3 +250,57 @@ jobs:
           DB_USER="$API_RUNTIME_DB_USER" DB_PASSWORD="$API_RUNTIME_DB_PASSWORD" \
             SITE_PROFILE=base2-obsidian BASE2_DISPOSABLE_JOURNEY=1 \
             pytest -q -m integration tests/test_preview_media_fixture_integration.py -c pytest.ini
+
+      - name: Restore Feature124 into separate owned database
+        id: workspace_restore
+        if: ${{ !cancelled() && (steps.integration_core.outcome == 'success' || steps.integration_core.outcome == 'failure') }}
+        timeout-minutes: 6
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: mydatabase
+          DB_USER: myuser
+          DB_PASSWORD: mypassword
+          WORKSPACE_POLICY_DISPOSABLE: '1'
+          WORKSPACE_RESTORE_DISPOSABLE: '1'
+          WORKSPACE_DB_USER: ci_workspace_runtime
+          WORKSPACE_DB_PASSWORD: ci_workspace_runtime_password_001
+          WORKSPACE_WORKER_DB_USER: ci_workspace_worker
+          WORKSPACE_WORKER_DB_PASSWORD: ci_workspace_worker_password_002
+          RUNTIME_WORKER_DB_USER: ci_runtime_worker
+          RUNTIME_WORKER_DB_PASSWORD: ci_runtime_worker_password_003
+          DATA_RIGHTS_WORKER_DB_USER: ci_data_rights_worker
+          DATA_RIGHTS_WORKER_DB_PASSWORD: ci_data_rights_worker_password_005
+          API_RUNTIME_DB_USER: ci_api_runtime
+          API_RUNTIME_DB_PASSWORD: ci_api_runtime_password_004
+          EMAIL_WORKER_DB_USER: ci_email_worker
+          EMAIL_WORKER_DB_PASSWORD: ci_email_worker_password_006
+        run: |
+          # Prefer only existing trusted clients for the pinned PostgreSQL 16 service.
+          if [ -x /usr/lib/postgresql/16/bin/psql ] && [ -x /usr/lib/postgresql/16/bin/pg_dump ] && [ -x /usr/lib/postgresql/16/bin/pg_restore ]; then
+            export PATH="/usr/lib/postgresql/16/bin:$PATH"
+          fi
+          export WORKSPACE_RESTORE_RUN_ID="$(python -c 'import uuid; print(uuid.uuid4().hex)')"
+          export WORKSPACE_RESTORE_REPORT="$RUNNER_TEMP/workspace-policy-restore-$WORKSPACE_RESTORE_RUN_ID.json"
+          export WORKSPACE_RESTORE_DIAGNOSTIC="$RUNNER_TEMP/workspace-policy-failure-$WORKSPACE_RESTORE_RUN_ID.json"
+          python -m scripts.python.workspace_policy_restore_fixture
+          timeout 300 python -m pytest api/tests/test_workspace_policy_restore_postgres.py -c api/pytest.ini -o addopts= -m integration --no-cov
+          python -m scripts.python.workspace_policy_restore_fixture --verify-report "$WORKSPACE_RESTORE_REPORT"
+
+      - name: Retain successful isolated restoration evidence
+        if: ${{ !cancelled() && steps.workspace_restore.outcome == 'success' }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: workspace-policy-restoration
+          path: ${{ runner.temp }}/workspace-policy-restore-*.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Retain failed isolated restoration diagnostic
+        if: ${{ !cancelled() && steps.workspace_restore.outcome == 'failure' }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: workspace-policy-restoration-failure
+          path: ${{ runner.temp }}/workspace-policy-failure-*.json
+          if-no-files-found: warn
+          retention-days: 7

@@ -141,6 +141,63 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+      - name: Workspace responsive release matrix
+        id: workspace_acceptance
+        if: >-
+          always() && steps.scope.outputs.mode == 'full' && steps.install.outcome == 'success'
+          && steps.build.outcome == 'success' && steps.browsers.outcome == 'success'
+          && steps.fonts.outcome == 'success'
+        run: npm run test:workspace-release -- --output=../.artifacts/workspace-124
+
+      - name: Upload workspace acceptance evidence
+        if: always() && steps.scope.outputs.mode == 'full'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: workspace-124
+          path: .artifacts/workspace-124
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Genuine forced-color media diagnostics
+        id: media_hc_acceptance
+        if: >-
+          always() && steps.scope.outputs.mode == 'full' && steps.install.outcome == 'success'
+          && steps.build.outcome == 'success' && steps.browsers.outcome == 'success'
+          && steps.fonts.outcome == 'success'
+        run: npm run test:media-release -- --project=chromium-high-contrast --reporter=line --output=../.artifacts/forced-colors-ci-${{ github.run_id }}-${{ github.run_attempt }}-media
+
+      - name: Genuine forced-color operations diagnostics
+        id: operations_hc_acceptance
+        if: >-
+          always() && steps.scope.outputs.mode == 'full' && steps.install.outcome == 'success'
+          && steps.build.outcome == 'success' && steps.browsers.outcome == 'success'
+          && steps.fonts.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Partial diagnostics must not rewrite the accepted full-matrix receipt.
+          receipt_before="$(sha256sum ../specs/106-production-readiness-program/operations-visual-runner.json)"
+          status=0
+          npm run test:operations-release -- --project=chromium-high-contrast --reporter=line --grep='(^| )operations center is accessible responsive and visually stable$' --output=../.artifacts/forced-colors-ci-${{ github.run_id }}-${{ github.run_attempt }}-operations || status=$?
+          receipt_check=0
+          receipt_after="$(sha256sum ../specs/106-production-readiness-program/operations-visual-runner.json)" || receipt_check=$?
+          if [[ "$receipt_check" != 0 || "$receipt_before" != "$receipt_after" ]]; then
+            echo "::error::Partial operations diagnostics modified the accepted full-matrix receipt."
+            if [[ "$status" == 0 ]]; then status=1; fi
+          fi
+          exit "$status"
+
+      - name: Retain targeted forced-color diagnostics
+        if: always() && steps.scope.outputs.mode == 'full'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: forced-color-diagnostics
+          path: |
+            .artifacts/forced-colors-ci-${{ github.run_id }}-${{ github.run_attempt }}-media
+            .artifacts/forced-colors-ci-${{ github.run_id }}-${{ github.run_attempt }}-operations
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Shared layout contracts and visual evidence
         id: layout_acceptance
         if: >-
@@ -186,7 +243,9 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: user-journeys-113
-          path: .artifacts/journeys-*
+          path: |
+            .artifacts/journeys-ci-${{ github.run_id }}-${{ github.run_attempt }}-journeys
+            .artifacts/journeys-ci-${{ github.run_id }}-${{ github.run_attempt }}-modules
           if-no-files-found: warn
           retention-days: 7
 
@@ -219,6 +278,9 @@ jobs:
         env:
           ACCOUNT: ${{ steps.account_acceptance.outcome }}
           SETTINGS: ${{ steps.settings_acceptance.outcome }}
+          WORKSPACE: ${{ steps.workspace_acceptance.outcome }}
+          MEDIA_HC: ${{ steps.media_hc_acceptance.outcome }}
+          OPERATIONS_HC: ${{ steps.operations_hc_acceptance.outcome }}
           LAYOUT: ${{ steps.layout_acceptance.outcome }}
           VOLCANO: ${{ steps.volcano_acceptance.outcome }}
           JOURNEYS: ${{ steps.journeys_acceptance.outcome }}
@@ -227,7 +289,7 @@ jobs:
           set -euo pipefail
           status=0
           printf '## Browser acceptance\n\n| Suite | Outcome |\n| --- | --- |\n' >> "$GITHUB_STEP_SUMMARY"
-          for suite in ACCOUNT SETTINGS LAYOUT VOLCANO JOURNEYS MODULE_JOURNEYS; do
+          for suite in ACCOUNT SETTINGS WORKSPACE MEDIA_HC OPERATIONS_HC LAYOUT VOLCANO JOURNEYS MODULE_JOURNEYS; do
             outcome="${!suite:-missing}"
             printf '| %s | %s |\n' "$suite" "$outcome" >> "$GITHUB_STEP_SUMMARY"
             if [[ "$outcome" != success ]]; then

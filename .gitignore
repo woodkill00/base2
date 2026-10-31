@@ -284,6 +284,9 @@ __pycache__/
 *.pyo
 .pytest_cache/
 .venv/
+# Generated service environments used by the exact-source complete gate.
+/.venv-api/
+/.venv-django/
 venv/
 
 # ==========================================
@@ -410,3 +413,6 @@ lerna-debug.log*
 
 # WSL
 .wsl-venv
+
+# Disposable real-service acceptance evidence
+e2e/artifacts/

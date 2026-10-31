@@ -162,6 +162,13 @@
 }
 
 @media (forced-colors: active) {
+  /* The picker is portaled outside the shell; preserve visible form boundaries. */
+  .media-picker > label > input,
+  .media-picker > label > select {
+    border: 1px solid ButtonText;
+    color: ButtonText;
+    background: ButtonFace;
+  }
   .app-shell-root,
   .app-shell-root .glass,
   .app-shell-root nav > div > div,

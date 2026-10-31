@@ -64,6 +64,11 @@ def run_idempotent_native_safe(command, **kwargs):
 
 
 def main() -> None:
+    if '--restore-security' in sys.argv[1:]:
+        raise RuntimeError(
+            'workspace_restore_requires_host_combined_dependencies_and_matching_postgres_clients; '
+            'use_the_guarded_hosted_restore_acceptance_step'
+        )
     root = Path(__file__).resolve().parents[2]
     name = f"base2-workspace-postgres-{os.getpid()}"
     owner_password = secrets.token_urlsafe(32)
@@ -322,6 +327,8 @@ def main() -> None:
                 django_image,
                 "manage.py",
                 "migrate",
+                "sitecontent",
+                "0035",
                 "--noinput",
             ],
             stdout=subprocess.DEVNULL,
@@ -541,6 +548,32 @@ def main() -> None:
         # The preceding rollback drills intentionally stop at migration 0017;
         # runtime API journeys require the current enqueue/least-privilege schema.
         run_idempotent_native_safe(django_migration + ["--noinput"], stdout=subprocess.DEVNULL)
+        # Exact-source Feature124 tests execute only AFTER canonical current Django
+        # migrations and API adapters, using actual separate request/worker roles.
+        run(api_migration, stdout=subprocess.DEVNULL)
+        policy_check = media_check[:-1] + [
+            "-m",
+            "pytest",
+            "-c",
+            "api/pytest.ini",
+            "-o",
+            "addopts=",
+            "-p",
+            "no:cacheprovider",
+            "-m",
+            "integration",
+            "api/tests/test_settings_postgres.py",
+            "api/tests/test_workspace_policy_postgres.py",
+            "api/tests/test_workspace_type_keys_postgres.py",
+            "api/tests/test_public_pack_search_postgres.py",
+            "api/tests/test_content_public_authoring_postgres.py",
+            "api/tests/test_workspace_review_notifications_postgres.py",
+            "api/tests/test_workspace_review_history_postgres.py",
+            "api/tests/test_media_policy_concurrency_postgres.py",
+            "api/tests/test_workspace_retention_assets_postgres.py",
+        ]
+        policy_check[3:3] = ["-e", "WORKSPACE_POLICY_DISPOSABLE=1"]
+        run(policy_check)
         journey_check = api_migration[:-2] + [
             "scripts/python/run_recovery_journey_postgres_checks.py"
         ]

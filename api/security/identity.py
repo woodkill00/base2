@@ -39,6 +39,8 @@ _ROLE_PERMISSIONS = {
             'operations.read',
             'operations.recover',
             'tenant.manage',
+            'workspace-policy.read',
+            'workspace-policy.write',
         }
     ),
     'admin': frozenset(
@@ -66,6 +68,8 @@ _ROLE_PERMISSIONS = {
             'media.write',
             'operations.manage',
             'operations.read',
+            'workspace-policy.read',
+            'workspace-policy.write',
         }
     ),
     'editor': frozenset(
@@ -80,9 +84,10 @@ _ROLE_PERMISSIONS = {
             'media.read',
             'media.upload',
             'media.write',
+            'workspace-policy.read',
         }
     ),
-    'viewer': frozenset({'content.read', 'content-workspace.read', 'media.read'}),
+    'viewer': frozenset({'content.read', 'content-workspace.read', 'media.read', 'workspace-policy.read'}),
 }
 _REDACTED_KEYS = frozenset(
     {

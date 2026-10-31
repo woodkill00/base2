@@ -259,6 +259,10 @@ def apply_operation(
     """Persist configure, transfer, or export with optimistic revision and replay safety."""
     with workspace_db_conn(tenant_id=tenant_id) as conn:
         with conn.cursor() as cursor:
+            # Ownership transfer shares the policy authority lock order.
+            cursor.execute(
+                'SELECT pg_advisory_xact_lock(hashtext(%s))', ('base2-workspace-policy-v1',)
+            )
             row = _state_row(cursor, tenant_id, lock=True)
             if not row:
                 raise TenantLifecycleRepositoryError('tenant:lifecycle_missing')

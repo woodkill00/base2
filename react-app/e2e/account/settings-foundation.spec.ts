@@ -47,6 +47,8 @@ async function fixture(page: Page) {
     conflict: false,
     preferenceWrites: [] as Record<string, unknown>[],
     notificationWrites: [] as Record<string, unknown>[],
+    notificationVersion: 1,
+    notificationConflict: false,
   };
   let notifications = [
     {
@@ -120,18 +122,23 @@ async function fixture(page: Page) {
       if (route.request().method() === 'PUT') {
         const payload = route.request().postDataJSON();
         state.notificationWrites.push(payload);
+        if (state.notificationConflict || payload.expected_version !== state.notificationVersion)
+          return route.fulfill({ status: 409, json: { detail: 'settings_version_conflict' } });
         const invalid = payload.preferences.some(
           (item: Record<string, unknown>) =>
             Object.keys(item).sort().join(',') !== 'channel,delivery,event_family'
         );
         if (invalid) return route.fulfill({ status: 422, json: { detail: 'unknown_fields' } });
+        state.notificationVersion += 1;
         notifications = payload.preferences.map((item: object) => ({
           ...item,
           mandatory: false,
           updated_at: '2026-10-30T12:05:00Z',
         }));
       }
-      return route.fulfill({ json: { preferences: notifications } });
+      return route.fulfill({
+        json: { schema_version: 1, version: state.notificationVersion, preferences: notifications },
+      });
     }
     return route.fulfill({ json: {} });
   });
@@ -218,7 +225,8 @@ test('notification reload and repeated saves never send server-managed timestamp
     );
   }
   expect(state.notificationWrites).toHaveLength(2);
-  await expect(page.getByText(/delivery-engine integration is not yet available/)).toBeVisible();
+  expect(state.notificationWrites.map((item) => item.expected_version)).toEqual([1, 2]);
+  await expect(page.getByText(/a durable test receipt, not live email delivery/)).toBeVisible();
 });
 
 test('failed discovery hides privileged controls and supports an explicit retry', async ({
@@ -310,6 +318,8 @@ test('notification row dividers preserve the approved tenth-opacity white after 
   await page.route('**/api/settings/notifications', (route) =>
     route.fulfill({
       json: {
+        schema_version: 1,
+        version: 1,
         preferences: [
           { event_family: 'security', channel: 'email', delivery: 'immediate', mandatory: true },
           { event_family: 'marketing', channel: 'email', delivery: 'disabled', mandatory: false },
@@ -506,3 +516,48 @@ for (const width of [390, 1440]) {
     }
   });
 }
+
+test('notification conflict freezes writes, preserves draft and reloads explicitly', async ({
+  page,
+}) => {
+  const state = await fixture(page);
+  await page.goto('/settings/notifications');
+  await ready(page);
+  const choice = page.getByLabel('Marketing Email delivery', { exact: true });
+  await choice.selectOption('disabled');
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(choice).toHaveValue('digest');
+  await choice.selectOption('disabled');
+  state.notificationConflict = true;
+  await page.getByRole('button', { name: 'Save notifications' }).click();
+  await expect(page.getByRole('alert')).toContainText('changed elsewhere');
+  await expect(choice).toHaveValue('disabled');
+  await expect(page.getByRole('button', { name: 'Save notifications' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Discard draft and reload notifications' }).click();
+  await expect(choice).toHaveValue('digest');
+  expect(state.notificationWrites).toHaveLength(1);
+});
+
+test('browser Forward Stay preserves URL, focus, draft and history', async ({ page }) => {
+  await fixture(page);
+  await page.goto('/settings/appearance');
+  await ready(page);
+  await page.getByRole('button', { name: 'Menu', exact: true }).click();
+  await page.getByRole('link', { name: 'Home', exact: true }).first().click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator('#settings-detail')).toHaveCount(0);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/settings\/appearance$/);
+  await ready(page);
+  await page.getByLabel('Theme', { exact: true }).selectOption('dark');
+  await page.getByLabel('Theme', { exact: true }).focus();
+  await page.goForward();
+  await expect(page.getByRole('alertdialog')).toBeVisible();
+  await page.getByRole('button', { name: 'Stay', exact: true }).click();
+  await expect(page).toHaveURL(/\/settings\/appearance$/);
+  await expect(page.getByLabel('Theme', { exact: true })).toHaveValue('dark');
+  await expect(page.getByLabel('Theme', { exact: true })).toBeFocused();
+  await page.goForward();
+  await page.getByRole('button', { name: 'Discard and leave' }).click();
+  await expect(page).not.toHaveURL(/\/settings\//);
+});

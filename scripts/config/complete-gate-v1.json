@@ -2,6 +2,36 @@
   "schemaVersion": 1,
   "checks": [
     {
+      "id": "feature-124-workspace-live-journeys",
+      "command": [
+        "python3",
+        "scripts/python/run_workspace_profile_acceptance.py",
+        "--profile",
+        "base2-obsidian",
+        "--shell",
+        "{operations-shell}"
+      ],
+      "required": true,
+      "timeoutSeconds": 1800,
+      "dependsOn": ["env-tools", "workspace-postgres-contract"],
+      "requiredTools": ["{operations-shell}", "python3", "docker", "node", "npm", "curl", "git"]
+    },
+    {
+      "id": "feature-124-workspace-representative-journeys",
+      "command": [
+        "python3",
+        "scripts/python/run_workspace_profile_acceptance.py",
+        "--profile",
+        "journey-reference",
+        "--shell",
+        "{operations-shell}"
+      ],
+      "required": true,
+      "timeoutSeconds": 1800,
+      "dependsOn": ["env-tools", "workspace-postgres-contract"],
+      "requiredTools": ["{operations-shell}", "python3", "docker", "node", "npm", "curl", "git"]
+    },
+    {
       "id": "feature-117-auth-journeys-browser",
       "command": [
         "npm",
@@ -342,14 +372,20 @@
     {
       "id": "operations-ui-contract",
       "command": [
-        "bash",
-        "-lc",
-        "cd react-app && node node_modules/vitest/vitest.mjs run src/__tests__/operations-center.test.jsx --coverage=false --pool=threads --maxWorkers=1"
+        "node",
+        "react-app/node_modules/vitest/vitest.mjs",
+        "run",
+        "src/__tests__/operations-center.test.jsx",
+        "--root=react-app",
+        "--config=vite.config.mjs",
+        "--coverage=false",
+        "--pool=threads",
+        "--maxWorkers=1"
       ],
       "required": true,
       "timeoutSeconds": 60,
       "dependsOn": ["operations-api-contract"],
-      "requiredTools": ["bash", "node"]
+      "requiredTools": ["node"]
     },
     {
       "id": "operations-visual-contract",
@@ -1006,7 +1042,9 @@
         "-q",
         "-o",
         "addopts=",
-        "scripts/tests/test_production_backup.py"
+        "scripts/tests/test_production_backup.py",
+        "scripts/tests/test_backup_security_manifest.py",
+        "scripts/tests/test_workspace_policy_restore_contract.py"
       ],
       "required": true,
       "timeoutSeconds": 60,
@@ -1194,11 +1232,20 @@
     },
     {
       "id": "frontend-ci-scope-contract",
-      "command": ["{python-api}", "-m", "pytest", "-q", "scripts/tests/test_frontend_ci_scope.py"],
+      "command": [
+        "{python-api}",
+        "-m",
+        "pytest",
+        "-q",
+        "scripts/tests/test_frontend_ci_scope.py",
+        "scripts/tests/test_e2e_workspace_topology.py",
+        "e2e/support/test_workspace_fixture.py",
+        "e2e/support/test_workspace_journey_source.py"
+      ],
       "required": true,
       "timeoutSeconds": 60,
       "dependsOn": ["ci-policy"],
-      "requiredTools": ["{python-api}"]
+      "requiredTools": ["{python-api}", "node"]
     },
     {
       "id": "dependency-policy",

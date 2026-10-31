@@ -105,7 +105,12 @@ def test_api_boot_has_no_migration_authority():
 
 
 @pytest.mark.parametrize(
-    ('tables', 'expected'), [((object(), object()), True), ((None, object()), False)]
+    ('tables', 'expected'),
+    [
+        ((object(), object(), object(), True, True, True), True),
+        ((None, object(), object(), True, True, True), False),
+        ((object(), object(), object(), False, True, True), False),
+    ],
 )
 def test_schema_readiness_is_read_only(monkeypatch, tables, expected):
     import api.db as db
@@ -125,9 +130,9 @@ def test_schema_readiness_is_read_only(monkeypatch, tables, expected):
     cursor.execute.assert_called_once()
     query = ' '.join(cursor.execute.call_args.args[0].split())
     assert query.startswith('SELECT to_regclass')
-    assert "name='0034_public_content_runtime_scope'" in query
-    assert "name='0005_data_rights_claim_fencing'" in query
-    assert "version='013_add_global_data_rights_operations'" in query
+    assert "name='0041_workspace_revision_tenant_scope'" in query
+    assert "name='0006_notification_preference_sets'" in query
+    assert "version='014_create_notification_preference_sets'" in query
 
 
 def test_schema_readiness_fails_closed(monkeypatch):

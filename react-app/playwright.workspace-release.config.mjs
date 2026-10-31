@@ -32,7 +32,11 @@ export default defineConfig({
     chromium('chromium-large-text', { width: 1280, height: 900 }),
     chromium('chromium-400-zoom', { width: 320, height: 720 }),
     chromium('chromium-light', { width: 1280, height: 900 }, { colorScheme: 'light' }),
-    chromium('chromium-high-contrast', { width: 1280, height: 900 }, { forcedColors: 'active' }),
+    chromium(
+      'chromium-high-contrast',
+      { width: 1280, height: 900 },
+      { contextOptions: { forcedColors: 'active' } }
+    ),
     {
       name: 'firefox-desktop',
       use: {

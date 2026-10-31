@@ -51,7 +51,7 @@ export default function VolcanoLayout({ children, headerTitle, contextSlot, foot
     setBusy(true);
     try {
       await logout();
-      navigate('/login');
+      navigate('/login', { replace: true });
     } catch {
       setStatus('Sign out failed. Please try again.');
     } finally {

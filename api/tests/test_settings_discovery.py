@@ -41,7 +41,11 @@ def test_capabilities_use_current_tenant_membership(monkeypatch, admitted, role,
     assert 'site-capabilities' in ids
     assert calls == [{'user_id': admitted.user_id, 'tenant_id': 'tenant-a'}]
     assert all(item['scope'] == ('account' if item['category'] == 'profile' else 'personal')
-               for item in body['controls'])
+               for item in body['controls'] if not item['id'].startswith('workspace-policy.'))
+    shared = [item for item in body['controls'] if item['id'].startswith('workspace-policy.')]
+    assert len(shared) == (2 if administrative else 1 if role else 0)
+    assert all(item['scope'] in {'site','organization'} for item in shared)
+    assert all(item['permission']=='workspace-policy.read' for item in shared)
     category_scope = {item['id']: item['scope'] for item in body['categories']}
     assert category_scope['profile'] == category_scope['security'] == 'account'
     assert category_scope['appearance'] == 'personal'

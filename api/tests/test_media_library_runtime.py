@@ -7,6 +7,8 @@ from uuid import UUID
 import pytest
 
 from api import tasks
+
+
 from api.services.content_workspace_scanner import ScannerHealth, clamav_health
 from api.services.media_library_parser import (
     FFPROBE_EXECUTION,
@@ -25,6 +27,20 @@ from api.services.media_library_runtime import (
     process_governed_media_asset,
     process_media_export,
 )
+
+
+@pytest.fixture(autouse=True)
+def enabled_deployment(monkeypatch):
+    from api.services import media_library_runtime as runtime
+
+    manifest = {
+        'siteId': 'site-a',
+        'modules': [
+            {'id': name, 'enabled': True} for name in ('accounts', 'media', 'content-workspace')
+        ],
+    }
+    monkeypatch.setattr(runtime, 'SITE_MANIFEST', manifest)
+    monkeypatch.setattr(tasks, 'SITE_MANIFEST', manifest)
 
 
 NOW = datetime(2026, 9, 6, 18, tzinfo=UTC)
@@ -279,6 +295,10 @@ class RuntimeCursor:
                 1,
                 1,
             )
+        elif compact.startswith('SELECT 1 FROM sitecontent_mediajob'):
+            self.response = (NOW + timedelta(days=3650),)
+        elif compact.startswith('SELECT %s>clock_timestamp()'):
+            self.response = (True,)
         elif compact.startswith('SELECT id FROM sitecontent_mediaobjectversion'):
             self.response = (UUID(int=4110),)
         elif (
@@ -406,12 +426,19 @@ def test_scan_task_uses_real_governed_worker_result_contract(monkeypatch, infect
 
     monkeypatch.setattr(runtime, 'db_conn', bound)
     preview = type(
-        'Preview', (),
-        {'content': b'preview', 'sha256': hashlib.sha256(b'preview').hexdigest(),
-         'media_type': 'image/png', 'width': 640, 'height': 160},
+        'Preview',
+        (),
+        {
+            'content': b'preview',
+            'sha256': hashlib.sha256(b'preview').hexdigest(),
+            'media_type': 'image/png',
+            'width': 640,
+            'height': 160,
+        },
     )()
     isolated = type(
-        'Isolated', (),
+        'Isolated',
+        (),
         {
             'preview': preview,
             'scanner_ref': 'clamav:1.4.3-27788',
@@ -436,11 +463,15 @@ def test_scan_task_uses_real_governed_worker_result_contract(monkeypatch, infect
             return CONTENT
 
         def put(self, **_kwargs):
-            return type('Stored', (), {
-                'object_key': 'variants/site-a/safe.bin',
-                'sha256': preview.sha256,
-                'byte_size': len(preview.content),
-            })()
+            return type(
+                'Stored',
+                (),
+                {
+                    'object_key': 'variants/site-a/safe.bin',
+                    'sha256': preview.sha256,
+                    'byte_size': len(preview.content),
+                },
+            )()
 
     completed = []
     monkeypatch.setattr(tasks, '_workspace_artifact_store', Store)
@@ -511,7 +542,8 @@ def test_transient_inspector_failure_is_durable_bounded_and_recovers(monkeypatch
     assert failed == 'quarantined'
     assert cursor.job_status == 'retryable' and cursor.job_attempt == 1
     retry_schedule = next(
-        params for sql, params in cursor.calls
+        params
+        for sql, params in cursor.calls
         if sql.startswith('UPDATE sitecontent_mediajob') and 'SET available_at=' in sql
     )
     assert retry_schedule[0] == 15 and retry_schedule[-1] == 1

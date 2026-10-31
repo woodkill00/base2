@@ -218,7 +218,8 @@ test.beforeEach(async ({ page }, testInfo) => {
         timezone: 'UTC',
         week_start: 'system',
       });
-    if (url.pathname === '/api/settings/notifications') return send({ preferences: [] });
+    if (url.pathname === '/api/settings/notifications')
+      return send({ schema_version: 1, version: 0, preferences: [] });
     if (url.pathname === '/api/settings/security-events') return send({ events: [] });
     if (url.pathname === '/api/privacy/operations') return send({ operations: [] });
     return send({});

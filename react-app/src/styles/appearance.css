@@ -4,6 +4,16 @@
   body {
     background-color: Canvas;
   }
+  [data-theme='obsidian'] .app-shell-root .base2-button--primary:not(:disabled) {
+    color: ButtonText;
+    background: ButtonFace;
+    border-color: ButtonText;
+  }
+  /* Native forced colors suppress the normal selected-tab box shadow. */
+  [role='tab'][aria-selected='true'] {
+    text-decoration-line: underline;
+    text-decoration-color: currentColor;
+  }
 }
 
 html[data-motion='reduced'],

@@ -2,6 +2,7 @@ import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { prepareCapture } from './capture';
+import profile from '../../src/config/generated/base2-obsidian.json';
 
 const axe = readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
 const owner = {
@@ -9,6 +10,7 @@ const owner = {
   email: 'journey@example.test',
   permissions: [
     'content-workspace.read',
+    'content-workspace.write',
     'content.create',
     'content.write',
     'content.export',
@@ -44,6 +46,11 @@ for (const width of [390, 1440]) {
     }, info) => {
       await page.setViewportSize({ width, height: 900 });
       setSessionFixture(page, owner);
+      const publicCopy = {
+        excerpt: 'Curated journey excerpt',
+        body: 'Intentional journey public body',
+      };
+      const editedPublicCopy = { ...publicCopy, body: 'Edited intentional journey public body' };
       let record: any = null;
       let creates = 0;
       let updates = 0;
@@ -119,8 +126,21 @@ for (const width of [390, 1440]) {
           if (route.request().method() === 'POST') {
             creates++;
             const data = route.request().postDataJSON();
+            expect(data.publicContent).toEqual(publicCopy);
             record = {
               ...data,
+              siteId: profile.siteId,
+              typeKey: 'article',
+              updatedAt: '2026-10-31T00:00:00Z',
+              allowedActions: ['submit_review', 'publish', 'delete'],
+              review: {
+                status: 'not_requested',
+                requiresReview: false,
+                policyVersion: 1,
+                semanticRevision: 'fixture-revision',
+                deliveryAdapter: 'local_test',
+                recoveryReason: null,
+              },
               id: 'synthetic-record',
               schemaVersion: 1,
               version: 1,
@@ -134,7 +154,14 @@ for (const width of [390, 1440]) {
           if (route.request().method() === 'PATCH') {
             expect(route.request().headers()['if-match']).toBe('"1"');
             updates++;
-            record = { ...record, values: route.request().postDataJSON().values, version: 2 };
+            const data = route.request().postDataJSON();
+            expect(data.publicContent).toEqual(editedPublicCopy);
+            record = {
+              ...record,
+              values: data.values,
+              publicContent: data.publicContent,
+              version: 2,
+            };
             record.title = record.values.title;
           }
           return send(record);
@@ -144,9 +171,12 @@ for (const width of [390, 1440]) {
       await page.goto('/workspace');
       const panel = page.getByRole('region', { name: /Records · Journey articles/ });
       await expect(panel).toHaveAttribute('aria-busy', 'false');
+      await expect(page.getByRole('button', { name: 'New record' })).toBeEnabled();
       await page.getByRole('button', { name: 'New record' }).click();
       await page.getByLabel('Title', { exact: true }).fill('First synthetic title');
       await page.getByLabel('Slug', { exact: true }).fill('synthetic-record');
+      await page.getByLabel('Public excerpt', { exact: true }).fill(publicCopy.excerpt);
+      await page.getByLabel('Public body', { exact: true }).fill(publicCopy.body);
       await page.getByRole('button', { name: 'Create draft' }).click();
       await expect(page.getByRole('heading', { name: 'First synthetic title' })).toBeVisible();
       await page.getByRole('button', { name: 'Edit fields' }).click();
@@ -154,11 +184,16 @@ for (const width of [390, 1440]) {
         .getByRole('form', { name: 'Edit record' })
         .getByLabel('Title', { exact: true })
         .fill('Edited synthetic title');
+      await page.getByLabel('Public body', { exact: true }).fill(editedPublicCopy.body);
       await page.getByRole('button', { name: 'Save changes' }).click();
       await expect(page.getByRole('heading', { name: 'Edited synthetic title' })).toBeVisible();
       await page.reload();
       await expect(panel).toHaveAttribute('aria-busy', 'false');
       await expect(page.getByText('Edited synthetic title', { exact: true })).toBeVisible();
+      await page.getByRole('button', { name: 'Open Edited synthetic title', exact: true }).click();
+      await expect(page.getByText(editedPublicCopy.body, { exact: true })).toBeVisible();
+      await expect(page.getByText(editedPublicCopy.excerpt, { exact: true })).toBeVisible();
+      expect(record.publicContent).toEqual(editedPublicCopy);
       expect(creates).toBe(1);
       expect(updates).toBe(1);
       await page.evaluate(axe);
