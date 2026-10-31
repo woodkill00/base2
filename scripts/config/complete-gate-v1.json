@@ -1208,11 +1208,20 @@
     },
     {
       "id": "frontend-ci-scope-contract",
-      "command": ["{python-api}", "-m", "pytest", "-q", "scripts/tests/test_frontend_ci_scope.py"],
+      "command": [
+        "{python-api}",
+        "-m",
+        "pytest",
+        "-q",
+        "scripts/tests/test_frontend_ci_scope.py",
+        "scripts/tests/test_e2e_workspace_topology.py",
+        "e2e/support/test_workspace_fixture.py",
+        "e2e/support/test_workspace_journey_source.py"
+      ],
       "required": true,
       "timeoutSeconds": 60,
       "dependsOn": ["ci-policy"],
-      "requiredTools": ["{python-api}"]
+      "requiredTools": ["{python-api}", "node"]
     },
     {
       "id": "dependency-policy",

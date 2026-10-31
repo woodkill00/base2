@@ -1,6 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('node:child_process');
 const path = require('node:path');
+const { readCompleteSearchPage, matchingSearchDocuments } = require('../support/search-contract');
 
 // No route interception, session injection, storage tokens, tenant selector, or
 // test-support HTTP controls. Credentials belong only to this fresh Compose DB.
@@ -518,15 +519,25 @@ test.describe('Feature124 real browser/API/PostgreSQL workspace acceptance', () 
           const publicGet = (route) =>
             publicRequest.request.get(`${BASE}/api${route}`, { headers: { 'X-Tenant-Id': SITE } });
           expect((await publicGet(`/content/${TYPE}/${published.slug}`)).status()).toBe(200);
+          const publicSearch = async () => {
+            const response = await publicGet('/search?q=public-visibility');
+            expect(response.status()).toBe(200);
+            return readCompleteSearchPage(await response.json());
+          };
+          let beforeRestriction;
           await expect
             .poll(
-              async () =>
-                (await (await publicGet('/search?q=public-visibility')).json()).items.map(
-                  (i) => i.id
-                ),
+              async () => {
+                beforeRestriction = await publicSearch();
+                return matchingSearchDocuments(beforeRestriction, TYPE, published);
+              },
               { timeout: 120_000, intervals: [1000, 2000, 5000] }
             )
-            .toContain(published.id);
+            .toHaveLength(1);
+          // Only this uniquely named fixture record is published for this query.
+          // Require the whole result, not a misleading first-page presence/absence.
+          expect(beforeRestriction.items).toHaveLength(1);
+          const searchDocumentId = beforeRestriction.items[0].id;
           const asset = await api(viewer, 'GET', `/content/v1/assets/${seeded.assetId}`);
           expect(asset.downloadGrant).toBeTruthy();
           await api(viewer, 'GET', `/content/v1/assets/${seeded.assetId}/content`, undefined, 200, {
@@ -562,9 +573,23 @@ test.describe('Feature124 real browser/API/PostgreSQL workspace acceptance', () 
           const denied = await publicGet(`/content/${TYPE}/${published.slug}`);
           expect(denied.status()).toBe(404);
           expect(denied.headers()['cache-control']).toContain('no-store');
-          expect(
-            (await (await publicGet('/search?q=public-visibility')).json()).items.map((i) => i.id)
-          ).not.toContain(published.id);
+          // Restriction is synchronous: one immediate request, no eventual poll.
+          const afterRestriction = await publicSearch();
+          expect(matchingSearchDocuments(afterRestriction, TYPE, published)).toHaveLength(0);
+          expect(afterRestriction.items.map((item) => item.id)).not.toContain(searchDocumentId);
+          expect(afterRestriction.items.map((item) => item.urlPath)).not.toContain(
+            `/${TYPE}/${published.slug}`
+          );
+          expect(afterRestriction.items).toHaveLength(0);
+          await testInfo.attach('public-search-visibility', {
+            body: JSON.stringify({
+              recordId: published.id,
+              searchDocumentId,
+              beforeRestriction,
+              afterRestriction,
+            }),
+            contentType: 'application/json',
+          });
           expect((await read(viewer, published)).id).toBe(published.id);
           await api(
             viewer,

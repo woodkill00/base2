@@ -255,3 +255,49 @@ source/pure-command guardrails and 15 fixture guards pass, along with Node synta
 and five-test Playwright collection. No local Docker/browser retry was attempted.
 Corrected runtime acceptance, later workspace assertions and the full release gate
 remain pending; healthy startup and passing auth do not establish those results.
+
+## Public-search identity correction after the next live run
+
+At head `ddcd6f9`, both E2E shells again reported four auth passes and one workspace
+failure, now later in the visibility step. Retained evidence binds merge checkout
+`73435b0999e76b2be7c576bcabcfadb163538260` to that feature head. Both runs completed
+the notification/CSRF step, all new shared-policy UI assertions and real beat delivery
+after worker restart. Shared-policy artifacts show versions 1→4 and the four expected
+requests including the stale version-3 conflict; beat artifacts show one reviewer
+receipt and owner suppression. No fixture replay or recovery error recurred.
+
+The new failure was another test/contract mismatch: `/api/search` returns the
+independent SearchDocument UUID, not the ContentRecord UUID. The public detail read
+passed 200, and retained search responses eventually contained the correct exact
+`urlPath` and title. Comparing their projection ID to the record ID prevented the
+positive assertion from passing; importantly, the old negative assertion would
+also have passed vacuously if content had leaked. Both predicates are corrected.
+
+The repaired test requires a 200 response and the actual SearchPage/item schema,
+complete pagination, exactly one pre-restriction path/title projection and its
+captured document ID. One immediate post-restriction search must contain neither
+that tuple, that path nor the captured document ID, and must have zero results.
+No eventual post-restriction poll or production behavior change is introduced.
+The regression uses the production serializer with distinct document/record IDs
+and rejects malformed/incomplete pages. An adjacent export/asset/scheduler/digest
+producer-field audit found no further response-shape mismatch.
+
+Twenty fixture/source/pure-helper tests pass; all fourteen retained search payloads
+from each shell were validated offline against the corrected contract. Independent
+source review accepted the repair. Original JSON, traces, logs and extracted
+attachments remain under `/tmp/base2-ci-ddcd6f9/{bash,pwsh}/`. The corrected visibility
+proof and later export/asset/scheduler/digest assertions still require a fresh CI
+run; these offline checks are not runtime acceptance or full-gate completion.
+
+The fixture/source regressions above were initially run only by explicit local
+commands: neither existing CI discovery nor the full-gate manifest collected
+`e2e/support/test_workspace_fixture.py` or
+`e2e/support/test_workspace_journey_source.py`. Both exact paths are now appended
+to the existing API-only CI regression step (with pinned Node 20 setup) and the
+existing API-Python `frontend-ci-scope-contract` gate descriptor (declaring Node).
+No job/check, dependency, coverage floor or existing test is removed. A static
+regression verifies both collection paths. This closes the wiring gap in source;
+execution of the newly wired checks in CI and the full gate remains pending.
+
+The topology/wiring regression itself is also explicitly collected by both commands;
+it is not left as a local-only guard for CI collection.

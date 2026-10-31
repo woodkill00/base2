@@ -80,9 +80,15 @@ jobs:
         if: matrix.service == 'api'
         run: python -m ruff check api
 
-      - name: Frontend change-selection security regressions
+      - name: Set up Node for acceptance contracts
         if: matrix.service == 'api'
-        run: python -m pytest -q scripts/tests/test_frontend_ci_scope.py scripts/tests/test_settings_foundation_ci.py scripts/tests/test_stacked_pr_ci.py
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '20'
+
+      - name: Frontend/E2E acceptance contracts
+        if: matrix.service == 'api'
+        run: python -m pytest -q scripts/tests/test_frontend_ci_scope.py scripts/tests/test_settings_foundation_ci.py scripts/tests/test_stacked_pr_ci.py scripts/tests/test_e2e_workspace_topology.py e2e/support/test_workspace_fixture.py e2e/support/test_workspace_journey_source.py
 
       - name: Mypy (typecheck)
         run: |

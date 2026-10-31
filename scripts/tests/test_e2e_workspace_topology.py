@@ -112,3 +112,34 @@ def test_ci_exercises_both_shells_in_separate_jobs_without_failure_cancellation(
     artifact = next(step for step in steps if step.get('uses', '').startswith('actions/upload-artifact@'))
     assert artifact['if'] == 'always()'
     assert artifact['with']['name'] == 'e2e-real-service-evidence-${{ matrix.runner-shell }}'
+
+
+def test_fixture_and_journey_contracts_are_collected_in_api_ci_and_complete_gate():
+    import json
+    import shlex
+
+    paths = (
+        'scripts/tests/test_e2e_workspace_topology.py',
+        'e2e/support/test_workspace_fixture.py',
+        'e2e/support/test_workspace_journey_source.py',
+    )
+    workflow = yaml.safe_load((ROOT / '.github/workflows/ci-backend.yml').read_text())
+    steps = next(job['steps'] for job in workflow['jobs'].values()
+                 if job.get('strategy', {}).get('matrix', {}).get('service') == ['api', 'django'])
+    regression = next(step for step in steps
+                      if 'scripts/tests/test_frontend_ci_scope.py' in step.get('run', ''))
+    assert regression['if'] == "matrix.service == 'api'"
+    command = shlex.split(regression['run'])
+    assert command[:4] == ['python', '-m', 'pytest', '-q']
+    assert all(path in command for path in paths)
+    node = next(step for step in steps if step.get('uses', '').startswith('actions/setup-node@'))
+    assert node['if'] == "matrix.service == 'api'"
+    assert node['uses'] == 'actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020'
+    assert node['with']['node-version'] == '20'
+    assert steps.index(node) < steps.index(regression)
+    manifest = json.loads((ROOT / 'scripts/config/complete-gate-v1.json').read_text())
+    gate = next(check for check in manifest['checks'] if check['id'] == 'frontend-ci-scope-contract')
+    assert gate['command'][:4] == ['{python-api}', '-m', 'pytest', '-q']
+    assert all(path in gate['command'] for path in paths)
+    assert {'{python-api}', 'node'} <= set(gate['requiredTools'])
+    assert gate['required'] is True
