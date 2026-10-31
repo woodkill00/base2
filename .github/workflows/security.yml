@@ -79,22 +79,36 @@ jobs:
       - name: Exercise fresh-volume two-UID spool lifecycle
         run: MEDIA_INSPECTOR_TEST_IMAGE=base2-media-inspector:acceptance bash api/tests/media_inspector_two_uid_container_acceptance.sh
 
+      - name: Prepare hash-verified media Syft
+        env:
+          SYFT_CHECK_FOR_APP_UPDATE: 'false'
+        run: |
+          mkdir -p "$RUNNER_TEMP/base2-media-syft"
+          curl --fail --location --proto '=https' --proto-redir '=https' \
+            --output "$RUNNER_TEMP/base2-media-syft/syft.tar.gz" \
+            https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_amd64.tar.gz
+          printf '%s  %s\n' \
+            'bb65249542db5fedeeb4d3f9b018b75e7264dbfbbb10486f044581a92f90490d' \
+            "$RUNNER_TEMP/base2-media-syft/syft.tar.gz" | sha256sum -c -
+          tar --no-same-owner -xzf "$RUNNER_TEMP/base2-media-syft/syft.tar.gz" \
+            --directory "$RUNNER_TEMP/base2-media-syft" syft
+          "$RUNNER_TEMP/base2-media-syft/syft" version -o json > media-inspector-syft-version.json
+          python -c "import json, sys; value = json.load(sys.stdin); assert value['application'] == 'syft' and value['version'] == '1.55.0' and value['platform'] == 'linux/amd64'" < media-inspector-syft-version.json
+          sha256sum "$RUNNER_TEMP/base2-media-syft/syft.tar.gz" "$RUNNER_TEMP/base2-media-syft/syft" > media-inspector-syft-checksums.txt
+
       - name: Preserve default media inspector image SBOM
-        uses: anchore/sbom-action@fc46e51fd3cb168ffb36c6d1915723c47db58abb
-        with:
-          image: base2-media-inspector:security
-          format: cyclonedx-json
-          output-file: media-inspector-sbom.raw.cdx.json
-          artifact-name: media-inspector-raw-sbom
+        env:
+          SYFT_CHECK_FOR_APP_UPDATE: 'false'
+        run: >-
+          "$RUNNER_TEMP/base2-media-syft/syft" scan docker:base2-media-inspector:security
+          -o cyclonedx-json > media-inspector-sbom.raw.cdx.json
 
       - name: Generate media inspector image SBOM
-        uses: anchore/sbom-action@fc46e51fd3cb168ffb36c6d1915723c47db58abb
-        with:
-          image: base2-media-inspector:security
-          config: api/media-inspector-syft.yaml
-          format: cyclonedx-json
-          output-file: media-inspector-sbom.cdx.json
-          artifact-name: media-inspector-enriched-sbom
+        env:
+          SYFT_CHECK_FOR_APP_UPDATE: 'false'
+        run: >-
+          "$RUNNER_TEMP/base2-media-syft/syft" scan docker:base2-media-inspector:security
+          --config api/media-inspector-syft.yaml -o cyclonedx-json > media-inspector-sbom.cdx.json
 
       - name: Export executed scanner and native build provenance
         run: |
@@ -145,6 +159,8 @@ jobs:
             grype.normalized.json
             media-inspector-sbom.cdx.json
             media-inspector-sbom.raw.cdx.json
+            media-inspector-syft-version.json
+            media-inspector-syft-checksums.txt
             media-inspector-clamav.bom.json
             media-inspector-python-provenance.json
             media-inspector-repository-evidence.json

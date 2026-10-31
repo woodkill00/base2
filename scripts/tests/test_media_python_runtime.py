@@ -75,7 +75,7 @@ class MediaPythonRuntimeTests(unittest.TestCase):
         self.assertNotIn('--cap-add', runtime_step)
         self.assertEqual(2, workflow.count('severity-cutoff: high'))
         self.assertEqual(2, workflow.count('fail-build: true'))
-        self.assertIn('config: api/media-inspector-syft.yaml', workflow)
+        self.assertIn('--config api/media-inspector-syft.yaml', workflow)
         self.assertIn('media-inspector-sbom.raw.cdx.json media-inspector-clamav.bom.json', workflow)
         config = (ROOT / 'api/media-inspector-syft.yaml').read_text()
         self.assertIn('  - +sbom-cataloger', config)

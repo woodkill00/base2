@@ -1,6 +1,7 @@
 import { expect, test } from './fixtures';
 import axe from 'axe-core';
 import { fulfillSessionFixture, setSessionFixture } from '../session-fixture';
+import { writeFile } from 'node:fs/promises';
 
 // Synthetic persistence tests: prove real document/CSS consumers, not live API
 // durability. The API repository/contract tests cover the server boundary.
@@ -84,6 +85,7 @@ for (const width of [390, 1440]) {
     await page.goto('/settings/appearance');
     const root = page.locator('html');
     const theme = page.getByRole('combobox', { name: 'Theme', exact: true });
+    const contrast = page.getByRole('combobox', { name: 'Contrast', exact: true });
     const save = page.getByRole('button', { name: 'Save preferences', exact: true });
     await expect(theme).toHaveValue('dark');
     await expect(root).toHaveAttribute('data-color-mode', 'dark');
@@ -97,7 +99,7 @@ for (const width of [390, 1440]) {
     await capture(`appearance-default-${width}.png`);
 
     await theme.selectOption('light');
-    await page.getByRole('combobox', { name: 'Contrast', exact: true }).selectOption('high');
+    await contrast.selectOption('high');
     await page.getByRole('combobox', { name: 'Motion', exact: true }).selectOption('reduced');
     await page.getByRole('combobox', { name: 'Density', exact: true }).selectOption('compact');
     await expect(root).toHaveAttribute('data-color-mode', 'dark'); // drafts never apply
@@ -194,9 +196,10 @@ for (const width of [390, 1440]) {
     expect(kickerContrast.ratio).toBeGreaterThanOrEqual(7);
 
     await page.addScriptTag({ content: axe.source });
-    const accessibility = await page.evaluate(async () =>
-      window.axe.run(document, { resultTypes: ['violations'] })
-    );
+    const accessibility = await page.evaluate(async () => {
+      const engine = (window as unknown as { axe: typeof import('axe-core') }).axe;
+      return engine.run(document, { resultTypes: ['violations'] });
+    });
     await info.attach('saved-appearance-axe-results', {
       body: JSON.stringify(accessibility, null, 2),
       contentType: 'application/json',
@@ -209,6 +212,101 @@ for (const width of [390, 1440]) {
       }))
     ).toEqual([]);
     await capture(`appearance-saved-${width}.png`);
+    // selectOption() does not establish pointer access. Probe the saved layout
+    // without locator clicks/trials that could scroll a fixed overlay out of the
+    // way. Keep the screenshot and persistence/reload flow unchanged.
+    const contrastHitTargets = await contrast.evaluate((element) => {
+      if (!(element instanceof HTMLSelectElement))
+        throw new Error('Expected native Contrast select');
+      const style = getComputedStyle(element);
+      const box = element.getBoundingClientRect();
+      const rect = (value: DOMRect) => ({
+        left: value.left,
+        top: value.top,
+        right: value.right,
+        bottom: value.bottom,
+        width: value.width,
+        height: value.height,
+      });
+      const describe = (node: Element) => ({
+        tag: node.tagName,
+        id: node.id,
+        testId: node.getAttribute('data-testid'),
+        classes: [...node.classList],
+      });
+      const probe = (name: string, x: number, y: number) => ({
+        name,
+        x,
+        y,
+        inViewport: x >= 0 && x < innerWidth && y >= 0 && y < innerHeight,
+        targetIsSelect: document.elementFromPoint(x, y) === element,
+        hitStack: document.elementsFromPoint(x, y).map(describe),
+      });
+      const descend = document.querySelector('[data-testid="base2-scroll-descend"]');
+      const descendBox = descend?.getBoundingClientRect();
+      const overlap = descendBox
+        ? {
+            left: Math.max(box.left, descendBox.left),
+            top: Math.max(box.top, descendBox.top),
+            right: Math.min(box.right, descendBox.right),
+            bottom: Math.min(box.bottom, descendBox.bottom),
+          }
+        : null;
+      const intersects = overlap && overlap.right > overlap.left && overlap.bottom > overlap.top;
+      return {
+        scroll: { x: scrollX, y: scrollY },
+        viewport: { width: innerWidth, height: innerHeight },
+        select: {
+          ...describe(element),
+          box: rect(box),
+          disabled: element.matches(':disabled'),
+          inert: Boolean(element.closest('[inert]')),
+          pointerEvents: style.pointerEvents,
+          visibility: style.visibility,
+          appearance: style.appearance,
+          direction: style.direction,
+        },
+        descend: descendBox ? { box: rect(descendBox), ...describe(descend!) } : null,
+        overlap: intersects ? overlap : null,
+        overlapProbe: intersects
+          ? probe(
+              'overlap-center',
+              (overlap.left + overlap.right) / 2,
+              (overlap.top + overlap.bottom) / 2
+            )
+          : null,
+        targets: [
+          probe('center', box.left + box.width / 2, box.top + box.height / 2),
+          // Native caret glyphs expose no DOM box. Use the inline-end 10px
+          // midpoint, recording exact runtime coordinates rather than PNG estimates.
+          probe(
+            'native-caret-side',
+            style.direction === 'rtl' ? box.left + 10 : box.right - 10,
+            box.top + box.height / 2
+          ),
+        ],
+      };
+    });
+    const contrastHitTargetsPath = info.outputPath('saved-appearance-contrast-hit-targets.json');
+    await writeFile(contrastHitTargetsPath, JSON.stringify(contrastHitTargets, null, 2));
+    await info.attach('saved-appearance-contrast-hit-targets', {
+      path: contrastHitTargetsPath,
+      contentType: 'application/json',
+    });
+    expect(contrastHitTargets.scroll).toEqual({ x: 0, y: 0 });
+    expect(contrastHitTargets.select).toMatchObject({
+      disabled: false,
+      inert: false,
+      visibility: 'visible',
+    });
+    expect(contrastHitTargets.select.pointerEvents).not.toBe('none');
+    for (const target of contrastHitTargets.targets) {
+      expect(target.inViewport, `${target.name} must be in the unscrolled viewport`).toBe(true);
+      expect(
+        target.targetIsSelect,
+        `${target.name} must hit Contrast, not a floating control: ${JSON.stringify(target.hitStack)}`
+      ).toBe(true);
+    }
 
     await page.reload();
     await expect(theme).toHaveValue('light');

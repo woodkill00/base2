@@ -1,8 +1,16 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
 import { fulfillSessionFixture, setSessionFixture } from '../session-fixture';
 
 const axeSource = readFileSync('node_modules/axe-core/axe.min.js', 'utf8');
+
+async function saveJson(info: TestInfo, name: string, data: unknown) {
+  const path = info.outputPath(`${name}.json`);
+  await writeFile(path, JSON.stringify(data, null, 2));
+  await info.attach(name, { path, contentType: 'application/json' });
+}
+
 const defaults = {
   version: 1,
   theme: 'light',
@@ -246,11 +254,12 @@ for (const width of [390, 1280]) {
       await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)
     ).toBeLessThanOrEqual(1);
     await page.addScriptTag({ content: axeSource });
-    const violations = await page.evaluate(async () =>
-      (await window.axe.run(document, { resultTypes: ['violations'] })).violations.map(
+    const violations = await page.evaluate(async () => {
+      const engine = (window as unknown as { axe: typeof import('axe-core') }).axe;
+      return (await engine.run(document, { resultTypes: ['violations'] })).violations.map(
         (item) => item.id
-      )
-    );
+      );
+    });
     expect(violations).toEqual([]);
     await page.screenshot({
       path: testInfo.outputPath(`settings-121-catalog-${width}.png`),
@@ -400,10 +409,7 @@ for (const width of [390, 1440]) {
         }),
       };
     });
-    await info.attach('standard-light-settings-kicker-contrast', {
-      body: JSON.stringify(measured, null, 2),
-      contentType: 'application/json',
-    });
+    await saveJson(info, 'standard-light-settings-kicker-contrast', measured);
     expect(measured.foregroundCss).toBe(measured.inheritedCss);
     expect(measured.foreground[3]).toBe(255);
     expect(measured.opacity).toBe('1');
@@ -415,14 +421,88 @@ for (const width of [390, 1440]) {
     await ready(page);
     await expect(page.locator('html')).toHaveAttribute('data-color-mode', 'dark');
     await expect(kicker).toHaveClass(/text-violet-300/);
-    const darkMatchesAccent = await kicker.evaluate((element) => {
-      const reference = document.createElement('span');
-      reference.className = 'text-violet-300';
-      element.parentElement!.append(reference);
-      const matches = getComputedStyle(element).color === getComputedStyle(reference).color;
-      reference.remove();
-      return matches;
-    });
-    expect(darkMatchesAccent).toBe(true);
+    const sampleDarkAccent = () =>
+      kicker.evaluate((element) => {
+        const reference = document.createElement('span');
+        reference.className = 'text-violet-300';
+        element.parentElement!.append(reference);
+        try {
+          const style = getComputedStyle(element);
+          const foregroundCss = style.color;
+          const referenceCss = getComputedStyle(reference).color;
+          const animations = element.getAnimations().map((animation) => ({
+            type: animation.constructor.name,
+            property:
+              animation instanceof window.CSSTransition ? animation.transitionProperty : null,
+            playState: animation.playState,
+            pending: animation.pending,
+            currentTime: animation.currentTime === null ? null : String(animation.currentTime),
+          }));
+          return {
+            sampledAt: performance.now(),
+            colorMode: document.documentElement.dataset.colorMode,
+            contrast: document.documentElement.dataset.contrast,
+            motion: document.documentElement.dataset.motion,
+            rootHasDarkClass: document.documentElement.classList.contains('dark'),
+            reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+            hasAccentClass: element.classList.contains('text-violet-300'),
+            foregroundCss,
+            referenceCss,
+            matchesAccent: foregroundCss === referenceCss,
+            transitionProperty: style.transitionProperty,
+            transitionDuration: style.transitionDuration,
+            transitionDelay: style.transitionDelay,
+            animations,
+            activeAnimations: animations.filter(
+              (animation) => animation.pending || animation.playState === 'running'
+            ).length,
+          };
+        } finally {
+          reference.remove();
+        }
+      });
+    // A root attribute is not a rendered-color readiness signal. Reduced motion
+    // still permits nonzero CSS transitions. Preserve the first observation and
+    // subsequent samples; do not assume a mismatch is animation rather than CSS.
+    const darkSamples = [await sampleDarkAccent()];
+    const assertDarkState = async () => {
+      const root = page.locator('html');
+      await expect(root).toHaveAttribute('data-color-mode', 'dark');
+      await expect(root).toHaveAttribute('data-contrast', 'standard');
+      await expect(root).toHaveAttribute('data-motion', 'reduced');
+      await expect(root).toHaveClass(/\bdark\b/);
+      await expect(kicker).toHaveClass(/text-violet-300/);
+    };
+    try {
+      await assertDarkState();
+      await expect
+        .poll(async () => {
+          const sample = await sampleDarkAccent();
+          darkSamples.push(sample);
+          return {
+            colorMode: sample.colorMode,
+            contrast: sample.contrast,
+            motion: sample.motion,
+            rootHasDarkClass: sample.rootHasDarkClass,
+            reducedMotion: sample.reducedMotion,
+            hasAccentClass: sample.hasAccentClass,
+            activeAnimations: sample.activeAnimations,
+            matchesAccent: sample.matchesAccent,
+          };
+        }, 'the settled dark kicker must exactly retain its approved accent')
+        .toEqual({
+          colorMode: 'dark',
+          contrast: 'standard',
+          motion: 'reduced',
+          rootHasDarkClass: true,
+          reducedMotion: true,
+          hasAccentClass: true,
+          activeAnimations: 0,
+          matchesAccent: true,
+        });
+      await assertDarkState();
+    } finally {
+      await saveJson(info, 'standard-dark-settings-kicker-readiness', { samples: darkSamples });
+    }
   });
 }
