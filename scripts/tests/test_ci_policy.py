@@ -24,6 +24,60 @@ class CiPolicyTests(unittest.TestCase):
     def scan(self, body):
         return self.policy.scan_workflow("fixture.yml", body, ["gate"], "ci-policy: diagnostic-cleanup")
 
+    def test_media_sbom_uses_hash_locked_tool_and_preserves_both_artifacts(self):
+        root = MODULE_PATH.parents[2]
+        workflow = (root / '.github/workflows/security.yml').read_text()
+        prepare = workflow.split('name: Prepare hash-verified media Syft', 1)[1].split('      - name:', 1)[0]
+        self.assertIn('https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_amd64.tar.gz', prepare)
+        self.assertIn('bb65249542db5fedeeb4d3f9b018b75e7264dbfbbb10486f044581a92f90490d', prepare)
+        self.assertIn('sha256sum -c -', prepare)
+        self.assertIn("value = json.load(sys.stdin); assert value['application'] == 'syft'", prepare)
+        self.assertIn("value['platform'] == 'linux/amd64'", prepare)
+        self.assertLess(prepare.index('sha256sum -c -'), prepare.index('tar --no-same-owner'))
+        self.assertIn('== \'1.55.0\'', prepare)
+        self.assertNotIn('install.sh', prepare)
+        for step_name, output in (
+            ('Preserve default media inspector image SBOM', 'media-inspector-sbom.raw.cdx.json'),
+            ('Generate media inspector image SBOM', 'media-inspector-sbom.cdx.json'),
+        ):
+            step = workflow.split('name: ' + step_name, 1)[1].split('      - name:', 1)[0]
+            self.assertIn('"$RUNNER_TEMP/base2-media-syft/syft" scan docker:base2-media-inspector:security', step)
+            self.assertIn('> ' + output, step)
+            self.assertNotIn('uses:', step)
+            self.assertIn("SYFT_CHECK_FOR_APP_UPDATE: 'false'", step)
+        self.assertEqual(2, workflow.count('"$RUNNER_TEMP/base2-media-syft/syft" scan'))
+        final_upload = workflow.split('name: Upload SBOM artifact', 1)[1].split('  npm-audit:', 1)[0]
+        for name in ('media-inspector-sbom.raw.cdx.json', 'media-inspector-sbom.cdx.json',
+                     'media-inspector-syft-version.json', 'media-inspector-syft-checksums.txt'):
+            self.assertIn(name, final_upload)
+
+    def test_media_grype_is_hash_locked_and_keeps_failure_and_both_reports(self):
+        root = MODULE_PATH.parents[2]
+        workflow = (root / '.github/workflows/security.yml').read_text()
+        prepare = workflow.split('name: Prepare hash-verified media Grype', 1)[1].split('      - name:', 1)[0]
+        self.assertIn('https://github.com/anchore/grype/releases/download/v0.121.0/grype_0.121.0_linux_amd64.tar.gz', prepare)
+        self.assertIn('64e07133d3486115de647a66581461dccf5c732748a0a3119077395565f15519', prepare)
+        self.assertLess(prepare.index('sha256sum -c -'), prepare.index('tar --no-same-owner'))
+        self.assertIn("value['application'] == 'grype'", prepare)
+        self.assertIn("value['version'] == '0.121.0'", prepare)
+        self.assertIn("value['platform'] == 'linux/amd64'", prepare)
+        scan = workflow.split('name: Scan media inspector image', 1)[1].split('      - name:', 1)[0]
+        self.assertIn('id: inspector-grype', scan)
+        self.assertIn('"$RUNNER_TEMP/base2-media-grype/grype" sbom:media-inspector-sbom.cdx.json', scan)
+        self.assertIn('--fail-on high', scan)
+        self.assertIn('--output sarif=media-inspector-grype.sarif.json', scan)
+        self.assertIn('--output json=media-inspector-grype.json', scan)
+        self.assertLess(scan.index('sarif=media-inspector-grype.sarif.json'), scan.index('/grype" sbom:'))
+        self.assertIn('>> "$GITHUB_OUTPUT"', scan)
+        self.assertIn("GRYPE_CHECK_FOR_APP_UPDATE: 'false'", scan)
+        for forbidden in ('GRYPE_DB_', '--only-fixed', '--only-notfixed', '--exclude', '--ignore',
+                          '--vex', 'continue-on-error', 'set +e', '||', 'exit 0'):
+            self.assertNotIn(forbidden, prepare + scan)
+        final_upload = workflow.split('name: Upload SBOM artifact', 1)[1].split('  npm-audit:', 1)[0]
+        for name in ('media-inspector-grype.json', 'media-inspector-grype-version.json',
+                     'media-inspector-grype-checksums.txt'):
+            self.assertIn(name, final_upload)
+
     def test_accepts_pinned_blocking_required_job(self):
         body = "on:\n  pull_request:\njobs:\n  gate:\n    steps:\n      - uses: actions/checkout@" + "a" * 40 + "\n"
         self.assertEqual([], self.scan(body))
@@ -123,8 +177,10 @@ class CiPolicyTests(unittest.TestCase):
             "FROM --platform=linux/amd64 clamav/clamav@sha256:1fdfd24c6f0a0fb60788481487459a6d4eda8a9b448641594e04db8410d34422 AS clamav-definitions",
             dockerfile,
         )
-        self.assertIn("cgr.dev/chainguard/python@sha256:ea666e12d8d5c985262f44b280ae7398d43e70156061b5657c040db835acd984", dockerfile)
-        self.assertIn("cgr.dev/chainguard/python@sha256:3e56a2973d429d5bf28d8dd99f929ea6344b0bf054c432f09cf579f747ee3114", dockerfile)
+        # Official 3.15.2 source rebuilt natively, not a relabeled Wolfi Python APK.
+        self.assertIn("python@sha256:c6ecb2f3c3dc85a75350f36560e1f49d35d6a9f7ce11fd775bd6834a69a9a0e1", dockerfile)
+        self.assertIn("cgr.dev/chainguard/wolfi-base@sha256:73f2cab0f11208427595d4bdd784046bc4116ef7cc52f0c1b48b6b7f820288d5", dockerfile)
+        self.assertNotIn("cgr.dev/chainguard/python", dockerfile)
         self.assertIn("mwader/static-ffmpeg@sha256:54e55b0c", dockerfile)
         self.assertIn("clamav-1.5.4.linux.x86_64.deb", dockerfile)
         self.assertIn(
@@ -132,7 +188,9 @@ class CiPolicyTests(unittest.TestCase):
             dockerfile,
         )
         self.assertNotIn("clamav-1.5-scanner=", dockerfile)
-        self.assertIn("/tmp/clamav/control /var/lib/dpkg/status", dockerfile)
+        self.assertNotIn("/var/lib/dpkg/status", dockerfile)
+        self.assertIn("scanner-bom", dockerfile)
+        self.assertIn("apk --keys-dir /locked-keys verify /locked-inputs/repository/x86_64/APKINDEX.tar.gz", dockerfile)
         self.assertNotIn("apk add", dockerfile)
         self.assertNotIn("apt-get", dockerfile)
         self.assertIn("--only-binary=:all: --no-deps --require-hashes", dockerfile)
@@ -373,7 +431,15 @@ class CiPolicyTests(unittest.TestCase):
         combined = workflow + acceptance
         self.assertNotIn("public.ecr.aws/docker/library", combined)
         self.assertNotIn('"postgres:16-alpine"', acceptance)
-        self.assertEqual(2, workflow.count("mirror.gcr.io/library/"))
+        self.assertEqual(3, workflow.count("mirror.gcr.io/library/"))
+        jobs = __import__("yaml").safe_load(workflow)["jobs"]
+        identity_image = jobs["identity-postgres-acceptance"]["services"]["postgres"]["image"]
+        self.assertEqual(
+            jobs["backend-integration"]["services"]["postgres"]["image"],
+            identity_image,
+        )
+        self.assertRegex(identity_image, r"^mirror\.gcr\.io/library/postgres@sha256:[0-9a-f]{64}$")
+        self.assertIn(identity_image.split("@sha256:", 1)[1], acceptance)
         self.assertEqual(1, acceptance.count("mirror.gcr.io/library/postgres@sha256:"))
 
     def test_workflows_pin_node24_checkout_and_artifact_actions(self):

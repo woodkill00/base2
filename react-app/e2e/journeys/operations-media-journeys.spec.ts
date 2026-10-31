@@ -38,7 +38,7 @@ for (const width of [390, 1440]) {
       let fail = false;
       let mutations = 0;
       await page.route('**/*', async (route) => {
-        if (await fulfillSessionFixture(route)) return;
+        if (await fulfillSessionFixture(route, { appearanceDefaults: true })) return;
         const url = new URL(route.request().url());
         if (url.origin !== 'http://127.0.0.1:4194') return route.abort('blockedbyclient');
         if (!url.pathname.startsWith('/api/')) return route.continue();
@@ -125,7 +125,7 @@ for (const width of [390, 1440]) {
         version: 1,
       };
       await page.route('**/*', async (route) => {
-        if (await fulfillSessionFixture(route)) return;
+        if (await fulfillSessionFixture(route, { appearanceDefaults: true })) return;
         const url = new URL(route.request().url());
         if (url.origin !== 'http://127.0.0.1:4194') return route.abort('blockedbyclient');
         if (!url.pathname.startsWith('/api/')) return route.continue();

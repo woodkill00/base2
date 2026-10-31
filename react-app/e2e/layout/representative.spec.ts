@@ -33,7 +33,7 @@ test.beforeEach(async ({ page }) => {
         version: 1,
         theme: 'dark',
         contrast: 'system',
-        motion: 'reduce',
+        motion: 'reduced',
         density: 'comfortable',
         locale: 'en',
         timezone: 'UTC',

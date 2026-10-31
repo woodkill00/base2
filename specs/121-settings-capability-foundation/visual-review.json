@@ -1,0 +1,843 @@
+{
+  "schemaVersion": 2,
+  "status": "reviewed-reference-adoption-pending-combined-comparison",
+  "repository": "woodkill00/base2",
+  "pullRequest": 89,
+  "scope": {
+    "reviewedReferenceCount": 26,
+    "replacementReferences": 25,
+    "newReferences": 1,
+    "canonicalObsidianVolcanoReferencesChanged": false,
+    "description": "Adopt the 26 individually reviewed settings captures listed below; this is not a redesign or a complete-gate receipt."
+  },
+  "sources": [
+    {
+      "commit": "ef12468938308c30810dd406fba641163060971b",
+      "runId": 41139472148,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148",
+      "artifactId": 13018247439,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148/artifacts/13018247439",
+      "archiveSha256": "ed3b2300811eb9ac060505b175409e5beb4d0b8f9795d51b5980701e4801fbfc",
+      "archiveBytes": 48925603
+    },
+    {
+      "commit": "3f9914595f886423e1da5a9fc531615b1c47e5a7",
+      "runId": 41143077949,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41143077949",
+      "artifactId": 13019357530,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41143077949/artifacts/13019357530",
+      "archiveSha256": "372b31d60839b15872b121197202c03bdce7c130e248139660314a147d8731f6",
+      "archiveBytes": 45821332
+    },
+    {
+      "commit": "0412a99f8755e14a3869083292e4d1a49185ca4c",
+      "runId": 41145375240,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41145375240",
+      "artifactId": 13020786151,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41145375240/artifacts/13020786151",
+      "archiveSha256": "1665034691e4bae647002988eacf4f1e2f645d8edfccfc7b0b5946c866976df5",
+      "archiveBytes": 45729572
+    },
+    {
+      "commit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "runId": 41152795903,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41152795903",
+      "artifactId": 13024305042,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41152795903/artifacts/13024305042",
+      "archiveSha256": "fd71b4394836f8c93509d96d914e3ba6aa7ebfb4b808337b550a05b2395addfe",
+      "archiveBytes": 74773335
+    }
+  ],
+  "reviewedReferences": [
+    {
+      "path": "react-app/e2e/account/settings-platform.spec.ts-snapshots/settings-overview-desktop-linux.png",
+      "previousSha256": "956b9c2e950a91847decbe554483281604efdcca2553d210d883db39a8c83473",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "bd32983b132569177dc1ca961b42f5d82a32abb4ea7895d35cfda1ce14842f61",
+      "sourceCommit": "ef12468938308c30810dd406fba641163060971b",
+      "runId": 41139472148,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148",
+      "artifactId": 13018247439,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148/artifacts/13018247439",
+      "artifactMember": "account/settings-platform-desktop--df623-eometry-and-visual-baseline/settings-overview-desktop-actual.png",
+      "width": 1440,
+      "height": 1228,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Intentional scope explanation and associated content reflow accepted; existing Northstar glass palette retained."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-platform.spec.ts-snapshots/settings-overview-compact-linux.png",
+      "previousSha256": "1b2c0e44d7913b77db81fb258f2bcf37207aa84c8d9fc50ab1f3dad46dcddfa8",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "15d57175e98a34dfd3b6663c8880b80bd3648cc337c2c80292a14bd6d132719c",
+      "sourceCommit": "ef12468938308c30810dd406fba641163060971b",
+      "runId": 41139472148,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148",
+      "artifactId": 13018247439,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148/artifacts/13018247439",
+      "artifactMember": "account/settings-platform-compact--f5476-eometry-and-visual-baseline/settings-overview-compact-actual.png",
+      "width": 390,
+      "height": 2353,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Intentional scope explanation and associated content reflow accepted; existing Northstar glass palette retained.",
+        "Scope paragraph wraps at compact width; controls and content remain readable."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-platform.spec.ts-snapshots/settings-overview-short-landscape-linux.png",
+      "previousSha256": "37527c1fb6bd340e1c49c91b2a7c634f9bbe73ff083ebb3ce85032eb242db390",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "7057504c081a83681c1e9666e1a56fbc153876bf405bb7ed9dc9bc10e4c3b3ad",
+      "sourceCommit": "ef12468938308c30810dd406fba641163060971b",
+      "runId": 41139472148,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148",
+      "artifactId": 13018247439,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148/artifacts/13018247439",
+      "artifactMember": "account/settings-platform-short-la-dd555-eometry-and-visual-baseline/settings-overview-short-landscape-actual.png",
+      "width": 844,
+      "height": 2093,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Intentional scope explanation and associated content reflow accepted; existing Northstar glass palette retained.",
+        "Short-landscape content and navigation remain readable."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-platform.spec.ts-snapshots/settings-appearance-desktop-linux.png",
+      "previousSha256": "259a4be828a76b34e59930e77d89b140a44f12c8dec0ba4aa85a5b32cd686553",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "5912214eb6fd4ca6463222e81c4e4ae46cac8189546def68c369b3b42d84468a",
+      "sourceCommit": "ef12468938308c30810dd406fba641163060971b",
+      "runId": 41139472148,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148",
+      "artifactId": 13018247439,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148/artifacts/13018247439",
+      "artifactMember": "account/settings-platform-appearan-6ce90-essible-and-visually-stable/settings-appearance-desktop-actual.png",
+      "width": 1280,
+      "height": 1212,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Intentional scope explanation and associated content reflow accepted; existing Northstar glass palette retained."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-platform.spec.ts-snapshots/settings-language-region-desktop-linux.png",
+      "previousSha256": "496905b134d8057fbfe7f85a6fc4bb40eda247e09648c09af78faa741327805c",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "978b282ae55d27e3ad8aa2d2ddefb032881c4542d6a307b8e0822efeb890dc68",
+      "sourceCommit": "ef12468938308c30810dd406fba641163060971b",
+      "runId": 41139472148,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148",
+      "artifactId": 13018247439,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148/artifacts/13018247439",
+      "artifactMember": "account/settings-platform-language-00b2f-essible-and-visually-stable/settings-language-region-desktop-actual.png",
+      "width": 1280,
+      "height": 1212,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Intentional scope explanation and associated content reflow accepted; existing Northstar glass palette retained."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-platform.spec.ts-snapshots/settings-profile-desktop-linux.png",
+      "previousSha256": "0e306da478a39268deb32cd86823cc18ce7d0a1f1b600068a28ae28c4e80aa68",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "46d2b33d521ba1bcefb7b1bd87bdd068c3fd4c0ed4ac1d78a35fe7f8e0c84aa4",
+      "sourceCommit": "ef12468938308c30810dd406fba641163060971b",
+      "runId": 41139472148,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148",
+      "artifactId": 13018247439,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148/artifacts/13018247439",
+      "artifactMember": "account/settings-platform-profile--5f984-essible-and-visually-stable/settings-profile-desktop-actual.png",
+      "width": 1280,
+      "height": 1324,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Intentional scope explanation and associated content reflow accepted; existing Northstar glass palette retained."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-platform.spec.ts-snapshots/settings-developer-desktop-linux.png",
+      "previousSha256": "4a4d2fdf574bf8ddb0921443a7eae727b06e6dafb0524e4f2656aefff6f59960",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "d752eb2bb9d317fce5de7a9aa6ccb2089f1353d57e5c5f05fc439dbc08090cba",
+      "sourceCommit": "ef12468938308c30810dd406fba641163060971b",
+      "runId": 41139472148,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148",
+      "artifactId": 13018247439,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148/artifacts/13018247439",
+      "artifactMember": "account/settings-platform-develope-265b9-essible-and-visually-stable/settings-developer-desktop-actual.png",
+      "width": 1280,
+      "height": 1212,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Intentional scope explanation and associated content reflow accepted; existing Northstar glass palette retained.",
+        "Misleading fixed API-documentation URL removed; deployment-managed endpoint limitation is stated."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-platform.spec.ts-snapshots/settings-security-desktop-linux.png",
+      "previousSha256": "02437d9a1286b2861ddbc56da3a932b56bce802f1fbc412af42ab037c3967ba6",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "e668866294a5120b9bc569a2f7ff73e379472da5d1d30c4afb025908616a08ee",
+      "sourceCommit": "ef12468938308c30810dd406fba641163060971b",
+      "runId": 41139472148,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148",
+      "artifactId": 13018247439,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148/artifacts/13018247439",
+      "artifactMember": "account/settings-platform-security-2088d-essible-and-visually-stable/settings-security-desktop-actual.png",
+      "width": 1280,
+      "height": 1375,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Intentional scope explanation and associated content reflow accepted; existing Northstar glass palette retained."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-platform.spec.ts-snapshots/settings-privacy-desktop-linux.png",
+      "previousSha256": "0007a2948f4d79c0f6530e9e5777a8e276e1fbc05712ad278b6b2da63b7429e3",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "530530d05fdcf65cef84a4940ab5c1d08545fac739b9b3087cf60590ebc98b90",
+      "sourceCommit": "ef12468938308c30810dd406fba641163060971b",
+      "runId": 41139472148,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148",
+      "artifactId": 13018247439,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148/artifacts/13018247439",
+      "artifactMember": "account/settings-platform-privacy--b30f2-essible-and-visually-stable/settings-privacy-desktop-actual.png",
+      "width": 1280,
+      "height": 1937,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Intentional scope explanation and associated content reflow accepted; existing Northstar glass palette retained."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-platform.spec.ts-snapshots/settings-privacy-history-unavailable-desktop-linux.png",
+      "previousSha256": "8edf040d851f213e1a116dd456a6de1d3f970bd0522d9b85520f1e8101550c8d",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "45761eb89123159e78cea6bf33f0f8f1533b34aeb7b34142d5a76399860e7bd5",
+      "sourceCommit": "ef12468938308c30810dd406fba641163060971b",
+      "runId": 41139472148,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148",
+      "artifactId": 13018247439,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148/artifacts/13018247439",
+      "artifactMember": "account/settings-platform-privacy--26881-ly-distinct-from-empty-data/settings-privacy-history-unavailable-desktop-actual.png",
+      "width": 1280,
+      "height": 2034,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Intentional scope explanation and associated content reflow accepted; existing Northstar glass palette retained.",
+        "Unavailable resource state remains visibly distinct from valid empty data."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-platform.spec.ts-snapshots/settings-notification-preferences-unavailable-desktop-linux.png",
+      "previousSha256": "6279fbacef423d3ee6d5072506b8700ada4150d5ac369098cae3fd54c0447b6d",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "92ce4063351866c1f5ccb518bc3df7ec34ca0c955f4f19e2f7c2d0c302f17447",
+      "sourceCommit": "ef12468938308c30810dd406fba641163060971b",
+      "runId": 41139472148,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148",
+      "artifactId": 13018247439,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148/artifacts/13018247439",
+      "artifactMember": "account/settings-platform-notifica-23c61-ly-distinct-from-empty-data/settings-notification-preferences-unavailable-desktop-actual.png",
+      "width": 1280,
+      "height": 1212,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Intentional scope explanation and associated content reflow accepted; existing Northstar glass palette retained.",
+        "Unavailable resource state remains visibly distinct from valid empty data."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-platform.spec.ts-snapshots/settings-security-activity-unavailable-desktop-linux.png",
+      "previousSha256": "61518c8ee68a02752dd0c015c773862fb39beb46b7a3646d150f23892db3ed6a",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "2b7ab2bc0e43304d3cc4f33455372fd1719f94b8047b5baf2653c010626701a4",
+      "sourceCommit": "ef12468938308c30810dd406fba641163060971b",
+      "runId": 41139472148,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148",
+      "artifactId": 13018247439,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148/artifacts/13018247439",
+      "artifactMember": "account/settings-platform-security-29286-ly-distinct-from-empty-data/settings-security-activity-unavailable-desktop-actual.png",
+      "width": 1280,
+      "height": 1212,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Intentional scope explanation and associated content reflow accepted; existing Northstar glass palette retained.",
+        "Unavailable state is explicit; account-wide activity is not advertised as organization audit history."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-platform.spec.ts-snapshots/settings-partial-error-desktop-linux.png",
+      "previousSha256": "57643c5c31dbae162868a0d2a42b64920fe05874e7c509455481d0c174783ba1",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "abf48ef9a47654c1865681a4e5e681f9c3fc13cd084d5ddc0b29257015459b4b",
+      "sourceCommit": "ef12468938308c30810dd406fba641163060971b",
+      "runId": 41139472148,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148",
+      "artifactId": 13018247439,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148/artifacts/13018247439",
+      "artifactMember": "account/settings-platform-partial--9fc9b-ns-explicit-visual-evidence/settings-partial-error-desktop-actual.png",
+      "width": 1280,
+      "height": 1351,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Intentional scope explanation and associated content reflow accepted; existing Northstar glass palette retained.",
+        "Resource error and preferences-unavailable messaging are separately visible without overlap."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-release.spec.ts-snapshots/settings-release-chromium-400-percent-reflow-chromium-400-percent-reflow-linux.png",
+      "previousSha256": "586d77ba317f7d682d97681ce1954c56ba22582d518fa8904c6f9d15f7f8ef8d",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "7cd267b98a85a671c76c75dfdb4ab97f94e333aec962c81110e879c9525faf45",
+      "sourceCommit": "ef12468938308c30810dd406fba641163060971b",
+      "runId": 41139472148,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148",
+      "artifactId": 13018247439,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148/artifacts/13018247439",
+      "artifactMember": "release/settings-release-release-p-27468-essible-and-visually-stable-chromium-400-percent-reflow/settings-release-chromium-400-percent-reflow-actual.png",
+      "width": 320,
+      "height": 2133,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Intentional scope explanation and associated content reflow accepted; existing Northstar glass palette retained.",
+        "Responsive/browser-specific screenshot manually inspected; no visible horizontal clipping.",
+        "This is the 320 CSS-pixel reflow profile, not evidence of a physical browser zoom gesture."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-release.spec.ts-snapshots/settings-release-chromium-landscape-touch-chromium-landscape-touch-linux.png",
+      "previousSha256": "5b1e59f222afefcb9a96ce6726c5de97fd9b9d0d071507a80fdf81a77e5dade6",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "6764c12306677413b3d0bad5746970034910b3bb63c3458752381ca49de0b6d8",
+      "sourceCommit": "ef12468938308c30810dd406fba641163060971b",
+      "runId": 41139472148,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148",
+      "artifactId": 13018247439,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148/artifacts/13018247439",
+      "artifactMember": "release/settings-release-release-p-27468-essible-and-visually-stable-chromium-landscape-touch/settings-release-chromium-landscape-touch-actual.png",
+      "width": 844,
+      "height": 2156,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Intentional scope explanation and associated content reflow accepted; existing Northstar glass palette retained.",
+        "Responsive/browser-specific screenshot manually inspected; no visible horizontal clipping."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-release.spec.ts-snapshots/settings-release-chromium-large-text-chromium-large-text-linux.png",
+      "previousSha256": "ef1f9351b23e8db77410a1516a006501cfaec0e22486128658e1d5e91abf952d",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "f66797e1c267b4f4db07ef44e13618789cd8bcd849123f4e449a56b984300313",
+      "sourceCommit": "ef12468938308c30810dd406fba641163060971b",
+      "runId": 41139472148,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148",
+      "artifactId": 13018247439,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148/artifacts/13018247439",
+      "artifactMember": "release/settings-release-release-p-27468-essible-and-visually-stable-chromium-large-text/settings-release-chromium-large-text-actual.png",
+      "width": 1280,
+      "height": 3378,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Intentional scope explanation and associated content reflow accepted; existing Northstar glass palette retained.",
+        "Responsive/browser-specific screenshot manually inspected; no visible horizontal clipping.",
+        "Enlarged-text profile retains readable wrapping and controls."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-release.spec.ts-snapshots/settings-release-chromium-phone-dpr3-chromium-phone-dpr3-linux.png",
+      "previousSha256": "9627308bee6a2596824a7fdf0072358b650e8cbae889dcc0b4da0483f0aa14b2",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "da624802bdf5687f4b01c065c5f422f7675b6ce8d8a4d86a4d6dd2e39f80e3cc",
+      "sourceCommit": "ef12468938308c30810dd406fba641163060971b",
+      "runId": 41139472148,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148",
+      "artifactId": 13018247439,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148/artifacts/13018247439",
+      "artifactMember": "release/settings-release-release-p-27468-essible-and-visually-stable-chromium-phone-dpr3/settings-release-chromium-phone-dpr3-actual.png",
+      "width": 390,
+      "height": 2353,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Intentional scope explanation and associated content reflow accepted; existing Northstar glass palette retained.",
+        "Responsive/browser-specific screenshot manually inspected; no visible horizontal clipping."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-release.spec.ts-snapshots/settings-release-chromium-tablet-chromium-tablet-linux.png",
+      "previousSha256": "94c57cd0bcfffd34786aba1a603d360b43804f7957cd405aad8de87c501ee64f",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "387e272d82fec4f8a435d2c792dd038731edc1fa5f2f765bae17e7277bc02a0c",
+      "sourceCommit": "ef12468938308c30810dd406fba641163060971b",
+      "runId": 41139472148,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148",
+      "artifactId": 13018247439,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148/artifacts/13018247439",
+      "artifactMember": "release/settings-release-release-p-27468-essible-and-visually-stable-chromium-tablet/settings-release-chromium-tablet-actual.png",
+      "width": 1024,
+      "height": 1852,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Intentional scope explanation and associated content reflow accepted; existing Northstar glass palette retained.",
+        "Responsive/browser-specific screenshot manually inspected; no visible horizontal clipping."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-release.spec.ts-snapshots/settings-release-firefox-desktop-firefox-desktop-linux.png",
+      "previousSha256": "86282af4fe7235c5f9cd4292605c63a7cdfcf1239d6f83939eb878b1d9128989",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "eeebc6b43ad9c5665f790e93523c322ea2413c2ea16093e275003ec833c504a5",
+      "sourceCommit": "ef12468938308c30810dd406fba641163060971b",
+      "runId": 41139472148,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148",
+      "artifactId": 13018247439,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148/artifacts/13018247439",
+      "artifactMember": "release/settings-release-release-p-27468-essible-and-visually-stable-firefox-desktop/settings-release-firefox-desktop-actual.png",
+      "width": 1440,
+      "height": 1228,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Intentional scope explanation and associated content reflow accepted; existing Northstar glass palette retained.",
+        "Responsive/browser-specific screenshot manually inspected; no visible horizontal clipping."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-release.spec.ts-snapshots/settings-release-webkit-mobile-webkit-mobile-linux.png",
+      "previousSha256": "672396f0cdef90134e4a9e004e76faefd7846434f680cdc5e4cef5639731bdbc",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "b24ee89708fe1a99b57cea7586b656593b8c3c029efdb1315f2cca001aa88b5b",
+      "sourceCommit": "ef12468938308c30810dd406fba641163060971b",
+      "runId": 41139472148,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148",
+      "artifactId": 13018247439,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41139472148/artifacts/13018247439",
+      "artifactMember": "release/settings-release-release-p-27468-essible-and-visually-stable-webkit-mobile/settings-release-webkit-mobile-actual.png",
+      "width": 390,
+      "height": 2347,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Intentional scope explanation and associated content reflow accepted; existing Northstar glass palette retained.",
+        "Responsive/browser-specific screenshot manually inspected; no visible horizontal clipping."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-platform.spec.ts-snapshots/settings-loading-desktop-linux.png",
+      "previousSha256": "2677844371b1f9453b90ccf77b980e1af7a2bedb15ef5258683a93c94f916310",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "5b4591ffd721649c658ca226bd622a54e6ccf6329c2c3b56687a75413ee15caa",
+      "sourceCommit": "3f9914595f886423e1da5a9fc531615b1c47e5a7",
+      "runId": 41143077949,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41143077949",
+      "artifactId": 13019357530,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41143077949/artifacts/13019357530",
+      "artifactMember": "account/settings-platform-loading--d58a7-ns-explicit-visual-evidence/settings-loading-desktop-actual.png",
+      "width": 1280,
+      "height": 900,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Both category navigation and detail pane visibly state Loading settings; no false No settings found message.",
+        "Pending-request fixture is intentionally held; this is not a valid-empty category state.",
+        "Existing Northstar glass design retained; layout readable and unclipped."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-platform.spec.ts-snapshots/settings-notifications-desktop-linux.png",
+      "previousSha256": "365968d239e740bf5248b8d4a6230ffd01249243ef6cd001a193b867c069d885",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "017049d973f1147a0b2b37794db51aeda8a216cbbe37dbd8409ca80656a7cb77",
+      "sourceCommit": "3f9914595f886423e1da5a9fc531615b1c47e5a7",
+      "runId": 41143077949,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41143077949",
+      "artifactId": 13019357530,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41143077949/artifacts/13019357530",
+      "artifactMember": "account/settings-platform-notifica-c16e4-essible-and-visually-stable/settings-notifications-desktop-actual.png",
+      "width": 1280,
+      "height": 1212,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Subtle row dividers restored; required and optional delivery controls remain distinct and readable.",
+        "Visible notice states these are stored choices and delivery-engine integration is not yet available.",
+        "Existing Northstar glass design retained; layout readable and unclipped."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-platform.spec.ts-snapshots/settings-organization-desktop-linux.png",
+      "previousSha256": "f25025ab97d6519d3ef3da80b426d2c77531e31e0dd8286104fc1852bf2aba7d",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "e8c07e80c5121a55740d2f26139a1a546dc0e0da11becbad200efecd24e76caf",
+      "sourceCommit": "3f9914595f886423e1da5a9fc531615b1c47e5a7",
+      "runId": 41143077949,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41143077949",
+      "artifactId": 13019357530,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41143077949/artifacts/13019357530",
+      "artifactMember": "account/settings-platform-organiza-fbfeb-essible-and-visually-stable/settings-organization-desktop-actual.png",
+      "width": 1280,
+      "height": 1212,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Fixture uses a real auth.login event rendered as Successful sign-in.",
+        "Visible explanation distinguishes personal account-wide activity from organization-scoped audit history.",
+        "Existing Northstar glass design retained; layout readable and unclipped."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-release.spec.ts-snapshots/settings-release-chromium-light-chromium-light-linux.png",
+      "previousSha256": "74d9e76866e66b12f6d3d0169afe2057f394301e384ee17ec7a33c1a749f1cc9",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "643f70640efe9cfa2273e34da09dd7bfff9d969275e5e1d3d4fa05cb1c821956",
+      "sourceCommit": "0412a99f8755e14a3869083292e4d1a49185ca4c",
+      "runId": 41145375240,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41145375240",
+      "artifactId": 13020786151,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41145375240/artifacts/13020786151",
+      "artifactMember": "release/settings-release-release-p-27468-essible-and-visually-stable-chromium-light/settings-release-chromium-light-actual.png",
+      "width": 1280,
+      "height": 1212,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Standard light (not forced colors): kicker now inherits readable surrounding dark text and hamburger icon inherits header foreground.",
+        "Full-page content, footer, and visible keyboard focus are readable; no clipping observed."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-release.spec.ts-snapshots/settings-release-chromium-high-contrast-chromium-high-contrast-linux.png",
+      "previousSha256": "03d2c6c22f720fcf8870e48a571d1a462eb7b4aa6783482d33ae4d5bbc12e265",
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "9296688c96f9bb03975e75633be23a61e1fb4ffc86559622972455a561eb7f5c",
+      "sourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "runId": 41152795903,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41152795903",
+      "artifactId": 13024305042,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41152795903/artifacts/13024305042",
+      "artifactMember": "release/settings-release-release-p-27468-essible-and-visually-stable-chromium-high-contrast/settings-release-chromium-high-contrast-actual.png",
+      "width": 1280,
+      "height": 1212,
+      "decision": "accepted-reference-change",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Genuine forced-colors media is asserted; Canvas/body colors and effective ancestor opacity are captured.",
+        "This is the FINAL post-keyboard snapshot-assertion image, not a pre-axe or restored diagnostic image.",
+        "Full page including lower cards/footer is readable, unclipped, and has visible keyboard focus.",
+        "Initial and restored complete-document axe results are empty; unchanged rule detects both deliberately bad controls.",
+        "Body DOM, computed-color diagnostics, element/text geometry and scroll restoration are checked exactly.",
+        "Bounded approximate PNG restoration comparison passes without changing golden thresholds."
+      ]
+    },
+    {
+      "path": "react-app/e2e/account/settings-release.spec.ts-snapshots/settings-release-chromium-high-contrast-light-chromium-high-contrast-light-linux.png",
+      "previousSha256": null,
+      "previousSourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "reviewedSha256": "de37a04cf855953436b2c4367fac7288b2d7f113ec840e0d47dca85176f70fe5",
+      "sourceCommit": "a4e209212abf12493e16772f0c1eb0e690846541",
+      "runId": 41152795903,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41152795903",
+      "artifactId": 13024305042,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41152795903/artifacts/13024305042",
+      "artifactMember": "release/settings-release-release-p-27468-essible-and-visually-stable-chromium-high-contrast-light/settings-release-chromium-high-contrast-light-actual.png",
+      "width": 1280,
+      "height": 1212,
+      "decision": "accepted-new-reference",
+      "reviewChecks": {
+        "actualPixelsInspected": true,
+        "readable": true,
+        "visibleClippingObserved": false,
+        "sha256AndArchiveMemberBytesVerified": true
+      },
+      "reviewNotes": [
+        "Genuine forced-colors media is asserted; Canvas/body colors and effective ancestor opacity are captured.",
+        "This is the FINAL post-keyboard snapshot-assertion image, not a pre-axe or restored diagnostic image.",
+        "Full page including lower cards/footer is readable, unclipped, and has visible keyboard focus.",
+        "Initial and restored complete-document axe results are empty; unchanged rule detects both deliberately bad controls.",
+        "Body DOM, computed-color diagnostics, element/text geometry and scroll restoration are checked exactly.",
+        "Bounded approximate PNG restoration comparison passes without changing golden thresholds."
+      ]
+    }
+  ],
+  "sourceAncestry": {
+    "verifiedAgainstCommit": "84c0e0c51c8ff492984892c35abf7627e6837120",
+    "requiredAncestorCommits": [
+      "ef12468938308c30810dd406fba641163060971b",
+      "3f9914595f886423e1da5a9fc531615b1c47e5a7",
+      "0412a99f8755e14a3869083292e4d1a49185ca4c",
+      "a4e209212abf12493e16772f0c1eb0e690846541",
+      "f83b3e65a1362e786c61496bfae4fc7a400ba0d1"
+    ],
+    "allRequiredCommitsAreAncestorsOfVerifiedCommit": true,
+    "requirements": [
+      "Retain every requiredAncestorCommits entry as an ancestor of the final merged source. Use a history-preserving merge commit rather than squash or rebase.",
+      "Before merging, verify ancestry again and verify each adopted repository path against its reviewedSha256. Exact commit identity and image bytes are required; patch similarity is not a substitute.",
+      "Capture evidence applies to its listed sourceCommit, browser/profile, fixtures and configuration. It does not establish that later source, dependencies, styles or test inputs are equivalent.",
+      "Run fresh supported comparisons on the final combined source with the adopted references. Changed capture inputs require new source-bound evidence; do not rewrite this review as a passing receipt.",
+      "If history must be rewritten, obtain a fresh supported review on retained history before release."
+    ]
+  },
+  "integrityChecks": {
+    "captureSha256AndArchiveMemberBytesVerified": 26,
+    "captureDimensionsVerified": 26,
+    "sourceArchiveSha256AndCrcVerified": 4,
+    "previousReferenceSha256VerifiedAgainstCommit": "84c0e0c51c8ff492984892c35abf7627e6837120",
+    "existingPreviousReferenceHashesVerified": 25,
+    "newReferenceAbsentAtVerifiedCommit": "react-app/e2e/account/settings-release.spec.ts-snapshots/settings-release-chromium-high-contrast-light-chromium-high-contrast-light-linux.png",
+    "previousHashesAlsoVerifiedAgainstDeclaredPreviousSourceCommits": true
+  },
+  "freshCombinedComparison": {
+    "status": "pending",
+    "requiredAgainstFinalCombinedSource": true,
+    "completeGatePassClaimed": false,
+    "notes": "Individual visual acceptance and permission to publish these references do not establish fresh baseline comparisons, release acceptance, merge readiness or deployment approval."
+  },
+  "reviewNotes": [
+    "Actual, expected and diff pixels were inspected for the original reference set; corrected captures were reviewed before acceptance. Only the exact reviewed PNG bytes are adopted.",
+    "Intentional scope explanations, accurate loading/unavailable states, corrected light-mode readability and genuine forced-color captures are accepted without changing snapshot thresholds.",
+    "Existing Northstar settings references are distinct from the canonical Obsidian/Volcano references. Canonical references remain unchanged.",
+    "Mixed historical header weights and privacy styling predated this feature; those older reference discrepancies are not attributed to new settings behavior.",
+    "The profile named 400-percent-reflow exercises a 320 CSS-pixel viewport; it is not evidence of a physical browser zoom gesture.",
+    "The forced-color Canvas backdrop correction does not claim to fix the upstream axe text-fill foreground limitation. Resolved colors were independently inspected in both forced palettes.",
+    "The separate restoration check is approximate: RGB channel differences at most 2 and changed-pixel fraction at most 0.00025, with exact dimensions, alpha, DOM, colors and layout. Golden comparison thresholds are unchanged; the small border-edge raster differences have no proven root cause.",
+    "The minor Volcano mobile overlap below remains open. Accessible center and caret-side samples do not establish that the whole select is unobscured.",
+    "Visual acceptance does not advertise planned domain engines as functional."
+  ],
+  "residualIssues": [
+    {
+      "id": "settings-volcano-compact-390-descend-corner-overlap",
+      "severity": "minor",
+      "status": "verified-open",
+      "sourceCommit": "f83b3e65a1362e786c61496bfae4fc7a400ba0d1",
+      "runId": 41155888085,
+      "runUrl": "https://github.com/woodkill00/base2/actions/runs/41155888085",
+      "artifactId": 13026180294,
+      "artifactUrl": "https://github.com/woodkill00/base2/actions/runs/41155888085/artifacts/13026180294",
+      "route": "/settings/appearance",
+      "state": {
+        "layout": "Volcano",
+        "viewport": {
+          "width": 390,
+          "height": 900
+        },
+        "scroll": {
+          "x": 0,
+          "y": 0
+        },
+        "theme": "light",
+        "contrast": "high",
+        "motion": "reduced",
+        "density": "compact"
+      },
+      "evidence": {
+        "imageArtifactMember": "ci-41155888085-1-volcano/appearance-preferences-app-79075--isolates-sign-out-at-390px-chromium/appearance-saved-390.png",
+        "imageSha256": "59b853efc33395556acebb717f2ec1679ffe413e3b612bd7aa0f069e3db900a0",
+        "hitDiagnosticsArtifactMember": "ci-41155888085-1-volcano/appearance-preferences-app-79075--isolates-sign-out-at-390px-chromium/saved-appearance-contrast-hit-targets.json",
+        "hitDiagnosticsSha256": "fbfd0ea8bac835481f5074bacf06b9c8ee667f78441d79c5303c6e9c4f53b93b",
+        "selectRect": {
+          "left": 64.1875,
+          "top": 773.015625,
+          "right": 325.8125,
+          "bottom": 817.015625,
+          "width": 261.625,
+          "height": 44
+        },
+        "descendRect": {
+          "left": 312.203125,
+          "top": 801.203125,
+          "right": 360.203125,
+          "bottom": 849.203125,
+          "width": 48,
+          "height": 48
+        },
+        "overlapWidth": 13.609375,
+        "overlapHeight": 15.8125,
+        "primaryTargets": [
+          {
+            "name": "center",
+            "x": 195,
+            "y": 795.015625,
+            "inViewport": true,
+            "targetIsSelect": true
+          },
+          {
+            "name": "native-caret-side",
+            "x": 315.8125,
+            "y": 795.015625,
+            "inViewport": true,
+            "targetIsSelect": true
+          }
+        ],
+        "overlapProbe": {
+          "name": "overlap-center",
+          "x": 319.0078125,
+          "y": 809.109375,
+          "inViewport": true,
+          "targetIsSelect": false
+        },
+        "actualOverlapTarget": {
+          "tag": "BUTTON",
+          "id": "",
+          "testId": "base2-scroll-descend",
+          "classes": [
+            "home-movement-button",
+            "home-movement-button-down"
+          ]
+        },
+        "artifactMemberBytesVerified": true,
+        "isBaselineReplacement": false
+      },
+      "finding": "At 390 x 900 CSS pixels and scroll position zero, the fixed descend button intercepts a 13.609375 x 15.8125 CSS-pixel lower-right corner of the Contrast select. The overlap-center hit is the descend button. The select center and caret-side sample still hit the enabled, visible select.",
+      "disposition": "The otherwise readable appearance capture is accepted with this minor overlap explicitly retained, not as fully unobscured. The related appearance evidence is not one of the 26 replacement/new reference images.",
+      "followup": "Consider a bounded mobile settings safe-area correction and verify the entire control hit area at relevant scroll positions while preserving the approved navigation design."
+    }
+  ]
+}

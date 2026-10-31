@@ -1,0 +1,30 @@
+diff --git a/node_modules/eslint-plugin-react/lib/rules/no-danger.js b/node_modules/eslint-plugin-react/lib/rules/no-danger.js
+--- a/node_modules/eslint-plugin-react/lib/rules/no-danger.js
++++ b/node_modules/eslint-plugin-react/lib/rules/no-danger.js
+@@ -10 +10 @@
+-const minimatch = require('minimatch');
++const { minimatch } = require('minimatch');
+diff --git a/node_modules/eslint-plugin-react/lib/rules/jsx-handler-names.js b/node_modules/eslint-plugin-react/lib/rules/jsx-handler-names.js
+--- a/node_modules/eslint-plugin-react/lib/rules/jsx-handler-names.js
++++ b/node_modules/eslint-plugin-react/lib/rules/jsx-handler-names.js
+@@ -8 +8 @@
+-const minimatch = require('minimatch');
++const { minimatch } = require('minimatch');
+diff --git a/node_modules/eslint-plugin-react/lib/rules/forbid-component-props.js b/node_modules/eslint-plugin-react/lib/rules/forbid-component-props.js
+--- a/node_modules/eslint-plugin-react/lib/rules/forbid-component-props.js
++++ b/node_modules/eslint-plugin-react/lib/rules/forbid-component-props.js
+@@ -8 +8 @@
+-const minimatch = require('minimatch');
++const { minimatch } = require('minimatch');
+diff --git a/node_modules/eslint-plugin-react/lib/rules/no-unstable-nested-components.js b/node_modules/eslint-plugin-react/lib/rules/no-unstable-nested-components.js
+--- a/node_modules/eslint-plugin-react/lib/rules/no-unstable-nested-components.js
++++ b/node_modules/eslint-plugin-react/lib/rules/no-unstable-nested-components.js
+@@ -8 +8 @@
+-const minimatch = require('minimatch');
++const { minimatch } = require('minimatch');
+diff --git a/node_modules/eslint-plugin-react/lib/rules/jsx-pascal-case.js b/node_modules/eslint-plugin-react/lib/rules/jsx-pascal-case.js
+--- a/node_modules/eslint-plugin-react/lib/rules/jsx-pascal-case.js
++++ b/node_modules/eslint-plugin-react/lib/rules/jsx-pascal-case.js
+@@ -9 +9 @@
+-const minimatch = require('minimatch');
++const { minimatch } = require('minimatch');

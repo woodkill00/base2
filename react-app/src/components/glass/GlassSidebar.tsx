@@ -1,3 +1,4 @@
+import { useAppearanceMotion } from '../../contexts/ThemeContext';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ChevronLeft, ChevronRight, FileText, Home } from 'lucide-react';
@@ -34,6 +35,7 @@ export const GlassSidebar: React.FC<Props> = ({
   onMenuItemClick,
   currentPath,
 }) => {
+  const { reducedMotion, transition: motionTransition } = useAppearanceMotion();
   const panelRef = useRef<HTMLElement | null>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const close = useMemo(() => onClose || (() => {}), [onClose]);
@@ -184,25 +186,27 @@ export const GlassSidebar: React.FC<Props> = ({
           aria-label={edgeOpen ? 'Close menu' : 'Open menu'}
           aria-expanded={edgeOpen}
           animate={{
-            boxShadow: edgeOpen
-              ? ['0 4px 16px 0 rgba(31,38,135,0.15)', '0 4px 16px 0 rgba(31,38,135,0.15)']
-              : [
-                  '0 4px 16px 0 rgba(31,38,135,0.15), 0 0 0 0 rgba(139,92,246,0.4)',
-                  '0 4px 16px 0 rgba(31,38,135,0.15), 0 0 0 8px rgba(139,92,246,0)',
-                ],
+            boxShadow: reducedMotion
+              ? '0 4px 16px 0 rgba(31,38,135,0.15)'
+              : edgeOpen
+                ? ['0 4px 16px 0 rgba(31,38,135,0.15)', '0 4px 16px 0 rgba(31,38,135,0.15)']
+                : [
+                    '0 4px 16px 0 rgba(31,38,135,0.15), 0 0 0 0 rgba(139,92,246,0.4)',
+                    '0 4px 16px 0 rgba(31,38,135,0.15), 0 0 0 8px rgba(139,92,246,0)',
+                  ],
           }}
-          transition={{
+          transition={motionTransition({
             repeat: edgeOpen ? 0 : Infinity,
             duration: 2,
             ease: 'easeOut',
-          }}
+          })}
         >
-          {!edgeOpen ? (
+          {!edgeOpen && !reducedMotion ? (
             <motion.div
               className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-violet-400"
               initial={{ scale: 1, opacity: 0.8 }}
               animate={{ scale: [1, 1.2, 1], opacity: [0.8, 1, 0.8] }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              transition={motionTransition({ duration: 2, repeat: Infinity, ease: 'easeInOut' })}
             />
           ) : null}
 
@@ -224,7 +228,7 @@ export const GlassSidebar: React.FC<Props> = ({
                 opacity: edgeOpen ? 0 : 1,
                 x: edgeOpen ? (edgePosition === 'left' ? -10 : 10) : 0,
               }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
+              transition={motionTransition({ duration: 0.3, ease: 'easeOut' })}
             >
               <rect x="4" y="14" width="16" height="2" rx="1" fill="currentColor" />
               <rect x="4" y="23" width="16" height="2" rx="1" fill="currentColor" />
@@ -240,7 +244,7 @@ export const GlassSidebar: React.FC<Props> = ({
                 opacity: edgeOpen ? 1 : 0,
                 x: edgeOpen ? 0 : edgePosition === 'left' ? 10 : -10,
               }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
+              transition={motionTransition({ duration: 0.3, ease: 'easeOut' })}
             >
               {edgePosition === 'left' ? (
                 <ChevronLeft className="w-6 h-6" style={{ transform: 'translateY(12px)' }} />
@@ -257,7 +261,7 @@ export const GlassSidebar: React.FC<Props> = ({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
+              transition={motionTransition({ duration: 0.3, ease: 'easeOut' })}
               onClick={() => setEdgeOpen(false)}
               className="fixed inset-0 z-30 backdrop-blur-sm bg-black/20 dark:bg-black/40"
               data-testid="public-menu-backdrop"
@@ -271,7 +275,7 @@ export const GlassSidebar: React.FC<Props> = ({
               initial={{ [edgePosition]: '-100%' }}
               animate={{ [edgePosition]: 0 }}
               exit={{ [edgePosition]: '-100%' }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
+              transition={motionTransition({ duration: 0.3, ease: 'easeOut' })}
               className="fixed z-30 backdrop-blur-2xl bg-white/25 dark:bg-black/40 shadow-[8px_0_32px_0_rgba(31,38,135,0.15)] dark:shadow-[8px_0_32px_0_rgba(0,0,0,0.3)] dark:shadow-[0_0_40px_0_rgba(139,92,246,0.1)]"
               style={{
                 [edgePosition]: 0,
@@ -371,7 +375,11 @@ export const GlassSidebar: React.FC<Props> = ({
                         key={item.id}
                         initial={{ opacity: 0, x: edgePosition === 'left' ? -20 : 20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.05, duration: 0.3, ease: 'easeOut' }}
+                        transition={motionTransition({
+                          delay: index * 0.05,
+                          duration: 0.3,
+                          ease: 'easeOut',
+                        })}
                         onClick={() => handleClick(item.id)}
                         className="w-full flex items-center gap-3 px-4 py-3 rounded-[var(--radius-lg)] backdrop-blur-xl bg-white/20 dark:bg-black/30 border border-white/30 dark:border-white/20 hover:bg-white/30 dark:hover:bg-black/40 transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 dark:focus-visible:ring-white/30 hover:-translate-y-0.5"
                       >

@@ -1,3 +1,4 @@
+import { useAppearanceMotion } from '../../contexts/ThemeContext';
 import { motion } from 'motion/react';
 import {
   Activity,
@@ -31,6 +32,7 @@ const commandItems = [
 const utilityItems = [LayoutGrid, Search, Shield, Database, GitBranch, Settings, Zap];
 
 const HomeObsidianOps = () => {
+  const { transition: motionTransition } = useAppearanceMotion();
   return (
     <section
       id="base2-obsidian-ops"
@@ -69,7 +71,7 @@ const HomeObsidianOps = () => {
                   initial={{ opacity: 0, x: -8 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: index * 0.08, duration: 0.35 }}
+                  transition={motionTransition({ delay: index * 0.08, duration: 0.35 })}
                 >
                   <span>[0{index + 1}]</span>
                   <strong>{line}</strong>

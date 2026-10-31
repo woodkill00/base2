@@ -47,6 +47,15 @@ jobs:
           base2-media-inspector:security -c
           "from pathlib import Path; raise SystemExit(Path('/app/api/tests/media_inspector_acceptance_entrypoint.py').exists())"
 
+      - name: Verify final Python runtime and binary wheel imports
+        run: >-
+          docker run --rm --user 65534:65534 --network none --read-only --cap-drop ALL
+          --security-opt no-new-privileges
+          --tmpfs /tmp:rw,nosuid,nodev,noexec,size=64m
+          --mount type=bind,src="$PWD/api/tests/media_inspector_runtime_acceptance.py",dst=/tmp/runtime_acceptance.py,readonly
+          --entrypoint /usr/bin/python base2-media-inspector:security
+          /tmp/runtime_acceptance.py --runtime-user 65534
+
       - name: Exercise hardened media inspector supervisor
         run: |
           docker run --rm \
@@ -70,21 +79,80 @@ jobs:
       - name: Exercise fresh-volume two-UID spool lifecycle
         run: MEDIA_INSPECTOR_TEST_IMAGE=base2-media-inspector:acceptance bash api/tests/media_inspector_two_uid_container_acceptance.sh
 
+      - name: Prepare hash-verified media Syft
+        env:
+          SYFT_CHECK_FOR_APP_UPDATE: 'false'
+        run: |
+          mkdir -p "$RUNNER_TEMP/base2-media-syft"
+          curl --fail --location --proto '=https' --proto-redir '=https' \
+            --output "$RUNNER_TEMP/base2-media-syft/syft.tar.gz" \
+            https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_amd64.tar.gz
+          printf '%s  %s\n' \
+            'bb65249542db5fedeeb4d3f9b018b75e7264dbfbbb10486f044581a92f90490d' \
+            "$RUNNER_TEMP/base2-media-syft/syft.tar.gz" | sha256sum -c -
+          tar --no-same-owner -xzf "$RUNNER_TEMP/base2-media-syft/syft.tar.gz" \
+            --directory "$RUNNER_TEMP/base2-media-syft" syft
+          "$RUNNER_TEMP/base2-media-syft/syft" version -o json > media-inspector-syft-version.json
+          python -c "import json, sys; value = json.load(sys.stdin); assert value['application'] == 'syft' and value['version'] == '1.55.0' and value['platform'] == 'linux/amd64'" < media-inspector-syft-version.json
+          sha256sum "$RUNNER_TEMP/base2-media-syft/syft.tar.gz" "$RUNNER_TEMP/base2-media-syft/syft" > media-inspector-syft-checksums.txt
+
+      - name: Preserve default media inspector image SBOM
+        env:
+          SYFT_CHECK_FOR_APP_UPDATE: 'false'
+        run: >-
+          "$RUNNER_TEMP/base2-media-syft/syft" scan docker:base2-media-inspector:security
+          -o cyclonedx-json > media-inspector-sbom.raw.cdx.json
+
       - name: Generate media inspector image SBOM
-        uses: anchore/sbom-action@fc46e51fd3cb168ffb36c6d1915723c47db58abb
-        with:
-          image: base2-media-inspector:security
-          format: cyclonedx-json
-          output-file: media-inspector-sbom.cdx.json
+        env:
+          SYFT_CHECK_FOR_APP_UPDATE: 'false'
+        run: >-
+          "$RUNNER_TEMP/base2-media-syft/syft" scan docker:base2-media-inspector:security
+          --config api/media-inspector-syft.yaml -o cyclonedx-json > media-inspector-sbom.cdx.json
+
+      - name: Export executed scanner and native build provenance
+        run: |
+          for name in clamav.bom python-provenance repository-evidence; do
+            docker run --rm --user 65534:65534 --network none --read-only --cap-drop ALL \
+              --security-opt no-new-privileges --entrypoint /usr/bin/python \
+              base2-media-inspector:security -c \
+              "import sys; from pathlib import Path; sys.stdout.write(Path('/usr/local/share/base2/$name.json').read_text())" \
+              > "media-inspector-$name.json"
+          done
+
+      - name: Verify media inspector SBOM includes the actual fixed interpreter
+        run: >-
+          python api/tests/media_inspector_sbom_acceptance.py media-inspector-sbom.cdx.json
+          media-inspector-sbom.raw.cdx.json media-inspector-clamav.bom.json
+          api/media-inspector-runtime.lock.json
+
+      - name: Prepare hash-verified media Grype
+        env:
+          GRYPE_CHECK_FOR_APP_UPDATE: 'false'
+        run: |
+          mkdir -p "$RUNNER_TEMP/base2-media-grype"
+          curl --fail --location --proto '=https' --proto-redir '=https' \
+            --output "$RUNNER_TEMP/base2-media-grype/grype.tar.gz" \
+            https://github.com/anchore/grype/releases/download/v0.121.0/grype_0.121.0_linux_amd64.tar.gz
+          printf '%s  %s\n' \
+            '64e07133d3486115de647a66581461dccf5c732748a0a3119077395565f15519' \
+            "$RUNNER_TEMP/base2-media-grype/grype.tar.gz" | sha256sum -c -
+          tar --no-same-owner -xzf "$RUNNER_TEMP/base2-media-grype/grype.tar.gz" \
+            --directory "$RUNNER_TEMP/base2-media-grype" grype
+          "$RUNNER_TEMP/base2-media-grype/grype" version -o json > media-inspector-grype-version.json
+          python -c "import json, sys; value = json.load(sys.stdin); assert value['application'] == 'grype' and value['version'] == '0.121.0' and value['platform'] == 'linux/amd64'" < media-inspector-grype-version.json
+          sha256sum "$RUNNER_TEMP/base2-media-grype/grype.tar.gz" "$RUNNER_TEMP/base2-media-grype/grype" > media-inspector-grype-checksums.txt
 
       - name: Scan media inspector image
         id: inspector-grype
-        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2
-        with:
-          sbom: media-inspector-sbom.cdx.json
-          fail-build: true
-          severity-cutoff: high
-          output-format: sarif
+        env:
+          GRYPE_CHECK_FOR_APP_UPDATE: 'false'
+        run: |
+          echo "sarif=media-inspector-grype.sarif.json" >> "$GITHUB_OUTPUT"
+          "$RUNNER_TEMP/base2-media-grype/grype" sbom:media-inspector-sbom.cdx.json \
+            --fail-on high \
+            --output sarif=media-inspector-grype.sarif.json \
+            --output json=media-inspector-grype.json
 
       - name: Normalize SBOM result
         if: always()
@@ -109,8 +177,17 @@ jobs:
             sbom.normalized.json
             grype.normalized.json
             media-inspector-sbom.cdx.json
+            media-inspector-sbom.raw.cdx.json
+            media-inspector-syft-version.json
+            media-inspector-syft-checksums.txt
+            media-inspector-clamav.bom.json
+            media-inspector-python-provenance.json
+            media-inspector-repository-evidence.json
             ${{ steps.inspector-grype.outputs.sarif }}
             media-inspector-grype.normalized.json
+            media-inspector-grype.json
+            media-inspector-grype-version.json
+            media-inspector-grype-checksums.txt
   npm-audit:
     runs-on: ubuntu-latest
     steps:

@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "targets": [
+    {
+      "name": "@eslint/eslintrc",
+      "version": "2.1.4",
+      "files": [
+        {
+          "path": "lib/config-array/override-tester.js",
+          "before": "dcb0beb172afb43a2c019eea2193c29f15edb98bf10ca77f1c3307f176c0a75a",
+          "after": "d143ccd1e62eb911b526d0da131f93d92d90b8cd63010ee270c70064e083fb41"
+        }
+      ]
+    },
+    {
+      "name": "@redocly/openapi-core",
+      "version": "1.34.7",
+      "files": [
+        {
+          "path": "lib/utils.js",
+          "before": "896a9acce92e3e5905aa267e895985d57888a87f500d58c29da9c8f9d488ff1c",
+          "after": "825736f13fb67dc4a1e2157bb51396209c7343cfd00376ed5d923e3e9ff82a18"
+        }
+      ]
+    },
+    {
+      "name": "eslint-plugin-react",
+      "version": "7.37.5",
+      "files": [
+        {
+          "path": "lib/rules/no-danger.js",
+          "before": "61f9fd97581e959d75bfb7ef030e9fb7b74c2df224980bed89f6463d05d2734a",
+          "after": "b87af897c6aba046e5dccd4ba9f085979c2c78f796aa1e114910de348c29f302"
+        },
+        {
+          "path": "lib/rules/jsx-handler-names.js",
+          "before": "2a0ffd32c997da581b9b7acecfec800b126774902fd06c09e08a8803e44155ca",
+          "after": "fc5845254b1dfc62295c880c7915da28eca7387f4a7a9baa3918e12391150575"
+        },
+        {
+          "path": "lib/rules/forbid-component-props.js",
+          "before": "2f928750174f7c93846598ba7939cdc0844ebda46954be2c990b056c9ec662b6",
+          "after": "e1f0a7212ac018f4e7397621b308189c18ecfe751dee39bcdce69f7835817b13"
+        },
+        {
+          "path": "lib/rules/no-unstable-nested-components.js",
+          "before": "5ae81f553263438f6fc9e059872fb617519fa8de08777a78a06a738db12313e8",
+          "after": "c8c6b1c7dae28c91158458fe12398987d703ef6e528808a8004636f5879369e3"
+        },
+        {
+          "path": "lib/rules/jsx-pascal-case.js",
+          "before": "dc9cdba6bd5897142976cf0ce68bc3cb134c45da8c2883c88c1db9ba933f0f17",
+          "after": "d1d48f828c01bca90bf4558931db2aeaf6e0fc9b8c27c89128484820a907c7cd"
+        }
+      ]
+    },
+    {
+      "name": "eslint",
+      "version": "8.57.1",
+      "files": []
+    },
+    {
+      "name": "@humanwhocodes/config-array",
+      "version": "0.13.0",
+      "files": []
+    },
+    {
+      "name": "@typescript-eslint/typescript-estree",
+      "version": "8.68.0",
+      "files": []
+    },
+    {
+      "name": "@joshwooding/vite-plugin-react-docgen-typescript",
+      "version": "0.5.0",
+      "files": []
+    },
+    {
+      "name": "flat-cache",
+      "version": "3.2.0",
+      "files": []
+    },
+    {
+      "name": "rimraf",
+      "version": "6.1.3",
+      "files": []
+    }
+  ],
+  "patches": [
+    {
+      "file": "@eslint+eslintrc+2.1.4.patch",
+      "sha256": "da5ee4f813ee36067663ae0d99d113b65e09f9590c1d6ddc98424320b8837a29"
+    },
+    {
+      "file": "@redocly+openapi-core+1.34.7.patch",
+      "sha256": "6a6503ee47bd35a3f28bb93dabc6c62074871b8a54443c3d2bc276310882e4b8"
+    },
+    {
+      "file": "eslint-plugin-react+7.37.5.patch",
+      "sha256": "c66dd5c95883bd31e87ba89ed188e09ce0906cb170c65f4890a96776a8f912c6"
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import { useAppearanceMotion } from '../../contexts/ThemeContext';
 import { motion } from 'motion/react';
 import { Layers } from 'lucide-react';
 
@@ -5,6 +6,7 @@ import GlassCard from '../glass/GlassCard';
 import { siteManifest } from '../../config/siteRuntime';
 
 const HomeFeatures = ({ items }) => {
+  const { transition: motionTransition } = useAppearanceMotion();
   const features =
     items && items.length
       ? items
@@ -49,7 +51,7 @@ const HomeFeatures = ({ items }) => {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: index * 0.1, duration: 0.5, ease: 'easeOut' }}
+              transition={motionTransition({ delay: index * 0.1, duration: 0.5, ease: 'easeOut' })}
             >
               <GlassCard
                 hover

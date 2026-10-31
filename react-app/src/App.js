@@ -1,8 +1,7 @@
 import { Fragment, Suspense, useEffect } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
-import { MotionConfig } from 'motion/react';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ToastProvider from './components/ToastProvider.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
@@ -16,6 +15,15 @@ import { getGoogleClientId } from './services/googleAuthConfig';
 
 // Replace this with your actual Google Client ID
 // Get it from: https://console.cloud.google.com/apis/credentials
+
+function AccountAppearance({ children }) {
+  const { user, loading } = useAuth();
+  return (
+    <ThemeProvider accountId={user?.id} authenticationLoading={loading}>
+      {children}
+    </ThemeProvider>
+  );
+}
 
 function App() {
   const clientId = getGoogleClientId();
@@ -33,26 +41,24 @@ function App() {
   return (
     <OAuthBoundary {...(clientId ? { clientId } : {})}>
       <AuthProvider>
-        <ThemeProvider>
-          <MotionConfig reducedMotion="user">
-            <ToastProvider>
-              <PrivacyRuntime />
-              <RestrictedPreviewNotice />
-              <Router
-                future={{
-                  v7_startTransition: true,
-                  v7_relativeSplatPath: true,
-                }}
-              >
-                <ErrorBoundary>
-                  <Suspense fallback={<div style={{ padding: 24 }}>Loading...</div>}>
-                    <PublicRoutes />
-                  </Suspense>
-                </ErrorBoundary>
-              </Router>
-            </ToastProvider>
-          </MotionConfig>
-        </ThemeProvider>
+        <AccountAppearance>
+          <ToastProvider>
+            <PrivacyRuntime />
+            <RestrictedPreviewNotice />
+            <Router
+              future={{
+                v7_startTransition: true,
+                v7_relativeSplatPath: true,
+              }}
+            >
+              <ErrorBoundary>
+                <Suspense fallback={<div style={{ padding: 24 }}>Loading...</div>}>
+                  <PublicRoutes />
+                </Suspense>
+              </ErrorBoundary>
+            </Router>
+          </ToastProvider>
+        </AccountAppearance>
       </AuthProvider>
     </OAuthBoundary>
   );

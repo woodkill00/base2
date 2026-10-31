@@ -1,9 +1,18 @@
 ARG TARGETPLATFORM=linux/amd64
 
-FROM --platform=linux/amd64 cgr.dev/chainguard/python@sha256:9ebf8de78b1cf497dfa5f82833900555d5632be933e494944f4a3ef3ea90863f AS inspector-builder
+FROM --platform=linux/amd64 python@sha256:c6ecb2f3c3dc85a75350f36560e1f49d35d6a9f7ce11fd775bd6834a69a9a0e1 AS inspector-builder
 ARG TARGETPLATFORM
 RUN test "$TARGETPLATFORM" = 'linux/amd64'
 WORKDIR /build
+# Source fixtures are hash-bound to the official interpreter rebuild and used
+# only through an ephemeral mount; no CPython test package enters production.
+RUN wget --https-only --output-document=/tmp/python.tar.xz \
+      https://www.python.org/ftp/python/3.15.2/Python-3.15.2.tar.xz \
+    && printf '%s  %s\n' \
+      '8b5536d280142ecf6cdfe15d12a21ba1c65e300bbf7b28a8d0cdb849575797de' \
+      '/tmp/python.tar.xz' | sha256sum -c - \
+    && mkdir /tmp/python-source \
+    && tar -xJf /tmp/python.tar.xz --strip-components=1 -C /tmp/python-source
 RUN wget --https-only --output-document=/tmp/clamav.deb \
       https://github.com/Cisco-Talos/clamav/releases/download/clamav-1.5.4/clamav-1.5.4.linux.x86_64.deb \
     && printf '%s  %s\n' \
@@ -14,16 +23,68 @@ RUN wget --https-only --output-document=/tmp/clamav.deb \
     && ar x /tmp/clamav.deb \
     && tar -xzf control.tar.gz ./control \
     && tar -xzf data.tar.gz
+COPY media-inspector-runtime.lock.json /build/media-inspector-runtime.lock.json
+COPY tests/media_inspector_build_inputs.py /build/media_inspector_build_inputs.py
+RUN python /build/media_inspector_build_inputs.py prepare --lock /build/media-inspector-runtime.lock.json --destination /locked-inputs \
+    && cd /tmp/python-source \
+    && patch --batch --forward --fuzz=0 -p1 < /locked-inputs/patches/0006-Allow-HelloRetryRequest-in-test_ssl-servername-callb.patch \
+    && patch --batch --forward --fuzz=0 -p1 < /locked-inputs/patches/0007-Always-provide-PROTOCOL_TLSv1-and-fix-HAS_TLSv1_2-wi.patch \
+    && python /build/media_inspector_build_inputs.py scanner-files --source /tmp/clamav --destination /clamav-provenance
 COPY requirements-media-inspector.txt /build/requirements-media-inspector.txt
 RUN pip install --no-cache-dir --only-binary=:all: --no-deps --require-hashes \
       --target /tmp/vendor \
       -r /build/requirements-media-inspector.txt
 
+FROM --platform=linux/amd64 cgr.dev/chainguard/wolfi-base@sha256:73f2cab0f11208427595d4bdd784046bc4116ef7cc52f0c1b48b6b7f820288d5 AS python-native-builder
+COPY --from=inspector-builder /locked-inputs /locked-inputs
+COPY --from=inspector-builder /build/media-inspector-runtime.lock.json /build/media-inspector-runtime.lock.json
+COPY --from=inspector-builder /build/media_inspector_build_inputs.py /build/media_inspector_build_inputs.py
+# Wolfi authenticates these APKs through its signed index. Never use
+# untrusted installation or an invented Python APK version. Reinstall the locked
+# build closure so headers/libraries are identical to the final native packages.
+RUN --network=none mkdir /locked-keys \
+    && cp /etc/apk/keys/wolfi-signing.rsa.pub /locked-keys/wolfi-signing.rsa.pub \
+    && sha256sum -c /locked-inputs/key.sha256 \
+    && apk --keys-dir /locked-keys verify /locked-inputs/repository/x86_64/APKINDEX.tar.gz \
+    && apk --keys-dir /locked-keys --repositories-file /dev/null --repository /locked-inputs/repository --no-network --no-cache add $(cat /locked-inputs/build-pins.txt) \
+    && apk --keys-dir /locked-keys --repositories-file /dev/null --repository /locked-inputs/repository --no-network --no-cache fix --reinstall $(cut -d= -f1 /locked-inputs/build-pins.txt) \
+    && awk -F: '/^P:/ {name=$2} /^V:/ {print name "=" $2}' /lib/apk/db/installed > /build-unsorted.txt \
+    && sort /build-unsorted.txt > /build-actual.txt \
+    && sort /locked-inputs/build-pins.txt > /build-expected.txt \
+    && cmp /build-expected.txt /build-actual.txt
+COPY --from=inspector-builder /tmp/python-source /usr/src/python
+WORKDIR /usr/src/python
+RUN --network=none ./configure --prefix=/usr/local --enable-shared --without-ensurepip \
+      --with-system-expat --with-system-libmpdec --with-openssl=/usr \
+      LDFLAGS='-Wl,-rpath,/usr/local/lib' \
+    && make -j2 \
+    && make DESTDIR=/python-root install \
+    && rm -rf /python-root/usr/local/lib/python3.15/test \
+      /python-root/usr/local/lib/python3.15/ensurepip \
+      /python-root/usr/local/include /python-root/usr/local/share/man \
+    && find /python-root -name '*.pyc' -delete \
+    && PYTHONDONTWRITEBYTECODE=1 LD_LIBRARY_PATH=/python-root/usr/local/lib /python-root/usr/local/bin/python3.15 \
+      /build/media_inspector_build_inputs.py python-files --lock /build/media-inspector-runtime.lock.json \
+      --source /python-root --destination /python-provenance.json
+# The empty runtime root is installed by APK itself, retaining exact ownership
+# and version records; no Python package, compiler, shell or installer is added.
+RUN --network=none mkdir -p /runtime-root \
+    && apk --root /runtime-root --initdb --keys-dir /locked-keys \
+      --repositories-file /dev/null --repository /locked-inputs/repository \
+      --no-network --no-cache add --no-scripts $(cat /locked-inputs/runtime-pins.txt) \
+    && awk -F: '/^P:/ {name=$2} /^V:/ {print name "=" $2}' /runtime-root/lib/apk/db/installed > /runtime-unsorted.txt \
+    && sort /runtime-unsorted.txt > /runtime-actual.txt \
+    && sort /locked-inputs/runtime-pins.txt > /runtime-expected.txt \
+    && cmp /runtime-expected.txt /runtime-actual.txt \
+    && cp -a /python-root/. /runtime-root/ \
+    && ln -s /usr/local/bin/python3.15 /runtime-root/usr/bin/python \
+    && ln -s python3.15 /runtime-root/usr/local/bin/python \
+    && find /runtime-root -type f -exec chmod a-s '{}' +
+
 FROM --platform=linux/amd64 clamav/clamav@sha256:1fdfd24c6f0a0fb60788481487459a6d4eda8a9b448641594e04db8410d34422 AS clamav-definitions
 FROM --platform=linux/amd64 mwader/static-ffmpeg@sha256:54e55b0cb8f672870fc38ceb2e6c411855cb3b39c505f5f3b2505ee01ed5f2b7 AS ffmpeg-runtime
-FROM --platform=linux/amd64 python@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6 AS privilege-runtime
 
-FROM --platform=linux/amd64 cgr.dev/chainguard/python@sha256:9ebf8de78b1cf497dfa5f82833900555d5632be933e494944f4a3ef3ea90863f AS definition-verifier
+FROM inspector-builder AS definition-verifier
 COPY --from=clamav-definitions /var/lib/clamav/main.cvd /var/lib/clamav/main.cvd
 COPY --from=clamav-definitions /var/lib/clamav/daily.cvd /var/lib/clamav/daily.cvd
 COPY --from=clamav-definitions /var/lib/clamav/bytecode.cvd /var/lib/clamav/bytecode.cvd
@@ -37,10 +98,13 @@ RUN printf '%s  %s\n' \
       '6d4aa01f219e988060fc419f495d07f27e0cdf1a2cccc065971da922c76f7ffb' \
       '/var/lib/clamav/bytecode.cvd' | sha256sum -c -
 
-FROM --platform=linux/amd64 cgr.dev/chainguard/python@sha256:54ad02f5ad9e7e62f216b8f856405cd949c5bb4d21ca1223ff0844641c00776e AS media-inspector-production
+FROM scratch AS media-inspector-production
+COPY --from=python-native-builder /runtime-root/ /
 WORKDIR /app
-COPY --from=privilege-runtime /usr/bin/setpriv /usr/bin/setpriv
-COPY --from=privilege-runtime /lib/x86_64-linux-gnu/libcap-ng.so.0.0.0 /usr/lib/libcap-ng.so.0
+COPY --from=python-native-builder /python-provenance.json /usr/local/share/base2/python-provenance.json
+COPY media-inspector-runtime.lock.json /usr/local/share/base2/media-inspector-runtime.lock.json
+COPY --from=inspector-builder /locked-inputs/repository-evidence.json /usr/local/share/base2/repository-evidence.json
+COPY --from=inspector-builder /clamav-provenance /usr/local/share/base2/clamav
 COPY --from=ffmpeg-runtime /ffmpeg /usr/bin/ffmpeg
 COPY --from=ffmpeg-runtime /ffprobe /usr/bin/ffprobe
 COPY --from=inspector-builder /tmp/clamav/usr/local/bin/clamscan /usr/bin/clamscan
@@ -49,7 +113,6 @@ COPY --from=inspector-builder /tmp/clamav/usr/local/lib/libclamav.so.12 /usr/loc
 COPY --from=inspector-builder /tmp/clamav/usr/local/lib/libclammspack.so.0.8.0 /usr/local/lib/libclammspack.so.0.8.0
 COPY --from=inspector-builder /tmp/clamav/usr/local/lib/libclammspack.so.0 /usr/local/lib/libclammspack.so.0
 COPY --from=inspector-builder /tmp/clamav/usr/local/etc/certs/clamav.crt /usr/local/etc/certs/clamav.crt
-COPY --from=inspector-builder /tmp/clamav/control /var/lib/dpkg/status
 COPY --from=definition-verifier /var/lib/clamav/main.cvd /var/lib/clamav/main.cvd
 COPY --from=definition-verifier /var/lib/clamav/daily.cvd /var/lib/clamav/daily.cvd
 COPY --from=definition-verifier /var/lib/clamav/bytecode.cvd /var/lib/clamav/bytecode.cvd
@@ -63,14 +126,25 @@ COPY --chown=65532:65532 services/media_library_parser.py ./api/services/media_l
 COPY --chown=65532:65532 services/media_library_processor.py ./api/services/media_library_processor.py
 COPY --chown=65532:65532 services/content_workspace_derivative.py ./api/services/content_workspace_derivative.py
 COPY --chown=65532:65532 scripts/media_inspector_spool_init.py ./api/scripts/media_inspector_spool_init.py
-ENV LD_LIBRARY_PATH=/usr/local/lib PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app/vendor:/app
+ENV PATH=/usr/local/bin:/usr/bin:/bin LD_LIBRARY_PATH=/usr/local/lib PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app/vendor:/app
+# This source-derived SBOM is consumed additively by Syft, never used to replace
+# the raw OS inventory. Version is executed and every imported file rehashed.
+RUN --network=none --mount=type=bind,source=tests/media_inspector_build_inputs.py,target=/tmp/build_inputs.py,readonly \
+    ["/usr/bin/python", "/tmp/build_inputs.py", "scanner-bom", "--destination", "/usr/local/share/base2/clamav.bom.json"]
+# Native unprivileged SSL/import acceptance, followed by a fatal complete audit.
+# Scratch has no shell/find: both validations use explicit executables.
+RUN --network=none --mount=type=bind,from=inspector-builder,source=/tmp/python-source/Lib/test,target=/tmp/cpython-tests/test,readonly \
+    --mount=type=bind,source=tests/media_inspector_runtime_acceptance.py,target=/tmp/runtime_acceptance.py,readonly \
+    ["/usr/bin/setpriv", "--reuid=65534", "--regid=65534", "--clear-groups", "--no-new-privs", "--inh-caps=-all", "--ambient-caps=-all", "--bounding-set=-all", "/usr/bin/python", "/tmp/runtime_acceptance.py", "--runtime-user", "65534", "--cpython-tests", "/tmp/cpython-tests"]
+RUN --network=none --mount=type=bind,source=tests/media_inspector_runtime_acceptance.py,target=/tmp/runtime_acceptance.py,readonly \
+    ["/usr/bin/python", "/tmp/runtime_acceptance.py", "--audit-elevated-files"]
 USER root
 ENTRYPOINT ["/usr/bin/python"]
 CMD ["-m", "api.services.media_inspector_service"]
 
 FROM media-inspector-production AS media-inspector-acceptance
-COPY --chown=65532:65532 tests/media_inspector_acceptance_entrypoint.py ./api/tests/media_inspector_acceptance_entrypoint.py
-COPY --chown=65532:65532 tests/media_inspector_container_acceptance.py ./api/tests/media_inspector_container_acceptance.py
-COPY --chown=65532:65532 tests/media_inspector_two_uid_producer.py ./api/tests/media_inspector_two_uid_producer.py
+COPY --chown=65532:65532 --chmod=0644 tests/media_inspector_acceptance_entrypoint.py ./api/tests/media_inspector_acceptance_entrypoint.py
+COPY --chown=65532:65532 --chmod=0644 tests/media_inspector_container_acceptance.py ./api/tests/media_inspector_container_acceptance.py
+COPY --chown=65532:65532 --chmod=0644 tests/media_inspector_two_uid_producer.py ./api/tests/media_inspector_two_uid_producer.py
 
 FROM media-inspector-production AS media-inspector-final

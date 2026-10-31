@@ -1,9 +1,11 @@
+import { useAppearanceMotion } from '../../contexts/ThemeContext';
 import { motion } from 'motion/react';
 
 import GlassCard from '../glass/GlassCard';
 import { siteManifest } from '../../config/siteRuntime';
 
 const HomeVisual = () => {
+  const { transition: motionTransition } = useAppearanceMotion();
   return (
     <section
       style={{ padding: 'calc(4rem) calc(max(1rem, calc((100vw - 1200px) / 2))) calc(4rem)' }}
@@ -13,7 +15,7 @@ const HomeVisual = () => {
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.8, ease: 'easeOut' }}
+          transition={motionTransition({ duration: 0.8, ease: 'easeOut' })}
         >
           <GlassCard
             className="home-visual-console"

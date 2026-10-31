@@ -1,0 +1,3 @@
+# Additive only: retain every default OS, Python and binary cataloger.
+select-catalogers:
+  - +sbom-cataloger

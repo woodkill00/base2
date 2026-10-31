@@ -11,10 +11,14 @@ export function setThemeCookie(theme: 'light' | 'dark', days = 180) {
 }
 
 export function getThemeCookie(): 'light' | 'dark' | null {
-  const m = document.cookie.match(/(?:^|; )theme=([^;]+)/);
-  if (!m) return null;
-  const v = decodeURIComponent(m[1]);
-  return v === 'dark' || v === 'light' ? (v as 'light' | 'dark') : null;
+  try {
+    const m = document.cookie.match(/(?:^|;\s*)theme=([^;]+)/);
+    if (!m) return null;
+    const v = decodeURIComponent(m[1]);
+    return v === 'dark' || v === 'light' ? (v as 'light' | 'dark') : null;
+  } catch {
+    return null;
+  }
 }
 
 export function applyThemeClass(theme: 'light' | 'dark') {

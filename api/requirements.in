@@ -14,6 +14,8 @@ ruff==0.6.9
 mypy==1.11.2
 httpx
 google-auth
+# Security patch for the google-auth ASN.1 dependency (CVE-2026-119194..119197).
+pyasn1==0.6.5
 opentelemetry-api==1.45.1
 opentelemetry-sdk
 opentelemetry-exporter-otlp
@@ -22,4 +24,4 @@ opentelemetry-instrumentation-psycopg2
 pydantic-settings
 cffi==2.0.0
 Pillow==13.0.0
-pypdf==6.21.2
+pypdf==6.21.4

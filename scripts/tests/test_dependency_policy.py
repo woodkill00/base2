@@ -45,16 +45,16 @@ class DependencyPolicyTests(unittest.TestCase):
             self.assertGreaterEqual(tuple(map(int, version.split('.'))), (7, 30, 1))
         self.assertIn('opentelemetry-api==1.45.1', (root / 'api/requirements.txt').read_text())
         dockerfile = (root / 'api/Dockerfile.media-inspector').read_text()
-        for digest in ('9ebf8de78b1cf497dfa5f82833900555d5632be933e494944f4a3ef3ea90863f',
-                       '54ad02f5ad9e7e62f216b8f856405cd949c5bb4d21ca1223ff0844641c00776e'):
-            self.assertIn('cgr.dev/chainguard/python@sha256:' + digest, dockerfile)
+        self.assertIn('python@sha256:c6ecb2f3c3dc85a75350f36560e1f49d35d6a9f7ce11fd775bd6834a69a9a0e1', dockerfile)
+        self.assertIn('cgr.dev/chainguard/wolfi-base@sha256:73f2cab0f11208427595d4bdd784046bc4116ef7cc52f0c1b48b6b7f820288d5', dockerfile)
+        self.assertNotIn('cgr.dev/chainguard/python', dockerfile)
 
     def test_october_security_pins_cover_api_inspector_and_frontend(self):
         root = MODULE_PATH.parents[2]
         for path in ('api/requirements.in', 'api/requirements.txt',
                      'api/requirements-media-inspector.txt'):
             self.assertRegex((root / path).read_text(), r'(?im)^pillow==13\.0\.0(?:\s|$)')
-            self.assertIn('pypdf==6.21.2', (root / path).read_text())
+            self.assertIn('pypdf==6.21.4', (root / path).read_text())
         self.assertIn('certifi==2026.10.19', (root / 'api/requirements.txt').read_text())
         for path in ('digital_ocean/requirements.txt', 'digital_ocean/requirements.lock'):
             self.assertRegex((root / path).read_text(), r'(?im)^pillow==13\.0\.0(?:\s|$)')

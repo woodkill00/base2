@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Moon, Sun } from 'lucide-react';
 import { motion } from 'motion/react';
 
 import ThemeToggle from './ThemeToggle';
+import { ThemeContext, useAppearanceMotion } from '../../contexts/ThemeContext';
 import GlassButton from './GlassButton';
 import { applyThemeClass, setThemeCookie } from '../../services/theme/persistence';
 import { siteManifest } from '../../config/siteRuntime';
@@ -34,12 +35,15 @@ export const GlassHeader: React.FC<Props> = ({
   titleAsHeading = true,
   themeLabel = 'Toggle theme',
 }) => {
+  const { transition: motionTransition } = useAppearanceMotion();
   const navigate = useNavigate();
   const inferredPublic = useMemo(() => title?.toLowerCase() === 'home', [title]);
   const isPublic = variant ? variant === 'public' : inferredPublic;
   const accountsEnabled = manifest.modules.some((item) => item.id === 'accounts' && item.enabled);
 
-  const [isDark, setIsDark] = useState(false);
+  const themeContext = useContext(ThemeContext);
+  const [fallbackDark, setIsDark] = useState(false);
+  const isDark = themeContext.hasProvider ? themeContext.theme === 'dark' : fallbackDark;
 
   useEffect(() => {
     if (!isPublic) return;
@@ -48,6 +52,10 @@ export const GlassHeader: React.FC<Props> = ({
   }, [isPublic]);
 
   const toggleTheme = () => {
+    if (themeContext.hasProvider) {
+      themeContext.toggleTheme();
+      return;
+    }
     const nextTheme: 'light' | 'dark' = isDark ? 'light' : 'dark';
     setIsDark(!isDark);
     applyThemeClass(nextTheme);
@@ -105,7 +113,7 @@ export const GlassHeader: React.FC<Props> = ({
               >
                 <motion.div
                   animate={{ rotate: isDark ? 180 : 0 }}
-                  transition={{ duration: 0.3, ease: 'easeOut' }}
+                  transition={motionTransition({ duration: 0.3, ease: 'easeOut' })}
                 >
                   {isDark ? (
                     <Sun className="w-5 h-5" aria-hidden="true" />
@@ -169,6 +177,9 @@ export const GlassHeader: React.FC<Props> = ({
           display: 'grid',
           placeItems: 'center',
           padding: 0,
+          // The shell already supplies the active profile's light/dark foreground.
+          // Do not inherit the ghost variant's fixed white on a light header.
+          color: 'inherit',
         }}
       >
         <svg

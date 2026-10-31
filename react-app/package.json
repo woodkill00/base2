@@ -27,22 +27,24 @@
     "@testing-library/jest-dom": "^6.1.4",
     "@testing-library/react": "^14.1.0",
     "@testing-library/user-event": "^14.5.1",
+    "@types/pngjs": "6.0.5",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
-    "@typescript-eslint/parser": "^8.41.0",
+    "@typescript-eslint/parser": "8.68.0",
     "@tailwindcss/postcss": "4.3.3",
     "@vitejs/plugin-react": "^4.7.0",
     "@vitest/coverage-istanbul": "^4.1.12",
     "autoprefixer": "^10.4.23",
     "cross-env": "^7.0.3",
-    "eslint": "^8.50.0",
+    "eslint": "8.57.1",
     "eslint-config-prettier": "^9.0.0",
-    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "^4.6.0",
     "jest-axe": "^9.0.0",
     "jsdom": "^29.1.1",
     "msw": "^2.6.6",
-    "openapi-typescript": "^7.13.0",
+    "openapi-typescript": "7.13.0",
+    "pngjs": "7.0.0",
     "postcss": "^8.5.6",
     "prettier": "^3.0.0",
     "storybook": "8.6.19",
@@ -50,7 +52,8 @@
     "typescript": "^5.9.3",
     "vite": "^6.4.5",
     "vitest": "^4.1.12",
-    "yaml": "^2.8.2"
+    "yaml": "^2.8.2",
+    "patch-package": "8.0.1"
   },
   "scripts": {
     "start": "vite",
@@ -80,7 +83,16 @@
     "analyze": "vite build --mode analyze",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "generate:openapi:types": "openapi-typescript ../specs/001-django-fastapi-react/contracts/openapi.yaml -o src/services/api/types.d.ts"
+    "generate:openapi:types": "openapi-typescript ../specs/001-django-fastapi-react/contracts/openapi.yaml -o src/services/api/types.d.ts",
+    "postinstall": "node scripts/apply-tooling-compatibility.cjs",
+    "verify:tooling": "node scripts/apply-tooling-compatibility.cjs --verify",
+    "test:tooling": "npm run verify:tooling && node --no-concurrent-recompilation --no-concurrent-marking node_modules/vitest/vitest.mjs run --config=vitest.tooling.config.mjs",
+    "pretest": "npm run test:tooling",
+    "pretest:ci": "npm run test:tooling",
+    "prelint": "npm run verify:tooling",
+    "prebuild": "npm run verify:tooling",
+    "prebuild-storybook": "npm run verify:tooling",
+    "pregenerate:openapi:types": "npm run verify:tooling"
   },
   "browserslist": {
     "production": [
@@ -95,6 +107,39 @@
     ]
   },
   "overrides": {
-    "uuid": "11.1.1"
+    "uuid": "11.1.1",
+    "eslint@8.57.1": {
+      "minimatch": "11.0.1"
+    },
+    "@eslint/eslintrc@2.1.4": {
+      "minimatch": "11.0.1"
+    },
+    "@humanwhocodes/config-array@0.13.0": {
+      "minimatch": "11.0.1"
+    },
+    "eslint-plugin-react@7.37.5": {
+      "minimatch": "11.0.1"
+    },
+    "@redocly/openapi-core@1.34.7": {
+      "minimatch": "11.0.1"
+    },
+    "@typescript-eslint/typescript-estree@8.68.0": {
+      "minimatch": "11.0.1"
+    },
+    "flat-cache@3.2.0": {
+      "rimraf": {
+        ".": "6.1.3",
+        "glob": {
+          ".": "14.0.2",
+          "minimatch": "11.0.1"
+        }
+      }
+    },
+    "@joshwooding/vite-plugin-react-docgen-typescript@0.5.0": {
+      "glob": {
+        ".": "14.0.2",
+        "minimatch": "11.0.1"
+      }
+    }
   }
 }

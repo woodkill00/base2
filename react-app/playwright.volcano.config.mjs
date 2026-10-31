@@ -5,7 +5,7 @@ import layout from './playwright.layout.config.mjs';
 export default defineConfig({
   ...layout,
   testIgnore: [],
-  testMatch: 'volcano-preservation.spec.ts',
+  testMatch: ['volcano-preservation.spec.ts', 'appearance-preferences.spec.ts'],
   projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
   webServer: {
     ...layout.webServer,
