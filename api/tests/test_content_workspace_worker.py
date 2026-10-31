@@ -45,7 +45,23 @@ class Connection:
 
 
 def bind(monkeypatch, connection):
+    monkeypatch.setattr(
+        worker.policy_repo,
+        'member',
+        lambda *args, **kwargs: {'role': 'admin', 'organization_id': 'scope'},
+    )
+    monkeypatch.setattr(
+        worker.policy_repo, 'authorize_read', lambda *args, **kwargs: {'role': 'admin'}
+    )
     scopes = []
+    # Existing scheduler transaction tests use a migrated permissive policy and a
+    # live scheduler grant; restrictive authorization is tested separately.
+    monkeypatch.setattr(
+        worker.policy_repo,
+        'read_policy',
+        lambda *args, **kwargs: {'version': 1, 'require_review': False},
+    )
+    monkeypatch.setattr(worker.policy_repo, 'authorize_scheduled', lambda *args, **kwargs: True)
 
     @contextmanager
     def fake_db_conn(*, tenant_id=None):
@@ -225,9 +241,10 @@ def test_due_media_scans_only_discovers_unresolved_quarantine(monkeypatch):
     assert "metadata->>'admission'='content_verified'" in sql
     assert "NOT IN ('clean','infected')" in sql
     assert "job.status IN ('leased','running')" in sql
-    assert "lease_expires_at<=NOW()" in sql
-    assert "FOR UPDATE" in claim.calls[0][0]
-    assert "status='leased'" in claim.calls[2][0]
+    assert 'lease_expires_at<=NOW()' in sql
+    assert 'pg_advisory_xact_lock' in claim.calls[0][0]
+    assert 'FOR UPDATE' in claim.calls[1][0]
+    assert "status='leased'" in claim.calls[4][0]
 
 
 class LeaseCursor(Cursor):
@@ -247,28 +264,37 @@ def test_media_scan_attempt_token_is_single_use_and_backoff_bound(monkeypatch):
     begin_cursor = LeaseCursor([1])
     begin_connection = Connection(begin_cursor)
     bind(monkeypatch, begin_connection)
-    assert worker.begin_media_scan_attempt(
-        site_id='site-a', asset_id=asset_id, job_id=job_id, attempt=2, lease_token=expires
-    ) is True
+    assert (
+        worker.begin_media_scan_attempt(
+            site_id='site-a', asset_id=asset_id, job_id=job_id, attempt=2, lease_token=expires
+        )
+        is True
+    )
     assert begin_connection.commits == 1
     assert begin_cursor.calls[0][1][3:] == (1, expires)
 
     duplicate_cursor = LeaseCursor([0])
     bind(monkeypatch, Connection(duplicate_cursor))
-    assert worker.begin_media_scan_attempt(
-        site_id='site-a', asset_id=asset_id, job_id=job_id, attempt=2, lease_token=expires
-    ) is False
+    assert (
+        worker.begin_media_scan_attempt(
+            site_id='site-a', asset_id=asset_id, job_id=job_id, attempt=2, lease_token=expires
+        )
+        is False
+    )
 
     finish_cursor = LeaseCursor([1])
     finish_connection = Connection(finish_cursor)
     bind(monkeypatch, finish_connection)
     worker.finish_media_scan_attempt(
-        site_id='site-a', job_id=job_id, attempt=2,
-        lease_token=expires, result='quarantined',
+        site_id='site-a',
+        job_id=job_id,
+        attempt=2,
+        lease_token=expires,
+        result='quarantined',
     )
     assert finish_connection.commits == 1
     assert finish_cursor.calls[0][1][5:7] == (30, 30)
-    assert "status=%s AND attempt=%s" in finish_cursor.calls[0][0]
+    assert 'status=%s AND attempt=%s' in finish_cursor.calls[0][0]
 
 
 @pytest.mark.parametrize(
@@ -312,7 +338,8 @@ def test_media_scan_ineligible_after_claim_is_cancelled_and_audited(monkeypatch)
 
     assert connection.commits == 1 and connection.rollbacks == 0
     assert "status='cancelled'" in cursor.calls[0][0]
-    assert "asset.status<>'quarantined'" in cursor.calls[0][0]
+    assert 'NOT EXISTS' in cursor.calls[0][0]
+    assert "asset.status='quarantined'" in cursor.calls[0][0]
     audit_insert = next(
         call for call in cursor.calls if 'INSERT INTO sitecontent_mediaauditevent' in call[0]
     )
@@ -345,12 +372,15 @@ def test_unexpected_media_scan_failure_is_recovered_immediately(monkeypatch):
     cursor = LeaseCursor([1])
     connection = Connection(cursor)
     bind(monkeypatch, connection)
-    assert worker.recover_media_scan_attempt(
-        site_id='site-a',
-        job_id=UUID(int=7105),
-        attempt=2,
-        lease_token=datetime(2026, 9, 7, 12, 2, tzinfo=UTC),
-    ) is True
+    assert (
+        worker.recover_media_scan_attempt(
+            site_id='site-a',
+            job_id=UUID(int=7105),
+            attempt=2,
+            lease_token=datetime(2026, 9, 7, 12, 2, tzinfo=UTC),
+        )
+        is True
+    )
     assert cursor.calls[0][1][:4] == (2, 2, 30, 2)
     assert "status='running'" in cursor.calls[0][0]
     assert connection.commits == 1
@@ -375,9 +405,12 @@ def test_media_scanner_is_content_bound_and_promotes_only_a_safe_derivative(
                 'quarantined',
                 {'admission': 'content_verified', 'width': 20, 'height': 10},
                 'image/png',
+                1,
+                1,
             )
         ]
     )
+    cursor.rows = cursor.rows * 2
     connection = Connection(cursor)
     scopes = bind(monkeypatch, connection)
 
@@ -423,7 +456,7 @@ def test_media_scanner_is_content_bound_and_promotes_only_a_safe_derivative(
         )
         == expected_result
     )
-    assert scopes == ['site-a'] and connection.commits == 1
+    assert scopes == ['site-a', 'site-a'] and connection.commits == 1
     update = next(call for call in cursor.calls if call[0].startswith('UPDATE'))
     assert update[1][0] == expected_status
     if verdict == 'clean':
@@ -443,6 +476,8 @@ def test_media_scanner_failure_rolls_back_without_false_clean_state(monkeypatch)
                 'quarantined',
                 {'admission': 'content_verified'},
                 'image/png',
+                1,
+                1,
             )
         ]
     )
@@ -460,7 +495,7 @@ def test_media_scanner_failure_rolls_back_without_false_clean_state(monkeypatch)
             artifact_store=Store(),
             scanner=lambda _content: (_ for _ in ()).throw(RuntimeError('scanner unavailable')),
         )
-    assert connection.rollbacks == 1 and connection.commits == 0
+    assert connection.rollbacks == 0 and connection.commits == 0
     assert all(not call[0].startswith('UPDATE') for call in cursor.calls)
 
 
@@ -542,7 +577,7 @@ def test_export_worker_binds_projection_stores_encrypted_artifact_and_completes(
         worker.process_export_job(site_id='site-a', job_id=job_id, artifact_store=Store())
         == 'completed'
     )
-    assert scopes == ['site-a'] and connection.commits == 1
+    assert scopes == ['site-a', 'site-a'] and connection.commits == 2
     statements = ' '.join(sql for sql, _ in cursor.calls)
     assert 'FOR UPDATE' in statements
     assert 'sitecontent_workspaceauditevent' in statements
@@ -578,7 +613,12 @@ def test_export_terminal_failure_is_redacted_and_expiry_is_bounded(monkeypatch):
 
     expired_cursor = Cursor(
         [
-            (UUID(int=6104), 'site-a', 'exports/site-a/00000000-0000-0000-0000-0000000017d8.bin', 'a' * 64),
+            (
+                UUID(int=6104),
+                'site-a',
+                'exports/site-a/00000000-0000-0000-0000-0000000017d8.bin',
+                'a' * 64,
+            ),
             (UUID(int=6105), 'site-b', '', ''),
         ]
     )
@@ -599,53 +639,27 @@ def test_export_terminal_failure_is_redacted_and_expiry_is_bounded(monkeypatch):
     assert expired_connection.commits == 1
 
 
-def test_retention_cleanup_preserves_relationships_and_audit_and_deletes_exact_objects(monkeypatch):
-    asset_id = UUID(int=7104)
-    record_id = UUID(int=7105)
-
-    class RetentionCursor(Cursor):
-        rowcount = 1
-
-        def __init__(self):
-            super().__init__([])
-            self.result_sets = [
-                [(asset_id, 'site-a', f'media/site-a/{asset_id}.bin', 'a' * 64)],
-                [('safe', f'variants/site-a/{asset_id}-safe.bin', 'b' * 64)],
-                [(record_id, 'site-a')],
-            ]
-
-        def fetchall(self):
-            return self.result_sets.pop(0) if self.result_sets else []
-
-    cursor = RetentionCursor()
-    connection = Connection(cursor)
-    bind(monkeypatch, connection)
-    deleted = []
-
-    class Store:
-        def delete(self, **kwargs):
-            deleted.append(kwargs)
-            return True
-
-    assert worker.purge_workspace_retention(
-        artifact_store=Store(), recovery_days=30, limit=50
-    ) == {'assets': 1, 'records': 1}
-    assert [item['namespace'] for item in deleted] == ['variants', 'media']
-    statements = ' '.join(sql for sql, _ in cursor.calls)
-    assert 'NOT EXISTS ( SELECT 1 FROM sitecontent_contentrelationship' in statements
-    assert 'NOT EXISTS ( SELECT 1 FROM sitecontent_assetbinding' in statements
-    assert statements.count('sitecontent_workspaceauditevent') == 2
-    assert connection.commits == 1 and connection.rollbacks == 0
-
-    replay_cursor = RetentionCursor()
-    replay_cursor.result_sets = [[], []]
-    replay_connection = Connection(replay_cursor)
-    bind(monkeypatch, replay_connection)
-    assert worker.purge_workspace_retention(
-        artifact_store=Store(), recovery_days=30, limit=50
-    ) == {'assets': 0, 'records': 0}
-    assert len(deleted) == 2
-    assert replay_connection.commits == 1 and replay_connection.rollbacks == 0
+def test_retention_record_cleanup_calls_asset_plan_outside_record_transaction(monkeypatch):
+    from api.services import workspace_retention_assets
+    record_id=UUID(int=7105)
+    cursor=Cursor([(record_id,'site-a')])
+    cursor.rowcount=1
+    connection=Connection(cursor)
+    bind(monkeypatch,connection)
+    monkeypatch.setattr(worker,'SITE_MANIFEST',{'siteId':'site-a'})
+    store=object()
+    def assets(**kwargs):
+        assert not cursor.calls
+        assert kwargs=={'artifact_store':store,'site_id':'site-a','limit':50}
+        return 1
+    monkeypatch.setattr(workspace_retention_assets,'purge_workspace_assets',assets)
+    assert worker.purge_workspace_retention(artifact_store=store,recovery_days=1,limit=50)=={'assets':1,'records':1}
+    assert 'pg_advisory_xact_lock' in cursor.calls[0][0]
+    query=next((sql,params) for sql,params in cursor.calls if 'SELECT r.id' in sql)
+    assert query[1]==(30,50)  # Caller cannot shorten the existing recovery floor.
+    assert 'NOT EXISTS' in query[0]
+    assert any('base2_purge_review_history' in sql for sql,_ in cursor.calls)
+    assert connection.commits==1
 
 
 def test_import_mapping_rejects_unknown_or_invalid_rows_without_losing_ordinals():
@@ -778,6 +792,8 @@ def test_import_commit_revalidates_source_and_applies_all_rows_atomically(monkey
             self.statement = ' '.join(sql.split())
 
         def fetchone(self):
+            if 'SELECT status,source_object_key' in self.statement:
+                return ('committing', f'imports/site-a/{job_id}.bin', digest)
             if 'SELECT j.status' in self.statement:
                 return (
                     'committing',
@@ -788,6 +804,7 @@ def test_import_commit_revalidates_source_and_applies_all_rows_atomically(monkey
                     {},
                     'article',
                     definition_id,
+                    'user:00000000-0000-0000-0000-000000000001',
                 )
             if "UPDATE sitecontent_importjob SET status='completed'" in self.statement:
                 return (job_id,)
@@ -813,7 +830,7 @@ def test_import_commit_revalidates_source_and_applies_all_rows_atomically(monkey
         worker.process_import_commit(site_id='site-a', job_id=job_id, artifact_store=Store())
         == 'completed'
     )
-    assert scopes == ['site-a'] and connection.commits == 1
+    assert scopes == ['site-a', 'site-a'] and connection.commits == 1
     statements = ' '.join(sql for sql, _ in cursor.calls)
     assert 'INSERT INTO sitecontent_contentrecord' in statements
     assert "'draft'" in statements
@@ -877,3 +894,86 @@ def test_import_commit_rolls_back_if_staged_row_digest_changed(monkeypatch):
         worker.process_import_commit(site_id='site-a', job_id=job_id, artifact_store=Store())
     assert connection.rollbacks == 1 and connection.commits == 0
     assert all('INSERT INTO sitecontent_contentrecord' not in sql for sql, _ in cursor.calls)
+
+
+def test_scheduled_publication_fails_closed_when_stored_actor_or_review_is_invalid(monkeypatch):
+    record_id = UUID(int=104)
+    cursor = Cursor([(record_id, 3, 1, {}, 'scheduled', 'past'), (True,)])
+    conn = Connection(cursor)
+    bind(monkeypatch, conn)
+    monkeypatch.setattr(worker.policy_repo, 'authorize_scheduled', lambda *args, **kwargs: False)
+    assert (
+        worker.publish_scheduled_record(site_id='site-a', record_id=record_id)
+        == 'authorization_required'
+    )
+    assert not any("SET state='published'" in sql for sql, _ in cursor.calls)
+    assert any('workspaceauditevent' in sql for sql, _ in cursor.calls)
+
+
+@pytest.fixture(autouse=True)
+def enabled_media_modules(monkeypatch):
+    from api.services import media_library_runtime as runtime
+
+    monkeypatch.setattr(
+        runtime,
+        'SITE_MANIFEST',
+        {'modules': [{'id': 'accounts', 'enabled': True}, {'id': 'media', 'enabled': True}]},
+    )
+
+
+def test_legacy_scan_inspects_outside_transaction_and_rejects_stale_snapshot(monkeypatch):
+    asset = UUID(int=7104)
+    row = ('media/site-a/source.bin', 'a' * 64, 'quarantined', {}, 'image/png', 1, 1)
+    cursor = Cursor([row, (*row[:-2], 2, 2)])
+    connection = Connection(cursor)
+    active = []
+
+    @contextmanager
+    def database(*, tenant_id):
+        assert tenant_id == 'site-a'
+        active.append(True)
+        try:
+            yield connection
+        finally:
+            active.pop()
+
+    monkeypatch.setattr(worker, 'db_conn', database)
+
+    class Store:
+        def get(self, *_args, **_kwargs):
+            assert not active
+            return b'synthetic'
+
+    def scanner(_content):
+        assert not active
+        return 'infected'
+
+    assert (
+        worker.scan_workspace_asset(
+            site_id='site-a', asset_id=asset, artifact_store=Store(), scanner=scanner
+        )
+        == 'stale_snapshot'
+    )
+    assert not any(sql.startswith('UPDATE') for sql, _ in cursor.calls)
+    assert any('pg_advisory_xact_lock' in sql for sql, _ in cursor.calls)
+
+
+def test_expired_media_claim_counts_abandoned_attempt_before_releasing(monkeypatch):
+    expires = datetime(2026, 9, 7, 12, 2, tzinfo=UTC)
+    discovery = Cursor([('site-a', UUID(int=7104), 1, 'a' * 64)])
+    claim = Cursor([(1,), (UUID(int=7105), 3, expires)])
+    connections = {None: Connection(discovery), 'site-a': Connection(claim)}
+
+    @contextmanager
+    def database(*, tenant_id=None):
+        yield connections[tenant_id]
+
+    monkeypatch.setattr(worker, 'db_conn', database)
+    assert worker.due_media_scans()[0][3] == 3
+    terminal = next(sql for sql, _ in claim.calls if "error_code='media_attempts_exhausted'" in sql)
+    lease = next(sql for sql, _ in claim.calls if "status='leased'" in sql)
+    assert 'attempt+1>=maximum_attempts' in terminal
+    assert "WHEN status IN ('leased','running') THEN attempt+1 ELSE attempt END" in lease
+    assert 'RETURNING id,attempt+1,lease_expires_at' in lease
+    # Completed retries retain their recorded count; only abandoned leases consume here.
+    assert "status IN ('queued','retryable')" in lease

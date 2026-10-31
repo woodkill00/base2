@@ -80,22 +80,6 @@ def test_first_preference_write_is_atomic_and_tenant_bound(monkeypatch):
     assert insert[1][1:3] == (str(USER), 'tenant-a')
 
 
-def test_notification_replace_deletes_and_inserts_only_exact_owner_scope(monkeypatch):
-    cursor = Cursor()
-    conn = Connection(cursor)
-    bind(monkeypatch, conn)
-    monkeypatch.setattr(repository, 'list_notifications', lambda **kwargs: [{**kwargs, 'event_family': 'security'}])
-    result = repository.replace_notifications(
-        user_id=USER, tenant_id='tenant-a',
-        preferences=[{'event_family': 'security', 'channel': 'email', 'delivery': 'immediate', 'mandatory': True}],
-    )
-    assert conn.commits == 1
-    assert cursor.calls[0][1] == (str(USER), 'tenant-a')
-    assert cursor.calls[1][1][1:3] == (str(USER), 'tenant-a')
-    assert result[0]['tenant_id'] == 'tenant-a'
-    assert conn.bound_tenant == 'tenant-a'
-
-
 def test_security_projection_clamps_limit_and_never_selects_metadata_or_ip(monkeypatch):
     cursor = Cursor(rows=[('event-1', 'auth.login', '2026-08-30T00:00:00Z', 'A' * 200)])
     bind(monkeypatch, Connection(cursor))

@@ -81,6 +81,8 @@ test.beforeEach(async ({ page }) => {
       });
     } else if (url.pathname === '/api/settings/notifications') {
       await json({
+        schema_version: 1,
+        version: 1,
         preferences: [
           { event_family: 'security', channel: 'email', delivery: 'immediate', mandatory: true },
           {

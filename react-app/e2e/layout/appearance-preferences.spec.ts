@@ -61,7 +61,7 @@ for (const width of [390, 1440]) {
         return route.fulfill({ json: preferences });
       }
       if (url.pathname === '/api/settings/notifications')
-        return route.fulfill({ json: { preferences: [] } });
+        return route.fulfill({ json: { schema_version: 1, version: 0, preferences: [] } });
       if (url.pathname === '/api/settings/security-events')
         return route.fulfill({ json: { events: [] } });
       if (url.pathname === '/api/privacy/operations')

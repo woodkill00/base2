@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import AppShell from '../components/glass/AppShell';
 import GlassButton from '../components/glass/GlassButton';
@@ -8,6 +8,8 @@ import { ExportWorkspace, ImportWorkspace } from '../components/content/Workspac
 import RecordInspector from '../components/content/RecordInspector';
 import SchemaBuilder from '../components/content/SchemaBuilder';
 import { contentWorkspaceAPI, normalizeWorkspaceError } from '../services/contentWorkspace';
+import { readWorkspaceRecord } from '../services/workspaceRecord';
+import { siteManifest } from '../config/siteRuntime';
 
 const TABS = ['Records', 'Schemas', 'Imports', 'Exports'];
 const TAB_HASHES = Object.fromEntries(TABS.map((item) => [item.toLowerCase(), item]));
@@ -18,12 +20,34 @@ const messageFor = (error) => {
     return 'This workspace is not available for your account.';
   if (normalized.status === 409)
     return 'The workspace changed elsewhere. Refresh before trying again.';
+  const code = error?.response?.data?.detail || normalized.code;
+  const reviewErrors = {
+    content_review_no_independent_reviewer:
+      'No independent reviewer is eligible. Ask an organization owner or administrator to add an active non-author owner/admin through organization administration, then submit again.',
+    content_review_independent_reviewer_required:
+      'An independent reviewer must approve this revision.',
+    content_review_stale:
+      'The content or policy changed. Reload the current revision and request a new review.',
+    content_review_authorship_unknown:
+      'Authorship is unknown. An authorized editor must explicitly adopt the complete snapshot before review.',
+    content_review_required: 'Valid independent review is required before publication.',
+    workspace_policy_unavailable:
+      'The shared workspace policy is unavailable. Publication is blocked safely.',
+  };
+  if (Object.hasOwn(reviewErrors, code)) return reviewErrors[code];
   if (normalized.status === 422) return 'Review the highlighted workspace values and try again.';
-  return 'The content workspace is temporarily unavailable. Your data was not changed.';
+  return 'The content workspace is temporarily unavailable; the request could not be confirmed. Refresh before retrying; a change may have completed.';
 };
 
-export default function ContentWorkspace() {
+export default function ContentWorkspace({ locale = 'en' }) {
   const location = useLocation();
+  const recordEpoch = useRef(0);
+  useEffect(
+    () => () => {
+      recordEpoch.current += 1;
+    },
+    []
+  );
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeSearch = searchParams.get('workspace_q') || '';
@@ -141,19 +165,30 @@ export default function ContentWorkspace() {
     return () => controller.abort();
   }, [selectedType]);
 
+  useEffect(() => {
+    recordEpoch.current += 1;
+    setActiveRecord(null);
+  }, [selectedType]);
+
   const openRecord = async (record) => {
+    const epoch = ++recordEpoch.current;
     setError('');
     try {
       const [detail, versions] = await Promise.all([
         contentWorkspaceAPI.record(selectedType, record.id),
         contentWorkspaceAPI.versions(selectedType, record.id),
       ]);
+      if (epoch !== recordEpoch.current) return;
       setActiveRecord({
-        ...detail,
+        ...readWorkspaceRecord(detail, {
+          recordId: record.id,
+          typeKey: selectedType,
+          siteId: siteManifest.siteId,
+        }),
         history: Array.isArray(versions?.items) ? versions.items : [],
       });
     } catch (caught) {
-      setError(messageFor(caught));
+      if (epoch === recordEpoch.current) setError(messageFor(caught));
     }
   };
 
@@ -642,10 +677,15 @@ export default function ContentWorkspace() {
                           >
                             {activeRecord ? (
                               <RecordInspector
+                                key={`${selectedType}:${activeRecord.id}`}
+                                locale={locale}
                                 typeKey={selectedType}
                                 schema={schema}
                                 record={activeRecord}
                                 onChanged={(updated) => {
+                                  // Every accepted snapshot, including same-version review changes,
+                                  // supersedes any detail read started before this completion.
+                                  recordEpoch.current += 1;
                                   setActiveRecord(updated);
                                   setRecords((current) =>
                                     current.map((item) =>

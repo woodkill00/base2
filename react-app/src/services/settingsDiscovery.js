@@ -2,6 +2,8 @@
 // Labels/help/availability come from the server's closed settings registry.
 const anchors = {
   profile: ['display-name', 'avatar-url', 'bio'],
+  organization: ['workspace-publishing-review'],
+  'site-capabilities': ['workspace-content-visibility'],
   appearance: ['theme', 'contrast', 'motion', 'density'],
   'language-region': ['locale', 'timezone', 'week-start'],
   privacy: ['deactivate-confirmation', 'delete-confirmation'],
@@ -31,7 +33,14 @@ export const parseSettingsDiscovery = (value, knownCategories) => {
         text(item.label, 100) &&
         text(item.description) &&
         text(item.synonyms) &&
-        ['personal', 'account'].includes(item.scope)
+        ((!['organization', 'site-capabilities'].includes(item.category) &&
+          ['personal', 'account'].includes(item.scope)) ||
+          (item.category === 'organization' &&
+            item.scope === 'organization' &&
+            item.id === 'workspace-policy.require_review') ||
+          (item.category === 'site-capabilities' &&
+            item.scope === 'site' &&
+            item.id === 'workspace-policy.public_access'))
     )
     .map((item) => ({ ...item, path: `/settings/${item.category}#${item.anchor}` }));
   const modules = (Array.isArray(value.modules) ? value.modules.slice(0, 30) : [])
@@ -107,4 +116,55 @@ export const readNotifications = (value, defaults) => {
     };
   });
   return result.length ? result : defaults.map((item) => ({ ...item }));
+};
+
+// A missing or unsafe revision must never enable an unconditioned replacement.
+export const readNotificationSet = (value, defaults = []) => {
+  if (value?.schema_version !== 1 || !Number.isSafeInteger(value.version) || value.version < 0)
+    throw new Error('settings_notifications_invalid');
+  const preferences = readNotifications(value, value.version === 0 ? defaults : []);
+  // Missing optional product/email is an explicit disabled projection, never an opt-in.
+  if (!preferences.some((item) => item.event_family === 'product' && item.channel === 'email'))
+    preferences.push({
+      event_family: 'product',
+      channel: 'email',
+      delivery: 'disabled',
+      mandatory: false,
+    });
+  return { schema_version: 1, version: value.version, preferences };
+};
+
+export const readWorkspacePolicy = (value, siteId) => {
+  const organization = value?.scope?.organization_id;
+  if (
+    value?.schema_version !== 1 ||
+    !Number.isSafeInteger(value.version) ||
+    value.version < 0 ||
+    typeof value.require_review !== 'boolean' ||
+    !['public_allowed', 'members_only'].includes(value.public_access) ||
+    value.scope?.site_id !== siteId ||
+    !(
+      organization === null ||
+      (typeof organization === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(organization))
+    ) ||
+    !['migrated', 'explicit', 'default'].includes(value.provenance) ||
+    value.permissions?.read !== true ||
+    typeof value.permissions?.write !== 'boolean' ||
+    (organization === null && value.permissions.write) ||
+    !Array.isArray(value.restrictions) ||
+    value.restrictions.length > 1 ||
+    value.restrictions.some((reason) => reason !== 'storage_transport_unverified')
+  )
+    throw new Error('settings_workspace_policy_invalid');
+  return {
+    schema_version: 1,
+    version: value.version,
+    require_review: value.require_review,
+    public_access: value.public_access,
+    scope: { site_id: value.scope.site_id, organization_id: organization },
+    provenance: value.provenance,
+    permissions: { read: true, write: value.permissions.write },
+    restrictions: [...value.restrictions],
+  };
 };

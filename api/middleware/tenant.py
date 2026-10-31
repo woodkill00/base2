@@ -43,7 +43,10 @@ async def tenant_context_middleware(request: Request, call_next):
                     )
                 if state != 'active':
                     return JSONResponse(status_code=423, content={'detail': 'tenant_not_serving'})
-    return await call_next(request)
+    response = await call_next(request)
+    if request.url.path.startswith(('/api/content', '/api/search', '/api/media', '/api/settings')):
+        response.headers['Cache-Control'] = 'private, no-store'
+    return response
 
 
 def require_tenant(request: Request) -> str:

@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
 from api.db import workspace_db_conn as db_conn
+from api.repositories import workspace_policy as policy_repo
 from api.security.content_workspace import CursorCodec, CursorError, canonical_digest
 from api.services.content_workspace_media import admit_upload
 from api.services.content_workspace_transfer import parse_csv, parse_json
@@ -305,6 +306,7 @@ class PostgresContentWorkspaceRepository:
         with db_conn(tenant_id=site_id) as conn:
             try:
                 with conn.cursor() as cur:
+                    policy_repo.begin_effect(cur, actor_ref=actor_ref)
                     cur.execute(
                         'SELECT pg_advisory_xact_lock(hashtextextended(%s, 104))',
                         (f'{site_id}:{payload["type_key"]}',),
@@ -551,6 +553,7 @@ class PostgresContentWorkspaceRepository:
         with db_conn(tenant_id=site_id) as conn:
             try:
                 with conn.cursor() as cur:
+                    policy_repo.begin_effect(cur, actor_ref=actor_ref)
                     cur.execute(
                         """SELECT id, status, lock_version FROM sitecontent_contenttypedefinition
                            WHERE site_id=%s AND type_key=%s AND version=%s FOR UPDATE""",
@@ -611,6 +614,7 @@ class PostgresContentWorkspaceRepository:
         with db_conn(tenant_id=site_id) as conn:
             try:
                 with conn.cursor() as cur:
+                    policy_repo.begin_effect(cur, actor_ref=actor_ref)
                     cur.execute(
                         """UPDATE sitecontent_contenttypedefinition
                            SET status='retired', lock_version=lock_version+1,
@@ -828,8 +832,17 @@ class PostgresContentWorkspaceRepository:
         with db_conn(tenant_id=site_id) as conn:
             try:
                 with conn.cursor() as cur:
+                    policy_repo.begin_effect(cur, actor_ref=actor_ref)
+                    policy_repo.read_policy(cur, site_id=site_id, lock=True)
                     definition, fields = self._schema(cur, site_id=site_id, type_key=type_key)
                     _validate_values(payload['values'], fields)
+                    policy_repo.member(
+                        cur,
+                        site_id=site_id,
+                        user_id=actor_ref.removeprefix('user:'),
+                        permission='write',
+                        lock=True,
+                    )
                     cur.execute(
                         """INSERT INTO sitecontent_contentrecord
                            (id, site_id, content_type, slug, title, excerpt, body, metadata,
@@ -894,6 +907,8 @@ class PostgresContentWorkspaceRepository:
         with db_conn(tenant_id=site_id) as conn:
             try:
                 with conn.cursor() as cur:
+                    policy_repo.begin_effect(cur, actor_ref=actor_ref)
+                    policy_repo.read_policy(cur, site_id=site_id, lock=True)
                     cur.execute(
                         """SELECT id, version, schema_version, values
                            FROM sitecontent_contentrecord
@@ -906,6 +921,13 @@ class PostgresContentWorkspaceRepository:
                         raise ValueError('content_not_found')
                     if existing[1] != expected_version:
                         raise ValueError('content_version_conflict')
+                    policy_repo.member(
+                        cur,
+                        site_id=site_id,
+                        user_id=actor_ref.removeprefix('user:'),
+                        permission='write',
+                        lock=True,
+                    )
                     _definition_row, fields = self._schema(cur, site_id=site_id, type_key=type_key)
                     _validate_values(values, fields)
                     snapshot_json = _json(existing[3])
@@ -962,6 +984,8 @@ class PostgresContentWorkspaceRepository:
         with db_conn(tenant_id=site_id) as conn:
             try:
                 with conn.cursor() as cur:
+                    policy_repo.begin_effect(cur, actor_ref=actor_ref)
+                    workspace_policy = policy_repo.read_policy(cur, site_id=site_id, lock=True)
                     cur.execute(
                         """SELECT r.id, r.version, r.schema_version, r.values, r.state,
                                   w.transitions
@@ -989,6 +1013,14 @@ class PostgresContentWorkspaceRepository:
                     destination = transition['to']
                     if destination == 'scheduled' and (publish_at is None or not timezone):
                         raise ValueError('content_transition_invalid')
+                    policy_repo.prepare_transition(
+                        cur,
+                        site_id=site_id,
+                        record_id=record_id,
+                        actor_ref=actor_ref,
+                        destination=destination,
+                        policy=workspace_policy,
+                    )
                     snapshot_json = _json(existing[3])
                     cur.execute(
                         """INSERT INTO sitecontent_contentrevision
@@ -1082,6 +1114,8 @@ class PostgresContentWorkspaceRepository:
         with db_conn(tenant_id=site_id) as conn:
             try:
                 with conn.cursor() as cur:
+                    policy_repo.begin_effect(cur, actor_ref=actor_ref)
+                    policy_repo.read_policy(cur, site_id=site_id, lock=True)
                     cur.execute(
                         """SELECT id, version, schema_version, values
                            FROM sitecontent_contentrecord
@@ -1094,6 +1128,13 @@ class PostgresContentWorkspaceRepository:
                         raise ValueError('content_not_found')
                     if current[1] != expected_version:
                         raise ValueError('content_version_conflict')
+                    policy_repo.member(
+                        cur,
+                        site_id=site_id,
+                        user_id=actor_ref.removeprefix('user:'),
+                        permission='write',
+                        lock=True,
+                    )
                     cur.execute(
                         """SELECT snapshot FROM sitecontent_contentrevision
                            WHERE content_id=%s AND revision=%s""",
@@ -1466,6 +1507,7 @@ class PostgresContentWorkspaceRepository:
         with db_conn(tenant_id=site_id) as conn:
             try:
                 with conn.cursor() as cur:
+                    policy_repo.begin_effect(cur, actor_ref=owner_ref)
                     cur.execute(
                         'SELECT pg_advisory_xact_lock(hashtextextended(%s, 110))', (site_id,)
                     )
@@ -1482,7 +1524,9 @@ class PostgresContentWorkspaceRepository:
                     replay = cur.fetchone()
                     if replay:
                         supplied = (
-                            payload['filename'], payload['media_type'], payload['byte_size'],
+                            payload['filename'],
+                            payload['media_type'],
+                            payload['byte_size'],
                             payload['sha256'],
                         )
                         if tuple(replay[2:]) != supplied:
@@ -1552,8 +1596,13 @@ class PostgresContentWorkspaceRepository:
                                VALUES (%s,%s,%s,%s,%s,%s,0,'created',1,
                                        NOW()+INTERVAL '30 minutes',NULL,NOW(),NOW(),'',%s)""",
                             (
-                                str(uuid4()), site_id, owner_ref, idempotency_key,
-                                payload['sha256'], payload['byte_size'], str(asset_id),
+                                str(uuid4()),
+                                site_id,
+                                owner_ref,
+                                idempotency_key,
+                                payload['sha256'],
+                                payload['byte_size'],
+                                str(asset_id),
                             ),
                         )
                         _audit(
@@ -1581,8 +1630,11 @@ class PostgresContentWorkspaceRepository:
             scope=scope, position={'assetId': str(asset_id)}
         )
         return {
-            'id': str(row[0]), 'status': row[1], 'uploadGrant': grant,
-            'expiresIn': 300, 'replayed': replayed,
+            'id': str(row[0]),
+            'status': row[1],
+            'uploadGrant': grant,
+            'expiresIn': 300,
+            'replayed': replayed,
         }
 
     def get_asset(self, *, site_id: str, asset_id: UUID, requester_ref: str):
@@ -1666,6 +1718,14 @@ class PostgresContentWorkspaceRepository:
                     except CursorError as exc:
                         raise ValueError('content_download_grant_invalid') from exc
                     content = artifact_store.get(row[0], expected_sha256=row[1])
+                    policy_repo.begin_effect(cur)
+                    policy_repo.authorize_read(cur, site_id=site_id, requester_ref=requester_ref)
+                    policy = policy_repo.read_policy(cur, site_id=site_id)
+                    if (
+                        policy['public_access'] == 'members_only'
+                        and settings.CONTENT_WORKSPACE_STORAGE_BACKEND != 'local'
+                    ):
+                        raise ValueError('storage_transport_unverified')
                     _audit(
                         cur,
                         site_id=site_id,
@@ -1692,50 +1752,89 @@ class PostgresContentWorkspaceRepository:
         maximum_bytes: int = 10 * 1024 * 1024,
     ):
         """Verify, persist, and quarantine one exact grant-bound media payload."""
+        # Admission and encrypted write happen outside every database transaction.
+        # The final fence never binds stale private output or unlinks a shared key.
+        with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
+            policy_repo.member(
+                cur, site_id=site_id, user_id=owner_ref.removeprefix('user:'), permission='write'
+            )
+            cur.execute(
+                """SELECT id, original_name, media_type, byte_size, sha256, status,
+                                      current_object_version,lock_version
+                   FROM sitecontent_mediaasset
+                   WHERE id=%s AND site_id=%s AND owner_ref=%s""",
+                (str(asset_id), site_id, owner_ref),
+            )
+            row = cur.fetchone()
+            if not row:
+                raise ValueError('content_not_found')
+        scope = {
+            'site': site_id,
+            'owner': owner_ref,
+            'asset': str(asset_id),
+            'sha256': row[4],
+            'bytes': row[3],
+            'purpose': 'asset-upload',
+        }
+        try:
+            CursorCodec(str(settings.TOKEN_PEPPER), ttl_seconds=300).decode(
+                upload_grant,
+                expected_scope=scope,
+            )
+        except CursorError as exc:
+            raise ValueError('content_upload_grant_invalid') from exc
+        if row[5] not in {'pending', 'quarantined'}:
+            raise ValueError('content_media_state_invalid')
+        admission = admit_upload(
+            filename=row[1],
+            claimed_type=row[2],
+            content=content,
+            maximum_bytes=maximum_bytes,
+        )
+        if admission.byte_size != row[3] or admission.sha256 != row[4]:
+            raise ValueError('content_integrity_failed')
+        stored = artifact_store.put(
+            namespace='media',
+            site_id=site_id,
+            object_id=str(asset_id),
+            content=content,
+        )
         with db_conn(tenant_id=site_id) as conn:
             try:
                 with conn.cursor() as cur:
+                    policy_repo.begin_effect(cur, actor_ref=owner_ref)
+                    policy_repo.member(
+                        cur,
+                        site_id=site_id,
+                        user_id=owner_ref.removeprefix('user:'),
+                        permission='write',
+                        lock=True,
+                    )
                     cur.execute(
-                        """SELECT id, original_name, media_type, byte_size, sha256, status
+                        """SELECT id,original_name,media_type,byte_size,sha256,status,
+                                  current_object_version,lock_version
                            FROM sitecontent_mediaasset
                            WHERE id=%s AND site_id=%s AND owner_ref=%s FOR UPDATE""",
                         (str(asset_id), site_id, owner_ref),
                     )
-                    row = cur.fetchone()
-                    if not row:
-                        raise ValueError('content_not_found')
-                    scope = {
-                        'site': site_id,
-                        'owner': owner_ref,
-                        'asset': str(asset_id),
-                        'sha256': row[4],
-                        'bytes': row[3],
-                        'purpose': 'asset-upload',
-                    }
+                    current = cur.fetchone()
+                    if (
+                        not current
+                        or current[:5] != row[:5]
+                        or current[6:] != row[6:]
+                        or current[5] not in {'pending', 'quarantined'}
+                    ):
+                        raise ValueError('content_media_state_invalid')
+                    cur.execute('SELECT EXTRACT(EPOCH FROM clock_timestamp())')
+                    checked_at = int(cur.fetchone()[0])
                     try:
                         CursorCodec(str(settings.TOKEN_PEPPER), ttl_seconds=300).decode(
-                            upload_grant,
-                            expected_scope=scope,
+                            upload_grant, expected_scope=scope, now=checked_at
                         )
                     except CursorError as exc:
                         raise ValueError('content_upload_grant_invalid') from exc
-                    if row[5] not in {'pending', 'quarantined'}:
-                        raise ValueError('content_media_state_invalid')
-                    admission = admit_upload(
-                        filename=row[1],
-                        claimed_type=row[2],
-                        content=content,
-                        maximum_bytes=maximum_bytes,
-                    )
-                    if admission.byte_size != row[3] or admission.sha256 != row[4]:
-                        raise ValueError('content_integrity_failed')
-                    stored = artifact_store.put(
-                        namespace='media',
-                        site_id=site_id,
-                        object_id=str(asset_id),
-                        content=content,
-                    )
-                    if row[5] == 'quarantined':
+                    if current[5] == 'quarantined':
+                        conn.commit()
                         return {
                             'id': str(asset_id),
                             'status': 'quarantined',
@@ -1831,12 +1930,21 @@ class PostgresContentWorkspaceRepository:
         with db_conn(tenant_id=site_id) as conn:
             try:
                 with conn.cursor() as cur:
+                    policy_repo.begin_effect(cur, actor_ref=actor_ref)
+                    policy_repo.read_policy(cur, site_id=site_id, lock=True)
                     record = self._lock_record(
                         cur,
                         site_id=site_id,
                         type_key=type_key,
                         record_id=record_id,
                         expected_version=expected_version,
+                    )
+                    policy_repo.member(
+                        cur,
+                        site_id=site_id,
+                        user_id=actor_ref.removeprefix('user:'),
+                        permission='write',
+                        lock=True,
                     )
                     cur.execute(
                         """SELECT media_type, status FROM sitecontent_mediaasset
@@ -1914,12 +2022,21 @@ class PostgresContentWorkspaceRepository:
         with db_conn(tenant_id=site_id) as conn:
             try:
                 with conn.cursor() as cur:
+                    policy_repo.begin_effect(cur, actor_ref=actor_ref)
+                    policy_repo.read_policy(cur, site_id=site_id, lock=True)
                     record = self._lock_record(
                         cur,
                         site_id=site_id,
                         type_key=type_key,
                         record_id=record_id,
                         expected_version=expected_version,
+                    )
+                    policy_repo.member(
+                        cur,
+                        site_id=site_id,
+                        user_id=actor_ref.removeprefix('user:'),
+                        permission='write',
+                        lock=True,
                     )
                     cur.execute(
                         """DELETE FROM sitecontent_assetbinding binding
@@ -1999,12 +2116,21 @@ class PostgresContentWorkspaceRepository:
         with db_conn(tenant_id=site_id) as conn:
             try:
                 with conn.cursor() as cur:
+                    policy_repo.begin_effect(cur, actor_ref=actor_ref)
+                    policy_repo.read_policy(cur, site_id=site_id, lock=True)
                     record = self._lock_record(
                         cur,
                         site_id=site_id,
                         type_key=type_key,
                         record_id=record_id,
                         expected_version=expected_version,
+                    )
+                    policy_repo.member(
+                        cur,
+                        site_id=site_id,
+                        user_id=actor_ref.removeprefix('user:'),
+                        permission='write',
+                        lock=True,
                     )
                     if payload['target_id'] == record_id:
                         raise ValueError('relationship_scope_invalid')
@@ -2108,12 +2234,21 @@ class PostgresContentWorkspaceRepository:
         with db_conn(tenant_id=site_id) as conn:
             try:
                 with conn.cursor() as cur:
+                    policy_repo.begin_effect(cur, actor_ref=actor_ref)
+                    policy_repo.read_policy(cur, site_id=site_id, lock=True)
                     record = self._lock_record(
                         cur,
                         site_id=site_id,
                         type_key=type_key,
                         record_id=record_id,
                         expected_version=expected_version,
+                    )
+                    policy_repo.member(
+                        cur,
+                        site_id=site_id,
+                        user_id=actor_ref.removeprefix('user:'),
+                        permission='write',
+                        lock=True,
                     )
                     cur.execute(
                         """DELETE FROM sitecontent_contentrelationship
@@ -2851,6 +2986,14 @@ class PostgresContentWorkspaceRepository:
                     except CursorError as exc:
                         raise ValueError('content_download_grant_invalid') from exc
                     content = artifact_store.get(row[2], expected_sha256=row[0])
+                    policy_repo.begin_effect(cur)
+                    policy_repo.authorize_read(cur, site_id=site_id, requester_ref=requester_ref)
+                    policy = policy_repo.read_policy(cur, site_id=site_id)
+                    if (
+                        policy['public_access'] == 'members_only'
+                        and settings.CONTENT_WORKSPACE_STORAGE_BACKEND != 'local'
+                    ):
+                        raise ValueError('storage_transport_unverified')
                     _audit(
                         cur,
                         site_id=site_id,

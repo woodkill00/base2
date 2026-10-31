@@ -106,7 +106,7 @@
       "api/main.py": "cda0bc4e11029cbb6e88edcd89bc1020efdfdc350ee2152c76f3f026df2d847c",
       "api/routes/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "api/routes/auth.py": "2660fdd89848db5b902e50344515e16453392acbebec5e7d6b1c811f892c7efb",
-      "api/routes/content_workspace.py": "71795a85af8dec9e8f392f757a3640cc46b3466bccdf90941ace3f59f131b360",
+      "api/routes/content_workspace.py": "f34cd3c23da96cd92a43b16cb2b24a1ea630528f24fbf7594949e8b7752ac0fa",
       "api/routes/engagement.py": "f26e86d78daab93ef74a8d547b2b4ec1a3035ebf2f13e9a886a2accd772f016e",
       "api/routes/identity.py": "55207b0e831cc42bd28795f3ed65b00fd2a764a00bdc707b5d4a6802b6ec8f43",
       "api/routes/media_library.py": "732e73377e3068c8b52b2df3beee352e1eab17ac0b66ad54bbd6cdd51fad6065",
@@ -115,7 +115,7 @@
       "api/routes/operations.py": "f5ddd88fe3996dcc8d53449f04613d3113052f23f3416a578c42cc867db5257e",
       "api/routes/privacy.py": "a071f4a04d158c0872793f0cd2f6b804e333e0a35ed880cc13ed529492e96c66",
       "api/routes/scheduling.py": "2bc71ee22ff666d22e7275e00394f6a885f94e04d20e97c44a4e93778ce859fa",
-      "api/routes/settings.py": "433ceb83cd764afee4402dbd4b3b0bc393b4c08ad0f568f2fd569a2a8ee77006",
+      "api/routes/settings.py": "fc077a38f456934cbc41de93531d3fabf5d7005f82400b87590d8212ab572f90",
       "api/routes/site_content.py": "719c357b1419d09b1c0b2913d7ed40603e1fe9aabe90e676ea222a4b0e1ae256",
       "api/routes/tenant.py": "72eb2c4206bd1477aa93262154ba97c5b56f574aa2446cea597274fd7303d2df",
       "api/routes/test_support.py": "2d719feced29efa077926a093859c5087db577015d2bb2825dd88f2c04b2c70f",
@@ -123,9 +123,9 @@
       "django/catalog/urls.py": "ee319a920fbb34f3d78e8f85dc0b6893b829cfb0a3b2a096ce7be92fd6982491",
       "django/project/urls.py": "d42f4027cc1be8c8d4bd7470d39d1fac3af6904cec38ae523de6cc5cea7042f7",
       "django/users/urls.py": "e1c30bf7c17d01975286d91dac4f45f686118503200be85a54c86e143bae8c40",
-      "react-app/src/App.js": "07295db01411fc4ca016dfa066cedff81ee9d81281a3653ed19277af794ea6d9",
+      "react-app/src/App.js": "c920d08362493c6e944e70c665dd8da1f391181f61aed9b87c4dded6bf6029a9",
       "react-app/src/routes/LocalizedExperience.jsx": "1f05c0f33763578f68670454b9290bd4a5562964bb8ea48a890aa5f76d9873f1",
-      "react-app/src/routes/PublicRoutes.jsx": "efa5600bf57913474584e5af5f2670bea2cf33b92a41131cabaa9052dbf45022"
+      "react-app/src/routes/PublicRoutes.jsx": "aef3516eded3255551019042493338affb88bade069619fc9ced67dbeb79bce5"
     }
   },
   "schemaVersion": 1

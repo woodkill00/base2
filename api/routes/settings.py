@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from api.auth.repo import insert_audit_event
 from api.middleware.tenant import require_tenant
 from api.repositories import settings as repository
+from api.repositories import workspace_policy
 from api.repositories.identity_admin import membership
 from api.settings_registry import discovery
 from api.security.request_auth import require_authenticated_principal
@@ -38,7 +39,15 @@ class NotificationChoice(BaseModel):
 
 class NotificationUpdate(BaseModel):
     model_config = ConfigDict(extra='forbid')
+    expected_version: int = Field(ge=0, strict=True)
     preferences: list[NotificationChoice] = Field(max_length=12)
+
+
+class WorkspacePolicyUpdate(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True)
+    expected_version: int = Field(ge=0)
+    require_review: bool
+    public_access: Literal['public_allowed', 'members_only']
 
 
 def _principal_and_tenant(request: Request):
@@ -107,7 +116,7 @@ def _notification_payload(choices: list[NotificationChoice]) -> list[dict]:
 @router.get('/notifications')
 async def notifications(request: Request):
     principal, tenant_id = _principal_and_tenant(request)
-    return {'preferences': repository.list_notifications(user_id=principal.user_id, tenant_id=tenant_id)}
+    return repository.get_notifications(user_id=principal.user_id, tenant_id=tenant_id)
 
 
 @router.put('/notifications')
@@ -115,18 +124,53 @@ async def put_notifications(payload: NotificationUpdate, request: Request):
     principal, tenant_id = _principal_and_tenant(request)
     values = _notification_payload(payload.preferences)
     saved = repository.replace_notifications(
-        user_id=principal.user_id, tenant_id=tenant_id, preferences=values
-    )
-    insert_audit_event(
-        user_id=principal.user_id, action='user.notification_preferences_updated',
+        user_id=principal.user_id, tenant_id=tenant_id, preferences=values,
+        expected_version=payload.expected_version,
         ip=request.client.host if request.client else '',
         user_agent=request.headers.get('user-agent', ''),
-        metadata={'tenant_id': tenant_id, 'preference_count': len(saved)},
     )
-    return {'preferences': saved}
+    if saved is None:
+        raise HTTPException(status_code=409, detail='settings_version_conflict')
+    return saved
 
 
 @router.get('/security-events')
 async def get_security_events(request: Request, limit: int = 25):
     principal, _ = _principal_and_tenant(request)
     return {'events': repository.security_events(user_id=principal.user_id, limit=limit)}
+
+
+def _policy_scope(request):
+    principal, tenant = _principal_and_tenant(request)
+    enabled = {item['id'] for item in SITE_MANIFEST['modules'] if item.get('enabled')}
+    if not {'accounts', 'content-workspace'} <= enabled:
+        raise HTTPException(status_code=404, detail='workspace_policy_capability_disabled')
+    return principal, tenant
+
+
+@router.get('/workspace-policy')
+def get_workspace_policy(request: Request):
+    principal, tenant = _policy_scope(request)
+    try:
+        return workspace_policy.get_policy(site_id=tenant, user_id=principal.user_id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=404, detail='workspace_policy_forbidden') from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='workspace_policy_unavailable') from exc
+
+
+@router.put('/workspace-policy')
+def put_workspace_policy(payload: WorkspacePolicyUpdate, request: Request):
+    principal, tenant = _policy_scope(request)
+    try:
+        result = workspace_policy.update_policy(site_id=tenant, user_id=principal.user_id,
+                                                **payload.model_dump())
+    except PermissionError as exc:
+        raise HTTPException(status_code=404, detail='workspace_policy_forbidden') from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail='workspace_policy_unavailable') from exc
+    if result is None:
+        raise HTTPException(status_code=409, detail='settings_version_conflict')
+    return result

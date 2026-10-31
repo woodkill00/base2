@@ -57,7 +57,17 @@ class Connection:
 
 
 def bind(monkeypatch, cursor):
+    # Existing permission-specific regressions isolate the explicit compatibility
+    # policy adapter. Restrictive behavior uses separate Feature124/real-PG tests.
+    monkeypatch.setattr(repository.policy_repo,'member',lambda *args, **kwargs: {'role':'admin','organization_id':'scope'})
+    monkeypatch.setattr(repository.policy_repo,'authorize_read',lambda *args, **kwargs: {'role':'admin'})
+    monkeypatch.setattr(repository.policy_repo,'read_policy',lambda *args, **kwargs: {'version':1,'require_review':False,'public_access':'public_allowed'})
+    monkeypatch.setattr(repository.policy_repo,'prepare_transition',lambda *args, **kwargs: None)
     connection = Connection(cursor)
+    # These regressions exercise existing media rules under an explicitly migrated
+    # compatibility policy; Feature124 policy/guard tests cover restrictive paths.
+    monkeypatch.setattr(repository.policy_repo, 'read_policy', lambda *args, **kwargs: {
+        'version': 1, 'require_review': False, 'public_access': 'public_allowed'})
 
     @contextmanager
     def fake_db_conn(*, tenant_id):
@@ -75,7 +85,7 @@ def test_asset_upload_creation_and_detail_are_grant_and_derivative_bound(monkeyp
     connection = bind(monkeypatch, cursor)
     created = repo.create_asset_upload(
         site_id="site-a",
-        owner_ref="user:test",
+        owner_ref="user:00000000-0000-0000-0000-000000000001",
         payload={
             "filename": "safe.png",
             "media_type": "image/png",
@@ -91,11 +101,12 @@ def test_asset_upload_creation_and_detail_are_grant_and_derivative_bound(monkeyp
     assert created["status"] == "pending" and created["expiresIn"] == 300
     assert "site-a" not in created["uploadGrant"]
     assert connection.commits == 1
-    quota_query = cursor.calls[2]
+    assert cursor.calls[0][1] == ("base2-workspace-policy-v1",)
+    quota_query = next(call for call in cursor.calls if "COALESCE(SUM(byte_size)" in call[0])
     assert "sitecontent_mediauploadsession" in quota_query[0]
     assert "expires_at>NOW()" in quota_query[0]
     assert quota_query[1] == ("site-a", "site-a", "site-a", "site-a")
-    asset_insert = cursor.calls[3]
+    asset_insert = next(call for call in cursor.calls if call[0].startswith("INSERT INTO sitecontent_mediaasset"))
     assert "authorization_epoch" in asset_insert[0]
     assert "'private',1,1,1,NOW(),NOW()" in asset_insert[0]
 
@@ -114,20 +125,20 @@ def test_asset_upload_creation_and_detail_are_grant_and_derivative_bound(monkeyp
     )
     cursor = QueueCursor(ones=[row])
     bind(monkeypatch, cursor)
-    detail = repo.get_asset(site_id="site-a", asset_id=ASSET_ID, requester_ref="user:reader")
+    detail = repo.get_asset(site_id="site-a", asset_id=ASSET_ID, requester_ref="user:00000000-0000-0000-0000-000000000003")
     assert detail["downloadGrant"] and detail["expiresIn"] == 60
     assert detail["updatedAt"] == NOW.isoformat()
 
     pending = (*row[:5], "quarantined", *row[6:9], None, None)
     cursor = QueueCursor(ones=[pending])
     bind(monkeypatch, cursor)
-    detail = repo.get_asset(site_id="site-a", asset_id=ASSET_ID, requester_ref="user:reader")
+    detail = repo.get_asset(site_id="site-a", asset_id=ASSET_ID, requester_ref="user:00000000-0000-0000-0000-000000000003")
     assert "downloadGrant" not in detail
 
     cursor = QueueCursor(ones=[None])
     bind(monkeypatch, cursor)
     with pytest.raises(ValueError, match="content_not_found"):
-        repo.get_asset(site_id="site-a", asset_id=ASSET_ID, requester_ref="user:reader")
+        repo.get_asset(site_id="site-a", asset_id=ASSET_ID, requester_ref="user:00000000-0000-0000-0000-000000000003")
 
 
 def test_asset_upload_replay_is_exact_and_quota_admission_is_atomic(monkeypatch):
@@ -141,7 +152,7 @@ def test_asset_upload_replay_is_exact_and_quota_admission_is_atomic(monkeypatch)
     cursor = QueueCursor(ones=[replay])
     connection = bind(monkeypatch, cursor)
     result = repo.create_asset_upload(
-        site_id="site-a", owner_ref="user:test", payload=payload,
+        site_id="site-a", owner_ref="user:00000000-0000-0000-0000-000000000001", payload=payload,
         idempotency_key="asset-upload-104", maximum_stored_bytes=1024,
         maximum_active_uploads=10, maximum_pending_processing=10,
     )
@@ -153,7 +164,7 @@ def test_asset_upload_replay_is_exact_and_quota_admission_is_atomic(monkeypatch)
     connection = bind(monkeypatch, cursor)
     with pytest.raises(ValueError, match="content_idempotency_conflict"):
         repo.create_asset_upload(
-            site_id="site-a", owner_ref="user:test", payload=payload,
+            site_id="site-a", owner_ref="user:00000000-0000-0000-0000-000000000001", payload=payload,
             idempotency_key="asset-upload-104", maximum_stored_bytes=1024,
             maximum_active_uploads=10, maximum_pending_processing=10,
         )
@@ -163,7 +174,7 @@ def test_asset_upload_replay_is_exact_and_quota_admission_is_atomic(monkeypatch)
     connection = bind(monkeypatch, cursor)
     with pytest.raises(ValueError, match="content_quota_storage_exceeded"):
         repo.create_asset_upload(
-            site_id="site-a", owner_ref="user:test", payload=payload,
+            site_id="site-a", owner_ref="user:00000000-0000-0000-0000-000000000001", payload=payload,
             idempotency_key="asset-upload-105", maximum_stored_bytes=1024,
             maximum_active_uploads=10, maximum_pending_processing=10,
         )
@@ -175,7 +186,7 @@ def test_upload_grant_preflight_is_owner_bound_and_stateless(monkeypatch):
     repo = repository.PostgresContentWorkspaceRepository()
     scope = {
         "site": "site-a",
-        "owner": "user:test",
+        "owner": "user:00000000-0000-0000-0000-000000000001",
         "asset": str(ASSET_ID),
         "sha256": "a" * 64,
         "bytes": 32,
@@ -189,10 +200,10 @@ def test_upload_grant_preflight_is_owner_bound_and_stateless(monkeypatch):
     assert repo.validate_asset_upload_grant(
         site_id="site-a",
         asset_id=ASSET_ID,
-        owner_ref="user:test",
+        owner_ref="user:00000000-0000-0000-0000-000000000001",
         upload_grant=grant,
     ) == {"expectedBytes": 32}
-    assert cursor.calls[0][1] == (str(ASSET_ID), "site-a", "user:test")
+    assert cursor.calls[0][1] == (str(ASSET_ID), "site-a", "user:00000000-0000-0000-0000-000000000001")
 
     cursor = QueueCursor(ones=[(32, "a" * 64, "pending")])
     bind(monkeypatch, cursor)
@@ -200,7 +211,7 @@ def test_upload_grant_preflight_is_owner_bound_and_stateless(monkeypatch):
         repo.validate_asset_upload_grant(
             site_id="site-a",
             asset_id=ASSET_ID,
-            owner_ref="user:test",
+            owner_ref="user:00000000-0000-0000-0000-000000000001",
             upload_grant=grant + "x",
         )
 
@@ -231,7 +242,7 @@ def test_record_lock_and_bump_enforce_presence_and_version():
         cursor,
         record=RECORD,
         site_id="site-a",
-        actor_ref="user:test",
+        actor_ref="user:00000000-0000-0000-0000-000000000001",
         action="safe_change",
     )
     assert version == 3
@@ -251,13 +262,13 @@ def test_asset_binding_and_unbinding_are_versioned_transactions(monkeypatch):
         record_id=RECORD_ID,
         field_key="hero",
         expected_version=2,
-        actor_ref="user:test",
+        actor_ref="user:00000000-0000-0000-0000-000000000001",
         payload={"asset_id": ASSET_ID, "alt_text": "Safe image", "order": 1},
     )
     assert UUID(bound["id"]) and bound["recordVersion"] == 3
     assert connection.commits == 1
-    assert "owner_ref=%s OR visibility" in cursor.calls[1][0]
-    assert cursor.calls[1][1] == (str(ASSET_ID), "site-a", "user:test")
+    assert "owner_ref=%s OR visibility" in cursor.calls[3][0]
+    assert cursor.calls[3][1] == (str(ASSET_ID), "site-a", "user:00000000-0000-0000-0000-000000000001")
 
     cursor = QueueCursor(ones=[RECORD, (binding_id,), (3,)])
     connection = bind(monkeypatch, cursor)
@@ -268,14 +279,14 @@ def test_asset_binding_and_unbinding_are_versioned_transactions(monkeypatch):
         field_key="hero",
         asset_id=ASSET_ID,
         expected_version=2,
-        actor_ref="user:test",
+        actor_ref="user:00000000-0000-0000-0000-000000000001",
     )
     assert unbound == {"deleted": True, "recordVersion": 3}
     assert connection.commits == 1
-    assert "EXISTS" in cursor.calls[1][0]
-    assert "asset.owner_ref=%s OR asset.visibility" in cursor.calls[1][0]
-    assert cursor.calls[1][1] == (
-        "site-a", str(RECORD_ID), "hero", str(ASSET_ID), "user:test"
+    assert "EXISTS" in cursor.calls[3][0]
+    assert "asset.owner_ref=%s OR asset.visibility" in cursor.calls[3][0]
+    assert cursor.calls[3][1] == (
+        "site-a", str(RECORD_ID), "hero", str(ASSET_ID), "user:00000000-0000-0000-0000-000000000001"
     )
 
 
@@ -291,11 +302,11 @@ def test_private_asset_binding_and_unbinding_fail_closed_for_non_owner(monkeypat
             record_id=RECORD_ID,
             field_key="hero",
             expected_version=2,
-            actor_ref="user:other",
+            actor_ref="user:00000000-0000-0000-0000-000000000002",
             payload={"asset_id": ASSET_ID, "alt_text": "Private image"},
         )
     assert connection.rollbacks == 1
-    assert cursor.calls[1][1][-1] == "user:other"
+    assert cursor.calls[3][1][-1] == "user:00000000-0000-0000-0000-000000000002"
 
     cursor = QueueCursor(ones=[RECORD, None])
     connection = bind(monkeypatch, cursor)
@@ -307,10 +318,10 @@ def test_private_asset_binding_and_unbinding_fail_closed_for_non_owner(monkeypat
             field_key="hero",
             asset_id=ASSET_ID,
             expected_version=2,
-            actor_ref="user:other",
+            actor_ref="user:00000000-0000-0000-0000-000000000002",
         )
     assert connection.rollbacks == 1
-    assert cursor.calls[1][1][-1] == "user:other"
+    assert cursor.calls[3][1][-1] == "user:00000000-0000-0000-0000-000000000002"
 
 
 @pytest.mark.parametrize(
@@ -333,7 +344,7 @@ def test_asset_binding_rejects_unsafe_asset_or_field(monkeypatch, asset, field, 
             record_id=RECORD_ID,
             field_key="hero",
             expected_version=2,
-            actor_ref="user:test",
+            actor_ref="user:00000000-0000-0000-0000-000000000001",
             payload={"asset_id": ASSET_ID, "alt_text": alt_text},
         )
     assert connection.rollbacks == 1
@@ -350,7 +361,7 @@ def test_unbind_missing_asset_rolls_back(monkeypatch):
             field_key="hero",
             asset_id=ASSET_ID,
             expected_version=2,
-            actor_ref="user:test",
+            actor_ref="user:00000000-0000-0000-0000-000000000001",
         )
     assert connection.rollbacks == 1
 
@@ -382,7 +393,7 @@ def test_relationship_listing_creation_and_deletion(monkeypatch):
         type_key="article",
         record_id=RECORD_ID,
         expected_version=2,
-        actor_ref="user:test",
+        actor_ref="user:00000000-0000-0000-0000-000000000001",
         payload={"target_id": TARGET_ID, "field_key": "related"},
     )
     assert created["recordVersion"] == 3 and UUID(created["id"])
@@ -396,7 +407,7 @@ def test_relationship_listing_creation_and_deletion(monkeypatch):
         record_id=RECORD_ID,
         relationship_id=RELATIONSHIP_ID,
         expected_version=2,
-        actor_ref="user:test",
+        actor_ref="user:00000000-0000-0000-0000-000000000001",
     )
     assert deleted == {"deleted": True, "recordVersion": 3}
     assert connection.commits == 1
@@ -464,7 +475,7 @@ def test_relationship_creation_rejects_invalid_graphs(monkeypatch, payload, ones
             type_key="article",
             record_id=RECORD_ID,
             expected_version=2,
-            actor_ref="user:test",
+            actor_ref="user:00000000-0000-0000-0000-000000000001",
             payload=payload,
         )
     assert connection.rollbacks == 1
@@ -480,6 +491,6 @@ def test_relationship_delete_missing_rolls_back(monkeypatch):
             record_id=RECORD_ID,
             relationship_id=RELATIONSHIP_ID,
             expected_version=2,
-            actor_ref="user:test",
+            actor_ref="user:00000000-0000-0000-0000-000000000001",
         )
     assert connection.rollbacks == 1

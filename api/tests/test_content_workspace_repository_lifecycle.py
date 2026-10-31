@@ -57,6 +57,12 @@ class Connection:
 
 
 def bind(monkeypatch, cursor):
+    # Existing permission-specific regressions isolate the explicit compatibility
+    # policy adapter. Restrictive behavior uses separate Feature124/real-PG tests.
+    monkeypatch.setattr(repository.policy_repo,'member',lambda *args, **kwargs: {'role':'admin','organization_id':'scope'})
+    monkeypatch.setattr(repository.policy_repo,'authorize_read',lambda *args, **kwargs: {'role':'admin'})
+    monkeypatch.setattr(repository.policy_repo,'read_policy',lambda *args, **kwargs: {'version':1,'require_review':False,'public_access':'public_allowed'})
+    monkeypatch.setattr(repository.policy_repo,'prepare_transition',lambda *args, **kwargs: None)
     connection = Connection(cursor)
 
     @contextmanager
@@ -152,7 +158,7 @@ def test_definition_not_found_and_publication_failures_roll_back(monkeypatch):
                 version=2,
                 expected_lock_version=1,
                 confirm_lossy=False,
-                actor_ref="user:test",
+                actor_ref="user:00000000-0000-0000-0000-000000000001",
             )
         assert connection.rollbacks == 1
 
@@ -174,7 +180,7 @@ def test_definition_publication_confirmation_and_retirement(monkeypatch):
             version=2,
             expected_lock_version=1,
             confirm_lossy=False,
-            actor_ref="user:test",
+            actor_ref="user:00000000-0000-0000-0000-000000000001",
         )
     assert connection.rollbacks == 1
 
@@ -194,7 +200,7 @@ def test_definition_publication_confirmation_and_retirement(monkeypatch):
         version=2,
         expected_lock_version=1,
         confirm_lossy=False,
-        actor_ref="user:test",
+        actor_ref="user:00000000-0000-0000-0000-000000000001",
     )
     assert published == {"typeKey": "article", "version": 2, "status": "published", "lockVersion": 2}
     assert connection.commits == 1
@@ -206,7 +212,7 @@ def test_definition_publication_confirmation_and_retirement(monkeypatch):
         type_key="article",
         version=2,
         expected_lock_version=2,
-        actor_ref="user:test",
+        actor_ref="user:00000000-0000-0000-0000-000000000001",
     )
     assert retired["status"] == "retired" and connection.commits == 1
 
@@ -218,7 +224,7 @@ def test_definition_publication_confirmation_and_retirement(monkeypatch):
             type_key="article",
             version=2,
             expected_lock_version=1,
-            actor_ref="user:test",
+            actor_ref="user:00000000-0000-0000-0000-000000000001",
         )
     assert connection.rollbacks == 1
 
@@ -230,7 +236,7 @@ def test_record_create_read_update_transition_history_and_restore(monkeypatch):
     created = repo.create_record(
         site_id="site-a",
         type_key="article",
-        actor_ref="user:test",
+        actor_ref="user:00000000-0000-0000-0000-000000000001",
         payload={"slug": "safe", "title": "Safe", "values": {"title": "Safe"}},
     )
     assert created["id"] == str(RECORD_ID) and connection.commits == 1
@@ -252,7 +258,7 @@ def test_record_create_read_update_transition_history_and_restore(monkeypatch):
         type_key="article",
         record_id=RECORD_ID,
         expected_version=2,
-        actor_ref="user:test",
+        actor_ref="user:00000000-0000-0000-0000-000000000001",
         values={"title": "Changed"},
     )
     assert updated["version"] == 3 and connection.commits == 1
@@ -275,7 +281,7 @@ def test_record_create_read_update_transition_history_and_restore(monkeypatch):
         type_key="article",
         record_id=RECORD_ID,
         expected_version=2,
-        actor_ref="user:test",
+        actor_ref="user:00000000-0000-0000-0000-000000000001",
         action="submit_review",
         publish_at=None,
         timezone=None,
@@ -299,7 +305,7 @@ def test_record_create_read_update_transition_history_and_restore(monkeypatch):
         record_id=RECORD_ID,
         version=1,
         expected_version=2,
-        actor_ref="user:test",
+        actor_ref="user:00000000-0000-0000-0000-000000000001",
     )
     assert restored["values"] == {"title": "Earlier"} and connection.commits == 1
 
@@ -315,7 +321,7 @@ def test_record_mutation_conflicts_and_invalid_transitions_are_closed(monkeypatc
                 type_key="article",
                 record_id=RECORD_ID,
                 expected_version=2,
-                actor_ref="user:test",
+                actor_ref="user:00000000-0000-0000-0000-000000000001",
                 values={"title": "Safe"},
             )
         assert connection.rollbacks == 1
@@ -329,7 +335,7 @@ def test_record_mutation_conflicts_and_invalid_transitions_are_closed(monkeypatc
             type_key="article",
             record_id=RECORD_ID,
             expected_version=2,
-            actor_ref="user:test",
+            actor_ref="user:00000000-0000-0000-0000-000000000001",
             action="publish",
             publish_at=None,
             timezone=None,
@@ -345,7 +351,7 @@ def test_saved_view_crud_is_tenant_owner_schema_and_version_bound(monkeypatch):
     cursor = QueueCursor(alls=[[view_row]])
     bind(monkeypatch, cursor)
     listed = repo.list_views(
-        site_id="site-a", type_key="article", owner_ref="user:test", caller_role="editor"
+        site_id="site-a", type_key="article", owner_ref="user:00000000-0000-0000-0000-000000000001", caller_role="editor"
     )
     assert listed["items"][0]["id"] == str(VIEW_ID)
 
@@ -354,7 +360,7 @@ def test_saved_view_crud_is_tenant_owner_schema_and_version_bound(monkeypatch):
     created = repo.create_view(
         site_id="site-a",
         type_key="article",
-        owner_ref="user:test",
+        owner_ref="user:00000000-0000-0000-0000-000000000001",
         payload={"title": "Safe", "query": query, "visibility": "private", "shared_roles": []},
     )
     assert created["lockVersion"] == 1 and connection.commits == 1
@@ -365,7 +371,7 @@ def test_saved_view_crud_is_tenant_owner_schema_and_version_bound(monkeypatch):
         site_id="site-a",
         type_key="article",
         view_id=VIEW_ID,
-        owner_ref="user:test",
+        owner_ref="user:00000000-0000-0000-0000-000000000001",
         caller_role=None,
     )
     assert detail["currentSchemaVersion"] == 1
@@ -377,7 +383,7 @@ def test_saved_view_crud_is_tenant_owner_schema_and_version_bound(monkeypatch):
         site_id="site-a",
         type_key="article",
         view_id=VIEW_ID,
-        owner_ref="user:test",
+        owner_ref="user:00000000-0000-0000-0000-000000000001",
         expected_version=1,
         payload={"title": "Changed", "visibility": "role_shared", "shared_roles": ["editor"]},
     )
@@ -389,7 +395,7 @@ def test_saved_view_crud_is_tenant_owner_schema_and_version_bound(monkeypatch):
         site_id="site-a",
         type_key="article",
         view_id=VIEW_ID,
-        owner_ref="user:test",
+        owner_ref="user:00000000-0000-0000-0000-000000000001",
         expected_version=2,
     )
     assert deleted == {"id": str(VIEW_ID), "deleted": True} and connection.commits == 1
@@ -414,7 +420,7 @@ def test_saved_view_invalid_owner_version_fields_and_visibility_roll_back(monkey
                 site_id="site-a",
                 type_key="article",
                 view_id=VIEW_ID,
-                owner_ref="user:test",
+                owner_ref="user:00000000-0000-0000-0000-000000000001",
                 expected_version=1,
                 payload=payload,
             )
@@ -427,7 +433,7 @@ def test_saved_view_invalid_owner_version_fields_and_visibility_roll_back(monkey
             site_id="site-a",
             type_key="article",
             view_id=VIEW_ID,
-            owner_ref="user:test",
+            owner_ref="user:00000000-0000-0000-0000-000000000001",
             caller_role=None,
         )
     cursor = QueueCursor(ones=[None])
@@ -437,7 +443,7 @@ def test_saved_view_invalid_owner_version_fields_and_visibility_roll_back(monkey
             site_id="site-a",
             type_key="article",
             view_id=VIEW_ID,
-            owner_ref="user:test",
+            owner_ref="user:00000000-0000-0000-0000-000000000001",
             expected_version=1,
         )
     assert connection.rollbacks == 1

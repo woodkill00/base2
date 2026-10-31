@@ -1,6 +1,7 @@
 import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import profile from '../../src/config/generated/base2-obsidian.json';
 
 const axeSource = readFileSync('node_modules/axe-core/axe.min.js', 'utf8');
 const typeId = '00000000-0000-0000-0000-000000010400';
@@ -56,7 +57,28 @@ const errorOutcomes = [
   'network-failed',
   'polling-exhausted',
 ];
+const fixtureActions: Record<string, string[]> = {
+  draft: ['submit_review', 'publish', 'delete'],
+  in_review: ['return_draft', 'publish', 'delete'],
+  scheduled: ['return_draft', 'publish', 'archive'],
+  published: ['archive'],
+  archived: ['restore', 'delete'],
+  deleted: [],
+};
 const records = states.map((state, index) => ({
+  siteId: profile.siteId,
+  typeKey: 'article',
+  updatedAt: '2026-10-31T00:00:00Z',
+  allowedActions: fixtureActions[state],
+  review: {
+    status: state === 'in_review' ? 'pending' : 'not_requested',
+    requiresReview: false,
+    policyVersion: 1,
+    semanticRevision: 'fixture-revision',
+    deliveryAdapter: 'local_test',
+    recoveryReason: null,
+  },
+
   id: `00000000-0000-0000-0000-0000000104${String(index).padStart(2, '0')}`,
   title:
     index === 1
@@ -259,7 +281,15 @@ test('workspace release corpus is accessible, responsive, and visually stable', 
 declare global {
   interface Window {
     axe: {
-      run: (root: Document, options?: unknown) => Promise<{ violations: Array<{ id: string }> }>;
+      run: (
+        root: Document,
+        options?: unknown
+      ) => Promise<{
+        violations: Array<{
+          id: string;
+          nodes: Array<{ target: unknown; failureSummary?: string }>;
+        }>;
+      }>;
     };
   }
 }

@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, createMemoryRouter, RouterProvider } from 'react-router-dom';
 import Settings from '../pages/SettingsCenter';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../lib/apiClient';
@@ -83,7 +83,7 @@ beforeEach(() => {
           : path === '/settings/preferences'
             ? preferences
             : path === '/settings/notifications'
-              ? { preferences: notifications }
+              ? { schema_version: 1, version: 2, preferences: notifications }
               : {},
     })
   );
@@ -161,18 +161,24 @@ test('conflict preserves draft, blocks repeat save, and explicit discard loads n
 
 test('stored notifications save twice using only mutation fields', async () => {
   const user = userEvent.setup();
-  apiClient.put.mockResolvedValue({ data: { preferences: notifications } });
+  apiClient.put
+    .mockResolvedValueOnce({ data: { schema_version: 1, version: 3, preferences: notifications } })
+    .mockResolvedValueOnce({ data: { schema_version: 1, version: 4, preferences: notifications } });
   renderSettings('/settings/notifications');
   await ready();
   await user.click(screen.getByRole('button', { name: 'Save notifications' }));
   await screen.findByRole('status');
   await user.click(screen.getByRole('button', { name: 'Save notifications' }));
   expect(apiClient.put).toHaveBeenCalledTimes(2);
-  for (const [, payload] of apiClient.put.mock.calls)
+  for (const [index, [, payload]] of apiClient.put.mock.calls.entries())
     expect(payload).toEqual({
-      preferences: [{ event_family: 'marketing', channel: 'email', delivery: 'digest' }],
+      expected_version: 2 + index,
+      preferences: [
+        { event_family: 'marketing', channel: 'email', delivery: 'digest' },
+        { event_family: 'product', channel: 'email', delivery: 'disabled' },
+      ],
     });
-  expect(screen.getByText(/delivery-engine integration is not yet available/i)).toBeInTheDocument();
+  expect(screen.getByText(/local test adapter/i)).toBeInTheDocument();
 });
 
 test('site capabilities show limited deployment-managed modules without invented controls', async () => {
@@ -575,6 +581,8 @@ test('notification dividers retain the approved subtle white tenth-opacity color
     path === '/settings/notifications'
       ? Promise.resolve({
           data: {
+            schema_version: 1,
+            version: 2,
             preferences: [
               {
                 event_family: 'security',
@@ -595,4 +603,105 @@ test('notification dividers retain the approved subtle white tenth-opacity color
     expect(row).toHaveStyle({ borderColor: 'rgba(255, 255, 255, 0.1)' });
     expect(row.parentElement).toHaveClass('divide-y');
   }
+});
+
+test('notification Cancel restores saved choices and conflict retains draft until explicit reload', async () => {
+  const user = userEvent.setup();
+  renderSettings('/settings/notifications');
+  await ready();
+  const choice = screen.getByLabelText(/marketing email delivery/i);
+  await user.selectOptions(choice, 'disabled');
+  const unload = new Event('beforeunload', { cancelable: true });
+  window.dispatchEvent(unload);
+  expect(unload.defaultPrevented).toBe(true);
+  await user.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(choice).toHaveValue('digest');
+  apiClient.put.mockRejectedValue({
+    response: { status: 409, data: { detail: 'settings_version_conflict' } },
+  });
+  await user.selectOptions(choice, 'disabled');
+  await user.click(screen.getByRole('button', { name: 'Save notifications' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent(/changed elsewhere/i);
+  expect(choice).toHaveValue('disabled');
+  expect(screen.getByRole('button', { name: 'Save notifications' })).toBeDisabled();
+  expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: /Discard draft and reload notifications/ }));
+  expect(choice).toHaveValue('digest');
+  expect(apiClient.put).toHaveBeenCalledTimes(1);
+});
+
+test('settings guard retains drafts in two categories and cancels each independently', async () => {
+  const user = userEvent.setup();
+  const router = createMemoryRouter(
+    [
+      { path: '/settings/*', element: <Settings /> },
+      { path: '*', element: <p>Outside</p> },
+    ],
+    { initialEntries: ['/settings/appearance'] }
+  );
+  render(<RouterProvider router={router} />);
+  await ready();
+  await user.selectOptions(screen.getByLabelText('Theme'), 'dark');
+  await act(() => router.navigate('/settings/notifications'));
+  await user.selectOptions(screen.getByLabelText(/marketing email delivery/i), 'disabled');
+  await user.click(screen.getByRole('button', { name: 'Cancel' }));
+  await act(() => router.navigate('/dashboard'));
+  expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Stay' }));
+  await act(() => router.navigate('/settings/appearance'));
+  expect(screen.getByLabelText('Theme')).toHaveValue('dark');
+  await user.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(screen.getByLabelText('Theme')).toHaveValue('light');
+  await act(() => router.navigate('/dashboard'));
+  expect(router.state.location.pathname).toBe('/dashboard');
+});
+
+test('late notification response cannot replace the new account snapshot', async () => {
+  const user = userEvent.setup();
+  let finish;
+  apiClient.put.mockReturnValue(
+    new Promise((resolve) => {
+      finish = resolve;
+    })
+  );
+  useAuth.mockReturnValue({ user: { id: 'notification-a' }, updateUser: vi.fn() });
+  const view = renderSettings('/settings/notifications');
+  await ready();
+  await user.selectOptions(screen.getByLabelText(/marketing email delivery/i), 'disabled');
+  await user.click(screen.getByRole('button', { name: 'Save notifications' }));
+  useAuth.mockReturnValue({ user: { id: 'notification-b' }, updateUser: vi.fn() });
+  view.rerender(
+    <MemoryRouter>
+      <Settings />
+    </MemoryRouter>
+  );
+  await ready();
+  await act(async () =>
+    finish({
+      data: {
+        schema_version: 1,
+        version: 3,
+        preferences: [{ event_family: 'marketing', channel: 'email', delivery: 'disabled' }],
+      },
+    })
+  );
+  expect(screen.getByLabelText(/marketing email delivery/i)).toHaveValue('digest');
+  expect(screen.queryByText('Notification preferences saved.')).not.toBeInTheDocument();
+});
+
+test('missing product email is disabled without making a draft, and explicit choice can be cancelled', async () => {
+  const user = userEvent.setup();
+  renderSettings('/settings/notifications');
+  await ready();
+  expect(screen.getByLabelText(/product email delivery/i)).toHaveValue('disabled');
+  let event = new Event('beforeunload', { cancelable: true });
+  globalThis.dispatchEvent(event);
+  expect(event.defaultPrevented).toBe(false);
+  await user.selectOptions(screen.getByLabelText(/product email delivery/i), 'immediate');
+  event = new Event('beforeunload', { cancelable: true });
+  globalThis.dispatchEvent(event);
+  expect(event.defaultPrevented).toBe(true);
+  await user.click(screen.getByRole('button', { name: 'Cancel', exact: true }));
+  expect(screen.getByLabelText(/product email delivery/i)).toHaveValue('disabled');
+  expect(apiClient.put).not.toHaveBeenCalled();
 });

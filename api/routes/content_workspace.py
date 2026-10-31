@@ -725,9 +725,11 @@ def delete_record(
 @router.get('/types/{type_key}/records/{record_id}')
 def get_record(type_key: str, record_id: UUID, request: Request):
     _valid_type_key(type_key)
-    _, tenant = _authorized_scope(request, 'content-workspace.read')
+    principal, tenant = _authorized_scope(request, 'content-workspace.read')
     try:
-        return get_repository().get_record(site_id=tenant, type_key=type_key, record_id=record_id)
+        from api.repositories.workspace_policy import review_metadata
+        record = get_repository().get_record(site_id=tenant, type_key=type_key, record_id=record_id)
+        return {**record, **review_metadata(site_id=tenant,record_id=record_id,user_id=principal.user_id)}
     except ValueError as exc:
         raise HTTPException(status_code=404, detail='content_not_found') from exc
     except Exception as exc:
@@ -1515,3 +1517,44 @@ async def read_export_content(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=503, detail='content_dependency_unavailable') from exc
+
+
+class ReviewSubjectRequest(ContractModel):
+    expected_version: int = Field(ge=1, strict=True)
+    adopt_snapshot: Literal[True]
+
+    @field_validator('adopt_snapshot', mode='before')
+    @classmethod
+    def explicit_snapshot_consent(cls, value):
+        if value is not True:
+            raise ValueError('content_adoption_confirmation_required')
+        return value
+
+
+class ReviewApprovalRequest(ContractModel):
+    expected_version: int = Field(ge=1, strict=True)
+
+
+def _review_action(type_key,record_id,payload,request,*,adopt):
+    from api.repositories import workspace_policy
+    _valid_type_key(type_key)
+    principal, tenant = _authorized_scope(request, 'content-workspace.write' if adopt else 'content-workspace.publish')
+    try:
+        return workspace_policy.review_action(site_id=tenant,type_key=type_key,record_id=record_id,
+            user_id=principal.user_id,expected_version=payload.expected_version,adopt=adopt)
+    except PermissionError as exc:
+        raise HTTPException(status_code=404,detail='content_not_found') from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=404 if str(exc)=='content_not_found' else 409 if str(exc)=='content_version_conflict' else 422,detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503,detail='content_dependency_unavailable') from exc
+
+
+@router.post('/types/{type_key}/records/{record_id}/review-subject')
+def adopt_review_subject(type_key:str,record_id:UUID,payload:ReviewSubjectRequest,request:Request):
+    return _review_action(type_key,record_id,payload,request,adopt=True)
+
+
+@router.post('/types/{type_key}/records/{record_id}/review-approval')
+def approve_review_subject(type_key:str,record_id:UUID,payload:ReviewApprovalRequest,request:Request):
+    return _review_action(type_key,record_id,payload,request,adopt=False)

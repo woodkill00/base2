@@ -11,6 +11,9 @@ from typing import Any, Callable
 from uuid import UUID, uuid4
 
 from api.db import workspace_worker_db_conn as db_conn
+from api.repositories import workspace_policy as policy_repo
+from api.settings import SITE_MANIFEST
+from api.security.restricted_preview import require_media_enabled
 from api.services.content_workspace_scanner import ScannerHealth
 from api.services.media_inspector_client import MediaInspectorClientError, inspect_media_via_spool
 from api.services.media_library_operations import audit_hash, build_export
@@ -180,6 +183,37 @@ def inspect_media_payload(
     )
 
 
+def require_media_processing_enabled() -> None:
+    """Deployment modules are authorization, including for direct worker calls."""
+    require_media_enabled()
+    enabled = {
+        item.get('id') for item in SITE_MANIFEST.get('modules', [])
+        if item.get('enabled') is True
+    }
+    if not {'accounts', 'media'} <= enabled:
+        raise MediaRuntimeError('media_capability_disabled')
+
+
+def _owns_inspection_claim(cur, *, site_id, asset_id, job_id, attempt, lease_token, row):
+    # wall-clock time, not transaction-start NOW(): waiting for the policy lock
+    # may outlive a lease. The job must authorize these exact immutable bytes.
+    cur.execute(
+        """SELECT 1 FROM sitecontent_mediajob WHERE id=%s AND site_id=%s
+           AND asset_id=%s AND kind='inspect' AND status='running'
+           AND attempt=%s AND lease_expires_at=%s
+           AND lease_expires_at>clock_timestamp()
+           AND idempotency_key=%s AND request_digest=%s FOR UPDATE""",
+        (str(job_id), site_id, str(asset_id), attempt - 1, lease_token,
+         f'inspect:{asset_id}:{row[5]}', row[1]),
+    )
+    if not cur.fetchone():
+        return False
+    # A SELECT FOR UPDATE predicate can be evaluated before waiting for an
+    # unchanged locked row. Recheck time only after ownership is locked.
+    cur.execute('SELECT %s>clock_timestamp()', (lease_token,))
+    return bool(cur.fetchone()[0])
+
+
 def process_governed_media_asset(
     *,
     site_id: str,
@@ -190,11 +224,94 @@ def process_governed_media_asset(
     observed_at: datetime | None = None,
     maximum_signature_age_hours: int = 24,
     inspector: Callable[..., InspectionOutcome] | None = None,
+    job_id: UUID | None = None,
+    attempt: int | None = None,
+    lease_token: datetime | None = None,
 ) -> str:
+    require_media_processing_enabled()
+    if job_id is not None and (
+        not isinstance(attempt, int) or isinstance(attempt, bool) or attempt < 1
+        or not isinstance(lease_token, datetime) or lease_token.tzinfo is None
+    ):
+        raise MediaRuntimeError('media_attempt_invalid')
+    if job_id is None and (attempt is not None or lease_token is not None):
+        raise MediaRuntimeError('media_attempt_invalid')
     observed = observed_at or datetime.now(UTC)
+    with db_conn(tenant_id=site_id) as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT storage_key,sha256,status,media_type,byte_size,
+                      current_object_version,lock_version
+               FROM sitecontent_mediaasset
+               WHERE site_id=%s AND id=%s""",
+            (site_id, str(asset_id)),
+        )
+        row = cur.fetchone()
+        if not row:
+            return 'not_found'
+        if row[2] in {'ready', 'rejected', 'purged'}:
+            return f'already_{row[2]}'
+        if row[2] != 'quarantined':
+            return 'not_ready'
+        if job_id is not None and not _owns_inspection_claim(
+            cur, site_id=site_id, asset_id=asset_id, job_id=job_id,
+            attempt=attempt, lease_token=lease_token, row=row,
+        ):
+            return 'stale_attempt'
+    inspection_error = None
+    content = artifact_store.get(row[0], expected_sha256=row[1])
+    try:
+        if inspector is None:
+            isolated = inspect_media_via_spool(
+                content=content,
+                expected_sha256=row[1],
+                media_type=row[3],
+                asset_id=asset_id,
+                object_version=int(row[5]),
+                observed_at=observed,
+            )
+            outcome = InspectionOutcome(
+                isolated.preview,
+                isolated.scanner_ref,
+                isolated.definitions_at,
+                isolated.observed_media_type,
+                isolated.result_sha256,
+                isolated.decoder_ref,
+                isolated.measurements,
+            )
+        else:
+            if scanner is None:
+                from api.services.content_workspace_scanner import scan_content
+
+                scanner = scan_content
+            if health_reader is None:
+                from api.services.content_workspace_scanner import clamav_health
+
+                health_reader = clamav_health
+            outcome = inspector(
+                content=content,
+                expected_sha256=row[1],
+                media_type=row[3],
+                scanner=scanner,
+                health=health_reader(),
+                observed_at=observed,
+                maximum_signature_age_hours=maximum_signature_age_hours,
+            )
+    except (MediaRuntimeError, MediaInspectorClientError) as exc:
+        inspection_error = exc
+    if inspection_error is None:
+        stored = artifact_store.put(
+            namespace='variants',
+            site_id=site_id,
+            object_id=f'{asset_id}-v{row[5]}-safe',
+            content=outcome.preview.content,
+        )
+        if stored.sha256 != outcome.preview.sha256:
+            raise MediaRuntimeError('media_derivative_integrity_failed')
     with db_conn(tenant_id=site_id) as conn:
         try:
             with conn.cursor() as cur:
+                policy_repo.begin_effect(cur)
+                require_media_processing_enabled()
                 cur.execute(
                     """SELECT storage_key,sha256,status,media_type,byte_size,
                               current_object_version,lock_version
@@ -202,55 +319,31 @@ def process_governed_media_asset(
                        WHERE site_id=%s AND id=%s FOR UPDATE""",
                     (site_id, str(asset_id)),
                 )
-                row = cur.fetchone()
-                if not row:
-                    return 'not_found'
-                if row[2] in {'ready', 'rejected', 'purged'}:
-                    return f'already_{row[2]}'
-                if row[2] != 'quarantined':
-                    return 'not_ready'
-                content = artifact_store.get(row[0], expected_sha256=row[1])
-                try:
-                    if inspector is None:
-                        isolated = inspect_media_via_spool(
-                            content=content,
-                            expected_sha256=row[1],
-                            media_type=row[3],
-                            asset_id=asset_id,
-                            object_version=int(row[5]),
-                            observed_at=observed,
-                        )
-                        outcome = InspectionOutcome(
-                            isolated.preview,
-                            isolated.scanner_ref,
-                            isolated.definitions_at,
-                            isolated.observed_media_type,
-                            isolated.result_sha256,
-                            isolated.decoder_ref,
-                            isolated.measurements,
-                        )
-                    else:
-                        if scanner is None:
-                            from api.services.content_workspace_scanner import scan_content
-
-                            scanner = scan_content
-                        if health_reader is None:
-                            from api.services.content_workspace_scanner import clamav_health
-
-                            health_reader = clamav_health
-                        outcome = inspector(
-                            content=content,
-                            expected_sha256=row[1],
-                            media_type=row[3],
-                            scanner=scanner,
-                            health=health_reader(),
-                            observed_at=observed,
-                            maximum_signature_age_hours=maximum_signature_age_hours,
-                        )
-                except (MediaRuntimeError, MediaInspectorClientError) as exc:
+                current = cur.fetchone()
+                if job_id is not None and not _owns_inspection_claim(
+                    cur, site_id=site_id, asset_id=asset_id, job_id=job_id,
+                    attempt=attempt, lease_token=lease_token, row=row,
+                ):
+                    return 'stale_attempt'
+                if current != row:
+                    # Output keys are exact immutable asset-version keys. Never unlink
+                    # here: another valid attempt may have referenced the same output.
+                    # Bounded attempts reuse that key; stale bytes remain private and
+                    # are reported for reference-aware retention, not blindly deleted.
+                    if job_id is not None:
+                        cur.execute("""UPDATE sitecontent_mediajob SET status='cancelled',
+                            error_code='media_scan_superseded',lease_expires_at=NULL,completed_at=NOW(),
+                            updated_at=NOW() WHERE id=%s AND site_id=%s""",(str(job_id),site_id))
+                    append_media_audit(cur,site_id=site_id,event_type='media.inspection.superseded',
+                        actor_ref='system:media-worker',subject_ref=f'asset:{asset_id}',
+                        detail={'code':'media_scan_superseded','status':'cancelled','sha256':row[1]})
+                    conn.commit()
+                    return 'stale_snapshot'
+                if inspection_error is not None:
+                    failure = inspection_error
                     code = (
-                        str(exc)
-                        if SAFE_CODE.fullmatch(str(exc))
+                        str(failure)
+                        if SAFE_CODE.fullmatch(str(failure))
                         else 'media_dependency_unavailable'
                     )
                     rejected = code == 'media_inspection_rejected'
@@ -292,7 +385,7 @@ def process_governed_media_asset(
                     )
                     job = cur.fetchone()
                     if not job:
-                        raise MediaRuntimeError('media_job_state_invalid') from exc
+                        raise MediaRuntimeError('media_job_state_invalid') from failure
                     if job[0] == 'retryable':
                         retry_delay = min(300, 15 * (2 ** (int(job[1]) - 1)))
                         cur.execute(
@@ -308,7 +401,7 @@ def process_governed_media_asset(
                             ),
                         )
                         if cur.rowcount != 1:
-                            raise MediaRuntimeError('media_job_state_invalid') from exc
+                            raise MediaRuntimeError('media_job_state_invalid') from failure
                     next_state = 'rejected' if rejected else (
                         'failed' if job[0] == 'failed' else 'quarantined'
                     )
@@ -334,14 +427,6 @@ def process_governed_media_asset(
                     )
                     conn.commit()
                     return next_state
-                stored = artifact_store.put(
-                    namespace='variants',
-                    site_id=site_id,
-                    object_id=f'{asset_id}-v{row[5]}-safe',
-                    content=outcome.preview.content,
-                )
-                if stored.sha256 != outcome.preview.sha256:
-                    raise MediaRuntimeError('media_derivative_integrity_failed')
                 cur.execute(
                     """INSERT INTO sitecontent_mediaobjectversion
                        (id,site_id,asset_id,version,storage_key,sha256,byte_size,detected_type,
@@ -618,6 +703,7 @@ def apply_due_media_governance(*, limit: int = 100) -> dict[str, int]:
         with db_conn(tenant_id=site) as conn:
             try:
                 with conn.cursor() as cur:
+                    policy_repo.begin_effect(cur)
                     expired = []
                     if hold_ids:
                         cur.execute(

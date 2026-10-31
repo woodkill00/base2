@@ -19,6 +19,8 @@ import GlassButton from '../components/glass/GlassButton';
 import GlassCard from '../components/glass/GlassCard';
 import GlassInput from '../components/glass/GlassInput';
 import Navigation from '../components/Navigation';
+import SettingsDraftGuard from '../components/SettingsDraftGuard';
+import WorkspacePolicyCard, { workspacePolicyCopy } from '../components/WorkspacePolicyCard';
 import { layoutPreviewEnabled, primaryNavigation } from '../config/layoutPolicy';
 import AccountCenter from './AccountCenter';
 import { useAuth } from '../contexts/AuthContext';
@@ -27,7 +29,8 @@ import { siteManifest } from '../config/siteRuntime';
 import {
   parseSettingsDiscovery,
   readPreferences,
-  readNotifications,
+  readNotificationSet,
+  readWorkspacePolicy,
 } from '../services/settingsDiscovery';
 import apiClient from '../lib/apiClient';
 import { authSession } from '../lib/authSession';
@@ -114,7 +117,7 @@ const KNOWN_CATEGORIES = [
 const DEFAULT_NOTIFICATIONS = [
   { event_family: 'security', channel: 'email', delivery: 'immediate', mandatory: true },
   { event_family: 'transactional', channel: 'email', delivery: 'immediate', mandatory: true },
-  { event_family: 'product', channel: 'email', delivery: 'digest', mandatory: false },
+  { event_family: 'product', channel: 'email', delivery: 'disabled', mandatory: false },
   { event_family: 'marketing', channel: 'email', delivery: 'disabled', mandatory: false },
 ];
 
@@ -266,6 +269,8 @@ const DETAIL_COPY = {
     comfortable: 'Comfortable',
     compact: 'Compact',
     deliveryControls: 'Delivery controls',
+    deliveryAdapter:
+      'Product email controls workspace review notices in a local test adapter only: a durable test receipt, not live email delivery. Other channels remain stored preferences; no live provider is enabled.',
     deliveryHelp:
       'Required security and transactional email cannot be disabled. Optional messages remain under your control.',
     requiredMessage: 'Required account message',
@@ -275,6 +280,11 @@ const DETAIL_COPY = {
     off: 'Off',
     saveNotifications: 'Save notifications',
     notificationSaved: 'Notification preferences saved.',
+    cancel: 'Cancel',
+    reloadNotifications: 'Reload notifications',
+    discardNotifications: 'Discard draft and reload notifications',
+    uncertainNotification:
+      'The save could not be confirmed. Your draft is preserved. Reload notifications before trying again; the server may have completed the change.',
     notificationDeliveryLabel: (eventFamily, channel) => `${eventFamily} ${channel} delivery`,
     notificationTerms: {
       security: 'Security',
@@ -376,6 +386,8 @@ const DETAIL_COPY = {
     comfortable: 'Komfortabel',
     compact: 'Kompakt',
     deliveryControls: 'Zustellung',
+    deliveryAdapter:
+      'Produkt-E-Mail steuert Prüfhinweise nur in einem lokalen Testadapter: ein dauerhafter Testbeleg, keine Live-E-Mail. Andere Kanäle bleiben gespeicherte Einstellungen; kein Live-Anbieter ist aktiviert.',
     deliveryHelp:
       'Erforderliche Sicherheits- und Transaktions-E-Mails können nicht deaktiviert werden. Optionale Nachrichten bleiben unter Ihrer Kontrolle.',
     requiredMessage: 'Erforderliche Kontonachricht',
@@ -385,6 +397,11 @@ const DETAIL_COPY = {
     off: 'Aus',
     saveNotifications: 'Benachrichtigungen speichern',
     notificationSaved: 'Benachrichtigungseinstellungen gespeichert.',
+    cancel: 'Abbrechen',
+    reloadNotifications: 'Benachrichtigungen neu laden',
+    discardNotifications: 'Entwurf verwerfen und Benachrichtigungen neu laden',
+    uncertainNotification:
+      'Das Speichern konnte nicht bestätigt werden. Ihr Entwurf bleibt erhalten. Laden Sie die Benachrichtigungen vor einem erneuten Versuch neu; die Änderung wurde möglicherweise bereits gespeichert.',
     notificationDeliveryLabel: (eventFamily, channel) =>
       `Zustellung für ${eventFamily} über ${channel}`,
     notificationTerms: {
@@ -486,6 +503,8 @@ const DETAIL_COPY = {
     comfortable: 'مريح',
     compact: 'مضغوط',
     deliveryControls: 'خيارات التسليم',
+    deliveryAdapter:
+      'يتحكم بريد المنتج في إشعارات المراجعة عبر محول اختبار محلي فقط: إيصال اختبار محفوظ وليس بريدًا فعليًا. تبقى القنوات الأخرى تفضيلات محفوظة؛ لا يوجد مزود إرسال فعلي مفعّل.',
     deliveryHelp:
       'لا يمكن تعطيل رسائل الأمان والمعاملات المطلوبة. تظل الرسائل الاختيارية تحت تحكمك.',
     requiredMessage: 'رسالة حساب مطلوبة',
@@ -495,6 +514,11 @@ const DETAIL_COPY = {
     off: 'إيقاف',
     saveNotifications: 'حفظ الإشعارات',
     notificationSaved: 'تم حفظ تفضيلات الإشعارات.',
+    cancel: 'إلغاء',
+    reloadNotifications: 'إعادة تحميل الإشعارات',
+    discardNotifications: 'تجاهل المسودة وإعادة تحميل الإشعارات',
+    uncertainNotification:
+      'تعذر تأكيد الحفظ. تم الاحتفاظ بمسودتك. أعد تحميل الإشعارات قبل المحاولة مجددًا؛ ربما أكمل الخادم التغيير.',
     notificationDeliveryLabel: (eventFamily, channel) => `تسليم ${eventFamily} عبر ${channel}`,
     notificationTerms: {
       security: 'الأمان',
@@ -615,8 +639,16 @@ const SettingsContent = () => {
     avatar_url: user?.avatar_url || '',
     bio: user?.bio || '',
   });
+  const [savedProfile, setSavedProfile] = useState(profile);
   const [operations, setOperations] = useState([]);
   const [notifications, setNotifications] = useState(DEFAULT_NOTIFICATIONS);
+  const [savedNotifications, setSavedNotifications] = useState(DEFAULT_NOTIFICATIONS);
+  const [notificationVersion, setNotificationVersion] = useState(null);
+  const [workspacePolicy, setWorkspacePolicy] = useState(null);
+  const [policyDraft, setPolicyDraft] = useState(null);
+  const [policyAvailable, setPolicyAvailable] = useState(null);
+  const [policyConflict, setPolicyConflict] = useState(false);
+  const [policyConfirmation, setPolicyConfirmation] = useState('');
   const [notificationUncertain, setNotificationUncertain] = useState(false);
   const [securityEvents, setSecurityEvents] = useState([]);
   const [resourceAvailability, setResourceAvailability] = useState({
@@ -669,8 +701,16 @@ const SettingsContent = () => {
       settingsAPI.privacyOperations(),
       settingsAPI.notifications(),
       settingsAPI.securityEvents(),
+      settingsAPI.workspacePolicy(),
     ]).then(
-      ([capabilityResult, preferenceResult, privacyResult, notificationResult, securityResult]) => {
+      ([
+        capabilityResult,
+        preferenceResult,
+        privacyResult,
+        notificationResult,
+        securityResult,
+        policyResult,
+      ]) => {
         if (!current) return;
         let capabilitiesAvailable = false;
         let preferencesAvailable = false;
@@ -708,10 +748,24 @@ const SettingsContent = () => {
           setOperations(privacyResult.value?.operations || []);
         }
         try {
-          setNotifications(readNotifications(notificationResult.value, DEFAULT_NOTIFICATIONS));
+          const next = readNotificationSet(notificationResult.value, DEFAULT_NOTIFICATIONS);
+          setNotifications(next.preferences);
+          setSavedNotifications(next.preferences);
+          setNotificationVersion(next.version);
           notificationsAvailable = notificationResult.status === 'fulfilled';
         } catch {
           // A malformed or unavailable read must never become editable defaults.
+        }
+        try {
+          const next = readWorkspacePolicy(policyResult.value, siteManifest.siteId);
+          setWorkspacePolicy(next);
+          setPolicyDraft({
+            require_review: next.require_review,
+            public_access: next.public_access,
+          });
+          setPolicyAvailable(policyResult.status === 'fulfilled');
+        } catch {
+          setPolicyAvailable(false);
         }
         if (securityResult.status === 'fulfilled')
           setSecurityEvents(securityResult.value?.events || []);
@@ -754,19 +808,40 @@ const SettingsContent = () => {
   }, [localizedCategories, query]);
 
   const hasPreferenceDraft = JSON.stringify(preferences) !== JSON.stringify(savedPreferences);
+  const hasNotificationDraft = JSON.stringify(notifications) !== JSON.stringify(savedNotifications);
+  const hasPolicyDraft = Boolean(
+    workspacePolicy &&
+    policyDraft &&
+    (workspacePolicy.require_review !== policyDraft.require_review ||
+      workspacePolicy.public_access !== policyDraft.public_access)
+  );
+  const hasSettingsDraft =
+    saving ||
+    hasPreferenceDraft ||
+    hasNotificationDraft ||
+    notificationUncertain ||
+    preferenceConflict ||
+    hasPolicyDraft ||
+    policyConflict ||
+    Boolean(policyConfirmation) ||
+    JSON.stringify(profile) !== JSON.stringify(savedProfile) ||
+    Boolean(
+      correction.display_name || correction.bio || deleteConfirmation || deactivateConfirmation
+    );
   useEffect(() => {
-    if (!hasPreferenceDraft) return undefined;
+    if (!hasSettingsDraft) return undefined;
     const warnBeforeUnload = (event) => {
       event.preventDefault();
       event.returnValue = '';
     };
     window.addEventListener('beforeunload', warnBeforeUnload);
     return () => window.removeEventListener('beforeunload', warnBeforeUnload);
-  }, [hasPreferenceDraft]);
+  }, [hasSettingsDraft]);
 
   const availableControls = useMemo(
     () =>
       controls.filter((item) => {
+        if (item.id.startsWith('workspace-policy.')) return policyAvailable === true;
         if (item.category === 'notifications')
           return (
             resourceAvailability.notifications === true &&
@@ -778,7 +853,13 @@ const SettingsContent = () => {
           return resourceAvailability.preferences === true;
         return true;
       }),
-    [controls, notifications, resourceAvailability.notifications, resourceAvailability.preferences]
+    [
+      controls,
+      notifications,
+      resourceAvailability.notifications,
+      resourceAvailability.preferences,
+      policyAvailable,
+    ]
   );
   const unavailableDeepLink =
     Boolean(location.hash) &&
@@ -863,9 +944,11 @@ const SettingsContent = () => {
   const reloadNotifications = async () => {
     if (!beginAction()) return;
     try {
-      const next = readNotifications(await settingsAPI.notifications(), DEFAULT_NOTIFICATIONS);
+      const next = readNotificationSet(await settingsAPI.notifications(), DEFAULT_NOTIFICATIONS);
       if (!mounted.current) return;
-      setNotifications(next);
+      setNotifications(next.preferences);
+      setSavedNotifications(next.preferences);
+      setNotificationVersion(next.version);
       setNotificationUncertain(false);
       setResourceAvailability((prior) => ({ ...prior, notifications: true }));
     } catch {
@@ -875,6 +958,99 @@ const SettingsContent = () => {
     }
   };
 
+  const reloadWorkspacePolicy = async () => {
+    if (!beginAction()) return;
+    try {
+      const next = readWorkspacePolicy(await settingsAPI.workspacePolicy(), siteManifest.siteId);
+      if (!mounted.current) return;
+      setWorkspacePolicy(next);
+      setPolicyDraft({ require_review: next.require_review, public_access: next.public_access });
+      setPolicyAvailable(true);
+      setPolicyConflict(false);
+      setPolicyConfirmation('');
+    } catch {
+      if (mounted.current)
+        setError((workspacePolicyCopy[locale] || workspacePolicyCopy.en).unavailable);
+    } finally {
+      endAction();
+    }
+  };
+
+  const saveWorkspacePolicy = async (field) => {
+    if (
+      !['require_review', 'public_access'].includes(field) ||
+      !policyAvailable ||
+      !workspacePolicy?.permissions.write ||
+      workspacePolicy.restrictions.length ||
+      policyConflict ||
+      !beginAction()
+    )
+      return;
+    const base = workspacePolicy;
+    const other = field === 'require_review' ? 'public_access' : 'require_review';
+    try {
+      // Save this category only. A dirty draft in the other category is not consent
+      // to commit it; its saved value belongs in this atomic compare-and-swap.
+      const next = readWorkspacePolicy(
+        await settingsAPI.saveWorkspacePolicy({
+          expected_version: base.version,
+          require_review: base.require_review,
+          public_access: base.public_access,
+          [field]: policyDraft[field],
+        }),
+        siteManifest.siteId
+      );
+      if (!mounted.current) return;
+      setWorkspacePolicy(next);
+      setPolicyDraft((current) => ({
+        require_review: next.require_review,
+        public_access: next.public_access,
+        [other]: current[other] !== base[other] ? current[other] : next[other],
+      }));
+      setPolicyConfirmation('');
+      setStatus((workspacePolicyCopy[locale] || workspacePolicyCopy.en).saved);
+    } catch (reason) {
+      if (!mounted.current) return;
+      if (reason?.status === 409) {
+        setPolicyConflict(true);
+        setError(detail.settingsConflict);
+      } else if (!reason?.status || reason.status >= 500) {
+        setPolicyConflict(true);
+        setError((workspacePolicyCopy[locale] || workspacePolicyCopy.en).uncertain);
+      } else setError(detail.actionFailed);
+    } finally {
+      endAction();
+    }
+  };
+
+  const renderWorkspacePolicy = (field) =>
+    controls.some((item) => item.id === `workspace-policy.${field}`) ? (
+      <WorkspacePolicyCard
+        field={field}
+        policy={workspacePolicy}
+        draft={policyDraft}
+        unavailable={policyAvailable === false}
+        busy={saving}
+        conflict={policyConflict}
+        confirmation={policyConfirmation}
+        locale={locale}
+        onChange={(key, value) => {
+          setPolicyDraft((current) => ({ ...current, [key]: value }));
+          setPolicyConfirmation('');
+        }}
+        onSave={setPolicyConfirmation}
+        onConfirm={saveWorkspacePolicy}
+        onKeep={() => setPolicyConfirmation('')}
+        onCancel={(key) => {
+          setPolicyDraft((current) => ({ ...current, [key]: workspacePolicy[key] }));
+          setPolicyConfirmation('');
+          setError('');
+          setStatus('');
+        }}
+        onReload={reloadWorkspacePolicy}
+      />
+    ) : null;
+
   const saveProfile = async (event) => {
     event.preventDefault();
     if (!beginAction()) return;
@@ -882,6 +1058,7 @@ const SettingsContent = () => {
       const response = await apiClient.patch('/users/me', profile);
       if (!mounted.current) return;
       updateUser(response.data);
+      setSavedProfile(profile);
       setStatus(detail.profileSaved);
     } catch (_reason) {
       if (!mounted.current) return;
@@ -956,18 +1133,23 @@ const SettingsContent = () => {
           event_family,
           channel,
           delivery,
-        }))
+        })),
+        notificationVersion
       );
       if (!mounted.current) return;
-      setNotifications(readNotifications(result, DEFAULT_NOTIFICATIONS));
+      const next = readNotificationSet(result, DEFAULT_NOTIFICATIONS);
+      setNotifications(next.preferences);
+      setSavedNotifications(next.preferences);
+      setNotificationVersion(next.version);
       setStatus(detail.notificationSaved);
     } catch (reason) {
       if (!mounted.current) return;
-      if (!reason?.status || reason.status >= 500) {
+      if (reason?.status === 409 || reason?.code === 'settings_version_conflict') {
         setNotificationUncertain(true);
-        setError(
-          'The save could not be confirmed. Reload notifications before trying again; the server may have completed the change.'
-        );
+        setError(detail.settingsConflict);
+      } else if (!reason?.status || reason.status >= 500) {
+        setNotificationUncertain(true);
+        setError(detail.uncertainNotification);
       } else setError(detail.actionFailed);
     } finally {
       endAction();
@@ -1096,6 +1278,17 @@ const SettingsContent = () => {
         <GlassButton type="submit" disabled={saving}>
           {saving ? detail.saving : detail.saveProfile}
         </GlassButton>
+        <GlassButton
+          variant="secondary"
+          disabled={saving || JSON.stringify(profile) === JSON.stringify(savedProfile)}
+          onClick={() => {
+            setProfile(savedProfile);
+            setError('');
+            setStatus('');
+          }}
+        >
+          {detail.cancel}
+        </GlassButton>
       </form>
     </GlassCard>
   );
@@ -1214,6 +1407,19 @@ const SettingsContent = () => {
               <GlassButton type="submit" disabled={saving || preferenceConflict}>
                 {saving ? copy.saving : copy.savePreferences}
               </GlassButton>
+              {!preferenceConflict && (
+                <GlassButton
+                  variant="secondary"
+                  disabled={saving || !hasPreferenceDraft}
+                  onClick={() => {
+                    setPreferences(savedPreferences);
+                    setError('');
+                    setStatus('');
+                  }}
+                >
+                  {detail.cancel}
+                </GlassButton>
+              )}
               {(preferenceConflict || hasPreferenceDraft) && (
                 <div className="mt-4 space-y-2">
                   <p className="text-sm">
@@ -1239,7 +1445,7 @@ const SettingsContent = () => {
             {detail.notificationsUnavailable}
           </p>
           <GlassButton disabled={saving} onClick={reloadNotifications}>
-            Reload notifications
+            {detail.reloadNotifications}
           </GlassButton>
         </div>
       </GlassCard>
@@ -1249,10 +1455,7 @@ const SettingsContent = () => {
           <div>
             <h2 className="font-semibold">{detail.deliveryControls}</h2>
             <p className="mt-2 text-sm opacity-75">{detail.deliveryHelp}</p>
-            <p className="mt-2 text-sm opacity-75">
-              These choices are stored; delivery-engine integration is not yet available. Saving
-              does not change live message delivery.
-            </p>
+            <p className="mt-2 text-sm opacity-75">{detail.deliveryAdapter}</p>
           </div>
           <div className="divide-y divide-white/10 rounded-xl border border-white/15">
             {notifications.map((item, index) => (
@@ -1298,9 +1501,22 @@ const SettingsContent = () => {
           <GlassButton type="submit" disabled={saving || notificationUncertain}>
             {saving ? detail.saving : detail.saveNotifications}
           </GlassButton>
+          {!notificationUncertain && (
+            <GlassButton
+              variant="secondary"
+              disabled={saving || !hasNotificationDraft}
+              onClick={() => {
+                setNotifications(savedNotifications);
+                setError('');
+                setStatus('');
+              }}
+            >
+              {detail.cancel}
+            </GlassButton>
+          )}
           {notificationUncertain && (
             <GlassButton variant="secondary" disabled={saving} onClick={reloadNotifications}>
-              Discard draft and reload notifications
+              {detail.discardNotifications}
             </GlassButton>
           )}
         </form>
@@ -1418,6 +1634,9 @@ const SettingsContent = () => {
 
   const renderOrganization = () => (
     <div className="grid gap-4 sm:grid-cols-2">
+      {controls.some((item) => item.id === 'workspace-policy.require_review') && (
+        <div className="sm:col-span-2">{renderWorkspacePolicy('require_review')}</div>
+      )}
       <GlassCard>
         <div className="p-6">
           <h2 className="font-semibold">{detail.membersRoles}</h2>
@@ -1484,6 +1703,7 @@ const SettingsContent = () => {
 
   const renderModules = () => (
     <div className="space-y-4">
+      {renderWorkspacePolicy('public_access')}
       <GlassCard>
         <p className="p-6 text-sm">
           Site scope · Deployment-managed. Enabled modules are foundations, not a promise that every
@@ -1552,6 +1772,7 @@ const SettingsContent = () => {
         lang={locale}
         dir={locale === 'ar' ? 'rtl' : 'ltr'}
       >
+        <SettingsDraftGuard dirty={Boolean(user?.id) && hasSettingsDraft} locale={locale} />
         {!layoutPreviewEnabled && <Navigation />}
         <nav aria-label={copy.breadcrumb} className="flex items-center gap-2 text-sm opacity-75">
           <Link className="min-h-11 py-3 hover:underline" to="/settings">
@@ -1660,6 +1881,7 @@ const SettingsContent = () => {
           </aside>
           <section
             id="settings-detail"
+            tabIndex={-1}
             aria-label={`${current?.label || copy.settings} ${copy.details}`}
             aria-busy={loading}
           >

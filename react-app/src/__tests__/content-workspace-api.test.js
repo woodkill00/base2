@@ -256,3 +256,19 @@ describe('content workspace API client', () => {
     });
   });
 });
+
+test('review approval and explicit snapshot adoption use bounded versioned requests', async () => {
+  apiClient.post.mockResolvedValue({ data: { record_id: 'record/id', version: 4 } });
+  await contentWorkspaceAPI.approveReview('article/type', 'record/id', 3);
+  expect(apiClient.post).toHaveBeenCalledWith(
+    '/content/v1/types/article%2Ftype/records/record%2Fid/review-approval',
+    { expected_version: 3 },
+    { timeout: 10000 }
+  );
+  await contentWorkspaceAPI.adoptReviewSubject('article/type', 'record/id', 3);
+  expect(apiClient.post).toHaveBeenCalledWith(
+    '/content/v1/types/article%2Ftype/records/record%2Fid/review-subject',
+    { expected_version: 3, adopt_snapshot: true },
+    { timeout: 10000 }
+  );
+});

@@ -50,6 +50,26 @@ class Connection:
 
 
 def bind(monkeypatch, connection):
+    # Existing permission-specific regressions isolate the explicit compatibility
+    # policy adapter. Restrictive behavior uses separate Feature124/real-PG tests.
+    monkeypatch.setattr(
+        repository.policy_repo,
+        'member',
+        lambda *args, **kwargs: {'role': 'admin', 'organization_id': 'scope'},
+    )
+    monkeypatch.setattr(
+        repository.policy_repo, 'authorize_read', lambda *args, **kwargs: {'role': 'admin'}
+    )
+    monkeypatch.setattr(
+        repository.policy_repo,
+        'read_policy',
+        lambda *args, **kwargs: {
+            'version': 1,
+            'require_review': False,
+            'public_access': 'public_allowed',
+        },
+    )
+    monkeypatch.setattr(repository.policy_repo, 'prepare_transition', lambda *args, **kwargs: None)
     calls = []
 
     @contextmanager
@@ -111,7 +131,7 @@ def test_create_definition_is_one_transaction_and_never_accepts_site_from_payloa
     scopes = bind(monkeypatch, connection)
     result = repository.PostgresContentWorkspaceRepository().create_definition(
         site_id='site-a',
-        actor_ref='user:test',
+        actor_ref='user:00000000-0000-0000-0000-000000000001',
         payload={
             'type_key': 'article',
             'name': 'Article',
@@ -139,7 +159,7 @@ def test_definition_creation_fails_closed_when_an_unpublished_draft_exists(monke
     with pytest.raises(ValueError, match='content_version_conflict'):
         repository.PostgresContentWorkspaceRepository().create_definition(
             site_id='site-a',
-            actor_ref='user:test',
+            actor_ref='user:00000000-0000-0000-0000-000000000001',
             payload={
                 'type_key': 'article',
                 'name': 'Article',
@@ -166,7 +186,7 @@ def test_asset_content_completion_binds_grant_hash_owner_and_quarantine(monkeypa
     digest = hashlib.sha256(content).hexdigest()
     scope = {
         'site': 'site-a',
-        'owner': 'user:test',
+        'owner': 'user:00000000-0000-0000-0000-000000000001',
         'asset': str(asset_id),
         'sha256': digest,
         'bytes': len(content),
@@ -177,7 +197,9 @@ def test_asset_content_completion_binds_grant_hash_owner_and_quarantine(monkeypa
     )
     cursor = Cursor(
         rows=[
-            (asset_id, 'safe.png', 'image/png', len(content), digest, 'pending'),
+            (asset_id, 'safe.png', 'image/png', len(content), digest, 'pending', 1, 1),
+            (asset_id, 'safe.png', 'image/png', len(content), digest, 'pending', 1, 1),
+            (datetime.now(UTC).timestamp(),),
             (asset_id,),
         ]
     )
@@ -201,7 +223,7 @@ def test_asset_content_completion_binds_grant_hash_owner_and_quarantine(monkeypa
     result = repository.PostgresContentWorkspaceRepository().complete_asset_upload(
         site_id='site-a',
         asset_id=asset_id,
-        owner_ref='user:test',
+        owner_ref='user:00000000-0000-0000-0000-000000000001',
         upload_grant=grant,
         content=content,
         artifact_store=Store(),
@@ -212,7 +234,7 @@ def test_asset_content_completion_binds_grant_hash_owner_and_quarantine(monkeypa
         'sha256': digest,
         'replayed': False,
     }
-    assert scopes == ['site-a'] and connection.commits == 1
+    assert scopes == ['site-a', 'site-a'] and connection.commits == 1
     combined_sql = ' '.join(sql for sql, _ in cursor.calls)
     assert 'FOR UPDATE' in combined_sql
     assert "status='quarantined'" in combined_sql
@@ -225,7 +247,7 @@ def test_validated_asset_download_is_grant_tenant_requester_and_derivative_bound
     digest = 'b' * 64
     scope = {
         'site': 'site-a',
-        'requester': 'user:test',
+        'requester': 'user:00000000-0000-0000-0000-000000000001',
         'asset': str(asset_id),
         'sha256': digest,
         'mediaType': 'image/png',
@@ -247,7 +269,7 @@ def test_validated_asset_download_is_grant_tenant_requester_and_derivative_bound
     result = repository.PostgresContentWorkspaceRepository().read_asset_content(
         site_id='site-a',
         asset_id=asset_id,
-        requester_ref='user:test',
+        requester_ref='user:00000000-0000-0000-0000-000000000001',
         download_grant=grant,
         artifact_store=Store(),
     )
@@ -295,7 +317,9 @@ def test_asset_metadata_exposes_a_short_grant_only_for_validated_safe_variant(mo
     )
     bind(monkeypatch, Connection(validated))
     result = repository.PostgresContentWorkspaceRepository().get_asset(
-        site_id='site-a', asset_id=asset_id, requester_ref='user:test'
+        site_id='site-a',
+        asset_id=asset_id,
+        requester_ref='user:00000000-0000-0000-0000-000000000001',
     )
     assert result['expiresIn'] == 60 and result['downloadGrant']
 
@@ -318,7 +342,9 @@ def test_asset_metadata_exposes_a_short_grant_only_for_validated_safe_variant(mo
     )
     bind(monkeypatch, Connection(ready))
     ready_result = repository.PostgresContentWorkspaceRepository().get_asset(
-        site_id='site-a', asset_id=asset_id, requester_ref='user:test'
+        site_id='site-a',
+        asset_id=asset_id,
+        requester_ref='user:00000000-0000-0000-0000-000000000001',
     )
     assert ready_result['expiresIn'] == 60 and ready_result['downloadGrant']
 
@@ -341,7 +367,9 @@ def test_asset_metadata_exposes_a_short_grant_only_for_validated_safe_variant(mo
     )
     bind(monkeypatch, Connection(quarantined))
     result = repository.PostgresContentWorkspaceRepository().get_asset(
-        site_id='site-a', asset_id=asset_id, requester_ref='user:test'
+        site_id='site-a',
+        asset_id=asset_id,
+        requester_ref='user:00000000-0000-0000-0000-000000000001',
     )
     assert 'downloadGrant' not in result
 
@@ -353,7 +381,7 @@ def test_export_content_read_is_expiry_requester_grant_and_digest_bound(monkeypa
     scope = {
         'site': 'site-a',
         'type': 'article',
-        'requester': 'user:test',
+        'requester': 'user:00000000-0000-0000-0000-000000000001',
         'job': str(job_id),
         'sha256': digest,
         'format': 'json',
@@ -375,7 +403,7 @@ def test_export_content_read_is_expiry_requester_grant_and_digest_bound(monkeypa
         site_id='site-a',
         type_key='article',
         job_id=job_id,
-        requester_ref='user:test',
+        requester_ref='user:00000000-0000-0000-0000-000000000001',
         download_grant=grant,
         artifact_store=Store(),
     )
@@ -422,7 +450,7 @@ def test_import_review_can_skip_invalid_rows_only_under_explicit_partial_policy(
         site_id='site-a',
         type_key='article',
         job_id=job_id,
-        requester_ref='user:test',
+        requester_ref='user:00000000-0000-0000-0000-000000000001',
         decisions=[{'ordinal': 1, 'action': 'skip', 'match_id': None}],
     )
     assert result['status'] == 'validated'
@@ -462,7 +490,7 @@ def test_import_row_listing_is_requester_bound_bounded_and_stably_paginated(monk
         site_id='site-a',
         type_key='article',
         job_id=job_id,
-        requester_ref='user:test',
+        requester_ref='user:00000000-0000-0000-0000-000000000001',
         after_ordinal=0,
         limit=1,
     )
@@ -470,7 +498,7 @@ def test_import_row_listing_is_requester_bound_bounded_and_stably_paginated(monk
     assert result['items'][0]['candidateIds'] == [str(UUID(int=3104))]
     assert result['nextOrdinal'] == 1
     assert scopes == ['site-a']
-    assert cursor.calls[0][1][-1] == 'user:test'
+    assert cursor.calls[0][1][-1] == 'user:00000000-0000-0000-0000-000000000001'
     assert 'ORDER BY ordinal LIMIT %s' in cursor.calls[1][0]
     assert cursor.calls[1][1][-1] == 2
 
@@ -479,7 +507,7 @@ def test_import_row_listing_is_requester_bound_bounded_and_stably_paginated(monk
             site_id='site-a',
             type_key='article',
             job_id=job_id,
-            requester_ref='user:test',
+            requester_ref='user:00000000-0000-0000-0000-000000000001',
             after_ordinal=0,
             limit=201,
         )
@@ -493,7 +521,7 @@ def test_import_source_completion_validates_parses_encrypts_and_marks_ready(monk
     scope = {
         'site': 'site-a',
         'type': 'article',
-        'requester': 'user:test',
+        'requester': 'user:00000000-0000-0000-0000-000000000001',
         'job': str(job_id),
         'sha256': digest,
         'format': 'json',
@@ -521,7 +549,7 @@ def test_import_source_completion_validates_parses_encrypts_and_marks_ready(monk
         site_id='site-a',
         type_key='article',
         job_id=job_id,
-        requester_ref='user:test',
+        requester_ref='user:00000000-0000-0000-0000-000000000001',
         upload_grant=grant,
         content=content,
         artifact_store=Store(),
@@ -549,7 +577,7 @@ def test_concurrent_import_creation_converges_to_the_committed_replay(monkeypatc
             'operation': 'import',
             'site': 'site-a',
             'type': 'article',
-            'requester': 'user:test',
+            'requester': 'user:00000000-0000-0000-0000-000000000001',
             'payload': payload,
         }
     )
@@ -585,7 +613,7 @@ def test_concurrent_import_creation_converges_to_the_committed_replay(monkeypatc
     result = repository.PostgresContentWorkspaceRepository().create_import(
         site_id='site-a',
         type_key='article',
-        requester_ref='user:test',
+        requester_ref='user:00000000-0000-0000-0000-000000000001',
         idempotency_key='concurrent-import-104',
         payload=payload,
     )
@@ -604,7 +632,7 @@ def test_concurrent_export_creation_converges_to_the_committed_replay(monkeypatc
             'operation': 'export',
             'site': 'site-a',
             'type': 'article',
-            'requester': 'user:test',
+            'requester': 'user:00000000-0000-0000-0000-000000000001',
             'payload': payload,
         }
     )
@@ -642,7 +670,7 @@ def test_concurrent_export_creation_converges_to_the_committed_replay(monkeypatc
     result = repository.PostgresContentWorkspaceRepository().create_export(
         site_id='site-a',
         type_key='article',
-        requester_ref='user:test',
+        requester_ref='user:00000000-0000-0000-0000-000000000001',
         idempotency_key='concurrent-export-104',
         payload=payload,
     )
@@ -776,7 +804,7 @@ def test_saved_view_executes_the_exact_bounded_query(monkeypatch):
         site_id='site-a',
         type_key='article',
         view_id=UUID(int=104),
-        owner_ref='user:test',
+        owner_ref='user:00000000-0000-0000-0000-000000000001',
         caller_role='editor',
     )
     assert result == {'items': [], 'nextCursor': None}
@@ -812,7 +840,7 @@ def test_saved_view_execution_fails_closed_after_schema_change(monkeypatch):
             site_id='site-a',
             type_key='article',
             view_id=UUID(int=104),
-            owner_ref='user:test',
+            owner_ref='user:00000000-0000-0000-0000-000000000001',
             caller_role='editor',
         )
 

@@ -80,6 +80,8 @@ describe('US3 Settings', () => {
       if (path === '/settings/notifications')
         return Promise.resolve({
           data: {
+            schema_version: 1,
+            version: 1,
             preferences: [
               {
                 event_family: 'security',
@@ -147,6 +149,23 @@ describe('US3 Settings', () => {
     });
   });
 
+  test('profile Cancel restores its saved snapshot and clears the unload guard', async () => {
+    const user = userEvent.setup();
+    renderSettings('/settings/profile');
+    await waitSettingsReady();
+    await user.clear(screen.getByLabelText(/display name/i));
+    await user.type(screen.getByLabelText(/display name/i), 'Unsaved');
+    const dirty = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(dirty);
+    expect(dirty.defaultPrevented).toBe(true);
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByLabelText(/display name/i)).toHaveValue('Old Name');
+    const clean = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(clean);
+    expect(clean.defaultPrevented).toBe(false);
+    expect(apiClient.patch).not.toHaveBeenCalled();
+  });
+
   test('search filters categories and reports no matches accessibly', async () => {
     const user = userEvent.setup();
     renderSettings();
@@ -184,7 +203,7 @@ describe('US3 Settings', () => {
 
   test('keeps required notification delivery enabled and saves optional choices', async () => {
     const user = userEvent.setup();
-    apiClient.put.mockResolvedValue({ data: { preferences: [] } });
+    apiClient.put.mockResolvedValue({ data: { schema_version: 1, version: 2, preferences: [] } });
     renderSettings('/settings/notifications');
     await waitSettingsReady();
     const security = await screen.findByLabelText(/security email delivery/i);
@@ -198,9 +217,11 @@ describe('US3 Settings', () => {
       expect(apiClient.put).toHaveBeenCalledWith(
         '/settings/notifications',
         {
+          expected_version: 1,
           preferences: [
             { event_family: 'security', channel: 'email', delivery: 'immediate' },
             { event_family: 'marketing', channel: 'email', delivery: 'disabled' },
+            { event_family: 'product', channel: 'email', delivery: 'disabled' },
           ],
         },
         { timeout: 10000 }
@@ -216,7 +237,7 @@ describe('US3 Settings', () => {
       locale: 'de',
     });
     const user = userEvent.setup();
-    apiClient.put.mockResolvedValue({ data: { preferences: [] } });
+    apiClient.put.mockResolvedValue({ data: { schema_version: 1, version: 2, preferences: [] } });
     renderSettings('/settings/notifications');
     await waitFor(() =>
       expect(screen.getByRole('region', { name: /details/i })).toHaveAttribute('aria-busy', 'false')

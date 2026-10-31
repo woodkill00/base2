@@ -2,6 +2,8 @@
 
 Feature 121 extends the existing Obsidian/Volcano Settings Center. It does not
 replace its design or implement every engine suggested by the site-family roadmap.
+Feature 124 extends this foundation; see [Shared workspace settings and review](shared-workspace-policy.md)
+for the current policy, notification concurrency and draft-recovery behavior.
 
 ## Find a setting
 
@@ -36,8 +38,9 @@ Preference forms load known values before allowing a write. **Save preferences**
 freezes the form while saving. A failed save retains the draft. Another tab's write
 causes a conflict, not a silent overwrite; **Discard draft and reload** explicitly
 loads the latest version before editing again. The page warns before a full browser
-unload with an unsaved preference draft. Browsing settings categories preserves the
-draft, but leaving this page through other app navigation is not a durable draft store.
+unload with an ordinary unsaved settings draft. Browsing settings categories preserves
+drafts; Feature 124 also guards internal departures with Stay/Discard confirmation.
+This is not a durable draft store, and leaving does not cancel requests already sent.
 
 If discovery fails, administrative links stay hidden; use **Retry settings discovery**.
 If preferences fail to load, use **Reload preferences**. Network-unavailable state is
@@ -71,10 +74,11 @@ Only `event_family`, `channel`, and `delivery` are submitted; server timestamps 
 mandatory classification are not accepted mutation fields. Required families cannot
 be disabled through the existing validated contract.
 
-**Delivery-engine integration is not yet available:** saving these preferences does
-not change live message delivery. Notification-set optimistic concurrency is also
-not implemented; concurrent notification edits remain last-write-wins. Those are
-explicit next-phase tasks, not completed features.
+Feature 124 adds whole-set optimistic concurrency and requires an expected version
+for writes. It also connects review/workflow requests to a durable local test adapter
+controlled by product/email preference. No live email/provider is activated, and other
+notification families/channels remain explicitly saved-only. See the current shared
+settings guide for conflicts, mandatory choices, digests and suppression semantics.
 
 ## API compatibility
 
@@ -87,7 +91,8 @@ the source of truth for enablement and existing APIs enforce all mutations.
 
 Preference storage/model shape is unchanged. First insertion handles a concurrent
 unique-key winner as a version conflict, and successful mutations return the exact
-snapshot from that transaction. No database migration or provider operation is added.
+snapshot from that transaction. Feature 121 added no provider operation; Feature 124 adds explicit schema migrations
+and a local test consumer, not live provider activation.
 
 ## Verification limits
 

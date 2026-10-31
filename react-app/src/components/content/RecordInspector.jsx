@@ -1,17 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import GlassButton from '../glass/GlassButton';
 import { contentWorkspaceAPI } from '../../services/contentWorkspace';
+import {
+  readWorkspaceRecord,
+  validWorkspaceReview,
+  validWorkspaceActions,
+} from '../../services/workspaceRecord';
+import { siteManifest } from '../../config/siteRuntime';
 import RecordStructuredFields from './RecordStructuredFields';
-
-const STATE_ACTIONS = {
-  draft: ['submit_review', 'publish', 'delete'],
-  in_review: ['return_draft', 'publish', 'delete'],
-  scheduled: ['return_draft', 'publish', 'archive'],
-  published: ['archive'],
-  archived: ['restore', 'delete'],
-};
+import { workspaceReviewCopy } from './workspaceReviewCopy';
 
 const LABELS = {
+  approve_review: 'Approve review',
+  adopt_review_subject: 'Adopt current snapshot',
   submit_review: 'Submit for review',
   return_draft: 'Return to draft',
   publish: 'Publish',
@@ -107,8 +109,54 @@ const FieldInput = ({ field, value, onChange }) => {
   );
 };
 
-export default function RecordInspector({ typeKey, schema, record, onChanged, onError }) {
+export default function RecordInspector({
+  typeKey,
+  schema,
+  record,
+  onChanged,
+  onError,
+  locale = 'en',
+}) {
+  const copy = workspaceReviewCopy[String(locale).split('-')[0]] || workspaceReviewCopy.en;
+  const labels = { ...LABELS, approve_review: copy.approve, adopt_review_subject: copy.adopt };
+  const review = validWorkspaceReview(record.review) ? record.review : null;
+  const [reviewRecovery, setReviewRecovery] = useState(false);
+  useEffect(() => {
+    setReviewRecovery(false);
+  }, [record.id, record.version, record.review]);
+  const noReviewer =
+    review?.requiresReview &&
+    (review.recoveryReason === 'no_independent_reviewer' || reviewRecovery);
+  const reviewLabel =
+    review && !review.requiresReview && review.status === 'pending'
+      ? copy.pendingOptional
+      : review && !review.requiresReview && review.status === 'authorship_unknown'
+        ? copy.unknownOptional
+        : review
+          ? copy[review.status]
+          : copy.unavailable;
   const [editing, setEditing] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const recordIdentity = `${typeKey}:${record.id}:${record.version}`;
+  const operation = useRef({ epoch: 0, busy: false, alive: false, identity: recordIdentity });
+  operation.current.identity = recordIdentity;
+  useEffect(() => {
+    const current = operation.current;
+    current.epoch += 1;
+    current.busy = false;
+    current.alive = true;
+    setBusy(false);
+    setBlocked(false);
+    return () => {
+      current.epoch += 1;
+      current.alive = false;
+    };
+  }, [typeKey, record.id, record.version]);
+  const actions =
+    review && validWorkspaceActions(record.allowedActions)
+      ? record.allowedActions.filter((action) => Object.hasOwn(LABELS, action))
+      : [];
+
   const [values, setValues] = useState(record.values || {});
   const [busy, setBusy] = useState(false);
   const [pendingAction, setPendingAction] = useState('');
@@ -135,20 +183,47 @@ export default function RecordInspector({ typeKey, schema, record, onChanged, on
     return () => globalThis.removeEventListener('beforeunload', protect);
   }, [dirty]);
 
-  const finishMutation = async (mutate) => {
+  const finishMutation = async (mutate, reload = false) => {
+    if (operation.current.busy || (blocked && !reload)) return;
+    const epoch = operation.current.epoch;
+    operation.current.busy = true;
     setBusy(true);
     onError('');
+    let refreshing = reload;
     try {
-      const updated = await mutate();
-      const versions = await contentWorkspaceAPI.versions(typeKey, record.id);
-      onChanged({ ...updated, history: Array.isArray(versions?.items) ? versions.items : [] });
+      if (mutate) await mutate();
+      refreshing = true;
+      if (epoch !== operation.current.epoch) return;
+      // Mutation responses are not authoritative detail envelopes. Always reload
+      // current review provenance/actions before enabling another transition.
+      const [updated, versions] = await Promise.all([
+        contentWorkspaceAPI.record(typeKey, record.id),
+        contentWorkspaceAPI.versions(typeKey, record.id),
+      ]);
+      if (epoch !== operation.current.epoch) return;
+      const detail = readWorkspaceRecord(updated, {
+        recordId: record.id,
+        typeKey,
+        siteId: siteManifest.siteId,
+        minimumVersion: record.version,
+      });
+      onChanged({ ...detail, history: Array.isArray(versions?.items) ? versions.items : [] });
       setPendingAction('');
       setPendingRestore(null);
       setEditing(false);
+      setBlocked(false);
     } catch (error) {
+      if (epoch !== operation.current.epoch) return;
+      const status = error?.response?.status ?? error?.status;
+      if (refreshing || !status || status === 409 || status >= 500) setBlocked(true);
+      const code = error?.response?.data?.detail || error?.response?.data?.error?.code;
+      if (code === 'content_review_no_independent_reviewer') setReviewRecovery(true);
       onError(error);
     } finally {
-      setBusy(false);
+      if (epoch === operation.current.epoch) {
+        operation.current.busy = false;
+        setBusy(false);
+      }
     }
   };
 
@@ -159,10 +234,16 @@ export default function RecordInspector({ typeKey, schema, record, onChanged, on
     );
   };
 
-  const confirmAction = () =>
-    finishMutation(() =>
-      contentWorkspaceAPI.transition(typeKey, record.id, pendingAction, record.version)
+  const confirmAction = () => {
+    if (!actions.includes(pendingAction)) return;
+    return finishMutation(() =>
+      pendingAction === 'approve_review'
+        ? contentWorkspaceAPI.approveReview(typeKey, record.id, record.version)
+        : pendingAction === 'adopt_review_subject'
+          ? contentWorkspaceAPI.adoptReviewSubject(typeKey, record.id, record.version)
+          : contentWorkspaceAPI.transition(typeKey, record.id, pendingAction, record.version)
     );
+  };
 
   const confirmRestore = () =>
     finishMutation(() =>
@@ -179,6 +260,14 @@ export default function RecordInspector({ typeKey, schema, record, onChanged, on
         <p className="text-sm opacity-65">/{record.slug}</p>
       </div>
 
+      {blocked && (
+        <div role="alert" className="space-y-3 rounded-xl border border-amber-300/30 p-4">
+          <p>{copy.uncertain}</p>
+          <GlassButton disabled={busy} onClick={() => finishMutation(null, true)}>
+            {copy.reload}
+          </GlassButton>
+        </div>
+      )}
       {editing ? (
         <form onSubmit={save} className="space-y-4" aria-label="Edit record">
           {(schema?.fields || []).map((field) => (
@@ -192,13 +281,13 @@ export default function RecordInspector({ typeKey, schema, record, onChanged, on
             />
           ))}
           <div className="flex flex-wrap gap-2">
-            <GlassButton type="submit" variant="primary" disabled={busy || !dirty}>
+            <GlassButton type="submit" variant="primary" disabled={busy || blocked || !dirty}>
               Save changes
             </GlassButton>
             <GlassButton
               type="button"
               variant="ghost"
-              disabled={busy}
+              disabled={busy || blocked}
               onClick={() => {
                 setValues(record.values || {});
                 setEditing(false);
@@ -227,19 +316,27 @@ export default function RecordInspector({ typeKey, schema, record, onChanged, on
               </div>
             ))}
           </dl>
-          <GlassButton type="button" onClick={() => setEditing(true)}>
+          <GlassButton type="button" disabled={busy || blocked} onClick={() => setEditing(true)}>
             Edit fields
           </GlassButton>
         </>
       )}
 
-      <RecordStructuredFields
-        typeKey={typeKey}
-        schema={schema}
-        record={record}
-        onChanged={onChanged}
-        onError={onError}
-      />
+      <fieldset disabled={busy || blocked || editing}>
+        <RecordStructuredFields
+          typeKey={typeKey}
+          schema={schema}
+          record={record}
+          onChanged={(updated) => {
+            if (operation.current.alive && operation.current.identity === recordIdentity)
+              onChanged(updated);
+          }}
+          onError={(error) => {
+            if (operation.current.alive && operation.current.identity === recordIdentity)
+              onError(error);
+          }}
+        />
+      </fieldset>
 
       <section
         aria-labelledby="record-workflow-title"
@@ -248,16 +345,40 @@ export default function RecordInspector({ typeKey, schema, record, onChanged, on
         <h4 id="record-workflow-title" className="font-semibold">
           Workflow
         </h4>
+        {review ? (
+          <div className="mt-2 space-y-2 text-sm">
+            <p>
+              {copy.review}: {reviewLabel} · {copy.policy}: {review.policyVersion}
+            </p>
+            <p>{review.requiresReview ? copy.required : copy.optional}</p>
+            <p>{copy.adapter}</p>
+            {noReviewer && (
+              <div role="status" className="space-y-2 rounded-xl border border-amber-300/30 p-3">
+                <p>{copy.noReviewer}</p>
+                <p>{review.status === 'pending' ? copy.recoverPending : copy.recoverDraft}</p>
+                {dirty || busy ? (
+                  <p>{copy.finishEditing}</p>
+                ) : (
+                  <Link className="inline-flex min-h-11 items-center underline" to="/admin">
+                    {copy.administration}
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="mt-2 text-sm">{copy.unavailable}</p>
+        )}
         <div className="mt-3 flex flex-wrap gap-2">
-          {(STATE_ACTIONS[record.state] || []).map((action) => (
+          {actions.map((action) => (
             <GlassButton
               key={action}
               type="button"
               variant={action === 'delete' ? 'ghost' : 'primary'}
-              disabled={busy || dirty}
+              disabled={busy || blocked || dirty}
               onClick={() => setPendingAction(action)}
             >
-              {LABELS[action]}
+              {labels[action]}
             </GlassButton>
           ))}
         </div>
@@ -268,18 +389,25 @@ export default function RecordInspector({ typeKey, schema, record, onChanged, on
             className="mt-4 rounded-xl border border-amber-300/30 bg-amber-950/20 p-4"
           >
             <p id="record-action-confirm">
-              Confirm {LABELS[pendingAction].toLowerCase()} for version {record.version}. This
+              Confirm {labels[pendingAction].toLowerCase()} for version {record.version}. This
               creates an audited new version.
+              {pendingAction === 'adopt_review_subject' && copy.adoption}
+              {pendingAction === 'approve_review' && copy.approval}
             </p>
             <div className="mt-3 flex gap-2">
-              <GlassButton type="button" variant="primary" onClick={confirmAction} disabled={busy}>
+              <GlassButton
+                type="button"
+                variant="primary"
+                onClick={confirmAction}
+                disabled={busy || blocked}
+              >
                 Confirm action
               </GlassButton>
               <GlassButton
                 type="button"
                 variant="ghost"
                 onClick={() => setPendingAction('')}
-                disabled={busy}
+                disabled={busy || blocked}
               >
                 Keep unchanged
               </GlassButton>
@@ -309,7 +437,7 @@ export default function RecordInspector({ typeKey, schema, record, onChanged, on
                   <GlassButton
                     type="button"
                     variant="ghost"
-                    disabled={busy || dirty}
+                    disabled={busy || blocked || dirty}
                     onClick={() => setPendingRestore(version)}
                   >
                     Restore
@@ -332,14 +460,19 @@ export default function RecordInspector({ typeKey, schema, record, onChanged, on
               retained.
             </p>
             <div className="mt-3 flex gap-2">
-              <GlassButton type="button" variant="primary" onClick={confirmRestore} disabled={busy}>
+              <GlassButton
+                type="button"
+                variant="primary"
+                onClick={confirmRestore}
+                disabled={busy || blocked}
+              >
                 Confirm restore
               </GlassButton>
               <GlassButton
                 type="button"
                 variant="ghost"
                 onClick={() => setPendingRestore(null)}
-                disabled={busy}
+                disabled={busy || blocked}
               >
                 Keep current
               </GlassButton>

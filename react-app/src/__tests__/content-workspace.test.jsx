@@ -4,6 +4,7 @@ import { axe, toHaveNoViolations } from 'jest-axe';
 import { MemoryRouter } from 'react-router-dom';
 import ContentWorkspace from '../pages/ContentWorkspace';
 import { contentWorkspaceAPI } from '../services/contentWorkspace';
+import { siteManifest } from '../config/siteRuntime';
 
 expect.extend(toHaveNoViolations);
 
@@ -20,6 +21,9 @@ vi.mock('../services/contentWorkspace', () => ({
     records: vi.fn(),
     record: vi.fn(),
     createRecord: vi.fn(),
+    approveReview: vi.fn(),
+    adoptReviewSubject: vi.fn(),
+    updateRecord: vi.fn(),
     versions: vi.fn(),
     views: vi.fn(),
     createView: vi.fn(),
@@ -72,6 +76,19 @@ describe('content workspace', () => {
       ],
     });
     contentWorkspaceAPI.record.mockResolvedValue({
+      siteId: siteManifest.siteId,
+      typeKey: 'article',
+      schemaVersion: 1,
+      updatedAt: '2026-10-31T00:00:00Z',
+      allowedActions: [],
+      review: {
+        status: 'not_requested',
+        requiresReview: false,
+        policyVersion: 1,
+        semanticRevision: null,
+        deliveryAdapter: 'local_test',
+        recoveryReason: null,
+      },
       id: 'record-1',
       title: 'Hello',
       slug: 'hello',
@@ -197,6 +214,19 @@ describe('content workspace', () => {
     });
     await act(async () => {
       resolveDetail({
+        siteId: siteManifest.siteId,
+        typeKey: 'article',
+        schemaVersion: 1,
+        updatedAt: '2026-10-31T00:00:00Z',
+        allowedActions: [],
+        review: {
+          status: 'not_requested',
+          requiresReview: false,
+          policyVersion: 1,
+          semanticRevision: null,
+          deliveryAdapter: 'local_test',
+          recoveryReason: null,
+        },
         id: 'record-1',
         title: 'Hello',
         slug: 'hello',
@@ -319,4 +349,82 @@ describe('content workspace', () => {
     );
     expect(await screen.findByRole('option', { name: 'Safe records' })).toBeVisible();
   });
+
+  test.each(['approve', 'adopt', 'save'])(
+    'accepted %s invalidates a delayed open of the same record, including same-version metadata',
+    async (action) => {
+      const user = userEvent.setup();
+      const old = {
+        siteId: siteManifest.siteId,
+        typeKey: 'article',
+        schemaVersion: 1,
+        updatedAt: '2026-10-31T00:00:00Z',
+        id: 'record-1',
+        title: 'Hello',
+        slug: 'hello',
+        state: 'in_review',
+        version: 2,
+        values: { title: 'Hello', summary: 'Original' },
+        allowedActions: ['approve_review', 'adopt_review_subject'],
+        review: {
+          status: 'pending',
+          requiresReview: true,
+          policyVersion: 1,
+          semanticRevision: 'revision-one',
+          deliveryAdapter: 'local_test',
+          recoveryReason: null,
+        },
+      };
+      const fresh = {
+        ...old,
+        version: action === 'approve' ? 2 : 3,
+        allowedActions: ['publish'],
+        review: { ...old.review, status: 'approved' },
+      };
+      let finishOpen;
+      contentWorkspaceAPI.record
+        .mockResolvedValueOnce(old)
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              finishOpen = resolve;
+            })
+        )
+        .mockResolvedValue(fresh);
+      contentWorkspaceAPI.approveReview.mockResolvedValue({
+        record_id: old.id,
+        version: fresh.version,
+      });
+      contentWorkspaceAPI.adoptReviewSubject.mockResolvedValue({
+        record_id: old.id,
+        version: fresh.version,
+      });
+      contentWorkspaceAPI.updateRecord.mockResolvedValue({
+        record_id: old.id,
+        version: fresh.version,
+      });
+      renderWorkspace();
+      await user.click(await screen.findByRole('button', { name: /Hello/ }));
+      await screen.findByRole('heading', { name: 'Hello' });
+      await user.click(screen.getByRole('button', { name: /Hello/ }));
+      if (action === 'save') {
+        await user.click(screen.getByRole('button', { name: 'Edit fields' }));
+        await user.type(screen.getByLabelText('Summary'), ' changed');
+        await user.click(screen.getByRole('button', { name: 'Save changes' }));
+      } else {
+        await user.click(
+          screen.getByRole('button', {
+            name: action === 'approve' ? 'Approve review' : 'Adopt current snapshot',
+          })
+        );
+        await user.click(screen.getByRole('button', { name: 'Confirm action' }));
+      }
+      await screen.findByRole('button', { name: 'Publish', exact: true });
+      await act(async () => finishOpen(old));
+      expect(screen.getByRole('button', { name: 'Publish', exact: true })).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Approve review', exact: true })
+      ).not.toBeInTheDocument();
+    }
+  );
 });

@@ -1,5 +1,5 @@
 import { Fragment, Suspense, useEffect } from 'react';
-import { BrowserRouter as Router } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -25,6 +25,21 @@ function AccountAppearance({ children }) {
   );
 }
 
+// One stable router owns browser history across account/theme updates. Existing
+// descendant routes and provider/error boundaries remain unchanged.
+const router = createBrowserRouter([
+  {
+    path: '*',
+    element: (
+      <ErrorBoundary>
+        <Suspense fallback={<div style={{ padding: 24 }}>Loading...</div>}>
+          <PublicRoutes />
+        </Suspense>
+      </ErrorBoundary>
+    ),
+  },
+]);
+
 function App() {
   const clientId = getGoogleClientId();
   const OAuthBoundary = clientId ? GoogleOAuthProvider : Fragment;
@@ -45,18 +60,7 @@ function App() {
           <ToastProvider>
             <PrivacyRuntime />
             <RestrictedPreviewNotice />
-            <Router
-              future={{
-                v7_startTransition: true,
-                v7_relativeSplatPath: true,
-              }}
-            >
-              <ErrorBoundary>
-                <Suspense fallback={<div style={{ padding: 24 }}>Loading...</div>}>
-                  <PublicRoutes />
-                </Suspense>
-              </ErrorBoundary>
-            </Router>
+            <RouterProvider router={router} />
           </ToastProvider>
         </AccountAppearance>
       </AuthProvider>

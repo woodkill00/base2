@@ -94,19 +94,46 @@ def test_concurrent_first_save_is_one_exact_success_and_one_conflict(monkeypatch
 def test_notification_timestamp_roundtrip_and_repeat_save_stay_owner_scoped(owners):
     choices = [{'event_family': 'marketing', 'channel': 'email', 'delivery': 'digest', 'mandatory': False}]
     saved = repository.replace_notifications(
-        user_id=owners[0], tenant_id='settings-test', preferences=choices,
+        user_id=owners[0], tenant_id='settings-test', expected_version=0, preferences=choices,
     )
-    assert saved[0]['updated_at'] is not None
+    assert all(row['updated_at'] is not None for row in saved['preferences'])
     for _ in range(2):
-        request = NotificationUpdate.model_validate({'preferences': [
+        request = NotificationUpdate.model_validate({'expected_version': saved['version'], 'preferences': [
             {key: row[key] for key in ('event_family', 'channel', 'delivery')}
-            for row in saved
+            for row in saved['preferences']
         ]})
         saved = repository.replace_notifications(
-            user_id=owners[0], tenant_id='settings-test',
+            user_id=owners[0], tenant_id='settings-test', expected_version=request.expected_version,
             preferences=_notification_payload(request.preferences),
         )
-        assert saved[0]['delivery'] == 'digest'
-        assert saved[0]['updated_at'] is not None
-    assert repository.list_notifications(user_id=owners[1], tenant_id='settings-test') == []
-    assert repository.list_notifications(user_id=owners[0], tenant_id='another-settings-test') == []
+        assert saved['version'] >= 2
+        assert next(row for row in saved['preferences'] if row['event_family'] == 'marketing')['delivery'] == 'digest'
+    assert repository.get_notifications(user_id=owners[1], tenant_id='settings-test')['version'] == 0
+    assert repository.get_notifications(user_id=owners[0], tenant_id='another-settings-test')['version'] == 0
+
+
+def test_notification_first_save_race_and_subsequent_stale_save(owners):
+    gate = Barrier(2, timeout=10)
+    def save(delivery):
+        gate.wait()
+        return repository.replace_notifications(
+            user_id=owners[0], tenant_id='settings-test', expected_version=0,
+            preferences=[{'event_family':'product', 'channel':'email', 'delivery': delivery}],
+        )
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(save, delivery) for delivery in ('immediate', 'digest')]
+        results = [future.result(timeout=20) for future in futures]
+    assert sum(value is None for value in results) == 1
+    winner = next(value for value in results if value is not None)
+    assert repository.get_notifications(user_id=owners[0], tenant_id='settings-test') == winner
+    assert repository.replace_notifications(user_id=owners[0], tenant_id='settings-test',
+                                           expected_version=0, preferences=[]) is None
+    second = repository.replace_notifications(user_id=owners[0], tenant_id='settings-test',
+                                             expected_version=1, preferences=[])
+    assert second['version'] == 2
+    assert {row['event_family'] for row in second['preferences']} == {'security', 'transactional'}
+    with db_conn() as conn, conn.cursor() as cur:
+        cur.execute("SELECT metadata_json FROM api_auth_audit_events WHERE user_id=%s AND action=%s ORDER BY created_at",
+                    (str(owners[0]), 'user.notification_preferences_updated'))
+        audits = cur.fetchall()
+    assert [row[0]['version'] for row in audits] == [1, 2]

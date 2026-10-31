@@ -9,6 +9,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from api.db import workspace_db_conn as db_conn
+from api.repositories import workspace_policy as policy_repo
 
 
 def _asset(row: tuple[Any, ...]) -> dict[str, Any]:
@@ -166,6 +167,7 @@ class PostgresMediaLibraryRepository:
         with db_conn(tenant_id=site_id) as conn:
             try:
                 with conn.cursor() as cur:
+                    policy_repo.begin_effect(cur, actor_ref=actor_ref)
                     cur.execute(
                         """SELECT lock_version, media_type FROM sitecontent_mediaasset
                            WHERE site_id=%s AND id=%s AND status NOT IN ('purged','soft_deleted')
@@ -360,6 +362,7 @@ class PostgresMediaLibraryRepository:
         with db_conn(tenant_id=site_id) as conn:
             try:
                 with conn.cursor() as cur:
+                    policy_repo.begin_effect(cur, actor_ref=actor_ref)
                     cur.execute(
                         'SELECT pg_advisory_xact_lock(hashtextextended(%s, 110))',
                         (lock_ref,),

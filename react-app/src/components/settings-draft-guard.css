@@ -1,0 +1,22 @@
+/* Leave confirmation must outrank shell drawers (9000), movement controls (8700),
+   and the command palette/toasts (9999), outside their stacking contexts. */
+.settings-draft-overlay {
+  z-index: 10000;
+}
+.settings-draft-overlay .glass-modal {
+  min-width: 0;
+  width: min(100%, 600px);
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+}
+@media (forced-colors: active) {
+  .settings-draft-overlay .glass-modal {
+    background: Canvas;
+    color: CanvasText;
+    border: 2px solid CanvasText;
+  }
+}
+.settings-draft-overlay .glass-btn {
+  color: inherit;
+  min-height: 44px;
+}

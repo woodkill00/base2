@@ -213,6 +213,13 @@ jobs:
           DB_PASSWORD: mypassword
           CELERY_BROKER_URL: redis://localhost:6379/0
           CELERY_RESULT_BACKEND: redis://localhost:6379/1
+          WORKSPACE_POLICY_DISPOSABLE: '1'
+          WORKSPACE_DB_USER: ci_workspace_runtime
+          WORKSPACE_DB_PASSWORD: ci_workspace_runtime_password_001
+          WORKSPACE_WORKER_DB_USER: ci_workspace_worker
+          WORKSPACE_WORKER_DB_PASSWORD: ci_workspace_worker_password_002
+          DATA_RIGHTS_WORKER_DB_USER: ci_data_rights_worker
+          DATA_RIGHTS_WORKER_DB_PASSWORD: ci_data_rights_worker_password_005
           API_RUNTIME_DB_USER: ci_api_runtime
           API_RUNTIME_DB_PASSWORD: ci_api_runtime_password_004
           EMAIL_WORKER_DB_USER: ci_email_worker

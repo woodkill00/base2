@@ -2,6 +2,7 @@ import { setSessionFixture, fulfillSessionFixture } from '../session-fixture';
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { prepareCapture } from './capture';
+import profile from '../../src/config/generated/base2-obsidian.json';
 
 const axe = readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
 const owner = {
@@ -121,6 +122,18 @@ for (const width of [390, 1440]) {
             const data = route.request().postDataJSON();
             record = {
               ...data,
+              siteId: profile.siteId,
+              typeKey: 'article',
+              updatedAt: '2026-10-31T00:00:00Z',
+              allowedActions: ['submit_review', 'publish', 'delete'],
+              review: {
+                status: 'not_requested',
+                requiresReview: false,
+                policyVersion: 1,
+                semanticRevision: 'fixture-revision',
+                deliveryAdapter: 'local_test',
+                recoveryReason: null,
+              },
               id: 'synthetic-record',
               schemaVersion: 1,
               version: 1,

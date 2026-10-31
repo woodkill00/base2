@@ -11,6 +11,9 @@ from common.models import (
     Url,
     UUIDMixin,
 )
+from common.models import (
+    NotificationPreferenceSet as CanonicalNotificationPreferenceSet,
+)
 
 AuthUser = get_user_model()
 
@@ -213,6 +216,37 @@ class UserPreferenceSet(UUIDMixin, TimestampedModel):
             models.CheckConstraint(condition=models.Q(version__gte=1), name="users_preferences_ver_gte1"),
         ]
         indexes = [models.Index(fields=("user", "organization"), name="users_preferences_owner_idx")]
+
+
+class NotificationPreferenceSet(CanonicalNotificationPreferenceSet):
+    """Operator-identity adapter; never joins API public identities by UUID."""
+
+    user = models.ForeignKey(
+        AuthUser, on_delete=models.CASCADE, related_name="notification_preference_sets"
+    )
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="notification_preference_sets",
+        null=True,
+        blank=True,
+    )
+
+    class Meta(CanonicalNotificationPreferenceSet.Meta):
+        abstract = False
+        constraints = [
+            *CanonicalNotificationPreferenceSet.Meta.constraints,
+            models.UniqueConstraint(
+                fields=("user",),
+                condition=models.Q(organization__isnull=True),
+                name="users_notifset_default_uniq",
+            ),
+            models.UniqueConstraint(
+                fields=("user", "organization"),
+                condition=models.Q(organization__isnull=False),
+                name="users_notifset_owner_uniq",
+            ),
+        ]
 
 
 class NotificationPreference(UUIDMixin, TimestampedModel):
